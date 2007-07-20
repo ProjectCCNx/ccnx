@@ -1,0 +1,607 @@
+package com.parc.ccn.network.impl;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.math.BigInteger;
+import java.net.InetAddress;
+import java.net.MalformedURLException;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.logging.Level;
+
+import javax.jcr.ItemExistsException;
+import javax.jcr.Node;
+import javax.jcr.NodeIterator;
+import javax.jcr.PathNotFoundException;
+import javax.jcr.Repository;
+import javax.jcr.RepositoryException;
+import javax.jcr.Session;
+import javax.jcr.SimpleCredentials;
+import javax.jcr.ValueFormatException;
+import javax.jcr.lock.LockException;
+import javax.jcr.nodetype.ConstraintViolationException;
+import javax.jcr.nodetype.NoSuchNodeTypeException;
+import javax.jcr.observation.Event;
+import javax.jcr.observation.ObservationManager;
+import javax.jcr.query.InvalidQueryException;
+import javax.jcr.query.Query;
+import javax.jcr.version.VersionException;
+import javax.jmdns.ServiceInfo;
+
+import org.apache.jackrabbit.core.TransientRepository;
+import org.apache.jackrabbit.rmi.client.ClientRepositoryFactory;
+import org.apache.jackrabbit.rmi.remote.RemoteRepository;
+import org.apache.jackrabbit.rmi.server.ServerAdapterFactory;
+
+import com.parc.ccn.Library;
+import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.query.CCNQueryListener;
+import com.parc.ccn.data.query.CCNQueryDescriptor;
+import com.parc.ccn.data.query.CCNQueryListener.CCNQueryType;
+import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.security.KeyLocator;
+import com.parc.ccn.network.CCNRepository;
+import com.parc.ccn.network.discovery.CCNDiscovery;
+
+/**
+ * Jackrabbit does have a way of linking directly
+ * to files. If we need efficiency, we could do that.
+ * @author smetters
+ *
+ */
+public class JackrabbitCCNRepository extends CCNRepository {
+
+	public static final int SERVER_PORT = 1101;
+	public static final String PROTOCOL_TYPE = "rmi";
+	public static final String SERVER_RMI_NAME = "jackrabbit";
+
+	/**
+	 * Where do we store stuff in Jackrabbit. 
+	 */
+	public static final String CONTENT_PROPERTY = "CONTENT";
+
+	/**
+	 * The bits of the authenticator, exploded.
+	 */
+	public static final String PUBLISHER_PROPERTY = "PUBLISHER";
+	public static final String TIMESTAMP_PROPERTY = "TIMESTAMP";
+	public static final String TYPE_PROPERTY = "CONTENT_TYPE";
+	public static final String HASH_PROPERTY = "CONTENT_HASH";
+	public static final String KEY_LOCATOR_PROPERTY = "KEY_LOCATOR";
+	public static final String SIGNATURE_PROPERTY = "SIGNATURE";
+	private static final int CONVERSION_RADIX = 24;
+
+	protected static JackrabbitCCNRepository _theNetwork = null;
+	protected HashMap<CCNQueryListener, JackrabbitEventListener> _eventListeners = new HashMap<CCNQueryListener, JackrabbitEventListener>();
+	protected Repository _repository;
+	protected Session _session;
+
+	/**
+	 * Use someone else's repository.
+	 */
+	public JackrabbitCCNRepository(String host, int port) 
+			throws MalformedURLException, 
+				ClassCastException, RemoteException, 
+				NotBoundException {
+		this(new ClientRepositoryFactory().getRepository(constructURL(PROTOCOL_TYPE, SERVER_RMI_NAME, host, port)));
+	}
+	
+	/**
+	 * Connect to a remote repository discovered through mDNS.
+	 */
+	public JackrabbitCCNRepository(ServiceInfo info) throws MalformedURLException, ClassCastException, RemoteException, NotBoundException {
+		this(info.getHostAddress(), info.getPort());
+	}
+
+	/**
+	 * Use our own repository.
+	 * @param repository
+	 */
+	public JackrabbitCCNRepository(int port) {
+		try {
+			_repository = createLocalRepository(port);
+			login();
+			advertiseServer(port);
+		} catch (Exception e) {
+			Library.logger().warning("Exception attempting to create our repository or log into it.");
+			Library.logStackTrace(Level.WARNING, e);
+		}		
+
+		Runtime.getRuntime().addShutdownHook(new Thread() {
+			public void run() { onShutdown(); }
+		});
+	}
+	
+	/**
+	 * Use our own repository on a standard port.
+	 *
+	 */
+	public JackrabbitCCNRepository() {
+		this(SERVER_PORT);
+	}
+
+	/**
+	 * Internal constructor for using someone else's repository.
+	 * @param repository
+	 */
+	protected JackrabbitCCNRepository(Repository repository) {
+		try {
+			_repository = repository;
+			login();
+		} catch (Exception e) {
+			Library.logger().warning("Exception attempting to log into repository.");
+			Library.logStackTrace(Level.WARNING, e);
+		}		
+
+		Runtime.getRuntime().addShutdownHook(new Thread() {
+			public void run() { onShutdown(); }
+		});
+	}
+
+	public void put(ContentName name, ContentAuthenticator authenticator, byte[] content) throws IOException {
+
+		if (null == name) {
+			Library.logger().warning("CCN:put: name cannot be null.");
+			throw new IllegalArgumentException("CCN:put: name cannot be null.");
+		}
+
+		// first, make sure all the nodes exist
+		Node n;
+		try {
+			n = _session.getRootNode();
+		} catch (RepositoryException e) {
+			Library.logger().warning("JackrabbitCCNRepository: cannot find root node!");
+			Library.logStackTrace(Level.WARNING, e);
+			throw new IOException(e.getMessage());
+		}
+
+		int i;
+		for (i = 0; i < name.count()-1; i++) {
+			
+			if (name.component(i).length == 0) continue;
+
+			try {
+			
+				n = n.getNode(nameComponentToString(name.component(i)));
+
+			} catch (PathNotFoundException e) {
+				// Add an intermediate name level
+				try {
+					
+					n = addSubNode(n, name.component(i));
+					
+				} catch (RepositoryException e1) {
+					Library.logger().warning("JackrabbitCCNRepository: can't add subNode.");
+					Library.logStackTrace(Level.WARNING, e);
+					throw new IOException(e.getMessage());
+				}
+
+			} catch (RepositoryException e) {
+				Library.logger().warning("JackrabbitCCNRepository: unexpected RepositoryException in put.");
+				Library.logStackTrace(Level.WARNING, e);
+				throw new IOException(e.getMessage());
+			}
+		}
+
+		try {
+			// Now we're down to the leaf node
+			n = addLeafNode(n, name.component(i), authenticator, content);
+
+			return;
+
+		} catch (RepositoryException e) {
+			throw new IOException(e.getMessage());
+		}
+	}
+
+	/**
+	 * Adds a child node with a new name level.
+	 * @return
+	 * @throws RepositoryException 
+	 */
+	protected Node addSubNode(Node parent, byte [] name) throws RepositoryException {
+
+		Node n = null;
+		String componentName = nameComponentToString(name);
+		try {
+			try {
+				n = parent.addNode(componentName,"nt:unstructured");
+				// now, make sure the leaf node is versionable				
+				if (!n.isNodeType("mix:versionable")) {
+					n.addMixin("mix:versionable");
+				}
+				if (!n.isNodeType("mix:referenceable")) {
+					n.addMixin("mix:referenceable");
+				}
+				
+			} catch (NoSuchNodeTypeException e) {
+				Library.logger().warning("Unexpected error: can't set built-in mixin types on a node.");
+				Library.logStackTrace(Level.WARNING, e);
+				throw new RuntimeException(e);
+			} catch (ItemExistsException e) {
+				Library.logger().warning("Configuration error: cannot add child of parent: " +
+							parent.getPath() + " with name " + componentName +
+							" because one already exists. But all parents should allow matching children.");
+				Library.logStackTrace(Level.WARNING, e);
+			} catch (PathNotFoundException e) {
+				Library.logger().warning("Unexpected error: known parent " +
+						parent.getPath() + " gives a path not found exception when adding child " +
+						componentName);
+				Library.logStackTrace(Level.WARNING, e);
+			} catch (VersionException e) {
+				Library.logger().warning("Unexpected error: known parent " +
+						parent.getPath() + " gives a version exception when adding child " +
+						componentName);
+				Library.logStackTrace(Level.WARNING, e);
+			} catch (ConstraintViolationException e) {
+				Library.logger().warning("Unexpected error: constraint violation exception creating standard subnode.");
+				Library.logStackTrace(Level.WARNING, e);
+				throw new RuntimeException(e);
+			} catch (LockException e) {
+				Library.logger().warning("Unexpected error: known parent " +
+						parent.getPath() + " gives a lock exception when adding child " +
+						componentName);
+				Library.logStackTrace(Level.WARNING, e);
+			}
+		} catch (RepositoryException e) {
+			// parent.getPath() throws a RepositoryException
+			Library.logger().warning("Unexpected error: known parent " +
+					parent.getPath() + " gives a repository exception when adding child " +
+					componentName);
+			Library.logStackTrace(Level.WARNING, e);
+			throw e;
+		}
+	
+		return n;
+
+//		resNode.setProperty ("jcr:mimeType", mimeType);
+//     resNode.setProperty ("jcr:encoding", encoding);
+//     resNode.setProperty ("jcr:data", new FileInputStream (file));
+//     Calendar lastModified = Calendar.getInstance ();
+//     lastModified.setTimeInMillis (file.lastModified ());
+//     resNode.setProperty ("jcr:lastModified", lastModified);
+
+	}
+
+	protected Node addLeafNode(Node parent, byte [] name, ContentAuthenticator authenticator, byte[] content) throws RepositoryException {
+	
+		Node n = addSubNode(parent, name);
+		
+		n.checkout();
+		
+		addContent(n, content);
+		addAuthenticationInfo(n, authenticator);
+
+		_session.save();
+		n.checkin();
+		return n;
+	}
+	
+	protected void addContent(Node n, byte [] content) throws ValueFormatException, VersionException, LockException, ConstraintViolationException, RepositoryException {
+		ByteArrayInputStream bai = new ByteArrayInputStream(content);
+		n.setProperty(CONTENT_PROPERTY, bai);
+	}
+	
+	boolean hasContent(Node n) throws RepositoryException {
+		return n.hasProperty(CONTENT_PROPERTY);
+	}
+	
+	protected static byte [] getContent(Node n) throws RepositoryException, IOException {
+		return getBinaryProperty(n, CONTENT_PROPERTY);
+	}
+
+	protected static byte[] getBinaryProperty(Node n, String property) throws RepositoryException, IOException {
+
+		InputStream in = n.getProperty(property).getStream();
+
+		int contentLength = (int)n.getProperty(property).getLength();
+
+		byte[] result = new byte[contentLength];
+		int bytesToRead = contentLength;
+		while(bytesToRead > 0) {
+			int len = in.read(result, contentLength - bytesToRead, bytesToRead);
+			if(len < 0) {
+				Library.logger().warning("JackrabbitCCNRepository: Error reading property " + property + " value from server.");
+				throw new IOException("JackrabbitCCNRepository: Error reading " + property + " value from server.");
+			}
+			bytesToRead -= len;
+		}
+		return result;
+	}
+
+	protected void addAuthenticationInfo(Node n, ContentAuthenticator authenticator) throws ValueFormatException, VersionException, LockException, ConstraintViolationException, RepositoryException {
+		n.setProperty(PUBLISHER_PROPERTY, publisherToString(authenticator.publisher()));
+		n.setProperty(TYPE_PROPERTY, authenticator.typeName());
+		n.setProperty(TIMESTAMP_PROPERTY, authenticator.timestamp().toString());
+		ByteArrayInputStream hai = new ByteArrayInputStream(authenticator.contentHash());
+		n.setProperty(HASH_PROPERTY, hai);
+		
+		ByteArrayInputStream kli = authenticator.keyLocator().getEncoded();
+		n.setProperty(KEY_LOCATOR_PROPERTY, kli);	
+
+		ByteArrayInputStream sai = new ByteArrayInputStream(authenticator.signature());
+		n.setProperty(SIGNATURE_PROPERTY, sai);
+	}
+	
+	protected ContentAuthenticator getAuthenticationInfo(Node n) throws ValueFormatException, PathNotFoundException, RepositoryException, IOException {
+		String strPublisher = n.getProperty(PUBLISHER_PROPERTY).getString();
+		byte [] publisherID = stringToByte(strPublisher);
+		
+		ContentAuthenticator.ContentType type = ContentAuthenticator.nameToType(n.getProperty(TYPE_PROPERTY).getString());
+
+		Timestamp timestamp = Timestamp.valueOf(n.getProperty(TIMESTAMP_PROPERTY).getString());
+		
+		byte [] hash = getBinaryProperty(n, HASH_PROPERTY);
+		byte [] encodedKeyLocator = getBinaryProperty(n, KEY_LOCATOR_PROPERTY);
+	
+		KeyLocator loc = new KeyLocator(encodedKeyLocator);
+		byte [] signature = getBinaryProperty(n, SIGNATURE_PROPERTY);
+		
+		ContentAuthenticator auth = new ContentAuthenticator(publisherID, timestamp, type,
+															 hash, loc, signature);
+		return auth;
+	}
+	
+	/**
+	 * All queries are persistent until cancelled. Add this
+	 * to the event listener, with the first-time caveat
+	 * to get the immediate results.
+	 * @throws IOException 
+	 */
+	public CCNQueryDescriptor get(ContentName name, ContentAuthenticator authenticator, CCNQueryType type, 
+								  CCNQueryListener listener, long TTL) throws IOException {
+		CCNQueryDescriptor query = new CCNQueryDescriptor(name, authenticator, type, TTL);
+		listener.setQuery(query);
+		subscribe(listener);
+		return query;
+	}
+
+	/**
+	 * Get immediate results to a query.
+	 * DKS: caution required to make sure that the idea of
+	 * what matches here is the same as the one in coresponding version in 
+	 * CCNQueryDescriptor. 
+	 * @param query
+	 * @return
+	 * @throws IOException 
+	 * @throws RepositoryException 
+	 * @throws InvalidQueryException 
+	 */
+	public ArrayList<ContentObject> get(CCNQueryDescriptor query) throws IOException {
+
+		ArrayList<ContentObject> objects = new ArrayList<ContentObject>();
+
+		try {
+			Query q = _session.getWorkspace().getQueryManager().createQuery("/jcr:root" + nameToPath(query.name()), Query.XPATH);
+			NodeIterator iter = q.execute().getNodes();
+			while (iter.hasNext()) {
+				Node node = (Node) iter.next();
+				objects.add(getContentObject(node));
+			}
+		} catch (RepositoryException e) {
+			Library.logger().warning("Invalid query or problem executing get: " + e.getMessage());
+			Library.warningStackTrace(e);
+			throw new IOException(e);
+		}
+
+		/*
+		 * Need to handle different query types, allow recursion to be specified in query.
+		 
+		q = _session.getWorkspace().getQueryManager().createQuery("/jcr:root" + nameToPath(query.name()) + "//*", Query.XPATH);
+		iter = q.execute().getNodes();
+		while (iter.hasNext()) {
+			Node node = (Node) iter.next();
+			objects.add(getContentObject(node));
+		}	
+		*/		
+		return objects;
+	}
+	
+	public void cancel(CCNQueryDescriptor query) throws IOException {
+		// Find the listener responding to this query
+		for (CCNQueryListener l : _eventListeners.keySet()) {
+			if (l.getQuery().equals(query)) {
+				unsubscribe(l);
+			}
+		}
+	}
+	
+	private void startListening(JackrabbitEventListener el) throws IOException {
+		try {
+			ObservationManager o = _session.getWorkspace().getObservationManager();
+			o.addEventListener(el, el.events(), el.getQueryPath(), true, null, null, false);
+		} catch (RepositoryException e) {
+			throw new IOException(e.getMessage());
+		}
+		// now tell them about the existing nodes
+		ArrayList<ContentObject> currentMatches = get(el.queryDescriptor());
+		el.listener().handleResults(currentMatches);
+			
+		return;		
+	}
+
+	/**
+	 * What's the difference between the query interface
+	 * and the subscription/observer interface? Maybe
+	 * just not pulling the data?
+	 */
+	public void subscribe(CCNQueryListener l) throws IOException {
+
+		int events = Event.NODE_ADDED | Event.NODE_REMOVED | Event.PROPERTY_ADDED | Event.PROPERTY_CHANGED | Event.PROPERTY_REMOVED;
+		JackrabbitEventListener el = new JackrabbitEventListener(this, l, events);
+		_eventListeners.put(l, el);
+		startListening(el);
+	}
+
+	public void resubscribeAll() throws IOException {
+		for (JackrabbitEventListener el : _eventListeners.values()) {
+			startListening(el);
+		}
+	}
+
+	public void unsubscribe(CCNQueryListener l) throws IOException {
+		try {
+			ObservationManager o = _session.getWorkspace().getObservationManager();
+			JackrabbitEventListener el = _eventListeners.get(l);
+			if (null == el)
+				return;
+			o.removeEventListener(el);
+			l.cancel();
+			_eventListeners.remove(l);
+		} catch (RepositoryException e) {
+			throw new IOException(e.getMessage());
+		}
+	}
+
+	// Package
+	Node getNode(String path) throws PathNotFoundException, RepositoryException {
+		return (Node)_session.getItem(path);
+	}
+	
+	ContentName getName(Node n) throws RepositoryException {
+		return parsePath(n.getPath());
+	}
+	
+	ContentObject getContentObject(Node n) throws IOException {
+		ContentName name = null;;
+		ContentAuthenticator authenticator = null;
+		byte [] content = null;
+		try {
+			name = getName(n);
+			authenticator = getAuthenticationInfo(n);
+			content = getContent(n);
+			
+		} catch (RepositoryException e) {
+			Library.logger().warning("Repository exception extracting content from node: " + n.toString());
+			Library.logStackTrace(Level.WARNING, e);
+			throw new IOException(e);
+		}
+		return new ContentObject(name, authenticator, content);
+	}
+
+	public void login() throws IOException {
+		SimpleCredentials sc = new SimpleCredentials(InetAddress.getLocalHost().getHostAddress(), "".toCharArray());
+		try {
+			_session = _repository.login(sc);
+		} catch (RepositoryException e) {
+			Library.logger().warning("Exception logging into Jackrabbit CCN repository: " + e.getMessage());
+			Library.logStackTrace(Level.WARNING, e);
+			throw new IOException(e);
+		}
+	}
+
+	public void login(String user, String password) throws IOException {
+		login();
+	}
+
+	public void logout() {
+		_session.logout();
+		_session = null;
+	}
+
+	public void disconnect() {
+		logout();
+	}
+
+	
+	public void reconnect() {
+		try {
+			login();
+			resubscribeAll();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}	
+
+	protected void onShutdown() {
+		try {
+			if (_session != null) _session.save();
+		} catch (RepositoryException e) {
+			Library.logger().warning("Exception attempting to save Jackrabbit session!");
+			Library.logStackTrace(Level.WARNING, e);
+		}
+		if (_session != null) _session.logout();
+	}
+
+	protected static Repository createLocalRepository(int port) throws IOException {
+		Repository repository = new TransientRepository();
+		ServerAdapterFactory factory = new ServerAdapterFactory();
+		RemoteRepository remote = factory.getRemoteRepository(repository);
+		Registry reg = LocateRegistry.createRegistry(port);
+		reg.rebind(SERVER_RMI_NAME, remote);
+		Library.logger().info("Started Jackrabbit server on port: " + port);
+		
+		return repository;
+	}
+
+	protected static void advertiseServer(int port) throws IOException {
+		CCNRepository.advertiseServer(CCNDiscovery.RMI_SERVICE_TYPE, port);
+	}
+
+	public static CCNRepository connect(ServiceInfo info) throws MalformedURLException, ClassCastException, RemoteException, NotBoundException {
+		return new JackrabbitCCNRepository(info.getHostAddress(), info.getPort());		
+	}
+		
+	/**
+	 * CCNs know about names as sequences of binary components. 
+	 * Jackrabbit thinks about names as (Java) strings, i.e. unicode.
+	 * 
+	 * @param component
+	 * @return
+	 */
+	protected static String nameComponentToString(byte [] component) {
+		return byteToString(component);
+	}
+	
+	protected static String publisherToString(byte [] publisherID) {
+		return byteToString(publisherID);
+	}
+	
+	// Go between ContentNames and generated Jackrabbit paths.
+	// Have to cope with Jackrabbit-specific maps between bytes and strings.
+	protected static ContentName parsePath(String path) {
+		
+		if (path == null) return ContentName.ROOT;
+		if (path.length() == 0) return ContentName.ROOT;
+		String[] parts = path.split(ContentName.SEPARATOR);
+		byte [][] byteParts = new byte[parts.length][];
+		for (int i=0; i < parts.length; ++i) {
+			byteParts[i] = stringToByte(parts[i]);
+		}
+		return new ContentName(parts);
+	}
+	
+	protected static String nameToPath(ContentName name) {
+		if ((null == name) || (0 == name.count())) {
+			return ContentName.SEPARATOR;
+		}
+		StringBuffer buf = new StringBuffer();
+		for (int i=0; i < name.count(); ++i) {
+			byte [] component = name.component(i);
+			if ((null == component) || (0 == component.length))
+				continue;
+			buf.append(ContentName.SEPARATOR);
+			buf.append(byteToString(name.component(i)));
+		}
+		return buf.toString();
+	}
+	
+	protected static String byteToString(byte [] id) {
+		BigInteger bi = new BigInteger(id);
+		// Have to make sure there are no ContentName.SEPARATOR's in there...
+		String str = bi.toString(CONVERSION_RADIX);
+		return str;
+	}
+	
+	protected static byte [] stringToByte(String id) {
+		BigInteger bi = new BigInteger(id, CONVERSION_RADIX);
+		return bi.toByteArray();
+	}
+}
