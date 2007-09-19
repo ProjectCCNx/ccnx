@@ -134,8 +134,18 @@ public class RepositoryManager implements CCNBase, CCNDiscoveryListener {
 		_localRepository.put(name, authenticator, content);
 	}
 
+	/**
+	 * Are there differences between observer and query
+	 * interfaces? Maybe one returns everything and one
+	 * just tells you what names have changed...
+	 * @throws IOException
+	 */
 	public void resubscribeAll() throws IOException {
-		
+		_localRepository.resubscribeAll();
+		for (CCNRepository repository : _repositories) {
+			if (!repository.equals(_localRepository))
+				repository.resubscribeAll();
+		}
 	}
 	
 	/**
@@ -189,25 +199,5 @@ public class RepositoryManager implements CCNBase, CCNDiscoveryListener {
 			Library.logger().warning("Cannot instantiate connection to that repository!");
 			Library.logStackTrace(Level.WARNING, e);
 		} 
-	}
-
-	/**
-	 * Make it easier to use a CCN, by making it
-	 * possible to get things in and out of one.
-	 * This interface allows a CCN to be built out
-	 * of a filesystem, or saved to one.
-	 * 
-	 * Uses file naming as names. Content nodes
-	 * dumped as files. Link nodes dumped as symlinks
-	 * or shortcuts.
-	 * @author smetters
-	 *
-	 */	
-	public static void importFolder(boolean recursive) {
-		
-	}
-	
-	public static void exportFolder(boolean recursive) {
-		
 	}
 }

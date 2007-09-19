@@ -47,6 +47,7 @@ import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.data.query.CCNQueryListener.CCNQueryType;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
+import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.network.CCNRepository;
 import com.parc.ccn.network.discovery.CCNDiscovery;
 
@@ -71,6 +72,7 @@ public class JackrabbitCCNRepository extends CCNRepository {
 	 * The bits of the authenticator, exploded.
 	 */
 	public static final String PUBLISHER_PROPERTY = "PUBLISHER";
+	public static final String PUBLISHER_TYPE_PROPERTY = "PUBLISHER_TYPE";
 	public static final String TIMESTAMP_PROPERTY = "TIMESTAMP";
 	public static final String TYPE_PROPERTY = "CONTENT_TYPE";
 	public static final String HASH_PROPERTY = "CONTENT_HASH";
@@ -318,6 +320,7 @@ public class JackrabbitCCNRepository extends CCNRepository {
 
 	protected void addAuthenticationInfo(Node n, ContentAuthenticator authenticator) throws ValueFormatException, VersionException, LockException, ConstraintViolationException, RepositoryException {
 		n.setProperty(PUBLISHER_PROPERTY, publisherToString(authenticator.publisher()));
+		n.setProperty(PUBLISHER_TYPE_PROPERTY, PublisherID.PublisherType.typeToName(authenticator.publisherType()));
 		n.setProperty(TYPE_PROPERTY, authenticator.typeName());
 		n.setProperty(TIMESTAMP_PROPERTY, authenticator.timestamp().toString());
 		ByteArrayInputStream hai = new ByteArrayInputStream(authenticator.contentHash());
@@ -333,6 +336,7 @@ public class JackrabbitCCNRepository extends CCNRepository {
 	protected ContentAuthenticator getAuthenticationInfo(Node n) throws ValueFormatException, PathNotFoundException, RepositoryException, IOException {
 		String strPublisher = n.getProperty(PUBLISHER_PROPERTY).getString();
 		byte [] publisherID = stringToByte(strPublisher);
+		String publisherType = n.getProperty(PUBLISHER_TYPE_PROPERTY).getString();
 		
 		ContentAuthenticator.ContentType type = ContentAuthenticator.nameToType(n.getProperty(TYPE_PROPERTY).getString());
 
@@ -344,7 +348,8 @@ public class JackrabbitCCNRepository extends CCNRepository {
 		KeyLocator loc = new KeyLocator(encodedKeyLocator);
 		byte [] signature = getBinaryProperty(n, SIGNATURE_PROPERTY);
 		
-		ContentAuthenticator auth = new ContentAuthenticator(publisherID, timestamp, type,
+		ContentAuthenticator auth = new ContentAuthenticator(publisherID, PublisherID.nameToType(publisherType),
+															 timestamp, type,
 															 hash, loc, signature);
 		return auth;
 	}

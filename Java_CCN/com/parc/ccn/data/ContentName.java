@@ -1,11 +1,26 @@
 package com.parc.ccn.data;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Arrays;
 
-public class ContentName {
+import javax.xml.stream.XMLEventReader;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamWriter;
+
+import sun.misc.BASE64Encoder;
+
+import com.parc.ccn.data.content.XMLEncodable;
+import com.parc.ccn.data.content.XMLHelper;
+
+public class ContentName implements XMLEncodable {
 
 	public static final String SEPARATOR = "\\/";
 	public static final ContentName ROOT = new ContentName((String)null);
+	private static final String COUNT_ELEMENT = null;
+	private static final String CONTENT_NAME_ELEMENT = null;
+	private static final String COMPONENT_ELEMENT = null;
 	
 	protected byte _components[][];
 		
@@ -75,6 +90,10 @@ public class ContentName {
 				System.arraycopy(components[i],0,_components[i],0,components[i].length);
 			}
 		}
+	}
+	
+	public ContentName() {
+		this(0, null);
 	}
 	
 	public ContentName clone() {
@@ -149,5 +168,57 @@ public class ContentName {
 		if(str.length() == 0) return ROOT;
 		String[] parts = str.split(SEPARATOR);
 		return new ContentName(parts);
+	}
+
+	public void decode(InputStream iStream) throws XMLStreamException {
+		XMLEventReader reader = XMLHelper.beginDecoding(iStream);
+		decode(reader);
+	}
+
+	public void decode(XMLEventReader reader) throws XMLStreamException {
+		XMLHelper.readStartElement(reader, CONTENT_NAME_ELEMENT);
+		XMLHelper.readStartElement(reader, COUNT_ELEMENT);
+		String strCount = reader.getElementText();
+		int count = Integer.valueOf(strCount);
+		XMLHelper.readEndElement(reader);
+		
+		_components = new byte[count][];
+		
+		for (int i=0; i < count; ++i) {
+			XMLHelper.readStartElement(reader, COMPONENT_ELEMENT);
+			String strComponent = reader.getElementText();
+			try {
+				_components[i] = XMLHelper.decodeElement(strComponent);
+			} catch (IOException e) {
+				throw new XMLStreamException("Cannot decode component " + i + ": " + strComponent, e);
+			}
+			if (null == _components[i]) {
+				throw new XMLStreamException("Component " + i + " decodes to null: " + strComponent);
+			}
+			XMLHelper.readEndElement(reader);
+		}
+		
+		XMLHelper.readEndElement(reader);
+	}
+
+	public void encode(OutputStream oStream) throws XMLStreamException {
+		XMLStreamWriter writer = XMLHelper.beginEncoding(oStream);
+		encode(writer);
+		XMLHelper.endEncoding(writer);	
+	}
+
+	public void encode(XMLStreamWriter writer) throws XMLStreamException {
+		writer.writeStartElement(CONTENT_NAME_ELEMENT);
+		writer.writeStartElement(COUNT_ELEMENT);
+		writer.writeCharacters(Integer.toString(count()));
+		writer.writeEndElement();
+		
+		for (int i=0; i < count(); ++i) {
+			writer.writeStartElement(COMPONENT_ELEMENT);
+			String strComponent = new BASE64Encoder().encode(_components[i]);
+			writer.writeCharacters(strComponent);
+			writer.writeEndElement();
+		}
+		writer.writeEndElement();
 	}
 }
