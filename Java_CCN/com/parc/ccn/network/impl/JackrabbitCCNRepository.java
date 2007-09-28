@@ -33,6 +33,7 @@ import javax.jcr.query.InvalidQueryException;
 import javax.jcr.query.Query;
 import javax.jcr.version.VersionException;
 import javax.jmdns.ServiceInfo;
+import javax.xml.stream.XMLStreamException;
 
 import org.apache.jackrabbit.core.TransientRepository;
 import org.apache.jackrabbit.rmi.client.ClientRepositoryFactory;
@@ -147,6 +148,7 @@ public class JackrabbitCCNRepository extends CCNRepository {
 		});
 	}
 
+	
 	public void put(ContentName name, ContentAuthenticator authenticator, byte[] content) throws IOException {
 
 		if (null == name) {
@@ -214,6 +216,8 @@ public class JackrabbitCCNRepository extends CCNRepository {
 		String componentName = nameComponentToString(name);
 		try {
 			try {
+				// DKS: file nodes: add file name, "nt:file"
+				// 
 				n = parent.addNode(componentName,"nt:unstructured");
 				// now, make sure the leaf node is versionable				
 				if (!n.isNodeType("mix:versionable")) {
@@ -320,13 +324,13 @@ public class JackrabbitCCNRepository extends CCNRepository {
 
 	protected void addAuthenticationInfo(Node n, ContentAuthenticator authenticator) throws ValueFormatException, VersionException, LockException, ConstraintViolationException, RepositoryException {
 		n.setProperty(PUBLISHER_PROPERTY, publisherToString(authenticator.publisher()));
-		n.setProperty(PUBLISHER_TYPE_PROPERTY, PublisherID.PublisherType.typeToName(authenticator.publisherType()));
+		n.setProperty(PUBLISHER_TYPE_PROPERTY, PublisherID.typeToName(authenticator.publisherType()));
 		n.setProperty(TYPE_PROPERTY, authenticator.typeName());
 		n.setProperty(TIMESTAMP_PROPERTY, authenticator.timestamp().toString());
 		ByteArrayInputStream hai = new ByteArrayInputStream(authenticator.contentHash());
 		n.setProperty(HASH_PROPERTY, hai);
 		
-		ByteArrayInputStream kli = authenticator.keyLocator().getEncoded();
+		ByteArrayInputStream kli = new ByteArrayInputStream(authenticator.keyLocator().getEncoded());
 		n.setProperty(KEY_LOCATOR_PROPERTY, kli);	
 
 		ByteArrayInputStream sai = new ByteArrayInputStream(authenticator.signature());
@@ -345,7 +349,13 @@ public class JackrabbitCCNRepository extends CCNRepository {
 		byte [] hash = getBinaryProperty(n, HASH_PROPERTY);
 		byte [] encodedKeyLocator = getBinaryProperty(n, KEY_LOCATOR_PROPERTY);
 	
-		KeyLocator loc = new KeyLocator(encodedKeyLocator);
+		KeyLocator loc;
+		try {
+			loc = new KeyLocator(encodedKeyLocator);
+		} catch (XMLStreamException e) {
+			Library.logger().log(Level.WARNING, "This should not happen: cannot retrieve and decode KeyLocator value we encoded and stored.");
+			throw new ValueFormatException(e);
+		}
 		byte [] signature = getBinaryProperty(n, SIGNATURE_PROPERTY);
 		
 		ContentAuthenticator auth = new ContentAuthenticator(publisherID, PublisherID.nameToType(publisherType),

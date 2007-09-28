@@ -1,6 +1,7 @@
 package com.parc.ccn.data.security;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -14,6 +15,7 @@ import java.security.cert.X509Certificate;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.HashMap;
+import java.util.logging.Level;
 
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
@@ -27,8 +29,8 @@ import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import com.parc.ccn.Library;
 import com.parc.ccn.crypto.certificates.OIDLookup;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.content.XMLEncodable;
-import com.parc.ccn.data.content.XMLHelper;
+import com.parc.ccn.data.util.XMLEncodable;
+import com.parc.ccn.data.util.XMLHelper;
 
 public class KeyLocator implements XMLEncodable {
     public enum KeyLocatorType { NAME, KEY, CERTIFICATE }
@@ -69,6 +71,11 @@ public class KeyLocator implements XMLEncodable {
     public KeyLocator(X509Certificate certificate) {
     	_certificate = certificate;
     	_type = KeyLocatorType.CERTIFICATE;
+    }
+    
+    public KeyLocator(byte [] encoded) throws XMLStreamException {
+    	ByteArrayInputStream bais = new ByteArrayInputStream(encoded);
+    	decode(bais);
     }
     
     KeyLocator() {} // for use by decoders
@@ -171,6 +178,18 @@ public class KeyLocator implements XMLEncodable {
 		}
 		XMLHelper.readEndElement(reader);
 	}
+	
+	public byte [] getEncoded() {
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		try {
+			encode(baos);
+		} catch (XMLStreamException e) {
+			Library.logger().log(Level.WARNING, "This should not happen: cannot encode KeyLocator to byte array.");
+			Library.warningStackTrace(e);
+			// DKS currently returning invalid byte array...
+		}
+		return baos.toByteArray();
+	}
 
 	public void encode(OutputStream oStream) throws XMLStreamException {
 		XMLStreamWriter writer = XMLHelper.beginEncoding(oStream);
@@ -184,9 +203,8 @@ public class KeyLocator implements XMLEncodable {
 		writer.writeCharacters(typeToName(type()));
 		writer.writeEndElement();   
 		if (type() == KeyLocatorType.KEY) {
-			writer.writeStartElement(PUBLISHER_KEY_ELEMENT);
-			writer.writeCharacters(XMLHelper.encodeElement(key().getEncoded()));
-			writer.writeEndElement();
+			XMLHelper.writeElement(writer, PUBLISHER_KEY_ELEMENT, 
+					XMLHelper.encodeElement(key().getEncoded()));
 		} else if (type() == KeyLocatorType.CERTIFICATE) {
 			writer.writeStartElement(PUBLISHER_CERTIFICATE_ELEMENT);
 			try {

@@ -1,4 +1,4 @@
-package com.parc.ccn.data.content;
+package com.parc.ccn.data.util;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -10,6 +10,7 @@ import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 import javax.xml.stream.events.XMLEvent;
+
 
 import sun.misc.BASE64Decoder;
 import sun.misc.BASE64Encoder;
@@ -55,6 +56,12 @@ public class XMLHelper {
 	
 	public static byte [] decodeElement(String element) throws IOException {
 		return new BASE64Decoder().decodeBuffer(element);
+	}
+
+	public static void writeElement(XMLStreamWriter writer, String tag, String content) throws XMLStreamException {
+		writer.writeStartElement(tag);
+		writer.writeCharacters(content);
+		writer.writeEndElement();
 	}
 
 	public static void readStartElement(XMLEventReader reader, String startTag) throws XMLStreamException {

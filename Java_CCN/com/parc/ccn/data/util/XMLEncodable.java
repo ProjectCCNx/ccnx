@@ -1,4 +1,4 @@
-package com.parc.ccn.data.content;
+package com.parc.ccn.data.util;
 
 import java.io.InputStream;
 import java.io.OutputStream;

@@ -26,13 +26,18 @@ import com.parc.ccn.network.impl.JackrabbitCCNRepository;
  * @author smetters
  *
  */
-public class RepositoryManager implements CCNBase, CCNDiscoveryListener {
+public class RepositoryManager extends DiscoveryManager implements CCNBase, CCNDiscoveryListener {
 	
 	/**
 	 * Static singleton.
 	 */
 	protected static RepositoryManager _repositoryManager = null;
 	
+	/**
+	 * Other local repositories we know about to talk to.
+	 */
+	protected ArrayList<CCNRepository> _repositories = new ArrayList<CCNRepository>();
+
 	public static RepositoryManager getCCNRepositoryManager() { 
 		if (null != _repositoryManager) 
 			return _repositoryManager;
@@ -56,7 +61,7 @@ public class RepositoryManager implements CCNBase, CCNDiscoveryListener {
 	 * queries to and handle responses from. Right now
 	 * we only do one-hop forwarding -- we ask repositories
 	 * we discover the queries coming from our user, and
-	 * respond to their queries using our local primary
+	 * respond to their queries using our primary
 	 * repository. We don't currently query our other
 	 * local repositories because of legacy security issues
 	 * (e.g. they could be our raw filesystem or email), 
@@ -67,8 +72,7 @@ public class RepositoryManager implements CCNBase, CCNDiscoveryListener {
 	 * we mirror stuff from local read-only repositories
 	 * to the rw repository.
 	 */
-	protected CCNRepository _localRepository = null;
-	protected ArrayList<CCNRepository> _repositories = new ArrayList<CCNRepository>();
+	protected CCNRepository _primaryRepository = null;
 	
 	/**
 	 * Outstanding queries. If we find a new repository, give
@@ -80,17 +84,15 @@ public class RepositoryManager implements CCNBase, CCNDiscoveryListener {
 	 * Default constructor to make static singleton.
 	 * Start with fixed configuration, then worry about
 	 * getting fancy...
+	 * DKS -- eventually make this configurable
 	 */
-	RepositoryManager() {
+	protected RepositoryManager() {
+		super(true, false);
 		// Make our local repository. Start listening
 		// for others.
-		_localRepository = new JackrabbitCCNRepository();
+		_primaryRepository = new JackrabbitCCNRepository();
 	}
 	
-	void start() {
-		// Find other repositories in the area.
-		CCNDiscovery.findServers(this);
-	}
 	
 	/**
 	 * Handle requests from clients.
@@ -111,15 +113,15 @@ public class RepositoryManager implements CCNBase, CCNDiscoveryListener {
 	public CCNQueryDescriptor get(ContentName name, ContentAuthenticator authenticator, CCNQueryType type, CCNQueryListener listener, long TTL) throws IOException {
 		// Should check to see if we have this query alredy outstanding?
 		
-		CCNQueryDescriptor initialDescriptor = _localRepository.get(name, authenticator, type, listener, TTL);
+		CCNQueryDescriptor initialDescriptor = _primaryRepository.get(name, authenticator, type, listener, TTL);
 		
 		ManagedCCNQueryDescriptor managedDescriptor = 
 				new ManagedCCNQueryDescriptor(initialDescriptor, listener);
 
 		for (CCNRepository repository : _repositories) {
-			if (!_localRepository.equals(repository)) {
+			if (!_primaryRepository.equals(repository)) {
 				CCNQueryDescriptor newDescriptor = 
-					repository.get(managedDescriptor.name(), managedDescriptor.authenticator(), managedDescriptor.type(), listener, managedDescriptor.TTL());
+					InterestManager.get(repository, managedDescriptor.name(), managedDescriptor.authenticator(), managedDescriptor.type(), listener, managedDescriptor.TTL());
 				managedDescriptor.addIdentifier(newDescriptor.queryIdentifier());
 			}
 		}
@@ -131,7 +133,7 @@ public class RepositoryManager implements CCNBase, CCNDiscoveryListener {
 	 * Puts we put only to our local repository. 
 	 */
 	public void put(ContentName name, ContentAuthenticator authenticator, byte[] content) throws IOException {
-		_localRepository.put(name, authenticator, content);
+		_primaryRepository.put(name, authenticator, content);
 	}
 
 	/**
@@ -141,63 +143,10 @@ public class RepositoryManager implements CCNBase, CCNDiscoveryListener {
 	 * @throws IOException
 	 */
 	public void resubscribeAll() throws IOException {
-		_localRepository.resubscribeAll();
+		_primaryRepository.resubscribeAll();
 		for (CCNRepository repository : _repositories) {
-			if (!repository.equals(_localRepository))
+			if (!repository.equals(_primaryRepository))
 				repository.resubscribeAll();
 		}
-	}
-	
-	/**
-	 * Handle new repositories appearing and old ones
-	 * going away.
-	 */
-	public void serviceRemoved(ServiceInfo info, boolean isLocal) {
-		// If a repository has disappeared, just remove it
-		// from our list. We can assume that it's no longer 
-		// available for us to cancel queries to it.
-	}
-
-	public void serviceAdded(ServiceInfo info, boolean isLocal) {
-		// We've found a new repository. Does it match
-		// any of the ones we currently have? If not,
-		// remember it, and forward to it all our outstanding
-		// queries.
-		
-		// Should we skip making a backend if this is local?
-		
-		// Want to find out before we make a repository 
-		// for this one.
-		for (CCNRepository repository : _repositories) {
-			if (repository.equals(info)) {
-				Library.logger().info("Found a repository we alreday know about: " + info.getURL());
-				// we know this one.
-				return;
-			}
-		}
-		Library.logger().info("Found a new repository: " + info.getURL());
-		try {
-			CCNRepository newRepository = RepositoryFactory.connect(info);
-
-			// Add this repository to our list.
-			_repositories.add(newRepository); // DKS -- synchronize?
-			
-			// Forward all our outstanding queries to it.
-			for (ManagedCCNQueryDescriptor mqd : _outstandingQueries) {
-				CCNQueryDescriptor newDescriptor;
-				try {
-					newDescriptor = newRepository.get(mqd.name(), mqd.authenticator(), mqd.type(), mqd.listener(), mqd.TTL());
-					mqd.addIdentifier(newDescriptor.queryIdentifier());
-				} catch (IOException e) {
-					Library.logger().info("Cannot forward query " + mqd + " to new repository: " + info.getURL());
-					// DKS -- do something more draconian?
-					continue;
-				}
-			}
-		
-		} catch (MalformedURLException e) {
-			Library.logger().warning("Cannot instantiate connection to that repository!");
-			Library.logStackTrace(Level.WARNING, e);
-		} 
 	}
 }

@@ -9,6 +9,8 @@ import javax.xml.stream.XMLStreamWriter;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.util.XMLEncodable;
+import com.parc.ccn.data.util.XMLHelper;
 
 /**
  * Mapping from a link to the underlying XML representation.

@@ -10,8 +10,8 @@ import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
-import com.parc.ccn.data.content.XMLEncodable;
-import com.parc.ccn.data.content.XMLHelper;
+import com.parc.ccn.data.util.XMLEncodable;
+import com.parc.ccn.data.util.XMLHelper;
 
 /**
  * Helper wrapper class for publisher IDs.
@@ -127,12 +127,8 @@ public class PublisherID implements XMLEncodable {
 
 	public void encode(XMLStreamWriter writer) throws XMLStreamException {
 		writer.writeStartElement(PUBLISHER_ID_ELEMENT);
-		writer.writeStartElement(PUBLISHER_TYPE_ELEMENT);
-		writer.writeCharacters(typeToName(type()));
-		writer.writeEndElement();   
-		writer.writeStartElement(PUBLISHER_ID_ID_ELEMENT);
-		writer.writeCharacters(XMLHelper.encodeElement(id()));
-		writer.writeEndElement();   		
+		XMLHelper.writeElement(writer, PUBLISHER_TYPE_ELEMENT, typeToName(type()));
+		XMLHelper.writeElement(writer, PUBLISHER_ID_ID_ELEMENT, XMLHelper.encodeElement(id()));
 		writer.writeEndElement();   		
 	}
 }

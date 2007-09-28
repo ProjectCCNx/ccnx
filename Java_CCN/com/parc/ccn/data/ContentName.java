@@ -11,8 +11,8 @@ import javax.xml.stream.XMLStreamWriter;
 
 import sun.misc.BASE64Encoder;
 
-import com.parc.ccn.data.content.XMLEncodable;
-import com.parc.ccn.data.content.XMLHelper;
+import com.parc.ccn.data.util.XMLEncodable;
+import com.parc.ccn.data.util.XMLHelper;
 
 public class ContentName implements XMLEncodable {
 
@@ -209,15 +209,11 @@ public class ContentName implements XMLEncodable {
 
 	public void encode(XMLStreamWriter writer) throws XMLStreamException {
 		writer.writeStartElement(CONTENT_NAME_ELEMENT);
-		writer.writeStartElement(COUNT_ELEMENT);
-		writer.writeCharacters(Integer.toString(count()));
-		writer.writeEndElement();
+		XMLHelper.writeElement(writer, COUNT_ELEMENT, Integer.toString(count()));
 		
 		for (int i=0; i < count(); ++i) {
-			writer.writeStartElement(COMPONENT_ELEMENT);
-			String strComponent = new BASE64Encoder().encode(_components[i]);
-			writer.writeCharacters(strComponent);
-			writer.writeEndElement();
+			XMLHelper.writeElement(writer, COMPONENT_ELEMENT, 
+					XMLHelper.encodeElement(_components[i]));
 		}
 		writer.writeEndElement();
 	}

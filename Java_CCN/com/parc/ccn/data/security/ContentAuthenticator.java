@@ -11,8 +11,8 @@ import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
-import com.parc.ccn.data.content.XMLEncodable;
-import com.parc.ccn.data.content.XMLHelper;
+import com.parc.ccn.data.util.XMLEncodable;
+import com.parc.ccn.data.util.XMLHelper;
 
 public class ContentAuthenticator implements XMLEncodable {
 
