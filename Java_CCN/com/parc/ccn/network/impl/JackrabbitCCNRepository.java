@@ -148,7 +148,12 @@ public class JackrabbitCCNRepository extends CCNRepository {
 		});
 	}
 
-	
+	public static JackrabbitCCNRepository getLocalJackrabbitRepository() {
+		// Eventually discover if there is one running locally and
+		// return that...
+		return new JackrabbitCCNRepository();
+	}
+		
 	public void put(ContentName name, ContentAuthenticator authenticator, byte[] content) throws IOException {
 
 		if (null == name) {
@@ -557,7 +562,7 @@ public class JackrabbitCCNRepository extends CCNRepository {
 	}
 
 	protected static void advertiseServer(int port) throws IOException {
-		CCNRepository.advertiseServer(CCNDiscovery.RMI_SERVICE_TYPE, port);
+		CCNRepository.advertiseServer(CCNDiscovery.JACKRABBIT_RMI_SERVICE_TYPE, port);
 	}
 
 	public static CCNRepository connect(ServiceInfo info) throws MalformedURLException, ClassCastException, RemoteException, NotBoundException {

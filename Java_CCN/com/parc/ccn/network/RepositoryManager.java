@@ -88,11 +88,10 @@ public class RepositoryManager extends DiscoveryManager implements CCNBase, CCND
 	 */
 	protected RepositoryManager() {
 		super(true, false);
-		// Make our local repository. Start listening
+		// Make/get our local repository. Start listening
 		// for others.
-		_primaryRepository = new JackrabbitCCNRepository();
+		_primaryRepository = JackrabbitCCNRepository.getLocalJackrabbitRepository();
 	}
-	
 	
 	/**
 	 * Handle requests from clients.
@@ -105,7 +104,8 @@ public class RepositoryManager extends DiscoveryManager implements CCNBase, CCND
 	}
 
 	/**
-	 * Gets we send to everybody. Once query descriptors
+	 * Gets we send to all the repositories we manage. 
+	 * Once query descriptors
 	 * contain identifiers to allow cancellation, we need
 	 * a way of amalgamating all the identifier information
 	 * into one query descriptor.
@@ -149,4 +149,21 @@ public class RepositoryManager extends DiscoveryManager implements CCNBase, CCND
 				repository.resubscribeAll();
 		}
 	}
+
+	@Override
+	public void serviceAdded(ServiceInfo info, boolean isLocal) {
+		// Do we want to keep the primary in the repo list?
+		// If so, just use super here.
+		super.serviceAdded(info, isLocal);
+	}
+
+	@Override
+	public void serviceRemoved(ServiceInfo info, boolean isLocal) {
+		super.serviceRemoved(info, isLocal);
+		if (_primaryRepository.equals(info)) {
+			Library.logger().warning("Lost primary repository. Replacing.");
+			_primaryRepository = JackrabbitCCNRepository.getLocalJackrabbitRepository();
+		}
+	}
+	
 }

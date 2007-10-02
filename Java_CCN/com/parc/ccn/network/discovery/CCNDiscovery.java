@@ -19,8 +19,8 @@ public class CCNDiscovery {
 	 * Need slightly more principled way to cover a variety of
 	 * service types.
 	 */
-	public static final String RMI_SERVICE_TYPE = "_ccn._rmi";
-	public static final String [] SERVICE_TYPES = {RMI_SERVICE_TYPE};
+	public static final String JACKRABBIT_RMI_SERVICE_TYPE = "_ccn._jackrabbit_rmi";
+	public static final String [] SERVICE_TYPES = {JACKRABBIT_RMI_SERVICE_TYPE};
 	public static final String SERVICE_NAME = "CCN";
 	public static final int CCN_PORT = 5399;
 	
