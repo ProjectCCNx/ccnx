@@ -80,6 +80,14 @@ public class PublisherID implements XMLEncodable {
 			return false;
 		return true;
 	}
+	
+	public boolean isSigner() {
+		return ((PublisherType.KEY == type()) || (PublisherType.CERTIFICATE == type()));
+	}
+	
+	public boolean isCertifier() {
+		return ((PublisherType.ISSUER_CERTIFICATE == type()) || (PublisherType.ISSUER_KEY == type()));
+	}
 
 	public static String typeToName(PublisherType type) {
 		return TypeNames.get(type);

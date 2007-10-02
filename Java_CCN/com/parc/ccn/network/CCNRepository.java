@@ -50,6 +50,8 @@ public abstract class CCNRepository implements CCNBase {
 		return (otherInfo.getURL().equalsIgnoreCase(_info.getURL()));
 	}
 	
+	public ServiceInfo info() { return _info; }
+	
 	public abstract void subscribe(CCNQueryListener l) throws IOException;
 	public abstract void resubscribeAll() throws IOException;
 	

@@ -1,6 +1,5 @@
 package com.parc.ccn.network;
 
-import java.io.IOException;
 import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.logging.Level;
@@ -8,7 +7,6 @@ import java.util.logging.Level;
 import javax.jmdns.ServiceInfo;
 
 import com.parc.ccn.Library;
-import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.network.discovery.CCNDiscovery;
 import com.parc.ccn.network.discovery.CCNDiscoveryListener;
 
@@ -44,6 +42,8 @@ public class DiscoveryManager implements CCNDiscoveryListener {
 				Library.logger().info("Removing a repository we know about: " + info.getURL());
 				// we know this one.
 				_repositories.remove(info);
+				
+				repositoryRemoved(info);
 				return;
 			}
 		}
@@ -80,25 +80,24 @@ public class DiscoveryManager implements CCNDiscoveryListener {
 			// Add this repository to our list.
 			_repositories.add(newRepository); // DKS -- synchronize?
 			
-			// Forward all our outstanding queries to it.
-			for (ManagedCCNQueryDescriptor mqd : _outstandingQueries) {
-				CCNQueryDescriptor newDescriptor;
-				try {
-					newDescriptor = newRepository.get(mqd.name(), mqd.authenticator(), mqd.type(), mqd.listener(), mqd.TTL());
-					mqd.addIdentifier(newDescriptor.queryIdentifier());
-				} catch (IOException e) {
-					Library.logger().info("Cannot forward query " + mqd + " to new repository: " + info.getURL());
-					// DKS -- do something more draconian?
-					continue;
-				}
-			}
-		
+			repositoryAdded(newRepository);
+			
 		} catch (MalformedURLException e) {
 			Library.logger().warning("Cannot instantiate connection to that repository!");
 			Library.logStackTrace(Level.WARNING, e);
 		} 
 	}
 
+	/**
+	 * Allow subclasses to optionally do specific things
+	 * when repositories are added and removed from the list.
+	 * @param newRepository
+	 */
+	protected void repositoryAdded(CCNRepository newRepository) {
+	}
+	
+	protected void repositoryRemoved(ServiceInfo repositoryInfo) {		
+	}
 	/**
 	 * We want to know about remote CCN repositories we
 	 * can sync to. This could be replaced by simply
@@ -110,4 +109,5 @@ public class DiscoveryManager implements CCNDiscoveryListener {
 		// Find other repositories in the area.
 		CCNDiscovery.findServers(this);
 	}
+	
 }

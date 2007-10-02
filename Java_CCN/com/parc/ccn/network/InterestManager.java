@@ -1,15 +1,5 @@
 package com.parc.ccn.network;
 
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.util.ArrayList;
-import java.util.logging.Level;
-
-import javax.jmdns.ServiceInfo;
-
-import com.parc.ccn.Library;
-import com.parc.ccn.data.query.CCNQueryDescriptor;
-import com.parc.ccn.network.discovery.CCNDiscovery;
 import com.parc.ccn.network.discovery.CCNDiscoveryListener;
 
 public class InterestManager extends DiscoveryManager implements CCNDiscoveryListener {
@@ -23,7 +13,7 @@ public class InterestManager extends DiscoveryManager implements CCNDiscoveryLis
 		super(true, false);
 	}
 
-	public static InterestManager getCCNRepositoryManager() { 
+	public static InterestManager getCCNInterestManager() { 
 		if (null != _interestManager) 
 			return _interestManager;
 		

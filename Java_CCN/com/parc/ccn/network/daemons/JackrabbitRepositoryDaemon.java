@@ -1,29 +1,31 @@
 package com.parc.ccn.network.daemons;
 
 import com.parc.ccn.Library;
-
+import com.parc.ccn.network.impl.JackrabbitCCNRepository;
 
 /**
- * Interface to low-level daemon that communicates
- * interests to other nodes and returns content.
- * Eventually, use Michael's daemon. Midrange,
- * maybe sync repositories. Short term, never send 
- * any interests or get any responses.
+ * Top-level wrapper for standalone repositories that
+ * want to run independent of any particular application.
  * @author smetters
  *
  */
+public class JackrabbitRepositoryDaemon extends Daemon {
+	
+	JackrabbitCCNRepository _repository = null;
 
-public class InterestDaemon extends Daemon {
-
-	public InterestDaemon(String args[]) {
+	public JackrabbitRepositoryDaemon(String args[]) {
 		super(args);
-		_daemonName = "interestDaemon";
+		_daemonName = "jackrabbitRepositoryDaemon";
 	}
-
+	
 	public void work() {
+		// we don't need to do anything on each work loop
+		// other than keep alive
 	}
-
+	
 	public void initialize() {
+		// we start up a jackrabbit and let it run
+		_repository = new JackrabbitCCNRepository();
 	}
 
 	/**
@@ -32,7 +34,7 @@ public class InterestDaemon extends Daemon {
 	 */
 	protected static void usage() {
 		try {
-			System.out.println("usage: " + InterestDaemon.class.getName() + " [-start | -stop | <interactive>]");
+			System.out.println("usage: " + JackrabbitRepositoryDaemon.class.getName() + " [-start | -stop | <interactive>]");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -46,7 +48,7 @@ public class InterestDaemon extends Daemon {
 		// Need to override in each subclass to make proper class.
 		Daemon daemon = null;
 		try {
-			daemon = new InterestDaemon(args);
+			daemon = new JackrabbitRepositoryDaemon(args);
 			runDaemon(daemon, args);
 		} catch (Exception e) {
 			Library.logger().warning("Error attempting to start daemon.");
@@ -54,4 +56,5 @@ public class InterestDaemon extends Daemon {
 			System.err.println("Error attempting to start daemon.");
 		}
 	}
+
 }

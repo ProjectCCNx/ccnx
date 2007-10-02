@@ -121,7 +121,7 @@ public class RepositoryManager extends DiscoveryManager implements CCNBase, CCND
 		for (CCNRepository repository : _repositories) {
 			if (!_primaryRepository.equals(repository)) {
 				CCNQueryDescriptor newDescriptor = 
-					InterestManager.get(repository, managedDescriptor.name(), managedDescriptor.authenticator(), managedDescriptor.type(), listener, managedDescriptor.TTL());
+					repository.get(managedDescriptor.name(), managedDescriptor.authenticator(), managedDescriptor.type(), listener, managedDescriptor.TTL());
 				managedDescriptor.addIdentifier(newDescriptor.queryIdentifier());
 			}
 		}
@@ -150,20 +150,25 @@ public class RepositoryManager extends DiscoveryManager implements CCNBase, CCND
 		}
 	}
 
-	@Override
-	public void serviceAdded(ServiceInfo info, boolean isLocal) {
-		// Do we want to keep the primary in the repo list?
-		// If so, just use super here.
-		super.serviceAdded(info, isLocal);
-	}
-
-	@Override
-	public void serviceRemoved(ServiceInfo info, boolean isLocal) {
-		super.serviceRemoved(info, isLocal);
-		if (_primaryRepository.equals(info)) {
-			Library.logger().warning("Lost primary repository. Replacing.");
-			_primaryRepository = JackrabbitCCNRepository.getLocalJackrabbitRepository();
-		}
+	protected void repositoryAdded(CCNRepository newRepository) {
+		// Forward all our outstanding queries to it.
+		for (ManagedCCNQueryDescriptor mqd : _outstandingQueries) {
+			CCNQueryDescriptor newDescriptor;
+			try {
+				newDescriptor = newRepository.get(mqd.name(), mqd.authenticator(), mqd.type(), mqd.listener(), mqd.TTL());
+				mqd.addIdentifier(newDescriptor.queryIdentifier());
+			} catch (IOException e) {
+				Library.logger().info("Cannot forward query " + mqd + " to new repository: " + newRepository.info().getURL());
+				// DKS -- do something more draconian?
+				continue;
+			}
+		}		
 	}
 	
+	protected void repositoryRemoved(ServiceInfo repositoryInfo) {
+		if (_primaryRepository.equals(repositoryInfo)) {
+			Library.logger().warning("Lost primary repository. Replacing.");
+			_primaryRepository = JackrabbitCCNRepository.getLocalJackrabbitRepository();
+		}		
+	}
 }

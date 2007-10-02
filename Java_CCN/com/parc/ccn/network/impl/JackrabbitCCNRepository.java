@@ -281,6 +281,16 @@ public class JackrabbitCCNRepository extends CCNRepository {
 
 	}
 
+	/**
+	 * We might want to have more than one signer adding data
+	 * under the same name. Jackrabbit handles that.
+	 * @param parent
+	 * @param name
+	 * @param authenticator
+	 * @param content
+	 * @return
+	 * @throws RepositoryException
+	 */
 	protected Node addLeafNode(Node parent, byte [] name, ContentAuthenticator authenticator, byte[] content) throws RepositoryException {
 	
 		Node n = addSubNode(parent, name);

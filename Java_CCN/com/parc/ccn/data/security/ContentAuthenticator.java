@@ -17,8 +17,8 @@ import com.parc.ccn.data.util.XMLHelper;
 public class ContentAuthenticator implements XMLEncodable {
 
     public enum ContentType {FRAGMENT, LINK, CONTAINER, LEAF, SESSION};
-    protected static final HashMap<ContentType, String> TypeNames = new HashMap<ContentType, String>();
-    protected static final HashMap<String, ContentType> NameTypes = new HashMap<String, ContentType>();
+    protected static final HashMap<ContentType, String> ContentTypeNames = new HashMap<ContentType, String>();
+    protected static final HashMap<String, ContentType> ContentNameTypes = new HashMap<String, ContentType>();
     public static final String CONTENT_AUTHENTICATOR_ELEMENT = "ContentAuthenticator";
     protected static final String TIMESTAMP_ELEMENT = "Timestamp";
     protected static final String CONTENT_TYPE_ELEMENT = "Type";
@@ -26,16 +26,16 @@ public class ContentAuthenticator implements XMLEncodable {
     protected static final String SIGNATURE_ELEMENT = "Signature";
     
     static {
-        TypeNames.put(ContentType.FRAGMENT, "FRAGMENT");
-        TypeNames.put(ContentType.LINK, "LINK");
-        TypeNames.put(ContentType.CONTAINER, "CONTAINER");
-        TypeNames.put(ContentType.LEAF, "LEAF");
-        TypeNames.put(ContentType.SESSION, "SESSION");
-        NameTypes.put("FRAGMENT", ContentType.FRAGMENT);
-        NameTypes.put("LINK", ContentType.LINK);
-        NameTypes.put("CONTAINER", ContentType.CONTAINER);
-        NameTypes.put("LEAF", ContentType.LEAF);
-        NameTypes.put("SESSION", ContentType.SESSION);
+        ContentTypeNames.put(ContentType.FRAGMENT, "FRAGMENT");
+        ContentTypeNames.put(ContentType.LINK, "LINK");
+        ContentTypeNames.put(ContentType.CONTAINER, "CONTAINER");
+        ContentTypeNames.put(ContentType.LEAF, "LEAF");
+        ContentTypeNames.put(ContentType.SESSION, "SESSION");
+        ContentNameTypes.put("FRAGMENT", ContentType.FRAGMENT);
+        ContentNameTypes.put("LINK", ContentType.LINK);
+        ContentNameTypes.put("CONTAINER", ContentType.CONTAINER);
+        ContentNameTypes.put("LEAF", ContentType.LEAF);
+        ContentNameTypes.put("SESSION", ContentType.SESSION);
     }
     
     protected PublisherID	_publisher;
@@ -148,11 +148,11 @@ public class ContentAuthenticator implements XMLEncodable {
 	}
 	
 	public static String typeToName(ContentType type) {
-		return TypeNames.get(type);
+		return ContentTypeNames.get(type);
 	}
 
 	public static ContentType nameToType(String name) {
-		return NameTypes.get(name);
+		return ContentNameTypes.get(name);
 	}
 	
 	@Override

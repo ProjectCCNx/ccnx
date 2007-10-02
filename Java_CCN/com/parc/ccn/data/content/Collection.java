@@ -12,6 +12,7 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
@@ -48,6 +49,17 @@ public class Collection implements XMLEncodable {
 			} else {
 				_contents.put(names[i], null);
 			}
+		}
+	}
+	
+	/**
+	 * Can use ContentObjects with empty content to group
+	 * names and authenticators.
+	 * @param objects
+	 */
+	public Collection(ContentObject [] objects) {
+		for (int i=0; i < objects.length; ++i) {
+			_contents.put(objects[i].name(), objects[i].authenticator());
 		}
 	}
 	
