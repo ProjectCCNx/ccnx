@@ -1,8 +1,12 @@
 package com.parc.ccn;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Random;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.FileHandler;
 import java.util.logging.Handler;
@@ -18,7 +22,8 @@ public class Library {
 		"com.parc.ccn.Library";
 
 	public static final String DEFAULT_LOG_DIR = "log";
-	public static final String DEFAULT_LOG_FILE = "ccn.log";
+	public static final String DEFAULT_LOG_FILE = "ccn_";
+	public static final String DEFAULT_LOG_SUFFIX = ".log";
 	public static final Level DEFAULT_LOG_LEVEL = Level.FINE;
 	
 	static Logger _systemLogger = null;
@@ -26,14 +31,37 @@ public class Library {
 	static {
 		// Can add an append=true argument to generate appending behavior.
 		Handler theHandler = null;
+		_systemLogger = Logger.getLogger(DEFAULT_APPLICATION_CLASS);
+
+		StringBuffer logFileName = new StringBuffer();
+		
 		try {
+			// See if log dir exists, if not make it.
+			File dir = new File(DEFAULT_LOG_DIR);
+			if (!dir.exists() || !dir.isDirectory()) {
+				if (!dir.mkdir()) {
+					System.err.println("Cannot open log directory " + DEFAULT_LOG_DIR);
+					throw new IOException("Cannot open log directory " + DEFAULT_LOG_DIR);
+				}
+			}
 			String sep = System.getProperty("file.separator");
-			theHandler = new FileHandler(DEFAULT_LOG_DIR + sep + DEFAULT_LOG_FILE);
+			
+			logFileName.append(DEFAULT_LOG_DIR + sep + DEFAULT_LOG_FILE);
+			Date theDate = new Date();
+			SimpleDateFormat df = new SimpleDateFormat("yy-MM-dd-HHmmss");
+			logFileName.append(df.format(theDate));
+			logFileName.append("-" + new Random().nextInt(1000));
+			logFileName.append(DEFAULT_LOG_SUFFIX);
+			
+			theHandler = new FileHandler(logFileName.toString());
+
 		} catch (IOException e) {
 			// Can't open that file
-			_systemLogger.addHandler(new ConsoleHandler());
+			System.err.println("Cannot open log file: " + logFileName);
+			e.printStackTrace();
+			
+			theHandler = new ConsoleHandler();
 		}
-		_systemLogger = Logger.getLogger(DEFAULT_APPLICATION_CLASS);
 		if (null != theHandler) {
 			_systemLogger.addHandler(theHandler);
 		}

@@ -11,34 +11,40 @@ import com.parc.ccn.network.impl.JackrabbitCCNRepository;
  */
 public class JackrabbitRepositoryDaemon extends Daemon {
 	
-	JackrabbitCCNRepository _repository = null;
+	protected static class JackrabbitWorkerThread extends Daemon.WorkerThread {
+
+		JackrabbitCCNRepository _repository = null;
+		
+		protected JackrabbitWorkerThread(String daemonName) {
+			super(daemonName);
+		}
+		
+		public void work() {
+			// we don't need to do anything on each work loop
+			// other than keep alive
+		}
+		
+		public void initialize() {
+			// we start up a jackrabbit and let it run
+			_repository = new JackrabbitCCNRepository();
+		}
+	}
 
 	public JackrabbitRepositoryDaemon(String args[]) {
 		super(args);
 		_daemonName = "jackrabbitRepositoryDaemon";
 	}
 	
-	public void work() {
-		// we don't need to do anything on each work loop
-		// other than keep alive
-	}
-	
-	public void initialize() {
-		// we start up a jackrabbit and let it run
-		_repository = new JackrabbitCCNRepository();
-	}
-
 	/**
 	 * Overridden by subclasses.
 	 *
 	 */
-	protected static void usage() {
-		try {
-			System.out.println("usage: " + JackrabbitRepositoryDaemon.class.getName() + " [-start | -stop | <interactive>]");
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		System.exit(0);
+	protected void usage() {
+		super.usage(); // add our own if we have args
+	}
+
+	protected WorkerThread createWorkerThread() {
+		return new JackrabbitWorkerThread(daemonName());
 	}
 
 	/**
@@ -50,10 +56,11 @@ public class JackrabbitRepositoryDaemon extends Daemon {
 		try {
 			daemon = new JackrabbitRepositoryDaemon(args);
 			runDaemon(daemon, args);
+			
 		} catch (Exception e) {
+			System.err.println("Error attempting to start daemon.");
 			Library.logger().warning("Error attempting to start daemon.");
 			Library.warningStackTrace(e);
-			System.err.println("Error attempting to start daemon.");
 		}
 	}
 

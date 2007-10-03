@@ -30,13 +30,8 @@ public class InterestDaemon extends Daemon {
 	 * Overridden by subclasses.
 	 *
 	 */
-	protected static void usage() {
-		try {
-			System.out.println("usage: " + InterestDaemon.class.getName() + " [-start | -stop | <interactive>]");
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		System.exit(0);
+	protected void usage() {
+		super.usage(); // add our own if we have args
 	}
 
 	/**

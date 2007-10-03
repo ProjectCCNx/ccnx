@@ -6,6 +6,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -15,6 +16,7 @@ import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.rmi.server.RemoteObject;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.Arrays;
 import java.util.Date;
 
 import com.parc.ccn.Library;
@@ -30,7 +32,6 @@ public class Daemon {
 	protected enum Mode {MODE_UNKNOWN, MODE_START, MODE_STOP, MODE_INTERACTIVE, MODE_DAEMON};
 
 	protected String _daemonName = null;
-	protected static WorkerThread _daemonThread;
 	protected static DaemonListenerClass _daemonListener = null;
 
 	/**
@@ -45,11 +46,13 @@ public class Daemon {
 	/**
 	 * The thread that runs inside the daemon, doing work
 	 */
-	protected class WorkerThread extends Thread {
+	protected static class WorkerThread extends Thread {
 
 		boolean _keepGoing;
+		String _daemonName;
 
-		protected WorkerThread() {
+		protected WorkerThread(String daemonName) {
+			_daemonName = daemonName;
 		}
 
 		public void run() {
@@ -86,7 +89,7 @@ public class Daemon {
 			} catch (NoSuchObjectException e) {
 			}
 
-			getRMIFile(daemonName()).delete();		
+			getRMIFile(_daemonName).delete();		
 			System.exit(0);
 		}			
 
@@ -94,14 +97,23 @@ public class Daemon {
 			_keepGoing = false;
 			interrupt();
 		}
+		
+		/**
+		 * Specialized by subclasses, called by worker thread.
+		 *
+		 */
+		public void work() {}
+		public void initialize() {}
+
 	}
 
-	protected class DaemonListenerClass extends UnicastRemoteObject implements DaemonListener {
+	protected static class DaemonListenerClass extends UnicastRemoteObject implements DaemonListener {
 
 		private static final long serialVersionUID = -9217344397211709762L;
+		protected WorkerThread _daemonThread;
 
-		public DaemonListenerClass() throws RemoteException {
-
+		public DaemonListenerClass(WorkerThread daemonThread) throws RemoteException {
+			_daemonThread = daemonThread;
 		}
 
 		public void shutDown() throws RemoteException {
@@ -114,7 +126,6 @@ public class Daemon {
 			Library.logger().info("Starting the daemon loop.");
 
 			try {
-				_daemonThread = createWorkerThread();
 				_daemonThread.start();
 
 				return true;
@@ -130,34 +141,30 @@ public class Daemon {
 	public String daemonName() { return _daemonName; }
 	
 	/**
-	 * Specialized by subclasses, called by worker thread.
-	 *
-	 */
-	public void work() {}
-	public void initialize() {}
-
-	/**
 	 * Overridden by subclasses.
 	 *
 	 */
-	protected static void usage() {
+	protected void usage() {
 		try {
+			System.out.println("usage: " + this.getClass().getName() + " [-start | -stop | -interactive]");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		System.exit(0);
 	}
 
+	/**
+	 * overridden by subclasses to make right type of thread.
+	 * @return
+	 */
 	protected WorkerThread createWorkerThread() {
-		return new WorkerThread();
+		return new WorkerThread(daemonName());
 	}
 
 	protected static void runAsDaemon(Daemon daemon) throws RemoteException, FileNotFoundException, IOException {
-
-		System.out.println(daemon.daemonName() + " started in background " + new Date());
 		Library.logger().info(daemon.daemonName() + " started in background " + new Date());
 
-		_daemonListener = daemon.new DaemonListenerClass();
+		_daemonListener = new DaemonListenerClass(daemon.createWorkerThread());
 
 		Remote stub = RemoteObject.toStub(_daemonListener);		
 
@@ -171,7 +178,6 @@ public class Daemon {
 
 		// this is atomic
 		tempFile.renameTo(getRMIFile(daemon.daemonName()));
-
 	}
 
 	private static void startDaemon(String daemonName, String daemonClass, String args[]) throws IOException, ClassNotFoundException {
@@ -182,25 +188,68 @@ public class Daemon {
 		}
 
 		String cmd = "java ";
-		cmd += "-cp " + System.getProperty("java.class.path") + " ";
+		cmd += "-cp " + ".;" + System.getProperty("java.class.path") + " ";
 
 		cmd += daemonClass + " ";
 		cmd += "-daemon";
-		for (int i=0; i < args.length; ++i) {
+		for (int i=1; i < args.length; ++i) {
 			cmd += " ";
 			cmd += args[i];
 		}
+		Library.logger().info("Starting daemon with command line: " + cmd);
 
+		// DKS -- for some reason the exec can't find the class...
+		// can't get enough data to find out which class.
+		// Can start jackrabbit without this by adding a call
+		// to startLoop inside runAsDaemon...
 		Process child = Runtime.getRuntime().exec(cmd);
+
+		InputStream is = child.getErrorStream();
+		byte [] buf = new byte[2048];
+		while (is.available() > 0) {
+			byte b = 0;
+			Arrays.fill(buf,b);
+			is.read(buf);
+			Library.logger().info("Child err: " + new String(buf));
+			try {
+				Thread.sleep(50);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		is = child.getInputStream();
+		while (is.available() > 0) {
+			byte b = 0;
+			Arrays.fill(buf,b);
+			is.read(buf);
+			Library.logger().info("Child output: " + new String(buf));
+		}
 
 		while (!getRMIFile(daemonName).exists()) {
 			try {
 				Thread.sleep(200);
+				
+				is = child.getErrorStream();
+				while (is.available() > 0) {
+					byte b = 0;
+					Arrays.fill(buf,b);
+					is.read(buf);
+					Library.logger().info("Child err: " + new String(buf));
+				}
+				is = child.getInputStream();
+				while (is.available() > 0) {
+					byte b = 0;
+					Arrays.fill(buf,b);
+					is.read(buf);
+					Library.logger().info("Child output: " + new String(buf));
+				}
 
 				// this should throw an exception
 				try {
 					int exitValue = child.exitValue();
 					// if we get here, the child has exited
+					Library.logger().warning("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
 					System.err.println("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
 					return;
 				} catch (IllegalThreadStateException e) {
@@ -258,29 +307,32 @@ public class Daemon {
 		return File.createTempFile(prefix, null, new File(System.getProperty("user.home")));
 	}
 
-	protected static void runDaemon(Daemon daemon, String args[]) {
+	protected static void runDaemon(Daemon daemon, String args[]) throws IOException {
+		
 		Mode mode = Mode.MODE_UNKNOWN;
 
-		if (args.length == 2 && args[1].equals("-start")) {
+		if (0 == args.length) { 
+			mode = Mode.MODE_INTERACTIVE;
+		} else if (args[0].equals("-start")) {
 			mode = Mode.MODE_START;
-		} else if (args.length == 2 && args[1].equals("-stop")) {
+		} else if (args[0].equals("-stop")) {
 			mode = Mode.MODE_STOP;
-		} else if (args.length == 2 && args[1].equals("-daemon")) {
+		} else if (args[0].equals("-daemon")) {
 			mode = Mode.MODE_DAEMON;
 		} else if (args.length == 1) {
 			mode = Mode.MODE_INTERACTIVE;
 		} else {
 			System.out.println("Unknown option " + args[1]);
-			usage();
+			daemon.usage();
 		}
 
 		// enums are capable of very sophisticated behavior
 		// unfortunately, straightforward switching is not among it...
 		try {
 			if (mode == Mode.MODE_INTERACTIVE) {
-				
-				daemon.initialize();
-				daemon.work();
+				WorkerThread wt = daemon.createWorkerThread();
+				wt.initialize();
+				wt.work();
 
 				System.exit(0);
 			} else if (mode == Mode.MODE_START) {
@@ -296,12 +348,14 @@ public class Daemon {
 				runAsDaemon(daemon);
 
 			} else {
-				usage();
+				daemon.usage();
 			}
+			
 		} catch (Exception e) {
 			Library.logger().warning(e.getClass().getName() + " in daemon startup: " + e.getMessage());
 			Library.warningStackTrace(e);
 		}							
+		Library.logger().info("Daemon runner finished.");
 	}
 
 	public static void main(String[] args) {
