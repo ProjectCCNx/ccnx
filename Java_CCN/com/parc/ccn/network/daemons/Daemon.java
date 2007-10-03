@@ -11,6 +11,7 @@ import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.PrintStream;
+import java.io.Serializable;
 import java.rmi.NoSuchObjectException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
@@ -46,8 +47,9 @@ public class Daemon {
 	/**
 	 * The thread that runs inside the daemon, doing work
 	 */
-	protected static class WorkerThread extends Thread {
+	protected static class WorkerThread extends Thread implements Serializable {
 
+		private static final long serialVersionUID = -4969812722104756329L;
 		boolean _keepGoing;
 		String _daemonName;
 
@@ -188,7 +190,7 @@ public class Daemon {
 		}
 
 		String cmd = "java ";
-		cmd += "-cp " + ".;" + System.getProperty("java.class.path") + " ";
+		cmd += "-cp " + System.getProperty("java.class.path") + " ";
 
 		cmd += daemonClass + " ";
 		cmd += "-daemon";
@@ -199,52 +201,18 @@ public class Daemon {
 		Library.logger().info("Starting daemon with command line: " + cmd);
 
 		// DKS -- for some reason the exec can't find the class...
-		// can't get enough data to find out which class.
+		// almost certainly because rmic not running to build the
+		// stub. Don't know best mech to implement this nicely
+		// without going to ant.
 		// Can start jackrabbit without this by adding a call
 		// to startLoop inside runAsDaemon...
 		Process child = Runtime.getRuntime().exec(cmd);
 
-		InputStream is = child.getErrorStream();
-		byte [] buf = new byte[2048];
-		while (is.available() > 0) {
-			byte b = 0;
-			Arrays.fill(buf,b);
-			is.read(buf);
-			Library.logger().info("Child err: " + new String(buf));
-			try {
-				Thread.sleep(50);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-		is = child.getInputStream();
-		while (is.available() > 0) {
-			byte b = 0;
-			Arrays.fill(buf,b);
-			is.read(buf);
-			Library.logger().info("Child output: " + new String(buf));
-		}
 
 		while (!getRMIFile(daemonName).exists()) {
 			try {
 				Thread.sleep(200);
 				
-				is = child.getErrorStream();
-				while (is.available() > 0) {
-					byte b = 0;
-					Arrays.fill(buf,b);
-					is.read(buf);
-					Library.logger().info("Child err: " + new String(buf));
-				}
-				is = child.getInputStream();
-				while (is.available() > 0) {
-					byte b = 0;
-					Arrays.fill(buf,b);
-					is.read(buf);
-					Library.logger().info("Child output: " + new String(buf));
-				}
-
 				// this should throw an exception
 				try {
 					int exitValue = child.exitValue();
