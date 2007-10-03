@@ -62,6 +62,7 @@ public class Daemon {
 
 			System.out.println("Initializing daemon thread " + new Date().toString() +".");
 			Library.logger().info("Initializing daemon thread " + new Date().toString() +".");
+
 			initialize();
 			
 			System.out.println("Daemon thread started " + new Date().toString() +".");
@@ -104,8 +105,12 @@ public class Daemon {
 		 * Specialized by subclasses, called by worker thread.
 		 *
 		 */
-		public void work() {}
-		public void initialize() {}
+		public void work() {
+			Library.logger().info("Should not be here, in WorkerThread.work().");			
+		}
+		public void initialize() {
+			Library.logger().info("Should not be here, in WorkerThread.initialize().");
+		}
 
 	}
 
@@ -298,10 +303,10 @@ public class Daemon {
 		// unfortunately, straightforward switching is not among it...
 		try {
 			if (mode == Mode.MODE_INTERACTIVE) {
+				Library.logger().info("Running " + daemon.daemonName() + " in the foreground.");
 				WorkerThread wt = daemon.createWorkerThread();
-				wt.initialize();
-				wt.work();
-
+				wt.start();
+				wt.join();
 				System.exit(0);
 			} else if (mode == Mode.MODE_START) {
 				startDaemon(daemon.daemonName(), daemon.getClass().getName(), args);
