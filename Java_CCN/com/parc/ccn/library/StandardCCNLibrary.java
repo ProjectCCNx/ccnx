@@ -10,13 +10,13 @@ import com.parc.ccn.data.query.CCNQueryListener;
 import com.parc.ccn.data.query.CCNQueryListener.CCNQueryType;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.network.RepositoryManager;
+import com.parc.ccn.network.CCNRepositoryManager;
 import com.parc.ccn.security.keys.KeyManager;
 
 /**
  * A basic implementation of the CCNLibrary API. This
  * rides on top of the CCNBase low-level interface. It uses
- * RepositoryManager to interface with a "real" virtual CCN,
+ * CCNRepositoryManager to interface with a "real" virtual CCN,
  * and KeyManager to interface with the user's collection of
  * signing and verification keys. 
  * 
@@ -162,18 +162,18 @@ public class StandardCCNLibrary implements CCNLibrary {
 	}
 
 	public void cancel(CCNQueryDescriptor query) throws IOException {
-		RepositoryManager.getCCNRepositoryManager().cancel(query);
+		CCNRepositoryManager.getCCNRepositoryManager().cancel(query);
 	}
 
 	public CCNQueryDescriptor get(ContentName name,
 			ContentAuthenticator authenticator, CCNQueryType type,
 			CCNQueryListener listener, long TTL) throws IOException {
-		return RepositoryManager.getCCNRepositoryManager().get(name, authenticator, type, listener, TTL);
+		return CCNRepositoryManager.getCCNRepositoryManager().get(name, authenticator, type, listener, TTL);
 	}
 
 	public void put(ContentName name, ContentAuthenticator authenticator,
 			byte[] content) throws IOException {
-		RepositoryManager.getCCNRepositoryManager().put(name, authenticator, content);
+		CCNRepositoryManager.getCCNRepositoryManager().put(name, authenticator, content);
 	}
 
 }

@@ -63,9 +63,9 @@ public abstract class CCNRepository implements CCNBase {
 	 */
 	public abstract ArrayList<ContentObject> get(CCNQueryDescriptor query) throws IOException;
 
-	public abstract void logout();
 	public abstract void login() throws IOException;
 	public abstract void login(String username, String password) throws IOException;
+	public abstract void logout();
 
 	protected static void advertiseServer(String serviceType, int port) throws IOException {
 		CCNDiscovery.advertiseServer(serviceType, port);
@@ -82,7 +82,7 @@ public abstract class CCNRepository implements CCNBase {
 		} else {
 			Library.logger().info("Found CCN repository on " + info.getNiceTextString());
 			try {
-				return RepositoryFactory.connect(info);
+				return CCNRepositoryFactory.connect(info);
 			} catch (Exception e) {
 				Library.logger().warning("Cannot connect to repository at host: " + 
 						info.getHostAddress() + ":" + info.getPort() + " of type: " + info.getNiceTextString());

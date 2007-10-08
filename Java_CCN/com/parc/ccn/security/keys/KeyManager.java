@@ -16,6 +16,8 @@ import com.parc.ccn.data.security.PublisherID;
  *
  */
 public class KeyManager {
+	
+	public static final String DEFAULT_DIGEST_ALGORITHM = "SHA-256";
 
 	public PublisherID getDefaultKeyID() {
 		// TODO Auto-generated method stub

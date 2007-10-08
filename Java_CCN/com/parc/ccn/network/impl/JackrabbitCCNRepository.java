@@ -43,13 +43,14 @@ import org.apache.jackrabbit.rmi.server.ServerAdapterFactory;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.query.CCNQueryListener;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
+import com.parc.ccn.data.query.CCNQueryListener;
 import com.parc.ccn.data.query.CCNQueryListener.CCNQueryType;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.network.CCNRepository;
+import com.parc.ccn.network.CCNRepositoryFactory;
 import com.parc.ccn.network.discovery.CCNDiscovery;
 
 /**
@@ -85,6 +86,17 @@ public class JackrabbitCCNRepository extends CCNRepository {
 	protected HashMap<CCNQueryListener, JackrabbitEventListener> _eventListeners = new HashMap<CCNQueryListener, JackrabbitEventListener>();
 	protected Repository _repository;
 	protected Session _session;
+	
+	/** 
+	 * The stock RMI interface directly to a jackrabbit.
+	 */
+	public static final String JACKRABBIT_RMI_SERVICE_TYPE = "_ccn._jackrabbit_rmi";
+	public static final String JACKRABBIT_RMI_SERVICE_NAME = "Jackrabbit";
+
+	static {
+		CCNRepositoryFactory.registerRepositoryType(JACKRABBIT_RMI_SERVICE_TYPE, JACKRABBIT_RMI_SERVICE_NAME, JackrabbitCCNRepository.class);
+		CCNDiscovery.registerServiceType(JACKRABBIT_RMI_SERVICE_TYPE);
+	}
 
 	/**
 	 * Use someone else's repository.
@@ -572,7 +584,7 @@ public class JackrabbitCCNRepository extends CCNRepository {
 	}
 
 	protected static void advertiseServer(int port) throws IOException {
-		CCNRepository.advertiseServer(CCNDiscovery.JACKRABBIT_RMI_SERVICE_TYPE, port);
+		CCNRepository.advertiseServer(JACKRABBIT_RMI_SERVICE_TYPE, port);
 	}
 
 	public static CCNRepository connect(ServiceInfo info) throws MalformedURLException, ClassCastException, RemoteException, NotBoundException {

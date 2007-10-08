@@ -21,6 +21,7 @@ public class DiscoveryManager implements CCNDiscoveryListener {
 	
 	/**
 	 * Do we want local repositories, remote repositories or both?
+	 * DKS -- allow filtering on type of repository.
 	 * @param wantLocal
 	 */
 	protected DiscoveryManager(boolean wantLocal, boolean wantRemote) {
@@ -75,7 +76,7 @@ public class DiscoveryManager implements CCNDiscoveryListener {
 		}
 		Library.logger().info("Found a new repository: " + info.getURL());
 		try {
-			CCNRepository newRepository = RepositoryFactory.connect(info);
+			CCNRepository newRepository = CCNRepositoryFactory.connect(info);
 	
 			// Add this repository to our list.
 			_repositories.add(newRepository); // DKS -- synchronize?

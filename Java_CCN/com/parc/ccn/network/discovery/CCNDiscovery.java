@@ -18,9 +18,10 @@ public class CCNDiscovery {
 	/**
 	 * Need slightly more principled way to cover a variety of
 	 * service types.
+	 * DKS - check synchronization
 	 */
-	public static final String JACKRABBIT_RMI_SERVICE_TYPE = "_ccn._jackrabbit_rmi";
-	public static final String [] SERVICE_TYPES = {JACKRABBIT_RMI_SERVICE_TYPE};
+	
+	protected static ArrayList<String> _serviceTypes = new ArrayList<String>();
 	public static final String SERVICE_NAME = "CCN";
 	public static final int CCN_PORT = 5399;
 	
@@ -75,12 +76,22 @@ public class CCNDiscovery {
 		if (null == _jmDNS) {
 			try {
 				_jmDNS = new JmDNS();
-				for (int i=0; i < SERVICE_TYPES.length; ++i)
-					_jmDNS.registerServiceType(SERVICE_TYPES[i]);
+				for (int i=0; i < _serviceTypes.size(); ++i)
+					_jmDNS.registerServiceType(_serviceTypes.get(i));
 			} catch (IOException e) {
 				Library.logger().warning("Cannot create discovery object.");
 				Library.logStackTrace(Level.WARNING, e);
 			}
+		}
+	}
+	
+	public static void registerServiceType(String serviceType) {
+		_serviceTypes.add(serviceType);
+		_jmDNS.registerServiceType(serviceType);
+		if (null != _serviceListener) {
+			for (int i=0; i < _serviceTypes.size(); ++i) {
+				_jmDNS.addServiceListener(serviceType, _serviceListener);
+			}			
 		}
 	}
 	
@@ -101,8 +112,8 @@ public class CCNDiscovery {
 				if (null == _serviceListener) {
 					addDiscoveryListener(discoveryListener);
 					_serviceListener = new CCNServiceListener();
-					for (int i=0; i < SERVICE_TYPES.length; ++i) {
-						_jmDNS.addServiceListener(SERVICE_TYPES[i], _serviceListener);
+					for (int i=0; i < _serviceTypes.size(); ++i) {
+						_jmDNS.addServiceListener(_serviceTypes.get(i), _serviceListener);
 					}
 				}
 			}
@@ -123,8 +134,8 @@ public class CCNDiscovery {
 
 	public static void shutdown() {
 		if (_serviceListener != null) {
-			for (int i=0; i < SERVICE_TYPES.length; ++i) {
-				_jmDNS.removeServiceListener(SERVICE_TYPES[i], _serviceListener);
+			for (int i=0; i < _serviceTypes.size(); ++i) {
+				_jmDNS.removeServiceListener(_serviceTypes.get(i), _serviceListener);
 			}
 		}
 		_jmDNS.unregisterAllServices();

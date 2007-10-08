@@ -15,7 +15,7 @@ import com.parc.ccn.Library;
  * @author smetters
  *
  */
-class RepositoryFactory {
+public class CCNRepositoryFactory {
 	
 	protected static HashMap<Class, String> _repositoryClassToServiceType = new HashMap<Class,String>();
 	protected static HashMap<String, Class> _serviceNameToRespositoryClass = new HashMap<String,Class>();

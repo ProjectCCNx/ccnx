@@ -1,20 +1,17 @@
 package com.parc.ccn.network;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.util.ArrayList;
-import java.util.logging.Level;
 
 import javax.jmdns.ServiceInfo;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.CCNBase;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.query.CCNQueryListener;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
+import com.parc.ccn.data.query.CCNQueryListener;
 import com.parc.ccn.data.query.CCNQueryListener.CCNQueryType;
 import com.parc.ccn.data.security.ContentAuthenticator;
-import com.parc.ccn.network.discovery.CCNDiscovery;
 import com.parc.ccn.network.discovery.CCNDiscoveryListener;
 import com.parc.ccn.network.impl.JackrabbitCCNRepository;
 
@@ -26,28 +23,28 @@ import com.parc.ccn.network.impl.JackrabbitCCNRepository;
  * @author smetters
  *
  */
-public class RepositoryManager extends DiscoveryManager implements CCNBase, CCNDiscoveryListener {
+public class CCNRepositoryManager extends DiscoveryManager implements CCNBase, CCNDiscoveryListener {
 	
 	/**
 	 * Static singleton.
 	 */
-	protected static RepositoryManager _repositoryManager = null;
+	protected static CCNRepositoryManager _repositoryManager = null;
 	
 	/**
 	 * Other local repositories we know about to talk to.
 	 */
 	protected ArrayList<CCNRepository> _repositories = new ArrayList<CCNRepository>();
 
-	public static RepositoryManager getCCNRepositoryManager() { 
+	public static CCNRepositoryManager getCCNRepositoryManager() { 
 		if (null != _repositoryManager) 
 			return _repositoryManager;
 		
 		return createRepositoryManager();
 	}
 	
-	protected static synchronized RepositoryManager createRepositoryManager() {
+	protected static synchronized CCNRepositoryManager createRepositoryManager() {
 		if (null == _repositoryManager) {
-			_repositoryManager = new RepositoryManager();
+			_repositoryManager = new CCNRepositoryManager();
 			// Might need to add a thread to handle discovery responses...
 			_repositoryManager.start();
 		}
@@ -86,7 +83,7 @@ public class RepositoryManager extends DiscoveryManager implements CCNBase, CCND
 	 * getting fancy...
 	 * DKS -- eventually make this configurable
 	 */
-	protected RepositoryManager() {
+	protected CCNRepositoryManager() {
 		super(true, false);
 		// Make/get our local repository. Start listening
 		// for others.

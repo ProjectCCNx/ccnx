@@ -1,6 +1,6 @@
 package com.parc.ccn;
 
-import com.parc.ccn.network.RepositoryManager;
+import com.parc.ccn.network.CCNRepositoryManager;
 
 public class RepositoryHelper {
 
@@ -18,7 +18,7 @@ public class RepositoryHelper {
 	 */	
 	public static void importFolder(String folderName,
 									boolean recursive) {
-		RepositoryManager manager = RepositoryManager.getCCNRepositoryManager();
+		CCNRepositoryManager manager = CCNRepositoryManager.getCCNRepositoryManager();
 	}
 	
 	public static void exportFolder(String folderName,

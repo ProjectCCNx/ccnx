@@ -13,6 +13,7 @@ public class JackrabbitRepositoryDaemon extends Daemon {
 	
 	protected static class JackrabbitWorkerThread extends Daemon.WorkerThread {
 
+		private static final long serialVersionUID = -6093561895394961537L;
 		JackrabbitCCNRepository _repository = null;
 		
 		protected JackrabbitWorkerThread(String daemonName) {
