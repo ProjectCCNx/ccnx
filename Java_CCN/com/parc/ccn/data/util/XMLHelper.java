@@ -11,6 +11,8 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 import javax.xml.stream.events.XMLEvent;
 
+import com.parc.ccn.Library;
+
 
 import sun.misc.BASE64Decoder;
 import sun.misc.BASE64Encoder;
@@ -26,28 +28,47 @@ public class XMLHelper {
 
 	public static XMLEventReader beginDecoding(InputStream iStream) throws XMLStreamException {
 		XMLInputFactory factory = XMLInputFactory.newInstance();
-		factory.setProperty(XMLInputFactory.IS_NAMESPACE_AWARE , 
-				Boolean.TRUE);
+		try {
+			factory.setProperty(XMLInputFactory.IS_NAMESPACE_AWARE , 
+					Boolean.TRUE);
+		} catch (IllegalArgumentException e) {
+			Library.logger().warning("XMLHelper: XMLInputFactory is not namespace aware.");
+		}
 		XMLEventReader reader = factory.createXMLEventReader(iStream);
 		return reader;
 	}
 	
 	public static XMLStreamWriter beginEncoding(OutputStream oStream) throws XMLStreamException {
 		XMLOutputFactory factory = XMLOutputFactory.newInstance();
-		factory.setProperty(XMLInputFactory.IS_NAMESPACE_AWARE , 
-				Boolean.TRUE);
+		try {
+			factory.setProperty(XMLInputFactory.IS_NAMESPACE_AWARE , 
+					Boolean.TRUE);
+		} catch (IllegalArgumentException e) {
+			Library.logger().warning("XMLHelper: XMLOutputFactory is not namespace aware.");
+		}
 		XMLStreamWriter writer = factory.createXMLStreamWriter(oStream);
 		writer.setPrefix(XMLEncodable.CCN_PREFIX, XMLEncodable.CCN_NAMESPACE);
 		writer.setDefaultNamespace(XMLEncodable.CCN_NAMESPACE);
 		// DKS -- need to set encoding when creating factory, and set it here.
 		writer.writeStartDocument();
-		writer.writeDefaultNamespace(XMLEncodable.CCN_NAMESPACE);
+		// Can't write default namespace till we write an element...
 		return writer;
 	}
 	
 	public static void endEncoding(XMLStreamWriter writer) throws XMLStreamException {
 		writer.writeEndDocument();
 		writer.flush();   		
+	}
+	
+	/**
+	 * Need to use this to get default namespace written.
+	 * @param writer
+	 * @param tag
+	 * @throws XMLStreamException
+	 */
+	public static void startFirstElement(XMLStreamWriter writer, String tag) throws XMLStreamException {
+		writer.writeStartElement(tag);
+		writer.writeDefaultNamespace(XMLEncodable.CCN_NAMESPACE);
 	}
 	
 	public static String encodeElement(byte [] element) {
@@ -63,10 +84,25 @@ public class XMLHelper {
 		writer.writeCharacters(content);
 		writer.writeEndElement();
 	}
+	
+	public static void readStartDocument(XMLEventReader reader) throws XMLStreamException {
+		XMLEvent event = reader.nextEvent();
+		if (!event.isStartDocument()) {
+			throw new XMLStreamException("Expected start document, got: " + event.toString());
+		}			
+	}
 
+	public static void readEndDocument(XMLEventReader reader) throws XMLStreamException {
+		XMLEvent event = reader.nextEvent();
+		if (!event.isEndDocument()) {
+			throw new XMLStreamException("Expected end document, got: " + event.toString());
+		}
+	}
+	
 	public static void readStartElement(XMLEventReader reader, String startTag) throws XMLStreamException {
 		XMLEvent event = reader.nextTag();
 		if (!event.isStartElement() || (!startTag.equals(event.asStartElement().getName()))) {
+			// Coming back with namespace decoration doesn't match
 			throw new XMLStreamException("Expected start element: " + startTag + " got: " + event.toString());
 		}	
 	}

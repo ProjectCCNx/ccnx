@@ -2,11 +2,19 @@ package test;
 
 import static org.junit.Assert.*;
 
+import java.net.MalformedURLException;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
+
+import javax.jmdns.ServiceInfo;
+
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import com.parc.ccn.network.impl.JackrabbitCCNRepository;
 
 public class JackrabbitCCNRepositoryTest {
 	
@@ -35,18 +43,41 @@ public class JackrabbitCCNRepositoryTest {
 	}
 
 	@Test
-	public void testJackrabbitCCNRepositoryServiceInfo() {
-		fail("Not yet implemented");
+	public void testJackrabbitCCNRepository() {
+		System.out.println("Creating local repository.");
+		JackrabbitCCNRepository repo = new JackrabbitCCNRepository();
+		
+		assertNotNull(repo);
 	}
 
 	@Test
-	public void testJackrabbitCCNRepository() {
+	public void testJackrabbitCCNRepositoryServiceInfo() {
+		System.out.println("Creating local repository.");
+		JackrabbitCCNRepository repo = new JackrabbitCCNRepository();
 		
+		assertNotNull(repo);
+		ServiceInfo info = repo.info();
+		
+		System.out.println("Creating connection to repository: " + info);
+		try {
+			JackrabbitCCNRepository repo2 = new JackrabbitCCNRepository(info);
+			assertNotNull(repo2);
+		} catch (Exception e) {
+			System.out.println("Got a " + e.getClass().getName() + ", message: " + e.getMessage());
+			e.printStackTrace();
+			throw new RuntimeException(e);
+		}
 	}
 
 	@Test
 	public void testPut() {
-		fail("Not yet implemented");
+		System.out.println("Creating local repository.");
+		JackrabbitCCNRepository repo = new JackrabbitCCNRepository();
+		
+		assertNotNull(repo);
+		
+		System.out.println("Adding content.");
+		
 	}
 
 	@Test

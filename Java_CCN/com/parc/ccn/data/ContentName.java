@@ -3,6 +3,7 @@ package com.parc.ccn.data;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.math.BigInteger;
 import java.util.Arrays;
 
 import javax.xml.stream.XMLEventReader;
@@ -16,9 +17,9 @@ public class ContentName implements XMLEncodable {
 
 	public static final String SEPARATOR = "\\/";
 	public static final ContentName ROOT = new ContentName((String)null);
-	private static final String COUNT_ELEMENT = null;
-	private static final String CONTENT_NAME_ELEMENT = null;
-	private static final String COMPONENT_ELEMENT = null;
+	private static final String COUNT_ELEMENT = "Count";
+	private static final String CONTENT_NAME_ELEMENT = "Name";
+	private static final String COMPONENT_ELEMENT = "Component";
 	
 	protected byte _components[][];
 		
@@ -99,17 +100,35 @@ public class ContentName implements XMLEncodable {
 	}
 		
 	public String toString() {
+		// DKS - print out component contents, not component object...
 		if ((null == _components) || (0 == _components.length)) {
 			return SEPARATOR;
 		}
 		StringBuffer nameBuf = new StringBuffer();
 		for (int i=0; i < _components.length; ++i) {
 			nameBuf.append(SEPARATOR);
-			nameBuf.append(_components[i]);
+			nameBuf.append(componentPrint(_components[i]));
 		}
 		return nameBuf.toString();
 	} 
 	
+	protected String componentPrint(byte[] bs) {
+		// DKS: would like to display strings as strings,
+		// but would have to detect printability 
+		if (isPrintable(bs)) {
+			String bstring = new String(bs);
+			return bstring;
+		} else {
+			BigInteger bsi = new BigInteger(1, bs); // force positive
+			return "0x" + bsi.toString(16);
+		}
+	}
+
+	protected boolean isPrintable(byte[] bs) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
 	public byte[][] components() { return _components; }
 	public int count() { 
 		if (null == _components) return 0;
@@ -174,6 +193,7 @@ public class ContentName implements XMLEncodable {
 	}
 
 	public void decode(XMLEventReader reader) throws XMLStreamException {
+		XMLHelper.readStartDocument(reader);
 		XMLHelper.readStartElement(reader, CONTENT_NAME_ELEMENT);
 		XMLHelper.readStartElement(reader, COUNT_ELEMENT);
 		String strCount = reader.getElementText();
@@ -197,6 +217,7 @@ public class ContentName implements XMLEncodable {
 		}
 		
 		XMLHelper.readEndElement(reader);
+		XMLHelper.readEndDocument(reader);
 	}
 
 	public void encode(OutputStream oStream) throws XMLStreamException {
@@ -206,7 +227,7 @@ public class ContentName implements XMLEncodable {
 	}
 
 	public void encode(XMLStreamWriter writer) throws XMLStreamException {
-		writer.writeStartElement(CONTENT_NAME_ELEMENT);
+		XMLHelper.startFirstElement(writer, CONTENT_NAME_ELEMENT);
 		XMLHelper.writeElement(writer, COUNT_ELEMENT, Integer.toString(count()));
 		
 		for (int i=0; i < count(); ++i) {
