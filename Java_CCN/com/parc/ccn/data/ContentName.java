@@ -15,7 +15,7 @@ import com.parc.ccn.data.util.XMLHelper;
 
 public class ContentName implements XMLEncodable {
 
-	public static final String SEPARATOR = "\\/";
+	public static final String SEPARATOR = "/";
 	public static final ContentName ROOT = new ContentName((String)null);
 	private static final String COUNT_ELEMENT = "Count";
 	private static final String CONTENT_NAME_ELEMENT = "Name";
