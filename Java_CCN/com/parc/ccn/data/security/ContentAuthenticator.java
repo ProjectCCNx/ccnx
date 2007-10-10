@@ -210,26 +210,21 @@ public class ContentAuthenticator implements XMLEncodable {
 		XMLHelper.readStartElement(reader, CONTENT_AUTHENTICATOR_ELEMENT);
 		
 		if (XMLHelper.peekStartElement(reader, TIMESTAMP_ELEMENT)) {
-			XMLHelper.readStartElement(reader, TIMESTAMP_ELEMENT);
-			String strTimestamp = reader.getElementText();
+			String strTimestamp = XMLHelper.readElementText(reader, TIMESTAMP_ELEMENT);
 			_timestamp = Timestamp.valueOf(strTimestamp);
 			if (null == _timestamp) {
 				throw new XMLStreamException("Cannot parse timestamp: " + strTimestamp);
 			}
-			XMLHelper.readEndElement(reader);
 		}
 
-		XMLHelper.readStartElement(reader, CONTENT_TYPE_ELEMENT);
-		String strType = reader.getElementText();
+		String strType = XMLHelper.readElementText(reader, CONTENT_TYPE_ELEMENT);
 		_type = nameToType(strType);
 		if (null == _type) {
 			throw new XMLStreamException("Cannot parse authenticator type: " + strType);
 		}
-		XMLHelper.readEndElement(reader);
 		
 		if (XMLHelper.peekStartElement(reader, CONTENT_HASH_ELEMENT)) {
-			XMLHelper.readStartElement(reader, CONTENT_HASH_ELEMENT);
-			String strHash = reader.getElementText();
+			String strHash = XMLHelper.readElementText(reader, CONTENT_HASH_ELEMENT);
 			try {
 				_contentHash = XMLHelper.decodeElement(strHash);
 			} catch (IOException e) {
@@ -238,7 +233,6 @@ public class ContentAuthenticator implements XMLEncodable {
 			if (null == _contentHash) {
 				throw new XMLStreamException("Cannot parse content hash: " + strHash);
 			}
-			XMLHelper.readEndElement(reader);
 		}
 		
 		if (XMLHelper.peekStartElement(reader, KeyLocator.KEY_LOCATOR_ELEMENT)) {
@@ -247,8 +241,7 @@ public class ContentAuthenticator implements XMLEncodable {
 		}
 		
 		if (XMLHelper.peekStartElement(reader, SIGNATURE_ELEMENT)) {
-			XMLHelper.readStartElement(reader, SIGNATURE_ELEMENT);
-			String strSig = reader.getElementText();
+			String strSig = XMLHelper.readElementText(reader, SIGNATURE_ELEMENT);
 			try {
 				_signature = XMLHelper.decodeElement(strSig);
 			} catch (IOException e) {
@@ -257,7 +250,6 @@ public class ContentAuthenticator implements XMLEncodable {
 			if (null == _contentHash) {
 				throw new XMLStreamException("Cannot parse signature: " + strSig);
 			}
-			XMLHelper.readEndElement(reader);
 		}
 		
 		XMLHelper.readEndElement(reader);

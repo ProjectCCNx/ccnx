@@ -11,9 +11,6 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 import javax.xml.stream.events.XMLEvent;
 
-import com.parc.ccn.Library;
-
-
 import sun.misc.BASE64Decoder;
 import sun.misc.BASE64Encoder;
 
@@ -28,24 +25,12 @@ public class XMLHelper {
 
 	public static XMLEventReader beginDecoding(InputStream iStream) throws XMLStreamException {
 		XMLInputFactory factory = XMLInputFactory.newInstance();
-		try {
-			factory.setProperty(XMLInputFactory.IS_NAMESPACE_AWARE , 
-					Boolean.TRUE);
-		} catch (IllegalArgumentException e) {
-			Library.logger().warning("XMLHelper: XMLInputFactory is not namespace aware.");
-		}
 		XMLEventReader reader = factory.createXMLEventReader(iStream);
 		return reader;
 	}
 	
 	public static XMLStreamWriter beginEncoding(OutputStream oStream) throws XMLStreamException {
 		XMLOutputFactory factory = XMLOutputFactory.newInstance();
-		try {
-			factory.setProperty(XMLInputFactory.IS_NAMESPACE_AWARE , 
-					Boolean.TRUE);
-		} catch (IllegalArgumentException e) {
-			Library.logger().warning("XMLHelper: XMLOutputFactory is not namespace aware.");
-		}
 		XMLStreamWriter writer = factory.createXMLStreamWriter(oStream);
 		writer.setPrefix(XMLEncodable.CCN_PREFIX, XMLEncodable.CCN_NAMESPACE);
 		writer.setDefaultNamespace(XMLEncodable.CCN_NAMESPACE);
@@ -99,16 +84,33 @@ public class XMLHelper {
 		}
 	}
 	
+	/**
+	 * XMLEventReader.getElementText eats the endElement of
+	 * an element. This is confusing. So make a helper function
+	 * that handles reading the whole element to help hide this
+	 * fact.
+	 * @param reader
+	 * @param startTag
+	 * @return
+	 * @throws XMLStreamException
+	 */
+	public static String readElementText(XMLEventReader reader, String startTag) throws XMLStreamException {
+		XMLHelper.readStartElement(reader, startTag);
+		String strElementText = reader.getElementText();
+		// XMLHelper.readEndElement(reader); // getElementText eats the endElement
+		return strElementText;
+	}
+	
 	public static void readStartElement(XMLEventReader reader, String startTag) throws XMLStreamException {
-		XMLEvent event = reader.nextTag();
-		if (!event.isStartElement() || (!startTag.equals(event.asStartElement().getName()))) {
+		XMLEvent event = reader.nextEvent();
+		if (!event.isStartElement() || (!startTag.equals(event.asStartElement().getName().getLocalPart()))) {
 			// Coming back with namespace decoration doesn't match
 			throw new XMLStreamException("Expected start element: " + startTag + " got: " + event.toString());
 		}	
 	}
 
 	public static void readEndElement(XMLEventReader reader) throws XMLStreamException {
-		XMLEvent event = reader.nextTag();
+		XMLEvent event = reader.nextEvent();
 		if (!event.isEndElement()) {
 			throw new XMLStreamException("Expected end element, got: " + event.toString());
 		}

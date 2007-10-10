@@ -104,16 +104,14 @@ public class PublisherID implements XMLEncodable {
 
 	public void decode(XMLEventReader reader) throws XMLStreamException {
 		XMLHelper.readStartElement(reader, PUBLISHER_ID_ELEMENT);
-		XMLHelper.readStartElement(reader, PUBLISHER_TYPE_ELEMENT);
-		String strType = reader.getElementText();
+
+		String strType = XMLHelper.readElementText(reader, PUBLISHER_TYPE_ELEMENT);
 		_publisherType = nameToType(strType);
 		if (null == _publisherType) {
 			throw new XMLStreamException("Cannot parse publisher type: " + strType);
 		}
-		XMLHelper.readEndElement(reader);
 		
-		XMLHelper.readStartElement(reader, PUBLISHER_ID_ID_ELEMENT);
-		String strID = reader.getElementText();
+		String strID = XMLHelper.readElementText(reader, PUBLISHER_ID_ID_ELEMENT);
 		try {
 			_publisherID = XMLHelper.decodeElement(strID);
 		} catch (IOException e) {
@@ -122,7 +120,6 @@ public class PublisherID implements XMLEncodable {
 		if (null == _publisherID) {
 			throw new XMLStreamException("Cannot parse publisher ID: " + strID);
 		}
-		XMLHelper.readEndElement(reader);
 		
 		XMLHelper.readEndElement(reader);
 	}

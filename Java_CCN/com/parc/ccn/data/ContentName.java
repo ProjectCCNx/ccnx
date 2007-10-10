@@ -194,17 +194,16 @@ public class ContentName implements XMLEncodable {
 
 	public void decode(XMLEventReader reader) throws XMLStreamException {
 		XMLHelper.readStartDocument(reader);
+
 		XMLHelper.readStartElement(reader, CONTENT_NAME_ELEMENT);
-		XMLHelper.readStartElement(reader, COUNT_ELEMENT);
-		String strCount = reader.getElementText();
+
+		String strCount = XMLHelper.readElementText(reader, COUNT_ELEMENT); 
 		int count = Integer.valueOf(strCount);
-		XMLHelper.readEndElement(reader);
 		
 		_components = new byte[count][];
 		
 		for (int i=0; i < count; ++i) {
-			XMLHelper.readStartElement(reader, COMPONENT_ELEMENT);
-			String strComponent = reader.getElementText();
+			String strComponent = XMLHelper.readElementText(reader, COMPONENT_ELEMENT); 
 			try {
 				_components[i] = XMLHelper.decodeElement(strComponent);
 			} catch (IOException e) {
@@ -213,7 +212,6 @@ public class ContentName implements XMLEncodable {
 			if (null == _components[i]) {
 				throw new XMLStreamException("Component " + i + " decodes to null: " + strComponent);
 			}
-			XMLHelper.readEndElement(reader);
 		}
 		
 		XMLHelper.readEndElement(reader);

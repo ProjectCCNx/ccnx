@@ -130,17 +130,15 @@ public class KeyLocator implements XMLEncodable {
 
 	public void decode(XMLEventReader reader) throws XMLStreamException {
 		XMLHelper.readStartElement(reader, KEY_LOCATOR_ELEMENT);
-		XMLHelper.readStartElement(reader, KEY_LOCATOR_TYPE_ELEMENT);
-		String strType = reader.getElementText();
+
+		String strType = XMLHelper.readElementText(reader, KEY_LOCATOR_TYPE_ELEMENT);
 		_type = nameToType(strType);
 		if (null == _type) {
 			throw new XMLStreamException("Cannot parse key type: " + strType);
 		}
-		XMLHelper.readEndElement(reader);
 		
 		if (type() == KeyLocatorType.KEY) {
-			XMLHelper.readStartElement(reader, PUBLISHER_KEY_ELEMENT);
-			String strKey = reader.getElementText();
+			String strKey = XMLHelper.readElementText(reader, PUBLISHER_KEY_ELEMENT);
 			try {
 				byte [] encodedKey = XMLHelper.decodeElement(strKey);
 				// This is a DER-encoded SubjectPublicKeyInfo.
@@ -155,10 +153,8 @@ public class KeyLocator implements XMLEncodable {
 			if (null == _key) {
 				throw new XMLStreamException("Cannot parse key: " + strKey);
 			}
-			XMLHelper.readEndElement(reader);
 		} else if (type() == KeyLocatorType.CERTIFICATE) {
-			XMLHelper.readStartElement(reader, PUBLISHER_CERTIFICATE_ELEMENT);
-			String strCert = reader.getElementText();
+			String strCert = XMLHelper.readElementText(reader, PUBLISHER_CERTIFICATE_ELEMENT);
 			try {
 				byte [] encodedCert = XMLHelper.decodeElement(strCert);
 				CertificateFactory factory = CertificateFactory.getInstance("X.509");
@@ -171,7 +167,6 @@ public class KeyLocator implements XMLEncodable {
 			if (null == _certificate) {
 				throw new XMLStreamException("Cannot parse certificate: " + strCert);
 			}
-			XMLHelper.readEndElement(reader);
 		} else if (type() == KeyLocatorType.NAME) {
 			_name = new ContentName();
 			_name.decode(reader);
