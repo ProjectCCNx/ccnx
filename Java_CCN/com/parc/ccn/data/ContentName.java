@@ -190,11 +190,10 @@ public class ContentName implements XMLEncodable {
 	public void decode(InputStream iStream) throws XMLStreamException {
 		XMLEventReader reader = XMLHelper.beginDecoding(iStream);
 		decode(reader);
+		XMLHelper.endDecoding(reader);
 	}
 
 	public void decode(XMLEventReader reader) throws XMLStreamException {
-		XMLHelper.readStartDocument(reader);
-
 		XMLHelper.readStartElement(reader, CONTENT_NAME_ELEMENT);
 
 		String strCount = XMLHelper.readElementText(reader, COUNT_ELEMENT); 
@@ -215,7 +214,6 @@ public class ContentName implements XMLEncodable {
 		}
 		
 		XMLHelper.readEndElement(reader);
-		XMLHelper.readEndDocument(reader);
 	}
 
 	public void encode(OutputStream oStream) throws XMLStreamException {

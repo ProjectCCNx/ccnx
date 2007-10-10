@@ -50,6 +50,7 @@ public class Link implements XMLEncodable {
 	public void decode(InputStream iStream) throws XMLStreamException {
 		XMLEventReader reader = XMLHelper.beginDecoding(iStream);
 		decode(reader);
+		XMLHelper.endDecoding(reader);
 	}
 	
 	public void encode(OutputStream oStream) throws XMLStreamException {

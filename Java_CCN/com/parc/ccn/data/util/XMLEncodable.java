@@ -14,7 +14,7 @@ public interface XMLEncodable {
 	
 	/**
 	 * Decode this object as the top-level item in a new
-	 * XML document.
+	 * XML document. Reads document start and end.
 	 * @param iStream
 	 * @throws XMLStreamException
 	 */
@@ -27,7 +27,7 @@ public interface XMLEncodable {
 
 	/**
 	 * Encode this object as the top-level item in a new 
-	 * XML document.
+	 * XML document. Writes start and end document.
 	 * @param oStream
 	 * @throws XMLStreamException
 	 */

@@ -26,6 +26,7 @@ public class XMLHelper {
 	public static XMLEventReader beginDecoding(InputStream iStream) throws XMLStreamException {
 		XMLInputFactory factory = XMLInputFactory.newInstance();
 		XMLEventReader reader = factory.createXMLEventReader(iStream);
+		XMLHelper.readStartDocument(reader);
 		return reader;
 	}
 	
@@ -122,6 +123,10 @@ public class XMLHelper {
 			return false;
 		}	
 		return true;
+	}
+
+	public static void endDecoding(XMLEventReader reader) throws XMLStreamException {
+		XMLHelper.readEndDocument(reader);
 	}
 }
 

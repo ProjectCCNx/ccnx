@@ -204,6 +204,7 @@ public class ContentAuthenticator implements XMLEncodable {
 	public void decode(InputStream iStream) throws XMLStreamException {
 		XMLEventReader reader = XMLHelper.beginDecoding(iStream);
 		decode(reader);
+		XMLHelper.endDecoding(reader);
 	}
 
 	public void decode(XMLEventReader reader) throws XMLStreamException {
