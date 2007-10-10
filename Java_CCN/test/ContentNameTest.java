@@ -49,9 +49,10 @@ public class ContentNameTest {
 				subName1 + ContentName.SEPARATOR + 
 				document1;
 		
-		System.out.println("ContentName: parsing name string.");
+		System.out.println("ContentName: parsing name string \"" + testString+"\"");
 		ContentName name = new ContentName(testString);
 		System.out.println("Name: " + name);
+		assertEquals(name.toString(), testString);
 	}
 
 	@Test
