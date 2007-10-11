@@ -102,13 +102,15 @@ public class ContentName implements XMLEncodable {
 	public String toString() {
 		// DKS - print out component contents, not component object...
 		if ((null == _components) || (0 == _components.length)) {
-			return SEPARATOR;
+			return null;
 		}
 		StringBuffer nameBuf = new StringBuffer();
-		for (int i=0; i < _components.length; ++i) {
-			nameBuf.append(SEPARATOR);
-			nameBuf.append(componentPrint(_components[i]));
+		for (int i=0; i < _components.length - 1; ++i) {
+						nameBuf.append(componentPrint(_components[i]));
+						nameBuf.append(SEPARATOR);
+
 		}
+		nameBuf.append(componentPrint(_components[_components.length - 1]));
 		return nameBuf.toString();
 	} 
 	
@@ -125,8 +127,13 @@ public class ContentName implements XMLEncodable {
 	}
 
 	protected boolean isPrintable(byte[] bs) {
-		// TODO Auto-generated method stub
-		return false;
+		for (int i = 0; i < bs.length; ++i) {
+			int codePoint= bs[i];
+			if (!Character.isDefined(codePoint) || Character.isISOControl(codePoint)) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	public byte[][] components() { return _components; }
