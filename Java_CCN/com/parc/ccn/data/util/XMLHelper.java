@@ -1,5 +1,6 @@
 package com.parc.ccn.data.util;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -10,6 +11,8 @@ import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 import javax.xml.stream.events.XMLEvent;
+
+import com.parc.ccn.Library;
 
 import sun.misc.BASE64Decoder;
 import sun.misc.BASE64Encoder;
@@ -57,11 +60,16 @@ public class XMLHelper {
 		writer.writeDefaultNamespace(XMLEncodable.CCN_NAMESPACE);
 	}
 	
+	// Needs to handle null and 0-length elements.
 	public static String encodeElement(byte [] element) {
+		if ((null == element) || (0 == element.length)) 
+			return new String("");
 		return new BASE64Encoder().encode(element);
 	}
 	
 	public static byte [] decodeElement(String element) throws IOException {
+		if ((null == element) || (0 == element.length()))
+			return new byte[0];
 		return new BASE64Decoder().decodeBuffer(element);
 	}
 
@@ -128,5 +136,18 @@ public class XMLHelper {
 	public static void endDecoding(XMLEventReader reader) throws XMLStreamException {
 		XMLHelper.readEndDocument(reader);
 	}
+	
+	public static String toString(XMLEncodable obj)  {
+		try {
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			obj.encode(baos);
+			return baos.toString();
+		} catch (XMLStreamException e) {
+			Library.logger().warning("Exception in XML encoding:" + e.getMessage());
+			Library.warningStackTrace(e);
+			return new String("Unencodable object.");
+		}
+	}			
 }
+
 

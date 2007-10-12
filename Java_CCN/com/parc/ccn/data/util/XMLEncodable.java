@@ -38,4 +38,9 @@ public interface XMLEncodable {
 	 */
 	public void encode(XMLStreamWriter writer) throws XMLStreamException;
 
+	/**
+	 * Make sure all of the necessary fields are filled in
+	 * prior to attempting to encode.
+	 */
+	public boolean validate();
 }
