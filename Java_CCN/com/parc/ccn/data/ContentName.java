@@ -40,8 +40,11 @@ public class ContentName implements XMLEncodable {
 			_components = null;
 		} else {
 			String[] parts = name.split(SEPARATOR);
+			// NHB: needs to check that initial character is SEPARATOR and probably throw something
+			// like MalformedContentNameString if anything is wrong
 			_components = new byte[parts.length][];
 			for (int i=0; i < _components.length; ++i) {
+				// NHB: getBytes does encoding by default charset -- may not be what we want?
 				_components[i] = parts[i].getBytes();
 			}
 		}
@@ -53,6 +56,7 @@ public class ContentName implements XMLEncodable {
 		} else {
 			_components = new byte[parts.length][];
 			for (int i=0; i < _components.length; ++i) {
+				// NHB: see other comment about getBytes
 				_components[i] = parts[i].getBytes();
 			}
 		}
@@ -102,9 +106,11 @@ public class ContentName implements XMLEncodable {
 	public String toString() {
 		// DKS - print out component contents, not component object...
 		if ((null == _components) || (0 == _components.length)) {
+			// NHB: should be null for no components, but empty string for length == 0 ?
 			return null;
 		}
 		StringBuffer nameBuf = new StringBuffer();
+		// NHB: use (SEPARATOR component)* 
 		for (int i=0; i < _components.length - 1; ++i) {
 						nameBuf.append(componentPrint(_components[i]));
 						nameBuf.append(SEPARATOR);
@@ -117,6 +123,7 @@ public class ContentName implements XMLEncodable {
 	protected String componentPrint(byte[] bs) {
 		// DKS: would like to display strings as strings,
 		// but would have to detect printability 
+		// NHB: Van is expecting the URI encoding rules
 		if (isPrintable(bs)) {
 			String bstring = new String(bs);
 			return bstring;
@@ -137,6 +144,7 @@ public class ContentName implements XMLEncodable {
 	}
 
 	public byte[][] components() { return _components; }
+	
 	public int count() { 
 		if (null == _components) return 0;
 		return _components.length; 
