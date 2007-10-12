@@ -98,7 +98,7 @@ public abstract class GenericX509CertificateGenerator {
             byte [] encoding = key.getEncoded();
             id = Digest(DIGEST_ALG, encoding);
         } catch (java.security.NoSuchAlgorithmException ex) {
-            // big configuration problem
+            // DKS --big configuration problem
             throw new RuntimeException("Error: can't find " + DIGEST_ALG + "!  " + ex.toString());
         }
         return id;
@@ -169,7 +169,7 @@ public abstract class GenericX509CertificateGenerator {
      * Adds an additional key usage to an Extended Key
      * Usage extension. If the certificate has no EKU extension, one is
      * added. Duplicates are automatically filtered.
-     * Add ability to set critical? EKU is rarely critical these
+     * DKS -- add ability to set critical? EKU is rarely critical these
      * days, but who knows...
      * Requires that getExtension returns the actual extension in the
      * cert. If it doesn't, we have to copy and replace (but if it doesn't,
@@ -333,7 +333,7 @@ public abstract class GenericX509CertificateGenerator {
      * @param critical should this extension be marked critical
      * @param bits an array booleans containing the values of each of the bits
      * in the order above (should be 9 long, if not, returns doing nothing --
-     * needs to throw exception)
+     * needs to throw exception DKS)
      */
     public abstract void addKeyUsage(boolean critical, boolean [] bits)
 	throws CertificateEncodingException;
