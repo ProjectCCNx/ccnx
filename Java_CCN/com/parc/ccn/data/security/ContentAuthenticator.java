@@ -263,6 +263,9 @@ public class ContentAuthenticator implements XMLEncodable {
 	}
 
 	public void encode(XMLStreamWriter writer) throws XMLStreamException {
+		if (!validate()) {
+			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
+		}
 		writer.writeStartElement(CONTENT_AUTHENTICATOR_ELEMENT);
 		if (!emptyPublisher()) {
 			publisherID().encode(writer);
@@ -289,6 +292,12 @@ public class ContentAuthenticator implements XMLEncodable {
 			writer.writeEndElement();   
 		}
 		writer.writeEndElement();   		
+	}
+	
+	public boolean validate() {
+		// any of the fields could be null when used 
+		// as a partial-match pattern
+		return true;
 	}
 
 }

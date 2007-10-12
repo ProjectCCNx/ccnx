@@ -38,6 +38,7 @@ public class PublisherID implements XMLEncodable {
         NameTypes.put("KEY", PublisherType.KEY);
         NameTypes.put("CERTIFICATE", PublisherType.CERTIFICATE);
         NameTypes.put("ISSUER_KEY", PublisherType.ISSUER_KEY);
+        NameTypes.put("ISSUER_CERTIFICATE", PublisherType.ISSUER_CERTIFICATE);
     }
 
     protected byte [] _publisherID;
@@ -48,7 +49,7 @@ public class PublisherID implements XMLEncodable {
 		_publisherType = publisherType;
 	}	
 	
-	PublisherID() {} // for use by decoders
+	public PublisherID() {} // for use by decoders
 	
 	public byte [] id() { return _publisherID; }
 	public PublisherType type() { return _publisherType; }
@@ -132,9 +133,21 @@ public class PublisherID implements XMLEncodable {
 	}
 
 	public void encode(XMLStreamWriter writer) throws XMLStreamException {
+		if (!validate()) {
+			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
+		}
 		writer.writeStartElement(PUBLISHER_ID_ELEMENT);
 		XMLHelper.writeElement(writer, PUBLISHER_TYPE_ELEMENT, typeToName(type()));
 		XMLHelper.writeElement(writer, PUBLISHER_ID_ID_ELEMENT, XMLHelper.encodeElement(id()));
 		writer.writeEndElement();   		
+	}
+	
+	public boolean validate() {
+		return ((null != id() && (null != type())));
+	}
+
+	@Override
+	public String toString() {
+		return XMLHelper.toString(this);
 	}
 }

@@ -28,11 +28,18 @@ import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.crypto.certificates.OIDLookup;
+import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
 
 public class KeyLocator implements XMLEncodable {
+	/**
+	 * KeyLocator(name) must allow for a complete name -- i.e.
+	 * a name and authentication information.
+	 * @author smetters
+	 *
+	 */
     public enum KeyLocatorType { NAME, KEY, CERTIFICATE }
 
     protected static final HashMap<KeyLocatorType, String> TypeNames = new HashMap<KeyLocatorType, String>();
@@ -54,13 +61,21 @@ public class KeyLocator implements XMLEncodable {
 
     protected KeyLocatorType _type;
     // Fake out a union.
-    protected ContentName _name;       // null if wrong type
+    protected CompleteName _name;       // null if wrong type
     protected PublicKey _key;
     protected X509Certificate _certificate;
     
-    public KeyLocator(ContentName name) {
-    	_name = name.clone();
+    public KeyLocator(CompleteName name) {
+    	_name = name; // DKS for the moment, we're using, not cloning...
     	_type = KeyLocatorType.NAME;
+    }
+    
+    public KeyLocator(ContentName name, ContentAuthenticator authenticator) {
+    	this(new CompleteName(name, authenticator));
+    }
+    
+    public KeyLocator(ContentName name) {
+    	this(name, null);
     }
     
     public KeyLocator(PublicKey key) {
@@ -78,10 +93,10 @@ public class KeyLocator implements XMLEncodable {
     	decode(bais);
     }
     
-    KeyLocator() {} // for use by decoders
+    public KeyLocator() {} // for use by decoders
     
 	public PublicKey key() { return _key; }
-    public ContentName name() { return _name; }
+    public CompleteName name() { return _name; }
     public X509Certificate certificate() { return _certificate; }
     public KeyLocatorType type() { return _type; }
 
@@ -169,7 +184,7 @@ public class KeyLocator implements XMLEncodable {
 				throw new XMLStreamException("Cannot parse certificate: " + strCert);
 			}
 		} else if (type() == KeyLocatorType.NAME) {
-			_name = new ContentName();
+			_name = new CompleteName();
 			_name.decode(reader);
 		}
 		XMLHelper.readEndElement(reader);
@@ -194,6 +209,9 @@ public class KeyLocator implements XMLEncodable {
 	}
 
 	public void encode(XMLStreamWriter writer) throws XMLStreamException {
+		if (!validate()) {
+			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
+		}
 		writer.writeStartElement(KEY_LOCATOR_ELEMENT);
 		writer.writeStartElement(KEY_LOCATOR_TYPE_ELEMENT);
 		writer.writeCharacters(typeToName(type()));
@@ -248,5 +266,13 @@ public class KeyLocator implements XMLEncodable {
 		}
 		return key;
 	}
+	
+	public boolean validate() {
+		return ((null != name() || (null != key()) || (null != certificate())));
+	}
 
+	@Override
+	public String toString() {
+		return XMLHelper.toString(this);
+	}	
 }
