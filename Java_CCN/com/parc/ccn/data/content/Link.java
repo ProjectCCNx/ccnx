@@ -7,6 +7,7 @@ import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
+import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.util.XMLEncodable;
@@ -25,21 +26,25 @@ public class Link implements XMLEncodable {
 	
 	protected static final String LINK_ELEMENT = "Link";
 	
-	protected ContentName _destName;
-	protected ContentAuthenticator _destAuthenticator;
+	protected CompleteName _destName;
 	
 	public Link(ContentName destName, ContentAuthenticator destAuthenticator) {
-		_destName = destName;
-		_destAuthenticator = destAuthenticator;
+		_destName = new CompleteName(destName,destAuthenticator);
 	}
 	
 	public Link(ContentName destName) {
 		this(destName, null);
 	}
 	
+	public Link (CompleteName destName) {
+		_destName = destName;
+	}
+	
 	public Link(InputStream iStream) throws XMLStreamException {
 		decode(iStream);
 	}
+	
+	public CompleteName targetName() { return _destName; }
 		
 	/**
 	 * XML format:
@@ -62,22 +67,20 @@ public class Link implements XMLEncodable {
 	public void decode(XMLEventReader reader) throws XMLStreamException {
 		XMLHelper.readStartElement(reader, LINK_ELEMENT);
 
-		_destName = new ContentName();
+		_destName = new CompleteName();
 		_destName.decode(reader);
 		
-		if (XMLHelper.peekStartElement(reader, ContentAuthenticator.CONTENT_AUTHENTICATOR_ELEMENT)) {
-			_destAuthenticator = new ContentAuthenticator();
-			_destAuthenticator.decode(reader);
-		}
 		XMLHelper.readEndElement(reader);
 	}
 
 	public void encode(XMLStreamWriter writer) throws XMLStreamException {
+
 		writer.writeStartElement(LINK_ELEMENT);
 		_destName.encode(writer);
-		if (null != _destAuthenticator) {
-			_destAuthenticator.encode(writer);
-		}
 		writer.writeEndElement();   		
+	}
+	
+	public boolean validate() {
+		return (null != targetName());
 	}
 }

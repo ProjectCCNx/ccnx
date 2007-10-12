@@ -2,15 +2,14 @@ package com.parc.ccn.data.content;
 
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
 
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
+import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.ContentAuthenticator;
@@ -32,10 +31,14 @@ public class Collection implements XMLEncodable {
 
 	private static final String ENTRY_ELEMENT = null;
 	
-	protected HashMap<ContentName,ContentAuthenticator> _contents = new HashMap<ContentName,ContentAuthenticator>();
+	protected ArrayList<CompleteName> _contents = new ArrayList<CompleteName>();
 	
 	public Collection(ContentName destName, ContentAuthenticator destAuthenticator) {
-		_contents.put(destName, destAuthenticator);
+		_contents.add(new CompleteName(destName, destAuthenticator));
+	}
+	
+	public Collection(CompleteName destName) {
+		_contents.add(destName);
 	}
 	
 	public Collection(ContentName [] names, ContentAuthenticator [] authenticators) {
@@ -45,9 +48,18 @@ public class Collection implements XMLEncodable {
 		}
 		for (int i=0; i < names.length; ++i) {
 			if ((null != authenticators) && (authenticators.length > 0)) {
-				_contents.put(names[i], authenticators[i]);
+				_contents.add(new CompleteName(names[i], authenticators[i]));
 			} else {
-				_contents.put(names[i], null);
+				_contents.add(new CompleteName(names[i], null));
+			}
+		}
+	}
+	
+	public Collection(CompleteName [] names) {
+		if (null != names) {
+			for (int i=0; i < names.length; ++i) {
+				if (null != names[i])
+					_contents.add(names[i]);
 			}
 		}
 	}
@@ -59,14 +71,14 @@ public class Collection implements XMLEncodable {
 	 */
 	public Collection(ContentObject [] objects) {
 		for (int i=0; i < objects.length; ++i) {
-			_contents.put(objects[i].name(), objects[i].authenticator());
+			_contents.add(objects[i].completeName());
 		}
 	}
 	
-	public Collection(HashMap<ContentName,ContentAuthenticator> contents) {
-		Iterator<Map.Entry<ContentName,ContentAuthenticator>> it = contents.entrySet().iterator();
+	public Collection(ArrayList<CompleteName> contents) {
+		Iterator<CompleteName> it = contents.iterator();
 		while (it.hasNext()) {
-			_contents.entrySet().add(it.next());
+			_contents.add(it.next());
 		}
 	}
 	
@@ -78,17 +90,19 @@ public class Collection implements XMLEncodable {
 		decode(iStream);
 	}
 	
-	public HashMap<ContentName,ContentAuthenticator> contents() { return _contents; }
-	public Set<ContentName> names() { return contents().keySet(); }
+	public ArrayList<CompleteName> contents() { return _contents; }
 		
-	public ContentAuthenticator authenticator(ContentName name) {
-		return contents().get(name);
+	public CompleteName get(int i) {
+		return contents().get(i);
 	}
 	
 	public void add(ContentName name, ContentAuthenticator authenticator) {
-		_contents.put(name, authenticator);
+		_contents.add(new CompleteName(name, authenticator));
 	}
 	
+	public void add(CompleteName name) {
+		_contents.add(name);
+	}
 	/**
 	 * XML format:
 	 * @throws XMLStreamException 
@@ -112,35 +126,63 @@ public class Collection implements XMLEncodable {
 		
 		XMLHelper.readStartElement(reader, COLLECTION_ELEMENT);
 
-		ContentName name = null;
-		ContentAuthenticator authenticator = null;
+		CompleteName completeName = null;
 		while ((null != reader.peek()) && (XMLHelper.peekStartElement(reader, ENTRY_ELEMENT))) {
 			XMLHelper.readStartElement(reader, ENTRY_ELEMENT);
-			name = new ContentName();
-			name.decode(reader);
-			if (XMLHelper.peekStartElement(reader, ContentAuthenticator.CONTENT_AUTHENTICATOR_ELEMENT)) {
-				authenticator = new ContentAuthenticator();
-				authenticator.decode(reader);
-			}
-			_contents.put(name, authenticator);
+			completeName = new CompleteName();
+			completeName.decode(reader);
+			add(completeName);
 			XMLHelper.readEndElement(reader);
 		}
 		XMLHelper.readEndElement(reader);
 	}
 
 	public void encode(XMLStreamWriter writer) throws XMLStreamException {
+		if (!validate()) {
+			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
+		}
 		writer.writeStartElement(COLLECTION_ELEMENT);
-		Iterator<ContentName> keyIt = names().iterator();
+		Iterator<CompleteName> keyIt = contents().iterator();
 		while (keyIt.hasNext()) {
 			writer.writeStartElement(ENTRY_ELEMENT);
-			ContentName name = keyIt.next();
+			CompleteName name = keyIt.next();
 			name.encode(writer);
-			ContentAuthenticator auth = contents().get(name);
-			if (null != auth) {
-				auth.encode(writer);
-			}
 			writer.writeEndElement();
 		}
 		writer.writeEndElement();   		
+	}
+	
+	public boolean validate() { 
+		return (null != contents());
+	}
+
+	@Override
+	public int hashCode() {
+		final int PRIME = 31;
+		int result = 1;
+		result = PRIME * result + ((_contents == null) ? 0 : _contents.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		final Collection other = (Collection) obj;
+		if (_contents == null) {
+			if (other._contents != null)
+				return false;
+		} else if (!_contents.equals(other._contents))
+			return false;
+		return true;
+	}
+
+	@Override
+	public String toString() {
+		return XMLHelper.toString(this);
 	}
 }
