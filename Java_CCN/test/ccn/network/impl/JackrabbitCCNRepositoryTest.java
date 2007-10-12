@@ -1,4 +1,4 @@
-package test;
+package test.ccn.network.impl;
 
 import static org.junit.Assert.*;
 
@@ -14,6 +14,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.parc.ccn.data.ContentName;
 import com.parc.ccn.network.impl.JackrabbitCCNRepository;
 
 public class JackrabbitCCNRepositoryTest {
@@ -25,6 +26,14 @@ public class JackrabbitCCNRepositoryTest {
 	public String content1 = "This is the content of a test file.";
 	public String document2 = "test2.txt";	
 	public String content2 = "This is the content of a second test file.";
+	public String document4 = "the important document name.foo";	
+	
+	String [] arrName1 = new String[]{baseName,subName1,document1};
+	ContentName name1 = new ContentName(arrName1);
+	String [] arrName2 = new String[]{baseName,subName1,document2};
+	ContentName name2 = new ContentName(arrName2);
+	String [] arrName3 = new String[]{baseName,subName2,document4};
+	ContentName name3 = new ContentName(arrName3);
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -77,6 +86,10 @@ public class JackrabbitCCNRepositoryTest {
 		assertNotNull(repo);
 		
 		System.out.println("Adding content.");
+		
+		
+		
+	//	repo.put
 		
 	}
 
