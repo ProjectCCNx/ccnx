@@ -127,7 +127,7 @@ public class XMLHelper {
 
 	public static boolean peekStartElement(XMLEventReader reader, String startTag) throws XMLStreamException {
 		XMLEvent event = reader.peek();
-		if ((null == event) || !event.isStartElement() || (!startTag.equals(event.asStartElement().getName()))) {
+		if ((null == event) || !event.isStartElement() || (!startTag.equals(event.asStartElement().getName().getLocalPart()))) {
 			return false;
 		}	
 		return true;

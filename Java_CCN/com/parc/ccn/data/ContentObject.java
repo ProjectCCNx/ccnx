@@ -40,6 +40,8 @@ public class ContentObject implements XMLEncodable {
     	_content = content;
     }
     
+    public ContentObject() {} // for use by decoders
+    
     public CompleteName completeName() { return _completeName; }
     
     public ContentName name() { 
@@ -67,6 +69,7 @@ public class ContentObject implements XMLEncodable {
 
 		// For the moment, include complete name level...
 		_completeName = new CompleteName();
+		_completeName.decode(reader);
 		
 		String strContent = XMLHelper.readElementText(reader, CONTENT_ELEMENT); 
 		try {

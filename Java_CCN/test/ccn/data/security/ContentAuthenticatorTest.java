@@ -1,11 +1,10 @@
 package test.ccn.data.security;
 
-import static org.junit.Assert.*;
-
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.Security;
 import java.security.cert.X509Certificate;
+import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.Date;
 
@@ -17,6 +16,7 @@ import test.ccn.data.XMLEncodableTester;
 
 import com.parc.ccn.crypto.certificates.BCX509CertificateGenerator;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherID.PublisherType;
@@ -50,9 +50,6 @@ public class ContentAuthenticatorTest {
 	static public byte [] contenthash = new byte[32];
 	static public byte [] publisherid = new byte[32];
 	static PublisherID pubkey = null;	
-	static PublisherID pubcert = null;	
-	static PublisherID pubisskey = null;	
-	static PublisherID pubisscert = null;	
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -91,7 +88,27 @@ public class ContentAuthenticatorTest {
 
 	@Test
 	public void testDecodeInputStream() {
-		fail("Not yet implemented");
+		ContentAuthenticator nca = new ContentAuthenticator(pubkey, 
+								new Timestamp(System.currentTimeMillis()), 
+								ContentAuthenticator.ContentType.LEAF, contenthash,
+								nameLoc, signature);
+		ContentAuthenticator dnca = new ContentAuthenticator();
+		XMLEncodableTester.encodeDecodeTest("ContentAuthenticator(name)", nca, dnca);
+
+		ContentAuthenticator kca = new ContentAuthenticator(pubkey, 
+				new Timestamp(System.currentTimeMillis()), 
+				ContentAuthenticator.ContentType.LEAF, contenthash,
+				keyLoc, signature);
+		ContentAuthenticator dkca = new ContentAuthenticator();
+		XMLEncodableTester.encodeDecodeTest("ContentAuthenticator(key)", kca, dkca);
+
+		ContentAuthenticator cca = new ContentAuthenticator(pubkey, 
+				new Timestamp(System.currentTimeMillis()), 
+				ContentAuthenticator.ContentType.LEAF, contenthash,
+				certLoc, signature);
+		ContentAuthenticator dcca = new ContentAuthenticator();
+		XMLEncodableTester.encodeDecodeTest("ContentAuthenticator(cert)", cca, dcca);
+		
 	}
 
 }

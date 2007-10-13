@@ -210,6 +210,11 @@ public class ContentAuthenticator implements XMLEncodable {
 	public void decode(XMLEventReader reader) throws XMLStreamException {
 		XMLHelper.readStartElement(reader, CONTENT_AUTHENTICATOR_ELEMENT);
 		
+		if (XMLHelper.peekStartElement(reader, PublisherID.PUBLISHER_ID_ELEMENT)) {
+			_publisher = new PublisherID();
+			_publisher.decode(reader);
+		}
+
 		if (XMLHelper.peekStartElement(reader, TIMESTAMP_ELEMENT)) {
 			String strTimestamp = XMLHelper.readElementText(reader, TIMESTAMP_ELEMENT);
 			_timestamp = Timestamp.valueOf(strTimestamp);
@@ -300,4 +305,8 @@ public class ContentAuthenticator implements XMLEncodable {
 		return true;
 	}
 
+	@Override
+	public String toString() {
+		return XMLHelper.toString(this);
+	}
 }

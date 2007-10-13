@@ -1,11 +1,11 @@
 package test.ccn.data;
 
-import static org.junit.Assert.*;
-
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.Security;
 import java.security.cert.X509Certificate;
+import java.sql.Timestamp;
+import java.util.Arrays;
 import java.util.Date;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -14,7 +14,11 @@ import org.junit.Test;
 
 import com.parc.ccn.crypto.certificates.BCX509CertificateGenerator;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
+import com.parc.ccn.data.security.PublisherID;
+import com.parc.ccn.data.security.PublisherID.PublisherType;
 
 public class ContentObjectTest {
 
@@ -38,8 +42,11 @@ public class ContentObjectTest {
 	static KeyPair pair = null;
 	static X509Certificate cert = null;
 	static KeyLocator nameLoc = null;
-	static KeyLocator keyLoc = null;
-	static KeyLocator certLoc = null;
+	static public byte [] signature = new byte[256];
+	static public byte [] contenthash = new byte[32];
+	static public byte [] publisherid = new byte[32];
+	static PublisherID pubkey = null;	
+	static ContentAuthenticator auth = null;
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -62,9 +69,17 @@ public class ContentObjectTest {
 					pair.getPrivate(),
 					null);
 			nameLoc = new KeyLocator(keyname);
-			keyLoc = new KeyLocator(pair.getPublic());
-			certLoc = new KeyLocator(cert);
 			
+			Arrays.fill(signature, (byte)1);
+			Arrays.fill(contenthash, (byte)2);
+			Arrays.fill(publisherid, (byte)3);
+			
+			pubkey = new PublisherID(publisherid, PublisherType.KEY);
+			
+			auth = new ContentAuthenticator(pubkey, 
+					new Timestamp(System.currentTimeMillis()), 
+					ContentAuthenticator.ContentType.LEAF, contenthash,
+					nameLoc, signature);
 		} catch (Exception ex) {
 			XMLEncodableTester.handleException(ex);
 			System.out.println("Unable To Initialize Test!!!");
@@ -73,7 +88,9 @@ public class ContentObjectTest {
 
 	@Test
 	public void testDecodeInputStream() {
-		fail("Not yet implemented");
+		ContentObject co = new ContentObject(name, auth, document3);
+		ContentObject dco = new ContentObject();
+		XMLEncodableTester.encodeDecodeTest("ContentObject", co, dco);
 	}
 
 }
