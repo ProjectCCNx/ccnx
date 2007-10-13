@@ -238,6 +238,9 @@ public class ContentName implements XMLEncodable {
 	}
 
 	public void encode(XMLStreamWriter writer) throws XMLStreamException {
+		if (!validate()) {
+			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
+		}
 		XMLHelper.startFirstElement(writer, CONTENT_NAME_ELEMENT);
 		XMLHelper.writeElement(writer, COUNT_ELEMENT, Integer.toString(count()));
 		
@@ -246,5 +249,9 @@ public class ContentName implements XMLEncodable {
 					XMLHelper.encodeElement(_components[i]));
 		}
 		writer.writeEndElement();
+	}
+	
+	public boolean validate() { 
+		return (null != _components);
 	}
 }
