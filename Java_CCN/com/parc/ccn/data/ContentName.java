@@ -6,6 +6,10 @@ import java.io.OutputStream;
 import java.math.BigInteger;
 import java.util.Arrays;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.net.URLDecoder;
+
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
@@ -16,7 +20,7 @@ import com.parc.ccn.data.util.XMLHelper;
 public class ContentName implements XMLEncodable {
 
 	public static final String SEPARATOR = "/";
-	public static final ContentName ROOT = new ContentName((String)null);
+	public static final ContentName ROOT = new ContentName(0, null);
 	private static final String COUNT_ELEMENT = "Count";
 	private static final String CONTENT_NAME_ELEMENT = "Name";
 	private static final String COMPONENT_ELEMENT = "Component";
@@ -35,17 +39,24 @@ public class ContentName implements XMLEncodable {
 		}
 	}
 		
-	public ContentName(String name) {
+	public ContentName(String name) throws MalformedContentNameStringException {
 		if((name == null) || (name.length() == 0)) {
 			_components = null;
 		} else {
-			String[] parts = name.split(SEPARATOR);
-			// NHB: needs to check that initial character is SEPARATOR and probably throw something
-			// like MalformedContentNameString if anything is wrong
-			_components = new byte[parts.length][];
-			for (int i=0; i < _components.length; ++i) {
-				// NHB: getBytes does encoding by default charset -- may not be what we want?
-				_components[i] = parts[i].getBytes();
+				String[] parts;
+				if (!name.startsWith(SEPARATOR)){
+					throw new MalformedContentNameStringException("ContentName strings must begin with " + SEPARATOR);
+				}
+				parts = name.split(SEPARATOR);
+			_components = new byte[parts.length - 1][];
+			// Leave off initial empty component
+			for (int i=1; i < parts.length; ++i) {
+	//		_components[i - 1] = parts[i].getBytes();
+				try {
+				_components[i-1] = URLDecoder.decode(parts[i], "UTF-8").getBytes();
+				} catch (UnsupportedEncodingException e) {
+					throw new RuntimeException("UTF-8 not supported", e);
+				}
 			}
 		}
 	}
@@ -56,7 +67,6 @@ public class ContentName implements XMLEncodable {
 		} else {
 			_components = new byte[parts.length][];
 			for (int i=0; i < _components.length; ++i) {
-				// NHB: see other comment about getBytes
 				_components[i] = parts[i].getBytes();
 			}
 		}
@@ -105,18 +115,13 @@ public class ContentName implements XMLEncodable {
 		
 	public String toString() {
 		// DKS - print out component contents, not component object...
-		if ((null == _components) || (0 == _components.length)) {
-			// NHB: should be null for no components, but empty string for length == 0 ?
-			return null;
-		}
+		if (null == _components) return null;
+		if (0 == _components.length) return new String();
 		StringBuffer nameBuf = new StringBuffer();
-		// NHB: use (SEPARATOR component)* 
-		for (int i=0; i < _components.length - 1; ++i) {
-						nameBuf.append(componentPrint(_components[i]));
-						nameBuf.append(SEPARATOR);
-
-		}
-		nameBuf.append(componentPrint(_components[_components.length - 1]));
+		for (int i=0; i < _components.length; ++i) {
+			nameBuf.append(SEPARATOR);
+			nameBuf.append(componentPrint(_components[i]));
+			}
 		return nameBuf.toString();
 	} 
 	
@@ -124,23 +129,14 @@ public class ContentName implements XMLEncodable {
 		// DKS: would like to display strings as strings,
 		// but would have to detect printability 
 		// NHB: Van is expecting the URI encoding rules
-		if (isPrintable(bs)) {
-			String bstring = new String(bs);
-			return bstring;
-		} else {
-			BigInteger bsi = new BigInteger(1, bs); // force positive
-			return "0x" + bsi.toString(16);
+		if (null == bs) {
+			return new String();
 		}
-	}
-
-	protected boolean isPrintable(byte[] bs) {
-		for (int i = 0; i < bs.length; ++i) {
-			int codePoint= bs[i];
-			if (!Character.isDefined(codePoint) || Character.isISOControl(codePoint)) {
-				return false;
-			}
+		try {
+			return URLEncoder.encode(new String(bs), "UTF-8");
+		} catch (UnsupportedEncodingException e) {
+			throw new RuntimeException("UTF-8 not supported", e);
 		}
-		return true;
 	}
 
 	public byte[][] components() { return _components; }
@@ -195,11 +191,10 @@ public class ContentName implements XMLEncodable {
 		return true;
 	}
 
-	public static ContentName parse(String str) {
-		if(str == null) return ROOT;
+	public static ContentName parse(String str) throws MalformedContentNameStringException {
+		if(str == null) return null;
 		if(str.length() == 0) return ROOT;
-		String[] parts = str.split(SEPARATOR);
-		return new ContentName(parts);
+		return new ContentName(str);
 	}
 
 	public void decode(InputStream iStream) throws XMLStreamException {

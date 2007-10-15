@@ -13,7 +13,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.*;
 
 public class ContentNameTest {
 
@@ -26,6 +26,7 @@ public class ContentNameTest {
 				0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c,
 				0x0d, 0x0e, 0x0f, 0x1f, 0x1b, 0x1c, 0x1d, 0x1e,
 				0x1f, 0x2e, 0x3c, 0x4a, 0x5c, 0x6d, 0x7e, 0xf};
+	public String escapedSubName1 = "%62%72%69%67%67%73";
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -45,16 +46,46 @@ public class ContentNameTest {
 
 	@Test
 	public void testContentNameString() {
-		String testString = baseName + ContentName.SEPARATOR +
+		ContentName name;
+		String testString = ContentName.SEPARATOR + baseName + ContentName.SEPARATOR +
 				subName1 + ContentName.SEPARATOR + 
 				document1;
-		
+				
 		System.out.println("ContentName: parsing name string \"" + testString+"\"");
-		ContentName name = new ContentName(testString);
+		try {
+			name = new ContentName(testString);
+		} catch (MalformedContentNameStringException e) {
+			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
+			e.printStackTrace();
+			name = null;
+		}
+		assertNotNull(name);
 		System.out.println("Name: " + name);
 		assertEquals(name.toString(), testString);
 	}
+	@Test
+	public void testContentNameStringException() {
+		ContentName name;
+		String testString = baseName;
 
+		System.out.println("ContentName: parsing name string \"" + testString+"\"");
+		try {
+			name = new ContentName(testString);
+		} catch (MalformedContentNameStringException e) {
+			name = null;
+		}
+		assertNull(name);
+	}
+	@Test
+	public void testEncoding() {
+		String name1 = ContentName.SEPARATOR + subName1;
+		String name2 = ContentName.SEPARATOR + escapedSubName1;
+		try {
+			assertEquals(new ContentName(name1), new ContentName(name2));
+		} catch (MalformedContentNameStringException e) {
+			fail("Unexpected exception MalformedContentNameStringException during ContentName parsing");
+		}
+	}
 	@Test
 	public void testContentNameByteArrayArray() {
 		byte [][] arr = new byte[4][];
