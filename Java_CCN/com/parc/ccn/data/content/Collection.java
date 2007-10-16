@@ -1,7 +1,6 @@
 package com.parc.ccn.data.content;
 
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 
@@ -13,6 +12,7 @@ import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
 
@@ -25,7 +25,7 @@ import com.parc.ccn.data.util.XMLHelper;
  * @author smetters
  *
  */
-public class Collection implements XMLEncodable {
+public class Collection extends GenericXMLEncodable implements XMLEncodable {
 	
 	protected static final String COLLECTION_ELEMENT = "Collection";
 
@@ -109,18 +109,6 @@ public class Collection implements XMLEncodable {
 	 * 
 	 */
 	
-	public void decode(InputStream iStream) throws XMLStreamException {
-		XMLEventReader reader = XMLHelper.beginDecoding(iStream);
-		decode(reader);
-		XMLHelper.endDecoding(reader);
-	}
-	
-	public void encode(OutputStream oStream) throws XMLStreamException {
-		XMLStreamWriter writer = XMLHelper.beginEncoding(oStream);
-		encode(writer);
-		XMLHelper.endEncoding(writer);	
-	}
-
 	public void decode(XMLEventReader reader) throws XMLStreamException {
 		_contents.clear();
 		
@@ -137,11 +125,11 @@ public class Collection implements XMLEncodable {
 		XMLHelper.readEndElement(reader);
 	}
 
-	public void encode(XMLStreamWriter writer) throws XMLStreamException {
+	public void encode(XMLStreamWriter writer, boolean isFirstElement) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		writer.writeStartElement(COLLECTION_ELEMENT);
+		XMLHelper.writeStartElement(writer, COLLECTION_ELEMENT, isFirstElement);
 		Iterator<CompleteName> keyIt = contents().iterator();
 		while (keyIt.hasNext()) {
 			writer.writeStartElement(ENTRY_ELEMENT);
@@ -179,10 +167,5 @@ public class Collection implements XMLEncodable {
 		} else if (!_contents.equals(other._contents))
 			return false;
 		return true;
-	}
-
-	@Override
-	public String toString() {
-		return XMLHelper.toString(this);
 	}
 }

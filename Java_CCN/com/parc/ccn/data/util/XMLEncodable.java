@@ -34,7 +34,15 @@ public interface XMLEncodable {
 	public void encode(OutputStream oStream) throws XMLStreamException;
 
 	/**
-	 * Write this item to an ongoing encoding pass.
+	 * Write this item to an ongoing encoding pass. 
+	 * @param isFirstElement is this the first element after the
+	 * 	start of the document; if so it needs to start the
+	 * 	default namespace.
+	 */
+	public void encode(XMLStreamWriter writer, boolean isFirstElement) throws XMLStreamException;
+
+	/**
+	 * Write this item to an ongoing encoding pass, not as the first element.
 	 */
 	public void encode(XMLStreamWriter writer) throws XMLStreamException;
 

@@ -3,8 +3,6 @@ package com.parc.ccn.data.security;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
@@ -30,10 +28,11 @@ import com.parc.ccn.Library;
 import com.parc.ccn.crypto.certificates.OIDLookup;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
 
-public class KeyLocator implements XMLEncodable {
+public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 	/**
 	 * KeyLocator(name) must allow for a complete name -- i.e.
 	 * a name and authentication information.
@@ -89,8 +88,7 @@ public class KeyLocator implements XMLEncodable {
     }
     
     public KeyLocator(byte [] encoded) throws XMLStreamException {
-    	ByteArrayInputStream bais = new ByteArrayInputStream(encoded);
-    	decode(bais);
+    	super(encoded);
     }
     
     public KeyLocator() {} // for use by decoders
@@ -136,12 +134,6 @@ public class KeyLocator implements XMLEncodable {
 		} else if (!_type.equals(other._type))
 			return false;
 		return true;
-	}
-
-	public void decode(InputStream iStream) throws XMLStreamException {
-		XMLEventReader reader = XMLHelper.beginDecoding(iStream);
-		decode(reader);
-		XMLHelper.endDecoding(reader);
 	}
 
 	public void decode(XMLEventReader reader) throws XMLStreamException {
@@ -202,17 +194,11 @@ public class KeyLocator implements XMLEncodable {
 		return baos.toByteArray();
 	}
 
-	public void encode(OutputStream oStream) throws XMLStreamException {
-		XMLStreamWriter writer = XMLHelper.beginEncoding(oStream);
-		encode(writer);
-		XMLHelper.endEncoding(writer);	
-	}
-
-	public void encode(XMLStreamWriter writer) throws XMLStreamException {
+	public void encode(XMLStreamWriter writer, boolean isFirstElement) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		writer.writeStartElement(KEY_LOCATOR_ELEMENT);
+		XMLHelper.writeStartElement(writer, KEY_LOCATOR_ELEMENT, isFirstElement);
 		writer.writeStartElement(KEY_LOCATOR_TYPE_ELEMENT);
 		writer.writeCharacters(typeToName(type()));
 		writer.writeEndElement();   
@@ -271,8 +257,4 @@ public class KeyLocator implements XMLEncodable {
 		return ((null != name() || (null != key()) || (null != certificate())));
 	}
 
-	@Override
-	public String toString() {
-		return XMLHelper.toString(this);
-	}	
 }

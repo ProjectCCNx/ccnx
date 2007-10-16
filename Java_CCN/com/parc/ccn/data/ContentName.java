@@ -1,23 +1,20 @@
 package com.parc.ccn.data;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.math.BigInteger;
-import java.util.Arrays;
-
 import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
 import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.util.Arrays;
 
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
+import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
 
-public class ContentName implements XMLEncodable {
+public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 
 	public static final String SEPARATOR = "/";
 	public static final ContentName ROOT = new ContentName(0, null);
@@ -79,6 +76,10 @@ public class ContentName implements XMLEncodable {
 			_components[parent.count()] = new byte[name.length];
 			System.arraycopy(_components[parent.count()],0,name,0,name.length);
 		}
+	}
+	
+	public ContentName(byte [] encoded) throws XMLStreamException {
+		super(encoded);
 	}
 	
 	public ContentName parent() {
@@ -197,12 +198,6 @@ public class ContentName implements XMLEncodable {
 		return new ContentName(str);
 	}
 
-	public void decode(InputStream iStream) throws XMLStreamException {
-		XMLEventReader reader = XMLHelper.beginDecoding(iStream);
-		decode(reader);
-		XMLHelper.endDecoding(reader);
-	}
-
 	public void decode(XMLEventReader reader) throws XMLStreamException {
 		XMLHelper.readStartElement(reader, CONTENT_NAME_ELEMENT);
 
@@ -226,17 +221,11 @@ public class ContentName implements XMLEncodable {
 		XMLHelper.readEndElement(reader);
 	}
 
-	public void encode(OutputStream oStream) throws XMLStreamException {
-		XMLStreamWriter writer = XMLHelper.beginEncoding(oStream);
-		encode(writer);
-		XMLHelper.endEncoding(writer);	
-	}
-
-	public void encode(XMLStreamWriter writer) throws XMLStreamException {
+	public void encode(XMLStreamWriter writer, boolean isFirstElement) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		XMLHelper.startFirstElement(writer, CONTENT_NAME_ELEMENT);
+		XMLHelper.writeStartElement(writer, CONTENT_NAME_ELEMENT, isFirstElement);
 		XMLHelper.writeElement(writer, COUNT_ELEMENT, Integer.toString(count()));
 		
 		for (int i=0; i < count(); ++i) {

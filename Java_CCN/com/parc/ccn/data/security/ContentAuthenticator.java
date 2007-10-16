@@ -1,8 +1,6 @@
 package com.parc.ccn.data.security;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -11,10 +9,11 @@ import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
+import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
 
-public class ContentAuthenticator implements XMLEncodable {
+public class ContentAuthenticator extends GenericXMLEncodable implements XMLEncodable {
 
     public enum ContentType {FRAGMENT, LINK, CONTAINER, LEAF, SESSION};
     protected static final HashMap<ContentType, String> ContentTypeNames = new HashMap<ContentType, String>();
@@ -74,6 +73,10 @@ public class ContentAuthenticator implements XMLEncodable {
     	_contentHash = hash;
     	_keyLocator = locator;
     	this._signature = signature;
+    }
+
+    public ContentAuthenticator(byte [] encoded) throws XMLStreamException {
+    	super(encoded);
     }
 
     public ContentAuthenticator() {}
@@ -201,12 +204,6 @@ public class ContentAuthenticator implements XMLEncodable {
 		return true;
 	}
 
-	public void decode(InputStream iStream) throws XMLStreamException {
-		XMLEventReader reader = XMLHelper.beginDecoding(iStream);
-		decode(reader);
-		XMLHelper.endDecoding(reader);
-	}
-
 	public void decode(XMLEventReader reader) throws XMLStreamException {
 		XMLHelper.readStartElement(reader, CONTENT_AUTHENTICATOR_ELEMENT);
 		
@@ -261,17 +258,11 @@ public class ContentAuthenticator implements XMLEncodable {
 		XMLHelper.readEndElement(reader);
 	}
 
-	public void encode(OutputStream oStream) throws XMLStreamException {
-		XMLStreamWriter writer = XMLHelper.beginEncoding(oStream);
-		encode(writer);
-		XMLHelper.endEncoding(writer);	
-	}
-
-	public void encode(XMLStreamWriter writer) throws XMLStreamException {
+	public void encode(XMLStreamWriter writer, boolean isFirstElement) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		writer.writeStartElement(CONTENT_AUTHENTICATOR_ELEMENT);
+		XMLHelper.writeStartElement(writer, CONTENT_AUTHENTICATOR_ELEMENT, isFirstElement);
 		if (!emptyPublisher()) {
 			publisherID().encode(writer);
 		}
@@ -305,8 +296,4 @@ public class ContentAuthenticator implements XMLEncodable {
 		return true;
 	}
 
-	@Override
-	public String toString() {
-		return XMLHelper.toString(this);
-	}
 }

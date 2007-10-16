@@ -1,14 +1,11 @@
 package com.parc.ccn.data;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
-
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
 import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
 
@@ -20,7 +17,7 @@ import com.parc.ccn.data.util.XMLHelper;
  * @author smetters
  *
  */
-public class CompleteName implements XMLEncodable {
+public class CompleteName extends GenericXMLEncodable implements XMLEncodable {
 	
 	protected static final String COMPLETE_NAME_ELEMENT = "CompleteName";
 
@@ -33,8 +30,7 @@ public class CompleteName implements XMLEncodable {
 	}
 
 	public CompleteName(byte [] encoded) throws XMLStreamException {
-		ByteArrayInputStream bais = new ByteArrayInputStream(encoded);
-		decode(bais);
+		super(encoded);
 	}
 
 	public CompleteName() {} // for use by decoders
@@ -43,12 +39,6 @@ public class CompleteName implements XMLEncodable {
 	
 	public ContentAuthenticator authenticator() { return _authenticator; }
 	
-	public void decode(InputStream iStream) throws XMLStreamException {
-		XMLEventReader reader = XMLHelper.beginDecoding(iStream);
-		decode(reader);
-		XMLHelper.endDecoding(reader);
-	}
-
 	/**
 	 * Thought about encoding and decoding as flat -- no wrapping
 	 * declaration. But then couldn't use these solo.
@@ -67,17 +57,11 @@ public class CompleteName implements XMLEncodable {
 		XMLHelper.readEndElement(reader);
 	}
 
-	public void encode(OutputStream oStream) throws XMLStreamException {
-		XMLStreamWriter writer = XMLHelper.beginEncoding(oStream);
-		encode(writer);
-		XMLHelper.endEncoding(writer);	
-	}
-
-	public void encode(XMLStreamWriter writer) throws XMLStreamException {
+	public void encode(XMLStreamWriter writer, boolean isFirstElement) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		writer.writeStartElement(COMPLETE_NAME_ELEMENT);
+		XMLHelper.writeStartElement(writer, COMPLETE_NAME_ELEMENT, isFirstElement);
 		
 		name().encode(writer);
 		if (null != authenticator())
@@ -121,10 +105,5 @@ public class CompleteName implements XMLEncodable {
 		} else if (!_name.equals(other._name))
 			return false;
 		return true;
-	}
-
-	@Override
-	public String toString() {
-		return XMLHelper.toString(this);
 	}
 }

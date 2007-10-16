@@ -1,8 +1,9 @@
 package com.parc.ccn.data.security;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.security.PublicKey;
+import java.security.cert.CertificateEncodingException;
+import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.HashMap;
 
@@ -10,6 +11,9 @@ import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
+import com.parc.ccn.Library;
+import com.parc.ccn.crypto.certificates.GenericX509CertificateGenerator;
+import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
 
@@ -18,8 +22,9 @@ import com.parc.ccn.data.util.XMLHelper;
  * @author smetters
  *
  */
-public class PublisherID implements XMLEncodable {
+public class PublisherID extends GenericXMLEncodable implements XMLEncodable {
 
+	public static final String PUBLISHER_ID_DIGEST_ALGORITHM = "SHA256";
     public static final int PUBLISHER_ID_LEN = 256/8;
     public enum PublisherType {KEY, CERTIFICATE, ISSUER_KEY, ISSUER_CERTIFICATE};
 
@@ -43,16 +48,34 @@ public class PublisherID implements XMLEncodable {
 
     protected byte [] _publisherID;
     protected PublisherType _publisherType;
+    
+    public PublisherID(PublicKey key, boolean isIssuer) {
+    	_publisherID = generateID(key);
+    	_publisherType = isIssuer ? PublisherType.ISSUER_KEY : PublisherType.KEY;
+    }
+    
+    public PublisherID(X509Certificate cert, boolean isIssuer) throws CertificateEncodingException {
+    	_publisherID = generateCertificateID(cert);
+    	_publisherType = isIssuer ? PublisherType.ISSUER_CERTIFICATE : PublisherType.ISSUER_KEY;
+    }
 	
 	public PublisherID(byte [] publisherID, PublisherType publisherType) {
 		_publisherID = Arrays.copyOf(publisherID, PUBLISHER_ID_LEN);
 		_publisherType = publisherType;
 	}	
 	
-	public PublisherID() {} // for use by decoders
+    public PublisherID(byte [] encoded) throws XMLStreamException {
+    	super(encoded);
+    }
+
+    public PublisherID() {} // for use by decoders
 	
 	public byte [] id() { return _publisherID; }
 	public PublisherType type() { return _publisherType; }
+	
+	public static byte [] generateID(PublicKey key) {
+		return GenericX509CertificateGenerator.generateKeyID(PUBLISHER_ID_DIGEST_ALGORITHM, key);
+	}
 
 	@Override
 	public int hashCode() {
@@ -98,12 +121,6 @@ public class PublisherID implements XMLEncodable {
 		return NameTypes.get(name);
 	}
 
-	public void decode(InputStream iStream) throws XMLStreamException {
-		XMLEventReader reader = XMLHelper.beginDecoding(iStream);
-		decode(reader);
-		XMLHelper.endDecoding(reader);
-	}
-
 	public void decode(XMLEventReader reader) throws XMLStreamException {
 		XMLHelper.readStartElement(reader, PUBLISHER_ID_ELEMENT);
 
@@ -126,17 +143,11 @@ public class PublisherID implements XMLEncodable {
 		XMLHelper.readEndElement(reader);
 	}
 
-	public void encode(OutputStream oStream) throws XMLStreamException {
-		XMLStreamWriter writer = XMLHelper.beginEncoding(oStream);
-		encode(writer);
-		XMLHelper.endEncoding(writer);	
-	}
-
-	public void encode(XMLStreamWriter writer) throws XMLStreamException {
+	public void encode(XMLStreamWriter writer, boolean isFirstElement) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		writer.writeStartElement(PUBLISHER_ID_ELEMENT);
+		XMLHelper.writeStartElement(writer, PUBLISHER_ID_ELEMENT, isFirstElement);
 		XMLHelper.writeElement(writer, PUBLISHER_TYPE_ELEMENT, typeToName(type()));
 		XMLHelper.writeElement(writer, PUBLISHER_ID_ID_ELEMENT, XMLHelper.encodeElement(id()));
 		writer.writeEndElement();   		
@@ -146,8 +157,25 @@ public class PublisherID implements XMLEncodable {
 		return ((null != id() && (null != type())));
 	}
 
-	@Override
-	public String toString() {
-		return XMLHelper.toString(this);
+	public static byte [] generateCertificateID(X509Certificate cert) throws CertificateEncodingException {
+		return generateCertificateID(PUBLISHER_ID_DIGEST_ALGORITHM, cert);
 	}
+	
+    public static byte [] generateCertificateID(String digestAlg, X509Certificate cert) throws CertificateEncodingException  {
+    	
+        byte [] id = null;
+        try {
+            byte [] encoding = cert.getEncoded();
+            id = GenericX509CertificateGenerator.Digest(digestAlg, encoding);
+        } catch (java.security.NoSuchAlgorithmException ex) {
+            // DKS --big configuration problem
+            throw new RuntimeException("Error: can't find " + digestAlg + "!  " + ex.toString());
+        } catch (CertificateEncodingException e) {
+			Library.logger().warning("Cannot encode certificate in PublisherID.generateCertificateID: " + e.getMessage());
+			Library.warningStackTrace(e);
+			throw e;
+		}
+        return id;
+    }
+
 }

@@ -70,6 +70,7 @@ public abstract class GenericX509CertificateGenerator {
 
     // SHA is the official JCA name for SHA1
     protected static final String DEFAULT_HASH = "SHA";
+    protected static final String KEY_ID_DIGEST_ALG = "SHA-1";
 
 
     /**
@@ -88,28 +89,33 @@ public abstract class GenericX509CertificateGenerator {
      * unless the issuer has no SubjectKeyIdentifier extension in it.
      * The keyIdentifier fields for AKI extensions should be taken from
      * the certificate of the issuer. Use getKeyIDFromCertificate to
-     * do this. p
+     * do this. W
      */
-    public static byte [] generateKeyID(PublicKey key)  {
+    public static byte [] generateKeyID(String digestAlg, PublicKey key)  {
     	
-        final String DIGEST_ALG = "SHA-1";
         byte [] id = null;
         try {
             byte [] encoding = key.getEncoded();
-            id = Digest(DIGEST_ALG, encoding);
+            id = Digest(digestAlg, encoding);
         } catch (java.security.NoSuchAlgorithmException ex) {
             // DKS --big configuration problem
-            throw new RuntimeException("Error: can't find " + DIGEST_ALG + "!  " + ex.toString());
+            throw new RuntimeException("Error: can't find " + digestAlg + "!  " + ex.toString());
         }
         return id;
     }
+    
+    public static byte [] generateKeyID(PublicKey key) {
+    	return generateKeyID(KEY_ID_DIGEST_ALG, key);
+    }
 
-    public static String getKeyIDString(PublicKey key)  {
-                byte[] keyID = generateKeyID(key);
-                
-                BigInteger big = new BigInteger(1,keyID);
-                
-                return big.toString(16);
+    public static String getKeyIDString(String digestAlg, PublicKey key)  {
+    	byte[] keyID = generateKeyID(digestAlg, key);
+    	BigInteger big = new BigInteger(1,keyID);
+    	return big.toString(16);
+    }
+    
+    public static String getKeyIDString(PublicKey key) {
+    	return getKeyIDString(KEY_ID_DIGEST_ALG,key);
     }
 
     /**

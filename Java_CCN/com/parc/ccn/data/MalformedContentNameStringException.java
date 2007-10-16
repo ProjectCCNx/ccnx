@@ -9,6 +9,8 @@ package com.parc.ccn.data;
  */
 public class MalformedContentNameStringException extends Exception {
 
+	private static final long serialVersionUID = 7844927632290343475L;
+
 	/**
 	 * 
 	 */

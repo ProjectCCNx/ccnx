@@ -1,8 +1,6 @@
 package com.parc.ccn.data;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.Arrays;
 
 import javax.xml.stream.XMLEventReader;
@@ -10,6 +8,7 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
 import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
 
@@ -19,7 +18,7 @@ import com.parc.ccn.data.util.XMLHelper;
  * @author smetters
  *
  */
-public class ContentObject implements XMLEncodable {
+public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 	
 	protected static final String CONTENT_OBJECT_ELEMENT = "Mapping";
 	protected static final String CONTENT_ELEMENT = "Content";
@@ -40,6 +39,10 @@ public class ContentObject implements XMLEncodable {
     	_content = content;
     }
     
+    public ContentObject(byte [] encoded) throws XMLStreamException {
+    	super(encoded);
+    }
+    
     public ContentObject() {} // for use by decoders
     
     public CompleteName completeName() { return _completeName; }
@@ -58,12 +61,6 @@ public class ContentObject implements XMLEncodable {
     
     public byte [] content() { return _content; }
 
-	public void decode(InputStream iStream) throws XMLStreamException {
-		XMLEventReader reader = XMLHelper.beginDecoding(iStream);
-		decode(reader);
-		XMLHelper.endDecoding(reader);
-	}
-
 	public void decode(XMLEventReader reader) throws XMLStreamException {
 		XMLHelper.readStartElement(reader, CONTENT_OBJECT_ELEMENT);
 
@@ -81,18 +78,11 @@ public class ContentObject implements XMLEncodable {
 		XMLHelper.readEndElement(reader);
 	}
 
-	public void encode(OutputStream oStream) throws XMLStreamException {
-		XMLStreamWriter writer = XMLHelper.beginEncoding(oStream);
-		encode(writer);
-		XMLHelper.endEncoding(writer);	
-	}
-
-	public void encode(XMLStreamWriter writer) throws XMLStreamException {
-		// TODO: DKS validate all these things before encoding		
+	public void encode(XMLStreamWriter writer, boolean isFirstElement) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		writer.writeStartElement(CONTENT_OBJECT_ELEMENT);
+		XMLHelper.writeStartElement(writer, CONTENT_OBJECT_ELEMENT, isFirstElement);
 
 		completeName().encode(writer);
 
@@ -135,10 +125,5 @@ public class ContentObject implements XMLEncodable {
 		if (!Arrays.equals(_content, other._content))
 			return false;
 		return true;
-	}
-
-	@Override
-	public String toString() {
-		return XMLHelper.toString(this);
 	}
 }

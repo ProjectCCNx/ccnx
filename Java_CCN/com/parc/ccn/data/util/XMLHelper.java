@@ -55,11 +55,16 @@ public class XMLHelper {
 	 * @param tag
 	 * @throws XMLStreamException
 	 */
-	public static void startFirstElement(XMLStreamWriter writer, String tag) throws XMLStreamException {
-		writer.writeStartElement(tag);
-		writer.writeDefaultNamespace(XMLEncodable.CCN_NAMESPACE);
+	public static void writeStartElement(XMLStreamWriter writer, String tag, boolean isFirstElement) throws XMLStreamException {
+		writer.writeStartElement(XMLEncodable.CCN_NAMESPACE, tag);
+		if (isFirstElement)
+			writer.writeDefaultNamespace(XMLEncodable.CCN_NAMESPACE);
 	}
 	
+	public static void writeStartElement(XMLStreamWriter writer, String tag) throws XMLStreamException {
+		writeStartElement(writer, tag, false);
+	}
+
 	// Needs to handle null and 0-length elements.
 	public static String encodeElement(byte [] element) {
 		if ((null == element) || (0 == element.length)) 
@@ -74,7 +79,7 @@ public class XMLHelper {
 	}
 
 	public static void writeElement(XMLStreamWriter writer, String tag, String content) throws XMLStreamException {
-		writer.writeStartElement(tag);
+		writer.writeStartElement(XMLEncodable.CCN_NAMESPACE, tag);
 		writer.writeCharacters(content);
 		writer.writeEndElement();
 	}

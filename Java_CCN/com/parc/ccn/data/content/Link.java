@@ -1,7 +1,6 @@
 package com.parc.ccn.data.content;
 
 import java.io.InputStream;
-import java.io.OutputStream;
 
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
@@ -10,6 +9,7 @@ import javax.xml.stream.XMLStreamWriter;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
 
@@ -22,7 +22,7 @@ import com.parc.ccn.data.util.XMLHelper;
  * @author smetters
  *
  */
-public class Link implements XMLEncodable {
+public class Link extends GenericXMLEncodable implements XMLEncodable {
 	
 	protected static final String LINK_ELEMENT = "Link";
 	
@@ -44,6 +44,10 @@ public class Link implements XMLEncodable {
 		decode(iStream);
 	}
 	
+	public Link(byte [] encoded) throws XMLStreamException {
+		super(encoded);
+	}
+	
 	public CompleteName targetName() { return _destName; }
 		
 	/**
@@ -52,18 +56,6 @@ public class Link implements XMLEncodable {
 	 * 
 	 */
 	
-	public void decode(InputStream iStream) throws XMLStreamException {
-		XMLEventReader reader = XMLHelper.beginDecoding(iStream);
-		decode(reader);
-		XMLHelper.endDecoding(reader);
-	}
-	
-	public void encode(OutputStream oStream) throws XMLStreamException {
-		XMLStreamWriter writer = XMLHelper.beginEncoding(oStream);
-		encode(writer);
-		XMLHelper.endEncoding(writer);	
-	}
-
 	public void decode(XMLEventReader reader) throws XMLStreamException {
 		XMLHelper.readStartElement(reader, LINK_ELEMENT);
 
@@ -73,9 +65,9 @@ public class Link implements XMLEncodable {
 		XMLHelper.readEndElement(reader);
 	}
 
-	public void encode(XMLStreamWriter writer) throws XMLStreamException {
+	public void encode(XMLStreamWriter writer, boolean isFirstElement) throws XMLStreamException {
 
-		writer.writeStartElement(LINK_ELEMENT);
+		XMLHelper.writeStartElement(writer, LINK_ELEMENT, isFirstElement);
 		_destName.encode(writer);
 		writer.writeEndElement();   		
 	}
