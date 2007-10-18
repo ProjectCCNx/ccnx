@@ -63,29 +63,42 @@ public class ContentNameTest {
 		System.out.println("Name: " + name);
 		assertEquals(name.toString(), testString);
 	}
-	@Test
-	public void testContentNameStringException() {
-		ContentName name;
-		String testString = baseName;
-
+	
+	@Test(expected=MalformedContentNameStringException.class)
+	public void testContentNameStringException() throws MalformedContentNameStringException {
+		String testString = "expectingAnException";
 		System.out.println("ContentName: parsing name string \"" + testString+"\"");
-		try {
-			name = new ContentName(testString);
-		} catch (MalformedContentNameStringException e) {
-			name = null;
-		}
-		assertNull(name);
+		new ContentName(testString);
 	}
+	
+	@Test
+	public void testContentNameStringArray() throws MalformedContentNameStringException {
+		ContentName name;
+		ContentName name2;
+		String testString = ContentName.SEPARATOR + baseName + ContentName.SEPARATOR +
+		subName1 + ContentName.SEPARATOR + 
+		document1;
+		String [] testStringParts = new String[3];
+		testStringParts[0] = baseName;
+		testStringParts[1] = subName1;
+		testStringParts[2] = document1;
+		name = new ContentName(testStringParts);
+		name2 = new ContentName(testString);
+		assertEquals(name, name2);
+	}
+	
 	@Test
 	public void testEncoding() {
 		String name1 = ContentName.SEPARATOR + subName1;
 		String name2 = ContentName.SEPARATOR + escapedSubName1;
+		System.out.println("ContentName: comparing parsed \"" + name1 + "\" and \"" + name2 + "\"");
 		try {
 			assertEquals(new ContentName(name1), new ContentName(name2));
 		} catch (MalformedContentNameStringException e) {
 			fail("Unexpected exception MalformedContentNameStringException during ContentName parsing");
 		}
 	}
+	
 	@Test
 	public void testContentNameByteArrayArray() {
 		byte [][] arr = new byte[4][];
