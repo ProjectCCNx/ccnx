@@ -48,7 +48,6 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 			_components = new byte[parts.length - 1][];
 			// Leave off initial empty component
 			for (int i=1; i < parts.length; ++i) {
-	//		_components[i - 1] = parts[i].getBytes();
 				try {
 				_components[i-1] = URLDecoder.decode(parts[i], "UTF-8").getBytes();
 				} catch (UnsupportedEncodingException e) {
