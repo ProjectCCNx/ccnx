@@ -211,7 +211,6 @@ public class Daemon {
 		// to startLoop inside runAsDaemon...
 		Process child = Runtime.getRuntime().exec(cmd);
 
-
 		while (!getRMIFile(daemonName).exists()) {
 			try {
 				Thread.sleep(200);

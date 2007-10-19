@@ -37,11 +37,11 @@ public class JackrabbitCCNRepositoryTest {
 	static public String baseName = "test";
 	static public String subName1 = "briggs";
 	static public String subName2 = "smetters";
-	static public String document1 = "test.txt";
+	static public String document1 = "test7.txt";
 	static public String content1 = "This is the content of a test file.";
-	static public String document2 = "test2.txt";	
+	static public String document2 = "test8.txt";	
 	static public String content2 = "This is the content of a second test file.";
-	static public String document4 = "the important document name.foo";	
+	static public String document4 = "the newer important document name.foo";	
 	
 	static String [] arrName1 = new String[]{baseName,subName1,document1};
 	static ContentName name1 = new ContentName(arrName1);
@@ -162,6 +162,10 @@ public class JackrabbitCCNRepositoryTest {
 		
 		try {
 			repo.put(name1, auth[0], document1.getBytes("UTF-8"));
+
+			System.out.println("Adding name: " + name2);
+			name2.encode(System.out);
+			
 			repo.put(name2, auth[1], document2.getBytes("UTF-8"));
 			repo.put(name3, auth[2], document3);
 			
@@ -189,7 +193,7 @@ public class JackrabbitCCNRepositoryTest {
 
 	@Test
 	public void testGetAuthenticationInfo() {
-		fail("Not yet implemented");
+		fail("Not yet implemented, need to improve filters so the use this stuff to query repo");
 	}
 
 	@Test
@@ -226,7 +230,7 @@ public class JackrabbitCCNRepositoryTest {
 	@Test
 	public void testFindRepo() {
 		assertNotNull(repo);
-		
+		// use discovery to find repo
 		fail("Not yet implemented");
 		
 	}

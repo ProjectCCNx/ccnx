@@ -140,7 +140,10 @@ public class JackrabbitCCNRepository extends CCNRepository {
 	}
 	
 	/**
-	 * Use our own repository on a standard port.
+	 * Start our own local repository on a standard port.
+	 * Really only want to call this once per port per VM.
+	 * DKS: make constructor protected, use factory function
+	 * to get local Jackrabbit.
 	 *
 	 */
 	public JackrabbitCCNRepository() {
@@ -437,14 +440,14 @@ public class JackrabbitCCNRepository extends CCNRepository {
 
 		try {
 			String queryString = "/jcr:root" + nameToPath(query.name());
-			Library.logger().info("get1: query string: " + queryString);
+
 			Query q = null;
 			try {
 				q = _session.getWorkspace().getQueryManager().createQuery(queryString, Query.XPATH);
-				Library.logger().info("Successfully created query 1.");
-			} catch (Exception e) {
-				Library.logger().info("1 query string: " + queryString);
-				Library.logger().info("1 exception: " + e.getClass().getName() + " m: " + e.getMessage());
+			} catch (InvalidQueryException e) {
+				Library.logger().warning("Invalid query string: " + queryString);
+				Library.logger().warning("Exception: " + e.getClass().getName() + " m: " + e.getMessage());
+				throw new IOException(e);
 			}
 
 			NodeIterator iter = q.execute().getNodes();
@@ -671,18 +674,27 @@ public class JackrabbitCCNRepository extends CCNRepository {
 		return byteToString(publisherID);
 	}
 	
-	// Go between ContentNames and generated Jackrabbit paths.
-	// Have to cope with Jackrabbit-specific maps between bytes and strings.
+	/**
+	 * 
+	 * Go between ContentNames and generated Jackrabbit paths.
+	 * Have to cope with Jackrabbit-specific maps between bytes and strings.
+	 * Jackrabbit's separator is also /.
+	 * Jackrabbit returns path with empty root component
+	 * on front, corresponding to jcr:root.
+	 **/
 	protected static ContentName parsePath(String path) {
-		
 		if (path == null) return ContentName.ROOT;
 		if (path.length() == 0) return ContentName.ROOT;
 		String[] parts = path.split(ContentName.SEPARATOR);
-		byte [][] byteParts = new byte[parts.length][];
-		for (int i=0; i < parts.length; ++i) {
-			byteParts[i] = stringToNameComponent(parts[i]);
+		// Jackrabbit puts a 0-length root component at
+		// the front, corresponding tp jcr:root.
+		int startComponent = (parts[0].length() == 0) ? 1 : 0;
+
+		byte [][] byteParts = new byte[parts.length - startComponent][];
+		for (int i=startComponent; i < parts.length; ++i) {
+			byteParts[i-startComponent] = stringToNameComponent(parts[i]);
 		}
-		return new ContentName(parts);
+		return new ContentName(byteParts);
 	}
 	
 	/**
