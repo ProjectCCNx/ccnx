@@ -5,6 +5,8 @@ import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
+import java.io.InputStream;
+
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
@@ -50,8 +52,26 @@ public class Sequence extends GenericXMLEncodable implements XMLEncodable {
 	 * 
 	 */
 	public Sequence(int length) {
-		this(DEFAULT_START, length / DEFAULT_BLOCKSIZE, DEFAULT_BLOCKSIZE, length);
+		this(DEFAULT_START, (length + DEFAULT_BLOCKSIZE - 1) / DEFAULT_BLOCKSIZE, DEFAULT_BLOCKSIZE, length);
 	}
+	
+	public Sequence() {
+		this(DEFAULT_START, 0, DEFAULT_BLOCKSIZE, 0);
+	}
+	
+	public int start() { 
+		return _start;
+	}
+	public int count() { 
+		return _count;
+	}
+	public int blockSize() { 
+		return _blockSize;
+	}
+	public int length() { 
+		return _length;
+	}
+	
 	/**
 	 * @param encoded
 	 * @throws XMLStreamException
@@ -59,7 +79,11 @@ public class Sequence extends GenericXMLEncodable implements XMLEncodable {
 	public Sequence(byte[] encoded) throws XMLStreamException {
 		super(encoded);
 	}
-
+	
+	public Sequence(InputStream iStream) throws XMLStreamException {
+		decode(iStream);
+	}
+	
 	/* (non-Javadoc)
 	 * @see com.parc.ccn.data.util.XMLEncodable#decode(javax.xml.stream.XMLEventReader)
 	 */
@@ -95,5 +119,20 @@ public class Sequence extends GenericXMLEncodable implements XMLEncodable {
 		if (_start < 0 || _count < 0 || _blockSize <= 0 || _length < 0) return false;
 		return true;
 	}
-
+	
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		final Sequence other = (Sequence) obj;
+		if (this._length != other._length || 
+				this._start != other._start ||
+				this._blockSize != other._blockSize ||
+				this._count != other._count) return false;
+		return true;
+	}
 }
