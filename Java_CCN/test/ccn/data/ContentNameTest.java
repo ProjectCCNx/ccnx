@@ -78,10 +78,7 @@ public class ContentNameTest {
 		String testString = ContentName.SEPARATOR + baseName + ContentName.SEPARATOR +
 		subName1 + ContentName.SEPARATOR + 
 		document1;
-		String [] testStringParts = new String[3];
-		testStringParts[0] = baseName;
-		testStringParts[1] = subName1;
-		testStringParts[2] = document1;
+		String [] testStringParts = new String[]{baseName,subName1,document1};
 		name = new ContentName(testStringParts);
 		name2 = new ContentName(testString);
 		assertEquals(name, name2);
