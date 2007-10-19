@@ -74,6 +74,15 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     	_keyLocator = locator;
     	this._signature = signature;
     }
+    
+    /**
+     * For queries.
+     * @param publisher
+     */
+    public ContentAuthenticator(PublisherID publisher) {
+    	super();
+    	this._publisher = publisher;
+    }
 
     public ContentAuthenticator(byte [] encoded) throws XMLStreamException {
     	super(encoded);

@@ -8,6 +8,7 @@ import javax.jmdns.ServiceInfo;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.CCNBase;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.data.query.CCNQueryListener;
 import com.parc.ccn.data.query.CCNQueryListener.CCNQueryType;
@@ -167,5 +168,15 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNBase, C
 			Library.logger().warning("Lost primary repository. Replacing.");
 			_primaryRepository = JackrabbitCCNRepository.getLocalJackrabbitRepository();
 		}		
+	}
+
+	public ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator, CCNQueryType type) throws IOException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator) throws IOException {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }

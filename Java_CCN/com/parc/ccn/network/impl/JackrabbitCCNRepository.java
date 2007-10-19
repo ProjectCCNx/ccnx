@@ -106,6 +106,7 @@ public class JackrabbitCCNRepository extends CCNRepository {
 				ClassCastException, RemoteException, 
 				NotBoundException {
 		this(new ClientRepositoryFactory().getRepository(constructURL(PROTOCOL_TYPE, SERVER_RMI_NAME, host, port)));
+		_info = CCNDiscovery.getServiceInfo(JACKRABBIT_RMI_SERVICE_TYPE, host, port);
 	}
 	
 	/**
@@ -113,6 +114,7 @@ public class JackrabbitCCNRepository extends CCNRepository {
 	 */
 	public JackrabbitCCNRepository(ServiceInfo info) throws MalformedURLException, ClassCastException, RemoteException, NotBoundException {
 		this(info.getHostAddress(), info.getPort());
+		_info = info;
 	}
 
 	/**
@@ -122,6 +124,9 @@ public class JackrabbitCCNRepository extends CCNRepository {
 	public JackrabbitCCNRepository(int port) {
 		try {
 			_repository = createLocalRepository(port);
+			_info = 
+				CCNDiscovery.getServiceInfo(
+						JACKRABBIT_RMI_SERVICE_TYPE, null, port);
 			login();
 			advertiseServer(port);
 		} catch (Exception e) {
@@ -214,7 +219,8 @@ public class JackrabbitCCNRepository extends CCNRepository {
 		try {
 			// Now we're down to the leaf node
 			n = addLeafNode(n, name.component(i), authenticator, content);
-
+			
+			Library.logger().info("Adding node: " + n.getCorrespondingNodePath(_session.getWorkspace().getName()));
 			return;
 
 		} catch (RepositoryException e) {
@@ -404,6 +410,15 @@ public class JackrabbitCCNRepository extends CCNRepository {
 		subscribe(listener);
 		return query;
 	}
+	
+	public ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator,
+										CCNQueryType type) throws IOException {
+		CCNQueryDescriptor queryDescriptor = 
+			new CCNQueryDescriptor(name, authenticator, type, 0);
+		return get(queryDescriptor);
+	}
+	
+	
 
 	/**
 	 * Get immediate results to a query.
@@ -421,7 +436,17 @@ public class JackrabbitCCNRepository extends CCNRepository {
 		ArrayList<ContentObject> objects = new ArrayList<ContentObject>();
 
 		try {
-			Query q = _session.getWorkspace().getQueryManager().createQuery("/jcr:root" + nameToPath(query.name()), Query.XPATH);
+			String queryString = "/jcr:root" + nameToPath(query.name());
+			Library.logger().info("get1: query string: " + queryString);
+			Query q = null;
+			try {
+				q = _session.getWorkspace().getQueryManager().createQuery(queryString, Query.XPATH);
+				Library.logger().info("Successfully created query 1.");
+			} catch (Exception e) {
+				Library.logger().info("1 query string: " + queryString);
+				Library.logger().info("1 exception: " + e.getClass().getName() + " m: " + e.getMessage());
+			}
+
 			NodeIterator iter = q.execute().getNodes();
 			while (iter.hasNext()) {
 				Node node = (Node) iter.next();
@@ -432,17 +457,6 @@ public class JackrabbitCCNRepository extends CCNRepository {
 			Library.warningStackTrace(e);
 			throw new IOException(e);
 		}
-
-		/*
-		 * Need to handle different query types, allow recursion to be specified in query.
-		 
-		q = _session.getWorkspace().getQueryManager().createQuery("/jcr:root" + nameToPath(query.name()) + "//*", Query.XPATH);
-		iter = q.execute().getNodes();
-		while (iter.hasNext()) {
-			Node node = (Node) iter.next();
-			objects.add(getContentObject(node));
-		}	
-		*/		
 		return objects;
 	}
 	
@@ -572,15 +586,34 @@ public class JackrabbitCCNRepository extends CCNRepository {
 		if (_session != null) _session.logout();
 	}
 
+	/**
+	 * Really really only want to do this once per port per
+	 * vm.
+	 * @param port
+	 * @return
+	 * @throws IOException
+	 */
 	protected static Repository createLocalRepository(int port) throws IOException {
 		Repository repository = new TransientRepository();
 		ServerAdapterFactory factory = new ServerAdapterFactory();
 		RemoteRepository remote = factory.getRemoteRepository(repository);
-		Registry reg = LocateRegistry.createRegistry(port);
+		Registry reg = null;
+		try {
+			reg = LocateRegistry.createRegistry(port);
+		} catch (Exception e) {
+			Library.logger().info("Cannot create RMI registry. Must already exist");
+			reg = LocateRegistry.getRegistry(port); // this always works, but gets unhappy
+						// if registry not previously created
+		}
 		reg.rebind(SERVER_RMI_NAME, remote);
 		Library.logger().info("Started Jackrabbit server on port: " + port);
-		
+	
 		return repository;
+	}
+	
+	public void shutdown() { // turn this one off
+		Library.logger().info("Shutting down Jackrabbit repository.");
+		onShutdown();
 	}
 
 	protected static void advertiseServer(int port) throws IOException {
@@ -599,7 +632,39 @@ public class JackrabbitCCNRepository extends CCNRepository {
 	 * @return
 	 */
 	protected static String nameComponentToString(byte [] component) {
-		return byteToString(component);
+		String str = byteToString(component);
+		if (Character.isDigit(str.charAt(0))) {
+			return "_" + str;
+		}
+		return str;
+	}
+	
+	/**
+	 * Undo any quoting we need to do above. In particular,
+	 * XPath can't handle names with leading numerals. Add
+	 * a _. We can't handle the names with the ending [#]
+	 * that jackrabbit uses for disambiguation of repeated
+	 * names. (We know the rest of the string is base64.)
+	 * DKS: should refuse to insert exact dupes by complete
+	 * name. As long as sign timestamp, that shouldn't 
+	 * happen, but make sure.
+	 * @param str
+	 * @return
+	 */
+	protected static byte [] stringToNameComponent(String str) {
+		if ((null == str) || (str.length() == 0)) 
+			return null;
+		
+		if (str.charAt(str.length()-1) == ']') {
+			return stringToByte(
+				str.substring(
+					((str.charAt(0) == '_') ? 1 : 0), 
+					str.lastIndexOf('['))); 
+		}
+		if (str.charAt(0) == '_') {
+			return stringToByte(str.substring(1));
+		}
+		return stringToByte(str);
 	}
 	
 	protected static String publisherToString(byte [] publisherID) {
@@ -615,11 +680,19 @@ public class JackrabbitCCNRepository extends CCNRepository {
 		String[] parts = path.split(ContentName.SEPARATOR);
 		byte [][] byteParts = new byte[parts.length][];
 		for (int i=0; i < parts.length; ++i) {
-			byteParts[i] = stringToByte(parts[i]);
+			byteParts[i] = stringToNameComponent(parts[i]);
 		}
 		return new ContentName(parts);
 	}
 	
+	/**
+	 * Could use toString of name, which does quoting.
+	 * Right now have to cope with the fact that XPath
+	 * can't have leading numbers in name components (though
+	 * Jackrabbit can).
+	 * @param name
+	 * @return
+	 */
 	protected static String nameToPath(ContentName name) {
 		if ((null == name) || (0 == name.count())) {
 			return ContentName.SEPARATOR;
@@ -630,7 +703,7 @@ public class JackrabbitCCNRepository extends CCNRepository {
 			if ((null == component) || (0 == component.length))
 				continue;
 			buf.append(ContentName.SEPARATOR);
-			buf.append(byteToString(name.component(i)));
+			buf.append(nameComponentToString(name.component(i)));
 		}
 		return buf.toString();
 	}

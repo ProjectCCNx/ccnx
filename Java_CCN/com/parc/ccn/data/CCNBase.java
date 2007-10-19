@@ -1,6 +1,7 @@
 package com.parc.ccn.data;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 import com.parc.ccn.data.query.CCNQueryListener;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
@@ -19,7 +20,12 @@ public interface CCNBase {
 				    			  CCNQueryListener listener,
 				    			  long TTL) throws IOException;
 	
+	public ArrayList<ContentObject> get(ContentName name,
+										ContentAuthenticator authenticator,
+										CCNQueryType type) throws IOException;
 	
+	public ArrayList<ContentObject> get(ContentName name,
+			ContentAuthenticator authenticator) throws IOException;
 	
 	public void cancel(CCNQueryDescriptor query) throws IOException;
 

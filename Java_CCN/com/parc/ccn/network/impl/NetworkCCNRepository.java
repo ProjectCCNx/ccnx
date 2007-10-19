@@ -99,10 +99,16 @@ public class NetworkCCNRepository extends CCNRepository {
 		return null;
 	}
 
+	public ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator, CCNQueryType type) throws IOException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 	public void put(ContentName name, ContentAuthenticator authenticator,
 			byte[] content) throws IOException {
 		// TODO Auto-generated method stub
 
 	}
+
 
 }

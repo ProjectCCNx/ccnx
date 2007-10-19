@@ -40,6 +40,13 @@ public abstract class GenericXMLEncodable implements XMLEncodable {
 		encode(writer, false);
 	}
 	
+	public abstract void encode(XMLStreamWriter writer, 
+				boolean isFirstElement) throws XMLStreamException;
+	
+	public abstract void decode(XMLEventReader reader) throws XMLStreamException;
+
+	public abstract boolean validate();
+
 	@Override
 	public String toString() {
 		return XMLHelper.toString(this);

@@ -96,14 +96,20 @@ public class CCNDiscovery {
 	}
 	
 	public static void advertiseServer(String serviceType, int port) throws IOException {
-		ServiceInfo si = 
-			new ServiceInfo(serviceType,
-							localHostName() + "'s " + 
-								SERVICE_NAME, 
-							port, "");
+		ServiceInfo si = getServiceInfo(serviceType, localHostName(), port);
 		_jmDNS.registerService(si);
 		_localCCNServiceInfos.add(si);
 		Library.logger().info("Advertising server: " + si.toString());
+	}
+	
+	public static ServiceInfo getServiceInfo(String serviceType, String host, int port) {
+		if (null == host) {
+			host = localHostName();
+		}
+		return new ServiceInfo(serviceType,
+				host + "'s " + 
+					SERVICE_NAME, 
+				port, "");		
 	}
 	
 	public static void findServers(CCNDiscoveryListener discoveryListener) {

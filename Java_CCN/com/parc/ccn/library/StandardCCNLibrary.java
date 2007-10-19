@@ -1,6 +1,7 @@
 package com.parc.ccn.library;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
@@ -174,6 +175,16 @@ public class StandardCCNLibrary implements CCNLibrary {
 	public void put(ContentName name, ContentAuthenticator authenticator,
 			byte[] content) throws IOException {
 		CCNRepositoryManager.getCCNRepositoryManager().put(name, authenticator, content);
+	}
+
+	public ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator, CCNQueryType type) throws IOException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator) throws IOException {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }
