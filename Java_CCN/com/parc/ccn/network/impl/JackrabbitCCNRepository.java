@@ -320,6 +320,14 @@ public class JackrabbitCCNRepository extends CCNRepository {
 		// TODO DKS: should refuse to insert exact dupes by complete
 		// name. As long as sign timestamp, that shouldn't 
 		// happen, but make sure.
+		
+		// TODO DKS: do we want to avoid dupes by appending
+		// signature, content hash, or publisher ID to name
+		// used internally by Jackrabbit (rather than storing
+		// it as a property)? Would make the XPath more complicated,
+		// but would keep us from having to search all the 
+		// nodes to make sure there wasn't a duplicate before
+		// insertion.
 		n.checkout();
 		
 		addContent(n, content);
