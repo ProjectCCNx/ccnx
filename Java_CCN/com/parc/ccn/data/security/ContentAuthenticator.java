@@ -42,15 +42,18 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     protected Timestamp		_timestamp;
     protected ContentType 	_type;
     // long	  	_size; // signed, must cope
+    // TODO DKS Expand to include hash tree info
     protected byte []		_contentHash; // encoded DigestInfo
     protected KeyLocator  	_keyLocator;
-    protected byte[]		_signature; // might want to use Signature type
+    protected byte[]		_signature; // TODO DKS might want to use Signature type
 
     public ContentAuthenticator(
     		byte[] publisher,
     		PublisherID.PublisherType publisherType,
     		Timestamp timestamp, 
     		ContentType type, 
+    		// TODO DKS may need to add structure to signature and hash, 
+    		// partic hash as it must also do hash trees
     		byte[] hash, 
     		KeyLocator locator, 
     		byte[] signature) {

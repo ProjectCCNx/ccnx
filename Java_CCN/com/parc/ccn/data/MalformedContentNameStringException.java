@@ -15,7 +15,6 @@ public class MalformedContentNameStringException extends Exception {
 	 * 
 	 */
 	public MalformedContentNameStringException() {
-		// TODO Auto-generated constructor stub
 	}
 
 	/**
@@ -23,7 +22,6 @@ public class MalformedContentNameStringException extends Exception {
 	 */
 	public MalformedContentNameStringException(String message) {
 		super(message);
-		// TODO Auto-generated constructor stub
 	}
 
 	/**
@@ -31,7 +29,6 @@ public class MalformedContentNameStringException extends Exception {
 	 */
 	public MalformedContentNameStringException(Throwable cause) {
 		super(cause);
-		// TODO Auto-generated constructor stub
 	}
 
 	/**
@@ -40,7 +37,6 @@ public class MalformedContentNameStringException extends Exception {
 	 */
 	public MalformedContentNameStringException(String message, Throwable cause) {
 		super(message, cause);
-		// TODO Auto-generated constructor stub
 	}
 
 }

@@ -114,7 +114,6 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 	}
 		
 	public String toString() {
-		// DKS - print out component contents, not component object...
 		if (null == _components) return null;
 		if (0 == _components.length) return new String();
 		StringBuffer nameBuf = new StringBuffer();
@@ -126,8 +125,6 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 	} 
 	
 	protected String componentPrint(byte[] bs) {
-		// DKS: would like to display strings as strings,
-		// but would have to detect printability 
 		// NHB: Van is expecting the URI encoding rules
 		if (null == bs) {
 			return new String();

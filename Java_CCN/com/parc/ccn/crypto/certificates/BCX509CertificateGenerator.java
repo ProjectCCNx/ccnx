@@ -1108,8 +1108,7 @@ public class BCX509CertificateGenerator extends GenericX509CertificateGenerator 
 	 *
 	 * @param critical should this extension be marked critical
 	 * @param bits an array booleans containing the values of each of the bits
-	 * in the order above (should be 9 long, if not, returns doing nothing --
-	 * needs to throw exception DKS)
+	 * in the order above (should be 9 long, if not, throws exception)
 	 */
 	public void addKeyUsage(boolean critical, boolean [] bits) throws CertificateEncodingException {
 		if ((null == bits) || (bits.length != NUM_KEY_USAGE_BITS)) {

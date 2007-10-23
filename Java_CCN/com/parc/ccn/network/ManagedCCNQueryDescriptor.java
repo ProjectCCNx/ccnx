@@ -88,15 +88,42 @@ public class ManagedCCNQueryDescriptor extends CCNQueryDescriptor {
 	}
 	
 	/**
-	 * DKS: TODO make equals
-	 */
-	
-	/**
 	 * Add a new identifier that is a random # to each
 	 * query so we can track it.
 	 **/
 	protected static Object newIdentifier() {
 		// Don't need cryptographic random numbers.
 		return new Long(new Random().nextLong());
+	}
+
+	@Override
+	public int hashCode() {
+		final int PRIME = 31;
+		int result = 1;
+		result = PRIME * result + ((_listener == null) ? 0 : _listener.hashCode());
+		result = PRIME * result + ((_queryIdentifiers == null) ? 0 : _queryIdentifiers.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		final ManagedCCNQueryDescriptor other = (ManagedCCNQueryDescriptor) obj;
+		if (_listener == null) {
+			if (other._listener != null)
+				return false;
+		} else if (!_listener.equals(other._listener))
+			return false;
+		if (_queryIdentifiers == null) {
+			if (other._queryIdentifiers != null)
+				return false;
+		} else if (!_queryIdentifiers.equals(other._queryIdentifiers))
+			return false;
+		return true;
 	}
 }

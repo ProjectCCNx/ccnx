@@ -117,6 +117,9 @@ public class XMLHelper {
 	
 	public static void readStartElement(XMLEventReader reader, String startTag) throws XMLStreamException {
 		XMLEvent event = reader.nextEvent();
+		// Use getLocalPart to strip namespaces. Right now assumes we are working
+		// with a global default namespace of CCN. Make it easier to use namespaces
+		// while still interoperating with the C implementation.
 		if (!event.isStartElement() || (!startTag.equals(event.asStartElement().getName().getLocalPart()))) {
 			// Coming back with namespace decoration doesn't match
 			throw new XMLStreamException("Expected start element: " + startTag + " got: " + event.toString());

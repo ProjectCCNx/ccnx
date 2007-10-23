@@ -21,10 +21,10 @@ public class DiscoveryManager implements CCNDiscoveryListener {
 	
 	/**
 	 * Do we want local repositories, remote repositories or both?
-	 * DKS -- allow filtering on type of repository.
 	 * @param wantLocal
 	 */
 	protected DiscoveryManager(boolean wantLocal, boolean wantRemote) {
+		// TODO DKS -- allow filtering on type of repository (Jackrabbit, etc).
 		super();
 		_wantLocal = wantLocal;
 		_wantRemote = wantRemote;
@@ -79,7 +79,7 @@ public class DiscoveryManager implements CCNDiscoveryListener {
 			CCNRepository newRepository = CCNRepositoryFactory.connect(info);
 	
 			// Add this repository to our list.
-			_repositories.add(newRepository); // DKS -- synchronize?
+			_repositories.add(newRepository); // TODO DKS -- synchronize?
 			
 			repositoryAdded(newRepository);
 			

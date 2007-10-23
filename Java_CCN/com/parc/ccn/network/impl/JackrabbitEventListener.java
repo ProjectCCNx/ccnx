@@ -119,11 +119,10 @@ class JackrabbitEventListener implements EventListener {
 	}
 
 	public String getQueryPath() {
-		// Needs to combine both the name in the query
+		// TODO DKS: Needs to combine both the name in the query
 		// and the query type into an effective jackrabbit
 		// query path. Could also incorporate publisher features,
 		// etc...
-		// TODO Auto-generated method stub
 		return null;
 	}
 }

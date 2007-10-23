@@ -82,12 +82,12 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNBase, C
 	 * Default constructor to make static singleton.
 	 * Start with fixed configuration, then worry about
 	 * getting fancy...
-	 * DKS -- eventually make this configurable
 	 */
 	protected CCNRepositoryManager() {
 		super(true, false);
 		// Make/get our local repository. Start listening
 		// for others.
+		// TODO DKS -- eventually make this configurable
 		_primaryRepository = JackrabbitCCNRepository.getLocalJackrabbitRepository();
 	}
 	
@@ -109,13 +109,14 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNBase, C
 	 * into one query descriptor.
 	 */
 	public CCNQueryDescriptor get(ContentName name, ContentAuthenticator authenticator, CCNQueryType type, CCNQueryListener listener, long TTL) throws IOException {
-		// Should check to see if we have this query alredy outstanding?
-		
+		// TODO DKS: Should check to see if we have this query alredy outstanding?
+		// TODO DKS: Check to see how query descriptors line up with interests
 		CCNQueryDescriptor initialDescriptor = _primaryRepository.get(name, authenticator, type, listener, TTL);
 		
 		ManagedCCNQueryDescriptor managedDescriptor = 
 				new ManagedCCNQueryDescriptor(initialDescriptor, listener);
 
+		// TODO DKS change to propagate by interest manager for remote
 		for (CCNRepository repository : _repositories) {
 			if (!_primaryRepository.equals(repository)) {
 				CCNQueryDescriptor newDescriptor = 
@@ -141,6 +142,8 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNBase, C
 	 * @throws IOException
 	 */
 	public void resubscribeAll() throws IOException {
+		// TODO DKS do we want the RepositoryManager to remember queries? if so, 
+		// how? what does resubscribeAll do?
 		_primaryRepository.resubscribeAll();
 		for (CCNRepository repository : _repositories) {
 			if (!repository.equals(_primaryRepository))

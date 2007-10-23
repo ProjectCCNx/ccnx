@@ -61,6 +61,7 @@ import com.parc.ccn.network.discovery.CCNDiscovery;
  */
 public class JackrabbitCCNRepository extends CCNRepository {
 
+	// TODO DKS: Make sure jackrabbit-specific exceptions aren't visible.
 	public static final int SERVER_PORT = 1101;
 	public static final String PROTOCOL_TYPE = "rmi";
 	public static final String SERVER_RMI_NAME = "jackrabbit";
@@ -142,11 +143,11 @@ public class JackrabbitCCNRepository extends CCNRepository {
 	/**
 	 * Start our own local repository on a standard port.
 	 * Really only want to call this once per port per VM.
-	 * DKS: make constructor protected, use factory function
-	 * to get local Jackrabbit.
-	 *
 	 */
 	public JackrabbitCCNRepository() {
+		// TODO DKS: make constructor protected, use factory function
+		// to get local Jackrabbit so we don't try to make
+		// more than one.
 		this(SERVER_PORT);
 	}
 
@@ -169,7 +170,7 @@ public class JackrabbitCCNRepository extends CCNRepository {
 	}
 
 	public static JackrabbitCCNRepository getLocalJackrabbitRepository() {
-		// Eventually discover if there is one running locally and
+		// TODO DKS: Eventually discover if there is one running locally and
 		// return that...
 		return new JackrabbitCCNRepository();
 	}
@@ -237,12 +238,12 @@ public class JackrabbitCCNRepository extends CCNRepository {
 	 * @throws RepositoryException 
 	 */
 	protected Node addSubNode(Node parent, byte [] name) throws RepositoryException {
-
+		// TODO DKS: do we need to check out parent?
 		Node n = null;
 		String componentName = nameComponentToString(name);
 		try {
 			try {
-				// DKS: file nodes: add file name, "nt:file"
+				// DKS: to make file nodes: add file name, "nt:file"
 				// 
 				n = parent.addNode(componentName,"nt:unstructured");
 				// now, make sure the leaf node is versionable				
@@ -313,9 +314,12 @@ public class JackrabbitCCNRepository extends CCNRepository {
 	 * @throws RepositoryException
 	 */
 	protected Node addLeafNode(Node parent, byte [] name, ContentAuthenticator authenticator, byte[] content) throws RepositoryException {
-	
+		// TODO: DKS -- should we check out parent?
 		Node n = addSubNode(parent, name);
 		
+		// TODO DKS: should refuse to insert exact dupes by complete
+		// name. As long as sign timestamp, that shouldn't 
+		// happen, but make sure.
 		n.checkout();
 		
 		addContent(n, content);
@@ -425,7 +429,7 @@ public class JackrabbitCCNRepository extends CCNRepository {
 
 	/**
 	 * Get immediate results to a query.
-	 * DKS: caution required to make sure that the idea of
+	 * DKS: Caution required to make sure that the idea of
 	 * what matches here is the same as the one in coresponding version in 
 	 * CCNQueryDescriptor. 
 	 * @param query
@@ -439,6 +443,8 @@ public class JackrabbitCCNRepository extends CCNRepository {
 		ArrayList<ContentObject> objects = new ArrayList<ContentObject>();
 
 		try {
+			// TODO: DKS: make Xpath match full query including whatever
+			// authentication info is specified by querier
 			String queryString = "/jcr:root" + nameToPath(query.name());
 
 			Query q = null;
@@ -522,6 +528,12 @@ public class JackrabbitCCNRepository extends CCNRepository {
 	// Package
 	Node getNode(String path) throws PathNotFoundException, RepositoryException {
 		return (Node)_session.getItem(path);
+	}
+	
+	void remove(Node node) {
+		// TODO: DKS need to check out parent, or its nearest versionable
+		// ancestor, remove node (which removes subtree), and
+		// then do a save and presumably a checkin on parent.
 	}
 	
 	ContentName getName(Node n) throws RepositoryException {
@@ -648,9 +660,7 @@ public class JackrabbitCCNRepository extends CCNRepository {
 	 * a _. We can't handle the names with the ending [#]
 	 * that jackrabbit uses for disambiguation of repeated
 	 * names. (We know the rest of the string is base64.)
-	 * DKS: should refuse to insert exact dupes by complete
-	 * name. As long as sign timestamp, that shouldn't 
-	 * happen, but make sure.
+	 * 
 	 * @param str
 	 * @return
 	 */
@@ -706,6 +716,7 @@ public class JackrabbitCCNRepository extends CCNRepository {
 	 * @return
 	 */
 	protected static String nameToPath(ContentName name) {
+		// TODO DKS: evaluate using toString instead
 		if ((null == name) || (0 == name.count())) {
 			return ContentName.SEPARATOR;
 		}

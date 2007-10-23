@@ -21,8 +21,10 @@ import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.spec.InvalidParameterSpecException;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.Enumeration;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -119,7 +121,6 @@ public class BCX509CertificateGeneratorTest extends TestCase {
 			outputCert("testAddEKUExtension.der", cert);
 			
 			X509Certificate cert2 = inputCert("testAddEKUExtension.der");
-			// DKS
 			cert2.verify(testPair.getPublic());
 			cert.verify(testPair.getPublic());
 			
@@ -156,7 +157,7 @@ public class BCX509CertificateGeneratorTest extends TestCase {
 			X509Certificate cert = gen.sign(null, testPair.getPrivate());
 			outputCert("testAddEKU.der", cert);
 			X509Certificate cert2 = inputCert("testAddEKU.der");
-			// DKS
+
 			System.out.println("Class of generated cert: " + cert.getClass().getName());
 			System.out.println("Class of read cert: " + cert2.getClass().getName());
 			cert2.verify(testPair.getPublic(), "BC");
@@ -870,6 +871,148 @@ public class BCX509CertificateGeneratorTest extends TestCase {
 		outputNames("End certificate (i=CN, s=C)", endCert);
 	}
 	
+	public void testRollover() throws Exception {
+		// Test PARC's cert rollover problem. Build
+		// hierarchy here because it's easy, test it outside.
+		
+		// Generate two hierarchies using same keys.
+		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+		kpg.initialize(1024); // go for fast
+		KeyPair rootPair = kpg.generateKeyPair();
+		KeyPair intPair = kpg.generateKeyPair();
+		KeyPair clientPair = kpg.generateKeyPair();
+		KeyPair serverPair = kpg.generateKeyPair();
+		
+		GregorianCalendar now = new GregorianCalendar();
+		printDate("Now", now);
+		// Old Intermediate root start
+		GregorianCalendar threeYearsAgo = ((GregorianCalendar)now.clone());
+		threeYearsAgo.add(GregorianCalendar.YEAR, -3);
+		printDate("Three years ago", threeYearsAgo);
+		// Old Intermediate root end
+		GregorianCalendar hourFromNow = ((GregorianCalendar)now.clone());
+		hourFromNow.add(Calendar.HOUR_OF_DAY, 1);
+		// Old root start -- three years ago minus a bit
+		GregorianCalendar aBitOverThreeYearsAgo = ((GregorianCalendar)now.clone());
+		aBitOverThreeYearsAgo.add(Calendar.HOUR_OF_DAY, -1);
+		// Old root end
+		GregorianCalendar threeYearsFromNow = ((GregorianCalendar)now.clone());
+		threeYearsFromNow.add(GregorianCalendar.YEAR, 3);
+		
+		// New root start - now minus a bit
+		GregorianCalendar anHourAgo = ((GregorianCalendar)now.clone());
+		anHourAgo.add(Calendar.HOUR_OF_DAY, -1);
+		// new root end
+		GregorianCalendar tenYearsFromNow = ((GregorianCalendar)now.clone());
+		tenYearsFromNow.add(Calendar.YEAR, 10);
+		
+		// New intermediate start -- now
+		// new intermediate end - just before root ends
+		GregorianCalendar almostTenYearsFromNow = ((GregorianCalendar)tenYearsFromNow.clone());
+		almostTenYearsFromNow.add(Calendar.HOUR_OF_DAY, -1);
+		
+		// Client start
+		GregorianCalendar oneYearAgo = ((GregorianCalendar)now.clone());
+		threeYearsAgo.add(GregorianCalendar.YEAR, -1);
+		GregorianCalendar oneYearFromNow = ((GregorianCalendar)now.clone());
+		threeYearsFromNow.add(GregorianCalendar.YEAR, 1);
+
+		String prootDN = "CN=PARC Root Certification Authority,O=PARC,C=US";
+		String pintDN = "CN=PARC Wireless Network Certification Authority,O=PARC,C=US";
+		String pendDN = "CN=roo-wlan.parc.com,O=PARC,C=US";
+		String pserverDN = "CN=radius.parc.com,O=PARC,C=US";
+
+		X509Certificate parcRootCertOld = 
+			BCX509CertificateGenerator.GenerateRootCertificate(
+				rootPair,
+				prootDN,
+				(BigInteger)null,
+				aBitOverThreeYearsAgo.getTime(),
+				threeYearsFromNow.getTime());
+		outputCert("parcOldRootTest.der", parcRootCertOld);
+
+		X509Certificate parcRootCertNew = 
+			BCX509CertificateGenerator.GenerateRootCertificate(
+				rootPair,
+				prootDN,
+				(BigInteger)null,
+				anHourAgo.getTime(),
+				tenYearsFromNow.getTime());
+		outputCert("parcNewRootTest.der", parcRootCertNew);
+		
+		outputKey("parcRootTestKey.der", rootPair);
+
+		BCX509CertificateGenerator genOld = 
+			new BCX509CertificateGenerator(
+				intPair.getPublic(),
+				prootDN,
+				pintDN,
+				null,
+				threeYearsAgo.getTime(),
+				hourFromNow.getTime(),
+				null);
+		genOld.addAuthorityKeyIdentifierExtension(false, BCX509CertificateGenerator.generateKeyID(parcRootCertOld.getPublicKey()));
+		genOld.addBasicConstraints(true, true);
+
+		X509Certificate parcIntCertOld = genOld.sign(null, rootPair.getPrivate());
+		outputCert("parcIntRootTestOld.der", parcIntCertOld);
+		
+		BCX509CertificateGenerator genNew = 
+			new BCX509CertificateGenerator(
+				intPair.getPublic(),
+				prootDN,
+				pintDN,
+				null,
+				anHourAgo.getTime(),
+				almostTenYearsFromNow.getTime(),
+				null);
+		genNew.addAuthorityKeyIdentifierExtension(false, BCX509CertificateGenerator.generateKeyID(parcRootCertNew.getPublicKey()));
+		genNew.addBasicConstraints(true, true);
+		
+		X509Certificate parcIntCertNew = genNew.sign(null, rootPair.getPrivate());
+		outputCert("parcIntRootTestNew.der", parcIntCertNew);
+		outputKey("parcIntTestKey.der", intPair);
+		
+		BCX509CertificateGenerator clientGen =
+			 new BCX509CertificateGenerator(
+				clientPair.getPublic(),
+				pintDN,
+				pendDN,
+				null,
+				oneYearAgo.getTime(),
+				oneYearFromNow.getTime(),
+				null);
+		
+		clientGen.addAuthorityKeyIdentifierExtension(false, BCX509CertificateGenerator.getKeyIDFromCertificate(parcIntCertOld));
+		clientGen.addClientAuthenticationEKU();
+		clientGen.addBasicConstraints(true, false);
+		clientGen.addDNSNameSubjectAltName(false, "roo-wlan.parc.com");
+		clientGen.addEmailSubjectAltName(false, "smetters@parc.com");
+		
+		X509Certificate parcClientCert = clientGen.sign(null, intPair.getPrivate());
+		outputCert("parcClientTest.der", parcClientCert);
+		outputKey("parcClientTestKey.der", clientPair);
+		
+		BCX509CertificateGenerator serverGen =
+			 new BCX509CertificateGenerator(
+				serverPair.getPublic(),
+				pintDN,
+				pserverDN,
+				null,
+				oneYearAgo.getTime(),
+				oneYearFromNow.getTime(),
+				null);
+		
+		serverGen.addAuthorityKeyIdentifierExtension(false, BCX509CertificateGenerator.getKeyIDFromCertificate(parcIntCertOld));
+		serverGen.setServerAuthenticationUsage("radius.parc.com");
+		serverGen.addBasicConstraints(true, false);
+		
+		X509Certificate parcServerCert = serverGen.sign(null, intPair.getPrivate());
+		outputCert("parcServerTest.der", parcServerCert);
+		outputKey("parcServerTestKey.der", serverPair);
+
+	}
+	
 	static void outputNames(String message, X509Certificate cert) throws Exception {
 		System.out.println("Outputting certificate names: " + message);
 		
@@ -937,5 +1080,19 @@ public class BCX509CertificateGeneratorTest extends TestCase {
 		X509Certificate cert = (X509Certificate)cf.generateCertificate(inStream);
 		inStream.close();
 		return cert;
+	}
+	
+	static void outputKey(String file, KeyPair pair) throws IOException {
+		// get private key out eventually to PEM format
+		// start with pkcs8
+		byte [] encoded = pair.getPrivate().getEncoded();
+		FileOutputStream fos = new FileOutputStream(file);
+		fos.write(encoded);
+		fos.flush();
+		fos.close();
+	}
+	
+	static void printDate(String label, Calendar date) {
+		System.out.println(label + ": " + date);
 	}
 }

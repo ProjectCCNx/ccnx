@@ -203,7 +203,7 @@ public class Daemon {
 		}
 		Library.logger().info("Starting daemon with command line: " + cmd);
 
-		// DKS -- for some reason the exec can't find the class...
+		// TODO DKS -- for some reason the exec can't find the class...
 		// almost certainly because rmic not running to build the
 		// stub. Don't know best mech to implement this nicely
 		// without going to ant.

@@ -89,7 +89,7 @@ public abstract class GenericX509CertificateGenerator {
      * unless the issuer has no SubjectKeyIdentifier extension in it.
      * The keyIdentifier fields for AKI extensions should be taken from
      * the certificate of the issuer. Use getKeyIDFromCertificate to
-     * do this. W
+     * do this. 
      */
     public static byte [] generateKeyID(String digestAlg, PublicKey key)  {
     	

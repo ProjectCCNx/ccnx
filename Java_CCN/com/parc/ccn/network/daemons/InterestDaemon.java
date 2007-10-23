@@ -20,6 +20,7 @@ public class InterestDaemon extends Daemon {
 		_daemonName = "interestDaemon";
 	}
 
+	// TODO DKS fill in interest daemon work and initialize methods when we know what they should do
 	public void work() {
 	}
 

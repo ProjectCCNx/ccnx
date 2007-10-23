@@ -18,9 +18,9 @@ public class CCNDiscovery {
 	/**
 	 * Need slightly more principled way to cover a variety of
 	 * service types.
-	 * DKS - check synchronization
 	 */
 	
+	// TODO DKS - check synchronization
 	protected static ArrayList<String> _serviceTypes = new ArrayList<String>();
 	public static final String SERVICE_NAME = "CCN";
 	public static final int CCN_PORT = 5399;
@@ -132,7 +132,7 @@ public class CCNDiscovery {
 			
 			// Tell the new listener about the services we currently know about.
 			for (ServiceInfo serviceInfo : _ccnServiceInfos) {
-				// DKS -- potential for deadlock?
+				// TODO DKS - check potential for deadlock?
 				dl.serviceAdded(serviceInfo, isLocal(serviceInfo.getInetAddress()));
 			}
 		}
