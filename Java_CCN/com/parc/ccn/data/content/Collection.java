@@ -29,7 +29,7 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable {
 	
 	protected static final String COLLECTION_ELEMENT = "Collection";
 
-	private static final String ENTRY_ELEMENT = null;
+	protected static final String ENTRY_ELEMENT = "Entry";
 	
 	protected ArrayList<CompleteName> _contents = new ArrayList<CompleteName>();
 	
@@ -132,10 +132,8 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable {
 		XMLHelper.writeStartElement(writer, COLLECTION_ELEMENT, isFirstElement);
 		Iterator<CompleteName> keyIt = contents().iterator();
 		while (keyIt.hasNext()) {
-			writer.writeStartElement(ENTRY_ELEMENT);
 			CompleteName name = keyIt.next();
 			name.encode(writer);
-			writer.writeEndElement();
 		}
 		writer.writeEndElement();   		
 	}

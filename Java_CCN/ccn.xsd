@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema xmlns="http://www.w3.org/2001/XMLSchema" 
+        xmlns:ccn="http://www.parc.com/ccn" 
+        targetNamespace="http://www.parc.com/ccn" 
+        elementFormDefault="unqualified"
+        attributeFormDefault="unqualified">
+
+  <annotation>
+    <documentation xml:lang="en">
+      Content-Centric Networks data schema.
+    <documentation>
+  <annotation>
+
+<!-- Top-level objects that can appear in 
+     documents, messages, etc. -->
+<element name="Mapping" type="ContentObjectType">
+<element name="Collection" type="CollectionType">
+<element name="Link" type="LinkType">
+<element name="Sequence" type="SequenceType">
+
+<complexType name="CollectionType">
+  <sequence>
+    <element name="CompleteName" type="CompleteNameType" minOccurs="0" maxOccurs="unbounded">
+  </sequence>
+</complexType>
+
+<complexType name="LinkType">
+  <sequence>
+    <element name="CompleteName" type="CompleteNameType" minOccurs="1" maxOccurs="1">
+  </sequence>
+</complexType>
+
+<complexType name="ContentObjectType">
+  <sequence>
+    <element name="CompleteName" type="CompleteNameType">
+    <element name="Content" type="base64Binary">
+  </sequence>
+</complexType>
+
+<complexType name="CompleteNameType">
+  <sequence>
+    <element name="Name" type="NameType">
+    <element name="ContentAuthenticator" type="ContentAuthenticatorType">
+  </sequence>
+</complexType>
+
+<complexType name="NameType">
+  <sequence>
+    <element name="Count" type="nonNegativeInteger">
+    <element name="Component" minOccurs="0" maxOccurs="unbounded" type="base64Binary">
+  </sequence>
+</complexType>
+
+<complexType name="ContentAuthenticatorType">
+  <sequence>
+    <element name="PublisherID" type="PublisherIDType">
+    <element name="Timestamp" type="dateTime">
+    <element name="Type" type="ContentType">
+    <!-- might change to more complex type,
+         currently base64 encoding of DER-encoded
+         DigestInfo -->
+    <element name="ContentHash" type="base64Binary">
+    <element name="KeyLocator" type="KeyLocatorType">
+    <element name="Signature" type="base64Binary">
+  </sequence>
+</complexType>
+
+<complexType name="PublisherIDType">
+  <sequence>
+    <element name="PublisherType" type="PublisherTypeType">
+    <element name="ID" type="IDType" 
+  </sequence>
+</complexType>
+
+<!-- enum -->
+<simpleType name="PublisherTypeType">
+  <restriction base="xsd:string">
+    <enumeration value="KEY"/>
+    <enumeration value="CERTIFICATE"/>
+    <enumeration value="ISSUER_KEY"/>
+    <enumeration value="ISSUER_CERTIFICATE"/>
+  </restriction>
+</simpleType>
+
+<!-- SHA-256 digest -->
+<simpleType name=IDType'>
+   <restriction base='String'>
+     <length value='32' fixed='true'/>
+   </restriction>
+</simpleType>
+
+<!-- enum -->
+<simpleType name="ContentType">
+  <restriction base="xsd:string">
+    <enumeration value="FRAGMENT"/>
+    <enumeration value="LINK"/>
+    <enumeration value="CONTAINER"/>
+    <enumeration value="LEAF"/>
+    <enumeration value="SESSION"/>
+    <enumeration value="SEQUENCE"/>
+  </restriction>
+</simpleType>
+
+<complexType name="KeyLocatorType">
+  <sequence>
+    <element name="Type" type="KeyLocatorTypeType">
+    <choice>
+      <element name="Key" type="base64Binary">
+      <element name="Certificate" type="base64Binary">
+      <element name="CompleteName" type="CompleteNameType">
+    </choice>
+  </sequence>
+</complexType>
+
+<simpleType name="KeyLocatorTypeType">
+  <restriction base="xsd:string">
+    <enumeration value="KEY"/>
+    <enumeration value="CERTIFICATE"/>
+    <enumeration value="NAME"/>
+  </restriction>
+</simpleType>
+
+</schema>

@@ -15,7 +15,7 @@ import com.parc.ccn.data.util.XMLHelper;
 
 public class ContentAuthenticator extends GenericXMLEncodable implements XMLEncodable {
 
-    public enum ContentType {FRAGMENT, LINK, CONTAINER, LEAF, SESSION};
+    public enum ContentType {FRAGMENT, LINK, CONTAINER, LEAF, SESSION, SEQUENCE};
     protected static final HashMap<ContentType, String> ContentTypeNames = new HashMap<ContentType, String>();
     protected static final HashMap<String, ContentType> ContentNameTypes = new HashMap<String, ContentType>();
     public static final String CONTENT_AUTHENTICATOR_ELEMENT = "ContentAuthenticator";
@@ -30,11 +30,13 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
         ContentTypeNames.put(ContentType.CONTAINER, "CONTAINER");
         ContentTypeNames.put(ContentType.LEAF, "LEAF");
         ContentTypeNames.put(ContentType.SESSION, "SESSION");
+        ContentTypeNames.put(ContentType.SEQUENCE, "SEQUENCE");
         ContentNameTypes.put("FRAGMENT", ContentType.FRAGMENT);
         ContentNameTypes.put("LINK", ContentType.LINK);
         ContentNameTypes.put("CONTAINER", ContentType.CONTAINER);
         ContentNameTypes.put("LEAF", ContentType.LEAF);
         ContentNameTypes.put("SESSION", ContentType.SESSION);
+        ContentNameTypes.put("SEQUENCE", ContentType.SEQUENCE);
     }
     
     protected PublisherID	_publisher;
@@ -278,6 +280,9 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 		if (!emptyPublisher()) {
 			publisherID().encode(writer);
 		}
+		// TODO DKS - make match correct XML timestamp format
+		// dateTime	1999-05-31T13:20:00.000-05:00
+		// currently writing 2007-10-23 21:36:05.828
 		if (null != timestamp()) {
 			writer.writeStartElement(TIMESTAMP_ELEMENT);
 			writer.writeCharacters(timestamp().toString());
