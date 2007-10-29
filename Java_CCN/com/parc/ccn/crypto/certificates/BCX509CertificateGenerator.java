@@ -36,16 +36,20 @@ import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.ASN1StreamParser;
+import org.bouncycastle.asn1.DERBMPString;
 import org.bouncycastle.asn1.DERBitString;
 import org.bouncycastle.asn1.DEREncodable;
+import org.bouncycastle.asn1.DERIA5String;
 import org.bouncycastle.asn1.DERInteger;
 import org.bouncycastle.asn1.DERObject;
 import org.bouncycastle.asn1.DERObjectIdentifier;
 import org.bouncycastle.asn1.DEROctetString;
+import org.bouncycastle.asn1.DERPrintableString;
 import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.DERTaggedObject;
 import org.bouncycastle.asn1.DERTags;
 import org.bouncycastle.asn1.DERUTCTime;
+import org.bouncycastle.asn1.DERUTF8String;
 import org.bouncycastle.asn1.DERUnknownTag;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.asn1.x509.BasicConstraints;
@@ -63,6 +67,7 @@ import org.bouncycastle.asn1.x509.X509CertificateStructure;
 import org.bouncycastle.asn1.x509.X509Extension;
 import org.bouncycastle.asn1.x509.X509Extensions;
 import org.bouncycastle.asn1.x509.X509Name;
+import org.bouncycastle.asn1.x509.X509NameEntryConverter;
 import org.bouncycastle.jce.provider.X509CertificateObject;
 
 /**
@@ -144,6 +149,51 @@ public class BCX509CertificateGenerator extends GenericX509CertificateGenerator 
 		public boolean getCritical() { return _extension.isCritical(); }
 		public ASN1OctetString getValue() { return _extension.getValue(); }
 		public X509Extension getExtension() { return _extension; }
+	}
+
+	/**
+	 * Taken from BouncyCastle... I don't
+	 * know why their default converter isn't
+	 * this one, but their default only makes
+	 * the C a printable string and most other
+	 * things UTF8, while this one they even say
+	 * matches standard recommendations...
+	 * @author smetters
+	 *
+	 */
+	public class X509DirEntryConverter
+		extends X509NameEntryConverter {
+		
+		/**
+		 * Kind of a hack. This is just the stuff no longer
+		 * in utf8 than it would be in unicode.
+		 */
+		public boolean canBeUTF8(String str) {
+			for (int i = str.length() - 1; i >= 0; i--) {
+				if (str.charAt(i) > 0x07ff) {
+					return false;
+				}
+			}
+			return true;
+		}
+		
+		public DERObject getConvertedValue(
+				DERObjectIdentifier  oid,
+				String               value) {
+			// DKS skip for now
+			//if (value.length() != 0 && value.charAt(0) == '#') {
+			//	return convertHexEncoded(value, 1);
+			//}
+			if (oid.equals(X509Name.EmailAddress)) {
+				return new DERIA5String(value);
+			} else if (canBePrintable(value)) {
+				return new DERPrintableString(value);
+			} else if (canBeUTF8(value)) {
+				return new DERUTF8String(value);
+			} else {
+				return new DERBMPString(value);
+			}
+		}
 	}
 
 	/**
@@ -1108,7 +1158,8 @@ public class BCX509CertificateGenerator extends GenericX509CertificateGenerator 
 	 *
 	 * @param critical should this extension be marked critical
 	 * @param bits an array booleans containing the values of each of the bits
-	 * in the order above (should be 9 long, if not, throws exception)
+	 * in the order above (should be 9 long, if not, returns doing nothing --
+	 * needs to throw exception DKS)
 	 */
 	public void addKeyUsage(boolean critical, boolean [] bits) throws CertificateEncodingException {
 		if ((null == bits) || (bits.length != NUM_KEY_USAGE_BITS)) {
@@ -1928,7 +1979,7 @@ public class BCX509CertificateGenerator extends GenericX509CertificateGenerator 
 	}
 
 	protected void setIssuerDN(String issuer) {
-		setIssuerDN(new X509Name(issuer));
+		setIssuerDN(new X509Name(issuer, new X509DirEntryConverter()));
 	}
 
 	public X509Name getSubjectDN() {
@@ -1940,7 +1991,7 @@ public class BCX509CertificateGenerator extends GenericX509CertificateGenerator 
 	}
 
 	public void setSubjectDN(String subject) {
-		setSubjectDN(new X509Name(subject));
+		setSubjectDN(new X509Name(subject, new X509DirEntryConverter()));
 	}
 
 	public BigInteger getSerialNumber() {

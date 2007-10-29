@@ -121,6 +121,7 @@ public class BCX509CertificateGeneratorTest extends TestCase {
 			outputCert("testAddEKUExtension.der", cert);
 			
 			X509Certificate cert2 = inputCert("testAddEKUExtension.der");
+			// DKS
 			cert2.verify(testPair.getPublic());
 			cert.verify(testPair.getPublic());
 			
@@ -157,7 +158,7 @@ public class BCX509CertificateGeneratorTest extends TestCase {
 			X509Certificate cert = gen.sign(null, testPair.getPrivate());
 			outputCert("testAddEKU.der", cert);
 			X509Certificate cert2 = inputCert("testAddEKU.der");
-
+			// DKS
 			System.out.println("Class of generated cert: " + cert.getClass().getName());
 			System.out.println("Class of read cert: " + cert2.getClass().getName());
 			cert2.verify(testPair.getPublic(), "BC");
@@ -892,30 +893,38 @@ public class BCX509CertificateGeneratorTest extends TestCase {
 		// Old Intermediate root end
 		GregorianCalendar hourFromNow = ((GregorianCalendar)now.clone());
 		hourFromNow.add(Calendar.HOUR_OF_DAY, 1);
+		printDate("An hour from now", hourFromNow);
 		// Old root start -- three years ago minus a bit
-		GregorianCalendar aBitOverThreeYearsAgo = ((GregorianCalendar)now.clone());
+		GregorianCalendar aBitOverThreeYearsAgo = ((GregorianCalendar)threeYearsAgo.clone());
 		aBitOverThreeYearsAgo.add(Calendar.HOUR_OF_DAY, -1);
+		printDate("Just over three years ago", aBitOverThreeYearsAgo);
 		// Old root end
 		GregorianCalendar threeYearsFromNow = ((GregorianCalendar)now.clone());
 		threeYearsFromNow.add(GregorianCalendar.YEAR, 3);
+		printDate("Three years from now", threeYearsFromNow);
 		
 		// New root start - now minus a bit
 		GregorianCalendar anHourAgo = ((GregorianCalendar)now.clone());
 		anHourAgo.add(Calendar.HOUR_OF_DAY, -1);
+		printDate("An hour ago", anHourAgo);
 		// new root end
 		GregorianCalendar tenYearsFromNow = ((GregorianCalendar)now.clone());
 		tenYearsFromNow.add(Calendar.YEAR, 10);
+		printDate("Ten years from now", tenYearsFromNow);
 		
 		// New intermediate start -- now
 		// new intermediate end - just before root ends
 		GregorianCalendar almostTenYearsFromNow = ((GregorianCalendar)tenYearsFromNow.clone());
 		almostTenYearsFromNow.add(Calendar.HOUR_OF_DAY, -1);
+		printDate("Almost ten years from now", almostTenYearsFromNow);
 		
 		// Client start
 		GregorianCalendar oneYearAgo = ((GregorianCalendar)now.clone());
-		threeYearsAgo.add(GregorianCalendar.YEAR, -1);
+		oneYearAgo.add(GregorianCalendar.YEAR, -1);
+		printDate("One year ago", oneYearAgo);
 		GregorianCalendar oneYearFromNow = ((GregorianCalendar)now.clone());
-		threeYearsFromNow.add(GregorianCalendar.YEAR, 1);
+		oneYearFromNow.add(GregorianCalendar.YEAR, 1);
+		printDate("One year from now", oneYearFromNow);
 
 		String prootDN = "CN=PARC Root Certification Authority,O=PARC,C=US";
 		String pintDN = "CN=PARC Wireless Network Certification Authority,O=PARC,C=US";
@@ -1012,7 +1021,7 @@ public class BCX509CertificateGeneratorTest extends TestCase {
 		outputKey("parcServerTestKey.der", serverPair);
 
 	}
-	
+
 	static void outputNames(String message, X509Certificate cert) throws Exception {
 		System.out.println("Outputting certificate names: " + message);
 		
@@ -1081,7 +1090,7 @@ public class BCX509CertificateGeneratorTest extends TestCase {
 		inStream.close();
 		return cert;
 	}
-	
+
 	static void outputKey(String file, KeyPair pair) throws IOException {
 		// get private key out eventually to PEM format
 		// start with pkcs8
@@ -1093,6 +1102,6 @@ public class BCX509CertificateGeneratorTest extends TestCase {
 	}
 	
 	static void printDate(String label, Calendar date) {
-		System.out.println(label + ": " + date);
+		System.out.println(label + ": " + date.getTime());
 	}
 }

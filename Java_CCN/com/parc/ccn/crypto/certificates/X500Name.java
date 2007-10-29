@@ -23,8 +23,9 @@ import org.bouncycastle.asn1.x509.X509NameTokenizer;
 /**
  * @author D.K. Smetters
  *
- * Replacement for BouncyCastle's X509Name. We can almost use that one,
- * but want to be able to do incremental construction.
+ * Replacement for BouncyCastle's X509Name. We can almost 
+ * use that one, but want to be able to do incremental 
+ * construction.
  * 
  * Old version of X500Name using codec had some complex
  * canonicalization information inside it in order to
@@ -279,13 +280,12 @@ public class X500Name implements Principal, DEREncodable {
 	public String getE() {
 		return getElement(X509Name.E);
 	}
-   
 
     /**
      * return false if we have characters out of the range of a printable
      * string, true otherwise.
      */
-    private boolean canBePrintable(String str) {
+    public static boolean canBePrintable(String str) {
         for (int i = str.length() - 1; i >= 0; i--) {
             if (str.charAt(i) > 0x007f) {
                 return false;
@@ -294,6 +294,10 @@ public class X500Name implements Principal, DEREncodable {
         return true;
     }
 
+    /**
+     * This isn't used in basic cert generation,
+     * which uses BC's X509Name.
+     */
     public DERObject getDERObject() {
         if (_seq == null) {
 
@@ -313,7 +317,7 @@ public class X500Name implements Principal, DEREncodable {
                     } else {
                         ev.add(new DERUTF8String(str));
                     }
-                }
+                 }
 
                 _seq = new DERSequence(new DERSet(ev));
             }

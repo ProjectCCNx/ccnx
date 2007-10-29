@@ -82,9 +82,11 @@
   </restriction>
 </simpleType>
 
-<!-- SHA-256 digest -->
 <simpleType name=IDType'>
    <restriction base='String'>
+     <!-- SHA-256 digest -->
+     <!-- DKS: TODO: SHA-256 is 32 binary bytes, will this
+          be base64 or hex? -->
      <length value='32' fixed='true'/>
    </restriction>
 </simpleType>
