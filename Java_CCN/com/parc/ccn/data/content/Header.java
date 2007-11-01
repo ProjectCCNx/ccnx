@@ -13,17 +13,17 @@ import com.parc.ccn.data.util.XMLHelper;
 
 /**
  * Mapping from a sequence to the underlying XML representation.
- * A Sequence is a content object giving a compact description of a
+ * A Header is a content object giving a compact description of a
  * sequence of named blocks.
  * @author briggs
- * TODO: these need to be subtypes of ContentObjects - change Sequence to Header
+ * TODO: these need to be subtypes of ContentObjects - change Header to Header
  * and give it a type.   see schema, make it choice of ...
  * and, root hash of hash tree, hash of reconstructed content
  *
  */
-public class Sequence extends GenericXMLEncodable implements XMLEncodable {
+public class Header extends GenericXMLEncodable implements XMLEncodable {
 	
-	protected static final String SEQUENCE_ELEMENT = "Sequence";
+	protected static final String SEQUENCE_ELEMENT = "Header";
 	protected static final String START_ELEMENT = "Start";
 	protected static final String COUNT_ELEMENT = "Count";
 	protected static final String BLOCKSIZE_ELEMENT = "BlockSize";
@@ -44,7 +44,7 @@ public class Sequence extends GenericXMLEncodable implements XMLEncodable {
 	 * @param blockSize
 	 * @param length
 	 */
-	public Sequence(int start, int count, int blockSize, int length) {
+	public Header(int start, int count, int blockSize, int length) {
 		_start = start;
 		_count = count;
 		_blockSize = blockSize;
@@ -54,11 +54,11 @@ public class Sequence extends GenericXMLEncodable implements XMLEncodable {
 	/**
 	 * 
 	 */
-	public Sequence(int length) {
+	public Header(int length) {
 		this(DEFAULT_START, (length + DEFAULT_BLOCKSIZE - 1) / DEFAULT_BLOCKSIZE, DEFAULT_BLOCKSIZE, length);
 	}
 	
-	public Sequence() {
+	public Header() {
 		this(DEFAULT_START, 0, DEFAULT_BLOCKSIZE, 0);
 	}
 	
@@ -79,11 +79,11 @@ public class Sequence extends GenericXMLEncodable implements XMLEncodable {
 	 * @param encoded
 	 * @throws XMLStreamException
 	 */
-	public Sequence(byte[] encoded) throws XMLStreamException {
+	public Header(byte[] encoded) throws XMLStreamException {
 		super(encoded);
 	}
 	
-	public Sequence(InputStream iStream) throws XMLStreamException {
+	public Header(InputStream iStream) throws XMLStreamException {
 		decode(iStream);
 	}
 	
@@ -119,10 +119,23 @@ public class Sequence extends GenericXMLEncodable implements XMLEncodable {
 
 	@Override
 	public boolean validate() {
-		if (_start < 0 || _count < 0 || _blockSize <= 0 || _length < 0) return false;
+		if (_start < 0 || _count < 0 ||  _length < 0) return false;
+		if (_blockSize <= 0) return false;
 		return true;
 	}
 	
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + _blockSize;
+		result = prime * result + _count;
+		result = prime * result + _length;
+		result = prime * result + _start;
+		return result;
+	}
+
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj)
@@ -131,11 +144,17 @@ public class Sequence extends GenericXMLEncodable implements XMLEncodable {
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		final Sequence other = (Sequence) obj;
-		if (this._length != other._length || 
-				this._start != other._start ||
-				this._blockSize != other._blockSize ||
-				this._count != other._count) return false;
+		final Header other = (Header) obj;
+		if (_length != other._length)
+			return false;
+		if (_count != other._count)
+			return false;
+		if (_start != other._start)
+			return false;
+		if (_blockSize != other._blockSize)
+			return false;
 		return true;
 	}
+
+
 }

@@ -22,11 +22,11 @@ import com.parc.ccn.data.content.*;
  * @author briggs
  *
  */
-public class SequenceTest {
+public class HeaderTest {
 	
 @Test
-public void testSequenceConstructor() {
-	Sequence seq = new Sequence(1, 1, 8192, 2);
+public void testHeaderConstructor() {
+	Header seq = new Header(1, 1, 8192, 2);
 	assertNotNull(seq);
 	assertEquals(1, seq.start());
 	assertEquals(1, seq.count());
@@ -35,45 +35,45 @@ public void testSequenceConstructor() {
 }
 
 @Test
-public void testSequenceConstructor2() {
+public void testHeaderConstructor2() {
 		int length = 77295;
-		Sequence seq = new Sequence(length);
+		Header seq = new Header(length);
 		assertNotNull(seq);
-		assertEquals(Sequence.DEFAULT_START, seq.start());
+		assertEquals(Header.DEFAULT_START, seq.start());
 		assertEquals(length, seq.length());
-		assertEquals(Sequence.DEFAULT_BLOCKSIZE, seq.blockSize());
-		assertEquals((length + Sequence.DEFAULT_BLOCKSIZE - 1) / Sequence.DEFAULT_BLOCKSIZE, seq.count());
+		assertEquals(Header.DEFAULT_BLOCKSIZE, seq.blockSize());
+		assertEquals((length + Header.DEFAULT_BLOCKSIZE - 1) / Header.DEFAULT_BLOCKSIZE, seq.count());
 }
 @Test
-public void testSequenceConstructor3() {
-		int length = Sequence.DEFAULT_BLOCKSIZE;
-		Sequence seq = new Sequence(length);
+public void testHeaderConstructor3() {
+		int length = Header.DEFAULT_BLOCKSIZE;
+		Header seq = new Header(length);
 		assertNotNull(seq);
-		assertEquals(Sequence.DEFAULT_START, seq.start());
+		assertEquals(Header.DEFAULT_START, seq.start());
 		assertEquals(length, seq.length());
-		assertEquals(Sequence.DEFAULT_BLOCKSIZE, seq.blockSize());
+		assertEquals(Header.DEFAULT_BLOCKSIZE, seq.blockSize());
 		assertEquals(1, seq.count());
 }
 @Test
 public void testEncodeOutputStream() {
-	Sequence seq = new Sequence(1, 1, 8192, 2);
+	Header seq = new Header(1, 1, 8192, 2);
 
 	ByteArrayOutputStream baos = new ByteArrayOutputStream();
-	System.out.println("Encoding sequence...");
+	System.out.println("Encoding header...");
 	try {
 		seq.encode(baos);
 	} catch (XMLStreamException e) {
 		System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
 		e.printStackTrace();
 	}
-	System.out.println("Encoded sequence: " );
+	System.out.println("Encoded header: " );
 	System.out.println(baos.toString());
 }
 
 @Test
 public void testDecodeInputStream() {
-	Sequence seqIn = new Sequence(83545);
-	Sequence seqOut = new Sequence();
+	Header seqIn = new Header(83545);
+	Header seqOut = new Header();
 
 	
 	ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -83,9 +83,9 @@ public void testDecodeInputStream() {
 		System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
 		e.printStackTrace();
 	}
-	System.out.println("Encoded sequence: " + baos.toString());
+	System.out.println("Encoded header: " + baos.toString());
 
-	System.out.println("Decoding sequence...");
+	System.out.println("Decoding header...");
 	ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
 
 	try {
@@ -94,7 +94,7 @@ public void testDecodeInputStream() {
 		System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
 		e.printStackTrace();
 	}
-	System.out.println("Decoded sequence: " + seqOut);
+	System.out.println("Decoded header: " + seqOut);
 	assertEquals(seqIn, seqOut);
 }
 
