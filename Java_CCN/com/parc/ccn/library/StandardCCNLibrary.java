@@ -29,6 +29,11 @@ import com.parc.ccn.security.keys.KeyManager;
  */
 public class StandardCCNLibrary implements CCNLibrary {
 	
+	public static final String MARKER = "_";
+	public static final String VERSION_MARKER = MARKER + "v" + MARKER;
+	public static final String BLOCK_MARKER = MARKER + "b" + MARKER;
+	public static final String CLIENT_METADATA_MARKER = MARKER + "meta" + MARKER;
+	
 	/**
 	 * Do we want to do this this way, or everything static?
 	 */
@@ -159,7 +164,12 @@ public class StandardCCNLibrary implements CCNLibrary {
 
 	public void put(ContentName name, byte[] contents, PublisherID publisher) {
 		// TODO Auto-generated method stub
-
+		// will call into CCNBase after picking appropriate credentials
+		// take content, blocksize (static), divide content into array of 
+		// content blocks, call hash fn for each block, call fn to build merkle
+		// hash tree.   Build header, for each block, get authinfo for block,
+		// (with hash tree, block identifier, timestamp -- SQLDateTime)
+		// insert header using mid-level insert, low-level insert for actual blocks.
 	}
 
 	public void cancel(CCNQueryDescriptor query) throws IOException {

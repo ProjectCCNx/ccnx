@@ -16,6 +16,9 @@ import com.parc.ccn.data.util.XMLHelper;
  * A Sequence is a content object giving a compact description of a
  * sequence of named blocks.
  * @author briggs
+ * TODO: these need to be subtypes of ContentObjects - change Sequence to Header
+ * and give it a type.   see schema, make it choice of ...
+ * and, root hash of hash tree, hash of reconstructed content
  *
  */
 public class Sequence extends GenericXMLEncodable implements XMLEncodable {
