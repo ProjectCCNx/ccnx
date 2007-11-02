@@ -2,14 +2,18 @@ package com.parc.ccn.library;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.sql.Timestamp;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.content.*;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.data.query.CCNQueryListener;
 import com.parc.ccn.data.query.CCNQueryListener.CCNQueryType;
-import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.security.*;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.network.CCNRepositoryManager;
 import com.parc.ccn.security.keys.KeyManager;
@@ -170,6 +174,29 @@ public class StandardCCNLibrary implements CCNLibrary {
 		// hash tree.   Build header, for each block, get authinfo for block,
 		// (with hash tree, block identifier, timestamp -- SQLDateTime)
 		// insert header using mid-level insert, low-level insert for actual blocks.
+		int blockSize = Header.DEFAULT_BLOCKSIZE;
+		int nBlocks = (contents.length + blockSize - 1) / blockSize;
+		int from = 0;
+		byte[][] contentBlocks = new byte[nBlocks][];
+		Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+		for (int i = 0; i < nBlocks; i++) {
+			int to = from + blockSize;
+			contentBlocks[i] = Arrays.copyOfRange(contents, from, (to < contents.length) ? to : contents.length);
+		}
+
+		// need to get new MerkleTree(contentBlocks, ...)
+		for (int i = 0; i < nBlocks; i++) {
+			ContentName blockName = new ContentName(name, BLOCK_MARKER.getBytes(),(i + "").getBytes());
+			// need new ContentAuthenticator as we put these
+			// put(blockName, authenticator, contentBlocks[i]);
+		}
+		// construct the headerBlockContents;
+		// put (headerBlockName, headerBlockAuthenticator, headerBlockContents);
+	}
+
+	public void put(ContentName name, ContentAuthenticator authenticator,
+			byte[] content) throws IOException {
+		CCNRepositoryManager.getCCNRepositoryManager().put(name, authenticator, content);
 	}
 
 	public void cancel(CCNQueryDescriptor query) throws IOException {
@@ -182,10 +209,6 @@ public class StandardCCNLibrary implements CCNLibrary {
 		return CCNRepositoryManager.getCCNRepositoryManager().get(name, authenticator, type, listener, TTL);
 	}
 
-	public void put(ContentName name, ContentAuthenticator authenticator,
-			byte[] content) throws IOException {
-		CCNRepositoryManager.getCCNRepositoryManager().put(name, authenticator, content);
-	}
 
 	public ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator, CCNQueryType type) throws IOException {
 		// TODO Auto-generated method stub
