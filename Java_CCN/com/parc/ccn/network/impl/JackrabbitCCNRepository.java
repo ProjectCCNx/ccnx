@@ -2,9 +2,11 @@ package com.parc.ccn.network.impl;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.io.InputStream;
-import java.math.BigInteger;
 import java.net.InetAddress;
+import java.net.URLEncoder;
+import java.net.URLDecoder;
 import java.net.MalformedURLException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
@@ -81,8 +83,6 @@ public class JackrabbitCCNRepository extends CCNRepository {
 	public static final String HASH_PROPERTY = "CONTENT_HASH";
 	public static final String KEY_LOCATOR_PROPERTY = "KEY_LOCATOR";
 	public static final String SIGNATURE_PROPERTY = "SIGNATURE";
-	private static final int CONVERSION_RADIX = 24;
-
 	protected static JackrabbitCCNRepository _theNetwork = null;
 	protected HashMap<CCNQueryListener, JackrabbitEventListener> _eventListeners = new HashMap<CCNQueryListener, JackrabbitEventListener>();
 	protected Repository _repository;
@@ -740,14 +740,18 @@ public class JackrabbitCCNRepository extends CCNRepository {
 	}
 	
 	protected static String byteToString(byte [] id) {
-		BigInteger bi = new BigInteger(id);
-		// Have to make sure there are no ContentName.SEPARATOR's in there...
-		String str = bi.toString(CONVERSION_RADIX);
-		return str;
+			try {
+				return URLEncoder.encode(new String(id), "UTF-8");
+			} catch (UnsupportedEncodingException e) {
+				throw new RuntimeException("UTF-8 not supported", e);
+			}
 	}
 	
 	protected static byte [] stringToByte(String id) {
-		BigInteger bi = new BigInteger(id, CONVERSION_RADIX);
-		return bi.toByteArray();
+		try {
+			return URLDecoder.decode(id, "UTF-8").getBytes();
+		} catch (UnsupportedEncodingException e) {
+			throw new RuntimeException("UTF-8 not supported", e);
+		}
 	}
 }
