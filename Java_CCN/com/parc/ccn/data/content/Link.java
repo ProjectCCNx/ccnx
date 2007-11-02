@@ -8,9 +8,8 @@ import javax.xml.stream.XMLStreamWriter;
 
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.ContentAuthenticator;
-import com.parc.ccn.data.util.GenericXMLEncodable;
-import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
 
 /**
@@ -22,7 +21,7 @@ import com.parc.ccn.data.util.XMLHelper;
  * @author smetters
  *
  */
-public class Link extends GenericXMLEncodable implements XMLEncodable {
+public class Link extends ContentObject {
 	
 	protected static final String LINK_ELEMENT = "Link";
 	

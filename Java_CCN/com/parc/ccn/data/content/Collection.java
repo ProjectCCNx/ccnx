@@ -12,8 +12,6 @@ import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.ContentAuthenticator;
-import com.parc.ccn.data.util.GenericXMLEncodable;
-import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
 
 /**
@@ -25,7 +23,7 @@ import com.parc.ccn.data.util.XMLHelper;
  * @author smetters
  *
  */
-public class Collection extends GenericXMLEncodable implements XMLEncodable {
+public class Collection extends ContentObject {
 	
 	protected static final String COLLECTION_ELEMENT = "Collection";
 
