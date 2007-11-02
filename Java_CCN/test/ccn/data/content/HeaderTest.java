@@ -3,7 +3,6 @@
  */
 package test.ccn.data.content;
 
-
 import static org.junit.Assert.*;
 
 import java.io.ByteArrayInputStream;
@@ -15,8 +14,6 @@ import javax.xml.stream.XMLStreamException;
 import org.junit.Test;
 
 import com.parc.ccn.data.content.*;
-
-
 
 /**
  * @author briggs

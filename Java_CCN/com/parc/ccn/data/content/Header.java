@@ -7,8 +7,7 @@ import javax.xml.stream.XMLStreamWriter;
 
 import java.io.InputStream;
 
-import com.parc.ccn.data.util.GenericXMLEncodable;
-import com.parc.ccn.data.util.XMLEncodable;
+import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.util.XMLHelper;
 
 /**
@@ -16,14 +15,14 @@ import com.parc.ccn.data.util.XMLHelper;
  * A Header is a content object giving a compact description of a
  * sequence of named blocks.
  * @author briggs
- * TODO: these need to be subtypes of ContentObjects - change Header to Header
+ * TODO: these need to be subtypes of ContentObjects
  * and give it a type.   see schema, make it choice of ...
  * and, root hash of hash tree, hash of reconstructed content
  *
  */
-public class Header extends GenericXMLEncodable implements XMLEncodable {
+public class Header extends ContentObject {
 	
-	protected static final String SEQUENCE_ELEMENT = "Header";
+	protected static final String HEADER_ELEMENT = "Header";
 	protected static final String START_ELEMENT = "Start";
 	protected static final String COUNT_ELEMENT = "Count";
 	protected static final String BLOCKSIZE_ELEMENT = "BlockSize";
@@ -92,7 +91,7 @@ public class Header extends GenericXMLEncodable implements XMLEncodable {
 	 */
 	@Override
 	public void decode(XMLEventReader reader) throws XMLStreamException {
-		XMLHelper.readStartElement(reader, SEQUENCE_ELEMENT);
+		XMLHelper.readStartElement(reader, HEADER_ELEMENT);
 		_start = Integer.valueOf(XMLHelper.readElementText(reader, START_ELEMENT));
 		_count = Integer.valueOf(XMLHelper.readElementText(reader, COUNT_ELEMENT));
 		_blockSize = Integer.valueOf(XMLHelper.readElementText(reader, BLOCKSIZE_ELEMENT));
@@ -109,7 +108,7 @@ public class Header extends GenericXMLEncodable implements XMLEncodable {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		XMLHelper.writeStartElement(writer, SEQUENCE_ELEMENT, isFirstElement);
+		XMLHelper.writeStartElement(writer, HEADER_ELEMENT, isFirstElement);
 		XMLHelper.writeElement(writer, START_ELEMENT,	 Integer.toString(_start));
 		XMLHelper.writeElement(writer, COUNT_ELEMENT,	 Integer.toString(_count));
 		XMLHelper.writeElement(writer, BLOCKSIZE_ELEMENT,	 Integer.toString(_blockSize));
