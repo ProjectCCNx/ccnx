@@ -1,6 +1,7 @@
 package com.parc.ccn.data.util;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 
@@ -46,6 +47,12 @@ public abstract class GenericXMLEncodable implements XMLEncodable {
 	public abstract void decode(XMLEventReader reader) throws XMLStreamException;
 
 	public abstract boolean validate();
+	
+	public byte [] encode() throws XMLStreamException {
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		encode(baos);
+		return baos.toByteArray();
+	}
 
 	@Override
 	public String toString() {

@@ -98,8 +98,8 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     public ContentAuthenticator(
     		PublisherID publisher,
     		ContentType type,
-    		byte [] contentDigest, // assume is already hashed
-    		boolean isDigest, // assume true
+       		byte [] contentOrDigest, // may be already hashed
+    		boolean isDigest, // should we digest it or is it already done?
     		KeyLocator locator,
     		PrivateKey signingKey) {
     	// TODO DKS: implement method
@@ -110,8 +110,8 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     		PublisherID publisher,
     		Timestamp timestamp,
     		ContentType type,
-    		byte [] contentDigest, // assume is already hashed
-    		boolean isDigest, // assume true
+    		byte [] contentOrDigest, // may be already hashed
+    		boolean isDigest, // should we digest it or is it already done?
     		KeyLocator locator,
     		PrivateKey signingKey) {
     	// TODO DKS: implement method

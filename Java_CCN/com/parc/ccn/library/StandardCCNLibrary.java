@@ -7,6 +7,8 @@ import java.util.Date;
 import java.security.PrivateKey;
 import java.sql.Timestamp;
 
+import javax.xml.stream.XMLStreamException;
+
 import com.parc.ccn.Library;
 import com.parc.ccn.crypto.Digest;
 import com.parc.ccn.crypto.MerkleTree;
@@ -208,7 +210,17 @@ public class StandardCCNLibrary implements CCNLibrary {
 		}
 		// construct the headerBlockContents;
 		Header header = new Header(contents.length, contentDigest, digestTree.root());
-		// put (headerBlockName, headerBlockAuthenticator, headerBlockContents);
+		byte[] encodedHeader = null;
+		try {
+			encodedHeader = header.encode();
+		} catch (XMLStreamException e) {
+			Library.logger().warning("This should not happen: we cannot encode our own header!");
+			Library.warningStackTrace(e);
+			// TODO throw something sensible
+		}
+		ContentAuthenticator headerBlockAuthenticator =
+			new ContentAuthenticator(publisher, timestamp, type, encodedHeader, false, locator, signingKey);
+		// put (headerBlockName, headerBlockAuthenticator, encodedHeader);
 	}
 
 	public void put(ContentName name, ContentAuthenticator authenticator,
