@@ -23,7 +23,8 @@ public class HeaderTest {
 
 	@Test
 	public void testHeaderConstructor() {
-		Header seq = new Header(1, 1, 8192, 2);
+		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
+		Header seq = new Header(1, 1, 8192, 2, digest, digest);
 		assertNotNull(seq);
 		assertEquals(1, seq.start());
 		assertEquals(1, seq.count());
@@ -34,7 +35,8 @@ public class HeaderTest {
 	@Test
 	public void testHeaderConstructor2() {
 		int length = 77295;
-		Header seq = new Header(length);
+		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
+		Header seq = new Header(length, digest, digest);
 		assertNotNull(seq);
 		assertEquals(Header.DEFAULT_START, seq.start());
 		assertEquals(length, seq.length());
@@ -44,7 +46,8 @@ public class HeaderTest {
 	@Test
 	public void testHeaderConstructor3() {
 		int length = Header.DEFAULT_BLOCKSIZE;
-		Header seq = new Header(length);
+		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
+		Header seq = new Header(length, digest, digest);
 		assertNotNull(seq);
 		assertEquals(Header.DEFAULT_START, seq.start());
 		assertEquals(length, seq.length());
@@ -53,7 +56,8 @@ public class HeaderTest {
 	}
 	@Test
 	public void testEncodeOutputStream() {
-		Header seq = new Header(1, 1, 8192, 2);
+		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
+		Header seq = new Header(1, 1, 8192, 2, digest, digest);
 
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		System.out.println("Encoding header...");
@@ -69,7 +73,8 @@ public class HeaderTest {
 
 	@Test
 	public void testDecodeInputStream() {
-		Header seqIn = new Header(83545);
+		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
+		Header seqIn = new Header(83545, digest, digest);
 		Header seqOut = new Header();
 
 
