@@ -80,7 +80,7 @@ public class JackrabbitCCNRepository extends CCNRepository {
 	public static final String PUBLISHER_TYPE_PROPERTY = "PUBLISHER_TYPE";
 	public static final String TIMESTAMP_PROPERTY = "TIMESTAMP";
 	public static final String TYPE_PROPERTY = "CONTENT_TYPE";
-	public static final String HASH_PROPERTY = "CONTENT_HASH";
+	public static final String HASH_PROPERTY = "CONTENT_HASH_ELEMENT";
 	public static final String KEY_LOCATOR_PROPERTY = "KEY_LOCATOR";
 	public static final String SIGNATURE_PROPERTY = "SIGNATURE";
 	protected static JackrabbitCCNRepository _theNetwork = null;
@@ -375,7 +375,7 @@ public class JackrabbitCCNRepository extends CCNRepository {
 		n.setProperty(PUBLISHER_TYPE_PROPERTY, PublisherID.typeToName(authenticator.publisherType()));
 		n.setProperty(TYPE_PROPERTY, authenticator.typeName());
 		n.setProperty(TIMESTAMP_PROPERTY, authenticator.timestamp().toString());
-		ByteArrayInputStream hai = new ByteArrayInputStream(authenticator.contentHash());
+		ByteArrayInputStream hai = new ByteArrayInputStream(authenticator.contentDigest());
 		n.setProperty(HASH_PROPERTY, hai);
 		
 		ByteArrayInputStream kli = new ByteArrayInputStream(authenticator.keyLocator().getEncoded());

@@ -1,6 +1,7 @@
 package com.parc.ccn.data.security;
 
 import java.io.IOException;
+import java.security.PrivateKey;
 import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -9,13 +10,14 @@ import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
+import com.parc.ccn.crypto.MerkleTree;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
 
 public class ContentAuthenticator extends GenericXMLEncodable implements XMLEncodable {
 
-    public enum ContentType {FRAGMENT, LINK, CONTAINER, LEAF, SESSION, HEADER};
+	public enum ContentType {FRAGMENT, LINK, CONTAINER, LEAF, SESSION, HEADER};
     protected static final HashMap<ContentType, String> ContentTypeNames = new HashMap<ContentType, String>();
     protected static final HashMap<String, ContentType> ContentNameTypes = new HashMap<String, ContentType>();
     public static final String CONTENT_AUTHENTICATOR_ELEMENT = "ContentAuthenticator";
@@ -45,7 +47,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     protected ContentType 	_type;
     // long	  	_size; // signed, must cope
     // TODO DKS Expand to include hash tree info
-    protected byte []		_contentHash; // encoded DigestInfo
+    protected byte []		_contentDigest; // encoded DigestInfo
     protected KeyLocator  	_keyLocator;
     protected byte[]		_signature; // TODO DKS might want to use Signature type
 
@@ -55,12 +57,12 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     		Timestamp timestamp, 
     		ContentType type, 
     		// TODO DKS may need to add structure to signature and hash, 
-    		// partic hash as it must also do hash trees
-    		byte[] hash, 
+    		// partic contentDigest as it must also do hash trees
+    		byte[] contentDigest, 
     		KeyLocator locator, 
     		byte[] signature) {
 		this(new PublisherID(publisher, publisherType), 
-				timestamp, type, hash,
+				timestamp, type, contentDigest,
 				locator, signature);
 	}
     
@@ -68,16 +70,96 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     		PublisherID publisher, 
 			Timestamp timestamp, 
 			ContentType type, 
-			byte[] hash, 
+			byte[] contentDigest, 
 			KeyLocator locator, 
 			byte[] signature) {
     	super();
     	this._publisher = publisher;
     	this._timestamp = timestamp;
     	this._type = type;
-    	_contentHash = hash;
+    	_contentDigest = contentDigest;
     	_keyLocator = locator;
     	this._signature = signature;
+    }
+    
+    /**
+     * Helper constructors. 
+     */
+    public ContentAuthenticator(
+    		PublisherID publisher,
+    		ContentType type,
+    		byte [] content, // will be hashed
+    		KeyLocator locator,
+    		PrivateKey signingKey) {
+    	// TODO DKS: implement method
+    	throw new UnsupportedOperationException("Implement this!");
+    }
+    
+    public ContentAuthenticator(
+    		PublisherID publisher,
+    		ContentType type,
+    		byte [] contentDigest, // assume is already hashed
+    		boolean isDigest, // assume true
+    		KeyLocator locator,
+    		PrivateKey signingKey) {
+    	// TODO DKS: implement method
+    	throw new UnsupportedOperationException("Implement this!");
+    }
+
+    public ContentAuthenticator(
+    		PublisherID publisher,
+    		Timestamp timestamp,
+    		ContentType type,
+    		byte [] contentDigest, // assume is already hashed
+    		boolean isDigest, // assume true
+    		KeyLocator locator,
+    		PrivateKey signingKey) {
+    	// TODO DKS: implement method
+    	throw new UnsupportedOperationException("Implement this!");
+    }
+
+    /**
+     * The content authenticators for a set of fragments consist of:
+     * The authenticator of the header block, which contains both
+     * the root hash of the Merkle tree and the hash of the content.
+     * This is a normal authenticator, signing the header block 
+     * as content.
+     * Then for each fragment, the authenticator contains the signature
+     * on the root hash as the signature, and the set of hashes necessary
+     * to verify the Merkle structure as the content hash.
+     * 
+     * The signature on the root node is actually a signature
+     * on a content authenticator containing the root hash as its
+     * content item. That way we also sign the publisher ID, type,
+     * etc.
+     * 
+     * This method returns an array of ContentAuthenticators, one
+     * per block of content.
+     */
+    public static ContentAuthenticator []
+    	authenticatedHashTree(PublisherID publisher,
+    						  Timestamp timestamp,
+        					  ContentType type,
+        					  MerkleTree tree,
+        					  KeyLocator locator,
+        					  PrivateKey signingKey) {
+    	
+    	// Need to sign the root node, along with the other supporting
+    	// data.
+    	ContentAuthenticator rootAuthenticator = 
+    			new ContentAuthenticator(publisher, timestamp, type, tree.root(), 
+    									 true, locator, signingKey);
+
+    	ContentAuthenticator [] authenticators = new ContentAuthenticator[tree.numLeaves()];
+    	
+    	// Now build the authenticator structures.
+    	for (int i=0; i < authenticators.length; ++i) {
+    		authenticators[i] = 
+    			new ContentAuthenticator(publisher, timestamp, 
+    									 type, tree.derEncodedPath(i),
+    									 locator, rootAuthenticator.signature());
+    	}
+    	return authenticators;
     }
     
     /**
@@ -112,16 +194,20 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     }
     
     public boolean emptyContentHash() {
-    	if ((null != contentHash()) && (0 != contentHash().length))
+    	if ((null != contentDigest()) && (0 != contentDigest().length))
     		return false;
     	return true;   	
     }
     
-	public byte[] contentHash() {
-		return _contentHash;
+    public boolean emptyContentType() { 
+    	return (null == _type);
+    }
+    
+	public byte[] contentDigest() {
+		return _contentDigest;
 	}
-	public void contentHash(byte[] hash) {
-		_contentHash = hash;
+	public void contentDigest(byte[] hash) {
+		_contentDigest = hash;
 	}
 	public KeyLocator keyLocator() {
 		return _keyLocator;
@@ -176,7 +262,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 	public int hashCode() {
 		final int PRIME = 31;
 		int result = 1;
-		result = PRIME * result + Arrays.hashCode(_contentHash);
+		result = PRIME * result + Arrays.hashCode(_contentDigest);
 		result = PRIME * result + ((_keyLocator == null) ? 0 : _keyLocator.hashCode());
 		result = PRIME * result + ((_publisher == null) ? 0 : _publisher.hashCode());;
 		result = PRIME * result + Arrays.hashCode(_signature);
@@ -194,16 +280,25 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 		if (getClass() != obj.getClass())
 			return false;
 		final ContentAuthenticator other = (ContentAuthenticator) obj;
-		if (!Arrays.equals(_contentHash, other._contentHash))
+		if (_contentDigest == null) {
+			if (other._contentDigest != null)
+				return false;
+		} else if (!Arrays.equals(_contentDigest, other._contentDigest))
 			return false;
 		if (_keyLocator == null) {
 			if (other._keyLocator != null)
 				return false;
 		} else if (!_keyLocator.equals(other._keyLocator))
 			return false;
-		if (!_publisher.equals(other._publisher))
+		if (_publisher == null) {
+			if (other._publisher != null)
+				return false;
+		} else if (!_publisher.equals(other._publisher))
 			return false;
-		if (!Arrays.equals(_signature, other._signature))
+		if (_signature == null) {
+			if (other._signature != null)
+				return false;
+		} else if (!Arrays.equals(_signature, other._signature))
 			return false;
 		if (_timestamp == null) {
 			if (other._timestamp != null)
@@ -234,20 +329,22 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 			}
 		}
 
-		String strType = XMLHelper.readElementText(reader, CONTENT_TYPE_ELEMENT);
-		_type = nameToType(strType);
-		if (null == _type) {
-			throw new XMLStreamException("Cannot parse authenticator type: " + strType);
+		if (XMLHelper.peekStartElement(reader, CONTENT_TYPE_ELEMENT)) {
+			String strType = XMLHelper.readElementText(reader, CONTENT_TYPE_ELEMENT);
+			_type = nameToType(strType);
+			if (null == _type) {
+				throw new XMLStreamException("Cannot parse authenticator type: " + strType);
+			}
 		}
 		
 		if (XMLHelper.peekStartElement(reader, CONTENT_HASH_ELEMENT)) {
 			String strHash = XMLHelper.readElementText(reader, CONTENT_HASH_ELEMENT);
 			try {
-				_contentHash = XMLHelper.decodeElement(strHash);
+				_contentDigest = XMLHelper.decodeElement(strHash);
 			} catch (IOException e) {
 				throw new XMLStreamException("Cannot parse content hash: " + strHash, e);
 			}
-			if (null == _contentHash) {
+			if (null == _contentDigest) {
 				throw new XMLStreamException("Cannot parse content hash: " + strHash);
 			}
 		}
@@ -264,7 +361,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 			} catch (IOException e) {
 				throw new XMLStreamException("Cannot parse signature: " + strSig, e);
 			}
-			if (null == _contentHash) {
+			if (null == _signature) {
 				throw new XMLStreamException("Cannot parse signature: " + strSig);
 			}
 		}
@@ -288,11 +385,15 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 			writer.writeCharacters(timestamp().toString());
 			writer.writeEndElement();
 		}
-		writer.writeStartElement(CONTENT_TYPE_ELEMENT);
-		writer.writeEndElement();   
+		
+		if (!emptyContentType()) {
+			writer.writeStartElement(CONTENT_TYPE_ELEMENT);
+			writer.writeEndElement();
+		}
+		
 		if (!emptyContentHash()) {
 			writer.writeStartElement(CONTENT_HASH_ELEMENT);
-			writer.writeCharacters(XMLHelper.encodeElement(contentHash()));
+			writer.writeCharacters(XMLHelper.encodeElement(contentDigest()));
 			writer.writeEndElement();   
 		}
 		if (null != keyLocator()) {

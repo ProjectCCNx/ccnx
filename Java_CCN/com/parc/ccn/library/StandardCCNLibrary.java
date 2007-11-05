@@ -4,9 +4,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.security.PrivateKey;
 import java.sql.Timestamp;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.crypto.Digest;
+import com.parc.ccn.crypto.MerkleTree;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.*;
@@ -14,7 +17,6 @@ import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.data.query.CCNQueryListener;
 import com.parc.ccn.data.query.CCNQueryListener.CCNQueryType;
 import com.parc.ccn.data.security.*;
-import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.network.CCNRepositoryManager;
 import com.parc.ccn.security.keys.KeyManager;
 
@@ -166,7 +168,15 @@ public class StandardCCNLibrary implements CCNLibrary {
 		put(name, contents, getDefaultPublisher());
 	}
 
-	public void put(ContentName name, byte[] contents, PublisherID publisher) {
+	public void put(ContentName name, byte[] contents, 
+					PublisherID publisher) {
+		// TODO Auto-generated method stub
+	}
+	
+	public void put(ContentName name, byte [] contents,
+					ContentAuthenticator.ContentType type,
+					PublisherID publisher, KeyLocator locator,
+					PrivateKey signingKey) {
 		// TODO Auto-generated method stub
 		// will call into CCNBase after picking appropriate credentials
 		// take content, blocksize (static), divide content into array of 
@@ -184,13 +194,20 @@ public class StandardCCNLibrary implements CCNLibrary {
 			contentBlocks[i] = Arrays.copyOfRange(contents, from, (to < contents.length) ? to : contents.length);
 		}
 
-		// need to get new MerkleTree(contentBlocks, ...)
+		// Digest of complete contents
+		byte [] contentDigest = Digest.hash(contents);
+		MerkleTree digestTree = new MerkleTree(contentBlocks);
+		ContentAuthenticator [] blockAuthenticators = 
+			ContentAuthenticator.authenticatedHashTree(publisher, timestamp, 
+													   type, digestTree, locator, 
+													   signingKey);
+		
 		for (int i = 0; i < nBlocks; i++) {
 			ContentName blockName = new ContentName(name, BLOCK_MARKER.getBytes(),(i + "").getBytes());
-			// need new ContentAuthenticator as we put these
-			// put(blockName, authenticator, contentBlocks[i]);
+			// put(blockName, blockAuthenticators[i], contentBlocks[i]);
 		}
 		// construct the headerBlockContents;
+		Header header = new Header(contents.length, contentDigest, digestTree.root());
 		// put (headerBlockName, headerBlockAuthenticator, headerBlockContents);
 	}
 

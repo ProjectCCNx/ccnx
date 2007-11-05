@@ -86,7 +86,7 @@ public class CCNQueryDescriptor {
    						return false;
    					}
    	   				if (!authenticator().emptyContentHash()) {
-   	   					if (!Arrays.equals(authenticator().contentHash(), object.authenticator().contentHash()))
+   	   					if (!Arrays.equals(authenticator().contentDigest(), object.authenticator().contentDigest()))
    	   						return false;
    	   				}
    	   	   			if (!authenticator().emptySignature()) {
