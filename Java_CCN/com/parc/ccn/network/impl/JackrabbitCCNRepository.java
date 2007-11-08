@@ -668,6 +668,8 @@ public class JackrabbitCCNRepository extends CCNRepository {
 	 * a _. We can't handle the names with the ending [#]
 	 * that jackrabbit uses for disambiguation of repeated
 	 * names. (We know the rest of the string is base64.)
+	 * NOTE: the rest of the string is no longer base64... see
+	 * byteToString/stringToByte
 	 * 
 	 * @param str
 	 * @return
