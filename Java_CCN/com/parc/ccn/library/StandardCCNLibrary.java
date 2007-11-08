@@ -3,7 +3,6 @@ package com.parc.ccn.library;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.security.PrivateKey;
 import java.sql.Timestamp;
 
@@ -186,6 +185,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 		// hash tree.   Build header, for each block, get authinfo for block,
 		// (with hash tree, block identifier, timestamp -- SQLDateTime)
 		// insert header using mid-level insert, low-level insert for actual blocks.
+		// We should implement a non-fragmenting put.   Won't do block stuff, will need to do latest version stuff.
 		int blockSize = Header.DEFAULT_BLOCKSIZE;
 		int nBlocks = (contents.length + blockSize - 1) / blockSize;
 		int from = 0;
@@ -200,13 +200,19 @@ public class StandardCCNLibrary implements CCNLibrary {
 		byte [] contentDigest = Digest.hash(contents);
 		MerkleTree digestTree = new MerkleTree(contentBlocks);
 		ContentAuthenticator [] blockAuthenticators = 
-			ContentAuthenticator.authenticatedHashTree(publisher, timestamp, 
+			ContentAuthenticator.authenticatedHashTree(name, publisher, timestamp, 
 													   type, digestTree, locator, 
 													   signingKey);
 		
 		for (int i = 0; i < nBlocks; i++) {
-			ContentName blockName = new ContentName(name, BLOCK_MARKER.getBytes(),(i + "").getBytes());
-			// put(blockName, blockAuthenticators[i], contentBlocks[i]);
+			ContentName blockName = blockName(name, i);
+			 try {
+				put(blockName, blockAuthenticators[i], contentBlocks[i]);
+			} catch (IOException e) {
+				Library.logger().warning("This should not happen: we cannot put our own blocks!");
+				Library.warningStackTrace(e);
+				// TODO throw something sensible
+			}
 		}
 		// construct the headerBlockContents;
 		Header header = new Header(contents.length, contentDigest, digestTree.root());
@@ -218,9 +224,19 @@ public class StandardCCNLibrary implements CCNLibrary {
 			Library.warningStackTrace(e);
 			// TODO throw something sensible
 		}
+		
 		ContentAuthenticator headerBlockAuthenticator =
-			new ContentAuthenticator(publisher, timestamp, type, encodedHeader, false, locator, signingKey);
-		// put (headerBlockName, headerBlockAuthenticator, encodedHeader);
+			new ContentAuthenticator(name, publisher, timestamp, type, encodedHeader, false, locator, signingKey);
+			try {
+				put (name, headerBlockAuthenticator, encodedHeader);
+			} catch (IOException e) {
+				Library.logger().warning("This should not happen: we cannot put our own header!");
+				Library.warningStackTrace(e);
+			}
+	}
+
+	public ContentName blockName(ContentName name, int i) {
+		return new ContentName(name, BLOCK_MARKER.getBytes(),(i + "").getBytes());
 	}
 
 	public void put(ContentName name, ContentAuthenticator authenticator,
