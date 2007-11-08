@@ -11,6 +11,7 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
 import com.parc.ccn.crypto.MerkleTree;
+import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
@@ -86,6 +87,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
      * Helper constructors. 
      */
     public ContentAuthenticator(
+    		ContentName name,
     		PublisherID publisher,
     		ContentType type,
     		byte [] content, // will be hashed
@@ -96,6 +98,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     }
     
     public ContentAuthenticator(
+    		ContentName name,
     		PublisherID publisher,
     		ContentType type,
        		byte [] contentOrDigest, // may be already hashed
@@ -107,6 +110,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     }
 
     public ContentAuthenticator(
+    		ContentName name,
     		PublisherID publisher,
     		Timestamp timestamp,
     		ContentType type,
@@ -137,7 +141,8 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
      * per block of content.
      */
     public static ContentAuthenticator []
-    	authenticatedHashTree(PublisherID publisher,
+    	authenticatedHashTree(ContentName name,
+    						  PublisherID publisher,
     						  Timestamp timestamp,
         					  ContentType type,
         					  MerkleTree tree,
@@ -147,7 +152,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     	// Need to sign the root node, along with the other supporting
     	// data.
     	ContentAuthenticator rootAuthenticator = 
-    			new ContentAuthenticator(publisher, timestamp, type, tree.root(), 
+    			new ContentAuthenticator(name, publisher, timestamp, type, tree.root(), 
     									 true, locator, signingKey);
 
     	ContentAuthenticator [] authenticators = new ContentAuthenticator[tree.numLeaves()];
