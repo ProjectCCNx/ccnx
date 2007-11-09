@@ -393,6 +393,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 		
 		if (!emptyContentType()) {
 			writer.writeStartElement(CONTENT_TYPE_ELEMENT);
+			writer.writeCharacters(typeName());
 			writer.writeEndElement();
 		}
 		
