@@ -35,21 +35,21 @@ import com.parc.ccn.security.keys.KeyManager;
  *
  */
 public class StandardCCNLibrary implements CCNLibrary {
-	
+
 	public static final String MARKER = "_";
 	public static final String VERSION_MARKER = MARKER + "v" + MARKER;
 	public static final String BLOCK_MARKER = MARKER + "b" + MARKER;
 	public static final String CLIENT_METADATA_MARKER = MARKER + "meta" + MARKER;
-	
+
 	/**
 	 * Do we want to do this this way, or everything static?
 	 */
 	protected KeyManager _userKeyManager = null;
-	
+
 	public StandardCCNLibrary(KeyManager keyManager) {
 		_userKeyManager = keyManager;
 	}
-	
+
 	public void setKeyManager(KeyManager keyManager) {
 		if (null == keyManager) {
 			Library.logger().warning("StandardCCNLibrary::setKeyManager: Key manager cannot be null!");
@@ -57,13 +57,13 @@ public class StandardCCNLibrary implements CCNLibrary {
 		}
 		_userKeyManager = keyManager;
 	}
-	
+
 	public KeyManager keyManager() { return _userKeyManager; }
-	
+
 	protected PublisherID getDefaultPublisher() {
 		return _userKeyManager.getDefaultKeyID();
 	}
-	
+
 	/**
 	 * Generate a collection where name maps to contents,
 	 * with no specification about who published contents or
@@ -170,14 +170,17 @@ public class StandardCCNLibrary implements CCNLibrary {
 	}
 
 	public void put(ContentName name, byte[] contents, 
-					PublisherID publisher) {
-		// TODO Auto-generated method stub
+			PublisherID publisher) {
+		// TODO: get a real KeyLocator and PrivateKey instead of null.
+		KeyLocator locator = null;
+		PrivateKey signingKey = null;
+		put(name, contents, ContentAuthenticator.ContentType.LEAF, publisher, locator, signingKey);
 	}
-	
+
 	public void put(ContentName name, byte [] contents,
-					ContentAuthenticator.ContentType type,
-					PublisherID publisher, KeyLocator locator,
-					PrivateKey signingKey) {
+			ContentAuthenticator.ContentType type,
+			PublisherID publisher, KeyLocator locator,
+			PrivateKey signingKey) {
 		// TODO Auto-generated method stub
 		// will call into CCNBase after picking appropriate credentials
 		// take content, blocksize (static), divide content into array of 
@@ -201,12 +204,12 @@ public class StandardCCNLibrary implements CCNLibrary {
 		MerkleTree digestTree = new MerkleTree(contentBlocks);
 		ContentAuthenticator [] blockAuthenticators = 
 			ContentAuthenticator.authenticatedHashTree(name, publisher, timestamp, 
-													   type, digestTree, locator, 
-													   signingKey);
-		
+					type, digestTree, locator, 
+					signingKey);
+
 		for (int i = 0; i < nBlocks; i++) {
 			ContentName blockName = blockName(name, i);
-			 try {
+			try {
 				put(blockName, blockAuthenticators[i], contentBlocks[i]);
 			} catch (IOException e) {
 				Library.logger().warning("This should not happen: we cannot put our own blocks!");
@@ -224,15 +227,15 @@ public class StandardCCNLibrary implements CCNLibrary {
 			Library.warningStackTrace(e);
 			// TODO throw something sensible
 		}
-		
+
 		ContentAuthenticator headerBlockAuthenticator =
 			new ContentAuthenticator(name, publisher, timestamp, type, encodedHeader, false, locator, signingKey);
-			try {
-				put (name, headerBlockAuthenticator, encodedHeader);
-			} catch (IOException e) {
-				Library.logger().warning("This should not happen: we cannot put our own header!");
-				Library.warningStackTrace(e);
-			}
+		try {
+			put (name, headerBlockAuthenticator, encodedHeader);
+		} catch (IOException e) {
+			Library.logger().warning("This should not happen: we cannot put our own header!");
+			Library.warningStackTrace(e);
+		}
 	}
 
 	public ContentName blockName(ContentName name, int i) {
