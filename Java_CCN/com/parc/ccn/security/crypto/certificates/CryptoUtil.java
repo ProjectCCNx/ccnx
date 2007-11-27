@@ -1,4 +1,4 @@
-package com.parc.ccn.crypto.certificates;
+package com.parc.ccn.security.crypto.certificates;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

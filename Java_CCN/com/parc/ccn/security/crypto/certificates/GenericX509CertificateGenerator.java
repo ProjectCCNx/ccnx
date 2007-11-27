@@ -1,4 +1,4 @@
-package com.parc.ccn.crypto.certificates;
+package com.parc.ccn.security.crypto.certificates;
 
 // Note: This code uses both codec.x509.X509Certificate and java.security.cert.X509Certificate.
 // Force the import to be the java version.

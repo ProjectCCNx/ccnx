@@ -25,12 +25,12 @@ import org.bouncycastle.asn1.DERObject;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 
 import com.parc.ccn.Library;
-import com.parc.ccn.crypto.certificates.OIDLookup;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
+import com.parc.ccn.security.crypto.certificates.OIDLookup;
 
 public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 	/**

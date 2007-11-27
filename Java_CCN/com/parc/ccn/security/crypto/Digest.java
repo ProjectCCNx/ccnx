@@ -1,4 +1,4 @@
-package com.parc.ccn.crypto;
+package com.parc.ccn.security.crypto;
 
 import java.security.MessageDigest;
 

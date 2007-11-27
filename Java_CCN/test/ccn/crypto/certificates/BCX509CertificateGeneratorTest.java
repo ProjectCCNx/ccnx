@@ -45,7 +45,8 @@ import org.bouncycastle.asn1.x509.X509Name;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.jce.provider.X509CertificateObject;
 
-import com.parc.ccn.crypto.certificates.BCX509CertificateGenerator;
+import com.parc.ccn.security.crypto.SignatureHelper;
+import com.parc.ccn.security.crypto.certificates.BCX509CertificateGenerator;
 
 /**
  * @author smetters
@@ -692,21 +693,21 @@ public class BCX509CertificateGeneratorTest extends TestCase {
 
 	public void testGetSignatureAlgorithmName() {
 		
-		String sha1wrsa =  BCX509CertificateGenerator.getSignatureAlgorithmName("SHA1", "RSA");
+		String sha1wrsa =  SignatureHelper.getSignatureAlgorithmName("SHA1", "RSA");
 		System.out.println("Got: " + sha1wrsa);
-		String sha_1wrsa = BCX509CertificateGenerator.getSignatureAlgorithmName("SHA-1", "RSA");
+		String sha_1wrsa = SignatureHelper.getSignatureAlgorithmName("SHA-1", "RSA");
 		System.out.println("Got: " + sha_1wrsa);
-		String shawrsa = BCX509CertificateGenerator.getSignatureAlgorithmName("SHA", "RSA");
+		String shawrsa = SignatureHelper.getSignatureAlgorithmName("SHA", "RSA");
 		System.out.println("Got: " + shawrsa);
-		String shawdsa = BCX509CertificateGenerator.getSignatureAlgorithmName("SHA", "DSA");
+		String shawdsa = SignatureHelper.getSignatureAlgorithmName("SHA", "DSA");
 		System.out.println("Got: " + shawdsa);
-		String sha1wdsa =  BCX509CertificateGenerator.getSignatureAlgorithmName("SHA1", "DSA");
+		String sha1wdsa =  SignatureHelper.getSignatureAlgorithmName("SHA1", "DSA");
 		System.out.println("Got: " + sha1wdsa);
-		String sha_1wdsa = BCX509CertificateGenerator.getSignatureAlgorithmName("SHA-1", "DSA");
+		String sha_1wdsa = SignatureHelper.getSignatureAlgorithmName("SHA-1", "DSA");
 		System.out.println("Got: " + sha_1wdsa);
-		String md5wrsa =  BCX509CertificateGenerator.getSignatureAlgorithmName("MD5", "RSA");
+		String md5wrsa =  SignatureHelper.getSignatureAlgorithmName("MD5", "RSA");
 		System.out.println("Got: " + md5wrsa);
-		String sha1wecdsa =  BCX509CertificateGenerator.getSignatureAlgorithmName("SHA1", "ECDSA");
+		String sha1wecdsa =  SignatureHelper.getSignatureAlgorithmName("SHA1", "ECDSA");
 		System.out.println("Got: " + sha1wecdsa);
 		
 	}

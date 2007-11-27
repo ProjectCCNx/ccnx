@@ -1,9 +1,8 @@
-package com.parc.ccn.crypto.certificates;
+package com.parc.ccn.security.crypto.certificates;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.security.AlgorithmParameters;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
@@ -47,10 +46,8 @@ import org.bouncycastle.asn1.DEROctetString;
 import org.bouncycastle.asn1.DERPrintableString;
 import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.DERTaggedObject;
-import org.bouncycastle.asn1.DERTags;
 import org.bouncycastle.asn1.DERUTCTime;
 import org.bouncycastle.asn1.DERUTF8String;
-import org.bouncycastle.asn1.DERUnknownTag;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.asn1.x509.BasicConstraints;
 import org.bouncycastle.asn1.x509.CRLDistPoint;
@@ -69,6 +66,8 @@ import org.bouncycastle.asn1.x509.X509Extensions;
 import org.bouncycastle.asn1.x509.X509Name;
 import org.bouncycastle.asn1.x509.X509NameEntryConverter;
 import org.bouncycastle.jce.provider.X509CertificateObject;
+
+import com.parc.ccn.security.crypto.SignatureHelper;
 
 /**
  * Title:        CA
@@ -105,7 +104,7 @@ public class BCX509CertificateGenerator extends GenericX509CertificateGenerator 
 	/**
 	 * Debugging flag
 	 */
-	private static final boolean debug = false;
+	public static final boolean debug = false;
 
 	/**
 	 * Cache a random number generator (non-secure, used for generating
@@ -376,12 +375,7 @@ public class BCX509CertificateGenerator extends GenericX509CertificateGenerator 
 		TBSCertificateStructure tbsCertificate = null; 
 
 		AlgorithmIdentifier sigAlg =
-			getSignatureAlgorithm(((null == hashAlgorithm) || (hashAlgorithm.length() == 0)) ?
-					DEFAULT_HASH : hashAlgorithm,
-					signingKey);
-
-		String sigAlgName =
-			getSignatureAlgorithmName(((null == hashAlgorithm) || (hashAlgorithm.length() == 0)) ?
+			SignatureHelper.getSignatureAlgorithm(((null == hashAlgorithm) || (hashAlgorithm.length() == 0)) ?
 					DEFAULT_HASH : hashAlgorithm,
 					signingKey);
 
@@ -420,19 +414,9 @@ public class BCX509CertificateGenerator extends GenericX509CertificateGenerator 
 		X509Certificate cert = null;
 		try {
 
-			Signature sig=null;
-			try {
-				sig = Signature.getInstance(sigAlgName);
-			} catch (Exception e) {
-				System.out.println("This should not happen: cannot get signature instance of type " + sigAlgName);
-				e.printStackTrace();
-			}
-
-			sig.initSign(signingKey);
-
 			byte [] encodedTBSCertificate = CryptoUtil.encode(tbsCertificate);        	
-			sig.update(encodedTBSCertificate);
-			byte [] signature = sig.sign();
+			byte [] signature = SignatureHelper.sign(((null == hashAlgorithm) || (hashAlgorithm.length() == 0)) ?
+					DEFAULT_HASH : hashAlgorithm, encodedTBSCertificate, signingKey);
 
 			ASN1EncodableVector seqVector = new ASN1EncodableVector();
 			seqVector.add(tbsCertificate);
@@ -1800,134 +1784,6 @@ public class BCX509CertificateGenerator extends GenericX509CertificateGenerator 
 		return id;
 	}
 
-	/**
-	 * gets an AlgorithmIdentifier incorporating a given digest and
-	 * encryption algorithm, and containing any necessary prarameters for
-	 * the signing key
-	 *
-	 * @param hashAlgorithm the JCA standard name of the digest algorithm
-	 * (e.g. "SHA1")
-	 * @param signingKey the private key that will be used to compute the
-	 * signature
-	 *
-	 * @throws NoSuchAlgorithmException if the algorithm identifier can't
-	 * be formed
-	 */
-	public static AlgorithmIdentifier getSignatureAlgorithm(
-			String hashAlgorithm, PrivateKey signingKey)
-	throws NoSuchAlgorithmException, InvalidParameterSpecException, 
-	InvalidAlgorithmParameterException
-	{
-		if (debug) {
-			System.out.println(
-					"X509CertificateGenerator: getSignatureAlgorithm, hash: " +
-					hashAlgorithm + " key alg: " + signingKey.getAlgorithm());
-		}
-		String signatureAlgorithmOID = getSignatureAlgorithmOID(
-				hashAlgorithm, signingKey.getAlgorithm());
-
-		if (signatureAlgorithmOID == null) {
-			if (debug) {
-				System.out.println("Error: got no signature algorithm!");
-			}
-			throw new NoSuchAlgorithmException(
-					"Cannot determine OID for hash algorithm "+ hashAlgorithm + " and encryption alg " + signingKey.getAlgorithm());
-		}
-
-		AlgorithmIdentifier thisSignatureAlgorithm = null;
-		try {
-
-			DEREncodable paramData = null;
-			AlgorithmParameters params = OIDLookup.getParametersFromKey(signingKey);
-
-			if (params == null) {
-				paramData = new DERUnknownTag(DERTags.NULL, new byte [0]);
-			} else {
-				ByteArrayInputStream bais = new ByteArrayInputStream(params.getEncoded());
-				ASN1InputStream dis = new ASN1InputStream(bais);
-				paramData = dis.readObject();
-			}
-
-
-			// Now we need the OID and the parameters. This is not the most
-			// efficient way in the world to do this, but it should work.
-			thisSignatureAlgorithm =
-				new AlgorithmIdentifier(new DERObjectIdentifier(signatureAlgorithmOID),
-						paramData);
-		} catch (IOException ex) {
-			System.out.println("This should not happen: getSignatureAlgorithm -- " );
-			System.out.println("    IOException thrown when decoding a key");
-			ex.getMessage();
-			ex.printStackTrace();
-			throw new InvalidParameterSpecException(ex.getMessage());
-		} 
-		return thisSignatureAlgorithm;
-	}
-
-	/**
-	 * gets the JCA string name of a signature algorithm, to be used with
-	 * a Signature object
-	 *
-	 * @param hashAlgorithm the JCA standard name of the digest algorithm
-	 * (e.g. "SHA1")
-	 * @param signingKey the private key that will be used to compute the
-	 * signature
-	 *
-	 * @returns the JCA string alias for the signature algorithm
-	 */
-	public static String getSignatureAlgorithmName(
-			String hashAlgorithm, PrivateKey signingKey)
-	{
-		return getSignatureAlgorithmName(hashAlgorithm, signingKey.getAlgorithm());
-	}
-
-	/**
-	 * gets the JCA string name of a signature algorithm, to be used with
-	 * a Signature object
-	 *
-	 * @param hashAlgorithm the JCA standard name of the digest algorithm
-	 * (e.g. "SHA1")
-	 * @param signingKey the private key that will be used to compute the
-	 * signature
-	 *
-	 * @returns the JCA string alias for the signature algorithm
-	 */
-	public static String getSignatureAlgorithmName(
-			String hashAlgorithm, String keyAlgorithm)
-	{
-		String signatureAlgorithm = OIDLookup.getSignatureAlgorithm(hashAlgorithm,
-				keyAlgorithm);
-		if (debug) {
-			System.out.println("getSignatureName: combining " +
-					hashAlgorithm  + " and " + keyAlgorithm +
-					" results in: " + signatureAlgorithm);
-		}
-		return signatureAlgorithm;
-	}
-
-	/**
-	 * gets the OID of a signature algorithm, to be used with
-	 * a Signature object
-	 *
-	 * @param hashAlgorithm the JCA standard name of the digest algorithm
-	 * (e.g. "SHA1")
-	 * @param signingKey the private key that will be used to compute the
-	 * signature
-	 *
-	 * @returns the JCA string alias for the signature algorithm
-	 */
-	public static String getSignatureAlgorithmOID(
-			String hashAlgorithm, String keyAlgorithm)
-	{
-		String signatureAlgorithm = OIDLookup.getSignatureAlgorithmOID(hashAlgorithm,
-				keyAlgorithm);
-		if (debug) {
-			System.out.println("getSignatureAlgorithmOID: combining " +
-					hashAlgorithm  + " and " + keyAlgorithm +
-					" results in: " + signatureAlgorithm);
-		}
-		return signatureAlgorithm;
-	}
 
 	static public boolean hasExtendedKeyUsage(X509Certificate cert, String usage) 
 	throws CertificateParsingException {

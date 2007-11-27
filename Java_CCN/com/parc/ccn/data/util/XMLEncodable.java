@@ -34,6 +34,13 @@ public interface XMLEncodable {
 	public void encode(OutputStream oStream) throws XMLStreamException;
 
 	/**
+	 * Helper function.
+	 * @return
+	 * @throws XMLStreamException
+	 */
+	public byte [] encode() throws XMLStreamException;
+
+	/**
 	 * Write this item to an ongoing encoding pass. 
 	 * @param isFirstElement is this the first element after the
 	 * 	start of the document; if so it needs to start the

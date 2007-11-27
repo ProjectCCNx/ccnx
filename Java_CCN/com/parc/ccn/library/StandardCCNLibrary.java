@@ -9,8 +9,6 @@ import java.sql.Timestamp;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
-import com.parc.ccn.crypto.Digest;
-import com.parc.ccn.crypto.MerkleTree;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.*;
@@ -19,6 +17,8 @@ import com.parc.ccn.data.query.CCNQueryListener;
 import com.parc.ccn.data.query.CCNQueryListener.CCNQueryType;
 import com.parc.ccn.data.security.*;
 import com.parc.ccn.network.CCNRepositoryManager;
+import com.parc.ccn.security.crypto.Digest;
+import com.parc.ccn.security.crypto.MerkleTree;
 import com.parc.ccn.security.keys.KeyManager;
 
 /**
@@ -181,7 +181,6 @@ public class StandardCCNLibrary implements CCNLibrary {
 			ContentAuthenticator.ContentType type,
 			PublisherID publisher, KeyLocator locator,
 			PrivateKey signingKey) {
-		// TODO Auto-generated method stub
 		// will call into CCNBase after picking appropriate credentials
 		// take content, blocksize (static), divide content into array of 
 		// content blocks, call hash fn for each block, call fn to build merkle

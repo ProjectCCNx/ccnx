@@ -1,7 +1,10 @@
 package com.parc.ccn.data.security;
 
 import java.io.IOException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.security.SignatureException;
 import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -10,11 +13,15 @@ import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
-import com.parc.ccn.crypto.MerkleTree;
+import com.parc.ccn.Library;
+import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
+import com.parc.ccn.security.crypto.Digest;
+import com.parc.ccn.security.crypto.MerkleTree;
+import com.parc.ccn.security.crypto.SignatureHelper;
 
 public class ContentAuthenticator extends GenericXMLEncodable implements XMLEncodable {
 
@@ -47,17 +54,16 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     protected Timestamp		_timestamp;
     protected ContentType 	_type;
     // long	  	_size; // signed, must cope
-    // TODO DKS Expand to include hash tree info
     protected byte []		_contentDigest; // encoded DigestInfo
     protected KeyLocator  	_keyLocator;
-    protected byte[]		_signature; // TODO DKS might want to use Signature type
+    protected byte[]		_signature; // DKS might want to use Signature type
 
     public ContentAuthenticator(
     		byte[] publisher,
     		PublisherID.PublisherType publisherType,
     		Timestamp timestamp, 
     		ContentType type, 
-    		// TODO DKS may need to add structure to signature and hash, 
+    		// DKS may need to add structure to signature and hash, 
     		// partic contentDigest as it must also do hash trees
     		byte[] contentDigest, 
     		KeyLocator locator, 
@@ -85,6 +91,9 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     
     /**
      * Helper constructors. 
+     * @throws SignatureException 
+     * @throws NoSuchAlgorithmException 
+     * @throws InvalidKeyException 
      */
     public ContentAuthenticator(
     		ContentName name,
@@ -92,21 +101,21 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     		ContentType type,
     		byte [] content, // will be hashed
     		KeyLocator locator,
-    		PrivateKey signingKey) {
-    	// TODO DKS: implement method
-    	throw new UnsupportedOperationException("Implement this!");
-    }
+    		PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException {
+    	this(name, publisher, now(), type, content,
+    			false, locator, signingKey);
+   }
     
-    public ContentAuthenticator(
+ 	public ContentAuthenticator(
     		ContentName name,
     		PublisherID publisher,
     		ContentType type,
        		byte [] contentOrDigest, // may be already hashed
     		boolean isDigest, // should we digest it or is it already done?
     		KeyLocator locator,
-    		PrivateKey signingKey) {
-    	// TODO DKS: implement method
-    	throw new UnsupportedOperationException("Implement this!");
+    		PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException {
+    	this(name, publisher, now(), type, contentOrDigest,
+    			isDigest, locator, signingKey);
     }
 
     public ContentAuthenticator(
@@ -117,10 +126,21 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     		byte [] contentOrDigest, // may be already hashed
     		boolean isDigest, // should we digest it or is it already done?
     		KeyLocator locator,
-    		PrivateKey signingKey) {
-    	// TODO DKS: implement method
-    	throw new UnsupportedOperationException("Implement this!");
-    }
+    		PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException {
+    	super();
+    	this._publisher = publisher;
+    	this._timestamp = timestamp;
+    	this._type = type;
+    	if (isDigest)
+    		_contentDigest = contentOrDigest;
+    	else
+    		_contentDigest = Digest.hash(contentOrDigest);
+    	_keyLocator = locator;
+    	// Might need to be a factory method instead
+    	// of a constructor, as calling class methods
+    	// in a constructor is dicey.
+    	sign(name, signingKey);
+     }
 
     /**
      * The content authenticators for a set of fragments consist of:
@@ -139,6 +159,9 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
      * 
      * This method returns an array of ContentAuthenticators, one
      * per block of content.
+     * @throws SignatureException 
+     * @throws NoSuchAlgorithmException 
+     * @throws InvalidKeyException 
      */
     public static ContentAuthenticator []
     	authenticatedHashTree(ContentName name,
@@ -147,7 +170,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
         					  ContentType type,
         					  MerkleTree tree,
         					  KeyLocator locator,
-        					  PrivateKey signingKey) {
+        					  PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException {
     	
     	// Need to sign the root node, along with the other supporting
     	// data.
@@ -417,6 +440,39 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 		// any of the fields could be null when used 
 		// as a partial-match pattern
 		return true;
+	}
+
+	public static Timestamp now() {
+		return new Timestamp(System.currentTimeMillis());
+	}
+	
+	/**
+	 * Generate a signature on a name-content mapping. This
+	 * signature is specific to both this content authenticator
+	 * and this name. We sign the canonicalized XML
+	 * of a CompleteName, with any non-provided optional
+	 * components omitted. 
+	 * @throws SignatureException 
+	 * @throws NoSuchAlgorithmException 
+	 * @throws InvalidKeyException 
+	 */
+	public void sign(ContentName name, String digestAlgorithm, PrivateKey signingKey) 
+		throws SignatureException, InvalidKeyException, NoSuchAlgorithmException {
+		
+		// Build XML document
+		CompleteName completeName = new CompleteName(name, this);
+		_signature = SignatureHelper.sign(digestAlgorithm, completeName, signingKey);
+	}
+	
+	public void sign(ContentName name, PrivateKey signingKey) 
+			throws SignatureException, InvalidKeyException {
+		try {
+			sign(name, Digest.DEFAULT_DIGEST, signingKey);
+		} catch (NoSuchAlgorithmException e) {
+			Library.logger().warning("Cannot find default digest algorithm: " + Digest.DEFAULT_DIGEST);
+			Library.warningStackTrace(e);
+			throw new SignatureException(e);
+		}
 	}
 
 }

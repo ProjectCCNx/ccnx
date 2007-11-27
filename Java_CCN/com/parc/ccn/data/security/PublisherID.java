@@ -12,10 +12,10 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
 import com.parc.ccn.Library;
-import com.parc.ccn.crypto.certificates.GenericX509CertificateGenerator;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
+import com.parc.ccn.security.crypto.certificates.GenericX509CertificateGenerator;
 
 /**
  * Helper wrapper class for publisher IDs.

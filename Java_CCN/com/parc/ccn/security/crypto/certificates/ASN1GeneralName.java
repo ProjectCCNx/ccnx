@@ -1,4 +1,4 @@
-package com.parc.ccn.crypto.certificates;
+package com.parc.ccn.security.crypto.certificates;
 
 import org.bouncycastle.asn1.ASN1EncodableVector;
 import org.bouncycastle.asn1.ASN1OctetString;

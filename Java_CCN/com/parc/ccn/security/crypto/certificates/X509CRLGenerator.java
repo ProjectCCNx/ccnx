@@ -1,4 +1,4 @@
-package com.parc.ccn.crypto.certificates;
+package com.parc.ccn.security.crypto.certificates;
 
 import java.math.BigInteger;
 import java.security.InvalidKeyException;
