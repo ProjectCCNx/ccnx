@@ -19,20 +19,24 @@ import com.parc.ccn.data.security.PublisherID;
  * @author smetters
  *
  */
-public interface KeyManager {
+public abstract class KeyManager {
 	
 	public static final String DEFAULT_DIGEST_ALGORITHM = "SHA-256";
 
-	public PublisherID getDefaultKeyID();
+	public abstract PublisherID getDefaultKeyID();
 
-	public PrivateKey getDefaultSigningKey();
-	public PublicKey getDefaultPublicKey();
+	public abstract PrivateKey getDefaultSigningKey();
+	public abstract PublicKey getDefaultPublicKey();
 
-	public KeyLocator getKeyLocator(PrivateKey signingKey);
+	public abstract KeyLocator getKeyLocator(PrivateKey signingKey);
 	
-	public PrivateKey getSigningKey(String alias);
-	public PrivateKey getSigningKey(PublisherID publisher);
+	public abstract PrivateKey getSigningKey(String alias);
+	public abstract PrivateKey getSigningKey(PublisherID publisher);
 	
-	public PublicKey getPublicKey(String alias);
-	public PublicKey getPublicKey(PublisherID publisher);
+	public abstract PublicKey getPublicKey(String alias);
+	public abstract PublicKey getPublicKey(PublisherID publisher);
+
+	public static KeyManager getDefaultKeyManager() {
+		return new BasicKeyManager();
+	}
 }

@@ -30,7 +30,10 @@ public class MerkleTree {
 	 */
 	public MerkleTree(String algorithm, byte [][] contentBlocks) {
 		_numLeaves = contentBlocks.length;
-		_pathLength = (int)Math.ceil(Math.log(_numLeaves)/Math.log(2));
+		if (_numLeaves > 1)
+			_pathLength = (int)Math.ceil(Math.log(_numLeaves)/Math.log(2)) + 1;
+		else
+			_pathLength = 2;
 		
 		// How many entries do we need? The number of
 		// leaves plus that number minus 1.

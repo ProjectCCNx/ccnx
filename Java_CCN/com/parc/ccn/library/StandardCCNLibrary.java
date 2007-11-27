@@ -57,6 +57,10 @@ public class StandardCCNLibrary implements CCNLibrary {
 		_userKeyManager = keyManager;
 	}
 
+	public StandardCCNLibrary() {
+		this(KeyManager.getDefaultKeyManager());
+	}
+
 	public void setKeyManager(KeyManager keyManager) {
 		if (null == keyManager) {
 			Library.logger().warning("StandardCCNLibrary::setKeyManager: Key manager cannot be null!");

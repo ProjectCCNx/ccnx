@@ -49,7 +49,11 @@ public class SignatureHelper {
 							   byte [] toBeSigned,
 							   PrivateKey signingKey) throws SignatureException, 
 							   			NoSuchAlgorithmException, InvalidKeyException {
-		
+		if (null == signingKey) {
+			Library.logger().info("sign: Signing key cannot be null.");
+			Library.logger().info("Temporarily generating fake signature.");
+			return Digest.hash(hashAlgorithm, toBeSigned);
+		}
 		String sigAlgName =
 			getSignatureAlgorithmName(((null == hashAlgorithm) || (hashAlgorithm.length() == 0)) ?
 					Digest.DEFAULT_DIGEST : hashAlgorithm,
@@ -72,7 +76,7 @@ public class SignatureHelper {
 							   XMLEncodable toBeSigned,
 							   PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException {
 		
-		if ((null == toBeSigned) || (null == signingKey)) {
+		if (null == toBeSigned) {
 			Library.logger().info("Value to be signed and signing key must not be null.");
 			return null;
 		}

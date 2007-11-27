@@ -12,7 +12,6 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.library.StandardCCNLibrary;
-import com.parc.ccn.security.keys.KeyManager;
 
 
 /**
@@ -24,8 +23,7 @@ public class StandardCCNLibraryTest {
 	
 	@Test
 	public void testPut() {
-		KeyManager keyManager = new  KeyManager();
-		StandardCCNLibrary library = new StandardCCNLibrary(keyManager);
+		StandardCCNLibrary library = new StandardCCNLibrary();
 		ContentName name = null;
 		byte[] content = null;
 //		ContentAuthenticator.ContentType type = ContentAuthenticator.ContentType.LEAF;
