@@ -12,6 +12,7 @@ import java.sql.Timestamp;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.*;
@@ -19,9 +20,12 @@ import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.data.query.CCNQueryListener;
 import com.parc.ccn.data.query.CCNQueryListener.CCNQueryType;
 import com.parc.ccn.data.security.*;
+import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
+import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.network.CCNRepositoryManager;
 import com.parc.ccn.security.crypto.Digest;
 import com.parc.ccn.security.crypto.MerkleTree;
+import com.parc.ccn.security.crypto.SignatureHelper;
 import com.parc.ccn.security.keys.KeyManager;
 
 /**
@@ -71,25 +75,45 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * Generate a collection where name maps to contents,
 	 * with no specification about who published contents or
 	 * what they contain.
+	 * @throws SignatureException 
 	 */
-	public void addCollection(ContentName name, ContentName[] contents) {
+	public void addCollection(ContentName name, ContentName[] contents) throws SignatureException {
 		addCollection(name, contents, getDefaultPublisher());
 	}
 
-	public void addCollection(ContentName name, ContentObject[] contents) {
+	public void addCollection(ContentName name, CompleteName[] contents) throws SignatureException {
 		addCollection(name, contents, getDefaultPublisher());
 	}
 
-	public void addCollection(ContentName name, ContentName[] contents,
-			PublisherID publisher) {
-		// TODO Auto-generated method stub
+	public void addCollection(ContentName name, 
+							  ContentName[] contents,
+							  PublisherID publisher) throws SignatureException {
 
+		Collection collectionData = new Collection(contents, null);
+		put(name, collectionData, ContentType.CONTAINER, publisher);
 	}
 
-	public void addCollection(ContentName name, ContentObject[] contents,
-			PublisherID publisher) {
-		// TODO Auto-generated method stub
+	public void addCollection(ContentName name, 
+							  CompleteName[] contents,
+							  PublisherID publisher) throws SignatureException {
+		Collection collectionData = new Collection(contents);
+		put(name, collectionData, ContentType.CONTAINER, publisher);
+	}
+	
+	public void addCollection(ContentName name, 
+			ContentName[] contents,
+			PublisherID publisher, KeyLocator locator,
+			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
+		Collection collectionData = new Collection(contents, null);
+		put(name, collectionData, ContentType.CONTAINER, publisher);
+	}
 
+	public void addCollection(ContentName name, 
+			CompleteName[] contents,
+			PublisherID publisher, KeyLocator locator,
+			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
+		Collection collectionData = new Collection(contents);
+		put(name, collectionData, ContentType.CONTAINER, publisher);
 	}
 
 	public void addToCollection(ContentName name,
@@ -99,7 +123,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	}
 
 	public void addToCollection(ContentName name,
-			ContentObject[] additionalContents) {
+			CompleteName[] additionalContents) {
 		// TODO Auto-generated method stub
 
 	}
@@ -111,7 +135,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	}
 
 	public void removeFromCollection(ContentName name,
-			ContentObject[] additionalContents) {
+			CompleteName[] additionalContents) {
 		// TODO Auto-generated method stub
 
 	}
@@ -127,58 +151,77 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * the direct signer of the content, or CERTIFIER, the
 	 * person who must have certified whoever's key signed
 	 * the linked-to content. 
+	 * @throws SignatureException 
 	 */
-	public void link(ContentName src, ContentName dest) {
+	public void link(ContentName src, ContentName dest) throws SignatureException {
 		link(src, dest, getDefaultPublisher());
 	}
 
 	public void link(ContentName src, ContentName dest,
-					 ContentAuthenticator destAuthenticator) {
+					 ContentAuthenticator destAuthenticator) throws SignatureException {
 		link(src, dest, destAuthenticator, getDefaultPublisher());
 	}
 
-	public void link(ContentName src, ContentName dest, PublisherID publisher) {
-		// TODO Auto-generated method stub
-
+	public void link(ContentName src, ContentName dest, PublisherID publisher) throws SignatureException {
+		link(src, dest, null, publisher);
 	}
-
+	
 	public void link(ContentName src, ContentName dest,
-			ContentAuthenticator destAuthenticator, PublisherID publisher) {
-		// TODO Auto-generated method stub
+			 		 ContentAuthenticator destAuthenticator,
+			 		 PublisherID publisher) throws SignatureException {
 
+		if ((null == src) || (null == dest)) {
+			Library.logger().info("link: src and dest cannot be null.");
+			throw new IllegalArgumentException("link: src and dest cannot be null.");
+		}
+		
+		Link linkData = new Link(dest, destAuthenticator);
+		put(src, linkData, ContentType.LINK, publisher);
 	}
 
-	public void newVersion(ContentName name, byte[] contents) {
+
+	/**
+	 * TODO: better answer than throwing an exception on invalid
+	 * args.
+	 * @throws NoSuchAlgorithmException 
+	 * @throws SignatureException 
+	 * @throws InvalidKeyException 
+	 */
+	public void link(ContentName src, ContentName dest,
+			ContentAuthenticator destAuthenticator, 
+			PublisherID publisher, KeyLocator locator,
+			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
+		
+		if ((null == src) || (null == dest)) {
+			Library.logger().info("link: src and dest cannot be null.");
+			throw new IllegalArgumentException("link: src and dest cannot be null.");
+		}
+		
+		Link linkData = new Link(dest, destAuthenticator);
+		put(src, linkData, ContentType.LINK, publisher, locator, signingKey);
+	}
+
+	public void newVersion(ContentName name, byte[] contents) throws SignatureException {
 		newVersion(name, contents, getDefaultPublisher());
 	}
 
-	public void newVersion(ContentName name, int version, byte[] contents) {
+	public void newVersion(ContentName name, int version, byte[] contents) throws SignatureException {
 		newVersion(name, version, contents, getDefaultPublisher());
 	}
 
 	public void newVersion(ContentName name, byte[] contents,
-			PublisherID publisher) {
-		// TODO Auto-generated method stub
-
+			PublisherID publisher) throws SignatureException {
+		int currentVersion = getLatestVersion(name, publisher);
+		newVersion(name, currentVersion+1, contents, publisher);
 	}
 
 	public void newVersion(ContentName name, int version, byte[] contents,
-			PublisherID publisher) {
-		// TODO Auto-generated method stub
-
-	}
-
-	public void put(ContentName name, byte[] contents) throws SignatureException {
-		put(name, contents, getDefaultPublisher());
-	}
-
-	public void put(ContentName name, byte[] contents, 
-					PublisherID publisher) throws SignatureException {
+			PublisherID publisher) throws SignatureException {
 
 		PrivateKey signingKey = keyManager().getDefaultSigningKey();
 		KeyLocator locator = keyManager().getKeyLocator(signingKey);
 		try {
-			put(name, contents, ContentAuthenticator.ContentType.LEAF, publisher, locator, signingKey);
+			newVersion(name, version, contents, publisher, locator, signingKey);
 		} catch (InvalidKeyException e) {
 			Library.logger().info("InvalidKeyException using default key.");
 			throw new SignatureException(e);
@@ -191,7 +234,143 @@ public class StandardCCNLibrary implements CCNLibrary {
 		}
 	}
 
+	public void newVersion(ContentName name, int version, byte [] contents,
+			PublisherID publisher, KeyLocator locator,
+			PrivateKey signingKey) throws SignatureException, 
+				InvalidKeyException, NoSuchAlgorithmException {
+
+		// Construct new name
+		// <name>/<VERSION_MARKER>/<version_number>
+		ContentName versionedName = versionName(name, version);
+		
+		// put result
+		put(versionedName, contents, ContentAuthenticator.ContentType.LEAF, publisher, locator, signingKey);
+	}
+
+	/**
+	 * TODO: check to make sure name doesn't have the
+	 *   version information in it already.
+	 * @param name
+	 * @param version
+	 * @return
+	 */
+	public ContentName versionName(ContentName name, int version) {
+		return new ContentName(name, VERSION_MARKER.getBytes(),(version + "").getBytes());
+	}
+
+	public int getLatestVersion(ContentName name, PublisherID publisher) {
+		// TODO Auto-generated method stub
+		return 1;
+	}
+
+	public int getVersion(ContentName name) {
+		// TODO Auto-generated method stub
+		return 1;		
+	}
+
+	public void put(ContentName name, byte[] contents) throws SignatureException {
+		put(name, contents, getDefaultPublisher());
+	}
+
+	public void put(ContentName name, byte[] contents, 
+					PublisherID publisher) throws SignatureException {
+		put(name, contents, ContentAuthenticator.ContentType.LEAF, publisher);
+	}
+	
+	public void put(ContentName name, byte[] contents, 
+					ContentAuthenticator.ContentType type,
+					PublisherID publisher) throws SignatureException {
+
+		PrivateKey signingKey = keyManager().getDefaultSigningKey();
+		KeyLocator locator = keyManager().getKeyLocator(signingKey);
+		try {
+			put(name, contents, type, publisher, locator, signingKey);
+		} catch (InvalidKeyException e) {
+			Library.logger().info("InvalidKeyException using default key.");
+			throw new SignatureException(e);
+		} catch (SignatureException e) {
+			Library.logger().info("SignatureException using default key.");
+			throw e;
+		} catch (NoSuchAlgorithmException e) {
+			Library.logger().info("NoSuchAlgorithmException using default key.");
+			throw new SignatureException(e);
+		}
+	}
+	
+	public void put(ContentName name, XMLEncodable contents, 
+					ContentAuthenticator.ContentType type,
+					PublisherID publisher) throws SignatureException {
+
+		PrivateKey signingKey = keyManager().getDefaultSigningKey();
+		KeyLocator locator = keyManager().getKeyLocator(signingKey);
+		try {
+			put(name, contents, type, publisher, locator, signingKey);
+		} catch (InvalidKeyException e) {
+			Library.logger().info("InvalidKeyException using default key.");
+			throw new SignatureException(e);
+		} catch (SignatureException e) {
+			Library.logger().info("SignatureException using default key.");
+			throw e;
+		} catch (NoSuchAlgorithmException e) {
+			Library.logger().info("NoSuchAlgorithmException using default key.");
+			throw new SignatureException(e);
+		}
+	}
+	
+	public void put(ContentName name, XMLEncodable contents,
+				    ContentAuthenticator.ContentType type,
+				    PublisherID publisher, KeyLocator locator,
+				    PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException {
+		
+		byte [] encodedContents = SignatureHelper.canonicalize(contents, signingKey);
+		
+		put(name, encodedContents, type, publisher, locator, signingKey);
+	}
+
+	/**
+	 * If small enough, doesn't fragment. Otherwise, does.
+	 * TODO: change puts to return ContentAuthenticator
+	 * or CompleteName of the thing they put (in the case
+	 * of a fragmented thing, the header). That way the
+	 * caller can then also easily link to that thing if
+	 * it needs to, or put again with a different name.
+	 * @throws IOException 
+	 **/
 	public void put(ContentName name, byte [] contents,
+			ContentAuthenticator.ContentType type,
+			PublisherID publisher, KeyLocator locator,
+			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
+		
+		if (contents.length >= Header.DEFAULT_BLOCKSIZE) {
+			fragmentedPut(name, contents, type, publisher, locator, signingKey);
+		} else {
+			ContentAuthenticator authenticator = 
+				new ContentAuthenticator(name, publisher, 
+										 type, contents, 
+										 locator, signingKey);
+			try {
+				put(name, authenticator, contents);
+			} catch (IOException e) {
+				Library.logger().warning("This should not happen: put failed with an IOExceptoin.");
+				Library.warningStackTrace(e);
+				// TODO throw something sensible
+			}
+		}
+	}
+
+	/** 
+	 * Low-level fragmentation interface.
+	 * @param name
+	 * @param contents
+	 * @param type
+	 * @param publisher
+	 * @param locator
+	 * @param signingKey
+	 * @throws InvalidKeyException
+	 * @throws SignatureException
+	 * @throws NoSuchAlgorithmException
+	 */
+	protected void fragmentedPut(ContentName name, byte [] contents,
 			ContentAuthenticator.ContentType type,
 			PublisherID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
@@ -269,7 +448,6 @@ public class StandardCCNLibrary implements CCNLibrary {
 			CCNQueryListener listener, long TTL) throws IOException {
 		return CCNRepositoryManager.getCCNRepositoryManager().get(name, authenticator, type, listener, TTL);
 	}
-
 
 	public ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator, CCNQueryType type) throws IOException {
 		// TODO Auto-generated method stub

@@ -1,11 +1,15 @@
 package com.parc.ccn.library;
 
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
 import java.security.SignatureException;
 
 import com.parc.ccn.data.CCNBase;
+import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
 
 /**
@@ -41,28 +45,45 @@ public interface CCNLibrary extends CCNBase {
 	
 	// internal functions about fragmentation - may be exposed, or in std impl
 	
-	public void newVersion(ContentName name, byte [] contents);
-	public void newVersion(ContentName name, int version, byte [] contents);
-	public void newVersion(ContentName name, byte [] contents, PublisherID publisher);
-	public void newVersion(ContentName name, int version, byte [] contents, PublisherID publisher);
+	public void newVersion(ContentName name, byte [] contents) throws SignatureException;
+	public void newVersion(ContentName name, int version, byte [] contents) throws SignatureException;
+	public void newVersion(ContentName name, byte [] contents, PublisherID publisher) throws SignatureException;
+	public void newVersion(ContentName name, int version, byte [] contents, PublisherID publisher) throws SignatureException;
+	public void newVersion(ContentName name, int version, byte [] contents,
+			PublisherID publisher, KeyLocator locator,
+			PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException;
+	public int getLatestVersion(ContentName name, PublisherID publisher);
+	public int getVersion(ContentName name);
 	
-	// islink
-	// getlink ( no deref)
-	public void link(ContentName src, ContentName dest);
-	public void link(ContentName src, ContentName dest, ContentAuthenticator destAuthenticator);
-	public void link(ContentName src, ContentName dest, PublisherID publisher);
-	public void link(ContentName src, ContentName dest, ContentAuthenticator destAuthenticator, PublisherID publisher);
+	// TODO islink
+	// TODO getlink ( no deref)
+	public void link(ContentName src, ContentName dest) throws SignatureException;
+	public void link(ContentName src, ContentName dest, ContentAuthenticator destAuthenticator) throws SignatureException;
+	public void link(ContentName src, ContentName dest, PublisherID publisher) throws SignatureException;
+	public void link(ContentName src, ContentName dest, ContentAuthenticator destAuthenticator, PublisherID publisher) throws SignatureException;
+	public void link(ContentName src, ContentName dest,
+			ContentAuthenticator destAuthenticator, 
+			PublisherID publisher, KeyLocator locator,
+			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException;
 	
-	public void addCollection(ContentName name, ContentName [] contents);
-	public void addCollection(ContentName name, ContentObject [] contents);
-	public void addCollection(ContentName name, ContentName [] contents, PublisherID publisher);
-	public void addCollection(ContentName name, ContentObject [] contents, PublisherID publisher);
+	public void addCollection(ContentName name, ContentName [] contents) throws SignatureException;
+	public void addCollection(ContentName name, CompleteName [] contents) throws SignatureException;
+	public void addCollection(ContentName name, ContentName [] contents, PublisherID publisher) throws SignatureException;
+	public void addCollection(ContentName name, CompleteName [] contents, PublisherID publisher) throws SignatureException;
+	public void addCollection(ContentName name, 
+			ContentName[] contents,
+			PublisherID publisher, KeyLocator locator,
+			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException;
+	public void addCollection(ContentName name, 
+			CompleteName[] contents,
+			PublisherID publisher, KeyLocator locator,
+			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException;
 	
 	/**
 	 * Use the same publisherID that we used originally.
 	 */
 	public void addToCollection(ContentName name, ContentName [] additionalContents);
-	public void addToCollection(ContentName name, ContentObject [] additionalContents);
+	public void addToCollection(ContentName name, CompleteName [] additionalContents);
 	public void removeFromCollection(ContentName name, ContentName [] additionalContents);
-	public void removeFromCollection(ContentName name, ContentObject [] additionalContents);
+	public void removeFromCollection(ContentName name, CompleteName [] additionalContents);
 }

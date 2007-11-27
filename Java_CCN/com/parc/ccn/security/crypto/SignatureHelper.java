@@ -76,6 +76,26 @@ public class SignatureHelper {
 			Library.logger().info("Value to be signed and signing key must not be null.");
 			return null;
 		}
+		byte [] canonicalizedData = canonicalize(toBeSigned, signingKey);
+		
+		return sign(hashAlgorithm, canonicalizedData, signingKey);
+	}
+
+	/**
+	 * This is really annoying -- we need to pass in a key
+	 * to instantiate the appropriate context to canonicalize.
+	 * For some reason the Java XML signature API is focusing
+	 * on canonicalization of signature info objects, rather
+	 * than canonicalization of the things below them to
+	 * actually be signed. 
+	 * DKS TODO: look into the Apache API.
+	 * @param toBeSigned
+	 * @param signingKey
+	 * @return
+	 * @throws SignatureException
+	 */
+	public static byte [] canonicalize(XMLEncodable toBeSigned, PrivateKey signingKey) throws SignatureException {
+
 		byte[] encoded;
 		try {
 			encoded = toBeSigned.encode();
@@ -135,8 +155,9 @@ public class SignatureHelper {
 		} catch (TransformException e) {
 			handleException("This should not happen: we cannot canonicalize mapping information to be signed!", e);
 		}
-		
-		return sign(hashAlgorithm, canonicalizedData.getBytes(), signingKey);
+		// Is there a problem with locale issues?
+		// DKS TODO: may need to get closer to real XML sigs.
+		return canonicalizedData.getBytes();
 	}
 
 	/**
