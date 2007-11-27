@@ -19,13 +19,13 @@ import com.parc.ccn.security.keys.KeyManager;
  *
  */
 public class StandardCCNLibraryTest {
-
+	static final String contentString = "This is a very small amount of content";
+	
 	@Test
 	public void testPut() {
 		KeyManager keyManager = new  KeyManager();
 		StandardCCNLibrary library = new StandardCCNLibrary(keyManager);
 		ContentName name = null;
-		String contentString = "This is a very small amount of content";
 		byte[] content = null;
 //		ContentAuthenticator.ContentType type = ContentAuthenticator.ContentType.LEAF;
 		PublisherID publisher = null;
