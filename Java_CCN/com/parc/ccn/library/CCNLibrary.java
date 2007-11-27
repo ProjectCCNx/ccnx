@@ -1,5 +1,7 @@
 package com.parc.ccn.library;
 
+import java.security.SignatureException;
+
 import com.parc.ccn.data.CCNBase;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
@@ -26,15 +28,16 @@ import com.parc.ccn.data.security.PublisherID;
  */
 public interface CCNLibrary extends CCNBase {
 
-	public void put(ContentName name, byte [] contents);
+	public void put(ContentName name, byte [] contents) throws SignatureException;
 
 	/**
 	 * Publish a piece of content under a particular identity.
 	 * @param name
 	 * @param contents
 	 * @param publisher selects one of our identities to publish under
+	 * @throws SignatureException 
 	 */
-	public void put(ContentName name, byte [] contents, PublisherID publisher);
+	public void put(ContentName name, byte [] contents, PublisherID publisher) throws SignatureException;
 	
 	// internal functions about fragmentation - may be exposed, or in std impl
 	

@@ -1,5 +1,8 @@
 package com.parc.ccn.security.keys;
 
+import java.security.PrivateKey;
+
+import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
 
 /**
@@ -20,6 +23,16 @@ public class KeyManager {
 	public static final String DEFAULT_DIGEST_ALGORITHM = "SHA-256";
 
 	public PublisherID getDefaultKeyID() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public PrivateKey getDefaultSigningKey() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public KeyLocator getKeyLocator(PrivateKey signingKey) {
 		// TODO Auto-generated method stub
 		return null;
 	}

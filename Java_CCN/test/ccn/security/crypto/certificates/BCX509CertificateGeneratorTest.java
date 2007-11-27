@@ -1,4 +1,4 @@
-package test.ccn.crypto.certificates;
+package test.ccn.security.crypto.certificates;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;

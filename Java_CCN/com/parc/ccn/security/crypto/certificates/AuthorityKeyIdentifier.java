@@ -45,7 +45,7 @@ public class AuthorityKeyIdentifier implements DEREncodable, DERTags {
 	protected DERInteger _issuerSerial = null;
 
 	public static AuthorityKeyIdentifier getInstance(ASN1TaggedObject obj,
-																			   boolean explicit) {
+													 boolean explicit) {
 		return getInstance(ASN1Sequence.getInstance(obj, explicit));
    }
 

@@ -3,7 +3,10 @@ package com.parc.ccn.library;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.security.SignatureException;
 import java.sql.Timestamp;
 
 import javax.xml.stream.XMLStreamException;
@@ -61,7 +64,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	public KeyManager keyManager() { return _userKeyManager; }
 
 	protected PublisherID getDefaultPublisher() {
-		return _userKeyManager.getDefaultKeyID();
+		return keyManager().getDefaultKeyID();
 	}
 
 	/**
@@ -130,7 +133,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	}
 
 	public void link(ContentName src, ContentName dest,
-			ContentAuthenticator destAuthenticator) {
+					 ContentAuthenticator destAuthenticator) {
 		link(src, dest, destAuthenticator, getDefaultPublisher());
 	}
 
@@ -165,22 +168,33 @@ public class StandardCCNLibrary implements CCNLibrary {
 
 	}
 
-	public void put(ContentName name, byte[] contents) {
+	public void put(ContentName name, byte[] contents) throws SignatureException {
 		put(name, contents, getDefaultPublisher());
 	}
 
 	public void put(ContentName name, byte[] contents, 
-			PublisherID publisher) {
-		// TODO: get a real KeyLocator and PrivateKey instead of null.
-		KeyLocator locator = null;
-		PrivateKey signingKey = null;
-		put(name, contents, ContentAuthenticator.ContentType.LEAF, publisher, locator, signingKey);
+					PublisherID publisher) throws SignatureException {
+
+		PrivateKey signingKey = keyManager().getDefaultSigningKey();
+		KeyLocator locator = keyManager().getKeyLocator(signingKey);
+		try {
+			put(name, contents, ContentAuthenticator.ContentType.LEAF, publisher, locator, signingKey);
+		} catch (InvalidKeyException e) {
+			Library.logger().info("InvalidKeyException using default key.");
+			throw new SignatureException(e);
+		} catch (SignatureException e) {
+			Library.logger().info("SignatureException using default key.");
+			throw e;
+		} catch (NoSuchAlgorithmException e) {
+			Library.logger().info("NoSuchAlgorithmException using default key.");
+			throw new SignatureException(e);
+		}
 	}
 
 	public void put(ContentName name, byte [] contents,
 			ContentAuthenticator.ContentType type,
 			PublisherID publisher, KeyLocator locator,
-			PrivateKey signingKey) {
+			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
 		// will call into CCNBase after picking appropriate credentials
 		// take content, blocksize (static), divide content into array of 
 		// content blocks, call hash fn for each block, call fn to build merkle

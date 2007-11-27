@@ -4,6 +4,7 @@
 package test.ccn.library;
 
 import java.io.UnsupportedEncodingException;
+import java.security.SignatureException;
 
 import org.junit.Test;
 
@@ -42,7 +43,12 @@ public class StandardCCNLibraryTest {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		library.put(name, content, publisher);
+		try {
+			library.put(name, content, publisher);
+		} catch (SignatureException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 	
 }

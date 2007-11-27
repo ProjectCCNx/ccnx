@@ -1,5 +1,12 @@
 package com.parc.ccn.security.crypto;
 
+import org.bouncycastle.asn1.ASN1Encodable;
+import org.bouncycastle.asn1.ASN1OctetString;
+import org.bouncycastle.asn1.DERInteger;
+import org.bouncycastle.asn1.DERObjectIdentifier;
+import org.bouncycastle.asn1.DEROctetString;
+import org.bouncycastle.asn1.DERSequence;
+
 
 public class MerkleTree {
 	
@@ -9,9 +16,11 @@ public class MerkleTree {
 	 * _tree[1], _tree[2] = 1st level
 	 * node i's children: _tree[2i+1],_tree[2i+2]
 	 * i's parent: floor(_tree[i-1/2])
-	 * the leaf nodes are the last n nodes 
+	 * the leaf nodes are the last n nodes
+	 * Store internally as DEROctetStrings for more efficient
+	 * encoding. 
 	 */
-	protected byte [][]_tree;
+	protected DEROctetString [] _tree;
 	protected int _numLeaves;
 	protected int _pathLength;
 	
@@ -25,11 +34,11 @@ public class MerkleTree {
 		
 		// How many entries do we need? The number of
 		// leaves plus that number minus 1.
-		_tree = new byte[2*_numLeaves - 1][];
+		_tree = new DEROctetString[2*_numLeaves - 1];
 		
 		// Hash the leaves
 		for (int i=0; i < numLeaves(); ++i) {
-			_tree[leafIndex(i)] = Digest.hash(algorithm, contentBlocks[i]);
+			_tree[leafIndex(i)] = new DEROctetString(Digest.hash(algorithm, contentBlocks[i]));
 		}
 		
 		// Climb the tree
@@ -42,7 +51,7 @@ public class MerkleTree {
 		while (firstNode > 0) {
 			for (int i = firstNode; i < endNode; i += 2) {
 				parent = parent(firstNode);
-				_tree[parent] = Digest.hash(_tree[i], _tree[i+1]);
+				_tree[parent] = new DEROctetString(Digest.hash(_tree[i].getOctets(), _tree[i+1].getOctets()));
 			}
 			firstNode = nextLevelStart;
 			endNode = nextLevelEnd;
@@ -57,7 +66,7 @@ public class MerkleTree {
 	
 	public int parent(int i) { 
 		if (i == 0) {
-			return 0;
+			return -1;
 		}
 		return (int)Math.floor((i-1)/2.0); 
 	}
@@ -72,8 +81,10 @@ public class MerkleTree {
 	public boolean isRight(int i) { return (0 != (i % 2)); }
 	public boolean isLeft(int i) { return (0 == (i % 2)); }
 	
-	public byte [] root() { return _tree[0]; } 
-	public byte [] get(int i) { return _tree[i]; }
+	public byte [] root() { return _tree[0].getOctets(); } 
+	public DEROctetString derRoot() { return _tree[0]; }
+	public byte [] get(int i) { return _tree[i].getOctets(); }
+	public DEROctetString derGet(int i) { return _tree[i]; }
 	public int size() { return _tree.length; }
 	
 	public int numLeaves() { return _numLeaves; }
@@ -90,7 +101,7 @@ public class MerkleTree {
 	public byte [] leaf(int i) {
 		if ((i < 0) || (i > _numLeaves))
 			throw new IllegalArgumentException(i + " is not a valid leaf value for a tree with " + numLeaves() + " leaves.");
-		return _tree[firstLeaf() + i]; 
+		return _tree[firstLeaf() + i].getOctets(); 
 	}
 	
 	/**
@@ -128,14 +139,59 @@ public class MerkleTree {
 	public byte [][] path(int leafNum) {
 		byte [][] result = new byte[pathLength()+1][];
 		
-		int index = 
+		int sibling = sibling(leafNum);
+		if (isLeft(leafNum)) {
+			result[pathLength()-1] = get(leafNum);
+			result[pathLength()] = get(sibling);
+		} else {
+			result[pathLength()-1] = get(sibling);
+			result[pathLength()] = get(leafNum);
+		}
+		int index = parent(leafNum);
+		while (index >= 0) {
+			result[index] = get(sibling(index));
+			index = parent(index);
+		}
+		return result;
+	}
+	
+	protected DEROctetString [] derPath(int leafNum) {
+		DEROctetString [] result = new DEROctetString[pathLength()+1];
 		
+		int sibling = sibling(leafNum);
+		if (isLeft(leafNum)) {
+			result[pathLength()-1] = derGet(leafNum);
+			result[pathLength()] = derGet(sibling);
+		} else {
+			result[pathLength()-1] = derGet(sibling);
+			result[pathLength()] = derGet(leafNum);
+		}
+		int index = parent(leafNum);
+		while (index >= 0) {
+			result[index] = derGet(sibling(index));
+			index = parent(index);
+		}
+		return result;
 	}
 	
 	/**
 	 * DER-encode the path.
+	 * TODO: DKS need decoder
 	 */
 	public byte [] derEncodedPath(int leafNum) {
-		throw new UnsupportedOperationException("Implement me!");
+		DEROctetString[] path = derPath(leafNum);
+		
+		/**
+		 * Sequence of OCTET STRING
+		 */
+		DERSequence sequenceOf = new DERSequence(path);
+		/**
+		 * Sequence of INTEGER, SEQUENCE OF OCTET STRING
+		 */
+		DERInteger intVal = new DERInteger(leafNum);
+		ASN1Encodable [] pathStruct = new ASN1Encodable[]{intVal, sequenceOf};
+		DERSequence encodablePath = new DERSequence(pathStruct);
+		byte [] encodedPath = encodablePath.getDEREncoded();
+		return encodedPath;
 	}
 }
