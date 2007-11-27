@@ -69,7 +69,7 @@ public class MerkleTree {
 	
 	public int numLeaves() { return _numLeaves; }
 	
-	public int firstLeaf() { return size() - numLeaves() + 1; }
+	public int firstLeaf() { return size() - numLeaves(); }
 	public int leafIndex(int i) { return firstLeaf() + i; }
 	
 	/**
