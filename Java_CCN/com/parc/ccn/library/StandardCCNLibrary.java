@@ -459,6 +459,9 @@ public class StandardCCNLibrary implements CCNLibrary {
 		CCNRepositoryManager.getCCNRepositoryManager().cancel(query);
 	}
 
+	/**
+	 * Have to handle un-fragmenting fragmented content.
+	 */
 	public CCNQueryDescriptor get(ContentName name,
 			ContentAuthenticator authenticator, CCNQueryType type,
 			CCNQueryListener listener, long TTL) throws IOException {

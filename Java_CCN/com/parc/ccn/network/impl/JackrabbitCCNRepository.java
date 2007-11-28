@@ -316,12 +316,26 @@ public class JackrabbitCCNRepository extends CCNRepository {
 	 * @throws RepositoryException
 	 */
 	protected Node addLeafNode(Node parent, byte [] name, ContentAuthenticator authenticator, byte[] content) throws RepositoryException {
-		// TODO: DKS -- should we check out parent?
-		Node n = addSubNode(parent, name);
-		
 		// TODO DKS: should refuse to insert exact dupes by complete
 		// name. As long as sign timestamp, that shouldn't 
 		// happen, but make sure.
+		String componentName = nameComponentToString(name);		
+		NodeIterator matchingChildren = parent.getNodes(componentName);
+		if ((null != matchingChildren) && (matchingChildren.getSize() > 0)) {
+			// We have nodes with the same name. 
+			// If the signatures match, this data is identical
+			// and we just return that node.
+			
+			// if the signatures don't match, but the content digest
+			// and publisher ID do match, it could be an attempt
+			// to update content -- timestamp is different.
+			// if those are the same, and all other metadata
+			// is the same, count it as updated and just
+			// update timestamp and signature
+		}
+		
+		// TODO: DKS -- should we check out parent?
+		Node n = addSubNode(parent, name);
 		
 		// TODO DKS: do we want to avoid dupes by appending
 		// signature, content hash, or publisher ID to name
@@ -330,6 +344,10 @@ public class JackrabbitCCNRepository extends CCNRepository {
 		// but would keep us from having to search all the 
 		// nodes to make sure there wasn't a duplicate before
 		// insertion.
+		// Only thing that would work would be signature, and
+		// that wouldn't get reinsertions of same content
+		// (timestamp changes).  Adding content digest would
+		// help.
 		n.checkout();
 		
 		addContent(n, content);
@@ -453,9 +471,7 @@ public class JackrabbitCCNRepository extends CCNRepository {
 		ArrayList<ContentObject> objects = new ArrayList<ContentObject>();
 
 		try {
-			// TODO: DKS: make Xpath match full query including whatever
-			// authentication info is specified by querier
-			String queryString = "/jcr:root" + nameToPath(query.name());
+			String queryString = getQueryString(query);
 
 			Query q = null;
 			try {
@@ -486,6 +502,13 @@ public class JackrabbitCCNRepository extends CCNRepository {
 				unsubscribe(l);
 			}
 		}
+	}
+	
+	protected String getQueryString(CCNQueryDescriptor query) {
+		// TODO: DKS: make Xpath match full query including whatever
+		// authentication info is specified by querier
+		String queryString = "/jcr:root" + nameToPath(query.name());
+		return queryString;
 	}
 	
 	private void startListening(JackrabbitEventListener el) throws IOException {
