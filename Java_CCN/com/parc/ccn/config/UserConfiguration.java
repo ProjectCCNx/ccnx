@@ -20,6 +20,7 @@ public class UserConfiguration {
 
 	protected static final String DEFAULT_CCN_NAMESPACE_STRING = "/parc.com";
 	protected static final String DEFAULT_USER_NAMESPACE_AREA = DEFAULT_CCN_NAMESPACE_STRING + "/home";
+	protected static final String DEFAULT_USER_KEY_NAME = "Key";
 	protected static ContentName DEFAULT_CCN_NAMESPACE;
 	protected static ContentName DEFAULT_USER_NAMESPACE;
 	
@@ -65,7 +66,16 @@ public class UserConfiguration {
 	
 	public static String addressBookFileName() { 
 		return CCN_DIR + FILE_SEP + ADDRESSBOOK_FILE_NAME; }
+	
+	public static String defaultKeyAlgorithm() { return DEFAULT_KEY_ALG; }
+	
+	public static String defaultKeyAlias() { return DEFAULT_KEY_ALIAS; }
+	
+	public static int defaultKeyLength() { return DEFAULT_KEY_LENGTH; }
 
+	public static String userName() { return USER_NAME; }
+	
+	public static String defaultKeyName() { return DEFAULT_USER_KEY_NAME; }
 	public static ContentName defaultNamespace() { return DEFAULT_CCN_NAMESPACE; }
 	public static ContentName defaultUserNamespace() { return DEFAULT_USER_NAMESPACE; }
 }

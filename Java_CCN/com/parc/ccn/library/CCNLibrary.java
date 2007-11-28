@@ -1,5 +1,6 @@
 package com.parc.ccn.library;
 
+import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
@@ -32,7 +33,7 @@ import com.parc.ccn.data.security.PublisherID;
  */
 public interface CCNLibrary extends CCNBase {
 
-	public void put(ContentName name, byte [] contents) throws SignatureException;
+	public CompleteName put(ContentName name, byte [] contents) throws SignatureException, IOException;
 
 	/**
 	 * Publish a piece of content under a particular identity.
@@ -40,50 +41,51 @@ public interface CCNLibrary extends CCNBase {
 	 * @param contents
 	 * @param publisher selects one of our identities to publish under
 	 * @throws SignatureException 
+	 * @throws IOException 
 	 */
-	public void put(ContentName name, byte [] contents, PublisherID publisher) throws SignatureException;
+	public CompleteName put(ContentName name, byte [] contents, PublisherID publisher) throws SignatureException, IOException;
 	
 	// internal functions about fragmentation - may be exposed, or in std impl
 	
-	public void newVersion(ContentName name, byte [] contents) throws SignatureException;
-	public void newVersion(ContentName name, int version, byte [] contents) throws SignatureException;
-	public void newVersion(ContentName name, byte [] contents, PublisherID publisher) throws SignatureException;
-	public void newVersion(ContentName name, int version, byte [] contents, PublisherID publisher) throws SignatureException;
-	public void newVersion(ContentName name, int version, byte [] contents,
+	public CompleteName newVersion(ContentName name, byte [] contents) throws SignatureException, IOException;
+	public CompleteName newVersion(ContentName name, int version, byte [] contents) throws SignatureException, IOException;
+	public CompleteName newVersion(ContentName name, byte [] contents, PublisherID publisher) throws SignatureException, IOException;
+	public CompleteName newVersion(ContentName name, int version, byte [] contents, PublisherID publisher) throws SignatureException, IOException;
+	public CompleteName newVersion(ContentName name, int version, byte [] contents,
 			PublisherID publisher, KeyLocator locator,
-			PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException;
+			PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, IOException;
 	public int getLatestVersion(ContentName name, PublisherID publisher);
 	public int getVersion(ContentName name);
 	
 	// TODO islink
 	// TODO getlink ( no deref)
-	public void link(ContentName src, ContentName dest) throws SignatureException;
-	public void link(ContentName src, ContentName dest, ContentAuthenticator destAuthenticator) throws SignatureException;
-	public void link(ContentName src, ContentName dest, PublisherID publisher) throws SignatureException;
-	public void link(ContentName src, ContentName dest, ContentAuthenticator destAuthenticator, PublisherID publisher) throws SignatureException;
-	public void link(ContentName src, ContentName dest,
+	public CompleteName link(ContentName src, ContentName dest) throws SignatureException, IOException;
+	public CompleteName link(ContentName src, ContentName dest, ContentAuthenticator destAuthenticator) throws SignatureException, IOException;
+	public CompleteName link(ContentName src, ContentName dest, PublisherID publisher) throws SignatureException, IOException;
+	public CompleteName link(ContentName src, ContentName dest, ContentAuthenticator destAuthenticator, PublisherID publisher) throws SignatureException, IOException;
+	public CompleteName link(ContentName src, ContentName dest,
 			ContentAuthenticator destAuthenticator, 
 			PublisherID publisher, KeyLocator locator,
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException;
+			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException;
 	
-	public void addCollection(ContentName name, ContentName [] contents) throws SignatureException;
-	public void addCollection(ContentName name, CompleteName [] contents) throws SignatureException;
-	public void addCollection(ContentName name, ContentName [] contents, PublisherID publisher) throws SignatureException;
-	public void addCollection(ContentName name, CompleteName [] contents, PublisherID publisher) throws SignatureException;
-	public void addCollection(ContentName name, 
+	public CompleteName addCollection(ContentName name, ContentName [] contents) throws SignatureException, IOException;
+	public CompleteName addCollection(ContentName name, CompleteName [] contents) throws SignatureException, IOException;
+	public CompleteName addCollection(ContentName name, ContentName [] contents, PublisherID publisher) throws SignatureException, IOException;
+	public CompleteName addCollection(ContentName name, CompleteName [] contents, PublisherID publisher) throws SignatureException, IOException;
+	public CompleteName addCollection(ContentName name, 
 			ContentName[] contents,
 			PublisherID publisher, KeyLocator locator,
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException;
-	public void addCollection(ContentName name, 
+			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException;
+	public CompleteName addCollection(ContentName name, 
 			CompleteName[] contents,
 			PublisherID publisher, KeyLocator locator,
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException;
+			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException;
 	
 	/**
 	 * Use the same publisherID that we used originally.
 	 */
-	public void addToCollection(ContentName name, ContentName [] additionalContents);
-	public void addToCollection(ContentName name, CompleteName [] additionalContents);
-	public void removeFromCollection(ContentName name, ContentName [] additionalContents);
-	public void removeFromCollection(ContentName name, CompleteName [] additionalContents);
+	public CompleteName addToCollection(ContentName name, ContentName [] additionalContents);
+	public CompleteName addToCollection(ContentName name, CompleteName [] additionalContents);
+	public CompleteName removeFromCollection(ContentName name, ContentName [] additionalContents);
+	public CompleteName removeFromCollection(ContentName name, CompleteName [] additionalContents);
 }

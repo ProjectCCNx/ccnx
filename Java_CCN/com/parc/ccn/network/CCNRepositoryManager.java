@@ -7,6 +7,7 @@ import javax.jmdns.ServiceInfo;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.CCNBase;
+import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
@@ -131,8 +132,8 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNBase, C
 	/**
 	 * Puts we put only to our local repository. 
 	 */
-	public void put(ContentName name, ContentAuthenticator authenticator, byte[] content) throws IOException {
-		_primaryRepository.put(name, authenticator, content);
+	public CompleteName put(ContentName name, ContentAuthenticator authenticator, byte[] content) throws IOException {
+		return _primaryRepository.put(name, authenticator, content);
 	}
 
 	/**

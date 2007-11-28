@@ -10,7 +10,7 @@ import com.parc.ccn.data.security.ContentAuthenticator;
 
 public interface CCNBase {
 	
-	public void put(ContentName name,
+	public CompleteName put(ContentName name,
 					ContentAuthenticator authenticator,
 					byte [] content) throws IOException;
 	

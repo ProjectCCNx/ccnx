@@ -10,6 +10,7 @@ import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
@@ -51,6 +52,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 				try {
 				_components[i-1] = URLDecoder.decode(parts[i], "UTF-8").getBytes();
 				} catch (UnsupportedEncodingException e) {
+					Library.logger().severe("UTF-8 not supported.");
 					throw new RuntimeException("UTF-8 not supported", e);
 				}
 			}
@@ -63,11 +65,32 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 		} else {
 			_components = new byte[parts.length][];
 			for (int i=0; i < _components.length; ++i) {
-				_components[i] = parts[i].getBytes();
+				try {
+					_components[i] = URLDecoder.decode(parts[i], "UTF-8").getBytes();
+				} catch (UnsupportedEncodingException e) {
+					Library.logger().severe("UTF-8 not supported.");
+					throw new RuntimeException("UTF-8 not supported", e);
+				}
 			}
 		}
 	}
-	
+
+	public ContentName(ContentName parent, String name) {
+		this(parent.count() + 
+				((null != name) ? 1 : 0), parent.components());
+		if (null != name) {
+			byte[] decodedName;
+			try {
+				decodedName = URLDecoder.decode(name, "UTF-8").getBytes();
+			} catch (UnsupportedEncodingException e) {
+				Library.logger().severe("UTF-8 not supported.");
+				throw new RuntimeException("UTF-8 not supported", e);
+			}
+			_components[parent.count()] = new byte[decodedName.length];
+			System.arraycopy(_components[parent.count()],0,decodedName,0,decodedName.length);
+		}
+	}
+
 	public ContentName(ContentName parent, byte[] name) {
 		this(parent.count() + 
 				((null != name) ? 1 : 0), parent.components());

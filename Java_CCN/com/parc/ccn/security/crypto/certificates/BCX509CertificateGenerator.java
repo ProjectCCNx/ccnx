@@ -115,6 +115,8 @@ public class BCX509CertificateGenerator extends GenericX509CertificateGenerator 
 	protected static SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyMMddHHmmss");
 	protected static SimpleTimeZone TZ = new SimpleTimeZone(0, "Z");
 
+	public static long MSEC_IN_YEAR = 1000 * 60 * 60 * 24 * 365;
+	
 	static {
 		DATE_FORMAT.setTimeZone(TZ);
 	}

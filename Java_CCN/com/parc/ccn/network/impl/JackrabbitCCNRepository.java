@@ -43,6 +43,7 @@ import org.apache.jackrabbit.rmi.remote.RemoteRepository;
 import org.apache.jackrabbit.rmi.server.ServerAdapterFactory;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
@@ -175,7 +176,7 @@ public class JackrabbitCCNRepository extends CCNRepository {
 		return new JackrabbitCCNRepository();
 	}
 		
-	public void put(ContentName name, ContentAuthenticator authenticator, byte[] content) throws IOException {
+	public CompleteName put(ContentName name, ContentAuthenticator authenticator, byte[] content) throws IOException {
 
 		if (null == name) {
 			Library.logger().warning("CCN:put: name cannot be null.");
@@ -225,11 +226,12 @@ public class JackrabbitCCNRepository extends CCNRepository {
 			n = addLeafNode(n, name.component(i), authenticator, content);
 			
 			Library.logger().info("Adding node: " + n.getCorrespondingNodePath(_session.getWorkspace().getName()));
-			return;
 
 		} catch (RepositoryException e) {
 			throw new IOException(e.getMessage());
 		}
+		
+		return new CompleteName(name, authenticator);
 	}
 
 	/**

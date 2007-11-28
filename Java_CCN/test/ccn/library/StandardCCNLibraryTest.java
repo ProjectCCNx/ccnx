@@ -3,11 +3,16 @@
  */
 package test.ccn.library;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.SignatureException;
 
+import junit.framework.Assert;
+
 import org.junit.Test;
 
+import com.parc.ccn.config.ConfigurationException;
+import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.security.PublisherID;
@@ -23,7 +28,14 @@ public class StandardCCNLibraryTest {
 	
 	@Test
 	public void testPut() {
-		StandardCCNLibrary library = new StandardCCNLibrary();
+		StandardCCNLibrary library = null;
+		try {
+			library = new StandardCCNLibrary();
+		} catch (ConfigurationException e1) {
+			e1.printStackTrace();
+		}
+		Assert.assertNotNull(library);
+		
 		ContentName name = null;
 		byte[] content = null;
 //		ContentAuthenticator.ContentType type = ContentAuthenticator.ContentType.LEAF;
@@ -32,7 +44,7 @@ public class StandardCCNLibraryTest {
 		try {
 			content = contentString.getBytes("UTF-8");	
 		} catch (UnsupportedEncodingException e) {
-				e.printStackTrace();
+			e.printStackTrace();
 		}
 		
 		try {
@@ -42,9 +54,10 @@ public class StandardCCNLibraryTest {
 			e.printStackTrace();
 		}
 		try {
-			library.put(name, content, publisher);
+			CompleteName result = library.put(name, content, publisher);
 		} catch (SignatureException e) {
-			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}

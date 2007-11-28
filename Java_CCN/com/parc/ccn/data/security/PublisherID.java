@@ -15,6 +15,7 @@ import com.parc.ccn.Library;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
+import com.parc.ccn.security.crypto.Digest;
 import com.parc.ccn.security.crypto.certificates.GenericX509CertificateGenerator;
 
 /**
@@ -56,7 +57,7 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable {
     
     public PublisherID(X509Certificate cert, boolean isIssuer) throws CertificateEncodingException {
     	_publisherID = generateCertificateID(cert);
-    	_publisherType = isIssuer ? PublisherType.ISSUER_CERTIFICATE : PublisherType.ISSUER_KEY;
+    	_publisherType = isIssuer ? PublisherType.ISSUER_CERTIFICATE : PublisherType.CERTIFICATE;
     }
 	
 	public PublisherID(byte [] publisherID, PublisherType publisherType) {
@@ -166,10 +167,7 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable {
         byte [] id = null;
         try {
             byte [] encoding = cert.getEncoded();
-            id = GenericX509CertificateGenerator.Digest(digestAlg, encoding);
-        } catch (java.security.NoSuchAlgorithmException ex) {
-            // DKS --big configuration problem
-            throw new RuntimeException("Error: can't find " + digestAlg + "!  " + ex.toString());
+            id = Digest.hash(digestAlg, encoding);
         } catch (CertificateEncodingException e) {
 			Library.logger().warning("Cannot encode certificate in PublisherID.generateCertificateID: " + e.getMessage());
 			Library.warningStackTrace(e);

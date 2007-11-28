@@ -11,6 +11,10 @@ public class ConfigurationException extends Exception {
 	public ConfigurationException(Exception e) {
 		super(e);
 	}
+	
+	public ConfigurationException(String message, Exception e) {
+		super(message, e);
+	}
 
 	public ConfigurationException() {
 		super();

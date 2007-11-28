@@ -5,6 +5,7 @@ import java.util.ArrayList;
 
 import javax.jmdns.ServiceInfo;
 
+import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
@@ -104,10 +105,10 @@ public class NetworkCCNRepository extends CCNRepository {
 		return null;
 	}
 
-	public void put(ContentName name, ContentAuthenticator authenticator,
+	public CompleteName put(ContentName name, ContentAuthenticator authenticator,
 			byte[] content) throws IOException {
 		// TODO Auto-generated method stub
-
+		return null;
 	}
 
 

@@ -3,6 +3,7 @@ package com.parc.ccn.security.keys;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 
+import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
 
@@ -36,7 +37,7 @@ public abstract class KeyManager {
 	public abstract PublicKey getPublicKey(String alias);
 	public abstract PublicKey getPublicKey(PublisherID publisher);
 
-	public static KeyManager getDefaultKeyManager() {
+	public static KeyManager getDefaultKeyManager() throws ConfigurationException {
 		return new BasicKeyManager();
 	}
 }
