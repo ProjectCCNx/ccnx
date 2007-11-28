@@ -33,9 +33,14 @@ public class MerkleTree {
 		else
 			_pathLength = 2;
 		
-		// How many entries do we need? The number of
-		// leaves plus that number minus 1.
-		_tree = new DEROctetString[2*_numLeaves - 1];
+		// How many entries do we need? 
+		// 2^(pathLength) - 1 (if even # nodes), - 2 (if odd)		
+		int nodeCount = (int)(Math.pow(2.0,_pathLength));
+		if (0 == (_numLeaves % 2)) 
+			nodeCount -= 1;
+		else
+			nodeCount -= 2;
+		_tree = new DEROctetString[nodeCount];
 		
 		// Hash the leaves
 		for (int i=0; i < numLeaves(); ++i) {
@@ -47,12 +52,14 @@ public class MerkleTree {
 		int endNode = size();
 		int nextLevelStart = parent(firstNode);
 		int nextLevelEnd = firstNode - 1;
-		int parent;
 		
-		while (firstNode > 0) {
-			for (int i = firstNode; i < endNode; i += 2) {
-				parent = parent(firstNode);
-				_tree[parent] = new DEROctetString(Digest.hash(_tree[i].getOctets(), _tree[i+1].getOctets()));
+		while (parent(firstNode) > 0) {
+			for (int i = parent(firstNode); i < parent(endNode); ++i) {
+				if (rightChild(i) < endNode)
+					_tree[i] = new DEROctetString(Digest.hash(get(leftChild(i)), get(rightChild(i))));
+				else
+					// last leaf
+					_tree[i] = new DEROctetString(Digest.hash(get(leftChild(i))));
 			}
 			firstNode = nextLevelStart;
 			endNode = nextLevelEnd;
@@ -73,7 +80,19 @@ public class MerkleTree {
 	}
 	
 	public int leftChild(int i) { return 2*i + 1; }
+	/**
+	 * Will return size() if no right child.
+	 * @param i
+	 * @return
+	 */
 	public int rightChild(int i) { return 2*i + 2; }
+	
+	/**
+	 * Will return size() if requested to return sibling
+	 * of last node of an odd-sized tree.
+	 * @param i
+	 * @return
+	 */
 	public int sibling(int i) {
 		if (0 == (i % 2))
 			return i+1;
