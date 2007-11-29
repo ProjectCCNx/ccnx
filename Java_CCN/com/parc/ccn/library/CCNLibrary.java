@@ -47,35 +47,36 @@ public interface CCNLibrary extends CCNBase {
 	
 	// internal functions about fragmentation - may be exposed, or in std impl
 	
-	public CompleteName newVersion(ContentName name, byte [] contents) throws SignatureException, IOException;
 	public CompleteName newVersion(ContentName name, int version, byte [] contents) throws SignatureException, IOException;
-	public CompleteName newVersion(ContentName name, byte [] contents, PublisherID publisher) throws SignatureException, IOException;
 	public CompleteName newVersion(ContentName name, int version, byte [] contents, PublisherID publisher) throws SignatureException, IOException;
 	public CompleteName newVersion(ContentName name, int version, byte [] contents,
 			PublisherID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, IOException;
+	
+	/**
+	 * Get the latest version published by this publisher.
+	 */
 	public int getLatestVersion(ContentName name, PublisherID publisher);
+	/**
+	 * Get the latest version published by anybody.
+	 * @param name
+	 * @return
+	 */
+	public int getLatestVersion(ContentName name);
+
 	public int getVersion(ContentName name);
 	
 	// TODO islink
 	// TODO getlink ( no deref)
-	public CompleteName link(ContentName src, ContentName dest) throws SignatureException, IOException;
 	public CompleteName link(ContentName src, ContentName dest, ContentAuthenticator destAuthenticator) throws SignatureException, IOException;
-	public CompleteName link(ContentName src, ContentName dest, PublisherID publisher) throws SignatureException, IOException;
 	public CompleteName link(ContentName src, ContentName dest, ContentAuthenticator destAuthenticator, PublisherID publisher) throws SignatureException, IOException;
 	public CompleteName link(ContentName src, ContentName dest,
 			ContentAuthenticator destAuthenticator, 
 			PublisherID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException;
 	
-	public CompleteName addCollection(ContentName name, ContentName [] contents) throws SignatureException, IOException;
 	public CompleteName addCollection(ContentName name, CompleteName [] contents) throws SignatureException, IOException;
-	public CompleteName addCollection(ContentName name, ContentName [] contents, PublisherID publisher) throws SignatureException, IOException;
 	public CompleteName addCollection(ContentName name, CompleteName [] contents, PublisherID publisher) throws SignatureException, IOException;
-	public CompleteName addCollection(ContentName name, 
-			ContentName[] contents,
-			PublisherID publisher, KeyLocator locator,
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException;
 	public CompleteName addCollection(ContentName name, 
 			CompleteName[] contents,
 			PublisherID publisher, KeyLocator locator,
@@ -84,8 +85,6 @@ public interface CCNLibrary extends CCNBase {
 	/**
 	 * Use the same publisherID that we used originally.
 	 */
-	public CompleteName addToCollection(ContentName name, ContentName [] additionalContents);
 	public CompleteName addToCollection(ContentName name, CompleteName [] additionalContents);
-	public CompleteName removeFromCollection(ContentName name, ContentName [] additionalContents);
 	public CompleteName removeFromCollection(ContentName name, CompleteName [] additionalContents);
 }

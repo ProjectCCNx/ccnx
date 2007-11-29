@@ -11,8 +11,8 @@ import com.parc.ccn.data.security.ContentAuthenticator;
 public interface CCNBase {
 	
 	public CompleteName put(ContentName name,
-					ContentAuthenticator authenticator,
-					byte [] content) throws IOException;
+						    ContentAuthenticator authenticator,
+						    byte [] content) throws IOException;
 	
 	public CCNQueryDescriptor get(ContentName name,
 				    			  ContentAuthenticator authenticator,
@@ -23,9 +23,6 @@ public interface CCNBase {
 	public ArrayList<ContentObject> get(ContentName name,
 										ContentAuthenticator authenticator,
 										CCNQueryType type) throws IOException;
-	
-	public ArrayList<ContentObject> get(ContentName name,
-			ContentAuthenticator authenticator) throws IOException;
 	
 	public void cancel(CCNQueryDescriptor query) throws IOException;
 
