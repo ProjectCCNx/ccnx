@@ -7,29 +7,29 @@ package com.parc.ccn.network.rpc;
 import org.acplt.oncrpc.*;
 import java.io.IOException;
 
-public class NameList implements XdrAble {
-    public int count;
-    public Name [] names;
+public class DataBlock implements XdrAble {
+    public int length;
+    public byte [] data;
 
-    public NameList() {
+    public DataBlock() {
     }
 
-    public NameList(XdrDecodingStream xdr)
+    public DataBlock(XdrDecodingStream xdr)
            throws OncRpcException, IOException {
         xdrDecode(xdr);
     }
 
     public void xdrEncode(XdrEncodingStream xdr)
            throws OncRpcException, IOException {
-        xdr.xdrEncodeInt(count);
-        { int $size = names.length; xdr.xdrEncodeInt($size); for ( int $idx = 0; $idx < $size; ++$idx ) { names[$idx].xdrEncode(xdr); } }
+        xdr.xdrEncodeInt(length);
+        xdr.xdrEncodeByteVector(data);
     }
 
     public void xdrDecode(XdrDecodingStream xdr)
            throws OncRpcException, IOException {
-        count = xdr.xdrDecodeInt();
-        { int $size = xdr.xdrDecodeInt(); names = new Name[$size]; for ( int $idx = 0; $idx < $size; ++$idx ) { names[$idx] = new Name(xdr); } }
+        length = xdr.xdrDecodeInt();
+        data = xdr.xdrDecodeByteVector();
     }
 
 }
-// End of NameList.java
+// End of DataBlock.java
