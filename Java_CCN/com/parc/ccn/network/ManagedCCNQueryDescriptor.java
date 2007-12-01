@@ -3,10 +3,9 @@ package com.parc.ccn.network;
 import java.util.ArrayList;
 import java.util.Random;
 
-import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.data.query.CCNQueryListener;
-import com.parc.ccn.data.security.ContentAuthenticator;
 
 /**
  * Amalgamates a lot of query descriptors describing
@@ -31,21 +30,19 @@ public class ManagedCCNQueryDescriptor extends CCNQueryDescriptor {
 	protected ArrayList<Object> _queryIdentifiers = new ArrayList<Object>();
 	protected CCNQueryListener _listener = null;
 	
-	public ManagedCCNQueryDescriptor(ContentName name,
-			  ContentAuthenticator authenticator,
-			  CCNQueryListener.CCNQueryType type,
-			  long TTL,
-			  CCNQueryListener listener) {
-		super(name, authenticator, type, TTL, newIdentifier());
+	public ManagedCCNQueryDescriptor(
+			CompleteName name,
+			long TTL,
+			CCNQueryListener listener) {
+		super(name, TTL, newIdentifier());
 		_listener = listener;
 	}
 
-	public ManagedCCNQueryDescriptor(ContentName name,
-			  ContentAuthenticator authenticator,
-			  CCNQueryListener.CCNQueryType type,
+	public ManagedCCNQueryDescriptor(
+			  CompleteName name,
 			  long TTL, Object initialIdentifier,
 			  CCNQueryListener listener) {
-		super(name, authenticator, type, TTL, newIdentifier());
+		super(name, TTL, newIdentifier());
 		if (null != initialIdentifier)
 			_queryIdentifiers.add(initialIdentifier);
 		_listener = listener;
