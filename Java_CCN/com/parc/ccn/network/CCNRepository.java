@@ -9,13 +9,11 @@ import java.util.logging.Level;
 
 import javax.jmdns.ServiceInfo;
 
+import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
-import com.parc.ccn.data.CCNBase;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
-import com.parc.ccn.data.query.CCNQueryListener;
-import com.parc.ccn.data.query.CCNQueryListener.CCNQueryType;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.network.discovery.CCNDiscovery;
 
@@ -56,22 +54,14 @@ public abstract class CCNRepository implements CCNBase {
 	
 	public ServiceInfo info() { return _info; }
 	
-	public abstract void subscribe(CCNQueryListener l) throws IOException;
-	public abstract void resubscribeAll() throws IOException;
-	
 	/**
 	 * Get immediate results to a query.
 	 * DKS: caution required to make sure that the idea of
 	 * what matches here is the same as the one in coresponding version in 
 	 * CCNQueryDescriptor. 
 	 */
-	public abstract ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator,
-													CCNQueryType type) throws IOException;
+	public abstract ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator) throws IOException;
 	public abstract ArrayList<ContentObject> get(CCNQueryDescriptor query) throws IOException;
-
-	public ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator) throws IOException {
-		return get(name, authenticator, CCNQueryType.EXACT_MATCH);
-	}
 	
 	public abstract void login() throws IOException;
 	public abstract void login(String username, String password) throws IOException;

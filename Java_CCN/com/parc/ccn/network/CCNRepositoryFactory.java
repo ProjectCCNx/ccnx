@@ -39,7 +39,7 @@ public class CCNRepositoryFactory {
 			throw new MalformedURLException("Malformed URL in service discovery response: " + url);
 		}
 		
-		Class repoClass = _serviceNameToRespositoryClass.get(nameSplit[1]);
+		Class<?> repoClass = _serviceNameToRespositoryClass.get(nameSplit[1]);
 		if (_repositoryClassToServiceType.get(repoClass).equals(info.getType())) {
 			Library.logger().info("Can't find class that matches both service name " + nameSplit[1] + 
 								   " and service type " + info.getType() +
@@ -51,7 +51,7 @@ public class CCNRepositoryFactory {
 		}
 		
 		// Have the class. Now need to use the serviceInfo constructor.
-		Class argumentTypes[] = new Class[]{ServiceInfo.class};
+		Class<?> argumentTypes[] = new Class[]{ServiceInfo.class};
 		Constructor ctr = null;
 		try {
 			// Oy. I don't know how to parameterize this classwize

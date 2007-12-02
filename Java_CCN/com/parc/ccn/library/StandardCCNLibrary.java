@@ -21,7 +21,6 @@ import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.data.query.CCNQueryListener;
-import com.parc.ccn.data.query.CCNQueryListener.CCNQueryType;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
@@ -122,13 +121,15 @@ public class StandardCCNLibrary implements CCNLibrary {
 		}
 	}
 
-	public CompleteName addToCollection(ContentName name,
+	public CompleteName addToCollection(
+			ContentName name,
 			CompleteName[] additionalContents) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
-	public CompleteName removeFromCollection(ContentName name,
+	public CompleteName removeFromCollection(
+			ContentName name,
 			CompleteName[] additionalContents) {
 		// TODO Auto-generated method stub
 		return null;
@@ -187,8 +188,8 @@ public class StandardCCNLibrary implements CCNLibrary {
 						NoSuchAlgorithmException, IOException {
 
 		if ((null == src) || (null == dest)) {
-			Library.logger().info("link: src and dest cannot be null.");
-			throw new IllegalArgumentException("link: src and dest cannot be null.");
+			Library.logger().info("Link: src and dest cannot be null.");
+			throw new IllegalArgumentException("Link: src and dest cannot be null.");
 		}
 		
 		if (null == signingKey)
@@ -226,6 +227,16 @@ public class StandardCCNLibrary implements CCNLibrary {
 			Library.logger().info("NoSuchAlgorithmException using default key.");
 			throw new SignatureException(e);
 		}
+	}
+
+	public ContentObject getLink(CompleteName name) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public boolean isLink(CompleteName name) {
+		// TODO Auto-generated method stub
+		return false;
 	}
 
 	public CompleteName newVersion(ContentName name, int version, byte [] contents,
@@ -276,6 +287,9 @@ public class StandardCCNLibrary implements CCNLibrary {
 		return 1;
 	}
 
+	/**
+	 * Extract the version information from this name.
+	 */
 	public int getVersion(ContentName name) {
 		// TODO Auto-generated method stub
 		return 1;		
@@ -310,12 +324,10 @@ public class StandardCCNLibrary implements CCNLibrary {
 
 	/**
 	 * If small enough, doesn't fragment. Otherwise, does.
-	 * TODO: change puts to return ContentAuthenticator
-	 * or CompleteName of the thing they put (in the case
+	 * Return CompleteName of the thing they put (in the case
 	 * of a fragmented thing, the header). That way the
 	 * caller can then also easily link to that thing if
 	 * it needs to, or put again with a different name.
-	 * @throws IOException 
 	 * @throws IOException 
 	 **/
 	public CompleteName put(ContentName name, byte [] contents,
@@ -341,7 +353,6 @@ public class StandardCCNLibrary implements CCNLibrary {
 			} catch (IOException e) {
 				Library.logger().warning("This should not happen: put failed with an IOExceptoin.");
 				Library.warningStackTrace(e);
-				// TODO throw something sensible
 				throw e;
 			}
 		}
@@ -358,11 +369,12 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * @throws InvalidKeyException
 	 * @throws SignatureException
 	 * @throws NoSuchAlgorithmException
+	 * @throws IOException 
 	 */
 	protected CompleteName fragmentedPut(ContentName name, byte [] contents,
 			ContentAuthenticator.ContentType type,
 			PublisherID publisher, KeyLocator locator,
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
+			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 		// will call into CCNBase after picking appropriate credentials
 		// take content, blocksize (static), divide content into array of 
 		// content blocks, call hash fn for each block, call fn to build merkle
@@ -395,7 +407,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 			} catch (IOException e) {
 				Library.logger().warning("This should not happen: we cannot put our own blocks!");
 				Library.warningStackTrace(e);
-				// TODO throw something sensible
+				throw e;
 			}
 		}
 		// construct the headerBlockContents;
@@ -406,7 +418,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 		} catch (XMLStreamException e) {
 			Library.logger().warning("This should not happen: we cannot encode our own header!");
 			Library.warningStackTrace(e);
-			// TODO throw something sensible
+			throw new IOException(e);
 		}
 
 		ContentAuthenticator headerBlockAuthenticator =
@@ -416,6 +428,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 		} catch (IOException e) {
 			Library.logger().warning("This should not happen: we cannot put our own header!");
 			Library.warningStackTrace(e);
+			throw e;
 		}
 		return new CompleteName(name, headerBlockAuthenticator);
 	}
@@ -423,37 +436,36 @@ public class StandardCCNLibrary implements CCNLibrary {
 	public ContentName blockName(ContentName name, int i) {
 		return new ContentName(name, BLOCK_MARKER.getBytes(),(i + "").getBytes());
 	}
-
+	
+	/**
+	 * Implementation of CCNBase. Pass on to repository
+	 * manager.
+	 */
 
 	/**
 	 * Implementation of CCNBase.put.
 	 */
 	public CompleteName put(ContentName name, ContentAuthenticator authenticator,
 			byte[] content) throws IOException {
-		return CCNRepositoryManager.getCCNRepositoryManager().put(name, authenticator, content);
-	}
-
-	public void cancel(CCNQueryDescriptor query) throws IOException {
-		CCNRepositoryManager.getCCNRepositoryManager().cancel(query);
+		return CCNRepositoryManager.getRepositoryManager().put(name, authenticator, content);
 	}
 
 	/**
 	 * Have to handle un-fragmenting fragmented content.
 	 */
-	public CCNQueryDescriptor get(ContentName name,
-			ContentAuthenticator authenticator, CCNQueryType type,
-			CCNQueryListener listener, long TTL) throws IOException {
-		return CCNRepositoryManager.getCCNRepositoryManager().get(name, authenticator, type, listener, TTL);
-	}
-
-	public ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator, CCNQueryType type) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
 	public ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
+		// TODO: defragment, deref links
+		return CCNRepositoryManager.getRepositoryManager().get(name, authenticator);
+	}
+
+	public CCNQueryDescriptor expressInterest(ContentName name,
+			ContentAuthenticator authenticator,
+			CCNQueryListener listener, long TTL) throws IOException {
+		return CCNRepositoryManager.getRepositoryManager().expressInterest(name, authenticator, listener, TTL);
+	}
+
+	public void cancelInterest(CCNQueryDescriptor query) throws IOException {
+		CCNRepositoryManager.getRepositoryManager().cancelInterest(query);
 	}
 
 }

@@ -6,9 +6,10 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.SignatureException;
 
-import com.parc.ccn.data.CCNBase;
+import com.parc.ccn.CCNBase;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
@@ -45,6 +46,15 @@ public interface CCNLibrary extends CCNBase {
 	 */
 	public CompleteName put(ContentName name, byte [] contents, PublisherID publisher) throws SignatureException, IOException;
 	
+	public CompleteName put(ContentName name, byte[] contents, 
+			ContentAuthenticator.ContentType type,
+			PublisherID publisher) throws SignatureException, IOException;
+
+	public CompleteName put(ContentName name, byte [] contents,
+			ContentAuthenticator.ContentType type,
+			PublisherID publisher, KeyLocator locator,
+			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException;
+	
 	// internal functions about fragmentation - may be exposed, or in std impl
 	
 	public CompleteName newVersion(ContentName name, int version, byte [] contents) throws SignatureException, IOException;
@@ -57,6 +67,7 @@ public interface CCNLibrary extends CCNBase {
 	 * Get the latest version published by this publisher.
 	 */
 	public int getLatestVersion(ContentName name, PublisherID publisher);
+
 	/**
 	 * Get the latest version published by anybody.
 	 * @param name
@@ -64,10 +75,34 @@ public interface CCNLibrary extends CCNBase {
 	 */
 	public int getLatestVersion(ContentName name);
 
+	/**
+	 * Return the numeric version associated with this
+	 * name.
+	 * @param name
+	 * @return version or -1 if no recognizable version information.
+	 */
 	public int getVersion(ContentName name);
 	
-	// TODO islink
-	// TODO getlink ( no deref)
+	/**
+	 * Does this specific name point to a link?
+	 * Looks at local (cached) data only. 
+	 * If more than one piece of content matches
+	 * this CompleteName, returns false.
+	 * @param name
+	 * @return true if its a link, false if not. 
+	 */
+	public boolean isLink(CompleteName name);
+	
+	/**
+	 * Return the link itself, not the content
+	 * pointed to by a link. 
+	 * @param name the identifier for the link to work on
+	 * @return returns null if not a link, or name refers to more than one object
+	 * @throws SignatureException
+	 * @throws IOException
+	 */
+	public ContentObject getLink(CompleteName name);
+	
 	public CompleteName link(ContentName src, ContentName dest, ContentAuthenticator destAuthenticator) throws SignatureException, IOException;
 	public CompleteName link(ContentName src, ContentName dest, ContentAuthenticator destAuthenticator, PublisherID publisher) throws SignatureException, IOException;
 	public CompleteName link(ContentName src, ContentName dest,

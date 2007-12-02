@@ -591,14 +591,14 @@ public class OIDLookup {
 	/**
 	 * Map accessors that handle synchronization
 	 **/
-	public static boolean mapContainsKey(Map map, Object key) {
+	public static boolean mapContainsKey(Map<?,?> map, Object key) {
 		
 		synchronized(map) {
 			return map.containsKey(key);
 		}
 	}
 
-	public static Object mapGet(Map map, Object key) {
+	public static Object mapGet(Map<?,?> map, Object key) {
 		synchronized(map) {
 			return map.get(key);
 		}

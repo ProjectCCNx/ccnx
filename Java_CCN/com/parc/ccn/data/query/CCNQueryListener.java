@@ -2,28 +2,46 @@ package com.parc.ccn.data.query;
 
 import java.util.ArrayList;
 
+import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentObject;
 
 public interface CCNQueryListener {
 	
-	public enum CCNQueryType {EXACT_MATCH};
-
 	/**
 	 * Callback called when we get new results for our query.
 	 * @param results
 	 * @return
 	 */
-    public int handleResults(ArrayList<ContentObject> results);
+    public int handleResults(CCNQueryDescriptor query, ArrayList<ContentObject> results);
     
-    public void setQuery(CCNQueryDescriptor query);
-
     /**
+     * Notification that our query has been cancelled.
+     * @param query
+     */
+    public void queryCancelled(CCNQueryDescriptor query);
+    
+    /**
+     * Notification that our query has timed out.
+     * @param query
+     */
+    public void queryTimedOut(CCNQueryDescriptor query);
+
+     /**
      * Returns the queries we are listening for.
      */
-    public CCNQueryDescriptor getQuery();
+    public CCNQueryDescriptor [] getQueries();
     
-    public boolean matchesQuery(ContentObject object);
+    /**
+     * Does this CompleteName match one of our queries?
+     * @param object
+     * @return
+     */
+    public boolean matchesQuery(CompleteName name);
     
-    public void cancel();
+    /**
+     * Cancel all the queries we are listening to.
+     *
+     */
+    public void cancelQueries();
     
 }

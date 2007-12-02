@@ -76,31 +76,19 @@ public class NetworkCCNRepository extends CCNRepository {
 
 	}
 
-	@Override
-	public void resubscribeAll() throws IOException {
+	public void cancelInterest(CCNQueryDescriptor query) throws IOException {
 		// TODO Auto-generated method stub
 
 	}
 
-	@Override
-	public void subscribe(CCNQueryListener l) throws IOException {
-		// TODO Auto-generated method stub
-
-	}
-
-	public void cancel(CCNQueryDescriptor query) throws IOException {
-		// TODO Auto-generated method stub
-
-	}
-
-	public CCNQueryDescriptor get(ContentName name,
-			ContentAuthenticator authenticator, CCNQueryType type,
+	public CCNQueryDescriptor expressInterest(ContentName name,
+			ContentAuthenticator authenticator, 
 			CCNQueryListener listener, long TTL) throws IOException {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
-	public ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator, CCNQueryType type) throws IOException {
+	public ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator) throws IOException {
 		// TODO Auto-generated method stub
 		return null;
 	}

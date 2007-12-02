@@ -12,6 +12,7 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 
@@ -34,6 +35,7 @@ public class BasicKeyManager extends KeyManager {
 	protected X509Certificate _certificate = null;
 	protected PrivateKey _privateKey = null;
 	protected KeyLocator _keyLocator = null;
+	private char [] _password = null;
 	
 	public BasicKeyManager() throws ConfigurationException {
 		loadKeyStore();
@@ -48,9 +50,10 @@ public class BasicKeyManager extends KeyManager {
 			KeyStore ks = null;
 		    FileInputStream in = null;
 			try {
+				_password = UserConfiguration.keystorePassword().toCharArray();
 				ks = KeyStore.getInstance(KeyStore.getDefaultType());
 				in = new FileInputStream(UserConfiguration.keystoreFileName());
-		    	ks.load(in, UserConfiguration.keystorePassword().toCharArray());
+		    	ks.load(in, _password);
 			} catch (NoSuchAlgorithmException e) {
 				Library.logger().warning("Cannot load empty default keystore.");
 				throw new ConfigurationException("Cannot load empty default keystore.");
@@ -81,7 +84,7 @@ public class BasicKeyManager extends KeyManager {
 	    _defaultAlias = UserConfiguration.defaultKeyAlias();
 		KeyStore.PrivateKeyEntry entry = null;
 		try {
-			entry = (KeyStore.PrivateKeyEntry)_keystore.getEntry(_defaultAlias, new KeyStore.PasswordProtection(UserConfiguration.keystorePassword().toCharArray()));
+			entry = (KeyStore.PrivateKeyEntry)_keystore.getEntry(_defaultAlias, new KeyStore.PasswordProtection(_password));
 		    _privateKey = entry.getPrivateKey();
 		    _certificate = (X509Certificate)entry.getCertificate();
 		    _defaultKeyID = new PublisherID(_certificate.getPublicKey(), false);
@@ -104,8 +107,9 @@ public class BasicKeyManager extends KeyManager {
 		
 		KeyStore ks = null;
 	    try {
+	    	_password = UserConfiguration.keystorePassword().toCharArray();
 			ks = KeyStore.getInstance(KeyStore.getDefaultType());
-			ks.load(null, UserConfiguration.keystorePassword().toCharArray());
+			ks.load(null, _password);
 		} catch (NoSuchAlgorithmException e) {
 			generateConfigurationException("Cannot load empty default keystore.", e);
 		} catch (CertificateException e) {
@@ -116,7 +120,7 @@ public class BasicKeyManager extends KeyManager {
 			generateConfigurationException("Cannot initialize instance of default key store type.", e);
 		}
 
-		KeyPairGenerator kpg = null;;
+		KeyPairGenerator kpg = null;
 		try {
 			kpg = KeyPairGenerator.getInstance(UserConfiguration.defaultKeyAlgorithm());
 		} catch (NoSuchAlgorithmException e) {
@@ -141,9 +145,9 @@ public class BasicKeyManager extends KeyManager {
 	    FileOutputStream out = null;
 	    try {
 		    ks.setEntry(UserConfiguration.defaultKeyAlias(), entry, 
-			        new KeyStore.PasswordProtection(UserConfiguration.keystorePassword().toCharArray()));
+			        new KeyStore.PasswordProtection(_password));
 	        out = new FileOutputStream(UserConfiguration.keystoreFileName());
-	        ks.store(out, UserConfiguration.keystorePassword().toCharArray());
+	        ks.store(out, _password);
 		} catch (NoSuchAlgorithmException e) {
 			generateConfigurationException("Cannot save default keystore.", e);
 		} catch (CertificateException e) {
@@ -189,7 +193,7 @@ public class BasicKeyManager extends KeyManager {
 		}
 		try {
 			CompleteName publishedLocation = 
-				CCNRepositoryManager.getCCNRepositoryManager().put(keyLocation, auth, encodedKey);
+				CCNRepositoryManager.getRepositoryManager().put(keyLocation, auth, encodedKey);
 			Library.logger().info("Generated user default key. Published key locator as: " + publishedLocation.name());
 		} catch (IOException e) {
 			generateConfigurationException("Cannot put key locator for default key.", e);
@@ -225,23 +229,37 @@ public class BasicKeyManager extends KeyManager {
 	}
 
 	public PublicKey getPublicKey(String alias) {
-		// TODO Auto-generated method stub
-		return null;
+		Certificate cert = null;;
+		try {
+			cert = _keystore.getCertificate(alias);
+		} catch (KeyStoreException e) {
+			Library.logger().info("No certificate for alias " + alias + " in BasicKeymManager keystore.");
+			return null;
+		}
+		return cert.getPublicKey();
 	}
 
+	public PrivateKey getSigningKey(String alias) {
+		PrivateKey key = null;;
+		try {
+			key = (PrivateKey)_keystore.getKey(alias, _password);
+		} catch (Exception e) {
+			Library.logger().info("No key for alias " + alias + " in BasicKeymManager keystore. " + 
+						e.getClass().getName() + ": " + e.getMessage());
+			return null;
+		}
+		return key;
+	}
+
+	@Override
 	public PublicKey getPublicKey(PublisherID publisher) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
-	public PrivateKey getSigningKey(String alias) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
+	@Override
 	public PrivateKey getSigningKey(PublisherID publisher) {
 		// TODO Auto-generated method stub
 		return null;
 	}
-
 }

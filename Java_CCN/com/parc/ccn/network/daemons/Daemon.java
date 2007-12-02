@@ -235,7 +235,8 @@ public class Daemon {
 
 		boolean b = false;
 		b = l.startLoop();
-		System.out.println("Started daemon " + daemonName + ".");
+		// use of b is to deflect warnings
+		System.out.println("Started daemon " + daemonName + "." + (b ? "" : ""));
 		Library.logger().info("Started daemon " + daemonName + ".");
 	}
 

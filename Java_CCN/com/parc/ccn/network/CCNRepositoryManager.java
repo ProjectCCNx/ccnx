@@ -5,14 +5,13 @@ import java.util.ArrayList;
 
 import javax.jmdns.ServiceInfo;
 
+import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
-import com.parc.ccn.data.CCNBase;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.data.query.CCNQueryListener;
-import com.parc.ccn.data.query.CCNQueryListener.CCNQueryType;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.network.discovery.CCNDiscoveryListener;
 import com.parc.ccn.network.impl.JackrabbitCCNRepository;
@@ -37,7 +36,7 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNBase, C
 	 */
 	protected ArrayList<CCNRepository> _repositories = new ArrayList<CCNRepository>();
 
-	public static CCNRepositoryManager getCCNRepositoryManager() { 
+	public static CCNRepositoryManager getRepositoryManager() { 
 		if (null != _repositoryManager) 
 			return _repositoryManager;
 		
@@ -109,10 +108,10 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNBase, C
 	 * a way of amalgamating all the identifier information
 	 * into one query descriptor.
 	 */
-	public CCNQueryDescriptor get(ContentName name, ContentAuthenticator authenticator, CCNQueryType type, CCNQueryListener listener, long TTL) throws IOException {
+	public CCNQueryDescriptor get(ContentName name, ContentAuthenticator authenticator, CCNQueryListener listener, long TTL) throws IOException {
 		// TODO DKS: Should check to see if we have this query alredy outstanding?
 		// TODO DKS: Check to see how query descriptors line up with interests
-		CCNQueryDescriptor initialDescriptor = _primaryRepository.get(name, authenticator, type, listener, TTL);
+		CCNQueryDescriptor initialDescriptor = _primaryRepository.get(name, authenticator, listener, TTL);
 		
 		ManagedCCNQueryDescriptor managedDescriptor = 
 				new ManagedCCNQueryDescriptor(initialDescriptor, listener);
@@ -121,7 +120,7 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNBase, C
 		for (CCNRepository repository : _repositories) {
 			if (!_primaryRepository.equals(repository)) {
 				CCNQueryDescriptor newDescriptor = 
-					repository.get(managedDescriptor.name(), managedDescriptor.authenticator(), managedDescriptor.type(), listener, managedDescriptor.TTL());
+					repository.expressInterest(managedDescriptor.name().name(), managedDescriptor.name().authenticator(), listener, managedDescriptor.TTL());
 				managedDescriptor.addIdentifier(newDescriptor.queryIdentifier());
 			}
 		}
@@ -157,7 +156,7 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNBase, C
 		for (ManagedCCNQueryDescriptor mqd : _outstandingQueries) {
 			CCNQueryDescriptor newDescriptor;
 			try {
-				newDescriptor = newRepository.get(mqd.name(), mqd.authenticator(), mqd.type(), mqd.listener(), mqd.TTL());
+				newDescriptor = newRepository.get(mqd.name(), mqd.authenticator(), mqd.listener(), mqd.TTL());
 				mqd.addIdentifier(newDescriptor.queryIdentifier());
 			} catch (IOException e) {
 				Library.logger().info("Cannot forward query " + mqd + " to new repository: " + newRepository.info().getURL());
