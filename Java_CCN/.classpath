@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry kind="src" path=""/>
+	<classpathentry excluding="BIN" kind="src" path=""/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="lib/bcprov-jdk16-137.jar"/>
 	<classpathentry kind="lib" path="lib/jmdns.jar"/>
@@ -38,5 +38,5 @@
 			<attribute name="javadoc_location" value="file:/C:/Documents and Settings/smetters/My Documents/work/src/remotetea/javadoc/"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="output" path=""/>
+	<classpathentry kind="output" path="bin"/>
 </classpath>
