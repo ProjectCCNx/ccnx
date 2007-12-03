@@ -48,7 +48,6 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.data.query.CCNQueryListener;
-import com.parc.ccn.data.query.CCNQueryListener.CCNQueryType;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
@@ -431,34 +430,11 @@ public class JackrabbitCCNRepository extends CCNRepository {
 															 hash, loc, signature);
 		return auth;
 	}
-	
-	/**
-	 * All queries are persistent until cancelled. Add this
-	 * to the event listener, with the first-time caveat
-	 * to get the immediate results.
-	 * @throws IOException 
-	 */
-	public CCNQueryDescriptor get(ContentName name, ContentAuthenticator authenticator, CCNQueryType type, 
-								  CCNQueryListener listener, long TTL) throws IOException {
-		CCNQueryDescriptor query = new CCNQueryDescriptor(name, authenticator, type, TTL);
-		listener.setQuery(query);
-		subscribe(listener);
-		return query;
-	}
-	
-	public ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator,
-										CCNQueryType type) throws IOException {
-		CCNQueryDescriptor queryDescriptor = 
-			new CCNQueryDescriptor(name, authenticator, type, 0);
-		return get(queryDescriptor);
-	}
-	
-	
-
+		
 	/**
 	 * Get immediate results to a query.
 	 * DKS: Caution required to make sure that the idea of
-	 * what matches here is the same as the one in coresponding version in 
+	 * what matches here is the same as the one in corresponding version in 
 	 * CCNQueryDescriptor. 
 	 * @param query
 	 * @return
@@ -466,7 +442,7 @@ public class JackrabbitCCNRepository extends CCNRepository {
 	 * @throws RepositoryException 
 	 * @throws InvalidQueryException 
 	 */
-	public ArrayList<ContentObject> get(CCNQueryDescriptor query) throws IOException {
+	public ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator) throws IOException {
 
 		ArrayList<ContentObject> objects = new ArrayList<ContentObject>();
 
@@ -504,10 +480,10 @@ public class JackrabbitCCNRepository extends CCNRepository {
 		}
 	}
 	
-	protected String getQueryString(CCNQueryDescriptor query) {
+	protected String getQueryString(CompleteName queryName) {
 		// TODO: DKS: make Xpath match full query including whatever
 		// authentication info is specified by querier
-		String queryString = "/jcr:root" + nameToPath(query.name());
+		String queryString = "/jcr:root" + nameToPath(queryName.name());
 		return queryString;
 	}
 	
@@ -551,7 +527,7 @@ public class JackrabbitCCNRepository extends CCNRepository {
 			if (null == el)
 				return;
 			o.removeEventListener(el);
-			l.cancel();
+			l.cancelQueries();
 			_eventListeners.remove(l);
 		} catch (RepositoryException e) {
 			throw new IOException(e.getMessage());
@@ -583,9 +559,9 @@ public class JackrabbitCCNRepository extends CCNRepository {
 			content = getContent(n);
 			
 		} catch (RepositoryException e) {
-			Library.logger().warning("Repository exception extracting content from node: " + n.toString());
+			Library.logger().warning("Repository exception extracting content from node: " + n.toString() + ": " + e.getMessage());
 			Library.logStackTrace(Level.WARNING, e);
-			throw new IOException(e);
+			throw new IOException("Repository exception extracting content from node: " + n.toString() + ": " + e.getMessage());
 		}
 		return new ContentObject(name, authenticator, content);
 	}
@@ -597,7 +573,7 @@ public class JackrabbitCCNRepository extends CCNRepository {
 		} catch (RepositoryException e) {
 			Library.logger().warning("Exception logging into Jackrabbit CCN repository: " + e.getMessage());
 			Library.logStackTrace(Level.WARNING, e);
-			throw new IOException(e);
+			throw new IOException("Exception logging into Jackrabbit CCN repository: " + e.getMessage());
 		}
 	}
 
@@ -613,7 +589,6 @@ public class JackrabbitCCNRepository extends CCNRepository {
 	public void disconnect() {
 		logout();
 	}
-
 	
 	public void reconnect() {
 		try {

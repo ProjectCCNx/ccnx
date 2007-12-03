@@ -73,12 +73,6 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNBase, C
 	protected CCNRepository _primaryRepository = null;
 	
 	/**
-	 * Outstanding queries. If we find a new repository, give
-	 * them the outstanding queries too.
-	 */
-	protected ArrayList<ManagedCCNQueryDescriptor> _outstandingQueries = new ArrayList<ManagedCCNQueryDescriptor>();
-	
-	/**
 	 * Default constructor to make static singleton.
 	 * Start with fixed configuration, then worry about
 	 * getting fancy...
@@ -92,43 +86,6 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNBase, C
 	}
 	
 	/**
-	 * Handle requests from clients.
-	 */
-	public void cancel(CCNQueryDescriptor query) throws IOException {
-		// This is either one of our managed query descriptors,
-		// or a sub-descriptor that maps back to one.
-		// If not, there is nothing we can do.
-		
-	}
-
-	/**
-	 * Gets we send to all the repositories we manage. 
-	 * Once query descriptors
-	 * contain identifiers to allow cancellation, we need
-	 * a way of amalgamating all the identifier information
-	 * into one query descriptor.
-	 */
-	public CCNQueryDescriptor get(ContentName name, ContentAuthenticator authenticator, CCNQueryListener listener, long TTL) throws IOException {
-		// TODO DKS: Should check to see if we have this query alredy outstanding?
-		// TODO DKS: Check to see how query descriptors line up with interests
-		CCNQueryDescriptor initialDescriptor = _primaryRepository.get(name, authenticator, listener, TTL);
-		
-		ManagedCCNQueryDescriptor managedDescriptor = 
-				new ManagedCCNQueryDescriptor(initialDescriptor, listener);
-
-		// TODO DKS change to propagate by interest manager for remote
-		for (CCNRepository repository : _repositories) {
-			if (!_primaryRepository.equals(repository)) {
-				CCNQueryDescriptor newDescriptor = 
-					repository.expressInterest(managedDescriptor.name().name(), managedDescriptor.name().authenticator(), listener, managedDescriptor.TTL());
-				managedDescriptor.addIdentifier(newDescriptor.queryIdentifier());
-			}
-		}
-		_outstandingQueries.add(managedDescriptor);
-		return managedDescriptor;
-	}
-
-	/**
 	 * Puts we put only to our local repository. 
 	 */
 	public CompleteName put(ContentName name, ContentAuthenticator authenticator, byte[] content) throws IOException {
@@ -136,34 +93,41 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNBase, C
 	}
 
 	/**
-	 * Are there differences between observer and query
-	 * interfaces? Maybe one returns everything and one
-	 * just tells you what names have changed...
-	 * @throws IOException
+	 * Gets we collect across all the repositories we know about.
+	 * These are immediate gets, returning only what is currently in 
+	 * the repository. Query/interest results we get because they
+	 * are inserted into the repository by the interest manager.
 	 */
-	public void resubscribeAll() throws IOException {
-		// TODO DKS do we want the RepositoryManager to remember queries? if so, 
-		// how? what does resubscribeAll do?
-		_primaryRepository.resubscribeAll();
-		for (CCNRepository repository : _repositories) {
-			if (!repository.equals(_primaryRepository))
-				repository.resubscribeAll();
+	public ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator) throws IOException {
+		ArrayList<ContentObject> results = _primaryRepository.get(name, authenticator);
+		
+		for (int i=0; i < _repositories.size(); ++i) {
+			results.addAll(_repositories.get(i).get(name, authenticator));
 		}
+		return results;
+	}
+
+	/**
+	 * The rest of CCNBase. Pass it on to the CCNInterestManager to
+	 * forward to the network.
+	 */
+	public CCNQueryDescriptor expressInterest(
+			ContentName name,
+			ContentAuthenticator authenticator,
+			CCNQueryListener callbackListener,
+			long TTL) throws IOException {
+		
+		return CCNInterestManager.getInterestManager().expressInterest(name, authenticator, callbackListener, TTL);
+	}
+	
+	public void cancelInterest(CCNQueryDescriptor query) throws IOException {
+		CCNInterestManager.getInterestManager().cancelInterest(query);
 	}
 
 	protected void repositoryAdded(CCNRepository newRepository) {
-		// Forward all our outstanding queries to it.
-		for (ManagedCCNQueryDescriptor mqd : _outstandingQueries) {
-			CCNQueryDescriptor newDescriptor;
-			try {
-				newDescriptor = newRepository.get(mqd.name(), mqd.authenticator(), mqd.listener(), mqd.TTL());
-				mqd.addIdentifier(newDescriptor.queryIdentifier());
-			} catch (IOException e) {
-				Library.logger().info("Cannot forward query " + mqd + " to new repository: " + newRepository.info().getURL());
-				// DKS -- do something more draconian?
-				continue;
-			}
-		}		
+		// TODO check whether equals method makes this work correctly
+		if (!_repositories.contains(newRepository))
+			_repositories.add(newRepository);
 	}
 	
 	protected void repositoryRemoved(ServiceInfo repositoryInfo) {
@@ -171,15 +135,5 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNBase, C
 			Library.logger().warning("Lost primary repository. Replacing.");
 			_primaryRepository = JackrabbitCCNRepository.getLocalJackrabbitRepository();
 		}		
-	}
-
-	public ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator, CCNQueryType type) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
 	}
 }

@@ -12,11 +12,9 @@ import javax.jcr.observation.EventIterator;
 import javax.jcr.observation.EventListener;
 
 import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.query.CCNQueryListener;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
-import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.query.CCNQueryListener;
 
 /**
  * Wraps a CCNQueryListener and links it to Jackrabbit events.
@@ -44,28 +42,7 @@ class JackrabbitEventListener implements EventListener {
 	
 	public int events() { return _events; }
 	public CCNQueryListener listener() { return _listener; }
-	public CCNQueryDescriptor queryDescriptor() { return _listener.getQuery(); }
-
-	public ContentName queryName() {
-		CCNQueryDescriptor descriptor = _listener.getQuery();
-		if (null == descriptor)
-			return null;
-		return descriptor.name();
-	}
-	
-	public ContentAuthenticator queryAuthenticator() {
-		CCNQueryDescriptor descriptor = _listener.getQuery();
-		if (null == descriptor)
-			return null;
-		return descriptor.authenticator();
-	}
-	
-	public CCNQueryListener.CCNQueryType queryType() {
-		CCNQueryDescriptor descriptor = _listener.getQuery();
-		if (null == descriptor)
-			return null;
-		return descriptor.type();
-	}
+	public CCNQueryDescriptor [] queryDescriptors() { return _listener.getQueries(); }
 	
 	public void onEvent(EventIterator events) {
 		
@@ -92,7 +69,7 @@ class JackrabbitEventListener implements EventListener {
 						try {
 							affectedNode = repository().getNode(event.getPath());
 							ContentObject co = repository().getContentObject(affectedNode);
-							if (_listener.matchesQuery(co)) {
+							if (_listener.matchesQuery(co.completeName())) {
 								nodesFound.add(co);
 							}
 						} catch (PathNotFoundException e) {
@@ -116,13 +93,5 @@ class JackrabbitEventListener implements EventListener {
 			}
 		}
 		_listener.handleResults(nodesFound);
-	}
-
-	public String getQueryPath() {
-		// TODO DKS: Needs to combine both the name in the query
-		// and the query type into an effective jackrabbit
-		// query path. Could also incorporate publisher features,
-		// etc...
-		return null;
 	}
 }

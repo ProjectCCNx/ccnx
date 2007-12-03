@@ -30,11 +30,16 @@ public class CCNQueryDescriptor {
 	 */
 	protected Object _queryIdentifier = null;
 	protected CompleteName _name = null;
+	protected boolean _recursive = false;
 	
 	public CCNQueryDescriptor(CompleteName name,
 							  long TTL) {
 		_name = name;
 		_TTL = TTL;
+		if (Arrays.equals(name.name().component(name.name().count()-1), 
+				RECURSIVE_POSTFIX.getBytes())) {
+			_recursive = true;
+		}
 	}
 	
 	public CCNQueryDescriptor(CompleteName name,
@@ -60,16 +65,16 @@ public class CCNQueryDescriptor {
     	// Need to cope with recursive queries.
     	// Switch on enums still weird in Java
     	
-    	// TODO -- fix
-    	jkl;
     	// Handle prefix matching
-    	if (name().name().component(name().name().count()-1).equals(RECURSIVE_POSTFIX.getBytes())) {
+    	// If the query is recursive, see if the remainder of the name matches
+     	if (recursive()) {
     		if (!name().name().equals(object.name(), name().name().count()-1)) {
     			return false;
     		}
     	} else if (!name().name().equals(object.name())) {
     		return false;
     	}
+     	
     	// Now take into account other specializations
     	// on the query, most notably publisherID.
     	if ((null != name().authenticator()) && (!name().authenticator().empty())) {
@@ -77,12 +82,16 @@ public class CCNQueryDescriptor {
     			if (!Arrays.equals(name().authenticator().publisher(), object.authenticator().publisher())) {
     				return false;
     			}
-    			if (!name().authenticator().emptyContentHash()) {
+    			if (!name().authenticator().emptyContentDigest()) {
     				if (!Arrays.equals(name().authenticator().contentDigest(), object.authenticator().contentDigest()))
     					return false;
     			}
     			if (!name().authenticator().emptySignature()) {
     				if (!Arrays.equals(name().authenticator().signature(), object.authenticator().signature()))
+    					return false;
+    			}
+    			if (!name().authenticator().emptyContentType()) {
+    				if (!name().authenticator().type().equals(object.authenticator().type()))
     					return false;
     			}
     		}
@@ -92,4 +101,5 @@ public class CCNQueryDescriptor {
     
 	public CompleteName name() { return _name; }
 	public long TTL() { return _TTL; }
+	public boolean recursive() { return _recursive; }
 }

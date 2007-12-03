@@ -204,7 +204,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 		} catch (XMLStreamException e) {
 			Library.logger().warning("Cannot canonicalize a standard link!");
 			Library.warningStackTrace(e);
-			throw new IOException(e);
+			throw new IOException("Cannot canonicalize a standard link! " + e.getMessage());
 		}
 	}
 
@@ -418,7 +418,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 		} catch (XMLStreamException e) {
 			Library.logger().warning("This should not happen: we cannot encode our own header!");
 			Library.warningStackTrace(e);
-			throw new IOException(e);
+			throw new IOException("This should not happen: we cannot encode our own header!" + e.getMessage());
 		}
 
 		ContentAuthenticator headerBlockAuthenticator =

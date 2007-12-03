@@ -51,11 +51,11 @@ public class CCNInterestManager {
 		} catch (OncRpcException e) {
 			Library.logger().warning("RPC exception creating transport client: " + e.getMessage());
 			Library.warningStackTrace(e);
-			throw new IOException(e);
+			throw new IOException("RPC exception creating transport client: " + e.getMessage());
 		}
 	}
 
-	public static CCNInterestManager getCCNInterestManager() { 
+	public static CCNInterestManager getInterestManager() { 
 		if (null != _interestManager) 
 			return _interestManager;
 		
@@ -72,25 +72,19 @@ public class CCNInterestManager {
 	}
 	
 	/**
-	 * Query, or express an interest in particular
-	 * content. This request is sent out over the
-	 * CCN to other nodes. On any results, the
-	 * callbackListener if given, is notified.
-	 * Results may also be cached in a local repository
-	 * for later retrieval by get().
-	 * Get and expressInterest could be implemented
-	 * as a single function that might return some
-	 * content immediately and others by callback;
-	 * we separate the two for now to simplify the
-	 * interface.
+	 * Query, or express an interest in particular content. This request is
+	 * sent out over the CCN to other nodes. On any results, the
+	 * callbackListener if given, is notified. Results may also be cached in 
+	 * a local repository for later retrieval by get(). Get and expressInterest 
+	 * be implemented as a single function that might return some
+	 * content immediately and others by callback; we separate the two for now to 
+	 * simplify the interface.
 	 * @param name
 	 * @param authenticator
 	 * @param callbackListener
-	 * @param TTL limited-duration query, removes
-	 * 	the requirement to call cancelInterest. TTL
-	 *  <= 0 signals a query that runs until cancelled.
-	 * @return returns a unique identifier that can
-	 * 		be used to cancel this query.
+	 * @param TTL limited-duration query, removes the requirement to call 
+	 * 		cancelInterest. TTL <= 0 signals a query that runs until canceled.
+	 * @return returns a unique identifier that can be used to cancel this query.
 	 * @throws IOException
 	 */
 	public CCNQueryDescriptor expressInterest(
@@ -100,11 +94,9 @@ public class CCNInterestManager {
 			long TTL) throws IOException {
 		
 		
-		Name oncName = new Name();
-		// For right now, we skip sending the 
-		// authenticator with the query. In the next
-		// version we will extend the transport
-		// agent to handle full queries.
+		Name oncName = name.toONCName();
+		// For right now, we skip sending the  authenticator with the query. In the next
+		// version we will extend the transport agent to handle full queries.
 		// TODO handle full queries in transport agent.
 		_client
 	}

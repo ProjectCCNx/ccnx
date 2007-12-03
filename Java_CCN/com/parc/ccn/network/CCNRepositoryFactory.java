@@ -17,11 +17,11 @@ import com.parc.ccn.Library;
  */
 public class CCNRepositoryFactory {
 	
-	protected static HashMap<Class, String> _repositoryClassToServiceType = new HashMap<Class,String>();
-	protected static HashMap<String, Class> _serviceNameToRespositoryClass = new HashMap<String,Class>();
+	protected static HashMap<Class<?>, String> _repositoryClassToServiceType = new HashMap<Class<?>,String>();
+	protected static HashMap<String, Class<?>> _serviceNameToRespositoryClass = new HashMap<String,Class<?>>();
 	
 	public static void registerRepositoryType(String serviceType, String serviceName,
-											  Class repositoryClass) {
+											  Class<?> repositoryClass) {
 		_serviceNameToRespositoryClass.put(serviceName, repositoryClass);
 		_repositoryClassToServiceType.put(repositoryClass, serviceType);
 	}
@@ -52,7 +52,7 @@ public class CCNRepositoryFactory {
 		
 		// Have the class. Now need to use the serviceInfo constructor.
 		Class<?> argumentTypes[] = new Class[]{ServiceInfo.class};
-		Constructor ctr = null;
+		Constructor<?> ctr = null;
 		try {
 			// Oy. I don't know how to parameterize this classwize
 			// given that I don't know for sure what class repoClass is...

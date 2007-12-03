@@ -12,13 +12,13 @@ public interface CCNQueryListener {
 	 * @param results
 	 * @return
 	 */
-    public int handleResults(CCNQueryDescriptor query, ArrayList<ContentObject> results);
+    public int handleResults(ArrayList<ContentObject> results);
     
     /**
-     * Notification that our query has been cancelled.
+     * Notification that our query has been canceled.
      * @param query
      */
-    public void queryCancelled(CCNQueryDescriptor query);
+    public void queryCanceled(CCNQueryDescriptor query);
     
     /**
      * Notification that our query has timed out.

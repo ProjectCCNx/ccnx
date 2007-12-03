@@ -9,15 +9,27 @@ import java.util.logging.Level;
 
 import javax.jmdns.ServiceInfo;
 
-import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
+import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.network.discovery.CCNDiscovery;
 
-public abstract class CCNRepository implements CCNBase {
+/**
+ * CCNRepository implements the get and put operations from CCNBase.
+ * It also needs to implement a segregation between "official" CCN results
+ * and temporary or local results stored and retrieved by its own
+ * CCNRepositoryManager, but not made available across the wire (e.g.
+ * cached copies of reconstructed content). Therefore it either needs to allow
+ * put and get to flag which sort of content to return, or it needs to
+ * return this information and allow the repository manager to filter
+ * as a function of who is calling.
+ * TODO DKS: figure out how to do this
+ * @author smetters
+ *
+ */
+public abstract class CCNRepository {
 
 	public static final long SERVER_DISCOVERY_TIMEOUT = 1000;
 	static final String SERVICE_SEPARATOR = "://";
@@ -51,18 +63,20 @@ public abstract class CCNRepository implements CCNBase {
 		return (otherInfo.getURL().equalsIgnoreCase(_info.getURL()));
 	}
 
-	
 	public ServiceInfo info() { return _info; }
 	
 	/**
 	 * Get immediate results to a query.
 	 * DKS: caution required to make sure that the idea of
-	 * what matches here is the same as the one in coresponding version in 
+	 * what matches here is the same as the one in corresponding version in 
 	 * CCNQueryDescriptor. 
 	 */
 	public abstract ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator) throws IOException;
-	public abstract ArrayList<ContentObject> get(CCNQueryDescriptor query) throws IOException;
-	
+
+	public abstract CompleteName put(ContentName name,
+									 ContentAuthenticator authenticator,
+									 byte [] content) throws IOException;
+		
 	public abstract void login() throws IOException;
 	public abstract void login(String username, String password) throws IOException;
 	public abstract void logout();

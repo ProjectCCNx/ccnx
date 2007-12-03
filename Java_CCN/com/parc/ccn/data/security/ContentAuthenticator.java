@@ -206,7 +206,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     public ContentAuthenticator() {}
     
     public boolean empty() {
-    	return (emptyPublisher() && emptySignature() && emptyContentHash());
+    	return (emptyPublisher() && emptySignature() && emptyContentDigest());
     }
     
     public boolean emptyPublisher() {
@@ -221,7 +221,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
        	return true;
     }
     
-    public boolean emptyContentHash() {
+    public boolean emptyContentDigest() {
     	if ((null != contentDigest()) && (0 != contentDigest().length))
     		return false;
     	return true;   	
@@ -420,7 +420,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 			writer.writeEndElement();
 		}
 		
-		if (!emptyContentHash()) {
+		if (!emptyContentDigest()) {
 			writer.writeStartElement(CONTENT_HASH_ELEMENT);
 			writer.writeCharacters(XMLHelper.encodeElement(contentDigest()));
 			writer.writeEndElement();   

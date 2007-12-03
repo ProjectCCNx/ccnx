@@ -14,6 +14,8 @@ import com.parc.ccn.Library;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
+import com.parc.ccn.network.rpc.Name;
+import com.parc.ccn.network.rpc.NameComponent;
 
 public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 
@@ -270,5 +272,15 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 	
 	public boolean validate() { 
 		return (null != _components);
+	}
+	
+	public Name toONCName() {
+		Name oncName = new Name();
+		// RPCgen created objects have lots of public data, no useful constructors.
+		oncName.component = new NameComponent[count()];
+		for (int i=0; i < count(); ++i) {
+			oncName.component[i] = new NameComponent();
+			
+		}
 	}
 }

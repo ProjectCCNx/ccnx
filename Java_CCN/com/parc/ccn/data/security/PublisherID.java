@@ -61,7 +61,11 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable {
     }
 	
 	public PublisherID(byte [] publisherID, PublisherType publisherType) {
-		_publisherID = Arrays.copyOf(publisherID, PUBLISHER_ID_LEN);
+		// Alas, Arrays.copyOf doesn't exist in 1.5, and we'd like
+		// to be mostly 1.5 compatible for the macs...
+		// _publisherID = Arrays.copyOf(publisherID, PUBLISHER_ID_LEN);
+		_publisherID = new byte[PUBLISHER_ID_LEN];
+		System.arraycopy(publisherID, 0, _publisherID, 0, PUBLISHER_ID_LEN);
 		_publisherType = publisherType;
 	}	
 	
