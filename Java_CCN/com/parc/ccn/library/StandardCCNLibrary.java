@@ -460,8 +460,8 @@ public class StandardCCNLibrary implements CCNLibrary {
 
 	public CCNQueryDescriptor expressInterest(ContentName name,
 			ContentAuthenticator authenticator,
-			CCNQueryListener listener, long TTL) throws IOException {
-		return CCNRepositoryManager.getRepositoryManager().expressInterest(name, authenticator, listener, TTL);
+			CCNQueryListener listener) throws IOException {
+		return CCNRepositoryManager.getRepositoryManager().expressInterest(name, authenticator, listener);
 	}
 
 	public void cancelInterest(CCNQueryDescriptor query) throws IOException {

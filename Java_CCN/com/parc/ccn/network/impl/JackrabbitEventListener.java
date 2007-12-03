@@ -28,7 +28,7 @@ class JackrabbitEventListener implements EventListener {
 	protected int _events;
 
 	public JackrabbitEventListener(JackrabbitCCNRepository repository,
-									CCNQueryListener l, int events) {
+								   CCNQueryListener l, int events) {
 		if (null == repository) 
 			throw new IllegalArgumentException("JackrabbitEventListener: repository cannot be null!");
 		_repository = repository;
@@ -69,9 +69,14 @@ class JackrabbitEventListener implements EventListener {
 						try {
 							affectedNode = repository().getNode(event.getPath());
 							ContentObject co = repository().getContentObject(affectedNode);
+							
+							// Need to filter -- the eventing interface only selects
+							// based on name; the listener might have other criteria.
+							// This is where we check those.
 							if (_listener.matchesQuery(co.completeName())) {
 								nodesFound.add(co);
 							}
+							
 						} catch (PathNotFoundException e) {
 							Library.logger().warning("Cannot find node corresponding to generated event at path: " + event.getPath());
 							Library.logStackTrace(Level.WARNING, e);

@@ -51,9 +51,6 @@ public interface CCNBase {
 	 * @param name
 	 * @param authenticator
 	 * @param callbackListener
-	 * @param TTL limited-duration query, removes
-	 * 	the requirement to call cancelInterest. TTL
-	 *  <= 0 signals a query that runs until cancelled.
 	 * @return returns a unique identifier that can
 	 * 		be used to cancel this query.
 	 * @throws IOException
@@ -61,8 +58,7 @@ public interface CCNBase {
 	public CCNQueryDescriptor expressInterest(
 			ContentName name,
 			ContentAuthenticator authenticator,
-			CCNQueryListener callbackListener,
-			long TTL) throws IOException;
+			CCNQueryListener callbackListener) throws IOException;
 	
 	public void cancelInterest(CCNQueryDescriptor query) throws IOException;
 

@@ -114,10 +114,9 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNBase, C
 	public CCNQueryDescriptor expressInterest(
 			ContentName name,
 			ContentAuthenticator authenticator,
-			CCNQueryListener callbackListener,
-			long TTL) throws IOException {
+			CCNQueryListener callbackListener) throws IOException {
 		
-		return CCNInterestManager.getInterestManager().expressInterest(name, authenticator, callbackListener, TTL);
+		return CCNInterestManager.getInterestManager().expressInterest(name, authenticator, callbackListener);
 	}
 	
 	public void cancelInterest(CCNQueryDescriptor query) throws IOException {

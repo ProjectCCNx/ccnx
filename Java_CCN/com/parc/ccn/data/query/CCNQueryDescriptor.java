@@ -3,7 +3,9 @@ package com.parc.ccn.data.query;
 import java.util.Arrays;
 
 import com.parc.ccn.data.CompleteName;
+import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.security.ContentAuthenticator;
 
 /**
  * This base class just combines all of the information
@@ -24,7 +26,6 @@ public class CCNQueryDescriptor {
 	 */
 	public static final String RECURSIVE_POSTFIX = "*";
 
-	protected long _TTL;
 	/*
 	 * First pass at handling identifiers for queries.
 	 */
@@ -32,10 +33,12 @@ public class CCNQueryDescriptor {
 	protected CompleteName _name = null;
 	protected boolean _recursive = false;
 	
-	public CCNQueryDescriptor(CompleteName name,
-							  long TTL) {
+	public CCNQueryDescriptor(ContentName name, ContentAuthenticator authenticator, Object identifier) {
+		this(new CompleteName(name, authenticator), identifier);
+	}
+	
+	public CCNQueryDescriptor(CompleteName name) {
 		_name = name;
-		_TTL = TTL;
 		if (Arrays.equals(name.name().component(name.name().count()-1), 
 				RECURSIVE_POSTFIX.getBytes())) {
 			_recursive = true;
@@ -43,14 +46,13 @@ public class CCNQueryDescriptor {
 	}
 	
 	public CCNQueryDescriptor(CompleteName name,
-			  long TTL, 
-			  Object identifier) {
-		this(name, TTL);
+			  				  Object identifier) {
+		this(name);
 		_queryIdentifier = identifier;
 	}
 	
 	public CCNQueryDescriptor(CCNQueryDescriptor descriptor) {
-		this(descriptor.name(), descriptor.TTL(), descriptor.queryIdentifier());
+		this(descriptor.name(), descriptor.queryIdentifier());
 	}
 	
 	public void setQueryIdentifier(Object identifier) {
@@ -100,6 +102,5 @@ public class CCNQueryDescriptor {
     }
     
 	public CompleteName name() { return _name; }
-	public long TTL() { return _TTL; }
 	public boolean recursive() { return _recursive; }
 }

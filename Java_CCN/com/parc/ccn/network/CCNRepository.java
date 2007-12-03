@@ -10,9 +10,12 @@ import java.util.logging.Level;
 import javax.jmdns.ServiceInfo;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.CCNBase;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.query.CCNQueryDescriptor;
+import com.parc.ccn.data.query.CCNQueryListener;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.network.discovery.CCNDiscovery;
 
@@ -29,7 +32,7 @@ import com.parc.ccn.network.discovery.CCNDiscovery;
  * @author smetters
  *
  */
-public abstract class CCNRepository {
+public abstract class CCNRepository implements CCNBase {
 
 	public static final long SERVER_DISCOVERY_TIMEOUT = 1000;
 	static final String SERVICE_SEPARATOR = "://";
@@ -65,18 +68,6 @@ public abstract class CCNRepository {
 
 	public ServiceInfo info() { return _info; }
 	
-	/**
-	 * Get immediate results to a query.
-	 * DKS: caution required to make sure that the idea of
-	 * what matches here is the same as the one in corresponding version in 
-	 * CCNQueryDescriptor. 
-	 */
-	public abstract ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator) throws IOException;
-
-	public abstract CompleteName put(ContentName name,
-									 ContentAuthenticator authenticator,
-									 byte [] content) throws IOException;
-		
 	public abstract void login() throws IOException;
 	public abstract void login(String username, String password) throws IOException;
 	public abstract void logout();
@@ -110,4 +101,27 @@ public abstract class CCNRepository {
 										 String host, int port) {
 		return new String(protocol + SERVICE_SEPARATOR + host + ":" + port + NAME_SEPARATOR + serviceName);
 	}
+
+	/**
+	 * CCNBase interface.
+	 */
+	/**
+	 * Get immediate results to a query.
+	 * DKS: caution required to make sure that the idea of
+	 * what matches here is the same as the one in corresponding version in 
+	 * CCNQueryDescriptor. 
+	 */
+	public abstract ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator) throws IOException;
+
+	public abstract CompleteName put(ContentName name,
+									 ContentAuthenticator authenticator,
+									 byte [] content) throws IOException;
+		
+	public abstract CCNQueryDescriptor expressInterest(
+			ContentName name,
+			ContentAuthenticator authenticator,
+			CCNQueryListener callbackListener) throws IOException;
+	
+	public abstract void cancelInterest(CCNQueryDescriptor query) throws IOException;
+
 }

@@ -82,23 +82,27 @@ public class CCNInterestManager {
 	 * @param name
 	 * @param authenticator
 	 * @param callbackListener
-	 * @param TTL limited-duration query, removes the requirement to call 
-	 * 		cancelInterest. TTL <= 0 signals a query that runs until canceled.
 	 * @return returns a unique identifier that can be used to cancel this query.
 	 * @throws IOException
 	 */
 	public CCNQueryDescriptor expressInterest(
 			ContentName name,
 			ContentAuthenticator authenticator,
-			CCNQueryListener callbackListener,
-			long TTL) throws IOException {
+			CCNQueryListener callbackListener) throws IOException {
 		
 		
 		Name oncName = name.toONCName();
 		// For right now, we skip sending the  authenticator with the query. In the next
 		// version we will extend the transport agent to handle full queries.
 		// TODO handle full queries in transport agent.
-		_client
+		try {
+			_client.RegisterInterest_1(oncName);
+		} catch (OncRpcException e) {
+			Library.logger().warning("Exception in expressInterest RPC interface: " + e.getMessage());
+			Library.warningStackTrace(e);
+			// IOException(Throwable) constructor not present in 1.5
+			throw new IOException("Exception in expressInterest RPC interface: " + e.getMessage());
+		}
 	}
 	
 	public void cancelInterest(CCNQueryDescriptor query) throws IOException {

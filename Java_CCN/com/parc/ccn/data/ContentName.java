@@ -51,12 +51,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 			_components = new byte[parts.length - 1][];
 			// Leave off initial empty component
 			for (int i=1; i < parts.length; ++i) {
-				try {
-				_components[i-1] = URLDecoder.decode(parts[i], "UTF-8").getBytes();
-				} catch (UnsupportedEncodingException e) {
-					Library.logger().severe("UTF-8 not supported.");
-					throw new RuntimeException("UTF-8 not supported", e);
-				}
+				_components[i-1] = componentParse(parts[i]);
 			}
 		}
 	}
@@ -67,12 +62,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 		} else {
 			_components = new byte[parts.length][];
 			for (int i=0; i < _components.length; ++i) {
-				try {
-					_components[i] = URLDecoder.decode(parts[i], "UTF-8").getBytes();
-				} catch (UnsupportedEncodingException e) {
-					Library.logger().severe("UTF-8 not supported.");
-					throw new RuntimeException("UTF-8 not supported", e);
-				}
+				_components[i] = componentParse(parts[i]);
 			}
 		}
 	}
@@ -81,18 +71,11 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 		this(parent.count() + 
 				((null != name) ? 1 : 0), parent.components());
 		if (null != name) {
-			byte[] decodedName;
-			try {
-				decodedName = URLDecoder.decode(name, "UTF-8").getBytes();
-			} catch (UnsupportedEncodingException e) {
-				Library.logger().severe("UTF-8 not supported.");
-				throw new RuntimeException("UTF-8 not supported", e);
-			}
+			byte[] decodedName = componentParse(name);
 			_components[parent.count()] = new byte[decodedName.length];
 			System.arraycopy(_components[parent.count()],0,decodedName,0,decodedName.length);
 		}
 	}
-
 	public ContentName(ContentName parent, byte[] name) {
 		this(parent.count() + 
 				((null != name) ? 1 : 0), parent.components());
@@ -163,7 +146,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 		return nameBuf.toString();
 	} 
 	
-	protected String componentPrint(byte[] bs) {
+	public static String componentPrint(byte[] bs) {
 		// NHB: Van is expecting the URI encoding rules
 		if (null == bs) {
 			return new String();
@@ -173,6 +156,17 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 		} catch (UnsupportedEncodingException e) {
 			throw new RuntimeException("UTF-8 not supported", e);
 		}
+	}
+
+	public static byte[] componentParse(String name) {
+		byte[] decodedName = null;
+		try {
+			decodedName = URLDecoder.decode(name, "UTF-8").getBytes();
+		} catch (UnsupportedEncodingException e) {
+			Library.logger().severe("UTF-8 not supported.");
+			throw new RuntimeException("UTF-8 not supported", e);
+		}
+		return decodedName;
 	}
 
 	public byte[][] components() { return _components; }
@@ -185,6 +179,11 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 	public byte[] component(int i) { 
 		if ((null == _components) || (i >= _components.length)) return null;
 		return _components[i];
+	}
+	
+	public String stringComponent(int i) {
+		if ((null == _components) || (i >= _components.length)) return null;
+		return componentPrint(_components[i]);
 	}
 	
 	public boolean equals(Object obj) {
@@ -280,7 +279,11 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 		oncName.component = new NameComponent[count()];
 		for (int i=0; i < count(); ++i) {
 			oncName.component[i] = new NameComponent();
-			
+			oncName.component[i].length = component(i).length;
+			// JDK 1.5 doesn't have Arrays.copyOf...
+			oncName.component[i].vals = new byte [oncName.component[i].length];
+			System.arraycopy(component(i), 0, oncName.component[i].vals, 0, oncName.component[i].length);	
 		}
+		return oncName;
 	}
 }

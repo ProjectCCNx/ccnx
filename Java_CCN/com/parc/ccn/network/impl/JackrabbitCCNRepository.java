@@ -2,19 +2,20 @@ package com.parc.ccn.network.impl;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
-import java.net.URLEncoder;
-import java.net.URLDecoder;
 import java.net.MalformedURLException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Arrays;
+import java.util.Iterator;
 import java.util.logging.Level;
 
 import javax.jcr.ItemExistsException;
@@ -63,7 +64,6 @@ import com.parc.ccn.network.discovery.CCNDiscovery;
  */
 public class JackrabbitCCNRepository extends CCNRepository {
 
-	// TODO DKS: Make sure jackrabbit-specific exceptions aren't visible.
 	public static final int SERVER_PORT = 1101;
 	public static final String PROTOCOL_TYPE = "rmi";
 	public static final String SERVER_RMI_NAME = "jackrabbit";
@@ -84,7 +84,7 @@ public class JackrabbitCCNRepository extends CCNRepository {
 	public static final String KEY_LOCATOR_PROPERTY = "KEY_LOCATOR";
 	public static final String SIGNATURE_PROPERTY = "SIGNATURE";
 	protected static JackrabbitCCNRepository _theNetwork = null;
-	protected HashMap<CCNQueryListener, JackrabbitEventListener> _eventListeners = new HashMap<CCNQueryListener, JackrabbitEventListener>();
+
 	protected Repository _repository;
 	protected Session _session;
 	
@@ -221,7 +221,8 @@ public class JackrabbitCCNRepository extends CCNRepository {
 		}
 
 		try {
-			// Now we're down to the leaf node
+			// Now we're down to the leaf node. Don't
+			// add it if we already have it.
 			n = addLeafNode(n, name.component(i), authenticator, content);
 			
 			Library.logger().info("Adding node: " + n.getCorrespondingNodePath(_session.getWorkspace().getName()));
@@ -447,7 +448,7 @@ public class JackrabbitCCNRepository extends CCNRepository {
 		ArrayList<ContentObject> objects = new ArrayList<ContentObject>();
 
 		try {
-			String queryString = getQueryString(query);
+			String queryString = getQueryString(name, authenticator);
 
 			Query q = null;
 			try {
@@ -471,67 +472,81 @@ public class JackrabbitCCNRepository extends CCNRepository {
 		return objects;
 	}
 	
-	public void cancel(CCNQueryDescriptor query) throws IOException {
-		// Find the listener responding to this query
-		for (CCNQueryListener l : _eventListeners.keySet()) {
-			if (l.getQuery().equals(query)) {
-				unsubscribe(l);
-			}
-		}
-	}
-	
-	protected String getQueryString(CompleteName queryName) {
+	protected String getQueryString(ContentName name, ContentAuthenticator authenticator) {
 		// TODO: DKS: make Xpath match full query including whatever
 		// authentication info is specified by querier
-		String queryString = "/jcr:root" + nameToPath(queryName.name());
+		String queryString = "/jcr:root" + nameToPath(name);
 		return queryString;
 	}
 	
-	private void startListening(JackrabbitEventListener el) throws IOException {
-		try {
-			ObservationManager o = _session.getWorkspace().getObservationManager();
-			o.addEventListener(el, el.events(), el.getQueryPath(), true, null, null, false);
-		} catch (RepositoryException e) {
-			throw new IOException(e.getMessage());
-		}
-		// now tell them about the existing nodes
-		ArrayList<ContentObject> currentMatches = get(el.queryDescriptor());
-		el.listener().handleResults(currentMatches);
-			
-		return;		
-	}
-
-	/**
-	 * What's the difference between the query interface
-	 * and the subscription/observer interface? Maybe
-	 * just not pulling the data?
-	 */
-	public void subscribe(CCNQueryListener l) throws IOException {
+	@Override
+	public CCNQueryDescriptor expressInterest(ContentName name, ContentAuthenticator authenticator, 
+			CCNQueryListener callbackListener) throws IOException {
 
 		int events = Event.NODE_ADDED | Event.NODE_REMOVED | Event.PROPERTY_ADDED | Event.PROPERTY_CHANGED | Event.PROPERTY_REMOVED;
-		JackrabbitEventListener el = new JackrabbitEventListener(this, l, events);
-		_eventListeners.put(l, el);
-		startListening(el);
+		JackrabbitEventListener el = new JackrabbitEventListener(this, callbackListener, events);
+		JackrabbitCCNQueryDescriptor descriptor = new JackrabbitCCNQueryDescriptor(name, authenticator, el);
+		startListening(descriptor);
+		return descriptor;
 	}
 
-	public void resubscribeAll() throws IOException {
-		for (JackrabbitEventListener el : _eventListeners.values()) {
-			startListening(el);
-		}
-	}
-
-	public void unsubscribe(CCNQueryListener l) throws IOException {
+	@Override
+	public void cancelInterest(CCNQueryDescriptor query) throws IOException {
 		try {
 			ObservationManager o = _session.getWorkspace().getObservationManager();
-			JackrabbitEventListener el = _eventListeners.get(l);
+			JackrabbitCCNQueryDescriptor jcqd = (JackrabbitCCNQueryDescriptor)query;
+			
+			JackrabbitEventListener el = jcqd.listener();
 			if (null == el)
 				return;
 			o.removeEventListener(el);
-			l.cancelQueries();
-			_eventListeners.remove(l);
+			
+			// Notify listener that queries were canceled.
+			el.listener().cancelQueries();
+		
 		} catch (RepositoryException e) {
+			Library.logger().warning("Exception canceling interest in: " + query.name());
 			throw new IOException(e.getMessage());
 		}
+	}
+	
+	private void startListening(JackrabbitCCNQueryDescriptor jcqd) throws IOException {
+		try {
+			// Jackrabbit has a robust observation interface.
+			// It will automatically handle recursion for us, as well
+			// as filtering events generated by this session. So we can
+			// avoid being notified for events generated by our own puts.
+			ObservationManager o = _session.getWorkspace().getObservationManager();
+			o.addEventListener(jcqd.listener(), jcqd.listener().events(), 
+							   nameToPath(jcqd.name().name()), 
+							   jcqd.recursive(), // isDeep -- do we pull only this node, or 
+							   					 // tree under it
+							   null, null, 
+							   true); // noLocal -- don't pull our own
+									  // events
+		} catch (RepositoryException e) {
+			Library.logger().warning("Exception starting to listen for events on path: " + jcqd.name().name());
+			Library.warningStackTrace(e);
+			throw new IOException(e.getMessage());
+		}
+		
+		// Now tell them about the matches that already exist
+		// Need to filter -- the eventing interface only selects
+		// based on name; the listener might have other criteria.
+		// This is where we check those.
+		// DKS: could rely on listener to do this...
+		ArrayList<ContentObject> currentMatches = get(jcqd.name().name(),jcqd.name().authenticator());
+		Iterator<ContentObject> it = currentMatches.iterator();
+		ContentObject thisObject = null;
+		while (it.hasNext()) {
+			thisObject = it.next();
+			if (!jcqd.listener().listener().matchesQuery(thisObject.completeName())) {
+				it.remove(); // only way to remove from an in-use iterator safely
+			}
+		}
+		jcqd.listener().listener().handleResults(currentMatches);
+			
+		return;		
 	}
 
 	// Package
@@ -593,7 +608,7 @@ public class JackrabbitCCNRepository extends CCNRepository {
 	public void reconnect() {
 		try {
 			login();
-			resubscribeAll();
+			// resubscribeAll();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -655,7 +670,12 @@ public class JackrabbitCCNRepository extends CCNRepository {
 	 * @return
 	 */
 	protected static String nameComponentToString(byte [] component) {
-		String str = byteToString(component);
+		// Instead of using byteToString, use ContentName's
+		// componentPrint, which will get us human-readable
+		// versions of much stuff.
+		String str = ContentName.componentPrint(component);
+		// Then deal with leading integers, which XPath
+		// can't handle.
 		if (Character.isDigit(str.charAt(0))) {
 			return "_" + str;
 		}
@@ -678,16 +698,19 @@ public class JackrabbitCCNRepository extends CCNRepository {
 		if ((null == str) || (str.length() == 0)) 
 			return null;
 		
+		// Remove trailing numbers, which are used to
+		// uniqueify duplicate names by Jackrabbit.
 		if (str.charAt(str.length()-1) == ']') {
-			return stringToByte(
+			return ContentName.componentParse(
 				str.substring(
 					((str.charAt(0) == '_') ? 1 : 0), 
 					str.lastIndexOf('['))); 
 		}
+		
 		if (str.charAt(0) == '_') {
-			return stringToByte(str.substring(1));
+			return ContentName.componentParse(str.substring(1));
 		}
-		return stringToByte(str);
+		return ContentName.componentParse(str);
 	}
 	
 	protected static String publisherToString(byte [] publisherID) {
@@ -718,20 +741,28 @@ public class JackrabbitCCNRepository extends CCNRepository {
 	}
 	
 	/**
-	 * Could use toString of name, which does quoting.
-	 * Right now have to cope with the fact that XPath
+	 * Switch to use ContentName.toString of name, which does quoting.
+	 * Have to cope with the fact that XPath
 	 * can't have leading numbers in name components (though
 	 * Jackrabbit can).
 	 * @param name
 	 * @return
 	 */
 	protected static String nameToPath(ContentName name) {
-		// TODO DKS: evaluate using toString instead
 		if ((null == name) || (0 == name.count())) {
 			return ContentName.SEPARATOR;
 		}
+		
+		// In case this is a query with its last component
+		// being "*", strip that.
+		int componentCount = name.count();
+		
+		if (Arrays.equals(name.component(name.count()-1), 
+				CCNQueryDescriptor.RECURSIVE_POSTFIX.getBytes())) {
+			--componentCount;
+		}
 		StringBuffer buf = new StringBuffer();
-		for (int i=0; i < name.count(); ++i) {
+		for (int i=0; i < componentCount; ++i) {
 			byte [] component = name.component(i);
 			if ((null == component) || (0 == component.length))
 				continue;
