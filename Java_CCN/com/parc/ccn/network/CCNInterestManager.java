@@ -55,18 +55,18 @@ public class CCNInterestManager {
 		}
 	}
 
-	public static CCNInterestManager getInterestManager() { 
+	public static CCNInterestManager getInterestManager() throws IOException { 
 		if (null != _interestManager) 
 			return _interestManager;
 		
 		return createInterestManager();
 	}
 	
-	protected static synchronized CCNInterestManager createInterestManager() {
+	protected static synchronized CCNInterestManager createInterestManager() throws IOException {
 		if (null == _interestManager) {
 			_interestManager = new CCNInterestManager();
-			// Need to start RPC server.
-			_interestManager.start();
+			// We don't need a thread for the interest manager;
+			// it only includes client functionality.
 		}
 		return _interestManager;
 	}
@@ -103,10 +103,22 @@ public class CCNInterestManager {
 			// IOException(Throwable) constructor not present in 1.5
 			throw new IOException("Exception in expressInterest RPC interface: " + e.getMessage());
 		}
+		return new CCNQueryDescriptor(name, authenticator, null, callbackListener);
 	}
 	
 	public void cancelInterest(CCNQueryDescriptor query) throws IOException {
-		
+		Name oncName = query.name().name().toONCName();
+		try {
+			_client.CancelInterest_1(oncName);
+			if (null != query.queryListener()) {
+				query.queryListener().queryCanceled(query);
+			}
+		} catch (OncRpcException e) {
+			Library.logger().warning("Exception in expressInterest RPC interface: " + e.getMessage());
+			Library.warningStackTrace(e);
+			// IOException(Throwable) constructor not present in 1.5
+			throw new IOException("Exception in expressInterest RPC interface: " + e.getMessage());
+		}
 	}
 
 }

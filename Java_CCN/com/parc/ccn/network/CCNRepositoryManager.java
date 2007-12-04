@@ -24,7 +24,7 @@ import com.parc.ccn.network.impl.JackrabbitCCNRepository;
  * @author smetters
  *
  */
-public class CCNRepositoryManager extends DiscoveryManager implements CCNBase, CCNDiscoveryListener {
+public class CCNRepositoryManager extends DiscoveryManager implements CCNRepository, CCNDiscoveryListener {
 	
 	/**
 	 * Static singleton.
@@ -34,7 +34,7 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNBase, C
 	/**
 	 * Other local repositories we know about to talk to.
 	 */
-	protected ArrayList<CCNRepository> _repositories = new ArrayList<CCNRepository>();
+	protected ArrayList<GenericCCNRepository> _repositories = new ArrayList<GenericCCNRepository>();
 
 	public static CCNRepositoryManager getRepositoryManager() { 
 		if (null != _repositoryManager) 
@@ -70,7 +70,7 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNBase, C
 	 * we mirror stuff from local read-only repositories
 	 * to the rw repository.
 	 */
-	protected CCNRepository _primaryRepository = null;
+	protected GenericCCNRepository _primaryRepository = null;
 	
 	/**
 	 * Default constructor to make static singleton.
@@ -109,7 +109,8 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNBase, C
 
 	/**
 	 * The rest of CCNBase. Pass it on to the CCNInterestManager to
-	 * forward to the network.
+	 * forward to the network. Also express it to the
+	 * repositories we manage.
 	 */
 	public CCNQueryDescriptor expressInterest(
 			ContentName name,
@@ -119,11 +120,15 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNBase, C
 		return CCNInterestManager.getInterestManager().expressInterest(name, authenticator, callbackListener);
 	}
 	
+	/**
+	 * Cancel this query with all the repositories we sent
+	 * it to.
+	 */
 	public void cancelInterest(CCNQueryDescriptor query) throws IOException {
 		CCNInterestManager.getInterestManager().cancelInterest(query);
 	}
 
-	protected void repositoryAdded(CCNRepository newRepository) {
+	protected void repositoryAdded(GenericCCNRepository newRepository) {
 		// TODO check whether equals method makes this work correctly
 		if (!_repositories.contains(newRepository))
 			_repositories.add(newRepository);

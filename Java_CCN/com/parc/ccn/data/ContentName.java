@@ -103,10 +103,6 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 		super(encoded);
 	}
 	
-	public ContentName parent() {
-		return new ContentName(count()-1, components());
-	}
-	
 	/**
 	 * Basic constructor for extending or contracting names.
 	 * @param count
@@ -131,10 +127,27 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 		this(0, null);
 	}
 	
+	public ContentName(Name oncRpcName) {
+		if ((null == oncRpcName.component) ||
+			(0 >= oncRpcName.component.length)) {
+			_components = null;
+		} else {
+			_components = new byte[oncRpcName.component.length][];
+			for (int i=0; i < oncRpcName.component.length; ++i) {
+				_components[i] = new byte[oncRpcName.component[i].length];
+				System.arraycopy(oncRpcName.component[i].vals,0,_components[i],0,oncRpcName.component[i].length);
+			}
+		}
+	}
+	
 	public ContentName clone() {
 		return new ContentName(components());
 	}
 		
+	public ContentName parent() {
+		return new ContentName(count()-1, components());
+	}
+	
 	public String toString() {
 		if (null == _components) return null;
 		if (0 == _components.length) return new String();

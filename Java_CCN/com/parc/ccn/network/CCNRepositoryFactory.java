@@ -26,14 +26,14 @@ public class CCNRepositoryFactory {
 		_repositoryClassToServiceType.put(repositoryClass, serviceType);
 	}
 	
-	public static CCNRepository connect(ServiceInfo info) throws MalformedURLException {
+	public static GenericCCNRepository connect(ServiceInfo info) throws MalformedURLException {
 		
 		String url = info.getURL();
 		// Assume URL is of the form:
 		// serviceType://host:port/serviceName
 		
 		
-		String [] nameSplit = url.split(CCNRepository.NAME_SEPARATOR);
+		String [] nameSplit = url.split(GenericCCNRepository.NAME_SEPARATOR);
 		if (nameSplit.length != 2) {
 			Library.logger().info("Malformed URL in service discovery response: " + url);
 			throw new MalformedURLException("Malformed URL in service discovery response: " + url);
@@ -69,9 +69,9 @@ public class CCNRepositoryFactory {
 		
 		// Now call it
 		Object arglist[] = new Object[]{info};
-		CCNRepository repository = null;
+		GenericCCNRepository repository = null;
 		try {
-			repository = (CCNRepository)ctr.newInstance(arglist);
+			repository = (GenericCCNRepository)ctr.newInstance(arglist);
 		} catch (IllegalArgumentException e) {
 			Library.logger().warning("Illegal argument exception: cannot create instance of repository class " + repoClass.getName() + " from service info: " + info.getURL());
 			Library.logStackTrace(Level.WARNING, e);

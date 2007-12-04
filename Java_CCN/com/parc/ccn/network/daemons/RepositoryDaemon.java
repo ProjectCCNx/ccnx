@@ -1,22 +1,31 @@
 package com.parc.ccn.network.daemons;
 
+import java.io.IOException;
+
+import org.acplt.oncrpc.OncRpcException;
+
 import com.parc.ccn.Library;
+import com.parc.ccn.network.CCNInterestServer;
 import com.parc.ccn.network.impl.JackrabbitCCNRepository;
 
 /**
  * Top-level wrapper for standalone repositories that
  * want to run independent of any particular application.
+ * 
+ * Starts a local jackrabbit repository, and a RPC server
+ * to handle requests from a transport agent.
  * @author smetters
  *
  */
-public class JackrabbitRepositoryDaemon extends Daemon {
+public class RepositoryDaemon extends Daemon {
 	
-	protected static class JackrabbitWorkerThread extends Daemon.WorkerThread {
+	protected static class RepositoryWorkerThread extends Daemon.WorkerThread {
 
 		private static final long serialVersionUID = -6093561895394961537L;
 		JackrabbitCCNRepository _repository = null;
+		CCNInterestServer _interestServer = null;
 		
-		protected JackrabbitWorkerThread(String daemonName) {
+		protected RepositoryWorkerThread(String daemonName) {
 			super(daemonName);
 		}
 		
@@ -28,10 +37,20 @@ public class JackrabbitRepositoryDaemon extends Daemon {
 		public void initialize() {
 			// we start up a jackrabbit and let it run
 			_repository = new JackrabbitCCNRepository();
+			try {
+				_interestServer = new CCNInterestServer();
+				_interestServer.run();
+			} catch (OncRpcException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 	}
 
-	public JackrabbitRepositoryDaemon(String args[]) {
+	public RepositoryDaemon(String args[]) {
 		super(args);
 		_daemonName = "jackrabbitRepositoryDaemon";
 	}
@@ -45,7 +64,7 @@ public class JackrabbitRepositoryDaemon extends Daemon {
 	}
 
 	protected WorkerThread createWorkerThread() {
-		return new JackrabbitWorkerThread(daemonName());
+		return new RepositoryWorkerThread(daemonName());
 	}
 
 	/**
@@ -55,7 +74,7 @@ public class JackrabbitRepositoryDaemon extends Daemon {
 		// Need to override in each subclass to make proper class.
 		Daemon daemon = null;
 		try {
-			daemon = new JackrabbitRepositoryDaemon(args);
+			daemon = new RepositoryDaemon(args);
 			runDaemon(daemon, args);
 			
 		} catch (Exception e) {

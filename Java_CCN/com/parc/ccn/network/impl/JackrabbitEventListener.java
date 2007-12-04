@@ -41,7 +41,7 @@ class JackrabbitEventListener implements EventListener {
 	JackrabbitCCNRepository repository() { return _repository; }
 	
 	public int events() { return _events; }
-	public CCNQueryListener listener() { return _listener; }
+	public CCNQueryListener queryListener() { return _listener; }
 	public CCNQueryDescriptor [] queryDescriptors() { return _listener.getQueries(); }
 	
 	public void onEvent(EventIterator events) {

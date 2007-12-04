@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry excluding="BIN|lib|libsrc|log|repository/**|rpc" kind="src" path=""/>
+	<classpathentry excluding="bin/|lib/|libsrc/|log/|repository/|rpc/|simulations/" kind="src" path=""/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="lib/bcprov-jdk16-137.jar"/>
 	<classpathentry kind="lib" path="lib/jmdns.jar"/>
