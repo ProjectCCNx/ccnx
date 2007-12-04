@@ -8,6 +8,7 @@ import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.net.UnknownHostException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -120,7 +121,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	}
 
 	/**
-	 * Use our own repository.
+	 * Start our own repository.
 	 * @param repository
 	 */
 	public JackrabbitCCNRepository(int port) {
@@ -170,12 +171,35 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		});
 	}
 
-	public static JackrabbitCCNRepository getLocalJackrabbitRepository() {
-		// TODO DKS: Eventually discover if there is one running locally and
-		// return that...
-		return new JackrabbitCCNRepository();
+	/**
+	 * Attempt to connect to existing Jackrabbit assumed
+	 * to be on this machine, listening on port.
+	 * @param port
+	 * @return
+	 * @throws NotBoundException 
+	 * @throws UnknownHostException 
+	 * @throws RemoteException 
+	 * @throws ClassCastException 
+	 * @throws MalformedURLException 
+	 */
+	public static JackrabbitCCNRepository getLocalJackrabbitRepository(int port) 
+		throws MalformedURLException, ClassCastException, RemoteException, UnknownHostException, NotBoundException {
+		// Skip discovery. See if there is one already
+		// running on this machine in the usual place,
+		// and return a wrapper around that.
+		return new JackrabbitCCNRepository(
+				InetAddress.getLocalHost().toString(), port);
 	}
 		
+	/**
+	 * Connect to an existing local Jackrabbit on the 
+	 * default port.
+	 **/
+	public static JackrabbitCCNRepository getLocalJackrabbitRepository() 
+		throws MalformedURLException, ClassCastException, RemoteException, UnknownHostException, NotBoundException {
+		this(SERVER_PORT);
+	}
+	
 	public CompleteName put(ContentName name, ContentAuthenticator authenticator, byte[] content) throws IOException {
 
 		if (null == name) {

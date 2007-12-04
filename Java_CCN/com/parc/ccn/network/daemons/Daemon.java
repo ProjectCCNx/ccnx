@@ -96,6 +96,7 @@ public class Daemon {
 
 		public void shutDown() {
 			_keepGoing = false;
+			finish();
 			interrupt();
 		}
 		
@@ -108,6 +109,9 @@ public class Daemon {
 		}
 		public void initialize() {
 			Library.logger().info("Should not be here, in WorkerThread.initialize().");
+		}
+		public void finish() {
+			Library.logger().info("Should not be here, in WorkerThread.finish().");
 		}
 
 	}
@@ -209,6 +213,11 @@ public class Daemon {
 		// without going to ant.
 		// Can start jackrabbit without this by adding a call
 		// to startLoop inside runAsDaemon...
+		FileOutputStream fos = new FileOutputStream("daemon_cmd.txt");
+		fos.write(cmd.getBytes());
+		fos.flush();
+		fos.close();
+		
 		Process child = Runtime.getRuntime().exec(cmd);
 
 		while (!getRMIFile(daemonName).exists()) {

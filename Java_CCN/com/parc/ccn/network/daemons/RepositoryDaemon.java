@@ -38,7 +38,7 @@ public class RepositoryDaemon extends Daemon {
 			// we start up a jackrabbit and let it run
 			_repository = new JackrabbitCCNRepository();
 			try {
-				_interestServer = new CCNInterestServer();
+				_interestServer = new CCNInterestServer(_repository);
 				_interestServer.run();
 			} catch (OncRpcException e) {
 				// TODO Auto-generated catch block
@@ -47,6 +47,11 @@ public class RepositoryDaemon extends Daemon {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+		}
+		
+		public void finish() {
+			_interestServer.stopRpcProcessing();
+			_repository.shutdown();
 		}
 	}
 

@@ -15,7 +15,7 @@ public class DiscoveryManager implements CCNDiscoveryListener {
 	/**
 	 * Other repositories we know about to talk to.
 	 */
-	protected ArrayList<GenericCCNRepository> _repositories = new ArrayList<GenericCCNRepository>();
+	protected ArrayList<CCNRepository> _repositories = new ArrayList<CCNRepository>();
 	protected boolean _wantLocal;
 	protected boolean _wantRemote;
 	
@@ -76,7 +76,7 @@ public class DiscoveryManager implements CCNDiscoveryListener {
 		}
 		Library.logger().info("Found a new repository: " + info.getURL());
 		try {
-			GenericCCNRepository newRepository = CCNRepositoryFactory.connect(info);
+			CCNRepository newRepository = CCNRepositoryFactory.connect(info);
 	
 			// Add this repository to our list.
 			_repositories.add(newRepository); // TODO DKS -- synchronize?
@@ -94,7 +94,7 @@ public class DiscoveryManager implements CCNDiscoveryListener {
 	 * when repositories are added and removed from the list.
 	 * @param newRepository
 	 */
-	protected void repositoryAdded(GenericCCNRepository newRepository) {
+	protected void repositoryAdded(CCNRepository newRepository) {
 	}
 	
 	protected void repositoryRemoved(ServiceInfo repositoryInfo) {		

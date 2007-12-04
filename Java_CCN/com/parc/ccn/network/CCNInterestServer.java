@@ -35,14 +35,15 @@ public class CCNInterestServer extends Transport2RepoServerStub {
 	 */
 	CCNRepository _theRepository = null; 
 	
-	public CCNInterestServer() throws OncRpcException, IOException {
-		this(SystemConfiguration.defaultRepositoryPort());
+	public CCNInterestServer(CCNRepository primaryRepository) throws OncRpcException, IOException {
+		this(SystemConfiguration.defaultRepositoryPort(), primaryRepository);
 	}
 	
-	public CCNInterestServer(int port) throws OncRpcException, IOException {
+	public CCNInterestServer(int port, CCNRepository primaryRepository) throws OncRpcException, IOException {
 		super(port);
-		// TODO: DKS right now this can only be called once...
-		_theRepository = CCNRepositoryManager.getRepositoryManager();
+		// Hack to avoid having to discover a jackrabbit we
+		// might already know about.
+		_theRepository = CCNRepositoryManager.getRepositoryManager(primaryRepository);
 	}
 
 	@Override

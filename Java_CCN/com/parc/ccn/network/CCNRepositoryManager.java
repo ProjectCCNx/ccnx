@@ -32,27 +32,6 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 	protected static CCNRepositoryManager _repositoryManager = null;
 	
 	/**
-	 * Other local repositories we know about to talk to.
-	 */
-	protected ArrayList<GenericCCNRepository> _repositories = new ArrayList<GenericCCNRepository>();
-
-	public static CCNRepositoryManager getRepositoryManager() { 
-		if (null != _repositoryManager) 
-			return _repositoryManager;
-		
-		return createRepositoryManager();
-	}
-	
-	protected static synchronized CCNRepositoryManager createRepositoryManager() {
-		if (null == _repositoryManager) {
-			_repositoryManager = new CCNRepositoryManager();
-			// Might need to add a thread to handle discovery responses...
-			_repositoryManager.start();
-		}
-		return _repositoryManager;
-	}
-
-	/**
 	 * We have one local repository that we create/open
 	 * and put data to, also put synchronization data into.
 	 * We have many other repositories that we forward
@@ -70,19 +49,68 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 	 * we mirror stuff from local read-only repositories
 	 * to the rw repository.
 	 */
-	protected GenericCCNRepository _primaryRepository = null;
+	protected CCNRepository _primaryRepository = null;
 	
+	public static CCNRepositoryManager getRepositoryManager() { 
+		if (null != _repositoryManager) 
+			return _repositoryManager;
+		
+		return createRepositoryManager(null);
+	}
+	
+	/**
+	 * If we've already initialized the RepositoryManager,
+	 * ignore any handed-in repository.
+	 * @return
+	 */
+	public static CCNRepositoryManager getRepositoryManager(CCNRepository primaryRepository) { 
+		if (null != _repositoryManager) 
+			return _repositoryManager;
+		
+		return createRepositoryManager(primaryRepository);
+	}
+
+	protected static synchronized CCNRepositoryManager 
+			createRepositoryManager(CCNRepository primaryRepository) {
+		if (null == _repositoryManager) {
+			_repositoryManager = new CCNRepositoryManager(primaryRepository);
+			// Might need to add a thread to handle discovery responses...
+			_repositoryManager.start();
+		}
+		return _repositoryManager;
+	}
+
 	/**
 	 * Default constructor to make static singleton.
 	 * Start with fixed configuration, then worry about
 	 * getting fancy...
 	 */
-	protected CCNRepositoryManager() {
+	protected CCNRepositoryManager(CCNRepository primaryRepository) {
 		super(true, false);
-		// Make/get our local repository. Start listening
-		// for others.
-		// TODO DKS -- eventually make this configurable
-		_primaryRepository = JackrabbitCCNRepository.getLocalJackrabbitRepository();
+		// We have two ways of managing repositories. We
+		// could either assume we own them, and make
+		// them, or we could look for ones already running.
+		// Which we do depends on the type of the repository.
+		// For example, for jackrabbit, we really want all
+		// RepositoryManagers on the same machine to talk
+		// to the same Jackrabbit. For file-systems based
+		// repositories, we could simply make wrappers that
+		// talked to the same files (or IMAP server or...).
+		// For figuring out what repositories to use,
+		// we could use discovery, or we could look for them
+		// in appropriate places (e.g. depending on a
+		// configuration file).
+		
+		// Right now we're set up to do discovery, but
+		// it isn't a good fit. For Jackrabbit, just see if
+		// we can use Jackrabbit's own RMI interface to 
+		// talk to an existing one. For other things, we
+		// should use a configuration file.
+		if (null == primaryRepository)
+			_primaryRepository = JackrabbitCCNRepository.getLocalJackrabbitRepository();
+		else
+			_primaryRepository = primaryRepository;
+		_repositories.add(primaryRepository);
 	}
 	
 	/**
@@ -128,16 +156,57 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 		CCNInterestManager.getInterestManager().cancelInterest(query);
 	}
 
-	protected void repositoryAdded(GenericCCNRepository newRepository) {
-		// TODO check whether equals method makes this work correctly
+	protected void repositoryAdded(CCNRepository newRepository) {
+		// DiscoveryManager handles _repositories list.
 		if (!_repositories.contains(newRepository))
 			_repositories.add(newRepository);
 	}
 	
 	protected void repositoryRemoved(ServiceInfo repositoryInfo) {
+		// DiscoveryManager handles _repositories list.
 		if (_primaryRepository.equals(repositoryInfo)) {
 			Library.logger().warning("Lost primary repository. Replacing.");
 			_primaryRepository = JackrabbitCCNRepository.getLocalJackrabbitRepository();
-		}		
+		}
+	}
+
+	public CompleteName addProperty(CompleteName target, String propertyName, byte[] propertyValue) throws IOException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public CompleteName addProperty(CompleteName target, String propertyName, String propertyValue) throws IOException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public ArrayList<CompleteName> enumerate(CompleteName name) throws IOException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public byte[] getByteProperty(CompleteName target, String propertyName) throws IOException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public ArrayList<ContentObject> getInternal(ContentName name, ContentAuthenticator authenticator) throws IOException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public String getStringProperty(CompleteName target, String propertyName) throws IOException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public boolean isInternal(CompleteName name) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	public CompleteName putInternal(ContentName name, ContentAuthenticator authenticator, byte[] content) throws IOException {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }
