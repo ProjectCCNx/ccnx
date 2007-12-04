@@ -62,7 +62,7 @@ public class AuthorityKeyIdentifier implements DEREncodable, DERTags {
 
 	public AuthorityKeyIdentifier(ASN1Sequence seq) {
 		
-		Enumeration e = seq.getObjects();	
+		Enumeration<?> e = seq.getObjects();	
 		DERTaggedObject o = null;
 		
 		while (e.hasMoreElements()) {

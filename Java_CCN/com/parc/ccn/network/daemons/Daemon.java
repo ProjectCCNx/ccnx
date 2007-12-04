@@ -197,7 +197,31 @@ public class Daemon {
 		}
 
 		String cmd = "java ";
-		cmd += "-cp " + System.getProperty("java.class.path") + " ";
+		// Need to put quotes around individual items, to cope with spaces in path names.
+		String classPath = System.getProperty("java.class.path");
+		String [] directories = null;
+		String sep = null;
+		if (classPath.contains(":")) {
+			sep = ":";
+			directories = classPath.split(":");
+		} else if (classPath.contains(";")) {
+			sep = ";"; // do we need to escape?
+			directories = classPath.split(";");
+		}
+		StringBuffer cp = new StringBuffer(
+							((null != directories) &&
+							  (directories.length > 0)) ?
+									  directories[0] : "");
+		if (null != directories) {
+			for (int i=1; i < directories.length; ++i) {
+				cp.append(sep);
+				cp.append("\"");
+				cp.append(directories[i]);
+				cp.append("\"");
+			}
+		}
+		
+		cmd += "-cp " + cp.toString() + " ";
 
 		cmd += daemonClass + " ";
 		cmd += "-daemon";

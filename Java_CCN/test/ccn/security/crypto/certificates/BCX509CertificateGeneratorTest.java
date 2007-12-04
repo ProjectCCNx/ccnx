@@ -171,7 +171,7 @@ public class BCX509CertificateGeneratorTest extends TestCase {
 				 							cert, BCX509CertificateGenerator.id_kp_ipsec));
 			Assert.assertTrue(BCX509CertificateGenerator.hasExtendedKeyUsage(
 				 				cert, BCX509CertificateGenerator.id_kp_registrationAgent));
-			Set criticalExtensions = cert.getCriticalExtensionOIDs();
+			Set<?> criticalExtensions = cert.getCriticalExtensionOIDs();
 			Assert.assertTrue(!criticalExtensions.contains(BCX509CertificateGenerator.id_ce_extendedKeyUsage));
 																																
 		} catch (Exception ex) {
@@ -713,13 +713,13 @@ public class BCX509CertificateGeneratorTest extends TestCase {
 	}
 
 	public void testProperties() {
-			Enumeration e;
+			Enumeration<?> e;
 			Provider[] provider;
 			String k; // key
 			String v; // value
 			String s; // string
 			String p; // previous mapping
-			Map map = new HashMap();
+			Map<String, String> map = new HashMap<String, String>();
 			int i;
 			int j;
 
@@ -810,7 +810,7 @@ public class BCX509CertificateGeneratorTest extends TestCase {
 		System.out.println("And looks like: " + out.getDERObject().toString());
 		X509CertificateStructure structure = new X509CertificateStructure((DERSequence)out.getDERObject());
 		System.out.println("Got structure.");
-		Enumeration extoids = structure.getTBSCertificate().getExtensions().oids();
+		Enumeration<?> extoids = structure.getTBSCertificate().getExtensions().oids();
 
 		System.out.println("Got extensions:");
 		while (extoids.hasMoreElements()) {

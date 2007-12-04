@@ -113,8 +113,8 @@ public class JackrabbitCCNRepositoryTest {
 			
 			pubonlyauth = new ContentAuthenticator(pubkey);
 			
-			System.out.println("Creating local repository.");
-			repo = new JackrabbitCCNRepository();
+			System.out.println("Getting local repository.");
+			repo = JackrabbitCCNRepository.getLocalJackrabbitRepository();
 			
 		} catch (Exception ex) {
 			XMLEncodableTester.handleException(ex);

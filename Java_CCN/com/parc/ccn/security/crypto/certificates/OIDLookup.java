@@ -396,7 +396,7 @@ public class OIDLookup {
 	  */
 	 static private Map<String,Map<String,String>> initAliasLookup() {
 	 	
-			Enumeration e;
+			Enumeration<?> e;
 			Provider[] providers;
 			String k; // key
 			String v; // value

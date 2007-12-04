@@ -55,6 +55,7 @@ public class StandardCCNLibraryTest {
 		}
 		try {
 			CompleteName result = library.put(name, content, publisher);
+			System.out.println("Resulting CompleteName: " + result);
 		} catch (SignatureException e) {
 			e.printStackTrace();
 		} catch (IOException e) {

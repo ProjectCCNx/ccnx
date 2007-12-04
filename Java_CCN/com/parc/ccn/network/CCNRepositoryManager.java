@@ -1,11 +1,11 @@
 package com.parc.ccn.network;
 
 import java.io.IOException;
+import java.rmi.RemoteException;
 import java.util.ArrayList;
 
 import javax.jmdns.ServiceInfo;
 
-import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
@@ -71,9 +71,16 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 	}
 
 	protected static synchronized CCNRepositoryManager 
-			createRepositoryManager(CCNRepository primaryRepository) {
+				createRepositoryManager(CCNRepository primaryRepository) {
 		if (null == _repositoryManager) {
-			_repositoryManager = new CCNRepositoryManager(primaryRepository);
+			try {
+				_repositoryManager = new CCNRepositoryManager(primaryRepository);
+			} catch (RemoteException e) {
+				// Could make one. For now signal error, expect it to be separate.
+				Library.logger().severe("Error finding Jackrabbit repository found. Please start repository daemon and try again.");
+				System.err.println("Error finding Jackrabbit repository found. Please start repository daemon and try again.");
+				throw new RuntimeException("Error finding Jackrabbit repository found. Please start repository daemon and try again.");
+			}
 			// Might need to add a thread to handle discovery responses...
 			_repositoryManager.start();
 		}
@@ -84,8 +91,9 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 	 * Default constructor to make static singleton.
 	 * Start with fixed configuration, then worry about
 	 * getting fancy...
+	 * @throws RemoteException 
 	 */
-	protected CCNRepositoryManager(CCNRepository primaryRepository) {
+	protected CCNRepositoryManager(CCNRepository primaryRepository) throws RemoteException {
 		super(true, false);
 		// We have two ways of managing repositories. We
 		// could either assume we own them, and make
@@ -106,10 +114,17 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 		// we can use Jackrabbit's own RMI interface to 
 		// talk to an existing one. For other things, we
 		// should use a configuration file.
-		if (null == primaryRepository)
+		if (null == primaryRepository) {
 			_primaryRepository = JackrabbitCCNRepository.getLocalJackrabbitRepository();
-		else
+			if (null == _primaryRepository) {
+				// Could make one. For now signal error, expect it to be separate.
+				Library.logger().severe("No local Jackrabbit repository found. Please start repository daemon and try again.");
+				System.err.println("No local Jackrabbit repository found. Please start repository daemon and try again.");
+				throw new RuntimeException("No local Jackrabbit repository found. Please start repository daemon and try again.");
+			}
+		} else {
 			_primaryRepository = primaryRepository;
+		}
 		_repositories.add(primaryRepository);
 	}
 	
@@ -138,7 +153,9 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 	/**
 	 * The rest of CCNBase. Pass it on to the CCNInterestManager to
 	 * forward to the network. Also express it to the
-	 * repositories we manage.
+	 * repositories we manage, particularly the primary.
+	 * Each might generate their own CCNQueryDescriptor,
+	 * so we need to group them together.
 	 */
 	public CCNQueryDescriptor expressInterest(
 			ContentName name,
@@ -154,20 +171,6 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 	 */
 	public void cancelInterest(CCNQueryDescriptor query) throws IOException {
 		CCNInterestManager.getInterestManager().cancelInterest(query);
-	}
-
-	protected void repositoryAdded(CCNRepository newRepository) {
-		// DiscoveryManager handles _repositories list.
-		if (!_repositories.contains(newRepository))
-			_repositories.add(newRepository);
-	}
-	
-	protected void repositoryRemoved(ServiceInfo repositoryInfo) {
-		// DiscoveryManager handles _repositories list.
-		if (_primaryRepository.equals(repositoryInfo)) {
-			Library.logger().warning("Lost primary repository. Replacing.");
-			_primaryRepository = JackrabbitCCNRepository.getLocalJackrabbitRepository();
-		}
 	}
 
 	public CompleteName addProperty(CompleteName target, String propertyName, byte[] propertyValue) throws IOException {
@@ -209,4 +212,37 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 		// TODO Auto-generated method stub
 		return null;
 	}
+	
+	protected void repositoryAdded(CCNRepository newRepository) {
+		// DiscoveryManager handles _repositories list.
+		if (!_repositories.contains(newRepository))
+			_repositories.add(newRepository);
+	}
+	
+	protected void repositoryRemoved(ServiceInfo repositoryInfo) {
+		// DiscoveryManager handles _repositories list.
+		if (_primaryRepository.equals(repositoryInfo)) {
+			Library.logger().warning("Lost primary repository. Replacing.");
+			try {
+				_primaryRepository = JackrabbitCCNRepository.getLocalJackrabbitRepository();
+				if (null == _primaryRepository) {
+					// desperate. try making one
+					// if this went away, also really ought to make an interest server.
+					// DKS TODO: make a combined local repo/interest server
+					Library.logger().warning("Primary Jackrabbit repository has disappeared and no replacement available.");
+					Library.logger().warning("Creating new local Jackrabbit repository; with no CCNInterestServer.");
+					_primaryRepository = new JackrabbitCCNRepository();
+					if (null == _primaryRepository) {
+						throw new RemoteException("Cannot create new local Jackrabbit server.");
+					}
+				}
+			} catch (RemoteException e) {
+				// One exists, but we can't get to it. For now signal error, expect it to be separate.
+				Library.logger().severe("Error connecting to local Jackrabbit repository found. Please start repository daemon and try again.");
+				System.err.println("Error connecting to local Jackrabbit repository found. Please start repository daemon and try again.");
+				throw new RuntimeException("Error connecting to local Jackrabbit repository found. Please start repository daemon and try again.");
+			}
+		}
+	}
+
 }

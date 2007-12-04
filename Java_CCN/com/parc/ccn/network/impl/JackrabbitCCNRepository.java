@@ -103,11 +103,11 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 
 	/**
 	 * Use someone else's repository.
+	 * @throws MalformedURLException 
 	 */
 	public JackrabbitCCNRepository(String host, int port) 
-			throws MalformedURLException, 
-				ClassCastException, RemoteException, 
-				NotBoundException {
+			throws ClassCastException, RemoteException, 
+				NotBoundException, MalformedURLException {
 		this(new ClientRepositoryFactory().getRepository(constructURL(PROTOCOL_TYPE, SERVER_RMI_NAME, host, port)));
 		_info = CCNDiscovery.getServiceInfo(JACKRABBIT_RMI_SERVICE_TYPE, host, port);
 	}
@@ -183,12 +183,35 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	 * @throws MalformedURLException 
 	 */
 	public static JackrabbitCCNRepository getLocalJackrabbitRepository(int port) 
-		throws MalformedURLException, ClassCastException, RemoteException, UnknownHostException, NotBoundException {
+		throws RemoteException {
 		// Skip discovery. See if there is one already
 		// running on this machine in the usual place,
 		// and return a wrapper around that.
-		return new JackrabbitCCNRepository(
-				InetAddress.getLocalHost().toString(), port);
+		try {
+			return new JackrabbitCCNRepository(
+					// This works.
+					"127.0.0.1",
+					// This gives us back the hostname,
+					// which can cause problems depending
+					// on host setup.
+//					InetAddress.getLocalHost().toString(),
+					port);
+		} catch (ClassCastException e) {
+			Library.logger().warning("This should not happen: ClassCastException connecting to local Jackrabbit repository: " + e.getMessage());
+			Library.warningStackTrace(e);
+			throw new RemoteException("This should not happen: ClassCastException connecting to local Jackrabbit repository: " + e.getMessage());
+		} catch (MalformedURLException e) {
+			Library.logger().warning("This should not happen: MalformedURLException on a system-constructed URL! " + e.getMessage());
+			Library.warningStackTrace(e);
+			throw new RemoteException("This should not happen: MalformedURLException on a system-constructed URL! " + e.getMessage());
+		/*} catch (UnknownHostException e) {
+			Library.logger().warning("UnknownHostException connecting to localhost! " + e.getMessage());
+			Library.warningStackTrace(e);
+			throw new RemoteException("UnknownHostException connecting to localhost! " + e.getMessage());
+		*/} catch (NotBoundException e) {
+			Library.logger().warning("NotBoundException: no Jackrabbit repository available.");
+			return null;
+		}
 	}
 		
 	/**
@@ -196,8 +219,8 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	 * default port.
 	 **/
 	public static JackrabbitCCNRepository getLocalJackrabbitRepository() 
-		throws MalformedURLException, ClassCastException, RemoteException, UnknownHostException, NotBoundException {
-		this(SERVER_PORT);
+		throws RemoteException {
+		return getLocalJackrabbitRepository(SERVER_PORT);
 	}
 	
 	public CompleteName put(ContentName name, ContentAuthenticator authenticator, byte[] content) throws IOException {

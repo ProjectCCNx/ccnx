@@ -10,7 +10,6 @@ import java.util.logging.Level;
 import javax.jmdns.ServiceInfo;
 
 import com.parc.ccn.Library;
-import com.parc.ccn.CCNBase;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;

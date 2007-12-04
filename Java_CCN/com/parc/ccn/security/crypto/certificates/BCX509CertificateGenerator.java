@@ -11,7 +11,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.Signature;
 import java.security.SignatureException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateEncodingException;
@@ -343,7 +342,7 @@ public class BCX509CertificateGenerator extends GenericX509CertificateGenerator 
 			setSerialNumber(generateRandomSerialNumber());
 		}
 
-		Enumeration oids = extensions.oids();
+		Enumeration<?> oids = extensions.oids();
 		while (oids.hasMoreElements()) {
 			DERObjectIdentifier oid = (DERObjectIdentifier)oids.nextElement();
 			X509Extension extension = extensions.getExtension(oid);
@@ -785,7 +784,7 @@ public class BCX509CertificateGenerator extends GenericX509CertificateGenerator 
 				return;
 			}
 			ExtendedKeyUsage oldEku = ExtendedKeyUsage.getInstance(decoded);
-			Enumeration oldPurposes = ((ASN1Sequence)oldEku.getDERObject()).getObjects();
+			Enumeration<?> oldPurposes = ((ASN1Sequence)oldEku.getDERObject()).getObjects();
 			Vector<DERObjectIdentifier> purposes =
 				new Vector<DERObjectIdentifier>();
 			while (oldPurposes.hasMoreElements()) {
@@ -833,7 +832,7 @@ public class BCX509CertificateGenerator extends GenericX509CertificateGenerator 
 		// Have to make a copy of the sequence containing everything but the
 		// one to remove.
 		ASN1EncodableVector newPurposes = new ASN1EncodableVector();
-		Enumeration oldPurposes = ((ASN1Sequence)decoded).getObjects();
+		Enumeration<?> oldPurposes = ((ASN1Sequence)decoded).getObjects();
 		DERObjectIdentifier oldPurpose = null;
 		while (oldPurposes.hasMoreElements()) {
 			oldPurpose = (DERObjectIdentifier)oldPurposes.nextElement();
@@ -875,7 +874,7 @@ public class BCX509CertificateGenerator extends GenericX509CertificateGenerator 
 	 **/
 	protected static boolean hasExtendedKeyUsage(ASN1Sequence usages, 
 			DERObjectIdentifier usage) {
-		Enumeration e = usages.getObjects();
+		Enumeration<?> e = usages.getObjects();
 		while (e.hasMoreElements()) {
 			if (e.nextElement().equals(usage))
 				return true;
@@ -1018,7 +1017,7 @@ public class BCX509CertificateGenerator extends GenericX509CertificateGenerator 
 		if (null != oldExt) {
 			GeneralNames oldGenNames = new GeneralNames((ASN1Sequence)
 					CryptoUtil.decode(oldExt.getValue().getOctets()));
-			Enumeration oldNames = ((ASN1Sequence)oldGenNames.getDERObject()).getObjects();
+			Enumeration<?> oldNames = ((ASN1Sequence)oldGenNames.getDERObject()).getObjects();
 			ASN1EncodableVector newNames = new ASN1EncodableVector();
 			while (oldNames.hasMoreElements()) {
 				newNames.add((DERTaggedObject) oldNames.nextElement());
@@ -1790,10 +1789,10 @@ public class BCX509CertificateGenerator extends GenericX509CertificateGenerator 
 	static public boolean hasExtendedKeyUsage(X509Certificate cert, String usage) 
 	throws CertificateParsingException {
 
-		List ekus = cert.getExtendedKeyUsage();
+		List<String> ekus = cert.getExtendedKeyUsage();
 		if (null == ekus)
 			return false;
-		Iterator it = ekus.iterator();
+		Iterator<String> it = ekus.iterator();
 		String thisEKU = null;
 		while (it.hasNext()) {
 			thisEKU = (String)it.next();

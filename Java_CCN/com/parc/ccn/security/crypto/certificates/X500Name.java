@@ -149,10 +149,10 @@ public class X500Name implements Principal, DEREncodable {
     public X500Name(ASN1Sequence  seq) {
 
         this._seq = seq;
-        Enumeration e = seq.getObjects();
+        Enumeration<?> e = seq.getObjects();
         while (e.hasMoreElements()) {
             DERSet  set = (DERSet)e.nextElement();
-            Enumeration  s = set.getObjects();
+            Enumeration<?>  s = set.getObjects();
 
             _ordering.addElement((DERObjectIdentifier)s.nextElement());
             _values.addElement(((DERString)s.nextElement()).getString());
@@ -170,7 +170,7 @@ public class X500Name implements Principal, DEREncodable {
      * following a specific ordering, you should use the constructor
      * with the ordering specified below.
      */
-    public X500Name(Hashtable  attributes)   {
+    public X500Name(Hashtable<DERObjectIdentifier, String>  attributes)   {
         this(null, attributes);
     }
 
@@ -182,21 +182,22 @@ public class X500Name implements Principal, DEREncodable {
      * construction process. The ordering vector should contain the OIDs
      * in the order they are meant to be encoded or printed in toString.
      */
-    public X500Name(Vector ordering, Hashtable attributes) {
+    public X500Name(Vector<DERObjectIdentifier> ordering, 
+    				Hashtable<DERObjectIdentifier, String> attributes) {
         if (ordering != null) {
             for (int i = 0; i != ordering.size(); i++) {
-                this._ordering.addElement((DERObjectIdentifier)ordering.elementAt(i));
+                this._ordering.addElement(ordering.elementAt(i));
             }
         } else {
-            Enumeration e = attributes.keys();
+            Enumeration<DERObjectIdentifier> e = attributes.keys();
 
             while (e.hasMoreElements()) {
-                this._ordering.addElement((DERObjectIdentifier)e.nextElement());
+                this._ordering.addElement(e.nextElement());
             }
         }
 
         for (int i = 0; i != this._ordering.size(); i++) {
-            DERObjectIdentifier oid = (DERObjectIdentifier)this._ordering.elementAt(i);
+            DERObjectIdentifier oid = this._ordering.elementAt(i);
 
             if (OIDLookUp.get(oid) == null) {
                 throw new IllegalArgumentException("Unknown object id - " + oid.getId() + " - passed to distinguished name");
@@ -213,15 +214,16 @@ public class X500Name implements Principal, DEREncodable {
     /**
      * takes two vectors one of the oids and the other of the values.
      */
-    public X500Name(Vector ordering, Vector values) {
+    public X500Name(Vector<DERObjectIdentifier> ordering, 
+    				Vector<String> values) {
 
         if (ordering.size() != values.size()) {
             throw new IllegalArgumentException("Ordering vector must be same length as values.");
         }
 
         for (int i = 0; i < ordering.size(); i++) {
-            this._ordering.addElement((DERObjectIdentifier)ordering.elementAt(i));
-            this._values.addElement((String)values.elementAt(i));
+            this._ordering.addElement(ordering.elementAt(i));
+            this._values.addElement(values.elementAt(i));
         }
     }
 
@@ -387,7 +389,7 @@ public class X500Name implements Principal, DEREncodable {
 	
     public int hashCode() {
         DERSequence seq = (DERSequence)this.getDERObject();
-        Enumeration e = seq.getObjects();
+        Enumeration<?> e = seq.getObjects();
         int hashCode = 0;
 
         while (e.hasMoreElements()) {
@@ -402,12 +404,12 @@ public class X500Name implements Principal, DEREncodable {
 
         StringBuffer buf = new StringBuffer();
         boolean first = true;
-        Enumeration e1 = _ordering.elements();
-        Enumeration e2 = _values.elements();
+        Enumeration<DERObjectIdentifier> e1 = _ordering.elements();
+        Enumeration<String> e2 = _values.elements();
 
         while (e1.hasMoreElements()) {
-            Object oid = e1.nextElement();
-            String sym = (String)OIDLookUp.get(oid);
+        	DERObjectIdentifier oid = e1.nextElement();
+            String sym = OIDLookUp.get(oid);
             
             if (first) {
                 first = false;
@@ -418,7 +420,7 @@ public class X500Name implements Principal, DEREncodable {
             if (sym != null) {
                 buf.append(sym);
             } else {
-                buf.append(((DERObjectIdentifier)oid).getId());
+                buf.append(oid.getId());
             }
 
             buf.append("=");
@@ -431,7 +433,7 @@ public class X500Name implements Principal, DEREncodable {
     public String toCanonicalString() {
         StringBuffer buf = new StringBuffer();
         boolean first = true;
-        Enumeration emap = CanonicalOrdering.elements();
+        Enumeration<DERObjectIdentifier> emap = CanonicalOrdering.elements();
         
         while (emap.hasMoreElements())  {
             Object oid = emap.nextElement();
@@ -493,8 +495,8 @@ public class X500Name implements Principal, DEREncodable {
             theseValues.addElement(value);
         }
 
-        Enumeration e1 = thisOrdering.elements();
-        Enumeration e2 = theseValues.elements();
+        Enumeration<DERObjectIdentifier> e1 = thisOrdering.elements();
+        Enumeration<String> e2 = theseValues.elements();
 
         while (e1.hasMoreElements())  {
             Object oid = e1.nextElement();
@@ -512,7 +514,7 @@ public class X500Name implements Principal, DEREncodable {
                 buf.append(((DERObjectIdentifier)oid).getId());
             }
             buf.append("=");
-            buf.append((String)e2.nextElement());
+            buf.append(e2.nextElement());
         }
         return buf.toString();
 	}
