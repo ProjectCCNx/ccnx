@@ -44,22 +44,23 @@ public class BasicKeyManager extends KeyManager {
 	protected void loadKeyStore() throws ConfigurationException {
 		File keyStoreFile = new File(UserConfiguration.keystoreFileName());
 		if (!keyStoreFile.exists()) {
+			Library.logger().info("Creating new CCN key store...");
 			_keystore = createKeyStore();	
 		}
 		if (null == _keystore) {
-			KeyStore ks = null;
 		    FileInputStream in = null;
 			try {
+				Library.logger().info("Loading CCN key store...");
 				_password = UserConfiguration.keystorePassword().toCharArray();
-				ks = KeyStore.getInstance(KeyStore.getDefaultType());
+				_keystore = KeyStore.getInstance(KeyStore.getDefaultType());
 				in = new FileInputStream(UserConfiguration.keystoreFileName());
-		    	ks.load(in, _password);
+				_keystore.load(in, _password);
 			} catch (NoSuchAlgorithmException e) {
-				Library.logger().warning("Cannot load empty default keystore.");
-				throw new ConfigurationException("Cannot load empty default keystore.");
+				Library.logger().warning("Cannot load default keystore.");
+				throw new ConfigurationException("Cannot load default keystore.");
 			} catch (CertificateException e) {
-				Library.logger().warning("Cannot load empty default keystore with no certificates.");
-				throw new ConfigurationException("Cannot load empty default keystore with no certificates.");
+				Library.logger().warning("Cannot load default keystore with no certificates.");
+				throw new ConfigurationException("Cannot load default keystore with no certificates.");
 			} catch (FileNotFoundException e) {
 				Library.logger().warning("Cannot open existing key store file: " + UserConfiguration.keystoreFileName());
 				throw new ConfigurationException("Cannot open existing key store file: " + UserConfiguration.keystoreFileName());
@@ -85,6 +86,9 @@ public class BasicKeyManager extends KeyManager {
 		KeyStore.PrivateKeyEntry entry = null;
 		try {
 			entry = (KeyStore.PrivateKeyEntry)_keystore.getEntry(_defaultAlias, new KeyStore.PasswordProtection(_password));
+			if (null == entry) {
+				Library.logger().warning("Cannot get default key entry: " + _defaultAlias);
+			}
 		    _privateKey = entry.getPrivateKey();
 		    _certificate = (X509Certificate)entry.getCertificate();
 		    _defaultKeyID = new PublisherID(_certificate.getPublicKey(), false);

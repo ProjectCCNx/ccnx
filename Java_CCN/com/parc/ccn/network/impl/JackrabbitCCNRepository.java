@@ -45,6 +45,7 @@ import org.apache.jackrabbit.rmi.remote.RemoteRepository;
 import org.apache.jackrabbit.rmi.server.ServerAdapterFactory;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
@@ -189,12 +190,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		// and return a wrapper around that.
 		try {
 			return new JackrabbitCCNRepository(
-					// This works.
-					"127.0.0.1",
-					// This gives us back the hostname,
-					// which can cause problems depending
-					// on host setup.
-//					InetAddress.getLocalHost().toString(),
+					SystemConfiguration.getLocalHost(),
 					port);
 		} catch (ClassCastException e) {
 			Library.logger().warning("This should not happen: ClassCastException connecting to local Jackrabbit repository: " + e.getMessage());
@@ -295,6 +291,8 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 			try {
 				// DKS: to make file nodes: add file name, "nt:file"
 				// 
+				parent.checkout();
+				
 				n = parent.addNode(componentName,"nt:unstructured");
 				// now, make sure the leaf node is versionable				
 				if (!n.isNodeType("mix:versionable")) {
@@ -304,6 +302,9 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 					n.addMixin("mix:referenceable");
 				}
 				
+				_session.save();
+				parent.checkin();
+
 			} catch (NoSuchNodeTypeException e) {
 				Library.logger().warning("Unexpected error: can't set built-in mixin types on a node.");
 				Library.logStackTrace(Level.WARNING, e);

@@ -111,4 +111,19 @@ public class ContentAuthenticatorTest {
 		
 	}
 
+	@Test
+	public void testSignContentNamePrivateKey() {
+
+		ContentAuthenticator scca = null;
+		try {
+			scca = new ContentAuthenticator(name, pubkey, 
+				ContentAuthenticator.ContentType.LEAF, contenthash,
+				keyLoc, pair.getPrivate());
+		} catch (Exception e) {
+			XMLEncodableTester.handleException(e);
+		}
+		ContentAuthenticator dscca = new ContentAuthenticator();
+		XMLEncodableTester.encodeDecodeTest("ContentAuthenticator(cert)", scca, dscca);
+	}
+
 }

@@ -73,7 +73,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 
 	public KeyManager keyManager() { return _userKeyManager; }
 
-	protected PublisherID getDefaultPublisher() {
+	public PublisherID getDefaultPublisher() {
 		return keyManager().getDefaultKeyID();
 	}
 
@@ -170,7 +170,6 @@ public class StandardCCNLibrary implements CCNLibrary {
 			throw new SignatureException(e);
 		}
 	}
-
 
 	/**
 	 * TODO: better answer than throwing an exception on invalid

@@ -1,9 +1,5 @@
 package com.parc.ccn.network.daemons;
 
-import java.io.IOException;
-
-import org.acplt.oncrpc.OncRpcException;
-
 import com.parc.ccn.Library;
 import com.parc.ccn.network.CCNInterestServer;
 import com.parc.ccn.network.impl.JackrabbitCCNRepository;
@@ -36,16 +32,17 @@ public class RepositoryDaemon extends Daemon {
 		
 		public void initialize() {
 			// we start up a jackrabbit and let it run
+			Library.logger().info("Starting Jackrabbit repository...");
 			_repository = new JackrabbitCCNRepository();
 			try {
-				_interestServer = new CCNInterestServer(_repository);
-				_interestServer.run();
-			} catch (OncRpcException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				Library.logger().info("Creating interest server..");
+				_interestServer = 
+					new CCNInterestServer(_repository);
+				Library.logger().info("Starting interest server...");				
+				_interestServer.run(_interestServer.transports); // straight run expects portmapper
+			} catch (Exception e) {
+				Library.logger().warning("Exception starting interest server: " + e.getMessage());
+				Library.warningStackTrace(e);
 			}
 		}
 		

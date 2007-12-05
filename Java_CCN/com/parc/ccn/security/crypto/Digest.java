@@ -6,7 +6,9 @@ import com.parc.ccn.Library;
 
 public class Digest {
 
-	public static String DEFAULT_DIGEST = "SHA-256";
+	// DKS TODO: get oids for SHA256
+//	public static String DEFAULT_DIGEST = "SHA-256";
+	public static String DEFAULT_DIGEST = "SHA-1";
 	
     public static byte[] hash(byte [] content) {
 		return hash(DEFAULT_DIGEST, content);

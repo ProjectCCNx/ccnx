@@ -37,6 +37,7 @@ public class CCNInterestServer extends Transport2RepoServerStub {
 	
 	public CCNInterestServer(CCNRepository primaryRepository) throws OncRpcException, IOException {
 		this(SystemConfiguration.defaultRepositoryPort(), primaryRepository);
+		Library.logger().info("CCNInterestServer: initialize.");
 	}
 	
 	public CCNInterestServer(int port, CCNRepository primaryRepository) throws OncRpcException, IOException {
@@ -44,6 +45,7 @@ public class CCNInterestServer extends Transport2RepoServerStub {
 		// Hack to avoid having to discover a jackrabbit we
 		// might already know about.
 		_theRepository = CCNRepositoryManager.getRepositoryManager(primaryRepository);
+		Library.logger().info("CCNInterestServer: initialize.");
 	}
 
 	@Override
@@ -53,6 +55,7 @@ public class CCNInterestServer extends Transport2RepoServerStub {
 		// TODO: DKS cope with authenticators or otherwise
 		//   make life cope with more than one piece of
 		//   content with the same name.
+		Library.logger().info("CCNInterestServer: Enumerate");
 		CompleteName name = new CompleteName(new ContentName(arg1), null);
 		ArrayList<CompleteName> availableNames = null;
 		try {
@@ -60,9 +63,7 @@ public class CCNInterestServer extends Transport2RepoServerStub {
 		} catch (IOException e) {
 			Library.logger().warning("Exception in RPC server call Enumerate_1: " + e.getMessage());
 			Library.warningStackTrace(e);
-			Library.logger().warning("Returning error as a negative count in the list.");
-			NameList list = new NameList();
-			list.count = -1;
+			Library.logger().warning("Returning error as a zero count in the list. Can't distinguish from no results.");
 		}
 		
 		// Convert back to a NameList.
@@ -81,6 +82,7 @@ public class CCNInterestServer extends Transport2RepoServerStub {
 		// Put an XML encoded ContentObject.
 		// Complain if more than one block matches name;
 		// TODO cope if more than one block matches.
+		Library.logger().info("CCNInterestServer: GetBlock");
 		ContentName name = new ContentName(arg1);
 		ArrayList<ContentObject> availableContent = null;
 		try {
@@ -108,17 +110,18 @@ public class CCNInterestServer extends Transport2RepoServerStub {
 		} catch (IOException e) {
 			Library.logger().warning("Exception in RPC server call GetBlock_1: " + e.getMessage());
 			Library.warningStackTrace(e);
-			Library.logger().warning("Returning error as negative block length.");
+			Library.logger().warning("Returning error as 0 block length. Can't distinguish from no content.");
 			DataBlock block = new DataBlock();
-			block.length = -1;
+			block.length = 0;
+			block.data = new byte[0];
 			return block;
 		} catch (XMLStreamException e) {
 			Library.logger().warning("Exception in RPC server call GetBlock_1: cannot encode content: " + e.getMessage());
 			Library.warningStackTrace(e);
-			Library.logger().warning("Returning error as negative block length.");
+			Library.logger().warning("Returning error as 0 block length. Can't distinguish from no content.");
 			DataBlock block = new DataBlock();
+			block.length = 0;
 			block.data = new byte[0];
-			block.length = -2;
 			return block;
 		}		
 	}
@@ -128,6 +131,7 @@ public class CCNInterestServer extends Transport2RepoServerStub {
 		// The data block should contain an XML
 		// encoded ContentObject.
 		try {
+			Library.logger().info("CCNInterestServer: PutBlock");
 			// Decode content object.
 			ContentObject co = new ContentObject(arg2.data);
 			_theRepository.put(co.name(), co.authenticator(), co.content());

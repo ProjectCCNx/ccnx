@@ -13,6 +13,7 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
+import com.parc.ccn.security.keys.KeyManager;
 
 /**
  * Higher-level interface to CCNs.
@@ -33,6 +34,12 @@ import com.parc.ccn.data.security.PublisherID;
  *
  */
 public interface CCNLibrary extends CCNBase {
+
+	public void setKeyManager(KeyManager keyManager);
+
+	public KeyManager keyManager();
+		
+	public PublisherID getDefaultPublisher();
 
 	public CompleteName put(ContentName name, byte [] contents) throws SignatureException, IOException;
 
@@ -83,6 +90,14 @@ public interface CCNLibrary extends CCNBase {
 	 */
 	public int getVersion(ContentName name);
 	
+	/**
+	 * Compute the name of this version.
+	 * @param name
+	 * @param version
+	 * @return
+	 */
+	public ContentName versionName(ContentName name, int version);
+
 	/**
 	 * Does this specific name point to a link?
 	 * Looks at local (cached) data only. 

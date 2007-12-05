@@ -5,6 +5,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 
 import org.acplt.oncrpc.OncRpcException;
+import org.acplt.oncrpc.OncRpcProtocols;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.config.SystemConfiguration;
@@ -43,7 +44,10 @@ public class CCNInterestManager {
 	protected CCNInterestManager() throws IOException {
 		super();
 		try {
-			_client = new Repo2TransportClient(InetAddress.getLocalHost(), SystemConfiguration.defaultTransportPort());
+			_client = new Repo2TransportClient(
+						InetAddress.getLocalHost(), 
+						SystemConfiguration.defaultTransportPort(),
+						OncRpcProtocols.ONCRPC_TCP);
 		} catch (UnknownHostException e) {
 			Library.logger().severe("Cannot look up localhost!");
 			Library.warningStackTrace(e);

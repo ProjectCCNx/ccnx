@@ -80,8 +80,15 @@ public class SignatureHelper {
 			Library.logger().info("Value to be signed and signing key must not be null.");
 			return null;
 		}
-		byte [] canonicalizedData = canonicalize(toBeSigned, signingKey);
-		
+		// DKS TODO: figure out canonicalization
+		//byte [] canonicalizedData = canonicalize(toBeSigned, signingKey);
+		byte[] canonicalizedData = null;
+		try {
+			canonicalizedData = toBeSigned.encode();
+		} catch (XMLStreamException e) {
+			Library.logger().warning("Exception encoding toBeSigned: " + e.getMessage());
+			Library.warningStackTrace(e);
+		}
 		return sign(hashAlgorithm, canonicalizedData, signingKey);
 	}
 
@@ -146,6 +153,10 @@ public class SignatureHelper {
 			        xmlSignatureFactory.
 			        newCanonicalizationMethod(
 			        		canonicalizationAlg, canonParams);
+			if (null == canonicalizationMethod) {
+				Library.logger().warning("Cannot find canonicalization method: " + canonicalizationAlg);
+				throw new TransformException("Cannot find canonicalization method: " + canonicalizationAlg);
+			}
 			out = canonicalizationMethod.transform(osd, cryptoContext);
 			
 			canonicalizedData = out.toString();

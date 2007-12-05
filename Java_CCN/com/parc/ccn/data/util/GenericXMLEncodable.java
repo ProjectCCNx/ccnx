@@ -5,14 +5,12 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.security.PrivateKey;
-import java.security.SignatureException;
 
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
 import com.parc.ccn.Library;
-import com.parc.ccn.security.crypto.SignatureHelper;
 
 /**
  * Helper class for objects that use the JAXP stream
@@ -69,8 +67,11 @@ public abstract class GenericXMLEncodable implements XMLEncodable {
 	public byte [] canonicalizeAndEncode(PrivateKey key) throws XMLStreamException {
 		byte [] encodedContents = null;
 		try {
-			encodedContents = SignatureHelper.canonicalize(this, key);
-		} catch (SignatureException e) {
+			// DKS TODO figure out canonicalization of content
+		//	encodedContents = SignatureHelper.canonicalize(this, key);
+			encodedContents = encode();
+//		} catch (SignatureException e) {
+		} catch (Exception e) {
 			Library.logger().warning("Cannot canonicalize " + this.getClass().getName());
 			Library.warningStackTrace(e);
 			throw new XMLStreamException(e);
