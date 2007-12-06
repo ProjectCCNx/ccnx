@@ -473,5 +473,15 @@ public class StandardCCNLibrary implements CCNLibrary {
 	public void cancelInterest(CCNQueryDescriptor query) throws IOException {
 		CCNRepositoryManager.getRepositoryManager().cancelInterest(query);
 	}
+	
+	/**
+	 * Enumerate matches in the local repositories.
+	 * @param query
+	 * @return
+	 * @throws IOException 
+	 */
+	public ArrayList<CompleteName> enumerate(CompleteName query) throws IOException {
+		return CCNRepositoryManager.getRepositoryManager().enumerate(query);		
+	}
 
 }

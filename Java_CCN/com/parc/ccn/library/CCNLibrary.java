@@ -5,11 +5,14 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.SignatureException;
+import java.util.ArrayList;
 
 import com.parc.ccn.CCNBase;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.query.CCNQueryDescriptor;
+import com.parc.ccn.data.query.CCNQueryListener;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
@@ -137,4 +140,13 @@ public interface CCNLibrary extends CCNBase {
 	 */
 	public CompleteName addToCollection(ContentName name, CompleteName [] additionalContents);
 	public CompleteName removeFromCollection(ContentName name, CompleteName [] additionalContents);
+
+	public CCNQueryDescriptor expressInterest(ContentName name,
+			ContentAuthenticator authenticator,
+			CCNQueryListener listener) throws IOException;
+	
+	public void cancelInterest(CCNQueryDescriptor query) throws IOException;
+	
+	public ArrayList<CompleteName> enumerate(CompleteName query) throws IOException;
+
 }
