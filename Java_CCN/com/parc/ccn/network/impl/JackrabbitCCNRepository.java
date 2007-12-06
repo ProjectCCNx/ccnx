@@ -23,6 +23,7 @@ import javax.jcr.ItemExistsException;
 import javax.jcr.Node;
 import javax.jcr.NodeIterator;
 import javax.jcr.PathNotFoundException;
+import javax.jcr.Property;
 import javax.jcr.Repository;
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
@@ -54,9 +55,10 @@ import com.parc.ccn.data.query.CCNQueryListener;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
+import com.parc.ccn.data.util.XMLHelper;
 import com.parc.ccn.network.CCNRepository;
-import com.parc.ccn.network.GenericCCNRepository;
 import com.parc.ccn.network.CCNRepositoryFactory;
+import com.parc.ccn.network.GenericCCNRepository;
 import com.parc.ccn.network.discovery.CCNDiscovery;
 
 /**
@@ -71,6 +73,9 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	public static final String PROTOCOL_TYPE = "rmi";
 	public static final String SERVER_RMI_NAME = "jackrabbit";
 
+	protected static String BASE64_MARKER = "_b_";
+	protected static String LEADING_NUMBER_MARKER = "_n_";
+	
 	/**
 	 * Where do we store stuff in Jackrabbit. 
 	 */
@@ -230,6 +235,18 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		Node n;
 		try {
 			n = _session.getRootNode();
+			// now, make sure the root node is versionable				
+			if ((!n.isNodeType("mix:versionable")) || (!n.isNodeType("mix:referenceable"))) {
+				if (!n.isNodeType("mix:versionable")) {
+					n.addMixin("mix:versionable");
+				}
+				if (!n.isNodeType("mix:referenceable")) {
+					n.addMixin("mix:referenceable");
+				}
+			
+				_session.save();
+			}
+
 		} catch (RepositoryException e) {
 			Library.logger().warning("JackrabbitCCNRepository: cannot find root node!");
 			Library.logStackTrace(Level.WARNING, e);
@@ -291,7 +308,8 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 			try {
 				// DKS: to make file nodes: add file name, "nt:file"
 				// 
-				parent.checkout();
+				// DKS TODO: trouble with checkouts, root not versioned
+				// parent.checkout();
 				
 				n = parent.addNode(componentName,"nt:unstructured");
 				// now, make sure the leaf node is versionable				
@@ -303,7 +321,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 				}
 				
 				_session.save();
-				parent.checkin();
+				// parent.checkin();
 
 			} catch (NoSuchNodeTypeException e) {
 				Library.logger().warning("Unexpected error: can't set built-in mixin types on a node.");
@@ -370,22 +388,75 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		// happen, but make sure.
 		String componentName = nameComponentToString(name);		
 		NodeIterator matchingChildren = parent.getNodes(componentName);
+		Node thisChild = null;
 		if ((null != matchingChildren) && (matchingChildren.getSize() > 0)) {
-			// We have nodes with the same name. 
-			// If the signatures match, this data is identical
-			// and we just return that node.
-			
-			// if the signatures don't match, but the content digest
-			// and publisher ID do match, it could be an attempt
-			// to update content -- timestamp is different.
-			// if those are the same, and all other metadata
-			// is the same, count it as updated and just
-			// update timestamp and signature
+			while (matchingChildren.hasNext()) {
+				thisChild = matchingChildren.nextNode();
+				if (null == thisChild)
+					continue;
+				// If the publisherID is not the same, the
+				// children do not match.
+				PublisherID publisher = getPublisherID(thisChild);
+				
+				if (null != publisher) {
+					if (publisher.equals(authenticator.publisher())) {
+						Library.logger().info("Adding node with same name and publisher.");
+						
+						// We have nodes with the same name. 
+						// If the signatures match, this data is identical
+						// and we just return that node.
+						byte [] signature = null;
+						try {
+							signature = getSignature(thisChild);
+						} catch (IOException e) {
+							Library.logger().info("IOException in getSignature: " + e.getMessage());
+							throw new RepositoryException(e);
+						}
+					
+						if (Arrays.equals(signature, authenticator.signature())) {
+							Library.logger().info("Adding node with same signature, just returning previous version.");
+							return thisChild;
+						} else {
+							
+							// if the signatures don't match, but the content digest
+							// and publisher ID do match, it could be an attempt
+							// to update content -- timestamp is different.
+							// if those are the same, and all other metadata
+							// is the same, count it as updated and just
+							// update timestamp and signature
+							// 
+							// WARNING: always verify signature before this
+							byte [] contentDigest = null;
+							try {
+								contentDigest = getContentDigest(thisChild);
+							} catch (IOException e) {
+								Library.logger().info("IOException in getContentDigest: " + e.getMessage());
+								throw new RepositoryException(e);
+							}
+							if (Arrays.equals(contentDigest, authenticator.contentDigest())) {
+								Library.logger().info("Adding node with same content, check.");
+								// timestamps could be different
+								// if type is the same, assume this is just
+								// an attempt to re-insert the same content
+								// and update just the relevant bits
+								ContentAuthenticator.ContentType type = ContentAuthenticator.nameToType(thisChild.getProperty(TYPE_PROPERTY).getString());
+								if (type == authenticator.type()) {
+									// same publisher, name, type
+									Library.logger().info("Publisher adding node of same name and type. Verifying signatures.");
+									
+									// DKS TODO: verify signatures, and if they both match, update auth
+									// info to reflect this new node
+								}
+							}
+						}
+					}
+				}
+			}
 		}
-		
+
 		// TODO: DKS -- should we check out parent?
 		Node n = addSubNode(parent, name);
-		
+
 		// TODO DKS: do we want to avoid dupes by appending
 		// signature, content hash, or publisher ID to name
 		// used internally by Jackrabbit (rather than storing
@@ -397,13 +468,14 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		// that wouldn't get reinsertions of same content
 		// (timestamp changes).  Adding content digest would
 		// help.
-		n.checkout();
+		// DKS: TODO trouble with checkouts, root not versioned
+		// n.checkout();
 		
 		addContent(n, content);
 		addAuthenticationInfo(n, authenticator);
 
 		_session.save();
-		n.checkin();
+		// n.checkin();
 		return n;
 	}
 	
@@ -455,18 +527,30 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	}
 	
 	protected ContentAuthenticator getAuthenticationInfo(Node n) throws ValueFormatException, PathNotFoundException, RepositoryException, IOException {
-		String strPublisher = n.getProperty(PUBLISHER_PROPERTY).getString();
-		byte [] publisherID = stringToByte(strPublisher);
-		String publisherType = n.getProperty(PUBLISHER_TYPE_PROPERTY).getString();
+		// Have to distinguish path and content nodes.
 		
-		ContentAuthenticator.ContentType type = ContentAuthenticator.nameToType(n.getProperty(TYPE_PROPERTY).getString());
+		PublisherID publisherID = getPublisherID(n);
+		
+		Property typeProperty = null;
+		String propertyString = null;
+		try {
+			typeProperty = n.getProperty(TYPE_PROPERTY);
+			if (null == typeProperty) {
+				throw new ValueFormatException("No type property on node: " + n.getPath());
+			}
+			propertyString = typeProperty.toString();
+		} catch (PathNotFoundException b) {
+			Library.logger().warning("Error: cannot get content type from node: " + n.getPath());
+		}
+		
+		ContentAuthenticator.ContentType type = ContentAuthenticator.nameToType(propertyString);
 
 		Timestamp timestamp = Timestamp.valueOf(n.getProperty(TIMESTAMP_PROPERTY).getString());
 		
-		byte [] hash = getBinaryProperty(n, HASH_PROPERTY);
+		byte [] hash = getContentDigest(n);
 		byte [] encodedKeyLocator = getBinaryProperty(n, KEY_LOCATOR_PROPERTY);
 	
-		KeyLocator loc;
+		KeyLocator loc = null;
 		try {
 			loc = new KeyLocator(encodedKeyLocator);
 		} catch (XMLStreamException e) {
@@ -475,7 +559,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		}
 		byte [] signature = getBinaryProperty(n, SIGNATURE_PROPERTY);
 		
-		ContentAuthenticator auth = new ContentAuthenticator(publisherID, PublisherID.nameToType(publisherType),
+		ContentAuthenticator auth = new ContentAuthenticator(publisherID,
 															 timestamp, type,
 															 hash, loc, signature);
 		return auth;
@@ -497,7 +581,10 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		ArrayList<ContentObject> objects = new ArrayList<ContentObject>();
 
 		try {
+			// Strips trailing '*' if there is one.
 			String queryString = getQueryString(name, authenticator);
+			// Might not need this if query string bakes it in.
+			boolean isRecursive = isRecursiveQuery(name);
 
 			Query q = null;
 			try {
@@ -524,10 +611,21 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	protected String getQueryString(ContentName name, ContentAuthenticator authenticator) {
 		// TODO: DKS: make Xpath match full query including whatever
 		// authentication info is specified by querier
+		// nameToPath already strips trailing recursive bits
+		// DKS: TODO: probably should only strip in here, as we know it's
+		// a query...
 		String queryString = "/jcr:root" + nameToPath(name);
 		return queryString;
 	}
 	
+    protected static boolean isRecursiveQuery(ContentName name) {
+		if (isRecursiveQuery(name)) {
+			Library.logger().info("nameToPath: converting recursive query name: " + name);
+			return true;
+		}
+		return false;
+	}
+
 	@Override
 	public CCNQueryDescriptor expressInterest(ContentName name, ContentAuthenticator authenticator, 
 			CCNQueryListener callbackListener) throws IOException {
@@ -643,6 +741,30 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		return new ContentObject(name, content);
 	}
 
+	protected PublisherID getPublisherID(Node n) throws ValueFormatException, RepositoryException {
+		String strPublisher = null;
+		try {
+			strPublisher = n.getProperty(PUBLISHER_PROPERTY).getString();
+		} catch (PathNotFoundException e) {
+			// no such property -- no publisher set
+			return null;
+		}
+		byte [] publisherID = stringToByte(strPublisher);
+		String publisherType = n.getProperty(PUBLISHER_TYPE_PROPERTY).getString();
+		return new PublisherID(publisherID, 
+							   PublisherID.nameToType(publisherType));
+	}
+	
+	protected byte [] getSignature(Node n) throws RepositoryException, IOException {
+		
+		return getBinaryProperty(n, SIGNATURE_PROPERTY);
+	}
+	
+	protected byte [] getContentDigest(Node n) throws RepositoryException, IOException {
+		
+		return getBinaryProperty(n, HASH_PROPERTY);
+	}
+	
 	public void login() throws IOException {
 		SimpleCredentials sc = new SimpleCredentials(InetAddress.getLocalHost().getHostAddress(), "".toCharArray());
 		try {
@@ -724,6 +846,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		return new JackrabbitCCNRepository(info.getHostAddress(), info.getPort());		
 	}
 		
+	
 	/**
 	 * CCNs know about names as sequences of binary components. 
 	 * Jackrabbit thinks about names as (Java) strings, i.e. unicode.
@@ -736,18 +859,34 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		// componentPrint, which will get us human-readable
 		// versions of much stuff.
 		String str = ContentName.componentPrint(component);
-		// Then deal with leading integers, which XPath
-		// can't handle.
-		if (Character.isDigit(str.charAt(0))) {
-			return "_" + str;
+		
+		// Technically before applying any of these quoting
+		// tricks, we need to make sure that the component
+		// doesn't already include the quoting strings...
+		
+		// If componentPrint decides this was a binary string,
+		// it will quote the bytes with %'s, which isn't
+		// legal for jackrabbit. We need to take those
+		// binary components, turn them back into bytes,
+		// and base64 them. We then need to prefix them
+		// with something recognizable.
+		if (str.contains("%")) {
+			str = BASE64_MARKER + XMLHelper.encodeElement(component);
+		} else if (Character.isDigit(str.charAt(0))) {
+			// Then deal with leading integers, which XPath
+			// can't handle. Need to quote them with a
+			// quote character that we can can recognizably
+			// remove. 
+			return LEADING_NUMBER_MARKER + str;
 		}
+		
 		return str;
 	}
 	
 	/**
 	 * Undo any quoting we need to do above. In particular,
 	 * XPath can't handle names with leading numerals. Add
-	 * a _. We can't handle the names with the ending [#]
+	 * a _n_. We can't handle the names with the ending [#]
 	 * that jackrabbit uses for disambiguation of repeated
 	 * names. (We know the rest of the string is base64.)
 	 * NOTE: the rest of the string is no longer base64... see
@@ -760,21 +899,31 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		if ((null == str) || (str.length() == 0)) 
 			return null;
 		
+		String parseString = str;
 		// Remove trailing numbers, which are used to
 		// uniqueify duplicate names by Jackrabbit.
-		if (str.charAt(str.length()-1) == ']') {
-			return ContentName.componentParse(
-				str.substring(
-					((str.charAt(0) == '_') ? 1 : 0), 
-					str.lastIndexOf('['))); 
+		if (parseString.charAt(parseString.length()-1) == ']') {
+			parseString = 
+				parseString.substring(0, 
+					parseString.lastIndexOf('[')); 
 		}
 		
-		if (str.charAt(0) == '_') {
-			return ContentName.componentParse(str.substring(1));
+		if (parseString.startsWith(BASE64_MARKER)) {
+			try {
+				return XMLHelper.decodeElement(parseString.substring(BASE64_MARKER.length()));
+			} catch (IOException e) {
+				Library.logger().warning("Cannot decode base64-encoded element that we encoded: " + parseString);
+				return new byte[0]; // DKS TODO need better answer
+			}
 		}
-		return ContentName.componentParse(str);
+		
+		if (parseString.startsWith(LEADING_NUMBER_MARKER)) {
+			return ContentName.componentParse(parseString.substring(LEADING_NUMBER_MARKER.length()));
+		}
+		
+		return ContentName.componentParse(parseString);
 	}
-	
+
 	protected static String publisherToString(byte [] publisherID) {
 		return byteToString(publisherID);
 	}
@@ -855,7 +1004,10 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		ArrayList<CompleteName> names = new ArrayList<CompleteName>();
 
 		try {
+			// Strips trailing '*' if there is one.
 			String queryString = getQueryString(name.name(), name.authenticator());
+			// Might not need this if query string bakes it in.
+			boolean isRecursive = isRecursiveQuery(name.name());
 
 			Query q = null;
 			try {

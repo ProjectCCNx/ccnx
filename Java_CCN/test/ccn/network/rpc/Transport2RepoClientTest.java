@@ -135,7 +135,8 @@ public class Transport2RepoClientTest {
 			Library.logger().info("Calling getBlock.");
 			DataBlock returnedBlock = _client.GetBlock_1(versionedName.toONCName());
 		
-			System.out.println("Returned block: " + returnedBlock);
+			System.out.println("Block: " + block.length +  " bytes.");
+			System.out.println("Returned block: " + returnedBlock.length +  " bytes.");
 			
 			// DataBlock does not define an equals...
 			Assert.assertEquals(block.length, returnedBlock.length);
@@ -152,6 +153,7 @@ public class Transport2RepoClientTest {
 		try {
 			System.out.println("Enumerating data under name: " + nameTop);
 			NameList nl = _client.Enumerate_1(nameTop.toONCName());
+			System.out.println("Got " + nl.count + " results.");
 			for (int i=0; i < nl.count; ++i) {
 				ContentName name = new ContentName(nl.names[i]);
 				System.out.println(name.toString());
@@ -159,6 +161,7 @@ public class Transport2RepoClientTest {
 			ContentName nameTopR = new ContentName(nameTop, "*");
 			System.out.println("Enumerating data under name: " + nameTopR);
 			NameList nl2 = _client.Enumerate_1(nameTopR.toONCName());
+			System.out.println("Got " + nl2.count + " results.");
 			for (int i=0; i < nl2.count; ++i) {
 				ContentName name = new ContentName(nl2.names[i]);
 				System.out.println(name.toString());

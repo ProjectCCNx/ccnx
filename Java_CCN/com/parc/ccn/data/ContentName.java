@@ -73,7 +73,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 		if (null != name) {
 			byte[] decodedName = componentParse(name);
 			_components[parent.count()] = new byte[decodedName.length];
-			System.arraycopy(_components[parent.count()],0,decodedName,0,decodedName.length);
+			System.arraycopy(decodedName,0,_components[parent.count()],0,decodedName.length);
 		}
 	}
 	public ContentName(ContentName parent, byte[] name) {
@@ -81,7 +81,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 				((null != name) ? 1 : 0), parent.components());
 		if (null != name) {
 			_components[parent.count()] = new byte[name.length];
-			System.arraycopy(_components[parent.count()],0,name,0,name.length);
+			System.arraycopy(name,0,_components[parent.count()],0,name.length);
 		}
 	}
 	
@@ -91,11 +91,11 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 				((null != name2) ? 1 : 0), parent.components());
 		if (null != name1) {
 			_components[parent.count()] = new byte[name1.length];	
-			System.arraycopy(_components[parent.count()],0,name1,0,name1.length);
+			System.arraycopy(name1,0,_components[parent.count()],0,name1.length);
 		}
 		if (null != name2) {
 			_components[parent.count() + 1] = new byte[name2.length];	
-			System.arraycopy(_components[parent.count() + 1],0,name2,0,name2.length);
+			System.arraycopy(name2,0,_components[parent.count() + 1],0,name2.length);
 		}
 	}
 		

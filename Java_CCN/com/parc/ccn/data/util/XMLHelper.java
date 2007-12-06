@@ -156,6 +156,14 @@ public class XMLHelper {
 			return new String("Unencodable object.");
 		}
 	}			
+	
+	public static String printBytes(byte [] data) {
+		StringBuffer buf = new StringBuffer();
+		for (int j=0; j < data.length; ++j) {
+			buf.append(Integer.toString((int)data[j], 16));
+		}
+		return buf.toString();
+	}
 }
 
 

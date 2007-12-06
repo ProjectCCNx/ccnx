@@ -7,12 +7,13 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.Security;
 import java.security.cert.X509Certificate;
-import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
+import java.util.Random;
 
 import javax.jmdns.ServiceInfo;
+
+import junit.framework.Assert;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.After;
@@ -23,12 +24,16 @@ import org.junit.Test;
 
 import test.ccn.data.XMLEncodableTester;
 
+import com.parc.ccn.Library;
+import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.data.security.PublisherID.PublisherType;
+import com.parc.ccn.data.util.XMLHelper;
+import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.StandardCCNLibrary;
 import com.parc.ccn.network.impl.JackrabbitCCNRepository;
 import com.parc.ccn.security.crypto.certificates.BCX509CertificateGenerator;
 
@@ -65,21 +70,24 @@ public class JackrabbitCCNRepositoryTest {
 	static KeyPair pair = null;
 	static X509Certificate cert = null;
 	static KeyLocator nameLoc = null;
-	static public byte [][] signature = new byte[3][256];
-	static public byte [][] contenthash = new byte[3][32];
-	static public byte [] publisherid = new byte[32];
 	static PublisherID pubkey = null;	
 	static ContentAuthenticator [] auth = new ContentAuthenticator[3];
 	static ContentAuthenticator pubonlyauth = null;
 	
+	static ContentName [] names = null;
+	static ContentName [] versionedNames = null;
+	static byte [][] content = null;
+	
 	// Really only want one of these per VM per port.
 	static JackrabbitCCNRepository repo = null;
+	static CCNLibrary library = null;
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		try {
 			Security.addProvider(new BouncyCastleProvider());
 			
+			Library.logger().info("Generating test key pair...");
 			// generate key pair
 			KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
 			kpg.initialize(512); // go for fast
@@ -97,24 +105,34 @@ public class JackrabbitCCNRepositoryTest {
 					null);
 			nameLoc = new KeyLocator(keyname);
 			
-			Arrays.fill(publisherid, (byte)10);
-			
-			pubkey = new PublisherID(publisherid, PublisherType.KEY);
-
-			for (int i=0; i<3; ++i) {
-				Arrays.fill(signature[i], (byte)(i+1));
-				Arrays.fill(contenthash[i], (byte)(i+2));
-				auth[i] = new ContentAuthenticator(pubkey, 
-					new Timestamp(System.currentTimeMillis()), 
-					ContentAuthenticator.ContentType.LEAF, 
-					contenthash[i],
-					nameLoc, signature[i]);
-			}
-			
-			pubonlyauth = new ContentAuthenticator(pubkey);
-			
 			System.out.println("Getting local repository.");
 			repo = JackrabbitCCNRepository.getLocalJackrabbitRepository();
+			library = new StandardCCNLibrary();
+			
+			Library.logger().info("Organizing content...");
+			pubkey = new PublisherID(pair.getPublic(), false);
+			content = new byte[][]{document1.getBytes("UTF-8"), document2.getBytes("UTF-8"), document3};
+			
+			names = new ContentName[]{name1, name2, name3};
+			int v = new Random().nextInt(1000);
+			versionedNames = new ContentName[names.length];
+			for (int i=0; i < names.length; ++i) {
+				versionedNames[i] = library.versionName(names[i], v);
+			}
+
+			Library.logger().info("Generating content authenticators.");
+			for (int i=0;i<3; ++i) {
+				auth[i] = new ContentAuthenticator(
+						names[i],
+						pubkey, 
+					ContentAuthenticator.ContentType.LEAF, 
+					content[i],
+					nameLoc, pair.getPrivate());
+			}
+			
+			Library.logger().info("Generating authenticator for query.");
+			pubonlyauth = new ContentAuthenticator(pubkey);
+			
 			
 		} catch (Exception ex) {
 			XMLEncodableTester.handleException(ex);
@@ -140,16 +158,20 @@ public class JackrabbitCCNRepositoryTest {
 		assertNotNull(repo);
 		
 		System.out.println("Adding content.");
-		
+		CompleteName cn = null;
 		try {
-			repo.put(name1, auth[0], document1.getBytes("UTF-8"));
-			repo.put(name2, auth[1], document2.getBytes("UTF-8"));
-			repo.put(name3, auth[2], document3);
-		
+			for (int i=0; i < 3; ++i) {
+				for (int j=0; j < versionedNames[i].count(); ++j) {
+					System.out.println("Component: " + ContentName.componentPrint(versionedNames[i].component(j)));
+				}
+				cn = repo.put(versionedNames[i], auth[i], content[i]);
+				System.out.println("Added name: " + cn.name());
+			}
+			
 		} catch (Exception e) {
 			System.out.println("Got exception : " + e.getClass().getName() + " message: " + e.getMessage());
 			e.printStackTrace();
-			throw new AssertionError(e);
+			Assert.fail("Got exception : " + e.getClass().getName() + " message: " + e.getMessage());
 		}
 	}
 
@@ -158,73 +180,84 @@ public class JackrabbitCCNRepositoryTest {
 		
 		assertNotNull(repo);
 		
-		System.out.println("Adding content.");
-		
 		try {
-			repo.put(name1, auth[0], document1.getBytes("UTF-8"));
-
-			System.out.println("Adding name: " + name2);
-			name2.encode(System.out);
-			
-			repo.put(name2, auth[1], document2.getBytes("UTF-8"));
-			repo.put(name3, auth[2], document3);
 			
 			System.out.println("Retrieving content.");
 			
-			ArrayList<ContentObject> obj2 = repo.get(name2, null);
-			System.out.println("For name: " + name2 + " got: " + obj2.size() + " answers.");
-			for (int i=0; i < obj2.size(); ++i) {
-				if (null != obj2.get(i))
-					System.out.println(i + ": " + obj2.get(i));
-			}
-			
-			ArrayList<ContentObject> obj3 = repo.get(name3, null);
-			System.out.println("For name: " + name3 + " got: " + obj3.size() + " answers.");
-			for (int i=0; i < obj3.size(); ++i) {
-				if (null != obj3.get(i))
-					System.out.println(i + ": " + obj3.get(i));
+			for (int i=0; i < 3; ++i) {
+				System.out.println("Querying for name: " + versionedNames[i]);
+				ArrayList<ContentObject> obj2 = 
+					repo.get(versionedNames[i], null);
+				System.out.println("For name: " + versionedNames[i] + " got: " + obj2.size() + " answers.");
+				for (int j=0; j < obj2.size(); ++j) {
+					if (null != obj2.get(j))
+						System.out.println(j + ": " + obj2.get(j));
+				}
 			}
 		} catch (Exception e) {
 			System.out.println("Got exception : " + e.getClass().getName() + " message: " + e.getMessage());
 			e.printStackTrace();
 			throw new AssertionError(e);
 		}
-	}
-
-	@Test
-	public void testGetAuthenticationInfo() {
-		fail("Not yet implemented, need to improve filters so the use this stuff to query repo");
 	}
 
 	@Test
 	public void testGetContentNameContentAuthenticatorCCNQueryTypeCCNQueryListenerLong() {
 		assertNotNull(repo);
 		
-		System.out.println("Adding content.");
-		
 		try {
-			repo.put(name1, auth[0], document1.getBytes("UTF-8"));
-			repo.put(name2, auth[1], document2.getBytes("UTF-8"));
-			repo.put(name3, auth[2], document3);
+			System.out.println("Testing name decoding: ");
 			
-			System.out.println("Retrieving content.");
+			System.out.println("Retrieving content by name and publisher ID.");
 			
-			ArrayList<ContentObject> obj1 = repo.get(name1, pubonlyauth);
-			ArrayList<ContentObject> obj2 = repo.get(name2, pubonlyauth);
-			ArrayList<ContentObject> obj3 = repo.get(name3, pubonlyauth);
-			
-			System.out.println("For name: " + name1 + " got: " + obj1.size() + " answers.");
-			System.out.println("For name: " + name2 + " got: " + obj2.size() + " answers.");
-			System.out.println("For name: " + name3 + " got: " + obj3.size() + " answers.");
-			for (int i=0; i < obj1.size(); ++i) {
-				if (null != obj1.get(i))
-					System.out.println(i + ": " + obj1.get(i));
+			// don't request versioned name, just request
+			// base name/*, see what we get back, make
+			// sure it selects by publisher.
+			ContentName queryName = null;
+			for (int i=0; i < 3; ++i) {
+				queryName = new ContentName(names[i], "*");
+				System.out.println("Querying for name: " + queryName);
+				ArrayList<ContentObject> obj2 = 
+					repo.get(queryName, pubonlyauth);
+				System.out.println("For name: " + names[i] + " got: " + obj2.size() + " answers.");
+				for (int j=0; j < obj2.size(); ++j) {
+					if (null != obj2.get(j))
+						System.out.println(j + ": " + obj2.get(j));
+				}
 			}
 		} catch (Exception e) {
 			System.out.println("Got exception : " + e.getClass().getName() + " message: " + e.getMessage());
 			e.printStackTrace();
 			throw new AssertionError(e);
 		}
+	}
+
+	@Test
+	public void testName() {
+		assertNotNull(repo);
+		String [] names = new String[]{"*", StandardCCNLibrary.VERSION_MARKER};
+		
+		for (int i=0; i < names.length; ++i) {
+			Library.logger().info("Name: " + names[i]);
+			byte [] nameBytes = ContentName.componentParse(names[i]);
+			Library.logger().info("Parses into " + nameBytes.length + " bytes: " + XMLHelper.printBytes(nameBytes));
+			
+			String unparse = ContentName.componentPrint(nameBytes);
+			Library.logger().info("Prints back as: " + unparse);
+		}
+		
+		ContentName name3v6 = library.versionName(name3, 6);
+		Library.logger().info("Versioned name: " + name3v6);
+		
+		byte [] byteMarker = ContentName.componentParse(StandardCCNLibrary.VERSION_MARKER);
+		byte [] byteV = ContentName.componentParse(Integer.toString(6));
+		ContentName name3v6t2 = new ContentName(name3, 
+					byteMarker,
+					byteV);
+		Library.logger().info("Constructed versioned name: " + name3v6t2);
+		Library.logger().info("Bytes of last name component: " + 
+								XMLHelper.printBytes(name3v6t2.component(name3v6t2.count()-1)));
+			
 	}
 
 	@Test

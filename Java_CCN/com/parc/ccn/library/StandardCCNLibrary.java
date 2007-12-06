@@ -265,7 +265,9 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * @return
 	 */
 	public ContentName versionName(ContentName name, int version) {
-		return new ContentName(name, VERSION_MARKER.getBytes(),(version + "").getBytes());
+		return new ContentName(name, 
+							   ContentName.componentParse(VERSION_MARKER),
+							   ContentName.componentParse(Integer.toString(version)));
 	}
 
 	/**
@@ -433,7 +435,9 @@ public class StandardCCNLibrary implements CCNLibrary {
 	}
 
 	public ContentName blockName(ContentName name, int i) {
-		return new ContentName(name, BLOCK_MARKER.getBytes(),(i + "").getBytes());
+		return new ContentName(name, 
+							ContentName.componentParse(BLOCK_MARKER),
+							ContentName.componentParse(Integer.toString(i)));
 	}
 	
 	/**
