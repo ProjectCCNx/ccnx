@@ -15,7 +15,7 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.network.rpc.DataBlock;
 import com.parc.ccn.network.rpc.Name;
 import com.parc.ccn.network.rpc.NameList;
-import com.parc.ccn.network.rpc.Transport2RepoServerStub;
+import com.parc.ccn.network.rpc.RepoTransport_TRANSPORTTOREPOPROG_ServerStub;
 
 /**
  * Encapsulate the RPC server handling requests from
@@ -26,7 +26,7 @@ import com.parc.ccn.network.rpc.Transport2RepoServerStub;
  * @author smetters
  *
  */
-public class CCNInterestServer extends Transport2RepoServerStub {
+public class CCNInterestServer extends RepoTransport_TRANSPORTTOREPOPROG_ServerStub {
 
 	/**
 	 * This is most likely a CCNRepositoryManager,
@@ -55,11 +55,14 @@ public class CCNInterestServer extends Transport2RepoServerStub {
 		// TODO: DKS cope with authenticators or otherwise
 		//   make life cope with more than one piece of
 		//   content with the same name.
-		Library.logger().info("CCNInterestServer: Enumerate");
 		CompleteName name = new CompleteName(new ContentName(arg1), null);
+		Library.logger().info("CCNInterestServer: Enumerating " + name.name());
 		ArrayList<CompleteName> availableNames = null;
 		try {
+			Library.logger().info("About to call enumerate. Repository? " + ((null == _theRepository) ? "no" : "yes"));
 			availableNames = _theRepository.enumerate(name);
+			Library.logger().info("Enumerate_1: got " + availableNames.size() + " results.");
+		
 		} catch (IOException e) {
 			Library.logger().warning("Exception in RPC server call Enumerate_1: " + e.getMessage());
 			Library.warningStackTrace(e);
@@ -82,8 +85,8 @@ public class CCNInterestServer extends Transport2RepoServerStub {
 		// Put an XML encoded ContentObject.
 		// Complain if more than one block matches name;
 		// TODO cope if more than one block matches.
-		Library.logger().info("CCNInterestServer: GetBlock");
 		ContentName name = new ContentName(arg1);
+		Library.logger().info("CCNInterestServer: GetBlock, name = " + name);
 		ArrayList<ContentObject> availableContent = null;
 		try {
 			availableContent = _theRepository.get(name, null);
@@ -98,9 +101,10 @@ public class CCNInterestServer extends Transport2RepoServerStub {
 			// The block contains an encoded ContentObject,
 			// so a 0-length block means no results.
 			if (availableContent.size() == 0) {
+				Library.logger().info("No matching content found in GetBlock_1.");
 				block.length = 0;
 				block.data = new byte[0]; // don't know if this is necessary
-			} else {
+			} else {				
 				byte [] encodedContent = availableContent.get(0).encode();
 				block.length = encodedContent.length;
 				block.data = encodedContent;

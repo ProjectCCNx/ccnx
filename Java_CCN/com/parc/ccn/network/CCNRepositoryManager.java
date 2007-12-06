@@ -145,7 +145,8 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 		ArrayList<ContentObject> results = _primaryRepository.get(name, authenticator);
 		
 		for (int i=0; i < _repositories.size(); ++i) {
-			results.addAll(_repositories.get(i).get(name, authenticator));
+			if (_primaryRepository != _repositories.get(i))
+				results.addAll(_repositories.get(i).get(name, authenticator));
 		}
 		return results;
 	}
@@ -184,8 +185,13 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 	}
 
 	public ArrayList<CompleteName> enumerate(CompleteName name) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
+		ArrayList<CompleteName> results = _primaryRepository.enumerate(name);
+		
+		for (int i=0; i < _repositories.size(); ++i) {
+			if (_primaryRepository != _repositories.get(i))
+				results.addAll(_repositories.get(i).enumerate(name));
+		}
+		return results;
 	}
 
 	public byte[] getByteProperty(CompleteName target, String propertyName) throws IOException {

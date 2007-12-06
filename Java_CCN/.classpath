@@ -38,5 +38,7 @@
 			<attribute name="javadoc_location" value="file:/C:/Documents and Settings/smetters/My Documents/work/src/remotetea/javadoc/"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry kind="lib" path="lib/jsr173_api.jar"/>
+	<classpathentry kind="lib" path="lib/xmldsig.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

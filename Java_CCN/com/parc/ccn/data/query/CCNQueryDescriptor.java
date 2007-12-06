@@ -26,6 +26,8 @@ public class CCNQueryDescriptor {
 	 * are all queries recursive?
 	 */
 	public static final String RECURSIVE_POSTFIX = "*";
+	public static final byte [] RECURSIVE_POSTFIX_BYTES = 
+		ContentName.componentParse(RECURSIVE_POSTFIX);
 
 	/*
 	 * First pass at handling identifiers for queries.

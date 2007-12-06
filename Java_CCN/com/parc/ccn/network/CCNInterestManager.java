@@ -14,7 +14,7 @@ import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.data.query.CCNQueryListener;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.network.rpc.Name;
-import com.parc.ccn.network.rpc.Repo2TransportClient;
+import com.parc.ccn.network.rpc.RepoTransport_REPOTOTRANSPORTPROG_Client;
 
 /**
  * Forwards queries over an ONC RPC interface
@@ -34,7 +34,7 @@ import com.parc.ccn.network.rpc.Repo2TransportClient;
  */
 public class CCNInterestManager {
 	
-	Repo2TransportClient _client = null;
+	RepoTransport_REPOTOTRANSPORTPROG_Client _client = null;
 
 	/**
 	 * Static singleton.
@@ -44,7 +44,7 @@ public class CCNInterestManager {
 	protected CCNInterestManager() throws IOException {
 		super();
 		try {
-			_client = new Repo2TransportClient(
+			_client = new RepoTransport_REPOTOTRANSPORTPROG_Client(
 						InetAddress.getLocalHost(), 
 						SystemConfiguration.defaultTransportPort(),
 						OncRpcProtocols.ONCRPC_TCP);

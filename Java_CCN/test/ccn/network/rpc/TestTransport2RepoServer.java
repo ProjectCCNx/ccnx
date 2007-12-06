@@ -11,9 +11,9 @@ import com.parc.ccn.network.rpc.DataBlock;
 import com.parc.ccn.network.rpc.Name;
 import com.parc.ccn.network.rpc.NameComponent;
 import com.parc.ccn.network.rpc.NameList;
-import com.parc.ccn.network.rpc.Transport2RepoServerStub;
+import com.parc.ccn.network.rpc.RepoTransport_TRANSPORTTOREPOPROG_ServerStub;
 
-public class TestTransport2RepoServer extends Transport2RepoServerStub {
+public class TestTransport2RepoServer extends RepoTransport_TRANSPORTTOREPOPROG_ServerStub {
 
 	public static TestTransport2RepoServer server = null;
 	

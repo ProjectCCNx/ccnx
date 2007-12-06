@@ -29,12 +29,12 @@ import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.StandardCCNLibrary;
 import com.parc.ccn.network.rpc.DataBlock;
 import com.parc.ccn.network.rpc.NameList;
-import com.parc.ccn.network.rpc.Transport2RepoClient;
+import com.parc.ccn.network.rpc.RepoTransport_TRANSPORTTOREPOPROG_Client;
 import com.parc.ccn.security.crypto.certificates.BCX509CertificateGenerator;
 
 public class Transport2RepoClientTest {
 
-	static Transport2RepoClient _client = null;
+	static RepoTransport_TRANSPORTTOREPOPROG_Client _client = null;
 	static CCNLibrary _library = null;
 
 	static public String baseName = "test";
@@ -50,7 +50,7 @@ public class Transport2RepoClientTest {
 	static ContentName name1 = new ContentName(arrName1);
 	static String [] arrName2 = new String[]{baseName,subName1,document2};
 	static ContentName name2 = new ContentName(arrName2);
-	static String [] arrName3 = new String[]{baseName,subName2,document4};
+	static String [] arrName3 = new String[]{baseName,subName2,document1};
 	static ContentName name3 = new ContentName(arrName3);
 	static String [] arrNameTop = new String[]{baseName};
 	static ContentName nameTop = new ContentName(arrNameTop);
@@ -95,7 +95,7 @@ public class Transport2RepoClientTest {
 			System.out.println("Getting client.");
 			InetAddress address = InetAddress.getByName("127.0.0.1");
 			System.out.println("Address: " + address);
-			_client = new Transport2RepoClient(
+			_client = new RepoTransport_TRANSPORTTOREPOPROG_Client(
 					//InetAddress.getLocalHost(), 
 					InetAddress.getByName("127.0.0.1"),
 					SystemConfiguration.defaultRepositoryPort(),
@@ -115,7 +115,8 @@ public class Transport2RepoClientTest {
 		KeyLocator locator = _library.keyManager().getKeyLocator(signingKey);
 		
 		try {
-			ContentName versionedName = _library.versionName(name3, new Random().nextInt());
+			ContentName versionedName = _library.versionName(name3, new Random().nextInt(1000));
+			System.out.println("Adding name: " + versionedName);
 			ContentAuthenticator authenticator = 
 				new ContentAuthenticator(versionedName, 
 										 _library.getDefaultPublisher(),
@@ -138,9 +139,27 @@ public class Transport2RepoClientTest {
 			System.out.println("Block: " + block.length +  " bytes.");
 			System.out.println("Returned block: " + returnedBlock.length +  " bytes.");
 			
+			if (returnedBlock.length > 0 ) {
+				ContentObject returnedObj = new ContentObject(returnedBlock.data);
+			
+				System.out.println("Original block:");
+				System.out.println(obj);
+			
+				System.out.println("Returned block:");
+				System.out.println(returnedObj);
+			}
+			
 			// DataBlock does not define an equals...
 			Assert.assertEquals(block.length, returnedBlock.length);
-			Assert.assertTrue(Arrays.equals(block.data, returnedBlock.data));
+			int diff = 0;
+			for (diff = 0; diff < block.length; ++diff) {
+				if (block.data[diff] != returnedBlock.data[diff]) {
+					// DKS TODO: fix problem in base64/quoting that is returning different vals
+					System.out.println("Original and returned blocks differ at byte: " + diff + " values are o:" + Byte.toString(block.data[diff]) + " r: " + Byte.toString(returnedBlock.data[diff]));
+					
+				}
+			}
+			Assert.assertTrue("Blocks differ -- problem in base64 somewhere? ", Arrays.equals(block.data, returnedBlock.data));
 			
 		} catch (Exception e) {
 			XMLEncodableTester.handleException(e);

@@ -279,6 +279,9 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 	}
 	
 	public static String typeToName(ContentType type) {
+		if (ContentTypeNames.get(type) == null) {
+			Library.logger().warning("Cannot find name for type: " + type);
+		}
 		return ContentTypeNames.get(type);
 	}
 
