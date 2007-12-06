@@ -138,6 +138,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 						JACKRABBIT_RMI_SERVICE_TYPE, null, port);
 			login();
 			advertiseServer(port);
+			Library.logger().info("Started Jackrabbit repository on port: " + port);
 		} catch (Exception e) {
 			Library.logger().warning("Exception attempting to create our repository or log into it.");
 			Library.logStackTrace(Level.WARNING, e);
@@ -592,7 +593,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 			} catch (InvalidQueryException e) {
 				Library.logger().warning("Invalid query string: " + queryString);
 				Library.logger().warning("Exception: " + e.getClass().getName() + " m: " + e.getMessage());
-				throw new IOException(e);
+				throw new IOException("Exception: " + e.getClass().getName() + " m: " + e.getMessage());
 			}
 
 			NodeIterator iter = q.execute().getNodes();
@@ -609,7 +610,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		} catch (RepositoryException e) {
 			Library.logger().warning("Invalid query or problem executing get: " + e.getMessage());
 			Library.warningStackTrace(e);
-			throw new IOException(e);
+			throw new IOException("Invalid query or problem executing get: " + e.getMessage());
 		}
 		return objects;
 	}
@@ -836,9 +837,11 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	 * @throws IOException
 	 */
 	protected static Repository createLocalRepository(int port) throws IOException {
+		Library.logger().info("Creating local repository on port : " + port);
 		Repository repository = new TransientRepository();
 		ServerAdapterFactory factory = new ServerAdapterFactory();
 		RemoteRepository remote = factory.getRemoteRepository(repository);
+		Library.logger().info("Created transient repository.");
 		Registry reg = null;
 		try {
 			reg = LocateRegistry.createRegistry(port);
@@ -1052,7 +1055,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 			} catch (InvalidQueryException e) {
 				Library.logger().warning("Invalid query string: " + queryString);
 				Library.logger().warning("Exception: " + e.getClass().getName() + " m: " + e.getMessage());
-				throw new IOException(e);
+				throw new IOException("Exception: " + e.getClass().getName() + " m: " + e.getMessage());
 			}
 
 			NodeIterator iter = q.execute().getNodes();
@@ -1069,7 +1072,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		} catch (RepositoryException e) {
 			Library.logger().warning("Invalid query or problem executing get: " + e.getMessage());
 			Library.warningStackTrace(e);
-			throw new IOException(e);
+			throw new IOException("Invalid query or problem executing get: " + e.getMessage());
 		}
 		return names;
 	}

@@ -7,7 +7,6 @@ import java.security.PrivateKey;
 import java.security.SignatureException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -117,7 +116,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 		} catch (XMLStreamException e) {
 			Library.logger().warning("Cannot canonicalize a standard container!");
 			Library.warningStackTrace(e);
-			throw new IOException(e);
+			throw new IOException("Cannot canonicalize a standard container!");
 		}
 	}
 
@@ -390,7 +389,11 @@ public class StandardCCNLibrary implements CCNLibrary {
 		Timestamp timestamp = new Timestamp(System.currentTimeMillis());
 		for (int i = 0; i < nBlocks; i++) {
 			int to = from + blockSize;
-			contentBlocks[i] = Arrays.copyOfRange(contents, from, (to < contents.length) ? to : contents.length);
+			// nice Arrays operations not in 1.5
+			int end = (to < contents.length) ? to : contents.length;
+//			contentBlocks[i] = Arrays.copyOfRange(contents, from, (to < contents.length) ? to : contents.length);
+			contentBlocks[i] = new byte[end-from];
+			System.arraycopy(contents, from, contentBlocks[i], 0, (to < contents.length) ? to : contents.length);
 		}
 
 		// Digest of complete contents

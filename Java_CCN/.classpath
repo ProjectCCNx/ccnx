@@ -2,7 +2,6 @@
 <classpath>
 	<classpathentry excluding="bin/|lib/|libsrc/|log/|repository/|rpc/|simulations/" kind="src" path=""/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="lib" path="lib/bcprov-jdk16-137.jar"/>
 	<classpathentry kind="lib" path="lib/jmdns.jar"/>
 	<classpathentry kind="lib" path="lib/commons-codec-1.2.jar"/>
 	<classpathentry kind="lib" path="lib/commons-collections-3.1.jar"/>
@@ -40,5 +39,8 @@
 	</classpathentry>
 	<classpathentry kind="lib" path="lib/jsr173_api.jar"/>
 	<classpathentry kind="lib" path="lib/xmldsig.jar"/>
+	<classpathentry kind="lib" path="lib/bcprov-jdk15-138.jar"/>
+	<classpathentry kind="lib" path="lib/sjsxp.jar"/>
+	<classpathentry kind="lib" path="lib/xmlsec.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
