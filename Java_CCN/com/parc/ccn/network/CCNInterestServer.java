@@ -108,6 +108,7 @@ public class CCNInterestServer extends RepoTransport_TRANSPORTTOREPOPROG_ServerS
 				byte [] encodedContent = availableContent.get(0).encode();
 				block.length = encodedContent.length;
 				block.data = encodedContent;
+				Library.logger().info("GetBlock_1 sending block of " + block.length + " bytes.");
 			}
 			return block;
 			
