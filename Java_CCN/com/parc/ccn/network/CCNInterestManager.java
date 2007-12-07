@@ -44,10 +44,14 @@ public class CCNInterestManager {
 	protected CCNInterestManager() throws IOException {
 		super();
 		try {
+			// without portmap
+			//_client = new RepoTransport_REPOTOTRANSPORTPROG_Client(
+			//			InetAddress.getLocalHost(), 
+			//			SystemConfiguration.defaultTransportPort(),
+			//			OncRpcProtocols.ONCRPC_UDP);
 			_client = new RepoTransport_REPOTOTRANSPORTPROG_Client(
-						InetAddress.getLocalHost(), 
-						SystemConfiguration.defaultTransportPort(),
-						OncRpcProtocols.ONCRPC_TCP);
+					InetAddress.getLocalHost(), 
+					OncRpcProtocols.ONCRPC_UDP);
 		} catch (UnknownHostException e) {
 			Library.logger().severe("Cannot look up localhost!");
 			Library.warningStackTrace(e);
