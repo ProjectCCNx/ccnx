@@ -164,7 +164,11 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 			ContentAuthenticator authenticator,
 			CCNQueryListener callbackListener) throws IOException {
 		
-		return CCNInterestManager.getInterestManager().expressInterest(name, authenticator, callbackListener);
+		CCNQueryDescriptor descriptor =  CCNInterestManager.getInterestManager().expressInterest(name, authenticator, callbackListener);
+		// Also put it out to the primary repository, return
+		// that descriptor.
+		// DKS TODO: handle multiple descriptors sensibly.
+		return _primaryRepository.expressInterest(name, authenticator, callbackListener);
 	}
 	
 	/**

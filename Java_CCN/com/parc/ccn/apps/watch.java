@@ -31,8 +31,8 @@ public class watch extends Thread implements CCNQueryListener {
 		_stop = false;
 		initialize();
 		
-		System.out.println("Daemon thread started " + new Date().toString() +".");
-		Library.logger().info("Daemon thread started " + new Date().toString() +".");
+		System.out.println("Watching: " + new Date().toString() +".");
+		Library.logger().info("Watching: " + new Date().toString() +".");
 
 		do {
 
