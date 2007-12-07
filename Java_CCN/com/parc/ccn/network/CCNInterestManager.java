@@ -109,7 +109,8 @@ public class CCNInterestManager {
 			Library.logger().warning("Exception in expressInterest RPC interface: " + e.getMessage());
 			Library.warningStackTrace(e);
 			// IOException(Throwable) constructor not present in 1.5
-			throw new IOException("Exception in expressInterest RPC interface: " + e.getMessage());
+			//throw new IOException("Exception in expressInterest RPC interface: " + e.getMessage());
+			return null; // DKS make robust to lack of transport
 		}
 		return new CCNQueryDescriptor(name, authenticator, null, callbackListener);
 	}
