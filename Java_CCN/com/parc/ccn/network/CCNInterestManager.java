@@ -99,6 +99,9 @@ public class CCNInterestManager {
 			ContentAuthenticator authenticator,
 			CCNQueryListener callbackListener) throws IOException {
 		
+		// Work around no portmap
+		if (null == _client)
+			return null;
 		
 		Name oncName = name.toONCName();
 		// For right now, we skip sending the  authenticator with the query. In the next
@@ -117,6 +120,10 @@ public class CCNInterestManager {
 	}
 	
 	public void cancelInterest(CCNQueryDescriptor query) throws IOException {
+		// Work around no portmap
+		if (null == _client)
+			return;
+		
 		Name oncName = query.name().name().toONCName();
 		try {
 			_client.CancelInterest_1(oncName);
