@@ -1,5 +1,7 @@
 package com.parc.ccn.network.daemons;
 
+import org.acplt.oncrpc.OncRpcException;
+
 import com.parc.ccn.Library;
 import com.parc.ccn.network.CCNInterestServer;
 import com.parc.ccn.network.impl.JackrabbitCCNRepository;
@@ -41,8 +43,13 @@ public class RepositoryDaemon extends Daemon {
 
 				Library.logger().info("Starting interest server...");				
 			//	_interestServer.run(_interestServer.transports); // starts with no portmap, expects direct connects
-				_interestServer.run(); // starts using portmap
+				try {
+					_interestServer.run(); // starts using portmap
 
+				} catch (OncRpcException oe) {
+					Library.logger().warning("Cannot register service with portmapper. Continuing without network connectivity.");
+					
+				}
 			} catch (Exception e) {
 				Library.logger().warning("Exception starting interest server: " + e.getMessage());
 				Library.warningStackTrace(e);

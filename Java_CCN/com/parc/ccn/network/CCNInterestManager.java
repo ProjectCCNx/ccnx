@@ -59,7 +59,8 @@ public class CCNInterestManager {
 		} catch (OncRpcException e) {
 			Library.logger().warning("RPC exception creating transport client: " + e.getMessage());
 			Library.warningStackTrace(e);
-			throw new IOException("RPC exception creating transport client: " + e.getMessage());
+			Library.logger().warning("Continuing without...");
+			//throw new IOException("RPC exception creating transport client: " + e.getMessage());
 		}
 	}
 
