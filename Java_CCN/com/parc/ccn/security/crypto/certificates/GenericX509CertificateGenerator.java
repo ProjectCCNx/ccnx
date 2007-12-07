@@ -158,7 +158,7 @@ public abstract class GenericX509CertificateGenerator {
     /**
      * Adds an Extended Key Usage extension, with the
      * given set of purposes. If the certificate already has an EKU extension,
-     * its contents are replaced by this list of purposes. If purposes is
+     * its contents are replaced by this List of purposes. If purposes is
      * null or of zero length, no extension is added (but any old one is
      * deleted).
      *

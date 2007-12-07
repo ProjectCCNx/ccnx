@@ -3,7 +3,6 @@ package com.parc.ccn.data.query;
 import java.util.ArrayList;
 
 import com.parc.ccn.data.CompleteName;
-import com.parc.ccn.data.ContentObject;
 
 public interface CCNQueryListener {
 	
@@ -12,7 +11,7 @@ public interface CCNQueryListener {
 	 * @param results
 	 * @return
 	 */
-    public int handleResults(ArrayList<ContentObject> results);
+    public int handleResults(ArrayList<CompleteName> results);
     
     /**
      * Notification that our query has been canceled.

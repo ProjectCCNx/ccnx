@@ -4,11 +4,14 @@ import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.security.Security;
 import java.security.SignatureException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 
 import javax.xml.stream.XMLStreamException;
+
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
@@ -48,6 +51,10 @@ public class StandardCCNLibrary implements CCNLibrary {
 	public static final String VERSION_MARKER = MARKER + "v" + MARKER;
 	public static final String BLOCK_MARKER = MARKER + "b" + MARKER;
 	public static final String CLIENT_METADATA_MARKER = MARKER + "meta" + MARKER;
+	
+	static {
+		Security.addProvider(new BouncyCastleProvider());
+	}
 
 	/**
 	 * Do we want to do this this way, or everything static?

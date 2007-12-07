@@ -66,7 +66,7 @@ public class CCNInterestServer extends RepoTransport_TRANSPORTTOREPOPROG_ServerS
 		} catch (IOException e) {
 			Library.logger().warning("Exception in RPC server call Enumerate_1: " + e.getMessage());
 			Library.warningStackTrace(e);
-			Library.logger().warning("Returning error as a zero count in the list. Can't distinguish from no results.");
+			Library.logger().warning("Returning error as a zero count in the List. Can't distinguish from no results.");
 		}
 		
 		// Convert back to a NameList.

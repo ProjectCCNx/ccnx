@@ -17,7 +17,7 @@ import com.parc.ccn.data.util.XMLHelper;
 /**
  * Mapping from a collection to the underlying XML representation.
  * Basically a collection is a content object containing
- * a list of names and optionally some content authentication
+ * a List of names and optionally some content authentication
  * information to specify whose value for each name
  * to take.
  * @author smetters

@@ -35,7 +35,7 @@ public class get {
 				ArrayList<ContentObject> objects = library.get(argName, null);
 				
 				System.out.println("Retrieved " + objects.size() + " objects named: " + argName);
-				
+				System.out.println("Writing to file " + args[1]);
 				if (objects.size() > 0) {
 					// just handle first one for now
 				
@@ -50,6 +50,7 @@ public class get {
 				usage();
 				return;
 			}
+			System.exit(0);
 		} catch (ConfigurationException e) {
 			System.out.println("Configuration exception in get: " + e.getMessage());
 			e.printStackTrace();

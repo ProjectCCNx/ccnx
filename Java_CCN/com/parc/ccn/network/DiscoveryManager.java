@@ -36,7 +36,7 @@ public class DiscoveryManager implements CCNDiscoveryListener {
 	 */
 	public void serviceRemoved(ServiceInfo info, boolean isLocal) {
 		// If a repository has disappeared, just remove it
-		// from our list. We can assume that it's no longer 
+		// from our List. We can assume that it's no longer 
 		// available for us to cancel queries to it.
 		for (CCNRepository repository : _repositories) {
 			if (repository.equals(info)) {
@@ -78,7 +78,7 @@ public class DiscoveryManager implements CCNDiscoveryListener {
 		try {
 			CCNRepository newRepository = CCNRepositoryFactory.connect(info);
 	
-			// Add this repository to our list.
+			// Add this repository to our List.
 			_repositories.add(newRepository); // TODO DKS -- synchronize?
 			
 			repositoryAdded(newRepository);
@@ -91,7 +91,7 @@ public class DiscoveryManager implements CCNDiscoveryListener {
 
 	/**
 	 * Allow subclasses to optionally do specific things
-	 * when repositories are added and removed from the list.
+	 * when repositories are added and removed from the List.
 	 * @param newRepository
 	 */
 	protected void repositoryAdded(CCNRepository newRepository) {

@@ -25,7 +25,7 @@ import com.parc.ccn.security.crypto.certificates.GenericX509CertificateGenerator
  */
 public class PublisherID extends GenericXMLEncodable implements XMLEncodable {
 
-	public static final String PUBLISHER_ID_DIGEST_ALGORITHM = "SHA256";
+	public static final String PUBLISHER_ID_DIGEST_ALGORITHM = "SHA-256";
     public static final int PUBLISHER_ID_LEN = 256/8;
     public enum PublisherType {KEY, CERTIFICATE, ISSUER_KEY, ISSUER_CERTIFICATE};
 

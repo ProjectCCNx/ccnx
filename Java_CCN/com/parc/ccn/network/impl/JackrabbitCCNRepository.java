@@ -703,12 +703,13 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		// based on name; the listener might have other criteria.
 		// This is where we check those.
 		// DKS: could rely on listener to do this...
-		ArrayList<ContentObject> currentMatches = get(jcqd.name().name(),jcqd.name().authenticator());
-		Iterator<ContentObject> it = currentMatches.iterator();
-		ContentObject thisObject = null;
+		ArrayList<CompleteName> currentMatches = 
+				enumerate(jcqd.name());
+		Iterator<CompleteName> it = currentMatches.iterator();
+		CompleteName thisName = null;
 		while (it.hasNext()) {
-			thisObject = it.next();
-			if (!jcqd.jackrabbitListener().queryListener().matchesQuery(thisObject.completeName())) {
+			thisName = it.next();
+			if (!jcqd.jackrabbitListener().queryListener().matchesQuery(thisName)) {
 				it.remove(); // only way to remove from an in-use iterator safely
 			}
 		}

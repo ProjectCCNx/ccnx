@@ -1,0 +1,23 @@
+#!/bin/sh
+
+JAVA_HOME=/usr
+CCN_HOME=.
+JAVA=$JAVA_HOME/bin/java
+
+CP1=$CCN_HOME/*.jar
+CP2=$CCN_HOME/lib/*.jar
+
+CP1=`echo $CP1 | sed "s/ /:/g"`
+CP2=`echo $CP2 | sed "s/ /:/g"`
+
+CLASSPATH=$CP1:$CP2
+
+if [ $# = 0 ]
+then
+  echo Possible commands:
+  echo 
+  grep ccn_run /usr/local/bin/* 2>/dev/null | sed 's/^\/usr\/local\/bin\/\([^:]*\):.*$/\1/' | grep 
+-v ccn_run | sort -u
+else
+  $JAVA -cp $CLASSPATH com.parc.ccn.network.daemons.RepositoryDaemon $*
+fi

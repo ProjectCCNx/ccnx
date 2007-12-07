@@ -533,7 +533,7 @@ public class BCX509CertificateGenerator extends GenericX509CertificateGenerator 
 	/**
 	 * If this extension is present in the certificate, return a pointer
 	 *  to the actual extension object (used for changing its value). Hopes the
-	 *  underlying certificate returns its actual extension list; not a copy.
+	 *  underlying certificate returns its actual extension List; not a copy.
 	 * 
 	 * Works better than codec.x509.X509Certificate.getExtension(s), which
 	 * resolve down to a non-working equals method in ASN1ObjectIdentifier...
@@ -716,7 +716,7 @@ public class BCX509CertificateGenerator extends GenericX509CertificateGenerator 
 	/**
 	 * Adds an Extended Key Usage extension, with the
 	 * given set of purposes. If the certificate already has an EKU extension,
-	 * its contents are replaced by this list of purposes. If purposes is
+	 * its contents are replaced by this List of purposes. If purposes is
 	 * null or of zero length, no extension is added (but any old one is
 	 * deleted).
 	 *
@@ -1215,7 +1215,7 @@ public class BCX509CertificateGenerator extends GenericX509CertificateGenerator 
 	/**
 	 * Add a CRL distribution points extension if one not present, otherwise replaces it
 	 * (one could build incremental behavior by getting the current value, decoding it,
-	 * and then creating a new list with the additional points). 
+	 * and then creating a new List with the additional points). 
 	 * @param critical the criticality of the extension
 	 * Either the distPointFullNames or the crlIssuer MUST be non-null, but not both.
 	 * We and BouncyCastle provide code to make it easy to use full DNs as distribution

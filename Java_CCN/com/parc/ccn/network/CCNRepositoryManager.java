@@ -145,8 +145,9 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 		ArrayList<ContentObject> results = _primaryRepository.get(name, authenticator);
 		
 		for (int i=0; i < _repositories.size(); ++i) {
-			if (_primaryRepository != _repositories.get(i))
+			if ((_primaryRepository != _repositories.get(i)) && (null != _repositories.get(i))) {
 				results.addAll(_repositories.get(i).get(name, authenticator));
+			}
 		}
 		return results;
 	}
@@ -188,8 +189,9 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 		ArrayList<CompleteName> results = _primaryRepository.enumerate(name);
 		
 		for (int i=0; i < _repositories.size(); ++i) {
-			if (_primaryRepository != _repositories.get(i))
+			if ((_primaryRepository != _repositories.get(i)) && (null != _repositories.get(i))) {
 				results.addAll(_repositories.get(i).enumerate(name));
+			}
 		}
 		return results;
 	}
@@ -220,13 +222,13 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 	}
 	
 	protected void repositoryAdded(CCNRepository newRepository) {
-		// DiscoveryManager handles _repositories list.
+		// DiscoveryManager handles _repositories List.
 		if (!_repositories.contains(newRepository))
 			_repositories.add(newRepository);
 	}
 	
 	protected void repositoryRemoved(ServiceInfo repositoryInfo) {
-		// DiscoveryManager handles _repositories list.
+		// DiscoveryManager handles _repositories List.
 		if (_primaryRepository.equals(repositoryInfo)) {
 			Library.logger().warning("Lost primary repository. Replacing.");
 			try {

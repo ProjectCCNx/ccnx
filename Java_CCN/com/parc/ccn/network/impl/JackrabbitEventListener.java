@@ -12,7 +12,7 @@ import javax.jcr.observation.EventIterator;
 import javax.jcr.observation.EventListener;
 
 import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.data.query.CCNQueryListener;
 
@@ -46,7 +46,7 @@ class JackrabbitEventListener implements EventListener {
 	
 	public void onEvent(EventIterator events) {
 		
-		ArrayList<ContentObject> nodesFound = new ArrayList<ContentObject>();
+		ArrayList<CompleteName> nodesFound = new ArrayList<CompleteName>();
 		
 		while (events.hasNext()) {
 			
@@ -68,13 +68,13 @@ class JackrabbitEventListener implements EventListener {
 						Node affectedNode;
 						try {
 							affectedNode = repository().getNode(event.getPath());
-							ContentObject co = repository().getContentObject(affectedNode);
+							CompleteName cn = repository().getCompleteName(affectedNode);
 							
 							// Need to filter -- the eventing interface only selects
 							// based on name; the listener might have other criteria.
 							// This is where we check those.
-							if (_listener.matchesQuery(co.completeName())) {
-								nodesFound.add(co);
+							if (_listener.matchesQuery(cn)) {
+								nodesFound.add(cn);
 							}
 							
 						} catch (PathNotFoundException e) {

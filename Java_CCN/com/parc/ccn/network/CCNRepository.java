@@ -13,7 +13,7 @@ import com.parc.ccn.data.security.ContentAuthenticator;
  * In addition to the standard base functions,
  * we need a few other means of access to our
  * repositories. First we need an enumerate function,
- * to list the names matching a given query.
+ * to List the names matching a given query.
  * Second, we need a way to store and return
  * internal properties on existing nodes, and
  * to store and return internal nodes, both used

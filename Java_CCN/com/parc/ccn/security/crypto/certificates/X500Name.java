@@ -144,7 +144,7 @@ public class X500Name implements Principal, DEREncodable {
     /**
      * Constructor from DERConstructedSequence.
      *
-     * the principal will be a list of constructed sets, each containing an (OID, String) pair.
+     * the principal will be a List of constructed sets, each containing an (OID, String) pair.
      */
     public X500Name(ASN1Sequence  seq) {
 

@@ -38,8 +38,11 @@ public class RepositoryDaemon extends Daemon {
 				Library.logger().info("Creating interest server..");
 				_interestServer = 
 					new CCNInterestServer(_repository);
+
 				Library.logger().info("Starting interest server...");				
-				_interestServer.run(_interestServer.transports); // straight run expects portmapper
+			//	_interestServer.run(_interestServer.transports); // starts with no portmap, expects direct connects
+				_interestServer.run(); // starts using portmap
+
 			} catch (Exception e) {
 				Library.logger().warning("Exception starting interest server: " + e.getMessage());
 				Library.warningStackTrace(e);

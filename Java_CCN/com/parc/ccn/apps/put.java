@@ -47,7 +47,7 @@ public class put {
 				CompleteName result = library.newVersion(argName, version, contents);
 				
 				System.out.println("Inserted file " + args[1] + " as " + result.name());
-				
+				System.exit(0);
 			} else {
 				for (int i=1; i < args.length; ++i) {
 					
