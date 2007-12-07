@@ -5,7 +5,6 @@ import java.util.Random;
 
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.ContentAuthenticator;
 
 /**
@@ -73,17 +72,17 @@ public class CCNQueryDescriptor {
 		return _queryIdentifier;
 	}
 
-    public boolean matchesQuery(ContentObject object) {
+    public boolean matchesQuery(CompleteName queryName) {
     	// Need to cope with recursive queries.
     	// Switch on enums still weird in Java
     	
     	// Handle prefix matching
     	// If the query is recursive, see if the remainder of the name matches
      	if (recursive()) {
-    		if (!name().name().equals(object.name(), name().name().count()-1)) {
+    		if (!name().name().equals(queryName.name(), name().name().count()-1)) {
     			return false;
     		}
-    	} else if (!name().name().equals(object.name())) {
+    	} else if (!name().name().equals(queryName.name())) {
     		return false;
     	}
      	
@@ -91,19 +90,19 @@ public class CCNQueryDescriptor {
     	// on the query, most notably publisherID.
     	if ((null != name().authenticator()) && (!name().authenticator().empty())) {
     		if (!name().authenticator().emptyPublisher()) {
-    			if (!Arrays.equals(name().authenticator().publisher(), object.authenticator().publisher())) {
+    			if (!Arrays.equals(name().authenticator().publisher(), queryName.authenticator().publisher())) {
     				return false;
     			}
     			if (!name().authenticator().emptyContentDigest()) {
-    				if (!Arrays.equals(name().authenticator().contentDigest(), object.authenticator().contentDigest()))
+    				if (!Arrays.equals(name().authenticator().contentDigest(), queryName.authenticator().contentDigest()))
     					return false;
     			}
     			if (!name().authenticator().emptySignature()) {
-    				if (!Arrays.equals(name().authenticator().signature(), object.authenticator().signature()))
+    				if (!Arrays.equals(name().authenticator().signature(), queryName.authenticator().signature()))
     					return false;
     			}
     			if (!name().authenticator().emptyContentType()) {
-    				if (!name().authenticator().type().equals(object.authenticator().type()))
+    				if (!name().authenticator().type().equals(queryName.authenticator().type()))
     					return false;
     			}
     		}
