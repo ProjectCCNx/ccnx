@@ -1,9 +1,6 @@
 package com.parc.ccn.security.crypto;
 
-import org.bouncycastle.asn1.ASN1Encodable;
-import org.bouncycastle.asn1.DERInteger;
 import org.bouncycastle.asn1.DEROctetString;
-import org.bouncycastle.asn1.DERSequence;
 
 
 public class MerkleTree {
@@ -21,58 +18,38 @@ public class MerkleTree {
 	protected DEROctetString [] _tree;
 	protected int _numLeaves;
 	protected int _pathLength;
+	protected String _algorithm;
+	
+	/**
+	 * Subclass constructor.
+	 * @param algorithm
+	 * @param contentBlocks
+	 */
+	protected MerkleTree(String algorithm, int numLeaves) {
+		_algorithm = (null == algorithm) ? Digest.DEFAULT_DIGEST : algorithm;
+		_numLeaves = numLeaves;
+		_pathLength = computePathLength(numLeaves);
+		_tree = new DEROctetString[nodeCount()];
+		// Let calling constructor handle building the tree.
+	}
 	
 	/**
 	 * @param contentBlocks the leaf content to be hashed into this 
 	 * Merkle hash tree.
 	 */
-	public MerkleTree(String algorithm, byte [][] contentBlocks) {
-		_numLeaves = contentBlocks.length;
-		if (_numLeaves > 1)
-			_pathLength = (int)Math.ceil(Math.log(_numLeaves)/Math.log(2)) + 1;
-		else
-			_pathLength = 2;
+	public MerkleTree(String algorithm, 
+					  byte [][] contentBlocks) {
+		this(algorithm, contentBlocks.length);
 		
-		// How many entries do we need? 
-		// 2^(pathLength) - 1 (if even # nodes), - 2 (if odd)		
-		int nodeCount = (int)(Math.pow(2.0,_pathLength));
-		if (0 == (_numLeaves % 2)) 
-			nodeCount -= 1;
-		else
-			nodeCount -= 2;
-		_tree = new DEROctetString[nodeCount];
-		
-		// Hash the leaves
-		for (int i=0; i < numLeaves(); ++i) {
-			_tree[leafIndex(i)] = new DEROctetString(Digest.hash(algorithm, contentBlocks[i]));
-		}
-		
-		// Climb the tree
-		int firstNode = firstLeaf(); 
-		int endNode = size();
-		int nextLevelStart = parent(firstNode);
-		int nextLevelEnd = firstNode - 1;
-		
-		while (parent(firstNode) > 0) {
-			for (int i = parent(firstNode); i < parent(endNode); ++i) {
-				if (rightChild(i) < endNode)
-					_tree[i] = new DEROctetString(Digest.hash(get(leftChild(i)), get(rightChild(i))));
-				else
-					// last leaf
-					_tree[i] = new DEROctetString(Digest.hash(get(leftChild(i))));
-			}
-			firstNode = nextLevelStart;
-			endNode = nextLevelEnd;
-			nextLevelEnd = firstNode - 1;
-			nextLevelStart = parent(firstNode);
-		}
+		computeLeafValues(contentBlocks);
+		computeNodeValues();
 	}
 	
 	public MerkleTree(byte [][] contentBlocks) {
 		this(Digest.DEFAULT_DIGEST, contentBlocks);
 	}
 	
-	public int parent(int i) { 
+	public static int parent(int i) { 
 		if (i == 0) {
 			return -1;
 		}
@@ -98,8 +75,8 @@ public class MerkleTree {
 			return i+1;
 		return i-1;
 	}
-	public boolean isRight(int i) { return (0 != (i % 2)); }
-	public boolean isLeft(int i) { return (0 == (i % 2)); }
+	public static boolean isRight(int i) { return (0 != (i % 2)); }
+	public static boolean isLeft(int i) { return (0 == (i % 2)); }
 	
 	public byte [] root() { return _tree[0].getOctets(); } 
 	public DEROctetString derRoot() { return _tree[0]; }
@@ -128,11 +105,16 @@ public class MerkleTree {
 	 * There are a variety of traversal algorithms for 
 	 * computing/reading Merkle hash trees.
 	 * 
-	 * Here, item 0 is the root, items n-1 and
-	 * n-2 are the leaf itself and its sibling. The
+	 * Here, item 0 is the root, item n-1 is the sibling
+	 * of the leaf itself. Whether nodeIndex is odd or
+	 * not determines whether it is the left or right
+	 * sibling (if nodeIndex odd, it is the right sibling,
+	 * even, the left). The
 	 * leaves in between are one each for each level of the
-	 * tree. There are pathLength()+1 items (one extra for
-	 * the leaf itself -- i.e. two at the terminal level).
+	 * tree. There are pathLength() items (the leaf itself
+	 * is not represented). We can detect this when a) leafNum
+	 * is odd, leafNum > 1 and computePathLength(leafNum) is 
+	 * one greater than the length of the presented path.
 	 * 
 	 * We need to represent the leaves so that the user
 	 * a) knows what order they come in, and b) also knows
@@ -149,69 +131,144 @@ public class MerkleTree {
 	 *  
 	 *  NodeList ::= SEQUENCE OF OCTET STRING
 	 *  
-	 *  We can derive whether this node is the last entry
-	 *  or the next to last by whether or not nodeIndex
-	 *  is odd; we can also use nodeIndex to determine
-	 *  what block this path represents in the full object.
 	 * @param leafNum
 	 * @return
 	 */
 	public byte [][] path(int leafNum) {
-		byte [][] result = new byte[pathLength()+1][];
+		byte [][] result = null;
 		
 		int sibling = sibling(leafNum);
-		if (isLeft(leafNum)) {
-			result[pathLength()-1] = get(leafNum);
-			result[pathLength()] = get(sibling);
+		if (sibling == size()) {
+			// we've hit the end, this node has no siblings
+			result = new byte[pathLength()-1][];
 		} else {
+			result = new byte[pathLength()][];
 			result[pathLength()-1] = get(sibling);
-			result[pathLength()] = get(leafNum);
 		}
+		
 		int index = parent(leafNum);
-		while (index >= 0) {
+		while (index > 0) {
 			result[index] = get(sibling(index));
 			index = parent(index);
 		}
+		result[index] = get(index); // root
 		return result;
 	}
 	
-	protected DEROctetString [] derPath(int leafNum) {
-		DEROctetString [] result = new DEROctetString[pathLength()+1];
+	public MerklePath derPath(int leafNum) {
+		DEROctetString [] result = 
+			new DEROctetString[pathLength()];
 		
 		int sibling = sibling(leafNum);
-		if (isLeft(leafNum)) {
-			result[pathLength()-1] = derGet(leafNum);
-			result[pathLength()] = derGet(sibling);
-		} else {
-			result[pathLength()-1] = derGet(sibling);
-			result[pathLength()] = derGet(leafNum);
-		}
+		result[pathLength()-1] = derGet(sibling);
 		int index = parent(leafNum);
-		while (index >= 0) {
+		while (index > 0) {
 			result[index] = derGet(sibling(index));
 			index = parent(index);
 		}
-		return result;
+		result[index] = derGet(index); // root
+		return new MerklePath(leafNum, result);
+	}
+		
+	protected void computeNodes(byte [][] contentBlocks) {
+		// Hash the leaves
+		for (int i=0; i < numLeaves(); ++i) {
+			_tree[leafIndex(i)] = 
+				new DEROctetString(Digest.hash(_algorithm, contentBlocks[i]));
+		}
+	}
+	
+	protected int nodeCount() {
+		// How many entries do we need? 
+		// 2^(pathLength) - 1 (if even # nodes), - 2 (if odd)		
+		int nodeCount = (int)(Math.pow(2.0,_pathLength));
+		if (0 == (_numLeaves % 2)) 
+			nodeCount -= 1;
+		else
+			nodeCount -= 2;
+		
+		return nodeCount;
+	}
+	
+	public static int computePathLength(int numLeaves) {
+		int pathLength = -1;
+		if (numLeaves > 1)
+			pathLength = (int)Math.ceil(Math.log(numLeaves)/Math.log(2)) + 1;
+		else
+			pathLength = 2;
+		return pathLength;
+	}
+	
+	protected void computeLeafValues(byte [][] contentBlocks) {
+		// Hash the leaves
+		for (int i=0; i < numLeaves(); ++i) {
+			_tree[leafIndex(i)] = 
+				new DEROctetString(
+						computeBlockDigest(i, contentBlocks));
+		}
+	}
+	
+	protected void computeNodeValues() {
+		// Climb the tree
+		int firstNode = firstLeaf(); 
+		int endNode = size();
+		int nextLevelStart = parent(firstNode);
+		int nextLevelEnd = firstNode - 1;
+		
+		while (parent(firstNode) > 0) {
+			for (int i = parent(firstNode); i < parent(endNode); ++i) {
+				if (rightChild(i) < endNode)
+					_tree[i] = 
+						new DEROctetString(Digest.hash(_algorithm, get(leftChild(i)), get(rightChild(i))));
+				else
+					// last leaf
+					_tree[i] = 
+						new DEROctetString(Digest.hash(_algorithm, get(leftChild(i))));
+			}
+			firstNode = nextLevelStart;
+			endNode = nextLevelEnd;
+			nextLevelEnd = firstNode - 1;
+			nextLevelStart = parent(firstNode);
+		}
 	}
 	
 	/**
-	 * DER-encode the path.
-	 * TODO: DKS need decoder
+	 * Separate this out so that it can be overridden.
+	 * @param i
+	 * @param contentBlocks
+	 * @return
 	 */
-	public byte [] derEncodedPath(int leafNum) {
-		DEROctetString[] path = derPath(leafNum);
-		
-		/**
-		 * Sequence of OCTET STRING
-		 */
-		DERSequence sequenceOf = new DERSequence(path);
-		/**
-		 * Sequence of INTEGER, SEQUENCE OF OCTET STRING
-		 */
-		DERInteger intVal = new DERInteger(leafNum);
-		ASN1Encodable [] pathStruct = new ASN1Encodable[]{intVal, sequenceOf};
-		DERSequence encodablePath = new DERSequence(pathStruct);
-		byte [] encodedPath = encodablePath.getDEREncoded();
-		return encodedPath;
+	protected byte [] computeBlockDigest(int i, byte [][] contentBlocks) {
+		return computeBlockDigest(_algorithm, contentBlocks[i]);
+	}
+	
+	public static byte [] computeBlockDigest(String algorithm, byte [] block) {
+		return Digest.hash(algorithm, block);		
+	}
+
+	public static byte [] computeBlockDigest(byte [] block) {
+		return computeBlockDigest(Digest.DEFAULT_DIGEST, block);		
+	}
+	
+	/**
+	 * Compute an intermediate node.
+	 */
+	public static byte [] computeNodeDigest(String algorithm, byte [] left, byte [] right) {
+		return Digest.hash(algorithm, left, right);
+	}
+	
+	public static byte [] computeNodeDigest(byte [] left, byte [] right) {
+		return computeNodeDigest(Digest.DEFAULT_DIGEST, left, right);
+	}
+	
+	/**
+	 * Compute an intermediate note for a last left child.
+	 */
+	public static byte [] computeNodeDigest(String algorithm, byte [] left) {
+		return Digest.hash(algorithm, left);		
+	}
+
+	public static byte [] computeNodeDigest(byte [] left) {
+		return computeNodeDigest(Digest.DEFAULT_DIGEST, left);		
 	}
 }

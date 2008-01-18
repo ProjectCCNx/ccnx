@@ -88,23 +88,28 @@ public class ContentAuthenticatorTest {
 
 	@Test
 	public void testDecodeInputStream() {
-		ContentAuthenticator nca = new ContentAuthenticator(pubkey, 
-								new Timestamp(System.currentTimeMillis()), 
-								ContentAuthenticator.ContentType.LEAF, contenthash,
-								nameLoc, signature);
+		ContentAuthenticator nca = new ContentAuthenticator(
+				pubkey, 
+				new Timestamp(System.currentTimeMillis()), 
+				ContentAuthenticator.ContentType.LEAF, 
+				contenthash, true,
+				nameLoc, signature);
 		ContentAuthenticator dnca = new ContentAuthenticator();
 		XMLEncodableTester.encodeDecodeTest("ContentAuthenticator(name)", nca, dnca);
 
-		ContentAuthenticator kca = new ContentAuthenticator(pubkey, 
+		ContentAuthenticator kca = new ContentAuthenticator(
+				pubkey, 
 				new Timestamp(System.currentTimeMillis()), 
-				ContentAuthenticator.ContentType.LEAF, contenthash,
+				ContentAuthenticator.ContentType.LEAF, 
+				contenthash, true,
 				keyLoc, signature);
 		ContentAuthenticator dkca = new ContentAuthenticator();
 		XMLEncodableTester.encodeDecodeTest("ContentAuthenticator(key)", kca, dkca);
 
 		ContentAuthenticator cca = new ContentAuthenticator(pubkey, 
 				new Timestamp(System.currentTimeMillis()), 
-				ContentAuthenticator.ContentType.LEAF, contenthash,
+				ContentAuthenticator.ContentType.LEAF, 
+				contenthash, true,
 				certLoc, signature);
 		ContentAuthenticator dcca = new ContentAuthenticator();
 		XMLEncodableTester.encodeDecodeTest("ContentAuthenticator(cert)", cca, dcca);
@@ -117,7 +122,9 @@ public class ContentAuthenticatorTest {
 		ContentAuthenticator scca = null;
 		try {
 			scca = new ContentAuthenticator(name, pubkey, 
-				ContentAuthenticator.ContentType.LEAF, contenthash,
+				ContentAuthenticator.now(),
+				ContentAuthenticator.ContentType.LEAF, 
+				contenthash, true,
 				keyLoc, pair.getPrivate());
 		} catch (Exception e) {
 			XMLEncodableTester.handleException(e);

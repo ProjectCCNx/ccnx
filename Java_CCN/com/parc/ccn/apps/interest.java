@@ -1,10 +1,8 @@
 package com.parc.ccn.apps;
 
 import java.io.IOException;
-import java.util.ArrayList;
 
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.CCNQueryDescriptor;

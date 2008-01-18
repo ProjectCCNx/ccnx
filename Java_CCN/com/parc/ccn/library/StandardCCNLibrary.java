@@ -28,8 +28,8 @@ import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
 import com.parc.ccn.network.CCNRepositoryManager;
+import com.parc.ccn.security.crypto.CCNMerkleTree;
 import com.parc.ccn.security.crypto.Digest;
-import com.parc.ccn.security.crypto.MerkleTree;
 import com.parc.ccn.security.keys.KeyManager;
 
 /**
@@ -213,6 +213,16 @@ public class StandardCCNLibrary implements CCNLibrary {
 		}
 	}
 
+	public ContentObject getLink(CompleteName name) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public boolean isLink(CompleteName name) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
 	public CompleteName newVersion(ContentName name, int version, byte[] contents) throws SignatureException, IOException {
 		return newVersion(name, version, contents, getDefaultPublisher());
 	}
@@ -234,16 +244,6 @@ public class StandardCCNLibrary implements CCNLibrary {
 		}
 	}
 
-	public ContentObject getLink(CompleteName name) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public boolean isLink(CompleteName name) {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
 	public CompleteName newVersion(ContentName name, int version, byte [] contents,
 			PublisherID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws SignatureException, 
@@ -261,19 +261,6 @@ public class StandardCCNLibrary implements CCNLibrary {
 
 		// put result
 		return put(versionedName, contents, ContentAuthenticator.ContentType.LEAF, publisher, locator, signingKey);
-	}
-
-	/**
-	 * TODO: check to make sure name doesn't have the
-	 *   version information in it already.
-	 * @param name
-	 * @param version
-	 * @return
-	 */
-	public ContentName versionName(ContentName name, int version) {
-		return new ContentName(name, 
-							   ContentName.componentParse(VERSION_MARKER),
-							   ContentName.componentParse(Integer.toString(version)));
 	}
 
 	/**
@@ -300,6 +287,19 @@ public class StandardCCNLibrary implements CCNLibrary {
 	public int getVersion(ContentName name) {
 		// TODO Auto-generated method stub
 		return 1;		
+	}
+
+	/**
+	 * TODO: check to make sure name doesn't have the
+	 *   version information in it already.
+	 * @param name
+	 * @param version
+	 * @return
+	 */
+	public ContentName versionName(ContentName name, int version) {
+		return new ContentName(name, 
+							   ContentName.componentParse(VERSION_MARKER),
+							   ContentName.componentParse(Integer.toString(version)));
 	}
 
 	public CompleteName put(ContentName name, byte[] contents) 
@@ -335,6 +335,68 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * of a fragmented thing, the header). That way the
 	 * caller can then also easily link to that thing if
 	 * it needs to, or put again with a different name.
+	 * 
+	 * We want to generate a unique name (just considering
+	 * the name part) for transport and routing layer efficiency. 
+	 * We want to do this in a way that
+	 * gives us the following properties:
+	 * <ol>
+	 * <li>General CCN nodes do not need to understand any
+	 *   name components.
+	 * <li>General CCN nodes can verify content signatures if
+	 * 	 they feel so inclined. That means that any components
+	 *   added to the name to make it unique must be signed
+	 *   along with the rest of the name.
+	 * <li>General CCN nodes need to know as few algorithms
+	 *   for verifying content signatures as possible; at
+	 *   minimum one for leaf content and one for fragmented
+	 *   content (probably also one for streamed content).
+	 * <li>If a particular CCN node wishes to interpret the
+	 * 	 content of the additional component (or query over it),
+	 * 	 they can, but we don't require them to be able to.
+	 * <li>Making content names unique shouldn't interfere with
+	 * 	 making names or content private. Content can be encrypted
+	 *   before hashing; name components could be encrypted even
+	 *   after uniquification (so no one can tell that two blocks
+	 *   have the same content, or even anything about the block
+	 *   that maps to a name).
+	 * </ol>
+	 * Requiring the result to be unique means that the additional
+	 * component added can't simply be the content digest, or
+	 * the publisher ID. Either of these could be useful, but
+	 * neither is guaranteed to be unique. The signature is guaranteed
+	 * to be unique, but including the signature in the name itself
+	 * (or the digest of the signature, etc) means that the name
+	 * cannot be completely signed -- as the signature can't be
+	 * included in the name for signing. At least the user-intended
+	 * part of the name must signed, and including the signature
+	 * in a distinguished component of the name means that CCN
+	 * nodes must understand what parts of the name are signed
+	 * and what aren't. While this is necessarily true, e.g. for
+	 * fragmented data (see below), you either need a way to
+	 * verify the remainder of the name (which is possible for
+	 * fragmented data), or only require users to sign name prefixes.
+	 * It is much better to require verification of the entire
+	 * name, either by signing it completely (for unfragmented data),
+	 * or by including the fragment names in the block information
+	 * incorporated in the hash tree for signing (see below).
+	 * So, what we use for unfragmented data is the digest of 
+	 * the content authenticator without the signature in it; 
+	 * which in turn contains the digest
+	 * of the content itself, as well as the publisher ID and
+	 * the timestamp (which will make it unique). When we generate
+	 * the signature, we still sign the name, the content authenticator,
+	 * and the content, as we cannot guarantee that the content
+	 * authenticator digest has been incorporated in the name.
+	 * 
+	 * For fragmented data, we only generate one signature,
+	 * on the root of the Merkle hash tree. For that we use
+	 * this same process to generate a unique name from the
+	 * content name and content information. However, we then
+	 * decorate that name to create the individual block names;
+	 * rather than have CCN nodes understand how to separate
+	 * that decoration and verify it, we incorporate the block
+	 * names into the Merkle hash tree.
 	 * @throws IOException 
 	 **/
 	public CompleteName put(ContentName name, byte [] contents,
@@ -351,12 +413,15 @@ public class StandardCCNLibrary implements CCNLibrary {
 		if (contents.length >= Header.DEFAULT_BLOCKSIZE) {
 			return fragmentedPut(name, contents, type, publisher, locator, signingKey);
 		} else {
-			ContentAuthenticator authenticator = 
-				new ContentAuthenticator(name, publisher, 
-						type, contents, 
+			// We need to generate unique name, and 
+			// generate signed ContentAuthenticator.
+			CompleteName uniqueName =
+				ContentAuthenticator.generateAuthenticatedName(
+						name, publisher, ContentAuthenticator.now(),
+						type, contents, false,
 						locator, signingKey);
 			try {
-				return put(name, authenticator, contents);
+				return put(uniqueName.name(), uniqueName.authenticator(), contents);
 			} catch (IOException e) {
 				Library.logger().warning("This should not happen: put failed with an IOExceptoin.");
 				Library.warningStackTrace(e);
@@ -382,7 +447,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 			ContentAuthenticator.ContentType type,
 			PublisherID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
-		// will call into CCNBase after picking appropriate credentials
+		// This will call into CCNBase after picking appropriate credentials
 		// take content, blocksize (static), divide content into array of 
 		// content blocks, call hash fn for each block, call fn to build merkle
 		// hash tree.   Build header, for each block, get authinfo for block,
@@ -404,17 +469,17 @@ public class StandardCCNLibrary implements CCNLibrary {
 		}
 
 		// Digest of complete contents
-		byte [] contentDigest = Digest.hash(contents);
-		MerkleTree digestTree = new MerkleTree(contentBlocks);
-		ContentAuthenticator [] blockAuthenticators = 
-			ContentAuthenticator.authenticatedHashTree(name, publisher, timestamp, 
-					type, digestTree, locator, 
-					signingKey);
+		// If we're going to unique-ify the block names
+		// (or just in general) we need to incorporate the names
+		// in the MerkleTree blocks. 
+    	CCNMerkleTree tree = 
+    		new CCNMerkleTree(name, publisher, timestamp, 
+    						  contentBlocks, locator, signingKey);
 
 		for (int i = 0; i < nBlocks; i++) {
-			ContentName blockName = blockName(name, i);
 			try {
-				put(blockName, blockAuthenticators[i], contentBlocks[i]);
+				CompleteName blockCompleteName = tree.getBlockCompleteName(i);
+				put(blockCompleteName.name(), blockCompleteName.authenticator(), contentBlocks[i]);
 			} catch (IOException e) {
 				Library.logger().warning("This should not happen: we cannot put our own blocks!");
 				Library.warningStackTrace(e);
@@ -422,7 +487,8 @@ public class StandardCCNLibrary implements CCNLibrary {
 			}
 		}
 		// construct the headerBlockContents;
-		Header header = new Header(contents.length, contentDigest, digestTree.root());
+		byte [] contentDigest = Digest.hash(contents);
+		Header header = new Header(contents.length, contentDigest, tree.root());
 		byte[] encodedHeader = null;
 		try {
 			encodedHeader = header.encode();
@@ -432,16 +498,18 @@ public class StandardCCNLibrary implements CCNLibrary {
 			throw new IOException("This should not happen: we cannot encode our own header!" + e.getMessage());
 		}
 
-		ContentAuthenticator headerBlockAuthenticator =
-			new ContentAuthenticator(name, publisher, timestamp, type, encodedHeader, false, locator, signingKey);
+		CompleteName headerBlockInformation =
+			ContentAuthenticator.generateAuthenticatedName(
+					name, publisher, timestamp, type, 
+					encodedHeader, false, locator, signingKey);
 		try {
-			put (name, headerBlockAuthenticator, encodedHeader);
+			put (headerBlockInformation.name(), headerBlockInformation.authenticator(), encodedHeader);
 		} catch (IOException e) {
 			Library.logger().warning("This should not happen: we cannot put our own header!");
 			Library.warningStackTrace(e);
 			throw e;
 		}
-		return new CompleteName(name, headerBlockAuthenticator);
+		return headerBlockInformation;
 	}
 
 	public ContentName blockName(ContentName name, int i) {
@@ -458,13 +526,15 @@ public class StandardCCNLibrary implements CCNLibrary {
 	/**
 	 * Implementation of CCNBase.put.
 	 */
-	public CompleteName put(ContentName name, ContentAuthenticator authenticator,
-			byte[] content) throws IOException {
+	public CompleteName put(ContentName name, 
+							ContentAuthenticator authenticator,
+							byte[] content) throws IOException {
 		return CCNRepositoryManager.getRepositoryManager().put(name, authenticator, content);
 	}
 
 	/**
-	 * Have to handle un-fragmenting fragmented content.
+	 * Have to handle un-fragmenting fragmented content, and
+	 * reading (and verifying) partial content.
 	 */
 	public ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator) throws IOException {
 		// TODO: defragment, deref links

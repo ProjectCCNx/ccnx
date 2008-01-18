@@ -11,16 +11,6 @@ import java.security.Signature;
 import java.security.SignatureException;
 import java.security.spec.InvalidParameterSpecException;
 
-import javax.xml.crypto.Data;
-import javax.xml.crypto.OctetStreamData;
-import javax.xml.crypto.dsig.CanonicalizationMethod;
-import javax.xml.crypto.dsig.TransformException;
-import javax.xml.crypto.dsig.XMLSignatureFactory;
-import javax.xml.crypto.dsig.dom.DOMSignContext;
-import javax.xml.crypto.dsig.spec.C14NMethodParameterSpec;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.asn1.ASN1InputStream;
@@ -29,9 +19,6 @@ import org.bouncycastle.asn1.DERObjectIdentifier;
 import org.bouncycastle.asn1.DERTags;
 import org.bouncycastle.asn1.DERUnknownTag;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
-import org.w3c.dom.Document;
-import org.w3c.dom.Node;
-import org.xml.sax.SAXException;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.util.XMLEncodable;
@@ -71,109 +58,19 @@ public class SignatureHelper {
 	 * @throws SignatureException 
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
+	 * @throws XMLStreamException 
 	 */
 	public static byte [] sign(String hashAlgorithm, 
 							   XMLEncodable toBeSigned,
-							   PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException {
+							   PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException {
 		
 		if (null == toBeSigned) {
 			Library.logger().info("Value to be signed and signing key must not be null.");
 			return null;
 		}
-		// DKS TODO: figure out canonicalization
-		//byte [] canonicalizedData = canonicalize(toBeSigned, signingKey);
-		byte[] canonicalizedData = null;
-		try {
-			canonicalizedData = toBeSigned.encode();
-		} catch (XMLStreamException e) {
-			Library.logger().warning("Exception encoding toBeSigned: " + e.getMessage());
-			Library.warningStackTrace(e);
-		}
-		return sign(hashAlgorithm, canonicalizedData, signingKey);
+		return sign(hashAlgorithm, toBeSigned.canonicalizeAndEncode(), signingKey);
 	}
 
-	/**
-	 * This is really annoying -- we need to pass in a key
-	 * to instantiate the appropriate context to canonicalize.
-	 * For some reason the Java XML signature API is focusing
-	 * on canonicalization of signature info objects, rather
-	 * than canonicalization of the things below them to
-	 * actually be signed. 
-	 * DKS TODO: look into the Apache API.
-	 * @param toBeSigned
-	 * @param signingKey
-	 * @return
-	 * @throws SignatureException
-	 */
-	public static byte [] canonicalize(XMLEncodable toBeSigned, PrivateKey signingKey) throws SignatureException {
-
-		byte[] encoded;
-		try {
-			encoded = toBeSigned.encode();
-		} catch (XMLStreamException e1) {
-			Library.logger().warning("This should not happen: we cannot encode " + toBeSigned.getClass().getName() + " to be signed!");
-			Library.warningStackTrace(e1);
-			throw new SignatureException(e1);
-		}
-		
-		ByteArrayInputStream bais = new ByteArrayInputStream(encoded);
-		// Canonicalize XML document
-        XMLSignatureFactory xmlSignatureFactory =
-            XMLSignatureFactory.getInstance();
-        
-        DocumentBuilderFactory documentBuilderFactory =
-            DocumentBuilderFactory.newInstance();
-        DocumentBuilder builder = null;
-		try {
-			builder = documentBuilderFactory.newDocumentBuilder();
-		} catch (ParserConfigurationException e1) {
-			handleException("This really should not happen: parser configuration exception -- error in DOM setup.", e1);
-		}
-        Document document = null;
-		try {
-			document = builder.parse(bais);
-		} catch (SAXException e1) {
-			handleException("This should not happen: we cannot parse mapping information to be signed!", e1);
-		} catch (IOException e1) {
-			handleException("This should not happen: we cannot read mapping information to be signed!", e1);
-		}
-    	Node node = document.getDocumentElement();
-    	
-    	bais.reset();
-		OctetStreamData osd = new OctetStreamData(bais);
-		
-        DOMSignContext cryptoContext = new DOMSignContext(signingKey, node);
-
-        String canonicalizationAlg = CanonicalizationMethod.EXCLUSIVE_WITH_COMMENTS;
-        C14NMethodParameterSpec canonParams = null;
-        Data out = null;
-        String canonicalizedData = null;
-        try {
-			CanonicalizationMethod canonicalizationMethod =
-			        xmlSignatureFactory.
-			        newCanonicalizationMethod(
-			        		canonicalizationAlg, canonParams);
-			if (null == canonicalizationMethod) {
-				Library.logger().warning("Cannot find canonicalization method: " + canonicalizationAlg);
-				throw new TransformException("Cannot find canonicalization method: " + canonicalizationAlg);
-			}
-			out = canonicalizationMethod.transform(osd, cryptoContext);
-			
-			canonicalizedData = out.toString();
-			
-			Library.logger().info("Canonicalized data: " + canonicalizedData);
-			
-        } catch (NoSuchAlgorithmException e) {
-        	handleException("This really should not happen: configuration error -- cannot find canonicalization algorithm.", e);
-		} catch (InvalidAlgorithmParameterException e) {
-			handleException("This really should not happen: configuration error -- cannot find canonicalization algorithm parameters.", e);
-		} catch (TransformException e) {
-			handleException("This should not happen: we cannot canonicalize mapping information to be signed!", e);
-		}
-		// Is there a problem with locale issues?
-		// DKS TODO: may need to get closer to real XML sigs.
-		return canonicalizedData.getBytes();
-	}
 
 	/**
 	 * gets an AlgorithmIdentifier incorporating a given digest and
@@ -299,12 +196,4 @@ public class SignatureHelper {
 					" results in: " + signatureAlgorithm);
 		return signatureAlgorithm;
 	}
-
-	public static void handleException(String message, 
-			Exception e) throws SignatureException {
-		Library.logger().warning(message);
-		Library.warningStackTrace(e);
-		throw new SignatureException(e);
-	}
-
 }

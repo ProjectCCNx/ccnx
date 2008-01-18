@@ -39,7 +39,12 @@ public interface XMLEncodable {
 	 * @throws XMLStreamException
 	 */
 	public byte [] encode() throws XMLStreamException;
-
+	
+	/**
+	 * Helper function for signatures
+	 */
+	public byte [] canonicalizeAndEncode() throws XMLStreamException;
+	
 	/**
 	 * Write this item to an ongoing encoding pass. 
 	 * @param isFirstElement is this the first element after the

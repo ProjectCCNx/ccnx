@@ -567,9 +567,11 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		}
 		byte [] signature = getBinaryProperty(n, SIGNATURE_PROPERTY);
 		
-		ContentAuthenticator auth = new ContentAuthenticator(publisherID,
-															 timestamp, type,
-															 hash, loc, signature);		
+		ContentAuthenticator auth = 
+			new ContentAuthenticator(publisherID,
+									 timestamp, type,
+									 hash, true,
+									 loc, signature);		
 		return auth;
 	}
 		

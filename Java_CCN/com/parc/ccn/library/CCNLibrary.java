@@ -149,4 +149,19 @@ public interface CCNLibrary extends CCNBase {
 	
 	public ArrayList<CompleteName> enumerate(CompleteName query) throws IOException;
 
+	/**
+	 * Approaches to get content. Low-level CCNBase returns
+	 * a specific piece of content from the repository (e.g.
+	 * if you ask for a fragment, you get a fragment). Library
+	 * customers want the actual content, independent of
+	 * fragmentation. Can implement this in a variety of ways;
+	 * could verify fragments and reconstruct whole content
+	 * and return it all at once. Could (better) implement
+	 * file-like API -- open opens the header for a piece of
+	 * content, read verifies the necessary fragments to return
+	 * that much data and reads the corresponding content.
+	 * 
+	 * DKS: TODO -- state-based put() analogous to write()s in
+	 * blocks.
+	 */
 }

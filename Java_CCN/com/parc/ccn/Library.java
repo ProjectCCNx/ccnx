@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.security.SignatureException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Random;
@@ -108,5 +109,11 @@ public class Library {
 		 StringWriter sw = new StringWriter();
 	     t.printStackTrace(new PrintWriter(sw));
 	     logger().log(level, sw.toString());
+	}
+	
+	public static void handleException(String message, 
+			Exception e) {
+		Library.logger().warning(message);
+		Library.warningStackTrace(e);
 	}
 }

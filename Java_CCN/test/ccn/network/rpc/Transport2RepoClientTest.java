@@ -120,8 +120,9 @@ public class Transport2RepoClientTest {
 			ContentAuthenticator authenticator = 
 				new ContentAuthenticator(versionedName, 
 										 _library.getDefaultPublisher(),
+										 ContentAuthenticator.now(),
 										 ContentAuthenticator.ContentType.LEAF,
-										 document3,
+										 document3, false,
 										 locator,
 										 signingKey);
 			ContentObject obj = new ContentObject(versionedName, authenticator, document3);

@@ -20,7 +20,6 @@ import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
 import com.parc.ccn.security.crypto.Digest;
-import com.parc.ccn.security.crypto.MerkleTree;
 import com.parc.ccn.security.crypto.SignatureHelper;
 
 public class ContentAuthenticator extends GenericXMLEncodable implements XMLEncodable {
@@ -57,76 +56,15 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     protected byte []		_contentDigest; // encoded DigestInfo
     protected KeyLocator  	_keyLocator;
     protected byte[]		_signature; // DKS might want to use Signature type
-
-    public ContentAuthenticator(
-    		byte[] publisher,
-    		PublisherID.PublisherType publisherType,
-    		Timestamp timestamp, 
-    		ContentType type, 
-    		// DKS may need to add structure to signature and hash, 
-    		// partic contentDigest as it must also do hash trees
-    		byte[] contentDigest, 
-    		KeyLocator locator, 
-    		byte[] signature) {
-		this(new PublisherID(publisher, publisherType), 
-				timestamp, type, contentDigest,
-				locator, signature);
-	}
     
     public ContentAuthenticator(
     		PublisherID publisher, 
 			Timestamp timestamp, 
 			ContentType type, 
-			byte[] contentDigest, 
-			KeyLocator locator, 
-			byte[] signature) {
-    	super();
-    	this._publisher = publisher;
-    	this._timestamp = timestamp;
-    	this._type = type;
-    	_contentDigest = contentDigest;
-    	_keyLocator = locator;
-    	this._signature = signature;
-    }
-    
-    /**
-     * Helper constructors. 
-     * @throws SignatureException 
-     * @throws NoSuchAlgorithmException 
-     * @throws InvalidKeyException 
-     */
-    public ContentAuthenticator(
-    		ContentName name,
-    		PublisherID publisher,
-    		ContentType type,
-    		byte [] content, // will be hashed
-    		KeyLocator locator,
-    		PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException {
-    	this(name, publisher, now(), type, content,
-    			false, locator, signingKey);
-   }
-    
- 	public ContentAuthenticator(
-    		ContentName name,
-    		PublisherID publisher,
-    		ContentType type,
        		byte [] contentOrDigest, // may be already hashed
     		boolean isDigest, // should we digest it or is it already done?
-    		KeyLocator locator,
-    		PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException {
-    	this(name, publisher, now(), type, contentOrDigest,
-    			isDigest, locator, signingKey);
-    }
-
-    public ContentAuthenticator(
-    		ContentName name,
-    		PublisherID publisher,
-    		Timestamp timestamp,
-    		ContentType type,
-    		byte [] contentOrDigest, // may be already hashed
-    		boolean isDigest, // should we digest it or is it already done?
-    		KeyLocator locator,
-    		PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException {
+			KeyLocator locator, 
+			byte[] signature) {
     	super();
     	this._publisher = publisher;
     	this._timestamp = timestamp;
@@ -136,60 +74,72 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     	else
     		_contentDigest = Digest.hash(contentOrDigest);
     	_keyLocator = locator;
-    	// Might need to be a factory method instead
-    	// of a constructor, as calling class methods
-    	// in a constructor is dicey.
-    	sign(name, signingKey);
-     }
-
+    	this._signature = signature;
+    }
+    
     /**
-     * The content authenticators for a set of fragments consist of:
-     * The authenticator of the header block, which contains both
-     * the root hash of the Merkle tree and the hash of the content.
-     * This is a normal authenticator, signing the header block 
-     * as content.
-     * Then for each fragment, the authenticator contains the signature
-     * on the root hash as the signature, and the set of hashes necessary
-     * to verify the Merkle structure as the content hash.
-     * 
-     * The signature on the root node is actually a signature
-     * on a content authenticator containing the root hash as its
-     * content item. That way we also sign the publisher ID, type,
-     * etc.
-     * 
-     * This method returns an array of ContentAuthenticators, one
-     * per block of content.
+     * Helper constructors. Be careful, may want to be
+     * using generateAuthenticatedName.
      * @throws SignatureException 
      * @throws NoSuchAlgorithmException 
      * @throws InvalidKeyException 
      */
-    public static ContentAuthenticator []
-    	authenticatedHashTree(ContentName name,
-    						  PublisherID publisher,
-    						  Timestamp timestamp,
-        					  ContentType type,
-        					  MerkleTree tree,
-        					  KeyLocator locator,
-        					  PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException {
-    	
-    	// Need to sign the root node, along with the other supporting
-    	// data.
-    	ContentAuthenticator rootAuthenticator = 
-    			new ContentAuthenticator(name, publisher, timestamp, type, tree.root(), 
-    									 true, locator, signingKey);
-
-    	ContentAuthenticator [] authenticators = new ContentAuthenticator[tree.numLeaves()];
-    	
-    	// Now build the authenticator structures.
-    	for (int i=0; i < authenticators.length; ++i) {
-    		authenticators[i] = 
-    			new ContentAuthenticator(publisher, timestamp, 
-    									 type, tree.derEncodedPath(i),
-    									 locator, rootAuthenticator.signature());
-    	}
-    	return authenticators;
-    }
+    public ContentAuthenticator(
+    		ContentName name,
+    		PublisherID publisher,
+    		Timestamp timestamp,
+    		ContentType type,
+    		byte [] contentOrDigest, // may be already hashed
+    		boolean isDigest, // should we digest it or is it already done?
+    		KeyLocator locator,
+    		PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException {
+    	this(publisher, timestamp, type, contentOrDigest,
+    		 isDigest, locator, null);
+    	// Might need to be a factory method instead
+    	// of a constructor, as calling class methods
+    	// in a constructor is dicey.
+    	sign(name, signingKey);
+	}
     
+    /**
+     * Generate unique name and authentication information.
+     * @param signingKey if null, only generates unique name
+     * 	and filled-in content authenticator. Can complete using
+     *  completeName.authenticator.sign(completeName.name, signingKey).
+     * @return
+     * @throws SignatureException 
+     * @throws InvalidKeyException 
+     */
+	public static CompleteName generateAuthenticatedName(
+	   		ContentName name,
+    		PublisherID publisher,
+    		Timestamp timestamp,
+    		ContentType type,
+    		byte [] contentOrDigest, // may be already hashed
+    		boolean isDigest, // should we digest it or is it already done?
+    		KeyLocator locator,
+    		PrivateKey signingKey) throws SignatureException, InvalidKeyException {
+		
+		// Generate raw authenticator.
+		ContentAuthenticator authenticator =
+			new ContentAuthenticator(publisher, timestamp, type,
+									 contentOrDigest, isDigest,
+									 locator, null);
+		byte [] authenticatorDigest = null;
+		try {
+			authenticatorDigest =
+				Digest.hash(authenticator.canonicalizeAndEncode());
+		} catch (XMLStreamException e) {
+			Library.handleException("Exception encoding internally-generated XML!", e);
+			throw new SignatureException(e);
+		}
+		
+		ContentName fullName = new ContentName(name, authenticatorDigest);
+		if (null != signingKey)
+			authenticator.sign(fullName, signingKey);
+		return new CompleteName(fullName, authenticator);
+	}
+	    
     /**
      * For queries.
      * @param publisher
@@ -463,8 +413,15 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 		throws SignatureException, InvalidKeyException, NoSuchAlgorithmException {
 		
 		// Build XML document
+		_signature = null;
 		CompleteName completeName = new CompleteName(name, this);
-		_signature = SignatureHelper.sign(digestAlgorithm, completeName, signingKey);
+		try {
+			_signature = 
+				SignatureHelper.sign(digestAlgorithm, completeName, signingKey);
+		} catch (XMLStreamException e) {
+			Library.handleException("Exception encoding internally-generated XML name!", e);
+			throw new SignatureException(e);
+		}
 	}
 	
 	public void sign(ContentName name, PrivateKey signingKey) 

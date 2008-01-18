@@ -184,12 +184,15 @@ public class BasicKeyManager extends KeyManager {
 		// Need a key locator to stick in data entry for
 		// locator. Use key itself.
 		KeyLocator locatorLocator = new KeyLocator(ssCert.getPublicKey());
-		ContentAuthenticator auth = null;
+		CompleteName uniqueKeyName = null;
 		try {
-			auth = new ContentAuthenticator(keyLocation, 
+			uniqueKeyName = ContentAuthenticator.generateAuthenticatedName(
+									 keyLocation, 
 									 new PublisherID(ssCert.getPublicKey(), false), 
+									 ContentAuthenticator.now(),
 									 ContentAuthenticator.ContentType.LEAF,
 									 encodedKey,
+									 false,
 									 locatorLocator,
 									 userKeyPair.getPrivate());
 		} catch (Exception e) {
@@ -197,7 +200,9 @@ public class BasicKeyManager extends KeyManager {
 		}
 		try {
 			CompleteName publishedLocation = 
-				CCNRepositoryManager.getRepositoryManager().put(keyLocation, auth, encodedKey);
+				CCNRepositoryManager.getRepositoryManager().put(
+						uniqueKeyName.name(), 
+						uniqueKeyName.authenticator(), encodedKey);
 			Library.logger().info("Generated user default key. Published key locator as: " + publishedLocation.name());
 		} catch (IOException e) {
 			generateConfigurationException("Cannot put key locator for default key.", e);

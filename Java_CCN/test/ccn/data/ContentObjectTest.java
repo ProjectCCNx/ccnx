@@ -78,7 +78,8 @@ public class ContentObjectTest {
 			
 			auth = new ContentAuthenticator(pubkey, 
 					new Timestamp(System.currentTimeMillis()), 
-					ContentAuthenticator.ContentType.LEAF, contenthash,
+					ContentAuthenticator.ContentType.LEAF, 
+					contenthash, true,
 					nameLoc, signature);
 		} catch (Exception ex) {
 			XMLEncodableTester.handleException(ex);
