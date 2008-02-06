@@ -179,16 +179,6 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 		CCNInterestManager.getInterestManager().cancelInterest(query);
 	}
 
-	public CompleteName addProperty(CompleteName target, String propertyName, byte[] propertyValue) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public CompleteName addProperty(CompleteName target, String propertyName, String propertyValue) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
 	public ArrayList<CompleteName> enumerate(CompleteName name) throws IOException {
 		ArrayList<CompleteName> results = _primaryRepository.enumerate(name);
 		
@@ -200,12 +190,27 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 		return results;
 	}
 
-	public byte[] getByteProperty(CompleteName target, String propertyName) throws IOException {
+	public ArrayList<ContentObject> getLocal(ContentName name, ContentAuthenticator authenticator) throws IOException {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
-	public ArrayList<ContentObject> getInternal(ContentName name, ContentAuthenticator authenticator) throws IOException {
+	public boolean isLocal(CompleteName name) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	public CompleteName putLocal(ContentName name, ContentAuthenticator authenticator, byte[] content) throws IOException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	
+	public CompleteName addProperty(CompleteName target, String propertyName, byte[] propertyValue) throws IOException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public CompleteName addProperty(CompleteName target, String propertyName, String propertyValue) throws IOException {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -215,16 +220,11 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 		return null;
 	}
 
-	public boolean isInternal(CompleteName name) {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	public CompleteName putInternal(ContentName name, ContentAuthenticator authenticator, byte[] content) throws IOException {
+	public byte[] getByteProperty(CompleteName target, String propertyName) throws IOException {
 		// TODO Auto-generated method stub
 		return null;
 	}
-	
+
 	protected void repositoryAdded(CCNRepository newRepository) {
 		// DiscoveryManager handles _repositories List.
 		if (!_repositories.contains(newRepository))

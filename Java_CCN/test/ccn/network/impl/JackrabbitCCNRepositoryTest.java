@@ -129,6 +129,7 @@ public class JackrabbitCCNRepositoryTest {
 			for (int i=0;i<versionedNames.length; ++i) {
 				auth[i] = new ContentAuthenticator(
 						versionedNames[i],
+						null,
 						pubkey, ContentAuthenticator.now(),
 					ContentAuthenticator.ContentType.LEAF, 
 					content[i], false,

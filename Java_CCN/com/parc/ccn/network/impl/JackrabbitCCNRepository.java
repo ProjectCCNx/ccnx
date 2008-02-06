@@ -87,6 +87,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	 */
 	public static final String PUBLISHER_PROPERTY = "PUBLISHER";
 	public static final String PUBLISHER_TYPE_PROPERTY = "PUBLISHER_TYPE";
+	public static final String NAME_COMPONENT_COUNT_PROPERTY = "NAME_COMPONENT_COUNT";
 	public static final String TIMESTAMP_PROPERTY = "TIMESTAMP";
 	public static final String TYPE_PROPERTY = "CONTENT_TYPE";
 	public static final String HASH_PROPERTY = "CONTENT_HASH_ELEMENT";
@@ -440,6 +441,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 								Library.logger().info("IOException in getContentDigest: " + e.getMessage());
 								throw new RepositoryException(e);
 							}
+							// TODO: DKS: check implications of unique names
 							if (Arrays.equals(contentDigest, authenticator.contentDigest())) {
 								Library.logger().info("Adding node with same content, check.");
 								// timestamps could be different
@@ -464,7 +466,9 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		// TODO: DKS -- should we check out parent?
 		Node n = addSubNode(parent, name);
 
-		// TODO DKS: do we want to avoid dupes by appending
+		// DKS: higher level is avoiding dupes by adding
+		// hash of content authenticator to name already. Don't
+		// need to further uniqueify
 		// signature, content hash, or publisher ID to name
 		// used internally by Jackrabbit (rather than storing
 		// it as a property)? Would make the XPath more complicated,
@@ -521,6 +525,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	protected void addAuthenticationInfo(Node n, ContentAuthenticator authenticator) throws ValueFormatException, VersionException, LockException, ConstraintViolationException, RepositoryException {
 		n.setProperty(PUBLISHER_PROPERTY, publisherToString(authenticator.publisher()));
 		n.setProperty(PUBLISHER_TYPE_PROPERTY, PublisherID.typeToName(authenticator.publisherType()));
+		n.setProperty(NAME_COMPONENT_COUNT_PROPERTY, authenticator.nameComponentCount());
 		Library.logger().info("Adding authentication info with type of " + authenticator.typeName() + " original type " + authenticator.type());
 		n.setProperty(TYPE_PROPERTY, authenticator.typeName());
 		n.setProperty(TIMESTAMP_PROPERTY, authenticator.timestamp().toString());
@@ -551,7 +556,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		} catch (PathNotFoundException b) {
 			Library.logger().warning("Error: cannot get content type from node: " + n.getPath());
 		}
-		
+		Integer componentCount = Integer.valueOf(n.getProperty(NAME_COMPONENT_COUNT_PROPERTY).getString());
 		ContentAuthenticator.ContentType type = ContentAuthenticator.nameToType(propertyString);
 		Timestamp timestamp = Timestamp.valueOf(n.getProperty(TIMESTAMP_PROPERTY).getString());
 		
@@ -569,7 +574,9 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		
 		ContentAuthenticator auth = 
 			new ContentAuthenticator(publisherID,
-									 timestamp, type,
+					 				 componentCount,
+									 timestamp, 
+									 type,
 									 hash, true,
 									 loc, signature);		
 		return auth;
@@ -1125,7 +1132,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	}
 
 	@Override
-	public ArrayList<ContentObject> getInternal(ContentName name, ContentAuthenticator authenticator) throws IOException {
+	public ArrayList<ContentObject> getLocal(ContentName name, ContentAuthenticator authenticator) throws IOException {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -1137,13 +1144,13 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	}
 
 	@Override
-	public boolean isInternal(CompleteName name) {
+	public boolean isLocal(CompleteName name) {
 		// TODO Auto-generated method stub
 		return false;
 	}
 
 	@Override
-	public CompleteName putInternal(ContentName name, ContentAuthenticator authenticator, byte[] content) throws IOException {
+	public CompleteName putLocal(ContentName name, ContentAuthenticator authenticator, byte[] content) throws IOException {
 		// TODO Auto-generated method stub
 		return null;
 	}

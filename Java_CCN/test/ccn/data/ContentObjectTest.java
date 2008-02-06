@@ -76,7 +76,7 @@ public class ContentObjectTest {
 			
 			pubkey = new PublisherID(publisherid, PublisherType.KEY);
 			
-			auth = new ContentAuthenticator(pubkey, 
+			auth = new ContentAuthenticator(pubkey, null,
 					new Timestamp(System.currentTimeMillis()), 
 					ContentAuthenticator.ContentType.LEAF, 
 					contenthash, true,

@@ -299,4 +299,8 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 		}
 		return oncName;
 	}
+
+	public ContentName copy(int nameComponentCount) {
+		return new ContentName(nameComponentCount, this.components());
+	}
 }

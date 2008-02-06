@@ -54,7 +54,8 @@ public interface CCNLibrary extends CCNBase {
 	 * @throws SignatureException 
 	 * @throws IOException 
 	 */
-	public CompleteName put(ContentName name, byte [] contents, PublisherID publisher) throws SignatureException, IOException;
+	public CompleteName put(ContentName name, byte [] contents,
+							PublisherID publisher) throws SignatureException, IOException;
 	
 	public CompleteName put(ContentName name, byte[] contents, 
 			ContentAuthenticator.ContentType type,
@@ -67,9 +68,13 @@ public interface CCNLibrary extends CCNBase {
 	
 	// internal functions about fragmentation - may be exposed, or in std impl
 	
-	public CompleteName newVersion(ContentName name, int version, byte [] contents) throws SignatureException, IOException;
-	public CompleteName newVersion(ContentName name, int version, byte [] contents, PublisherID publisher) throws SignatureException, IOException;
-	public CompleteName newVersion(ContentName name, int version, byte [] contents,
+	public CompleteName newVersion(ContentName name, int version, 
+								   byte [] contents) throws SignatureException, IOException;
+	public CompleteName newVersion(ContentName name, int version, 
+								   byte [] contents, 
+								   PublisherID publisher) throws SignatureException, IOException;
+	public CompleteName newVersion(ContentName name, int version, 
+			byte [] contents,
 			PublisherID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, IOException;
 	
@@ -150,7 +155,7 @@ public interface CCNLibrary extends CCNBase {
 	public ArrayList<CompleteName> enumerate(CompleteName query) throws IOException;
 
 	/**
-	 * Approaches to get content. Low-level CCNBase returns
+	 * Approaches to read and write content. Low-level CCNBase returns
 	 * a specific piece of content from the repository (e.g.
 	 * if you ask for a fragment, you get a fragment). Library
 	 * customers want the actual content, independent of
@@ -160,8 +165,15 @@ public interface CCNLibrary extends CCNBase {
 	 * file-like API -- open opens the header for a piece of
 	 * content, read verifies the necessary fragments to return
 	 * that much data and reads the corresponding content.
+	 * Open read/write or append does?
 	 * 
 	 * DKS: TODO -- state-based put() analogous to write()s in
-	 * blocks.
+	 * blocks; also state-based read() that verifies. Start
+	 * with state-based read.
 	 */
+	
+	/**
+	 * Beginnings of read interface. If name is 
+	 */
+	public CCNDescriptor open(CompleteName name);
 }

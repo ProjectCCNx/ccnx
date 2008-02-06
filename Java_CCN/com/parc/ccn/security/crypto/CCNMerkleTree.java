@@ -84,7 +84,7 @@ public class CCNMerkleTree extends MerkleTree {
 				// DKS TODO -- need to indicate how much of final name we are signing.
 				// Add a component count to the content authenticator.
 				_rootAuthenticator = new ContentAuthenticator(
-						_rootName, _publisherID, _timestamp, 
+						_rootName, null, _publisherID, _timestamp, 
 						ContentType.FRAGMENT, root(), true, 
 						_locator, _signingKey);
 			}
@@ -120,7 +120,9 @@ public class CCNMerkleTree extends MerkleTree {
 		if (null == _blockAuthenticators[i]) {
 			_blockAuthenticators[i]=
 				new ContentAuthenticator(
-						_publisherID, _timestamp, 
+						_publisherID, 
+						rootAuthenticator().nameComponentCount(),
+						_timestamp, 
 						ContentType.FRAGMENT, 
 						derPath(i).derEncodedPath(),
 						true,

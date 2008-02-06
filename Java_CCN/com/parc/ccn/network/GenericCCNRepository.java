@@ -184,19 +184,19 @@ public abstract class GenericCCNRepository implements CCNRepository {
 	/* (non-Javadoc)
 	 * @see com.parc.ccn.network.CCNRepository#getInternal(com.parc.ccn.data.ContentName, com.parc.ccn.data.security.ContentAuthenticator)
 	 */
-	public abstract ArrayList<ContentObject> getInternal(
+	public abstract ArrayList<ContentObject> getLocal(
 			ContentName name, 
 			ContentAuthenticator authenticator) throws IOException;
 
 	/* (non-Javadoc)
 	 * @see com.parc.ccn.network.CCNRepository#isInternal(com.parc.ccn.data.CompleteName)
 	 */
-	public abstract boolean isInternal(CompleteName name);
+	public abstract boolean isLocal(CompleteName name);
 
 	/* (non-Javadoc)
 	 * @see com.parc.ccn.network.CCNRepository#putInternal(com.parc.ccn.data.ContentName, com.parc.ccn.data.security.ContentAuthenticator, byte[])
 	 */
-	public abstract CompleteName putInternal(
+	public abstract CompleteName putLocal(
 			ContentName name, 
 			ContentAuthenticator authenticator, 
 			byte[] content) throws IOException;

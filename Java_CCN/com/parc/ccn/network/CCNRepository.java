@@ -36,7 +36,7 @@ public interface CCNRepository extends CCNBase {
 	 * be retrieved by getInternal, not by get.
 	 * DKS: not sure this is the best way to do this.
 	 * Want a way of storing, say, reconstructed
-	 * fragmented content in the repositor without
+	 * fragmented content in the repository without
 	 * the risk that it will be sent out over the wire.
 	 * @param name
 	 * @param authenticator
@@ -44,12 +44,13 @@ public interface CCNRepository extends CCNBase {
 	 * @return
 	 * @throws IOException
 	 */
-	public CompleteName putInternal(
+	public CompleteName putLocal(
 			ContentName name,
 		    ContentAuthenticator authenticator,
 		    byte [] content) throws IOException;
 
 	/**
+	 * 
 	 * Retrieve any protected content available for a
 	 * given name. Returns immediately.
 	 * @param name
@@ -57,7 +58,7 @@ public interface CCNRepository extends CCNBase {
 	 * @return
 	 * @throws IOException
 	 */
-	public ArrayList<ContentObject> getInternal(
+	public ArrayList<ContentObject> getLocal(
 			ContentName name,
 			ContentAuthenticator authenticator) throws IOException;
 
@@ -67,7 +68,7 @@ public interface CCNRepository extends CCNBase {
 	 * @param name
 	 * @return
 	 */
-	public boolean isInternal(CompleteName name);
+	public boolean isLocal(CompleteName name);
 	
 	/**
 	 * Annotate content (internal or public) with

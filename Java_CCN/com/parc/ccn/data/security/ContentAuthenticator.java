@@ -28,6 +28,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     protected static final HashMap<ContentType, String> ContentTypeNames = new HashMap<ContentType, String>();
     protected static final HashMap<String, ContentType> ContentNameTypes = new HashMap<String, ContentType>();
     public static final String CONTENT_AUTHENTICATOR_ELEMENT = "ContentAuthenticator";
+    protected static final String NAME_LENGTH_ELEMENT = "NameLength";
     protected static final String TIMESTAMP_ELEMENT = "Timestamp";
     protected static final String CONTENT_TYPE_ELEMENT = "Type";
     protected static final String CONTENT_HASH_ELEMENT = "ContentHash";
@@ -50,6 +51,8 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     
     protected PublisherID	_publisher;
     // int   		_version; // Java types are signed, must cope
+    protected Integer 		_nameComponentCount; // how many name components are signed
+    									 // if omitted, assume all
     protected Timestamp		_timestamp;
     protected ContentType 	_type;
     // long	  	_size; // signed, must cope
@@ -59,6 +62,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     
     public ContentAuthenticator(
     		PublisherID publisher, 
+    		Integer nameLength,
 			Timestamp timestamp, 
 			ContentType type, 
        		byte [] contentOrDigest, // may be already hashed
@@ -67,6 +71,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 			byte[] signature) {
     	super();
     	this._publisher = publisher;
+    	this._nameComponentCount = nameLength;
     	this._timestamp = timestamp;
     	this._type = type;
     	if (isDigest)
@@ -86,19 +91,20 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
      */
     public ContentAuthenticator(
     		ContentName name,
-    		PublisherID publisher,
-    		Timestamp timestamp,
+       		Integer nameComponentCount,
+       		PublisherID publisher,
+     		Timestamp timestamp,
     		ContentType type,
     		byte [] contentOrDigest, // may be already hashed
     		boolean isDigest, // should we digest it or is it already done?
     		KeyLocator locator,
     		PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException {
-    	this(publisher, timestamp, type, contentOrDigest,
+    	this(publisher, nameComponentCount, timestamp, type, contentOrDigest,
     		 isDigest, locator, null);
     	// Might need to be a factory method instead
     	// of a constructor, as calling class methods
     	// in a constructor is dicey.
-    	sign(name, signingKey);
+    	sign(name, nameComponentCount, signingKey);
 	}
     
     /**
@@ -122,7 +128,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 		
 		// Generate raw authenticator.
 		ContentAuthenticator authenticator =
-			new ContentAuthenticator(publisher, timestamp, type,
+			new ContentAuthenticator(publisher, null, timestamp, type,
 									 contentOrDigest, isDigest,
 									 locator, null);
 		byte [] authenticatorDigest = null;
@@ -134,9 +140,10 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 			throw new SignatureException(e);
 		}
 		
-		ContentName fullName = new ContentName(name, authenticatorDigest);
+		ContentName fullName = 
+			new ContentName(name, authenticatorDigest);
 		if (null != signingKey)
-			authenticator.sign(fullName, signingKey);
+			authenticator.sign(fullName, fullName.count(), signingKey);
 		return new CompleteName(fullName, authenticator);
 	}
 	    
@@ -179,6 +186,14 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     
     public boolean emptyContentType() { 
     	return (null == _type);
+    }
+    
+    public boolean emptyNameComponentCount() {
+    	return (null == _nameComponentCount);
+    }
+    
+    public boolean emptyTimestamp() {
+    	return (null == _timestamp);
     }
     
 	public byte[] contentDigest() {
@@ -224,6 +239,11 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 		this._type = type;
 	}
 	
+	public Integer nameComponentCount() { return _nameComponentCount; }
+	public void nameComponentCount(Integer nameComponentCount) {
+		this._nameComponentCount = nameComponentCount;
+	}
+	
 	public String typeName() {
 		return typeToName(type());
 	}
@@ -246,6 +266,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 		result = PRIME * result + Arrays.hashCode(_contentDigest);
 		result = PRIME * result + ((_keyLocator == null) ? 0 : _keyLocator.hashCode());
 		result = PRIME * result + ((_publisher == null) ? 0 : _publisher.hashCode());;
+		result = PRIME * result + ((_nameComponentCount == null) ? 0 : _nameComponentCount.hashCode());;
 		result = PRIME * result + Arrays.hashCode(_signature);
 		result = PRIME * result + ((_timestamp == null) ? 0 : _timestamp.hashCode());
 		result = PRIME * result + ((_type == null) ? 0 : _type.hashCode());
@@ -276,6 +297,11 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 				return false;
 		} else if (!_publisher.equals(other._publisher))
 			return false;
+		if (_nameComponentCount == null) {
+			if (other._nameComponentCount != null)
+				return false;
+		} else if (!_nameComponentCount.equals(other._nameComponentCount))
+			return false;
 		if (_signature == null) {
 			if (other._signature != null)
 				return false;
@@ -302,6 +328,14 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 			_publisher.decode(reader);
 		}
 
+		if (XMLHelper.peekStartElement(reader, NAME_LENGTH_ELEMENT)) {
+			String strLength = XMLHelper.readElementText(reader, NAME_LENGTH_ELEMENT); 
+			_nameComponentCount = Integer.valueOf(strLength);
+			if (null == _nameComponentCount) {
+				throw new XMLStreamException("Cannot parse name length: " + strLength);
+			}
+		}
+			
 		if (XMLHelper.peekStartElement(reader, TIMESTAMP_ELEMENT)) {
 			String strTimestamp = XMLHelper.readElementText(reader, TIMESTAMP_ELEMENT);
 			_timestamp = Timestamp.valueOf(strTimestamp);
@@ -358,10 +392,15 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 		if (!emptyPublisher()) {
 			publisherID().encode(writer);
 		}
+
+		if (!emptyNameComponentCount()) {
+			XMLHelper.writeElement(writer, NAME_LENGTH_ELEMENT, Integer.toString(nameComponentCount()));
+		}
+
 		// TODO DKS - make match correct XML timestamp format
 		// dateTime	1999-05-31T13:20:00.000-05:00
 		// currently writing 2007-10-23 21:36:05.828
-		if (null != timestamp()) {
+		if (!emptyTimestamp()) {
 			writer.writeStartElement(TIMESTAMP_ELEMENT);
 			writer.writeCharacters(timestamp().toString());
 			writer.writeEndElement();
@@ -404,30 +443,47 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 	 * signature is specific to both this content authenticator
 	 * and this name. We sign the canonicalized XML
 	 * of a CompleteName, with any non-provided optional
-	 * components omitted. 
+	 * components omitted. We include componentCount number
+	 * of components of the name given (if that is null,
+	 * we sign all of it). That allows for signing prefixes
+	 * of structures, e.g. for fragmented data.
 	 * @throws SignatureException 
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
 	 */
-	public void sign(ContentName name, String digestAlgorithm, PrivateKey signingKey) 
+	public void sign(ContentName name, 
+					 Integer componentCount,
+					 String digestAlgorithm, 
+					 PrivateKey signingKey) 
 		throws SignatureException, InvalidKeyException, NoSuchAlgorithmException {
 		
 		// Build XML document
 		_signature = null;
-		CompleteName completeName = new CompleteName(name, this);
+		if (componentCount > name.count()) {
+			throw new SignatureException("Cannot sign more name components than given!");
+		}
+		// DKS -- how to work this in better?
+		_nameComponentCount = componentCount;
+		// Do we reflect the componentCount in the name we make
+		// or how we sign it?
+		CompleteName completeName = new CompleteName(name, componentCount, this);
 		try {
 			_signature = 
-				SignatureHelper.sign(digestAlgorithm, completeName, signingKey);
+				SignatureHelper.sign(digestAlgorithm, 
+									 completeName, 
+									 signingKey);
 		} catch (XMLStreamException e) {
 			Library.handleException("Exception encoding internally-generated XML name!", e);
 			throw new SignatureException(e);
 		}
 	}
 	
-	public void sign(ContentName name, PrivateKey signingKey) 
+	public void sign(ContentName name, 
+					 Integer componentCount,
+					 PrivateKey signingKey) 
 			throws SignatureException, InvalidKeyException {
 		try {
-			sign(name, Digest.DEFAULT_DIGEST, signingKey);
+			sign(name, componentCount, Digest.DEFAULT_DIGEST, signingKey);
 		} catch (NoSuchAlgorithmException e) {
 			Library.logger().warning("Cannot find default digest algorithm: " + Digest.DEFAULT_DIGEST);
 			Library.warningStackTrace(e);

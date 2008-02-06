@@ -316,7 +316,8 @@ public class StandardCCNLibrary implements CCNLibrary {
 			ContentAuthenticator.ContentType type,
 			PublisherID publisher) throws SignatureException, IOException {
 		try {
-			return put(name, contents, type, publisher, null, null);
+			return put(name, contents, type, publisher, 
+					   null, null);
 		} catch (InvalidKeyException e) {
 			Library.logger().info("InvalidKeyException using default key.");
 			throw new SignatureException(e);

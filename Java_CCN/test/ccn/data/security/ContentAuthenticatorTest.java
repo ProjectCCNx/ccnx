@@ -90,6 +90,7 @@ public class ContentAuthenticatorTest {
 	public void testDecodeInputStream() {
 		ContentAuthenticator nca = new ContentAuthenticator(
 				pubkey, 
+				null,
 				new Timestamp(System.currentTimeMillis()), 
 				ContentAuthenticator.ContentType.LEAF, 
 				contenthash, true,
@@ -99,6 +100,7 @@ public class ContentAuthenticatorTest {
 
 		ContentAuthenticator kca = new ContentAuthenticator(
 				pubkey, 
+				null,
 				new Timestamp(System.currentTimeMillis()), 
 				ContentAuthenticator.ContentType.LEAF, 
 				contenthash, true,
@@ -107,6 +109,7 @@ public class ContentAuthenticatorTest {
 		XMLEncodableTester.encodeDecodeTest("ContentAuthenticator(key)", kca, dkca);
 
 		ContentAuthenticator cca = new ContentAuthenticator(pubkey, 
+				null,
 				new Timestamp(System.currentTimeMillis()), 
 				ContentAuthenticator.ContentType.LEAF, 
 				contenthash, true,
@@ -121,7 +124,8 @@ public class ContentAuthenticatorTest {
 
 		ContentAuthenticator scca = null;
 		try {
-			scca = new ContentAuthenticator(name, pubkey, 
+			scca = new ContentAuthenticator(name, null,
+			    pubkey, 
 				ContentAuthenticator.now(),
 				ContentAuthenticator.ContentType.LEAF, 
 				contenthash, true,

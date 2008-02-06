@@ -119,6 +119,7 @@ public class Transport2RepoClientTest {
 			System.out.println("Adding name: " + versionedName);
 			ContentAuthenticator authenticator = 
 				new ContentAuthenticator(versionedName, 
+										 null, // DKS: check
 										 _library.getDefaultPublisher(),
 										 ContentAuthenticator.now(),
 										 ContentAuthenticator.ContentType.LEAF,

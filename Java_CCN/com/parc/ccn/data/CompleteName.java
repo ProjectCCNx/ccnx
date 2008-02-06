@@ -24,9 +24,26 @@ public class CompleteName extends GenericXMLEncodable implements XMLEncodable {
 	protected ContentName _name;
 	protected ContentAuthenticator _authenticator;
 	
-	public CompleteName(ContentName name, ContentAuthenticator authenticator) {
-		_name = name;
+	/**
+	 * TODO: DKS figure out how to handle encoding faster,
+	 * and how to handle shorter version of names without
+	 * copying, particularly without 1.6 array ops.
+	 * @param name
+	 * @param authenticator
+	 */
+	public CompleteName(ContentName name, 
+						Integer nameComponentCount,
+						ContentAuthenticator authenticator) {
+		if ((null == nameComponentCount) || (nameComponentCount == name.count())) {
+			_name = name;
+		} else {
+			_name = name.copy(nameComponentCount);
+		}
 		_authenticator = authenticator;
+	}
+	
+	public CompleteName(ContentName name, ContentAuthenticator authenticator) {
+		this(name, null, authenticator);
 	}
 
 	public CompleteName(byte [] encoded) throws XMLStreamException {
