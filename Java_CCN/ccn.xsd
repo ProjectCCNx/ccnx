@@ -8,73 +8,73 @@
   <annotation>
     <documentation xml:lang="en">
       Content-Centric Networks data schema.
-    <documentation>
-  <annotation>
+    </documentation>
+  </annotation>
 
 <!-- Top-level objects that can appear in 
      documents, messages, etc. -->
-<element name="Mapping" type="ContentObjectType">
-<element name="Collection" type="CollectionType">
-<element name="Link" type="LinkType">
-<element name="Sequence" type="SequenceType">
+<element name="Mapping" type="ContentObjectType"></element>
+<element name="Collection" type="CollectionType"/>
+<element name="Link" type="LinkType"/>
+<element name="Sequence" type="SequenceType"/>
 
 <complexType name="CollectionType">
   <sequence>
-    <element name="CompleteName" type="CompleteNameType" minOccurs="0" maxOccurs="unbounded">
+    <element name="CompleteName" type="CompleteNameType" minOccurs="0" maxOccurs="unbounded"/>
   </sequence>
 </complexType>
 
 <complexType name="LinkType">
   <sequence>
-    <element name="CompleteName" type="CompleteNameType" minOccurs="1" maxOccurs="1">
+    <element name="CompleteName" type="CompleteNameType" minOccurs="1" maxOccurs="1"/>
   </sequence>
 </complexType>
 
 <complexType name="ContentObjectType">
   <sequence>
-    <element name="CompleteName" type="CompleteNameType">
-    <element name="Content" type="base64Binary">
+    <element name="CompleteName" type="CompleteNameType"/>
+    <element name="Content" type="base64Binary"/>
   </sequence>
 </complexType>
 
 <complexType name="CompleteNameType">
   <sequence>
-    <element name="Name" type="NameType">
-    <element name="ContentAuthenticator" type="ContentAuthenticatorType">
+    <element name="Name" type="NameType"/>
+    <element name="ContentAuthenticator" type="ContentAuthenticatorType"/>
   </sequence>
 </complexType>
 
 <complexType name="NameType">
   <sequence>
-    <element name="Count" type="nonNegativeInteger">
-    <element name="Component" minOccurs="0" maxOccurs="unbounded" type="base64Binary">
+    <element name="Count" type="nonNegativeInteger"/>
+    <element name="Component" minOccurs="0" maxOccurs="unbounded" type="base64Binary"/>
   </sequence>
 </complexType>
 
 <complexType name="ContentAuthenticatorType">
   <sequence>
     <element name="PublisherID" type="PublisherIDType"
-			minOccurs="0" maxOccurs="1">
+			minOccurs="0" maxOccurs="1"/>
     <element name="Timestamp" type="dateTime"
-			minOccurs="0" maxOccurs="1">
+			minOccurs="0" maxOccurs="1"/>
     <element name="Type" type="ContentType"
-			minOccurs="0" maxOccurs="1">
+			minOccurs="0" maxOccurs="1"/>
     <!-- might change to more complex type,
          currently base64 encoding of DER-encoded
          DigestInfo -->
     <element name="ContentHash" type="base64Binary"
-			minOccurs="0" maxOccurs="1">
+			minOccurs="0" maxOccurs="1"/>
     <element name="KeyLocator" type="KeyLocatorType"
-			minOccurs="0" maxOccurs="1">
+			minOccurs="0" maxOccurs="1"/>
     <element name="Signature" type="base64Binary"
-			minOccurs="0" maxOccurs="1">
+			minOccurs="0" maxOccurs="1"/>
   </sequence>
 </complexType>
 
 <complexType name="PublisherIDType">
   <sequence>
-    <element name="PublisherType" type="PublisherTypeType">
-    <element name="ID" type="IDType" 
+    <element name="PublisherType" type="PublisherTypeType"/>
+    <element name="ID" type="IDType"/> 
   </sequence>
 </complexType>
 
@@ -88,7 +88,7 @@
   </restriction>
 </simpleType>
 
-<simpleType name=IDType'>
+<simpleType name="IDType">
    <restriction base='String'>
      <!-- SHA-256 digest -->
      <!-- DKS: TODO: SHA-256 is 32 binary bytes, will this
@@ -111,11 +111,11 @@
 
 <complexType name="KeyLocatorType">
   <sequence>
-    <element name="Type" type="KeyLocatorTypeType">
+    <element name="Type" type="KeyLocatorTypeType"/>
     <choice>
-      <element name="Key" type="base64Binary">
-      <element name="Certificate" type="base64Binary">
-      <element name="CompleteName" type="CompleteNameType">
+      <element name="Key" type="base64Binary"/>
+      <element name="Certificate" type="base64Binary"/>
+      <element name="CompleteName" type="CompleteNameType"/>
     </choice>
   </sequence>
 </complexType>
