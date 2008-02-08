@@ -55,6 +55,8 @@
   <sequence>
     <element name="PublisherID" type="PublisherIDType"
 			minOccurs="0" maxOccurs="1"/>
+    <element name="NameComponentCount" type="nonNegativeInteger"
+			minOccurs="0" maxOccurs="1"/>
     <element name="Timestamp" type="dateTime"
 			minOccurs="0" maxOccurs="1"/>
     <element name="Type" type="ContentType"
