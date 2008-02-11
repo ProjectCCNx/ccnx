@@ -82,7 +82,7 @@
 
 <!-- enum -->
 <simpleType name="PublisherTypeType">
-  <restriction base="xsd:string">
+  <restriction base="string">
     <enumeration value="KEY"/>
     <enumeration value="CERTIFICATE"/>
     <enumeration value="ISSUER_KEY"/>
@@ -91,7 +91,7 @@
 </simpleType>
 
 <simpleType name="IDType">
-   <restriction base="xsd:string">
+   <restriction base="string">
      <!-- SHA-256 digest -->
      <!-- DKS: TODO: SHA-256 is 32 binary bytes, will this
           be base64 or hex? -->
@@ -101,7 +101,7 @@
 
 <!-- enum -->
 <simpleType name="ContentType">
-  <restriction base="xsd:string">
+  <restriction base="string">
     <enumeration value="FRAGMENT"/>
     <enumeration value="LINK"/>
     <enumeration value="CONTAINER"/>
@@ -123,7 +123,7 @@
 </complexType>
 
 <simpleType name="KeyLocatorTypeType">
-  <restriction base="xsd:string">
+  <restriction base="string">
     <enumeration value="KEY"/>
     <enumeration value="CERTIFICATE"/>
     <enumeration value="NAME"/>
