@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<schema xmlns="http://www.w3.org/2001/XMLSchema" 
+<!-- $Id$ -->
+<!DOCTYPE schema PUBLIC "-//W3C//DTD XMLSCHEMA 200102//EN" "XMLSchema.dtd" [
+    <!-- Override namespace prefixes and suffixes so we can use unqualified schema syntax -->
+    <!ENTITY % p ''>
+    <!ENTITY % s ''>
+    <!ENTITY % schemaAttrs 'xmlns:ccn CDATA #FIXED "http://www.parc.com/ccn"'>
+]>
+
+<schema xmlns="http://www.w3.org/2001/XMLSchema"
         xmlns:ccn="http://www.parc.com/ccn" 
         targetNamespace="http://www.parc.com/ccn" 
         elementFormDefault="unqualified"
@@ -18,6 +26,7 @@
 <element name="Link" type="LinkType"/>
 <element name="Sequence" type="SequenceType"/>
 <element name="Header" type="HeaderType"/>
+<element name="Interest" type="InterestType"/>
 
 <complexType name="CollectionType">
   <sequence>
@@ -73,7 +82,7 @@
     <element name="NameComponentCount" type="nonNegativeInteger"/>
     <element name="Timestamp" type="dateTime"/>
     <element name="Type" type="ContentType"/>
-    <!-- might change to more complex type,
+    <!-- ContentHash might change to more complex type,
          currently base64 encoding of DER-encoded
          DigestInfo -->
     <element name="ContentHash" type="base64Binary"/>
@@ -99,11 +108,19 @@
 </complexType>
 
 <complexType name="PublisherIDType">
-  <sequence>
-    <element name="PublisherType" type="PublisherTypeType"/>
-    <element name="KeyID" type="KeyIDType"/> 
-  </sequence>
+  <simpleContent>
+    <extension base="SHA256Digest">
+      <attribute name="type" type="PublisherTypeType" use="required"/>
+    </extension>
+  </simpleContent>
 </complexType>
+
+<simpleType name="SHA256Digest">
+    <restriction base="base64Binary">
+      <!-- SHA-256 digest -->
+      <length value="32" fixed="true"/>
+    </restriction>
+</simpleType>
 
 <!-- enum -->
 <simpleType name="PublisherTypeType">
@@ -113,13 +130,6 @@
     <enumeration value="ISSUER_KEY"/>
     <enumeration value="ISSUER_CERTIFICATE"/>
   </restriction>
-</simpleType>
-
-<simpleType name="KeyIDType">
-   <restriction base="base64Binary">
-     <!-- SHA-256 digest -->
-     <length value="32" fixed="true"/>
-   </restriction>
 </simpleType>
 
 <!-- enum -->
