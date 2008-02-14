@@ -23,19 +23,15 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 	protected static final String CONTENT_OBJECT_ELEMENT = "Mapping";
 	protected static final String CONTENT_ELEMENT = "Content";
 	
-	protected CompleteName _completeName;
+	protected ContentName _name;
+	protected ContentAuthenticator _authenticator;
     protected byte [] _content;
     
     public ContentObject(ContentName name,
     					 ContentAuthenticator authenticator,
     					 byte [] content) {
-    	_completeName = new CompleteName(name, authenticator);
-    	_content = content;
-    }
-    
-    public ContentObject(CompleteName completeName,
-    					 byte [] content) {
-    	_completeName = completeName;
+    	_name = name;
+    	_authenticator = authenticator;
     	_content = content;
     }
     
@@ -45,18 +41,12 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
     
     public ContentObject() {} // for use by decoders
     
-    public CompleteName completeName() { return _completeName; }
-    
     public ContentName name() { 
-    	if (null != _completeName)
-    		return _completeName.name(); 
-    	return null;
+    	return _name;
     }
     
     public ContentAuthenticator authenticator() { 
-    	if (null != _completeName)
-    		return _completeName.authenticator(); 
-    	return null;
+    	return _authenticator;
     }
     
     public byte [] content() { return _content; }
@@ -64,9 +54,11 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 	public void decode(XMLEventReader reader) throws XMLStreamException {
 		XMLHelper.readStartElement(reader, CONTENT_OBJECT_ELEMENT);
 
-		// For the moment, include complete name level...
-		_completeName = new CompleteName();
-		_completeName.decode(reader);
+		_name = new ContentName();
+		_name.decode(reader);
+		
+		_authenticator = new ContentAuthenticator();
+		_authenticator.decode(reader);
 		
 		String strContent = XMLHelper.readElementText(reader, CONTENT_ELEMENT); 
 		try {
@@ -84,7 +76,8 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 		}
 		XMLHelper.writeStartElement(writer, CONTENT_OBJECT_ELEMENT, isFirstElement);
 
-		completeName().encode(writer);
+		name().encode(writer);
+		authenticator().encode(writer);
 
 		// needs to handle null content
 		XMLHelper.writeElement(writer, CONTENT_ELEMENT, 
@@ -96,14 +89,15 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 	public boolean validate() { 
 		// recursive?
 		// null content ok
-		return (null != completeName());
+		return ((null != name()) && (null != authenticator()));
 	}
 
 	@Override
 	public int hashCode() {
 		final int PRIME = 31;
 		int result = 1;
-		result = PRIME * result + ((_completeName == null) ? 0 : _completeName.hashCode());
+		result = PRIME * result + ((_name == null) ? 0 : _name.hashCode());
+		result = PRIME * result + ((_authenticator == null) ? 0 : _authenticator.hashCode());
 		result = PRIME * result + Arrays.hashCode(_content);
 		return result;
 	}
@@ -117,13 +111,27 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 		if (getClass() != obj.getClass())
 			return false;
 		final ContentObject other = (ContentObject) obj;
-		if (_completeName == null) {
-			if (other._completeName != null)
+		if (_name == null) {
+			if (other.name() != null)
 				return false;
-		} else if (!_completeName.equals(other._completeName))
+		} else if (!_name.equals(other.name()))
+			return false;
+		if (_authenticator == null) {
+			if (other.authenticator() != null)
+				return false;
+		} else if (!_authenticator.equals(other.authenticator()))
 			return false;
 		if (!Arrays.equals(_content, other._content))
 			return false;
 		return true;
+	}
+	
+	/**
+	 * Need a low-level signing and verification interface that
+	 * can be used by things with only access to low-level
+	 * interfaces. Put that code in the authenticator.
+	 */
+	public boolean verify() {
+		return ContentAuthenticator.verify(this);
 	}
 }

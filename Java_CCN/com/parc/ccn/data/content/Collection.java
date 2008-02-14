@@ -8,10 +8,8 @@ import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
-import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.util.XMLHelper;
 
 /**
@@ -27,79 +25,47 @@ public class Collection extends ContentObject {
 	
 	protected static final String COLLECTION_ELEMENT = "Collection";
 
-	protected static final String ENTRY_ELEMENT = "Entry";
+	protected ArrayList<Link> _contents = new ArrayList<Link>();
 	
-	protected ArrayList<CompleteName> _contents = new ArrayList<CompleteName>();
-	
-	public Collection(ContentName destName, ContentAuthenticator destAuthenticator) {
-		_contents.add(new CompleteName(destName, destAuthenticator));
-	}
-	
-	public Collection(CompleteName destName) {
-		_contents.add(destName);
-	}
-	
-	public Collection(ContentName [] names, ContentAuthenticator [] authenticators) {
-		if ((names == null) || (names.length == 0) ||
-			((null != authenticators) && (authenticators.length > 0) && (names.length != authenticators.length))) {
-			throw new IllegalArgumentException("Collections must contain names, and either no authenticators or the same number of authenticators as names.");
-		}
-		for (int i=0; i < names.length; ++i) {
-			if ((null != authenticators) && (authenticators.length > 0)) {
-				_contents.add(new CompleteName(names[i], authenticators[i]));
-			} else {
-				_contents.add(new CompleteName(names[i], null));
-			}
-		}
-	}
-	
-	public Collection(CompleteName [] names) {
-		if (null != names) {
-			for (int i=0; i < names.length; ++i) {
-				if (null != names[i])
-					_contents.add(names[i]);
-			}
-		}
-	}
-	
-	/**
-	 * Can use ContentObjects with empty content to group
-	 * names and authenticators.
-	 * @param objects
-	 */
-	public Collection(ContentObject [] objects) {
-		for (int i=0; i < objects.length; ++i) {
-			_contents.add(objects[i].completeName());
-		}
-	}
-	
-	public Collection(ArrayList<CompleteName> contents) {
-		Iterator<CompleteName> it = contents.iterator();
-		while (it.hasNext()) {
-			_contents.add(it.next());
-		}
+	public Collection(Link destination) {
+		_contents.add(destination);
 	}
 	
 	public Collection(ContentName destName) {
-		this(destName, null);
+		_contents.add(new Link(destName));
+	}
+	
+	public Collection(Link [] links) {
+		for (int i=0; i < links.length; ++i) {
+			_contents.add(links[i]);
+		}
+	}
+			
+	public Collection(ArrayList<Link> contents) {
+		Iterator<Link> it = contents.iterator();
+		while (it.hasNext()) {
+			_contents.add(it.next());
+		}
 	}
 	
 	public Collection(InputStream iStream) throws XMLStreamException {
 		decode(iStream);
 	}
 	
-	public ArrayList<CompleteName> contents() { return _contents; }
+	public ArrayList<Link> contents() { 
+		return _contents; 
+	}
 		
-	public CompleteName get(int i) {
+	public Link get(int i) {
 		return contents().get(i);
 	}
 	
-	public void add(ContentName name, ContentAuthenticator authenticator) {
-		_contents.add(new CompleteName(name, authenticator));
+	public void add(Link content) {
+		_contents.add(content);
 	}
 	
-	public void add(CompleteName name) {
-		_contents.add(name);
+	public void add(ContentName name) {
+		_contents.add(new Link(name, null));
 	}
 	/**
 	 * XML format:
@@ -112,12 +78,11 @@ public class Collection extends ContentObject {
 		
 		XMLHelper.readStartElement(reader, COLLECTION_ELEMENT);
 
-		CompleteName completeName = null;
-		while ((null != reader.peek()) && (XMLHelper.peekStartElement(reader, ENTRY_ELEMENT))) {
-			XMLHelper.readStartElement(reader, ENTRY_ELEMENT);
-			completeName = new CompleteName();
-			completeName.decode(reader);
-			add(completeName);
+		Link link = null;
+		while ((null != reader.peek()) && (XMLHelper.peekStartElement(reader, Link.LINK_ELEMENT))) {
+			link = new Link();
+			link.decode(reader);
+			add(link);
 			XMLHelper.readEndElement(reader);
 		}
 		XMLHelper.readEndElement(reader);
@@ -128,10 +93,10 @@ public class Collection extends ContentObject {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		XMLHelper.writeStartElement(writer, COLLECTION_ELEMENT, isFirstElement);
-		Iterator<CompleteName> keyIt = contents().iterator();
-		while (keyIt.hasNext()) {
-			CompleteName name = keyIt.next();
-			name.encode(writer);
+		Iterator<Link> linkIt = contents().iterator();
+		while (linkIt.hasNext()) {
+			Link link = linkIt.next();
+			link.encode(writer);
 		}
 		writer.writeEndElement();   		
 	}

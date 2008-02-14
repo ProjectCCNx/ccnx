@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 import javax.xml.stream.XMLEventReader;
@@ -20,21 +21,21 @@ import com.parc.ccn.network.rpc.NameComponent;
 public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 
 	public static final String SEPARATOR = "/";
-	public static final ContentName ROOT = new ContentName(0, null);
-	private static final String COUNT_ELEMENT = "Count";
+	public static final ContentName ROOT = new ContentName(0, (ArrayList<byte []>)null);
 	private static final String CONTENT_NAME_ELEMENT = "Name";
 	private static final String COMPONENT_ELEMENT = "Component";
 	
-	protected byte _components[][];
+	protected ArrayList<byte []>  _components;
 		
 	public ContentName(byte components[][]) {
 		if (null == components) {
 			_components = null;
 		} else {
-			_components = new byte[components.length][];
+			_components = new ArrayList<byte []>(components.length);
 			for (int i=0; i < components.length; ++i) {
-				_components[i] = new byte[components[i].length];
-				System.arraycopy(components[i],0,_components[i],0,components[i].length);
+				byte [] c = new byte[components[i].length];
+				System.arraycopy(components[i],0,c,0,components[i].length);
+				_components.add(c);
 			}
 		}
 	}
@@ -48,10 +49,10 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 					throw new MalformedContentNameStringException("ContentName strings must begin with " + SEPARATOR);
 				}
 				parts = name.split(SEPARATOR);
-			_components = new byte[parts.length - 1][];
+				_components = new ArrayList<byte []>(parts.length - 1);
 			// Leave off initial empty component
 			for (int i=1; i < parts.length; ++i) {
-				_components[i-1] = componentParse(parts[i]);
+				_components.add(componentParse(parts[i]));
 			}
 		}
 	}
@@ -60,9 +61,9 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 		if ((parts == null) || (parts.length == 0)) {
 			_components = null;
 		} else {
-			_components = new byte[parts.length][];
-			for (int i=0; i < _components.length; ++i) {
-				_components[i] = componentParse(parts[i]);
+			_components = new ArrayList<byte []>(parts.length);
+			for (int i=0; i < parts.length; ++i) {
+				_components.add(componentParse(parts[i]));
 			}
 		}
 	}
@@ -72,16 +73,17 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 				((null != name) ? 1 : 0), parent.components());
 		if (null != name) {
 			byte[] decodedName = componentParse(name);
-			_components[parent.count()] = new byte[decodedName.length];
-			System.arraycopy(decodedName,0,_components[parent.count()],0,decodedName.length);
+			_components.add(decodedName);
 		}
 	}
-	public ContentName(ContentName parent, byte[] name) {
+	
+	public ContentName(ContentName parent, byte [] name) {
 		this(parent.count() + 
 				((null != name) ? 1 : 0), parent.components());
 		if (null != name) {
-			_components[parent.count()] = new byte[name.length];
-			System.arraycopy(name,0,_components[parent.count()],0,name.length);
+			byte [] c = new byte[name.length];
+			System.arraycopy(name,0,c,0,name.length);
+			_components.add(c);
 		}
 	}
 	
@@ -90,12 +92,14 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 				((null != name1) ? 1 : 0) +
 				((null != name2) ? 1 : 0), parent.components());
 		if (null != name1) {
-			_components[parent.count()] = new byte[name1.length];	
-			System.arraycopy(name1,0,_components[parent.count()],0,name1.length);
+			byte [] c = new byte[name1.length];
+			System.arraycopy(name1,0,c,0,name1.length);
+			_components.add(c);
 		}
 		if (null != name2) {
-			_components[parent.count() + 1] = new byte[name2.length];	
-			System.arraycopy(name2,0,_components[parent.count() + 1],0,name2.length);
+			byte [] c = new byte[name2.length];
+			System.arraycopy(name2,0,c,0,name2.length);
+			_components.add(c);
 		}
 	}
 		
@@ -110,38 +114,62 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 	 */
 	public ContentName(int count, byte components[][]) {
 		if (0 >= count) {
-			_components = null;
+			_components = new ArrayList<byte []>(0);
 		} else {
-			_components = new byte[count][];
 			int max = (null == components) ? 0 : 
 				  		((count > components.length) ? 
 				  				components.length : count);
+			_components = new ArrayList<byte []>(max);
 			for (int i=0; i < max; ++i) {
-				_components[i] = new byte[components[i].length];
-				System.arraycopy(components[i],0,_components[i],0,components[i].length);
+				byte [] c = new byte[components[i].length];
+				System.arraycopy(components[i],0,c,0,components[i].length);
+				_components.add(c);
+			}
+		}
+	}
+	
+	
+	/**
+	 * Basic constructor for extending or contracting names.
+	 * Shallow copy, as we don't tend to alter name components
+	 * once created.
+	 * @param count
+	 * @param components
+	 */
+	public ContentName(int count, ArrayList<byte []>components) {
+		if (0 >= count) {
+			_components = new ArrayList<byte[]>(0);
+		} else {
+			int max = (null == components) ? 0 : 
+				  		((count > components.size()) ? 
+				  				components.size() : count);
+			_components = new ArrayList<byte []>(max);
+			for (int i=0; i < max; ++i) {
+				_components.add(components.get(i));
 			}
 		}
 	}
 	
 	public ContentName() {
-		this(0, null);
+		this(0, (ArrayList<byte[]>)null);
 	}
 	
 	public ContentName(Name oncRpcName) {
 		if ((null == oncRpcName.component) ||
 			(0 >= oncRpcName.component.length)) {
-			_components = null;
+			_components = new ArrayList<byte[]>(0);
 		} else {
-			_components = new byte[oncRpcName.component.length][];
+			_components = new ArrayList<byte []>(oncRpcName.component.length);
 			for (int i=0; i < oncRpcName.component.length; ++i) {
-				_components[i] = new byte[oncRpcName.component[i].length];
-				System.arraycopy(oncRpcName.component[i].vals,0,_components[i],0,oncRpcName.component[i].length);
+				byte [] c = new byte[oncRpcName.component[i].length];
+				System.arraycopy(oncRpcName.component[i].vals,0,c,0,oncRpcName.component[i].length);
+				_components.add(c);
 			}
 		}
 	}
 	
 	public ContentName clone() {
-		return new ContentName(components());
+		return new ContentName(count(), components());
 	}
 		
 	public ContentName parent() {
@@ -150,12 +178,12 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 	
 	public String toString() {
 		if (null == _components) return null;
-		if (0 == _components.length) return new String();
+		if (0 == _components.size()) return new String();
 		StringBuffer nameBuf = new StringBuffer();
-		for (int i=0; i < _components.length; ++i) {
+		for (int i=0; i < _components.size(); ++i) {
 			nameBuf.append(SEPARATOR);
-			nameBuf.append(componentPrint(_components[i]));
-			}
+			nameBuf.append(componentPrint(_components.get(i)));
+		}
 		return nameBuf.toString();
 	} 
 	
@@ -182,21 +210,21 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 		return decodedName;
 	}
 
-	public byte[][] components() { return _components; }
+	public ArrayList<byte[]> components() { return _components; }
 	
 	public int count() { 
 		if (null == _components) return 0;
-		return _components.length; 
+		return _components.size(); 
 	}
 
 	public byte[] component(int i) { 
-		if ((null == _components) || (i >= _components.length)) return null;
-		return _components[i];
+		if ((null == _components) || (i >= _components.size())) return null;
+		return _components.get(i);
 	}
 	
 	public String stringComponent(int i) {
-		if ((null == _components) || (i >= _components.length)) return null;
-		return componentPrint(_components[i]);
+		if ((null == _components) || (i >= _components.size())) return null;
+		return componentPrint(_components.get(i));
 	}
 	
 	public boolean equals(Object obj) {
@@ -244,24 +272,66 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 		if(str.length() == 0) return ROOT;
 		return new ContentName(str);
 	}
+	
+	public boolean contains(String str) {
+		return contains(componentParse(str));
+	}
+	
+	public boolean contains(byte [] component) {
+		return (containsWhere(component) > 0);
+	}
+	
+	public int containsWhere(String str) {
+		return containsWhere(componentParse(str));
+	}
+	
+	int containsWhere(byte [] component) {
+		int i=0;
+		boolean result = false;
+		for (i=0; i < _components.size(); ++i) {
+			if (Arrays.equals(_components.get(i),component)) {
+				result = true;
+				break;
+			}	
+		}
+		if (result)
+			return i;
+		return -1;		
+	}
 
+	/**
+	 * Slice the name off right before the given component
+	 * @param name
+	 * @param component
+	 * @return
+	 */
+	public ContentName cut(byte [] component) {
+		int offset = this.containsWhere(component);
+		
+		if (offset < 0) {
+			// unfragmented
+			return this;
+		}
+		
+		// else need to cut it
+		return new ContentName(offset, this.components());
+	}
+	
+	public ContentName cut(String component) {
+		return cut(componentParse(component)); 
+	}
+	
 	public void decode(XMLEventReader reader) throws XMLStreamException {
 		XMLHelper.readStartElement(reader, CONTENT_NAME_ELEMENT);
-
-		String strCount = XMLHelper.readElementText(reader, COUNT_ELEMENT); 
-		int count = Integer.valueOf(strCount);
 		
-		_components = new byte[count][];
+		_components = new ArrayList<byte []>();
 		
-		for (int i=0; i < count; ++i) {
+		while (XMLHelper.peekStartElement(reader, COMPONENT_ELEMENT)) {
 			String strComponent = XMLHelper.readElementText(reader, COMPONENT_ELEMENT); 
 			try {
-				_components[i] = XMLHelper.decodeElement(strComponent);
+				_components.add(XMLHelper.decodeElement(strComponent));
 			} catch (IOException e) {
-				throw new XMLStreamException("Cannot decode component " + i + ": " + strComponent, e);
-			}
-			if (null == _components[i]) {
-				throw new XMLStreamException("Component " + i + " decodes to null: " + strComponent);
+				throw new XMLStreamException("Cannot decode component: " + strComponent, e);
 			}
 		}
 		
@@ -273,11 +343,10 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		XMLHelper.writeStartElement(writer, CONTENT_NAME_ELEMENT, isFirstElement);
-		XMLHelper.writeElement(writer, COUNT_ELEMENT, Integer.toString(count()));
 		
 		for (int i=0; i < count(); ++i) {
 			XMLHelper.writeElement(writer, COMPONENT_ELEMENT, 
-					XMLHelper.encodeElement(_components[i]));
+					XMLHelper.encodeElement(_components.get(i)));
 		}
 		writer.writeEndElement();
 	}

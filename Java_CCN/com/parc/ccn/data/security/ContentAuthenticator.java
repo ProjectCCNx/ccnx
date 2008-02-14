@@ -16,6 +16,7 @@ import javax.xml.stream.XMLStreamWriter;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
@@ -28,7 +29,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     protected static final HashMap<ContentType, String> ContentTypeNames = new HashMap<ContentType, String>();
     protected static final HashMap<String, ContentType> ContentNameTypes = new HashMap<String, ContentType>();
     public static final String CONTENT_AUTHENTICATOR_ELEMENT = "ContentAuthenticator";
-    protected static final String NAME_LENGTH_ELEMENT = "NameLength";
+    protected static final String NAME_COMPONENT_COUNT_ELEMENT = "NameComponentCount";
     protected static final String TIMESTAMP_ELEMENT = "Timestamp";
     protected static final String CONTENT_TYPE_ELEMENT = "Type";
     protected static final String CONTENT_HASH_ELEMENT = "ContentHash";
@@ -328,8 +329,8 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 			_publisher.decode(reader);
 		}
 
-		if (XMLHelper.peekStartElement(reader, NAME_LENGTH_ELEMENT)) {
-			String strLength = XMLHelper.readElementText(reader, NAME_LENGTH_ELEMENT); 
+		if (XMLHelper.peekStartElement(reader, NAME_COMPONENT_COUNT_ELEMENT)) {
+			String strLength = XMLHelper.readElementText(reader, NAME_COMPONENT_COUNT_ELEMENT); 
 			_nameComponentCount = Integer.valueOf(strLength);
 			if (null == _nameComponentCount) {
 				throw new XMLStreamException("Cannot parse name length: " + strLength);
@@ -389,12 +390,13 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		XMLHelper.writeStartElement(writer, CONTENT_AUTHENTICATOR_ELEMENT, isFirstElement);
+		
 		if (!emptyPublisher()) {
 			publisherID().encode(writer);
 		}
 
 		if (!emptyNameComponentCount()) {
-			XMLHelper.writeElement(writer, NAME_LENGTH_ELEMENT, Integer.toString(nameComponentCount()));
+			XMLHelper.writeElement(writer, NAME_COMPONENT_COUNT_ELEMENT, Integer.toString(nameComponentCount()));
 		}
 
 		// TODO DKS - make match correct XML timestamp format
@@ -447,6 +449,9 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 	 * of components of the name given (if that is null,
 	 * we sign all of it). That allows for signing prefixes
 	 * of structures, e.g. for fragmented data.
+	 * DKS: TODO: want to sign something that the low level
+	 * can verify easily. Might imply that XML should put
+	 * back in CompleteName.
 	 * @throws SignatureException 
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
@@ -489,6 +494,15 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 			Library.warningStackTrace(e);
 			throw new SignatureException(e);
 		}
+	}
+	
+	/**
+	 * Low-level verification. Might require putting back
+	 * CompleteName wrapper in ContentObject.
+	 */
+	public static boolean verify(ContentObject object) {
+		// TODO: DKS implement
+		return false;
 	}
 
 }

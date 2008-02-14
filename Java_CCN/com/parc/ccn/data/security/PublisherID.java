@@ -32,9 +32,8 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable {
     protected static final HashMap<PublisherType, String> TypeNames = new HashMap<PublisherType, String>();
     protected static final HashMap<String, PublisherType> NameTypes = new HashMap<String, PublisherType>();
     
-    protected static final String PUBLISHER_ID_ELEMENT = "PublisherID";
-    protected static final String PUBLISHER_TYPE_ELEMENT = "Type";
-    protected static final String PUBLISHER_ID_ID_ELEMENT = "ID";
+    public static final String PUBLISHER_ID_ELEMENT = "PublisherID";
+    protected static final String PUBLISHER_TYPE_ATTRIBUTE = "type";
     
     static {
         TypeNames.put(PublisherType.KEY, "KEY");
@@ -127,15 +126,12 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable {
 	}
 
 	public void decode(XMLEventReader reader) throws XMLStreamException {
-		XMLHelper.readStartElement(reader, PUBLISHER_ID_ELEMENT);
-
-		String strType = XMLHelper.readElementText(reader, PUBLISHER_TYPE_ELEMENT);
-		_publisherType = nameToType(strType);
-		if (null == _publisherType) {
-			throw new XMLStreamException("Cannot parse publisher type: " + strType);
-		}
 		
-		String strID = XMLHelper.readElementText(reader, PUBLISHER_ID_ID_ELEMENT);
+		// The format of a publisher ID is:
+		// <PublisherID type=<type>>id content</PublisherID>
+		HashMap<String,String> attributes = new HashMap<String,String>();
+
+		String strID = XMLHelper.readElementText(reader, PUBLISHER_ID_ELEMENT, attributes);
 		try {
 			_publisherID = XMLHelper.decodeElement(strID);
 		} catch (IOException e) {
@@ -144,7 +140,17 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable {
 		if (null == _publisherID) {
 			throw new XMLStreamException("Cannot parse publisher ID: " + strID);
 		}
-		
+		if (attributes.size() != 1) {
+			throw new XMLStreamException("Cannot parse publisher ID: got " + attributes.size() + " expected 1.");
+		}
+		if (!attributes.containsKey(PUBLISHER_TYPE_ATTRIBUTE)) {
+			throw new XMLStreamException("Cannot parse publisher ID: did not get expected attribute: " + PUBLISHER_TYPE_ATTRIBUTE);
+		}
+		_publisherType = nameToType(attributes.get(PUBLISHER_TYPE_ATTRIBUTE));
+		if (null == _publisherType) {
+			throw new XMLStreamException("Cannot parse publisher ID: unknown publisher type: " + attributes.get(PUBLISHER_TYPE_ATTRIBUTE));
+		}
+			
 		XMLHelper.readEndElement(reader);
 	}
 
@@ -152,10 +158,16 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		XMLHelper.writeStartElement(writer, PUBLISHER_ID_ELEMENT, isFirstElement);
-		XMLHelper.writeElement(writer, PUBLISHER_TYPE_ELEMENT, typeToName(type()));
-		XMLHelper.writeElement(writer, PUBLISHER_ID_ID_ELEMENT, XMLHelper.encodeElement(id()));
-		writer.writeEndElement();   		
+		// The format of a publisher ID is:
+		// <PublisherID type=<type> id_content />
+		HashMap<String,String> attributes = new HashMap<String,String>();
+		attributes.put(PUBLISHER_TYPE_ATTRIBUTE,typeToName(type()));
+		
+		XMLHelper.writeElement(writer, 
+								PUBLISHER_ID_ELEMENT,
+								XMLHelper.encodeElement(id()),
+								attributes,
+								isFirstElement);
 	}
 	
 	public boolean validate() {

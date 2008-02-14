@@ -784,10 +784,12 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	}
 	
 	ContentObject getContentObject(Node n) throws IOException {
-		CompleteName name = null;;
+		ContentName name = null;
+		ContentAuthenticator authenticator = null;
 		byte [] content = null;
 		try {
-			name = getCompleteName(n);
+			name = getName(n);
+			authenticator = getAuthenticationInfo(n);
 			content = getContent(n);
 			
 		} catch (RepositoryException e) {
@@ -795,7 +797,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 			Library.logStackTrace(Level.WARNING, e);
 			throw new IOException("Repository exception extracting content from node: " + n.toString() + ": " + e.getMessage());
 		}
-		return new ContentObject(name, content);
+		return new ContentObject(name, authenticator, content);
 	}
 
 	protected PublisherID getPublisherID(Node n) throws ValueFormatException, RepositoryException {

@@ -14,6 +14,7 @@ import test.ccn.data.XMLEncodableTester;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.KeyLocator;
+import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.security.crypto.certificates.BCX509CertificateGenerator;
 
 public class KeyLocatorTest {
@@ -29,6 +30,7 @@ public class KeyLocatorTest {
 
 	static KeyPair pair = null;
 	static X509Certificate cert = null;
+	static PublisherID pubID = null;
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -50,6 +52,7 @@ public class KeyLocatorTest {
 					null,
 					pair.getPrivate(),
 					null);
+			pubID = new PublisherID(pair.getPublic(), false);
 		} catch (Exception ex) {
 			XMLEncodableTester.handleException(ex);
 			System.out.println("Unable To Initialize Test!!!");
@@ -61,7 +64,11 @@ public class KeyLocatorTest {
 		KeyLocator nameLoc = new KeyLocator(name);
 		KeyLocator nameLocDec = new KeyLocator();
 		XMLEncodableTester.encodeDecodeTest("KeyLocator(name)", nameLoc, nameLocDec);
-
+		
+		KeyLocator nameIDLoc = new KeyLocator(name, pubID);
+		KeyLocator nameIDLocDec = new KeyLocator();
+		XMLEncodableTester.encodeDecodeTest("KeyLocator(name,ID)", nameIDLoc, nameIDLocDec);
+		
 		KeyLocator keyLoc = new KeyLocator(pair.getPublic());
 		KeyLocator keyLocDec = new KeyLocator();
 		XMLEncodableTester.encodeDecodeTest("KeyLocator(key)", keyLoc, keyLocDec);

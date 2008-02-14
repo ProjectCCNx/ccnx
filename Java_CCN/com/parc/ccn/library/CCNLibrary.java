@@ -11,10 +11,12 @@ import com.parc.ccn.CCNBase;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.data.query.CCNQueryListener;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
+import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.security.keys.KeyManager;
 
@@ -81,14 +83,20 @@ public interface CCNLibrary extends CCNBase {
 	/**
 	 * Get the latest version published by this publisher.
 	 */
-	public int getLatestVersion(ContentName name, PublisherID publisher);
+	public int getLatestVersionNumber(ContentName name, PublisherID publisher);
 
 	/**
 	 * Get the latest version published by anybody.
 	 * @param name
 	 * @return
 	 */
-	public int getLatestVersion(ContentName name);
+	public int getLatestVersionNumber(ContentName name);
+
+	/**
+	 * Get the latest version published by this publisher,
+	 * or by anybody if publisher is null.
+	 */
+	public ContentName getLatestVersionName(ContentName name, PublisherID publisher);
 
 	/**
 	 * Return the numeric version associated with this
@@ -126,17 +134,17 @@ public interface CCNLibrary extends CCNBase {
 	 */
 	public ContentObject getLink(CompleteName name);
 	
-	public CompleteName link(ContentName src, ContentName dest, ContentAuthenticator destAuthenticator) throws SignatureException, IOException;
-	public CompleteName link(ContentName src, ContentName dest, ContentAuthenticator destAuthenticator, PublisherID publisher) throws SignatureException, IOException;
+	public CompleteName link(ContentName src, ContentName dest, LinkAuthenticator destAuthenticator) throws SignatureException, IOException;
+	public CompleteName link(ContentName src, ContentName dest, LinkAuthenticator destAuthenticator, PublisherID publisher) throws SignatureException, IOException;
 	public CompleteName link(ContentName src, ContentName dest,
-			ContentAuthenticator destAuthenticator, 
+			LinkAuthenticator destAuthenticator, 
 			PublisherID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException;
 	
-	public CompleteName addCollection(ContentName name, CompleteName [] contents) throws SignatureException, IOException;
-	public CompleteName addCollection(ContentName name, CompleteName [] contents, PublisherID publisher) throws SignatureException, IOException;
+	public CompleteName addCollection(ContentName name, Link [] contents) throws SignatureException, IOException;
+	public CompleteName addCollection(ContentName name, Link [] contents, PublisherID publisher) throws SignatureException, IOException;
 	public CompleteName addCollection(ContentName name, 
-			CompleteName[] contents,
+			Link[] contents,
 			PublisherID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException;
 	
@@ -173,7 +181,14 @@ public interface CCNLibrary extends CCNBase {
 	 */
 	
 	/**
-	 * Beginnings of read interface. If name is 
+	 * Beginnings of read interface. If name is not versioned,
+	 * finds the latest version meeting the constraints. 
+	 * @return a CCNDescriptor, which contains, among other things,
+	 * the actual name we are opening. It also contains things
+	 * like offsets and verification information.
+	 * @throws IOException 
 	 */
-	public CCNDescriptor open(CompleteName name);
+	public CCNDescriptor open(CompleteName name) throws IOException;
+	
+	public long read(CCNDescriptor ccnObject, byte [] buf, long offset, long len);
 }

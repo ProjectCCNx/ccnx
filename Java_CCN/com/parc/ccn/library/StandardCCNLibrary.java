@@ -1,5 +1,6 @@
 package com.parc.ccn.library;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -8,6 +9,7 @@ import java.security.Security;
 import java.security.SignatureException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Iterator;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -25,6 +27,7 @@ import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.data.query.CCNQueryListener;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
+import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
 import com.parc.ccn.network.CCNRepositoryManager;
@@ -49,8 +52,9 @@ public class StandardCCNLibrary implements CCNLibrary {
 
 	public static final String MARKER = "_";
 	public static final String VERSION_MARKER = MARKER + "v" + MARKER;
-	public static final String BLOCK_MARKER = MARKER + "b" + MARKER;
+	public static final String FRAGMENT_MARKER = MARKER + "b" + MARKER;
 	public static final String CLIENT_METADATA_MARKER = MARKER + "meta" + MARKER;
+	public static final String HEADER_NAME = ".header";
 	
 	static {
 		Security.addProvider(new BouncyCastleProvider());
@@ -83,13 +87,13 @@ public class StandardCCNLibrary implements CCNLibrary {
 		return keyManager().getDefaultKeyID();
 	}
 
-	public CompleteName addCollection(ContentName name, CompleteName[] contents) throws SignatureException, IOException {
+	public CompleteName addCollection(ContentName name, Link [] contents) throws SignatureException, IOException {
 		return addCollection(name, contents, getDefaultPublisher());
 	}
 
 	public CompleteName addCollection(
 			ContentName name, 
-			CompleteName[] contents,
+			Link [] contents,
 			PublisherID publisher) throws SignatureException, IOException {
 		try {
 			return addCollection(name, contents, publisher, null, null);
@@ -106,7 +110,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 
 	public CompleteName addCollection(
 			ContentName name, 
-			CompleteName[] contents,
+			Link[] contents,
 			PublisherID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 		
@@ -156,16 +160,16 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * @throws SignatureException 
 	 * @throws IOException 
 	 */
-	public CompleteName link(ContentName src, ContentName dest,
-			ContentAuthenticator destAuthenticator) throws SignatureException, IOException {
-		return link(src, dest, destAuthenticator, getDefaultPublisher());
+	public CompleteName link(ContentName src, ContentName target,
+			LinkAuthenticator targetAuthenticator) throws SignatureException, IOException {
+		return link(src, target, targetAuthenticator, getDefaultPublisher());
 	}
 
-	public CompleteName link(ContentName src, ContentName dest,
-			ContentAuthenticator destAuthenticator,
+	public CompleteName link(ContentName src, ContentName target,
+			LinkAuthenticator targetAuthenticator,
 			PublisherID publisher) throws SignatureException, IOException {
 		try {
-			return link(src,dest,destAuthenticator,publisher,null,null);
+			return link(src,target,targetAuthenticator,publisher,null,null);
 		} catch (InvalidKeyException e) {
 			Library.logger().warning("Default key invalid.");
 			Library.warningStackTrace(e);
@@ -186,15 +190,15 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * @throws IOException 
 	 * @throws XMLStreamException 
 	 */
-	public CompleteName link(ContentName src, ContentName dest,
-			ContentAuthenticator destAuthenticator, 
+	public CompleteName link(ContentName src, ContentName target,
+			LinkAuthenticator targetAuthenticator, 
 			PublisherID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, 
 						NoSuchAlgorithmException, IOException {
 
-		if ((null == src) || (null == dest)) {
-			Library.logger().info("Link: src and dest cannot be null.");
-			throw new IllegalArgumentException("Link: src and dest cannot be null.");
+		if ((null == src) || (null == target)) {
+			Library.logger().info("Link: src and target cannot be null.");
+			throw new IllegalArgumentException("Link: src and target cannot be null.");
 		}
 		
 		if (null == signingKey)
@@ -203,7 +207,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 		if (null == locator)
 			locator = keyManager().getKeyLocator(signingKey);
 	
-		Link linkData = new Link(dest, destAuthenticator);
+		Link linkData = new Link(target, targetAuthenticator);
 		try {
 			return put(src, linkData.canonicalizeAndEncode(signingKey), ContentType.LINK, publisher, locator, signingKey);
 		} catch (XMLStreamException e) {
@@ -214,13 +218,14 @@ public class StandardCCNLibrary implements CCNLibrary {
 	}
 
 	public ContentObject getLink(CompleteName name) {
-		// TODO Auto-generated method stub
+		if (!isLink(name))
+			return null;
+		// Want the low-level get.
 		return null;
 	}
 
 	public boolean isLink(CompleteName name) {
-		// TODO Auto-generated method stub
-		return false;
+		return (name.authenticator().type() == ContentType.LINK);
 	}
 
 	public CompleteName newVersion(ContentName name, int version, byte[] contents) throws SignatureException, IOException {
@@ -266,7 +271,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	/**
 	 * Get the latest version published by this publisher.
 	 */
-	public int getLatestVersion(ContentName name, PublisherID publisher) {
+	public int getLatestVersionNumber(ContentName name, PublisherID publisher) {
 		// TODO Auto-generated method stub
 		return 1;
 	}
@@ -276,32 +281,49 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * @param name
 	 * @return
 	 */
-	public int getLatestVersion(ContentName name) {
-		// TODO Auto-generated method stub
-		return 1;
+	public int getLatestVersionNumber(ContentName name) {
+		return getLatestVersionNumber(name, null);
+	}
+	
+	public ContentName getLatestVersionName(ContentName name, PublisherID publisher) {
+		// Some overlapping work between getLatest and versionName,
+		// in terms of creating intermediate unversioned form...
+		// Could be clever and carry around extra components and
+		// just length pointers.
+		int latestVersion = getLatestVersionNumber(name, publisher);
+		return versionName(name, latestVersion);
 	}
 
 	/**
 	 * Extract the version information from this name.
 	 */
 	public int getVersion(ContentName name) {
-		// TODO Auto-generated method stub
-		return 1;		
+		int offset = name.containsWhere(VERSION_MARKER);
+		return Integer.valueOf(ContentName.componentPrint(name.component(offset+1)));
 	}
 
 	/**
-	 * TODO: check to make sure name doesn't have the
-	 *   version information in it already.
 	 * @param name
 	 * @param version
 	 * @return
 	 */
 	public ContentName versionName(ContentName name, int version) {
-		return new ContentName(name, 
+		ContentName baseName = name;
+		if (isVersioned(name))
+			baseName = versionRoot(name);
+		return new ContentName(baseName, 
 							   ContentName.componentParse(VERSION_MARKER),
 							   ContentName.componentParse(Integer.toString(version)));
 	}
+	
+	public static boolean isVersioned(ContentName name) {
+		return name.contains(VERSION_MARKER);
+	}
 
+	public static ContentName versionRoot(ContentName name) {
+		return name.cut(VERSION_MARKER);
+	}
+	
 	public CompleteName put(ContentName name, byte[] contents) 
 				throws SignatureException, IOException {
 		return put(name, contents, getDefaultPublisher());
@@ -398,6 +420,9 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * rather than have CCN nodes understand how to separate
 	 * that decoration and verify it, we incorporate the block
 	 * names into the Merkle hash tree.
+	 * 
+	 * TODO: DKS: improve this to handle stream writes better.
+	 * What happens if we want to write a block at a time.
 	 * @throws IOException 
 	 **/
 	public CompleteName put(ContentName name, byte [] contents,
@@ -499,9 +524,12 @@ public class StandardCCNLibrary implements CCNLibrary {
 			throw new IOException("This should not happen: we cannot encode our own header!" + e.getMessage());
 		}
 
+		// Add another differentiator to avoid making header
+		// name prefix of other valid names?
+		ContentName headerName = headerName(name);
 		CompleteName headerBlockInformation =
 			ContentAuthenticator.generateAuthenticatedName(
-					name, publisher, timestamp, type, 
+					headerName, publisher, timestamp, type, 
 					encodedHeader, false, locator, signingKey);
 		try {
 			put (headerBlockInformation.name(), headerBlockInformation.authenticator(), encodedHeader);
@@ -512,11 +540,74 @@ public class StandardCCNLibrary implements CCNLibrary {
 		}
 		return headerBlockInformation;
 	}
+	
+	/**
+	 * Might want to make headerName not prefix of  rest of
+	 * name, but instead different subleaf. 
+	 * the header name of v.6 of name <name>
+	 * was originally <name>/_v_/6; could be 
+	 * <name>/_v_/6/.header or <name>/_v_/6/_m_/.header;
+	 * the full uniqueified names would be:
+	 * <name>/_v_/6/<sha256> or <name>/_v_/6/.header/<sha256>
+	 * or <name>/_v_/6/_m_/.header/<sha256>.
+	 * The first version has the problem that the
+	 * header name (without the unknown uniqueifier)
+	 * is the prefix of the block names; so relies on the
+	 * packet scheduler to get us a header rather than a block.
+	 * Given a block we can't even derive the uniqueified
+	 * name of the header... 
+	 * So, even though we need to cope with on-path data
+	 * in general, for this most critical case make our lives
+	 * easier by making the header block namable without
+	 * getting all the data blocks as well by recursion.
+	 * @param name
+	 * @return
+	 */
+	public static ContentName headerName(ContentName name) {
+		// Want to make sure we don't add a header name
+		// to a fragment. Go back up to the fragment root.
+		if (isFragment(name))
+			return new ContentName(fragmentRoot(name), HEADER_NAME);
+		return new ContentName(name, HEADER_NAME);
+	}
+	
+	public static ContentName headerRoot(ContentName headerName) {
+		// Do we want to handle fragment roots, etc, here too?
+		if (!isHeader(headerName)) {
+			throw new IllegalArgumentException("Name " + headerName.toString() + " is not a header name.");
+		}
+		// Strip off any header-specific prefix info if we
+		// add any.
+		return headerName.cut(HEADER_NAME); 
+	}
+	
+	public static boolean isHeader(ContentName name) {
+		// with on-path header, no way to tell except
+		// that it wasn't a fragment. With separate name,
+		// easier to handle.
+		return (name.contains(HEADER_NAME));
+	}
 
-	public ContentName blockName(ContentName name, int i) {
+	public static boolean isFragment(ContentName name) {
+		return name.contains(FRAGMENT_MARKER);
+	}
+	
+	public static ContentName fragmentRoot(ContentName name) {
+		return name.cut(FRAGMENT_MARKER);
+	}
+	
+	public static ContentName fragmentName(ContentName name, int i) {
 		return new ContentName(name, 
-							ContentName.componentParse(BLOCK_MARKER),
+							ContentName.componentParse(FRAGMENT_MARKER),
 							ContentName.componentParse(Integer.toString(i)));
+	}
+	
+	/**
+	 * Extract the fragment information from this name.
+	 */
+	public static int getFragment(ContentName name) {
+		int offset = name.containsWhere(FRAGMENT_MARKER);
+		return Integer.valueOf(ContentName.componentPrint(name.component(offset+1)));
 	}
 	
 	/**
@@ -534,11 +625,16 @@ public class StandardCCNLibrary implements CCNLibrary {
 	}
 
 	/**
-	 * Have to handle un-fragmenting fragmented content, and
-	 * reading (and verifying) partial content.
+	 * The low-level get just gets us blocks that match this
+	 * name. (Have to think about metadata matches.) 
+	 * Trying to map this into a higher-order "get" that
+	 * unfragments and reads into a single buffer is challenging.
+	 * For now, let's just pass this one through to the bottom
+	 * level, and use open and read to defragment.
+	 * 
+	 * DKS TODO: should this get at least verify?
 	 */
 	public ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator) throws IOException {
-		// TODO: defragment, deref links
 		return CCNRepositoryManager.getRepositoryManager().get(name, authenticator);
 	}
 
@@ -554,12 +650,181 @@ public class StandardCCNLibrary implements CCNLibrary {
 	
 	/**
 	 * Enumerate matches in the local repositories.
-	 * @param query
+	 * TODO: maybe filter out fragments, possibly other metadata.
+	 * TODO: add in communication layer to talk just to
+	 * local repositories for v 2.0 protocol.
+	 * @param query At this point, always recursive.
 	 * @return
 	 * @throws IOException 
 	 */
 	public ArrayList<CompleteName> enumerate(CompleteName query) throws IOException {
 		return CCNRepositoryManager.getRepositoryManager().enumerate(query);		
 	}
+	
+	/**
+	 * Do need a way to enumerate just the high-level documents,
+	 * prior to fragmentation. Particularly necessary to cope
+	 * with version collision errors...
+	 */
+	public ArrayList<CompleteName> enumerateDocuments(CompleteName query) throws IOException {
+		ContentName nameToOpen = query.name();
+		if (isFragment(query.name())) {
+			// DKS TODO: should we do this?
+			nameToOpen = fragmentRoot(nameToOpen);
+		}
+		if (!isVersioned(nameToOpen)) {
+			// if publisherID is null, will get any publisher
+			nameToOpen = 
+				getLatestVersionName(nameToOpen, 
+									 query.authenticator().publisherID());
+		}
+		
+		// Should have name of root of version we want to
+		// open. Get the header block. Already stripped to
+		// root. We've altered the header semantics, so that
+		// we can just get headers rather than a plethora of
+		// fragments. 
+		ContentName headerName = headerName(nameToOpen);
+		// This might not be unique - 
+		// we could have here either multiple versions of
+		// a given number, or multiple of a given number
+		// by a given publisher. If the latter, pick by latest
+		// after verifying. If the former, pick by latest
+		// version crossed with trust.
+		// DKS TODO figure out how to intermix trust information.
+		// DKS TODO -- overloaded authenticator as query;
+		// doesn't work well - would have to check that right things
+		// are asked.
+		// DKS TODO -- does get itself do a certain amount of
+		// prefiltering? Can it mark objects as verified?
+		// do we want to use the low-level get, as the high-level
+		// one might unfragment?
+		ArrayList<CompleteName> documents = 
+						enumerate(new CompleteName(headerName, query.authenticator()));
+		
+		return documents;
+	}
+	
+	/**
+	 * High-level verify. Calls low-level verify, if we
+	 * don't think this has been verified already. Probably
+	 * need to separate to keep the two apart.
+	 * @param object
+	 * @return
+	 */
+	public boolean verify(ContentObject object) {
+		if (!object.verify()) {
+			Library.logger().warning("Low-level verify failed on " + object.name());
+			return false;
+		}
+		// TODO DKS
+		throw new UnsupportedOperationException("Implement me!");
+	}
+	
+	/**
+	 * Open this name for reading (for now). If the name
+	 * is versioned, open that version. Otherwise, open the
+	 * latest version. If the name is a fragment, just open that one.
+	 * Implicitly implements query match.
+	 * Currently suggests can query match only on publisher...
+	 * need to systematize this. Some of this might want
+	 * to move into CCNDescriptor.
+	 * 
+	 * For now, it looks like the library-level (defragmenting)
+	 * get will be implemented in terms of these operations,
+	 * rather than the other way 'round. So these should use
+	 * the low-level (CCNBase/CCNRepository/CCNNetwork) get.
+	 * @throws IOException 
+	 */
+	public CCNDescriptor open(CompleteName name) throws IOException {
+		ContentName nameToOpen = name.name();
+		if (isFragment(name.name())) {
+			// DKS TODO: should we do this?
+			nameToOpen = fragmentRoot(nameToOpen);
+		}
+		if (!isVersioned(nameToOpen)) {
+			// if publisherID is null, will get any publisher
+			nameToOpen = 
+				getLatestVersionName(nameToOpen, 
+									 name.authenticator().publisherID());
+		}
+		
+		// Should have name of root of version we want to
+		// open. Get the header block. Already stripped to
+		// root. We've altered the header semantics, so that
+		// we can just get headers rather than a plethora of
+		// fragments. 
+		ContentName headerName = headerName(nameToOpen);
+		// This might not be unique - 
+		// we could have here either multiple versions of
+		// a given number, or multiple of a given number
+		// by a given publisher. If the latter, pick by latest
+		// after verifying. If the former, pick by latest
+		// version crossed with trust.
+		// DKS TODO figure out how to intermix trust information.
+		// DKS TODO -- overloaded authenticator as query;
+		// doesn't work well - would have to check that right things
+		// are asked.
+		// DKS TODO -- does get itself do a certain amount of
+		// prefiltering? Can it mark objects as verified?
+		// do we want to use the low-level get, as the high-level
+		// one might unfragment?
+		ArrayList<ContentObject> headers = get(headerName, name.authenticator());
+		
+		if ((null == headers) || (headers.size() == 0)) {
+			Library.logger().info("No available content named: " + headerName.toString());
+			throw new FileNotFoundException("No available content named: " + headerName.toString());
+		}
+		// So for each header, we assume we have a potential document.
+		
+		// First we verify. (Or should get have done this for us?)
+		// We don't bother complaining unless we have more than one
+		// header that matches. Given that we would complain for
+		// that, we need an enumerate that operates at this level.)
+		Iterator<ContentObject> headerIt = headers.iterator();
+		while (headerIt.hasNext()) {
+			ContentObject header = headerIt.next();
+			// TODO: DKS: should this be header.verify()?
+			// Need low-level verify as well as high-level verify...
+			// Low-level verify just checks that signer actually signed.
+			// High-level verify checks trust.
+			if (!verify(header)) {
+				Library.logger().warning("Found header: " + header.name().toString() + " that fails to verify.");
+				headerIt.remove();
+			}
+		}
+		if (headers.size() == 0) {
+			Library.logger().info("No available verifiable content named: " + headerName.toString());
+			throw new FileNotFoundException("No available verifiable content named: " + headerName.toString());
+		}
+		if (headers.size() > 1) {
+			Library.logger().info("Found " + headers.size() + " headers matching the name: " + headerName.toString());
+			throw new IOException("CCNException: More than one (" + headers.size() + ") valid header found for name: " + headerName.toString() + " in open!");
+		}
+		if (headers.get(0) == null) {
+			Library.logger().info("Found only null headers matching the name: " + headerName.toString());
+			throw new IOException("CCNException: No non-null header found for name: " + headerName.toString() + " in open!");
+		}
+		
+		try {
+			return new CCNDescriptor(headers.get(0), true);
+		} catch (XMLStreamException e) {
+			Library.logger().warning("XMLStreamException: trying to create a CCNDescriptor from header: " + headerName.toString());
+			Library.warningStackTrace(e);
+			throw new IOException(e);
+		}
+	}
+		
+	public long read(CCNDescriptor ccnObject, byte [] buf, long 
+											offset, long len) {
+		return ccnObject.read(buf,offset,len);
+	}
 
+	public int seek(CCNDescriptor ccnObject, long offset, CCNDescriptor.SeekWhence whence) {
+		return ccnObject.seek(offset, whence);
+	}
+	
+	public long tell(CCNDescriptor ccnObject) {
+		return ccnObject.tell();
+	}
 }

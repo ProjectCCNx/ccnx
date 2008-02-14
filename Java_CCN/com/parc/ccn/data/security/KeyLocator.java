@@ -25,7 +25,6 @@ import org.bouncycastle.asn1.DERObject;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 
 import com.parc.ccn.Library;
-import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLEncodable;
@@ -60,23 +59,23 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 
     protected KeyLocatorType _type;
     // Fake out a union.
-    protected CompleteName _name;       // null if wrong type
+    protected KeyName _keyName;       // null if wrong type
     protected PublicKey _key;
     protected X509Certificate _certificate;
     
-    public KeyLocator(CompleteName name) {
-    	_name = name; // DKS for the moment, we're using, not cloning...
+    public KeyLocator(ContentName name) {
+    	this (name, null);
+    }
+    
+    public KeyLocator(ContentName name, PublisherID publisher) {
+    	this(new KeyName(name, publisher));
+    }
+    
+    public KeyLocator(KeyName keyName) {
+    	_keyName = keyName;
     	_type = KeyLocatorType.NAME;
     }
-    
-    public KeyLocator(ContentName name, ContentAuthenticator authenticator) {
-    	this(new CompleteName(name, authenticator));
-    }
-    
-    public KeyLocator(ContentName name) {
-    	this(name, null);
-    }
-    
+
     public KeyLocator(PublicKey key) {
     	_key = key;
     	_type = KeyLocatorType.KEY;
@@ -94,7 +93,7 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
     public KeyLocator() {} // for use by decoders
     
 	public PublicKey key() { return _key; }
-    public CompleteName name() { return _name; }
+    public KeyName name() { return _keyName; }
     public X509Certificate certificate() { return _certificate; }
     public KeyLocatorType type() { return _type; }
 
@@ -103,7 +102,7 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 		final int PRIME = 31;
 		int result = 1;
 		result = PRIME * result + ((_key == null) ? 0 : _key.hashCode());
-		result = PRIME * result + ((_name == null) ? 0 : _name.hashCode());
+		result = PRIME * result + ((_keyName == null) ? 0 : _keyName.hashCode());
 		result = PRIME * result + ((_type == null) ? 0 : _type.hashCode());
 		result = PRIME * result + ((_certificate == null) ? 0 : _certificate.hashCode());
 		return result;
@@ -123,10 +122,10 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 				return false;
 		} else if (!_key.equals(other._key))
 			return false;
-		if (_name == null) {
-			if (other._name != null)
+		if (_keyName == null) {
+			if (other.name() != null)
 				return false;
-		} else if (!_name.equals(other._name))
+		} else if (!_keyName.equals(other.name()))
 			return false;
 		if (_type == null) {
 			if (other._type != null)
@@ -176,8 +175,8 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 				throw new XMLStreamException("Cannot parse certificate: " + strCert);
 			}
 		} else if (type() == KeyLocatorType.NAME) {
-			_name = new CompleteName();
-			_name.decode(reader);
+			_keyName = new KeyName();
+			_keyName.decode(reader);
 		}
 		XMLHelper.readEndElement(reader);
 	}

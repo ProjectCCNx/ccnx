@@ -6,10 +6,9 @@ import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
-import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.util.XMLHelper;
 
 /**
@@ -25,18 +24,16 @@ public class Link extends ContentObject {
 	
 	protected static final String LINK_ELEMENT = "Link";
 	
-	protected CompleteName _destName;
+	protected ContentName _targetName;
+	protected LinkAuthenticator _targetAuthenticator = null;
 	
-	public Link(ContentName destName, ContentAuthenticator destAuthenticator) {
-		_destName = new CompleteName(destName,destAuthenticator);
+	public Link(ContentName targetName, LinkAuthenticator targetAuthenticator) {
+		_targetName = targetName;
+		_targetAuthenticator = targetAuthenticator;
 	}
 	
-	public Link(ContentName destName) {
-		this(destName, null);
-	}
-	
-	public Link (CompleteName destName) {
-		_destName = destName;
+	public Link(ContentName targetName) {
+		this(targetName, null);
 	}
 	
 	public Link(InputStream iStream) throws XMLStreamException {
@@ -47,7 +44,13 @@ public class Link extends ContentObject {
 		super(encoded);
 	}
 	
-	public CompleteName targetName() { return _destName; }
+	/**
+	 * Decoding constructor.
+	 */
+	public Link() {}
+	
+	public ContentName targetName() { return _targetName; }
+	public LinkAuthenticator targetAuthenticator() { return _targetAuthenticator; }
 		
 	/**
 	 * XML format:
@@ -58,16 +61,22 @@ public class Link extends ContentObject {
 	public void decode(XMLEventReader reader) throws XMLStreamException {
 		XMLHelper.readStartElement(reader, LINK_ELEMENT);
 
-		_destName = new CompleteName();
-		_destName.decode(reader);
+		_targetName = new ContentName();
+		_targetName.decode(reader);
 		
+		if (XMLHelper.peekStartElement(reader, LinkAuthenticator.LINK_AUTHENTICATOR_ELEMENT)) {
+			_targetAuthenticator = new LinkAuthenticator();
+			_targetAuthenticator.decode(reader);
+		}
+
 		XMLHelper.readEndElement(reader);
 	}
 
 	public void encode(XMLStreamWriter writer, boolean isFirstElement) throws XMLStreamException {
 
 		XMLHelper.writeStartElement(writer, LINK_ELEMENT, isFirstElement);
-		_destName.encode(writer);
+		_targetName.encode(writer);
+		_targetAuthenticator.encode(writer);
 		writer.writeEndElement();   		
 	}
 	

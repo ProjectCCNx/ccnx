@@ -9,7 +9,7 @@ import javax.xml.stream.XMLStreamWriter;
 
 public interface XMLEncodable {
 	
-	public static final String CCN_NAMESPACE = "http://www.parc.com/CCN";
+	public static final String CCN_NAMESPACE = "http://www.parc.com/ccn";
 	public static final String CCN_PREFIX = "ccn";
 	
 	/**

@@ -4,12 +4,15 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.HashMap;
+import java.util.Iterator;
 
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
+import javax.xml.stream.events.Attribute;
 import javax.xml.stream.events.XMLEvent;
 
 import com.parc.ccn.Library;
@@ -55,14 +58,34 @@ public class XMLHelper {
 	 * @param tag
 	 * @throws XMLStreamException
 	 */
-	public static void writeStartElement(XMLStreamWriter writer, String tag, boolean isFirstElement) throws XMLStreamException {
+	public static void writeStartElement(XMLStreamWriter writer, 
+										 String tag, 
+										 HashMap<String,String> attributes,
+										 boolean isFirstElement) throws XMLStreamException {
 		writer.writeStartElement(XMLEncodable.CCN_NAMESPACE, tag);
 		if (isFirstElement)
 			writer.writeDefaultNamespace(XMLEncodable.CCN_NAMESPACE);
+		
+		if (null != attributes) {
+			Iterator<String> atIt = attributes.keySet().iterator();
+			while (atIt.hasNext()) {
+				String name = atIt.next();
+				writeAttribute(writer, name, attributes.get(name));
+			}
+		}
+	}
+	
+	public static void writeStartElement(XMLStreamWriter writer, String tag, boolean isFirstElement) throws XMLStreamException {
+		writeStartElement(writer, tag, null, isFirstElement);
 	}
 	
 	public static void writeStartElement(XMLStreamWriter writer, String tag) throws XMLStreamException {
-		writeStartElement(writer, tag, false);
+		writeStartElement(writer, tag, null, false);
+	}
+	
+	protected static void writeAttribute(XMLStreamWriter writer, String name, String value) throws XMLStreamException {
+		// Might not play well if this is the first element (namespace writing issues...)
+		writer.writeAttribute(XMLEncodable.CCN_NAMESPACE, name, value);
 	}
 
 	// Needs to handle null and 0-length elements.
@@ -79,7 +102,24 @@ public class XMLHelper {
 	}
 
 	public static void writeElement(XMLStreamWriter writer, String tag, String content) throws XMLStreamException {
+		writeElement(writer, tag, content, null, false);
+	}
+	
+	public static void writeElement(XMLStreamWriter writer, 
+									String tag, String content,
+									HashMap<String,String> attributes,
+									boolean isFirstElement) throws XMLStreamException {
+
 		writer.writeStartElement(XMLEncodable.CCN_NAMESPACE, tag);
+		if (isFirstElement)
+			writer.writeDefaultNamespace(XMLEncodable.CCN_NAMESPACE);
+		if (null != attributes) {
+			Iterator<String> atIt = attributes.keySet().iterator();
+			while (atIt.hasNext()) {
+				String name = atIt.next();
+				writeAttribute(writer, name, attributes.get(name));
+			}
+		}
 		writer.writeCharacters(content);
 		writer.writeEndElement();
 	}
@@ -105,17 +145,30 @@ public class XMLHelper {
 	 * fact.
 	 * @param reader
 	 * @param startTag
+	 * @param attributes can be null if we don't expect any.
 	 * @return
 	 * @throws XMLStreamException
 	 */
-	public static String readElementText(XMLEventReader reader, String startTag) throws XMLStreamException {
-		XMLHelper.readStartElement(reader, startTag);
+	public static String readElementText(XMLEventReader reader, 
+										 String startTag,
+										 HashMap<String,String> attributes) throws XMLStreamException {
+		XMLHelper.readStartElement(reader, startTag, attributes);
 		String strElementText = reader.getElementText();
 		// XMLHelper.readEndElement(reader); // getElementText eats the endElement
 		return strElementText;
 	}
 	
+	public static String readElementText(XMLEventReader reader, 
+			 							 String startTag) throws XMLStreamException {
+		return readElementText(reader, startTag, null);
+	}
+	
 	public static void readStartElement(XMLEventReader reader, String startTag) throws XMLStreamException {
+		readStartElement(reader, startTag, null);
+	}
+	
+	public static void readStartElement(XMLEventReader reader, String startTag,
+										HashMap<String,String> attributes) throws XMLStreamException {
 		XMLEvent event = reader.nextEvent();
 		// Use getLocalPart to strip namespaces. Right now assumes we are working
 		// with a global default namespace of CCN. Make it easier to use namespaces
@@ -124,6 +177,15 @@ public class XMLHelper {
 			// Coming back with namespace decoration doesn't match
 			throw new XMLStreamException("Expected start element: " + startTag + " got: " + event.toString());
 		}	
+		if (null != attributes) {
+			// we might be expecting attributes
+			Iterator<?> it = event.asStartElement().getAttributes();
+			while (it.hasNext()) {
+				Attribute a = (Attribute)it.next();
+				// may need fancier namespace handling.
+				attributes.put(a.getName().getLocalPart(), a.getValue());
+			}
+		}
 	}
 
 	public static void readEndElement(XMLEventReader reader) throws XMLStreamException {
