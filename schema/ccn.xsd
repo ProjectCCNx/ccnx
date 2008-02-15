@@ -141,7 +141,6 @@
 
 <xs:complexType name="KeyLocatorType">
   <xs:sequence>
-    <xs:element name="Type" type="KeyLocatorTypeType"/>
     <xs:choice>
       <xs:element name="Key" type="xs:base64Binary"/>
       <xs:element name="Certificate" type="xs:base64Binary"/>
@@ -149,13 +148,5 @@
     </xs:choice>
   </xs:sequence>
 </xs:complexType>
-
-<xs:simpleType name="KeyLocatorTypeType">
-  <xs:restriction base="xs:string">
-    <xs:enumeration value="KEY"/>
-    <xs:enumeration value="CERTIFICATE"/>
-    <xs:enumeration value="NAME"/>
-  </xs:restriction>
-</xs:simpleType>
 
 </xs:schema>
