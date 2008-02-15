@@ -4,7 +4,7 @@ W3REFS=XMLSchema.dtd XMLSchema.xsd datatypes.dtd xml.xsd
 default: check
 
 $(W3REFS):
-	gzcat w3downloads.tgz | tar xf -
+	type gzcat>>/dev/null && { gzcat w3downloads.tgz | tar xf -; } || tar xfz w3downloads.tgz
 
 w3downloads.tgz: always
 	tar cvfz w3downloads.tgz $(W3REFS)
