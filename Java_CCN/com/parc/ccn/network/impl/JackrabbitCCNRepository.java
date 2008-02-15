@@ -928,7 +928,15 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		// and base64 them. We then need to prefix them
 		// with something recognizable.
 		if (str.contains("%")) {
-			str = BASE64_MARKER + XMLHelper.encodeElement(component);
+			str = BASE64_MARKER + 
+		      XMLHelper.encodeElement(component);
+			// We also need to cope with the fact that "/" is a legal
+			// base64 character. If we find a / in the base64'ed
+			// string, we change it into -, which is legal for
+			// jackrabbit but not used in base64.
+			if (str.contains("/")) {
+				str = str.replace('/', '-');
+			}
 			return str;
 		} 
 		
@@ -939,6 +947,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		if (str.contains("+")) {
 			str = str.replace("+", "_x0020_");
 		}
+		
 		
 		if (Character.isDigit(str.charAt(0))) {
 			// Then deal with leading integers, which XPath
@@ -972,13 +981,17 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		// uniqueify duplicate names by Jackrabbit.
 		if (parseString.charAt(parseString.length()-1) == ']') {
 			parseString = 
-				parseString.substring(0, 
-					parseString.lastIndexOf('[')); 
+				parseString.substring(0,
+						parseString.lastIndexOf("[")); 
 		}
 		
-		if (parseString.startsWith(BASE64_MARKER)) {
+		if (parseString.indexOf(BASE64_MARKER) == 0) {
 			try {
-				return XMLHelper.decodeElement(parseString.substring(BASE64_MARKER.length()));
+				String base64String = parseString.substring(BASE64_MARKER.length());
+				if (base64String.indexOf("-") > 0) {
+					base64String = base64String.replace('-', '/');
+				}
+				return XMLHelper.decodeElement(base64String);
 			} catch (IOException e) {
 				Library.logger().warning("Cannot decode base64-encoded element that we encoded: " + parseString);
 				return new byte[0]; // DKS TODO need better answer

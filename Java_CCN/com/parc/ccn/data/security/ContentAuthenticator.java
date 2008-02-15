@@ -8,6 +8,7 @@ import java.security.PublicKey;
 import java.security.SignatureException;
 import java.security.cert.CertificateEncodingException;
 import java.sql.Timestamp;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.HashMap;
 
@@ -385,9 +386,10 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 			
 		if (XMLHelper.peekStartElement(reader, TIMESTAMP_ELEMENT)) {
 			String strTimestamp = XMLHelper.readElementText(reader, TIMESTAMP_ELEMENT);
-			_timestamp = Timestamp.valueOf(strTimestamp);
-			if (null == _timestamp) {
-				throw new XMLStreamException("Cannot parse timestamp: " + strTimestamp);
+			try {
+				_timestamp = XMLHelper.parseDateTime(strTimestamp);
+			} catch (ParseException e) {
+				throw new XMLStreamException("Cannot parse timestamp: " + strTimestamp, e);
 			}
 		}
 
@@ -450,7 +452,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 		// currently writing 2007-10-23 21:36:05.828
 		if (!emptyTimestamp()) {
 			writer.writeStartElement(TIMESTAMP_ELEMENT);
-			writer.writeCharacters(timestamp().toString());
+			writer.writeCharacters(XMLHelper.formatDateTime(timestamp()));
 			writer.writeEndElement();
 		}
 		

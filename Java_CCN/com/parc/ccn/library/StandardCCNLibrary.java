@@ -435,6 +435,10 @@ public class StandardCCNLibrary implements CCNLibrary {
 
 		if (null == locator)
 			locator = keyManager().getKeyLocator(signingKey);
+		
+		if (null == publisher) {
+			publisher = keyManager().getPublisherID(signingKey);
+		}
 	
 		Library.logger().info("Putting content: " + name.toString());
 		if (contents.length >= Header.DEFAULT_BLOCKSIZE) {

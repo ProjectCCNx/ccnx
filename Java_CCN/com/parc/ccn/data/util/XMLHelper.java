@@ -4,8 +4,14 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.sql.Timestamp;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.TimeZone;
 
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLInputFactory;
@@ -15,10 +21,10 @@ import javax.xml.stream.XMLStreamWriter;
 import javax.xml.stream.events.Attribute;
 import javax.xml.stream.events.XMLEvent;
 
-import com.parc.ccn.Library;
-
 import sun.misc.BASE64Decoder;
 import sun.misc.BASE64Encoder;
+
+import com.parc.ccn.Library;
 
 /**
  * Helper class for objects that use the JAXP stream
@@ -28,6 +34,15 @@ import sun.misc.BASE64Encoder;
  *
  */
 public class XMLHelper {
+	
+	protected static DateFormat canonicalDateFormat = null;
+	protected static final String PAD_STRING = "000000";
+	
+	static {
+		canonicalDateFormat = 
+			new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.S'Z'");
+		canonicalDateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+	}
 
 	public static XMLEventReader beginDecoding(InputStream iStream) throws XMLStreamException {
 		XMLInputFactory factory = XMLInputFactory.newInstance();
@@ -225,6 +240,34 @@ public class XMLHelper {
 			buf.append(Integer.toString((int)data[j], 16));
 		}
 		return buf.toString();
+	}
+	
+	/**
+	 * Put our intput/output of Timestamps in one place as
+	 * it seems tricky.
+	 * @param dateTime
+	 * @return
+	 */
+	public static String formatDateTime(Timestamp dateTime) {
+		// Need to put on fractional seconds (msec, nsec)
+		// as bits after the second...
+		// DKS TODO handle nanoseconds or give up on them.
+		String date = canonicalDateFormat.format(dateTime);
+		long nanos = dateTime.getNanos() % 1000000;
+		if (nanos > 0) {
+			// we have real nanos
+			String nstr = Long.toString(nanos);
+			if (nstr.length() < 6) {
+				nstr = PAD_STRING.substring(0, (6-nstr.length())) + nstr + "Z";
+			}
+			//date = date.replace("Z", nstr);
+		}
+		return date;
+	}
+	
+	public static Timestamp parseDateTime(String strDateTime) throws ParseException {
+		Date thisDate = canonicalDateFormat.parse(strDateTime);
+		return new Timestamp(thisDate.getTime());
 	}
 }
 

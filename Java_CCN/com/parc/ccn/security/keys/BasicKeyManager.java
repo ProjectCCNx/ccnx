@@ -238,6 +238,11 @@ public class BasicKeyManager extends KeyManager {
 		return _privateKey;
 	}
 
+	/**
+	 * DKS TODO get publisher as well, or unique name.
+	 * Go through process for managing own keys, as well
+	 * as process for handling others'.
+	 */
 	public KeyLocator getKeyLocator(PrivateKey signingKey) {
 		if (null == _keyLocator) {
 			ContentName keyLocation = new ContentName(UserConfiguration.defaultUserNamespace(), UserConfiguration.defaultKeyName());
@@ -273,6 +278,8 @@ public class BasicKeyManager extends KeyManager {
 	public PublicKey getPublicKey(PublisherID publisher) {
 		// TODO Auto-generated method stub
 		Library.logger().info("getPublicKey: retrieving key: " + publisher);
+		if (_defaultKeyID.equals(publisher))
+			return _certificate.getPublicKey();
 		return null;
 	}
 
@@ -280,6 +287,8 @@ public class BasicKeyManager extends KeyManager {
 	public PrivateKey getSigningKey(PublisherID publisher) {
 		// TODO Auto-generated method stub
 		Library.logger().info("getSigningKey: retrieving key: " + publisher);
+		if (_defaultKeyID.equals(publisher))
+			return _privateKey;
 		return null;
 	}
 
@@ -287,6 +296,17 @@ public class BasicKeyManager extends KeyManager {
 	public PublicKey getPublicKey(PublisherID publisherID, KeyLocator keyLocator) {
 		// TODO Auto-generated method stub
 		Library.logger().info("getPublicKey: retrieving key: " + publisherID + " located at: " + keyLocator);
+		// Do we have it locally.
+		PublicKey key = getPublicKey(publisherID);
+		if (null != key)
+			return key;
+		return null;
+	}
+
+	@Override
+	public PublisherID getPublisherID(PrivateKey signingKey) {
+		if (_privateKey.equals(signingKey))
+			return _defaultKeyID;
 		return null;
 	}
 }

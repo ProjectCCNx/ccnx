@@ -73,4 +73,6 @@ public abstract class KeyManager {
 	 * @return
 	 */
 	public abstract PublicKey getPublicKey(PublisherID publisherID, KeyLocator keyLocator);
+
+	public abstract PublisherID getPublisherID(PrivateKey signingKey);
 }
