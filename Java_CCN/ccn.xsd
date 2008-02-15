@@ -1,166 +1,161 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- $Id$ -->
-<!DOCTYPE schema PUBLIC "-//W3C//DTD XMLSCHEMA 200102//EN" "XMLSchema.dtd" [
-    <!-- Override namespace prefixes and suffixes so we can use unqualified schema syntax -->
-    <!ENTITY % p ''>
-    <!ENTITY % s ''>
-    <!ENTITY % schemaAttrs 'xmlns:ccn CDATA #FIXED "http://www.parc.com/ccn"'>
-]>
-
-<schema xmlns="http://www.w3.org/2001/XMLSchema"
+<!DOCTYPE xs:schema PUBLIC "-//W3C//DTD XMLSCHEMA 200102//EN" "XMLSchema.dtd">
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+<!-- XXX
         xmlns:ccn="http://www.parc.com/ccn" 
-        targetNamespace="http://www.parc.com/ccn" 
+        targetNamespace="http://www.parc.com/ccn"
         elementFormDefault="unqualified"
-        attributeFormDefault="unqualified">
+        attributeFormDefault="unqualified"
+-->
 
-  <annotation>
-    <documentation xml:lang="en">
+  <xs:annotation>
+    <xs:documentation xml:lang="en">
       Content-Centric Networks data schema.
-    </documentation>
-  </annotation>
+    </xs:documentation>
+  </xs:annotation>
 
 <!-- Top-level objects that can appear in 
      documents, messages, etc. -->
-<element name="Mapping" type="ContentObjectType"/>
-<element name="Collection" type="CollectionType"/>
-<element name="Link" type="LinkType"/>
-<element name="Sequence" type="SequenceType"/>
-<element name="Header" type="HeaderType"/>
-<element name="Interest" type="InterestType"/>
+<xs:element name="Mapping" type="ContentObjectType"/>
+<xs:element name="Collection" type="CollectionType"/>
+<xs:element name="Link" type="LinkType"/>
+<xs:element name="Header" type="HeaderType"/>
+<xs:element name="Interest" type="InterestType"/>
 
-<complexType name="CollectionType">
-  <sequence>
-    <element name="Link" type="LinkType" minOccurs="0" maxOccurs="unbounded"/>
-  </sequence>
-</complexType>
+<xs:complexType name="CollectionType">
+  <xs:sequence>
+    <xs:element name="Link" type="LinkType" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
 
-<complexType name="LinkType">
-  <sequence>
-    <element name="Name" type="NameType"/>
-    <element name="LinkAuthenticator" type="LinkAuthenticatorType" minOccurs="0" maxOccurs="1"/>
-  </sequence>
-</complexType>
+<xs:complexType name="LinkType">
+  <xs:sequence>
+    <xs:element name="Name" type="NameType"/>
+    <xs:element name="LinkAuthenticator" type="LinkAuthenticatorType" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
 
-<complexType name="LinkAuthenticatorType">
-  <sequence>
-    <element name="PublisherID" type="PublisherIDType" minOccurs="0" maxOccurs="1"/>
-    <element name="NameComponentCount" type="nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
-    <element name="Timestamp" type="dateTime" minOccurs="0" maxOccurs="1"/>
-    <element name="Type" type="ContentType" minOccurs="0" maxOccurs="1"/>
-    <element name="ContentHash" type="base64Binary" minOccurs="0" maxOccurs="1"/>
-  </sequence>
-</complexType>
+<xs:complexType name="LinkAuthenticatorType">
+  <xs:sequence>
+    <xs:element name="PublisherID" type="PublisherIDType" minOccurs="0" maxOccurs="1"/>
+    <xs:element name="NameComponentCount" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
+    <xs:element name="Timestamp" type="xs:dateTime" minOccurs="0" maxOccurs="1"/>
+    <xs:element name="Type" type="ContentType" minOccurs="0" maxOccurs="1"/>
+    <xs:element name="ContentHash" type="xs:base64Binary" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
 
-<complexType name="HeaderType">
-  <sequence>
-    <element name="Start" type="nonNegativeInteger"/>
-    <element name="Count" type="nonNegativeInteger"/>
-    <element name="BlockSize" type="nonNegativeInteger"/>
-    <element name="Length" type="nonNegativeInteger"/>
-    <element name="RootDigest" type="base64Binary"/>
-    <element name="ContentDigest" type="base64Binary" minOccurs="0"/>
-  </sequence>
-</complexType>
+<xs:complexType name="HeaderType">
+  <xs:sequence>
+    <xs:element name="Start" type="xs:nonNegativeInteger"/>
+    <xs:element name="Count" type="xs:nonNegativeInteger"/>
+    <xs:element name="BlockSize" type="xs:nonNegativeInteger"/>
+    <xs:element name="Length" type="xs:nonNegativeInteger"/>
+    <xs:element name="RootDigest" type="xs:base64Binary"/>
+    <xs:element name="ContentDigest" type="xs:base64Binary" minOccurs="0"/>
+  </xs:sequence>
+</xs:complexType>
 
-<complexType name="ContentObjectType">
-  <sequence>
-    <element name="Name" type="NameType"/>
-    <element name="ContentAuthenticator" type="ContentAuthenticatorType"/>
-    <element name="Content" type="base64Binary"/>
-  </sequence>
-</complexType>
+<xs:complexType name="ContentObjectType">
+  <xs:sequence>
+    <xs:element name="Name" type="NameType"/>
+    <xs:element name="ContentAuthenticator" type="ContentAuthenticatorType"/>
+    <xs:element name="Content" type="xs:base64Binary"/>
+  </xs:sequence>
+</xs:complexType>
 
-<complexType name="NameType">
-  <sequence>
-    <element name="Component" minOccurs="0" maxOccurs="unbounded" type="base64Binary"/>
-  </sequence>
-</complexType>
+<xs:complexType name="NameType">
+  <xs:sequence>
+    <xs:element name="Component" type="xs:base64Binary" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
 
-<complexType name="ContentAuthenticatorType">
-  <sequence>
-    <element name="PublisherID" type="PublisherIDType"/>
-    <element name="NameComponentCount" type="nonNegativeInteger"/>
-    <element name="Timestamp" type="dateTime"/>
-    <element name="Type" type="ContentType"/>
+<xs:complexType name="ContentAuthenticatorType">
+  <xs:sequence>
+    <xs:element name="PublisherID" type="PublisherIDType"/>
+    <xs:element name="NameComponentCount" type="xs:nonNegativeInteger"/>
+    <xs:element name="Timestamp" type="xs:dateTime"/> <!-- should be canonical -->
+    <xs:element name="Type" type="ContentType"/>
     <!-- ContentHash might change to more complex type,
          currently base64 encoding of DER-encoded
          DigestInfo -->
-    <element name="ContentHash" type="base64Binary"/>
-    <element name="KeyLocator" type="KeyLocatorType"/>
-    <element name="Signature" type="base64Binary"/>
-  </sequence>
-</complexType>
+    <xs:element name="ContentHash" type="xs:base64Binary"/>
+    <xs:element name="KeyLocator" type="KeyLocatorType"/>
+    <xs:element name="Signature" type="xs:base64Binary"/>
+  </xs:sequence>
+</xs:complexType>
 
-<complexType name="KeyNameType">
-  <sequence>
-    <element name="Name" type="NameType"/>
-    <element name="PublisherID" type="PublisherIDType"
+<xs:complexType name="KeyNameType">
+  <xs:sequence>
+    <xs:element name="Name" type="NameType"/>
+    <xs:element name="PublisherID" type="PublisherIDType"
 			minOccurs="0" maxOccurs="1"/>
-  </sequence>
-</complexType>
+  </xs:sequence>
+</xs:complexType>
 
-<complexType name="InterestType">
-  <sequence>
-    <element name="Name" type="NameType"/>
-    <element name="PublisherID" type="PublisherIDType"
+<xs:complexType name="InterestType">
+  <xs:sequence>
+    <xs:element name="Name" type="NameType"/>
+    <xs:element name="PublisherID" type="PublisherIDType"
 			minOccurs="0" maxOccurs="1"/>
-  </sequence>
-</complexType>
+  </xs:sequence>
+</xs:complexType>
 
-<complexType name="PublisherIDType">
-  <simpleContent>
-    <extension base="SHA256Digest">
-      <attribute name="type" type="PublisherTypeType" use="required"/>
-    </extension>
-  </simpleContent>
-</complexType>
+<xs:complexType name="PublisherIDType">
+  <xs:simpleContent>
+    <xs:extension base="SHA256Digest">
+      <xs:attribute name="type" type="PublisherTypeType" use="required"/>
+    </xs:extension>
+  </xs:simpleContent>
+</xs:complexType>
 
-<simpleType name="SHA256Digest">
-    <restriction base="base64Binary">
+<xs:simpleType name="SHA256Digest">
+    <xs:restriction base="xs:base64Binary">
       <!-- SHA-256 digest -->
-      <length value="32" fixed="true"/>
-    </restriction>
-</simpleType>
+      <xs:length value="32" fixed="true"/>
+    </xs:restriction>
+</xs:simpleType>
 
 <!-- enum -->
-<simpleType name="PublisherTypeType">
-  <restriction base="string">
-    <enumeration value="KEY"/>
-    <enumeration value="CERTIFICATE"/>
-    <enumeration value="ISSUER_KEY"/>
-    <enumeration value="ISSUER_CERTIFICATE"/>
-  </restriction>
-</simpleType>
+<xs:simpleType name="PublisherTypeType">
+  <xs:restriction base="xs:string">
+    <xs:enumeration value="KEY"/>
+    <xs:enumeration value="CERTIFICATE"/>
+    <xs:enumeration value="ISSUER_KEY"/>
+    <xs:enumeration value="ISSUER_CERTIFICATE"/>
+  </xs:restriction>
+</xs:simpleType>
 
 <!-- enum -->
-<simpleType name="ContentType">
-  <restriction base="string">
-    <enumeration value="FRAGMENT"/>
-    <enumeration value="LINK"/>
-    <enumeration value="CONTAINER"/>
-    <enumeration value="LEAF"/>
-    <enumeration value="SESSION"/>
-    <enumeration value="SEQUENCE"/>
-  </restriction>
-</simpleType>
+<xs:simpleType name="ContentType">
+  <xs:restriction base="xs:string">
+    <xs:enumeration value="FRAGMENT"/>
+    <xs:enumeration value="LINK"/>
+    <xs:enumeration value="CONTAINER"/>
+    <xs:enumeration value="LEAF"/>
+    <xs:enumeration value="SESSION"/>
+    <xs:enumeration value="SEQUENCE"/>
+  </xs:restriction>
+</xs:simpleType>
 
-<complexType name="KeyLocatorType">
-  <sequence>
-    <element name="Type" type="KeyLocatorTypeType"/>
-    <choice>
-      <element name="Key" type="base64Binary"/>
-      <element name="Certificate" type="base64Binary"/>
-      <element name="KeyName" type="KeyNameType"/>
-    </choice>
-  </sequence>
-</complexType>
+<xs:complexType name="KeyLocatorType">
+  <xs:sequence>
+    <xs:element name="Type" type="KeyLocatorTypeType"/>
+    <xs:choice>
+      <xs:element name="Key" type="xs:base64Binary"/>
+      <xs:element name="Certificate" type="xs:base64Binary"/>
+      <xs:element name="KeyName" type="KeyNameType"/>
+    </xs:choice>
+  </xs:sequence>
+</xs:complexType>
 
-<simpleType name="KeyLocatorTypeType">
-  <restriction base="string">
-    <enumeration value="KEY"/>
-    <enumeration value="CERTIFICATE"/>
-    <enumeration value="NAME"/>
-  </restriction>
-</simpleType>
+<xs:simpleType name="KeyLocatorTypeType">
+  <xs:restriction base="xs:string">
+    <xs:enumeration value="KEY"/>
+    <xs:enumeration value="CERTIFICATE"/>
+    <xs:enumeration value="NAME"/>
+  </xs:restriction>
+</xs:simpleType>
 
-</schema>
+</xs:schema>

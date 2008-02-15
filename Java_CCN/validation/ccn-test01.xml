@@ -1,0 +1,31 @@
+<?xml version="1.0"?><!-- xmlns="http://www.parc.com/ccn" -->
+<Mapping>
+  <Name>
+    <Component>dGVzdA==</Component>
+    <Component>c21ldHRlcnM=</Component>
+    <Component>dGVzdDIudHh0</Component>
+  </Name>
+  <ContentAuthenticator>
+    <PublisherID type="KEY">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherID>
+    <NameComponentCount>3</NameComponentCount>
+    <Timestamp>2008-02-11T16:54:36.671Z</Timestamp>
+    <Type>LEAF</Type>
+    <ContentHash>AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI=</ContentHash>
+    <KeyLocator>
+      <Type>NAME</Type>
+      <KeyName>
+        <Name>
+          <Component>dGVzdA==</Component>
+          <Component>c21ldHRlcnM=</Component>
+          <Component>a2V5</Component>
+        </Name>
+      </KeyName>
+    </KeyLocator>
+    <Signature>AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEB
+AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEB
+AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEB
+AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEB
+AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ==</Signature>
+  </ContentAuthenticator>
+  <Content>AQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Content>
+</Mapping>
