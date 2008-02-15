@@ -32,7 +32,7 @@ import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
 import com.parc.ccn.network.CCNRepositoryManager;
 import com.parc.ccn.security.crypto.CCNMerkleTree;
-import com.parc.ccn.security.crypto.Digest;
+import com.parc.ccn.security.crypto.DigestHelper;
 import com.parc.ccn.security.keys.KeyManager;
 
 /**
@@ -436,6 +436,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 		if (null == locator)
 			locator = keyManager().getKeyLocator(signingKey);
 	
+		Library.logger().info("Putting content: " + name.toString());
 		if (contents.length >= Header.DEFAULT_BLOCKSIZE) {
 			return fragmentedPut(name, contents, type, publisher, locator, signingKey);
 		} else {
@@ -447,6 +448,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 						type, contents, false,
 						locator, signingKey);
 			try {
+				Library.logger().info("Final put name: " + uniqueName.name().toString());
 				return put(uniqueName.name(), uniqueName.authenticator(), contents);
 			} catch (IOException e) {
 				Library.logger().warning("This should not happen: put failed with an IOExceptoin.");
@@ -513,7 +515,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 			}
 		}
 		// construct the headerBlockContents;
-		byte [] contentDigest = Digest.hash(contents);
+		byte [] contentDigest = DigestHelper.digest(contents);
 		Header header = new Header(contents.length, contentDigest, tree.root());
 		byte[] encodedHeader = null;
 		try {
@@ -711,14 +713,25 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * need to separate to keep the two apart.
 	 * @param object
 	 * @return
+	 * @throws XMLStreamException 
+	 * @throws NoSuchAlgorithmException 
+	 * @throws SignatureException 
+	 * @throws InvalidKeyException 
 	 */
-	public boolean verify(ContentObject object) {
-		if (!object.verify()) {
-			Library.logger().warning("Low-level verify failed on " + object.name());
-			return false;
+	public boolean verify(ContentObject object) 
+			throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException {
+		
+		try {
+			if (!object.verify()) {
+				Library.logger().warning("Low-level verify failed on " + object.name());
+			}
+		} catch (Exception e) {
+			Library.logger().warning("Exception " + e.getClass().getName() + " during verify: " + e.getMessage());
+			Library.warningStackTrace(e);
 		}
+		return true;
 		// TODO DKS
-		throw new UnsupportedOperationException("Implement me!");
+		//throw new UnsupportedOperationException("Implement me!");
 	}
 	
 	/**
@@ -788,8 +801,14 @@ public class StandardCCNLibrary implements CCNLibrary {
 			// Need low-level verify as well as high-level verify...
 			// Low-level verify just checks that signer actually signed.
 			// High-level verify checks trust.
-			if (!verify(header)) {
-				Library.logger().warning("Found header: " + header.name().toString() + " that fails to verify.");
+			try {
+				if (!verify(header)) {
+					Library.logger().warning("Found header: " + header.name().toString() + " that fails to verify.");
+					headerIt.remove();
+				}
+			} catch (Exception e) {
+				Library.logger().warning("Got an " + e.getClass().getName() + " exception attempting to verify header: " + header.name().toString() + ", treat as failure to verify.");
+				Library.warningStackTrace(e);
 				headerIt.remove();
 			}
 		}

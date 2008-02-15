@@ -179,16 +179,25 @@ public class BasicKeyManager extends KeyManager {
 		// problem -- we need to be able to put
 		// even though we aren't done being created yet
 		// go through low-level interface
-		ContentName keyLocation = new ContentName(UserConfiguration.defaultUserNamespace(), UserConfiguration.defaultKeyName());
+		ContentName keyLocation = 
+			new ContentName(UserConfiguration.defaultUserNamespace(), UserConfiguration.defaultKeyName());
 		byte [] encodedKey = ssCert.getPublicKey().getEncoded();
 		// Need a key locator to stick in data entry for
-		// locator. Use key itself.
-		KeyLocator locatorLocator = new KeyLocator(ssCert.getPublicKey());
+		// locator. Could use key itself, but then would have
+		// key both in the content for this item and in the
+		// key locator, which is redundant. Use naming form
+		// that allows for self-referential key names -- the
+		// CCN equivalent of a "self-signed cert". Means that
+		// we will refer to only the base key name and the publisher ID,
+		// not the uniqueified key name...
+		PublisherID thisKey = new PublisherID(ssCert.getPublicKey(), false);
+		KeyLocator locatorLocator = 
+			new KeyLocator(keyLocation, thisKey);
 		CompleteName uniqueKeyName = null;
 		try {
 			uniqueKeyName = ContentAuthenticator.generateAuthenticatedName(
-									 keyLocation, 
-									 new PublisherID(ssCert.getPublicKey(), false), 
+									 keyLocation,
+									 thisKey,
 									 ContentAuthenticator.now(),
 									 ContentAuthenticator.ContentType.LEAF,
 									 encodedKey,
@@ -263,12 +272,21 @@ public class BasicKeyManager extends KeyManager {
 	@Override
 	public PublicKey getPublicKey(PublisherID publisher) {
 		// TODO Auto-generated method stub
+		Library.logger().info("getPublicKey: retrieving key: " + publisher);
 		return null;
 	}
 
 	@Override
 	public PrivateKey getSigningKey(PublisherID publisher) {
 		// TODO Auto-generated method stub
+		Library.logger().info("getSigningKey: retrieving key: " + publisher);
+		return null;
+	}
+
+	@Override
+	public PublicKey getPublicKey(PublisherID publisherID, KeyLocator keyLocator) {
+		// TODO Auto-generated method stub
+		Library.logger().info("getPublicKey: retrieving key: " + publisherID + " located at: " + keyLocator);
 		return null;
 	}
 }

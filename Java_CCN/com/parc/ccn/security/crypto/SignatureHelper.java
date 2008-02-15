@@ -7,6 +7,7 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.security.spec.InvalidParameterSpecException;
@@ -39,12 +40,13 @@ public class SignatureHelper {
 		if (null == signingKey) {
 			Library.logger().info("sign: Signing key cannot be null.");
 			Library.logger().info("Temporarily generating fake signature.");
-			return Digest.hash(hashAlgorithm, toBeSigned);
+			return DigestHelper.digest(hashAlgorithm, toBeSigned);
 		}
 		String sigAlgName =
 			getSignatureAlgorithmName(((null == hashAlgorithm) || (hashAlgorithm.length() == 0)) ?
-					Digest.DEFAULT_DIGEST : hashAlgorithm,
+					DigestHelper.DEFAULT_DIGEST_ALGORITHM : hashAlgorithm,
 					signingKey);
+		// DKS TODO if we switch to SHA256, this fails.
 		Signature sig = Signature.getInstance(sigAlgName);
 
 		sig.initSign(signingKey);
@@ -65,12 +67,54 @@ public class SignatureHelper {
 							   PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException {
 		
 		if (null == toBeSigned) {
-			Library.logger().info("Value to be signed and signing key must not be null.");
+			Library.logger().info("Value to be signed must not be null.");
 			return null;
 		}
-		return sign(hashAlgorithm, toBeSigned.canonicalizeAndEncode(), signingKey);
+		return sign(hashAlgorithm, 
+					toBeSigned.canonicalizeAndEncode(), 
+					signingKey);
 	}
 
+
+	public static boolean verify(
+			byte [] data,
+			byte [] signature,
+			PublicKey verificationKey) throws SignatureException, 
+						NoSuchAlgorithmException, InvalidKeyException {
+		if (null == verificationKey) {
+			Library.logger().info("verify: Verifying key cannot be null.");
+			throw new IllegalArgumentException("verify: Verifying key cannot be null.");
+		}
+
+		Signature sig = Signature.getInstance(verificationKey.getAlgorithm());
+
+		sig.initVerify(verificationKey);
+		sig.update(data);
+		return sig.verify(signature);
+	}
+
+	/**
+	 * Encodes and canonicalizes an XML object before
+	 * signing it.
+	 * @throws SignatureException 
+	 * @throws NoSuchAlgorithmException 
+	 * @throws InvalidKeyException 
+	 * @throws XMLStreamException 
+	 */
+	public static boolean verify(
+			XMLEncodable xmlData,
+			byte [] signature,
+			PublicKey verificationKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException {
+
+		if ((null == xmlData) || (null == signature)) {
+			Library.logger().info("Value to be verified and signature must not be null.");
+			throw new SignatureException("verify: Value to be verified and signature must not be null.");
+		}
+		return verify(
+				xmlData.canonicalizeAndEncode(), 
+				signature,
+				verificationKey);
+	}
 
 	/**
 	 * gets an AlgorithmIdentifier incorporating a given digest and

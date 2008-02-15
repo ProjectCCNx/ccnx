@@ -1,6 +1,9 @@
 package com.parc.ccn.data;
 
 import java.io.IOException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SignatureException;
 import java.util.Arrays;
 
 import javax.xml.stream.XMLEventReader;
@@ -130,8 +133,12 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 	 * Need a low-level signing and verification interface that
 	 * can be used by things with only access to low-level
 	 * interfaces. Put that code in the authenticator.
+	 * @throws XMLStreamException 
+	 * @throws NoSuchAlgorithmException 
+	 * @throws SignatureException 
+	 * @throws InvalidKeyException 
 	 */
-	public boolean verify() {
-		return ContentAuthenticator.verify(this);
+	public boolean verify() throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException {
+		return ContentAuthenticator.verify(this, true);
 	}
 }

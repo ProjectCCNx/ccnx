@@ -52,6 +52,10 @@ public class Collection extends ContentObject {
 		decode(iStream);
 	}
 	
+	public Collection() {
+		
+	}
+	
 	public ArrayList<Link> contents() { 
 		return _contents; 
 	}
@@ -67,12 +71,14 @@ public class Collection extends ContentObject {
 	public void add(ContentName name) {
 		_contents.add(new Link(name, null));
 	}
+	
+	public int size() { return _contents.size(); }
+	
 	/**
 	 * XML format:
 	 * @throws XMLStreamException 
 	 * 
 	 */
-	
 	public void decode(XMLEventReader reader) throws XMLStreamException {
 		_contents.clear();
 		
@@ -83,7 +89,6 @@ public class Collection extends ContentObject {
 			link = new Link();
 			link.decode(reader);
 			add(link);
-			XMLHelper.readEndElement(reader);
 		}
 		XMLHelper.readEndElement(reader);
 	}

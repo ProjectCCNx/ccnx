@@ -663,11 +663,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	}
 	
     protected static boolean isRecursiveQuery(ContentName name) {
-    	if (Arrays.equals(name.component(name.count()-1), 
-				CCNQueryDescriptor.RECURSIVE_POSTFIX_BYTES)) {
-			return true;
-		}
-		return false;
+    	return true;
 	}
 
 	@Override
@@ -1045,7 +1041,10 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		}
 		
 		// In case this is a query with its last component
-		// being "*", strip that.
+		// being "*", strip that. Even though we don't
+		// distinguish recursive queries anymore, leave this
+		// here for a bit...
+		// DKS TODO remove
 		int componentCount = name.count();
 		
 		if (Arrays.equals(name.component(name.count()-1), 

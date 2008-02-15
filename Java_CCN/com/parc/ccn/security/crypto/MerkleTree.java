@@ -1,6 +1,7 @@
 package com.parc.ccn.security.crypto;
 
 import org.bouncycastle.asn1.DEROctetString;
+import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 
 
 public class MerkleTree {
@@ -20,13 +21,15 @@ public class MerkleTree {
 	protected int _pathLength;
 	protected String _algorithm;
 	
+	protected static final String MERKLE_OID_PREFIX = "1.2.840.113550.11.1.2";
+	
 	/**
 	 * Subclass constructor.
 	 * @param algorithm
 	 * @param contentBlocks
 	 */
 	protected MerkleTree(String algorithm, int numLeaves) {
-		_algorithm = (null == algorithm) ? Digest.DEFAULT_DIGEST : algorithm;
+		_algorithm = (null == algorithm) ? DigestHelper.DEFAULT_DIGEST_ALGORITHM : algorithm;
 		_numLeaves = numLeaves;
 		_pathLength = computePathLength(numLeaves);
 		_tree = new DEROctetString[nodeCount()];
@@ -46,7 +49,7 @@ public class MerkleTree {
 	}
 	
 	public MerkleTree(byte [][] contentBlocks) {
-		this(Digest.DEFAULT_DIGEST, contentBlocks);
+		this(DigestHelper.DEFAULT_DIGEST_ALGORITHM, contentBlocks);
 	}
 	
 	public static int parent(int i) { 
@@ -174,7 +177,7 @@ public class MerkleTree {
 		// Hash the leaves
 		for (int i=0; i < numLeaves(); ++i) {
 			_tree[leafIndex(i)] = 
-				new DEROctetString(Digest.hash(_algorithm, contentBlocks[i]));
+				new DEROctetString(DigestHelper.digest(_algorithm, contentBlocks[i]));
 		}
 	}
 	
@@ -219,11 +222,11 @@ public class MerkleTree {
 			for (int i = parent(firstNode); i < parent(endNode); ++i) {
 				if (rightChild(i) < endNode)
 					_tree[i] = 
-						new DEROctetString(Digest.hash(_algorithm, get(leftChild(i)), get(rightChild(i))));
+						new DEROctetString(DigestHelper.digest(_algorithm, get(leftChild(i)), get(rightChild(i))));
 				else
 					// last leaf
 					_tree[i] = 
-						new DEROctetString(Digest.hash(_algorithm, get(leftChild(i))));
+						new DEROctetString(DigestHelper.digest(_algorithm, get(leftChild(i))));
 			}
 			firstNode = nextLevelStart;
 			endNode = nextLevelEnd;
@@ -243,32 +246,40 @@ public class MerkleTree {
 	}
 	
 	public static byte [] computeBlockDigest(String algorithm, byte [] block) {
-		return Digest.hash(algorithm, block);		
+		return DigestHelper.digest(algorithm, block);		
 	}
 
 	public static byte [] computeBlockDigest(byte [] block) {
-		return computeBlockDigest(Digest.DEFAULT_DIGEST, block);		
+		return computeBlockDigest(DigestHelper.DEFAULT_DIGEST_ALGORITHM, block);		
 	}
 	
 	/**
 	 * Compute an intermediate node.
 	 */
 	public static byte [] computeNodeDigest(String algorithm, byte [] left, byte [] right) {
-		return Digest.hash(algorithm, left, right);
+		return DigestHelper.digest(algorithm, left, right);
 	}
 	
 	public static byte [] computeNodeDigest(byte [] left, byte [] right) {
-		return computeNodeDigest(Digest.DEFAULT_DIGEST, left, right);
+		return computeNodeDigest(DigestHelper.DEFAULT_DIGEST_ALGORITHM, left, right);
 	}
 	
 	/**
 	 * Compute an intermediate note for a last left child.
 	 */
 	public static byte [] computeNodeDigest(String algorithm, byte [] left) {
-		return Digest.hash(algorithm, left);		
+		return DigestHelper.digest(algorithm, left);		
 	}
 
 	public static byte [] computeNodeDigest(byte [] left) {
-		return computeNodeDigest(Digest.DEFAULT_DIGEST, left);		
+		return computeNodeDigest(DigestHelper.DEFAULT_DIGEST_ALGORITHM, left);		
+	}
+
+	public static boolean isMerkleTree(AlgorithmIdentifier algorithmId) {
+		// Use a hack -- all MHT OIDs use same prefix.
+		String strAlg = algorithmId.toString();
+		if (strAlg.startsWith(MERKLE_OID_PREFIX))
+			return true;
+		return false;
 	}
 }

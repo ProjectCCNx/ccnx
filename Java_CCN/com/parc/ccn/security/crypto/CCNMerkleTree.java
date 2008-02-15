@@ -26,6 +26,8 @@ import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
  */
 public class CCNMerkleTree extends MerkleTree {
 	
+	public static final String DEFAULT_MHT_ALGORITHM = "SHA256MHT";
+	
 	ContentName _rootName = null;
 	PublisherID _publisherID = null;
 	Timestamp _timestamp = null;
@@ -44,7 +46,7 @@ public class CCNMerkleTree extends MerkleTree {
 			KeyLocator locator,
 			PrivateKey signingKey) {
 		
-		super(Digest.DEFAULT_DIGEST, contentBlocks);
+		super(DigestHelper.DEFAULT_DIGEST_ALGORITHM, contentBlocks);
 		
 		_rootName = name;
 		_publisherID = publisher;

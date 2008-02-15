@@ -17,6 +17,9 @@ public class MerklePath {
 	
 	int _leafNum;
 	DEROctetString [] _path = null;
+	// DKS TODO: implement lookup mechanism to get MHT
+	// OID from component digest OID. Right now just pull
+	// from CCNMerkleTree.
 	
 	public MerklePath(int leafNum, DEROctetString [] path) {
 		_leafNum = leafNum;
@@ -48,7 +51,8 @@ public class MerklePath {
 				(_path.length == 0) || (null == nodeContent)) {
 			throw new IllegalArgumentException("MerklePath value illegal -- cannot verify!");
 		}
-		byte [] leafDigest = MerkleTree.computeBlockDigest(nodeContent);
+		byte [] leafDigest = 
+			MerkleTree.computeBlockDigest(nodeContent);
 		
 		byte [] node = leafDigest;
 		int nodeIndex = _leafNum;
@@ -94,7 +98,8 @@ public class MerklePath {
 	}
 
 	/**
-	 * DER-encode the path.
+	 * DER-encode the path. Embed it in a DigestInfo
+	 * with the appropriate algorithm identifier.
 	 */
 	public byte [] derEncodedPath() {
 		
@@ -109,6 +114,15 @@ public class MerklePath {
 		ASN1Encodable [] pathStruct = new ASN1Encodable[]{intVal, sequenceOf};
 		DERSequence encodablePath = new DERSequence(pathStruct);
 		byte [] encodedPath = encodablePath.getDEREncoded();
-		return encodedPath;
+		
+		// Wrap it up in a DigestInfo
+		return DigestHelper.digestEncoder(CCNMerkleTree.DEFAULT_MHT_ALGORITHM, encodedPath);
+	}
+
+	public byte[] getRootAsEncodedDigest() {
+		// Take root and wrap it up as an encoded DigestInfo
+		return DigestHelper.digestEncoder(
+				DigestHelper.DEFAULT_DIGEST_ALGORITHM, 
+				root().getOctets());
 	}
 }

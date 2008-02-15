@@ -15,7 +15,7 @@ import com.parc.ccn.Library;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
-import com.parc.ccn.security.crypto.Digest;
+import com.parc.ccn.security.crypto.DigestHelper;
 import com.parc.ccn.security.crypto.certificates.GenericX509CertificateGenerator;
 
 /**
@@ -150,8 +150,6 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable {
 		if (null == _publisherType) {
 			throw new XMLStreamException("Cannot parse publisher ID: unknown publisher type: " + attributes.get(PUBLISHER_TYPE_ATTRIBUTE));
 		}
-			
-		XMLHelper.readEndElement(reader);
 	}
 
 	public void encode(XMLStreamWriter writer, boolean isFirstElement) throws XMLStreamException {
@@ -183,7 +181,7 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable {
         byte [] id = null;
         try {
             byte [] encoding = cert.getEncoded();
-            id = Digest.hash(digestAlg, encoding);
+            id = DigestHelper.digest(digestAlg, encoding);
         } catch (CertificateEncodingException e) {
 			Library.logger().warning("Cannot encode certificate in PublisherID.generateCertificateID: " + e.getMessage());
 			Library.warningStackTrace(e);

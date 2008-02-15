@@ -18,11 +18,12 @@ import com.parc.ccn.data.security.ContentAuthenticator;
 public class CCNQueryDescriptor {
 	
 	// TODO: DKS: reevaluate query descriptors with new
-	// RepositoryManager/InterestManager architecture
+	// version 2.0 architecture
 	
 	/**
-	 * Do we handle recursive queries this way or
-	 * are all queries recursive?
+	 * All queries are recursive. Leave these here
+	 * for a bit so that we can strip accidentally-included ones.
+	 * DKS TODO remove.
 	 */
 	public static final String RECURSIVE_POSTFIX = "*";
 	public static final byte [] RECURSIVE_POSTFIX_BYTES = 
@@ -33,7 +34,7 @@ public class CCNQueryDescriptor {
 	 */
 	protected Object _queryIdentifier = null;
 	protected CompleteName _name = null;
-	protected boolean _recursive = false;
+	protected boolean _recursive = true;
 	protected CCNQueryListener _listener = null;
 	
 	public CCNQueryDescriptor(ContentName name, ContentAuthenticator authenticator, 
@@ -49,10 +50,6 @@ public class CCNQueryDescriptor {
 			  				  Object identifier,
 			  				  CCNQueryListener listener) {
 		_name = name;
-		if (Arrays.equals(name.name().component(name.name().count()-1), 
-				RECURSIVE_POSTFIX.getBytes())) {
-			_recursive = true;
-		}
 		_listener = listener;
 		if (null != identifier)
 			_queryIdentifier = identifier;
@@ -73,8 +70,7 @@ public class CCNQueryDescriptor {
 	}
 
     public boolean matchesQuery(CompleteName queryName) {
-    	// Need to cope with recursive queries.
-    	// Switch on enums still weird in Java
+    	// All queries recursive now.
     	
     	// Handle prefix matching
     	// If the query is recursive, see if the remainder of the name matches

@@ -109,6 +109,18 @@ public class OIDLookup {
 		_s2oid.put("SHAwithRSA", "1.2.840.113549.1.1.5");
 		_s2oid.put("SHA-1withRSA", "1.2.840.113549.1.1.5");
 
+		_s2oid.put("SHA256withRSA", "1.2.840.113549.1.1.11");
+		_oid2s.put("1.2.840.113549.1.1.11", "SHA256withRSA");
+		_s2oid.put("SHA-256withRSA", "1.2.840.113549.1.1.11");
+
+		_s2oid.put("SHA384withRSA", "1.2.840.113549.1.1.12");
+		_oid2s.put("1.2.840.113549.1.1.12", "SHA384withRSA");
+		_s2oid.put("SHA-384withRSA", "1.2.840.113549.1.1.12");
+
+		_s2oid.put("SHA512withRSA", "1.2.840.113549.1.1.13");
+		_oid2s.put("1.2.840.113549.1.1.13", "SHA512withRSA");
+		_s2oid.put("SHA-512withRSA", "1.2.840.113549.1.1.13");
+
 		_s2oid.put("MD5withRSA", "1.2.840.113549.1.1.4");
 		_oid2s.put("1.2.840.113549.1.1.4", "MD5withRSA");
 		_oid2s.put("1.3.14.3.2.25", "MD5withRSA");
@@ -131,6 +143,16 @@ public class OIDLookup {
 		_d2oid.put("SHA-1", "1.3.14.3.2.26");
 		_d2oid.put("SHA", "1.3.14.3.2.26");
 		_oid2d.put("1.3.14.3.2.26", "SHA1");
+		
+		_d2oid.put("SHA256", "2.16.840.1.101.3.4.2.1");
+		_d2oid.put("SHA-256", "2.16.840.1.101.3.4.2.1");
+		_oid2d.put("2.16.840.1.101.3.4.2.1", "SHA256");
+		_d2oid.put("SHA384", "2.16.840.1.101.3.4.2.2");
+		_d2oid.put("SHA-384", "2.16.840.1.101.3.4.2.2");
+		_oid2d.put("2.16.840.1.101.3.4.2.2", "SHA384");
+		_d2oid.put("SHA512", "2.16.840.1.101.3.4.2.3");
+		_d2oid.put("SHA-512", "2.16.840.1.101.3.4.2.3");
+		_oid2d.put("2.16.840.1.101.3.4.2.3", "SHA512");
 
 		_d2oid.put("MD4", "1.2.840.113549.2.4");
 		_oid2d.put("1.2.840.113549.2.4", "MD4");
@@ -145,6 +167,13 @@ public class OIDLookup {
 		_d2oid.put("RIPEMD128", "1.3.36.3.2.2");
 		_d2oid.put("RipeMD128", "1.3.36.3.2.2");
 		_oid2d.put("1.3.36.3.2.2", "RIPEMD128");
+		
+		_d2oid.put("SHA1MHT", "1.2.840.113550.11.1.2.1");
+		_d2oid.put("SHA-1MHT", "1.2.840.113550.11.1.2.1");
+		_oid2d.put("1.2.840.113550.11.1.2.1", "SHA1MHT");
+		_d2oid.put("SHA256MHT", "1.2.840.113550.11.1.2.2");
+		_d2oid.put("SHA-256MHT", "1.2.840.113550.11.1.2.2");
+		_oid2d.put("1.2.840.113550.11.1.2.2", "SHA256MHT");
 		
 		_c2oid.put("RSA", "1.2.840.113549.1.1.1");
 		_oid2c.put("1.2.840.113549.1.1.1", "RSA");
@@ -551,8 +580,8 @@ public class OIDLookup {
 			if (alias.length() < 1)
 				throw new IllegalArgumentException("Zero-length alias!");
 
-			Map oid2alg = (Map)mapGet(_e2oid2alg, engine);
-			Map alg2oid = (Map)mapGet(_e2alg2oid, engine);
+			Map<String,String> oid2alg = (Map<String,String>)mapGet(_e2oid2alg, engine);
+			Map<String,String> alg2oid = (Map<String,String>)mapGet(_e2alg2oid, engine);
 	
 			if ((null != oid2alg) && (null != alg2oid)) {
 				if (Character.isDigit(alias.charAt(0))) {

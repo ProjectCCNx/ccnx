@@ -294,11 +294,10 @@ public class JackrabbitCCNRepositoryTest {
 		assertNotNull(repo);
 		String [] arrNameTop = new String[]{baseName};
 		ContentName nameTop = new ContentName(arrNameTop);
-		ContentName nameTopR = new ContentName(nameTop, "*");
 		try {
-			System.out.println("Enumerating: " + nameTopR);
+			System.out.println("Enumerating: " + nameTop);
 			ArrayList<CompleteName> results = 
-				repo.enumerate(new CompleteName(nameTopR,null));
+				repo.enumerate(new CompleteName(nameTop,null));
 			System.out.println("Got " + results.size() + " results:");
 			for (int i=0; i < results.size(); ++i) {
 				System.out.println("Result " + i + ": " + results.get(i).name());
