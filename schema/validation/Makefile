@@ -12,11 +12,15 @@ w3downloads.tgz: always
 ccn.xsd:
 	ln -s ../ccn.xsd
 
+ccn.dtd:
+	ln -s ../ccn.dtd
+
 clean:
 	rm -f $(W3REFS)
 	test -L ccn.xsd && rm ccn.xsd || :
+	test -L ccn.dtd&& rm ccn.dtd || :
 
-check: ccn.xsd $(W3REFS) always
+check: ccn.xsd ccn.dtd $(W3REFS) always
 	xmllint --noout ccn.xsd
 	@echo === ccn.xsd is well-formed
 	xmllint --valid --nowarning --noout ccn.xsd
@@ -31,6 +35,7 @@ check: ccn.xsd $(W3REFS) always
 	xmllint --noout --schema ccn.xsd ccn-test07.xml
 	xmllint --noout --schema ccn.xsd ccn-test08.xml
 	xmllint --noout --schema ccn.xsd ccn-test09.xml
+	xmllint --noout --dtdvalid ccn.dtd ccn-test??.xml
 
 always:
 

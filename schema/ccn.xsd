@@ -86,14 +86,6 @@
   </xs:sequence>
 </xs:complexType>
 
-<xs:complexType name="KeyNameType">
-  <xs:sequence>
-    <xs:element name="Name" type="NameType"/>
-    <xs:element name="PublisherID" type="PublisherIDType"
-			minOccurs="0" maxOccurs="1"/>
-  </xs:sequence>
-</xs:complexType>
-
 <xs:complexType name="InterestType">
   <xs:sequence>
     <xs:element name="Name" type="NameType"/>
@@ -146,6 +138,14 @@
       <xs:element name="Certificate" type="xs:base64Binary"/>
       <xs:element name="KeyName" type="KeyNameType"/>
     </xs:choice>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="KeyNameType">
+  <xs:sequence>
+    <xs:element name="Name" type="NameType"/>
+    <xs:element name="PublisherID" type="PublisherIDType"
+			minOccurs="0" maxOccurs="1"/>
   </xs:sequence>
 </xs:complexType>
 

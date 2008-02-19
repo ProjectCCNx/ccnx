@@ -1,0 +1,79 @@
+<!-- DTD for ccn -->
+<!-- $Id$ -->
+
+<!ENTITY % URI "CDATA">	<!-- a Uniform Resource Identifier -->
+<!ENTITY % commonattrs
+	"xmlns %URI; #FIXED 'http://www.parc.com/ccn'">
+
+<!ELEMENT Mapping	(Name, ContentAuthenticator, Content)>
+<!ATTLIST Mapping	%commonattrs;>
+
+<!ELEMENT Collection	(Link*)>
+<!ATTLIST Collection	%commonattrs;>
+
+<!ELEMENT Link    	(Name, LinkAuthenticator?)>
+<!ATTLIST Link		%commonattrs;>
+
+<!ELEMENT LinkAuthenticator (PublisherID?, NameComponentCount?, Timestamp?, Type?, ContentHash?)>
+<!ATTLIST LinkAuthenticator %commonattrs;>
+
+<!ELEMENT Header	(Start, Count, BlockSize, Length, RootDigest, ContentDigest?)>
+<!ATTLIST Header	%commonattrs;>
+
+<!ELEMENT Start		(#PCDATA)>	<!-- nonNegativeInteger -->
+<!ELEMENT Count		(#PCDATA)>	<!-- nonNegativeInteger -->
+<!ELEMENT BlockSize	(#PCDATA)>	<!-- nonNegativeInteger -->
+<!ELEMENT Length	(#PCDATA)>	<!-- nonNegativeInteger -->
+
+<!ELEMENT RootDigest	(#PCDATA)>	<!-- base64Binary -->
+<!ELEMENT ContentDigest	(#PCDATA)>	<!-- base64Binary -->
+
+<!ELEMENT Content	(#PCDATA)>	<!-- base64Binary -->
+
+<!ELEMENT Name		(Component*)>
+<!ATTLIST Name		%commonattrs;>
+
+<!ELEMENT Component	(#PCDATA)>	<!-- base64Binary -->
+
+<!ELEMENT ContentAuthenticator (
+		PublisherID?,
+		NameComponentCount?,
+		Timestamp?,
+		Type?,
+		ContentHash?,
+		KeyLocator?,
+		Signature?)>
+<!ATTLIST ContentAuthenticator %commonattrs;>
+
+<!ELEMENT Interest	(Name, PublisherID?)>
+<!ATTLIST Interest	%commonattrs;>
+
+<!ELEMENT PublisherID	(#PCDATA)>	<!-- base64Binary SHA-256 digest -->
+<!ATTLIST PublisherID	type CDATA #REQUIRED> <!-- XXX - should be enum -->
+<!ATTLIST PublisherID	%commonattrs;>
+
+<!-- enum 
+<simpleType name="PublisherTypeType">
+  <restriction base="string">
+    <enumeration value="KEY"/>
+    <enumeration value="CERTIFICATE"/>
+    <enumeration value="ISSUER_KEY"/>
+    <enumeration value="ISSUER_CERTIFICATE"/>
+  </restriction>
+</simpleType> -->
+
+<!ELEMENT NameComponentCount (#PCDATA)>      <!-- nonNegativeInteger -->
+<!ELEMENT Timestamp	(#PCDATA)>	<!-- dateTime -->
+<!ELEMENT Type		(#PCDATA)>	<!-- FRAGMENT, LINK, CONTAINER, LEAF, SESSION, SEQUENCE -->
+<!ELEMENT ContentHash	(#PCDATA)>	<!-- base64 encoding of DER-encoded DigestInfo -->
+
+<!ELEMENT KeyLocator	(Key | Certificate | KeyName)>
+<!ATTLIST KeyLocator	%commonattrs;>
+
+<!ELEMENT Key		(#PCDATA)>	<!-- base64Binary -->
+<!ELEMENT Certificate	(#PCDATA)>	<!-- base64Binary -->
+<!ELEMENT Signature	(#PCDATA)>	<!-- base64Binary -->
+
+<!ELEMENT KeyName	(Name, PublisherID?)>
+<!ATTLIST KeyName	%commonattrs;>
+
