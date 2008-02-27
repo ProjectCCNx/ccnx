@@ -12,6 +12,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.data.query.CCNQueryListener;
+import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.network.discovery.CCNDiscoveryListener;
 import com.parc.ccn.network.impl.JackrabbitCCNRepository;
@@ -140,35 +141,41 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 	 * These are immediate gets, returning only what is currently in 
 	 * the repository. Query/interest results we get because they
 	 * are inserted into the repository by the interest manager.
+	 * We have applications that want both recursive and nonrecursive
+	 * behavior. Make that controllable, to let us decide whether
+	 * we need to support both in the final repository protocol.
 	 */
-	public ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator) throws IOException {
-		ArrayList<ContentObject> results = _primaryRepository.get(name, authenticator);
+	public ArrayList<ContentObject> get(ContentName name, 
+									    ContentAuthenticator authenticator,
+									    boolean isRecursive) throws IOException {
+		ArrayList<ContentObject> results = _primaryRepository.get(name, authenticator, isRecursive);
 		
 		for (int i=0; i < _repositories.size(); ++i) {
 			if ((_primaryRepository != _repositories.get(i)) && (null != _repositories.get(i))) {
-				results.addAll(_repositories.get(i).get(name, authenticator));
+				results.addAll(_repositories.get(i).get(name, authenticator, isRecursive));
 			}
 		}
 		return results;
 	}
 
 	/**
-	 * The rest of CCNBase. Pass it on to the CCNInterestManager to
-	 * forward to the network. Also express it to the
-	 * repositories we manage, particularly the primary.
-	 * Each might generate their own CCNQueryDescriptor,
-	 * so we need to group them together.
+	 * Handle passing interest on to the local repositories. This 
+	 * doesn't generate any network interests, and can be used to
+	 * simply watch data coming in to the repository.
 	 */
 	public CCNQueryDescriptor expressInterest(
-			ContentName name,
-			ContentAuthenticator authenticator,
+			Interest interest,
 			CCNQueryListener callbackListener) throws IOException {
 	
-		CCNQueryDescriptor descriptor =  CCNInterestManager.getInterestManager().expressInterest(name, authenticator, callbackListener);
-		// Also put it out to the primary repository, return
-		// that descriptor.
-		// DKS TODO: handle multiple descriptors sensibly.
-		return _primaryRepository.expressInterest(name, authenticator, callbackListener);
+		ArrayList<CCNQueryDescriptor> queries = new ArrayList<CCNQueryDescriptor>();
+		// TODO DKS amalgamate query descriptors into one that can then be
+		// joined with the network QD if necessary to allow cancellation of all.
+		for (int i=0; i < _repositories.size(); ++i) {
+			if ((_primaryRepository != _repositories.get(i)) && (null != _repositories.get(i))) {
+				queries.add(_repositories.get(i).expressInterest(interest, callbackListener));
+			}
+		}
+		return _primaryRepository.expressInterest(interest, callbackListener);
 	}
 	
 	/**
@@ -179,32 +186,28 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 		CCNInterestManager.getInterestManager().cancelInterest(query);
 	}
 
-	public ArrayList<CompleteName> enumerate(CompleteName name) throws IOException {
-		ArrayList<CompleteName> results = _primaryRepository.enumerate(name);
+	public ArrayList<CompleteName> enumerate(Interest interest) throws IOException {
+		ArrayList<CompleteName> results = _primaryRepository.enumerate(interest);
 		
 		for (int i=0; i < _repositories.size(); ++i) {
 			if ((_primaryRepository != _repositories.get(i)) && (null != _repositories.get(i))) {
-				results.addAll(_repositories.get(i).enumerate(name));
+				results.addAll(_repositories.get(i).enumerate(interest));
 			}
 		}
 		return results;
 	}
 
-	public ArrayList<ContentObject> getLocal(ContentName name, ContentAuthenticator authenticator) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
+	public ArrayList<CompleteName> getChildren(CompleteName name) throws IOException {
+		ArrayList<CompleteName> results = _primaryRepository.getChildren(name);
+		
+		for (int i=0; i < _repositories.size(); ++i) {
+			if ((_primaryRepository != _repositories.get(i)) && (null != _repositories.get(i))) {
+				results.addAll(_repositories.get(i).getChildren(name));
+			}
+		}
+		return results;
 	}
 
-	public boolean isLocal(CompleteName name) {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	public CompleteName putLocal(ContentName name, ContentAuthenticator authenticator, byte[] content) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
-	}
-	
 	public CompleteName addProperty(CompleteName target, String propertyName, byte[] propertyValue) throws IOException {
 		// TODO Auto-generated method stub
 		return null;

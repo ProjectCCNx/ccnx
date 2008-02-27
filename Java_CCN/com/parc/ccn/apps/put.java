@@ -42,9 +42,9 @@ public class put {
 				byte [] contents = Utils.getBytesFromFile(theFile);
 				
 				// put as name
-				int version = new Random().nextInt(1000);
+				// int version = new Random().nextInt(1000);
 				// would be version = library.latestVersion(argName) + 1;
-				CompleteName result = library.newVersion(argName, version, contents);
+				CompleteName result = library.newVersion(argName, contents);
 				
 				System.out.println("Inserted file " + args[1] + " as " + result.name());
 				System.exit(0);
@@ -62,9 +62,9 @@ public class put {
 					// put as child of name
 					ContentName nodeName = new ContentName(argName, theFile.getName());
 					
-					int version = new Random().nextInt(1000);
+					// int version = new Random().nextInt(1000);
 					// would be version = library.latestVersion(argName) + 1;
-					CompleteName result = library.newVersion(nodeName, version, contents);
+					CompleteName result = library.newVersion(nodeName, contents);
 					
 					System.out.println("Inserted file " + args[i] + " as " + result.name());
 					

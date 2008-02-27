@@ -15,6 +15,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.data.query.CCNQueryListener;
+import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.network.discovery.CCNDiscovery;
 
@@ -119,7 +120,7 @@ public abstract class GenericCCNRepository implements CCNRepository {
 	/* (non-Javadoc)
 	 * @see com.parc.ccn.network.CCNRepository#get(com.parc.ccn.data.ContentName, com.parc.ccn.data.security.ContentAuthenticator)
 	 */
-	public abstract ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator) throws IOException;
+	public abstract ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator, boolean isRecursive) throws IOException;
 
 	/* (non-Javadoc)
 	 * @see com.parc.ccn.network.CCNRepository#put(com.parc.ccn.data.ContentName, com.parc.ccn.data.security.ContentAuthenticator, byte[])
@@ -129,11 +130,10 @@ public abstract class GenericCCNRepository implements CCNRepository {
 									 byte [] content) throws IOException;
 		
 	/* (non-Javadoc)
-	 * @see com.parc.ccn.network.CCNRepository#expressInterest(com.parc.ccn.data.ContentName, com.parc.ccn.data.security.ContentAuthenticator, com.parc.ccn.data.query.CCNQueryListener)
+	 * @see com.parc.ccn.network.CCNRepository#expressInterest(com.parc.ccn.data.query.Interest, com.parc.ccn.data.query.CCNQueryListener)
 	 */
 	public abstract CCNQueryDescriptor expressInterest(
-			ContentName name,
-			ContentAuthenticator authenticator,
+			Interest interest,
 			CCNQueryListener callbackListener) throws IOException;
 	
 	/* (non-Javadoc)
@@ -146,9 +146,15 @@ public abstract class GenericCCNRepository implements CCNRepository {
 	 * @throws IOException 
 	 */
 	/* (non-Javadoc)
-	 * @see com.parc.ccn.network.CCNRepository#enumerate(com.parc.ccn.data.CompleteName)
+	 * @see com.parc.ccn.network.CCNRepository#enumerate(com.parc.ccn.data.query.Interest)
 	 */
 	public abstract ArrayList<CompleteName> enumerate(
+			Interest interest) throws IOException;
+
+	/* (non-Javadoc)
+	 * @see com.parc.ccn.network.CCNRepository#getChildren(com.parc.ccn.data.CompleteName)
+	 */
+	public abstract ArrayList<CompleteName> getChildren(
 			CompleteName name) throws IOException;
 
 	/* (non-Javadoc)

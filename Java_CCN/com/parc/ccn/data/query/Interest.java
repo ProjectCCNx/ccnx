@@ -5,16 +5,16 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
 
 /**
- * We sometimes need to refer to the "complete" name
- * of an object -- the unique combination of a ContentName
- * and a ContentAuthenticator. The authenticator can
- * be null, as can any of its fields.
+ * This class represents all the allowed specializations
+ * of queries recognized and supported (in a best-effort
+ * fashion) at the CCN level.
  * @author smetters
  *
  */
@@ -41,6 +41,10 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable {
 	public Interest(ContentName name) {
 		this(name, null);
 	}
+	
+	public Interest(String name) throws MalformedContentNameStringException {
+		this(new ContentName(name), null);
+	}
 
 	public Interest(byte [] encoded) throws XMLStreamException {
 		super(encoded);
@@ -50,7 +54,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable {
 
 	public ContentName name() { return _name; }
 	
-	public PublisherID publisher() { return _publisher; }
+	public PublisherID publisherID() { return _publisher; }
 	
 	/**
 	 * Thought about encoding and decoding as flat -- no wrapping
@@ -77,8 +81,8 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable {
 		XMLHelper.writeStartElement(writer, INTEREST_ELEMENT, isFirstElement);
 		
 		name().encode(writer);
-		if (null != publisher())
-			publisher().encode(writer);
+		if (null != publisherID())
+			publisherID().encode(writer);
 
 		writer.writeEndElement();   		
 	}

@@ -44,12 +44,17 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 		if((name == null) || (name.length() == 0)) {
 			_components = null;
 		} else {
-				String[] parts;
-				if (!name.startsWith(SEPARATOR)){
-					throw new MalformedContentNameStringException("ContentName strings must begin with " + SEPARATOR);
-				}
-				parts = name.split(SEPARATOR);
+			String[] parts;
+			if (!name.startsWith(SEPARATOR)){
+				throw new MalformedContentNameStringException("ContentName strings must begin with " + SEPARATOR);
+			}
+			parts = name.split(SEPARATOR);
+			if (parts.length == 0) {
+				// We've been asked to parse the root name.
+				_components = new ArrayList<byte []>(0);
+			} else {
 				_components = new ArrayList<byte []>(parts.length - 1);
+			}
 			// Leave off initial empty component
 			for (int i=1; i < parts.length; ++i) {
 				_components.add(componentParse(parts[i]));

@@ -79,6 +79,7 @@ public class SignatureHelper {
 	public static boolean verify(
 			byte [] data,
 			byte [] signature,
+			String digestAlgorithm,
 			PublicKey verificationKey) throws SignatureException, 
 						NoSuchAlgorithmException, InvalidKeyException {
 		if (null == verificationKey) {
@@ -86,7 +87,11 @@ public class SignatureHelper {
 			throw new IllegalArgumentException("verify: Verifying key cannot be null.");
 		}
 
-		Signature sig = Signature.getInstance(verificationKey.getAlgorithm());
+		String sigAlgName =
+			getSignatureAlgorithmName(((null == digestAlgorithm) || (digestAlgorithm.length() == 0)) ?
+					DigestHelper.DEFAULT_DIGEST_ALGORITHM : digestAlgorithm,
+					verificationKey);
+		Signature sig = Signature.getInstance(sigAlgName);
 
 		sig.initVerify(verificationKey);
 		sig.update(data);
@@ -104,6 +109,7 @@ public class SignatureHelper {
 	public static boolean verify(
 			XMLEncodable xmlData,
 			byte [] signature,
+			String digestAlgorithm,
 			PublicKey verificationKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException {
 
 		if ((null == xmlData) || (null == signature)) {
@@ -113,6 +119,7 @@ public class SignatureHelper {
 		return verify(
 				xmlData.canonicalizeAndEncode(), 
 				signature,
+				digestAlgorithm,
 				verificationKey);
 	}
 
@@ -197,6 +204,12 @@ public class SignatureHelper {
 		return getSignatureAlgorithmName(hashAlgorithm, signingKey.getAlgorithm());
 	}
 
+	public static String getSignatureAlgorithmName(
+			String hashAlgorithm, PublicKey publicKey)
+	{
+		return getSignatureAlgorithmName(hashAlgorithm, publicKey.getAlgorithm());
+	}
+
 	/**
 	 * gets the JCA string name of a signature algorithm, to be used with
 	 * a Signature object
@@ -213,9 +226,9 @@ public class SignatureHelper {
 	{
 		String signatureAlgorithm = OIDLookup.getSignatureAlgorithm(hashAlgorithm,
 				keyAlgorithm);
-		Library.logger().info("getSignatureName: combining " +
-					hashAlgorithm  + " and " + keyAlgorithm +
-					" results in: " + signatureAlgorithm);
+		//Library.logger().info("getSignatureName: combining " +
+		//			hashAlgorithm  + " and " + keyAlgorithm +
+		//			" results in: " + signatureAlgorithm);
 		return signatureAlgorithm;
 	}
 
@@ -235,9 +248,9 @@ public class SignatureHelper {
 	{
 		String signatureAlgorithm = OIDLookup.getSignatureAlgorithmOID(hashAlgorithm,
 				keyAlgorithm);
-		Library.logger().info("getSignatureAlgorithmOID: combining " +
-					hashAlgorithm  + " and " + keyAlgorithm +
-					" results in: " + signatureAlgorithm);
+	//	Library.logger().info("getSignatureAlgorithmOID: combining " +
+	//				hashAlgorithm  + " and " + keyAlgorithm +
+	//				" results in: " + signatureAlgorithm);
 		return signatureAlgorithm;
 	}
 }

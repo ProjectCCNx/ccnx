@@ -57,7 +57,6 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
     protected static final String PUBLISHER_KEY_ELEMENT = "Key";
     protected static final String PUBLISHER_CERTIFICATE_ELEMENT = "Certificate";
 
-    protected KeyLocatorType _type;
     // Fake out a union.
     protected KeyName _keyName;       // null if wrong type
     protected PublicKey _key;
@@ -73,17 +72,14 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
     
     public KeyLocator(KeyName keyName) {
     	_keyName = keyName;
-    	_type = KeyLocatorType.NAME;
     }
 
     public KeyLocator(PublicKey key) {
     	_key = key;
-    	_type = KeyLocatorType.KEY;
     }
     
     public KeyLocator(X509Certificate certificate) {
     	_certificate = certificate;
-    	_type = KeyLocatorType.CERTIFICATE;
     }
     
     public KeyLocator(byte [] encoded) throws XMLStreamException {
@@ -95,7 +91,13 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 	public PublicKey key() { return _key; }
     public KeyName name() { return _keyName; }
     public X509Certificate certificate() { return _certificate; }
-    public KeyLocatorType type() { return _type; }
+    public KeyLocatorType type() { 
+    	if (null != certificate())
+    		return KeyLocatorType.CERTIFICATE;
+    	if (null != key())
+    		return KeyLocatorType.KEY;
+    	return KeyLocatorType.NAME; 
+    }
 
 	@Override
 	public int hashCode() {
@@ -103,7 +105,6 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 		int result = 1;
 		result = PRIME * result + ((_key == null) ? 0 : _key.hashCode());
 		result = PRIME * result + ((_keyName == null) ? 0 : _keyName.hashCode());
-		result = PRIME * result + ((_type == null) ? 0 : _type.hashCode());
 		result = PRIME * result + ((_certificate == null) ? 0 : _certificate.hashCode());
 		return result;
 	}
@@ -127,24 +128,13 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 				return false;
 		} else if (!_keyName.equals(other.name()))
 			return false;
-		if (_type == null) {
-			if (other._type != null)
-				return false;
-		} else if (!_type.equals(other._type))
-			return false;
 		return true;
 	}
 
 	public void decode(XMLEventReader reader) throws XMLStreamException {
 		XMLHelper.readStartElement(reader, KEY_LOCATOR_ELEMENT);
 
-		String strType = XMLHelper.readElementText(reader, KEY_LOCATOR_TYPE_ELEMENT);
-		_type = nameToType(strType);
-		if (null == _type) {
-			throw new XMLStreamException("Cannot parse key type: " + strType);
-		}
-		
-		if (type() == KeyLocatorType.KEY) {
+		if (XMLHelper.peekStartElement(reader, PUBLISHER_KEY_ELEMENT)) {
 			String strKey = XMLHelper.readElementText(reader, PUBLISHER_KEY_ELEMENT);
 			try {
 				byte [] encodedKey = XMLHelper.decodeElement(strKey);
@@ -160,7 +150,7 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 			if (null == _key) {
 				throw new XMLStreamException("Cannot parse key: " + strKey);
 			}
-		} else if (type() == KeyLocatorType.CERTIFICATE) {
+		} else if (XMLHelper.peekStartElement(reader, PUBLISHER_CERTIFICATE_ELEMENT)) {
 			String strCert = XMLHelper.readElementText(reader, PUBLISHER_CERTIFICATE_ELEMENT);
 			try {
 				byte [] encodedCert = XMLHelper.decodeElement(strCert);
@@ -174,7 +164,7 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 			if (null == _certificate) {
 				throw new XMLStreamException("Cannot parse certificate: " + strCert);
 			}
-		} else if (type() == KeyLocatorType.NAME) {
+		} else {
 			_keyName = new KeyName();
 			_keyName.decode(reader);
 		}
@@ -198,9 +188,6 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		XMLHelper.writeStartElement(writer, KEY_LOCATOR_ELEMENT, isFirstElement);
-		writer.writeStartElement(KEY_LOCATOR_TYPE_ELEMENT);
-		writer.writeCharacters(typeToName(type()));
-		writer.writeEndElement();   
 		if (type() == KeyLocatorType.KEY) {
 			XMLHelper.writeElement(writer, PUBLISHER_KEY_ELEMENT, 
 					XMLHelper.encodeElement(key().getEncoded()));

@@ -2,7 +2,6 @@ package com.parc.ccn.library;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.Header;

@@ -121,7 +121,7 @@ public class DigestHelper {
 			MerklePath mp = new MerklePath(info.getDigest());
 			return mp.verify(content);
 		} else {
-			byte [] digest = digest(OIDLookup.getDigestName(info.getAlgorithmId().toString()), content);
+			byte [] digest = digest(OIDLookup.getDigestName(info.getAlgorithmId().getObjectId().getId()), content);
 			return Arrays.equals(info.getDigest(), digest);
 		}
 	}

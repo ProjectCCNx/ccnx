@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.Security;
 import java.security.SignatureException;
 import java.sql.Timestamp;
@@ -25,11 +26,13 @@ import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.data.query.CCNQueryListener;
+import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
+import com.parc.ccn.network.CCNInterestManager;
 import com.parc.ccn.network.CCNRepositoryManager;
 import com.parc.ccn.security.crypto.CCNMerkleTree;
 import com.parc.ccn.security.crypto.DigestHelper;
@@ -59,11 +62,29 @@ public class StandardCCNLibrary implements CCNLibrary {
 	static {
 		Security.addProvider(new BouncyCastleProvider());
 	}
+	
+	protected static StandardCCNLibrary _library = null;
 
 	/**
 	 * Do we want to do this this way, or everything static?
 	 */
 	protected KeyManager _userKeyManager = null;
+	
+	public static StandardCCNLibrary getLibrary() { 
+		if (null == _library) {
+			synchronized (StandardCCNLibrary.class) {
+				if (null == _library) {
+					try {
+						_library = new StandardCCNLibrary();
+					} catch (ConfigurationException e) {
+						Library.logger().severe("Configuration exception initializing CCN library: " + e.getMessage());
+						throw new RuntimeException("Configuration exception initializing CCN library: " + e.getMessage(), e);
+					}
+				}
+			}
+		}
+		return _library;
+	}
 
 	public StandardCCNLibrary(KeyManager keyManager) {
 		_userKeyManager = keyManager;
@@ -228,15 +249,45 @@ public class StandardCCNLibrary implements CCNLibrary {
 		return (name.authenticator().type() == ContentType.LINK);
 	}
 
-	public CompleteName newVersion(ContentName name, int version, byte[] contents) throws SignatureException, IOException {
-		return newVersion(name, version, contents, getDefaultPublisher());
+	/**
+	 * Just attempt to generate the latest version of a piece
+	 * of content, regardless of who authored the previous
+	 * version.
+	 * 
+	 * Right now have all sorts of uncertainties in versioning --
+	 * do we know the latest version number of a piece of content?
+	 * Even if we've read it, it isn't atomic -- by the time
+	 * we write our new version, someone else might have updated
+	 * the number...
+	 */
+	public CompleteName newVersion(ContentName name,
+								   byte[] contents) throws SignatureException, IOException {
+		return newVersion(name, contents, getDefaultPublisher());
 	}
 
-	public CompleteName newVersion(ContentName name, int version, byte[] contents,
+	/**
+	 * @param publisher Who we want to publish this as,
+	 * not who published the existing version.
+	 */
+	public CompleteName newVersion(
+			ContentName name, 
+			byte[] contents,
 			PublisherID publisher) throws SignatureException, IOException {
 
 		try {
-			return newVersion(name, version, contents, publisher, null, null);
+			ContentName latestVersion = 
+				getLatestVersionName(name, null);
+		
+			int currentVersion = -1;
+			if (null != latestVersion)
+				// will return -1 if unversioned 
+				currentVersion = getVersionNumber(latestVersion);
+			
+			// This ends us up with version numbers starting
+			// at 0. If we want version numbers starting at 1,
+			// modify this.
+			return addVersion(name, currentVersion+1, contents, publisher, null, null);
+		
 		} catch (InvalidKeyException e) {
 			Library.logger().info("InvalidKeyException using default key.");
 			throw new SignatureException(e);
@@ -249,7 +300,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 		}
 	}
 
-	public CompleteName newVersion(ContentName name, int version, byte [] contents,
+	public CompleteName addVersion(ContentName name, int version, byte [] contents,
 			PublisherID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws SignatureException, 
 			InvalidKeyException, NoSuchAlgorithmException, IOException {
@@ -259,7 +310,11 @@ public class StandardCCNLibrary implements CCNLibrary {
 
 		if (null == locator)
 			locator = keyManager().getKeyLocator(signingKey);
-	
+		
+		if (null == publisher) {
+			publisher = keyManager().getPublisherID(signingKey);
+		}
+		
 		// Construct new name
 		// <name>/<VERSION_MARKER>/<version_number>
 		ContentName versionedName = versionName(name, version);
@@ -269,36 +324,71 @@ public class StandardCCNLibrary implements CCNLibrary {
 	}
 
 	/**
-	 * Get the latest version published by this publisher.
+	 * Because getting just the latest version number would
+	 * require getting the latest version name first, 
+	 * just get the latest version name and allow caller
+	 * to pull number.
+	 * @return If null, no existing version found.
 	 */
-	public int getLatestVersionNumber(ContentName name, PublisherID publisher) {
-		// TODO Auto-generated method stub
-		return 1;
-	}
-
-	/**
-	 * Get the latest version published by anybody.
-	 * @param name
-	 * @return
-	 */
-	public int getLatestVersionNumber(ContentName name) {
-		return getLatestVersionNumber(name, null);
-	}
-	
 	public ContentName getLatestVersionName(ContentName name, PublisherID publisher) {
-		// Some overlapping work between getLatest and versionName,
-		// in terms of creating intermediate unversioned form...
-		// Could be clever and carry around extra components and
-		// just length pointers.
-		int latestVersion = getLatestVersionNumber(name, publisher);
-		return versionName(name, latestVersion);
+		// Challenge -- Dan's proposed latest version syntax,
+		// <name>/latestversion/1/2/3... works well if there
+		// are 12 versions, not if there are a million. 
+		// Need to do a limited get/enumerate just to get version
+		// names, without enumerating all the blocks.
+		// DKS TODO general way of doing this
+		// right now use list children. Should be able to do
+		// it in Jackrabbit with XPath.
+		ContentName baseVersionName = 
+			new ContentName(versionRoot(name), VERSION_MARKER);
+		try {
+			// Because we're just looking at children of
+			// the name -- not actual pieces of content --
+			// look only at ContentNames.
+			ArrayList<CompleteName> availableVersions = 
+				CCNRepositoryManager.getRepositoryManager().getChildren(new CompleteName(baseVersionName, null));
+			
+			if ((null == availableVersions) || (availableVersions.size() == 0)) {
+				// No existing version.
+				return null;
+			}
+			
+			Iterator<CompleteName> vit = availableVersions.iterator();
+			
+			// Assume (not currently true) that we've gotten
+			// back only content that matches our (publisher) criteria.
+			// So just need to sort on version numbers.
+			int latestVersion = -1;
+			ContentName latestVersionName = null;
+			while (vit.hasNext()) {
+				CompleteName version = vit.next();
+				int thisVersion =
+					getVersionNumber(version.name());
+				if (thisVersion > latestVersion) {
+					latestVersion = thisVersion;
+					latestVersionName = version.name();
+				}
+			}
+			// Should we rely on unique names? Or worry
+			// about CompleteNames? We only really have 
+			// ContentNames here, so return just that.
+			return latestVersionName;
+			
+		} catch (IOException e) {
+			Library.logger().warning("IOException getting latest version number of name: " + name + ": " + e.getMessage());
+			Library.warningStackTrace(e);
+		}
+		return null;
 	}
 
 	/**
 	 * Extract the version information from this name.
+	 * @return Version number, or -1 if not versioned.
 	 */
-	public int getVersion(ContentName name) {
+	public int getVersionNumber(ContentName name) {
 		int offset = name.containsWhere(VERSION_MARKER);
+		if (offset < 0)
+			return -1; // no version information.
 		return Integer.valueOf(ContentName.componentPrint(name.component(offset+1)));
 	}
 
@@ -640,17 +730,33 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * 
 	 * DKS TODO: should this get at least verify?
 	 */
-	public ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator) throws IOException {
-		return CCNRepositoryManager.getRepositoryManager().get(name, authenticator);
+	public ArrayList<ContentObject> get(ContentName name, 
+										ContentAuthenticator authenticator,
+										boolean isRecursive) throws IOException {
+		return CCNRepositoryManager.getRepositoryManager().get(name, authenticator,isRecursive);
 	}
 
-	public CCNQueryDescriptor expressInterest(ContentName name,
-			ContentAuthenticator authenticator,
+	/**
+	 * The rest of CCNBase. Pass it on to the CCNInterestManager to
+	 * forward to the network. Also express it to the
+	 * repositories we manage, particularly the primary.
+	 * Each might generate their own CCNQueryDescriptor,
+	 * so we need to group them together.
+	 */
+	public CCNQueryDescriptor expressInterest(
+			Interest interest,
 			CCNQueryListener listener) throws IOException {
-		return CCNRepositoryManager.getRepositoryManager().expressInterest(name, authenticator, listener);
+		
+		// Express interest to the network and to the repositories.
+		// TODO DKS amalgamate across queries to return single query descriptor that
+		// can be used to cancel.
+		CCNQueryDescriptor descriptor =  
+			CCNInterestManager.getInterestManager().expressInterest(interest, listener);
+		return CCNRepositoryManager.getRepositoryManager().expressInterest(interest, listener);
 	}
 
 	public void cancelInterest(CCNQueryDescriptor query) throws IOException {
+		CCNInterestManager.getInterestManager().cancelInterest(query);
 		CCNRepositoryManager.getRepositoryManager().cancelInterest(query);
 	}
 	
@@ -663,16 +769,16 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * @return
 	 * @throws IOException 
 	 */
-	public ArrayList<CompleteName> enumerate(CompleteName query) throws IOException {
+	public ArrayList<CompleteName> enumerate(Interest query) throws IOException {
 		return CCNRepositoryManager.getRepositoryManager().enumerate(query);		
 	}
-	
+
 	/**
 	 * Do need a way to enumerate just the high-level documents,
 	 * prior to fragmentation. Particularly necessary to cope
 	 * with version collision errors...
 	 */
-	public ArrayList<CompleteName> enumerateDocuments(CompleteName query) throws IOException {
+	public ArrayList<CompleteName> enumerateDocuments(Interest query) throws IOException {
 		ContentName nameToOpen = query.name();
 		if (isFragment(query.name())) {
 			// DKS TODO: should we do this?
@@ -682,7 +788,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 			// if publisherID is null, will get any publisher
 			nameToOpen = 
 				getLatestVersionName(nameToOpen, 
-									 query.authenticator().publisherID());
+									 query.publisherID());
 		}
 		
 		// Should have name of root of version we want to
@@ -706,7 +812,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 		// do we want to use the low-level get, as the high-level
 		// one might unfragment?
 		ArrayList<CompleteName> documents = 
-						enumerate(new CompleteName(headerName, query.authenticator()));
+						enumerate(new Interest(headerName, query.publisherID()));
 		
 		return documents;
 	}
@@ -716,17 +822,20 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * don't think this has been verified already. Probably
 	 * need to separate to keep the two apart.
 	 * @param object
+	 * @param publicKey The key to use to verify the signature,
+	 * 	or null if the key should be retrieved using the key 
+	 *  locator.
 	 * @return
 	 * @throws XMLStreamException 
 	 * @throws NoSuchAlgorithmException 
 	 * @throws SignatureException 
 	 * @throws InvalidKeyException 
 	 */
-	public boolean verify(ContentObject object) 
+	public boolean verify(ContentObject object, PublicKey publicKey) 
 			throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException {
 		
 		try {
-			if (!object.verify()) {
+			if (!object.verify(publicKey)) {
 				Library.logger().warning("Low-level verify failed on " + object.name());
 			}
 		} catch (Exception e) {
@@ -786,7 +895,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 		// prefiltering? Can it mark objects as verified?
 		// do we want to use the low-level get, as the high-level
 		// one might unfragment?
-		ArrayList<ContentObject> headers = get(headerName, name.authenticator());
+		ArrayList<ContentObject> headers = get(headerName, name.authenticator(),false);
 		
 		if ((null == headers) || (headers.size() == 0)) {
 			Library.logger().info("No available content named: " + headerName.toString());
@@ -806,7 +915,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 			// Low-level verify just checks that signer actually signed.
 			// High-level verify checks trust.
 			try {
-				if (!verify(header)) {
+				if (!verify(header, null)) {
 					Library.logger().warning("Found header: " + header.name().toString() + " that fails to verify.");
 					headerIt.remove();
 				}
@@ -834,7 +943,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 		} catch (XMLStreamException e) {
 			Library.logger().warning("XMLStreamException: trying to create a CCNDescriptor from header: " + headerName.toString());
 			Library.warningStackTrace(e);
-			throw new IOException(e);
+			throw new IOException("XMLStreamException: trying to create a CCNDescriptor from header: " + headerName.toString());
 		}
 	}
 		
@@ -849,5 +958,10 @@ public class StandardCCNLibrary implements CCNLibrary {
 	
 	public long tell(CCNDescriptor ccnObject) {
 		return ccnObject.tell();
+	}
+
+	public boolean isLocal(CompleteName name) {
+		// TODO Auto-generated method stub
+		return false;
 	}
 }

@@ -62,6 +62,21 @@ public class ContentNameTest {
 		assertNotNull(name);
 		System.out.println("Name: " + name);
 		assertEquals(name.toString(), testString);
+
+		String testString2 = ContentName.SEPARATOR;
+		ContentName name2 = null;
+		System.out.println("ContentName: parsing name string \"" + testString2+"\"");
+		try {
+			name2 = new ContentName(testString2);
+		} catch (MalformedContentNameStringException e) {
+			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
+			e.printStackTrace();
+			name2 = null;
+		}
+		assertNotNull(name2);
+		System.out.println("Name: " + name2);
+		assertEquals(name2.toString(), testString2);
+	
 	}
 	
 	@Test(expected=MalformedContentNameStringException.class)

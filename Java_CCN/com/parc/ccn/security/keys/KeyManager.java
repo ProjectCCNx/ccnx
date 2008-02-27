@@ -1,10 +1,12 @@
 package com.parc.ccn.security.keys;
 
+import java.io.IOException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
+import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
 
@@ -29,8 +31,11 @@ public abstract class KeyManager {
 
 	public abstract PrivateKey getDefaultSigningKey();
 	public abstract PublicKey getDefaultPublicKey();
+	public abstract KeyLocator getDefaultKeyLocator();
 
-	public abstract KeyLocator getKeyLocator(PrivateKey signingKey);
+	public abstract ContentName getDefaultKeyName(byte [] keyID);
+	public abstract PublicKey getKey(PublisherID desiredKeyID,
+									 KeyLocator locator) throws IOException;
 	
 	public abstract PrivateKey getSigningKey(String alias);
 	public abstract PrivateKey getSigningKey(PublisherID publisher);
@@ -71,8 +76,12 @@ public abstract class KeyManager {
 	 * @param publisherID
 	 * @param keyLocator
 	 * @return
+	 * @throws IOException 
 	 */
-	public abstract PublicKey getPublicKey(PublisherID publisherID, KeyLocator keyLocator);
+	public abstract PublicKey getPublicKey(PublisherID publisherID, KeyLocator keyLocator) throws IOException;
 
 	public abstract PublisherID getPublisherID(PrivateKey signingKey);
+
+	public abstract KeyLocator getKeyLocator(PrivateKey signingKey);
+	
 }

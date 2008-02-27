@@ -14,6 +14,7 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.data.query.CCNQueryListener;
+import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.LinkAuthenticator;
@@ -50,6 +51,7 @@ public interface CCNLibrary extends CCNBase {
 
 	/**
 	 * Publish a piece of content under a particular identity.
+	 * All of these automatically make the final name unique.
 	 * @param name
 	 * @param contents
 	 * @param publisher selects one of our identities to publish under
@@ -59,39 +61,34 @@ public interface CCNLibrary extends CCNBase {
 	public CompleteName put(ContentName name, byte [] contents,
 							PublisherID publisher) throws SignatureException, IOException;
 	
-	public CompleteName put(ContentName name, byte[] contents, 
+	public CompleteName put(
+			ContentName name, 
+			byte[] contents, 
 			ContentAuthenticator.ContentType type,
 			PublisherID publisher) throws SignatureException, IOException;
 
-	public CompleteName put(ContentName name, byte [] contents,
+	public CompleteName put(
+			ContentName name, 
+			byte [] contents,
 			ContentAuthenticator.ContentType type,
 			PublisherID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException;
 	
 	// internal functions about fragmentation - may be exposed, or in std impl
 	
-	public CompleteName newVersion(ContentName name, int version, 
+	public CompleteName newVersion(ContentName name,
 								   byte [] contents) throws SignatureException, IOException;
-	public CompleteName newVersion(ContentName name, int version, 
+	public CompleteName newVersion(ContentName name,
 								   byte [] contents, 
 								   PublisherID publisher) throws SignatureException, IOException;
-	public CompleteName newVersion(ContentName name, int version, 
+	
+	public CompleteName addVersion(
+			ContentName name, 
+			int version, 
 			byte [] contents,
 			PublisherID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, IOException;
 	
-	/**
-	 * Get the latest version published by this publisher.
-	 */
-	public int getLatestVersionNumber(ContentName name, PublisherID publisher);
-
-	/**
-	 * Get the latest version published by anybody.
-	 * @param name
-	 * @return
-	 */
-	public int getLatestVersionNumber(ContentName name);
-
 	/**
 	 * Get the latest version published by this publisher,
 	 * or by anybody if publisher is null.
@@ -104,7 +101,7 @@ public interface CCNLibrary extends CCNBase {
 	 * @param name
 	 * @return version or -1 if no recognizable version information.
 	 */
-	public int getVersion(ContentName name);
+	public int getVersionNumber(ContentName name);
 	
 	/**
 	 * Compute the name of this version.
@@ -154,13 +151,13 @@ public interface CCNLibrary extends CCNBase {
 	public CompleteName addToCollection(ContentName name, CompleteName [] additionalContents);
 	public CompleteName removeFromCollection(ContentName name, CompleteName [] additionalContents);
 
-	public CCNQueryDescriptor expressInterest(ContentName name,
-			ContentAuthenticator authenticator,
+	public CCNQueryDescriptor expressInterest(
+			Interest interest,
 			CCNQueryListener listener) throws IOException;
 	
 	public void cancelInterest(CCNQueryDescriptor query) throws IOException;
 	
-	public ArrayList<CompleteName> enumerate(CompleteName query) throws IOException;
+	public ArrayList<CompleteName> enumerate(Interest query) throws IOException;
 
 	/**
 	 * Approaches to read and write content. Low-level CCNBase returns
@@ -191,4 +188,13 @@ public interface CCNLibrary extends CCNBase {
 	public CCNDescriptor open(CompleteName name) throws IOException;
 	
 	public long read(CCNDescriptor ccnObject, byte [] buf, long offset, long len);
+
+	/**
+	 * Does this name refer to a node that represents
+	 * local (protected) content?
+	 * @param name
+	 * @return
+	 */
+	public boolean isLocal(CompleteName name);
+
 }

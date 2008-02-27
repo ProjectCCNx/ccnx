@@ -45,6 +45,7 @@ import org.apache.jackrabbit.core.TransientRepository;
 import org.apache.jackrabbit.rmi.client.ClientRepositoryFactory;
 import org.apache.jackrabbit.rmi.remote.RemoteRepository;
 import org.apache.jackrabbit.rmi.server.ServerAdapterFactory;
+import org.apache.jackrabbit.util.Text;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.config.SystemConfiguration;
@@ -53,6 +54,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.data.query.CCNQueryListener;
+import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
@@ -227,10 +229,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		return getLocalJackrabbitRepository(SERVER_PORT);
 	}
 	
-	/**
-	 * Package
-	 */
-	Session session() { return _session; }
+	public Session session() { return _session; }
 	
 	public CompleteName put(ContentName name, ContentAuthenticator authenticator, byte[] content) throws IOException {
 
@@ -593,13 +592,26 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	 * @throws RepositoryException 
 	 * @throws InvalidQueryException 
 	 */
-	public ArrayList<ContentObject> get(ContentName name, ContentAuthenticator authenticator) throws IOException {
+	public ArrayList<ContentObject> get(ContentName name, 
+										ContentAuthenticator authenticator,
+										boolean isRecursive) throws IOException {
 
 		ArrayList<ContentObject> objects = new ArrayList<ContentObject>();
 
 		try {
 			// Strips trailing '*' if there is one.
-			String queryString = getQueryString(name, authenticator);
+			// All queries are recursive. Should gets be?
+			// In the theory of making this the way you 
+			// get matching results to a query, yes. In
+			// terms of the ability to tell that something
+			// is not in the repository, no -- we'd like
+			// to know, for example, if a name is there at all,
+			// or if it doesn't have data attached to it.
+			// As a temporary hack, allow us to pass this
+			// in as a flag.
+			// TODO DKS decide whether to keep it this way.
+			String queryString = 
+				getQueryString(name, authenticator, isRecursive);
 			// Might not need this if query string bakes it in.
 
 			Query q = null;
@@ -619,7 +631,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 					// either need better query to only pull these out,
 					// which might need a different node type
 					objects.add(getContentObject(node));
-				}
+				} 
 			}
 			Library.logger().warning("Query returned " + iter.getSize() + " results, of which " + objects.size() + " were CCN nodes.");
 		} catch (RepositoryException e) {
@@ -643,36 +655,64 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		return node.hasProperty(SIGNATURE_PROPERTY);
 	}
 	
-	protected String getQueryString(ContentName name, ContentAuthenticator authenticator) {
+	/**
+	 * Might need to eventually get query strings based
+	 * on either full content authenticators or just
+	 * interests, so hide this distinction here.
+	 * @param name
+	 * @param authenticator
+	 * @param isRecursive
+	 * @return
+	 */
+	protected String getQueryString(ContentName name, 
+			ContentAuthenticator authenticator,
+			boolean isRecursive) {
+		return getQueryString(name, isRecursive);
+	}
+	
+	protected String getQueryString(Interest interest, boolean isRecursive) {
+		return getQueryString(interest.name(), isRecursive);
+	}
+	
+	/**
+	 * Right now all we actually implement is query by
+	 * name, filtering on other properties done upstream.
+	 * @param name
+	 * @param authenticator
+	 * @param isRecursive
+	 * @return
+	 */
+	protected String getQueryString(ContentName name, 
+									boolean isRecursive) {
 		// TODO: DKS: make Xpath match full query including whatever
 		// authentication info is specified by querier
-		// nameToPath already strips trailing recursive bits
+		// nameToPath already strips trailing deprecated recursive bits
 		// This gets us to the root of the name we want
 		StringBuffer queryStringBuf = 
 			new StringBuffer("/jcr:root" + nameToPath(name));
-		if (isRecursiveQuery(name)) {
+		if (isRecursive) {
 			// the two slashes says go down any number of levels
 			queryStringBuf.append("//*");
 		}
 		// DKS: TODO: Add a requirement to make it a valid CCN node 
 		// right now filtering results upstream
 		// queryStringBuf.append("[@" + PUBLISHER_PROPERTY + "!= ''");
-		Library.logger().info("Querying for name: " + name);
-		Library.logger().info("Query is: " + queryStringBuf.toString());
+		Library.logger().info("Query: name: " + name.toString() + " query: " + queryStringBuf.toString());
 		return queryStringBuf.toString();
 	}
 	
-    protected static boolean isRecursiveQuery(ContentName name) {
+    protected static boolean isRecursiveQuery(Interest interest) {
     	return true;
 	}
 
 	@Override
-	public CCNQueryDescriptor expressInterest(ContentName name, ContentAuthenticator authenticator, 
+	public CCNQueryDescriptor expressInterest(
+			Interest interest, 
 			CCNQueryListener callbackListener) throws IOException {
 
 		int events = Event.NODE_ADDED | Event.NODE_REMOVED | Event.PROPERTY_ADDED | Event.PROPERTY_CHANGED | Event.PROPERTY_REMOVED;
 		JackrabbitEventListener el = new JackrabbitEventListener(this, callbackListener, events);
-		JackrabbitCCNQueryDescriptor descriptor = new JackrabbitCCNQueryDescriptor(name, authenticator, el, callbackListener);
+		JackrabbitCCNQueryDescriptor descriptor = new JackrabbitCCNQueryDescriptor(interest, el, callbackListener);
 		startListening(descriptor);
 		return descriptor;
 	}
@@ -703,17 +743,17 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 			// It will automatically handle recursion for us, as well
 			// as filtering events generated by this session. So we can
 			// avoid being notified for events generated by our own puts.
-			Library.logger().info("Jackrabbit: startListening to path: " + nameToPath(jcqd.name().name()) + " recursive? " + jcqd.recursive());
+			Library.logger().info("Jackrabbit: startListening to path: " + nameToPath(jcqd.name()) + " recursive? " + jcqd.recursive());
 			ObservationManager o = _session.getWorkspace().getObservationManager();
 			o.addEventListener(jcqd.jackrabbitListener(), jcqd.jackrabbitListener().events(), 
-							   nameToPath(jcqd.name().name()), 
+							   nameToPath(jcqd.name()), 
 							   jcqd.recursive(), // isDeep -- do we pull only this node, or 
 							   					 // tree under it
 							   null, null, 
 							   true); // noLocal -- don't pull our own
 									  // events
 		} catch (RepositoryException e) {
-			Library.logger().warning("Exception starting to listen for events on path: " + jcqd.name().name());
+			Library.logger().warning("Exception starting to listen for events on path: " + jcqd.name());
 			Library.warningStackTrace(e);
 			throw new IOException(e.getMessage());
 		}
@@ -724,7 +764,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		// This is where we check those.
 		// DKS: could rely on listener to do this...
 		ArrayList<CompleteName> currentMatches = 
-				enumerate(jcqd.name());
+				enumerate(jcqd.interest());
 		Iterator<CompleteName> it = currentMatches.iterator();
 		CompleteName thisName = null;
 		while (it.hasNext()) {
@@ -760,8 +800,17 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		// then do a save and presumably a checkin on parent.
 	}
 	
-	ContentName getName(Node n) throws RepositoryException {
-		return parsePath(n.getPath());
+	ContentName getName(Node n) throws IOException {
+		ContentName name = null;;
+		try {
+			name = parsePath(n.getPath());
+			
+		} catch (RepositoryException e) {
+			Library.logger().warning("Repository exception extracting name from node: " + n.toString() + ": " + e.getMessage());
+			Library.logStackTrace(Level.WARNING, e);
+			throw new IOException("Repository exception extracting name from node: " + n.toString() + ": " + e.getMessage());
+		}
+		return name;
 	}
 	
 	CompleteName getCompleteName(Node n) throws IOException {
@@ -927,6 +976,9 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		// binary components, turn them back into bytes,
 		// and base64 them. We then need to prefix them
 		// with something recognizable.
+		// We could ues Jackrabbit's JCR quoting mechanisms
+		// to directly quote the binary, but that ends up being
+		// very long...
 		if (str.contains("%")) {
 			str = BASE64_MARKER + 
 		      XMLHelper.encodeElement(component);
@@ -934,21 +986,18 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 			// base64 character. If we find a / in the base64'ed
 			// string, we change it into -, which is legal for
 			// jackrabbit but not used in base64.
-			if (str.contains("/")) {
-				str = str.replace('/', '-');
-			}
+
+			str = str.replace("/", "_X002F_");
+			// Oddly, this doesn't cope with =, which is not
+			// legal in a query.
+			str = str.replace("=", "_X003D_");
+			str = str.replace("+", "_X002B_");
+			//if (str.charAt(str.length()-1) == '_')
+			//	str = str.substring(0, str.length()-1);
 			return str;
 		} 
 		
-		// DKS -- TODO: must to real JSR quoting. This is
-		// too weird a mix of URL quoting and JSR stuff.
-		// Jackrabbit will insert nodes with +'s for spaces,
-		// but won't query for them.
-		if (str.contains("+")) {
-			str = str.replace("+", "_x0020_");
-		}
-		
-		
+	
 		if (Character.isDigit(str.charAt(0))) {
 			// Then deal with leading integers, which XPath
 			// can't handle. Need to quote them with a
@@ -956,7 +1005,17 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 			// remove. 
 			str = LEADING_NUMBER_MARKER + str;
 		}
-		
+		str = Text.escapeIllegalJcrChars(str);
+
+		// Deal with the things that XPath doesn't like even
+		// though JCR does.
+		if (str.contains("="))
+			str = str.replace("=","_X003D_");
+		if (str.contains("+"))
+			str = str.replace("+","_X002B_");
+
+		//if (str.charAt(str.length()-1) == '_')
+		//	str = str.substring(0, str.length()-1);
 		return str;
 	}
 	
@@ -988,9 +1047,12 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		if (parseString.indexOf(BASE64_MARKER) == 0) {
 			try {
 				String base64String = parseString.substring(BASE64_MARKER.length());
-				if (base64String.indexOf("-") > 0) {
-					base64String = base64String.replace('-', '/');
-				}
+				//if (base64String.endsWith("_x003D"))
+				//	base64String = base64String.substring(0, base64String.length()-6) + "=";
+				base64String = base64String.replace("_X003D_", "=");
+				base64String = base64String.replace("_X002B_", "+");
+				base64String = base64String.replace("_X002F_", "/");
+				
 				return XMLHelper.decodeElement(base64String);
 			} catch (IOException e) {
 				Library.logger().warning("Cannot decode base64-encoded element that we encoded: " + parseString);
@@ -998,14 +1060,18 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 			}
 		}
 		
-		// DKS -- TODO: must to real JSR quoting. This is
-		// too weird a mix of URL quoting and JSR stuff.
-		// Jackrabbit will insert nodes with +'s for spaces,
-		// but won't query for them.
-		if (parseString.contains("_x0020_")) {
-			parseString = parseString.replace("_x0020_", "+");
-		}
+		//if (parseString.endsWith("_x003D"))
+		//	parseString = parseString.substring(0, parseString.length()-6) + "=";
 		
+		parseString = Text.unescapeIllegalJcrChars(parseString);
+		
+		// Deal with the things that XPath doesn't like even
+		// though JCR does. C
+		if (parseString.contains("_X003D_"))
+			parseString = parseString.replace("_X003D_","=");
+		if (parseString.contains("_X002B_"))
+			parseString = parseString.replace("_X002B_","+");
+
 		if (parseString.startsWith(LEADING_NUMBER_MARKER)) {
 			return ContentName.componentParse(parseString.substring(LEADING_NUMBER_MARKER.length()));
 		}
@@ -1090,15 +1156,82 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 			throw new RuntimeException("UTF-8 not supported", e);
 		}
 	}
-
+	
 	@Override
-	public ArrayList<CompleteName> enumerate(CompleteName name) throws IOException {
+	public ArrayList<CompleteName> enumerate(Interest interest) throws IOException {
+		return enumerate(interest, true, true);
+	}
+	
+	@Override
+	public ArrayList<CompleteName> getChildren(CompleteName name) throws IOException {
+		// Finds the node in question, and then enumerates its
+		// children.
+		ArrayList<CompleteName> names = new ArrayList<CompleteName>();
+		try {
+			// Strips trailing '*' if there is one, as that
+			// was old-form recursive flag. Currently standard
+			// enumeration interface is recursive, but offer
+			// a non-recursive version as getChildren.
+			String queryString = 
+				getQueryString(name.name(), name.authenticator(), false);
+			Query q = null;
+			try {
+				q = _session.getWorkspace().getQueryManager().createQuery(queryString, Query.XPATH);
+			} catch (InvalidQueryException e) {
+				Library.logger().warning("Invalid query string: " + queryString);
+				Library.logger().warning("Exception: " + e.getClass().getName() + " m: " + e.getMessage());
+				throw new IOException("Exception: " + e.getClass().getName() + " m: " + e.getMessage());
+			}
+
+			NodeIterator iter = q.execute().getNodes();
+			while (iter.hasNext()) {
+				Node node = (Node) iter.next();
+				// Now, given that we have the parent, get the children.
+				NodeIterator children = node.getNodes();
+				while (children.hasNext()) {
+					Node child = (Node) children.next();
+					if (isCCNNode(child)) {
+						// DKS TODO: this is a temporary hack to mark CCN nodes.
+						// either need better query to only pull these out,
+						// which might need a different node type
+						names.add(getCompleteName(child));
+					} else {
+						names.add(new CompleteName(getName(child), null));
+					}
+				}
+			}
+//			Library.logger().warning("Query returned " + iter.getSize() + " results, of which " + names.size() + " were CCN nodes.");
+		} catch (RepositoryException e) {
+			Library.logger().warning("Invalid query or problem executing get: " + e.getMessage());
+			Library.warningStackTrace(e);
+			throw new IOException("Invalid query or problem executing get: " + e.getMessage());
+		}
+		return names;
+	}
+
+	/**
+	 * Internal enumeration function that handles
+	 * massing up list of names below this one.
+	 * @param name
+	 * @param isRecursive Do we list one level below, or all the way down.
+	 * @param contentObjectsOnly Do we list names for content objects, or subnames.
+	 * @return
+	 * @throws IOException
+	 */
+	protected ArrayList<CompleteName> enumerate(
+			Interest interest, 
+			boolean isRecursive,
+			boolean contentObjectsOnly) throws IOException {
+		
 		ArrayList<CompleteName> names = new ArrayList<CompleteName>();
 
 		try {
-			// Strips trailing '*' if there is one, makes
-			// query recursive if there is.
-			String queryString = getQueryString(name.name(), name.authenticator());
+			// Strips trailing '*' if there is one, as that
+			// was old-form recursive flag. Currently standard
+			// enumeration interface is recursive, but offer
+			// a non-recursive version as getChildren.
+			String queryString = 
+				getQueryString(interest, isRecursive);
 			Query q = null;
 			try {
 				q = _session.getWorkspace().getQueryManager().createQuery(queryString, Query.XPATH);
@@ -1116,6 +1249,8 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 					// either need better query to only pull these out,
 					// which might need a different node type
 					names.add(getCompleteName(node));
+				} else if (!contentObjectsOnly) {
+					names.add(new CompleteName(getName(node), null));
 				}
 			}
 			Library.logger().warning("Query returned " + iter.getSize() + " results, of which " + names.size() + " were CCN nodes.");

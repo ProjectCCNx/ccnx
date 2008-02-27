@@ -3,9 +3,9 @@ package com.parc.ccn.apps;
 import java.io.IOException;
 
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
+import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.StandardCCNLibrary;
 
 public class interest {
@@ -24,9 +24,9 @@ public class interest {
 			// List contents under all names given
 			
 			for (int i=0; i < args.length; ++i) {
-				ContentName argName = new ContentName(args[i]);
+				Interest interest = new Interest(args[i]);
 			
-				CCNQueryDescriptor query = library.expressInterest(argName, null, null);
+				CCNQueryDescriptor query = library.expressInterest(interest, null);
 				
 			} 
 			System.exit(0);

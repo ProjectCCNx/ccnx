@@ -31,8 +31,9 @@ public class get {
 			StandardCCNLibrary library = new StandardCCNLibrary();
 			
 			if (args.length == 2) {
-				
-				ArrayList<ContentObject> objects = library.get(argName, null);
+				// Adjust to use defragmenting interface, find latest
+				// version, etc...
+				ArrayList<ContentObject> objects = library.get(argName, null, true);
 				
 				System.out.println("Retrieved " + objects.size() + " objects named: " + argName);
 				System.out.println("Writing to file " + args[1]);

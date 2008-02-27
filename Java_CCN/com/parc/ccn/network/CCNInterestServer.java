@@ -12,6 +12,7 @@ import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.network.rpc.DataBlock;
 import com.parc.ccn.network.rpc.Name;
 import com.parc.ccn.network.rpc.NameList;
@@ -55,12 +56,12 @@ public class CCNInterestServer extends RepoTransport_TRANSPORTTOREPOPROG_ServerS
 		// TODO: DKS cope with authenticators or otherwise
 		//   make life cope with more than one piece of
 		//   content with the same name.
-		CompleteName name = new CompleteName(new ContentName(arg1), null);
-		Library.logger().info("CCNInterestServer: Enumerating " + name.name());
+		Interest interest = new Interest(new ContentName(arg1), null);
+		Library.logger().info("CCNInterestServer: Enumerating " + interest.name());
 		ArrayList<CompleteName> availableNames = null;
 		try {
 			Library.logger().info("About to call enumerate. Repository? " + ((null == _theRepository) ? "no" : "yes"));
-			availableNames = _theRepository.enumerate(name);
+			availableNames = _theRepository.enumerate(interest);
 			Library.logger().info("Enumerate_1: got " + availableNames.size() + " results.");
 		
 		} catch (IOException e) {
@@ -89,7 +90,8 @@ public class CCNInterestServer extends RepoTransport_TRANSPORTTOREPOPROG_ServerS
 		Library.logger().info("CCNInterestServer: GetBlock, name = " + name);
 		ArrayList<ContentObject> availableContent = null;
 		try {
-			availableContent = _theRepository.get(name, null);
+			// Use recursive get.
+			availableContent = _theRepository.get(name, null, true);
 		
 			// Right now, can't send back more than
 			// one block. If we get more than one, complain.

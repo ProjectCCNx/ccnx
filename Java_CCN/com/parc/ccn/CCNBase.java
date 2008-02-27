@@ -8,6 +8,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNQueryListener;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
+import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 
 public interface CCNBase {
@@ -27,14 +28,20 @@ public interface CCNBase {
 	/**
 	 * Retrieve any local content available for a
 	 * given name. Returns immediately.
+	 * For now, allow control of recursive vs non-recursive
+	 * gets, to determine whether this is key functionality.
+	 * Interests are always recursive.
 	 * @param name
 	 * @param authenticator
+	 * @param isRecursive if false, just return content objects
+	 * 	associated with this name if any, or an empty list if none.
 	 * @return
 	 * @throws IOException
 	 */
 	public ArrayList<ContentObject> get(
 			ContentName name,
-			ContentAuthenticator authenticator) throws IOException;
+			ContentAuthenticator authenticator,
+			boolean isRecursive) throws IOException;
 
 	/**
 	 * Query, or express an interest in particular
@@ -56,8 +63,7 @@ public interface CCNBase {
 	 * @throws IOException
 	 */
 	public CCNQueryDescriptor expressInterest(
-			ContentName name,
-			ContentAuthenticator authenticator,
+			Interest interest,
 			CCNQueryListener callbackListener) throws IOException;
 	
 	public void cancelInterest(CCNQueryDescriptor query) throws IOException;

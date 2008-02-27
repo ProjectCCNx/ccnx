@@ -7,10 +7,10 @@ import java.util.Date;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.CompleteName;
-import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.data.query.CCNQueryListener;
+import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.StandardCCNLibrary;
 
@@ -87,7 +87,7 @@ public class watch extends Thread implements CCNQueryListener {
 	}
 	
 	public void queryCanceled(CCNQueryDescriptor query) {
-		System.out.println("Canceled query for: " + query.name().name());
+		System.out.println("Canceled query for: " + query.name());
 	}
 	
 	public void queryTimedOut(CCNQueryDescriptor query) {
@@ -112,9 +112,9 @@ public class watch extends Thread implements CCNQueryListener {
 			watch listener = new watch(library);
 			
 			for (int i=0; i < args.length; ++i) {
-				ContentName argName = new ContentName(args[i]);
+				Interest interest = new Interest(args[i]);
 			
-				CCNQueryDescriptor query = library.expressInterest(argName, null, listener);
+				CCNQueryDescriptor query = library.expressInterest(interest, listener);
 				listener.addQuery(query);
 			} 
 			

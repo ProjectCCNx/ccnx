@@ -244,6 +244,10 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     	return (null == _timestamp);
     }
     
+    public boolean emptyKeyLocator() {
+    	return (null == _keyLocator);
+    }
+    
 	public byte[] contentDigest() {
 		return _contentDigest;
 	}
@@ -467,7 +471,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 			writer.writeCharacters(XMLHelper.encodeElement(contentDigest()));
 			writer.writeEndElement();   
 		}
-		if (null != keyLocator()) {
+		if (!emptyKeyLocator()) {
 			keyLocator().encode(writer);
 		}
 		if (!emptySignature()) {
@@ -564,14 +568,19 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 	 * 	 only need to verify that signature once. If verifySignature
 	 *   is true, we do that work. If it is false, we simply verify
 	 *   that this piece of content matches that signature; assuming 
-	 *   that the caller has alreaday verified that signature.
+	 *   that the caller has already verified that signature.
+	 * @param publicKey If the caller already knows a public key
+	 *   that should be used to verify the signature, they can
+	 *   pass it in. Otherwise, the key locator in the object
+	 *   will be used to find the key.
 	 * @throws SignatureException 
 	 * @throws XMLStreamException 
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
 	 */
 	public static boolean verify(ContentObject object,
-								 boolean verifySignature) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException {
+								 boolean verifySignature,
+								 PublicKey publicKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException {
 		// TODO DKS: make more efficient.
 		
 		// Start with the cheap part. Check that the content
@@ -593,7 +602,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 		}
 	
 		if (verifySignature) {
-			result = verifyContentSignature(object);
+			result = verifyContentSignature(object, publicKey);
 		}
 		return result;
 	}
@@ -616,20 +625,35 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
 	 */
-	public static boolean verifyContentSignature(ContentObject object) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException {
-		// Get a copy of the public key.
-		// Simple routers will install key manager that
-		// will just pull from CCN.
-		PublicKey publicKey = 
-			KeyManager.getKeyManager().getPublicKey(
-							object.authenticator().publisherID(),
-							object.authenticator().keyLocator());
+	public static boolean verifyContentSignature(
+			ContentObject object,
+			PublicKey publicKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException {
 	
 		if (null == publicKey) {
-			throw new SignatureException("Cannot obtain public key to verify object: " + object.name() + ". Key locator: " + 
+			// Get a copy of the public key.
+			// Simple routers will install key manager that
+			// will just pull from CCN.
+			try {
+				publicKey = 
+					KeyManager.getKeyManager().getPublicKey(
+						object.authenticator().publisherID(),
 						object.authenticator().keyLocator());
+
+				if (null == publicKey) {
+					throw new SignatureException("Cannot obtain public key to verify object: " + object.name() + ". Key locator: " + 
+						object.authenticator().keyLocator());
+				}
+			} catch (IOException e) {
+				throw new SignatureException("Cannot obtain public key to verify object: " + object.name() + ". Key locator: " + 
+						object.authenticator().keyLocator() + " exception: " + e.getMessage(), e);				
+			}
 		}
-	
+		
+		// Verify that this key matches the publisher ID
+		// in the object. 
+		// DKS TODO -- this doesn't work as well
+		// when not a KEY identifier.
+		
 		// Format data for verification. If this
 		// is a fragment, we will need to verify just the 
 		// root. 
@@ -648,6 +672,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 		boolean result = 
 			SignatureHelper.verify(verifyName, 
 							   	   object.authenticator().signature(),
+							   	   DigestHelper.DEFAULT_DIGEST_ALGORITHM,
 							   	   publicKey);
 		return result;
 		

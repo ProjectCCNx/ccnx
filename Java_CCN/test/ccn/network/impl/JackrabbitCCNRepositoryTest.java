@@ -12,6 +12,9 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.Random;
 
+import javax.jcr.RepositoryException;
+import javax.jcr.query.InvalidQueryException;
+import javax.jcr.query.Query;
 import javax.jmdns.ServiceInfo;
 
 import junit.framework.Assert;
@@ -29,6 +32,7 @@ import com.parc.ccn.Library;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
@@ -57,6 +61,13 @@ public class JackrabbitCCNRepositoryTest {
 	static ContentName name3 = new ContentName(arrName3);
 	static String [] arrName4 = new String[]{baseName,subName1,document5};
 	static ContentName name4 = new ContentName(arrName4);
+	static String [] testname = new String[]{"parc.com", "home", "smetters", "Key", "_b_QVHo0jm3yle8hqO1eJtNtlIpoLf3xZKS_X002F_qexnCviNrs_X003D_"};
+//	static String [] testname = new String[]{"parc.com", "home", "smetters", "Key", "_b_QVHo0jm3yle8hqO1eJtNtlIpoLf3xZKS_x002F_qexnCviNrs_x003D_"};
+	// static String [] testname = new String[]{"test","smetters","values","data","_b_cSil7rUBIYjrplNNeZxzBLt7IwvOmqFCWFqzfO345do_x003D_!"};
+	//static String [] testname = new String[]{"test","smetters","values","data","_b_cSil7rUBIYjrplNNeZxzBLt7IwvOmqFCWFqzfO345do_x003D_"};
+	//static String [] testname = new String[]{"test","smetters","values","data", "testdata.txt"};
+	static ContentName testCN = new ContentName(testname);
+	static ContentAuthenticator testAuth = null;
 	
 	static public byte [] document3 = new byte[]{0x01, 0x02, 0x03, 0x04,
 				0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c,
@@ -139,6 +150,13 @@ public class JackrabbitCCNRepositoryTest {
 			Library.logger().info("Generating authenticator for query.");
 			pubonlyauth = new ContentAuthenticator(pubkey);
 			
+			testAuth = new ContentAuthenticator(
+					testCN,
+					null,
+					pubkey, ContentAuthenticator.now(),
+				ContentAuthenticator.ContentType.LEAF, 
+				rootDN.getBytes(), false,
+				nameLoc, pair.getPrivate());
 			
 		} catch (Exception ex) {
 			XMLEncodableTester.handleException(ex);
@@ -158,6 +176,20 @@ public class JackrabbitCCNRepositoryTest {
 	public void tearDown() throws Exception {
 	}
 
+	@Test
+	public void testQueryString() {
+		String queryString = "/jcr:root/test/briggs/foo.txt/_b_Ey8By8VSg1vo9pJ5sB9XmITu8nGEz0u6NqNmbyBVzak_x003D_";
+		try {
+			Query q = repo.session().getWorkspace().getQueryManager().createQuery(queryString, Query.XPATH);
+		} catch (InvalidQueryException e) {
+			Library.logger().warning("Invalid query string: " + queryString);
+			Library.logger().warning("Exception: " + e.getClass().getName() + " m: " + e.getMessage());
+			Assert.fail();
+		} catch (RepositoryException e) {
+			Library.logger().warning("Exception: " + e.getClass().getName() + " m: " + e.getMessage());
+			Assert.fail();
+		}
+	}
 
 	@Test
 	public void testPut() {
@@ -190,7 +222,7 @@ public class JackrabbitCCNRepositoryTest {
 			for (int i=0; i < versionedNames.length; ++i) {
 				Library.logger().info("Querying for name: " + versionedNames[i]);
 				ArrayList<ContentObject> obj2 = 
-					repo.get(versionedNames[i], null);
+					repo.get(versionedNames[i], null, true);
 				Library.logger().info("For name: " + versionedNames[i] + " got: " + obj2.size() + " answers.");
 				for (int j=0; j < obj2.size(); ++j) {
 					if (null != obj2.get(j))
@@ -201,6 +233,41 @@ public class JackrabbitCCNRepositoryTest {
 			Library.logger().info("Got exception : " + e.getClass().getName() + " message: " + e.getMessage());
 			e.printStackTrace();
 			throw new AssertionError(e);
+		}
+	}
+	
+	@Test
+	public void testRecall() {
+		assertNotNull(repo);
+		
+		try {
+			Library.logger().info("Inserting and retrieving name.");
+			
+			CompleteName putName = repo.put(testCN, testAuth, rootDN.getBytes());
+			
+			Library.logger().info("Getting name we inserted.");
+			ArrayList<ContentObject> testGet =
+				repo.get(testCN, null, false);
+			Library.logger().info("Got : " + testGet.size() + " names.");
+			for (int i=0; i < testGet.size(); ++i) {
+				if (null != testGet.get(i)) {
+					Library.logger().info(i + ": " + testGet.get(i).name());
+				}
+			}
+			
+			Library.logger().info("Getting name we got back.");
+			testGet =
+				repo.get(putName.name(), null, false);
+			Library.logger().info("Got : " + testGet.size() + " names.");
+			for (int i=0; i < testGet.size(); ++i) {
+				if (null != testGet.get(i)) {
+					Library.logger().info(i + ": " + testGet.get(i).name());
+				}
+			}
+			
+		} catch (Exception e) {
+			Library.logger().info("Got exception : " + e.getClass().getName() + ": " + e.getMessage());
+			Library.warningStackTrace(e);
 		}
 	}
 
@@ -221,7 +288,7 @@ public class JackrabbitCCNRepositoryTest {
 				queryName = new ContentName(names[i], "*");
 				Library.logger().info("Querying for name: " + queryName);
 				ArrayList<ContentObject> obj2 = 
-					repo.get(queryName, pubonlyauth);
+					repo.get(queryName, pubonlyauth, true);
 				Library.logger().info("For name: " + names[i] + " got: " + obj2.size() + " answers.");
 				for (int j=0; j < obj2.size(); ++j) {
 					if (null != obj2.get(j))
@@ -297,7 +364,7 @@ public class JackrabbitCCNRepositoryTest {
 		try {
 			System.out.println("Enumerating: " + nameTop);
 			ArrayList<CompleteName> results = 
-				repo.enumerate(new CompleteName(nameTop,null));
+				repo.enumerate(new Interest(nameTop,null));
 			System.out.println("Got " + results.size() + " results:");
 			for (int i=0; i < results.size(); ++i) {
 				System.out.println("Result " + i + ": " + results.get(i).name());

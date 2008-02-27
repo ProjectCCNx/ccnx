@@ -8,11 +8,9 @@ import org.acplt.oncrpc.OncRpcException;
 import org.acplt.oncrpc.OncRpcProtocols;
 
 import com.parc.ccn.Library;
-import com.parc.ccn.config.SystemConfiguration;
-import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.data.query.CCNQueryListener;
-import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.network.rpc.Name;
 import com.parc.ccn.network.rpc.RepoTransport_REPOTOTRANSPORTPROG_Client;
 
@@ -95,15 +93,14 @@ public class CCNInterestManager {
 	 * @throws IOException
 	 */
 	public CCNQueryDescriptor expressInterest(
-			ContentName name,
-			ContentAuthenticator authenticator,
+			Interest interest,
 			CCNQueryListener callbackListener) throws IOException {
 		
 		// Work around no portmap
 		if (null == _client)
 			return null;
 		
-		Name oncName = name.toONCName();
+		Name oncName = interest.name().toONCName();
 		// For right now, we skip sending the  authenticator with the query. In the next
 		// version we will extend the transport agent to handle full queries.
 		// TODO handle full queries in transport agent.
@@ -116,7 +113,7 @@ public class CCNInterestManager {
 			//throw new IOException("Exception in expressInterest RPC interface: " + e.getMessage());
 			return null; // DKS make robust to lack of transport
 		}
-		return new CCNQueryDescriptor(name, authenticator, null, callbackListener);
+		return new CCNQueryDescriptor(interest, null, callbackListener);
 	}
 	
 	public void cancelInterest(CCNQueryDescriptor query) throws IOException {
@@ -124,7 +121,7 @@ public class CCNInterestManager {
 		if (null == _client)
 			return;
 		
-		Name oncName = query.name().name().toONCName();
+		Name oncName = query.name().toONCName();
 		try {
 			_client.CancelInterest_1(oncName);
 			if (null != query.queryListener()) {
