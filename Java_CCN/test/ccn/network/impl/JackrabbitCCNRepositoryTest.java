@@ -180,7 +180,7 @@ public class JackrabbitCCNRepositoryTest {
 	public void testQueryString() {
 		String queryString = "/jcr:root/test/briggs/foo.txt/_b_Ey8By8VSg1vo9pJ5sB9XmITu8nGEz0u6NqNmbyBVzak_x003D_";
 		try {
-			Query q = repo.session().getWorkspace().getQueryManager().createQuery(queryString, Query.XPATH);
+			repo.session().getWorkspace().getQueryManager().createQuery(queryString, Query.XPATH);
 		} catch (InvalidQueryException e) {
 			Library.logger().warning("Invalid query string: " + queryString);
 			Library.logger().warning("Exception: " + e.getClass().getName() + " m: " + e.getMessage());

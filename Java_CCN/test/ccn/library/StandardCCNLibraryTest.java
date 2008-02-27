@@ -14,7 +14,6 @@ import junit.framework.Assert;
 import org.junit.Test;
 
 import com.parc.ccn.CCNBase;
-import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
@@ -25,7 +24,6 @@ import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.StandardCCNLibrary;
-import com.parc.ccn.network.CCNRepository;
 import com.parc.ccn.network.CCNRepositoryManager;
 
 

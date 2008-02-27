@@ -750,8 +750,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 		// Express interest to the network and to the repositories.
 		// TODO DKS amalgamate across queries to return single query descriptor that
 		// can be used to cancel.
-		CCNQueryDescriptor descriptor =  
-			CCNInterestManager.getInterestManager().expressInterest(interest, listener);
+		CCNInterestManager.getInterestManager().expressInterest(interest, listener);
 		return CCNRepositoryManager.getRepositoryManager().expressInterest(interest, listener);
 	}
 

@@ -4,7 +4,6 @@ import java.io.IOException;
 
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.StandardCCNLibrary;
 
@@ -26,7 +25,7 @@ public class interest {
 			for (int i=0; i < args.length; ++i) {
 				Interest interest = new Interest(args[i]);
 			
-				CCNQueryDescriptor query = library.expressInterest(interest, null);
+				library.expressInterest(interest, null);
 				
 			} 
 			System.exit(0);

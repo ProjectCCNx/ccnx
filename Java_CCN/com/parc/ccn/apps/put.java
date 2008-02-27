@@ -3,7 +3,6 @@ package com.parc.ccn.apps;
 import java.io.File;
 import java.io.IOException;
 import java.security.SignatureException;
-import java.util.Random;
 
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.CompleteName;
