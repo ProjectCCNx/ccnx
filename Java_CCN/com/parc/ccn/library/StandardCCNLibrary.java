@@ -369,10 +369,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 				CompleteName version = vit.next();
 				int thisVersion =
 					getVersionNumber(version.name());
-				if ((thisVersion > latestVersion) ||
-					((thisVersion == latestVersion) && 
-					 (null != latestVersionName) &&
-					 (version.authenticator().timestamp().after(latestVersionName.authenticator().timestamp())))) {
+				if (thisVersion > latestVersion) { 
 					latestVersion = thisVersion;
 					latestVersionName = version;
 				}
@@ -788,7 +785,9 @@ public class StandardCCNLibrary implements CCNLibrary {
 		// TODO DKS amalgamate across queries to return single query descriptor that
 		// can be used to cancel.
 		try {
-			CCNInterestManager.getInterestManager().expressInterest(interest, listener);
+			CCNInterestManager interestManager = CCNInterestManager.getInterestManager();
+			if (null != interestManager)
+				interestManager.expressInterest(interest, listener);
 		} catch (Exception e) {
 			Library.logger().info("CCN network unavailable: " + e.getMessage() + " Continuing without network connectivity.");
 		}
