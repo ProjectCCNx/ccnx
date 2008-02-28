@@ -1,0 +1,9 @@
+#!/bin/sh
+type xmllint
+cat << EOF
+****************
+You may need to install a newer version of xmllint,
+or change your PATH to find the right one.
+****************
+EOF
+exit 1

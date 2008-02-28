@@ -21,6 +21,7 @@ clean:
 	test -L ccn.dtd&& rm ccn.dtd || :
 
 check: ccn.xsd ccn.dtd $(W3REFS) always
+	xmllint --noout --schema XMLSchema.xsd XMLSchema.xsd || ./oops
 	xmllint --noout ccn.xsd
 	@echo === ccn.xsd is well-formed
 	xmllint --valid --nowarning --noout ccn.xsd
