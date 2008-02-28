@@ -9,7 +9,8 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.util.GenericXMLEncodable;
+import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
 
 /**
@@ -21,7 +22,7 @@ import com.parc.ccn.data.util.XMLHelper;
  * @author smetters
  *
  */
-public class Collection extends ContentObject {
+public class Collection extends GenericXMLEncodable implements XMLEncodable {
 	
 	protected static final String COLLECTION_ELEMENT = "Collection";
 
@@ -52,6 +53,10 @@ public class Collection extends ContentObject {
 		decode(iStream);
 	}
 	
+	public Collection(byte [] encoded) throws XMLStreamException {
+		super(encoded);
+	}
+
 	public Collection() {
 		
 	}
@@ -70,6 +75,14 @@ public class Collection extends ContentObject {
 	
 	public void add(ContentName name) {
 		_contents.add(new Link(name, null));
+	}
+	
+	public void remove(int i) {
+		_contents.remove(i);
+	}
+	
+	public void remove(Link content) {
+		_contents.remove(content);
 	}
 	
 	public int size() { return _contents.size(); }

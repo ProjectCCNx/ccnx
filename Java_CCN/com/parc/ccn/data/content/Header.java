@@ -10,7 +10,8 @@ import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
-import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.util.GenericXMLEncodable;
+import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
 
 /**
@@ -23,7 +24,7 @@ import com.parc.ccn.data.util.XMLHelper;
  * and, root hash of hash tree, hash of reconstructed content
  *
  */
-public class Header extends ContentObject {
+public class Header extends GenericXMLEncodable implements XMLEncodable  {
 	
     public enum FragmentationType {SIMPLE_BLOCK};
     protected static final HashMap<FragmentationType, String> FragmentationTypeNames = new HashMap<FragmentationType, String>();

@@ -326,6 +326,12 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 		return cut(componentParse(component)); 
 	}
 	
+	public boolean isPrefixOf(ContentName other) {
+		if (this.count() > other.count())
+			return false;
+		return this.equals(other, this.count());
+	}
+	
 	public void decode(XMLEventReader reader) throws XMLStreamException {
 		XMLHelper.readStartElement(reader, CONTENT_NAME_ELEMENT);
 		

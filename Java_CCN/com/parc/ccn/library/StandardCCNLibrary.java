@@ -144,7 +144,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 			locator = keyManager().getKeyLocator(signingKey);
 	
 		try {
-			return put(name, collectionData.canonicalizeAndEncode(signingKey), ContentType.CONTAINER, publisher);
+			return put(name, collectionData.canonicalizeAndEncode(signingKey), ContentType.COLLECTION, publisher);
 		} catch (XMLStreamException e) {
 			Library.logger().warning("Cannot canonicalize a standard container!");
 			Library.warningStackTrace(e);
@@ -328,6 +328,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * require getting the latest version name first, 
 	 * just get the latest version name and allow caller
 	 * to pull number.
+	 * DKS TODO return complete name -- of header? Or what...
 	 * @return If null, no existing version found.
 	 */
 	public ContentName getLatestVersionName(ContentName name, PublisherID publisher) {
@@ -355,30 +356,56 @@ public class StandardCCNLibrary implements CCNLibrary {
 			
 			Iterator<CompleteName> vit = availableVersions.iterator();
 			
-			// Assume (not currently true) that we've gotten
-			// back only content that matches our (publisher) criteria.
-			// So just need to sort on version numbers.
+			// DKS TODO
+			// Need to make sure we match our publisher criteria
+			// if any. Really need to do this in original query,
+			// as filtering could be complex (want to be able to
+			// ask for items signed by anyone whose key was signed
+			// by someone in particular, not just things published
+			// by a particular signer).
 			int latestVersion = -1;
-			ContentName latestVersionName = null;
+			CompleteName latestVersionName = null;
 			while (vit.hasNext()) {
 				CompleteName version = vit.next();
 				int thisVersion =
 					getVersionNumber(version.name());
-				if (thisVersion > latestVersion) {
+				if ((thisVersion > latestVersion) ||
+					((thisVersion == latestVersion) && 
+					 (null != latestVersionName) &&
+					 (version.authenticator().timestamp().after(latestVersionName.authenticator().timestamp())))) {
 					latestVersion = thisVersion;
-					latestVersionName = version.name();
+					latestVersionName = version;
 				}
 			}
 			// Should we rely on unique names? Or worry
 			// about CompleteNames? We only really have 
 			// ContentNames here, so return just that.
-			return latestVersionName;
+			return latestVersionName.name();
 			
 		} catch (IOException e) {
 			Library.logger().warning("IOException getting latest version number of name: " + name + ": " + e.getMessage());
 			Library.warningStackTrace(e);
 		}
 		return null;
+	}
+	
+	/**
+	 * Things are not as simple as this. Most things
+	 * are fragmented. Maybe make this a simple interface
+	 * that puts them back together and returns a byte []?
+	 * @throws IOException 
+	 */
+	public ContentObject getLatestVersion(ContentName name, PublisherID publisher) throws IOException {
+		ContentName currentName = getLatestVersionName(name, publisher);
+		
+		ArrayList<ContentObject> contents =
+			get(currentName, null, false);
+		
+		if (contents.size() > 1) {
+			Library.logger().info("Brain-dead getLatestVersion interface has been overwhelmed with too much content for name: " + name);
+			return null;
+		}
+		return contents.get(0);
 	}
 
 	/**
@@ -406,7 +433,17 @@ public class StandardCCNLibrary implements CCNLibrary {
 							   ContentName.componentParse(Integer.toString(version)));
 	}
 	
-	public static boolean isVersioned(ContentName name) {
+	public boolean isVersionOf(ContentName version, ContentName parent) {
+		if (!isVersioned(version))
+			return false;
+		
+		if (isVersioned(parent))
+			parent = versionRoot(parent);
+		
+		return parent.isPrefixOf(version);
+	}
+	
+	public boolean isVersioned(ContentName name) {
 		return name.contains(VERSION_MARKER);
 	}
 

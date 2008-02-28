@@ -112,6 +112,24 @@ public interface CCNLibrary extends CCNBase {
 	public ContentName versionName(ContentName name, int version);
 
 	/**
+	 * Does this name represent a version of the given parent?
+	 * @param version
+	 * @param parent
+	 * @return
+	 */
+	public boolean isVersionOf(ContentName version, ContentName parent);
+	
+	public boolean isVersioned(ContentName name);
+	
+	/**
+	 * Things are not as simple as this. Most things
+	 * are fragmented. Maybe make this a simple interface
+	 * that puts them back together and returns a byte []?
+	 * @throws IOException 
+	 */
+	public ContentObject getLatestVersion(ContentName name, PublisherID publisher) throws IOException;
+
+	/**
 	 * Does this specific name point to a link?
 	 * Looks at local (cached) data only. 
 	 * If more than one piece of content matches

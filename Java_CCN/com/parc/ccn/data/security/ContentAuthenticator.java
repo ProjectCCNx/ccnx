@@ -29,7 +29,7 @@ import com.parc.ccn.security.keys.KeyManager;
 
 public class ContentAuthenticator extends GenericXMLEncodable implements XMLEncodable {
 
-	public enum ContentType {FRAGMENT, LINK, CONTAINER, LEAF, SESSION, HEADER};
+	public enum ContentType {FRAGMENT, LINK, COLLECTION, LEAF, SESSION, HEADER};
     protected static final HashMap<ContentType, String> ContentTypeNames = new HashMap<ContentType, String>();
     protected static final HashMap<String, ContentType> ContentNameTypes = new HashMap<String, ContentType>();
     public static final String CONTENT_AUTHENTICATOR_ELEMENT = "ContentAuthenticator";
@@ -42,13 +42,13 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     static {
         ContentTypeNames.put(ContentType.FRAGMENT, "FRAGMENT");
         ContentTypeNames.put(ContentType.LINK, "LINK");
-        ContentTypeNames.put(ContentType.CONTAINER, "CONTAINER");
+        ContentTypeNames.put(ContentType.COLLECTION, "COLLECTION");
         ContentTypeNames.put(ContentType.LEAF, "LEAF");
         ContentTypeNames.put(ContentType.SESSION, "SESSION");
         ContentTypeNames.put(ContentType.HEADER, "HEADER");
         ContentNameTypes.put("FRAGMENT", ContentType.FRAGMENT);
         ContentNameTypes.put("LINK", ContentType.LINK);
-        ContentNameTypes.put("CONTAINER", ContentType.CONTAINER);
+        ContentNameTypes.put("COLLECTION", ContentType.COLLECTION);
         ContentNameTypes.put("LEAF", ContentType.LEAF);
         ContentNameTypes.put("SESSION", ContentType.SESSION);
         ContentNameTypes.put("HEADER", ContentType.HEADER);
