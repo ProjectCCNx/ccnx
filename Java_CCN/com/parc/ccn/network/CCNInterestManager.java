@@ -99,6 +99,11 @@ public class CCNInterestManager {
 		if (null == _client)
 			return;
 		
+		// Need to be able to do this more than once.
+		// Or should do it once per interest for thing that needs
+		// canceling...
+		callbackListener.addInterest(interest);
+		
 		Name oncName = interest.name().toONCName();
 		// For right now, we skip sending the  authenticator with the query. In the next
 		// version we will extend the transport agent to handle full queries.

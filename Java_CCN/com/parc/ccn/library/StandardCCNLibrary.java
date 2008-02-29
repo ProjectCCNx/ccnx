@@ -809,6 +809,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 		} catch (Exception e) {
 			Library.logger().info("CCN network unavailable: " + e.getMessage() + " Continuing without network connectivity.");
 		}
+		// Will add the interest to the listener
 		CCNRepositoryManager.getRepositoryManager().expressInterest(interest, listener);
 		return;
 	}

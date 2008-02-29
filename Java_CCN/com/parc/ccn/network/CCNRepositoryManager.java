@@ -166,6 +166,7 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 			Interest interest,
 			CCNInterestListener callbackListener) throws IOException {
 	
+		// Needs to be ok to call this more than once.
 		callbackListener.addInterest(interest);
 		for (int i=0; i < _repositories.size(); ++i) {
 			if ((_primaryRepository != _repositories.get(i)) && (null != _repositories.get(i))) {

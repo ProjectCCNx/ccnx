@@ -27,10 +27,8 @@ public abstract class BasicInterestListener implements CCNInterestListener {
 	 */
 	protected CCNBase _interestProvider = null;
 	
-	public BasicInterestListener(CCNBase interestProvider,
-								 Interest initialInterest) {
+	public BasicInterestListener(CCNBase interestProvider) {
 		_interestProvider = interestProvider;
-		addInterest(initialInterest);
 	}
 	
 	public void addInterest(Interest interest) {
