@@ -46,10 +46,6 @@ public class CompleteName extends GenericXMLEncodable implements XMLEncodable {
 		this(name, null, authenticator);
 	}
 
-	public CompleteName(byte [] encoded) throws XMLStreamException {
-		super(encoded);
-	}
-
 	public CompleteName() {} // for use by decoders
 
 	public ContentName name() { return _name; }

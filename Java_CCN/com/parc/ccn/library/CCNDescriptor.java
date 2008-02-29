@@ -82,9 +82,9 @@ public class CCNDescriptor {
 		_headerAuthenticator = headerObject.authenticator();
 		_baseName = StandardCCNLibrary.headerRoot(headerObject.name());
 		
-		_header = new Header(headerObject.content());	
+		_header = new Header();
+		_header.decode(headerObject.content());
 	}
-	
 	
 	/**
 	 * Reads from this object into buf. Starts at the

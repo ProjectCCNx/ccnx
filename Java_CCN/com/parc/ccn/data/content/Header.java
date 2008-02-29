@@ -2,7 +2,6 @@
 package com.parc.ccn.data.content;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.Arrays;
 import java.util.HashMap;
 
@@ -103,18 +102,6 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 	
 	public Header() {
 		this(DEFAULT_START, 0, DEFAULT_BLOCKSIZE, 0, null, null);
-	}
-	
-	/**
-	 * @param encoded
-	 * @throws XMLStreamException
-	 */
-	public Header(byte[] encoded) throws XMLStreamException {
-		super(encoded);
-	}
-	
-	public Header(InputStream iStream) throws XMLStreamException {
-		decode(iStream);
 	}
 	
 	public int start() { 

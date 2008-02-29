@@ -39,10 +39,6 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
     	_content = content;
     }
     
-    public ContentObject(byte [] encoded) throws XMLStreamException {
-    	super(encoded);
-    }
-    
     public ContentObject() {} // for use by decoders
     
     public ContentName name() { 

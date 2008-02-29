@@ -166,6 +166,9 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 			Interest interest,
 			CCNInterestListener callbackListener) throws IOException {
 	
+		if (null == interest)
+			return;
+		
 		// Needs to be ok to call this more than once.
 		callbackListener.addInterest(interest);
 		for (int i=0; i < _repositories.size(); ++i) {
@@ -203,6 +206,9 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 	}
 
 	public ArrayList<CompleteName> getChildren(CompleteName name) throws IOException {
+		if (null == name) 
+			return null;
+		
 		ArrayList<CompleteName> results = _primaryRepository.getChildren(name);
 		
 		for (int i=0; i < _repositories.size(); ++i) {

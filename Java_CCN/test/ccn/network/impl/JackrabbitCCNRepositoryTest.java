@@ -61,7 +61,8 @@ public class JackrabbitCCNRepositoryTest {
 	static ContentName name3 = new ContentName(arrName3);
 	static String [] arrName4 = new String[]{baseName,subName1,document5};
 	static ContentName name4 = new ContentName(arrName4);
-	static String [] testname = new String[]{"parc.com", "home", "smetters", "Key", "_b_QVHo0jm3yle8hqO1eJtNtlIpoLf3xZKS_X002F_qexnCviNrs_X003D_"};
+	static String [] testname = new String[]{"test", "smetters", "Activities", ".directory"};
+//	static String [] testname = new String[]{"parc.com", "home", "smetters", "Key", "_b_QVHo0jm3yle8hqO1eJtNtlIpoLf3xZKS_X002F_qexnCviNrs_X003D_"};
 //	static String [] testname = new String[]{"parc.com", "home", "smetters", "Key", "_b_QVHo0jm3yle8hqO1eJtNtlIpoLf3xZKS_x002F_qexnCviNrs_x003D_"};
 	// static String [] testname = new String[]{"test","smetters","values","data","_b_cSil7rUBIYjrplNNeZxzBLt7IwvOmqFCWFqzfO345do_x003D_!"};
 	//static String [] testname = new String[]{"test","smetters","values","data","_b_cSil7rUBIYjrplNNeZxzBLt7IwvOmqFCWFqzfO345do_x003D_"};

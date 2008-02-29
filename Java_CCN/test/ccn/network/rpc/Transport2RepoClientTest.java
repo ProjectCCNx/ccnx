@@ -142,7 +142,8 @@ public class Transport2RepoClientTest {
 			System.out.println("Returned block: " + returnedBlock.length +  " bytes.");
 			
 			if (returnedBlock.length > 0 ) {
-				ContentObject returnedObj = new ContentObject(returnedBlock.data);
+				ContentObject returnedObj = new ContentObject();
+				returnedObj.decode(returnedBlock.data);
 			
 				System.out.println("Original block:");
 				System.out.println(obj);

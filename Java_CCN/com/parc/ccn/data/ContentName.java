@@ -108,10 +108,6 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 		}
 	}
 		
-	public ContentName(byte [] encoded) throws XMLStreamException {
-		super(encoded);
-	}
-	
 	/**
 	 * Basic constructor for extending or contracting names.
 	 * @param count

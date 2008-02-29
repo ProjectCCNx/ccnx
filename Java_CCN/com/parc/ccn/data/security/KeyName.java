@@ -41,10 +41,6 @@ public class KeyName extends GenericXMLEncodable implements XMLEncodable {
 		this(name, null);
 	}
 
-	public KeyName(byte [] encoded) throws XMLStreamException {
-		super(encoded);
-	}
-
 	public KeyName() {} // for use by decoders
 
 	public ContentName name() { return _name; }

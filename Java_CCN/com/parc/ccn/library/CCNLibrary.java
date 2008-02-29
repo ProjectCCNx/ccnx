@@ -18,6 +18,7 @@ import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherID;
+import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
 import com.parc.ccn.security.keys.KeyManager;
 
 /**
@@ -80,11 +81,17 @@ public interface CCNLibrary extends CCNBase {
 	public CompleteName newVersion(ContentName name,
 								   byte [] contents, 
 								   PublisherID publisher) throws SignatureException, IOException;
+	public CompleteName newVersion(
+			ContentName name, 
+			byte[] contents,
+			ContentType type, // handle links and collections
+			PublisherID publisher) throws SignatureException, IOException;
 	
 	public CompleteName addVersion(
 			ContentName name, 
 			int version, 
 			byte [] contents,
+			ContentType type,
 			PublisherID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, IOException;
 	

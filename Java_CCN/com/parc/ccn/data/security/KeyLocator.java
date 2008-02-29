@@ -82,10 +82,6 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
     	_certificate = certificate;
     }
     
-    public KeyLocator(byte [] encoded) throws XMLStreamException {
-    	super(encoded);
-    }
-    
     public KeyLocator() {} // for use by decoders
     
 	public PublicKey key() { return _key; }

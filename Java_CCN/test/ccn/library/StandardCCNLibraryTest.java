@@ -94,6 +94,21 @@ public class StandardCCNLibraryTest {
 	}
 	
 	@Test
+	public void testVersion() throws Exception {
+		
+		String name = "/test/smetters/stuff/versioned_name";
+		ContentName cn = new ContentName(name);
+		String name2 = "/test/smetters/stuff/.directory";
+		ContentName cn2 = new ContentName(name2);
+		String data = "The associated data.";
+		String newdata = "The new associated data.";
+		
+		versionTest(cn, data.getBytes(), newdata.getBytes());
+		versionTest(cn2, data.getBytes(), newdata.getBytes());
+		
+	}
+
+	@Test
 	public void testRecall() {
 		String key = "/test/smetters/values/data";
 		byte[] data1 = "data".getBytes();
@@ -200,6 +215,38 @@ public class StandardCCNLibraryTest {
 			System.out.println("Exception in testing recall: " + e.getClass().getName() + ": " + e.getMessage());
 			Assert.fail(e.getMessage());
 		}
+	}
+	
+	
+	public void versionTest(ContentName docName,
+							byte [] content1,
+							byte [] content2) throws Exception {
+		
+		CompleteName 
+			version1 = library.newVersion(docName, content1);
+		System.out.println("Inserted first version as: " + version1.name());
+		Assert.assertNotNull("New version is null!", version1);
+		
+		ContentObject latestVersion =
+			library.getLatestVersion(docName, null);
+		
+		Assert.assertNotNull("Retrieved latest version of " + docName + " got null!", latestVersion);
+		System.out.println("Latest version name: " + latestVersion.name());
+		
+		CompleteName version2 = 
+			library.newVersion(docName, content2);
+		
+		Assert.assertNotNull("New version is null!", version2);
+		System.out.println("Inserted second version as: " + version2.name());
+		
+		ContentObject newLatestVersion = 
+			library.getLatestVersion(docName, null);
+		Assert.assertNotNull("Retrieved new latest version of " + docName + " got null!", newLatestVersion);
+		System.out.println("Latest version name: " + newLatestVersion.name());
+		
+		Assert.assertTrue("Version is not a version of the parent name!", library.isVersionOf(version1.name(), docName));
+		Assert.assertTrue("Version is not a version of the parent name!", library.isVersionOf(version2.name(), docName));
+		Assert.assertTrue("Version numbers don't increase!", library.getVersionNumber(version2.name()) > library.getVersionNumber(version1.name()));
 	}
 	
 	@Test

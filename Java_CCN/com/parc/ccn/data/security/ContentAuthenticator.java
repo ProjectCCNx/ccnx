@@ -172,10 +172,6 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     	this._publisher = publisher;
     }
 
-    public ContentAuthenticator(byte [] encoded) throws XMLStreamException {
-    	super(encoded);
-    }
-    
     public ContentAuthenticator(ContentAuthenticator other) {
     	this(other.publisherID(), 
     		 other.nameComponentCount(),

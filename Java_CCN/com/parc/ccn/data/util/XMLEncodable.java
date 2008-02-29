@@ -12,6 +12,7 @@ public interface XMLEncodable {
 	public static final String CCN_NAMESPACE = "http://www.parc.com/ccn";
 	public static final String CCN_PREFIX = "ccn";
 	
+
 	/**
 	 * Decode this object as the top-level item in a new
 	 * XML document. Reads document start and end.
@@ -19,6 +20,11 @@ public interface XMLEncodable {
 	 * @throws XMLStreamException
 	 */
 	public void decode(InputStream iStream) throws XMLStreamException;
+	
+	/**
+	 * Helper method.
+	 */
+	public void decode(byte [] objectBuffer) throws XMLStreamException;
 	
 	/**
 	 * Pull this item from an ongoing decoding pass.

@@ -1,6 +1,5 @@
 package com.parc.ccn.data.content;
 
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 
@@ -49,18 +48,23 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable {
 		}
 	}
 	
-	public Collection(InputStream iStream) throws XMLStreamException {
-		decode(iStream);
-	}
-	
-	public Collection(byte [] encoded) throws XMLStreamException {
-		super(encoded);
-	}
-
 	public Collection() {
-		
 	}
 	
+	/**
+	 * Need to make final objects sometimes, for which we
+	 * need an atomic create from byte array option. But
+	 * if we do it with a constructor, we run into the problem
+	 * that each subclass must reimplement it, to be sure
+	 * that their members are constructed prior to decoding.
+	 * So do it this way.
+	 * @throws XMLStreamException 
+	 */
+	public static Collection newCollection(byte [] encodedCollection) throws XMLStreamException {
+		Collection newCollection = new Collection();
+		newCollection.decode(encodedCollection);
+		return newCollection;
+	}
 	public ArrayList<Link> contents() { 
 		return _contents; 
 	}

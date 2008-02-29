@@ -50,10 +50,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable {
 		this(new ContentName(name), null);
 	}
 
-	public Interest(byte [] encoded) throws XMLStreamException {
-		super(encoded);
-	}
-
 	public Interest() {} // for use by decoders
 
 	public ContentName name() { return _name; }
@@ -61,8 +57,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable {
 	public PublisherID publisherID() { return _publisher; }
 	
 	public boolean matches(CompleteName result) {
-		if ((null != name()) && 
-			 name().isPrefixOf(result.name())) {
+		if (null == name())
+			return false; // should not happen
+		// to get interest that matches everything, should
+		// use / (ROOT)
+		if (name().isPrefixOf(result.name())) {
 			if (null != publisherID()) {
 				if ((null == result.authenticator()) ||
 					(null == result.authenticator().publisherID())) {
@@ -73,6 +72,8 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable {
 				if (result.authenticator().publisherID().equals(publisherID())) {
 					return true;
 				}
+			} else {
+				return true;
 			}
 		}
 		return false;

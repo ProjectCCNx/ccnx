@@ -143,7 +143,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 			locator = keyManager().getKeyLocator(signingKey);
 	
 		try {
-			return put(name, collectionData.canonicalizeAndEncode(signingKey), ContentType.COLLECTION, publisher);
+			return newVersion(name, collectionData.canonicalizeAndEncode(signingKey), ContentType.COLLECTION, publisher);
 		} catch (XMLStreamException e) {
 			Library.logger().warning("Cannot canonicalize a standard container!");
 			Library.warningStackTrace(e);
@@ -162,6 +162,19 @@ public class StandardCCNLibrary implements CCNLibrary {
 			ContentName name,
 			CompleteName[] additionalContents) {
 		// TODO Auto-generated method stub
+		return null;
+	}
+	
+	public CompleteName updateCollection(
+			ContentName name,
+			Link [] contentsToAdd,
+			Link [] contentsToRemove) {
+		return null;
+	}
+	
+	public CompleteName updateCollection(
+			ContentName name,
+			Link [] newContents) {
 		return null;
 	}
 
@@ -264,6 +277,13 @@ public class StandardCCNLibrary implements CCNLibrary {
 		return newVersion(name, contents, getDefaultPublisher());
 	}
 
+	public CompleteName newVersion(
+			ContentName name, 
+			byte[] contents,
+			PublisherID publisher) throws SignatureException, IOException {
+		return newVersion(name, contents, ContentType.LEAF, publisher);
+	}
+	
 	/**
 	 * @param publisher Who we want to publish this as,
 	 * not who published the existing version.
@@ -271,6 +291,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	public CompleteName newVersion(
 			ContentName name, 
 			byte[] contents,
+			ContentType type, // handle links and collections
 			PublisherID publisher) throws SignatureException, IOException {
 
 		try {
@@ -285,7 +306,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 			// This ends us up with version numbers starting
 			// at 0. If we want version numbers starting at 1,
 			// modify this.
-			return addVersion(name, currentVersion+1, contents, publisher, null, null);
+			return addVersion(name, currentVersion+1, contents, type, publisher, null, null);
 		
 		} catch (InvalidKeyException e) {
 			Library.logger().info("InvalidKeyException using default key.");
@@ -299,7 +320,9 @@ public class StandardCCNLibrary implements CCNLibrary {
 		}
 	}
 
-	public CompleteName addVersion(ContentName name, int version, byte [] contents,
+	public CompleteName addVersion(
+			ContentName name, int version, byte [] contents,
+			ContentType type,
 			PublisherID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws SignatureException, 
 			InvalidKeyException, NoSuchAlgorithmException, IOException {
@@ -314,12 +337,16 @@ public class StandardCCNLibrary implements CCNLibrary {
 			publisher = keyManager().getPublisherID(signingKey);
 		}
 		
+		if (null == type)
+			type = ContentType.LEAF;
+		
 		// Construct new name
 		// <name>/<VERSION_MARKER>/<version_number>
 		ContentName versionedName = versionName(name, version);
 
 		// put result
-		return put(versionedName, contents, ContentAuthenticator.ContentType.LEAF, publisher, locator, signingKey);
+		return put(versionedName, contents, 
+				 	type, publisher, locator, signingKey);
 	}
 
 	/**
@@ -393,6 +420,9 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 */
 	public ContentObject getLatestVersion(ContentName name, PublisherID publisher) throws IOException {
 		ContentName currentName = getLatestVersionName(name, publisher);
+		
+		if (null == currentName) // no latest version
+			return null;
 		
 		// Need recursive get. The currentName we have here is
 		// just the prefix of this version.

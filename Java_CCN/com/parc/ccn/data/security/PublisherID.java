@@ -68,10 +68,6 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable {
 		_publisherType = publisherType;
 	}	
 	
-    public PublisherID(byte [] encoded) throws XMLStreamException {
-    	super(encoded);
-    }
-
     public PublisherID() {} // for use by decoders
 	
 	public byte [] id() { return _publisherID; }

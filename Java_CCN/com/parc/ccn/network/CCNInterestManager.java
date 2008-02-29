@@ -99,6 +99,9 @@ public class CCNInterestManager {
 		if (null == _client)
 			return;
 		
+		if (null == interest)
+			return;
+		
 		// Need to be able to do this more than once.
 		// Or should do it once per interest for thing that needs
 		// canceling...

@@ -46,10 +46,6 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
     	this._publisher = publisher;
     }
 
-    public LinkAuthenticator(byte [] encoded) throws XMLStreamException {
-    	super(encoded);
-    }
-
     public LinkAuthenticator() {}
     
     public boolean empty() {

@@ -140,7 +140,8 @@ public class CCNInterestServer extends RepoTransport_TRANSPORTTOREPOPROG_ServerS
 		try {
 			Library.logger().info("CCNInterestServer: PutBlock");
 			// Decode content object.
-			ContentObject co = new ContentObject(arg2.data);
+			ContentObject co = new ContentObject();
+			co.decode(arg2.data);
 			_theRepository.put(co.name(), co.authenticator(), co.content());
 			return 0;
 			

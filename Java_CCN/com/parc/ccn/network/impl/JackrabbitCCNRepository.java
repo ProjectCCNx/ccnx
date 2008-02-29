@@ -77,8 +77,9 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	public static final String PROTOCOL_TYPE = "rmi";
 	public static final String SERVER_RMI_NAME = "jackrabbit";
 
-	protected static String BASE64_MARKER = "_b_";
-	protected static String LEADING_NUMBER_MARKER = "_n_";
+	protected static String BASE64_MARKER = "_jb_";
+	protected static String LEADING_NUMBER_MARKER = "_jn_";
+	protected static String LEADING_DOT_MARKER = "_jd_";
 	
 	/**
 	 * Where do we store stuff in Jackrabbit. 
@@ -565,7 +566,8 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	
 		KeyLocator loc = null;
 		try {
-			loc = new KeyLocator(encodedKeyLocator);
+			loc = new KeyLocator();
+			loc.decode(encodedKeyLocator);
 		} catch (XMLStreamException e) {
 			Library.logger().log(Level.WARNING, "This should not happen: cannot retrieve and decode KeyLocator value we encoded and stored.");
 			throw new ValueFormatException(e);
@@ -596,7 +598,10 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	public ArrayList<ContentObject> get(ContentName name, 
 										ContentAuthenticator authenticator,
 										boolean isRecursive) throws IOException {
-
+		
+		if (null == name) 
+			return null;
+		
 		ArrayList<ContentObject> objects = new ArrayList<ContentObject>();
 
 		try {
@@ -1030,7 +1035,10 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 			// quote character that we can can recognizably
 			// remove. 
 			str = LEADING_NUMBER_MARKER + str;
+		} else if (str.charAt(0) == '.'){
+			str = LEADING_DOT_MARKER + str;
 		}
+		
 		str = Text.escapeIllegalJcrChars(str);
 
 		// Deal with the things that XPath doesn't like even
@@ -1102,6 +1110,9 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 			return ContentName.componentParse(parseString.substring(LEADING_NUMBER_MARKER.length()));
 		}
 		
+		if (parseString.startsWith(LEADING_DOT_MARKER)) {
+			return ContentName.componentParse(parseString.substring(LEADING_DOT_MARKER.length()));
+		}
 		return ContentName.componentParse(parseString);
 	}
 

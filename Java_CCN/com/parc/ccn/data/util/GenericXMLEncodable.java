@@ -41,16 +41,23 @@ public abstract class GenericXMLEncodable implements XMLEncodable {
 
 	protected GenericXMLEncodable() {}
 	
-    protected GenericXMLEncodable(byte [] encoded) throws XMLStreamException {
-    	ByteArrayInputStream bais = new ByteArrayInputStream(encoded);
-    	decode(bais);
-    }
-    
+	/**
+	 * Don't provide a constructor that takes a byte[]. It
+	 * can decode fine, but subclasses don't have their members
+	 * set up to accept the data yet. Do the base constructor
+	 * and then call decode.
+	 */
+	
  	public void decode(InputStream iStream) throws XMLStreamException {
 		XMLEventReader reader = XMLHelper.beginDecoding(iStream);
 		decode(reader);
 		XMLHelper.endDecoding(reader);
 	}
+ 	
+ 	public void decode(byte [] content) throws XMLStreamException {
+ 		ByteArrayInputStream bais = new ByteArrayInputStream(content);
+ 		decode(bais);
+ 	}
 	
 	public void encode(OutputStream oStream) throws XMLStreamException {
 		XMLStreamWriter writer = XMLHelper.beginEncoding(oStream);

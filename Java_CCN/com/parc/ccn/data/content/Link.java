@@ -1,7 +1,5 @@
 package com.parc.ccn.data.content;
 
-import java.io.InputStream;
-
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
@@ -37,14 +35,6 @@ public class Link extends GenericXMLEncodable implements XMLEncodable {
 		this(targetName, null);
 	}
 	
-	public Link(InputStream iStream) throws XMLStreamException {
-		decode(iStream);
-	}
-	
-	public Link(byte [] encoded) throws XMLStreamException {
-		super(encoded);
-	}
-	
 	/**
 	 * Decoding constructor.
 	 */
@@ -77,7 +67,8 @@ public class Link extends GenericXMLEncodable implements XMLEncodable {
 
 		XMLHelper.writeStartElement(writer, LINK_ELEMENT, isFirstElement);
 		_targetName.encode(writer);
-		_targetAuthenticator.encode(writer);
+		if (null != _targetAuthenticator)
+			_targetAuthenticator.encode(writer);
 		writer.writeEndElement();   		
 	}
 	
