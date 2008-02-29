@@ -223,7 +223,7 @@ public class StandardCCNLibraryTest {
 		public TestListener(CCNBase queryProvider,
 							Interest initialInterest,
 							Thread mainThread) {
-			super(queryProvider, initialInterest);
+			super(queryProvider);
 			_mainThread = mainThread;
 		}
 
