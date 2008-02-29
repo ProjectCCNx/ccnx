@@ -18,8 +18,7 @@ import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.data.query.BasicQueryListener;
-import com.parc.ccn.data.query.CCNQueryDescriptor;
+import com.parc.ccn.data.query.BasicInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.library.CCNLibrary;
@@ -217,13 +216,14 @@ public class StandardCCNLibraryTest {
 		}
 	}
 	
-	class TestListener extends BasicQueryListener {
+	class TestListener extends BasicInterestListener {
 		int _count = 0;
 		Thread _mainThread;
 		
 		public TestListener(CCNBase queryProvider,
+							Interest initialInterest,
 							Thread mainThread) {
-			super(queryProvider);
+			super(queryProvider, initialInterest);
 			_mainThread = mainThread;
 		}
 
@@ -280,9 +280,10 @@ public class StandardCCNLibraryTest {
 		byte[] data2 = "data2".getBytes();
 		
 		try {
-			CCNQueryDescriptor qd =
-				library.expressInterest(new Interest(key), 
-									new TestListener(library, mainThread));
+			Interest ik = new Interest(key);
+			TestListener tl = new TestListener(library, ik, mainThread);
+			library.expressInterest(ik, 
+									tl);
 			
 			library.put(new ContentName(key), data1);
 			// wait a little bit before we move on...
@@ -299,7 +300,7 @@ public class StandardCCNLibraryTest {
 			} catch (InterruptedException e) {
 			}
 			
-			library.cancelInterest(qd);
+			library.cancelInterest(ik, tl);
 			
 		} catch (Exception e) {
 			System.out.println("Exception in testing interests: " + e.getClass().getName() + ": " + e.getMessage());

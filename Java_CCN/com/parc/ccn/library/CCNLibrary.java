@@ -12,7 +12,6 @@ import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.Link;
-import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
@@ -169,13 +168,13 @@ public interface CCNLibrary extends CCNBase {
 	public CompleteName addToCollection(ContentName name, CompleteName [] additionalContents);
 	public CompleteName removeFromCollection(ContentName name, CompleteName [] additionalContents);
 
-	public CCNQueryDescriptor expressInterest(
+	public void expressInterest(
 			Interest interest,
 			CCNInterestListener listener) throws IOException;
 	
-	public void cancelInterest(CCNQueryDescriptor query) throws IOException;
+	public void cancelInterest(Interest interest, CCNInterestListener listener) throws IOException;
 	
-	public ArrayList<CompleteName> enumerate(Interest query) throws IOException;
+	public ArrayList<CompleteName> enumerate(Interest interest) throws IOException;
 
 	/**
 	 * Approaches to read and write content. Low-level CCNBase returns

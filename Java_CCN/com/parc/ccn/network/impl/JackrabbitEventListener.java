@@ -13,11 +13,13 @@ import javax.jcr.observation.EventListener;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.CompleteName;
-import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.data.query.CCNInterestListener;
+import com.parc.ccn.data.query.Interest;
 
 /**
  * Wraps a CCNQueryListener and links it to Jackrabbit events.
+ * One JEL per interest, otherwise can't cancel individual
+ * interests -- can only remove query listeners, not queries.
  * @author smetters
  *
  */
@@ -26,29 +28,42 @@ class JackrabbitEventListener implements EventListener {
 	protected JackrabbitCCNRepository _repository;
 	protected CCNInterestListener _listener;
 	protected int _events;
+	protected Interest _interest;
 	
 	protected ArrayList<String> _nodesAlreadyFound = new ArrayList<String>();
 
 	public JackrabbitEventListener(JackrabbitCCNRepository repository,
-								   CCNInterestListener l, int events) {
+								   Interest interest,
+								   CCNInterestListener l, 
+								   int events) {
 		if (null == repository) 
 			throw new IllegalArgumentException("JackrabbitEventListener: repository cannot be null!");
 		_repository = repository;
-		if (null == l) 
-			throw new IllegalArgumentException("JackrabbitEventListener: listener cannot be null!");
+		if (null == l) {
+			// There is no point to having a null listener here,
+			// though there is at the network level.
+			Library.logger().info("JackrabbitEventListener: listener is null! We can listen, but we can not tell anybody if we find anything.");
+		}
 		_listener = l;
+		if (null == interest) {
+			// We need to know the interest to be able to cancel it later.
+			Library.logger().warning("JackrabbitEventListener: interest cannot be null.");
+		}
+		_interest = interest;
 		_events = events;
 	}
 	
 	JackrabbitCCNRepository repository() { return _repository; }
 	
 	public int events() { return _events; }
-	public CCNInterestListener queryListener() { return _listener; }
-	public CCNQueryDescriptor [] queryDescriptors() { return _listener.getQueries(); }
+	public CCNInterestListener interestListener() { return _listener; }
+	public Interest interest() { 
+		return _interest;
+	}
 	
 	public void onEvent(EventIterator events) {
 		
-		if (null == queryListener()) {
+		if (null == interestListener()) {
 			Library.logger().info("JackrabbitEventListener: no CCNQueryListener. Nothing to do.");
 			return;
 		}
@@ -86,7 +101,8 @@ class JackrabbitEventListener implements EventListener {
 						// Need to filter -- the eventing interface only selects
 						// based on name; the listener might have other criteria.
 						// This is where we check those.
-						if (_listener.matchesQuery(cn)) {
+						if ((null != _listener) &&
+							 _listener.matchesInterest(cn)) {
 							if (!_nodesAlreadyFound.contains(affectedNode.getPath())) {
 							//	Library.logger().info("Listener found new CCN Node: " + cn.name());
 								nodesFound.add(cn); // nodes found in response to this query
@@ -117,6 +133,7 @@ class JackrabbitEventListener implements EventListener {
 			}
 		}
 	
-		_listener.handleResults(nodesFound);
+		if (null != _listener)
+			_listener.handleResults(nodesFound);
 	}
 }

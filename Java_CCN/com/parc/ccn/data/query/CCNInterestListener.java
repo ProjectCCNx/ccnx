@@ -14,12 +14,6 @@ public interface CCNInterestListener {
     public int handleResults(ArrayList<CompleteName> results);
     
     /**
-     * Notification that our query has been canceled.
-     * @param query
-     */
-    public void interestCanceled(Interest interest);
-    
-    /**
      * Notification that our query has timed out.
      * @param query
      */
@@ -31,10 +25,11 @@ public interface CCNInterestListener {
     public Interest [] getInterests();
     
     /**
-     * Adds another query we are listening for.
-     * Normally this will be done automatically,
-     * to avoid race conditions. This is just to
-     * allow manual listener management.
+     * This will be called by the repository/query
+     * target automatically. Implementations should
+     * track interests with a Set or similar method,
+     * so that calls to addInterest with the same interest
+     * don't result in multiple interests.
      */
     public void addInterest(Interest interest);
     

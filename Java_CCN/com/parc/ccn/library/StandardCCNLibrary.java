@@ -24,7 +24,6 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.content.Link;
-import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
@@ -796,7 +795,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * Each might generate their own CCNQueryDescriptor,
 	 * so we need to group them together.
 	 */
-	public CCNQueryDescriptor expressInterest(
+	public void expressInterest(
 			Interest interest,
 			CCNInterestListener listener) throws IOException {
 		
@@ -810,12 +809,13 @@ public class StandardCCNLibrary implements CCNLibrary {
 		} catch (Exception e) {
 			Library.logger().info("CCN network unavailable: " + e.getMessage() + " Continuing without network connectivity.");
 		}
-		return CCNRepositoryManager.getRepositoryManager().expressInterest(interest, listener);
+		CCNRepositoryManager.getRepositoryManager().expressInterest(interest, listener);
+		return;
 	}
 
-	public void cancelInterest(CCNQueryDescriptor query) throws IOException {
-		CCNInterestManager.getInterestManager().cancelInterest(query);
-		CCNRepositoryManager.getRepositoryManager().cancelInterest(query);
+	public void cancelInterest(Interest interest, CCNInterestListener listener) throws IOException {
+		CCNInterestManager.getInterestManager().cancelInterest(interest, listener);
+		CCNRepositoryManager.getRepositoryManager().cancelInterest(interest, listener);
 	}
 	
 	/**

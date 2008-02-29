@@ -10,7 +10,6 @@ import com.parc.ccn.Library;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
@@ -163,33 +162,32 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 	 * doesn't generate any network interests, and can be used to
 	 * simply watch data coming in to the repository.
 	 */
-	public CCNQueryDescriptor expressInterest(
+	public void expressInterest(
 			Interest interest,
 			CCNInterestListener callbackListener) throws IOException {
 	
-		ArrayList<CCNQueryDescriptor> queries = new ArrayList<CCNQueryDescriptor>();
-		// TODO DKS amalgamate query descriptors into one that can then be
-		// joined with the network QD if necessary to allow cancellation of all.
+		callbackListener.addInterest(interest);
 		for (int i=0; i < _repositories.size(); ++i) {
 			if ((_primaryRepository != _repositories.get(i)) && (null != _repositories.get(i))) {
-				queries.add(_repositories.get(i).expressInterest(interest, callbackListener));
+				_repositories.get(i).expressInterest(interest, callbackListener);
 			}
 		}
-		// Danger of results coming in between these two steps...
-		// DKS TODO queue up other queries if necessary
-		// possibly rethink the way this works -- tell the listener up
-		// front what it's listening for...
-		CCNQueryDescriptor qd = _primaryRepository.expressInterest(interest, callbackListener);
-		callbackListener.addQuery(qd);
-		return qd;
+		_primaryRepository.expressInterest(interest, callbackListener);
+		return;
 	}
 	
 	/**
 	 * Cancel this query with all the repositories we sent
 	 * it to.
 	 */
-	public void cancelInterest(CCNQueryDescriptor query) throws IOException {
-		CCNInterestManager.getInterestManager().cancelInterest(query);
+	public void cancelInterest(Interest interest, CCNInterestListener callbackListener) throws IOException {
+		for (int i=0; i < _repositories.size(); ++i) {
+			if ((_primaryRepository != _repositories.get(i)) && (null != _repositories.get(i))) {
+				_repositories.get(i).cancelInterest(interest, callbackListener);
+			}
+		}
+		_primaryRepository.cancelInterest(interest, callbackListener);
+		return;
 	}
 
 	public ArrayList<CompleteName> enumerate(Interest interest) throws IOException {

@@ -21,6 +21,9 @@ import com.parc.ccn.data.util.XMLHelper;
  */
 public class Interest extends GenericXMLEncodable implements XMLEncodable {
 	
+	// Used to remove spurious *'s
+	public static final String RECURSIVE_POSTFIX = "*";
+	
 	protected static final String INTEREST_ELEMENT = "Interest";
 
 	protected ContentName _name;
@@ -74,6 +77,8 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable {
 		}
 		return false;
 	}
+	
+	public boolean recursive() { return true; }
 	
 	/**
 	 * Thought about encoding and decoding as flat -- no wrapping

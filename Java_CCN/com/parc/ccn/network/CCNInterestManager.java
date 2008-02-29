@@ -8,7 +8,6 @@ import org.acplt.oncrpc.OncRpcException;
 import org.acplt.oncrpc.OncRpcProtocols;
 
 import com.parc.ccn.Library;
-import com.parc.ccn.data.query.CCNQueryDescriptor;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.network.rpc.Name;
@@ -92,44 +91,38 @@ public class CCNInterestManager {
 	 * @return returns a unique identifier that can be used to cancel this query.
 	 * @throws IOException
 	 */
-	public CCNQueryDescriptor expressInterest(
+	public void expressInterest(
 			Interest interest,
 			CCNInterestListener callbackListener) throws IOException {
 		
 		// Work around no portmap
 		if (null == _client)
-			return null;
+			return;
 		
-		CCNQueryDescriptor qd = new CCNQueryDescriptor(interest, null, callbackListener);
 		Name oncName = interest.name().toONCName();
 		// For right now, we skip sending the  authenticator with the query. In the next
 		// version we will extend the transport agent to handle full queries.
 		// TODO handle full queries in transport agent.
 		try {
 			_client.RegisterInterest_1(oncName);
-			// Won't respond to inputs that come in before this next step...
-			callbackListener.addQuery(qd);
 		} catch (OncRpcException e) {
 			Library.logger().warning("Exception in expressInterest RPC interface: " + e.getMessage());
 			Library.warningStackTrace(e);
 			// IOException(Throwable) constructor not present in 1.5
 			//throw new IOException("Exception in expressInterest RPC interface: " + e.getMessage());
-			return null; // DKS make robust to lack of transport
+			return; // DKS make robust to lack of transport
 		}
-		return qd;
+		return;
 	}
 	
-	public void cancelInterest(CCNQueryDescriptor query) throws IOException {
+	public void cancelInterest(Interest interest, CCNInterestListener listener) throws IOException {
 		// Work around no portmap
 		if (null == _client)
 			return;
 		
-		Name oncName = query.name().toONCName();
+		Name oncName = interest.name().toONCName();
 		try {
 			_client.CancelInterest_1(oncName);
-			if (null != query.queryListener()) {
-				query.queryListener().queryCanceled(query);
-			}
 		} catch (OncRpcException e) {
 			Library.logger().warning("Exception in expressInterest RPC interface: " + e.getMessage());
 			Library.warningStackTrace(e);

@@ -65,6 +65,13 @@ public interface CCNBase {
 			Interest interest,
 			CCNInterestListener callbackListener) throws IOException;
 	
-	public void cancelInterest(Interest interest) throws IOException;
+	/**
+	 * Cancel this interest. 
+	 * @param interest
+	 * @param callbackListener Used to distinguish the same interest
+	 * 	requested by more than one listener.
+	 * @throws IOException
+	 */
+	public void cancelInterest(Interest interest, CCNInterestListener callbackListener) throws IOException;
 
 }

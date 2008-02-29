@@ -58,7 +58,7 @@ public class watch extends Thread implements CCNInterestListener {
 	public void cancelInterests() {
 		for (int i=0; i < _interests.size(); ++i) {
 			try {
-				_library.cancelInterest(_interests.get(i));
+				_library.cancelInterest(_interests.get(i), this);
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
