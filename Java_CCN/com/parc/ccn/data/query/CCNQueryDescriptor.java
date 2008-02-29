@@ -33,15 +33,15 @@ public class CCNQueryDescriptor {
 	protected Object _queryIdentifier = null;
 	protected Interest _interest = null;
 	protected boolean _recursive = true;
-	protected CCNQueryListener _listener = null;
+	protected CCNInterestListener _listener = null;
 	
-	public CCNQueryDescriptor(Interest interest, CCNQueryListener listener) {
+	public CCNQueryDescriptor(Interest interest, CCNInterestListener listener) {
 		this(interest, null, listener);
 	}
 	
 	public CCNQueryDescriptor(Interest interest,
 			  				  Object identifier,
-			  				  CCNQueryListener listener) {
+			  				  CCNInterestListener listener) {
 		_interest = interest;
 		_listener = listener;
 		if (null != identifier)
@@ -88,7 +88,7 @@ public class CCNQueryDescriptor {
 	public ContentName name() { return _interest.name(); }
 	public Interest interest() { return _interest; }
 	public boolean recursive() { return _recursive; }
-	public CCNQueryListener queryListener() { return _listener; }
+	public CCNInterestListener queryListener() { return _listener; }
 
 	@Override
 	public int hashCode() {

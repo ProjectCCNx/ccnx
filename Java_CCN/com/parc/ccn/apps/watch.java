@@ -8,16 +8,15 @@ import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.data.query.CCNQueryDescriptor;
-import com.parc.ccn.data.query.CCNQueryListener;
+import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.StandardCCNLibrary;
 
-public class watch extends Thread implements CCNQueryListener {
+public class watch extends Thread implements CCNInterestListener {
 	
 	protected boolean _stop = false;
-	protected ArrayList<CCNQueryDescriptor> _queries = new ArrayList<CCNQueryDescriptor>();
+	protected ArrayList<Interest> _interests = new ArrayList<Interest>();
 	protected CCNLibrary _library = null;
 	
 	public watch(CCNLibrary library) {_library = library;}
@@ -25,7 +24,7 @@ public class watch extends Thread implements CCNQueryListener {
 	public void initialize() {}
 	public void work() {}
 	
-	public void addQuery(CCNQueryDescriptor descriptor) {_queries.add(descriptor);}
+	public void addInterest(Interest interest) {_interests.add(interest);}
 	
 	public void run() {
 		_stop = false;
@@ -56,10 +55,10 @@ public class watch extends Thread implements CCNQueryListener {
 		System.out.println("usage: watch <ccnname> [<ccnname>...]");
 	}
 	
-	public void cancelQueries() {
-		for (int i=0; i < _queries.size(); ++i) {
+	public void cancelInterests() {
+		for (int i=0; i < _interests.size(); ++i) {
 			try {
-				_library.cancelInterest(_queries.get(i));
+				_library.cancelInterest(_interests.get(i));
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -67,8 +66,8 @@ public class watch extends Thread implements CCNQueryListener {
 		}
 	}
 	
-	public CCNQueryDescriptor[] getQueries() {
-		return (CCNQueryDescriptor[])_queries.toArray();
+	public Interest[] getInterests() {
+		return (Interest[])_interests.toArray();
 	}
 	
 	public int handleResults(ArrayList<CompleteName> results) {
@@ -78,19 +77,19 @@ public class watch extends Thread implements CCNQueryListener {
 		return results.size();
 	}
 	
-	public boolean matchesQuery(CompleteName name) {
-		for (int i=0; i < _queries.size(); ++i) {
-			if (_queries.get(i).matchesQuery(name))
+	public boolean matchesInterest(CompleteName name) {
+		for (int i=0; i < _interests.size(); ++i) {
+			if (_interests.get(i).matches(name))
 				return true;
 		}
 		return false;
 	}
 	
-	public void queryCanceled(CCNQueryDescriptor query) {
-		System.out.println("Canceled query for: " + query.name());
+	public void interestCanceled(Interest interest) {
+		System.out.println("Canceled interest in: " + interest.name());
 	}
 	
-	public void queryTimedOut(CCNQueryDescriptor query) {
+	public void interestTimedOut(Interest interest) {
 		// TODO Auto-generated method stub
 		
 	}
@@ -114,8 +113,8 @@ public class watch extends Thread implements CCNQueryListener {
 			for (int i=0; i < args.length; ++i) {
 				Interest interest = new Interest(args[i]);
 			
-				CCNQueryDescriptor query = library.expressInterest(interest, listener);
-				listener.addQuery(query);
+				library.expressInterest(interest, listener);
+				listener.addInterest(interest);
 			} 
 			
 			listener.run();

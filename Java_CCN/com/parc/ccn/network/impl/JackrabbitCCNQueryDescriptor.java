@@ -1,7 +1,7 @@
 package com.parc.ccn.network.impl;
 
 import com.parc.ccn.data.query.CCNQueryDescriptor;
-import com.parc.ccn.data.query.CCNQueryListener;
+import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 
 public class JackrabbitCCNQueryDescriptor extends CCNQueryDescriptor {
@@ -9,11 +9,11 @@ public class JackrabbitCCNQueryDescriptor extends CCNQueryDescriptor {
 	public JackrabbitCCNQueryDescriptor(
 			Interest interest, 
 			JackrabbitEventListener identifier,
-			CCNQueryListener listener) {
+			CCNInterestListener listener) {
 		super(interest, identifier, listener);
 	}
 
-	public JackrabbitCCNQueryDescriptor(Interest interest, CCNQueryListener listener) {
+	public JackrabbitCCNQueryDescriptor(Interest interest, CCNInterestListener listener) {
 		super(interest, listener);
 	}
 

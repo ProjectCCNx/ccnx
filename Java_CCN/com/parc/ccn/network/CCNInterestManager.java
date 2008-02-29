@@ -9,7 +9,7 @@ import org.acplt.oncrpc.OncRpcProtocols;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
-import com.parc.ccn.data.query.CCNQueryListener;
+import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.network.rpc.Name;
 import com.parc.ccn.network.rpc.RepoTransport_REPOTOTRANSPORTPROG_Client;
@@ -94,18 +94,21 @@ public class CCNInterestManager {
 	 */
 	public CCNQueryDescriptor expressInterest(
 			Interest interest,
-			CCNQueryListener callbackListener) throws IOException {
+			CCNInterestListener callbackListener) throws IOException {
 		
 		// Work around no portmap
 		if (null == _client)
 			return null;
 		
+		CCNQueryDescriptor qd = new CCNQueryDescriptor(interest, null, callbackListener);
 		Name oncName = interest.name().toONCName();
 		// For right now, we skip sending the  authenticator with the query. In the next
 		// version we will extend the transport agent to handle full queries.
 		// TODO handle full queries in transport agent.
 		try {
 			_client.RegisterInterest_1(oncName);
+			// Won't respond to inputs that come in before this next step...
+			callbackListener.addQuery(qd);
 		} catch (OncRpcException e) {
 			Library.logger().warning("Exception in expressInterest RPC interface: " + e.getMessage());
 			Library.warningStackTrace(e);
@@ -113,7 +116,7 @@ public class CCNInterestManager {
 			//throw new IOException("Exception in expressInterest RPC interface: " + e.getMessage());
 			return null; // DKS make robust to lack of transport
 		}
-		return new CCNQueryDescriptor(interest, null, callbackListener);
+		return qd;
 	}
 	
 	public void cancelInterest(CCNQueryDescriptor query) throws IOException {

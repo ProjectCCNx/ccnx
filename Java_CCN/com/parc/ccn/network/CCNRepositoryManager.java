@@ -11,7 +11,7 @@ import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
-import com.parc.ccn.data.query.CCNQueryListener;
+import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.network.discovery.CCNDiscoveryListener;
@@ -165,7 +165,7 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 	 */
 	public CCNQueryDescriptor expressInterest(
 			Interest interest,
-			CCNQueryListener callbackListener) throws IOException {
+			CCNInterestListener callbackListener) throws IOException {
 	
 		ArrayList<CCNQueryDescriptor> queries = new ArrayList<CCNQueryDescriptor>();
 		// TODO DKS amalgamate query descriptors into one that can then be
@@ -175,7 +175,13 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 				queries.add(_repositories.get(i).expressInterest(interest, callbackListener));
 			}
 		}
-		return _primaryRepository.expressInterest(interest, callbackListener);
+		// Danger of results coming in between these two steps...
+		// DKS TODO queue up other queries if necessary
+		// possibly rethink the way this works -- tell the listener up
+		// front what it's listening for...
+		CCNQueryDescriptor qd = _primaryRepository.expressInterest(interest, callbackListener);
+		callbackListener.addQuery(qd);
+		return qd;
 	}
 	
 	/**

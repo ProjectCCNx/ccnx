@@ -53,7 +53,7 @@ import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
-import com.parc.ccn.data.query.CCNQueryListener;
+import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
@@ -708,7 +708,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	@Override
 	public CCNQueryDescriptor expressInterest(
 			Interest interest, 
-			CCNQueryListener callbackListener) throws IOException {
+			CCNInterestListener callbackListener) throws IOException {
 
 		int events = Event.NODE_ADDED | Event.NODE_REMOVED | Event.PROPERTY_ADDED | Event.PROPERTY_CHANGED | Event.PROPERTY_REMOVED;
 		JackrabbitEventListener el = new JackrabbitEventListener(this, callbackListener, events);

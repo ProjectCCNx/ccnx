@@ -4,6 +4,7 @@ import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
+import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.security.PublisherID;
@@ -55,6 +56,24 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable {
 	public ContentName name() { return _name; }
 	
 	public PublisherID publisherID() { return _publisher; }
+	
+	public boolean matches(CompleteName result) {
+		if ((null != name()) && 
+			 name().isPrefixOf(result.name())) {
+			if (null != publisherID()) {
+				if ((null == result.authenticator()) ||
+					(null == result.authenticator().publisherID())) {
+					return false;
+				}
+				// Should this be more general?
+				// TODO DKS handle issuer
+				if (result.authenticator().publisherID().equals(publisherID())) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
 	
 	/**
 	 * Thought about encoding and decoding as flat -- no wrapping

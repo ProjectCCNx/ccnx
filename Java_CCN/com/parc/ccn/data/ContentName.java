@@ -327,6 +327,8 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 	}
 	
 	public boolean isPrefixOf(ContentName other) {
+		if (null == other)
+			return false;
 		if (this.count() > other.count())
 			return false;
 		return this.equals(other, this.count());

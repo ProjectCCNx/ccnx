@@ -14,7 +14,7 @@ import javax.jcr.observation.EventListener;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
-import com.parc.ccn.data.query.CCNQueryListener;
+import com.parc.ccn.data.query.CCNInterestListener;
 
 /**
  * Wraps a CCNQueryListener and links it to Jackrabbit events.
@@ -24,13 +24,13 @@ import com.parc.ccn.data.query.CCNQueryListener;
 class JackrabbitEventListener implements EventListener {
 
 	protected JackrabbitCCNRepository _repository;
-	protected CCNQueryListener _listener;
+	protected CCNInterestListener _listener;
 	protected int _events;
 	
 	protected ArrayList<String> _nodesAlreadyFound = new ArrayList<String>();
 
 	public JackrabbitEventListener(JackrabbitCCNRepository repository,
-								   CCNQueryListener l, int events) {
+								   CCNInterestListener l, int events) {
 		if (null == repository) 
 			throw new IllegalArgumentException("JackrabbitEventListener: repository cannot be null!");
 		_repository = repository;
@@ -43,7 +43,7 @@ class JackrabbitEventListener implements EventListener {
 	JackrabbitCCNRepository repository() { return _repository; }
 	
 	public int events() { return _events; }
-	public CCNQueryListener queryListener() { return _listener; }
+	public CCNInterestListener queryListener() { return _listener; }
 	public CCNQueryDescriptor [] queryDescriptors() { return _listener.getQueries(); }
 	
 	public void onEvent(EventIterator events) {

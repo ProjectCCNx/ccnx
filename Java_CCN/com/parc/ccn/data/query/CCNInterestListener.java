@@ -4,7 +4,7 @@ import java.util.ArrayList;
 
 import com.parc.ccn.data.CompleteName;
 
-public interface CCNQueryListener {
+public interface CCNInterestListener {
 	
 	/**
 	 * Callback called when we get new results for our query.
@@ -17,30 +17,38 @@ public interface CCNQueryListener {
      * Notification that our query has been canceled.
      * @param query
      */
-    public void queryCanceled(CCNQueryDescriptor query);
+    public void interestCanceled(Interest interest);
     
     /**
      * Notification that our query has timed out.
      * @param query
      */
-    public void queryTimedOut(CCNQueryDescriptor query);
+    public void interestTimedOut(Interest interest);
 
      /**
      * Returns the queries we are listening for.
      */
-    public CCNQueryDescriptor [] getQueries();
+    public Interest [] getInterests();
+    
+    /**
+     * Adds another query we are listening for.
+     * Normally this will be done automatically,
+     * to avoid race conditions. This is just to
+     * allow manual listener management.
+     */
+    public void addInterest(Interest interest);
     
     /**
      * Does this CompleteName match one of our queries?
      * @param object
      * @return
      */
-    public boolean matchesQuery(CompleteName name);
+    public boolean matchesInterest(CompleteName name);
     
     /**
      * Cancel all the queries we are listening to.
      *
      */
-    public void cancelQueries();
+    public void cancelInterests();
     
 }

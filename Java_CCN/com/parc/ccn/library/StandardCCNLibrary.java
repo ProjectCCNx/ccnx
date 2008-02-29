@@ -25,7 +25,7 @@ import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
-import com.parc.ccn.data.query.CCNQueryListener;
+import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
@@ -395,14 +395,33 @@ public class StandardCCNLibrary implements CCNLibrary {
 	public ContentObject getLatestVersion(ContentName name, PublisherID publisher) throws IOException {
 		ContentName currentName = getLatestVersionName(name, publisher);
 		
+		// Need recursive get. The currentName we have here is
+		// just the prefix of this version.
 		ArrayList<ContentObject> contents =
-			get(currentName, null, false);
+			get(currentName, null, true);
 		
 		if (contents.size() > 1) {
-			Library.logger().info("Brain-dead getLatestVersion interface has been overwhelmed with too much content for name: " + name);
-			return null;
-		}
-		return contents.get(0);
+			Library.logger().info("Brain-dead getLatestVersion interface has " + contents.size() + " versions for name: " + name);
+			// We have multiple copies of the latest version.
+			// The immediate children of the name are either contents or headers.
+			// Find the most recent one.
+			ContentObject recentObject = null;
+			Iterator<ContentObject> cit = contents.iterator();
+			while (cit.hasNext()) {
+				ContentObject thisObject = cit.next();
+				
+				if ((null == recentObject) && 
+						(null != thisObject.authenticator())) {
+					recentObject = thisObject;
+				} else if ((null != thisObject.authenticator()) && 
+							(thisObject.authenticator().timestamp().after(recentObject.authenticator().timestamp()))) {
+					recentObject = thisObject;
+				}
+				return recentObject;
+			}
+		} else if (contents.size() > 0)
+			return contents.get(0);
+		return null;
 	}
 
 	/**
@@ -779,7 +798,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 */
 	public CCNQueryDescriptor expressInterest(
 			Interest interest,
-			CCNQueryListener listener) throws IOException {
+			CCNInterestListener listener) throws IOException {
 		
 		// Express interest to the network and to the repositories.
 		// TODO DKS amalgamate across queries to return single query descriptor that

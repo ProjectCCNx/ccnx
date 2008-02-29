@@ -6,8 +6,7 @@ import java.util.ArrayList;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.query.CCNQueryListener;
-import com.parc.ccn.data.query.CCNQueryDescriptor;
+import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 
@@ -62,10 +61,10 @@ public interface CCNBase {
 	 * 		be used to cancel this query.
 	 * @throws IOException
 	 */
-	public CCNQueryDescriptor expressInterest(
+	public void expressInterest(
 			Interest interest,
-			CCNQueryListener callbackListener) throws IOException;
+			CCNInterestListener callbackListener) throws IOException;
 	
-	public void cancelInterest(CCNQueryDescriptor query) throws IOException;
+	public void cancelInterest(Interest interest) throws IOException;
 
 }

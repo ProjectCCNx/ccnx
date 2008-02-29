@@ -13,7 +13,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
-import com.parc.ccn.data.query.CCNQueryListener;
+import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
@@ -171,7 +171,7 @@ public interface CCNLibrary extends CCNBase {
 
 	public CCNQueryDescriptor expressInterest(
 			Interest interest,
-			CCNQueryListener listener) throws IOException;
+			CCNInterestListener listener) throws IOException;
 	
 	public void cancelInterest(CCNQueryDescriptor query) throws IOException;
 	

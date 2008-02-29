@@ -14,7 +14,7 @@ import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNQueryDescriptor;
-import com.parc.ccn.data.query.CCNQueryListener;
+import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.network.discovery.CCNDiscovery;
@@ -134,7 +134,7 @@ public abstract class GenericCCNRepository implements CCNRepository {
 	 */
 	public abstract CCNQueryDescriptor expressInterest(
 			Interest interest,
-			CCNQueryListener callbackListener) throws IOException;
+			CCNInterestListener callbackListener) throws IOException;
 	
 	/* (non-Javadoc)
 	 * @see com.parc.ccn.network.CCNRepository#cancelInterest(com.parc.ccn.data.query.CCNQueryDescriptor)
