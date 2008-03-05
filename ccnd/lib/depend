@@ -1,7 +1,0 @@
-ccn_charbuf.o: ccn_charbuf.c ../include/ccn/charbuf.h
-ccn_coding.o: ccn_coding.c ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h
-ccn_coding.o: ccn_coding.c ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h
-ccn_xmltoccnb.o: ccn_xmltoccnb.c ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h
