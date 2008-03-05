@@ -26,23 +26,23 @@
 	<classpathentry kind="lib" path="lib/bcprov-jdk15-138.jar" sourcepath="C:/Documents and Settings/smetters/My Documents/work/src/bcprov-jdk15-138/src.zip"/>
 	<classpathentry kind="lib" path="lib/sjsxp.jar"/>
 	<classpathentry kind="lib" path="lib/xmlsec.jar"/>
-	<classpathentry kind="lib" path="C:/Documents and Settings/smetters/My Documents/work/projects/workspace/CCN/lib/lucene-core-2.2.0.jar"/>
-	<classpathentry kind="lib" path="C:/Documents and Settings/smetters/My Documents/work/projects/workspace/CCN/lib/jackrabbit-api-1.4.jar" sourcepath="libsrc/jackrabbit-api-1.4-sources.jar"/>
-	<classpathentry kind="lib" path="C:/Documents and Settings/smetters/My Documents/work/projects/workspace/CCN/lib/jackrabbit-classloader-1.4.jar"/>
-	<classpathentry kind="lib" path="C:/Documents and Settings/smetters/My Documents/work/projects/workspace/CCN/lib/jackrabbit-core-1.4.jar" sourcepath="libsrc/jackrabbit-core-1.4-sources.jar"/>
-	<classpathentry kind="lib" path="C:/Documents and Settings/smetters/My Documents/work/projects/workspace/CCN/lib/jackrabbit-jca-1.4.jar"/>
-	<classpathentry kind="lib" path="C:/Documents and Settings/smetters/My Documents/work/projects/workspace/CCN/lib/jackrabbit-jcr2spi-1.4.jar"/>
-	<classpathentry kind="lib" path="C:/Documents and Settings/smetters/My Documents/work/projects/workspace/CCN/lib/jackrabbit-jcr-commons-1.4.jar"/>
-	<classpathentry kind="lib" path="C:/Documents and Settings/smetters/My Documents/work/projects/workspace/CCN/lib/jackrabbit-jcr-rmi-1.4.jar"/>
-	<classpathentry kind="lib" path="C:/Documents and Settings/smetters/My Documents/work/projects/workspace/CCN/lib/jackrabbit-jcr-server-1.4.jar"/>
-	<classpathentry kind="lib" path="C:/Documents and Settings/smetters/My Documents/work/projects/workspace/CCN/lib/jackrabbit-jcr-servlet-1.4.jar"/>
-	<classpathentry kind="lib" path="C:/Documents and Settings/smetters/My Documents/work/projects/workspace/CCN/lib/jackrabbit-jcr-tests-1.4.jar"/>
-	<classpathentry kind="lib" path="C:/Documents and Settings/smetters/My Documents/work/projects/workspace/CCN/lib/jackrabbit-spi2jcr-1.4.jar"/>
-	<classpathentry kind="lib" path="C:/Documents and Settings/smetters/My Documents/work/projects/workspace/CCN/lib/jackrabbit-spi-1.4.jar"/>
-	<classpathentry kind="lib" path="C:/Documents and Settings/smetters/My Documents/work/projects/workspace/CCN/lib/jackrabbit-spi-commons-1.4.jar"/>
-	<classpathentry kind="lib" path="C:/Documents and Settings/smetters/My Documents/work/projects/workspace/CCN/lib/jackrabbit-text-extractors-1.4.jar"/>
-	<classpathentry kind="lib" path="C:/Documents and Settings/smetters/My Documents/work/projects/workspace/CCN/lib/jackrabbit-webapp-1.4.jar"/>
-	<classpathentry kind="lib" path="C:/Documents and Settings/smetters/My Documents/work/projects/workspace/CCN/lib/jackrabbit-webdav-1.4.jar"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/jdk1.5.0_11"/>
+	<classpathentry kind="lib" path="lib/lucene-core-2.2.0.jar"/>
+	<classpathentry kind="lib" path="lib/jackrabbit-api-1.4.jar" sourcepath="libsrc/jackrabbit-api-1.4-sources.jar"/>
+	<classpathentry kind="lib" path="lib/jackrabbit-classloader-1.4.jar"/>
+	<classpathentry kind="lib" path="lib/jackrabbit-core-1.4.jar" sourcepath="libsrc/jackrabbit-core-1.4-sources.jar"/>
+	<classpathentry kind="lib" path="lib/jackrabbit-jca-1.4.jar"/>
+	<classpathentry kind="lib" path="lib/jackrabbit-jcr2spi-1.4.jar"/>
+	<classpathentry kind="lib" path="lib/jackrabbit-jcr-commons-1.4.jar"/>
+	<classpathentry kind="lib" path="lib/jackrabbit-jcr-rmi-1.4.jar"/>
+	<classpathentry kind="lib" path="lib/jackrabbit-jcr-server-1.4.jar"/>
+	<classpathentry kind="lib" path="lib/jackrabbit-jcr-servlet-1.4.jar"/>
+	<classpathentry kind="lib" path="lib/jackrabbit-jcr-tests-1.4.jar"/>
+	<classpathentry kind="lib" path="lib/jackrabbit-spi2jcr-1.4.jar"/>
+	<classpathentry kind="lib" path="lib/jackrabbit-spi-1.4.jar"/>
+	<classpathentry kind="lib" path="lib/jackrabbit-spi-commons-1.4.jar"/>
+	<classpathentry kind="lib" path="lib/jackrabbit-text-extractors-1.4.jar"/>
+	<classpathentry kind="lib" path="lib/jackrabbit-webapp-1.4.jar"/>
+	<classpathentry kind="lib" path="lib/jackrabbit-webdav-1.4.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

@@ -16,8 +16,7 @@ if [ $# = 0 ]
 then
   echo Possible commands:
   echo 
-  grep ccn_run /usr/local/bin/* 2>/dev/null | sed 's/^\/usr\/local\/bin\/\([^:]*\):.*$/\1/' | grep 
--v ccn_run | sort -u
+  grep ccn_run /usr/local/bin/* 2>/dev/null | sed 's/^\/usr\/local\/bin\/\([^:]*\):.*$/\1/' | grep -v ccn_run | sort -u
 else
   $JAVA -cp $CLASSPATH com.parc.ccn.network.daemons.RepositoryDaemon $*
 fi

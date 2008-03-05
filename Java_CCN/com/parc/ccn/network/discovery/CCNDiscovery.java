@@ -81,23 +81,32 @@ public class CCNDiscovery {
 			} catch (IOException e) {
 				Library.logger().warning("Cannot create discovery object.");
 				Library.logStackTrace(Level.WARNING, e);
-			}
+				Library.logger().warning("Continuing without discovery.");
+			} 
 		}
 	}
 	
 	public static void registerServiceType(String serviceType) {
 		_serviceTypes.add(serviceType);
-		_jmDNS.registerServiceType(serviceType);
-		if (null != _serviceListener) {
-			for (int i=0; i < _serviceTypes.size(); ++i) {
-				_jmDNS.addServiceListener(serviceType, _serviceListener);
-			}			
+		if (null != _jmDNS) {
+			_jmDNS.registerServiceType(serviceType);
+			if (null != _serviceListener) {
+				for (int i=0; i < _serviceTypes.size(); ++i) {
+					_jmDNS.addServiceListener(serviceType, _serviceListener);
+				}			
+			}
+		} else {
+			Library.logger().info("No multicast DNS available to register service type: " + serviceType);
 		}
 	}
 	
 	public static void advertiseServer(String serviceType, int port) throws IOException {
 		ServiceInfo si = getServiceInfo(serviceType, localHostName(), port);
-		_jmDNS.registerService(si);
+		if (null != _jmDNS) {
+			_jmDNS.registerService(si);
+		} else {
+			Library.logger().info("No multicast DNS available to advertise server: " + serviceType);
+		}
 		_localCCNServiceInfos.add(si);
 		Library.logger().info("Advertising server: " + si.toString());
 	}
@@ -118,8 +127,12 @@ public class CCNDiscovery {
 				if (null == _serviceListener) {
 					addDiscoveryListener(discoveryListener);
 					_serviceListener = new CCNServiceListener();
-					for (int i=0; i < _serviceTypes.size(); ++i) {
-						_jmDNS.addServiceListener(_serviceTypes.get(i), _serviceListener);
+					if (null != _jmDNS) {
+						for (int i=0; i < _serviceTypes.size(); ++i) {
+							_jmDNS.addServiceListener(_serviceTypes.get(i), _serviceListener);
+						}
+					} else {
+						Library.logger().info("No multicast DNS available to help in finding servers.");
 					}
 				}
 			}
@@ -139,6 +152,8 @@ public class CCNDiscovery {
 	}
 
 	public static void shutdown() {
+		if (null == _jmDNS)
+			return;
 		if (_serviceListener != null) {
 			for (int i=0; i < _serviceTypes.size(); ++i) {
 				_jmDNS.removeServiceListener(_serviceTypes.get(i), _serviceListener);

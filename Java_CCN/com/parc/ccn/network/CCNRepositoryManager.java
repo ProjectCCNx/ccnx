@@ -170,7 +170,8 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 			return;
 		
 		// Needs to be ok to call this more than once.
-		callbackListener.addInterest(interest);
+		if (null != callbackListener)
+			callbackListener.addInterest(interest);
 		for (int i=0; i < _repositories.size(); ++i) {
 			if ((_primaryRepository != _repositories.get(i)) && (null != _repositories.get(i))) {
 				_repositories.get(i).expressInterest(interest, callbackListener);

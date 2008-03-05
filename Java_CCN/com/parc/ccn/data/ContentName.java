@@ -12,13 +12,14 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
 import com.parc.ccn.network.rpc.Name;
 import com.parc.ccn.network.rpc.NameComponent;
 
-public class ContentName extends GenericXMLEncodable implements XMLEncodable {
+public class ContentName extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentName> {
 
 	public static final String SEPARATOR = "/";
 	public static final ContentName ROOT = new ContentName(0, (ArrayList<byte []>)null);
@@ -228,6 +229,23 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 		return componentPrint(_components.get(i));
 	}
 	
+	public void decode(XMLEventReader reader) throws XMLStreamException {
+		XMLHelper.readStartElement(reader, CONTENT_NAME_ELEMENT);
+		
+		_components = new ArrayList<byte []>();
+		
+		while (XMLHelper.peekStartElement(reader, COMPONENT_ELEMENT)) {
+			String strComponent = XMLHelper.readElementText(reader, COMPONENT_ELEMENT); 
+			try {
+				_components.add(XMLHelper.decodeElement(strComponent));
+			} catch (IOException e) {
+				throw new XMLStreamException("Cannot decode component: " + strComponent, e);
+			}
+		}
+		
+		XMLHelper.readEndElement(reader);
+	}
+
 	public boolean equals(Object obj) {
 		if (this == obj)
 			return true;
@@ -330,23 +348,6 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 		return this.equals(other, this.count());
 	}
 	
-	public void decode(XMLEventReader reader) throws XMLStreamException {
-		XMLHelper.readStartElement(reader, CONTENT_NAME_ELEMENT);
-		
-		_components = new ArrayList<byte []>();
-		
-		while (XMLHelper.peekStartElement(reader, COMPONENT_ELEMENT)) {
-			String strComponent = XMLHelper.readElementText(reader, COMPONENT_ELEMENT); 
-			try {
-				_components.add(XMLHelper.decodeElement(strComponent));
-			} catch (IOException e) {
-				throw new XMLStreamException("Cannot decode component: " + strComponent, e);
-			}
-		}
-		
-		XMLHelper.readEndElement(reader);
-	}
-
 	public void encode(XMLStreamWriter writer, boolean isFirstElement) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
@@ -380,5 +381,20 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable {
 
 	public ContentName copy(int nameComponentCount) {
 		return new ContentName(nameComponentCount, this.components());
+	}
+
+	public int compareTo(ContentName o) {
+		int len = (this.count() > o.count()) ? this.count() : o.count();
+		int componentResult = 0;
+		for (int i=0; i < len; ++i) {
+			componentResult = DataUtils.compareTo(this.component(i), o.component(i));
+			if (0 != componentResult)
+				return componentResult;
+		}
+		if (this.count() < o.count())
+			return -1;
+		else if (this.count() > o.count())
+			return 1;
+		return 0;
 	}
 }

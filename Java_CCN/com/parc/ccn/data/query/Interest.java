@@ -16,10 +16,13 @@ import com.parc.ccn.data.util.XMLHelper;
  * This class represents all the allowed specializations
  * of queries recognized and supported (in a best-effort
  * fashion) at the CCN level.
+ * 
+ * Implement Comparable to make it much easier to store in
+ * a Set and avoid duplicates.
  * @author smetters
  *
  */
-public class Interest extends GenericXMLEncodable implements XMLEncodable {
+public class Interest extends GenericXMLEncodable implements XMLEncodable, Comparable<Interest> {
 	
 	// Used to remove spurious *'s
 	public static final String RECURSIVE_POSTFIX = "*";
@@ -136,16 +139,38 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable {
 		if (getClass() != obj.getClass())
 			return false;
 		final Interest other = (Interest) obj;
-		if (_publisher == null) {
-			if (other._publisher != null)
-				return false;
-		} else if (!_publisher.equals(other._publisher))
-			return false;
 		if (_name == null) {
 			if (other._name != null)
 				return false;
 		} else if (!_name.equals(other._name))
 			return false;
+		if (_publisher == null) {
+			if (other._publisher != null)
+				return false;
+		} else if (!_publisher.equals(other._publisher))
+			return false;
 		return true;
+	}
+
+	public int compareTo(Interest o) {
+		int result = 0;
+		if (null != _name) {
+			result = _name.compareTo(o.name());
+			if (0 != result)
+				return result;
+		} else {
+			if (null != o.name())
+				return -1; // sort nothing before something
+			// else fall through and compare publishers
+		}
+		
+		if (null != _publisher) {
+			result = _publisher.compareTo(o.publisherID());
+			return result;
+		} else {
+			if (null != o.publisherID())
+				return -1;
+			return 0;
+		}
 	}
 }

@@ -18,6 +18,9 @@ import com.parc.ccn.data.CompleteName;
  */
 public abstract class BasicInterestListener implements CCNInterestListener {
 
+	/**
+	 * Interest must implement Comparable.
+	 */
 	protected Set<Interest> _interests = new TreeSet<Interest>();
 	
 	/**

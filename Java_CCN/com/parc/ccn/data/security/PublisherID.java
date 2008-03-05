@@ -12,6 +12,7 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
@@ -23,7 +24,7 @@ import com.parc.ccn.security.crypto.certificates.GenericX509CertificateGenerator
  * @author smetters
  *
  */
-public class PublisherID extends GenericXMLEncodable implements XMLEncodable {
+public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Comparable<PublisherID> {
 
 	public static final String PUBLISHER_ID_DIGEST_ALGORITHM = "SHA-256";
     public static final int PUBLISHER_ID_LEN = 256/8;
@@ -185,5 +186,13 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable {
 		}
         return id;
     }
+
+	public int compareTo(PublisherID o) {
+		int result = DataUtils.compareTo(this.id(), o.id());
+		if (0 == result) {
+			result = typeToName(this.type()).compareTo(typeToName(o.type()));
+		}
+		return result;
+	}
 
 }

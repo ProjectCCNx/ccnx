@@ -1,5 +1,7 @@
 package com.parc.ccn.network.daemons;
 
+import java.io.IOException;
+
 import org.acplt.oncrpc.OncRpcException;
 
 import com.parc.ccn.Library;
@@ -22,14 +24,27 @@ public class RepositoryDaemon extends Daemon {
 		private static final long serialVersionUID = -6093561895394961537L;
 		JackrabbitCCNRepository _repository = null;
 		CCNInterestServer _interestServer = null;
+		boolean _noNetwork = false;
 		
 		protected RepositoryWorkerThread(String daemonName) {
 			super(daemonName);
 		}
 		
 		public void work() {
-			// we don't need to do anything on each work loop
-			// other than keep alive
+			// Put call to start the server in the work method, as it blocks.
+			Library.logger().info("Starting interest server...");				
+			//	_interestServer.run(_interestServer.transports); // starts with no portmap, expects direct connects
+			try {
+				if (!_noNetwork)
+					_interestServer.run(); // starts using portmap
+
+			} catch (OncRpcException oe) {
+				Library.logger().warning("Cannot register service with portmapper. Continuing without network connectivity.");
+				_noNetwork = true;
+			} catch (IOException ie) {
+				Library.logger().warning("IOException running interest server: " + ie.getMessage());
+				Library.warningStackTrace(ie);
+			}
 		}
 		
 		public void initialize() {
@@ -41,15 +56,6 @@ public class RepositoryDaemon extends Daemon {
 				_interestServer = 
 					new CCNInterestServer(_repository);
 
-				Library.logger().info("Starting interest server...");				
-			//	_interestServer.run(_interestServer.transports); // starts with no portmap, expects direct connects
-				try {
-					_interestServer.run(); // starts using portmap
-
-				} catch (OncRpcException oe) {
-					Library.logger().warning("Cannot register service with portmapper. Continuing without network connectivity.");
-					
-				}
 			} catch (Exception e) {
 				Library.logger().warning("Exception starting interest server: " + e.getMessage());
 				Library.warningStackTrace(e);
