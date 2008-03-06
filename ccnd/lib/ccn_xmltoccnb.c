@@ -17,18 +17,22 @@ struct ccn_encoder_stack_item {
 };
 
 struct ccn_encoder {
-    struct ccn_charbuf *c;
     struct ccn_charbuf *openudata;
-    int subitems;
     FILE *outfile;
 };
 
 
 struct ccn_encoder *
-ccn_encoder_create(void)
+ccn_encoder_create(FILE *outfile)
 {
     struct ccn_encoder *c;
     c = calloc(1, sizeof(*c));
+    if (c) {
+        c->openudata = ccn_charbuf_create();
+        if (c->openudata != NULL)
+            ccn_charbuf_reserve(c->openudata, 128);
+        c->outfile = outfile;
+    }
     return(c);
 }
 
@@ -43,35 +47,59 @@ ccn_encoder_destroy(struct ccn_encoder **cbp)
     }
 }
 
-#define emit_name(a,b,c) (void)0
-#define emit_bytes(a,b,c) (void)0
-#define emit_item(a,b,c) (void)0
+static void
+emit_bytes(struct ccn_encoder *u, const void *p, size_t length)
+{
+    fwrite(p, 1, length, u->outfile);
+}
+
+static void
+emit_tt(struct ccn_encoder *u, size_t numval, enum ccn_tt tt)
+{
+    unsigned char buf[1+8*((sizeof(numval)+6)/7)];
+    unsigned char *p = buf + (sizeof(buf)-1);
+    int n = 1;
+    p[0] = ((numval & CCN_MAX_TINY) << CCN_TT_BITS) + (CCN_TT_MASK & tt);
+    numval >>= (7-CCN_TT_BITS);
+    while (numval != 0) {
+        (--p)[0] = ((unsigned char)numval) | 128;
+        n++;
+        numval >>= 7;
+    }
+    emit_bytes(u, p, n);
+}
+
+static void
+emit_name(struct ccn_encoder *u, enum ccn_tt tt, const void *name)
+{
+    size_t length = strlen(name);
+    if (length == 0) return; /* should never happen */
+    emit_tt(u, length-1, tt);
+    emit_bytes(u, name, length);
+}
 
 static void
 finish_openudata(struct ccn_encoder *u)
 {
     if (u->openudata->length != 0) {
-        emit_item(u, u->openudata->length, CCN_UDATA);
+        emit_tt(u, u->openudata->length, CCN_UDATA);
         emit_bytes(u, u->openudata->buf, u->openudata->length);
         u->openudata->length = 0;
-        u->subitems++;
     }
 }
 
-static unsigned char dummy[] = { 127, 127, 127, 127, (1 << 4) + CCN_STRUCTURE };
 static void
 do_start_element(void *ud, const XML_Char *name,
                           const XML_Char **atts)
 {
     struct ccn_encoder *u = ud;
     const XML_Char **att;
-    u->subitems++;
-    //push(u);
+    finish_openudata(u);
     emit_name(u, CCN_TAG, name);
     for (att = atts; att[0] != NULL; att += 2) {
         size_t attrlen = strlen(att[1]);
         emit_name(u, CCN_ATTR, att[0]);
-        emit_name(u, attrlen, CCN_UDATA);
+        emit_tt(u, attrlen, CCN_UDATA);
         emit_bytes(u, att[1], attrlen);
     }
 }
@@ -80,7 +108,9 @@ static void
 do_end_element(void *ud, const XML_Char *name)
 {
     struct ccn_encoder *u = ud;
-    fprintf(u->outfile, "ENDTAG %s\n", name);
+    static const unsigned char closer[] = { CCN_CLOSE };
+    finish_openudata(u);
+    emit_bytes(u, closer, sizeof(closer));
 }
 
 static void
@@ -95,10 +125,12 @@ process_fd(int fd, FILE *outfile) {
     char buf[17];
     ssize_t len;
     int res = 0;
-    struct ccn_encoder userdata = { .outfile = outfile };
-    
-    XML_Parser p = XML_ParserCreate(NULL);
-    XML_SetUserData(p, &userdata);
+    struct ccn_encoder *u;
+    XML_Parser p;
+    u = ccn_encoder_create(outfile);
+    if (u == NULL) return(1);
+    p = XML_ParserCreate(NULL);
+    XML_SetUserData(p, u);
     XML_SetElementHandler(p, &do_start_element, &do_end_element);
     XML_SetCharacterDataHandler(p, &do_character_data);
     
@@ -117,6 +149,7 @@ process_fd(int fd, FILE *outfile) {
         res |= 1;
     }
     XML_ParserFree(p);
+    ccn_encoder_destroy(&u);
     
     return(res);
 }
@@ -141,11 +174,9 @@ process_file(char *path) {
             basename = path;
         else
             basename++;
-        fprintf(stderr, "basename = %s\n", basename);
         ext = strrchr(basename, '.');
         if (ext == NULL || 0 != strcasecmp(ext, ".xml"))
             ext = strrchr(basename, 0);
-        fprintf(stderr, "ext = basename + %d\n", (int)(ext - basename));
         outname = calloc(1, ext - basename + sizeof(outext));
         if (outname == NULL) { perror("calloc"); exit(1); }
         memcpy(outname, basename, ext - basename);
@@ -162,8 +193,10 @@ process_file(char *path) {
         res = process_fd(fd, outfile);
         fflush(outfile);
     }
-    if (outfile != stdout) {
+    if (outfile != NULL && outfile != stdout) {
         fclose(outfile);
+        if (res == 0)
+            fprintf(stderr, " %s written.\n", outname);
     }
     if (fd > 0)
         close(fd);

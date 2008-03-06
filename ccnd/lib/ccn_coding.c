@@ -17,12 +17,11 @@ struct ccn_decoder_stack_item {
     struct ccn_decoder_stack_item *link;
 };
 
-#define NUMVALCAREFUL (unsigned)(UINT_MAX >> 7)
 struct ccn_decoder {
     int state;
     int tagstate;
     int bits;
-    unsigned numval;
+    size_t numval;
     uintmax_t bignumval;
     struct ccn_decoder_stack_item *stack;
     struct ccn_charbuf *stringstack;
@@ -90,7 +89,7 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
 {
     int state = d->state;
     int tagstate = 0;
-    unsigned numval = d->numval;
+    size_t numval = d->numval;
     ssize_t i = 0;
     unsigned char c;
     size_t chunk;
@@ -125,8 +124,14 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
             case 1: /* parsing numval */
                 c = p[i++];
                 if (c != (c & 127)) {
+                    if (numval > (numval << 7)) {
+                        state = 9;
+                        d->bignumval = numval;
+                        i--;
+                        continue;
+                    }
                     numval = (numval << 7) + (c & 127);
-                    if (numval > NUMVALCAREFUL) {
+                    if (numval > (numval << 3)) {
                         state = 9;
                         d->bignumval = numval;
                     }
@@ -298,6 +303,22 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
 }
 
 static int
+process_test(unsigned char *data, size_t n) {
+    struct ccn_decoder *d = ccn_decoder_create();
+    int res = 0;
+    size_t s;
+    s = ccn_decoder_decode(d, data, n);
+    printf("\n");
+    if (d->state != 0 || s < n || d->stack != NULL || d->tagstate != 0) {
+        res = 1;
+        fprintf(stderr, "error state %d after %d of %d chars\n",
+            (int)d->state, (int)s, (int)n);
+    }
+    ccn_decoder_destroy(&d);
+    return(res);
+}
+
+static int
 process_fd(int fd)
 {
     struct ccn_charbuf *c = ccn_charbuf_create();
@@ -320,7 +341,8 @@ process_fd(int fd)
         }
         c->length += len;
     }
-    fprintf(stderr, "%6lu bytes\n", (unsigned long)c->length);
+    fprintf(stderr, " <!-- input is %6lu bytes -->\n", (unsigned long)c->length);
+    res |= process_test(c->buf, c->length);
     ccn_charbuf_destroy(&c);
     return(res);
 }
@@ -337,8 +359,6 @@ process_file(char *path) {
             return(1);
         }
     }
-    
-    fprintf(stderr, "<!-- Processing %s -->\n", path);
     
     res = process_fd(fd);
     
@@ -372,22 +392,6 @@ unsigned char test1[] = {
     'H','i','&','b','y','e',
                CCN_CLOSE,
 };
-
-static int
-process_test(unsigned char *data, size_t n) {
-    struct ccn_decoder *d = ccn_decoder_create();
-    int res = 0;
-    size_t s;
-    s = ccn_decoder_decode(d, data, n);
-    printf("\n");
-    if (d->state != 0 || s < n || d->stack != NULL || d->tagstate != 0) {
-        res = 1;
-        fprintf(stderr, "error state %d after %d of %d chars\n",
-            (int)d->state, (int)s, (int)n);
-    }
-    ccn_decoder_destroy(&d);
-    return(res);
-}
 
 int
 main(int argc, char **argv) {
