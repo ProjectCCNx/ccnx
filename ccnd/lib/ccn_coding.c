@@ -76,11 +76,6 @@ ccn_decoder_destroy(struct ccn_decoder **dp)
     }
 }
 
-
-const char * const vocab[] = { "foo", "bar", "baz" };
-
-const size_t vocab_limit = sizeof(vocab) / sizeof(vocab[0]);
-
 static const char Base64[] =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -194,6 +189,8 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                     case '<':
                         printf("&lt;");
                         break;
+                    case '>':
+                        printf("&gt;");
                     case '"':
                         printf("&quot;");
                         break;
