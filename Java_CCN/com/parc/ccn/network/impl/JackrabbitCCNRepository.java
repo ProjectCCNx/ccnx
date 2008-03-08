@@ -787,11 +787,14 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 			throw new IOException(e.getMessage());
 		}
 		
-		// Now tell them about the matches that already exist
-		// Need to filter -- the eventing interface only selects
-		// based on name; the listener might have other criteria.
-		// This is where we check those.
-		// DKS: could rely on listener to do this...
+		// This code would tell the listener immediately about
+		// matches that currently exist. While that sounds like
+		// a good idea, once you have a fair amount of data in
+		// your repository, it's not anymore. Better bet is to
+		// just use the interest interface to talk about new
+		// data, and use the get and enumerate interface to talk
+		// about data we already know about.
+		/*
 		ArrayList<CompleteName> currentMatches = 
 				enumerate(jel.interest());
 		Iterator<CompleteName> it = currentMatches.iterator();
@@ -805,7 +808,8 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		}
 		if (null != jel.interestListener())
 			jel.interestListener().handleResults(currentMatches);
-			
+		*/
+		
 		return;		
 	}
 

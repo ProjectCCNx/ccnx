@@ -25,6 +25,7 @@ public class RepositoryDaemon extends Daemon {
 		JackrabbitCCNRepository _repository = null;
 		CCNInterestServer _interestServer = null;
 		boolean _noNetwork = false;
+		boolean _started = false;
 		
 		protected RepositoryWorkerThread(String daemonName) {
 			super(daemonName);
@@ -32,7 +33,10 @@ public class RepositoryDaemon extends Daemon {
 		
 		public void work() {
 			// Put call to start the server in the work method, as it blocks.
-			Library.logger().info("Starting interest server...");				
+			if (!_started) {
+				Library.logger().info("Starting interest server...");				
+				_started = true;
+			}
 			//	_interestServer.run(_interestServer.transports); // starts with no portmap, expects direct connects
 			try {
 				if (!_noNetwork)
