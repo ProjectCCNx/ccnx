@@ -1,6 +1,5 @@
 
-
-#define CCN_TT_BITS 4
+#define CCN_TT_BITS 3
 #define CCN_TT_MASK ((1 << CCN_TT_BITS) - 1)
 #define CCN_MAX_TINY ((1 << (7-CCN_TT_BITS)) - 1)
 

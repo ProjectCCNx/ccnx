@@ -160,12 +160,12 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                             s->nameindex = d->stringstack->length;
                             d->schema = numval;
                             d->sstate = 0;
-                            switch (d->schema) {
+                            switch (numval) {
                                 case CCN_PROCESSING_INSTRUCTIONS:
                                     printf("<?");
                                     break;
                                 default:
-                                    fprintf(stderr, "*** Warning: unrecognized builtin %u", (unsigned)numval);
+                                    fprintf(stderr, "*** Warning: unrecognized builtin %lu\n", (unsigned long)numval);
                                     d->schema = CCN_UNKNOWN_BUILTIN;
                                     break;
                             }
@@ -352,6 +352,7 @@ process_test(unsigned char *data, size_t n) {
     struct ccn_decoder *d = ccn_decoder_create();
     int res = 0;
     size_t s;
+    printf("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n");
     s = ccn_decoder_decode(d, data, n);
     printf("\n");
     if (d->state != 0 || s < n || d->stack != NULL || d->tagstate != 0) {
