@@ -1,4 +1,5 @@
 
+
 #define CCN_TT_BITS 4
 #define CCN_TT_MASK ((1 << CCN_TT_BITS) - 1)
 #define CCN_MAX_TINY ((1 << (7-CCN_TT_BITS)) - 1)
@@ -13,3 +14,10 @@ enum ccn_tt {
 };
 
 #define CCN_CLOSE ((unsigned char)(1 << 7))
+
+enum ccn_vocab {
+    CCN_UNKNOWN_BUILTIN = -2,
+    CCN_NO_SCHEMA = -1,
+    CCN_PROCESSING_INSTRUCTIONS = 16, /* <?name:U value:U?> */
+    
+};

@@ -70,15 +70,6 @@ emit_tt(struct ccn_encoder *u, size_t numval, enum ccn_tt tt)
 }
 
 static void
-emit_name(struct ccn_encoder *u, enum ccn_tt tt, const void *name)
-{
-    size_t length = strlen(name);
-    if (length == 0) return; /* should never happen */
-    emit_tt(u, length-1, tt);
-    emit_bytes(u, name, length);
-}
-
-static void
 finish_openudata(struct ccn_encoder *u)
 {
     if (u->openudata->length != 0) {
@@ -88,19 +79,44 @@ finish_openudata(struct ccn_encoder *u)
     }
 }
 
+
+static void
+emit_name(struct ccn_encoder *u, enum ccn_tt tt, const void *name)
+{
+    size_t length = strlen(name);
+    if (length == 0) return; /* should never happen */
+    finish_openudata(u);
+    emit_tt(u, length-1, tt);
+    emit_bytes(u, name, length);
+}
+
+static void
+emit_xchars(struct ccn_encoder *u, const XML_Char *xchars)
+{
+    size_t length = strlen(xchars);
+    finish_openudata(u);
+    emit_tt(u, length, CCN_UDATA);
+    emit_bytes(u, xchars, length);
+}
+
+static void
+emit_closer(struct ccn_encoder *u)
+{
+    static const unsigned char closer[] = { CCN_CLOSE };
+    finish_openudata(u);
+    emit_bytes(u, closer, sizeof(closer));
+}
+
 static void
 do_start_element(void *ud, const XML_Char *name,
                           const XML_Char **atts)
 {
     struct ccn_encoder *u = ud;
     const XML_Char **att;
-    finish_openudata(u);
     emit_name(u, CCN_TAG, name);
     for (att = atts; att[0] != NULL; att += 2) {
-        size_t attrlen = strlen(att[1]);
         emit_name(u, CCN_ATTR, att[0]);
-        emit_tt(u, attrlen, CCN_UDATA);
-        emit_bytes(u, att[1], attrlen);
+        emit_xchars(u, att[1]);
     }
 }
 
@@ -108,9 +124,7 @@ static void
 do_end_element(void *ud, const XML_Char *name)
 {
     struct ccn_encoder *u = ud;
-    static const unsigned char closer[] = { CCN_CLOSE };
-    finish_openudata(u);
-    emit_bytes(u, closer, sizeof(closer));
+    emit_closer(u);
 }
 
 static void
@@ -118,6 +132,17 @@ do_character_data(void *ud, const XML_Char *s, int len)
 {
      struct ccn_encoder *u = ud;
      ccn_charbuf_append(u->openudata, s, len);
+}
+
+static void
+do_processing_instructions(void *ud, const XML_Char *target, const XML_Char *data)
+{
+     struct ccn_encoder *u = ud;
+     finish_openudata(u);
+     emit_tt(u, CCN_PROCESSING_INSTRUCTIONS, CCN_BUILTIN);
+     emit_xchars(u, target);
+     emit_xchars(u, data);
+     emit_closer(u);
 }
 
 static int
@@ -133,6 +158,7 @@ process_fd(int fd, FILE *outfile) {
     XML_SetUserData(p, u);
     XML_SetElementHandler(p, &do_start_element, &do_end_element);
     XML_SetCharacterDataHandler(p, &do_character_data);
+    XML_SetProcessingInstructionHandler(p, &do_processing_instructions);
     
     while ((len = read(fd, buf, sizeof(buf))) > 0) {
         if (XML_Parse(p, buf, len, 0) != XML_STATUS_OK) {

@@ -14,6 +14,8 @@ struct ccn_decoder_stack_item {
     size_t nameindex; /* byte index into stringstack */
     size_t itemcount;
     size_t savedss;
+    enum ccn_vocab saved_schema;
+    int saved_schema_state;
     struct ccn_decoder_stack_item *link;
 };
 
@@ -23,6 +25,8 @@ struct ccn_decoder {
     int bits;
     size_t numval;
     uintmax_t bignumval;
+    enum ccn_vocab schema;
+    int sstate;
     struct ccn_decoder_stack_item *stack;
     struct ccn_charbuf *stringstack;
 };
@@ -37,6 +41,7 @@ ccn_decoder_create(void)
         free(d);
         d = NULL;
     }
+    d->schema = CCN_NO_SCHEMA;
     return(d);
 }
 
@@ -47,6 +52,8 @@ ccn_decoder_push(struct ccn_decoder *d) {
     if (s != NULL) {
         s->link = d->stack;
         s->savedss = d->stringstack->length;
+        s->saved_schema = d->schema;
+        s->saved_schema_state = d->sstate;
         d->stack = s;
     }
     return(s);
@@ -58,6 +65,8 @@ ccn_decoder_pop(struct ccn_decoder *d) {
     if (s != NULL) {
         d->stack = s->link;
         d->stringstack->length = s->savedss;
+        d->schema = s->saved_schema;
+        d->sstate = s->saved_schema_state;
         free(s);
     }
 }
@@ -107,6 +116,13 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                         tagstate = 0;
                         printf("/>");
                     }
+                    else if (d->schema == CCN_PROCESSING_INSTRUCTIONS) {
+                        printf("?>");
+                        if (d->sstate != 2) {
+                            state = -__LINE__;
+                            break;
+                        }
+                    }
                     else {
                         printf("</%s>", d->stringstack->buf + s->nameindex);
                     }
@@ -126,19 +142,35 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                         continue;
                     }
                     numval = (numval << 7) + (c & 127);
-                    if (numval > (numval << 3)) {
+                    if (numval > (numval << (7-CCN_TT_BITS))) {
                         state = 9;
                         d->bignumval = numval;
                     }
                 }
                 else {
-                    numval = (numval << 3) + (c >> 4);
-                    c &= 15;
+                    numval = (numval << (7-CCN_TT_BITS)) + (c >> CCN_TT_BITS);
+                    c &= CCN_TT_MASK;
                     if (tagstate == 1 && c != CCN_ATTR) {
                         tagstate = 0;
                         printf(">");
                     }
                     switch (c) {
+                        case CCN_BUILTIN:
+                            s = ccn_decoder_push(d);
+                            s->nameindex = d->stringstack->length;
+                            d->schema = numval;
+                            d->sstate = 0;
+                            switch (d->schema) {
+                                case CCN_PROCESSING_INSTRUCTIONS:
+                                    printf("<?");
+                                    break;
+                                default:
+                                    fprintf(stderr, "*** Warning: unrecognized builtin %u", (unsigned)numval);
+                                    d->schema = CCN_UNKNOWN_BUILTIN;
+                                    break;
+                            }
+                            state = 0;
+                            break;
                         case CCN_INTVAL:
                             printf("%lu", (unsigned long)numval);
                             state = 0;
@@ -147,7 +179,16 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                             state = (numval == 0) ? 0 : 10;
                             break;
                         case CCN_UDATA:
-                            state = (numval == 0) ? 0 : 3;
+                            state = 3;
+                            if (d->schema == CCN_PROCESSING_INSTRUCTIONS) {
+                                if (d->sstate > 0) {
+                                    printf(" ");
+                                }
+                                state = 6;
+                                d->sstate += 1;
+                            }
+                            if (numval == 0)
+                                state = 0;
                             break;
                         case CCN_ATTR:
                             if (tagstate != 1) {
@@ -231,6 +272,13 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                     }
                     state = 0;
                 }
+                break;
+            case 6: /* processing instructions */
+                c = p[i++];
+                if (--numval == 0) {
+                    state = 0;
+                }
+                printf("%c", c);
                 break;
             case 9: /* parsing big numval - cannot be a length anymore */
                 c = p[i++];
