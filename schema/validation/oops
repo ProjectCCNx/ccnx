@@ -4,6 +4,9 @@ cat << EOF
 ****************
 You may need to install a newer version of xmllint,
 or change your PATH to find the right one.
+For example, on Mac OS X, you can install xmllint using
+macports, and set your path with
+  export PATH=/opt/local/bin:\$PATH
 ****************
 EOF
 exit 1

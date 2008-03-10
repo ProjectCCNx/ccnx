@@ -166,6 +166,11 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                                     break;
                                 default:
                                     fprintf(stderr, "*** Warning: unrecognized builtin %lu\n", (unsigned long)numval);
+                                    ccn_charbuf_append(d->stringstack, "UNKNOWN_BUILTIN", sizeof("UNKNOWN_BUILTIN"));
+                                    printf("<%s code=\"%lu\"",
+                                           d->stringstack->buf + s->nameindex,
+                                           (unsigned long)d->schema);
+                                    tagstate = 1;
                                     d->schema = CCN_UNKNOWN_BUILTIN;
                                     break;
                             }
@@ -414,29 +419,45 @@ process_file(char *path) {
 }
 
 unsigned char test1[] = {
-    (2 << 4) + CCN_TAG, 'F', 'o', 'o',
-    (0 << 4) + CCN_TAG, 'a',
-    (1 << 4) + CCN_UDATA, 'X',
+    (2 << CCN_TT_BITS) + CCN_TAG, 'F', 'o', 'o',
+    (0 << CCN_TT_BITS) + CCN_TAG, 'a',
+    (1 << CCN_TT_BITS) + CCN_UDATA, 'X',
                CCN_CLOSE,
-    (0 << 4) + CCN_TAG, 'b',
-    (3 << 4) + CCN_ATTR, 't', 'y', 'p', 'e',
-    (5 << 4) + CCN_UDATA, 'e', 'm', 'p', 't', 'y',
+    (0 << CCN_TT_BITS) + CCN_TAG, 'b',
+    (3 << CCN_TT_BITS) + CCN_ATTR, 't', 'y', 'p', 'e',
+    (5 << CCN_TT_BITS) + CCN_UDATA, 'e', 'm', 'p', 't', 'y',
                CCN_CLOSE,
-    (2 << 4) + CCN_TAG, 'b', 'i', 'n',
-    (4 << 4) + CCN_BLOB, 1, 0x23, 0x45, 0x67,
+    (2 << CCN_TT_BITS) + CCN_TAG, 'b', 'i', 'n',
+    (4 << CCN_TT_BITS) + CCN_BLOB, 1, 0x23, 0x45, 0x67,
                CCN_CLOSE,
-    (2 << 4) + CCN_TAG, 'i', 'n', 't',
-    128 + 42/8,
-    ((42 % 8) << 4) + CCN_INTVAL,
+    (2 << CCN_TT_BITS) + CCN_TAG, 'i', 'n', 't',
+    128 + (42 >> (7-CCN_TT_BITS)),
+    ((42 & CCN_TT_MASK) << CCN_TT_BITS) + CCN_INTVAL,
                CCN_CLOSE,
-    (2 << 4) + CCN_TAG, 'i', 'n', 't',
-    (3 << 4) + CCN_ATTR, 't', 'y', 'p', 'e',
-    (3 << 4) + CCN_UDATA, 'B', 'I', 'G',
+    (2 << CCN_TT_BITS) + CCN_TAG, 'i', 'n', 't',
+    (3 << CCN_TT_BITS) + CCN_ATTR, 't', 'y', 'p', 'e',
+    (3 << CCN_TT_BITS) + CCN_UDATA, 'B', 'I', 'G',
     129, 130, 131, 132, 133, 134, 135, 136, (1 << 4) + CCN_INTVAL,
                CCN_CLOSE,
-    (6 << 4) + CCN_UDATA,
+    (6 << CCN_TT_BITS) + CCN_UDATA,
     'H','i','&','b','y','e',
                CCN_CLOSE,
+};
+
+unsigned char test2[] = {
+    (7 << CCN_TT_BITS) + CCN_BUILTIN,
+    (1 << CCN_TT_BITS) + CCN_UDATA, 'U',
+    (1 << CCN_TT_BITS) + CCN_BLOB, 'B',
+    (CCN_MAX_TINY << CCN_TT_BITS) + CCN_INTVAL,
+    (0 << CCN_TT_BITS) + CCN_TAG, 'e',
+    (0 << CCN_TT_BITS) + CCN_ATTR, 'a',
+    (1 << CCN_TT_BITS) + CCN_UDATA, 'x',
+        CCN_CLOSE,
+    (1 << CCN_TT_BITS) + CCN_BUILTIN,
+        (0 << CCN_TT_BITS) + CCN_ATTR, 'b',
+        (1 << CCN_TT_BITS) + CCN_UDATA, '1',
+        CCN_CLOSE,
+        CCN_CLOSE
 };
 
 int
@@ -447,6 +468,9 @@ main(int argc, char **argv) {
         fprintf(stderr, "<!-- Processing %s -->\n", argv[i]);
         if (0 == strcmp(argv[i], "-test1")) {
             res |= process_test(test1, sizeof(test1));
+        }
+        else if (0 == strcmp(argv[i], "-test2")) {
+            res |= process_test(test2, sizeof(test2));
         }
         else
             res |= process_file(argv[i]);
