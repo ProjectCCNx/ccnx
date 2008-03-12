@@ -639,7 +639,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 					objects.add(getContentObject(node));
 				} 
 			}
-			Library.logger().warning("Query returned " + iter.getSize() + " results, of which " + objects.size() + " were CCN nodes.");
+			// Library.logger().warning("Query returned " + iter.getSize() + " results, of which " + objects.size() + " were CCN nodes.");
 		} catch (RepositoryException e) {
 			Library.logger().warning("Invalid query or problem executing get: " + e.getMessage());
 			Library.warningStackTrace(e);
@@ -703,7 +703,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		// DKS: TODO: Add a requirement to make it a valid CCN node 
 		// right now filtering results upstream
 		// queryStringBuf.append("[@" + PUBLISHER_PROPERTY + "!= ''");
-		Library.logger().info("Query: name: " + name.toString() + " query: " + queryStringBuf.toString());
+		//Library.logger().info("Query: name: " + name.toString() + " query: " + queryStringBuf.toString());
 		return queryStringBuf.toString();
 	}
 	
@@ -1294,7 +1294,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 					names.add(new CompleteName(getName(node), null));
 				}
 			}
-			Library.logger().warning("Query returned " + iter.getSize() + " results, of which " + names.size() + " were CCN nodes.");
+		//	Library.logger().warning("Query returned " + iter.getSize() + " results, of which " + names.size() + " were CCN nodes.");
 		} catch (RepositoryException e) {
 			Library.logger().warning("Invalid query or problem executing get: " + e.getMessage());
 			Library.warningStackTrace(e);

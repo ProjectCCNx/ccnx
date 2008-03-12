@@ -57,10 +57,10 @@ public class CCNInterestServer extends RepoTransport_TRANSPORTTOREPOPROG_ServerS
 		//   make life cope with more than one piece of
 		//   content with the same name.
 		Interest interest = new Interest(new ContentName(arg1), null);
-		Library.logger().info("CCNInterestServer: Enumerating " + interest.name());
+		//Library.logger().info("CCNInterestServer: Enumerating " + interest.name());
 		ArrayList<CompleteName> availableNames = null;
 		try {
-			Library.logger().info("About to call enumerate. Repository? " + ((null == _theRepository) ? "no" : "yes"));
+		//	Library.logger().info("About to call enumerate. Repository? " + ((null == _theRepository) ? "no" : "yes"));
 			availableNames = _theRepository.enumerate(interest);
 			Library.logger().info("Enumerate_1: got " + availableNames.size() + " results.");
 		
@@ -76,6 +76,7 @@ public class CCNInterestServer extends RepoTransport_TRANSPORTTOREPOPROG_ServerS
 					   availableNames.size() : 0);
 		list.names = new Name[list.count];
 		for (int i=0; i < list.count; ++i) {
+			Library.logger().info("Enumerate: name: " + i + ": " + availableNames.get(i));
 			list.names[i] = availableNames.get(i).name().toONCName();
 		}
 		return list;
@@ -112,7 +113,7 @@ public class CCNInterestServer extends RepoTransport_TRANSPORTTOREPOPROG_ServerS
 				byte [] encodedContent = availableContent.get(0).encode();
 				block.length = encodedContent.length;
 				block.data = encodedContent;
-				Library.logger().info("GetBlock_1 sending block of " + block.length + " bytes.");
+				Library.logger().info("GetBlock_1 sending block of " + block.length + " bytes for name: " + availableContent.get(0).name());
 			}
 			return block;
 			
@@ -140,10 +141,10 @@ public class CCNInterestServer extends RepoTransport_TRANSPORTTOREPOPROG_ServerS
 		// The data block should contain an XML
 		// encoded ContentObject.
 		try {
-			Library.logger().info("CCNInterestServer: PutBlock");
 			// Decode content object.
 			ContentObject co = new ContentObject();
 			co.decode(arg2.data);
+			Library.logger().info("CCNInterestServer: PutBlock recieved content: " + co.name());
 			_theRepository.put(co.name(), co.authenticator(), co.content());
 			return 0;
 			
