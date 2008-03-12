@@ -295,7 +295,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 			// add it if we already have it.
 			n = addLeafNode(n, name.component(i), authenticator, content);
 			
-			Library.logger().info("Adding node: " + n.getCorrespondingNodePath(_session.getWorkspace().getName()));
+		//	Library.logger().info("Adding node: " + n.getCorrespondingNodePath(_session.getWorkspace().getName()));
 
 		} catch (RepositoryException e) {
 			throw new IOException(e.getMessage());
@@ -527,7 +527,6 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		n.setProperty(PUBLISHER_PROPERTY, publisherToString(authenticator.publisher()));
 		n.setProperty(PUBLISHER_TYPE_PROPERTY, PublisherID.typeToName(authenticator.publisherType()));
 		n.setProperty(NAME_COMPONENT_COUNT_PROPERTY, authenticator.nameComponentCount());
-		Library.logger().info("Adding authentication info with type of " + authenticator.typeName() + " original type " + authenticator.type());
 		n.setProperty(TYPE_PROPERTY, authenticator.typeName());
 		n.setProperty(TIMESTAMP_PROPERTY, authenticator.timestamp().toString());
 		ByteArrayInputStream hai = new ByteArrayInputStream(authenticator.contentDigest());
