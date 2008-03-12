@@ -62,7 +62,7 @@ public class CCNInterestServer extends RepoTransport_TRANSPORTTOREPOPROG_ServerS
 		try {
 		//	Library.logger().info("About to call enumerate. Repository? " + ((null == _theRepository) ? "no" : "yes"));
 			availableNames = _theRepository.enumerate(interest);
-			Library.logger().info("Enumerate_1: got " + availableNames.size() + " results.");
+			Library.logger().info("Enumerate_1: got " + availableNames.size() + " results for name: " + interest.name());
 		
 		} catch (IOException e) {
 			Library.logger().warning("Exception in RPC server call Enumerate_1: " + e.getMessage());
@@ -99,7 +99,7 @@ public class CCNInterestServer extends RepoTransport_TRANSPORTTOREPOPROG_ServerS
 			// Right now, can't send back more than
 			// one block. If we get more than one, complain.
 			if (availableContent.size() > 1) {
-				Library.logger().info("GetBlock_1 retrieved " + availableContent.size() + " blocks of data for a single name.");
+				Library.logger().info("GetBlock_1 retrieved " + availableContent.size() + " blocks of data for a single name: " + name);
 			}
 			// Return the first block we got, if any.
 			DataBlock block = new DataBlock();

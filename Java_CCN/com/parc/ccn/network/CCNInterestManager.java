@@ -112,6 +112,7 @@ public class CCNInterestManager {
 		// version we will extend the transport agent to handle full queries.
 		// TODO handle full queries in transport agent.
 		try {
+			Library.logger().info("Expressing interest to network: " + interest.name());
 			_client.RegisterInterest_1(oncName);
 		} catch (OncRpcException e) {
 			Library.logger().warning("Exception in expressInterest RPC interface: " + e.getMessage());
@@ -130,6 +131,7 @@ public class CCNInterestManager {
 		
 		Name oncName = interest.name().toONCName();
 		try {
+			Library.logger().info("Cancelled network interest in: " + interest.name());
 			_client.CancelInterest_1(oncName);
 		} catch (OncRpcException e) {
 			Library.logger().warning("Exception in expressInterest RPC interface: " + e.getMessage());
