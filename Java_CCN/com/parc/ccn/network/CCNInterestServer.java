@@ -90,8 +90,10 @@ public class CCNInterestServer extends RepoTransport_TRANSPORTTOREPOPROG_ServerS
 		Library.logger().info("CCNInterestServer: GetBlock, name = " + name);
 		ArrayList<ContentObject> availableContent = null;
 		try {
-			// Use recursive get.
-			availableContent = _theRepository.get(name, null, true);
+			// Use non-recursive get, assume we're being asked for an exact name.
+			// The recursive get gets things only underneath this name, not this
+			// name itself.
+			availableContent = _theRepository.get(name, null, false);
 		
 			// Right now, can't send back more than
 			// one block. If we get more than one, complain.

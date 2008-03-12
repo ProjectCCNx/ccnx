@@ -810,6 +810,10 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * For now, let's just pass this one through to the bottom
 	 * level, and use open and read to defragment.
 	 * 
+	 * Note: the jackrabbit implementation (at least) does not
+	 * return an exact match to name if isRecursive is true -- it
+	 * returns only nodes underneath name.
+	 * 
 	 * DKS TODO: should this get at least verify?
 	 */
 	public ArrayList<ContentObject> get(ContentName name, 
@@ -1049,6 +1053,9 @@ public class StandardCCNLibrary implements CCNLibrary {
 		return ccnObject.tell();
 	}
 
+	/**
+	 * Implement naming convention about locality.
+	 */
 	public boolean isLocal(CompleteName name) {
 		// TODO Auto-generated method stub
 		return false;

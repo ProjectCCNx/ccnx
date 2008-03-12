@@ -36,7 +36,10 @@ public class CCNDescriptor {
 
 	/**
 	 * The content authenticator associated with the 
-	 * corresponding header information.
+	 * corresponding header information. We only need
+	 * the publisher ID and the root object content digest,
+	 * but might want to have access to the other
+	 * authentication information.
 	 */
 	ContentAuthenticator _headerAuthenticator = null;
 	
