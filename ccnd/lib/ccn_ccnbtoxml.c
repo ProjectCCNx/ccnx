@@ -356,224 +356,129 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
     return(i);
 }
 
-
-
-struct cons;
-struct cons {
-    void *car;
-    struct cons *cdr;
-};
-
-static struct cons *
-last_cdr(struct cons *list)
-{
-    if (list != NULL) {
-        while (list->cdr != NULL)
-            list = list->cdr;
+static int
+process_test(unsigned char *data, size_t n) {
+    struct ccn_decoder *d = ccn_decoder_create();
+    int res = 0;
+    size_t s;
+    printf("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n");
+    s = ccn_decoder_decode(d, data, n);
+    printf("\n");
+    if (d->state != 0 || s < n || d->stack != NULL || d->tagstate != 0) {
+        res = 1;
+        fprintf(stderr, "error state %d after %d of %d chars\n",
+            (int)d->state, (int)s, (int)n);
     }
-    return (list);
+    ccn_decoder_destroy(&d);
+    return(res);
 }
 
 static int
-memq(struct cons *list, void *elt)
+process_fd(int fd)
 {
-    for (; list != NULL; list = list->cdr) {
-        if (elt == list->car)
+    struct ccn_charbuf *c = ccn_charbuf_create();
+    ssize_t len;
+    int res = 0;
+    for (;;) {
+        unsigned char *p = ccn_charbuf_reserve(c, 80);
+        if (p == NULL) {
+            perror("ccn_charbuf_reserve");
+            res = 1;
+            break;
+        }
+        len = read(fd, p, c->limit - c->length);
+        if (len <= 0) {
+            if (len == -1) {
+                perror("read");
+                res = 1;
+            }
+            break;
+        }
+        c->length += len;
+    }
+    fprintf(stderr, " <!-- input is %6lu bytes -->\n", (unsigned long)c->length);
+    res |= process_test(c->buf, c->length);
+    ccn_charbuf_destroy(&c);
+    return(res);
+}
+
+
+static int
+process_file(char *path) {
+    int fd = 0;
+    int res = 0;
+    if (0 != strcmp(path, "-")) {
+        fd = open(path, O_RDONLY);
+        if (-1 == fd) {
+            perror(path);
             return(1);
-    }
-    return(0);
-}
-
-static struct cons *
-cons(void *car, struct cons *cdr) {
-    struct cons *l;
-    l = calloc(1, sizeof(*l));
-    l->car = car;
-    l->cdr = cdr;
-    return(l);
-}
-
-static void
-print_schema(struct ccn_schema_node *s, enum ccn_schema_node_type container, struct cons *w)
-{
-    if (s == NULL) { printf("<>"); return; }
-    switch (s->type) {
-        case CCN_SCHEMA_LABEL:
-            if (s->data == NULL || s->data->ident == NULL) {
-                printf("<?!!>\n");
-                break;
-            }
-            printf("%s", s->data->ident);
-            if (s->data->code >= 0) {
-                printf("[%d]", s->data->code);
-            }
-            printf(" ::= ");
-            if (s->data->tt == CCN_TAG) {
-                printf("<%s> ", s->data->ident);
-            }
-            print_schema(s->right, CCN_SCHEMA_SEQ, w);
-            if (s->data->tt == CCN_TAG) {
-                printf(" </%s>", s->data->ident);
-            }
-            printf("\n");
-            break;
-        case CCN_SCHEMA_TERMINAL:
-            if (s->data == NULL || s->data->ident == NULL) {
-                printf("'?!!'");
-                break;
-            }
-            printf("'%s'", s->data->ident);
-            break;
-        case CCN_SCHEMA_NONTERMINAL:
-            if (s->data == NULL || s->data->ident == NULL) {
-                printf("<?!>");
-                break;
-            }
-            printf("%s", s->data->ident);
-            if (s->data->schema != NULL && !memq(w, s->data)) {
-                last_cdr(w)->cdr = cons(s->data, NULL);
-            }
-            break;
-        case CCN_SCHEMA_ALT:
-            if (container < CCN_SCHEMA_ALT)
-                printf("(");
-            print_schema(s->left, CCN_SCHEMA_ALT, w);
-            printf(" | ");
-            print_schema(s->right, CCN_SCHEMA_ALT, w);
-            if (container < CCN_SCHEMA_ALT)
-                printf(")");
-            break;
-        case CCN_SCHEMA_SEQ:
-            if (container < CCN_SCHEMA_SEQ)
-                printf("(");
-            print_schema(s->left, CCN_SCHEMA_SEQ, w);
-            printf(" ");
-            print_schema(s->right, CCN_SCHEMA_SEQ, w);
-            if (container < CCN_SCHEMA_SEQ)
-                printf(")");
-            break;
-        default: printf("<?>");
-    }
-}
-
-void
-ccn_print_schema(struct ccn_schema_node *s) {
-    struct cons *w = cons(s == NULL ? NULL : s->data, NULL); /* work list */
-    struct cons *tail;
-    struct ccn_schema_data *d;
-    print_schema(s, CCN_SCHEMA_LABEL, w);
-    if (s->type == CCN_SCHEMA_LABEL) {
-        for (tail = w->cdr; tail != NULL; tail = tail->cdr) {
-            d = tail->car;
-            print_schema(d->schema, CCN_SCHEMA_LABEL, w);
         }
     }
-    for (; w != NULL; w = tail) {
-        tail = w->cdr;
-        free(w);
-    }
-}
-
-struct ccn_schema_node *
-ccn_schema_define(struct ccn_schema_node *defs, const char *ident, int code)
-{
-    struct ccn_schema_node *s;
-    if (ident == NULL)
-        return(NULL);
-    if (defs != NULL) {
-        for (s = defs; s != NULL; s = s->left) {
-            if (s->type != CCN_SCHEMA_LABEL || s->data == NULL)
-                return(NULL); /* bad defs */
-            if (0 == strcmp(ident, (const void *)(s->data->ident)))
-                return(NULL); /* duplicate name */
-            if (code >= 0 && code == s->data->code)
-                return(NULL); /* duplicate code */
-        }
-    }
-    s = calloc(1, sizeof(*s));
-    s->type = CCN_SCHEMA_LABEL;
-    s->data = calloc(1, sizeof(*s->data));
-    s->data->ident = (const void *)(strdup(ident));
-    s->data->schema = s;
-    s->data->code = code;
-    if (defs != NULL)
-        defs->left = s; /* use left link to link defs together */
-    return(s);
-}
-
-struct ccn_schema_node *
-ccn_schema_nonterminal(struct ccn_schema_node *label)
-{
-    struct ccn_schema_node *s;
-    if (label == NULL || label->type != CCN_SCHEMA_LABEL ||
-          label->data == NULL || label->data->schema != label)
-        return(NULL);
-    s = calloc(1, sizeof(*s));
-    s->type = CCN_SCHEMA_NONTERMINAL;
-    s->data = label->data;
-    return(s);
-}
-
-struct ccn_schema_node *
-ccn_schema_sanitize(struct ccn_schema_node *s) {
-    if (s != NULL && s->type == CCN_SCHEMA_LABEL)
-        s = ccn_schema_nonterminal(s);
-    return(s);
-}
-
-struct ccn_schema_node *
-ccn_schema_alt(struct ccn_schema_node *left, struct ccn_schema_node *right)
-{
-    struct ccn_schema_node *s;
-    s = calloc(1, sizeof(*s));
-    s->type = CCN_SCHEMA_ALT;
-    s->left = ccn_schema_sanitize(left);
-    s->right = ccn_schema_sanitize(right);
-    return(s);
-}
-
-struct ccn_schema_node *
-ccn_schema_seq(struct ccn_schema_node *left, struct ccn_schema_node *right)
-{
-    struct ccn_schema_node *s;
-    left = ccn_schema_sanitize(left);
-    right = ccn_schema_sanitize(right);
-    if (left == NULL)
-        return(right);
-    if (right == NULL)
-        return(left);
-    s = calloc(1, sizeof(*s));
-    s->type = CCN_SCHEMA_SEQ;
-    s->left = left;
-    s->right = right;
-    return(s);
-}
-
-
-int main() {
-    struct ccn_schema_node *goal = ccn_schema_define(NULL, "CCN", -1);
-    struct ccn_schema_node *Mapping = ccn_schema_define(goal, "Mapping", 1);
-    struct ccn_schema_node *Name = ccn_schema_define(goal, "Name", -1);
-    struct ccn_schema_node *Component = ccn_schema_define(goal, "Component", -1);
-    struct ccn_schema_node *Components = ccn_schema_define(goal, "Components", -1);
-    struct ccn_schema_node *Interest = ccn_schema_define(goal, "Interest", 2);
-    struct ccn_schema_node *BLOB = ccn_schema_define(goal, "BLOB", -1);
-    struct ccn_schema_node *ContentAuthenticator = ccn_schema_define(goal, "ContentAuthenticator", -1);
-    struct ccn_schema_node *Content = ccn_schema_define(goal, "Content", -1);
-    Mapping->data->tt = CCN_TAG;
-    Component->data->tt = CCN_TAG;
-    Interest->data->tt = CCN_TAG;
-    ContentAuthenticator->data->tt = CCN_TAG;
-    Content->data->tt = CCN_TAG;
-    BLOB->data->tt = CCN_BLOB;
     
-    goal->right = ccn_schema_alt(Interest, Mapping);
-    Mapping->right = ccn_schema_seq(Name, ccn_schema_seq(ContentAuthenticator, Content));
-    Name->right = ccn_schema_sanitize(Components);
-    Components->right = ccn_schema_alt(ccn_schema_seq(Component, Components), NULL);
-    Interest->right = ccn_schema_seq(Name, NULL);
-    Component->right = ccn_schema_sanitize(BLOB);
-    Content->right = ccn_schema_sanitize(BLOB);
-    ccn_print_schema(goal);
-    return(0);
+    res = process_fd(fd);
+    
+    if (fd > 0)
+        close(fd);
+    return(res);
 }
+
+unsigned char test1[] = {
+    (2 << CCN_TT_BITS) + CCN_TAG, 'F', 'o', 'o',
+    (0 << CCN_TT_BITS) + CCN_TAG, 'a',
+    (1 << CCN_TT_BITS) + CCN_UDATA, 'X',
+               CCN_CLOSE,
+    (0 << CCN_TT_BITS) + CCN_TAG, 'b',
+    (3 << CCN_TT_BITS) + CCN_ATTR, 't', 'y', 'p', 'e',
+    (5 << CCN_TT_BITS) + CCN_UDATA, 'e', 'm', 'p', 't', 'y',
+               CCN_CLOSE,
+    (2 << CCN_TT_BITS) + CCN_TAG, 'b', 'i', 'n',
+    (4 << CCN_TT_BITS) + CCN_BLOB, 1, 0x23, 0x45, 0x67,
+               CCN_CLOSE,
+    (2 << CCN_TT_BITS) + CCN_TAG, 'i', 'n', 't',
+    128 + (42 >> (7-CCN_TT_BITS)),
+    ((42 & CCN_TT_MASK) << CCN_TT_BITS) + CCN_INTVAL,
+               CCN_CLOSE,
+    (2 << CCN_TT_BITS) + CCN_TAG, 'i', 'n', 't',
+    (3 << CCN_TT_BITS) + CCN_ATTR, 't', 'y', 'p', 'e',
+    (3 << CCN_TT_BITS) + CCN_UDATA, 'B', 'I', 'G',
+    129, 130, 131, 132, 133, 134, 135, 136, (1 << 4) + CCN_INTVAL,
+               CCN_CLOSE,
+    (6 << CCN_TT_BITS) + CCN_UDATA,
+    'H','i','&','b','y','e',
+               CCN_CLOSE,
+};
+
+unsigned char test2[] = {
+    (7 << CCN_TT_BITS) + CCN_BUILTIN,
+    (1 << CCN_TT_BITS) + CCN_UDATA, 'U',
+    (1 << CCN_TT_BITS) + CCN_BLOB, 'B',
+    (CCN_MAX_TINY << CCN_TT_BITS) + CCN_INTVAL,
+    (0 << CCN_TT_BITS) + CCN_TAG, 'e',
+    (0 << CCN_TT_BITS) + CCN_ATTR, 'a',
+    (1 << CCN_TT_BITS) + CCN_UDATA, 'x',
+        CCN_CLOSE,
+    (1 << CCN_TT_BITS) + CCN_BUILTIN,
+        (0 << CCN_TT_BITS) + CCN_ATTR, 'b',
+        (1 << CCN_TT_BITS) + CCN_UDATA, '1',
+        CCN_CLOSE,
+        CCN_CLOSE
+};
+
+int
+main(int argc, char **argv) {
+    int i;
+    int res = 0;
+    for (i = 1; argv[i] != 0; i++) {
+        fprintf(stderr, "<!-- Processing %s -->\n", argv[i]);
+        if (0 == strcmp(argv[i], "-test1")) {
+            res |= process_test(test1, sizeof(test1));
+        }
+        else if (0 == strcmp(argv[i], "-test2")) {
+            res |= process_test(test2, sizeof(test2));
+        }
+        else
+            res |= process_file(argv[i]);
+    }
+    return(res);
+}
+
