@@ -470,7 +470,11 @@ main(int argc, char **argv) {
     int res = 0;
     for (i = 1; argv[i] != 0; i++) {
         fprintf(stderr, "<!-- Processing %s -->\n", argv[i]);
-        if (0 == strcmp(argv[i], "-test1")) {
+        if (0 == strcmp(argv[i], "-schema")) {
+            struct ccn_schema_node *goal = ccn_build_schemata();
+            ccn_print_schema(goal);
+        }
+        else if (0 == strcmp(argv[i], "-test1")) {
             res |= process_test(test1, sizeof(test1));
         }
         else if (0 == strcmp(argv[i], "-test2")) {
