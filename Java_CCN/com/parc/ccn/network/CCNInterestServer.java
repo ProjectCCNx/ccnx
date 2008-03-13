@@ -76,7 +76,7 @@ public class CCNInterestServer extends RepoTransport_TRANSPORTTOREPOPROG_ServerS
 					   availableNames.size() : 0);
 		list.names = new Name[list.count];
 		for (int i=0; i < list.count; ++i) {
-			Library.logger().info("Enumerate: name: " + i + ": " + availableNames.get(i));
+			Library.logger().info("Enumerate: name: " + i + ": " + availableNames.get(i).name());
 			list.names[i] = availableNames.get(i).name().toONCName();
 		}
 		return list;
