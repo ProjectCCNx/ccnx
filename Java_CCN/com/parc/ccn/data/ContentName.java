@@ -2,6 +2,7 @@ package com.parc.ccn.data;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.math.BigInteger;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.util.ArrayList;
@@ -199,6 +200,14 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		} catch (UnsupportedEncodingException e) {
 			throw new RuntimeException("UTF-8 not supported", e);
 		}
+	}
+	
+	public static String hexPrint(byte [] bs) {
+		if (null == bs)
+			return new String();
+		
+		BigInteger bi = new BigInteger(1,bs);
+		return bi.toString(16);
 	}
 
 	public static byte[] componentParse(String name) {

@@ -32,6 +32,7 @@ import com.parc.ccn.network.rpc.RepoTransport_REPOTOTRANSPORTPROG_Client;
 public class CCNInterestManager {
 	
 	RepoTransport_REPOTOTRANSPORTPROG_Client _client = null;
+	boolean _noNetwork = false;
 
 	/**
 	 * Static singleton.
@@ -40,25 +41,9 @@ public class CCNInterestManager {
 
 	protected CCNInterestManager() throws IOException {
 		super();
-		try {
-			// without portmap
-			//_client = new RepoTransport_REPOTOTRANSPORTPROG_Client(
-			//			InetAddress.getLocalHost(), 
-			//			SystemConfiguration.defaultTransportPort(),
-			//			OncRpcProtocols.ONCRPC_UDP);
-			_client = new RepoTransport_REPOTOTRANSPORTPROG_Client(
-					InetAddress.getLocalHost(), 
-					OncRpcProtocols.ONCRPC_UDP);
-		} catch (UnknownHostException e) {
-			Library.logger().severe("Cannot look up localhost!");
-			Library.warningStackTrace(e);
-			throw new RuntimeException("This should not happen: no localhost!", e);
-		} catch (OncRpcException e) {
-			Library.logger().warning("RPC exception creating transport client: " + e.getMessage());
-			Library.warningStackTrace(e);
-			Library.logger().warning("Continuing without...");
-			//throw new IOException("RPC exception creating transport client: " + e.getMessage());
-		}
+		_client = getClient();
+		if (null == _client)
+			_noNetwork = true;
 	}
 
 	public static CCNInterestManager getInterestManager() throws IOException { 
@@ -75,6 +60,31 @@ public class CCNInterestManager {
 			// it only includes client functionality.
 		}
 		return _interestManager;
+	}
+	
+	protected RepoTransport_REPOTOTRANSPORTPROG_Client getClient() throws IOException {
+		RepoTransport_REPOTOTRANSPORTPROG_Client client = null;
+		try {
+			// without portmap
+			//_client = new RepoTransport_REPOTOTRANSPORTPROG_Client(
+			//			InetAddress.getLocalHost(), 
+			//			SystemConfiguration.defaultTransportPort(),
+			//			OncRpcProtocols.ONCRPC_UDP);
+			client = new RepoTransport_REPOTOTRANSPORTPROG_Client(
+					InetAddress.getLocalHost(), 
+					OncRpcProtocols.ONCRPC_UDP);
+		} catch (UnknownHostException e) {
+			Library.logger().severe("Cannot look up localhost!");
+			Library.warningStackTrace(e);
+			throw new RuntimeException("This should not happen: no localhost!", e);
+		} catch (OncRpcException e) {
+			Library.logger().warning("RPC exception creating transport client: " + e.getMessage());
+			Library.warningStackTrace(e);
+			Library.logger().warning("Continuing without...");
+			//throw new IOException("RPC exception creating transport client: " + e.getMessage());
+		}
+		return client;
+		
 	}
 	
 	/**
@@ -96,11 +106,19 @@ public class CCNInterestManager {
 			CCNInterestListener callbackListener) throws IOException {
 		
 		// Work around no portmap
-		if (null == _client)
+		if (_noNetwork)
 			return;
 		
 		if (null == interest)
 			return;
+		
+		if (null == _client) {
+			Library.logger().info("InterestManager: Lost connection to transport server. Retrying.");
+			_client = getClient();
+			if (null == _client) {
+				Library.logger().info("InterestManager: Failed to restore connection to transport server. Will try again later.");
+			}
+		}
 		
 		// Need to be able to do this more than once.
 		// Or should do it once per interest for thing that needs
@@ -117,8 +135,8 @@ public class CCNInterestManager {
 		} catch (OncRpcException e) {
 			Library.logger().warning("Exception in expressInterest RPC interface: " + e.getMessage());
 			Library.warningStackTrace(e);
-			// IOException(Throwable) constructor not present in 1.5
-			//throw new IOException("Exception in expressInterest RPC interface: " + e.getMessage());
+			Library.logger().warning("Assume we lost transport, need to reinitialize.");
+			_client = null;
 			return; // DKS make robust to lack of transport
 		}
 		return;
@@ -126,8 +144,16 @@ public class CCNInterestManager {
 	
 	public void cancelInterest(Interest interest, CCNInterestListener listener) throws IOException {
 		// Work around no portmap
-		if (null == _client)
+		if (_noNetwork)
 			return;
+		
+		if (null == _client) {
+			Library.logger().info("InterestManager: Lost connection to transport server. Retrying.");
+			_client = getClient();
+			if (null == _client) {
+				Library.logger().info("InterestManager: Failed to restore connection to transport server. Will try again later.");
+			}
+		}
 		
 		Name oncName = interest.name().toONCName();
 		try {
@@ -136,8 +162,9 @@ public class CCNInterestManager {
 		} catch (OncRpcException e) {
 			Library.logger().warning("Exception in expressInterest RPC interface: " + e.getMessage());
 			Library.warningStackTrace(e);
-			// IOException(Throwable) constructor not present in 1.5
-			throw new IOException("Exception in expressInterest RPC interface: " + e.getMessage());
+			Library.logger().warning("Assume we lost transport, need to reinitialize.");
+			_client = null;
+			return;
 		}
 	}
 

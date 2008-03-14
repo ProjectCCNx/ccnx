@@ -5,6 +5,7 @@ import java.util.ArrayList;
 
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.CompleteName;
+import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.StandardCCNLibrary;
@@ -32,7 +33,11 @@ public class list {
 				System.out.println("Retrieved " + names.size() + " names matching: " + interest.name());
 				
 				for (int j=0; j < names.size(); ++j) {
-					System.out.println(names.get(j).name());
+					ContentName name = names.get(j).name();
+					System.out.println(name + " (" + 
+							name.component(name.count()-1).length + " str len: " +
+							name.stringComponent(name.count()-1).length() + ")");
+				//	System.out.println(ContentName.hexPrint(name.component(name.count()-1)));
 				}
 			} 
 			System.exit(0);
