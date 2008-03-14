@@ -8,7 +8,7 @@ import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.StandardCCNLibrary;
 
 public class interest {
-
+	
 	/**
 	 * @param args
 	 */
@@ -21,7 +21,6 @@ public class interest {
 		try {
 			StandardCCNLibrary library = new StandardCCNLibrary();
 			// List contents under all names given
-			
 			for (int i=0; i < args.length; ++i) {
 				Interest interest = new Interest(args[i]);
 			

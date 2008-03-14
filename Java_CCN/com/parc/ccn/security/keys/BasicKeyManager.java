@@ -54,20 +54,20 @@ public class BasicKeyManager extends KeyManager {
 	protected void loadKeyStore() throws ConfigurationException {
 		File keyStoreFile = new File(UserConfiguration.keystoreFileName());
 		if (!keyStoreFile.exists()) {
-			Library.logger().info("Creating new CCN key store...");
+			Library.logger().info("Creating new CCN key store..." + UserConfiguration.keystoreFileName());
 			_keystore = createKeyStore();	
 		}
 		if (null == _keystore) {
 		    FileInputStream in = null;
 			try {
-				Library.logger().info("Loading CCN key store...");
+				Library.logger().info("Loading CCN key store from " + UserConfiguration.keystoreFileName() + "...");
 				_password = UserConfiguration.keystorePassword().toCharArray();
 				_keystore = KeyStore.getInstance(KeyStore.getDefaultType());
 				in = new FileInputStream(UserConfiguration.keystoreFileName());
 				_keystore.load(in, _password);
 			} catch (NoSuchAlgorithmException e) {
 				Library.logger().warning("Cannot load default keystore.");
-				throw new ConfigurationException("Cannot load default keystore.");
+				throw new ConfigurationException("Cannot load default keystore: " + UserConfiguration.keystoreFileName()+ ".");
 			} catch (CertificateException e) {
 				Library.logger().warning("Cannot load default keystore with no certificates.");
 				throw new ConfigurationException("Cannot load default keystore with no certificates.");

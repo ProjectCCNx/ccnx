@@ -37,10 +37,11 @@ public class UserConfiguration {
 	
 	static {
 		try {
-			USER_DIR = System.getProperty("user.dir");
+			USER_DIR = System.getProperty("user.home");
 			USER_NAME = System.getProperty("user.name");
 			FILE_SEP = System.getProperty("file.separator");
-			DEFAULT_CCN_NAMESPACE = new ContentName(DEFAULT_CCN_NAMESPACE_STRING);
+			DEFAULT_CCN_NAMESPACE = 
+				new ContentName(DEFAULT_CCN_NAMESPACE_STRING);
 			DEFAULT_USER_NAMESPACE = 
 				new ContentName(DEFAULT_USER_NAMESPACE_AREA + 
 								ContentName.SEPARATOR +
