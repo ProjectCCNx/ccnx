@@ -241,6 +241,7 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                         break;
                     case '>':
                         printf("&gt;");
+                        break;
                     case '"':
                         printf("&quot;");
                         break;
