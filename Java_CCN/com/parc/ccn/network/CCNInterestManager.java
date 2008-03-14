@@ -33,6 +33,9 @@ public class CCNInterestManager {
 	
 	RepoTransport_REPOTOTRANSPORTPROG_Client _client = null;
 	boolean _noNetwork = false;
+	int _noClientCount = 0;
+	
+	static final int CLIENT_RETRY_MAX = 3;
 
 	/**
 	 * Static singleton.
@@ -43,7 +46,7 @@ public class CCNInterestManager {
 		super();
 		_client = getClient();
 		if (null == _client)
-			_noNetwork = true;
+			_noClientCount++;
 	}
 
 	public static CCNInterestManager getInterestManager() throws IOException { 
@@ -65,6 +68,8 @@ public class CCNInterestManager {
 	protected RepoTransport_REPOTOTRANSPORTPROG_Client getClient() throws IOException {
 		RepoTransport_REPOTOTRANSPORTPROG_Client client = null;
 		try {
+			if (_noNetwork)
+				return null;
 			// without portmap
 			//_client = new RepoTransport_REPOTOTRANSPORTPROG_Client(
 			//			InetAddress.getLocalHost(), 
@@ -73,6 +78,9 @@ public class CCNInterestManager {
 			client = new RepoTransport_REPOTOTRANSPORTPROG_Client(
 					InetAddress.getLocalHost(), 
 					OncRpcProtocols.ONCRPC_UDP);
+			if (null != client)
+				_noClientCount = 0; // reset retry counter
+			
 		} catch (UnknownHostException e) {
 			Library.logger().severe("Cannot look up localhost!");
 			Library.warningStackTrace(e);
@@ -81,6 +89,11 @@ public class CCNInterestManager {
 			Library.logger().warning("RPC exception creating transport client: " + e.getMessage());
 			Library.warningStackTrace(e);
 			Library.logger().warning("Continuing without...");
+			_noClientCount++; // increment retry count
+			if (_noClientCount > CLIENT_RETRY_MAX) {
+				Library.logger().warning("Tried " + CLIENT_RETRY_MAX + " times in a row to obtain a connection to the transport (RepoTransport) server. Giving up.");
+				_noNetwork = true;
+			}
 			//throw new IOException("RPC exception creating transport client: " + e.getMessage());
 		}
 		return client;
