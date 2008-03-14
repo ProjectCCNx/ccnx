@@ -28,6 +28,12 @@ ccn_ccnbtoxml: ccn_ccnbtoxml.o
 ccn_xmltoccnb: ccn_xmltoccnb.o
 	$(CC) $(CFLAGS) -o $@ ccn_xmltoccnb.o $(LDLIBS)
 
+hashtbtest: hashtbtest.o
+	$(CC) $(CFLAGS) -o $@ hashtbtest.o $(LDLIBS)
+
+ccn_recursive_parse: ccn_recursive_parse.o
+	$(CC) $(CFLAGS) -o $@ ccn_recursive_parse.o $(LDLIBS)
+
 clean:
 	rm -f *.o *.a $(PROGRAMS) depend
 	rm -rf *.dSYM $(DEBRIS)

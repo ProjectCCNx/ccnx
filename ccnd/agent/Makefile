@@ -16,6 +16,9 @@ $(PROGRAMS): $(CCNLIBDIR)/libccn2.a
 $(CCNLIBDIR)/libccn2.a:
 	cd $(CCNLIBDIR) && $(MAKE) libccn2.a;
 
+ccnd: ccnd.o
+	$(CC) $(CFLAGS) -o $@ ccnd.o $(LDLIBS)
+
 clean:
 	rm -f *.o *.a $(PROGRAMS) depend
 	rm -rf *.dSYM $(DEBRIS)
