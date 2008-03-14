@@ -1,5 +1,5 @@
 # $Id$
-SUBDIRS = lib
+SUBDIRS = lib agent
 default all clean depend:
 	for i in $(SUBDIRS); do (cd "$$i" && pwd && $(MAKE) $@ || exit 1); done
 
