@@ -5,11 +5,13 @@ COPT = -g -Wall
 
 #Solaris# make MORE_LDLIBS='-lsocket -lnsl'
 
-PROGRAMS = ccn_ccnbtoxml ccn_xmltoccnb ccn_recursive_parse
+PROGRAMS = ccn_ccnbtoxml ccn_xmltoccnb ccn_recursive_parse hashtbtest
 DEBRIS = ccn_coding
-CSRC = ccn_charbuf.c ccn_coding.c ccn_ccnbtoxml.c ccn_xmltoccnb.c ccn_recursive_parse.c
+CSRC = ccn_charbuf.c ccn_coding.c ccn_ccnbtoxml.c ccn_xmltoccnb.c \
+    ccn_recursive_parse.c \
+    hashtb.c hashtbtest.c
 
-LIB_OBJS = ccn_charbuf.o ccn_coding.o
+LIB_OBJS = ccn_charbuf.o ccn_coding.o hashtb.o
 
 default all: $(PROGRAMS) lib
 
@@ -46,3 +48,5 @@ ccn_xmltoccnb.o: ccn_xmltoccnb.c ../include/ccn/coding.h \
   ../include/ccn/charbuf.h
 ccn_recursive_parse.o: ccn_recursive_parse.c ../include/ccn/coding.h \
   ../include/ccn/charbuf.h
+hashtb.o: hashtb.c ../include/ccn/hashtb.h
+hashtbtest.o: hashtbtest.c ../include/ccn/hashtb.h

@@ -134,7 +134,9 @@ char *testdata1[] = {
         "<Component>", "dGVzdA==", "</Component>", 
         "<Component>", "YnJpZ2dz", "</Component>", 
         "<Component>", "dGVzdC50eHQ=", "</Component>", 
-        "<Component>", "AQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==", "</Component>", 
+        "<Component>",
+            "AQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==",
+        "</Component>", 
       "</Name>", 
     "</Interest>",
     NULL
