@@ -10,11 +10,13 @@
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
 
+#define CCN_NO_SCHEMA INT_MIN
+#define CCN_UNKNOWN_SCHEMA (INT_MIN+1)
+
 struct ccn_decoder_stack_item {
     size_t nameindex; /* byte index into stringstack */
-    size_t itemcount;
     size_t savedss;
-    enum ccn_vocab saved_schema;
+    int saved_schema;
     int saved_schema_state;
     struct ccn_decoder_stack_item *link;
 };
@@ -25,7 +27,7 @@ struct ccn_decoder {
     int bits;
     size_t numval;
     uintmax_t bignumval;
-    enum ccn_vocab schema;
+    int schema;
     int sstate;
     struct ccn_decoder_stack_item *stack;
     struct ccn_charbuf *stringstack;
@@ -116,7 +118,7 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                         tagstate = 0;
                         printf("/>");
                     }
-                    else if (d->schema == CCN_PROCESSING_INSTRUCTIONS) {
+                    else if (d->schema == -1-CCN_PROCESSING_INSTRUCTIONS) {
                         printf("?>");
                         if (d->sstate != 2) {
                             state = -__LINE__;
@@ -150,38 +152,45 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                 else {
                     numval = (numval << (7-CCN_TT_BITS)) + (c >> CCN_TT_BITS);
                     c &= CCN_TT_MASK;
-                    if (tagstate == 1 && c != CCN_ATTR) {
+                    if (tagstate == 1 && c != CCN_ATTR && c != CCN_DATTR) {
                         tagstate = 0;
                         printf(">");
                     }
                     switch (c) {
-                        case CCN_BUILTIN:
+                        case CCN_EXT:
                             s = ccn_decoder_push(d);
                             s->nameindex = d->stringstack->length;
-                            d->schema = numval;
+                            d->schema = -1-numval;
                             d->sstate = 0;
                             switch (numval) {
                                 case CCN_PROCESSING_INSTRUCTIONS:
                                     printf("<?");
                                     break;
                                 default:
+                                    state = -__LINE__;
+                            }
+                            state = 0;
+                            break;
+                        case CCN_DTAG:
+                            s = ccn_decoder_push(d);
+                            s->nameindex = d->stringstack->length;
+                            d->schema = numval;
+                            d->sstate = 0;
+                            switch (numval) {
+                                default:
                                     fprintf(stderr,
-                                        "*** Warning: unrecognized builtin %lu\n",
+                                        "*** Warning: unrecognized DTAG %lu\n",
                                         (unsigned long)numval);
                                     ccn_charbuf_append(d->stringstack,
-                                        "UNKNOWN_BUILTIN",
-                                        sizeof("UNKNOWN_BUILTIN"));
+                                        "UNKNOWN_DTAG",
+                                        sizeof("UNKNOWN_DTAG"));
                                     printf("<%s code=\"%lu\"",
                                            d->stringstack->buf + s->nameindex,
                                            (unsigned long)d->schema);
                                     tagstate = 1;
-                                    d->schema = CCN_UNKNOWN_BUILTIN;
+                                    d->schema = CCN_UNKNOWN_SCHEMA;
                                     break;
                             }
-                            state = 0;
-                            break;
-                        case CCN_INTVAL:
-                            printf("%lu", (unsigned long)numval);
                             state = 0;
                             break;
                         case CCN_BLOB:
@@ -189,7 +198,7 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                             break;
                         case CCN_UDATA:
                             state = 3;
-                            if (d->schema == CCN_PROCESSING_INSTRUCTIONS) {
+                            if (d->schema == -1-CCN_PROCESSING_INSTRUCTIONS) {
                                 if (d->sstate > 0) {
                                     printf(" ");
                                 }
@@ -198,6 +207,18 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                             }
                             if (numval == 0)
                                 state = 0;
+                            break;
+                        case CCN_DATTR:
+                            if (tagstate != 1) {
+                                state = -__LINE__;
+                                break;
+                            }
+                            s = ccn_decoder_push(d);
+                            ccn_charbuf_reserve(d->stringstack, 1);
+                            s->nameindex = d->stringstack->length;
+                            printf(" UNKNOWN_DATTR_%lu=\"", (unsigned long)numval);
+                            tagstate = 3;
+                            state = 0;
                             break;
                         case CCN_ATTR:
                             if (tagstate != 1) {
@@ -271,7 +292,6 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                         state = -__LINE__;
                         break;
                     }
-                    s->itemcount = 1;
                     if (state == 4) {
                         printf("<%s", d->stringstack->buf + s->nameindex);
                         tagstate = 1;
@@ -302,11 +322,12 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                         tagstate = 0;
                         printf(">");
                     }
+                    /*
+                     * There's nothing that we actually need the bignumval
+                     * for, so we can probably GC this whole state and
+                     * give up earlier.
+                     */
                     switch (c) {
-                        case CCN_INTVAL:
-                            printf("%llu", d->bignumval);
-                            state = 0;
-                            break;
                         default:
                             state = -__LINE__;
                     }
@@ -435,14 +456,15 @@ unsigned char test1[] = {
     (2 << CCN_TT_BITS) + CCN_TAG, 'b', 'i', 'n',
     (4 << CCN_TT_BITS) + CCN_BLOB, 1, 0x23, 0x45, 0x67,
                CCN_CLOSE,
-    (2 << CCN_TT_BITS) + CCN_TAG, 'i', 'n', 't',
-    128 + (42 >> (7-CCN_TT_BITS)),
-    ((42 & CCN_TT_MASK) << CCN_TT_BITS) + CCN_INTVAL,
+    (128 + ((20-1) >> (7-CCN_TT_BITS))),
+    (((20-1) & CCN_TT_MASK) << CCN_TT_BITS) + CCN_TAG,
+        'a', 'b', 'c', 'd',  'a', 'b', 'c', 'd', 
+        'a', 'b', 'c', 'd',  'a', 'b', 'c', 'd',
+        'a', 'b', 'c', 'd',
                CCN_CLOSE,
     (2 << CCN_TT_BITS) + CCN_TAG, 'i', 'n', 't',
     (3 << CCN_TT_BITS) + CCN_ATTR, 't', 'y', 'p', 'e',
     (3 << CCN_TT_BITS) + CCN_UDATA, 'B', 'I', 'G',
-    129, 130, 131, 132, 133, 134, 135, 136, (1 << 4) + CCN_INTVAL,
                CCN_CLOSE,
     (6 << CCN_TT_BITS) + CCN_UDATA,
     'H','i','&','b','y','e',
@@ -450,15 +472,17 @@ unsigned char test1[] = {
 };
 
 unsigned char test2[] = {
-    (7 << CCN_TT_BITS) + CCN_BUILTIN,
+    (7 << CCN_TT_BITS) + CCN_DTAG,
     (1 << CCN_TT_BITS) + CCN_UDATA, 'U',
     (1 << CCN_TT_BITS) + CCN_BLOB, 'B',
-    (CCN_MAX_TINY << CCN_TT_BITS) + CCN_INTVAL,
+    (2 << CCN_TT_BITS) + CCN_UDATA, '4', '2',
     (0 << CCN_TT_BITS) + CCN_TAG, 'e',
     (0 << CCN_TT_BITS) + CCN_ATTR, 'a',
     (1 << CCN_TT_BITS) + CCN_UDATA, 'x',
+    (7 << CCN_TT_BITS) + CCN_DATTR,
+    (1 << CCN_TT_BITS) + CCN_UDATA, '&',
         CCN_CLOSE,
-    (1 << CCN_TT_BITS) + CCN_BUILTIN,
+    (1 << CCN_TT_BITS) + CCN_DTAG,
         (0 << CCN_TT_BITS) + CCN_ATTR, 'b',
         (1 << CCN_TT_BITS) + CCN_UDATA, '1',
         CCN_CLOSE,

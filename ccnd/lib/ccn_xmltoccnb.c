@@ -139,7 +139,7 @@ do_processing_instructions(void *ud, const XML_Char *target, const XML_Char *dat
 {
      struct ccn_encoder *u = ud;
      finish_openudata(u);
-     emit_tt(u, CCN_PROCESSING_INSTRUCTIONS, CCN_BUILTIN);
+     emit_tt(u, CCN_PROCESSING_INSTRUCTIONS, CCN_EXT);
      emit_xchars(u, target);
      emit_xchars(u, data);
      emit_closer(u);
