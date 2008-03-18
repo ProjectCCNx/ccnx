@@ -5,7 +5,7 @@
 <!ENTITY % commonattrs
 	"xmlns %URI; #FIXED 'http://www.parc.com/ccn'">
 
-<!ELEMENT Mapping	(Name, ContentAuthenticator, Content)>
+<!ELEMENT Mapping	(Name, ContentAuthenticator, Signature, Content)>
 <!ATTLIST Mapping	%commonattrs;>
 
 <!ELEMENT Collection	(Link*)>
@@ -14,7 +14,10 @@
 <!ELEMENT Link    	(Name, LinkAuthenticator?)>
 <!ATTLIST Link		%commonattrs;>
 
-<!ELEMENT LinkAuthenticator (PublisherID?, NameComponentCount?, Timestamp?, Type?, ContentHash?)>
+<!ELEMENT CompleteName	(Name, ContentAuthenticator, Signature)>
+<!ATTLIST CompleteName	%commonattrs;>
+
+<!ELEMENT LinkAuthenticator (PublisherID?, NameComponentCount?, Timestamp?, Type?, ContentDigest?)>
 <!ATTLIST LinkAuthenticator %commonattrs;>
 
 <!ELEMENT Header	(Start, Count, BlockSize, Length, RootDigest, ContentDigest?)>
@@ -26,7 +29,6 @@
 <!ELEMENT Length	(#PCDATA)>	<!-- nonNegativeInteger -->
 
 <!ELEMENT RootDigest	(#PCDATA)>	<!-- base64Binary -->
-<!ELEMENT ContentDigest	(#PCDATA)>	<!-- base64Binary -->
 
 <!ELEMENT Content	(#PCDATA)>	<!-- base64Binary -->
 
@@ -36,13 +38,12 @@
 <!ELEMENT Component	(#PCDATA)>	<!-- base64Binary -->
 
 <!ELEMENT ContentAuthenticator (
-		PublisherID,
+		PublisherKeyID,
 		NameComponentCount,
 		Timestamp,
 		Type,
-		ContentHash,
 		KeyLocator,
-		Signature)>
+		ContentDigest)>
 <!ATTLIST ContentAuthenticator %commonattrs;>
 
 <!ELEMENT Interest	(Name, PublisherID?)>
@@ -62,10 +63,12 @@
   </restriction>
 </simpleType> -->
 
+<!ELEMENT PublisherKeyID	(#PCDATA)>	<!-- base64Binary SHA-256 digest -->
+
 <!ELEMENT NameComponentCount (#PCDATA)>      <!-- nonNegativeInteger -->
 <!ELEMENT Timestamp	(#PCDATA)>	<!-- dateTime -->
 <!ELEMENT Type		(#PCDATA)>	<!-- FRAGMENT, LINK, CONTAINER, LEAF, SESSION, SEQUENCE -->
-<!ELEMENT ContentHash	(#PCDATA)>	<!-- base64 encoding of DER-encoded DigestInfo -->
+<!ELEMENT ContentDigest	(#PCDATA)>	<!-- base64 encoding of DER-encoded DigestInfo -->
 
 <!ELEMENT KeyLocator	(Key | Certificate | KeyName)>
 <!ATTLIST KeyLocator	%commonattrs;>
@@ -76,4 +79,3 @@
 
 <!ELEMENT KeyName	(Name, PublisherID?)>
 <!ATTLIST KeyName	%commonattrs;>
-

@@ -18,6 +18,7 @@
 <!-- Top-level objects that can appear in 
      documents, messages, etc. -->
 <xs:element name="Mapping" type="ContentObjectType"/>
+<xs:element name="CompleteName" type="CompleteNameType"/>
 <xs:element name="Collection" type="CollectionType"/>
 <xs:element name="Link" type="LinkType"/>
 <xs:element name="Header" type="HeaderType"/>
@@ -57,14 +58,6 @@
   </xs:sequence>
 </xs:complexType>
 
-<xs:complexType name="ContentObjectType">
-  <xs:sequence>
-    <xs:element name="Name" type="NameType"/>
-    <xs:element name="ContentAuthenticator" type="ContentAuthenticatorType"/>
-    <xs:element name="Content" type="xs:base64Binary"/>
-  </xs:sequence>
-</xs:complexType>
-
 <xs:complexType name="NameType">
   <xs:sequence>
     <xs:element name="Component" type="xs:base64Binary" minOccurs="0" maxOccurs="unbounded"/>
@@ -73,15 +66,44 @@
 
 <xs:complexType name="ContentAuthenticatorType">
   <xs:sequence>
-    <xs:element name="PublisherID" type="PublisherIDType"/>
+    <xs:element name="PublisherKeyID" type="KeyIDType"/>
     <xs:element name="NameComponentCount" type="xs:nonNegativeInteger"/>
     <xs:element name="Timestamp" type="xs:dateTime"/> <!-- should be canonical -->
     <xs:element name="Type" type="ContentType"/>
-    <!-- ContentHash might change to more complex type,
-         currently base64 encoding of DER-encoded
-         DigestInfo -->
-    <xs:element name="ContentHash" type="xs:base64Binary"/>
     <xs:element name="KeyLocator" type="KeyLocatorType"/>
+    <!-- ContentDigest might change to more complex type,
+         currently base64 encoding of DER-encoded
+         DigestInfo. This means for a MerkleTree-based or
+         similar digest path, not all of the contents of 
+         the content digest were actually signed (only the 
+         root will be signed), so verification may require some
+         alteration of the encoded authenticator structure. -->
+    <xs:element name="ContentDigest" type="xs:base64Binary"/>
+
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="ContentObjectType">
+  <xs:sequence>
+    <xs:element name="Name" type="NameType"/>
+    <xs:element name="ContentAuthenticator" type="ContentAuthenticatorType"/>
+    <!-- There is a tension between including the Signature in the ContentAuthenticator
+         and thus having it be completely self-contained, and having the Signature
+         be outside and thus easier to verify (you can't sign the signature, so
+         it would have to be removed from the encoded CA before verification).
+         We've tried it the other way; now try it this way to see if the code is
+         cleaner. -->
+    <xs:element name="Signature" type="xs:base64Binary"/>
+    <xs:element name="Content" type="xs:base64Binary"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Sometimes we just need to talk about mappings (everything needed
+     to authenticate a name) without the content itself -->
+<xs:complexType name="CompleteNameType">
+  <xs:sequence>
+    <xs:element name="Name" type="NameType"/>
+    <xs:element name="ContentAuthenticator" type="ContentAuthenticatorType"/>
     <xs:element name="Signature" type="xs:base64Binary"/>
   </xs:sequence>
 </xs:complexType>
@@ -96,11 +118,15 @@
 
 <xs:complexType name="PublisherIDType">
   <xs:simpleContent>
-    <xs:extension base="SHA256Digest">
+    <xs:extension base="KeyIDType">
       <xs:attribute name="type" type="PublisherTypeType" use="required"/>
     </xs:extension>
   </xs:simpleContent>
 </xs:complexType>
+
+<xs:simpleType name="KeyIDType">
+  <xs:restriction base="SHA256Digest"/>
+</xs:simpleType>
 
 <xs:simpleType name="SHA256Digest">
     <xs:restriction base="xs:base64Binary">
