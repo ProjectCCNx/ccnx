@@ -16,7 +16,6 @@ import java.rmi.registry.Registry;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.logging.Level;
 
 import javax.jcr.Item;
@@ -29,6 +28,7 @@ import javax.jcr.Repository;
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 import javax.jcr.SimpleCredentials;
+import javax.jcr.UnsupportedRepositoryOperationException;
 import javax.jcr.ValueFormatException;
 import javax.jcr.lock.LockException;
 import javax.jcr.nodetype.ConstraintViolationException;
@@ -101,6 +101,8 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 
 	protected Repository _repository;
 	protected Session _session;
+	protected Node _root;
+	protected boolean _versionableRoot;
 	
 	/** 
 	 * The stock RMI interface directly to a jackrabbit.
@@ -143,8 +145,13 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 				CCNDiscovery.getServiceInfo(
 						JACKRABBIT_RMI_SERVICE_TYPE, null, port);
 			login();
+			if (root().canAddMixin("mix:versionable")) {
+				root().addMixin("mix:versionable");
+				_versionableRoot = true;
+				Library.logger().info("Jackrabbit: added versioning capabilities to root.");
+			}
 			advertiseServer(port);
-			Library.logger().info("Started Jackrabbit repository on port: " + port);
+			Library.logger().info("Started new Jackrabbit repository on port: " + port);
 		} catch (Exception e) {
 			Library.logger().warning("Exception attempting to create our repository or log into it.");
 			Library.logStackTrace(Level.WARNING, e);
@@ -232,6 +239,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	}
 	
 	public Session session() { return _session; }
+	public Node root()  { return _root; }
 	
 	public CompleteName put(ContentName name, ContentAuthenticator authenticator, byte[] content) throws IOException {
 
@@ -303,24 +311,27 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		
 		return new CompleteName(name, authenticator);
 	}
-
+	
 	/**
 	 * Adds a child node with a new name level.
+	 * Assumes caller has already checked out parent.
+	 * Caller is responsible for saving the session after
+	 * finishing setting up this node (that will mark
+	 * this node as read-only), and checking in
+	 * the parent. Caller could also lock the parent if
+	 * need be.
 	 * @return
 	 * @throws RepositoryException 
 	 */
-	protected Node addSubNode(Node parent, byte [] name) throws RepositoryException {
+	protected Node addNode(Node checkedOutParent, byte [] name) throws RepositoryException {
 		// TODO DKS: do we need to check out parent?
 		Node n = null;
 		String componentName = nameComponentToString(name);
 		try {
 			try {
 				// DKS: to make file nodes: add file name, "nt:file"
-				// 
-				// DKS TODO: trouble with checkouts, root not versioned
-				// parent.checkout();
 				
-				n = parent.addNode(componentName,"nt:unstructured");
+				n = checkedOutParent.addNode(componentName,"nt:unstructured");
 				// now, make sure the leaf node is versionable				
 				if (!n.isNodeType("mix:versionable")) {
 					n.addMixin("mix:versionable");
@@ -329,56 +340,66 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 					n.addMixin("mix:referenceable");
 				}
 				
-				_session.save();
-				// parent.checkin();
-
 			} catch (NoSuchNodeTypeException e) {
 				Library.logger().warning("Unexpected error: can't set built-in mixin types on a node.");
 				Library.logStackTrace(Level.WARNING, e);
 				throw new RuntimeException(e);
 			} catch (ItemExistsException e) {
 				Library.logger().warning("Configuration error: cannot add child of parent: " +
-							parent.getPath() + " with name " + componentName +
+						checkedOutParent.getPath() + " with name " + componentName +
 							" because one already exists. But all parents should allow matching children.");
 				Library.logStackTrace(Level.WARNING, e);
 			} catch (PathNotFoundException e) {
 				Library.logger().warning("Unexpected error: known parent " +
-						parent.getPath() + " gives a path not found exception when adding child " +
+						checkedOutParent.getPath() + " gives a path not found exception when adding child " +
 						componentName);
 				Library.logStackTrace(Level.WARNING, e);
 			} catch (VersionException e) {
 				Library.logger().warning("Unexpected error: known parent " +
-						parent.getPath() + " gives a version exception when adding child " +
+						checkedOutParent.getPath() + " gives a version exception when adding child " +
 						componentName);
 				Library.logStackTrace(Level.WARNING, e);
 			} catch (ConstraintViolationException e) {
 				Library.logger().warning("Unexpected error: constraint violation exception creating standard subnode.");
 				Library.logStackTrace(Level.WARNING, e);
 				throw new RuntimeException(e);
-			} catch (LockException e) {
-				Library.logger().warning("Unexpected error: known parent " +
-						parent.getPath() + " gives a lock exception when adding child " +
-						componentName);
-				Library.logStackTrace(Level.WARNING, e);
 			}
 		} catch (RepositoryException e) {
 			// parent.getPath() throws a RepositoryException
 			Library.logger().warning("Unexpected error: known parent " +
-					parent.getPath() + " gives a repository exception when adding child " +
+					checkedOutParent.getPath() + " gives a repository exception when adding child " +
 					componentName);
 			Library.logStackTrace(Level.WARNING, e);
 			throw e;
 		}
 	
 		return n;
-
-//		resNode.setProperty ("jcr:mimeType", mimeType);
-//     resNode.setProperty ("jcr:encoding", encoding);
-//     resNode.setProperty ("jcr:data", new FileInputStream (file));
-//     Calendar lastModified = Calendar.getInstance ();
-//     lastModified.setTimeInMillis (file.lastModified ());
-//     resNode.setProperty ("jcr:lastModified", lastModified);
-
+	}
+	
+	/**
+	 * Add intermediary node.
+	 * @param parent
+	 * @param name
+	 * @return
+	 */
+	protected Node addSubNode(Node parent, byte [] name) throws RepositoryException {
+		Node n = null;
+		try {
+	
+			try {
+				if (versionableRoot() || !isRoot(parent)) {
+					parent.checkout();
+				}
+				n = addNode(parent,name);
+				session().save();
+			} finally {
+				if (parent.isCheckedOut())
+					parent.checkin();
+			}
+		} catch (UnsupportedRepositoryOperationException ure) {
+			Library.logger().warning("Unexpected error: Repository does not support versioning! " + ure.getMessage());
+		}
+		return n;
 	}
 
 	/**
@@ -464,30 +485,42 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 			}
 		}
 
-		// TODO: DKS -- should we check out parent?
-		Node n = addSubNode(parent, name);
+		Node n = null;
+		try {
 
-		// DKS: higher level is avoiding dupes by adding
-		// hash of content authenticator to name already. Don't
-		// need to further uniqueify
-		// signature, content hash, or publisher ID to name
-		// used internally by Jackrabbit (rather than storing
-		// it as a property)? Would make the XPath more complicated,
-		// but would keep us from having to search all the 
-		// nodes to make sure there wasn't a duplicate before
-		// insertion.
-		// Only thing that would work would be signature, and
-		// that wouldn't get reinsertions of same content
-		// (timestamp changes).  Adding content digest would
-		// help.
-		// DKS: TODO trouble with checkouts, root not versioned
-		// n.checkout();
-		
-		addContent(n, content);
-		addAuthenticationInfo(n, authenticator);
+			try {
+				if (versionableRoot() || !isRoot(parent)) {
+					parent.checkout();
+					// parent.lock?
+				}
+				n = addNode(parent,name);
 
-		_session.save();
-		// n.checkin();
+				// DKS: higher level is avoiding dupes by adding
+				// hash of content authenticator to name already. Don't
+				// need to further uniqueify
+				// signature, content hash, or publisher ID to name
+				// used internally by Jackrabbit (rather than storing
+				// it as a property)? Would make the XPath more complicated,
+				// but would keep us from having to search all the 
+				// nodes to make sure there wasn't a duplicate before
+				// insertion.
+				// Only thing that would work would be signature, and
+				// that wouldn't get reinsertions of same content
+				// (timestamp changes).  Adding content digest would
+				// help.
+
+				addContent(n, content);
+				addAuthenticationInfo(n, authenticator);
+
+				session().save();
+			} finally {
+				if (parent.isCheckedOut())
+					parent.checkin();
+				// parent.unlock()
+			}
+		} catch (UnsupportedRepositoryOperationException ure) {
+			Library.logger().warning("Unexpected error: Repository does not support versioning! " + ure.getMessage());
+		}
 		return n;
 	}
 	
@@ -907,6 +940,12 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		SimpleCredentials sc = new SimpleCredentials(InetAddress.getLocalHost().getHostAddress(), "".toCharArray());
 		try {
 			_session = _repository.login(sc);
+			_root = _session.getRootNode();
+			if (_root.isNodeType("mix:versionable")) {
+				_versionableRoot = true;
+			} else {
+				_versionableRoot = false;
+			}
 		} catch (RepositoryException e) {
 			Library.logger().warning("Exception logging into Jackrabbit CCN repository: " + e.getMessage());
 			Library.logStackTrace(Level.WARNING, e);
@@ -921,6 +960,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	public void logout() {
 		_session.logout();
 		_session = null;
+		_root = null;
 	}
 
 	public void disconnect() {
@@ -969,7 +1009,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		}
 		reg.rebind(SERVER_RMI_NAME, remote);
 		Library.logger().info("Started Jackrabbit server on port: " + port);
-	
+		
 		return repository;
 	}
 	
@@ -1342,5 +1382,15 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	public CompleteName putLocal(ContentName name, ContentAuthenticator authenticator, byte[] content) throws IOException {
 		// TODO Auto-generated method stub
 		return null;
+	}
+	
+	public boolean versionableRoot() {
+		return _versionableRoot;
+	}
+	
+	public boolean isRoot(Node node) {
+		if (null == node)
+			return false;
+		return (node.equals(root()));
 	}
 }
