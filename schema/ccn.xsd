@@ -17,7 +17,7 @@
 
 <!-- Top-level objects that can appear in 
      documents, messages, etc. -->
-<xs:element name="Mapping" type="ContentObjectType"/>
+<xs:element name="ContentObject" type="ContentObjectType"/>
 <xs:element name="CompleteName" type="CompleteNameType"/>
 <xs:element name="Collection" type="CollectionType"/>
 <xs:element name="Link" type="LinkType"/>

@@ -5,8 +5,8 @@
 <!ENTITY % commonattrs
 	"xmlns %URI; #FIXED 'http://www.parc.com/ccn'">
 
-<!ELEMENT Mapping	(Name, ContentAuthenticator, Signature, Content)>
-<!ATTLIST Mapping	%commonattrs;>
+<!ELEMENT ContentObject	(Name, ContentAuthenticator, Signature, Content)>
+<!ATTLIST ContentObject	%commonattrs;>
 
 <!ELEMENT Collection	(Link*)>
 <!ATTLIST Collection	%commonattrs;>

@@ -1,5 +1,5 @@
 <?xml version="1.0"?><!-- xmlns="http://www.parc.com/ccn" -->
-<Mapping>
+<ContentObject>
   <Name>
     <Component>dGVzdA==</Component>
     <Component>c21ldHRlcnM=</Component>
@@ -27,4 +27,4 @@ AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEB
 AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEB
 AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ==</Signature>
   <Content>AQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Content>
-</Mapping>
+</ContentObject>

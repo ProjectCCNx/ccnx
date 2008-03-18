@@ -1,7 +1,7 @@
 # $Id$
 W3REFS=XMLSchema.dtd XMLSchema.xsd datatypes.dtd xml.xsd
 
-default: check
+default all: check
 
 $(W3REFS):
 	type gzcat>>/dev/null && { gzcat w3downloads.tgz | tar xf -; } || tar xfz w3downloads.tgz
@@ -18,7 +18,7 @@ ccn.dtd:
 clean:
 	rm -f $(W3REFS)
 	test -L ccn.xsd && rm ccn.xsd || :
-	test -L ccn.dtd&& rm ccn.dtd || :
+	test -L ccn.dtd && rm ccn.dtd || :
 
 check: ccn.xsd ccn.dtd $(W3REFS) always
 	xmllint --noout --schema XMLSchema.xsd XMLSchema.xsd || ./oops
