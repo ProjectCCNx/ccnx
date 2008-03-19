@@ -18,9 +18,20 @@ struct ccn_encoder_stack_item {
 
 struct ccn_encoder {
     struct ccn_charbuf *openudata;
+    const struct ccn_dict_entry *tagdict;
+    int tagdict_count;
     FILE *outfile;
 };
 
+static int
+dict_lookup(const char *key, const struct ccn_dict_entry *dict, int n)
+{
+    int i;
+    for (i = 0; i < n; i++)
+        if (0 == strcmp(key, dict[i].name))
+            return (dict[i].index);
+    return (-1);
+}
 
 struct ccn_encoder *
 ccn_encoder_create(FILE *outfile)
@@ -32,6 +43,8 @@ ccn_encoder_create(FILE *outfile)
         if (c->openudata != NULL)
             ccn_charbuf_reserve(c->openudata, 128);
         c->outfile = outfile;
+        c->tagdict = ccn_dtag_dict.dict;
+        c->tagdict_count = ccn_dtag_dict.count;
     }
     return(c);
 }
@@ -79,13 +92,20 @@ finish_openudata(struct ccn_encoder *u)
     }
 }
 
-
 static void
 emit_name(struct ccn_encoder *u, enum ccn_tt tt, const void *name)
 {
     size_t length = strlen(name);
+    int dictindex = -1;
     if (length == 0) return; /* should never happen */
     finish_openudata(u);
+    if (tt == CCN_TAG) {
+        dictindex = dict_lookup(name, u->tagdict, u->tagdict_count);
+        if (dictindex >= 0) {
+            emit_tt(u, dictindex, CCN_DTAG);
+            return;
+        }
+    }
     emit_tt(u, length-1, tt);
     emit_bytes(u, name, length);
 }

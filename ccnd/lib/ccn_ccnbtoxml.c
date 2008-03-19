@@ -31,6 +31,8 @@ struct ccn_decoder {
     int sstate;
     struct ccn_decoder_stack_item *stack;
     struct ccn_charbuf *stringstack;
+    const struct ccn_dict_entry *tagdict;
+    int tagdict_count;
 };
 
 struct ccn_decoder *
@@ -44,6 +46,8 @@ ccn_decoder_create(void)
         d = NULL;
     }
     d->schema = CCN_NO_SCHEMA;
+    d->tagdict = ccn_dtag_dict.dict;
+    d->tagdict_count = ccn_dtag_dict.count;
     return(d);
 }
 
@@ -87,6 +91,16 @@ ccn_decoder_destroy(struct ccn_decoder **dp)
     }
 }
 
+static const char *
+dict_name_from_number(int index, const struct ccn_dict_entry *dict, int n)
+{
+    int i;
+    for (i = 0; i < n; i++)
+        if (index == dict[i].index)
+            return (dict[i].name);
+    return (NULL);
+}
+
 static const char Base64[] =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -100,6 +114,7 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
     unsigned char c;
     size_t chunk;
     struct ccn_decoder_stack_item *s;
+    const char *tagname;
     while (i < n) {
         switch (state) {
             case 0: /* start new thing */
@@ -176,21 +191,26 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                             s->nameindex = d->stringstack->length;
                             d->schema = numval;
                             d->sstate = 0;
-                            switch (numval) {
-                                default:
-                                    fprintf(stderr,
+                            tagname = NULL;
+                            if (numval <= INT_MAX)
+                                tagname = dict_name_from_number(numval, d->tagdict, d->tagdict_count);
+                            if (tagname == NULL) {
+                                fprintf(stderr,
                                         "*** Warning: unrecognized DTAG %lu\n",
                                         (unsigned long)numval);
-                                    ccn_charbuf_append(d->stringstack,
-                                        "UNKNOWN_DTAG",
-                                        sizeof("UNKNOWN_DTAG"));
-                                    printf("<%s code=\"%lu\"",
-                                           d->stringstack->buf + s->nameindex,
-                                           (unsigned long)d->schema);
-                                    tagstate = 1;
-                                    d->schema = CCN_UNKNOWN_SCHEMA;
-                                    break;
+                                ccn_charbuf_append(d->stringstack,
+                                                   "UNKNOWN_DTAG",
+                                                   sizeof("UNKNOWN_DTAG"));
+                                printf("<%s code=\"%lu\"",
+                                       d->stringstack->buf + s->nameindex,
+                                       (unsigned long)d->schema);
+                                d->schema = CCN_UNKNOWN_SCHEMA;
                             }
+                            else {
+                                ccn_charbuf_append(d->stringstack, tagname, strlen(tagname)+1);
+                                printf("<%s", tagname);
+                            }
+                            tagstate = 1;
                             state = 0;
                             break;
                         case CCN_BLOB:
