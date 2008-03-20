@@ -9,6 +9,7 @@ PROGRAMS = ccn_ccnbtoxml ccn_xmltoccnb ccn_recursive_parse hashtbtest
 DEBRIS = ccn_coding
 CSRC = ccn_charbuf.c ccn_coding.c ccn_ccnbtoxml.c ccn_xmltoccnb.c \
     ccn_recursive_parse.c \
+    ccn_schemaexperiment.c \
     hashtb.c hashtbtest.c
 
 LIB_OBJS = ccn_charbuf.o ccn_coding.o hashtb.o
@@ -31,8 +32,8 @@ ccn_xmltoccnb: ccn_xmltoccnb.o
 hashtbtest: hashtbtest.o
 	$(CC) $(CFLAGS) -o $@ hashtbtest.o $(LDLIBS)
 
-ccn_recursive_parse: ccn_recursive_parse.o
-	$(CC) $(CFLAGS) -o $@ ccn_recursive_parse.o $(LDLIBS)
+ccn_recursive_parse: ccn_recursive_parse.o ccn_schemaexperiment.o
+	$(CC) $(CFLAGS) -o $@ ccn_recursive_parse.o ccn_schemaexperiment.o $(LDLIBS)
 
 clean:
 	rm -f *.o *.a $(PROGRAMS) depend
@@ -53,6 +54,8 @@ ccn_ccnbtoxml.o: ccn_ccnbtoxml.c ../include/ccn/charbuf.h \
 ccn_xmltoccnb.o: ccn_xmltoccnb.c ../include/ccn/coding.h \
   ../include/ccn/charbuf.h
 ccn_recursive_parse.o: ccn_recursive_parse.c ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h
+  ../include/ccn/charbuf.h ../include/ccn/schemaexperiment.h
+ccn_schemaexperiment.o: ccn_schemaexperiment.c ../include/ccn/charbuf.h \
+  ../include/ccn/schemaexperiment.h
 hashtb.o: hashtb.c ../include/ccn/hashtb.h
 hashtbtest.o: hashtbtest.c ../include/ccn/hashtb.h

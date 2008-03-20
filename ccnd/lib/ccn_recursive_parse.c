@@ -9,6 +9,7 @@
 
 #include <ccn/coding.h>
 #include <ccn/charbuf.h>
+#include <ccn/schemaexperiment.h>
 
 /*
  * This is a sketch of a schema-driven recursive-descent parser,
@@ -154,6 +155,8 @@ int main (int argc, char **argv) {
     struct source *source;
     struct ccn_schema_node *goal = ccn_build_schemata();
     char **testdata = argv + 1;
+    
+    ccn_print_schema(goal);
     source = calloc(1, sizeof(*source));
     if (testdata[0] == NULL) {
         fprintf(stderr, "using testdata1\n");
