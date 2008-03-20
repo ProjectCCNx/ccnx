@@ -340,6 +340,8 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 					n.addMixin("mix:referenceable");
 				}
 				
+				Library.logger().info("addNode: created node " + n.getPath());
+				
 			} catch (NoSuchNodeTypeException e) {
 				Library.logger().warning("Unexpected error: can't set built-in mixin types on a node.");
 				Library.logStackTrace(Level.WARNING, e);
@@ -388,13 +390,16 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	
 			try {
 				if (versionableRoot() || !isRoot(parent)) {
+					Library.logger().info("addSubNode: checking out " + parent.getPath());
 					parent.checkout();
 				}
 				n = addNode(parent,name);
 				session().save();
 			} finally {
-				if (parent.isCheckedOut())
+				if (parent.isCheckedOut()) {
 					parent.checkin();
+					Library.logger().info("addSubNode: checked in " + parent.getPath());
+				}
 			}
 		} catch (UnsupportedRepositoryOperationException ure) {
 			Library.logger().warning("Unexpected error: Repository does not support versioning! " + ure.getMessage());
@@ -490,6 +495,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 
 			try {
 				if (versionableRoot() || !isRoot(parent)) {
+					Library.logger().info("addLeafNode: checking out " + parent.getPath());
 					parent.checkout();
 					// parent.lock?
 				}
@@ -514,8 +520,10 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 
 				session().save();
 			} finally {
-				if (parent.isCheckedOut())
+				if (parent.isCheckedOut()) {
 					parent.checkin();
+					Library.logger().info("addLeafNode: checked in " + parent.getPath());
+				}
 				// parent.unlock()
 			}
 		} catch (UnsupportedRepositoryOperationException ure) {

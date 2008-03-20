@@ -27,6 +27,9 @@
         <param name="path" value="${rep.home}/repository"/>
     </FileSystem>
 
+	<!-- Use the DataStore, new in 1.4. Keep things in the file system. -->
+	<DataStore class="org.apache.jackrabbit.core.data.FileDataStore"/> 
+
     <!--
         security configuration
     -->
@@ -70,10 +73,18 @@
             persistence manager of the workspace:
             class: FQN of class implementing the PersistenceManager interface
         -->
+		<!--
         <PersistenceManager class="org.apache.jackrabbit.core.persistence.db.DerbyPersistenceManager">
           <param name="url" value="jdbc:derby:${wsp.home}/db;create=true"/>
           <param name="schemaObjectPrefix" value="${wsp.name}_"/>
         </PersistenceManager>
+		-->
+
+        <PersistenceManager class="org.apache.jackrabbit.core.persistence.bundle.BundleFsPersistenceManager">
+		  <param name="blobFSBlockSize" value="0"/>
+		  <param name="errorHandling" value=""/>
+        </PersistenceManager>
+
         <!--
             Search index and the file system it uses.
             class: FQN of class implementing the QueryHandler interface
@@ -101,10 +112,17 @@
             a 'normal' persistence manager, but this could change in future
             implementations.
         -->
+		<!--
         <PersistenceManager class="org.apache.jackrabbit.core.persistence.db.DerbyPersistenceManager">
           <param name="url" value="jdbc:derby:${rep.home}/version/db;create=true"/>
           <param name="schemaObjectPrefix" value="version_"/>
         </PersistenceManager>
+		-->
+        <PersistenceManager class="org.apache.jackrabbit.core.persistence.bundle.BundleFsPersistenceManager">
+		  <param name="blobFSBlockSize" value="0"/>
+		  <param name="errorHandling" value=""/>
+        </PersistenceManager>
+
     </Versioning>
 
     <!--
