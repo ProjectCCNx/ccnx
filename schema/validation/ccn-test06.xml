@@ -1,7 +1,3 @@
-<?xml version="1.0"?>
-<Interest>
-  <Name/>
-    <PublisherID type="ISSUER_KEY">
-      AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=
-  </PublisherID>
+<Interest><Name></Name>
+    <PublisherID type="ISSUER_KEY" ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherID>
 </Interest>

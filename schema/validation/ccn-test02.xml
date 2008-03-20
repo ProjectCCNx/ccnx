@@ -1,9 +1,6 @@
-<?xml version="1.0"?>
-<Interest>
-  <Name>
-    <Component>dGVzdA==</Component>
-    <Component>YnJpZ2dz</Component>
-    <Component>dGVzdC50eHQ=</Component>
-    <Component>AQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Component>
+<Interest><Name><Component ccnbencoding="base64Binary">dGVzdA==</Component>
+    <Component ccnbencoding="base64Binary">YnJpZ2dz</Component>
+    <Component ccnbencoding="base64Binary">dGVzdC50eHQ=</Component>
+    <Component ccnbencoding="base64Binary">AQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Component>
   </Name>
 </Interest>

@@ -1,30 +1,19 @@
-<?xml version="1.0"?><!-- xmlns="http://www.parc.com/ccn" -->
-<ContentObject>
-  <Name>
-    <Component>dGVzdA==</Component>
-    <Component>c21ldHRlcnM=</Component>
-    <Component>dGVzdDIudHh0</Component>
+<ContentObject><Name><Component ccnbencoding="base64Binary">dGVzdA==</Component>
+    <Component ccnbencoding="base64Binary">c21ldHRlcnM=</Component>
+    <Component ccnbencoding="base64Binary">dGVzdDIudHh0</Component>
   </Name>
-  <ContentAuthenticator>
-    <PublisherKeyID>AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherKeyID>
+  <ContentAuthenticator><PublisherKeyID ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherKeyID>
     <NameComponentCount>3</NameComponentCount>
     <Timestamp>2008-02-11T16:54:36.671Z</Timestamp>
     <Type>LEAF</Type>
-    <KeyLocator>
-      <KeyName>
-        <Name>
-          <Component>dGVzdA==</Component>
-          <Component>c21ldHRlcnM=</Component>
-          <Component>a2V5</Component>
+    <KeyLocator><KeyName><Name><Component ccnbencoding="base64Binary">dGVzdA==</Component>
+          <Component ccnbencoding="base64Binary">c21ldHRlcnM=</Component>
+          <Component ccnbencoding="base64Binary">a2V5</Component>
         </Name>
       </KeyName>
     </KeyLocator>
-    <ContentDigest>AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI=</ContentDigest>
+    <ContentDigest ccnbencoding="base64Binary">AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI=</ContentDigest>
   </ContentAuthenticator>
-  <Signature>AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEB
-AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEB
-AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEB
-AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEB
-AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ==</Signature>
-  <Content>AQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Content>
+  <Signature ccnbencoding="base64Binary">AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ==</Signature>
+  <Content ccnbencoding="base64Binary">AQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Content>
 </ContentObject>

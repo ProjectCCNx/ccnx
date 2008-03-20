@@ -167,12 +167,12 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                 else {
                     numval = (numval << (7-CCN_TT_BITS)) + (c >> CCN_TT_BITS);
                     c &= CCN_TT_MASK;
-                    if (tagstate == 1 && c != CCN_ATTR && c != CCN_DATTR) {
-                        tagstate = 0;
-                        printf(">");
-                    }
                     switch (c) {
                         case CCN_EXT:
+                            if (tagstate == 1) {
+                                tagstate = 0;
+                                printf(">");
+                            }
                             s = ccn_decoder_push(d);
                             s->nameindex = d->stringstack->length;
                             d->schema = -1-numval;
@@ -187,6 +187,10 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                             state = 0;
                             break;
                         case CCN_DTAG:
+                            if (tagstate == 1) {
+                                tagstate = 0;
+                                printf(">");
+                            }
                             s = ccn_decoder_push(d);
                             s->nameindex = d->stringstack->length;
                             d->schema = numval;
@@ -214,9 +218,19 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                             state = 0;
                             break;
                         case CCN_BLOB:
+                            if (tagstate == 1) {
+                                tagstate = 0;
+                                printf(" ccnbencoding=\"base64Binary\">");
+                            }
+                            else
+                                fprintf(stdout, "blob not tagged in xml output\n");
                             state = (numval == 0) ? 0 : 10;
                             break;
                         case CCN_UDATA:
+                            if (tagstate == 1) {
+                                tagstate = 0;
+                                printf(">");
+                            }
                             state = 3;
                             if (d->schema == -1-CCN_PROCESSING_INSTRUCTIONS) {
                                 if (d->sstate > 0) {
@@ -245,13 +259,22 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                                 state = -__LINE__;
                                 break;
                             }
-                            /* FALLTHRU */
-                        case CCN_TAG:
                             numval += 1; /* encoded as length-1 */
                             s = ccn_decoder_push(d);
                             ccn_charbuf_reserve(d->stringstack, numval + 1);
                             s->nameindex = d->stringstack->length;
-                            state = (c == CCN_TAG) ? 4 : 5;
+                            state = 5;
+                            break;
+                        case CCN_TAG:
+                            if (tagstate == 1) {
+                                tagstate = 0;
+                                printf(">");
+                            }
+                            numval += 1; /* encoded as length-1 */
+                            s = ccn_decoder_push(d);
+                            ccn_charbuf_reserve(d->stringstack, numval + 1);
+                            s->nameindex = d->stringstack->length;
+                            state = 4;
                             break;
                         default:
                             state = -__LINE__;

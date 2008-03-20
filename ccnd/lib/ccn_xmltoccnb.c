@@ -18,10 +18,83 @@ struct ccn_encoder_stack_item {
 
 struct ccn_encoder {
     struct ccn_charbuf *openudata;
+    int is_base64binary;
     const struct ccn_dict_entry *tagdict;
     int tagdict_count;
     FILE *outfile;
 };
+
+struct base64_decoder {
+    size_t input_processed;
+    size_t result_size;
+    unsigned char *output;
+    size_t output_size;
+    unsigned partial;
+    int phase;
+};
+
+/* "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/" */
+static void
+base64_decode_bytes(struct base64_decoder *d, const void *p, size_t count)
+{
+    size_t i;
+    size_t oi = d->result_size;
+    const char *s = p;
+    unsigned partial = d->partial;
+    unsigned endgame = partial & 0x100;
+    int phase = d->phase;
+    char ch;
+    if (phase < 0)
+        return;
+    for (i = 0; i < count; i++) {
+        ch = s[i];
+        /*
+         * We know we have UTF-8, hence ascii for the characters we care about.
+         * Thus the range checks here are legitimate.
+         */
+        if ('A' <= ch && ch <= 'Z')
+            ch -= 'A';
+        else if ('a' <= ch && ch <= 'z')
+            ch -= 'a' - 26;
+        else if ('0' <= ch && ch <= '9')
+            ch -= '0' - 52;
+        else if (ch == '+')
+            ch = 62;
+        else if (ch == '/')
+            ch = 63;
+        else if (ch == ' ' || ch == '\t' || ch == '\n')
+            continue;
+        else if (ch == '=')
+            if (phase > 4 || (partial & 3) != 0)
+                phase = -1;
+            else {
+                phase -= 2;
+                partial >>= 2;
+                endgame = 0x100;
+                continue;
+            }
+        else {
+            phase = -1;
+            break;
+        }
+        if (endgame != 0) {
+            phase = -1;
+            break;
+        }
+        partial <<= 6;
+        partial |= ch;
+        phase += 6;
+        if (phase >= 8) {
+            if (oi < d->output_size)
+                d->output[oi] = partial >> (phase - 8);
+            oi += 1;
+            phase -= 8;
+        }
+    }
+    d->phase = phase;
+    d->partial = partial & ((1<<6)-1);
+    d->result_size = oi;
+}
 
 static int
 dict_lookup(const char *key, const struct ccn_dict_entry *dict, int n)
@@ -85,6 +158,32 @@ emit_tt(struct ccn_encoder *u, size_t numval, enum ccn_tt tt)
 static void
 finish_openudata(struct ccn_encoder *u)
 {
+    if (u->is_base64binary) {
+        unsigned char *obuf = NULL;
+        ssize_t len = -1;
+        size_t maxbinlen = u->openudata->length * 3 / 4 + 4;
+        struct base64_decoder d = { 0 };
+        
+        u->is_base64binary = 0;
+        obuf = ccn_charbuf_reserve(u->openudata, maxbinlen);
+        if (obuf != NULL) {
+            d.output = obuf;
+            d.output_size = maxbinlen;
+            base64_decode_bytes(&d, u->openudata->buf, u->openudata->length);
+            if (d.phase == 0 && d.result_size <= d.output_size)
+                len = d.result_size;
+        }
+        if (len == -1) {
+            fprintf(stderr,
+                "could not decode base64binary, leaving as character data\n");
+        }
+        else {
+            emit_tt(u, len, CCN_BLOB);
+            emit_bytes(u, obuf, len);
+            u->openudata->length = 0;
+            return;
+        }
+    }
     if (u->openudata->length != 0) {
         emit_tt(u, u->openudata->length, CCN_UDATA);
         emit_bytes(u, u->openudata->buf, u->openudata->length);
@@ -133,11 +232,18 @@ do_start_element(void *ud, const XML_Char *name,
 {
     struct ccn_encoder *u = ud;
     const XML_Char **att;
+    int is_base64binary = 0;
     emit_name(u, CCN_TAG, name);
     for (att = atts; att[0] != NULL; att += 2) {
+        if (0 == strcmp(att[0], "ccnbencoding") && 
+            0 == strcmp(att[1], "base64Binary")) {
+            is_base64binary = 1;
+            continue;
+        }
         emit_name(u, CCN_ATTR, att[0]);
         emit_xchars(u, att[1]);
     }
+    u->is_base64binary = is_base64binary;
 }
 
 static void

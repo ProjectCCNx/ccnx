@@ -43,7 +43,7 @@
     <xs:element name="NameComponentCount" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
     <xs:element name="Timestamp" type="xs:dateTime" minOccurs="0" maxOccurs="1"/>
     <xs:element name="Type" type="ContentType" minOccurs="0" maxOccurs="1"/>
-    <xs:element name="ContentHash" type="xs:base64Binary" minOccurs="0" maxOccurs="1"/>
+    <xs:element name="ContentHash" type="Base64BinaryType" minOccurs="0" maxOccurs="1"/>
   </xs:sequence>
 </xs:complexType>
 
@@ -53,17 +53,26 @@
     <xs:element name="Count" type="xs:nonNegativeInteger"/>
     <xs:element name="BlockSize" type="xs:nonNegativeInteger"/>
     <xs:element name="Length" type="xs:nonNegativeInteger"/>
-    <xs:element name="RootDigest" type="xs:base64Binary"/>
-    <xs:element name="ContentDigest" type="xs:base64Binary" minOccurs="0"/>
+    <xs:element name="RootDigest" type="Base64BinaryType"/>
+    <xs:element name="ContentDigest" type="Base64BinaryType" minOccurs="0"/>
   </xs:sequence>
 </xs:complexType>
 
 <xs:complexType name="NameType">
   <xs:sequence>
-    <xs:element name="Component" type="xs:base64Binary" minOccurs="0" maxOccurs="unbounded"/>
+    <xs:element name="Component" type="Base64BinaryType"
+                minOccurs="0" maxOccurs="unbounded"/>
   </xs:sequence>
 </xs:complexType>
 
+<xs:complexType name="Base64BinaryType">
+  <xs:simpleContent>
+    <xs:extension base="xs:base64Binary">
+      <xs:attribute name="ccnbencoding" type="xs:string" fixed="base64Binary"/>
+    </xs:extension>
+  </xs:simpleContent>
+</xs:complexType>
+    
 <xs:complexType name="ContentAuthenticatorType">
   <xs:sequence>
     <xs:element name="PublisherKeyID" type="KeyIDType"/>
@@ -78,7 +87,7 @@
          the content digest were actually signed (only the 
          root will be signed), so verification may require some
          alteration of the encoded authenticator structure. -->
-    <xs:element name="ContentDigest" type="xs:base64Binary"/>
+    <xs:element name="ContentDigest" type="Base64BinaryType"/>
 
   </xs:sequence>
 </xs:complexType>
@@ -93,8 +102,8 @@
          it would have to be removed from the encoded CA before verification).
          We've tried it the other way; now try it this way to see if the code is
          cleaner. -->
-    <xs:element name="Signature" type="xs:base64Binary"/>
-    <xs:element name="Content" type="xs:base64Binary"/>
+    <xs:element name="Signature" type="Base64BinaryType"/>
+    <xs:element name="Content" type="Base64BinaryType"/>
   </xs:sequence>
 </xs:complexType>
 
@@ -104,7 +113,7 @@
   <xs:sequence>
     <xs:element name="Name" type="NameType"/>
     <xs:element name="ContentAuthenticator" type="ContentAuthenticatorType"/>
-    <xs:element name="Signature" type="xs:base64Binary"/>
+    <xs:element name="Signature" type="Base64BinaryType"/>
   </xs:sequence>
 </xs:complexType>
 
@@ -118,15 +127,20 @@
 
 <xs:complexType name="PublisherIDType">
   <xs:simpleContent>
-    <xs:extension base="KeyIDType">
+    <xs:extension base="SHA256Digest">
       <xs:attribute name="type" type="PublisherTypeType" use="required"/>
+      <xs:attribute name="ccnbencoding" type="xs:string" fixed="base64Binary"/>
     </xs:extension>
   </xs:simpleContent>
 </xs:complexType>
 
-<xs:simpleType name="KeyIDType">
-  <xs:restriction base="SHA256Digest"/>
-</xs:simpleType>
+<xs:complexType name="KeyIDType">
+  <xs:simpleContent>
+    <xs:extension base="SHA256Digest">
+      <xs:attribute name="ccnbencoding" type="xs:string" fixed="base64Binary"/>
+    </xs:extension>
+  </xs:simpleContent>
+</xs:complexType>
 
 <xs:simpleType name="SHA256Digest">
     <xs:restriction base="xs:base64Binary">
@@ -160,8 +174,8 @@
 <xs:complexType name="KeyLocatorType">
   <xs:sequence>
     <xs:choice>
-      <xs:element name="Key" type="xs:base64Binary"/>
-      <xs:element name="Certificate" type="xs:base64Binary"/>
+      <xs:element name="Key" type="Base64BinaryType"/>
+      <xs:element name="Certificate" type="Base64BinaryType"/>
       <xs:element name="KeyName" type="KeyNameType"/>
     </xs:choice>
   </xs:sequence>
