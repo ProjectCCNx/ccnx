@@ -1,11 +1,11 @@
 #!/bin/sh
 
 JAVA_HOME=/usr
-CCN_HOME=.
+CCN_HOME_JAVA=${CCN_HOME_JAVA:-.}
 JAVA=$JAVA_HOME/bin/java
 
-CP1=$CCN_HOME/*.jar
-CP2=$CCN_HOME/lib/*.jar
+CP1=$CCN_HOME_JAVA/*.jar
+CP2=$CCN_HOME_JAVA/lib/*.jar
 
 CP1=`echo $CP1 | sed "s/ /:/g"`
 CP2=`echo $CP2 | sed "s/ /:/g"`
