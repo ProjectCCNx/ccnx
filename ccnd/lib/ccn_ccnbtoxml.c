@@ -489,49 +489,32 @@ process_file(char *path) {
     return(res);
 }
 
+#define L (CCN_TT_HBIT & ~CCN_CLOSE)
 unsigned char test1[] = {
-    (2 << CCN_TT_BITS) + CCN_TAG, 'F', 'o', 'o',
-    (0 << CCN_TT_BITS) + CCN_TAG, 'a',
-    (1 << CCN_TT_BITS) + CCN_UDATA, 'X',
+    (2 << CCN_TT_BITS) + CCN_TAG + L, 'F', 'o', 'o',
+    (0 << CCN_TT_BITS) + CCN_TAG + L, 'a',
+    (1 << CCN_TT_BITS) + CCN_UDATA + L, 'X',
                CCN_CLOSE,
-    (0 << CCN_TT_BITS) + CCN_TAG, 'b',
-    (3 << CCN_TT_BITS) + CCN_ATTR, 't', 'y', 'p', 'e',
-    (5 << CCN_TT_BITS) + CCN_UDATA, 'e', 'm', 'p', 't', 'y',
+    (0 << CCN_TT_BITS) + CCN_TAG + L, 'b',
+    (3 << CCN_TT_BITS) + CCN_ATTR + L, 't', 'y', 'p', 'e',
+    (5 << CCN_TT_BITS) + CCN_UDATA + L, 'e', 'm', 'p', 't', 'y',
                CCN_CLOSE,
-    (2 << CCN_TT_BITS) + CCN_TAG, 'b', 'i', 'n',
-    (4 << CCN_TT_BITS) + CCN_BLOB, 1, 0x23, 0x45, 0x67,
+    (2 << CCN_TT_BITS) + CCN_TAG + L, 'b', 'i', 'n',
+    (4 << CCN_TT_BITS) + CCN_BLOB + L, 1, 0x23, 0x45, 0x67,
                CCN_CLOSE,
-    (128 + ((20-1) >> (7-CCN_TT_BITS))),
-    (((20-1) & CCN_TT_MASK) << CCN_TT_BITS) + CCN_TAG,
+    (CCN_CLOSE + ((20-1) >> (7-CCN_TT_BITS))),
+    (((20-1) & CCN_TT_MASK) << CCN_TT_BITS) + CCN_TAG + L,
         'a', 'b', 'c', 'd',  'a', 'b', 'c', 'd', 
         'a', 'b', 'c', 'd',  'a', 'b', 'c', 'd',
         'a', 'b', 'c', 'd',
                CCN_CLOSE,
-    (2 << CCN_TT_BITS) + CCN_TAG, 'i', 'n', 't',
-    (3 << CCN_TT_BITS) + CCN_ATTR, 't', 'y', 'p', 'e',
-    (3 << CCN_TT_BITS) + CCN_UDATA, 'B', 'I', 'G',
+    (2 << CCN_TT_BITS) + CCN_TAG + L, 'i', 'n', 't',
+    (3 << CCN_TT_BITS) + CCN_ATTR + L, 't', 'y', 'p', 'e',
+    (3 << CCN_TT_BITS) + CCN_UDATA + L, 'B', 'I', 'G',
                CCN_CLOSE,
-    (6 << CCN_TT_BITS) + CCN_UDATA,
+    (6 << CCN_TT_BITS) + CCN_UDATA + L,
     'H','i','&','b','y','e',
                CCN_CLOSE,
-};
-
-unsigned char test2[] = {
-    (7 << CCN_TT_BITS) + CCN_DTAG,
-    (1 << CCN_TT_BITS) + CCN_UDATA, 'U',
-    (1 << CCN_TT_BITS) + CCN_BLOB, 'B',
-    (2 << CCN_TT_BITS) + CCN_UDATA, '4', '2',
-    (0 << CCN_TT_BITS) + CCN_TAG, 'e',
-    (0 << CCN_TT_BITS) + CCN_ATTR, 'a',
-    (1 << CCN_TT_BITS) + CCN_UDATA, 'x',
-    (7 << CCN_TT_BITS) + CCN_DATTR,
-    (1 << CCN_TT_BITS) + CCN_UDATA, '&',
-        CCN_CLOSE,
-    (1 << CCN_TT_BITS) + CCN_DTAG,
-        (0 << CCN_TT_BITS) + CCN_ATTR, 'b',
-        (1 << CCN_TT_BITS) + CCN_UDATA, '1',
-        CCN_CLOSE,
-        CCN_CLOSE
 };
 
 int
@@ -542,9 +525,6 @@ main(int argc, char **argv) {
         fprintf(stderr, "<!-- Processing %s -->\n", argv[i]);
         if (0 == strcmp(argv[i], "-test1")) {
             res |= process_test(test1, sizeof(test1));
-        }
-        else if (0 == strcmp(argv[i], "-test2")) {
-            res |= process_test(test2, sizeof(test2));
         }
         else
             res |= process_file(argv[i]);

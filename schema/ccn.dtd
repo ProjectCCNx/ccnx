@@ -5,6 +5,9 @@
 <!ENTITY % commonattrs
 	"xmlns %URI; #FIXED 'http://www.parc.com/ccn'">
 
+<!ELEMENT CCNProtocolDataUnit	((ContentObject | Interest)*)>
+<!ATTLIST CCNProtocolDataUnit	%commonattrs;>
+
 <!ELEMENT ContentObject	(Name, ContentAuthenticator, Signature, Content)>
 <!ATTLIST ContentObject	%commonattrs;>
 
