@@ -145,10 +145,12 @@ emit_tt(struct ccn_encoder *u, size_t numval, enum ccn_tt tt)
     unsigned char buf[1+8*((sizeof(numval)+6)/7)];
     unsigned char *p = buf + (sizeof(buf)-1);
     int n = 1;
-    p[0] = ((numval & CCN_MAX_TINY) << CCN_TT_BITS) + (CCN_TT_MASK & tt);
+    p[0] = (CCN_TT_HBIT & ~CCN_CLOSE) |
+           ((numval & CCN_MAX_TINY) << CCN_TT_BITS) |
+           (CCN_TT_MASK & tt);
     numval >>= (7-CCN_TT_BITS);
     while (numval != 0) {
-        (--p)[0] = ((unsigned char)numval) | 128;
+        (--p)[0] = (((unsigned char)numval) & ~CCN_TT_HBIT) | CCN_CLOSE;
         n++;
         numval >>= 7;
     }

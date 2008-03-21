@@ -101,13 +101,14 @@ ccn_skeleton_decode(struct ccn_skeleton_decoder *d, unsigned char p[], size_t n)
                 /* FALLTHRU */
             case CCN_DSTATE_1: /* parsing numval */
                 c = p[i++];
-                if (c != (c & 127)) {
+                if ((c & CCN_TT_HBIT) == CCN_CLOSE) {
                     if (numval > (SIZE_T_MAX >> (7 + CCN_TT_BITS)))
                         state = -__LINE__;
                     numval = (numval << 7) + (c & 127);
                 }
                 else {
-                    numval = (numval << (7-CCN_TT_BITS)) + (c >> CCN_TT_BITS);
+                    numval = (numval << (7-CCN_TT_BITS)) +
+                             ((c >> CCN_TT_BITS) & CCN_MAX_TINY);
                     c &= CCN_TT_MASK;
                     switch (c) {
                         case CCN_EXT:

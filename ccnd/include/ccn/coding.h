@@ -3,6 +3,7 @@
 #define CCN_TT_BITS 3
 #define CCN_TT_MASK ((1 << CCN_TT_BITS) - 1)
 #define CCN_MAX_TINY ((1 << (7-CCN_TT_BITS)) - 1)
+#define CCN_TT_HBIT ((unsigned char)(1 << 7))
 
 enum ccn_tt {
     CCN_EXT,        /* starts composite extension - numval is subtype */
@@ -15,7 +16,7 @@ enum ccn_tt {
 };
 
 /* CCN_CLOSE terminates composites */
-#define CCN_CLOSE ((unsigned char)(1 << 7))
+#define CCN_CLOSE ((unsigned char)(0))
 
 enum ccn_ext_subtype {
     /* skip smallest values for now */

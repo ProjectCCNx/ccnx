@@ -1,5 +1,7 @@
 #!/bin/sh
 # This tries decoding all the ccnb files in the current directory
 # into XML and then back into binary, comparing the result to the original.
-for i in *.ccnb; do ./ccn_ccnbtoxml "$i" | ./ccn_xmltoccnb - | cmp - "$i" || exit 1; done
-for i in *.ccnb; do ./ccn_ccnbtoxml "$i" | xmlwf || exit 1; done
+D=`dirname "$0"`/
+test -x "$D"ccn_ccnbtoxml || D=''
+for i in *.ccnb; do "$D"ccn_ccnbtoxml "$i" | "$D"ccn_xmltoccnb - | cmp - "$i" || exit 1; done
+for i in *.ccnb; do "$D"ccn_ccnbtoxml "$i" | xmlwf || exit 1; done

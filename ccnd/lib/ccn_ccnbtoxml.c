@@ -151,7 +151,7 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                 /* FALLTHRU */
             case 1: /* parsing numval */
                 c = p[i++];
-                if (c != (c & 127)) {
+                if ((c & CCN_TT_HBIT) == CCN_CLOSE) {
                     if (numval > (numval << 7)) {
                         state = 9;
                         d->bignumval = numval;
@@ -165,7 +165,8 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                     }
                 }
                 else {
-                    numval = (numval << (7-CCN_TT_BITS)) + (c >> CCN_TT_BITS);
+                    numval = (numval << (7-CCN_TT_BITS)) +
+                             ((c >> CCN_TT_BITS) & CCN_MAX_TINY);
                     c &= CCN_TT_MASK;
                     switch (c) {
                         case CCN_EXT:
@@ -355,12 +356,13 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                 break;
             case 9: /* parsing big numval - cannot be a length anymore */
                 c = p[i++];
-                if (c != (c & 127)) {
+                if ((c & CCN_TT_HBIT) == CCN_CLOSE) {
                     d->bignumval = (d->bignumval << 7) + (c & 127);
                 }
                 else {
-                    d->bignumval = (d->bignumval << 3) + (c >> 4);
-                    c &= 15;
+                    d->bignumval = (d->bignumval << (7-CCN_TT_BITS)) +
+                                   ((c >> CCN_TT_BITS) & CCN_MAX_TINY);
+                    c &= CCN_TT_MASK;
                     if (tagstate == 1) {
                         tagstate = 0;
                         printf(">");
