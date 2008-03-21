@@ -1,3 +1,4 @@
+#include <stddef.h>
 
 #define CCN_TT_BITS 3
 #define CCN_TT_MASK ((1 << CCN_TT_BITS) - 1)
@@ -61,3 +62,18 @@ struct ccn_dict {
     const struct ccn_dict_entry *dict;
 };
 extern const struct ccn_dict ccn_dtag_dict; /* matches enum ccn_dtag above */
+
+enum ccn_decoder_state;
+
+struct ccn_skeleton_decoder { /* initialize to all 0 */
+    ssize_t index;
+    int state;
+    int tagstate;
+    size_t numval;
+    int nest;
+};
+
+ssize_t ccn_skeleton_decode(
+    struct ccn_skeleton_decoder *d,
+    unsigned char p[],
+    size_t n);

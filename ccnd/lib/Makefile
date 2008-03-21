@@ -5,11 +5,13 @@ COPT = -g -Wall
 
 #Solaris# make MORE_LDLIBS='-lsocket -lnsl'
 
-PROGRAMS = ccn_ccnbtoxml ccn_xmltoccnb ccn_recursive_parse hashtbtest
+PROGRAMS = ccn_ccnbtoxml ccn_xmltoccnb ccn_recursive_parse \
+    hashtbtest skel_decode_test
 DEBRIS = ccn_coding
 CSRC = ccn_charbuf.c ccn_coding.c ccn_ccnbtoxml.c ccn_xmltoccnb.c \
     ccn_recursive_parse.c \
     ccn_schemaexperiment.c \
+    skel_decode_test.c \
     hashtb.c hashtbtest.c
 
 LIB_OBJS = ccn_charbuf.o ccn_coding.o hashtb.o
@@ -31,6 +33,9 @@ ccn_xmltoccnb: ccn_xmltoccnb.o
 
 hashtbtest: hashtbtest.o
 	$(CC) $(CFLAGS) -o $@ hashtbtest.o $(LDLIBS)
+
+skel_decode_test: skel_decode_test.o
+	$(CC) $(CFLAGS) -o $@ skel_decode_test.o $(LDLIBS)
 
 ccn_recursive_parse: ccn_recursive_parse.o ccn_schemaexperiment.o
 	$(CC) $(CFLAGS) -o $@ ccn_recursive_parse.o ccn_schemaexperiment.o $(LDLIBS)
@@ -56,6 +61,8 @@ ccn_xmltoccnb.o: ccn_xmltoccnb.c ../include/ccn/coding.h \
 ccn_recursive_parse.o: ccn_recursive_parse.c ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/schemaexperiment.h
 ccn_schemaexperiment.o: ccn_schemaexperiment.c ../include/ccn/charbuf.h \
-  ../include/ccn/schemaexperiment.h
+  ../include/ccn/coding.h ../include/ccn/schemaexperiment.h
+skel_decode_test.o: skel_decode_test.c ../include/ccn/charbuf.h \
+  ../include/ccn/coding.h
 hashtb.o: hashtb.c ../include/ccn/hashtb.h
 hashtbtest.o: hashtbtest.c ../include/ccn/hashtb.h
