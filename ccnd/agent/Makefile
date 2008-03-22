@@ -6,8 +6,8 @@ CCNLIBDIR = ../lib
 
 #Solaris# make MORE_LDLIBS='-lsocket -lnsl'
 
-PROGRAMS = ccnd
-CSRC = ccnd.c
+PROGRAMS = ccnd smoketestccnd
+CSRC = ccnd.c smoketestccnd.c
 
 default all: $(PROGRAMS)
 
@@ -18,6 +18,9 @@ $(CCNLIBDIR)/libccn2.a:
 
 ccnd: ccnd.o
 	$(CC) $(CFLAGS) -o $@ ccnd.o $(LDLIBS)
+
+smoketestccnd: smoketestccnd.o
+	$(CC) $(CFLAGS) -o $@ smoketestccnd.o $(LDLIBS)
 
 clean:
 	rm -f *.o *.a $(PROGRAMS) depend
@@ -32,3 +35,4 @@ depend: Makefile $(CSRC)
 ###############################
 ccnd.o: ccnd.c ../include/ccn/ccnd.h ../include/ccn/charbuf.h \
   ../include/ccn/coding.h ../include/ccn/hashtb.h
+smoketestccnd.o: smoketestccnd.c
