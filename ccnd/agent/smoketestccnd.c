@@ -41,12 +41,12 @@ int main(int argc, char **argv) {
     int binary = 0;
     char *filename = NULL;
     int rep = 1;
-    while ((c = getopt(argc, argv, ":hbf:n:")) != -1) {
+    while ((c = getopt(argc, argv, "hf:n:")) != -1) {
         switch (c) {
             default:
                 fprintf(stderr, "Unknown option: -%c\n", optopt);
             case 'h':
-                fprintf(stderr, "%s\n", "options: -b (for binary) -f infilename -n repeat");
+                fprintf(stderr, "%s\n", "options: -f infilename -n repeat");
                 exit(1);
             case 'f':
 		filename = optarg;
@@ -59,9 +59,6 @@ int main(int argc, char **argv) {
 	    case 'n':
 		rep = atoi(optarg);
 		break;
-	    case 'b':
-                binary = 1;
-                break;
         }
     }
     sock = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -74,33 +71,25 @@ int main(int argc, char **argv) {
         err(1, "connect(..., %s)", addr.sun_path);
     for (;;) {
         ssize_t rawlen;
-        if (binary) {
-            rawlen = read(0, rawbuf, sizeof(rawbuf));
-            if (rawlen <= 0) {
-		if (filename == NULL || --rep <= 0)
-			break;
-		close(0);
-		res = open(filename, O_RDONLY);
-		if (res != 0)
-			break;
-	    }
-        }
-        else {
-            if (NULL==fgets(rawbuf, sizeof(rawbuf), stdin))
-                break;
-            rawlen = strlen(rawbuf);
-            while (rawlen > 0 && rawbuf[rawlen-1] == '\n')
-                rawlen--;
+        rawlen = read(0, rawbuf, sizeof(rawbuf));
+        if (rawlen <= 0) {
+            if (filename == NULL || --rep <= 0)
+                    break;
+            close(0);
+            res = open(filename, O_RDONLY);
+            if (res != 0)
+                    break;
         }
 	send(sock, rawbuf, rawlen, 0);
 	sleep(1);
-	rawlen = recv(sock, rawbuf, sizeof(rawbuf)-1, MSG_DONTWAIT);
+	rawlen = recv(sock, rawbuf, sizeof(rawbuf), MSG_DONTWAIT);
         if (rawlen == -1 && errno == EAGAIN)
             continue;
         if (rawlen == -1)
             err(1, "recv");
         if (rawlen == 0)
             break;
+        printf("recv of %lu bytes\n", (unsigned long)rawlen);
         printraw(rawbuf, rawlen);
         }
     exit(0);

@@ -1,8 +1,8 @@
 /*
- *  ccnd.c
+ * ccnd.c
  *  
- *  Copyright 2008 Palo Alto Research Center, Inc. All rights reserved.
- *
+ * Copyright 2008 Palo Alto Research Center, Inc. All rights reserved.
+ * $Id$
  */
 
 #include <sys/types.h>
@@ -48,7 +48,11 @@ struct face {
     int fd;
     struct ccn_charbuf *inbuf;
     struct ccn_skeleton_decoder decoder;
+    size_t outbufindex;
+    struct ccn_charbuf *outbuf;
 };
+
+static void do_write(struct ccnd *h, struct face *face, unsigned char *data, size_t size);
 
 static const char *unlink_this_at_exit = NULL;
 static void
@@ -150,7 +154,25 @@ shutdown_client_fd(struct ccnd *h, int fd)
     face->fd = -1;
     fprintf(stderr, "ccnd[%d] shutdown client fd=%d\n", (int)getpid(), fd);
     ccn_charbuf_destroy(&face->inbuf);
+    ccn_charbuf_destroy(&face->outbuf);
     hashtb_delete(e);
+}
+
+static void
+process_input_message(struct ccnd *h, struct face *face, unsigned char *msg, size_t size)
+{
+    // BFI version
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    int i;
+    for (i = 1, hashtb_start(h->faces, e);
+         i < h->nfds && e->data != NULL;
+         i++, hashtb_next(e)) {
+        struct face *otherface = e->data;
+        if (face != otherface) {
+            do_write(h, otherface, msg, size);
+        }
+    }
 }
 
 static void
@@ -158,8 +180,9 @@ process_input(struct ccnd *h, int fd)
 {
     struct face *face = hashtb_lookup(h->faces, &fd, sizeof(fd));
     ssize_t res;
+    ssize_t dres;
     ssize_t msgstart;
-    void *buf;
+    unsigned char *buf;
     struct ccn_skeleton_decoder *d = &face->decoder;
     if (face->inbuf == NULL)
         face->inbuf = ccn_charbuf_create();
@@ -170,37 +193,99 @@ process_input(struct ccnd *h, int fd)
     if (res == -1)
         perror("ccnd: read");
     else if (res == 0) {
-        shutdown_client_fd(h, fd);
+        shutdown_client_fd(h, fd); // XXX 
     }
     else {
         face->inbuf->length += res;
         msgstart = 0;
-        ccn_skeleton_decode(d, buf, res);
+        dres = ccn_skeleton_decode(d, buf, res);
+        fprintf(stderr, "ccn_skeleton_decode of %d bytes accepted %d\n",
+            (int)res, (int)dres);
         while (d->state == 0 && d->tagstate == 0 && d->nest == 0) {
             fprintf(stderr, "%lu byte msg received on %d\n",
                 (unsigned long)(d->index - msgstart), fd);
-            if (d->index == face->inbuf->length) {
-                face->inbuf->length = 0;
-                break;
-            }
+            process_input_message(h, face, face->inbuf->buf + msgstart, 
+                                           d->index - msgstart);
             msgstart = d->index;
-            ccn_skeleton_decode(d,
+            if (msgstart == face->inbuf->length) {
+                face->inbuf->length = 0;
+                return;
+            }
+            dres = ccn_skeleton_decode(d,
                     face->inbuf->buf + d->index,
-                    face->inbuf->length - d->index);
+                    res = face->inbuf->length - d->index);
+            fprintf(stderr, "  ccn_skeleton_decode of %d bytes accepted %d\n",
+            (int)res, (int)dres);
         }
         if (d->state < 0) {
             fprintf(stderr, "ccnd: protocol error on %d\n", fd);
             shutdown_client_fd(h, fd);
             return;
         }
-        if (d->index < face->inbuf->length) {
+        if (msgstart < face->inbuf->length && msgstart > 0) {
             /* move partial message to start of buffer */
-            memmove(face->inbuf->buf, face->inbuf->buf + d->index,
-                face->inbuf->length - d->index);
-            face->inbuf->length -= d->index;
-            d->index = 0;
+            memmove(face->inbuf->buf, face->inbuf->buf + msgstart,
+                face->inbuf->length - msgstart);
+            face->inbuf->length -= msgstart;
+            d->index -= msgstart;
         }
     }
+}
+
+static void
+do_write(struct ccnd *h, struct face *face, unsigned char *data, size_t size)
+{
+    ssize_t res;
+    if (face->outbuf != NULL) {
+        ccn_charbuf_append(face->outbuf, data, size);
+        return;
+    }
+    res = write(face->fd, data, size);
+    if (res == size)
+        return;
+    if (res == -1) {
+        if (errno == EAGAIN)
+            res = 0;
+        else {
+            perror("ccnd: write");
+            return;
+        }
+    }
+    face->outbuf = ccn_charbuf_create();
+    if (face->outbuf == NULL) {
+        perror("ccnd: ccn_charbuf_create");
+        exit(1);
+    }
+    ccn_charbuf_append(face->outbuf, data + res, size - res);
+    face->outbufindex = 0;
+}
+
+static void
+do_deferred_write(struct ccnd *h, int fd)
+{
+    ssize_t res;
+    struct face *face = hashtb_lookup(h->faces, &fd, sizeof(fd));
+    if (face != NULL && face->outbuf != NULL) {
+        ssize_t sendlen = face->outbuf->length - face->outbufindex;
+        if (sendlen > 0) {
+            res = write(fd, face->outbuf->buf + face->outbufindex, sendlen);
+            if (res == -1) {
+                perror("ccnd: write");
+                shutdown_client_fd(h, fd);
+                return;
+            }
+            if (res == sendlen) {
+                face->outbufindex = 0;
+                ccn_charbuf_destroy(&face->outbuf);
+                return;
+            }
+            face->outbufindex += res;
+            return;
+        }
+        face->outbufindex = 0;
+        ccn_charbuf_destroy(&face->outbuf);
+    }
+    fprintf(stderr, "ccnd:do_deferred_write: something fishy on %d\n", fd);
 }
 
 static void
@@ -211,7 +296,6 @@ run(struct ccnd *h)
     int i;
     int res;
     int timeout_ms = -1;
-    char buf[1] = "?";
     for (;;) {
         if (hashtb_n(h->faces) + 1 != h->nfds) {
             h->nfds = hashtb_n(h->faces) + 1;
@@ -226,6 +310,8 @@ run(struct ccnd *h)
             struct face *face = e->data;
             h->fds[i].fd = face->fd;
             h->fds[i].events = POLLIN;
+            if (face->outbuf != NULL)
+                h->fds[i].events |= POLLOUT;
         }
         h->nfds = i;
         res = poll(h->fds, h->nfds, timeout_ms);
@@ -249,10 +335,10 @@ run(struct ccnd *h)
                     shutdown_client_fd(h, h->fds[i].fd);
                     continue;
                 }
+                if (h->fds[i].revents & (POLLOUT))
+                    do_deferred_write(h, h->fds[i].fd);
                 if (h->fds[i].revents & (POLLIN))
                     process_input(h, h->fds[i].fd);
-                if (h->fds[i].revents & (POLLOUT))
-                    write(h->fds[i].fd, buf, 1);
             }
         }
     }
