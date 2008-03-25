@@ -51,7 +51,7 @@ ccn_charbuf_append(struct ccn_charbuf *c, const void *p, size_t n)
 {
     unsigned char *dst = ccn_charbuf_reserve(c, n);
     if (dst == NULL)
-        return(1);
+        return(-1);
     memcpy(dst, p, n);
     c->length += n;
     return(0);
