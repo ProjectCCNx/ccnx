@@ -14,5 +14,5 @@
 
 /* link adapters sign on by sending this greeting to ccnd */
 #define CCN_EMPTY_PDU "CCN\202\000"
-
+#define CCN_EMPTY_PDU_LENGTH 5
 #endif
