@@ -44,7 +44,6 @@ int main(int argc, char **argv) {
     while ((c = getopt(argc, argv, "hf:n:")) != -1) {
         switch (c) {
             default:
-                fprintf(stderr, "Unknown option: -%c\n", optopt);
             case 'h':
                 fprintf(stderr, "%s\n", "options: -f infilename -n repeat");
                 exit(1);

@@ -193,7 +193,7 @@ process_input(struct ccnd *h, int fd)
     if (res == -1)
         perror("ccnd: read");
     else if (res == 0) {
-        shutdown_client_fd(h, fd); // XXX 
+        shutdown_client_fd(h, fd);
     }
     else {
         face->inbuf->length += res;

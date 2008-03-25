@@ -1,4 +1,16 @@
-/* $Id$ */
+/*
+ * ccn/hashtb.h
+ * 
+ * Copyright 2008 Palo Alto Research Center, Inc. All rights reserved.
+ *
+ * Hash table
+ *
+ * $Id$
+ */
+
+#ifndef CCN_HASHTB_DEFINED
+#define CCN_HASHTB_DEFINED
+
 #include <stddef.h>
 
 struct hashtb;
@@ -54,3 +66,5 @@ hashtb_seek(struct hashtb_enumerator *hte, const void *key, size_t keysize);
 
 void
 hashtb_delete(struct hashtb_enumerator *);
+
+#endif

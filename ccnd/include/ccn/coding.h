@@ -1,3 +1,16 @@
+/*
+ * ccn/coding.h
+ * 
+ * Copyright 2008 Palo Alto Research Center, Inc. All rights reserved.
+ *
+ * Details of the ccn binary wire encoding
+ *
+ * $Id$
+ */
+
+#ifndef CCN_CODING_DEFINED
+#define CCN_CODING_DEFINED
+
 #include <stddef.h>
 
 #define CCN_TT_BITS 3
@@ -79,3 +92,5 @@ ssize_t ccn_skeleton_decode(
     struct ccn_skeleton_decoder *d,
     unsigned char p[],
     size_t n);
+
+#endif
