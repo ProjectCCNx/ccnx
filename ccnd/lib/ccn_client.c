@@ -17,11 +17,20 @@
 #include <ccn/ccnd.h>
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
+#include <ccn/hashtb.h>
 
 struct ccn {
     int sock;
+    struct hashtb *interests;
+    struct ccn_content_closure *default_content_handler;
+    struct ccn_interest_closure *default_interest_handler;
     int err;
     int errline;
+};
+
+struct expressed_interest {
+    int repeat;
+    struct ccn_content_closure *action;
 };
 
 #define NOTE_ERR(h, e) (h->err = (e), h->errline = __LINE__, -1)
@@ -81,6 +90,7 @@ ccn_destroy(struct ccn **hp)
     if (*hp == NULL)
         return;
     ccn_disconnect(*hp);
+    hashtb_destroy(&((*hp)->interests));
     free(*hp);
     *hp = NULL;
 }
@@ -114,6 +124,57 @@ ccn_name_append(struct ccn_charbuf *c, const void *component, size_t n)
     if (res == -1) return(res);
     res = ccn_charbuf_append(c, closer, sizeof(closer));
     return(res);
+}
+
+int
+ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
+                     int repeat, struct ccn_content_closure *action)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    int res;
+    struct expressed_interest *interest;
+    if (h->interests == NULL) {
+        h->interests = hashtb_create(sizeof(struct expressed_interest));
+        if (h->interests == NULL)
+            return(NOTE_ERRNO(h));
+    }
+    hashtb_start(h->interests, e);
+    // XXX - should validate namebuf more than this
+    if (namebuf == NULL || namebuf->length < 2 ||
+          namebuf->buf[namebuf->length-1] != CCN_CLOSE)
+        return(NOTE_ERR(h, EINVAL));
+    /*
+     * To make it easy to lookup prefixes of names, we do not 
+     * keep the final CCN_CLOSE as part of the key.
+     */
+    res = hashtb_seek(e, namebuf->buf, namebuf->length-1);
+    interest = e->data;
+    if (interest == NULL)
+        return(NOTE_ERRNO(h));
+    if (repeat == 0) {
+        hashtb_delete(e);
+        return(0);
+    }
+    if (repeat > 0 && interest->repeat >= 0)
+        interest->repeat += repeat;
+    else
+        interest->repeat = -1;
+    interest->action = action;
+    if (res == HT_NEW_ENTRY) {
+        // set up the timekeeping stuff
+    }
+    return(0);
+}
+
+int
+ccn_set_default_content_handler(struct ccn *h,
+                                struct ccn_content_closure *action)
+{
+    if (h == NULL)
+        return(-1);
+    h->default_content_handler = action;
+    return(0);
 }
 
 int

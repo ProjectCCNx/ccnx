@@ -16,6 +16,28 @@
 
 struct ccn;
 
+struct ccn_interest_closure;
+typedef int (*ccn_interest_handler)(
+    struct ccn_interest_closure *selfp,
+    struct ccn *h,
+    void *etc // placeholder
+);
+struct ccn_interest_closure {
+    ccn_interest_handler selfp;
+    void *data;
+};
+
+struct ccn_content_closure;
+typedef int (*ccn_content_handler)(
+    struct ccn_content_closure *selfp,
+    struct ccn *h,
+    void *etc // placeholder
+);
+struct ccn_content_closure {
+    ccn_content_handler selfp;
+    void *data;
+};
+
 /*
  * ccn_create: create a client handle
  * Creates and initializes a client handle, not yet connected.
@@ -70,6 +92,44 @@ int ccn_name_init(struct ccn_charbuf *c);
  * Return value is 0, or -1 for error.
  */
 int ccn_name_append(struct ccn_charbuf *c, const void *component, size_t n);
+
+/***********************************
+ * ccn_express_interest: 
+ * repeat: -1 - keep expressing until cancelled
+ *          0 - cancel this interest
+ *         >0 - express this many times (not counting timeouts)
+ * The namebuf may be reused or destroyed after the call.
+ * If action is not NULL, it is invoked when matching data comes back.
+ */
+int ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
+                         int repeat, struct ccn_content_closure *action);
+/*
+ * ccn_set_default_content_handler:
+ * Sets default content_handler, replacing any in effect.
+ * This is used when content comes in that does not match any
+ * expressed interest that has a handler.
+ */
+int ccn_set_default_content_handler(struct ccn *h,
+                                    struct ccn_content_closure *action);
+
+/***********************************
+ * ccn_set_interest_filter: 
+ * The namebuf may be reused or destroyed after the call.
+ * If action is NULL, any existing filter is removed.
+ * Otherwise action will be called when an interest arrives that has
+ * given name as a prefix.
+ * Handler should return -1 if it cannot produce new content in response.
+ */
+int
+ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
+                            struct ccn_interest_closure *action);
+/*
+ * ccn_set_default_interest_handler:
+ * Sets default interest_handler, replacing any in effect.
+ */
+int
+ccn_set_default_interest_handler(struct ccn *h,
+                                     struct ccn_interest_closure *action);
 
 /***********************************
  * Low-level binary formatting
