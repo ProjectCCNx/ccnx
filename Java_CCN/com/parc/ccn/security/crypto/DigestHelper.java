@@ -61,6 +61,23 @@ public class DigestHelper {
 		}
 	}
 	
+	public static byte [] digest(String digestAlgorithm, byte [][] contents) {
+		byte [] hash = null;
+		try {
+	        MessageDigest md = MessageDigest.getInstance(digestAlgorithm);
+	        for (int i=0; i < contents.length; ++i) {
+	        	md.update(contents[i]);
+	        }
+	        hash = md.digest();
+			return hash;
+		} catch (java.security.NoSuchAlgorithmException ex) {
+			// DKS --big configuration problem
+			Library.logger().warning("Fatal Error: cannot find algorithm " + digestAlgorithm);
+			throw new RuntimeException("Error: can't find " + digestAlgorithm + "!  " + ex.toString());
+		}
+	}
+
+	
 	/**
 	 * Digests some data and wraps it in a DigestInfo.
 	 * @param digestAlgorithm

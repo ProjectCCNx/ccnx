@@ -9,6 +9,7 @@ import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
+import com.parc.ccn.data.security.PublisherKeyID;
 
 /**
  * Front-end for key repository, both our keys
@@ -26,27 +27,6 @@ import com.parc.ccn.data.security.PublisherID;
 public abstract class KeyManager {
 	
 	public static final String DEFAULT_DIGEST_ALGORITHM = "SHA-256";
-
-	public abstract PublisherID getDefaultKeyID();
-
-	public abstract PrivateKey getDefaultSigningKey();
-	public abstract PublicKey getDefaultPublicKey();
-	public abstract KeyLocator getDefaultKeyLocator();
-
-	public abstract ContentName getDefaultKeyName(byte [] keyID);
-	public abstract PublicKey getKey(PublisherID desiredKeyID,
-									 KeyLocator locator) throws IOException;
-	
-	public abstract PrivateKey getSigningKey(String alias);
-	public abstract PrivateKey getSigningKey(PublisherID publisher);
-	
-	/**
-	 * Get our public keys.
-	 * @param alias
-	 * @return
-	 */
-	public abstract PublicKey getPublicKey(String alias);
-	public abstract PublicKey getPublicKey(PublisherID publisher);
 
 	public static KeyManager getDefaultKeyManager() throws ConfigurationException {
 		return new BasicKeyManager();
@@ -71,6 +51,34 @@ public abstract class KeyManager {
 	}
 
 	/**
+	 * Get our default keys.
+	 * @return
+	 */
+	public abstract PublisherKeyID getDefaultKeyID();
+
+	public abstract PrivateKey getDefaultSigningKey();
+	public abstract PublicKey getDefaultPublicKey();
+	public abstract KeyLocator getDefaultKeyLocator();
+
+	public abstract ContentName getDefaultKeyName(byte [] keyID);
+	
+	/**
+	 * Get our public and private keys.
+	 * @param alias
+	 * @return
+	 */
+	public abstract PublicKey getPublicKey(String alias);
+	public abstract PublicKey getPublicKey(PublisherKeyID publisher);
+
+	public abstract PublisherKeyID getPublisherKeyID(PrivateKey signingKey);
+
+	public abstract KeyLocator getKeyLocator(PrivateKey signingKey);
+
+	public abstract PrivateKey getSigningKey(String alias);
+	public abstract PrivateKey getSigningKey(PublisherID publisher);
+	
+
+	/**
 	 * Get someone else's public keys. Interesting to see
 	 * whether or not this should be handled by a TrustManager.
 	 * @param publisherID
@@ -78,10 +86,9 @@ public abstract class KeyManager {
 	 * @return
 	 * @throws IOException 
 	 */
-	public abstract PublicKey getPublicKey(PublisherID publisherID, KeyLocator keyLocator) throws IOException;
+	public abstract PublicKey getPublicKey(PublisherKeyID publisherKeyID, KeyLocator keyLocator) throws IOException;
 
-	public abstract PublisherID getPublisherID(PrivateKey signingKey);
-
-	public abstract KeyLocator getKeyLocator(PrivateKey signingKey);
+	public abstract PublicKey getKey(PublisherKeyID desiredKeyID,
+									KeyLocator locator) throws IOException;
 	
 }

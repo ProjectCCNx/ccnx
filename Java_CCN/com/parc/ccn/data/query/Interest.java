@@ -11,6 +11,7 @@ import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLHelper;
+import com.parc.ccn.security.keys.TrustManager;
 
 /**
  * This class represents all the allowed specializations
@@ -30,6 +31,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	protected static final String INTEREST_ELEMENT = "Interest";
 
 	protected ContentName _name;
+	// DKS TODO can we really support a PublisherID here, or just a PublisherKeyID?
 	protected PublisherID _publisher;
 	
 	/**
@@ -67,12 +69,12 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		if (name().isPrefixOf(result.name())) {
 			if (null != publisherID()) {
 				if ((null == result.authenticator()) ||
-					(null == result.authenticator().publisherID())) {
+					(null == result.authenticator().publisherKeyID())) {
 					return false;
 				}
 				// Should this be more general?
 				// TODO DKS handle issuer
-				if (result.authenticator().publisherID().equals(publisherID())) {
+				if (TrustManager.getTrustManager().matchesRole(publisherID(), result.authenticator().publisherKeyID())) {
 					return true;
 				}
 			} else {

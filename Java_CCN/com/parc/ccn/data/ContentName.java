@@ -181,7 +181,8 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	
 	public String toString() {
 		if (null == _components) return null;
-		if (0 == _components.size()) return new String();
+		// toString of root name is "/"
+		if (0 == _components.size()) return SEPARATOR;
 		StringBuffer nameBuf = new StringBuffer();
 		for (int i=0; i < _components.size(); ++i) {
 			nameBuf.append(SEPARATOR);

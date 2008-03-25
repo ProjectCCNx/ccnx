@@ -118,15 +118,12 @@ public class Transport2RepoClientTest {
 			ContentName versionedName = _library.versionName(name3, new Random().nextInt(1000));
 			System.out.println("Adding name: " + versionedName);
 			ContentAuthenticator authenticator = 
-				new ContentAuthenticator(versionedName, 
-										 null, // DKS: check
-										 _library.getDefaultPublisher(),
+				new ContentAuthenticator(_library.getDefaultPublisher(), null,
 										 ContentAuthenticator.now(),
 										 ContentAuthenticator.ContentType.LEAF,
-										 document3, false,
 										 locator,
-										 signingKey);
-			ContentObject obj = new ContentObject(versionedName, authenticator, document3);
+										 document3, false);
+			ContentObject obj = new ContentObject(versionedName, versionedName.count(), authenticator, document3, signingKey);
 			DataBlock block = new DataBlock();
 			block.data = obj.canonicalizeAndEncode(signingKey);
 			block.length = block.data.length;

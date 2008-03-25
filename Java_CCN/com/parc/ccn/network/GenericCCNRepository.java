@@ -126,6 +126,7 @@ public abstract class GenericCCNRepository implements CCNRepository {
 	 */
 	public abstract CompleteName put(ContentName name,
 									 ContentAuthenticator authenticator,
+									 byte [] signature,
 									 byte [] content) throws IOException;
 		
 	/* (non-Javadoc)

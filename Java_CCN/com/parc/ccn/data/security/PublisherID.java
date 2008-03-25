@@ -67,7 +67,11 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 		_publisherID = new byte[PUBLISHER_ID_LEN];
 		System.arraycopy(publisherID, 0, _publisherID, 0, PUBLISHER_ID_LEN);
 		_publisherType = publisherType;
-	}	
+	}
+	
+	public PublisherID(PublisherKeyID keyID) {
+		this(keyID.id(), PublisherType.KEY);
+	}
 	
     public PublisherID() {} // for use by decoders
 	

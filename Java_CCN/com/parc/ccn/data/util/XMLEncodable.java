@@ -10,8 +10,7 @@ import javax.xml.stream.XMLStreamWriter;
 public interface XMLEncodable {
 	
 	public static final String CCN_NAMESPACE = "http://www.parc.com/ccn";
-	public static final String CCN_PREFIX = "ccn";
-	
+	public static final String CCN_PREFIX = "ccn";	
 
 	/**
 	 * Decode this object as the top-level item in a new
@@ -40,7 +39,7 @@ public interface XMLEncodable {
 	public void encode(OutputStream oStream) throws XMLStreamException;
 
 	/**
-	 * Helper function.
+	 * Helper function. Should return canonicalized encoding.
 	 * @return
 	 * @throws XMLStreamException
 	 */

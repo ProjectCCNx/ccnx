@@ -20,11 +20,10 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.BasicInterestListener;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.PublisherID;
+import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.StandardCCNLibrary;
 import com.parc.ccn.network.CCNRepositoryManager;
-import com.parc.ccn.network.rpc.DataBlock;
 import com.parc.ccn.network.rpc.Name;
 
 
@@ -125,7 +124,7 @@ public class StandardCCNLibraryTest {
 		ContentName name = null;
 		byte[] content = null;
 //		ContentAuthenticator.ContentType type = ContentAuthenticator.ContentType.LEAF;
-		PublisherID publisher = null;
+		PublisherKeyID publisher = null;
 		
 		try {
 			content = contentString.getBytes("UTF-8");	
@@ -217,7 +216,7 @@ public class StandardCCNLibraryTest {
 				System.out.println("Inserted name's parent same as key name? " + parentName.equals(keyName));
 			
 				ArrayList<CompleteName> parentChildren =
-					CCNRepositoryManager.getRepositoryManager().getChildren(new CompleteName(parentName, null));
+					CCNRepositoryManager.getRepositoryManager().getChildren(new CompleteName(parentName, null, null));
 				
 				System.out.println("GetChildren got " + parentChildren.size() + " children of expected parent.");
 				boolean isInThere = false;

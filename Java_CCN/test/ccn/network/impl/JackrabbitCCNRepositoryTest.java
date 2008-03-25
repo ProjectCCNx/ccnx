@@ -35,7 +35,7 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherID;
+import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.util.XMLHelper;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.StandardCCNLibrary;
@@ -69,6 +69,7 @@ public class JackrabbitCCNRepositoryTest {
 	//static String [] testname = new String[]{"test","smetters","values","data", "testdata.txt"};
 	static ContentName testCN = new ContentName(testname);
 	static ContentAuthenticator testAuth = null;
+	static byte [] testSig = null;
 	
 	static public byte [] document3 = new byte[]{0x01, 0x02, 0x03, 0x04,
 				0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c,
@@ -85,13 +86,14 @@ public class JackrabbitCCNRepositoryTest {
 	static KeyPair pair = null;
 	static X509Certificate cert = null;
 	static KeyLocator nameLoc = null;
-	static PublisherID pubkey = null;	
+	static PublisherKeyID pubkey = null;	
 	static ContentAuthenticator [] auth = null;
 	static ContentAuthenticator pubonlyauth = null;
 	
 	static ContentName [] names = null;
 	static ContentName [] versionedNames = null;
 	static byte [][] content = null;
+	static byte [][] signatures = null;
 	
 	// Really only want one of these per VM per port.
 	static JackrabbitCCNRepository repo = null;
@@ -125,12 +127,13 @@ public class JackrabbitCCNRepositoryTest {
 			library = new StandardCCNLibrary();
 			
 			Library.logger().info("Organizing content...");
-			pubkey = new PublisherID(pair.getPublic(), false);
+			pubkey = new PublisherKeyID(pair.getPublic());
 			
 			names = new ContentName[]{name1, name2, name3, name4};
 			int v = new Random().nextInt(1000);
 			versionedNames = new ContentName[names.length];
 			content = new byte[versionedNames.length][];
+			signatures = new byte[versionedNames.length][];
 			auth = new ContentAuthenticator[versionedNames.length];
 			for (int i=0; i < names.length; ++i) {
 				versionedNames[i] = library.versionName(names[i], v);
@@ -140,24 +143,21 @@ public class JackrabbitCCNRepositoryTest {
 			Library.logger().info("Generating content authenticators.");
 			for (int i=0;i<versionedNames.length; ++i) {
 				auth[i] = new ContentAuthenticator(
-						versionedNames[i],
-						null,
-						pubkey, ContentAuthenticator.now(),
+						pubkey, null, ContentAuthenticator.now(),
 					ContentAuthenticator.ContentType.LEAF, 
-					content[i], false,
-					nameLoc, pair.getPrivate());
+					nameLoc, content[i], false);
+				signatures[i] = ContentObject.sign(versionedNames[i], null, auth[i], pair.getPrivate());
 			}
 			
 			Library.logger().info("Generating authenticator for query.");
 			pubonlyauth = new ContentAuthenticator(pubkey);
 			
 			testAuth = new ContentAuthenticator(
-					testCN,
-					null,
-					pubkey, ContentAuthenticator.now(),
+					pubkey, null, ContentAuthenticator.now(),
 				ContentAuthenticator.ContentType.LEAF, 
-				rootDN.getBytes(), false,
-				nameLoc, pair.getPrivate());
+				nameLoc, rootDN.getBytes(), false);
+			
+			testSig = ContentObject.sign(testCN, null, testAuth, pair.getPrivate());
 			
 		} catch (Exception ex) {
 			XMLEncodableTester.handleException(ex);
@@ -200,7 +200,7 @@ public class JackrabbitCCNRepositoryTest {
 		CompleteName cn = null;
 		try {
 			for (int i=0; i < versionedNames.length; ++i) {
-				cn = repo.put(versionedNames[i], auth[i], content[i]);
+				cn = repo.put(versionedNames[i], auth[i], signatures[i], content[i]);
 				Library.logger().info("Added name: " + cn.name());
 			}
 			
@@ -244,7 +244,7 @@ public class JackrabbitCCNRepositoryTest {
 		try {
 			Library.logger().info("Inserting and retrieving name.");
 			
-			CompleteName putName = repo.put(testCN, testAuth, rootDN.getBytes());
+			CompleteName putName = repo.put(testCN, testAuth, testSig, rootDN.getBytes());
 			
 			Library.logger().info("Getting name we inserted.");
 			ArrayList<ContentObject> testGet =
@@ -331,13 +331,6 @@ public class JackrabbitCCNRepositoryTest {
 			
 	}
 
-	@Test
-	public void testFindRepo() {
-		assertNotNull(repo);
-		// use discovery to find repo
-		fail("Not yet implemented");
-		
-	}
 	@Test
 	public void testJackrabbitCCNRepositoryServiceInfo() {
 		

@@ -29,7 +29,7 @@ import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.LinkAuthenticator;
-import com.parc.ccn.data.security.PublisherID;
+import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
 import com.parc.ccn.network.CCNInterestManager;
 import com.parc.ccn.network.CCNRepositoryManager;
@@ -103,7 +103,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 
 	public KeyManager keyManager() { return _userKeyManager; }
 
-	public PublisherID getDefaultPublisher() {
+	public PublisherKeyID getDefaultPublisher() {
 		return keyManager().getDefaultKeyID();
 	}
 
@@ -114,7 +114,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	public CompleteName addCollection(
 			ContentName name, 
 			Link [] contents,
-			PublisherID publisher) throws SignatureException, IOException {
+			PublisherKeyID publisher) throws SignatureException, IOException {
 		try {
 			return addCollection(name, contents, publisher, null, null);
 		} catch (InvalidKeyException e) {
@@ -131,7 +131,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	public CompleteName addCollection(
 			ContentName name, 
 			Link[] contents,
-			PublisherID publisher, KeyLocator locator,
+			PublisherKeyID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 		
 		Collection collectionData = new Collection(contents);
@@ -143,7 +143,8 @@ public class StandardCCNLibrary implements CCNLibrary {
 			locator = keyManager().getKeyLocator(signingKey);
 	
 		try {
-			return newVersion(name, collectionData.canonicalizeAndEncode(signingKey), ContentType.COLLECTION, publisher);
+			return newVersion(name, collectionData.canonicalizeAndEncode(signingKey), 
+								ContentType.COLLECTION, publisher);
 		} catch (XMLStreamException e) {
 			Library.logger().warning("Cannot canonicalize a standard container!");
 			Library.warningStackTrace(e);
@@ -194,13 +195,13 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * @throws IOException 
 	 */
 	public CompleteName link(ContentName src, ContentName target,
-			LinkAuthenticator targetAuthenticator) throws SignatureException, IOException {
+							 LinkAuthenticator targetAuthenticator) throws SignatureException, IOException {
 		return link(src, target, targetAuthenticator, getDefaultPublisher());
 	}
 
 	public CompleteName link(ContentName src, ContentName target,
-			LinkAuthenticator targetAuthenticator,
-			PublisherID publisher) throws SignatureException, IOException {
+							LinkAuthenticator targetAuthenticator,
+							PublisherKeyID publisher) throws SignatureException, IOException {
 		try {
 			return link(src,target,targetAuthenticator,publisher,null,null);
 		} catch (InvalidKeyException e) {
@@ -224,9 +225,9 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * @throws XMLStreamException 
 	 */
 	public CompleteName link(ContentName src, ContentName target,
-			LinkAuthenticator targetAuthenticator, 
-			PublisherID publisher, KeyLocator locator,
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException, 
+							 LinkAuthenticator targetAuthenticator, 
+							 PublisherKeyID publisher, KeyLocator locator,
+							 PrivateKey signingKey) throws InvalidKeyException, SignatureException, 
 						NoSuchAlgorithmException, IOException {
 
 		if ((null == src) || (null == target)) {
@@ -280,7 +281,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	public CompleteName newVersion(
 			ContentName name, 
 			byte[] contents,
-			PublisherID publisher) throws SignatureException, IOException {
+			PublisherKeyID publisher) throws SignatureException, IOException {
 		return newVersion(name, contents, ContentType.LEAF, publisher);
 	}
 	
@@ -292,7 +293,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 			ContentName name, 
 			byte[] contents,
 			ContentType type, // handle links and collections
-			PublisherID publisher) throws SignatureException, IOException {
+			PublisherKeyID publisher) throws SignatureException, IOException {
 
 		try {
 			ContentName latestVersion = 
@@ -323,7 +324,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	public CompleteName addVersion(
 			ContentName name, int version, byte [] contents,
 			ContentType type,
-			PublisherID publisher, KeyLocator locator,
+			PublisherKeyID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws SignatureException, 
 			InvalidKeyException, NoSuchAlgorithmException, IOException {
 
@@ -334,7 +335,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 			locator = keyManager().getKeyLocator(signingKey);
 		
 		if (null == publisher) {
-			publisher = keyManager().getPublisherID(signingKey);
+			publisher = keyManager().getPublisherKeyID(signingKey);
 		}
 		
 		if (null == type)
@@ -355,9 +356,10 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * just get the latest version name and allow caller
 	 * to pull number.
 	 * DKS TODO return complete name -- of header? Or what...
+	 * DKS TODO match on publisher key id, or full publisher options?
 	 * @return If null, no existing version found.
 	 */
-	public ContentName getLatestVersionName(ContentName name, PublisherID publisher) {
+	public ContentName getLatestVersionName(ContentName name, PublisherKeyID publisher) {
 		// Challenge -- Dan's proposed latest version syntax,
 		// <name>/latestversion/1/2/3... works well if there
 		// are 12 versions, not if there are a million. 
@@ -373,7 +375,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 			// the name -- not actual pieces of content --
 			// look only at ContentNames.
 			ArrayList<CompleteName> availableVersions = 
-				CCNRepositoryManager.getRepositoryManager().getChildren(new CompleteName(baseVersionName, null));
+				CCNRepositoryManager.getRepositoryManager().getChildren(new CompleteName(baseVersionName, null, null));
 			
 			if ((null == availableVersions) || (availableVersions.size() == 0)) {
 				// No existing version.
@@ -418,7 +420,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * that puts them back together and returns a byte []?
 	 * @throws IOException 
 	 */
-	public ContentObject getLatestVersion(ContentName name, PublisherID publisher) throws IOException {
+	public ContentObject getLatestVersion(ContentName name, PublisherKeyID publisher) throws IOException {
 		ContentName currentName = getLatestVersionName(name, publisher);
 		
 		if (null == currentName) // no latest version
@@ -502,13 +504,13 @@ public class StandardCCNLibrary implements CCNLibrary {
 	}
 
 	public CompleteName put(ContentName name, byte[] contents, 
-			PublisherID publisher) throws SignatureException, IOException {
+							PublisherKeyID publisher) throws SignatureException, IOException {
 		return put(name, contents, ContentAuthenticator.ContentType.LEAF, publisher);
 	}
 
 	public CompleteName put(ContentName name, byte[] contents, 
-			ContentAuthenticator.ContentType type,
-			PublisherID publisher) throws SignatureException, IOException {
+							ContentAuthenticator.ContentType type,
+							PublisherKeyID publisher) throws SignatureException, IOException {
 		try {
 			return put(name, contents, type, publisher, 
 					   null, null);
@@ -598,9 +600,9 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * @throws IOException 
 	 **/
 	public CompleteName put(ContentName name, byte [] contents,
-			ContentAuthenticator.ContentType type,
-			PublisherID publisher, KeyLocator locator,
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+							ContentAuthenticator.ContentType type,
+							PublisherKeyID publisher, KeyLocator locator,
+							PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 	
 		if (null == signingKey)
 			signingKey = keyManager().getDefaultSigningKey();
@@ -609,7 +611,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 			locator = keyManager().getKeyLocator(signingKey);
 		
 		if (null == publisher) {
-			publisher = keyManager().getPublisherID(signingKey);
+			publisher = keyManager().getPublisherKeyID(signingKey);
 		}
 	
 		Library.logger().info("Putting content: " + name.toString());
@@ -619,13 +621,12 @@ public class StandardCCNLibrary implements CCNLibrary {
 			// We need to generate unique name, and 
 			// generate signed ContentAuthenticator.
 			CompleteName uniqueName =
-				ContentAuthenticator.generateAuthenticatedName(
+				CompleteName.generateAuthenticatedName(
 						name, publisher, ContentAuthenticator.now(),
-						type, contents, false,
-						locator, signingKey);
+						type, locator, contents, false, signingKey);
 			try {
 				Library.logger().info("Final put name: " + uniqueName.name().toString());
-				return put(uniqueName.name(), uniqueName.authenticator(), contents);
+				return put(uniqueName.name(), uniqueName.authenticator(), uniqueName.signature(), contents);
 			} catch (IOException e) {
 				Library.logger().warning("This should not happen: put failed with an IOExceptoin.");
 				Library.warningStackTrace(e);
@@ -648,9 +649,9 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * @throws IOException 
 	 */
 	protected CompleteName fragmentedPut(ContentName name, byte [] contents,
-			ContentAuthenticator.ContentType type,
-			PublisherID publisher, KeyLocator locator,
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+										ContentAuthenticator.ContentType type,
+										PublisherKeyID publisher, KeyLocator locator,
+										PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 		// This will call into CCNBase after picking appropriate credentials
 		// take content, blocksize (static), divide content into array of 
 		// content blocks, call hash fn for each block, call fn to build merkle
@@ -683,7 +684,8 @@ public class StandardCCNLibrary implements CCNLibrary {
 		for (int i = 0; i < nBlocks; i++) {
 			try {
 				CompleteName blockCompleteName = tree.getBlockCompleteName(i);
-				put(blockCompleteName.name(), blockCompleteName.authenticator(), contentBlocks[i]);
+				put(blockCompleteName.name(), blockCompleteName.authenticator(), 
+						blockCompleteName.signature(), contentBlocks[i]);
 			} catch (IOException e) {
 				Library.logger().warning("This should not happen: we cannot put our own blocks!");
 				Library.warningStackTrace(e);
@@ -706,11 +708,12 @@ public class StandardCCNLibrary implements CCNLibrary {
 		// name prefix of other valid names?
 		ContentName headerName = headerName(name);
 		CompleteName headerBlockInformation =
-			ContentAuthenticator.generateAuthenticatedName(
-					headerName, publisher, timestamp, type, 
-					encodedHeader, false, locator, signingKey);
+			CompleteName.generateAuthenticatedName(
+					headerName, publisher, timestamp, type, locator,
+					encodedHeader, false, signingKey);
 		try {
-			put (headerBlockInformation.name(), headerBlockInformation.authenticator(), encodedHeader);
+			put(headerBlockInformation.name(), headerBlockInformation.authenticator(),
+					headerBlockInformation.signature(), encodedHeader);
 		} catch (IOException e) {
 			Library.logger().warning("This should not happen: we cannot put our own header!");
 			Library.warningStackTrace(e);
@@ -798,8 +801,9 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 */
 	public CompleteName put(ContentName name, 
 							ContentAuthenticator authenticator,
+							byte [] signature, 
 							byte[] content) throws IOException {
-		return CCNRepositoryManager.getRepositoryManager().put(name, authenticator, content);
+		return CCNRepositoryManager.getRepositoryManager().put(name, authenticator, signature, content);
 	}
 
 	/**
@@ -865,50 +869,6 @@ public class StandardCCNLibrary implements CCNLibrary {
 	public ArrayList<CompleteName> enumerate(Interest query) throws IOException {
 		return CCNRepositoryManager.getRepositoryManager().enumerate(query);		
 	}
-
-	/**
-	 * Do need a way to enumerate just the high-level documents,
-	 * prior to fragmentation. Particularly necessary to cope
-	 * with version collision errors...
-	 */
-	public ArrayList<CompleteName> enumerateDocuments(Interest query) throws IOException {
-		ContentName nameToOpen = query.name();
-		if (isFragment(query.name())) {
-			// DKS TODO: should we do this?
-			nameToOpen = fragmentRoot(nameToOpen);
-		}
-		if (!isVersioned(nameToOpen)) {
-			// if publisherID is null, will get any publisher
-			nameToOpen = 
-				getLatestVersionName(nameToOpen, 
-									 query.publisherID());
-		}
-		
-		// Should have name of root of version we want to
-		// open. Get the header block. Already stripped to
-		// root. We've altered the header semantics, so that
-		// we can just get headers rather than a plethora of
-		// fragments. 
-		ContentName headerName = headerName(nameToOpen);
-		// This might not be unique - 
-		// we could have here either multiple versions of
-		// a given number, or multiple of a given number
-		// by a given publisher. If the latter, pick by latest
-		// after verifying. If the former, pick by latest
-		// version crossed with trust.
-		// DKS TODO figure out how to intermix trust information.
-		// DKS TODO -- overloaded authenticator as query;
-		// doesn't work well - would have to check that right things
-		// are asked.
-		// DKS TODO -- does get itself do a certain amount of
-		// prefiltering? Can it mark objects as verified?
-		// do we want to use the low-level get, as the high-level
-		// one might unfragment?
-		ArrayList<CompleteName> documents = 
-						enumerate(new Interest(headerName, query.publisherID()));
-		
-		return documents;
-	}
 	
 	/**
 	 * High-level verify. Calls low-level verify, if we
@@ -965,7 +925,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 			// if publisherID is null, will get any publisher
 			nameToOpen = 
 				getLatestVersionName(nameToOpen, 
-									 name.authenticator().publisherID());
+									 name.authenticator().publisherKeyID());
 		}
 		
 		// Should have name of root of version we want to

@@ -16,12 +16,14 @@ public interface CCNBase {
 	 * Make a data item available to the CCN.
 	 * @param name
 	 * @param authenticator
+	 * @param signature
 	 * @param content
 	 * @return
 	 * @throws IOException
 	 */
 	public CompleteName put(ContentName name,
 						    ContentAuthenticator authenticator,
+						    byte [] signature,
 						    byte [] content) throws IOException;
 	
 	/**

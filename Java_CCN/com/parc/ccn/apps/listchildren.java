@@ -26,7 +26,7 @@ public class listchildren {
 				ContentName argName = new ContentName(args[i]);
 			
 				ArrayList<CompleteName> names = 
-					CCNRepositoryManager.getRepositoryManager().getChildren(new CompleteName(argName, null));
+					CCNRepositoryManager.getRepositoryManager().getChildren(new CompleteName(argName, null, null));
 				
 				System.out.println("Retrieved " + names.size() + " names matching: " + argName);
 				

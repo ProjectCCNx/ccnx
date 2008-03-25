@@ -11,9 +11,10 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherID;
+import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
 
 /**
@@ -29,35 +30,32 @@ public class CCNMerkleTree extends MerkleTree {
 	public static final String DEFAULT_MHT_ALGORITHM = "SHA256MHT";
 	
 	ContentName _rootName = null;
-	PublisherID _publisherID = null;
-	Timestamp _timestamp = null;
-	KeyLocator _locator = null;
-	ContentName [] _blockNames = null;
 	ContentAuthenticator _rootAuthenticator = null;
-	PrivateKey _signingKey = null; // don't like keeping this here,
-		// but simplifies things... leave it for now.
+	ContentName [] _blockNames = null;
+	byte [] _rootSignature = null;
 	ContentAuthenticator [] _blockAuthenticators = null;
 	
 	public CCNMerkleTree(
 			ContentName name, 
-			PublisherID publisher,
+			PublisherKeyID publisher,
 			Timestamp timestamp,
 			byte[][] contentBlocks,
 			KeyLocator locator,
-			PrivateKey signingKey) {
+			PrivateKey signingKey) throws InvalidKeyException, SignatureException {
 		
 		super(DigestHelper.DEFAULT_DIGEST_ALGORITHM, contentBlocks);
 		
 		_rootName = name;
-		_publisherID = publisher;
-		_timestamp = timestamp;
-		_locator = locator;
 		
 		_blockNames = new ContentName[numLeaves()];
 		_blockAuthenticators = new ContentAuthenticator[numLeaves()];
 		
 		computeLeafValues(contentBlocks);
 		computeNodeValues();
+		_rootAuthenticator = new ContentAuthenticator(publisher, null, timestamp, 
+													  ContentType.FRAGMENT, locator, root(), true);
+		_rootSignature = ContentObject.sign(_rootName, _rootName.count(),
+											_rootAuthenticator, signingKey);
 	}
 
 	public ContentName getBlockName(int i) {
@@ -72,29 +70,15 @@ public class CCNMerkleTree extends MerkleTree {
 		return _blockAuthenticators[i];
 	}
 
-	/**
-   	 * Need to sign the root node, along with the other supporting
-	 * data.
-   	 * @throws NoSuchAlgorithmException 
-   	 * @throws SignatureException 
-   	 * @throws InvalidKeyException 
-	 **/ 
-	ContentAuthenticator rootAuthenticator() throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
-		
-		if (null == _rootAuthenticator) {
-			synchronized(this) {
-				// DKS TODO -- need to indicate how much of final name we are signing.
-				// Add a component count to the content authenticator.
-				_rootAuthenticator = new ContentAuthenticator(
-						_rootName, null, _publisherID, _timestamp, 
-						ContentType.FRAGMENT, root(), true, 
-						_locator, _signingKey);
-			}
-		}
+	ContentAuthenticator rootAuthenticator() {
 		return _rootAuthenticator;
 	}
+	
+	byte [] rootSignature() {
+		return _rootSignature;
+	}
 
-	   /**
+	/**
      * The content authenticators for a set of fragments consist of:
      * The authenticator of the header block, which contains both
      * the root hash of the Merkle tree and the hash of the content.
@@ -122,17 +106,16 @@ public class CCNMerkleTree extends MerkleTree {
 		if (null == _blockAuthenticators[i]) {
 			_blockAuthenticators[i]=
 				new ContentAuthenticator(
-						_publisherID, 
+						rootAuthenticator().publisherKeyID(), 
 						rootAuthenticator().nameComponentCount(),
-						_timestamp, 
+						rootAuthenticator().timestamp(), 
 						ContentType.FRAGMENT, 
+						rootAuthenticator().keyLocator(),
 						derPath(i).derEncodedPath(),
-						true,
-						_locator, 
-						rootAuthenticator().signature());
+						true);
 		}
 		
-		return new CompleteName(getBlockName(i), getBlockAuthenticator(i));
+		return new CompleteName(getBlockName(i), getBlockAuthenticator(i), rootSignature());
     }
 
 
@@ -153,16 +136,16 @@ public class CCNMerkleTree extends MerkleTree {
 		// for now doing it the straightforward way.
 		byte [] contentDigest = super.computeBlockDigest(i, contentBlocks);
 	
-		CompleteName uniqueName;
+		CompleteName uniqueName = null;
 		try {
-			uniqueName = ContentAuthenticator.generateAuthenticatedName(
+			uniqueName = CompleteName.generateAuthenticatedName(
 					_rootName,
-					_publisherID,
-					_timestamp,
+					rootAuthenticator().publisherKeyID(),
+					rootAuthenticator().timestamp(),
 					ContentAuthenticator.ContentType.FRAGMENT,
+					rootAuthenticator().keyLocator(),
 					contentDigest,
 					true,
-					_locator,
 					null);
 		} catch (InvalidKeyException e1) {
 			Library.handleException("Unexpected exception: InvalidKeyException when no signature performed.", e1);

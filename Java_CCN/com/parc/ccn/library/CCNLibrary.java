@@ -17,7 +17,7 @@ import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.LinkAuthenticator;
-import com.parc.ccn.data.security.PublisherID;
+import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
 import com.parc.ccn.security.keys.KeyManager;
 
@@ -45,7 +45,7 @@ public interface CCNLibrary extends CCNBase {
 
 	public KeyManager keyManager();
 		
-	public PublisherID getDefaultPublisher();
+	public PublisherKeyID getDefaultPublisher();
 
 	public CompleteName put(ContentName name, byte [] contents) throws SignatureException, IOException;
 
@@ -59,19 +59,19 @@ public interface CCNLibrary extends CCNBase {
 	 * @throws IOException 
 	 */
 	public CompleteName put(ContentName name, byte [] contents,
-							PublisherID publisher) throws SignatureException, IOException;
+							PublisherKeyID publisher) throws SignatureException, IOException;
 	
 	public CompleteName put(
 			ContentName name, 
 			byte[] contents, 
 			ContentAuthenticator.ContentType type,
-			PublisherID publisher) throws SignatureException, IOException;
+			PublisherKeyID publisher) throws SignatureException, IOException;
 
 	public CompleteName put(
 			ContentName name, 
 			byte [] contents,
 			ContentAuthenticator.ContentType type,
-			PublisherID publisher, KeyLocator locator,
+			PublisherKeyID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException;
 	
 	// internal functions about fragmentation - may be exposed, or in std impl
@@ -80,26 +80,26 @@ public interface CCNLibrary extends CCNBase {
 								   byte [] contents) throws SignatureException, IOException;
 	public CompleteName newVersion(ContentName name,
 								   byte [] contents, 
-								   PublisherID publisher) throws SignatureException, IOException;
+								   PublisherKeyID publisher) throws SignatureException, IOException;
 	public CompleteName newVersion(
 			ContentName name, 
 			byte[] contents,
 			ContentType type, // handle links and collections
-			PublisherID publisher) throws SignatureException, IOException;
+			PublisherKeyID publisher) throws SignatureException, IOException;
 	
 	public CompleteName addVersion(
 			ContentName name, 
 			int version, 
 			byte [] contents,
 			ContentType type,
-			PublisherID publisher, KeyLocator locator,
+			PublisherKeyID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, IOException;
 	
 	/**
 	 * Get the latest version published by this publisher,
 	 * or by anybody if publisher is null.
 	 */
-	public ContentName getLatestVersionName(ContentName name, PublisherID publisher);
+	public ContentName getLatestVersionName(ContentName name, PublisherKeyID publisher);
 
 	/**
 	 * Return the numeric version associated with this
@@ -133,7 +133,8 @@ public interface CCNLibrary extends CCNBase {
 	 * that puts them back together and returns a byte []?
 	 * @throws IOException 
 	 */
-	public ContentObject getLatestVersion(ContentName name, PublisherID publisher) throws IOException;
+	public ContentObject getLatestVersion(ContentName name, 
+										  PublisherKeyID publisher) throws IOException;
 
 	/**
 	 * Does this specific name point to a link?
@@ -155,18 +156,21 @@ public interface CCNLibrary extends CCNBase {
 	 */
 	public ContentObject getLink(CompleteName name);
 	
-	public CompleteName link(ContentName src, ContentName dest, LinkAuthenticator destAuthenticator) throws SignatureException, IOException;
-	public CompleteName link(ContentName src, ContentName dest, LinkAuthenticator destAuthenticator, PublisherID publisher) throws SignatureException, IOException;
+	public CompleteName link(ContentName src, ContentName dest, 
+							 LinkAuthenticator destAuthenticator) throws SignatureException, IOException;
+	public CompleteName link(ContentName src, ContentName dest, 
+							 LinkAuthenticator destAuthenticator, PublisherKeyID publisher) throws SignatureException, IOException;
 	public CompleteName link(ContentName src, ContentName dest,
 			LinkAuthenticator destAuthenticator, 
-			PublisherID publisher, KeyLocator locator,
+			PublisherKeyID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException;
 	
 	public CompleteName addCollection(ContentName name, Link [] contents) throws SignatureException, IOException;
-	public CompleteName addCollection(ContentName name, Link [] contents, PublisherID publisher) throws SignatureException, IOException;
+	public CompleteName addCollection(ContentName name, Link [] contents, 
+									  PublisherKeyID publisher) throws SignatureException, IOException;
 	public CompleteName addCollection(ContentName name, 
 			Link[] contents,
-			PublisherID publisher, KeyLocator locator,
+			PublisherKeyID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException;
 	
 	/**

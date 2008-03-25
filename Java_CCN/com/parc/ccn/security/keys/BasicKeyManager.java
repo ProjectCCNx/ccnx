@@ -33,6 +33,7 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
+import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.network.CCNRepositoryManager;
 import com.parc.ccn.security.crypto.certificates.BCX509CertificateGenerator;
 import com.parc.ccn.security.crypto.certificates.CryptoUtil;
@@ -41,7 +42,7 @@ public class BasicKeyManager extends KeyManager {
 	
 	protected KeyStore _keystore = null;
 	protected String _defaultAlias = null;
-	protected PublisherID _defaultKeyID = null;
+	protected PublisherKeyID _defaultKeyID = null;
 	protected X509Certificate _certificate = null;
 	protected PrivateKey _privateKey = null;
 	protected KeyLocator _keyLocator = null;
@@ -101,7 +102,7 @@ public class BasicKeyManager extends KeyManager {
 			}
 		    _privateKey = entry.getPrivateKey();
 		    _certificate = (X509Certificate)entry.getCertificate();
-		    _defaultKeyID = new PublisherID(_certificate.getPublicKey(), false);
+		    _defaultKeyID = new PublisherKeyID(_certificate.getPublicKey());
 
 		    // Check to make sure we've published information about
 		    // this key. (e.g. in testing, we may frequently
@@ -109,7 +110,7 @@ public class BasicKeyManager extends KeyManager {
 		    // key remains, so need to republish). Or the first
 		    // time we load this keystore, we need to publish.
 		    ContentName keyName = getDefaultKeyName(_defaultKeyID.id());
-		    _keyLocator = new KeyLocator(keyName, _defaultKeyID);
+		    _keyLocator = new KeyLocator(keyName, new PublisherID(_defaultKeyID));
 			Library.logger().info("Default key locator: " + _keyLocator);
 		    if (null == getKey(_defaultKeyID, _keyLocator)) {
 		    	publishKey(_certificate.getPublicKey(), _privateKey);
@@ -215,20 +216,20 @@ public class BasicKeyManager extends KeyManager {
 		// CCN equivalent of a "self-signed cert". Means that
 		// we will refer to only the base key name and the publisher ID,
 		// not the uniqueified key name...
-		PublisherID thisKeyID = new PublisherID(key, false);
+		PublisherKeyID thisKeyID = new PublisherKeyID(key);
 		ContentName keyName = getDefaultKeyName(thisKeyID.id());
 		KeyLocator locatorLocator = 
-			new KeyLocator(keyName, thisKeyID);
+			new KeyLocator(keyName, new PublisherID(thisKeyID));
 		CompleteName uniqueKeyName = null;
 		try {
-			uniqueKeyName = ContentAuthenticator.generateAuthenticatedName(
+			uniqueKeyName = CompleteName.generateAuthenticatedName(
 									 keyName,
 									 thisKeyID,
 									 ContentAuthenticator.now(),
 									 ContentAuthenticator.ContentType.LEAF,
+									 locatorLocator,
 									 encodedKey,
 									 false,
-									 locatorLocator,
 									 signingKey);
 		} catch (Exception e) {
 			generateConfigurationException("Exception generating key locator for (and using) default user key.", e);
@@ -242,6 +243,7 @@ public class BasicKeyManager extends KeyManager {
 				CCNRepositoryManager.getRepositoryManager().put(
 						uniqueKeyName.name(), 
 						uniqueKeyName.authenticator(), 
+						uniqueKeyName.signature(),
 						encodedKey);
 			Library.logger().info("Generated user default key. Published key locator as: " + publishedLocation.name());
 			return publishedLocation;
@@ -257,7 +259,7 @@ public class BasicKeyManager extends KeyManager {
 		throw new ConfigurationException(message, e);
 	}
 
-	public PublisherID getDefaultKeyID() {
+	public PublisherKeyID getDefaultKeyID() {
 		return _defaultKeyID;
 	}
 
@@ -325,7 +327,7 @@ public class BasicKeyManager extends KeyManager {
 	 * @return
 	 * @throws IOException
 	 */
-	public PublicKey getKey(PublisherID desiredKeyID,
+	public PublicKey getKey(PublisherKeyID desiredKeyID,
 							KeyLocator locator) throws IOException {
 		
 		if (null != locator.certificate())
@@ -334,10 +336,16 @@ public class BasicKeyManager extends KeyManager {
 			return locator.key();
 		
 		// Otherwise, this is a name.
+		// Pull all the content under the name; we likely may have a more
+		// complicated publisher check than just a key match that get can
+		// (or could if it was implemented) do. Would in many ways
+		// prefer to do enumerate here and then pull content we know
+		// we have.
 		ArrayList<ContentObject> keys =
-			CCNRepositoryManager.getRepositoryManager().get(locator.name().name(), 
-															new ContentAuthenticator(locator.name().publisher()),
-															true);
+			CCNRepositoryManager.getRepositoryManager().get(
+					locator.name().name(), 
+					null,
+					true);
 			
 		// OK, we have a bunch of stuff. 
 		Library.logger().info("BasicKeyManager: getKey: retrieved " + keys.size() + " items for one key locator.");
@@ -369,11 +377,14 @@ public class BasicKeyManager extends KeyManager {
 			// Want to find key *for* the ID desiredKeyID.
 			// First, see if this ContentObject matches this locator.
 			// It presumably matches the name, or the get would not have returned
-			// it. It also presumably matches the publisher,
-			// given the query. But that part isn't really implemented,
-			// so check.
+			// it. We want to query for role, not just exact match
+			// for publisher, which get won't do (even if publisher
+			// matching were implemented). So pull back all the matching
+			// content and check here.
 			try {
-				if (potentialKey.authenticator().publisherID().equals(locator.name().publisher())) {
+				if (TrustManager.getTrustManager().matchesRole(
+						locator.name().publisher(), 
+						potentialKey.authenticator().publisherKeyID())) {
 					// DKS TODO remove the above check
 
 					// First pull the key data. 
@@ -381,6 +392,7 @@ public class BasicKeyManager extends KeyManager {
 						continue;
 					}
 					
+					// DKS TODO What if it's a certificate?
 					PublicKey key = CryptoUtil.getPublicKey(potentialKey.content());
 
 					// Tricky -- can't necessarily just call verify,
@@ -450,7 +462,7 @@ public class BasicKeyManager extends KeyManager {
 	}
 
 	@Override
-	public PublicKey getPublicKey(PublisherID publisher) {
+	public PublicKey getPublicKey(PublisherKeyID publisher) {
 		// TODO Auto-generated method stub
 		Library.logger().info("getPublicKey: retrieving key: " + publisher);
 		if (_defaultKeyID.equals(publisher))
@@ -468,7 +480,7 @@ public class BasicKeyManager extends KeyManager {
 	}
 
 	@Override
-	public PublicKey getPublicKey(PublisherID publisherID, KeyLocator keyLocator) throws IOException {
+	public PublicKey getPublicKey(PublisherKeyID publisherID, KeyLocator keyLocator) throws IOException {
 		// TODO Auto-generated method stub
 		Library.logger().info("getPublicKey: retrieving key: " + publisherID + " located at: " + keyLocator);
 		// Do we have it locally.
@@ -479,7 +491,7 @@ public class BasicKeyManager extends KeyManager {
 	}
 
 	@Override
-	public PublisherID getPublisherID(PrivateKey signingKey) {
+	public PublisherKeyID getPublisherKeyID(PrivateKey signingKey) {
 		if (_privateKey.equals(signingKey))
 			return _defaultKeyID;
 		return null;

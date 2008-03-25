@@ -75,4 +75,39 @@ public class Link extends GenericXMLEncodable implements XMLEncodable {
 	public boolean validate() {
 		return (null != targetName());
 	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime
+				* result
+				+ ((_targetAuthenticator == null) ? 0 : _targetAuthenticator
+						.hashCode());
+		result = prime * result
+				+ ((_targetName == null) ? 0 : _targetName.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		final Link other = (Link) obj;
+		if (_targetAuthenticator == null) {
+			if (other._targetAuthenticator != null)
+				return false;
+		} else if (!_targetAuthenticator.equals(other._targetAuthenticator))
+			return false;
+		if (_targetName == null) {
+			if (other._targetName != null)
+				return false;
+		} else if (!_targetName.equals(other._targetName))
+			return false;
+		return true;
+	}
 }

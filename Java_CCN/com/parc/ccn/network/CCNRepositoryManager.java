@@ -131,8 +131,9 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 	/**
 	 * Puts we put only to our local repository. 
 	 */
-	public CompleteName put(ContentName name, ContentAuthenticator authenticator, byte[] content) throws IOException {
-		return _primaryRepository.put(name, authenticator, content);
+	public CompleteName put(ContentName name, ContentAuthenticator authenticator, 
+							byte [] signature, byte[] content) throws IOException {
+		return _primaryRepository.put(name, authenticator, signature, content);
 	}
 
 	/**

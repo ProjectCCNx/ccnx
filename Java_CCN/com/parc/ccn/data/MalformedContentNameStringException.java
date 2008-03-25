@@ -3,11 +3,13 @@
  */
 package com.parc.ccn.data;
 
+import com.parc.ccn.CCNException;
+
 /**
  * @author briggs
  *
  */
-public class MalformedContentNameStringException extends Exception {
+public class MalformedContentNameStringException extends CCNException {
 
 	private static final long serialVersionUID = 7844927632290343475L;
 
