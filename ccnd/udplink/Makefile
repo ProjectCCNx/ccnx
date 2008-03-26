@@ -1,10 +1,12 @@
-CFLAGS = $(COPT) $(CPREFLAGS)
+UNAME =$(shell uname)
+UNAME:sh =uname
+CFLAGS = $(COPT) $(CPREFLAGS) $(MORE_CFLAGS)
 LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn2
 CPREFLAGS = -I../include
-COPT = -g -Wall
+COPT = -g 
 CCNLIBDIR = ../lib
 
-#Solaris# make MORE_LDLIBS='-lsocket -lnsl'
+include Makefile.$(UNAME).mk
 
 PROGRAMS = udplink
 CSRC = udplink.c
