@@ -17,11 +17,11 @@ CSRC = ccn_charbuf.c ccn_coding.c ccn_client.c \
 
 LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_coding.o hashtb.o
 
-default all: $(PROGRAMS) lib
+default all: lib $(PROGRAMS)
 
 lib: libccn2.a
 
-libccn2.a: $(LIB_OBJS) ccn_coding.o
+libccn2.a: $(LIB_OBJS)
 	ar cru $@ $(LIB_OBJS)
 
 $(PROGRAMS): libccn2.a

@@ -22,19 +22,33 @@
 struct ccn {
     int sock;
     struct hashtb *interests;
-    struct ccn_content_closure *default_content_handler;
-    struct ccn_interest_closure *default_interest_handler;
+    struct ccn_closure *default_content_handler;
+    struct ccn_closure *default_interest_handler;
     int err;
     int errline;
 };
 
 struct expressed_interest {
     int repeat;
-    struct ccn_content_closure *action;
+    struct ccn_closure *action;
 };
 
 #define NOTE_ERR(h, e) (h->err = (e), h->errline = __LINE__, -1)
 #define NOTE_ERRNO(h) NOTE_ERR(h, errno)
+
+static void
+ccn_replace_handler(struct ccn *h, struct ccn_closure **dstp, struct ccn_closure *src)
+{
+    struct ccn_closure *old = *dstp;
+    if (src == old)
+        return;
+    if (src != NULL)
+        src->refcount++;
+    *dstp = src;
+    if (old != NULL && (--(old->refcount)) == 0) {
+        (old->p)(old, CCN_UPCALL_FINAL, h, NULL, 0, NULL, 0);
+    }
+}
 
 struct ccn *
 ccn_create(void)
@@ -87,11 +101,22 @@ ccn_disconnect(struct ccn *h)
 void
 ccn_destroy(struct ccn **hp)
 {
-    if (*hp == NULL)
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct ccn *h = *hp;
+    if (h == NULL)
         return;
-    ccn_disconnect(*hp);
-    hashtb_destroy(&((*hp)->interests));
-    free(*hp);
+    ccn_disconnect(h);
+    ccn_replace_handler(h, &(h->default_interest_handler), NULL);
+    ccn_replace_handler(h, &(h->default_content_handler), NULL);
+    if (h->interests != NULL) {
+        for (hashtb_start(h->interests, e); e->data != NULL; hashtb_next(e)) {
+            struct expressed_interest *i = e->data;
+            ccn_replace_handler(h, &(i->action), NULL);
+        }
+        hashtb_destroy(&(h->interests));
+    }
+    free(h);
     *hp = NULL;
 }
 
@@ -128,7 +153,7 @@ ccn_name_append(struct ccn_charbuf *c, const void *component, size_t n)
 
 int
 ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
-                     int repeat, struct ccn_content_closure *action)
+                     int repeat, struct ccn_closure *action)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -153,6 +178,7 @@ ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
     if (interest == NULL)
         return(NOTE_ERRNO(h));
     if (repeat == 0) {
+        ccn_replace_handler(h, &(interest->action), NULL);
         hashtb_delete(e);
         return(0);
     }
@@ -160,7 +186,7 @@ ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
         interest->repeat += repeat;
     else
         interest->repeat = -1;
-    interest->action = action;
+    ccn_replace_handler(h, &(interest->action), action);
     if (res == HT_NEW_ENTRY) {
         // set up the timekeeping stuff
     }
@@ -169,11 +195,11 @@ ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
 
 int
 ccn_set_default_content_handler(struct ccn *h,
-                                struct ccn_content_closure *action)
+                                struct ccn_closure *action)
 {
     if (h == NULL)
         return(-1);
-    h->default_content_handler = action;
+    ccn_replace_handler(h, &(h->default_content_handler), action);
     return(0);
 }
 

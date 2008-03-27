@@ -15,27 +15,25 @@
 #include <ccn/charbuf.h>
 
 struct ccn;
-
-struct ccn_interest_closure;
-typedef int (*ccn_interest_handler)(
-    struct ccn_interest_closure *selfp,
-    struct ccn *h,
-    void *etc // placeholder
-);
-struct ccn_interest_closure {
-    ccn_interest_handler selfp;
-    void *data;
+enum ccn_upcall_kind {
+    CCN_UPCALL_FINAL,       /* handler is about to be deregistered */
+    CCN_UPCALL_INTEREST,    /* incoming interest */
+    CCN_UPCALL_CONTENT      /* incoming content */
 };
-
-struct ccn_content_closure;
-typedef int (*ccn_content_handler)(
-    struct ccn_content_closure *selfp,
+struct ccn_closure;
+typedef int (*ccn_handler)(
+    struct ccn_closure *selfp,
+    enum ccn_upcall_kind,
     struct ccn *h,
-    void *etc // placeholder
+    const unsigned char *ccnb,    /* binary-format Interest or ContentObject */
+    size_t ccnb_size,
+    const unsigned char *matched, /* ccnb formatted name that was matched */
+    size_t matched_size
 );
-struct ccn_content_closure {
-    ccn_content_handler selfp;
+struct ccn_closure {
+    ccn_handler p;
     void *data;
+    int refcount;
 };
 
 /*
@@ -98,11 +96,12 @@ int ccn_name_append(struct ccn_charbuf *c, const void *component, size_t n);
  * repeat: -1 - keep expressing until cancelled
  *          0 - cancel this interest
  *         >0 - express this many times (not counting timeouts)
+ * Use the above routines to set up namebuf.
  * The namebuf may be reused or destroyed after the call.
  * If action is not NULL, it is invoked when matching data comes back.
  */
 int ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
-                         int repeat, struct ccn_content_closure *action);
+                         int repeat, struct ccn_closure *action);
 /*
  * ccn_set_default_content_handler:
  * Sets default content_handler, replacing any in effect.
@@ -110,26 +109,27 @@ int ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
  * expressed interest that has a handler.
  */
 int ccn_set_default_content_handler(struct ccn *h,
-                                    struct ccn_content_closure *action);
+                                    struct ccn_closure *action);
 
 /***********************************
  * ccn_set_interest_filter: 
  * The namebuf may be reused or destroyed after the call.
  * If action is NULL, any existing filter is removed.
- * Otherwise action will be called when an interest arrives that has
- * given name as a prefix.
+ * Otherwise action will be called when an interest arrives that is
+ * either a prefix of the given name or which has the given name
+ * as a prefix.
  * Handler should return -1 if it cannot produce new content in response.
  */
 int
 ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
-                            struct ccn_interest_closure *action);
+                        struct ccn_closure *action);
 /*
  * ccn_set_default_interest_handler:
  * Sets default interest_handler, replacing any in effect.
  */
 int
 ccn_set_default_interest_handler(struct ccn *h,
-                                     struct ccn_interest_closure *action);
+                                 struct ccn_closure *action);
 
 /***********************************
  * Low-level binary formatting
