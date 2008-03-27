@@ -31,7 +31,7 @@ enum ccn_decoder_state {
 #define XML(goop) ((void)0)
 
 ssize_t
-ccn_skeleton_decode(struct ccn_skeleton_decoder *d, unsigned char p[], size_t n)
+ccn_skeleton_decode(struct ccn_skeleton_decoder *d, const unsigned char *p, size_t n)
 {
     enum ccn_decoder_state state = d->state;
     int tagstate = 0;

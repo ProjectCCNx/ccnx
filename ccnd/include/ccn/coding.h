@@ -90,7 +90,7 @@ struct ccn_skeleton_decoder { /* initialize to all 0 */
 
 ssize_t ccn_skeleton_decode(
     struct ccn_skeleton_decoder *d,
-    unsigned char p[],
+    const unsigned char *p,
     size_t n);
 
 #endif

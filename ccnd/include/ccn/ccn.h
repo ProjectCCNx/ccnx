@@ -56,6 +56,7 @@ int ccn_connect(struct ccn *h, const char *name);
  * ccn_get_connection_fd: get connection socket fd
  * This is in case the client needs to know the associated
  * fd, e.g. for use in select/poll.
+ * The client should not use this fd for actual I/O.
  * Normal return value is the fd for the connection.
  * Returns -1 if the handle is not connected.
  */ 
@@ -120,16 +121,33 @@ int ccn_set_default_content_handler(struct ccn *h,
  * as a prefix.
  * Handler should return -1 if it cannot produce new content in response.
  */
-int
+int /*NYI*/
 ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
                         struct ccn_closure *action);
 /*
  * ccn_set_default_interest_handler:
  * Sets default interest_handler, replacing any in effect.
  */
-int
+int /*NYI*/
 ccn_set_default_interest_handler(struct ccn *h,
                                  struct ccn_closure *action);
+
+/*
+ * ccn_put: send ccn binary
+ * This checks for a single well-formed ccn binary object and 
+ * sends it out (or queues it to be sent).  For normal clients,
+ * this should be a ContentObject sent in response to an Interest,
+ * but ccn_put does not check for that.
+ * Returns -1 for error, 0 if sent completely, 1 if queued.
+ */
+int ccn_put(struct ccn *h, const void *p, size_t length);
+
+/*
+ * ccn_output_is_pending:
+ * This is for client-managed select or poll.
+ * Returns 1 if there is data waiting to be sent, else 0.
+ */
+int ccn_output_is_pending(struct ccn *h);
 
 /***********************************
  * Low-level binary formatting

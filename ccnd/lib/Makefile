@@ -6,14 +6,15 @@ COPT = -g -Wall
 #Solaris# make MORE_LDLIBS='-lsocket -lnsl'
 
 PROGRAMS = ccn_ccnbtoxml ccn_xmltoccnb ccn_recursive_parse \
-    hashtbtest skel_decode_test
+    hashtbtest skel_decode_test smoketestclientlib
 DEBRIS = ccn_coding
 CSRC = ccn_charbuf.c ccn_coding.c ccn_client.c \
     ccn_ccnbtoxml.c ccn_xmltoccnb.c \
     ccn_recursive_parse.c \
     ccn_schemaexperiment.c \
     skel_decode_test.c \
-    hashtb.c hashtbtest.c
+    hashtb.c hashtbtest.c \
+    smoketestclientlib.c
 
 LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_coding.o hashtb.o
 
@@ -40,6 +41,9 @@ skel_decode_test: skel_decode_test.o
 
 ccn_recursive_parse: ccn_recursive_parse.o ccn_schemaexperiment.o
 	$(CC) $(CFLAGS) -o $@ ccn_recursive_parse.o ccn_schemaexperiment.o $(LDLIBS)
+
+smoketestclientlib: smoketestclientlib.o
+	$(CC) $(CFLAGS) -o $@ smoketestclientlib.o $(LDLIBS)
 
 clean:
 	rm -f *.o *.a $(PROGRAMS) depend

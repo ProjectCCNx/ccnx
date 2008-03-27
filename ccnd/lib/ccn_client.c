@@ -21,6 +21,8 @@
 
 struct ccn {
     int sock;
+    size_t outbufindex;
+    struct ccn_charbuf *outbuf;
     struct hashtb *interests;
     struct ccn_closure *default_content_handler;
     struct ccn_closure *default_interest_handler;
@@ -76,6 +78,9 @@ ccn_connect(struct ccn *h, const char *name)
     strncpy(addr.sun_path, name, sizeof(addr.sun_path));
     addr.sun_family = AF_UNIX;
     res = connect(h->sock, (struct sockaddr *)&addr, sizeof(addr));
+    if (res == -1)
+        return(NOTE_ERRNO(h));
+    res = fcntl(h->sock, F_SETFL, O_NONBLOCK);
     if (res == -1)
         return(NOTE_ERRNO(h));
     return(h->sock);
@@ -201,6 +206,76 @@ ccn_set_default_content_handler(struct ccn *h,
         return(-1);
     ccn_replace_handler(h, &(h->default_content_handler), action);
     return(0);
+}
+
+int
+ccn_put(struct ccn *h, const void *p, size_t length)
+{
+    struct ccn_skeleton_decoder dd = {0};
+    ssize_t res;
+    if (h == NULL || p == NULL || length == 0)
+        return(NOTE_ERR(h, EINVAL));
+    res = ccn_skeleton_decode(&dd, p, length);
+    if (!(res == length && dd.state == 0 && dd.tagstate == 0 && dd.nest == 0))
+        return(NOTE_ERR(h, EINVAL));
+    if (h->outbuf != NULL && h->outbufindex < h->outbuf->length) {
+        size_t size;
+        // XXX - should limit unbounded growth of h->outbuf
+        ccn_charbuf_append(h->outbuf, p, length); // XXX - check res
+        size = h->outbuf->length - h->outbufindex;
+        res = write(h->sock, h->outbuf->buf + h->outbufindex, size);
+        if (res == size) {
+            h->outbuf->length = h->outbufindex = 0;
+            return(0);
+        }
+        if (res == -1)
+            return ((errno == EAGAIN) ? 1 : NOTE_ERRNO(h));
+        h->outbufindex += res;
+        return(1);
+    }
+    res = write(h->sock, p, length);
+    if (res == length)
+        return(0);
+    if (res == -1) {
+        if (errno != EAGAIN)
+            return(NOTE_ERRNO(h));
+        res = 0;
+    }
+    if (h->outbuf == NULL) {
+        h->outbuf = ccn_charbuf_create();
+        h->outbufindex = 0;
+        }
+    ccn_charbuf_append(h->outbuf, ((const unsigned char *)p)+res, length-res);
+    return(1);
+}
+
+int
+ccn_output_is_pending(struct ccn *h)
+{
+    return(h != NULL && h->outbuf != NULL && h->outbufindex < h->outbuf->length);
+}
+
+int
+ccn_run(struct ccn *h, int timeout)
+{
+/**********
+    for (each expressed interest) {
+        if (interest has timed out) {
+            refresh the interest
+        }
+    }
+    if (have data to send)
+        set POLLOUT
+    for (;;) {
+        set POLLIN
+        poll(...)
+        if (output is ready)
+            send more stuff
+        if (input is ready)
+            read and dispatch
+    }
+*************/
+    return(NOTE_ERR(h, ENOSYS));
 }
 
 int
