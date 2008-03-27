@@ -26,7 +26,7 @@ main (int argc, char * const argv[]) {
         int debug;
     } options = {NULL, NULL, "\0\0\0\0\0\0\0", "\0\0\0\0\0\0\0", 0};
 
-    int c;
+    int c, i;
     int result;
     int localsock;
     int remotesock;
@@ -37,7 +37,7 @@ main (int argc, char * const argv[]) {
     struct ccn *ccn;
     struct ccn_skeleton_decoder ldecoder = {0};
     struct ccn_skeleton_decoder rdecoder = {0};
-    unsigned char buf[PIPE_BUF];
+    unsigned char buf[8800];
 
     while ((c = getopt(argc, argv, "dc:h:r:l:")) != -1) {
         switch (c) {
@@ -156,10 +156,10 @@ main (int argc, char * const argv[]) {
             if (result == -1) {
                 err(1, "sendto(remotesock, buf, %d)", dres - CCN_EMPTY_PDU_LENGTH);
             }
-            fprintf(stderr, "local->remote %d bytes in, decoder accepted %d bytes, sent %d bytes to remote\n",
-                    recvlen, dres, dres - CCN_EMPTY_PDU_LENGTH);
+            fprintf(stderr, "local->remote %ld bytes in, decoder accepted %d bytes, sent %d bytes to remote\n",
+                    (long)recvlen, dres, dres - CCN_EMPTY_PDU_LENGTH);
             if (options.debug) {
-                for (int i = 0; i < dres; i++) {
+                for (i = 0; i < dres; i++) {
                     fprintf(stderr, "%02x ", buf[i]);
                 }
                 fprintf(stderr, "\n");
@@ -184,9 +184,9 @@ main (int argc, char * const argv[]) {
             if (result == -1) {
                 err(1, "sendto(localsock, buf, %d)", recvlen + CCN_EMPTY_PDU_LENGTH);
             }
-            fprintf(stderr, "remote->local %d bytes in, sent %d bytes to local\n", recvlen, recvlen + CCN_EMPTY_PDU_LENGTH);
+            fprintf(stderr, "remote->local %ld bytes in, sent %ld bytes to local\n", (long) recvlen, (long)recvlen + CCN_EMPTY_PDU_LENGTH);
             if (options.debug) {
-                for (int i = 0; i < recvlen + CCN_EMPTY_PDU_LENGTH; i++) {
+                for (i = 0; i < recvlen + CCN_EMPTY_PDU_LENGTH; i++) {
                     fprintf(stderr, "%02x ", buf[i]);
                 }
                 fprintf(stderr, "\n");
