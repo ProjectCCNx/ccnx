@@ -11,6 +11,14 @@
 #include "ccn/ccn.h"
 #include "ccn/ccnd.h"
 
+struct options {
+    const char *localsockname;
+    const char *remotehostname;
+    char remoteport[8];
+    char localport[8];
+    int debug;
+};
+
 void
 usage(char *name) {
     fprintf(stderr, "Usage: %s [-d(ebug)] [-c ccnsocket] -h remotehost -r remoteport [-l localport]\n", name);
@@ -28,18 +36,67 @@ send_remote(int s, struct addrinfo *r, unsigned char *buf, size_t start, size_t 
     return (result);
 }
 
+void process_options(int argc, char * const argv[], struct options *options) {
+    int c;
+
+    while ((c = getopt(argc, argv, "dc:h:r:l:")) != -1) {
+        switch (c) {
+        case 'd': {
+            options->debug++;
+        }
+        case 'c': {
+            options->localsockname = optarg;
+            break;
+        }
+        case 'h': {
+            options->remotehostname = optarg;
+            break;
+        }
+        case 'r':
+        case 'l': {
+            int port = atoi(optarg);
+            char portstr[8];
+            if (port <= 0 || port >= 65536) {
+                usage(argv[0]);
+                fprintf(stderr, "port must be in range 1..65535\n");
+                exit(1);
+            } 
+            snprintf(portstr, sizeof(portstr), "%d", port);
+            if (c == 'r') {
+                memmove(options->remoteport, portstr, sizeof(options->remoteport));
+            } else {
+                memmove(options->localport, portstr, sizeof(options->localport));
+            }
+            break;
+        }
+        }
+    }
+    
+    /* the remote end of the connection must be specified */
+    if (options->remotehostname == NULL) {
+        usage(argv[0]);
+        fprintf(stderr, "remote hostname/address required\n");
+        exit(1);
+    }
+
+    if (options->remoteport[0] == '\0') {
+        usage(argv[0]);
+        fprintf(stderr, "remote port required\n");
+        exit(1);
+    }
+
+    /* if the local port is not specified, default to same as remote port */
+    if (options->localport[0] == '\0') {
+        memmove(options->localport, options->remoteport, sizeof(options->localport));
+    }
+}
+
 int
 main (int argc, char * const argv[]) {
 
-    struct options {
-        const char *localsockname;
-        const char *remotehostname;
-        char remoteport[8];
-        char localport[8];
-        int debug;
-    } options = {NULL, NULL, "", "", 0};
+    struct options options = {NULL, NULL, "", "", 0};
 
-    int c, i;
+    int i;
     int result;
     int localsock;
     int remotesock;
@@ -58,56 +115,7 @@ main (int argc, char * const argv[]) {
     ssize_t msgstart = 0;
     ssize_t recvlen = 0;
 
-    while ((c = getopt(argc, argv, "dc:h:r:l:")) != -1) {
-        switch (c) {
-        case 'd': {
-            options.debug++;
-        }
-        case 'c': {
-            options.localsockname = optarg;
-            break;
-        }
-        case 'h': {
-            options.remotehostname = optarg;
-            break;
-        }
-        case 'r':
-        case 'l': {
-            int port = atoi(optarg);
-            char portstr[8];
-            if (port <= 0 || port >= 65536) {
-                usage(argv[0]);
-                fprintf(stderr, "port must be in range 1..65535\n");
-                exit(1);
-            } 
-            snprintf(portstr, sizeof(portstr), "%d", port);
-            if (c == 'r') {
-                memmove(options.remoteport, portstr, sizeof(options.remoteport));
-            } else {
-                memmove(options.localport, portstr, sizeof(options.localport));
-            }
-            break;
-        }
-        }
-    }
-    
-    /* the remote end of the connection must be specified */
-    if (options.remotehostname == NULL) {
-        usage(argv[0]);
-        fprintf(stderr, "remote hostname/address required\n");
-        exit(1);
-    }
-
-    if (options.remoteport[0] == '\0') {
-        usage(argv[0]);
-        fprintf(stderr, "remote port required\n");
-        exit(1);
-    }
-
-    /* if the local port is not specified, default to same as remote port */
-    if (options.localport[0] == '\0') {
-        memmove(options.localport, options.remoteport, sizeof(options.localport));
-    }
+    process_options(argc, argv, &options);
 
     /* connect to the local ccn socket */
     ccn = ccn_create();
@@ -213,7 +221,7 @@ main (int argc, char * const argv[]) {
                 /* send the packet out on the remote side, removing CCNPDU encapsulation */
                 result = send_remote(remotesock, raddrinfo, charbuf->buf, msgstart, ld->index - msgstart);
                 if (result == -1) {
-                    fprintf(stderr, "udplink[%d] sendto(remotesock, rbuf, %d): %s\n", getpid(), dres - CCN_EMPTY_PDU_LENGTH, strerror(errno));
+                    fprintf(stderr, "udplink[%d] sendto(remotesock, rbuf, %d): %s\n", getpid(), ld->index - msgstart, strerror(errno));
                     exit(1);
                 }
                 else if (result == -2) {
@@ -231,14 +239,15 @@ main (int argc, char * const argv[]) {
                     charbuf->length = 0;
                     break;
                 }
-                dres = ccn_skeleton_decode(ld, charbuf->buf + msgstart, recvlen = charbuf->length - msgstart);
+                recvlen = charbuf->length - msgstart;
+                dres = ccn_skeleton_decode(ld, charbuf->buf + msgstart, recvlen);
             }
             if (ld->state < 0) {
                 fprintf(stderr, "udplink[%d]: local data protocol error\n", getpid());
                 exit(1);
             }
+            /* move partial message to start of buffer */
             if (msgstart < charbuf->length && msgstart > 0) {
-                /* move partial message to start of buffer */
                 memmove(charbuf->buf, charbuf->buf + msgstart, charbuf->length - msgstart);
                 charbuf->length -= msgstart;
                 ld->index -= msgstart;
@@ -249,10 +258,9 @@ main (int argc, char * const argv[]) {
         if (fds[1].revents & (POLLIN)) {
             struct sockaddr from = {0};
             socklen_t fromlen = sizeof(from);
-            memset(rbuf, 0, sizeof(rbuf));
-            memmove(rbuf, CCN_EMPTY_PDU, CCN_EMPTY_PDU_LENGTH - 1);
-            
             unsigned char *recvbuf;
+
+            memmove(rbuf, CCN_EMPTY_PDU, CCN_EMPTY_PDU_LENGTH - 1);
             recvbuf = &rbuf[CCN_EMPTY_PDU_LENGTH - 1];
             ssize_t recvlen = recvfrom(remotesock, recvbuf,
                                        sizeof(rbuf) - CCN_EMPTY_PDU_LENGTH,
