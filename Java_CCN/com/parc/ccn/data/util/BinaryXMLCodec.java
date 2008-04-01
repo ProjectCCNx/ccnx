@@ -168,6 +168,8 @@ public class BinaryXMLCodec  {
 	}
 			
 	public static int numbits(long x) {
+		if (0 == x)
+			return 0;
 		return (LONG_BITS - Long.numberOfLeadingZeros(x - 1)); 
 	}
 	
@@ -177,6 +179,7 @@ public class BinaryXMLCodec  {
 		// Last byte gives you XML_TT_VAL_BITS
 		// Remainder each give you XML_REG_VAL_BITS
 		numbits -= XML_TT_VAL_BITS;
+		// If numbits < 0 here, ceil brings it up to 0 which gives the correct behavior.
 		return (((int)Math.ceil((double)numbits/XML_REG_VAL_BITS) + 1));
 	}
 	
