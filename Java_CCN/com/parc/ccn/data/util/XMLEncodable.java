@@ -9,9 +9,6 @@ import javax.xml.stream.XMLStreamWriter;
 
 public interface XMLEncodable {
 	
-	public static final String CCN_NAMESPACE = "http://www.parc.com/ccn";
-	public static final String CCN_PREFIX = "ccn";	
-
 	/**
 	 * Decode this object as the top-level item in a new
 	 * XML document. Reads document start and end.
