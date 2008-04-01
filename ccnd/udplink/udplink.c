@@ -114,6 +114,11 @@ main (int argc, char * const argv[]) {
     struct ccn_charbuf *charbuf;
     ssize_t msgstart = 0;
     ssize_t recvlen = 0;
+    ssize_t dres;
+    unsigned char csockopt;
+    unsigned int isockopt;
+    struct ip_mreq mreq;
+    struct ipv6_mreq mreq6;
 
     process_options(argc, argv, &options);
 
@@ -157,20 +162,51 @@ main (int argc, char * const argv[]) {
     }
 
 
-    /* XXX we may need to play games for multicast here if we want to specify other than the default interface */
-
-    if (raddrinfo->ai_family == PF_INET && IN_MULTICAST(((struct sockaddr_in *)(raddrinfo->ai_addr))->sin_addr.s_addr)) {
-        /* IPv4 multicast */
-        if (options.debug) fprintf(stderr, "it's an IPv4 multicast\n");
-    } else if (raddrinfo->ai_family == PF_INET6 && IN6_IS_ADDR_MULTICAST((&((struct sockaddr_in6 *)raddrinfo->ai_addr)->sin6_addr))) {
-        /* IPv6 multicast */
-        if (options.debug) fprintf(stderr, "it's an IPv6 multicast\n");
-    }
-
     result = bind(remotesock, laddrinfo->ai_addr, laddrinfo->ai_addrlen);
     if (result == -1) {
         fprintf(stderr, "bind(remotesock, local...): %s\n", strerror(errno));
         exit(1);
+    }
+
+    /* XXX we may need to play games for multicast here if we want to specify other than the default interface */
+
+    if (raddrinfo->ai_family == PF_INET && IN_MULTICAST(ntohl(((struct sockaddr_in *)(raddrinfo->ai_addr))->sin_addr.s_addr))) {
+        /* IPv4 multicast */
+        if (options.debug) fprintf(stderr, "it's an IPv4 multicast\n");
+#ifdef IP_ADD_MEMBERSHIP
+        memset((void *)&mreq, 0, sizeof(mreq));
+        memcpy((void *)&mreq.imr_multiaddr, &((struct sockaddr_in *)raddrinfo->ai_addr)->sin_addr, sizeof(mreq.imr_multiaddr));
+        result = setsockopt(remotesock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq));
+        if (result == -1) {
+            fprintf(stderr, "setsockopt(remotesock, IP_ADD_MEMBERSHIP, ...): %s\n", strerror(errno));
+        }
+#endif
+#ifdef IP_MULTICAST_LOOP
+        csockopt = 0;
+        result = setsockopt(remotesock, IPPROTO_IP, IP_MULTICAST_LOOP, &csockopt, sizeof(csockopt));
+        if (result == -1) {
+            fprintf(stderr, "setsockopt(remotesock, IP_MULTICAST_LOOP, ...): %s\n", strerror(errno));
+            exit(1);
+        }
+#endif
+    } else if (raddrinfo->ai_family == PF_INET6 && IN6_IS_ADDR_MULTICAST((&((struct sockaddr_in6 *)raddrinfo->ai_addr)->sin6_addr))) {
+        /* IPv6 multicast */
+        if (options.debug) fprintf(stderr, "it's an IPv6 multicast\n");
+#ifdef IPV6_JOIN_GROUP
+        memset((void *)&mreq6, 0, sizeof(mreq6));
+        memcpy((void *)&mreq6.ipv6mr_multiaddr, &((struct sockaddr_in6 *)raddrinfo->ai_addr)->sin6_addr, sizeof(mreq6.ipv6mr_multiaddr));
+        result = setsockopt(remotesock, IPPROTO_IPV6, IPV6_JOIN_GROUP, &mreq6, sizeof(mreq6));
+        if (result == -1) {
+            fprintf(stderr, "setsockopt(remotesock, IPV6_JOIN_GROUP ...): %s\n", strerror(errno));
+        }
+#endif
+#ifdef IPV6_MULTICAST_LOOP
+        isockopt = 0;
+        result = setsockopt(remotesock, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &isockopt, sizeof(isockopt));
+        if (result == -1) {
+            fprintf(stderr, "setsockopt(remotesock, IPV6_MULTICAST_LOOP, ...): %s\n", strerror(errno));
+        }
+#endif
     }
 
 
@@ -193,12 +229,12 @@ main (int argc, char * const argv[]) {
     for (;;) {
         if (0 == (result = poll(fds, 2, -1))) continue;
         if (-1 == result) {
-            (1, "poll");
+            fprintf(stderr, "poll: %s\n", strerror(errno));
+            exit(1);
         }
 
         /* process local data */
         if (fds[0].revents & (POLLIN)) {
-            ssize_t dres;
             unsigned char *lbuf = ccn_charbuf_reserve(charbuf, 32);
             if (charbuf->length == 0) {
                 memset(ld, 0, sizeof(*ld));
@@ -221,11 +257,11 @@ main (int argc, char * const argv[]) {
                 /* send the packet out on the remote side, removing CCNPDU encapsulation */
                 result = send_remote(remotesock, raddrinfo, charbuf->buf, msgstart, ld->index - msgstart);
                 if (result == -1) {
-                    fprintf(stderr, "udplink[%d] sendto(remotesock, rbuf, %d): %s\n", getpid(), ld->index - msgstart, strerror(errno));
+                    fprintf(stderr, "udplink[%d] sendto(remotesock, rbuf, %ld): %s\n", getpid(), (long)ld->index - msgstart, strerror(errno));
                     exit(1);
                 }
                 else if (result == -2) {
-                    fprintf(stderr, "udplink[%d] protocol error, missing CCNPDU encapsulation. Message dropped\n");
+                    fprintf(stderr, "udplink[%d] protocol error, missing CCNPDU encapsulation. Message dropped\n", getpid());
                 }
 
                 if (options.debug) {
@@ -267,9 +303,16 @@ main (int argc, char * const argv[]) {
                                        0, &from, &fromlen);
             /* encapsulate, and send the packet out on the local side */
             recvbuf[recvlen] = '\0';
+            memset(rd, 0, sizeof(*rd));
+            dres = ccn_skeleton_decode(rd, rbuf, recvlen + CCN_EMPTY_PDU_LENGTH);
+            if (rd->state != 0 || rd->tagstate != 0 || rd->nest != 0 || dres != (recvlen + CCN_EMPTY_PDU_LENGTH)) {
+                fprintf(stderr, "udplink[%d]: remote data protocol error\n", getpid());
+                continue;
+            }
+
             result = send(localsock, rbuf, recvlen + CCN_EMPTY_PDU_LENGTH, 0);
             if (result == -1) {
-                fprintf(stderr, "sendto(localsock, rbuf, %d): %s\n", recvlen + CCN_EMPTY_PDU_LENGTH, strerror(errno));
+                fprintf(stderr, "sendto(localsock, rbuf, %ld): %s\n", (long) recvlen + CCN_EMPTY_PDU_LENGTH, strerror(errno));
                 exit(1);
             }
             fprintf(stderr, "remote->local %ld bytes in, sent %ld bytes to local\n", (long) recvlen, (long)recvlen + CCN_EMPTY_PDU_LENGTH);
@@ -284,4 +327,5 @@ main (int argc, char * const argv[]) {
     ccn_destroy(&ccn);
     freeaddrinfo(raddrinfo);
     freeaddrinfo(laddrinfo);
+    exit(0);
 }
