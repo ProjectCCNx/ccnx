@@ -61,7 +61,8 @@ public class LinkTest {
 		for (int i=0; i < ns.length; ++i) {
 			Link l = new Link(ns[i],las[i]);
 			Link ldec = new Link();
-			XMLEncodableTester.encodeDecodeTest("Link_" + i, l, ldec);
+			Link lbdec = new Link();
+			XMLEncodableTester.encodeDecodeTest("Link_" + i, l, ldec, lbdec);
 		}
 	}
 

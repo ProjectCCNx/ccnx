@@ -113,7 +113,7 @@ public class SignatureHelper {
 			throw new SignatureException("Cannot sign null content!");
 		}
 		return sign(digestAlgorithm, 
-					toBeSigned.canonicalizeAndEncode(), 
+					toBeSigned.encode(), 
 					signingKey);
 	}
 	
@@ -127,7 +127,7 @@ public class SignatureHelper {
 		}
 		byte [][] encodedData = new byte [toBeSigneds.length][];
 		for (int i=0; i < toBeSigneds.length; ++i) {
-			encodedData[i] = toBeSigneds[i].canonicalizeAndEncode();
+			encodedData[i] = toBeSigneds[i].encode();
 		}
 		return sign(digestAlgorithm, 
 					encodedData,
@@ -185,7 +185,7 @@ public class SignatureHelper {
 			throw new SignatureException("verify: Value to be verified and signature must not be null.");
 		}
 		return verify(
-				xmlData.canonicalizeAndEncode(), 
+				xmlData.encode(), 
 				signature,
 				digestAlgorithm,
 				verificationKey);
@@ -202,7 +202,7 @@ public class SignatureHelper {
 		}
 		byte [][] encodedData = new byte [xmlData.length][];
 		for (int i=0; i < xmlData.length; ++i) {
-			encodedData[i] = xmlData[i].canonicalizeAndEncode();
+			encodedData[i] = xmlData[i].encode();
 		}
 		return verify(
 				encodedData, 

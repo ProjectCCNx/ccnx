@@ -1,17 +1,15 @@
 
 package com.parc.ccn.data.content;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 
-import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamWriter;
 
 import com.parc.ccn.data.util.GenericXMLEncodable;
+import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
-import com.parc.ccn.data.util.XMLHelper;
+import com.parc.ccn.data.util.XMLEncoder;
 
 /**
  * Mapping from a sequence to the underlying XML representation.
@@ -47,7 +45,7 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 	/**
 	 * These are generic.
 	 */
-	protected static final String CONTENT_HASH_ELEMENT = "ContentDigest";
+	protected static final String CONTENT_DIGEST_ELEMENT = "ContentDigest";
 	protected static final String MERKLE_ROOT_ELEMENT = "RootDigest";
 	
 	public static final int DEFAULT_BLOCKSIZE = 4096;
@@ -141,54 +139,40 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 	 * @see com.parc.ccn.data.util.XMLEncodable#decode(javax.xml.stream.XMLEventReader)
 	 */
 	@Override
-	public void decode(XMLEventReader reader) throws XMLStreamException {
-		XMLHelper.readStartElement(reader, HEADER_ELEMENT);
-		_start = Integer.valueOf(XMLHelper.readElementText(reader, START_ELEMENT));
-		_count = Integer.valueOf(XMLHelper.readElementText(reader, COUNT_ELEMENT));
-		_blockSize = Integer.valueOf(XMLHelper.readElementText(reader, BLOCKSIZE_ELEMENT));
-		_length = Integer.valueOf(XMLHelper.readElementText(reader, LENGTH_ELEMENT));
-		String strDig = XMLHelper.readElementText(reader, CONTENT_HASH_ELEMENT);
-		try {
-			_contentDigest = XMLHelper.decodeElement(strDig);
-		} catch (IOException e) {
-			throw new XMLStreamException("Cannot parse content digest: " + strDig, e);
-		}
+	public void decode(XMLDecoder decoder) throws XMLStreamException {
+		decoder.readStartElement(HEADER_ELEMENT);
+		_start = Integer.valueOf(decoder.readUTF8Element(START_ELEMENT));
+		_count = Integer.valueOf(decoder.readUTF8Element(COUNT_ELEMENT));
+		_blockSize = Integer.valueOf(decoder.readUTF8Element(BLOCKSIZE_ELEMENT));
+		_length = Integer.valueOf(decoder.readUTF8Element(LENGTH_ELEMENT));
+		_contentDigest = decoder.readBinaryElement(CONTENT_DIGEST_ELEMENT);
 		if (null == _contentDigest) {
-			throw new XMLStreamException("Cannot parse content digest: " + strDig);
+			throw new XMLStreamException("Cannot parse content digest.");
 		}
-		String strRoot = XMLHelper.readElementText(reader, MERKLE_ROOT_ELEMENT);
-		try {
-			_rootDigest = XMLHelper.decodeElement(strRoot);
-		} catch (IOException e) {
-			throw new XMLStreamException("Cannot parse root digest: " + strRoot, e);
-		}
+		_rootDigest = decoder.readBinaryElement(MERKLE_ROOT_ELEMENT);
 		if (null == _rootDigest) {
-			throw new XMLStreamException("Cannot parse root digest: " + strRoot);
+			throw new XMLStreamException("Cannot parse root digest.");
 		}
-		XMLHelper.readEndElement(reader);
+		decoder.readEndElement();
 	}
 
 	/* (non-Javadoc)
 	 * @see com.parc.ccn.data.util.XMLEncodable#encode(javax.xml.stream.XMLStreamWriter, boolean)
 	 */
 	@Override
-	public void encode(XMLStreamWriter writer, boolean isFirstElement)
+	public void encode(XMLEncoder encoder)
 			throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		XMLHelper.writeStartElement(writer, HEADER_ELEMENT, isFirstElement);
-		XMLHelper.writeElement(writer, START_ELEMENT,	 Integer.toString(_start));
-		XMLHelper.writeElement(writer, COUNT_ELEMENT,	 Integer.toString(_count));
-		XMLHelper.writeElement(writer, BLOCKSIZE_ELEMENT,	 Integer.toString(_blockSize));
-		XMLHelper.writeElement(writer, LENGTH_ELEMENT,	Integer.toString(_length));
-		writer.writeStartElement(CONTENT_HASH_ELEMENT);
-		writer.writeCharacters(XMLHelper.encodeElement(contentDigest()));
-		writer.writeEndElement();   
-		writer.writeStartElement(MERKLE_ROOT_ELEMENT);
-		writer.writeCharacters(XMLHelper.encodeElement(rootDigest()));
-		writer.writeEndElement();   
-		writer.writeEndElement();
+		encoder.writeStartElement(HEADER_ELEMENT);
+		encoder.writeElement(START_ELEMENT,	 Integer.toString(_start));
+		encoder.writeElement(COUNT_ELEMENT,	 Integer.toString(_count));
+		encoder.writeElement(BLOCKSIZE_ELEMENT,	 Integer.toString(_blockSize));
+		encoder.writeElement(LENGTH_ELEMENT,	Integer.toString(_length));
+		encoder.writeElement(CONTENT_DIGEST_ELEMENT, contentDigest());
+		encoder.writeElement(MERKLE_ROOT_ELEMENT, rootDigest());
+		encoder.writeEndElement();
 	}
 
 	@Override

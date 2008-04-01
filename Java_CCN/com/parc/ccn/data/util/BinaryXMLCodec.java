@@ -93,7 +93,7 @@ public class BinaryXMLCodec  {
 		buf[offset + numEncodingBytes - 1] = 
 			(byte)(BYTE_MASK &
 						((XML_TT_MASK & tag) | 
-						((XML_TT_VAL_MASK & val) << XML_TT_VAL_BITS)));
+						((XML_TT_VAL_MASK & val) << XML_TT_BITS)));
 		val = val >>> XML_TT_VAL_BITS;;
 		
 		// Rest of val goes into preceding bytes, 7 bits per byte, top bit
@@ -141,7 +141,7 @@ public class BinaryXMLCodec  {
 				// last byte
 				type = next & XML_TT_MASK;
 				val = val << XML_TT_VAL_BITS;
-				val |= (next & XML_TT_VAL_MASK);
+				val |= ((next >>> XML_TT_BITS) & XML_TT_VAL_MASK);
 			}
 			
 		} while (0 != (next & XML_TT_MORE));
@@ -177,7 +177,7 @@ public class BinaryXMLCodec  {
 		// Last byte gives you XML_TT_VAL_BITS
 		// Remainder each give you XML_REG_VAL_BITS
 		numbits -= XML_TT_VAL_BITS;
-		return (((int)Math.ceil(numbits/XML_REG_VAL_BITS) + 1));
+		return (((int)Math.ceil((double)numbits/XML_REG_VAL_BITS) + 1));
 	}
 	
 	/**

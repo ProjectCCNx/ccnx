@@ -1,21 +1,20 @@
 package com.parc.ccn.data.security;
 
-import java.io.IOException;
 import java.security.PublicKey;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.TreeMap;
 
-import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamWriter;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.data.util.GenericXMLEncodable;
+import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
-import com.parc.ccn.data.util.XMLHelper;
+import com.parc.ccn.data.util.XMLEncoder;
 import com.parc.ccn.security.crypto.DigestHelper;
 import com.parc.ccn.security.crypto.certificates.GenericX509CertificateGenerator;
 
@@ -126,24 +125,17 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 		return NameTypes.get(name);
 	}
 
-	public void decode(XMLEventReader reader) throws XMLStreamException {
+	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		
 		// The format of a publisher ID is:
 		// <PublisherID type=<type>>id content</PublisherID>
-		HashMap<String,String> attributes = new HashMap<String,String>();
+		TreeMap<String,String> attributes = new TreeMap<String,String>();
 
-		String strID = XMLHelper.readElementText(reader, PUBLISHER_ID_ELEMENT, attributes);
-		try {
-			_publisherID = XMLHelper.decodeElement(strID);
-		} catch (IOException e) {
-			throw new XMLStreamException("Cannot parse publisher ID: " + strID, e);
-		}
+		_publisherID = decoder.readBinaryElement(PUBLISHER_ID_ELEMENT, attributes);
 		if (null == _publisherID) {
-			throw new XMLStreamException("Cannot parse publisher ID: " + strID);
+			throw new XMLStreamException("Cannot parse publisher ID.");
 		}
-		if (attributes.size() != 1) {
-			throw new XMLStreamException("Cannot parse publisher ID: got " + attributes.size() + " expected 1.");
-		}
+		// Don't check number of attributes -- binary encoding attr may have been added.
 		if (!attributes.containsKey(PUBLISHER_TYPE_ATTRIBUTE)) {
 			throw new XMLStreamException("Cannot parse publisher ID: did not get expected attribute: " + PUBLISHER_TYPE_ATTRIBUTE);
 		}
@@ -153,20 +145,17 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 		}
 	}
 
-	public void encode(XMLStreamWriter writer, boolean isFirstElement) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		// The format of a publisher ID is:
 		// <PublisherID type=<type> id_content />
-		HashMap<String,String> attributes = new HashMap<String,String>();
+		TreeMap<String,String> attributes = new TreeMap<String,String>();
 		attributes.put(PUBLISHER_TYPE_ATTRIBUTE,typeToName(type()));
 		
-		XMLHelper.writeElement(writer, 
-								PUBLISHER_ID_ELEMENT,
-								XMLHelper.encodeElement(id()),
-								attributes,
-								isFirstElement);
+		encoder.writeElement(PUBLISHER_ID_ELEMENT, id(),
+								attributes);
 	}
 	
 	public boolean validate() {

@@ -1,14 +1,13 @@
 package com.parc.ccn.data.content;
 
-import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamWriter;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.util.GenericXMLEncodable;
+import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
-import com.parc.ccn.data.util.XMLHelper;
+import com.parc.ccn.data.util.XMLEncoder;
 
 /**
  * Mapping from a link to the underlying XML representation.
@@ -49,27 +48,27 @@ public class Link extends GenericXMLEncodable implements XMLEncodable {
 	 * 
 	 */
 	
-	public void decode(XMLEventReader reader) throws XMLStreamException {
-		XMLHelper.readStartElement(reader, LINK_ELEMENT);
+	public void decode(XMLDecoder decoder) throws XMLStreamException {
+		decoder.readStartElement(LINK_ELEMENT);
 
 		_targetName = new ContentName();
-		_targetName.decode(reader);
+		_targetName.decode(decoder);
 		
-		if (XMLHelper.peekStartElement(reader, LinkAuthenticator.LINK_AUTHENTICATOR_ELEMENT)) {
+		if (decoder.peekStartElement(LinkAuthenticator.LINK_AUTHENTICATOR_ELEMENT)) {
 			_targetAuthenticator = new LinkAuthenticator();
-			_targetAuthenticator.decode(reader);
+			_targetAuthenticator.decode(decoder);
 		}
 
-		XMLHelper.readEndElement(reader);
+		decoder.readEndElement();
 	}
 
-	public void encode(XMLStreamWriter writer, boolean isFirstElement) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws XMLStreamException {
 
-		XMLHelper.writeStartElement(writer, LINK_ELEMENT, isFirstElement);
-		_targetName.encode(writer);
+		encoder.writeStartElement(LINK_ELEMENT);
+		_targetName.encode(encoder);
 		if (null != _targetAuthenticator)
-			_targetAuthenticator.encode(writer);
-		writer.writeEndElement();   		
+			_targetAuthenticator.encode(encoder);
+		encoder.writeEndElement();   		
 	}
 	
 	public boolean validate() {

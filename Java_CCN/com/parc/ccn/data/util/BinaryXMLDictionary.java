@@ -10,7 +10,7 @@ import com.parc.ccn.Library;
 public class BinaryXMLDictionary {
 	
 	// Should not necessarily tie this to CCN...
-	protected static String DEFAULT_DICTIONARY_FILENAME = "tagname.cvsdict";
+	protected static String DEFAULT_DICTIONARY_FILENAME = "tagname.csvdict";
 	
 	protected String _dictionaryFileName;
 	protected HashMap<String,Long> _encodingDictionary = new HashMap<String,Long>();

@@ -7,9 +7,9 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
-import com.parc.ccn.data.util.XMLHelper;
+import com.parc.ccn.data.util.TextXMLCodec;
 
-public class XMLHelperTest {
+public class TextXMLCodecTest {
 
 	@Test
 	public void testParseDateTime() {
@@ -31,11 +31,11 @@ public class XMLHelperTest {
 	}
 	
 	public void testDateTime(Timestamp testDateTime) {
-		String strDateTime = XMLHelper.formatDateTime(testDateTime);
+		String strDateTime = TextXMLCodec.formatDateTime(testDateTime);
 		System.out.println("DateTime: " + testDateTime + " XML version: " + strDateTime);
 		Timestamp parsedDateTime = null;
 		try {
-			parsedDateTime = XMLHelper.parseDateTime(strDateTime);
+			parsedDateTime = TextXMLCodec.parseDateTime(strDateTime);
 		} catch (ParseException e) {
 			System.out.println("Exception parsing date time: " + e.getMessage());
 			e.printStackTrace();

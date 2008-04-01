@@ -3,14 +3,13 @@ package com.parc.ccn.data.content;
 import java.util.ArrayList;
 import java.util.Iterator;
 
-import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamWriter;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.util.GenericXMLEncodable;
+import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
-import com.parc.ccn.data.util.XMLHelper;
+import com.parc.ccn.data.util.XMLEncoder;
 
 /**
  * Mapping from a collection to the underlying XML representation.
@@ -96,31 +95,31 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable {
 	 * @throws XMLStreamException 
 	 * 
 	 */
-	public void decode(XMLEventReader reader) throws XMLStreamException {
+	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		_contents.clear();
 		
-		XMLHelper.readStartElement(reader, COLLECTION_ELEMENT);
+		decoder.readStartElement(COLLECTION_ELEMENT);
 
 		Link link = null;
-		while ((null != reader.peek()) && (XMLHelper.peekStartElement(reader, Link.LINK_ELEMENT))) {
+		while (decoder.peekStartElement(Link.LINK_ELEMENT)) {
 			link = new Link();
-			link.decode(reader);
+			link.decode(decoder);
 			add(link);
 		}
-		XMLHelper.readEndElement(reader);
+		decoder.readEndElement();
 	}
 
-	public void encode(XMLStreamWriter writer, boolean isFirstElement) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		XMLHelper.writeStartElement(writer, COLLECTION_ELEMENT, isFirstElement);
+		encoder.writeStartElement(COLLECTION_ELEMENT);
 		Iterator<Link> linkIt = contents().iterator();
 		while (linkIt.hasNext()) {
 			Link link = linkIt.next();
-			link.encode(writer);
+			link.encode(encoder);
 		}
-		writer.writeEndElement();   		
+		encoder.writeEndElement();   		
 	}
 	
 	public boolean validate() { 

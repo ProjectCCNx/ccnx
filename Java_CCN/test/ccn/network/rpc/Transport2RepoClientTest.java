@@ -125,7 +125,7 @@ public class Transport2RepoClientTest {
 										 document3, false);
 			ContentObject obj = new ContentObject(versionedName, versionedName.count(), authenticator, document3, signingKey);
 			DataBlock block = new DataBlock();
-			block.data = obj.canonicalizeAndEncode(signingKey);
+			block.data = obj.encode();
 			block.length = block.data.length;
 			
 			Library.logger().info("Calling putBlock.");

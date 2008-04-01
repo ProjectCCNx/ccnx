@@ -1,8 +1,7 @@
 package com.parc.ccn.data.util;
 
+import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.TreeMap;
 
@@ -14,11 +13,6 @@ import javax.xml.stream.events.XMLEvent;
 
 public class TextXMLDecoder implements XMLDecoder {
 
-	static {
-		XMLCodecFactory.registerDecoder(TextXMLCodec.codecName(), 
-				TextXMLDecoder.class);
-	}
-	
 	protected InputStream _istream = null;
 	protected XMLEventReader _reader = null;
 
@@ -106,15 +100,19 @@ public class TextXMLDecoder implements XMLDecoder {
 	}
 
 	public byte[] readBinaryElement(String startTag) throws XMLStreamException {
-		readBinaryElement(startTag, null);
+		return readBinaryElement(startTag, null);
 	}
 
 	public byte[] readBinaryElement(String startTag,
 			TreeMap<String, String> attributes) throws XMLStreamException {
-		readStartElement(startTag, attributes);
-		String strElementText = _reader.getElementText();
-		// readEndElement(); // getElementText eats the endElement
-		return TextXMLCodec.decodeBinaryElement(strElementText);
+		try {
+			readStartElement(startTag, attributes);
+			String strElementText = _reader.getElementText();
+			// readEndElement(); // getElementText eats the endElement
+			return TextXMLCodec.decodeBinaryElement(strElementText);
+		} catch (IOException e) {
+			throw new XMLStreamException(e.getMessage(), e);
+		}
 	}
 
 }

@@ -1,15 +1,12 @@
 package com.parc.ccn.data;
 
-import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.PrivateKey;
 import java.security.SignatureException;
 import java.sql.Timestamp;
 import java.util.Arrays;
 
-import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamWriter;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.security.ContentAuthenticator;
@@ -17,8 +14,9 @@ import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
 import com.parc.ccn.data.util.GenericXMLEncodable;
+import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
-import com.parc.ccn.data.util.XMLHelper;
+import com.parc.ccn.data.util.XMLEncoder;
 import com.parc.ccn.security.crypto.DigestHelper;
 
 /**
@@ -74,45 +72,39 @@ public class CompleteName extends GenericXMLEncodable implements XMLEncodable {
 	 * Thought about encoding and decoding as flat -- no wrapping
 	 * declaration. But then couldn't use these solo.
 	 */
-	public void decode(XMLEventReader reader) throws XMLStreamException {
-		XMLHelper.readStartElement(reader, COMPLETE_NAME_ELEMENT);
+	public void decode(XMLDecoder decoder) throws XMLStreamException {
+		decoder.readStartElement(COMPLETE_NAME_ELEMENT);
 
 		_name = new ContentName();
-		_name.decode(reader);
+		_name.decode(decoder);
 		
-		if (XMLHelper.peekStartElement(reader, ContentAuthenticator.CONTENT_AUTHENTICATOR_ELEMENT)) {
+		if (decoder.peekStartElement(ContentAuthenticator.CONTENT_AUTHENTICATOR_ELEMENT)) {
 			_authenticator = new ContentAuthenticator();
-			_authenticator.decode(reader);
+			_authenticator.decode(decoder);
 		}
 		
-		String strSignature = XMLHelper.readElementText(reader, SIGNATURE_ELEMENT); 
-		try {
-			_signature = XMLHelper.decodeElement(strSignature);
-		} catch (IOException e) {
-			throw new XMLStreamException("Cannot decode signature : " + strSignature, e);
-		}
+		_signature = decoder.readBinaryElement(SIGNATURE_ELEMENT); 
 
-		XMLHelper.readEndElement(reader);
+		decoder.readEndElement();
 	}
 
-	public void encode(XMLStreamWriter writer, boolean isFirstElement) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		XMLHelper.writeStartElement(writer, COMPLETE_NAME_ELEMENT, isFirstElement);
+		encoder.writeStartElement(COMPLETE_NAME_ELEMENT);
 		
-		name().encode(writer);
+		name().encode(encoder);
 		
 		if (null != authenticator())
-			authenticator().encode(writer);
+			authenticator().encode(encoder);
 		
 		if (null != signature()) {
 			// needs to handle null content
-			XMLHelper.writeElement(writer, SIGNATURE_ELEMENT, 
-					XMLHelper.encodeElement(_signature));
+			encoder.writeElement(SIGNATURE_ELEMENT, _signature);
 		}
 
-		writer.writeEndElement();   		
+		encoder.writeEndElement();   		
 	}
 	
 	public boolean validate() {
@@ -150,7 +142,7 @@ public class CompleteName extends GenericXMLEncodable implements XMLEncodable {
 		try {
 			authenticatorDigest =
 				DigestHelper.digest(
-						authenticator.canonicalizeAndEncode());
+						authenticator.encode());
 		} catch (XMLStreamException e) {
 			Library.handleException("Exception encoding internally-generated XML!", e);
 			throw new SignatureException(e);

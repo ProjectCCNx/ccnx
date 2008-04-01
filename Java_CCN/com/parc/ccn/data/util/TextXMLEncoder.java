@@ -1,26 +1,15 @@
 package com.parc.ccn.data.util;
 
-import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.TreeMap;
 
-import javax.xml.stream.XMLEventReader;
-import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
-import sun.misc.BASE64Encoder;
-
 public class TextXMLEncoder implements XMLEncoder {
 
-	static {
-		XMLCodecFactory.registerEncoder(TextXMLCodec.codecName(), 
-				TextXMLEncoder.class);
-	}
-	
 	protected OutputStream _ostream = null;
 	protected XMLStreamWriter _writer = null;
 	protected boolean _isFirstElement = true;

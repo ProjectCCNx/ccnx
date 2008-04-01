@@ -69,7 +69,8 @@ public class CollectionTest {
 	public void testEncodeOutputStream() {
 		Collection c = new Collection(ls);
 		Collection cdec = new Collection();
-		XMLEncodableTester.encodeDecodeTest("Collection", c, cdec);
+		Collection bcdec = new Collection();
+		XMLEncodableTester.encodeDecodeTest("Collection", c, cdec, bcdec);
 	}
 
 	@Test

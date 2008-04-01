@@ -1,16 +1,16 @@
 package com.parc.ccn.data.security;
 
-import java.io.IOException;
 import java.sql.Timestamp;
+import java.text.ParseException;
 import java.util.Arrays;
 
-import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamWriter;
 
 import com.parc.ccn.data.util.GenericXMLEncodable;
+import com.parc.ccn.data.util.TextXMLCodec;
+import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
-import com.parc.ccn.data.util.XMLHelper;
+import com.parc.ccn.data.util.XMLEncoder;
 
 public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodable {
 
@@ -172,88 +172,82 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 		return true;
 	}
 
-	public void decode(XMLEventReader reader) throws XMLStreamException {
-		XMLHelper.readStartElement(reader, LINK_AUTHENTICATOR_ELEMENT);
+	public void decode(XMLDecoder decoder) throws XMLStreamException {
+		decoder.readStartElement(LINK_AUTHENTICATOR_ELEMENT);
 		
-		if (XMLHelper.peekStartElement(reader, PublisherID.PUBLISHER_ID_ELEMENT)) {
+		if (decoder.peekStartElement(PublisherID.PUBLISHER_ID_ELEMENT)) {
 			_publisher = new PublisherID();
-			_publisher.decode(reader);
+			_publisher.decode(decoder);
 		}
 
-		if (XMLHelper.peekStartElement(reader, NAME_COMPONENT_COUNT_ELEMENT)) {
-			String strLength = XMLHelper.readElementText(reader, NAME_COMPONENT_COUNT_ELEMENT); 
+		if (decoder.peekStartElement(NAME_COMPONENT_COUNT_ELEMENT)) {
+			String strLength = decoder.readUTF8Element(NAME_COMPONENT_COUNT_ELEMENT); 
 			_nameComponentCount = Integer.valueOf(strLength);
 			if (null == _nameComponentCount) {
 				throw new XMLStreamException("Cannot parse name length: " + strLength);
 			}
 		}
 			
-		if (XMLHelper.peekStartElement(reader, TIMESTAMP_ELEMENT)) {
-			String strTimestamp = XMLHelper.readElementText(reader, TIMESTAMP_ELEMENT);
-			_timestamp = Timestamp.valueOf(strTimestamp);
+		if (decoder.peekStartElement(TIMESTAMP_ELEMENT)) {
+			String strTimestamp = decoder.readUTF8Element(TIMESTAMP_ELEMENT);
+			try {
+				_timestamp = TextXMLCodec.parseDateTime(strTimestamp);
+			} catch (ParseException e) {
+				_timestamp = null;
+			}
 			if (null == _timestamp) {
 				throw new XMLStreamException("Cannot parse timestamp: " + strTimestamp);
 			}
 		}
 
-		if (XMLHelper.peekStartElement(reader, CONTENT_TYPE_ELEMENT)) {
-			String strType = XMLHelper.readElementText(reader, CONTENT_TYPE_ELEMENT);
+		if (decoder.peekStartElement(CONTENT_TYPE_ELEMENT)) {
+			String strType = decoder.readUTF8Element(CONTENT_TYPE_ELEMENT);
 			_type = ContentAuthenticator.nameToType(strType);
 			if (null == _type) {
 				throw new XMLStreamException("Cannot parse authenticator type: " + strType);
 			}
 		}
 		
-		if (XMLHelper.peekStartElement(reader, CONTENT_HASH_ELEMENT)) {
-			String strHash = XMLHelper.readElementText(reader, CONTENT_HASH_ELEMENT);
-			try {
-				_contentDigest = XMLHelper.decodeElement(strHash);
-			} catch (IOException e) {
-				throw new XMLStreamException("Cannot parse content hash: " + strHash, e);
-			}
+		if (decoder.peekStartElement(CONTENT_HASH_ELEMENT)) {
+			_contentDigest = decoder.readBinaryElement(CONTENT_HASH_ELEMENT);
 			if (null == _contentDigest) {
-				throw new XMLStreamException("Cannot parse content hash: " + strHash);
+				throw new XMLStreamException("Cannot parse content hash.");
 			}
 		}
 				
-		XMLHelper.readEndElement(reader);
+		decoder.readEndElement();
 	}
 
-	public void encode(XMLStreamWriter writer, boolean isFirstElement) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		XMLHelper.writeStartElement(writer, LINK_AUTHENTICATOR_ELEMENT, isFirstElement);
+		encoder.writeStartElement(LINK_AUTHENTICATOR_ELEMENT);
 		
 		if (!emptyPublisher()) {
-			publisherID().encode(writer);
+			publisherID().encode(encoder);
 		}
 
 		if (!emptyNameComponentCount()) {
-			XMLHelper.writeElement(writer, NAME_COMPONENT_COUNT_ELEMENT, Integer.toString(nameComponentCount()));
+			encoder.writeElement(NAME_COMPONENT_COUNT_ELEMENT, Integer.toString(nameComponentCount()));
 		}
 
 		// TODO DKS - make match correct XML timestamp format
 		// dateTime	1999-05-31T13:20:00.000-05:00
 		// currently writing 2007-10-23 21:36:05.828
 		if (!emptyTimestamp()) {
-			writer.writeStartElement(TIMESTAMP_ELEMENT);
-			writer.writeCharacters(timestamp().toString());
-			writer.writeEndElement();
+			encoder.writeElement(TIMESTAMP_ELEMENT, 
+								 TextXMLCodec.formatDateTime(timestamp()));
 		}
 		
 		if (!emptyContentType()) {
-			writer.writeStartElement(CONTENT_TYPE_ELEMENT);
-			writer.writeCharacters(ContentAuthenticator.typeToName(type()));
-			writer.writeEndElement();
+			encoder.writeElement(CONTENT_TYPE_ELEMENT, ContentAuthenticator.typeToName(type()));
 		}
 		
 		if (!emptyContentDigest()) {
-			writer.writeStartElement(CONTENT_HASH_ELEMENT);
-			writer.writeCharacters(XMLHelper.encodeElement(contentDigest()));
-			writer.writeEndElement();   
+			encoder.writeElement(CONTENT_HASH_ELEMENT, contentDigest());
 		}
-		writer.writeEndElement();   		
+		encoder.writeEndElement();   		
 	}
 	
 	public boolean validate() {

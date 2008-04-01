@@ -94,7 +94,8 @@ public class ContentAuthenticatorTest {
 				ContentAuthenticator.ContentType.LEAF, 
 				nameLoc, contenthash, true);
 		ContentAuthenticator dnca = new ContentAuthenticator();
-		XMLEncodableTester.encodeDecodeTest("ContentAuthenticator(name)", nca, dnca);
+		ContentAuthenticator bdnca = new ContentAuthenticator();
+		XMLEncodableTester.encodeDecodeTest("ContentAuthenticator(name)", nca, dnca, bdnca);
 
 		ContentAuthenticator kca = new ContentAuthenticator(
 				pubkey, 
@@ -103,7 +104,8 @@ public class ContentAuthenticatorTest {
 				ContentAuthenticator.ContentType.LEAF, 
 				keyLoc, contenthash, true);
 		ContentAuthenticator dkca = new ContentAuthenticator();
-		XMLEncodableTester.encodeDecodeTest("ContentAuthenticator(key)", kca, dkca);
+		ContentAuthenticator bdkca = new ContentAuthenticator();
+		XMLEncodableTester.encodeDecodeTest("ContentAuthenticator(key)", kca, dkca, bdkca);
 
 		ContentAuthenticator cca = new ContentAuthenticator(pubkey, 
 				null,
@@ -111,7 +113,8 @@ public class ContentAuthenticatorTest {
 				ContentAuthenticator.ContentType.LEAF, 
 				certLoc, contenthash, true);
 		ContentAuthenticator dcca = new ContentAuthenticator();
-		XMLEncodableTester.encodeDecodeTest("ContentAuthenticator(cert)", cca, dcca);
+		ContentAuthenticator bdcca = new ContentAuthenticator();
+		XMLEncodableTester.encodeDecodeTest("ContentAuthenticator(cert)", cca, dcca, bdcca);
 		
 	}
 

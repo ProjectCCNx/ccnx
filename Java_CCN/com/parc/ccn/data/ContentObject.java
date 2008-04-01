@@ -9,15 +9,14 @@ import java.security.SignatureException;
 import java.security.cert.CertificateEncodingException;
 import java.util.Arrays;
 
-import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamWriter;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.util.GenericXMLEncodable;
+import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
-import com.parc.ccn.data.util.XMLHelper;
+import com.parc.ccn.data.util.XMLEncoder;
 import com.parc.ccn.security.crypto.DigestHelper;
 import com.parc.ccn.security.crypto.SignatureHelper;
 import com.parc.ccn.security.keys.KeyManager;
@@ -77,50 +76,38 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
     
     public CompleteName completeName() { return new CompleteName(name(), authenticator(), signature()); }
 
-	public void decode(XMLEventReader reader) throws XMLStreamException {
-		XMLHelper.readStartElement(reader, CONTENT_OBJECT_ELEMENT);
+	public void decode(XMLDecoder decoder) throws XMLStreamException {
+		decoder.readStartElement(CONTENT_OBJECT_ELEMENT);
 
 		_name = new ContentName();
-		_name.decode(reader);
+		_name.decode(decoder);
 		
 		_authenticator = new ContentAuthenticator();
-		_authenticator.decode(reader);
+		_authenticator.decode(decoder);
 		
-		String strSignature = XMLHelper.readElementText(reader, SIGNATURE_ELEMENT); 
-		try {
-			_signature = XMLHelper.decodeElement(strSignature);
-		} catch (IOException e) {
-			throw new XMLStreamException("Cannot decode signature : " + strSignature, e);
-		}
+		_signature = decoder.readBinaryElement(SIGNATURE_ELEMENT);
 
-		String strContent = XMLHelper.readElementText(reader, CONTENT_ELEMENT); 
-		try {
-			_content = XMLHelper.decodeElement(strContent);
-		} catch (IOException e) {
-			throw new XMLStreamException("Cannot decode content : " + strContent, e);
-		}
+		_content = decoder.readBinaryElement(CONTENT_ELEMENT);
 		
-		XMLHelper.readEndElement(reader);
+		decoder.readEndElement();
 	}
 
-	public void encode(XMLStreamWriter writer, boolean isFirstElement) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		XMLHelper.writeStartElement(writer, CONTENT_OBJECT_ELEMENT, isFirstElement);
+		encoder.writeStartElement(CONTENT_OBJECT_ELEMENT);
 
-		name().encode(writer);
-		authenticator().encode(writer);
-
-		// needs to handle null content
-		XMLHelper.writeElement(writer, SIGNATURE_ELEMENT, 
-				XMLHelper.encodeElement(_signature));
+		name().encode(encoder);
+		authenticator().encode(encoder);
 
 		// needs to handle null content
-		XMLHelper.writeElement(writer, CONTENT_ELEMENT, 
-				XMLHelper.encodeElement(_content));
+		encoder.writeElement(SIGNATURE_ELEMENT, _signature);
 
-		writer.writeEndElement();   		
+		// needs to handle null content
+		encoder.writeElement(CONTENT_ELEMENT, _content);
+
+		encoder.writeEndElement();   		
 	}
 	
 	public boolean validate() { 

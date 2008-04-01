@@ -13,6 +13,8 @@ import javax.xml.stream.XMLStreamException;
 
 import org.junit.Test;
 
+import test.ccn.data.XMLEncodableTester;
+
 import com.parc.ccn.data.content.*;
 
 /**
@@ -69,6 +71,11 @@ public class HeaderTest {
 		}
 		System.out.println("Encoded header: " );
 		System.out.println(baos.toString());
+		
+		Header dt = new Header();
+		Header db = new Header();
+		
+		XMLEncodableTester.encodeDecodeTest("Header", seq, dt, db);
 	}
 
 	@Test

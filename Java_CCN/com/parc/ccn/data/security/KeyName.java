@@ -1,13 +1,12 @@
 package com.parc.ccn.data.security;
 
-import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamWriter;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.util.GenericXMLEncodable;
+import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
-import com.parc.ccn.data.util.XMLHelper;
+import com.parc.ccn.data.util.XMLEncoder;
 
 /**
  * We sometimes need to refer to the "complete" name
@@ -51,31 +50,31 @@ public class KeyName extends GenericXMLEncodable implements XMLEncodable {
 	 * Thought about encoding and decoding as flat -- no wrapping
 	 * declaration. But then couldn't use these solo.
 	 */
-	public void decode(XMLEventReader reader) throws XMLStreamException {
-		XMLHelper.readStartElement(reader, KEY_NAME_ELEMENT);
+	public void decode(XMLDecoder decoder) throws XMLStreamException {
+		decoder.readStartElement(KEY_NAME_ELEMENT);
 
 		_name = new ContentName();
-		_name.decode(reader);
+		_name.decode(decoder);
 		
-		if (XMLHelper.peekStartElement(reader, PublisherID.PUBLISHER_ID_ELEMENT)) {
+		if (decoder.peekStartElement(PublisherID.PUBLISHER_ID_ELEMENT)) {
 			_publisher = new PublisherID();
-			_publisher.decode(reader);
+			_publisher.decode(decoder);
 		}
 		
-		XMLHelper.readEndElement(reader);
+		decoder.readEndElement();
 	}
 
-	public void encode(XMLStreamWriter writer, boolean isFirstElement) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		XMLHelper.writeStartElement(writer, KEY_NAME_ELEMENT, isFirstElement);
+		encoder.writeStartElement(KEY_NAME_ELEMENT);
 		
-		name().encode(writer);
+		name().encode(encoder);
 		if (null != publisher())
-			publisher().encode(writer);
+			publisher().encode(encoder);
 
-		writer.writeEndElement();   		
+		encoder.writeEndElement();   		
 	}
 	
 	public boolean validate() {

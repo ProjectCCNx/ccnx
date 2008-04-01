@@ -46,7 +46,8 @@ public class TextXMLCodec {
 
 	/**
 	 * Put our intput/output of Timestamps in one place as
-	 * it seems tricky.
+	 * it seems tricky. Used by all classes to encode, so
+	 * might want to go somewhere else.
 	 * @param dateTime
 	 * @return
 	 */

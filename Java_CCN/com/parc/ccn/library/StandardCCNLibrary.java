@@ -143,7 +143,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 			locator = keyManager().getKeyLocator(signingKey);
 	
 		try {
-			return newVersion(name, collectionData.canonicalizeAndEncode(signingKey), 
+			return newVersion(name, collectionData.encode(), 
 								ContentType.COLLECTION, publisher);
 		} catch (XMLStreamException e) {
 			Library.logger().warning("Cannot canonicalize a standard container!");
@@ -243,7 +243,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	
 		Link linkData = new Link(target, targetAuthenticator);
 		try {
-			return put(src, linkData.canonicalizeAndEncode(signingKey), ContentType.LINK, publisher, locator, signingKey);
+			return put(src, linkData.encode(), ContentType.LINK, publisher, locator, signingKey);
 		} catch (XMLStreamException e) {
 			Library.logger().warning("Cannot canonicalize a standard link!");
 			Library.warningStackTrace(e);

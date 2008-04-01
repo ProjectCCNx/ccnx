@@ -59,7 +59,7 @@ import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
-import com.parc.ccn.data.util.XMLHelper;
+import com.parc.ccn.data.util.TextXMLCodec;
 import com.parc.ccn.network.CCNRepository;
 import com.parc.ccn.network.CCNRepositoryFactory;
 import com.parc.ccn.network.GenericCCNRepository;
@@ -1084,7 +1084,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		// very long...
 		if (str.contains("%")) {
 			str = BASE64_MARKER + 
-		      XMLHelper.encodeElement(component);
+		      TextXMLCodec.encodeBinaryElement(component);
 			// We also need to cope with the fact that "/" is a legal
 			// base64 character. If we find a / in the base64'ed
 			// string, we change it into -, which is legal for
@@ -1159,7 +1159,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 				base64String = base64String.replace("_X002B_", "+");
 				base64String = base64String.replace("_X002F_", "/");
 				
-				return XMLHelper.decodeElement(base64String);
+				return TextXMLCodec.decodeBinaryElement(base64String);
 			} catch (IOException e) {
 				Library.logger().warning("Cannot decode base64-encoded element that we encoded: " + parseString);
 				return new byte[0]; // DKS TODO need better answer

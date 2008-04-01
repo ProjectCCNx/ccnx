@@ -158,7 +158,7 @@ public class CCNMerkleTree extends MerkleTree {
 		_blockNames[i] = uniqueName.name();
 		byte[] blockDigest = null;
 		try {
-			blockDigest = super.computeNodeDigest(_blockNames[i].canonicalizeAndEncode(), contentBlocks[i]);
+			blockDigest = super.computeNodeDigest(_blockNames[i].encode(), contentBlocks[i]);
 		} catch (XMLStreamException e) {
 			Library.handleException("This should not happen: exception encoding XML content we created!",e);
 		}

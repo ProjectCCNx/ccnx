@@ -1,6 +1,5 @@
 package com.parc.ccn.data.util;
 
-import java.lang.reflect.Constructor;
 import java.util.HashMap;
 import java.util.logging.Level;
 
@@ -11,10 +10,28 @@ public class XMLCodecFactory {
 	
 	protected static String _defaultCodec = null;
 	
-	protected static HashMap<String,Class<? extends XMLEncoder>> _registeredEncoders =
-											new HashMap<String,Class<? extends XMLEncoder>>();
-	protected static HashMap<String,Class<? extends XMLDecoder>> _registeredDecoders =
-											new HashMap<String,Class<? extends XMLDecoder>>();
+	static {
+		// Make sure this happens before any registrations
+		_registeredEncoders = new HashMap<String,Class<? extends XMLEncoder>>();
+		_registeredDecoders = new HashMap<String,Class<? extends XMLDecoder>>();
+
+		// Register standard system encoders and decoders here. If
+		// registration placed in static initializers of their own class,
+		// those aren't called till the classes are loaded, which doesn't
+		// happen till we make one -- which we can't do till they're
+		// registered. Chicken and egg... avoid by doing it here.
+		XMLCodecFactory.registerEncoder(TextXMLCodec.codecName(), 
+										TextXMLEncoder.class);
+		XMLCodecFactory.registerDecoder(TextXMLCodec.codecName(), 
+										TextXMLDecoder.class);
+		XMLCodecFactory.registerDecoder(BinaryXMLCodec.codecName(), 
+										BinaryXMLDecoder.class);
+		XMLCodecFactory.registerEncoder(BinaryXMLCodec.codecName(), 
+										BinaryXMLEncoder.class);
+	}
+	
+	protected static HashMap<String,Class<? extends XMLEncoder>> _registeredEncoders;
+	protected static HashMap<String,Class<? extends XMLDecoder>> _registeredDecoders;
 	
 	public static void registerEncoder(String name, Class<? extends XMLEncoder> encoderClass) {
 		_registeredEncoders.put(name, encoderClass);
@@ -60,30 +77,14 @@ public class XMLCodecFactory {
 	public static XMLEncoder getEncoder(String codecName) {
 		Class<? extends XMLEncoder> encoderClass = getEncoderClass(codecName);
 		
-		// Have the class. Now need to use the default constructor.
-		Class<?> argumentTypes[] = new Class[]{};
-		Constructor<? extends XMLEncoder> ctr = null;
-		try {
-			ctr = encoderClass.getConstructor(argumentTypes);
-		} catch (Exception e) {
-			Library.logger().warning("Unexpected error: cannot get XMLEncoder constructor for repository class " + encoderClass.getName());
-			Library.logStackTrace(Level.WARNING, e);
-			throw new RuntimeException("Unexpected error: cannot get XMLEncoder constructor for repository class " + encoderClass.getName(), e);
-		} 
-		if (null == ctr) {
-			Library.logger().warning("Unexpected error: repository class " + encoderClass.getName() + " has no default constructor.");
-			throw new RuntimeException("Unexpected error: repository class " + encoderClass.getName() + " has no default constructor.");
+		if (null == encoderClass) {
+			return null;
 		}
 		
-		// Now call it
-		Object arglist[] = new Object[]{};
+		// Have the class. Now need to use the default constructor.
 		XMLEncoder encoder = null;
 		try {
-			encoder = ctr.newInstance(arglist);
-		} catch (IllegalArgumentException e) {
-			Library.logger().warning("Illegal argument exception: cannot create instance of encoder class " + encoderClass.getName());
-			Library.logStackTrace(Level.WARNING, e);
-			throw e;
+			encoder = encoderClass.newInstance();
 		} catch (Exception e) {
 			Library.logger().warning("Unexpected error: cannot create instance of encoder class " + encoderClass.getName());
 			Library.logStackTrace(Level.WARNING, e);
@@ -106,36 +107,19 @@ public class XMLCodecFactory {
 	 * @return
 	 */
 	public static XMLDecoder getDecoder(String codecName) {
-		Class<? extends XMLDecoder> encoderClass = getDecoderClass(codecName);
+		Class<? extends XMLDecoder> decoderClass = getDecoderClass(codecName);
 		
-		// Have the class. Now need to use the default constructor.
-		Class<?> argumentTypes[] = new Class[]{};
-		Constructor<? extends XMLDecoder> ctr = null;
-		try {
-			ctr = encoderClass.getConstructor(argumentTypes);
-		} catch (Exception e) {
-			Library.logger().warning("Unexpected error: cannot get XMLEncoder constructor for repository class " + encoderClass.getName());
-			Library.logStackTrace(Level.WARNING, e);
-			throw new RuntimeException("Unexpected error: cannot get XMLEncoder constructor for repository class " + encoderClass.getName(), e);
-		} 
-		if (null == ctr) {
-			Library.logger().warning("Unexpected error: repository class " + encoderClass.getName() + " has no default constructor.");
-			throw new RuntimeException("Unexpected error: repository class " + encoderClass.getName() + " has no default constructor.");
+		if (null == decoderClass) {
+			return null;
 		}
-		
-		// Now call it
-		Object arglist[] = new Object[]{};
+		// Have the class. Now need to use the default constructor.
 		XMLDecoder decoder = null;
 		try {
-			decoder = ctr.newInstance(arglist);
-		} catch (IllegalArgumentException e) {
-			Library.logger().warning("Illegal argument exception: cannot create instance of encoder class " + encoderClass.getName());
-			Library.logStackTrace(Level.WARNING, e);
-			throw e;
+			decoder = decoderClass.newInstance();
 		} catch (Exception e) {
-			Library.logger().warning("Unexpected error: cannot create instance of encoder class " + encoderClass.getName());
+			Library.logger().warning("Unexpected error: cannot create instance of decoder class " + decoderClass.getName());
 			Library.logStackTrace(Level.WARNING, e);
-			throw new RuntimeException("Unexpected error: cannot create instance of encoder class " + encoderClass.getName(), e);
+			throw new RuntimeException("Unexpected error: cannot create instance of decoder class " + decoderClass.getName(), e);
 		}
 		
 		return decoder;

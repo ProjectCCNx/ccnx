@@ -1,18 +1,15 @@
 package com.parc.ccn.data.security;
 
-import java.io.IOException;
 import java.security.PublicKey;
 import java.util.Arrays;
-import java.util.HashMap;
 
-import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamWriter;
 
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.data.util.GenericXMLEncodable;
+import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
-import com.parc.ccn.data.util.XMLHelper;
+import com.parc.ccn.data.util.XMLEncoder;
 
 /**
  * Helper wrapper class for publisher IDs.
@@ -71,32 +68,23 @@ public class PublisherKeyID extends GenericXMLEncodable implements XMLEncodable,
 		return true;
 	}
 	
-	public void decode(XMLEventReader reader) throws XMLStreamException {
+	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		
 		// The format of a publisher ID is an octet string.
 
-		String strID = XMLHelper.readElementText(reader, PUBLISHER_KEY_ID_ELEMENT);
-		try {
-			_publisherID = XMLHelper.decodeElement(strID);
-		} catch (IOException e) {
-			throw new XMLStreamException("Cannot parse publisher key ID: " + strID, e);
-		}
+		_publisherID = decoder.readBinaryElement(PUBLISHER_KEY_ID_ELEMENT);
 		if (null == _publisherID) {
-			throw new XMLStreamException("Cannot parse publisher key ID: " + strID);
+			throw new XMLStreamException("Cannot parse publisher key ID.");
 		}
 	}
 
-	public void encode(XMLStreamWriter writer, boolean isFirstElement) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		// The format of a publisher ID is:
 		// <PublisherID type=<type> id_content />
-		XMLHelper.writeElement(writer, 
-								PUBLISHER_KEY_ID_ELEMENT,
-								XMLHelper.encodeElement(id()),
-								null,
-								isFirstElement);
+		encoder.writeElement(PUBLISHER_KEY_ID_ELEMENT,id());
 	}
 	
 	public boolean validate() {

@@ -1,6 +1,5 @@
 package com.parc.ccn.data;
 
-import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.net.URLDecoder;
@@ -8,15 +7,14 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamWriter;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.data.util.GenericXMLEncodable;
+import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
-import com.parc.ccn.data.util.XMLHelper;
+import com.parc.ccn.data.util.XMLEncoder;
 import com.parc.ccn.network.rpc.Name;
 import com.parc.ccn.network.rpc.NameComponent;
 
@@ -239,21 +237,16 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		return componentPrint(_components.get(i));
 	}
 	
-	public void decode(XMLEventReader reader) throws XMLStreamException {
-		XMLHelper.readStartElement(reader, CONTENT_NAME_ELEMENT);
+	public void decode(XMLDecoder decoder) throws XMLStreamException {
+		decoder.readStartElement(CONTENT_NAME_ELEMENT);
 		
 		_components = new ArrayList<byte []>();
 		
-		while (XMLHelper.peekStartElement(reader, COMPONENT_ELEMENT)) {
-			String strComponent = XMLHelper.readElementText(reader, COMPONENT_ELEMENT); 
-			try {
-				_components.add(XMLHelper.decodeElement(strComponent));
-			} catch (IOException e) {
-				throw new XMLStreamException("Cannot decode component: " + strComponent, e);
-			}
+		while (decoder.peekStartElement(COMPONENT_ELEMENT)) {
+			_components.add(decoder.readBinaryElement(COMPONENT_ELEMENT));
 		}
 		
-		XMLHelper.readEndElement(reader);
+		decoder.readEndElement();
 	}
 
 	public boolean equals(Object obj) {
@@ -358,17 +351,17 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		return this.equals(other, this.count());
 	}
 	
-	public void encode(XMLStreamWriter writer, boolean isFirstElement) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		XMLHelper.writeStartElement(writer, CONTENT_NAME_ELEMENT, isFirstElement);
+
+		encoder.writeStartElement(CONTENT_NAME_ELEMENT);
 		
 		for (int i=0; i < count(); ++i) {
-			XMLHelper.writeElement(writer, COMPONENT_ELEMENT, 
-					XMLHelper.encodeElement(_components.get(i)));
+			encoder.writeElement(COMPONENT_ELEMENT, _components.get(i));
 		}
-		writer.writeEndElement();
+		encoder.writeEndElement();
 	}
 	
 	public boolean validate() { 

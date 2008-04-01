@@ -15,9 +15,7 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.HashMap;
 import java.util.logging.Level;
 
-import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamWriter;
 
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.ASN1Sequence;
@@ -27,8 +25,9 @@ import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.util.GenericXMLEncodable;
+import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
-import com.parc.ccn.data.util.XMLHelper;
+import com.parc.ccn.data.util.XMLEncoder;
 import com.parc.ccn.security.crypto.certificates.OIDLookup;
 
 public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
@@ -127,44 +126,40 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 		return true;
 	}
 
-	public void decode(XMLEventReader reader) throws XMLStreamException {
-		XMLHelper.readStartElement(reader, KEY_LOCATOR_ELEMENT);
+	public void decode(XMLDecoder decoder) throws XMLStreamException {
+		decoder.readStartElement(KEY_LOCATOR_ELEMENT);
 
-		if (XMLHelper.peekStartElement(reader, PUBLISHER_KEY_ELEMENT)) {
-			String strKey = XMLHelper.readElementText(reader, PUBLISHER_KEY_ELEMENT);
+		if (decoder.peekStartElement(PUBLISHER_KEY_ELEMENT)) {
 			try {
-				byte [] encodedKey = XMLHelper.decodeElement(strKey);
+				byte [] encodedKey = decoder.readBinaryElement(PUBLISHER_KEY_ELEMENT);
 				// This is a DER-encoded SubjectPublicKeyInfo.
 				_key = decodeKey(encodedKey);
 			} catch (IOException e) {
-				Library.logger().warning("Cannot parse stored key: " + strKey + " error: " + e.getMessage());
-				throw new XMLStreamException("Cannot parse key: " + strKey, e);
+				Library.logger().warning("Cannot parse stored key: error: " + e.getMessage());
+				throw new XMLStreamException("Cannot parse key: ", e);
 			} catch (InvalidKeySpecException e) {
-				Library.logger().warning("Cannot turn stored key " + strKey + " into key of appropriate type.");
-				throw new XMLStreamException("Cannot turn stored key " + strKey + " into key of appropriate type.");
+				Library.logger().warning("Cannot turn stored key " + " into key of appropriate type.");
+				throw new XMLStreamException("Cannot turn stored key " + " into key of appropriate type.");
 			}
 			if (null == _key) {
-				throw new XMLStreamException("Cannot parse key: " + strKey);
+				throw new XMLStreamException("Cannot parse key: ");
 			}
-		} else if (XMLHelper.peekStartElement(reader, PUBLISHER_CERTIFICATE_ELEMENT)) {
-			String strCert = XMLHelper.readElementText(reader, PUBLISHER_CERTIFICATE_ELEMENT);
+		} else if (decoder.peekStartElement(PUBLISHER_CERTIFICATE_ELEMENT)) {
 			try {
-				byte [] encodedCert = XMLHelper.decodeElement(strCert);
+				byte [] encodedCert = decoder.readBinaryElement(PUBLISHER_CERTIFICATE_ELEMENT);
 				CertificateFactory factory = CertificateFactory.getInstance("X.509");
 				_certificate = (X509Certificate) factory.generateCertificate(new ByteArrayInputStream(encodedCert));
-			} catch (IOException e) {
-				throw new XMLStreamException("Cannot parse certificate: " + strCert, e);
 			} catch (CertificateException e) {
 				throw new XMLStreamException("Cannot decode certificate: " + e.getMessage(), e);
 			}
 			if (null == _certificate) {
-				throw new XMLStreamException("Cannot parse certificate: " + strCert);
+				throw new XMLStreamException("Cannot parse certificate! ");
 			}
 		} else {
 			_keyName = new KeyName();
-			_keyName.decode(reader);
+			_keyName.decode(decoder);
 		}
-		XMLHelper.readEndElement(reader);
+		decoder.readEndElement();
 	}
 	
 	public byte [] getEncoded() {
@@ -179,27 +174,24 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 		return baos.toByteArray();
 	}
 
-	public void encode(XMLStreamWriter writer, boolean isFirstElement) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		XMLHelper.writeStartElement(writer, KEY_LOCATOR_ELEMENT, isFirstElement);
+		encoder.writeStartElement(KEY_LOCATOR_ELEMENT);
 		if (type() == KeyLocatorType.KEY) {
-			XMLHelper.writeElement(writer, PUBLISHER_KEY_ELEMENT, 
-					XMLHelper.encodeElement(key().getEncoded()));
+			encoder.writeElement(PUBLISHER_KEY_ELEMENT, key().getEncoded());
 		} else if (type() == KeyLocatorType.CERTIFICATE) {
-			writer.writeStartElement(PUBLISHER_CERTIFICATE_ELEMENT);
 			try {
-				writer.writeCharacters(XMLHelper.encodeElement(certificate().getEncoded()));
+				encoder.writeElement(PUBLISHER_CERTIFICATE_ELEMENT, certificate().getEncoded());
 			} catch (CertificateEncodingException e) {
 				Library.logger().warning("CertificateEncodingException attempting to write key locator: " + e.getMessage());
-				throw new XMLStreamException(e);
+				throw new XMLStreamException("CertificateEncodingException attempting to write key locator: " + e.getMessage(), e);
 			}
-			writer.writeEndElement();
 		} else if (type() == KeyLocatorType.NAME) {
-			name().encode(writer);
+			name().encode(encoder);
 		}
-		writer.writeEndElement();   		
+		encoder.writeEndElement();   		
 	}
 	
 	public static String typeToName(KeyLocatorType type) {

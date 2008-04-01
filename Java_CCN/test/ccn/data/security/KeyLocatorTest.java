@@ -63,19 +63,23 @@ public class KeyLocatorTest {
 	public void testEncodeOutputStream() {
 		KeyLocator nameLoc = new KeyLocator(name);
 		KeyLocator nameLocDec = new KeyLocator();
-		XMLEncodableTester.encodeDecodeTest("KeyLocator(name)", nameLoc, nameLocDec);
+		KeyLocator bnameLocDec = new KeyLocator();
+		XMLEncodableTester.encodeDecodeTest("KeyLocator(name)", nameLoc, nameLocDec, bnameLocDec);
 		
 		KeyLocator nameIDLoc = new KeyLocator(name, pubID);
 		KeyLocator nameIDLocDec = new KeyLocator();
-		XMLEncodableTester.encodeDecodeTest("KeyLocator(name,ID)", nameIDLoc, nameIDLocDec);
+		KeyLocator bnameIDLocDec = new KeyLocator();
+		XMLEncodableTester.encodeDecodeTest("KeyLocator(name,ID)", nameIDLoc, nameIDLocDec, bnameIDLocDec);
 		
 		KeyLocator keyLoc = new KeyLocator(pair.getPublic());
 		KeyLocator keyLocDec = new KeyLocator();
-		XMLEncodableTester.encodeDecodeTest("KeyLocator(key)", keyLoc, keyLocDec);
+		KeyLocator bkeyLocDec = new KeyLocator();
+		XMLEncodableTester.encodeDecodeTest("KeyLocator(key)", keyLoc, keyLocDec, bkeyLocDec);
 
 		KeyLocator certLoc = new KeyLocator(cert);
 		KeyLocator certLocDec = new KeyLocator();
-		XMLEncodableTester.encodeDecodeTest("KeyLocator(cert)", certLoc, certLocDec);
+		KeyLocator bcertLocDec = new KeyLocator();
+		XMLEncodableTester.encodeDecodeTest("KeyLocator(cert)", certLoc, certLocDec, bcertLocDec);
 
 	}	
 

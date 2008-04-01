@@ -1,20 +1,19 @@
 package com.parc.ccn.data.security;
 
-import java.io.IOException;
 import java.security.cert.CertificateEncodingException;
 import java.sql.Timestamp;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.HashMap;
 
-import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamWriter;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.util.GenericXMLEncodable;
+import com.parc.ccn.data.util.TextXMLCodec;
+import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
-import com.parc.ccn.data.util.XMLHelper;
+import com.parc.ccn.data.util.XMLEncoder;
 import com.parc.ccn.security.crypto.DigestHelper;
 
 public class ContentAuthenticator extends GenericXMLEncodable implements XMLEncodable {
@@ -26,7 +25,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     protected static final String NAME_COMPONENT_COUNT_ELEMENT = "NameComponentCount";
     protected static final String TIMESTAMP_ELEMENT = "Timestamp";
     protected static final String CONTENT_TYPE_ELEMENT = "Type";
-    protected static final String CONTENT_HASH_ELEMENT = "ContentHash";
+    protected static final String CONTENT_DIGEST_ELEMENT = "ContentHash";
     
     static {
         ContentTypeNames.put(ContentType.FRAGMENT, "FRAGMENT");
@@ -248,99 +247,83 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 		return true;
 	}
 
-	public void decode(XMLEventReader reader) throws XMLStreamException {
-		XMLHelper.readStartElement(reader, CONTENT_AUTHENTICATOR_ELEMENT);
+	public void decode(XMLDecoder decoder) throws XMLStreamException {
+		decoder.readStartElement(CONTENT_AUTHENTICATOR_ELEMENT);
 		
-		if (XMLHelper.peekStartElement(reader, PublisherKeyID.PUBLISHER_KEY_ID_ELEMENT)) {
+		if (decoder.peekStartElement(PublisherKeyID.PUBLISHER_KEY_ID_ELEMENT)) {
 			_publisher = new PublisherKeyID();
-			_publisher.decode(reader);
+			_publisher.decode(decoder);
 		}
 
-		if (XMLHelper.peekStartElement(reader, NAME_COMPONENT_COUNT_ELEMENT)) {
-			String strLength = XMLHelper.readElementText(reader, NAME_COMPONENT_COUNT_ELEMENT); 
+		if (decoder.peekStartElement(NAME_COMPONENT_COUNT_ELEMENT)) {
+			String strLength = decoder.readUTF8Element(NAME_COMPONENT_COUNT_ELEMENT); 
 			_nameComponentCount = Integer.valueOf(strLength);
 			if (null == _nameComponentCount) {
 				throw new XMLStreamException("Cannot parse name length: " + strLength);
 			}
 		}
 			
-		if (XMLHelper.peekStartElement(reader, TIMESTAMP_ELEMENT)) {
-			String strTimestamp = XMLHelper.readElementText(reader, TIMESTAMP_ELEMENT);
+		if (decoder.peekStartElement(TIMESTAMP_ELEMENT)) {
+			String strTimestamp = decoder.readUTF8Element(TIMESTAMP_ELEMENT);
 			try {
-				_timestamp = XMLHelper.parseDateTime(strTimestamp);
+				_timestamp = TextXMLCodec.parseDateTime(strTimestamp);
 			} catch (ParseException e) {
 				throw new XMLStreamException("Cannot parse timestamp: " + strTimestamp, e);
 			}
 		}
 
-		if (XMLHelper.peekStartElement(reader, CONTENT_TYPE_ELEMENT)) {
-			String strType = XMLHelper.readElementText(reader, CONTENT_TYPE_ELEMENT);
+		if (decoder.peekStartElement(CONTENT_TYPE_ELEMENT)) {
+			String strType = decoder.readUTF8Element(CONTENT_TYPE_ELEMENT);
 			_type = nameToType(strType);
 			if (null == _type) {
 				throw new XMLStreamException("Cannot parse authenticator type: " + strType);
 			}
 		}
 		
-		if (XMLHelper.peekStartElement(reader, KeyLocator.KEY_LOCATOR_ELEMENT)) {
+		if (decoder.peekStartElement(KeyLocator.KEY_LOCATOR_ELEMENT)) {
 			_keyLocator = new KeyLocator();
-			_keyLocator.decode(reader);
+			_keyLocator.decode(decoder);
 		}
 		
-		if (XMLHelper.peekStartElement(reader, CONTENT_HASH_ELEMENT)) {
-			String strHash = XMLHelper.readElementText(reader, CONTENT_HASH_ELEMENT);
-			try {
-				_contentDigest = XMLHelper.decodeElement(strHash);
-			} catch (IOException e) {
-				throw new XMLStreamException("Cannot parse content hash: " + strHash, e);
-			}
-			if (null == _contentDigest) {
-				throw new XMLStreamException("Cannot parse content hash: " + strHash);
-			}
-		}
+		_contentDigest = decoder.readBinaryElement(CONTENT_DIGEST_ELEMENT);
 		
-		XMLHelper.readEndElement(reader);
+		decoder.readEndElement();
 	}
 
-	public void encode(XMLStreamWriter writer, boolean isFirstElement) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		XMLHelper.writeStartElement(writer, CONTENT_AUTHENTICATOR_ELEMENT, isFirstElement);
+		encoder.writeStartElement(CONTENT_AUTHENTICATOR_ELEMENT);
 		
 		if (!emptyPublisher()) {
-			publisherKeyID().encode(writer);
+			publisherKeyID().encode(encoder);
 		}
 
 		if (!emptyNameComponentCount()) {
-			XMLHelper.writeElement(writer, NAME_COMPONENT_COUNT_ELEMENT, Integer.toString(nameComponentCount()));
+			encoder.writeElement(NAME_COMPONENT_COUNT_ELEMENT, Integer.toString(nameComponentCount()));
 		}
 
 		// TODO DKS - make match correct XML timestamp format
 		// dateTime	1999-05-31T13:20:00.000-05:00
 		// currently writing 2007-10-23 21:36:05.828
 		if (!emptyTimestamp()) {
-			writer.writeStartElement(TIMESTAMP_ELEMENT);
-			writer.writeCharacters(XMLHelper.formatDateTime(timestamp()));
-			writer.writeEndElement();
+			encoder.writeElement(TIMESTAMP_ELEMENT, TextXMLCodec.formatDateTime(timestamp()));
 		}
 		
 		if (!emptyContentType()) {
-			writer.writeStartElement(CONTENT_TYPE_ELEMENT);
-			writer.writeCharacters(typeName());
-			writer.writeEndElement();
+			encoder.writeElement(CONTENT_TYPE_ELEMENT, typeName());
 		}
 		
 		if (!emptyKeyLocator()) {
-			keyLocator().encode(writer);
+			keyLocator().encode(encoder);
 		}
 
 		if (!emptyContentDigest()) {
-			writer.writeStartElement(CONTENT_HASH_ELEMENT);
-			writer.writeCharacters(XMLHelper.encodeElement(contentDigest()));
-			writer.writeEndElement();   
+			encoder.writeElement(CONTENT_DIGEST_ELEMENT, contentDigest());
 		}
 
-		writer.writeEndElement();   		
+		encoder.writeEndElement();   		
 	}
 	
 	public boolean validate() {

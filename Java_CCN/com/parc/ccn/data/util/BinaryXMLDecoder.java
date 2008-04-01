@@ -12,11 +12,6 @@ public class BinaryXMLDecoder implements XMLDecoder {
 	
 	protected static final int MARK_LEN = 512; // tag length in UTF-8 encoded bytes, plus length/val bytes
 	
-	static {
-		XMLCodecFactory.registerDecoder(BinaryXMLCodec.codecName(), 
-									    BinaryXMLDecoder.class);
-	}
-
 	protected InputStream _istream = null;
 	protected BinaryXMLDictionary _dictionary = null;
 	
@@ -128,7 +123,7 @@ public class BinaryXMLDecoder implements XMLDecoder {
 				decodedTag = _dictionary.decodeTag(tv.val());					
 			}
 			
-			if ((null !=  decodedTag) || (decodedTag.equals(startTag))) {
+			if ((null !=  decodedTag) && (decodedTag.equals(startTag))) {
 				isCorrectTag = true;
 			}
 			

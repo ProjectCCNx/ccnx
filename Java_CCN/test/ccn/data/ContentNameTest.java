@@ -200,5 +200,22 @@ public class ContentNameTest {
 		System.out.println("Decoded name: " + name2);
 		assertEquals(name, name2);
 	}
+	
+	@Test
+	public void testEncodingDecoding() {
+		byte [][] arr = new byte[4][];
+		arr[0] = baseName.getBytes();
+		arr[1] = subName1.getBytes();
+		arr[2] = document1.getBytes();
+		arr[3] = document3;
+		ContentName name = new ContentName(arr);
+		System.out.println("Encoding name: " + name);
+		assertNotNull(name);
+
+		ContentName tn = new ContentName();
+		ContentName bn = new ContentName();
+		
+		XMLEncodableTester.encodeDecodeTest("ContentName", name, tn, bn);
+	}
 
 }

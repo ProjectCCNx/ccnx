@@ -1,7 +1,6 @@
 package test.ccn.network.impl;
 
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.security.KeyPair;
@@ -36,7 +35,7 @@ import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
-import com.parc.ccn.data.util.XMLHelper;
+import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.StandardCCNLibrary;
 import com.parc.ccn.network.impl.JackrabbitCCNRepository;
@@ -311,7 +310,8 @@ public class JackrabbitCCNRepositoryTest {
 		for (int i=0; i < names.length; ++i) {
 			Library.logger().info("Name: " + names[i]);
 			byte [] nameBytes = ContentName.componentParse(names[i]);
-			Library.logger().info("Parses into " + nameBytes.length + " bytes: " + XMLHelper.printBytes(nameBytes));
+			Library.logger().info("Parses into " + nameBytes.length + " bytes: " + 
+					DataUtils.printBytes(nameBytes));
 			
 			String unparse = ContentName.componentPrint(nameBytes);
 			Library.logger().info("Prints back as: " + unparse);
@@ -327,7 +327,7 @@ public class JackrabbitCCNRepositoryTest {
 					byteV);
 		Library.logger().info("Constructed versioned name: " + name3v6t2);
 		Library.logger().info("Bytes of last name component: " + 
-								XMLHelper.printBytes(name3v6t2.component(name3v6t2.count()-1)));
+								DataUtils.printBytes(name3v6t2.component(name3v6t2.count()-1)));
 			
 	}
 

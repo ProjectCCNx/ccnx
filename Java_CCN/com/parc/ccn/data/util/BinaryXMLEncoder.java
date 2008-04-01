@@ -13,11 +13,6 @@ import com.parc.ccn.Library;
 
 public class BinaryXMLEncoder implements XMLEncoder {
 	
-	static {
-		XMLCodecFactory.registerEncoder(BinaryXMLCodec.codecName(), 
-									    BinaryXMLEncoder.class);
-	}
-	
 	protected OutputStream _ostream = null;
 	protected BinaryXMLDictionary _dictionary = null;
 	
@@ -39,7 +34,11 @@ public class BinaryXMLEncoder implements XMLEncoder {
 	}
 	
 	public void endEncoding() throws XMLStreamException {
-		_ostream.flush();
+		try {
+			_ostream.flush();
+		} catch (IOException e) {
+			throw new XMLStreamException(e.getMessage(), e);
+		}
 	}
 
 	public void writeElement(String tag, String utf8Content)
@@ -89,7 +88,7 @@ public class BinaryXMLEncoder implements XMLEncoder {
 				BinaryXMLCodec.encodeUString(_ostream, tag, BinaryXMLCodec.XML_TAG);
 				
 			} else {
-				BinaryXMLCodec.encodeTypeAndVal(BinaryXMLCodec.XML_DTAG, dictionaryVal);
+				BinaryXMLCodec.encodeTypeAndVal(BinaryXMLCodec.XML_DTAG, dictionaryVal, _ostream);
 			}
 			
 			if (null != attributes) {
@@ -106,7 +105,7 @@ public class BinaryXMLEncoder implements XMLEncoder {
 						// not in dictionary, encode as attr
 						BinaryXMLCodec.encodeUString(_ostream, strAttr, BinaryXMLCodec.XML_ATTR);
 					} else {
-						BinaryXMLCodec.encodeTypeAndVal(BinaryXMLCodec.XML_DATTR, dictionaryAttr);
+						BinaryXMLCodec.encodeTypeAndVal(BinaryXMLCodec.XML_DATTR, dictionaryAttr, _ostream);
 					}
 					// Write value
 					BinaryXMLCodec.encodeUString(_ostream, strValue);

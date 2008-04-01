@@ -1,5 +1,7 @@
 package com.parc.ccn.data.util;
 
+import java.math.BigInteger;
+
 public class DataUtils {
 
 	public static int compareTo(byte [] arr1, byte [] arr2) {
@@ -28,6 +30,11 @@ public class DataUtils {
 		else if (arr1.length > arr2.length)
 			return 1;
 		return 0;
+	}
+	
+	public static String printBytes(byte [] bytes) {
+		BigInteger bi = new BigInteger(1, bytes);
+		return bi.toString(16);
 	}
 
 }

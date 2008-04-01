@@ -88,8 +88,9 @@ public class ContentObjectTest {
 	@Test
 	public void testDecodeInputStream() {
 		ContentObject co = new ContentObject(name, auth, signature, document3);
-		ContentObject dco = new ContentObject();
-		XMLEncodableTester.encodeDecodeTest("ContentObject", co, dco);
+		ContentObject tdco = new ContentObject();
+		ContentObject bdco = new ContentObject();
+		XMLEncodableTester.encodeDecodeTest("ContentObject", co, tdco, bdco);
 	}
 
 }

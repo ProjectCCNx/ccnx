@@ -1,16 +1,15 @@
 package com.parc.ccn.data.query;
 
-import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamWriter;
 
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.util.GenericXMLEncodable;
+import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
-import com.parc.ccn.data.util.XMLHelper;
+import com.parc.ccn.data.util.XMLEncoder;
 import com.parc.ccn.security.keys.TrustManager;
 
 /**
@@ -90,31 +89,31 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * Thought about encoding and decoding as flat -- no wrapping
 	 * declaration. But then couldn't use these solo.
 	 */
-	public void decode(XMLEventReader reader) throws XMLStreamException {
-		XMLHelper.readStartElement(reader, INTEREST_ELEMENT);
+	public void decode(XMLDecoder decoder) throws XMLStreamException {
+		decoder.readStartElement(INTEREST_ELEMENT);
 
 		_name = new ContentName();
-		_name.decode(reader);
+		_name.decode(decoder);
 		
-		if (XMLHelper.peekStartElement(reader, PublisherID.PUBLISHER_ID_ELEMENT)) {
+		if (decoder.peekStartElement(PublisherID.PUBLISHER_ID_ELEMENT)) {
 			_publisher = new PublisherID();
-			_publisher.decode(reader);
+			_publisher.decode(decoder);
 		}
 		
-		XMLHelper.readEndElement(reader);
+		decoder.readEndElement();
 	}
 
-	public void encode(XMLStreamWriter writer, boolean isFirstElement) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		XMLHelper.writeStartElement(writer, INTEREST_ELEMENT, isFirstElement);
+		encoder.writeStartElement(INTEREST_ELEMENT);
 		
-		name().encode(writer);
+		name().encode(encoder);
 		if (null != publisherID())
-			publisherID().encode(writer);
+			publisherID().encode(encoder);
 
-		writer.writeEndElement();   		
+		encoder.writeEndElement();   		
 	}
 	
 	public boolean validate() {

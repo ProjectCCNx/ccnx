@@ -28,19 +28,23 @@ public class PublisherIDTest {
 	public void testDecodeInputStream() {
 		PublisherID pubkey = new PublisherID(publisherid, PublisherType.KEY);
 		PublisherID pubkeyDec = new PublisherID();
-		XMLEncodableTester.encodeDecodeTest("PublisherID(key)", pubkey, pubkeyDec);
+		PublisherID bpubkeyDec = new PublisherID();
+		XMLEncodableTester.encodeDecodeTest("PublisherID(key)", pubkey, pubkeyDec, bpubkeyDec);
 	
 		PublisherID pubcert = new PublisherID(publisherid, PublisherType.CERTIFICATE);
 		PublisherID pubcertDec = new PublisherID();
-		XMLEncodableTester.encodeDecodeTest("PublisherID(cert)", pubcert, pubcertDec);
+		PublisherID bpubcertDec = new PublisherID();
+		XMLEncodableTester.encodeDecodeTest("PublisherID(cert)", pubcert, pubcertDec, bpubcertDec);
 		
 		PublisherID pubisskey = new PublisherID(publisherid, PublisherType.ISSUER_KEY);
 		PublisherID pubisskeyDec = new PublisherID();
-		XMLEncodableTester.encodeDecodeTest("PublisherID(isskey)", pubisskey, pubisskeyDec);
+		PublisherID bpubisskeyDec = new PublisherID();
+		XMLEncodableTester.encodeDecodeTest("PublisherID(isskey)", pubisskey, pubisskeyDec, bpubisskeyDec);
 			
 		PublisherID pubisscert = new PublisherID(publisherid, PublisherType.ISSUER_CERTIFICATE);
 		PublisherID pubisscertDec = new PublisherID();
-		XMLEncodableTester.encodeDecodeTest("PublisherID(isscert)", pubisscert, pubisscertDec);
+		PublisherID bpubisscertDec = new PublisherID();
+		XMLEncodableTester.encodeDecodeTest("PublisherID(isscert)", pubisscert, pubisscertDec, bpubisscertDec);
 			
 	}
 
