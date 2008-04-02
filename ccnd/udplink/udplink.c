@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <errno.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -19,13 +20,48 @@ struct options {
     int debug;
 };
 
+
 void
 usage(char *name) {
     fprintf(stderr, "Usage: %s [-d(ebug)] [-c ccnsocket] -h remotehost -r remoteport [-l localport]\n", name);
 }
 
+void
+udplink_fatal(char *format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+
+    fprintf(stderr, "udplink[%d]: ", getpid());
+    vfprintf(stderr, format, ap);
+    exit(1);
+}
+
+void
+udplink_note(char *format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+
+    fprintf(stderr, "udplink[%d]: ", getpid());
+    vfprintf(stderr, format, ap);
+}
+
+void
+udplink_print_data(char *source, unsigned char *data, int start, int length)
+{
+    int i;
+    fprintf(stderr, "%d bytes from %s:", length, source);
+    for (i = 0; i < length; i++) {
+        if ((i % 20) == 0) fprintf(stderr, "\n%4d: ", i);
+        if (((i + 10) % 20) == 0) fprintf(stderr, "| ");
+        fprintf(stderr, "%02x ", data[i + start]);
+    }
+    fprintf(stderr, "\n");
+}
+
 ssize_t
-send_remote(int s, struct addrinfo *r, unsigned char *buf, size_t start, size_t length) {
+send_remote_unencapsulated(int s, struct addrinfo *r, unsigned char *buf, size_t start, size_t length) {
     ssize_t result;
 
     if (memcmp(&buf[start], CCN_EMPTY_PDU, CCN_EMPTY_PDU_LENGTH - 1) != 0) {
@@ -58,8 +94,7 @@ void process_options(int argc, char * const argv[], struct options *options) {
             char portstr[8];
             if (port <= 0 || port >= 65536) {
                 usage(argv[0]);
-                fprintf(stderr, "port must be in range 1..65535\n");
-                exit(1);
+                udplink_fatal("port must be in range 1..65535\n");
             } 
             snprintf(portstr, sizeof(portstr), "%d", port);
             if (c == 'r') {
@@ -75,14 +110,12 @@ void process_options(int argc, char * const argv[], struct options *options) {
     /* the remote end of the connection must be specified */
     if (options->remotehostname == NULL) {
         usage(argv[0]);
-        fprintf(stderr, "remote hostname/address required\n");
-        exit(1);
+        udplink_fatal("remote hostname/address required\n");
     }
 
     if (options->remoteport[0] == '\0') {
         usage(argv[0]);
-        fprintf(stderr, "remote port required\n");
-        exit(1);
+        udplink_fatal("remote port required\n");
     }
 
     /* if the local port is not specified, default to same as remote port */
@@ -96,7 +129,6 @@ main (int argc, char * const argv[]) {
 
     struct options options = {NULL, NULL, "", "", 0};
 
-    int i;
     int result;
     int localsock;
     int remotesock;
@@ -126,8 +158,7 @@ main (int argc, char * const argv[]) {
     ccn = ccn_create();
     localsock = ccn_connect(ccn, options.localsockname);
     if (localsock == -1) {
-        fprintf(stderr, "ccn_connect: %s\n", strerror(errno));
-        exit(1);
+        udplink_fatal("ccn_connect: %s\n", strerror(errno));
     }
 
     hints.ai_family = PF_UNSPEC;
@@ -139,10 +170,15 @@ main (int argc, char * const argv[]) {
 
     result = getaddrinfo(options.remotehostname, options.remoteport, &hints, &raddrinfo);
     if (result != 0 || raddrinfo == NULL) {
-        fprintf(stderr, "getaddrinfo(%s, %s, ...): %s\n", options.remotehostname, options.remoteport, gai_strerror(result));
-        exit(1);
+        udplink_fatal("getaddrinfo(%s, %s, ...): %s\n", options.remotehostname, options.remoteport, gai_strerror(result));
     }
+
     getnameinfo(raddrinfo->ai_addr, raddrinfo->ai_addrlen, canonical_remote, sizeof(canonical_remote), NULL, 0, 0);
+
+    remotesock = socket(raddrinfo->ai_family, raddrinfo->ai_socktype, 0);
+    if (remotesock == -1) {
+        udplink_fatal("socket: %s\n", strerror(errno));
+    }
 
     hints.ai_family = raddrinfo->ai_family;
     hints.ai_flags = AI_PASSIVE;
@@ -151,60 +187,64 @@ main (int argc, char * const argv[]) {
 #endif
     result = getaddrinfo(NULL, options.localport, &hints, &laddrinfo);
     if (result != 0 || laddrinfo == NULL) {
-        fprintf(stderr, "getaddrinfo(NULL, %s, ...): %s\n", options.localport, gai_strerror(result));
-        exit(1);
+        udplink_fatal("getaddrinfo(NULL, %s, ...): %s\n", options.localport, gai_strerror(result));
     }
-
-    remotesock = socket(raddrinfo->ai_family, raddrinfo->ai_socktype, 0);
-    if (remotesock == -1) {
-        fprintf(stderr, "socket: %s\n", strerror(errno));
-        exit(1);
-    }
-
 
     result = bind(remotesock, laddrinfo->ai_addr, laddrinfo->ai_addrlen);
     if (result == -1) {
-        fprintf(stderr, "bind(remotesock, local...): %s\n", strerror(errno));
-        exit(1);
+        udplink_fatal("bind(remotesock, local...): %s\n", strerror(errno));
     }
 
     /* XXX we may need to play games for multicast here if we want to specify other than the default interface */
 
     if (raddrinfo->ai_family == PF_INET && IN_MULTICAST(ntohl(((struct sockaddr_in *)(raddrinfo->ai_addr))->sin_addr.s_addr))) {
         /* IPv4 multicast */
-        if (options.debug) fprintf(stderr, "it's an IPv4 multicast\n");
+        if (options.debug) udplink_note("IPv4 multicast\n");
 #ifdef IP_ADD_MEMBERSHIP
         memset((void *)&mreq, 0, sizeof(mreq));
         memcpy((void *)&mreq.imr_multiaddr, &((struct sockaddr_in *)raddrinfo->ai_addr)->sin_addr, sizeof(mreq.imr_multiaddr));
         result = setsockopt(remotesock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq));
         if (result == -1) {
-            fprintf(stderr, "setsockopt(remotesock, IP_ADD_MEMBERSHIP, ...): %s\n", strerror(errno));
+            udplink_fatal("setsockopt(remotesock, IP_ADD_MEMBERSHIP, ...): %s\n", strerror(errno));
         }
 #endif
 #ifdef IP_MULTICAST_LOOP
         csockopt = 0;
         result = setsockopt(remotesock, IPPROTO_IP, IP_MULTICAST_LOOP, &csockopt, sizeof(csockopt));
         if (result == -1) {
-            fprintf(stderr, "setsockopt(remotesock, IP_MULTICAST_LOOP, ...): %s\n", strerror(errno));
-            exit(1);
+            udplink_fatal("setsockopt(remotesock, IP_MULTICAST_LOOP, ...): %s\n", strerror(errno));
+        }
+#endif
+#ifdef IP_MULTICAST_TTL
+        csockopt = 5;
+        result = setsockopt(remotesock, IPPROTO_IP, IP_MULTICAST_TTL, &csockopt, sizeof(csockopt));
+        if (result == -1) {
+            udplink_fatal("setsockopt(remotesock, IP_MULTICAST_TTL, ...): %s\n", strerror(errno));
         }
 #endif
     } else if (raddrinfo->ai_family == PF_INET6 && IN6_IS_ADDR_MULTICAST((&((struct sockaddr_in6 *)raddrinfo->ai_addr)->sin6_addr))) {
         /* IPv6 multicast */
-        if (options.debug) fprintf(stderr, "it's an IPv6 multicast\n");
+        if (options.debug) udplink_note("IPv6 multicast\n");
 #ifdef IPV6_JOIN_GROUP
         memset((void *)&mreq6, 0, sizeof(mreq6));
         memcpy((void *)&mreq6.ipv6mr_multiaddr, &((struct sockaddr_in6 *)raddrinfo->ai_addr)->sin6_addr, sizeof(mreq6.ipv6mr_multiaddr));
         result = setsockopt(remotesock, IPPROTO_IPV6, IPV6_JOIN_GROUP, &mreq6, sizeof(mreq6));
         if (result == -1) {
-            fprintf(stderr, "setsockopt(remotesock, IPV6_JOIN_GROUP ...): %s\n", strerror(errno));
+            udplink_fatal("setsockopt(remotesock, IPV6_JOIN_GROUP ...): %s\n", strerror(errno));
         }
 #endif
 #ifdef IPV6_MULTICAST_LOOP
         isockopt = 0;
         result = setsockopt(remotesock, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &isockopt, sizeof(isockopt));
         if (result == -1) {
-            fprintf(stderr, "setsockopt(remotesock, IPV6_MULTICAST_LOOP, ...): %s\n", strerror(errno));
+            udplink_fatal("setsockopt(remotesock, IPV6_MULTICAST_LOOP, ...): %s\n", strerror(errno));
+        }
+#endif
+#ifdef IPV6_MULTICAST_HOPS
+        isockopt = 5;
+        result = setsockopt(remotesock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &isockopt, sizeof(isockopt));
+        if (result == -1) {
+            udplink_fatal("setsockopt(remotesock, IPV6_MULTICAST_LOOP, ...): %s\n", strerror(errno));
         }
 #endif
     }
@@ -213,13 +253,12 @@ main (int argc, char * const argv[]) {
     /* announce our presence to ccnd and request CCN PDU encapsulation */
     result = send(localsock, CCN_EMPTY_PDU, CCN_EMPTY_PDU_LENGTH, 0);
     if (result == -1) {
-        fprintf(stderr, "initial send: %s\n", strerror(errno));
-        exit(1);
+        udplink_fatal("initial send: %s\n", strerror(errno));
     }
 
     charbuf = ccn_charbuf_create();
 
-    fprintf(stderr, "udplink[%d] connected to %s\n", getpid(), canonical_remote);
+    udplink_note("connected to %s\n", canonical_remote);
 
     fds[0].fd = localsock;
     fds[0].events = POLLIN;
@@ -229,8 +268,7 @@ main (int argc, char * const argv[]) {
     for (;;) {
         if (0 == (result = poll(fds, 2, -1))) continue;
         if (-1 == result) {
-            fprintf(stderr, "poll: %s\n", strerror(errno));
-            exit(1);
+            udplink_fatal("poll: %s\n", strerror(errno));
         }
 
         /* process local data */
@@ -241,35 +279,26 @@ main (int argc, char * const argv[]) {
             }
             recvlen = recv(localsock, lbuf , charbuf->limit - charbuf->length, 0);
             if (recvlen == -1) {
-                fprintf(stderr, "recv(localsock, ...): %s\n", strerror(errno));
-                exit(1);
+                udplink_fatal("recv(localsock, ...): %s\n", strerror(errno));
             }
             if (recvlen == 0) {
-                fprintf(stderr, "udplink[%d] ccnd disconnected\n", getpid());
                 break;
             }
             charbuf->length += recvlen;
             msgstart = 0;
             dres = ccn_skeleton_decode(ld, lbuf, recvlen);
             while (ld->state == 0 && ld->tagstate == 0 && ld->nest == 0) {
-                fprintf(stderr, "%lu byte msg accepted\n", (unsigned long) (ld->index - msgstart));
-
-                /* send the packet out on the remote side, removing CCNPDU encapsulation */
-                result = send_remote(remotesock, raddrinfo, charbuf->buf, msgstart, ld->index - msgstart);
+                if (options.debug) {
+                    udplink_print_data("local", charbuf->buf, msgstart, ld->index - msgstart);
+                }
+                result = send_remote_unencapsulated(remotesock, raddrinfo, charbuf->buf, msgstart, ld->index - msgstart);
                 if (result == -1) {
-                    fprintf(stderr, "udplink[%d] sendto(remotesock, rbuf, %ld): %s\n", getpid(), (long)ld->index - msgstart, strerror(errno));
-                    exit(1);
+                    udplink_fatal("sendto(remotesock, rbuf, %ld): %s\n", (long)ld->index - msgstart, strerror(errno));
                 }
                 else if (result == -2) {
-                    fprintf(stderr, "udplink[%d] protocol error, missing CCNPDU encapsulation. Message dropped\n", getpid());
+                    udplink_note("protocol error, missing CCN PDU encapsulation. Message dropped\n");
                 }
 
-                if (options.debug) {
-                    for (i = msgstart; i < ld->index; i++) {
-                        fprintf(stderr, "%02x ", charbuf->buf[i]);
-                    }
-                    fprintf(stderr, "\n");
-                }
                 msgstart = ld->index;
                 if (msgstart == charbuf->length) {
                     charbuf->length = 0;
@@ -279,8 +308,7 @@ main (int argc, char * const argv[]) {
                 dres = ccn_skeleton_decode(ld, charbuf->buf + msgstart, recvlen);
             }
             if (ld->state < 0) {
-                fprintf(stderr, "udplink[%d]: local data protocol error\n", getpid());
-                exit(1);
+                udplink_fatal("local data protocol error\n");
             }
             /* move partial message to start of buffer */
             if (msgstart < charbuf->length && msgstart > 0) {
@@ -306,24 +334,21 @@ main (int argc, char * const argv[]) {
             memset(rd, 0, sizeof(*rd));
             dres = ccn_skeleton_decode(rd, rbuf, recvlen + CCN_EMPTY_PDU_LENGTH);
             if (rd->state != 0 || rd->tagstate != 0 || rd->nest != 0 || dres != (recvlen + CCN_EMPTY_PDU_LENGTH)) {
-                fprintf(stderr, "udplink[%d]: remote data protocol error\n", getpid());
+                udplink_note("remote data protocol error\n");
                 continue;
             }
 
             result = send(localsock, rbuf, recvlen + CCN_EMPTY_PDU_LENGTH, 0);
             if (result == -1) {
-                fprintf(stderr, "sendto(localsock, rbuf, %ld): %s\n", (long) recvlen + CCN_EMPTY_PDU_LENGTH, strerror(errno));
-                exit(1);
+                udplink_fatal("sendto(localsock, rbuf, %ld): %s\n", (long) recvlen + CCN_EMPTY_PDU_LENGTH, strerror(errno));
             }
-            fprintf(stderr, "remote->local %ld bytes in, sent %ld bytes to local\n", (long) recvlen, (long)recvlen + CCN_EMPTY_PDU_LENGTH);
             if (options.debug) {
-                for (i = 0; i < recvlen + CCN_EMPTY_PDU_LENGTH; i++) {
-                    fprintf(stderr, "%02x ", rbuf[i]);
-                }
-                fprintf(stderr, "\n");
+                udplink_print_data("remote", rbuf, 0, recvlen + CCN_EMPTY_PDU_LENGTH);
             }
         }
     }
+
+    udplink_note("disconnected\n");
     ccn_destroy(&ccn);
     freeaddrinfo(raddrinfo);
     freeaddrinfo(laddrinfo);
