@@ -285,7 +285,6 @@ main (int argc, char * const argv[]) {
                 break;
             }
             charbuf->length += recvlen;
-            msgstart = 0;
             dres = ccn_skeleton_decode(ld, lbuf, recvlen);
             while (ld->state == 0 && ld->tagstate == 0 && ld->nest == 0) {
                 if (options.debug) {
@@ -302,6 +301,7 @@ main (int argc, char * const argv[]) {
                 msgstart = ld->index;
                 if (msgstart == charbuf->length) {
                     charbuf->length = 0;
+                    msgstart = 0;
                     break;
                 }
                 recvlen = charbuf->length - msgstart;
@@ -315,6 +315,7 @@ main (int argc, char * const argv[]) {
                 memmove(charbuf->buf, charbuf->buf + msgstart, charbuf->length - msgstart);
                 charbuf->length -= msgstart;
                 ld->index -= msgstart;
+                msgstart = 0;
             }
         }
 
