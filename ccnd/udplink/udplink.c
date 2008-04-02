@@ -195,6 +195,8 @@ main (int argc, char * const argv[]) {
         udplink_fatal("bind(remotesock, local...): %s\n", strerror(errno));
     }
 
+    udplink_note("connected to %s\n", canonical_remote);
+
     /* XXX we may need to play games for multicast here if we want to specify other than the default interface */
 
     if (raddrinfo->ai_family == PF_INET && IN_MULTICAST(ntohl(((struct sockaddr_in *)(raddrinfo->ai_addr))->sin_addr.s_addr))) {
@@ -205,21 +207,21 @@ main (int argc, char * const argv[]) {
         memcpy((void *)&mreq.imr_multiaddr, &((struct sockaddr_in *)raddrinfo->ai_addr)->sin_addr, sizeof(mreq.imr_multiaddr));
         result = setsockopt(remotesock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq));
         if (result == -1) {
-            udplink_fatal("setsockopt(remotesock, IP_ADD_MEMBERSHIP, ...): %s\n", strerror(errno));
+            udplink_fatal("setsockopt(..., IP_ADD_MEMBERSHIP, ...): %s\n", strerror(errno));
         }
 #endif
 #ifdef IP_MULTICAST_LOOP
         csockopt = 0;
         result = setsockopt(remotesock, IPPROTO_IP, IP_MULTICAST_LOOP, &csockopt, sizeof(csockopt));
         if (result == -1) {
-            udplink_fatal("setsockopt(remotesock, IP_MULTICAST_LOOP, ...): %s\n", strerror(errno));
+            udplink_fatal("setsockopt(..., IP_MULTICAST_LOOP, ...): %s\n", strerror(errno));
         }
 #endif
 #ifdef IP_MULTICAST_TTL
         csockopt = 5;
         result = setsockopt(remotesock, IPPROTO_IP, IP_MULTICAST_TTL, &csockopt, sizeof(csockopt));
         if (result == -1) {
-            udplink_fatal("setsockopt(remotesock, IP_MULTICAST_TTL, ...): %s\n", strerror(errno));
+            udplink_fatal("setsockopt(..., IP_MULTICAST_TTL, ...): %s\n", strerror(errno));
         }
 #endif
     } else if (raddrinfo->ai_family == PF_INET6 && IN6_IS_ADDR_MULTICAST((&((struct sockaddr_in6 *)raddrinfo->ai_addr)->sin6_addr))) {
@@ -230,21 +232,21 @@ main (int argc, char * const argv[]) {
         memcpy((void *)&mreq6.ipv6mr_multiaddr, &((struct sockaddr_in6 *)raddrinfo->ai_addr)->sin6_addr, sizeof(mreq6.ipv6mr_multiaddr));
         result = setsockopt(remotesock, IPPROTO_IPV6, IPV6_JOIN_GROUP, &mreq6, sizeof(mreq6));
         if (result == -1) {
-            udplink_fatal("setsockopt(remotesock, IPV6_JOIN_GROUP ...): %s\n", strerror(errno));
+            udplink_fatal("setsockopt(..., IPV6_JOIN_GROUP, ...): %s\n", strerror(errno));
         }
 #endif
 #ifdef IPV6_MULTICAST_LOOP
         isockopt = 0;
         result = setsockopt(remotesock, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &isockopt, sizeof(isockopt));
         if (result == -1) {
-            udplink_fatal("setsockopt(remotesock, IPV6_MULTICAST_LOOP, ...): %s\n", strerror(errno));
+            udplink_fatal("setsockopt(..., IPV6_MULTICAST_LOOP, ...): %s\n", strerror(errno));
         }
 #endif
 #ifdef IPV6_MULTICAST_HOPS
         isockopt = 5;
         result = setsockopt(remotesock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &isockopt, sizeof(isockopt));
         if (result == -1) {
-            udplink_fatal("setsockopt(remotesock, IPV6_MULTICAST_LOOP, ...): %s\n", strerror(errno));
+            udplink_fatal("setsockopt(..., IPV6_MULTICAST_LOOP, ...): %s\n", strerror(errno));
         }
 #endif
     }
@@ -257,8 +259,6 @@ main (int argc, char * const argv[]) {
     }
 
     charbuf = ccn_charbuf_create();
-
-    udplink_note("connected to %s\n", canonical_remote);
 
     fds[0].fd = localsock;
     fds[0].events = POLLIN;
