@@ -52,7 +52,18 @@ struct face {
     struct ccn_charbuf *outbuf;
 };
 
-static void do_write(struct ccnd *h, struct face *face, unsigned char *data, size_t size);
+static void cleanup_at_exit(void);
+static void unlink_at_exit(const char *path);
+static int create_local_listener(const char *sockname, int backlog);
+static void accept_new_client(struct ccnd *h);
+static void shutdown_client_fd(struct ccnd *h, int fd);
+static void process_input_message(struct ccnd *h, struct face *face,
+                                  unsigned char *msg, size_t size);
+static void process_input(struct ccnd *h, int fd);
+static void do_write(struct ccnd *h, struct face *face,
+                     unsigned char *data, size_t size);
+static void do_deferred_write(struct ccnd *h, int fd);
+static void run(struct ccnd *h);
 
 static const char *unlink_this_at_exit = NULL;
 static void
@@ -63,6 +74,7 @@ cleanup_at_exit(void)
         unlink_this_at_exit = NULL;
     }
 }
+
 static void
 handle_fatal_signal(int sig) {
     cleanup_at_exit();
