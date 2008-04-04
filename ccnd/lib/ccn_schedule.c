@@ -20,7 +20,7 @@ struct ccn_schedule {
     struct ccn_schedule_heap_item *heap;
     int heap_n;
     int heap_limit;
-    int heap_height;
+    int heap_height; /* this is validated just before use */
     int now;      /* internal microsec corresponding to lasttime  */
     struct timeval lasttime; /* actual time when we last checked  */
     int time_has_passed; /* to prevent too-frequent time syscalls */
@@ -214,8 +214,6 @@ ccn_schedule_run_next(struct ccn_schedule *sched)
     sched->heap[0].ev = NULL;
     microsec = sched->heap[0].event_time - sched->now;
     heap_sift(sched->heap, sched->heap_n--);
-    while ((sched->heap_n >> sched->heap_height) < 1)
-        sched->heap_height--;
     res = (ev->action)(sched, sched->clienth, ev, 0);
     if (res <= 0) {
         free(ev); // XXX should quarantine this

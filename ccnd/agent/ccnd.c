@@ -21,6 +21,7 @@
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
 #include <ccn/hashtb.h>
+#include <ccn/schedule.h>
 
 struct ccnd;
 struct dbl_links;
@@ -34,6 +35,7 @@ struct ccnd {
     struct hashtb *faces;
     nfds_t nfds;
     struct pollfd *fds;
+    struct ccn_schedule *sched;
 };
 
 struct dbl_links {
@@ -308,7 +310,10 @@ run(struct ccnd *h)
     int i;
     int res;
     int timeout_ms = -1;
+    int usec;
     for (;;) {
+        usec = ccn_schedule_run(h->sched);
+        timeout_ms = (usec < 0) ? -1 : usec / 1000;
         if (hashtb_n(h->faces) + 1 != h->nfds) {
             h->nfds = hashtb_n(h->faces) + 1;
             h->fds = realloc(h->fds, h->nfds * sizeof(h->fds[0]));
@@ -356,6 +361,17 @@ run(struct ccnd *h)
     }
 }
 
+static int
+beat(struct ccn_schedule *sched,
+    void *clienth,
+    struct ccn_scheduled_event *ev,
+    int flags)
+{
+    fprintf(stderr, "%c", 'G'&31);
+    fflush(stderr);
+    return(60000000/72);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -364,6 +380,7 @@ main(int argc, char **argv)
     struct ccnd *h;
     h = calloc(1, sizeof(h));
     h->faces = hashtb_create(sizeof(struct face));
+    h->sched = ccn_schedule_create(h);
     ll = create_local_listener(sockname, 42);
     if (ll == -1) {
         perror(sockname);
@@ -371,6 +388,8 @@ main(int argc, char **argv)
     }
     fprintf(stderr, "ccnd[%d] listening on %s\n", (int)getpid(), sockname);
     h->local_listener_fd = ll;
+    if (0)
+        ccn_schedule_event(h->sched, 500000, &beat, NULL, 0);
     run(h);
     fprintf(stderr, "ccnd[%d] exiting.\n", (int)getpid());
     exit(0);
