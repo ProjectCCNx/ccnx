@@ -26,6 +26,7 @@ enum ccn_tt {
     CCN_DATTR,      /* attribute numval is attrdict index */
     CCN_BLOB,       /* opaque binary data - numval is byte count */
     CCN_UDATA,      /* UTF-8 encoded character data - numval is byte count */
+    CCN_NO_TOKEN    /* should not occur in encoding */
 };
 
 /* CCN_CLOSE terminates composites */
@@ -107,6 +108,19 @@ enum ccn_decoder_state {
     CCN_DSTATE_ERR_NEST     = -4, 
     CCN_DSTATE_ERR_BUG      = -5,
 };
+
+/*
+ * If the CCN_DSTATE_PAUSE bit is set in the decoder state,
+ * the decoder will return just after recognizing each token.
+ * In this instance, use CCN_GET_TT_FROM_DSTATE to extract
+ * the token type from the decoder state;
+ * CCN_CLOSE will be reported as CCN_NO_TOKEN.
+ * The pause bit persists, so the end test should take that into account
+ * by using the CCN_FINAL_DSTATE macro instead of testing for state 0.
+ */
+#define CCN_DSTATE_PAUSE (1 << 15)
+#define CCN_GET_TT_FROM_DSTATE(state) (CCN_TT_MASK & ((state) >> 16))
+#define CCN_FINAL_DSTATE(state) (((state) & (CCN_DSTATE_PAUSE-1)) == 0)
 
 ssize_t ccn_skeleton_decode(
     struct ccn_skeleton_decoder *d,

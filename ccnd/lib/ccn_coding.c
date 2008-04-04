@@ -26,15 +26,17 @@ ccn_skeleton_decode(struct ccn_skeleton_decoder *d, const unsigned char *p, size
     ssize_t i = 0;
     unsigned char c;
     size_t chunk;
+    int pause = 0;
     if (d->state >= 0) {
-        tagstate = d->state >> 8;
+        pause = d->state & CCN_DSTATE_PAUSE;
+        tagstate = (d->state >> 8) & 3;
         state = d->state & 0xFF;
     }
     while (i < n) {
         switch (state) {
             case CCN_DSTATE_INITIAL:
             case CCN_DSTATE_NEWTOKEN: /* start new thing */
-                d->element_index = i + d->index;
+                d->token_index = i + d->index;
                 if (tagstate > 1 && tagstate-- == 2) {
                     XML("\""); /* close off the attribute value */
                 } 
@@ -54,6 +56,10 @@ ccn_skeleton_decode(struct ccn_skeleton_decoder *d, const unsigned char *p, size
                     d->nest -= 1;
                     if (d->nest == 0) {
                         state = CCN_DSTATE_INITIAL;
+                        n = i;
+                    }
+                    if (pause) {
+                        state |= (((int)CCN_NO_TOKEN) << 16);
                         n = i;
                     }
                     break;
@@ -140,6 +146,10 @@ ccn_skeleton_decode(struct ccn_skeleton_decoder *d, const unsigned char *p, size
                         default:
                             state = CCN_DSTATE_ERR_CODING;
                     }
+                    if (pause) {
+                        state |= (c << 16);
+                        n = i;
+                    }
                 }
                 break;
             case CCN_DSTATE_TAGNAME: /* parsing tag name */
@@ -201,8 +211,8 @@ ccn_skeleton_decode(struct ccn_skeleton_decoder *d, const unsigned char *p, size
         }
     }
     if (state < 0)
-        tagstate = 0;
-    d->state = state + (tagstate << 8); 
+        tagstate = pause = 0;
+    d->state = state | pause | (tagstate << 8); 
     d->numval = numval;
     d->index += i;
     return(i);
