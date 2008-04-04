@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <net/if.h>
 #include <netdb.h>
 #include <poll.h>
 #include <string.h>
@@ -12,18 +13,22 @@
 #include "ccn/ccn.h"
 #include "ccn/ccnd.h"
 
+#define UDPMAXBUF 8800
+
 struct options {
     const char *localsockname;
     const char *remotehostname;
     char remoteport[8];
     char localport[8];
+    unsigned int remoteifindex;
+    int multicastttl;
     int debug;
 };
 
 
 void
 usage(char *name) {
-    fprintf(stderr, "Usage: %s [-d(ebug)] [-c ccnsocket] -h remotehost -r remoteport [-l localport]\n", name);
+    fprintf(stderr, "Usage: %s [-d(ebug)] [-c ccnsocket] -h remotehost -r remoteport [-l localport] [-t multicastttl]\n", name);
 }
 
 void
@@ -74,8 +79,9 @@ send_remote_unencapsulated(int s, struct addrinfo *r, unsigned char *buf, size_t
 
 void process_options(int argc, char * const argv[], struct options *options) {
     int c;
+    char *cp;
 
-    while ((c = getopt(argc, argv, "dc:h:r:l:")) != -1) {
+    while ((c = getopt(argc, argv, "dc:h:r:l:t:")) != -1) {
         switch (c) {
         case 'd': {
             options->debug++;
@@ -104,6 +110,12 @@ void process_options(int argc, char * const argv[], struct options *options) {
             }
             break;
         }
+        case 't': {
+            int ttl = atoi(optarg);
+            if (ttl < 1 || ttl > 255) {
+                udplink_fatal("multicast ttl/hopcount must be in range 1..255\n");
+            }
+        }
         }
     }
     
@@ -118,39 +130,121 @@ void process_options(int argc, char * const argv[], struct options *options) {
         udplink_fatal("remote port required\n");
     }
 
+    cp = strchr(options->remotehostname, '%');
+    if (cp != NULL) {
+        cp++;
+        errno = 0;
+        options->remoteifindex = atoi(cp);
+        if (options->remoteifindex == 0) {
+            options->remoteifindex = if_nametoindex(cp);
+            if (options->remoteifindex == 0 && errno != 0) {
+                udplink_fatal("Invalid interface name %s\n", cp);
+            }
+        }
+    }
+
     /* if the local port is not specified, default to same as remote port */
     if (options->localport[0] == '\0') {
         memmove(options->localport, options->remoteport, sizeof(options->localport));
     }
 }
 
+void
+set_multicast_sockopt(int socket, struct addrinfo *ai, struct options *options)
+{
+    struct addrinfo hints;
+    struct ip_mreq mreq;
+    struct ipv6_mreq mreq6;
+    unsigned char csockopt;
+    unsigned int isockopt;
+    int result;
+
+    memset((void *)&hints, 0, sizeof(hints));
+    memset((void *)&mreq, 0, sizeof(mreq));
+    memset((void *)&mreq6, 0, sizeof(mreq6));
+
+    if (ai->ai_family == PF_INET && IN_MULTICAST(ntohl(((struct sockaddr_in *)(ai->ai_addr))->sin_addr.s_addr))) {
+        if (options->debug) udplink_note("IPv4 multicast\n");
+#ifdef IP_ADD_MEMBERSHIP
+        memcpy((void *)&mreq.imr_multiaddr, &((struct sockaddr_in *)ai->ai_addr)->sin_addr, sizeof(mreq.imr_multiaddr));
+        if (options->remoteifindex != 0) {
+            /* mreq.imr_interface.s_addr = local address of interface remoteifindex */
+        }
+        result = setsockopt(socket, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq));
+        if (result == -1) {
+            udplink_fatal("setsockopt(..., IP_ADD_MEMBERSHIP, ...): %s\n", strerror(errno));
+        }
+#endif
+#ifdef IP_MULTICAST_LOOP
+        csockopt = 0;
+        result = setsockopt(socket, IPPROTO_IP, IP_MULTICAST_LOOP, &csockopt, sizeof(csockopt));
+        if (result == -1) {
+            udplink_fatal("setsockopt(..., IP_MULTICAST_LOOP, ...): %s\n", strerror(errno));
+        }
+#endif
+#ifdef IP_MULTICAST_TTL
+        if (options->multicastttl > 0) {
+            csockopt = options->multicastttl;
+            result = setsockopt(socket, IPPROTO_IP, IP_MULTICAST_TTL, &csockopt, sizeof(csockopt));
+            if (result == -1) {
+                udplink_fatal("setsockopt(..., IP_MULTICAST_TTL, ...): %s\n", strerror(errno));
+            }
+        }
+#endif
+    } else if (ai->ai_family == PF_INET6 && IN6_IS_ADDR_MULTICAST((&((struct sockaddr_in6 *)ai->ai_addr)->sin6_addr))) {
+        if (options->debug) udplink_note("IPv6 multicast\n");
+#ifdef IPV6_JOIN_GROUP
+        memcpy((void *)&mreq6.ipv6mr_multiaddr, &((struct sockaddr_in6 *)ai->ai_addr)->sin6_addr, sizeof(mreq6.ipv6mr_multiaddr));
+        if (options->remoteifindex > 0) {
+            mreq6.ipv6mr_interface = options->remoteifindex;
+        }
+        result = setsockopt(socket, IPPROTO_IPV6, IPV6_JOIN_GROUP, &mreq6, sizeof(mreq6));
+        if (result == -1) {
+            udplink_fatal("setsockopt(..., IPV6_JOIN_GROUP, ...): %s\n", strerror(errno));
+        }
+#endif
+#ifdef IPV6_MULTICAST_LOOP
+        isockopt = 0;
+        result = setsockopt(socket, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &isockopt, sizeof(isockopt));
+        if (result == -1) {
+            udplink_fatal("setsockopt(..., IPV6_MULTICAST_LOOP, ...): %s\n", strerror(errno));
+        }
+#endif
+#ifdef IPV6_MULTICAST_HOPS
+        if (options->multicastttl > 0) {
+            isockopt = options->multicastttl;
+            result = setsockopt(socket, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &isockopt, sizeof(isockopt));
+            if (result == -1) {
+                udplink_fatal("setsockopt(..., IPV6_MULTICAST_LOOP, ...): %s\n", strerror(errno));
+            }
+        }
+#endif
+    }
+}
+
 int
 main (int argc, char * const argv[]) {
 
-    struct options options = {NULL, NULL, "", "", 0};
+    struct options options = {NULL, NULL, "", "", 0, 0, 0};
 
     int result;
     int localsock;
     int remotesock;
     char canonical_remote[NI_MAXHOST] = "";
-    struct addrinfo hints = {0};
     struct addrinfo *raddrinfo = NULL;
     struct addrinfo *laddrinfo = NULL;
+    struct addrinfo hints = {0};
     struct pollfd fds[2];
     struct ccn *ccn;
     struct ccn_skeleton_decoder ldecoder = {0};
     struct ccn_skeleton_decoder *ld = &ldecoder;
     struct ccn_skeleton_decoder rdecoder = {0};
     struct ccn_skeleton_decoder *rd = &rdecoder;
-    unsigned char rbuf[8800];
+    unsigned char rbuf[UDPMAXBUF];
     struct ccn_charbuf *charbuf;
     ssize_t msgstart = 0;
     ssize_t recvlen = 0;
     ssize_t dres;
-    unsigned char csockopt;
-    unsigned int isockopt;
-    struct ip_mreq mreq;
-    struct ipv6_mreq mreq6;
 
     process_options(argc, argv, &options);
 
@@ -189,7 +283,7 @@ main (int argc, char * const argv[]) {
     if (result != 0 || laddrinfo == NULL) {
         udplink_fatal("getaddrinfo(NULL, %s, ...): %s\n", options.localport, gai_strerror(result));
     }
-
+    
     result = bind(remotesock, laddrinfo->ai_addr, laddrinfo->ai_addrlen);
     if (result == -1) {
         udplink_fatal("bind(remotesock, local...): %s\n", strerror(errno));
@@ -197,60 +291,7 @@ main (int argc, char * const argv[]) {
 
     udplink_note("connected to %s\n", canonical_remote);
 
-    /* XXX we may need to play games for multicast here if we want to specify other than the default interface */
-
-    if (raddrinfo->ai_family == PF_INET && IN_MULTICAST(ntohl(((struct sockaddr_in *)(raddrinfo->ai_addr))->sin_addr.s_addr))) {
-        /* IPv4 multicast */
-        if (options.debug) udplink_note("IPv4 multicast\n");
-#ifdef IP_ADD_MEMBERSHIP
-        memset((void *)&mreq, 0, sizeof(mreq));
-        memcpy((void *)&mreq.imr_multiaddr, &((struct sockaddr_in *)raddrinfo->ai_addr)->sin_addr, sizeof(mreq.imr_multiaddr));
-        result = setsockopt(remotesock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq));
-        if (result == -1) {
-            udplink_fatal("setsockopt(..., IP_ADD_MEMBERSHIP, ...): %s\n", strerror(errno));
-        }
-#endif
-#ifdef IP_MULTICAST_LOOP
-        csockopt = 0;
-        result = setsockopt(remotesock, IPPROTO_IP, IP_MULTICAST_LOOP, &csockopt, sizeof(csockopt));
-        if (result == -1) {
-            udplink_fatal("setsockopt(..., IP_MULTICAST_LOOP, ...): %s\n", strerror(errno));
-        }
-#endif
-#ifdef IP_MULTICAST_TTL
-        csockopt = 5;
-        result = setsockopt(remotesock, IPPROTO_IP, IP_MULTICAST_TTL, &csockopt, sizeof(csockopt));
-        if (result == -1) {
-            udplink_fatal("setsockopt(..., IP_MULTICAST_TTL, ...): %s\n", strerror(errno));
-        }
-#endif
-    } else if (raddrinfo->ai_family == PF_INET6 && IN6_IS_ADDR_MULTICAST((&((struct sockaddr_in6 *)raddrinfo->ai_addr)->sin6_addr))) {
-        /* IPv6 multicast */
-        if (options.debug) udplink_note("IPv6 multicast\n");
-#ifdef IPV6_JOIN_GROUP
-        memset((void *)&mreq6, 0, sizeof(mreq6));
-        memcpy((void *)&mreq6.ipv6mr_multiaddr, &((struct sockaddr_in6 *)raddrinfo->ai_addr)->sin6_addr, sizeof(mreq6.ipv6mr_multiaddr));
-        result = setsockopt(remotesock, IPPROTO_IPV6, IPV6_JOIN_GROUP, &mreq6, sizeof(mreq6));
-        if (result == -1) {
-            udplink_fatal("setsockopt(..., IPV6_JOIN_GROUP, ...): %s\n", strerror(errno));
-        }
-#endif
-#ifdef IPV6_MULTICAST_LOOP
-        isockopt = 0;
-        result = setsockopt(remotesock, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &isockopt, sizeof(isockopt));
-        if (result == -1) {
-            udplink_fatal("setsockopt(..., IPV6_MULTICAST_LOOP, ...): %s\n", strerror(errno));
-        }
-#endif
-#ifdef IPV6_MULTICAST_HOPS
-        isockopt = 5;
-        result = setsockopt(remotesock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &isockopt, sizeof(isockopt));
-        if (result == -1) {
-            udplink_fatal("setsockopt(..., IPV6_MULTICAST_LOOP, ...): %s\n", strerror(errno));
-        }
-#endif
-    }
-
+    set_multicast_sockopt(remotesock, raddrinfo, &options);
 
     /* announce our presence to ccnd and request CCN PDU encapsulation */
     result = send(localsock, CCN_EMPTY_PDU, CCN_EMPTY_PDU_LENGTH, 0);
@@ -323,13 +364,17 @@ main (int argc, char * const argv[]) {
         if (fds[1].revents & (POLLIN)) {
             struct sockaddr from = {0};
             socklen_t fromlen = sizeof(from);
+            ssize_t recvlen;
             unsigned char *recvbuf;
 
             memmove(rbuf, CCN_EMPTY_PDU, CCN_EMPTY_PDU_LENGTH - 1);
             recvbuf = &rbuf[CCN_EMPTY_PDU_LENGTH - 1];
-            ssize_t recvlen = recvfrom(remotesock, recvbuf,
-                                       sizeof(rbuf) - CCN_EMPTY_PDU_LENGTH,
-                                       0, &from, &fromlen);
+            recvlen = recvfrom(remotesock, recvbuf, sizeof(rbuf) - CCN_EMPTY_PDU_LENGTH,
+                               0, &from, &fromlen);
+            if (recvlen == sizeof(rbuf) - CCN_EMPTY_PDU_LENGTH) {
+                udplink_note("remote packet too large, discarded\n");
+                continue;
+            }
             /* encapsulate, and send the packet out on the local side */
             recvbuf[recvlen] = '\0';
             memset(rd, 0, sizeof(*rd));
