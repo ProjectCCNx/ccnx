@@ -327,7 +327,7 @@ main (int argc, char * const argv[]) {
             }
             charbuf->length += recvlen;
             dres = ccn_skeleton_decode(ld, lbuf, recvlen);
-            while (ld->state == 0 && ld->tagstate == 0 && ld->nest == 0) {
+            while (ld->state == 0 && ld->nest == 0) {
                 if (options.debug) {
                     udplink_print_data("local", charbuf->buf, msgstart, ld->index - msgstart);
                 }
@@ -379,7 +379,7 @@ main (int argc, char * const argv[]) {
             recvbuf[recvlen] = '\0';
             memset(rd, 0, sizeof(*rd));
             dres = ccn_skeleton_decode(rd, rbuf, recvlen + CCN_EMPTY_PDU_LENGTH);
-            if (rd->state != 0 || rd->tagstate != 0 || rd->nest != 0 || dres != (recvlen + CCN_EMPTY_PDU_LENGTH)) {
+            if (rd->state != 0 || dres != (recvlen + CCN_EMPTY_PDU_LENGTH)) {
                 udplink_note("remote data protocol error\n");
                 continue;
             }

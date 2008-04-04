@@ -10,19 +10,6 @@
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
 
-enum ccn_decoder_state {
-    CCN_DSTATE_0 = 0,
-    CCN_DSTATE_1,
-    CCN_DSTATE_2,
-    CCN_DSTATE_3,
-    CCN_DSTATE_4,
-    CCN_DSTATE_5,
-    CCN_DSTATE_6,
-    CCN_DSTATE_7,
-    CCN_DSTATE_8,
-    CCN_DSTATE_10
-};
-
 /*
  * This macro documents what's happening in the state machine by
  * hinting what XML syntax would be emitted in a re-encoder.
@@ -39,16 +26,22 @@ ccn_skeleton_decode(struct ccn_skeleton_decoder *d, const unsigned char *p, size
     ssize_t i = 0;
     unsigned char c;
     size_t chunk;
+    if (d->state >= 0) {
+        tagstate = d->state >> 8;
+        state = d->state & 0xFF;
+    }
     while (i < n) {
         switch (state) {
-            case CCN_DSTATE_0: /* start new thing */
+            case CCN_DSTATE_INITIAL:
+            case CCN_DSTATE_NEWTOKEN: /* start new thing */
+                d->element_index = i + d->index;
                 if (tagstate > 1 && tagstate-- == 2) {
                     XML("\""); /* close off the attribute value */
                 } 
                 if (p[i] == CCN_CLOSE) {
                     i++;
                     if (d->nest <= 0 || tagstate > 1) {
-                        state = -__LINE__;
+                        state = CCN_DSTATE_ERR_NEST;
                         break;
                     }
                     if (tagstate == 1) {
@@ -59,18 +52,20 @@ ccn_skeleton_decode(struct ccn_skeleton_decoder *d, const unsigned char *p, size
                         XML("</%s>");
                     }
                     d->nest -= 1;
-                    if (d->nest == 0)
+                    if (d->nest == 0) {
+                        state = CCN_DSTATE_INITIAL;
                         n = i;
+                    }
                     break;
                 }
                 numval = 0;
-                state = 1;
+                state = CCN_DSTATE_NUMVAL;
                 /* FALLTHRU */
-            case CCN_DSTATE_1: /* parsing numval */
+            case CCN_DSTATE_NUMVAL: /* parsing numval */
                 c = p[i++];
                 if ((c & CCN_TT_HBIT) == CCN_CLOSE) {
                     if (numval > (SIZE_T_MAX >> (7 + CCN_TT_BITS)))
-                        state = -__LINE__;
+                        state = CCN_DSTATE_ERR_OVERFLOW;
                     numval = (numval << 7) + (c & 127);
                 }
                 else {
@@ -84,7 +79,8 @@ ccn_skeleton_decode(struct ccn_skeleton_decoder *d, const unsigned char *p, size
                                 XML(">");
                             }
                             d->nest += 1;
-                            state = 0;
+                            d->element_index = d->token_index;
+                            state = CCN_DSTATE_NEWTOKEN;
                             break;
                         case CCN_DTAG:
                             if (tagstate == 1) {
@@ -92,43 +88,44 @@ ccn_skeleton_decode(struct ccn_skeleton_decoder *d, const unsigned char *p, size
                                 XML(">");
                             }
                             d->nest += 1;
+                            d->element_index = d->token_index;
                             XML("<%s");
                             tagstate = 1;
-                            state = 0;
+                            state = CCN_DSTATE_NEWTOKEN;
                             break;
                         case CCN_BLOB:
                             if (tagstate == 1) {
                                 tagstate = 0;
                                 XML(" ccnbencoding=\"base64Binary\">");
                             }
-                            state = CCN_DSTATE_10;
+                            state = CCN_DSTATE_BLOB;
                             if (numval == 0)
-                                state = 0;
+                                state = CCN_DSTATE_NEWTOKEN;
                             break;
                         case CCN_UDATA:
                             if (tagstate == 1) {
                                 tagstate = 0;
                                 XML(">");
                             }
-                            state = CCN_DSTATE_3;
+                            state = CCN_DSTATE_UDATA;
                             if (numval == 0)
-                                state = 0;
+                                state = CCN_DSTATE_NEWTOKEN;
                             break;
                         case CCN_DATTR:
                             if (tagstate != 1) {
-                                state = -__LINE__;
+                                state = CCN_DSTATE_ERR_ATTR;
                                 break;
                             }
                             tagstate = 3;
-                            state = 0;
+                            state = CCN_DSTATE_NEWTOKEN;
                             break;
                         case CCN_ATTR:
                             if (tagstate != 1) {
-                                state = -__LINE__;
+                                state = CCN_DSTATE_ERR_ATTR;
                                 break;
                             }
                             numval += 1; /* encoded as length-1 */
-                            state = CCN_DSTATE_5;
+                            state = CCN_DSTATE_ATTRNAME;
                             break;
                         case CCN_TAG:
                             if (tagstate == 1) {
@@ -137,74 +134,75 @@ ccn_skeleton_decode(struct ccn_skeleton_decoder *d, const unsigned char *p, size
                             }
                             numval += 1; /* encoded as length-1 */
                             d->nest += 1;
-                            state = CCN_DSTATE_4;
+                            d->element_index = d->token_index;
+                            state = CCN_DSTATE_TAGNAME;
                             break;
                         default:
-                            state = -__LINE__;
+                            state = CCN_DSTATE_ERR_CODING;
                     }
                 }
                 break;
-            case CCN_DSTATE_4: /* parsing tag name */
+            case CCN_DSTATE_TAGNAME: /* parsing tag name */
                 chunk = n - i;
                 if (chunk > numval)
                     chunk = numval;
                 if (chunk == 0) {
-                    state = -__LINE__;
+                    state = CCN_DSTATE_ERR_BUG;
                     break;
                 }
                 numval -= chunk;
                 i += chunk;
                 if (numval == 0) {
                     if (d->nest == 0) {
-                        state = -__LINE__;
+                        state = CCN_DSTATE_ERR_NEST;
                         break;
                     }
                     XML("<%s");
                     tagstate = 1;
-                    state = CCN_DSTATE_0;
+                    state = CCN_DSTATE_NEWTOKEN;
                 }
                 break;                
-            case CCN_DSTATE_5: /* parsing attribute name */
+            case CCN_DSTATE_ATTRNAME: /* parsing attribute name */
                 chunk = n - i;
                 if (chunk > numval)
                     chunk = numval;
                 if (chunk == 0) {
-                    state = -__LINE__;
+                    state = CCN_DSTATE_ERR_BUG;
                     break;
                 }
                 numval -= chunk;
                 i += chunk;
                 if (numval == 0) {
                     if (d->nest == 0) {
-                        state = -__LINE__;
+                        state = CCN_DSTATE_ERR_ATTR;
                         break;
                     }
                     XML(" %s=\"");
                     tagstate = 3;
-                    state = CCN_DSTATE_0;
+                    state = CCN_DSTATE_NEWTOKEN;
                 }
                 break;
-            case CCN_DSTATE_3: /* utf-8 data */
-            case CCN_DSTATE_6: /* processing instructions, etc. */
-            case CCN_DSTATE_10: /* BLOB */
+            case CCN_DSTATE_UDATA: /* utf-8 data */
+            case CCN_DSTATE_BLOB: /* BLOB */
                 chunk = n - i;
                 if (chunk > numval)
                     chunk = numval;
                 if (chunk == 0) {
-                    state = -__LINE__;
+                    state = CCN_DSTATE_ERR_BUG;
                     break;
                 }
                 numval -= chunk;
                 i += chunk;
                 if (numval == 0)
-                    state = CCN_DSTATE_0;
+                    state = CCN_DSTATE_NEWTOKEN;
                 break;
             default:
                 n = i;
         }
     }
-    d->state = state;
-    d->tagstate = tagstate;
+    if (state < 0)
+        tagstate = 0;
+    d->state = state + (tagstate << 8); 
     d->numval = numval;
     d->index += i;
     return(i);

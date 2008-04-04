@@ -214,8 +214,8 @@ process_input(struct ccnd *h, int fd)
         msgstart = 0;
         dres = ccn_skeleton_decode(d, buf, res);
         fprintf(stderr, "ccn_skeleton_decode of %d bytes accepted %d\n",
-            (int)res, (int)dres);
-        while (d->state == 0 && d->tagstate == 0 && d->nest == 0) {
+                        (int)res, (int)dres);
+        while (d->state == 0) {
             fprintf(stderr, "%lu byte msg received on %d\n",
                 (unsigned long)(d->index - msgstart), fd);
             process_input_message(h, face, face->inbuf->buf + msgstart, 
@@ -229,7 +229,7 @@ process_input(struct ccnd *h, int fd)
                     face->inbuf->buf + d->index,
                     res = face->inbuf->length - d->index);
             fprintf(stderr, "  ccn_skeleton_decode of %d bytes accepted %d\n",
-            (int)res, (int)dres);
+                            (int)res, (int)dres);
         }
         if (d->state < 0) {
             fprintf(stderr, "ccnd: protocol error on %d\n", fd);

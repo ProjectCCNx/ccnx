@@ -10,9 +10,6 @@
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
 
-#define CCN_NO_SCHEMA INT_MIN
-#define CCN_UNKNOWN_SCHEMA (INT_MIN+1)
-
 static int
 process_test(unsigned char *data, size_t n) {
     struct ccn_skeleton_decoder skel_decoder = {0};
@@ -21,7 +18,7 @@ process_test(unsigned char *data, size_t n) {
     size_t s;
 retry:
     s = ccn_skeleton_decode(d, data, n);
-    if (d->state != 0 || d->nest != 0 || d->tagstate != 0) {
+    if (d->state != 0) {
         res = 1;
         fprintf(stderr, "error state %d after %d of %d chars\n",
             (int)d->state, (int)s, (int)n);
@@ -79,9 +76,7 @@ process_file(char *path) {
             return(1);
         }
     }
-    
     res = process_fd(fd);
-    
     if (fd > 0)
         close(fd);
     return(res);

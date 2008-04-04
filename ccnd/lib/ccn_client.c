@@ -216,7 +216,7 @@ ccn_put(struct ccn *h, const void *p, size_t length)
     if (h == NULL || p == NULL || length == 0)
         return(NOTE_ERR(h, EINVAL));
     res = ccn_skeleton_decode(&dd, p, length);
-    if (!(res == length && dd.state == 0 && dd.tagstate == 0 && dd.nest == 0))
+    if (!(res == length && dd.state == 0))
         return(NOTE_ERR(h, EINVAL));
     if (h->outbuf != NULL && h->outbufindex < h->outbuf->length) {
         size_t size;

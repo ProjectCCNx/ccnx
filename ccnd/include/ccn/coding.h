@@ -78,14 +78,34 @@ struct ccn_dict {
 };
 extern const struct ccn_dict ccn_dtag_dict; /* matches enum ccn_dtag above */
 
-enum ccn_decoder_state;
-
 struct ccn_skeleton_decoder { /* initialize to all 0 */
-    ssize_t index;
-    int state;
-    int tagstate;
-    size_t numval;
-    int nest;
+    ssize_t index;          /* Number of bytes processed */
+    int state;              /* Decoder state */
+    int nest;               /* Element nesting */
+    size_t numval;          /* Current numval, meaning depends on state */
+    size_t token_index;     /* Starting index of most-recent token */
+    size_t element_index;   /* Starting index of most-recent element */
+};
+
+/*
+ * The decoder state is one of these, possibly with some
+ * additional bits set for internal use.  A complete parse
+ * ends up in state 0 or an error state.
+ */
+enum ccn_decoder_state {
+    CCN_DSTATE_INITIAL = 0,
+    CCN_DSTATE_NEWTOKEN,
+    CCN_DSTATE_NUMVAL,
+    CCN_DSTATE_UDATA,
+    CCN_DSTATE_TAGNAME,
+    CCN_DSTATE_ATTRNAME,
+    CCN_DSTATE_BLOB,
+    /* All error states are negative */
+    CCN_DSTATE_ERR_OVERFLOW = -1,
+    CCN_DSTATE_ERR_ATTR     = -2,       
+    CCN_DSTATE_ERR_CODING   = -3,
+    CCN_DSTATE_ERR_NEST     = -4, 
+    CCN_DSTATE_ERR_BUG      = -5,
 };
 
 ssize_t ccn_skeleton_decode(
