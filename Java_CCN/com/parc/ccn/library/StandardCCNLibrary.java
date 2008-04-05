@@ -31,8 +31,7 @@ import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
-import com.parc.ccn.network.CCNInterestManager;
-import com.parc.ccn.network.CCNRepositoryManager;
+import com.parc.ccn.network.CCNNetworkManager;
 import com.parc.ccn.security.crypto.CCNMerkleTree;
 import com.parc.ccn.security.crypto.DigestHelper;
 import com.parc.ccn.security.keys.KeyManager;
@@ -40,7 +39,7 @@ import com.parc.ccn.security.keys.KeyManager;
 /**
  * A basic implementation of the CCNLibrary API. This
  * rides on top of the CCNBase low-level interface. It uses
- * CCNRepositoryManager to interface with a "real" virtual CCN,
+ * CCNNetworkManager to interface with a "real" virtual CCN,
  * and KeyManager to interface with the user's collection of
  * signing and verification keys. 
  * 
@@ -375,7 +374,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 			// the name -- not actual pieces of content --
 			// look only at ContentNames.
 			ArrayList<CompleteName> availableVersions = 
-				CCNRepositoryManager.getRepositoryManager().getChildren(new CompleteName(baseVersionName, null, null));
+				CCNNetworkManager.getNetworkManager().getChildren(new CompleteName(baseVersionName, null, null));
 			
 			if ((null == availableVersions) || (availableVersions.size() == 0)) {
 				// No existing version.
@@ -803,7 +802,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 							ContentAuthenticator authenticator,
 							byte [] signature, 
 							byte[] content) throws IOException {
-		return CCNRepositoryManager.getRepositoryManager().put(name, authenticator, signature, content);
+		return CCNNetworkManager.getNetworkManager().put(name, authenticator, signature, content);
 	}
 
 	/**
@@ -823,7 +822,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	public ArrayList<ContentObject> get(ContentName name, 
 										ContentAuthenticator authenticator,
 										boolean isRecursive) throws IOException {
-		return CCNRepositoryManager.getRepositoryManager().get(name, authenticator,isRecursive);
+		return CCNNetworkManager.getNetworkManager().get(name, authenticator,isRecursive);
 	}
 
 	/**
@@ -836,25 +835,12 @@ public class StandardCCNLibrary implements CCNLibrary {
 	public void expressInterest(
 			Interest interest,
 			CCNInterestListener listener) throws IOException {
-		
-		// Express interest to the network and to the repositories.
-		// TODO DKS amalgamate across queries to return single query descriptor that
-		// can be used to cancel.
-		try {
-			CCNInterestManager interestManager = CCNInterestManager.getInterestManager();
-			if (null != interestManager)
-				interestManager.expressInterest(interest, listener);
-		} catch (Exception e) {
-			Library.logger().info("CCN network unavailable: " + e.getMessage() + " Continuing without network connectivity.");
-		}
-		// Will add the interest to the listener
-		CCNRepositoryManager.getRepositoryManager().expressInterest(interest, listener);
-		return;
+		// Will add the interest to the listener.
+		CCNNetworkManager.getNetworkManager().expressInterest(interest, listener);
 	}
 
 	public void cancelInterest(Interest interest, CCNInterestListener listener) throws IOException {
-		CCNInterestManager.getInterestManager().cancelInterest(interest, listener);
-		CCNRepositoryManager.getRepositoryManager().cancelInterest(interest, listener);
+		CCNNetworkManager.getNetworkManager().cancelInterest(interest, listener);
 	}
 	
 	/**
@@ -867,7 +853,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * @throws IOException 
 	 */
 	public ArrayList<CompleteName> enumerate(Interest query) throws IOException {
-		return CCNRepositoryManager.getRepositoryManager().enumerate(query);		
+		return CCNNetworkManager.getNetworkManager().enumerate(query);		
 	}
 	
 	/**

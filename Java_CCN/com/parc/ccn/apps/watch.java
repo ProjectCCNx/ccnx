@@ -7,6 +7,7 @@ import java.util.Date;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.CompleteName;
+import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
@@ -70,7 +71,7 @@ public class watch extends Thread implements CCNInterestListener {
 		return (Interest[])_interests.toArray();
 	}
 	
-	public int handleResults(ArrayList<CompleteName> results) {
+	public int handleResults(ArrayList<ContentObject> results) {
 		for (int i=0; i < results.size(); ++i) {
 			System.out.println("New content: " + results.get(i).name());
 		}

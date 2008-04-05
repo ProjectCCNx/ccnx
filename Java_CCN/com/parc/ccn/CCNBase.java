@@ -10,6 +10,12 @@ import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 
+/**
+ * DKS TODO this should change to reflect only the core CCN network
+ * operations.
+ * @author smetters
+ *
+ */
 public interface CCNBase {
 	
 	/** 

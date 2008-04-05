@@ -9,6 +9,7 @@ import java.util.TreeSet;
 import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.CompleteName;
+import com.parc.ccn.data.ContentObject;
 
 /**
  * A base class handling standard query listener
@@ -55,7 +56,7 @@ public abstract class BasicInterestListener implements CCNInterestListener {
 		return _interests.toArray(new Interest[_interests.size()]);
 	}
 
-	public abstract int handleResults(ArrayList<CompleteName> results);
+	public abstract int handleResults(ArrayList<ContentObject> results);
 
 	public boolean matchesInterest(CompleteName name) {
 		Iterator<Interest> iIt = _interests.iterator();

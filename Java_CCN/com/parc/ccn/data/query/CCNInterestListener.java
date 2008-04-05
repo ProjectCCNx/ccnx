@@ -3,15 +3,17 @@ package com.parc.ccn.data.query;
 import java.util.ArrayList;
 
 import com.parc.ccn.data.CompleteName;
+import com.parc.ccn.data.ContentObject;
 
 public interface CCNInterestListener {
 	
 	/**
 	 * Callback called when we get new results for our query.
-	 * @param results
+	 * @param results Change to a content object, as that is what
+	 * 			ccnd is currently handing back anyway.
 	 * @return
 	 */
-    public int handleResults(ArrayList<CompleteName> results);
+    public int handleResults(ArrayList<ContentObject> results);
     
     /**
      * Notification that our query has timed out.

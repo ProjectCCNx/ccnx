@@ -1,19 +1,16 @@
 package com.parc.ccn.network.daemons;
 
-import java.io.IOException;
-
-import org.acplt.oncrpc.OncRpcException;
-
 import com.parc.ccn.Library;
-import com.parc.ccn.network.CCNInterestServer;
 import com.parc.ccn.network.impl.JackrabbitCCNRepository;
 
 /**
  * Top-level wrapper for standalone repositories that
  * want to run independent of any particular application.
  * 
- * Starts a local jackrabbit repository, and a RPC server
- * to handle requests from a transport agent.
+ * Starts a local jackrabbit repository. Clients on the same machine
+ * use RMI to find the repository. 
+ * 
+ * Run only one of these per machine.
  * @author smetters
  *
  */
@@ -23,7 +20,7 @@ public class RepositoryDaemon extends Daemon {
 
 		private static final long serialVersionUID = -6093561895394961537L;
 		JackrabbitCCNRepository _repository = null;
-		CCNInterestServer _interestServer = null;
+
 		boolean _noNetwork = false;
 		boolean _started = false;
 		
@@ -37,37 +34,16 @@ public class RepositoryDaemon extends Daemon {
 				Library.logger().info("Starting interest server...");				
 				_started = true;
 			}
-			//	_interestServer.run(_interestServer.transports); // starts with no portmap, expects direct connects
-			try {
-				if (!_noNetwork)
-					_interestServer.run(); // starts using portmap
-
-			} catch (OncRpcException oe) {
-				Library.logger().warning("Cannot register service with portmapper. Continuing without network connectivity.");
-				_noNetwork = true;
-			} catch (IOException ie) {
-				Library.logger().warning("IOException running interest server: " + ie.getMessage());
-				Library.warningStackTrace(ie);
-			}
 		}
 		
 		public void initialize() {
 			// we start up a jackrabbit and let it run
 			Library.logger().info("Starting Jackrabbit repository...");
 			_repository = new JackrabbitCCNRepository();
-			try {
-				Library.logger().info("Creating interest server..");
-				_interestServer = 
-					new CCNInterestServer(_repository);
-
-			} catch (Exception e) {
-				Library.logger().warning("Exception starting interest server: " + e.getMessage());
-				Library.warningStackTrace(e);
-			}
+			Library.logger().info("...started.");
 		}
 		
 		public void finish() {
-			_interestServer.stopRpcProcessing();
 			_repository.shutdown();
 		}
 	}

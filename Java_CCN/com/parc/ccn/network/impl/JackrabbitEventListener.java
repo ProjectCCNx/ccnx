@@ -13,6 +13,7 @@ import javax.jcr.observation.EventListener;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.CompleteName;
+import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 
@@ -68,7 +69,7 @@ class JackrabbitEventListener implements EventListener {
 			return;
 		}
 
-		ArrayList<CompleteName> nodesFound = new ArrayList<CompleteName>();
+		ArrayList<ContentObject> nodesFound = new ArrayList<ContentObject>();
 
 		while (events.hasNext()) {
 
@@ -105,7 +106,10 @@ class JackrabbitEventListener implements EventListener {
 							 _listener.matchesInterest(cn)) {
 							if (!_nodesAlreadyFound.contains(affectedNode.getPath())) {
 							//	Library.logger().info("Listener found new CCN Node: " + cn.name());
-								nodesFound.add(cn); // nodes found in response to this query
+								ContentObject co = 
+									new ContentObject(cn.name(), cn.authenticator(), cn.signature(),
+													  repository().getContentDigest(affectedNode));
+								nodesFound.add(co); // nodes found in response to this query
 								_nodesAlreadyFound.add(affectedNode.getPath());
 							}
 						} else {
