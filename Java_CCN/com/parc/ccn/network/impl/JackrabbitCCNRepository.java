@@ -1370,48 +1370,6 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		}
 		return names;
 	}
-
-	@Override
-	public CompleteName addProperty(CompleteName target, String propertyName, byte[] propertyValue) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public CompleteName addProperty(CompleteName target, String propertyName, String propertyValue) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public byte[] getByteProperty(CompleteName target, String propertyName) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public ArrayList<ContentObject> getLocal(ContentName name, ContentAuthenticator authenticator) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public String getStringProperty(CompleteName target, String propertyName) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public boolean isLocal(CompleteName name) {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	public CompleteName putLocal(ContentName name, ContentAuthenticator authenticator, byte[] content) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
-	}
 	
 	public boolean versionableRoot() {
 		return _versionableRoot;

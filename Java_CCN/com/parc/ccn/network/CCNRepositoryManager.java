@@ -221,26 +221,6 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 		return results;
 	}
 
-	public CompleteName addProperty(CompleteName target, String propertyName, byte[] propertyValue) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public CompleteName addProperty(CompleteName target, String propertyName, String propertyValue) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public String getStringProperty(CompleteName target, String propertyName) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public byte[] getByteProperty(CompleteName target, String propertyName) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
 	protected void repositoryAdded(CCNRepository newRepository) {
 		// DiscoveryManager handles _repositories List.
 		if (!_repositories.contains(newRepository))

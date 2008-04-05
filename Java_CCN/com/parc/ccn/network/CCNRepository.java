@@ -40,36 +40,5 @@ public interface CCNRepository extends CCNBase {
 	 */
 	public ArrayList<CompleteName> getChildren(
 			CompleteName name) throws IOException;
-	
-	/**
-	 * Annotate content (internal or public) with
-	 * additional information.
-	 */
-	public CompleteName addProperty(
-			CompleteName target,
-			String propertyName, 
-		    byte [] propertyValue) throws IOException;
-
-	/**
-	 * Annotate content (internal or public) with
-	 * additional information.
-	 */
-	public CompleteName addProperty(
-			CompleteName target,
-			String propertyName, 
-		    String propertyValue) throws IOException;
-	/**
-	 * Retrieve additional information.
-	 */
-	public String getStringProperty(
-			CompleteName target,
-			String propertyName) throws IOException;
-
-	/**
-	 * Retrieve additional information.
-	 */
-	public byte [] getByteProperty(
-			CompleteName target,
-			String propertyName) throws IOException;
 
 }
