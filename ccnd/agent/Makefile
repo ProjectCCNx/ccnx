@@ -34,5 +34,6 @@ depend: Makefile $(CSRC)
 # but must be updated manually.
 ###############################
 ccnd.o: ccnd.c ../include/ccn/ccnd.h ../include/ccn/charbuf.h \
-  ../include/ccn/coding.h ../include/ccn/hashtb.h
+  ../include/ccn/coding.h ../include/ccn/hashtb.h \
+  ../include/ccn/schedule.h
 smoketestccnd.o: smoketestccnd.c
