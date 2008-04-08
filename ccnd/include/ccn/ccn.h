@@ -105,7 +105,7 @@ int ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
                          int repeat, struct ccn_closure *action);
 /*
  * ccn_set_default_content_handler:
- * Sets default content_handler, replacing any in effect.
+ * Sets default content handler, replacing any in effect.
  * This is used when content comes in that does not match any
  * expressed interest that has a handler.
  */
@@ -126,11 +126,10 @@ ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
                         struct ccn_closure *action);
 /*
  * ccn_set_default_interest_handler:
- * Sets default interest_handler, replacing any in effect.
+ * Sets default interest handler, replacing any in effect.
  */
-int /*NYI*/
-ccn_set_default_interest_handler(struct ccn *h,
-                                 struct ccn_closure *action);
+int ccn_set_default_interest_handler(struct ccn *h,
+                                     struct ccn_closure *action);
 
 /*
  * ccn_put: send ccn binary
