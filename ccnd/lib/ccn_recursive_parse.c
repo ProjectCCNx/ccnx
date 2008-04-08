@@ -29,7 +29,7 @@ cons(char *car, struct pair *cdr) {
     l->car = car;
     l->cdr = cdr;
     return(l);
-};
+}
 
 int
 MatchOpenTag(const unsigned char *name, const char *thing) {
