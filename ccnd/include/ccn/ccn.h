@@ -150,6 +150,54 @@ int ccn_put(struct ccn *h, const void *p, size_t length);
 int ccn_output_is_pending(struct ccn *h);
 
 /***********************************
+ * Binary decoding
+ * These routines require the whole binary object be buffered.
+ */
+
+struct ccn_buf_decoder {
+    struct ccn_skeleton_decoder decoder;
+    unsigned char *buf;
+    size_t size;
+};
+
+struct ccn_buf_decoder *ccn_buf_decoder_start(struct ccn_buf_decoder *d,
+    unsigned char *buf, size_t size);
+
+void ccn_buf_advance(struct ccn_buf_decoder *d);
+
+/* The match routines return a boolean - true for match */
+int ccn_buf_match_dtag(struct ccn_buf_decoder *d, enum ccn_dtag dtag);
+
+int ccn_buf_match_blob(struct ccn_buf_decoder *d,
+                       unsigned char **bufp, size_t *sizep);
+
+int ccn_buf_match_udata(struct ccn_buf_decoder *d, const char *s);
+
+int ccn_buf_match_attr(struct ccn_buf_decoder *d, const char *s);
+
+/* ccn_buf_check_close enters an error state if element closer not found */
+void ccn_buf_check_close(struct ccn_buf_decoder *d);
+
+struct ccn_parsed_interest {
+    size_t name_start;
+    size_t name_size;
+    size_t pubid_start;
+    size_t pubid_size;
+    size_t nonce_start;
+    size_t nonce_size;
+};
+
+/*
+ * ccn_parse_interest:
+ * Returns number of name components, or 
+ * a negative value for an error.
+ * Fills in *interest.
+ */
+int
+ccn_parse_interest(unsigned char *msg, size_t size,
+                   struct ccn_parsed_interest *interest);
+
+/***********************************
  * Low-level binary formatting
  */
 

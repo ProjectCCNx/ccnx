@@ -8,7 +8,7 @@ COPT = -g -Wall
 PROGRAMS = ccn_ccnbtoxml ccn_xmltoccnb ccn_recursive_parse \
     hashtbtest skel_decode_test smoketestclientlib
 DEBRIS = ccn_coding
-CSRC = ccn_charbuf.c ccn_coding.c ccn_client.c \
+CSRC = ccn_buf_decoder.c ccn_charbuf.c ccn_coding.c ccn_client.c  \
     ccn_ccnbtoxml.c ccn_xmltoccnb.c ccn_schedule.c \
     ccn_recursive_parse.c \
     ccn_schemaexperiment.c \
@@ -16,7 +16,8 @@ CSRC = ccn_charbuf.c ccn_coding.c ccn_client.c \
     hashtb.c hashtbtest.c \
     smoketestclientlib.c
 
-LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_coding.o ccn_schedule.o hashtb.o
+LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_coding.o ccn_schedule.o \
+    ccn_buf_decoder.o hashtb.o
 
 default all: lib $(PROGRAMS)
 
@@ -56,6 +57,8 @@ depend: Makefile $(CSRC)
 # Dependencies below here are checked by depend target
 # but must be updated manually.
 ###############################
+ccn_buf_decoder.o: ccn_buf_decoder.c ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h
 ccn_charbuf.o: ccn_charbuf.c ../include/ccn/charbuf.h
 ccn_coding.o: ccn_coding.c ../include/ccn/charbuf.h \
   ../include/ccn/coding.h

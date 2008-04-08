@@ -39,6 +39,7 @@ struct ccnd {
     nfds_t nfds;
     struct pollfd *fds;
     struct ccn_schedule *sched;
+    struct ccn_charbuf *scratch_charbuf;
 };
 
 struct dbl_links {
@@ -68,7 +69,7 @@ static int create_local_listener(const char *sockname, int backlog);
 static void accept_new_client(struct ccnd *h);
 static void shutdown_client_fd(struct ccnd *h, int fd);
 static void process_input_message(struct ccnd *h, struct face *face,
-                                  unsigned char *msg, size_t size);
+                                  unsigned char *msg, size_t size, int pdu_ok);
 static void process_input(struct ccnd *h, int fd);
 static void do_write(struct ccnd *h, struct face *face,
                      unsigned char *data, size_t size);
@@ -101,6 +102,27 @@ unlink_at_exit(const char *path)
         signal(SIGHUP, &handle_fatal_signal);
         atexit(&cleanup_at_exit);
     }
+}
+
+static struct ccn_charbuf *
+charbuf_obtain(struct ccnd *h)
+{
+    struct ccn_charbuf *c = h->scratch_charbuf;
+    if (c == NULL)
+        return(ccn_charbuf_create());
+    h->scratch_charbuf = NULL;
+    c->length = 0;
+    return(c);
+}
+
+static void
+charbuf_release(struct ccnd *h, struct ccn_charbuf *c)
+{
+    c->length = 0;
+    if (h->scratch_charbuf == NULL)
+        h->scratch_charbuf = c;
+    else
+        ccn_charbuf_destroy(&c);
 }
 
 static int
@@ -190,13 +212,13 @@ do_write_BFI(struct ccnd *h, struct face *face,
              unsigned char *data, size_t size) {
     struct ccn_charbuf *c;
     if ((face->flags & CCN_FACE_LINK) != 0) {
-        c = ccn_charbuf_create();
+        c = charbuf_obtain(h);
         ccn_charbuf_reserve(c, size + 5);
         ccn_charbuf_append_tt(c, CCN_DTAG_CCNProtocolDataUnit, CCN_DTAG);
         ccn_charbuf_append(c, data, size);
         ccn_charbuf_append_closer(c);
         do_write(h, face, c->buf, c->length);
-        ccn_charbuf_destroy(&c);
+        charbuf_release(h, c);
         return;
     }
     do_write(h, face, data, size);
@@ -224,15 +246,31 @@ process_input_message_BFI(struct ccnd *h, struct face *face,
 }
 
 static void
-process_input_message(struct ccnd *h, struct face *face, unsigned char *msg, size_t size)
+process_incoming_interest(struct ccnd *h, struct face *face,
+                      unsigned char *msg, size_t size)
+{
+    struct ccn_parsed_interest interest = {0};
+    int res;
+    res = ccn_parse_interest(msg, size, &interest);
+    if (res < 0) {
+        fprintf(stderr, "bad interest - code %d\n", res);
+        return;
+    }
+    
+    process_input_message_BFI(h, face, msg, size);
+}
+
+static void
+process_input_message(struct ccnd *h, struct face *face,
+                      unsigned char *msg, size_t size, int pdu_ok)
 {
     struct ccn_skeleton_decoder decoder = {0};
     struct ccn_skeleton_decoder *d = &decoder;
     ssize_t dres;
     d->state |= CCN_DSTATE_PAUSE;
     dres = ccn_skeleton_decode(d, msg, size);
-    if (CCN_GET_TT_FROM_DSTATE(d->state) == CCN_DTAG) {
-        if (d->numval == CCN_DTAG_CCNProtocolDataUnit) {
+    if (d->state >= 0 && CCN_GET_TT_FROM_DSTATE(d->state) == CCN_DTAG) {
+        if (pdu_ok && d->numval == CCN_DTAG_CCNProtocolDataUnit) {
             size -= d->index;
             if (size > 0)
                 size--;
@@ -243,20 +281,24 @@ process_input_message(struct ccnd *h, struct face *face, unsigned char *msg, siz
                 dres = ccn_skeleton_decode(d, msg + d->index, size - d->index);
                 if (d->state != 0)
                     break;
-                process_input_message_BFI(h, face, msg + d->index - dres, dres);
+                process_input_message(h, face, msg + d->index - dres, dres, 0);
             }
             return;
         }
-        else if (d->numval == CCN_DTAG_Interest || CCN_DTAG_Content) {
+        else if (d->numval == CCN_DTAG_Interest) {
+            process_incoming_interest(h, face, msg, size);
+            return;
+        }
+        else if (d->numval == CCN_DTAG_Content) {
             process_input_message_BFI(h, face, msg, size);
             return;
         }
     }
-    fprintf(stderr, "discarding unknown message; size = %lu", (unsigned long)size);
+    fprintf(stderr, "discarding unknown message; size = %lu\n", (unsigned long)size);
 }
 
 struct face *
-get_source(struct ccnd *h, struct face *face,
+get_dgram_source(struct ccnd *h, struct face *face,
            struct sockaddr *addr, socklen_t addrlen)
 {
     struct face *source;
@@ -303,7 +345,7 @@ process_input(struct ccnd *h, int fd)
             shutdown_client_fd(h, fd);
     }
     else {
-        source = get_source(h, face, addr, addrlen);
+        source = get_dgram_source(h, face, addr, addrlen);
         face->inbuf->length += res;
         msgstart = 0;
         dres = ccn_skeleton_decode(d, buf, res);
@@ -313,7 +355,7 @@ process_input(struct ccnd *h, int fd)
             fprintf(stderr, "%lu byte msg received on %d\n",
                 (unsigned long)(d->index - msgstart), fd);
             process_input_message(h, source, face->inbuf->buf + msgstart, 
-                                           d->index - msgstart);
+                                           d->index - msgstart, 1);
             msgstart = d->index;
             if (msgstart == face->inbuf->length) {
                 face->inbuf->length = 0;
@@ -542,7 +584,7 @@ main(int argc, char **argv)
 {
     struct ccnd *h;
     h = ccnd_create();
-    if (1)
+    if (0)
         ccn_schedule_event(h->sched, 500000, &beat, NULL, 5);
     run(h);
     fprintf(stderr, "ccnd[%d] exiting.\n", (int)getpid());

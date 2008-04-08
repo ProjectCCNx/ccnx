@@ -7,8 +7,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <poll.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/un.h>
 #include <unistd.h>
@@ -22,17 +24,23 @@
 struct ccn {
     int sock;
     size_t outbufindex;
+    struct ccn_charbuf *interestbuf;
+    struct ccn_charbuf *inbuf;
     struct ccn_charbuf *outbuf;
     struct hashtb *interests;
-    struct ccn_closure *default_content_handler;
-    struct ccn_closure *default_interest_handler;
+    struct ccn_closure *default_content_action;
+    struct ccn_closure *default_interest_action;
+    struct ccn_skeleton_decoder decoder;
     int err;
     int errline;
 };
 
 struct expressed_interest {
-    int repeat;
+    struct timeval lasttime;
     struct ccn_closure *action;
+    int repeat;
+    int target;
+    int outstanding;
 };
 
 #define NOTE_ERR(h, e) (h->err = (e), h->errline = __LINE__, -1)
@@ -60,6 +68,7 @@ ccn_create(void)
     if (h != NULL) {
         h->sock = -1;
     }
+    h->interestbuf = ccn_charbuf_create();
     return(h);
 }
 
@@ -96,6 +105,8 @@ int
 ccn_disconnect(struct ccn *h)
 {
     int res;
+    ccn_charbuf_destroy(&h->inbuf);
+    ccn_charbuf_destroy(&h->outbuf);
     res = close(h->sock);
     h->sock = -1;
     if (res == -1)
@@ -112,8 +123,8 @@ ccn_destroy(struct ccn **hp)
     if (h == NULL)
         return;
     ccn_disconnect(h);
-    ccn_replace_handler(h, &(h->default_interest_handler), NULL);
-    ccn_replace_handler(h, &(h->default_content_handler), NULL);
+    ccn_replace_handler(h, &(h->default_interest_action), NULL);
+    ccn_replace_handler(h, &(h->default_content_action), NULL);
     if (h->interests != NULL) {
         for (hashtb_start(h->interests, e); e->data != NULL; hashtb_next(e)) {
             struct expressed_interest *i = e->data;
@@ -121,6 +132,7 @@ ccn_destroy(struct ccn **hp)
         }
         hashtb_destroy(&(h->interests));
     }
+    ccn_charbuf_destroy(&h->interestbuf);
     free(h);
     *hp = NULL;
 }
@@ -192,9 +204,17 @@ ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
     else
         interest->repeat = -1;
     ccn_replace_handler(h, &(interest->action), action);
-    if (res == HT_NEW_ENTRY) {
-        // set up the timekeeping stuff
-    }
+    interest->target = 1;
+    return(0);
+}
+
+int
+ccn_set_default_interest_handler(struct ccn *h,
+                                struct ccn_closure *action)
+{
+    if (h == NULL)
+        return(-1);
+    ccn_replace_handler(h, &(h->default_interest_action), action);
     return(0);
 }
 
@@ -204,7 +224,27 @@ ccn_set_default_content_handler(struct ccn *h,
 {
     if (h == NULL)
         return(-1);
-    ccn_replace_handler(h, &(h->default_content_handler), action);
+    ccn_replace_handler(h, &(h->default_content_action), action);
+    return(0);
+}
+
+static int
+ccn_pushout(struct ccn *h)
+{
+    ssize_t res;
+    size_t size;
+    if (h->outbuf != NULL && h->outbufindex < h->outbuf->length) {
+        size = h->outbuf->length - h->outbufindex;
+        res = write(h->sock, h->outbuf->buf + h->outbufindex, size);
+        if (res == size) {
+            h->outbuf->length = h->outbufindex = 0;
+            return(0);
+        }
+        if (res == -1)
+            return ((errno == EAGAIN) ? 1 : NOTE_ERRNO(h));
+        h->outbufindex += res;
+        return(1);
+    }
     return(0);
 }
 
@@ -219,19 +259,9 @@ ccn_put(struct ccn *h, const void *p, size_t length)
     if (!(res == length && dd.state == 0))
         return(NOTE_ERR(h, EINVAL));
     if (h->outbuf != NULL && h->outbufindex < h->outbuf->length) {
-        size_t size;
         // XXX - should limit unbounded growth of h->outbuf
         ccn_charbuf_append(h->outbuf, p, length); // XXX - check res
-        size = h->outbuf->length - h->outbufindex;
-        res = write(h->sock, h->outbuf->buf + h->outbufindex, size);
-        if (res == size) {
-            h->outbuf->length = h->outbufindex = 0;
-            return(0);
-        }
-        if (res == -1)
-            return ((errno == EAGAIN) ? 1 : NOTE_ERRNO(h));
-        h->outbufindex += res;
-        return(1);
+        return (ccn_pushout(h));
     }
     res = write(h->sock, p, length);
     if (res == length)
@@ -244,7 +274,7 @@ ccn_put(struct ccn *h, const void *p, size_t length)
     if (h->outbuf == NULL) {
         h->outbuf = ccn_charbuf_create();
         h->outbufindex = 0;
-        }
+    }
     ccn_charbuf_append(h->outbuf, ((const unsigned char *)p)+res, length-res);
     return(1);
 }
@@ -255,27 +285,168 @@ ccn_output_is_pending(struct ccn *h)
     return(h != NULL && h->outbuf != NULL && h->outbufindex < h->outbuf->length);
 }
 
+static void
+ccn_refresh_interest(struct ccn *h, struct expressed_interest *interest,
+                     const unsigned char *namepre, size_t nameprelen)
+{
+    struct ccn_charbuf *c = h->interestbuf;
+    c->length = 0;
+    ccn_charbuf_append_tt(c, CCN_DTAG_Interest, CCN_DTAG);
+    ccn_charbuf_append(c, namepre, nameprelen);
+    ccn_charbuf_append_closer(c);
+    ccn_charbuf_append_closer(c);
+    while (interest->outstanding < interest->target) {
+        ccn_put(h, c->buf, c->length);
+        interest->outstanding += 1;
+    }
+}
+
+static void
+ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
+{
+    struct ccn_parsed_interest interest = {0};
+    int res;
+    res = ccn_parse_interest(msg, size, &interest);
+    if (res >= 0) {
+        if (h->default_interest_action != NULL) {
+            (h->default_interest_action->p)(
+                h->default_interest_action,
+                CCN_UPCALL_INTEREST,
+                h, msg, size, NULL, 0);
+        }
+        return;
+    }
+    /* Assume it is a ContentObject. */
+    /* XXX - Should check against interests here! */
+    if (h->default_content_action != NULL) {
+        (h->default_content_action->p)(
+            h->default_content_action,
+            CCN_UPCALL_CONTENT,
+            h, msg, size, NULL, 0);
+    }
+}
+
+static int
+ccn_process_input(struct ccn *h)
+{
+    ssize_t res;
+    ssize_t msgstart;
+    unsigned char *buf;
+    struct ccn_skeleton_decoder *d = &h->decoder;
+    struct ccn_charbuf *inbuf = h->inbuf;
+    if (inbuf == NULL)
+        h->inbuf = inbuf = ccn_charbuf_create();
+    if (inbuf->length == 0)
+        memset(d, 0, sizeof(*d));
+    buf = ccn_charbuf_reserve(inbuf, 8800);
+    res = read(h->sock, buf, inbuf->limit - inbuf->length);
+    if (res == 0) {
+        ccn_disconnect(h);
+        return(-1);
+    }
+    if (res == -1) {
+        if (errno == EAGAIN)
+            res = 0;
+        else
+            return(NOTE_ERRNO(h));
+    }
+    inbuf->length += res;
+    msgstart = 0;
+    ccn_skeleton_decode(d, buf, res);
+    while (d->state == 0) {
+        ccn_dispatch_message(h, inbuf->buf + msgstart, 
+                              d->index - msgstart);
+        msgstart = d->index;
+        if (msgstart == inbuf->length) {
+            inbuf->length = 0;
+            return(0);
+        }
+        ccn_skeleton_decode(d, inbuf->buf + d->index,
+                            inbuf->length - d->index);
+    }
+    if (msgstart < inbuf->length && msgstart > 0) {
+        /* move partial message to start of buffer */
+        memmove(inbuf->buf, inbuf->buf + msgstart,
+                inbuf->length - msgstart);
+        inbuf->length -= msgstart;
+        d->index -= msgstart;
+    }
+    return(0);
+}
+
+#define CCN_INTEREST_HALFLIFE_MICROSEC 4000000
 int
 ccn_run(struct ccn *h, int timeout)
 {
-/**********
-    for (each expressed interest) {
-        if (interest has timed out) {
-            refresh the interest
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct timeval now;
+    struct timeval start;
+    struct expressed_interest *interest;
+    int delta;
+    int refresh;
+    struct pollfd fds[1];
+    int timeout_ms;
+    int res;
+    memset(fds, 0, sizeof(fds));
+    start.tv_sec = 0;
+    while (h->sock != -1) {
+        refresh = 5 * CCN_INTEREST_HALFLIFE_MICROSEC;
+        gettimeofday(&now, NULL);
+        if (h->interests != NULL && !ccn_output_is_pending(h)) {
+             for (hashtb_start(h->interests, e); e->data != NULL; hashtb_next(e)) {
+                interest = e->data;
+                if (interest->lasttime.tv_sec + 30 < now.tv_sec) {
+                    interest->outstanding = 0;
+                    interest->lasttime = now;
+                }
+                delta = (now.tv_sec  - interest->lasttime.tv_sec)*1000000 +
+                        (now.tv_usec - interest->lasttime.tv_usec);
+                while (delta >= CCN_INTEREST_HALFLIFE_MICROSEC) {
+                    interest->outstanding /= 2;
+                    delta -= CCN_INTEREST_HALFLIFE_MICROSEC;
+                }
+                if (delta < 0)
+                    delta = 0;
+                if (CCN_INTEREST_HALFLIFE_MICROSEC - delta < refresh)
+                    refresh = CCN_INTEREST_HALFLIFE_MICROSEC - delta;
+                interest->lasttime = now;
+                while (delta > interest->lasttime.tv_usec) {
+                    delta -= 1000000;
+                    interest->lasttime.tv_sec -= 1;
+                }
+                interest->lasttime.tv_usec -= delta;
+                if (interest->outstanding < interest->target)
+                    ccn_refresh_interest(h, interest, e->key, e->keysize);
+             }
+        }
+        if (start.tv_sec == 0)
+            start = now;
+        else if (timeout >= 0) {
+            delta = (now.tv_sec  - start.tv_sec) *1000 +
+                    (now.tv_usec - start.tv_usec)/1000;
+            if (delta > timeout)
+                return(0);
+        }
+        fds[0].fd = h->sock;
+        fds[0].events = POLLIN;
+        if (ccn_output_is_pending(h))
+            fds[0].events |= POLLOUT;
+        timeout_ms = refresh / 1000;
+        if (timeout >= 0 && timeout < timeout_ms)
+            timeout_ms = timeout;
+        res = poll(fds, 1, timeout_ms);
+        if (res < 0)
+            return (NOTE_ERRNO(h));
+        if (res > 0) {
+            if ((fds[0].revents | POLLOUT) != 0)
+                ccn_pushout(h);
+            if ((fds[0].revents | POLLIN) != 0) {
+                ccn_process_input(h);
+            }
         }
     }
-    if (have data to send)
-        set POLLOUT
-    for (;;) {
-        set POLLIN
-        poll(...)
-        if (output is ready)
-            send more stuff
-        if (input is ready)
-            read and dispatch
-    }
-*************/
-    return(NOTE_ERR(h, ENOSYS));
+    return(-1);
 }
 
 int
