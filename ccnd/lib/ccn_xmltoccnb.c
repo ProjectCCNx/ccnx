@@ -19,6 +19,7 @@ struct ccn_encoder_stack_item {
 struct ccn_encoder {
     struct ccn_charbuf *openudata;
     int is_base64binary;
+    int toss_white;
     const struct ccn_dict_entry *tagdict;
     int tagdict_count;
     FILE *outfile;
@@ -157,6 +158,23 @@ emit_tt(struct ccn_encoder *u, size_t numval, enum ccn_tt tt)
     emit_bytes(u, p, n);
 }
 
+static int
+all_whitespace(struct ccn_charbuf *b)
+{
+    size_t i;
+    size_t n = b->length;
+    for (i = 0; i < n; i++) {
+        switch (b->buf[i]) {
+            case ' ':
+            case '\t':
+            case '\n':
+                continue;
+        }
+        return(0);
+    }
+    return(1);
+}
+
 static void
 finish_openudata(struct ccn_encoder *u)
 {
@@ -165,7 +183,6 @@ finish_openudata(struct ccn_encoder *u)
         ssize_t len = -1;
         size_t maxbinlen = u->openudata->length * 3 / 4 + 4;
         struct base64_decoder d = { 0 };
-        
         u->is_base64binary = 0;
         obuf = ccn_charbuf_reserve(u->openudata, maxbinlen);
         if (obuf != NULL) {
@@ -187,8 +204,10 @@ finish_openudata(struct ccn_encoder *u)
         }
     }
     if (u->openudata->length != 0) {
-        emit_tt(u, u->openudata->length, CCN_UDATA);
-        emit_bytes(u, u->openudata->buf, u->openudata->length);
+        if (!(u->toss_white && all_whitespace(u->openudata))) {
+            emit_tt(u, u->openudata->length, CCN_UDATA);
+            emit_bytes(u, u->openudata->buf, u->openudata->length);
+        }
         u->openudata->length = 0;
     }
 }
@@ -273,8 +292,9 @@ do_processing_instructions(void *ud, const XML_Char *target, const XML_Char *dat
      emit_closer(u);
 }
 
+#define TOSS_WHITE 1
 static int
-process_fd(int fd, FILE *outfile) {
+process_fd(int fd, FILE *outfile, int flags) {
     char buf[17];
     ssize_t len;
     int res = 0;
@@ -282,6 +302,9 @@ process_fd(int fd, FILE *outfile) {
     XML_Parser p;
     u = ccn_encoder_create(outfile);
     if (u == NULL) return(1);
+    if (flags & TOSS_WHITE) {
+        u->toss_white = 1;
+    }
     p = XML_ParserCreate(NULL);
     XML_SetUserData(p, u);
     XML_SetElementHandler(p, &do_start_element, &do_end_element);
@@ -309,7 +332,7 @@ process_fd(int fd, FILE *outfile) {
 }
 
 static int
-process_file(char *path) {
+process_file(char *path, int flags) {
     int fd = 0;
     int res = 0;
     FILE *outfile = stdout;
@@ -344,7 +367,7 @@ process_file(char *path) {
         }
     }
     if (res == 0) {
-        res = process_fd(fd, outfile);
+        res = process_fd(fd, outfile, flags);
         fflush(outfile);
     }
     if (outfile != NULL && outfile != stdout) {
@@ -366,9 +389,14 @@ int
 main(int argc, char **argv) {
     int i;
     int res = 0;
+    int flags = 0;
     for (i = 1; argv[i] != 0; i++) {
+        if (0 == strcmp(argv[i], "-w")) {
+            flags |= TOSS_WHITE;
+            continue;
+        }
         fprintf(stderr, "<!-- Processing %s -->\n", argv[i]);
-        res |= process_file(argv[i]);
+        res |= process_file(argv[i], flags);
     }
     return(res);
 }
