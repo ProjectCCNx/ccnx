@@ -18,6 +18,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <ccn/ccn.h>
 #include <ccn/ccnd.h>
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
@@ -51,6 +52,7 @@ struct dbl_links {
 struct face {
     int fd;
     int sock_type;
+    int flags;
     struct ccn_charbuf *inbuf;
     struct ccn_skeleton_decoder decoder;
     size_t outbufindex;
@@ -58,6 +60,7 @@ struct face {
     const struct sockaddr *addr;
     socklen_t addrlen;
 };
+#define CCN_FACE_LINK (1 << 0)
 
 static void cleanup_at_exit(void);
 static void unlink_at_exit(const char *path);
@@ -178,27 +181,78 @@ shutdown_client_fd(struct ccnd *h, int fd)
     hashtb_delete(e);
 }
 
+/*
+ * do_write_BFI:
+ * This is temporary...
+ */
 static void
-process_input_message(struct ccnd *h, struct face *face, unsigned char *msg, size_t size)
+do_write_BFI(struct ccnd *h, struct face *face,
+             unsigned char *data, size_t size) {
+    struct ccn_charbuf *c;
+    if ((face->flags & CCN_FACE_LINK) != 0) {
+        c = ccn_charbuf_create();
+        ccn_charbuf_reserve(c, size + 5);
+        ccn_charbuf_append_tt(c, CCN_DTAG_CCNProtocolDataUnit, CCN_DTAG);
+        ccn_charbuf_append(c, data, size);
+        ccn_charbuf_append_closer(c);
+        do_write(h, face, c->buf, c->length);
+        ccn_charbuf_destroy(&c);
+        return;
+    }
+    do_write(h, face, data, size);
+}
+
+static void
+process_input_message_BFI(struct ccnd *h, struct face *face,
+                unsigned char *msg, size_t size)
 {
     // BFI version
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
-    int i;
-    for (i = 1, hashtb_start(h->faces, e);
-         i < h->nfds && e->data != NULL;
-         i++, hashtb_next(e)) {
+    for (hashtb_start(h->faces, e); e->data != NULL; hashtb_next(e)) {
         struct face *otherface = e->data;
         if (face != otherface && otherface->sock_type != SOCK_DGRAM) {
-            do_write(h, otherface, msg, size);
+            do_write_BFI(h, otherface, msg, size);
         }
     }
     for (hashtb_start(h->dgram_faces, e); e->data != NULL; hashtb_next(e)) {
         struct face *otherface = e->data;
         if (face != otherface) {
-            do_write(h, otherface, msg, size);
+            do_write_BFI(h, otherface, msg, size);
         }
     }
+}
+
+static void
+process_input_message(struct ccnd *h, struct face *face, unsigned char *msg, size_t size)
+{
+    struct ccn_skeleton_decoder decoder = {0};
+    struct ccn_skeleton_decoder *d = &decoder;
+    ssize_t dres;
+    d->state |= CCN_DSTATE_PAUSE;
+    dres = ccn_skeleton_decode(d, msg, size);
+    if (CCN_GET_TT_FROM_DSTATE(d->state) == CCN_DTAG) {
+        if (d->numval == CCN_DTAG_CCNProtocolDataUnit) {
+            size -= d->index;
+            if (size > 0)
+                size--;
+            msg += d->index;
+            face->flags |= CCN_FACE_LINK;
+            memset(d, 0, sizeof(*d));
+            while (d->index < size) {
+                dres = ccn_skeleton_decode(d, msg + d->index, size - d->index);
+                if (d->state != 0)
+                    break;
+                process_input_message_BFI(h, face, msg + d->index - dres, dres);
+            }
+            return;
+        }
+        else if (d->numval == CCN_DTAG_Interest || CCN_DTAG_Content) {
+            process_input_message_BFI(h, face, msg, size);
+            return;
+        }
+    }
+    fprintf(stderr, "discarding unknown message; size = %lu", (unsigned long)size);
 }
 
 struct face *
