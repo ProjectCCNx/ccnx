@@ -32,16 +32,16 @@
 <!ELEMENT Length	(#PCDATA)>	<!-- nonNegativeInteger -->
 
 <!ELEMENT RootDigest	(#PCDATA)>	<!-- base64Binary -->
-<!ATTLIST RootDigest     ccnbencoding CDATA #FIXED 'base64Binary' >
+<!ATTLIST RootDigest    ccnbencoding CDATA #FIXED 'base64Binary'>
 
 <!ELEMENT Content	(#PCDATA)>	<!-- base64Binary -->
-<!ATTLIST Content     ccnbencoding CDATA #FIXED 'base64Binary' >
+<!ATTLIST Content       ccnbencoding CDATA #FIXED 'base64Binary'>
 
 <!ELEMENT Name		(Component*)>
 <!ATTLIST Name		%commonattrs;>
 
 <!ELEMENT Component	(#PCDATA)>	<!-- base64Binary -->
-<!ATTLIST Component     ccnbencoding CDATA #FIXED 'base64Binary' >
+<!ATTLIST Component     ccnbencoding CDATA #FIXED 'base64Binary'>
 
 <!ELEMENT ContentAuthenticator (
 		PublisherKeyID,
@@ -52,11 +52,11 @@
 		ContentDigest)>
 <!ATTLIST ContentAuthenticator %commonattrs;>
 
-<!ELEMENT Interest	(Name, PublisherID?)>
+<!ELEMENT Interest	(Name, PublisherID?, Nonce?)>
 <!ATTLIST Interest	%commonattrs;>
 
 <!ELEMENT PublisherID	(#PCDATA)>	<!-- base64Binary SHA-256 digest -->
-<!ATTLIST PublisherID     ccnbencoding CDATA #FIXED 'base64Binary' >
+<!ATTLIST PublisherID   ccnbencoding CDATA #FIXED 'base64Binary'>
 <!ATTLIST PublisherID	type CDATA #REQUIRED> <!-- XXX - should be enum -->
 <!ATTLIST PublisherID	%commonattrs;>
 
@@ -70,24 +70,27 @@
   </restriction>
 </simpleType> -->
 
-<!ELEMENT PublisherKeyID	(#PCDATA)>	<!-- base64Binary SHA-256 digest -->
-<!ATTLIST PublisherKeyID     ccnbencoding CDATA #FIXED 'base64Binary' >
+<!ELEMENT Nonce         (#PCDATA)>      <!-- base64Binary -->
+<!ATTLIST Nonce         ccnbencoding CDATA #FIXED 'base64Binary'>
 
-<!ELEMENT NameComponentCount (#PCDATA)>      <!-- nonNegativeInteger -->
+<!ELEMENT PublisherKeyID (#PCDATA)>	<!-- base64Binary SHA-256 digest -->
+<!ATTLIST PublisherKeyID ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT NameComponentCount (#PCDATA)> <!-- nonNegativeInteger -->
 <!ELEMENT Timestamp	(#PCDATA)>	<!-- dateTime -->
 <!ELEMENT Type		(#PCDATA)>	<!-- FRAGMENT, LINK, CONTAINER, LEAF, SESSION, SEQUENCE -->
 <!ELEMENT ContentDigest	(#PCDATA)>	<!-- base64 encoding of DER-encoded DigestInfo -->
-<!ATTLIST ContentDigest ccnbencoding CDATA #FIXED 'base64Binary' >
+<!ATTLIST ContentDigest ccnbencoding CDATA #FIXED 'base64Binary'>
 
 <!ELEMENT KeyLocator	(Key | Certificate | KeyName)>
 <!ATTLIST KeyLocator	%commonattrs;>
 
 <!ELEMENT Key		(#PCDATA)>	<!-- base64Binary -->
-<!ATTLIST Key           ccnbencoding CDATA #FIXED 'base64Binary' >
+<!ATTLIST Key           ccnbencoding CDATA #FIXED 'base64Binary'>
 <!ELEMENT Certificate	(#PCDATA)>	<!-- base64Binary -->
-<!ATTLIST Certificate   ccnbencoding CDATA #FIXED 'base64Binary' >
+<!ATTLIST Certificate   ccnbencoding CDATA #FIXED 'base64Binary'>
 <!ELEMENT Signature	(#PCDATA)>	<!-- base64Binary -->
-<!ATTLIST Signature     ccnbencoding CDATA #FIXED 'base64Binary' >
+<!ATTLIST Signature     ccnbencoding CDATA #FIXED 'base64Binary'>
 
 <!ELEMENT KeyName	(Name, PublisherID?)>
 <!ATTLIST KeyName	%commonattrs;>

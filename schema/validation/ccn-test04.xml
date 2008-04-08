@@ -1,3 +1,4 @@
-<Interest><Name></Name>
+<Interest><Name><Component ccnbencoding="base64Binary">Zm9vYmFy</Component></Name>
   <PublisherID type="KEY" ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherID>
+  <Nonce ccnbencoding="base64Binary">bubblebabble</Nonce>
 </Interest>

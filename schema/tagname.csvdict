@@ -25,4 +25,5 @@
 38,Start
 39,Timestamp
 40,Type
+41,Nonce
 17702112,CCNProtocolDataUnit
