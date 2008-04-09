@@ -4,13 +4,16 @@
 #include <string.h>
 #include <ccn/hashtb.h>
 
-void Dump(struct hashtb *h) {
+void
+Dump(struct hashtb *h)
+{
     struct hashtb_enumerator eee;
     struct hashtb_enumerator *e = &eee;
     printf("------- %d ------\n", hashtb_n(h));
     for (hashtb_start(h, e); e->key != NULL; hashtb_next(e)) {
-        printf("%s: %u\n", (const char *)e->key, ((unsigned *)e->data)[0]);
+        printf("%u: %s\n", ((unsigned *)e->data)[0], (const char *)e->key);
     }
+    hashtb_end(e);
 }
 
 int
@@ -42,6 +45,7 @@ main(void)
             ((unsigned *)(e->data))[0] += 1;
         }
     }
+    hashtb_end(e);
     hashtb_destroy(&h);
     return(0);
 }

@@ -294,7 +294,8 @@ do_processing_instructions(void *ud, const XML_Char *target, const XML_Char *dat
 
 #define TOSS_WHITE 1
 static int
-process_fd(int fd, FILE *outfile, int flags) {
+process_fd(int fd, FILE *outfile, int flags)
+{
     char buf[17];
     ssize_t len;
     int res = 0;
@@ -332,7 +333,8 @@ process_fd(int fd, FILE *outfile, int flags) {
 }
 
 static int
-process_file(char *path, int flags) {
+process_file(char *path, int flags)
+{
     int fd = 0;
     int res = 0;
     FILE *outfile = stdout;
@@ -386,7 +388,8 @@ process_file(char *path, int flags) {
 }
 
 int
-main(int argc, char **argv) {
+main(int argc, char **argv)
+{
     int i;
     int res = 0;
     int flags = 0;

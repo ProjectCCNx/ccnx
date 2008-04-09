@@ -17,7 +17,8 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-void printraw(char *p, int n) {
+void printraw(char *p, int n)
+{
     int i, l;
     while (n > 0) {
         l = (n > 40 ? 40 : n);
@@ -33,7 +34,8 @@ void printraw(char *p, int n) {
 }
 
 char rawbuf[1024*1024];
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
     int c;
     struct sockaddr_un addr = {0};
     int res;

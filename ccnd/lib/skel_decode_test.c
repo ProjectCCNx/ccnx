@@ -24,7 +24,8 @@ static const char *tt_name[8] = {
 #define SHOW_HEX_STATE 1
 
 static int
-process_test(unsigned char *data, size_t n, int flags) {
+process_test(unsigned char *data, size_t n, int flags)
+{
     struct ccn_skeleton_decoder skel_decoder = {0};
     struct ccn_skeleton_decoder *d = &skel_decoder;
     int res = 0;
@@ -97,7 +98,8 @@ process_fd(int fd, int flags)
 
 
 static int
-process_file(char *path, int flags) {
+process_file(char *path, int flags)
+{
     int fd = 0;
     int res = 0;
     if (0 != strcmp(path, "-")) {
@@ -114,7 +116,8 @@ process_file(char *path, int flags) {
 }
 
 int
-main(int argc, char **argv) {
+main(int argc, char **argv)
+{
     int i;
     int res = 0;
     int flags = 0;

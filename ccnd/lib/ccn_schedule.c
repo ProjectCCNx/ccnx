@@ -283,7 +283,8 @@ static int D(
     struct ccn_scheduled_event *ev,
     int flags) { printf("D");  return 30000000; }
 static struct ccn_schedule_heap_item tst[7];
-int TESTSCHEDULE() {
+int TESTSCHEDULE()
+{
     struct ccn_schedule *s = ccn_schedule_create(dd+5);
     int i;
     s->heap = tst; // for easy debugger display

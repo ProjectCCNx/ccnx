@@ -45,14 +45,15 @@ struct hashtb_enumerator {
 /*
  * hashtb_start: initializes enumerator to first table entry
  * Order of enumeration is arbitrary.
- * Must do this before using the enumerator for anything else.
+ * Must do this before using the enumerator for anything else,
+ * and must call hashtb_end when done.
  * Returns second argument.
  */
 struct hashtb_enumerator *
 hashtb_start(struct hashtb *, struct hashtb_enumerator *);
+void hashtb_end(struct hashtb_enumerator *);
 
-void
-hashtb_next(struct hashtb_enumerator *);
+void hashtb_next(struct hashtb_enumerator *);
 
 /*
  * hashtb_seek: Find or add an item

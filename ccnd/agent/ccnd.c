@@ -5,7 +5,6 @@
  * $Id$
  */
 
-#include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <netdb.h>
@@ -15,9 +14,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <sys/un.h>
+#include <unistd.h>
+
 #include <ccn/ccn.h>
 #include <ccn/ccnd.h>
 #include <ccn/charbuf.h>
@@ -36,6 +37,9 @@ struct ccnd {
     int local_listener_fd;
     struct hashtb *faces; /* keyed by fd */
     struct hashtb *dgram_faces; /* keyed by sockaddr */
+    struct hashtb *content_tab; /* keyed by name components */
+    struct hashtb *interest_tab; /* keyed by name components */
+    struct hashtb *propagating; /* keyed by pubid + nonce */
     nfds_t nfds;
     struct pollfd *fds;
     struct ccn_schedule *sched;
@@ -52,7 +56,6 @@ struct dbl_links {
  */
 struct face {
     int fd;
-    int sock_type;
     int flags;
     struct ccn_charbuf *inbuf;
     struct ccn_skeleton_decoder decoder;
@@ -61,7 +64,21 @@ struct face {
     const struct sockaddr *addr;
     socklen_t addrlen;
 };
-#define CCN_FACE_LINK (1 << 0)
+/* face flags */
+#define CCN_FACE_LINK   (1 << 0)
+#define CCN_FACE_DGRAM  (1 << 1)
+
+struct interest_entry {
+    int nyi;
+};
+
+struct content_entry {
+    int nyi;
+};
+
+struct propagating_entry {
+    int nyi;
+};
 
 static void cleanup_at_exit(void);
 static void unlink_at_exit(const char *path);
@@ -87,7 +104,8 @@ cleanup_at_exit(void)
 }
 
 static void
-handle_fatal_signal(int sig) {
+handle_fatal_signal(int sig)
+{
     cleanup_at_exit();
     _exit(sig);
 }
@@ -102,6 +120,13 @@ unlink_at_exit(const char *path)
         signal(SIGHUP, &handle_fatal_signal);
         atexit(&cleanup_at_exit);
     }
+}
+
+static void
+fatal_err(const char *msg)
+{
+    perror(msg);
+    exit(1);
 }
 
 static struct ccn_charbuf *
@@ -172,13 +197,11 @@ accept_new_client(struct ccnd *h)
     if (res == -1)
         perror("fcntl");
     hashtb_start(h->faces, e);
-    if (hashtb_seek(e, &fd, sizeof(fd)) != HT_NEW_ENTRY) {
-        perror("ccnd: accept_new_client");
-        exit(1);
-    }
+    if (hashtb_seek(e, &fd, sizeof(fd)) != HT_NEW_ENTRY)
+        fatal_err("ccnd: accept_new_client");
     face = e->data;
     face->fd = fd;
-    face->sock_type = SOCK_STREAM;
+    hashtb_end(e);
     fprintf(stderr, "ccnd[%d] accepted client fd=%d\n", (int)getpid(), fd);
 }
 
@@ -189,10 +212,8 @@ shutdown_client_fd(struct ccnd *h, int fd)
     struct hashtb_enumerator *e = &ee;
     struct face *face;
     hashtb_start(h->faces, e);
-    if (hashtb_seek(e, &fd, sizeof(fd)) != HT_OLD_ENTRY) {
-        perror("ccnd: shutdown_client_fd");
-        exit(1);
-    }
+    if (hashtb_seek(e, &fd, sizeof(fd)) != HT_OLD_ENTRY)
+        fatal_err("ccnd: shutdown_client_fd");
     face = e->data;
     if (face->fd != fd) abort();
     close(fd);
@@ -201,6 +222,7 @@ shutdown_client_fd(struct ccnd *h, int fd)
     ccn_charbuf_destroy(&face->inbuf);
     ccn_charbuf_destroy(&face->outbuf);
     hashtb_delete(e);
+    hashtb_end(e);
 }
 
 /*
@@ -233,16 +255,18 @@ process_input_message_BFI(struct ccnd *h, struct face *face,
     struct hashtb_enumerator *e = &ee;
     for (hashtb_start(h->faces, e); e->data != NULL; hashtb_next(e)) {
         struct face *otherface = e->data;
-        if (face != otherface && otherface->sock_type != SOCK_DGRAM) {
+        if (face != otherface && (otherface->flags & CCN_FACE_DGRAM) == 0) {
             do_write_BFI(h, otherface, msg, size);
         }
     }
+    hashtb_end(e);
     for (hashtb_start(h->dgram_faces, e); e->data != NULL; hashtb_next(e)) {
         struct face *otherface = e->data;
         if (face != otherface) {
             do_write_BFI(h, otherface, msg, size);
         }
     }
+    hashtb_end(e);
 }
 
 static void
@@ -304,7 +328,7 @@ get_dgram_source(struct ccnd *h, struct face *face,
     struct face *source;
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
-    if (face->sock_type != SOCK_DGRAM)
+    if ((face->flags & CCN_FACE_DGRAM) == 0)
         return(face);
     hashtb_start(h->dgram_faces, e);
     hashtb_seek(e, addr, addrlen);
@@ -313,8 +337,9 @@ get_dgram_source(struct ccnd *h, struct face *face,
         source->addr = e->key;
         source->addrlen = e->keysize;
         source->fd = face->fd;
-        source->sock_type = SOCK_DGRAM;
+        source->flags |= CCN_FACE_DGRAM;
     }
+    hashtb_end(e);
     return(source);
 }
 
@@ -341,7 +366,7 @@ process_input(struct ccnd *h, int fd)
     if (res == -1)
         perror("ccnd: recvfrom");
     else if (res == 0) {
-        if (face->sock_type != SOCK_DGRAM)
+        if ((face->flags & CCN_FACE_DGRAM) == 0)
             shutdown_client_fd(h, fd);
     }
     else {
@@ -367,7 +392,7 @@ process_input(struct ccnd *h, int fd)
             fprintf(stderr, "  ccn_skeleton_decode of %d bytes accepted %d\n",
                             (int)res, (int)dres);
         }
-        if (face->sock_type == SOCK_DGRAM) {
+        if ((face->flags & CCN_FACE_DGRAM) != 0) {
             fprintf(stderr, "ccnd: protocol error, discarding %d bytes\n",
                 (int)(face->inbuf->length - d->index));
             face->inbuf->length = 0;
@@ -410,15 +435,13 @@ do_write(struct ccnd *h, struct face *face, unsigned char *data, size_t size)
             return;
         }
     }
-    if (face->sock_type == SOCK_DGRAM) {
+    if ((face->flags & CCN_FACE_DGRAM) != 0) {
         fprintf(stderr, "ccnd: sendto short\n");
         return;
     }
     face->outbuf = ccn_charbuf_create();
-    if (face->outbuf == NULL) {
-        perror("ccnd: ccn_charbuf_create");
-        exit(1);
-    }
+    if (face->outbuf == NULL)
+        fatal_err("ccnd: ccn_charbuf_create");
     ccn_charbuf_append(face->outbuf, data + res, size - res);
     face->outbufindex = 0;
 }
@@ -480,6 +503,7 @@ run(struct ccnd *h)
             if (face->outbuf != NULL)
                 h->fds[i].events |= POLLOUT;
         }
+        hashtb_end(e);
         h->nfds = i;
         res = poll(h->fds, h->nfds, timeout_ms);
         if (-1 == res) {
@@ -527,12 +551,12 @@ ccnd_create(void)
     h = calloc(1, sizeof(*h));
     h->faces = hashtb_create(sizeof(struct face));
     h->dgram_faces = hashtb_create(sizeof(struct face));
+    h->content_tab = hashtb_create(sizeof(struct content_entry));
+    h->interest_tab = hashtb_create(sizeof(struct interest_entry));
+    h->propagating = hashtb_create(sizeof(struct propagating_entry));
     h->sched = ccn_schedule_create(h);
     fd = create_local_listener(sockname, 42);
-    if (fd == -1) {
-        perror(sockname);
-        exit(1);
-    }
+    if (fd == -1) fatal_err(sockname);
     fprintf(stderr, "ccnd[%d] listening on %s\n", (int)getpid(), sockname);
     h->local_listener_fd = fd;
     hints.ai_family = PF_UNSPEC;
@@ -556,7 +580,8 @@ ccnd_create(void)
                     exit(1);
                 face = e->data;
                 face->fd = fd;
-                face->sock_type = SOCK_DGRAM;
+                face->flags |= CCN_FACE_DGRAM;
+                hashtb_end(e);
                 fprintf(stderr, "ccnd[%d] accepting datagrams on fd %d\n",
                     (int)getpid(), fd);
             }

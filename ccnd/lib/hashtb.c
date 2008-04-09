@@ -14,14 +14,14 @@ struct node {
     size_t keysize;
     /* user data follows immediately, followed by key */
 };
-#define DATA(p) ((void *)((p) + 1))
-/* evil reference to ht here */
-#define KEY(p) ((unsigned char *)((p) + 1) + ht->item_size)
+#define DATA(ht, p) ((void *)((p) + 1))
+#define KEY(ht, p) ((unsigned char *)((p) + 1) + ht->item_size)
 
 struct hashtb {
     struct node *onebucket;
     size_t item_size;
     int n;
+    int refcount;
 };
 
 struct hashtb *
@@ -44,8 +44,13 @@ hashtb_destroy(struct hashtb **htp)
         struct hashtb_enumerator *e = hashtb_start(*htp, &tmp);
         while (e->key != NULL)
             hashtb_delete(e);
-        free(*htp);
-        *htp = NULL;
+        hashtb_end(&tmp);
+        if ((*htp)->refcount == 0) {
+            free(*htp);
+            *htp = NULL;
+        }
+        else
+            abort();
     }
 }
 
@@ -63,8 +68,8 @@ hashtb_lookup(struct hashtb *ht, const void *key, size_t keysize)
         return(NULL);
     }
     for (p = ht->onebucket; p != NULL; p = p->link) {
-        if (keysize == p->keysize && 0 == memcmp(key, KEY(p), keysize)) {
-            return(DATA(p));
+        if (keysize == p->keysize && 0 == memcmp(key, KEY(ht, p), keysize)) {
+            return(DATA(ht, p));
         }
     }
     return(NULL);
@@ -84,14 +89,15 @@ setpos(struct hashtb_enumerator *hte, struct node **pp)
         hte->data = NULL;
     }
     else {
-        hte->key = KEY(p);
+        hte->key = KEY(ht, p);
         hte->keysize = p->keysize;
-        hte->data = DATA(p);
+        hte->data = DATA(ht, p);
     }
 }
 
 static char hashtb_magic[] = "HTB";
 
+#define MAX_ENUMERATORS 30
 struct hashtb_enumerator *
 hashtb_start(struct hashtb *ht, struct hashtb_enumerator *hte)
 {
@@ -99,7 +105,22 @@ hashtb_start(struct hashtb *ht, struct hashtb_enumerator *hte)
     hte->datasize = ht->item_size;
     hte->ht = ht;
     setpos(hte, &(ht->onebucket));
+    ht->refcount++;
+    if (ht->refcount > MAX_ENUMERATORS)
+        abort(); /* probably somebody is missing a call to hashtb_end() */
     return(hte);
+}
+
+void
+hashtb_end(struct hashtb_enumerator *hte)
+{
+    struct hashtb *ht = hte->ht;
+    if (hte->priv[1] != hashtb_magic || ht->refcount <= 0) abort();
+    hte->priv[0] = 0;
+    hte->priv[1] = 0;
+    ht->refcount--;
+    if (ht->refcount == 0)
+        /* XXX - do deferred deallocation */;
 }
 
 void
@@ -123,7 +144,7 @@ hashtb_seek(struct hashtb_enumerator *hte, const void *key, size_t keysize)
     }
     pp = &(ht->onebucket);
     for (p = *pp; p != NULL; pp = &(p->link), p = p->link) {
-        if (keysize == p->keysize && 0 == memcmp(key, KEY(p), keysize)) {
+        if (keysize == p->keysize && 0 == memcmp(key, KEY(ht, p), keysize)) {
             setpos(hte, pp);
             return(HT_OLD_ENTRY);
         }
@@ -133,7 +154,7 @@ hashtb_seek(struct hashtb_enumerator *hte, const void *key, size_t keysize)
         setpos(hte, NULL);
         return(-1);
     }
-    memcpy(KEY(p), key, keysize);
+    memcpy(KEY(ht, p), key, keysize);
     p->keysize = keysize;
     p->link = *pp;
     *pp = p;
@@ -148,9 +169,11 @@ hashtb_delete(struct hashtb_enumerator *hte)
     struct hashtb *ht = hte->ht;
     struct node **pp = hte->priv[0];
     struct node *p = *pp;
-    if ((p != NULL) && (hte->priv[1] == hashtb_magic) && KEY(p) == hte->key) {
+    if ((p != NULL) && (hte->priv[1] == hashtb_magic) && KEY(ht, p) == hte->key) {
         *pp = p->link;
-        free(p);
+        if (ht->refcount == 1)
+            free(p);
+        /* XXX - fix leak! */
         hte->ht->n -= 1;
     }
     setpos(hte, pp);

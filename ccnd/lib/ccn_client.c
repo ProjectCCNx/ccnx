@@ -130,6 +130,7 @@ ccn_destroy(struct ccn **hp)
             struct expressed_interest *i = e->data;
             ccn_replace_handler(h, &(i->action), NULL);
         }
+        hashtb_end(e);
         hashtb_destroy(&(h->interests));
     }
     ccn_charbuf_destroy(&h->interestbuf);
@@ -181,7 +182,6 @@ ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
         if (h->interests == NULL)
             return(NOTE_ERRNO(h));
     }
-    hashtb_start(h->interests, e);
     // XXX - should validate namebuf more than this
     if (namebuf == NULL || namebuf->length < 2 ||
           namebuf->buf[namebuf->length-1] != CCN_CLOSE)
@@ -190,15 +190,19 @@ ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
      * To make it easy to lookup prefixes of names, we do not 
      * keep the final CCN_CLOSE as part of the key.
      */
+    hashtb_start(h->interests, e);
     res = hashtb_seek(e, namebuf->buf, namebuf->length-1);
     interest = e->data;
     if (interest == NULL)
-        return(NOTE_ERRNO(h));
-    if (repeat == 0) {
+        NOTE_ERRNO(h);
+    else if (repeat == 0) {
         ccn_replace_handler(h, &(interest->action), NULL);
         hashtb_delete(e);
-        return(0);
+        interest == NULL;
     }
+    hashtb_end(e);
+    if (interest == NULL)
+        return(res);
     if (repeat > 0 && interest->repeat >= 0)
         interest->repeat += repeat;
     else
@@ -419,6 +423,7 @@ ccn_run(struct ccn *h, int timeout)
                 if (interest->outstanding < interest->target)
                     ccn_refresh_interest(h, interest, e->key, e->keysize);
              }
+             hashtb_end(e);
         }
         if (start.tv_sec == 0)
             start = now;

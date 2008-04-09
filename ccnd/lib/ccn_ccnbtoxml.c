@@ -52,7 +52,8 @@ ccn_decoder_create(void)
 }
 
 struct ccn_decoder_stack_item *
-ccn_decoder_push(struct ccn_decoder *d) {
+ccn_decoder_push(struct ccn_decoder *d)
+{
     struct ccn_decoder_stack_item *s;
     s = calloc(1, sizeof(*s));
     if (s != NULL) {
@@ -66,7 +67,8 @@ ccn_decoder_push(struct ccn_decoder *d) {
 }
 
 void
-ccn_decoder_pop(struct ccn_decoder *d) {
+ccn_decoder_pop(struct ccn_decoder *d)
+{
     struct ccn_decoder_stack_item *s = d->stack;
     if (s != NULL) {
         d->stack = s->link;
@@ -424,7 +426,8 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
 }
 
 static int
-process_test(unsigned char *data, size_t n) {
+process_test(unsigned char *data, size_t n)
+{
     struct ccn_decoder *d = ccn_decoder_create();
     int res = 0;
     size_t s;
@@ -471,7 +474,8 @@ process_fd(int fd)
 
 
 static int
-process_file(char *path) {
+process_file(char *path)
+{
     int fd = 0;
     int res = 0;
     if (0 != strcmp(path, "-")) {
@@ -518,7 +522,8 @@ unsigned char test1[] = {
 };
 
 int
-main(int argc, char **argv) {
+main(int argc, char **argv)
+{
     int i;
     int res = 0;
     for (i = 1; argv[i] != 0; i++) {
