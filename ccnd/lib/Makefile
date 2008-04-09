@@ -5,13 +5,11 @@ COPT = -g -Wall
 
 #Solaris# make MORE_LDLIBS='-lsocket -lnsl'
 
-PROGRAMS = ccn_ccnbtoxml ccn_xmltoccnb ccn_recursive_parse \
+PROGRAMS = ccn_ccnbtoxml ccn_xmltoccnb \
     hashtbtest skel_decode_test smoketestclientlib
-DEBRIS = ccn_coding
+DEBRIS = ccn_coding ccn_recursive_parse
 CSRC = ccn_buf_decoder.c ccn_charbuf.c ccn_coding.c ccn_client.c  \
     ccn_ccnbtoxml.c ccn_xmltoccnb.c ccn_schedule.c \
-    ccn_recursive_parse.c \
-    ccn_schemaexperiment.c \
     skel_decode_test.c \
     hashtb.c hashtbtest.c \
     smoketestclientlib.c
@@ -40,9 +38,6 @@ hashtbtest: hashtbtest.o
 skel_decode_test: skel_decode_test.o
 	$(CC) $(CFLAGS) -o $@ skel_decode_test.o $(LDLIBS)
 
-ccn_recursive_parse: ccn_recursive_parse.o ccn_schemaexperiment.o
-	$(CC) $(CFLAGS) -o $@ ccn_recursive_parse.o ccn_schemaexperiment.o $(LDLIBS)
-
 smoketestclientlib: smoketestclientlib.o
 	$(CC) $(CFLAGS) -o $@ smoketestclientlib.o $(LDLIBS)
 
@@ -69,10 +64,6 @@ ccn_ccnbtoxml.o: ccn_ccnbtoxml.c ../include/ccn/charbuf.h \
 ccn_xmltoccnb.o: ccn_xmltoccnb.c ../include/ccn/coding.h \
   ../include/ccn/charbuf.h
 ccn_schedule.o: ccn_schedule.c ../include/ccn/schedule.h
-ccn_recursive_parse.o: ccn_recursive_parse.c ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/schemaexperiment.h
-ccn_schemaexperiment.o: ccn_schemaexperiment.c ../include/ccn/charbuf.h \
-  ../include/ccn/coding.h ../include/ccn/schemaexperiment.h
 skel_decode_test.o: skel_decode_test.c ../include/ccn/charbuf.h \
   ../include/ccn/coding.h
 hashtb.o: hashtb.c ../include/ccn/hashtb.h
