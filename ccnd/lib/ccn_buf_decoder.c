@@ -158,7 +158,23 @@ ccn_parse_required_tagged_BLOB(struct ccn_buf_decoder *d, enum ccn_dtag dtag)
     else
         d->decoder.state = -__LINE__;
     if (d->decoder.state < 0)
-        return (-1);
+        return (d->decoder.state);
+    return(res);
+}
+
+int
+ccn_parse_optional_tagged_BLOB(struct ccn_buf_decoder *d, enum ccn_dtag dtag)
+{
+    int res = -1;
+    if (ccn_buf_match_dtag(d, dtag)) {
+        res = d->decoder.element_index;
+        ccn_buf_advance(d);
+        if (ccn_buf_match_blob(d, NULL, NULL))
+            ccn_buf_advance(d);
+        ccn_buf_check_close(d);
+    }
+    if (d->decoder.state < 0)
+        return (d->decoder.state);
     return(res);
 }
 
@@ -216,6 +232,30 @@ ccn_parse_Name(struct ccn_buf_decoder *d, struct parsed_Name *x)
     return(-1);
 }
 
+struct parsed_KeyName {
+    int Name;
+    int PublisherID;
+};
+
+int
+ccn_parse_KeyName(struct ccn_buf_decoder *d, struct parsed_KeyName *x)
+{
+    int res = -1;
+    struct parsed_Name name;
+    if (ccn_buf_match_dtag(d, CCN_DTAG_KeyName)) {
+        res = d->decoder.element_index;
+        ccn_buf_advance(d);
+        x->Name = ccn_parse_Name(d, &name);
+        x->PublisherID = ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_PublisherID);
+        ccn_buf_check_close(d);
+    }
+    else
+        d->decoder.state = -__LINE__;
+    if (d->decoder.state < 0)
+        return (d->decoder.state);
+    return(res);
+}
+
 struct parsed_ContentAuthenticator {
     int PublisherKeyID;
     int NameComponentCount;
@@ -233,11 +273,12 @@ ccn_parse_ContentAuthenticator(struct ccn_buf_decoder *d,
     if (ccn_buf_match_dtag(d, CCN_DTAG_ContentAuthenticator)) {
         res = d->decoder.element_index;
         ccn_buf_advance(d);
-        x->PublisherKeyID = ccn_parse_required_tagged_BLOB(d, CCN_DTAG_PublisherID);
+        x->PublisherKeyID = ccn_parse_required_tagged_BLOB(d, CCN_DTAG_PublisherKeyID);
         x->NameComponentCount = ccn_parse_required_tagged_UDATA(d, CCN_DTAG_NameComponentCount);
         x->Timestamp = ccn_parse_required_tagged_UDATA(d, CCN_DTAG_Timestamp);
         x->Type = ccn_parse_required_tagged_UDATA(d, CCN_DTAG_Type);
         if (ccn_buf_match_dtag(d, CCN_DTAG_KeyLocator)) {
+            struct parsed_KeyName keyname = {-1, -1};
             x->KeyLocator = d->decoder.element_index;
             ccn_buf_advance(d);
             if (ccn_buf_match_dtag(d, CCN_DTAG_Key))
@@ -245,7 +286,7 @@ ccn_parse_ContentAuthenticator(struct ccn_buf_decoder *d,
             else if (ccn_buf_match_dtag(d, CCN_DTAG_Certificate))
                 (void)ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Certificate);
             else
-                (void)ccn_parse_required_tagged_BLOB(d, CCN_DTAG_KeyName); /* XXX - wrong */
+                (void)ccn_parse_KeyName(d, &keyname);
             ccn_buf_check_close(d);
         }
         x->ContentDigest = ccn_parse_required_tagged_BLOB(d, CCN_DTAG_ContentDigest);
@@ -254,7 +295,7 @@ ccn_parse_ContentAuthenticator(struct ccn_buf_decoder *d,
     else
         d->decoder.state = -__LINE__;
     if (d->decoder.state < 0)
-        return (-1);
+        return (d->decoder.state);
     return(res);
 
 }
