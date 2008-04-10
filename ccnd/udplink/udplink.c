@@ -72,7 +72,7 @@ send_remote_unencapsulated(int s, struct addrinfo *r, unsigned char *buf, size_t
     if (memcmp(&buf[start], CCN_EMPTY_PDU, CCN_EMPTY_PDU_LENGTH - 1) != 0) {
         return (-2);
     }
-    result = sendto(s, buf + CCN_EMPTY_PDU_LENGTH - 1, length - CCN_EMPTY_PDU_LENGTH,
+    result = sendto(s, buf + CCN_EMPTY_PDU_LENGTH - 1 + start, length - CCN_EMPTY_PDU_LENGTH,
                     0, r->ai_addr, r->ai_addrlen);
     return (result);
 }
