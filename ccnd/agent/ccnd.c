@@ -280,7 +280,20 @@ process_incoming_interest(struct ccnd *h, struct face *face,
         fprintf(stderr, "bad interest - code %d\n", res);
         return;
     }
-    
+    process_input_message_BFI(h, face, msg, size);
+}
+
+static void
+process_incoming_content(struct ccnd *h, struct face *face,
+                      unsigned char *msg, size_t size)
+{
+    struct ccn_parsed_ContentObject obj = {0};
+    int res;
+    res = ccn_parse_ContentObject(msg, size, &obj);
+    if (res < 0) {
+        fprintf(stderr, "error parsing ContentObject - code %d\n", res);
+        return;
+    }
     process_input_message_BFI(h, face, msg, size);
 }
 
@@ -313,8 +326,8 @@ process_input_message(struct ccnd *h, struct face *face,
             process_incoming_interest(h, face, msg, size);
             return;
         }
-        else if (d->numval == CCN_DTAG_Content) {
-            process_input_message_BFI(h, face, msg, size);
+        else if (d->numval == CCN_DTAG_ContentObject) {
+            process_incoming_content(h, face, msg, size);
             return;
         }
     }

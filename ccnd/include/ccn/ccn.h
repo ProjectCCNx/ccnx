@@ -196,6 +196,17 @@ int
 ccn_parse_interest(unsigned char *msg, size_t size,
                    struct ccn_parsed_interest *interest);
 
+struct ccn_parsed_ContentObject {
+    int Name;
+    int ContentAuthenticator;
+    int Signature;
+    int Content;
+};
+
+int ccn_parse_ContentObject(unsigned char *msg, size_t size,
+                   struct ccn_parsed_ContentObject *x);
+
+
 /***********************************
  * Low-level binary formatting
  */

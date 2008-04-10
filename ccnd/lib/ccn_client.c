@@ -198,7 +198,7 @@ ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
     else if (repeat == 0) {
         ccn_replace_handler(h, &(interest->action), NULL);
         hashtb_delete(e);
-        interest == NULL;
+        interest = NULL;
     }
     hashtb_end(e);
     if (interest == NULL)

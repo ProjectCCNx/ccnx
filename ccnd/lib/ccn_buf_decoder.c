@@ -144,3 +144,143 @@ ccn_parse_interest(unsigned char *msg, size_t size,
     return (ncomp);
 }
 
+int
+ccn_parse_required_tagged_BLOB(struct ccn_buf_decoder *d, enum ccn_dtag dtag)
+{
+    int res = -1;
+    if (ccn_buf_match_dtag(d, dtag)) {
+        res = d->decoder.element_index;
+        ccn_buf_advance(d);
+        if (ccn_buf_match_blob(d, NULL, NULL))
+            ccn_buf_advance(d);
+        ccn_buf_check_close(d);
+    }
+    else
+        d->decoder.state = -__LINE__;
+    if (d->decoder.state < 0)
+        return (-1);
+    return(res);
+}
+
+int
+ccn_parse_required_tagged_UDATA(struct ccn_buf_decoder *d, enum ccn_dtag dtag)
+{
+    int res = -1;
+    if (ccn_buf_match_dtag(d, dtag)) {
+        res = d->decoder.element_index;
+        ccn_buf_advance(d);
+        if (d->decoder.state >= 0 &&
+            CCN_GET_TT_FROM_DSTATE(d->decoder.state) == CCN_UDATA)
+            ccn_buf_advance(d);
+        else
+            d->decoder.state = -__LINE__;
+        ccn_buf_check_close(d);
+    }
+    else
+        d->decoder.state = -__LINE__;
+    if (d->decoder.state < 0)
+        return (-1);
+    return(res);
+}
+
+struct parsed_Name {
+    int start;
+    int size;
+    int ncomp;
+};
+
+int
+ccn_parse_Name(struct ccn_buf_decoder *d, struct parsed_Name *x)
+{
+    int ncomp = 0;
+    int res = -1;
+    if (ccn_buf_match_dtag(d, CCN_DTAG_Name)) {
+        res = d->decoder.element_index;
+        ccn_buf_advance(d);
+        while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
+            ncomp += 1;
+            ccn_buf_advance(d);
+            if (ccn_buf_match_blob(d, NULL, NULL)) {
+                ccn_buf_advance(d);
+            }
+            ccn_buf_check_close(d);
+        }
+        ccn_buf_check_close(d);
+    }
+    if (res >= 0 && d->decoder.state >= 0) {
+        x->start = res;
+        x->size = d->decoder.token_index - res;
+        x->ncomp = ncomp;
+        return (res);
+    }
+    return(-1);
+}
+
+struct parsed_ContentAuthenticator {
+    int PublisherKeyID;
+    int NameComponentCount;
+    int Timestamp;
+    int Type;
+    int KeyLocator;
+    int ContentDigest;
+};
+
+int
+ccn_parse_ContentAuthenticator(struct ccn_buf_decoder *d,
+    struct parsed_ContentAuthenticator *x)
+{
+    int res = -1;
+    if (ccn_buf_match_dtag(d, CCN_DTAG_ContentAuthenticator)) {
+        res = d->decoder.element_index;
+        ccn_buf_advance(d);
+        x->PublisherKeyID = ccn_parse_required_tagged_BLOB(d, CCN_DTAG_PublisherID);
+        x->NameComponentCount = ccn_parse_required_tagged_UDATA(d, CCN_DTAG_NameComponentCount);
+        x->Timestamp = ccn_parse_required_tagged_UDATA(d, CCN_DTAG_Timestamp);
+        x->Type = ccn_parse_required_tagged_UDATA(d, CCN_DTAG_Type);
+        if (ccn_buf_match_dtag(d, CCN_DTAG_KeyLocator)) {
+            x->KeyLocator = d->decoder.element_index;
+            ccn_buf_advance(d);
+            if (ccn_buf_match_dtag(d, CCN_DTAG_Key))
+                (void)ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Key);
+            else if (ccn_buf_match_dtag(d, CCN_DTAG_Certificate))
+                (void)ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Certificate);
+            else
+                (void)ccn_parse_required_tagged_BLOB(d, CCN_DTAG_KeyName); /* XXX - wrong */
+            ccn_buf_check_close(d);
+        }
+        x->ContentDigest = ccn_parse_required_tagged_BLOB(d, CCN_DTAG_ContentDigest);
+        ccn_buf_check_close(d);
+    }
+    else
+        d->decoder.state = -__LINE__;
+    if (d->decoder.state < 0)
+        return (-1);
+    return(res);
+
+}
+
+int
+ccn_parse_ContentObject(unsigned char *msg, size_t size,
+                   struct ccn_parsed_ContentObject *x)
+{
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d = ccn_buf_decoder_start(&decoder, msg, size);
+    int res = -1;
+    if (ccn_buf_match_dtag(d, CCN_DTAG_ContentObject)) {
+        struct parsed_Name name;
+        struct parsed_ContentAuthenticator auth;
+        res = d->decoder.element_index;
+        ccn_buf_advance(d);
+        x->Name = ccn_parse_Name(d, &name);
+        x->ContentAuthenticator = ccn_parse_ContentAuthenticator(d, &auth);
+        x->Signature = ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Signature);
+        x->Content = ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Content);
+        ccn_buf_check_close(d);
+    }
+    else
+        d->decoder.state = -__LINE__;
+    if (d->decoder.index != size || !CCN_FINAL_DSTATE(d->decoder.state))
+        return (CCN_DSTATE_ERR_CODING);
+    return(res);
+}
+
