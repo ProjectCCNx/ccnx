@@ -308,7 +308,7 @@ main (int argc, char * const argv[]) {
 
     for (;;) {
         if (0 == (result = poll(fds, 2, -1))) continue;
-        if (-1 == result) {
+        if (-1 == result && errno != EINTR) {
             udplink_fatal("poll: %s\n", strerror(errno));
         }
 
@@ -376,7 +376,7 @@ main (int argc, char * const argv[]) {
                 continue;
             }
             /* encapsulate, and send the packet out on the local side */
-            recvbuf[recvlen] = '\0';
+            recvbuf[recvlen] = CCN_EMPTY_PDU[CCN_EMPTY_PDU_LENGTH - 1];
             memset(rd, 0, sizeof(*rd));
             dres = ccn_skeleton_decode(rd, rbuf, recvlen + CCN_EMPTY_PDU_LENGTH);
             if (rd->state != 0 || dres != (recvlen + CCN_EMPTY_PDU_LENGTH)) {
