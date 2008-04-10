@@ -217,5 +217,43 @@ public class ContentNameTest {
 		
 		XMLEncodableTester.encodeDecodeTest("ContentName", name, tn, bn);
 	}
+	
+	/**
+	 * Test relations like isPrefixOf()
+	 * @throws MalformedContentNameStringException 
+	 */
+	@Test 
+	public void testRelations() throws MalformedContentNameStringException {
+		ContentName small = new ContentName(ContentName.SEPARATOR + baseName + ContentName.SEPARATOR + subName1);
+		ContentName middle = new ContentName(small, subName2);
+		ContentName large = new ContentName(middle, document1);
+		
+		assertEquals(small, small);
+		assertEquals(middle, middle);
+		assertEquals(large, large);
+		
+		assertTrue(small.isPrefixOf(middle));
+		assertTrue(small.isPrefixOf(large));
+		assertTrue(middle.isPrefixOf(large));
+		assertFalse(middle.isPrefixOf(small));
+		assertFalse(large.isPrefixOf(small));
+		assertFalse(large.isPrefixOf(middle));
+		
+		assertTrue(small.isPrefixOf(small));
+		assertTrue(middle.isPrefixOf(middle));
+		assertTrue(large.isPrefixOf(large));
+		
+		assertEquals(small.compareTo(small), 0);
+		assertEquals(middle.compareTo(middle), 0);
+		assertEquals(large.compareTo(large), 0);
+
+		assertEquals(small.compareTo(middle), -1);
+		assertEquals(small.compareTo(large), -1);
+		assertEquals(middle.compareTo(large), -1);
+		assertEquals(middle.compareTo(small), 1);
+		assertEquals(large.compareTo(small), 1);
+		assertEquals(large.compareTo(middle), 1);
+		
+	}
 
 }
