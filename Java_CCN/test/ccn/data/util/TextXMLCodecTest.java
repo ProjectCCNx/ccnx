@@ -28,6 +28,9 @@ public class TextXMLCodecTest {
 		testDateTime(now);
 		now.setNanos(953405384);
 		testDateTime(now);
+		
+		now.setNanos(110672800);
+		testDateTime(now);
 	}
 	
 	public void testDateTime(Timestamp testDateTime) {
@@ -41,7 +44,11 @@ public class TextXMLCodecTest {
 			e.printStackTrace();
 			Assert.fail("Failed to parse date time: " + strDateTime);
 		}
-		System.out.println("Parsed version: " + parsedDateTime);		
+		System.out.println("Parsed version: " + parsedDateTime);
+		// Note that implementation only preserves msec, not nanos
+		testDateTime.setNanos((testDateTime.getNanos() / 1000000) * 1000000);
+//		System.out.println("Tested nanos: " + testDateTime.getNanos());
+		Assert.assertTrue(parsedDateTime.equals(testDateTime));
 	}
 
 }

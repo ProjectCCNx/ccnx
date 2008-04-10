@@ -23,7 +23,7 @@ public class TextXMLCodec {
 	public static String codecName() { return CODEC_NAME; }
 
 	protected static DateFormat canonicalDateFormat = null;
-	protected static final String PAD_STRING = "000000";
+	protected static final String PAD_STRING = "00000000";
 	
 	static {
 		canonicalDateFormat = 
@@ -56,15 +56,17 @@ public class TextXMLCodec {
 		// as bits after the second...
 		// DKS TODO handle nanoseconds or give up on them.
 		String date = canonicalDateFormat.format(dateTime);
+		/* Nanoseconds are not handled by parser, so skip them here for now
 		long nanos = dateTime.getNanos() % 1000000;
 		if (nanos > 0) {
 			// we have real nanos
 			String nstr = Long.toString(nanos);
-			if (nstr.length() < 6) {
-				nstr = PAD_STRING.substring(0, (6-nstr.length())) + nstr + "Z";
+			if (nstr.length() < 8) {
+				nstr = PAD_STRING.substring(0, (8-nstr.length())) + nstr + "Z";
 			}
-			//date = date.replace("Z", nstr);
+			date = date.replace("Z", nstr);
 		}
+		*/
 		return date;
 	}
 	
