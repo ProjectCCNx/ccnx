@@ -26,11 +26,12 @@ public interface CCNBase {
 	 * @param content
 	 * @return
 	 * @throws IOException
+	 * @throws InterruptedException 
 	 */
 	public CompleteName put(ContentName name,
 						    ContentAuthenticator authenticator,
 						    byte [] signature,
-						    byte [] content) throws IOException;
+						    byte [] content) throws IOException, InterruptedException;
 	
 	/**
 	 * Retrieve any local content available for a
@@ -44,11 +45,12 @@ public interface CCNBase {
 	 * 	associated with this name if any, or an empty list if none.
 	 * @return
 	 * @throws IOException
+	 * @throws InterruptedException 
 	 */
 	public ArrayList<ContentObject> get(
 			ContentName name,
 			ContentAuthenticator authenticator,
-			boolean isRecursive) throws IOException;
+			boolean isRecursive) throws IOException, InterruptedException;
 
 	/**
 	 * Query, or express an interest in particular

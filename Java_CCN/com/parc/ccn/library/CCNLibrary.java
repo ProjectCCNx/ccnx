@@ -47,7 +47,7 @@ public interface CCNLibrary extends CCNBase {
 		
 	public PublisherKeyID getDefaultPublisher();
 
-	public CompleteName put(ContentName name, byte [] contents) throws SignatureException, IOException;
+	public CompleteName put(ContentName name, byte [] contents) throws SignatureException, IOException, InterruptedException;
 
 	/**
 	 * Publish a piece of content under a particular identity.
@@ -57,35 +57,36 @@ public interface CCNLibrary extends CCNBase {
 	 * @param publisher selects one of our identities to publish under
 	 * @throws SignatureException 
 	 * @throws IOException 
+	 * @throws InterruptedException 
 	 */
 	public CompleteName put(ContentName name, byte [] contents,
-							PublisherKeyID publisher) throws SignatureException, IOException;
+							PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException;
 	
 	public CompleteName put(
 			ContentName name, 
 			byte[] contents, 
 			ContentAuthenticator.ContentType type,
-			PublisherKeyID publisher) throws SignatureException, IOException;
+			PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException;
 
 	public CompleteName put(
 			ContentName name, 
 			byte [] contents,
 			ContentAuthenticator.ContentType type,
 			PublisherKeyID publisher, KeyLocator locator,
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException;
+			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InterruptedException;
 	
 	// internal functions about fragmentation - may be exposed, or in std impl
 	
 	public CompleteName newVersion(ContentName name,
-								   byte [] contents) throws SignatureException, IOException;
+								   byte [] contents) throws SignatureException, IOException, InterruptedException;
 	public CompleteName newVersion(ContentName name,
 								   byte [] contents, 
-								   PublisherKeyID publisher) throws SignatureException, IOException;
+								   PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException;
 	public CompleteName newVersion(
 			ContentName name, 
 			byte[] contents,
 			ContentType type, // handle links and collections
-			PublisherKeyID publisher) throws SignatureException, IOException;
+			PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException;
 	
 	public CompleteName addVersion(
 			ContentName name, 
@@ -93,7 +94,7 @@ public interface CCNLibrary extends CCNBase {
 			byte [] contents,
 			ContentType type,
 			PublisherKeyID publisher, KeyLocator locator,
-			PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, IOException;
+			PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, IOException, InterruptedException;
 	
 	/**
 	 * Get the latest version published by this publisher,
@@ -132,9 +133,10 @@ public interface CCNLibrary extends CCNBase {
 	 * are fragmented. Maybe make this a simple interface
 	 * that puts them back together and returns a byte []?
 	 * @throws IOException 
+	 * @throws InterruptedException 
 	 */
 	public ContentObject getLatestVersion(ContentName name, 
-										  PublisherKeyID publisher) throws IOException;
+										  PublisherKeyID publisher) throws IOException, InterruptedException;
 
 	/**
 	 * Does this specific name point to a link?
@@ -157,21 +159,21 @@ public interface CCNLibrary extends CCNBase {
 	public ContentObject getLink(CompleteName name);
 	
 	public CompleteName link(ContentName src, ContentName dest, 
-							 LinkAuthenticator destAuthenticator) throws SignatureException, IOException;
+							 LinkAuthenticator destAuthenticator) throws SignatureException, IOException, InterruptedException;
 	public CompleteName link(ContentName src, ContentName dest, 
-							 LinkAuthenticator destAuthenticator, PublisherKeyID publisher) throws SignatureException, IOException;
+							 LinkAuthenticator destAuthenticator, PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException;
 	public CompleteName link(ContentName src, ContentName dest,
 			LinkAuthenticator destAuthenticator, 
 			PublisherKeyID publisher, KeyLocator locator,
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException;
+			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InterruptedException;
 	
-	public CompleteName addCollection(ContentName name, Link [] contents) throws SignatureException, IOException;
+	public CompleteName addCollection(ContentName name, Link [] contents) throws SignatureException, IOException, InterruptedException;
 	public CompleteName addCollection(ContentName name, Link [] contents, 
-									  PublisherKeyID publisher) throws SignatureException, IOException;
+									  PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException;
 	public CompleteName addCollection(ContentName name, 
 			Link[] contents,
 			PublisherKeyID publisher, KeyLocator locator,
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException;
+			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InterruptedException;
 	
 	/**
 	 * Use the same publisherID that we used originally.
@@ -212,8 +214,9 @@ public interface CCNLibrary extends CCNBase {
 	 * the actual name we are opening. It also contains things
 	 * like offsets and verification information.
 	 * @throws IOException 
+	 * @throws InterruptedException 
 	 */
-	public CCNDescriptor open(CompleteName name) throws IOException;
+	public CCNDescriptor open(CompleteName name) throws IOException, InterruptedException;
 	
 	public long read(CCNDescriptor ccnObject, byte [] buf, long offset, long len);
 

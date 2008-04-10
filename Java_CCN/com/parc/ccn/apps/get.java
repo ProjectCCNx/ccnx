@@ -61,6 +61,9 @@ public class get {
 		} catch (IOException e) {
 			System.out.println("Cannot write file. " + e.getMessage());
 			e.printStackTrace();
+		} catch (InterruptedException e) {
+			System.out.println("Cannot write file. " + e.getMessage());
+			e.printStackTrace();
 		} 
 
 	}

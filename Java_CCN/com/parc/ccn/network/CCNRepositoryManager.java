@@ -130,9 +130,10 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 	
 	/**
 	 * Puts we put only to our local repository. 
+	 * @throws InterruptedException 
 	 */
 	public CompleteName put(ContentName name, ContentAuthenticator authenticator, 
-							byte [] signature, byte[] content) throws IOException {
+							byte [] signature, byte[] content) throws IOException, InterruptedException {
 		return _primaryRepository.put(name, authenticator, signature, content);
 	}
 
@@ -144,10 +145,11 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 	 * We have applications that want both recursive and nonrecursive
 	 * behavior. Make that controllable, to let us decide whether
 	 * we need to support both in the final repository protocol.
+	 * @throws InterruptedException 
 	 */
 	public ArrayList<ContentObject> get(ContentName name, 
 									    ContentAuthenticator authenticator,
-									    boolean isRecursive) throws IOException {
+									    boolean isRecursive) throws IOException, InterruptedException {
 		ArrayList<ContentObject> results = _primaryRepository.get(name, authenticator, isRecursive);
 		
 		for (int i=0; i < _repositories.size(); ++i) {

@@ -106,14 +106,14 @@ public class StandardCCNLibrary implements CCNLibrary {
 		return keyManager().getDefaultKeyID();
 	}
 
-	public CompleteName addCollection(ContentName name, Link [] contents) throws SignatureException, IOException {
+	public CompleteName addCollection(ContentName name, Link [] contents) throws SignatureException, IOException, InterruptedException {
 		return addCollection(name, contents, getDefaultPublisher());
 	}
 
 	public CompleteName addCollection(
 			ContentName name, 
 			Link [] contents,
-			PublisherKeyID publisher) throws SignatureException, IOException {
+			PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException {
 		try {
 			return addCollection(name, contents, publisher, null, null);
 		} catch (InvalidKeyException e) {
@@ -131,7 +131,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 			ContentName name, 
 			Link[] contents,
 			PublisherKeyID publisher, KeyLocator locator,
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InterruptedException {
 		
 		Collection collectionData = new Collection(contents);
 
@@ -192,15 +192,16 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * @param destAuthenticator can be null
 	 * @throws SignatureException 
 	 * @throws IOException 
+	 * @throws InterruptedException 
 	 */
 	public CompleteName link(ContentName src, ContentName target,
-							 LinkAuthenticator targetAuthenticator) throws SignatureException, IOException {
+							 LinkAuthenticator targetAuthenticator) throws SignatureException, IOException, InterruptedException {
 		return link(src, target, targetAuthenticator, getDefaultPublisher());
 	}
 
 	public CompleteName link(ContentName src, ContentName target,
 							LinkAuthenticator targetAuthenticator,
-							PublisherKeyID publisher) throws SignatureException, IOException {
+							PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException {
 		try {
 			return link(src,target,targetAuthenticator,publisher,null,null);
 		} catch (InvalidKeyException e) {
@@ -221,13 +222,14 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * @throws SignatureException 
 	 * @throws InvalidKeyException 
 	 * @throws IOException 
+	 * @throws InterruptedException 
 	 * @throws XMLStreamException 
 	 */
 	public CompleteName link(ContentName src, ContentName target,
 							 LinkAuthenticator targetAuthenticator, 
 							 PublisherKeyID publisher, KeyLocator locator,
 							 PrivateKey signingKey) throws InvalidKeyException, SignatureException, 
-						NoSuchAlgorithmException, IOException {
+						NoSuchAlgorithmException, IOException, InterruptedException {
 
 		if ((null == src) || (null == target)) {
 			Library.logger().info("Link: src and target cannot be null.");
@@ -271,28 +273,30 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * Even if we've read it, it isn't atomic -- by the time
 	 * we write our new version, someone else might have updated
 	 * the number...
+	 * @throws InterruptedException 
 	 */
 	public CompleteName newVersion(ContentName name,
-								   byte[] contents) throws SignatureException, IOException {
+								   byte[] contents) throws SignatureException, IOException, InterruptedException {
 		return newVersion(name, contents, getDefaultPublisher());
 	}
 
 	public CompleteName newVersion(
 			ContentName name, 
 			byte[] contents,
-			PublisherKeyID publisher) throws SignatureException, IOException {
+			PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException {
 		return newVersion(name, contents, ContentType.LEAF, publisher);
 	}
 	
 	/**
 	 * @param publisher Who we want to publish this as,
 	 * not who published the existing version.
+	 * @throws InterruptedException 
 	 */
 	public CompleteName newVersion(
 			ContentName name, 
 			byte[] contents,
 			ContentType type, // handle links and collections
-			PublisherKeyID publisher) throws SignatureException, IOException {
+			PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException {
 
 		try {
 			ContentName latestVersion = 
@@ -325,7 +329,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 			ContentType type,
 			PublisherKeyID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws SignatureException, 
-			InvalidKeyException, NoSuchAlgorithmException, IOException {
+			InvalidKeyException, NoSuchAlgorithmException, IOException, InterruptedException {
 
 		if (null == signingKey)
 			signingKey = keyManager().getDefaultSigningKey();
@@ -418,8 +422,9 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * are fragmented. Maybe make this a simple interface
 	 * that puts them back together and returns a byte []?
 	 * @throws IOException 
+	 * @throws InterruptedException 
 	 */
-	public ContentObject getLatestVersion(ContentName name, PublisherKeyID publisher) throws IOException {
+	public ContentObject getLatestVersion(ContentName name, PublisherKeyID publisher) throws IOException, InterruptedException {
 		ContentName currentName = getLatestVersionName(name, publisher);
 		
 		if (null == currentName) // no latest version
@@ -498,18 +503,18 @@ public class StandardCCNLibrary implements CCNLibrary {
 	}
 	
 	public CompleteName put(ContentName name, byte[] contents) 
-				throws SignatureException, IOException {
+				throws SignatureException, IOException, InterruptedException {
 		return put(name, contents, getDefaultPublisher());
 	}
 
 	public CompleteName put(ContentName name, byte[] contents, 
-							PublisherKeyID publisher) throws SignatureException, IOException {
+							PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException {
 		return put(name, contents, ContentAuthenticator.ContentType.LEAF, publisher);
 	}
 
 	public CompleteName put(ContentName name, byte[] contents, 
 							ContentAuthenticator.ContentType type,
-							PublisherKeyID publisher) throws SignatureException, IOException {
+							PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException {
 		try {
 			return put(name, contents, type, publisher, 
 					   null, null);
@@ -597,11 +602,12 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * TODO: DKS: improve this to handle stream writes better.
 	 * What happens if we want to write a block at a time.
 	 * @throws IOException 
+	 * @throws InterruptedException 
 	 **/
 	public CompleteName put(ContentName name, byte [] contents,
 							ContentAuthenticator.ContentType type,
 							PublisherKeyID publisher, KeyLocator locator,
-							PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+							PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InterruptedException {
 	
 		if (null == signingKey)
 			signingKey = keyManager().getDefaultSigningKey();
@@ -646,11 +652,12 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * @throws SignatureException
 	 * @throws NoSuchAlgorithmException
 	 * @throws IOException 
+	 * @throws InterruptedException 
 	 */
 	protected CompleteName fragmentedPut(ContentName name, byte [] contents,
 										ContentAuthenticator.ContentType type,
 										PublisherKeyID publisher, KeyLocator locator,
-										PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+										PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InterruptedException {
 		// This will call into CCNBase after picking appropriate credentials
 		// take content, blocksize (static), divide content into array of 
 		// content blocks, call hash fn for each block, call fn to build merkle
@@ -797,11 +804,12 @@ public class StandardCCNLibrary implements CCNLibrary {
 
 	/**
 	 * Implementation of CCNBase.put.
+	 * @throws InterruptedException 
 	 */
 	public CompleteName put(ContentName name, 
 							ContentAuthenticator authenticator,
 							byte [] signature, 
-							byte[] content) throws IOException {
+							byte[] content) throws IOException, InterruptedException {
 		return CCNNetworkManager.getNetworkManager().put(name, authenticator, signature, content);
 	}
 
@@ -818,10 +826,11 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * returns only nodes underneath name.
 	 * 
 	 * DKS TODO: should this get at least verify?
+	 * @throws InterruptedException 
 	 */
 	public ArrayList<ContentObject> get(ContentName name, 
 										ContentAuthenticator authenticator,
-										boolean isRecursive) throws IOException {
+										boolean isRecursive) throws IOException, InterruptedException {
 		return CCNNetworkManager.getNetworkManager().get(name, authenticator,isRecursive);
 	}
 
@@ -900,8 +909,9 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * rather than the other way 'round. So these should use
 	 * the low-level (CCNBase/CCNRepository/CCNNetwork) get.
 	 * @throws IOException 
+	 * @throws InterruptedException 
 	 */
-	public CCNDescriptor open(CompleteName name) throws IOException {
+	public CCNDescriptor open(CompleteName name) throws IOException, InterruptedException {
 		ContentName nameToOpen = name.name();
 		if (isFragment(name.name())) {
 			// DKS TODO: should we do this?

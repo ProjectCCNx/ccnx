@@ -226,13 +226,13 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 	
 	public boolean verify(PublicKey publicKey) 
 					throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, 
-								XMLStreamException {
+								XMLStreamException, InterruptedException {
 		return verify(this, true, publicKey);
 	}
 	
 	public static boolean verify(ContentObject object, PublicKey publicKey) 
 				throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, 
-								XMLStreamException {
+								XMLStreamException, InterruptedException {
 		return verify(object, true, publicKey);
 	}
 	
@@ -263,10 +263,11 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 	 * @throws XMLStreamException 
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
+	 * @throws InterruptedException 
 	 */
 	public static boolean verify(ContentObject object,
 								 boolean verifySignature,
-								 PublicKey publicKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException {
+								 PublicKey publicKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException, InterruptedException {
 		// TODO DKS: make more efficient.
 		
 		// Start with the cheap part. Check that the content
@@ -310,10 +311,11 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 	 * @throws XMLStreamException 
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
+	 * @throws InterruptedException 
 	 */
 	public static boolean verifyContentSignature(
 			ContentObject object,
-			PublicKey publicKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException {
+			PublicKey publicKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException, InterruptedException {
 	
 		if (null == publicKey) {
 			// Get a copy of the public key.

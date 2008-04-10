@@ -85,10 +85,11 @@ public abstract class KeyManager {
 	 * @param keyLocator
 	 * @return
 	 * @throws IOException 
+	 * @throws InterruptedException 
 	 */
-	public abstract PublicKey getPublicKey(PublisherKeyID publisherKeyID, KeyLocator keyLocator) throws IOException;
+	public abstract PublicKey getPublicKey(PublisherKeyID publisherKeyID, KeyLocator keyLocator) throws IOException, InterruptedException;
 
 	public abstract PublicKey getKey(PublisherKeyID desiredKeyID,
-									KeyLocator locator) throws IOException;
+									KeyLocator locator) throws IOException, InterruptedException;
 	
 }

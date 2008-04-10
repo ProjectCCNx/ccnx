@@ -247,7 +247,7 @@ public class BasicKeyManager extends KeyManager {
 						encodedKey);
 			Library.logger().info("Generated user default key. Published key locator as: " + publishedLocation.name());
 			return publishedLocation;
-		} catch (IOException e) {
+		} catch (Exception e) {
 			generateConfigurationException("Cannot put key locator for default key.", e);
 		}
 		return null;
@@ -326,9 +326,10 @@ public class BasicKeyManager extends KeyManager {
 	 * @param locator
 	 * @return
 	 * @throws IOException
+	 * @throws InterruptedException 
 	 */
 	public PublicKey getKey(PublisherKeyID desiredKeyID,
-							KeyLocator locator) throws IOException {
+							KeyLocator locator) throws IOException, InterruptedException {
 		
 		if (null != locator.certificate())
 			return locator.certificate().getPublicKey();
@@ -480,7 +481,7 @@ public class BasicKeyManager extends KeyManager {
 	}
 
 	@Override
-	public PublicKey getPublicKey(PublisherKeyID publisherID, KeyLocator keyLocator) throws IOException {
+	public PublicKey getPublicKey(PublisherKeyID publisherID, KeyLocator keyLocator) throws IOException, InterruptedException {
 		// TODO Auto-generated method stub
 		Library.logger().info("getPublicKey: retrieving key: " + publisherID + " located at: " + keyLocator);
 		// Do we have it locally.

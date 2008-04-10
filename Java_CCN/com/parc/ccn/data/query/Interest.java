@@ -27,7 +27,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	// Used to remove spurious *'s
 	public static final String RECURSIVE_POSTFIX = "*";
 	
-	protected static final String INTEREST_ELEMENT = "Interest";
+	public static final String INTEREST_ELEMENT = "Interest";
 
 	protected ContentName _name;
 	// DKS TODO can we really support a PublisherID here, or just a PublisherKeyID?
