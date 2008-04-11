@@ -15,7 +15,7 @@ import com.parc.ccn.security.crypto.certificates.OIDLookup;
 
 public class DigestHelper {
 
-	public static String DEFAULT_DIGEST_ALGORITHM = "SHA256";
+	public static String DEFAULT_DIGEST_ALGORITHM = "SHA-256";
 	// public static String DEFAULT_DIGEST_ALGORITHM = "SHA-1";
 	
     public static byte[] digest(byte [] content) {

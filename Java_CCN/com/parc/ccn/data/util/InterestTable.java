@@ -1,6 +1,8 @@
 package com.parc.ccn.data.util;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.SortedMap;
@@ -240,12 +242,12 @@ public class InterestTable<V> {
 	}
 
 	/**
-	 * Get best matching Interest for a CompleteName, where best is defined
+	 * Get longest matching Interest for a CompleteName, where longest is defined
 	 * as longest ContentName.  Any ContentName entries in the table will be 
 	 * ignored by this operation, so the Entry returned will have a 
-	 * non-null interest. 
+	 * non-null interest. If there are multiple matches, first is returned.
 	 * @param target - desired CompleteName
-	 * @return Entry of best match if any, null if no match
+	 * @return Entry of longest match if any, null if no match
 	 */
 	public Entry<V> getMatch(CompleteName target) {
 		Entry<V> match = null;
@@ -278,15 +280,36 @@ public class InterestTable<V> {
 				matches.addAll(getAllMatchByName(name, target));
 			}
 	    }
+	    Collections.reverse(matches);
 	    return matches;
 	}
 	
+	/**
+	 * Get longest matching Interest for a ContentName, where longest is defined
+	 * as longest ContentName.  If there are multiple matches, first is returned.  
+	 * This will return a mix of ContentName and Interest entries if they exist
+	 * (and match) in the table, i.e. the Interest of an Entry may be null in some cases.
+	 * @param target desired ContentName
+	 * @return Entry of longest match if any, null if no match
+	 */
+	public Entry<V> getMatch(ContentName target) {
+		Entry<V> match = null;
+		ContentName headname = new ContentName(target, new byte[] {0} ); // need to include equal item in headMap
+	    for (Iterator<ContentName> nameIt = _contents.headMap(headname).keySet().iterator(); nameIt.hasNext();) {
+			ContentName name = nameIt.next();
+			if (name.isPrefixOf(target)) {
+				match = _contents.get(name).get(0);
+			}
+	    }
+		return match;
+	}
+
 	/**
 	 * Get all matching entries for a ContentName.
 	 * This will return a mix of ContentName and Interest entries if they exist
 	 * (and match) in the table, i.e. the Interest of an Entry may be null in some cases.
 	 * @param target desired ContentName
-	 * @return List of matches, empty if no match
+	 * @return List of matches ordered from longest match to shortest, empty if no match
 	 */
 	public List<Entry<V>> getMatches(ContentName target) {
 		List<Entry<V>> matches = new ArrayList<Entry<V>>();
@@ -297,16 +320,17 @@ public class InterestTable<V> {
 				matches.addAll(_contents.get(name));
 			}
 	    }
+	    Collections.reverse(matches);
 	    return matches;
 	}
 
 	/**
-	 * Remove and return the best matching Interest for a CompleteName, where best is defined
+	 * Remove and return the longest matching Interest for a CompleteName, where best is defined
 	 * as longest ContentName.  Any ContentName entries in the table will be 
 	 * ignored by this operation, so the Entry returned will have a 
 	 * non-null interest. 
 	 * @param target - desired CompleteName
-	 * @return Entry of best match if any, null if no match
+	 * @return Entry of longest match if any, null if no match
 	 */
 	public Entry<V> removeMatch(CompleteName target) {
 		Entry<V> match = null;
@@ -333,7 +357,7 @@ public class InterestTable<V> {
 	 * ignored by this operation, so every Entry returned will have a 
 	 * non-null interest. 
 	 * @param target - desired CompleteName
-	 * @return List of matches, empty if no match
+	 * @return List of matches ordered from longest match to shortest, empty if no match
 	 */
 	public List<Entry<V>> removeMatches(CompleteName target) {
 		List<Entry<V>> matches = new ArrayList<Entry<V>>();
@@ -352,6 +376,7 @@ public class InterestTable<V> {
 		    	removeAllMatchByName(contentName, target);				
 			}
 	    }
+	    Collections.reverse(matches);
 	    return matches;
 	}
 	
