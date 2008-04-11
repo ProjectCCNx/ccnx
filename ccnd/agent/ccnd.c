@@ -44,6 +44,7 @@ struct ccnd {
     struct pollfd *fds;
     struct ccn_schedule *sched;
     struct ccn_charbuf *scratch_charbuf;
+    struct ccn_indexbuf *scratch_indexbuf;
 };
 
 struct dbl_links {
@@ -69,11 +70,16 @@ struct face {
 #define CCN_FACE_DGRAM  (1 << 1)
 
 struct interest_entry {
-    int nyi;
+    /* The interest hash table is keyed by the Component elements of the Name */
+    int ncomp;           /* Number of name components */
 };
 
 struct content_entry {
-    int nyi;
+    /* The content hash table is keyed by the Component elements of the Name */
+    unsigned short *comp_end;  /* byte length of each name prefix */
+    int ncomp;           /* Number of name components */    
+    int tail_size;
+    unsigned char *tail; /* ContentObject elements other than the Name */
 };
 
 struct propagating_entry {
@@ -148,6 +154,27 @@ charbuf_release(struct ccnd *h, struct ccn_charbuf *c)
         h->scratch_charbuf = c;
     else
         ccn_charbuf_destroy(&c);
+}
+
+static struct ccn_indexbuf *
+indexbuf_obtain(struct ccnd *h)
+{
+    struct ccn_indexbuf *c = h->scratch_indexbuf;
+    if (c == NULL)
+        return(ccn_indexbuf_create());
+    h->scratch_indexbuf = NULL;
+    c->n = 0;
+    return(c);
+}
+
+static void
+indexbuf_release(struct ccnd *h, struct ccn_indexbuf *c)
+{
+    c->n = 0;
+    if (h->scratch_indexbuf == NULL)
+        h->scratch_indexbuf = c;
+    else
+        ccn_indexbuf_destroy(&c);
 }
 
 static int
@@ -275,7 +302,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,
 {
     struct ccn_parsed_interest interest = {0};
     int res;
-    res = ccn_parse_interest(msg, size, &interest);
+    res = ccn_parse_interest(msg, size, &interest, NULL);
     if (res < 0) {
         fprintf(stderr, "bad interest - code %d\n", res);
         return;
@@ -287,14 +314,63 @@ static void
 process_incoming_content(struct ccnd *h, struct face *face,
                       unsigned char *msg, size_t size)
 {
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
     struct ccn_parsed_ContentObject obj = {0};
     int res;
-    res = ccn_parse_ContentObject(msg, size, &obj);
+    size_t keysize = 0;
+    size_t tailsize = 0;
+    unsigned char *tail = NULL;
+    struct content_entry *content = NULL;
+    unsigned short *comp_end;
+    int i;
+    struct ccn_indexbuf *comps = indexbuf_obtain(h);
+    res = ccn_parse_ContentObject(msg, size, &obj, comps);
     if (res < 0) {
         fprintf(stderr, "error parsing ContentObject - code %d\n", res);
-        return;
     }
-    process_input_message_BFI(h, face, msg, size);
+    else if (comps->n < 1 || (keysize = comps->buf[comps->n - 1] - comps->buf[0]) > 65535) {
+        fprintf(stderr, "ContentObject with keysize %lu discarded\n", (unsigned long)keysize);
+        res = -__LINE__;
+    }
+    else {
+        tail = msg + obj.ContentAuthenticator;
+        tailsize = size - 2 - obj.ContentAuthenticator;
+        hashtb_start(h->content_tab, e);
+        res = hashtb_seek(e, msg + comps->buf[0], keysize);
+        content = e->data;
+        if (res == HT_OLD_ENTRY) {
+            if (tailsize != content->tail_size || 0 != memcmp(tail, content->tail, tailsize)) {
+                fprintf(stderr, "ContentObject name collision!!!!!\n");
+                content = NULL;
+                hashtb_delete(e); /* Mercilessly throw away both of them. */
+                res = -__LINE__;
+            }
+            else
+                fprintf(stderr, "received duplicate ContentObject\n");
+        }
+        else if (res == HT_NEW_ENTRY) {
+            content->ncomp = comps->n - 1;
+            comp_end = content->comp_end = calloc(comps->n - 1, sizeof(comp_end[0]));
+            content->tail_size = tailsize;
+            content->tail = calloc(1, tailsize);
+            if (content->tail != NULL && comp_end != NULL) {
+                memcpy(content->tail, tail, tailsize);
+                for (i = 1; i < comps->n; i++)
+                    comp_end[i-1] = comps->buf[i] - comps->buf[0];
+            }
+            else {
+                perror("process_incoming_content");
+                hashtb_delete(e);
+                res = -__LINE__;
+            }
+        }
+        hashtb_end(e);
+    }
+    indexbuf_release(h, comps);
+    if (res == HT_NEW_ENTRY) {
+        process_input_message_BFI(h, face, msg, size);
+    }
 }
 
 static void

@@ -13,6 +13,7 @@
 
 #include <ccn/coding.h>
 #include <ccn/charbuf.h>
+#include <ccn/indexbuf.h>
 
 struct ccn;
 enum ccn_upcall_kind {
@@ -177,6 +178,7 @@ int ccn_buf_match_attr(struct ccn_buf_decoder *d, const char *s);
 /* ccn_buf_check_close enters an error state if element closer not found */
 void ccn_buf_check_close(struct ccn_buf_decoder *d);
 
+/* XXX - make this more like struct ccn_parsed_ContentObject in form */
 struct ccn_parsed_interest {
     size_t name_start;
     size_t name_size;
@@ -185,16 +187,19 @@ struct ccn_parsed_interest {
     size_t nonce_start;
     size_t nonce_size;
 };
-
 /*
  * ccn_parse_interest:
  * Returns number of name components, or 
  * a negative value for an error.
  * Fills in *interest.
+ * If components is not NULL, it is filled with byte indexes
+ * of the start of each Component of the Name of the Interest,
+ * plus one additional value for the index of the end of the last component.
  */
 int
 ccn_parse_interest(unsigned char *msg, size_t size,
-                   struct ccn_parsed_interest *interest);
+                   struct ccn_parsed_interest *interest,
+                   struct ccn_indexbuf *components);
 
 struct ccn_parsed_ContentObject {
     int Name;
@@ -202,9 +207,17 @@ struct ccn_parsed_ContentObject {
     int Signature;
     int Content;
 };
-
+/*
+ * ccn_parse_ContentObject:
+ * Returns 0, or a negative value for an error.
+ * Fills in *x with offsets of constituent elements.
+ * If components is not NULL, it is filled with byte indexes
+ * of the start of each Component of the Name of the ContentObject,
+ * plus one additional value for the index of the end of the last component.
+ */
 int ccn_parse_ContentObject(unsigned char *msg, size_t size,
-                   struct ccn_parsed_ContentObject *x);
+                   struct ccn_parsed_ContentObject *x,
+                   struct ccn_indexbuf *components);
 
 
 /***********************************

@@ -310,7 +310,7 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
 {
     struct ccn_parsed_interest interest = {0};
     int res;
-    res = ccn_parse_interest(msg, size, &interest);
+    res = ccn_parse_interest(msg, size, &interest, NULL);
     if (res >= 0) {
         if (h->default_interest_action != NULL) {
             (h->default_interest_action->p)(
