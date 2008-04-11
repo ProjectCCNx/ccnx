@@ -19,7 +19,8 @@ Dump(struct hashtb *h)
 void
 finally(struct hashtb_enumerator *e)
 {
-    fprintf(stderr, "%s deleting %s\n", hashtb_get_param(e->ht, NULL), (const char *)e->key);
+    char *who = hashtb_get_param(e->ht, NULL);
+    fprintf(stderr, "%s deleting %s\n", who, (const char *)e->key);
 }
 
 int

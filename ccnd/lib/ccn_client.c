@@ -28,6 +28,7 @@ struct ccn {
     struct ccn_charbuf *inbuf;
     struct ccn_charbuf *outbuf;
     struct hashtb *interests;
+    struct hashtb *interest_filters;
     struct ccn_closure *default_content_action;
     struct ccn_closure *default_interest_action;
     struct ccn_skeleton_decoder decoder;
@@ -41,6 +42,10 @@ struct expressed_interest {
     int repeat;
     int target;
     int outstanding;
+};
+
+struct interest_filter {
+    struct ccn_closure *action;
 };
 
 #define NOTE_ERR(h, e) (h->err = (e), h->errline = __LINE__, -1)
@@ -133,6 +138,14 @@ ccn_destroy(struct ccn **hp)
         hashtb_end(e);
         hashtb_destroy(&(h->interests));
     }
+    if (h->interest_filters != NULL) {
+        for (hashtb_start(h->interest_filters, e); e->data != NULL; hashtb_next(e)) {
+            struct interest_filter *i = e->data;
+            ccn_replace_handler(h, &(i->action), NULL);
+        }
+        hashtb_end(e);
+        hashtb_destroy(&(h->interest_filters));
+    }
     ccn_charbuf_destroy(&h->interestbuf);
     free(h);
     *hp = NULL;
@@ -210,6 +223,31 @@ ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
     ccn_replace_handler(h, &(interest->action), action);
     interest->target = 1;
     return(0);
+}
+
+int
+ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
+                        struct ccn_closure *action)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    int res;
+    struct interest_filter *entry;
+    if (h->interest_filters == NULL) {
+        h->interest_filters = hashtb_create(sizeof(struct interest_filter), NULL);
+        if (h->interest_filters == NULL)
+            return(NOTE_ERRNO(h));
+    }
+    hashtb_start(h->interest_filters, e);
+    res = hashtb_seek(e, namebuf->buf, namebuf->length-1);
+    if (res >= 0) {
+        entry = e->data;
+        ccn_replace_handler(h, &(entry->action), action);
+        if (action == NULL)
+            hashtb_delete(e);
+    }
+    hashtb_end(e);
+    return(res);
 }
 
 int
@@ -312,6 +350,25 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
     int res;
     res = ccn_parse_interest(msg, size, &interest, NULL);
     if (res >= 0) {
+        if (h->interest_filters != NULL) {
+            struct hashtb_enumerator ee;
+            struct hashtb_enumerator *e = &ee;
+            /* XXX - this makes no attempt to match longer things first */
+            for (hashtb_start(h->interest_filters, e); res >= 0 && e->data != NULL; hashtb_next(e)) {
+                struct interest_filter *entry = e->data;
+                size_t size = interest.name_size - 1;
+                if (size > e->keysize)
+                    size = e->keysize;
+                if (0 == memcmp(msg + interest.name_start, e->key, size))
+                    res = (entry->action->p)(
+                        entry->action,
+                        CCN_UPCALL_INTEREST,
+                        h, msg, size, e->key, e->keysize + 1); /* hashtb provides trailing null */
+            }
+            hashtb_end(e);
+            if (res == -1)
+                return;
+        }
         if (h->default_interest_action != NULL) {
             (h->default_interest_action->p)(
                 h->default_interest_action,
@@ -441,7 +498,7 @@ ccn_run(struct ccn *h, int timeout)
         if (timeout >= 0 && timeout < timeout_ms)
             timeout_ms = timeout;
         res = poll(fds, 1, timeout_ms);
-        if (res < 0)
+        if (res < 0 && errno != EINTR)
             return (NOTE_ERRNO(h));
         if (res > 0) {
             if ((fds[0].revents | POLLOUT) != 0)

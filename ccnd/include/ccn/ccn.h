@@ -15,6 +15,8 @@
 #include <ccn/charbuf.h>
 #include <ccn/indexbuf.h>
 
+#define CCN_INTEREST_HALFLIFE_MICROSEC 4000000
+
 struct ccn;
 enum ccn_upcall_kind {
     CCN_UPCALL_FINAL,       /* handler is about to be deregistered */
@@ -115,16 +117,15 @@ int ccn_set_default_content_handler(struct ccn *h,
 
 /***********************************
  * ccn_set_interest_filter: 
- * The namebuf may be reused or destroyed after the call.
+ * The action, if provided, may be called when an interest arrives that is
+ * either a prefix of the given name or which has the given name as a prefix.
  * If action is NULL, any existing filter is removed.
- * Otherwise action will be called when an interest arrives that is
- * either a prefix of the given name or which has the given name
- * as a prefix.
+ * The namebuf may be reused or destroyed after the call.
  * Handler should return -1 if it cannot produce new content in response.
  */
-int /*NYI*/
-ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
-                        struct ccn_closure *action);
+int ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
+                            struct ccn_closure *action);
+
 /*
  * ccn_set_default_interest_handler:
  * Sets default interest handler, replacing any in effect.
@@ -148,6 +149,14 @@ int ccn_put(struct ccn *h, const void *p, size_t length);
  * Returns 1 if there is data waiting to be sent, else 0.
  */
 int ccn_output_is_pending(struct ccn *h);
+
+/*
+ * ccn_run: process incoming
+ * This may serve as the main event loop for simple apps by passing 
+ * a timeout value of -1.
+ * The timeout is in milliseconds.
+ */
+int ccn_run(struct ccn *h, int timeout);
 
 /***********************************
  * Binary decoding
