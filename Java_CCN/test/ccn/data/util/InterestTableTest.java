@@ -128,9 +128,6 @@ public class InterestTableTest {
 		bb.putLong(new Date().getTime());
 		byte[] contents = bb.array();
 		// security bits
-//		KeyManager keyManager = KeyManager.getDefaultKeyManager();
-//		PrivateKey signingKey = keyManager.getDefaultSigningKey();
-//		KeyLocator locator = keyManager.getKeyLocator(signingKey);
 		KeyLocator locator = new KeyLocator(new ContentName("/key/" + pub.id().toString()));
 		// unique name		
 		return CompleteName.generateAuthenticatedName(
@@ -147,6 +144,15 @@ public class InterestTableTest {
 		matchName(table, new ContentName(name), v);
 	}
 	
+	private void noMatch(InterestTable<Integer> table, ContentName name) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
+		assertNull((null == activeKeyID) ? table.getMatch(name) :
+									       table.getMatch(getCompleteName(name)));
+	}
+
+	private void noMatch(InterestTable<Integer> table, String name) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
+		noMatch(table, new ContentName(name));
+	}
+
 	private void matchNames(InterestTable<Integer> table, ContentName name, ContentName[] n, int[] v) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
 		List<InterestTable.Entry<Integer>> result = (null == activeKeyID) ? table.getMatches(name) :
 																			 table.getMatches(getCompleteName(name));
@@ -163,10 +169,6 @@ public class InterestTableTest {
 			cn[i] = new ContentName(n[i]);
 		}
 		matchNames(table, new ContentName(name), cn, v);
-	}
-
-	private void matchName(InterestTable<Integer> table, String name, PublisherKeyID pub, int v) throws InvalidKeyException, SignatureException, MalformedContentNameStringException, ConfigurationException {
-		assertEquals(v, table.getMatch(getCompleteName(name, pub)).value());
 	}
 	
 	private void addEntry(InterestTable<Integer> table, ContentName name, Integer value) throws MalformedContentNameStringException {
@@ -186,6 +188,7 @@ public class InterestTableTest {
 		String ab = "/a/b";
 		String abb = "/a/bb";
 		String abc = "/a/b/c";
+		String ab_b = "/a/b/b";
 		String b = "/b";
 		String c = "/c";
 		String aa = "/aa";
@@ -204,30 +207,49 @@ public class InterestTableTest {
 		addEntry(names, zero, new Integer(8));
 		addEntry(names, onethree, new Integer(9));
 		addEntry(names, one, new Integer(10));
+		addEntry(names, ab, new Integer(45));
+
+		assertEquals(11, names.size());
+		assertEquals(10, names.sizeNames());
 
 		matchName(names, abb, 5);
 		matchName(names, abc, 7);
 		matchName(names, ab, 2);
 		matchName(names, "/a/b/d", 2);
 		matchName(names, "/a/b/c/d", 7);
+		matchName(names, ab_b, 2);
 		matchName(names, b, 4);
 		matchName(names, c, 3);
 		matchName(names, one, 10);
 		matchName(names, zero, 8);
 		matchName(names, onethree, 9);
+		matchName(names, "/a/b/b/a", 2);
 		
 		matchNames(names, aa, new String[] {aa}, new int[] {6});
 		matchNames(names, c, new String[] {c}, new int[] {3});
-		matchNames(names, "/a/b/c/d", new String[] {abc, ab, a}, new int[] {7, 2, 1});
-		matchNames(names, abc, new String[] {abc, ab, a}, new int[] {7, 2, 1});
-		matchNames(names, ab, new String[] {ab, a}, new int[] {2, 1});
+		matchNames(names, "/a/b/c/d", new String[] {abc, ab, ab, a}, new int[] {7, 45, 2, 1});
+		matchNames(names, abc, new String[] {abc, ab, ab, a}, new int[] {7, 45, 2, 1});
+		matchNames(names, ab, new String[] {ab, ab, a}, new int[] {45, 2, 1});
 		matchNames(names, a, new String[] {a}, new int[] {1});
 		matchNames(names, abb, new String[] {abb, a}, new int[] {5, 1});
-		matchNames(names, "/a/b/d", new String[] {ab, a}, new int[] {2, 1});
+		matchNames(names, "/a/b/d", new String[] {ab, ab, a}, new int[] {45, 2, 1});
 		matchNames(names, zero, new ContentName[] {zero}, new int[] {8});
 		matchNames(names, onethree, new ContentName[] {onethree, one}, new int[] {9, 10});
 		matchNames(names, one, new ContentName[] {one}, new int[] {10});
 
+		addEntry(names, ab_b, new Integer(11));
+		assertEquals(12, names.size());
+		assertEquals(11, names.sizeNames());
+
+		
+		matchName(names, ab_b, 11);
+		matchName(names, abc, 7);
+		matchName(names, "/a/b/c/d", 7);
+		
+		matchNames(names, "/a/b/c/d", new String[] {abc, ab, ab, a}, new int[] {7, 45, 2, 1});
+		matchNames(names, "/a/b/b/a", new String[] {ab_b, ab, ab, a}, new int[] {11, 45, 2, 1});
+
+		noMatch(names, "/q");
 	}
 	
 	@Test
@@ -239,6 +261,63 @@ public class InterestTableTest {
 		// Next run CompleteName against names in table
 		setID(0);
 		runMatchName();
+	}
+	
+	@Test
+	public void testMatchPub() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
+
+		String a = "/a";
+		String ab = "/a/b";
+		String abb = "/a/bb";
+		String abc = "/a/b/c";
+		String ab_b = "/a/b/b";
+		String b = "/b";
+		String c = "/c";
+		String aa = "/aa";
+
+		InterestTable<Integer> names = new InterestTable<Integer>();
+
+		setID(0);
+		addEntry(names, a, new Integer(1));
+		addEntry(names, b, new Integer(2));
+		addEntry(names, abb, new Integer(3));
+		addEntry(names, ab_b, new Integer(4));
+		
+		setID(1);
+		addEntry(names, ab, new Integer(5));
+		addEntry(names, abc, new Integer(6));
+		addEntry(names, aa, new Integer(7));
+		
+		setID(2);
+		addEntry(names, ab_b, new Integer(8));
+		
+		assertEquals(8, names.size());
+		assertEquals(7, names.sizeNames());
+		
+		setID(2);
+		matchName(names, ab_b, 8);
+		matchName(names, "/a/b/b/a", 8);
+		matchNames(names, "/a/b/b/a", new String[] {ab_b}, new int[] {8});
+		noMatch(names, abb);
+		noMatch(names, abc);
+		matchName(names, ab_b, 8);
+		
+		setID(0);
+		noMatch(names, aa);
+		matchName(names, "/a/b/b/a", 4);
+		matchName(names, abc, 1);
+		matchNames(names, abc, new String[] {a}, new int[] {1});
+		matchName(names, "/a/b/c/d", 1);
+		matchNames(names, "/a/b/b/a", new String[] {ab_b, a}, new int[] {4, 1});
+		matchName(names, ab_b, 4);
+		matchNames(names, ab_b, new String[] {ab_b, a}, new int[] {4, 1});
+		
+		setID(1);
+		noMatch(names, b);
+		matchName(names, abc, 6);
+		matchNames(names, abc, new String[] {abc, ab}, new int[] {6, 5});
+		matchName(names, "/a/b/b/a", 5);
+		noMatch(names, abb);
 	}
 
 }

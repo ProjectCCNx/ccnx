@@ -256,7 +256,10 @@ public class InterestTable<V> {
 			ContentName name = nameIt.next();
 			if (name.isPrefixOf(target.name())) {
 				// Name match - is there an interest match here?
-				match = getMatchByName(name, target);
+				Entry<V> found = getMatchByName(name, target);
+				if (null != found) {
+					match = getMatchByName(name, target);
+				}
 			}
 	    }
 		return match;
@@ -340,8 +343,11 @@ public class InterestTable<V> {
 			ContentName name = nameIt.next();
 			if (name.isPrefixOf(target.name())) {
 				// Name match - is there an interest match here?
-				match = getMatchByName(name, target);
-				matchName = name;
+				Entry<V> found = getMatchByName(name, target);
+				if (null != found) {
+					match = found;
+					matchName = name;
+				}
 				// Do not remove here -- need to find best match and avoid disturbing iterator
 			}
 	    }
