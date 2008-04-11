@@ -22,18 +22,29 @@ struct hashtb {
     size_t item_size;
     int n;
     int refcount;
+    struct hashtb_param param;
 };
 
 struct hashtb *
-hashtb_create(size_t item_size)
+hashtb_create(size_t item_size, const struct hashtb_param *param)
 {
     struct hashtb *ht;
     ht = calloc(1, sizeof(*ht));
     if (ht != NULL) {
         ht->item_size = item_size;
         ht->n = 0;
+        if (param != NULL)
+            ht->param = *param;
     }
     return(ht);
+}
+
+void *
+hashtb_get_param(struct hashtb *ht, struct hashtb_param *param)
+{
+    if (param != NULL)
+        *param = ht->param;
+    return(ht->param.finalize_data);
 }
 
 void
@@ -50,7 +61,7 @@ hashtb_destroy(struct hashtb **htp)
             *htp = NULL;
         }
         else
-            abort();
+            abort(); /* perhaps a bit brutal... */
     }
 }
 
@@ -64,9 +75,8 @@ void *
 hashtb_lookup(struct hashtb *ht, const void *key, size_t keysize)
 {
     struct node *p;
-    if (key == NULL) {
+    if (key == NULL)
         return(NULL);
-    }
     for (p = ht->onebucket; p != NULL; p = p->link) {
         if (keysize == p->keysize && 0 == memcmp(key, KEY(ht, p), keysize)) {
             return(DATA(ht, p));
@@ -171,12 +181,14 @@ hashtb_delete(struct hashtb_enumerator *hte)
     struct node *p = *pp;
     if ((p != NULL) && (hte->priv[1] == hashtb_magic) && KEY(ht, p) == hte->key) {
         *pp = p->link;
-        if (ht->refcount == 1)
-            free(p);
-        /* XXX - fix leak! */
         hte->ht->n -= 1;
+        if (ht->refcount == 1) {
+            hashtb_finalize_proc f = ht->param.finalize;
+            if (f != NULL)
+                (*f)(hte);
+            free(p);
+        }
+        /* XXX - fix leak! */
+        setpos(hte, pp);
     }
-    setpos(hte, pp);
 }
-
-

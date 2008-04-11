@@ -11,6 +11,7 @@
 #include <poll.h>
 #include <signal.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -45,6 +46,7 @@ struct ccnd {
     struct ccn_schedule *sched;
     struct ccn_charbuf *scratch_charbuf;
     struct ccn_indexbuf *scratch_indexbuf;
+    uint_least64_t accession;
 };
 
 struct dbl_links {
@@ -66,8 +68,8 @@ struct face {
     socklen_t addrlen;
 };
 /* face flags */
-#define CCN_FACE_LINK   (1 << 0)
-#define CCN_FACE_DGRAM  (1 << 1)
+#define CCN_FACE_LINK   (1 << 0) /* Elements wrapped by CCNProtocolDataUnit */
+#define CCN_FACE_DGRAM  (1 << 1) /* Datagram interface, respect packets */
 
 struct interest_entry {
     /* The interest hash table is keyed by the Component elements of the Name */
@@ -76,6 +78,7 @@ struct interest_entry {
 
 struct content_entry {
     /* The content hash table is keyed by the Component elements of the Name */
+    uint_least64_t accession;   /* keep track of arrival order */
     unsigned short *comp_end;  /* byte length of each name prefix */
     int ncomp;           /* Number of name components */    
     int tail_size;
@@ -300,14 +303,34 @@ static void
 process_incoming_interest(struct ccnd *h, struct face *face,
                       unsigned char *msg, size_t size)
 {
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
     struct ccn_parsed_interest interest = {0};
+    size_t namesize = 0;
     int res;
-    res = ccn_parse_interest(msg, size, &interest, NULL);
+    struct interest_entry *entry = NULL;
+    struct ccn_indexbuf *comps = indexbuf_obtain(h);
+    res = ccn_parse_interest(msg, size, &interest, comps);
     if (res < 0) {
-        fprintf(stderr, "bad interest - code %d\n", res);
-        return;
+        fprintf(stderr, "error parsing Interest - code %d\n", res);
     }
-    process_input_message_BFI(h, face, msg, size);
+    else if (comps->n < 1 || (namesize = comps->buf[comps->n - 1] - comps->buf[0]) > 65535) {
+        fprintf(stderr, "Interest with namesize %lu discarded\n", (unsigned long)namesize);
+        res = -__LINE__;
+    }
+    else {
+        hashtb_start(h->interest_tab, e);
+        res = hashtb_seek(e, msg + comps->buf[0], namesize);
+        entry = e->data;
+        if (res == HT_NEW_ENTRY) {
+            entry->ncomp = comps->n - 1;
+            fprintf(stderr, "New interest\n");
+        }
+        hashtb_end(e);
+    }
+    indexbuf_release(h, comps);
+    if (res >= 0)
+        process_input_message_BFI(h, face, msg, size);
 }
 
 static void
@@ -335,7 +358,7 @@ process_incoming_content(struct ccnd *h, struct face *face,
     }
     else {
         tail = msg + obj.ContentAuthenticator;
-        tailsize = size - 2 - obj.ContentAuthenticator;
+        tailsize = size - obj.ContentAuthenticator - 2; /* 2 closers */
         hashtb_start(h->content_tab, e);
         res = hashtb_seek(e, msg + comps->buf[0], keysize);
         content = e->data;
@@ -350,6 +373,7 @@ process_incoming_content(struct ccnd *h, struct face *face,
                 fprintf(stderr, "received duplicate ContentObject\n");
         }
         else if (res == HT_NEW_ENTRY) {
+            content->accession = ++(h->accession);
             content->ncomp = comps->n - 1;
             comp_end = content->comp_end = calloc(comps->n - 1, sizeof(comp_end[0]));
             content->tail_size = tailsize;
@@ -638,11 +662,11 @@ ccnd_create(void)
     struct addrinfo *addrinfo = NULL;
     struct addrinfo *a;
     h = calloc(1, sizeof(*h));
-    h->faces = hashtb_create(sizeof(struct face));
-    h->dgram_faces = hashtb_create(sizeof(struct face));
-    h->content_tab = hashtb_create(sizeof(struct content_entry));
-    h->interest_tab = hashtb_create(sizeof(struct interest_entry));
-    h->propagating = hashtb_create(sizeof(struct propagating_entry));
+    h->faces = hashtb_create(sizeof(struct face), NULL);
+    h->dgram_faces = hashtb_create(sizeof(struct face), NULL);
+    h->content_tab = hashtb_create(sizeof(struct content_entry), NULL);
+    h->interest_tab = hashtb_create(sizeof(struct interest_entry), NULL);
+    h->propagating = hashtb_create(sizeof(struct propagating_entry), NULL);
     h->sched = ccn_schedule_create(h);
     fd = create_local_listener(sockname, 42);
     if (fd == -1) fatal_err(sockname);

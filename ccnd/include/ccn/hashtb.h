@@ -13,14 +13,40 @@
 
 #include <stddef.h>
 
-struct hashtb;
+struct hashtb; /* details are private to the implementation */
+struct hashtb_enumerator; /* more about this below */
+typedef void (*hashtb_finalize_proc)(struct hashtb_enumerator *);
+struct hashtb_param {
+    hashtb_finalize_proc finalize; /* default is NULL */
+    void *finalize_data;           /* default is NULL */
+    int orders;                    /* default is 0 */
+}; 
 
+/*
+ * hashtb_create: Create a new hash table.
+ * The param may be NULL to use the defaults, otherwise
+ * a copy of *param is made.
+ */
 struct hashtb *
-hashtb_create(size_t item_size);
+hashtb_create(size_t item_size, const struct hashtb_param *param);
 
+/*
+ * hashtb_get_param: Get the parameters used when creating ht.
+ * Return value is the finalize_data; param may be NULL if no
+ * other parameters are needed.
+ */
+void *
+hashtb_get_param(struct hashtb *ht, struct hashtb_param *param);
+
+/*
+ * hashtb_destroy: Destroy a hash table and all of its elements.
+ */
 void
-hashtb_destroy(struct hashtb **);
+hashtb_destroy(struct hashtb **ht);
 
+/*
+ * hashtb_n: Get current number of elements.
+ */
 int
 hashtb_n(struct hashtb *ht);
 
@@ -39,7 +65,7 @@ struct hashtb_enumerator {
     size_t keysize;
     void *data;
     size_t datasize;
-    void *priv[2];
+    void *priv[3];
 };
 
 /*
@@ -65,7 +91,16 @@ hashtb_seek(struct hashtb_enumerator *hte, const void *key, size_t keysize);
 #define HT_OLD_ENTRY 0
 #define HT_NEW_ENTRY 1
 
-void
-hashtb_delete(struct hashtb_enumerator *);
+/*
+ * hashtb_delete: Delete an item
+ * The item will be unlinked from the table, and will
+ * be freed when safe to do so (i.e., when there are no other
+ * active enumerators).  The finalize proc (if any) will be
+ * called before the item is freed, and it is responsible for
+ * cleaning up any external pointers to the item.
+ * When the delete returns, the enumerator will be positioned
+ * at the next item.
+ */
+void hashtb_delete(struct hashtb_enumerator *);
 
 #endif

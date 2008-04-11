@@ -178,7 +178,7 @@ ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
     int res;
     struct expressed_interest *interest;
     if (h->interests == NULL) {
-        h->interests = hashtb_create(sizeof(struct expressed_interest));
+        h->interests = hashtb_create(sizeof(struct expressed_interest), NULL);
         if (h->interests == NULL)
             return(NOTE_ERRNO(h));
     }
@@ -480,5 +480,3 @@ ccn_charbuf_append_closer(struct ccn_charbuf *c)
     res = ccn_charbuf_append(c, &closer, 1);
     return(res);
 }
-
-

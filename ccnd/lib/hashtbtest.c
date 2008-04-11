@@ -16,11 +16,18 @@ Dump(struct hashtb *h)
     hashtb_end(e);
 }
 
+void
+finally(struct hashtb_enumerator *e)
+{
+    fprintf(stderr, "%s deleting %s\n", hashtb_get_param(e->ht, NULL), (const char *)e->key);
+}
+
 int
-main(void)
+main(int argc, char **argv)
 {
     char buf[1024] = {0};
-    struct hashtb *h = hashtb_create(sizeof(unsigned *));
+    struct hashtb_param p = { &finally, argv[1]};
+    struct hashtb *h = hashtb_create(sizeof(unsigned *), p.finalize_data ? &p : NULL);
     struct hashtb_enumerator eee;
     struct hashtb_enumerator *e = hashtb_start(h, &eee);
     while (fgets(buf, sizeof(buf), stdin)) {
