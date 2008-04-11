@@ -11,6 +11,7 @@
 #ifndef CCN_CODING_DEFINED
 #define CCN_CODING_DEFINED
 
+#include <sys/types.h>
 #include <stddef.h>
 
 #define CCN_TT_BITS 3
