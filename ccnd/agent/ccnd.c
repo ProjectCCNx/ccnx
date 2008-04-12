@@ -314,8 +314,10 @@ process_incoming_interest(struct ccnd *h, struct face *face,
     if (res < 0) {
         fprintf(stderr, "error parsing Interest - code %d\n", res);
     }
-    else if (comps->n < 1 || (namesize = comps->buf[comps->n - 1] - comps->buf[0]) > 65535) {
-        fprintf(stderr, "Interest with namesize %lu discarded\n", (unsigned long)namesize);
+    else if (comps->n < 1 ||
+             (namesize = comps->buf[comps->n - 1] - comps->buf[0]) > 65535) {
+        fprintf(stderr, "Interest with namesize %lu discarded\n",
+                (unsigned long)namesize);
         res = -__LINE__;
     }
     else {
@@ -352,8 +354,10 @@ process_incoming_content(struct ccnd *h, struct face *face,
     if (res < 0) {
         fprintf(stderr, "error parsing ContentObject - code %d\n", res);
     }
-    else if (comps->n < 1 || (keysize = comps->buf[comps->n - 1] - comps->buf[0]) > 65535) {
-        fprintf(stderr, "ContentObject with keysize %lu discarded\n", (unsigned long)keysize);
+    else if (comps->n < 1 ||
+             (keysize = comps->buf[comps->n - 1] - comps->buf[0]) > 65535) {
+        fprintf(stderr, "ContentObject with keysize %lu discarded\n",
+                (unsigned long)keysize);
         res = -__LINE__;
     }
     else {

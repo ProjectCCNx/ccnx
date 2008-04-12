@@ -350,11 +350,11 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
     int res;
     res = ccn_parse_interest(msg, size, &interest, NULL);
     if (res >= 0) {
+        enum ccn_upcall_kind upcall_kind = CCN_UPCALL_INTEREST;
         if (h->interest_filters != NULL) {
             struct hashtb_enumerator ee;
             struct hashtb_enumerator *e = &ee;
-            /* XXX - this makes no attempt to match longer things first */
-            for (hashtb_start(h->interest_filters, e); res >= 0 && e->data != NULL; hashtb_next(e)) {
+            for (hashtb_start(h->interest_filters, e); e->data != NULL; hashtb_next(e)) {
                 struct interest_filter *entry = e->data;
                 size_t size = interest.name_size - 1;
                 if (size > e->keysize)
@@ -362,17 +362,17 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                 if (0 == memcmp(msg + interest.name_start, e->key, size))
                     res = (entry->action->p)(
                         entry->action,
-                        CCN_UPCALL_INTEREST,
+                        upcall_kind,
                         h, msg, size, e->key, e->keysize + 1); /* hashtb provides trailing null */
             }
             hashtb_end(e);
-            if (res == -1)
-                return;
+            if (res != -1)
+                upcall_kind = CCN_UPCALL_CONSUMED_INTEREST;
         }
         if (h->default_interest_action != NULL) {
             (h->default_interest_action->p)(
                 h->default_interest_action,
-                CCN_UPCALL_INTEREST,
+                upcall_kind,
                 h, msg, size, NULL, 0);
         }
         return;
