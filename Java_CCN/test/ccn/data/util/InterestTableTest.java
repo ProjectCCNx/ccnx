@@ -144,6 +144,10 @@ public class InterestTableTest {
 		matchName(table, new ContentName(name), v);
 	}
 	
+	private void removeName(InterestTable<Integer> table, ContentName name, int v) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
+		assertEquals(v, table.removeMatch(getCompleteName(name)).value());
+	}
+	
 	private void noMatch(InterestTable<Integer> table, ContentName name) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
 		assertNull((null == activeKeyID) ? table.getMatch(name) :
 									       table.getMatch(getCompleteName(name)));
@@ -171,6 +175,15 @@ public class InterestTableTest {
 		matchNames(table, new ContentName(name), cn, v);
 	}
 	
+	private void removeNames(InterestTable<Integer> table, ContentName name, ContentName[] n, int[] v) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
+		List<InterestTable.Entry<Integer>> result = table.removeMatches(getCompleteName(name));
+		assertEquals(v.length, result.size());
+		for (int i = 0; i < v.length; i++) {
+			assertEquals(v[i], result.get(i).value());
+			assertEquals(n[i], result.get(i).name());
+		}
+	}
+
 	private void addEntry(InterestTable<Integer> table, ContentName name, Integer value) throws MalformedContentNameStringException {
 		if (null == activeKeyID) {
 			table.add(name, value);
@@ -318,6 +331,10 @@ public class InterestTableTest {
 		matchNames(names, abc, new String[] {abc, ab}, new int[] {6, 5});
 		matchName(names, "/a/b/b/a", 5);
 		noMatch(names, abb);
+		
+		setID(-1);
+		matchName(names, a, 1);
+		matchNames(names, "/a/b/b/a", new String[] {ab_b, ab_b, ab, a}, new int[] {8, 4, 5, 1});
 	}
 
 }
