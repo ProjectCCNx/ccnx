@@ -35,9 +35,9 @@ typedef int (*ccn_handler)(
     int matched_comps             /* number of components in registration */
 );
 struct ccn_closure {
-    ccn_handler p;
-    void *data;
-    int refcount;
+    ccn_handler p; 
+    void *data;    /* for client use */
+    int refcount;  /* client is not expected to update this directly */
 };
 
 /*
@@ -202,8 +202,7 @@ struct ccn_parsed_interest {
 };
 /*
  * ccn_parse_interest:
- * Returns number of name components, or 
- * a negative value for an error.
+ * Returns number of name components, or a negative value for an error.
  * Fills in *interest.
  * If components is not NULL, it is filled with byte indexes
  * of the start of each Component of the Name of the Interest,

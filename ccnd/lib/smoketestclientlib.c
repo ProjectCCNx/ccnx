@@ -12,86 +12,171 @@
 #include <ccn/ccn.h>
 #include <unistd.h>
 
-void printraw(char *p, int n)
+void printraw(const void *r, int n)
 {
     int i, l;
+    const unsigned char *p = r;
     while (n > 0) {
         l = (n > 40 ? 40 : n);
         for (i = 0; i < l; i++)
             printf(" %c", (' ' <= p[i] && p[i] <= '~') ? p[i] : '.');
         printf("\n");
         for (i = 0; i < l; i++)
-            printf("%02X", (unsigned char)p[i]);
+            printf("%02X", p[i]);
         printf("\n");
         p += l;
         n -= l;
     }
 }
 
-char rawbuf[1024*1024];
+int
+incoming_content(
+    struct ccn_closure *selfp,
+    enum ccn_upcall_kind kind,
+    struct ccn *h,
+    const unsigned char *ccnb,    /* binary-format Interest or ContentObject */
+    size_t ccnb_size,             /* size in bytes */
+    struct ccn_indexbuf *comps,   /* component boundaries within ccnb */
+    int matched_comps             /* number of components in registration */
+)
+{
+    if (kind == CCN_UPCALL_FINAL)
+        return(0);
+    if (kind != CCN_UPCALL_CONTENT)
+        return(-1);
+    printf("Got content matching %d components:\n", matched_comps);
+    printraw(ccnb, ccnb_size);
+    return(0);
+}
+
+/* Use some static data for this simple program */
+static struct ccn_closure incoming_content_action = {
+    .p = &incoming_content
+};
+
+static unsigned char rawbuf[1024*1024];
+static ssize_t rawlen;
+
+int
+outgoing_content(
+    struct ccn_closure *selfp,
+    enum ccn_upcall_kind kind,
+    struct ccn *h,
+    const unsigned char *ccnb,    /* binary-format Interest or ContentObject */
+    size_t ccnb_size,             /* size in bytes */
+    struct ccn_indexbuf *comps,   /* component boundaries within ccnb */
+    int matched_comps             /* number of components in registration */
+)
+{
+    int res = 0;
+    if (kind == CCN_UPCALL_FINAL) {
+        printf("CCN_UPCALL_FINAL for outgoing_content()\n");
+        return(res);
+    }
+    printf("Got interest matching %d components, kind = %d\n", matched_comps, kind);
+    if (kind == CCN_UPCALL_INTEREST) {
+        res = ccn_put(h, rawbuf, rawlen);
+        if (res == -1) {
+            fprintf(stderr, "error sending data");
+            return(-1);
+        }
+        else {
+            printf("Sent my content:\n");
+            printraw(rawbuf, rawlen);
+            return(0);
+        }
+    }
+    else
+        return(-1);
+}
+
+static struct ccn_closure interest_filter = {
+    .p = &outgoing_content
+};
+
 int main(int argc, char **argv)
 {
-    int c;
+    int ch;
     int res;
-    int binary = 0;
     char *filename = NULL;
     int rep = 1;
     struct ccn *ccn = NULL;
-    while ((c = getopt(argc, argv, "hf:n:")) != -1) {
-        switch (c) {
+    struct ccn_parsed_interest interest = {0};
+    int i;
+    struct ccn_charbuf *c = ccn_charbuf_create();
+    struct ccn_indexbuf *comps = ccn_indexbuf_create();
+    while ((ch = getopt(argc, argv, "hf:n:")) != -1) {
+        switch (ch) {
             default:
             case 'h':
-                fprintf(stderr, "%s\n", "options: -f infilename -n repeat");
+                fprintf(stderr, "provide names of files containing ccnb format interests and content\n");
                 exit(1);
-            case 'f':
-		filename = optarg;
-		binary = 1;
-		close(0);
-		res = open(filename, O_RDONLY);
-		if (res != 0) {
-			perror(filename);
-                        exit(1);
-		}
-                break;
 	    case 'n':
 		rep = atoi(optarg);
 		break;
         }
     }
+    argc -= optind;
+    argv += optind;
     ccn = ccn_create();
     if (ccn_connect(ccn, NULL) == -1) {
         perror("ccn_connect");
         exit(1);
     }
-    for (;;) {
-        ssize_t rawlen;
-        rawlen = read(0, rawbuf, sizeof(rawbuf));
-        if (rawlen <= 0) {
-            if (filename == NULL || --rep <= 0)
-                    break;
-            close(0);
-            res = open(filename, O_RDONLY);
-            if (res != 0)
-                    break;
-        }
-	res = ccn_put(ccn, rawbuf, rawlen);
-        if (res == -1) {
-            fprintf(stderr, "got error on ccn_put\n");
+    for (i = 1; argv[i] != NULL; i++) {
+        filename = argv[i];
+        close(0);
+        res = open(filename, O_RDONLY);
+        if (res != 0) {
+            perror(filename);
             exit(1);
         }
-        if (res == 1)
-            sleep(1);
-	// blatant API violation follows!
-        rawlen = read(ccn_get_connection_fd(ccn), rawbuf, sizeof(rawbuf));
-        if (rawlen == -1 && errno == EAGAIN)
+        fprintf(stderr, "Reading %s ... ", filename);
+        rawlen = read(0, rawbuf, sizeof(rawbuf));
+        if (rawlen < 0) {
+            perror("skipping");
             continue;
-        if (rawlen == -1)
-            perror("recv");
-        if (rawlen == 0)
-            break;
-        printf("recv of %lu bytes\n", (unsigned long)rawlen);
-        printraw(rawbuf, rawlen);
         }
+        res = ccn_parse_interest(rawbuf, rawlen, &interest, NULL);
+        if (res >= 0) {
+            fprintf(stderr, "Registering interest with %d name components\n", res);
+            c->length = 0;
+            ccn_charbuf_append(c, rawbuf + interest.name_start, interest.name_size);
+            ccn_express_interest(ccn, c, rep, &incoming_content_action);
+        }
+        else {
+            struct ccn_parsed_ContentObject obj = {0};
+            int k;
+            res = ccn_parse_ContentObject(rawbuf, rawlen, &obj, comps);
+            if (res >= 0) {
+                fprintf(stderr, "Offering content\n");
+                /* We won't listen for interests with fewer than 2 name components */
+                for (k = comps->n - 1; k >= 2; k--) {
+                    c->length = 0;
+                    ccn_charbuf_append_tt(c, CCN_DTAG_Name, CCN_DTAG);
+                    ccn_charbuf_append(c, rawbuf+comps->buf[0], comps->buf[k] - comps->buf[0]);
+                    ccn_charbuf_append_closer(c);
+                    res = ccn_set_interest_filter(ccn, c, &interest_filter);
+                    if (res < 0) abort();
+                }
+                res = ccn_run(ccn, 1000);
+                /* Stop listening for these interests now */
+                for (k = comps->n - 1; k >= 2; k--) {
+                    c->length = 0;
+                    ccn_charbuf_append_tt(c, CCN_DTAG_Name, CCN_DTAG);
+                    ccn_charbuf_append(c, rawbuf+comps->buf[0], comps->buf[k] - comps->buf[0]);
+                    ccn_charbuf_append_closer(c);
+                    res = ccn_set_interest_filter(ccn, c, NULL);
+                    if (res < 0) abort();
+                }
+            }
+            else {
+                fprintf(stderr, "what's that?\n");
+            }
+        }
+    }
+    fprintf(stderr, "Running for 8 more seconds\n");
+    res = ccn_run(ccn, 8000);
     ccn_destroy(&ccn);
     exit(0);
 }
