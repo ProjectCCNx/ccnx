@@ -206,7 +206,7 @@ ccn_name_append(struct ccn_charbuf *c, const void *component, size_t n)
 }
 
 #if (CCN_DTAG_Name <= CCN_MAX_TINY) /* This better be true */
-#define CCN_START_Name ((unsigned char)((CCN_DTAG_Name << CCN_TT_BITS)) + CCN_DTAG)
+#define CCN_START_Name ((unsigned char)(CCN_TT_HBIT + (CCN_DTAG_Name << CCN_TT_BITS)) + CCN_DTAG)
 #endif
 
 static int
