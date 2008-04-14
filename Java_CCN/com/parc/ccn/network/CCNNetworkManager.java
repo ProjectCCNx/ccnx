@@ -13,6 +13,7 @@ import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +37,8 @@ import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.util.InterestTable;
+import com.parc.ccn.data.util.InterestTable.Entry;
 import com.parc.ccn.security.keys.KeyManager;
 import com.sun.org.apache.xpath.internal.operations.Equals;
 
@@ -72,23 +75,22 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 	protected KeyManager _keyManager;
 	protected ContentObject _keepalive; 
 	// Maps of interests: users must synchronize on collection
-	protected SortedMap<ContentName,InterestHolder> _othersInterests = new TreeMap<ContentName,InterestHolder>();
-	protected SortedMap<ContentName,List<InterestRegistration>> _myInterests = new TreeMap<ContentName,List<InterestRegistration>>();
-	protected SortedMap<ContentName, List<Filter>> _myFilters = new TreeMap<ContentName, List<Filter>>();
+	protected InterestTable<InterestLabel> _othersInterests = new InterestTable<InterestLabel>();
+	protected InterestTable<InterestRegistration> _myInterests = new InterestTable<InterestRegistration>();
+	protected InterestTable<CCNFilterListener> _myFilters = new InterestTable<CCNFilterListener>();
 	// Map ContentName -> Object to notify() of interest
-	protected Map<CompleteName, Semaphore> _writers = Collections.synchronizedMap(new TreeMap<CompleteName, Semaphore>());
+	protected Map<CompleteName, Semaphore> _writers = Collections.synchronizedMap(new HashMap<CompleteName, Semaphore>());
 		
 	/**
-	 * Record of Interest heard from the network that may be consumed
+	 * Local label for an Interest heard from the network that may be consumed
 	 * by data from this application in the future. 
 	 * @author jthornto
 	 *
 	 */
-	protected class InterestHolder {
-		public Interest interest;
-		public int count;
-		public InterestHolder(Interest i, int c) {
-			interest = i; count = c;
+	protected class InterestLabel {
+		public final Date recvd;
+		public InterestLabel() {
+			recvd = new Date();
 		}
 	}
 	
@@ -106,8 +108,8 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 	 *
 	 */
 	protected class InterestRegistration {
-		public Interest interest;
-		public CCNInterestListener listener;
+		public final Interest interest;
+		public final CCNInterestListener listener;
 		public ContentObject data = null;
 		public Semaphore sema = new Semaphore(0);
 		public InterestRegistration(Interest i, CCNInterestListener l) {
@@ -218,22 +220,14 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 		Semaphore waitobj = null;
 		while (true) {
 			synchronized(_othersInterests) {
-				ContentName headname = new ContentName(name, new byte[] {0} ); // need to include equal item in headMap
-			    for (Iterator<InterestHolder> holderIt = _othersInterests.headMap(headname).values().iterator(); holderIt.hasNext();) {
-					InterestHolder holder = holderIt.next();
-					if (holder.interest.matches(complete)) {
-						// This is it: an interest matching our data so data consumes it
-						holder.count--;
-						if (holder.count == 0) {
-							holderIt.remove();
-						}
-						if (null != waitobj) {
-							_writers.remove(complete);
-						}
-						ContentObject co = new ContentObject(name, authenticator, signature, content); 
-						write(co);
-						return complete;
+				if (null != _othersInterests.removeMatch(complete)) {
+					if (null != waitobj) {
+						// I was waiting, but no longer, I have interest to consume
+						_writers.remove(complete);
 					}
+					ContentObject co = new ContentObject(name, authenticator, signature, content); 
+					write(co);
+					return complete;
 				}
 			}
 			// If we got here then there is no Interest for this data yet
@@ -348,13 +342,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 	InterestRegistration registerInterest(Interest interest, CCNInterestListener callbackListener) {
 		InterestRegistration reg = new InterestRegistration(interest, callbackListener);
 		synchronized (_myInterests) {
-			if (_myInterests.containsKey(interest.name())) {
-				_myInterests.get(interest.name()).add(reg);
-			} else {
-				List<InterestRegistration> entry = new ArrayList<InterestRegistration>(1);
-				entry.add(reg);
-				_myInterests.put(interest.name(), entry);
-			}
+			_myInterests.add(interest, reg);
 		}
 		return reg;
 	}
@@ -362,7 +350,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 	void unregisterInterest(Interest interest, CCNInterestListener callbackListener) {
 		InterestRegistration reg = new InterestRegistration(interest, callbackListener);
 		synchronized (_myInterests) {
-			_myInterests.get(interest.name()).remove(reg);
+			_myInterests.remove(interest, reg);
 		}
 	}
 
@@ -375,6 +363,8 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 		Date lastsweep = new Date(); 
 		while (_run) {
 			try {
+				
+				//--------------------------------- Error Recovery
 				if (_error) {
 					// Sleep to rate-limit recovery under error conditions
 					try { Thread.sleep(PERIOD); } catch (InterruptedException e) {}
@@ -386,18 +376,15 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 					//write(_keepalive);
 					_error = false;
 				}
-				// Read and decode
+				//--------------------------------- Read and decode
 				_socket.receive(datagram);
 				packet.decode(datagram.getData());
-				// Process interests (if any)
+				
+				//--------------------------------- Process interests (if any)
 				for (Interest interest : packet.interests()) {
 					// Record this known interest
 					synchronized (_othersInterests) {
-						if (_othersInterests.containsKey(interest.name())) {
-							_othersInterests.get(interest.name()).count++;
-						} else {
-							_othersInterests.put(interest.name(), new InterestHolder(interest, 1));
-						}
+						_othersInterests.add(interest, new InterestLabel());
 					}
 					// Now notify any pending writers with data to consume this interest
 					// if multiple, there's a race.  We can't notify only the first
@@ -413,17 +400,10 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 						}
 					}
 					// Call any listeners with matching filters
-					List<CCNFilterListener> toCallback = new ArrayList<CCNFilterListener>();
+					List<CCNFilterListener> toCallback;
 					synchronized (_myFilters) {
-						ContentName headname = new ContentName(interest.name(), new byte[] {0} ); // need to include equal item in headMap
-						for (List<Filter> filtlist : _myFilters.headMap(headname).values()) {
-							for (Filter filt : filtlist) {
-								if (filt.name.isPrefixOf(interest.name())) {
-									// Save listener, don't call here while holding lock
-									toCallback.add(filt.listener);
-								}
-							}
-						}
+						// Save listeners, don't call here while holding lock
+						toCallback = _myFilters.getValues(interest.name());
 					}
 					// Now perform the callbacks
 					if (toCallback.size() > 0) {
@@ -435,30 +415,24 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 					}
 				} // for interests
 				
-				// Process data (if any) 
+				//--------------------------------- Process data (if any) 
 				for (ContentObject data : packet.data()) {
 					// Deliver this data if it satisfies any of my interests
 					List<CCNInterestListener> toCallback = new ArrayList<CCNInterestListener>();
 					synchronized (_myInterests) {
-						ContentName headname = new ContentName(data.name(), new byte[] {0} ); // need to include equal item in headMap
-					    for (List<InterestRegistration> reglist : _myInterests.headMap(headname).values()) {
-							for (InterestRegistration reg : reglist) {
-								if (reg.interest.matches(data.completeName())) {
-									// We have a match
-									try {
-										if (null != reg.listener) {
-											// Save listener, don't call here while holding _myInterests lock
-											toCallback.add(reg.listener);
-										} else {
-											// Store data for the waiting thread
-											reg.data = data;
-											// Wake it up
-											reg.sema.release();
-										}
-									} catch (Exception ex) {
-										Library.logger().warning("CCNNetworkManager: failed to deliver data: " + ex.getMessage());
-									}
+						for (InterestRegistration reg : _myInterests.getValues(data.completeName())) {
+							try {
+								if (null != reg.listener) {
+									// Save listener, don't call here while holding _myInterests lock
+									toCallback.add(reg.listener);
+								} else {
+									// Store data for the waiting thread
+									reg.data = data;
+									// Wake it up
+									reg.sema.release();
 								}
+							} catch (Exception ex) {
+								Library.logger().warning("CCNNetworkManager: failed to deliver data: " + ex.getMessage());
 							}
 					    }
 					} // synchronized
@@ -472,6 +446,8 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 						}
 					}
 				} // for data 
+				
+				//--------------------------------- Trigger periodic behavior if time
 				if (new Date().getTime() - lastsweep.getTime() > PERIOD) {
 					throw new SocketTimeoutException();
 				}
@@ -480,14 +456,15 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 				try {
 					// Re-express to the network all of the registered interests
 					synchronized (_myInterests) {
-						for (List<InterestRegistration> entry : _myInterests.values()) {
-							for (InterestRegistration reg : entry) {
-								write(reg.interest);
-							}
+						for (Entry<InterestRegistration> entry : _myInterests.getMatches(new ContentName("/"))) {
+							InterestRegistration reg = entry.value();
+							write(reg.interest);
 						}
 					}
 				} catch (IOException io) {
 					Library.logger().warning("CCNNetworkManager: Error writing datagram: " + io.getMessage());
+				} catch (MalformedContentNameStringException ex) {
+					Library.logger().warning("CCNNetworkManager: Internal error: malformed content name string");
 				}
 			} catch (XMLStreamException xmlex) {
 				Library.logger().warning("CCNNetworkManager: Malformed datagram: " + xmlex.getMessage());

@@ -17,7 +17,6 @@ import org.junit.Test;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
@@ -26,7 +25,6 @@ import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.PublisherID.PublisherType;
 import com.parc.ccn.data.util.InterestTable;
-import com.parc.ccn.security.keys.KeyManager;
 
 public class InterestTableTest {
 
@@ -34,8 +32,16 @@ public class InterestTableTest {
 	static public PublisherID ids[] = new PublisherID[3];
 	static public PublisherKeyID keyids[] = new PublisherKeyID[3];
 
+	// IDs are parameters that establish test condition so same 
+	// code can be run under different conditions
 	static public PublisherKeyID activeKeyID = null;
 	static public PublisherID activeID = null;
+	
+	// removeByMatch controls whether remove operations are tested
+	// via the removeMatch* (true) or the removeValue* (false) methods 
+	// of the InterestTable.  This global parameter permits the conditions
+	// to be varied for different runs of the same code.
+	static public boolean removeByMatch = true;
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -132,8 +138,11 @@ public class InterestTableTest {
 	}
 	
 	private void match(InterestTable<Integer> table, ContentName name, int v) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
+		// Test both methods
 		assertEquals(v, (null == activeKeyID) ? table.getMatch(name).value() :
 												 table.getMatch(getCompleteName(name)).value());
+		assertEquals(v, (null == activeKeyID) ? table.getValue(name) :
+			 									table.getValue(getCompleteName(name)));
 	}
 
 	private void match(InterestTable<Integer> table, String name, int v) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
@@ -141,7 +150,11 @@ public class InterestTableTest {
 	}
 	
 	private void removeMatch(InterestTable<Integer> table, ContentName name, int v) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
-		assertEquals(v, table.removeMatch(getCompleteName(name)).value());
+		if (removeByMatch) {
+			assertEquals(v, table.removeMatch(getCompleteName(name)).value());
+		} else {
+			assertEquals(v, table.removeValue(getCompleteName(name)));
+		}
 	}
 	
 	private void removeMatch(InterestTable<Integer> table, String name, int v) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
@@ -174,6 +187,7 @@ public class InterestTableTest {
 
 	private void noRemoveMatch(InterestTable<Integer> table, ContentName name) throws InvalidKeyException, SignatureException, MalformedContentNameStringException, ConfigurationException {
 		assertNull(table.removeMatch(getCompleteName(name)));
+		assertNull(table.removeValue(getCompleteName(name)));
 	}
 	
 	private void noRemoveMatch(InterestTable<Integer> table, String name) throws InvalidKeyException, SignatureException, MalformedContentNameStringException, ConfigurationException {
@@ -183,6 +197,8 @@ public class InterestTableTest {
 	private void noMatch(InterestTable<Integer> table, ContentName name) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
 		assertNull((null == activeKeyID) ? table.getMatch(name) :
 									       table.getMatch(getCompleteName(name)));
+		assertNull((null == activeKeyID) ? table.getValue(name) :
+		       							   table.getValue(getCompleteName(name)));
 	}
 
 	private void noMatch(InterestTable<Integer> table, String name) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
@@ -197,6 +213,13 @@ public class InterestTableTest {
 			assertEquals(v[i], result.get(i).value());
 			assertEquals(n[i], result.get(i).name());
 		}
+		
+		List<Integer> values = (null == activeKeyID) ? table.getValues(name) :
+			 								table.getValues(getCompleteName(name));
+		assertEquals(v.length, values.size());
+		for (int i=0; i < v.length; i++) {
+			assertEquals(v[i], values.get(i));
+		}
 	}
 	
 	private void matches(InterestTable<Integer> table, String name, String[] n, int[] v) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
@@ -208,11 +231,19 @@ public class InterestTableTest {
 	}
 	
 	private void removeMatches(InterestTable<Integer> table, ContentName name, ContentName[] n, int[] v) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
-		List<InterestTable.Entry<Integer>> result = table.removeMatches(getCompleteName(name));
-		assertEquals(v.length, result.size());
-		for (int i = 0; i < v.length; i++) {
-			assertEquals(v[i], result.get(i).value());
-			assertEquals(n[i], result.get(i).name());
+		if (removeByMatch) {
+			List<InterestTable.Entry<Integer>> result = table.removeMatches(getCompleteName(name));
+			assertEquals(v.length, result.size());
+			for (int i = 0; i < v.length; i++) {
+				assertEquals(v[i], result.get(i).value());
+				assertEquals(n[i], result.get(i).name());
+			}
+		} else {
+			List<Integer> result = table.removeValues(getCompleteName(name));
+			assertEquals(v.length, result.size());
+			for (int i = 0; i < v.length; i++) {
+				assertEquals(v[i], result.get(i));
+			}
 		}
 	}
 
@@ -387,8 +418,17 @@ public class InterestTableTest {
 		matches(names, "/a/b/b/a", new String[] {abb, abb, ab, a}, new int[] {8, 4, 5, 1});
 	}
 
+
 	@Test
-	public void testSimpleRemoves() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
+	public void testSimpleRemoves() throws InvalidKeyException, MalformedContentNameStringException, SignatureException, ConfigurationException {
+		removeByMatch = true;
+		runSimpleRemoves();
+		
+		removeByMatch = false;
+		runSimpleRemoves();
+	}
+	
+	private void runSimpleRemoves() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
 		
 		setID(0);
 		InterestTable<Integer> names = initTable();
@@ -435,7 +475,15 @@ public class InterestTableTest {
 	}
 
 	@Test
-	public void testRemovesPub() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
+	public void testRemovesPub() throws InvalidKeyException, MalformedContentNameStringException, SignatureException, ConfigurationException {
+		removeByMatch = true;
+		runRemovesPub();
+		
+		removeByMatch = false;
+		runRemovesPub();
+	}
+	
+	private void runRemovesPub() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
 		
 		InterestTable<Integer> names = initPub();
 		setID(2);

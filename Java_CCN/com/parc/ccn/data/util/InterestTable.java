@@ -242,10 +242,26 @@ public class InterestTable<V> {
 	}
 
 	/**
-	 * Get longest matching Interest for a CompleteName, where longest is defined
+	 * Get value of longest matching Interest for a CompleteName, where longest is defined
 	 * as longest ContentName.  Any ContentName entries in the table will be 
-	 * ignored by this operation, so the Entry returned will have a 
-	 * non-null interest. If there are multiple matches, first is returned.
+	 * ignored by this operation. If there are multiple matches, first is returned.
+	 * @param target - desired CompleteName
+	 * @return Entry of longest match if any, null if no match
+	 */
+	public V getValue(CompleteName target) {
+		Entry<V> match = getMatch(target);
+		if (null != match) {
+			return match.value();
+		} else {
+			return null;
+		}
+	}
+
+	/**
+	 * Get longest matching Interest for a CompleteName.  This is the same as 
+	 * getValue() except that the Entry is returned so the matching item
+	 * may be retrieved and null value may be detected. The Entry returned will have a 
+	 * non-null interest because this method matches only Interests in the table.
 	 * @param target - desired CompleteName
 	 * @return Entry of longest match if any, null if no match
 	 */
@@ -266,10 +282,27 @@ public class InterestTable<V> {
 	}
 
 	/**
+	 * Get values of all matching Interests for a CompleteName.
+	 * Any ContentName entries in the table will be 
+	 * ignored by this operation and any null values will be ignored.
+	 */
+	public List<V> getValues(CompleteName target) {
+		List<V> result = new ArrayList<V>();
+		List<Entry<V>> matches = getMatches(target);
+		for (Entry<V> entry : matches) {
+			if (null != entry.value()) {
+				result.add(entry.value());
+			}
+		}
+		return result;
+	}
+	
+	/**
 	 * Get all matching Interests for a CompleteName.
 	 * Any ContentName entries in the table will be 
 	 * ignored by this operation, so every Entry returned will have a 
-	 * non-null interest. 
+	 * non-null interest.  This is the same as getValues() except that 
+	 * Entry objects are returned.
 	 * @param target - desired CompleteName
 	 * @return List of matches, empty if no match
 	 */
@@ -286,14 +319,30 @@ public class InterestTable<V> {
 	    Collections.reverse(matches);
 	    return matches;
 	}
-	
+		
 	/**
-	 * Get longest matching Interest for a ContentName, where longest is defined
+	 * Get value of longest matching Interest for a ContentName, where longest is defined
 	 * as longest ContentName.  If there are multiple matches, first is returned.  
 	 * This will return a mix of ContentName and Interest entries if they exist
 	 * (and match) in the table, i.e. the Interest of an Entry may be null in some cases.
 	 * @param target desired ContentName
 	 * @return Entry of longest match if any, null if no match
+	 */
+	public V getValue(ContentName target) {
+		Entry<V> match = getMatch(target);
+		if (null != match) {
+			return match.value();
+		} else {
+			return null;
+		}
+	}
+
+	/**
+	 * Get longest matching Interest.  This method is the same as getValue()
+	 * except that the  Entry is returned so the matching item may be retrieved 
+	 * and null value may be detected.
+	 * @param target
+	 * @return
 	 */
 	public Entry<V> getMatch(ContentName target) {
 		Entry<V> match = null;
@@ -306,7 +355,18 @@ public class InterestTable<V> {
 	    }
 		return match;
 	}
-
+	
+	public List<V> getValues(ContentName target) {
+		List<V> result = new ArrayList<V>();
+		List<Entry<V>> matches = getMatches(target);
+		for (Entry<V> entry : matches) {
+			if (null != entry.value()) {
+				result.add(entry.value());
+			} 
+		}
+		return result;
+	}
+	
 	/**
 	 * Get all matching entries for a ContentName.
 	 * This will return a mix of ContentName and Interest entries if they exist
@@ -327,6 +387,22 @@ public class InterestTable<V> {
 	    return matches;
 	}
 
+	/**
+	 * Remove and return value of the longest matching Interest for a CompleteName, where best is defined
+	 * as longest ContentName.  Any ContentName entries in the table will be 
+	 * ignored by this operation, as will null values.
+	 * @param target - desired CompleteName
+	 * @return value of longest match if any, null if no match
+	 */	
+	public V removeValue(CompleteName target) {
+		Entry<V> match = removeMatch(target);
+		if (null != match) {
+			return match.value();
+		} else {
+			return null;
+		}
+	}
+	
 	/**
 	 * Remove and return the longest matching Interest for a CompleteName, where best is defined
 	 * as longest ContentName.  Any ContentName entries in the table will be 
@@ -355,6 +431,25 @@ public class InterestTable<V> {
 	    	return removeMatchByName(matchName, target);
 	    }
 		return match;
+	}
+
+	/**
+	 * Remove and return values for all matching Interests for a CompleteName.
+	 * Any ContentName entries in the table will be 
+	 * ignored by this operation.  Null values will not be represented in returned
+	 * list though their Interests will have been removed if any. 
+	 * @param target - desired CompleteName
+	 * @return List of matches ordered from longest match to shortest, empty if no match
+	 */
+	public List<V> removeValues(CompleteName target) {
+		List<V> result = new ArrayList<V>();
+		List<Entry<V>> matches = removeMatches(target);
+		for (Entry<V> entry : matches) {
+			if (null != entry.value()) {
+				result.add(entry.value());
+			}
+		}
+		return result;
 	}
 	
 	/**
