@@ -30,9 +30,9 @@ typedef int (*ccn_handler)(
     enum ccn_upcall_kind kind,
     struct ccn *h,
     const unsigned char *ccnb,    /* binary-format Interest or ContentObject */
-    size_t ccnb_size,
-    const unsigned char *matched, /* ccnb formatted name that was matched */
-    size_t matched_size
+    size_t ccnb_size,             /* size in bytes */
+    struct ccn_indexbuf *comps,   /* component boundaries within ccnb */
+    int matched_comps             /* number of components in registration */
 );
 struct ccn_closure {
     ccn_handler p;
@@ -118,15 +118,14 @@ int ccn_set_default_content_handler(struct ccn *h,
 
 /***********************************
  * ccn_set_interest_filter: 
- * The action, if provided, will be called when an interest arrives that is
- * a prefix of the given name or which has the given name as a prefix. - XXX*
+ * The action, if provided, will be called when an interest arrives that
+ * has the given name as a prefix.
  * If action is NULL, any existing filter is removed.
  * The namebuf may be reused or destroyed after the call.
  * Handler should return -1 if it cannot produce new content in response.
  * The upcall kind passed to the handler will be CCN_UPCALL_INTEREST
  * if no other handler has claimed to produce content, or else
  * CCN_UPCALL_CONSUMED_INTEREST.
- *
  */
 int ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
                             struct ccn_closure *action);

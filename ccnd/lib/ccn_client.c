@@ -28,15 +28,16 @@ struct ccn {
     struct ccn_charbuf *inbuf;
     struct ccn_charbuf *outbuf;
     struct hashtb *interests;
-    struct hashtb *interest_filters;
     struct ccn_closure *default_content_action;
+    struct hashtb *interest_filters;
     struct ccn_closure *default_interest_action;
     struct ccn_skeleton_decoder decoder;
+    struct ccn_indexbuf *scratch_indexbuf;
     int err;
     int errline;
 };
 
-struct expressed_interest {
+struct expressed_interest { /* keyed by components of name */
     struct timeval lasttime;
     struct ccn_closure *action;
     int repeat;
@@ -44,12 +45,33 @@ struct expressed_interest {
     int outstanding;
 };
 
-struct interest_filter {
+struct interest_filter { /* keyed by components of name */
     struct ccn_closure *action;
 };
 
 #define NOTE_ERR(h, e) (h->err = (e), h->errline = __LINE__, -1)
 #define NOTE_ERRNO(h) NOTE_ERR(h, errno)
+
+static struct ccn_indexbuf *
+ccn_indexbuf_obtain(struct ccn *h)
+{
+    struct ccn_indexbuf *c = h->scratch_indexbuf;
+    if (c == NULL)
+        return(ccn_indexbuf_create());
+    h->scratch_indexbuf = NULL;
+    c->n = 0;
+    return(c);
+}
+
+static void
+ccn_indexbuf_release(struct ccn *h, struct ccn_indexbuf *c)
+{
+    c->n = 0;
+    if (h->scratch_indexbuf == NULL)
+        h->scratch_indexbuf = c;
+    else
+        ccn_indexbuf_destroy(&c);
+}
 
 static void
 ccn_replace_handler(struct ccn *h, struct ccn_closure **dstp, struct ccn_closure *src)
@@ -147,6 +169,7 @@ ccn_destroy(struct ccn **hp)
         hashtb_destroy(&(h->interest_filters));
     }
     ccn_charbuf_destroy(&h->interestbuf);
+    ccn_indexbuf_destroy(&h->scratch_indexbuf);
     free(h);
     *hp = NULL;
 }
@@ -182,6 +205,21 @@ ccn_name_append(struct ccn_charbuf *c, const void *component, size_t n)
     return(res);
 }
 
+#if (CCN_DTAG_Name <= CCN_MAX_TINY) /* This better be true */
+#define CCN_START_Name ((unsigned char)((CCN_DTAG_Name << CCN_TT_BITS)) + CCN_DTAG)
+#endif
+
+static int
+ccn_check_namebuf(struct ccn *h, struct ccn_charbuf *namebuf)
+{
+    // XXX - should perhpas validate namebuf more than this
+    if (namebuf == NULL || namebuf->length < 2 ||
+          namebuf->buf[0] != CCN_START_Name ||
+          namebuf->buf[namebuf->length-1] != CCN_CLOSE)
+        return(NOTE_ERR(h, EINVAL));
+    return(0);
+}
+
 int
 ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
                      int repeat, struct ccn_closure *action)
@@ -195,16 +233,15 @@ ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
         if (h->interests == NULL)
             return(NOTE_ERRNO(h));
     }
-    // XXX - should validate namebuf more than this
-    if (namebuf == NULL || namebuf->length < 2 ||
-          namebuf->buf[namebuf->length-1] != CCN_CLOSE)
-        return(NOTE_ERR(h, EINVAL));
+    res = ccn_check_namebuf(h, namebuf);
+    if (res < 0)
+        return(res);
     /*
-     * To make it easy to lookup prefixes of names, we do not 
-     * keep the final CCN_CLOSE as part of the key.
+     * To make it easy to lookup prefixes of names, we keep only
+     * the name components as the key in the hash table.
      */
     hashtb_start(h->interests, e);
-    res = hashtb_seek(e, namebuf->buf, namebuf->length-1);
+    res = hashtb_seek(e, namebuf->buf + 1, namebuf->length - 2);
     interest = e->data;
     if (interest == NULL)
         NOTE_ERRNO(h);
@@ -238,8 +275,11 @@ ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
         if (h->interest_filters == NULL)
             return(NOTE_ERRNO(h));
     }
+    res = ccn_check_namebuf(h, namebuf);
+    if (res < 0)
+        return(res);
     hashtb_start(h->interest_filters, e);
-    res = hashtb_seek(e, namebuf->buf, namebuf->length-1);
+    res = hashtb_seek(e, namebuf->buf + 1, namebuf->length - 2);
     if (res >= 0) {
         entry = e->data;
         ccn_replace_handler(h, &(entry->action), action);
@@ -329,17 +369,24 @@ ccn_output_is_pending(struct ccn *h)
 
 static void
 ccn_refresh_interest(struct ccn *h, struct expressed_interest *interest,
-                     const unsigned char *namepre, size_t nameprelen)
+                     const unsigned char *components, size_t components_size)
 {
     struct ccn_charbuf *c = h->interestbuf;
+    int res;
     c->length = 0;
     ccn_charbuf_append_tt(c, CCN_DTAG_Interest, CCN_DTAG);
-    ccn_charbuf_append(c, namepre, nameprelen);
+    ccn_charbuf_append_tt(c, CCN_DTAG_Name, CCN_DTAG);
+    ccn_charbuf_append(c, components, components_size);
     ccn_charbuf_append_closer(c);
+    // XXX - no provision for pubid right now.
     ccn_charbuf_append_closer(c);
     while (interest->outstanding < interest->target) {
-        ccn_put(h, c->buf, c->length);
+        res = ccn_put(h, c->buf, c->length);
+        if (res < 0)
+            break;
         interest->outstanding += 1;
+        if (res == 1)
+            break; /* don't keep refreshing if we are queueing */
     }
 }
 
@@ -347,44 +394,76 @@ static void
 ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
 {
     struct ccn_parsed_interest interest = {0};
+    struct ccn_indexbuf *comps = ccn_indexbuf_obtain(h);
+    int i;
     int res;
-    res = ccn_parse_interest(msg, size, &interest, NULL);
+    res = ccn_parse_interest(msg, size, &interest, comps);
     if (res >= 0) {
+        /* This message is an Interest */
         enum ccn_upcall_kind upcall_kind = CCN_UPCALL_INTEREST;
         if (h->interest_filters != NULL) {
-            struct hashtb_enumerator ee;
-            struct hashtb_enumerator *e = &ee;
-            for (hashtb_start(h->interest_filters, e); e->data != NULL; hashtb_next(e)) {
-                struct interest_filter *entry = e->data;
-                size_t size = interest.name_size - 1;
-                if (size > e->keysize)
-                    size = e->keysize;
-                if (0 == memcmp(msg + interest.name_start, e->key, size))
+            size_t keystart = comps->buf[0];
+            unsigned char *key = msg + keystart;
+            struct interest_filter *entry;
+            for (i = comps->n - 1; i >= 0; i--) {
+                entry = hashtb_lookup(h->interest_filters, key, comps->buf[i] - keystart);
+                if (entry != NULL) {
                     res = (entry->action->p)(
                         entry->action,
                         upcall_kind,
-                        h, msg, size, e->key, e->keysize + 1); /* hashtb provides trailing null */
+                        h, msg, size, comps, i);
+                    if (res != -1)
+                        upcall_kind = CCN_UPCALL_CONSUMED_INTEREST;
+                }
             }
-            hashtb_end(e);
-            if (res != -1)
-                upcall_kind = CCN_UPCALL_CONSUMED_INTEREST;
         }
         if (h->default_interest_action != NULL) {
             (h->default_interest_action->p)(
                 h->default_interest_action,
                 upcall_kind,
-                h, msg, size, NULL, 0);
+                h, msg, size, comps, 0);
         }
-        return;
     }
-    /* Assume it is a ContentObject. */
-    /* XXX - Should check against interests here! */
-    if (h->default_content_action != NULL) {
-        (h->default_content_action->p)(
-            h->default_content_action,
-            CCN_UPCALL_CONTENT,
-            h, msg, size, NULL, 0);
+    else {
+        /* This message should be a ContentObject. */
+        struct ccn_parsed_ContentObject obj = {0};
+        res = ccn_parse_ContentObject(msg, size, &obj, comps);
+        if (res >= 0) {
+            if (h->interests != NULL) {
+                size_t keystart = comps->buf[0];
+                unsigned char *key = msg + keystart;
+                struct expressed_interest *entry;
+                for (i = comps->n - 1; i >= 0; i--) {
+                    entry = hashtb_lookup(h->interests, key, comps->buf[i] - keystart);
+                    if (entry != NULL && entry->target > 0) {
+                        res = (entry->action->p)(
+                            entry->action,
+                            CCN_UPCALL_CONTENT,
+                            h, msg, size, comps, i);
+                        entry = NULL; /* client may have removed the entry */
+                        if (res >= 0) {
+                            entry = hashtb_lookup(h->interests, key, comps->buf[i] - keystart);
+                            if (entry != NULL) {
+                                if (entry->repeat > 0)
+                                    if (0 == --(entry->repeat))
+                                        entry->target = 0; /* XXX - need to finalize somewhere */
+                                entry->outstanding -= 1;
+                                if (entry->outstanding < entry->target)
+                                    ccn_refresh_interest(h, entry, key, comps->buf[i] - keystart);
+                            }
+                        }
+                    }
+                }
+            }
+            if (h->default_content_action != NULL) {
+                (h->default_content_action->p)(
+                    h->default_content_action,
+                    CCN_UPCALL_CONTENT,
+                    h, msg, size, comps, 0);
+            }
+        }
     }
+    ccn_indexbuf_release(h, comps);
 }
 
 static int
