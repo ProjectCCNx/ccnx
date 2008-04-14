@@ -123,7 +123,7 @@ int main(int argc, char **argv)
         perror("ccn_connect");
         exit(1);
     }
-    for (i = 1; argv[i] != NULL; i++) {
+    for (i = 0; argv[i] != NULL; i++) {
         filename = argv[i];
         close(0);
         res = open(filename, O_RDONLY);
@@ -150,7 +150,7 @@ int main(int argc, char **argv)
             res = ccn_parse_ContentObject(rawbuf, rawlen, &obj, comps);
             if (res >= 0) {
                 fprintf(stderr, "Offering content\n");
-                /* We won't listen for interests with fewer than 2 name components */
+                /* We won't listen for interests with fewer than 2 name component */
                 for (k = comps->n - 1; k >= 2; k--) {
                     c->length = 0;
                     ccn_charbuf_append_tt(c, CCN_DTAG_Name, CCN_DTAG);
