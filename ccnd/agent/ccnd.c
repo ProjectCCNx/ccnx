@@ -35,18 +35,23 @@ struct face;
  * We pass this handle almost everywhere.
  */
 struct ccnd {
-    int local_listener_fd;
-    struct hashtb *faces; /* keyed by fd */
+    struct hashtb *faces_by_fd; /* keyed by fd */
     struct hashtb *dgram_faces; /* keyed by sockaddr */
     struct hashtb *content_tab; /* keyed by name components */
     struct hashtb *interest_tab; /* keyed by name components */
-    struct hashtb *propagating; /* keyed by pubid + nonce */
+    struct hashtb *propagating_tab; /* keyed by pubid + nonce */
+    unsigned face_gen;
+    unsigned face_rover;        /* for faceid allocation */
+    unsigned face_limit;
+    struct face **faces_by_faceid; /* array with face_limit elements */
+    int local_listener_fd;
     nfds_t nfds;
     struct pollfd *fds;
     struct ccn_schedule *sched;
     struct ccn_charbuf *scratch_charbuf;
     struct ccn_indexbuf *scratch_indexbuf;
     uint_least64_t accession;
+    unsigned short seed[3];
 };
 
 struct dbl_links {
@@ -60,6 +65,8 @@ struct dbl_links {
 struct face {
     int fd;
     int flags;
+    unsigned generation; /* (generation, faceid) is unique */
+    unsigned faceid; /* internal face id */
     struct ccn_charbuf *inbuf;
     struct ccn_skeleton_decoder decoder;
     size_t outbufindex;
@@ -74,6 +81,7 @@ struct face {
 struct interest_entry {
     /* The interest hash table is keyed by the Component elements of the Name */
     int ncomp;           /* Number of name components */
+    int refcount;
 };
 
 struct content_entry {
@@ -85,8 +93,13 @@ struct content_entry {
     unsigned char *tail; /* ContentObject elements other than the Name */
 };
 
+/*
+ * The propagating interest hash table is keyed by the concatenation of
+ * the PublisherID and the Nonce.
+ */
 struct propagating_entry {
-    int nyi;
+    struct interest_entry *interest;
+    
 };
 
 static void cleanup_at_exit(void);
@@ -181,6 +194,48 @@ indexbuf_release(struct ccnd *h, struct ccn_indexbuf *c)
 }
 
 static int
+enroll_face(struct ccnd *h, struct face *face) {
+    unsigned i;
+    unsigned n = h->face_limit;
+    struct face **a = h->faces_by_faceid;
+    for (i = h->face_rover; i < n; i++)
+        if (a[i] == NULL) goto use_i;
+    h->face_gen++;
+    for (i = 0; i < n; i++)
+        if (a[i] == NULL) goto use_i;
+    i = (h->face_limit + 1) * 3 / 2;
+    if (i <= h->face_limit)
+        return(-1); /* overflow */
+    a = realloc(a, i * sizeof(struct face *));
+    if (a == NULL)
+        return(-1); /* ENOMEM */
+    h->face_limit = i;
+    while (--i > n)
+        a[i] = NULL;
+    h->faces_by_faceid = a;
+use_i:
+    a[i] = face;
+    h->face_rover = i + 1;
+    face->faceid = i;
+    face->generation = h->face_gen;
+    return (i);
+}
+
+static void
+finalize_face(struct hashtb_enumerator *e)
+{
+    struct ccnd *h = hashtb_get_param(e->ht, NULL);
+    struct face *face = e->data;
+    unsigned faceid = face->faceid;
+    if (faceid < h->face_limit && h->faces_by_faceid[faceid] == face) {
+        h->faces_by_faceid[faceid] = NULL;
+        fprintf(stderr, "releasing face id (%u,%u)\n", face->generation, faceid);
+    }
+    else
+        abort();
+}
+
+static int
 create_local_listener(const char *sockname, int backlog)
 {
     int res;
@@ -226,13 +281,14 @@ accept_new_client(struct ccnd *h)
     res = fcntl(fd, F_SETFL, O_NONBLOCK);
     if (res == -1)
         perror("fcntl");
-    hashtb_start(h->faces, e);
+    hashtb_start(h->faces_by_fd, e);
     if (hashtb_seek(e, &fd, sizeof(fd)) != HT_NEW_ENTRY)
         fatal_err("ccnd: accept_new_client");
     face = e->data;
     face->fd = fd;
+    res = enroll_face(h, face);
     hashtb_end(e);
-    fprintf(stderr, "ccnd[%d] accepted client fd=%d\n", (int)getpid(), fd);
+    fprintf(stderr, "ccnd[%d] accepted client fd=%d id=%d\n", (int)getpid(), fd, res);
 }
 
 static void
@@ -241,14 +297,14 @@ shutdown_client_fd(struct ccnd *h, int fd)
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     struct face *face;
-    hashtb_start(h->faces, e);
+    hashtb_start(h->faces_by_fd, e);
     if (hashtb_seek(e, &fd, sizeof(fd)) != HT_OLD_ENTRY)
         fatal_err("ccnd: shutdown_client_fd");
     face = e->data;
     if (face->fd != fd) abort();
     close(fd);
     face->fd = -1;
-    fprintf(stderr, "ccnd[%d] shutdown client fd=%d\n", (int)getpid(), fd);
+    fprintf(stderr, "ccnd[%d] shutdown client fd=%d id=%d\n", (int)getpid(), fd, (int)face->faceid);
     ccn_charbuf_destroy(&face->inbuf);
     ccn_charbuf_destroy(&face->outbuf);
     hashtb_delete(e);
@@ -283,7 +339,7 @@ process_input_message_BFI(struct ccnd *h, struct face *face,
     // BFI version
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
-    for (hashtb_start(h->faces, e); e->data != NULL; hashtb_next(e)) {
+    for (hashtb_start(h->faces_by_fd, e); e->data != NULL; hashtb_next(e)) {
         struct face *otherface = e->data;
         if (face != otherface && (otherface->flags & CCN_FACE_DGRAM) == 0) {
             do_write_BFI(h, otherface, msg, size);
@@ -297,6 +353,60 @@ process_input_message_BFI(struct ccnd *h, struct face *face,
         }
     }
     hashtb_end(e);
+}
+
+static int
+propagate_interest(struct ccnd *h, struct face *face,
+                      struct interest_entry *entry,
+                      unsigned char *msg, struct ccn_parsed_interest *pi)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    unsigned char *pkey;
+    size_t pkeysize;
+    struct ccn_charbuf *cb = NULL;
+    int res;
+    struct propagating_entry *pe = NULL;
+    if (pi->nonce_size == 0) {
+        /* This interest has no nonce; add one before going on */
+        int noncebytes = 6;
+        int i;
+        unsigned char *s;
+        cb = charbuf_obtain(h);
+        ccn_charbuf_append(cb, msg + pi->pubid_start, pi->pubid_size);
+        ccn_charbuf_append_tt(cb, CCN_DTAG_Nonce, CCN_DTAG);
+        ccn_charbuf_append_tt(cb, noncebytes, CCN_BLOB);
+        s = ccn_charbuf_reserve(cb, noncebytes);
+        for (i = 0; i < noncebytes; i++)
+            s[i] = nrand48(h->seed) >> i;
+        cb->length += noncebytes;
+        ccn_charbuf_append_closer(cb);
+        pkey = cb->buf;
+        pkeysize = cb->length;
+    }
+    else if (pi->nonce_start == pi->pubid_start + pi->pubid_size) {
+        pkey = msg + pi->pubid_start;
+        pkeysize = pi->pubid_size + pi->nonce_size;
+    }
+    else {
+        pkey = msg + pi->nonce_start;
+        pkeysize = pi->nonce_size;
+    }
+    hashtb_start(h->propagating_tab, e);
+    res = hashtb_seek(e, pkey, pkeysize);
+    pe = e->data;
+    if (res == HT_NEW_ENTRY) {
+        pe->interest = entry;
+        entry->refcount++;
+        res = 0;
+    }
+    else if (res == HT_OLD_ENTRY) {
+        res = -1; /* We've seen this already, do not propagate */
+    }
+    hashtb_end(e);
+    if (cb != NULL)
+        charbuf_release(h, cb);
+    return(res);
 }
 
 static void
@@ -329,6 +439,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,
             fprintf(stderr, "New interest\n");
         }
         hashtb_end(e);
+        res = propagate_interest(h, face, entry, msg, &interest);
     }
     indexbuf_release(h, comps);
     if (res >= 0)
@@ -370,7 +481,7 @@ process_incoming_content(struct ccnd *h, struct face *face,
             if (tailsize != content->tail_size || 0 != memcmp(tail, content->tail, tailsize)) {
                 fprintf(stderr, "ContentObject name collision!!!!!\n");
                 content = NULL;
-                hashtb_delete(e); /* Mercilessly throw away both of them. */
+                hashtb_delete(e); /* XXX - Mercilessly throw away both of them. */
                 res = -__LINE__;
             }
             else
@@ -455,6 +566,7 @@ get_dgram_source(struct ccnd *h, struct face *face,
         source->addrlen = e->keysize;
         source->fd = face->fd;
         source->flags |= CCN_FACE_DGRAM;
+        enroll_face(h, source);
     }
     hashtb_end(e);
     return(source);
@@ -463,7 +575,7 @@ get_dgram_source(struct ccnd *h, struct face *face,
 static void
 process_input(struct ccnd *h, int fd)
 {
-    struct face *face = hashtb_lookup(h->faces, &fd, sizeof(fd));
+    struct face *face = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
     struct face *source = NULL;
     ssize_t res;
     ssize_t dres;
@@ -568,7 +680,7 @@ do_deferred_write(struct ccnd *h, int fd)
 {
     /* This only happens on connected sockets */
     ssize_t res;
-    struct face *face = hashtb_lookup(h->faces, &fd, sizeof(fd));
+    struct face *face = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
     if (face != NULL && face->outbuf != NULL) {
         ssize_t sendlen = face->outbuf->length - face->outbufindex;
         if (sendlen > 0) {
@@ -604,14 +716,14 @@ run(struct ccnd *h)
     for (;;) {
         usec = ccn_schedule_run(h->sched);
         timeout_ms = (usec < 0) ? -1 : usec / 1000;
-        if (hashtb_n(h->faces) + 1 != h->nfds) {
-            h->nfds = hashtb_n(h->faces) + 1;
+        if (hashtb_n(h->faces_by_fd) + 1 != h->nfds) {
+            h->nfds = hashtb_n(h->faces_by_fd) + 1;
             h->fds = realloc(h->fds, h->nfds * sizeof(h->fds[0]));
             memset(h->fds, 0, h->nfds * sizeof(h->fds[0]));
         }
         h->fds[0].fd = h->local_listener_fd;
         h->fds[0].events = POLLIN;
-        for (i = 1, hashtb_start(h->faces, e);
+        for (i = 1, hashtb_start(h->faces_by_fd, e);
              i < h->nfds && e->data != NULL;
              i++, hashtb_next(e)) {
             struct face *face = e->data;
@@ -665,12 +777,14 @@ ccnd_create(void)
     struct addrinfo hints = {0};
     struct addrinfo *addrinfo = NULL;
     struct addrinfo *a;
+    struct hashtb_param faceparam = { &finalize_face };
     h = calloc(1, sizeof(*h));
-    h->faces = hashtb_create(sizeof(struct face), NULL);
-    h->dgram_faces = hashtb_create(sizeof(struct face), NULL);
+    faceparam.finalize_data = h;
+    h->faces_by_fd = hashtb_create(sizeof(struct face), &faceparam);
+    h->dgram_faces = hashtb_create(sizeof(struct face), &faceparam);
     h->content_tab = hashtb_create(sizeof(struct content_entry), NULL);
     h->interest_tab = hashtb_create(sizeof(struct interest_entry), NULL);
-    h->propagating = hashtb_create(sizeof(struct propagating_entry), NULL);
+    h->propagating_tab = hashtb_create(sizeof(struct propagating_entry), NULL);
     h->sched = ccn_schedule_create(h);
     fd = create_local_listener(sockname, 42);
     if (fd == -1) fatal_err(sockname);
@@ -692,7 +806,7 @@ ccnd_create(void)
                 res = fcntl(fd, F_SETFL, O_NONBLOCK);
                 if (res == -1)
                     perror("fcntl");
-                hashtb_start(h->faces, e);
+                hashtb_start(h->faces_by_fd, e);
                 if (hashtb_seek(e, &fd, sizeof(fd)) != HT_NEW_ENTRY)
                     exit(1);
                 face = e->data;
@@ -705,6 +819,7 @@ ccnd_create(void)
         }
         freeaddrinfo(addrinfo);
     }
+    h->seed[1] = (unsigned short)getpid(); /* should gather more entropy than this */
     return(h);
 }
 

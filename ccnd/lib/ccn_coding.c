@@ -23,7 +23,6 @@ ccn_skeleton_decode(struct ccn_skeleton_decoder *d, const unsigned char *p, size
     enum ccn_decoder_state state = d->state;
     int tagstate = 0;
     size_t numval = d->numval;
-    const size_t numvalmax = ~0;
     ssize_t i = 0;
     unsigned char c;
     size_t chunk;
@@ -71,7 +70,7 @@ ccn_skeleton_decode(struct ccn_skeleton_decoder *d, const unsigned char *p, size
             case CCN_DSTATE_NUMVAL: /* parsing numval */
                 c = p[i++];
                 if ((c & CCN_TT_HBIT) == CCN_CLOSE) {
-                    if (numval > (numvalmax >> (7 + CCN_TT_BITS)))
+                    if (numval > ((~(size_t)0U) >> (7 + CCN_TT_BITS)))
                         state = CCN_DSTATE_ERR_OVERFLOW;
                     numval = (numval << 7) + (c & 127);
                 }
