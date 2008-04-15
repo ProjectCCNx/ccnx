@@ -13,6 +13,7 @@ struct handlerstate {
     int next;
     int count;
     struct handlerstateitem {
+        char *filename;
         unsigned char *contents;
         size_t	size;
         struct ccn_parsed_ContentObject x;
@@ -79,6 +80,7 @@ main (int argc, char *argv[]) {
             continue;
         }
         fprintf(stderr, "- ok\n");
+        state->d[n].filename = filename;
         state->d[n].contents = malloc(rawlen);
         state->d[n].size = rawlen;
         memcpy(state->d[n].contents, rawbuf, rawlen);
@@ -155,7 +157,7 @@ interest_handler(struct ccn_closure *selfp,
                                   state->d[i].contents, state->d[i].components);
             if (mc == (components->n - 1)) {
                 ccn_put(h, state->d[i].contents, state->d[i].size);
-                fprintf(stderr, "Matched %d components, item %d\n", mc, i);
+                fprintf(stderr, "Sending %s, matched %d components\n", state->d[i].filename, mc);
                 if (i < c - 1) {
                     item = state->d[i];
                     memmove(&(state->d[i]), &(state->d[i+1]), sizeof(item) * ((c - 1) - i));
