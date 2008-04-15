@@ -37,8 +37,6 @@ main (int argc, char *argv[]) {
     struct ccn_closure *action;
     struct ccn_charbuf *namebuf;
     char c;
-    char *cp;
-    char *ecp;
     int result;
 
     while ((c = getopt(argc, argv, "d:")) != -1) {
@@ -125,6 +123,7 @@ read_file(char *dir, char *name, unsigned char **contents, size_t *sizep) {
     close(fd);
     *contents = buf;
     *sizep = s.st_size;
+    return (0);
 }
 
 struct handlerstate *
@@ -220,4 +219,5 @@ actionhandler(struct ccn_closure *selfp,
         }
         return(0);
     }
+    return (-1);
 }
