@@ -46,6 +46,7 @@ struct ccnd {
     unsigned face_rover;        /* for faceid allocation */
     unsigned face_limit;
     struct face **faces_by_faceid; /* array with face_limit elements */
+    struct ccn_scheduled_event *reaper;
     int local_listener_fd;
     nfds_t nfds;
     struct pollfd *fds;
@@ -68,6 +69,7 @@ struct face {
     int fd;
     int flags;
     unsigned faceid; /* internal face id */
+    unsigned recvcount; /* for activity monitoring */
     struct ccn_charbuf *inbuf;
     struct ccn_skeleton_decoder decoder;
     size_t outbufindex;
@@ -230,7 +232,11 @@ finalize_face(struct hashtb_enumerator *e)
     unsigned i = face->faceid & MAXFACES;
     if (i < h->face_limit && h->faces_by_faceid[i] == face) {
         h->faces_by_faceid[i] = NULL;
-        fprintf(stderr, "releasing face id %u (slot %u)\n", face->faceid, face->faceid & MAXFACES);
+        fprintf(stderr, "releasing face id %u (slot %u)\n",
+            face->faceid, face->faceid & MAXFACES);
+        /* If face->addr is not NULL, it is our key so don't free it. */
+        ccn_charbuf_destroy(&face->inbuf);
+        ccn_charbuf_destroy(&face->outbuf);
     }
     else
         fprintf(stderr, "orphaned face %u\n", face->faceid);
@@ -331,6 +337,49 @@ do_write_BFI(struct ccnd *h, struct face *face,
         return;
     }
     do_write(h, face, data, size);
+}
+
+/*
+ * This checks for inactivity on datagram faces.
+ * Returns number of faces that have gone away.
+ */
+static int
+check_dgram_faces(struct ccnd *h)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    int count = 0;
+    for (hashtb_start(h->dgram_faces, e); e->data != NULL; hashtb_next(e)) {
+        struct face *face = e->data;
+        if ((face->flags & CCN_FACE_DGRAM) != 0 && face->addr != NULL) {
+            if (face->recvcount == 0) {
+                count += 1;
+                hashtb_delete(e);
+            }
+            else
+                face->recvcount = (face->recvcount > 1); /* go around twice */
+        }
+    }
+    hashtb_end(e);
+    return(count);
+}
+
+static int
+reap_dgram_faces(
+    struct ccn_schedule *sched,
+    void *clienth,
+    struct ccn_scheduled_event *ev,
+    int flags)
+{
+    struct ccnd *h = clienth;
+    if ((flags & CCN_SCHEDULE_CANCEL) == 0) {
+        check_dgram_faces(h);
+        if (hashtb_n(h->dgram_faces) > 0)
+            return(2 * CCN_INTEREST_HALFLIFE_MICROSEC);
+    }
+    /* nothing on the horizon, so go away */
+    h->reaper = NULL;
+    return(0);
 }
 
 static void
@@ -639,17 +688,23 @@ get_dgram_source(struct ccnd *h, struct face *face,
     struct face *source;
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
+    int res;
     if ((face->flags & CCN_FACE_DGRAM) == 0)
         return(face);
     hashtb_start(h->dgram_faces, e);
-    hashtb_seek(e, addr, addrlen);
-    source = e->data;
-    if (source != NULL && source->addr == NULL) {
-        source->addr = e->key;
-        source->addrlen = e->keysize;
-        source->fd = face->fd;
-        source->flags |= CCN_FACE_DGRAM;
-        enroll_face(h, source);
+    res = hashtb_seek(e, addr, addrlen);
+    if (res >= 0) {
+        source = e->data;
+        if (source->addr == NULL) {
+            source->addr = e->key;
+            source->addrlen = e->keysize;
+            source->fd = face->fd;
+            source->flags |= CCN_FACE_DGRAM;
+            enroll_face(h, source);
+            if (h->reaper == NULL)
+                h->reaper = ccn_schedule_event(h->sched, CCN_INTEREST_HALFLIFE_MICROSEC, reap_dgram_faces, NULL, 0);
+        }
+        source->recvcount++;
     }
     hashtb_end(e);
     return(source);
@@ -682,6 +737,7 @@ process_input(struct ccnd *h, int fd)
             shutdown_client_fd(h, fd);
     }
     else {
+        face->recvcount++;
         source = get_dgram_source(h, face, addr, addrlen);
         face->inbuf->length += res;
         msgstart = 0;
@@ -735,8 +791,9 @@ do_write(struct ccnd *h, struct face *face, unsigned char *data, size_t size)
     }
     if (face->addr == NULL)
         res = send(face->fd, data, size, 0);
-    else
+    else {
         res = sendto(face->fd, data, size, 0, face->addr, face->addrlen);
+    }
     if (res == size)
         return;
     if (res == -1) {
@@ -863,6 +920,8 @@ ccnd_create(void)
     struct hashtb_param faceparam = { &finalize_face };
     h = calloc(1, sizeof(*h));
     faceparam.finalize_data = h;
+    h->face_limit = 10; /* soft limit */
+    h->faces_by_faceid = calloc(h->face_limit, sizeof(h->faces_by_faceid[0]));
     h->faces_by_fd = hashtb_create(sizeof(struct face), &faceparam);
     h->dgram_faces = hashtb_create(sizeof(struct face), &faceparam);
     h->content_tab = hashtb_create(sizeof(struct content_entry), NULL);
