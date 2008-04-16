@@ -31,6 +31,8 @@ struct ccnd;
 struct dbl_links;
 struct face;
 
+#define MAXFACES 0xFFFFF
+
 /*
  * We pass this handle almost everywhere.
  */
@@ -39,7 +41,7 @@ struct ccnd {
     struct hashtb *dgram_faces; /* keyed by sockaddr */
     struct hashtb *content_tab; /* keyed by name components */
     struct hashtb *interest_tab; /* keyed by name components */
-    struct hashtb *propagating_tab; /* keyed by pubid + nonce */
+    struct hashtb *propagating_tab; /* keyed by nonce */
     unsigned face_gen;
     unsigned face_rover;        /* for faceid allocation */
     unsigned face_limit;
@@ -65,7 +67,6 @@ struct dbl_links {
 struct face {
     int fd;
     int flags;
-    unsigned generation; /* (generation, faceid) is unique */
     unsigned faceid; /* internal face id */
     struct ccn_charbuf *inbuf;
     struct ccn_skeleton_decoder decoder;
@@ -81,7 +82,7 @@ struct face {
 struct interest_entry {
     /* The interest hash table is keyed by the Component elements of the Name */
     int ncomp;           /* Number of name components */
-    int refcount;
+    int xxxrefcount;
 };
 
 struct content_entry {
@@ -94,12 +95,12 @@ struct content_entry {
 };
 
 /*
- * The propagating interest hash table is keyed by the concatenation of
- * the PublisherID and the Nonce.
+ * The propagating interest hash table is keyed by Nonce.
  */
 struct propagating_entry {
-    struct interest_entry *interest;
-    
+    unsigned char *interest_msg;
+    size_t size;
+    struct ccn_indexbuf *outbound;
 };
 
 static void cleanup_at_exit(void);
@@ -200,10 +201,11 @@ enroll_face(struct ccnd *h, struct face *face) {
     struct face **a = h->faces_by_faceid;
     for (i = h->face_rover; i < n; i++)
         if (a[i] == NULL) goto use_i;
-    h->face_gen++;
+    h->face_gen += MAXFACES + 1;
     for (i = 0; i < n; i++)
         if (a[i] == NULL) goto use_i;
     i = (h->face_limit + 1) * 3 / 2;
+    if (i > MAXFACES) i = MAXFACES;
     if (i <= h->face_limit)
         return(-1); /* overflow */
     a = realloc(a, i * sizeof(struct face *));
@@ -216,9 +218,8 @@ enroll_face(struct ccnd *h, struct face *face) {
 use_i:
     a[i] = face;
     h->face_rover = i + 1;
-    face->faceid = i;
-    face->generation = h->face_gen;
-    return (i);
+    face->faceid = i | h->face_gen;
+    return (face->faceid);
 }
 
 static void
@@ -226,13 +227,13 @@ finalize_face(struct hashtb_enumerator *e)
 {
     struct ccnd *h = hashtb_get_param(e->ht, NULL);
     struct face *face = e->data;
-    unsigned faceid = face->faceid;
-    if (faceid < h->face_limit && h->faces_by_faceid[faceid] == face) {
-        h->faces_by_faceid[faceid] = NULL;
-        fprintf(stderr, "releasing face id (%u,%u)\n", face->generation, faceid);
+    unsigned i = face->faceid & MAXFACES;
+    if (i < h->face_limit && h->faces_by_faceid[i] == face) {
+        h->faces_by_faceid[i] = NULL;
+        fprintf(stderr, "releasing face id %u (slot %u)\n", face->faceid, face->faceid & MAXFACES);
     }
     else
-        abort();
+        fprintf(stderr, "orphaned face %u\n", face->faceid);
 }
 
 static int
@@ -355,10 +356,73 @@ process_input_message_BFI(struct ccnd *h, struct face *face,
     hashtb_end(e);
 }
 
+/*
+ * This is where a forwarding table would be plugged in.
+ * For now we forward everywhere but the source.
+ */
+static struct ccn_indexbuf *
+get_outbound_faces(struct ccnd *h,
+    struct face *from,
+    unsigned char *msg,
+    struct ccn_parsed_interest *pi)
+{
+    struct ccn_indexbuf *x = ccn_indexbuf_create();
+    unsigned i;
+    struct face **a = h->faces_by_faceid;
+    for (i = 0; i < h->face_limit; i++)
+        if (a[i] != NULL && a[i] != from)
+            ccn_indexbuf_append_element(x, a[i]->faceid);
+    return(x);
+}
+
+static void
+indexbuf_remove_element(struct ccn_indexbuf *x, size_t val)
+{
+    int i;
+    if (x == NULL) return;
+    for (i = x->n - 1; i > 0; i--)
+        if (x->buf[i] == val) {
+            x->buf[i] = x->buf[--x->n]; /* move last element into vacant spot */
+            return;
+        }
+}
+
+static int
+do_propagate(
+    struct ccn_schedule *sched,
+    void *clienth,
+    struct ccn_scheduled_event *ev,
+    int flags)
+{
+    struct ccnd *h = clienth;
+    struct propagating_entry *pe = ev->evdata;
+    if (pe->outbound == NULL || pe->interest_msg == NULL)
+        return(0);
+    if (flags & CCN_SCHEDULE_CANCEL)
+        pe->outbound->n = 0;
+    if (pe->outbound->n > 0) {
+        unsigned faceid = pe->outbound->buf[--pe->outbound->n];
+        struct face *face = NULL;
+        if ((faceid & MAXFACES) < h->face_limit)
+            face = h->faces_by_faceid[faceid & MAXFACES];
+        if (face != NULL && face->faceid == faceid)
+            do_write_BFI(h, face, pe->interest_msg, pe->size);
+    }
+    if (pe->outbound->n == 0) {
+        pe->size = 0;
+        free(pe->interest_msg);
+        pe->interest_msg = NULL;
+        ccn_indexbuf_destroy(&pe->outbound);
+        return(0);
+    }
+    return(nrand48(h->seed) % 8192);
+}
+
 static int
 propagate_interest(struct ccnd *h, struct face *face,
                       struct interest_entry *entry,
-                      unsigned char *msg, struct ccn_parsed_interest *pi)
+                      unsigned char *msg, size_t msg_size,
+                      struct ccn_parsed_interest *pi)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -367,13 +431,19 @@ propagate_interest(struct ccnd *h, struct face *face,
     struct ccn_charbuf *cb = NULL;
     int res;
     struct propagating_entry *pe = NULL;
+    unsigned char *msg_out = msg;
+    size_t msg_out_size = msg_size;
     if (pi->nonce_size == 0) {
         /* This interest has no nonce; add one before going on */
+        struct ccn_parsed_interest check;
         int noncebytes = 6;
+        size_t nonce_start = 0;
         int i;
         unsigned char *s;
         cb = charbuf_obtain(h);
+        ccn_charbuf_append(cb, msg, pi->name_start + pi->name_size);
         ccn_charbuf_append(cb, msg + pi->pubid_start, pi->pubid_size);
+        nonce_start = cb->length;
         ccn_charbuf_append_tt(cb, CCN_DTAG_Nonce, CCN_DTAG);
         ccn_charbuf_append_tt(cb, noncebytes, CCN_BLOB);
         s = ccn_charbuf_reserve(cb, noncebytes);
@@ -381,12 +451,15 @@ propagate_interest(struct ccnd *h, struct face *face,
             s[i] = nrand48(h->seed) >> i;
         cb->length += noncebytes;
         ccn_charbuf_append_closer(cb);
-        pkey = cb->buf;
-        pkeysize = cb->length;
-    }
-    else if (pi->nonce_start == pi->pubid_start + pi->pubid_size) {
-        pkey = msg + pi->pubid_start;
-        pkeysize = pi->pubid_size + pi->nonce_size;
+        pkeysize = cb->length - nonce_start;
+        ccn_charbuf_append_closer(cb);
+        pkey = cb->buf + nonce_start;
+        msg_out = cb->buf;
+        msg_out_size = cb->length;
+        while (0 > (i=ccn_parse_interest(msg_out, msg_out_size, &check, NULL))) {
+            perror("FIX ME");
+            sleep(5);
+        }
     }
     else {
         pkey = msg + pi->nonce_start;
@@ -396,11 +469,23 @@ propagate_interest(struct ccnd *h, struct face *face,
     res = hashtb_seek(e, pkey, pkeysize);
     pe = e->data;
     if (res == HT_NEW_ENTRY) {
-        pe->interest = entry;
-        entry->refcount++;
-        res = 0;
+        unsigned char *m;
+        m = calloc(1, msg_out_size);
+        if (m == NULL) {
+            res = -1;
+            hashtb_delete(e);
+        }
+        else {
+            memcpy(m, msg_out, msg_out_size);
+            pe->interest_msg = m;
+            pe->size = msg_out_size;
+            pe->outbound = get_outbound_faces(h, face, msg, pi);
+            res = 0;
+            ccn_schedule_event(h->sched, nrand48(h->seed) % 8192, do_propagate, pe, 0);
+        }
     }
     else if (res == HT_OLD_ENTRY) {
+        indexbuf_remove_element(pe->outbound, face->faceid);
         res = -1; /* We've seen this already, do not propagate */
     }
     hashtb_end(e);
@@ -439,11 +524,9 @@ process_incoming_interest(struct ccnd *h, struct face *face,
             fprintf(stderr, "New interest\n");
         }
         hashtb_end(e);
-        res = propagate_interest(h, face, entry, msg, &interest);
+        propagate_interest(h, face, entry, msg, size, &interest);
     }
     indexbuf_release(h, comps);
-    if (res >= 0)
-        process_input_message_BFI(h, face, msg, size);
 }
 
 static void

@@ -192,9 +192,9 @@ ccn_parse_interest(unsigned char *msg, size_t size,
         interest->name_start = name.start;
         interest->name_size = name.size;
         ncomp = name.ncomp;
-        interest->pubid_start = interest->pubid_size = 0;
+        interest->pubid_start = d->decoder.element_index; 
+        interest->pubid_size = 0;
         if (ccn_buf_match_dtag(d, CCN_DTAG_PublisherID)) {
-            interest->pubid_start = d->decoder.element_index;
             ccn_buf_advance(d);
             if (!ccn_buf_match_attr(d, "type"))
                 return (-__LINE__);
@@ -211,14 +211,14 @@ ccn_parse_interest(unsigned char *msg, size_t size,
             interest->pubid_size = d->decoder.index - interest->pubid_start;
             ccn_buf_check_close(d);
         }
-        interest->nonce_start = interest->nonce_size = 0;
+        interest->nonce_start = d->decoder.element_index;
+        interest->nonce_size = 0;
         if (ccn_buf_match_dtag(d, CCN_DTAG_Nonce)) {
-            interest->nonce_start = d->decoder.element_index;
             ccn_buf_advance(d);
             if (!ccn_buf_match_blob(d, NULL, NULL))
                 return (-__LINE__);
             ccn_buf_advance(d);
-            interest->pubid_size = d->decoder.index - interest->pubid_start;
+            interest->nonce_size = d->decoder.index - interest->nonce_start;
             ccn_buf_check_close(d);
         }
         ccn_buf_check_close(d);
