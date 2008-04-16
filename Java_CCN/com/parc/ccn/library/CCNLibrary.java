@@ -11,6 +11,7 @@ import com.parc.ccn.CCNBase;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
@@ -62,6 +63,8 @@ public interface CCNLibrary extends CCNBase {
 	public CompleteName put(ContentName name, byte [] contents,
 							PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException;
 	
+	public CompleteName put(String name, String contents) throws SignatureException, MalformedContentNameStringException, IOException, InterruptedException;
+	
 	public CompleteName put(
 			ContentName name, 
 			byte[] contents, 
@@ -96,6 +99,8 @@ public interface CCNLibrary extends CCNBase {
 			PublisherKeyID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, IOException, InterruptedException;
 	
+	public ArrayList<ContentObject> get(String name) throws MalformedContentNameStringException, IOException, InterruptedException;
+
 	/**
 	 * Get the latest version published by this publisher,
 	 * or by anybody if publisher is null.

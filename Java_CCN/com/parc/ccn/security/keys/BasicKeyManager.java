@@ -112,9 +112,11 @@ public class BasicKeyManager extends KeyManager {
 		    ContentName keyName = getDefaultKeyName(_defaultKeyID.id());
 		    _keyLocator = new KeyLocator(keyName, new PublisherID(_defaultKeyID));
 			Library.logger().info("Default key locator: " + _keyLocator);
-		    if (null == getKey(_defaultKeyID, _keyLocator)) {
-		    	publishKey(_certificate.getPublicKey(), _privateKey);
-		    }
+			// JDT TODO Restore publishing info about this key. Commented-out for 
+			// now to enable unit test with no repo.
+//		    if (null == getKey(_defaultKeyID, _keyLocator)) {
+//		    	publishKey(_certificate.getPublicKey(), _privateKey);
+//		    }
 		
 		} catch (Exception e) {
 			generateConfigurationException("Cannot retrieve default user keystore entry.", e);

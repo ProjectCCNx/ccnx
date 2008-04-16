@@ -19,7 +19,10 @@ public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
 	
 	protected List<GenericXMLEncodable> _contents = null; 
 
-	public WirePacket() {}; // for use by decoders
+	public WirePacket() {
+		// Empty packet won't generate NullPointerException
+		_contents = new ArrayList<GenericXMLEncodable>();
+	}; // for use by decoders
 
 	public WirePacket(List<GenericXMLEncodable> contents) {
 		_contents = contents;

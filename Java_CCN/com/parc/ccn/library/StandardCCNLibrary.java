@@ -21,6 +21,7 @@ import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.content.Link;
@@ -501,6 +502,10 @@ public class StandardCCNLibrary implements CCNLibrary {
 	public static ContentName versionRoot(ContentName name) {
 		return name.cut(VERSION_MARKER);
 	}
+
+	public CompleteName put(String name, String contents) throws SignatureException, MalformedContentNameStringException, IOException, InterruptedException {
+		return put(new ContentName(name), contents.getBytes());
+	}
 	
 	public CompleteName put(ContentName name, byte[] contents) 
 				throws SignatureException, IOException, InterruptedException {
@@ -619,7 +624,6 @@ public class StandardCCNLibrary implements CCNLibrary {
 			publisher = keyManager().getPublisherKeyID(signingKey);
 		}
 	
-		Library.logger().info("Putting content: " + name.toString());
 		if (contents.length >= Header.DEFAULT_BLOCKSIZE) {
 			return fragmentedPut(name, contents, type, publisher, locator, signingKey);
 		} else {
@@ -810,6 +814,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 							ContentAuthenticator authenticator,
 							byte [] signature, 
 							byte[] content) throws IOException, InterruptedException {
+
 		return CCNNetworkManager.getNetworkManager().put(name, authenticator, signature, content);
 	}
 
@@ -832,6 +837,10 @@ public class StandardCCNLibrary implements CCNLibrary {
 										ContentAuthenticator authenticator,
 										boolean isRecursive) throws IOException, InterruptedException {
 		return CCNNetworkManager.getNetworkManager().get(name, authenticator,isRecursive);
+	}
+	
+	public ArrayList<ContentObject> get(String name) throws MalformedContentNameStringException, IOException, InterruptedException {
+		return get(new ContentName(name), null, false);
 	}
 
 	/**
