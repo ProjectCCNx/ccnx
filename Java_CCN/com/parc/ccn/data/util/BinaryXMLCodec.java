@@ -54,7 +54,7 @@ public class BinaryXMLCodec  {
 	public static int XML_TT_VAL_MASK = ((1 << (XML_TT_VAL_BITS)) - 1);
 	public static int XML_REG_VAL_BITS = 7;
 	public static int XML_REG_VAL_MASK = ((1 << XML_REG_VAL_BITS) - 1);
-	public static int XML_TT_MORE = (1 << XML_REG_VAL_BITS); // 0x80
+	public static int XML_TT_NO_MORE = (1 << XML_REG_VAL_BITS); // 0x80
 	public static int BYTE_MASK = 0xFF;
 	public static int LONG_BYTES = 8;
 	public static int LONG_BITS = 64;
@@ -92,8 +92,9 @@ public class BinaryXMLCodec  {
 		// Bottom 4 bits of val go in last byte with tag.
 		buf[offset + numEncodingBytes - 1] = 
 			(byte)(BYTE_MASK &
-						((XML_TT_MASK & tag) | 
-						((XML_TT_VAL_MASK & val) << XML_TT_BITS)));
+						(((XML_TT_MASK & tag) | 
+						 ((XML_TT_VAL_MASK & val) << XML_TT_BITS))) |
+						 XML_TT_NO_MORE); // set top bit for last byte
 		val = val >>> XML_TT_VAL_BITS;;
 		
 		// Rest of val goes into preceding bytes, 7 bits per byte, top bit
@@ -101,7 +102,7 @@ public class BinaryXMLCodec  {
 		int i = offset + numEncodingBytes - 2;
 		while ((0 != val) && (i >= offset)) {
 			buf[i] = (byte)(BYTE_MASK &
-							    ((val & XML_REG_VAL_MASK) | XML_TT_MORE));
+							    (val & XML_REG_VAL_MASK)); // leave top bit unset
 			val = val >>> XML_REG_VAL_BITS;
 			--i;
 		}
@@ -134,7 +135,7 @@ public class BinaryXMLCodec  {
 		do {
 			next = istream.read();
 			
-			if (0 != (next & XML_TT_MORE)) {
+			if (0 == (next & XML_TT_NO_MORE)) {
 				val = val << XML_REG_VAL_BITS;
 				val |= (next & XML_REG_VAL_MASK);
 			} else {
@@ -144,7 +145,7 @@ public class BinaryXMLCodec  {
 				val |= ((next >>> XML_TT_BITS) & XML_TT_VAL_MASK);
 			}
 			
-		} while (0 != (next & XML_TT_MORE));
+		} while (0 == (next & XML_TT_NO_MORE));
 		
 		return new TypeAndVal(type, val);
 	}
