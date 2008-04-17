@@ -30,6 +30,8 @@
 struct ccnd;
 struct dbl_links;
 struct face;
+struct content_entry;
+struct interest_entry;
 
 #define MAXFACES 0xFFFFF
 
@@ -39,7 +41,8 @@ struct face;
 struct ccnd {
     struct hashtb *faces_by_fd; /* keyed by fd */
     struct hashtb *dgram_faces; /* keyed by sockaddr */
-    struct hashtb *content_tab; /* keyed by name components */
+    struct hashtb *content_tab; /* keyed by initial fragment of ContentObject */
+    struct hashtb *content_by_accession_tab; /* keyed by accession */
     struct hashtb *interest_tab; /* keyed by name components */
     struct hashtb *propagating_tab; /* keyed by nonce */
     unsigned face_gen;
@@ -53,6 +56,9 @@ struct ccnd {
     struct ccn_schedule *sched;
     struct ccn_charbuf *scratch_charbuf;
     struct ccn_indexbuf *scratch_indexbuf;
+    unsigned content_by_accession_window;
+    struct content_entry **content_by_accession;
+    uint_least64_t accession_base;
     uint_least64_t accession;
     unsigned short seed[3];
 };
@@ -84,16 +90,17 @@ struct face {
 struct interest_entry {
     /* The interest hash table is keyed by the Component elements of the Name */
     int ncomp;           /* Number of name components */
-    int xxxrefcount;
 };
 
 struct content_entry {
     /* The content hash table is keyed by the Component elements of the Name */
     uint_least64_t accession;   /* keep track of arrival order */
-    unsigned short *comp_end;  /* byte length of each name prefix */
-    int ncomp;           /* Number of name components */    
+    unsigned short *comps;      /* Name Component byte boundary offsets */
+    int ncomps;                 /* Number of name components plus one*/    
+    const unsigned char *key;	/* ContentObject fragment prior to Content */
+    int key_size;
+    unsigned char *tail;        /* ContentObject fragment starting at Content */
     int tail_size;
-    unsigned char *tail; /* ContentObject elements other than the Name */
 };
 
 /*
@@ -242,6 +249,52 @@ finalize_face(struct hashtb_enumerator *e)
         fprintf(stderr, "orphaned face %u\n", face->faceid);
 }
 
+static void
+enroll_content(struct ccnd *h, struct content_entry *content)
+{
+    unsigned new_window;
+    struct content_entry **new_array;
+    struct content_entry **old_array = h->content_by_accession;
+    unsigned i = 0;
+    unsigned j = 0;
+    if (content->accession >= h->accession_base + h->content_by_accession_window) {
+        new_window = ((h->content_by_accession_window + 20) * 3 / 2);
+        new_array = calloc(new_window, sizeof(new_array[0]));
+        if (new_array == NULL)
+            return;
+        while (i < h->content_by_accession_window && old_array[i] == NULL)
+            i++;
+        h->accession_base += i;
+        h->content_by_accession = new_array;
+        while (i < h->content_by_accession_window)
+            new_array[j++] = old_array[i++];
+        h->content_by_accession_window = new_window;
+	free(old_array);
+    }
+    h->content_by_accession[content->accession - h->accession_base] = content;
+}
+
+static void
+finalize_content(struct hashtb_enumerator *e)
+{
+    struct ccnd *h = hashtb_get_param(e->ht, NULL);
+    struct content_entry *entry = e->data;
+    unsigned i = entry->accession - h->accession_base;
+    if (i < h->content_by_accession_window && h->content_by_accession[i] == entry) {
+        h->content_by_accession[i] = NULL;
+        if (entry->comps != NULL) {
+            free(entry->comps);
+            entry->comps = NULL;
+        }
+        if (entry->tail != NULL) {
+            free(entry->tail);
+            entry->tail = NULL;
+        }
+    }
+    else
+        fprintf(stderr, "orphaned content %u\n", i);
+}
+
 static int
 create_local_listener(const char *sockname, int backlog)
 {
@@ -363,9 +416,33 @@ check_dgram_faces(struct ccnd *h)
     hashtb_end(e);
     return(count);
 }
+/*
+ * This checks for expired propagating interests.
+ * Returns number that have gone away.
+ */
+static int
+check_propagating(struct ccnd *h)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    int count = 0;
+    for (hashtb_start(h->propagating_tab, e); e->data != NULL; hashtb_next(e)) {
+        struct propagating_entry *pi = e->data;
+        if (pi->interest_msg == NULL) {
+            if (pi->size == 0) {
+                count += 1;
+                hashtb_delete(e);
+            }
+            else
+                pi->size = (pi->size > 1); /* go around twice */
+        }
+    }
+    hashtb_end(e);
+    return(count);
+}
 
 static int
-reap_dgram_faces(
+reap(
     struct ccn_schedule *sched,
     void *clienth,
     struct ccn_scheduled_event *ev,
@@ -374,7 +451,8 @@ reap_dgram_faces(
     struct ccnd *h = clienth;
     if ((flags & CCN_SCHEDULE_CANCEL) == 0) {
         check_dgram_faces(h);
-        if (hashtb_n(h->dgram_faces) > 0)
+        check_propagating(h);
+        if (hashtb_n(h->dgram_faces) > 0 || hashtb_n(h->propagating_tab) > 0)
             return(2 * CCN_INTEREST_HALFLIFE_MICROSEC);
     }
     /* nothing on the horizon, so go away */
@@ -386,7 +464,7 @@ static void
 process_input_message_BFI(struct ccnd *h, struct face *face,
                 unsigned char *msg, size_t size)
 {
-    // BFI version
+    // BFI version - send it everywhere
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     for (hashtb_start(h->faces_by_fd, e); e->data != NULL; hashtb_next(e)) {
@@ -458,10 +536,12 @@ do_propagate(
             do_write_BFI(h, face, pe->interest_msg, pe->size);
     }
     if (pe->outbound->n == 0) {
-        pe->size = 0;
-        free(pe->interest_msg);
+        if (pe->interest_msg != NULL)
+            free(pe->interest_msg);
         pe->interest_msg = NULL;
         ccn_indexbuf_destroy(&pe->outbound);
+        if (h->reaper == NULL)
+            h->reaper = ccn_schedule_event(h->sched, 0, reap, NULL, 0);
         return(0);
     }
     return(nrand48(h->seed) % 8192);
@@ -534,7 +614,8 @@ propagate_interest(struct ccnd *h, struct face *face,
         }
     }
     else if (res == HT_OLD_ENTRY) {
-        indexbuf_remove_element(pe->outbound, face->faceid);
+        if (pe->outbound != NULL)
+            indexbuf_remove_element(pe->outbound, face->faceid);
         res = -1; /* We've seen this already, do not propagate */
     }
     hashtb_end(e);
@@ -590,7 +671,6 @@ process_incoming_content(struct ccnd *h, struct face *face,
     size_t tailsize = 0;
     unsigned char *tail = NULL;
     struct content_entry *content = NULL;
-    unsigned short *comp_end;
     int i;
     struct ccn_indexbuf *comps = indexbuf_obtain(h);
     res = ccn_parse_ContentObject(msg, size, &obj, comps);
@@ -598,19 +678,21 @@ process_incoming_content(struct ccnd *h, struct face *face,
         fprintf(stderr, "error parsing ContentObject - code %d\n", res);
     }
     else if (comps->n < 1 ||
-             (keysize = comps->buf[comps->n - 1] - comps->buf[0]) > 65535) {
+             (keysize = comps->buf[comps->n - 1]) > 65535) {
         fprintf(stderr, "ContentObject with keysize %lu discarded\n",
                 (unsigned long)keysize);
         res = -__LINE__;
     }
     else {
-        tail = msg + obj.ContentAuthenticator;
-        tailsize = size - obj.ContentAuthenticator - 2; /* 2 closers */
+        keysize = obj.Content;
+        tail = msg + obj.Content;
+        tailsize = size - obj.Content;
         hashtb_start(h->content_tab, e);
-        res = hashtb_seek(e, msg + comps->buf[0], keysize);
+        res = hashtb_seek(e, msg, keysize);
         content = e->data;
         if (res == HT_OLD_ENTRY) {
-            if (tailsize != content->tail_size || 0 != memcmp(tail, content->tail, tailsize)) {
+            if (tailsize != content->tail_size ||
+                  0 != memcmp(tail, content->tail, tailsize)) {
                 fprintf(stderr, "ContentObject name collision!!!!!\n");
                 content = NULL;
                 hashtb_delete(e); /* XXX - Mercilessly throw away both of them. */
@@ -621,14 +703,17 @@ process_incoming_content(struct ccnd *h, struct face *face,
         }
         else if (res == HT_NEW_ENTRY) {
             content->accession = ++(h->accession);
-            content->ncomp = comps->n - 1;
-            comp_end = content->comp_end = calloc(comps->n - 1, sizeof(comp_end[0]));
+            enroll_content(h, content);
+            content->ncomps = comps->n;
+            content->comps = calloc(comps->n, sizeof(comps[0]));
             content->tail_size = tailsize;
             content->tail = calloc(1, tailsize);
-            if (content->tail != NULL && comp_end != NULL) {
+            content->key_size = e->keysize;
+            content->key = e->key;
+            if (content->tail != NULL && content->comps != NULL) {
                 memcpy(content->tail, tail, tailsize);
-                for (i = 1; i < comps->n; i++)
-                    comp_end[i-1] = comps->buf[i] - comps->buf[0];
+                for (i = 0; i < comps->n; i++)
+                    content->comps[i] = comps->buf[i];
             }
             else {
                 perror("process_incoming_content");
@@ -702,7 +787,7 @@ get_dgram_source(struct ccnd *h, struct face *face,
             source->flags |= CCN_FACE_DGRAM;
             enroll_face(h, source);
             if (h->reaper == NULL)
-                h->reaper = ccn_schedule_event(h->sched, CCN_INTEREST_HALFLIFE_MICROSEC, reap_dgram_faces, NULL, 0);
+                h->reaper = ccn_schedule_event(h->sched, CCN_INTEREST_HALFLIFE_MICROSEC, reap, NULL, 0);
         }
         source->recvcount++;
     }
@@ -917,14 +1002,16 @@ ccnd_create(void)
     struct addrinfo hints = {0};
     struct addrinfo *addrinfo = NULL;
     struct addrinfo *a;
-    struct hashtb_param faceparam = { &finalize_face };
+    struct hashtb_param param = { &finalize_face };
     h = calloc(1, sizeof(*h));
-    faceparam.finalize_data = h;
+    param.finalize_data = h;
     h->face_limit = 10; /* soft limit */
     h->faces_by_faceid = calloc(h->face_limit, sizeof(h->faces_by_faceid[0]));
-    h->faces_by_fd = hashtb_create(sizeof(struct face), &faceparam);
-    h->dgram_faces = hashtb_create(sizeof(struct face), &faceparam);
-    h->content_tab = hashtb_create(sizeof(struct content_entry), NULL);
+    param.finalize = &finalize_face;
+    h->faces_by_fd = hashtb_create(sizeof(struct face), &param);
+    h->dgram_faces = hashtb_create(sizeof(struct face), &param);
+    param.finalize = &finalize_content;
+    h->content_tab = hashtb_create(sizeof(struct content_entry), &param);
     h->interest_tab = hashtb_create(sizeof(struct interest_entry), NULL);
     h->propagating_tab = hashtb_create(sizeof(struct propagating_entry), NULL);
     h->sched = ccn_schedule_create(h);
