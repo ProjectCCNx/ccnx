@@ -1,5 +1,7 @@
 package com.parc.ccn.network;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -78,6 +80,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 	protected boolean _run = true;
 	protected KeyManager _keyManager;
 	protected ContentObject _keepalive; 
+	protected FileOutputStream _tapStream = null;
 	// Tables of interests/filters: users must synchronize on collection
 	protected InterestTable<InterestLabel> _othersInterests = new InterestTable<InterestLabel>();
 	protected InterestTable<InterestRegistration> _myInterests = new InterestTable<InterestRegistration>();
@@ -181,6 +184,19 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 		_error = new IOException("need to send first packet to CCN agent");
 		_thread = new Thread(this);
 		_thread.start();
+	}
+	
+	public void shutdown() {
+		Library.logger().info("Shutdown");
+		_run = false;
+	}
+	
+	/**
+	 * Turn on writing of all packets to a file for test/debug
+	 * @param filename
+	 */
+	public void setTap(String pathname) throws IOException {
+		_tapStream = new FileOutputStream(new File(pathname));
 	}
 	
 	/** Create a single special piece of content that we can send 
@@ -310,6 +326,14 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 			byte[] bytes = packet.encode();
 			DatagramPacket datagram = new DatagramPacket(bytes, bytes.length);
 			_socket.send(datagram);
+			
+			if (null != _tapStream) {
+				try {
+					_tapStream.write(bytes);
+				} catch (IOException io) {
+					Library.logger().warning("Unable to write packet to tap stream for debugging");
+				}
+			}
 		} catch (IOException io) {
 			// Best-effort, just mark error
 			_error = io;
@@ -350,7 +374,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 		}		
 	
 		// TODO: remove direct connection to repository
-		CCNRepositoryManager.getRepositoryManager().expressInterest(interest, callbackListener);
+		//CCNRepositoryManager.getRepositoryManager().expressInterest(interest, callbackListener);
 
 		// Register the interest for repeated presentation to the network.
 		registerInterest(interest, callbackListener);
@@ -571,7 +595,6 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 	// Locally deliver a packet of data, which may have originated locally
 	// or from the network
 	protected void deliverData(ContentObject data) {
-		System.out.println("Deliver data " + data.name());
 		List<CCNInterestListener> toCallback = new ArrayList<CCNInterestListener>();
 		synchronized (_myInterests) {
 			for (InterestRegistration reg : _myInterests.getValues(data.completeName())) {

@@ -1,5 +1,6 @@
 package com.parc.ccn.config;
 
+import com.parc.ccn.data.util.BinaryXMLCodec;
 import com.parc.ccn.data.util.TextXMLCodec;
 
 public class SystemConfiguration {
@@ -12,7 +13,7 @@ public class SystemConfiguration {
 	 * currently "Text" and "Binary", or better yet
 	 * BinaryXMLCodec.codecName() or TextXMLCodec.codecName().
 	 */
-	protected static final String SYSTEM_DEFAULT_ENCODING = TextXMLCodec.codecName();
+	protected static final String SYSTEM_DEFAULT_ENCODING = BinaryXMLCodec.codecName();
 	
 	/**
 	 * Run-time default. Set to command line property if given, if not,
@@ -60,5 +61,9 @@ public class SystemConfiguration {
 				DEFAULT_ENCODING = commandLineProperty;
 		}
 		return DEFAULT_ENCODING;
+	}
+	
+	public static void setDefaultEncoding(String encoding) {
+		DEFAULT_ENCODING = encoding;
 	}
 }
