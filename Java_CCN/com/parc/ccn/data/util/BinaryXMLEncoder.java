@@ -85,6 +85,9 @@ public class BinaryXMLEncoder implements XMLEncoder {
 			
 			if (dictionaryVal < 0) {
 				// not in dictionary
+				// compressed format wants length of tag represented as length-1
+				// to save that extra bit, as tag cannot be 0 length.
+				// encodeUString knows to do that.
 				BinaryXMLCodec.encodeUString(_ostream, tag, BinaryXMLCodec.XML_TAG);
 				
 			} else {
@@ -103,6 +106,9 @@ public class BinaryXMLEncoder implements XMLEncoder {
 					long dictionaryAttr = _dictionary.encodeAttr(strAttr);
 					if (dictionaryAttr < 0) {
 						// not in dictionary, encode as attr
+						// compressed format wants length of tag represented as length-1
+						// to save that extra bit, as tag cannot be 0 length.
+						// encodeUString knows to do that.
 						BinaryXMLCodec.encodeUString(_ostream, strAttr, BinaryXMLCodec.XML_ATTR);
 					} else {
 						BinaryXMLCodec.encodeTypeAndVal(BinaryXMLCodec.XML_DATTR, dictionaryAttr, _ostream);

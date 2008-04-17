@@ -215,6 +215,7 @@ public class BinaryXMLCodec  {
 	
 	/**
 	 * Expects to read a XML_UDATA type marker, and then the data.
+	 * This will not decode a TAG or ATTR ustring.
 	 */
 	public static String decodeUString(InputStream istream) throws IOException {
 		TypeAndVal tv = decodeTypeAndVal(istream);
@@ -228,7 +229,10 @@ public class BinaryXMLCodec  {
 
 	/**
 	 * If we've read the type indicator (which could be UDATA, or TAG, or ATTR)
-	 * and just need to get the data.
+	 * and just need to get the data. Assumes caller will cope with the fact that
+	 * TAGs and ATTRs have encoded lengths that are one byte shorter than their
+	 * actual data length, and that the length passed in here is actually the
+	 * length of data we should read.
 	 * @param istream
 	 * @param byteLength
 	 * @return
@@ -252,10 +256,21 @@ public class BinaryXMLCodec  {
 		encodeUString(ostream, ustring, XML_UDATA);
 	}
 	
+	/**
+	 * We have to special case the UStrings that represent TAG and ATTR.
+	 * The lengths of these strings are represented as length-1, as they
+	 * can never be 0 length. The decrement is done here, rather than
+	 * in encodeTypeAndVal. Alternatively, we could make this generic, and
+	 * either provide another encoder specifically for tags, or allow
+	 * caller to give us a length.
+	 **/
 	public static void encodeUString(OutputStream ostream, String ustring, byte type) throws IOException {
 		byte [] strBytes = ustring.getBytes("UTF-8");
 		
-		encodeTypeAndVal(type, strBytes.length, ostream);
+		encodeTypeAndVal(type, 
+							(((type == XML_TAG) || (type == XML_ATTR)) ?
+									(strBytes.length-1) :
+									strBytes.length), ostream);
 		ostream.write(strBytes);
 	}
 

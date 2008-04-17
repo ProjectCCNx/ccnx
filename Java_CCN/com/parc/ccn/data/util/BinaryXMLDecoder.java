@@ -54,7 +54,8 @@ public class BinaryXMLDecoder implements XMLDecoder {
 			String decodedTag = null;
 			
 			if (tv.type() == BinaryXMLCodec.XML_TAG) {
-				decodedTag = BinaryXMLCodec.decodeUString(_istream, (int)tv.val());
+				// Tag value represents length-1 as tags can never be empty.
+				decodedTag = BinaryXMLCodec.decodeUString(_istream, (int)tv.val()+1);
 				
 			} else if (tv.type() == BinaryXMLCodec.XML_DTAG) {
 				decodedTag = _dictionary.decodeTag(tv.val());					
@@ -64,6 +65,9 @@ public class BinaryXMLDecoder implements XMLDecoder {
 				throw new XMLStreamException("Expected start element: " + startTag + " got: " + decodedTag + "(" + tv.val() + ")");
 			}
 			
+			// DKS: does not read attributes out of stream if caller doesn't
+			// ask for them. Should possibly peek and skip over them regardless.
+			// TODO: fix this
 			if (null != attributes) {
 			
 				// Now need to get attributes.
@@ -77,7 +81,8 @@ public class BinaryXMLDecoder implements XMLDecoder {
 					
 					String attributeName = null;
 					if (BinaryXMLCodec.XML_ATTR == thisTV.type()) {
-						attributeName = BinaryXMLCodec.decodeUString(_istream, (int)thisTV.val());
+						// Tag value represents length-1 as attribute names cannot be empty.
+						attributeName = BinaryXMLCodec.decodeUString(_istream, (int)thisTV.val()+1);
 					} else if (BinaryXMLCodec.XML_DATTR == thisTV.type()) {
 						// DKS TODO are attributes same or different dictionary?
 						attributeName = _dictionary.decodeTag(tv.val());
