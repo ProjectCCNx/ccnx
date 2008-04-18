@@ -28,7 +28,6 @@
 #include <ccn/schedule.h>
 
 struct ccnd;
-struct dbl_links;
 struct face;
 struct content_entry;
 struct interest_entry;
@@ -47,16 +46,15 @@ struct interest_entry;
  * We pass this handle almost everywhere.
  */
 struct ccnd {
-    struct hashtb *faces_by_fd; /* keyed by fd */
-    struct hashtb *dgram_faces; /* keyed by sockaddr */
-    struct hashtb *content_tab; /* keyed by initial fragment of ContentObject */
-    //struct hashtb *content_by_accession_tab; /* keyed by accession */
-    struct hashtb *interest_tab; /* keyed by name components */
+    struct hashtb *faces_by_fd;     /* keyed by fd */
+    struct hashtb *dgram_faces;     /* keyed by sockaddr */
+    struct hashtb *content_tab;     /* keyed by initial fragment of ContentObject */
+    struct hashtb *interest_tab;    /* keyed by name components */
     struct hashtb *propagating_tab; /* keyed by nonce */
     unsigned face_gen;
-    unsigned face_rover;        /* for faceid allocation */
+    unsigned face_rover;            /* for faceid allocation */
     unsigned face_limit;
-    struct face **faces_by_faceid; /* array with face_limit elements */
+    struct face **faces_by_faceid;  /* array with face_limit elements */
     struct ccn_scheduled_event *reaper;
     int local_listener_fd;
     nfds_t nfds;
@@ -64,16 +62,11 @@ struct ccnd {
     struct ccn_schedule *sched;
     struct ccn_charbuf *scratch_charbuf;
     struct ccn_indexbuf *scratch_indexbuf;
+    uint_least64_t accession_base;
     unsigned content_by_accession_window;
     struct content_entry **content_by_accession;
-    uint_least64_t accession_base;
     uint_least64_t accession;
     unsigned short seed[3];
-};
-
-struct dbl_links {
-    struct dbl_links *prev;
-    struct dbl_links *next;
 };
 
 /*
@@ -82,8 +75,8 @@ struct dbl_links {
 struct face {
     int fd;
     int flags;
-    unsigned faceid; /* internal face id */
-    unsigned recvcount; /* for activity monitoring */
+    unsigned faceid;            /* internal face id */
+    unsigned recvcount;         /* for activity level monitoring */
     struct ccn_charbuf *inbuf;
     struct ccn_skeleton_decoder decoder;
     size_t outbufindex;
@@ -95,16 +88,24 @@ struct face {
 #define CCN_FACE_LINK   (1 << 0) /* Elements wrapped by CCNProtocolDataUnit */
 #define CCN_FACE_DGRAM  (1 << 1) /* Datagram interface, respect packets */
 
+/*
+ * The interest hash table is keyed by the Component elements of the Name
+ */
 struct interest_entry {
-    /* The interest hash table is keyed by the Component elements of the Name */
-    int ncomp;           /* Number of name components */
+    int ncomp;                   /* Number of name components */
     struct ccn_indexbuf *interested_faceid;
     struct ccn_indexbuf *counters;
-    uint_least64_t accession; /* possible data match */
+    uint_least64_t accession;   /* possible data match */
+    uint_least64_t oldest;
+    uint_least64_t newest;
 };
 
+/*
+ *  The content hash table is keyed by the initial portion of the ContentObject
+ *  that contains all the parts of the complete name, so that the original
+ *  ContentObject may be reconstructed simply by gluing this together with the rest.
+ */
 struct content_entry {
-    /* The content hash table is keyed by the Component elements of the Name */
     uint_least64_t accession;   /* keep track of arrival order */
     unsigned short *comps;      /* Name Component byte boundary offsets */
     int ncomps;                 /* Number of name components plus one*/
@@ -472,7 +473,6 @@ content_sender(struct ccn_schedule *sched,
     return(0);
 }
 
-
 /*
  * Returns index at which the element was found or added,
  * or -1 in case of error.
@@ -493,7 +493,7 @@ indexbuf_unordered_set_insert(struct ccn_indexbuf *x, size_t val)
 
 /*
  * match_interests: Find and consume interests that match given content
- * Adds to content->faces set the faceids that should receive copies,
+ * Adds to content->faces the faceids that should receive copies,
  * and schedules content_sender if needed.
  */
 static void
@@ -578,6 +578,7 @@ check_dgram_faces(struct ccnd *h)
     hashtb_end(e);
     return(count);
 }
+
 /*
  * This checks for expired propagating interests.
  * Returns number that have gone away.
@@ -727,7 +728,6 @@ propagate_interest(struct ccnd *h, struct face *face,
     size_t msg_out_size = msg_size;
     if (pi->nonce_size == 0) {
         /* This interest has no nonce; add one before going on */
-        struct ccn_parsed_interest check;
         int noncebytes = 6;
         size_t nonce_start = 0;
         int i;
@@ -748,10 +748,6 @@ propagate_interest(struct ccnd *h, struct face *face,
         pkey = cb->buf + nonce_start;
         msg_out = cb->buf;
         msg_out_size = cb->length;
-        while (0 > (i=ccn_parse_interest(msg_out, msg_out_size, &check, NULL))) {
-            perror("FIX ME");
-            sleep(5);
-        }
     }
     else {
         pkey = msg + pi->nonce_start;
