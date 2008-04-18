@@ -21,6 +21,19 @@ struct ccn_decoder_stack_item {
     struct ccn_decoder_stack_item *link;
 };
 
+struct ccn_decoder;
+enum callback_kind {
+    CALLBACK_INITIAL,
+    CALLBACK_OBJECTEND,
+    CALLBACK_FINAL
+};
+
+typedef void (*ccn_decoder_callback)(
+    struct ccn_decoder *d,
+    enum callback_kind kind,
+    void *data
+);
+
 struct ccn_decoder {
     int state;
     int tagstate;
@@ -33,6 +46,8 @@ struct ccn_decoder {
     struct ccn_charbuf *stringstack;
     const struct ccn_dict_entry *tagdict;
     int tagdict_count;
+    ccn_decoder_callback callback;
+    void *callbackdata;
 };
 
 struct ccn_decoder *
@@ -49,6 +64,17 @@ ccn_decoder_create(void)
     d->tagdict = ccn_dtag_dict.dict;
     d->tagdict_count = ccn_dtag_dict.count;
     return(d);
+}
+
+void
+ccn_decoder_set_callback(struct ccn_decoder *d, ccn_decoder_callback c, void *data) {
+    d->callback = c;
+    if (c == NULL) {
+        d->callbackdata = NULL;
+    } else {
+        d->callbackdata = data;
+        c(d, CALLBACK_INITIAL, data);
+    }
 }
 
 struct ccn_decoder_stack_item *
@@ -84,6 +110,9 @@ ccn_decoder_destroy(struct ccn_decoder **dp)
 {
     struct ccn_decoder *d = *dp;
     if (d != NULL) {
+        if (d->callback != NULL) {
+            d->callback(d, CALLBACK_FINAL, d->callbackdata);
+        }
         while (d->stack != NULL) {
             ccn_decoder_pop(d);
         }
@@ -146,6 +175,9 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                         printf("</%s>", d->stringstack->buf + s->nameindex);
                     }
                     ccn_decoder_pop(d);
+                    if (d->stack == NULL && d->callback != NULL) {
+                        d->callback(d, CALLBACK_OBJECTEND, d->callbackdata);
+                    }
                     break;
                 }
                 numval = 0;
@@ -226,7 +258,7 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                                 printf(" ccnbencoding=\"base64Binary\">");
                             }
                             else
-                                fprintf(stdout, "blob not tagged in xml output\n");
+                                fprintf(stderr, "blob not tagged in xml output\n");
                             state = (numval == 0) ? 0 : 10;
                             break;
                         case CCN_UDATA:
@@ -426,9 +458,8 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
 }
 
 static int
-process_test(unsigned char *data, size_t n)
+process_test(struct ccn_decoder *d, unsigned char *data, size_t n)
 {
-    struct ccn_decoder *d = ccn_decoder_create();
     int res = 0;
     size_t s;
     printf("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n");
@@ -439,12 +470,11 @@ process_test(unsigned char *data, size_t n)
         fprintf(stderr, "error state %d after %d of %d chars\n",
             (int)d->state, (int)s, (int)n);
     }
-    ccn_decoder_destroy(&d);
     return(res);
 }
 
 static int
-process_fd(int fd)
+process_fd(struct ccn_decoder *d, int fd)
 {
     struct ccn_charbuf *c = ccn_charbuf_create();
     ssize_t len;
@@ -467,7 +497,7 @@ process_fd(int fd)
         c->length += len;
     }
     fprintf(stderr, " <!-- input is %6lu bytes -->\n", (unsigned long)c->length);
-    res |= process_test(c->buf, c->length);
+    res |= process_test(d, c->buf, c->length);
     ccn_charbuf_destroy(&c);
     return(res);
 }
@@ -478,6 +508,56 @@ process_file(char *path)
 {
     int fd = 0;
     int res = 0;
+    struct ccn_decoder *d;
+
+    if (0 != strcmp(path, "-")) {
+        fd = open(path, O_RDONLY);
+        if (-1 == fd) {
+            perror(path);
+            return(1);
+        }
+    }
+
+    d = ccn_decoder_create();
+    res = process_fd(d, fd);
+    ccn_decoder_destroy(&d);
+
+    if (fd > 0)
+        close(fd);
+    return(res);
+}
+
+static struct callback_state {
+    int fragment;
+    char *fileprefix;
+} cs;
+
+static void
+set_stdout(struct ccn_decoder *d, enum callback_kind kind, void *data)
+{
+    struct callback_state *cs = (struct callback_state *)data;
+    char filename[256];
+    switch (kind) {
+    case CALLBACK_INITIAL:
+    case CALLBACK_OBJECTEND:
+        snprintf(filename, sizeof(filename), "%s%05d.xml", cs->fileprefix, cs->fragment++);
+        fprintf(stderr, " <!-- attaching stdout to %s --!>\n", filename);
+        freopen(filename, "w+", stdout);
+        break;
+    case CALLBACK_FINAL:
+        fflush(stdout);
+        fclose(stdout);
+        break;
+    }
+}
+
+static int
+process_split_file(char *base, char *path)
+{
+    int fd = 0;
+    int res = 0;
+    struct ccn_decoder *d;
+
     if (0 != strcmp(path, "-")) {
         fd = open(path, O_RDONLY);
         if (-1 == fd) {
@@ -486,8 +566,13 @@ process_file(char *path)
         }
     }
     
-    res = process_fd(fd);
-    
+    cs.fileprefix = base;
+    cs.fragment = 0;
+    d = ccn_decoder_create();
+    ccn_decoder_set_callback(d, set_stdout, &cs);
+    res = process_fd(d, fd);
+    ccn_decoder_destroy(&d);
+
     if (fd > 0)
         close(fd);
     return(res);
@@ -526,10 +611,21 @@ main(int argc, char **argv)
 {
     int i;
     int res = 0;
+    struct ccn_decoder *d;
     for (i = 1; argv[i] != 0; i++) {
         fprintf(stderr, "<!-- Processing %s -->\n", argv[i]);
         if (0 == strcmp(argv[i], "-test1")) {
-            res |= process_test(test1, sizeof(test1));
+            d = ccn_decoder_create();
+            res |= process_test(d, test1, sizeof(test1));
+            ccn_decoder_destroy(&d);
+        } else if (0 == strcmp(argv[i], "-split")) {
+            if (argv[i + 1] == NULL || argv[i + 2] == NULL) {
+                res = 1;
+                break;
+            }
+            fprintf(stderr, "<!-- Processing %s into %s -->\n", argv[i + 2], argv[i + 1]);
+            res |= process_split_file(argv[i+1], argv[i+2]);
+            i += 2;
         }
         else
             res |= process_file(argv[i]);
