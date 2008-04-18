@@ -571,12 +571,11 @@ check_dgram_faces(struct ccnd *h)
             if (face->recvcount == 0) {
                 count += 1;
                 hashtb_delete(e);
+                continue;
             }
-            else {
-                face->recvcount = (face->recvcount > 1); /* go around twice */
-                hashtb_next(e);
-            }
+            face->recvcount = (face->recvcount > 1); /* go around twice */
         }
+        hashtb_next(e);
     }
     hashtb_end(e);
     return(count);
@@ -599,12 +598,11 @@ check_propagating(struct ccnd *h)
             if (pi->size == 0) {
                 count += 1;
                 hashtb_delete(e);
+                continue;
             }
-            else {
-                pi->size = (pi->size > 1); /* go around twice */
-                hashtb_next(e);
-            }
+            pi->size = (pi->size > 1); /* go around twice */
         }
+        hashtb_next(e);
     }
     hashtb_end(e);
     return(count);
