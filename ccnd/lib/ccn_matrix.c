@@ -2,7 +2,9 @@
 
 #include <stddef.h>
 #include <stdlib.h>
+#include <string.h>
 #include <ccn/matrix.h>
+#include <ccn/hashtb.h>
 
 struct ccn_matrix {
     struct hashtb_enumerator e;
@@ -32,7 +34,7 @@ ccn_matrix_destroy(struct ccn_matrix **mp)
     struct ccn_matrix *m = *mp;
     if (m != NULL) {
         struct hashtb *ht = m->e.ht;
-        hashtb_end(m->e);
+        hashtb_end(&m->e);
         hashtb_destroy(&ht);
         free(m);
         *mp = NULL;
@@ -43,9 +45,12 @@ ccn_matrix_destroy(struct ccn_matrix **mp)
 intptr_t
 ccn_matrix_fetch(struct ccn_matrix *m, uint_least64_t row, unsigned col)
 {
-    struct ccn_matrix_key key = { row, col };
     intptr_t *valp;
-    valp = hashtb_lookup(&m->e, &key);
+    struct ccn_matrix_key key;
+    memset(&key, 0, sizeof(key)); /* make sure any padding is cleared */
+    key.row = row;
+    key.col = col;
+    valp = hashtb_lookup(m->e.ht, &key, sizeof(key));
     return(valp == NULL ? 0 : *valp);
 }
 
@@ -53,9 +58,12 @@ void
 ccn_matrix_store(struct ccn_matrix *m, uint_least64_t row, unsigned col,
                  intptr_t value)
 {
-    struct ccn_matrix_key key = { row, col };
     intptr_t *valp;
-    if (hashtb_seek(&m->e, &key) == -1) return;
+    struct ccn_matrix_key key;
+    memset(&key, 0, sizeof(key));
+    key.row = row;
+    key.col = col;
+    if (hashtb_seek(&(m->e), &key, sizeof(key)) == -1) return;
     valp = m->e.data;
     *valp = value;
 }
@@ -69,29 +77,30 @@ ccn_matrix_store(struct ccn_matrix *m, uint_least64_t row, unsigned col,
 int
 ccn_matrix_getbounds(struct ccn_matrix *m, struct ccn_matrix_bounds *result)
 {
-    struct hashtb_enumerator *e = &m->e;
-    struct hashtb ht = e->ht;
+    struct hashtb_enumerator *e = &(m->e);
+    struct hashtb *ht = e->ht;
     intptr_t *valp;
     const struct ccn_matrix_key *key;
-    hashtab_end(e);
-    result->row_min = ~(uint_least64_t)0;
-    result->row_max = 0;
-    result->col_min = ~(unsigned)0;
-    result->col_max = 0;
-    for (hashtab_start(ht, e); e->data != NULL; hashtab_next(e)) {
+    int first = 1;
+    hashtb_end(e);
+    memset(result, 0, sizeof(*result));
+    hashtb_start(ht, e);
+    while (e->data != NULL) {
         valp = e->data;
-        if (valp == 0)
-            hashtab_delete(e);
+        if (*valp == 0)
+            hashtb_delete(e);
         else {
             key = e->key;
-            if (key->row > result->row_max)
+            if (first || key->row >= result->row_max)
                 result->row_max = key->row + 1;
-            else if (key->row < result->row_min)
+            if (first || key->row < result->row_min)
                 result->row_min = key->row;
-            if (key->col > result->col_max)
+            if (first || key->col >= result->col_max)
                 result->col_max = key->col + 1;
-            else if (key->col < result->col_min)
+            if (first || key->col < result->col_min)
                 result->col_min = key->col;
+            first = 0;
+            hashtb_next(e);
         }
     }
     return(hashtb_n(ht));

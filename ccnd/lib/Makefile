@@ -6,15 +6,15 @@ COPT = -g -Wall
 #Solaris# make MORE_LDLIBS='-lsocket -lnsl'
 
 PROGRAMS = ccn_ccnbtoxml ccn_xmltoccnb \
-    hashtbtest skel_decode_test smoketestclientlib dataresponsetest
+    hashtbtest matrixtest skel_decode_test smoketestclientlib dataresponsetest
 DEBRIS = ccn_coding ccn_recursive_parse
 CSRC = ccn_buf_decoder.c ccn_charbuf.c ccn_indexbuf.c ccn_coding.c ccn_client.c  \
     ccn_ccnbtoxml.c ccn_xmltoccnb.c ccn_schedule.c ccn_matrix.c \
     skel_decode_test.c \
-    hashtb.c hashtbtest.c \
+    hashtb.c hashtbtest.c matrixtest.c \
     smoketestclientlib.c
 
-LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_schedule.o ccn_matrix.c \
+LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_schedule.o ccn_matrix.o \
     ccn_buf_decoder.o hashtb.o
 
 default all: lib $(PROGRAMS)
@@ -34,6 +34,9 @@ ccn_xmltoccnb: ccn_xmltoccnb.o
 
 hashtbtest: hashtbtest.o
 	$(CC) $(CFLAGS) -o $@ hashtbtest.o $(LDLIBS)
+
+matrixtest: matrixtest.o
+	$(CC) $(CFLAGS) -o $@ matrixtest.o $(LDLIBS)
 
 skel_decode_test: skel_decode_test.o
 	$(CC) $(CFLAGS) -o $@ skel_decode_test.o $(LDLIBS)
@@ -70,11 +73,13 @@ ccn_ccnbtoxml.o: ccn_ccnbtoxml.c ../include/ccn/charbuf.h \
 ccn_xmltoccnb.o: ccn_xmltoccnb.c ../include/ccn/coding.h \
   ../include/ccn/charbuf.h
 ccn_schedule.o: ccn_schedule.c ../include/ccn/schedule.h
-ccn_matrix.o: ccn_matrix.c ../include/ccn/matrix.h
+ccn_matrix.o: ccn_matrix.c ../include/ccn/matrix.h \
+  ../include/ccn/hashtb.h
 skel_decode_test.o: skel_decode_test.c ../include/ccn/charbuf.h \
   ../include/ccn/coding.h
 hashtb.o: hashtb.c ../include/ccn/hashtb.h
 hashtbtest.o: hashtbtest.c ../include/ccn/hashtb.h
+matrixtest.o: matrixtest.c ../include/ccn/matrix.h
 smoketestclientlib.o: smoketestclientlib.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h

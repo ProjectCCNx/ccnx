@@ -9,3 +9,10 @@ cleanall:
         done
 	find . -type l -exec rm '{}' ';'
 
+MANIFEST:
+	svn list -R | grep -v '/$$' > MANIFEST
+
+tar:	ccnd.tar
+ccnd.tar: MANIFEST
+	tar cf ccnd.tar -T MANIFEST
+	rm MANIFEST

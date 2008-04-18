@@ -564,15 +564,18 @@ check_dgram_faces(struct ccnd *h)
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     int count = 0;
-    for (hashtb_start(h->dgram_faces, e); e->data != NULL; hashtb_next(e)) {
+    hashtb_start(h->dgram_faces, e);
+    while (e->data != NULL) {
         struct face *face = e->data;
         if ((face->flags & CCN_FACE_DGRAM) != 0 && face->addr != NULL) {
             if (face->recvcount == 0) {
                 count += 1;
                 hashtb_delete(e);
             }
-            else
+            else {
                 face->recvcount = (face->recvcount > 1); /* go around twice */
+                hashtb_next(e);
+            }
         }
     }
     hashtb_end(e);
@@ -589,15 +592,18 @@ check_propagating(struct ccnd *h)
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     int count = 0;
-    for (hashtb_start(h->propagating_tab, e); e->data != NULL; hashtb_next(e)) {
+    hashtb_start(h->propagating_tab, e);
+    while (e->data != NULL) {
         struct propagating_entry *pi = e->data;
         if (pi->interest_msg == NULL) {
             if (pi->size == 0) {
                 count += 1;
                 hashtb_delete(e);
             }
-            else
+            else {
                 pi->size = (pi->size > 1); /* go around twice */
+                hashtb_next(e);
+            }
         }
     }
     hashtb_end(e);
@@ -761,6 +767,7 @@ propagate_interest(struct ccnd *h, struct face *face,
         m = calloc(1, msg_out_size);
         if (m == NULL) {
             res = -1;
+            pe = NULL;
             hashtb_delete(e);
         }
         else {
