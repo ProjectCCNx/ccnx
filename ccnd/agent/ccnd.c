@@ -33,7 +33,15 @@ struct face;
 struct content_entry;
 struct interest_entry;
 
-#define MAXFACES 0xFFFFF
+/*
+ * Each face is referenced by a number, the faceid.  The low-order
+ * bits (under the MAXFACES) constitute a slot number that is
+ * unique (for this ccnd) among the faces that are alive at a given time.
+ * The rest of the bits form a generation number that make the
+ * entire faceid unique over time, even for faces that are defunct.
+ */
+#define FACESLOTBITS 18
+#define MAXFACES ((1U << FACESLOTBITS) - 1)
 
 /*
  * We pass this handle almost everywhere.
@@ -42,7 +50,7 @@ struct ccnd {
     struct hashtb *faces_by_fd; /* keyed by fd */
     struct hashtb *dgram_faces; /* keyed by sockaddr */
     struct hashtb *content_tab; /* keyed by initial fragment of ContentObject */
-    struct hashtb *content_by_accession_tab; /* keyed by accession */
+    //struct hashtb *content_by_accession_tab; /* keyed by accession */
     struct hashtb *interest_tab; /* keyed by name components */
     struct hashtb *propagating_tab; /* keyed by nonce */
     unsigned face_gen;
@@ -90,17 +98,23 @@ struct face {
 struct interest_entry {
     /* The interest hash table is keyed by the Component elements of the Name */
     int ncomp;           /* Number of name components */
+    struct ccn_indexbuf *interested_faceid;
+    struct ccn_indexbuf *counters;
+    uint_least64_t accession; /* possible data match */
 };
 
 struct content_entry {
     /* The content hash table is keyed by the Component elements of the Name */
     uint_least64_t accession;   /* keep track of arrival order */
     unsigned short *comps;      /* Name Component byte boundary offsets */
-    int ncomps;                 /* Number of name components plus one*/    
+    int ncomps;                 /* Number of name components plus one*/
     const unsigned char *key;	/* ContentObject fragment prior to Content */
     int key_size;
     unsigned char *tail;        /* ContentObject fragment starting at Content */
     int tail_size;
+    int nface_done;             /* How many faces have seen the content */
+    struct ccn_indexbuf *faces; /* These faceids have or want the content */
+    struct ccn_scheduled_event *sender;
 };
 
 /*
@@ -203,6 +217,18 @@ indexbuf_release(struct ccnd *h, struct ccn_indexbuf *c)
         ccn_indexbuf_destroy(&c);
 }
 
+static struct face *
+face_from_faceid(struct ccnd *h, unsigned faceid) {
+    unsigned slot = faceid & MAXFACES;
+    struct face *face = NULL;
+    if (slot < h->face_limit) {
+        face = h->faces_by_faceid[slot];
+        if (face != NULL && face->faceid != faceid)
+            face = NULL;
+    }
+    return(face);
+}
+
 static int
 enroll_face(struct ccnd *h, struct face *face) {
     unsigned i;
@@ -249,6 +275,19 @@ finalize_face(struct hashtb_enumerator *e)
         fprintf(stderr, "orphaned face %u\n", face->faceid);
 }
 
+static struct content_entry *
+content_from_accession(struct ccnd *h, uint_least64_t accession)
+{
+    struct content_entry *ans = NULL;
+    if (accession >= h->accession_base &&
+        accession < h->accession_base + h->content_by_accession_window) {
+        ans = h->content_by_accession[accession - h->accession_base];
+        if (ans != NULL && ans->accession != accession)
+            ans = NULL;
+    }
+    return(ans);
+}
+
 static void
 enroll_content(struct ccnd *h, struct content_entry *content)
 {
@@ -281,6 +320,10 @@ finalize_content(struct hashtb_enumerator *e)
     struct content_entry *entry = e->data;
     unsigned i = entry->accession - h->accession_base;
     if (i < h->content_by_accession_window && h->content_by_accession[i] == entry) {
+        if (entry->sender != NULL) {
+            ccn_schedule_cancel(h->sched, entry->sender);
+            entry->sender = NULL;
+        }
         h->content_by_accession[i] = NULL;
         if (entry->comps != NULL) {
             free(entry->comps);
@@ -290,9 +333,18 @@ finalize_content(struct hashtb_enumerator *e)
             free(entry->tail);
             entry->tail = NULL;
         }
+        ccn_indexbuf_destroy(&entry->faces);
     }
     else
         fprintf(stderr, "orphaned content %u\n", i);
+}
+
+static void
+finalize_interest(struct hashtb_enumerator *e)
+{
+    struct interest_entry *entry = e->data;
+    ccn_indexbuf_destroy(&entry->interested_faceid);
+    ccn_indexbuf_destroy(&entry->counters);
 }
 
 static int
@@ -369,6 +421,111 @@ shutdown_client_fd(struct ccnd *h, int fd)
     ccn_charbuf_destroy(&face->outbuf);
     hashtb_delete(e);
     hashtb_end(e);
+}
+
+static void
+send_content(struct ccnd *h, struct face *face, struct content_entry *content) {
+    struct ccn_charbuf *c = charbuf_obtain(h);
+    if ((face->flags & CCN_FACE_LINK) != 0)
+        ccn_charbuf_append_tt(c, CCN_DTAG_CCNProtocolDataUnit, CCN_DTAG);
+    ccn_charbuf_append(c, content->key, content->key_size);
+    ccn_charbuf_append(c, content->tail, content->tail_size);
+    /* stuff interest here */
+    if ((face->flags & CCN_FACE_LINK) != 0)
+        ccn_charbuf_append_closer(c);
+    do_write(h, face, c->buf, c->length);
+    charbuf_release(h, c);
+}
+
+#define CCN_DATA_INITIAL_PAUSE 2000
+#define CCN_DATA_PAUSE 1000
+static int
+content_sender(struct ccn_schedule *sched,
+    void *clienth,
+    struct ccn_scheduled_event *ev,
+    int flags)
+{
+    struct ccnd *h = clienth;
+    struct content_entry *content = ev->evdata;
+    if (content == NULL ||
+        content != content_from_accession(h, content->accession)) {
+        fprintf(stderr, "ccn.c:%d bogon\n", __LINE__);
+        return(0);
+    }
+    if ((flags & CCN_SCHEDULE_CANCEL) != 0) {
+        content->sender = NULL;
+        return(0);
+    }
+    while (content->nface_done < content->faces->n) {
+        unsigned faceid = content->faces->buf[content->nface_done++];
+        struct face *face = face_from_faceid(h, faceid);
+        if (face != NULL) {
+            send_content(h, face, content);
+            if (content->nface_done < content->faces->n)
+                return(CCN_DATA_PAUSE);
+        }
+    }
+    content->sender = NULL;
+    return(0);
+}
+
+
+/*
+ * Returns index at which the element was found or added,
+ * or -1 in case of error.
+ */
+static int
+indexbuf_unordered_set_insert(struct ccn_indexbuf *x, size_t val)
+{
+    int i;
+    if (x == NULL)
+        return (-1);
+    for (i = 0; i < x->n; i++)
+        if (x->buf[i] == val)
+            return(i);
+    if (ccn_indexbuf_append_element(x, val) < 0)
+        return(-1);
+    return(i);
+}
+
+/*
+ * match_interests: Find and consume interests that match given content
+ * Adds to content->faces set the faceids that should receive copies,
+ * and schedules content_sender if needed.
+ */
+static void
+match_interests(struct ccnd *h, struct content_entry *content) {
+    int i;
+    int ci;
+    unsigned faceid;
+    struct face *face = NULL;
+    unsigned c0 = content->comps[0];
+    const unsigned char *key = content->key + c0;
+    for (ci = content->ncomps - 1; ci >= 0; ci--) {
+        int size = content->comps[ci] - c0;
+        struct interest_entry *interest = hashtb_lookup(h->interest_tab, key, size);
+        if (interest != NULL && interest->counters != NULL) {
+            struct content_entry *other;
+            other = content_from_accession(h, interest->accession);
+            if (other == NULL || other->nface_done > content->nface_done)
+                interest->accession = content->accession;
+            for (i = 0; i < interest->counters->n; i++) {
+                if (interest->counters->buf[i] > 0) {
+                    faceid = interest->interested_faceid->buf[i];
+                    face = face_from_faceid(h, faceid);
+                    if (face != NULL) {
+                        indexbuf_unordered_set_insert(content->faces, faceid);
+                        interest->counters->buf[i] -= 1;
+                    }
+                    else
+                        interest->counters->buf[i] = 0;
+                }
+            }
+        }
+    }
+    if (content->faces->n > content->nface_done && content->sender == NULL)
+        content->sender = ccn_schedule_event(h->sched, CCN_DATA_INITIAL_PAUSE,
+                                             content_sender, content, 0);
 }
 
 /*
@@ -460,6 +617,7 @@ reap(
     return(0);
 }
 
+#if 0
 static void
 process_input_message_BFI(struct ccnd *h, struct face *face,
                 unsigned char *msg, size_t size)
@@ -482,6 +640,7 @@ process_input_message_BFI(struct ccnd *h, struct face *face,
     }
     hashtb_end(e);
 }
+#endif
 
 /*
  * This is where a forwarding table would be plugged in.
@@ -549,7 +708,6 @@ do_propagate(
 
 static int
 propagate_interest(struct ccnd *h, struct face *face,
-                      struct interest_entry *entry,
                       unsigned char *msg, size_t msg_size,
                       struct ccn_parsed_interest *pi)
 {
@@ -651,10 +809,23 @@ process_incoming_interest(struct ccnd *h, struct face *face,
         entry = e->data;
         if (res == HT_NEW_ENTRY) {
             entry->ncomp = comps->n - 1;
+            entry->interested_faceid = ccn_indexbuf_create();
+            entry->counters = ccn_indexbuf_create();
             fprintf(stderr, "New interest\n");
         }
+        if (entry != NULL) {
+            struct content_entry *content;
+            res = indexbuf_unordered_set_insert(entry->interested_faceid, face->faceid);
+            while (entry->counters->n <= res)
+                if (0 > ccn_indexbuf_append_element(entry->counters, 0)) break;
+            if (0 <= res && res < entry->counters->n)
+                entry->counters->buf[res] += 1;
+            content = content_from_accession(h, entry->accession);
+            if (content != NULL)
+                match_interests(h, content);
+        }
         hashtb_end(e);
-        propagate_interest(h, face, entry, msg, size, &interest);
+        propagate_interest(h, face, msg, size, &interest);
     }
     indexbuf_release(h, comps);
 }
@@ -698,11 +869,21 @@ process_incoming_content(struct ccnd *h, struct face *face,
                 hashtb_delete(e); /* XXX - Mercilessly throw away both of them. */
                 res = -__LINE__;
             }
-            else
+            else {
                 fprintf(stderr, "received duplicate ContentObject\n");
+                /* Make note that this face knows about this content */
+                i = indexbuf_unordered_set_insert(content->faces, face->faceid);
+                if (i >= content->nface_done) {
+                    content->faces->buf[i] = content->faces->buf[content->nface_done];
+                    content->faces->buf[content->nface_done++] = face->faceid;
+                }
+            }
         }
         else if (res == HT_NEW_ENTRY) {
             content->accession = ++(h->accession);
+            content->faces = ccn_indexbuf_create();
+            ccn_indexbuf_append_element(content->faces, face->faceid);
+            content->nface_done = 1;
             enroll_content(h, content);
             content->ncomps = comps->n;
             content->comps = calloc(comps->n, sizeof(comps[0]));
@@ -710,7 +891,7 @@ process_incoming_content(struct ccnd *h, struct face *face,
             content->tail = calloc(1, tailsize);
             content->key_size = e->keysize;
             content->key = e->key;
-            if (content->tail != NULL && content->comps != NULL) {
+            if (content->tail != NULL && content->comps != NULL && content->faces != NULL) {
                 memcpy(content->tail, tail, tailsize);
                 for (i = 0; i < comps->n; i++)
                     content->comps[i] = comps->buf[i];
@@ -719,14 +900,14 @@ process_incoming_content(struct ccnd *h, struct face *face,
                 perror("process_incoming_content");
                 hashtb_delete(e);
                 res = -__LINE__;
+                content = NULL;
             }
         }
         hashtb_end(e);
     }
     indexbuf_release(h, comps);
-    if (res == HT_NEW_ENTRY) {
-        process_input_message_BFI(h, face, msg, size);
-    }
+    if (res >= 0 && content != NULL && content->faces != NULL)
+        match_interests(h, content);
 }
 
 static void
@@ -1012,7 +1193,8 @@ ccnd_create(void)
     h->dgram_faces = hashtb_create(sizeof(struct face), &param);
     param.finalize = &finalize_content;
     h->content_tab = hashtb_create(sizeof(struct content_entry), &param);
-    h->interest_tab = hashtb_create(sizeof(struct interest_entry), NULL);
+    param.finalize = &finalize_interest;
+    h->interest_tab = hashtb_create(sizeof(struct interest_entry), &param);
     h->propagating_tab = hashtb_create(sizeof(struct propagating_entry), NULL);
     h->sched = ccn_schedule_create(h);
     fd = create_local_listener(sockname, 42);
