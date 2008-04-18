@@ -171,7 +171,7 @@ public class BinaryXMLCodec  {
 	public static int numbits(long x) {
 		if (0 == x)
 			return 0;
-		return (LONG_BITS - Long.numberOfLeadingZeros(x - 1)); 
+		return (LONG_BITS - Long.numberOfLeadingZeros(x)); 
 	}
 	
 	public static int numEncodingBytes(long x) {
