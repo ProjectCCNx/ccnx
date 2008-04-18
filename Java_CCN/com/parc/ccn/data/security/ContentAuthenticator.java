@@ -25,7 +25,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     protected static final String NAME_COMPONENT_COUNT_ELEMENT = "NameComponentCount";
     protected static final String TIMESTAMP_ELEMENT = "Timestamp";
     protected static final String CONTENT_TYPE_ELEMENT = "Type";
-    protected static final String CONTENT_DIGEST_ELEMENT = "ContentHash";
+    protected static final String CONTENT_DIGEST_ELEMENT = "ContentDigest";
     
     static {
         ContentTypeNames.put(ContentType.FRAGMENT, "FRAGMENT");
