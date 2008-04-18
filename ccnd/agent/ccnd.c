@@ -236,12 +236,15 @@ enroll_face(struct ccnd *h, struct face *face) {
     struct face **a = h->faces_by_faceid;
     for (i = h->face_rover; i < n; i++)
         if (a[i] == NULL) goto use_i;
-    h->face_gen += MAXFACES + 1;
     for (i = 0; i < n; i++)
-        if (a[i] == NULL) goto use_i;
-    i = (h->face_limit + 1) * 3 / 2;
+        if (a[i] == NULL) {
+            /* bump gen only if second pass succeeds */
+            h->face_gen += MAXFACES + 1;
+            goto use_i;
+        }
+    i = (n + 1) * 3 / 2;
     if (i > MAXFACES) i = MAXFACES;
-    if (i <= h->face_limit)
+    if (i <= n)
         return(-1); /* overflow */
     a = realloc(a, i * sizeof(struct face *));
     if (a == NULL)
@@ -496,6 +499,7 @@ indexbuf_unordered_set_insert(struct ccn_indexbuf *x, size_t val)
 static void
 match_interests(struct ccnd *h, struct content_entry *content) {
     int i;
+    int k;
     int ci;
     unsigned faceid;
     struct face *face = NULL;
@@ -514,8 +518,9 @@ match_interests(struct ccnd *h, struct content_entry *content) {
                     faceid = interest->interested_faceid->buf[i];
                     face = face_from_faceid(h, faceid);
                     if (face != NULL) {
-                        indexbuf_unordered_set_insert(content->faces, faceid);
-                        interest->counters->buf[i] -= 1;
+                        k = indexbuf_unordered_set_insert(content->faces, faceid);
+                        if (k >= content->nface_done)
+                            interest->counters->buf[i] -= 1;
                     }
                     else
                         interest->counters->buf[i] = 0;
