@@ -303,7 +303,16 @@ ccn_parse_ContentAuthenticator(struct ccn_buf_decoder *d,
                 (void)ccn_parse_KeyName(d, &keyname);
             ccn_buf_check_close(d);
         }
-        x->ContentDigest = ccn_parse_required_tagged_BLOB(d, CCN_DTAG_ContentDigest);
+        /* XXX: disagreement over whether it's a ContentHash or a ContentDigest
+         * Resolve that, and change this to a required tagged BLOB of the right type
+         */
+        if (ccn_buf_match_dtag(d, CCN_DTAG_ContentHash)) {
+            x->ContentDigest = ccn_parse_required_tagged_BLOB(d, CCN_DTAG_ContentHash);
+        } else if (ccn_buf_match_dtag(d, CCN_DTAG_ContentDigest)) {
+            x->ContentDigest = ccn_parse_required_tagged_BLOB(d, CCN_DTAG_ContentDigest);
+        } else {
+            d->decoder.state = -__LINE__;
+        }
         ccn_buf_check_close(d);
     }
     else
