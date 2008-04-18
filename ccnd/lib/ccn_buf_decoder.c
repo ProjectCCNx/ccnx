@@ -244,7 +244,23 @@ ccn_parse_KeyName(struct ccn_buf_decoder *d, struct parsed_KeyName *x)
         res = d->decoder.element_index;
         ccn_buf_advance(d);
         x->Name = ccn_parse_Name(d, &name, NULL);
-        x->PublisherID = ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_PublisherID);
+        if (ccn_buf_match_dtag(d, CCN_DTAG_PublisherID)) {
+            x->PublisherID = d->decoder.element_index;
+            ccn_buf_advance(d);
+            if (!ccn_buf_match_attr(d, "type"))
+                return (-__LINE__);
+            ccn_buf_advance(d);
+            if (!(ccn_buf_match_udata(d, "KEY") ||
+                  ccn_buf_match_udata(d, "CERTIFICATE") ||
+                  ccn_buf_match_udata(d, "ISSUER_KEY") ||
+                  ccn_buf_match_udata(d, "ISSUER_CERTIFICATE")))
+                return (-__LINE__);
+            ccn_buf_advance(d);
+            if (!ccn_buf_match_blob(d, NULL, NULL))
+                return (-__LINE__);
+            ccn_buf_advance(d);
+            ccn_buf_check_close(d);
+        }
         ccn_buf_check_close(d);
     }
     else

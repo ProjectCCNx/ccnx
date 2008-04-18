@@ -9,12 +9,12 @@ PROGRAMS = ccn_ccnbtoxml ccn_xmltoccnb \
     hashtbtest skel_decode_test smoketestclientlib dataresponsetest
 DEBRIS = ccn_coding ccn_recursive_parse
 CSRC = ccn_buf_decoder.c ccn_charbuf.c ccn_indexbuf.c ccn_coding.c ccn_client.c  \
-    ccn_ccnbtoxml.c ccn_xmltoccnb.c ccn_schedule.c \
+    ccn_ccnbtoxml.c ccn_xmltoccnb.c ccn_schedule.c ccn_matrix.c \
     skel_decode_test.c \
     hashtb.c hashtbtest.c \
     smoketestclientlib.c
 
-LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_schedule.o \
+LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_schedule.o ccn_matrix.c \
     ccn_buf_decoder.o hashtb.o
 
 default all: lib $(PROGRAMS)
@@ -56,20 +56,25 @@ depend: Makefile $(CSRC)
 # but must be updated manually.
 ###############################
 ccn_buf_decoder.o: ccn_buf_decoder.c ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h
 ccn_charbuf.o: ccn_charbuf.c ../include/ccn/charbuf.h
+ccn_indexbuf.o: ccn_indexbuf.c ../include/ccn/indexbuf.h
 ccn_coding.o: ccn_coding.c ../include/ccn/charbuf.h \
   ../include/ccn/coding.h
 ccn_client.o: ccn_client.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/ccnd.h ../include/ccn/hashtb.h
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
+  ../include/ccn/ccnd.h ../include/ccn/hashtb.h
 ccn_ccnbtoxml.o: ccn_ccnbtoxml.c ../include/ccn/charbuf.h \
   ../include/ccn/coding.h
 ccn_xmltoccnb.o: ccn_xmltoccnb.c ../include/ccn/coding.h \
   ../include/ccn/charbuf.h
 ccn_schedule.o: ccn_schedule.c ../include/ccn/schedule.h
+ccn_matrix.o: ccn_matrix.c ../include/ccn/matrix.h
 skel_decode_test.o: skel_decode_test.c ../include/ccn/charbuf.h \
   ../include/ccn/coding.h
 hashtb.o: hashtb.c ../include/ccn/hashtb.h
 hashtbtest.o: hashtbtest.c ../include/ccn/hashtb.h
 smoketestclientlib.o: smoketestclientlib.c ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h
