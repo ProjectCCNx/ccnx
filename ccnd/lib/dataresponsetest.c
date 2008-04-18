@@ -39,6 +39,8 @@ main (int argc, char *argv[]) {
     char rawbuf[1024 * 1024];
     ssize_t rawlen;
     int i, n, res;
+    int fd = -1;
+    int quiet = 0;
 
     ccn = ccn_create();
     if (ccn_connect(ccn, NULL) == -1) {
@@ -52,10 +54,13 @@ main (int argc, char *argv[]) {
 
     n = 0;
     for (i = 1; i < argc; i++) {
-        int fd = -1;
         if (fd != -1) close(fd);
         filename = argv[i];
-        fprintf(stderr, "Processing %s ", filename);
+        if (0 == strcmp(filename, "-quiet")) {
+            quiet = 1;
+            continue;
+        }
+        if (!quiet) fprintf(stderr, "Processing %s ", filename);
         fd = open(filename, O_RDONLY);
         if (fd == -1) {
             perror("- open");
@@ -71,15 +76,15 @@ main (int argc, char *argv[]) {
             perror("realloc failed");
             exit(1);
         }
-        if (state->d[n].components == NULL) {
-            state->d[n].components = ccn_indexbuf_create();
-        }
+        memset(&(state->d[n]), 0, sizeof(*(state->d)));
+        state->d[n].components = ccn_indexbuf_create();
         res = ccn_parse_ContentObject((unsigned char *)rawbuf, rawlen, &(state->d[n].x), state->d[n].components);
         if (res < 0) {
-            fprintf(stderr, "- skipping: Not a ContentObject\n");
+            fprintf(stderr, "- skipping: Not a ContentObject error %d\n", res);
+            ccn_indexbuf_destroy(&state->d[n].components);
             continue;
         }
-        fprintf(stderr, "- ok\n");
+        if (!quiet) fprintf(stderr, "- ok\n");
         state->d[n].filename = filename;
         state->d[n].contents = malloc(rawlen);
         state->d[n].size = rawlen;
@@ -101,6 +106,7 @@ main (int argc, char *argv[]) {
     }
 
     res = ccn_set_interest_filter(ccn, namebuf, action);
+    res = ccn_express_interest(ccn, namebuf, -1, action);
     res = ccn_run(ccn, -1);
     ccn_disconnect(ccn);
     ccn_destroy(&ccn);
@@ -135,7 +141,7 @@ interest_handler(struct ccn_closure *selfp,
                  struct ccn_indexbuf *components,
                  int matched_components) {
 
-    int i, c, mc;
+    int i, c, mc, res;
     struct handlerstateitem item;
     struct handlerstate *state;
 
@@ -144,12 +150,36 @@ interest_handler(struct ccn_closure *selfp,
     case CCN_UPCALL_FINAL:
         fprintf(stderr, "Upcall final\n");
         return (0);
+
     case CCN_UPCALL_CONTENT:
-        fprintf(stderr, "Upcall content\n");
+        c = state->count;
+        fprintf(stderr, "Storing content item %d ", c);
+        state->d = realloc(state->d, (c + 1) * sizeof(*(state->d)));
+        if (state->d == NULL) {
+            perror("realloc failed");
+            exit(1);
+        }
+        memset(&(state->d[c]), 0, sizeof(*(state->d)));
+        state->d[c].components = ccn_indexbuf_create();
+        /* XXX: probably should not have to do this re-parse of the content object */
+        res = ccn_parse_ContentObject((unsigned char *)ccnb, ccnb_size, &(state->d[c].x), state->d[c].components);
+        if (res < 0) {
+            fprintf(stderr, "- skipping: Not a ContentObject\n");
+            ccn_indexbuf_destroy(&state->d[c].components);
+            return (-1);
+        }
+        fprintf(stderr, "- ok\n");
+        state->d[c].filename = "ephemeral";
+        state->d[c].contents = malloc(ccnb_size);
+        state->d[c].size = ccnb_size;
+        memcpy(state->d[c].contents, ccnb, ccnb_size);
+        state->count = c + 1;
         return (0);
+
     case CCN_UPCALL_CONSUMED_INTEREST:
         fprintf(stderr, "Upcall consumed interest\n");
         return (-1); /* no data */
+
     case CCN_UPCALL_INTEREST:
         c = state->count;
         for (i = 0; i < c; i++) {
