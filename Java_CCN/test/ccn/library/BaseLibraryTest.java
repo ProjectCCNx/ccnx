@@ -5,6 +5,8 @@ import static org.junit.Assert.*;
 
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.Random;
 import java.util.logging.Level;
 
 import org.junit.Before;
@@ -37,12 +39,13 @@ public class BaseLibraryTest {
 	@Test
 	public void testGetPut() throws Throwable {
 		try {
-			Thread putter = new Thread(new PutThread(5));
-			Thread getter = new Thread(new GetThread(5));
+			Thread putter = new Thread(new PutThread(25));
+			Thread getter = new Thread(new GetThread(25));
 			putter.start();
 			Thread.sleep(200);
+			Date start = new Date();
 			getter.start();
-			putter.join(10000);
+			putter.join(5000);
 			boolean good = true;
 			exit = true;
 			if (getter.getState() != Thread.State.TERMINATED) {
@@ -62,7 +65,7 @@ public class BaseLibraryTest {
 			if (!good) {
 				fail();
 			}
-			System.out.println("Get/Put test done");
+			System.out.println("Get/Put test done (" + (new Date().getTime() - start.getTime()) + " ms)");
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 			fail("InterruptedException");
@@ -77,7 +80,9 @@ public class BaseLibraryTest {
 		public void run() {
 			try {
 				System.out.println("Get thread started");
+				Random rand = new Random();
 				for (int i = 0; i < count; i++) {
+					Thread.sleep(rand.nextInt(50));
 					ArrayList<ContentObject> contents = library.get("/BaseLibraryTest/" + new Integer(i).toString());
 					assertEquals(1, contents.size());
 					assertEquals(i, Integer.parseInt(new String(contents.get(0).content())));
@@ -98,9 +103,11 @@ public class BaseLibraryTest {
 		public void run() {
 			try {
 				System.out.println("Put thread started");
+				Random rand = new Random();
 				for (int i = 0; i < count; i++) {
+					Thread.sleep(rand.nextInt(50));
 					library.put("/BaseLibraryTest/" + new Integer(i).toString(), new Integer(i).toString());
-					System.out.println("Put " + i);
+					System.out.println("Put " + i + " done");
 				}
 				System.out.println("Put thread finished");
 			} catch (Throwable ex) {
