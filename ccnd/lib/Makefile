@@ -5,11 +5,11 @@ COPT = -g -Wall
 
 #Solaris# make MORE_LDLIBS='-lsocket -lnsl'
 
-PROGRAMS = ccn_ccnbtoxml ccn_xmltoccnb \
+PROGRAMS = ccn_ccnbtoxml ccn_xmltoccnb ccn_splitccnb \
     hashtbtest matrixtest skel_decode_test smoketestclientlib dataresponsetest
 DEBRIS = ccn_coding ccn_recursive_parse
 CSRC = ccn_buf_decoder.c ccn_charbuf.c ccn_indexbuf.c ccn_coding.c ccn_client.c  \
-    ccn_ccnbtoxml.c ccn_xmltoccnb.c ccn_schedule.c ccn_matrix.c \
+    ccn_ccnbtoxml.c ccn_xmltoccnb.c ccn_splitccnb.c ccn_schedule.c ccn_matrix.c \
     skel_decode_test.c \
     hashtb.c hashtbtest.c matrixtest.c \
     smoketestclientlib.c
@@ -31,6 +31,9 @@ ccn_ccnbtoxml: ccn_ccnbtoxml.o
 
 ccn_xmltoccnb: ccn_xmltoccnb.o
 	$(CC) $(CFLAGS) -o $@ ccn_xmltoccnb.o $(LDLIBS)
+
+ccn_splitccnb: ccn_splitccnb.o
+	$(CC) $(CFLAGS) -o $@ ccn_splitccnb.o $(LDLIBS)
 
 hashtbtest: hashtbtest.o
 	$(CC) $(CFLAGS) -o $@ hashtbtest.o $(LDLIBS)
@@ -72,6 +75,8 @@ ccn_ccnbtoxml.o: ccn_ccnbtoxml.c ../include/ccn/charbuf.h \
   ../include/ccn/coding.h
 ccn_xmltoccnb.o: ccn_xmltoccnb.c ../include/ccn/coding.h \
   ../include/ccn/charbuf.h
+ccn_splitccnb.o: ccn_splitccnb.c ../include/ccn/charbuf.h \
+  ../include/ccn/coding.h
 ccn_schedule.o: ccn_schedule.c ../include/ccn/schedule.h
 ccn_matrix.o: ccn_matrix.c ../include/ccn/matrix.h \
   ../include/ccn/hashtb.h
