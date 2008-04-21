@@ -5,11 +5,13 @@ import static org.junit.Assert.*;
 
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.ArrayList;
+import java.util.logging.Level;
 
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.StandardCCNLibrary;
@@ -23,6 +25,9 @@ public class BaseLibraryTest {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		library = StandardCCNLibrary.getLibrary();
+		
+		// Uncomment the following line for more debug-level tracing
+//		Library.logger().setLevel(Level.FINER);
 	}
 
 	@Before
@@ -37,7 +42,7 @@ public class BaseLibraryTest {
 			putter.start();
 			Thread.sleep(200);
 			getter.start();
-			putter.join(3000);
+			putter.join(10000);
 			boolean good = true;
 			exit = true;
 			if (getter.getState() != Thread.State.TERMINATED) {

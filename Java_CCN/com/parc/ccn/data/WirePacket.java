@@ -33,6 +33,10 @@ public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
 		_contents.add(contents);
 	}
 	
+	public void clear() {
+		_contents.clear();
+	}
+	
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		boolean done = false;
 		_contents = new ArrayList<GenericXMLEncodable>();

@@ -24,7 +24,7 @@ public class Library {
 	public static final String DEFAULT_LOG_DIR = "log";
 	public static final String DEFAULT_LOG_FILE = "ccn_";
 	public static final String DEFAULT_LOG_SUFFIX = ".log";
-	public static final Level DEFAULT_LOG_LEVEL = Level.FINE;
+	public static final Level DEFAULT_LOG_LEVEL = Level.INFO;
 	
 	static Logger _systemLogger = null;
 	
@@ -68,10 +68,12 @@ public class Library {
 		// Could just do a console handler if the file won't open.
 		// Do that eventually, for debugging put in both.
 		// Actually, right now, seem to get a console handler by default.
-		 
+		// This move is anti-social, but a starting point.  We don't want 
+		// any handlers to be more restrictive then the level set for 
+		// our _systemLevel
 		Handler[] handlers = Logger.getLogger( "" ).getHandlers();
 		for ( int index = 0; index < handlers.length; index++ ) {
-			handlers[index].setLevel( DEFAULT_LOG_LEVEL );
+			handlers[index].setLevel( Level.ALL );
 		}
 
 		// We also have to set our logger to log finer-grained

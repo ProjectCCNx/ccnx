@@ -4,6 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -46,6 +47,15 @@ public abstract class GenericXMLEncodable implements XMLEncodable {
  		ByteArrayInputStream bais = new ByteArrayInputStream(content);
  		decode(bais, codec);
  	}
+	
+	public void decode(ByteBuffer buf) throws XMLStreamException {
+		if (!buf.hasArray()) {
+			throw new XMLStreamException("Unusable ByteBuffer: has no array");
+		}
+		byte[] array = buf.array();
+		ByteArrayInputStream bais = new ByteArrayInputStream(array, buf.position(), buf.remaining());
+		decode(bais, null);
+	}
 	
 	public void encode(OutputStream ostream) throws XMLStreamException {
 		encode(ostream, null);
