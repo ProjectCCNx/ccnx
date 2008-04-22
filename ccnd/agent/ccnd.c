@@ -25,6 +25,7 @@
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
 #include <ccn/hashtb.h>
+#include <ccn/matrix.h>
 #include <ccn/schedule.h>
 
 struct ccnd;
@@ -51,11 +52,13 @@ struct ccnd {
     struct hashtb *content_tab;     /* keyed by initial fragment of ContentObject */
     struct hashtb *interest_tab;    /* keyed by name components */
     struct hashtb *propagating_tab; /* keyed by nonce */
+    struct ccn_matrix *backlinks;   /* for linking to earlier content */
     unsigned face_gen;
     unsigned face_rover;            /* for faceid allocation */
     unsigned face_limit;
     struct face **faces_by_faceid;  /* array with face_limit elements */
     struct ccn_scheduled_event *reaper;
+    struct ccn_scheduled_event *age;
     int local_listener_fd;
     nfds_t nfds;
     struct pollfd *fds;
@@ -92,13 +95,14 @@ struct face {
  * The interest hash table is keyed by the Component elements of the Name
  */
 struct interest_entry {
-    int ncomp;                   /* Number of name components */
     struct ccn_indexbuf *interested_faceid;
     struct ccn_indexbuf *counters;
-    uint_least64_t accession;   /* possible data match */
-    uint_least64_t oldest;
     uint_least64_t newest;
+    uint_least64_t cached_accession;
+    unsigned       cached_faceid;
+    int ncomp;                   /* Number of name components */
 };
+#define CCN_UNIT_INTEREST 5
 
 /*
  *  The content hash table is keyed by the initial portion of the ContentObject
@@ -108,7 +112,7 @@ struct interest_entry {
 struct content_entry {
     uint_least64_t accession;   /* keep track of arrival order */
     unsigned short *comps;      /* Name Component byte boundary offsets */
-    int ncomps;                 /* Number of name components plus one*/
+    int ncomps;                 /* Number of name components plus one */
     const unsigned char *key;	/* ContentObject fragment prior to Content */
     int key_size;
     unsigned char *tail;        /* ContentObject fragment starting at Content */
@@ -491,13 +495,15 @@ indexbuf_unordered_set_insert(struct ccn_indexbuf *x, size_t val)
     return(i);
 }
 
+
 /*
  * match_interests: Find and consume interests that match given content
  * Adds to content->faces the faceids that should receive copies,
  * and schedules content_sender if needed.
  */
 static void
-match_interests(struct ccnd *h, struct content_entry *content) {
+match_interests(struct ccnd *h, struct content_entry *content)
+{
     int i;
     int k;
     int ci;
@@ -509,21 +515,28 @@ match_interests(struct ccnd *h, struct content_entry *content) {
         int size = content->comps[ci] - c0;
         struct interest_entry *interest = hashtb_lookup(h->interest_tab, key, size);
         if (interest != NULL && interest->counters != NULL) {
-            struct content_entry *other;
-            other = content_from_accession(h, interest->accession);
-            if (other == NULL || other->nface_done > content->nface_done)
-                interest->accession = content->accession;
+            if (ci > 0 && content->accession > interest->newest) {
+                intptr_t delta = (content->accession - interest->newest);
+                ccn_matrix_store(h->backlinks, content->accession, ci, delta);
+                interest->newest = content->accession;
+            }
             for (i = 0; i < interest->counters->n; i++) {
-                if (interest->counters->buf[i] > 0) {
+                /* Use signed count for this calculation */
+                intptr_t count = interest->counters->buf[i];
+                if (count > 0) {
                     faceid = interest->interested_faceid->buf[i];
                     face = face_from_faceid(h, faceid);
                     if (face != NULL) {
                         k = indexbuf_unordered_set_insert(content->faces, faceid);
-                        if (k >= content->nface_done)
-                            interest->counters->buf[i] -= 1;
+                        if (k >= content->nface_done) {
+                            count -= CCN_UNIT_INTEREST;
+                            if (count < 0)
+                                count = 0;
+                        }
                     }
                     else
-                        interest->counters->buf[i] = 0;
+                        count = 0;
+                    interest->counters->buf[i] = count;
                 }
             }
         }
@@ -531,6 +544,48 @@ match_interests(struct ccnd *h, struct content_entry *content) {
     if (content->faces->n > content->nface_done && content->sender == NULL)
         content->sender = ccn_schedule_event(h->sched, CCN_DATA_INITIAL_PAUSE,
                                              content_sender, content, 0);
+}
+
+/*
+ * age_interests:
+ * This is called several times per interest halflife to age
+ * the interest counters.  Returns the number of still-active counts.
+ */
+#define CCN_INTEREST_AGING_MICROSEC (CCN_INTEREST_HALFLIFE_MICROSEC / 4)
+static int
+age_interests(struct ccnd *h) {
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct interest_entry *interest;
+    int n;
+    int i;
+    int n_active = 0;
+    hashtb_start(h->interest_tab, e);
+    for (interest = e->data; interest != NULL; interest = e->data) {
+        n = interest->counters->n;
+        for (i = 0; i < n; i++) {
+            size_t count = interest->counters->buf[i];
+            if (count > CCN_UNIT_INTEREST) {
+                /* factor of approximately the fourth root of 1/2 */
+                interest->counters->buf[i] = (count * 5 + 3) / 6;
+            }
+            else if (count > 0) {
+                interest->counters->buf[i] -= 1;
+            }
+            else {
+                /* count was 0, remove this counter */
+                interest->interested_faceid->buf[i] = interest->interested_faceid->buf[n-1];
+                interest->counters->buf[i] = interest->counters->buf[n-1];
+                i -= 1;
+                n -= 1;
+                interest->interested_faceid->n = interest->counters->n = n;
+            }
+        }
+        n_active += n;
+        hashtb_next(e);
+    }
+    hashtb_end(e);
+    return(n_active);
 }
 
 /*
@@ -627,6 +682,40 @@ reap(
     return(0);
 }
 
+static void
+reap_needed(struct ccnd *h, int init_delay_usec)
+{
+    if (h->reaper == NULL)
+        h->reaper = ccn_schedule_event(h->sched, init_delay_usec, reap, NULL, 0);
+}
+
+static int
+aging_deamon(
+    struct ccn_schedule *sched,
+    void *clienth,
+    struct ccn_scheduled_event *ev,
+    int flags)
+{
+    struct ccnd *h = clienth;
+    if ((flags & CCN_SCHEDULE_CANCEL) == 0) {
+        int n_active = age_interests(h);
+        if (n_active > 0)
+            return(ev->evint);
+    }
+    /* nothing on the horizon, so go away */
+    h->age = NULL;
+    return(0);
+}
+
+static void
+aging_needed(struct ccnd *h)
+{
+    if (h->age == NULL) {
+        int period = CCN_INTEREST_AGING_MICROSEC;
+        h->age = ccn_schedule_event(h->sched, period, aging_deamon, NULL, period);
+    }
+}
+
 #if 0
 static void
 process_input_message_BFI(struct ccnd *h, struct face *face,
@@ -671,12 +760,24 @@ get_outbound_faces(struct ccnd *h,
     return(x);
 }
 
+static int
+indexbuf_member(struct ccn_indexbuf *x, size_t val)
+{
+    int i;
+    if (x == NULL)
+        return (-1);
+    for (i = x->n - 1; i >= 0; i--)
+        if (x->buf[i] == val)
+            return(i);
+    return(-1);
+}
+
 static void
 indexbuf_remove_element(struct ccn_indexbuf *x, size_t val)
 {
     int i;
     if (x == NULL) return;
-    for (i = x->n - 1; i > 0; i--)
+    for (i = x->n - 1; i >= 0; i--)
         if (x->buf[i] == val) {
             x->buf[i] = x->buf[--x->n]; /* move last element into vacant spot */
             return;
@@ -709,8 +810,7 @@ do_propagate(
             free(pe->interest_msg);
         pe->interest_msg = NULL;
         ccn_indexbuf_destroy(&pe->outbound);
-        if (h->reaper == NULL)
-            h->reaper = ccn_schedule_event(h->sched, 0, reap, NULL, 0);
+        reap_needed(h, 0);
         return(0);
     }
     return(nrand48(h->seed) % 8192);
@@ -789,17 +889,65 @@ propagate_interest(struct ccnd *h, struct face *face,
 }
 
 static void
+create_backlinks_for_new_interest(struct ccnd *h, struct interest_entry *interest,
+    unsigned char *msg, struct ccn_indexbuf *comps) {
+    struct interest_entry *shorter = NULL;
+    int n = comps->n;
+    int i;
+    int col = 0;
+    uint_least64_t accession = h->accession;
+    uint_least64_t newer = 0;
+    size_t keysize;
+    if (n <= 1)
+        return; /* Pointless to create backlinks if everything matches */
+    /* Try to bootstrap using the longest interest shorter than this one */
+    keysize = comps->buf[n-1] - comps->buf[0];
+    for (i = n - 2; (shorter != NULL) && i > 0; i--) {
+        shorter = hashtb_lookup(h->interest_tab,
+            msg + comps->buf[0], comps->buf[i] - comps->buf[0]);
+    }
+    if (shorter != NULL) {
+        accession = shorter->newest;
+        col = i;
+    }
+    while (accession > h->accession_base) {
+        struct content_entry *content = NULL;
+        if (accession < h->accession_base + h->content_by_accession_window)
+            content = h->content_by_accession[accession - h->accession_base];
+        if (content != NULL && content->accession == accession &&
+            content->ncomps >= n &&
+            keysize == content->comps[n-1] - content->comps[0] &&
+            0 == memcmp(msg + comps->buf[0], content->key + content->comps[0], keysize)) {
+            if (newer == 0)
+                interest->newest = accession;
+            else
+                ccn_matrix_store(h->backlinks, newer, n-1, accession - newer);
+            newer = accession;
+        }
+        if (col > 0) {
+            intptr_t delta = ccn_matrix_fetch(h->backlinks, accession, col);
+            if (delta == 0)
+                break;
+            accession -= delta;
+        }
+        else
+            accession -= 1;
+    }
+}
+
+static void
 process_incoming_interest(struct ccnd *h, struct face *face,
                       unsigned char *msg, size_t size)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
-    struct ccn_parsed_interest interest = {0};
+    struct ccn_parsed_interest parsed_interest = {0};
     size_t namesize = 0;
     int res;
-    struct interest_entry *entry = NULL;
+    int matched;
+    struct interest_entry *interest = NULL;
     struct ccn_indexbuf *comps = indexbuf_obtain(h);
-    res = ccn_parse_interest(msg, size, &interest, comps);
+    res = ccn_parse_interest(msg, size, &parsed_interest, comps);
     if (res < 0) {
         fprintf(stderr, "error parsing Interest - code %d\n", res);
     }
@@ -810,28 +958,57 @@ process_incoming_interest(struct ccnd *h, struct face *face,
         res = -__LINE__;
     }
     else {
+        matched = 0;
         hashtb_start(h->interest_tab, e);
         res = hashtb_seek(e, msg + comps->buf[0], namesize);
-        entry = e->data;
+        interest = e->data;
         if (res == HT_NEW_ENTRY) {
-            entry->ncomp = comps->n - 1;
-            entry->interested_faceid = ccn_indexbuf_create();
-            entry->counters = ccn_indexbuf_create();
+            interest->ncomp = comps->n - 1;
+            interest->interested_faceid = ccn_indexbuf_create();
+            interest->counters = ccn_indexbuf_create();
             fprintf(stderr, "New interest\n");
+            create_backlinks_for_new_interest(h, interest, msg, comps);
         }
-        if (entry != NULL) {
+        if (interest != NULL) {
             struct content_entry *content;
-            res = indexbuf_unordered_set_insert(entry->interested_faceid, face->faceid);
-            while (entry->counters->n <= res)
-                if (0 > ccn_indexbuf_append_element(entry->counters, 0)) break;
-            if (0 <= res && res < entry->counters->n)
-                entry->counters->buf[res] += 1;
-            content = content_from_accession(h, entry->accession);
-            if (content != NULL)
+            uint_least64_t accession;
+            res = indexbuf_unordered_set_insert(interest->interested_faceid, face->faceid);
+            while (interest->counters->n <= res)
+                if (0 > ccn_indexbuf_append_element(interest->counters, 0)) break;
+            if (0 <= res && res < interest->counters->n)
+                interest->counters->buf[res] += CCN_UNIT_INTEREST;
+            if (face->faceid == interest->cached_faceid)
+                accession = interest->cached_accession;
+            else if (comps->n == 1)
+                accession = h->accession;
+            else
+                accession = interest->newest;
+            while (accession >= h->accession_base) {
+                content = content_from_accession(h, accession);
+                if (content != NULL && indexbuf_member(content->faces, face->faceid) == -1)
+                    break;
+                content = NULL;
+                if (comps->n == 1) {
+                    if (accession-- == 0) break;
+                }
+                else {
+                    intptr_t delta = ccn_matrix_fetch(h->backlinks, accession, comps->n - 1);
+                    if (delta <= 0 || delta > accession)
+                        break;
+                    accession -= delta;
+                }
+            }
+            if (content != NULL) {
                 match_interests(h, content);
+                interest->cached_accession = content->accession;
+                interest->cached_faceid = face->faceid;
+                matched = 1;
+            }
         }
         hashtb_end(e);
-        propagate_interest(h, face, msg, size, &interest);
+        aging_needed(h);
+        if (!matched)
+            propagate_interest(h, face, msg, size, &parsed_interest);
     }
     indexbuf_release(h, comps);
 }
@@ -973,8 +1150,7 @@ get_dgram_source(struct ccnd *h, struct face *face,
             source->fd = face->fd;
             source->flags |= CCN_FACE_DGRAM;
             enroll_face(h, source);
-            if (h->reaper == NULL)
-                h->reaper = ccn_schedule_event(h->sched, CCN_INTEREST_HALFLIFE_MICROSEC, reap, NULL, 0);
+            reap_needed(h, CCN_INTEREST_HALFLIFE_MICROSEC);
         }
         source->recvcount++;
     }
@@ -1202,6 +1378,7 @@ ccnd_create(void)
     param.finalize = &finalize_interest;
     h->interest_tab = hashtb_create(sizeof(struct interest_entry), &param);
     h->propagating_tab = hashtb_create(sizeof(struct propagating_entry), NULL);
+    h->backlinks = ccn_matrix_create();
     h->sched = ccn_schedule_create(h);
     fd = create_local_listener(sockname, 42);
     if (fd == -1) fatal_err(sockname);
