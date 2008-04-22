@@ -41,7 +41,7 @@ udplink_fatal(char *format, ...)
     va_start(ap, format);
 
     gettimeofday(&t, NULL);
-    fprintf(stderr, "udplink[%d] %d.%06d: ", getpid(), t.tv_sec, t.tv_usec);
+    fprintf(stderr, "udplink[%d] %d.%06d: ", getpid(), (int)t.tv_sec, (unsigned)t.tv_usec);
     vfprintf(stderr, format, ap);
     exit(1);
 }
@@ -54,7 +54,7 @@ udplink_note(char *format, ...)
     va_start(ap, format);
 
     gettimeofday(&t, NULL);
-    fprintf(stderr, "udplink[%d] %d.%06d: ", getpid(), t.tv_sec, t.tv_usec);
+    fprintf(stderr, "udplink[%d] %d.%06d: ", getpid(), (int)t.tv_sec, (unsigned)t.tv_usec);
     vfprintf(stderr, format, ap);
 }
 
@@ -62,7 +62,6 @@ void
 udplink_print_data(char *source, unsigned char *data, int start, int length)
 {
     int i;
-    struct timeval t;
 
     udplink_note("%d bytes from %s:", length, source);
     for (i = 0; i < length; i++) {
