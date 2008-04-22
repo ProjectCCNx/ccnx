@@ -25,9 +25,13 @@ clean:
 	rm -f *.o *.a $(PROGRAMS) depend
 	rm -rf *.dSYM $(DEBRIS)
 
+depend: Makefile $(CSRC)
+	gcc -MM $(CSRC) $(CPREFLAGS) > depend
+	tail -n `wc -l < depend` Makefile | diff - depend
 ###############################
 # Dependencies below here are checked by depend target
 # but must be updated manually.
 ###############################
-udplink.o: udplink.c ../include/ccn/ccnd.h \
-  ../include/ccn/coding.h
+udplink.o: udplink.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
+  ../include/ccn/ccnd.h
