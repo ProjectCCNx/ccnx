@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/un.h>
 #include <unistd.h>
@@ -171,6 +172,19 @@ unlink_at_exit(const char *path)
         signal(SIGHUP, &handle_fatal_signal);
         atexit(&cleanup_at_exit);
     }
+}
+
+static int
+comm_file_ok(void)
+{
+    struct stat statbuf;
+    int res;
+    if (unlink_this_at_exit == NULL)
+        return(1);
+    res = stat(unlink_this_at_exit, &statbuf);
+    if (res == -1)
+        return(0);
+    return(1);
 }
 
 static void
@@ -446,7 +460,7 @@ send_content(struct ccnd *h, struct face *face, struct content_entry *content) {
 }
 
 #define CCN_DATA_INITIAL_PAUSE 2000
-#define CCN_DATA_PAUSE 1000
+#define CCN_DATA_PAUSE 10000
 static int
 content_sender(struct ccn_schedule *sched,
     void *clienth,
@@ -460,7 +474,7 @@ content_sender(struct ccn_schedule *sched,
         fprintf(stderr, "ccn.c:%d bogon\n", __LINE__);
         return(0);
     }
-    if ((flags & CCN_SCHEDULE_CANCEL) != 0) {
+    if ((flags & CCN_SCHEDULE_CANCEL) != 0 || content->faces == NULL) {
         content->sender = NULL;
         return(0);
     }
@@ -495,6 +509,15 @@ indexbuf_unordered_set_insert(struct ccn_indexbuf *x, size_t val)
     return(i);
 }
 
+static int
+content_faces_set_insert(struct content_entry *content, unsigned faceid)
+{
+    if (content->faces == NULL) {
+        content->faces = ccn_indexbuf_create();
+        content->nface_done = 0;
+    }
+    return (indexbuf_unordered_set_insert(content->faces, faceid));
+}
 
 /*
  * match_interests: Find and consume interests that match given content
@@ -527,7 +550,7 @@ match_interests(struct ccnd *h, struct content_entry *content)
                     faceid = interest->interested_faceid->buf[i];
                     face = face_from_faceid(h, faceid);
                     if (face != NULL) {
-                        k = indexbuf_unordered_set_insert(content->faces, faceid);
+                        k = content_faces_set_insert(content, faceid);
                         if (k >= content->nface_done) {
                             count -= CCN_UNIT_INTEREST;
                             if (count < 0)
@@ -541,7 +564,9 @@ match_interests(struct ccnd *h, struct content_entry *content)
             }
         }
     }
-    if (content->faces->n > content->nface_done && content->sender == NULL)
+    if (content->sender == NULL &&
+          content->faces != NULL &&
+          content->faces->n > content->nface_done)
         content->sender = ccn_schedule_event(h->sched, CCN_DATA_INITIAL_PAUSE,
                                              content_sender, content, 0);
 }
@@ -674,6 +699,10 @@ reap(
     if ((flags & CCN_SCHEDULE_CANCEL) == 0) {
         check_dgram_faces(h);
         check_propagating(h);
+        if (!comm_file_ok()) {
+            fprintf(stderr, "ccnd[%d] exiting (%s gone)\n", getpid(), unlink_this_at_exit);
+            exit(0);
+        }
         if (hashtb_n(h->dgram_faces) > 0 || hashtb_n(h->propagating_tab) > 0)
             return(2 * CCN_INTEREST_HALFLIFE_MICROSEC);
     }
@@ -970,7 +999,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,
             create_backlinks_for_new_interest(h, interest, msg, comps);
         }
         if (interest != NULL) {
-            struct content_entry *content;
+            struct content_entry *content = NULL;
             uint_least64_t accession;
             res = indexbuf_unordered_set_insert(interest->interested_faceid, face->faceid);
             while (interest->counters->n <= res)
@@ -985,7 +1014,8 @@ process_incoming_interest(struct ccnd *h, struct face *face,
                 accession = interest->newest;
             while (accession >= h->accession_base) {
                 content = content_from_accession(h, accession);
-                if (content != NULL && indexbuf_member(content->faces, face->faceid) == -1)
+                if (content != NULL && content->accession == accession &&
+                      indexbuf_member(content->faces, face->faceid) == -1)
                     break;
                 content = NULL;
                 if (comps->n == 1) {
@@ -1055,7 +1085,7 @@ process_incoming_content(struct ccnd *h, struct face *face,
             else {
                 fprintf(stderr, "received duplicate ContentObject\n");
                 /* Make note that this face knows about this content */
-                i = indexbuf_unordered_set_insert(content->faces, face->faceid);
+                i = content_faces_set_insert(content, face->faceid);
                 if (i >= content->nface_done) {
                     content->faces->buf[i] = content->faces->buf[content->nface_done];
                     content->faces->buf[content->nface_done++] = face->faceid;
@@ -1089,7 +1119,7 @@ process_incoming_content(struct ccnd *h, struct face *face,
         hashtb_end(e);
     }
     indexbuf_release(h, comps);
-    if (res >= 0 && content != NULL && content->faces != NULL)
+    if (res >= 0 && content != NULL)
         match_interests(h, content);
 }
 
