@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <net/if.h>
 #include <netdb.h>
 #include <poll.h>
@@ -23,6 +24,7 @@ struct options {
     unsigned int remoteifindex;
     int multicastttl;
     int debug;
+    int logging;
 };
 
 
@@ -34,10 +36,12 @@ usage(char *name) {
 void
 udplink_fatal(char *format, ...)
 {
+    struct timeval t;
     va_list ap;
     va_start(ap, format);
 
-    fprintf(stderr, "udplink[%d]: ", getpid());
+    gettimeofday(&t, NULL);
+    fprintf(stderr, "udplink[%d] %d.%06d: ", getpid(), t.tv_sec, t.tv_usec);
     vfprintf(stderr, format, ap);
     exit(1);
 }
@@ -45,10 +49,12 @@ udplink_fatal(char *format, ...)
 void
 udplink_note(char *format, ...)
 {
+    struct timeval t;
     va_list ap;
     va_start(ap, format);
 
-    fprintf(stderr, "udplink[%d]: ", getpid());
+    gettimeofday(&t, NULL);
+    fprintf(stderr, "udplink[%d] %d.%06d: ", getpid(), t.tv_sec, t.tv_usec);
     vfprintf(stderr, format, ap);
 }
 
@@ -56,7 +62,9 @@ void
 udplink_print_data(char *source, unsigned char *data, int start, int length)
 {
     int i;
-    fprintf(stderr, "%d bytes from %s:", length, source);
+    struct timeval t;
+
+    udplink_note("%d bytes from %s:", length, source);
     for (i = 0; i < length; i++) {
         if ((i % 20) == 0) fprintf(stderr, "\n%4d: ", i);
         if (((i + 10) % 20) == 0) fprintf(stderr, "| ");
@@ -225,7 +233,7 @@ set_multicast_sockopt(int socket, struct addrinfo *ai, struct options *options)
 int
 main (int argc, char * const argv[]) {
 
-    struct options options = {NULL, NULL, "", "", 0, 0, 0};
+    struct options options = {NULL, NULL, "", "", 0, 0, 0, 0};
 
     int result;
     int localsock;
@@ -255,7 +263,7 @@ main (int argc, char * const argv[]) {
         udplink_fatal("ccn_connect: %s\n", strerror(errno));
     }
 
-    hints.ai_family = PF_UNSPEC;
+    hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_DGRAM;
     hints.ai_flags = AI_ADDRCONFIG;
 #ifdef AI_NUMERICSERV
@@ -289,7 +297,7 @@ main (int argc, char * const argv[]) {
         udplink_fatal("bind(remotesock, local...): %s\n", strerror(errno));
     }
 
-    udplink_note("connected to %s\n", canonical_remote);
+    udplink_note("connected to %s:%s\n", canonical_remote, options.remoteport);
 
     set_multicast_sockopt(remotesock, raddrinfo, &options);
 
@@ -366,11 +374,20 @@ main (int argc, char * const argv[]) {
             socklen_t fromlen = sizeof(from);
             ssize_t recvlen;
             unsigned char *recvbuf;
+            char addrbuf[128];
 
             memmove(rbuf, CCN_EMPTY_PDU, CCN_EMPTY_PDU_LENGTH - 1);
             recvbuf = &rbuf[CCN_EMPTY_PDU_LENGTH - 1];
             recvlen = recvfrom(remotesock, recvbuf, sizeof(rbuf) - CCN_EMPTY_PDU_LENGTH,
                                0, &from, &fromlen);
+            if (1 || options.logging) {
+                if (from.sa_family == AF_INET) {
+                    inet_ntop(AF_INET, &((struct sockaddr_in *)&from)->sin_addr, addrbuf, sizeof(addrbuf));
+                } else {
+                    inet_ntop(AF_INET6, &((struct sockaddr_in6 *)&from)->sin6_addr, addrbuf, sizeof(addrbuf));
+                }
+                udplink_note("%d bytes from %s\n", recvlen, addrbuf);
+            }
             if (recvlen == sizeof(rbuf) - CCN_EMPTY_PDU_LENGTH) {
                 udplink_note("remote packet too large, discarded\n");
                 continue;
