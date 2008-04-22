@@ -29,108 +29,7 @@
 #include <ccn/matrix.h>
 #include <ccn/schedule.h>
 
-struct ccnd;
-struct face;
-struct content_entry;
-struct interest_entry;
-
-/*
- * Each face is referenced by a number, the faceid.  The low-order
- * bits (under the MAXFACES) constitute a slot number that is
- * unique (for this ccnd) among the faces that are alive at a given time.
- * The rest of the bits form a generation number that make the
- * entire faceid unique over time, even for faces that are defunct.
- */
-#define FACESLOTBITS 18
-#define MAXFACES ((1U << FACESLOTBITS) - 1)
-
-/*
- * We pass this handle almost everywhere.
- */
-struct ccnd {
-    struct hashtb *faces_by_fd;     /* keyed by fd */
-    struct hashtb *dgram_faces;     /* keyed by sockaddr */
-    struct hashtb *content_tab;     /* keyed by initial fragment of ContentObject */
-    struct hashtb *interest_tab;    /* keyed by name components */
-    struct hashtb *propagating_tab; /* keyed by nonce */
-    struct ccn_matrix *backlinks;   /* for linking to earlier content */
-    unsigned face_gen;
-    unsigned face_rover;            /* for faceid allocation */
-    unsigned face_limit;
-    struct face **faces_by_faceid;  /* array with face_limit elements */
-    struct ccn_scheduled_event *reaper;
-    struct ccn_scheduled_event *age;
-    int local_listener_fd;
-    nfds_t nfds;
-    struct pollfd *fds;
-    struct ccn_schedule *sched;
-    struct ccn_charbuf *scratch_charbuf;
-    struct ccn_indexbuf *scratch_indexbuf;
-    uint_least64_t accession_base;
-    unsigned content_by_accession_window;
-    struct content_entry **content_by_accession;
-    uint_least64_t accession;
-    unsigned short seed[3];
-};
-
-/*
- * One of our active interfaces
- */
-struct face {
-    int fd;
-    int flags;
-    unsigned faceid;            /* internal face id */
-    unsigned recvcount;         /* for activity level monitoring */
-    struct ccn_charbuf *inbuf;
-    struct ccn_skeleton_decoder decoder;
-    size_t outbufindex;
-    struct ccn_charbuf *outbuf;
-    const struct sockaddr *addr;
-    socklen_t addrlen;
-};
-/* face flags */
-#define CCN_FACE_LINK   (1 << 0) /* Elements wrapped by CCNProtocolDataUnit */
-#define CCN_FACE_DGRAM  (1 << 1) /* Datagram interface, respect packets */
-
-/*
- * The interest hash table is keyed by the Component elements of the Name
- */
-struct interest_entry {
-    struct ccn_indexbuf *interested_faceid;
-    struct ccn_indexbuf *counters;
-    uint_least64_t newest;
-    uint_least64_t cached_accession;
-    unsigned       cached_faceid;
-    int ncomp;                   /* Number of name components */
-};
-#define CCN_UNIT_INTEREST 5
-
-/*
- *  The content hash table is keyed by the initial portion of the ContentObject
- *  that contains all the parts of the complete name, so that the original
- *  ContentObject may be reconstructed simply by gluing this together with the rest.
- */
-struct content_entry {
-    uint_least64_t accession;   /* keep track of arrival order */
-    unsigned short *comps;      /* Name Component byte boundary offsets */
-    int ncomps;                 /* Number of name components plus one */
-    const unsigned char *key;	/* ContentObject fragment prior to Content */
-    int key_size;
-    unsigned char *tail;        /* ContentObject fragment starting at Content */
-    int tail_size;
-    int nface_done;             /* How many faces have seen the content */
-    struct ccn_indexbuf *faces; /* These faceids have or want the content */
-    struct ccn_scheduled_event *sender;
-};
-
-/*
- * The propagating interest hash table is keyed by Nonce.
- */
-struct propagating_entry {
-    unsigned char *interest_msg;
-    size_t size;
-    struct ccn_indexbuf *outbound;
-};
+#include "ccnd_private.h"
 
 static void cleanup_at_exit(void);
 static void unlink_at_exit(const char *path);
@@ -744,31 +643,6 @@ aging_needed(struct ccnd *h)
         h->age = ccn_schedule_event(h->sched, period, aging_deamon, NULL, period);
     }
 }
-
-#if 0
-static void
-process_input_message_BFI(struct ccnd *h, struct face *face,
-                unsigned char *msg, size_t size)
-{
-    // BFI version - send it everywhere
-    struct hashtb_enumerator ee;
-    struct hashtb_enumerator *e = &ee;
-    for (hashtb_start(h->faces_by_fd, e); e->data != NULL; hashtb_next(e)) {
-        struct face *otherface = e->data;
-        if (face != otherface && (otherface->flags & CCN_FACE_DGRAM) == 0) {
-            do_write_BFI(h, otherface, msg, size);
-        }
-    }
-    hashtb_end(e);
-    for (hashtb_start(h->dgram_faces, e); e->data != NULL; hashtb_next(e)) {
-        struct face *otherface = e->data;
-        if (face != otherface) {
-            do_write_BFI(h, otherface, msg, size);
-        }
-    }
-    hashtb_end(e);
-}
-#endif
 
 /*
  * This is where a forwarding table would be plugged in.

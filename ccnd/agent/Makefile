@@ -7,7 +7,7 @@ CCNLIBDIR = ../lib
 #Solaris# make MORE_LDLIBS='-lsocket -lnsl'
 
 PROGRAMS = ccnd smoketestccnd
-CSRC = ccnd.c smoketestccnd.c
+CSRC = ccnd.c ccnd_stats.c smoketestccnd.c
 
 default all: $(PROGRAMS)
 
@@ -16,8 +16,9 @@ $(PROGRAMS): $(CCNLIBDIR)/libccn2.a
 $(CCNLIBDIR)/libccn2.a:
 	cd $(CCNLIBDIR) && $(MAKE) libccn2.a;
 
-ccnd: ccnd.o
-	$(CC) $(CFLAGS) -o $@ ccnd.o $(LDLIBS)
+CCND_OBJ = ccnd.o ccnd_stats.o
+ccnd: $(CCND_OBJ) 
+	$(CC) $(CFLAGS) -o $@ $(CCND_OBJ) $(LDLIBS)
 
 smoketestccnd: smoketestccnd.o
 	$(CC) $(CFLAGS) -o $@ smoketestccnd.o $(LDLIBS)
@@ -33,7 +34,9 @@ depend: Makefile $(CSRC)
 # Dependencies below here are checked by depend target
 # but must be updated manually.
 ###############################
-ccnd.o: ccnd.c ../include/ccn/ccnd.h ../include/ccn/charbuf.h \
-  ../include/ccn/coding.h ../include/ccn/hashtb.h \
-  ../include/ccn/schedule.h
+ccnd.o: ccnd.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
+  ../include/ccn/ccnd.h ../include/ccn/hashtb.h ../include/ccn/matrix.h \
+  ../include/ccn/schedule.h ccnd_private.h
+ccnd_stats.o: ccnd_stats.c ccnd_private.h
 smoketestccnd.o: smoketestccnd.c
