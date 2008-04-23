@@ -114,10 +114,10 @@ hashtb_start(struct hashtb *ht, struct hashtb_enumerator *hte)
     hte->priv[1] = hashtb_magic;
     hte->datasize = ht->item_size;
     hte->ht = ht;
-    setpos(hte, &(ht->onebucket));
     ht->refcount++;
     if (ht->refcount > MAX_ENUMERATORS)
         abort(); /* probably somebody is missing a call to hashtb_end() */
+    setpos(hte, &(ht->onebucket));
     return(hte);
 }
 
