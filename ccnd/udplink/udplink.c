@@ -86,55 +86,76 @@ send_remote_unencapsulated(int s, struct addrinfo *r, unsigned char *buf, size_t
 
 void process_options(int argc, char * const argv[], struct options *options) {
     int c;
-    char *cp;
+    char *cp = NULL;
+    char *rportstr = NULL;
+    char *lportstr = NULL;
+    char *ttlstr = NULL;
+    int n;
 
     while ((c = getopt(argc, argv, "dc:h:r:l:t:")) != -1) {
         switch (c) {
-        case 'd': {
+        case 'd':
             options->logging++;
-        }
-        case 'c': {
+            break;
+        case 'c':
             options->localsockname = optarg;
             break;
-        }
-        case 'h': {
+        case 'h':
             options->remotehostname = optarg;
             break;
-        }
         case 'r':
-        case 'l': {
-            int port = atoi(optarg);
-            char portstr[8];
-            if (port <= 0 || port >= 65536) {
-                usage(argv[0]);
-                udplink_fatal("port must be in range 1..65535\n");
-            } 
-            snprintf(portstr, sizeof(portstr), "%d", port);
-            if (c == 'r') {
-                memmove(options->remoteport, portstr, sizeof(options->remoteport));
-            } else {
-                memmove(options->localport, portstr, sizeof(options->localport));
-            }
+            rportstr = optarg;
             break;
-        }
-        case 't': {
-            int ttl = atoi(optarg);
-            if (ttl < 1 || ttl > 255) {
-                udplink_fatal("multicast ttl/hopcount must be in range 1..255\n");
-            }
-        }
+        case 'l':
+            lportstr = optarg;
+            break;
+        case 't':
+            ttlstr = optarg;
+            break;
         }
     }
     
     /* the remote end of the connection must be specified */
-    if (options->remotehostname == NULL) {
+    if (options->remotehostname == NULL || rportstr == NULL) {
         usage(argv[0]);
-        udplink_fatal("remote hostname/address required\n");
+        exit(1);
     }
 
-    if (options->remoteport[0] == '\0') {
+    if (strspn(rportstr, "0123456789") != strlen(rportstr)) {
         usage(argv[0]);
-        udplink_fatal("remote port required\n");
+        exit(1);
+    }
+    
+    n = atoi(rportstr);
+    if (n <= 0 || n >= 65536) {
+        usage(argv[0]);
+        exit(1);
+    }
+    sprintf(options->remoteport, "%d", n);
+
+    if (lportstr != NULL) {
+        if (strspn(lportstr, "0123456789") != strlen(lportstr)) {
+            usage(argv[0]);
+            exit(1);
+        }
+        n = atoi(lportstr);
+        if (n <= 0 || n >= 65536) {
+            usage(argv[0]);
+            exit(1);
+        }
+    }
+    sprintf(options->localport, "%d", n);
+
+    if (ttlstr != NULL) {
+        if (strspn(ttlstr, "0123456789") != strlen(ttlstr)) {
+            usage(argv[0]);
+            exit(1);
+        }
+        options->multicastttl = atoi(ttlstr);
+        if (options->multicastttl < 1 || options->multicastttl > 255) {
+            usage(argv[0]);
+            exit(1);
+        }
     }
 
     cp = strchr(options->remotehostname, '%');
@@ -148,11 +169,6 @@ void process_options(int argc, char * const argv[], struct options *options) {
                 udplink_fatal("Invalid interface name %s\n", cp);
             }
         }
-    }
-
-    /* if the local port is not specified, default to same as remote port */
-    if (options->localport[0] == '\0') {
-        memmove(options->localport, options->remoteport, sizeof(options->localport));
     }
 }
 
@@ -287,7 +303,7 @@ main (int argc, char * const argv[]) {
 
     result = getaddrinfo(options.remotehostname, options.remoteport, &hints, &raddrinfo);
     if (result != 0 || raddrinfo == NULL) {
-        udplink_fatal("getaddrinfo(%s, %s, ...): %s\n", options.remotehostname, options.remoteport, gai_strerror(result));
+        udplink_fatal("getaddrinfo(\"%s\", \"%s\", ...): %s\n", options.remotehostname, options.remoteport, gai_strerror(result));
     }
 
     getnameinfo(raddrinfo->ai_addr, raddrinfo->ai_addrlen, canonical_remote, sizeof(canonical_remote), NULL, 0, 0);
