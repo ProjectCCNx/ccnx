@@ -41,7 +41,7 @@ udplink_fatal(char *format, ...)
     va_start(ap, format);
 
     gettimeofday(&t, NULL);
-    fprintf(stderr, "udplink[%d] %d.%06d: ", getpid(), (int)t.tv_sec, (unsigned)t.tv_usec);
+    fprintf(stderr, "%d.%06d udplink[%d]: ", (int)t.tv_sec, (unsigned)t.tv_usec, getpid());
     vfprintf(stderr, format, ap);
     exit(1);
 }
@@ -54,7 +54,7 @@ udplink_note(char *format, ...)
     va_start(ap, format);
 
     gettimeofday(&t, NULL);
-    fprintf(stderr, "udplink[%d] %d.%06d: ", getpid(), (int)t.tv_sec, (unsigned)t.tv_usec);
+    fprintf(stderr, "%d.%06d udplink[%d]: ", (int)t.tv_sec, (unsigned)t.tv_usec, getpid());
     vfprintf(stderr, format, ap);
 }
 
@@ -264,7 +264,7 @@ main (int argc, char * const argv[]) {
     ssize_t msgstart = 0;
     ssize_t recvlen = 0;
     ssize_t dres;
-    struct sigaction sigact_changeloglevel = {0};
+    struct sigaction sigact_changeloglevel = {{0}, 0};
 
     process_options(argc, argv, &options);
     sigact_changeloglevel.sa_handler = changeloglevel;
