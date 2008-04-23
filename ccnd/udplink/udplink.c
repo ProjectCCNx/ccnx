@@ -10,22 +10,22 @@
 #include <netdb.h>
 #include <poll.h>
 #include <string.h>
+#include <signal.h>
 
 #include "ccn/ccn.h"
 #include "ccn/ccnd.h"
 
 #define UDPMAXBUF 8800
 
-struct options {
+static struct options {
     const char *localsockname;
     const char *remotehostname;
     char remoteport[8];
     char localport[8];
     unsigned int remoteifindex;
     int multicastttl;
-    int debug;
     int logging;
-};
+} options = {NULL, NULL, "", "", 0, 0, 0};
 
 
 void
@@ -91,7 +91,7 @@ void process_options(int argc, char * const argv[], struct options *options) {
     while ((c = getopt(argc, argv, "dc:h:r:l:t:")) != -1) {
         switch (c) {
         case 'd': {
-            options->debug++;
+            options->logging++;
         }
         case 'c': {
             options->localsockname = optarg;
@@ -171,7 +171,7 @@ set_multicast_sockopt(int socket, struct addrinfo *ai, struct options *options)
     memset((void *)&mreq6, 0, sizeof(mreq6));
 
     if (ai->ai_family == PF_INET && IN_MULTICAST(ntohl(((struct sockaddr_in *)(ai->ai_addr))->sin_addr.s_addr))) {
-        if (options->debug) udplink_note("IPv4 multicast\n");
+        if (options->logging > 1) udplink_note("IPv4 multicast\n");
 #ifdef IP_ADD_MEMBERSHIP
         memcpy((void *)&mreq.imr_multiaddr, &((struct sockaddr_in *)ai->ai_addr)->sin_addr, sizeof(mreq.imr_multiaddr));
         if (options->remoteifindex != 0) {
@@ -199,7 +199,7 @@ set_multicast_sockopt(int socket, struct addrinfo *ai, struct options *options)
         }
 #endif
     } else if (ai->ai_family == PF_INET6 && IN6_IS_ADDR_MULTICAST((&((struct sockaddr_in6 *)ai->ai_addr)->sin6_addr))) {
-        if (options->debug) udplink_note("IPv6 multicast\n");
+        if (options->logging > 1) udplink_note("IPv6 multicast\n");
 #ifdef IPV6_JOIN_GROUP
         memcpy((void *)&mreq6.ipv6mr_multiaddr, &((struct sockaddr_in6 *)ai->ai_addr)->sin6_addr, sizeof(mreq6.ipv6mr_multiaddr));
         if (options->remoteifindex > 0) {
@@ -229,11 +229,23 @@ set_multicast_sockopt(int socket, struct addrinfo *ai, struct options *options)
     }
 }
 
+void
+changeloglevel(int s) {
+    switch (s) {
+    case SIGUSR1:
+        options.logging = 0;
+        udplink_note("logging disabled\n");
+        break;
+    case SIGUSR2:
+        if (options.logging < 100) options.logging++;
+        udplink_note("log level %d\n", options.logging);
+        break;
+    }
+    return;
+}
+
 int
 main (int argc, char * const argv[]) {
-
-    struct options options = {NULL, NULL, "", "", 0, 0, 0, 0};
-
     int result;
     int localsock;
     int remotesock;
@@ -252,8 +264,12 @@ main (int argc, char * const argv[]) {
     ssize_t msgstart = 0;
     ssize_t recvlen = 0;
     ssize_t dres;
+    struct sigaction sigact_changeloglevel = {0};
 
     process_options(argc, argv, &options);
+    sigact_changeloglevel.sa_handler = changeloglevel;
+    sigaction(SIGUSR1, &sigact_changeloglevel, NULL);
+    sigaction(SIGUSR2, &sigact_changeloglevel, NULL);
 
     /* connect to the local ccn socket */
     ccn = ccn_create();
@@ -315,7 +331,8 @@ main (int argc, char * const argv[]) {
 
     for (;;) {
         if (0 == (result = poll(fds, 2, -1))) continue;
-        if (-1 == result && errno != EINTR) {
+        if (-1 == result) {
+            if (errno == EINTR) continue;
             udplink_fatal("poll: %s\n", strerror(errno));
         }
 
@@ -327,6 +344,7 @@ main (int argc, char * const argv[]) {
             }
             recvlen = recv(localsock, lbuf , charbuf->limit - charbuf->length, 0);
             if (recvlen == -1) {
+                if (errno == EAGAIN) continue;
                 udplink_fatal("recv(localsock, ...): %s\n", strerror(errno));
             }
             if (recvlen == 0) {
@@ -335,11 +353,12 @@ main (int argc, char * const argv[]) {
             charbuf->length += recvlen;
             dres = ccn_skeleton_decode(ld, lbuf, recvlen);
             while (ld->state == 0 && ld->nest == 0) {
-                if (options.debug) {
+                if (options.logging > 1) {
                     udplink_print_data("local", charbuf->buf, msgstart, ld->index - msgstart);
                 }
                 result = send_remote_unencapsulated(remotesock, raddrinfo, charbuf->buf, msgstart, ld->index - msgstart);
                 if (result == -1) {
+                    if (errno == EAGAIN) continue;
                     udplink_fatal("sendto(remotesock, rbuf, %ld): %s\n", (long)ld->index - msgstart, strerror(errno));
                 }
                 else if (result == -2) {
@@ -379,7 +398,7 @@ main (int argc, char * const argv[]) {
             recvbuf = &rbuf[CCN_EMPTY_PDU_LENGTH - 1];
             recvlen = recvfrom(remotesock, recvbuf, sizeof(rbuf) - CCN_EMPTY_PDU_LENGTH,
                                0, &from, &fromlen);
-            if (1 || options.logging) {
+            if (options.logging > 0) {
                 if (from.sa_family == AF_INET) {
                     inet_ntop(AF_INET, &((struct sockaddr_in *)&from)->sin_addr, addrbuf, sizeof(addrbuf));
                 } else {
@@ -404,7 +423,7 @@ main (int argc, char * const argv[]) {
             if (result == -1) {
                 udplink_fatal("sendto(localsock, rbuf, %ld): %s\n", (long) recvlen + CCN_EMPTY_PDU_LENGTH, strerror(errno));
             }
-            if (options.debug) {
+            if (options.logging > 1) {
                 udplink_print_data("remote", rbuf, 0, recvlen + CCN_EMPTY_PDU_LENGTH);
             }
         }
