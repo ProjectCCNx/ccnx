@@ -18,7 +18,7 @@ struct handlerstate {
         size_t	size;
         struct ccn_parsed_ContentObject x;
         struct ccn_indexbuf *components;
-    } *d;
+    } *items;
 };
 
 int interest_handler(struct ccn_closure *selfp,
@@ -34,6 +34,8 @@ main (int argc, char *argv[]) {
     struct ccn *ccn = NULL;
     struct ccn_closure *action;
     struct ccn_charbuf *namebuf;
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
     struct handlerstate *state;
     char *filename;
     char rawbuf[1024 * 1024];
@@ -41,6 +43,7 @@ main (int argc, char *argv[]) {
     int i, n, res;
     int fd = -1;
     int quiet = 0;
+    int nointerest = 0;
 
     ccn = ccn_create();
     if (ccn_connect(ccn, NULL) == -1) {
@@ -60,6 +63,10 @@ main (int argc, char *argv[]) {
             quiet = 1;
             continue;
         }
+        if (0 == strcmp(filename, "-nointerest")) {
+            nointerest = 1;
+            continue;
+        }
         if (!quiet) fprintf(stderr, "Processing %s ", filename);
         fd = open(filename, O_RDONLY);
         if (fd == -1) {
@@ -71,25 +78,31 @@ main (int argc, char *argv[]) {
             perror("- read");
             continue;
         }
-        state->d = realloc(state->d, (n + 1) * sizeof(*(state->d)));
-        if (state->d == NULL) {
-            perror("realloc failed");
-            exit(1);
+        
+        d = ccn_buf_decoder_start(&decoder, (unsigned char *)rawbuf, rawlen);
+        if (ccn_buf_match_dtag(d, CCN_DTAG_ContentObject)) {
+            state->items = realloc(state->items, (n + 1) * sizeof(*(state->items)));
+            if (state->items == NULL) {
+                perror("realloc failed");
+                exit(1);
+            }
+            memset(&(state->items[n]), 0, sizeof(*(state->items)));
+            state->items[n].components = ccn_indexbuf_create();
+            res = ccn_parse_ContentObject((unsigned char *)rawbuf, rawlen, &(state->items[n].x), state->items[n].components);
+            if (res < 0) {
+                fprintf(stderr, "- skipping: ContentObject error %d\n", res);
+                ccn_indexbuf_destroy(&state->items[n].components);
+                continue;
+            }
+            if (!quiet) fprintf(stderr, "- ok\n");
+            state->items[n].filename = filename;
+            state->items[n].contents = malloc(rawlen);
+            state->items[n].size = rawlen;
+            memcpy(state->items[n].contents, rawbuf, rawlen);
+            n++;
+        } else if (ccn_buf_match_dtag(d, CCN_DTAG_Interest)) {
+            fprintf(stderr, " - skipping: Interest\n");
         }
-        memset(&(state->d[n]), 0, sizeof(*(state->d)));
-        state->d[n].components = ccn_indexbuf_create();
-        res = ccn_parse_ContentObject((unsigned char *)rawbuf, rawlen, &(state->d[n].x), state->d[n].components);
-        if (res < 0) {
-            fprintf(stderr, "- skipping: Not a ContentObject error %d\n", res);
-            ccn_indexbuf_destroy(&state->d[n].components);
-            continue;
-        }
-        if (!quiet) fprintf(stderr, "- ok\n");
-        state->d[n].filename = filename;
-        state->d[n].contents = malloc(rawlen);
-        state->d[n].size = rawlen;
-        memcpy(state->d[n].contents, rawbuf, rawlen);
-        n++;
     }
     state->count = n;
     action->data = state;
@@ -106,7 +119,7 @@ main (int argc, char *argv[]) {
     }
 
     res = ccn_set_interest_filter(ccn, namebuf, action);
-    res = ccn_express_interest(ccn, namebuf, -1, action);
+    if (nointerest == 0) res = ccn_express_interest(ccn, namebuf, -1, action);
     res = ccn_run(ccn, -1);
     ccn_disconnect(ccn);
     ccn_destroy(&ccn);
@@ -153,26 +166,36 @@ interest_handler(struct ccn_closure *selfp,
 
     case CCN_UPCALL_CONTENT:
         c = state->count;
+        for (i = 0; i < c; i++) {
+            if (components->n == state->items[i].components->n) {
+                mc = match_components((unsigned char *)ccnb, components,
+                                  state->items[i].contents, state->items[i].components);
+                if (mc == (components->n - 1)) {
+                    fprintf(stderr, "Duplicate content\n");
+                    return (0);
+                }
+            }
+        }
         fprintf(stderr, "Storing content item %d ", c);
-        state->d = realloc(state->d, (c + 1) * sizeof(*(state->d)));
-        if (state->d == NULL) {
+        state->items = realloc(state->items, (c + 1) * sizeof(*(state->items)));
+        if (state->items == NULL) {
             perror("realloc failed");
             exit(1);
         }
-        memset(&(state->d[c]), 0, sizeof(*(state->d)));
-        state->d[c].components = ccn_indexbuf_create();
+        memset(&(state->items[c]), 0, sizeof(*(state->items)));
+        state->items[c].components = ccn_indexbuf_create();
         /* XXX: probably should not have to do this re-parse of the content object */
-        res = ccn_parse_ContentObject((unsigned char *)ccnb, ccnb_size, &(state->d[c].x), state->d[c].components);
+        res = ccn_parse_ContentObject((unsigned char *)ccnb, ccnb_size, &(state->items[c].x), state->items[c].components);
         if (res < 0) {
             fprintf(stderr, "- skipping: Not a ContentObject\n");
-            ccn_indexbuf_destroy(&state->d[c].components);
+            ccn_indexbuf_destroy(&state->items[c].components);
             return (-1);
         }
         fprintf(stderr, "- ok\n");
-        state->d[c].filename = "ephemeral";
-        state->d[c].contents = malloc(ccnb_size);
-        state->d[c].size = ccnb_size;
-        memcpy(state->d[c].contents, ccnb, ccnb_size);
+        state->items[c].filename = "ephemeral";
+        state->items[c].contents = malloc(ccnb_size);
+        state->items[c].size = ccnb_size;
+        memcpy(state->items[c].contents, ccnb, ccnb_size);
         state->count = c + 1;
         return (0);
 
@@ -184,14 +207,14 @@ interest_handler(struct ccn_closure *selfp,
         c = state->count;
         for (i = 0; i < c; i++) {
             mc = match_components((unsigned char *)ccnb, components,
-                                  state->d[i].contents, state->d[i].components);
+                                  state->items[i].contents, state->items[i].components);
             if (mc == (components->n - 1)) {
-                ccn_put(h, state->d[i].contents, state->d[i].size);
-                fprintf(stderr, "Sending %s, matched %d components\n", state->d[i].filename, mc);
+                ccn_put(h, state->items[i].contents, state->items[i].size);
+                fprintf(stderr, "Sending %s, matched %d components\n", state->items[i].filename, mc);
                 if (i < c - 1) {
-                    item = state->d[i];
-                    memmove(&(state->d[i]), &(state->d[i+1]), sizeof(item) * ((c - 1) - i));
-                    state->d[c - 1] = item;
+                    item = state->items[i];
+                    memmove(&(state->items[i]), &(state->items[i+1]), sizeof(item) * ((c - 1) - i));
+                    state->items[c - 1] = item;
                 }
                 return (1);
             }
