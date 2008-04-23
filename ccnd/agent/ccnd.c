@@ -1341,6 +1341,7 @@ main(int argc, char **argv)
     h = ccnd_create();
     if (0)
         ccn_schedule_event(h->sched, 500000, &beat, NULL, 5);
+    ccnd_stats_httpd_start(h);
     run(h);
     fprintf(stderr, "ccnd[%d] exiting.\n", (int)getpid());
     exit(0);

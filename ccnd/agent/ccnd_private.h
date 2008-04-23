@@ -108,12 +108,14 @@ struct interest_entry {
     unsigned       cached_faceid;
     int ncomp;                   /* Number of name components */
 };
+/* The interest counters are scaled by a factor of CCN_UNIT_INTEREST */
 #define CCN_UNIT_INTEREST 5
 
 /*
  *  The content hash table is keyed by the initial portion of the ContentObject
  *  that contains all the parts of the complete name, so that the original
- *  ContentObject may be reconstructed simply by gluing this together with the rest.
+ *  ContentObject may be reconstructed simply by gluing this together with
+ *  the remainder of the object, represented by tail.
  */
 struct content_entry {
     uint_least64_t accession;   /* keep track of arrival order */
@@ -136,5 +138,8 @@ struct propagating_entry {
     size_t size;
     struct ccn_indexbuf *outbound;
 };
+
+/* Consider a separate header for these */
+int ccnd_stats_httpd_start(struct ccnd *);
 
 #endif

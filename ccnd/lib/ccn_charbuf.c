@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ccn/charbuf.h>
@@ -57,3 +59,30 @@ ccn_charbuf_append(struct ccn_charbuf *c, const void *p, size_t n)
     return(0);
 }
 
+int
+ccn_charbuf_putf(struct ccn_charbuf *c, const char *fmt, ...)
+{
+    int sz;
+    va_list ap;
+    char *buf;
+    buf = (char *)ccn_charbuf_reserve(c, strlen(fmt) + 10); /* estimate */
+    if (buf == NULL) return(-1);
+    va_start(ap, fmt);
+    sz = vsnprintf(buf, c->limit - c->length, fmt, ap);
+    if (sz < 0)
+        return(sz);
+    if (c->length + sz < c->limit) {
+        c->length += sz;
+        return(sz);
+    }
+    va_end(ap);
+    buf = (char *)ccn_charbuf_reserve(c, sz + 1); /* accurate */
+    if (buf == NULL) return(-1);
+    va_start(ap, fmt);
+    sz = vsnprintf(buf, c->limit - c->length, fmt, ap);
+    if (c->length + sz < c->limit) {
+        c->length += sz;
+        return(sz);
+    }
+    return(-1);
+}
