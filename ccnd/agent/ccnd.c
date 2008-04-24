@@ -43,6 +43,7 @@ static void do_write(struct ccnd *h, struct face *face,
                      unsigned char *data, size_t size);
 static void do_deferred_write(struct ccnd *h, int fd);
 static void run(struct ccnd *h);
+static void clean_needed(struct ccnd *h);
 
 static const char *unlink_this_at_exit = NULL;
 static void
@@ -342,6 +343,7 @@ shutdown_client_fd(struct ccnd *h, int fd)
     ccn_charbuf_destroy(&face->outbuf);
     hashtb_delete(e);
     hashtb_end(e);
+    clean_needed(h);
 }
 
 static void
@@ -557,6 +559,8 @@ check_dgram_faces(struct ccnd *h)
         hashtb_next(e);
     }
     hashtb_end(e);
+    if (count > 0)
+        clean_needed(h);
     return(count);
 }
 
@@ -641,6 +645,61 @@ aging_needed(struct ccnd *h)
     if (h->age == NULL) {
         int period = CCN_INTEREST_AGING_MICROSEC;
         h->age = ccn_schedule_event(h->sched, period, aging_deamon, NULL, period);
+    }
+}
+
+/*
+ * clean_deamon: weeds expired faceids out of the content table
+ */
+static int
+clean_deamon(
+    struct ccn_schedule *sched,
+    void *clienth,
+    struct ccn_scheduled_event *ev,
+    int flags)
+{
+    struct ccnd *h = clienth;
+    if ((flags & CCN_SCHEDULE_CANCEL) == 0) {
+        unsigned i;
+        unsigned n;
+        struct content_entry* content;
+        int n_cleaned = 0;
+        n = h->accession - h->accession_base + 1;
+        if (n > h->content_by_accession_window)
+            n = h->content_by_accession_window;
+        for (i = 0; i < n; i++) {
+            content = h->content_by_accession[i];
+            if (content != NULL && content->faces != NULL) {
+                int j, k, d;
+                for (j = 0, k = 0, d = 0; j < content->faces->n; j++) {
+                    unsigned faceid = content->faces->buf[j];
+                    struct face *face = face_from_faceid(h, faceid);
+                    if (face != NULL) {
+                        if (j < content->nface_done)
+                            d++;
+                        content->faces->buf[k++] = faceid;
+                    }
+                }
+                if (k < content->faces->n) {
+                    n_cleaned++;
+                    content->faces->n = k;
+                    content->nface_done = d;
+                }
+            }
+        }
+        if (n_cleaned > 0)
+            return(120000000 / (n_cleaned + 1));
+    }
+    /* nothing on the horizon, so go away */
+    h->clean = NULL;
+    return(0);
+}
+
+static void
+clean_needed(struct ccnd *h)
+{
+    if (h->clean == NULL) {
+        h->clean = ccn_schedule_event(h->sched, 10000000, clean_deamon, NULL, 0);
     }
 }
 

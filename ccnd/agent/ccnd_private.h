@@ -55,6 +55,7 @@ struct ccnd {
     struct face **faces_by_faceid;  /* array with face_limit elements */
     struct ccn_scheduled_event *reaper;
     struct ccn_scheduled_event *age;
+    struct ccn_scheduled_event *clean;
     int local_listener_fd;
     nfds_t nfds;
     struct pollfd *fds;
@@ -118,7 +119,7 @@ struct interest_entry {
  *  the remainder of the object, represented by tail.
  */
 struct content_entry {
-    uint_least64_t accession;   /* keep track of arrival order */
+    uint_least64_t accession;   /* assigned in arrival order */
     unsigned short *comps;      /* Name Component byte boundary offsets */
     int ncomps;                 /* Number of name components plus one */
     const unsigned char *key;	/* ContentObject fragment prior to Content */

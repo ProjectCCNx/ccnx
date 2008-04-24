@@ -24,6 +24,7 @@
 
 struct ccnd_stats {
     long total_interest_counts;
+    long total_content_suppressed;
 };
 
 int
@@ -31,18 +32,24 @@ ccnd_collect_stats(struct ccnd *h, struct ccnd_stats *ans)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
-    struct interest_entry *interest;
-    long total_interest = 0;
+    long sum;
     int i;
     int n;
-    for(hashtb_start(h->interest_tab, e); e->data != NULL; hashtb_next(e)) {
-        interest = e->data;
+    for(sum = 0, hashtb_start(h->interest_tab, e); e->data != NULL; hashtb_next(e)) {
+        struct interest_entry *interest = e->data;
         n = interest->counters->n;
         for (i = 0; i < n; i++)
-            total_interest += interest->counters->buf[i];
+            sum += interest->counters->buf[i];
     }
+    ans->total_interest_counts = (sum + CCN_UNIT_INTEREST-1) / CCN_UNIT_INTEREST;
     hashtb_end(e);
-    ans->total_interest_counts = (total_interest + CCN_UNIT_INTEREST-1) / CCN_UNIT_INTEREST;
+    for(sum = 0, hashtb_start(h->content_tab, e); e->data != NULL; hashtb_next(e)) {
+        struct content_entry *content = e->data;
+        if (content->faces != NULL)
+            sum += content->faces->n;
+    }
+    ans->total_content_suppressed = sum;
+    hashtb_end(e);
     return(0);
 }
 
@@ -62,12 +69,14 @@ collect_stats_html(struct ccnd *h)
         "<meta http-equiv='refresh' content='3'>"
         "<body>"
         "<div><b>Content items in store:</b> %d</div>"
+        "<div><b>Content supression:</b> %d</div>"
         "<div><b>Interests:</b> %d names, %ld pending, %d propagating</div>"
         "<div><b>Active faces and listeners:</b> %d</div>"
         "</body>"
         "<html>",
         getpid(),
         hashtb_n(h->content_tab),
+        stats.total_content_suppressed,
         hashtb_n(h->interest_tab), stats.total_interest_counts, hashtb_n(h->propagating_tab),
         hashtb_n(h->faces_by_fd) + hashtb_n(h->dgram_faces));
     ans = strdup((char *)b->buf);
