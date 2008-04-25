@@ -435,9 +435,15 @@ main (int argc, char * const argv[]) {
                 continue;
             }
 
+        retry:
             result = send(localsock, rbuf, recvlen + CCN_EMPTY_PDU_LENGTH, 0);
             if (result == -1) {
-                udplink_fatal("sendto(localsock, rbuf, %ld): %s\n", (long) recvlen + CCN_EMPTY_PDU_LENGTH, strerror(errno));
+                if (errno == EAGAIN) {
+                    udplink_note("sendto(localsock, rbuf, %ld): %s\n", (long) recvlen + CCN_EMPTY_PDU_LENGTH, strerror(errno));
+                    goto retry;
+                } else {
+                    udplink_fatal("sendto(localsock, rbuf, %ld): %s\n", (long) recvlen + CCN_EMPTY_PDU_LENGTH, strerror(errno));
+                }
             }
             if (options.logging > 1) {
                 udplink_print_data("remote", rbuf, 0, recvlen + CCN_EMPTY_PDU_LENGTH);
