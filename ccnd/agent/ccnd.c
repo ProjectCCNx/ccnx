@@ -1397,6 +1397,7 @@ int
 main(int argc, char **argv)
 {
     struct ccnd *h;
+    signal(SIGPIPE, SIG_IGN);
     h = ccnd_create();
     if (0)
         ccn_schedule_event(h->sched, 500000, &beat, NULL, 5);
