@@ -103,4 +103,14 @@ hashtb_seek(struct hashtb_enumerator *hte, const void *key, size_t keysize);
  */
 void hashtb_delete(struct hashtb_enumerator *);
 
+/*
+ * hashtb_rehash: Hint about number of buckets to use
+ * Normally the implementation grows the number of buckets as needed.
+ * This optional call might help if the caller knows something about
+ * the expected number of elements in advance, or if the size of the
+ * table has shrunken dramatically and is not expected to grow soon.
+ * Does nothing if there are any active enumerators.
+ */
+void hashtb_rehash(struct hashtb *ht, unsigned n_buckets);
+
 #endif
