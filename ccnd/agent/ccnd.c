@@ -316,7 +316,7 @@ accept_new_client(struct ccnd *h)
     if (res == -1)
         perror("fcntl");
     hashtb_start(h->faces_by_fd, e);
-    if (hashtb_seek(e, &fd, sizeof(fd)) != HT_NEW_ENTRY)
+    if (hashtb_seek(e, &fd, sizeof(fd), 0) != HT_NEW_ENTRY)
         fatal_err("ccnd: accept_new_client");
     face = e->data;
     face->fd = fd;
@@ -332,7 +332,7 @@ shutdown_client_fd(struct ccnd *h, int fd)
     struct hashtb_enumerator *e = &ee;
     struct face *face;
     hashtb_start(h->faces_by_fd, e);
-    if (hashtb_seek(e, &fd, sizeof(fd)) != HT_OLD_ENTRY)
+    if (hashtb_seek(e, &fd, sizeof(fd), 0) != HT_OLD_ENTRY)
         fatal_err("ccnd: shutdown_client_fd");
     face = e->data;
     if (face->fd != fd) abort();
@@ -820,7 +820,7 @@ propagate_interest(struct ccnd *h, struct face *face,
         pkeysize = pi->nonce_size;
     }
     hashtb_start(h->propagating_tab, e);
-    res = hashtb_seek(e, pkey, pkeysize);
+    res = hashtb_seek(e, pkey, pkeysize, 0);
     pe = e->data;
     if (res == HT_NEW_ENTRY) {
         unsigned char *m;
@@ -922,7 +922,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,
     else {
         matched = 0;
         hashtb_start(h->interest_tab, e);
-        res = hashtb_seek(e, msg + comps->buf[0], namesize);
+        res = hashtb_seek(e, msg + comps->buf[0], namesize, 0);
         interest = e->data;
         if (res == HT_NEW_ENTRY) {
             interest->ncomp = comps->n - 1;
@@ -1005,7 +1005,7 @@ process_incoming_content(struct ccnd *h, struct face *face,
         tail = msg + obj.Content;
         tailsize = size - obj.Content;
         hashtb_start(h->content_tab, e);
-        res = hashtb_seek(e, msg, keysize);
+        res = hashtb_seek(e, msg, keysize, 0);
         content = e->data;
         if (res == HT_OLD_ENTRY) {
             if (tailsize != content->tail_size ||
@@ -1104,7 +1104,7 @@ get_dgram_source(struct ccnd *h, struct face *face,
     if ((face->flags & CCN_FACE_DGRAM) == 0)
         return(face);
     hashtb_start(h->dgram_faces, e);
-    res = hashtb_seek(e, addr, addrlen);
+    res = hashtb_seek(e, addr, addrlen, 0);
     if (res >= 0) {
         source = e->data;
         if (source->addr == NULL) {
@@ -1364,7 +1364,7 @@ ccnd_create(void)
                 if (res == -1)
                     perror("fcntl");
                 hashtb_start(h->faces_by_fd, e);
-                if (hashtb_seek(e, &fd, sizeof(fd)) != HT_NEW_ENTRY)
+                if (hashtb_seek(e, &fd, sizeof(fd), 0) != HT_NEW_ENTRY)
                     exit(1);
                 face = e->data;
                 face->fd = fd;

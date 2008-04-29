@@ -241,7 +241,7 @@ ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
      * the name components as the key in the hash table.
      */
     hashtb_start(h->interests, e);
-    res = hashtb_seek(e, namebuf->buf + 1, namebuf->length - 2);
+    res = hashtb_seek(e, namebuf->buf + 1, namebuf->length - 2, 0);
     interest = e->data;
     if (interest == NULL)
         NOTE_ERRNO(h);
@@ -279,7 +279,7 @@ ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
     if (res < 0)
         return(res);
     hashtb_start(h->interest_filters, e);
-    res = hashtb_seek(e, namebuf->buf + 1, namebuf->length - 2);
+    res = hashtb_seek(e, namebuf->buf + 1, namebuf->length - 2, 0);
     if (res >= 0) {
         entry = e->data;
         ccn_replace_handler(h, &(entry->action), action);

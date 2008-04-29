@@ -11,7 +11,7 @@ struct node {
     struct node* link;
     size_t hash;
     size_t keysize;
-    size_t extrasize;
+    size_t extsize;
     /* user data follows immediately, followed by key */
 };
 #define DATA(ht, p) ((void *)((p) + 1))
@@ -116,11 +116,13 @@ setpos(struct hashtb_enumerator *hte, struct node **pp)
     if (p == NULL) {
         hte->key = NULL;
         hte->keysize = 0;
+        hte->extsize = 0;
         hte->data = NULL;
     }
     else {
         hte->key = KEY(ht, p);
         hte->keysize = p->keysize;
+        hte->extsize = p->extsize;
         hte->data = DATA(ht, p);
     }
 }
@@ -160,8 +162,6 @@ hashtb_end(struct hashtb_enumerator *hte)
     ht->refcount--;
     if (ht->refcount == 0) {
         /* XXX - do deferred deallocation */;
-        if (ht->n > ht->n_buckets)
-            hashtb_rehash(ht, ht->n + (ht->n >> 4)); // XXX - beat on rehash for now
     }
 }
 
@@ -180,7 +180,7 @@ hashtb_next(struct hashtb_enumerator *hte)
 }
 
 int
-hashtb_seek(struct hashtb_enumerator *hte, const void *key, size_t keysize)
+hashtb_seek(struct hashtb_enumerator *hte, const void *key, size_t keysize, size_t extsize)
 {
     struct node *p = NULL;
     struct hashtb *ht = hte->ht;
@@ -207,7 +207,7 @@ hashtb_seek(struct hashtb_enumerator *hte, const void *key, size_t keysize)
             return(HT_OLD_ENTRY);
         }
     }
-    p = calloc(1, sizeof(*p) + ht->item_size + keysize + 1);
+    p = calloc(1, sizeof(*p) + ht->item_size + keysize + extsize);
     if (p == NULL) {
         setpos(hte, NULL);
         return(-1);
@@ -215,6 +215,7 @@ hashtb_seek(struct hashtb_enumerator *hte, const void *key, size_t keysize)
     memcpy(KEY(ht, p), key, keysize);
     p->hash = h;
     p->keysize = keysize;
+    p->extsize = extsize;
     p->link = *pp;
     *pp = p;
     hte->ht->n += 1;

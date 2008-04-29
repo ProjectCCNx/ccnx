@@ -11,6 +11,8 @@ Dump(struct hashtb *h)
     struct hashtb_enumerator *e = &eee;
     printf("------- %d ------\n", hashtb_n(h));
     for (hashtb_start(h, e); e->key != NULL; hashtb_next(e)) {
+        if (e->extsize != 1 || strlen(e->key) != e->keysize)
+            abort();
         printf("%u: %s\n", ((unsigned *)e->data)[0], (const char *)e->key);
     }
     hashtb_end(e);
@@ -34,7 +36,7 @@ main(int argc, char **argv)
     while (fgets(buf, sizeof(buf), stdin)) {
         int i = strlen(buf);
         if (i > 0 && buf[i-1] == '\n')
-            buf[i-1] = 0;
+            buf[--i] = 0;
         if (buf[0] == '?') {
             Dump(h);
         }
@@ -44,12 +46,12 @@ main(int argc, char **argv)
             v = hashtb_lookup(h, buf+1, i-1);
             if (v != NULL)
                 printf("(%u)", *v);
-            res = hashtb_seek(e, buf+1, i-1);
+            res = hashtb_seek(e, buf+1, i-1, 1);
             hashtb_delete(e);
             printf("%d\n", res == HT_OLD_ENTRY);
             }
         else {
-            hashtb_seek(e, buf, i);
+            hashtb_seek(e, buf, i, 1);
             ((unsigned *)(e->data))[0] += 1;
         }
     }

@@ -61,8 +61,9 @@ hashtb_lookup(struct hashtb *ht, const void *key, size_t keysize);
 /* The client owns the memory for an enumerator, normally in a local. */ 
 struct hashtb_enumerator {
     struct hashtb *ht;
-    const void *key;
+    const void *key;        /* Key concatenated with extension data */
     size_t keysize;
+    size_t extsize;
     void *data;
     size_t datasize;
     void *priv[3];
@@ -83,11 +84,19 @@ void hashtb_next(struct hashtb_enumerator *);
 
 /*
  * hashtb_seek: Find or add an item
+ * For a newly added item, the keysize bytes of key along
+ * with the extsize following bytes get copied into the
+ * hash table's data.  If the key is really a null-terminated
+ * string, consider using extsize = 1 to copy the terminator
+ * into the keystore.  This feature may also be used to copy
+ * larger chunks of unvarying data that are meant to be kept with key.
+ *
  * returns 0 if entry existed before, 1 if newly added,
  *        -1 for a fatal error (ENOMEM or key==NULL).
  */
 int
-hashtb_seek(struct hashtb_enumerator *hte, const void *key, size_t keysize);
+hashtb_seek(struct hashtb_enumerator *hte,
+            const void *key, size_t keysize, size_t extsize);
 #define HT_OLD_ENTRY 0
 #define HT_NEW_ENTRY 1
 

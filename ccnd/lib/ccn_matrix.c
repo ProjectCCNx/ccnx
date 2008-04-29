@@ -63,7 +63,7 @@ ccn_matrix_store(struct ccn_matrix *m, uint_least64_t row, unsigned col,
     memset(&key, 0, sizeof(key));
     key.row = row;
     key.col = col;
-    if (hashtb_seek(&(m->e), &key, sizeof(key)) == -1) return;
+    if (hashtb_seek(&(m->e), &key, sizeof(key), 0) == -1) return;
     valp = m->e.data;
     *valp = value;
 }
