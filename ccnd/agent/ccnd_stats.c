@@ -5,13 +5,15 @@
  * $Id$
  */
 
+#include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <netdb.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
+#include <sys/time.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -176,4 +178,20 @@ ccnd_stats_httpd_start(struct ccnd *h)
     ai = NULL;
     ccn_schedule_event(h->sched, 1000000, &check_for_http_connection, NULL, sock);
     return(0);
+}
+
+/* ccnd_msg may migrate into a different place ... */
+void
+ccnd_msg(struct ccnd *h, const char *fmt, ...)
+{
+    struct timeval t;
+    va_list ap;
+    struct ccn_charbuf *b = ccn_charbuf_create();
+    
+    gettimeofday(&t, NULL);
+    ccn_charbuf_putf(b, "%d.%06u ccnd[%d]: %s\n",
+        (int)t.tv_sec, (unsigned)t.tv_usec, (int)getpid(), fmt);
+    va_start(ap, fmt);
+    vfprintf(stderr, (const char *)b->buf, ap);
+    ccn_charbuf_destroy(&b);
 }

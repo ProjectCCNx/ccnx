@@ -1,6 +1,7 @@
 /* $Id$ */
 
 #include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -16,6 +17,9 @@ struct node {
 };
 #define DATA(ht, p) ((void *)((p) + 1))
 #define KEY(ht, p) ((unsigned char *)((p) + 1) + ht->item_size)
+
+#define CHECKHTE(ht, hte) ((uintptr_t)((hte)->priv[1]) == ~(uintptr_t)(ht))
+#define MARKHTE(ht, hte) ((hte)->priv[1] = (void*)~(uintptr_t)(ht))
 
 struct hashtb {
     struct node **bucket;
@@ -136,13 +140,11 @@ scan_buckets(struct hashtb *ht, unsigned b)
     return(NULL);
 }
 
-static char hashtb_magic[] = "HTB";
-
 #define MAX_ENUMERATORS 30
 struct hashtb_enumerator *
 hashtb_start(struct hashtb *ht, struct hashtb_enumerator *hte)
 {
-    hte->priv[1] = hashtb_magic;
+    MARKHTE(ht, hte);
     hte->datasize = ht->item_size;
     hte->ht = ht;
     ht->refcount++;
@@ -156,7 +158,7 @@ void
 hashtb_end(struct hashtb_enumerator *hte)
 {
     struct hashtb *ht = hte->ht;
-    if (hte->priv[1] != hashtb_magic || ht->refcount <= 0) abort();
+    if (!CHECKHTE(ht, hte) || ht->refcount <= 0) abort();
     hte->priv[0] = 0;
     hte->priv[1] = 0;
     ht->refcount--;
@@ -229,7 +231,7 @@ hashtb_delete(struct hashtb_enumerator *hte)
     struct hashtb *ht = hte->ht;
     struct node **pp = hte->priv[0];
     struct node *p = *pp;
-    if ((p != NULL) && (hte->priv[1] == hashtb_magic) && KEY(ht, p) == hte->key) {
+    if ((p != NULL) && CHECKHTE(ht, hte) && KEY(ht, p) == hte->key) {
         *pp = p->link;
         if (*pp == NULL)
            pp = scan_buckets(hte->ht, (p->hash % hte->ht->n_buckets) + 1);

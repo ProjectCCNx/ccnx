@@ -187,14 +187,14 @@ finalize_face(struct hashtb_enumerator *e)
     unsigned i = face->faceid & MAXFACES;
     if (i < h->face_limit && h->faces_by_faceid[i] == face) {
         h->faces_by_faceid[i] = NULL;
-        fprintf(stderr, "releasing face id %u (slot %u)\n",
+        ccnd_msg(h, "releasing face id %u (slot %u)",
             face->faceid, face->faceid & MAXFACES);
         /* If face->addr is not NULL, it is our key so don't free it. */
         ccn_charbuf_destroy(&face->inbuf);
         ccn_charbuf_destroy(&face->outbuf);
     }
     else
-        fprintf(stderr, "orphaned face %u\n", face->faceid);
+        ccnd_msg(h, "orphaned face %u", face->faceid);
 }
 
 static struct content_entry *
@@ -258,7 +258,7 @@ finalize_content(struct hashtb_enumerator *e)
         ccn_indexbuf_destroy(&entry->faces);
     }
     else
-        fprintf(stderr, "orphaned content %u\n", i);
+        ccnd_msg(h, "orphaned content %u", i);
 }
 
 static void
@@ -277,7 +277,7 @@ create_local_listener(const char *sockname, int backlog)
     struct sockaddr_un a = { 0 };
     res = unlink(sockname);
     if (!(res == 0 || errno == ENOENT))
-        fprintf(stderr, "failed to unlink %s\n", sockname);
+        ccnd_msg(NULL, "failed to unlink %s", sockname);
     a.sun_family = AF_UNIX;
     strncpy(a.sun_path, sockname, sizeof(a.sun_path));
     sock = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -322,7 +322,7 @@ accept_new_client(struct ccnd *h)
     face->fd = fd;
     res = enroll_face(h, face);
     hashtb_end(e);
-    fprintf(stderr, "ccnd[%d] accepted client fd=%d id=%d\n", (int)getpid(), fd, res);
+    ccnd_msg(h, "accepted client fd=%d id=%d", fd, res);
 }
 
 static void
@@ -338,7 +338,7 @@ shutdown_client_fd(struct ccnd *h, int fd)
     if (face->fd != fd) abort();
     close(fd);
     face->fd = -1;
-    fprintf(stderr, "ccnd[%d] shutdown client fd=%d id=%d\n", (int)getpid(), fd, (int)face->faceid);
+    ccnd_msg(h, "shutdown client fd=%d id=%d", fd, (int)face->faceid);
     ccn_charbuf_destroy(&face->inbuf);
     ccn_charbuf_destroy(&face->outbuf);
     hashtb_delete(e);
@@ -372,7 +372,7 @@ content_sender(struct ccn_schedule *sched,
     struct content_entry *content = ev->evdata;
     if (content == NULL ||
         content != content_from_accession(h, content->accession)) {
-        fprintf(stderr, "ccn.c:%d bogon\n", __LINE__);
+        ccnd_msg(h, "ccn.c:%d bogon", __LINE__);
         return(0);
     }
     if ((flags & CCN_SCHEDULE_CANCEL) != 0 || content->faces == NULL) {
@@ -603,7 +603,7 @@ reap(
         check_dgram_faces(h);
         check_propagating(h);
         if (!comm_file_ok()) {
-            fprintf(stderr, "ccnd[%d] exiting (%s gone)\n", getpid(), unlink_this_at_exit);
+            ccnd_msg(h, "exiting (%s gone)", getpid(), unlink_this_at_exit);
             exit(0);
         }
         if (hashtb_n(h->dgram_faces) > 0 || hashtb_n(h->propagating_tab) > 0)
@@ -911,11 +911,11 @@ process_incoming_interest(struct ccnd *h, struct face *face,
     struct ccn_indexbuf *comps = indexbuf_obtain(h);
     res = ccn_parse_interest(msg, size, &parsed_interest, comps);
     if (res < 0) {
-        fprintf(stderr, "error parsing Interest - code %d\n", res);
+        ccnd_msg(h, "error parsing Interest - code %d", res);
     }
     else if (comps->n < 1 ||
              (namesize = comps->buf[comps->n - 1] - comps->buf[0]) > 65535) {
-        fprintf(stderr, "Interest with namesize %lu discarded\n",
+        ccnd_msg(h, "Interest with namesize %lu discarded",
                 (unsigned long)namesize);
         res = -__LINE__;
     }
@@ -928,7 +928,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,
             interest->ncomp = comps->n - 1;
             interest->interested_faceid = ccn_indexbuf_create();
             interest->counters = ccn_indexbuf_create();
-            fprintf(stderr, "New interest\n");
+            ccnd_msg(h, "New interest");
             create_backlinks_for_new_interest(h, interest, msg, comps);
         }
         if (interest != NULL) {
@@ -992,11 +992,11 @@ process_incoming_content(struct ccnd *h, struct face *face,
     struct ccn_indexbuf *comps = indexbuf_obtain(h);
     res = ccn_parse_ContentObject(msg, size, &obj, comps);
     if (res < 0) {
-        fprintf(stderr, "error parsing ContentObject - code %d\n", res);
+        ccnd_msg(h, "error parsing ContentObject - code %d", res);
     }
     else if (comps->n < 1 ||
              (keysize = comps->buf[comps->n - 1]) > 65535) {
-        fprintf(stderr, "ContentObject with keysize %lu discarded\n",
+        ccnd_msg(h, "ContentObject with keysize %lu discarded",
                 (unsigned long)keysize);
         res = -__LINE__;
     }
@@ -1010,13 +1010,14 @@ process_incoming_content(struct ccnd *h, struct face *face,
         if (res == HT_OLD_ENTRY) {
             if (tailsize != content->tail_size ||
                   0 != memcmp(tail, content->tail, tailsize)) {
-                fprintf(stderr, "ContentObject name collision!!!!!\n");
+                ccnd_msg(h, "ContentObject name collision!!!!!");
                 content = NULL;
                 hashtb_delete(e); /* XXX - Mercilessly throw away both of them. */
                 res = -__LINE__;
             }
             else {
-                fprintf(stderr, "received duplicate ContentObject\n");
+                ccnd_msg(h, "received duplicate ContentObject from %u (accession %llu)",
+                    face->faceid, (unsigned long long)content->accession);
                 /* Make note that this face knows about this content */
                 i = content_faces_set_insert(content, face->faceid);
                 if (i >= content->nface_done) {
@@ -1090,7 +1091,7 @@ process_input_message(struct ccnd *h, struct face *face,
             return;
         }
     }
-    fprintf(stderr, "discarding unknown message; size = %lu\n", (unsigned long)size);
+    ccnd_msg(h, "discarding unknown message; size = %lu", (unsigned long)size);
 }
 
 struct face *
@@ -1153,10 +1154,10 @@ process_input(struct ccnd *h, int fd)
         face->inbuf->length += res;
         msgstart = 0;
         dres = ccn_skeleton_decode(d, buf, res);
-        fprintf(stderr, "ccn_skeleton_decode of %d bytes accepted %d\n",
+        if (0) ccnd_msg(h, "ccn_skeleton_decode of %d bytes accepted %d",
                         (int)res, (int)dres);
         while (d->state == 0) {
-            fprintf(stderr, "%lu byte msg received on %d\n",
+            if (0) ccnd_msg(h, "%lu byte msg received on %d",
                 (unsigned long)(d->index - msgstart), fd);
             process_input_message(h, source, face->inbuf->buf + msgstart, 
                                            d->index - msgstart, 1);
@@ -1168,17 +1169,17 @@ process_input(struct ccnd *h, int fd)
             dres = ccn_skeleton_decode(d,
                     face->inbuf->buf + d->index,
                     res = face->inbuf->length - d->index);
-            fprintf(stderr, "  ccn_skeleton_decode of %d bytes accepted %d\n",
+            if (0) ccnd_msg(h, "  ccn_skeleton_decode of %d bytes accepted %d",
                             (int)res, (int)dres);
         }
         if ((face->flags & CCN_FACE_DGRAM) != 0) {
-            fprintf(stderr, "ccnd: protocol error, discarding %d bytes\n",
-                (int)(face->inbuf->length - d->index));
+            ccnd_msg(h, "ccnd[%d]: protocol error, discarding %d bytes",
+                getpid(), (int)(face->inbuf->length - d->index));
             face->inbuf->length = 0;
             return;
         }
         else if (d->state < 0) {
-            fprintf(stderr, "ccnd: protocol error on %d\n", fd);
+            ccnd_msg(h, "ccnd[%d]: protocol error on fd %d", getpid(), fd);
             shutdown_client_fd(h, fd);
             return;
         }
@@ -1216,7 +1217,7 @@ do_write(struct ccnd *h, struct face *face, unsigned char *data, size_t size)
         }
     }
     if ((face->flags & CCN_FACE_DGRAM) != 0) {
-        fprintf(stderr, "ccnd: sendto short\n");
+        ccnd_msg(h, "sendto short");
         return;
     }
     face->outbuf = ccn_charbuf_create();
@@ -1252,7 +1253,7 @@ do_deferred_write(struct ccnd *h, int fd)
         face->outbufindex = 0;
         ccn_charbuf_destroy(&face->outbuf);
     }
-    fprintf(stderr, "ccnd:do_deferred_write: something fishy on %d\n", fd);
+    ccnd_msg(h, "ccnd:do_deferred_write: something fishy on %d", fd);
 }
 
 static void
@@ -1263,10 +1264,13 @@ run(struct ccnd *h)
     int i;
     int res;
     int timeout_ms = -1;
+    int prev_timeout_ms = -1;
     int usec;
     for (;;) {
         usec = ccn_schedule_run(h->sched);
         timeout_ms = (usec < 0) ? -1 : usec / 1000;
+        if (timeout_ms == 0 && prev_timeout_ms == 0)
+            timeout_ms = 1;
         if (hashtb_n(h->faces_by_fd) + 1 != h->nfds) {
             h->nfds = hashtb_n(h->faces_by_fd) + 1;
             h->fds = realloc(h->fds, h->nfds * sizeof(h->fds[0]));
@@ -1286,6 +1290,7 @@ run(struct ccnd *h)
         hashtb_end(e);
         h->nfds = i;
         res = poll(h->fds, h->nfds, timeout_ms);
+        prev_timeout_ms = ((res == 0) ? timeout_ms : 1);
         if (-1 == res) {
             perror("ccnd: poll");
             sleep(1);
@@ -1345,7 +1350,7 @@ ccnd_create(void)
     h->sched = ccn_schedule_create(h);
     fd = create_local_listener(sockname, 42);
     if (fd == -1) fatal_err(sockname);
-    fprintf(stderr, "ccnd[%d] listening on %s\n", (int)getpid(), sockname);
+    ccnd_msg(h, "listening on %s", sockname);
     h->local_listener_fd = fd;
     hints.ai_family = PF_UNSPEC;
     hints.ai_socktype = SOCK_DGRAM;
@@ -1370,8 +1375,8 @@ ccnd_create(void)
                 face->fd = fd;
                 face->flags |= CCN_FACE_DGRAM;
                 hashtb_end(e);
-                fprintf(stderr, "ccnd[%d] accepting datagrams on fd %d\n",
-                    (int)getpid(), fd);
+                ccnd_msg(h, "accepting datagrams on fd %d",
+                    fd);
             }
         }
         freeaddrinfo(addrinfo);
@@ -1380,29 +1385,14 @@ ccnd_create(void)
     return(h);
 }
 
-static int
-beat(struct ccn_schedule *sched,
-    void *clienth,
-    struct ccn_scheduled_event *ev,
-    int flags)
-{
-    fprintf(stderr, "%c", 'G'&31);
-    fflush(stderr);
-    if (--ev->evint <= 0)
-        return(0);
-    return(60000000/72);
-}
-
 int
 main(int argc, char **argv)
 {
     struct ccnd *h;
     signal(SIGPIPE, SIG_IGN);
     h = ccnd_create();
-    if (0)
-        ccn_schedule_event(h->sched, 500000, &beat, NULL, 5);
     ccnd_stats_httpd_start(h);
     run(h);
-    fprintf(stderr, "ccnd[%d] exiting.\n", (int)getpid());
+    ccnd_msg(h, "exiting.", (int)getpid());
     exit(0);
 }

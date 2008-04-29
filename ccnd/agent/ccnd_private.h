@@ -142,5 +142,6 @@ struct propagating_entry {
 
 /* Consider a separate header for these */
 int ccnd_stats_httpd_start(struct ccnd *);
+void ccnd_msg(struct ccnd *, const char *, ...);
 
 #endif
