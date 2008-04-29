@@ -230,6 +230,8 @@ hashtb_delete(struct hashtb_enumerator *hte)
     struct node *p = *pp;
     if ((p != NULL) && (hte->priv[1] == hashtb_magic) && KEY(ht, p) == hte->key) {
         *pp = p->link;
+        if (*pp == NULL)
+           pp = scan_buckets(hte->ht, (p->hash % hte->ht->n_buckets) + 1);
         hte->ht->n -= 1;
         if (ht->refcount == 1) {
             hashtb_finalize_proc f = ht->param.finalize;
