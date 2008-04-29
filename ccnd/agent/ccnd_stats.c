@@ -25,6 +25,7 @@
 struct ccnd_stats {
     long total_interest_counts;
     long total_content_suppressed;
+    long total_flood_control;      /* done propagating, still recorded */
 };
 
 int
@@ -50,6 +51,14 @@ ccnd_collect_stats(struct ccnd *h, struct ccnd_stats *ans)
     }
     ans->total_content_suppressed = sum;
     hashtb_end(e);
+    for(sum = 0, hashtb_start(h->propagating_tab, e); e->data != NULL; hashtb_next(e)) {
+        struct propagating_entry *pi = e->data;
+        if (pi->outbound == NULL)
+            sum += 1;
+    }
+    ans->total_flood_control = sum;
+    hashtb_end(e);
+
     return(0);
 }
 
@@ -70,14 +79,16 @@ collect_stats_html(struct ccnd *h)
         "<body>"
         "<div><b>Content items in store:</b> %d</div>"
         "<div><b>Content supression:</b> %d</div>"
-        "<div><b>Interests:</b> %d names, %ld pending, %d propagating</div>"
+        "<div><b>Interests:</b> %d names, %ld pending, %ld propagating, %ld noted</div>"
         "<div><b>Active faces and listeners:</b> %d</div>"
         "</body>"
         "<html>",
         getpid(),
         hashtb_n(h->content_tab),
         stats.total_content_suppressed,
-        hashtb_n(h->interest_tab), stats.total_interest_counts, hashtb_n(h->propagating_tab),
+        hashtb_n(h->interest_tab), stats.total_interest_counts,
+                hashtb_n(h->propagating_tab) - stats.total_flood_control,
+                stats.total_flood_control,
         hashtb_n(h->faces_by_fd) + hashtb_n(h->dgram_faces));
     ans = strdup((char *)b->buf);
     ccn_charbuf_destroy(&b);

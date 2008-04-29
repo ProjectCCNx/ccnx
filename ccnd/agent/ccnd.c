@@ -775,7 +775,7 @@ do_propagate(
         reap_needed(h, 0);
         return(0);
     }
-    return(nrand48(h->seed) % 8192);
+    return(nrand48(h->seed) % 8192 + 500);
 }
 
 static int
