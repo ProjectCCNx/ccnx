@@ -99,41 +99,36 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 	protected Queue<DataRegistration> _newData = new LinkedList<DataRegistration>();
 	protected Queue<InterestRegistration> _newInterests = new LinkedList<InterestRegistration>();
 			
-	/**
-	 * Record of Interest
-	 * @field interest Interest itself
-	 * @field listener Listener to be notified of data matching the Interest.  The
-	 * listener must be set (non-null) for cases of standing Interest that holds 
-	 * until canceled by the application.  The listener should be null when a 
-	 * thread is blocked waiting for data, in which case the thread will be 
-	 * blocked on semaphore.
-	 * @field semaphore used to block thread waiting for data or null if none
-	 * @field data data for waiting thread
-	 * @field lastRefresh last time this interest was refreshed
-	 * @field data Holds data responsive to the interest for a waiting thread
-	 * @author jthornto
-	 *
-	 */
-	protected class InterestRegistration implements Runnable {
-		public final Interest interest;
-		protected CCNInterestListener listener;
-		protected boolean deliveryPending = false;
-		protected ArrayList<ContentObject> data = new ArrayList<ContentObject>(1);
+	protected abstract class Registration implements Runnable {
+		protected Object listener;
 		public Semaphore sema = null;
-		public Date lastRefresh;
-		public InterestRegistration(Interest i, CCNInterestListener l) {
-			interest = i; 
-			listener = l;
-			if (null == listener) {
-				sema = new Semaphore(0);
+		protected boolean deliveryPending = false;
+		public void invalidate() {
+			// There may be a pending delivery in progress, and it doesn't 
+			// happen while holding this lock because that would give the 
+			// application callback code power to block library processing.
+			// Instead, we use a flag that is checked and set under this lock
+			// to be sure that on exit from invalidate() there will be 
+			// no future deliveries based on the now-invalid registration.
+			while (true) {
+				synchronized (this) {
+					// Make invalid, this will prevent any new delivery that comes
+					// along from doing anything.
+					this.listener = null;
+					this.sema = null;
+					// Return only if no delivery is in progress now
+					if (!deliveryPending) {
+						return;
+					}
+				}
+				Thread.yield();
 			}
-			lastRefresh = new Date();
 		}
 		// Equality based on listener if present, so multiple objects can 
 		// have the same interest registered without colliding
 		public boolean equals(Object obj) {
-			if (obj instanceof InterestRegistration) {
-				InterestRegistration other = (InterestRegistration)obj;
+			if (obj instanceof Registration) {
+				Registration other = (Registration)obj;
 				if (null == this.listener && null == other.listener){
 					return super.equals(obj);
 				} else if (null != this.listener && null != other.listener) {
@@ -149,6 +144,35 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 				return super.hashCode();
 			}
 		}
+	}
+	
+	/**
+	 * Record of Interest
+	 * @field interest Interest itself
+	 * @field listener Listener to be notified of data matching the Interest.  The
+	 * listener must be set (non-null) for cases of standing Interest that holds 
+	 * until canceled by the application.  The listener should be null when a 
+	 * thread is blocked waiting for data, in which case the thread will be 
+	 * blocked on semaphore.
+	 * @field semaphore used to block thread waiting for data or null if none
+	 * @field data data for waiting thread
+	 * @field lastRefresh last time this interest was refreshed
+	 * @field data Holds data responsive to the interest for a waiting thread
+	 * @author jthornto
+	 *
+	 */
+	protected class InterestRegistration extends Registration {
+		public final Interest interest;
+		protected ArrayList<ContentObject> data = new ArrayList<ContentObject>(1);
+		public Date lastRefresh;
+		public InterestRegistration(Interest i, CCNInterestListener l) {
+			interest = i; 
+			listener = l;
+			if (null == listener) {
+				sema = new Semaphore(0);
+			}
+			lastRefresh = new Date();
+		}
 		public synchronized void add(ContentObject obj) {
 			this.data.add(obj);
 		}
@@ -156,27 +180,6 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 			ArrayList<ContentObject> result = this.data;
 			this.data = new ArrayList<ContentObject>(1);
 			return result;
-		}
-		public void invalidate() {
-			// There may be a pending delivery in progress, and it doesn't 
-			// happen while holding this lock because that would give the 
-			// application callback code power to block library processing.
-			// Instead, we use a flag that is checked and set under this lock
-			// to be sure that on exit from invalidate() there will be 
-			// no future deliveries based on the now-invalid interest.
-			while (true) {
-				synchronized (this) {
-					// Make invalid, this will prevent any new delivery that comes
-					// along from doing anything.
-					this.listener = null;
-					this.sema = null;
-					// Return only if no delivery is in progress now
-					if (!deliveryPending) {
-						return;
-					}
-				}
-				Thread.yield();
-			}
 		}
 		public void run() {
 			synchronized (this) {
@@ -194,7 +197,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 						if (this.data.size() > 0) {
 							results = this.data;
 							this.data = new ArrayList<ContentObject>(1);
-							listener = this.listener;
+							listener = (CCNInterestListener)this.listener;
 						}
 					}
 					// Call into client code without holding any library locks
@@ -226,9 +229,9 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 	 * @author jthornto
 	 *
 	 */
-	protected class Filter implements Runnable {
+	protected class Filter extends Registration {
 		public ContentName name;
-		public CCNFilterListener listener;
+		protected boolean deliveryPending = false;
 		protected ArrayList<Interest> interests= new ArrayList<Interest>(1);
 		public Filter(ContentName n, CCNFilterListener l) {
 			name = n; listener = l;
@@ -237,20 +240,31 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 			interests.add(i);
 		}
 		public void run() {
+			synchronized (this) {
+				// Mark us pending delivery, so that any invalidate() that comes 
+				// along will not return until delivery has finished
+				this.deliveryPending = true;
+			}
 			try {
 				ArrayList<Interest> results = null;
+				CCNFilterListener listener = null;
 				synchronized (this) {
 					if (this.interests.size() > 0) { 
 						results = interests;
 						interests = new ArrayList<Interest>(1);
+						listener = (CCNFilterListener)this.listener;
 					}
 				}
 				// Call into client code without holding any library locks
 				if (null != results) {
-					this.listener.handleResults(results);
+					listener.handleResults(results);
 				}
 			} catch (RuntimeException ex) {
 				Library.logger().warning("failed to deliver interest: " + ex.toString());
+			} finally {
+				synchronized(this) {
+					this.deliveryPending = false;
+				}
 			}
 		}
 	}
@@ -467,7 +481,10 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 	 */
 	public void cancelInterestFilter(ContentName filter, CCNFilterListener callbackListener) {
 		synchronized (_myFilters) {
-			_myFilters.remove(filter, new Filter(filter, callbackListener));
+			Entry<Filter> found = _myFilters.remove(filter, new Filter(filter, callbackListener));
+			if (null != found) {
+				found.value().invalidate();
+			}
 		}
 	}
 
