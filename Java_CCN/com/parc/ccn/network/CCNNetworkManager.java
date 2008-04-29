@@ -29,6 +29,8 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 
 import javax.xml.stream.XMLStreamException;
@@ -79,7 +81,8 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 	 */
 	protected static CCNNetworkManager _networkManager = null;
 	
-	protected Thread _thread = null;
+	protected Thread _thread = null; // the main processing thread
+	protected ExecutorService _threadpool = null; // pool service for callback threads
 	protected DatagramChannel _channel = null; // for use by run thread only!
 	protected Selector _selector = null;
 	protected Throwable _error = null; // Marks error state of socket
@@ -90,12 +93,12 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 	// Tables of interests/filters: users must synchronize on collection
 	protected InterestTable<InterestRegistration> _othersInterests = new InterestTable<InterestRegistration>();
 	protected InterestTable<InterestRegistration> _myInterests = new InterestTable<InterestRegistration>();
-	protected InterestTable<CCNFilterListener> _myFilters = new InterestTable<CCNFilterListener>();
+	protected InterestTable<Filter> _myFilters = new InterestTable<Filter>();
 	protected List<DataRegistration> _writers = Collections.synchronizedList(new LinkedList<DataRegistration>());
 	// Queues of new arrivals from inside to be processed
 	protected Queue<DataRegistration> _newData = new LinkedList<DataRegistration>();
 	protected Queue<InterestRegistration> _newInterests = new LinkedList<InterestRegistration>();
-		
+			
 	/**
 	 * Record of Interest
 	 * @field interest Interest itself
@@ -111,10 +114,10 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 	 * @author jthornto
 	 *
 	 */
-	protected class InterestRegistration {
+	protected class InterestRegistration implements Runnable {
 		public final Interest interest;
 		public CCNInterestListener listener;
-		public ContentObject data = null;
+		protected ArrayList<ContentObject> data = new ArrayList<ContentObject>(1);
 		public Semaphore sema = null;
 		public Date lastRefresh;
 		public InterestRegistration(Interest i, CCNInterestListener l) {
@@ -145,6 +148,43 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 				return super.hashCode();
 			}
 		}
+		public synchronized void add(ContentObject obj) {
+			this.data.add(obj);
+		}
+		public synchronized ArrayList<ContentObject> data() {
+			ArrayList<ContentObject> result = this.data;
+			this.data = new ArrayList<ContentObject>(1);
+			return result;
+		}
+		public void run() {
+			try {
+				Library.logger().fine("data delivery for " + this.interest.name());
+				if (null != this.listener) {
+					// Standing interest: call listener callback
+					ArrayList<ContentObject> results = null;
+					synchronized (this) {
+						if (this.data.size() > 0) {
+							results = this.data;
+							this.data = new ArrayList<ContentObject>(1);
+						}
+					}
+					// Call into client code without holding any library locks
+					if (null != results) {
+						this.listener.handleResults(results);
+					}
+				} else if (null != this.sema) {
+					// Waiting thread will pickup data -- wake it up
+					// If this interest came from net no thread will be waiting but 
+					// no matter
+					this.sema.release();
+					Library.logger().fine("released " + this.sema);
+				} // else this is no longer valid registration
+			} catch (Exception ex) {
+				Library.logger().warning("failed to deliver data: " + ex.toString());
+				//ex.printStackTrace();
+			}
+
+		}
 	}
 	
 	/**
@@ -153,9 +193,33 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 	 * @author jthornto
 	 *
 	 */
-	protected class Filter {
+	protected class Filter implements Runnable {
 		public ContentName name;
 		public CCNFilterListener listener;
+		protected ArrayList<Interest> interests= new ArrayList<Interest>(1);
+		public Filter(ContentName n, CCNFilterListener l) {
+			name = n; listener = l;
+		}
+		public synchronized void add(Interest i) {
+			interests.add(i);
+		}
+		public void run() {
+			try {
+				ArrayList<Interest> results = null;
+				synchronized (this) {
+					if (this.interests.size() > 0) { 
+						results = interests;
+						interests = new ArrayList<Interest>(1);
+					}
+				}
+				// Call into client code without holding any library locks
+				if (null != results) {
+					this.listener.handleResults(results);
+				}
+			} catch (RuntimeException ex) {
+				Library.logger().warning("failed to deliver interest: " + ex.toString());
+			}
+		}
 	}
 	
 	/** 
@@ -207,6 +271,8 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 		_channel.configureBlocking(false);
 		_selector = Selector.open();
 		_channel.register(_selector, SelectionKey.OP_READ);
+		// Create callback threadpool and main processing thread
+		_threadpool = Executors.newCachedThreadPool();
 		_thread = new Thread(this);
 		_thread.start();
 	}
@@ -276,6 +342,9 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 		_selector.wakeup();
 		// Await interest consumption
 		reg.sema.acquire(); // currently no timeouts
+		// If normal data delivery the remove should have been done
+		// but eventually we may exit here by timeout and need to remove
+		_writers.remove(reg);
 		return complete;
 		//return CCNRepositoryManager.getRepositoryManager().put(name, authenticator, signature, content);
 	}
@@ -297,12 +366,10 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 		// Await data to consume the interest 
 		reg.sema.acquire(); // currently no timeouts
 		Library.logger().fine("unblocked for " + interest.name() + " on " + reg.sema);
-		ArrayList<ContentObject> results = new ArrayList<ContentObject>(1);
-		results.add(reg.data);
-		// If normal data delivery the unregister should have been done
-		// but eventually we may exit here by timeout and need to unregister
+		// Typically the main processing thread will have registered the interest
+		// which must be undone here, but no harm if never registered
 		unregisterInterest(reg);
-		return results;
+		return reg.data();
 		//return CCNRepositoryManager.getRepositoryManager().get(name, authenticator, isRecursive);
 	}
 
@@ -358,7 +425,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 	 */
 	public void setInterestFilter(ContentName filter, CCNFilterListener callbackListener) {
 		synchronized (_myFilters) {
-			_myFilters.add(filter, callbackListener);
+			_myFilters.add(filter, new Filter(filter, callbackListener));
 		}
 	}
 	
@@ -367,7 +434,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 	 */
 	public void cancelInterestFilter(ContentName filter, CCNFilterListener callbackListener) {
 		synchronized (_myFilters) {
-			_myFilters.remove(filter, callbackListener);
+			_myFilters.remove(filter, new Filter(filter, callbackListener));
 		}
 	}
 
@@ -535,9 +602,12 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 				InterestRegistration iInterest = null;
 				synchronized (_newInterests) { iInterest = _newInterests.poll(); }
 				while (null != iInterest) {
-					boolean satisfied = deliverInterest(iInterest, false);
-					if (!satisfied || null != iInterest.listener) {
+					if (null == deliverInterest(iInterest) || null != iInterest.listener) {
 						// Unsatisfied temporary and all standing interests go to network
+						// This prevents internal interests from consuming data 
+						// so it never gets to agent to cache. 
+						// The only reason we will withhold data from the network
+						// is if there is not interest in it from anywhere
 						write(iInterest.interest);		
 						registerInterest(iInterest);
 					}
@@ -547,11 +617,14 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 				//--------------------------------- Process interests from net (if any)
 				for (Interest interest : packet.interests()) {
 					InterestRegistration oInterest = new InterestRegistration(interest, null);
-					if (!deliverInterest(oInterest, true)) {
-						// Record this known interest if it has not already been consumed
+					DataRegistration dreg = deliverInterest(oInterest);
+					if (null == dreg) {
+						// Record this known interest that has not already been consumed
 						synchronized (_othersInterests) {
 							_othersInterests.add(interest, oInterest);
 						}
+					} else {
+						write(dreg.data);
 					}
 					// External interests never go back to network
 				} // for interests
@@ -566,7 +639,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 						for (Entry<InterestRegistration> entry : _myInterests.getMatches(new ContentName("/"))) {
 							InterestRegistration reg = entry.value();
 							write(reg.interest);
-							deliverInterest(reg, false);
+							deliverInterest(reg);
 						}
 					}
 					lastsweep = new Date();
@@ -581,100 +654,46 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 		Library.logger().info("Shutdown complete");
 	}
 
-	// Internal delivery of interests to pending writes and filter listeners
-	protected boolean deliverInterest(InterestRegistration ireg, boolean fromNet) throws XMLStreamException {
-		boolean result = false;
+	// Internal delivery of interests to pending writers and filter listeners
+	protected DataRegistration deliverInterest(InterestRegistration ireg) throws XMLStreamException {
+		DataRegistration result = null;
 		// First pending writer with data gets to consume this interest
 		for (Iterator<DataRegistration> writeIter = _writers.iterator(); writeIter.hasNext();) {
 			DataRegistration dreg = (DataRegistration) writeIter.next();
 			if (ireg.interest.matches(dreg.data.completeName())) {
-				if (fromNet) {
-					write(dreg.data);
-				} else {
-					deliverDataFinal(dreg, ireg);
-				}
+				ireg.add(dreg.data);
+				_threadpool.execute(ireg);
 				dreg.sema.release();
-				writeIter.remove();
-				result = true;
+				result = dreg;
 				break;
 			}
 		}
 		// Call any listeners with matching filters
-		List<CCNFilterListener> toCallback;
 		synchronized (_myFilters) {
-			// Save listeners, don't call here while holding lock
-			toCallback = _myFilters.getValues(ireg.interest.name());
-		}
-		// Now perform the callbacks
-		if (toCallback.size() > 0) {
-			ArrayList<Interest> results = new ArrayList<Interest>(1);
-			results.add(ireg.interest);
-			for (CCNFilterListener listener : toCallback) {
-				listener.handleResults(results);
+			for (Filter filter : _myFilters.getValues(ireg.interest.name())) {
+				filter.add(ireg.interest);
+				_threadpool.execute(filter);
 			}
 		}
 		return result;
 	}
 
-	// Locally deliver a packet of data, which may have originated locally
-	// or from the network.  Consumes appropriate interests
+	// internal delivery of data, which may have originated locally
+	// or from the network.
 	protected boolean deliverData(DataRegistration dreg) {
 		boolean consumer = false; // is there a consumer?
 
 		// Check local interests
-		List<InterestRegistration> interestList = null;
 		synchronized (_myInterests) {
-			if (null != _myInterests.getMatch(dreg.data.completeName())) {
-				interestList = _myInterests.getValues(dreg.data.completeName());
-				Library.logger().fine("Found " + interestList.size() + " matches for " + dreg.data.name());
+			for (InterestRegistration ireg : _myInterests.getValues(dreg.data.completeName())) {
+				ireg.add(dreg.data);
+				_threadpool.execute(ireg);
+				if (!dreg.isFromNet()) {
+					dreg.sema.release();
+				}
 				consumer = true;
 			}
 		}
-		
-		// Deliver
-		if (null != interestList) {
-			for (InterestRegistration ireg : _myInterests.getValues(dreg.data.completeName())) {
-				deliverDataFinal(dreg, ireg);
-			}
-		}
-
-		// NOTE: We write the data out to the network even if the
-		// interest consumed is internal to this process (JVM), because 
-		// there is no caching inside the library.  If there are multiple
-		// consumers of the data we have a possible race between internal
-		// and external interests.  External interests in a race 
-		// should normally all be satisfied with data from cache in the
-		// agent(s), but in order for that to happen the agent must 
-		// see the data.
-		// The only reason we will withhold data from the network
-		// is if there is not interest in it from anywhere
 		return consumer;
-	}
-
-	// Final internal delivery of data to match registered interest
-	protected void deliverDataFinal(DataRegistration dreg, InterestRegistration ireg) {
-		try {
-			Library.logger().fine("data " + dreg.data.name().toString());
-			if (null != ireg.listener) {
-				// Save listener, don't call here while holding _myInterests lock
-				ArrayList<ContentObject> results = new ArrayList<ContentObject>(1);
-				results.add(dreg.data);
-				ireg.listener.handleResults(results);
-			} else if (ireg.sema != null) {
-				// Store data for the waiting thread
-				ireg.data = dreg.data;
-				// Wake it up
-				ireg.sema.release();
-				Library.logger().fine("released " + ireg.sema);
-				// Remove so we don't try to deliver multiple data
-				unregisterInterest(ireg);
-			} // else this is no longer valid registration
-			if (!dreg.isFromNet()) {
-				dreg.sema.release();
-			}
-		} catch (Exception ex) {
-			Library.logger().warning("failed to deliver data: " + ex.toString());
-			//ex.printStackTrace();
-		}
 	}
 }
