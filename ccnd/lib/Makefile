@@ -6,13 +6,14 @@ COPT = -g -Wall
 #Solaris# make MORE_LDLIBS='-lsocket -lnsl'
 
 PROGRAMS = ccn_ccnbtoxml ccn_xmltoccnb ccn_splitccnb \
-    hashtbtest matrixtest skel_decode_test smoketestclientlib dataresponsetest
+    hashtbtest matrixtest skel_decode_test \
+    smoketestclientlib dataresponsetest ccntimestamps
 DEBRIS = ccn_coding ccn_recursive_parse
 CSRC = ccn_buf_decoder.c ccn_charbuf.c ccn_indexbuf.c ccn_coding.c ccn_client.c  \
     ccn_ccnbtoxml.c ccn_xmltoccnb.c ccn_splitccnb.c ccn_schedule.c ccn_matrix.c \
     skel_decode_test.c \
     hashtb.c hashtbtest.c matrixtest.c \
-    smoketestclientlib.c
+    smoketestclientlib.c ccntimestamps.c
 
 LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_schedule.o ccn_matrix.o \
     ccn_buf_decoder.o hashtb.o
@@ -49,6 +50,9 @@ smoketestclientlib: smoketestclientlib.o
 
 dataresponsetest: dataresponsetest.o
 	$(CC) $(CFLAGS) -o $@ dataresponsetest.o $(LDLIBS)
+
+ccntimestamps: ccntimestamps.o
+	$(CC) $(CFLAGS) -o $@ ccntimestamps.o $(LDLIBS)
 
 clean:
 	rm -f *.o *.a $(PROGRAMS) depend

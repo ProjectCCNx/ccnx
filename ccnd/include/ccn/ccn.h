@@ -169,12 +169,12 @@ int ccn_run(struct ccn *h, int timeout);
 
 struct ccn_buf_decoder {
     struct ccn_skeleton_decoder decoder;
-    unsigned char *buf;
+    const unsigned char *buf;
     size_t size;
 };
 
 struct ccn_buf_decoder *ccn_buf_decoder_start(struct ccn_buf_decoder *d,
-    unsigned char *buf, size_t size);
+    const unsigned char *buf, size_t size);
 
 void ccn_buf_advance(struct ccn_buf_decoder *d);
 
@@ -182,7 +182,7 @@ void ccn_buf_advance(struct ccn_buf_decoder *d);
 int ccn_buf_match_dtag(struct ccn_buf_decoder *d, enum ccn_dtag dtag);
 
 int ccn_buf_match_blob(struct ccn_buf_decoder *d,
-                       unsigned char **bufp, size_t *sizep);
+                       const unsigned char **bufp, size_t *sizep);
 
 int ccn_buf_match_udata(struct ccn_buf_decoder *d, const char *s);
 
@@ -209,7 +209,7 @@ struct ccn_parsed_interest {
  * plus one additional value for the index of the end of the last component.
  */
 int
-ccn_parse_interest(unsigned char *msg, size_t size,
+ccn_parse_interest(const unsigned char *msg, size_t size,
                    struct ccn_parsed_interest *interest,
                    struct ccn_indexbuf *components);
 
@@ -227,7 +227,7 @@ struct ccn_parsed_ContentObject {
  * of the start of each Component of the Name of the ContentObject,
  * plus one additional value for the index of the end of the last component.
  */
-int ccn_parse_ContentObject(unsigned char *msg, size_t size,
+int ccn_parse_ContentObject(const unsigned char *msg, size_t size,
                    struct ccn_parsed_ContentObject *x,
                    struct ccn_indexbuf *components);
 

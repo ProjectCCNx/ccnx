@@ -79,18 +79,23 @@ collect_stats_html(struct ccnd *h)
         "<title>ccnd[%d]</title>"
         "<meta http-equiv='refresh' content='3'>"
         "<body>"
-        "<div><b>Content items in store:</b> %d</div>"
+        "<div><b>Content items:</b> %llu accessioned, %d stored, %lu duplicate, %lu sent</div>"
         "<div><b>Content supression:</b> %d</div>"
         "<div><b>Interests:</b> %d names, %ld pending, %ld propagating, %ld noted</div>"
+        "<div><b>Interest totals:</b> %lu accepted, %lu dropped, %lu sent</div>"
         "<div><b>Active faces and listeners:</b> %d</div>"
         "</body>"
         "<html>",
         getpid(),
-        hashtb_n(h->content_tab),
+        (unsigned long long)h->accession,
+                hashtb_n(h->content_tab),
+                h->content_dups_recvd,
+                h->content_items_sent,
         stats.total_content_suppressed,
         hashtb_n(h->interest_tab), stats.total_interest_counts,
                 hashtb_n(h->propagating_tab) - stats.total_flood_control,
                 stats.total_flood_control,
+        h->interests_accepted, h->interests_dropped, h->interests_sent,
         hashtb_n(h->faces_by_fd) + hashtb_n(h->dgram_faces));
     ans = strdup((char *)b->buf);
     ccn_charbuf_destroy(&b);

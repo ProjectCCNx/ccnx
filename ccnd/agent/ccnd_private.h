@@ -66,6 +66,11 @@ struct ccnd {
     unsigned content_by_accession_window;
     struct content_entry **content_by_accession;
     uint_least64_t accession;
+    unsigned long content_dups_recvd;
+    unsigned long content_items_sent;
+    unsigned long interests_accepted;
+    unsigned long interests_dropped;
+    unsigned long interests_sent;
     unsigned short seed[3];
 };
 

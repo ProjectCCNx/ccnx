@@ -357,11 +357,25 @@ send_content(struct ccnd *h, struct face *face, struct content_entry *content) {
     if ((face->flags & CCN_FACE_LINK) != 0)
         ccn_charbuf_append_closer(c);
     do_write(h, face, c->buf, c->length);
+    h->content_items_sent += 1;
     charbuf_release(h, c);
 }
 
-#define CCN_DATA_INITIAL_PAUSE 2000
-#define CCN_DATA_PAUSE 10000
+#define CCN_DATA_PAUSE (16U*1024U)
+
+static int
+choose_content_delay(struct ccnd *h, unsigned faceid)
+{
+    struct face *face = face_from_faceid(h, faceid);
+    if (face == NULL)
+        return(1); /* Going nowhere, get it over with */
+    if ((face->flags & CCN_FACE_DGRAM) != 0)
+        return(100); /* localhost udp, delay just a little */
+    if ((face->flags & CCN_FACE_LINK) != 0) /* udplink or such, delay more */
+        return((nrand48(h->seed) % CCN_DATA_PAUSE) + CCN_DATA_PAUSE/2);
+    return(10); /* local stream, answer quickly */
+}
+
 static int
 content_sender(struct ccn_schedule *sched,
     void *clienth,
@@ -385,7 +399,7 @@ content_sender(struct ccn_schedule *sched,
         if (face != NULL) {
             send_content(h, face, content);
             if (content->nface_done < content->faces->n)
-                return(CCN_DATA_PAUSE);
+                return(choose_content_delay(h, content->faces->buf[content->nface_done]));
         }
     }
     content->sender = NULL;
@@ -468,8 +482,9 @@ match_interests(struct ccnd *h, struct content_entry *content)
     if (content->sender == NULL &&
           content->faces != NULL &&
           content->faces->n > content->nface_done)
-        content->sender = ccn_schedule_event(h->sched, CCN_DATA_INITIAL_PAUSE,
-                                             content_sender, content, 0);
+        content->sender = ccn_schedule_event(h->sched,
+            choose_content_delay(h, content->faces->buf[content->nface_done]),
+            content_sender, content, 0);
 }
 
 /*
@@ -761,11 +776,11 @@ do_propagate(
         pe->outbound->n = 0;
     if (pe->outbound->n > 0) {
         unsigned faceid = pe->outbound->buf[--pe->outbound->n];
-        struct face *face = NULL;
-        if ((faceid & MAXFACES) < h->face_limit)
-            face = h->faces_by_faceid[faceid & MAXFACES];
-        if (face != NULL && face->faceid == faceid)
+        struct face *face = face_from_faceid(h, faceid);
+        if (face != NULL) {
             do_write_BFI(h, face, pe->interest_msg, pe->size);
+            h->interests_sent += 1;
+        }
     }
     if (pe->outbound->n == 0) {
         if (pe->interest_msg != NULL)
@@ -840,6 +855,7 @@ propagate_interest(struct ccnd *h, struct face *face,
         }
     }
     else if (res == HT_OLD_ENTRY) {
+        ccnd_msg(h, "Interesting - this shouldn't happen much - ccnd.c:%d", __LINE__);
         if (pe->outbound != NULL)
             indexbuf_remove_element(pe->outbound, face->faceid);
         res = -1; /* We've seen this already, do not propagate */
@@ -897,6 +913,15 @@ create_backlinks_for_new_interest(struct ccnd *h, struct interest_entry *interes
     }
 }
 
+static int
+is_duplicate_flooded(struct ccnd *h, unsigned char *msg, struct ccn_parsed_interest *pi) {
+    struct propagating_entry *pe = NULL;
+    if (pi->nonce_size == 0)
+        return(0);
+    pe = hashtb_lookup(h->propagating_tab, msg + pi->nonce_start, pi->nonce_size);
+    return(pe != NULL);
+}
+
 static void
 process_incoming_interest(struct ccnd *h, struct face *face,
                       unsigned char *msg, size_t size)
@@ -919,7 +944,11 @@ process_incoming_interest(struct ccnd *h, struct face *face,
                 (unsigned long)namesize);
         res = -__LINE__;
     }
+    else if (is_duplicate_flooded(h, msg, &parsed_interest)) {
+        h->interests_dropped += 1;
+    }
     else {
+        h->interests_accepted += 1;
         matched = 0;
         hashtb_start(h->interest_tab, e);
         res = hashtb_seek(e, msg + comps->buf[0], namesize, 0);
@@ -1016,6 +1045,7 @@ process_incoming_content(struct ccnd *h, struct face *face,
                 res = -__LINE__;
             }
             else {
+                h->content_dups_recvd++;
                 ccnd_msg(h, "received duplicate ContentObject from %u (accession %llu)",
                     face->faceid, (unsigned long long)content->accession);
                 /* Make note that this face knows about this content */

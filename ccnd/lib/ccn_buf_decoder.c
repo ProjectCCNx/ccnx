@@ -12,7 +12,7 @@
 #include <ccn/indexbuf.h>
 
 struct ccn_buf_decoder *
-ccn_buf_decoder_start(struct ccn_buf_decoder *d, unsigned char *buf, size_t size)
+ccn_buf_decoder_start(struct ccn_buf_decoder *d, const unsigned char *buf, size_t size)
 {
     memset(&d->decoder, 0, sizeof(d->decoder));
     d->decoder.state |= CCN_DSTATE_PAUSE;
@@ -39,7 +39,7 @@ ccn_buf_match_dtag(struct ccn_buf_decoder *d, enum ccn_dtag dtag)
 }
 
 int
-ccn_buf_match_blob(struct ccn_buf_decoder *d, unsigned char **bufp, size_t *sizep)
+ccn_buf_match_blob(struct ccn_buf_decoder *d, const unsigned char **bufp, size_t *sizep)
 {
     if (d->decoder.state >= 0 && CCN_GET_TT_FROM_DSTATE(d->decoder.state) == CCN_BLOB) {
         if (bufp != NULL)
@@ -174,8 +174,9 @@ ccn_parse_Name(struct ccn_buf_decoder *d, struct parsed_Name *x, struct ccn_inde
     }
     return(-1);
 }
+
 int
-ccn_parse_interest(unsigned char *msg, size_t size,
+ccn_parse_interest(const unsigned char *msg, size_t size,
                    struct ccn_parsed_interest *interest,
                    struct ccn_indexbuf *components)
 {
@@ -315,7 +316,7 @@ ccn_parse_ContentAuthenticator(struct ccn_buf_decoder *d,
 }
 
 int
-ccn_parse_ContentObject(unsigned char *msg, size_t size,
+ccn_parse_ContentObject(const unsigned char *msg, size_t size,
                    struct ccn_parsed_ContentObject *x,
                    struct ccn_indexbuf *components)
 {
