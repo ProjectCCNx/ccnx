@@ -308,16 +308,18 @@ public class InterestTable<V> {
 	 */
 	public List<Entry<V>> getMatches(CompleteName target) {
 		List<Entry<V>> matches = new ArrayList<Entry<V>>();
-		ContentName headname = new ContentName(target.name(), new byte[] {0} ); // need to include equal item in headMap
-	    for (Iterator<ContentName> nameIt = _contents.headMap(headname).keySet().iterator(); nameIt.hasNext();) {
-			ContentName name = nameIt.next();
-			if (name.isPrefixOf(target.name())) {
-				// Name match - is there an interest match here?
-				matches.addAll(getAllMatchByName(name, target));
+		if (null != target) {
+			ContentName headname = new ContentName(target.name(), new byte[] {0} ); // need to include equal item in headMap
+			for (Iterator<ContentName> nameIt = _contents.headMap(headname).keySet().iterator(); nameIt.hasNext();) {
+				ContentName name = nameIt.next();
+				if (name.isPrefixOf(target.name())) {
+					// Name match - is there an interest match here?
+					matches.addAll(getAllMatchByName(name, target));
+				}
 			}
-	    }
-	    Collections.reverse(matches);
-	    return matches;
+			Collections.reverse(matches);
+		}
+		return matches;
 	}
 		
 	/**
@@ -413,23 +415,25 @@ public class InterestTable<V> {
 	 */
 	public Entry<V> removeMatch(CompleteName target) {
 		Entry<V> match = null;
-		ContentName matchName = null;
-		ContentName headname = new ContentName(target.name(), new byte[] {0} ); // need to include equal item in headMap
-	    for (Iterator<ContentName> nameIt = _contents.headMap(headname).keySet().iterator(); nameIt.hasNext();) {
-			ContentName name = nameIt.next();
-			if (name.isPrefixOf(target.name())) {
-				// Name match - is there an interest match here?
-				Entry<V> found = getMatchByName(name, target);
-				if (null != found) {
-					match = found;
-					matchName = name;
+		if (null != target) {
+			ContentName matchName = null;
+			ContentName headname = new ContentName(target.name(), new byte[] {0} ); // need to include equal item in headMap
+			for (Iterator<ContentName> nameIt = _contents.headMap(headname).keySet().iterator(); nameIt.hasNext();) {
+				ContentName name = nameIt.next();
+				if (name.isPrefixOf(target.name())) {
+					// Name match - is there an interest match here?
+					Entry<V> found = getMatchByName(name, target);
+					if (null != found) {
+						match = found;
+						matchName = name;
+					}
+					// Do not remove here -- need to find best match and avoid disturbing iterator
 				}
-				// Do not remove here -- need to find best match and avoid disturbing iterator
 			}
-	    }
-	    if (null != match) {
-	    	return removeMatchByName(matchName, target);
-	    }
+			if (null != match) {
+				return removeMatchByName(matchName, target);
+			}
+		}
 		return match;
 	}
 

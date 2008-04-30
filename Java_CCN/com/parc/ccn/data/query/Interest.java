@@ -61,8 +61,8 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public PublisherID publisherID() { return _publisher; }
 	
 	public boolean matches(CompleteName result) {
-		if (null == name())
-			return false; // should not happen
+		if (null == name() || null == result)
+			return false; // null name() should not happen, null arg can
 		// to get interest that matches everything, should
 		// use / (ROOT)
 		if (name().isPrefixOf(result.name())) {

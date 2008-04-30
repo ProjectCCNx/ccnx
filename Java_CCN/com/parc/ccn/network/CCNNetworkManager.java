@@ -99,7 +99,11 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 	protected Queue<DataRegistration> _newData = new LinkedList<DataRegistration>();
 	protected Queue<InterestRegistration> _newInterests = new LinkedList<InterestRegistration>();
 			
-	protected abstract class Registration implements Runnable {
+	// Generic superclass for registration objects that may have a listener
+	// Handles invalidation and pending delivery consistently to enable 
+	// subclass to call listener callback without holding any library locks,
+	// yet avoid delivery to a cancelled listener.
+	protected abstract class ListenerRegistration implements Runnable {
 		protected Object listener;
 		public Semaphore sema = null;
 		protected boolean deliveryPending = false;
@@ -127,8 +131,8 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 		// Equality based on listener if present, so multiple objects can 
 		// have the same interest registered without colliding
 		public boolean equals(Object obj) {
-			if (obj instanceof Registration) {
-				Registration other = (Registration)obj;
+			if (obj instanceof ListenerRegistration) {
+				ListenerRegistration other = (ListenerRegistration)obj;
 				if (null == this.listener && null == other.listener){
 					return super.equals(obj);
 				} else if (null != this.listener && null != other.listener) {
@@ -161,7 +165,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 	 * @author jthornto
 	 *
 	 */
-	protected class InterestRegistration extends Registration {
+	protected class InterestRegistration extends ListenerRegistration {
 		public final Interest interest;
 		protected ArrayList<ContentObject> data = new ArrayList<ContentObject>(1);
 		public Date lastRefresh;
@@ -175,7 +179,9 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 		}
 		// Add a copy of data, not the original data object, so that 
 		// the recipient cannot disturb the buffers of the sender
-		// TODO There is an extra copy here for data inbound from network
+		// We need this even when data comes from network, since receive
+		// buffer will be reused while recipient thread may proceed to read
+		// from buffer it is handed
 		public synchronized void add(ContentObject obj) {
 			this.data.add(obj.clone());
 		}
@@ -232,7 +238,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 	 * @author jthornto
 	 *
 	 */
-	protected class Filter extends Registration {
+	protected class Filter extends ListenerRegistration {
 		public ContentName name;
 		protected boolean deliveryPending = false;
 		protected ArrayList<Interest> interests= new ArrayList<Interest>(1);
@@ -280,7 +286,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 	 * @return
 	 */
 	protected class DataRegistration {
-		public ContentObject data = null;
+		protected ContentObject data = null;
 		public Semaphore sema = null;
 		public DataRegistration(ContentObject d, boolean internal) {
 			data = d;
@@ -288,8 +294,36 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 				sema = new Semaphore(0);
 			}
 		}
+		// On return from invalidate, buffers underlying data object may be reused safely
+		public synchronized void invalidate() {
+			data = null;
+		}
 		public boolean isFromNet() {
 			return (null == sema);
+		}
+		public synchronized CompleteName completeName() {
+			if (null != data) {
+				return data.completeName();
+			} else {
+				return null;
+			}
+		}
+		public synchronized ContentName name() {
+			if (null != data) {
+				return data.name();
+			} else {
+				return null;
+			}
+		}
+		public synchronized void write(CCNNetworkManager mgr) throws XMLStreamException {
+			if (null != data) {
+				mgr.write(data);
+			} // else already invalidated, buffer may be no good, nothing to do
+		}
+		public synchronized void copyTo(InterestRegistration ireg) {
+			if (null != data) {
+				ireg.add(data); // actual copying is here
+			} // else already invalidated, buffer may be no good, nothing to do
 		}
 	}
 	
@@ -392,9 +426,10 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 		_selector.wakeup();
 		// Await interest consumption
 		reg.sema.acquire(); // currently no timeouts
-		// If normal data delivery the remove should have been done
-		// but eventually we may exit here by timeout and need to remove
+		// The main processing thread may have had to register this writer
+		// which must be undone here, but no harm if never registered
 		_writers.remove(reg);
+		reg.invalidate(); // make sure that buffer is ignored from here on
 		return complete;
 		//return CCNRepositoryManager.getRepositoryManager().put(name, authenticator, signature, content);
 	}
@@ -625,17 +660,17 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 				while (null != iData) {
 					boolean consumer = deliverData(iData);
 					synchronized(_othersInterests) {
-						if (null != _othersInterests.removeMatch(iData.data.completeName())) {
+						if (null != _othersInterests.removeMatch(iData.completeName())) {
 							consumer = true;
 						}
 					}
 					if (consumer) {
 						// Internal data goes to network only if there was Interest 
 						// either internal or external
-						write(iData.data);
+						iData.write(this);
 						// Do not release the put() until data has been completely
 						// delivered so that buffer may be reused
-						Library.logger().fine("releasing writer for " + iData.data.name());
+						Library.logger().fine("releasing writer for " + iData.name());
 						iData.sema.release();
 					} else {
 						// No interest to consume yet: hold on to this data for 
@@ -679,7 +714,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 							_othersInterests.add(interest, oInterest);
 						}
 					} else {
-						write(dreg.data);
+						dreg.write(this);
 					}
 					// External interests never go back to network
 				} // for interests
@@ -715,8 +750,8 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 		// First pending writer with data gets to consume this interest
 		for (Iterator<DataRegistration> writeIter = _writers.iterator(); writeIter.hasNext();) {
 			DataRegistration dreg = (DataRegistration) writeIter.next();
-			if (ireg.interest.matches(dreg.data.completeName())) {
-				ireg.add(dreg.data); // this is a copy of the data
+			if (ireg.interest.matches(dreg.completeName())) {
+				dreg.copyTo(ireg); // this is a copy of the data
 				_threadpool.execute(ireg);
 				dreg.sema.release();
 				result = dreg;
@@ -740,8 +775,8 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 
 		// Check local interests
 		synchronized (_myInterests) {
-			for (InterestRegistration ireg : _myInterests.getValues(dreg.data.completeName())) {
-				ireg.add(dreg.data); // this is a copy of the data
+			for (InterestRegistration ireg : _myInterests.getValues(dreg.completeName())) {
+				dreg.copyTo(ireg); // this is a copy of the data
 				_threadpool.execute(ireg);
 				consumer = true;
 			}
