@@ -62,6 +62,10 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
     
     public ContentObject() {} // for use by decoders
     
+    public ContentObject clone() {
+    	return new ContentObject(_name, _authenticator, _signature.clone(), _content.clone());
+    }
+    
     public ContentName name() { 
     	return _name;
     }

@@ -173,8 +173,11 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 			}
 			lastRefresh = new Date();
 		}
+		// Add a copy of data, not the original data object, so that 
+		// the recipient cannot disturb the buffers of the sender
+		// TODO There is an extra copy here for data inbound from network
 		public synchronized void add(ContentObject obj) {
-			this.data.add(obj);
+			this.data.add(obj.clone());
 		}
 		public synchronized ArrayList<ContentObject> data() {
 			ArrayList<ContentObject> result = this.data;
@@ -630,6 +633,8 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 						// Internal data goes to network only if there was Interest 
 						// either internal or external
 						write(iData.data);
+						// Do not release the put() until data has been completely
+						// delivered so that buffer may be reused
 						Library.logger().fine("releasing writer for " + iData.data.name());
 						iData.sema.release();
 					} else {
@@ -645,6 +650,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 					DataRegistration oData = new DataRegistration(co, false);
 					deliverData(oData);
 					// External data never goes back to network, never held onto here
+					// External data never has a thread waiting, so no need to release sema
 				}
 
 				//--------------------------------- Process internal interests (if any)
@@ -710,7 +716,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 		for (Iterator<DataRegistration> writeIter = _writers.iterator(); writeIter.hasNext();) {
 			DataRegistration dreg = (DataRegistration) writeIter.next();
 			if (ireg.interest.matches(dreg.data.completeName())) {
-				ireg.add(dreg.data);
+				ireg.add(dreg.data); // this is a copy of the data
 				_threadpool.execute(ireg);
 				dreg.sema.release();
 				result = dreg;
@@ -735,11 +741,8 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 		// Check local interests
 		synchronized (_myInterests) {
 			for (InterestRegistration ireg : _myInterests.getValues(dreg.data.completeName())) {
-				ireg.add(dreg.data);
+				ireg.add(dreg.data); // this is a copy of the data
 				_threadpool.execute(ireg);
-				if (!dreg.isFromNet()) {
-					dreg.sema.release();
-				}
 				consumer = true;
 			}
 		}
