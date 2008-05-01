@@ -364,6 +364,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 	public void shutdown() {
 		Library.logger().info("Shutdown requested");
 		_run = false;
+		_selector.wakeup();
 	}
 	
 	/**
@@ -641,6 +642,10 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 					} else {
 						// This was a timeout or wakeup, no data
 						packet.clear();
+						if (!_run) {
+							// exit immediately if wakeup for shutdown
+							break;
+						}
 					}
 				} catch (IOException io) {
 					// We see IOException on receive every time if agent is gone
@@ -741,6 +746,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 				Library.logger().warning("Internal error: malformed content name string");
 			}
 		}
+		_threadpool.shutdown();
 		Library.logger().info("Shutdown complete");
 	}
 
