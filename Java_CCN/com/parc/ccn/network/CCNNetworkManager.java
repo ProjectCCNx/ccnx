@@ -763,7 +763,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 			DataRegistration dreg = (DataRegistration) writeIter.next();
 			if (ireg.interest.matches(dreg.completeName())) {
 				Library.logger().info("Remove for " + dreg.name());
-				writeIter.remove();
+				writeIter.remove(); // avoid handing same data back to second get()
 				dreg.copyTo(ireg); // this is a copy of the data
 				_threadpool.execute(ireg);
 				dreg.sema.release();
