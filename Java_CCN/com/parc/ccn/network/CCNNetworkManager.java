@@ -107,6 +107,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 		protected Object listener;
 		public Semaphore sema = null;
 		protected boolean deliveryPending = false;
+		public abstract void deliver();
 		public void invalidate() {
 			// There may be a pending delivery in progress, and it doesn't 
 			// happen while holding this lock because that would give the 
@@ -126,6 +127,24 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 					}
 				}
 				Thread.yield();
+			}
+		}
+		public void run() {
+			synchronized (this) {
+				// Mark us pending delivery, so that any invalidate() that comes 
+				// along will not return until delivery has finished
+				this.deliveryPending = true;
+			}
+			try {
+				// Delivery may synchronize on this object to access data structures
+				// but should hold no locks when calling the listener
+				deliver();
+			} catch (Exception ex) {
+				Library.logger().warning("failed delivery: " + ex.toString());
+			} finally {
+				synchronized(this) {
+					this.deliveryPending = false;
+				}
 			}
 		}
 		// Equality based on listener if present, so multiple objects can 
@@ -197,12 +216,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 				return false;
 			}
 		}
-		public void run() {
-			synchronized (this) {
-				// Mark us pending delivery, so that any invalidate() that comes 
-				// along will not return until delivery has finished
-				this.deliveryPending = true;
-			}
+		public void deliver() {
 			try {
 				Library.logger().fine("data delivery for " + this.interest.name());
 				if (null != this.listener) {
@@ -230,12 +244,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 			} catch (Exception ex) {
 				Library.logger().warning("failed to deliver data: " + ex.toString());
 				//ex.printStackTrace();
-			} finally {
-				synchronized(this) {
-					this.deliveryPending = false;
-				}
 			}
-
 		}
 	}
 	
@@ -255,12 +264,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 		public synchronized void add(Interest i) {
 			interests.add(i);
 		}
-		public void run() {
-			synchronized (this) {
-				// Mark us pending delivery, so that any invalidate() that comes 
-				// along will not return until delivery has finished
-				this.deliveryPending = true;
-			}
+		public void deliver() {
 			try {
 				ArrayList<Interest> results = null;
 				CCNFilterListener listener = null;
@@ -277,10 +281,6 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 				}
 			} catch (RuntimeException ex) {
 				Library.logger().warning("failed to deliver interest: " + ex.toString());
-			} finally {
-				synchronized(this) {
-					this.deliveryPending = false;
-				}
 			}
 		}
 	}
@@ -734,6 +734,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 
 					// Re-express all of the registered interests
 					// TODO re-express only those due to be re-expressed
+					Library.logger().fine("Periodic refresh of interests");
 					synchronized (_myInterests) {
 						for (Entry<InterestRegistration> entry : _myInterests.getMatches(new ContentName("/"))) {
 							InterestRegistration reg = entry.value();
@@ -761,6 +762,8 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 		for (Iterator<DataRegistration> writeIter = _writers.iterator(); writeIter.hasNext();) {
 			DataRegistration dreg = (DataRegistration) writeIter.next();
 			if (ireg.interest.matches(dreg.completeName())) {
+				Library.logger().info("Remove for " + dreg.name());
+				writeIter.remove();
 				dreg.copyTo(ireg); // this is a copy of the data
 				_threadpool.execute(ireg);
 				dreg.sema.release();

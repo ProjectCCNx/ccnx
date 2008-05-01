@@ -25,6 +25,7 @@ import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.content.Link;
+import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
@@ -1024,5 +1025,15 @@ public class StandardCCNLibrary implements CCNLibrary {
 	public boolean isLocal(CompleteName name) {
 		// TODO Auto-generated method stub
 		return false;
+	}
+
+	public void cancelInterestFilter(ContentName filter,
+			CCNFilterListener callbackListener) {
+		CCNNetworkManager.getNetworkManager().cancelInterestFilter(filter, callbackListener);		
+	}
+
+	public void setInterestFilter(ContentName filter,
+			CCNFilterListener callbackListener) {
+		CCNNetworkManager.getNetworkManager().setInterestFilter(filter, callbackListener);
 	}
 }

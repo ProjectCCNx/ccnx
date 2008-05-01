@@ -13,6 +13,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.content.Link;
+import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
@@ -191,6 +192,17 @@ public interface CCNLibrary extends CCNBase {
 			CCNInterestListener listener) throws IOException;
 	
 	public void cancelInterest(Interest interest, CCNInterestListener listener) throws IOException;
+	
+	/**
+	 * Register a standing interest filter with callback to receive any 
+	 * matching interests seen
+	 */
+	public void setInterestFilter(ContentName filter, CCNFilterListener callbackListener);
+	
+	/**
+	 * Unregister a standing interest filter
+	 */
+	public void cancelInterestFilter(ContentName filter, CCNFilterListener callbackListener);
 	
 	public ArrayList<CompleteName> enumerate(Interest interest) throws IOException;
 

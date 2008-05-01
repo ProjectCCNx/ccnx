@@ -3,7 +3,9 @@ package test.ccn.library;
 
 import static org.junit.Assert.*;
 
+import java.io.IOException;
 import java.lang.Thread.UncaughtExceptionHandler;
+import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Random;
@@ -16,7 +18,10 @@ import org.junit.Test;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.CompleteName;
+import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.MalformedContentNameStringException;
+import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
@@ -88,6 +93,13 @@ public class BaseLibraryTest {
 			genericGetPut(putter, getter);
 	}
 
+	@Test
+	public void testGetPutServ() throws Throwable {
+			Thread putter = new Thread(new PutServer(25));
+			Thread getter = new Thread(new GetThread(25));
+			genericGetPut(putter, getter);
+	}
+
 
 	public class GetThread implements Runnable {
 		int count = 0;
@@ -142,6 +154,7 @@ public class BaseLibraryTest {
 		}
 		public void run() {
 			try {
+				System.out.println("GetServer started");
 				Interest interest = new Interest("/BaseLibraryTest/");
 				// Register interest
 				library.expressInterest(interest, this);
@@ -159,7 +172,7 @@ public class BaseLibraryTest {
 		public Interest[] getInterests() {
 			return null;
 		}
-		public int handleResults(ArrayList<ContentObject> results) {
+		public synchronized int handleResults(ArrayList<ContentObject> results) {
 			for (ContentObject contentObject : results) {
 				assertEquals(next, Integer.parseInt(new String(contentObject.content())));
 				System.out.println("Got " + next);			
@@ -175,5 +188,49 @@ public class BaseLibraryTest {
 		public boolean matchesInterest(CompleteName name) {
 			return false;
 		}
+	}
+	
+	public class PutServer implements Runnable, CCNFilterListener {
+		int count = 0;
+		int next = 0;
+		Semaphore sema = new Semaphore(0);
+		ContentName name = null;
+		
+		public PutServer(int n) {
+			count = n;
+		}
+		
+		public void run() {
+			try {
+				System.out.println("PutServer started");
+				// Register filter
+				name = new ContentName("/BaseLibraryTest/");
+				library.setInterestFilter(name, this);
+				// Block on semaphore until enough data has been received
+				sema.acquire();
+				library.cancelInterestFilter(name, this);
+			} catch (Throwable ex) {
+				error = ex;
+			}
+		}
+
+		public synchronized int handleResults(ArrayList<Interest> interests) {
+			try {
+				assertEquals(1, interests.size());
+				for (Interest interest : interests) {
+					assertTrue(name.isPrefixOf(interest.name()));
+					library.put("/BaseLibraryTest/" + new Integer(next).toString(), new Integer(next).toString());
+					System.out.println("Put " + next + " done");
+					next++;
+				}
+				if (next >= count) {
+					sema.release();
+				}
+			} catch (Throwable e) {
+				error = e;
+			}
+			return 0;
+		}
+		
 	}
 }
