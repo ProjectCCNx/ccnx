@@ -83,7 +83,7 @@ public class BaseLibraryTest {
 				Random rand = new Random();
 				for (int i = 0; i < count; i++) {
 					Thread.sleep(rand.nextInt(50));
-					ArrayList<ContentObject> contents = library.get("/BaseLibraryTest/" + new Integer(i).toString());
+					ArrayList<ContentObject> contents = library.get("/BaseLibraryTest/");
 					assertEquals(1, contents.size());
 					assertEquals(i, Integer.parseInt(new String(contents.get(0).content())));
 					System.out.println("Got " + i);
