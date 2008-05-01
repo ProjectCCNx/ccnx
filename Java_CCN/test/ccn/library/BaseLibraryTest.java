@@ -7,6 +7,7 @@ import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Random;
+import java.util.concurrent.Semaphore;
 import java.util.logging.Level;
 
 import org.junit.Before;
@@ -14,7 +15,10 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.query.CCNInterestListener;
+import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.StandardCCNLibrary;
 
@@ -36,16 +40,14 @@ public class BaseLibraryTest {
 	public void setUp() throws Exception {
 	}
 
-	@Test
-	public void testGetPut() throws Throwable {
+	public void genericGetPut(Thread putter, Thread getter) throws Throwable {
 		try {
-			Thread putter = new Thread(new PutThread(25));
-			Thread getter = new Thread(new GetThread(25));
 			putter.start();
 			Thread.sleep(200);
 			Date start = new Date();
 			getter.start();
 			putter.join(5000);
+			getter.join(5000);
 			boolean good = true;
 			exit = true;
 			if (getter.getState() != Thread.State.TERMINATED) {
@@ -72,6 +74,21 @@ public class BaseLibraryTest {
 		}
 	}
 	
+	@Test
+	public void testGetPut() throws Throwable {
+		Thread putter = new Thread(new PutThread(25));
+		Thread getter = new Thread(new GetThread(25));
+		genericGetPut(putter, getter);
+	}
+	
+	@Test
+	public void testGetServPut() throws Throwable {
+			Thread putter = new Thread(new PutThread(25));
+			Thread getter = new Thread(new GetServer(25));
+			genericGetPut(putter, getter);
+	}
+
+
 	public class GetThread implements Runnable {
 		int count = 0;
 		public GetThread(int n) {
@@ -113,6 +130,50 @@ public class BaseLibraryTest {
 			} catch (Throwable ex) {
 				error = ex;
 			}
+		}
+	}
+	
+	public class GetServer implements Runnable, CCNInterestListener {
+		int count = 0;
+		int next = 0;
+		Semaphore sema = new Semaphore(0);
+		public GetServer(int n) {
+			count = n;
+		}
+		public void run() {
+			try {
+				Interest interest = new Interest("/BaseLibraryTest/");
+				// Register interest
+				library.expressInterest(interest, this);
+				// Block on semaphore until enough data has been received
+				sema.acquire();
+				library.cancelInterest(interest, this);
+			} catch (Throwable ex) {
+				error = ex;
+			}
+		}
+		public void addInterest(Interest interest) {
+		}
+		public void cancelInterests() {
+		}
+		public Interest[] getInterests() {
+			return null;
+		}
+		public int handleResults(ArrayList<ContentObject> results) {
+			for (ContentObject contentObject : results) {
+				assertEquals(next, Integer.parseInt(new String(contentObject.content())));
+				System.out.println("Got " + next);			
+				next++;
+			}
+			if (next >= count) {
+				sema.release();
+			}
+			return 0;
+		}
+		public void interestTimedOut(Interest interest) {
+		}
+		public boolean matchesInterest(CompleteName name) {
+			return false;
 		}
 	}
 }

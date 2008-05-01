@@ -496,9 +496,6 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 		if (null == callbackListener) {
 			throw new NullPointerException("cancelInterest: callbackListener cannot be null");
 		}
-
-		// TODO: remove direct connection to repository
-		CCNRepositoryManager.getRepositoryManager().cancelInterest(interest, callbackListener);
 	
 		// Remove interest from repeated presentation to the network.
 		unregisterInterest(interest, callbackListener);
