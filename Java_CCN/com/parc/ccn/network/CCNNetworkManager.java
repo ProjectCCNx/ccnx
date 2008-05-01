@@ -190,6 +190,13 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 			this.data = new ArrayList<ContentObject>(1);
 			return result;
 		}
+		public synchronized boolean isStanding() {
+			if (null != this.listener) {
+				return true;
+			} else {
+				return false;
+			}
+		}
 		public void run() {
 			synchronized (this) {
 				// Mark us pending delivery, so that any invalidate() that comes 
@@ -773,7 +780,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 
 	// internal delivery of data, which may have originated locally
 	// or from the network.
-	protected boolean deliverData(DataRegistration dreg) {
+	protected boolean deliverData(DataRegistration dreg) throws XMLStreamException {
 		boolean consumer = false; // is there a consumer?
 
 		// Check local interests
@@ -781,6 +788,10 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 			for (InterestRegistration ireg : _myInterests.getValues(dreg.completeName())) {
 				dreg.copyTo(ireg); // this is a copy of the data
 				_threadpool.execute(ireg);
+				if (ireg.isStanding() && dreg.isFromNet()) {
+					// refresh interest immediately
+					write(ireg.interest);
+				}
 				consumer = true;
 			}
 		}
