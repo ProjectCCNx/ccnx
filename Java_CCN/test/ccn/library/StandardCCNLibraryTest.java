@@ -355,7 +355,7 @@ public class StandardCCNLibraryTest {
 		}
 
 		@Override
-		public int handleResults(ArrayList<ContentObject> results) {
+		public int handleContent(ArrayList<ContentObject> results) {
 			byte[] content = null;
 			if (null != results) {
 				Iterator<ContentObject> rit = results.iterator();

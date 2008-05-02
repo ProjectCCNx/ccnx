@@ -11,7 +11,7 @@ public interface CCNFilterListener {
 	 * @param interests The matching interests
 	 * @return
 	 */
-    public int handleResults(ArrayList<Interest> interests);
+    public int handleInterests(ArrayList<Interest> interests);
     
 
 }

@@ -173,7 +173,7 @@ public class BaseLibraryTest {
 		public Interest[] getInterests() {
 			return null;
 		}
-		public synchronized int handleResults(ArrayList<ContentObject> results) {
+		public synchronized int handleContent(ArrayList<ContentObject> results) {
 			for (ContentObject contentObject : results) {
 				assertEquals(next, Integer.parseInt(new String(contentObject.content())));
 				System.out.println("Got " + next);			
@@ -216,7 +216,7 @@ public class BaseLibraryTest {
 			}
 		}
 
-		public synchronized int handleResults(ArrayList<Interest> interests) {
+		public synchronized int handleInterests(ArrayList<Interest> interests) {
 			try {
 				assertEquals(1, interests.size());
 				for (Interest interest : interests) {

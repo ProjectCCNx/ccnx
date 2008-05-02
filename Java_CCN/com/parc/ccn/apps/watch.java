@@ -71,7 +71,7 @@ public class watch extends Thread implements CCNInterestListener {
 		return (Interest[])_interests.toArray();
 	}
 	
-	public int handleResults(ArrayList<ContentObject> results) {
+	public int handleContent(ArrayList<ContentObject> results) {
 		for (int i=0; i < results.size(); ++i) {
 			System.out.println("New content: " + results.get(i).name());
 		}

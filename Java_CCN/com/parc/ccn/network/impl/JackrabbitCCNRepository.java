@@ -54,12 +54,15 @@ import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.util.TextXMLCodec;
+import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.StandardCCNLibrary;
 import com.parc.ccn.network.CCNRepository;
 import com.parc.ccn.network.CCNRepositoryFactory;
 import com.parc.ccn.network.GenericCCNRepository;
@@ -71,7 +74,7 @@ import com.parc.ccn.network.discovery.CCNDiscovery;
  * @author smetters
  *
  */
-public class JackrabbitCCNRepository extends GenericCCNRepository implements CCNRepository {
+public class JackrabbitCCNRepository extends GenericCCNRepository implements CCNRepository, CCNInterestListener, CCNFilterListener {
 
 	public static final int SERVER_PORT = 1101;
 	public static final String PROTOCOL_TYPE = "rmi";
@@ -99,6 +102,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	protected static JackrabbitCCNRepository _theNetwork = null;
 
 	protected Repository _repository;
+	protected CCNLibrary _library;
 	protected Session _session;
 	protected Node _root;
 	protected boolean _versionableRoot;
@@ -140,6 +144,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	public JackrabbitCCNRepository(int port) {
 		try {
 			_repository = createLocalRepository(port);
+			_library = StandardCCNLibrary.open();
 			_info = 
 				CCNDiscovery.getServiceInfo(
 						JACKRABBIT_RMI_SERVICE_TYPE, null, port);
@@ -1379,5 +1384,61 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		if (null == node)
 			return false;
 		return (node.equals(root()));
+	}
+
+	//----------------------------------------------- CCNInterestListener
+	
+	public int handleContent(ArrayList<ContentObject> results) {
+		try {
+			for (ContentObject contentObject : results) {
+				put(contentObject.name(), contentObject.authenticator(), contentObject.signature(), contentObject.content());
+			}
+		} catch (IOException e) {
+			Library.logger().warning(e.getMessage());
+		}
+		return 0;
+	}
+
+	public void addInterest(Interest interest) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	public void cancelInterests() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	public Interest[] getInterests() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public void interestTimedOut(Interest interest) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	public boolean matchesInterest(CompleteName name) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+	
+	//----------------------------------------------- CCNFilterListener
+
+	public int handleInterests(ArrayList<Interest> interests) {
+		// TODO This is not correct, just placeholder superstructure:
+		// need to handle multiple pieces of content intelligently
+		try {
+			for (Interest interest : interests) {
+				ContentObject obj = get(interest.name(), null, true).get(0);
+				_library.put(obj.name(), obj.authenticator(), obj.signature(), obj.content());
+			}
+		} catch (IOException e) {
+			Library.logger().warning(e.getMessage());
+		} catch (InterruptedException e) {
+			// nothing to do
+		}
+		return 0;
 	}
 }

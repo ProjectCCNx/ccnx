@@ -100,7 +100,7 @@ public class puttap implements CCNInterestListener {
 		return null;
 	}
 
-	public int handleResults(ArrayList<ContentObject> results) {
+	public int handleContent(ArrayList<ContentObject> results) {
 		// Intentional no-op
 		return 0;
 	}

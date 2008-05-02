@@ -138,6 +138,6 @@ class JackrabbitEventListener implements EventListener {
 		}
 	
 		if (null != _listener)
-			_listener.handleResults(nodesFound);
+			_listener.handleContent(nodesFound);
 	}
 }

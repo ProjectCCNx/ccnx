@@ -13,7 +13,7 @@ public interface CCNInterestListener {
 	 * 			ccnd is currently handing back anyway.
 	 * @return
 	 */
-    public int handleResults(ArrayList<ContentObject> results);
+    public int handleContent(ArrayList<ContentObject> results);
     
     /**
      * Notification that our query has timed out.

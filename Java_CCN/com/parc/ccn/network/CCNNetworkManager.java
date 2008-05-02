@@ -240,7 +240,7 @@ public class CCNNetworkManager implements Runnable {
 					}
 					// Call into client code without holding any library locks
 					if (null != results) {
-						listener.handleResults(results);
+						listener.handleContent(results);
 					}
 				} else if (null != this.sema) {
 					// Waiting thread will pickup data -- wake it up
@@ -285,7 +285,7 @@ public class CCNNetworkManager implements Runnable {
 				}
 				// Call into client code without holding any library locks
 				if (null != results) {
-					listener.handleResults(results);
+					listener.handleInterests(results);
 				}
 			} catch (RuntimeException ex) {
 				Library.logger().warning("failed to deliver interest: " + ex.toString());
