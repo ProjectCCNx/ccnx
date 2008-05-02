@@ -68,7 +68,7 @@ import com.sun.org.apache.xpath.internal.operations.Equals;
  * @author smetters
  *
  */
-public class CCNNetworkManager implements CCNRepository, Runnable {
+public class CCNNetworkManager implements Runnable {
 	
 	public static final int DEFAULT_AGENT_PORT = 4485;
 	public static final int MAX_PAYLOAD = 8800; // number of bytes in UDP payload
@@ -106,6 +106,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 	protected abstract class ListenerRegistration implements Runnable {
 		protected Object listener;
 		public Semaphore sema = null;
+		public Object owner = null;
 		protected boolean deliveryPending = false;
 		public abstract void deliver();
 		public void invalidate() {
@@ -152,17 +153,23 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 		public boolean equals(Object obj) {
 			if (obj instanceof ListenerRegistration) {
 				ListenerRegistration other = (ListenerRegistration)obj;
-				if (null == this.listener && null == other.listener){
-					return super.equals(obj);
-				} else if (null != this.listener && null != other.listener) {
-					return this.listener.equals(other.listener);
+				if (this.owner == other.owner) {
+					if (null == this.listener && null == other.listener){
+						return super.equals(obj);
+					} else if (null != this.listener && null != other.listener) {
+						return this.listener.equals(other.listener);
+					}
 				}
 			}
 			return false;
 		}
 		public int hashCode() {
 			if (null != this.listener) {
-				return this.listener.hashCode();
+				if (null != owner) {
+					return owner.hashCode() + this.listener.hashCode();
+				} else {
+					return this.listener.hashCode();
+				}
 			} else {
 				return super.hashCode();
 			}
@@ -188,9 +195,10 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 		public final Interest interest;
 		protected ArrayList<ContentObject> data = new ArrayList<ContentObject>(1);
 		public Date lastRefresh;
-		public InterestRegistration(Interest i, CCNInterestListener l) {
+		public InterestRegistration(Interest i, CCNInterestListener l, Object owner) {
 			interest = i; 
 			listener = l;
+			this.owner = owner;
 			if (null == listener) {
 				sema = new Semaphore(0);
 			}
@@ -258,8 +266,8 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 		public ContentName name;
 		protected boolean deliveryPending = false;
 		protected ArrayList<Interest> interests= new ArrayList<Interest>(1);
-		public Filter(ContentName n, CCNFilterListener l) {
-			name = n; listener = l;
+		public Filter(ContentName n, CCNFilterListener l, Object o) {
+			name = n; listener = l; owner = o;
 		}
 		public synchronized void add(Interest i) {
 			interests.add(i);
@@ -295,8 +303,10 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 	protected class DataRegistration {
 		protected ContentObject data = null;
 		public Semaphore sema = null;
-		public DataRegistration(ContentObject d, boolean internal) {
+		public Object owner = null;
+		public DataRegistration(ContentObject d, boolean internal, Object own) {
 			data = d;
+			owner = own;
 			if (internal) {
 				sema = new Semaphore(0);
 			}
@@ -422,11 +432,11 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 	 * flow control is maintained
 	 * TODO persistence protocol
 	 */
-	public CompleteName put(ContentName name, ContentAuthenticator authenticator, 
+	public CompleteName put(Object caller, ContentName name, ContentAuthenticator authenticator, 
 							byte [] signature, byte[] content) throws IOException, InterruptedException {
 		CompleteName complete = new CompleteName(name, authenticator, signature);
 		ContentObject co = new ContentObject(name, authenticator, signature, content); 
-		DataRegistration reg = new DataRegistration(co, true);
+		DataRegistration reg = new DataRegistration(co, true, caller);
 		// Add to internal processing queue
 		synchronized (_newData) {
 			_newData.add(reg);
@@ -442,14 +452,11 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 		//return CCNRepositoryManager.getRepositoryManager().put(name, authenticator, signature, content);
 	}
 
-	/**
-	 * Gets we also currently forward to the repository.
-	 */
-	public ArrayList<ContentObject> get(ContentName name, 
+	public ArrayList<ContentObject> get(Object caller, ContentName name, 
 									    ContentAuthenticator authenticator,
 									    boolean isRecursive) throws IOException, InterruptedException {
 		Interest interest = new Interest(name);
-		InterestRegistration reg = new InterestRegistration(interest, null);
+		InterestRegistration reg = new InterestRegistration(interest, null, caller);
 		// Add to internal processing queue
 		synchronized (_newInterests) {
 			_newInterests.add(reg);
@@ -476,6 +483,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 	 * we need to notify the listener for hits coming across the network.
 	 */
 	public void expressInterest(
+			Object caller,
 			Interest interest,
 			CCNInterestListener callbackListener) throws IOException {
 		if (null == callbackListener) {
@@ -485,7 +493,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 		// TODO: remove direct connection to repository
 		//CCNRepositoryManager.getRepositoryManager().expressInterest(interest, callbackListener);
 
-		InterestRegistration reg = new InterestRegistration(interest, callbackListener);
+		InterestRegistration reg = new InterestRegistration(interest, callbackListener, caller);
 		// Add to internal processing queue
 		// We leave actual registration to the processing thread so that 
 		// concurrency problems like double-delivery can be avoided
@@ -499,13 +507,13 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 	 * Cancel this query with all the repositories we sent
 	 * it to.
 	 */
-	public void cancelInterest(Interest interest, CCNInterestListener callbackListener) throws IOException {
+	public void cancelInterest(Object caller, Interest interest, CCNInterestListener callbackListener) throws IOException {
 		if (null == callbackListener) {
 			throw new NullPointerException("cancelInterest: callbackListener cannot be null");
 		}
 	
 		// Remove interest from repeated presentation to the network.
-		unregisterInterest(interest, callbackListener);
+		unregisterInterest(caller, interest, callbackListener);
 	}
 
 	
@@ -513,18 +521,18 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 	 * Register a standing interest filter with callback to receive any 
 	 * matching interests seen
 	 */
-	public void setInterestFilter(ContentName filter, CCNFilterListener callbackListener) {
+	public void setInterestFilter(Object caller, ContentName filter, CCNFilterListener callbackListener) {
 		synchronized (_myFilters) {
-			_myFilters.add(filter, new Filter(filter, callbackListener));
+			_myFilters.add(filter, new Filter(filter, callbackListener, caller));
 		}
 	}
 	
 	/**
 	 * Unregister a standing interest filter
 	 */
-	public void cancelInterestFilter(ContentName filter, CCNFilterListener callbackListener) {
+	public void cancelInterestFilter(Object caller, ContentName filter, CCNFilterListener callbackListener) {
 		synchronized (_myFilters) {
-			Entry<Filter> found = _myFilters.remove(filter, new Filter(filter, callbackListener));
+			Entry<Filter> found = _myFilters.remove(filter, new Filter(filter, callbackListener, caller));
 			if (null != found) {
 				found.value().invalidate();
 			}
@@ -587,8 +595,8 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 	
 	// external version: for use when we only have interest from client.  For all internal
 	// purposes we should unregister the InterestRegistration we already have
-	void unregisterInterest(Interest interest, CCNInterestListener callbackListener) {
-		InterestRegistration reg = new InterestRegistration(interest, callbackListener);
+	void unregisterInterest(Object caller, Interest interest, CCNInterestListener callbackListener) {
+		InterestRegistration reg = new InterestRegistration(interest, callbackListener, caller);
 		unregisterInterest(reg);
 	}
 	
@@ -691,7 +699,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 
 				//--------------------------------- Process data from net (if any) 
 				for (ContentObject co : packet.data()) {
-					DataRegistration oData = new DataRegistration(co, false);
+					DataRegistration oData = new DataRegistration(co, false, null);
 					deliverData(oData);
 					// External data never goes back to network, never held onto here
 					// External data never has a thread waiting, so no need to release sema
@@ -715,7 +723,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 
 				//--------------------------------- Process interests from net (if any)
 				for (Interest interest : packet.interests()) {
-					InterestRegistration oInterest = new InterestRegistration(interest, null);
+					InterestRegistration oInterest = new InterestRegistration(interest, null, null);
 					DataRegistration dreg = deliverInterest(oInterest);
 					if (null == dreg) {
 						// Record this known interest that has not already been consumed
@@ -761,7 +769,7 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 		// First pending writer with data gets to consume this interest
 		for (Iterator<DataRegistration> writeIter = _writers.iterator(); writeIter.hasNext();) {
 			DataRegistration dreg = (DataRegistration) writeIter.next();
-			if (ireg.interest.matches(dreg.completeName())) {
+			if (dreg.owner != ireg.owner && ireg.interest.matches(dreg.completeName())) {
 				Library.logger().info("Remove for " + dreg.name());
 				writeIter.remove(); // avoid handing same data back to second get()
 				dreg.copyTo(ireg); // this is a copy of the data
@@ -774,8 +782,10 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 		// Call any listeners with matching filters
 		synchronized (_myFilters) {
 			for (Filter filter : _myFilters.getValues(ireg.interest.name())) {
-				filter.add(ireg.interest);
-				_threadpool.execute(filter);
+				if (filter.owner != ireg.owner) {
+					filter.add(ireg.interest);
+					_threadpool.execute(filter);
+				}
 			}
 		}
 		return result;
@@ -789,13 +799,15 @@ public class CCNNetworkManager implements CCNRepository, Runnable {
 		// Check local interests
 		synchronized (_myInterests) {
 			for (InterestRegistration ireg : _myInterests.getValues(dreg.completeName())) {
-				dreg.copyTo(ireg); // this is a copy of the data
-				_threadpool.execute(ireg);
-				if (ireg.isStanding() && dreg.isFromNet()) {
-					// refresh interest immediately
-					write(ireg.interest);
+				if (dreg.owner != ireg.owner) {
+					dreg.copyTo(ireg); // this is a copy of the data
+					_threadpool.execute(ireg);
+					if (ireg.isStanding() && dreg.isFromNet()) {
+						// refresh interest immediately
+						write(ireg.interest);
+					}
+					consumer = true;
 				}
-				consumer = true;
 			}
 		}
 		return consumer;

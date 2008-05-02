@@ -29,14 +29,12 @@ import com.parc.ccn.library.StandardCCNLibrary;
 
 public class BaseLibraryTest {
 
-	protected static CCNLibrary library = null;
 	protected static boolean exit = false;
 	protected static Throwable error = null; // for errors from other threads
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		library = StandardCCNLibrary.getLibrary();
-		
+	
 		// Uncomment the following line for more debug-level tracing
 //		Library.logger().setLevel(Level.FINER);
 	}
@@ -102,6 +100,7 @@ public class BaseLibraryTest {
 
 
 	public class GetThread implements Runnable {
+		protected CCNLibrary library = StandardCCNLibrary.open();
 		int count = 0;
 		public GetThread(int n) {
 			count = n;
@@ -125,6 +124,7 @@ public class BaseLibraryTest {
 	}
 	
 	public class PutThread implements Runnable {
+		protected CCNLibrary library = StandardCCNLibrary.open();
 		int count = 0;
 		public PutThread(int n) {
 			count = n;
@@ -146,6 +146,7 @@ public class BaseLibraryTest {
 	}
 	
 	public class GetServer implements Runnable, CCNInterestListener {
+		protected CCNLibrary library = StandardCCNLibrary.open();
 		int count = 0;
 		int next = 0;
 		Semaphore sema = new Semaphore(0);
@@ -191,6 +192,7 @@ public class BaseLibraryTest {
 	}
 	
 	public class PutServer implements Runnable, CCNFilterListener {
+		protected CCNLibrary library = StandardCCNLibrary.open();
 		int count = 0;
 		int next = 0;
 		Semaphore sema = new Semaphore(0);

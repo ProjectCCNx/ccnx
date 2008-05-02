@@ -70,20 +70,15 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 */
 	protected KeyManager _userKeyManager = null;
 	
-	public static StandardCCNLibrary getLibrary() { 
-		if (null == _library) {
-			synchronized (StandardCCNLibrary.class) {
-				if (null == _library) {
-					try {
-						_library = new StandardCCNLibrary();
-					} catch (ConfigurationException e) {
-						Library.logger().severe("Configuration exception initializing CCN library: " + e.getMessage());
-						throw new RuntimeException("Configuration exception initializing CCN library: " + e.getMessage(), e);
-					}
-				}
+	public static StandardCCNLibrary open() { 
+		synchronized (StandardCCNLibrary.class) {
+			try {
+				return new StandardCCNLibrary();
+			} catch (ConfigurationException e) {
+				Library.logger().severe("Configuration exception initializing CCN library: " + e.getMessage());
+				throw new RuntimeException("Configuration exception initializing CCN library: " + e.getMessage(), e);
 			}
 		}
-		return _library;
 	}
 
 	public StandardCCNLibrary(KeyManager keyManager) {
@@ -816,7 +811,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 							byte [] signature, 
 							byte[] content) throws IOException, InterruptedException {
 
-		return CCNNetworkManager.getNetworkManager().put(name, authenticator, signature, content);
+		return CCNNetworkManager.getNetworkManager().put(this, name, authenticator, signature, content);
 	}
 
 	/**
@@ -837,7 +832,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	public ArrayList<ContentObject> get(ContentName name, 
 										ContentAuthenticator authenticator,
 										boolean isRecursive) throws IOException, InterruptedException {
-		return CCNNetworkManager.getNetworkManager().get(name, authenticator,isRecursive);
+		return CCNNetworkManager.getNetworkManager().get(this, name, authenticator,isRecursive);
 	}
 	
 	public ArrayList<ContentObject> get(String name) throws MalformedContentNameStringException, IOException, InterruptedException {
@@ -855,11 +850,11 @@ public class StandardCCNLibrary implements CCNLibrary {
 			Interest interest,
 			CCNInterestListener listener) throws IOException {
 		// Will add the interest to the listener.
-		CCNNetworkManager.getNetworkManager().expressInterest(interest, listener);
+		CCNNetworkManager.getNetworkManager().expressInterest(this, interest, listener);
 	}
 
 	public void cancelInterest(Interest interest, CCNInterestListener listener) throws IOException {
-		CCNNetworkManager.getNetworkManager().cancelInterest(interest, listener);
+		CCNNetworkManager.getNetworkManager().cancelInterest(this, interest, listener);
 	}
 	
 	/**
@@ -1029,11 +1024,11 @@ public class StandardCCNLibrary implements CCNLibrary {
 
 	public void cancelInterestFilter(ContentName filter,
 			CCNFilterListener callbackListener) {
-		CCNNetworkManager.getNetworkManager().cancelInterestFilter(filter, callbackListener);		
+		CCNNetworkManager.getNetworkManager().cancelInterestFilter(this, filter, callbackListener);		
 	}
 
 	public void setInterestFilter(ContentName filter,
 			CCNFilterListener callbackListener) {
-		CCNNetworkManager.getNetworkManager().setInterestFilter(filter, callbackListener);
+		CCNNetworkManager.getNetworkManager().setInterestFilter(this, filter, callbackListener);
 	}
 }

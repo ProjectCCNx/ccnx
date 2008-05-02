@@ -37,7 +37,7 @@ public class StandardCCNLibraryTest {
 	protected static CCNLibrary library = null;
 
 	static {
-		library = StandardCCNLibrary.getLibrary();
+		library = StandardCCNLibrary.open();
 	}
 
 	@Test
