@@ -343,7 +343,6 @@ shutdown_client_fd(struct ccnd *h, int fd)
     ccn_charbuf_destroy(&face->outbuf);
     hashtb_delete(e);
     hashtb_end(e);
-    clean_needed(h);
 }
 
 static void
@@ -574,8 +573,6 @@ check_dgram_faces(struct ccnd *h)
         hashtb_next(e);
     }
     hashtb_end(e);
-    if (count > 0)
-        clean_needed(h);
     return(count);
 }
 
@@ -665,6 +662,7 @@ aging_needed(struct ccnd *h)
 
 /*
  * clean_deamon: weeds expired faceids out of the content table
+ * and expires short-term blocking state.
  */
 static int
 clean_deamon(
@@ -674,48 +672,46 @@ clean_deamon(
     int flags)
 {
     struct ccnd *h = clienth;
-    if ((flags & CCN_SCHEDULE_CANCEL) == 0) {
-        unsigned i;
-        unsigned n;
-        struct content_entry* content;
-        int n_cleaned = 0;
-        n = h->accession - h->accession_base + 1;
-        if (n > h->content_by_accession_window)
-            n = h->content_by_accession_window;
-        for (i = 0; i < n; i++) {
-            content = h->content_by_accession[i];
-            if (content != NULL && content->faces != NULL) {
-                int j, k, d;
-                for (j = 0, k = 0, d = 0; j < content->faces->n; j++) {
-                    unsigned faceid = content->faces->buf[j];
-                    struct face *face = face_from_faceid(h, faceid);
-                    if (face != NULL) {
-                        if (j < content->nface_done)
-                            d++;
-                        content->faces->buf[k++] = faceid;
-                    }
-                }
-                if (k < content->faces->n) {
-                    n_cleaned++;
-                    content->faces->n = k;
-                    content->nface_done = d;
+    unsigned i;
+    unsigned n;
+    struct content_entry* content;
+    if ((flags & CCN_SCHEDULE_CANCEL) != 0) {
+        h->clean = NULL;
+        return(0);
+    }
+    n = h->accession - h->accession_base + 1;
+    if (n > h->content_by_accession_window)
+        n = h->content_by_accession_window;
+    for (i = 0; i < n; i++) {
+        content = h->content_by_accession[i];
+        if (content != NULL && content->faces != NULL) {
+            int j, k, d;
+            int j0 = content->nface_old;
+            j0 = 0; /* disable blocking state expiration for now */
+            for (j = j0, k = 0, d = 0; j < content->faces->n; j++) {
+                unsigned faceid = content->faces->buf[j];
+                struct face *face = face_from_faceid(h, faceid);
+                if (face != NULL) {
+                    if (j < content->nface_done)
+                        d++;
+                    content->faces->buf[k++] = faceid;
                 }
             }
+            if (k < content->faces->n) {
+                content->faces->n = k;
+                content->nface_done = d;
+            }
+            content->nface_old = d;
         }
-        if (n_cleaned > 0)
-            return(120000000 / (n_cleaned + 1));
     }
-    /* nothing on the horizon, so go away */
-    h->clean = NULL;
-    return(0);
+    return(15000000);
 }
 
 static void
 clean_needed(struct ccnd *h)
 {
-    if (h->clean == NULL) {
-        h->clean = ccn_schedule_event(h->sched, 10000000, clean_deamon, NULL, 0);
-    }
+    if (h->clean == NULL)
+        h->clean = ccn_schedule_event(h->sched, 1000000, clean_deamon, NULL, 0);
 }
 
 /*
@@ -957,6 +953,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,
             interest->ncomp = comps->n - 1;
             interest->interested_faceid = ccn_indexbuf_create();
             interest->counters = ccn_indexbuf_create();
+            interest->cached_faceid = ~0U;
             ccnd_msg(h, "New interest");
             create_backlinks_for_new_interest(h, interest, msg, comps);
         }
@@ -1405,13 +1402,13 @@ ccnd_create(void)
                 face->fd = fd;
                 face->flags |= CCN_FACE_DGRAM;
                 hashtb_end(e);
-                ccnd_msg(h, "accepting datagrams on fd %d",
-                    fd);
+                ccnd_msg(h, "accepting datagrams on fd %d", fd);
             }
         }
         freeaddrinfo(addrinfo);
     }
     h->seed[1] = (unsigned short)getpid(); /* should gather more entropy than this */
+    clean_needed(h);
     return(h);
 }
 

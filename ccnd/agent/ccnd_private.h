@@ -131,6 +131,7 @@ struct content_entry {
     int key_size;
     unsigned char *tail;        /* ContentObject fragment starting at Content */
     int tail_size;
+    int nface_old;              /* Used for cleaning supression state */
     int nface_done;             /* How many faces have seen the content */
     struct ccn_indexbuf *faces; /* These faceids have or want the content */
     struct ccn_scheduled_event *sender;
