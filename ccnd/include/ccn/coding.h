@@ -67,6 +67,7 @@ enum ccn_dtag {
     CCN_DTAG_Timestamp = 39,
     CCN_DTAG_Type = 40,
     CCN_DTAG_Nonce = 41,
+    CCN_DTAG_Scope = 42,
     CCN_DTAG_CCNProtocolDataUnit = 17702112,
     CCN_DTAG_ExperimentalResponseFilter = 23204960,
 };

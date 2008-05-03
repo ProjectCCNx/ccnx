@@ -104,9 +104,12 @@ int ccn_name_append(struct ccn_charbuf *c, const void *component, size_t n);
  * Use the above routines to set up namebuf.
  * The namebuf may be reused or destroyed after the call.
  * If action is not NULL, it is invoked when matching data comes back.
+ * If interest_template is supplied, it should contain a ccnb formatted
+ * interest message to provide the other portions of the interest.
  */
 int ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
-                         int repeat, struct ccn_closure *action);
+                         int repeat, struct ccn_closure *action,
+                         struct ccn_charbuf *interest_template);
 /*
  * ccn_set_default_content_handler:
  * Sets default content handler, replacing any in effect.
@@ -181,6 +184,9 @@ void ccn_buf_advance(struct ccn_buf_decoder *d);
 /* The match routines return a boolean - true for match */
 int ccn_buf_match_dtag(struct ccn_buf_decoder *d, enum ccn_dtag dtag);
 
+int ccn_buf_match_some_dtag(struct ccn_buf_decoder *d);
+
+int ccn_buf_match_some_blob(struct ccn_buf_decoder *d);
 int ccn_buf_match_blob(struct ccn_buf_decoder *d,
                        const unsigned char **bufp, size_t *sizep);
 
@@ -197,6 +203,7 @@ struct ccn_parsed_interest {
     size_t name_size;
     size_t pubid_start;
     size_t pubid_size;
+    int scope;
     size_t nonce_start;
     size_t nonce_size;
 };
@@ -204,8 +211,8 @@ struct ccn_parsed_interest {
  * ccn_parse_interest:
  * Returns number of name components, or a negative value for an error.
  * Fills in *interest.
- * If components is not NULL, it is filled with byte indexes
- * of the start of each Component of the Name of the Interest,
+ * If components is not NULL, it is filled with byte indexes of
+ * the start of each Component of the Name of the Interest,
  * plus one additional value for the index of the end of the last component.
  */
 int

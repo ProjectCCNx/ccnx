@@ -142,7 +142,7 @@ int main(int argc, char **argv)
             fprintf(stderr, "Registering interest with %d name components\n", res);
             c->length = 0;
             ccn_charbuf_append(c, rawbuf + interest.name_start, interest.name_size);
-            ccn_express_interest(ccn, c, rep, &incoming_content_action);
+            ccn_express_interest(ccn, c, rep, &incoming_content_action, NULL);
         }
         else {
             struct ccn_parsed_ContentObject obj = {0};

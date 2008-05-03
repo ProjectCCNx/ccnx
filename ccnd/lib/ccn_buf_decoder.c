@@ -39,9 +39,22 @@ ccn_buf_match_dtag(struct ccn_buf_decoder *d, enum ccn_dtag dtag)
 }
 
 int
+ccn_buf_match_some_dtag(struct ccn_buf_decoder *d)
+{
+    return(d->decoder.state >= 0 &&
+           CCN_GET_TT_FROM_DSTATE(d->decoder.state) == CCN_DTAG);
+}
+
+int
+ccn_buf_match_some_blob(struct ccn_buf_decoder *d)
+{
+    return(d->decoder.state >= 0 && CCN_GET_TT_FROM_DSTATE(d->decoder.state) == CCN_BLOB);
+}
+
+int
 ccn_buf_match_blob(struct ccn_buf_decoder *d, const unsigned char **bufp, size_t *sizep)
 {
-    if (d->decoder.state >= 0 && CCN_GET_TT_FROM_DSTATE(d->decoder.state) == CCN_BLOB) {
+    if (ccn_buf_match_some_blob(d)) {
         if (bufp != NULL)
             *bufp = d->buf + d->decoder.index;
         if (sizep != NULL)
@@ -89,7 +102,7 @@ ccn_parse_required_tagged_BLOB(struct ccn_buf_decoder *d, enum ccn_dtag dtag)
     if (ccn_buf_match_dtag(d, dtag)) {
         res = d->decoder.element_index;
         ccn_buf_advance(d);
-        if (ccn_buf_match_blob(d, NULL, NULL))
+        if (ccn_buf_match_some_blob(d))
             ccn_buf_advance(d);
         ccn_buf_check_close(d);
     }
@@ -176,6 +189,66 @@ ccn_parse_Name(struct ccn_buf_decoder *d, struct parsed_Name *x, struct ccn_inde
 }
 
 int
+ccn_parse_PublisherID(struct ccn_buf_decoder *d)
+{
+    int res = -1;
+    if (ccn_buf_match_dtag(d, CCN_DTAG_PublisherID)) {
+        res = d->decoder.element_index;
+        ccn_buf_advance(d);
+        if (!ccn_buf_match_attr(d, "type"))
+            return (d->decoder.state = -__LINE__);
+        ccn_buf_advance(d);
+        if (!(ccn_buf_match_udata(d, "KEY") ||
+              ccn_buf_match_udata(d, "CERTIFICATE") ||
+              ccn_buf_match_udata(d, "ISSUER_KEY") ||
+              ccn_buf_match_udata(d, "ISSUER_CERTIFICATE")))
+            return (d->decoder.state = -__LINE__);
+        ccn_buf_advance(d);
+        if (!ccn_buf_match_blob(d, NULL, NULL))
+            return (d->decoder.state = -__LINE__);
+        ccn_buf_advance(d);
+        ccn_buf_check_close(d);
+    }
+    if (d->decoder.state < 0)
+        return (d->decoder.state);
+    return(res);
+}
+
+int
+ccn_parse_nonNegativeInteger(struct ccn_buf_decoder *d)
+{
+    const unsigned char *p;
+    int i;
+    int n;
+    int val;
+    int newval;
+    unsigned char c;
+    if (d->decoder.state >= 0 &&
+          CCN_GET_TT_FROM_DSTATE(d->decoder.state) == CCN_UDATA) {
+        p = d->buf + d->decoder.index;
+        n = d->decoder.numval;
+        if (n < 1)
+            return(d->decoder.state = -__LINE__);
+        val = 0;
+        for (i = 0; i < n; i++) {
+            c = p[i];
+            if ('0' <= c && c <= '9') {
+                newval = val * 10 + (c - '0');
+                if (newval < val)
+                    return(d->decoder.state = -__LINE__);
+                val = newval;
+            }
+            else
+                return(d->decoder.state = -__LINE__);
+        }
+        ccn_buf_advance(d);
+        return(val);
+    }
+    return(d->decoder.state = -__LINE__);
+}
+
+
+int
 ccn_parse_interest(const unsigned char *msg, size_t size,
                    struct ccn_parsed_interest *interest,
                    struct ccn_indexbuf *components)
@@ -193,33 +266,34 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
         interest->name_start = name.start;
         interest->name_size = name.size;
         ncomp = name.ncomp;
-        interest->pubid_start = d->decoder.element_index; 
-        interest->pubid_size = 0;
-        if (ccn_buf_match_dtag(d, CCN_DTAG_PublisherID)) {
+        /* optional PublisherID */
+        interest->pubid_start = d->decoder.token_index; 
+        res = ccn_parse_PublisherID(d);
+        interest->pubid_size = d->decoder.token_index - interest->pubid_start;
+        /* optional Scope */
+        interest->scope = -1;
+        if (ccn_buf_match_dtag(d, CCN_DTAG_Scope)) {
             ccn_buf_advance(d);
-            if (!ccn_buf_match_attr(d, "type"))
-                return (-__LINE__);
-            ccn_buf_advance(d);
-            if (!(ccn_buf_match_udata(d, "KEY") ||
-                  ccn_buf_match_udata(d, "CERTIFICATE") ||
-                  ccn_buf_match_udata(d, "ISSUER_KEY") ||
-                  ccn_buf_match_udata(d, "ISSUER_CERTIFICATE")))
-                return (-__LINE__);
-            ccn_buf_advance(d);
-            if (!ccn_buf_match_blob(d, NULL, NULL))
-                return (-__LINE__);
-            ccn_buf_advance(d);
-            interest->pubid_size = d->decoder.index - interest->pubid_start;
+            interest->scope = ccn_parse_nonNegativeInteger(d);
+            if (interest->scope > 9)
+                return (d->decoder.state  = -__LINE__);
             ccn_buf_check_close(d);
         }
-        interest->nonce_start = d->decoder.element_index;
-        interest->nonce_size = 0;
+        /* optional Nonce */
+        interest->nonce_start = d->decoder.token_index;
         if (ccn_buf_match_dtag(d, CCN_DTAG_Nonce)) {
             ccn_buf_advance(d);
-            if (!ccn_buf_match_blob(d, NULL, NULL))
-                return (-__LINE__);
+            if (!ccn_buf_match_some_blob(d))
+                return (d->decoder.state  = -__LINE__);
             ccn_buf_advance(d);
-            interest->nonce_size = d->decoder.index - interest->nonce_start;
+            ccn_buf_check_close(d);
+        }
+        interest->nonce_size = d->decoder.token_index - interest->nonce_start;
+        /* Allow for some experimental stuff */
+        while (ccn_buf_match_some_dtag(d)) {
+            ccn_buf_advance(d);
+            if (ccn_buf_match_some_blob(d))
+                ccn_buf_advance(d);
             ccn_buf_check_close(d);
         }
         ccn_buf_check_close(d);
@@ -245,23 +319,7 @@ ccn_parse_KeyName(struct ccn_buf_decoder *d, struct parsed_KeyName *x)
         res = d->decoder.element_index;
         ccn_buf_advance(d);
         x->Name = ccn_parse_Name(d, &name, NULL);
-        if (ccn_buf_match_dtag(d, CCN_DTAG_PublisherID)) {
-            x->PublisherID = d->decoder.element_index;
-            ccn_buf_advance(d);
-            if (!ccn_buf_match_attr(d, "type"))
-                return (-__LINE__);
-            ccn_buf_advance(d);
-            if (!(ccn_buf_match_udata(d, "KEY") ||
-                  ccn_buf_match_udata(d, "CERTIFICATE") ||
-                  ccn_buf_match_udata(d, "ISSUER_KEY") ||
-                  ccn_buf_match_udata(d, "ISSUER_CERTIFICATE")))
-                return (-__LINE__);
-            ccn_buf_advance(d);
-            if (!ccn_buf_match_blob(d, NULL, NULL))
-                return (-__LINE__);
-            ccn_buf_advance(d);
-            ccn_buf_check_close(d);
-        }
+        x->PublisherID = ccn_parse_PublisherID(d);
         ccn_buf_check_close(d);
     }
     else

@@ -40,6 +40,8 @@ struct ccn {
 struct expressed_interest { /* keyed by components of name */
     struct timeval lasttime;
     struct ccn_closure *action;
+    unsigned char *template_stuff;
+    unsigned template_stuff_size;
     int repeat;
     int target;
     int outstanding;
@@ -142,6 +144,33 @@ ccn_disconnect(struct ccn *h)
 }
 
 void
+replace_template(struct expressed_interest *interest,
+    struct ccn_charbuf *interest_template)
+{
+    size_t start;
+    size_t size;
+    int res;
+    struct ccn_parsed_interest pi = {0};
+    if (interest->template_stuff != NULL)
+        free(interest->template_stuff);
+    interest->template_stuff = NULL;
+    interest->template_stuff_size = 0;
+    if (interest_template != NULL) {
+        res = ccn_parse_interest(interest_template->buf,
+                                 interest_template->length, &pi, NULL);
+        if (res >= 0) {
+            start = pi.name_start + pi.name_size;
+            size = interest_template->length - 1 - start;
+            interest->template_stuff = calloc(1, size);
+            if (interest->template_stuff != NULL) {
+                memcpy(interest->template_stuff, interest_template->buf + start, size);
+                interest->template_stuff_size = size;
+            }
+        }
+    }
+}
+
+void
 ccn_destroy(struct ccn **hp)
 {
     struct hashtb_enumerator ee;
@@ -156,6 +185,7 @@ ccn_destroy(struct ccn **hp)
         for (hashtb_start(h->interests, e); e->data != NULL; hashtb_next(e)) {
             struct expressed_interest *i = e->data;
             ccn_replace_handler(h, &(i->action), NULL);
+            replace_template(i, NULL);
         }
         hashtb_end(e);
         hashtb_destroy(&(h->interests));
@@ -222,7 +252,8 @@ ccn_check_namebuf(struct ccn *h, struct ccn_charbuf *namebuf)
 
 int
 ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
-                     int repeat, struct ccn_closure *action)
+                     int repeat, struct ccn_closure *action,
+                     struct ccn_charbuf *interest_template)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -247,6 +278,7 @@ ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
         NOTE_ERRNO(h);
     else if (repeat == 0) {
         ccn_replace_handler(h, &(interest->action), NULL);
+        replace_template(interest, NULL);
         hashtb_delete(e);
         interest = NULL;
     }
@@ -258,6 +290,7 @@ ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
     else
         interest->repeat = -1;
     ccn_replace_handler(h, &(interest->action), action);
+    replace_template(interest, interest_template);
     interest->target = 1;
     return(0);
 }
@@ -378,7 +411,9 @@ ccn_refresh_interest(struct ccn *h, struct expressed_interest *interest,
     ccn_charbuf_append_tt(c, CCN_DTAG_Name, CCN_DTAG);
     ccn_charbuf_append(c, components, components_size);
     ccn_charbuf_append_closer(c);
-    // XXX - no provision for pubid right now.
+    if (interest->template_stuff != NULL)
+        ccn_charbuf_append(c, interest->template_stuff,
+                              interest->template_stuff_size);
     ccn_charbuf_append_closer(c);
     while (interest->outstanding < interest->target) {
         res = ccn_put(h, c->buf, c->length);

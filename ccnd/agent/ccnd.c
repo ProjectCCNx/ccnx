@@ -716,7 +716,7 @@ clean_needed(struct ccnd *h)
 
 /*
  * This is where a forwarding table would be plugged in.
- * For now we forward everywhere but the source.
+ * For now we forward everywhere but the source, subject to scope.
  */
 static struct ccn_indexbuf *
 get_outbound_faces(struct ccnd *h,
@@ -727,8 +727,13 @@ get_outbound_faces(struct ccnd *h,
     struct ccn_indexbuf *x = ccn_indexbuf_create();
     unsigned i;
     struct face **a = h->faces_by_faceid;
+    int blockmask = 0;
+    if (pi->scope == 0)
+        return(x);
+    if (pi->scope == 1)
+        blockmask = CCN_FACE_LINK;
     for (i = 0; i < h->face_limit; i++)
-        if (a[i] != NULL && a[i] != from)
+        if (a[i] != NULL && a[i] != from && ((a[i]->flags & blockmask) == 0))
             ccn_indexbuf_append_element(x, a[i]->faceid);
     return(x);
 }
@@ -810,8 +815,7 @@ propagate_interest(struct ccnd *h, struct face *face,
         int i;
         unsigned char *s;
         cb = charbuf_obtain(h);
-        ccn_charbuf_append(cb, msg, pi->name_start + pi->name_size);
-        ccn_charbuf_append(cb, msg + pi->pubid_start, pi->pubid_size);
+        ccn_charbuf_append(cb, msg, pi->nonce_start);
         nonce_start = cb->length;
         ccn_charbuf_append_tt(cb, CCN_DTAG_Nonce, CCN_DTAG);
         ccn_charbuf_append_tt(cb, noncebytes, CCN_BLOB);
@@ -821,7 +825,8 @@ propagate_interest(struct ccnd *h, struct face *face,
         cb->length += noncebytes;
         ccn_charbuf_append_closer(cb);
         pkeysize = cb->length - nonce_start;
-        ccn_charbuf_append_closer(cb);
+        ccn_charbuf_append(cb, msg + pi->nonce_start,
+                               msg_size - pi->nonce_start);
         pkey = cb->buf + nonce_start;
         msg_out = cb->buf;
         msg_out_size = cb->length;
@@ -934,6 +939,11 @@ process_incoming_interest(struct ccnd *h, struct face *face,
     if (res < 0) {
         ccnd_msg(h, "error parsing Interest - code %d", res);
     }
+    else if (parsed_interest.scope > 0 && parsed_interest.scope < 2 &&
+             (face->flags & CCN_FACE_LINK) != 0) {
+        ccnd_msg(h, "Interest from %u out of scope - discarded", face->faceid);
+        res = -__LINE__;
+    }
     else if (comps->n < 1 ||
              (namesize = comps->buf[comps->n - 1] - comps->buf[0]) > 65535) {
         ccnd_msg(h, "Interest with namesize %lu discarded",
@@ -996,7 +1006,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,
         }
         hashtb_end(e);
         aging_needed(h);
-        if (!matched)
+        if (!matched && parsed_interest.scope != 0)
             propagate_interest(h, face, msg, size, &parsed_interest);
     }
     indexbuf_release(h, comps);

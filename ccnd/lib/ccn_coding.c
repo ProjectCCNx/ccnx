@@ -248,6 +248,7 @@ static const struct ccn_dict_entry ccn_tagdict[] = {
     {CCN_DTAG_Timestamp, "Timestamp"},
     {CCN_DTAG_Type, "Type"},
     {CCN_DTAG_Nonce, "Nonce"},
+    {CCN_DTAG_Scope, "Scope"},
     {CCN_DTAG_CCNProtocolDataUnit, "CCNProtocolDataUnit"},
     {CCN_DTAG_ExperimentalResponseFilter, "ExperimentalResponseFilter"},
 };

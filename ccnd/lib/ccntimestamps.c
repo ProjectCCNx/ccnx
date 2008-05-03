@@ -56,6 +56,7 @@ main(int argc, char **argv)
 {
     struct ccn *ccn = NULL;
     struct ccn_charbuf *c = NULL;
+    struct ccn_charbuf *templ = NULL;
     int i;
     ccn = ccn_create();
     if (ccn_connect(ccn, NULL) == -1) {
@@ -63,8 +64,11 @@ main(int argc, char **argv)
         exit(1);
     }
     c = ccn_charbuf_create();
+    templ = ccn_charbuf_create();
+    /* set scope to only address ccnd */
+    ccn_charbuf_append(templ, "\001\322\362\000\002\322\216\060\000\000", 10);
     ccn_name_init(c);
-    ccn_express_interest(ccn, c, -1, &incoming_content_action);
+    ccn_express_interest(ccn, c, -1, &incoming_content_action, templ);
     for (i = 0; i < 100; i++) {
         incoming_content_action.data = NULL;
         ccn_run(ccn, 100); /* stop if we run dry for 1/10 sec */

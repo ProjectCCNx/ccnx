@@ -92,3 +92,6 @@ matrixtest.o: matrixtest.c ../include/ccn/matrix.h
 smoketestclientlib.o: smoketestclientlib.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h
+ccntimestamps.o: ccntimestamps.c ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h

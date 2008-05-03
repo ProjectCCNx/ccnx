@@ -52,7 +52,7 @@
 		ContentDigest)>
 <!ATTLIST ContentAuthenticator %commonattrs;>
 
-<!ELEMENT Interest	(Name, PublisherID?, Nonce?)>
+<!ELEMENT Interest	(Name, PublisherID?, Scope?, Nonce?)>
 <!ATTLIST Interest	%commonattrs;>
 
 <!ELEMENT PublisherID	(#PCDATA)>	<!-- base64Binary SHA-256 digest -->
@@ -69,6 +69,8 @@
     <enumeration value="ISSUER_CERTIFICATE"/>
   </restriction>
 </simpleType> -->
+
+<!ELEMENT Scope         (#PCDATA)>      <!-- nonNegativeInteger -->
 
 <!ELEMENT Nonce         (#PCDATA)>      <!-- base64Binary -->
 <!ATTLIST Nonce         ccnbencoding CDATA #FIXED 'base64Binary'>

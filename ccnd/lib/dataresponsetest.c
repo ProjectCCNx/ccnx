@@ -12,7 +12,8 @@
 static struct options {
     int logging;
     int nointerest;
-} options = {0, 0};
+    int reconnect;
+} options = {0, 0, 0};
 
 struct handlerstate {
     int next;
@@ -40,6 +41,7 @@ main (int argc, char *argv[]) {
     struct ccn_closure *action;
     struct ccn_charbuf *namebuf = NULL;
     struct ccn_charbuf *interestnamebuf = NULL;
+    struct ccn_charbuf *interesttemplatebuf = NULL;
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d;
     struct handlerstate *state;
@@ -71,7 +73,8 @@ main (int argc, char *argv[]) {
     }
 
     interestnamebuf = ccn_charbuf_create();
-    if (interestnamebuf == NULL) {
+    interesttemplatebuf = ccn_charbuf_create();
+    if (interestnamebuf == NULL || interesttemplatebuf == NULL) {
         fprintf(stderr, "ccn_charbuf_create\n");
         exit(1);
     }
@@ -93,7 +96,11 @@ main (int argc, char *argv[]) {
             options.nointerest = 1;
             continue;
         }
-
+        if (0 == strcmp(filename, "-reconnect")) {
+            options.reconnect = 1;
+            continue;
+        }
+        
         if (options.logging > 0) fprintf(stderr, "Processing %s ", filename);
         fd = open(filename, O_RDONLY);
         if (fd == -1) {
@@ -134,9 +141,11 @@ main (int argc, char *argv[]) {
             struct ccn_parsed_interest interest = {0};
             if (options.nointerest == 0) {
                 interestnamebuf->length = 0;
+                interesttemplatebuf->length = 0;
                 res = ccn_parse_interest((unsigned char *)rawbuf, rawlen, &interest, NULL);
                 ccn_charbuf_append(interestnamebuf, rawbuf + interest.name_start, interest.name_size);
-                res = ccn_express_interest(ccn, interestnamebuf, -1, action);
+                ccn_charbuf_append(interesttemplatebuf, rawbuf, rawlen);
+                res = ccn_express_interest(ccn, interestnamebuf, -1, action, interesttemplatebuf);
             }
         } else {
             if (options.logging == 0) fprintf(stderr, "Processing %s ", filename);
@@ -152,8 +161,14 @@ main (int argc, char *argv[]) {
     }
 
     res = ccn_set_interest_filter(ccn, namebuf, action);
-    res = ccn_run(ccn, -1);
-    ccn_disconnect(ccn);
+    for (;;) {
+        res = ccn_run(ccn, -1);
+        ccn_disconnect(ccn);
+        if (!options.reconnect)
+            break;
+        sleep(2);
+        ccn_connect(ccn, NULL);
+    }
     ccn_destroy(&ccn);
     exit(0);
 }
