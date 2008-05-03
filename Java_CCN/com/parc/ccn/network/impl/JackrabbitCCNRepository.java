@@ -156,6 +156,10 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 			}
 			advertiseServer(port);
 			Library.logger().info("Started new Jackrabbit repository on port: " + port);
+			// Register for CCN callbacks
+			_library.expressInterest(new Interest(new ContentName()), this);
+			_library.setInterestFilter(new ContentName(), this);
+			Library.logger().info("Registered for CCN Interests and Data");
 		} catch (Exception e) {
 			Library.logger().warning("Exception attempting to create our repository or log into it.");
 			Library.logStackTrace(Level.WARNING, e);
