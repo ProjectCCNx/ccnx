@@ -197,7 +197,26 @@ int ccn_buf_match_attr(struct ccn_buf_decoder *d, const char *s);
 /* ccn_buf_check_close enters an error state if element closer not found */
 void ccn_buf_check_close(struct ccn_buf_decoder *d);
 
-/* XXX - make this more like struct ccn_parsed_ContentObject in form */
+enum ccn_parsed_interest_offsetid {
+    CCN_PI_B_Name,
+    CCN_PI_B_Component0,
+    CCN_PI_E_ComponentN,
+    CCN_PI_E_Name,
+    CCN_PI_B_PublisherID = CCN_PI_E_Name,
+    CCN_PI_E_PublisherID,
+    CCN_PI_B_Scope = CCN_PI_E_PublisherID,
+    CCN_PI_BV_Scope,
+    CCN_PI_EV_Scope,
+    CCN_PI_E_Scope,
+    CCN_PI_B_Nonce = CCN_PI_E_Scope,
+    CCN_PI_BV_Nonce,
+    CCN_PI_EV_Nonce,
+    CCN_PI_E_Nonce,
+    CCN_PI_B_OTHER = CCN_PI_E_Nonce,
+    CCN_PI_E_OTHER,
+    CCN_PI_E
+};
+
 struct ccn_parsed_interest {
     size_t name_start;
     size_t name_size;
@@ -206,7 +225,9 @@ struct ccn_parsed_interest {
     int scope;
     size_t nonce_start;
     size_t nonce_size;
+    unsigned short offset[CCN_PI_E+1];
 };
+
 /*
  * ccn_parse_interest:
  * Returns number of name components, or a negative value for an error.

@@ -204,7 +204,7 @@ ccn_parse_PublisherID(struct ccn_buf_decoder *d)
               ccn_buf_match_udata(d, "ISSUER_CERTIFICATE")))
             return (d->decoder.state = -__LINE__);
         ccn_buf_advance(d);
-        if (!ccn_buf_match_blob(d, NULL, NULL))
+        if (!ccn_buf_match_some_blob(d))
             return (d->decoder.state = -__LINE__);
         ccn_buf_advance(d);
         ccn_buf_check_close(d);
@@ -260,18 +260,25 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
     if (ccn_buf_match_dtag(d, CCN_DTAG_Interest)) {
         struct parsed_Name name = {0};
         ccn_buf_advance(d);
+        interest->offset[CCN_PI_B_Name] = d->decoder.element_index;
+        interest->offset[CCN_PI_B_Component0] = d->decoder.index;
         res = ccn_parse_Name(d, &name, components);
         if (res < 0)
             return(res);
+        interest->offset[CCN_PI_E_ComponentN] = d->decoder.token_index - 1;
+        interest->offset[CCN_PI_E_Name] = d->decoder.token_index;
         interest->name_start = name.start;
         interest->name_size = name.size;
         ncomp = name.ncomp;
         /* optional PublisherID */
-        interest->pubid_start = d->decoder.token_index; 
+        interest->offset[CCN_PI_B_PublisherID] = d->decoder.token_index;
+        interest->pubid_start = d->decoder.token_index;
         res = ccn_parse_PublisherID(d);
         interest->pubid_size = d->decoder.token_index - interest->pubid_start;
+        interest->offset[CCN_PI_E_PublisherID] = d->decoder.token_index;
         /* optional Scope */
         interest->scope = -1;
+        interest->offset[CCN_PI_B_Scope] = d->decoder.token_index;
         if (ccn_buf_match_dtag(d, CCN_DTAG_Scope)) {
             ccn_buf_advance(d);
             interest->scope = ccn_parse_nonNegativeInteger(d);
@@ -279,8 +286,10 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
                 return (d->decoder.state  = -__LINE__);
             ccn_buf_check_close(d);
         }
+        interest->offset[CCN_PI_E_Scope] = d->decoder.token_index;
         /* optional Nonce */
         interest->nonce_start = d->decoder.token_index;
+        interest->offset[CCN_PI_B_Nonce] = d->decoder.token_index;
         if (ccn_buf_match_dtag(d, CCN_DTAG_Nonce)) {
             ccn_buf_advance(d);
             if (!ccn_buf_match_some_blob(d))
@@ -288,15 +297,19 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
             ccn_buf_advance(d);
             ccn_buf_check_close(d);
         }
+        interest->offset[CCN_PI_E_Nonce] = d->decoder.token_index;
         interest->nonce_size = d->decoder.token_index - interest->nonce_start;
         /* Allow for some experimental stuff */
+        interest->offset[CCN_PI_B_OTHER] = d->decoder.token_index;
         while (ccn_buf_match_some_dtag(d)) {
             ccn_buf_advance(d);
             if (ccn_buf_match_some_blob(d))
                 ccn_buf_advance(d);
             ccn_buf_check_close(d);
         }
+        interest->offset[CCN_PI_E_OTHER] = d->decoder.token_index;
         ccn_buf_check_close(d);
+        interest->offset[CCN_PI_E] = d->decoder.index;
     }
     if (d->decoder.state < 0)
         return(d->decoder.state);
