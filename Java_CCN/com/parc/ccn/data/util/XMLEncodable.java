@@ -2,6 +2,7 @@ package com.parc.ccn.data.util;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -24,6 +25,13 @@ public interface XMLEncodable {
 	public void decode(byte [] objectBuffer) throws XMLStreamException;
 	
 	public void decode(byte [] objectBuffer, String codec) throws XMLStreamException;
+
+	/** 
+	 * Helper method using network buffer objects.
+	 */
+	public void decode(ByteBuffer buf) throws XMLStreamException;
+	
+	public void decode(ByteBuffer buf, String codec) throws XMLStreamException;
 
 	/**
 	 * Pull this item from an ongoing decoding pass.

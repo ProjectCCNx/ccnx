@@ -49,12 +49,16 @@ public abstract class GenericXMLEncodable implements XMLEncodable {
  	}
 	
 	public void decode(ByteBuffer buf) throws XMLStreamException {
+		decode(buf, null);
+	}
+	
+	public void decode(ByteBuffer buf, String codec) throws XMLStreamException {
 		if (!buf.hasArray()) {
 			throw new XMLStreamException("Unusable ByteBuffer: has no array");
 		}
 		byte[] array = buf.array();
 		ByteArrayInputStream bais = new ByteArrayInputStream(array, buf.position(), buf.remaining());
-		decode(bais, null);
+		decode(bais, codec);
 	}
 	
 	public void encode(OutputStream ostream) throws XMLStreamException {

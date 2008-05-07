@@ -28,10 +28,14 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public static final String RECURSIVE_POSTFIX = "*";
 	
 	public static final String INTEREST_ELEMENT = "Interest";
+	public static final String SCOPE_ELEMENT = "Scope";
+	public static final String NONCE_ELEMENT = "Nonce";
 
 	protected ContentName _name;
 	// DKS TODO can we really support a PublisherID here, or just a PublisherKeyID?
 	protected PublisherID _publisher;
+	protected Integer _scope;
+	protected byte [] _nonce;
 	
 	/**
 	 * TODO: DKS figure out how to handle encoding faster,
@@ -59,6 +63,10 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public ContentName name() { return _name; }
 	
 	public PublisherID publisherID() { return _publisher; }
+	
+	public Integer scope() { return _scope; }
+	
+	public byte [] nonce() { return _nonce; }
 	
 	public boolean matches(CompleteName result) {
 		if (null == name() || null == result)
@@ -100,6 +108,18 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			_publisher.decode(decoder);
 		}
 		
+		if (decoder.peekStartElement(SCOPE_ELEMENT)) {
+			String strLength = decoder.readUTF8Element(SCOPE_ELEMENT); 
+			_scope = Integer.valueOf(strLength);
+			if (null == _scope) {
+				throw new XMLStreamException("Cannot parse scope: " + strLength);
+			}
+		}
+		
+		if (decoder.peekStartElement(NONCE_ELEMENT)) {
+			_nonce = decoder.readBinaryElement(NONCE_ELEMENT);
+		}
+			
 		decoder.readEndElement();
 	}
 
@@ -112,6 +132,12 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		name().encode(encoder);
 		if (null != publisherID())
 			publisherID().encode(encoder);
+		
+		if (null != scope()) 
+			encoder.writeElement(SCOPE_ELEMENT, Integer.toString(scope()));
+
+		if (null != nonce())
+			encoder.writeElement(NONCE_ELEMENT, nonce());
 
 		encoder.writeEndElement();   		
 	}
