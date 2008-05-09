@@ -57,14 +57,21 @@ public class puttap implements CCNInterestListener {
 				return;
 			}
 
-			// Get library, set tap so packets get written to file
-			StandardCCNLibrary library = new StandardCCNLibrary();
+			// Set up tap so packets get written to file
 			CCNNetworkManager.getNetworkManager().setTap(tapName);
+			
+			// Get writing library 
+			StandardCCNLibrary library = new StandardCCNLibrary();
 			
 			ContentName name = new ContentName(ccnName);
 			
 			// Register standing interest so our put's will flow
-			library.expressInterest(new Interest(ccnName), this);
+			// This must be through separate library instance so it 
+			// appears that there is an interest from a separate app
+			// because interest from the same app as the writer will 
+			// not consume the data and therefore will block
+			StandardCCNLibrary reader = new StandardCCNLibrary();
+			reader.expressInterest(new Interest(ccnName), this);
 
 			// Dump the file in small packets
 	        InputStream is = new FileInputStream(theFile);
