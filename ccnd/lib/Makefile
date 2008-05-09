@@ -7,13 +7,13 @@ COPT = -g -Wall
 
 PROGRAMS = ccn_ccnbtoxml ccn_xmltoccnb ccn_splitccnb \
     hashtbtest matrixtest skel_decode_test \
-    smoketestclientlib dataresponsetest ccntimestamps
+    smoketestclientlib dataresponsetest ccntimestamps ccndump
 DEBRIS = ccn_coding ccn_recursive_parse
 CSRC = ccn_buf_decoder.c ccn_charbuf.c ccn_indexbuf.c ccn_coding.c ccn_client.c  \
     ccn_ccnbtoxml.c ccn_xmltoccnb.c ccn_splitccnb.c ccn_schedule.c ccn_matrix.c \
     skel_decode_test.c \
     hashtb.c hashtbtest.c matrixtest.c \
-    smoketestclientlib.c ccntimestamps.c
+    smoketestclientlib.c ccntimestamps.c ccndump.c
 
 LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_schedule.o ccn_matrix.o \
     ccn_buf_decoder.o hashtb.o
@@ -53,6 +53,9 @@ dataresponsetest: dataresponsetest.o
 
 ccntimestamps: ccntimestamps.o
 	$(CC) $(CFLAGS) -o $@ ccntimestamps.o $(LDLIBS)
+
+ccndump: ccndump.o
+	$(CC) $(CFLAGS) -o $@ ccndump.o $(LDLIBS)
 
 clean:
 	rm -f *.o *.a $(PROGRAMS) depend

@@ -106,6 +106,7 @@ ccn_connect(struct ccn *h, const char *name)
 {
     struct sockaddr_un addr = {0};
     int res;
+    h->err = 0;
     if (h == NULL || h->sock != -1)
         return(NOTE_ERR(h, EINVAL));
     if (name == NULL)
@@ -621,6 +622,8 @@ ccn_run(struct ccn *h, int timeout)
                 ccn_process_input(h);
             }
         }
+        if (h->err == ENOTCONN)
+            ccn_disconnect(h);
     }
     return(-1);
 }
