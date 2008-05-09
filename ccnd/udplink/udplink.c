@@ -439,7 +439,10 @@ main (int argc, char * const argv[]) {
             result = send(localsock, rbuf, recvlen + CCN_EMPTY_PDU_LENGTH, 0);
             if (result == -1) {
                 if (errno == EAGAIN) {
-                    udplink_note("sendto(localsock, rbuf, %ld): %s\n", (long) recvlen + CCN_EMPTY_PDU_LENGTH, strerror(errno));
+                    if (options.logging > 0)
+                        udplink_note("sendto(localsock, rbuf, %ld): %s (dropped)\n", (long) recvlen + CCN_EMPTY_PDU_LENGTH, strerror(errno));
+                    if (1)
+                        continue;
                     goto retry;
                 } else {
                     udplink_fatal("sendto(localsock, rbuf, %ld): %s\n", (long) recvlen + CCN_EMPTY_PDU_LENGTH, strerror(errno));
