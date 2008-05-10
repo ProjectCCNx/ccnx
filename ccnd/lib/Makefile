@@ -1,4 +1,13 @@
-CFLAGS = $(COPT) $(CPREFLAGS)
+SHEXT=
+SHARED_LD_FLAGS=
+PLATCFLAGS=
+
+# Darwin #
+#SHEXT=dylib
+#SHARED_LD_FLAGS = -dylib -arch `/usr/bin/arch` -install_name libccn.1.$(SHEXT) -all_load /usr/lib/dylib1.o -lSystem
+#PLATCFLAGS=-fno-common
+
+CFLAGS = $(COPT) $(CPREFLAGS) $(PLATCFLAGS)
 LDLIBS = -L../lib $(MORE_LDLIBS) -lexpat -lccn2
 CPREFLAGS = -I../include
 COPT = -g -Wall
@@ -24,6 +33,11 @@ lib: libccn2.a
 
 libccn2.a: $(LIB_OBJS)
 	ar cru $@ $(LIB_OBJS)
+
+shared: libccn.1.$(SHEXT)
+
+libccn.1.$(SHEXT): libccn2.a
+	$(LD) $(SHARED_LD_FLAGS) -o $@ libccn2.a
 
 $(PROGRAMS): libccn2.a
 
@@ -58,7 +72,7 @@ ccndump: ccndump.o
 	$(CC) $(CFLAGS) -o $@ ccndump.o $(LDLIBS)
 
 clean:
-	rm -f *.o *.a $(PROGRAMS) depend
+	rm -f *.o *.a libccn.1.$(SHEXT) $(PROGRAMS) depend
 	rm -rf *.dSYM $(DEBRIS)
 
 depend: Makefile $(CSRC)
