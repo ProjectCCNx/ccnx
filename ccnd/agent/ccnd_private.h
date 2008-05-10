@@ -38,6 +38,7 @@ struct face;
 struct content_entry;
 struct interest_entry;
 struct propagating_entry;
+struct back_filter;
 
 /*
  * We pass this handle almost everywhere.
@@ -109,10 +110,13 @@ struct face {
 struct interest_entry {
     struct ccn_indexbuf *interested_faceid;
     struct ccn_indexbuf *counters;
+    struct back_filter *back_filter;
     uint_least64_t newest;
     uint_least64_t cached_accession;
-    unsigned       cached_faceid;
-    int ncomp;                   /* Number of name components */
+    intptr_t matches;           /* Number of matching ContentObjects */
+    unsigned cached_faceid;
+    unsigned char idle;
+    int ncomp;                  /* Number of name components */
 };
 /* The interest counters are scaled by a factor of CCN_UNIT_INTEREST */
 #define CCN_UNIT_INTEREST 5
@@ -127,6 +131,8 @@ struct content_entry {
     uint_least64_t accession;   /* assigned in arrival order */
     unsigned short *comps;      /* Name Component byte boundary offsets */
     int ncomps;                 /* Number of name components plus one */
+    int flags;
+    int sig_offset;             /* offset of 32-byte signature */
     const unsigned char *key;	/* ContentObject fragment prior to Content */
     int key_size;
     unsigned char *tail;        /* ContentObject fragment starting at Content */
@@ -136,6 +142,7 @@ struct content_entry {
     struct ccn_indexbuf *faces; /* These faceids have or want the content */
     struct ccn_scheduled_event *sender;
 };
+#define CCN_CONTENT_ENTRY_SLOWSEND 1
 
 /*
  * The propagating interest hash table is keyed by Nonce.
@@ -145,6 +152,19 @@ struct propagating_entry {
     size_t size;
     struct ccn_indexbuf *outbound;
 };
+
+/*
+ * Bloom filter for saying what content we have.
+ */
+struct back_filter {
+    unsigned char lg_bits;  /* 13 maximum (8 kilobits), 3 minimum (one byte)*/
+    unsigned char n_hash;   /* number of hash functions to employ */
+    unsigned char method;   /* allow for various hashing algorithms */
+    unsigned char reserved;
+    unsigned char seed[4];  /* can seed hashes differently */
+    unsigned char bloom[1024]; /* 8 kilobits maximum */
+};
+
 
 /* Consider a separate header for these */
 int ccnd_stats_httpd_start(struct ccnd *);

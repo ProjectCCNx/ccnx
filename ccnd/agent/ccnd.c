@@ -44,6 +44,11 @@ static void do_write(struct ccnd *h, struct face *face,
 static void do_deferred_write(struct ccnd *h, int fd);
 static void run(struct ccnd *h);
 static void clean_needed(struct ccnd *h);
+static struct back_filter *bloom_create(struct ccnd *h, int n);
+static void bloom_destroy(struct back_filter **);
+static void bloom_insert(struct content_entry *, struct back_filter *);
+static int bloom_match(struct content_entry *, const struct back_filter *);
+static void bloom_update_for_old_content(struct ccnd *, struct interest_entry *);
 
 static const char *unlink_this_at_exit = NULL;
 static void
@@ -267,6 +272,7 @@ finalize_interest(struct hashtb_enumerator *e)
     struct interest_entry *entry = e->data;
     ccn_indexbuf_destroy(&entry->interested_faceid);
     ccn_indexbuf_destroy(&entry->counters);
+    bloom_destroy(&entry->back_filter);
 }
 
 static int
@@ -363,15 +369,16 @@ send_content(struct ccnd *h, struct face *face, struct content_entry *content) {
 #define CCN_DATA_PAUSE (16U*1024U)
 
 static int
-choose_content_delay(struct ccnd *h, unsigned faceid)
+choose_content_delay(struct ccnd *h, unsigned faceid, int content_flags)
 {
     struct face *face = face_from_faceid(h, faceid);
+    int shift = (content_flags & CCN_CONTENT_ENTRY_SLOWSEND) ? 2 : 0;
     if (face == NULL)
         return(1); /* Going nowhere, get it over with */
     if ((face->flags & CCN_FACE_DGRAM) != 0)
         return(100); /* localhost udp, delay just a little */
     if ((face->flags & CCN_FACE_LINK) != 0) /* udplink or such, delay more */
-        return((nrand48(h->seed) % CCN_DATA_PAUSE) + CCN_DATA_PAUSE/2);
+        return(((nrand48(h->seed) % CCN_DATA_PAUSE) + CCN_DATA_PAUSE/2) << shift);
     return(10); /* local stream, answer quickly */
 }
 
@@ -398,7 +405,9 @@ content_sender(struct ccn_schedule *sched,
         if (face != NULL) {
             send_content(h, face, content);
             if (content->nface_done < content->faces->n)
-                return(choose_content_delay(h, content->faces->buf[content->nface_done]));
+                return(choose_content_delay(h,
+                        content->faces->buf[content->nface_done],
+                        content->flags));
         }
     }
     content->sender = NULL;
@@ -436,11 +445,13 @@ content_faces_set_insert(struct content_entry *content, unsigned faceid)
 /*
  * match_interests: Find and consume interests that match given content
  * Adds to content->faces the faceids that should receive copies,
- * and schedules content_sender if needed.
+ * and schedules content_sender if needed.  Returns number of matches.
  */
-static void
+static int
 match_interests(struct ccnd *h, struct content_entry *content)
 {
+    int n_matched = 0;
+    int n;
     int i;
     int k;
     int ci;
@@ -451,13 +462,19 @@ match_interests(struct ccnd *h, struct content_entry *content)
     for (ci = content->ncomps - 1; ci >= 0; ci--) {
         int size = content->comps[ci] - c0;
         struct interest_entry *interest = hashtb_lookup(h->interest_tab, key, size);
-        if (interest != NULL && interest->counters != NULL) {
-            if (ci > 0 && content->accession > interest->newest) {
-                intptr_t delta = (content->accession - interest->newest);
-                ccn_matrix_store(h->backlinks, content->accession, ci, delta);
+        if (interest != NULL) {
+            if (content->accession > interest->newest) {
+                if (ci > 0) {
+                    intptr_t delta = (content->accession - interest->newest);
+                    ccn_matrix_store(h->backlinks, content->accession, ci, delta);
+                }
                 interest->newest = content->accession;
+                interest->matches += 1;
+                if (interest->back_filter != NULL)
+                    bloom_insert(content, interest->back_filter);                
             }
-            for (i = 0; i < interest->counters->n; i++) {
+            n = (interest->counters == NULL) ? 0 : interest->counters->n;
+            for (i = 0; i < n; i++) {
                 /* Use signed count for this calculation */
                 intptr_t count = interest->counters->buf[i];
                 if (count > 0) {
@@ -466,6 +483,7 @@ match_interests(struct ccnd *h, struct content_entry *content)
                     if (face != NULL) {
                         k = content_faces_set_insert(content, faceid);
                         if (k >= content->nface_done) {
+                            n_matched += 1;
                             count -= CCN_UNIT_INTEREST;
                             if (count < 0)
                                 count = 0;
@@ -482,8 +500,47 @@ match_interests(struct ccnd *h, struct content_entry *content)
           content->faces != NULL &&
           content->faces->n > content->nface_done)
         content->sender = ccn_schedule_event(h->sched,
-            choose_content_delay(h, content->faces->buf[content->nface_done]),
+            choose_content_delay(h, content->faces->buf[content->nface_done],
+                                    content->flags),
             content_sender, content, 0);
+    return(n_matched);
+}
+
+/*
+ * adjust_filters_matching_interests:
+ * Install new back filter(s) on all interests matching the content.
+ */
+static void
+adjust_filters_matching_interests(struct ccnd *h, struct content_entry *content)
+{
+    int ci;
+    unsigned c0 = content->comps[0];
+    const unsigned char *key = content->key + c0;
+    for (ci = content->ncomps - 1; ci >= 0; ci--) {
+        int size = content->comps[ci] - c0;
+        struct interest_entry *interest = hashtb_lookup(h->interest_tab, key, size);
+        if (interest != NULL) {
+            bloom_destroy(&interest->back_filter);
+            if (interest->matches < 4000) { // XXX 4000
+                interest->back_filter = bloom_create(h, interest->matches);
+                bloom_update_for_old_content(h, interest);
+            }
+        }
+    }
+}
+
+static void
+clean_filters(struct ccnd *h)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct interest_entry *interest;
+    hashtb_start(h->interest_tab, e);
+    for (interest = e->data; interest != NULL; interest = e->data) {
+        bloom_destroy(&interest->back_filter);
+        hashtb_next(e);
+    }
+    hashtb_end(e);
 }
 
 /*
@@ -503,6 +560,13 @@ age_interests(struct ccnd *h) {
     hashtb_start(h->interest_tab, e);
     for (interest = e->data; interest != NULL; interest = e->data) {
         n = interest->counters->n;
+        if (n > 0)
+            interest->idle = 0;
+        else if ((++interest->idle) > 8) {
+            hashtb_delete(e);
+            continue;
+        }
+        interest->cached_faceid = ~0;
         for (i = 0; i < n; i++) {
             size_t count = interest->counters->buf[i];
             if (count > CCN_UNIT_INTEREST) {
@@ -642,8 +706,8 @@ aging_deamon(
 {
     struct ccnd *h = clienth;
     if ((flags & CCN_SCHEDULE_CANCEL) == 0) {
-        int n_active = age_interests(h);
-        if (n_active > 0)
+        age_interests(h);
+        if (hashtb_n(h->interest_tab) != 0)
             return(ev->evint);
     }
     /* nothing on the horizon, so go away */
@@ -666,10 +730,10 @@ aging_needed(struct ccnd *h)
  */
 static int
 clean_deamon(
-    struct ccn_schedule *sched,
-    void *clienth,
-    struct ccn_scheduled_event *ev,
-    int flags)
+             struct ccn_schedule *sched,
+             void *clienth,
+             struct ccn_scheduled_event *ev,
+             int flags)
 {
     struct ccnd *h = clienth;
     unsigned i;
@@ -686,12 +750,14 @@ clean_deamon(
         content = h->content_by_accession[i];
         if (content != NULL && content->faces != NULL) {
             int j, k, d;
-            int j0 = content->nface_old;
-            j0 = 0; /* disable blocking state expiration for now */
-            for (j = j0, k = 0, d = 0; j < content->faces->n; j++) {
+            for (j = 0, k = 0, d = 0; j < content->faces->n; j++) {
                 unsigned faceid = content->faces->buf[j];
                 struct face *face = face_from_faceid(h, faceid);
                 if (face != NULL) {
+                    if (j < content->nface_old) {
+                        if ((face->flags & CCN_FACE_LINK) != 0)
+                            continue;
+                    }
                     if (j < content->nface_done)
                         d++;
                     content->faces->buf[k++] = faceid;
@@ -704,6 +770,7 @@ clean_deamon(
             content->nface_old = d;
         }
     }
+    clean_filters(h);
     return(15000000);
 }
 
@@ -797,7 +864,8 @@ do_propagate(
 static int
 propagate_interest(struct ccnd *h, struct face *face,
                       unsigned char *msg, size_t msg_size,
-                      struct ccn_parsed_interest *pi)
+                      struct ccn_parsed_interest *pi,
+                      struct interest_entry *ie)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -825,6 +893,16 @@ propagate_interest(struct ccnd *h, struct face *face,
         cb->length += noncebytes;
         ccn_charbuf_append_closer(cb);
         pkeysize = cb->length - nonce_start;
+        if (ie->back_filter != NULL && pi->offset[CCN_PI_E_OTHER] == pi->offset[CCN_PI_B_OTHER]) {
+            /* send our current Bloom filter if we have one and none is there */
+            /* XXX - this should probably be independent of adding the Nonce */
+            struct back_filter *f = ie->back_filter;
+            size_t size = sizeof(*f) - sizeof(f->bloom) + (1 << (f->lg_bits - 3));
+            ccn_charbuf_append_tt(cb, CCN_DTAG_ExperimentalResponseFilter, CCN_DTAG);
+            ccn_charbuf_append_tt(cb, size, CCN_BLOB);
+            ccn_charbuf_append(cb, f, size);
+            ccn_charbuf_append_closer(cb);
+        }
         ccn_charbuf_append(cb, msg + pi->nonce_start,
                                msg_size - pi->nonce_start);
         pkey = cb->buf + nonce_start;
@@ -868,8 +946,9 @@ propagate_interest(struct ccnd *h, struct face *face,
 }
 
 static void
-create_backlinks_for_new_interest(struct ccnd *h, struct interest_entry *interest,
-    unsigned char *msg, struct ccn_indexbuf *comps) {
+create_backlinks_for_new_interest(struct ccnd *h,
+      struct interest_entry *interest,
+      unsigned char *msg, struct ccn_indexbuf *comps) {
     struct interest_entry *shorter = NULL;
     int n = comps->n;
     int i;
@@ -877,8 +956,13 @@ create_backlinks_for_new_interest(struct ccnd *h, struct interest_entry *interes
     uint_least64_t accession = h->accession;
     uint_least64_t newer = 0;
     size_t keysize;
-    if (n <= 1)
-        return; /* Pointless to create backlinks if everything matches */
+    intptr_t delta = 1;
+    if (n <= 1) {
+        /* Pointless to create backlinks if everything matches */
+        interest->newest = h->accession;
+        interest->matches = hashtb_n(h->content_tab);
+        return; 
+    }
     /* Try to bootstrap using the longest interest shorter than this one */
     keysize = comps->buf[n-1] - comps->buf[0];
     for (i = n - 2; (shorter != NULL) && i > 0; i--) {
@@ -889,38 +973,211 @@ create_backlinks_for_new_interest(struct ccnd *h, struct interest_entry *interes
         accession = shorter->newest;
         col = i;
     }
-    while (accession > h->accession_base) {
-        struct content_entry *content = NULL;
-        if (accession < h->accession_base + h->content_by_accession_window)
-            content = h->content_by_accession[accession - h->accession_base];
-        if (content != NULL && content->accession == accession &&
-            content->ncomps >= n &&
-            keysize == content->comps[n-1] - content->comps[0] &&
-            0 == memcmp(msg + comps->buf[0], content->key + content->comps[0], keysize)) {
+    interest->matches = 0;
+    while (accession >= h->accession_base) {
+        struct content_entry *content = content_from_accession(h, accession);
+        if (content != NULL &&
+              content->ncomps >= n &&
+              keysize == content->comps[n-1] - content->comps[0] &&
+              0 == memcmp(msg + comps->buf[0],
+                          content->key + content->comps[0], keysize)) {
             if (newer == 0)
                 interest->newest = accession;
             else
-                ccn_matrix_store(h->backlinks, newer, n-1, accession - newer);
+                ccn_matrix_store(h->backlinks, newer, n-1, newer - accession);
             newer = accession;
+            interest->matches += 1;
         }
         if (col > 0) {
-            intptr_t delta = ccn_matrix_fetch(h->backlinks, accession, col);
+            delta = ccn_matrix_fetch(h->backlinks, accession, col);
             if (delta == 0)
                 break;
-            accession -= delta;
         }
-        else
-            accession -= 1;
+        if (delta > accession)
+            break;
+        accession -= delta;
     }
 }
 
 static int
-is_duplicate_flooded(struct ccnd *h, unsigned char *msg, struct ccn_parsed_interest *pi) {
+is_duplicate_flooded(struct ccnd *h, unsigned char *msg, struct ccn_parsed_interest *pi)
+{
     struct propagating_entry *pe = NULL;
     if (pi->nonce_size == 0)
         return(0);
     pe = hashtb_lookup(h->propagating_tab, msg + pi->nonce_start, pi->nonce_size);
     return(pe != NULL);
+}
+
+static struct back_filter *
+bloom_create(struct ccnd *h, int n)
+{
+    struct back_filter *f;
+    int i;
+    f = calloc(1, sizeof(*f));
+    if (f != NULL) {
+        f->method = 'S';
+        f->lg_bits = 13;
+        // XXX - should make smarter choice for parameters, based on n
+        f->n_hash = 5;
+        if (n < 10) (f->lg_bits = 6, f->n_hash = 2); 
+        for (i = 0; i < sizeof(f->seed); i++)
+            f->seed[i] = nrand48(h->seed) >> 8;
+    }
+    return(f);
+}
+
+static void
+bloom_destroy(struct back_filter **f)
+{
+    if (*f == NULL) return;
+    free(*f);
+    *f = NULL;
+}
+
+const struct back_filter *
+bloom_validate(const unsigned char *buf, size_t size)
+{
+    const struct back_filter *f = (const struct back_filter *)buf;
+    if (size < 9)
+        return (NULL);
+    if (f->lg_bits > 13 || f->lg_bits < 3)
+        return (NULL);
+    if (f->n_hash < 1 || f->n_hash > 16)
+        return (NULL);
+    if (size != (sizeof(*f) - sizeof(f->bloom)) + (1 << (f->lg_bits - 3)))
+        return (NULL);
+    if (!(f->reserved == 0 && f->method == 'S'))
+        return (NULL);
+    return(f);
+}
+
+static int
+bloom_seed(const struct back_filter *f)
+{
+    unsigned u;
+    const unsigned char *s = f->seed;
+    u = (s[0] << 24) | (s[1] << 16) | (s[2] << 8) | s[3];
+    return(u & 0x7FFFFFFF);
+}
+
+static int
+bloom_nextseed(int s)
+{
+    const int k = 13; /* use this many bits of feedback shift output */
+    int b = s & ((1 << k) - 1);
+    /* fsr primitive polynomial (modulo 2) x**31 + x**13 + 1 */
+    s = (s >> k) ^ (b << (31 - k)) ^ (b << (13 - k));
+    return(s);
+}
+
+static void
+bloom_gethashbytes(struct content_entry *content, unsigned char method,
+        unsigned char *hb, size_t size)
+{
+    if (method != 'S') abort(); /* should have screened this earlier */
+    if (content->sig_offset > 0)
+        memcpy(hb, content->key + content->sig_offset, size);
+}
+
+static void
+bloom_insert(struct content_entry *content, struct back_filter *f)
+{
+    int s = bloom_seed(f);
+    int n = f->n_hash;
+    int m = (8*sizeof(f->bloom) - 1) & ((1 << f->lg_bits) - 1);
+    unsigned char hb[32] = {0};
+    int i, k, h;
+    bloom_gethashbytes(content, f->method, hb, sizeof(hb));
+    for (i = 0, k = 0; i < n; i++) {
+        h = (((hb[k] << 8) | hb[k+1]) ^ s) & m;
+        f->bloom[h >> 3] |= (1 << (h & 7));
+        if (i + 1 == n) break;
+        s = bloom_nextseed(s);
+        k = (k + 2) % sizeof(hb); /* should swizzle hb if we want more than 16 functions */
+    }
+}
+
+static int
+bloom_match(struct content_entry *content, const struct back_filter *f)
+{
+    int s = bloom_seed(f);
+    int n = f->n_hash;
+    int m = (8*sizeof(f->bloom) - 1) & ((1 << f->lg_bits) - 1);
+    unsigned char hb[32] = {0};
+    int i, k, h;
+    bloom_gethashbytes(content, f->method, hb, sizeof(hb));
+    for (i = 0, k = 0; i < n; i++) {
+        h = (((hb[k] << 8) | hb[k+1]) ^ s) & m;
+        if (0 == (f->bloom[h >> 3] & (1 << (h & 7))))
+            return(0);
+        if (i + 1 == n) break;
+        s = bloom_nextseed(s);
+        k = (k + 2) % sizeof(hb); /* should swizzle hb if we want more than 16 functions */
+    }
+    return(1);
+}
+
+static void
+bloom_update_for_old_content(struct ccnd *h, struct interest_entry *interest)
+{
+    struct back_filter *f = interest->back_filter;
+    int ncomps = interest->ncomp;
+    struct content_entry *content = NULL;
+    uint_least64_t accession;
+    intptr_t delta = 1;
+    if (f == NULL)
+        return;
+    for (accession = interest->newest; accession >= h->accession_base; accession -= delta) {
+        content = content_from_accession(h, accession);
+        if (content != NULL)
+            bloom_insert(content, f);
+        if (ncomps > 0) {
+            delta = ccn_matrix_fetch(h->backlinks, accession, ncomps);
+            if (delta < 0) abort();
+        }
+        if (delta == 0 || delta > accession)
+            break;
+    }
+}
+
+/*
+ * content_is_unblocked: 
+ * Decide whether to send content in response to the interest, which
+ * we already know is a prefix match.
+ */
+static int
+content_is_unblocked(struct content_entry *content,
+        struct ccn_parsed_interest *pi, unsigned char *msg, unsigned faceid)
+{
+    const unsigned char *filtbuf = NULL;
+    size_t filtsize = 0;
+    const struct back_filter *f = NULL;
+    int k;
+    if (pi->offset[CCN_PI_E_OTHER] > pi->offset[CCN_PI_B_OTHER]) {
+        struct ccn_buf_decoder decoder;
+        struct ccn_buf_decoder *d = ccn_buf_decoder_start(&decoder,
+                msg + pi->offset[CCN_PI_B_OTHER],
+                pi->offset[CCN_PI_E_OTHER] - pi->offset[CCN_PI_B_OTHER]);
+        if (ccn_buf_match_dtag(d, CCN_DTAG_ExperimentalResponseFilter)) {
+            ccn_buf_advance(d);
+            ccn_buf_match_blob(d, &filtbuf, &filtsize);
+            f = bloom_validate(filtbuf, filtsize);
+        }
+    }
+    if (f != NULL) {
+        if (bloom_match(content, f))
+            return(0);
+        /* Not in filter, so send even if we have sent before. */
+        k = indexbuf_member(content->faces, faceid);
+        if (0 <= k && k < content->nface_done) {
+            content->faces->buf[k] = ~0;
+            return(1);
+        }
+        /* Say no if we are already planning to send anyway */
+        return(k == -1);
+    }
+    return(indexbuf_member(content->faces, faceid) == -1);
 }
 
 static void
@@ -983,8 +1240,8 @@ process_incoming_interest(struct ccnd *h, struct face *face,
                 accession = interest->newest;
             while (accession >= h->accession_base) {
                 content = content_from_accession(h, accession);
-                if (content != NULL && content->accession == accession &&
-                      indexbuf_member(content->faces, face->faceid) == -1)
+                if (content != NULL &&
+                      content_is_unblocked(content, &parsed_interest, msg, face->faceid))
                     break;
                 content = NULL;
                 if (comps->n == 1) {
@@ -1007,9 +1264,26 @@ process_incoming_interest(struct ccnd *h, struct face *face,
         hashtb_end(e);
         aging_needed(h);
         if (!matched && parsed_interest.scope != 0)
-            propagate_interest(h, face, msg, size, &parsed_interest);
+            propagate_interest(h, face, msg, size, &parsed_interest, interest);
     }
     indexbuf_release(h, comps);
+}
+
+int
+get_signature_offset(struct ccn_parsed_ContentObject *pco, const unsigned char *msg)
+{
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
+    if (pco->Signature >= 0 && pco->Content > pco->Signature) {
+        d = ccn_buf_decoder_start(&decoder, msg + pco->Signature, pco->Content - pco->Signature);
+        if (ccn_buf_match_dtag(d, CCN_DTAG_Signature)) {
+            ccn_buf_advance(d);
+            if (ccn_buf_match_some_blob(d) && d->decoder.numval >= 32) {
+                return(pco->Signature + d->decoder.index);
+            }
+        }
+    }
+    return(0);
 }
 
 static void
@@ -1055,6 +1329,7 @@ process_incoming_content(struct ccnd *h, struct face *face,
                 h->content_dups_recvd++;
                 ccnd_msg(h, "received duplicate ContentObject from %u (accession %llu)",
                     face->faceid, (unsigned long long)content->accession);
+                adjust_filters_matching_interests(h, content);
                 /* Make note that this face knows about this content */
                 i = content_faces_set_insert(content, face->faceid);
                 if (i >= content->nface_done) {
@@ -1073,6 +1348,7 @@ process_incoming_content(struct ccnd *h, struct face *face,
             content->comps = calloc(comps->n, sizeof(comps[0]));
             content->tail_size = tailsize;
             content->tail = calloc(1, tailsize);
+            content->sig_offset = get_signature_offset(&obj, msg);
             content->key_size = e->keysize;
             content->key = e->key;
             if (content->tail != NULL && content->comps != NULL && content->faces != NULL) {
@@ -1090,8 +1366,12 @@ process_incoming_content(struct ccnd *h, struct face *face,
         hashtb_end(e);
     }
     indexbuf_release(h, comps);
-    if (res >= 0 && content != NULL)
-        match_interests(h, content);
+    if (res >= 0 && content != NULL) {
+        int n_matches;
+        n_matches = match_interests(h, content);
+        if (res == HT_NEW_ENTRY && n_matches == 0)
+            content->flags |= CCN_CONTENT_ENTRY_SLOWSEND;
+    }
 }
 
 static void
