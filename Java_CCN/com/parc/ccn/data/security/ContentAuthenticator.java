@@ -67,13 +67,18 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     	this._timestamp = timestamp;
     	this._type = type;
     	try {
-    		if (isDigest)
+    		if (isDigest) {
     			// Should check to see if it is encoded.
     			// If not, have to pass in algorithm to allow encoding.
     			_contentDigest = contentOrDigest;
-    		else
+    		} else {
 	    		_contentDigest = 
 	    			DigestHelper.encodedDigest(contentOrDigest);
+    			Library.logger().info("VerificationTest: digesting " + 
+    					contentOrDigest.length + " bytes of content. First: " +
+    					Integer.toHexString((int)contentOrDigest[0]) + " Last: " + 
+    					Integer.toHexString((int)contentOrDigest[contentOrDigest.length-1]));
+    		}
     	} catch (CertificateEncodingException e) {
     		Library.logger().warning("This should not happen: exception encoding digest using built-in algorithms: " + e.getMessage());
     		Library.warningStackTrace(e);
