@@ -521,7 +521,7 @@ adjust_filters_matching_interests(struct ccnd *h, struct content_entry *content)
         struct interest_entry *interest = hashtb_lookup(h->interest_tab, key, size);
         if (interest != NULL) {
             bloom_destroy(&interest->back_filter);
-            if (interest->matches < 4000) { // XXX 4000
+            if (interest->matches < 20000) { // XXX 20000
                 interest->back_filter = bloom_create(h, interest->matches);
                 bloom_update_for_old_content(h, interest);
             }
@@ -679,7 +679,7 @@ reap(
         check_dgram_faces(h);
         check_propagating(h);
         if (!comm_file_ok()) {
-            ccnd_msg(h, "exiting (%s gone)", getpid(), unlink_this_at_exit);
+            ccnd_msg(h, "exiting (%s gone)", unlink_this_at_exit);
             exit(0);
         }
         if (hashtb_n(h->dgram_faces) > 0 || hashtb_n(h->propagating_tab) > 0)
@@ -1018,9 +1018,15 @@ bloom_create(struct ccnd *h, int n)
     if (f != NULL) {
         f->method = 'S';
         f->lg_bits = 13;
-        // XXX - should make smarter choice for parameters, based on n
-        f->n_hash = 5;
-        if (n < 10) (f->lg_bits = 6, f->n_hash = 2); 
+        /* try for about m = 8*n (m = bits in Bloom filter) */
+        while (f->lg_bits > 3 && (1 << f->lg_bits) > n * 8)
+            f->lg_bits--;
+        /* optimum number of hash functions is ln(2)*(m/n); use ln(2) ~= 9/13 */
+        f->n_hash = (9 << f->lg_bits) / (13 * n + 1);
+        if (f->n_hash < 2)
+            f->n_hash = 2;
+        if (f->n_hash > 32)
+            f->n_hash = 32;
         for (i = 0; i < sizeof(f->seed); i++)
             f->seed[i] = nrand48(h->seed) >> 8;
     }
@@ -1624,14 +1630,12 @@ run(struct ccnd *h)
         for (i = 1; res > 0 && i < h->nfds; i++) {
             if (h->fds[i].revents != 0) {
                 res--;
-                if (h->fds[i].revents & (POLLERR | POLLNVAL | POLLHUP)) {
-                    shutdown_client_fd(h, h->fds[i].fd);
-                    continue;
-                }
                 if (h->fds[i].revents & (POLLOUT))
                     do_deferred_write(h, h->fds[i].fd);
                 if (h->fds[i].revents & (POLLIN))
                     process_input(h, h->fds[i].fd);
+                if (h->fds[i].revents & (POLLERR | POLLNVAL | POLLHUP))
+                    shutdown_client_fd(h, h->fds[i].fd);
             }
         }
     }
