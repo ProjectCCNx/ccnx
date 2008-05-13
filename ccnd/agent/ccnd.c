@@ -1467,8 +1467,12 @@ process_input(struct ccnd *h, int fd)
             /* flags */ 0, addr, &addrlen);
     if (res == -1)
         perror("ccnd: recvfrom");
-    else if (res == 0)
-        face->recvcount++;
+    else if (res == 0) {
+        if ((face->flags & CCN_FACE_DGRAM) == 0)
+            shutdown_client_fd(h, fd);
+        else
+            face->recvcount++;
+    }
     else {
         face->recvcount++;
         source = get_dgram_source(h, face, addr, addrlen);
@@ -1559,7 +1563,7 @@ do_deferred_write(struct ccnd *h, int fd)
         if (sendlen > 0) {
             res = send(fd, face->outbuf->buf + face->outbufindex, sendlen, 0);
             if (res == -1) {
-                perror("ccnd: write");
+                perror("ccnd: send");
                 shutdown_client_fd(h, fd);
                 return;
             }
@@ -1628,12 +1632,17 @@ run(struct ccnd *h)
         for (i = 1; res > 0 && i < h->nfds; i++) {
             if (h->fds[i].revents != 0) {
                 res--;
+                if (h->fds[i].revents & (POLLERR | POLLNVAL | POLLHUP)) {
+                    if (h->fds[i].revents & (POLLIN))
+                        process_input(h, h->fds[i].fd);
+                    else
+                        shutdown_client_fd(h, h->fds[i].fd);
+                    continue;
+                }
                 if (h->fds[i].revents & (POLLOUT))
                     do_deferred_write(h, h->fds[i].fd);
                 if (h->fds[i].revents & (POLLIN))
                     process_input(h, h->fds[i].fd);
-                if (h->fds[i].revents & (POLLERR | POLLNVAL | POLLHUP))
-                    shutdown_client_fd(h, h->fds[i].fd);
             }
         }
     }
