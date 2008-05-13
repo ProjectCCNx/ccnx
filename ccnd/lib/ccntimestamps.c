@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <ccn/ccn.h>
 
 int
@@ -57,21 +58,36 @@ main(int argc, char **argv)
     struct ccn *ccn = NULL;
     struct ccn_charbuf *c = NULL;
     struct ccn_charbuf *templ = NULL;
+    long w = 0;
     int i;
+    int ch;
+    while ((ch = getopt(argc, argv, "hw:")) != -1) {
+        switch (ch) {
+            case 'w':
+                w = atol(optarg);
+                break;
+            default:
+            case 'h':
+                fprintf(stderr, "usage: %s [ -h ] [ -w sec ] \n", argv[0]);
+                exit(1);
+        }
+    }
     ccn = ccn_create();
     if (ccn_connect(ccn, NULL) == -1) {
         perror("Could not connect to ccnd");
         exit(1);
     }
     c = ccn_charbuf_create();
-    templ = ccn_charbuf_create();
-    /* set scope to only address ccnd */
-    ccn_charbuf_append(templ, "\001\322\362\000\002\322\216\060\000\000", 10);
+    if (w <= 0) {
+        templ = ccn_charbuf_create();
+        /* set scope to only address ccnd */
+        ccn_charbuf_append(templ, "\001\322\362\000\002\322\216\060\000\000", 10);
+    }
     ccn_name_init(c);
     ccn_express_interest(ccn, c, -1, &incoming_content_action, templ);
     for (i = 0; i < 100; i++) {
         incoming_content_action.data = NULL;
-        ccn_run(ccn, 100); /* stop if we run dry for 1/10 sec */
+        ccn_run(ccn, w <= 0 ? 100 : w * 1000);
         if (incoming_content_action.data == NULL)
             break;
     }
