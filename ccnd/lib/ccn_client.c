@@ -2,12 +2,12 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <poll.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -35,6 +35,7 @@ struct ccn {
     struct ccn_indexbuf *scratch_indexbuf;
     int err;
     int errline;
+    int verbose_error;
 };
 
 struct expressed_interest { /* keyed by components of name */
@@ -51,8 +52,17 @@ struct interest_filter { /* keyed by components of name */
     struct ccn_closure *action;
 };
 
-#define NOTE_ERR(h, e) (h->err = (e), h->errline = __LINE__, -1)
+#define NOTE_ERR(h, e) (h->err = (e), h->errline = __LINE__, ccn_note_err(h))
 #define NOTE_ERRNO(h) NOTE_ERR(h, errno)
+
+static int
+ccn_note_err(struct ccn *h)
+{
+    if (h->verbose_error)
+        fprintf(stderr, "ccn_client.c:%d[%d] - error %d\n",
+                        h->errline, (int)getpid(), h->err);
+    return(-1);
+}
 
 static struct ccn_indexbuf *
 ccn_indexbuf_obtain(struct ccn *h)
@@ -93,11 +103,14 @@ struct ccn *
 ccn_create(void)
 {
     struct ccn *h;
+    const char *s;
     h = calloc(1, sizeof(*h));
     if (h != NULL) {
         h->sock = -1;
     }
     h->interestbuf = ccn_charbuf_create();
+    s = getenv("CCN_DEBUG");
+    h->verbose_error = (s != NULL && s[0] != 0);
     return(h);
 }
 
@@ -292,7 +305,7 @@ ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
         interest->repeat = -1;
     ccn_replace_handler(h, &(interest->action), action);
     replace_template(interest, interest_template);
-    interest->target = 1;
+    interest->target = 8;
     return(0);
 }
 
@@ -416,13 +429,10 @@ ccn_refresh_interest(struct ccn *h, struct expressed_interest *interest,
         ccn_charbuf_append(c, interest->template_stuff,
                               interest->template_stuff_size);
     ccn_charbuf_append_closer(c);
-    while (interest->outstanding < interest->target) {
+    if (interest->outstanding < interest->target) {
         res = ccn_put(h, c->buf, c->length);
-        if (res < 0)
-            break;
-        interest->outstanding += 1;
-        if (res == 1)
-            break; /* don't keep refreshing if we are queueing */
+        if (res >= 0)
+            interest->outstanding += 1;
     }
 }
 
@@ -480,10 +490,16 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                         if (res >= 0) {
                             entry = hashtb_lookup(h->interests, key, comps->buf[i] - keystart);
                             if (entry != NULL) {
-                                if (entry->repeat > 0)
-                                    if (0 == --(entry->repeat))
-                                        entry->target = 0; /* XXX - need to finalize somewhere */
+                                if (entry->repeat > 0) {
+                                    entry->repeat -= 1;
+                                    if (entry->repeat > entry->target)
+                                        entry->target = entry->repeat;
+                                    /* XXX - need to finalize somewhere when these hit 0*/
+                                }
                                 entry->outstanding -= 1;
+                                if (entry->outstanding < entry->target)
+                                    ccn_refresh_interest(h, entry, key, comps->buf[i] - keystart);
+                                /* Since we got content, work on filling pipeline */
                                 if (entry->outstanding < entry->target)
                                     ccn_refresh_interest(h, entry, key, comps->buf[i] - keystart);
                             }
@@ -550,7 +566,6 @@ ccn_process_input(struct ccn *h)
     return(0);
 }
 
-#define CCN_INTEREST_HALFLIFE_MICROSEC 4000000
 int
 ccn_run(struct ccn *h, int timeout)
 {
@@ -592,7 +607,7 @@ ccn_run(struct ccn *h, int timeout)
                     interest->lasttime.tv_sec -= 1;
                 }
                 interest->lasttime.tv_usec -= delta;
-                if (interest->outstanding < interest->target)
+                if (interest->target > 0 && interest->outstanding == 0)
                     ccn_refresh_interest(h, interest, e->key, e->keysize);
              }
              hashtb_end(e);
