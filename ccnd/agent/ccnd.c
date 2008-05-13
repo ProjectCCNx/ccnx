@@ -1467,10 +1467,8 @@ process_input(struct ccnd *h, int fd)
             /* flags */ 0, addr, &addrlen);
     if (res == -1)
         perror("ccnd: recvfrom");
-    else if (res == 0) {
-        if ((face->flags & CCN_FACE_DGRAM) == 0)
-            shutdown_client_fd(h, fd);
-    }
+    else if (res == 0)
+        face->recvcount++;
     else {
         face->recvcount++;
         source = get_dgram_source(h, face, addr, addrlen);
