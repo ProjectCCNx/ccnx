@@ -27,8 +27,8 @@ segment_prefix(char *path)
     if (s == NULL) s = path;
     d = strrchr(s, '.');
     if (d == NULL) d = s + strlen(s);
-    r = malloc(1 + d - path);
-    strlcpy(r, path, 1 + d - path);
+    r = calloc(1, 1 + d - path);
+    memcpy(r, path, d - path);
     return (r);
 }
 
