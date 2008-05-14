@@ -16,13 +16,15 @@ COPT = -g -Wall
 
 PROGRAMS = ccn_ccnbtoxml ccn_xmltoccnb ccn_splitccnb \
     hashtbtest matrixtest skel_decode_test \
-    smoketestclientlib dataresponsetest ccntimestamps ccndump
+    smoketestclientlib dataresponsetest ccntimestamps ccndump \
+    ccn_verifysig
 DEBRIS = ccn_coding ccn_recursive_parse
 CSRC = ccn_buf_decoder.c ccn_charbuf.c ccn_indexbuf.c ccn_coding.c ccn_client.c  \
     ccn_ccnbtoxml.c ccn_xmltoccnb.c ccn_splitccnb.c ccn_schedule.c ccn_matrix.c \
     skel_decode_test.c \
     hashtb.c hashtbtest.c matrixtest.c \
-    smoketestclientlib.c ccntimestamps.c ccndump.c
+    smoketestclientlib.c ccntimestamps.c ccndump.c \
+    ccn_verifysig.c
 
 LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_schedule.o ccn_matrix.o \
     ccn_buf_decoder.o hashtb.o
@@ -71,6 +73,9 @@ ccntimestamps: ccntimestamps.o
 ccndump: ccndump.o
 	$(CC) $(CFLAGS) -o $@ ccndump.o $(LDLIBS)
 
+ccn_verifysig: ccn_verifysig.o
+	$(CC) $(CFLAGS) -o $@ ccn_verifysig.o $(LDLIBS) -lcrypto
+
 clean:
 	rm -f *.o *.a libccn.1.$(SHEXT) $(PROGRAMS) depend
 	rm -rf *.dSYM $(DEBRIS)
@@ -112,3 +117,6 @@ smoketestclientlib.o: smoketestclientlib.c ../include/ccn/ccn.h \
 ccntimestamps.o: ccntimestamps.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h
+ccndump.o: ccndump.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h
+ccn_verifysig.o: ccn_verifysig.c
