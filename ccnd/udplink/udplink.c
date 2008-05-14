@@ -282,6 +282,8 @@ main (int argc, char * const argv[]) {
     ssize_t recvlen = 0;
     ssize_t dres;
     struct sigaction sigact_changeloglevel;
+    unsigned char *deferredbuf = NULL;
+    size_t deferredlen = 0;
 
     process_options(argc, argv, &options);
     memset(&sigact_changeloglevel, 0, sizeof(sigact_changeloglevel));
@@ -352,6 +354,17 @@ main (int argc, char * const argv[]) {
         if (-1 == result) {
             if (errno == EINTR) continue;
             udplink_fatal("poll: %s\n", strerror(errno));
+        }
+        /* process deferred send to local */
+        if (fds[0].revents & (POLLOUT)) {
+            fds[1].events |= POLLIN;
+            fds[0].events &= ~POLLOUT;
+            if (deferredlen > 0) {
+                result = send(localsock, deferredbuf, deferredlen, 0);
+                if (result != deferredlen && options.logging > 1)
+                    udplink_note("sendto(local, deferredbuf, %ld): %s (deferred)\n", (long) deferredlen, strerror(errno));
+                deferredlen = 0;
+            }
         }
 
         /* process local data */
@@ -437,19 +450,22 @@ main (int argc, char * const argv[]) {
                 continue;
             }
 
-        retry:
             result = send(localsock, rbuf, recvlen + CCN_EMPTY_PDU_LENGTH, 0);
             if (result == -1) {
                 if (errno == EAGAIN) {
+                    fds[1].events &= ~POLLIN;
+                    fds[0].events |= POLLOUT;
+                    deferredbuf = realloc(deferredbuf, recvlen + CCN_EMPTY_PDU_LENGTH);
+                    deferredlen = recvlen + CCN_EMPTY_PDU_LENGTH;
+                    memcpy(deferredbuf, rbuf, deferredlen);
                     if (options.logging > 0)
-                        udplink_note("sendto(localsock, rbuf, %ld): %s (dropped)\n", (long) recvlen + CCN_EMPTY_PDU_LENGTH, strerror(errno));
-                    if (1)
-                        continue;
-                    goto retry;
+                        udplink_note("sendto(localsock, rbuf, %ld): %s (deferred)\n", (long) deferredlen, strerror(errno));
+                    continue;
                 } else {
                     udplink_fatal("sendto(localsock, rbuf, %ld): %s\n", (long) recvlen + CCN_EMPTY_PDU_LENGTH, strerror(errno));
                 }
             }
+            if (result != recvlen + CCN_EMPTY_PDU_LENGTH) abort();
             if (options.logging > 1) {
                 udplink_print_data("remote", rbuf, 0, recvlen + CCN_EMPTY_PDU_LENGTH);
             }
@@ -460,5 +476,9 @@ main (int argc, char * const argv[]) {
     ccn_destroy(&ccn);
     freeaddrinfo(raddrinfo);
     freeaddrinfo(laddrinfo);
+    if (deferredbuf != NULL) {
+        free(deferredbuf);
+        deferredbuf = NULL;
+    }
     exit(0);
 }
