@@ -1,19 +1,20 @@
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <errno.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <errno.h>
 #include <net/if.h>
 #include <netdb.h>
+#include <netinet/in.h>
 #include <poll.h>
-#include <string.h>
 #include <signal.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <unistd.h>
 
-#include "ccn/ccn.h"
-#include "ccn/ccnd.h"
+#include <ccn/ccn.h>
+#include <ccn/ccnd.h>
 
 #define UDPMAXBUF 8800
 
@@ -280,9 +281,10 @@ main (int argc, char * const argv[]) {
     ssize_t msgstart = 0;
     ssize_t recvlen = 0;
     ssize_t dres;
-    struct sigaction sigact_changeloglevel = {{0}, 0};
+    struct sigaction sigact_changeloglevel;
 
     process_options(argc, argv, &options);
+    memset(&sigact_changeloglevel, 0, sizeof(sigact_changeloglevel));
     sigact_changeloglevel.sa_handler = changeloglevel;
     sigaction(SIGUSR1, &sigact_changeloglevel, NULL);
     sigaction(SIGUSR2, &sigact_changeloglevel, NULL);
