@@ -1018,8 +1018,8 @@ bloom_create(struct ccnd *h, int n)
     if (f != NULL) {
         f->method = 'S';
         f->lg_bits = 13;
-        /* try for about m = 8*n (m = bits in Bloom filter) */
-        while (f->lg_bits > 3 && (1 << f->lg_bits) > n * 8)
+        /* try for about m = 12*n (m = bits in Bloom filter) */
+        while (f->lg_bits > 3 && (1 << f->lg_bits) > n * 12)
             f->lg_bits--;
         /* optimum number of hash functions is ln(2)*(m/n); use ln(2) ~= 9/13 */
         f->n_hash = (9 << f->lg_bits) / (13 * n + 1);
