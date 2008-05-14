@@ -3,7 +3,6 @@
  * Author: Michael Plass
  */
 #include <arpa/inet.h>
-#include <err.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -54,8 +53,10 @@ int main(int argc, char **argv)
 		binary = 1;
 		close(0);
 		res = open(filename, O_RDONLY);
-		if (res != 0)
-			err(1, filename);
+		if (res != 0) {
+			perror(filename);
+                        exit(1);
+                }
 		break;
 	    case 'n':
 		rep = atoi(optarg);
@@ -63,13 +64,17 @@ int main(int argc, char **argv)
         }
     }
     sock = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (sock == -1)
-        err(1, "socket");
+    if (sock == -1) {
+        perror("socket");
+        exit(1);
+    }
     strncpy(addr.sun_path, "/tmp/.ccnd.sock", sizeof(addr.sun_path));
     addr.sun_family = AF_UNIX;
     res = connect(sock, (struct sockaddr *)&addr, sizeof(addr));
-    if (res == -1)
-        err(1, "connect(..., %s)", addr.sun_path);
+    if (res == -1) {
+        perror("/tmp/.ccnd.sock");
+        exit(1);
+    }
     for (;;) {
         ssize_t rawlen;
         rawlen = read(0, rawbuf, sizeof(rawbuf));
@@ -86,8 +91,10 @@ int main(int argc, char **argv)
 	rawlen = recv(sock, rawbuf, sizeof(rawbuf), MSG_DONTWAIT);
         if (rawlen == -1 && errno == EAGAIN)
             continue;
-        if (rawlen == -1)
-            err(1, "recv");
+        if (rawlen == -1) {
+            perror("recv");
+            exit(1);
+        }
         if (rawlen == 0)
             break;
         printf("recv of %lu bytes\n", (unsigned long)rawlen);
