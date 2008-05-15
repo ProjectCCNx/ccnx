@@ -46,7 +46,7 @@ static void run(struct ccnd *h);
 static void clean_needed(struct ccnd *h);
 static struct back_filter *bloom_create(struct ccnd *h, int n);
 static void bloom_destroy(struct back_filter **);
-static void bloom_insert(struct content_entry *, struct back_filter *);
+static int bloom_insert(struct content_entry *, struct back_filter *);
 static int bloom_match(struct content_entry *, const struct back_filter *);
 static void bloom_update_for_old_content(struct ccnd *, struct interest_entry *);
 
@@ -1016,7 +1016,7 @@ bloom_create(struct ccnd *h, int n)
     int i;
     f = calloc(1, sizeof(*f));
     if (f != NULL) {
-        f->method = 'S';
+        f->method = 's';
         f->lg_bits = 13;
         /* try for about m = 12*n (m = bits in Bloom filter) */
         while (f->lg_bits > 3 && (1 << f->lg_bits) > n * 12)
@@ -1053,27 +1053,30 @@ bloom_validate(const unsigned char *buf, size_t size)
         return (NULL);
     if (size != (sizeof(*f) - sizeof(f->bloom)) + (1 << (f->lg_bits - 3)))
         return (NULL);
-    if (!(f->reserved == 0 && f->method == 'S'))
+    if (!(f->reserved == 0 && f->method == 's'))
         return (NULL);
     return(f);
 }
 
 static int
-bloom_seed(const struct back_filter *f)
+bloom_seed(const struct back_filter *f, const unsigned char *x)
 {
     unsigned u;
     const unsigned char *s = f->seed;
-    u = (s[0] << 24) | (s[1] << 16) | (s[2] << 8) | s[3];
+    u = ((s[0] + x[0]) << 24) |
+        ((s[1] + x[1]) << 16) |
+        ((s[2] + x[2]) << 8) |
+        (s[3] + x[3]);
     return(u & 0x7FFFFFFF);
 }
 
 static int
-bloom_nextseed(int s)
+bloom_nexthash(int s, unsigned char u)
 {
     const int k = 13; /* use this many bits of feedback shift output */
     int b = s & ((1 << k) - 1);
     /* fsr primitive polynomial (modulo 2) x**31 + x**13 + 1 */
-    s = (s >> k) ^ (b << (31 - k)) ^ (b << (13 - k));
+    s = ((s >> k) ^ (b << (31 - k)) ^ (b << (13 - k))) + u;
     return(s);
 }
 
@@ -1081,47 +1084,83 @@ static void
 bloom_gethashbytes(struct content_entry *content, unsigned char method,
         unsigned char *hb, size_t size)
 {
-    if (method != 'S') abort(); /* should have screened this earlier */
+    if (method != 's') abort(); /* should have screened this earlier */
     if (content->sig_offset > 0)
         memcpy(hb, content->key + content->sig_offset, size);
 }
 
-static void
-bloom_insert(struct content_entry *content, struct back_filter *f)
+/*
+ * bloom_insert:
+ * Returns the number of bits changed in the filter, so a zero return
+ * means a collison has happened.
+ */
+static int
+_bloom_insert(struct content_entry *content, struct back_filter *f)
 {
-    int s = bloom_seed(f);
+    int d = 0;
     int n = f->n_hash;
     int m = (8*sizeof(f->bloom) - 1) & ((1 << f->lg_bits) - 1);
     unsigned char hb[32] = {0};
-    int i, k, h;
+    int i, k, h, s;
     bloom_gethashbytes(content, f->method, hb, sizeof(hb));
-    for (i = 0, k = 0; i < n; i++) {
-        h = (((hb[k] << 8) | hb[k+1]) ^ s) & m;
+    s = bloom_seed(f, hb);
+    for (k = 0; k < 4; k++)
+        s = bloom_nexthash(s, 0);
+    for (i = 0; i < n; i++) {
+        h = s & m;
+        if (0 == (f->bloom[h >> 3] & (1 << (h & 7)))) {
+            f->bloom[h >> 3] |= (1 << (h & 7));
+            d++;
+        }
         f->bloom[h >> 3] |= (1 << (h & 7));
         if (i + 1 == n) break;
-        s = bloom_nextseed(s);
-        k = (k + 2) % sizeof(hb); /* should swizzle hb if we want more than 16 functions */
+        s = bloom_nexthash(s, hb[k++ % 32]);
     }
+    return(d);
 }
 
+/*
+ * bloom_match:
+ * This is identical to bloom_insert except at the fringes and what
+ * happens in the inner loop.
+ */
 static int
 bloom_match(struct content_entry *content, const struct back_filter *f)
 {
-    int s = bloom_seed(f);
     int n = f->n_hash;
     int m = (8*sizeof(f->bloom) - 1) & ((1 << f->lg_bits) - 1);
     unsigned char hb[32] = {0};
-    int i, k, h;
+    int i, k, h, s;
     bloom_gethashbytes(content, f->method, hb, sizeof(hb));
-    for (i = 0, k = 0; i < n; i++) {
-        h = (((hb[k] << 8) | hb[k+1]) ^ s) & m;
+    s = bloom_seed(f, hb);
+    for (k = 0; k < 4; k++)
+        s = bloom_nexthash(s, 0);
+    for (i = 0; i < n; i++) {
+        h = s & m;
         if (0 == (f->bloom[h >> 3] & (1 << (h & 7))))
             return(0);
         if (i + 1 == n) break;
-        s = bloom_nextseed(s);
-        k = (k + 2) % sizeof(hb); /* should swizzle hb if we want more than 16 functions */
+        s = bloom_nexthash(s, hb[k++ % 32]);
     }
     return(1);
+}
+
+static int ccnd_debug_bloom = 0;
+static int
+bloom_insert(struct content_entry *content, struct back_filter *f)
+{
+    int d;
+    if (ccnd_debug_bloom && bloom_match(content, f)) {
+        unsigned char zero[4] = {0};
+        unsigned char hb[32] = {0};
+        bloom_gethashbytes(content, f->method, hb, sizeof(hb));
+        fprintf(stderr, "Bloom collision! lg_bits = %d, n_hash = %d, seed = %d, sig = %02X%02X%02X...\n",
+                (int)f->lg_bits, (int)f->n_hash, bloom_seed(f, zero), (int)hb[0], (int)hb[1], (int)hb[2]);
+    }
+    d = _bloom_insert(content, f);
+    if (!bloom_match(content, f))
+        fprintf(stderr, "Bloom bug!!!!\n");
+    return(d);
 }
 
 static void
@@ -1591,19 +1630,20 @@ run(struct ccnd *h)
     int timeout_ms = -1;
     int prev_timeout_ms = -1;
     int usec;
+    int specials = 1;
     for (;;) {
         usec = ccn_schedule_run(h->sched);
         timeout_ms = (usec < 0) ? -1 : usec / 1000;
         if (timeout_ms == 0 && prev_timeout_ms == 0)
             timeout_ms = 1;
-        if (hashtb_n(h->faces_by_fd) + 1 != h->nfds) {
-            h->nfds = hashtb_n(h->faces_by_fd) + 1;
+        if (hashtb_n(h->faces_by_fd) + specials != h->nfds) {
+            h->nfds = hashtb_n(h->faces_by_fd) + specials;
             h->fds = realloc(h->fds, h->nfds * sizeof(h->fds[0]));
             memset(h->fds, 0, h->nfds * sizeof(h->fds[0]));
         }
         h->fds[0].fd = h->local_listener_fd;
         h->fds[0].events = POLLIN;
-        for (i = 1, hashtb_start(h->faces_by_fd, e);
+        for (i = specials, hashtb_start(h->faces_by_fd, e);
              i < h->nfds && e->data != NULL;
              i++, hashtb_next(e)) {
             struct face *face = e->data;
@@ -1629,7 +1669,7 @@ run(struct ccnd *h)
                 accept_new_client(h);
             res--;
         }
-        for (i = 1; res > 0 && i < h->nfds; i++) {
+        for (i = specials; res > 0 && i < h->nfds; i++) {
             if (h->fds[i].revents != 0) {
                 res--;
                 if (h->fds[i].revents & (POLLERR | POLLNVAL | POLLHUP)) {
