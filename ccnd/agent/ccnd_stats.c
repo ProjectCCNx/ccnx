@@ -38,7 +38,8 @@ ccnd_collect_stats(struct ccnd *h, struct ccnd_stats *ans)
     long sum;
     int i;
     int n;
-    for(sum = 0, hashtb_start(h->interest_tab, e); e->data != NULL; hashtb_next(e)) {
+    for (sum = 0, hashtb_start(h->interest_tab, e);
+                                   e->data != NULL; hashtb_next(e)) {
         struct interest_entry *interest = e->data;
         n = interest->counters->n;
         for (i = 0; i < n; i++)
@@ -46,14 +47,16 @@ ccnd_collect_stats(struct ccnd *h, struct ccnd_stats *ans)
     }
     ans->total_interest_counts = (sum + CCN_UNIT_INTEREST-1) / CCN_UNIT_INTEREST;
     hashtb_end(e);
-    for(sum = 0, hashtb_start(h->content_tab, e); e->data != NULL; hashtb_next(e)) {
+    for (sum = 0, hashtb_start(h->content_tab, e);
+                                  e->data != NULL; hashtb_next(e)) {
         struct content_entry *content = e->data;
         if (content->faces != NULL)
             sum += content->faces->n;
     }
     ans->total_content_suppressed = sum;
     hashtb_end(e);
-    for(sum = 0, hashtb_start(h->propagating_tab, e); e->data != NULL; hashtb_next(e)) {
+    for (sum = 0, hashtb_start(h->propagating_tab, e);
+                                      e->data != NULL; hashtb_next(e)) {
         struct propagating_entry *pi = e->data;
         if (pi->outbound == NULL)
             sum += 1;
@@ -120,8 +123,11 @@ check_for_http_connection(struct ccn_schedule *sched,
     for (;;) {
         char buf[7] = "GET / ";
         int fd = accept(sock, NULL, 0);
-        if (fd == -1)
+        if (fd == -1) {
+            if (errno != EAGAIN)
+                perror("check_for_http_connection - accept");
             break;
+        }
         fcntl(fd, F_SETFL, O_NONBLOCK);
         res = read(fd, buf, sizeof(buf)-1);
         if ((res == -1 && errno == EAGAIN) || res == sizeof(buf)-1) {
@@ -136,7 +142,7 @@ check_for_http_connection(struct ccn_schedule *sched,
         close(fd);
     }
     free(response);
-    return(4000000);
+    return(3333333);
 }
 
 int
