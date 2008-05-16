@@ -1,11 +1,11 @@
 # $Id$
 SUBDIRS = lib agent udplink
 OBJTREE = obj.`uname`
-MAKEF =  -f ../conf.mk -f Makefile -f ../subr.mk
+MAKEF =  -f ../conf.mk -f Makefile -f ../conf.mk -f ../subr.mk
 
 default all clean depend:
 	test -f conf.mk || touch conf.mk
-	test -d include/ccn || (test -d ../include/ccn && mkdir include && ln -s ../../include/ccn include/ccn)
+	test -d include/ccn || (test -d ../include/ccn && mkdir -p include && ln -s ../../include/ccn include/ccn)
 	test -f subr.mk || (test -f ../subr.mk && ln -s ../subr.mk)
 	for i in $(SUBDIRS); do								\
 	  (cd "$$i" && pwd && $(MAKE) $(MAKEF) SRCDIR=../$(SRCDIR)/$$i $@ || exit 1);	\
@@ -26,10 +26,7 @@ objtree:
 	cd $(OBJTREE) && ../configure
 
 cleanall:
-	find . -type d -name obj.\* | while read i; do    \
-          rm -f $$i/*.o $$i/*.ko* $$i/depend $$i/.depend; \
-        done
-	find . -type l -exec rm '{}' ';'
+	find . -type l -print -exec rm '{}' ';'
 
 MANIFEST:
 	svn list -R | grep -v '/$$' > MANIFEST
