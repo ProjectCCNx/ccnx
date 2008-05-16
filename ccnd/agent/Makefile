@@ -13,8 +13,13 @@ default all: $(PROGRAMS)
 
 $(PROGRAMS): $(CCNLIBDIR)/libccn2.a
 
-$(CCNLIBDIR)/libccn2.a:
-	cd $(CCNLIBDIR) && $(MAKE) libccn2.a;
+$(OBJDIR)/Makefile: Makefile
+	test -d $(OBJDIR)
+	test -f $(OBJDIR)/Makefile && mv $(OBJDIR)/Makefile $(OBJDIR)/Makefile~ ||:
+	cp -p Makefile $(OBJDIR)/Makefile
+
+$(CSRC) ccnd_private.h:
+	test -f $(SRCDIR)/$@ && ln -s $(SRCDIR)/$@
 
 CCND_OBJ = ccnd.o ccnd_stats.o
 ccnd: $(CCND_OBJ) 

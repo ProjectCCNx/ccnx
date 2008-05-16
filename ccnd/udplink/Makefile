@@ -15,8 +15,15 @@ default all: $(PROGRAMS)
 
 $(PROGRAMS): $(CCNLIBDIR)/libccn2.a
 
-$(CCNLIBDIR)/libccn2.a:
-	cd $(CCNLIBDIR) && $(MAKE) libccn2.a;
+$(OBJDIR)/Makefile: Makefile
+	test -d $(OBJDIR)
+	test -f $(OBJDIR)/Makefile && mv $(OBJDIR)/Makefile $(OBJDIR)/Makefile~ ||:
+	cp -p Makefile $(OBJDIR)/Makefile
+	cp -p *.mk $(OBJDIR)/.
+
+$(CSRC):
+	test -f $(SRCDIR)/$@ && ln -s $(SRCDIR)/$@
+
 
 udplink: udplink.o
 	$(CC) $(CFLAGS) -o $@ udplink.o $(LDLIBS)

@@ -24,12 +24,20 @@ CSRC = ccn_buf_decoder.c ccn_charbuf.c ccn_indexbuf.c ccn_coding.c ccn_client.c 
     skel_decode_test.c \
     hashtb.c hashtbtest.c matrixtest.c \
     smoketestclientlib.c ccntimestamps.c ccndump.c \
-    ccn_verifysig.c
+    ccn_verifysig.c dataresponsetest.c
 
 LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_schedule.o ccn_matrix.o \
     ccn_buf_decoder.o hashtb.o
 
 default all: lib $(PROGRAMS)
+
+$(OBJDIR)/Makefile: Makefile
+	test -d $(OBJDIR)
+	test -f $(OBJDIR)/Makefile && mv $(OBJDIR)/Makefile $(OBJDIR)/Makefile~ ||:
+	cp -p Makefile $(OBJDIR)/Makefile
+
+$(CSRC):
+	test -f $(SRCDIR)/$@ && ln -s $(SRCDIR)/$@
 
 lib: libccn2.a
 
