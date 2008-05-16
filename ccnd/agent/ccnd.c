@@ -1460,7 +1460,7 @@ struct face *
 get_dgram_source(struct ccnd *h, struct face *face,
            struct sockaddr *addr, socklen_t addrlen)
 {
-    struct face *source;
+    struct face *source = NULL;
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     int res;
