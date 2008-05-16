@@ -77,7 +77,7 @@ ccn_verifysig: ccn_verifysig.o
 	$(CC) $(CFLAGS) -o $@ ccn_verifysig.o $(LDLIBS) -lcrypto
 
 clean:
-	rm -f *.o *.a libccn.1.$(SHEXT) $(PROGRAMS) depend
+	rm -f *.o libccn2.a libccn.1.$(SHEXT) $(PROGRAMS) depend
 	rm -rf *.dSYM $(DEBRIS)
 
 ###############################
