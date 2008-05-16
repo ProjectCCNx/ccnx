@@ -1,25 +1,16 @@
-CFLAGS = $(COPT) $(CPREFLAGS)
+CFLAGS = $(COPT) $(CWARNFLAGS) $(CPREFLAGS) $(PLATCFLAGS)
 LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn2
 CPREFLAGS = -I../include
-COPT = -g -Wall
+COPT = -g
 CCNLIBDIR = ../lib
-
-#Solaris# make MORE_LDLIBS='-lsocket -lnsl'
 
 PROGRAMS = ccnd smoketestccnd
 CSRC = ccnd.c ccnd_stats.c smoketestccnd.c
+HSRC = ccnd_private.h
 
 default all: $(PROGRAMS)
 
 $(PROGRAMS): $(CCNLIBDIR)/libccn2.a
-
-$(OBJDIR)/Makefile: Makefile
-	test -d $(OBJDIR)
-	test -f $(OBJDIR)/Makefile && mv $(OBJDIR)/Makefile $(OBJDIR)/Makefile~ ||:
-	cp -p Makefile $(OBJDIR)/Makefile
-
-$(CSRC) ccnd_private.h:
-	test -f $(SRCDIR)/$@ && ln -s $(SRCDIR)/$@
 
 CCND_OBJ = ccnd.o ccnd_stats.o
 ccnd: $(CCND_OBJ) 
@@ -32,9 +23,6 @@ clean:
 	rm -f *.o *.a $(PROGRAMS) depend
 	rm -rf *.dSYM $(DEBRIS)
 
-depend: Makefile $(CSRC)
-	gcc -MM $(CSRC) $(CPREFLAGS) > depend
-	tail -n `wc -l < depend` Makefile | diff - depend
 ###############################
 # Dependencies below here are checked by depend target
 # but must be updated manually.

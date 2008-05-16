@@ -1,0 +1,1 @@
+CWARNFLAGS = -Wall

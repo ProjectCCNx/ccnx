@@ -1,1 +1,0 @@
-MORE_CFLAGS = -Wall

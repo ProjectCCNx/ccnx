@@ -7,18 +7,18 @@ PLATCFLAGS=
 #SHARED_LD_FLAGS = -dylib -arch `/usr/bin/arch` -install_name libccn.1.$(SHEXT) -all_load /usr/lib/dylib1.o -lSystem
 #PLATCFLAGS=-fno-common
 
-CFLAGS = $(COPT) $(CPREFLAGS) $(PLATCFLAGS)
-LDLIBS = -L../lib $(MORE_LDLIBS) -lexpat -lccn2
+CFLAGS = $(COPT) $(CWARNFLAGS) $(CPREFLAGS) $(PLATCFLAGS)
+LDLIBS = -L../lib $(MORE_LDLIBS) -lccn2
+EXPATLIBS = -lexpat
 CPREFLAGS = -I../include
-COPT = -g -Wall
+COPT = -g
 
-#Solaris# make MORE_LDLIBS='-lsocket -lnsl'
-
-PROGRAMS = ccn_ccnbtoxml ccn_xmltoccnb ccn_splitccnb \
+PROGRAMS = ccn_ccnbtoxml ccn_splitccnb \
     hashtbtest matrixtest skel_decode_test \
     smoketestclientlib dataresponsetest ccntimestamps ccndump \
-    ccn_verifysig
-DEBRIS = ccn_coding ccn_recursive_parse
+    ccn_verifysig $(EXPAT_PROGRAMS)
+EXPAT_PROGRAMS = ccn_xmltoccnb
+DEBRIS = 
 CSRC = ccn_buf_decoder.c ccn_charbuf.c ccn_indexbuf.c ccn_coding.c ccn_client.c  \
     ccn_ccnbtoxml.c ccn_xmltoccnb.c ccn_splitccnb.c ccn_schedule.c ccn_matrix.c \
     skel_decode_test.c \
@@ -30,14 +30,6 @@ LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_schedule.o
     ccn_buf_decoder.o hashtb.o
 
 default all: lib $(PROGRAMS)
-
-$(OBJDIR)/Makefile: Makefile
-	test -d $(OBJDIR)
-	test -f $(OBJDIR)/Makefile && mv $(OBJDIR)/Makefile $(OBJDIR)/Makefile~ ||:
-	cp -p Makefile $(OBJDIR)/Makefile
-
-$(CSRC):
-	test -f $(SRCDIR)/$@ && ln -s $(SRCDIR)/$@
 
 lib: libccn2.a
 
@@ -55,7 +47,7 @@ ccn_ccnbtoxml: ccn_ccnbtoxml.o
 	$(CC) $(CFLAGS) -o $@ ccn_ccnbtoxml.o $(LDLIBS)
 
 ccn_xmltoccnb: ccn_xmltoccnb.o
-	$(CC) $(CFLAGS) -o $@ ccn_xmltoccnb.o $(LDLIBS)
+	$(CC) $(CFLAGS) -o $@ ccn_xmltoccnb.o $(LDLIBS) $(EXPATLIBS)
 
 ccn_splitccnb: ccn_splitccnb.o
 	$(CC) $(CFLAGS) -o $@ ccn_splitccnb.o $(LDLIBS)
@@ -88,9 +80,6 @@ clean:
 	rm -f *.o *.a libccn.1.$(SHEXT) $(PROGRAMS) depend
 	rm -rf *.dSYM $(DEBRIS)
 
-depend: Makefile $(CSRC)
-	gcc -MM $(CSRC) $(CPREFLAGS) > depend
-	tail -n `wc -l < depend` Makefile | diff - depend
 ###############################
 # Dependencies below here are checked by depend target
 # but must be updated manually.
@@ -127,4 +116,9 @@ ccntimestamps.o: ccntimestamps.c ../include/ccn/ccn.h \
   ../include/ccn/indexbuf.h
 ccndump.o: ccndump.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h
-ccn_verifysig.o: ccn_verifysig.c
+ccn_verifysig.o: ccn_verifysig.c ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h
+dataresponsetest.o: dataresponsetest.c ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h
