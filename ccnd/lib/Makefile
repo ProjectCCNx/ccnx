@@ -1,12 +1,3 @@
-SHEXT=
-SHARED_LD_FLAGS=
-PLATCFLAGS=
-
-# Darwin #
-#SHEXT=dylib
-#SHARED_LD_FLAGS = -dylib -arch `/usr/bin/arch` -install_name libccn.1.$(SHEXT) -all_load /usr/lib/dylib1.o -lSystem
-#PLATCFLAGS=-fno-common
-
 CFLAGS = $(COPT) $(CWARNFLAGS) $(CPREFLAGS) $(PLATCFLAGS)
 LDLIBS = -L../lib $(MORE_LDLIBS) -lccn2
 EXPATLIBS = -lexpat
@@ -29,16 +20,16 @@ CSRC = ccn_buf_decoder.c ccn_charbuf.c ccn_indexbuf.c ccn_coding.c ccn_client.c 
 LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_schedule.o ccn_matrix.o \
     ccn_buf_decoder.o hashtb.o
 
-default all: lib $(PROGRAMS)
+default all: lib $(SHLIBNAME) $(PROGRAMS)
 
 lib: libccn2.a
 
 libccn2.a: $(LIB_OBJS)
 	ar cru $@ $(LIB_OBJS)
 
-shared: libccn.1.$(SHEXT)
+shared: $(SHLIBNAME)
 
-libccn.1.$(SHEXT): libccn2.a
+$(SHLIBNAME): libccn2.a $(SHLIBDEPS)
 	$(LD) $(SHARED_LD_FLAGS) -o $@ libccn2.a
 
 $(PROGRAMS): libccn2.a
