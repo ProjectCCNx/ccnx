@@ -1,4 +1,4 @@
-echo "# Darwin.sh $@ was here" >> conf.mk
+echo "# Linux.sh $@ was here" >> conf.mk
 # check for python that's advanced enough
 PYTHON=`which python`
 if test "$PYTHON" != ""; then 
