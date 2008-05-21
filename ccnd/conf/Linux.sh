@@ -10,7 +10,7 @@ except:
 else:
     print 1 
 EOF`
-  if test "$PYTHONVERSION" == 1; then
+  if test "$PYTHONVERSION" -eq 1; then
      echo "PYTHON=$PYTHON" >> conf.mk
      echo "PYTHON_TARGETS=python" >> conf.mk
   else
