@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry excluding="bin/|lib/|libsrc/|log/|repository/|rpc/|simulations/" kind="src" path=""/>
+	<classpathentry excluding="bin/|build/|lib/|libsrc/|log/|repository/|rpc/|simulations/" kind="src" path=""/>
 	<classpathentry kind="lib" path="lib/jmdns.jar"/>
 	<classpathentry kind="lib" path="lib/commons-codec-1.2.jar"/>
 	<classpathentry kind="lib" path="lib/commons-collections-3.1.jar"/>

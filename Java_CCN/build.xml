@@ -11,56 +11,59 @@
    <property name="jarfile" location="${build}/${jarfile-base}"/>
    <property name="junit-jar" location="${lib}/junit-4.3.1.jar"/>
 
+   <!-- CLASSPATH NOTE: This should be a minimal set of what is 
+        required, so we have an authoritative list of dependencies -->
+
    <path id="classpath">
-       <pathelement location="${lib}/bcprov-jdk15-138.jar"/>
+<!--        <pathelement location="${lib}/bcprov-jdk15-138.jar"/> -->
        <pathelement location="${lib}/bcprov-jdk16-138.jar"/>
-       <pathelement location="${lib}/commons-codec-1.2.jar"/>
-       <pathelement location="${lib}/commons-collections-3.1.jar"/>
-       <pathelement location="${lib}/commons-httpclient-3.0.jar"/>
-       <pathelement location="${lib}/concurrent-1.3.4.jar"/>
-       <pathelement location="${lib}/derby-10.2.1.6.jar"/>
-       <pathelement location="${lib}/geronimo-jta_1.0.1B_spec-1.0.1.jar"/>
+<!--        <pathelement location="${lib}/commons-codec-1.2.jar"/> -->
+<!--        <pathelement location="${lib}/commons-collections-3.1.jar"/> -->
+<!--        <pathelement location="${lib}/commons-httpclient-3.0.jar"/> -->
+<!--        <pathelement location="${lib}/concurrent-1.3.4.jar"/> -->
+<!--        <pathelement location="${lib}/derby-10.2.1.6.jar"/> -->
+<!--        <pathelement location="${lib}/geronimo-jta_1.0.1B_spec-1.0.1.jar"/> -->
        <pathelement location="${lib}/jackrabbit-api-1.4.jar"/>
-       <pathelement location="${lib}/jackrabbit-classloader-1.4.jar"/>
+<!--        <pathelement location="${lib}/jackrabbit-classloader-1.4.jar"/> -->
        <pathelement location="${lib}/jackrabbit-core-1.4.jar"/>
-       <pathelement location="${lib}/jackrabbit-jca-1.4.jar"/>
-       <pathelement location="${lib}/jackrabbit-jcr2spi-1.4.jar"/>
+<!--        <pathelement location="${lib}/jackrabbit-jca-1.4.jar"/> -->
+<!--        <pathelement location="${lib}/jackrabbit-jcr2spi-1.4.jar"/> -->
        <pathelement location="${lib}/jackrabbit-jcr-commons-1.4.jar"/>
        <pathelement location="${lib}/jackrabbit-jcr-rmi-1.4.jar"/>
-       <pathelement location="${lib}/jackrabbit-jcr-server-1.4.jar"/>
-       <pathelement location="${lib}/jackrabbit-jcr-servlet-1.4.jar"/>
-       <pathelement location="${lib}/jackrabbit-jcr-tests-1.4.jar"/>
-       <pathelement location="${lib}/jackrabbit-ocm-1.4.jar"/>
-       <pathelement location="${lib}/jackrabbit-ocm-1.4-jdk14.jar"/>
-       <pathelement location="${lib}/jackrabbit-ocm-nodemanagement-1.4.jar"/>
-       <pathelement location="${lib}/jackrabbit-spi-1.4.jar"/>
-       <pathelement location="${lib}/jackrabbit-spi2jcr-1.4.jar"/>
-       <pathelement location="${lib}/jackrabbit-spi-commons-1.4.jar"/>
-       <pathelement location="${lib}/jackrabbit-text-extractors-1.4.jar"/>
-       <pathelement location="${lib}/jackrabbit-webapp-1.4.jar"/>
-       <pathelement location="${lib}/jackrabbit-webdav-1.4.jar"/>
-       <pathelement location="${lib}/jcl104-over-slf4j-1.3.0.jar"/>
+<!--        <pathelement location="${lib}/jackrabbit-jcr-server-1.4.jar"/> -->
+<!--        <pathelement location="${lib}/jackrabbit-jcr-servlet-1.4.jar"/> -->
+<!--        <pathelement location="${lib}/jackrabbit-jcr-tests-1.4.jar"/> -->
+<!--        <pathelement location="${lib}/jackrabbit-ocm-1.4.jar"/> -->
+<!--        <pathelement location="${lib}/jackrabbit-ocm-1.4-jdk14.jar"/> -->
+<!--        <pathelement location="${lib}/jackrabbit-ocm-nodemanagement-1.4.jar"/> -->
+<!--        <pathelement location="${lib}/jackrabbit-spi-1.4.jar"/> -->
+<!--        <pathelement location="${lib}/jackrabbit-spi2jcr-1.4.jar"/> -->
+<!--        <pathelement location="${lib}/jackrabbit-spi-commons-1.4.jar"/> -->
+<!--        <pathelement location="${lib}/jackrabbit-text-extractors-1.4.jar"/> -->
+<!--        <pathelement location="${lib}/jackrabbit-webapp-1.4.jar"/> -->
+<!--        <pathelement location="${lib}/jackrabbit-webdav-1.4.jar"/> -->
+<!--        <pathelement location="${lib}/jcl104-over-slf4j-1.3.0.jar"/> -->
        <pathelement location="${lib}/jcr-1.0.jar"/>
        <pathelement location="${lib}/jmdns.jar"/>
-       <pathelement location="${lib}/jrpcgen.jar"/>
-       <pathelement location="${lib}/jsr173_api.jar"/>
+<!--        <pathelement location="${lib}/jrpcgen.jar"/> -->
+<!--        <pathelement location="${lib}/jsr173_api.jar"/> -->
        <pathelement location="${junit-jar}"/>
-       <pathelement location="${lib}/log4j-1.2.13.jar"/>
-       <pathelement location="${lib}/lucene-core-2.2.0.jar"/>
-       <pathelement location="${lib}/mock.jar"/>
-       <pathelement location="${lib}/nekohtml-0.9.4.jar"/>
-       <pathelement location="${lib}/oncrpc.jar"/>
-       <pathelement location="${lib}/pdfbox-0.6.4.jar"/>
-       <pathelement location="${lib}/poi-2.5.1-final-20040804.jar"/>
+<!--        <pathelement location="${lib}/log4j-1.2.13.jar"/> -->
+<!--        <pathelement location="${lib}/lucene-core-2.2.0.jar"/> -->
+<!--        <pathelement location="${lib}/mock.jar"/> -->
+<!--        <pathelement location="${lib}/nekohtml-0.9.4.jar"/> -->
+<!--        <pathelement location="${lib}/oncrpc.jar"/> -->
+<!--        <pathelement location="${lib}/pdfbox-0.6.4.jar"/> -->
+<!--        <pathelement location="${lib}/poi-2.5.1-final-20040804.jar"/> -->
        <pathelement location="${lib}/portmap.jar"/>
-       <pathelement location="${lib}/sjsxp.jar"/>
-       <pathelement location="${lib}/slf4j-api-1.3.0.jar"/>
-       <pathelement location="${lib}/slf4j-log4j12-1.3.0.jar"/>
-       <pathelement location="${lib}/tm-extractors-0.4.jar"/>
-       <pathelement location="${lib}/xercesImpl-2.8.1.jar"/>
-       <pathelement location="${lib}/xml-apis-1.3.03.jar"/>
-       <pathelement location="${lib}/xmldsig.jar"/>
-       <pathelement location="${lib}/xmlsec.jar"/>
+<!--        <pathelement location="${lib}/sjsxp.jar"/> -->
+<!--        <pathelement location="${lib}/slf4j-api-1.3.0.jar"/> -->
+<!--        <pathelement location="${lib}/slf4j-log4j12-1.3.0.jar"/> -->
+<!--        <pathelement location="${lib}/tm-extractors-0.4.jar"/> -->
+<!--        <pathelement location="${lib}/xercesImpl-2.8.1.jar"/> -->
+<!--        <pathelement location="${lib}/xml-apis-1.3.03.jar"/> -->
+<!--        <pathelement location="${lib}/xmldsig.jar"/> -->
+<!--        <pathelement location="${lib}/xmlsec.jar"/> -->
    </path>
 
    <!-- repository directory is likely to be created by running things
