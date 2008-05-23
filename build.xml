@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This is an ant project file, see http://ant.apache.org/ -->
+
+<project default="all" name="ccn">
+
+    <target name="all">
+       <!-- safety check that the tagname.csvdict is correct -->
+       <exec os="Linux" executable="cmp" failonerror="true">
+           <arg file="schema/tagname.csvdict"/>
+           <arg file="Java_CCN/com/parc/ccn/data/util/tagname.csvdict"/>
+       </exec>
+
+        <subant failonerror="true"
+                verbose="true">
+            <!-- as the order of building matters, use a file list -->
+            <filelist dir=".">
+                <file name="Java_CCN/build.xml"/>
+            </filelist>
+        </subant>
+    </target>
+
+    <target name="clean">
+        <subant target="clean" failonerror="true">
+            <fileset dir="." includes="*/build.xml"/>
+        </subant>
+    </target>
+
+    <target name="test">
+        <subant target="test" failonerror="true" verbose="true">
+            <fileset dir="." includes="*/build.xml"/>
+        </subant>
+    </target>
+</project>
