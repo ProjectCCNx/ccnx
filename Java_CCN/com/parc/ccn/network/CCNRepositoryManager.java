@@ -95,46 +95,47 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 	 */
 	protected CCNRepositoryManager(CCNRepository primaryRepository) throws RemoteException {
 		super(true, false);
-		// We have two ways of managing repositories. We
-		// could either assume we own them, and make
-		// them, or we could look for ones already running.
-		// Which we do depends on the type of the repository.
-		// For example, for jackrabbit, we really want all
-		// RepositoryManagers on the same machine to talk
-		// to the same Jackrabbit. For file-systems based
-		// repositories, we could simply make wrappers that
-		// talked to the same files (or IMAP server or...).
-		// For figuring out what repositories to use,
-		// we could use discovery, or we could look for them
-		// in appropriate places (e.g. depending on a
-		// configuration file).
 		
-		// Right now we're set up to do discovery, but
-		// it isn't a good fit. For Jackrabbit, just see if
-		// we can use Jackrabbit's own RMI interface to 
-		// talk to an existing one. For other things, we
-		// should use a configuration file.
+		// New architecture is eliminating direct connection to a repo
+		// in the manner supported by this class.
+		// All access to a repo is going to be over CCN instead.
+		// As a result, this class will be deprecated and probably removed
+		// and to begin we are moving away from requiring a repo to exist
+		// at all times.
+
+		// If we have a local primary repository available, it will be 
+		// first in the list and will typically remain there.  If we don't
+		// that should be fine.
 		if (null == primaryRepository) {
 			_primaryRepository = JackrabbitCCNRepository.getLocalJackrabbitRepository();
 			if (null == _primaryRepository) {
 				// Could make one. For now signal error, expect it to be separate.
 				Library.logger().severe("No local Jackrabbit repository found. Please start repository daemon and try again.");
 				System.err.println("No local Jackrabbit repository found. Please start repository daemon and try again.");
-				throw new RuntimeException("No local Jackrabbit repository found. Please start repository daemon and try again.");
+				// Proceed without repo
+				//throw new RuntimeException("No local Jackrabbit repository found. Please start repository daemon and try again.");
 			}
 		} else {
 			_primaryRepository = primaryRepository;
 		}
-		_repositories.add(primaryRepository);
+		if (null != primaryRepository) {
+			_repositories.add(primaryRepository);
+		}
 	}
 	
 	/**
-	 * Puts we put only to our local repository. 
+	 * Puts we put only to our local repository if any. 
+	 * NOTE: This entire class will be deprecated, so don't worry too much 
+	 * about case of no primary repo
 	 * @throws InterruptedException 
 	 */
 	public CompleteName put(ContentName name, ContentAuthenticator authenticator, 
 							byte [] signature, byte[] content) throws IOException, InterruptedException {
-		return _primaryRepository.put(name, authenticator, signature, content);
+		if (null != _primaryRepository) {
+			return _primaryRepository.put(name, authenticator, signature, content);
+		} else {
+			return null;
+		}
 	}
 
 	/**
@@ -150,10 +151,12 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 	public ArrayList<ContentObject> get(ContentName name, 
 									    ContentAuthenticator authenticator,
 									    boolean isRecursive) throws IOException, InterruptedException {
-		ArrayList<ContentObject> results = _primaryRepository.get(name, authenticator, isRecursive);
+		// Primary no longer treated separately -- part of deprecating this entire class
+		//ArrayList<ContentObject> results = _primaryRepository.get(name, authenticator, isRecursive);
+		ArrayList<ContentObject> results = new ArrayList<ContentObject>();
 		
 		for (int i=0; i < _repositories.size(); ++i) {
-			if ((_primaryRepository != _repositories.get(i)) && (null != _repositories.get(i))) {
+			if (null != _repositories.get(i)) {
 				results.addAll(_repositories.get(i).get(name, authenticator, isRecursive));
 			}
 		}
@@ -176,11 +179,12 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 		if (null != callbackListener)
 			callbackListener.addInterest(interest);
 		for (int i=0; i < _repositories.size(); ++i) {
-			if ((_primaryRepository != _repositories.get(i)) && (null != _repositories.get(i))) {
+			if (null != _repositories.get(i)) {
 				_repositories.get(i).expressInterest(interest, callbackListener);
 			}
 		}
-		_primaryRepository.expressInterest(interest, callbackListener);
+		// No special treatment for primary -- part of deprecating
+		//_primaryRepository.expressInterest(interest, callbackListener);
 		return;
 	}
 	
@@ -190,19 +194,21 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 	 */
 	public void cancelInterest(Interest interest, CCNInterestListener callbackListener) throws IOException {
 		for (int i=0; i < _repositories.size(); ++i) {
-			if ((_primaryRepository != _repositories.get(i)) && (null != _repositories.get(i))) {
+			if (null != _repositories.get(i)) {
 				_repositories.get(i).cancelInterest(interest, callbackListener);
 			}
 		}
-		_primaryRepository.cancelInterest(interest, callbackListener);
+		// No special treatment for primary -- part of deprecating
+		//_primaryRepository.cancelInterest(interest, callbackListener);
 		return;
 	}
 
 	public ArrayList<CompleteName> enumerate(Interest interest) throws IOException {
-		ArrayList<CompleteName> results = _primaryRepository.enumerate(interest);
-		
+		// No special treatment for primary -- part of deprecating
+		//ArrayList<CompleteName> results = _primaryRepository.enumerate(interest);
+		ArrayList<CompleteName> results = new ArrayList<CompleteName>();
 		for (int i=0; i < _repositories.size(); ++i) {
-			if ((_primaryRepository != _repositories.get(i)) && (null != _repositories.get(i))) {
+			if (null != _repositories.get(i)) {
 				results.addAll(_repositories.get(i).enumerate(interest));
 			}
 		}
@@ -213,10 +219,11 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 		if (null == name) 
 			return null;
 		
-		ArrayList<CompleteName> results = _primaryRepository.getChildren(name);
-		
+		// No special treatment for primary -- part of deprecating
+		//ArrayList<CompleteName> results = _primaryRepository.getChildren(name);
+		ArrayList<CompleteName> results = new ArrayList<CompleteName>();
 		for (int i=0; i < _repositories.size(); ++i) {
-			if ((_primaryRepository != _repositories.get(i)) && (null != _repositories.get(i))) {
+			if (null != _repositories.get(i)) {
 				results.addAll(_repositories.get(i).getChildren(name));
 			}
 		}

@@ -10,6 +10,7 @@
    <property name="jarfile-base" value="ccn.jar"/>
    <property name="jarfile" location="${build}/${jarfile-base}"/>
    <property name="junit-jar" location="${lib}/junit-4.3.1.jar"/>
+   <property name="testout" location="testout"/>
 
    <!-- CLASSPATH NOTE: This should be a minimal set of what is 
         required, so we have an authoritative list of dependencies -->
@@ -66,18 +67,29 @@
 <!--        <pathelement location="${lib}/xmlsec.jar"/> -->
    </path>
 
+   <path id="classpath-run">
+      <path refid="classpath"/>
+      <pathelement location="${jarfile}"/>
+   </path>
+
    <!-- repository directory is likely to be created by running things
         so must be excluded from jar at least -->
 
+   <property name="build-excludes" value="bin/**, log/**, lib/**, libsrc/**, repository/**, build/**, testout/**"/>
+
    <target name="compile">
        <mkdir dir="${build}"/>
+       <depend srcdir="." destdir="${build}" closure="yes"/>
        <javac destdir="${build}"
-              srcdir="." excludes="bin/**, log/**, lib/**, libsrc/**, repository/**, build/**"
-              source="1.5"> 
+              srcdir="." excludes="${build-excludes}"
+              source="1.5" debug="on"> 
            <classpath>
                <path refid="classpath"/>
            </classpath>
        </javac>
+       <copy todir="${build}">
+           <fileset dir="." excludes="${build-excludes}, **/*.java"/>
+       </copy>
    </target>
 
    <target name="jar" depends="compile">
@@ -89,25 +101,48 @@
        </jar>
    </target>
 
-   <target name="clean">
+   <target name="clean-test">
+       <delete dir="${testout}"/>       
+   </target>
+
+   <target name="clean" depends="clean-test">
        <delete dir="${build}"/>       
    </target>
 
-   <!-- test is for running all fully-automated tests to validate code -->
+   <!-- test is for running all current automated tests to validate code -->
    <target name="test" depends="jar">
-       <junit printsummary="yes" haltonfailure="yes">
+       <mkdir dir="${testout}"/>
+       <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}">
            <classpath>
-               <path refid="classpath"/>
-               <pathelement location="${jarfile}"/>
+               <path refid="classpath-run"/>
            </classpath>
-           <formatter type="brief" usefile="false"/>
+           <formatter type="brief" usefile="true"/>
           
-           <batchtest>
+           <batchtest todir="${testout}">
                <fileset dir="${build}">
+                   <include name="test/ccn/data/*Test.class"/>
+                   <include name="test/ccn/data/content/*Test*.class"/>
+                   <include name="test/ccn/data/security/*Test*.class"/>
                    <include name="test/ccn/data/util/*Test*.class"/>
+                   <include name="test/ccn/security/crypto/certificates/*Test*.class"/>
                </fileset>
            </batchtest>
+           <test todir="${testout}"  name="test.ccn.library.BaseLibraryTest"/>
        </junit>
+
+       <echo message="Running puttap tests"/>
+       <java classname="com.parc.ccn.apps.puttap" classpathref="classpath-run" failonerror="true" output="${testout}/TEST-com.parc.cc.apps.puttap0.txt">
+           <arg value="0"/>
+           <arg value="/CCNUnitTest/puttap"/>
+           <arg file="${testout}/TEST-puttap0.out"/>
+           <arg file="com/parc/ccn/apps/puttap.java"/>
+       </java>
+       <java classname="com.parc.ccn.apps.puttap" classpathref="classpath-run" failonerror="true" output="${testout}/TEST-com.parc.cc.apps.puttap1.txt">
+           <arg value="0"/>
+           <arg value="/CCNUnitTest/puttap"/>
+           <arg file="${testout}/TEST-puttap1.out"/>
+           <arg file="com/parc/ccn/apps/puttap.java"/>
+       </java>
    </target>
 
 </project>

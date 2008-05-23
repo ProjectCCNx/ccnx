@@ -3,6 +3,8 @@ package com.parc.ccn.data.util;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.HashMap;
 
 import com.parc.ccn.Library;
@@ -10,7 +12,7 @@ import com.parc.ccn.Library;
 public class BinaryXMLDictionary {
 	
 	// Should not necessarily tie this to CCN...
-	protected static String DEFAULT_DICTIONARY_FILENAME = "tagname.csvdict";
+	protected static String DEFAULT_DICTIONARY_RESNAME = "tagname.csvdict";
 	
 	protected String _dictionaryFileName;
 	protected HashMap<String,Long> _encodingDictionary = new HashMap<String,Long>();
@@ -32,9 +34,9 @@ public class BinaryXMLDictionary {
 
 	public BinaryXMLDictionary() {
 		try {
-			loadDictionaryFile(DEFAULT_DICTIONARY_FILENAME);
+			loadDictionaryFile(DEFAULT_DICTIONARY_RESNAME);
 		} catch (IOException fe) {
-			Library.logger().warning("Cannot parse default CCN encoding dictionary: " + DEFAULT_DICTIONARY_FILENAME +
+			Library.logger().warning("Cannot parse default CCN encoding dictionary: " + DEFAULT_DICTIONARY_RESNAME +
 					fe.getMessage());
 			
 		}
@@ -67,8 +69,9 @@ public class BinaryXMLDictionary {
 
 	protected void loadDictionaryFile(String dictionaryFile) throws IOException {
 		
+		InputStream in = getClass().getResourceAsStream(dictionaryFile);
 		BufferedReader reader = 
-			new BufferedReader(new FileReader(dictionaryFile));
+			new BufferedReader(new InputStreamReader(in));
 		
 		String line = null;
 		

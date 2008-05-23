@@ -799,7 +799,7 @@ public class BCX509CertificateGeneratorTest extends TestCase {
 	}
 	
 	public void testParsing() throws Exception {
-		String filename = "testAddEKUExtension.der";
+		String filename = "TEST-testAddEKUExtension.der";
 		InputStream inStream = new FileInputStream(filename);
 
 		ASN1StreamParser ain = new ASN1StreamParser(inStream);
@@ -1078,14 +1078,15 @@ public class BCX509CertificateGeneratorTest extends TestCase {
 	static void outputCert(String file, X509Certificate cert) 
 			throws CertificateEncodingException, FileNotFoundException, IOException {
 		byte [] encoded = cert.getEncoded();
-		FileOutputStream fos = new FileOutputStream(file);
+		// Prepend "TEST-" to all file names for consistent cleanup by ant script
+		FileOutputStream fos = new FileOutputStream("TEST-" + file);
 		fos.write(encoded);
 		fos.flush();
 		fos.close();
 	}
 	
 	static X509Certificate inputCert(String file) throws IOException, CertificateException {
-		InputStream inStream = new FileInputStream(file);
+		InputStream inStream = new FileInputStream("TEST-" + file);
 		CertificateFactory cf = CertificateFactory.getInstance("X.509");
 		X509Certificate cert = (X509Certificate)cf.generateCertificate(inStream);
 		inStream.close();
@@ -1096,7 +1097,7 @@ public class BCX509CertificateGeneratorTest extends TestCase {
 		// get private key out eventually to PEM format
 		// start with pkcs8
 		byte [] encoded = pair.getPrivate().getEncoded();
-		FileOutputStream fos = new FileOutputStream(file);
+		FileOutputStream fos = new FileOutputStream("TEST-" + file);
 		fos.write(encoded);
 		fos.flush();
 		fos.close();
