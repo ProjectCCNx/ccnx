@@ -15,6 +15,7 @@
             <!-- as the order of building matters, use a file list -->
             <filelist dir=".">
                 <file name="Java_CCN/build.xml"/>
+                <file name="apps/CPOF/build.xml"/>
             </filelist>
         </subant>
     </target>
