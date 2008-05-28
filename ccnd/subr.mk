@@ -7,5 +7,5 @@ $(OBJDIR)/Makefile: Makefile
 	cp -p Makefile $(OBJDIR)/Makefile
 
 depend: Makefile $(CSRC)
-	gcc -MM $(CSRC) $(CPREFLAGS) > depend
+	echo $(CSRC) | xargs gcc -MM $(CPREFLAGS) > depend
 	tail -n `wc -l < depend` Makefile | diff - depend
