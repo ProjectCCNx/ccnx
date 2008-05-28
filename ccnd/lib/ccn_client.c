@@ -579,7 +579,7 @@ ccn_run(struct ccn *h, int timeout)
     int timeout_ms;
     int res;
     memset(fds, 0, sizeof(fds));
-    start.tv_sec = 0;
+    memset(&start, 0, sizeof(start));
     while (h->sock != -1) {
         refresh = 5 * CCN_INTEREST_HALFLIFE_MICROSEC;
         gettimeofday(&now, NULL);
