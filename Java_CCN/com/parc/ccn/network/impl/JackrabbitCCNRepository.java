@@ -1435,8 +1435,11 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		// need to handle multiple pieces of content intelligently
 		try {
 			for (Interest interest : interests) {
-				ContentObject obj = get(interest.name(), null, true).get(0);
-				_library.put(obj.name(), obj.authenticator(), obj.signature(), obj.content());
+				ArrayList<ContentObject> found = get(interest.name(), null, true);
+				if (found.size() > 0) {
+					ContentObject obj = found.get(0);
+					_library.put(obj.name(), obj.authenticator(), obj.signature(), obj.content());
+				}
 			}
 		} catch (IOException e) {
 			Library.logger().warning(e.getMessage());

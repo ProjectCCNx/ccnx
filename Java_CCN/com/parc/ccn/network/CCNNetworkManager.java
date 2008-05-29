@@ -605,6 +605,7 @@ public class CCNNetworkManager implements Runnable {
 		WirePacket packet = new WirePacket();
 		Date lastsweep = new Date(); 
 		Date lastheartbeat = new Date(0);
+		Library.logger().info("CCNNetworkManager processing thread started");
 		while (_run) {
 			try {
 				

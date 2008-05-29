@@ -36,7 +36,7 @@ public class BinaryXMLDictionary {
 		try {
 			loadDictionaryFile(DEFAULT_DICTIONARY_RESNAME);
 		} catch (IOException fe) {
-			Library.logger().warning("Cannot parse default CCN encoding dictionary: " + DEFAULT_DICTIONARY_RESNAME +
+			Library.logger().warning("Cannot parse default CCN encoding dictionary: " + DEFAULT_DICTIONARY_RESNAME + ":" + 
 					fe.getMessage());
 			
 		}

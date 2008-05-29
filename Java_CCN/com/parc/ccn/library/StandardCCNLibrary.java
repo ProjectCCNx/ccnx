@@ -83,6 +83,8 @@ public class StandardCCNLibrary implements CCNLibrary {
 
 	public StandardCCNLibrary(KeyManager keyManager) {
 		_userKeyManager = keyManager;
+		// force initialization of network manager
+		CCNNetworkManager.getNetworkManager();
 	}
 
 	public StandardCCNLibrary() throws ConfigurationException {
