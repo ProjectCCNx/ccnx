@@ -26,4 +26,6 @@
 39,Timestamp
 40,Type
 41,Nonce
+42,Scope
 17702112,CCNProtocolDataUnit
+23204960,ExperimentalResponseFilter
