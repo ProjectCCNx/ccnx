@@ -1,8 +1,11 @@
 package com.parc.ccn.data;
 
 import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.SignatureException;
+import java.security.cert.CertificateEncodingException;
 import java.sql.Timestamp;
 import java.util.Arrays;
 
@@ -67,6 +70,34 @@ public class CompleteName extends GenericXMLEncodable implements XMLEncodable {
 	public ContentAuthenticator authenticator() { return _authenticator; }
 	
 	public byte [] signature() { return _signature; }
+	
+	/**
+	 * Determines whether signature is correct. Whether it matches the content
+	 * must still be verified by checking the content against the content
+	 * digest. This uses the primary verification functions implemented in ContentObject,
+	 * and is repackaged here for convenience.
+	 * @param publicKey The key to use for verification. If null, the library will
+	 *   attempt to look it up.
+	 * @return
+	 * @throws InterruptedException 
+	 * @throws XMLStreamException 
+	 * @throws NoSuchAlgorithmException 
+	 * @throws SignatureException 
+	 * @throws InvalidKeyException 
+	 */
+	public boolean verifySignature(PublicKey publicKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException, InterruptedException  {
+		return ContentObject.verifyContentSignature(name(), authenticator(), signature(), publicKey);
+	}
+	
+	/**
+	 * Determines whether this content matches the content digest in the authenticator. 
+	 * This uses the primary verification functions implemented in ContentObject,
+	 * and is repackaged here for convenience.
+	 * @return
+	 */
+	public boolean verifyContentDigest(byte [] content) throws CertificateEncodingException {
+		return DigestHelper.verifyDigest(authenticator().contentDigest(), content);
+	}
 	
 	/**
 	 * Thought about encoding and decoding as flat -- no wrapping

@@ -74,7 +74,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     		} else {
 	    		_contentDigest = 
 	    			DigestHelper.encodedDigest(contentOrDigest);
-    			Library.logger().info("VerificationTest: digesting " + 
+    			Library.logger().finest("VerificationTest: digesting " + 
     					contentOrDigest.length + " bytes of content. First: " +
     					Integer.toHexString((int)contentOrDigest[0]) + " Last: " + 
     					Integer.toHexString((int)contentOrDigest[contentOrDigest.length-1]));

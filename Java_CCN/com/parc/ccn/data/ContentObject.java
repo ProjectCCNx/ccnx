@@ -293,7 +293,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 		}
 	
 		if (verifySignature) {
-			result = verifyContentSignature(object, publicKey);
+			result = verifyContentSignature(object.name(), object.authenticator(), object.signature(), publicKey);
 		}
 		return result;
 	}
@@ -318,7 +318,9 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 	 * @throws InterruptedException 
 	 */
 	public static boolean verifyContentSignature(
-			ContentObject object,
+			ContentName name,
+			ContentAuthenticator authenticator,
+			byte [] signature,
 			PublicKey publicKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException, InterruptedException {
 	
 		if (null == publicKey) {
@@ -328,16 +330,16 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 			try {
 				publicKey = 
 					KeyManager.getKeyManager().getPublicKey(
-						object.authenticator().publisherKeyID(),
-						object.authenticator().keyLocator());
+						authenticator.publisherKeyID(),
+						authenticator.keyLocator());
 
 				if (null == publicKey) {
-					throw new SignatureException("Cannot obtain public key to verify object: " + object.name() + ". Key locator: " + 
-						object.authenticator().keyLocator());
+					throw new SignatureException("Cannot obtain public key to verify object: " + name + ". Key locator: " + 
+						authenticator.keyLocator());
 				}
 			} catch (IOException e) {
-				throw new SignatureException("Cannot obtain public key to verify object: " + object.name() + ". Key locator: " + 
-						object.authenticator().keyLocator() + " exception: " + e.getMessage(), e);				
+				throw new SignatureException("Cannot obtain public key to verify object: " + name + ". Key locator: " + 
+						authenticator.keyLocator() + " exception: " + e.getMessage(), e);				
 			}
 		}
 		
@@ -350,13 +352,13 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 		// is a fragment, we will need to verify just the 
 		// root. 
 		ContentName verifyName = new ContentName(
-							object.authenticator().nameComponentCount(),
-							object.name().components());
+							authenticator.nameComponentCount(),
+							name.components());
 	
 		// Now, check the signature.
 		boolean result = 
-			SignatureHelper.verify(new XMLEncodable[]{verifyName, object.authenticator()}, 
-							   	   object.signature(),
+			SignatureHelper.verify(new XMLEncodable[]{verifyName, authenticator}, 
+							   	   signature,
 							   	   DigestHelper.DEFAULT_DIGEST_ALGORITHM,
 							   	   publicKey);
 		return result;

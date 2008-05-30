@@ -93,7 +93,20 @@ public class BaseLibraryTest {
 			Thread getter = new Thread(new GetThread(25));
 			genericGetPut(putter, getter);
 	}
-
+	
+	/**
+	 * Subclassible object processing operations, to make it possible to easily
+	 * implement tests based on this one.
+	 * @author smetters
+	 *
+	 */
+	public void checkGetResults(ArrayList<ContentObject> getResults) {
+		System.out.println("Got result: " + getResults.get(0).name());
+	}
+	
+	public void checkPutResults(CompleteName putResult) {
+		System.out.println("Put data: " + putResult.name());
+	}
 
 	public class GetThread implements Runnable {
 		protected CCNLibrary library = StandardCCNLibrary.open();
@@ -111,6 +124,7 @@ public class BaseLibraryTest {
 					assertEquals(1, contents.size());
 					assertEquals(i, Integer.parseInt(new String(contents.get(0).content())));
 					System.out.println("Got " + i);
+					checkGetResults(contents);
 				}
 				System.out.println("Get thread finished");
 			} catch (Throwable ex) {
@@ -131,8 +145,9 @@ public class BaseLibraryTest {
 				Random rand = new Random();
 				for (int i = 0; i < count; i++) {
 					Thread.sleep(rand.nextInt(50));
-					library.put("/BaseLibraryTest/" + new Integer(i).toString(), new Integer(i).toString());
+					CompleteName putName = library.put("/BaseLibraryTest/" + new Integer(i).toString(), new Integer(i).toString());
 					System.out.println("Put " + i + " done");
+					checkPutResults(putName);
 				}
 				System.out.println("Put thread finished");
 			} catch (Throwable ex) {
@@ -172,9 +187,11 @@ public class BaseLibraryTest {
 		public synchronized int handleContent(ArrayList<ContentObject> results) {
 			for (ContentObject contentObject : results) {
 				assertEquals(next, Integer.parseInt(new String(contentObject.content())));
-				System.out.println("Got " + next);			
+				System.out.println("Got " + next);	
 				next++;
 			}
+			checkGetResults(results);
+			
 			if (next >= count) {
 				sema.release();
 			}
@@ -217,8 +234,9 @@ public class BaseLibraryTest {
 				assertEquals(1, interests.size());
 				for (Interest interest : interests) {
 					assertTrue(name.isPrefixOf(interest.name()));
-					library.put("/BaseLibraryTest/" + new Integer(next).toString(), new Integer(next).toString());
+					CompleteName putName = library.put("/BaseLibraryTest/" + new Integer(next).toString(), new Integer(next).toString());
 					System.out.println("Put " + next + " done");
+					checkPutResults(putName);
 					next++;
 				}
 				if (next >= count) {
