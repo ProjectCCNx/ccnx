@@ -9,6 +9,7 @@ import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.events.Attribute;
+import javax.xml.stream.events.Characters;
 import javax.xml.stream.events.XMLEvent;
 
 public class TextXMLDecoder implements XMLDecoder {
@@ -79,6 +80,27 @@ public class TextXMLDecoder implements XMLDecoder {
 		}	
 		return true;
 	}
+	/**
+	 * Consumes the end element.
+	 * @return
+	 * @throws XMLStreamException
+	 */
+	public String readElementText() throws XMLStreamException {
+		StringBuffer buf = new StringBuffer();
+		XMLEvent event = _reader.nextEvent();
+		
+		// Handles empty text element.
+		while (event.isCharacters()) {
+			buf.append(((Characters)event).getData());
+			event = _reader.nextEvent();
+		}
+		if (event.isStartElement()) {
+			throw new XMLStreamException("readElementText expects start element to have been previously consumed, got: " + event.toString());
+		} else if (!event.isEndElement()) {
+			throw new XMLStreamException("Expected end of text element, got: " + event.toString());
+		}
+		return buf.toString();
+	}
 
 	public void readEndElement() throws XMLStreamException {
 		XMLEvent event = _reader.nextEvent();
@@ -93,9 +115,9 @@ public class TextXMLDecoder implements XMLDecoder {
 
 	public String readUTF8Element(String startTag,
 								  TreeMap<String, String> attributes) throws XMLStreamException {
-		readStartElement(startTag, attributes);
-		String strElementText = _reader.getElementText();
-		// readEndElement(); // getElementText eats the endElement
+		readStartElement(startTag, attributes); // can't use getElementText, can't get attributes
+		String strElementText = readElementText();
+		// readEndElement(); // readElementText consumes end element
 		return strElementText;
 	}
 
@@ -106,9 +128,9 @@ public class TextXMLDecoder implements XMLDecoder {
 	public byte[] readBinaryElement(String startTag,
 			TreeMap<String, String> attributes) throws XMLStreamException {
 		try {
-			readStartElement(startTag, attributes);
-			String strElementText = _reader.getElementText();
-			// readEndElement(); // getElementText eats the endElement
+			readStartElement(startTag, attributes); // can't use getElementText, can't get attributes
+			String strElementText = readElementText();
+			// readEndElement(); // readElementText consumes end element
 			return TextXMLCodec.decodeBinaryElement(strElementText);
 		} catch (IOException e) {
 			throw new XMLStreamException(e.getMessage(), e);

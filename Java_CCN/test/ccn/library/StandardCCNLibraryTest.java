@@ -24,11 +24,10 @@ import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.StandardCCNLibrary;
 import com.parc.ccn.network.CCNRepositoryManager;
-import com.parc.ccn.network.rpc.Name;
 
 
 /**
- * @author briggs
+ * @author briggs,smetters
  *
  */
 public class StandardCCNLibraryTest {
@@ -73,49 +72,6 @@ public class StandardCCNLibraryTest {
 		}
 	}
 
-	@Test
-	public void testONCEnumerate() {
-		Assert.assertNotNull(library);
-
-		try {
-			ArrayList<CompleteName> availableNames =
-				library.enumerate(new Interest("/CPOF"));
-
-			Iterator<CompleteName> nameIt = availableNames.iterator();
-
-			while (nameIt.hasNext()) {
-				CompleteName theName = nameIt.next();
-
-				// Turn it into an ONC name and back again
-				// for testing.
-				Name oncName = theName.name().toONCName();
-				ContentName theNameAgain = new ContentName(oncName);
-
-				if (!theNameAgain.equals(theName.name())) {
-					System.out.println("Changing a name to an ONC name and back again changed the name!");
-					System.out.println("Original name:    " + theName.name());
-					System.out.println("The changed name: " + theNameAgain);
-				}
-
-				// Just get by name, to test equivalent to current
-				// ONC interface.
-				ArrayList<ContentObject> theObject = 
-					library.get(theNameAgain, null, false);
-
-				if (theObject.size() == 0) {
-					System.out.println("Missing content: enumerated name: " + theNameAgain + " not gettable.");
-
-				} else {
-					System.out.println("Retrieved " + theObject.size() + " versions of enumerated name: " + theNameAgain);
-				}
-			}
-
-		} catch (Exception e) {
-			System.out.println("Got an exception in enumerate test: " + e.getClass().getName() + ": " + e.getMessage());
-			e.printStackTrace();
-			Assert.fail("Exception in testEnumerate: " + e.getMessage());
-		}
-	}
 
 	@Test
 	public void testPut() {

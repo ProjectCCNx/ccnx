@@ -618,7 +618,9 @@ public class OIDLookup {
 	}
 	
 	/**
-	 * Map accessors that handle synchronization
+	 * Map accessors that handle synchronization. 
+	 * DKS TODO replace with read-only maps, and make these go away after
+	 * initialization. (Can also use Collection.synchronizedMap).
 	 **/
 	public static boolean mapContainsKey(Map<?,?> map, Object key) {
 		

@@ -1,7 +1,5 @@
 package com.parc.ccn.data;
 
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -9,7 +7,6 @@ import java.util.List;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;

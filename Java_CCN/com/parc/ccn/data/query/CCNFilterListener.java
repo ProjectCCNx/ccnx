@@ -2,8 +2,6 @@ package com.parc.ccn.data.query;
 
 import java.util.ArrayList;
 
-import com.parc.ccn.data.ContentObject;
-
 public interface CCNFilterListener {
 
 	/**

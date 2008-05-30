@@ -1,7 +1,6 @@
 package com.parc.ccn.config;
 
 import com.parc.ccn.data.util.BinaryXMLCodec;
-import com.parc.ccn.data.util.TextXMLCodec;
 
 public class SystemConfiguration {
 

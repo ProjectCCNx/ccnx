@@ -15,8 +15,6 @@ import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
-import com.parc.ccn.network.rpc.Name;
-import com.parc.ccn.network.rpc.NameComponent;
 
 public class ContentName extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentName> {
 
@@ -154,21 +152,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public ContentName() {
 		this(0, (ArrayList<byte[]>)null);
 	}
-	
-	public ContentName(Name oncRpcName) {
-		if ((null == oncRpcName.component) ||
-			(0 >= oncRpcName.component.length)) {
-			_components = new ArrayList<byte[]>(0);
-		} else {
-			_components = new ArrayList<byte []>(oncRpcName.component.length);
-			for (int i=0; i < oncRpcName.component.length; ++i) {
-				byte [] c = new byte[oncRpcName.component[i].length];
-				System.arraycopy(oncRpcName.component[i].vals,0,c,0,oncRpcName.component[i].length);
-				_components.add(c);
-			}
-		}
-	}
-	
+		
 	public ContentName clone() {
 		return new ContentName(count(), components());
 	}
@@ -368,20 +352,6 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		return (null != _components);
 	}
 	
-	public Name toONCName() {
-		Name oncName = new Name();
-		// RPCgen created objects have lots of public data, no useful constructors.
-		oncName.component = new NameComponent[count()];
-		for (int i=0; i < count(); ++i) {
-			oncName.component[i] = new NameComponent();
-			oncName.component[i].length = component(i).length;
-			// JDK 1.5 doesn't have Arrays.copyOf...
-			oncName.component[i].vals = new byte [oncName.component[i].length];
-			System.arraycopy(component(i), 0, oncName.component[i].vals, 0, oncName.component[i].length);	
-		}
-		return oncName;
-	}
-
 	public ContentName copy(int nameComponentCount) {
 		return new ContentName(nameComponentCount, this.components());
 	}
