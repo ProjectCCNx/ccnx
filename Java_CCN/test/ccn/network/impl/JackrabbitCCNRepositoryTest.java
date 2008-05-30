@@ -1,11 +1,16 @@
 package test.ccn.network.impl;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.Security;
+import java.security.SignatureException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Date;
@@ -34,6 +39,7 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
+import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNLibrary;
@@ -61,11 +67,17 @@ public class JackrabbitCCNRepositoryTest {
 	static String [] arrName4 = new String[]{baseName,subName1,document5};
 	static ContentName name4 = new ContentName(arrName4);
 	static String [] testname = new String[]{"test", "smetters", "Activities", ".directory"};
+
 //	static String [] testname = new String[]{"parc.com", "home", "smetters", "Key", "_b_QVHo0jm3yle8hqO1eJtNtlIpoLf3xZKS_X002F_qexnCviNrs_X003D_"};
 //	static String [] testname = new String[]{"parc.com", "home", "smetters", "Key", "_b_QVHo0jm3yle8hqO1eJtNtlIpoLf3xZKS_x002F_qexnCviNrs_x003D_"};
 	// static String [] testname = new String[]{"test","smetters","values","data","_b_cSil7rUBIYjrplNNeZxzBLt7IwvOmqFCWFqzfO345do_x003D_!"};
 	//static String [] testname = new String[]{"test","smetters","values","data","_b_cSil7rUBIYjrplNNeZxzBLt7IwvOmqFCWFqzfO345do_x003D_"};
 	//static String [] testname = new String[]{"test","smetters","values","data", "testdata.txt"};
+
+	static String [] testBase = new String[] {"test", "smetters", "content", "versioned"};
+	static final int VERSION_COUNT = 5;
+	
+	static ContentName collectedBaseName = new ContentName(testBase);
 	static ContentName testCN = new ContentName(testname);
 	static ContentAuthenticator testAuth = null;
 	static byte [] testSig = null;
@@ -84,15 +96,8 @@ public class JackrabbitCCNRepositoryTest {
 
 	static KeyPair pair = null;
 	static X509Certificate cert = null;
-	static KeyLocator nameLoc = null;
-	static PublisherKeyID pubkey = null;	
-	static ContentAuthenticator [] auth = null;
-	static ContentAuthenticator pubonlyauth = null;
-	
-	static ContentName [] names = null;
-	static ContentName [] versionedNames = null;
-	static byte [][] content = null;
-	static byte [][] signatures = null;
+	static KeyLocator keyLoc = null;
+	static PublisherKeyID pubID = null;	
 	
 	// Really only want one of these per VM per port.
 	static JackrabbitCCNRepository repo = null;
@@ -119,45 +124,13 @@ public class JackrabbitCCNRepositoryTest {
 					null,
 					pair.getPrivate(),
 					null);
-			nameLoc = new KeyLocator(keyname);
+			pubID = new PublisherKeyID(pair.getPublic());
+			keyLoc = new KeyLocator(keyname, new PublisherID(pubID));
 			
 			Library.logger().info("Getting local repository.");
 			repo = JackrabbitCCNRepository.getLocalJackrabbitRepository();
 			library = new StandardCCNLibrary();
-			
-			Library.logger().info("Organizing content...");
-			pubkey = new PublisherKeyID(pair.getPublic());
-			
-			names = new ContentName[]{name1, name2, name3, name4};
-			int v = new Random().nextInt(1000);
-			versionedNames = new ContentName[names.length];
-			content = new byte[versionedNames.length][];
-			signatures = new byte[versionedNames.length][];
-			auth = new ContentAuthenticator[versionedNames.length];
-			for (int i=0; i < names.length; ++i) {
-				versionedNames[i] = library.versionName(names[i], v);
-				content[i] = document1.getBytes("UTF-8");
-			}
-
-			Library.logger().info("Generating content authenticators.");
-			for (int i=0;i<versionedNames.length; ++i) {
-				auth[i] = new ContentAuthenticator(
-						pubkey, null, ContentAuthenticator.now(),
-					ContentAuthenticator.ContentType.LEAF, 
-					nameLoc, content[i], false);
-				signatures[i] = ContentObject.sign(versionedNames[i], null, auth[i], pair.getPrivate());
-			}
-			
-			Library.logger().info("Generating authenticator for query.");
-			pubonlyauth = new ContentAuthenticator(pubkey);
-			
-			testAuth = new ContentAuthenticator(
-					pubkey, null, ContentAuthenticator.now(),
-				ContentAuthenticator.ContentType.LEAF, 
-				nameLoc, rootDN.getBytes(), false);
-			
-			testSig = ContentObject.sign(testCN, null, testAuth, pair.getPrivate());
-			
+						
 		} catch (Exception ex) {
 			XMLEncodableTester.handleException(ex);
 			Library.logger().info("Unable To Initialize Test!!!");
@@ -176,6 +149,33 @@ public class JackrabbitCCNRepositoryTest {
 	public void tearDown() throws Exception {
 	}
 
+	public void checkGetResults(ArrayList<ContentObject> getResults) {
+		boolean verifySig = false;
+		for (int i=0; i < getResults.size(); ++i) {
+			try {
+				verifySig = getResults.get(i).verify(pair.getPublic());
+				Library.logger().info("Get signature verified? " + verifySig);
+				assertTrue(verifySig);
+			} catch (Exception e) {
+				Library.logger().info("Exception in checkGetResults for name: " + getResults.get(i).name() +": " + e.getClass().getName() + " " + e.getMessage());
+				Library.infoStackTrace(e);
+				fail();			
+			}
+		} 
+	}
+	
+	public void checkPutResults(CompleteName putResult) {
+		try {
+			boolean verifySig = putResult.verifySignature(pair.getPublic());
+			Library.logger().info("Put signature verified? " + verifySig);
+			assertTrue(verifySig);
+		} catch (Exception e) {
+			Library.logger().info("Exception in checkPutResults for name: " + putResult.name() +": " + e.getClass().getName() + " " + e.getMessage());
+			Library.infoStackTrace(e);
+			fail();			
+		}
+	}
+
 	@Test
 	public void testQueryString() {
 		String queryString = "/jcr:root/test/briggs/foo.txt/_b_Ey8By8VSg1vo9pJ5sB9XmITu8nGEz0u6NqNmbyBVzak_x003D_";
@@ -190,17 +190,31 @@ public class JackrabbitCCNRepositoryTest {
 			Assert.fail();
 		}
 	}
+	
+	public CompleteName generateVersionedNameAndAuth(ContentName startName, int version, byte [] content) throws InvalidKeyException, SignatureException {
+		ContentName versionedName = library.versionName(startName, version);
+		
+		CompleteName authenticatedName = CompleteName.generateAuthenticatedName(versionedName, pubID, null, 
+								ContentAuthenticator.ContentType.LEAF, keyLoc, content, false, pair.getPrivate());
+		return authenticatedName;
+	}
 
 	@Test
 	public void testPut() {
 		assertNotNull(repo);
 		
 		Library.logger().info("Adding content.");
-		CompleteName cn = null;
+
 		try {
-			for (int i=0; i < versionedNames.length; ++i) {
-				cn = repo.put(versionedNames[i], auth[i], signatures[i], content[i]);
-				Library.logger().info("Added name: " + cn.name());
+			int index = new Random().nextInt(1000);
+			String collection = "Collection-" + Integer.toString(index);
+			ContentName startName = new ContentName(collectedBaseName, collection);
+			for (int i=0; i < VERSION_COUNT; ++i) {
+				byte [] content = new Integer(i).toString().getBytes("UTF-8");
+				CompleteName inname = generateVersionedNameAndAuth(startName, i, content); 
+				CompleteName outname = repo.put(inname.name(), inname.authenticator(), inname.signature(), content);
+				checkPutResults(outname);
+				Library.logger().info("Added name: " + outname.name());
 			}
 			
 		} catch (Exception e) {
@@ -211,96 +225,136 @@ public class JackrabbitCCNRepositoryTest {
 	}
 
 	@Test
-	public void testGetContent() {
-		
-		assertNotNull(repo);
-		
-		try {
-			
-			Library.logger().info("Retrieving content.");
-			
-			for (int i=0; i < versionedNames.length; ++i) {
-				Library.logger().info("Querying for name: " + versionedNames[i]);
-				ArrayList<ContentObject> obj2 = 
-					repo.get(versionedNames[i], null, true);
-				Library.logger().info("For name: " + versionedNames[i] + " got: " + obj2.size() + " answers.");
-				for (int j=0; j < obj2.size(); ++j) {
-					if (null != obj2.get(j))
-						Library.logger().info(j + ": " + obj2.get(j));
-				}
-			}
-		} catch (Exception e) {
-			Library.logger().info("Got exception : " + e.getClass().getName() + " message: " + e.getMessage());
-			e.printStackTrace();
-			throw new AssertionError(e);
-		}
-	}
-	
-	@Test
 	public void testRecall() {
 		assertNotNull(repo);
 		
+		Library.logger().info("Adding content.");
+		ArrayList<ContentObject> retrievedNames = null;
 		try {
-			Library.logger().info("Inserting and retrieving name.");
-			
-			CompleteName putName = repo.put(testCN, testAuth, testSig, rootDN.getBytes());
-			
-			Library.logger().info("Getting name we inserted.");
-			ArrayList<ContentObject> testGet =
-				repo.get(testCN, null, false);
-			Library.logger().info("Got : " + testGet.size() + " names.");
-			for (int i=0; i < testGet.size(); ++i) {
-				if (null != testGet.get(i)) {
-					Library.logger().info(i + ": " + testGet.get(i).name());
-				}
-			}
-			
-			Library.logger().info("Getting name we got back.");
-			testGet =
-				repo.get(putName.name(), null, false);
-			Library.logger().info("Got : " + testGet.size() + " names.");
-			for (int i=0; i < testGet.size(); ++i) {
-				if (null != testGet.get(i)) {
-					Library.logger().info(i + ": " + testGet.get(i).name());
-				}
-			}
-			
-		} catch (Exception e) {
-			Library.logger().info("Got exception : " + e.getClass().getName() + ": " + e.getMessage());
-			Library.warningStackTrace(e);
-		}
-	}
+			int index = new Random().nextInt(1000);
+			String collection = "Collection-" + Integer.toString(index);
+			ContentName startName = new ContentName(collectedBaseName, collection);
+			for (int i=0; i < VERSION_COUNT; ++i) {
+				byte [] content = new Integer(i).toString().getBytes("UTF-8");
+				CompleteName inname = generateVersionedNameAndAuth(startName, i, content); 
+				CompleteName outname = repo.put(inname.name(), inname.authenticator(), inname.signature(), content);
+				checkPutResults(outname);
+				Library.logger().info("Added name, next will retrieve: " + outname.name());
 
-	@Test
-	public void testGetContentNameContentAuthenticatorCCNQueryTypeCCNQueryListenerLong() {
-		assertNotNull(repo);
-		
-		try {
-			Library.logger().info("Testing name decoding: ");
-			
-			Library.logger().info("Retrieving content by name and publisher ID.");
-			
-			// don't request versioned name, just request
-			// base name/*, see what we get back, make
-			// sure it selects by publisher.
-			ContentName queryName = null;
-			for (int i=0; i < versionedNames.length; ++i) {
-				queryName = new ContentName(names[i], "*");
-				Library.logger().info("Querying for name: " + queryName);
-				ArrayList<ContentObject> obj2 = 
-					repo.get(queryName, pubonlyauth, true);
-				Library.logger().info("For name: " + names[i] + " got: " + obj2.size() + " answers.");
-				for (int j=0; j < obj2.size(); ++j) {
-					if (null != obj2.get(j))
-						Library.logger().info(j + ": " + obj2.get(j));
-				}
+				retrievedNames = repo.get(outname.name(), null, false);
+				
+				assertEquals(retrievedNames.size(), 1);
+				assertEquals(i, Integer.parseInt(new String(retrievedNames.get(0).content())));
+				checkGetResults(retrievedNames);
+				System.out.println("Got " + i);
 			}
+			
 		} catch (Exception e) {
 			Library.logger().info("Got exception : " + e.getClass().getName() + " message: " + e.getMessage());
 			e.printStackTrace();
-			throw new AssertionError(e);
+			Assert.fail("Got exception : " + e.getClass().getName() + " message: " + e.getMessage());
 		}
 	}
+
+
+	@Test
+	public void testRecurse() {
+		assertNotNull(repo);
+		
+		Library.logger().info("Adding content.");
+		ArrayList<ContentObject> retrievedNames = null;
+		try {
+			int index = new Random().nextInt(1000);
+			String collection = "Collection-" + Integer.toString(index);
+			ContentName startName = new ContentName(collectedBaseName, collection);
+			for (int i=0; i < VERSION_COUNT; ++i) {
+				byte [] content = new Integer(i).toString().getBytes("UTF-8");
+				CompleteName inname = generateVersionedNameAndAuth(startName, i, content); 
+				CompleteName outname = repo.put(inname.name(), inname.authenticator(), inname.signature(), content);
+				checkPutResults(outname);
+				Library.logger().info("Added name: " + outname.name());
+			}
+			
+			retrievedNames = repo.get(startName, null, true);
+			Library.logger().info("Recursive retrieve, got " + retrievedNames.size() + " results, expected " + VERSION_COUNT + ".");
+				
+			assertTrue(retrievedNames.size() >= VERSION_COUNT);
+			checkGetResults(retrievedNames);
+			
+		} catch (Exception e) {
+			Library.logger().info("Got exception : " + e.getClass().getName() + " message: " + e.getMessage());
+			e.printStackTrace();
+			Assert.fail("Got exception : " + e.getClass().getName() + " message: " + e.getMessage());
+		}
+	}
+
+	
+
+	@Test
+	public void testRecallByAuth() {
+		assertNotNull(repo);
+		
+		Library.logger().info("Adding content.");
+		ArrayList<ContentObject> retrievedNames = null;
+		try {
+			int index = new Random().nextInt(1000);
+			String collection = "Collection-" + Integer.toString(index);
+			ContentName startName = new ContentName(collectedBaseName, collection);
+			for (int i=0; i < VERSION_COUNT; ++i) {
+				byte [] content = new Integer(i).toString().getBytes("UTF-8");
+				CompleteName inname = generateVersionedNameAndAuth(startName, i, content); 
+				CompleteName outname = repo.put(inname.name(), inname.authenticator(), inname.signature(), content);
+				checkPutResults(outname);
+				Library.logger().info("Added name, next will retrieve: " + outname.name());
+
+				retrievedNames = repo.get(outname.name(), outname.authenticator(), false);
+				
+				assertEquals(retrievedNames.size(), 1);
+				assertEquals(i, Integer.parseInt(new String(retrievedNames.get(0).content())));
+				checkGetResults(retrievedNames);
+				System.out.println("Got " + i);
+			}
+			
+		} catch (Exception e) {
+			Library.logger().info("Got exception : " + e.getClass().getName() + " message: " + e.getMessage());
+			e.printStackTrace();
+			Assert.fail("Got exception : " + e.getClass().getName() + " message: " + e.getMessage());
+		}
+	}
+
+
+	@Test
+	public void testRecurseByAuth() {
+		assertNotNull(repo);
+		
+		Library.logger().info("Adding content.");
+		ArrayList<ContentObject> retrievedNames = null;
+		try {
+			int index = new Random().nextInt(1000);
+			String collection = "Collection-" + Integer.toString(index);
+			ContentName startName = new ContentName(collectedBaseName, collection);
+			for (int i=0; i < VERSION_COUNT; ++i) {
+				byte [] content = new Integer(i).toString().getBytes("UTF-8");
+				CompleteName inname = generateVersionedNameAndAuth(startName, i, content); 
+				CompleteName outname = repo.put(inname.name(), inname.authenticator(), inname.signature(), content);
+				checkPutResults(outname);
+				Library.logger().info("Added name: " + outname.name());
+			}
+			
+			ContentAuthenticator pubOnlyAuth = new ContentAuthenticator(pubID);
+			retrievedNames = repo.get(startName, pubOnlyAuth, true);
+			Library.logger().info("Recursive retrieve, got " + retrievedNames.size() + " results, expected " + VERSION_COUNT + ".");
+				
+			assertTrue(retrievedNames.size() >= VERSION_COUNT);
+			checkGetResults(retrievedNames);
+			
+		} catch (Exception e) {
+			Library.logger().info("Got exception : " + e.getClass().getName() + " message: " + e.getMessage());
+			e.printStackTrace();
+			Assert.fail("Got exception : " + e.getClass().getName() + " message: " + e.getMessage());
+		}
+	}
+
 
 	@Test
 	public void testName() {

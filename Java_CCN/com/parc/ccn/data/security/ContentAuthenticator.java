@@ -65,6 +65,8 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     	this._publisher = publisher;
     	this._nameComponentCount = nameLength;
     	this._timestamp = timestamp;
+    	if (null == this._timestamp)
+    		this._timestamp = now();
     	this._type = type;
     	try {
     		if (isDigest) {
