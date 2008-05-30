@@ -494,6 +494,7 @@ match_interests(struct ccnd *h, struct content_entry *content)
                     interest->counters->buf[i] = count;
                 }
             }
+            // XXX - somewhere around here we should be prepared to cancel a propagating interest.
         }
     }
     if (content->sender == NULL &&
@@ -876,6 +877,11 @@ propagate_interest(struct ccnd *h, struct face *face,
     struct propagating_entry *pe = NULL;
     unsigned char *msg_out = msg;
     size_t msg_out_size = msg_size;
+    struct ccn_indexbuf *outbound = get_outbound_faces(h, face, msg, pi);
+    if (outbound == NULL || outbound->n == 0) {
+        ccn_indexbuf_destroy(&outbound);
+        return(0);
+    } 
     if (pi->nonce_size == 0) {
         /* This interest has no nonce; add one before going on */
         int noncebytes = 6;
@@ -928,7 +934,8 @@ propagate_interest(struct ccnd *h, struct face *face,
             memcpy(m, msg_out, msg_out_size);
             pe->interest_msg = m;
             pe->size = msg_out_size;
-            pe->outbound = get_outbound_faces(h, face, msg, pi);
+            pe->outbound = outbound;
+            outbound = NULL;
             res = 0;
             ccn_schedule_event(h->sched, nrand48(h->seed) % 8192, do_propagate, pe, 0);
         }
@@ -942,6 +949,7 @@ propagate_interest(struct ccnd *h, struct face *face,
     hashtb_end(e);
     if (cb != NULL)
         charbuf_release(h, cb);
+    ccn_indexbuf_destroy(&outbound);
     return(res);
 }
 
