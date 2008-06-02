@@ -341,6 +341,20 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 *  threshold. It will throw an exception for pieces of content larger than that.
 	 *  
 	 * TODO DKS do something cleverer.
+	 * Generates the complete name for this piece of leaf content. 
+	 * @param name The base name to version.
+	 * @param version The version to publish.
+	 * @param contents The (undigested) contents. Must be smaller than the fragmentation threshold for now.
+	 * @param type The desired type, or null for default.
+	 * @param publisher The desired publisher, or null for default.
+	 * @param locator The desired key locator, or null for default.
+	 * @param signingKey The desired signing key, or null for default.
+	 * @return
+	 * @throws SignatureException
+	 * @throws InvalidKeyException
+	 * @throws NoSuchAlgorithmException
+	 * @throws IOException
+	 * @throws InterruptedException
 	 */
 	public CompleteName newVersionName(
 			ContentName name, int version, byte [] contents,
@@ -348,6 +362,9 @@ public class StandardCCNLibrary implements CCNLibrary {
 			PublisherKeyID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws SignatureException, 
 			InvalidKeyException, NoSuchAlgorithmException, IOException, InterruptedException {
+
+		if (contents.length > Header.DEFAULT_BLOCKSIZE)
+			throw new IOException("newVersionName currently only handles non-fragmenting content smaller than: " + Header.DEFAULT_BLOCKSIZE);
 
 		if (null == signingKey)
 			signingKey = keyManager().getDefaultSigningKey();

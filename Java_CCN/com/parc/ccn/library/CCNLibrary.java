@@ -92,6 +92,29 @@ public interface CCNLibrary extends CCNBase {
 			ContentType type, // handle links and collections
 			PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException;
 	
+	/**
+	 * Generates the complete name for this piece of leaf content. 
+	 * @param name The base name to version.
+	 * @param version The version to publish.
+	 * @param contents The (undigested) contents. Must be smaller than the fragmentation threshold for now.
+	 * @param type The desired type, or null for default.
+	 * @param publisher The desired publisher, or null for default.
+	 * @param locator The desired key locator, or null for default.
+	 * @param signingKey The desired signing key, or null for default.
+	 * @return
+	 * @throws SignatureException
+	 * @throws InvalidKeyException
+	 * @throws NoSuchAlgorithmException
+	 * @throws IOException
+	 * @throws InterruptedException
+	 */
+	public CompleteName newVersionName(
+			ContentName name, int version, byte [] contents,
+			ContentType type,
+			PublisherKeyID publisher, KeyLocator locator,
+			PrivateKey signingKey) throws SignatureException, 
+			InvalidKeyException, NoSuchAlgorithmException, IOException, InterruptedException;
+
 	public CompleteName addVersion(
 			ContentName name, 
 			int version, 
