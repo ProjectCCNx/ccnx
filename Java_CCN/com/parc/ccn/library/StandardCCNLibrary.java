@@ -263,9 +263,9 @@ public class StandardCCNLibrary implements CCNLibrary {
 	}
 
 	/**
-	 * Just attempt to generate the latest version of a piece
-	 * of content, regardless of who authored the previous
-	 * version.
+	 * Publishes a new version of this name with the given contents. First
+	 * attempts to figure out the most recent version of that name, and
+	 * then increments that to get the intended version number.
 	 * 
 	 * Right now have all sorts of uncertainties in versioning --
 	 * do we know the latest version number of a piece of content?
@@ -279,6 +279,15 @@ public class StandardCCNLibrary implements CCNLibrary {
 		return newVersion(name, contents, getDefaultPublisher());
 	}
 
+	/**
+	 * A specialization of newVersion that allows control of the identity to
+	 * publish under. 
+	 * 
+	 * @param publisher Who we want to publish this as,
+	 * not who published the existing version. If null, uses the default publishing
+	 * identity.
+	 * @throws InterruptedException 
+	 */
 	public CompleteName newVersion(
 			ContentName name, 
 			byte[] contents,
@@ -287,6 +296,8 @@ public class StandardCCNLibrary implements CCNLibrary {
 	}
 	
 	/**
+	 * A further specialization of newVersion that allows specification of the content type,
+	 * primarily to handle links and collections. Could be made protected.
 	 * @param publisher Who we want to publish this as,
 	 * not who published the existing version.
 	 * @throws InterruptedException 
@@ -322,7 +333,49 @@ public class StandardCCNLibrary implements CCNLibrary {
 			throw new SignatureException(e);
 		}
 	}
+	
+	/**
+	 * Generates the name and authenticator for the new version of a given name.
+	 * NOTE: This currently believes it is generating the name of a piece of content,
+	 *  and is only happy doing so for atomic pieces of content below the fragmentation
+	 *  threshold. It will throw an exception for pieces of content larger than that.
+	 *  
+	 * TODO DKS do something cleverer.
+	 */
+	public CompleteName newVersionName(
+			ContentName name, int version, byte [] contents,
+			ContentType type,
+			PublisherKeyID publisher, KeyLocator locator,
+			PrivateKey signingKey) throws SignatureException, 
+			InvalidKeyException, NoSuchAlgorithmException, IOException, InterruptedException {
 
+		if (null == signingKey)
+			signingKey = keyManager().getDefaultSigningKey();
+
+		if (null == locator)
+			locator = keyManager().getKeyLocator(signingKey);
+
+		if (null == publisher) {
+			publisher = keyManager().getPublisherKeyID(signingKey);
+		}
+
+		if (null == type)
+			type = ContentType.LEAF;
+		
+		ContentName versionedName = versionName(name, version);
+		CompleteName uniqueName =
+			CompleteName.generateAuthenticatedName(
+					versionedName, publisher, ContentAuthenticator.now(),
+					type, locator, contents, false, signingKey);
+
+		return uniqueName;
+	}
+
+
+	/**
+	 * This does the actual work of generating a new version's name and doing 
+	 * the corresponding put. Handles fragmentation.
+	 */
 	public CompleteName addVersion(
 			ContentName name, int version, byte [] contents,
 			ContentType type,
