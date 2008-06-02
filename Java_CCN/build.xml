@@ -152,7 +152,7 @@
            <arg file="com/parc/ccn/apps/puttap.java"/>
        </java>
        <java classname="com.parc.ccn.apps.puttap" classpathref="classpath-run" failonerror="true" output="${testout}/TEST-com.parc.cc.apps.puttap1.txt">
-           <arg value="0"/>
+           <arg value="1"/>
            <arg value="/CCNUnitTest/puttap"/>
            <arg file="${testout}/TEST-puttap1.out"/>
            <arg file="com/parc/ccn/apps/puttap.java"/>
