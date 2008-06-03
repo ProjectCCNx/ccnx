@@ -319,7 +319,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 			
 			// This ends us up with version numbers starting
 			// at 0. If we want version numbers starting at 1,
-			// modify this.
+			// modify this and baseVersion.
 			return addVersion(name, currentVersion+1, contents, type, publisher, null, null);
 		
 		} catch (InvalidKeyException e) {
@@ -333,6 +333,12 @@ public class StandardCCNLibrary implements CCNLibrary {
 			throw new SignatureException(e);
 		}
 	}
+	
+	/**
+	 * Control whether versions start at 0 or 1.
+	 * @return
+	 */
+	public static final int baseVersion() { return 0; }
 	
 	/**
 	 * Generates the name and authenticator for the new version of a given name.
@@ -530,6 +536,8 @@ public class StandardCCNLibrary implements CCNLibrary {
 
 	/**
 	 * Extract the version information from this name.
+	 * TODO DKS the fragment number variant of this is static to StandardCCNLibrary, they
+	 * 	probably ought to both be the same.
 	 * @return Version number, or -1 if not versioned.
 	 */
 	public int getVersionNumber(ContentName name) {
@@ -1065,7 +1073,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 		}
 		
 		try {
-			return new CCNDescriptor(headers.get(0), true);
+			return new CCNDescriptor(headers.get(0), true, this);
 		} catch (XMLStreamException e) {
 			Library.logger().warning("XMLStreamException: trying to create a CCNDescriptor from header: " + headerName.toString());
 			Library.warningStackTrace(e);
