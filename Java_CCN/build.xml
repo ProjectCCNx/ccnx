@@ -11,6 +11,9 @@
    <property name="jarfile" location="${build}/${jarfile-base}"/>
    <property name="junit-jar" location="${lib}/junit-4.3.1.jar"/>
    <property name="testout" location="testout"/>
+   <!-- To enable remote debugging, the incantation is 
+	"-Xdebug -Xrunjdwp:transport=dt_socket,address=8000,server=y,suspend=n" -->
+   <property name="DEBUG_OPTIONS" value=""/>
 
    <!-- CLASSPATH NOTE: This should be a minimal set of what is 
         required, so we have an authoritative list of dependencies -->
@@ -145,17 +148,20 @@
        </junit>
 
        <echo message="Running puttap tests"/>
-       <java classname="com.parc.ccn.apps.puttap" classpathref="classpath-run" failonerror="true" output="${testout}/TEST-com.parc.cc.apps.puttap0.txt">
+       <java classname="com.parc.ccn.apps.puttap" classpathref="classpath-run" failonerror="true" output="${testout}/TEST-com.parc.cc.apps.puttap0.txt" fork="true">
            <arg value="0"/>
            <arg value="/CCNUnitTest/puttap"/>
            <arg file="${testout}/TEST-puttap0.out"/>
            <arg file="com/parc/ccn/apps/puttap.java"/>
+           <jvmarg line="${DEBUG_OPTIONS}"/>
        </java>
-       <java classname="com.parc.ccn.apps.puttap" classpathref="classpath-run" failonerror="true" output="${testout}/TEST-com.parc.cc.apps.puttap1.txt">
+       <echo message="Running binary puttap tests"/>
+       <java classname="com.parc.ccn.apps.puttap" classpathref="classpath-run" failonerror="true" output="${testout}/TEST-com.parc.cc.apps.puttap1.txt" fork="true">
            <arg value="1"/>
            <arg value="/CCNUnitTest/puttap"/>
            <arg file="${testout}/TEST-puttap1.out"/>
            <arg file="com/parc/ccn/apps/puttap.java"/>
+           <jvmarg line="${DEBUG_OPTIONS}"/>
        </java>
    </target>
 
