@@ -3,11 +3,13 @@ package com.parc.ccn.library;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.Header;
@@ -65,7 +67,7 @@ public class CCNDescriptor {
 	 * Can also get this by verifying the header, and 
 	 * checking that the header contains the same root.
 	 */
-	boolean _rootSignatureVerified = false;
+	byte [] _verifiedRootSignature = null;
 	
 	/**
 	 * Start out with an implementation in terms of
@@ -76,26 +78,102 @@ public class CCNDescriptor {
 	 */
 	ContentObject _currentBlock = null;
 	long _readOffset = 0; // offset into current block
-	boolean _currentBlockVerified = false;
 	
 	/**
-	 * Right now, take callers word that they already
-	 * verified this object. Verify blocks with respect
-	 * to the information in the header. We could instead
-	 * verify in the constructor and except if fail; letting
-	 * callers use the constructor to verify.
+	 * Open header of existing object for reading. Eventually might
+	 * want to not start from header, and might need to make this
+	 * constructor also work for write for open.
 	 * @param headerObject
 	 * @param verified
 	 * @throws XMLStreamException if the object is not a valid Header
+	 * @throws InterruptedException 
+	 * @throws IOException 
 	 */
-	public CCNDescriptor(ContentObject headerObject, 
-						 boolean verified,
-						 CCNLibrary library) throws XMLStreamException {
+	public CCNDescriptor(CompleteName name,
+						 CCNLibrary library) throws XMLStreamException, IOException, InterruptedException {
 		_library = library; 
 		if (null == _library) {
 			throw new IllegalArgumentException("Unexpected null library in CCNDescriptor constructor!");
 		}
 
+		ContentName nameToOpen = name.name();
+		if (StandardCCNLibrary.isFragment(name.name())) {
+			// DKS TODO: should we do this?
+			nameToOpen = StandardCCNLibrary.fragmentRoot(nameToOpen);
+		}
+		if (!_library.isVersioned(nameToOpen)) {
+			// if publisherID is null, will get any publisher
+			nameToOpen = 
+				_library.getLatestVersionName(nameToOpen, 
+									 name.authenticator().publisherKeyID());
+		}
+		
+		// Should have name of root of version we want to
+		// open. Get the header block. Already stripped to
+		// root. We've altered the header semantics, so that
+		// we can just get headers rather than a plethora of
+		// fragments. 
+		ContentName headerName = StandardCCNLibrary.headerName(nameToOpen);
+		// This might not be unique - 
+		// we could have here either multiple versions of
+		// a given number, or multiple of a given number
+		// by a given publisher. If the latter, pick by latest
+		// after verifying. If the former, pick by latest
+		// version crossed with trust.
+		// DKS TODO figure out how to intermix trust information.
+		// DKS TODO -- overloaded authenticator as query;
+		// doesn't work well - would have to check that right things
+		// are asked.
+		// DKS TODO -- does get itself do a certain amount of
+		// prefiltering? Can it mark objects as verified?
+		// do we want to use the low-level get, as the high-level
+		// one might unfragment?
+		ArrayList<ContentObject> headers = _library.get(headerName, name.authenticator(),false);
+		
+		if ((null == headers) || (headers.size() == 0)) {
+			Library.logger().info("No available content named: " + headerName.toString());
+			throw new FileNotFoundException("No available content named: " + headerName.toString());
+		}
+		// So for each header, we assume we have a potential document.
+		
+		// First we verify. (Or should get have done this for us?)
+		// We don't bother complaining unless we have more than one
+		// header that matches. Given that we would complain for
+		// that, we need an enumerate that operates at this level.)
+		Iterator<ContentObject> headerIt = headers.iterator();
+		while (headerIt.hasNext()) {
+			ContentObject header = headerIt.next();
+			// TODO: DKS: should this be header.verify()?
+			// Need low-level verify as well as high-level verify...
+			// Low-level verify just checks that signer actually signed.
+			// High-level verify checks trust.
+			try {
+				if (!_library.verify(header, null)) {
+					Library.logger().warning("Found header: " + header.name().toString() + " that fails to verify.");
+					headerIt.remove();
+				}
+			} catch (Exception e) {
+				Library.logger().warning("Got an " + e.getClass().getName() + " exception attempting to verify header: " + header.name().toString() + ", treat as failure to verify.");
+				Library.warningStackTrace(e);
+				headerIt.remove();
+			}
+		}
+		if (headers.size() == 0) {
+			Library.logger().info("No available verifiable content named: " + headerName.toString());
+			throw new FileNotFoundException("No available verifiable content named: " + headerName.toString());
+		}
+		if (headers.size() > 1) {
+			Library.logger().info("Found " + headers.size() + " headers matching the name: " + headerName.toString());
+			throw new IOException("CCNException: More than one (" + headers.size() + ") valid header found for name: " + headerName.toString() + " in open!");
+		}
+		
+		ContentObject headerObject = headers.get(0);
+		
+		if (headerObject == null) {
+			Library.logger().info("Found only null headers matching the name: " + headerName.toString());
+			throw new IOException("CCNException: No non-null header found for name: " + headerName.toString() + " in open!");
+		}
+		
 		_headerAuthenticator = headerObject.authenticator();
 		_baseName = StandardCCNLibrary.headerRoot(headerObject.name());
 		
@@ -112,8 +190,11 @@ public class CCNDescriptor {
 	 * @param offset the offset into buf at which to write data
 	 * @param len the number of bytes to write
 	 * @return
+	 * @throws InterruptedException 
+	 * @throws IOException 
 	 */
-	public long read(byte[] buf, long offset, long len) {
+	public long read(byte[] buf, long offset, long len) throws IOException, InterruptedException {
+		
 		int result = 0;
 		
 		// is this the first block?
@@ -131,8 +212,13 @@ public class CCNDescriptor {
 		while (lenToRead > 0) {
 			if (_readOffset >= _currentBlock.content().length) {
 				// DKS make sure we don't miss a byte...
-				result = seek(StandardCCNLibrary.getFragment(_currentBlock.name())+1);
+				result = seek(StandardCCNLibrary.getFragmentNumber(_currentBlock.name())+1);
 			}
+			long readCount = ((_currentBlock.content().length - _readOffset) > len) ? len : (_currentBlock.content().length - _readOffset);
+			System.arraycopy(_currentBlock.content(), (int)_readOffset, buf, (int)offset, (int)readCount);
+			_readOffset += readCount;
+			offset += readCount;
+			lenToRead -= readCount;
 		}
 		return 0;
 	}
@@ -140,18 +226,43 @@ public class CCNDescriptor {
 	/**
 	 * Support ideas of seek, etc, even if fuse doesn't
 	 * require them. Seek actually does a get on the appropriate content block.
+	 * @throws InterruptedException 
+	 * @throws IOException 
 	 */
-	public int seek(long offset, Enum<SeekWhence> whence) {
+	public int seek(long offset, Enum<SeekWhence> whence) throws IOException, InterruptedException {
+		// Assumption that block indices begin at 0.
+		if (SeekWhence.SEEK_END == whence) {
+			
+		} else if ((SeekWhence.SEEK_SET == whence) || (null == _currentBlock)) {
+			// if _currentBlock is null, we are at the beginning regardless of
+			// whether we were asked for SEEK_CUR
+			
+		} else {
+			// SEEK_CUR
+			// how many bytes are left in this block?
+			long bytesRemaining = _currentBlock.content().length - _readOffset;
+			offset -= bytesRemaining;
+			
+			int blockIncrement = (int)Math.floor(offset/_header.blockSize());
+			
+			int thisBlock = StandardCCNLibrary.getFragmentNumber(_currentBlock.name());
+			
+			seek(thisBlock+blockIncrement);
+			_readOffset += offset % _header.blockSize();
+		}
 		return 0;
 	}
 	
-	protected int seek(int blockNumber) {
+	protected int seek(int blockNumber) throws IOException, InterruptedException {
+		_currentBlock = getBlock(blockNumber);
 		_readOffset = 0;
 		return 0;
 	}
 	
 	public long tell() {
-		return 0;
+		if (null == _currentBlock)
+			return 0;
+		return ((_header.blockSize() * StandardCCNLibrary.getFragmentNumber(_currentBlock.name())) + _readOffset);
 	}
 	
 	protected ContentObject getBlock(int number) throws IOException, InterruptedException {
@@ -179,15 +290,22 @@ public class CCNDescriptor {
 			// High-level verify checks trust.
 			try {
 				if (!ContentObject.verifyContentDigest(block.authenticator().contentDigest(), block.content())) {
-					Library.logger().warning("Found block: " + block.name().toString() + " that fails to verify.");
+					Library.logger().warning("Found block: " + block.name().toString() + " whose digest fails to verify.");
 					blockIt.remove();
 				}
 				// Compare to see whether this block matches the root signature we previously verified, if
 				// not, verify and store the current signature.
-				// DKS TODO -- and move original verification inside constructor
-				//if ()
+				if ((null == _verifiedRootSignature) || (!Arrays.equals(_verifiedRootSignature, block.signature()))) {
+					if (!ContentObject.verifyContentSignature(block.name(), block.authenticator(), block.signature(), null)) {
+						Library.logger().warning("Found block: " + block.name().toString() + " whose signature fails to verify.");
+						blockIt.remove();
+					} else {
+						_verifiedRootSignature = block.signature();
+					}
+				} // otherwise, it matches previously verified signature.
+				
 			} catch (Exception e) {
-				Library.logger().warning("Got an " + e.getClass().getName() + " exception attempting to verify header: " + block.name().toString() + ", treat as failure to verify.");
+				Library.logger().warning("Got an " + e.getClass().getName() + " exception attempting to verify block: " + block.name().toString() + ", treat as failure to verify.");
 				Library.warningStackTrace(e);
 				blockIt.remove();
 			}
@@ -204,6 +322,6 @@ public class CCNDescriptor {
 			Library.logger().info("Found only null blocks matching the name: " + blockName.toString());
 			throw new IOException("CCNException: No non-null blocks found for name: " + blockName.toString() + " in open!");
 		}
-		return null;
+		return blocks.get(0);
 	}
 }

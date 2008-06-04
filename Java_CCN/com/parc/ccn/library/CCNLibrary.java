@@ -4,8 +4,11 @@ import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.SignatureException;
 import java.util.ArrayList;
+
+import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.CCNBase;
 import com.parc.ccn.data.CompleteName;
@@ -230,6 +233,23 @@ public interface CCNLibrary extends CCNBase {
 	public ArrayList<CompleteName> enumerate(Interest interest) throws IOException;
 
 	/**
+	 * High-level verify. Calls low-level verify, if we
+	 * don't think this has been verified already. Probably
+	 * need to separate to keep the two apart.
+	 * @param object
+	 * @param publicKey The key to use to verify the signature,
+	 * 	or null if the key should be retrieved using the key 
+	 *  locator.
+	 * @return
+	 * @throws XMLStreamException 
+	 * @throws NoSuchAlgorithmException 
+	 * @throws SignatureException 
+	 * @throws InvalidKeyException 
+	 */
+	public boolean verify(ContentObject object, PublicKey publicKey) 
+			throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException;
+	
+	/**
 	 * Approaches to read and write content. Low-level CCNBase returns
 	 * a specific piece of content from the repository (e.g.
 	 * if you ask for a fragment, you get a fragment). Library
@@ -255,10 +275,11 @@ public interface CCNLibrary extends CCNBase {
 	 * like offsets and verification information.
 	 * @throws IOException 
 	 * @throws InterruptedException 
+	 * @throws XMLStreamException 
 	 */
-	public CCNDescriptor open(CompleteName name) throws IOException, InterruptedException;
+	public CCNDescriptor open(CompleteName name) throws IOException, InterruptedException, XMLStreamException;
 	
-	public long read(CCNDescriptor ccnObject, byte [] buf, long offset, long len);
+	public long read(CCNDescriptor ccnObject, byte [] buf, long offset, long len) throws IOException, InterruptedException;
 
 	/**
 	 * Does this name refer to a node that represents

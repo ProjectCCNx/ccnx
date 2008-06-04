@@ -1,6 +1,5 @@
 package com.parc.ccn.library;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -872,7 +871,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	/**
 	 * Extract the fragment information from this name.
 	 */
-	public static int getFragment(ContentName name) {
+	public static int getFragmentNumber(ContentName name) {
 		int offset = name.containsWhere(FRAGMENT_MARKER);
 		return Integer.valueOf(ContentName.componentPrint(name.component(offset+1)));
 	}
@@ -996,97 +995,16 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * @throws IOException 
 	 * @throws InterruptedException 
 	 */
-	public CCNDescriptor open(CompleteName name) throws IOException, InterruptedException {
-		ContentName nameToOpen = name.name();
-		if (isFragment(name.name())) {
-			// DKS TODO: should we do this?
-			nameToOpen = fragmentRoot(nameToOpen);
-		}
-		if (!isVersioned(nameToOpen)) {
-			// if publisherID is null, will get any publisher
-			nameToOpen = 
-				getLatestVersionName(nameToOpen, 
-									 name.authenticator().publisherKeyID());
-		}
-		
-		// Should have name of root of version we want to
-		// open. Get the header block. Already stripped to
-		// root. We've altered the header semantics, so that
-		// we can just get headers rather than a plethora of
-		// fragments. 
-		ContentName headerName = headerName(nameToOpen);
-		// This might not be unique - 
-		// we could have here either multiple versions of
-		// a given number, or multiple of a given number
-		// by a given publisher. If the latter, pick by latest
-		// after verifying. If the former, pick by latest
-		// version crossed with trust.
-		// DKS TODO figure out how to intermix trust information.
-		// DKS TODO -- overloaded authenticator as query;
-		// doesn't work well - would have to check that right things
-		// are asked.
-		// DKS TODO -- does get itself do a certain amount of
-		// prefiltering? Can it mark objects as verified?
-		// do we want to use the low-level get, as the high-level
-		// one might unfragment?
-		ArrayList<ContentObject> headers = get(headerName, name.authenticator(),false);
-		
-		if ((null == headers) || (headers.size() == 0)) {
-			Library.logger().info("No available content named: " + headerName.toString());
-			throw new FileNotFoundException("No available content named: " + headerName.toString());
-		}
-		// So for each header, we assume we have a potential document.
-		
-		// First we verify. (Or should get have done this for us?)
-		// We don't bother complaining unless we have more than one
-		// header that matches. Given that we would complain for
-		// that, we need an enumerate that operates at this level.)
-		Iterator<ContentObject> headerIt = headers.iterator();
-		while (headerIt.hasNext()) {
-			ContentObject header = headerIt.next();
-			// TODO: DKS: should this be header.verify()?
-			// Need low-level verify as well as high-level verify...
-			// Low-level verify just checks that signer actually signed.
-			// High-level verify checks trust.
-			try {
-				if (!verify(header, null)) {
-					Library.logger().warning("Found header: " + header.name().toString() + " that fails to verify.");
-					headerIt.remove();
-				}
-			} catch (Exception e) {
-				Library.logger().warning("Got an " + e.getClass().getName() + " exception attempting to verify header: " + header.name().toString() + ", treat as failure to verify.");
-				Library.warningStackTrace(e);
-				headerIt.remove();
-			}
-		}
-		if (headers.size() == 0) {
-			Library.logger().info("No available verifiable content named: " + headerName.toString());
-			throw new FileNotFoundException("No available verifiable content named: " + headerName.toString());
-		}
-		if (headers.size() > 1) {
-			Library.logger().info("Found " + headers.size() + " headers matching the name: " + headerName.toString());
-			throw new IOException("CCNException: More than one (" + headers.size() + ") valid header found for name: " + headerName.toString() + " in open!");
-		}
-		if (headers.get(0) == null) {
-			Library.logger().info("Found only null headers matching the name: " + headerName.toString());
-			throw new IOException("CCNException: No non-null header found for name: " + headerName.toString() + " in open!");
-		}
-		
-		try {
-			return new CCNDescriptor(headers.get(0), true, this);
-		} catch (XMLStreamException e) {
-			Library.logger().warning("XMLStreamException: trying to create a CCNDescriptor from header: " + headerName.toString());
-			Library.warningStackTrace(e);
-			throw new IOException("XMLStreamException: trying to create a CCNDescriptor from header: " + headerName.toString());
-		}
+	public CCNDescriptor open(CompleteName name) throws IOException, InterruptedException, XMLStreamException {
+		return new CCNDescriptor(name, this);
 	}
 		
 	public long read(CCNDescriptor ccnObject, byte [] buf, long 
-											offset, long len) {
+											offset, long len) throws IOException, InterruptedException {
 		return ccnObject.read(buf,offset,len);
 	}
 
-	public int seek(CCNDescriptor ccnObject, long offset, CCNDescriptor.SeekWhence whence) {
+	public int seek(CCNDescriptor ccnObject, long offset, CCNDescriptor.SeekWhence whence) throws IOException, InterruptedException {
 		return ccnObject.seek(offset, whence);
 	}
 	
