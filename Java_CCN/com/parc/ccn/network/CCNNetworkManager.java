@@ -57,6 +57,7 @@ import com.parc.ccn.security.keys.KeyManager;
 public class CCNNetworkManager implements Runnable {
 	
 	public static final int DEFAULT_AGENT_PORT = 4485;
+	public static final String PROP_AGENT_PORT = "ccn.agent.port";
 	public static final int MAX_PAYLOAD = 8800; // number of bytes in UDP payload
 	public static final int SOCKET_TIMEOUT = 1000; // period to wait in ms.
 	public static final int PERIOD = 4000; // period for occasional ops in ms.
@@ -349,12 +350,20 @@ public class CCNNetworkManager implements Runnable {
 	}
 	
 	protected CCNNetworkManager() throws IOException {
+		// Determine port at which to contact agent
+		int port = DEFAULT_AGENT_PORT;
+		String portval = System.getProperty(PROP_AGENT_PORT);
+		if (null != portval) {
+			try {
+			port = new Integer(portval);
+			} catch (Exception ex) {
+				throw new IOException("Invalid port '" + portval + "' specified in " + PROP_AGENT_PORT);
+			}
+			Library.logger().warning("Contacting CCN agent at non-standard port " + port + " based on property " + PROP_AGENT_PORT);
+		}
 		// Socket is to belong exclusively to run thread started here
-//		_socket = new DatagramSocket(); // binds ephemeral UDP port
-//		_socket.setSoTimeout(SOCKET_TIMEOUT);
-//		_socket.connect(InetAddress.getByName("localhost"), DEFAULT_AGENT_PORT);
 		_channel = DatagramChannel.open();
-		_channel.connect(new InetSocketAddress("localhost", DEFAULT_AGENT_PORT));
+		_channel.connect(new InetSocketAddress("localhost", port));
 		_channel.configureBlocking(false);
 		_selector = Selector.open();
 		_channel.register(_selector, SelectionKey.OP_READ);
