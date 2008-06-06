@@ -1,5 +1,5 @@
 CFLAGS = $(COPT) $(CWARNFLAGS) $(CPREFLAGS) $(PLATCFLAGS)
-LDLIBS = -L../lib $(MORE_LDLIBS) -lccn2
+LDLIBS = -L../lib $(MORE_LDLIBS) -lccn
 EXPATLIBS = -lexpat
 CPREFLAGS = -I../include
 COPT = -g
@@ -22,17 +22,17 @@ LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_schedule.o
 
 default all: lib $(SHLIBNAME) $(PROGRAMS)
 
-lib: libccn2.a
+lib: libccn.a
 
-libccn2.a: $(LIB_OBJS)
+libccn.a: $(LIB_OBJS)
 	ar cru $@ $(LIB_OBJS)
 
 shared: $(SHLIBNAME)
 
-$(SHLIBNAME): libccn2.a $(SHLIBDEPS)
-	$(LD) $(SHARED_LD_FLAGS) -o $@ libccn2.a
+$(SHLIBNAME): libccn.a $(SHLIBDEPS)
+	$(LD) $(SHARED_LD_FLAGS) -o $@ libccn.a
 
-$(PROGRAMS): libccn2.a
+$(PROGRAMS): libccn.a
 
 ccn_ccnbtoxml: ccn_ccnbtoxml.o
 	$(CC) $(CFLAGS) -o $@ ccn_ccnbtoxml.o $(LDLIBS)
@@ -68,7 +68,7 @@ ccn_verifysig: ccn_verifysig.o
 	$(CC) $(CFLAGS) -o $@ ccn_verifysig.o $(LDLIBS) -lcrypto
 
 clean:
-	rm -f *.o libccn2.a libccn.1.$(SHEXT) $(PROGRAMS) depend
+	rm -f *.o libccn.a libccn.1.$(SHEXT) $(PROGRAMS) depend
 	rm -rf *.dSYM $(DEBRIS)
 
 ###############################

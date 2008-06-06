@@ -1,5 +1,5 @@
 CFLAGS = $(COPT) $(CWARNFLAGS) $(CPREFLAGS) $(PLATCFLAGS)
-LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn2
+LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn
 CPREFLAGS = -I../include
 COPT = -g
 CCNLIBDIR = ../lib
@@ -10,7 +10,7 @@ HSRC = ccnd_private.h
 
 default all: $(PROGRAMS)
 
-$(PROGRAMS): $(CCNLIBDIR)/libccn2.a
+$(PROGRAMS): $(CCNLIBDIR)/libccn.a
 
 CCND_OBJ = ccnd.o ccnd_stats.o
 ccnd: $(CCND_OBJ) 

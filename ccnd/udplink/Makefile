@@ -1,5 +1,5 @@
 CFLAGS = $(COPT) $(CWARNFLAGS) $(CPREFLAGS) $(MORE_CFLAGS)
-LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn2
+LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn
 CPREFLAGS = -I../include
 COPT = -g 
 CCNLIBDIR = ../lib
@@ -9,7 +9,7 @@ CSRC = udplink.c
 
 default all: $(PROGRAMS)
 
-$(PROGRAMS): $(CCNLIBDIR)/libccn2.a
+$(PROGRAMS): $(CCNLIBDIR)/libccn.a
 
 udplink: udplink.o
 	$(CC) $(CFLAGS) -o $@ udplink.o $(LDLIBS)
