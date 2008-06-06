@@ -1,5 +1,8 @@
-$(CSRC) $(HSRC):
+$(CSRC) $(HSRC) $(SCRIPTSRC):
 	test -f $(SRCDIR)/$@ && ln -s $(SRCDIR)/$@
+
+$(DUPDIR):
+	test -d $(SRCDIR)/$(DUPDIR) && mkdir $(DUPDIR) && cp -p $(SRCDIR)/$(DUPDIR)/* $(DUPDIR)
 
 $(OBJDIR)/Makefile: Makefile
 	test -d $(OBJDIR) || mkdir $(OBJDIR)
