@@ -19,6 +19,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/un.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <ccn/ccn.h>
@@ -1707,7 +1708,7 @@ ccnd_reseed(struct ccnd *h)
     }
     else {
         h->seed[1] = (unsigned short)getpid(); /* better than no entropy */
-        h->seed[2] = (unsigned short)time();
+        h->seed[2] = (unsigned short)time(NULL);
     }
 }
 
