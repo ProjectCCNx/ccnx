@@ -9,7 +9,7 @@ PROGRAMS = ccn_ccnbtoxml ccn_splitccnb \
     smoketestclientlib dataresponsetest ccntimestamps ccndump \
     ccn_verifysig $(EXPAT_PROGRAMS)
 EXPAT_PROGRAMS = ccn_xmltoccnb
-DEBRIS = 
+DEBRIS = libccn2.a
 CSRC = ccn_buf_decoder.c ccn_charbuf.c ccn_indexbuf.c ccn_coding.c ccn_client.c  \
     ccn_ccnbtoxml.c ccn_xmltoccnb.c ccn_splitccnb.c ccn_schedule.c ccn_matrix.c \
     skel_decode_test.c \
