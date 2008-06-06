@@ -18,6 +18,7 @@ echo '#' generated `date` `uname -nsrv` > conf.mk
 TryAppend "`uname`"
 TryAppend "`uname -sr | sed -e 's/ /-/g'`"
 TryScript "`uname`" "$@"
+TryScript "python" "$@"
 echo ============= conf.mk =============>&2
 cat conf.mk				>&2
 echo ===================================>&2
