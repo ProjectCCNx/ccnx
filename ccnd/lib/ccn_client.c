@@ -104,9 +104,9 @@ ccn_create(void)
     struct ccn *h;
     const char *s;
     h = calloc(1, sizeof(*h));
-    if (h != NULL) {
-        h->sock = -1;
-    }
+    if (h == NULL)
+        return(h);
+    h->sock = -1;
     h->interestbuf = ccn_charbuf_create();
     s = getenv("CCN_DEBUG");
     h->verbose_error = (s != NULL && s[0] != 0);
@@ -118,11 +118,21 @@ ccn_connect(struct ccn *h, const char *name)
 {
     struct sockaddr_un addr = {0};
     int res;
+    char name_buf[60];
     h->err = 0;
     if (h == NULL || h->sock != -1)
         return(NOTE_ERR(h, EINVAL));
-    if (name == NULL)
-        name = CCN_DEFAULT_LOCAL_SOCKNAME;
+    if (name == NULL || name[0] == 0) {
+        name = getenv(CCN_LOCAL_PORT_ENVNAME);
+        if (name == NULL || name[0] == 0 || strlen(name) > 10) {
+            name = CCN_DEFAULT_LOCAL_SOCKNAME;
+        }
+        else {
+            snprintf(name_buf, sizeof(name_buf), "%s.%s",
+                     CCN_DEFAULT_LOCAL_SOCKNAME, name);
+            name = name_buf;
+        }
+    }
     h->sock = socket(AF_UNIX, SOCK_STREAM, 0);
     if (h->sock == -1)
         return(NOTE_ERRNO(h));

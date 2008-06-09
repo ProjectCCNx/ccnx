@@ -17,6 +17,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <ccn/ccnd.h>
 #include <ccn/charbuf.h>
 #include <ccn/indexbuf.h>
 #include <ccn/schedule.h>
@@ -153,10 +154,20 @@ ccnd_stats_httpd_start(struct ccnd *h)
     int yes = 1;
     struct addrinfo hints = {0};
     struct addrinfo *ai = NULL;
+    const char *portstr;
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
-    res = getaddrinfo(NULL, "8544", &hints, &ai);
+    /*
+     * XXX - use the tcp port corresponding to the configured udp port
+     * for our httpd service.
+     * This is probably wrong long-term, but handy for debugging multiple
+     * ccnd instances on one machine.
+     */
+    portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
+    if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
+        portstr = "4485";
+    res = getaddrinfo(NULL, portstr, &hints, &ai);
     if (res == -1) {
         perror("ccnd_stats_httpd_listen: getaddrinfo");
         return(-1);

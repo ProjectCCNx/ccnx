@@ -283,6 +283,10 @@ create_local_listener(const char *sockname, int backlog)
     int sock;
     struct sockaddr_un a = { 0 };
     res = unlink(sockname);
+    if (res == 0) {
+        ccnd_msg(NULL, "unlinked old %s, please wait", sockname);
+        sleep(9); /* give old ccnd a chance to exit */
+    }
     if (!(res == 0 || errno == ENOENT))
         ccnd_msg(NULL, "failed to unlink %s", sockname);
     a.sun_family = AF_UNIX;
@@ -1712,13 +1716,26 @@ ccnd_reseed(struct ccnd *h)
     }
 }
 
+static const char *
+ccnd_get_local_sockname(void)
+{
+    char *s = getenv(CCN_LOCAL_PORT_ENVNAME);
+    char name_buf[60];
+    if (s == NULL || s[0] == 0 || strlen(s) > 10)
+        return(CCN_DEFAULT_LOCAL_SOCKNAME);
+    snprintf(name_buf, sizeof(name_buf), "%s.%s",
+                     CCN_DEFAULT_LOCAL_SOCKNAME, s);
+    return(strdup(name_buf));
+}
+
 static struct ccnd *
 ccnd_create(void)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     struct face *face;
-    const char *sockname = CCN_DEFAULT_LOCAL_SOCKNAME;
+    const char *sockname;
+    const char *portstr;
     int fd;
     int res;
     struct ccnd *h;
@@ -1726,6 +1743,7 @@ ccnd_create(void)
     struct addrinfo *addrinfo = NULL;
     struct addrinfo *a;
     struct hashtb_param param = { &finalize_face };
+    sockname = ccnd_get_local_sockname();
     h = calloc(1, sizeof(*h));
     param.finalize_data = h;
     h->face_limit = 10; /* soft limit */
@@ -1747,7 +1765,10 @@ ccnd_create(void)
     hints.ai_family = PF_UNSPEC;
     hints.ai_socktype = SOCK_DGRAM;
     hints.ai_flags = AI_ADDRCONFIG;
-    res = getaddrinfo(NULL, "4485", &hints, &addrinfo);
+    portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
+    if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
+        portstr = "4485";
+    res = getaddrinfo(NULL, portstr, &hints, &addrinfo);
     if (res == 0) {
         for (a = addrinfo; a != NULL; a = a->ai_next) {
             fd = socket(a->ai_family, SOCK_DGRAM, 0);
