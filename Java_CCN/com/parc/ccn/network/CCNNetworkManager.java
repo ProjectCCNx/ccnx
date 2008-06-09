@@ -60,7 +60,7 @@ public class CCNNetworkManager implements Runnable {
 	public static final String PROP_AGENT_PORT = "ccn.agent.port";
 	public static final int MAX_PAYLOAD = 8800; // number of bytes in UDP payload
 	public static final int SOCKET_TIMEOUT = 1000; // period to wait in ms.
-	public static final int PERIOD = 4000; // period for occasional ops in ms.
+	public static final int PERIOD = 1000; // period for occasional ops in ms.
 	public static final String KEEPALIVE_NAME = "/HereIAm";
 	
 	/**
@@ -636,6 +636,7 @@ public class CCNNetworkManager implements Runnable {
 				// Send 0-length packet to alert agent to our presence
 				if (new Date().getTime() - lastheartbeat.getTime() > (PERIOD * 2)) {
 
+//					Library.logger().finest("Heartbeat");
 					try {
 						ByteBuffer heartbeat = ByteBuffer.allocate(0);
 						_channel.write(heartbeat);
@@ -655,6 +656,7 @@ public class CCNNetworkManager implements Runnable {
 						// inspect the selected-key set
 						datagram.clear(); // make ready for new read
 						_channel.read(datagram);
+						Library.logger().finest("read datagram");
 						if (null != _error) {
 							Library.logger().info("Receive error cleared");
 							_error = null;
@@ -751,11 +753,12 @@ public class CCNNetworkManager implements Runnable {
 				//--------------------------------- Trigger periodic behavior if time
 				if (new Date().getTime() - lastsweep.getTime() > PERIOD) {
 					// This is where we do all the periodic behavior
+//					Library.logger().finest("Refreshing interests (size " + _myInterests.size() + ")");
 
 					// Re-express all of the registered interests
 					// TODO re-express only those due to be re-expressed
 					synchronized (_myInterests) {
-						for (Entry<InterestRegistration> entry : _myInterests.getMatches(new ContentName("/"))) {
+						for (Entry<InterestRegistration> entry : _myInterests.values()) {
 							InterestRegistration reg = entry.value();
 							Library.logger().finer("Refresh interest: " + reg.interest.name());
 							write(reg.interest);
@@ -766,9 +769,7 @@ public class CCNNetworkManager implements Runnable {
 				}
 
 			} catch (XMLStreamException xmlex) {
-				Library.logger().severe("Processing thread failure (Malformed datagram): " + xmlex.getMessage());
-			} catch (MalformedContentNameStringException ex) {
-				Library.logger().severe("Processing thread failure (Malformed content name): " + ex.getMessage());
+				Library.logger().severe("Processing thread failure (Malformed datagram): " + xmlex.getMessage()); 
 			} catch (Exception ex) {
 				Library.logger().severe("Processing thread failure (unknown): " + ex.getMessage());
 			}

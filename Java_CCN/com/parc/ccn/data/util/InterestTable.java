@@ -1,6 +1,7 @@
 package com.parc.ccn.data.util;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -127,6 +128,8 @@ public class InterestTable<V> {
 		return null;
 	}
 	
+	// Internal: return all the entries having exactly the specified name,
+	// useful once you have found the matching names to collect entries from them
 	protected List<Holder<V>> getAllMatchByName(ContentName name, CompleteName target) {
 		List<Holder<V>> matches = new ArrayList<Holder<V>>();
 		List<Holder<V>> list = _contents.get(name);
@@ -388,6 +391,21 @@ public class InterestTable<V> {
 	    return matches;
 	}
 
+	/**
+	 * Get all entries.  This will return a mix of ContentName and Interest entries
+	 * if they exist in the table, i.e. the Interest of an Entry may be null in some cases.
+	 * @return Collection of entries in arbitrary order
+	 */
+	public Collection<Entry<V>> values() {
+		List<Entry<V>> results =  new ArrayList<Entry<V>>();
+		for (Iterator<ContentName> keyIt = _contents.keySet().iterator(); keyIt.hasNext();) {
+			ContentName name = (ContentName) keyIt.next();
+			List<Holder<V>> list = _contents.get(name);
+			results.addAll(list);
+		}
+		return results;
+	}
+	
 	/**
 	 * Remove and return value of the longest matching Interest for a CompleteName, where best is defined
 	 * as longest ContentName.  Any ContentName entries in the table will be 

@@ -271,8 +271,9 @@ public class InterestTableTest {
 	private void sizes(InterestTable<Integer> table, int s, int n) {
 		assertEquals(s, table.size());
 		assertEquals(n, table.sizeNames());
+		assertEquals(s, table.values().size());
 	}
-
+	
 	final String a = "/a";
 	final String ab = "/a/b";
 	final String a_bb = "/a/bb";
