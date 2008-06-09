@@ -213,7 +213,6 @@ public class CCNNetworkManager implements Runnable {
 		}
 		public void deliver() {
 			try {
-				Library.logger().fine("data delivery for " + this.interest.name());
 				if (null != this.listener) {
 					// Standing interest: call listener callback
 					ArrayList<ContentObject> results = null;
@@ -227,15 +226,22 @@ public class CCNNetworkManager implements Runnable {
 					}
 					// Call into client code without holding any library locks
 					if (null != results) {
+						Library.logger().finer("Interest callback (" + results.size() + " data) for: " + this.interest.name());
 						listener.handleContent(results);
+					} else {
+						Library.logger().finer("Interest callback skipped (no data) for: " + this.interest.name());
 					}
 				} else if (null != this.sema) {
+					Library.logger().finer("Data consumes pending get: " + this.interest.name());
 					// Waiting thread will pickup data -- wake it up
 					// If this interest came from net or waiting thread timed out,
 					// then no thread will be waiting but no harm is done
 					this.sema.release();
-					Library.logger().fine("released " + this.sema);
-				} // else this is no longer valid registration
+					Library.logger().finest("released " + this.sema);
+				} else {
+					// this is no longer valid registration
+					Library.logger().finer("Interest callback skipped (not valid) for: " + this.interest.name());
+				}
 			} catch (Exception ex) {
 				Library.logger().warning("failed to deliver data: " + ex.toString());
 				//ex.printStackTrace();
@@ -272,7 +278,10 @@ public class CCNNetworkManager implements Runnable {
 				}
 				// Call into client code without holding any library locks
 				if (null != results) {
+					Library.logger().finer("Filter callback (" + results.size() + " interests) for: " + name);
 					listener.handleInterests(results);
+				} else {
+					Library.logger().finer("Filter callback skipped (no interests) for: " + name);
 				}
 			} catch (RuntimeException ex) {
 				Library.logger().warning("failed to deliver interest: " + ex.toString());
@@ -430,6 +439,7 @@ public class CCNNetworkManager implements Runnable {
 	public CompleteName put(Object caller, ContentName name, ContentAuthenticator authenticator, 
 							byte [] signature, byte[] content) throws IOException, InterruptedException {
 		CompleteName complete = new CompleteName(name, authenticator, signature);
+		Library.logger().fine("put: " + complete.name());
 		ContentObject co = new ContentObject(name, authenticator, signature, content); 
 		DataRegistration reg = new DataRegistration(co, true, caller);
 		// Add to internal processing queue
@@ -437,8 +447,10 @@ public class CCNNetworkManager implements Runnable {
 			_newData.add(reg);
 		}
 		_selector.wakeup();
+		Library.logger().finest("blocking for data " + complete.name() + " on " + reg.sema);
 		// Await interest consumption
 		reg.sema.acquire(); // currently no timeouts
+		Library.logger().finest("unblocked for data " + complete.name() + " on " + reg.sema);
 		// The main processing thread may have had to register this writer
 		// which must be undone here, but no harm if never registered
 		_writers.remove(reg);
@@ -451,16 +463,17 @@ public class CCNNetworkManager implements Runnable {
 									    ContentAuthenticator authenticator,
 									    boolean isRecursive) throws IOException, InterruptedException {
 		Interest interest = new Interest(name);
+		Library.logger().fine("get: " + interest.name());
 		InterestRegistration reg = new InterestRegistration(interest, null, caller);
 		// Add to internal processing queue
 		synchronized (_newInterests) {
 			_newInterests.add(reg);
 		}
 		_selector.wakeup();
-		Library.logger().fine("blocking for " + interest.name() + " on " + reg.sema);
+		Library.logger().finest("blocking for " + interest.name() + " on " + reg.sema);
 		// Await data to consume the interest 
 		reg.sema.acquire(); // currently no timeouts
-		Library.logger().fine("unblocked for " + interest.name() + " on " + reg.sema);
+		Library.logger().finest("unblocked for " + interest.name() + " on " + reg.sema);
 		// Typically the main processing thread will have registered the interest
 		// which must be undone here, but no harm if never registered
 		unregisterInterest(reg);
@@ -485,9 +498,7 @@ public class CCNNetworkManager implements Runnable {
 			throw new NullPointerException("expressInterest: callbackListener cannot be null");
 		}		
 	
-		// TODO: remove direct connection to repository
-		//CCNRepositoryManager.getRepositoryManager().expressInterest(interest, callbackListener);
-
+		Library.logger().fine("expressInterest: " + interest.name());
 		InterestRegistration reg = new InterestRegistration(interest, callbackListener, caller);
 		// Add to internal processing queue
 		// We leave actual registration to the processing thread so that 
@@ -507,6 +518,7 @@ public class CCNNetworkManager implements Runnable {
 			throw new NullPointerException("cancelInterest: callbackListener cannot be null");
 		}
 	
+		Library.logger().fine("cancelInterest: " + interest.name());
 		// Remove interest from repeated presentation to the network.
 		unregisterInterest(caller, interest, callbackListener);
 	}
@@ -517,6 +529,7 @@ public class CCNNetworkManager implements Runnable {
 	 * matching interests seen
 	 */
 	public void setInterestFilter(Object caller, ContentName filter, CCNFilterListener callbackListener) {
+		Library.logger().fine("setInterestFilter: " + filter);
 		synchronized (_myFilters) {
 			_myFilters.add(filter, new Filter(filter, callbackListener, caller));
 		}
@@ -526,6 +539,7 @@ public class CCNNetworkManager implements Runnable {
 	 * Unregister a standing interest filter
 	 */
 	public void cancelInterestFilter(Object caller, ContentName filter, CCNFilterListener callbackListener) {
+		Library.logger().fine("cancelInterestFilter: " + filter);
 		synchronized (_myFilters) {
 			Entry<Filter> found = _myFilters.remove(filter, new Filter(filter, callbackListener, caller));
 			if (null != found) {
@@ -581,7 +595,7 @@ public class CCNNetworkManager implements Runnable {
 	 */
 	InterestRegistration registerInterest(InterestRegistration reg) {
 		// Add to standing interests table
-		Library.logger().fine("registerInterest for " + reg.interest.name());
+		Library.logger().finest("registerInterest for " + reg.interest.name());
 		synchronized (_myInterests) {
 			_myInterests.add(reg.interest, reg);
 		}
@@ -683,7 +697,7 @@ public class CCNNetworkManager implements Runnable {
 						iData.write(this);
 						// Do not release the put() until data has been completely
 						// delivered so that buffer may be reused
-						Library.logger().fine("releasing writer for " + iData.name());
+						Library.logger().finest("releasing writer for " + iData.name() + " on " + iData.sema);
 						iData.sema.release();
 					} else {
 						// No interest to consume yet: hold on to this data for 
@@ -695,6 +709,7 @@ public class CCNNetworkManager implements Runnable {
 
 				//--------------------------------- Process data from net (if any) 
 				for (ContentObject co : packet.data()) {
+					Library.logger().fine("Data from net: " + co.name());
 					DataRegistration oData = new DataRegistration(co, false, null);
 					deliverData(oData);
 					// External data never goes back to network, never held onto here
@@ -719,6 +734,7 @@ public class CCNNetworkManager implements Runnable {
 
 				//--------------------------------- Process interests from net (if any)
 				for (Interest interest : packet.interests()) {
+					Library.logger().fine("Interest from net: " + interest.name());
 					InterestRegistration oInterest = new InterestRegistration(interest, null, null);
 					DataRegistration dreg = deliverInterest(oInterest);
 					if (null == dreg) {
@@ -738,10 +754,10 @@ public class CCNNetworkManager implements Runnable {
 
 					// Re-express all of the registered interests
 					// TODO re-express only those due to be re-expressed
-					Library.logger().fine("Periodic refresh of interests");
 					synchronized (_myInterests) {
 						for (Entry<InterestRegistration> entry : _myInterests.getMatches(new ContentName("/"))) {
 							InterestRegistration reg = entry.value();
+							Library.logger().finer("Refresh interest: " + reg.interest.name());
 							write(reg.interest);
 							deliverInterest(reg);
 						}
@@ -750,9 +766,11 @@ public class CCNNetworkManager implements Runnable {
 				}
 
 			} catch (XMLStreamException xmlex) {
-				Library.logger().warning("Malformed datagram: " + xmlex.getMessage());
-			}  catch (MalformedContentNameStringException ex) {
-				Library.logger().warning("Internal error: malformed content name string");
+				Library.logger().severe("Processing thread failure (Malformed datagram): " + xmlex.getMessage());
+			} catch (MalformedContentNameStringException ex) {
+				Library.logger().severe("Processing thread failure (Malformed content name): " + ex.getMessage());
+			} catch (Exception ex) {
+				Library.logger().severe("Processing thread failure (unknown): " + ex.getMessage());
 			}
 		}
 		_threadpool.shutdown();
@@ -766,19 +784,21 @@ public class CCNNetworkManager implements Runnable {
 		for (Iterator<DataRegistration> writeIter = _writers.iterator(); writeIter.hasNext();) {
 			DataRegistration dreg = (DataRegistration) writeIter.next();
 			if (dreg.owner != ireg.owner && ireg.interest.matches(dreg.completeName())) {
-				Library.logger().info("Remove for " + dreg.name());
+				Library.logger().finer("Interest consumed by pending put: " + dreg.name());
 				writeIter.remove(); // avoid handing same data back to second get()
 				dreg.copyTo(ireg); // this is a copy of the data
 				_threadpool.execute(ireg);
 				dreg.sema.release();
+				Library.logger().finest("released " + dreg.sema);
 				result = dreg;
-				break;
+				return result;
 			}
 		}
 		// Call any listeners with matching filters
 		synchronized (_myFilters) {
 			for (Filter filter : _myFilters.getValues(ireg.interest.name())) {
 				if (filter.owner != ireg.owner) {
+					Library.logger().finer("Schedule delivery for interest: " + ireg.interest.name());
 					filter.add(ireg.interest);
 					_threadpool.execute(filter);
 				}
@@ -796,6 +816,7 @@ public class CCNNetworkManager implements Runnable {
 		synchronized (_myInterests) {
 			for (InterestRegistration ireg : _myInterests.getValues(dreg.completeName())) {
 				if (dreg.owner != ireg.owner) {
+					Library.logger().finer("Schedule delivery for data: " + dreg.completeName().name());
 					dreg.copyTo(ireg); // this is a copy of the data
 					_threadpool.execute(ireg);
 					if (ireg.isStanding() && dreg.isFromNet()) {

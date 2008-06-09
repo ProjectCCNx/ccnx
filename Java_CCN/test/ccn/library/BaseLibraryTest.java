@@ -9,11 +9,13 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.Random;
 import java.util.concurrent.Semaphore;
+import java.util.logging.Level;
 
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
@@ -31,8 +33,8 @@ public class BaseLibraryTest {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 	
-		// Uncomment the following line for more debug-level tracing
-//		Library.logger().setLevel(Level.FINER);
+		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
+		Library.logger().setLevel(Level.INFO);
 	}
 
 	@Before
@@ -66,7 +68,7 @@ public class BaseLibraryTest {
 			if (!good) {
 				fail();
 			}
-			System.out.println("Get/Put test done (" + (new Date().getTime() - start.getTime()) + " ms)");
+			System.out.println("Get/Put test in " + (new Date().getTime() - start.getTime()) + " ms");
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 			fail("InterruptedException");
@@ -75,6 +77,7 @@ public class BaseLibraryTest {
 	
 	@Test
 	public void testGetPut() throws Throwable {
+		System.out.println("TEST: PutThread/GetThread");
 		Thread putter = new Thread(new PutThread(25));
 		Thread getter = new Thread(new GetThread(25));
 		genericGetPut(putter, getter);
@@ -82,16 +85,18 @@ public class BaseLibraryTest {
 	
 	@Test
 	public void testGetServPut() throws Throwable {
-			Thread putter = new Thread(new PutThread(25));
-			Thread getter = new Thread(new GetServer(25));
-			genericGetPut(putter, getter);
+		System.out.println("TEST: PutThread/GetServer");
+		Thread putter = new Thread(new PutThread(25));
+		Thread getter = new Thread(new GetServer(25));
+		genericGetPut(putter, getter);
 	}
 
 	@Test
 	public void testGetPutServ() throws Throwable {
-			Thread putter = new Thread(new PutServer(25));
-			Thread getter = new Thread(new GetThread(25));
-			genericGetPut(putter, getter);
+		System.out.println("TEST: PutServer/GetThread");
+		Thread putter = new Thread(new PutServer(25));
+		Thread getter = new Thread(new GetThread(25));
+		genericGetPut(putter, getter);
 	}
 	
 	/**

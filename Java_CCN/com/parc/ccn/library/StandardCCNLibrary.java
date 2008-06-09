@@ -709,7 +709,6 @@ public class StandardCCNLibrary implements CCNLibrary {
 						name, publisher, ContentAuthenticator.now(),
 						type, locator, contents, false, signingKey);
 			try {
-				Library.logger().info("Final put name: " + uniqueName.name().toString());
 				return put(uniqueName.name(), uniqueName.authenticator(), uniqueName.signature(), contents);
 			} catch (IOException e) {
 				Library.logger().warning("This should not happen: put failed with an IOExceptoin.");
