@@ -1488,7 +1488,8 @@ get_dgram_source(struct ccnd *h, struct face *face,
             source->addrlen = e->keysize;
             source->fd = face->fd;
             source->flags |= CCN_FACE_DGRAM;
-            enroll_face(h, source);
+            res = enroll_face(h, source);
+            ccnd_msg(h, "accepted datagram client id=%d", res);
             reap_needed(h, CCN_INTEREST_HALFLIFE_MICROSEC);
         }
         source->recvcount++;
@@ -1523,11 +1524,15 @@ process_input(struct ccnd *h, int fd)
         if ((face->flags & CCN_FACE_DGRAM) == 0)
             shutdown_client_fd(h, fd);
         else
-            face->recvcount++;
+            get_dgram_source(h, face, addr, addrlen)->recvcount++;
     }
     else {
-        face->recvcount++;
         source = get_dgram_source(h, face, addr, addrlen);
+        source->recvcount++;
+        if (res == 1 && (source->flags & CCN_FACE_DGRAM) != 0) {
+            ccnd_msg(h, "single-byte heartbeat on %d", source->faceid);
+            return;
+        }
         face->inbuf->length += res;
         msgstart = 0;
         dres = ccn_skeleton_decode(d, buf, res);
