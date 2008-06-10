@@ -527,7 +527,7 @@ process_file(char *path)
     return(res);
 }
 
-static struct callback_state {
+struct callback_state {
     int fragment;
     char *fileprefix;
 };
@@ -547,6 +547,7 @@ set_stdout(struct ccn_decoder *d, enum callback_kind kind, void *data)
     case CALLBACK_FINAL:
         fflush(stdout);
         fclose(stdout);
+        free(cs);
         break;
     }
 }
@@ -557,6 +558,7 @@ process_split_file(char *base, char *path)
     int fd = 0;
     int res = 0;
     struct ccn_decoder *d;
+    struct callback_state *cs;
 
     if (0 != strcmp(path, "-")) {
         fd = open(path, O_RDONLY);
@@ -566,10 +568,11 @@ process_split_file(char *base, char *path)
         }
     }
     
-    cs.fileprefix = base;
-    cs.fragment = 0;
+    cs = calloc(1, sizeof(*cs));
+    cs->fileprefix = base;
+    cs->fragment = 0;
     d = ccn_decoder_create();
-    ccn_decoder_set_callback(d, set_stdout, &cs);
+    ccn_decoder_set_callback(d, set_stdout, cs);
     res = process_fd(d, fd);
     ccn_decoder_destroy(&d);
 
