@@ -182,6 +182,7 @@ public class CCNNetworkManager implements Runnable {
 		public final Interest interest;
 		protected ArrayList<ContentObject> data = new ArrayList<ContentObject>(1);
 		public Date lastRefresh;
+		// All internal client interests must have an owner
 		public InterestRegistration(Interest i, CCNInterestListener l, Object owner) {
 			interest = i; 
 			listener = l;
@@ -211,6 +212,10 @@ public class CCNNetworkManager implements Runnable {
 				return false;
 			}
 		}
+		// Is this an internal interest? (i.e. not from net)
+		public synchronized boolean isInternal() {
+			return (null != owner);
+		}
 		public void deliver() {
 			try {
 				if (null != this.listener) {
@@ -236,8 +241,8 @@ public class CCNNetworkManager implements Runnable {
 					// Waiting thread will pickup data -- wake it up
 					// If this interest came from net or waiting thread timed out,
 					// then no thread will be waiting but no harm is done
+					Library.logger().finest("releasing " + this.sema);
 					this.sema.release();
-					Library.logger().finest("released " + this.sema);
 				} else {
 					// this is no longer valid registration
 					Library.logger().finer("Interest callback skipped (not valid) for: " + this.interest.name());
@@ -575,6 +580,7 @@ public class CCNNetworkManager implements Runnable {
 			byte[] bytes = packet.encode();
 			ByteBuffer datagram = ByteBuffer.wrap(bytes);
 			_channel.write(datagram);
+			Library.logger().finest("Wrote datagram (" + datagram.position() + " bytes)");
 			if (null != _tapStream) {
 				try {
 					_tapStream.write(bytes);
@@ -638,7 +644,7 @@ public class CCNNetworkManager implements Runnable {
 
 //					Library.logger().finest("Heartbeat");
 					try {
-						ByteBuffer heartbeat = ByteBuffer.allocate(0);
+						ByteBuffer heartbeat = ByteBuffer.allocate(1);
 						_channel.write(heartbeat);
 						lastheartbeat = new Date();
 					} catch (IOException io) {
@@ -656,7 +662,8 @@ public class CCNNetworkManager implements Runnable {
 						// inspect the selected-key set
 						datagram.clear(); // make ready for new read
 						_channel.read(datagram);
-						Library.logger().finest("read datagram");
+						Library.logger().finest("Read datagram (" + datagram.position() + " bytes)");
+						_selector.selectedKeys().clear();
 						if (null != _error) {
 							Library.logger().info("Receive error cleared");
 							_error = null;
@@ -722,7 +729,7 @@ public class CCNNetworkManager implements Runnable {
 				InterestRegistration iInterest = null;
 				synchronized (_newInterests) { iInterest = _newInterests.poll(); }
 				while (null != iInterest) {
-					if (null == deliverInterest(iInterest) || null != iInterest.listener) {
+					if (!deliverInterest(iInterest) || null != iInterest.listener) {
 						// Unsatisfied temporary and all standing interests go to network
 						// This prevents internal interests from consuming data 
 						// so it never gets to agent to cache. 
@@ -738,14 +745,11 @@ public class CCNNetworkManager implements Runnable {
 				for (Interest interest : packet.interests()) {
 					Library.logger().fine("Interest from net: " + interest.name());
 					InterestRegistration oInterest = new InterestRegistration(interest, null, null);
-					DataRegistration dreg = deliverInterest(oInterest);
-					if (null == dreg) {
+					if (!deliverInterest(oInterest)) {
 						// Record this known interest that has not already been consumed
 						synchronized (_othersInterests) {
 							_othersInterests.add(interest, oInterest);
 						}
-					} else {
-						dreg.write(this);
 					}
 					// External interests never go back to network
 				} // for interests
@@ -779,20 +783,24 @@ public class CCNNetworkManager implements Runnable {
 	}
 
 	// Internal delivery of interests to pending writers and filter listeners
-	protected DataRegistration deliverInterest(InterestRegistration ireg) throws XMLStreamException {
-		DataRegistration result = null;
+	// return true iff interest has been consumed by pending data already
+	protected boolean deliverInterest(InterestRegistration ireg) throws XMLStreamException {
 		// First pending writer with data gets to consume this interest
 		for (Iterator<DataRegistration> writeIter = _writers.iterator(); writeIter.hasNext();) {
 			DataRegistration dreg = (DataRegistration) writeIter.next();
 			if (dreg.owner != ireg.owner && ireg.interest.matches(dreg.completeName())) {
 				Library.logger().finer("Interest consumed by pending put: " + dreg.name());
 				writeIter.remove(); // avoid handing same data back to second get()
-				dreg.copyTo(ireg); // this is a copy of the data
-				_threadpool.execute(ireg);
+				if (ireg.isInternal()) {
+					dreg.copyTo(ireg); // this is a copy of the data
+					_threadpool.execute(ireg);
+				}
+				// Any consuming data is sent to network to reach agent cache
+				// even if interest consumed is internal
+				dreg.write(this);
+				Library.logger().finest("releasing " + dreg.sema);
 				dreg.sema.release();
-				Library.logger().finest("released " + dreg.sema);
-				result = dreg;
-				return result;
+				return true;
 			}
 		}
 		// Call any listeners with matching filters
@@ -805,7 +813,7 @@ public class CCNNetworkManager implements Runnable {
 				}
 			}
 		}
-		return result;
+		return false;
 	}
 
 	// internal delivery of data, which may have originated locally
