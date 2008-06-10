@@ -994,13 +994,17 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * @throws IOException 
 	 * @throws InterruptedException 
 	 */
-	public CCNDescriptor open(CompleteName name) throws IOException, InterruptedException, XMLStreamException {
-		return new CCNDescriptor(name, this);
+	public CCNDescriptor open(CompleteName name, OpenMode mode) throws IOException, InterruptedException, XMLStreamException {
+		return new CCNDescriptor(name, mode, this);
 	}
 		
 	public long read(CCNDescriptor ccnObject, byte [] buf, long 
 											offset, long len) throws IOException, InterruptedException {
 		return ccnObject.read(buf,offset,len);
+	}
+
+	public long write(CCNDescriptor ccnObject, byte [] buf, long offset, long len) throws IOException, InterruptedException {
+		return ccnObject.write(buf, offset, len);
 	}
 
 	public int seek(CCNDescriptor ccnObject, long offset, CCNDescriptor.SeekWhence whence) throws IOException, InterruptedException {
@@ -1010,7 +1014,15 @@ public class StandardCCNLibrary implements CCNLibrary {
 	public long tell(CCNDescriptor ccnObject) {
 		return ccnObject.tell();
 	}
-
+	
+	public int close(CCNDescriptor ccnObject) {
+		return ccnObject.close();
+	}
+	
+	public void sync(CCNDescriptor ccnObject) {
+		ccnObject.sync();
+	}
+	
 	/**
 	 * Implement naming convention about locality.
 	 */

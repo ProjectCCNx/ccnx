@@ -14,6 +14,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.library.CCNLibrary.OpenMode;
 
 /**
  * An object which contains state operation for 
@@ -36,14 +37,18 @@ public class CCNDescriptor {
 	
 	public enum SeekWhence {SEEK_SET, SEEK_CUR, SEEK_END};
 	
-	CCNLibrary _library = null;
+	protected CCNLibrary _library = null;
+	
+	protected OpenMode _mode = null;
 	
 	/**
 	 * The base name of the object we are actually
 	 * reading or writing.
 	 */
-	ContentName _baseName = null;
+	protected ContentName _headerName = null;
 
+	protected ContentName _baseName = null;
+	
 	/**
 	 * The content authenticator associated with the 
 	 * corresponding header information. We only need
@@ -51,13 +56,13 @@ public class CCNDescriptor {
 	 * but might want to have access to the other
 	 * authentication information.
 	 */
-	ContentAuthenticator _headerAuthenticator = null;
+	protected ContentAuthenticator _headerAuthenticator = null;
 	
 	/**
 	 * The header information for that object, once
 	 * we've read it. 
 	 */
-	Header _header = null;
+	protected Header _header = null;
 	/**
 	 * We need some state information about what
 	 * we've verified, assuming that the authentication
@@ -67,7 +72,7 @@ public class CCNDescriptor {
 	 * Can also get this by verifying the header, and 
 	 * checking that the header contains the same root.
 	 */
-	byte [] _verifiedRootSignature = null;
+	protected byte [] _verifiedRootSignature = null;
 	
 	/**
 	 * Start out with an implementation in terms of
@@ -76,13 +81,16 @@ public class CCNDescriptor {
 	 * languages other than Java might need to handle
 	 * this a different way.
 	 */
-	ContentObject _currentBlock = null;
-	long _readOffset = 0; // offset into current block
-	
+	protected ContentObject _currentBlock = null;
+	protected long _blockOffset = 0; // offset into current block
+
 	/**
-	 * Open header of existing object for reading. Eventually might
-	 * want to not start from header, and might need to make this
-	 * constructor also work for write for open.
+	 * Open header of existing object for reading, or prepare new
+	 * name for writing. Eventually might
+	 * want to not start from header. If name is not versioned,
+	 * figures out either the latest version to open (read)
+	 * or next version to write (write).
+	 * @param mode 
 	 * @param headerObject
 	 * @param verified
 	 * @throws XMLStreamException if the object is not a valid Header
@@ -90,11 +98,51 @@ public class CCNDescriptor {
 	 * @throws IOException 
 	 */
 	public CCNDescriptor(CompleteName name,
-						 CCNLibrary library) throws XMLStreamException, IOException, InterruptedException {
+						 OpenMode mode, CCNLibrary library) throws XMLStreamException, IOException, InterruptedException {
 		_library = library; 
 		if (null == _library) {
 			throw new IllegalArgumentException("Unexpected null library in CCNDescriptor constructor!");
 		}
+
+		_mode = mode;
+		
+		if (_mode == OpenMode.O_RDONLY)
+			openForReading(name);
+		else if (_mode == OpenMode.O_WRONLY)
+			openForWriting(name);
+		
+	}
+	
+	protected void openForWriting(CompleteName name) {
+		ContentName nameToOpen = name.name();
+		if (StandardCCNLibrary.isFragment(name.name())) {
+			// DKS TODO: should we do this?
+			nameToOpen = StandardCCNLibrary.fragmentRoot(nameToOpen);
+		}
+		
+		// Assume if name is already versioned, caller knows what name
+		// to write. If caller specifies authentication information,
+		// ignore it for now.
+		if (!_library.isVersioned(nameToOpen)) {
+			// if publisherID is null, will get any publisher
+			ContentName currentVersionName = 
+				_library.getLatestVersionName(nameToOpen, null);
+			if (null == currentVersionName) {
+				nameToOpen = _library.versionName(nameToOpen, StandardCCNLibrary.baseVersion());
+			} else {
+				nameToOpen = _library.versionName(currentVersionName, (_library.getVersionNumber(currentVersionName) + 1));
+			}
+		}
+		// Should have name of root of version we want to
+		// open. Get the header block. Already stripped to
+		// root. We've altered the header semantics, so that
+		// we can just get headers rather than a plethora of
+		// fragments. 
+		_baseName = nameToOpen;
+		_headerName = StandardCCNLibrary.headerName(_baseName);
+	}
+	
+	protected void openForReading(CompleteName name) throws IOException, InterruptedException, XMLStreamException {
 
 		ContentName nameToOpen = name.name();
 		if (StandardCCNLibrary.isFragment(name.name())) {
@@ -104,16 +152,17 @@ public class CCNDescriptor {
 		if (!_library.isVersioned(nameToOpen)) {
 			// if publisherID is null, will get any publisher
 			nameToOpen = 
-				_library.getLatestVersionName(nameToOpen, 
-									 name.authenticator().publisherKeyID());
+				_library.getLatestVersionName(nameToOpen,
+							(null != name.authenticator()) ? 
+									 name.authenticator().publisherKeyID() : null);
 		}
-		
 		// Should have name of root of version we want to
 		// open. Get the header block. Already stripped to
 		// root. We've altered the header semantics, so that
 		// we can just get headers rather than a plethora of
 		// fragments. 
-		ContentName headerName = StandardCCNLibrary.headerName(nameToOpen);
+		_headerName = StandardCCNLibrary.headerName(nameToOpen);
+		
 		// This might not be unique - 
 		// we could have here either multiple versions of
 		// a given number, or multiple of a given number
@@ -128,11 +177,11 @@ public class CCNDescriptor {
 		// prefiltering? Can it mark objects as verified?
 		// do we want to use the low-level get, as the high-level
 		// one might unfragment?
-		ArrayList<ContentObject> headers = _library.get(headerName, name.authenticator(),false);
+		ArrayList<ContentObject> headers = _library.get(_headerName, name.authenticator(),false);
 		
 		if ((null == headers) || (headers.size() == 0)) {
-			Library.logger().info("No available content named: " + headerName.toString());
-			throw new FileNotFoundException("No available content named: " + headerName.toString());
+			Library.logger().info("No available content named: " + _headerName.toString());
+			throw new FileNotFoundException("No available content named: " + _headerName.toString());
 		}
 		// So for each header, we assume we have a potential document.
 		
@@ -159,19 +208,19 @@ public class CCNDescriptor {
 			}
 		}
 		if (headers.size() == 0) {
-			Library.logger().info("No available verifiable content named: " + headerName.toString());
-			throw new FileNotFoundException("No available verifiable content named: " + headerName.toString());
+			Library.logger().info("No available verifiable content named: " + _headerName.toString());
+			throw new FileNotFoundException("No available verifiable content named: " + _headerName.toString());
 		}
 		if (headers.size() > 1) {
-			Library.logger().info("Found " + headers.size() + " headers matching the name: " + headerName.toString());
-			throw new IOException("CCNException: More than one (" + headers.size() + ") valid header found for name: " + headerName.toString() + " in open!");
+			Library.logger().info("Found " + headers.size() + " headers matching the name: " + _headerName.toString());
+			throw new IOException("CCNException: More than one (" + headers.size() + ") valid header found for name: " + _headerName.toString() + " in open!");
 		}
 		
 		ContentObject headerObject = headers.get(0);
 		
 		if (headerObject == null) {
-			Library.logger().info("Found only null headers matching the name: " + headerName.toString());
-			throw new IOException("CCNException: No non-null header found for name: " + headerName.toString() + " in open!");
+			Library.logger().info("Found only null headers matching the name: " + _headerName.toString());
+			throw new IOException("CCNException: No non-null header found for name: " + _headerName.toString() + " in open!");
 		}
 		
 		_headerAuthenticator = headerObject.authenticator();
@@ -210,19 +259,34 @@ public class CCNDescriptor {
 		// we've read len bytes, pull next block.
 		long lenToRead = len;
 		while (lenToRead > 0) {
-			if (_readOffset >= _currentBlock.content().length) {
+			if (_blockOffset >= _currentBlock.content().length) {
 				// DKS make sure we don't miss a byte...
 				result = seek(StandardCCNLibrary.getFragmentNumber(_currentBlock.name())+1);
 			}
-			long readCount = ((_currentBlock.content().length - _readOffset) > len) ? len : (_currentBlock.content().length - _readOffset);
-			System.arraycopy(_currentBlock.content(), (int)_readOffset, buf, (int)offset, (int)readCount);
-			_readOffset += readCount;
+			long readCount = ((_currentBlock.content().length - _blockOffset) > len) ? len : (_currentBlock.content().length - _blockOffset);
+			System.arraycopy(_currentBlock.content(), (int)_blockOffset, buf, (int)offset, (int)readCount);
+			_blockOffset += readCount;
 			offset += readCount;
 			lenToRead -= readCount;
 		}
 		return 0;
 	}
 	
+	public long write(byte[] buf, long offset, long len) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	public int close() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	public void sync() {
+		// TODO Auto-generated method stub
+		
+	}
+
 	/**
 	 * Support ideas of seek, etc, even if fuse doesn't
 	 * require them. Seek actually does a get on the appropriate content block.
@@ -240,7 +304,7 @@ public class CCNDescriptor {
 		} else {
 			// SEEK_CUR
 			// how many bytes are left in this block?
-			long bytesRemaining = _currentBlock.content().length - _readOffset;
+			long bytesRemaining = _currentBlock.content().length - _blockOffset;
 			offset -= bytesRemaining;
 			
 			int blockIncrement = (int)Math.floor(offset/_header.blockSize());
@@ -248,21 +312,21 @@ public class CCNDescriptor {
 			int thisBlock = StandardCCNLibrary.getFragmentNumber(_currentBlock.name());
 			
 			seek(thisBlock+blockIncrement);
-			_readOffset += offset % _header.blockSize();
+			_blockOffset += offset % _header.blockSize();
 		}
 		return 0;
 	}
 	
 	protected int seek(int blockNumber) throws IOException, InterruptedException {
 		_currentBlock = getBlock(blockNumber);
-		_readOffset = 0;
+		_blockOffset = 0;
 		return 0;
 	}
 	
 	public long tell() {
 		if (null == _currentBlock)
 			return 0;
-		return ((_header.blockSize() * StandardCCNLibrary.getFragmentNumber(_currentBlock.name())) + _readOffset);
+		return ((_header.blockSize() * StandardCCNLibrary.getFragmentNumber(_currentBlock.name())) + _blockOffset);
 	}
 	
 	protected ContentObject getBlock(int number) throws IOException, InterruptedException {
@@ -324,4 +388,5 @@ public class CCNDescriptor {
 		}
 		return blocks.get(0);
 	}
+
 }

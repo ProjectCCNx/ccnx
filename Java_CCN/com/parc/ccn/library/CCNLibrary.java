@@ -45,6 +45,8 @@ import com.parc.ccn.security.keys.KeyManager;
  *
  */
 public interface CCNLibrary extends CCNBase {
+	
+	public enum OpenMode { O_RDONLY, O_WRONLY };
 
 	public void setKeyManager(KeyManager keyManager);
 
@@ -268,8 +270,17 @@ public interface CCNLibrary extends CCNBase {
 	 */
 	
 	/**
-	 * Beginnings of read interface. If name is not versioned,
-	 * finds the latest version meeting the constraints. 
+	 * Beginnings of file system interface. If name is not versioned,
+	 * for read, finds the latest version meeting the constraints.
+	 * For writes, probably also should figure out the next version
+	 * and open that for writing. Might get more complicated later;
+	 * a file system (e.g. FUSE) layer on top of this might get more
+	 * complicated still (e.g. mechanisms for detecting what the latest
+	 * version is to make a new one for writing right now can't detect
+	 * that we're already in the process of writing a given version).
+	 * For now, we constraint the types of open modes we know about.
+	 * We can't really append to an existing file, so we really can
+	 * only pretty much open for writing or reading.
 	 * @return a CCNDescriptor, which contains, among other things,
 	 * the actual name we are opening. It also contains things
 	 * like offsets and verification information.
@@ -277,10 +288,20 @@ public interface CCNLibrary extends CCNBase {
 	 * @throws InterruptedException 
 	 * @throws XMLStreamException 
 	 */
-	public CCNDescriptor open(CompleteName name) throws IOException, InterruptedException, XMLStreamException;
+	public CCNDescriptor open(CompleteName name, OpenMode mode) throws IOException, InterruptedException, XMLStreamException;
 	
 	public long read(CCNDescriptor ccnObject, byte [] buf, long offset, long len) throws IOException, InterruptedException;
 
+	public long write(CCNDescriptor ccnObject, byte [] buf, long offset, long len) throws IOException, InterruptedException;
+	
+	public int seek(CCNDescriptor ccnObject, long offset, CCNDescriptor.SeekWhence whence) throws IOException, InterruptedException;
+	
+	public long tell(CCNDescriptor ccnObject);
+	
+	public int close(CCNDescriptor ccnObject);
+	
+	public void sync(CCNDescriptor ccnObject);
+	
 	/**
 	 * Does this name refer to a node that represents
 	 * local (protected) content?
