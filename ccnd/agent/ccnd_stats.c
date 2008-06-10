@@ -15,6 +15,8 @@
 #include <string.h>
 #include <sys/time.h>
 #include <sys/socket.h>
+#include <sys/utsname.h>
+
 #include <unistd.h>
 
 #include <ccn/ccnd.h>
@@ -74,23 +76,41 @@ collect_stats_html(struct ccnd *h)
     char *ans;
     struct ccnd_stats stats = {0};
     struct ccn_charbuf *b = ccn_charbuf_create();
+    int pid;
+    struct utsname un;
+    const char *portstr;
+    
+    portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
+    if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
+        portstr = "4485";
+    uname(&un);
+    pid = getpid();
     
     ccnd_collect_stats(h, &stats);
     ccn_charbuf_putf(b,
         "HTTP/0.9 200 OK\r\n"
-        "Content-Type: text/html; charset=iso-8859-1\r\n\r\n"
+        "Content-Type: text/html; charset=utf-8\r\n\r\n"
         "<html>"
+        "<head>"
         "<title>ccnd[%d]</title>"
         "<meta http-equiv='refresh' content='3'>"
+        "<style type='text/css'>"
+        " p.header {color: white; background-color: blue} "
+        "</style>"
+        "</head>"
         "<body>"
+        "<p class='header' width='100%%'>%s ccnd[%d] local port %s</p>"
         "<div><b>Content items:</b> %llu accessioned, %d stored, %lu duplicate, %lu sent</div>"
         "<div><b>Content supression:</b> %d</div>"
         "<div><b>Interests:</b> %d names, %ld pending, %ld propagating, %ld noted</div>"
         "<div><b>Interest totals:</b> %lu accepted, %lu dropped, %lu sent</div>"
         "<div><b>Active faces and listeners:</b> %d</div>"
         "</body>"
-        "<html>",
-        getpid(),
+        "</html>",
+        pid,
+        un.nodename,
+        pid,
+        portstr,
         (unsigned long long)h->accession,
                 hashtb_n(h->content_tab),
                 h->content_dups_recvd,
