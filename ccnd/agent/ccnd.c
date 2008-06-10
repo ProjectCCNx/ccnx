@@ -50,6 +50,11 @@ static void bloom_destroy(struct back_filter **);
 static int bloom_insert(struct content_entry *, struct back_filter *);
 static int bloom_match(struct content_entry *, const struct back_filter *);
 static void bloom_update_for_old_content(struct ccnd *, struct interest_entry *);
+static const struct back_filter *bloom_validate(const unsigned char *buf, size_t size);
+static int get_signature_offset(struct ccn_parsed_ContentObject *pco,
+                         const unsigned char *msg);
+static struct face *get_dgram_source(struct ccnd *h, struct face *face,
+                              struct sockaddr *addr, socklen_t addrlen);
 
 static const char *unlink_this_at_exit = NULL;
 static void
@@ -395,6 +400,8 @@ content_sender(struct ccn_schedule *sched,
 {
     struct ccnd *h = clienth;
     struct content_entry *content = ev->evdata;
+    (void)sched;
+    
     if (content == NULL ||
         content != content_from_accession(h, content->accession)) {
         ccnd_msg(h, "ccn.c:%d bogon", __LINE__);
@@ -681,6 +688,8 @@ reap(
     int flags)
 {
     struct ccnd *h = clienth;
+    (void)(sched);
+    (void)(ev);
     if ((flags & CCN_SCHEDULE_CANCEL) == 0) {
         check_dgram_faces(h);
         check_propagating(h);
@@ -711,6 +720,7 @@ aging_deamon(
     int flags)
 {
     struct ccnd *h = clienth;
+    (void)(sched);
     if ((flags & CCN_SCHEDULE_CANCEL) == 0) {
         age_interests(h);
         if (hashtb_n(h->interest_tab) != 0)
@@ -745,6 +755,8 @@ clean_deamon(
     unsigned i;
     unsigned n;
     struct content_entry* content;
+    (void)(sched);
+    (void)(ev);
     if ((flags & CCN_SCHEDULE_CANCEL) != 0) {
         h->clean = NULL;
         return(0);
@@ -844,6 +856,7 @@ do_propagate(
 {
     struct ccnd *h = clienth;
     struct propagating_entry *pe = ev->evdata;
+    (void)(sched);
     if (pe->outbound == NULL || pe->interest_msg == NULL)
         return(0);
     if (flags & CCN_SCHEDULE_CANCEL)
@@ -1054,7 +1067,7 @@ bloom_destroy(struct back_filter **f)
     *f = NULL;
 }
 
-const struct back_filter *
+static const struct back_filter *
 bloom_validate(const unsigned char *buf, size_t size)
 {
     const struct back_filter *f = (const struct back_filter *)buf;
@@ -1327,7 +1340,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,
     indexbuf_release(h, comps);
 }
 
-int
+static int
 get_signature_offset(struct ccn_parsed_ContentObject *pco, const unsigned char *msg)
 {
     struct ccn_buf_decoder decoder;
@@ -1469,7 +1482,7 @@ process_input_message(struct ccnd *h, struct face *face,
     ccnd_msg(h, "discarding unknown message; size = %lu", (unsigned long)size);
 }
 
-struct face *
+static struct face *
 get_dgram_source(struct ccnd *h, struct face *face,
            struct sockaddr *addr, socklen_t addrlen)
 {
@@ -1520,17 +1533,13 @@ process_input(struct ccnd *h, int fd)
             /* flags */ 0, addr, &addrlen);
     if (res == -1)
         perror("ccnd: recvfrom");
-    else if (res == 0) {
-        if ((face->flags & CCN_FACE_DGRAM) == 0)
-            shutdown_client_fd(h, fd);
-        else
-            get_dgram_source(h, face, addr, addrlen)->recvcount++;
-    }
+    else if (res == 0 && (face->flags & CCN_FACE_DGRAM) == 0)
+        shutdown_client_fd(h, fd);
     else {
         source = get_dgram_source(h, face, addr, addrlen);
         source->recvcount++;
-        if (res == 1 && (source->flags & CCN_FACE_DGRAM) != 0) {
-            ccnd_msg(h, "single-byte heartbeat on %d", source->faceid);
+        if (res <= 1 && (source->flags & CCN_FACE_DGRAM) != 0) {
+            ccnd_msg(h, "%d-byte heartbeat on %d", (int)res, source->faceid);
             return;
         }
         face->inbuf->length += res;

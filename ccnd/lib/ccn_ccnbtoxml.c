@@ -362,7 +362,7 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                 numval -= chunk;
                 i += chunk;
                 if (numval == 0) {
-                    ccn_charbuf_append(d->stringstack, (unsigned char *)"\0", 1);
+                    ccn_charbuf_append(d->stringstack, (const unsigned char *)"\0", 1);
                     s = d->stack;
                     if (s == NULL ||
                         strlen((char*)d->stringstack->buf + s->nameindex) != 
@@ -530,7 +530,7 @@ process_file(char *path)
 static struct callback_state {
     int fragment;
     char *fileprefix;
-} cs;
+};
 
 static void
 set_stdout(struct ccn_decoder *d, enum callback_kind kind, void *data)
