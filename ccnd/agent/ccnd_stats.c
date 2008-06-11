@@ -131,32 +131,27 @@ int
 ccnd_stats_check_for_http_connection(struct ccnd *h)
 {
     int res;
-    int sock;
     char *response = NULL;
-    sock = h->httpd_listener_fd;
-    for (;;) {
-        char buf[7] = "GET / ";
-        int fd = accept(sock, NULL, 0);
-        if (fd == -1) {
-            if (errno != EAGAIN)
-                perror("check_for_http_connection - accept");
-            break;
-        }
-        fcntl(fd, F_SETFL, O_NONBLOCK);
-        res = read(fd, buf, sizeof(buf)-1);
-        if ((res == -1 && errno == EAGAIN) || res == sizeof(buf)-1) {
-            if (0 == strcmp(buf, "GET / ")) {
-                if (response == NULL)
-                    response = collect_stats_html(h);
-                write(fd, response, strlen(response));
-            }
-            else
-                write(fd, resp404, strlen(resp404));
-        }
-        close(fd);
+    char buf[7] = "GET / ";
+    int fd = accept(h->httpd_listener_fd, NULL, 0);
+    if (fd == -1) {
+        perror("check_for_http_connection - accept");
+        return(-1);
     }
-    if (response != NULL)
-        free(response);
+    // XXX - the blocking read opens us to a D.O.S., but non-blocking causes
+    //  problems on the client side (for unknown reasons).
+    // fcntl(fd, F_SETFL, O_NONBLOCK);
+    response = collect_stats_html(h);
+    res = read(fd, buf, sizeof(buf)-1);
+    if ((res == -1 && errno == EAGAIN) || res == sizeof(buf)-1) {
+        if (0 == strcmp(buf, "GET / ")) {
+            write(fd, response, strlen(response));
+        }
+        else
+            write(fd, resp404, strlen(resp404));
+    }
+    close(fd);
+    free(response);
     return(0);
 }
 
@@ -198,7 +193,7 @@ ccnd_stats_httpd_start(struct ccnd *h)
         close(sock);
         return(-1);
     }
-    res = fcntl(sock, F_SETFL, O_NONBLOCK);
+    //res = fcntl(sock, F_SETFL, O_NONBLOCK);
     if (res == -1) {
         perror("ccnd_stats_httpd_listen: fcntl");
         close(sock);
