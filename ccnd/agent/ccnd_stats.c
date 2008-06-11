@@ -93,7 +93,7 @@ collect_stats_html(struct ccnd *h)
         "<html>"
         "<head>"
         "<title>ccnd[%d]</title>"
-        "<meta http-equiv='refresh' content='3'>"
+        //"<meta http-equiv='refresh' content='3'>"
         "<style type='text/css'>"
         " p.header {color: white; background-color: blue} "
         "</style>"
@@ -127,20 +127,13 @@ collect_stats_html(struct ccnd *h)
 }
 
 static const char *resp404 = "HTTP/0.9 404 Not Found\r\n";
-static int
-check_for_http_connection(struct ccn_schedule *sched,
-    void *clienth,
-    struct ccn_scheduled_event *ev,
-    int flags)
+int
+ccnd_stats_check_for_http_connection(struct ccnd *h)
 {
     int res;
     int sock;
     char *response = NULL;
-    sock = ev->evint;
-    if ((flags && CCN_SCHEDULE_CANCEL) != 0) {
-        close(sock);
-        return(0);
-    }
+    sock = h->httpd_listener_fd;
     for (;;) {
         char buf[7] = "GET / ";
         int fd = accept(sock, NULL, 0);
@@ -154,7 +147,7 @@ check_for_http_connection(struct ccn_schedule *sched,
         if ((res == -1 && errno == EAGAIN) || res == sizeof(buf)-1) {
             if (0 == strcmp(buf, "GET / ")) {
                 if (response == NULL)
-                    response = collect_stats_html(clienth);
+                    response = collect_stats_html(h);
                 write(fd, response, strlen(response));
             }
             else
@@ -162,8 +155,9 @@ check_for_http_connection(struct ccn_schedule *sched,
         }
         close(fd);
     }
-    free(response);
-    return(3333333);
+    if (response != NULL)
+        free(response);
+    return(0);
 }
 
 int
@@ -218,7 +212,8 @@ ccnd_stats_httpd_start(struct ccnd *h)
     }
     freeaddrinfo(ai);
     ai = NULL;
-    ccn_schedule_event(h->sched, 1000000, &check_for_http_connection, NULL, sock);
+    h->httpd_listener_fd = sock;
+    //ccn_schedule_event(h->sched, 1000000, &check_for_http_connection, NULL, sock);
     return(0);
 }
 

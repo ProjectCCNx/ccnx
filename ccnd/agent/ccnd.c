@@ -1657,7 +1657,7 @@ run(struct ccnd *h)
     int timeout_ms = -1;
     int prev_timeout_ms = -1;
     int usec;
-    int specials = 1;
+    int specials = 2; /* local_listener_fd, httpd_listener_fd */
     for (;;) {
         usec = ccn_schedule_run(h->sched);
         timeout_ms = (usec < 0) ? -1 : usec / 1000;
@@ -1670,6 +1670,8 @@ run(struct ccnd *h)
         }
         h->fds[0].fd = h->local_listener_fd;
         h->fds[0].events = POLLIN;
+        h->fds[1].fd = h->httpd_listener_fd;
+        h->fds[1].events = POLLIN;
         for (i = specials, hashtb_start(h->faces_by_fd, e);
              i < h->nfds && e->data != NULL;
              i++, hashtb_next(e)) {
@@ -1694,6 +1696,12 @@ run(struct ccnd *h)
                 return;
             if (h->fds[0].revents & (POLLIN))
                 accept_new_client(h);
+            res--;
+        }
+        /* Maybe it's time for a status display */
+        if (h->fds[1].revents != 0) {
+            if (h->fds[1].revents & (POLLIN))
+                ccnd_stats_check_for_http_connection(h);
             res--;
         }
         for (i = specials; res > 0 && i < h->nfds; i++) {

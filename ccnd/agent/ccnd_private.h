@@ -58,6 +58,7 @@ struct ccnd {
     struct ccn_scheduled_event *age;
     struct ccn_scheduled_event *clean;
     int local_listener_fd;
+    int httpd_listener_fd;
     nfds_t nfds;
     struct pollfd *fds;
     struct ccn_schedule *sched;
@@ -168,6 +169,7 @@ struct back_filter {
 
 /* Consider a separate header for these */
 int ccnd_stats_httpd_start(struct ccnd *);
+int ccnd_stats_check_for_http_connection(struct ccnd *);
 void ccnd_msg(struct ccnd *, const char *, ...);
 
 #endif
