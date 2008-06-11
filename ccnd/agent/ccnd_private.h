@@ -118,6 +118,7 @@ struct interest_entry {
     unsigned cached_faceid;
     unsigned char idle;
     int ncomp;                  /* Number of name components */
+    struct propagating_entry *propagating_head;
 };
 /* The interest counters are scaled by a factor of CCN_UNIT_INTEREST */
 #define CCN_UNIT_INTEREST 5
@@ -149,8 +150,11 @@ struct content_entry {
  * The propagating interest hash table is keyed by Nonce.
  */
 struct propagating_entry {
+    struct propagating_entry *next;
+    struct propagating_entry *prev;
     unsigned char *interest_msg;
     size_t size;
+    unsigned faceid;
     struct ccn_indexbuf *outbound;
 };
 

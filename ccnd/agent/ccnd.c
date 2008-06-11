@@ -273,12 +273,54 @@ finalize_content(struct hashtb_enumerator *e)
 }
 
 static void
+finished_propagating(struct propagating_entry *pe)
+{
+    if (pe->interest_msg != NULL) {
+        free(pe->interest_msg);
+        pe->interest_msg = NULL;
+    }
+    if (pe->next != NULL) {
+        pe->next->prev = pe->prev;
+        pe->prev->next = pe->next;
+        pe->next = pe->prev = NULL;
+    }
+    ccn_indexbuf_destroy(&pe->outbound);
+}
+
+static void
 finalize_interest(struct hashtb_enumerator *e)
 {
     struct interest_entry *entry = e->data;
     ccn_indexbuf_destroy(&entry->interested_faceid);
     ccn_indexbuf_destroy(&entry->counters);
     bloom_destroy(&entry->back_filter);
+    if (entry->propagating_head != NULL) {
+        finished_propagating(entry->propagating_head);
+        free(entry->propagating_head);
+        entry->propagating_head = NULL;
+    }
+}
+
+static void
+link_propagating_interest_to_interest_entry(struct ccnd *h,
+    struct propagating_entry *pe, struct interest_entry *ie)
+{
+    struct propagating_entry *head = ie->propagating_head;
+    if (head == NULL) {
+        head = calloc(1, sizeof(*head));
+        head->next = head;
+        head->prev = head;
+        ie->propagating_head = head;
+    }
+    pe->next = head;
+    pe->prev = head->prev;
+    pe->prev->next = pe->next->prev = pe;
+}
+
+static void
+finalize_propagating(struct hashtb_enumerator *e)
+{
+    finished_propagating(e->data);
 }
 
 static int
@@ -454,6 +496,40 @@ content_faces_set_insert(struct content_entry *content, unsigned faceid)
     return (indexbuf_unordered_set_insert(content->faces, faceid));
 }
 
+static void
+schedule_content_delivery(struct ccnd *h, struct content_entry *content)
+{
+    if (content->sender == NULL &&
+          content->faces != NULL &&
+          content->faces->n > content->nface_done)
+        content->sender = ccn_schedule_event(h->sched,
+            choose_content_delay(h, content->faces->buf[content->nface_done],
+                                    content->flags),
+            content_sender, content, 0);
+}
+
+/*
+ * cancel_one_propagating_interest:
+ * (provided one exists)
+ * 
+ */
+static void
+cancel_one_propagating_interest(struct ccnd *h,
+                                struct interest_entry *interest, unsigned faceid)
+{
+    struct propagating_entry *head = interest->propagating_head;
+    struct propagating_entry *p;
+    if (head == NULL)
+        return;
+    /* XXX - Should we consume the oldest or the newest? */
+    for (p = head->next; p != head; p = p->next) {
+        if (p->faceid == faceid) {
+            finished_propagating(p);
+            return;
+        }
+    }
+}
+
 /*
  * match_interests: Find and consume interests that match given content
  * Adds to content->faces the faceids that should receive copies,
@@ -499,6 +575,7 @@ match_interests(struct ccnd *h, struct content_entry *content)
                             count -= CCN_UNIT_INTEREST;
                             if (count < 0)
                                 count = 0;
+                            cancel_one_propagating_interest(h, interest, faceid);
                         }
                     }
                     else
@@ -506,18 +583,66 @@ match_interests(struct ccnd *h, struct content_entry *content)
                     interest->counters->buf[i] = count;
                 }
             }
-            // XXX - somewhere around here we should be prepared to cancel a propagating interest.
         }
     }
-    if (content->sender == NULL &&
-          content->faces != NULL &&
-          content->faces->n > content->nface_done)
-        content->sender = ccn_schedule_event(h->sched,
-            choose_content_delay(h, content->faces->buf[content->nface_done],
-                                    content->flags),
-            content_sender, content, 0);
+    if (n_matched != 0)
+        schedule_content_delivery(h, content);
     return(n_matched);
 }
+
+/*
+ * match_interest_for_faceid: Find and consume interests that match given
+ *  content, restricted to the given faceid.  This is used when a new interest
+ *  arrives, so we do not want to cancel any propagating interest that
+ *  interest.
+ *  But since the content may match other interests as well, we do need
+ *  to examine all the possible matches anyway to update the counts.
+ *  In principle we could chase down propagating interests for those, but
+ *  that should be rare, I think, and maybe not desirable.
+ */
+static int
+match_interest_for_faceid(struct ccnd *h, struct content_entry *content, unsigned faceid)
+{
+    int n_matched = 0;
+    int n;
+    int i;
+    int k;
+    int ci;
+    struct face *face = NULL;
+    unsigned c0 = content->comps[0];
+    const unsigned char *key = content->key + c0;
+    for (ci = content->ncomps - 1; ci >= 0; ci--) {
+        int size = content->comps[ci] - c0;
+        struct interest_entry *interest = hashtb_lookup(h->interest_tab, key, size);
+        if (interest != NULL) {
+            n = (interest->counters == NULL) ? 0 : interest->counters->n;
+            for (i = 0; i < n; i++) {
+                if (faceid == interest->interested_faceid->buf[i]) {
+                    intptr_t count = interest->counters->buf[i];
+                    if (count == 0)
+                        break;
+                    face = face_from_faceid(h, faceid);
+                    if (face != NULL) {
+                        k = content_faces_set_insert(content, faceid);
+                        if (k >= content->nface_done) {
+                            n_matched += 1;
+                            count -= CCN_UNIT_INTEREST;
+                            if (count < 0)
+                                count = 0;
+                        }
+                    }
+                    else
+                        count = 0;
+                    interest->counters->buf[i] = count;
+                    break;
+                }
+            }
+        }
+    }
+    schedule_content_delivery(h, content);
+    return(n_matched);
+}
+
 
 /*
  * adjust_filters_matching_interests:
@@ -870,10 +995,7 @@ do_propagate(
         }
     }
     if (pe->outbound->n == 0) {
-        if (pe->interest_msg != NULL)
-            free(pe->interest_msg);
-        pe->interest_msg = NULL;
-        ccn_indexbuf_destroy(&pe->outbound);
+        finished_propagating(pe);
         reap_needed(h, 0);
         return(0);
     }
@@ -952,8 +1074,10 @@ propagate_interest(struct ccnd *h, struct face *face,
             memcpy(m, msg_out, msg_out_size);
             pe->interest_msg = m;
             pe->size = msg_out_size;
+            pe->faceid = face->faceid;
             pe->outbound = outbound;
             outbound = NULL;
+            link_propagating_interest_to_interest_entry(h, pe, ie);
             res = 0;
             ccn_schedule_event(h->sched, nrand48(h->seed) % 8192, do_propagate, pe, 0);
         }
@@ -1326,7 +1450,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,
                 }
             }
             if (content != NULL) {
-                match_interests(h, content);
+                match_interest_for_faceid(h, content, face->faceid);
                 interest->cached_accession = content->accession;
                 interest->cached_faceid = face->faceid;
                 matched = 1;
@@ -1777,7 +1901,8 @@ ccnd_create(void)
     h->content_tab = hashtb_create(sizeof(struct content_entry), &param);
     param.finalize = &finalize_interest;
     h->interest_tab = hashtb_create(sizeof(struct interest_entry), &param);
-    h->propagating_tab = hashtb_create(sizeof(struct propagating_entry), NULL);
+    param.finalize = &finalize_propagating;
+    h->propagating_tab = hashtb_create(sizeof(struct propagating_entry), &param);
     h->backlinks = ccn_matrix_create();
     h->sched = ccn_schedule_create(h);
     fd = create_local_listener(sockname, 42);
