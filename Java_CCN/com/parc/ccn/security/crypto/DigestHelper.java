@@ -1,6 +1,7 @@
 package com.parc.ccn.security.crypto;
 
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateEncodingException;
 import java.util.Arrays;
 
@@ -17,6 +18,30 @@ public class DigestHelper {
 
 	public static String DEFAULT_DIGEST_ALGORITHM = "SHA-256";
 	// public static String DEFAULT_DIGEST_ALGORITHM = "SHA-1";
+	
+	protected MessageDigest _md;
+	
+	public DigestHelper() {
+		try {
+			_md = MessageDigest.getInstance(DEFAULT_DIGEST_ALGORITHM);
+		} catch (java.security.NoSuchAlgorithmException ex) {
+			// DKS --big configuration problem
+			Library.logger().warning("Fatal Error: cannot find algorithm " + DEFAULT_DIGEST_ALGORITHM);
+			throw new RuntimeException("Error: can't find " + DEFAULT_DIGEST_ALGORITHM + "!  " + ex.toString());
+		}
+	}
+	
+	public DigestHelper(String digestAlgorithm) throws NoSuchAlgorithmException {
+		_md = MessageDigest.getInstance(digestAlgorithm);
+	}
+	
+	public void update(byte [] content, int offset, int len) {
+		_md.update(content);
+	}
+	
+	public byte [] digest() {
+		return _md.digest();
+	}
 	
     public static byte[] digest(byte [] content) {
 		return digest(DEFAULT_DIGEST_ALGORITHM, content);

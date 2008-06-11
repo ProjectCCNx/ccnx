@@ -34,12 +34,14 @@ public class CCNMerkleTree extends MerkleTree {
 	ContentName [] _blockNames = null;
 	byte [] _rootSignature = null;
 	ContentAuthenticator [] _blockAuthenticators = null;
+	int _baseBlockIndex = 0;
 	
 	public CCNMerkleTree(
 			ContentName name, 
 			PublisherKeyID publisher,
 			Timestamp timestamp,
 			byte[][] contentBlocks,
+			int baseBlockIndex,
 			KeyLocator locator,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException {
 		
@@ -47,6 +49,7 @@ public class CCNMerkleTree extends MerkleTree {
 		
 		_rootName = name;
 		
+		_baseBlockIndex = baseBlockIndex;
 		_blockNames = new ContentName[numLeaves()];
 		_blockAuthenticators = new ContentAuthenticator[numLeaves()];
 		
@@ -124,6 +127,8 @@ public class CCNMerkleTree extends MerkleTree {
 	 * into the tree. We also need to incorporate the hash
 	 * of the content block itself into the name to make it
 	 * unique.
+	 * DKS TODO aren't incorporating the fragment identifier into
+	 * the name.
 	 * @param i
 	 * @param contentBlocks
 	 * @return

@@ -292,15 +292,15 @@ public interface CCNLibrary extends CCNBase {
 	
 	public long read(CCNDescriptor ccnObject, byte [] buf, long offset, long len) throws IOException, InterruptedException;
 
-	public long write(CCNDescriptor ccnObject, byte [] buf, long offset, long len) throws IOException, InterruptedException;
+	public long write(CCNDescriptor ccnObject, byte [] buf, long offset, long len) throws IOException, InterruptedException, InvalidKeyException, SignatureException, NoSuchAlgorithmException;
 	
 	public int seek(CCNDescriptor ccnObject, long offset, CCNDescriptor.SeekWhence whence) throws IOException, InterruptedException;
 	
 	public long tell(CCNDescriptor ccnObject);
 	
-	public int close(CCNDescriptor ccnObject);
+	public int close(CCNDescriptor ccnObject) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException;
 	
-	public void sync(CCNDescriptor ccnObject);
+	public void sync(CCNDescriptor ccnObject) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException;
 	
 	/**
 	 * Does this name refer to a node that represents

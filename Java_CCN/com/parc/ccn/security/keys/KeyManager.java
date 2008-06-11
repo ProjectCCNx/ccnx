@@ -76,6 +76,7 @@ public abstract class KeyManager {
 
 	public abstract PrivateKey getSigningKey(String alias);
 	public abstract PrivateKey getSigningKey(PublisherID publisher);
+	public abstract PrivateKey getSigningKey(PublisherKeyID publisherKeyID);
 	
 
 	/**

@@ -138,7 +138,11 @@ public class StandardCCNLibrary implements CCNLibrary {
 
 		if (null == locator)
 			locator = keyManager().getKeyLocator(signingKey);
-	
+		
+		if (null == publisher) {
+			publisher = keyManager().getPublisherKeyID(signingKey);
+		}
+
 		try {
 			return newVersion(name, collectionData.encode(), 
 								ContentType.COLLECTION, publisher);
@@ -239,7 +243,11 @@ public class StandardCCNLibrary implements CCNLibrary {
 
 		if (null == locator)
 			locator = keyManager().getKeyLocator(signingKey);
-	
+		
+		if (null == publisher) {
+			publisher = keyManager().getPublisherKeyID(signingKey);
+		}
+
 		Link linkData = new Link(target, targetAuthenticator);
 		try {
 			return put(src, linkData.encode(), ContentType.LINK, publisher, locator, signingKey);
@@ -756,29 +764,33 @@ public class StandardCCNLibrary implements CCNLibrary {
 			contentBlocks[i] = new byte[end-from];
 			System.arraycopy(contents, from, contentBlocks[i], 0, (to < contents.length) ? to : contents.length);
 		}
-
-		// Digest of complete contents
-		// If we're going to unique-ify the block names
-		// (or just in general) we need to incorporate the names
-		// in the MerkleTree blocks. 
-    	CCNMerkleTree tree = 
-    		new CCNMerkleTree(name, publisher, timestamp, 
-    						  contentBlocks, locator, signingKey);
-
-		for (int i = 0; i < nBlocks; i++) {
-			try {
-				CompleteName blockCompleteName = tree.getBlockCompleteName(i);
-				put(blockCompleteName.name(), blockCompleteName.authenticator(), 
-						blockCompleteName.signature(), contentBlocks[i]);
-			} catch (IOException e) {
-				Library.logger().warning("This should not happen: we cannot put our own blocks!");
-				Library.warningStackTrace(e);
-				throw e;
-			}
-		}
+		
+		byte [] contentTreeAuthenticator = putMerkleTree(name, contentBlocks, baseFragment(), timestamp, publisher, locator, signingKey);
+		
 		// construct the headerBlockContents;
 		byte [] contentDigest = DigestHelper.digest(contents);
-		Header header = new Header(contents.length, contentDigest, tree.root());
+		return putHeader(name, contents.length, contentDigest, contentTreeAuthenticator,
+						 type, timestamp, publisher, locator, signingKey);
+	}
+	
+	CompleteName putHeader(ContentName name, int contentLength, byte [] contentDigest, 
+				byte [] contentTreeAuthenticator,
+				ContentAuthenticator.ContentType type,
+				Timestamp timestamp, 
+				PublisherKeyID publisher, KeyLocator locator,
+				PrivateKey signingKey) throws IOException, InvalidKeyException, SignatureException, InterruptedException {
+
+		if (null == signingKey)
+			signingKey = keyManager().getDefaultSigningKey();
+
+		if (null == locator)
+			locator = keyManager().getKeyLocator(signingKey);
+		
+		if (null == publisher) {
+			publisher = keyManager().getPublisherKeyID(signingKey);
+		}		
+		
+		Header header = new Header(contentLength, contentDigest, contentTreeAuthenticator);
 		byte[] encodedHeader = null;
 		try {
 			encodedHeader = header.encode();
@@ -803,7 +815,51 @@ public class StandardCCNLibrary implements CCNLibrary {
 			Library.warningStackTrace(e);
 			throw e;
 		}
-		return headerBlockInformation;
+		return headerBlockInformation;		
+	}
+	
+	/**
+	 * Control whether fragments start at 0 or 1.
+	 * @return
+	 */
+	public static final int baseFragment() { return 0; }
+
+	
+	byte [] putMerkleTree(ContentName name, byte [][] contentBlocks, int baseBlockIndex,
+			Timestamp timestamp,
+			PublisherKeyID publisher, KeyLocator locator,
+			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException {
+
+		if (null == signingKey)
+			signingKey = keyManager().getDefaultSigningKey();
+
+		if (null == locator)
+			locator = keyManager().getKeyLocator(signingKey);
+		
+		if (null == publisher) {
+			publisher = keyManager().getPublisherKeyID(signingKey);
+		}		
+		
+		// Digest of complete contents
+		// If we're going to unique-ify the block names
+		// (or just in general) we need to incorporate the names
+		// in the MerkleTree blocks. 
+    	CCNMerkleTree tree = 
+    		new CCNMerkleTree(name, publisher, timestamp, 
+    						  contentBlocks, baseBlockIndex, locator, signingKey);
+
+		for (int i = 0; i < contentBlocks.length; i++) {
+			try {
+				CompleteName blockCompleteName = tree.getBlockCompleteName(i);
+				put(blockCompleteName.name(), blockCompleteName.authenticator(), 
+						blockCompleteName.signature(), contentBlocks[i]);
+			} catch (IOException e) {
+				Library.logger().warning("This should not happen: we cannot put our own blocks!");
+				Library.warningStackTrace(e);
+				throw e;
+			}
+		}
+		return tree.root();
 	}
 	
 	/**
@@ -1003,7 +1059,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 		return ccnObject.read(buf,offset,len);
 	}
 
-	public long write(CCNDescriptor ccnObject, byte [] buf, long offset, long len) throws IOException, InterruptedException {
+	public long write(CCNDescriptor ccnObject, byte [] buf, long offset, long len) throws IOException, InterruptedException, InvalidKeyException, SignatureException, NoSuchAlgorithmException {
 		return ccnObject.write(buf, offset, len);
 	}
 
@@ -1015,11 +1071,11 @@ public class StandardCCNLibrary implements CCNLibrary {
 		return ccnObject.tell();
 	}
 	
-	public int close(CCNDescriptor ccnObject) {
+	public int close(CCNDescriptor ccnObject) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException {
 		return ccnObject.close();
 	}
 	
-	public void sync(CCNDescriptor ccnObject) {
+	public void sync(CCNDescriptor ccnObject) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException {
 		ccnObject.sync();
 	}
 	

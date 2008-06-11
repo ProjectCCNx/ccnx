@@ -96,6 +96,12 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 			return true;
 		if (obj == null)
 			return false;
+		if (PublisherKeyID.class == obj.getClass()) {
+			if (PublisherType.KEY == this.type())
+				return (Arrays.equals(_publisherID, ((PublisherKeyID)obj).id()));
+			// TODO DKS fill in...
+			throw new UnsupportedOperationException("Have to finish up equals!");			
+		}
 		if (getClass() != obj.getClass())
 			return false;
 		final PublisherID other = (PublisherID) obj;
@@ -108,7 +114,7 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 			return false;
 		return true;
 	}
-	
+		
 	public boolean isSigner() {
 		return ((PublisherType.KEY == type()) || (PublisherType.CERTIFICATE == type()));
 	}

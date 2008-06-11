@@ -60,6 +60,8 @@ public class PublisherKeyID extends GenericXMLEncodable implements XMLEncodable,
 			return true;
 		if (obj == null)
 			return false;
+		if (PublisherID.class == obj.getClass())
+			return obj.equals(this); // put complex implementation in one place
 		if (getClass() != obj.getClass())
 			return false;
 		final PublisherKeyID other = (PublisherKeyID) obj;

@@ -2,6 +2,11 @@ package com.parc.ccn.library;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.SignatureException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -14,7 +19,10 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.security.KeyLocator;
+import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.library.CCNLibrary.OpenMode;
+import com.parc.ccn.security.crypto.DigestHelper;
 
 /**
  * An object which contains state operation for 
@@ -35,9 +43,16 @@ import com.parc.ccn.library.CCNLibrary.OpenMode;
  */
 public class CCNDescriptor {
 	
+	/**
+	 * Maximum number of blocks we keep around before we build a
+	 * Merkle tree and flush. Should be based on lengths of merkle
+	 * paths and signatures and so on.
+	 */
+	protected static final int BLOCK_BUF_COUNT = 128;
+	
 	public enum SeekWhence {SEEK_SET, SEEK_CUR, SEEK_END};
 	
-	protected CCNLibrary _library = null;
+	protected StandardCCNLibrary _library = null;
 	
 	protected OpenMode _mode = null;
 	
@@ -75,6 +90,11 @@ public class CCNDescriptor {
 	protected byte [] _verifiedRootSignature = null;
 	
 	/**
+	 * Write data
+	 */
+	long _totalLength = 0;
+	
+	/**
 	 * Start out with an implementation in terms of
 	 * get returning us a block of data, rather than
 	 * calling us back. Update as necessary. For
@@ -82,7 +102,20 @@ public class CCNDescriptor {
 	 * this a different way.
 	 */
 	protected ContentObject _currentBlock = null;
-	protected long _blockOffset = 0; // offset into current block
+	protected int _blockOffset = 0; // read/write offset into current block
+	protected int _blockIndex = 0; // index into array of block buffers
+	protected byte [][] _blockBuffers = null;
+	protected int _baseBlockIndex; // base index of current set of block buffers.
+	
+	protected Timestamp _timestamp; // timestamp we use for writing, set to first time we write
+	
+	protected PublisherKeyID _publisher;
+	protected KeyLocator _locator;
+	protected PrivateKey _signingKey;
+
+	protected ContentAuthenticator.ContentType _type;
+	
+	protected DigestHelper _dh;
 
 	/**
 	 * Open header of existing object for reading, or prepare new
@@ -98,13 +131,20 @@ public class CCNDescriptor {
 	 * @throws IOException 
 	 */
 	public CCNDescriptor(CompleteName name,
-						 OpenMode mode, CCNLibrary library) throws XMLStreamException, IOException, InterruptedException {
+						 OpenMode mode, 
+						 PublisherKeyID publisher,
+						 KeyLocator locator,
+						 PrivateKey signingKey,
+						 StandardCCNLibrary library) throws XMLStreamException, IOException, InterruptedException {
 		_library = library; 
 		if (null == _library) {
 			throw new IllegalArgumentException("Unexpected null library in CCNDescriptor constructor!");
 		}
 
 		_mode = mode;
+		_publisher = publisher;
+		_locator = locator;
+		_signingKey = signingKey;
 		
 		if (_mode == OpenMode.O_RDONLY)
 			openForReading(name);
@@ -113,11 +153,23 @@ public class CCNDescriptor {
 		
 	}
 	
+	public CCNDescriptor(CompleteName name,
+			 OpenMode mode, StandardCCNLibrary library) throws XMLStreamException, IOException, InterruptedException {
+		this(name, mode, null, null, null, library);
+	}
+
+		
 	protected void openForWriting(CompleteName name) {
 		ContentName nameToOpen = name.name();
 		if (StandardCCNLibrary.isFragment(name.name())) {
 			// DKS TODO: should we do this?
 			nameToOpen = StandardCCNLibrary.fragmentRoot(nameToOpen);
+		}
+		
+		if (null != name.authenticator()) {
+			_type = name.authenticator().type();
+		} else {
+			_type = ContentAuthenticator.ContentType.LEAF;
 		}
 		
 		// Assume if name is already versioned, caller knows what name
@@ -140,6 +192,11 @@ public class CCNDescriptor {
 		// fragments. 
 		_baseName = nameToOpen;
 		_headerName = StandardCCNLibrary.headerName(_baseName);
+		
+		_blockBuffers = new byte[BLOCK_BUF_COUNT][];
+		_baseBlockIndex = StandardCCNLibrary.baseFragment();
+		
+		_dh = new DigestHelper();
 	}
 	
 	protected void openForReading(CompleteName name) throws IOException, InterruptedException, XMLStreamException {
@@ -235,6 +292,8 @@ public class CCNDescriptor {
 	 * the object. By default, that starts at the beginning of the object (byte 0)
 	 * after open, and subsequent calls to read pick up where the last left off
 	 * (analogous to fread), but it can be moved by calling seek.
+	 * 
+	 * DKS TODO cope with int/long problem in System.arraycopy here and in write. 
 	 * @param buf the buffer into which to write.
 	 * @param offset the offset into buf at which to write data
 	 * @param len the number of bytes to write
@@ -243,6 +302,9 @@ public class CCNDescriptor {
 	 * @throws IOException 
 	 */
 	public long read(byte[] buf, long offset, long len) throws IOException, InterruptedException {
+		
+		if (!openForReading())
+			throw new IOException("CCNDescriptor for content name: " + _baseName + " is not open for reading!");
 		
 		int result = 0;
 		
@@ -272,19 +334,99 @@ public class CCNDescriptor {
 		return 0;
 	}
 	
-	public long write(byte[] buf, long offset, long len) {
-		// TODO Auto-generated method stub
-		return 0;
-	}
+	public long write(byte[] buf, long offset, long len) throws IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException {
+		if (!openForWriting())
+			throw new IOException("CCNDescriptor for content name: " + _baseName + " is not open for writing!");
 
-	public int close() {
-		// TODO Auto-generated method stub
-		return 0;
-	}
-
-	public void sync() {
-		// TODO Auto-generated method stub
+		if ((len <= 0) || (null == buf) || (buf.length == 0) || (offset >= buf.length))
+			return 0;
 		
+		long bytesToWrite = len;
+		
+		while (bytesToWrite > 0) {
+			if (_blockIndex >= BLOCK_BUF_COUNT) {
+				sync();
+			}
+		
+			if (null == _blockBuffers[_blockIndex]) {
+				_blockBuffers[_blockIndex] = new byte[Header.DEFAULT_BLOCKSIZE];
+				_blockOffset = 0;
+			}
+			
+			long thisBufAvail = _blockBuffers[_blockIndex].length - _blockOffset;
+			long toWriteNow = (thisBufAvail > bytesToWrite) ? bytesToWrite : thisBufAvail;
+			
+			System.arraycopy(buf, (int)offset, _blockBuffers[_blockIndex], (int)_blockOffset, (int)toWriteNow);
+			_dh.update(buf, (int) offset, (int)toWriteNow);
+			
+			bytesToWrite -= toWriteNow; 
+			_blockOffset += toWriteNow;
+			
+			if (_blockOffset >= _blockBuffers[_blockIndex].length) {
+				++_blockIndex;
+				_blockOffset = 0;
+			}
+		}
+		_totalLength += len;
+		return 0;
+	}
+
+	public int close() throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException {
+		if (openForWriting()) {
+			// Special case; if we don't need to fragment, don't. Can't
+			// do this in sync(), as we can't tell a manual sync from a close.
+			// Though that means a manual sync(); close(); on a short piece of
+			// content would end up with unnecessary fragmentation...
+			if ((_baseBlockIndex == StandardCCNLibrary.baseFragment()) && 
+					((_blockIndex == 0) || ((_blockIndex == 1) && (_blockOffset == 0)))) {
+				// maybe need put with offset and length
+				if ((_blockIndex == 1) || (_blockOffset == _blockBuffers[0].length)) {
+					_library.put(_baseName, _blockBuffers[0], _type, _publisher, _locator, _signingKey);
+				} else {
+					byte [] tempBuf = new byte[_blockOffset];
+					System.arraycopy(_blockBuffers[0],0,tempBuf,0,_blockOffset);
+					_library.put(_baseName, tempBuf, _type, _publisher, _locator, _signingKey);
+				}
+			} else {
+				sync();
+				writeHeader();
+			}
+		}
+		return 0;
+	}
+
+	public void sync() throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException {
+		
+		if (!openForWriting())
+			return;
+		
+		if (null == _timestamp)
+			_timestamp = ContentAuthenticator.now();
+	
+		// Generate Merkle tree (or other auth structure) and authenticators and put contents.
+		_library.putMerkleTree(_baseName, _blockBuffers, _baseBlockIndex, _timestamp, _publisher, _locator, _signingKey);
+		// Set contents of blocks to 0
+		for (int i=0; i < _blockBuffers.length; ++i) {
+			Arrays.fill(_blockBuffers[i], 0, _blockBuffers[i].length, (byte)0);
+		}
+		_baseBlockIndex += _blockIndex;
+		_blockIndex = 0;
+	}
+	
+	protected void writeHeader() throws InvalidKeyException, SignatureException, IOException, InterruptedException {
+		// What do we put in the header if we have multiple merkle trees?
+		_library.putHeader(_baseName, (int)_totalLength, _dh.digest(), 
+				null,
+				_type,
+				_timestamp, _publisher, _locator, _signingKey);
+	}
+	
+	public boolean openForReading() {
+		return ((null != _mode) && (OpenMode.O_RDONLY == _mode));
+	}
+
+	public boolean openForWriting() {
+		return ((null != _mode) && (OpenMode.O_WRONLY == _mode));
 	}
 
 	/**

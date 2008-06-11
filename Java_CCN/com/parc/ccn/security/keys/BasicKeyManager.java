@@ -483,6 +483,15 @@ public class BasicKeyManager extends KeyManager {
 	}
 
 	@Override
+	public PrivateKey getSigningKey(PublisherKeyID publisher) {
+		// TODO Auto-generated method stub
+		Library.logger().info("getSigningKey: retrieving key: " + publisher);
+		if (_defaultKeyID.equals(publisher))
+			return _privateKey;
+		return null;
+	}
+
+	@Override
 	public PublicKey getPublicKey(PublisherKeyID publisherID, KeyLocator keyLocator) throws IOException, InterruptedException {
 		// TODO Auto-generated method stub
 		Library.logger().info("getPublicKey: retrieving key: " + publisherID + " located at: " + keyLocator);
