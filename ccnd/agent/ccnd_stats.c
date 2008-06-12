@@ -131,11 +131,16 @@ int
 ccnd_stats_check_for_http_connection(struct ccnd *h)
 {
     int res;
+    int fd;
     char *response = NULL;
     char buf[7] = "GET / ";
-    int fd = accept(h->httpd_listener_fd, NULL, 0);
+    if (h->httpd_listener_fd == -1)
+        return(-1);
+    fd = accept(h->httpd_listener_fd, NULL, 0);
     if (fd == -1) {
         perror("check_for_http_connection - accept");
+        close(h->httpd_listener_fd);
+        h->httpd_listener_fd = -1;
         return(-1);
     }
     // XXX - the blocking read opens us to a D.O.S., but non-blocking causes

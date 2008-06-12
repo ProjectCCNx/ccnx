@@ -1638,16 +1638,20 @@ get_dgram_source(struct ccnd *h, struct face *face,
 static void
 process_input(struct ccnd *h, int fd)
 {
-    struct face *face = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
+    struct face *face = NULL;
     struct face *source = NULL;
     ssize_t res;
     ssize_t dres;
     ssize_t msgstart;
     unsigned char *buf;
-    struct ccn_skeleton_decoder *d = &face->decoder;
+    struct ccn_skeleton_decoder *d;
     struct sockaddr_storage sstor;
     socklen_t addrlen = sizeof(sstor);
     struct sockaddr *addr = (struct sockaddr *)&sstor;
+    face = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
+    if (face == NULL)
+        return;
+    d = &face->decoder;
     if (face->inbuf == NULL)
         face->inbuf = ccn_charbuf_create();
     if (face->inbuf->length == 0)
@@ -1795,7 +1799,7 @@ run(struct ccnd *h)
         h->fds[0].fd = h->local_listener_fd;
         h->fds[0].events = POLLIN;
         h->fds[1].fd = h->httpd_listener_fd;
-        h->fds[1].events = POLLIN;
+        h->fds[1].events = (h->httpd_listener_fd == -1) ? 0 : POLLIN;
         for (i = specials, hashtb_start(h->faces_by_fd, e);
              i < h->nfds && e->data != NULL;
              i++, hashtb_next(e)) {
@@ -1840,7 +1844,7 @@ run(struct ccnd *h)
                 }
                 if (h->fds[i].revents & (POLLOUT))
                     do_deferred_write(h, h->fds[i].fd);
-                if (h->fds[i].revents & (POLLIN))
+                else if (h->fds[i].revents & (POLLIN))
                     process_input(h, h->fds[i].fd);
             }
         }
