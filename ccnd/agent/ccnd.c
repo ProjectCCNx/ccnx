@@ -222,7 +222,7 @@ content_from_accession(struct ccnd *h, uint_least64_t accession)
 }
 
 static void
-enroll_content(struct ccnd *h, struct content_entry *content)
+enroll_content(struct ccnd *h, struct content_entry *content) // XXX - neworder
 {
     unsigned new_window;
     struct content_entry **new_array;
@@ -247,7 +247,7 @@ enroll_content(struct ccnd *h, struct content_entry *content)
 }
 
 static void
-finalize_content(struct hashtb_enumerator *e)
+finalize_content(struct hashtb_enumerator *e) // XXX - neworder
 {
     struct ccnd *h = hashtb_get_param(e->ht, NULL);
     struct content_entry *entry = e->data;
@@ -870,7 +870,7 @@ aging_needed(struct ccnd *h)
  * and expires short-term blocking state.
  */
 static int
-clean_deamon(
+clean_deamon( // XXX - neworder
              struct ccn_schedule *sched,
              void *clienth,
              struct ccn_scheduled_event *ev,
@@ -1096,7 +1096,7 @@ propagate_interest(struct ccnd *h, struct face *face,
 }
 
 static void
-create_backlinks_for_new_interest(struct ccnd *h,
+create_backlinks_for_new_interest(struct ccnd *h, // XXX - neworder
       struct interest_entry *interest,
       unsigned char *msg, struct ccn_indexbuf *comps) {
     struct interest_entry *shorter = NULL;
@@ -1314,7 +1314,7 @@ bloom_insert(struct content_entry *content, struct back_filter *f)
 }
 
 static void
-bloom_update_for_old_content(struct ccnd *h, struct interest_entry *interest)
+bloom_update_for_old_content(struct ccnd *h, struct interest_entry *interest) // XXX - neworder
 {
     struct back_filter *f = interest->back_filter;
     int ncomps = interest->ncomp;
@@ -1376,7 +1376,7 @@ content_is_unblocked(struct content_entry *content,
 }
 
 static void
-process_incoming_interest(struct ccnd *h, struct face *face,
+process_incoming_interest(struct ccnd *h, struct face *face,  // XXX - neworder
                       unsigned char *msg, size_t size)
 {
     struct hashtb_enumerator ee;
@@ -1482,7 +1482,7 @@ get_signature_offset(struct ccn_parsed_ContentObject *pco, const unsigned char *
 }
 
 static void
-process_incoming_content(struct ccnd *h, struct face *face,
+process_incoming_content(struct ccnd *h, struct face *face, // XXX - neworder
                       unsigned char *msg, size_t size)
 {
     struct hashtb_enumerator ee;
@@ -1879,7 +1879,7 @@ ccnd_get_local_sockname(void)
 }
 
 static struct ccnd *
-ccnd_create(void)
+ccnd_create(void) // XXX - neworder
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
