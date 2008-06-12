@@ -127,6 +127,8 @@
 			minOccurs="0" maxOccurs="1"/>
     <xs:element name="Nonce" type="Base64BinaryType"
 			minOccurs="0" maxOccurs="1"/>
+    <xs:element name="ExperimentalResponseFilter" type="Base64BinaryType"
+			minOccurs="0" maxOccurs="1"/>
   </xs:sequence>
 </xs:complexType>
 

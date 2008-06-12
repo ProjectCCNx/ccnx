@@ -52,7 +52,7 @@
 		ContentDigest)>
 <!ATTLIST ContentAuthenticator %commonattrs;>
 
-<!ELEMENT Interest	(Name, PublisherID?, Scope?, Nonce?)>
+<!ELEMENT Interest	(Name, PublisherID?, Scope?, Nonce?, ExperimentalResponseFilter?)>
 <!ATTLIST Interest	%commonattrs;>
 
 <!ELEMENT PublisherID	(#PCDATA)>	<!-- base64Binary SHA-256 digest -->
@@ -74,6 +74,9 @@
 
 <!ELEMENT Nonce         (#PCDATA)>      <!-- base64Binary -->
 <!ATTLIST Nonce         ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT ExperimentalResponseFilter (#PCDATA)>      <!-- base64Binary -->
+<!ATTLIST ExperimentalResponseFilter ccnbencoding CDATA #FIXED 'base64Binary'>
 
 <!ELEMENT PublisherKeyID (#PCDATA)>	<!-- base64Binary SHA-256 digest -->
 <!ATTLIST PublisherKeyID ccnbencoding CDATA #FIXED 'base64Binary'>
