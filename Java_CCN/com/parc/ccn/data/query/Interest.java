@@ -119,8 +119,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		if (decoder.peekStartElement(NONCE_ELEMENT)) {
 			_nonce = decoder.readBinaryElement(NONCE_ELEMENT);
 		}
-			
-		decoder.readEndElement();
+		try {
+			decoder.readEndElement();
+		} catch (XMLStreamException e) {
+			// DKS TODO -- get Michael to update schema!
+		}
 	}
 
 	public void encode(XMLEncoder encoder) throws XMLStreamException {
