@@ -186,7 +186,7 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
         return id;
     }
 
-	public int compareTo(PublisherID o) {
+ 	public int compareTo(PublisherID o) {
 		int result = DataUtils.compareTo(this.id(), o.id());
 		if (0 == result) {
 			result = typeToName(this.type()).compareTo(typeToName(o.type()));
@@ -194,4 +194,9 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 		return result;
 	}
 
+	@Override
+	public String toString() {
+		// 	16 would be the most familiar option, but 32 is shorter
+		return typeToName(type()) + ":" + DigestHelper.printBytes(id(), 32);
+	}
 }

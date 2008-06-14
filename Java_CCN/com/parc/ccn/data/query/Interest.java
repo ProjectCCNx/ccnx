@@ -30,12 +30,14 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public static final String INTEREST_ELEMENT = "Interest";
 	public static final String SCOPE_ELEMENT = "Scope";
 	public static final String NONCE_ELEMENT = "Nonce";
+	public static final String RESPONSE_FILTER_ELEMENT = "ExperimentalResponseFilter";
 
 	protected ContentName _name;
 	// DKS TODO can we really support a PublisherID here, or just a PublisherKeyID?
 	protected PublisherID _publisher;
 	protected Integer _scope;
 	protected byte [] _nonce;
+	protected byte [] _responseFilter;
 	
 	/**
 	 * TODO: DKS figure out how to handle encoding faster,
@@ -67,6 +69,8 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public Integer scope() { return _scope; }
 	
 	public byte [] nonce() { return _nonce; }
+	
+	public byte [] responseFilter() { return _responseFilter; }
 	
 	public boolean matches(CompleteName result) {
 		if (null == name() || null == result)
@@ -119,6 +123,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		if (decoder.peekStartElement(NONCE_ELEMENT)) {
 			_nonce = decoder.readBinaryElement(NONCE_ELEMENT);
 		}
+		
+		if (decoder.peekStartElement(RESPONSE_FILTER_ELEMENT)) {
+			_responseFilter = decoder.readBinaryElement(RESPONSE_FILTER_ELEMENT);
+		}
+		
 		try {
 			decoder.readEndElement();
 		} catch (XMLStreamException e) {
@@ -141,6 +150,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 
 		if (null != nonce())
 			encoder.writeElement(NONCE_ELEMENT, nonce());
+
+		if (null != responseFilter())
+			encoder.writeElement(RESPONSE_FILTER_ELEMENT, responseFilter());
 
 		encoder.writeEndElement();   		
 	}

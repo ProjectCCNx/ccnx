@@ -1,5 +1,6 @@
 package com.parc.ccn.security.crypto;
 
+import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateEncodingException;
@@ -172,5 +173,10 @@ public class DigestHelper {
 		DERObject di = CryptoUtil.decode(encodedDigest);
 		DigestInfo info = new DigestInfo((ASN1Sequence)di);
 		return info;
+	}
+	
+	public static String printBytes(byte [] binaryObject, int radix) {
+		BigInteger bi = new BigInteger(1,binaryObject);
+		return bi.toString(radix);
 	}
 }
