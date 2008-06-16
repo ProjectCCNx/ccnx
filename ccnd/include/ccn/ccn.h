@@ -108,6 +108,49 @@ int ccn_name_init(struct ccn_charbuf *c);
 int ccn_name_append(struct ccn_charbuf *c, const void *component, size_t n);
 
 /***********************************
+ * Authenticators and signatures for content are constructed in charbufs
+ * using the following routines.
+ */
+
+enum ccn_content_type {
+    CCN_CONTENT_FRAGMENT,
+    CCN_CONTENT_LINK,
+    CCN_CONTENT_COLLECTION,
+    CCN_CONTENT_LEAF,
+    CCN_CONTENT_SESSION,
+    CCN_CONTENT_HEADER
+};
+
+/*
+ * ccn_auth_init: create authenticator in a charbuf 
+ * Note that KeyLocator is optional (may be NULL) and is ignored 
+ * even if set in initial placeholder implementation
+ * Return value is 0, or -1 for error.
+ */
+int
+ccn_auth_create(struct ccn_charbuf *c,
+	      struct ccn_charbuf *PublisherKeyID,
+	      int NameComponentCount,
+	      struct ccn_charbuf *Timestamp,
+	      enum ccn_content_type Type,
+	      struct ccn_charbuf *KeyLocator,
+	      struct ccn_charbuf *ContentDigest);
+
+/*
+ * ccn_sign: placeholder to create a signature value.
+ */
+int
+ccn_sign(struct ccn_charbuf *c, 
+	 const struct ccn_charbuf *input);
+
+/*
+ * ccn_digest: placeholder to create a digest value.
+ */
+int
+ccn_digest(struct ccn_charbuf *c, 
+	   const struct ccn_charbuf *input);
+
+/***********************************
  * ccn_express_interest: 
  * repeat: -1 - keep expressing until cancelled
  *          0 - cancel this interest
@@ -282,6 +325,28 @@ int ccn_parse_ContentObject(const unsigned char *msg, size_t size,
  */
 int ccn_compare_names(const unsigned char *a, size_t asize,
                       const unsigned char *b, size_t bsize);
+
+/***********************************
+ * Binary encoding
+ */
+
+/*
+ * ccn_encode_ContentObject:
+ *    buf: output buffer where encoded object is written
+ *    Name: encoded name from ccn_name_init
+ *    ContentAuthenticator: encoded authenticator from ccn_auth_create
+ *    Signature: encoded signature from ccn_sign
+ *    Content: raw content 
+ *    len: length of the content
+ */
+
+int ccn_encode_ContentObject(struct ccn_charbuf *buf,
+			     struct ccn_charbuf *Name,
+			     struct ccn_charbuf *ContentAuthenticator,
+			     struct ccn_charbuf *Signature,
+			     const char *Content, int len);
+
+const char * ccn_content_name(enum ccn_content_type type);
 
 /***********************************
  * Low-level binary formatting

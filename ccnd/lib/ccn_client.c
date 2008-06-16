@@ -274,6 +274,87 @@ ccn_check_namebuf(struct ccn *h, struct ccn_charbuf *namebuf)
 }
 
 int
+ccn_auth_create(struct ccn_charbuf *c,
+	      struct ccn_charbuf *PublisherKeyID,
+	      int NameComponentCount,
+	      struct ccn_charbuf *Timestamp,
+	      enum ccn_content_type Type,
+	      struct ccn_charbuf *KeyLocator,
+	      struct ccn_charbuf *ContentDigest)
+{
+    int res;
+    const char *typename = ccn_content_name(Type);
+    if (typename == NULL) {
+	return -1;
+    }
+    struct ccn_charbuf *name_comp_count = NULL;
+    
+    res = ccn_charbuf_append_tt(c, PublisherKeyID->length, CCN_BLOB);
+    if (res == -1) return(res);
+    res = ccn_charbuf_append_charbuf(c, PublisherKeyID);
+    if (res == -1) return(res);
+    name_comp_count = ccn_charbuf_create();
+    if (name_comp_count == NULL || 
+	ccn_charbuf_putf(name_comp_count, "%d", NameComponentCount) != 0) {
+	ccn_charbuf_destroy(&name_comp_count);
+	return -1;
+    }
+    res = ccn_charbuf_append_tt(c, name_comp_count->length, CCN_UDATA);
+    if (res == -1) {
+	ccn_charbuf_destroy(&name_comp_count);
+	return(res);
+    }
+    res = ccn_charbuf_append_charbuf(c, name_comp_count);
+    if (res == -1) {
+	ccn_charbuf_destroy(&name_comp_count);
+	return(res);
+    }
+    res = ccn_charbuf_append_tt(c, Timestamp->length, CCN_UDATA);
+    if (res == -1) return(res);
+    res = ccn_charbuf_append_charbuf(c, Timestamp);
+    if (res == -1) return(res);
+    if (typename != NULL) {
+	res = ccn_charbuf_append_tt(c, strlen(typename), CCN_UDATA);
+	if (res == -1) return(res);
+	res = ccn_charbuf_append(c, typename, strlen(typename));
+	if (res == -1) return(res);
+    }
+    if (KeyLocator != NULL) {
+	res = ccn_charbuf_append_charbuf(c, KeyLocator);
+	if (res == -1) return(res);
+    }
+    res = ccn_charbuf_append_tt(c, ContentDigest->length, CCN_BLOB);
+    if (res == -1) return(res);
+    res = ccn_charbuf_append_charbuf(c, ContentDigest);
+    if (res == -1) return(res);
+
+
+    return res;
+}
+	      
+/* NOTE: ccn_sign is a placeholder at this time, it does nothing
+   useful but produces a constant signature to fill the field.
+   This won't ever verify of course */
+int
+ccn_sign(struct ccn_charbuf *c, 
+	 const struct ccn_charbuf *input)
+{
+    int const_sig = 0x0;
+    return ccn_charbuf_append(c, &const_sig, sizeof(const_sig));
+}
+
+/* NOTE: ccn_digest is a placeholder at this time, it does nothing
+   useful but produces a constant digest to fill the field.
+*/
+int
+ccn_digest(struct ccn_charbuf *c, 
+	 const struct ccn_charbuf *input)
+{
+    int const_digest = 0x0;
+    return ccn_charbuf_append(c, &const_digest, sizeof(const_digest));
+}
+
+int
 ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
                      int repeat, struct ccn_closure *action,
                      struct ccn_charbuf *interest_template)

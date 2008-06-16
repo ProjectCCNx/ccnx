@@ -23,6 +23,7 @@ struct ccn_charbuf *ccn_charbuf_create(void);
 void ccn_charbuf_destroy(struct ccn_charbuf **cbp);
 unsigned char *ccn_charbuf_reserve(struct ccn_charbuf *c, size_t n);
 int ccn_charbuf_append(struct ccn_charbuf *c, const void *p, size_t n);
+int ccn_charbuf_append_charbuf(struct ccn_charbuf *c, const struct ccn_charbuf *i);
 int ccn_charbuf_putf(struct ccn_charbuf *c, const char *fmt, ...);
 
 #endif
