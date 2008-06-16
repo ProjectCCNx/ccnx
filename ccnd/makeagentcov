@@ -1,0 +1,6 @@
+#!/bin/sh
+# Assuming we're using gcc, set up to run gcov on ccnd.
+make
+rm agent/ccnd.o agent/ccnd
+make COPT='-g -fprofile-arcs -ftest-coverage'
+echo "### Say 'make coverage' after test run to generate gcov results"
