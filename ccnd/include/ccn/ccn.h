@@ -17,14 +17,19 @@
 
 #define CCN_INTEREST_HALFLIFE_MICROSEC 4000000
 
+/* opaque declarations */
 struct ccn;
-enum ccn_upcall_kind {
-    CCN_UPCALL_FINAL,       /* handler is about to be deregistered */
-    CCN_UPCALL_INTEREST,    /* incoming interest */
-    CCN_UPCALL_CONSUMED_INTEREST, /* incoming interest, someone has answered */
-    CCN_UPCALL_CONTENT      /* incoming content */
-};
+
+/* forward declarations */
 struct ccn_closure;
+enum ccn_upcall_kind;
+
+/*
+ * Types for implementing upcalls
+ * To receive notifications of incoming interests and content, the
+ * client is expected to create closures (using client-managed memory).
+ * 
+ */
 typedef int (*ccn_handler)(
     struct ccn_closure *selfp,
     enum ccn_upcall_kind kind,
@@ -34,6 +39,12 @@ typedef int (*ccn_handler)(
     struct ccn_indexbuf *comps,   /* component boundaries within ccnb */
     int matched_comps             /* number of components in registration */
 );
+enum ccn_upcall_kind {
+    CCN_UPCALL_FINAL,       /* handler is about to be deregistered */
+    CCN_UPCALL_INTEREST,    /* incoming interest */
+    CCN_UPCALL_CONSUMED_INTEREST, /* incoming interest, someone has answered */
+    CCN_UPCALL_CONTENT      /* incoming content */
+};
 struct ccn_closure {
     ccn_handler p; 
     void *data;    /* for client use */
@@ -247,6 +258,7 @@ struct ccn_parsed_ContentObject {
     int Signature;
     int Content;
 };
+
 /*
  * ccn_parse_ContentObject:
  * Returns 0, or a negative value for an error.
@@ -259,6 +271,17 @@ int ccn_parse_ContentObject(const unsigned char *msg, size_t size,
                    struct ccn_parsed_ContentObject *x,
                    struct ccn_indexbuf *components);
 
+/*
+ * ccn_compare_names:
+ * Returns a value that is negative, zero, or positive depending upon whether
+ * the Name element of a is less, equal, or greater than the Name element of b.
+ * a and b may point to the start of ccnb-encoded elements of type Name,
+ * Interest, or ContentObject.  The size values should be large enough to
+ * encompass the entire Name element.
+ * The ordering used is the canonical ordering of the ccn name hierarchy.
+ */
+int ccn_compare_names(const unsigned char *a, size_t asize,
+                      const unsigned char *b, size_t bsize);
 
 /***********************************
  * Low-level binary formatting

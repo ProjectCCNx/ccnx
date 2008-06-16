@@ -209,7 +209,7 @@ finalize_face(struct hashtb_enumerator *e)
 }
 
 static struct content_entry *
-content_from_accession(struct ccnd *h, uint_least64_t accession)
+content_from_accession(struct ccnd *h, ccn_accession_t accession)
 {
     struct content_entry *ans = NULL;
     if (accession >= h->accession_base &&
@@ -1103,8 +1103,8 @@ create_backlinks_for_new_interest(struct ccnd *h, // XXX - neworder
     int n = comps->n;
     int i;
     int col = 0;
-    uint_least64_t accession = h->accession;
-    uint_least64_t newer = 0;
+    ccn_accession_t accession = h->accession;
+    ccn_accession_t newer = 0;
     size_t keysize;
     intptr_t delta = 1;
     if (n <= 1) {
@@ -1319,7 +1319,7 @@ bloom_update_for_old_content(struct ccnd *h, struct interest_entry *interest) //
     struct back_filter *f = interest->back_filter;
     int ncomps = interest->ncomp;
     struct content_entry *content = NULL;
-    uint_least64_t accession;
+    ccn_accession_t accession;
     intptr_t delta = 1;
     if (f == NULL)
         return;
@@ -1421,7 +1421,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX - neworder
         }
         if (interest != NULL) {
             struct content_entry *content = NULL;
-            uint_least64_t accession;
+            ccn_accession_t accession;
             res = indexbuf_unordered_set_insert(interest->interested_faceid, face->faceid);
             while (interest->counters->n <= res)
                 if (0 > ccn_indexbuf_append_element(interest->counters, 0)) break;

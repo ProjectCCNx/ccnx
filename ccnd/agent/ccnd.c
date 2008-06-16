@@ -55,7 +55,8 @@ static int get_signature_offset(struct ccn_parsed_ContentObject *pco,
                          const unsigned char *msg);
 static struct face *get_dgram_source(struct ccnd *h, struct face *face,
                               struct sockaddr *addr, socklen_t addrlen);
-
+static void content_skiplist_insert(struct ccnd *h, struct content_entry *content);
+static void content_skiplist_remove(struct ccnd *h, struct content_entry *content);
 static const char *unlink_this_at_exit = NULL;
 static void
 cleanup_at_exit(void)
@@ -209,7 +210,7 @@ finalize_face(struct hashtb_enumerator *e)
 }
 
 static struct content_entry *
-content_from_accession(struct ccnd *h, uint_least64_t accession)
+content_from_accession(struct ccnd *h, ccn_accession_t accession)
 {
     struct content_entry *ans = NULL;
     if (accession >= h->accession_base &&
@@ -253,6 +254,7 @@ finalize_content(struct hashtb_enumerator *e) // XXX - neworder
     struct content_entry *entry = e->data;
     unsigned i = entry->accession - h->accession_base;
     if (i < h->content_by_accession_window && h->content_by_accession[i] == entry) {
+        content_skiplist_remove(h, entry);
         if (entry->sender != NULL) {
             ccn_schedule_cancel(h->sched, entry->sender);
             entry->sender = NULL;
@@ -270,6 +272,75 @@ finalize_content(struct hashtb_enumerator *e) // XXX - neworder
     }
     else
         ccnd_msg(h, "orphaned content %u", i);
+}
+
+static int
+content_skiplist_findbefore(struct ccnd *h, const unsigned char *key, size_t keysize, struct ccn_indexbuf **ans)
+{
+    int i;
+    int n = h->skiplinks->n;
+    struct ccn_indexbuf *c;
+    struct content_entry *content;
+    int order;
+    
+    c = h->skiplinks;
+    for (i = n - 1; i >= 0; i--) {
+        for (;;) {
+            if (c->buf[i] == 0)
+                break;
+            content = content_from_accession(h, c->buf[i]);
+            if (content == NULL)
+                abort();
+            order = ccn_compare_names(content->key, content->key_size, key, keysize);
+            if (order >= 0)
+                break;
+            if (content->skiplinks == NULL || i >= content->skiplinks->n)
+                abort();
+            c = content->skiplinks;
+        }
+        ans[i] = c;
+    }
+    return(n);
+}
+
+#define CCN_SKIPLIST_MAX_DEPTH 30
+static void
+content_skiplist_insert(struct ccnd *h, struct content_entry *content)
+{
+    int d;
+    int i;
+    struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
+    if (content->skiplinks != NULL) abort();
+    for (d = 1; d < CCN_SKIPLIST_MAX_DEPTH - d; d++)
+        if ((nrand48(h->seed) & 3) != 0) break;
+    if (h->skiplinks == NULL)
+        h->skiplinks = ccn_indexbuf_create();
+    while (h->skiplinks->n < d)
+        ccn_indexbuf_append_element(h->skiplinks, 0);
+    i = content_skiplist_findbefore(h, content->key, content->key_size, pred);
+    if (i < d)
+        d = i; /* just in case */
+    content->skiplinks = ccn_indexbuf_create();
+    for (i = 0; i < d; i++) {
+        ccn_indexbuf_append_element(content->skiplinks, pred[i]->buf[i]);
+        pred[i]->buf[i] = content->accession;
+    }
+}
+
+static void
+content_skiplist_remove(struct ccnd *h, struct content_entry *content)
+{
+    int i;
+    int d;
+    struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
+    if (content->skiplinks == NULL) abort();
+    d = content_skiplist_findbefore(h, content->key, content->key_size, pred);
+    if (d > content->skiplinks->n)
+        d = content->skiplinks->n;
+    for (i = 0; i < d; i++) {
+        pred[i]->buf[i] = content->skiplinks->buf[i];
+    }
+    ccn_indexbuf_destroy(&content->skiplinks);
 }
 
 static void
@@ -1103,8 +1174,8 @@ create_backlinks_for_new_interest(struct ccnd *h, // XXX - neworder
     int n = comps->n;
     int i;
     int col = 0;
-    uint_least64_t accession = h->accession;
-    uint_least64_t newer = 0;
+    ccn_accession_t accession = h->accession;
+    ccn_accession_t newer = 0;
     size_t keysize;
     intptr_t delta = 1;
     if (n <= 1) {
@@ -1319,7 +1390,7 @@ bloom_update_for_old_content(struct ccnd *h, struct interest_entry *interest) //
     struct back_filter *f = interest->back_filter;
     int ncomps = interest->ncomp;
     struct content_entry *content = NULL;
-    uint_least64_t accession;
+    ccn_accession_t accession;
     intptr_t delta = 1;
     if (f == NULL)
         return;
@@ -1421,7 +1492,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX - neworder
         }
         if (interest != NULL) {
             struct content_entry *content = NULL;
-            uint_least64_t accession;
+            ccn_accession_t accession;
             res = indexbuf_unordered_set_insert(interest->interested_faceid, face->faceid);
             while (interest->counters->n <= res)
                 if (0 > ccn_indexbuf_append_element(interest->counters, 0)) break;
@@ -1550,6 +1621,7 @@ process_incoming_content(struct ccnd *h, struct face *face, // XXX - neworder
                 memcpy(content->tail, tail, tailsize);
                 for (i = 0; i < comps->n; i++)
                     content->comps[i] = comps->buf[i];
+                content_skiplist_insert(h, content);
             }
             else {
                 perror("process_incoming_content");

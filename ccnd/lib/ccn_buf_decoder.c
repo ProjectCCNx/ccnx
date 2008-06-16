@@ -166,7 +166,7 @@ ccn_parse_Name(struct ccn_buf_decoder *d, struct parsed_Name *x, struct ccn_inde
         if (components) components->n = 0;
         ccn_buf_advance(d);
         while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
-            if (components)
+            if (components != NULL)
                 ccn_indexbuf_append_element(components, d->decoder.token_index);
             ncomp += 1;
             ccn_buf_advance(d);
@@ -175,7 +175,7 @@ ccn_parse_Name(struct ccn_buf_decoder *d, struct parsed_Name *x, struct ccn_inde
             }
             ccn_buf_check_close(d);
         }
-        if (components)
+        if (components != NULL)
             ccn_indexbuf_append_element(components, d->decoder.token_index);
         ccn_buf_check_close(d);
     }
@@ -410,5 +410,57 @@ ccn_parse_ContentObject(const unsigned char *msg, size_t size,
     if (d->decoder.index != size || !CCN_FINAL_DSTATE(d->decoder.state))
         return (CCN_DSTATE_ERR_CODING);
     return(res);
+}
+
+static struct ccn_buf_decoder *
+ccn_buf_decoder_start_at_components(struct ccn_buf_decoder *d,
+    const unsigned char *buf, size_t buflen)
+{
+    ccn_buf_decoder_start(d, buf, buflen);
+    while (ccn_buf_match_dtag(d, CCN_DTAG_Name) ||
+           ccn_buf_match_dtag(d, CCN_DTAG_Interest) ||
+           ccn_buf_match_dtag(d, CCN_DTAG_ContentObject))
+        ccn_buf_advance(d);
+    return(d);
+}
+
+int
+ccn_compare_names(const unsigned char *a, size_t asize, const unsigned char *b, size_t bsize)
+{
+    struct ccn_buf_decoder a_decoder;
+    struct ccn_buf_decoder b_decoder;
+    struct ccn_buf_decoder *aa = ccn_buf_decoder_start_at_components(&a_decoder, a, asize);
+    struct ccn_buf_decoder *bb = ccn_buf_decoder_start_at_components(&b_decoder, b, bsize);
+    const unsigned char *acp = NULL;
+    const unsigned char *bcp = NULL;
+    size_t acsize;
+    size_t bcsize;
+    int cmp = 0;
+    int more_a;
+    // fprintf(stderr, "############\n");
+    for (;;) {
+        more_a = ccn_buf_match_dtag(aa, CCN_DTAG_Component);
+        cmp = more_a - ccn_buf_match_dtag(bb, CCN_DTAG_Component);
+        if (more_a == 0 || cmp != 0)
+            break;
+        ccn_buf_advance(aa);
+        ccn_buf_advance(bb);
+        acsize = bcsize = 0;
+        if (ccn_buf_match_blob(aa, &acp, &acsize))
+            ccn_buf_advance(aa);
+        if (ccn_buf_match_blob(bb, &bcp, &bcsize))
+            ccn_buf_advance(bb);
+        // fprintf(stderr, "%s : %s\n", acp, bcp);
+        cmp = acsize - bcsize;
+        if (cmp != 0)
+            break;
+        cmp = memcmp(acp, bcp, acsize);
+        if (cmp != 0)
+            break;
+        ccn_buf_check_close(aa);
+        ccn_buf_check_close(bb);
+    }
+    // fprintf(stderr, "ccn_compare_names returning %d\n", cmp);
+    return (cmp);
 }
 
