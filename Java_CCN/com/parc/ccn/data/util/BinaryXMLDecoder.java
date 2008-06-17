@@ -122,7 +122,9 @@ public class BinaryXMLDecoder implements XMLDecoder {
 			String decodedTag = null;
 			
 			if (tv.type() == BinaryXMLCodec.XML_TAG) {
-				decodedTag = BinaryXMLCodec.decodeUString(_istream, (int)tv.val());
+				Library.logger().info("Unexpected: got tag in decode; looking for tag " + startTag + " got length: " + (int)tv.val()+1);
+				// Tag value represents length-1 as tags can never be empty.
+				decodedTag = BinaryXMLCodec.decodeUString(_istream, (int)tv.val()+1);
 				
 			} else if (tv.type() == BinaryXMLCodec.XML_DTAG) {
 				decodedTag = _dictionary.decodeTag(tv.val());					
