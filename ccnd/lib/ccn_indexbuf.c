@@ -75,3 +75,34 @@ ccn_indexbuf_append_element(struct ccn_indexbuf *c, ELEMENT v)
     return(0);
 }
 
+int ccn_indexbuf_comp_strcmp(const char *data, const struct ccn_indexbuf* indexbuf, unsigned int index, const char *val) {
+    /* indexbuf should have an extra value marking end of last component,
+       so we need to use last 2 values */
+    if (index > indexbuf->n-2) {
+	/* There isn't a component at this index, so no match, call
+	   supplied value greater-than */
+	return 1;
+    }
+    return strncmp(val, data + indexbuf->buf[index], indexbuf->buf[index+1]-indexbuf->buf[index]);
+}
+
+char * ccn_indexbuf_comp_strdup(const char *data, const struct ccn_indexbuf *indexbuf, unsigned int index) {
+    char * result;
+    int len;
+    /* indexbuf should have an extra value marking end of last component,
+       so we need to use last 2 values */
+    if (index > indexbuf->n-2) {
+	/* There isn't a component at this index */
+	return NULL;
+    }
+    len = indexbuf->buf[index+1]-indexbuf->buf[index];
+    result = malloc(len + 1); /* add extra byte for safety \0 */
+    if (result == NULL) {
+	return NULL;
+    }
+    memcpy(result, data + indexbuf->buf[index], len);
+    /* Ensure null-terminated by adding \0 here */
+    result[len] = '\0';
+    return result;
+}
+
