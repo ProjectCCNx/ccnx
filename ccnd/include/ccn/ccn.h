@@ -90,6 +90,7 @@ int ccn_disconnect(struct ccn *h);
 void ccn_destroy(struct ccn **hp);
 
 /***********************************
+ * Writing Names:
  * Names for interests are constructed in charbufs using 
  * the following routines.
  */
@@ -106,6 +107,7 @@ int ccn_name_init(struct ccn_charbuf *c);
  * Return value is 0, or -1 for error.
  */
 int ccn_name_append(struct ccn_charbuf *c, const void *component, size_t n);
+
 
 /***********************************
  * Authenticators and signatures for content are constructed in charbufs
@@ -325,6 +327,29 @@ int ccn_parse_ContentObject(const unsigned char *msg, size_t size,
  */
 int ccn_compare_names(const unsigned char *a, size_t asize,
                       const unsigned char *b, size_t bsize);
+
+/***********************************
+ * Reading Names:
+ * Names may be (minimally) read using the following routines, b
+ * based on the component boundary markers generated from a parse.
+ */
+
+/*
+ * ccn_indexbuf_comp_strcmp: perform strcmp of given val against 
+ * component.  Returns -1, 0, or 1 if val is less than, equal to,
+ * or greater than the component at given index (counting from 0).
+ * Safe even on binary components, though the result may not be useful.
+ */
+int ccn_name_comp_strcmp(const char *data, const struct ccn_indexbuf* indexbuf, unsigned int index, const char *val);
+
+/*
+ * ccn_indexbuf_comp_strdup: return a copy of component at given index
+ * as a string, that is, it will be terminated by \0 even if the original
+ * component was not.  The first component is index 0.
+ * Caller is responsible to free returned buffer containing copy.
+ */
+char * ccn_name_comp_strdup(const char *data, const struct ccn_indexbuf *indexbuf, unsigned int index);
+
 
 /***********************************
  * Binary encoding
