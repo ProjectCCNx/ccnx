@@ -6,7 +6,7 @@ COPT = -g
 
 PROGRAMS = ccn_ccnbtoxml ccn_splitccnb \
     hashtbtest matrixtest skel_decode_test \
-    smoketestclientlib dataresponsetest ccntimestamps ccndump \
+    smoketestclientlib dataresponsetest ccntimestamps ccndump ccndumpnames \
     ccn_verifysig $(EXPAT_PROGRAMS)
 EXPAT_PROGRAMS = ccn_xmltoccnb
 DEBRIS = libccn2.a
@@ -14,11 +14,11 @@ CSRC = ccn_buf_decoder.c ccn_buf_encoder.c ccn_charbuf.c ccn_indexbuf.c ccn_codi
     ccn_ccnbtoxml.c ccn_xmltoccnb.c ccn_splitccnb.c ccn_schedule.c ccn_matrix.c \
     skel_decode_test.c \
     hashtb.c hashtbtest.c matrixtest.c \
-    smoketestclientlib.c ccntimestamps.c ccndump.c \
-    ccn_verifysig.c dataresponsetest.c
+    smoketestclientlib.c ccntimestamps.c ccndump.c ccndumpnames.c \
+    ccn_verifysig.c dataresponsetest.c ccn_uri.c
 
 LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_schedule.o ccn_matrix.o \
-    ccn_buf_decoder.o ccn_buf_encoder.o hashtb.o
+    ccn_buf_decoder.o ccn_uri.o ccn_buf_encoder.o hashtb.o
 
 default all: lib $(SHLIBNAME) $(PROGRAMS)
 
@@ -63,6 +63,9 @@ ccntimestamps: ccntimestamps.o
 
 ccndump: ccndump.o
 	$(CC) $(CFLAGS) -o $@ ccndump.o $(LDLIBS)
+
+ccndumpnames: ccndumpnames.o
+	$(CC) $(CFLAGS) -o $@ ccndumpnames.o $(LDLIBS)
 
 ccn_verifysig: ccn_verifysig.o
 	$(CC) $(CFLAGS) -o $@ ccn_verifysig.o $(LDLIBS) -lcrypto
