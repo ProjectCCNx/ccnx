@@ -123,7 +123,7 @@ ccn_create(void)
 	char tap_name[255];
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
-	if (snprintf(tap_name, 255, "%s-%d-%d-%d", s, getpid(), tv.tv_sec, tv.tv_usec) >= 255) {
+	if (snprintf(tap_name, 255, "%s-%d-%d-%d", s, (int)getpid(), (int)tv.tv_sec, (int)tv.tv_usec) >= 255) {
 	    fprintf(stderr, "CCN_TAP path is too long: %s\n", s);
 	} else {
 	    h->tap = open(tap_name, O_WRONLY|O_APPEND|O_CREAT, S_IRWXU);
@@ -388,72 +388,92 @@ ccn_auth_create(struct ccn_charbuf *c,
     return (res == 0 ? res : -1);
 }
 
-static int ccn_name_comp_get(const unsigned char *data, const struct ccn_indexbuf *indexbuf, unsigned int index, const unsigned char **comp, size_t *size) {
+static int
+ccn_name_comp_get(const unsigned char *data,
+                  const struct ccn_indexbuf *indexbuf,
+                  unsigned int i,
+                  const unsigned char **comp, size_t *size)
+{
     int len;
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d;
     /* indexbuf should have an extra value marking end of last component,
        so we need to use last 2 values */
-    if (index > indexbuf->n-2) {
+    if (i > indexbuf->n - 2) {
 	/* There isn't a component at this index */
-	return -1;
+	return(-1);
     }
-    len = indexbuf->buf[index+1]-indexbuf->buf[index];
-    d = ccn_buf_decoder_start(&decoder, data + indexbuf->buf[index], len);
+    len = indexbuf->buf[i + 1]-indexbuf->buf[i];
+    d = ccn_buf_decoder_start(&decoder, data + indexbuf->buf[i], len);
     if (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
 	ccn_buf_advance(d);
-	if (ccn_buf_match_blob(d, comp, size)) {
-	    return 0;
-	} else {
-	    return -1;
-	}
-    } else {
-	return -1;
+	if (ccn_buf_match_blob(d, comp, size))
+	    return(0);
+	*comp = d->buf + d->decoder.index;
+        *size = 0;
+        ccn_buf_check_close(d);
+        if (d->decoder.state >= 0)
+            return(0);
     }
+    return(-1);
 }
 	      
-int ccn_name_comp_strcmp(const unsigned char *data, const struct ccn_indexbuf* indexbuf, unsigned int index, const char *val) {
-    const unsigned char * comp_ptr;
+int
+ccn_name_comp_strcmp(const unsigned char *data,
+                     const struct ccn_indexbuf *indexbuf,
+                     unsigned int i, const char *val)
+{
+    const unsigned char *comp_ptr;
     size_t comp_size;
 
-    if (ccn_name_comp_get(data, indexbuf, index, &comp_ptr, &comp_size) == 0) {
-	return strncmp(val, comp_ptr, comp_size);
-    } else {
-	/* Probably no such component, say query is greater-than */
-	return 1;
-    }
+    // XXX - We probably want somewhat different semantics in the API -
+    // comparing a string against a longer string with a 0 byte should
+    // not claim equality.
+    if (ccn_name_comp_get(data, indexbuf, i, &comp_ptr, &comp_size) == 0)
+	return(strncmp(val, (const char *)comp_ptr, comp_size));
+    /* Probably no such component, say query is greater-than */
+    return(1);
 }
 
-char * ccn_name_comp_strdup(const unsigned char *data, const struct ccn_indexbuf *indexbuf, unsigned int index) {
+char *
+ccn_name_comp_strdup(const unsigned char *data,
+                     const struct ccn_indexbuf *indexbuf,
+                     unsigned int i)
+{
     char * result = NULL;
     const unsigned char * comp_ptr;
     size_t comp_size;
 
-    if (ccn_name_comp_get(data, indexbuf, index, &comp_ptr, &comp_size) == 0) {
-	result = malloc(comp_size+1);
+    if (ccn_name_comp_get(data, indexbuf, i, &comp_ptr, &comp_size) == 0) {
+	result = calloc(1, comp_size + 1);
 	if (result != NULL) {
 	    memcpy(result, comp_ptr, comp_size);
 	    /* Ensure that result is null-terminated */
 	    result[comp_size] = '\0';
 	}
     }
-    return result;
+    return(result);
 }
 
-int ccn_content_get_value(const unsigned char *data, size_t data_size, const struct ccn_parsed_ContentObject *content, const unsigned char **value, size_t *value_size) {
+int
+ccn_content_get_value(const unsigned char *data, size_t data_size,
+                      const struct ccn_parsed_ContentObject *content,
+                      const unsigned char **value, size_t *value_size)
+{
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d;
     d = ccn_buf_decoder_start(&decoder, data + content->Content, data_size - content->Content);
     if (ccn_buf_match_dtag(d, CCN_DTAG_Content)) {
 	ccn_buf_advance(d);
-	if (ccn_buf_match_blob(d, value, value_size)) {
-	    return 0;
-	} else {
-	    return -1;
-	}
-    } else {
-	return -1;
-    }    
+	if (ccn_buf_match_blob(d, value, value_size))
+	    return(0);
+	*value = d->buf + d->decoder.index;
+        *value_size = 0;
+        ccn_buf_check_close(d);
+        if (d->decoder.state >= 0)
+            return(0);
+    }
+    return(-1);
 }
 
 /* NOTE: ccn_sign is a placeholder at this time, it does nothing

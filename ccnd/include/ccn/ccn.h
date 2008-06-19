@@ -361,24 +361,33 @@ int ccn_compare_names(const unsigned char *a, size_t asize,
 /*
  * ccn_indexbuf_comp_strcmp: perform strcmp of given val against 
  * component.  Returns -1, 0, or 1 if val is less than, equal to,
- * or greater than the component at given index (counting from 0).
+ * or greater than the component at given index i (counting from 0).
  * Safe even on binary components, though the result may not be useful.
+ * NOTE - this ordering may be different from the canonical ordering
+ * used by ccn_compare_names();
  */
-int ccn_name_comp_strcmp(const unsigned char *data, const struct ccn_indexbuf* indexbuf, unsigned int index, const char *val);
+int ccn_name_comp_strcmp(const unsigned char *data,
+                         const struct ccn_indexbuf* indexbuf,
+                         unsigned int i,
+                         const char *val);
 
 /*
- * ccn_indexbuf_comp_strdup: return a copy of component at given index
- * as a string, that is, it will be terminated by \0 even if the original
- * component was not.  The first component is index 0.
+ * ccn_indexbuf_comp_strdup: return a copy of component at given index i
+ * as a string, that is, it will be terminated by \0.
+ * The first component is index 0.
  * Caller is responsible to free returned buffer containing copy.
  */
-char * ccn_name_comp_strdup(const unsigned char *data, const struct ccn_indexbuf *indexbuf, unsigned int index);
+char * ccn_name_comp_strdup(const unsigned char *data,
+                            const struct ccn_indexbuf *indexbuf,
+                            unsigned int i);
 
 /***********************************
  * Reading content objects
  */
 
-int ccn_content_get_value(const unsigned char *data, size_t data_size, const struct ccn_parsed_ContentObject *content, const unsigned char **value, size_t *size);
+int ccn_content_get_value(const unsigned char *data, size_t data_size,
+                          const struct ccn_parsed_ContentObject *content,
+                          const unsigned char **value, size_t *size);
 
 /***********************************
  * Binary encoding
