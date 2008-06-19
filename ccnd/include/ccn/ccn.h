@@ -340,7 +340,7 @@ int ccn_compare_names(const unsigned char *a, size_t asize,
  * or greater than the component at given index (counting from 0).
  * Safe even on binary components, though the result may not be useful.
  */
-int ccn_name_comp_strcmp(const char *data, const struct ccn_indexbuf* indexbuf, unsigned int index, const char *val);
+int ccn_name_comp_strcmp(const unsigned char *data, const struct ccn_indexbuf* indexbuf, unsigned int index, const char *val);
 
 /*
  * ccn_indexbuf_comp_strdup: return a copy of component at given index
@@ -348,7 +348,7 @@ int ccn_name_comp_strcmp(const char *data, const struct ccn_indexbuf* indexbuf, 
  * component was not.  The first component is index 0.
  * Caller is responsible to free returned buffer containing copy.
  */
-char * ccn_name_comp_strdup(const char *data, const struct ccn_indexbuf *indexbuf, unsigned int index);
+char * ccn_name_comp_strdup(const unsigned char *data, const struct ccn_indexbuf *indexbuf, unsigned int index);
 
 
 /***********************************
