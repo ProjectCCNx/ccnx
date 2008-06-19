@@ -7,7 +7,7 @@ COPT = -g
 PROGRAMS = ccn_ccnbtoxml ccn_splitccnb \
     hashtbtest matrixtest skel_decode_test \
     smoketestclientlib dataresponsetest ccntimestamps ccndump ccndumpnames \
-    ccn_verifysig $(EXPAT_PROGRAMS)
+    encodedecodetest ccn_verifysig $(EXPAT_PROGRAMS)
 EXPAT_PROGRAMS = ccn_xmltoccnb
 DEBRIS = libccn2.a
 CSRC = ccn_buf_decoder.c ccn_buf_encoder.c ccn_charbuf.c ccn_indexbuf.c ccn_coding.c ccn_client.c  \
@@ -15,7 +15,7 @@ CSRC = ccn_buf_decoder.c ccn_buf_encoder.c ccn_charbuf.c ccn_indexbuf.c ccn_codi
     skel_decode_test.c \
     hashtb.c hashtbtest.c matrixtest.c \
     smoketestclientlib.c ccntimestamps.c ccndump.c ccndumpnames.c \
-    ccn_verifysig.c dataresponsetest.c ccn_uri.c
+    ccn_verifysig.c dataresponsetest.c ccn_uri.c  encodedecodetest.c
 
 LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_schedule.o ccn_matrix.o \
     ccn_buf_decoder.o ccn_uri.o ccn_buf_encoder.o hashtb.o
@@ -23,6 +23,9 @@ LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_schedule.o
 default all: lib $(SHLIBNAME) $(PROGRAMS)
 
 lib: libccn.a
+
+test: all
+	./encodedecodetest /dev/null
 
 libccn.a: $(LIB_OBJS)
 	ar cru $@ $(LIB_OBJS)
@@ -57,6 +60,9 @@ smoketestclientlib: smoketestclientlib.o
 
 dataresponsetest: dataresponsetest.o
 	$(CC) $(CFLAGS) -o $@ dataresponsetest.o $(LDLIBS)
+
+encodedecodetest: encodedecodetest.o
+	$(CC) $(CFLAGS) -o $@ encodedecodetest.o $(LDLIBS)
 
 ccntimestamps: ccntimestamps.o
 	$(CC) $(CFLAGS) -o $@ ccntimestamps.o $(LDLIBS)

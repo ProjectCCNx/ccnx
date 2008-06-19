@@ -42,20 +42,21 @@ int ccn_encode_ContentObject(struct ccn_charbuf *c,
 			     struct ccn_charbuf *Signature,
 			     const char *Content, int len) {
     int res = 0;
-    res = ccn_charbuf_append_tt(c, CCN_DTAG_ContentObject, CCN_DTAG);
-    if (res == -1) return(res);
-    res = ccn_charbuf_append_charbuf(c, Name);
-    if (res == -1) return(res);
-    res = ccn_charbuf_append_charbuf(c, ContentAuthenticator);
-    if (res == -1) return(res);
-    res = ccn_charbuf_append_charbuf(c, Signature);
-    if (res == -1) return(res);
-    res = ccn_charbuf_append_tt(c, len, CCN_BLOB);
-    if (res == -1) return(res);
-    res = ccn_charbuf_append(c, Content, len);
-    if (res == -1) return(res);
-    res = ccn_charbuf_append_closer(c);
-    if (res == -1) return(res);
+
+    /* Each of the input charbufs should be already encoded as a 
+       sub-piece so just needs to be dropped in */
+    res += ccn_charbuf_append_tt(c, CCN_DTAG_ContentObject, CCN_DTAG);
+
+    res += ccn_charbuf_append_charbuf(c, Name);
+    res += ccn_charbuf_append_charbuf(c, ContentAuthenticator);
+    res += ccn_charbuf_append_charbuf(c, Signature);
+
+    res += ccn_charbuf_append_tt(c, CCN_DTAG_Content, CCN_DTAG);
+    res += ccn_charbuf_append_tt(c, len, CCN_BLOB);
+    res += ccn_charbuf_append(c, Content, len);
+    res += ccn_charbuf_append_closer(c);
+
+    res += ccn_charbuf_append_closer(c);
     
-    return res;
+    return (res == 0 ? res : -1);
 }

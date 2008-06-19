@@ -35,6 +35,7 @@ struct ccn {
     int err;
     int errline;
     int verbose_error;
+    int tap;
 };
 
 struct expressed_interest { /* keyed by components of name */
@@ -103,6 +104,7 @@ ccn_create(void)
 {
     struct ccn *h;
     const char *s;
+
     h = calloc(1, sizeof(*h));
     if (h == NULL)
         return(h);
@@ -110,6 +112,25 @@ ccn_create(void)
     h->interestbuf = ccn_charbuf_create();
     s = getenv("CCN_DEBUG");
     h->verbose_error = (s != NULL && s[0] != 0);
+    s = getenv("CCN_TAP");
+    if (s != NULL && s[0] != 0) {
+	char tap_name[255];
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	if (snprintf(tap_name, 255, "%s-%d-%d-%d", s, getpid(), tv.tv_sec, tv.tv_usec) >= 255) {
+	    fprintf(stderr, "CCN_TAP path is too long: %s\n", s);
+	} else {
+	    h->tap = open(tap_name, O_WRONLY|O_APPEND|O_CREAT, S_IRWXU);
+	    if (h->tap == -1) {
+		perror("Unable to open CCN_TAP file");
+	    } else {
+		printf("CCN_TAP writing to %s\n", tap_name);
+		fflush(stdout);
+	    }
+	}
+    } else {
+	h->tap = -1;
+    }
     return(h);
 }
 
@@ -223,6 +244,9 @@ ccn_destroy(struct ccn **hp)
     }
     ccn_charbuf_destroy(&h->interestbuf);
     ccn_indexbuf_destroy(&h->scratch_indexbuf);
+    if (h->tap != -1) {
+	close(h->tap);
+    }
     free(h);
     *hp = NULL;
 }
@@ -274,6 +298,32 @@ ccn_check_namebuf(struct ccn *h, struct ccn_charbuf *namebuf)
 }
 
 int
+ccn_auth_create_default(struct ccn_charbuf *c,
+		struct ccn_charbuf *signature,
+		enum ccn_content_type Type,
+		struct ccn_charbuf *path,
+		int path_count,
+		char * content, size_t length) {
+    struct ccn_charbuf *pub_key_id = ccn_charbuf_create();
+    struct ccn_charbuf *timestamp = ccn_charbuf_create();
+    struct ccn_charbuf *digest = ccn_charbuf_create();
+    int res = 0;
+
+    /* Right now, we don't have real signatures, digests, etc.
+       so the default thing here is just to create 
+       constant placeholders */
+    res += ccn_digest(digest, NULL);
+    res += ccn_sign(signature, NULL);
+
+    res += ccn_auth_create(c, pub_key_id, path_count, timestamp, Type, NULL, digest);
+
+    ccn_charbuf_destroy(&pub_key_id);
+    ccn_charbuf_destroy(&timestamp);
+    ccn_charbuf_destroy(&digest);
+    return (res == 0 ? res : -1);
+}
+		
+int
 ccn_auth_create(struct ccn_charbuf *c,
 	      struct ccn_charbuf *PublisherKeyID,
 	      int NameComponentCount,
@@ -282,57 +332,50 @@ ccn_auth_create(struct ccn_charbuf *c,
 	      struct ccn_charbuf *KeyLocator,
 	      struct ccn_charbuf *ContentDigest)
 {
-    int res;
+    int res = 0;
     const char *typename = ccn_content_name(Type);
-    if (typename == NULL) {
+    struct ccn_charbuf *name_comp_count = ccn_charbuf_create();
+    if (typename == NULL || name_comp_count == NULL) {
 	return -1;
     }
-    struct ccn_charbuf *name_comp_count = NULL;
     
-    res = ccn_charbuf_append_tt(c, PublisherKeyID->length, CCN_BLOB);
-    if (res == -1) return(res);
-    res = ccn_charbuf_append_charbuf(c, PublisherKeyID);
-    if (res == -1) return(res);
-    name_comp_count = ccn_charbuf_create();
-    if (name_comp_count == NULL || 
-	ccn_charbuf_putf(name_comp_count, "%d", NameComponentCount) != 0) {
-	ccn_charbuf_destroy(&name_comp_count);
-	return -1;
-    }
-    res = ccn_charbuf_append_tt(c, name_comp_count->length, CCN_UDATA);
-    if (res == -1) {
-	ccn_charbuf_destroy(&name_comp_count);
-	return(res);
-    }
-    res = ccn_charbuf_append_charbuf(c, name_comp_count);
-    if (res == -1) {
-	ccn_charbuf_destroy(&name_comp_count);
-	return(res);
-    }
-    res = ccn_charbuf_append_tt(c, Timestamp->length, CCN_UDATA);
-    if (res == -1) return(res);
-    res = ccn_charbuf_append_charbuf(c, Timestamp);
-    if (res == -1) return(res);
-    if (typename != NULL) {
-	res = ccn_charbuf_append_tt(c, strlen(typename), CCN_UDATA);
-	if (res == -1) return(res);
-	res = ccn_charbuf_append(c, typename, strlen(typename));
-	if (res == -1) return(res);
-    }
+    res += ccn_charbuf_append_tt(c, CCN_DTAG_ContentAuthenticator, CCN_DTAG);
+
+    res += ccn_charbuf_append_tt(c, CCN_DTAG_PublisherKeyID, CCN_DTAG);
+    res += ccn_charbuf_append_tt(c, PublisherKeyID->length, CCN_BLOB);
+    res += ccn_charbuf_append_charbuf(c, PublisherKeyID);
+    res += ccn_charbuf_append_closer(c);
+
+    res += ccn_charbuf_append_tt(c, CCN_DTAG_NameComponentCount, CCN_DTAG);
+    res += ccn_charbuf_putf(name_comp_count, "%d", NameComponentCount);
+    res += ccn_charbuf_append_tt(c, name_comp_count->length, CCN_UDATA);
+    res += ccn_charbuf_append_charbuf(c, name_comp_count);
+    res += ccn_charbuf_append_closer(c);
+
+    res += ccn_charbuf_append_tt(c, CCN_DTAG_Timestamp, CCN_DTAG);
+    res += ccn_charbuf_append_tt(c, Timestamp->length, CCN_UDATA);
+    res += ccn_charbuf_append_charbuf(c, Timestamp);
+    res += ccn_charbuf_append_closer(c);
+
+    res += ccn_charbuf_append_tt(c, CCN_DTAG_Type, CCN_DTAG);
+    res += ccn_charbuf_append_tt(c, strlen(typename), CCN_UDATA);
+    res += ccn_charbuf_append(c, typename, strlen(typename));
+    res += ccn_charbuf_append_closer(c);
+
     if (KeyLocator != NULL) {
-	res = ccn_charbuf_append_charbuf(c, KeyLocator);
-	if (res == -1) return(res);
+	/* KeyLocator is a sub-type that should already be encoded */
+	res += ccn_charbuf_append_charbuf(c, KeyLocator);
     }
-    res = ccn_charbuf_append_tt(c, ContentDigest->length, CCN_BLOB);
-    if (res == -1) return(res);
-    res = ccn_charbuf_append_charbuf(c, ContentDigest);
-    if (res == -1) return(res);
 
+    /* ContentDigest is a sub-type that should already be encoded */
+    res += ccn_charbuf_append_charbuf(c, ContentDigest);
+    res += ccn_charbuf_append_closer(c);
 
-    return res;
+    ccn_charbuf_destroy(&name_comp_count);
+    return (res == 0 ? res : -1);
 }
 
-static int ccn_name_comp_get(const char *data, const struct ccn_indexbuf *indexbuf, unsigned int index, const unsigned char **comp, size_t *size) {
+static int ccn_name_comp_get(const unsigned char *data, const struct ccn_indexbuf *indexbuf, unsigned int index, const unsigned char **comp, size_t *size) {
     int len;
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d;
@@ -356,7 +399,7 @@ static int ccn_name_comp_get(const char *data, const struct ccn_indexbuf *indexb
     }
 }
 	      
-int ccn_name_comp_strcmp(const char *data, const struct ccn_indexbuf* indexbuf, unsigned int index, const char *val) {
+int ccn_name_comp_strcmp(const unsigned char *data, const struct ccn_indexbuf* indexbuf, unsigned int index, const char *val) {
     const unsigned char * comp_ptr;
     size_t comp_size;
 
@@ -368,7 +411,7 @@ int ccn_name_comp_strcmp(const char *data, const struct ccn_indexbuf* indexbuf, 
     }
 }
 
-char * ccn_name_comp_strdup(const char *data, const struct ccn_indexbuf *indexbuf, unsigned int index) {
+char * ccn_name_comp_strdup(const unsigned char *data, const struct ccn_indexbuf *indexbuf, unsigned int index) {
     char * result = NULL;
     const unsigned char * comp_ptr;
     size_t comp_size;
@@ -384,7 +427,21 @@ char * ccn_name_comp_strdup(const char *data, const struct ccn_indexbuf *indexbu
     return result;
 }
 
-
+int ccn_content_get_value(const unsigned char *data, size_t data_size, const struct ccn_parsed_ContentObject *content, const unsigned char **value, size_t *value_size) {
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
+    d = ccn_buf_decoder_start(&decoder, data + content->Content, data_size - content->Content);
+    if (ccn_buf_match_dtag(d, CCN_DTAG_Content)) {
+	ccn_buf_advance(d);
+	if (ccn_buf_match_blob(d, value, value_size)) {
+	    return 0;
+	} else {
+	    return -1;
+	}
+    } else {
+	return -1;
+    }    
+}
 
 /* NOTE: ccn_sign is a placeholder at this time, it does nothing
    useful but produces a constant signature to fill the field.
@@ -394,7 +451,13 @@ ccn_sign(struct ccn_charbuf *c,
 	 const struct ccn_charbuf *input)
 {
     int const_sig = 0x0;
-    return ccn_charbuf_append(c, &const_sig, sizeof(const_sig));
+    int res = 0;
+
+    res += ccn_charbuf_append_tt(c, CCN_DTAG_Signature, CCN_DTAG);
+    res += ccn_charbuf_append_tt(c, sizeof(const_sig), CCN_BLOB);
+    res += ccn_charbuf_append(c, &const_sig, sizeof(const_sig));
+    res += ccn_charbuf_append_closer(c);
+    return (res == 0 ? res : -1);
 }
 
 /* NOTE: ccn_digest is a placeholder at this time, it does nothing
@@ -405,7 +468,13 @@ ccn_digest(struct ccn_charbuf *c,
 	 const struct ccn_charbuf *input)
 {
     int const_digest = 0x0;
-    return ccn_charbuf_append(c, &const_digest, sizeof(const_digest));
+    int res = 0;
+
+    res += ccn_charbuf_append_tt(c, CCN_DTAG_ContentDigest, CCN_DTAG);
+    res += ccn_charbuf_append_tt(c, sizeof(const_digest), CCN_BLOB);
+    res += ccn_charbuf_append(c, &const_digest, sizeof(const_digest));
+    res += ccn_charbuf_append_closer(c);
+    return (res == 0 ? res : -1);
 }
 
 int
@@ -535,6 +604,9 @@ ccn_put(struct ccn *h, const void *p, size_t length)
         // XXX - should limit unbounded growth of h->outbuf
         ccn_charbuf_append(h->outbuf, p, length); // XXX - check res
         return (ccn_pushout(h));
+    }
+    if (h->tap != -1) {
+	write(h->tap, p, length);
     }
     res = write(h->sock, p, length);
     if (res == length)
