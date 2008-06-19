@@ -5,11 +5,17 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.IOException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Random;
 import java.util.concurrent.Semaphore;
 import java.util.logging.Level;
+
+import javax.xml.stream.XMLStreamException;
 
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -19,6 +25,7 @@ import com.parc.ccn.Library;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
@@ -29,6 +36,8 @@ public class BaseLibraryTest {
 
 	protected static boolean exit = false;
 	protected static Throwable error = null; // for errors from other threads
+	
+	protected static final String BASE_NAME = "/test/BaseLibraryTest/";
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -112,7 +121,55 @@ public class BaseLibraryTest {
 	public void checkPutResults(CompleteName putResult) {
 		System.out.println("Put data: " + putResult.name());
 	}
-
+	
+	/**
+	 * Expects this method to call checkGetResults on each set of content returned...
+	 * @param baseName
+	 * @param count
+	 * @param library
+	 * @return
+	 * @throws InterruptedException
+	 * @throws MalformedContentNameStringException
+	 * @throws IOException
+	 * @throws NoSuchAlgorithmException 
+	 * @throws SignatureException 
+	 * @throws InvalidKeyException 
+	 * @throws XMLStreamException 
+	 */
+	public void getResults(String baseName, int count, CCNLibrary library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException {
+		Random rand = new Random();
+		for (int i = 0; i < count; i++) {
+			Thread.sleep(rand.nextInt(50));
+			ArrayList<ContentObject> contents = library.get(baseName);
+			assertEquals(1, contents.size());
+			assertEquals(i, Integer.parseInt(new String(contents.get(0).content())));
+			System.out.println("Got " + i);
+			checkGetResults(contents);
+		}
+		return;
+	}
+	
+	/**
+	 * Responsible for calling checkPutResults on each put. (Could return them all in
+	 * a batch then check...)
+	 * @throws InterruptedException 
+	 * @throws IOException 
+	 * @throws MalformedContentNameStringException 
+	 * @throws SignatureException 
+	 * @throws XMLStreamException 
+	 * @throws NoSuchAlgorithmException 
+	 * @throws InvalidKeyException 
+	 */
+	public void doPuts(String baseName, int count, CCNLibrary library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException, NoSuchAlgorithmException {
+		Random rand = new Random();
+		for (int i = 0; i < count; i++) {
+			Thread.sleep(rand.nextInt(50));
+			CompleteName putName = library.put(baseName + new Integer(i).toString(), new Integer(i).toString());
+			System.out.println("Put " + i + " done");
+			checkPutResults(putName);
+		}
+	}
+	
 	public class GetThread implements Runnable {
 		protected CCNLibrary library = StandardCCNLibrary.open();
 		int count = 0;
@@ -122,15 +179,7 @@ public class BaseLibraryTest {
 		public void run() {
 			try {
 				System.out.println("Get thread started");
-				Random rand = new Random();
-				for (int i = 0; i < count; i++) {
-					Thread.sleep(rand.nextInt(50));
-					ArrayList<ContentObject> contents = library.get("/BaseLibraryTest/");
-					assertEquals(1, contents.size());
-					assertEquals(i, Integer.parseInt(new String(contents.get(0).content())));
-					System.out.println("Got " + i);
-					checkGetResults(contents);
-				}
+				getResults(BASE_NAME, count, library);
 				System.out.println("Get thread finished");
 			} catch (Throwable ex) {
 				error = ex;
@@ -147,13 +196,7 @@ public class BaseLibraryTest {
 		public void run() {
 			try {
 				System.out.println("Put thread started");
-				Random rand = new Random();
-				for (int i = 0; i < count; i++) {
-					Thread.sleep(rand.nextInt(50));
-					CompleteName putName = library.put("/BaseLibraryTest/" + new Integer(i).toString(), new Integer(i).toString());
-					System.out.println("Put " + i + " done");
-					checkPutResults(putName);
-				}
+				doPuts(BASE_NAME, count, library);
 				System.out.println("Put thread finished");
 			} catch (Throwable ex) {
 				error = ex;
@@ -172,7 +215,7 @@ public class BaseLibraryTest {
 		public void run() {
 			try {
 				System.out.println("GetServer started");
-				Interest interest = new Interest("/BaseLibraryTest/");
+				Interest interest = new Interest(BASE_NAME);
 				// Register interest
 				library.expressInterest(interest, this);
 				// Block on semaphore until enough data has been received
@@ -224,7 +267,7 @@ public class BaseLibraryTest {
 			try {
 				System.out.println("PutServer started");
 				// Register filter
-				name = new ContentName("/BaseLibraryTest/");
+				name = new ContentName(BASE_NAME);
 				library.setInterestFilter(name, this);
 				// Block on semaphore until enough data has been received
 				sema.acquire();
@@ -239,7 +282,7 @@ public class BaseLibraryTest {
 				assertEquals(1, interests.size());
 				for (Interest interest : interests) {
 					assertTrue(name.isPrefixOf(interest.name()));
-					CompleteName putName = library.put("/BaseLibraryTest/" + new Integer(next).toString(), new Integer(next).toString());
+					CompleteName putName = library.put(BASE_NAME + new Integer(next).toString(), new Integer(next).toString());
 					System.out.println("Put " + next + " done");
 					checkPutResults(putName);
 					next++;
