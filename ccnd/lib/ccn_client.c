@@ -55,6 +55,12 @@ struct interest_filter { /* keyed by components of name */
 #define NOTE_ERR(h, e) (h->err = (e), h->errline = __LINE__, ccn_note_err(h))
 #define NOTE_ERRNO(h) NOTE_ERR(h, errno)
 
+void
+ccn_perror(struct ccn *h, const char * s) {
+    fprintf(stderr, "%s: error %d - ccn_client.c:%d[%d]\n",
+	    s, h->err, h->errline, (int)getpid());
+}
+
 static int
 ccn_note_err(struct ccn *h)
 {
@@ -282,6 +288,11 @@ ccn_name_append(struct ccn_charbuf *c, const void *component, size_t n)
     return(res);
 }
 
+int 
+ccn_name_append_str(struct ccn_charbuf *c, const char *s) {
+    return ccn_name_append(c, s, strlen(s));
+}
+
 #if (CCN_DTAG_Name <= CCN_MAX_TINY) /* This better be true */
 #define CCN_START_Name ((unsigned char)(CCN_TT_HBIT + (CCN_DTAG_Name << CCN_TT_BITS)) + CCN_DTAG)
 #endif
@@ -347,7 +358,9 @@ ccn_auth_create(struct ccn_charbuf *c,
     res += ccn_charbuf_append_closer(c);
 
     res += ccn_charbuf_append_tt(c, CCN_DTAG_NameComponentCount, CCN_DTAG);
-    res += ccn_charbuf_putf(name_comp_count, "%d", NameComponentCount);
+    if (ccn_charbuf_putf(name_comp_count, "%d", NameComponentCount) < 0) {
+	res = -1;
+    }
     res += ccn_charbuf_append_tt(c, name_comp_count->length, CCN_UDATA);
     res += ccn_charbuf_append_charbuf(c, name_comp_count);
     res += ccn_charbuf_append_closer(c);

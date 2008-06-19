@@ -108,6 +108,15 @@ int ccn_name_init(struct ccn_charbuf *c);
  */
 int ccn_name_append(struct ccn_charbuf *c, const void *component, size_t n);
 
+/*
+ * ccn_name_append_str: add a Component that is a \0 terminated string.
+ * The component added is the bytes of the string without the \0.
+ * This function is convenient for those applications that construct 
+ * component names from simple strings.
+ * Return value is 0, or -1 for error
+ */
+int 
+ccn_name_append_str(struct ccn_charbuf *c, const char *s);
 
 /***********************************
  * Authenticators and signatures for content are constructed in charbufs
@@ -124,7 +133,22 @@ enum ccn_content_type {
 };
 
 /*
- * ccn_auth_init: create authenticator in a charbuf 
+ * ccn_auth_create_default: create authenticator in a charbuf 
+ * with defaults.
+ * Return value is 0, or -1 for error.
+ */
+int
+ccn_auth_create_default(struct ccn_charbuf *c, /* output authenticator */
+			struct ccn_charbuf *signature, /* output signature */
+			enum ccn_content_type Type, /* input content type */
+			struct ccn_charbuf *path, /* input path */
+			int path_count, /* number of path components */
+			char * content, /* input: raw content */
+			size_t length /* length of raw content */
+			);
+
+/*
+ * ccn_auth_create: create authenticator in a charbuf 
  * Note that KeyLocator is optional (may be NULL) and is ignored 
  * even if set in initial placeholder implementation
  * Return value is 0, or -1 for error.
@@ -350,6 +374,11 @@ int ccn_name_comp_strcmp(const unsigned char *data, const struct ccn_indexbuf* i
  */
 char * ccn_name_comp_strdup(const unsigned char *data, const struct ccn_indexbuf *indexbuf, unsigned int index);
 
+/***********************************
+ * Reading content objects
+ */
+
+int ccn_content_get_value(const unsigned char *data, size_t data_size, const struct ccn_parsed_ContentObject *content, const unsigned char **value, size_t *size);
 
 /***********************************
  * Binary encoding
@@ -372,6 +401,17 @@ int ccn_encode_ContentObject(struct ccn_charbuf *buf,
 			     const char *Content, int len);
 
 const char * ccn_content_name(enum ccn_content_type type);
+
+/***********************************
+ * Debugging
+ */
+
+/*
+ * ccn_perror: produce message on standard error output describing the last
+ * error encountered during a call using the given handle.
+ */
+void ccn_perror(struct ccn *h, const char * s);
+
 
 /***********************************
  * Low-level binary formatting
