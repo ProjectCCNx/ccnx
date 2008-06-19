@@ -249,7 +249,7 @@ public class CCNNetworkManager implements Runnable {
 				}
 			} catch (Exception ex) {
 				Library.logger().warning("failed to deliver data: " + ex.toString());
-				//ex.printStackTrace();
+				Library.warningStackTrace(ex);
 			}
 		}
 	}

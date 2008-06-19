@@ -84,6 +84,7 @@ public class BinaryXMLEncoder implements XMLEncoder {
 			long dictionaryVal = _dictionary.encodeTag(tag);
 			
 			if (dictionaryVal < 0) {
+				Library.logger().info("Unexpected: tag found that is not in our dictionary: " + tag);
 				// not in dictionary
 				// compressed format wants length of tag represented as length-1
 				// to save that extra bit, as tag cannot be 0 length.

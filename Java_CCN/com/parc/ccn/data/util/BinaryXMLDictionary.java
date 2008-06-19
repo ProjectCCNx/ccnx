@@ -68,7 +68,14 @@ public class BinaryXMLDictionary {
 
 	protected void loadDictionaryFile(String dictionaryFile) throws IOException {
 		
+		if (null == dictionaryFile) 
+			throw new IOException("BinaryXMLDictionary: dictionary file name cannot be null!");
+		
 		InputStream in = getClass().getResourceAsStream(dictionaryFile);
+		
+		if (null == in) {
+			throw new IOException("BinaryXMLDictionary: getResourceAsStream cannot open resource file: " + dictionaryFile + ".");
+		}
 		BufferedReader reader = 
 			new BufferedReader(new InputStreamReader(in));
 		
