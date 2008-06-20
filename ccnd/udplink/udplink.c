@@ -22,17 +22,18 @@
 static struct options {
     const char *localsockname;
     const char *remotehostname;
+    struct addrinfo *multicastaddrinfo;
     char remoteport[8];
     char localport[8];
     unsigned int remoteifindex;
     int multicastttl;
     int logging;
-} options = {NULL, NULL, "", "", 0, 0, 0};
+} options = {NULL, NULL, NULL, "", "", 0, 0, 0};
 
 
 void
 usage(char *name) {
-    fprintf(stderr, "Usage: %s [-d(ebug)] [-c ccnsocket] -h remotehost -r remoteport [-l localport] [-t multicastttl]\n", name);
+    fprintf(stderr, "Usage: %s [-d(ebug)] [-c ccnsocket] -h remotehost -r remoteport [-l localport] [-m multicastlocaladdress] [-t multicastttl]\n", name);
 }
 
 void
@@ -92,9 +93,11 @@ void process_options(int argc, char * const argv[], struct options *options) {
     char *rportstr = NULL;
     char *lportstr = NULL;
     char *ttlstr = NULL;
+    struct addrinfo hints = {0};
+    int result;
     int n;
 
-    while ((c = getopt(argc, argv, "dc:h:r:l:t:")) != -1) {
+    while ((c = getopt(argc, argv, "dc:h:r:l:m:t:")) != -1) {
         switch (c) {
         case 'd':
             options->logging++;
@@ -110,6 +113,19 @@ void process_options(int argc, char * const argv[], struct options *options) {
             break;
         case 'l':
             lportstr = optarg;
+            break;
+        case 'm':
+            hints.ai_family = PF_INET;
+            hints.ai_socktype = SOCK_DGRAM;
+            hints.ai_flags =  AI_NUMERICHOST;
+#ifdef AI_NUMERICSERV
+            hints.ai_flags |= AI_NUMERICSERV;
+#endif
+            result = getaddrinfo(optarg, NULL, &hints, &options->multicastaddrinfo);
+            if (result != 0 || options->multicastaddrinfo == NULL) {
+                udplink_fatal("getaddrinfo(\"%s\", ...): %s\n", optarg, gai_strerror(result));
+            }
+
             break;
         case 't':
             ttlstr = optarg;
@@ -192,8 +208,8 @@ set_multicast_sockopt(int socket, struct addrinfo *ai, struct options *options)
         if (options->logging > 1) udplink_note("IPv4 multicast\n");
 #ifdef IP_ADD_MEMBERSHIP
         memcpy((void *)&mreq.imr_multiaddr, &((struct sockaddr_in *)ai->ai_addr)->sin_addr, sizeof(mreq.imr_multiaddr));
-        if (options->remoteifindex != 0) {
-            /* mreq.imr_interface.s_addr = local address of interface remoteifindex */
+        if (options->multicastaddrinfo != NULL) {
+            memcpy((void *)&mreq.imr_interface.s_addr, &((struct sockaddr_in *)options->multicastaddrinfo->ai_addr)->sin_addr, sizeof(mreq.imr_interface.s_addr));
         }
         result = setsockopt(socket, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq));
         if (result == -1) {
