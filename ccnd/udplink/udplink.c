@@ -92,6 +92,7 @@ void process_options(int argc, char * const argv[], struct options *options) {
     char *cp = NULL;
     char *rportstr = NULL;
     char *lportstr = NULL;
+    char *mcastoutstr = NULL;
     char *ttlstr = NULL;
     struct addrinfo hints = {0};
     int result;
@@ -115,18 +116,7 @@ void process_options(int argc, char * const argv[], struct options *options) {
             lportstr = optarg;
             break;
         case 'm':
-            hints.ai_family = PF_INET;
-            hints.ai_socktype = SOCK_DGRAM;
-            hints.ai_flags =  AI_NUMERICHOST;
-#ifdef AI_NUMERICSERV
-            hints.ai_flags |= AI_NUMERICSERV;
-#endif
-	    udplink_note("interface %s requested\n", optarg);
-            result = getaddrinfo(optarg, NULL, &hints, &options->multicastaddrinfo);
-            if (result != 0 || options->multicastaddrinfo == NULL) {
-                udplink_fatal("getaddrinfo(\"%s\", ...): %s\n", optarg, gai_strerror(result));
-            }
-
+	    mcastoutstr = optarg;
             break;
         case 't':
             ttlstr = optarg;
@@ -164,6 +154,20 @@ void process_options(int argc, char * const argv[], struct options *options) {
         }
     }
     sprintf(options->localport, "%d", n);
+
+    if (mcastoutstr != NULL) {
+	hints.ai_family = PF_INET;
+	hints.ai_socktype = SOCK_DGRAM;
+	hints.ai_flags =  AI_NUMERICHOST;
+#ifdef AI_NUMERICSERV
+	hints.ai_flags |= AI_NUMERICSERV;
+#endif
+	udplink_note("interface %s requested\n", optarg);
+	result = getaddrinfo(optarg, options->localport, &hints, &options->multicastaddrinfo);
+	if (result != 0 || options->multicastaddrinfo == NULL) {
+	    udplink_fatal("getaddrinfo(\"%s\", ...): %s\n", optarg, gai_strerror(result));
+	}
+    }
 
     if (ttlstr != NULL) {
         if (strspn(ttlstr, "0123456789") != strlen(ttlstr)) {
