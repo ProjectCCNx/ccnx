@@ -119,9 +119,17 @@ ccntimestamps.o: ccntimestamps.c ../include/ccn/ccn.h \
   ../include/ccn/indexbuf.h
 ccndump.o: ccndump.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h
+ccndumpnames.o: ccndumpnames.c ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h
 ccn_verifysig.o: ccn_verifysig.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h
 dataresponsetest.o: dataresponsetest.c ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h
+ccn_uri.o: ccn_uri.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h
+encodedecodetest.o: encodedecodetest.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h

@@ -23,6 +23,9 @@ clean:
 	rm -f *.o *.a $(PROGRAMS) depend
 	rm -rf *.dSYM $(DEBRIS)
 
+test:   ccnd smoketestccnd
+	@echo "Sorry, no ccnd unit tests at this time"
+        
 ###############################
 # Dependencies below here are checked by depend target
 # but must be updated manually.

@@ -3,12 +3,12 @@ SUBDIRS = lib agent udplink python
 OBJTREE = obj.`uname`
 MAKEF =  -f ../conf.mk -f Makefile -f ../conf.mk -f ../subr.mk
 
-default all clean depend coverage:
+default all clean depend coverage test:
 	test -f conf.mk || touch conf.mk
 	test -d include/ccn || (test -d ../include/ccn && mkdir -p include && ln -s ../../include/ccn include/ccn)
 	test -f subr.mk || (test -f ../subr.mk && ln -s ../subr.mk)
-	for i in $(SUBDIRS); do								\
-	  (cd "$$i" && pwd && $(MAKE) $(MAKEF) SRCDIR=../$(SRCDIR)/$$i $@ || exit 1);	\
+	for i in $(SUBDIRS); do         \
+	  (cd "$$i" && pwd && $(MAKE) $(MAKEF) SRCDIR=../$(SRCDIR)/$$i $@) || break;	\
 	done
 	@test -d $(OBJTREE) && echo "+++ NOTE - $(OBJTREE) exists" ||:
 
