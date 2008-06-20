@@ -40,7 +40,7 @@ void path_destroy(struct path **path) {
 }
 
 int 
-encode_message(struct ccn_charbuf *message, struct path * name_path, unsigned char *data, size_t len) {
+encode_message(struct ccn_charbuf *message, struct path * name_path, char *data, size_t len) {
     struct ccn_charbuf *path = NULL;
     struct ccn_charbuf *authenticator = ccn_charbuf_create();
     struct ccn_charbuf *signature = ccn_charbuf_create();
@@ -64,12 +64,12 @@ encode_message(struct ccn_charbuf *message, struct path * name_path, unsigned ch
 }
 
 int 
-decode_message(struct ccn_charbuf *message, struct path * name_path, unsigned char *data, size_t len) {
+decode_message(struct ccn_charbuf *message, struct path * name_path, char *data, size_t len) {
     struct ccn_parsed_ContentObject content;
     struct ccn_indexbuf *comps = ccn_indexbuf_create();
     const unsigned char * content_value;
     char * s = NULL;
-    int content_length;
+    size_t content_length;
     
     int res = 0;
     int i;
