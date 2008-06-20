@@ -46,6 +46,12 @@ ccn_uri_append_comp(struct ccn_charbuf *c, const unsigned char *data, size_t siz
 
 /*
  * ccn_uri_append:
+ * This appends to c a URI representation of the ccnb-encoded Name element
+ * passed in.  For convenience, it will also look inside of a ContentObject
+ * or Interest object to find the Name.
+ * Components that consist of solely of zero or more dots are converted
+ * by adding 3 more dots so there are no ambiguities with . or .. or whether
+ * a component is empty or absent.
  */
 
 int
@@ -166,4 +172,3 @@ ccn_append_uri_component(struct ccn_charbuf *c, const char *s, size_t limit, siz
         *cont = limit;
     return(err);
 }
-

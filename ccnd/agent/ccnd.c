@@ -816,7 +816,6 @@ age_interests(struct ccnd *h) {
             hashtb_delete(e);
             continue;
         }
-        interest->cached_faceid = ~0;
         for (i = 0; i < n; i++) {
             size_t count = interest->counters->buf[i];
             if (count > CCN_UNIT_INTEREST) {
@@ -1483,10 +1482,16 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
                 if (0 > ccn_indexbuf_append_element(interest->counters, 0)) break;
             if (0 <= res && res < interest->counters->n)
                 interest->counters->buf[res] += CCN_UNIT_INTEREST;
-            if (interest->cached_faceid == face->faceid)
+            content = NULL;
+            if (interest->cached_faceid == face->faceid) {
                 content = content_from_accession(h, interest->cached_accession);
-            else
+                if (content != NULL)
+                    content = content_from_accession(h, content_skiplist_next(h, content));
+            }
+            if (content == NULL) {
                 content = find_first_match_candidate(h, msg, size);
+                interest->cached_faceid = ~0;
+            }
             while (content != NULL &&
                   content_matches_interest_prefix(h, content, msg, size, &parsed_interest, comps)) {
                 if (content_is_unblocked(content, &parsed_interest, msg, face->faceid) &&
