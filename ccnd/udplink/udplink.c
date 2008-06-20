@@ -121,6 +121,7 @@ void process_options(int argc, char * const argv[], struct options *options) {
 #ifdef AI_NUMERICSERV
             hints.ai_flags |= AI_NUMERICSERV;
 #endif
+	    udplink_note("interface %s requested\n", optarg);
             result = getaddrinfo(optarg, NULL, &hints, &options->multicastaddrinfo);
             if (result != 0 || options->multicastaddrinfo == NULL) {
                 udplink_fatal("getaddrinfo(\"%s\", ...): %s\n", optarg, gai_strerror(result));
@@ -344,7 +345,16 @@ main (int argc, char * const argv[]) {
         udplink_fatal("getaddrinfo(NULL, %s, ...): %s\n", options.localport, gai_strerror(result));
     }
     
-    result = bind(remotesock, laddrinfo->ai_addr, laddrinfo->ai_addrlen);
+    if (options.multicastaddrinfo != NULL) {
+	/* We have a specific interface to bind to.  multicastaddrinfo
+ 	   is actually the unicast ipv4 address of this interface */
+	result = bind(remotesock, options.multicastaddrinfo->ai_addr, options.multicastaddrinfo->ai_addrlen);
+    } else {
+	/* Default case with no specific interface: bind to laddrinfo 
+           address obtained above, which should be unspecific network
+           address based on AI_PASSIVE hint */
+        result = bind(remotesock, laddrinfo->ai_addr, laddrinfo->ai_addrlen);
+    }
     if (result == -1) {
         udplink_fatal("bind(remotesock, local...): %s\n", strerror(errno));
     }
