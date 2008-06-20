@@ -163,9 +163,9 @@ void process_options(int argc, char * const argv[], struct options *options) {
 	hints.ai_flags |= AI_NUMERICSERV;
 #endif
 	udplink_note("interface %s requested (port %s)\n", mcastoutstr, options->localport);
-	result = getaddrinfo(optarg, options->localport, &hints, &options->multicastaddrinfo);
+	result = getaddrinfo(mcastoutstr, options->localport, &hints, &options->multicastaddrinfo);
 	if (result != 0 || options->multicastaddrinfo == NULL) {
-	    udplink_fatal("getaddrinfo(\"%s\", ...): %s\n", optarg, gai_strerror(result));
+	    udplink_fatal("getaddrinfo(\"%s\", ...): %s\n", mcastoutstr, gai_strerror(result));
 	}
     }
 
