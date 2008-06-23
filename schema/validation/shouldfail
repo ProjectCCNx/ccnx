@@ -1,0 +1,12 @@
+#!/bin/sh
+Cleanup () {
+  rm tmp-$$.out
+}
+trap Cleanup 0
+# We succeed if the commandline fails
+"$@" 2>tmp-$$.out || exit 0
+# We also succeed if the string "error:" came out on stderr
+# (because xmllint does not always set the exit status)
+grep -e 'error:' tmp-$$.out >/dev/null && exit 0
+echo '###' \'"$@"\' should not have succeeded! >&2
+exit 1
