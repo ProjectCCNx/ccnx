@@ -27,7 +27,6 @@
  */
 struct ccn_charbuf;
 struct hashtb;
-struct ccn_matrix;
 struct ccn_schedule;
 
 /*
@@ -53,7 +52,6 @@ struct ccnd {
     struct hashtb *content_tab;     /* keyed by initial fragment of ContentObject */
     struct hashtb *interest_tab;    /* keyed by name components */
     struct hashtb *propagating_tab; /* keyed by nonce */
-    struct ccn_matrix *backlinks;   /* for linking to earlier content */
     struct ccn_indexbuf *skiplinks; /* skiplist for content-ordered ops */
     unsigned face_gen;
     unsigned face_rover;            /* for faceid allocation */
@@ -141,9 +139,7 @@ struct interest_entry {
     struct ccn_indexbuf *interested_faceid;
     struct ccn_indexbuf *counters;
     struct back_filter *back_filter;
-    ccn_accession_t newest;
     ccn_accession_t cached_accession;
-    intptr_t matches;           /* Number of matching ContentObjects */
     unsigned cached_faceid;
     unsigned char idle;
     int ncomp;                  /* Number of name components */

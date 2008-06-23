@@ -27,16 +27,9 @@
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
 #include <ccn/hashtb.h>
-#include <ccn/matrix.h>
 #include <ccn/schedule.h>
 
-#define newest newest_UNUSED
-#define backlinks backlinks_UNUSED
-#define matches matches_UNUSED
 #include "ccnd_private.h"
-#undef newest
-#undef backlinks
-#undef matches
 
 static void cleanup_at_exit(void);
 static void unlink_at_exit(const char *path);
