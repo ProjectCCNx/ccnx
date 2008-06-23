@@ -31,6 +31,10 @@ cleanall:
 MANIFEST:
 	svn list -R | grep -v '/$$' > MANIFEST
 
+FAVORITES: MANIFEST
+	./makefavorites
+	rm MANIFEST
+
 tar:	ccnd.tar
 ccnd.tar: MANIFEST
 	tar cf ccnd.tar -T MANIFEST

@@ -1,0 +1,13 @@
+#!/bin/sh
+# Set up a FAVORITES directory with links to sources
+# for a better experience with source browsers (e.g. Xcode Organizer)
+mkdir -p FAVORITES/0
+mkdir -p FAVORITES/1
+find FAVORITES -type l \( -name \*.c -o -name \*.h \) -exec rm '{}' ';'
+while read i; do
+  b=`basename "$i"`
+  case "${b:--}" in
+    *.h) ln -s ../../"$i" FAVORITES/0/"$b";;
+    *.c) ln -s ../../"$i" FAVORITES/1/"$b";;
+  esac
+done < MANIFEST
