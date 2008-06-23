@@ -31,13 +31,21 @@ main(int argc, char **argv)
     int status = 0;
     
     const EVP_MD *md;
+    EVP_MD_CTX *md_ctx;
     
     OpenSSL_add_all_digests();
     
     md = EVP_get_digestbynid(NID_sha256);
-    
     if (md == NULL) abort();
     
+    md_ctx = EVP_MD_CTX_create();
+    if (md_ctx == NULL) abort();
+
+    if (!EVP_DigestInit_ex(md_ctx, md, NULL)) {
+        EVP_MD_CTX_destroy(md_ctx);
+        abort();
+    }
+
     while ((ch = getopt(argc, argv, "h")) != -1) {
         switch (ch) {
             default:
@@ -76,6 +84,30 @@ main(int argc, char **argv)
             status = 1;
             continue;
         }
+        /* figure out what gets included in the digest, and do
+           EVP_DigestUpdate(md_ctx, &stuff, count) and then
+           unsigned char mdbuf[EVP_MAX_MD_SIZE];
+           unsigned int buflen = 0;
+           EVP_DigestFinal_ex(md_ctx, mdbuf, &buflen);
+
+           This will give us the digest of the data.
+           If we're trying to verify it according to the public key, we have to
+           locate the actual key, and then it looks very similar, with:
+           
+           const EVP_PKEY *verification_key = <get the key>;
+           (create a context)
+           (get the digest)
+           if (verification_key->type == EVP_PKEY_DSA) {
+           	digest = EVP_dss1();
+           }
+           EVP_VerifyInit(context, digest);
+           EVP_VerifyUpdate(context, data, length);
+           (read in the signature)
+           err = EVP_VerifyFinal(context, signature, signaturelength, verification_key);
+           if (err != 1) {
+           	failed...
+           }
+        */
         fprintf(stderr, "to be continued\n");
     }
     exit(status);
