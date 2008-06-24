@@ -49,6 +49,13 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
     }
     
     /**
+     * Helper function
+     */
+    public ContentObject(CompleteName completeName, byte [] content) {
+    	this(completeName.name(), completeName.authenticator(), completeName.signature(), content);
+    }
+    
+    /**
      * Generate an authenticator and a signature.
      * @throws SignatureException 
      * @throws InvalidKeyException 

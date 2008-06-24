@@ -104,6 +104,7 @@ public class BinaryXMLEncoder implements XMLEncoder {
 					String strAttr = it.next();
 					String strValue = attributes.get(strAttr);
 					
+					// TODO DKS are attributes in different dictionary? right now not using DATTRS
 					long dictionaryAttr = _dictionary.encodeAttr(strAttr);
 					if (dictionaryAttr < 0) {
 						// not in dictionary, encode as attr

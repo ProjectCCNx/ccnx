@@ -27,10 +27,8 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.config.UserConfiguration;
-import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherKeyID;
@@ -39,13 +37,16 @@ import com.parc.ccn.security.crypto.certificates.BCX509CertificateGenerator;
 import com.parc.ccn.security.crypto.certificates.CryptoUtil;
 
 public class BasicKeyManager extends KeyManager {
-	
+		
 	protected KeyStore _keystore = null;
 	protected String _defaultAlias = null;
 	protected PublisherKeyID _defaultKeyID = null;
 	protected X509Certificate _certificate = null;
 	protected PrivateKey _privateKey = null;
 	protected KeyLocator _keyLocator = null;
+	
+	protected KeyRepository _keyRepository = new KeyRepository();
+	
 	private char [] _password = null;
 	
 	public BasicKeyManager() throws ConfigurationException {
@@ -63,7 +64,7 @@ public class BasicKeyManager extends KeyManager {
 			try {
 				Library.logger().info("Loading CCN key store from " + UserConfiguration.keystoreFileName() + "...");
 				_password = UserConfiguration.keystorePassword().toCharArray();
-				_keystore = KeyStore.getInstance(KeyStore.getDefaultType());
+				_keystore = KeyStore.getInstance(UserConfiguration.defaultKeystoreType());
 				in = new FileInputStream(UserConfiguration.keystoreFileName());
 				_keystore.load(in, _password);
 			} catch (NoSuchAlgorithmException e) {
@@ -79,7 +80,7 @@ public class BasicKeyManager extends KeyManager {
 				Library.logger().warning("Cannot open existing key store file: " + UserConfiguration.keystoreFileName() + ": " + e.getMessage());
 				throw new ConfigurationException(e);
 			} catch (KeyStoreException e) {
-				Library.logger().warning("Cannot create instance of default key store type: " + e.getMessage());
+				Library.logger().warning("Cannot create instance of preferred key store type: " + e.getMessage());
 				Library.warningStackTrace(e);
 				throw new ConfigurationException("Cannot create instance of default key store type: " + e.getMessage());
 			} finally {
@@ -114,9 +115,10 @@ public class BasicKeyManager extends KeyManager {
 			Library.logger().info("Default key locator: " + _keyLocator);
 			// JDT TODO Restore publishing info about this key. Commented-out for 
 			// now to enable unit test with no repo.
-//		    if (null == getKey(_defaultKeyID, _keyLocator)) {
-//		    	publishKey(_certificate.getPublicKey(), _privateKey);
-//		    }
+		    if (null == getKey(_defaultKeyID, _keyLocator)) {
+		    	keyRepository().publishKey(_keyLocator.name().name(), _certificate.getPublicKey(), 
+		    								_defaultKeyID, _privateKey);
+		    }
 		
 		} catch (Exception e) {
 			generateConfigurationException("Cannot retrieve default user keystore entry.", e);
@@ -130,7 +132,11 @@ public class BasicKeyManager extends KeyManager {
 			if (!ccnDir.mkdirs()) {
 				generateConfigurationException("Cannot create user CCN directory: " + ccnDir.getAbsolutePath(), null);
 			}
+			
 		}
+		
+		// Alas, until 1.6, we can't set permissions on the file or directory...
+		// TODO DKS when switch to 1.6, add permission settings.
 		File keyStoreFile  = new File(UserConfiguration.keystoreFileName());
 		if (keyStoreFile.exists())
 			return null;
@@ -138,7 +144,7 @@ public class BasicKeyManager extends KeyManager {
 		KeyStore ks = null;
 	    try {
 	    	_password = UserConfiguration.keystorePassword().toCharArray();
-			ks = KeyStore.getInstance(KeyStore.getDefaultType());
+			ks = KeyStore.getInstance(UserConfiguration.defaultKeystoreType());
 			ks.load(null, _password);
 		} catch (NoSuchAlgorithmException e) {
 			generateConfigurationException("Cannot load empty default keystore.", e);
@@ -202,60 +208,8 @@ public class BasicKeyManager extends KeyManager {
 		return ks;
 	}
 
-	protected CompleteName publishKey(PublicKey key, PrivateKey signingKey) throws ConfigurationException {
-		// publish a key locator for our use
-		// as long as we can re-generate the name,
-		// we know it should exist
-		// problem -- we need to be able to put
-		// even though we aren't done being created yet
-		// go through low-level interface
-		byte [] encodedKey = key.getEncoded();
-		// Need a key locator to stick in data entry for
-		// locator. Could use key itself, but then would have
-		// key both in the content for this item and in the
-		// key locator, which is redundant. Use naming form
-		// that allows for self-referential key names -- the
-		// CCN equivalent of a "self-signed cert". Means that
-		// we will refer to only the base key name and the publisher ID,
-		// not the uniqueified key name...
-		PublisherKeyID thisKeyID = new PublisherKeyID(key);
-		ContentName keyName = getDefaultKeyName(thisKeyID.id());
-		KeyLocator locatorLocator = 
-			new KeyLocator(keyName, new PublisherID(thisKeyID));
-		CompleteName uniqueKeyName = null;
-		try {
-			uniqueKeyName = CompleteName.generateAuthenticatedName(
-									 keyName,
-									 thisKeyID,
-									 ContentAuthenticator.now(),
-									 ContentAuthenticator.ContentType.LEAF,
-									 locatorLocator,
-									 encodedKey,
-									 false,
-									 signingKey);
-		} catch (Exception e) {
-			generateConfigurationException("Exception generating key locator for (and using) default user key.", e);
-		}
-		try {
-			// DKS TODO should we publish this more widely?
-			// Just write it locally for now, let others pick
-			// it up. Use low-level interface as we may not
-			// have a library.
-			CompleteName publishedLocation = 
-				CCNRepositoryManager.getRepositoryManager().put(
-						uniqueKeyName.name(), 
-						uniqueKeyName.authenticator(), 
-						uniqueKeyName.signature(),
-						encodedKey);
-			Library.logger().info("Generated user default key. Published key locator as: " + publishedLocation.name());
-			return publishedLocation;
-		} catch (Exception e) {
-			generateConfigurationException("Cannot put key locator for default key.", e);
-		}
-		return null;
-	}
 	
-	protected void generateConfigurationException(String message, Exception e) throws ConfigurationException {
+	static void generateConfigurationException(String message, Exception e) throws ConfigurationException {
 		Library.logger().warning(message + " " + e.getClass().getName() + ": " + e.getMessage());
 		Library.warningStackTrace(e);
 		throw new ConfigurationException(message, e);
@@ -338,7 +292,28 @@ public class BasicKeyManager extends KeyManager {
 		else if (null != locator.key())
 			return locator.key();
 		
-		// Otherwise, this is a name.
+		// Otherwise, this is a name. 
+		
+		// First, try our local key repository. 
+		PublicKey key = null;
+		try {
+			key = _keyRepository.getPublicKey(desiredKeyID, locator);
+		} catch (InvalidKeySpecException ikse) {
+			Library.logger().info("Name: " + locator.name() + " is not a key: " + ikse.getMessage());
+			// go around again
+		} catch (CertificateEncodingException e) {
+			Library.logger().info("Name: " + locator.name() + " cannot be decoded: " + e.getMessage());
+			// go around again
+		} catch (NoSuchAlgorithmException e) {
+			Library.logger().info("Name: " + locator.name() + " uses unknown algorithm: " + e.getMessage());
+		} 
+		
+		if (null != key)
+			return key;
+		
+		/*
+		// No dice, now we have to go to the network. 
+		// DKS TODO add in timeout...
 		// Pull all the content under the name; we likely may have a more
 		// complicated publisher check than just a key match that get can
 		// (or could if it was implemented) do. Would in many ways
@@ -396,7 +371,7 @@ public class BasicKeyManager extends KeyManager {
 					}
 					
 					// DKS TODO What if it's a certificate?
-					PublicKey key = CryptoUtil.getPublicKey(potentialKey.content());
+					key = CryptoUtil.getPublicKey(potentialKey.content());
 
 					// Tricky -- can't necessarily just call verify,
 					// or we could end up with a circular dependency.
@@ -452,16 +427,11 @@ public class BasicKeyManager extends KeyManager {
 		}
 		if (null != keyObject) {
 			Library.logger().info("Retrieved key: " + keyObject.name());
-			remember(locator.name().publisher(), theKey, keyObject);
+			_keyRepository.remember(theKey, keyObject);
 			return theKey;
 		} 
+		*/
 		return null;
-	}
-
-	protected void remember(PublisherID publisher, PublicKey theKey,
-			ContentObject keyObject) {
-		// TODO Auto-generated method stub
-		
 	}
 
 	@Override
@@ -516,6 +486,11 @@ public class BasicKeyManager extends KeyManager {
 		
 		// DKS TODO
 		return null;
+	}
+
+	@Override
+	public KeyRepository keyRepository() {
+		return _keyRepository;
 	}
 
 }

@@ -4,8 +4,10 @@ import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.security.PublisherID;
+import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
@@ -73,19 +75,26 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public byte [] responseFilter() { return _responseFilter; }
 	
 	public boolean matches(CompleteName result) {
-		if (null == name() || null == result)
+		return matches(result.name(), (null != result.authenticator()) ? result.authenticator().publisherKeyID() : null);
+	}
+	
+	public boolean matches(ContentObject result) {
+		return matches(result.name(), (null != result.authenticator()) ? result.authenticator().publisherKeyID() : null);
+	}
+
+	public boolean matches(ContentName resultName, PublisherKeyID resultPublisherKeyID) {
+		if (null == name() || null == resultName)
 			return false; // null name() should not happen, null arg can
 		// to get interest that matches everything, should
 		// use / (ROOT)
-		if (name().isPrefixOf(result.name())) {
+		if (name().isPrefixOf(resultName)) {
 			if (null != publisherID()) {
-				if ((null == result.authenticator()) ||
-					(null == result.authenticator().publisherKeyID())) {
+				if (null == resultPublisherKeyID) {
 					return false;
 				}
 				// Should this be more general?
 				// TODO DKS handle issuer
-				if (TrustManager.getTrustManager().matchesRole(publisherID(), result.authenticator().publisherKeyID())) {
+				if (TrustManager.getTrustManager().matchesRole(publisherID(), resultPublisherKeyID)) {
 					return true;
 				}
 			} else {

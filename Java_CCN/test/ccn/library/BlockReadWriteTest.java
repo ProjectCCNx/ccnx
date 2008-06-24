@@ -1,7 +1,6 @@
 package test.ccn.library;
 
 import java.io.ByteArrayInputStream;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -26,8 +25,8 @@ import com.parc.ccn.library.CCNLibrary.OpenMode;
 
 public class BlockReadWriteTest extends BaseLibraryTest {
 	
-	protected static final String fileName = "../data/medium_file.txt";
-	protected static final int CHUNK_SIZE = 256;
+	protected static final String fileName = "medium_file.txt";
+	protected static final int CHUNK_SIZE = 512;
 	
 	protected static CCNLibrary libraries[] = new CCNLibrary[2];
 
@@ -35,7 +34,7 @@ public class BlockReadWriteTest extends BaseLibraryTest {
 	public static void setUpBeforeClass() throws Exception {
 	
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
-		Library.logger().setLevel(Level.INFO);
+		Library.logger().setLevel(Level.FINEST);
 		libraries[0] = new StandardCCNLibrary();
 		libraries[1] = new StandardCCNLibrary(); // force them to use separate ones.
 	}
@@ -81,13 +80,14 @@ public class BlockReadWriteTest extends BaseLibraryTest {
 		Library.logger().info("Opened descriptor for writing: " + thisName);
 		
 		// Dump the file in small packets
-		InputStream is = new ByteArrayInputStream(TEST_CONTENT.getBytes());
+		InputStream is = new ByteArrayInputStream(TEST_LONG_CONTENT.getBytes());
         byte[] bytes = new byte[CHUNK_SIZE];
         int buflen = 0;
         while ((buflen = is.read(bytes)) >= 0) {
         	useLibrary.write(desc, bytes, 0, buflen);
         	Library.logger().info("Wrote " + buflen + " bytes to CCNDescriptor.");
         }
+        Library.logger().info("Finished writing. Closing CCN writing CCNDescriptor.");
         useLibrary.close(desc);
         Library.logger().info("Closed CCN writing CCNDescriptor.");
 	}
@@ -132,4 +132,84 @@ public class BlockReadWriteTest extends BaseLibraryTest {
 		"birth of freedom. . . and that government of the people. . .by the \n" +
 		"people. . .for the people. . . shall not perish from the earth. \n" +
 		"\n";
+	
+	protected static final String TEST_MEDIUM_CONTENT = 
+		"By the President of the United States of America:\n" +
+		"\n" + 
+		"A PROCLAMATION\n" + 
+		"\n" + 
+	    "Whereas on the 22nd day of September, A.D. 1862, a\n" + 
+	    "proclamation was issued by the President of the United\n" + 
+	    "States, containing, among other things, the following, to\n" + 
+	    "wit:\n" + 
+		"\n" + 
+	    "That on the 1st day of January, A.D. 1863, all persons held as\n" + 
+	    "slaves within any State or designated part of a State the people\n" + 
+	    "whereof shall then be in rebellion against the United States shall\n" + 
+	    "be then, thenceforward, and forever free; and the executive\n" + 
+	    "government of the United States, including the military and naval\n" + 
+	    "authority thereof, will recognize and maintain the freedom of such\n" + 
+	    "persons and will do no act or acts to repress such persons, or any\n" + 
+	    "of them, in any efforts they may make for their actual freedom.\n" + 
+		"\n" + 
+	    "That the executive will on the 1st day of January aforesaid, by\n" + 
+		"proclamation, designate the States and parts of States, if any, in\n" + 
+		"which the people thereof, respectively, shall then be in rebellion\n" + 
+		"against the United States; and the fact that any State or the people\n" + 
+		"thereof shall on that day be in good faith represented in the Congress\n" + 
+		"of the United States by members chosen thereto at elections wherein a\n" + 
+		"majority of the qualified voters of such States shall have\n" + 
+		"participated shall, in the absence of strong countervailing testimony,\n" + 
+		"be deemed conclusive evidence that such State and the people thereof\n" + 
+		"are not then in rebellion against the United States.\n" + 
+		"\n" + 
+	    "Now, therefore, I, Abraham Lincoln, President of the United\n" + 
+	    "States, by virtue of the power in me vested as Commander-In-Chief\n" + 
+	    "of the Army and Navy of the United States in time of actual armed\n" + 
+	    "rebellion against the authority and government of the United\n" + 
+	    "States, and as a fit and necessary war measure for supressing said\n" + 
+	    "rebellion, do, on this 1st day of January, A.D. 1863, and in\n" + 
+	    "accordance with my purpose so to do, publicly proclaimed for the\n" + 
+	    "full period of one hundred days from the first day above\n" + 
+	    "mentioned, order and designate as the States and parts of States\n" + 
+	    "wherein the people thereof, respectively, are this day in\n" + 
+	    "rebellion against the United States the following, to wit:\n" + 
+		"\n" + 
+	    "Arkansas, Texas, Louisiana (except the parishes of St. Bernard,\n" + 
+	    "Palquemines, Jefferson, St. John, St. Charles, St. James,\n" + 
+	    "Ascension, Assumption, Terrebone, Lafourche, St. Mary, St. Martin,\n" + 
+	    "and Orleans, including the city of New Orleans), Mississippi,\n" + 
+	    "Alabama, Florida, Georgia, South Carolina, North Carolina, and\n" + 
+	    "Virginia (except the forty-eight counties designated as West\n" + 
+	    "Virginia, and also the counties of Berkeley, Accomac,\n" + 
+	    "Morthhampton, Elizabeth City, York, Princess Anne, and Norfolk,\n" + 
+	    "including the cities of Norfolk and Portsmouth), and which\n" + 
+	    "excepted parts are for the present left precisely as if this\n" + 
+	    "proclamation were not issued.\n" + 
+		"\n" + 
+	    "And by virtue of the power and for the purpose aforesaid, I do\n" + 
+	    "order and declare that all persons held as slaves within said\n" + 
+	    "designated States and parts of States are, and henceforward shall\n" + 
+	    "be, free; and that the Executive Government of the United States,\n" + 
+	    "including the military and naval authorities thereof, will\n" + 
+	    "recognize and maintain the freedom of said persons.\n" + 
+		"\n" + 
+	    "And I hereby enjoin upon the people so declared to be free to\n" + 
+	    "abstain from all violence, unless in necessary self-defence; and I\n" + 
+	    "recommend to them that, in all case when allowed, they labor\n" + 
+	    "faithfully for reasonable wages.\n" + 
+		"\n" + 
+	    "And I further declare and make known that such persons of\n" + 
+	    "suitable condition will be received into the armed service of\n" + 
+	    "the United States to garrison forts, positions, stations, and\n" + 
+	    "other places, and to man vessels of all sorts in said\n" + 
+	    "service.\n" + 
+		"\n" + 
+	    "And upon this act, sincerely believed to be an act of\n" + 
+	    "justice, warranted by the Constitution upon military\n" + 
+	    "necessity, I invoke the considerate judgment of mankind and\n" + 
+	    "the gracious favor of Almighty God.\n";
+	
+	protected static final String TEST_LONG_CONTENT = TEST_CONTENT + TEST_MEDIUM_CONTENT + TEST_CONTENT + TEST_MEDIUM_CONTENT;
+
 }

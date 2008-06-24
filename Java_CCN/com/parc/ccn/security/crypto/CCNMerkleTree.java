@@ -41,11 +41,13 @@ public class CCNMerkleTree extends MerkleTree {
 			PublisherKeyID publisher,
 			Timestamp timestamp,
 			byte[][] contentBlocks,
+			boolean isDigest,
+			int blockCount,
 			int baseBlockIndex,
 			KeyLocator locator,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException {
-		
-		super(DigestHelper.DEFAULT_DIGEST_ALGORITHM, contentBlocks);
+		// Computes leaves and tree.
+		super(DigestHelper.DEFAULT_DIGEST_ALGORITHM, contentBlocks, isDigest, blockCount);
 		
 		_rootName = name;
 		
@@ -53,8 +55,7 @@ public class CCNMerkleTree extends MerkleTree {
 		_blockNames = new ContentName[numLeaves()];
 		_blockAuthenticators = new ContentAuthenticator[numLeaves()];
 		
-		computeLeafValues(contentBlocks);
-		computeNodeValues();
+		// DKS TODO root() here is throwing an exception
 		_rootAuthenticator = new ContentAuthenticator(publisher, null, timestamp, 
 													  ContentType.FRAGMENT, locator, root(), true);
 		_rootSignature = ContentObject.sign(_rootName, _rootName.count(),

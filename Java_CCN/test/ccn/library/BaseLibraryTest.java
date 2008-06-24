@@ -56,8 +56,8 @@ public class BaseLibraryTest {
 			Thread.sleep(200);
 			Date start = new Date();
 			getter.start();
-			putter.join(5000);
-			getter.join(5000);
+			putter.join(50000);
+			getter.join(50000);
 			boolean good = true;
 			exit = true;
 			if (getter.getState() != Thread.State.TERMINATED) {
@@ -200,6 +200,8 @@ public class BaseLibraryTest {
 				System.out.println("Put thread finished");
 			} catch (Throwable ex) {
 				error = ex;
+				Library.logger().finer("Exception in run: " + ex.getClass().getName() + " message: " + ex.getMessage());
+				Library.logStackTrace(Level.FINEST, ex);
 			}
 		}
 	}

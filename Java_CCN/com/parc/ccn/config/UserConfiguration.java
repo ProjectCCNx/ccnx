@@ -16,6 +16,7 @@ public class UserConfiguration {
 	 */
 	protected static final String CCN_DIR_NAME = ".ccn";
 	protected static final String KEYSTORE_FILE_NAME = ".ccn_keystore";
+	protected static final String KEY_DIRECTORY = "keyCache";
 	protected static final String ADDRESSBOOK_FILE_NAME = "ccn_addressbook.xml";
 
 	protected static final String DEFAULT_CCN_NAMESPACE_STRING = "/parc.com";
@@ -29,6 +30,7 @@ public class UserConfiguration {
 	protected static final int DEFAULT_KEY_LENGTH = 1024;
 	protected static final String DEFAULT_KEY_ALG = "RSA";
 	protected static final String DEFAULT_KEY_ALIAS = "CCNUser";
+	protected static final String DEFAULT_KEYSTORE_TYPE = "JKS"; // "JCEKS"; // want JCEKS, but don't want to force regen yet
 	
 	protected static String CCN_DIR;
 	protected static String USER_DIR;
@@ -65,12 +67,17 @@ public class UserConfiguration {
 	public static String keystorePassword() { 
 		return CCN_DIR + FILE_SEP + KEYSTORE_PASSWORD; }
 	
+	public static String keyRepositoryDirectory() {
+		return CCN_DIR + FILE_SEP + KEY_DIRECTORY; }
+	
 	public static String addressBookFileName() { 
 		return CCN_DIR + FILE_SEP + ADDRESSBOOK_FILE_NAME; }
 	
 	public static String defaultKeyAlgorithm() { return DEFAULT_KEY_ALG; }
 	
 	public static String defaultKeyAlias() { return DEFAULT_KEY_ALIAS; }
+	
+	public static String defaultKeystoreType() { return DEFAULT_KEYSTORE_TYPE; }
 	
 	public static int defaultKeyLength() { return DEFAULT_KEY_LENGTH; }
 

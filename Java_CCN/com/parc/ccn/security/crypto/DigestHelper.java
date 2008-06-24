@@ -179,4 +179,9 @@ public class DigestHelper {
 		BigInteger bi = new BigInteger(1,binaryObject);
 		return bi.toString(radix);
 	}
+	
+	public static byte [] scanBytes(String encodedString, int radix) {
+		BigInteger bi = new BigInteger(encodedString, radix);
+		return bi.toByteArray();
+	}
 }

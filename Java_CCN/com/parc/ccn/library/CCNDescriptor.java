@@ -199,6 +199,13 @@ public class CCNDescriptor {
 		_dh = new DigestHelper();
 	}
 	
+	/**
+	 * DKS TODO: Needs to handle both single-put and fragmented content.
+	 * @param name
+	 * @throws IOException
+	 * @throws InterruptedException
+	 * @throws XMLStreamException
+	 */
 	protected void openForReading(CompleteName name) throws IOException, InterruptedException, XMLStreamException {
 
 		ContentName nameToOpen = name.name();
@@ -345,6 +352,7 @@ public class CCNDescriptor {
 		
 		while (bytesToWrite > 0) {
 			if (_blockIndex >= BLOCK_BUF_COUNT) {
+				Library.logger().fine("write: about to sync one tree's worth of blocks (" + BLOCK_BUF_COUNT +") to the network.");
 				sync();
 			}
 		
@@ -361,8 +369,10 @@ public class CCNDescriptor {
 			
 			bytesToWrite -= toWriteNow; 
 			_blockOffset += toWriteNow;
+			Library.logger().finer("write: added " + toWriteNow + " bytes to block. blockIndex: " + _blockIndex + " ( " + (BLOCK_BUF_COUNT-_blockIndex-1) + " left)  blockOffset: " + _blockOffset + "( " + (thisBufAvail - toWriteNow) + " left in block).");
 			
 			if (_blockOffset >= _blockBuffers[_blockIndex].length) {
+				Library.logger().finer("write: finished writing block " + _blockIndex);
 				++_blockIndex;
 				_blockOffset = 0;
 			}
@@ -381,13 +391,16 @@ public class CCNDescriptor {
 					((_blockIndex == 0) || ((_blockIndex == 1) && (_blockOffset == 0)))) {
 				// maybe need put with offset and length
 				if ((_blockIndex == 1) || (_blockOffset == _blockBuffers[0].length)) {
+					Library.logger().finest("close(): writing single-block file in one put, length: " + _blockBuffers[0].length);
 					_library.put(_baseName, _blockBuffers[0], _type, _publisher, _locator, _signingKey);
 				} else {
 					byte [] tempBuf = new byte[_blockOffset];
 					System.arraycopy(_blockBuffers[0],0,tempBuf,0,_blockOffset);
+					Library.logger().finest("close(): writing single-block file in one put, copied buffer length = " + _blockOffset);
 					_library.put(_baseName, tempBuf, _type, _publisher, _locator, _signingKey);
 				}
 			} else {
+				// DKS TODO Needs to cope with partial last block.
 				sync();
 				writeHeader();
 			}
@@ -396,15 +409,16 @@ public class CCNDescriptor {
 	}
 
 	public void sync() throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException {
-		
+		// DKS TODO needs to cope with partial last block. 
 		if (!openForWriting())
 			return;
 		
 		if (null == _timestamp)
 			_timestamp = ContentAuthenticator.now();
 	
+		Library.logger().finer("sync: putting merkle tree to the network, " + (_blockIndex+1) + " blocks.");
 		// Generate Merkle tree (or other auth structure) and authenticators and put contents.
-		_library.putMerkleTree(_baseName, _blockBuffers, _baseBlockIndex, _timestamp, _publisher, _locator, _signingKey);
+		_library.putMerkleTree(_baseName, _blockBuffers, _blockIndex+1, _baseBlockIndex, _timestamp, _publisher, _locator, _signingKey);
 		// Set contents of blocks to 0
 		for (int i=0; i < _blockBuffers.length; ++i) {
 			Arrays.fill(_blockBuffers[i], 0, _blockBuffers[i].length, (byte)0);

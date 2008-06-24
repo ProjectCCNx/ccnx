@@ -39,17 +39,24 @@ public class MerkleTree {
 	/**
 	 * @param contentBlocks the leaf content to be hashed into this 
 	 * Merkle hash tree.
+	 * @param blockCount the number of those blocks to include (e.g. we may not
+	 * 	have filled our contentBlocks buffers prior to building the tree).
+	 * @param isDigest are the content blocks raw content (false), or are they already digested
+	 * 	  with our default algorithm (true)? (default algorithm: DigestHelper.DEFAULT_DIGEST_ALGORITHM)
 	 */
 	public MerkleTree(String algorithm, 
-					  byte [][] contentBlocks) {
-		this(algorithm, contentBlocks.length);
+					  byte [][] contentBlocks, boolean isDigest, int blockCount) {
+		this(algorithm, blockCount);
 		
-		computeLeafValues(contentBlocks);
+		if (blockCount > contentBlocks.length) 
+			throw new IllegalArgumentException("MerkleTree: cannot build tree from more blocks than given! Have " + contentBlocks.length + " blocks, asked to use: " + blockCount);
+		
+		computeLeafValues(contentBlocks, isDigest);
 		computeNodeValues();
 	}
 	
-	public MerkleTree(byte [][] contentBlocks) {
-		this(DigestHelper.DEFAULT_DIGEST_ALGORITHM, contentBlocks);
+	public MerkleTree(byte [][] contentBlocks, boolean isDigest, int blockCount) {
+		this(DigestHelper.DEFAULT_DIGEST_ALGORITHM, contentBlocks, isDigest, blockCount);
 	}
 	
 	public static int parent(int i) { 
@@ -83,10 +90,21 @@ public class MerkleTree {
 	
 	public byte [] root() { return _tree[0].getOctets(); } 
 	public DEROctetString derRoot() { return _tree[0]; }
-	public byte [] get(int i) { return _tree[i].getOctets(); }
-	public DEROctetString derGet(int i) { return _tree[i]; }
 	public int size() { return _tree.length; }
 	
+	public byte [] get(int i) { 
+		DEROctetString dv = derGet(i);
+		if (null == dv)
+			return null;
+		return dv.getOctets(); 
+	}
+	
+	public DEROctetString derGet(int i) { 
+		if ((i < 0) || (i >= size())) 
+				return null;
+		return _tree[i]; 
+	}
+
 	public int numLeaves() { return _numLeaves; }
 	public int pathLength() { return _pathLength; }
 	
@@ -159,28 +177,26 @@ public class MerkleTree {
 	}
 	
 	public MerklePath derPath(int leafNum) {
+		
+		int leafIndex = leafIndex(leafNum);
+		
 		DEROctetString [] result = 
 			new DEROctetString[pathLength()];
 		
-		int sibling = sibling(leafNum);
-		result[pathLength()-1] = derGet(sibling);
-		int index = parent(leafNum);
+		// What do we do if we don't have a sibling?
+		int sibling = sibling(leafIndex);
+		if (sibling < size()) // we have a sibling
+			result[pathLength()-1] = derGet(sibling);
+		
+		int index = parent(leafIndex);
 		while (index > 0) {
-			result[index] = derGet(sibling(index));
+			result[index] = derGet(sibling(index)); // only last level allows sibling-less nodes
 			index = parent(index);
 		}
 		result[index] = derGet(index); // root
 		return new MerklePath(leafNum, result);
 	}
 		
-	protected void computeNodes(byte [][] contentBlocks) {
-		// Hash the leaves
-		for (int i=0; i < numLeaves(); ++i) {
-			_tree[leafIndex(i)] = 
-				new DEROctetString(DigestHelper.digest(_algorithm, contentBlocks[i]));
-		}
-	}
-	
 	protected int nodeCount() {
 		// How many entries do we need? 
 		// 2^(pathLength) - 1 (if even # nodes), - 2 (if odd)		
@@ -202,25 +218,31 @@ public class MerkleTree {
 		return pathLength;
 	}
 	
-	protected void computeLeafValues(byte [][] contentBlocks) {
+	/**
+	 * Compute the raw digest of the content blocks, and format them appropriately.
+	 * @param contentBlocks
+	 * @param isDigest if the content is already digested (must use the default digest algorithm, for
+	 * 	now; we can change that if there is  a need).
+	 */
+	protected void computeLeafValues(byte [][] contentBlocks, boolean isDigest) {
 		// Hash the leaves
 		for (int i=0; i < numLeaves(); ++i) {
 			_tree[leafIndex(i)] = 
 				new DEROctetString(
-						computeBlockDigest(i, contentBlocks));
+						(isDigest ? contentBlocks[i] : computeBlockDigest(i, contentBlocks)));
 		}
 	}
 	
 	protected void computeNodeValues() {
 		// Climb the tree
 		int firstNode = firstLeaf(); 
-		int endNode = size();
+		int endNode = size()-1;
 		int nextLevelStart = parent(firstNode);
 		int nextLevelEnd = firstNode - 1;
 		
-		while (parent(firstNode) > 0) {
-			for (int i = parent(firstNode); i < parent(endNode); ++i) {
-				if (rightChild(i) < endNode)
+		while (parent(firstNode) >= 0) {
+			for (int i = parent(firstNode); i <= parent(endNode); ++i) {
+				if (rightChild(i) <= endNode)
 					_tree[i] = 
 						new DEROctetString(DigestHelper.digest(_algorithm, get(leftChild(i)), get(rightChild(i))));
 				else

@@ -54,6 +54,7 @@ public class BinaryXMLDecoder implements XMLDecoder {
 			String decodedTag = null;
 			
 			if (tv.type() == BinaryXMLCodec.XML_TAG) {
+				Library.logger().info("Unexpected: got tag in readStartElement; looking for tag " + startTag + " got length: " + (int)tv.val()+1);
 				// Tag value represents length-1 as tags can never be empty.
 				decodedTag = BinaryXMLCodec.decodeUString(_istream, (int)tv.val()+1);
 				
@@ -83,6 +84,7 @@ public class BinaryXMLDecoder implements XMLDecoder {
 					if (BinaryXMLCodec.XML_ATTR == thisTV.type()) {
 						// Tag value represents length-1 as attribute names cannot be empty.
 						attributeName = BinaryXMLCodec.decodeUString(_istream, (int)thisTV.val()+1);
+					
 					} else if (BinaryXMLCodec.XML_DATTR == thisTV.type()) {
 						// DKS TODO are attributes same or different dictionary?
 						attributeName = _dictionary.decodeTag(tv.val());
@@ -122,7 +124,7 @@ public class BinaryXMLDecoder implements XMLDecoder {
 			String decodedTag = null;
 			
 			if (tv.type() == BinaryXMLCodec.XML_TAG) {
-				Library.logger().info("Unexpected: got tag in decode; looking for tag " + startTag + " got length: " + (int)tv.val()+1);
+				Library.logger().info("Unexpected: got tag in peekStartElement; looking for tag " + startTag + " got length: " + (int)tv.val()+1);
 				// Tag value represents length-1 as tags can never be empty.
 				decodedTag = BinaryXMLCodec.decodeUString(_istream, (int)tv.val()+1);
 				

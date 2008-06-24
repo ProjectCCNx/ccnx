@@ -49,6 +49,10 @@ public abstract class KeyManager {
 			throw new RuntimeException("Error in system configuration. Cannot get KeyManager.",e);
 		}
 	}
+	
+	public static KeyRepository getKeyRepository() {
+		return getKeyManager().keyRepository();
+	}
 
 	/**
 	 * Get our default keys.
@@ -92,5 +96,8 @@ public abstract class KeyManager {
 
 	public abstract PublicKey getKey(PublisherKeyID desiredKeyID,
 									KeyLocator locator) throws IOException, InterruptedException;
+	
+	
+	public abstract KeyRepository keyRepository();
 	
 }

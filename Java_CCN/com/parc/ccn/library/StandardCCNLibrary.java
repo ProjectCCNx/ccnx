@@ -56,7 +56,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	public static final String VERSION_MARKER = MARKER + "v" + MARKER;
 	public static final String FRAGMENT_MARKER = MARKER + "b" + MARKER;
 	public static final String CLIENT_METADATA_MARKER = MARKER + "meta" + MARKER;
-	public static final String HEADER_NAME = ".header";
+	public static final String HEADER_NAME = ".header"; // DKS currently not used; see below.
 	
 	static {
 		Security.addProvider(new BouncyCastleProvider());
@@ -765,7 +765,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 			System.arraycopy(contents, from, contentBlocks[i], 0, (to < contents.length) ? to : contents.length);
 		}
 		
-		byte [] contentTreeAuthenticator = putMerkleTree(name, contentBlocks, baseFragment(), timestamp, publisher, locator, signingKey);
+		byte [] contentTreeAuthenticator = putMerkleTree(name, contentBlocks, contentBlocks.length, baseFragment(), timestamp, publisher, locator, signingKey);
 		
 		// construct the headerBlockContents;
 		byte [] contentDigest = DigestHelper.digest(contents);
@@ -825,7 +825,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	public static final int baseFragment() { return 0; }
 
 	
-	byte [] putMerkleTree(ContentName name, byte [][] contentBlocks, int baseBlockIndex,
+	byte [] putMerkleTree(ContentName name, byte [][] contentBlocks, int blockCount, int baseBlockIndex, 
 			Timestamp timestamp,
 			PublisherKeyID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException {
@@ -846,11 +846,12 @@ public class StandardCCNLibrary implements CCNLibrary {
 		// in the MerkleTree blocks. 
     	CCNMerkleTree tree = 
     		new CCNMerkleTree(name, publisher, timestamp, 
-    						  contentBlocks, baseBlockIndex, locator, signingKey);
+    						  contentBlocks, true, blockCount, baseBlockIndex, locator, signingKey);
 
-		for (int i = 0; i < contentBlocks.length; i++) {
+		for (int i = 0; i < blockCount; i++) {
 			try {
 				CompleteName blockCompleteName = tree.getBlockCompleteName(i);
+				Library.logger().finest("putMerkleTree: writing block " + i + " of " + blockCount + " to name " + blockCompleteName.name());
 				put(blockCompleteName.name(), blockCompleteName.authenticator(), 
 						blockCompleteName.signature(), contentBlocks[i]);
 			} catch (IOException e) {
@@ -864,7 +865,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	
 	/**
 	 * Might want to make headerName not prefix of  rest of
-	 * name, but instead different subleaf. 
+	 * name, but instead different subleaf. For example,
 	 * the header name of v.6 of name <name>
 	 * was originally <name>/_v_/6; could be 
 	 * <name>/_v_/6/.header or <name>/_v_/6/_m_/.header;
@@ -873,40 +874,52 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * or <name>/_v_/6/_m_/.header/<sha256>.
 	 * The first version has the problem that the
 	 * header name (without the unknown uniqueifier)
-	 * is the prefix of the block names; so relies on the
-	 * packet scheduler to get us a header rather than a block.
-	 * Given a block we can't even derive the uniqueified
-	 * name of the header... 
-	 * So, even though we need to cope with on-path data
-	 * in general, for this most critical case make our lives
-	 * easier by making the header block namable without
-	 * getting all the data blocks as well by recursion.
+	 * is the prefix of the block names; so we must use the
+	 * scheduler or other cleverness to get the header ahead of the blocks.
+	 * The second version of this makes it impossible to easily
+	 * write a reader that gets both single-block content and
+	 * fragmented content (and we don't want to turn the former
+	 * into always two-block content).
+	 * So having tried the second route, we're moving back to the former.
 	 * @param name
 	 * @return
 	 */
 	public static ContentName headerName(ContentName name) {
 		// Want to make sure we don't add a header name
 		// to a fragment. Go back up to the fragment root.
-		if (isFragment(name))
-			return new ContentName(fragmentRoot(name), HEADER_NAME);
-		return new ContentName(name, HEADER_NAME);
+		// Currently no header name added.
+		if (isFragment(name)) {
+			// return new ContentName(fragmentRoot(name), HEADER_NAME);
+			return fragmentRoot(name);
+		}
+		// return new ContentName(name, HEADER_NAME);
+		return name;
 	}
 	
+	/**
+	 * DKS not currently adding a header-specific prefix. A header, however,
+	 * should not be a fragment.
+	 * @param headerName
+	 * @return
+	 */
 	public static ContentName headerRoot(ContentName headerName) {
 		// Do we want to handle fragment roots, etc, here too?
 		if (!isHeader(headerName)) {
 			throw new IllegalArgumentException("Name " + headerName.toString() + " is not a header name.");
 		}
 		// Strip off any header-specific prefix info if we
-		// add any.
-		return headerName.cut(HEADER_NAME); 
+		// add any. If not present, does nothing. Would be faster not to bother
+		// calling at all.
+		// return headerName.cut(HEADER_NAME); 
+		return headerName;
 	}
 	
 	public static boolean isHeader(ContentName name) {
 		// with on-path header, no way to tell except
 		// that it wasn't a fragment. With separate name,
 		// easier to handle.
-		return (name.contains(HEADER_NAME));
+	//	return (name.contains(HEADER_NAME));
+		return (!isFragment(name));
 	}
 
 	public static boolean isFragment(ContentName name) {

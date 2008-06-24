@@ -35,6 +35,14 @@ public class PublisherKeyID extends GenericXMLEncodable implements XMLEncodable,
 		System.arraycopy(publisherID, 0, _publisherID, 0, PublisherID.PUBLISHER_ID_LEN);
 	}	
 	
+	/**
+	 * Expects the equivalent of publisherKeyID.toString
+	 * @param publisherID
+	 */
+	public PublisherKeyID(String publisherID) {
+		this(DigestHelper.scanBytes(publisherID, 32));
+	}
+	
     public PublisherKeyID() {} // for use by decoders
 	
 	public byte [] id() { return _publisherID; }
