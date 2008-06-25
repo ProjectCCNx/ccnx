@@ -23,11 +23,15 @@ main(int argc, char **argv)
     int ch;
     int res;
     int i;
+    int argi;
     int fd;
     ssize_t size;
     const char *filename;
     struct ccn_parsed_ContentObject obj = {0};
     struct ccn_indexbuf *comps = ccn_indexbuf_create();
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d = NULL;
+
     int status = 0;
     
     const EVP_MD *md;
@@ -56,8 +60,8 @@ main(int argc, char **argv)
     }
     argc -= optind;
     argv += optind;
-    for (i = 0; argv[i] != NULL; i++) {
-        filename = argv[i];
+    for (argi = 0; argv[argi] != NULL; argi++) {
+        filename = argv[argi];
         fd = open(filename, O_RDONLY);
         if (fd == -1) {
             perror(filename);
@@ -84,6 +88,28 @@ main(int argc, char **argv)
             status = 1;
             continue;
         }
+        d = ccn_buf_decoder_start(&decoder, rawbuf + obj.Content, size - obj.Content);
+        const unsigned char *actual_contentp = rawbuf;
+        size_t actual_content_size = 0;
+        if (!ccn_buf_match_dtag(d, CCN_DTAG_Content)) abort();
+        ccn_buf_advance(d);
+        ccn_buf_match_blob(d, &actual_contentp, &actual_content_size);
+        
+        
+        if (!EVP_DigestInit_ex(md_ctx, md, NULL)) {
+            EVP_MD_CTX_destroy(md_ctx);
+            abort();
+        }
+
+       res =  EVP_DigestUpdate(md_ctx, actual_contentp, actual_content_size);
+       
+        unsigned char mdbuf[EVP_MAX_MD_SIZE];
+        unsigned int buflen = 0;
+        res = EVP_DigestFinal_ex(md_ctx, mdbuf, &buflen);
+        for (i = 0; i < buflen; i++)
+            fprintf(stderr, "%02x ", (unsigned)mdbuf[i]);
+        fprintf(stderr, "\n");
+        
         /* figure out what gets included in the digest, and do
            EVP_DigestUpdate(md_ctx, &stuff, count) and then
            unsigned char mdbuf[EVP_MAX_MD_SIZE];

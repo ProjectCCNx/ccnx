@@ -261,11 +261,10 @@ int
 ccn_name_init(struct ccn_charbuf *c)
 {
     int res;
-    const unsigned char closer = CCN_CLOSE;
     c->length = 0;
     res = ccn_charbuf_append_tt(c, CCN_DTAG_Name, CCN_DTAG);
     if (res == -1) return(res);
-    res = ccn_charbuf_append(c, &closer, 1);
+    res = ccn_charbuf_append_closer(c);
     return(res);
 }
 

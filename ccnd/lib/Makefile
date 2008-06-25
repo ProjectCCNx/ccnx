@@ -73,8 +73,11 @@ ccndump: ccndump.o
 ccndumpnames: ccndumpnames.o
 	$(CC) $(CFLAGS) -o $@ ccndumpnames.o $(LDLIBS)
 
+ccn_verifysig.o:
+	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_verifysig.c
+
 ccn_verifysig: ccn_verifysig.o
-	$(CC) $(CFLAGS) -o $@ ccn_verifysig.o $(LDLIBS) -lcrypto
+	$(CC) $(CFLAGS) -o $@ ccn_verifysig.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 clean:
 	rm -f *.o libccn.a libccn.1.$(SHEXT) $(PROGRAMS) depend

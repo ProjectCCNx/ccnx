@@ -73,6 +73,8 @@ decode_message(struct ccn_charbuf *message, struct path * name_path, char *data,
     
     int res = 0;
     int i;
+    
+    memset(&content, 0x33, sizeof(content));
 
     if (ccn_parse_ContentObject(message->buf, message->length, &content, comps) != 0) {
 	printf("Decode failed to parse object\n");
@@ -93,7 +95,7 @@ decode_message(struct ccn_charbuf *message, struct path * name_path, char *data,
 	if (s == NULL || strcmp(s, name_path->comps[i]) != 0) {
 	    printf("Decode mismatch on retrieved path component %d\n", i);
 	}
-	if (s != NULL) free(s);
+	if (s != NULL) { free(s); s = NULL; }
     }
     if (ccn_content_get_value(message->buf, message->length, &content,
 			      &content_value, &content_length) != 0) {

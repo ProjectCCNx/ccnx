@@ -321,11 +321,40 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
                    struct ccn_parsed_interest *interest,
                    struct ccn_indexbuf *components);
 
+enum ccn_parsed_content_object_offsetid {
+    CCN_PCO_B_Name,
+    CCN_PCO_B_Component0,
+    CCN_PCO_E_ComponentN,
+    CCN_PCO_E_Name,
+    CCN_PCO_B_ContentAuthenticator = CCN_PCO_E_Name,
+    CCN_PCO_B_CAUTH_PublisherKeyID,
+    CCN_PCO_E_CAUTH_PublisherKeyID,
+    CCN_PCO_B_CAUTH_NameComponentCount = CCN_PCO_E_CAUTH_PublisherKeyID,
+    CCN_PCO_E_CAUTH_NameComponentCount,
+    CCN_PCO_B_CAUTH_Timestamp = CCN_PCO_E_CAUTH_NameComponentCount,
+    CCN_PCO_E_CAUTH_Timestamp,
+    CCN_PCO_B_CAUTH_Type = CCN_PCO_E_CAUTH_Timestamp,
+    CCN_PCO_E_CAUTH_Type,
+    CCN_PCO_B_CAUTH_KeyLocator = CCN_PCO_E_CAUTH_Type,
+    /* Exactly one of Key, Certificate, or KeyName will be present */
+    CCN_PCO_B_CAUTH_Key_Certificate_KeyName,
+    CCN_PCO_E_CAUTH_Key_Certificate_KeyName,
+    CCN_PCO_E_CAUTH_KeyLocator,
+    CCN_PCO_B_CAUTH_ContentDigest = CCN_PCO_E_CAUTH_KeyLocator,
+    CCN_PCO_E_CAUTH_ContentDigest,
+    CCN_PCO_B_Signature = CCN_PCO_E_CAUTH_ContentDigest,
+    CCN_PCO_E_Signature,
+    CCN_PCO_B_Content = CCN_PCO_E_Signature,
+    CCN_PCO_E_Content,
+    CCN_PCO_E
+};
+
 struct ccn_parsed_ContentObject {
     int Name;
     int ContentAuthenticator;
     int Signature;
     int Content;
+    unsigned short offset[CCN_PCO_E+1];
 };
 
 /*

@@ -104,15 +104,18 @@ hexit(int c)
  * to c.  This does not do any ccnb-related stuff.
  * Processing stops at an error or if an unescaped nul, '/', '?', or '#' is found.
  * A component that consists solely of dots gets special treatment to reverse
- * the addition of ... by ccn_uri_append_comp.
+ * the addition of ... by ccn_uri_append_comp.  Since '.' is an unreserved
+ * character, percent-encoding is not supposed to change meaning and hence
+ * the dot processing happens after percent-encoding is removed.
  * A positive return value indicates there were unescaped reserved or
  * non-printable characters found.  This might warrant some extra checking
  * by the caller.
  * A return value of -1 indicates the component was "..", so the caller
  * will need to do something extra to handle this as appropriate.
- * A return value of -1 indicates a bad %-escaped sequence.
+ * A return value of -2 indicates the component was empty or ".", so the caller
+ * should do nothing with it.
+ * A return value of -3 indicates a bad %-escaped sequence.
  * If cont is not NULL, *cont is set to the number of input characters processed.
- * 
  */
 int
 ccn_append_uri_component(struct ccn_charbuf *c, const char *s, size_t limit, size_t *cont)
@@ -159,8 +162,10 @@ ccn_append_uri_component(struct ccn_charbuf *c, const char *s, size_t limit, siz
     if (i == c->length) {
         /* all dots */
         i -= start;
-        if (i <= 1)
+        if (i <= 1) {
             c->length = start;
+            err = -2;
+        }
         else if (i == 2) {
             c->length = start;
             err = -1;
@@ -171,4 +176,66 @@ ccn_append_uri_component(struct ccn_charbuf *c, const char *s, size_t limit, siz
     if (cont != NULL)
         *cont = limit;
     return(err);
+}
+
+int
+ccn_name_append_uri(struct ccn_charbuf *c, const char *uri) {
+    int res;
+    struct ccn_charbuf *compbuf = NULL;
+    const char *stop = uri + strlen(uri);
+    const char *s = uri;
+    size_t cont = 0;
+    
+    compbuf = ccn_charbuf_create();
+    if (compbuf == NULL) return(-1);
+    if (s[0] != '/') {
+        res = ccn_append_uri_component(compbuf, s, stop - s, &cont);
+        if (res < -2)
+            goto Done;
+        ccn_charbuf_reserve(compbuf, 1)[0] = 0;
+        if (0 == strcasecmp((const char *)(compbuf->buf), "ccn:") && s[cont-1] == ':') {
+            s += cont; cont = 0;
+        }
+        // XXX - need to error out on other uri schemes
+    }
+    if (s[0] == '/') {
+        ccn_name_init(c);
+        s++;
+        if (s[0] == '/') {
+            /* Skip over hostname part - not used in ccn scheme */
+            compbuf->length = 0;
+            s++;
+            res = ccn_append_uri_component(compbuf, s, stop - s, &cont);
+            if (res < 0)
+                goto Done;
+            s += cont; cont = 0;
+        }
+    }
+    while (s[0] == '/') {
+        s++;
+        compbuf->length = 0;
+        res = ccn_append_uri_component(compbuf, s, stop - s, &cont);
+        s += cont; cont = 0;
+        if (res < -2)
+            goto Done;
+        if (res == -2)
+            continue;
+        if (res == -1) {
+            //res = ccn_name_last_component_offset(c->buf, c->length);
+            if (res < 0)
+                goto Done;
+            c->length = res;
+            ccn_charbuf_append_closer(c);
+            ccn_charbuf_append_closer(c);
+            continue;
+        }
+        res = ccn_name_append(c, compbuf->buf, compbuf->length);
+        if (res < 0)
+            goto Done;
+    }
+Done:
+    ccn_charbuf_destroy(&compbuf);
+    if (res < 0)
+        return(-1);
+    return(stop - s);
 }
