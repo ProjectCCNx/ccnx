@@ -4,6 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 
 import javax.xml.stream.XMLStreamException;
@@ -57,6 +58,12 @@ public abstract class GenericXMLEncodable implements XMLEncodable {
 			throw new XMLStreamException("Unusable ByteBuffer: has no array");
 		}
 		byte[] array = buf.array();
+		
+		byte[] tmp = new byte[8];
+		System.arraycopy(array, buf.position(), tmp, 0, (buf.remaining() > tmp.length) ? tmp.length : buf.remaining());
+		BigInteger tmpBuf = new BigInteger(1,tmp);
+		Library.logger().finest("decode (buf.pos: " + buf.position() + " remaining: " + buf.remaining() + ") start: " + tmpBuf.toString(16));
+		
 		ByteArrayInputStream bais = new ByteArrayInputStream(array, buf.position(), buf.remaining());
 		decode(bais, codec);
 	}

@@ -774,6 +774,7 @@ public class CCNNetworkManager implements Runnable {
 
 			} catch (XMLStreamException xmlex) {
 				Library.logger().severe("Processing thread failure (Malformed datagram): " + xmlex.getMessage()); 
+				Library.warningStackTrace(xmlex);
 			} catch (Exception ex) {
 				Library.logger().severe("Processing thread failure (unknown): " + ex.getMessage());
 			}

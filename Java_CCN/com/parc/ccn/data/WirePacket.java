@@ -6,6 +6,7 @@ import java.util.List;
 
 import javax.xml.stream.XMLStreamException;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
@@ -37,21 +38,24 @@ public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		boolean done = false;
 		_contents = new ArrayList<GenericXMLEncodable>();
-		while (!done)
-		if (decoder.peekStartElement(Interest.INTEREST_ELEMENT)) {
-			Interest interest = new Interest();
-			interest.decode(decoder);
-			_contents.add(interest);
-		} else if (decoder.peekStartElement(ContentObject.CONTENT_OBJECT_ELEMENT)) {
-			ContentObject data = new ContentObject();
-			data.decode(decoder);
-			_contents.add(data);
-		} else {
-			done = true;
-			if (_contents.size() == 0) {
-				throw new XMLStreamException("Unrecognized packet content");
+		
+		while (!done) {
+			if (decoder.peekStartElement(Interest.INTEREST_ELEMENT)) {
+				Interest interest = new Interest();
+				interest.decode(decoder);
+				_contents.add(interest);
+			} else if (decoder.peekStartElement(ContentObject.CONTENT_OBJECT_ELEMENT)) {
+				ContentObject data = new ContentObject();
+				data.decode(decoder);
+				_contents.add(data);
+			} else {
+				done = true;
+				if (_contents.size() == 0) {
+					throw new XMLStreamException("Unrecognized packet content");
+				}
 			}
 		}
+		Library.logger().finest("Finished decoding wire packet.");
 	}
 
 	public void encode(XMLEncoder encoder) throws XMLStreamException {

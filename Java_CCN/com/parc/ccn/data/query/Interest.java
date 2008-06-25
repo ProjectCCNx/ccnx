@@ -2,6 +2,7 @@ package com.parc.ccn.data.query;
 
 import javax.xml.stream.XMLStreamException;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
@@ -134,6 +135,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		}
 		
 		if (decoder.peekStartElement(RESPONSE_FILTER_ELEMENT)) {
+			Library.logger().info("Got response filter element.");
 			_responseFilter = decoder.readBinaryElement(RESPONSE_FILTER_ELEMENT);
 		}
 		
@@ -141,6 +143,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			decoder.readEndElement();
 		} catch (XMLStreamException e) {
 			// DKS TODO -- get Michael to update schema!
+			Library.logger().info("Catching exception reading interest end element, and moving on. Waiting for schema updates...");
 		}
 	}
 

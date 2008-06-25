@@ -1,5 +1,7 @@
 package com.parc.ccn.data.util;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.TreeMap;
@@ -11,6 +13,7 @@ import com.parc.ccn.Library;
 public class BinaryXMLDecoder implements XMLDecoder {
 	
 	protected static final int MARK_LEN = 512; // tag length in UTF-8 encoded bytes, plus length/val bytes
+	protected static final int DEBUG_MAX_LEN = 32768;
 	
 	protected InputStream _istream = null;
 	protected BinaryXMLDictionary _dictionary = null;
@@ -111,32 +114,59 @@ public class BinaryXMLDecoder implements XMLDecoder {
 			Library.logger().info("Cannot peek -- stream without marking ability!");
 			throw new XMLStreamException("No lookahead in stream!");
 		}
-		
+
 		boolean isCorrectTag = false; 
-		
+
 		_istream.mark(MARK_LEN);
-		
+
 		try {
 			// Have to distinguish genuine errors from wrong tags. Could either use
 			// a special exception subtype, or redo the work here.
 			BinaryXMLCodec.TypeAndVal tv = BinaryXMLCodec.decodeTypeAndVal(_istream);
-			
+
 			String decodedTag = null;
-			
+
 			if (tv.type() == BinaryXMLCodec.XML_TAG) {
 				Library.logger().info("Unexpected: got tag in peekStartElement; looking for tag " + startTag + " got length: " + (int)tv.val()+1);
+
+				if (tv.val()+1 > DEBUG_MAX_LEN) {
+					throw new XMLStreamException("Decoding error: length " + tv.val()+1 + " longer than expected maximum length!");
+				}
+
 				// Tag value represents length-1 as tags can never be empty.
 				decodedTag = BinaryXMLCodec.decodeUString(_istream, (int)tv.val()+1);
-				
+
 			} else if (tv.type() == BinaryXMLCodec.XML_DTAG) {
 				decodedTag = _dictionary.decodeTag(tv.val());					
 			}
-			
+
 			if ((null !=  decodedTag) && (decodedTag.equals(startTag))) {
 				isCorrectTag = true;
 			}
-			
+		} catch (XMLStreamException e) {
+			try {
+				_istream.reset();
+				_istream.mark(MARK_LEN);
+				long ms = System.currentTimeMillis();
+				File tempFile = new File("data_" + Long.toString(ms) + ".ccnb");
+				FileOutputStream fos = new FileOutputStream(tempFile);
+				byte buf[] = new byte[1024];
+				while (_istream.available() > 0) {
+					int count = _istream.read(buf);
+					fos.write(buf,0, count);
+				}
+				fos.close();
+				_istream.reset();
+				Library.logger().info("BinaryXMLDecoder: exception in peekStartElement, dumping offending object to file: " + tempFile.getAbsolutePath());
+				throw e;
+				
+			} catch (IOException ie) {
+				Library.logger().info("IOException in BinaryXMLDecoder error handling: " + e.getMessage());
+				throw new XMLStreamException("peekStartElement", e);
+
+			}
 		} catch (IOException e) {
+			Library.logger().info("IOException in BinaryXMLDecoder: " + e.getMessage());
 			throw new XMLStreamException("peekStartElement", e);
 
 		} finally {
