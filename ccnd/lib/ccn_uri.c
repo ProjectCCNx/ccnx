@@ -123,7 +123,7 @@ hexit(int c)
  * A return value of -3 indicates a bad %-escaped sequence.
  * If cont is not NULL, *cont is set to the number of input characters processed.
  */
-int
+static int
 ccn_append_uri_component(struct ccn_charbuf *c, const char *s, size_t limit, size_t *cont)
 {
     size_t start = c->length;
@@ -143,9 +143,7 @@ ccn_append_uri_component(struct ccn_charbuf *c, const char *s, size_t limit, siz
             case '%':
                 if (i + 3 > limit || (d1 = hexit(s[i+1])) < 0 ||
                                      (d2 = hexit(s[i+2])) < 0   ) {
-                    limit = i;
-                    err = -2;
-                    break;
+                    return(-3);
                 }
                 ch = d1 * 16 + d2;
                 i += 2;
