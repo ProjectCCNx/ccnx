@@ -116,6 +116,20 @@ decode_message(struct ccn_charbuf *message, struct path * name_path, char *data,
 }
 
 int
+expected_res(int res, char code)
+{
+    if (code == '*')
+        return(1);
+    if (code == '-')
+        return(res < 0);
+    if (code == '+')
+        return(res > 0);
+    if ('0' <= code && code <= '9')
+        return(res == (code - '0'));
+    abort(); // test program bug!!!
+}
+
+int
 main (int argc, char *argv[]) {
     struct ccn_charbuf *buffer;
     struct ccn_skeleton_decoder dd = {0};
@@ -125,16 +139,16 @@ main (int argc, char *argv[]) {
     int result = 0;
     char * contents[] = {"INVITE sip:foo@parc.com SIP/2.0\nVia: SIP/2.0/UDP 127.0.0.1:5060;rport;branch=z9hG4bK519044721\nFrom: <sip:jthornto@13.2.117.52>;tag=2105643453\nTo: Test User <sip:foo@parc.com>\nCall-ID: 119424355@127.0.0.1\nCSeq: 20 INVITE\nContact: <sip:jthornto@127.0.0.1:5060>\nMax-Forwards: 70\nUser-Agent: Linphone-1.7.1/eXosip\nSubject: Phone call\nExpires: 120\nAllow: INVITE, ACK, CANCEL, BYE, OPTIONS, REFER, SUBSCRIBE, NOTIFY, MESSAGE\nContent-Type: application/sdp\nContent-Length:   448\n\nv=0\no=jthornto 123456 654321 IN IP4 127.0.0.1\ns=A conversation\nc=IN IP4 127.0.0.1\nt=0 0\nm=audio 7078 RTP/AVP 111 110 0 3 8 101\na=rtpmap:111 speex/16000/1\na=rtpmap:110 speex/8000/1\na=rtpmap:0 PCMU/8000/1\na=rtpmap:3 GSM/8000/1\na=rtpmap:8 PCMA/8000/1\na=rtpmap:101 telephone-event/8000\na=fmtp:101 0-11\nm=video 9078 RTP/AVP 97 98 99\na=rtpmap:97 theora/90000\na=rtpmap:98 H263-1998/90000\na=fmtp:98 CIF=1;QCIF=1\na=rtpmap:99 MP4V-ES/90000\n", 
  
-			 "Quaer #%2d zjduer  badone"};
+			 "Quaer #%2d zjduer  badone", NULL};
     char * paths[] = { "/sip/protocol/parc.com/domain/foo/principal/invite/verb/119424355@127.0.0.1/id", 
-		       "/d/e/f" };
+		       "/d/e/f", NULL};
     struct path * cur_path = NULL;
     int i;
 
-    if (argc > 1) {
-	outname = argv[1];
+    if (argc == 3 && strcmp(argv[1], "-o") == 0) {
+	outname = argv[2];
     } else {
-	printf("Usage: %s <outfilename>\n", argv[0]);
+	printf("Usage: %s -o <outfilename>\n", argv[0]);
 	exit(1);
     }
     buffer = ccn_charbuf_create();
@@ -161,20 +175,79 @@ main (int argc, char *argv[]) {
     ccn_charbuf_destroy(&buffer);
     printf("Done with sample message\n");
     
-    /* Now exercises as unit tests */
+    /* Now exercise as unit tests */
     
-    for (i=0; i<2; i++) {
+    for (i = 0; paths[i] != NULL && contents[i] != NULL; i++) {
 	printf("Unit test case %d\n", i);
 	cur_path = path_create(paths[i]);
 	buffer = ccn_charbuf_create();
 	if (encode_message(buffer, cur_path, contents[i], strlen(contents[i]))) {
 	    printf("Failed encode\n");
+            result = 1;
 	} else if (decode_message(buffer, cur_path, contents[i], strlen(contents[i]))) {
 	    printf("Failed decode\n");
+            result = 1;
 	}
 	path_destroy(&cur_path);
 	ccn_charbuf_destroy(&buffer);
     }
-
+    
+    /* Test the uri encode / decode routines */
+    
+    // XXX tested routines don't have a header file yest.
+    extern int ccn_uri_append(struct ccn_charbuf *, const unsigned char *, size_t, int);
+    extern int ccn_name_from_uri(struct ccn_charbuf *c, const char *uri);
+    static const char *uri_tests[] = {
+        "_+4", "ccn:/this/is/a/test",       "",     "ccn:/this/is/a/test",
+        ".+4", "../test2?x=2",              "?x=2", "ccn:/this/is/a/test2",
+        "_-X", "../test2?x=2",              "",     "",
+        "_+2", "/missing/scheme",           "",     "ccn:/missing/scheme",
+        ".+0", "../../../../../././#/",     "#/",   "ccn:",
+        NULL, NULL, NULL, NULL
+    };
+    const char **u;
+    struct ccn_charbuf *uri_out = ccn_charbuf_create();
+    buffer = ccn_charbuf_create();
+    for (u = uri_tests; *u != NULL; u++,u++,u++,u++,i++) {
+        printf("Unit test case %d\n", i);
+        if (u[0][0] != '.')
+            buffer->length = 0;
+        res = ccn_name_from_uri(buffer, u[1]);
+        if (!expected_res(res, u[0][1])) {
+            printf("Failed: ccn_name_from_uri wrong res %d\n", res);
+            result = 1;
+        }
+        if (res >= 0) {
+            if (res > strlen(u[1])) {
+                printf("Failed: ccn_name_from_uri long res %d\n", res);
+                result = 1;
+            }
+            else if (0 != strcmp(u[1] + res, u[2])) {
+                printf("Failed: ccn_name_from_uri expecting leftover '%s', got '%s'\n", u[2], u[1] + res);
+                result = 1;
+            }
+            uri_out->length = 0;
+            res = ccn_uri_append(uri_out, buffer->buf, buffer->length, 1);
+            if (!expected_res(res, u[0][2])) {
+                printf("Failed: ccn_uri_append wrong res %d\n", res);
+                result = 1;
+            }
+            if (res >= 0) {
+                if (uri_out->length != strlen(u[3])) {
+                    printf("Failed: ccn_uri_append produced wrong number of characters\n");
+                    result = 1;
+                }
+                ccn_charbuf_reserve(uri_out, 1)[0] = 0;
+                if (0 != strcmp((const char *)uri_out->buf, u[3])) {
+                    printf("Failed: ccn_uri_append produced wrong output\n");
+                    printf("Expected: %s\n", u[3]);
+                    printf("  Actual: %s\n", (const char *)uri_out->buf);
+                    result = 1;
+                }
+            }
+        }
+    }
+    ccn_charbuf_destroy(&buffer);
+    ccn_charbuf_destroy(&uri_out);
     exit(result);
 }

@@ -52,10 +52,14 @@ ccn_uri_append_comp(struct ccn_charbuf *c, const unsigned char *data, size_t siz
  * Components that consist of solely of zero or more dots are converted
  * by adding 3 more dots so there are no ambiguities with . or .. or whether
  * a component is empty or absent.
+ * Will prepend "ccn:" unless includescheme is 0
  */
 
 int
-ccn_uri_append(struct ccn_charbuf *c, const unsigned char *ccnb, size_t size)
+ccn_uri_append(struct ccn_charbuf *c,
+               const unsigned char *ccnb,
+               size_t size,
+               int includescheme)
 {
     int ncomp = 0;
     const unsigned char *comp = NULL;
@@ -67,6 +71,8 @@ ccn_uri_append(struct ccn_charbuf *c, const unsigned char *ccnb, size_t size)
         ccn_buf_advance(d);
     if (!ccn_buf_match_dtag(d, CCN_DTAG_Name))
         return(-1);
+    if (includescheme)
+        ccn_charbuf_append(c, "ccn:", 4);
     ccn_buf_advance(d);
     while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
         ccn_buf_advance(d);
@@ -178,8 +184,38 @@ ccn_append_uri_component(struct ccn_charbuf *c, const char *s, size_t limit, siz
     return(err);
 }
 
+static int
+ccn_name_last_component_offset(const unsigned char *ccnb, size_t size)
+{
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d = ccn_buf_decoder_start(&decoder, ccnb, size);
+    int res = -1;
+    if (ccn_buf_match_dtag(d, CCN_DTAG_Name)) {
+        ccn_buf_advance(d);
+        res = d->decoder.token_index; /* in case of 0 components */
+        while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
+            res = d->decoder.token_index;
+            ccn_buf_advance(d);
+            if (ccn_buf_match_blob(d, NULL, NULL))
+                ccn_buf_advance(d);
+            ccn_buf_check_close(d);
+        }
+        ccn_buf_check_close(d);
+    }
+    return ((d->decoder.state >= 0) ? res : -1);
+}
+
+/*
+ * ccn_name_from_uri: Convert a ccn-scheme URI to a ccnb-encoded Name.
+ * The converted result is placed in c.
+ * On input, c may contain a base name, in which case relative URIs are allowed.
+ * Otherwise c should start out empty, and the URI must be absolute.
+ * Returns -1 if an error is found, otherwise returns the number of characters
+ * that were processed.
+ */
 int
-ccn_name_append_uri(struct ccn_charbuf *c, const char *uri) {
+ccn_name_from_uri(struct ccn_charbuf *c, const char *uri)
+{
     int res;
     struct ccn_charbuf *compbuf = NULL;
     const char *stop = uri + strlen(uri);
@@ -193,16 +229,17 @@ ccn_name_append_uri(struct ccn_charbuf *c, const char *uri) {
         if (res < -2)
             goto Done;
         ccn_charbuf_reserve(compbuf, 1)[0] = 0;
-        if (0 == strcasecmp((const char *)(compbuf->buf), "ccn:") && s[cont-1] == ':') {
+        if (0 == strcasecmp((const char *)(compbuf->buf), "ccn:") &&
+              s[cont-1] == ':') {
             s += cont; cont = 0;
         }
         // XXX - need to error out on other uri schemes
     }
     if (s[0] == '/') {
         ccn_name_init(c);
-        s++;
-        if (s[0] == '/') {
+        if (s[1] == '/') {
             /* Skip over hostname part - not used in ccn scheme */
+            s += 2;
             compbuf->length = 0;
             s++;
             res = ccn_append_uri_component(compbuf, s, stop - s, &cont);
@@ -211,21 +248,24 @@ ccn_name_append_uri(struct ccn_charbuf *c, const char *uri) {
             s += cont; cont = 0;
         }
     }
-    while (s[0] == '/') {
-        s++;
+    while (s[0] != 0 && s[0] != '?' && s[0] != '#') {
+        if (s[0] == '/')
+            s++;
         compbuf->length = 0;
         res = ccn_append_uri_component(compbuf, s, stop - s, &cont);
         s += cont; cont = 0;
         if (res < -2)
             goto Done;
-        if (res == -2)
+        if (res == -2) {
+            res = 0; /* process . or equiv in URI */
             continue;
+        }
         if (res == -1) {
-            //res = ccn_name_last_component_offset(c->buf, c->length);
+            /* process .. in URI - discard last name component */
+            res = ccn_name_last_component_offset(c->buf, c->length);
             if (res < 0)
                 goto Done;
             c->length = res;
-            ccn_charbuf_append_closer(c);
             ccn_charbuf_append_closer(c);
             continue;
         }
@@ -237,5 +277,5 @@ Done:
     ccn_charbuf_destroy(&compbuf);
     if (res < 0)
         return(-1);
-    return(stop - s);
+    return(s - uri);
 }

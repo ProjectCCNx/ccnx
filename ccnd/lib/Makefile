@@ -25,7 +25,7 @@ default all: lib $(SHLIBNAME) $(PROGRAMS)
 lib: libccn.a
 
 test: all
-	./encodedecodetest /dev/null
+	./encodedecodetest -o /dev/null
 
 libccn.a: $(LIB_OBJS)
 	ar cru $@ $(LIB_OBJS)
