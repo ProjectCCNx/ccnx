@@ -1,0 +1,35 @@
+#!/usr/bin/perl
+
+use XML::Simple;
+use Dumpvalue;
+
+if ($#ARGV < 0) {
+  print "Usage: $0 logfile\n";
+  exit(1);
+}
+my $print_names = 0;
+if ($#ARGV > 0) {
+  $print_names = 1;
+}
+
+while ($#ARGV >= 0) {
+  my $file = $ARGV[0];
+  if ($print_names) {
+    print "::::::::::::::\n";
+    print "$file\n";
+    print "::::::::::::::\n";
+  }
+  shift @ARGV;
+  my $xsl = XML::Simple->new();
+  my $doc = $xsl->XMLin($file);
+
+#   my $dumper = new Dumpvalue;
+#   $dumper->dumpValue($doc);
+
+  my @records = @{$doc->{record}};
+  print "$#records\n";
+  foreach my $rec (@records) {
+    print $rec->{date} . ' ' . $rec->{class} . ' ' . $rec->{method} . ' ';
+    print $rec->{level} . ': ' . $rec->{message} . "\n";
+  }
+}
