@@ -668,7 +668,7 @@ public class CCNNetworkManager implements Runnable {
 							Library.logger().info("Receive error cleared");
 							_error = null;
 						}
-						datagram.rewind(); // make ready to decode
+						datagram.flip(); // make ready to decode
 						packet.decode(datagram);
 					} else {
 						// This was a timeout or wakeup, no data

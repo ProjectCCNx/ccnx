@@ -29,11 +29,13 @@ public class BaseLibrarySource implements CCNFilterListener {
 	int next = 0;
 	protected static Throwable error = null; // for errors in callback
 	Semaphore sema = new Semaphore(0);
+	static Random rand;
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
 		Library.logger().setLevel(Level.FINEST);
+		rand = new Random();
 	}
 
 	/**
@@ -46,13 +48,27 @@ public class BaseLibrarySource implements CCNFilterListener {
 		System.out.println("Put data: " + putResult.name());
 	}
 
+	/**
+	 * getRandomString returns a random string (all digits) of random
+	 * length so that different packets will have varying sizes of content
+	 * as a test of buffer handling.  The idea is to oscillate between 
+	 * long and short strings.
+	 */
+	public String getRandomString() {
+		int size = rand.nextBoolean() ? rand.nextInt(500) : rand.nextInt(5000) + 1000;
+		StringBuilder sb = new StringBuilder(size);
+		for (int i = 0; i < size; i++) {
+			sb.append(new Integer(rand.nextInt(9)).toString());
+		}
+		return sb.toString();
+	}
+	
 	@Test
 	public void puts() throws Throwable {
 		System.out.println("Put sequence started");
-		Random rand = new Random();
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
-			CompleteName putName = library.put("/BaseLibraryTest/gets/" + new Integer(i).toString(), new Integer(i).toString());
+			CompleteName putName = library.put("/BaseLibraryTest/gets/" + new Integer(i).toString(), new Integer(i).toString() + " " + "I");
 			System.out.println("Put " + i + " done");
 			checkPutResults(putName);
 		}
@@ -77,7 +93,7 @@ public class BaseLibrarySource implements CCNFilterListener {
 		try {
 			for (Interest interest : interests) {
 				assertTrue(name.isPrefixOf(interest.name()));
-				CompleteName putName = library.put("/BaseLibraryTest/server/" + new Integer(next).toString(), new Integer(next).toString());
+				CompleteName putName = library.put("/BaseLibraryTest/server/" + new Integer(next).toString(), new Integer(next).toString() + " " + "I");
 				System.out.println("Put " + next + " done");
 				checkPutResults(putName);
 				next++;
