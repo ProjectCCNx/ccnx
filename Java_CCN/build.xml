@@ -11,10 +11,15 @@
    <property name="jarfile" location="${build}/${jarfile-base}"/>
    <property name="junit-jar" location="${lib}/junit-4.3.1.jar"/>
    <property name="testout" location="testout"/>
+   <property name="ccnd" location="../ccnd/agent/ccnd_june08"/>
    <!-- To enable remote debugging, the incantation is 
 	"-Xdebug -Xrunjdwp:transport=dt_socket,address=8000,server=y,suspend=n" -->
    <property name="DEBUG_OPTIONS" value=""/>
-   <property name="TEST_PORT" value="4810"/>
+   <!-- TEST_PORT is alternative ccnd port so we can run tests
+        with an isolated ccnd rather than the "live" ccnd on the machine.
+        Port 9 (discard) would be ideal but this needs to be a non-privileged
+        port. -->
+   <property name="TEST_PORT" value="1999"/>
 
    <!-- CLASSPATH NOTE: This should be a minimal set of what is 
         required, so we have an authoritative list of dependencies -->
@@ -167,6 +172,32 @@
            <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
            <jvmarg line="${DEBUG_OPTIONS}"/>
        </java>
+
+       <echo message="Running end-to-end test"/>
+       <parallel failonany="true">
+           <daemons>
+               <echo message="Running test ccnd on port ${TEST_PORT}"/>
+               <exec executable="${ccnd}" dir="${testout}" output="${testout}/TEST-ccnd0.txt">
+                   <env key="CCN_LOCAL_PORT" value="${TEST_PORT}"/>
+               </exec>
+           </daemons>
+           <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perTest" dir="${testout}">
+               <classpath>
+                   <path refid="classpath-run"/>
+               </classpath>
+               <formatter type="brief" usefile="true"/>
+               <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+               <test todir="${testout}"  name="test.ccn.endtoend.BaseLibrarySink"/>
+           </junit>
+           <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perTest" dir="${testout}">
+               <classpath>
+                   <path refid="classpath-run"/>
+               </classpath>
+               <formatter type="brief" usefile="true"/>
+               <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+               <test todir="${testout}"  name="test.ccn.endtoend.BaseLibrarySource"/>
+           </junit>
+       </parallel>
    </target>
 
 </project>
