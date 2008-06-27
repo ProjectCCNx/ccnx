@@ -1,21 +1,22 @@
+<?xml version="1.0"?>
 <ContentObject>
-    <Name>
-        <Component ccnbencoding="base64Binary">dmdxO6LZm7UUoUdyt6EG3KrnkNJkjdaayBppbvfD
+  <Name>
+    <Component ccnbencoding="base64Binary">dmdxO6LZm7UUoUdyt6EG3KrnkNJkjdaayBppbvfD
         </Component>
-        <Component ccnbencoding="base64Binary">ZG1keE82TFptN1VVb1VkeXQ2RUczS3Jua05Ka2pkYWF5QnBwYnZmRA==
+    <Component ccnbencoding="base64Binary">ZG1keE82TFptN1VVb1VkeXQ2RUczS3Jua05Ka2pkYWF5QnBwYnZmRA==
         </Component>
-    </Name>
-    <ContentAuthenticator>
-        <PublisherKeyID ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=
+  </Name>
+  <ContentAuthenticator>
+    <PublisherKeyID ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=
         </PublisherKeyID>
-        <NameComponentCount>2</NameComponentCount>
-        <Timestamp>2008-02-11T16:58:35.49634Z</Timestamp>
-        <Type>LEAF</Type>
-        <KeyLocator>
-            <Key ccnbencoding="base64Binary">MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAIS1Wt50GDXWhk2j/gflHoJh6UgZ+I1W5Jx4xVZM3lP6jFbWu+wcEios+KpjrQnFwqGNPH+TyKWH/DLHo5X1L0sCAwEAAQ==</Key>
-        </KeyLocator>
-        <ContentDigest ccnbencoding="base64Binary">AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI=</ContentDigest>
-    </ContentAuthenticator>
-    <Signature ccnbencoding="base64Binary">AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ==</Signature>
-    <Content ccnbencoding="base64Binary">dmdxO6LZm7UUoUdyt6EG3KrnkNJkjdaayBppbvfD</Content>
+    <NameComponentCount>2</NameComponentCount>
+    <Timestamp>2008-02-11T16:58:35.49634Z</Timestamp>
+    <Type>LEAF</Type>
+    <KeyLocator>
+      <Key ccnbencoding="base64Binary">MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAIS1Wt50GDXWhk2j/gflHoJh6UgZ+I1W5Jx4xVZM3lP6jFbWu+wcEios+KpjrQnFwqGNPH+TyKWH/DLHo5X1L0sCAwEAAQ==</Key>
+    </KeyLocator>
+    <ContentDigest ccnbencoding="base64Binary">AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI=</ContentDigest>
+  </ContentAuthenticator>
+  <Signature ccnbencoding="base64Binary">AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ==</Signature>
+  <Content ccnbencoding="base64Binary">dmdxO6LZm7UUoUdyt6EG3KrnkNJkjdaayBppbvfD</Content>
 </ContentObject>

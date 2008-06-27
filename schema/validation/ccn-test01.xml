@@ -1,15 +1,22 @@
-<ContentObject><Name><Component ccnbencoding="base64Binary">dGVzdA==</Component>
+<?xml version="1.0"?>
+<ContentObject>
+  <Name>
+    <Component ccnbencoding="base64Binary">dGVzdA==</Component>
     <Component ccnbencoding="base64Binary">YnJpZ2dz</Component>
     <Component ccnbencoding="base64Binary">dGVzdC50eHQ=</Component>
     <Component ccnbencoding="base64Binary">AQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Component>
     <Component ccnbencoding="base64Binary">c21ldHRlcnM=</Component>
     <Component ccnbencoding="base64Binary">dGVzdDIudHh0</Component>
   </Name>
-  <ContentAuthenticator><PublisherKeyID ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherKeyID>
+  <ContentAuthenticator>
+    <PublisherKeyID ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherKeyID>
     <NameComponentCount>3</NameComponentCount>
     <Timestamp>2008-02-11T16:54:36.671Z</Timestamp>
     <Type>LEAF</Type>
-    <KeyLocator><KeyName><Name><Component ccnbencoding="base64Binary">dGVzdA==</Component>
+    <KeyLocator>
+      <KeyName>
+        <Name>
+          <Component ccnbencoding="base64Binary">dGVzdA==</Component>
           <Component ccnbencoding="base64Binary">c21ldHRlcnM=</Component>
           <Component ccnbencoding="base64Binary">a2V5</Component>
         </Name>

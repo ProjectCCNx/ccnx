@@ -1,3 +1,5 @@
-<Interest><Name></Name>
-    <PublisherID type="CERTIFICATE" ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherID>
+<?xml version="1.0"?>
+<Interest>
+  <Name/>
+  <PublisherID type="CERTIFICATE" ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherID>
 </Interest>

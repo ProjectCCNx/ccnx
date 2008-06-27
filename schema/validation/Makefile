@@ -21,6 +21,9 @@ clean:
 	test -L ccn.xsd && rm ccn.xsd || :
 	test -L ccn.dtd && rm ccn.dtd || :
 
+pretty:
+	echo ccn-test??.xml | xargs -n 1 sh prettify.sh
+
 check: ccn.xsd ccn.dtd $(W3REFS) $(FUZZED) always
 	xmllint --noout --schema XMLSchema.xsd XMLSchema.xsd || ./oops
 	xmllint --noout ccn.xsd
