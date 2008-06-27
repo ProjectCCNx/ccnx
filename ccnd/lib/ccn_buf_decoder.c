@@ -61,6 +61,10 @@ ccn_buf_match_blob(struct ccn_buf_decoder *d, const unsigned char **bufp, size_t
             *sizep = d->decoder.numval;
         return (1);
     }
+    if (bufp != NULL)
+        *bufp = d->buf + d->decoder.token_index;
+    if (sizep != NULL)
+        *sizep = 0;
     return(0);
 }
 
@@ -247,6 +251,23 @@ ccn_parse_nonNegativeInteger(struct ccn_buf_decoder *d)
     return(d->decoder.state = -__LINE__);
 }
 
+int
+ccn_fetch_tagged_nonNegativeInteger(enum ccn_dtag tt, const unsigned char *buf, size_t start, size_t stop)
+{
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
+    int result = -1;
+    if (stop < start) return(-1);
+    d = ccn_buf_decoder_start(&decoder, buf + start, stop - start);
+    if (ccn_buf_match_dtag(d, tt)) {
+        ccn_buf_advance(d);
+        result = ccn_parse_nonNegativeInteger(d);
+        ccn_buf_check_close(d);
+    }
+    if (result < 0)
+        return(-1);
+    return(result);
+}
 
 int
 ccn_parse_interest(const unsigned char *msg, size_t size,
@@ -405,31 +426,31 @@ ccn_parse_ContentObject(const unsigned char *msg, size_t size,
         x->offset[CCN_PCO_E_Name] = d->decoder.token_index;
         
         if (ccn_buf_match_dtag(d, CCN_DTAG_ContentAuthenticator)) {
-            x->ContentAuthenticator = d->decoder.element_index;
+            x->ContentAuthenticator = d->decoder.token_index;
             ccn_buf_advance(d);
-            x->offset[CCN_PCO_B_CAUTH_PublisherKeyID] = d->decoder.element_index;
+            x->offset[CCN_PCO_B_CAUTH_PublisherKeyID] = d->decoder.token_index;
             ccn_parse_required_tagged_BLOB(d, CCN_DTAG_PublisherKeyID);
             x->offset[CCN_PCO_E_CAUTH_PublisherKeyID] = d->decoder.token_index;
             
-            x->offset[CCN_PCO_B_CAUTH_NameComponentCount] = d->decoder.element_index;
+            x->offset[CCN_PCO_B_CAUTH_NameComponentCount] = d->decoder.token_index;
             ccn_parse_required_tagged_UDATA(d, CCN_DTAG_NameComponentCount);
             x->offset[CCN_PCO_E_CAUTH_NameComponentCount] = d->decoder.token_index;
             
-            x->offset[CCN_PCO_B_CAUTH_Timestamp] = d->decoder.element_index;
+            x->offset[CCN_PCO_B_CAUTH_Timestamp] = d->decoder.token_index;
             ccn_parse_required_tagged_UDATA(d, CCN_DTAG_Timestamp);
             x->offset[CCN_PCO_E_CAUTH_Timestamp] = d->decoder.token_index;
             
-            x->offset[CCN_PCO_B_CAUTH_Type] = d->decoder.element_index;
+            x->offset[CCN_PCO_B_CAUTH_Type] = d->decoder.token_index;
             ccn_parse_required_tagged_UDATA(d, CCN_DTAG_Type);
             x->offset[CCN_PCO_E_CAUTH_Type] = d->decoder.token_index;
             
-            x->offset[CCN_PCO_B_CAUTH_KeyLocator] = d->decoder.element_index;
-            x->offset[CCN_PCO_B_CAUTH_Key_Certificate_KeyName] = d->decoder.element_index;
-            x->offset[CCN_PCO_E_CAUTH_Key_Certificate_KeyName] = d->decoder.element_index;
+            x->offset[CCN_PCO_B_CAUTH_KeyLocator] = d->decoder.token_index;
+            x->offset[CCN_PCO_B_CAUTH_Key_Certificate_KeyName] = d->decoder.token_index;
+            x->offset[CCN_PCO_E_CAUTH_Key_Certificate_KeyName] = d->decoder.token_index;
             if (ccn_buf_match_dtag(d, CCN_DTAG_KeyLocator)) {
                 struct parsed_KeyName keyname = {-1, -1};
                 ccn_buf_advance(d);
-                x->offset[CCN_PCO_B_CAUTH_Key_Certificate_KeyName] = d->decoder.element_index;
+                x->offset[CCN_PCO_B_CAUTH_Key_Certificate_KeyName] = d->decoder.token_index;
                 if (ccn_buf_match_dtag(d, CCN_DTAG_Key)) {
                     (void)ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Key);
                 }
@@ -444,19 +465,20 @@ ccn_parse_ContentObject(const unsigned char *msg, size_t size,
             }
             x->offset[CCN_PCO_E_CAUTH_KeyLocator] = d->decoder.token_index;
             
-            x->offset[CCN_PCO_B_CAUTH_ContentDigest] = d->decoder.element_index;
+            x->offset[CCN_PCO_B_CAUTH_ContentDigest] = d->decoder.token_index;
             ccn_parse_required_tagged_BLOB(d, CCN_DTAG_ContentDigest);
             x->offset[CCN_PCO_E_CAUTH_ContentDigest] = d->decoder.token_index;
             
             ccn_buf_check_close(d);
+            x->offset[CCN_PCO_E_ContentAuthenticator] = d->decoder.token_index;
         }
         else
             d->decoder.state = -__LINE__;
         
-        x->offset[CCN_PCO_B_Signature] = d->decoder.element_index;
+        x->offset[CCN_PCO_B_Signature] = d->decoder.token_index;
         x->Signature = ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Signature);
         x->offset[CCN_PCO_E_Signature] = d->decoder.token_index;
-        x->offset[CCN_PCO_B_Content] = d->decoder.element_index;
+        x->offset[CCN_PCO_B_Content] = d->decoder.token_index;
         x->Content = ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Content);
         x->offset[CCN_PCO_E_Content] = d->decoder.token_index;
         ccn_buf_check_close(d);
@@ -465,6 +487,26 @@ ccn_parse_ContentObject(const unsigned char *msg, size_t size,
     else
         d->decoder.state = -__LINE__;
     if (d->decoder.index != size || !CCN_FINAL_DSTATE(d->decoder.state))
+        return (CCN_DSTATE_ERR_CODING);
+    return(0);
+}
+
+int
+ccn_ref_tagged_BLOB(enum ccn_dtag tt, const unsigned char *buf, size_t start, size_t stop, const unsigned char **presult, size_t *psize)
+{
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
+    if (stop < start) return(-1);
+    d = ccn_buf_decoder_start(&decoder, buf + start, stop - start);
+    if (ccn_buf_match_dtag(d, tt)) {
+        ccn_buf_advance(d);
+        if (ccn_buf_match_blob(d, presult, psize))
+            ccn_buf_advance(d);
+        ccn_buf_check_close(d);
+    }
+    else
+        return(-1);
+    if (d->decoder.index != d->size || !CCN_FINAL_DSTATE(d->decoder.state))
         return (CCN_DSTATE_ERR_CODING);
     return(0);
 }

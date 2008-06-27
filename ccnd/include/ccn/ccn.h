@@ -277,6 +277,18 @@ int ccn_buf_match_attr(struct ccn_buf_decoder *d, const char *s);
 /* ccn_buf_check_close enters an error state if element closer not found */
 void ccn_buf_check_close(struct ccn_buf_decoder *d);
 
+/*
+ * ccn_ref_tagged_BLOB: Get address and size associated with a blob-valued element
+ * Returns 0 for success, negative value for error.
+ */
+int ccn_ref_tagged_BLOB(enum ccn_dtag tt,
+                        const unsigned char *buf,
+                        size_t start, size_t stop,
+                        const unsigned char **presult, size_t *psize);
+
+int ccn_fetch_tagged_nonNegativeInteger(enum ccn_dtag tt,
+            const unsigned char *buf, size_t start, size_t stop);
+
 enum ccn_parsed_interest_offsetid {
     CCN_PI_B_Name,
     CCN_PI_B_Component0,
@@ -342,7 +354,8 @@ enum ccn_parsed_content_object_offsetid {
     CCN_PCO_E_CAUTH_KeyLocator,
     CCN_PCO_B_CAUTH_ContentDigest = CCN_PCO_E_CAUTH_KeyLocator,
     CCN_PCO_E_CAUTH_ContentDigest,
-    CCN_PCO_B_Signature = CCN_PCO_E_CAUTH_ContentDigest,
+    CCN_PCO_E_ContentAuthenticator,
+    CCN_PCO_B_Signature = CCN_PCO_E_ContentAuthenticator,
     CCN_PCO_E_Signature,
     CCN_PCO_B_Content = CCN_PCO_E_Signature,
     CCN_PCO_E_Content,
