@@ -68,6 +68,11 @@ enum ccn_dtag {
     CCN_DTAG_Type = 40,
     CCN_DTAG_Nonce = 41,
     CCN_DTAG_Scope = 42,
+    CCN_DTAG_MatchFirstAvailableDescendant = 48,
+    CCN_DTAG_MatchLastAvailableDescendant = 49,
+    CCN_DTAG_MatchNextAvailableSibling = 50,
+    CCN_DTAG_MatchLastAvailableSibling = 51,
+    CCN_DTAG_MatchEntirePrefix = 52,
     CCN_DTAG_CCNProtocolDataUnit = 17702112,
     CCN_DTAG_ExperimentalResponseFilter = 23204960,
 };

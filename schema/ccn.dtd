@@ -52,7 +52,19 @@
 		ContentDigest)>
 <!ATTLIST ContentAuthenticator %commonattrs;>
 
-<!ELEMENT Interest	(Name, PublisherID?, Scope?, Nonce?, ExperimentalResponseFilter?)>
+<!ENTITY % matchrule
+	"( MatchFirstAvailableDescendant |
+           MatchLastAvailableDescendant  | 
+           MatchNextAvailableSibling     |
+           MatchLastAvailableSibling     |
+           MatchEntirePrefix             )">
+<!ELEMENT MatchFirstAvailableDescendant EMPTY>
+<!ELEMENT MatchLastAvailableDescendant EMPTY>
+<!ELEMENT MatchNextAvailableSibling EMPTY>
+<!ELEMENT MatchLastAvailableSibling EMPTY>
+<!ELEMENT MatchEntirePrefix EMPTY>
+
+<!ELEMENT Interest	(Name, %matchrule;, PublisherID?, Scope?, Nonce?, ExperimentalResponseFilter?)>
 <!ATTLIST Interest	%commonattrs;>
 
 <!ELEMENT PublisherID	(#PCDATA)>	<!-- base64Binary SHA-256 digest -->

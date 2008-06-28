@@ -11,6 +11,9 @@
 #include <ccn/coding.h>
 #include <ccn/indexbuf.h>
 
+// XXX - stdio is temporary
+#include <stdio.h>
+
 struct ccn_buf_decoder *
 ccn_buf_decoder_start(struct ccn_buf_decoder *d, const unsigned char *buf, size_t size)
 {
@@ -291,6 +294,24 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
         interest->name_start = name.start;
         interest->name_size = name.size;
         ncomp = name.ncomp;
+        /* Required match rule */
+        interest->offset[CCN_PI_B_MatchRule] = d->decoder.token_index;
+        if (ccn_buf_match_some_dtag(d)) {
+            switch (d->decoder.numval) {
+                case CCN_DTAG_MatchFirstAvailableDescendant:
+                case CCN_DTAG_MatchLastAvailableDescendant:
+                case CCN_DTAG_MatchNextAvailableSibling:
+                case CCN_DTAG_MatchLastAvailableSibling:
+                case CCN_DTAG_MatchEntirePrefix:
+                    ccn_buf_advance(d);
+                    ccn_buf_check_close(d);
+                    break;
+                default:
+                    fprintf(stderr, "Got a match?\n");
+            }
+        }
+        else fprintf(stderr, "got a match?\n");
+        interest->offset[CCN_PI_E_MatchRule] = d->decoder.token_index;
         /* optional PublisherID */
         interest->offset[CCN_PI_B_PublisherID] = d->decoder.token_index;
         interest->pubid_start = d->decoder.token_index;

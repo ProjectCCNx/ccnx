@@ -1,6 +1,6 @@
 # $Id$
 W3REFS=XMLSchema.dtd XMLSchema.xsd datatypes.dtd xml.xsd
-FUZZED= ccn-schemabad01.xml ccn-schemabad02.xml ccn-schemabad10.xml
+FUZZED= ccn-schemabad01.xml ccn-schemabad02.xml ccn-schemabad10.xml ccn-schemabad11.xml
 
 default all test: check
 
@@ -50,3 +50,5 @@ ccn-schemabad06.xml: ccn-test06.xml
 ccn-schemabad10.xml: ccn-test10.xml
 	sed -e '/Timestamp/s/11T16/11 16/' $? > $@
 
+ccn-schemabad11.xml: ccn-test11.xml
+	sed -e '/MatchNextAvailableSibling/d' $? > $@

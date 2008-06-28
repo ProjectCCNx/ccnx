@@ -30,5 +30,6 @@
       <Component ccnbencoding="base64Binary">dGVzdC50eHQ=</Component>
       <Component ccnbencoding="base64Binary">AQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Component>
     </Name>
+    <MatchLastAvailableSibling/>
   </Interest>
 </CCNProtocolDataUnit>

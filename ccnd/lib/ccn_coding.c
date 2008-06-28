@@ -249,6 +249,11 @@ static const struct ccn_dict_entry ccn_tagdict[] = {
     {CCN_DTAG_Type, "Type"},
     {CCN_DTAG_Nonce, "Nonce"},
     {CCN_DTAG_Scope, "Scope"},
+    {CCN_DTAG_MatchFirstAvailableDescendant, "MatchFirstAvailableDescendant"},
+    {CCN_DTAG_MatchLastAvailableDescendant, "MatchLastAvailableDescendant"},
+    {CCN_DTAG_MatchNextAvailableSibling, "MatchNextAvailableSibling"},
+    {CCN_DTAG_MatchLastAvailableSibling, "MatchLastAvailableSibling"},
+    {CCN_DTAG_MatchEntirePrefix, "MatchEntirePrefix"},
     {CCN_DTAG_CCNProtocolDataUnit, "CCNProtocolDataUnit"},
     {CCN_DTAG_ExperimentalResponseFilter, "ExperimentalResponseFilter"},
 };

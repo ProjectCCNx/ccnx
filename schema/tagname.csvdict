@@ -27,5 +27,10 @@
 40,Type
 41,Nonce
 42,Scope
+48,MatchFirstAvailableDescendant
+49,MatchLastAvailableDescendant
+50,MatchNextAvailableSibling
+51,MatchLastAvailableSibling
+52,MatchEntirePrefix
 17702112,CCNProtocolDataUnit
 23204960,ExperimentalResponseFilter

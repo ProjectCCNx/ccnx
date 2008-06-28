@@ -121,6 +121,14 @@
 <xs:complexType name="InterestType">
   <xs:sequence>
     <xs:element name="Name" type="NameType"/>
+    <xs:choice minOccurs="1" maxOccurs="1">
+      <!-- minOccurs="1" is strict, impls might act like minOccurs="0" for a while -->
+      <xs:element name="MatchFirstAvailableDescendant"/>
+      <xs:element name="MatchLastAvailableDescendant"/>
+      <xs:element name="MatchNextAvailableSibling"/>
+      <xs:element name="MatchLastAvailableSibling"/>
+      <xs:element name="MatchEntirePrefix"/>
+    </xs:choice>
     <xs:element name="PublisherID" type="PublisherIDType"
 			minOccurs="0" maxOccurs="1"/>
     <xs:element name="Scope" type="xs:nonNegativeInteger"
