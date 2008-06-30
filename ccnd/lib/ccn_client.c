@@ -56,7 +56,8 @@ struct interest_filter { /* keyed by components of name */
 #define NOTE_ERRNO(h) NOTE_ERR(h, errno)
 
 void
-ccn_perror(struct ccn *h, const char * s) {
+ccn_perror(struct ccn *h, const char * s)
+{
     fprintf(stderr, "%s: error %d - ccn_client.c:%d[%d]\n",
 	    s, h->err, h->errline, (int)getpid());
 }
@@ -209,8 +210,8 @@ replace_template(struct expressed_interest *interest,
         res = ccn_parse_interest(interest_template->buf,
                                  interest_template->length, &pi, NULL);
         if (res >= 0) {
-            start = pi.name_start + pi.name_size;
-            size = interest_template->length - 1 - start;
+            start = pi.offset[CCN_PI_B_PublisherID];
+            size = pi.offset[CCN_PI_E_Scope] - start;
             interest->template_stuff = calloc(1, size);
             if (interest->template_stuff != NULL) {
                 memcpy(interest->template_stuff, interest_template->buf + start, size);
@@ -288,8 +289,9 @@ ccn_name_append(struct ccn_charbuf *c, const void *component, size_t n)
 }
 
 int 
-ccn_name_append_str(struct ccn_charbuf *c, const char *s) {
-    return ccn_name_append(c, s, strlen(s));
+ccn_name_append_str(struct ccn_charbuf *c, const char *s)
+{
+    return (ccn_name_append(c, s, strlen(s)));
 }
 
 #if (CCN_DTAG_Name <= CCN_MAX_TINY) /* This better be true */
@@ -299,7 +301,7 @@ ccn_name_append_str(struct ccn_charbuf *c, const char *s) {
 static int
 ccn_check_namebuf(struct ccn *h, struct ccn_charbuf *namebuf)
 {
-    // XXX - should perhpas validate namebuf more than this
+    // XXX - should validate namebuf more than this
     if (namebuf == NULL || namebuf->length < 2 ||
           namebuf->buf[0] != CCN_START_Name ||
           namebuf->buf[namebuf->length-1] != CCN_CLOSE)
@@ -313,7 +315,8 @@ ccn_auth_create_default(struct ccn_charbuf *c,
 		enum ccn_content_type Type,
 		struct ccn_charbuf *path,
 		int path_count,
-		char * content, size_t length) {
+		char * content, size_t length)
+{
     struct ccn_charbuf *pub_key_id = ccn_charbuf_create();
     struct ccn_charbuf *timestamp = ccn_charbuf_create();
     struct ccn_charbuf *digest = ccn_charbuf_create();
@@ -346,7 +349,7 @@ ccn_auth_create(struct ccn_charbuf *c,
     const char *typename = ccn_content_name(Type);
     struct ccn_charbuf *name_comp_count = ccn_charbuf_create();
     if (typename == NULL || name_comp_count == NULL) {
-	return -1;
+	return (-1);
     }
     
     res += ccn_charbuf_append_tt(c, CCN_DTAG_ContentAuthenticator, CCN_DTAG);
@@ -398,7 +401,7 @@ ccn_name_comp_get(const unsigned char *data,
     struct ccn_buf_decoder *d;
     /* indexbuf should have an extra value marking end of last component,
        so we need to use last 2 values */
-    if (i > indexbuf->n - 2) {
+    if (indexbuf->n < 2 || i > indexbuf->n - 2) {
 	/* There isn't a component at this index */
 	return(-1);
     }
@@ -459,20 +462,12 @@ ccn_content_get_value(const unsigned char *data, size_t data_size,
                       const struct ccn_parsed_ContentObject *content,
                       const unsigned char **value, size_t *value_size)
 {
-    struct ccn_buf_decoder decoder;
-    struct ccn_buf_decoder *d;
-    d = ccn_buf_decoder_start(&decoder, data + content->Content, data_size - content->Content);
-    if (ccn_buf_match_dtag(d, CCN_DTAG_Content)) {
-	ccn_buf_advance(d);
-	if (ccn_buf_match_blob(d, value, value_size))
-	    return(0);
-	*value = d->buf + d->decoder.index;
-        *value_size = 0;
-        ccn_buf_check_close(d);
-        if (d->decoder.state >= 0)
-            return(0);
-    }
-    return(-1);
+    int res;
+    res = ccn_ref_tagged_BLOB(CCN_DTAG_Content, data,
+          content->offset[CCN_PCO_B_Content],
+          content->offset[CCN_PCO_E_Content],
+          value, value_size);
+    return(res);
 }
 
 /* NOTE: ccn_sign is a placeholder at this time, it does nothing

@@ -11,7 +11,8 @@
 #include <ccn/coding.h>
 #include <ccn/indexbuf.h>
 
-const char * ccn_content_name(enum ccn_content_type type) {
+const char * ccn_content_name(enum ccn_content_type type)
+{
     switch (type) {
     case CCN_CONTENT_FRAGMENT:
 	return "FRAGMENT";

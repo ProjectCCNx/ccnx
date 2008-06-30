@@ -299,12 +299,8 @@ enum ccn_parsed_interest_offsetid {
     CCN_PI_B_PublisherID = CCN_PI_E_MatchRule,
     CCN_PI_E_PublisherID,
     CCN_PI_B_Scope = CCN_PI_E_PublisherID,
-    CCN_PI_BV_Scope,
-    CCN_PI_EV_Scope,
     CCN_PI_E_Scope,
     CCN_PI_B_Nonce = CCN_PI_E_Scope,
-    CCN_PI_BV_Nonce,
-    CCN_PI_EV_Nonce,
     CCN_PI_E_Nonce,
     CCN_PI_B_OTHER = CCN_PI_E_Nonce,
     CCN_PI_E_OTHER,
@@ -312,13 +308,7 @@ enum ccn_parsed_interest_offsetid {
 };
 
 struct ccn_parsed_interest {
-    size_t name_start;
-    size_t name_size;
-    size_t pubid_start;
-    size_t pubid_size;
     int scope;
-    size_t nonce_start;
-    size_t nonce_size;
     unsigned short offset[CCN_PI_E+1];
 };
 

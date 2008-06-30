@@ -139,9 +139,11 @@ int main(int argc, char **argv)
         }
         res = ccn_parse_interest(rawbuf, rawlen, &interest, NULL);
         if (res >= 0) {
+            size_t name_start = interest.offset[CCN_PI_B_Name];
+            size_t name_size = interest.offset[CCN_PI_E_Name] - name_start;
             fprintf(stderr, "Registering interest with %d name components\n", res);
             c->length = 0;
-            ccn_charbuf_append(c, rawbuf + interest.name_start, interest.name_size);
+            ccn_charbuf_append(c, rawbuf + name_start, name_size);
             ccn_express_interest(ccn, c, rep, &incoming_content_action, NULL);
         }
         else {

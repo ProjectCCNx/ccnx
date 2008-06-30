@@ -67,7 +67,8 @@ ccn_decoder_create(void)
 }
 
 void
-ccn_decoder_set_callback(struct ccn_decoder *d, ccn_decoder_callback c, void *data) {
+ccn_decoder_set_callback(struct ccn_decoder *d, ccn_decoder_callback c, void *data)
+{
     d->callback = c;
     if (c == NULL) {
         d->callbackdata = NULL;

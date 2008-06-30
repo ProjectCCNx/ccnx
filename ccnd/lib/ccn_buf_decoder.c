@@ -291,8 +291,6 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
             return(res);
         interest->offset[CCN_PI_E_ComponentN] = d->decoder.token_index - 1;
         interest->offset[CCN_PI_E_Name] = d->decoder.token_index;
-        interest->name_start = name.start;
-        interest->name_size = name.size;
         ncomp = name.ncomp;
         /* Required match rule */
         interest->offset[CCN_PI_B_MatchRule] = d->decoder.token_index;
@@ -314,9 +312,7 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
         interest->offset[CCN_PI_E_MatchRule] = d->decoder.token_index;
         /* optional PublisherID */
         interest->offset[CCN_PI_B_PublisherID] = d->decoder.token_index;
-        interest->pubid_start = d->decoder.token_index;
         res = ccn_parse_PublisherID(d);
-        interest->pubid_size = d->decoder.token_index - interest->pubid_start;
         interest->offset[CCN_PI_E_PublisherID] = d->decoder.token_index;
         /* optional Scope */
         interest->scope = -1;
@@ -325,12 +321,11 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
             ccn_buf_advance(d);
             interest->scope = ccn_parse_nonNegativeInteger(d);
             if (interest->scope > 9)
-                return (d->decoder.state  = -__LINE__);
+                return (d->decoder.state = -__LINE__);
             ccn_buf_check_close(d);
         }
         interest->offset[CCN_PI_E_Scope] = d->decoder.token_index;
         /* optional Nonce */
-        interest->nonce_start = d->decoder.token_index;
         interest->offset[CCN_PI_B_Nonce] = d->decoder.token_index;
         if (ccn_buf_match_dtag(d, CCN_DTAG_Nonce)) {
             ccn_buf_advance(d);
@@ -340,7 +335,6 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
             ccn_buf_check_close(d);
         }
         interest->offset[CCN_PI_E_Nonce] = d->decoder.token_index;
-        interest->nonce_size = d->decoder.token_index - interest->nonce_start;
         /* Allow for some experimental stuff */
         interest->offset[CCN_PI_B_OTHER] = d->decoder.token_index;
         while (ccn_buf_match_some_dtag(d)) {

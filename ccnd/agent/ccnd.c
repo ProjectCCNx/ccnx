@@ -149,7 +149,8 @@ indexbuf_release(struct ccnd *h, struct ccn_indexbuf *c)
 }
 
 static struct face *
-face_from_faceid(struct ccnd *h, unsigned faceid) {
+face_from_faceid(struct ccnd *h, unsigned faceid)
+{
     unsigned slot = faceid & MAXFACES;
     struct face *face = NULL;
     if (slot < h->face_limit) {
@@ -161,7 +162,8 @@ face_from_faceid(struct ccnd *h, unsigned faceid) {
 }
 
 static int
-enroll_face(struct ccnd *h, struct face *face) {
+enroll_face(struct ccnd *h, struct face *face)
+{
     unsigned i;
     unsigned n = h->face_limit;
     struct face **a = h->faces_by_faceid;
@@ -520,7 +522,8 @@ shutdown_client_fd(struct ccnd *h, int fd)
 }
 
 static void
-send_content(struct ccnd *h, struct face *face, struct content_entry *content) {
+send_content(struct ccnd *h, struct face *face, struct content_entry *content)
+{
     struct ccn_charbuf *c = charbuf_obtain(h);
     if ((face->flags & CCN_FACE_LINK) != 0)
         ccn_charbuf_append_tt(c, CCN_DTAG_CCNProtocolDataUnit, CCN_DTAG);
@@ -793,7 +796,8 @@ clean_filters(struct ccnd *h)
  */
 #define CCN_INTEREST_AGING_MICROSEC (CCN_INTEREST_HALFLIFE_MICROSEC / 4)
 static int
-age_interests(struct ccnd *h) {
+age_interests(struct ccnd *h)
+{
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     struct interest_entry *interest;
@@ -1132,14 +1136,14 @@ propagate_interest(struct ccnd *h, struct face *face,
         ccn_indexbuf_destroy(&outbound);
         return(0);
     } 
-    if (pi->nonce_size == 0) {
+    if (pi->offset[CCN_PI_B_Nonce] == pi->offset[CCN_PI_E_Nonce]) {
         /* This interest has no nonce; add one before going on */
         int noncebytes = 6;
         size_t nonce_start = 0;
         int i;
         unsigned char *s;
         cb = charbuf_obtain(h);
-        ccn_charbuf_append(cb, msg, pi->nonce_start);
+        ccn_charbuf_append(cb, msg, pi->offset[CCN_PI_B_Nonce]);
         nonce_start = cb->length;
         ccn_charbuf_append_tt(cb, CCN_DTAG_Nonce, CCN_DTAG);
         ccn_charbuf_append_tt(cb, noncebytes, CCN_BLOB);
@@ -1159,15 +1163,15 @@ propagate_interest(struct ccnd *h, struct face *face,
             ccn_charbuf_append(cb, f, size);
             ccn_charbuf_append_closer(cb);
         }
-        ccn_charbuf_append(cb, msg + pi->nonce_start,
-                               msg_size - pi->nonce_start);
+        ccn_charbuf_append(cb, msg + pi->offset[CCN_PI_B_OTHER],
+                               msg_size - pi->offset[CCN_PI_B_OTHER]);
         pkey = cb->buf + nonce_start;
         msg_out = cb->buf;
         msg_out_size = cb->length;
     }
     else {
-        pkey = msg + pi->nonce_start;
-        pkeysize = pi->nonce_size;
+        pkey = msg + pi->offset[CCN_PI_B_Nonce];
+        pkeysize = pi->offset[CCN_PI_E_Nonce] - pi->offset[CCN_PI_B_Nonce];
     }
     hashtb_start(h->propagating_tab, e);
     res = hashtb_seek(e, pkey, pkeysize, 0);
@@ -1209,9 +1213,11 @@ static int
 is_duplicate_flooded(struct ccnd *h, unsigned char *msg, struct ccn_parsed_interest *pi)
 {
     struct propagating_entry *pe = NULL;
-    if (pi->nonce_size == 0)
+    size_t nonce_start = pi->offset[CCN_PI_B_Nonce];
+    size_t nonce_size = pi->offset[CCN_PI_E_Nonce] - nonce_start;
+    if (nonce_size == 0)
         return(0);
-    pe = hashtb_lookup(h->propagating_tab, msg + pi->nonce_start, pi->nonce_size);
+    pe = hashtb_lookup(h->propagating_tab, msg + nonce_start, nonce_size);
     return(pe != NULL);
 }
 

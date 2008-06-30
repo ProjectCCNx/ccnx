@@ -140,10 +140,14 @@ main (int argc, char *argv[]) {
         } else if (ccn_buf_match_dtag(d, CCN_DTAG_Interest)) {
             struct ccn_parsed_interest interest = {0};
             if (options.nointerest == 0) {
+                size_t name_start;
+                size_t name_size;
                 interestnamebuf->length = 0;
                 interesttemplatebuf->length = 0;
                 res = ccn_parse_interest((unsigned char *)rawbuf, rawlen, &interest, NULL);
-                ccn_charbuf_append(interestnamebuf, rawbuf + interest.name_start, interest.name_size);
+                name_start = interest.offset[CCN_PI_B_Name];
+                name_size = interest.offset[CCN_PI_E_Name] - name_start;
+                ccn_charbuf_append(interestnamebuf, rawbuf + name_start, name_size);
                 ccn_charbuf_append(interesttemplatebuf, rawbuf, rawlen);
                 res = ccn_express_interest(ccn, interestnamebuf, -1, action, interesttemplatebuf);
             }
