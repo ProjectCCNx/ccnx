@@ -63,7 +63,7 @@ public class BaseLibrarySink implements CCNInterestListener {
 		System.out.println("Get sequence finished");
 	}
 	
-//	@Test
+	@Test
 	public void server() throws Throwable {
 		System.out.println("GetServer started");
 		Interest interest = new Interest("/BaseLibraryTest/server");

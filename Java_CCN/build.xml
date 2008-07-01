@@ -201,7 +201,7 @@
                </exec>
            </daemons>
            <!-- timeout more than 2X average so sure timeout == failure -->
-           <junit printsummary="off" haltonfailure="yes" fork="on" forkmode="perTest" timeout="30000" dir="${testout}">
+           <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perTest" timeout="30000" dir="${testout}">
                <classpath>
                    <path refid="classpath-run"/>
                </classpath>
@@ -209,7 +209,7 @@
                <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
                <test todir="${testout}"  name="test.ccn.endtoend.BaseLibrarySink"/>
            </junit>
-           <junit printsummary="off" haltonfailure="yes" fork="on" forkmode="perTest" timeout="30000" dir="${testout}">
+           <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perTest" timeout="30000" dir="${testout}">
                <classpath>
                    <path refid="classpath-run"/>
                </classpath>

@@ -87,7 +87,7 @@ public class BaseLibrarySource implements CCNFilterListener {
 		System.out.println("Put sequence finished");
 	}
 	
-	//@Test
+	@Test
 	public void server() throws Throwable {
 		assert(count <= Byte.MAX_VALUE);
 		System.out.println("PutServer started");
@@ -104,6 +104,9 @@ public class BaseLibrarySource implements CCNFilterListener {
 
 	public synchronized int handleInterests(ArrayList<Interest> interests) {
 		try {
+			if (next >= count) {
+				return 0;
+			}
 			for (Interest interest : interests) {
 				assertTrue(name.isPrefixOf(interest.name()));
 				byte[] content = getRandomContent(next);
