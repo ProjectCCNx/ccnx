@@ -36,6 +36,7 @@ public class BaseLibraryTest {
 
 	protected static boolean exit = false;
 	protected static Throwable error = null; // for errors from other threads
+	public static int count = 55;
 	
 	protected static final String BASE_NAME = "/test/BaseLibraryTest/";
 
@@ -87,24 +88,24 @@ public class BaseLibraryTest {
 	@Test
 	public void testGetPut() throws Throwable {
 		System.out.println("TEST: PutThread/GetThread");
-		Thread putter = new Thread(new PutThread(25));
-		Thread getter = new Thread(new GetThread(25));
+		Thread putter = new Thread(new PutThread(count));
+		Thread getter = new Thread(new GetThread(count));
 		genericGetPut(putter, getter);
 	}
 	
 	@Test
 	public void testGetServPut() throws Throwable {
 		System.out.println("TEST: PutThread/GetServer");
-		Thread putter = new Thread(new PutThread(25));
-		Thread getter = new Thread(new GetServer(25));
+		Thread putter = new Thread(new PutThread(count));
+		Thread getter = new Thread(new GetServer(count));
 		genericGetPut(putter, getter);
 	}
 
 	@Test
 	public void testGetPutServ() throws Throwable {
 		System.out.println("TEST: PutServer/GetThread");
-		Thread putter = new Thread(new PutServer(25));
-		Thread getter = new Thread(new GetThread(25));
+		Thread putter = new Thread(new PutServer(count));
+		Thread getter = new Thread(new GetThread(count));
 		genericGetPut(putter, getter);
 	}
 	
@@ -281,7 +282,6 @@ public class BaseLibraryTest {
 
 		public synchronized int handleInterests(ArrayList<Interest> interests) {
 			try {
-				assertEquals(1, interests.size());
 				for (Interest interest : interests) {
 					assertTrue(name.isPrefixOf(interest.name()));
 					CompleteName putName = library.put(BASE_NAME + new Integer(next).toString(), new Integer(next).toString());
