@@ -158,12 +158,12 @@ main(int argc, char **argv)
         res =  EVP_DigestUpdate(md_ctx, actual_contentp, actual_content_size);
         
         unsigned char mdbuf[EVP_MAX_MD_SIZE];
-        unsigned int buflen = 0;
-        res = EVP_DigestFinal_ex(md_ctx, mdbuf, &buflen);
+        unsigned int mdbuflen = 0;
+        res = EVP_DigestFinal_ex(md_ctx, mdbuf, &mdbuflen);
         
-        if (msg_digest_size != buflen + sizeof(magicgoop))
-            FAIL((stderr, "msg_digest_size(%d) != buflen(%d) + sizeof(magicgoop)(%d)", (int)msg_digest_size, (int)buflen, (int)sizeof(magicgoop)));
-        if (0 != memcmp(mdbuf, msg_digest + sizeof(magicgoop), buflen)) {
+        if (msg_digest_size != mdbuflen + sizeof(magicgoop))
+            FAIL((stderr, "msg_digest_size(%d) != mdbuflen(%d) + sizeof(magicgoop)(%d)", (int)msg_digest_size, (int)mdbuflen, (int)sizeof(magicgoop)));
+        if (0 != memcmp(mdbuf, msg_digest + sizeof(magicgoop), mdbuflen)) {
             MOAN((stderr, "Computed sha256 digest does not match"));
             bad++;
             continue;
