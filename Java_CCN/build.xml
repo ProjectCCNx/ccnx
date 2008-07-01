@@ -133,7 +133,10 @@
    </target>
 
    <!-- test is for running all current automated tests to validate code -->
-   <target name="test" depends="jar">
+   <target name="test" depends="test-data, test-baselib, test-puttap, test-endtoend">
+   </target>
+
+   <target name="test-data" depends="jar">
        <mkdir dir="${testout}"/>
        <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}">
            <classpath>
@@ -151,9 +154,23 @@
                    <include name="test/ccn/security/crypto/certificates/*Test*.class"/>
                </fileset>
            </batchtest>
+       </junit>
+   </target>
+
+   <target name="test-baselib" depends="jar">
+       <mkdir dir="${testout}"/>
+       <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}">
+           <classpath>
+               <path refid="classpath-run"/>
+           </classpath>
+           <formatter type="brief" usefile="true"/>
+           <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
            <test todir="${testout}"  name="test.ccn.library.BaseLibraryTest"/>
        </junit>
+   </target>
 
+   <target name="test-puttap" depends="jar">
+       <mkdir dir="${testout}"/>
        <echo message="Running puttap tests"/>
        <java classname="com.parc.ccn.apps.puttap" classpathref="classpath-run" failonerror="true" output="${testout}/TEST-com.parc.cc.apps.puttap0.txt" fork="true">
            <arg value="0"/>
@@ -172,7 +189,9 @@
            <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
            <jvmarg line="${DEBUG_OPTIONS}"/>
        </java>
-
+    </target>
+ 
+   <target name="test-endtoend" depends="jar">
        <echo message="Running end-to-end test"/>
        <parallel failonany="true">
            <daemons>
@@ -181,7 +200,8 @@
                    <env key="CCN_LOCAL_PORT" value="${TEST_PORT}"/>
                </exec>
            </daemons>
-           <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perTest" dir="${testout}">
+           <!-- timeout more than 2X average so sure timeout == failure -->
+           <junit printsummary="off" haltonfailure="yes" fork="on" forkmode="perTest" timeout="30000" dir="${testout}">
                <classpath>
                    <path refid="classpath-run"/>
                </classpath>
@@ -189,7 +209,7 @@
                <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
                <test todir="${testout}"  name="test.ccn.endtoend.BaseLibrarySink"/>
            </junit>
-           <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perTest" dir="${testout}">
+           <junit printsummary="off" haltonfailure="yes" fork="on" forkmode="perTest" timeout="30000" dir="${testout}">
                <classpath>
                    <path refid="classpath-run"/>
                </classpath>

@@ -17,13 +17,14 @@ import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.Interest;
+import com.parc.ccn.data.util.BinaryXMLCodec;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.StandardCCNLibrary;
 
 //NOTE: This test requires ccnd to be running and complementary sink process 
 
 public class BaseLibrarySource implements CCNFilterListener {
-	static int count = 25;
+	public static int count = 43;
 	protected CCNLibrary library = StandardCCNLibrary.open();
 	ContentName name = null;
 	int next = 0;
@@ -34,7 +35,7 @@ public class BaseLibrarySource implements CCNFilterListener {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
-		Library.logger().setLevel(Level.FINEST);
+		Library.logger().setLevel(Level.INFO);
 		rand = new Random();
 	}
 
@@ -51,32 +52,44 @@ public class BaseLibrarySource implements CCNFilterListener {
 	/**
 	 * getRandomString returns a random string (all digits) of random
 	 * length so that different packets will have varying sizes of content
-	 * as a test of buffer handling.  The idea is to oscillate between 
-	 * long and short strings.
+	 * as a test of buffer handling.  We try to carefully construct 
+	 * content that will do maximum damage if interpreted as the start 
+	 * of a message (i.e. if you read this as 'leftover' data in a buffer
+	 * previously used for a larger packet, because you read past the end
+	 * of what you are supposed to be handling)
 	 */
-	public String getRandomString() {
-		int size = rand.nextBoolean() ? rand.nextInt(500) : rand.nextInt(5000) + 1000;
-		StringBuilder sb = new StringBuilder(size);
-		for (int i = 0; i < size; i++) {
-			sb.append(new Integer(rand.nextInt(9)).toString());
+	public byte[] getRandomContent(int item) {
+		// Initially keep this small so we don't engage fragmentation,
+		// which may not yet be working and is not supported by this test code
+		byte valbyte = new Integer(BinaryXMLCodec.XML_REG_VAL_MASK).byteValue(); // max value
+		byte typebyte = new Integer(BinaryXMLCodec.XML_TT_NO_MORE | BinaryXMLCodec.XML_TAG).byteValue();
+		int size = 1 + (rand.nextBoolean() ? rand.nextInt(42) * 12 : rand.nextInt(250) * 12 + 504);
+		byte[] result = new byte[size];
+		result[0] = new Integer(item).byteValue();
+		for (int i = 1; i < result.length; i++) {
+			result[i] = (i % 12 == 0) ? typebyte : valbyte; 
+			
 		}
-		return sb.toString();
+		return result;
 	}
 	
 	@Test
 	public void puts() throws Throwable {
+		assert(count <= Byte.MAX_VALUE);
 		System.out.println("Put sequence started");
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
-			CompleteName putName = library.put("/BaseLibraryTest/gets/" + new Integer(i).toString(), new Integer(i).toString() + " " + "I");
-			System.out.println("Put " + i + " done");
+			byte[] content = getRandomContent(i);
+			CompleteName putName = library.put(new ContentName("/BaseLibraryTest/gets/" + new Integer(i).toString()), content);
+			System.out.println("Put " + i + " done: " + content.length + " content bytes");
 			checkPutResults(putName);
 		}
 		System.out.println("Put sequence finished");
 	}
 	
-	@Test
+	//@Test
 	public void server() throws Throwable {
+		assert(count <= Byte.MAX_VALUE);
 		System.out.println("PutServer started");
 		// Register filter
 		name = new ContentName("/BaseLibraryTest/");
@@ -93,8 +106,9 @@ public class BaseLibrarySource implements CCNFilterListener {
 		try {
 			for (Interest interest : interests) {
 				assertTrue(name.isPrefixOf(interest.name()));
-				CompleteName putName = library.put("/BaseLibraryTest/server/" + new Integer(next).toString(), new Integer(next).toString() + " " + "I");
-				System.out.println("Put " + next + " done");
+				byte[] content = getRandomContent(next);
+				CompleteName putName = library.put(new ContentName("/BaseLibraryTest/server/" + new Integer(next).toString()), content);
+				System.out.println("Put " + next + " done: " + content.length + " content bytes");
 				checkPutResults(putName);
 				next++;
 			}

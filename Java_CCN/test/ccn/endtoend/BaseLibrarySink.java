@@ -21,7 +21,6 @@ import com.parc.ccn.library.StandardCCNLibrary;
 // NOTE: This test requires ccnd to be running and complementary source process
 
 public class BaseLibrarySink implements CCNInterestListener {
-	static int count = 25;
 	CCNLibrary library = StandardCCNLibrary.open();
 	Semaphore sema = new Semaphore(0);
 	int next = 0;
@@ -48,12 +47,11 @@ public class BaseLibrarySink implements CCNInterestListener {
 	public void gets() throws Throwable {
 		System.out.println("Get sequence started");
 		Random rand = new Random();
-		for (int i = 0; i < count; i++) {
+		for (int i = 0; i < BaseLibrarySource.count; i++) {
 			Thread.sleep(rand.nextInt(50));
 			ArrayList<ContentObject> contents = library.get("/BaseLibraryTest/gets");
 			assertEquals(1, contents.size());
-			String sc = new String(contents.get(0).content());
-			int value = Integer.parseInt(sc.split(" ")[0]);
+			int value = contents.get(0).content()[0];
 			// Note that we cannot be guaranteed to pick up every value:
 			// due to timing we may miss a value that arrives while we are not
 			// in the get()
@@ -65,7 +63,7 @@ public class BaseLibrarySink implements CCNInterestListener {
 		System.out.println("Get sequence finished");
 	}
 	
-	@Test
+//	@Test
 	public void server() throws Throwable {
 		System.out.println("GetServer started");
 		Interest interest = new Interest("/BaseLibraryTest/server");
@@ -82,13 +80,13 @@ public class BaseLibrarySink implements CCNInterestListener {
 	public synchronized int handleContent(ArrayList<ContentObject> results) {
 		try {
 			for (ContentObject contentObject : results) {
-				assertEquals(next, Integer.parseInt(new String(contentObject
-						.content()).split(" ")[0]));
+				int value = contentObject.content()[0];
+				assertEquals(next, value);
 				System.out.println("Got " + next);
 				next++;
 			}
 			checkGetResults(results);
-			if (next >= count) {
+			if (next >= BaseLibrarySource.count) {
 				sema.release();
 			}
 		} catch (Throwable e) {
