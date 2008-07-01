@@ -16,6 +16,9 @@ CCND_OBJ = ccnd.o ccnd_stats.o
 ccnd: $(CCND_OBJ) 
 	$(CC) $(CFLAGS) -o $@ $(CCND_OBJ) $(LDLIBS)
 
+ccnd_june08: ccnd_june08.o
+	$(CC) $(CFLAGS) -o $@ ccnd_june08.o $(LDLIBS)
+
 smoketestccnd: smoketestccnd.o
 	$(CC) $(CFLAGS) -o $@ smoketestccnd.o $(LDLIBS)
 
