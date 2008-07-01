@@ -55,7 +55,9 @@ main(int argc, char **argv)
 {
     int ch;
     int res;
+#if 0
     int i;
+#endif
     int argi;
     int fd;
     ssize_t size;
