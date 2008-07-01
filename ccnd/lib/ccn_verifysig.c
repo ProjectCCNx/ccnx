@@ -55,9 +55,6 @@ main(int argc, char **argv)
 {
     int ch;
     int res;
-#if 0
-    int i;
-#endif
     int argi;
     int fd;
     ssize_t size;
@@ -135,12 +132,7 @@ main(int argc, char **argv)
                                   &msg_digest,
                                   &msg_digest_size);
         if (res < 0) FAIL((stderr, "URP"));
-#if 0
-        for (i = 0; i < msg_digest_size; i++)
-            fprintf(stderr, "%02x ", (unsigned)msg_digest[i]);
-        fprintf(stderr, "<---<<< ContentDigest\n");
-#endif
-        
+
         if (msg_digest_size > sizeof(magicgoop) && 0 == memcmp(msg_digest, magicgoop, sizeof(magicgoop))) {
             // keep going
         }
@@ -151,7 +143,11 @@ main(int argc, char **argv)
         
         const unsigned char *actual_contentp = NULL;
         size_t actual_content_size = 0;
-        res = ccn_ref_tagged_BLOB(CCN_DTAG_Content, rawbuf, co->Content, size - 1, &actual_contentp, &actual_content_size);
+        res = ccn_ref_tagged_BLOB(CCN_DTAG_Content, rawbuf,
+                                  co->offset[CCN_PCO_B_Content],
+                                  co->offset[CCN_PCO_E_Content],
+                                  &actual_contentp,
+                                  &actual_content_size);
         if (res < 0) FAIL((stderr, "URP"));        
         
         if (!EVP_DigestInit_ex(md_ctx, md, NULL)) {
@@ -164,11 +160,6 @@ main(int argc, char **argv)
         unsigned char mdbuf[EVP_MAX_MD_SIZE];
         unsigned int buflen = 0;
         res = EVP_DigestFinal_ex(md_ctx, mdbuf, &buflen);
-#if 0
-        for (i = 0; i < buflen; i++)
-            fprintf(stderr, "%02x ", (unsigned)mdbuf[i]);
-        fprintf(stderr, "<---<<< Computed sha256\n");
-#endif
         
         if (msg_digest_size != buflen + sizeof(magicgoop))
             FAIL((stderr, "msg_digest_size(%d) != buflen(%d) + sizeof(magicgoop)(%d)", (int)msg_digest_size, (int)buflen, (int)sizeof(magicgoop)));
@@ -203,6 +194,7 @@ main(int argc, char **argv)
         
         
         int nameComponentCount;
+
         nameComponentCount = ccn_fetch_tagged_nonNegativeInteger(
             CCN_DTAG_NameComponentCount,
             rawbuf,
@@ -217,14 +209,16 @@ main(int argc, char **argv)
 
         const unsigned char *signed_name = NULL;
         size_t signed_name_size = 0;
+
+        signed_name = rawbuf + co->offset[CCN_PCO_B_Name];
         if (nameComponentCount == comps->n - 1) {
-            signed_name = rawbuf + co->Name;
             signed_name_size = co->offset[CCN_PCO_E_Name] - co->offset[CCN_PCO_B_Name];
+            res = EVP_VerifyUpdate(ver_ctx, signed_name, signed_name_size);
         } else {
-            MOAN((stderr, "Cannot process partial names in signatures yet"));
-            continue;
+            signed_name_size = comps->buf[nameComponentCount] - co->offset[CCN_PCO_B_Name];
+            res = EVP_VerifyUpdate(ver_ctx, signed_name, signed_name_size);
+            res = EVP_VerifyUpdate(ver_ctx, rawbuf + co->offset[CCN_PCO_E_Name] - 1, 1);
         }
-        res = EVP_VerifyUpdate(ver_ctx, signed_name, signed_name_size);
 
         res = EVP_VerifyUpdate(ver_ctx, rawbuf + co->offset[CCN_PCO_B_ContentAuthenticator],
                                co->offset[CCN_PCO_E_ContentAuthenticator] - co->offset[CCN_PCO_B_ContentAuthenticator]);
