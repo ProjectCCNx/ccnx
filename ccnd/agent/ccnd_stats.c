@@ -41,12 +41,12 @@ ccnd_collect_stats(struct ccnd *h, struct ccnd_stats *ans)
     long sum;
     int i;
     int n;
-    for (sum = 0, hashtb_start(h->interest_tab, e);
+    for (sum = 0, hashtb_start(h->interestprefix_tab, e);
                                    e->data != NULL; hashtb_next(e)) {
-        struct interest_entry *interest = e->data;
-        n = interest->counters->n;
+        struct interestprefix_entry *ipe = e->data;
+        n = ipe->counters->n;
         for (i = 0; i < n; i++)
-            sum += interest->counters->buf[i];
+            sum += ipe->counters->buf[i];
     }
     ans->total_interest_counts = (sum + CCN_UNIT_INTEREST-1) / CCN_UNIT_INTEREST;
     hashtb_end(e);
@@ -116,7 +116,7 @@ collect_stats_html(struct ccnd *h)
                 h->content_dups_recvd,
                 h->content_items_sent,
         stats.total_content_suppressed,
-        hashtb_n(h->interest_tab), stats.total_interest_counts,
+        hashtb_n(h->interestprefix_tab), stats.total_interest_counts,
                 hashtb_n(h->propagating_tab) - stats.total_flood_control,
                 stats.total_flood_control,
         h->interests_accepted, h->interests_dropped, h->interests_sent,

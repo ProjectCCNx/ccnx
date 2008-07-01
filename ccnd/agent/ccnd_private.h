@@ -35,7 +35,7 @@ struct ccn_schedule;
 struct ccnd;
 struct face;
 struct content_entry;
-struct interest_entry;
+struct interestprefix_entry;
 struct propagating_entry;
 struct content_tree_node;
 
@@ -49,7 +49,7 @@ struct ccnd {
     struct hashtb *faces_by_fd;     /* keyed by fd */
     struct hashtb *dgram_faces;     /* keyed by sockaddr */
     struct hashtb *content_tab;     /* keyed by initial fragment of ContentObject */
-    struct hashtb *interest_tab;    /* keyed by name components */
+    struct hashtb *interestprefix_tab; /* keyed by name prefix components */
     struct hashtb *propagating_tab; /* keyed by nonce */
     struct ccn_indexbuf *skiplinks; /* skiplist for content-ordered ops */
     unsigned face_gen;
@@ -132,9 +132,9 @@ struct content_entry {
 #define CCN_CONTENT_ENTRY_SLOWSEND 1
 
 /*
- * The interest hash table is keyed by the Component elements of the Name
+ * The interestprefix hash table is keyed by the Component elements of the Name prefix
  */
-struct interest_entry {
+struct interestprefix_entry {
     struct ccn_indexbuf *interested_faceid;
     struct ccn_indexbuf *counters;
     ccn_accession_t cached_accession;

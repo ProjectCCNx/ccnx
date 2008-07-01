@@ -402,7 +402,7 @@ finished_propagating(struct propagating_entry *pe)
 static void
 finalize_interest(struct hashtb_enumerator *e)
 {
-    struct interest_entry *entry = e->data;
+    struct interestprefix_entry *entry = e->data;
     ccn_indexbuf_destroy(&entry->interested_faceid);
     ccn_indexbuf_destroy(&entry->counters);
     if (entry->propagating_head != NULL) {
@@ -414,14 +414,14 @@ finalize_interest(struct hashtb_enumerator *e)
 
 static void
 link_propagating_interest_to_interest_entry(struct ccnd *h,
-    struct propagating_entry *pe, struct interest_entry *ie)
+    struct propagating_entry *pe, struct interestprefix_entry *ipe)
 {
-    struct propagating_entry *head = ie->propagating_head;
+    struct propagating_entry *head = ipe->propagating_head;
     if (head == NULL) {
         head = calloc(1, sizeof(*head));
         head->next = head;
         head->prev = head;
-        ie->propagating_head = head;
+        ipe->propagating_head = head;
     }
     pe->next = head;
     pe->prev = head->prev;
@@ -627,9 +627,9 @@ schedule_content_delivery(struct ccnd *h, struct content_entry *content)
  */
 static void
 cancel_one_propagating_interest(struct ccnd *h,
-                                struct interest_entry *interest, unsigned faceid)
+                                struct interestprefix_entry *ipe, unsigned faceid)
 {
-    struct propagating_entry *head = interest->propagating_head;
+    struct propagating_entry *head = ipe->propagating_head;
     struct propagating_entry *p;
     if (head == NULL)
         return;
@@ -661,14 +661,14 @@ match_interests(struct ccnd *h, struct content_entry *content)
     const unsigned char *key = content->key + c0;
     for (ci = content->ncomps - 1; ci >= 0; ci--) {
         int size = content->comps[ci] - c0;
-        struct interest_entry *interest = hashtb_lookup(h->interest_tab, key, size);
-        if (interest != NULL) {
-            n = (interest->counters == NULL) ? 0 : interest->counters->n;
+        struct interestprefix_entry *ipe = hashtb_lookup(h->interestprefix_tab, key, size);
+        if (ipe != NULL) {
+            n = (ipe->counters == NULL) ? 0 : ipe->counters->n;
             for (i = 0; i < n; i++) {
                 /* Use signed count for this calculation */
-                intptr_t count = interest->counters->buf[i];
+                intptr_t count = ipe->counters->buf[i];
                 if (count > 0) {
-                    faceid = interest->interested_faceid->buf[i];
+                    faceid = ipe->interested_faceid->buf[i];
                     face = face_from_faceid(h, faceid);
                     if (face != NULL) {
                         k = content_faces_set_insert(content, faceid);
@@ -677,12 +677,12 @@ match_interests(struct ccnd *h, struct content_entry *content)
                             count -= CCN_UNIT_INTEREST;
                             if (count < 0)
                                 count = 0;
-                            cancel_one_propagating_interest(h, interest, faceid);
+                            cancel_one_propagating_interest(h, ipe, faceid);
                         }
                     }
                     else
                         count = 0;
-                    interest->counters->buf[i] = count;
+                    ipe->counters->buf[i] = count;
                 }
             }
         }
@@ -714,12 +714,12 @@ match_interest_for_faceid(struct ccnd *h, struct content_entry *content, unsigne
     const unsigned char *key = content->key + c0;
     for (ci = content->ncomps - 1; ci >= 0; ci--) {
         int size = content->comps[ci] - c0;
-        struct interest_entry *interest = hashtb_lookup(h->interest_tab, key, size);
-        if (interest != NULL) {
-            n = (interest->counters == NULL) ? 0 : interest->counters->n;
+        struct interestprefix_entry *ipe = hashtb_lookup(h->interestprefix_tab, key, size);
+        if (ipe != NULL) {
+            n = (ipe->counters == NULL) ? 0 : ipe->counters->n;
             for (i = 0; i < n; i++) {
-                if (faceid == interest->interested_faceid->buf[i]) {
-                    intptr_t count = interest->counters->buf[i];
+                if (faceid == ipe->interested_faceid->buf[i]) {
+                    intptr_t count = ipe->counters->buf[i];
                     if (count == 0)
                         break;
                     face = face_from_faceid(h, faceid);
@@ -734,7 +734,7 @@ match_interest_for_faceid(struct ccnd *h, struct content_entry *content, unsigne
                     }
                     else
                         count = 0;
-                    interest->counters->buf[i] = count;
+                    ipe->counters->buf[i] = count;
                     break;
                 }
             }
@@ -756,11 +756,11 @@ adjust_filters_matching_interests(struct ccnd *h, struct content_entry *content)
     const unsigned char *key = content->key + c0;
     for (ci = content->ncomps - 1; ci >= 0; ci--) {
         int size = content->comps[ci] - c0;
-        struct interest_entry *interest = hashtb_lookup(h->interest_tab, key, size);
-        if (interest != NULL) {
-            // bloom_destroy(&interest->back_filter);
-            // interest->back_filter = bloom_create(h, interest->matches);
-            // bloom_update_for_old_content(h, interest);
+        struct interestprefix_entry *ipe = hashtb_lookup(h->interestprefix_tab, key, size);
+        if (ipe != NULL) {
+            // bloom_destroy(&ipe->back_filter);
+            // ipe->back_filter = bloom_create(h, ipe->matches);
+            // bloom_update_for_old_content(h, ipe);
         }
     }
 }
@@ -770,10 +770,10 @@ clean_filters(struct ccnd *h)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
-    struct interest_entry *interest;
-    hashtb_start(h->interest_tab, e);
-    for (interest = e->data; interest != NULL; interest = e->data) {
-        // bloom_destroy(&interest->back_filter);
+    struct interestprefix_entry *ipe;
+    hashtb_start(h->interestprefix_tab, e);
+    for (ipe = e->data; ipe != NULL; ipe = e->data) {
+        // bloom_destroy(&ipe->back_filter);
         hashtb_next(e);
     }
     hashtb_end(e);
@@ -790,35 +790,35 @@ age_interests(struct ccnd *h)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
-    struct interest_entry *interest;
+    struct interestprefix_entry *ipe;
     int n;
     int i;
     int n_active = 0;
-    hashtb_start(h->interest_tab, e);
-    for (interest = e->data; interest != NULL; interest = e->data) {
-        n = interest->counters->n;
+    hashtb_start(h->interestprefix_tab, e);
+    for (ipe = e->data; ipe != NULL; ipe = e->data) {
+        n = ipe->counters->n;
         if (n > 0)
-            interest->idle = 0;
-        else if ((++interest->idle) > 8) {
+            ipe->idle = 0;
+        else if ((++ipe->idle) > 8) {
             hashtb_delete(e);
             continue;
         }
         for (i = 0; i < n; i++) {
-            size_t count = interest->counters->buf[i];
+            size_t count = ipe->counters->buf[i];
             if (count > CCN_UNIT_INTEREST) {
                 /* factor of approximately the fourth root of 1/2 */
-                interest->counters->buf[i] = (count * 5 + 3) / 6;
+                ipe->counters->buf[i] = (count * 5 + 3) / 6;
             }
             else if (count > 0) {
-                interest->counters->buf[i] -= 1;
+                ipe->counters->buf[i] -= 1;
             }
             else {
                 /* count was 0, remove this counter */
-                interest->interested_faceid->buf[i] = interest->interested_faceid->buf[n-1];
-                interest->counters->buf[i] = interest->counters->buf[n-1];
+                ipe->interested_faceid->buf[i] = ipe->interested_faceid->buf[n-1];
+                ipe->counters->buf[i] = ipe->counters->buf[n-1];
                 i -= 1;
                 n -= 1;
-                interest->interested_faceid->n = interest->counters->n = n;
+                ipe->interested_faceid->n = ipe->counters->n = n;
             }
         }
         n_active += n;
@@ -952,7 +952,7 @@ aging_deamon(
     (void)(sched);
     if ((flags & CCN_SCHEDULE_CANCEL) == 0) {
         age_interests(h);
-        if (hashtb_n(h->interest_tab) != 0)
+        if (hashtb_n(h->interestprefix_tab) != 0)
             return(ev->evint);
     }
     /* nothing on the horizon, so go away */
@@ -1110,7 +1110,7 @@ static int
 propagate_interest(struct ccnd *h, struct face *face,
                       unsigned char *msg, size_t msg_size,
                       struct ccn_parsed_interest *pi,
-                      struct interest_entry *ie)
+                      struct interestprefix_entry *ipe)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -1144,10 +1144,10 @@ propagate_interest(struct ccnd *h, struct face *face,
         ccn_charbuf_append_closer(cb);
         pkeysize = cb->length - nonce_start;
 #if 0
-        if (ie->back_filter != NULL && pi->offset[CCN_PI_E_OTHER] == pi->offset[CCN_PI_B_OTHER]) {
+        if (ipe->back_filter != NULL && pi->offset[CCN_PI_E_OTHER] == pi->offset[CCN_PI_B_OTHER]) {
             /* send our current Bloom filter if we have one and none is there */
             /* XXX - this should probably be independent of adding the Nonce */
-            struct back_filter *f = ie->back_filter;
+            struct back_filter *f = ipe->back_filter;
             size_t size = sizeof(*f) - sizeof(f->bloom) + (1 << (f->lg_bits - 3));
             ccn_charbuf_append_tt(cb, CCN_DTAG_ExperimentalResponseFilter, CCN_DTAG);
             ccn_charbuf_append_tt(cb, size, CCN_BLOB);
@@ -1183,7 +1183,7 @@ propagate_interest(struct ccnd *h, struct face *face,
             pe->faceid = face->faceid;
             pe->outbound = outbound;
             outbound = NULL;
-            link_propagating_interest_to_interest_entry(h, pe, ie);
+            link_propagating_interest_to_interest_entry(h, pe, ipe);
             res = 0;
             ccn_schedule_event(h->sched, nrand48(h->seed) % 8192, do_propagate, pe, 0);
         }
@@ -1263,7 +1263,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
     size_t namesize = 0;
     int res;
     int matched;
-    struct interest_entry *interest = NULL;
+    struct interestprefix_entry *ipe = NULL;
     struct ccn_indexbuf *comps = indexbuf_obtain(h);
     res = ccn_parse_interest(msg, size, &parsed_interest, comps);
     if (res < 0) {
@@ -1286,32 +1286,32 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
     else {
         h->interests_accepted += 1;
         matched = 0;
-        hashtb_start(h->interest_tab, e);
+        hashtb_start(h->interestprefix_tab, e);
         res = hashtb_seek(e, msg + comps->buf[0], namesize, 0);
-        interest = e->data;
+        ipe = e->data;
         if (res == HT_NEW_ENTRY) {
-            interest->ncomp = comps->n - 1;
-            interest->interested_faceid = ccn_indexbuf_create();
-            interest->counters = ccn_indexbuf_create();
-            interest->cached_faceid = ~0U;
+            ipe->ncomp = comps->n - 1;
+            ipe->interested_faceid = ccn_indexbuf_create();
+            ipe->counters = ccn_indexbuf_create();
+            ipe->cached_faceid = ~0U;
             ccnd_msg(h, "New interest");
         }
-        if (interest != NULL) {
+        if (ipe != NULL) {
             struct content_entry *content = NULL;
-            res = indexbuf_unordered_set_insert(interest->interested_faceid, face->faceid);
-            while (interest->counters->n <= res)
-                if (0 > ccn_indexbuf_append_element(interest->counters, 0)) break;
-            if (0 <= res && res < interest->counters->n)
-                interest->counters->buf[res] += CCN_UNIT_INTEREST;
+            res = indexbuf_unordered_set_insert(ipe->interested_faceid, face->faceid);
+            while (ipe->counters->n <= res)
+                if (0 > ccn_indexbuf_append_element(ipe->counters, 0)) break;
+            if (0 <= res && res < ipe->counters->n)
+                ipe->counters->buf[res] += CCN_UNIT_INTEREST;
             content = NULL;
-            if (interest->cached_faceid == face->faceid) {
-                content = content_from_accession(h, interest->cached_accession);
+            if (ipe->cached_faceid == face->faceid) {
+                content = content_from_accession(h, ipe->cached_accession);
                 if (content != NULL)
                     content = content_from_accession(h, content_skiplist_next(h, content));
             }
             if (content == NULL) {
                 content = find_first_match_candidate(h, msg, size);
-                interest->cached_faceid = ~0;
+                ipe->cached_faceid = ~0;
             }
             while (content != NULL &&
                   content_matches_interest_prefix(h, content, msg, size, &parsed_interest, comps)) {
@@ -1320,23 +1320,23 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
                     break;
                 }
                 content = content_from_accession(h, content_skiplist_next(h, content));
-                if (content == NULL && interest->cached_faceid == face->faceid) {
+                if (content == NULL && ipe->cached_faceid == face->faceid) {
                     /* need to wrap around to the top */
                     content = find_first_match_candidate(h, msg, size);
-                    interest->cached_faceid = ~0;
+                    ipe->cached_faceid = ~0;
                 }
             }
             if (content != NULL) {
                 match_interest_for_faceid(h, content, face->faceid);
-                interest->cached_accession = content->accession;
-                interest->cached_faceid = face->faceid;
+                ipe->cached_accession = content->accession;
+                ipe->cached_faceid = face->faceid;
                 matched = 1;
             }
         }
         hashtb_end(e);
         aging_needed(h);
         if (!matched && parsed_interest.scope != 0)
-            propagate_interest(h, face, msg, size, &parsed_interest, interest);
+            propagate_interest(h, face, msg, size, &parsed_interest, ipe);
     }
     indexbuf_release(h, comps);
 }
@@ -1789,7 +1789,7 @@ ccnd_create(void) // XXX - neworder
     param.finalize = &finalize_content;
     h->content_tab = hashtb_create(sizeof(struct content_entry), &param);
     param.finalize = &finalize_interest;
-    h->interest_tab = hashtb_create(sizeof(struct interest_entry), &param);
+    h->interestprefix_tab = hashtb_create(sizeof(struct interestprefix_entry), &param);
     param.finalize = &finalize_propagating;
     h->propagating_tab = hashtb_create(sizeof(struct propagating_entry), &param);
     // h->backlinks = ccn_matrix_create();
