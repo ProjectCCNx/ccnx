@@ -18,12 +18,12 @@
 
 static unsigned char rawbuf[8801];
 
-#define FAIL(args) do { printf args; Bug(__LINE__); } while(0)
-#define MOAN(args) do { printf args; Moan(__LINE__); status = 1; } while(0)
+#define FAIL(args) do { fprintf args; Bug(__LINE__); } while(0)
+#define MOAN(args) do { fprintf args; Moan(__LINE__); status = 1; } while(0)
 
 static void
 Moan(int line) {
-    printf(" at ccn_verifysig.c:%d\n", line);
+    fprintf(stderr, " at ccn_verifysig.c:%d\n", line);
 }
 
 static void
@@ -75,14 +75,14 @@ main(int argc, char **argv)
     OpenSSL_add_all_digests();
     
     md = EVP_get_digestbynid(NID_sha256);
-    if (md == NULL) FAIL(("The openssl library does not seem to support sha256"));
+    if (md == NULL) FAIL((stderr, "The openssl library does not seem to support sha256"));
     
     md_ctx = EVP_MD_CTX_create();
-    if (md_ctx == NULL) FAIL(("URP"));
+    if (md_ctx == NULL) FAIL((stderr, "URP"));
     
     if (!EVP_DigestInit_ex(md_ctx, md, NULL)) {
         EVP_MD_CTX_destroy(md_ctx);
-        FAIL(("URP"));
+        FAIL((stderr, "URP"));
     }
     
     while ((ch = getopt(argc, argv, "h")) != -1) {
@@ -132,10 +132,12 @@ main(int argc, char **argv)
                                   co->offset[CCN_PCO_E_CAUTH_ContentDigest],
                                   &msg_digest,
                                   &msg_digest_size);
-        if (res < 0) FAIL(("URP"));
+        if (res < 0) FAIL((stderr, "URP"));
+#if 0
         for (i = 0; i < msg_digest_size; i++)
             fprintf(stderr, "%02x ", (unsigned)msg_digest[i]);
         fprintf(stderr, "<---<<< ContentDigest\n");
+#endif
         
         if (msg_digest_size > sizeof(magicgoop) && 0 == memcmp(msg_digest, magicgoop, sizeof(magicgoop))) {
             // keep going
@@ -148,11 +150,11 @@ main(int argc, char **argv)
         const unsigned char *actual_contentp = NULL;
         size_t actual_content_size = 0;
         res = ccn_ref_tagged_BLOB(CCN_DTAG_Content, rawbuf, co->Content, size - 1, &actual_contentp, &actual_content_size);
-        if (res < 0) FAIL(("URP"));        
+        if (res < 0) FAIL((stderr, "URP"));        
         
         if (!EVP_DigestInit_ex(md_ctx, md, NULL)) {
             EVP_MD_CTX_destroy(md_ctx);
-            FAIL(("URP"));
+            FAIL((stderr, "URP"));
         }
         
         res =  EVP_DigestUpdate(md_ctx, actual_contentp, actual_content_size);
@@ -160,21 +162,21 @@ main(int argc, char **argv)
         unsigned char mdbuf[EVP_MAX_MD_SIZE];
         unsigned int buflen = 0;
         res = EVP_DigestFinal_ex(md_ctx, mdbuf, &buflen);
+#if 0
         for (i = 0; i < buflen; i++)
             fprintf(stderr, "%02x ", (unsigned)mdbuf[i]);
         fprintf(stderr, "<---<<< Computed sha256\n");
+#endif
         
         if (msg_digest_size != buflen + sizeof(magicgoop))
-            FAIL(("msg_digest_size(%d) != buflen(%d) + sizeof(magicgoop)(%d)", (int)msg_digest_size, (int)buflen, (int)sizeof(magicgoop)));
+            FAIL((stderr, "msg_digest_size(%d) != buflen(%d) + sizeof(magicgoop)(%d)", (int)msg_digest_size, (int)buflen, (int)sizeof(magicgoop)));
         if (0 != memcmp(mdbuf, msg_digest + sizeof(magicgoop), buflen)) {
-            MOAN(("Computed sha256 digest does not match"));
+            MOAN((stderr, "Computed sha256 digest does not match"));
             bad++;
             continue;
         }
-        good++;
-        fprintf(stderr, "so far, so good.\n");
-        
-        const EVP_PKEY *verification_key = NULL;
+
+        EVP_PKEY *verification_key = NULL;
         const unsigned char *public_key_ptr = some_public_key;
         // EVP_PKEY *d2i_PUBKEY(EVP_PKEY **a, const unsigned char **pp, long length);
         verification_key = d2i_PUBKEY(NULL, &public_key_ptr, sizeof(some_public_key));
@@ -189,12 +191,12 @@ main(int argc, char **argv)
         
         EVP_MD_CTX *ver_ctx;
         ver_ctx = EVP_MD_CTX_create();
-        if (ver_ctx == NULL) FAIL(("URP"));
+        if (ver_ctx == NULL) FAIL((stderr, "URP"));
         
         res = EVP_VerifyInit(ver_ctx, the_digest);
         if (!res) {
             // EVP_MD_CTX_destroy(ver_ctx);
-            FAIL(("EVP_VerifyInit"));
+            FAIL((stderr, "EVP_VerifyInit"));
         }
         
         
@@ -205,38 +207,45 @@ main(int argc, char **argv)
             co->offset[CCN_PCO_B_CAUTH_NameComponentCount],
             co->offset[CCN_PCO_E_CAUTH_NameComponentCount]);
         if (nameComponentCount < 0)
-            FAIL(("NameComponentCount is not a nonNegativeInteger"));
+            FAIL((stderr, "NameComponentCount is not a nonNegativeInteger"));
         if (nameComponentCount >= comps->n) {
-            FAIL(("NameComponentCount(%d) exceeds number of name components(%d)",
+            FAIL((stderr, "NameComponentCount(%d) exceeds number of name components(%d)",
                 nameComponentCount, (int)(comps->n - 1)));
         }
-        //res = EVP_VerifyUpdate(ver_ctx, data, length);
+
+        const unsigned char *signed_name = NULL;
+        size_t signed_name_size = 0;
+        if (nameComponentCount == comps->n - 1) {
+            signed_name = rawbuf + co->Name;
+            signed_name_size = co->offset[CCN_PCO_E_Name] - co->offset[CCN_PCO_B_Name];
+        } else {
+            MOAN((stderr, "Cannot process partial names in signatures yet"));
+            continue;
+        }
+        res = EVP_VerifyUpdate(ver_ctx, signed_name, signed_name_size);
+
+        res = EVP_VerifyUpdate(ver_ctx, rawbuf + co->offset[CCN_PCO_B_ContentAuthenticator],
+                               co->offset[CCN_PCO_E_ContentAuthenticator] - co->offset[CCN_PCO_B_ContentAuthenticator]);
         
-        
-        /* figure out what gets included in the digest, and do
-         EVP_DigestUpdate(md_ctx, &stuff, count) and then
-         unsigned char mdbuf[EVP_MAX_MD_SIZE];
-         unsigned int buflen = 0;
-         EVP_DigestFinal_ex(md_ctx, mdbuf, &buflen);
-         
-         This will give us the digest of the data.
-         If we're trying to verify it according to the public key, we have to
-         locate the actual key, and then it looks very similar, with:
-         
-         const EVP_PKEY *verification_key = <get the key>;
-         (create a context)
-         (get the digest)
-         if (verification_key->type == EVP_PKEY_DSA) {
-         digest = EVP_dss1();
-         }
-         EVP_VerifyInit(context, digest);
-         EVP_VerifyUpdate(context, data, length);
-         (read in the signature)
-         err = EVP_VerifyFinal(context, signature, signaturelength, verification_key);
-         if (err != 1) {
-         failed...
-         }
-         */
+        const unsigned char *signature = NULL;
+        size_t signature_size = 0;
+
+        res = ccn_ref_tagged_BLOB(CCN_DTAG_Signature, rawbuf,
+                                  co->offset[CCN_PCO_B_Signature],
+                                  co->offset[CCN_PCO_E_Signature],
+                                  &signature,
+                                  &signature_size);
+        if (res < 0) FAIL((stderr, "Unable to get Signature from object"));
+
+        res = EVP_VerifyFinal(ver_ctx, signature, signature_size, verification_key);
+
+         if (res != 1) {
+             MOAN((stderr, "Signature failed to verify"));
+             bad++;
+         } else {
+             fprintf(stderr, "Verified\n");
+             good++;
+         }   
     }
     printf("\n%d files, %d skipped, %d good, %d bad.\n", argi, argi - good - bad, good, bad);
     exit(status);
