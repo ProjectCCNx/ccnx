@@ -37,7 +37,6 @@ struct face;
 struct content_entry;
 struct interest_entry;
 struct propagating_entry;
-struct back_filter;
 struct content_tree_node;
 
 //typedef uint_least64_t ccn_accession_t;
@@ -138,7 +137,6 @@ struct content_entry {
 struct interest_entry {
     struct ccn_indexbuf *interested_faceid;
     struct ccn_indexbuf *counters;
-    struct back_filter *back_filter;
     ccn_accession_t cached_accession;
     unsigned cached_faceid;
     unsigned char idle;
@@ -159,19 +157,6 @@ struct propagating_entry {
     unsigned faceid;
     struct ccn_indexbuf *outbound;
 };
-
-/*
- * Bloom filter for saying what content we have.
- */
-struct back_filter {
-    unsigned char lg_bits;  /* 13 maximum (8 kilobits), 3 minimum (one byte)*/
-    unsigned char n_hash;   /* number of hash functions to employ */
-    unsigned char method;   /* allow for various hashing algorithms */
-    unsigned char reserved;
-    unsigned char seed[4];  /* can seed hashes differently */
-    unsigned char bloom[1024]; /* 8 kilobits maximum */
-};
-
 
 /* Consider a separate header for these */
 int ccnd_stats_httpd_start(struct ccnd *);
