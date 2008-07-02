@@ -33,10 +33,6 @@ Bug(int line) {
         exit(1);
 }
 
-static const unsigned char magicgoop[] = {
-    0x30, 0x2f, 0x30, 0x0b, 0x06, 0x09, 0x60, 0x86,
-0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x04, 0x20 };
-
 static const unsigned char some_public_key[162] =
 "\060\201\237\060\015\006\011\052\206\110\206\367\015\001\001\001"
 "\005\000\003\201\215\000\060\201\211\002\201\201\000\303\055\043"
@@ -49,6 +45,141 @@ static const unsigned char some_public_key[162] =
 "\053\220\075\305\332\232\102\276\367\301\336\111\244\323\064\054"
 "\012\054\040\020\001\017\270\363\141\360\327\150\143\002\003\001"
 "\000\001";
+
+int
+ccn_verify_signature(const unsigned char *msg,
+                     size_t size,
+                     struct ccn_parsed_ContentObject *co,
+                     struct ccn_indexbuf *comps, EVP_PKEY *verification_pubkey)
+{
+    EVP_MD_CTX mdc;
+    EVP_MD_CTX *md_ctx = &mdc;
+    EVP_MD_CTX verc;
+    EVP_MD_CTX *ver_ctx = &verc;
+    const EVP_MD *md;
+    int res;
+
+    static const unsigned char magicgoop[] = {
+        0x30, 0x2f, 0x30, 0x0b, 0x06, 0x09, 0x60, 0x86,
+        0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x04, 0x20
+    };
+
+    md = EVP_get_digestbynid(NID_sha256);
+    if (md == NULL) {
+        FAIL((stderr, "The openssl library does not seem to support sha256"));
+    }
+
+    EVP_MD_CTX_init(md_ctx);
+    if (!EVP_DigestInit_ex(md_ctx, md, NULL)) {
+        FAIL((stderr, "EVP_DigestInit_ex failed"));
+    }
+
+    const unsigned char *msg_digest = NULL;
+    size_t msg_digest_size = 0;
+        
+    res = ccn_ref_tagged_BLOB(CCN_DTAG_ContentDigest, msg,
+                              co->offset[CCN_PCO_B_CAUTH_ContentDigest],
+                              co->offset[CCN_PCO_E_CAUTH_ContentDigest],
+                              &msg_digest,
+                              &msg_digest_size);
+    if (res < 0) FAIL((stderr, "URP"));
+    if (msg_digest_size > sizeof(magicgoop) && 0 == memcmp(msg_digest, magicgoop, sizeof(magicgoop))) {
+        // keep going
+    }
+    else {
+        fprintf(stderr, "not a ContentDigest I understand right now\n");
+        return (-1);
+    }
+        
+    const unsigned char *actual_contentp = NULL;
+    size_t actual_content_size = 0;
+
+    res = ccn_ref_tagged_BLOB(CCN_DTAG_Content, msg,
+                              co->offset[CCN_PCO_B_Content],
+                              co->offset[CCN_PCO_E_Content],
+                              &actual_contentp,
+                              &actual_content_size);
+    if (res < 0) FAIL((stderr, "URP"));        
+        
+    if (!EVP_DigestInit_ex(md_ctx, md, NULL)) {
+        FAIL((stderr, "URP"));
+    }
+        
+    res =  EVP_DigestUpdate(md_ctx, actual_contentp, actual_content_size);
+        
+    unsigned char mdbuf[EVP_MAX_MD_SIZE];
+    unsigned int mdbuflen = 0;
+    res = EVP_DigestFinal_ex(md_ctx, mdbuf, &mdbuflen);
+    EVP_MD_CTX_cleanup(md_ctx);
+
+    if (msg_digest_size != mdbuflen + sizeof(magicgoop))
+        FAIL((stderr, "msg_digest_size(%d) != mdbuflen(%d) + sizeof(magicgoop)(%d)", (int)msg_digest_size, (int)mdbuflen, (int)sizeof(magicgoop)));
+
+    if (0 != memcmp(mdbuf, msg_digest + sizeof(magicgoop), mdbuflen)) {
+        fprintf(stderr, "Computed sha256 digest does not match\n");
+        return (-2);
+    }
+
+    const EVP_MD *the_digest;
+    if (verification_pubkey->type == EVP_PKEY_DSA) {
+        the_digest = EVP_dss1();
+    }
+    else {
+        the_digest = EVP_sha256();
+    }
+        
+    EVP_MD_CTX_init(ver_ctx);
+    res = EVP_VerifyInit_ex(ver_ctx, the_digest, NULL);
+    if (!res) {
+        FAIL((stderr, "EVP_VerifyInit_ex"));
+    }
+
+    int nameComponentCount;
+    nameComponentCount = ccn_fetch_tagged_nonNegativeInteger(CCN_DTAG_NameComponentCount,
+                                                             msg,
+                                                             co->offset[CCN_PCO_B_CAUTH_NameComponentCount],
+                                                             co->offset[CCN_PCO_E_CAUTH_NameComponentCount]);
+    if (nameComponentCount < 0)
+        FAIL((stderr, "NameComponentCount is not a nonNegativeInteger"));
+    if (nameComponentCount >= comps->n) {
+        FAIL((stderr, "NameComponentCount(%d) exceeds number of name components(%d)",
+              nameComponentCount, (int)(comps->n - 1)));
+    }
+
+    const unsigned char *signed_name = NULL;
+    size_t signed_name_size = 0;
+
+    signed_name = msg + co->offset[CCN_PCO_B_Name];
+    if (nameComponentCount == comps->n - 1) {
+        signed_name_size = co->offset[CCN_PCO_E_Name] - co->offset[CCN_PCO_B_Name];
+        res = EVP_VerifyUpdate(ver_ctx, signed_name, signed_name_size);
+    } else {
+        signed_name_size = comps->buf[nameComponentCount] - co->offset[CCN_PCO_B_Name];
+        res = EVP_VerifyUpdate(ver_ctx, signed_name, signed_name_size);
+        res = EVP_VerifyUpdate(ver_ctx, msg + co->offset[CCN_PCO_E_Name] - 1, 1);
+    }
+
+    res = EVP_VerifyUpdate(ver_ctx, msg + co->offset[CCN_PCO_B_ContentAuthenticator],
+                           co->offset[CCN_PCO_E_ContentAuthenticator] - co->offset[CCN_PCO_B_ContentAuthenticator]);
+        
+    const unsigned char *signature = NULL;
+    size_t signature_size = 0;
+
+    res = ccn_ref_tagged_BLOB(CCN_DTAG_Signature, msg,
+                              co->offset[CCN_PCO_B_Signature],
+                              co->offset[CCN_PCO_E_Signature],
+                              &signature,
+                              &signature_size);
+    if (res < 0) FAIL((stderr, "Unable to get Signature from object"));
+
+    res = EVP_VerifyFinal(ver_ctx, signature, signature_size, verification_pubkey);
+    EVP_MD_CTX_cleanup(ver_ctx);
+
+    if (res == 1)
+        return (1);
+    else
+        return (0);
+}
 
 int
 main(int argc, char **argv)
@@ -68,28 +199,21 @@ main(int argc, char **argv)
     int good = 0;
     int bad = 0;
     
-    const EVP_MD *md;
-    EVP_MD_CTX *md_ctx;
-    
     OpenSSL_add_all_digests();
     
-    md = EVP_get_digestbynid(NID_sha256);
-    if (md == NULL) FAIL((stderr, "The openssl library does not seem to support sha256"));
-    
-    md_ctx = EVP_MD_CTX_create();
-    if (md_ctx == NULL) FAIL((stderr, "URP"));
-    
-    if (!EVP_DigestInit_ex(md_ctx, md, NULL)) {
-        EVP_MD_CTX_destroy(md_ctx);
-        FAIL((stderr, "URP"));
-    }
-    
+    /* we're checking against a single public key, until we have the
+     * infrastructure for locating keys
+     */
+    EVP_PKEY *verification_pubkey = NULL;
+    const unsigned char *public_key_ptr = some_public_key;
+    verification_pubkey = d2i_PUBKEY(NULL, &public_key_ptr, sizeof(some_public_key));
+        
     while ((ch = getopt(argc, argv, "h")) != -1) {
         switch (ch) {
-            default:
-            case 'h':
-                fprintf(stderr, "provide names of files containing ccnb format content\n");
-                exit(1);
+        default:
+        case 'h':
+            fprintf(stderr, "provide names of files containing ccnb format content\n");
+            exit(1);
         }
     }
     argc -= optind;
@@ -122,126 +246,16 @@ main(int argc, char **argv)
             status = 1;
             continue;
         }
-        
-        const unsigned char *msg_digest = NULL;
-        size_t msg_digest_size = 0;
-        
-        res = ccn_ref_tagged_BLOB(CCN_DTAG_ContentDigest, rawbuf,
-                                  co->offset[CCN_PCO_B_CAUTH_ContentDigest],
-                                  co->offset[CCN_PCO_E_CAUTH_ContentDigest],
-                                  &msg_digest,
-                                  &msg_digest_size);
-        if (res < 0) FAIL((stderr, "URP"));
 
-        if (msg_digest_size > sizeof(magicgoop) && 0 == memcmp(msg_digest, magicgoop, sizeof(magicgoop))) {
-            // keep going
-        }
-        else {
-            fprintf(stderr, "skipping: not a ContentDigest I understand right now\n");
-            continue;
-        }
+        res = ccn_verify_signature(rawbuf, size, co, comps, verification_pubkey);
         
-        const unsigned char *actual_contentp = NULL;
-        size_t actual_content_size = 0;
-        res = ccn_ref_tagged_BLOB(CCN_DTAG_Content, rawbuf,
-                                  co->offset[CCN_PCO_B_Content],
-                                  co->offset[CCN_PCO_E_Content],
-                                  &actual_contentp,
-                                  &actual_content_size);
-        if (res < 0) FAIL((stderr, "URP"));        
-        
-        if (!EVP_DigestInit_ex(md_ctx, md, NULL)) {
-            EVP_MD_CTX_destroy(md_ctx);
-            FAIL((stderr, "URP"));
-        }
-        
-        res =  EVP_DigestUpdate(md_ctx, actual_contentp, actual_content_size);
-        
-        unsigned char mdbuf[EVP_MAX_MD_SIZE];
-        unsigned int mdbuflen = 0;
-        res = EVP_DigestFinal_ex(md_ctx, mdbuf, &mdbuflen);
-        
-        if (msg_digest_size != mdbuflen + sizeof(magicgoop))
-            FAIL((stderr, "msg_digest_size(%d) != mdbuflen(%d) + sizeof(magicgoop)(%d)", (int)msg_digest_size, (int)mdbuflen, (int)sizeof(magicgoop)));
-        if (0 != memcmp(mdbuf, msg_digest + sizeof(magicgoop), mdbuflen)) {
-            MOAN((stderr, "Computed sha256 digest does not match"));
+        if (res != 1) {
+            fprintf(stderr, "Signature failed to verify\n");
             bad++;
-            continue;
-        }
-
-        EVP_PKEY *verification_key = NULL;
-        const unsigned char *public_key_ptr = some_public_key;
-        // EVP_PKEY *d2i_PUBKEY(EVP_PKEY **a, const unsigned char **pp, long length);
-        verification_key = d2i_PUBKEY(NULL, &public_key_ptr, sizeof(some_public_key));
-        
-        const EVP_MD *the_digest;
-        if (verification_key->type == EVP_PKEY_DSA) {
-            the_digest = EVP_dss1();
-        }
-        else {
-            the_digest = EVP_sha256();
-        }
-        
-        EVP_MD_CTX *ver_ctx;
-        ver_ctx = EVP_MD_CTX_create();
-        if (ver_ctx == NULL) FAIL((stderr, "URP"));
-        
-        res = EVP_VerifyInit(ver_ctx, the_digest);
-        if (!res) {
-            // EVP_MD_CTX_destroy(ver_ctx);
-            FAIL((stderr, "EVP_VerifyInit"));
-        }
-        
-        
-        int nameComponentCount;
-
-        nameComponentCount = ccn_fetch_tagged_nonNegativeInteger(
-            CCN_DTAG_NameComponentCount,
-            rawbuf,
-            co->offset[CCN_PCO_B_CAUTH_NameComponentCount],
-            co->offset[CCN_PCO_E_CAUTH_NameComponentCount]);
-        if (nameComponentCount < 0)
-            FAIL((stderr, "NameComponentCount is not a nonNegativeInteger"));
-        if (nameComponentCount >= comps->n) {
-            FAIL((stderr, "NameComponentCount(%d) exceeds number of name components(%d)",
-                nameComponentCount, (int)(comps->n - 1)));
-        }
-
-        const unsigned char *signed_name = NULL;
-        size_t signed_name_size = 0;
-
-        signed_name = rawbuf + co->offset[CCN_PCO_B_Name];
-        if (nameComponentCount == comps->n - 1) {
-            signed_name_size = co->offset[CCN_PCO_E_Name] - co->offset[CCN_PCO_B_Name];
-            res = EVP_VerifyUpdate(ver_ctx, signed_name, signed_name_size);
         } else {
-            signed_name_size = comps->buf[nameComponentCount] - co->offset[CCN_PCO_B_Name];
-            res = EVP_VerifyUpdate(ver_ctx, signed_name, signed_name_size);
-            res = EVP_VerifyUpdate(ver_ctx, rawbuf + co->offset[CCN_PCO_E_Name] - 1, 1);
-        }
-
-        res = EVP_VerifyUpdate(ver_ctx, rawbuf + co->offset[CCN_PCO_B_ContentAuthenticator],
-                               co->offset[CCN_PCO_E_ContentAuthenticator] - co->offset[CCN_PCO_B_ContentAuthenticator]);
-        
-        const unsigned char *signature = NULL;
-        size_t signature_size = 0;
-
-        res = ccn_ref_tagged_BLOB(CCN_DTAG_Signature, rawbuf,
-                                  co->offset[CCN_PCO_B_Signature],
-                                  co->offset[CCN_PCO_E_Signature],
-                                  &signature,
-                                  &signature_size);
-        if (res < 0) FAIL((stderr, "Unable to get Signature from object"));
-
-        res = EVP_VerifyFinal(ver_ctx, signature, signature_size, verification_key);
-
-         if (res != 1) {
-             MOAN((stderr, "Signature failed to verify"));
-             bad++;
-         } else {
-             fprintf(stderr, "Verified\n");
-             good++;
-         }   
+            fprintf(stderr, "Verified\n");
+            good++;
+        }   
     }
     printf("\n%d files, %d skipped, %d good, %d bad.\n", argi, argi - good - bad, good, bad);
     exit(status);
