@@ -1,0 +1,110 @@
+#!/bin/sh
+echo nextsib.ccnb
+../lib/ccn_xmltoccnb -w - <<'END' > nextsib.ccnb
+<Interest>
+  <Name>
+    <Component ccnbencoding="base64Binary">d3d3Lm55dGltZXMuY29t</Component>
+    <Component ccnbencoding="base64Binary">MjAwOA==</Component>
+    <Component ccnbencoding="base64Binary">MDQ=</Component>
+    <Component ccnbencoding="base64Binary">MjM=</Component>
+    <Component ccnbencoding="base64Binary">dXM=</Component>
+    <Component ccnbencoding="base64Binary">MjJjbmQtcG9seWdhbXkuaHRtbA==</Component>
+    <Component ccnbencoding="base64Binary">MTMx</Component>
+  </Name>
+  <MatchNextAvailableSibling/>
+</Interest>
+END
+echo lastsib.ccnb
+../lib/ccn_xmltoccnb -w - <<'END' > lastsib.ccnb
+<Interest>
+  <Name>
+    <Component ccnbencoding="base64Binary">d3d3Lm55dGltZXMuY29t</Component>
+    <Component ccnbencoding="base64Binary">MjAwOA==</Component>
+    <Component ccnbencoding="base64Binary">MDQ=</Component>
+    <Component ccnbencoding="base64Binary">MjM=</Component>
+    <Component ccnbencoding="base64Binary">dXM=</Component>
+    <Component ccnbencoding="base64Binary">MjJjbmQtcG9seWdhbXkuaHRtbA==</Component>
+    <Component ccnbencoding="base64Binary">MTMx</Component>
+  </Name>
+  <MatchLastAvailableSibling/>
+</Interest>
+END
+echo firstin.ccnb
+../lib/ccn_xmltoccnb -w - <<'END' > firstin.ccnb
+<Interest>
+  <Name>
+    <Component ccnbencoding="base64Binary">d3d3Lm55dGltZXMuY29t</Component>
+    <Component ccnbencoding="base64Binary">MjAwOA==</Component>
+    <Component ccnbencoding="base64Binary">MDQ=</Component>
+    <Component ccnbencoding="base64Binary">MjM=</Component>
+    <Component ccnbencoding="base64Binary">dXM=</Component>
+    <Component ccnbencoding="base64Binary">MjJjbmQtcG9seWdhbXkuaHRtbA==</Component>
+    <Component ccnbencoding="base64Binary">MTMx</Component>
+  </Name>
+  <MatchFirstAvailableDescendant/>
+</Interest>
+END
+echo lastin.ccnb
+../lib/ccn_xmltoccnb -w - <<'END' > lastin.ccnb
+<Interest>
+  <Name>
+    <Component ccnbencoding="base64Binary">d3d3Lm55dGltZXMuY29t</Component>
+    <Component ccnbencoding="base64Binary">MjAwOA==</Component>
+    <Component ccnbencoding="base64Binary">MDQ=</Component>
+    <Component ccnbencoding="base64Binary">MjM=</Component>
+    <Component ccnbencoding="base64Binary">dXM=</Component>
+    <Component ccnbencoding="base64Binary">MjJjbmQtcG9seWdhbXkuaHRtbA==</Component>
+    <Component ccnbencoding="base64Binary">MTMx</Component>
+  </Name>
+  <MatchLastAvailableDescendant/>
+</Interest>
+END
+echo exactmatch.ccnb
+../lib/ccn_xmltoccnb -w - <<'END' > exactmatch.ccnb
+<Interest>
+  <Name>
+    <Component ccnbencoding="base64Binary">d3d3Lm55dGltZXMuY29t</Component>
+    <Component ccnbencoding="base64Binary">MjAwOA==</Component>
+    <Component ccnbencoding="base64Binary">MDQ=</Component>
+    <Component ccnbencoding="base64Binary">MjM=</Component>
+    <Component ccnbencoding="base64Binary">dXM=</Component>
+    <Component ccnbencoding="base64Binary">MjJjbmQtcG9seWdhbXkuaHRtbA==</Component>
+    <Component ccnbencoding="base64Binary">MTMx</Component>
+  </Name>
+  <MatchEntirePrefix/>
+</Interest>
+END
+echo vanilla.ccnb
+../lib/ccn_xmltoccnb -w - <<'END' > classic.ccnb
+<Interest>
+  <Name>
+    <Component ccnbencoding="base64Binary">d3d3Lm55dGltZXMuY29t</Component>
+    <Component ccnbencoding="base64Binary">MjAwOA==</Component>
+    <Component ccnbencoding="base64Binary">MDQ=</Component>
+    <Component ccnbencoding="base64Binary">MjM=</Component>
+    <Component ccnbencoding="base64Binary">dXM=</Component>
+    <Component ccnbencoding="base64Binary">MjJjbmQtcG9seWdhbXkuaHRtbA==</Component>
+    <Component ccnbencoding="base64Binary">MTMx</Component>
+  </Name>
+</Interest>
+END
+Fail () {
+   echo $*
+   exit 1
+}
+test -e /tmp/.ccnd.sock && Fail There is a ccnd running - please stop it for this test.
+./ccnd &
+sleep 1
+gzcat 5586.ccnb.gz | nc -U /tmp/.ccnd.sock
+for i in firstin lastin nextsib lastsib exactmatch classic; do
+    echo ===================================== $i.ccnb
+    ./smoketestccnd -f $i.ccnb  -n 3 > $i.smokeout
+done
+echo Expect to see different answers because of suppressed matches against unsent content
+cat lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb | nc -U /tmp/.ccnd.sock -w 1 | nc -U /tmp/.ccnd.sock
+echo Timing gaps here probably will cause repeating of the same item
+for i in 0 1 2 3 4 5 6 7 8 9; do cat lastsib.ccnb; done | nc -U /tmp/.ccnd.sock -w 1 | nc -U /tmp/.ccnd.sock
+rm /tmp/.ccnd.sock
+echo GET / | nc localhost 4485
+grep 757300FA019D3232636E642D706F6C7967616D792E68746D6C00FA9D3 *.smokeout | sort | uniq -c
+wait

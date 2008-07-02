@@ -27,7 +27,7 @@ clean:
 	rm -rf *.dSYM $(DEBRIS)
 
 test:   ccnd smoketestccnd
-	@echo "Sorry, no ccnd unit tests at this time"
+	./testmatchrules
         
 ###############################
 # Dependencies below here are checked by depend target
