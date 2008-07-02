@@ -28,6 +28,7 @@
 #include <ccn/bloom.h>
 #include <ccn/hashtb.h>
 #include <ccn/schedule.h>
+#include <ccn/uri.h>
 
 #include "ccnd_private.h"
 
@@ -377,18 +378,29 @@ content_matches_interest_qualifiers(struct ccnd *h,
                                     struct ccn_indexbuf *comps)
 {
     size_t compsize = 0;
+    int cmp = 0;
     switch (pi->matchrule) {
         case CCN_DTAG_MatchNextAvailableSibling:
         case CCN_DTAG_MatchLastAvailableSibling:
             compsize = pi->offset[CCN_PI_E_ComponentLast] -
-            pi->offset[CCN_PI_B_Component0];
+                       pi->offset[CCN_PI_B_Component0];
             if (compsize + content->comps[0] <= content->key_size &&
                 0 == memcmp(content->key + content->comps[0],
                             interest_msg + pi->offset[CCN_PI_B_Component0],
                             compsize))
                 return(0);
-            if (ccn_compare_names(content->key, content->key_size,
-                                  interest_msg, pi->offset[CCN_PI_E]) <= 0)
+            cmp = ccn_compare_names(content->key, content->key_size,
+                                    interest_msg, pi->offset[CCN_PI_E]);
+            if (0) {
+                struct ccn_charbuf *c = ccn_charbuf_create();
+                ccn_uri_append(c, content->key, content->key_size, 0);
+                ccn_charbuf_append(c, " : ", 3);
+                ccn_uri_append(c, interest_msg, pi->offset[CCN_PI_E], 0);
+                ccn_charbuf_append(c, "\0", 1);
+                ccnd_msg(h, "ccn_compare_names -- %s -> %d", c->buf, cmp);
+                ccn_charbuf_destroy(&c);
+            }
+            if (cmp <= 0)
                 return(0);
             break;
             case CCN_DTAG_MatchFirstAvailableDescendant:
@@ -729,8 +741,7 @@ match_interests(struct ccnd *h, struct content_entry *content)
  *  arrives, so we do not want to cancel any propagating interest for that one.
  *  But since the content may match other interests as well, we do need
  *  to examine all the possible matches anyway to update the counts.
- *  In principle we could chase down propagating interests for those, but
- *  that should be rare, I think, and maybe not desirable.
+ *  XXX we should chase down propagating interests for those.
  */
 static int
 match_interest_for_faceid(struct ccnd *h, struct content_entry *content, unsigned faceid)
@@ -757,6 +768,7 @@ match_interest_for_faceid(struct ccnd *h, struct content_entry *content, unsigne
                     if (face != NULL) {
                         k = content_faces_set_insert(content, faceid);
                         if (k >= content->nface_done) {
+                            /* XXX TODO - loop over the associated propagating interests and check for qualifier matches. */
                             n_matched += 1;
                             count -= CCN_UNIT_INTEREST;
                             if (count < 0)
@@ -1196,6 +1208,7 @@ is_duplicate_flooded(struct ccnd *h, unsigned char *msg, struct ccn_parsed_inter
     return(pe != NULL);
 }
 
+int use_short_term_blocking_state = 0;
 /*
  * content_is_unblocked: 
  * Decide whether to send content in response to the interest, which
@@ -1220,8 +1233,8 @@ content_is_unblocked(struct content_entry *content,
             f = ccn_bloom_validate_wire(filtbuf, filtsize);
         }
     }
-    if (f != NULL) {
-        if (content->sig_offset > 0 &&
+    if (f != NULL || !use_short_term_blocking_state) {
+        if (f != NULL && content->sig_offset > 0 &&
               ccn_bloom_match_wire(f, content->key + content->sig_offset, 32))
             return(0);
         /* Not in filter, so send even if we have sent before. */
@@ -1299,12 +1312,16 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
                 if (0 > ccn_indexbuf_append_element(ipe->counters, 0)) break;
             if (0 <= res && res < ipe->counters->n)
                 ipe->counters->buf[res] += CCN_UNIT_INTEREST;
-            content = content_from_accession(h, face->cached_accession);
-            if (content != NULL)
-                content = content_from_accession(h, content_skiplist_next(h, content));
-            if (content != NULL &&
-                !content_matches_interest_prefix(h, content, msg, comps)) {
-                content = NULL;
+            content = NULL;
+            if (pi->matchrule == 0) {
+                /* some help for old clients that are expecting suppression state */
+                content = content_from_accession(h, face->cached_accession);
+                if (content != NULL && content_matches_interest_prefix(h, content, msg, comps))
+                    content = content_from_accession(h, content_skiplist_next(h, content));
+                if (content != NULL &&
+                    !content_matches_interest_prefix(h, content, msg, comps)) {
+                    content = NULL;
+                }
             }
             if (content == NULL) {
                 may_wrap = 0;
