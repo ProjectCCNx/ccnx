@@ -8,6 +8,7 @@
 #include <dirent.h>
 
 #include <ccn/ccn.h>
+#include <ccn/uri.h>
 
 struct path {
     int count;
@@ -225,11 +226,7 @@ main (int argc, char *argv[]) {
     }
     
     /* Test the uri encode / decode routines */
-    
-    // XXX tested routines don't have a header file yest.
-    extern int ccn_uri_append(struct ccn_charbuf *, const unsigned char *, size_t, int);
-    extern int ccn_name_from_uri(struct ccn_charbuf *c, const char *uri);
-    
+        
     init_all_chars_percent_encoded();
     const char *uri_tests[] = {
         "_+4", "ccn:/this/is/a/test",       "",     "ccn:/this/is/a/test",
