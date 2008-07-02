@@ -96,6 +96,7 @@ struct face {
     int flags;
     unsigned faceid;            /* internal face id */
     unsigned recvcount;         /* for activity level monitoring */
+    ccn_accession_t cached_accession;
     struct ccn_charbuf *inbuf;
     struct ccn_skeleton_decoder decoder;
     size_t outbufindex;
@@ -117,7 +118,7 @@ struct content_entry {
     ccn_accession_t accession;   /* assigned in arrival order */
     unsigned short *comps;      /* Name Component byte boundary offsets */
     int ncomps;                 /* Number of name components plus one */
-    int flags;
+    int flags;                  /* see below */
     int sig_offset;             /* offset of 32-byte signature */
     const unsigned char *key;	/* ContentObject fragment prior to Content */
     int key_size;
@@ -129,6 +130,7 @@ struct content_entry {
     struct ccn_scheduled_event *sender;
     struct ccn_indexbuf *skiplinks; /* skiplist for content-ordered ops */
 };
+/* content_entry flags */
 #define CCN_CONTENT_ENTRY_SLOWSEND 1
 
 /*
@@ -137,8 +139,6 @@ struct content_entry {
 struct interestprefix_entry {
     struct ccn_indexbuf *interested_faceid;
     struct ccn_indexbuf *counters;
-    ccn_accession_t cached_accession;
-    unsigned cached_faceid;
     unsigned char idle;
     int ncomp;                  /* Number of name components */
     struct propagating_entry *propagating_head;

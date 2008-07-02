@@ -347,13 +347,13 @@ find_first_match_candidate(struct ccnd *h, const unsigned char *interest_msg, si
     if (d == 0)
         return(NULL);
     return(content_from_accession(h, pred[0]->buf[0]));
-    return(NULL);
 }
 
 static int
-content_matches_interest_prefix(struct ccnd *h, struct content_entry *content,
-    const unsigned char *interest_msg, size_t size,
-    struct ccn_parsed_interest *pi, struct ccn_indexbuf *comps)
+content_matches_interest_prefix(struct ccnd *h,
+                                struct content_entry *content,
+                                const unsigned char *interest_msg,
+                                struct ccn_indexbuf *comps)
 {
     size_t prefixlen;
     /* First verify the prefix match. */
@@ -362,17 +362,48 @@ content_matches_interest_prefix(struct ccnd *h, struct content_entry *content,
     prefixlen = comps->buf[comps->n-1] - comps->buf[0];
     if (content->comps[comps->n-1] - content->comps[0] != prefixlen)
         return(0);
-    if (0 != memcmp(content->key + content->comps[0], interest_msg + comps->buf[0], prefixlen))
+    if (0 != memcmp(content->key + content->comps[0],
+                    interest_msg + comps->buf[0],
+                    prefixlen))
         return(0);
     return(1);
 }
 
 static int
-content_matches_interest_qualifiers(struct ccnd *h, struct content_entry *content,
-    const unsigned char *interest_msg, size_t size,
-    struct ccn_parsed_interest *pi, struct ccn_indexbuf *comps)
+content_matches_interest_qualifiers(struct ccnd *h,
+                                    struct content_entry *content,
+                                    const unsigned char *interest_msg,
+                                    struct ccn_parsed_interest *pi,
+                                    struct ccn_indexbuf *comps)
 {
-    // XXX - test qualifiers here
+    size_t compsize = 0;
+    switch (pi->matchrule) {
+        case CCN_DTAG_MatchNextAvailableSibling:
+        case CCN_DTAG_MatchLastAvailableSibling:
+            compsize = pi->offset[CCN_PI_E_ComponentLast] -
+            pi->offset[CCN_PI_B_Component0];
+            if (compsize + content->comps[0] <= content->key_size &&
+                0 == memcmp(content->key + content->comps[0],
+                            interest_msg + pi->offset[CCN_PI_B_Component0],
+                            compsize))
+                return(0);
+            if (ccn_compare_names(content->key, content->key_size,
+                                  interest_msg, pi->offset[CCN_PI_E]) <= 0)
+                return(0);
+            break;
+            case CCN_DTAG_MatchFirstAvailableDescendant:
+            case CCN_DTAG_MatchLastAvailableDescendant:
+            /* XXX - do we want this to be strict? */
+            if (comps->n == content->ncomps)
+                return(0);
+            break;
+            case CCN_DTAG_MatchEntirePrefix:
+            if (comps->n != content->ncomps)
+                return(0);
+            default:
+            break;
+    }
+    // XXX - test any other qualifiers here
     return(1);
 }
 
@@ -745,41 +776,6 @@ match_interest_for_faceid(struct ccnd *h, struct content_entry *content, unsigne
 }
 
 /*
- * adjust_filters_matching_interests:
- * Install new back filter(s) on all interests matching the content.
- */
-static void
-adjust_filters_matching_interests(struct ccnd *h, struct content_entry *content)
-{
-    int ci;
-    unsigned c0 = content->comps[0];
-    const unsigned char *key = content->key + c0;
-    for (ci = content->ncomps - 1; ci >= 0; ci--) {
-        int size = content->comps[ci] - c0;
-        struct interestprefix_entry *ipe = hashtb_lookup(h->interestprefix_tab, key, size);
-        if (ipe != NULL) {
-            // bloom_destroy(&ipe->back_filter);
-            // ipe->back_filter = bloom_create(h, ipe->matches);
-            // bloom_update_for_old_content(h, ipe);
-        }
-    }
-}
-
-static void
-clean_filters(struct ccnd *h)
-{
-    struct hashtb_enumerator ee;
-    struct hashtb_enumerator *e = &ee;
-    struct interestprefix_entry *ipe;
-    hashtb_start(h->interestprefix_tab, e);
-    for (ipe = e->data; ipe != NULL; ipe = e->data) {
-        // bloom_destroy(&ipe->back_filter);
-        hashtb_next(e);
-    }
-    hashtb_end(e);
-}
-
-/*
  * age_interests:
  * This is called several times per interest halflife to age
  * the interest counters.  Returns the number of still-active counts.
@@ -888,14 +884,14 @@ check_propagating(struct ccnd *h)
     int count = 0;
     hashtb_start(h->propagating_tab, e);
     while (e->data != NULL) {
-        struct propagating_entry *pi = e->data;
-        if (pi->interest_msg == NULL) {
-            if (pi->size == 0) {
+        struct propagating_entry *pe = e->data;
+        if (pe->interest_msg == NULL) {
+            if (pe->size == 0) {
                 count += 1;
                 hashtb_delete(e);
                 continue;
             }
-            pi->size = (pi->size > 1); /* go around twice */
+            pe->size = (pe->size > 1); /* go around twice */
         }
         hashtb_next(e);
     }
@@ -1017,7 +1013,6 @@ clean_deamon( // XXX - neworder
             content->nface_old = d;
         }
     }
-    clean_filters(h);
     return(15000000);
 }
 
@@ -1143,18 +1138,6 @@ propagate_interest(struct ccnd *h, struct face *face,
         cb->length += noncebytes;
         ccn_charbuf_append_closer(cb);
         pkeysize = cb->length - nonce_start;
-#if 0
-        if (ipe->back_filter != NULL && pi->offset[CCN_PI_E_OTHER] == pi->offset[CCN_PI_B_OTHER]) {
-            /* send our current Bloom filter if we have one and none is there */
-            /* XXX - this should probably be independent of adding the Nonce */
-            struct back_filter *f = ipe->back_filter;
-            size_t size = sizeof(*f) - sizeof(f->bloom) + (1 << (f->lg_bits - 3));
-            ccn_charbuf_append_tt(cb, CCN_DTAG_ExperimentalResponseFilter, CCN_DTAG);
-            ccn_charbuf_append_tt(cb, size, CCN_BLOB);
-            ccn_charbuf_append(cb, f, size);
-            ccn_charbuf_append_closer(cb);
-        }
-#endif
         ccn_charbuf_append(cb, msg + pi->offset[CCN_PI_B_OTHER],
                                msg_size - pi->offset[CCN_PI_B_OTHER]);
         pkey = cb->buf + nonce_start;
@@ -1260,30 +1243,42 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     struct ccn_parsed_interest parsed_interest = {0};
+    struct ccn_parsed_interest *pi = &parsed_interest;
     size_t namesize = 0;
     int res;
     int matched;
     struct interestprefix_entry *ipe = NULL;
     struct ccn_indexbuf *comps = indexbuf_obtain(h);
-    res = ccn_parse_interest(msg, size, &parsed_interest, comps);
+    if (size > 65535)
+        res = -__LINE__;
+    else
+        res = ccn_parse_interest(msg, size, pi, comps);
     if (res < 0) {
         ccnd_msg(h, "error parsing Interest - code %d", res);
     }
-    else if (parsed_interest.scope > 0 && parsed_interest.scope < 2 &&
+    else if (pi->scope > 0 && pi->scope < 2 &&
              (face->flags & CCN_FACE_LINK) != 0) {
         ccnd_msg(h, "Interest from %u out of scope - discarded", face->faceid);
         res = -__LINE__;
     }
-    else if (comps->n < 1 ||
-             (namesize = comps->buf[comps->n - 1] - comps->buf[0]) > 65535) {
-        ccnd_msg(h, "Interest with namesize %lu discarded",
-                (unsigned long)namesize);
-        res = -__LINE__;
-    }
-    else if (is_duplicate_flooded(h, msg, &parsed_interest)) {
+    else if (is_duplicate_flooded(h, msg, pi)) {
         h->interests_dropped += 1;
     }
     else {
+        switch (pi->matchrule) {
+            case CCN_DTAG_MatchNextAvailableSibling:
+            case CCN_DTAG_MatchLastAvailableSibling:
+                if (comps->n <= 1)
+                    return; /* safety net - ccn_parse_interest should catch */
+                comps->n -= 1;
+                break;
+            case CCN_DTAG_MatchFirstAvailableDescendant:
+                face->cached_accession = 0;
+                break;
+            default:
+                break;
+        }
+        namesize = comps->buf[comps->n - 1] - comps->buf[0];
         h->interests_accepted += 1;
         matched = 0;
         hashtb_start(h->interestprefix_tab, e);
@@ -1293,50 +1288,67 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
             ipe->ncomp = comps->n - 1;
             ipe->interested_faceid = ccn_indexbuf_create();
             ipe->counters = ccn_indexbuf_create();
-            ipe->cached_faceid = ~0U;
-            ccnd_msg(h, "New interest");
+            ccnd_msg(h, "New interest prefix");
         }
         if (ipe != NULL) {
             struct content_entry *content = NULL;
+            struct content_entry *last_match = NULL;
+            int may_wrap = 1;
             res = indexbuf_unordered_set_insert(ipe->interested_faceid, face->faceid);
             while (ipe->counters->n <= res)
                 if (0 > ccn_indexbuf_append_element(ipe->counters, 0)) break;
             if (0 <= res && res < ipe->counters->n)
                 ipe->counters->buf[res] += CCN_UNIT_INTEREST;
-            content = NULL;
-            if (ipe->cached_faceid == face->faceid) {
-                content = content_from_accession(h, ipe->cached_accession);
-                if (content != NULL)
-                    content = content_from_accession(h, content_skiplist_next(h, content));
+            content = content_from_accession(h, face->cached_accession);
+            if (content != NULL)
+                content = content_from_accession(h, content_skiplist_next(h, content));
+            if (content != NULL &&
+                !content_matches_interest_prefix(h, content, msg, comps)) {
+                content = NULL;
             }
             if (content == NULL) {
+                may_wrap = 0;
                 content = find_first_match_candidate(h, msg, size);
-                ipe->cached_faceid = ~0;
+                if (content != NULL &&
+                    !content_matches_interest_prefix(h, content, msg, comps)) {
+                    content = NULL;
+                }
             }
-            while (content != NULL &&
-                  content_matches_interest_prefix(h, content, msg, size, &parsed_interest, comps)) {
-                if (content_is_unblocked(content, &parsed_interest, msg, face->faceid) &&
-                    content_matches_interest_qualifiers(h, content, msg, size, &parsed_interest, comps)) {
-                    break;
+            while (content != NULL) {
+                if (content_is_unblocked(content, pi, msg, face->faceid) &&
+                    content_matches_interest_qualifiers(h, content, msg, pi, comps)) {
+                    if (pi->matchrule == CCN_DTAG_MatchLastAvailableDescendant ||
+                        pi->matchrule == CCN_DTAG_MatchLastAvailableSibling) {
+                        last_match = content;
+                        may_wrap = 0;
+                    }
+                    else
+                        break;
                 }
                 content = content_from_accession(h, content_skiplist_next(h, content));
-                if (content == NULL && ipe->cached_faceid == face->faceid) {
-                    /* need to wrap around to the top */
+                if (content != NULL &&
+                    !content_matches_interest_prefix(h, content, msg, comps))
+                    content = NULL;
+                if (content == NULL && may_wrap) {
+                    may_wrap = 0;
                     content = find_first_match_candidate(h, msg, size);
-                    ipe->cached_faceid = ~0;
+                    if (content != NULL &&
+                        !content_matches_interest_prefix(h, content, msg, comps))
+                        content = NULL;
                 }
             }
+            if (last_match != NULL)
+                content = last_match;
             if (content != NULL) {
                 match_interest_for_faceid(h, content, face->faceid);
-                ipe->cached_accession = content->accession;
-                ipe->cached_faceid = face->faceid;
+                face->cached_accession = content->accession;
                 matched = 1;
             }
         }
         hashtb_end(e);
         aging_needed(h);
-        if (!matched && parsed_interest.scope != 0)
-            propagate_interest(h, face, msg, size, &parsed_interest, ipe);
+        if (!matched && pi->scope != 0)
+            propagate_interest(h, face, msg, size, pi, ipe);
     }
     indexbuf_release(h, comps);
 }
@@ -1401,7 +1413,6 @@ process_incoming_content(struct ccnd *h, struct face *face, // XXX - neworder
                 h->content_dups_recvd++;
                 ccnd_msg(h, "received duplicate ContentObject from %u (accession %llu)",
                     face->faceid, (unsigned long long)content->accession);
-                adjust_filters_matching_interests(h, content);
                 /* Make note that this face knows about this content */
                     // XXX - should distinguish the case that we were waiting
                     //  to send this content - in that case we might have
@@ -1473,6 +1484,7 @@ process_input_message(struct ccnd *h, struct face *face,
                 dres = ccn_skeleton_decode(d, msg + d->index, size - d->index);
                 if (d->state != 0)
                     break;
+                /* The pdu_ok parameter limits the recursion depth */
                 process_input_message(h, face, msg + d->index - dres, dres, 0);
             }
             return;
@@ -1792,7 +1804,6 @@ ccnd_create(void) // XXX - neworder
     h->interestprefix_tab = hashtb_create(sizeof(struct interestprefix_entry), &param);
     param.finalize = &finalize_propagating;
     h->propagating_tab = hashtb_create(sizeof(struct propagating_entry), &param);
-    // h->backlinks = ccn_matrix_create();
     h->sched = ccn_schedule_create(h);
     fd = create_local_listener(sockname, 42);
     if (fd == -1) fatal_err(sockname);

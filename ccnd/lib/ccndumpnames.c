@@ -26,7 +26,7 @@ incoming_content(
         return(0);
     c = ccn_charbuf_create();
     res = ccn_uri_append(c, ccnb, ccnb_size);
-    printf("%d %d ccn:%s\n", kind, res, c->buf);
+    printf("%d %d %s\n", kind, res, c->buf);
     ccn_charbuf_destroy(&c);
     selfp->data = selfp; /* make not NULL to indicate we got something */
     return(0);

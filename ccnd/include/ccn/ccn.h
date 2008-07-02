@@ -292,7 +292,8 @@ int ccn_fetch_tagged_nonNegativeInteger(enum ccn_dtag tt,
 enum ccn_parsed_interest_offsetid {
     CCN_PI_B_Name,
     CCN_PI_B_Component0,
-    CCN_PI_E_ComponentN,
+    CCN_PI_E_ComponentKey,
+    CCN_PI_E_ComponentLast,
     CCN_PI_E_Name,
     CCN_PI_B_MatchRule = CCN_PI_E_Name,
     CCN_PI_E_MatchRule,
@@ -309,6 +310,7 @@ enum ccn_parsed_interest_offsetid {
 
 struct ccn_parsed_interest {
     int scope;
+    enum ccn_dtag matchrule;
     unsigned short offset[CCN_PI_E+1];
 };
 

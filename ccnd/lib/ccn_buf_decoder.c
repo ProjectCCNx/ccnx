@@ -160,6 +160,7 @@ ccn_parse_required_tagged_UDATA(struct ccn_buf_decoder *d, enum ccn_dtag dtag)
 struct parsed_Name {
     int start;
     int size;
+    int lastcomp;
     int ncomp;
 };
 
@@ -172,9 +173,11 @@ ccn_parse_Name(struct ccn_buf_decoder *d, struct parsed_Name *x, struct ccn_inde
         res = d->decoder.element_index;
         if (components) components->n = 0;
         ccn_buf_advance(d);
+        x->lastcomp = d->decoder.token_index;
         while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
             if (components != NULL)
                 ccn_indexbuf_append_element(components, d->decoder.token_index);
+            x->lastcomp = d->decoder.token_index;
             ncomp += 1;
             ccn_buf_advance(d);
             if (ccn_buf_match_blob(d, NULL, NULL)) {
@@ -289,18 +292,25 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
         res = ccn_parse_Name(d, &name, components);
         if (res < 0)
             return(res);
-        interest->offset[CCN_PI_E_ComponentN] = d->decoder.token_index - 1;
+        interest->offset[CCN_PI_E_ComponentKey] = 
+        interest->offset[CCN_PI_E_ComponentLast] = d->decoder.token_index - 1;
         interest->offset[CCN_PI_E_Name] = d->decoder.token_index;
         ncomp = name.ncomp;
         /* Required match rule */
         interest->offset[CCN_PI_B_MatchRule] = d->decoder.token_index;
+        interest->matchrule = 0;
         if (ccn_buf_match_some_dtag(d)) {
             switch (d->decoder.numval) {
-                case CCN_DTAG_MatchFirstAvailableDescendant:
-                case CCN_DTAG_MatchLastAvailableDescendant:
                 case CCN_DTAG_MatchNextAvailableSibling:
                 case CCN_DTAG_MatchLastAvailableSibling:
+                    if (ncomp == 0)
+                        d->decoder.state  = -__LINE__;
+                    interest->offset[CCN_PI_E_ComponentKey] = name.lastcomp;
+                    /* FALLTHRU */
+                case CCN_DTAG_MatchFirstAvailableDescendant:
+                case CCN_DTAG_MatchLastAvailableDescendant:
                 case CCN_DTAG_MatchEntirePrefix:
+                    interest->matchrule = d->decoder.numval;
                     ccn_buf_advance(d);
                     ccn_buf_check_close(d);
                     break;
