@@ -1,5 +1,7 @@
 #!/bin/sh
+COMMANDLINE="$0 $*"
 Cleanup () {
+  test -f tmp-$$.out && test -f expectedfailures.out && echo "$COMMANDLINE" >> expectedfailures.out && cat tmp-$$.out >> expectedfailures.out
   rm tmp-$$.out
 }
 trap Cleanup 0
