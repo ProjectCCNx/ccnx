@@ -52,19 +52,7 @@
 		ContentDigest)>
 <!ATTLIST ContentAuthenticator %commonattrs;>
 
-<!ENTITY % matchrule
-	"( MatchFirstAvailableDescendant |
-           MatchLastAvailableDescendant  | 
-           MatchNextAvailableSibling     |
-           MatchLastAvailableSibling     |
-           MatchEntirePrefix             )">
-<!ELEMENT MatchFirstAvailableDescendant EMPTY>
-<!ELEMENT MatchLastAvailableDescendant EMPTY>
-<!ELEMENT MatchNextAvailableSibling EMPTY>
-<!ELEMENT MatchLastAvailableSibling EMPTY>
-<!ELEMENT MatchEntirePrefix EMPTY>
-
-<!ELEMENT Interest	(Name, %matchrule;, PublisherID?, Scope?, Nonce?, ExperimentalResponseFilter?)>
+<!ELEMENT Interest	(Name, PublisherID?, Exclude?, OrderPreference?, AnswerOriginKind?, Scope?, Count?, Nonce?, ExperimentalResponseFilter?)>
 <!ATTLIST Interest	%commonattrs;>
 
 <!ELEMENT PublisherID	(#PCDATA)>	<!-- base64Binary SHA-256 digest -->
@@ -81,6 +69,18 @@
     <enumeration value="ISSUER_CERTIFICATE"/>
   </restriction>
 </simpleType> -->
+
+<!ELEMENT Exclude       (BloomSeed?, Bloom?, (Component, Bloom?)*)>
+
+<!ELEMENT BloomSeed (#PCDATA)>      <!-- base64Binary -->
+<!ATTLIST BloomSeed ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT Bloom (#PCDATA)>      <!-- base64Binary -->
+<!ATTLIST Bloom ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT OrderPreference (#PCDATA)>    <!-- nonNegativeInteger -->
+
+<!ELEMENT AnswerOriginKind (#PCDATA)>   <!-- nonNegativeInteger -->
 
 <!ELEMENT Scope         (#PCDATA)>      <!-- nonNegativeInteger -->
 

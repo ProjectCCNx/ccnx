@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <Interest>
   <Name/>
-  <MatchFirstAvailableDescendant/>
   <PublisherID type="CERTIFICATE" ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherID>
+  <OrderPreference>4</OrderPreference>
 </Interest>

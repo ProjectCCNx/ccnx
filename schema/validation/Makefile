@@ -20,6 +20,7 @@ clean:
 	rm -f $(W3REFS) $(FUZZED)
 	test -L ccn.xsd && rm ccn.xsd || :
 	test -L ccn.dtd && rm ccn.dtd || :
+	: ===> expectedfailures.out
 
 pretty:
 	echo ccn-test??.xml | xargs -n 1 sh prettify.sh
@@ -51,4 +52,4 @@ ccn-schemabad10.xml: ccn-test10.xml
 	sed -e '/Timestamp/s/11T16/11 16/' $? > $@
 
 ccn-schemabad11.xml: ccn-test11.xml
-	sed -e '/MatchNextAvailableSibling/d' $? > $@
+	sed -e 's/<\/Bloom>/<\/Bloom><Bloom\/>/' $? > $@

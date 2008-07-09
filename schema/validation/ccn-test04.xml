@@ -3,8 +3,9 @@
   <Name>
     <Component ccnbencoding="base64Binary">Zm9vYmFy</Component>
   </Name>
-  <MatchFirstAvailableDescendant/>
   <PublisherID type="KEY" ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherID>
+  <OrderPreference>4</OrderPreference>
+  <AnswerOriginKind>3</AnswerOriginKind>
   <Scope>1</Scope>
   <Nonce ccnbencoding="base64Binary">bubblebabble</Nonce>
 </Interest>
