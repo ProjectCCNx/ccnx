@@ -95,7 +95,7 @@ Fail () {
 test -e /tmp/.ccnd.sock && Fail There is a ccnd running - please stop it for this test.
 ./ccnd &
 sleep 1
-gzcat 5586.ccnb.gz | nc -U /tmp/.ccnd.sock
+gzip -c -d 5586.ccnb.gz | nc -U /tmp/.ccnd.sock
 for i in firstin lastin nextsib lastsib exactmatch classic; do
     echo ===================================== $i.ccnb
     ./smoketestccnd -f $i.ccnb  -n 3 > $i.smokeout
