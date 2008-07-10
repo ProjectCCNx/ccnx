@@ -2,7 +2,10 @@
 <Interest>
   <Name>
     <Component ccnbencoding="base64Binary">Zm9vYmFy</Component>
+    <Component ccnbencoding="base64Binary">tribble//trouble</Component>
+    <Component ccnbencoding="base64Binary">w6I6GyAHfRPfNScOP3Q2+EYewYHPZXmBunuqnSUMk8E=</Component>
   </Name>
+  <NameComponentCount>1</NameComponentCount>
   <PublisherID type="KEY" ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherID>
   <OrderPreference>4</OrderPreference>
   <AnswerOriginKind>3</AnswerOriginKind>

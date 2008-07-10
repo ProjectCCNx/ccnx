@@ -52,7 +52,7 @@
 		ContentDigest)>
 <!ATTLIST ContentAuthenticator %commonattrs;>
 
-<!ELEMENT Interest	(Name, PublisherID?, Exclude?, OrderPreference?, AnswerOriginKind?, Scope?, Count?, Nonce?, ExperimentalResponseFilter?)>
+<!ELEMENT Interest	(Name, NameComponentCount?, PublisherID?, Exclude?, OrderPreference?, AnswerOriginKind?, Scope?, Count?, Nonce?, ExperimentalResponseFilter?)>
 <!ATTLIST Interest	%commonattrs;>
 
 <!ELEMENT PublisherID	(#PCDATA)>	<!-- base64Binary SHA-256 digest -->
