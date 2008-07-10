@@ -29,7 +29,7 @@ cleanall:
 	find . -type l -print -exec rm '{}' ';'
 
 MANIFEST:
-	svn list -R | grep -v '/$$' > MANIFEST
+	svn list -R | grep -v -e '/$$' -e 'agent/5586.ccnb.gz' > MANIFEST
 
 FAVORITES: MANIFEST
 	./makefavorites
