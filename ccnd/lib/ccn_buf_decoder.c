@@ -11,11 +11,12 @@
 #include <ccn/coding.h>
 #include <ccn/indexbuf.h>
 
-// XXX - stdio is temporary
-#include <stdio.h>
+// XXX - stdio is for temporary debug stuff
+//#include <stdio.h>
 
 struct ccn_buf_decoder *
-ccn_buf_decoder_start(struct ccn_buf_decoder *d, const unsigned char *buf, size_t size)
+ccn_buf_decoder_start(struct ccn_buf_decoder *d,
+                      const unsigned char *buf, size_t size)
 {
     memset(&d->decoder, 0, sizeof(d->decoder));
     d->decoder.state |= CCN_DSTATE_PAUSE;
@@ -51,11 +52,13 @@ ccn_buf_match_some_dtag(struct ccn_buf_decoder *d)
 int
 ccn_buf_match_some_blob(struct ccn_buf_decoder *d)
 {
-    return(d->decoder.state >= 0 && CCN_GET_TT_FROM_DSTATE(d->decoder.state) == CCN_BLOB);
+    return(d->decoder.state >= 0 &&
+           CCN_GET_TT_FROM_DSTATE(d->decoder.state) == CCN_BLOB);
 }
 
 int
-ccn_buf_match_blob(struct ccn_buf_decoder *d, const unsigned char **bufp, size_t *sizep)
+ccn_buf_match_blob(struct ccn_buf_decoder *d,
+                   const unsigned char **bufp, size_t *sizep)
 {
     if (ccn_buf_match_some_blob(d)) {
         if (bufp != NULL)
@@ -157,6 +160,23 @@ ccn_parse_required_tagged_UDATA(struct ccn_buf_decoder *d, enum ccn_dtag dtag)
     return(res);
 }
 
+int
+ccn_parse_optional_tagged_UDATA(struct ccn_buf_decoder *d, enum ccn_dtag dtag)
+{
+    int res = -1;
+    if (ccn_buf_match_dtag(d, dtag)) {
+        res = d->decoder.element_index;
+        ccn_buf_advance(d);
+        if (d->decoder.state >= 0 &&
+            CCN_GET_TT_FROM_DSTATE(d->decoder.state) == CCN_UDATA)
+            ccn_buf_advance(d);
+        ccn_buf_check_close(d);
+    }
+    if (d->decoder.state < 0)
+        return (-1);
+    return(res);
+}
+
 struct parsed_Name {
     int start;
     int size;
@@ -225,6 +245,25 @@ ccn_parse_PublisherID(struct ccn_buf_decoder *d)
 }
 
 int
+ccn_parse_Exclude(struct ccn_buf_decoder *d)
+{
+    int res = -1;
+    if (ccn_buf_match_dtag(d, CCN_DTAG_Exclude)) {
+        res = d->decoder.element_index;
+        ccn_buf_advance(d);
+        ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_Bloom);
+        while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
+            ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Component);
+            ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_Bloom);
+        }
+        ccn_buf_check_close(d);
+    }
+    if (d->decoder.state < 0)
+        return (d->decoder.state);
+    return(res);
+}
+
+int
 ccn_parse_nonNegativeInteger(struct ccn_buf_decoder *d)
 {
     const unsigned char *p;
@@ -258,7 +297,23 @@ ccn_parse_nonNegativeInteger(struct ccn_buf_decoder *d)
 }
 
 int
-ccn_fetch_tagged_nonNegativeInteger(enum ccn_dtag tt, const unsigned char *buf, size_t start, size_t stop)
+ccn_parse_optional_tagged_nonNegativeInteger(struct ccn_buf_decoder *d, enum ccn_dtag dtag)
+{
+    int res = -1;
+    if (ccn_buf_match_dtag(d, dtag)) {
+        ccn_buf_advance(d);
+        res = ccn_parse_nonNegativeInteger(d);
+        ccn_buf_check_close(d);
+    }
+    if (d->decoder.state < 0)
+        return (d->decoder.state);
+    return(res);
+}
+
+int
+ccn_fetch_tagged_nonNegativeInteger(enum ccn_dtag tt,
+                                    const unsigned char *buf,
+                                    size_t start, size_t stop)
 {
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d;
@@ -292,67 +347,47 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
         res = ccn_parse_Name(d, &name, components);
         if (res < 0)
             return(res);
-        interest->offset[CCN_PI_E_ComponentKey] = 
         interest->offset[CCN_PI_E_ComponentLast] = d->decoder.token_index - 1;
         interest->offset[CCN_PI_E_Name] = d->decoder.token_index;
         ncomp = name.ncomp;
-        /* Required match rule */
-        interest->offset[CCN_PI_B_MatchRule] = d->decoder.token_index;
-        interest->matchrule = 0;
-        if (ccn_buf_match_some_dtag(d)) {
-            switch (d->decoder.numval) {
-                case CCN_DTAG_MatchNextAvailableSibling:
-                case CCN_DTAG_MatchLastAvailableSibling:
-                    if (ncomp == 0)
-                        d->decoder.state  = -__LINE__;
-                    interest->offset[CCN_PI_E_ComponentKey] = name.lastcomp;
-                    /* FALLTHRU */
-                case CCN_DTAG_MatchFirstAvailableDescendant:
-                case CCN_DTAG_MatchLastAvailableDescendant:
-                case CCN_DTAG_MatchEntirePrefix:
-                    interest->matchrule = d->decoder.numval;
-                    ccn_buf_advance(d);
-                    ccn_buf_check_close(d);
-                    break;
-                default:
-                    fprintf(stderr, "Got a match?\n");
-            }
-        }
-        else fprintf(stderr, "got a match?\n");
-        interest->offset[CCN_PI_E_MatchRule] = d->decoder.token_index;
+        /* optional NameComponentCount */
+        interest->offset[CCN_PI_B_NameComponentCount] = d->decoder.token_index;
+        interest->prefix_comps = ccn_parse_optional_tagged_nonNegativeInteger(d,
+                         CCN_DTAG_NameComponentCount);
+        interest->offset[CCN_PI_E_NameComponentCount] = d->decoder.token_index;
+        if (interest->prefix_comps > ncomp)
+            return (d->decoder.state = -__LINE__);
+        if (interest->prefix_comps == -1)
+            interest->prefix_comps = ncomp;
         /* optional PublisherID */
         interest->offset[CCN_PI_B_PublisherID] = d->decoder.token_index;
         res = ccn_parse_PublisherID(d);
         interest->offset[CCN_PI_E_PublisherID] = d->decoder.token_index;
+        /* optional Exclude element */
+        interest->offset[CCN_PI_B_Exclude] = d->decoder.token_index;
+        res = ccn_parse_Exclude(d);
+        interest->offset[CCN_PI_E_Exclude] = d->decoder.token_index;
+        /* optional OrderPreference */
+        interest->offset[CCN_PI_B_OrderPreference] = d->decoder.token_index;
+        interest->orderpref = ccn_parse_optional_tagged_nonNegativeInteger(d,
+                         CCN_DTAG_OrderPreference);
+        interest->offset[CCN_PI_E_OrderPreference] = d->decoder.token_index;
+        if (interest->orderpref > 5)
+            return (d->decoder.state = -__LINE__);
         /* optional Scope */
-        interest->scope = -1;
         interest->offset[CCN_PI_B_Scope] = d->decoder.token_index;
-        if (ccn_buf_match_dtag(d, CCN_DTAG_Scope)) {
-            ccn_buf_advance(d);
-            interest->scope = ccn_parse_nonNegativeInteger(d);
-            if (interest->scope > 9)
-                return (d->decoder.state = -__LINE__);
-            ccn_buf_check_close(d);
-        }
+        interest->scope = ccn_parse_optional_tagged_nonNegativeInteger(d,
+                         CCN_DTAG_Scope);
         interest->offset[CCN_PI_E_Scope] = d->decoder.token_index;
+        if (interest->scope > 9)
+                return (d->decoder.state = -__LINE__);
         /* optional Nonce */
         interest->offset[CCN_PI_B_Nonce] = d->decoder.token_index;
-        if (ccn_buf_match_dtag(d, CCN_DTAG_Nonce)) {
-            ccn_buf_advance(d);
-            if (!ccn_buf_match_some_blob(d))
-                return (d->decoder.state  = -__LINE__);
-            ccn_buf_advance(d);
-            ccn_buf_check_close(d);
-        }
+        res = ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_Nonce);
         interest->offset[CCN_PI_E_Nonce] = d->decoder.token_index;
         /* Allow for some experimental stuff */
         interest->offset[CCN_PI_B_OTHER] = d->decoder.token_index;
-        while (ccn_buf_match_some_dtag(d)) {
-            ccn_buf_advance(d);
-            if (ccn_buf_match_some_blob(d))
-                ccn_buf_advance(d);
-            ccn_buf_check_close(d);
-        }
+        ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_ExperimentalResponseFilter);
         interest->offset[CCN_PI_E_OTHER] = d->decoder.token_index;
         ccn_buf_check_close(d);
         interest->offset[CCN_PI_E] = d->decoder.index;
@@ -388,6 +423,23 @@ ccn_parse_KeyName(struct ccn_buf_decoder *d, struct parsed_KeyName *x)
     return(res);
 }
 
+int
+ccn_parse_Signature(struct ccn_buf_decoder *d)
+{
+    int res = -1;
+    if (ccn_buf_match_dtag(d, CCN_DTAG_Signature)) {
+        res = d->decoder.element_index;
+        ccn_buf_advance(d);
+        ccn_parse_optional_tagged_UDATA(d, CCN_DTAG_DigestAlgorithm);
+        ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_Witness);
+        ccn_parse_required_tagged_BLOB(d, CCN_DTAG_SignatureBits);
+        ccn_buf_check_close(d);
+    }
+    if (d->decoder.state < 0)
+        return (d->decoder.state);
+    return(res);
+}
+
 struct parsed_ContentAuthenticator {
     int PublisherKeyID;
     int NameComponentCount;
@@ -399,7 +451,7 @@ struct parsed_ContentAuthenticator {
 
 /* ccn_parse_ContentAuthenticator is currently unused */
 int
-ccn_parse_ContentAuthenticator(struct ccn_buf_decoder *d,
+XXX_ccn_parse_ContentAuthenticator(struct ccn_buf_decoder *d,
     struct parsed_ContentAuthenticator *x)
 {
     int res = -1;
@@ -439,27 +491,32 @@ ccn_parse_ContentObject(const unsigned char *msg, size_t size,
 {
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d = ccn_buf_decoder_start(&decoder, msg, size);
+    int res;
+    x->magic = -1;
     if (ccn_buf_match_dtag(d, CCN_DTAG_ContentObject)) {
         struct parsed_Name name;
-        ccn_buf_advance(d);        
-        x->offset[CCN_PCO_B_Name] = d->decoder.element_index;
+        ccn_buf_advance(d);
+        x->offset[CCN_PCO_B_Signature] = d->decoder.token_index;
+        res = ccn_parse_Signature(d);
+        if (res >= 0)
+            x->magic = 20080711;
+        x->offset[CCN_PCO_E_Signature] = d->decoder.token_index;
+        x->offset[CCN_PCO_B_Name] = d->decoder.token_index;
         x->offset[CCN_PCO_B_Component0] = d->decoder.index;
-        x->Name = ccn_parse_Name(d, &name, components);
-        if (x->Name < 0)
+        res = ccn_parse_Name(d, &name, components);
+        if (res < 0)
             d->decoder.state = -__LINE__;
         x->offset[CCN_PCO_E_ComponentN] = d->decoder.token_index - 1;
         x->offset[CCN_PCO_E_Name] = d->decoder.token_index;
-        
+        x->offset[CCN_PCO_B_ContentAuthenticator] = d->decoder.token_index;
         if (ccn_buf_match_dtag(d, CCN_DTAG_ContentAuthenticator)) {
-            x->ContentAuthenticator = d->decoder.token_index;
             ccn_buf_advance(d);
             x->offset[CCN_PCO_B_CAUTH_PublisherKeyID] = d->decoder.token_index;
             ccn_parse_required_tagged_BLOB(d, CCN_DTAG_PublisherKeyID);
             x->offset[CCN_PCO_E_CAUTH_PublisherKeyID] = d->decoder.token_index;
             
-            x->offset[CCN_PCO_B_CAUTH_NameComponentCount] = d->decoder.token_index;
-            ccn_parse_required_tagged_UDATA(d, CCN_DTAG_NameComponentCount);
-            x->offset[CCN_PCO_E_CAUTH_NameComponentCount] = d->decoder.token_index;
+            if (x->magic == -1)                                                 // XXX - compat
+                ccn_parse_optional_tagged_UDATA(d, CCN_DTAG_NameComponentCount);// XXX - compat
             
             x->offset[CCN_PCO_B_CAUTH_Timestamp] = d->decoder.token_index;
             ccn_parse_required_tagged_UDATA(d, CCN_DTAG_Timestamp);
@@ -489,22 +546,21 @@ ccn_parse_ContentObject(const unsigned char *msg, size_t size,
                 ccn_buf_check_close(d);
             }
             x->offset[CCN_PCO_E_CAUTH_KeyLocator] = d->decoder.token_index;
-            
-            x->offset[CCN_PCO_B_CAUTH_ContentDigest] = d->decoder.token_index;
-            ccn_parse_required_tagged_BLOB(d, CCN_DTAG_ContentDigest);
-            x->offset[CCN_PCO_E_CAUTH_ContentDigest] = d->decoder.token_index;
-            
+            if (x->magic == -1)                                                 // XXX - compat
+                ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_ContentDigest);      // XXX - compat
             ccn_buf_check_close(d);
-            x->offset[CCN_PCO_E_ContentAuthenticator] = d->decoder.token_index;
         }
         else
             d->decoder.state = -__LINE__;
-        
-        x->offset[CCN_PCO_B_Signature] = d->decoder.token_index;
-        x->Signature = ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Signature);
-        x->offset[CCN_PCO_E_Signature] = d->decoder.token_index;
+        x->offset[CCN_PCO_E_ContentAuthenticator] = d->decoder.token_index;
+        if (x->magic == -1 && ccn_buf_match_dtag(d, CCN_DTAG_Signature)) {      // XXX - compat
+            x->offset[CCN_PCO_B_Signature] = d->decoder.token_index;            // XXX - compat
+            res = ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Signature);        // XXX - compat
+            x->magic = 20080630;                                                // XXX - compat
+            x->offset[CCN_PCO_E_Signature] = d->decoder.token_index;            // XXX - compat
+        }                                                                       // XXX - compat
         x->offset[CCN_PCO_B_Content] = d->decoder.token_index;
-        x->Content = ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Content);
+        ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Content);
         x->offset[CCN_PCO_E_Content] = d->decoder.token_index;
         ccn_buf_check_close(d);
         x->offset[CCN_PCO_E] = d->decoder.index;
@@ -513,11 +569,15 @@ ccn_parse_ContentObject(const unsigned char *msg, size_t size,
         d->decoder.state = -__LINE__;
     if (d->decoder.index != size || !CCN_FINAL_DSTATE(d->decoder.state))
         return (CCN_DSTATE_ERR_CODING);
+    if (x->magic < 0)
+        return(-1);
     return(0);
 }
 
 int
-ccn_ref_tagged_BLOB(enum ccn_dtag tt, const unsigned char *buf, size_t start, size_t stop, const unsigned char **presult, size_t *psize)
+ccn_ref_tagged_BLOB(enum ccn_dtag tt,
+                    const unsigned char *buf, size_t start, size_t stop,
+                    const unsigned char **presult, size_t *psize)
 {
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d;

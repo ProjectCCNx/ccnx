@@ -7,24 +7,28 @@ COPT = -g
 PROGRAMS = ccn_ccnbtoxml ccn_splitccnb \
     hashtbtest matrixtest skel_decode_test \
     smoketestclientlib dataresponsetest ccntimestamps ccndump ccndumpnames \
-    encodedecodetest ccn_verifysig $(EXPAT_PROGRAMS)
+    encodedecodetest $(EXPAT_PROGRAMS)
 EXPAT_PROGRAMS = ccn_xmltoccnb
+BROKEN_PROGRAMS = ccn_verifysig
 DEBRIS = libccn2.a
-CSRC = ccn_buf_decoder.c ccn_buf_encoder.c ccn_charbuf.c ccn_indexbuf.c ccn_coding.c ccn_client.c  \
+CSRC = ccn_buf_decoder.c ccn_dtag_table.c ccn_buf_encoder.c ccn_charbuf.c \
+    ccn_indexbuf.c ccn_coding.c ccn_client.c  \
     ccn_ccnbtoxml.c ccn_xmltoccnb.c ccn_splitccnb.c ccn_schedule.c ccn_matrix.c ccn_bloom.c \
     skel_decode_test.c \
     hashtb.c hashtbtest.c matrixtest.c \
     smoketestclientlib.c ccntimestamps.c ccndump.c ccndumpnames.c \
     ccn_verifysig.c dataresponsetest.c ccn_uri.c  encodedecodetest.c
 
-LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_schedule.o ccn_matrix.o \
+LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_dtag_table.o ccn_schedule.o ccn_matrix.o \
     ccn_buf_decoder.o ccn_uri.o ccn_buf_encoder.o ccn_bloom.o hashtb.o
 
-default all: lib $(SHLIBNAME) $(PROGRAMS)
+default: lib $(SHLIBNAME) $(PROGRAMS)
+
+all: default $(BROKEN_PROGRAMS)
 
 lib: libccn.a
 
-test: all
+test: default encodedecodetest
 	./encodedecodetest -o /dev/null
 
 libccn.a: $(LIB_OBJS)
@@ -90,6 +94,7 @@ clean:
 ccn_buf_decoder.o: ccn_buf_decoder.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h
+ccn_dtag_table.o: ccn_dtag_table.c ../include/ccn/coding.h
 ccn_buf_encoder.o: ccn_buf_encoder.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h

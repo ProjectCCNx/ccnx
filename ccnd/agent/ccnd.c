@@ -354,13 +354,16 @@ static int
 content_matches_interest_prefix(struct ccnd *h,
                                 struct content_entry *content,
                                 const unsigned char *interest_msg,
-                                struct ccn_indexbuf *comps)
+                                struct ccn_indexbuf *comps,
+                                int prefix_comps)
 {
     size_t prefixlen;
+    if (prefix_comps < 0 || prefix_comps >= comps->n)
+        abort();
     /* First verify the prefix match. */
-    if (content->ncomps < comps->n)
+    if (content->ncomps < prefix_comps + 1)
         return(0);
-    prefixlen = comps->buf[comps->n-1] - comps->buf[0];
+    prefixlen = comps->buf[prefix_comps] - comps->buf[0];
     if (content->comps[comps->n-1] - content->comps[0] != prefixlen)
         return(0);
     if (0 != memcmp(content->key + content->comps[0],
@@ -377,6 +380,11 @@ content_matches_interest_qualifiers(struct ccnd *h,
                                     struct ccn_parsed_interest *pi,
                                     struct ccn_indexbuf *comps)
 {
+    if (pi->offset[CCN_PI_E_Exclude] > pi->offset[CCN_PI_B_Exclude]) {
+        ccnd_msg(h, "content_matches_interest_qualifiers -- Exclude construct is not yet implemented, rolling a die instead");
+        return(0 == (nrand48(h->seed) % 6));
+    }
+#if 0
     size_t compsize = 0;
     int cmp = 0;
     switch (pi->matchrule) {
@@ -415,6 +423,7 @@ content_matches_interest_qualifiers(struct ccnd *h,
             default:
             break;
     }
+#endif
     // XXX - test any other qualifiers here
     return(1);
 }
@@ -1278,20 +1287,9 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
         h->interests_dropped += 1;
     }
     else {
-        switch (pi->matchrule) {
-            case CCN_DTAG_MatchNextAvailableSibling:
-            case CCN_DTAG_MatchLastAvailableSibling:
-                if (comps->n <= 1)
-                    return; /* safety net - ccn_parse_interest should catch */
-                comps->n -= 1;
-                break;
-            case CCN_DTAG_MatchFirstAvailableDescendant:
-                face->cached_accession = 0;
-                break;
-            default:
-                break;
-        }
-        namesize = comps->buf[comps->n - 1] - comps->buf[0];
+        if (pi->orderpref > 1 && pi->prefix_comps == comps->n - 1)
+            face->cached_accession = 0;
+        namesize = comps->buf[pi->prefix_comps] - comps->buf[0];
         h->interests_accepted += 1;
         matched = 0;
         hashtb_start(h->interestprefix_tab, e);
@@ -1306,53 +1304,43 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
         if (ipe != NULL) {
             struct content_entry *content = NULL;
             struct content_entry *last_match = NULL;
-            int may_wrap = 1;
             res = indexbuf_unordered_set_insert(ipe->interested_faceid, face->faceid);
             while (ipe->counters->n <= res)
                 if (0 > ccn_indexbuf_append_element(ipe->counters, 0)) break;
             if (0 <= res && res < ipe->counters->n)
                 ipe->counters->buf[res] += CCN_UNIT_INTEREST;
+            // XXX test AnswerOriginKind here.
             content = NULL;
-            if (pi->matchrule == 0) {
+            if (face->cached_accession != 0) {
                 /* some help for old clients that are expecting suppression state */
                 content = content_from_accession(h, face->cached_accession);
-                if (content != NULL && content_matches_interest_prefix(h, content, msg, comps))
+                face->cached_accession = 0;
+                if (content != NULL && content_matches_interest_prefix(h, content, msg, comps, pi->prefix_comps))
                     content = content_from_accession(h, content_skiplist_next(h, content));
                 if (content != NULL &&
-                    !content_matches_interest_prefix(h, content, msg, comps)) {
+                    !content_matches_interest_prefix(h, content, msg, comps, pi->prefix_comps)) {
                     content = NULL;
                 }
             }
             if (content == NULL) {
-                may_wrap = 0;
                 content = find_first_match_candidate(h, msg, size);
                 if (content != NULL &&
-                    !content_matches_interest_prefix(h, content, msg, comps)) {
+                    !content_matches_interest_prefix(h, content, msg, comps, pi->prefix_comps)) {
                     content = NULL;
                 }
             }
             while (content != NULL) {
                 if (content_is_unblocked(content, pi, msg, face->faceid) &&
                     content_matches_interest_qualifiers(h, content, msg, pi, comps)) {
-                    if (pi->matchrule == CCN_DTAG_MatchLastAvailableDescendant ||
-                        pi->matchrule == CCN_DTAG_MatchLastAvailableSibling) {
-                        last_match = content;
-                        may_wrap = 0;
-                    }
-                    else
+                    if (pi->orderpref != 5) // XXX - should be symbolic
                         break;
+                    last_match = content;
                 }
+                // XXX - accessional ordering is NYI
                 content = content_from_accession(h, content_skiplist_next(h, content));
                 if (content != NULL &&
-                    !content_matches_interest_prefix(h, content, msg, comps))
+                    !content_matches_interest_prefix(h, content, msg, comps, pi->prefix_comps))
                     content = NULL;
-                if (content == NULL && may_wrap) {
-                    may_wrap = 0;
-                    content = find_first_match_candidate(h, msg, size);
-                    if (content != NULL &&
-                        !content_matches_interest_prefix(h, content, msg, comps))
-                        content = NULL;
-                }
             }
             if (last_match != NULL)
                 content = last_match;
@@ -1375,12 +1363,22 @@ get_signature_offset(struct ccn_parsed_ContentObject *pco, const unsigned char *
 {
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d;
-    if (pco->Signature >= 0 && pco->Content > pco->Signature) {
-        d = ccn_buf_decoder_start(&decoder, msg + pco->Signature, pco->Content - pco->Signature);
+    int start = pco->offset[CCN_PCO_B_Signature];
+    int stop  = pco->offset[CCN_PCO_E_Signature];
+    if (start < stop) {
+        d = ccn_buf_decoder_start(&decoder, msg + start, stop - start);
         if (ccn_buf_match_dtag(d, CCN_DTAG_Signature)) {
             ccn_buf_advance(d);
+            // XXX - only works for default sig
+            if (ccn_buf_match_dtag(d, CCN_DTAG_SignatureBits)) {
+                ccn_buf_advance(d);
+                if (ccn_buf_match_some_blob(d) && d->decoder.numval >= 32) {
+                    return(start + d->decoder.index);
+                }
+            }
             if (ccn_buf_match_some_blob(d) && d->decoder.numval >= 32) {
-                return(pco->Signature + d->decoder.index);
+                    // XXX - this is for compatibilty - remove after July 2008
+                    return(start + d->decoder.index);
             }
         }
     }
@@ -1412,9 +1410,17 @@ process_incoming_content(struct ccnd *h, struct face *face, // XXX - neworder
         res = -__LINE__;
     }
     else {
-        keysize = obj.Content;
-        tail = msg + obj.Content;
-        tailsize = size - obj.Content;
+        if (obj.magic != 20080711) {
+            if (++(h->oldformatcontent) == h->oldformatcontentgrumble) {
+                h->oldformatcontentgrumble *= 10;
+                ccnd_msg(h, "downrev content items received: %d (%d)",
+                    h->oldformatcontent,
+                    obj.magic);
+            }
+        }
+        keysize = obj.offset[CCN_PCO_B_Content];
+        tail = msg + keysize;
+        tailsize = size - keysize;
         hashtb_start(h->content_tab, e);
         res = hashtb_seek(e, msg, keysize, 0);
         content = e->data;
@@ -1822,6 +1828,7 @@ ccnd_create(void) // XXX - neworder
     param.finalize = &finalize_propagating;
     h->propagating_tab = hashtb_create(sizeof(struct propagating_entry), &param);
     h->sched = ccn_schedule_create(h);
+    h->oldformatcontentgrumble = 1;
     fd = create_local_listener(sockname, 42);
     if (fd == -1) fatal_err(sockname);
     ccnd_msg(h, "listening on %s", sockname);

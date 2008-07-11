@@ -70,6 +70,8 @@ struct ccnd {
     unsigned content_by_accession_window;
     struct content_entry **content_by_accession;
     ccn_accession_t accession;
+    unsigned long oldformatcontent;
+    unsigned long oldformatcontentgrumble;
     unsigned long content_dups_recvd;
     unsigned long content_items_sent;
     unsigned long interests_accepted;

@@ -289,28 +289,53 @@ int ccn_ref_tagged_BLOB(enum ccn_dtag tt,
 int ccn_fetch_tagged_nonNegativeInteger(enum ccn_dtag tt,
             const unsigned char *buf, size_t start, size_t stop);
 
+/*********** Interest parsing ***********/
+
+/*
+ * The parse of an interest results in an array of offsets into the 
+ * wire representation, with the start and end of each major element and
+ * a few of the inportant sub-elements.  The following enum allows those
+ * array items to be referred to symbolically.  The *_B_* indices correspond
+ * to beginning offsets and the *_E_* indices correspond to ending offests.
+ * An omitted element has its beginning and ending offset equal to each other.
+ * Normally these offsets will end up in non-decreasing order.
+ * Some aliasing tricks may be played here, e.g. since
+ * offset[CCN_PI_B_NameComponentCount] is always equal to offset[CCN_PI_E_Name],
+ * we may define CCN_PI_B_NameComponentCount = CCN_PI_E_Name.  However, code
+ * should not rely on that, since it may change from time to time as the
+ * interest schema evolves.
+ */
 enum ccn_parsed_interest_offsetid {
     CCN_PI_B_Name,
     CCN_PI_B_Component0,
-    CCN_PI_E_ComponentKey,
     CCN_PI_E_ComponentLast,
     CCN_PI_E_Name,
-    CCN_PI_B_MatchRule = CCN_PI_E_Name,
-    CCN_PI_E_MatchRule,
-    CCN_PI_B_PublisherID = CCN_PI_E_MatchRule,
+    CCN_PI_B_NameComponentCount /* = CCN_PI_E_Name */,
+    CCN_PI_E_NameComponentCount,
+    CCN_PI_B_PublisherID,
     CCN_PI_E_PublisherID,
-    CCN_PI_B_Scope = CCN_PI_E_PublisherID,
+    CCN_PI_B_Exclude,
+    CCN_PI_E_Exclude,
+    CCN_PI_B_OrderPreference,
+    CCN_PI_E_OrderPreference,
+    CCN_PI_B_AnswerOriginKind,
+    CCN_PI_E_AnswerOriginKind,
+    CCN_PI_B_Scope,
     CCN_PI_E_Scope,
-    CCN_PI_B_Nonce = CCN_PI_E_Scope,
+    CCN_PI_B_Count,
+    CCN_PI_E_Count,
+    CCN_PI_B_Nonce,
     CCN_PI_E_Nonce,
-    CCN_PI_B_OTHER = CCN_PI_E_Nonce,
+    CCN_PI_B_OTHER,
     CCN_PI_E_OTHER,
     CCN_PI_E
 };
 
 struct ccn_parsed_interest {
+    int prefix_comps;
+    int orderpref;
+    int answerfrom;
     int scope;
-    enum ccn_dtag matchrule;
     unsigned short offset[CCN_PI_E+1];
 };
 
@@ -327,40 +352,35 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
                    struct ccn_parsed_interest *interest,
                    struct ccn_indexbuf *components);
 
+/*********** ContentObject parsing ***********/
+/* Analogous to enum ccn_parsed_interest_offsetid, but for content */
 enum ccn_parsed_content_object_offsetid {
+    CCN_PCO_B_Signature,
+    CCN_PCO_E_Signature,
     CCN_PCO_B_Name,
     CCN_PCO_B_Component0,
     CCN_PCO_E_ComponentN,
     CCN_PCO_E_Name,
-    CCN_PCO_B_ContentAuthenticator = CCN_PCO_E_Name,
+    CCN_PCO_B_ContentAuthenticator,
     CCN_PCO_B_CAUTH_PublisherKeyID,
     CCN_PCO_E_CAUTH_PublisherKeyID,
-    CCN_PCO_B_CAUTH_NameComponentCount = CCN_PCO_E_CAUTH_PublisherKeyID,
-    CCN_PCO_E_CAUTH_NameComponentCount,
-    CCN_PCO_B_CAUTH_Timestamp = CCN_PCO_E_CAUTH_NameComponentCount,
+    CCN_PCO_B_CAUTH_Timestamp,
     CCN_PCO_E_CAUTH_Timestamp,
-    CCN_PCO_B_CAUTH_Type = CCN_PCO_E_CAUTH_Timestamp,
+    CCN_PCO_B_CAUTH_Type,
     CCN_PCO_E_CAUTH_Type,
-    CCN_PCO_B_CAUTH_KeyLocator = CCN_PCO_E_CAUTH_Type,
+    CCN_PCO_B_CAUTH_KeyLocator,
     /* Exactly one of Key, Certificate, or KeyName will be present */
     CCN_PCO_B_CAUTH_Key_Certificate_KeyName,
     CCN_PCO_E_CAUTH_Key_Certificate_KeyName,
     CCN_PCO_E_CAUTH_KeyLocator,
-    CCN_PCO_B_CAUTH_ContentDigest = CCN_PCO_E_CAUTH_KeyLocator,
-    CCN_PCO_E_CAUTH_ContentDigest,
     CCN_PCO_E_ContentAuthenticator,
-    CCN_PCO_B_Signature = CCN_PCO_E_ContentAuthenticator,
-    CCN_PCO_E_Signature,
-    CCN_PCO_B_Content = CCN_PCO_E_Signature,
+    CCN_PCO_B_Content,
     CCN_PCO_E_Content,
     CCN_PCO_E
 };
 
 struct ccn_parsed_ContentObject {
-    int Name;
-    int ContentAuthenticator;
-    int Signature;
-    int Content;
+    int magic;
     unsigned short offset[CCN_PCO_E+1];
 };
 

@@ -7,6 +7,13 @@
 #include <unistd.h>
 #include <ccn/ccn.h>
 
+static
+struct mydata {
+    unsigned char *firstseen;
+    size_t firstseensize;
+    int nseen;
+} mydata = {0};
+
 int
 incoming_content(
     struct ccn_closure *selfp,
@@ -21,10 +28,23 @@ incoming_content(
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d = NULL;
     int nest = 0;
-    if (kind == CCN_UPCALL_FINAL)
+    struct mydata *md = selfp->data;
+    if (kind == CCN_UPCALL_FINAL) {
+        // XXX - cleanup
         return(0);
-    if (kind != CCN_UPCALL_CONTENT)
+    }
+    if (kind != CCN_UPCALL_CONTENT || md == NULL)
         return(-1);
+    if (md->firstseen == NULL) {
+        md->firstseen = calloc(1, ccnb_size);
+        memcpy(md->firstseen, ccnb, ccnb_size);
+        md->firstseensize = ccnb_size;
+    }
+    else if (md->firstseensize == ccnb_size && 0 == memcmp(md->firstseen, ccnb, ccnb_size)) {
+        selfp->data == NULL;
+        return(-1);
+    }
+    md->nseen++;
     d = ccn_buf_decoder_start(&decoder, ccnb, ccnb_size);
     if (ccn_buf_match_dtag(d, CCN_DTAG_ContentObject)) {
         nest = d->decoder.nest;
@@ -37,7 +57,6 @@ incoming_content(
                 if (CCN_GET_TT_FROM_DSTATE(d->decoder.state) == CCN_UDATA) {
                     fwrite(ccnb + d->decoder.index, 1, d->decoder.numval, stdout);
                     printf("\n");
-                    selfp->data = selfp; /* make not NULL to indicate we got something */
                     return(0);
                 }
             }
@@ -49,7 +68,8 @@ incoming_content(
 
 /* Use some static data for this simple program */
 static struct ccn_closure incoming_content_action = {
-    .p = &incoming_content
+    .p = &incoming_content,
+    .data = &mydata
 };
 
 int
@@ -61,6 +81,7 @@ main(int argc, char **argv)
     long w = 0;
     int i;
     int ch;
+    int seen = 0;
     while ((ch = getopt(argc, argv, "hw:")) != -1) {
         switch (ch) {
             case 'w':
@@ -86,9 +107,9 @@ main(int argc, char **argv)
     ccn_name_init(c);
     ccn_express_interest(ccn, c, -1, &incoming_content_action, templ);
     for (i = 0; i < 100; i++) {
-        incoming_content_action.data = NULL;
+        seen = mydata.nseen;
         ccn_run(ccn, w <= 0 ? 100 : w * 1000);
-        if (incoming_content_action.data == NULL)
+        if (seen == mydata.nseen)
             break;
     }
     ccn_destroy(&ccn);

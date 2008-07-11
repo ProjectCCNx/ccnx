@@ -1618,12 +1618,22 @@ get_signature_offset(struct ccn_parsed_ContentObject *pco, const unsigned char *
 {
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d;
-    if (pco->Signature >= 0 && pco->Content > pco->Signature) {
-        d = ccn_buf_decoder_start(&decoder, msg + pco->Signature, pco->Content - pco->Signature);
+    int start = pco->offset[CCN_PCO_B_Signature];
+    int stop  = pco->offset[CCN_PCO_E_Signature];
+    if (start < stop) {
+        d = ccn_buf_decoder_start(&decoder, msg + start, stop - start);
         if (ccn_buf_match_dtag(d, CCN_DTAG_Signature)) {
             ccn_buf_advance(d);
+            // XXX - only works for default sig
+            if (ccn_buf_match_dtag(d, CCN_DTAG_SignatureBits)) {
+                ccn_buf_advance(d);
+                if (ccn_buf_match_some_blob(d) && d->decoder.numval >= 32) {
+                    return(start + d->decoder.index);
+                }
+            }
             if (ccn_buf_match_some_blob(d) && d->decoder.numval >= 32) {
-                return(pco->Signature + d->decoder.index);
+                    // XXX - this is for compatibilty - remove after July 2008
+                    return(start + d->decoder.index);
             }
         }
     }
@@ -1655,9 +1665,9 @@ process_incoming_content(struct ccnd *h, struct face *face, // XXX - neworder
         res = -__LINE__;
     }
     else {
-        keysize = obj.Content;
-        tail = msg + obj.Content;
-        tailsize = size - obj.Content;
+        keysize = obj.offset[CCN_PCO_B_Content];
+        tail = msg + keysize;
+        tailsize = size - keysize;
         hashtb_start(h->content_tab, e);
         res = hashtb_seek(e, msg, keysize, 0);
         content = e->data;

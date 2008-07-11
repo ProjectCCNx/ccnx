@@ -31,6 +31,7 @@ int ccn_bloom_store_wire(struct ccn_bloom *b, unsigned char *dest, size_t destsi
 
 /*
  * This structure reflects the on-wire representation of the Bloom filter.
+ * XXX - needs updating for separation of BloomSeed
  */
 struct ccn_bloom_wire {
     unsigned char lg_bits;  /* 13 maximum (8 kilobits), 3 minimum (one byte) */

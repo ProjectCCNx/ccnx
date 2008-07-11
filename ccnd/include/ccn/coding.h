@@ -78,6 +78,9 @@ enum ccn_dtag {
     CCN_DTAG_MatchNextAvailableSibling = 50,
     CCN_DTAG_MatchLastAvailableSibling = 51,
     CCN_DTAG_MatchEntirePrefix = 52,
+    CCN_DTAG_Witness = 53,
+    CCN_DTAG_SignatureBits = 54,
+    CCN_DTAG_DigestAlgorithm = 55,
     CCN_DTAG_CCNProtocolDataUnit = 17702112,
     CCN_DTAG_ExperimentalResponseFilter = 23204960,
 };

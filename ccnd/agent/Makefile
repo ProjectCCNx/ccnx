@@ -5,10 +5,13 @@ COPT = -g
 CCNLIBDIR = ../lib
 
 PROGRAMS = ccnd smoketestccnd ccnd_june08
+BROKEN_PROGRAMS = 
 CSRC = ccnd.c ccnd_stats.c smoketestccnd.c ccnd_june08.c
 HSRC = ccnd_private.h
 
-default all: $(PROGRAMS)
+default: $(PROGRAMS)
+
+all: default $(BROKEN_PROGRAMS)
 
 $(PROGRAMS): $(CCNLIBDIR)/libccn.a
 
@@ -23,7 +26,7 @@ smoketestccnd: smoketestccnd.o
 	$(CC) $(CFLAGS) -o $@ smoketestccnd.o $(LDLIBS)
 
 clean:
-	rm -f *.o *.a $(PROGRAMS) depend
+	rm -f *.o *.a $(PROGRAMS) $(BROKEN_PROGRAMS) depend
 	rm -rf *.dSYM $(DEBRIS)
 
 test:   ccnd smoketestccnd
