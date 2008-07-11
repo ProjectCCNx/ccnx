@@ -1,0 +1,9 @@
+#!/bin/sh
+D=`dirname "$0"`
+D="${D:-.}"
+test -e /tmp/.ccnd.sock && rm /tmp/.ccnd.sock && echo "GET /" | nc localhost 4485 > /dev/null && sleep 1
+time "$D"/agent/ccnd "$@" &
+sleep 1
+S="$D"/ccn-start-udplink-`uname -n`.sh
+test -f "$S" || echo '***' Please create $S script 'to start up udplink instance(s) for this machine'
+sh "$S"
