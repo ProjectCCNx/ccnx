@@ -1,12 +1,14 @@
 <?xml version="1.0"?>
 <ContentObject>
+  <Signature>
+    <SignatureBits ccnbencoding="base64Binary">FakeBits</SignatureBits>
+  </Signature>
   <Name>
     <Component ccnbencoding="base64Binary">dmdxO6LZm7UUoUdyt6EG3KrnkNJkjdaayBppbvfD</Component>
   </Name>
   <ContentAuthenticator>
     <PublisherKeyID ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherKeyID>
-    <NameComponentCount>1</NameComponentCount>
-    <Timestamp>2008-02-11T16:58:35.432Z</Timestamp>
+    <Timestamp>2008-07-11T16:58:35.432Z</Timestamp>
     <Type>LEAF</Type>
     <KeyLocator>
       <KeyName>
@@ -17,8 +19,6 @@
         </Name>
       </KeyName>
     </KeyLocator>
-    <ContentDigest ccnbencoding="base64Binary">AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI=</ContentDigest>
   </ContentAuthenticator>
-  <Signature ccnbencoding="base64Binary">AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ==</Signature>
   <Content ccnbencoding="base64Binary"/>
 </ContentObject>

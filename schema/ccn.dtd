@@ -8,7 +8,7 @@
 <!ELEMENT CCNProtocolDataUnit	((ContentObject | Interest)*)>
 <!ATTLIST CCNProtocolDataUnit	%commonattrs;>
 
-<!ELEMENT ContentObject	(Name, ContentAuthenticator, Signature, Content)>
+<!ELEMENT ContentObject	(Signature, Name, ContentAuthenticator, Content)>
 <!ATTLIST ContentObject	%commonattrs;>
 
 <!ELEMENT Collection	(Link*)>
@@ -45,11 +45,9 @@
 
 <!ELEMENT ContentAuthenticator (
 		PublisherKeyID,
-		NameComponentCount,
 		Timestamp,
 		Type,
-		KeyLocator,
-		ContentDigest)>
+		KeyLocator)>
 <!ATTLIST ContentAuthenticator %commonattrs;>
 
 <!ELEMENT Interest	(Name, NameComponentCount?, PublisherID?, Exclude?, OrderPreference?, AnswerOriginKind?, Scope?, Count?, Nonce?, ExperimentalResponseFilter?)>
@@ -95,7 +93,7 @@
 
 <!ELEMENT NameComponentCount (#PCDATA)> <!-- nonNegativeInteger -->
 <!ELEMENT Timestamp	(#PCDATA)>	<!-- dateTime -->
-<!ELEMENT Type		(#PCDATA)>	<!-- FRAGMENT, LINK, CONTAINER, LEAF, SESSION, SEQUENCE -->
+<!ELEMENT Type		(#PCDATA)>	<!-- FRAGMENT, LINK, CONTAINER, LEAF, SESSION, SEQUENCE, KEY -->
 <!ELEMENT ContentDigest	(#PCDATA)>	<!-- base64 encoding of DER-encoded DigestInfo -->
 <!ATTLIST ContentDigest ccnbencoding CDATA #FIXED 'base64Binary'>
 
@@ -106,8 +104,16 @@
 <!ATTLIST Key           ccnbencoding CDATA #FIXED 'base64Binary'>
 <!ELEMENT Certificate	(#PCDATA)>	<!-- base64Binary -->
 <!ATTLIST Certificate   ccnbencoding CDATA #FIXED 'base64Binary'>
-<!ELEMENT Signature	(#PCDATA)>	<!-- base64Binary -->
-<!ATTLIST Signature     ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT Signature	(DigestAlgorithm?, Witness?, SignatureBits)>
+
+<!ELEMENT DigestAlgorithm  (#PCDATA)>	<!-- decimal OID -->
+
+<!ELEMENT Witness       (#PCDATA)>	<!-- base64Binary -->
+<!ATTLIST Witness       ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT SignatureBits (#PCDATA)>	<!-- base64Binary -->
+<!ATTLIST SignatureBits ccnbencoding CDATA #FIXED 'base64Binary'>
 
 <!ELEMENT KeyName	(Name, PublisherID?)>
 <!ATTLIST KeyName	%commonattrs;>

@@ -1,6 +1,6 @@
 # $Id$
 W3REFS=XMLSchema.dtd XMLSchema.xsd datatypes.dtd xml.xsd
-FUZZED= ccn-schemabad01.xml ccn-schemabad02.xml ccn-schemabad10.xml ccn-schemabad11.xml
+FUZZED= ccn-schemabad01.xml ccn-schemabad02.xml ccn-schemabad04.xml ccn-schemabad10.xml ccn-schemabad11.xml
 
 default all test: check
 
@@ -40,10 +40,13 @@ check: ccn.xsd ccn.dtd $(W3REFS) $(FUZZED) always
 always:
 
 ccn-schemabad01.xml: ccn-test01.xml
-	sed -e '/NameComponentCount/s/3/E/' $? > $@
+	sed -e '/Witness/s/BlahBlah/foo/' $? > $@
 
 ccn-schemabad02.xml: ccn-test01.xml
-	sed -e '/NameComponentCount/s/3//' $? > $@
+	sed -e '/Witness/s/BlahBlah/bad!/' $? > $@
+
+ccn-schemabad04.xml: ccn-test04.xml
+	sed -e '/NameComponentCount/s/[1-9]/E/' $? > $@
 
 ccn-schemabad06.xml: ccn-test06.xml
 	sed -e '/PublisherID type/s/ISSUER_KEY/ISSUER_KEYS/' $? > $@

@@ -1,12 +1,14 @@
 <?xml version="1.0"?>
 <CCNProtocolDataUnit>
   <ContentObject>
+    <Signature>
+      <SignatureBits ccnbencoding="base64Binary">okEd7rqcA9aY6ZQ4kYpHgQZKIMseZz2qrUxBYjsA0cF9P6cbM9O7FSo7</SignatureBits>
+    </Signature>
     <Name>
       <Component ccnbencoding="base64Binary">dmdxO6LZm7UUoUdyt6EG3KrnkNJkjdaayBppbvfD</Component>
     </Name>
     <ContentAuthenticator>
       <PublisherKeyID ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherKeyID>
-      <NameComponentCount>1</NameComponentCount>
       <Timestamp>2008-02-11T16:58:35.432Z</Timestamp>
       <Type>LEAF</Type>
       <KeyLocator>
@@ -18,9 +20,7 @@
           </Name>
         </KeyName>
       </KeyLocator>
-      <ContentDigest ccnbencoding="base64Binary">AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI=</ContentDigest>
     </ContentAuthenticator>
-    <Signature ccnbencoding="base64Binary">AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ==</Signature>
     <Content ccnbencoding="base64Binary"/>
   </ContentObject>
   <Interest>
