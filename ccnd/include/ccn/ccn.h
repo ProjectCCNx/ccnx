@@ -356,6 +356,12 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
 /* Analogous to enum ccn_parsed_interest_offsetid, but for content */
 enum ccn_parsed_content_object_offsetid {
     CCN_PCO_B_Signature,
+    CCN_PCO_B_DigestAlgorithm,
+    CCN_PCO_E_DigestAlgorithm,
+    CCN_PCO_B_Witness,
+    CCN_PCO_E_Witness,
+    CCN_PCO_B_SignatureBits,
+    CCN_PCO_E_SignatureBits,
     CCN_PCO_E_Signature,
     CCN_PCO_B_Name,
     CCN_PCO_B_Component0,

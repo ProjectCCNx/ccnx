@@ -423,62 +423,32 @@ ccn_parse_KeyName(struct ccn_buf_decoder *d, struct parsed_KeyName *x)
     return(res);
 }
 
-int
-ccn_parse_Signature(struct ccn_buf_decoder *d)
+static int
+ccn_parse_Signature(struct ccn_buf_decoder *d, struct ccn_parsed_ContentObject *x)
 {
     int res = -1;
+    int i;
+    struct ccn_parsed_ContentObject dummy;
+    if (x == NULL)
+        x = &dummy;
+    for (i = CCN_PCO_B_Signature; i <= CCN_PCO_E_Signature; i++) {
+        x->offset[i] = d->decoder.token_index;
+    }
     if (ccn_buf_match_dtag(d, CCN_DTAG_Signature)) {
         res = d->decoder.element_index;
         ccn_buf_advance(d);
+        x->offset[CCN_PCO_B_DigestAlgorithm] = d->decoder.token_index;
         ccn_parse_optional_tagged_UDATA(d, CCN_DTAG_DigestAlgorithm);
+        x->offset[CCN_PCO_E_DigestAlgorithm] = d->decoder.token_index;
+        x->offset[CCN_PCO_B_Witness] = d->decoder.token_index;
         ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_Witness);
+        x->offset[CCN_PCO_E_Witness] = d->decoder.token_index;
+        x->offset[CCN_PCO_B_SignatureBits] = d->decoder.token_index;
         ccn_parse_required_tagged_BLOB(d, CCN_DTAG_SignatureBits);
+        x->offset[CCN_PCO_E_SignatureBits] = d->decoder.token_index;
         ccn_buf_check_close(d);
+        x->offset[CCN_PCO_E_Signature] = d->decoder.token_index;
     }
-    if (d->decoder.state < 0)
-        return (d->decoder.state);
-    return(res);
-}
-
-struct parsed_ContentAuthenticator {
-    int PublisherKeyID;
-    int NameComponentCount;
-    int Timestamp;
-    int Type;
-    int KeyLocator;
-    int ContentDigest;
-};
-
-/* ccn_parse_ContentAuthenticator is currently unused */
-int
-XXX_ccn_parse_ContentAuthenticator(struct ccn_buf_decoder *d,
-    struct parsed_ContentAuthenticator *x)
-{
-    int res = -1;
-    if (ccn_buf_match_dtag(d, CCN_DTAG_ContentAuthenticator)) {
-        res = d->decoder.element_index;
-        ccn_buf_advance(d);
-        x->PublisherKeyID = ccn_parse_required_tagged_BLOB(d, CCN_DTAG_PublisherKeyID);
-        x->NameComponentCount = ccn_parse_required_tagged_UDATA(d, CCN_DTAG_NameComponentCount);
-        x->Timestamp = ccn_parse_required_tagged_UDATA(d, CCN_DTAG_Timestamp);
-        x->Type = ccn_parse_required_tagged_UDATA(d, CCN_DTAG_Type);
-        if (ccn_buf_match_dtag(d, CCN_DTAG_KeyLocator)) {
-            struct parsed_KeyName keyname = {-1, -1};
-            x->KeyLocator = d->decoder.element_index;
-            ccn_buf_advance(d);
-            if (ccn_buf_match_dtag(d, CCN_DTAG_Key))
-                (void)ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Key);
-            else if (ccn_buf_match_dtag(d, CCN_DTAG_Certificate))
-                (void)ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Certificate);
-            else
-                (void)ccn_parse_KeyName(d, &keyname);
-            ccn_buf_check_close(d);
-        }
-        x->ContentDigest = ccn_parse_required_tagged_BLOB(d, CCN_DTAG_ContentDigest);
-        ccn_buf_check_close(d);
-    }
-    else
-        d->decoder.state = -__LINE__;
     if (d->decoder.state < 0)
         return (d->decoder.state);
     return(res);
@@ -496,11 +466,9 @@ ccn_parse_ContentObject(const unsigned char *msg, size_t size,
     if (ccn_buf_match_dtag(d, CCN_DTAG_ContentObject)) {
         struct parsed_Name name;
         ccn_buf_advance(d);
-        x->offset[CCN_PCO_B_Signature] = d->decoder.token_index;
-        res = ccn_parse_Signature(d);
+        res = ccn_parse_Signature(d, x);
         if (res >= 0)
             x->magic = 20080711;
-        x->offset[CCN_PCO_E_Signature] = d->decoder.token_index;
         x->offset[CCN_PCO_B_Name] = d->decoder.token_index;
         x->offset[CCN_PCO_B_Component0] = d->decoder.index;
         res = ccn_parse_Name(d, &name, components);
@@ -603,8 +571,10 @@ ccn_buf_decoder_start_at_components(struct ccn_buf_decoder *d,
     ccn_buf_decoder_start(d, buf, buflen);
     while (ccn_buf_match_dtag(d, CCN_DTAG_Name) ||
            ccn_buf_match_dtag(d, CCN_DTAG_Interest) ||
-           ccn_buf_match_dtag(d, CCN_DTAG_ContentObject))
+           ccn_buf_match_dtag(d, CCN_DTAG_ContentObject)) {
         ccn_buf_advance(d);
+        ccn_parse_Signature(d, NULL);
+    }
     return(d);
 }
 
