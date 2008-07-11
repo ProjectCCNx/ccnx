@@ -37,5 +37,8 @@
 50,MatchNextAvailableSibling
 51,MatchLastAvailableSibling
 52,MatchEntirePrefix
+53,Witness
+54,SignatureBits
+55,DigestAlgorithm
 17702112,CCNProtocolDataUnit
 23204960,ExperimentalResponseFilter

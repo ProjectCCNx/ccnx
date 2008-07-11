@@ -44,7 +44,7 @@
     <xs:element name="NameComponentCount" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
     <xs:element name="Timestamp" type="xs:dateTime" minOccurs="0" maxOccurs="1"/>
     <xs:element name="Type" type="ContentType" minOccurs="0" maxOccurs="1"/>
-    <xs:element name="ContentHash" type="Base64BinaryType" minOccurs="0" maxOccurs="1"/>
+    <xs:element name="ContentDigest" type="Base64BinaryType" minOccurs="0" maxOccurs="1"/>
   </xs:sequence>
 </xs:complexType>
 
@@ -77,44 +77,99 @@
 <xs:complexType name="ContentAuthenticatorType">
   <xs:sequence>
     <xs:element name="PublisherKeyID" type="KeyIDType"/>
-    <xs:element name="NameComponentCount" type="xs:nonNegativeInteger"/>
     <xs:element name="Timestamp" type="xs:dateTime"/> <!-- should be canonical -->
     <xs:element name="Type" type="ContentType"/>
-    <xs:element name="KeyLocator" type="KeyLocatorType"/>
-    <!-- ContentDigest might change to more complex type,
-         currently base64 encoding of DER-encoded
-         DigestInfo. This means for a MerkleTree-based or
-         similar digest path, not all of the contents of 
-         the content digest were actually signed (only the 
-         root will be signed), so verification may require some
-         alteration of the encoded authenticator structure. -->
-    <xs:element name="ContentDigest" type="Base64BinaryType"/>
+	<!-- Where to find the key to verify this content. Currently
+		 signed and mandatory, could maybe be unsigned and
+		 optional. In theory, then could be ommitted when the signer
+		 is really sure that everyone on the path can find the
+		 key. Does not need to be signed; you can't verify the
+		 signature over it until you have the key, and by then you
+		 know whether it was correct or not. Not signing it also
+		 allows it to be replaced by updated information known to the
+		 forwarder.  DoS attacks mounted by ommitting it can be
+		 mounted whether it is signed or not; as can attacks mounted
+		 by modifying it maliciously. The PublisherKeyID in the
+		 ContentAuthenticator is what is used as the real fast
+		 selector to identify the signer of this content, not the
+		 locator. The reason for leaving it in the signed component of
+		 the packet for now is the risk of selective DOS attacks - if
+		 credentials attached to a key can be found only by locating
+		 it within a certain namespace, one could replace the
+		 publisher's locator with another that pointed to the same key
+		 but made it seem as if it lacked those credentials. -->
+	<xs:element name="KeyLocator" type="KeyLocatorType" />
+  </xs:sequence>
+</xs:complexType>
 
+<!-- Encapsulate some of the possible bits necessary to verify the
+	 mapping. -->
+<xs:complexType name="SignatureType">
+  <xs:sequence>
+	<!-- We either need to include a digest algorithm or a signature
+		 algorithm here. X.509 uses a sigalg up front (and again in
+		 the signature), PKCS#7 and XML signature uses a digest up
+		 front. Most APIs require us to know the signature algorithm,
+		 not the digest algorithm, to begin the verification process.
+		 Putting the signature up front along with this algorithm
+		 forces us to store the signature till we need it, but
+		 allows us to not repeat the algorithm. Expressing just a
+		 digest algorithm forces us to assume that a give key can
+		 only be used for one algorithm (depending on how we encode
+		 the signature). Also, if we digest the content before including
+		 it in the signature, we need to know what digest algorithm to
+		 use. We either have to assume it's the same one as for the
+		 signature, or standard one (with a separate, elided expression
+		 of version to allow later change if this one is broken).
+		 Right now, take the theory that a) signature algorithms
+		 are likely less standard for us than digest algorithms. So
+		 specify a digest algorithm here to increase our options of
+		 eliding it (default = sha-256). b) for now, sign the content
+		 directly rather than re-hashing it.  -->
+	<xs:element name="DigestAlgorithm" type="xs:string"
+					 default="2.16.840.1.101.3.4.2.1" minOccurs="0" maxOccurs="1" /> 
+	<!-- A witness is additional information necessary to verify the
+		 signature in some algorithms. For elements authenticated
+		 using a Merkle Hash Tree, the witness information would be
+		 the elements of the hash path through the tree. -->
+	<xs:element name="Witness" type="Base64BinaryType" minOccurs="0" maxOccurs="1" />
+	<!-- The signature over the name, content authenticator, and content. -->
+    <xs:element name="SignatureBits" type="Base64BinaryType"/>
   </xs:sequence>
 </xs:complexType>
 
 <xs:complexType name="ContentObjectType">
   <xs:sequence>
-    <xs:element name="Name" type="NameType"/>
-    <xs:element name="ContentAuthenticator" type="ContentAuthenticatorType"/>
-    <!-- There is a tension between including the Signature in the ContentAuthenticator
-         and thus having it be completely self-contained, and having the Signature
-         be outside and thus easier to verify (you can't sign the signature, so
-         it would have to be removed from the encoded CA before verification).
-         We've tried it the other way; now try it this way to see if the code is
-         cleaner. -->
-    <xs:element name="Signature" type="Base64BinaryType"/>
-    <xs:element name="Content" type="Base64BinaryType"/>
+	<!-- Signature over name, content authenticator, and the digest
+		 of the content. Place first to allow grouping of Signature+Name
+		 and Name+Authenticator for various applications. -->
+	<xs:element name="Signature" type="SignatureType"/>
+	<xs:element name="Name" type="NameType"/>
+	<xs:element name="ContentAuthenticator" type="ContentAuthenticatorType"/>
+	<!-- The content to be signed. As there is no longer a proxy for
+		 (digest of) the content explicitly in the authenticator, you
+		 need the content itself to verify the signature. Because we
+	     generally need to compute the digest of the content anyway,
+	     we do so prior to signing. Given that, we either need to pick
+	     a standard digest algorithm for content and always use it
+	     (presumably SHA-256), at which point we need a version number
+	     for messages, in case SHA-256 is broken and we need to change.
+	     Or, we need to specify what digest to use in each message. --> 
+	<xs:element name="Content" type="Base64BinaryType"/>
   </xs:sequence>
 </xs:complexType>
 
 <!-- Sometimes we just need to talk about mappings (everything needed
-     to authenticate a name) without the content itself -->
+     to authenticate a name) without the content itself.  Since we
+     have moved the proxy for the content out of the content
+     authenticator, this information is no longer sufficient to
+     authenticate the content. We will have to look carefully at where
+     and how it is used. -->
 <xs:complexType name="CompleteNameType">
   <xs:sequence>
+    <xs:element name="Signature" type="SignatureType"/>
     <xs:element name="Name" type="NameType"/>
     <xs:element name="ContentAuthenticator" type="ContentAuthenticatorType"/>
-    <xs:element name="Signature" type="Base64BinaryType"/>
   </xs:sequence>
 </xs:complexType>
 
@@ -151,8 +206,6 @@
                         minOccurs="0"/> <!-- FIXTHIS - we need to be able to alternate Bs and Cs -->
   </xs:sequence>
 </xs:complexType>
-
-
 
 <xs:complexType name="PublisherIDType">
   <xs:simpleContent>
@@ -197,6 +250,7 @@
     <xs:enumeration value="LEAF"/>
     <xs:enumeration value="SESSION"/>
     <xs:enumeration value="SEQUENCE"/>
+    <xs:enumeration value="KEY"/>
   </xs:restriction>
 </xs:simpleType>
 
