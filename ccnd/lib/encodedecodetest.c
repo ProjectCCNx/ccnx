@@ -57,10 +57,10 @@ encode_message(struct ccn_charbuf *message, struct path * name_path, char *data,
 	ccn_name_append_str(path, name_path->comps[i]);
     }
 
-    if (ccn_auth_create_default(authenticator, signature, CCN_CONTENT_FRAGMENT, path, name_path->count, data, len) != 0) {
+    if (ccn_auth_create_default(authenticator, signature, CCN_CONTENT_FRAGMENT, path, data, len) != 0) {
 	return -1;
     }
-    return ccn_encode_ContentObject(message, path, authenticator, signature, data, len);
+    return ccn_encode_ContentObject(message, signature, 42, path, authenticator, data, len);
     
 }
 

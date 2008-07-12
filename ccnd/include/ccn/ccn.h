@@ -135,32 +135,29 @@ enum ccn_content_type {
 /*
  * ccn_auth_create_default: create authenticator in a charbuf 
  * with defaults.
+ * XXX - path needs documentation
  * Return value is 0, or -1 for error.
  */
 int
 ccn_auth_create_default(struct ccn_charbuf *c, /* output authenticator */
 			struct ccn_charbuf *signature, /* output signature */
 			enum ccn_content_type Type, /* input content type */
-			struct ccn_charbuf *path, /* input path */
-			int path_count, /* number of path components */
-			char * content, /* input: raw content */
+			const struct ccn_charbuf *path, /* input path */
+			const void *content, /* input: raw content */
 			size_t length /* length of raw content */
 			);
 
 /*
  * ccn_auth_create: create authenticator in a charbuf 
- * Note that KeyLocator is optional (may be NULL) and is ignored 
- * even if set in initial placeholder implementation
+ * Note that KeyLocator is optional (may be NULL)
  * Return value is 0, or -1 for error.
  */
 int
 ccn_auth_create(struct ccn_charbuf *c,
 	      struct ccn_charbuf *PublisherKeyID,
-	      int NameComponentCount,
 	      struct ccn_charbuf *Timestamp,
 	      enum ccn_content_type Type,
-	      struct ccn_charbuf *KeyLocator,
-	      struct ccn_charbuf *ContentDigest);
+	      struct ccn_charbuf *KeyLocator);
 
 /*
  * ccn_sign: placeholder to create a signature value.
@@ -168,13 +165,6 @@ ccn_auth_create(struct ccn_charbuf *c,
 int
 ccn_sign(struct ccn_charbuf *c, 
 	 const struct ccn_charbuf *input);
-
-/*
- * ccn_digest: placeholder to create a digest value.
- */
-int
-ccn_digest(struct ccn_charbuf *c, 
-	   const struct ccn_charbuf *input);
 
 /***********************************
  * ccn_express_interest: 
@@ -457,19 +447,21 @@ int ccn_content_get_value(const unsigned char *data, size_t data_size,
 
 /*
  * ccn_encode_ContentObject:
+ * Eventually this will sign as well...
  *    buf: output buffer where encoded object is written
+ *    Signature: encoded signature from ccn_auth_create
  *    Name: encoded name from ccn_name_init
  *    ContentAuthenticator: encoded authenticator from ccn_auth_create
- *    Signature: encoded signature from ccn_sign
  *    Content: raw content 
  *    len: length of the content
  */
 
-int ccn_encode_ContentObject(struct ccn_charbuf *buf,
-			     struct ccn_charbuf *Name,
-			     struct ccn_charbuf *ContentAuthenticator,
-			     struct ccn_charbuf *Signature,
-			     const char *Content, int len);
+int ccn_encode_ContentObject(struct ccn_charbuf *ccnb,
+			     const struct ccn_charbuf *Signature,
+                             int foo, // to change procedure type
+                             const struct ccn_charbuf *Name,
+			     const struct ccn_charbuf *ContentAuthenticator,
+			     const void *Content, int len);
 
 const char * ccn_content_name(enum ccn_content_type type);
 

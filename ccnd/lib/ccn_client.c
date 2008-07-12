@@ -313,42 +313,37 @@ int
 ccn_auth_create_default(struct ccn_charbuf *c,
 		struct ccn_charbuf *signature,
 		enum ccn_content_type Type,
-		struct ccn_charbuf *path,
-		int path_count,
-		char * content, size_t length)
+		const struct ccn_charbuf *path,
+		const void *content, size_t length)
 {
     struct ccn_charbuf *pub_key_id = ccn_charbuf_create();
     struct ccn_charbuf *timestamp = ccn_charbuf_create();
-    struct ccn_charbuf *digest = ccn_charbuf_create();
     int res = 0;
 
-    /* Right now, we don't have real signatures, digests, etc.
-       so the default thing here is just to create 
-       constant placeholders */
-    res += ccn_digest(digest, NULL);
-    res += ccn_sign(signature, NULL);
+    res += ccn_auth_create(c, pub_key_id, timestamp, Type, NULL);
 
-    res += ccn_auth_create(c, pub_key_id, path_count, timestamp, Type, NULL, digest);
+    res += ccn_charbuf_append_tt(signature, CCN_DTAG_Signature, CCN_DTAG);
+    res += ccn_charbuf_append_tt(signature, CCN_DTAG_SignatureBits, CCN_DTAG);
+    res += ccn_charbuf_append_tt(signature, 8, CCN_BLOB);
+    res += ccn_charbuf_append(signature, "unsigned", 8);
+    res += ccn_charbuf_append_closer(signature);
+    res += ccn_charbuf_append_closer(signature);
 
     ccn_charbuf_destroy(&pub_key_id);
     ccn_charbuf_destroy(&timestamp);
-    ccn_charbuf_destroy(&digest);
     return (res == 0 ? res : -1);
 }
 		
 int
 ccn_auth_create(struct ccn_charbuf *c,
 	      struct ccn_charbuf *PublisherKeyID,
-	      int NameComponentCount,
 	      struct ccn_charbuf *Timestamp,
 	      enum ccn_content_type Type,
-	      struct ccn_charbuf *KeyLocator,
-	      struct ccn_charbuf *ContentDigest)
+	      struct ccn_charbuf *KeyLocator)
 {
     int res = 0;
     const char *typename = ccn_content_name(Type);
-    struct ccn_charbuf *name_comp_count = ccn_charbuf_create();
-    if (typename == NULL || name_comp_count == NULL) {
+    if (typename == NULL) {
 	return (-1);
     }
     
@@ -357,14 +352,6 @@ ccn_auth_create(struct ccn_charbuf *c,
     res += ccn_charbuf_append_tt(c, CCN_DTAG_PublisherKeyID, CCN_DTAG);
     res += ccn_charbuf_append_tt(c, PublisherKeyID->length, CCN_BLOB);
     res += ccn_charbuf_append_charbuf(c, PublisherKeyID);
-    res += ccn_charbuf_append_closer(c);
-
-    res += ccn_charbuf_append_tt(c, CCN_DTAG_NameComponentCount, CCN_DTAG);
-    if (ccn_charbuf_putf(name_comp_count, "%d", NameComponentCount) < 0) {
-	res = -1;
-    }
-    res += ccn_charbuf_append_tt(c, name_comp_count->length, CCN_UDATA);
-    res += ccn_charbuf_append_charbuf(c, name_comp_count);
     res += ccn_charbuf_append_closer(c);
 
     res += ccn_charbuf_append_tt(c, CCN_DTAG_Timestamp, CCN_DTAG);
@@ -381,12 +368,9 @@ ccn_auth_create(struct ccn_charbuf *c,
 	/* KeyLocator is a sub-type that should already be encoded */
 	res += ccn_charbuf_append_charbuf(c, KeyLocator);
     }
-
-    /* ContentDigest is a sub-type that should already be encoded */
-    res += ccn_charbuf_append_charbuf(c, ContentDigest);
+    
     res += ccn_charbuf_append_closer(c);
 
-    ccn_charbuf_destroy(&name_comp_count);
     return (res == 0 ? res : -1);
 }
 
@@ -447,7 +431,7 @@ ccn_name_comp_strdup(const unsigned char *data,
     size_t comp_size;
 
     if (ccn_name_comp_get(data, indexbuf, i, &comp_ptr, &comp_size) == 0) {
-	result = calloc(1, comp_size + 1);
+	result = calloc(1, comp_size + 1); // XXX - [mfp] - this is the only place (I think) that the client is responsible for directly calling free() on something that we allocated.  This should be fixed!
 	if (result != NULL) {
 	    memcpy(result, comp_ptr, comp_size);
 	    /* Ensure that result is null-terminated */
@@ -468,40 +452,6 @@ ccn_content_get_value(const unsigned char *data, size_t data_size,
           content->offset[CCN_PCO_E_Content],
           value, value_size);
     return(res);
-}
-
-/* NOTE: ccn_sign is a placeholder at this time, it does nothing
-   useful but produces a constant signature to fill the field.
-   This won't ever verify of course */
-int
-ccn_sign(struct ccn_charbuf *c, 
-	 const struct ccn_charbuf *input)
-{
-    int const_sig = 0x0;
-    int res = 0;
-
-    res += ccn_charbuf_append_tt(c, CCN_DTAG_Signature, CCN_DTAG);
-    res += ccn_charbuf_append_tt(c, sizeof(const_sig), CCN_BLOB);
-    res += ccn_charbuf_append(c, &const_sig, sizeof(const_sig));
-    res += ccn_charbuf_append_closer(c);
-    return (res == 0 ? res : -1);
-}
-
-/* NOTE: ccn_digest is a placeholder at this time, it does nothing
-   useful but produces a constant digest to fill the field.
-*/
-int
-ccn_digest(struct ccn_charbuf *c, 
-	 const struct ccn_charbuf *input)
-{
-    int const_digest = 0x0;
-    int res = 0;
-
-    res += ccn_charbuf_append_tt(c, CCN_DTAG_ContentDigest, CCN_DTAG);
-    res += ccn_charbuf_append_tt(c, sizeof(const_digest), CCN_BLOB);
-    res += ccn_charbuf_append(c, &const_digest, sizeof(const_digest));
-    res += ccn_charbuf_append_closer(c);
-    return (res == 0 ? res : -1);
 }
 
 int

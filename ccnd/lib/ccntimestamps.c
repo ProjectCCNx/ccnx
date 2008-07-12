@@ -41,7 +41,7 @@ incoming_content(
         md->firstseensize = ccnb_size;
     }
     else if (md->firstseensize == ccnb_size && 0 == memcmp(md->firstseen, ccnb, ccnb_size)) {
-        selfp->data == NULL;
+        selfp->data = NULL;
         return(-1);
     }
     md->nseen++;

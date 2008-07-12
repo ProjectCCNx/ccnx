@@ -37,20 +37,22 @@ const char * ccn_content_name(enum ccn_content_type type)
     }
 }
 
-int ccn_encode_ContentObject(struct ccn_charbuf *c,
-			     struct ccn_charbuf *Name,
-			     struct ccn_charbuf *ContentAuthenticator,
-			     struct ccn_charbuf *Signature,
-			     const char *Content, int len) {
+int ccn_encode_ContentObject(struct ccn_charbuf *ccnb,
+			     const struct ccn_charbuf *Signature,
+                             int foo, // to change procedure type
+                             const struct ccn_charbuf *Name,
+			     const struct ccn_charbuf *ContentAuthenticator,
+			     const void *Content, int len) {
+    struct ccn_charbuf *c = ccnb;
     int res = 0;
 
     /* Each of the input charbufs should be already encoded as a 
        sub-piece so just needs to be dropped in */
-    res += ccn_charbuf_append_tt(c, CCN_DTAG_ContentObject, CCN_DTAG);
 
+    res += ccn_charbuf_append_tt(c, CCN_DTAG_ContentObject, CCN_DTAG);
+    res += ccn_charbuf_append_charbuf(c, Signature);
     res += ccn_charbuf_append_charbuf(c, Name);
     res += ccn_charbuf_append_charbuf(c, ContentAuthenticator);
-    res += ccn_charbuf_append_charbuf(c, Signature);
 
     res += ccn_charbuf_append_tt(c, CCN_DTAG_Content, CCN_DTAG);
     res += ccn_charbuf_append_tt(c, len, CCN_BLOB);
