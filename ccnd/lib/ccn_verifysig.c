@@ -52,127 +52,43 @@ ccn_verify_signature(const unsigned char *msg,
                      struct ccn_parsed_ContentObject *co,
                      struct ccn_indexbuf *comps, EVP_PKEY *verification_pubkey)
 {
-    EVP_MD_CTX mdc;
-    EVP_MD_CTX *md_ctx = &mdc;
     EVP_MD_CTX verc;
     EVP_MD_CTX *ver_ctx = &verc;
-    const EVP_MD *md;
     int res;
 
-    static const unsigned char magicgoop[] = {
-        0x30, 0x2f, 0x30, 0x0b, 0x06, 0x09, 0x60, 0x86,
-        0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x04, 0x20
-    };
+    const EVP_MD *digest = EVP_md_null();
 
-    md = EVP_get_digestbynid(NID_sha256);
-    if (md == NULL) {
-        FAIL((stderr, "The openssl library does not seem to support sha256"));
-    }
+    const unsigned char *signature_bits = NULL;
+    size_t signature_bits_size = 0;
 
-    EVP_MD_CTX_init(md_ctx);
-    if (!EVP_DigestInit_ex(md_ctx, md, NULL)) {
-        FAIL((stderr, "EVP_DigestInit_ex failed"));
-    }
+    res = ccn_ref_tagged_BLOB(CCN_DTAG_SignatureBits, msg,
+                              co->offset[CCN_PCO_B_SignatureBits],
+                              co->offset[CCN_PCO_E_SignatureBits],
+                              &signature_bits,
+                              &signature_bits_size);
+    if (res < 0) FAIL((stderr, "Unable to get SignatureBits from object"));
 
-    const unsigned char *msg_digest = NULL;
-    size_t msg_digest_size = 0;
-        
-    res = ccn_ref_tagged_BLOB(CCN_DTAG_ContentDigest, msg,
-                              co->offset[CCN_PCO_B_CAUTH_ContentDigest],
-                              co->offset[CCN_PCO_E_CAUTH_ContentDigest],
-                              &msg_digest,
-                              &msg_digest_size);
-    if (res < 0) FAIL((stderr, "URP"));
-    if (msg_digest_size > sizeof(magicgoop) && 0 == memcmp(msg_digest, magicgoop, sizeof(magicgoop))) {
-        // keep going
+    if (co->offset[CCN_PCO_B_DigestAlgorithm] == co->offset[CCN_PCO_E_DigestAlgorithm]) {
+        digest = EVP_sha256();
     }
     else {
-        fprintf(stderr, "not a ContentDigest I understand right now\n");
+        /* XXX - figure out what algorithm the OID represents */
+        fprintf(stderr, "not a DigestAlgorithm I understand right now\n");
         return (-1);
     }
-        
-    const unsigned char *actual_contentp = NULL;
-    size_t actual_content_size = 0;
 
-    res = ccn_ref_tagged_BLOB(CCN_DTAG_Content, msg,
-                              co->offset[CCN_PCO_B_Content],
-                              co->offset[CCN_PCO_E_Content],
-                              &actual_contentp,
-                              &actual_content_size);
-    if (res < 0) FAIL((stderr, "URP"));        
-        
-    if (!EVP_DigestInit_ex(md_ctx, md, NULL)) {
-        FAIL((stderr, "URP"));
-    }
-        
-    res =  EVP_DigestUpdate(md_ctx, actual_contentp, actual_content_size);
-        
-    unsigned char mdbuf[EVP_MAX_MD_SIZE];
-    unsigned int mdbuflen = 0;
-    res = EVP_DigestFinal_ex(md_ctx, mdbuf, &mdbuflen);
-    EVP_MD_CTX_cleanup(md_ctx);
-
-    if (msg_digest_size != mdbuflen + sizeof(magicgoop))
-        FAIL((stderr, "msg_digest_size(%d) != mdbuflen(%d) + sizeof(magicgoop)(%d)", (int)msg_digest_size, (int)mdbuflen, (int)sizeof(magicgoop)));
-
-    if (0 != memcmp(mdbuf, msg_digest + sizeof(magicgoop), mdbuflen)) {
-        fprintf(stderr, "Computed sha256 digest does not match\n");
-        return (-2);
-    }
-
-    const EVP_MD *the_digest;
-    if (verification_pubkey->type == EVP_PKEY_DSA) {
-        the_digest = EVP_dss1();
-    }
-    else {
-        the_digest = EVP_sha256();
-    }
-        
     EVP_MD_CTX_init(ver_ctx);
-    res = EVP_VerifyInit_ex(ver_ctx, the_digest, NULL);
+    res = EVP_VerifyInit_ex(ver_ctx, digest, NULL);
     if (!res) {
         FAIL((stderr, "EVP_VerifyInit_ex"));
     }
 
-    int nameComponentCount;
-    nameComponentCount = ccn_fetch_tagged_nonNegativeInteger(CCN_DTAG_NameComponentCount,
-                                                             msg,
-                                                             co->offset[CCN_PCO_B_CAUTH_NameComponentCount],
-                                                             co->offset[CCN_PCO_E_CAUTH_NameComponentCount]);
-    if (nameComponentCount < 0)
-        FAIL((stderr, "NameComponentCount is not a nonNegativeInteger"));
-    if (nameComponentCount >= comps->n) {
-        FAIL((stderr, "NameComponentCount(%d) exceeds number of name components(%d)",
-              nameComponentCount, (int)(comps->n - 1)));
-    }
+    /* we sign from the beginning of the name through the end of the content */
 
-    const unsigned char *signed_name = NULL;
-    size_t signed_name_size = 0;
+    size_t signed_size = co->offset[CCN_PCO_E_Content] - co->offset[CCN_PCO_B_Name];
+    res = EVP_VerifyUpdate(ver_ctx, msg + co->offset[CCN_PCO_B_Name], signed_size);
 
-    signed_name = msg + co->offset[CCN_PCO_B_Name];
-    if (nameComponentCount == comps->n - 1) {
-        signed_name_size = co->offset[CCN_PCO_E_Name] - co->offset[CCN_PCO_B_Name];
-        res = EVP_VerifyUpdate(ver_ctx, signed_name, signed_name_size);
-    } else {
-        signed_name_size = comps->buf[nameComponentCount] - co->offset[CCN_PCO_B_Name];
-        res = EVP_VerifyUpdate(ver_ctx, signed_name, signed_name_size);
-        res = EVP_VerifyUpdate(ver_ctx, msg + co->offset[CCN_PCO_E_Name] - 1, 1);
-    }
-
-    res = EVP_VerifyUpdate(ver_ctx, msg + co->offset[CCN_PCO_B_ContentAuthenticator],
-                           co->offset[CCN_PCO_E_ContentAuthenticator] - co->offset[CCN_PCO_B_ContentAuthenticator]);
-        
-    const unsigned char *signature = NULL;
-    size_t signature_size = 0;
-
-    res = ccn_ref_tagged_BLOB(CCN_DTAG_Signature, msg,
-                              co->offset[CCN_PCO_B_Signature],
-                              co->offset[CCN_PCO_E_Signature],
-                              &signature,
-                              &signature_size);
-    if (res < 0) FAIL((stderr, "Unable to get Signature from object"));
-
-    res = EVP_VerifyFinal(ver_ctx, signature, signature_size, verification_pubkey);
+    res = EVP_VerifyFinal(ver_ctx, signature_bits, signature_bits_size, verification_pubkey);
     EVP_MD_CTX_cleanup(ver_ctx);
 
     if (res == 1)
