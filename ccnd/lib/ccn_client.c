@@ -194,7 +194,7 @@ ccn_disconnect(struct ccn *h)
     return(0);
 }
 
-void
+static void
 replace_template(struct expressed_interest *interest,
     struct ccn_charbuf *interest_template)
 {
@@ -626,7 +626,7 @@ ccn_refresh_interest(struct ccn *h, struct expressed_interest *interest,
         res = ccn_put(h, c->buf, c->length);
         if (res >= 0)
             interest->outstanding += 1;
-    }
+}
 }
 
 static void
@@ -674,15 +674,17 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                 struct expressed_interest *entry;
                 for (i = comps->n - 1; i >= 0; i--) {
                     entry = hashtb_lookup(h->interests, key, comps->buf[i] - keystart);
+// XXX - At this point we need to check whether the content matches the rest of the qualifiers on the interest before doing the upcall.
                     if (entry != NULL && entry->target > 0) {
                         res = (entry->action->p)(
                             entry->action,
                             CCN_UPCALL_CONTENT,
                             h, msg, size, comps, i);
-                        entry = NULL; /* client may have removed the entry */
+                        entry = NULL; /* client may have removed or replaced the entry */
                         if (res >= 0) {
                             entry = hashtb_lookup(h->interests, key, comps->buf[i] - keystart);
                             if (entry != NULL) {
+// XXX - Should have an easy way of updating the interest to account for the received content.
                                 if (entry->repeat > 0) {
                                     entry->repeat -= 1;
                                     if (entry->repeat > entry->target)
@@ -693,6 +695,7 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                                 if (entry->outstanding < entry->target)
                                     ccn_refresh_interest(h, entry, key, comps->buf[i] - keystart);
                                 /* Since we got content, work on filling pipeline */
+// XXX - When is this relevant?
                                 if (entry->outstanding < entry->target)
                                     ccn_refresh_interest(h, entry, key, comps->buf[i] - keystart);
                             }
