@@ -13,6 +13,7 @@ import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
@@ -31,28 +32,35 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 	
 	protected static final String CONTENT_OBJECT_ELEMENT = "ContentObject";
 	protected static final String CONTENT_ELEMENT = "Content";
-    protected static final String SIGNATURE_ELEMENT = "Signature";
 	
 	protected ContentName _name;
 	protected ContentAuthenticator _authenticator;
-    protected byte[] _signature; // DKS might want to use Signature type
     protected byte [] _content;
+	protected Signature _signature; // DKS might want to use Signature type
+    public String _digestAlgorithm = null; 
     
-    public ContentObject(ContentName name,
+    public ContentObject(String digestAlgorithm, // prefer OID
+    					 ContentName name,
     					 ContentAuthenticator authenticator,
-    					 byte [] signature,
-    					 byte [] content) {
+    					 byte [] content,
+    					 Signature signature
+    					 ) {
     	_name = name;
     	_authenticator = authenticator;
-    	_signature = signature;
     	_content = content;
+    	_signature = signature;
+    }
+    
+    public ContentObject(ContentName name, ContentAuthenticator authenticator, byte [] content,
+    					 Signature signature) {
+    	this(DigestHelper.DEFAULT_DIGEST_ALGORITHM, name, authenticator, content, signature);
     }
     
     /**
      * Helper function
      */
     public ContentObject(CompleteName completeName, byte [] content) {
-    	this(completeName.name(), completeName.authenticator(), completeName.signature(), content);
+    	this(completeName.name(), completeName.authenticator(), content, completeName.signature());
     }
     
     /**
@@ -60,17 +68,17 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
      * @throws SignatureException 
      * @throws InvalidKeyException 
      */
-    public ContentObject(ContentName name, Integer componentCount,
+    public ContentObject(ContentName name, 
     					 ContentAuthenticator authenticator,
     					 byte [] content, PrivateKey signingKey) throws InvalidKeyException, SignatureException {
-    	this(name, authenticator, null, content);
-    	_signature = sign(name, componentCount, authenticator, signingKey);
+    	this(name, authenticator, content, (Signature)null);
+    	_signature = sign(name, authenticator, content, signingKey);
     }
     
     public ContentObject() {} // for use by decoders
     
     public ContentObject clone() {
-    	return new ContentObject(_name, _authenticator, _signature.clone(), _content.clone());
+    	return new ContentObject(_name, _authenticator, _content.clone(), _signature.clone());
     }
     
     public ContentName name() { 
@@ -83,23 +91,26 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
     
     public byte [] content() { return _content; }
     
-    public byte [] signature() { return _signature; }
+    public Signature signature() { return _signature; }
+    
+    public void signature(Signature signature) { _signature = signature; }
     
     public CompleteName completeName() { return new CompleteName(name(), authenticator(), signature()); }
 
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		decoder.readStartElement(CONTENT_OBJECT_ELEMENT);
 
+		_signature = new Signature();
+		_signature.decode(decoder);
+		
 		_name = new ContentName();
 		_name.decode(decoder);
 		
 		_authenticator = new ContentAuthenticator();
 		_authenticator.decode(decoder);
 		
-		_signature = decoder.readBinaryElement(SIGNATURE_ELEMENT);
-
 		_content = decoder.readBinaryElement(CONTENT_ELEMENT);
-		
+
 		decoder.readEndElement();
 	}
 
@@ -109,11 +120,9 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 		}
 		encoder.writeStartElement(CONTENT_OBJECT_ELEMENT);
 
+		signature().encode(encoder);
 		name().encode(encoder);
 		authenticator().encode(encoder);
-
-		// needs to handle null content
-		encoder.writeElement(SIGNATURE_ELEMENT, _signature);
 
 		// needs to handle null content
 		encoder.writeElement(CONTENT_ELEMENT, _content);
@@ -124,8 +133,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 	public boolean validate() { 
 		// recursive?
 		// null content ok
-		return ((null != name()) && (null != authenticator()) && (null != signature()) &&
-				(signature().length > 0));
+		return ((null != name()) && (null != authenticator()) && (null != signature()));
 	}
 
 	@Override
@@ -134,7 +142,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 		int result = 1;
 		result = PRIME * result + ((_name == null) ? 0 : _name.hashCode());
 		result = PRIME * result + ((_authenticator == null) ? 0 : _authenticator.hashCode());
-		result = PRIME * result + Arrays.hashCode(_signature);
+		result = PRIME * result + ((_signature == null) ? 0 : _signature.hashCode());
 		result = PRIME * result + Arrays.hashCode(_content);
 		return result;
 	}
@@ -158,7 +166,10 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 				return false;
 		} else if (!_authenticator.equals(other.authenticator()))
 			return false;
-		if (!Arrays.equals(_signature, other._signature))
+		if (_signature == null) {
+			if (other.signature() != null)
+				return false;
+		} else if (!_signature.equals(other.signature()))
 			return false;
 		if (!Arrays.equals(_content, other._content))
 			return false;
@@ -168,66 +179,44 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 	/**
 	 * Generate a signature on a name-content mapping. This
 	 * signature is specific to both this content authenticator
-	 * and this name. We sign the canonicalized XML
-	 * of a CompleteName, with any non-provided optional
-	 * components omitted. We include componentCount number
-	 * of components of the name given (if that is null,
-	 * we sign all of it). That allows for signing prefixes
-	 * of structures, e.g. for fragmented data.
-	 * DKS: TODO: want to sign something that the low level
-	 * can verify easily. Might imply that XML should put
-	 * back in CompleteName.
+	 * and this name. The ContentAuthenticator no longer contains
+	 * a proxy for the content, so we sign the content itself
+	 * directly.  This is used with simple algorithms that don't
+	 * generate a witness.
+	 * DKS -- TODO - do we sign the content or a hash of the content?
 	 * @throws SignatureException 
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
 	 */
-	public static byte [] sign(ContentName name, 
-					 		   Integer componentCount,
+	public static Signature sign(ContentName name, 
 					 		   ContentAuthenticator authenticator,
+					 		   byte [] content,
 					 		   String digestAlgorithm, 
 					 		   PrivateKey signingKey) 
 		throws SignatureException, InvalidKeyException, NoSuchAlgorithmException {
 		
 		// Build XML document
 		byte [] signature = null;
-		if ((null != componentCount) && 
-				(componentCount > name.count())) {
-			throw new SignatureException("Cannot sign more name components than given!");
-		}
 		
-		// TODO DKS -- optimize signing and verification.
-		
-		// This handles a null component count.
-		authenticator.nameComponentCount(componentCount);
-		
-		// Do we reflect the componentCount in the name we make
-		// or how we sign it? i.e. do we build a new name with
-		// just that many components, or does the encoder take
-		// the component count as a property?
-		ContentName signedName = null;
-		if ((null == componentCount) || (componentCount == name.count()))
-			signedName = name;
-		else
-			signedName = new ContentName(componentCount, name.components());
 		try {
 			signature = 
 				SignatureHelper.sign(digestAlgorithm, 
-									 new XMLEncodable[]{signedName, authenticator},
+									 new XMLEncodable[]{name, authenticator}, new byte[][]{contentProxy(content)},
 									 signingKey);
 		} catch (XMLStreamException e) {
 			Library.handleException("Exception encoding internally-generated XML name!", e);
 			throw new SignatureException(e);
 		}
-		return signature;
+		return new Signature(digestAlgorithm, null, signature);
 	}
 	
-	public static byte [] sign(ContentName name, 
-					 		   Integer componentCount,
+	public static Signature sign(ContentName name, 
 					 		   ContentAuthenticator authenticator,
+					 		   byte [] content,
 					 		   PrivateKey signingKey) 
 			throws SignatureException, InvalidKeyException {
 		try {
-			return sign(name, componentCount, authenticator, DigestHelper.DEFAULT_DIGEST_ALGORITHM, signingKey);
+			return sign(name, authenticator, content, DigestHelper.DEFAULT_DIGEST_ALGORITHM, signingKey);
 		} catch (NoSuchAlgorithmException e) {
 			Library.logger().warning("Cannot find default digest algorithm: " + DigestHelper.DEFAULT_DIGEST_ALGORITHM);
 			Library.warningStackTrace(e);
@@ -238,26 +227,16 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 	public boolean verify(PublicKey publicKey) 
 					throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, 
 								XMLStreamException, InterruptedException {
-		return verify(this, true, publicKey);
-	}
-	
-	public static boolean verify(ContentObject object, PublicKey publicKey) 
-				throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, 
-								XMLStreamException, InterruptedException {
-		return verify(object, true, publicKey);
+		return verify(this, publicKey);
 	}
 	
 	/**
-	 * Low-level verification. Might require putting back
-	 * CompleteName wrapper in ContentObject. Might not
-	 * want to always verify root signature for hash tree,
-	 * separate out verification of hash path from 
-	 * verification of signature on root.
+	 * Want to verify a content object. First compute the 
+	 * witness result (e.g. Merkle path root, or possibly content
+	 * proxy), and make it available to the caller if caller just
+	 * needs to check whether it matches a previous round. Then
+	 * verify the actual signature.
 	 * 
-	 * This doesn't tell you that you should trust the content,
-	 * only that the signature is correct and the content
-	 * matches. You can then reason on the name and signer
-	 * to determine trust.
 	 * @param verifySignature If we have a collection of blocks
 	 * 	 all authenticated by the public key signature, we may
 	 * 	 only need to verify that signature once. If verifySignature
@@ -277,46 +256,38 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 	 * @throws InterruptedException 
 	 */
 	public static boolean verify(ContentObject object,
-								 boolean verifySignature,
 								 PublicKey publicKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException, InterruptedException {
-		// TODO DKS: make more efficient.
 		
-		// Start with the cheap part. Check that the content
-		// matches the content digest, and that it fits into
-		// hash tree. Takes the content and a content digest,
-		// which is expected to be in the form of a DigestInfo.
-		boolean result = false;
+		// Start with the cheap part. Derive the content proxy that was signed. This is
+		// either the root of the MerkleHash tree, the content itself, or the digest of
+		// the content. 
+		byte [] contentProxy = null;
 		try {
-			result = verifyContentDigest(object.authenticator().contentDigest(),
-					 object.content());
+			// Callers that think they don't need to recompute the signature can just compute
+			// the proxy and check.
+			// The proxy may be dependent on the whole object. If there is a proxy, signature
+			// is over that. Otherwise, signature is over hash of the content and name and authenticator.
+			contentProxy = object.computeProxy();
 		} catch (CertificateEncodingException e) {
 			Library.logger().info("Encoding exception attempting to verify content digest for object: " + object.name() + ". Signature verification fails.");
 			return false;
 		}
 		
-		if (!result) {
-			Library.logger().info("Content object: " + object.name() + " content does not verify.");
-			return result;
+		if (null != contentProxy) {
+			return SignatureHelper.verify(contentProxy, object.signature().signature(), object.signature().digestAlgorithm(), publicKey);
 		}
 	
-		if (verifySignature) {
-			result = verifyContentSignature(object.name(), object.authenticator(), object.signature(), publicKey);
-		}
-		return result;
+		return verify(object.name(), object.authenticator(), object.content(), object.signature(), publicKey);
 	}
 
-	public static boolean verifyContentDigest(
-			byte[] contentDigest,
-			byte[] content) throws CertificateEncodingException {
-		return DigestHelper.verifyDigest(contentDigest, content);
-	}
-	
 	/**
 	 * Verify the public key signature on a content object.
 	 * Does not verify that the content matches the signature,
 	 * merely that the signature over the name and content
 	 * authenticator is correct and was performed with the
 	 * indicated public key.
+	 * @param contentProxy the proxy for the content that was signed. This could
+	 * 	be the content itself, a digest of the content, or the root of a Merkle hash tree.
 	 * @return
 	 * @throws SignatureException 
 	 * @throws XMLStreamException 
@@ -324,10 +295,11 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 	 * @throws InvalidKeyException 
 	 * @throws InterruptedException 
 	 */
-	public static boolean verifyContentSignature(
+	public static boolean verify(
 			ContentName name,
 			ContentAuthenticator authenticator,
-			byte [] signature,
+			byte [] content,
+			Signature signature,
 			PublicKey publicKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException, InterruptedException {
 	
 		if (null == publicKey) {
@@ -349,26 +321,73 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 						authenticator.keyLocator() + " exception: " + e.getMessage(), e);				
 			}
 		}
-		
-		// Verify that this key matches the publisher ID
-		// in the object. 
-		// DKS TODO -- this doesn't work as well
-		// when not a KEY identifier.
-		
-		// Format data for verification. If this
-		// is a fragment, we will need to verify just the 
-		// root. 
-		ContentName verifyName = new ContentName(
-							authenticator.nameComponentCount(),
-							name.components());
 	
 		// Now, check the signature.
 		boolean result = 
-			SignatureHelper.verify(new XMLEncodable[]{verifyName, authenticator}, 
-							   	   signature,
-							   	   DigestHelper.DEFAULT_DIGEST_ALGORITHM,
-							   	   publicKey);
+			SignatureHelper.verify(new XMLEncodable[]{name, authenticator}, new byte[][]{content},
+					signature.signature(),
+					(signature.digestAlgorithm() == null) ? DigestHelper.DEFAULT_DIGEST_ALGORITHM : signature.digestAlgorithm(),
+							publicKey);
 		return result;
 		
 	}
+
+	public boolean verify(byte[] proxy, byte [] signature, ContentAuthenticator authenticator,
+			String digestAlgorithm, PublicKey publicKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException {
+		if (null == publicKey) {
+			// Get a copy of the public key.
+			// Simple routers will install key manager that
+			// will just pull from CCN.
+			try {
+				publicKey = 
+					KeyManager.getKeyManager().getPublicKey(
+						authenticator.publisherKeyID(),
+						authenticator.keyLocator());
+
+				if (null == publicKey) {
+					throw new SignatureException("Cannot obtain public key to verify object. Key locator: " + 
+						authenticator.keyLocator());
+				}
+			} catch (IOException e) {
+				throw new SignatureException("Cannot obtain public key to verify object. Key locator: " + 
+						authenticator.keyLocator() + " exception: " + e.getMessage(), e);				
+			}
+		}
+	
+		// Now, check the signature.
+		boolean result = 
+			SignatureHelper.verify(proxy,
+					signature,
+					(digestAlgorithm == null) ? DigestHelper.DEFAULT_DIGEST_ALGORITHM : digestAlgorithm,
+							publicKey);
+		return result;
+	}
+
+	public byte [] computeProxy() throws CertificateEncodingException, XMLStreamException {
+		// Given a witness and an object, compute the proxy.
+		if (null == content())
+			return null;
+		if ((null == signature()) || (null == signature().witness())) {
+			return null;
+		}
+		// Have to eventually handle various forms of witnesses...
+		byte [] blockDigest =
+			DigestHelper.digestLeaf(
+				DigestHelper.DEFAULT_DIGEST_ALGORITHM, 
+				new XMLEncodable[]{name(), authenticator()},
+				new byte [][]{content()});
+		return signature().computeProxy(blockDigest, true);
+	}
+	
+	/**
+	 * Do we sign/verify the content itself, or a digest of the content?
+	 * And if so, what algorithm do we use?
+	 * @param content
+	 * @return
+	 */
+	protected static byte [] contentProxy(byte [] content) {
+		return content;
+	}
+
+
 }

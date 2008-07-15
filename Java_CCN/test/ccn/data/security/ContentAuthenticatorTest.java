@@ -46,7 +46,6 @@ public class ContentAuthenticatorTest {
 	static KeyLocator certLoc = null;
 	
 	static public byte [] signature = new byte[256];
-	static public byte [] contenthash = new byte[32];
 	static public byte [] publisherid = new byte[32];
 	static PublisherKeyID pubkey = null;	
 	
@@ -75,7 +74,6 @@ public class ContentAuthenticatorTest {
 			certLoc = new KeyLocator(cert);
 			
 			Arrays.fill(signature, (byte)1);
-			Arrays.fill(contenthash, (byte)2);
 			Arrays.fill(publisherid, (byte)3);
 			
 			pubkey = new PublisherKeyID(publisherid);
@@ -89,29 +87,26 @@ public class ContentAuthenticatorTest {
 	public void testDecodeInputStream() {
 		ContentAuthenticator nca = new ContentAuthenticator(
 				pubkey, 
-				null,
 				new Timestamp(System.currentTimeMillis()), 
 				ContentAuthenticator.ContentType.LEAF, 
-				nameLoc, contenthash, true);
+				nameLoc);
 		ContentAuthenticator dnca = new ContentAuthenticator();
 		ContentAuthenticator bdnca = new ContentAuthenticator();
 		XMLEncodableTester.encodeDecodeTest("ContentAuthenticator(name)", nca, dnca, bdnca);
 
 		ContentAuthenticator kca = new ContentAuthenticator(
 				pubkey, 
-				null,
 				new Timestamp(System.currentTimeMillis()), 
 				ContentAuthenticator.ContentType.LEAF, 
-				keyLoc, contenthash, true);
+				keyLoc);
 		ContentAuthenticator dkca = new ContentAuthenticator();
 		ContentAuthenticator bdkca = new ContentAuthenticator();
 		XMLEncodableTester.encodeDecodeTest("ContentAuthenticator(key)", kca, dkca, bdkca);
 
 		ContentAuthenticator cca = new ContentAuthenticator(pubkey, 
-				null,
 				new Timestamp(System.currentTimeMillis()), 
 				ContentAuthenticator.ContentType.LEAF, 
-				certLoc, contenthash, true);
+				certLoc);
 		ContentAuthenticator dcca = new ContentAuthenticator();
 		ContentAuthenticator bdcca = new ContentAuthenticator();
 		XMLEncodableTester.encodeDecodeTest("ContentAuthenticator(cert)", cca, dcca, bdcca);

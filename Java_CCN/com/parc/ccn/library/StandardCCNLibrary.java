@@ -31,6 +31,7 @@ import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
 import com.parc.ccn.network.CCNNetworkManager;
 import com.parc.ccn.security.crypto.CCNMerkleTree;
@@ -396,7 +397,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 		CompleteName uniqueName =
 			CompleteName.generateAuthenticatedName(
 					versionedName, publisher, ContentAuthenticator.now(),
-					type, locator, contents, false, signingKey);
+					type, locator, contents, signingKey);
 
 		return uniqueName;
 	}
@@ -710,14 +711,10 @@ public class StandardCCNLibrary implements CCNLibrary {
 		if (contents.length >= Header.DEFAULT_BLOCKSIZE) {
 			return fragmentedPut(name, contents, type, publisher, locator, signingKey);
 		} else {
-			// We need to generate unique name, and 
-			// generate signed ContentAuthenticator.
-			CompleteName uniqueName =
-				CompleteName.generateAuthenticatedName(
-						name, publisher, ContentAuthenticator.now(),
-						type, locator, contents, false, signingKey);
 			try {
-				return put(uniqueName.name(), uniqueName.authenticator(), uniqueName.signature(), contents);
+				// Generate signature
+				ContentObject co = new ContentObject(name, new ContentAuthenticator(publisher, type, locator), contents, signingKey);
+				return put(co.name(), co.authenticator(), co.content(), co.signature());
 			} catch (IOException e) {
 				Library.logger().warning("This should not happen: put failed with an IOExceptoin.");
 				Library.warningStackTrace(e);
@@ -765,11 +762,20 @@ public class StandardCCNLibrary implements CCNLibrary {
 			System.arraycopy(contents, from, contentBlocks[i], 0, (to < contents.length) ? to : contents.length);
 		}
 		
-		byte [] contentTreeAuthenticator = putMerkleTree(name, contentBlocks, contentBlocks.length, baseFragment(), timestamp, publisher, locator, signingKey);
+		if (isFragment(name)) {
+			Library.logger().info("Asked to store fragments under fragment name: " + name + ". Stripping fragment information");
+		}
+		
+		ContentName fragmentBaseName = fragmentBase(name);
+		
+		CCNMerkleTree tree = 
+			putMerkleTree(fragmentBaseName, baseFragment(),
+						  contentBlocks, contentBlocks.length, 
+						  baseFragment(), timestamp, publisher, locator, signingKey);
 		
 		// construct the headerBlockContents;
 		byte [] contentDigest = DigestHelper.digest(contents);
-		return putHeader(name, contents.length, contentDigest, contentTreeAuthenticator,
+		return putHeader(name, contents.length, contentDigest, tree.root(),
 						 type, timestamp, publisher, locator, signingKey);
 	}
 	
@@ -803,19 +809,21 @@ public class StandardCCNLibrary implements CCNLibrary {
 		// Add another differentiator to avoid making header
 		// name prefix of other valid names?
 		ContentName headerName = headerName(name);
-		CompleteName headerBlockInformation =
-			CompleteName.generateAuthenticatedName(
-					headerName, publisher, timestamp, type, locator,
-					encodedHeader, false, signingKey);
+		ContentObject headerObject = new ContentObject(headerName, 
+														new ContentAuthenticator(publisher, timestamp, ContentType.HEADER, locator),
+														encodedHeader,
+														signingKey);
+		CompleteName headerResult = null;
 		try {
-			put(headerBlockInformation.name(), headerBlockInformation.authenticator(),
-					headerBlockInformation.signature(), encodedHeader);
+			headerResult = 
+				put(headerObject.name(), headerObject.authenticator(),
+					headerObject.content(), headerObject.signature());
 		} catch (IOException e) {
 			Library.logger().warning("This should not happen: we cannot put our own header!");
 			Library.warningStackTrace(e);
 			throw e;
 		}
-		return headerBlockInformation;		
+		return headerResult;		
 	}
 	
 	/**
@@ -825,7 +833,9 @@ public class StandardCCNLibrary implements CCNLibrary {
 	public static final int baseFragment() { return 0; }
 
 	
-	byte [] putMerkleTree(ContentName name, byte [][] contentBlocks, int blockCount, int baseBlockIndex, 
+	CCNMerkleTree putMerkleTree(
+			ContentName name, int baseNameIndex,
+			byte [][] contentBlocks, int blockCount, int baseBlockIndex, 
 			Timestamp timestamp,
 			PublisherKeyID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException {
@@ -843,24 +853,27 @@ public class StandardCCNLibrary implements CCNLibrary {
 		// Digest of complete contents
 		// If we're going to unique-ify the block names
 		// (or just in general) we need to incorporate the names
-		// in the MerkleTree blocks. 
+		// and authenticators in the MerkleTree blocks. 
+		// For now, this generates the root signature too, so can
+		// ask for the signature for each block.
     	CCNMerkleTree tree = 
-    		new CCNMerkleTree(name, publisher, timestamp, 
-    						  contentBlocks, true, blockCount, baseBlockIndex, locator, signingKey);
+    		new CCNMerkleTree(name, baseNameIndex,
+    						  new ContentAuthenticator(publisher, timestamp, ContentType.FRAGMENT, locator),
+    						  contentBlocks, false, blockCount, baseBlockIndex, signingKey);
 
 		for (int i = 0; i < blockCount; i++) {
 			try {
-				CompleteName blockCompleteName = tree.getBlockCompleteName(i);
-				Library.logger().finest("putMerkleTree: writing block " + i + " of " + blockCount + " to name " + blockCompleteName.name());
-				put(blockCompleteName.name(), blockCompleteName.authenticator(), 
-						blockCompleteName.signature(), contentBlocks[i]);
+				Library.logger().finest("putMerkleTree: writing block " + i + " of " + blockCount + " to name " + tree.blockName(i));
+				put(tree.blockName(i), tree.blockAuthenticator(i), 
+						contentBlocks[i], tree.blockSignature(i));
 			} catch (IOException e) {
 				Library.logger().warning("This should not happen: we cannot put our own blocks!");
 				Library.warningStackTrace(e);
 				throw e;
 			}
 		}
-		return tree.root();
+		// Caller needs both root signature and root itself. For now, give back the tree.
+		return tree;
 	}
 	
 	/**
@@ -930,6 +943,10 @@ public class StandardCCNLibrary implements CCNLibrary {
 		return name.cut(FRAGMENT_MARKER);
 	}
 	
+	public static ContentName fragmentBase(ContentName name) {
+		return new ContentName(fragmentRoot(name), FRAGMENT_MARKER);
+	}
+	
 	public static ContentName fragmentName(ContentName name, int i) {
 		return new ContentName(name, 
 							ContentName.componentParse(FRAGMENT_MARKER),
@@ -955,10 +972,10 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 */
 	public CompleteName put(ContentName name, 
 							ContentAuthenticator authenticator,
-							byte [] signature, 
-							byte[] content) throws IOException, InterruptedException {
+							byte[] content,
+							Signature signature) throws IOException, InterruptedException {
 
-		return CCNNetworkManager.getNetworkManager().put(this, name, authenticator, signature, content);
+		return CCNNetworkManager.getNetworkManager().put(this, name, authenticator, content, signature);
 	}
 
 	/**
@@ -1035,6 +1052,13 @@ public class StandardCCNLibrary implements CCNLibrary {
 			throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException {
 		
 		try {
+			if (null == publicKey) {
+				publicKey = KeyManager.getKeyRepository().getPublicKey(object.authenticator().publisherKeyID(), object.authenticator().keyLocator());
+				if (null == publicKey) {
+					Library.logger().info("Cannot retrieve key for publisher " + object.authenticator().publisherKeyID() + " to verify conten: " + object.name());
+					return false;
+				}
+			}
 			if (!object.verify(publicKey)) {
 				Library.logger().warning("Low-level verify failed on " + object.name());
 			}

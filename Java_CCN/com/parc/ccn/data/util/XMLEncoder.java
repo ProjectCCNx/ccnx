@@ -1,6 +1,7 @@
 package com.parc.ccn.data.util;
 
 import java.io.OutputStream;
+import java.sql.Timestamp;
 import java.util.TreeMap;
 
 import javax.xml.stream.XMLStreamException;
@@ -36,5 +37,9 @@ public interface XMLEncoder {
 	
 	public void writeElement(String tag, byte [] binaryContent, 
 			TreeMap<String,String> attributes) throws XMLStreamException;
-
+	
+	/**
+	 * Encapsulate our handling of timestamps.
+	 */
+	public void writeDateTime(String tag, Timestamp dateTime) throws XMLStreamException;
 }

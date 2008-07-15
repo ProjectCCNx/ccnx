@@ -16,6 +16,7 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.network.discovery.CCNDiscovery;
 
 /**
@@ -126,8 +127,8 @@ public abstract class GenericCCNRepository implements CCNRepository {
 	 */
 	public abstract CompleteName put(ContentName name,
 									 ContentAuthenticator authenticator,
-									 byte [] signature,
-									 byte [] content) throws IOException;
+									 byte [] content,
+									 Signature signature) throws IOException;
 		
 	/* (non-Javadoc)
 	 * @see com.parc.ccn.network.CCNRepository#expressInterest(com.parc.ccn.data.query.Interest, com.parc.ccn.data.query.CCNQueryListener)

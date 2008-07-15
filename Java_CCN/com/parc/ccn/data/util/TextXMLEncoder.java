@@ -1,6 +1,7 @@
 package com.parc.ccn.data.util;
 
 import java.io.OutputStream;
+import java.sql.Timestamp;
 import java.util.Iterator;
 import java.util.TreeMap;
 
@@ -92,6 +93,12 @@ public class TextXMLEncoder implements XMLEncoder {
 
 	public void writeEndElement() throws XMLStreamException {
 		_writer.writeEndElement();
+	}
+
+	public void writeDateTime(String tag, Timestamp dateTime)
+			throws XMLStreamException {
+		writeElement(tag, 
+				 TextXMLCodec.formatDateTime(dateTime));
 	}
 
 }

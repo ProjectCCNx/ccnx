@@ -105,10 +105,11 @@ class JackrabbitEventListener implements EventListener {
 						if ((null != _listener) &&
 							 _listener.matchesInterest(cn)) {
 							if (!_nodesAlreadyFound.contains(affectedNode.getPath())) {
-							//	Library.logger().info("Listener found new CCN Node: " + cn.name());
+							repository();
+								//	Library.logger().info("Listener found new CCN Node: " + cn.name());
 								ContentObject co = 
-									new ContentObject(cn.name(), cn.authenticator(), cn.signature(),
-													  repository().getContentDigest(affectedNode));
+									new ContentObject(cn.name(), cn.authenticator(), 
+											JackrabbitCCNRepository.getContent(affectedNode), cn.signature());
 								nodesFound.add(co); // nodes found in response to this query
 								_nodesAlreadyFound.add(affectedNode.getPath());
 							}

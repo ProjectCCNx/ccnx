@@ -26,6 +26,11 @@ public class Library {
 	public static final String DEFAULT_LOG_SUFFIX = ".log";
 	public static final Level DEFAULT_LOG_LEVEL = Level.INFO;
 	
+	/**
+	 * Property to set log level.
+	 */
+	public static final String DEFAULT_LOG_LEVEL_PROPERTY = "com.parc.ccn.LogLevel";
+	
 	static Logger _systemLogger = null;
 	
 	static {
@@ -75,10 +80,23 @@ public class Library {
 		for ( int index = 0; index < handlers.length; index++ ) {
 			handlers[index].setLevel( Level.ALL );
 		}
+		
+		// Allow override of default log level.
+		String logLevelName = System.getProperty(DEFAULT_LOG_LEVEL_PROPERTY);
+		
+		Level logLevel = DEFAULT_LOG_LEVEL;
+		
+		if (null != logLevelName) {
+			try {
+				logLevel = Level.parse(logLevelName);
+			} catch (IllegalArgumentException e) {
+				logLevel = DEFAULT_LOG_LEVEL;
+			}
+		}
 
 		// We also have to set our logger to log finer-grained
 		// messages
-		_systemLogger.setLevel(DEFAULT_LOG_LEVEL);
+		_systemLogger.setLevel(logLevel);
 	}
 
 	public static String getApplicationClass() {

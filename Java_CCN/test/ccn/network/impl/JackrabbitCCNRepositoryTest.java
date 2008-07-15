@@ -166,9 +166,6 @@ public class JackrabbitCCNRepositoryTest {
 	
 	public void checkPutResults(CompleteName putResult) {
 		try {
-			boolean verifySig = putResult.verifySignature(pair.getPublic());
-			Library.logger().info("Put signature verified? " + verifySig);
-			assertTrue(verifySig);
 		} catch (Exception e) {
 			Library.logger().info("Exception in checkPutResults for name: " + putResult.name() +": " + e.getClass().getName() + " " + e.getMessage());
 			Library.infoStackTrace(e);
@@ -195,7 +192,7 @@ public class JackrabbitCCNRepositoryTest {
 		ContentName versionedName = library.versionName(startName, version);
 		
 		CompleteName authenticatedName = CompleteName.generateAuthenticatedName(versionedName, pubID, null, 
-								ContentAuthenticator.ContentType.LEAF, keyLoc, content, false, pair.getPrivate());
+								ContentAuthenticator.ContentType.LEAF, keyLoc, content, pair.getPrivate());
 		return authenticatedName;
 	}
 
@@ -212,7 +209,7 @@ public class JackrabbitCCNRepositoryTest {
 			for (int i=0; i < VERSION_COUNT; ++i) {
 				byte [] content = new Integer(i).toString().getBytes("UTF-8");
 				CompleteName inname = generateVersionedNameAndAuth(startName, i, content); 
-				CompleteName outname = repo.put(inname.name(), inname.authenticator(), inname.signature(), content);
+				CompleteName outname = repo.put(inname.name(), inname.authenticator(), content, inname.signature());
 				checkPutResults(outname);
 				Library.logger().info("Added name: " + outname.name());
 			}
@@ -237,7 +234,7 @@ public class JackrabbitCCNRepositoryTest {
 			for (int i=0; i < VERSION_COUNT; ++i) {
 				byte [] content = new Integer(i).toString().getBytes("UTF-8");
 				CompleteName inname = generateVersionedNameAndAuth(startName, i, content); 
-				CompleteName outname = repo.put(inname.name(), inname.authenticator(), inname.signature(), content);
+				CompleteName outname = repo.put(inname.name(), inname.authenticator(), content, inname.signature());
 				checkPutResults(outname);
 				Library.logger().info("Added name, next will retrieve: " + outname.name());
 
@@ -270,7 +267,7 @@ public class JackrabbitCCNRepositoryTest {
 			for (int i=0; i < VERSION_COUNT; ++i) {
 				byte [] content = new Integer(i).toString().getBytes("UTF-8");
 				CompleteName inname = generateVersionedNameAndAuth(startName, i, content); 
-				CompleteName outname = repo.put(inname.name(), inname.authenticator(), inname.signature(), content);
+				CompleteName outname = repo.put(inname.name(), inname.authenticator(), content, inname.signature());
 				checkPutResults(outname);
 				Library.logger().info("Added name: " + outname.name());
 			}
@@ -303,7 +300,7 @@ public class JackrabbitCCNRepositoryTest {
 			for (int i=0; i < VERSION_COUNT; ++i) {
 				byte [] content = new Integer(i).toString().getBytes("UTF-8");
 				CompleteName inname = generateVersionedNameAndAuth(startName, i, content); 
-				CompleteName outname = repo.put(inname.name(), inname.authenticator(), inname.signature(), content);
+				CompleteName outname = repo.put(inname.name(), inname.authenticator(), content, inname.signature());
 				checkPutResults(outname);
 				Library.logger().info("Added name, next will retrieve: " + outname.name());
 
@@ -336,7 +333,7 @@ public class JackrabbitCCNRepositoryTest {
 			for (int i=0; i < VERSION_COUNT; ++i) {
 				byte [] content = new Integer(i).toString().getBytes("UTF-8");
 				CompleteName inname = generateVersionedNameAndAuth(startName, i, content); 
-				CompleteName outname = repo.put(inname.name(), inname.authenticator(), inname.signature(), content);
+				CompleteName outname = repo.put(inname.name(), inname.authenticator(), content, inname.signature());
 				checkPutResults(outname);
 				Library.logger().info("Added name: " + outname.name());
 			}

@@ -4,7 +4,8 @@ import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateEncodingException;
-import java.util.Arrays;
+
+import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.DERObject;
@@ -12,6 +13,7 @@ import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.asn1.x509.DigestInfo;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.security.crypto.certificates.CryptoUtil;
 import com.parc.ccn.security.crypto.certificates.OIDLookup;
 
@@ -19,6 +21,7 @@ public class DigestHelper {
 
 	public static String DEFAULT_DIGEST_ALGORITHM = "SHA-256";
 	// public static String DEFAULT_DIGEST_ALGORITHM = "SHA-1";
+	public static int DEFAULT_DIGEST_LENGTH = 32;
 	
 	protected MessageDigest _md;
 	
@@ -63,7 +66,8 @@ public class DigestHelper {
 
 	/**
 	 * Helper functions for building Merkle hash trees. Returns digest of
-	 * two concatenated byte arrays.
+	 * two concatenated byte arrays. If either is null, simply includes
+	 * the non-null array.
 	 * @param content1
 	 * @param content2
 	 * @return
@@ -72,12 +76,24 @@ public class DigestHelper {
 		return digest(DEFAULT_DIGEST_ALGORITHM, content1, content2);
 	}
 	
+	/**
+	 * Helper functions for building Merkle hash trees. Returns digest of
+	 * two concatenated byte arrays. If either is null, simply includes
+	 * the non-null array.
+	 * @param content1
+	 * @param content2
+	 * @return
+	 */
 	public static byte [] digest(String digestAlgorithm, byte [] content1, byte [] content2) {
 		byte [] hash = null;
 		try {
 	        MessageDigest md = MessageDigest.getInstance(digestAlgorithm);
-	        md.update(content1);
-	        md.update(content2);
+	        if ((null == content1) && (null == content2)) 
+	        	return null;
+	        if (null != content1)
+	        	md.update(content1);
+	        if (null != content2)
+	        	md.update(content2);
 	        hash = md.digest();
 			return hash;
 		} catch (java.security.NoSuchAlgorithmException ex) {
@@ -103,6 +119,31 @@ public class DigestHelper {
 		}
 	}
 
+	/**
+	 * Same digest preparation algorithm as ContentObject.
+	 * @throws XMLStreamException 
+	 */
+	public static byte [] digestLeaf(
+			String digestAlgorithm,
+			XMLEncodable [] toBeSigneds,
+			byte [][] additionalToBeSigneds) throws XMLStreamException {
+		
+		if (null == toBeSigneds) {
+			Library.logger().info("Value to be signed must not be null.");
+			throw new XMLStreamException("Unexpected null content in digestLeaf!");
+		}
+		byte [][] encodedData = new byte [toBeSigneds.length + ((null != additionalToBeSigneds) ? additionalToBeSigneds.length : 0)][];
+		for (int i=0; i < toBeSigneds.length; ++i) {
+			encodedData[i] = toBeSigneds[i].encode();
+		}
+		if (null != additionalToBeSigneds) {
+			for (int i=0,j=toBeSigneds.length; j < encodedData.length; ++i,++j) {
+				encodedData[j] = additionalToBeSigneds[i];
+			}
+		}
+		return DigestHelper.digest(digestAlgorithm, 
+									encodedData);
+	}
 	
 	/**
 	 * Digests some data and wraps it in a DigestInfo.
@@ -136,36 +177,6 @@ public class DigestHelper {
 			Library.warningStackTrace(e);
 			// DKS TODO what to actually throw
 			return new byte[0];
-		}
-	}
-	
-	/**
-	 * Decode DigestInfo and determine whether this is
-	 * a straight digest or a path.
-	 * @param encodedDigest
-	 * @return
-	 * @throws CertificateEncodingException 
-	 */
-	public static byte [] digestToSign(byte [] encodedDigest) throws CertificateEncodingException {
-		DigestInfo info = digestDecoder(encodedDigest);
-		if (MerkleTree.isMerkleTree(info.getAlgorithmId())) {
-			MerklePath mp = new MerklePath(info.getDigest());
-			return mp.getRootAsEncodedDigest();
-		} else {
-			return info.getDigest();
-		}
-	}
-
-	public static boolean verifyDigest(
-			byte [] encodedDigest,
-			byte [] content) throws CertificateEncodingException {
-		DigestInfo info = digestDecoder(encodedDigest);
-		if (MerkleTree.isMerkleTree(info.getAlgorithmId())) {
-			MerklePath mp = new MerklePath(info.getDigest());
-			return mp.verify(content);
-		} else {
-			byte [] digest = digest(OIDLookup.getDigestName(info.getAlgorithmId().getObjectId().getId()), content);
-			return Arrays.equals(info.getDigest(), digest);
 		}
 	}
 	

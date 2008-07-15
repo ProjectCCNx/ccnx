@@ -13,6 +13,7 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.network.discovery.CCNDiscoveryListener;
 import com.parc.ccn.network.impl.JackrabbitCCNRepository;
 
@@ -130,9 +131,9 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 	 * @throws InterruptedException 
 	 */
 	public CompleteName put(ContentName name, ContentAuthenticator authenticator, 
-							byte [] signature, byte[] content) throws IOException, InterruptedException {
+							byte[] content, Signature signature) throws IOException, InterruptedException {
 		if (null != _primaryRepository) {
-			return _primaryRepository.put(name, authenticator, signature, content);
+			return _primaryRepository.put(name, authenticator, content, signature);
 		} else {
 			return null;
 		}

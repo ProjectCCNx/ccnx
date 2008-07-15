@@ -86,8 +86,23 @@ public class CCNDescriptor {
 	 * spans all blocks. (Revise later.)
 	 * Can also get this by verifying the header, and 
 	 * checking that the header contains the same root.
+	 * The proxy is the thing that is actually signed,
+	 * e.g. the digest(?) of the content, or the Merkle
+	 * tree root or whatever. The first block of a new
+	 * tree, we need to compute the root, verify the
+	 * signature, and then remember the root and the
+	 * signature. For each subsequent block, if the
+	 * signature matches, we merely need to determine
+	 * whether the witness computes to the same proxy.
+	 * 
+	 * DKS NOTE: witness doesn't compute over the content
+	 * proxy. It computes over the digest of the name,
+	 * content authenticator, and content proxy -- same
+	 * thing that would be used to verify the signature on
+	 * a block.
 	 */
 	protected byte [] _verifiedRootSignature = null;
+	protected byte [] _verifiedProxy = null;
 	
 	/**
 	 * Write data
@@ -418,7 +433,8 @@ public class CCNDescriptor {
 	
 		Library.logger().finer("sync: putting merkle tree to the network, " + (_blockIndex+1) + " blocks.");
 		// Generate Merkle tree (or other auth structure) and authenticators and put contents.
-		_library.putMerkleTree(_baseName, _blockBuffers, _blockIndex+1, _baseBlockIndex, _timestamp, _publisher, _locator, _signingKey);
+		_library.putMerkleTree(_baseName, _baseBlockIndex, _blockBuffers, _blockIndex+1, _baseBlockIndex,
+								_timestamp, _publisher, _locator, _signingKey);
 		// Set contents of blocks to 0
 		for (int i=0; i < _blockBuffers.length; ++i) {
 			Arrays.fill(_blockBuffers[i], 0, _blockBuffers[i].length, (byte)0);
@@ -509,21 +525,30 @@ public class CCNDescriptor {
 			// Low-level verify just checks that signer actually signed.
 			// High-level verify checks trust.
 			try {
-				if (!ContentObject.verifyContentDigest(block.authenticator().contentDigest(), block.content())) {
-					Library.logger().warning("Found block: " + block.name().toString() + " whose digest fails to verify.");
-					blockIt.remove();
-				}
 				// Compare to see whether this block matches the root signature we previously verified, if
 				// not, verify and store the current signature.
-				if ((null == _verifiedRootSignature) || (!Arrays.equals(_verifiedRootSignature, block.signature()))) {
-					if (!ContentObject.verifyContentSignature(block.name(), block.authenticator(), block.signature(), null)) {
-						Library.logger().warning("Found block: " + block.name().toString() + " whose signature fails to verify.");
+				// We need to compute the proxy regardless.
+				byte [] proxy = block.computeProxy();
+
+				// OK, if we have an existing verified signature, and it matches this block's
+				// signature, the proxy ought to match as well.
+				if ((null != _verifiedRootSignature) || (Arrays.equals(_verifiedRootSignature, block.signature().signature()))) {
+					if ((null == proxy) || (null == _verifiedProxy) || (!Arrays.equals(_verifiedProxy, proxy))) {
+						Library.logger().warning("Found block: " + block.name().toString() + " whose digest fails to verify.");
 						blockIt.remove();
-					} else {
-						_verifiedRootSignature = block.signature();
 					}
-				} // otherwise, it matches previously verified signature.
-				
+				} else {
+					// Verifying a new block. See if the signature verifies, otherwise store the signature
+					// and proxy.
+					if (!block.verify(proxy, block.signature().signature(), block.authenticator(), block.signature().digestAlgorithm(), null)) {
+						Library.logger().warning("Found block: " + block.name().toString() + " whose signature fails to verify.");
+						blockIt.remove();						
+					} else {
+						// Remember current verifiers
+						_verifiedRootSignature = block.signature().signature();
+						_verifiedProxy = proxy;
+					}
+				} 
 			} catch (Exception e) {
 				Library.logger().warning("Got an " + e.getClass().getName() + " exception attempting to verify block: " + block.name().toString() + ", treat as failure to verify.");
 				Library.warningStackTrace(e);

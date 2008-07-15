@@ -60,6 +60,7 @@ import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.util.TextXMLCodec;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.StandardCCNLibrary;
@@ -93,12 +94,12 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	 * The bits of the authenticator, exploded.
 	 */
 	public static final String PUBLISHER_PROPERTY = "PUBLISHER";
-	public static final String NAME_COMPONENT_COUNT_PROPERTY = "NAME_COMPONENT_COUNT";
 	public static final String TIMESTAMP_PROPERTY = "TIMESTAMP";
 	public static final String TYPE_PROPERTY = "CONTENT_TYPE";
-	public static final String HASH_PROPERTY = "CONTENT_HASH_ELEMENT";
 	public static final String KEY_LOCATOR_PROPERTY = "KEY_LOCATOR";
 	public static final String SIGNATURE_PROPERTY = "SIGNATURE";
+	public static final String WITNESS_PROPERTY = "WITNESS";
+	public static final String DIGEST_ALGORITHM_PROPERTY = "DIGEST_ALGORITHM";
 	protected static JackrabbitCCNRepository _theNetwork = null;
 
 	protected Repository _repository;
@@ -250,7 +251,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	public Node root()  { return _root; }
 	
 	public CompleteName put(ContentName name, ContentAuthenticator authenticator, 
-								byte [] signature, byte[] content) throws IOException {
+								byte[] content, Signature signature) throws IOException {
 
 		if (null == name) {
 			Library.logger().warning("CCN:put: name cannot be null.");
@@ -310,7 +311,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		try {
 			// Now we're down to the leaf node. Don't
 			// add it if we already have it.
-			n = addLeafNode(n, name.component(i), authenticator, signature, content);
+			n = addLeafNode(n, name.component(i), authenticator, content, signature);
 			
 		//	Library.logger().info("Adding node: " + n.getCorrespondingNodePath(_session.getWorkspace().getName()));
 
@@ -427,7 +428,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	 * @throws RepositoryException
 	 */
 	protected Node addLeafNode(Node parent, byte [] name, ContentAuthenticator authenticator, 
-									byte [] signature, byte[] content) throws RepositoryException {
+									byte[] content, Signature signature) throws RepositoryException {
 		// TODO DKS: should refuse to insert exact dupes by complete
 		// name. As long as sign timestamp, that shouldn't 
 		// happen, but make sure.
@@ -450,7 +451,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 						// We have nodes with the same name. 
 						// If the signatures match, this data is identical
 						// and we just return that node.
-						byte [] existingSignature = null;
+						Signature existingSignature = null;
 						try {
 							existingSignature = getSignature(thisChild);
 						} catch (IOException e) {
@@ -458,12 +459,12 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 							throw new RepositoryException(e);
 						}
 					
-						if (Arrays.equals(signature, existingSignature)) {
+						if (signature.equals(existingSignature)) {
 							Library.logger().info("Adding node with same signature, just returning previous version.");
 							return thisChild;
 						} else {
 							
-							// if the signatures don't match, but the content digest
+							// if the signatures don't match, but the content 
 							// and publisher ID do match, it could be an attempt
 							// to update content -- timestamp is different.
 							// if those are the same, and all other metadata
@@ -471,15 +472,15 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 							// update timestamp and signature
 							// 
 							// WARNING: always verify signature before this
-							byte [] contentDigest = null;
+							byte [] oldcontent = null;
 							try {
-								contentDigest = getContentDigest(thisChild);
+								oldcontent = getContent(thisChild);
 							} catch (IOException e) {
-								Library.logger().info("IOException in getContentDigest: " + e.getMessage());
+								Library.logger().info("IOException in getContent: " + e.getMessage());
 								throw new RepositoryException(e);
 							}
 							// TODO: DKS: check implications of unique names
-							if (Arrays.equals(contentDigest, authenticator.contentDigest())) {
+							if (Arrays.equals(content, oldcontent)) {
 								Library.logger().info("Adding node with same content, check.");
 								// timestamps could be different
 								// if type is the same, assume this is just
@@ -566,17 +567,39 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		return getBinaryProperty(n, CONTENT_PROPERTY);
 	}
 
-	protected void addSignature(Node n, byte [] signature) throws ValueFormatException, VersionException, LockException, ConstraintViolationException, RepositoryException {
-		ByteArrayInputStream bai = new ByteArrayInputStream(signature);
+	protected void addSignature(Node n, Signature signature) throws ValueFormatException, VersionException, LockException, ConstraintViolationException, RepositoryException {
+		if (null != signature.witness()) {
+			ByteArrayInputStream baw = new ByteArrayInputStream(signature.witness());
+			n.setProperty(WITNESS_PROPERTY, baw);
+		}
+		ByteArrayInputStream bai = new ByteArrayInputStream(signature.signature());
 		n.setProperty(SIGNATURE_PROPERTY, bai);
 	}
 	
-	boolean hasSignature(Node n) throws RepositoryException {
+	protected static boolean hasSignature(Node n) throws RepositoryException {
 		return n.hasProperty(SIGNATURE_PROPERTY);
 	}
 	
-	protected static byte [] getSignature(Node n) throws RepositoryException, IOException {
-		return getBinaryProperty(n, SIGNATURE_PROPERTY);
+	protected static boolean hasWitness(Node n) throws RepositoryException {
+		return n.hasProperty(WITNESS_PROPERTY);
+	}
+	
+	protected static boolean hasDigestAlgorithm(Node n) throws RepositoryException {
+		return n.hasProperty(DIGEST_ALGORITHM_PROPERTY);
+	}
+
+	protected static Signature getSignature(Node n) throws RepositoryException, IOException {
+		String digestAlgorithm = null;
+		if (hasDigestAlgorithm(n)) {
+			digestAlgorithm = n.getProperty(DIGEST_ALGORITHM_PROPERTY).getString();
+		}
+
+		byte [] witness = null;
+		if (hasWitness(n)) {
+			witness = getBinaryProperty(n, WITNESS_PROPERTY);
+		}
+		byte [] signature = getBinaryProperty(n, SIGNATURE_PROPERTY);
+		return new Signature(digestAlgorithm, witness, signature);
 	}
 
 	protected static byte[] getBinaryProperty(Node n, String property) throws RepositoryException, IOException {
@@ -600,15 +623,11 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 
 	protected void addAuthenticationInfo(Node n, ContentAuthenticator authenticator) throws ValueFormatException, VersionException, LockException, ConstraintViolationException, RepositoryException {
 		n.setProperty(PUBLISHER_PROPERTY, publisherToString(authenticator.publisher()));
-		if (null != authenticator.nameComponentCount())
-			n.setProperty(NAME_COMPONENT_COUNT_PROPERTY, authenticator.nameComponentCount());
 		n.setProperty(TYPE_PROPERTY, authenticator.typeName());
 		n.setProperty(TIMESTAMP_PROPERTY, authenticator.timestamp().toString());
 		
 		ByteArrayInputStream kli = new ByteArrayInputStream(authenticator.keyLocator().getEncoded());
 		n.setProperty(KEY_LOCATOR_PROPERTY, kli);	
-		ByteArrayInputStream hai = new ByteArrayInputStream(authenticator.contentDigest());
-		n.setProperty(HASH_PROPERTY, hai);
 	}
 	
 	protected ContentAuthenticator getAuthenticationInfo(Node n) throws ValueFormatException, PathNotFoundException, RepositoryException, IOException {
@@ -629,14 +648,9 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 			Library.logger().warning("Error: cannot get content type from node: " + n.getPath());
 		}
 		
-		Integer componentCount = null;
-		if (n.hasProperty(NAME_COMPONENT_COUNT_PROPERTY))
-			componentCount = Integer.valueOf(n.getProperty(NAME_COMPONENT_COUNT_PROPERTY).getString());
-
 		ContentAuthenticator.ContentType type = ContentAuthenticator.nameToType(propertyString);
 		Timestamp timestamp = Timestamp.valueOf(n.getProperty(TIMESTAMP_PROPERTY).getString());
 		
-		byte [] hash = getContentDigest(n);
 		byte [] encodedKeyLocator = getBinaryProperty(n, KEY_LOCATOR_PROPERTY);
 	
 		KeyLocator loc = null;
@@ -650,10 +664,8 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		
 		ContentAuthenticator auth = 
 			new ContentAuthenticator(publisherKeyID,
-					 				 componentCount,
 									 timestamp, 
-									 type, loc,
-									 hash, true);		
+									 type, loc);		
 		return auth;
 	}
 		
@@ -924,7 +936,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	CompleteName getCompleteName(Node n) throws IOException {
 		ContentName name = null;;
 		ContentAuthenticator authenticator = null;
-		byte [] signature = null;
+		Signature signature = null;
 		try {
 			name = getName(n);
 			authenticator = getAuthenticationInfo(n);
@@ -941,8 +953,9 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	ContentObject getContentObject(Node n) throws IOException {
 		ContentName name = null;
 		ContentAuthenticator authenticator = null;
+		Signature signature = null;
 		byte [] content = null;
-		byte [] signature = null;
+		
 		try {
 			name = getName(n);
 			authenticator = getAuthenticationInfo(n);
@@ -954,7 +967,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 			Library.logStackTrace(Level.WARNING, e);
 			throw new IOException("Repository exception extracting content from node: " + n.toString() + ": " + e.getMessage());
 		}
-		return new ContentObject(name, authenticator, signature, content);
+		return new ContentObject(name, authenticator, content, signature);
 	}
 
 	protected PublisherKeyID getPublisherKeyID(Node n) throws ValueFormatException, RepositoryException {
@@ -969,11 +982,6 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		return new PublisherKeyID(publisherID);
 	}
 		
-	protected byte [] getContentDigest(Node n) throws RepositoryException, IOException {
-		
-		return getBinaryProperty(n, HASH_PROPERTY);
-	}
-	
 	public void login() throws IOException {
 		SimpleCredentials sc = new SimpleCredentials(InetAddress.getLocalHost().getHostAddress(), "".toCharArray());
 		try {
@@ -1395,7 +1403,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	public int handleContent(ArrayList<ContentObject> results) {
 		try {
 			for (ContentObject contentObject : results) {
-				put(contentObject.name(), contentObject.authenticator(), contentObject.signature(), contentObject.content());
+				put(contentObject.name(), contentObject.authenticator(), contentObject.content(), contentObject.signature());
 			}
 		} catch (IOException e) {
 			Library.logger().warning(e.getMessage());
@@ -1438,7 +1446,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 				ArrayList<ContentObject> found = get(interest.name(), null, true);
 				if (found.size() > 0) {
 					ContentObject obj = found.get(0);
-					_library.put(obj.name(), obj.authenticator(), obj.signature(), obj.content());
+					_library.put(obj.name(), obj.authenticator(), obj.content(), obj.signature());
 				}
 			}
 		} catch (IOException e) {

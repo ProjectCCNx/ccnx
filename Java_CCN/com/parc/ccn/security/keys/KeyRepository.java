@@ -70,21 +70,19 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		KeyLocator locatorLocator = 
 			new KeyLocator(keyName, new PublisherID(keyID));
 		
-		CompleteName uniqueKeyName = null;
+		ContentObject keyObject = null;
 		try {
-			uniqueKeyName = CompleteName.generateAuthenticatedName(
+			keyObject = new ContentObject(
 									 keyName,
-									 keyID,
-									 ContentAuthenticator.now(),
-									 ContentAuthenticator.ContentType.LEAF,
-									 locatorLocator,
+									 new ContentAuthenticator(keyID,
+											 				  ContentAuthenticator.now(),
+											 				  ContentAuthenticator.ContentType.LEAF,
+											 				  locatorLocator),
 									 encodedKey,
-									 false,
 									 signingKey);
 		} catch (Exception e) {
 			BasicKeyManager.generateConfigurationException("Exception generating key locator and publishing key.", e);
 		}
-		ContentObject keyObject = new ContentObject(uniqueKeyName, encodedKey);
 		remember(key, keyObject);
 	}
 	
@@ -189,7 +187,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 			ContentObject keyObject = retrieve(it.next());
 			if (null != keyObject) {
 				try {
-					CCNNetworkManager.getNetworkManager().put(this, keyObject.name(), keyObject.authenticator(), keyObject.signature(), keyObject.content());
+					CCNNetworkManager.getNetworkManager().put(this, keyObject.name(), keyObject.authenticator(), keyObject.content(), keyObject.signature());
 				} catch (Exception e) {
 					Library.logger().info("KeyRepository::handleInterests, exception in put: " + e.getClass().getName() + " message: " + e.getMessage());
 					Library.infoStackTrace(e);

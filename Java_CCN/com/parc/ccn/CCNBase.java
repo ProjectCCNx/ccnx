@@ -9,6 +9,7 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.security.Signature;
 
 /**
  * DKS TODO this should change to reflect only the core CCN network
@@ -30,8 +31,8 @@ public interface CCNBase {
 	 */
 	public CompleteName put(ContentName name,
 						    ContentAuthenticator authenticator,
-						    byte [] signature,
-						    byte [] content) throws IOException, InterruptedException;
+						    byte [] content,
+						    Signature signature) throws IOException, InterruptedException;
 	
 	/**
 	 * Retrieve any local content available for a

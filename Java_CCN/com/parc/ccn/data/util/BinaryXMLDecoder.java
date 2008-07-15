@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.sql.Timestamp;
+import java.text.ParseException;
 import java.util.TreeMap;
 
 import javax.xml.stream.XMLStreamException;
@@ -238,6 +240,23 @@ public class BinaryXMLDecoder implements XMLDecoder {
 		
 		return blob;
 	}
-
+	
+	/**
+	 * Right now we use the same format for timestamps as the text encoders,
+	 * but this allows us to switch.
+	 */
+	public Timestamp readDateTime(String startTag) throws XMLStreamException {
+		String strTimestamp = readUTF8Element(startTag);
+		Timestamp timestamp;
+		try {
+			timestamp = TextXMLCodec.parseDateTime(strTimestamp);
+		} catch (ParseException e) {
+			timestamp = null;
+		}
+		if (null == timestamp) {
+			throw new XMLStreamException("Cannot parse timestamp: " + strTimestamp);
+		}		
+		return timestamp;
+	}
 
 }

@@ -119,15 +119,21 @@ public class SignatureHelper {
 	
 	public static byte [] sign(String digestAlgorithm,
 							   XMLEncodable [] toBeSigneds,
+							   byte [][] additionalToBeSigneds,
 							   PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException {
 		
 		if (null == toBeSigneds) {
 			Library.logger().info("Value to be signed must not be null.");
 			throw new SignatureException("Cannot sign null content!");
 		}
-		byte [][] encodedData = new byte [toBeSigneds.length][];
+		byte [][] encodedData = new byte [toBeSigneds.length + ((null != additionalToBeSigneds) ? additionalToBeSigneds.length : 0)][];
 		for (int i=0; i < toBeSigneds.length; ++i) {
 			encodedData[i] = toBeSigneds[i].encode();
+		}
+		if (null != additionalToBeSigneds) {
+			for (int i=0,j=toBeSigneds.length; j < encodedData.length; ++i,++j) {
+				encodedData[j] = additionalToBeSigneds[i];
+			}
 		}
 		return sign(digestAlgorithm, 
 					encodedData,
@@ -149,6 +155,7 @@ public class SignatureHelper {
 			getSignatureAlgorithmName(((null == digestAlgorithm) || (digestAlgorithm.length() == 0)) ?
 					DigestHelper.DEFAULT_DIGEST_ALGORITHM : digestAlgorithm,
 					verificationKey);
+		
 		Signature sig = Signature.getInstance(sigAlgName);
 
 		sig.initVerify(verificationKey);
@@ -192,6 +199,7 @@ public class SignatureHelper {
 	}
 
 	public static boolean verify(XMLEncodable [] xmlData,
+								 byte [][] binaryData,
 								 byte [] signature,
 								 String digestAlgorithm,
 								 PublicKey verificationKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException {
@@ -200,9 +208,14 @@ public class SignatureHelper {
 			Library.logger().info("Value to be verified and signature must not be null.");
 			throw new SignatureException("verify: Value to be verified and signature must not be null.");
 		}
-		byte [][] encodedData = new byte [xmlData.length][];
+		byte [][] encodedData = new byte [xmlData.length + ((null != binaryData) ? binaryData.length : 0)][];
 		for (int i=0; i < xmlData.length; ++i) {
 			encodedData[i] = xmlData[i].encode();
+		}
+		if (null != binaryData) {
+			for (int i=0,j=xmlData.length; j < encodedData.length; ++i,++j) {
+				encodedData[j] = binaryData[i];
+			}
 		}
 		return verify(
 				encodedData, 

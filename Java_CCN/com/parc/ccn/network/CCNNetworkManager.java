@@ -36,6 +36,8 @@ import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.Signature;
+import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
 import com.parc.ccn.data.util.InterestTable;
 import com.parc.ccn.data.util.InterestTable.Entry;
 import com.parc.ccn.security.keys.KeyManager;
@@ -419,12 +421,9 @@ public class CCNNetworkManager implements Runnable {
 			PrivateKey signingKey = _keyManager.getDefaultSigningKey();
 			KeyLocator locator = _keyManager.getKeyLocator(signingKey);
 			PublisherKeyID publisher =  _keyManager.getDefaultKeyID();
-			// unique name		
-				CompleteName uniqueName =
-					CompleteName.generateAuthenticatedName(
-							keepname, publisher, ContentAuthenticator.now(),
-							ContentAuthenticator.ContentType.LEAF, locator, contents, false, signingKey);
-			_keepalive = new ContentObject(uniqueName.name(), uniqueName.authenticator(), uniqueName.signature(), contents);
+			
+			_keepalive = new ContentObject(keepname, new ContentAuthenticator(publisher, ContentType.LEAF, locator),
+																			  contents, signingKey);
 		} catch (InvalidKeyException e) {
 			throw new IOException("CCNNetworkManager: bad default signing key: " + e.getMessage());
 		} catch (MalformedContentNameStringException e) {
@@ -442,10 +441,10 @@ public class CCNNetworkManager implements Runnable {
 	 * TODO persistence protocol
 	 */
 	public CompleteName put(Object caller, ContentName name, ContentAuthenticator authenticator, 
-							byte [] signature, byte[] content) throws IOException, InterruptedException {
+							byte[] content, Signature signature) throws IOException, InterruptedException {
 		CompleteName complete = new CompleteName(name, authenticator, signature);
 		Library.logger().fine("put: " + complete.name());
-		ContentObject co = new ContentObject(name, authenticator, signature, content); 
+		ContentObject co = new ContentObject(name, authenticator, content, signature); 
 		DataRegistration reg = new DataRegistration(co, true, caller);
 		// Add to internal processing queue
 		synchronized (_newData) {

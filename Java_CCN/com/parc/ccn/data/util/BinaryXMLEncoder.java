@@ -3,6 +3,7 @@ package com.parc.ccn.data.util;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.sql.Timestamp;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeMap;
@@ -136,6 +137,14 @@ public class BinaryXMLEncoder implements XMLEncoder {
 			throw new XMLStreamException(e.getMessage(),e);
 		}
 	}
+
+	/**
+	 * For now, same as text. Might want something more compact.
+	 */
+	public void writeDateTime(String tag, Timestamp dateTime) throws XMLStreamException {
+		writeElement(tag, 
+				TextXMLCodec.formatDateTime(dateTime));
+}
 
 
 }

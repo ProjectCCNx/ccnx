@@ -32,9 +32,6 @@ public class BaseSecurityTest extends BaseLibraryTest {
 	
 	public void checkPutResults(CompleteName putResult) {
 		try {
-			boolean verifySig = putResult.verifySignature(null);
-			Library.logger().info("Put signature verified? " + verifySig);
-			assertTrue(verifySig);
 		} catch (Exception e) {
 			Library.logger().info("Exception in checkPutResults for name: " + putResult.name() +": " + e.getClass().getName() + " " + e.getMessage());
 			Library.infoStackTrace(e);

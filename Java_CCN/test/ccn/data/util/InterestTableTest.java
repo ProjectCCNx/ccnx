@@ -135,7 +135,7 @@ public class InterestTableTest {
 		// unique name		
 		return CompleteName.generateAuthenticatedName(
 				name, pub, ContentAuthenticator.now(),
-						ContentAuthenticator.ContentType.LEAF, locator, contents, false, null);
+						ContentAuthenticator.ContentType.LEAF, locator, contents, null);
 	}
 	
 	private void match(InterestTable<Integer> table, ContentName name, int v) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {

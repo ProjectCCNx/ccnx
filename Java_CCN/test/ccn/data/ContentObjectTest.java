@@ -17,6 +17,7 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.security.crypto.certificates.BCX509CertificateGenerator;
 
 public class ContentObjectTest {
@@ -41,7 +42,7 @@ public class ContentObjectTest {
 	static KeyPair pair = null;
 	static X509Certificate cert = null;
 	static KeyLocator nameLoc = null;
-	static public byte [] signature = new byte[256];
+	static public Signature signature;
 	static public byte [] contenthash = new byte[32];
 	static public byte [] publisherid = new byte[32];
 	static PublisherKeyID pubkey = null;	
@@ -69,16 +70,18 @@ public class ContentObjectTest {
 					null);
 			nameLoc = new KeyLocator(keyname);
 			
-			Arrays.fill(signature, (byte)1);
+			byte [] signaturebuf = new byte[64];
+			Arrays.fill(signaturebuf, (byte)1);
+			signature = new Signature(signaturebuf);
 			Arrays.fill(contenthash, (byte)2);
 			Arrays.fill(publisherid, (byte)3);
 			
 			pubkey = new PublisherKeyID(publisherid);
 			
-			auth = new ContentAuthenticator(pubkey, null,
+			auth = new ContentAuthenticator(pubkey,
 					new Timestamp(System.currentTimeMillis()), 
 					ContentAuthenticator.ContentType.LEAF, 
-					nameLoc, contenthash, true);
+					nameLoc);
 		} catch (Exception ex) {
 			XMLEncodableTester.handleException(ex);
 			System.out.println("Unable To Initialize Test!!!");
@@ -87,7 +90,7 @@ public class ContentObjectTest {
 
 	@Test
 	public void testDecodeInputStream() {
-		ContentObject co = new ContentObject(name, auth, signature, document3);
+		ContentObject co = new ContentObject(name, auth, document3, signature);
 		ContentObject tdco = new ContentObject();
 		ContentObject bdco = new ContentObject();
 		XMLEncodableTester.encodeDecodeTest("ContentObject", co, tdco, bdco);

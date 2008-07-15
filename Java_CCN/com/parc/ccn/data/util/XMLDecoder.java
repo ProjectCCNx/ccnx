@@ -1,6 +1,7 @@
 package com.parc.ccn.data.util;
 
 import java.io.InputStream;
+import java.sql.Timestamp;
 import java.util.TreeMap;
 
 import javax.xml.stream.XMLStreamException;
@@ -37,4 +38,9 @@ public interface XMLDecoder {
 	public byte [] readBinaryElement(String startTag, TreeMap<String,String> attributes) throws XMLStreamException;
 	
 	public byte [] readBinaryElement(String startTag) throws XMLStreamException;
+
+	/**
+	 * Encapsulate our handling of timestamps.
+	 */
+	public Timestamp readDateTime(String startTag) throws XMLStreamException;
 }
