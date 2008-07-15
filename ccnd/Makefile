@@ -29,13 +29,15 @@ cleanall:
 	find . -type l -print -exec rm '{}' ';'
 
 MANIFEST:
-	svn list -R | grep -v -e '/$$' -e 'agent/5586.ccnb.gz' > MANIFEST
+	echo MANIFEST > MANIFEST.new
+	svn list -R | grep -v -e '/$$' -e 'agent/5586.ccnb.gz' >> MANIFEST.new
+	mv MANIFEST.new MANIFEST
 
 FAVORITES: MANIFEST
 	./makefavorites
-	rm MANIFEST
+	mv MANIFEST 00MANIFEST
 
 tar:	ccnd.tar
 ccnd.tar: MANIFEST
 	tar cf ccnd.tar -T MANIFEST
-	rm MANIFEST
+	mv MANIFEST 00MANIFEST
