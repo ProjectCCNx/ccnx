@@ -1,5 +1,6 @@
 package com.parc.ccn.data;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -14,7 +15,9 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.Signature;
+import com.parc.ccn.data.util.BinaryXMLCodec;
 import com.parc.ccn.data.util.GenericXMLEncodable;
+import com.parc.ccn.data.util.XMLCodecFactory;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
@@ -201,7 +204,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 		try {
 			signature = 
 				SignatureHelper.sign(digestAlgorithm, 
-									 new XMLEncodable[]{name, authenticator}, new byte[][]{contentProxy(content)},
+									 prepareContent(name, authenticator,content),
 									 signingKey);
 		} catch (XMLStreamException e) {
 			Library.handleException("Exception encoding internally-generated XML name!", e);
@@ -324,7 +327,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 	
 		// Now, check the signature.
 		boolean result = 
-			SignatureHelper.verify(new XMLEncodable[]{name, authenticator}, new byte[][]{content},
+			SignatureHelper.verify(prepareContent(name, authenticator, content),
 					signature.signature(),
 					(signature.digestAlgorithm() == null) ? DigestHelper.DEFAULT_DIGEST_ALGORITHM : signature.digestAlgorithm(),
 							publicKey);
@@ -332,7 +335,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 		
 	}
 
-	public boolean verify(byte[] proxy, byte [] signature, ContentAuthenticator authenticator,
+	public static boolean verify(byte[] proxy, byte [] signature, ContentAuthenticator authenticator,
 			String digestAlgorithm, PublicKey publicKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException {
 		if (null == publicKey) {
 			// Get a copy of the public key.
@@ -372,22 +375,42 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 		}
 		// Have to eventually handle various forms of witnesses...
 		byte [] blockDigest =
-			DigestHelper.digestLeaf(
+			DigestHelper.digest(
 				DigestHelper.DEFAULT_DIGEST_ALGORITHM, 
-				new XMLEncodable[]{name(), authenticator()},
-				new byte [][]{content()});
+				prepareContent(name(), authenticator(),content()));
 		return signature().computeProxy(blockDigest, true);
 	}
 	
 	/**
-	 * Do we sign/verify the content itself, or a digest of the content?
-	 * And if so, what algorithm do we use?
-	 * @param content
+	 * Prepare digest for signature.
 	 * @return
 	 */
-	protected static byte [] contentProxy(byte [] content) {
-		return content;
-	}
+	public static byte [] prepareContent(ContentName name, 
+										ContentAuthenticator authenticator, byte [] content) throws XMLStreamException {
+		if ((null == name) || (null == authenticator) || (null == content)) {
+			Library.logger().info("Name, authenticator and content must not be null.");
+			throw new XMLStreamException("prepareContent: name, authenticator and content must not be null.");
+		}
+		
+		// Do setup. Binary codec doesn't write a preamble or anything.
+		// If allow to pick, text encoder would sometimes write random stuff...
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		XMLEncoder encoder = XMLCodecFactory.getEncoder(BinaryXMLCodec.CODEC_NAME);
+		encoder.beginEncoding(baos);
+		
+		// We include the tags in what we verify, to allow routers to merely
+		// take a chunk of data from the packet and sign/verify it en masse
+		name.encode(encoder);
+		authenticator.encode(encoder);
+		// We treat content as a blob according to the binary codec. Want to always
+		// sign the same thing, plus it's really hard to do the automated codec
+		// stuff without doing a whole document, unless we do some serious
+		// rearranging.
+		encoder.writeElement(CONTENT_ELEMENT, content);
 
+		encoder.endEncoding();	
+
+		return baos.toByteArray();
+	}
 
 }

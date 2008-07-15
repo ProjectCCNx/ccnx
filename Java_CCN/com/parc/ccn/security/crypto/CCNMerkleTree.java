@@ -12,7 +12,6 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.Signature;
-import com.parc.ccn.data.util.XMLEncodable;
 
 /**
  * This class extends your basic Merkle tree to 
@@ -217,10 +216,10 @@ public class CCNMerkleTree extends MerkleTree {
 		
 		byte[] blockDigest = null;
 		try {
-			blockDigest = DigestHelper.digestLeaf(
+			blockDigest = DigestHelper.digest(
 									DigestHelper.DEFAULT_DIGEST_ALGORITHM, 
-									new XMLEncodable[]{blockName(leafIndex), blockAuthenticator(leafIndex)},
-									new byte [][]{contentBlocks[leafIndex + blockOffset]});
+									ContentObject.prepareContent(blockName(leafIndex), blockAuthenticator(leafIndex),
+																	contentBlocks[leafIndex + blockOffset]));
 		} catch (XMLStreamException e) {
 			Library.logger().info("Exception in computeBlockDigest, leaf: " + leafIndex + " out of " + numLeaves() + " type: " + e.getClass().getName() + ": " + e.getMessage());
 			// DKS todo -- what to throw?

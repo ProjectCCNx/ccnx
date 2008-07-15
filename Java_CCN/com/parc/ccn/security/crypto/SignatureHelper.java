@@ -211,7 +211,7 @@ public class SignatureHelper {
 		byte [][] encodedData = new byte [xmlData.length + ((null != binaryData) ? binaryData.length : 0)][];
 		for (int i=0; i < xmlData.length; ++i) {
 			encodedData[i] = xmlData[i].encode();
-		}
+		} // DKS TODO -- switch to ostreams to handle binary end/begin tags
 		if (null != binaryData) {
 			for (int i=0,j=xmlData.length; j < encodedData.length; ++i,++j) {
 				encodedData[j] = binaryData[i];
