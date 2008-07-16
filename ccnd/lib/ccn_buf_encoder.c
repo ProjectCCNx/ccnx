@@ -11,9 +11,76 @@
 #include <ccn/coding.h>
 #include <ccn/indexbuf.h>
 
-const char * ccn_content_name(enum ccn_content_type type)
+int
+ccn_auth_create_default(struct ccn_charbuf *c,
+		struct ccn_charbuf *signature,
+		enum ccn_content_type Type,
+		const struct ccn_charbuf *path,
+		const void *content, size_t length)
+{
+    struct ccn_charbuf *pub_key_id = ccn_charbuf_create();
+    struct ccn_charbuf *timestamp = ccn_charbuf_create();
+    int res = 0;
+
+    res += ccn_auth_create(c, pub_key_id, timestamp, Type, NULL);
+
+    res += ccn_charbuf_append_tt(signature, CCN_DTAG_Signature, CCN_DTAG);
+    res += ccn_charbuf_append_tt(signature, CCN_DTAG_SignatureBits, CCN_DTAG);
+    res += ccn_charbuf_append_tt(signature, 8, CCN_BLOB);
+    res += ccn_charbuf_append(signature, "unsigned", 8);
+    res += ccn_charbuf_append_closer(signature);
+    res += ccn_charbuf_append_closer(signature);
+
+    ccn_charbuf_destroy(&pub_key_id);
+    ccn_charbuf_destroy(&timestamp);
+    return (res == 0 ? res : -1);
+}
+		
+int
+ccn_auth_create(struct ccn_charbuf *c,
+	      struct ccn_charbuf *PublisherKeyID,
+	      struct ccn_charbuf *Timestamp,
+	      enum ccn_content_type Type,
+	      struct ccn_charbuf *KeyLocator)
+{
+    int res = 0;
+    const char *typename = ccn_content_name(Type);
+    if (typename == NULL) {
+	return (-1);
+    }
+    
+    res += ccn_charbuf_append_tt(c, CCN_DTAG_ContentAuthenticator, CCN_DTAG);
+
+    res += ccn_charbuf_append_tt(c, CCN_DTAG_PublisherKeyID, CCN_DTAG);
+    res += ccn_charbuf_append_tt(c, PublisherKeyID->length, CCN_BLOB);
+    res += ccn_charbuf_append_charbuf(c, PublisherKeyID);
+    res += ccn_charbuf_append_closer(c);
+
+    res += ccn_charbuf_append_tt(c, CCN_DTAG_Timestamp, CCN_DTAG);
+    res += ccn_charbuf_append_tt(c, Timestamp->length, CCN_UDATA);
+    res += ccn_charbuf_append_charbuf(c, Timestamp);
+    res += ccn_charbuf_append_closer(c);
+
+    res += ccn_charbuf_append_tt(c, CCN_DTAG_Type, CCN_DTAG);
+    res += ccn_charbuf_append_tt(c, strlen(typename), CCN_UDATA);
+    res += ccn_charbuf_append(c, typename, strlen(typename));
+    res += ccn_charbuf_append_closer(c);
+
+    if (KeyLocator != NULL) {
+	/* KeyLocator is a sub-type that should already be encoded */
+	res += ccn_charbuf_append_charbuf(c, KeyLocator);
+    }
+    
+    res += ccn_charbuf_append_closer(c);
+
+    return (res == 0 ? res : -1);
+}
+
+const char *
+ccn_content_name(enum ccn_content_type type)
 {
     switch (type) {
+    // XXX - these do not match up with schema/ccn.xsd
     case CCN_CONTENT_FRAGMENT:
 	return "FRAGMENT";
 	break;
@@ -62,4 +129,32 @@ int ccn_encode_ContentObject(struct ccn_charbuf *ccnb,
     res += ccn_charbuf_append_closer(c);
     
     return (res == 0 ? res : -1);
+}
+
+
+int
+ccn_charbuf_append_tt(struct ccn_charbuf *c, size_t val, enum ccn_tt tt)
+{
+    unsigned char buf[1+8*((sizeof(val)+6)/7)];
+    unsigned char *p = &(buf[sizeof(buf)-1]);
+    int n = 1;
+    p[0] = (CCN_TT_HBIT & ~CCN_CLOSE) |
+           ((val & CCN_MAX_TINY) << CCN_TT_BITS) |
+           (CCN_TT_MASK & tt);
+    val >>= (7-CCN_TT_BITS);
+    while (val != 0) {
+        (--p)[0] = (((unsigned char)val) & ~CCN_TT_HBIT) | CCN_CLOSE;
+        n++;
+        val >>= 7;
+    }
+    return (ccn_charbuf_append(c, p, n));
+}
+
+int
+ccn_charbuf_append_closer(struct ccn_charbuf *c)
+{
+    int res;
+    const unsigned char closer = CCN_CLOSE;
+    res = ccn_charbuf_append(c, &closer, 1);
+    return(res);
 }

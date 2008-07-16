@@ -579,6 +579,19 @@ ccn_buf_decoder_start_at_components(struct ccn_buf_decoder *d,
 }
 
 int
+ccn_content_get_value(const unsigned char *data, size_t data_size,
+                      const struct ccn_parsed_ContentObject *content,
+                      const unsigned char **value, size_t *value_size)
+{
+    int res;
+    res = ccn_ref_tagged_BLOB(CCN_DTAG_Content, data,
+          content->offset[CCN_PCO_B_Content],
+          content->offset[CCN_PCO_E_Content],
+          value, value_size);
+    return(res);
+}
+
+int
 ccn_compare_names(const unsigned char *a, size_t asize, const unsigned char *b, size_t bsize)
 {
     struct ccn_buf_decoder a_decoder;
