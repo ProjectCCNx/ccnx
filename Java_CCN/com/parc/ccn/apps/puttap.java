@@ -3,8 +3,10 @@ package com.parc.ccn.apps;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.security.PublicKey;
 import java.util.ArrayList;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
@@ -31,15 +33,15 @@ public class puttap implements CCNInterestListener {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		if (args.length != 4) {
+		if ((args.length < 4) || (args.length > 5)) {
 			usage();
 			return;
 		}
 		
-		new puttap().go(args[0], args[1], args[2], args[3]);
+		new puttap().go(args[0], args[1], args[2], args[3], ((args.length == 5) ? args[4] : null));
 	}
 	
-	public void go(String encFlag, String ccnName, String tapName, String readName) {
+	public void go(String encFlag, String ccnName, String tapName, String readName, String verifyFlag) {
 		try {
 			if (encFlag.equals("0")) {
 				SystemConfiguration.setDefaultEncoding(TextXMLCodec.codecName());
@@ -52,6 +54,10 @@ public class puttap implements CCNInterestListener {
 				usage();
 				return;
 			}
+			
+			boolean verify = false;
+			if ((null != verifyFlag) && (verifyFlag.equals("-s")))
+				verify = true;
 
 			// Set up tap so packets get written to file
 			CCNNetworkManager.getNetworkManager().setTap(tapName);
@@ -68,13 +74,23 @@ public class puttap implements CCNInterestListener {
 			// not consume the data and therefore will block
 			StandardCCNLibrary reader = new StandardCCNLibrary();
 			reader.expressInterest(new Interest(ccnName), this);
+			
+			PublicKey publicKey = null;
+			// If we're verifying, pull our default public key as that's what we're using.
+			if (verify)
+				publicKey = library.keyManager().getDefaultPublicKey();
 
 			// Dump the file in small packets
 	        InputStream is = new FileInputStream(theFile);
 	        byte[] bytes = new byte[CHUNK_SIZE];
 	        int i = 0;
 	        while (is.read(bytes) >= 0) {
-	        	library.put(new ContentName(name, new Integer(i++).toString()), bytes);
+	        	CompleteName cn = library.put(new ContentName(name, new Integer(i++).toString()), bytes);
+	        	if (verify) {
+	        		if (!ContentObject.verify(cn.name(), cn.authenticator(), bytes, cn.signature(), publicKey)) {
+	        			Library.logger().info("puttap: object failed to verify: " + cn.name());
+	        		}
+	        	}
 	        }
 	        
 	        // Need to call shutdown directly on manager at this point
@@ -87,7 +103,7 @@ public class puttap implements CCNInterestListener {
 	}
 
 	public static void usage() {
-		System.out.println("usage: puttap 0|1 <ccnname> <tapname> <filename>");
+		System.out.println("usage: puttap 0|1 <ccnname> <tapname> <filename> [-s]");
 	}
 
 	public void addInterest(Interest interest) {

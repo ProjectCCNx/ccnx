@@ -1,11 +1,32 @@
 package com.parc.ccn.config;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.util.HashMap;
+
+import com.parc.ccn.Library;
+import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.util.BinaryXMLCodec;
 
 public class SystemConfiguration {
+	
+	public enum DEBUGGING_FLAGS {DEBUG_SIGNATURES};
+	protected static HashMap<DEBUGGING_FLAGS,Boolean> DEBUG_FLAG_VALUES = new HashMap<DEBUGGING_FLAGS,Boolean>();
 
 	protected static final int DEFAULT_REPO2TRANSPORT_PORT = 43567;
 	protected static final int DEFAULT_TRANSPORT2REPO_PORT = 43568;
+	
+	/**
+	 * Property to set debug flags.
+	 */
+	public static final String DEBUG_FLAG_PROPERTY = "com.parc.ccn.DebugFlags";
+	
+	/**
+	 * Property to set directory to dump debug data.
+	 */
+	public static final String DEBUG_DATA_DIRECTORY_PROPERTY = "com.parc.ccn.DebugDataDirectory";
+	protected static final String DEFAULT_DEBUG_DATA_DIRECTORY = "./CCN_DEBUG_DATA";
+	protected static String DEBUG_DATA_DIRECTORY = null;
 	
 	/**
 	 * Can set compile-time default encoding here. Choices are
@@ -26,6 +47,19 @@ public class SystemConfiguration {
 	 */
 	protected static final String DEFAULT_ENCODING_PROPERTY = 
 		"com.parc.ccn.data.DefaultEncoding";
+
+	static {
+		// Allow override of default debug information.
+		String debugFlags = System.getProperty(DEBUG_FLAG_PROPERTY);
+		if (null != debugFlags) {
+			String [] flags = debugFlags.split(":");
+			for (int i=0; i < flags.length; ++i) {
+				setDebugFlag(flags[i]);
+			}
+		}
+			
+		DEBUG_DATA_DIRECTORY = System.getProperty(DEBUG_DATA_DIRECTORY_PROPERTY, DEFAULT_DEBUG_DATA_DIRECTORY);
+	}
 
 	public static String getLocalHost() {
 //		InetAddress.getLocalHost().toString(),
@@ -60,5 +94,52 @@ public class SystemConfiguration {
 	
 	public static void setDefaultEncoding(String encoding) {
 		DEFAULT_ENCODING = encoding;
+	}
+	
+	public static boolean checkDebugFlag(DEBUGGING_FLAGS debugFlag) {
+		Boolean result = DEBUG_FLAG_VALUES.get(debugFlag);
+		if (null == result)
+			return false;
+		return result.booleanValue();
+	}
+	
+	public static void setDebugFlag(DEBUGGING_FLAGS debugFlag, boolean value) {
+		DEBUG_FLAG_VALUES.put(debugFlag, Boolean.valueOf(value));
+	}
+
+	public static void setDebugFlag(String debugFlag, boolean value) {
+		DEBUGGING_FLAGS df = DEBUGGING_FLAGS.valueOf(debugFlag);
+		setDebugFlag(df, value);
+	}
+	
+	public static void setDebugFlag(String debugFlag) {
+		setDebugFlag(debugFlag, true);
+	}
+	
+	public static void outputDebugData(ContentName name, byte [] data) {
+		// Output debug data under a given name.
+		try {	
+			File dataDir = new File(DEBUG_DATA_DIRECTORY);
+			if (!dataDir.exists()) {
+				if (!dataDir.mkdirs()) {
+					Library.logger().warning("outputDebugData: Cannot create default debug data directory: " + dataDir.getAbsolutePath());
+					return;
+				}
+			}
+			File outputFile = new File(dataDir, name.toString());
+			if (!outputFile.getParentFile().exists()) {
+				if (!outputFile.getParentFile().mkdirs()) {
+					Library.logger().warning("outputDebugData: cannot create data parent directory: " + outputFile.getParent());
+				}
+			}
+			
+			Library.logger().info("Attempting to output debug data for name " + name.toString() + " to file " + outputFile.getAbsolutePath());
+			
+			FileOutputStream fos = new FileOutputStream(outputFile);
+			fos.write(data);
+			fos.close();
+		} catch (Exception e) {
+			Library.logger().warning("Exception attempting to log debug data for name: " + name.toString() + " " + e.getClass().getName() + ": " + e.getMessage());
+		}
 	}
 }

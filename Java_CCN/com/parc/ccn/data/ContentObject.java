@@ -13,6 +13,8 @@ import java.util.Arrays;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.config.SystemConfiguration;
+import com.parc.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.util.BinaryXMLCodec;
@@ -32,6 +34,8 @@ import com.parc.ccn.security.keys.KeyManager;
  *
  */
 public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
+	
+	public static boolean DEBUG_SIGNING = false;
 	
 	protected static final String CONTENT_OBJECT_ELEMENT = "ContentObject";
 	protected static final String CONTENT_ELEMENT = "Content";
@@ -202,10 +206,15 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 		byte [] signature = null;
 		
 		try {
+			byte [] toBeSigned = prepareContent(name, authenticator,content);
 			signature = 
 				SignatureHelper.sign(digestAlgorithm, 
-									 prepareContent(name, authenticator,content),
+									 toBeSigned,
 									 signingKey);
+			if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
+				SystemConfiguration.outputDebugData(name, toBeSigned);
+			}
+			
 		} catch (XMLStreamException e) {
 			Library.handleException("Exception encoding internally-generated XML name!", e);
 			throw new SignatureException(e);

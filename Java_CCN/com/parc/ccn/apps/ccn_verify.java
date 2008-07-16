@@ -1,7 +1,10 @@
 package com.parc.ccn.apps;
 
+import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.cert.CertificateEncodingException;
@@ -48,16 +51,24 @@ public class ccn_verify {
 		
 	public static ContentObject readObjectFile(String filePath) throws FileNotFoundException, XMLStreamException {
 		FileInputStream fis = new FileInputStream(filePath);
-		
+		BufferedInputStream bis = new BufferedInputStream(fis);
 		ContentObject co = new ContentObject();
-		co.decode(fis);
+		co.decode(bis);
 		return co;
 		
 	}
 	
-	public static PublicKey readKeyFile(String filePath) throws FileNotFoundException, XMLStreamException, CertificateEncodingException, InvalidKeySpecException, NoSuchAlgorithmException {
+	public static PublicKey readKeyFile(String filePath) throws IOException, FileNotFoundException, XMLStreamException, CertificateEncodingException, InvalidKeySpecException, NoSuchAlgorithmException {
 		ContentObject keyObject = readObjectFile(filePath);
-		return CryptoUtil.getPublicKey(keyObject.content());
+		try {
+			return CryptoUtil.getPublicKey(keyObject.content());
+		} catch (InvalidKeySpecException e) {
+			System.out.println("Exception decoding public key! " + filePath + " " + e.getClass().getName() + ": " + e.getMessage());
+			FileOutputStream fos = new FileOutputStream("contentDump.der");
+			fos.write(keyObject.content());
+			fos.close();
+			throw e;
+		}
 	}
 
 }
