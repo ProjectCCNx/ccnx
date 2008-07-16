@@ -33,7 +33,9 @@ int interest_handler(struct ccn_closure *selfp,
                   const unsigned char *ccnb,    /* binary-format Interest or ContentObject */
                   size_t ccnb_size,
                   struct ccn_indexbuf *components,
-                  int matched_components);
+                int matched_components,
+                     const unsigned char *matched_ccnb,
+                     size_t matched_ccnb_size);
 
 int
 main (int argc, char *argv[]) {
@@ -149,7 +151,7 @@ main (int argc, char *argv[]) {
                 name_size = interest.offset[CCN_PI_E_Name] - name_start;
                 ccn_charbuf_append(interestnamebuf, rawbuf + name_start, name_size);
                 ccn_charbuf_append(interesttemplatebuf, rawbuf, rawlen);
-                res = ccn_express_interest(ccn, interestnamebuf, -1, action, interesttemplatebuf);
+                res = ccn_express_interest(ccn, interestnamebuf, action, interesttemplatebuf);
             }
         } else {
             if (options.logging == 0) fprintf(stderr, "Processing %s ", filename);
@@ -203,7 +205,9 @@ interest_handler(struct ccn_closure *selfp,
                  const unsigned char *ccnb,    /* binary-format Interest or ContentObject */
                  size_t ccnb_size,
                  struct ccn_indexbuf *components,
-                 int matched_components) {
+                 int matched_components,
+                 const unsigned char *matched_ccnb,
+                 size_t matched_ccnb_size) {
 
     int i, c, mc, res;
     struct handlerstateitem item;
@@ -215,6 +219,10 @@ interest_handler(struct ccn_closure *selfp,
         fprintf(stderr, "Upcall final\n");
         return (0);
 
+    case CCN_UPCALL_INTEREST_TIMED_OUT:
+        fprintf(stderr, "refresh\n");
+        return (CCN_UPCALL_RESULT_REEXPRESS);
+        
     case CCN_UPCALL_CONTENT:
         c = state->count;
         for (i = 0; i < c; i++) {

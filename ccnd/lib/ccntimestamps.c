@@ -33,6 +33,9 @@ incoming_content(
         // XXX - cleanup
         return(0);
     }
+    if (kind == CCN_UPCALL_INTEREST_TIMED_OUT) {
+        return(0); /* don't re-express */
+    }
     if (kind != CCN_UPCALL_CONTENT || md == NULL)
         return(-1);
     if (md->firstseen == NULL) {
@@ -57,13 +60,13 @@ incoming_content(
                 if (CCN_GET_TT_FROM_DSTATE(d->decoder.state) == CCN_UDATA) {
                     fwrite(ccnb + d->decoder.index, 1, d->decoder.numval, stdout);
                     printf("\n");
-                    return(0);
+                    break;
                 }
             }
             ccn_buf_advance(d);
         }
     }
-    return(0);
+    return(CCN_UPCALL_RESULT_REEXPRESS);
 }
 
 /* Use some static data for this simple program */
@@ -105,7 +108,7 @@ main(int argc, char **argv)
         ccn_charbuf_append(templ, "\001\322\362\000\002\322\216\060\000\000", 10);
     }
     ccn_name_init(c);
-    ccn_express_interest(ccn, c, -1, &incoming_content_action, templ);
+    ccn_express_interest(ccn, c, &incoming_content_action, templ);
     for (i = 0; i < 100; i++) {
         seen = mydata.nseen;
         ccn_run(ccn, w <= 0 ? 100 : w * 1000);

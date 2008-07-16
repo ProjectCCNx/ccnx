@@ -28,7 +28,9 @@ enum ccn_upcall_kind;
  * Types for implementing upcalls
  * To receive notifications of incoming interests and content, the
  * client is expected to create closures (using client-managed memory).
- * 
+ * When ccnb is a ContentObject or for a CCN_UPCALL_INTEREST_TIMED_OUT event,
+ * matched_ccnb corresponding Interest message, where this is applicable.
+ * Otherwise matched_ccnb will be NULL.
  */
 typedef int (*ccn_handler)(
     struct ccn_closure *selfp,
@@ -37,13 +39,16 @@ typedef int (*ccn_handler)(
     const unsigned char *ccnb,    /* binary-format Interest or ContentObject */
     size_t ccnb_size,             /* size in bytes */
     struct ccn_indexbuf *comps,   /* component boundaries within ccnb */
-    int matched_comps             /* number of components in registration */
+    int matched_comps,            /* number of components in registration */
+    const unsigned char *matched_ccnb, /* binary-format matched Interest */
+    size_t matched_ccnb_size
 );
 enum ccn_upcall_kind {
     CCN_UPCALL_FINAL,       /* handler is about to be deregistered */
     CCN_UPCALL_INTEREST,    /* incoming interest */
     CCN_UPCALL_CONSUMED_INTEREST, /* incoming interest, someone has answered */
-    CCN_UPCALL_CONTENT      /* incoming content */
+    CCN_UPCALL_CONTENT,     /* incoming content */
+    CCN_UPCALL_INTEREST_TIMED_OUT /* interest timed out */
 };
 struct ccn_closure {
     ccn_handler p; 
@@ -159,26 +164,23 @@ ccn_auth_create(struct ccn_charbuf *c,
 	      enum ccn_content_type Type,
 	      struct ccn_charbuf *KeyLocator);
 
-/*
- * ccn_sign: placeholder to create a signature value.
- */
-int
-ccn_sign(struct ccn_charbuf *c, 
-	 const struct ccn_charbuf *input);
-
 /***********************************
  * ccn_express_interest: 
- * repeat: -1 - keep expressing until cancelled
- *          0 - cancel this interest
- *         >0 - express this many times (not counting timeouts)
  * Use the above routines to set up namebuf.
  * The namebuf may be reused or destroyed after the call.
  * If action is not NULL, it is invoked when matching data comes back.
  * If interest_template is supplied, it should contain a ccnb formatted
  * interest message to provide the other portions of the interest.
+ * It may also be reused or destroyed after the call.
+ * When an interest times out, the upcall may return
+ * CCN_UPCALL_RESULT_REEXPRESS to simply re-express the interest.
+ * The default is to unregister the handler.  The common use will be for
+ * the upcall to register again with an interest modified to prevent matching
+ * the same interest again.
  */
+#define CCN_UPCALL_RESULT_REEXPRESS 1
 int ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
-                         int repeat, struct ccn_closure *action,
+                         struct ccn_closure *action,
                          struct ccn_charbuf *interest_template);
 /*
  * ccn_set_default_content_handler:
@@ -464,6 +466,17 @@ int ccn_encode_ContentObject(struct ccn_charbuf *ccnb,
 			     const void *Content, int len);
 
 const char * ccn_content_name(enum ccn_content_type type);
+
+/*
+ * ccn_content_matches_interest:
+ * XXX - ENODOC
+ */
+int ccn_content_matches_interest(const unsigned char *content_object,
+                                 size_t content_object_size,
+                                 const struct ccn_parsed_ContentObject *pc,
+                                 const unsigned char *interest_msg,
+                                 size_t interest_msg_size,
+                                 const struct ccn_parsed_ContentObject *pi);
 
 /***********************************
  * Debugging

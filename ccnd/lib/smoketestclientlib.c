@@ -37,11 +37,15 @@ incoming_content(
     const unsigned char *ccnb,    /* binary-format Interest or ContentObject */
     size_t ccnb_size,             /* size in bytes */
     struct ccn_indexbuf *comps,   /* component boundaries within ccnb */
-    int matched_comps             /* number of components in registration */
+    int matched_comps,            /* number of components in registration */
+    const unsigned char *matched_ccnb, /* binary-format matched Interest */
+    size_t matched_ccnb_size
 )
 {
     if (kind == CCN_UPCALL_FINAL)
         return(0);
+    if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
+        return(CCN_UPCALL_RESULT_REEXPRESS);
     if (kind != CCN_UPCALL_CONTENT)
         return(-1);
     printf("Got content matching %d components:\n", matched_comps);
@@ -65,7 +69,9 @@ outgoing_content(
     const unsigned char *ccnb,    /* binary-format Interest or ContentObject */
     size_t ccnb_size,             /* size in bytes */
     struct ccn_indexbuf *comps,   /* component boundaries within ccnb */
-    int matched_comps             /* number of components in registration */
+    int matched_comps,            /* number of components in registration */
+    const unsigned char *matched_ccnb, /* binary-format matched Interest */
+    size_t matched_ccnb_size
 )
 {
     int res = 0;
@@ -94,7 +100,8 @@ static struct ccn_closure interest_filter = {
     .p = &outgoing_content
 };
 
-int main(int argc, char **argv)
+int
+main(int argc, char **argv)
 {
     int ch;
     int res;
@@ -144,7 +151,8 @@ int main(int argc, char **argv)
             fprintf(stderr, "Registering interest with %d name components\n", res);
             c->length = 0;
             ccn_charbuf_append(c, rawbuf + name_start, name_size);
-            ccn_express_interest(ccn, c, rep, &incoming_content_action, NULL);
+            // XXX - rep is currently ignored
+            ccn_express_interest(ccn, c, &incoming_content_action, NULL);
         }
         else {
             struct ccn_parsed_ContentObject obj = {0};

@@ -102,7 +102,7 @@ ccn_replace_handler(struct ccn *h, struct ccn_closure **dstp, struct ccn_closure
         src->refcount++;
     *dstp = src;
     if (old != NULL && (--(old->refcount)) == 0) {
-        (old->p)(old, CCN_UPCALL_FINAL, h, NULL, 0, NULL, 0);
+        (old->p)(old, CCN_UPCALL_FINAL, h, NULL, 0, NULL, 0, NULL, 0);
     }
 }
 
@@ -456,7 +456,7 @@ ccn_content_get_value(const unsigned char *data, size_t data_size,
 
 int
 ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
-                     int repeat, struct ccn_closure *action,
+                     struct ccn_closure *action,
                      struct ccn_charbuf *interest_template)
 {
     struct hashtb_enumerator ee;
@@ -480,24 +480,16 @@ ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
     interest = e->data;
     if (interest == NULL)
         NOTE_ERRNO(h);
-    else if (repeat == 0) {
-        ccn_replace_handler(h, &(interest->action), NULL);
-        replace_template(interest, NULL);
-        hashtb_delete(e);
-        interest = NULL;
-    }
     hashtb_end(e);
     if (interest == NULL)
         return(res);
-    if (repeat > 0 && interest->repeat >= 0)
-        interest->repeat += repeat;
-    else
-        interest->repeat = -1;
     ccn_replace_handler(h, &(interest->action), action);
     replace_template(interest, interest_template);
     interest->target = 8;
     return(0);
 }
+
+
 
 int
 ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
@@ -632,6 +624,8 @@ ccn_refresh_interest(struct ccn *h, struct expressed_interest *interest,
 static void
 ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
 {
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
     struct ccn_parsed_interest interest = {0};
     struct ccn_indexbuf *comps = ccn_indexbuf_obtain(h);
     int i;
@@ -650,7 +644,7 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                     res = (entry->action->p)(
                         entry->action,
                         upcall_kind,
-                        h, msg, size, comps, i);
+                        h, msg, size, comps, i, NULL, 0);
                     if (res != -1)
                         upcall_kind = CCN_UPCALL_CONSUMED_INTEREST;
                 }
@@ -660,7 +654,7 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
             (h->default_interest_action->p)(
                 h->default_interest_action,
                 upcall_kind,
-                h, msg, size, comps, 0);
+                h, msg, size, comps, 0, NULL, 0);
         }
     }
     else {
@@ -676,30 +670,27 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                     entry = hashtb_lookup(h->interests, key, comps->buf[i] - keystart);
 // XXX - At this point we need to check whether the content matches the rest of the qualifiers on the interest before doing the upcall.
                     if (entry != NULL && entry->target > 0) {
+                        entry->outstanding -= 1;
                         res = (entry->action->p)(
                             entry->action,
                             CCN_UPCALL_CONTENT,
-                            h, msg, size, comps, i);
+                            h, msg, size, comps, i, NULL, 0); // XXX pass matched_ccnb
                         entry = NULL; /* client may have removed or replaced the entry */
-                        if (res >= 0) {
-                            entry = hashtb_lookup(h->interests, key, comps->buf[i] - keystart);
-                            if (entry != NULL) {
-// XXX - Should have an easy way of updating the interest to account for the received content.
-                                if (entry->repeat > 0) {
-                                    entry->repeat -= 1;
-                                    if (entry->repeat > entry->target)
-                                        entry->target = entry->repeat;
-                                    /* XXX - need to finalize somewhere when these hit 0*/
-                                }
-                                entry->outstanding -= 1;
-                                if (entry->outstanding < entry->target)
-                                    ccn_refresh_interest(h, entry, key, comps->buf[i] - keystart);
-                                /* Since we got content, work on filling pipeline */
-// XXX - When is this relevant?
-                                if (entry->outstanding < entry->target)
-                                    ccn_refresh_interest(h, entry, key, comps->buf[i] - keystart);
+                        if (res < 0)
+                            continue;
+                        hashtb_start(h->interests, e);
+                        hashtb_seek(e, key, comps->buf[i] - keystart, 0);
+                        entry = e->data;
+                        if (entry != NULL) {
+                            if (res == CCN_UPCALL_RESULT_REEXPRESS)
+                                ccn_refresh_interest(h, entry, key, comps->buf[i] - keystart);
+                            else {
+                                ccn_replace_handler(h, &(entry->action), NULL);
+                                replace_template(entry, NULL);
+                                hashtb_delete(e);
                             }
                         }
+                        hashtb_end(e);
                     }
                 }
             }
@@ -707,7 +698,7 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                 (h->default_content_action->p)(
                     h->default_content_action,
                     CCN_UPCALL_CONTENT,
-                    h, msg, size, comps, 0);
+                    h, msg, size, comps, 0, NULL, 0);
             }
         }
     }
@@ -803,8 +794,14 @@ ccn_run(struct ccn *h, int timeout)
                     interest->lasttime.tv_sec -= 1;
                 }
                 interest->lasttime.tv_usec -= delta;
-                if (interest->target > 0 && interest->outstanding == 0)
+                if (interest->target > 0 && interest->outstanding == 0) {
+                    res = (interest->action->p)(
+                                             interest->action,
+                                             CCN_UPCALL_INTEREST_TIMED_OUT,
+                                             h, NULL, 0, NULL, 0, NULL, 0); // XXX pass matched_ccnb and other stuff
+                    
                     ccn_refresh_interest(h, interest, e->key, e->keysize);
+                }
              }
              hashtb_end(e);
         }

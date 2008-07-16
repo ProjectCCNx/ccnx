@@ -6,10 +6,10 @@ COPT = -g
 
 PROGRAMS = ccn_ccnbtoxml ccn_splitccnb ccn_verifysig\
     hashtbtest matrixtest skel_decode_test \
-    smoketestclientlib dataresponsetest ccntimestamps ccndump ccndumpnames \
+    smoketestclientlib dataresponsetest ccntimestamps \
     encodedecodetest $(EXPAT_PROGRAMS)
 EXPAT_PROGRAMS = ccn_xmltoccnb
-BROKEN_PROGRAMS = 
+BROKEN_PROGRAMS = ccndump ccndumpnames
 DEBRIS = libccn2.a
 CSRC = ccn_buf_decoder.c ccn_dtag_table.c ccn_buf_encoder.c ccn_charbuf.c \
     ccn_indexbuf.c ccn_coding.c ccn_client.c  \
