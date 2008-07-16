@@ -108,8 +108,23 @@ public class SystemConfiguration {
 	}
 
 	public static void setDebugFlag(String debugFlag, boolean value) {
-		DEBUGGING_FLAGS df = DEBUGGING_FLAGS.valueOf(debugFlag);
-		setDebugFlag(df, value);
+		try {
+			DEBUGGING_FLAGS df = DEBUGGING_FLAGS.valueOf(debugFlag);
+			setDebugFlag(df, value);
+		} catch (IllegalArgumentException ax) {
+			Library.logger().info("Cannot set debugging flag, no known flag: " + debugFlag + ". Choices are: " + debugFlagList());
+		}
+	}
+	
+	public static String debugFlagList() {
+		DEBUGGING_FLAGS [] availableFlags = DEBUGGING_FLAGS.values();
+		StringBuffer flags = new StringBuffer();
+		for (int i=0; i < availableFlags.length; ++i) {
+			if (i > 0)
+				flags.append(":");
+			flags.append(availableFlags);
+		}
+		return flags.toString();
 	}
 	
 	public static void setDebugFlag(String debugFlag) {
