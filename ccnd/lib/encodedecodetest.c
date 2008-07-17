@@ -84,7 +84,7 @@ decode_message(struct ccn_charbuf *message, struct path * name_path, char *data,
 
     if (comps->n-1 != name_path->count) {
 	printf("Decode got wrong number of path components: %d vs. %d\n", 
-	       comps->n-1, name_path->count);
+	       (int)(comps->n-1), name_path->count);
 	res = -1;
     }
     for (i=0; i<name_path->count; i++) {
@@ -104,7 +104,7 @@ decode_message(struct ccn_charbuf *message, struct path * name_path, char *data,
 	res = -1;
     } else if (content_length != len) {
 	printf("Decode mismatch on content length %d vs. %d\n", 
-	       content_length, len);
+	       (int)content_length, (int)len);
 	res = -1;
     } else if (memcmp(content_value, data, len) != 0) {
 	printf("Decode mismatch of content\n");
@@ -185,16 +185,16 @@ main (int argc, char *argv[]) {
 	exit(1);
     }
     buffer = ccn_charbuf_create();
-    printf("Encoding sample message data length %d\n", strlen(contents[0]));
+    printf("Encoding sample message data length %d\n", (int)strlen(contents[0]));
     cur_path = path_create(paths[0]);
     if (encode_message(buffer, cur_path, contents[0], strlen(contents[0]))) {
 	printf("Failed to encode message!\n");
     } else {
-	printf("Encoded sample message length is %d\n", buffer->length);
+	printf("Encoded sample message length is %d\n", (int)buffer->length);
 
 	res = ccn_skeleton_decode(&dd, buffer->buf, buffer->length);
 	if (!(res == buffer->length && dd.state == 0)) {
-	    printf("Failed to decode!  Result %d State %d\n", res, dd.state);
+	    printf("Failed to decode!  Result %d State %d\n", (int)res, dd.state);
 	    result = 1;
 	}
 	fd = open(outname, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU);
@@ -246,18 +246,18 @@ main (int argc, char *argv[]) {
     const char **u;
     struct ccn_charbuf *uri_out = ccn_charbuf_create();
     buffer = ccn_charbuf_create();
-    for (u = uri_tests; *u != NULL; u++,u++,u++,u++,i++) {
+    for (u = uri_tests; *u != NULL; u += 4, i++) {
         printf("Unit test case %d\n", i);
         if (u[0][0] != '.')
             buffer->length = 0;
         res = ccn_name_from_uri(buffer, u[1]);
         if (!expected_res(res, u[0][1])) {
-            printf("Failed: ccn_name_from_uri wrong res %d\n", res);
+            printf("Failed: ccn_name_from_uri wrong res %d\n", (int)res);
             result = 1;
         }
         if (res >= 0) {
             if (res > strlen(u[1])) {
-                printf("Failed: ccn_name_from_uri long res %d\n", res);
+                printf("Failed: ccn_name_from_uri long res %d\n", (int)res);
                 result = 1;
             }
             else if (0 != strcmp(u[1] + res, u[2])) {
@@ -267,7 +267,7 @@ main (int argc, char *argv[]) {
             uri_out->length = 0;
             res = ccn_uri_append(uri_out, buffer->buf, buffer->length, 1);
             if (!expected_res(res, u[0][2])) {
-                printf("Failed: ccn_uri_append wrong res %d\n", res);
+                printf("Failed: ccn_uri_append wrong res %d\n", (int)res);
                 result = 1;
             }
             if (res >= 0) {

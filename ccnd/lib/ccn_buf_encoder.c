@@ -20,14 +20,18 @@ ccn_auth_create_default(struct ccn_charbuf *c,
 {
     struct ccn_charbuf *pub_key_id = ccn_charbuf_create();
     struct ccn_charbuf *timestamp = ccn_charbuf_create();
+    unsigned char fakesig[32] = "nooooogoooodsiiiiig";
+    unsigned char fakepub[32] = {0};
     int res = 0;
 
+    ccn_charbuf_append(pub_key_id, fakepub, sizeof(fakepub));
+    ccn_charbuf_putf(timestamp, "2008-08-17T20:35:22Z");
     res += ccn_auth_create(c, pub_key_id, timestamp, Type, NULL);
 
     res += ccn_charbuf_append_tt(signature, CCN_DTAG_Signature, CCN_DTAG);
     res += ccn_charbuf_append_tt(signature, CCN_DTAG_SignatureBits, CCN_DTAG);
-    res += ccn_charbuf_append_tt(signature, 8, CCN_BLOB);
-    res += ccn_charbuf_append(signature, "unsigned", 8);
+    res += ccn_charbuf_append_tt(signature, sizeof(fakesig), CCN_BLOB);
+    res += ccn_charbuf_append(signature, fakesig, sizeof(fakesig));
     res += ccn_charbuf_append_closer(signature);
     res += ccn_charbuf_append_closer(signature);
 

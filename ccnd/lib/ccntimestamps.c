@@ -22,7 +22,9 @@ incoming_content(
     const unsigned char *ccnb,    /* binary-format Interest or ContentObject */
     size_t ccnb_size,             /* size in bytes */
     struct ccn_indexbuf *comps,   /* component boundaries within ccnb */
-    int matched_comps             /* number of components in registration */
+    int matched_comps,            /* number of components in registration */
+    const unsigned char *matched_ccnb,
+    size_t matched_ccnb_size
 )
 {
     struct ccn_buf_decoder decoder;
