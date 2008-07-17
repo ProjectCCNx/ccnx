@@ -476,7 +476,7 @@ int ccn_content_matches_interest(const unsigned char *content_object,
                                  const struct ccn_parsed_ContentObject *pc,
                                  const unsigned char *interest_msg,
                                  size_t interest_msg_size,
-                                 const struct ccn_parsed_ContentObject *pi);
+                                 const struct ccn_parsed_interest *pi);
 
 /***********************************
  * Debugging
