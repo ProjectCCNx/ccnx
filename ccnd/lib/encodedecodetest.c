@@ -9,6 +9,7 @@
 
 #include <ccn/ccn.h>
 #include <ccn/uri.h>
+#include <ccn/digest.h>
 
 struct path {
     int count;
@@ -287,5 +288,38 @@ main (int argc, char *argv[]) {
     }
     ccn_charbuf_destroy(&buffer);
     ccn_charbuf_destroy(&uri_out);
+    do {
+        printf("Unit test case %d\n", i++);
+        struct ccn_digest *dg = ccn_digest_create(CCN_DIGEST_SHA256);
+        if (dg == NULL) {
+            printf("Failed: ccn_digest_create returned NULL\n");
+            result = 1;
+            break;
+        }
+        printf("Unit test case %d\n", i++);
+        const unsigned char expected_digest[] = {
+            0xb3, 0x82, 0xcd, 0xb0, 0xe9, 0x5d, 0xf7, 0x3b, 0xe7, 0xdc, 0x19, 0x81, 0x3a, 0xfd, 0xdf, 0x89, 0xfb, 0xd4, 0xd4, 0xa0, 0xdb, 0x11, 0xa6, 0xba, 0x24, 0x16, 0x5b, 0xad, 0x9d, 0x90, 0x72, 0xb0
+        };
+        unsigned char actual_digest[sizeof(expected_digest)] = {0};
+        const char *data = "Content-centric";
+        if (ccn_digest_size(dg) != sizeof(expected_digest)) {
+            printf("Failed: wrong digest size\n");
+            result = 1;
+            break;
+        }
+        printf("Unit test case %d\n", i++);
+        ccn_digest_init(dg);
+        res = ccn_digest_update(dg, data, strlen(data));
+        if (res != 0)
+            printf("Warning: check res %d\n", (int)res);
+        printf("Unit test case %d\n", i++);
+        res = ccn_digest_final(dg, actual_digest, sizeof(expected_digest));
+        if (res != 0)
+            printf("Warning: check res %d\n", (int)res);
+        if (0 != memcmp(actual_digest, expected_digest, sizeof(expected_digest))) {
+            printf("Failed: wrong digest\n");
+            result = 1;
+        }
+    } while (0);
     exit(result);
 }
