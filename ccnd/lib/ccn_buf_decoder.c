@@ -391,6 +391,7 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
         res = ccn_parse_Name(d, &name, components);
         if (res < 0)
             return(res);
+        interest->offset[CCN_PI_B_ComponentLast] = name.lastcomp;
         interest->offset[CCN_PI_E_ComponentLast] = d->decoder.token_index - 1;
         interest->offset[CCN_PI_E_Name] = d->decoder.token_index;
         ncomp = name.ncomp;
@@ -507,6 +508,7 @@ ccn_parse_ContentObject(const unsigned char *msg, size_t size,
     struct ccn_buf_decoder *d = ccn_buf_decoder_start(&decoder, msg, size);
     int res;
     x->magic = -1;
+    x->digest_bytes = 0;
     if (ccn_buf_match_dtag(d, CCN_DTAG_ContentObject)) {
         struct parsed_Name name;
         ccn_buf_advance(d);
@@ -518,7 +520,7 @@ ccn_parse_ContentObject(const unsigned char *msg, size_t size,
         res = ccn_parse_Name(d, &name, components);
         if (res < 0)
             d->decoder.state = -__LINE__;
-        x->offset[CCN_PCO_E_ComponentN] = d->decoder.token_index - 1;
+        x->offset[CCN_PCO_E_ComponentLast] = d->decoder.token_index - 1;
         x->offset[CCN_PCO_E_Name] = d->decoder.token_index;
         x->offset[CCN_PCO_B_ContentAuthenticator] = d->decoder.token_index;
         if (ccn_buf_match_dtag(d, CCN_DTAG_ContentAuthenticator)) {
@@ -636,12 +638,15 @@ ccn_content_get_value(const unsigned char *data, size_t data_size,
 }
 
 int
-ccn_compare_names(const unsigned char *a, size_t asize, const unsigned char *b, size_t bsize)
+ccn_compare_names(const unsigned char *a, size_t asize,
+                  const unsigned char *b, size_t bsize)
 {
     struct ccn_buf_decoder a_decoder;
     struct ccn_buf_decoder b_decoder;
-    struct ccn_buf_decoder *aa = ccn_buf_decoder_start_at_components(&a_decoder, a, asize);
-    struct ccn_buf_decoder *bb = ccn_buf_decoder_start_at_components(&b_decoder, b, bsize);
+    struct ccn_buf_decoder *aa =
+        ccn_buf_decoder_start_at_components(&a_decoder, a, asize);
+    struct ccn_buf_decoder *bb =
+        ccn_buf_decoder_start_at_components(&b_decoder, b, bsize);
     const unsigned char *acp = NULL;
     const unsigned char *bcp = NULL;
     size_t acsize;

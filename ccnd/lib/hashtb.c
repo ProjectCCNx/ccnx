@@ -214,7 +214,7 @@ hashtb_seek(struct hashtb_enumerator *hte, const void *key, size_t keysize, size
         setpos(hte, NULL);
         return(-1);
     }
-    memcpy(KEY(ht, p), key, keysize);
+    memcpy(KEY(ht, p), key, keysize + extsize);
     p->hash = h;
     p->keysize = keysize;
     p->extsize = extsize;

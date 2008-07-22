@@ -124,9 +124,9 @@ ccn_bloom.o: ccn_bloom.c ../include/ccn/bloom.h
 ccn_name_util.o: ccn_name_util.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h
-ccn_match.o: ccn_match.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
-  ../include/ccn/bloom.h
+ccn_match.o: ccn_match.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h ../include/ccn/digest.h
 ccn_digest.o: ccn_digest.c ../include/ccn/digest.h
 skel_decode_test.o: skel_decode_test.c ../include/ccn/charbuf.h \
   ../include/ccn/coding.h

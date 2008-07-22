@@ -261,10 +261,6 @@ finalize_content(struct hashtb_enumerator *e) // XXX - neworder
             free(entry->comps);
             entry->comps = NULL;
         }
-        if (entry->tail != NULL) {
-            free(entry->tail);
-            entry->tail = NULL;
-        }
         ccn_indexbuf_destroy(&entry->faces);
     }
     else
@@ -340,10 +336,21 @@ content_skiplist_remove(struct ccnd *h, struct content_entry *content)
 
 
 static struct content_entry *
-find_first_match_candidate(struct ccnd *h, const unsigned char *interest_msg, size_t size)
+find_first_match_candidate(struct ccnd *h,
+    const unsigned char *interest_msg,
+    const struct ccn_parsed_interest *pi)
 {
     int d;
     struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
+    size_t size = pi->offset[CCN_PI_E_Name];
+    if ((pi->offset[CCN_PI_E_ComponentLast] - 
+         pi->offset[CCN_PI_B_ComponentLast]) == 1 + 2 + 32 + 1) {
+        /*
+         * Last component may be a content digest, so don't
+         * consider it when finding the first candidate match.
+         */
+        size = pi->offset[CCN_PI_B_ComponentLast];
+    };
     d = content_skiplist_findbefore(h, interest_msg, size, pred);
     if (d == 0)
         return(NULL);
@@ -361,10 +368,19 @@ content_matches_interest_prefix(struct ccnd *h,
     if (prefix_comps < 0 || prefix_comps >= comps->n)
         abort();
     /* First verify the prefix match. */
-    if (content->ncomps < prefix_comps + 1)
-        return(0);
+    if (content->ncomps < prefix_comps + 1) {
+        if (content->ncomps == prefix_comps &&
+            prefix_comps > 0 &&
+            (comps->buf[prefix_comps] - comps->buf[prefix_comps - 1] ==
+                1 + 2 + 32 + 1)) {
+            /* This could be a digest component - strip it */
+            prefix_comps -= 1;
+        }
+        else
+            return(0);
+    }
     prefixlen = comps->buf[prefix_comps] - comps->buf[0];
-    if (content->comps[comps->n-1] - content->comps[0] != prefixlen)
+    if (content->comps[prefix_comps] - content->comps[0] != prefixlen)
         return(0);
     if (0 != memcmp(content->key + content->comps[0],
                     interest_msg + comps->buf[0],
@@ -380,52 +396,14 @@ content_matches_interest_qualifiers(struct ccnd *h,
                                     struct ccn_parsed_interest *pi,
                                     struct ccn_indexbuf *comps)
 {
-    if (pi->offset[CCN_PI_E_Exclude] > pi->offset[CCN_PI_B_Exclude]) {
-        ccnd_msg(h, "content_matches_interest_qualifiers -- Exclude construct is not yet implemented, rolling a die instead");
-        return(0 == (nrand48(h->seed) % 6));
-    }
-#if 0
-    size_t compsize = 0;
-    int cmp = 0;
-    switch (pi->matchrule) {
-        case CCN_DTAG_MatchNextAvailableSibling:
-        case CCN_DTAG_MatchLastAvailableSibling:
-            compsize = pi->offset[CCN_PI_E_ComponentLast] -
-                       pi->offset[CCN_PI_B_Component0];
-            if (compsize + content->comps[0] <= content->key_size &&
-                0 == memcmp(content->key + content->comps[0],
-                            interest_msg + pi->offset[CCN_PI_B_Component0],
-                            compsize))
-                return(0);
-            cmp = ccn_compare_names(content->key, content->key_size,
-                                    interest_msg, pi->offset[CCN_PI_E]);
-            if (0) {
-                struct ccn_charbuf *c = ccn_charbuf_create();
-                ccn_uri_append(c, content->key, content->key_size, 0);
-                ccn_charbuf_append(c, " : ", 3);
-                ccn_uri_append(c, interest_msg, pi->offset[CCN_PI_E], 0);
-                ccn_charbuf_append(c, "\0", 1);
-                ccnd_msg(h, "ccn_compare_names -- %s -> %d", c->buf, cmp);
-                ccn_charbuf_destroy(&c);
-            }
-            if (cmp <= 0)
-                return(0);
-            break;
-            case CCN_DTAG_MatchFirstAvailableDescendant:
-            case CCN_DTAG_MatchLastAvailableDescendant:
-            /* XXX - do we want this to be strict? */
-            if (comps->n == content->ncomps)
-                return(0);
-            break;
-            case CCN_DTAG_MatchEntirePrefix:
-            if (comps->n != content->ncomps)
-                return(0);
-            default:
-            break;
-    }
-#endif
-    // XXX - test any other qualifiers here
-    return(1);
+    int ans;
+    ans = ccn_content_matches_interest(content->key,
+                                       content->key_size + content->tail_size,
+                                       NULL,
+                                       interest_msg,
+                                       pi->offset[CCN_PI_E],
+                                       pi);
+    return(ans);
 }
 
 static ccn_accession_t
@@ -572,8 +550,7 @@ send_content(struct ccnd *h, struct face *face, struct content_entry *content)
     struct ccn_charbuf *c = charbuf_obtain(h);
     if ((face->flags & CCN_FACE_LINK) != 0)
         ccn_charbuf_append_tt(c, CCN_DTAG_CCNProtocolDataUnit, CCN_DTAG);
-    ccn_charbuf_append(c, content->key, content->key_size);
-    ccn_charbuf_append(c, content->tail, content->tail_size);
+    ccn_charbuf_append(c, content->key, content->key_size + content->tail_size);
     /* stuff interest here */
     if ((face->flags & CCN_FACE_LINK) != 0)
         ccn_charbuf_append_closer(c);
@@ -1323,7 +1300,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
                 }
             }
             if (content == NULL) {
-                content = find_first_match_candidate(h, msg, size);
+                content = find_first_match_candidate(h, msg, pi);
                 if (content != NULL &&
                     !content_matches_interest_prefix(h, content, msg, comps, pi->prefix_comps)) {
                     content = NULL;
@@ -1422,11 +1399,11 @@ process_incoming_content(struct ccnd *h, struct face *face, // XXX - neworder
         tail = msg + keysize;
         tailsize = size - keysize;
         hashtb_start(h->content_tab, e);
-        res = hashtb_seek(e, msg, keysize, 0);
+        res = hashtb_seek(e, msg, keysize, tailsize);
         content = e->data;
         if (res == HT_OLD_ENTRY) {
-            if (tailsize != content->tail_size ||
-                  0 != memcmp(tail, content->tail, tailsize)) {
+            if (tailsize != e->extsize ||
+                  0 != memcmp(tail, e->key + keysize, tailsize)) {
                 ccnd_msg(h, "ContentObject name collision!!!!!");
                 content = NULL;
                 hashtb_delete(e); /* XXX - Mercilessly throw away both of them. */
@@ -1457,13 +1434,11 @@ process_incoming_content(struct ccnd *h, struct face *face, // XXX - neworder
             enroll_content(h, content);
             content->ncomps = comps->n;
             content->comps = calloc(comps->n, sizeof(comps[0]));
-            content->tail_size = tailsize;
-            content->tail = calloc(1, tailsize);
             content->sig_offset = get_signature_offset(&obj, msg);
             content->key_size = e->keysize;
+            content->tail_size = e->extsize;
             content->key = e->key;
-            if (content->tail != NULL && content->comps != NULL && content->faces != NULL) {
-                memcpy(content->tail, tail, tailsize);
+            if (content->comps != NULL && content->faces != NULL) {
                 for (i = 0; i < comps->n; i++)
                     content->comps[i] = comps->buf[i];
                 content_skiplist_insert(h, content);

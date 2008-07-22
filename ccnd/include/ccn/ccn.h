@@ -300,6 +300,7 @@ int ccn_fetch_tagged_nonNegativeInteger(enum ccn_dtag tt,
 enum ccn_parsed_interest_offsetid {
     CCN_PI_B_Name,
     CCN_PI_B_Component0,
+    CCN_PI_B_ComponentLast,
     CCN_PI_E_ComponentLast,
     CCN_PI_E_Name,
     CCN_PI_B_NameComponentCount /* = CCN_PI_E_Name */,
@@ -358,6 +359,7 @@ enum ccn_parsed_content_object_offsetid {
     CCN_PCO_B_Name,
     CCN_PCO_B_Component0,
     CCN_PCO_E_ComponentN,
+    CCN_PCO_E_ComponentLast = CCN_PCO_E_ComponentN,
     CCN_PCO_E_Name,
     CCN_PCO_B_ContentAuthenticator,
     CCN_PCO_B_CAUTH_PublisherKeyID,
@@ -380,6 +382,8 @@ enum ccn_parsed_content_object_offsetid {
 struct ccn_parsed_ContentObject {
     int magic;
     unsigned short offset[CCN_PCO_E+1];
+    int digest_bytes;
+    unsigned char digest[32];
 };
 
 /*
@@ -389,10 +393,15 @@ struct ccn_parsed_ContentObject {
  * If components is not NULL, it is filled with byte indexes
  * of the start of each Component of the Name of the ContentObject,
  * plus one additional value for the index of the end of the last component.
+ * Sets x->digest_bytes to 0; the digest is computed lazily by calling
+ * ccn_digest_ContentObject.
  */
 int ccn_parse_ContentObject(const unsigned char *msg, size_t size,
                    struct ccn_parsed_ContentObject *x,
                    struct ccn_indexbuf *components);
+
+void ccn_digest_ContentObject(const unsigned char *msg,
+                              struct ccn_parsed_ContentObject *pc);
 
 /*
  * ccn_compare_names:
@@ -473,7 +482,7 @@ const char * ccn_content_name(enum ccn_content_type type);
  */
 int ccn_content_matches_interest(const unsigned char *content_object,
                                  size_t content_object_size,
-                                 const struct ccn_parsed_ContentObject *pc,
+                                 struct ccn_parsed_ContentObject *pc,
                                  const unsigned char *interest_msg,
                                  size_t interest_msg_size,
                                  const struct ccn_parsed_interest *pi);

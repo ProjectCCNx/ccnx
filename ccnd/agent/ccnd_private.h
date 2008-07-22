@@ -78,6 +78,7 @@ struct ccnd {
     unsigned long interests_dropped;
     unsigned long interests_sent;
     unsigned short seed[3];
+    int debug;
 };
 
 /*
@@ -124,7 +125,6 @@ struct content_entry {
     int sig_offset;             /* offset of 32-byte signature */
     const unsigned char *key;	/* ContentObject fragment prior to Content */
     int key_size;
-    unsigned char *tail;        /* ContentObject fragment starting at Content */
     int tail_size;
     int nface_old;              /* Used for cleaning supression state */
     int nface_done;             /* How many faces have seen the content */
@@ -164,5 +164,10 @@ struct propagating_entry {
 int ccnd_stats_httpd_start(struct ccnd *);
 int ccnd_stats_check_for_http_connection(struct ccnd *);
 void ccnd_msg(struct ccnd *, const char *, ...);
+void ccnd_debug_ccnb(struct ccnd *h,
+                     int lineno,
+                     const char *msg,
+                     const unsigned char *ccnb,
+                     size_t ccnb_size);
 
 #endif

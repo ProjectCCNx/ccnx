@@ -90,6 +90,23 @@ echo classic.ccnb
   </Name>
 </Interest>
 END
+echo contenthash.ccnb
+../lib/ccn_xmltoccnb -w - <<'END' > contenthash.ccnb
+<Interest>
+  <Name>
+    <Component ccnbencoding="base64Binary">d3d3LmNubi5jb20=</Component>
+    <Component ccnbencoding="base64Binary">MjAwOA==</Component>
+    <Component ccnbencoding="base64Binary">VVM=</Component>
+    <Component ccnbencoding="base64Binary">MDQ=</Component>
+    <Component ccnbencoding="base64Binary">MTc=</Component>
+    <Component ccnbencoding="base64Binary">aGVucnkucG9wZQ==</Component>
+    <Component ccnbencoding="base64Binary">aW5kZXguaHRtbA==</Component>
+    <Component ccnbencoding="base64Binary">MjI=</Component>
+    <Component ccnbencoding="base64Binary">l1lsiioolv0uG2oar6brFPCT7OOpGbHA8aBboHQ+jaA=</Component>
+    <Component ccnbencoding="base64Binary">l1lsiioolv0uG2oar6brFPCT7OOpGbHA8aBboHQ+jaA=</Component>
+  </Name>
+</Interest>
+END
 Fail () {
    echo $*
    exit 1
@@ -98,7 +115,7 @@ test -e /tmp/.ccnd.sock && Fail There is a ccnd running - please stop it for thi
 ./ccnd &
 sleep 1
 gzip -c -d 5586.ccnb.gz | nc -U /tmp/.ccnd.sock
-for i in firstin lastin nextsib lastsib exactmatch classic; do
+for i in firstin lastin nextsib lastsib exactmatch classic contenthash; do
     echo ===================================== $i.ccnb
     ./smoketestccnd -f $i.ccnb  -n 3 > $i.smokeout
 done

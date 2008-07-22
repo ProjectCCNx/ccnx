@@ -17,7 +17,7 @@ $(PROGRAMS): $(CCNLIBDIR)/libccn.a
 
 CCND_OBJ = ccnd.o ccnd_stats.o
 ccnd: $(CCND_OBJ) 
-	$(CC) $(CFLAGS) -o $@ $(CCND_OBJ) $(LDLIBS)
+	$(CC) $(CFLAGS) -o $@ $(CCND_OBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccnd_june08: ccnd_june08.o
 	$(CC) $(CFLAGS) -o $@ ccnd_june08.o $(LDLIBS)
