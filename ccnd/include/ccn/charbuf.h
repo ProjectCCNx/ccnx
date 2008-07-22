@@ -12,6 +12,7 @@
 #define CCN_CHARBUF_DEFINED
 
 #include <stddef.h>
+#include <time.h>
 
 struct ccn_charbuf {
     size_t length;
@@ -62,7 +63,7 @@ int ccn_charbuf_putf(struct ccn_charbuf *c, const char *fmt, ...);
  * Return value is 0, or -1 for error.
  * example: 2008-07-22T17:33:14.109Z
  */ 
-int ccn_charbuf_append_datetime(struct ccn_charbuf *c, long secs, int nsecs);
+int ccn_charbuf_append_datetime(struct ccn_charbuf *c, time_t secs, int nsecs);
 
 /*
  * ccn_charbuf_as_string: view charbuf contents as a string

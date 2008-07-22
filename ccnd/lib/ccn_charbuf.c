@@ -101,7 +101,7 @@ ccn_charbuf_putf(struct ccn_charbuf *c, const char *fmt, ...)
 }
 
 int
-ccn_charbuf_append_datetime(struct ccn_charbuf *c, long secs, int nsecs)
+ccn_charbuf_append_datetime(struct ccn_charbuf *c, time_t secs, int nsecs)
 {
     char timestring[32];
     int timelen;
@@ -113,6 +113,8 @@ ccn_charbuf_append_datetime(struct ccn_charbuf *c, long secs, int nsecs)
     if (timelen >= sizeof(timestring))
         return(-1);
     if (nsecs != 0) {
+        if (nsecs < 0 || nsecs >= 1000000000)
+            return(-1);
         timelen += snprintf(&timestring[timelen], sizeof(timestring) - timelen,
                             ".%09d", nsecs);
         if (timelen >= sizeof(timestring))
