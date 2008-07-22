@@ -1,7 +1,8 @@
-#include <stdio.h>
 #include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <ccn/charbuf.h>
 
 struct ccn_charbuf *
@@ -62,7 +63,13 @@ ccn_charbuf_append(struct ccn_charbuf *c, const void *p, size_t n)
 int
 ccn_charbuf_append_charbuf(struct ccn_charbuf *c, const struct ccn_charbuf *in)
 {
-  return ccn_charbuf_append(c, in->buf, in->length);
+  return(ccn_charbuf_append(c, in->buf, in->length));
+}
+
+int
+ccn_charbuf_append_string(struct ccn_charbuf *c, const char *s)
+{
+  return(ccn_charbuf_append(c, s, strlen(s)));
 }
 
 int
@@ -91,4 +98,39 @@ ccn_charbuf_putf(struct ccn_charbuf *c, const char *fmt, ...)
         return(sz);
     }
     return(-1);
+}
+
+int
+ccn_charbuf_append_datetime(struct ccn_charbuf *c, long secs, int nsecs)
+{
+    char timestring[32];
+    int timelen;
+    struct tm time_tm;
+    int res;
+
+    timelen = strftime(timestring, sizeof(timestring),
+                       "%FT%T", gmtime_r(&secs, &time_tm));
+    if (timelen >= sizeof(timestring))
+        return(-1);
+    if (nsecs != 0) {
+        timelen += snprintf(&timestring[timelen], sizeof(timestring) - timelen,
+                            ".%09d", nsecs);
+        if (timelen >= sizeof(timestring))
+            return(-1);
+        while (timestring[timelen - 1] == '0') timelen--;
+    }
+    timestring[timelen++] = 'Z';
+    res = ccn_charbuf_append(c, timestring, timelen);
+    return (res);
+}
+
+char *
+ccn_charbuf_as_string(struct ccn_charbuf *c)
+{
+    unsigned char *r;
+    r = ccn_charbuf_reserve(c, 1);
+    if (r == NULL)
+        return(NULL);
+    r[0] = 0;
+    return((char *)c->buf);
 }

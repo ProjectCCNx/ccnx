@@ -232,3 +232,15 @@ ccnd_msg(struct ccnd *h, const char *fmt, ...)
     vfprintf(stderr, (const char *)b->buf, ap);
     ccn_charbuf_destroy(&b);
 }
+
+void
+ccnd_debug_ccnb(struct ccnd *h,
+                     int lineno,
+                     const char *msg,
+                     const unsigned char *ccnb,
+                     size_t ccnb_size)
+{
+    struct ccn_charbuf *b = ccn_charbuf_create();
+    
+    ccn_charbuf_destroy(&b);
+}
