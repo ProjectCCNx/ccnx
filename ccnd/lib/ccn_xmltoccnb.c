@@ -19,6 +19,7 @@ struct ccn_encoder_stack_item {
 struct ccn_encoder {
     struct ccn_charbuf *openudata;
     int is_base64binary;
+    int is_hexBinary;
     int toss_white;
     const struct ccn_dict_entry *tagdict;
     int tagdict_count;
@@ -203,6 +204,43 @@ finish_openudata(struct ccn_encoder *u)
             return;
         }
     }
+    else if (u->is_hexBinary) {
+        size_t maxbinlen = (u->openudata->length + 1)/2;
+        unsigned char *obuf = NULL;
+        int v = -1;
+        size_t i;
+        size_t j = 0;
+        unsigned char ch;
+        u->is_hexBinary = 0;
+        obuf = ccn_charbuf_reserve(u->openudata, maxbinlen);
+        if (obuf != NULL) {
+            for (v = 1, i = 0, j = 0; v > 0 && i < u->openudata->length; i++) {
+                ch = u->openudata->buf[i];
+                if (ch <= ' ')
+                    continue;
+                v = (v << 4) + (('0' <= ch && ch <= '9') ? (ch - '0') :
+                                ('A' <= ch && ch <= 'F') ? (ch - 'A' + 10) :
+                                ('a' <= ch && ch <= 'f') ? (ch - 'a' + 10) :
+                                -1024);
+                if (v > 255) {
+                    if (j >= maxbinlen)
+                        break;
+                    obuf[j++] = v & 255;
+                    v = 1;
+                }
+            }
+        }
+        if (v != 1) {
+            fprintf(stderr,
+                    "could not decode hexBinary, leaving as character data\n");
+        }
+        else {
+            emit_tt(u, j, CCN_BLOB);
+            emit_bytes(u, obuf, j);
+            u->openudata->length = 0;
+            return;
+        }
+    }
     if (u->openudata->length != 0) {
         if (!(u->toss_white && all_whitespace(u->openudata))) {
             emit_tt(u, u->openudata->length, CCN_UDATA);
@@ -249,22 +287,30 @@ emit_closer(struct ccn_encoder *u)
 
 static void
 do_start_element(void *ud, const XML_Char *name,
-                          const XML_Char **atts)
+                 const XML_Char **atts)
 {
     struct ccn_encoder *u = ud;
     const XML_Char **att;
     int is_base64binary = 0;
+    int is_hexBinary = 0;
     emit_name(u, CCN_TAG, name);
     for (att = atts; att[0] != NULL; att += 2) {
-        if (0 == strcmp(att[0], "ccnbencoding") && 
-            0 == strcmp(att[1], "base64Binary")) {
-            is_base64binary = 1;
-            continue;
+        if (0 == strcmp(att[0], "ccnbencoding")) {
+            if (0 == strcmp(att[1], "base64Binary")) {
+                is_base64binary = 1;
+                continue;
+            }
+            if (0 == strcmp(att[1], "hexBinary")) {
+                is_hexBinary = 1;
+                continue;
+            }
+            fprintf(stderr, "warning - unknown ccnbencoding found (%s)\n", att[1]);
         }
         emit_name(u, CCN_ATTR, att[0]);
         emit_xchars(u, att[1]);
     }
     u->is_base64binary = is_base64binary;
+    u->is_hexBinary = is_hexBinary;
 }
 
 static void
