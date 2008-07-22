@@ -6,6 +6,8 @@
  */
 
 #include <string.h>
+#include <time.h>
+#include <stdio.h>
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
@@ -161,4 +163,24 @@ ccn_charbuf_append_closer(struct ccn_charbuf *c)
     const unsigned char closer = CCN_CLOSE;
     res = ccn_charbuf_append(c, &closer, 1);
     return(res);
+}
+
+int
+ccn_charbuf_append_datetime(struct ccn_charbuf *c, long secs, long nsecs)
+{
+    char timestring[32];
+    int timelen;
+    struct tm time_tm;
+    int res;
+
+    timelen = strftime(timestring, sizeof(timestring), "%FT%T", gmtime_r(&secs, &time_tm));
+    if (nsecs != 0) {
+        sprintf(&timestring[timelen], ".%09ld", nsecs);
+        timelen += 10;
+        while (timestring[timelen - 1] == '0') timelen--;
+    }
+    timestring[timelen++] = 'Z';
+    timestring[timelen] = '\0';
+    res = ccn_charbuf_append(c, timestring, timelen);
+    return (res);
 }

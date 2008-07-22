@@ -514,4 +514,11 @@ int ccn_charbuf_append_tt(struct ccn_charbuf *c, size_t val, enum ccn_tt tt);
  */
 int ccn_charbuf_append_closer(struct ccn_charbuf *c);
 
+/*
+ * ccn_charbuf_append_datetime: append a formatted datetime string based on the
+ *	time provided as local timezone seconds and nanoseconds from the epoch
+ * Return value is 0, or -1 for error.
+ */
+int ccn_charbuf_append_datetime(struct ccn_charbuf *c, long secs, long nsecs);
+
 #endif
