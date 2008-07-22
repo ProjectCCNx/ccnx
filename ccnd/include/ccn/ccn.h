@@ -154,15 +154,17 @@ ccn_auth_create_default(struct ccn_charbuf *c, /* output authenticator */
 
 /*
  * ccn_auth_create: create authenticator in a charbuf 
- * Note that KeyLocator is optional (may be NULL)
+ * Note that key_locator is optional (may be NULL) and is ccnb encoded
  * Return value is 0, or -1 for error.
  */
 int
 ccn_auth_create(struct ccn_charbuf *c,
-	      struct ccn_charbuf *PublisherKeyID,
-	      struct ccn_charbuf *Timestamp,
-	      enum ccn_content_type Type,
-	      struct ccn_charbuf *KeyLocator);
+                const void *publisher_key_id,	/* input, (sha256) hash */
+                size_t publisher_key_id_size, 	/* input, 32 for sha256 hashes */
+                time_t sec,			/* input, dateTime seconds since epoch */
+                int nanosec,			/* input, dateTime nanoseconds */
+                enum ccn_content_type type,	/* input */
+                const struct ccn_charbuf *key_locator);	/* input, optional, ccnb encoded */
 
 /***********************************
  * ccn_express_interest: 
