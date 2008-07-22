@@ -23,7 +23,7 @@ ccn_digest_create(enum ccn_digest_id id)
         default:
             return(NULL);
     }
-    ans = calloc(1, sizeof(ans));
+    ans = calloc(1, sizeof(*ans));
     if (ans != NULL) {
         ans->id = id;
         ans->sz = sz;

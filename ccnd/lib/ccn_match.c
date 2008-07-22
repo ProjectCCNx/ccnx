@@ -11,12 +11,13 @@ ccn_digest_ContentObject(const unsigned char *content_object,
                          struct ccn_parsed_ContentObject *pc)
 {
     int res;
-    struct ccn_digest *d;
-    const unsigned char *content;
-    size_t content_bytes;
+    struct ccn_digest *d = NULL;
+    const unsigned char *content = NULL;
+    size_t content_bytes = 0;
     if (pc->magic < 20080000) abort();
     if (pc->digest_bytes == sizeof(pc->digest))
         return;
+    if (pc->digest_bytes != 0) abort();
     d = ccn_digest_create(CCN_DIGEST_SHA256);
     ccn_digest_init(d);
     res = ccn_ref_tagged_BLOB(CCN_DTAG_Content, content_object,
@@ -28,7 +29,9 @@ ccn_digest_ContentObject(const unsigned char *content_object,
     if (res < 0) abort();
     res = ccn_digest_final(d, pc->digest, sizeof(pc->digest));
     if (res < 0) abort();
+    if (pc->digest_bytes != 0) abort();
     pc->digest_bytes = sizeof(pc->digest);
+    ccn_digest_destroy(&d);
 }
 
 int
