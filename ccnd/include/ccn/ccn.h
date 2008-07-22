@@ -384,8 +384,8 @@ enum ccn_parsed_content_object_offsetid {
 struct ccn_parsed_ContentObject {
     int magic;
     unsigned short offset[CCN_PCO_E+1];
-    int digest_bytes;
     unsigned char digest[32];
+    int digest_bytes;
 };
 
 /*

@@ -19,11 +19,14 @@
 
 #include <unistd.h>
 
+#include <ccn/ccn.h>
 #include <ccn/ccnd.h>
 #include <ccn/charbuf.h>
+#include <ccn/coding.h>
 #include <ccn/indexbuf.h>
 #include <ccn/schedule.h>
 #include <ccn/hashtb.h>
+#include <ccn/uri.h>
 
 #include "ccnd_private.h"
 
@@ -240,7 +243,22 @@ ccnd_debug_ccnb(struct ccnd *h,
                      const unsigned char *ccnb,
                      size_t ccnb_size)
 {
-    struct ccn_charbuf *b = ccn_charbuf_create();
-    
-    ccn_charbuf_destroy(&b);
+    struct ccn_charbuf *c = ccn_charbuf_create();
+    struct ccn_charbuf *nm = NULL;
+    struct ccn_parsed_ContentObject parsed_ContentObject = {0};
+    int res;
+    ccn_charbuf_putf(c, "debug.%d %s ", lineno, msg);
+    ccn_uri_append(c, ccnb, ccnb_size, 1);
+    res = ccn_parse_ContentObject(ccnb, ccnb_size, &parsed_ContentObject, NULL);
+    if (res >= 0) {
+        /* Include the (implicit) content digest name component */
+        ccn_digest_ContentObject(ccnb, &parsed_ContentObject);
+        nm = ccn_charbuf_create();
+        ccn_name_init(nm);
+        ccn_name_append(nm, parsed_ContentObject.digest, parsed_ContentObject.digest_bytes);
+        ccn_uri_append(c, nm->buf, nm->length, 0);
+        ccn_charbuf_destroy(&nm);
+    }
+    ccnd_msg(h, "%s", ccn_charbuf_as_string(c));
+    ccn_charbuf_destroy(&c);
 }

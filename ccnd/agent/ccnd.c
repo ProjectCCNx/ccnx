@@ -1384,6 +1384,7 @@ process_incoming_content(struct ccnd *h, struct face *face, // XXX - neworder
              (keysize = comps->buf[comps->n - 1]) > 65535) {
         ccnd_msg(h, "ContentObject with keysize %lu discarded",
                 (unsigned long)keysize);
+        ccnd_debug_ccnb(h, __LINE__, "oversize", msg, size);
         res = -__LINE__;
     }
     else {
@@ -1405,6 +1406,8 @@ process_incoming_content(struct ccnd *h, struct face *face, // XXX - neworder
             if (tailsize != e->extsize ||
                   0 != memcmp(tail, e->key + keysize, tailsize)) {
                 ccnd_msg(h, "ContentObject name collision!!!!!");
+                ccnd_debug_ccnb(h, __LINE__, "new", msg, size);
+                ccnd_debug_ccnb(h, __LINE__, "old", e->key, e->keysize + e->extsize);
                 content = NULL;
                 hashtb_delete(e); /* XXX - Mercilessly throw away both of them. */
                 res = -__LINE__;
@@ -1413,6 +1416,7 @@ process_incoming_content(struct ccnd *h, struct face *face, // XXX - neworder
                 h->content_dups_recvd++;
                 ccnd_msg(h, "received duplicate ContentObject from %u (accession %llu)",
                     face->faceid, (unsigned long long)content->accession);
+                ccnd_debug_ccnb(h, __LINE__, "dup", msg, size);
                 /* Make note that this face knows about this content */
                     // XXX - should distinguish the case that we were waiting
                     //  to send this content - in that case we might have
