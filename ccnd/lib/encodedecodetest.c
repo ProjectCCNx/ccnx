@@ -177,6 +177,7 @@ main (int argc, char *argv[]) {
     char * paths[] = { "/sip/protocol/parc.com/domain/foo/principal/invite/verb/119424355@127.0.0.1/id", 
 		       "/d/e/f", NULL};
     struct path * cur_path = NULL;
+    unsigned char pubkeyid[32] = {0};
     int i;
 
     if (argc == 3 && strcmp(argv[1], "-o") == 0) {
@@ -186,6 +187,21 @@ main (int argc, char *argv[]) {
 	exit(1);
     }
     buffer = ccn_charbuf_create();
+    printf("Creating authenticator\n");
+    res = ccn_auth_create(buffer, pubkeyid, sizeof(pubkeyid), 1219005322, 0, CCN_CONTENT_FRAGMENT, NULL);
+    if (res == -1) {
+        printf("Failed to create authenticator!\n");
+    }
+    
+    res = ccn_skeleton_decode(&dd, buffer->buf, buffer->length);
+    if (!(res == buffer->length && dd.state == 0)) {
+        printf("Failed to decode authenticator!  Result %d State %d\n", (int)res, dd.state);
+        result = 1;
+    }
+    memset(&dd, 0, sizeof(dd));
+    buffer->length = 0;
+    printf("Done with authenticator\n");
+
     printf("Encoding sample message data length %d\n", (int)strlen(contents[0]));
     cur_path = path_create(paths[0]);
     if (encode_message(buffer, cur_path, contents[0], strlen(contents[0]))) {
