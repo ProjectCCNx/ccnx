@@ -6,14 +6,13 @@
 struct ccn_pkcs12 {
     EVP_PKEY *private_key;
     X509 *certificate;
-    STACK_OF(X509) *ca;
 };
 
 struct ccn_pkcs12 *
 ccn_pkcs12_create()
 {
-    struct ccn_pkcs12 *res_pkcs12 = calloc(1, sizeof(*res_pkcs12));
-    return (res_pkcs12);
+    struct ccn_pkcs12 *res = calloc(1, sizeof(*res));
+    return (res);
 }
 
 void
@@ -24,9 +23,6 @@ ccn_pkcs12_destroy(struct ccn_pkcs12 **p)
             EVP_PKEY_free((*p)->private_key);
         if ((*p)->certificate != NULL)
             X509_free((*p)->certificate);
-        if ((*p)->ca != NULL) {
-            /* XXX - NHB - how do we free a STACK_OF(X509) */
-        }
         free(*p);
         *p = NULL;
     }
@@ -49,7 +45,7 @@ ccn_pkcs12_init(struct ccn_pkcs12 *p, char *name, char *password)
     if (pkcs12 == NULL)
         return (-1);
 
-    res = PKCS12_parse(pkcs12, password, &p->private_key, &p->certificate, &p->ca);
+    res = PKCS12_parse(pkcs12, password, &p->private_key, &p->certificate, NULL);
     PKCS12_free(pkcs12);
 
     if (res != 0)
