@@ -30,7 +30,7 @@ public class UserConfiguration {
 	protected static final int DEFAULT_KEY_LENGTH = 1024;
 	protected static final String DEFAULT_KEY_ALG = "RSA";
 	protected static final String DEFAULT_KEY_ALIAS = "CCNUser";
-	protected static final String DEFAULT_KEYSTORE_TYPE = "JKS"; // "JCEKS"; // want JCEKS, but don't want to force regen yet
+	protected static final String DEFAULT_KEYSTORE_TYPE = "PKCS12"; // "JCEKS"; // want JCEKS, but don't want to force regen yet
 	
 	protected static String CCN_DIR;
 	protected static String USER_DIR;
@@ -65,7 +65,7 @@ public class UserConfiguration {
 		return CCN_DIR + FILE_SEP + KEYSTORE_FILE_NAME; }
 	
 	public static String keystorePassword() { 
-		return CCN_DIR + FILE_SEP + KEYSTORE_PASSWORD; }
+		return KEYSTORE_PASSWORD; }
 	
 	public static String keyRepositoryDirectory() {
 		return CCN_DIR + FILE_SEP + KEY_DIRECTORY; }
