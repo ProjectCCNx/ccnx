@@ -38,9 +38,12 @@ struct ccn {
     int tap;
 };
 
-struct expressed_interest { /* keyed by components of name */
+struct expressed_interest { /* keyed by components of name prefix */
     struct timeval lasttime;
     struct ccn_closure *action;
+    int prefix_comps;
+    unsigned char *morecomponents;
+    unsigned morecomponents_size;
     unsigned char *template_stuff;
     unsigned template_stuff_size;
     int repeat;
@@ -210,13 +213,30 @@ replace_template(struct expressed_interest *interest,
         res = ccn_parse_interest(interest_template->buf,
                                  interest_template->length, &pi, NULL);
         if (res >= 0) {
-            start = pi.offset[CCN_PI_B_PublisherID];
-            size = pi.offset[CCN_PI_E_Scope] - start;
+            start = pi.offset[CCN_PI_E_NameComponentCount];
+            size = pi.offset[CCN_PI_E_Count] - start;
             interest->template_stuff = calloc(1, size);
             if (interest->template_stuff != NULL) {
                 memcpy(interest->template_stuff, interest_template->buf + start, size);
                 interest->template_stuff_size = size;
             }
+        }
+    }
+}
+
+static void
+replace_morecomponents(struct expressed_interest *interest,
+                       const unsigned char *morecomponents, size_t morecomponents_size)
+{
+    if (interest->morecomponents != NULL)
+        free(interest->morecomponents);
+    interest->morecomponents = NULL;
+    interest->morecomponents = 0;
+    if (morecomponents_size > 0) {
+        interest->morecomponents = calloc(1, morecomponents_size);
+        if (interest->morecomponents != NULL) {
+            memcpy(interest->morecomponents, morecomponents, morecomponents_size);
+            interest->morecomponents_size = morecomponents_size;
         }
     }
 }
@@ -236,6 +256,7 @@ ccn_destroy(struct ccn **hp)
         for (hashtb_start(h->interests, e); e->data != NULL; hashtb_next(e)) {
             struct expressed_interest *i = e->data;
             ccn_replace_handler(h, &(i->action), NULL);
+            replace_morecomponents(i, NULL, 0);
             replace_template(i, NULL);
         }
         hashtb_end(e);
@@ -258,53 +279,77 @@ ccn_destroy(struct ccn **hp)
     *hp = NULL;
 }
 
-#if (CCN_DTAG_Name <= CCN_MAX_TINY) /* This better be true */
-#define CCN_START_Name ((unsigned char)(CCN_TT_HBIT + (CCN_DTAG_Name << CCN_TT_BITS)) + CCN_DTAG)
-#endif
-
+/*
+ * ccn_check_namebuf: check that name is valid
+ * Returns the byte offset of the end of prefix portion,
+ * as given by prefix_comps, or -1 for error.
+ * prefix_comps = -1 means the whole name is the prefix.
+ */
 static int
-ccn_check_namebuf(struct ccn *h, struct ccn_charbuf *namebuf)
+ccn_check_namebuf(struct ccn *h, struct ccn_charbuf *namebuf, int prefix_comps)
 {
-    // XXX - should validate namebuf more than this
-    if (namebuf == NULL || namebuf->length < 2 ||
-          namebuf->buf[0] != CCN_START_Name ||
-          namebuf->buf[namebuf->length-1] != CCN_CLOSE)
-        return(NOTE_ERR(h, EINVAL));
-    return(0);
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
+    int i = 0;
+    int ans = 0;
+    d = ccn_buf_decoder_start(&decoder, namebuf->buf, namebuf->length);
+    if (ccn_buf_match_dtag(d, CCN_DTAG_Name)) {
+        ccn_buf_advance(d);
+        ans = d->decoder.token_index;
+        while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
+            ccn_buf_advance(d);
+            if (ccn_buf_match_blob(d, NULL, NULL)) {
+                ccn_buf_advance(d);
+            }
+            ccn_buf_check_close(d);
+            i += 1;
+            if (prefix_comps < 0 || i == prefix_comps)
+                ans = d->decoder.token_index;
+        }
+        ccn_buf_check_close(d);
+    }
+    if (d->decoder.state < 0 || ans < prefix_comps)
+        return(-1);
+    return(ans);
 }
 
 int
-ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
+ccn_express_interest(struct ccn *h,
+                     struct ccn_charbuf *namebuf,
+                     int prefix_comps,
                      struct ccn_closure *action,
                      struct ccn_charbuf *interest_template)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     int res;
+    int prefixend;
     struct expressed_interest *interest;
     if (h->interests == NULL) {
         h->interests = hashtb_create(sizeof(struct expressed_interest), NULL);
         if (h->interests == NULL)
             return(NOTE_ERRNO(h));
     }
-    res = ccn_check_namebuf(h, namebuf);
-    if (res < 0)
-        return(res);
+    prefixend = ccn_check_namebuf(h, namebuf, prefix_comps);
+    if (prefixend < 0)
+        return(prefixend);
     /*
      * To make it easy to lookup prefixes of names, we keep only
      * the name components as the key in the hash table.
      */
     hashtb_start(h->interests, e);
-    res = hashtb_seek(e, namebuf->buf + 1, namebuf->length - 2, 0);
+    res = hashtb_seek(e, namebuf->buf + 1, prefixend - 1, 0);
     interest = e->data;
     if (interest == NULL)
         NOTE_ERRNO(h);
-    hashtb_end(e);
     if (interest == NULL)
         return(res);
+    interest->prefix_comps = prefix_comps;
     ccn_replace_handler(h, &(interest->action), action);
+    replace_morecomponents(interest, namebuf->buf + prefixend, namebuf->length - 1 - prefixend);
     replace_template(interest, interest_template);
-    interest->target = 8;
+    interest->target = 1;
+    hashtb_end(e);
     return(0);
 }
 
@@ -321,7 +366,7 @@ ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
         if (h->interest_filters == NULL)
             return(NOTE_ERRNO(h));
     }
-    res = ccn_check_namebuf(h, namebuf);
+    res = ccn_check_namebuf(h, namebuf, -1);
     if (res < 0)
         return(res);
     hashtb_start(h->interest_filters, e);
@@ -422,11 +467,22 @@ ccn_refresh_interest(struct ccn *h, struct expressed_interest *interest,
 {
     struct ccn_charbuf *c = h->interestbuf;
     int res;
+    char buf[20];
     c->length = 0;
     ccn_charbuf_append_tt(c, CCN_DTAG_Interest, CCN_DTAG);
     ccn_charbuf_append_tt(c, CCN_DTAG_Name, CCN_DTAG);
     ccn_charbuf_append(c, components, components_size);
-    ccn_charbuf_append_closer(c);
+    if (interest->prefix_comps >= 0 && interest->morecomponents_size != 0) {
+        ccn_charbuf_append(c, interest->morecomponents, interest->morecomponents_size);
+        ccn_charbuf_append_closer(c);
+        ccn_charbuf_append_tt(c, CCN_DTAG_NameComponentCount, CCN_DTAG);
+        res = snprintf(buf, sizeof(buf), "%d", interest->prefix_comps);
+        ccn_charbuf_append_tt(c, res, CCN_BLOB);
+        ccn_charbuf_append(c, buf, res);
+        ccn_charbuf_append_closer(c);
+    }
+    else
+        ccn_charbuf_append_closer(c);
     if (interest->template_stuff != NULL)
         ccn_charbuf_append(c, interest->template_stuff,
                               interest->template_stuff_size);

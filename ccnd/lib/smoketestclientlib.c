@@ -111,6 +111,7 @@ main(int argc, char **argv)
     struct ccn_parsed_interest interest = {0};
     int i;
     struct ccn_charbuf *c = ccn_charbuf_create();
+    struct ccn_charbuf *templ = ccn_charbuf_create();
     struct ccn_indexbuf *comps = ccn_indexbuf_create();
     while ((ch = getopt(argc, argv, "hf:n:")) != -1) {
         switch (ch) {
@@ -148,11 +149,13 @@ main(int argc, char **argv)
         if (res >= 0) {
             size_t name_start = interest.offset[CCN_PI_B_Name];
             size_t name_size = interest.offset[CCN_PI_E_Name] - name_start;
+            templ->length = 0;
+            ccn_charbuf_append(templ, rawbuf, rawlen);
             fprintf(stderr, "Registering interest with %d name components\n", res);
             c->length = 0;
             ccn_charbuf_append(c, rawbuf + name_start, name_size);
             // XXX - rep is currently ignored
-            ccn_express_interest(ccn, c, &incoming_content_action, NULL);
+            ccn_express_interest(ccn, c, interest.prefix_comps, &incoming_content_action, templ);
         }
         else {
             struct ccn_parsed_ContentObject obj = {0};

@@ -169,6 +169,10 @@ ccn_auth_create(struct ccn_charbuf *c,
 /***********************************
  * ccn_express_interest: 
  * Use the above routines to set up namebuf.
+ * Matching occurs only on the first prefix_comps components of
+ * the name, or on all components if prefix_comps is -1.
+ * Any remaining components serve to establish the starting point for
+ * the search for matching content.
  * The namebuf may be reused or destroyed after the call.
  * If action is not NULL, it is invoked when matching data comes back.
  * If interest_template is supplied, it should contain a ccnb formatted
@@ -181,7 +185,9 @@ ccn_auth_create(struct ccn_charbuf *c,
  * the same interest again.
  */
 #define CCN_UPCALL_RESULT_REEXPRESS 1
-int ccn_express_interest(struct ccn *h, struct ccn_charbuf *namebuf,
+int ccn_express_interest(struct ccn *h,
+                         struct ccn_charbuf *namebuf,
+                         int prefix_comps,
                          struct ccn_closure *action,
                          struct ccn_charbuf *interest_template);
 /*

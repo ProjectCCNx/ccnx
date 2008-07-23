@@ -110,7 +110,7 @@ main(int argc, char **argv)
         ccn_charbuf_append(templ, "\001\322\362\000\002\322\216\060\000\000", 10);
     }
     ccn_name_init(c);
-    ccn_express_interest(ccn, c, &incoming_content_action, templ);
+    ccn_express_interest(ccn, c, -1, &incoming_content_action, templ);
     for (i = 0; i < 100; i++) {
         seen = mydata.nseen;
         ccn_run(ccn, w <= 0 ? 100 : w * 1000);
