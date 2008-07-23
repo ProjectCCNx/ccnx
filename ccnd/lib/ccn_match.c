@@ -58,6 +58,8 @@ ccn_content_matches_interest(const unsigned char *content_object,
     size_t comp_size = 0;
     const unsigned char *bloom;
     size_t bloom_size = 0;
+    // XXX - This does not yet properly handle the "mark" in the prefix that is implement using the NameComponentCount field (pi->prefix_comps)
+    // XXX - pubid matching is not done yet, either
     if (pc == NULL) {
         res = ccn_parse_ContentObject(content_object, content_object_size,
                                       &pc_store, NULL);

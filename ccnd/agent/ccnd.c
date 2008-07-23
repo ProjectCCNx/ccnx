@@ -1264,7 +1264,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
         h->interests_dropped += 1;
     }
     else {
-        if (pi->orderpref > 1 && pi->prefix_comps == comps->n - 1)
+        if (pi->orderpref > 1 || pi->prefix_comps != comps->n - 1)
             face->cached_accession = 0;
         namesize = comps->buf[pi->prefix_comps] - comps->buf[0];
         h->interests_accepted += 1;
@@ -1287,7 +1287,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
             if (0 <= res && res < ipe->counters->n)
                 ipe->counters->buf[res] += CCN_UNIT_INTEREST;
             // XXX test AnswerOriginKind here.
-            ccnd_debug_ccnb(h, __LINE__, "interest", msg, size);
+            if (h->debug) ccnd_debug_ccnb(h, __LINE__, "interest", msg, size);
             content = NULL;
             if (face->cached_accession != 0) {
                 /* some help for old clients that are expecting suppression state */
@@ -1299,7 +1299,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
                     ccnd_debug_ccnb(h, __LINE__, "resume", content->key, content->key_size + content->tail_size);
                 if (content != NULL &&
                     !content_matches_interest_prefix(h, content, msg, comps, pi->prefix_comps)) {
-                    ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", msg, size);
+                    if (h->debug) ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", msg, size);
                     content = NULL;
                 }
             }
@@ -1309,7 +1309,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
                     ccnd_debug_ccnb(h, __LINE__, "firstmatch", content->key, content->key_size + content->tail_size);
                 if (content != NULL &&
                     !content_matches_interest_prefix(h, content, msg, comps, pi->prefix_comps)) {
-                    ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", msg, size);
+                    if (h->debug) ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", msg, size);
                     content = NULL;
                 }
             }
@@ -1325,10 +1325,11 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
                 // XXX - accessional ordering is NYI
                 content = content_from_accession(h, content_skiplist_next(h, content));
                 if (content != NULL &&
-                    !content_matches_interest_prefix(h, content, msg, comps, pi->prefix_comps))
+                    !content_matches_interest_prefix(h, content, msg, comps, pi->prefix_comps)) {
                     if (h->debug)
                         ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", content->key, content->key_size + content->tail_size);
                     content = NULL;
+                }
             }
             if (last_match != NULL)
                 content = last_match;

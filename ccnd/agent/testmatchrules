@@ -9,9 +9,10 @@ echo nextsib.ccnb
     <Component ccnbencoding="base64Binary">MjM=</Component>
     <Component ccnbencoding="base64Binary">dXM=</Component>
     <Component ccnbencoding="base64Binary">MjJjbmQtcG9seWdhbXkuaHRtbA==</Component>
-    <Component ccnbencoding="base64Binary">MTMx</Component>
+    <Component ccnbencoding="hexBinary">313330</Component>
   </Name>
   <NameComponentCount>6</NameComponentCount>
+  <Exclude><Component ccnbencoding="hexBinary">313330</Component></Exclude>
   <OrderPreference>4</OrderPreference>
 </Interest>
 END
@@ -25,7 +26,7 @@ echo lastsib.ccnb
     <Component ccnbencoding="base64Binary">MjM=</Component>
     <Component ccnbencoding="base64Binary">dXM=</Component>
     <Component ccnbencoding="base64Binary">MjJjbmQtcG9seWdhbXkuaHRtbA==</Component>
-    <Component ccnbencoding="base64Binary">MTMx</Component>
+    <Component ccnbencoding="hexBinary">313330</Component>
   </Name>
   <NameComponentCount>6</NameComponentCount>
   <OrderPreference>5</OrderPreference>
@@ -41,7 +42,6 @@ echo firstin.ccnb
     <Component ccnbencoding="base64Binary">MjM=</Component>
     <Component ccnbencoding="base64Binary">dXM=</Component>
     <Component ccnbencoding="base64Binary">MjJjbmQtcG9seWdhbXkuaHRtbA==</Component>
-    <Component ccnbencoding="base64Binary">MTMx</Component>
   </Name>
   <OrderPreference>4</OrderPreference>
 </Interest>
@@ -56,7 +56,6 @@ echo lastin.ccnb
     <Component ccnbencoding="base64Binary">MjM=</Component>
     <Component ccnbencoding="base64Binary">dXM=</Component>
     <Component ccnbencoding="base64Binary">MjJjbmQtcG9seWdhbXkuaHRtbA==</Component>
-    <Component ccnbencoding="base64Binary">MTMx</Component>
   </Name>
   <OrderPreference>5</OrderPreference>
 </Interest>
@@ -132,5 +131,5 @@ for i in 0 1 2 3 4 5 6 7 8 9; do cat lastsib.ccnb; done | nc -U /tmp/.ccnd.sock 
 echo ==============================================================
 rm /tmp/.ccnd.sock
 echo GET / | nc localhost 4485
-grep 757300FA019D3232636E642D706F6C7967616D792E68746D6C00FA9D3 *.smokeout | sort | uniq -c
+grep 757300FA019D3232636E642D706F6C7967616D792E68746D6C00 *.smokeout | sort | uniq -c
 wait
