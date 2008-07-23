@@ -34,9 +34,45 @@ ccn_digest_ContentObject(const unsigned char *content_object,
     ccn_digest_destroy(&d);
 }
 
+static int
+ccn_pubid_matches(const unsigned char *content_object,
+                  struct ccn_parsed_ContentObject *pc,
+                  const unsigned char *interest_msg,
+                  const struct ccn_parsed_interest *pi)
+{
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
+    int pubidstart;
+    int pubidbytes;
+    int contentpubidstart;
+    int contentpubidbytes;
+    pubidstart = pi->offset[CCN_PI_B_PublisherIDKeyDigest];
+    pubidbytes = pi->offset[CCN_PI_E_PublisherIDKeyDigest] - pubidstart;
+    if (pubidbytes > 0) {
+        d = ccn_buf_decoder_start(&decoder,
+                                  content_object + pc->offset[CCN_PCO_B_CAUTH_PublisherKeyID],
+                                  (pc->offset[CCN_PCO_E_CAUTH_PublisherKeyID] -
+                                   pc->offset[CCN_PCO_B_CAUTH_PublisherKeyID]));
+        ccn_buf_advance(d);
+        if (ccn_buf_match_some_blob(d)) {
+            contentpubidstart = d->decoder.token_index;
+            ccn_buf_advance(d);
+            contentpubidbytes = d->decoder.token_index - contentpubidstart;
+        }
+        if (pubidbytes != contentpubidbytes)
+            return(0); // This is fishy
+        if (0 != memcmp(interest_msg + pubidstart,
+                        content_object + contentpubidbytes,
+                        pubidbytes))
+            return(0);
+    }
+    return(1);
+};
+
 int
 ccn_content_matches_interest(const unsigned char *content_object,
                              size_t content_object_size,
+                             int implicit_content_digest,
                              struct ccn_parsed_ContentObject *pc,
                              const unsigned char *interest_msg,
                              size_t interest_msg_size,
@@ -58,8 +94,6 @@ ccn_content_matches_interest(const unsigned char *content_object,
     size_t comp_size = 0;
     const unsigned char *bloom;
     size_t bloom_size = 0;
-    // XXX - This does not yet properly handle the "mark" in the prefix that is implement using the NameComponentCount field (pi->prefix_comps)
-    // XXX - pubid matching is not done yet, either
     if (pc == NULL) {
         res = ccn_parse_ContentObject(content_object, content_object_size,
                                       &pc_store, NULL);
@@ -72,8 +106,10 @@ ccn_content_matches_interest(const unsigned char *content_object,
         if (res < 0) return(0);
         pi = &pi_store;
     }
+    if (!ccn_pubid_matches(content_object, pc, interest_msg, pi))
+        return(0);
     prefixstart = pi->offset[CCN_PI_B_Component0];
-    prefixbytes = pi->offset[CCN_PI_E_ComponentLast] - prefixstart;
+    prefixbytes = pi->offset[CCN_PI_E_LastPrefixComponent] - prefixstart;
     namecompstart = pc->offset[CCN_PCO_B_Component0];
     namecompbytes = pc->offset[CCN_PCO_E_ComponentLast] - namecompstart;
     if (prefixbytes > namecompbytes) {
@@ -81,9 +117,10 @@ ccn_content_matches_interest(const unsigned char *content_object,
          * The only way for this to be a match is if the implicit
          * content digest name component comes into play.
          */
-        if (pi->offset[CCN_PI_B_ComponentLast] - prefixstart == namecompbytes &&
-            (pi->offset[CCN_PI_E_ComponentLast] -
-             pi->offset[CCN_PI_B_ComponentLast])  == 1 + 2 + 32 + 1) {
+        if (implicit_content_digest &&
+            pi->offset[CCN_PI_B_LastPrefixComponent] - prefixstart == namecompbytes &&
+            (pi->offset[CCN_PI_E_LastPrefixComponent] -
+             pi->offset[CCN_PI_B_LastPrefixComponent]) == 1 + 2 + 32 + 1) {
             prefixbytes = namecompbytes;
             checkdigest = 1;
         }
@@ -101,9 +138,9 @@ ccn_content_matches_interest(const unsigned char *content_object,
          */
         ccn_digest_ContentObject(content_object, pc);
         d = ccn_buf_decoder_start(&decoder,
-                        interest_msg + pi->offset[CCN_PI_B_ComponentLast],
-                        (pi->offset[CCN_PI_E_ComponentLast] -
-                         pi->offset[CCN_PI_B_ComponentLast]));
+                        interest_msg + pi->offset[CCN_PI_B_LastPrefixComponent],
+                        (pi->offset[CCN_PI_E_LastPrefixComponent] -
+                         pi->offset[CCN_PI_B_LastPrefixComponent]));
         comp_size = 0;
         if (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
                 ccn_buf_advance(d);
@@ -128,6 +165,8 @@ ccn_content_matches_interest(const unsigned char *content_object,
             else
                 return(0);
         }
+        else if (!implicit_content_digest)
+            goto exclude_checked;
         else if (prefixbytes == namecompbytes) {
             /* use the digest name as the next component */
             ccn_digest_ContentObject(content_object, pc);
@@ -179,6 +218,7 @@ ccn_content_matches_interest(const unsigned char *content_object,
             // Stubbed out. Pretend nextcomp matches, hence excluding this one.
             return(0);
         }
+    exclude_checked: {}
     }
     /*
      * At this point the prefix match and exclude-by-next-component is done.

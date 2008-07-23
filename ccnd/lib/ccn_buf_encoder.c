@@ -108,6 +108,9 @@ ccn_content_name(enum ccn_content_type type)
     case CCN_CONTENT_HEADER:
 	return "HEADER";
 	break;
+    case CCN_CONTENT_KEY:
+	return "KEY";
+	break;
     default:
 	return NULL;
     }

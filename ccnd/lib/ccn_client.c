@@ -451,7 +451,7 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
     if (res >= 0) {
         /* This message is an Interest */
         enum ccn_upcall_kind upcall_kind = CCN_UPCALL_INTEREST;
-        if (h->interest_filters != NULL) {
+        if (h->interest_filters != NULL && comps->n > 0) {
             size_t keystart = comps->buf[0];
             unsigned char *key = msg + keystart;
             struct interest_filter *entry;

@@ -6,6 +6,7 @@
  */
 
 #include <string.h>
+#include <stdlib.h>
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
@@ -210,28 +211,43 @@ ccn_parse_Name(struct ccn_buf_decoder *d, struct parsed_Name *x, struct ccn_inde
 }
 
 int
-ccn_parse_PublisherID(struct ccn_buf_decoder *d)
+ccn_parse_PublisherID(struct ccn_buf_decoder *d, struct ccn_parsed_interest *pi)
 {
     int res = -1;
+    int iskey = 0;
+    unsigned pubstart = d->decoder.token_index;
+    unsigned keystart = pubstart;
+    unsigned keyend = pubstart;
+    unsigned pubend = pubstart;
     if (ccn_buf_match_dtag(d, CCN_DTAG_PublisherID)) {
         res = d->decoder.element_index;
         ccn_buf_advance(d);
         if (!ccn_buf_match_attr(d, "type"))
             return (d->decoder.state = -__LINE__);
         ccn_buf_advance(d);
-        if (!(ccn_buf_match_udata(d, "KEY") ||
-              ccn_buf_match_udata(d, "CERTIFICATE") ||
-              ccn_buf_match_udata(d, "ISSUER_KEY") ||
+        iskey = ccn_buf_match_udata(d, "KEY");
+        if (!(iskey                                      ||
+              ccn_buf_match_udata(d, "CERTIFICATE")      ||
+              ccn_buf_match_udata(d, "ISSUER_KEY")       ||
               ccn_buf_match_udata(d, "ISSUER_CERTIFICATE")))
             return (d->decoder.state = -__LINE__);
         ccn_buf_advance(d);
+        keystart = d->decoder.token_index;
         if (!ccn_buf_match_some_blob(d))
             return (d->decoder.state = -__LINE__);
         ccn_buf_advance(d);
+        keyend = d->decoder.token_index;
         ccn_buf_check_close(d);
+        pubend = d->decoder.token_index;
     }
     if (d->decoder.state < 0)
         return (d->decoder.state);
+    if (pi != NULL) {
+        pi->offset[CCN_PI_B_PublisherID] = pubstart;
+        pi->offset[CCN_PI_B_PublisherIDKeyDigest] = keystart;
+        pi->offset[CCN_PI_E_PublisherIDKeyDigest] = iskey ? keyend : keystart;
+        pi->offset[CCN_PI_E_PublisherID] = pubend;
+    }
     return(res);
 }
 
@@ -391,7 +407,9 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
         res = ccn_parse_Name(d, &name, components);
         if (res < 0)
             return(res);
-        interest->offset[CCN_PI_B_ComponentLast] = name.lastcomp;
+        interest->offset[CCN_PI_B_LastPrefixComponent] = name.lastcomp;
+        interest->offset[CCN_PI_E_LastPrefixComponent] = d->decoder.token_index - 1;
+        //interest->offset[CCN_PI_B_ComponentLast] = name.lastcomp;
         interest->offset[CCN_PI_E_ComponentLast] = d->decoder.token_index - 1;
         interest->offset[CCN_PI_E_Name] = d->decoder.token_index;
         ncomp = name.ncomp;
@@ -402,12 +420,24 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
         interest->offset[CCN_PI_E_NameComponentCount] = d->decoder.token_index;
         if (interest->prefix_comps > ncomp)
             return (d->decoder.state = -__LINE__);
-        if (interest->prefix_comps == -1)
+        if (interest->prefix_comps == -1 || interest->prefix_comps == ncomp)
             interest->prefix_comps = ncomp;
+        else if (components != NULL) {
+            ncomp = interest->prefix_comps;
+            if (ncomp >= components->n) abort();
+            interest->offset[CCN_PI_B_LastPrefixComponent] = components->buf[(ncomp > 0) ? ncomp-1 : 0];
+            interest->offset[CCN_PI_E_LastPrefixComponent] = components->buf[ncomp];
+        }
+        else {
+            /* urp - restart the parse with a components buffer. Ugly. */
+            components = ccn_indexbuf_create();
+            if (components == NULL) return(-1);
+            res = ccn_parse_interest(msg, size, interest, components);
+            ccn_indexbuf_destroy(&components);
+            return(res);
+        }
         /* optional PublisherID */
-        interest->offset[CCN_PI_B_PublisherID] = d->decoder.token_index;
-        res = ccn_parse_PublisherID(d);
-        interest->offset[CCN_PI_E_PublisherID] = d->decoder.token_index;
+        res = ccn_parse_PublisherID(d, interest);
         /* optional Exclude element */
         interest->offset[CCN_PI_B_Exclude] = d->decoder.token_index;
         res = ccn_parse_Exclude(d);
@@ -458,7 +488,7 @@ ccn_parse_KeyName(struct ccn_buf_decoder *d, struct parsed_KeyName *x)
         res = d->decoder.element_index;
         ccn_buf_advance(d);
         x->Name = ccn_parse_Name(d, &name, NULL);
-        x->PublisherID = ccn_parse_PublisherID(d);
+        x->PublisherID = ccn_parse_PublisherID(d, NULL);
         ccn_buf_check_close(d);
     }
     else

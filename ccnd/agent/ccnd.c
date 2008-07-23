@@ -343,6 +343,7 @@ find_first_match_candidate(struct ccnd *h,
     int d;
     struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
     size_t size = pi->offset[CCN_PI_E_Name];
+#if 0
     if ((pi->offset[CCN_PI_E_ComponentLast] - 
          pi->offset[CCN_PI_B_ComponentLast]) == 1 + 2 + 32 + 1) {
         /*
@@ -351,6 +352,7 @@ find_first_match_candidate(struct ccnd *h,
          */
         size = pi->offset[CCN_PI_B_ComponentLast];
     };
+#endif
     d = content_skiplist_findbefore(h, interest_msg, size, pred);
     if (d == 0)
         return(NULL);
@@ -399,6 +401,7 @@ content_matches_interest_qualifiers(struct ccnd *h,
     int ans;
     ans = ccn_content_matches_interest(content->key,
                                        content->key_size + content->tail_size,
+                                       0, // XXX
                                        NULL,
                                        interest_msg,
                                        pi->offset[CCN_PI_E],

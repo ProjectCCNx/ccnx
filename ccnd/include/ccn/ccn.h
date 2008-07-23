@@ -134,7 +134,8 @@ enum ccn_content_type {
     CCN_CONTENT_COLLECTION,
     CCN_CONTENT_LEAF,
     CCN_CONTENT_SESSION,
-    CCN_CONTENT_HEADER
+    CCN_CONTENT_HEADER,
+    CCN_CONTENT_KEY
 };
 
 /*
@@ -302,12 +303,16 @@ int ccn_fetch_tagged_nonNegativeInteger(enum ccn_dtag tt,
 enum ccn_parsed_interest_offsetid {
     CCN_PI_B_Name,
     CCN_PI_B_Component0,
-    CCN_PI_B_ComponentLast,
+    CCN_PI_B_LastPrefixComponent,
+    CCN_PI_E_LastPrefixComponent,
+    // CCN_PI_B_ComponentLast,
     CCN_PI_E_ComponentLast,
     CCN_PI_E_Name,
     CCN_PI_B_NameComponentCount /* = CCN_PI_E_Name */,
     CCN_PI_E_NameComponentCount,
     CCN_PI_B_PublisherID,
+    CCN_PI_B_PublisherIDKeyDigest,
+    CCN_PI_E_PublisherIDKeyDigest,
     CCN_PI_E_PublisherID,
     CCN_PI_B_Exclude,
     CCN_PI_E_Exclude,
@@ -484,6 +489,7 @@ const char * ccn_content_name(enum ccn_content_type type);
  */
 int ccn_content_matches_interest(const unsigned char *content_object,
                                  size_t content_object_size,
+                                 int implicit_content_digest,
                                  struct ccn_parsed_ContentObject *pc,
                                  const unsigned char *interest_msg,
                                  size_t interest_msg_size,
