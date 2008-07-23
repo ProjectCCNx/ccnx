@@ -93,7 +93,7 @@
 
 <!ELEMENT NameComponentCount (#PCDATA)> <!-- nonNegativeInteger -->
 <!ELEMENT Timestamp	(#PCDATA)>	<!-- dateTime -->
-<!ELEMENT Type		(#PCDATA)>	<!-- FRAGMENT, LINK, CONTAINER, LEAF, SESSION, SEQUENCE, KEY -->
+<!ELEMENT Type		(#PCDATA)>	<!-- FRAGMENT, LINK, COLLECTION, LEAF, SESSION, HEADER, KEY -->
 <!ELEMENT ContentDigest	(#PCDATA)>	<!-- base64 encoding of DER-encoded DigestInfo -->
 <!ATTLIST ContentDigest ccnbencoding CDATA #FIXED 'base64Binary'>
 

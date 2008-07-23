@@ -246,10 +246,10 @@
   <xs:restriction base="xs:string">
     <xs:enumeration value="FRAGMENT"/>
     <xs:enumeration value="LINK"/>
-    <xs:enumeration value="CONTAINER"/>
+    <xs:enumeration value="COLLECTION"/>
     <xs:enumeration value="LEAF"/>
     <xs:enumeration value="SESSION"/>
-    <xs:enumeration value="SEQUENCE"/>
+    <xs:enumeration value="HEADER"/>
     <xs:enumeration value="KEY"/>
   </xs:restriction>
 </xs:simpleType>

@@ -40,5 +40,6 @@
 53,Witness
 54,SignatureBits
 55,DigestAlgorithm
+56,BlockSize
 17702112,CCNProtocolDataUnit
 23204960,ExperimentalResponseFilter
