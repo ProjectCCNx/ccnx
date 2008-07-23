@@ -1287,6 +1287,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
             if (0 <= res && res < ipe->counters->n)
                 ipe->counters->buf[res] += CCN_UNIT_INTEREST;
             // XXX test AnswerOriginKind here.
+            ccnd_debug_ccnb(h, __LINE__, "interest", msg, size);
             content = NULL;
             if (face->cached_accession != 0) {
                 /* some help for old clients that are expecting suppression state */
@@ -1294,21 +1295,29 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
                 face->cached_accession = 0;
                 if (content != NULL && content_matches_interest_prefix(h, content, msg, comps, pi->prefix_comps))
                     content = content_from_accession(h, content_skiplist_next(h, content));
+                if (h->debug && content != NULL)
+                    ccnd_debug_ccnb(h, __LINE__, "resume", content->key, content->key_size + content->tail_size);
                 if (content != NULL &&
                     !content_matches_interest_prefix(h, content, msg, comps, pi->prefix_comps)) {
+                    ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", msg, size);
                     content = NULL;
                 }
             }
             if (content == NULL) {
                 content = find_first_match_candidate(h, msg, pi);
+                if (h->debug && content != NULL)
+                    ccnd_debug_ccnb(h, __LINE__, "firstmatch", content->key, content->key_size + content->tail_size);
                 if (content != NULL &&
                     !content_matches_interest_prefix(h, content, msg, comps, pi->prefix_comps)) {
+                    ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", msg, size);
                     content = NULL;
                 }
             }
             while (content != NULL) {
                 if (content_is_unblocked(content, pi, msg, face->faceid) &&
                     content_matches_interest_qualifiers(h, content, msg, pi, comps)) {
+                    if (h->debug)
+                        ccnd_debug_ccnb(h, __LINE__, "matches", content->key, content->key_size + content->tail_size);
                     if (pi->orderpref != 5) // XXX - should be symbolic
                         break;
                     last_match = content;
@@ -1317,6 +1326,8 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
                 content = content_from_accession(h, content_skiplist_next(h, content));
                 if (content != NULL &&
                     !content_matches_interest_prefix(h, content, msg, comps, pi->prefix_comps))
+                    if (h->debug)
+                        ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", content->key, content->key_size + content->tail_size);
                     content = NULL;
             }
             if (last_match != NULL)
@@ -1784,6 +1795,7 @@ ccnd_create(void) // XXX - neworder
     struct face *face;
     const char *sockname;
     const char *portstr;
+    const char *debugstr;
     int fd;
     int res;
     struct ccnd *h;
@@ -1815,6 +1827,9 @@ ccnd_create(void) // XXX - neworder
     hints.ai_family = PF_UNSPEC;
     hints.ai_socktype = SOCK_DGRAM;
     hints.ai_flags = AI_ADDRCONFIG;
+    debugstr = getenv("CCND_DEBUG");
+    if (debugstr != NULL && debugstr[0] != 0)
+        h->debug = 1;
     portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
     if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
         portstr = "4485";

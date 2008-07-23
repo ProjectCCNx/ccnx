@@ -80,8 +80,8 @@ ccn_content_matches_interest(const unsigned char *content_object,
          * content digest name component comes into play.
          */
         if (pi->offset[CCN_PI_B_ComponentLast] - prefixstart == namecompbytes &&
-            (pi->offset[CCN_PI_B_ComponentLast] -
-             pi->offset[CCN_PI_E_ComponentLast])  == 1 + 2 + 32 + 1) {
+            (pi->offset[CCN_PI_E_ComponentLast] -
+             pi->offset[CCN_PI_B_ComponentLast])  == 1 + 2 + 32 + 1) {
             prefixbytes = namecompbytes;
             checkdigest = 1;
         }
@@ -98,8 +98,17 @@ ccn_content_matches_interest(const unsigned char *content_object,
          * since there is no next component present.
          */
         ccn_digest_ContentObject(content_object, pc);
-        if (0 != memcmp(interest_msg + prefixbytes + 1,
-                        pc->digest, pc->digest_bytes))
+        d = ccn_buf_decoder_start(&decoder,
+                        interest_msg + pi->offset[CCN_PI_B_ComponentLast],
+                        (pi->offset[CCN_PI_E_ComponentLast] -
+                         pi->offset[CCN_PI_B_ComponentLast]));
+        comp_size = 0;
+        if (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
+                ccn_buf_advance(d);
+                ccn_buf_match_blob(d, &comp, &comp_size);
+            }
+        if (comp_size != pc->digest_bytes) abort();
+        if (0 != memcmp(comp, pc->digest, comp_size))
             return(0);
     }
     else if (pi->offset[CCN_PI_E_Exclude] > pi->offset[CCN_PI_B_Exclude]) {
@@ -134,12 +143,15 @@ ccn_content_matches_interest(const unsigned char *content_object,
         bloom_size = 0;
         if (ccn_buf_match_dtag(d, CCN_DTAG_Bloom)) {
                 ccn_buf_advance(d);
-                ccn_buf_match_blob(d, &bloom, &bloom_size);
+                if (ccn_buf_match_blob(d, &bloom, &bloom_size))
+                    ccn_buf_advance(d);
                 ccn_buf_check_close(d);
         }
         while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
             ccn_buf_advance(d);
-            ccn_buf_match_blob(d, &comp, &comp_size);
+            comp_size = 0;
+            if (ccn_buf_match_blob(d, &comp, &comp_size))
+                ccn_buf_advance(d);
             ccn_buf_check_close(d);
             if (comp_size > nextcomp_size)
                 break;
@@ -153,7 +165,8 @@ ccn_content_matches_interest(const unsigned char *content_object,
             bloom_size = 0;
             if (ccn_buf_match_dtag(d, CCN_DTAG_Bloom)) {
                 ccn_buf_advance(d);
-                ccn_buf_match_blob(d, &bloom, &bloom_size);
+                if (ccn_buf_match_blob(d, &bloom, &bloom_size))
+                    ccn_buf_advance(d);
                 ccn_buf_check_close(d);
             }
         }

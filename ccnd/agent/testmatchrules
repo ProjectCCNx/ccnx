@@ -73,7 +73,12 @@ echo exactmatch.ccnb
     <Component ccnbencoding="base64Binary">MjJjbmQtcG9seWdhbXkuaHRtbA==</Component>
     <Component ccnbencoding="base64Binary">MTMx</Component>
   </Name>
-  <Exclude><Bloom ccnbencoding="base64Binary">AA==</Bloom></Exclude>
+  <Exclude>
+    <Bloom ccnbencoding="base64Binary">AA==</Bloom>
+    <Component ccnbencoding="hexBinary">00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000</Component>
+    <Component ccnbencoding="hexBinary">FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF</Component>
+    <Bloom ccnbencoding="base64Binary">AA==</Bloom>
+  </Exclude>
 </Interest>
 END
 echo classic.ccnb
