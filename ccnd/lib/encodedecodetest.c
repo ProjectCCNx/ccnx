@@ -188,7 +188,7 @@ main (int argc, char *argv[]) {
     }
     buffer = ccn_charbuf_create();
     printf("Creating authenticator\n");
-    res = ccn_auth_create(buffer, pubkeyid, sizeof(pubkeyid), 1219005322, 0, CCN_CONTENT_FRAGMENT, NULL);
+    res = ccn_auth_create(buffer, pubkeyid, sizeof(pubkeyid), NULL, CCN_CONTENT_FRAGMENT, NULL);
     if (res == -1) {
         printf("Failed to create authenticator!\n");
     }

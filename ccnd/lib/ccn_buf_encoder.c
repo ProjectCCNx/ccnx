@@ -23,8 +23,7 @@ ccn_auth_create_default(struct ccn_charbuf *c,
     unsigned char fakepub[32] = {0};
     int res = 0;
 
-    /* Fake timestamp is "2008-08-17T20:35:22Z" */
-    res += ccn_auth_create(c, fakepub, sizeof(fakepub), 1219005322, 0, Type, NULL);
+    res += ccn_auth_create(c, fakepub, sizeof(fakepub), NULL, Type, NULL);
 
     res += ccn_charbuf_append_tt(signature, CCN_DTAG_Signature, CCN_DTAG);
     res += ccn_charbuf_append_tt(signature, CCN_DTAG_SignatureBits, CCN_DTAG);
@@ -40,39 +39,47 @@ int
 ccn_auth_create(struct ccn_charbuf *c,
                 const void *publisher_key_id,	/* input, sha256 hash */
                 size_t publisher_key_id_size, 	/* input, 32 for sha256 hashes */
-                time_t sec,			/* input, dateTime seconds since epoch */
-                int nanosec,			/* input, dateTime nanoseconds */
+                const char *datetime,
                 enum ccn_content_type type,	/* input */
                 const struct ccn_charbuf *key_locator)	/* input, optional, ccnb encoded */
 {
     int res = 0;
     const char *typename = ccn_content_name(type);
-    struct ccn_charbuf *datetime = ccn_charbuf_create();
+    struct ccn_charbuf *dt;
 
     if (typename == NULL)
 	return (-1);
-    if (publisher_key_id == NULL || publisher_key_id_size != 32)
-        return (-1);
-    if (datetime == NULL) 
+    if (publisher_key_id != NULL && publisher_key_id_size != 32)
         return (-1);
 
     res += ccn_charbuf_append_tt(c, CCN_DTAG_ContentAuthenticator, CCN_DTAG);
 
     res += ccn_charbuf_append_tt(c, CCN_DTAG_PublisherKeyID, CCN_DTAG);
-    res += ccn_charbuf_append_tt(c, publisher_key_id_size, CCN_BLOB);
-    res += ccn_charbuf_append(c, publisher_key_id, publisher_key_id_size);
+    if (publisher_key_id != NULL) {
+        res += ccn_charbuf_append_tt(c, publisher_key_id_size, CCN_BLOB);
+        res += ccn_charbuf_append(c, publisher_key_id, publisher_key_id_size);
+    } else {
+        /* obtain the default publisher key id and append it */
+    }
     res += ccn_charbuf_append_closer(c);
 
-    res += ccn_charbuf_append_datetime(datetime, sec, nanosec);
-
     res += ccn_charbuf_append_tt(c, CCN_DTAG_Timestamp, CCN_DTAG);
-    res += ccn_charbuf_append_tt(c, datetime->length, CCN_UDATA);
-    res += ccn_charbuf_append_charbuf(c, datetime);
+    if (datetime != NULL) {
+        res += ccn_charbuf_append_tt(c, strlen(datetime), CCN_UDATA);
+        res += ccn_charbuf_append_string(c, datetime);
+    }
+    else {
+        dt = ccn_charbuf_create();
+        res += ccn_charbuf_append_datetime_now(dt, CCN_DATETIME_PRECISION_USEC);
+        res += ccn_charbuf_append_tt(c, dt->length, CCN_UDATA);
+        res += ccn_charbuf_append_charbuf(c, dt);
+        ccn_charbuf_destroy(&dt);
+    }
     res += ccn_charbuf_append_closer(c);
 
     res += ccn_charbuf_append_tt(c, CCN_DTAG_Type, CCN_DTAG);
     res += ccn_charbuf_append_tt(c, strlen(typename), CCN_UDATA);
-    res += ccn_charbuf_append(c, typename, strlen(typename));
+    res += ccn_charbuf_append_string(c, typename);
     res += ccn_charbuf_append_closer(c);
 
     if (key_locator != NULL) {

@@ -162,8 +162,7 @@ int
 ccn_auth_create(struct ccn_charbuf *c,
                 const void *publisher_key_id,	/* input, (sha256) hash */
                 size_t publisher_key_id_size, 	/* input, 32 for sha256 hashes */
-                time_t sec,			/* input, dateTime seconds since epoch */
-                int nanosec,			/* input, dateTime nanoseconds */
+                const char *datetime,		/* input, NULL for "now" */
                 enum ccn_content_type type,	/* input */
                 const struct ccn_charbuf *key_locator);	/* input, optional, ccnb encoded */
 
