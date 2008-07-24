@@ -54,7 +54,7 @@ public class BaseLibraryTest {
 	public void genericGetPut(Thread putter, Thread getter) throws Throwable {
 		try {
 			putter.start();
-			Thread.sleep(200);
+			Thread.sleep(20);
 			Date start = new Date();
 			getter.start();
 			putter.join(50000);
