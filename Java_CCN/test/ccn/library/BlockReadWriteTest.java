@@ -51,7 +51,7 @@ public class BlockReadWriteTest extends BaseLibraryTest {
 		FileOutputStream os = new FileOutputStream(fileName + "_testout.txt");
         byte[] bytes = new byte[CHUNK_SIZE*3];
         long buflen = 0;
-        while ((buflen = useLibrary.read(desc, bytes, 0, bytes.length)) >= 0) {
+        while ((buflen = useLibrary.read(desc, bytes, 0, bytes.length)) > 0) {
         	Library.logger().info("Read " + buflen + " bytes from CCNDescriptor.");
         	os.write(bytes, 0, (int)buflen);
         }
