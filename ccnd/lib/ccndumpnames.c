@@ -6,8 +6,7 @@
 #include <string.h>
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
-int
-ccn_uri_append(struct ccn_charbuf *c, const unsigned char *ccnb, size_t size);
+#include <ccn/uri.h>
 
 /***********
 <Interest>
@@ -42,8 +41,12 @@ incoming_content(
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
         return(CCN_UPCALL_RESULT_REEXPRESS);
     c = ccn_charbuf_create();
-    res = ccn_uri_append(c, ccnb, ccnb_size);
-    printf("%d %d %s\n", kind, res, ccn_charbuf_as_string(c));
+    res = ccn_uri_append(c, ccnb, ccnb_size, 1);
+    if (res >= 0)
+        printf("%s\n", ccn_charbuf_as_string(c));
+    else
+        fprintf("*** Error: ccndumpnames line %d kind=%d res=%d\n",
+            __LINE__, kind, res);
     /* Use the name of the content just received as the resumption point */
     ccn_name_init(c);
     c->length--;
