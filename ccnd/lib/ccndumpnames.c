@@ -43,7 +43,7 @@ incoming_content(
         return(CCN_UPCALL_RESULT_REEXPRESS);
     c = ccn_charbuf_create();
     res = ccn_uri_append(c, ccnb, ccnb_size);
-    printf("%d %d %s\n", kind, res, c->buf);
+    printf("%d %d %s\n", kind, res, ccn_charbuf_as_string(c));
     /* Use the name of the content just received as the resumption point */
     ccn_name_init(c);
     c->length--;
