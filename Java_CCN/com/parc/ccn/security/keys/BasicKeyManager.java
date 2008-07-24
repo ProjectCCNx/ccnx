@@ -45,11 +45,12 @@ public class BasicKeyManager extends KeyManager {
 	protected PrivateKey _privateKey = null;
 	protected KeyLocator _keyLocator = null;
 	
-	protected KeyRepository _keyRepository = new KeyRepository();
+	protected KeyRepository _keyRepository = null;
 	
 	private char [] _password = null;
 	
-	public BasicKeyManager() throws ConfigurationException {
+	public BasicKeyManager() throws ConfigurationException, IOException {
+		_keyRepository = new KeyRepository();
 		loadKeyStore();
 	}
 	
