@@ -1248,6 +1248,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
     struct ccn_parsed_interest *pi = &parsed_interest;
     size_t namesize = 0;
     int res;
+    int try;
     int matched;
     struct interestprefix_entry *ipe = NULL;
     struct ccn_indexbuf *comps = indexbuf_obtain(h);
@@ -1316,9 +1317,17 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
                     content = NULL;
                 }
             }
-            while (content != NULL) {
+            for (try = 0; content != NULL; try++) {
                 if (content_is_unblocked(content, pi, msg, face->faceid) &&
                     content_matches_interest_qualifiers(h, content, msg, pi, comps)) {
+                    if (try == 0 &&
+                          pi->orderpref == 4 &&
+                          pi->prefix_comps != comps->n - 1 &&
+                          content_matches_interest_prefix(h, content, msg, comps, comps->n - 1)) {
+                        if (h->debug)
+                            ccnd_debug_ccnb(h, __LINE__, "skip_match", content->key, content->key_size + content->tail_size);
+                        goto move_along;
+                    }
                     if (h->debug)
                         ccnd_debug_ccnb(h, __LINE__, "matches", content->key, content->key_size + content->tail_size);
                     if (pi->orderpref != 5) // XXX - should be symbolic
@@ -1326,6 +1335,8 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
                     last_match = content;
                 }
                 // XXX - accessional ordering is NYI
+                
+                move_along:
                 content = content_from_accession(h, content_skiplist_next(h, content));
                 if (content != NULL &&
                     !content_matches_interest_prefix(h, content, msg, comps, pi->prefix_comps)) {

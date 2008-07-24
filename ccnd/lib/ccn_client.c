@@ -26,16 +26,24 @@ struct ccn {
     struct ccn_charbuf *interestbuf;
     struct ccn_charbuf *inbuf;
     struct ccn_charbuf *outbuf;
-    struct hashtb *interests;
+    struct hashtb *interests_by_prefix;
     struct ccn_closure *default_content_action;
     struct hashtb *interest_filters;
     struct ccn_closure *default_interest_action;
     struct ccn_skeleton_decoder decoder;
     struct ccn_indexbuf *scratch_indexbuf;
+    struct timeval now;
+    int refresh_us;
     int err;
     int errline;
     int verbose_error;
     int tap;
+};
+
+struct expressed_interest;
+
+struct interests_by_prefix {
+    struct expressed_interest *list;
 };
 
 struct expressed_interest { /* keyed by components of name prefix */
@@ -49,6 +57,7 @@ struct expressed_interest { /* keyed by components of name prefix */
     int repeat;
     int target;
     int outstanding;
+    struct expressed_interest *next;
 };
 
 struct interest_filter { /* keyed by components of name */
@@ -241,6 +250,17 @@ replace_morecomponents(struct expressed_interest *interest,
     }
 }
 
+static struct expressed_interest *
+ccn_destroy_interest(struct ccn *h, struct expressed_interest *i)
+{
+    struct expressed_interest *ans = i->next;
+    ccn_replace_handler(h, &(i->action), NULL);
+    replace_morecomponents(i, NULL, 0);
+    replace_template(i, NULL);
+    free(i);
+    return(ans);
+}
+
 void
 ccn_destroy(struct ccn **hp)
 {
@@ -252,15 +272,14 @@ ccn_destroy(struct ccn **hp)
     ccn_disconnect(h);
     ccn_replace_handler(h, &(h->default_interest_action), NULL);
     ccn_replace_handler(h, &(h->default_content_action), NULL);
-    if (h->interests != NULL) {
-        for (hashtb_start(h->interests, e); e->data != NULL; hashtb_next(e)) {
-            struct expressed_interest *i = e->data;
-            ccn_replace_handler(h, &(i->action), NULL);
-            replace_morecomponents(i, NULL, 0);
-            replace_template(i, NULL);
+    if (h->interests_by_prefix != NULL) {
+        for (hashtb_start(h->interests_by_prefix, e); e->data != NULL; hashtb_next(e)) {
+            struct interests_by_prefix *entry = e->data;
+            while (entry->list != NULL)
+                entry->list = ccn_destroy_interest(h, entry->list);
         }
         hashtb_end(e);
-        hashtb_destroy(&(h->interests));
+        hashtb_destroy(&(h->interests_by_prefix));
     }
     if (h->interest_filters != NULL) {
         for (hashtb_start(h->interest_filters, e); e->data != NULL; hashtb_next(e)) {
@@ -325,9 +344,10 @@ ccn_express_interest(struct ccn *h,
     int res;
     int prefixend;
     struct expressed_interest *interest;
-    if (h->interests == NULL) {
-        h->interests = hashtb_create(sizeof(struct expressed_interest), NULL);
-        if (h->interests == NULL)
+    struct interests_by_prefix *entry = NULL;
+    if (h->interests_by_prefix == NULL) {
+        h->interests_by_prefix = hashtb_create(sizeof(struct interests_by_prefix), NULL);
+        if (h->interests_by_prefix == NULL)
             return(NOTE_ERRNO(h));
     }
     prefixend = ccn_check_namebuf(h, namebuf, prefix_comps);
@@ -335,20 +355,27 @@ ccn_express_interest(struct ccn *h,
         return(prefixend);
     /*
      * To make it easy to lookup prefixes of names, we keep only
-     * the name components as the key in the hash table.
+     * the prefix name components as the key in the hash table.
      */
-    hashtb_start(h->interests, e);
+    hashtb_start(h->interests_by_prefix, e);
     res = hashtb_seek(e, namebuf->buf + 1, prefixend - 1, 0);
-    interest = e->data;
-    if (interest == NULL)
+    entry = e->data;
+    if (entry == NULL) {
         NOTE_ERRNO(h);
-    if (interest == NULL)
         return(res);
+    }
+    interest = calloc(1, sizeof(*interest));
+    if (interest == NULL) {
+        NOTE_ERRNO(h);
+        return(-1);
+    }
     interest->prefix_comps = prefix_comps;
     ccn_replace_handler(h, &(interest->action), action);
     replace_morecomponents(interest, namebuf->buf + prefixend, namebuf->length - 1 - prefixend);
     replace_template(interest, interest_template);
     interest->target = 1;
+    interest->next = entry->list;
+    entry->list = interest;
     hashtb_end(e);
     return(0);
 }
@@ -477,7 +504,7 @@ ccn_refresh_interest(struct ccn *h, struct expressed_interest *interest,
         ccn_charbuf_append_closer(c);
         ccn_charbuf_append_tt(c, CCN_DTAG_NameComponentCount, CCN_DTAG);
         res = snprintf(buf, sizeof(buf), "%d", interest->prefix_comps);
-        ccn_charbuf_append_tt(c, res, CCN_BLOB);
+        ccn_charbuf_append_tt(c, res, CCN_UDATA);
         ccn_charbuf_append(c, buf, res);
         ccn_charbuf_append_closer(c);
     }
@@ -485,25 +512,25 @@ ccn_refresh_interest(struct ccn *h, struct expressed_interest *interest,
         ccn_charbuf_append_closer(c);
     if (interest->template_stuff != NULL)
         ccn_charbuf_append(c, interest->template_stuff,
-                              interest->template_stuff_size);
+                           interest->template_stuff_size);
     ccn_charbuf_append_closer(c);
     if (interest->outstanding < interest->target) {
         res = ccn_put(h, c->buf, c->length);
-        if (res >= 0)
+        if (res >= 0) {
             interest->outstanding += 1;
-}
+            interest->lasttime = h->now;
+        }
+    }
 }
 
 static void
 ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
 {
-    struct hashtb_enumerator ee;
-    struct hashtb_enumerator *e = &ee;
-    struct ccn_parsed_interest interest = {0};
+    struct ccn_parsed_interest pi = {0};
     struct ccn_indexbuf *comps = ccn_indexbuf_obtain(h);
     int i;
     int res;
-    res = ccn_parse_interest(msg, size, &interest, comps);
+    res = ccn_parse_interest(msg, size, &pi, comps);
     if (res >= 0) {
         /* This message is an Interest */
         enum ccn_upcall_kind upcall_kind = CCN_UPCALL_INTEREST;
@@ -535,35 +562,31 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
         struct ccn_parsed_ContentObject obj = {0};
         res = ccn_parse_ContentObject(msg, size, &obj, comps);
         if (res >= 0) {
-            if (h->interests != NULL) {
+            if (h->interests_by_prefix != NULL) {
                 size_t keystart = comps->buf[0];
                 unsigned char *key = msg + keystart;
-                struct expressed_interest *entry;
+                struct expressed_interest *interest = NULL;
+                struct interests_by_prefix *entry = NULL;
                 for (i = comps->n - 1; i >= 0; i--) {
-                    entry = hashtb_lookup(h->interests, key, comps->buf[i] - keystart);
-// XXX - At this point we need to check whether the content matches the rest of the qualifiers on the interest before doing the upcall.
-                    if (entry != NULL && entry->target > 0) {
-                        entry->outstanding -= 1;
-                        res = (entry->action->p)(
-                            entry->action,
-                            CCN_UPCALL_CONTENT,
-                            h, msg, size, comps, i, NULL, 0); // XXX pass matched_ccnb
-                        entry = NULL; /* client may have removed or replaced the entry */
-                        if (res < 0)
-                            continue;
-                        hashtb_start(h->interests, e);
-                        hashtb_seek(e, key, comps->buf[i] - keystart, 0);
-                        entry = e->data;
-                        if (entry != NULL) {
-                            if (res == CCN_UPCALL_RESULT_REEXPRESS)
-                                ccn_refresh_interest(h, entry, key, comps->buf[i] - keystart);
-                            else {
-                                ccn_replace_handler(h, &(entry->action), NULL);
-                                replace_template(entry, NULL);
-                                hashtb_delete(e);
+                    entry = hashtb_lookup(h->interests_by_prefix, key, comps->buf[i] - keystart);
+                    if (entry != NULL) {
+                        for (interest = entry->list; interest != NULL; interest = interest->next) {
+                            if (interest->target > 0 && interest->outstanding > 0) {
+                                // XXX - At this point we need to check whether the content matches the rest of the qualifiers on the interest before doing the upcall.
+                                interest->outstanding -= 1;
+                                res = (interest->action->p)(interest->action,
+                                                            CCN_UPCALL_CONTENT,
+                                                            h, msg, size, comps, i, NULL, 0); // XXX pass matched_ccnb
+                                if (res == CCN_UPCALL_RESULT_REEXPRESS)
+                                    ccn_refresh_interest(h, interest, key, comps->buf[i] - keystart);
+                                else {
+                                    interest->target = 0;
+                                    ccn_replace_handler(h, &(interest->action), NULL);
+                                    replace_morecomponents(interest, NULL, 0);
+                                    replace_template(interest, NULL);
+                                }
                             }
                         }
-                        hashtb_end(e);
                     }
                 }
             }
@@ -626,74 +649,92 @@ ccn_process_input(struct ccn *h)
     return(0);
 }
 
+static void
+ccn_age_interest(struct ccn *h,
+                 struct expressed_interest *interest,
+                 const unsigned char *key, size_t keysize)
+{
+    int delta;
+    int res;
+    if (interest->lasttime.tv_sec + 30 < h->now.tv_sec) {
+        interest->outstanding = 0;
+        ccn_refresh_interest(h, interest, key, keysize);
+        if (CCN_INTEREST_HALFLIFE_MICROSEC < h->refresh_us)
+            h->refresh_us = CCN_INTEREST_HALFLIFE_MICROSEC;
+        return;
+    }
+    delta = (h->now.tv_sec  - interest->lasttime.tv_sec)*1000000 +
+    (h->now.tv_usec - interest->lasttime.tv_usec);
+    while (delta >= CCN_INTEREST_HALFLIFE_MICROSEC) {
+        interest->outstanding /= 2;
+        delta -= CCN_INTEREST_HALFLIFE_MICROSEC;
+    }
+    if (delta < 0)
+        delta = 0;
+    if (CCN_INTEREST_HALFLIFE_MICROSEC - delta < h->refresh_us)
+        h->refresh_us = CCN_INTEREST_HALFLIFE_MICROSEC - delta;
+    interest->lasttime = h->now;
+    while (delta > interest->lasttime.tv_usec) {
+        delta -= 1000000;
+        interest->lasttime.tv_sec -= 1;
+    }
+    interest->lasttime.tv_usec -= delta;
+    if (interest->target > 0 && interest->outstanding == 0) {
+        res = (interest->action->p)(
+                                    interest->action,
+                                    CCN_UPCALL_INTEREST_TIMED_OUT,
+                                    h, NULL, 0, NULL, 0, NULL, 0); // XXX pass matched_ccnb and other stuff
+        if (res == CCN_UPCALL_RESULT_REEXPRESS)
+            ccn_refresh_interest(h, interest, key, keysize);
+    }
+}
+
 int
 ccn_run(struct ccn *h, int timeout)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
-    struct timeval now;
     struct timeval start;
-    struct expressed_interest *interest;
-    int delta;
-    int refresh;
+    struct interests_by_prefix *entry;
+    struct expressed_interest **ip;
     struct pollfd fds[1];
-    int timeout_ms;
+    int millisec;
     int res;
     memset(fds, 0, sizeof(fds));
     memset(&start, 0, sizeof(start));
     while (h->sock != -1) {
-        refresh = 5 * CCN_INTEREST_HALFLIFE_MICROSEC;
-        gettimeofday(&now, NULL);
-        if (h->interests != NULL && !ccn_output_is_pending(h)) {
-             for (hashtb_start(h->interests, e); e->data != NULL; hashtb_next(e)) {
-                interest = e->data;
-                if (interest->lasttime.tv_sec + 30 < now.tv_sec) {
-                    interest->outstanding = 0;
-                    interest->lasttime = now;
-                }
-                delta = (now.tv_sec  - interest->lasttime.tv_sec)*1000000 +
-                        (now.tv_usec - interest->lasttime.tv_usec);
-                while (delta >= CCN_INTEREST_HALFLIFE_MICROSEC) {
-                    interest->outstanding /= 2;
-                    delta -= CCN_INTEREST_HALFLIFE_MICROSEC;
-                }
-                if (delta < 0)
-                    delta = 0;
-                if (CCN_INTEREST_HALFLIFE_MICROSEC - delta < refresh)
-                    refresh = CCN_INTEREST_HALFLIFE_MICROSEC - delta;
-                interest->lasttime = now;
-                while (delta > interest->lasttime.tv_usec) {
-                    delta -= 1000000;
-                    interest->lasttime.tv_sec -= 1;
-                }
-                interest->lasttime.tv_usec -= delta;
-                if (interest->target > 0 && interest->outstanding == 0) {
-                    res = (interest->action->p)(
-                                             interest->action,
-                                             CCN_UPCALL_INTEREST_TIMED_OUT,
-                                             h, NULL, 0, NULL, 0, NULL, 0); // XXX pass matched_ccnb and other stuff
-                    
-                    ccn_refresh_interest(h, interest, e->key, e->keysize);
+        h->refresh_us = 5 * CCN_INTEREST_HALFLIFE_MICROSEC;
+        gettimeofday(&h->now, NULL);
+        if (h->interests_by_prefix != NULL && !ccn_output_is_pending(h)) {
+             for (hashtb_start(h->interests_by_prefix, e); e->data != NULL; hashtb_next(e)) {
+                entry = e->data;
+                for (ip = &(entry->list); (*ip) != NULL;) {
+                    if ((*ip)->target != 0)
+                        ccn_age_interest(h, (*ip), e->key, e->keysize);
+                    if ((*ip)->target == 0)
+                        (*ip) = ccn_destroy_interest(h, (*ip));
+                    else
+                        ip = &((*ip)->next);
                 }
              }
              hashtb_end(e);
         }
         if (start.tv_sec == 0)
-            start = now;
+            start = h->now;
         else if (timeout >= 0) {
-            delta = (now.tv_sec  - start.tv_sec) *1000 +
-                    (now.tv_usec - start.tv_usec)/1000;
-            if (delta > timeout)
+            millisec = (h->now.tv_sec  - start.tv_sec) *1000 +
+                       (h->now.tv_usec - start.tv_usec)/1000;
+            if (millisec > timeout)
                 return(0);
         }
         fds[0].fd = h->sock;
         fds[0].events = POLLIN;
         if (ccn_output_is_pending(h))
             fds[0].events |= POLLOUT;
-        timeout_ms = refresh / 1000;
-        if (timeout >= 0 && timeout < timeout_ms)
-            timeout_ms = timeout;
-        res = poll(fds, 1, timeout_ms);
+        millisec = (h->refresh_us) / 1000;
+        if (timeout >= 0 && timeout < millisec)
+            millisec = timeout;
+        res = poll(fds, 1, millisec);
         if (res < 0 && errno != EINTR)
             return (NOTE_ERRNO(h));
         if (res > 0) {

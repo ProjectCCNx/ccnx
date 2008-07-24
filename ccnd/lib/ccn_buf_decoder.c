@@ -418,7 +418,7 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
         interest->prefix_comps = ccn_parse_optional_tagged_nonNegativeInteger(d,
                          CCN_DTAG_NameComponentCount);
         interest->offset[CCN_PI_E_NameComponentCount] = d->decoder.token_index;
-        if (interest->prefix_comps > ncomp)
+        if (d->decoder.state < 0 || interest->prefix_comps > ncomp)
             return (d->decoder.state = -__LINE__);
         if (interest->prefix_comps == -1 || interest->prefix_comps == ncomp)
             interest->prefix_comps = ncomp;
@@ -456,6 +456,13 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
         interest->offset[CCN_PI_E_Scope] = d->decoder.token_index;
         if (interest->scope > 9)
                 return (d->decoder.state = -__LINE__);
+        /* optional Count */
+        interest->offset[CCN_PI_B_Count] = d->decoder.token_index;
+        interest->count = ccn_parse_optional_tagged_nonNegativeInteger(d,
+                         CCN_DTAG_Count);
+        interest->offset[CCN_PI_E_Count] = d->decoder.token_index;
+        if (interest->count == -1)
+            interest->count = 1;
         /* optional Nonce */
         interest->offset[CCN_PI_B_Nonce] = d->decoder.token_index;
         res = ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_Nonce, 4, 64);

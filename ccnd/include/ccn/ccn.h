@@ -341,6 +341,7 @@ struct ccn_parsed_interest {
     int orderpref;
     int answerfrom;
     int scope;
+    int count;
     unsigned short offset[CCN_PI_E+1];
 };
 
