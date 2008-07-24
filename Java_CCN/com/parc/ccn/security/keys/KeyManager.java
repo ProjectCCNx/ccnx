@@ -28,7 +28,7 @@ public abstract class KeyManager {
 	
 	public static final String DEFAULT_DIGEST_ALGORITHM = "SHA-256";
 
-	public static KeyManager getDefaultKeyManager() throws ConfigurationException {
+	public static KeyManager getDefaultKeyManager() throws ConfigurationException, IOException {
 		return new BasicKeyManager();
 	}
 	
@@ -47,6 +47,10 @@ public abstract class KeyManager {
 			Library.logger().warning("Configuration exception attempting to get KeyManager: " + e.getMessage());
 			Library.warningStackTrace(e);
 			throw new RuntimeException("Error in system configuration. Cannot get KeyManager.",e);
+		} catch (IOException e) {
+			Library.logger().warning("IO exception attempting to get KeyManager: " + e.getMessage());
+			Library.warningStackTrace(e);
+			throw new RuntimeException("Error in system IO. Cannot get KeyManager.",e);
 		}
 	}
 	
