@@ -149,9 +149,12 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 		if (null == _contentDigest) {
 			throw new XMLStreamException("Cannot parse content digest.");
 		}
-		_rootDigest = decoder.readBinaryElement(MERKLE_ROOT_ELEMENT);
-		if (null == _rootDigest) {
-			throw new XMLStreamException("Cannot parse root digest.");
+		
+		if (decoder.peekStartElement(MERKLE_ROOT_ELEMENT)) {
+			_rootDigest = decoder.readBinaryElement(MERKLE_ROOT_ELEMENT);
+			if (null == _rootDigest) {
+				throw new XMLStreamException("Cannot parse root digest.");
+			}
 		}
 		decoder.readEndElement();
 	}
@@ -171,7 +174,8 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 		encoder.writeElement(BLOCKSIZE_ELEMENT,	 Integer.toString(_blockSize));
 		encoder.writeElement(LENGTH_ELEMENT,	Integer.toString(_length));
 		encoder.writeElement(CONTENT_DIGEST_ELEMENT, contentDigest());
-		encoder.writeElement(MERKLE_ROOT_ELEMENT, rootDigest());
+		if (null != rootDigest())
+			encoder.writeElement(MERKLE_ROOT_ELEMENT, rootDigest());
 		encoder.writeEndElement();
 	}
 
