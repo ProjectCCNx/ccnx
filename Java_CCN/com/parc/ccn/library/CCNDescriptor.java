@@ -22,6 +22,7 @@ import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.library.CCNLibrary.OpenMode;
+import com.parc.ccn.security.crypto.CCNMerkleTree;
 import com.parc.ccn.security.crypto.DigestHelper;
 
 /**
@@ -131,6 +132,8 @@ public class CCNDescriptor {
 	protected ContentAuthenticator.ContentType _type;
 	
 	protected DigestHelper _dh;
+	
+	protected ArrayList<byte []> _roots = new ArrayList<byte[]>();
 
 	/**
 	 * Open header of existing object for reading, or prepare new
@@ -307,6 +310,7 @@ public class CCNDescriptor {
 		
 		_header = new Header();
 		_header.decode(headerObject.content());
+		Library.logger().info("Opened " + headerObject.name() + " for reading. Total length: " + _header.length() + " blocksize: " + _header.blockSize() + " total blocks: " + blockCount());
 	}
 	
 	/**
@@ -337,23 +341,30 @@ public class CCNDescriptor {
 			if (result != 0) {
 				return result; // errno analogy?
 			}
+			if (null == _currentBlock)
+				return 0; // nothing to read
 		} 
 		
 		// Now we have a block in place. Read from it. If we run out of block before
 		// we've read len bytes, pull next block.
 		long lenToRead = len;
+		long lenRead = 0;
 		while (lenToRead > 0) {
 			if (_blockOffset >= _currentBlock.content().length) {
 				// DKS make sure we don't miss a byte...
 				result = seek(StandardCCNLibrary.getFragmentNumber(_currentBlock.name())+1);
+				if (null == _currentBlock) {
+					return lenRead;
+				}
 			}
-			long readCount = ((_currentBlock.content().length - _blockOffset) > len) ? len : (_currentBlock.content().length - _blockOffset);
+			long readCount = ((_currentBlock.content().length - _blockOffset) > lenToRead) ? lenToRead : (_currentBlock.content().length - _blockOffset);
 			System.arraycopy(_currentBlock.content(), (int)_blockOffset, buf, (int)offset, (int)readCount);
 			_blockOffset += readCount;
 			offset += readCount;
 			lenToRead -= readCount;
+			lenRead += readCount;
 		}
-		return 0;
+		return lenRead;
 	}
 	
 	public long write(byte[] buf, long offset, long len) throws IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException {
@@ -433,11 +444,15 @@ public class CCNDescriptor {
 	
 		Library.logger().finer("sync: putting merkle tree to the network, " + (_blockIndex+1) + " blocks.");
 		// Generate Merkle tree (or other auth structure) and authenticators and put contents.
-		_library.putMerkleTree(_baseName, _baseBlockIndex, _blockBuffers, _blockIndex+1, _baseBlockIndex,
+		CCNMerkleTree tree =
+			_library.putMerkleTree(_baseName, _baseBlockIndex, _blockBuffers, _blockIndex+1, _baseBlockIndex,
 								_timestamp, _publisher, _locator, _signingKey);
+		_roots.add(tree.root());
+		
 		// Set contents of blocks to 0
 		for (int i=0; i < _blockBuffers.length; ++i) {
-			Arrays.fill(_blockBuffers[i], 0, _blockBuffers[i].length, (byte)0);
+			if (null != _blockBuffers[i])
+				Arrays.fill(_blockBuffers[i], 0, _blockBuffers[i].length, (byte)0);
 		}
 		_baseBlockIndex += _blockIndex;
 		_blockIndex = 0;
@@ -446,9 +461,10 @@ public class CCNDescriptor {
 	protected void writeHeader() throws InvalidKeyException, SignatureException, IOException, InterruptedException {
 		// What do we put in the header if we have multiple merkle trees?
 		_library.putHeader(_baseName, (int)_totalLength, _dh.digest(), 
-				null,
+				((_roots.size() > 0) ? _roots.get(0) : null),
 				_type,
 				_timestamp, _publisher, _locator, _signingKey);
+		Library.logger().info("Wrote header: " + StandardCCNLibrary.headerName(_baseName));
 	}
 	
 	public boolean openForReading() {
@@ -503,6 +519,16 @@ public class CCNDescriptor {
 	
 	protected ContentObject getBlock(int number) throws IOException, InterruptedException {
 		
+		// Return null if we go past the end.
+		if (number < StandardCCNLibrary.baseFragment()) 
+			throw new IOException("Illegal block number " + number + " below initial value " + StandardCCNLibrary.baseFragment() + ".");
+		
+		if (number >= (StandardCCNLibrary.baseFragment() + blockCount())) {
+			// Past the last block.
+			Library.logger().info("Seek past the last block: " + number + " asked for, count available is: " + StandardCCNLibrary.baseFragment() + blockCount());
+			return null;
+		}
+
 		ContentName blockName = StandardCCNLibrary.fragmentName(_baseName, number);
 
 		ArrayList<ContentObject> blocks = _library.get(blockName, _headerAuthenticator, true);
@@ -549,6 +575,7 @@ public class CCNDescriptor {
 						_verifiedProxy = proxy;
 					}
 				} 
+				Library.logger().info("Got block: " + block.name().toString() + ", verified.");
 			} catch (Exception e) {
 				Library.logger().warning("Got an " + e.getClass().getName() + " exception attempting to verify block: " + block.name().toString() + ", treat as failure to verify.");
 				Library.warningStackTrace(e);
@@ -570,4 +597,14 @@ public class CCNDescriptor {
 		return blocks.get(0);
 	}
 
+	protected int blockCount() {
+		if (!openForReading())
+			return (_blockIndex+1);
+		
+		if (null == _header) {
+			return -1;
+		}
+		
+		return (int)(Math.ceil(1.0*_header.length()/_header.blockSize()));
+	}
 }
