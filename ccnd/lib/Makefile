@@ -7,7 +7,7 @@ COPT = -g
 PROGRAMS = ccn_ccnbtoxml ccn_splitccnb ccn_verifysig\
     hashtbtest matrixtest skel_decode_test \
     smoketestclientlib dataresponsetest ccntimestamps \
-    encodedecodetest ccndumpnames ccndump $(EXPAT_PROGRAMS)
+    encodedecodetest ccndumpnames ccndump ccnls $(EXPAT_PROGRAMS)
 EXPAT_PROGRAMS = ccn_xmltoccnb
 BROKEN_PROGRAMS =
 DEBRIS = libccn2.a
@@ -19,6 +19,7 @@ CSRC = ccn_buf_decoder.c ccn_dtag_table.c ccn_buf_encoder.c ccn_charbuf.c \
     skel_decode_test.c \
     hashtb.c hashtbtest.c matrixtest.c \
     smoketestclientlib.c ccntimestamps.c ccndump.c ccndumpnames.c \
+    ccnls.c \
     ccn_verifysig.c dataresponsetest.c ccn_uri.c  encodedecodetest.c
 
 LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_dtag_table.o ccn_schedule.o ccn_matrix.o \
@@ -80,6 +81,9 @@ ccndump: ccndump.o
 
 ccndumpnames: ccndumpnames.o
 	$(CC) $(CFLAGS) -o $@ ccndumpnames.o $(LDLIBS)
+
+ccnls: ccnls.o
+	$(CC) $(CFLAGS) -o $@ ccnls.o $(LDLIBS)
 
 ccn_digest.o:
 	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_digest.c
@@ -147,7 +151,9 @@ ccndump.o: ccndump.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h
 ccndumpnames.o: ccndumpnames.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h
+  ../include/ccn/indexbuf.h ../include/ccn/uri.h
+ccnls.o: ccnls.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccn_verifysig.o: ccn_verifysig.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h
