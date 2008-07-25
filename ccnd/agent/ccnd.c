@@ -220,7 +220,7 @@ content_from_accession(struct ccnd *h, ccn_accession_t accession)
 }
 
 static void
-enroll_content(struct ccnd *h, struct content_entry *content) // XXX - neworder
+enroll_content(struct ccnd *h, struct content_entry *content)
 {
     unsigned new_window;
     struct content_entry **new_array;
@@ -268,7 +268,10 @@ finalize_content(struct hashtb_enumerator *e) // XXX - neworder
 }
 
 static int
-content_skiplist_findbefore(struct ccnd *h, const unsigned char *key, size_t keysize, struct ccn_indexbuf **ans)
+content_skiplist_findbefore(struct ccnd *h,
+                            const unsigned char *key,
+                            size_t keysize,
+                            struct ccn_indexbuf **ans)
 {
     int i;
     int n = h->skiplinks->n;
@@ -284,7 +287,8 @@ content_skiplist_findbefore(struct ccnd *h, const unsigned char *key, size_t key
             content = content_from_accession(h, c->buf[i]);
             if (content == NULL)
                 abort();
-            order = ccn_compare_names(content->key, content->key_size, key, keysize);
+            order = ccn_compare_names(content->key, content->key_size,
+                                      key, keysize);
             if (order >= 0)
                 break;
             if (content->skiplinks == NULL || i >= content->skiplinks->n)
@@ -1240,7 +1244,7 @@ content_is_unblocked(struct content_entry *content,
 
 static void
 process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
-                      unsigned char *msg, size_t size)
+                          unsigned char *msg, size_t size)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -1251,6 +1255,8 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
     int try;
     int matched;
     struct interestprefix_entry *ipe = NULL;
+    struct content_entry *content = NULL;
+    struct content_entry *last_match = NULL;
     struct ccn_indexbuf *comps = indexbuf_obtain(h);
     if (size > 65535)
         res = -__LINE__;
@@ -1283,9 +1289,10 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
             ccnd_msg(h, "New interest prefix");
         }
         if (ipe != NULL) {
-            struct content_entry *content = NULL;
-            struct content_entry *last_match = NULL;
-            res = indexbuf_unordered_set_insert(ipe->interested_faceid, face->faceid);
+            content = NULL;
+            last_match = NULL;
+            res = indexbuf_unordered_set_insert(ipe->interested_faceid,
+                                                face->faceid);
             while (ipe->counters->n <= res)
                 if (0 > ccn_indexbuf_append_element(ipe->counters, 0)) break;
             if (0 <= res && res < ipe->counters->n)
@@ -1297,23 +1304,32 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
                 /* some help for old clients that are expecting suppression state */
                 content = content_from_accession(h, face->cached_accession);
                 face->cached_accession = 0;
-                if (content != NULL && content_matches_interest_prefix(h, content, msg, comps, pi->prefix_comps))
+                if (content != NULL &&
+                    content_matches_interest_prefix(h, content, msg, 
+                                                    comps, pi->prefix_comps))
                     content = content_from_accession(h, content_skiplist_next(h, content));
                 if (h->debug && content != NULL)
-                    ccnd_debug_ccnb(h, __LINE__, "resume", content->key, content->key_size + content->tail_size);
+                    ccnd_debug_ccnb(h, __LINE__, "resume", 
+                                    content->key, content->key_size + content->tail_size);
                 if (content != NULL &&
-                    !content_matches_interest_prefix(h, content, msg, comps, pi->prefix_comps)) {
-                    if (h->debug) ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", msg, size);
+                    !content_matches_interest_prefix(h, content, msg,
+                                                     comps, pi->prefix_comps)) {
+                    if (h->debug)
+                        ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", msg, size);
                     content = NULL;
                 }
             }
             if (content == NULL) {
                 content = find_first_match_candidate(h, msg, pi);
                 if (h->debug && content != NULL)
-                    ccnd_debug_ccnb(h, __LINE__, "firstmatch", content->key, content->key_size + content->tail_size);
+                    ccnd_debug_ccnb(h, __LINE__, "firstmatch", 
+                                    content->key,
+                                    content->key_size + content->tail_size);
                 if (content != NULL &&
-                    !content_matches_interest_prefix(h, content, msg, comps, pi->prefix_comps)) {
-                    if (h->debug) ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", msg, size);
+                    !content_matches_interest_prefix(h, content, msg, comps, 
+                                                     pi->prefix_comps)) {
+                    if (h->debug) ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", 
+                                                  msg, size);
                     content = NULL;
                 }
             }
@@ -1321,27 +1337,35 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
                 if (content_is_unblocked(content, pi, msg, face->faceid) &&
                     content_matches_interest_qualifiers(h, content, msg, pi, comps)) {
                     if (try == 0 &&
-                          pi->orderpref == 4 &&
-                          pi->prefix_comps != comps->n - 1 &&
-                          content_matches_interest_prefix(h, content, msg, comps, comps->n - 1)) {
+                        pi->orderpref == 4 &&
+                        pi->prefix_comps != comps->n - 1 &&
+                        content_matches_interest_prefix(h, content, msg,
+                                                        comps, comps->n - 1)) {
                         if (h->debug)
-                            ccnd_debug_ccnb(h, __LINE__, "skip_match", content->key, content->key_size + content->tail_size);
+                            ccnd_debug_ccnb(h, __LINE__, "skip_match",
+                                            content->key,
+                                            content->key_size + content->tail_size);
                         goto move_along;
                     }
                     if (h->debug)
-                        ccnd_debug_ccnb(h, __LINE__, "matches", content->key, content->key_size + content->tail_size);
+                        ccnd_debug_ccnb(h, __LINE__, "matches",
+                                        content->key,
+                                        content->key_size + content->tail_size);
                     if (pi->orderpref != 5) // XXX - should be symbolic
                         break;
                     last_match = content;
                 }
                 // XXX - accessional ordering is NYI
                 
-                move_along:
+            move_along:
                 content = content_from_accession(h, content_skiplist_next(h, content));
                 if (content != NULL &&
-                    !content_matches_interest_prefix(h, content, msg, comps, pi->prefix_comps)) {
+                    !content_matches_interest_prefix(h, content, msg, 
+                                                     comps, pi->prefix_comps)) {
                     if (h->debug)
-                        ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", content->key, content->key_size + content->tail_size);
+                        ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch",
+                                        content->key, 
+                                        content->key_size + content->tail_size);
                     content = NULL;
                 }
             }
@@ -1362,7 +1386,8 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
 }
 
 static int
-get_signature_offset(struct ccn_parsed_ContentObject *pco, const unsigned char *msg)
+get_signature_offset(struct ccn_parsed_ContentObject *pco,
+                     const unsigned char *msg)
 {
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d;
@@ -1390,7 +1415,7 @@ get_signature_offset(struct ccn_parsed_ContentObject *pco, const unsigned char *
 
 static void
 process_incoming_content(struct ccnd *h, struct face *face, // XXX - neworder
-                      unsigned char *msg, size_t size)
+                         unsigned char *msg, size_t size)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -1405,83 +1430,84 @@ process_incoming_content(struct ccnd *h, struct face *face, // XXX - neworder
     res = ccn_parse_ContentObject(msg, size, &obj, comps);
     if (res < 0) {
         ccnd_msg(h, "error parsing ContentObject - code %d", res);
+        goto Bail;
     }
-    else if (comps->n < 1 ||
-             (keysize = comps->buf[comps->n - 1]) > 65535) {
+    if (comps->n < 1 ||
+        (keysize = comps->buf[comps->n - 1]) > 65535) {
         ccnd_msg(h, "ContentObject with keysize %lu discarded",
-                (unsigned long)keysize);
+                 (unsigned long)keysize);
         ccnd_debug_ccnb(h, __LINE__, "oversize", msg, size);
         res = -__LINE__;
+        goto Bail;
     }
-    else {
-        if (obj.magic != 20080711) {
-            if (++(h->oldformatcontent) == h->oldformatcontentgrumble) {
-                h->oldformatcontentgrumble *= 10;
-                ccnd_msg(h, "downrev content items received: %d (%d)",
-                    h->oldformatcontent,
-                    obj.magic);
-            }
+    if (obj.magic != 20080711) {
+        if (++(h->oldformatcontent) == h->oldformatcontentgrumble) {
+            h->oldformatcontentgrumble *= 10;
+            ccnd_msg(h, "downrev content items received: %d (%d)",
+                     h->oldformatcontent,
+                     obj.magic);
         }
-        keysize = obj.offset[CCN_PCO_B_Content];
-        tail = msg + keysize;
-        tailsize = size - keysize;
-        hashtb_start(h->content_tab, e);
-        res = hashtb_seek(e, msg, keysize, tailsize);
-        content = e->data;
-        if (res == HT_OLD_ENTRY) {
-            if (tailsize != e->extsize ||
-                  0 != memcmp(tail, e->key + keysize, tailsize)) {
-                ccnd_msg(h, "ContentObject name collision!!!!!");
-                ccnd_debug_ccnb(h, __LINE__, "new", msg, size);
-                ccnd_debug_ccnb(h, __LINE__, "old", e->key, e->keysize + e->extsize);
-                content = NULL;
-                hashtb_delete(e); /* XXX - Mercilessly throw away both of them. */
-                res = -__LINE__;
-            }
-            else {
-                h->content_dups_recvd++;
-                ccnd_msg(h, "received duplicate ContentObject from %u (accession %llu)",
-                    face->faceid, (unsigned long long)content->accession);
-                ccnd_debug_ccnb(h, __LINE__, "dup", msg, size);
-                /* Make note that this face knows about this content */
-                    // XXX - should distinguish the case that we were waiting
-                    //  to send this content - in that case we might have
-                    //  some other content we should send instead.
-                    // Also, if we have a matching pending interest from this
-                    //  face, we should consume it in some cases.
-                i = content_faces_set_insert(content, face->faceid);
-                if (i >= content->nface_done) {
-                    content->faces->buf[i] = content->faces->buf[content->nface_done];
-                    content->faces->buf[content->nface_done++] = face->faceid;
-                }
-            }
-        }
-        else if (res == HT_NEW_ENTRY) {
-            content->accession = ++(h->accession);
-            content->faces = ccn_indexbuf_create();
-            ccn_indexbuf_append_element(content->faces, face->faceid);
-            content->nface_done = 1;
-            enroll_content(h, content);
-            content->ncomps = comps->n;
-            content->comps = calloc(comps->n, sizeof(comps[0]));
-            content->sig_offset = get_signature_offset(&obj, msg);
-            content->key_size = e->keysize;
-            content->tail_size = e->extsize;
-            content->key = e->key;
-            if (content->comps != NULL && content->faces != NULL) {
-                for (i = 0; i < comps->n; i++)
-                    content->comps[i] = comps->buf[i];
-                content_skiplist_insert(h, content);
-            }
-            else {
-                perror("process_incoming_content");
-                hashtb_delete(e);
-                res = -__LINE__;
-                content = NULL;
-            }
-        }
-        hashtb_end(e);
     }
+    keysize = obj.offset[CCN_PCO_B_Content];
+    tail = msg + keysize;
+    tailsize = size - keysize;
+    hashtb_start(h->content_tab, e);
+    res = hashtb_seek(e, msg, keysize, tailsize);
+    content = e->data;
+    if (res == HT_OLD_ENTRY) {
+        if (tailsize != e->extsize ||
+            0 != memcmp(tail, e->key + keysize, tailsize)) {
+            ccnd_msg(h, "ContentObject name collision!!!!!");
+            ccnd_debug_ccnb(h, __LINE__, "new", msg, size);
+            ccnd_debug_ccnb(h, __LINE__, "old", e->key, e->keysize + e->extsize);
+            content = NULL;
+            hashtb_delete(e); /* XXX - Mercilessly throw away both of them. */
+            res = -__LINE__;
+        }
+        else {
+            h->content_dups_recvd++;
+            ccnd_msg(h, "received duplicate ContentObject from %u (accession %llu)",
+                     face->faceid, (unsigned long long)content->accession);
+            ccnd_debug_ccnb(h, __LINE__, "dup", msg, size);
+            /* Make note that this face knows about this content */
+            // XXX - should distinguish the case that we were waiting
+            //  to send this content - in that case we might have
+            //  some other content we should send instead.
+            // Also, if we have a matching pending interest from this
+            //  face, we should consume it in some cases.
+            i = content_faces_set_insert(content, face->faceid);
+            if (i >= content->nface_done) {
+                content->faces->buf[i] = content->faces->buf[content->nface_done];
+                content->faces->buf[content->nface_done++] = face->faceid;
+            }
+        }
+    }
+    else if (res == HT_NEW_ENTRY) {
+        content->accession = ++(h->accession);
+        content->faces = ccn_indexbuf_create();
+        ccn_indexbuf_append_element(content->faces, face->faceid);
+        content->nface_done = 1;
+        enroll_content(h, content);
+        content->ncomps = comps->n;
+        content->comps = calloc(comps->n, sizeof(comps[0]));
+        content->sig_offset = get_signature_offset(&obj, msg);
+        content->key_size = e->keysize;
+        content->tail_size = e->extsize;
+        content->key = e->key;
+        if (content->comps != NULL && content->faces != NULL) {
+            for (i = 0; i < comps->n; i++)
+                content->comps[i] = comps->buf[i];
+            content_skiplist_insert(h, content);
+        }
+        else {
+            perror("process_incoming_content");
+            hashtb_delete(e);
+            res = -__LINE__;
+            content = NULL;
+        }
+    }
+    hashtb_end(e);
+Bail:
     indexbuf_release(h, comps);
     if (res >= 0 && content != NULL) {
         int n_matches;
