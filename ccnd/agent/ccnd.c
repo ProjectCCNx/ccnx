@@ -245,7 +245,7 @@ enroll_content(struct ccnd *h, struct content_entry *content)
 }
 
 static void
-finalize_content(struct hashtb_enumerator *e) // XXX - neworder
+finalize_content(struct hashtb_enumerator *e)
 {
     struct ccnd *h = hashtb_get_param(e->ht, NULL);
     struct content_entry *entry = e->data;
@@ -347,16 +347,6 @@ find_first_match_candidate(struct ccnd *h,
     int d;
     struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
     size_t size = pi->offset[CCN_PI_E_Name];
-#if 0
-    if ((pi->offset[CCN_PI_E_ComponentLast] - 
-         pi->offset[CCN_PI_B_ComponentLast]) == 1 + 2 + 32 + 1) {
-        /*
-         * Last component may be a content digest, so don't
-         * consider it when finding the first candidate match.
-         */
-        size = pi->offset[CCN_PI_B_ComponentLast];
-    };
-#endif
     d = content_skiplist_findbefore(h, interest_msg, size, pred);
     if (d == 0)
         return(NULL);
@@ -374,17 +364,8 @@ content_matches_interest_prefix(struct ccnd *h,
     if (prefix_comps < 0 || prefix_comps >= comps->n)
         abort();
     /* First verify the prefix match. */
-    if (content->ncomps < prefix_comps + 1) {
-        if (content->ncomps == prefix_comps &&
-            prefix_comps > 0 &&
-            (comps->buf[prefix_comps] - comps->buf[prefix_comps - 1] ==
-                1 + 2 + 32 + 1)) {
-            /* This could be a digest component - strip it */
-            prefix_comps -= 1;
-        }
-        else
+    if (content->ncomps < prefix_comps + 1)
             return(0);
-    }
     prefixlen = comps->buf[prefix_comps] - comps->buf[0];
     if (content->comps[prefix_comps] - content->comps[0] != prefixlen)
         return(0);
@@ -405,7 +386,7 @@ content_matches_interest_qualifiers(struct ccnd *h,
     int ans;
     ans = ccn_content_matches_interest(content->key,
                                        content->key_size + content->tail_size,
-                                       0, // XXX
+                                       1,
                                        NULL,
                                        interest_msg,
                                        pi->offset[CCN_PI_E],
@@ -555,10 +536,20 @@ static void
 send_content(struct ccnd *h, struct face *face, struct content_entry *content)
 {
     struct ccn_charbuf *c = charbuf_obtain(h);
+    int n, a, b, size;
     if ((face->flags & CCN_FACE_LINK) != 0)
         ccn_charbuf_append_tt(c, CCN_DTAG_CCNProtocolDataUnit, CCN_DTAG);
-    ccn_charbuf_append(c, content->key, content->key_size + content->tail_size);
-    /* stuff interest here */
+    /* Excise the message-digest name component */
+    n = content->ncomps;
+    if (n < 2) abort();
+    a = content->comps[n - 2];
+    b = content->comps[n - 1];
+    size = content->key_size + content->tail_size;
+    if (b - a != 36)
+        ccnd_debug_ccnb(h, __LINE__, "strange_digest", content->key, size);
+    ccn_charbuf_append(c, content->key, a);
+    ccn_charbuf_append(c, content->key + b, size - b);
+    /* XXX - stuff interest here */
     if ((face->flags & CCN_FACE_LINK) != 0)
         ccn_charbuf_append_closer(c);
     do_write(h, face, c->buf, c->length);
@@ -1414,9 +1405,11 @@ get_signature_offset(struct ccn_parsed_ContentObject *pco,
 }
 
 static void
-process_incoming_content(struct ccnd *h, struct face *face, // XXX - neworder
-                         unsigned char *msg, size_t size)
+process_incoming_content(struct ccnd *h, struct face *face,
+                         unsigned char *wire_msg, size_t wire_size)
 {
+    unsigned char *msg;
+    size_t size;
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     struct ccn_parsed_ContentObject obj = {0};
@@ -1427,19 +1420,42 @@ process_incoming_content(struct ccnd *h, struct face *face, // XXX - neworder
     struct content_entry *content = NULL;
     int i;
     struct ccn_indexbuf *comps = indexbuf_obtain(h);
+    struct ccn_charbuf *cb = charbuf_obtain(h);
+    
+    msg = wire_msg;
+    size = wire_size;
+    
     res = ccn_parse_ContentObject(msg, size, &obj, comps);
     if (res < 0) {
         ccnd_msg(h, "error parsing ContentObject - code %d", res);
         goto Bail;
     }
     if (comps->n < 1 ||
-        (keysize = comps->buf[comps->n - 1]) > 65535) {
+        (keysize = comps->buf[comps->n - 1]) > 65535 - 36) {
         ccnd_msg(h, "ContentObject with keysize %lu discarded",
                  (unsigned long)keysize);
         ccnd_debug_ccnb(h, __LINE__, "oversize", msg, size);
         res = -__LINE__;
         goto Bail;
     }
+    /* Make the content-digest name component explicit */
+    ccn_digest_ContentObject(msg, &obj);
+    if (obj.digest_bytes != 32) {
+        ccnd_debug_ccnb(h, __LINE__, "indigestible", msg, size);
+        goto Bail;
+    }
+    i = comps->buf[comps->n - 1];
+    ccn_charbuf_append(cb, msg, i);
+    ccn_charbuf_append_tt(cb, CCN_DTAG_Component, CCN_DTAG);
+    ccn_charbuf_append_tt(cb, obj.digest_bytes, CCN_BLOB);
+    ccn_charbuf_append(cb, obj.digest, obj.digest_bytes);
+    ccn_charbuf_append_closer(cb);
+    ccn_charbuf_append(cb, msg + i, size - i);
+    msg = cb->buf;
+    size = cb->length;
+    res = ccn_parse_ContentObject(msg, size, &obj, comps);
+    if (res < 0) abort(); /* must have just messed up */
+    
     if (obj.magic != 20080711) {
         if (++(h->oldformatcontent) == h->oldformatcontentgrumble) {
             h->oldformatcontentgrumble *= 10;
@@ -1448,6 +1464,7 @@ process_incoming_content(struct ccnd *h, struct face *face, // XXX - neworder
                      obj.magic);
         }
     }
+    
     keysize = obj.offset[CCN_PCO_B_Content];
     tail = msg + keysize;
     tailsize = size - keysize;
@@ -1509,6 +1526,8 @@ process_incoming_content(struct ccnd *h, struct face *face, // XXX - neworder
     hashtb_end(e);
 Bail:
     indexbuf_release(h, comps);
+    charbuf_release(h, cb);
+    cb = NULL;
     if (res >= 0 && content != NULL) {
         int n_matches;
         n_matches = match_interests(h, content);
@@ -1829,7 +1848,7 @@ ccnd_get_local_sockname(void)
 }
 
 static struct ccnd *
-ccnd_create(void) // XXX - neworder
+ccnd_create(void)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;

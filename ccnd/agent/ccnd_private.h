@@ -113,12 +113,16 @@ struct face {
 
 /*
  *  The content hash table is keyed by the initial portion of the ContentObject
- *  that contains all the parts of the complete name, so that the original
- *  ContentObject may be reconstructed simply by gluing this together with
- *  the remainder of the object, represented by tail.
+ *  that contains all the parts of the complete name.  The extdata of the hash
+ *  table holds the rest of the object, so that the whole ContentObject is
+ *  stored contiguously.  The internal form differs from the on-wire form in
+ *  that the final content-digest name component is represented explicitly,
+ *  which simplifies the matching logic.
+ *  The original ContentObject may be reconstructed simply by excising this
+ *  last name component, which is easily located via the comps array.
  */
 struct content_entry {
-    ccn_accession_t accession;   /* assigned in arrival order */
+    ccn_accession_t accession;  /* assigned in arrival order */
     unsigned short *comps;      /* Name Component byte boundary offsets */
     int ncomps;                 /* Number of name components plus one */
     int flags;                  /* see below */

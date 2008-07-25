@@ -250,8 +250,9 @@ ccnd_debug_ccnb(struct ccnd *h,
     ccn_charbuf_putf(c, "debug.%d %s ", lineno, msg);
     ccn_uri_append(c, ccnb, ccnb_size, 1);
     res = ccn_parse_ContentObject(ccnb, ccnb_size, &parsed_ContentObject, NULL);
-    if (res >= 0) {
+    if (0) {
         /* Include the (implicit) content digest name component */
+        /* XXX - do not need this because that component is explicit inside ccnd, but keep code around for possible reuse */
         ccn_digest_ContentObject(ccnb, &parsed_ContentObject);
         nm = ccn_charbuf_create();
         ccn_name_init(nm);
