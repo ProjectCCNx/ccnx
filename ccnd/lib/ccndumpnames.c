@@ -45,7 +45,7 @@ incoming_content(
     if (res >= 0)
         printf("%s\n", ccn_charbuf_as_string(c));
     else
-        fprintf("*** Error: ccndumpnames line %d kind=%d res=%d\n",
+        fprintf(stderr, "*** Error: ccndumpnames line %d kind=%d res=%d\n",
             __LINE__, kind, res);
     /* Use the name of the content just received as the resumption point */
     ccn_name_init(c);
