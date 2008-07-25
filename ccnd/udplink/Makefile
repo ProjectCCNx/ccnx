@@ -12,7 +12,7 @@ default all: $(PROGRAMS)
 $(PROGRAMS): $(CCNLIBDIR)/libccn.a
 
 udplink: udplink.o
-	$(CC) $(CFLAGS) -o $@ udplink.o $(LDLIBS)
+	$(CC) $(CFLAGS) -o $@ udplink.o $(LDLIBS)  $(OPENSSL_LIBS) -lcrypto
 
 clean:
 	rm -f *.o *.a $(PROGRAMS) depend

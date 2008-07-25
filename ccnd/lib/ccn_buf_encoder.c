@@ -11,6 +11,8 @@
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
 #include <ccn/indexbuf.h>
+#include <ccn/digest.h>
+#include <ccn/signing.h>
 
 int
 ccn_auth_create_default(struct ccn_charbuf *c,
@@ -32,7 +34,7 @@ ccn_auth_create_default(struct ccn_charbuf *c,
     res += ccn_charbuf_append_closer(signature);
     res += ccn_charbuf_append_closer(signature);
 
-    return (res == 0 ? res : -1);
+    return (res == 0 ? 0 : -1);
 }
 		
 int
@@ -46,7 +48,8 @@ ccn_auth_create(struct ccn_charbuf *c,
     int res = 0;
     const char *typename = ccn_content_name(type);
     struct ccn_charbuf *dt;
-
+    const char fakepubkeyid[32] = {0};
+ 
     if (typename == NULL)
 	return (-1);
     if (publisher_key_id != NULL && publisher_key_id_size != 32)
@@ -60,6 +63,8 @@ ccn_auth_create(struct ccn_charbuf *c,
         res += ccn_charbuf_append(c, publisher_key_id, publisher_key_id_size);
     } else {
         /* obtain the default publisher key id and append it */
+        res += ccn_charbuf_append_tt(c, sizeof(fakepubkeyid), CCN_BLOB);
+        res += ccn_charbuf_append(c, fakepubkeyid, sizeof(fakepubkeyid));
     }
     res += ccn_charbuf_append_closer(c);
 
@@ -89,7 +94,7 @@ ccn_auth_create(struct ccn_charbuf *c,
     
     res += ccn_charbuf_append_closer(c);
 
-    return (res == 0 ? res : -1);
+    return (res == 0 ? 0 : -1);
 }
 
 const char *
@@ -123,31 +128,111 @@ ccn_content_name(enum ccn_content_type type)
     }
 }
 
-int ccn_encode_ContentObject(struct ccn_charbuf *ccnb,
-			     const struct ccn_charbuf *Signature,
-                             int foo, // to change procedure type
-                             const struct ccn_charbuf *Name,
-			     const struct ccn_charbuf *ContentAuthenticator,
-			     const void *Content, int len) {
-    struct ccn_charbuf *c = ccnb;
+int
+ccn_encode_Signature(struct ccn_charbuf *buf,
+                     const char *digest_algorithm,
+                     const void *witness,
+                     size_t witness_size,
+                     const void *signature,
+                     size_t signature_size)
+{
     int res = 0;
 
-    /* Each of the input charbufs should be already encoded as a 
-       sub-piece so just needs to be dropped in */
+    if (signature == NULL)
+        return (-1);
 
-    res += ccn_charbuf_append_tt(c, CCN_DTAG_ContentObject, CCN_DTAG);
-    res += ccn_charbuf_append_charbuf(c, Signature);
-    res += ccn_charbuf_append_charbuf(c, Name);
-    res += ccn_charbuf_append_charbuf(c, ContentAuthenticator);
+    res += ccn_charbuf_append_tt(buf, CCN_DTAG_Signature, CCN_DTAG);
 
-    res += ccn_charbuf_append_tt(c, CCN_DTAG_Content, CCN_DTAG);
-    res += ccn_charbuf_append_tt(c, len, CCN_BLOB);
-    res += ccn_charbuf_append(c, Content, len);
-    res += ccn_charbuf_append_closer(c);
+    if (digest_algorithm != NULL) {
+        res += ccn_charbuf_append_tt(buf, CCN_DTAG_DigestAlgorithm, CCN_DTAG);
+        res += ccn_charbuf_append_tt(buf, strlen(digest_algorithm), CCN_UDATA);
+        res += ccn_charbuf_append_string(buf, digest_algorithm);
+        res += ccn_charbuf_append_closer(buf);
+    }
 
-    res += ccn_charbuf_append_closer(c);
+    if (witness != NULL) {
+        res += ccn_charbuf_append_tt(buf, CCN_DTAG_Witness, CCN_DTAG);
+        res += ccn_charbuf_append_tt(buf, witness_size, CCN_BLOB);
+        res += ccn_charbuf_append(buf, witness, witness_size);
+        res += ccn_charbuf_append_closer(buf);
+    }
+
+    res += ccn_charbuf_append_tt(buf, CCN_DTAG_SignatureBits, CCN_DTAG);
+    res += ccn_charbuf_append_tt(buf, signature_size, CCN_BLOB);
+    res += ccn_charbuf_append(buf, signature, signature_size);
+    res += ccn_charbuf_append_closer(buf);
     
-    return (res == 0 ? res : -1);
+    res += ccn_charbuf_append_closer(buf);
+
+    return (res == 0 ? 0 : -1);
+}
+
+#include <openssl/evp.h>
+    
+int
+ccn_encode_ContentObject(struct ccn_charbuf *buf,
+                         const struct ccn_charbuf *Name,
+                         const struct ccn_charbuf *ContentAuthenticator,
+                         const void *data,
+                         size_t size,
+                         const char *digest_algorithm,
+                         const void *private_key
+                         )
+{
+    int res = 0;
+    struct ccn_sigc *sig_ctx;
+    unsigned char *signature;
+    size_t signature_size;
+    struct ccn_charbuf *content_header;
+
+    content_header = ccn_charbuf_create();
+    res += ccn_charbuf_append_tt(content_header, CCN_DTAG_Content, CCN_DTAG);
+    res += ccn_charbuf_append_tt(content_header, size, CCN_BLOB);
+    res += ccn_charbuf_append_closer(content_header);
+
+    sig_ctx = ccn_sigc_create();
+    if (sig_ctx == NULL) return (-1);
+
+    if (0 != ccn_sigc_init(sig_ctx, digest_algorithm)) return (-1);
+    if (0 != ccn_sigc_update(sig_ctx, Name->buf, Name->length)) return (-1);
+    if (0 != ccn_sigc_update(sig_ctx, ContentAuthenticator->buf, ContentAuthenticator->length)) return (-1);
+    if (0 != ccn_sigc_update(sig_ctx, content_header->buf, content_header->length - 1)) return (-1);
+    if (0 != ccn_sigc_update(sig_ctx, data, size)) return (-1);
+    if (0 != ccn_sigc_update(sig_ctx, content_header->buf + content_header->length - 1, 1)) return (-1);
+
+    signature = calloc(1, ccn_sigc_signature_max_size(sig_ctx, private_key));
+    if (signature == NULL) return (-1);
+    if (0 != ccn_sigc_final(sig_ctx, signature, &signature_size, private_key)) {
+        free(signature);
+        return (-1);
+    }
+    ccn_sigc_destroy(&sig_ctx);
+
+    res += ccn_charbuf_append_tt(buf, CCN_DTAG_ContentObject, CCN_DTAG);
+    res += ccn_encode_Signature(buf, digest_algorithm, NULL, 0, signature, signature_size);
+    res += ccn_charbuf_append_charbuf(buf, Name);
+    res += ccn_charbuf_append_charbuf(buf, ContentAuthenticator);
+    res += ccn_encode_Content(buf, data, size);
+    res += ccn_charbuf_append_closer(buf);
+    
+    free(signature);
+    ccn_charbuf_destroy(&content_header);
+    return (res == 0 ? 0 : -1);
+}
+
+int
+ccn_encode_Content(struct ccn_charbuf *buf,
+			     const void *data,
+			     size_t size)
+{
+    int res = 0;
+
+    res += ccn_charbuf_append_tt(buf, CCN_DTAG_Content, CCN_DTAG);
+    res += ccn_charbuf_append_tt(buf, size, CCN_BLOB);
+    res += ccn_charbuf_append(buf, data, size);
+    res += ccn_charbuf_append_closer(buf);
+    
+    return (res == 0 ? 0 : -1);
 }
 
 

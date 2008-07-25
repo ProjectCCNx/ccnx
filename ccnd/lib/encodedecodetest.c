@@ -10,6 +10,7 @@
 #include <ccn/ccn.h>
 #include <ccn/uri.h>
 #include <ccn/digest.h>
+#include <ccn/keystore.h>
 
 struct path {
     int count;
@@ -42,27 +43,36 @@ void path_destroy(struct path **path) {
 }
 
 int 
-encode_message(struct ccn_charbuf *message, struct path * name_path, char *data, size_t len) {
-    struct ccn_charbuf *path = NULL;
+encode_message(struct ccn_charbuf *message, struct path * name_path, char *data, size_t len, const void *pkey) {
+    struct ccn_charbuf *path = ccn_charbuf_create();
     struct ccn_charbuf *authenticator = ccn_charbuf_create();
-    struct ccn_charbuf *signature = ccn_charbuf_create();
     int i;
+    int res;
 
-    path = ccn_charbuf_create();
     if (path == NULL || ccn_name_init(path) == -1) {
 	fprintf(stderr, "Failed to allocate or initialize content path\n");
 	return -1;
     }
 
-    for (i=0; i<name_path->count; i++) {
+    for (i = 0; i < name_path->count; i++) {
 	ccn_name_append_str(path, name_path->comps[i]);
     }
 
-    if (ccn_auth_create_default(authenticator, signature, CCN_CONTENT_FRAGMENT, path, data, len) != 0) {
-	return -1;
+    if (ccn_auth_create(authenticator, /*pubkeyid*/NULL, /*size*/0, /*datetime*/NULL, CCN_CONTENT_FRAGMENT, /*keylocator*/NULL) != 0) {
+	fprintf(stderr, "Failed to create authenticator\n");
+        return (-1);
     }
-    return ccn_encode_ContentObject(message, signature, 42, path, authenticator, data, len);
-    
+
+    res = ccn_encode_ContentObject(message, path, authenticator, data, len, NULL, pkey);
+
+    if (res != 0) {
+	fprintf(stderr, "Failed to encode ContentObject\n");
+    }
+
+    ccn_charbuf_destroy(&path);
+    ccn_charbuf_destroy(&authenticator);
+
+    return (res);
 }
 
 int 
@@ -178,6 +188,7 @@ main (int argc, char *argv[]) {
 		       "/d/e/f", NULL};
     struct path * cur_path = NULL;
     unsigned char pubkeyid[32] = {0};
+    struct ccn_keystore *keystore = ccn_keystore_create();
     int i;
 
     if (argc == 3 && strcmp(argv[1], "-o") == 0) {
@@ -202,9 +213,13 @@ main (int argc, char *argv[]) {
     buffer->length = 0;
     printf("Done with authenticator\n");
 
+    if (0 != ccn_keystore_init(keystore, "/tilde/briggs/.ccn/.ccn_keystore", "Th1s1sn0t8g00dp8ssw0rd.")) {
+        printf("Failed to initialize keystore\n");
+        result = 1;
+    }
     printf("Encoding sample message data length %d\n", (int)strlen(contents[0]));
     cur_path = path_create(paths[0]);
-    if (encode_message(buffer, cur_path, contents[0], strlen(contents[0]))) {
+    if (encode_message(buffer, cur_path, contents[0], strlen(contents[0]), ccn_keystore_private_key(keystore))) {
 	printf("Failed to encode message!\n");
     } else {
 	printf("Encoded sample message length is %d\n", (int)buffer->length);
@@ -231,7 +246,7 @@ main (int argc, char *argv[]) {
 	printf("Unit test case %d\n", i);
 	cur_path = path_create(paths[i]);
 	buffer = ccn_charbuf_create();
-	if (encode_message(buffer, cur_path, contents[i], strlen(contents[i]))) {
+	if (encode_message(buffer, cur_path, contents[i], strlen(contents[i]), ccn_keystore_private_key(keystore))) {
 	    printf("Failed encode\n");
             result = 1;
 	} else if (decode_message(buffer, cur_path, contents[i], strlen(contents[i]))) {

@@ -20,7 +20,7 @@ ccnd: $(CCND_OBJ)
 	$(CC) $(CFLAGS) -o $@ $(CCND_OBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccnd_june08: ccnd_june08.o
-	$(CC) $(CFLAGS) -o $@ ccnd_june08.o $(LDLIBS)
+	$(CC) $(CFLAGS) -o $@ ccnd_june08.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 smoketestccnd: smoketestccnd.o
 	$(CC) $(CFLAGS) -o $@ smoketestccnd.o $(LDLIBS)

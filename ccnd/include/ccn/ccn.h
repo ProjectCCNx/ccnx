@@ -471,23 +471,35 @@ int ccn_content_get_value(const unsigned char *data, size_t data_size,
 
 /*
  * ccn_encode_ContentObject:
- * Eventually this will sign as well...
  *    buf: output buffer where encoded object is written
- *    Signature: encoded signature from ccn_auth_create
  *    Name: encoded name from ccn_name_init
  *    ContentAuthenticator: encoded authenticator from ccn_auth_create
- *    Content: raw content 
- *    len: length of the content
+ *    data, size: the raw data to be encoded
+ *    digest_algorithm: to be used for signing
+ *    private_key: to be used for signing
  */
 
-int ccn_encode_ContentObject(struct ccn_charbuf *ccnb,
-			     const struct ccn_charbuf *Signature,
-                             int foo, // to change procedure type
+int ccn_encode_ContentObject(struct ccn_charbuf *buf,
                              const struct ccn_charbuf *Name,
-			     const struct ccn_charbuf *ContentAuthenticator,
-			     const void *Content, int len);
+                             const struct ccn_charbuf *ContentAuthenticator,
+                             const void *data,
+                             size_t size,
+                             const char *digest_algorithm,
+                             const void *private_key
+                             );
 
-const char * ccn_content_name(enum ccn_content_type type);
+/*
+ * ccn_encode_Content:
+ *    buf: output buffer where encoded object is written
+ *    data: raw data
+ *    size: size of raw data
+ */
+
+int ccn_encode_Content(struct ccn_charbuf *buf,
+			     const void *data,
+			     size_t size);
+
+const char *ccn_content_name(enum ccn_content_type type);
 
 /*
  * ccn_content_matches_interest:

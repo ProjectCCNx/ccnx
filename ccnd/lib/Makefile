@@ -15,7 +15,7 @@ CSRC = ccn_buf_decoder.c ccn_dtag_table.c ccn_buf_encoder.c ccn_charbuf.c \
     ccn_indexbuf.c ccn_coding.c ccn_client.c  \
     ccn_ccnbtoxml.c ccn_xmltoccnb.c ccn_splitccnb.c \
     ccn_schedule.c ccn_matrix.c ccn_bloom.c ccn_name_util.c \
-    ccn_match.c ccn_digest.c ccn_pkcs12.c \
+    ccn_match.c ccn_digest.c ccn_keystore.c ccn_signing.c \
     skel_decode_test.c \
     hashtb.c hashtbtest.c matrixtest.c \
     smoketestclientlib.c ccntimestamps.c ccndump.c ccndumpnames.c \
@@ -23,7 +23,7 @@ CSRC = ccn_buf_decoder.c ccn_dtag_table.c ccn_buf_encoder.c ccn_charbuf.c \
     ccn_verifysig.c dataresponsetest.c ccn_uri.c  encodedecodetest.c
 
 LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_dtag_table.o ccn_schedule.o ccn_matrix.o \
-    ccn_buf_decoder.o ccn_uri.o ccn_buf_encoder.o ccn_bloom.o ccn_name_util.o ccn_digest.o ccn_pkcs12.o ccn_match.o hashtb.o
+    ccn_buf_decoder.o ccn_uri.o ccn_buf_encoder.o ccn_bloom.o ccn_name_util.o ccn_digest.o ccn_keystore.o ccn_signing.o ccn_match.o hashtb.o
 
 default: lib $(PROGRAMS)
 
@@ -65,31 +65,34 @@ skel_decode_test: skel_decode_test.o
 	$(CC) $(CFLAGS) -o $@ skel_decode_test.o $(LDLIBS)
 
 smoketestclientlib: smoketestclientlib.o
-	$(CC) $(CFLAGS) -o $@ smoketestclientlib.o $(LDLIBS)
+	$(CC) $(CFLAGS) -o $@ smoketestclientlib.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 dataresponsetest: dataresponsetest.o
-	$(CC) $(CFLAGS) -o $@ dataresponsetest.o $(LDLIBS)
+	$(CC) $(CFLAGS) -o $@ dataresponsetest.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 encodedecodetest: encodedecodetest.o
 	$(CC) $(CFLAGS) -o $@ encodedecodetest.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccntimestamps: ccntimestamps.o
-	$(CC) $(CFLAGS) -o $@ ccntimestamps.o $(LDLIBS)
+	$(CC) $(CFLAGS) -o $@ ccntimestamps.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccndump: ccndump.o
-	$(CC) $(CFLAGS) -o $@ ccndump.o $(LDLIBS)
+	$(CC) $(CFLAGS) -o $@ ccndump.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccndumpnames: ccndumpnames.o
-	$(CC) $(CFLAGS) -o $@ ccndumpnames.o $(LDLIBS)
+	$(CC) $(CFLAGS) -o $@ ccndumpnames.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccnls: ccnls.o
-	$(CC) $(CFLAGS) -o $@ ccnls.o $(LDLIBS)
+	$(CC) $(CFLAGS) -o $@ ccnls.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccn_digest.o:
 	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_digest.c
 
-ccn_pkcs12.o:
-	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_pkcs12.c
+ccn_keystore.o:
+	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_keystore.c
+
+ccn_signing.o:
+	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_signing.c
 
 ccn_verifysig.o:
 	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_verifysig.c
