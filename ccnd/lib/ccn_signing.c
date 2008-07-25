@@ -50,8 +50,11 @@ ccn_sigc_update(struct ccn_sigc *ctx, const void *data, size_t size)
 int
 ccn_sigc_final(struct ccn_sigc *ctx, const void *signature, size_t *size, void *priv_key)
 {
-    if (0 == EVP_SignFinal(&ctx->context, (unsigned char *)signature, size, priv_key))
+    unsigned int sig_size;
+
+    if (0 == EVP_SignFinal(&ctx->context, (unsigned char *)signature, &sig_size, priv_key))
         return (-1);
+    *size = sig_size;
     return (0);
 }
 
