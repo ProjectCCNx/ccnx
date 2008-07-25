@@ -1,6 +1,6 @@
 #!/bin/csh
 /usr/sfw/bin/wget -O /tmp/$$.cnnrss http://rss.cnn.com/rss/cnn_latest.rss
-cat /tmp/$$.cnnrss | egrep '(<link>)|(<guid isPermaLink="false">http://)' |sed 's/.*<link>//;s/<\/link>//;s/.*<guid.*http...//;s/<\/guid>//' >>/tmp/$$.links
+cat /tmp/$$.cnnrss | egrep '(<link>)|(<guid isPermaLink="false">http://)' |sed 's/.*<link>//;s/<\/link>//;s/.*<guid.*http...//;s/<\/guid>//;s///;s/\?eref=rss_latest//' >>/tmp/$$.links
 awk '/http:/ {link=$1;} \!/^http:/ {print "mkdir -p `dirname \""$1"\"`"; print "/usr/sfw/bin/wget -O \""$1"\" \""link"\""}' /tmp/$$.links >/tmp/$$.cmd
 source /tmp/$$.cmd
 rm /tmp/$$.*
