@@ -143,14 +143,11 @@ struct content_entry {
  * The interestprefix hash table is keyed by the Component elements of the Name prefix
  */
 struct interestprefix_entry {
-    struct ccn_indexbuf *interested_faceid;
-    struct ccn_indexbuf *counters;
     unsigned char idle;
-    int ncomp;                  /* Number of name components */
     struct propagating_entry *propagating_head;
 };
 /* The interest counters are scaled by a factor of CCN_UNIT_INTEREST */
-#define CCN_UNIT_INTEREST 5
+//#define CCN_UNIT_INTEREST 5
 
 /*
  * The propagating interest hash table is keyed by Nonce.

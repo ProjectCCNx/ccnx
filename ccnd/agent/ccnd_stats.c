@@ -42,16 +42,18 @@ ccnd_collect_stats(struct ccnd *h, struct ccnd_stats *ans)
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     long sum;
-    int i;
-    int n;
     for (sum = 0, hashtb_start(h->interestprefix_tab, e);
                                    e->data != NULL; hashtb_next(e)) {
         struct interestprefix_entry *ipe = e->data;
-        n = ipe->counters->n;
-        for (i = 0; i < n; i++)
-            sum += ipe->counters->buf[i];
+        struct propagating_entry *head = ipe->propagating_head;
+        struct propagating_entry *p;
+        if (head != NULL) {
+            for (p = head->next; p != head; p = p->next) {
+                sum += 1;
+            }
+        }
     }
-    ans->total_interest_counts = (sum + CCN_UNIT_INTEREST-1) / CCN_UNIT_INTEREST;
+    ans->total_interest_counts = sum;
     hashtb_end(e);
     for (sum = 0, hashtb_start(h->content_tab, e);
                                   e->data != NULL; hashtb_next(e)) {
@@ -64,7 +66,7 @@ ccnd_collect_stats(struct ccnd *h, struct ccnd_stats *ans)
     for (sum = 0, hashtb_start(h->propagating_tab, e);
                                       e->data != NULL; hashtb_next(e)) {
         struct propagating_entry *pi = e->data;
-        if (pi->outbound == NULL)
+        if (pi->interest_msg == NULL)
             sum += 1;
     }
     ans->total_flood_control = sum;

@@ -311,6 +311,8 @@ ccn_check_namebuf(struct ccn *h, struct ccn_charbuf *namebuf, int prefix_comps)
     struct ccn_buf_decoder *d;
     int i = 0;
     int ans = 0;
+    if (namebuf == NULL || namebuf->length < 2)
+        return(-1);
     d = ccn_buf_decoder_start(&decoder, namebuf->buf, namebuf->length);
     if (ccn_buf_match_dtag(d, CCN_DTAG_Name)) {
         ccn_buf_advance(d);
