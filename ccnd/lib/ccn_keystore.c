@@ -63,3 +63,21 @@ ccn_keystore_private_key(struct ccn_keystore *p)
 
     return (const void *)(p->private_key);
 }
+
+const void *
+ccn_keystore_public_key(struct ccn_keystore *p)
+{
+    if (0 == p->initialized)
+        return (NULL);
+
+    return (const void *)X509_get_pubkey(p->certificate);
+}
+
+const void *
+ccn_keystore_certificate(struct ccn_keystore *p)
+{
+    if (0 == p->initialized)
+        return (NULL);
+
+    return (const void *)(p->certificate);
+}
