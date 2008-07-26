@@ -189,6 +189,7 @@ main (int argc, char *argv[]) {
     struct path * cur_path = NULL;
     unsigned char pubkeyid[32] = {0};
     struct ccn_keystore *keystore = ccn_keystore_create();
+    char keystore_name[1024] = {0};
     int i;
 
     if (argc == 3 && strcmp(argv[1], "-o") == 0) {
@@ -213,7 +214,9 @@ main (int argc, char *argv[]) {
     buffer->length = 0;
     printf("Done with authenticator\n");
 
-    if (0 != ccn_keystore_init(keystore, "/tilde/briggs/.ccn/.ccn_keystore", "Th1s1sn0t8g00dp8ssw0rd.")) {
+    strcat(keystore_name, getenv("HOME"));
+    strcat(keystore_name, "/.ccn/.ccn_keystore");
+    if (0 != ccn_keystore_init(keystore, keystore_name, "Th1s1sn0t8g00dp8ssw0rd.")) {
         printf("Failed to initialize keystore\n");
         result = 1;
     }

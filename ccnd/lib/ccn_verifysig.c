@@ -35,25 +35,11 @@ Bug(int line) {
         exit(1);
 }
 
-unsigned char some_public_key[162]={
-0x30,0x81,0x9F,0x30,0x0D,0x06,0x09,0x2A,0x86,0x48,0x86,0xF7,0x0D,0x01,0x01,0x01,
-0x05,0x00,0x03,0x81,0x8D,0x00,0x30,0x81,0x89,0x02,0x81,0x81,0x00,0x9C,0x32,0xCB,
-0xCF,0x6E,0xA8,0x90,0x55,0x5F,0x67,0xF3,0xA8,0x3D,0xF4,0x03,0xAC,0xD5,0x22,0xF0,
-0x54,0xD1,0x34,0x68,0xC8,0xFD,0x1F,0x7E,0x5B,0xC8,0xBF,0xFE,0xE8,0xF8,0xD1,0x9A,
-0x5E,0x28,0x18,0xE5,0x28,0xE3,0x94,0xB1,0xA9,0x44,0x9F,0x19,0x81,0x87,0x67,0xC1,
-0xCE,0x7F,0xD9,0x01,0xF6,0xAD,0xCE,0x48,0xB5,0x46,0x9E,0x73,0xC1,0x8E,0xC0,0x33,
-0x0C,0x98,0x4C,0x73,0xAE,0x3C,0x86,0x2F,0x2E,0xC8,0xC0,0x3B,0x71,0x5F,0x2B,0xF1,
-0x34,0x6E,0x9E,0x0B,0x82,0xE1,0x6D,0x80,0x6B,0x51,0x56,0x87,0xC6,0x64,0x1E,0xDB,
-0x8E,0xB1,0x0F,0x5E,0x76,0x7E,0x5B,0xB4,0x73,0x7B,0xB8,0xA6,0xA4,0xA0,0x3E,0x2E,
-0x7A,0x99,0xF8,0x50,0x30,0x34,0x6E,0x6E,0x70,0xF8,0x30,0x6C,0xB5,0x02,0x03,0x01,
-0x00,0x01,
-};
-
 int
 ccn_verify_signature(const unsigned char *msg,
                      size_t size,
                      struct ccn_parsed_ContentObject *co,
-                     struct ccn_indexbuf *comps, EVP_PKEY *verification_pubkey)
+                     struct ccn_indexbuf *comps, const void *verification_pubkey)
 {
     EVP_MD_CTX verc;
     EVP_MD_CTX *ver_ctx = &verc;
@@ -91,7 +77,7 @@ ccn_verify_signature(const unsigned char *msg,
     size_t signed_size = co->offset[CCN_PCO_E_Content] - co->offset[CCN_PCO_B_Name];
     res = EVP_VerifyUpdate(ver_ctx, msg + co->offset[CCN_PCO_B_Name], signed_size);
 
-    res = EVP_VerifyFinal(ver_ctx, signature_bits, signature_bits_size, verification_pubkey);
+    res = EVP_VerifyFinal(ver_ctx, signature_bits, signature_bits_size, (EVP_PKEY *)verification_pubkey);
     EVP_MD_CTX_cleanup(ver_ctx);
 
     if (res == 1)
@@ -113,7 +99,9 @@ main(int argc, char **argv)
     struct ccn_parsed_ContentObject obj = {0};
     struct ccn_parsed_ContentObject *co = &obj;
     struct ccn_indexbuf *comps = ccn_indexbuf_create();
-    
+    struct ccn_keystore *keystore;
+    char keystore_name[1024] = {0};
+
     int status = 0;
     
     int good = 0;
@@ -121,13 +109,20 @@ main(int argc, char **argv)
     
     OpenSSL_add_all_digests();
     
-    /* we're checking against a single public key, until we have the
-     * infrastructure for locating keys
+    /* verify against the user's own public key until we have the infrastructure
+     * to locate keys
      */
-    EVP_PKEY *verification_pubkey = NULL;
-    const unsigned char *public_key_ptr = some_public_key;
-    verification_pubkey = d2i_PUBKEY(NULL, &public_key_ptr, sizeof(some_public_key));
-        
+    const void *verification_pubkey = NULL;
+
+    strcat(keystore_name, getenv("HOME"));
+    strcat(keystore_name, "/.ccn/.ccn_keystore");
+    keystore = ccn_keystore_create();
+    if (0 != ccn_keystore_init(keystore, keystore_name, "Th1s1sn0t8g00dp8ssw0rd.")) {
+        printf("Failed to initialize keystore\n");
+        exit(1);
+    }
+    verification_pubkey = ccn_keystore_public_key(keystore);
+
     while ((ch = getopt(argc, argv, "h")) != -1) {
         switch (ch) {
         default:
@@ -165,6 +160,18 @@ main(int argc, char **argv)
             fprintf(stderr, "skipping: not a ContentObject\n");
             status = 1;
             continue;
+        }
+        if (co->offset[CCN_PCO_B_CAUTH_KeyLocator] != co->offset[CCN_PCO_E_CAUTH_KeyLocator]) {
+            struct ccn_buf_decoder decoder;
+            struct ccn_buf_decoder *d =
+                ccn_buf_decoder_start(&decoder,
+                                      rawbuf + co->offset[CCN_PCO_B_CAUTH_Key_Certificate_KeyName],
+                                      co->offset[CCN_PCO_E_CAUTH_Key_Certificate_KeyName] - co->offset[CCN_PCO_B_CAUTH_Key_Certificate_KeyName]);
+            
+           fprintf(stderr, "[has KeyLocator: ");
+           if (ccn_buf_match_dtag(d, CCN_DTAG_KeyName)) fprintf(stderr, "KeyName] ");
+           if (ccn_buf_match_dtag(d, CCN_DTAG_Certificate)) fprintf(stderr, "Certificate] ");
+           if (ccn_buf_match_dtag(d, CCN_DTAG_Key)) fprintf(stderr, "Key] ");
         }
 
         res = ccn_verify_signature(rawbuf, size, co, comps, verification_pubkey);
