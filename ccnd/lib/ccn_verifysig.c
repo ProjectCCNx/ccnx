@@ -20,7 +20,7 @@ static unsigned char rawbuf[8801];
 
 #define MOAN(args) do { fprintf args; Moan(__LINE__); status = 1; } while(0)
 
-static void
+void
 Moan(int line) {
     fprintf(stderr, " at ccn_verifysig.c:%d\n", line);
 }

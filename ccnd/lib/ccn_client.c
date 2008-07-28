@@ -49,12 +49,14 @@ struct interests_by_prefix {
 struct expressed_interest { /* keyed by components of name prefix */
     struct timeval lasttime;
     struct ccn_closure *action;
-    int prefix_comps;
-    unsigned char *morecomponents;
-    unsigned morecomponents_size;
-    unsigned char *template_stuff;
-    unsigned template_stuff_size;
-    int repeat;
+    unsigned char *interest_msg;
+    size_t size;
+    //int prefix_comps;
+    //unsigned char *morecomponents;
+    //unsigned morecomponents_size;
+    //unsigned char *template_stuff;
+    //unsigned template_stuff_size;
+    //int repeat;
     int target;
     int outstanding;
     struct expressed_interest *next;
@@ -105,7 +107,9 @@ ccn_indexbuf_release(struct ccn *h, struct ccn_indexbuf *c)
 }
 
 static void
-ccn_replace_handler(struct ccn *h, struct ccn_closure **dstp, struct ccn_closure *src)
+ccn_replace_handler(struct ccn *h,
+                    struct ccn_closure **dstp,
+                    struct ccn_closure *src)
 {
     struct ccn_closure *old = *dstp;
     if (src == old)
@@ -114,7 +118,9 @@ ccn_replace_handler(struct ccn *h, struct ccn_closure **dstp, struct ccn_closure
         src->refcount++;
     *dstp = src;
     if (old != NULL && (--(old->refcount)) == 0) {
-        (old->p)(old, CCN_UPCALL_FINAL, h, NULL, 0, NULL, 0, NULL, 0);
+        struct ccn_upcall_info info = { 0 };
+        info.h = h;
+        (old->p)(old, CCN_UPCALL_FINAL, &info);
     }
 }
 
@@ -207,45 +213,18 @@ ccn_disconnect(struct ccn *h)
 }
 
 static void
-replace_template(struct expressed_interest *interest,
-    struct ccn_charbuf *interest_template)
+replace_interest_msg(struct expressed_interest *interest,
+                     struct ccn_charbuf *cb)
 {
-    size_t start;
-    size_t size;
-    int res;
-    struct ccn_parsed_interest pi = {0};
-    if (interest->template_stuff != NULL)
-        free(interest->template_stuff);
-    interest->template_stuff = NULL;
-    interest->template_stuff_size = 0;
-    if (interest_template != NULL) {
-        res = ccn_parse_interest(interest_template->buf,
-                                 interest_template->length, &pi, NULL);
-        if (res >= 0) {
-            start = pi.offset[CCN_PI_E_NameComponentCount];
-            size = pi.offset[CCN_PI_E_Count] - start;
-            interest->template_stuff = calloc(1, size);
-            if (interest->template_stuff != NULL) {
-                memcpy(interest->template_stuff, interest_template->buf + start, size);
-                interest->template_stuff_size = size;
-            }
-        }
-    }
-}
-
-static void
-replace_morecomponents(struct expressed_interest *interest,
-                       const unsigned char *morecomponents, size_t morecomponents_size)
-{
-    if (interest->morecomponents != NULL)
-        free(interest->morecomponents);
-    interest->morecomponents = NULL;
-    interest->morecomponents = 0;
-    if (morecomponents_size > 0) {
-        interest->morecomponents = calloc(1, morecomponents_size);
-        if (interest->morecomponents != NULL) {
-            memcpy(interest->morecomponents, morecomponents, morecomponents_size);
-            interest->morecomponents_size = morecomponents_size;
+    if (interest->interest_msg != NULL)
+        free(interest->interest_msg);
+    interest->interest_msg = NULL;
+    interest->size = 0;
+    if (cb != NULL && cb->length > 0) {
+        interest->interest_msg = calloc(1, cb->length);
+        if (interest->interest_msg != NULL) {
+            memcpy(interest->interest_msg, cb->buf, cb->length);
+            interest->size = cb->length;
         }
     }
 }
@@ -255,8 +234,7 @@ ccn_destroy_interest(struct ccn *h, struct expressed_interest *i)
 {
     struct expressed_interest *ans = i->next;
     ccn_replace_handler(h, &(i->action), NULL);
-    replace_morecomponents(i, NULL, 0);
-    replace_template(i, NULL);
+    replace_interest_msg(i, NULL);
     free(i);
     return(ans);
 }
@@ -334,6 +312,46 @@ ccn_check_namebuf(struct ccn *h, struct ccn_charbuf *namebuf, int prefix_comps)
     return(ans);
 }
 
+static void
+ccn_construct_interest(struct ccn *h,
+                       struct ccn_charbuf *namebuf,
+                       int prefix_comps,
+                       struct ccn_charbuf *interest_template,
+                       struct expressed_interest *dest)
+{
+    struct ccn_charbuf *c = h->interestbuf;
+    size_t start;
+    size_t size;
+    int res;
+    char buf[20];
+    
+    c->length = 0;
+    ccn_charbuf_append_tt(c, CCN_DTAG_Interest, CCN_DTAG);
+    ccn_charbuf_append(c, namebuf->buf, namebuf->length);
+    if (prefix_comps >= 0) {
+        ccn_charbuf_append_tt(c, CCN_DTAG_NameComponentCount, CCN_DTAG);
+        res = snprintf(buf, sizeof(buf), "%d", prefix_comps);
+        ccn_charbuf_append_tt(c, res, CCN_UDATA);
+        ccn_charbuf_append(c, buf, res);
+        ccn_charbuf_append_closer(c);
+    }
+    res = 0;
+    if (interest_template != NULL) {
+        struct ccn_parsed_interest pi = { 0 };
+        res = ccn_parse_interest(interest_template->buf,
+                                 interest_template->length, &pi, NULL);
+        if (res >= 0) {
+            start = pi.offset[CCN_PI_E_NameComponentCount];
+            size = pi.offset[CCN_PI_E_Count] - start;
+            ccn_charbuf_append(c, interest_template->buf + start, size);
+        }
+        else
+            NOTE_ERR(h, EINVAL);
+    }
+    ccn_charbuf_append_closer(c);
+    replace_interest_msg(dest, (res >= 0 ? c : NULL));
+}
+
 int
 ccn_express_interest(struct ccn *h,
                      struct ccn_charbuf *namebuf,
@@ -345,7 +363,7 @@ ccn_express_interest(struct ccn *h,
     struct hashtb_enumerator *e = &ee;
     int res;
     int prefixend;
-    struct expressed_interest *interest;
+    struct expressed_interest *interest = NULL;
     struct interests_by_prefix *entry = NULL;
     if (h->interests_by_prefix == NULL) {
         h->interests_by_prefix = hashtb_create(sizeof(struct interests_by_prefix), NULL);
@@ -364,17 +382,22 @@ ccn_express_interest(struct ccn *h,
     entry = e->data;
     if (entry == NULL) {
         NOTE_ERRNO(h);
+        hashtb_end(e);
         return(res);
     }
     interest = calloc(1, sizeof(*interest));
     if (interest == NULL) {
         NOTE_ERRNO(h);
+        hashtb_end(e);
         return(-1);
     }
-    interest->prefix_comps = prefix_comps;
+    ccn_construct_interest(h, namebuf, prefix_comps, interest_template, interest);
+    if (interest->interest_msg == NULL) {
+        free(interest);
+        hashtb_end(e);
+        return(-1);
+    }
     ccn_replace_handler(h, &(interest->action), action);
-    replace_morecomponents(interest, namebuf->buf + prefixend, namebuf->length - 1 - prefixend);
-    replace_template(interest, interest_template);
     interest->target = 1;
     interest->next = entry->list;
     entry->list = interest;
@@ -494,30 +517,9 @@ static void
 ccn_refresh_interest(struct ccn *h, struct expressed_interest *interest,
                      const unsigned char *components, size_t components_size)
 {
-    struct ccn_charbuf *c = h->interestbuf;
     int res;
-    char buf[20];
-    c->length = 0;
-    ccn_charbuf_append_tt(c, CCN_DTAG_Interest, CCN_DTAG);
-    ccn_charbuf_append_tt(c, CCN_DTAG_Name, CCN_DTAG);
-    ccn_charbuf_append(c, components, components_size);
-    if (interest->prefix_comps >= 0 && interest->morecomponents_size != 0) {
-        ccn_charbuf_append(c, interest->morecomponents, interest->morecomponents_size);
-        ccn_charbuf_append_closer(c);
-        ccn_charbuf_append_tt(c, CCN_DTAG_NameComponentCount, CCN_DTAG);
-        res = snprintf(buf, sizeof(buf), "%d", interest->prefix_comps);
-        ccn_charbuf_append_tt(c, res, CCN_UDATA);
-        ccn_charbuf_append(c, buf, res);
-        ccn_charbuf_append_closer(c);
-    }
-    else
-        ccn_charbuf_append_closer(c);
-    if (interest->template_stuff != NULL)
-        ccn_charbuf_append(c, interest->template_stuff,
-                           interest->template_stuff_size);
-    ccn_charbuf_append_closer(c);
     if (interest->outstanding < interest->target) {
-        res = ccn_put(h, c->buf, c->length);
+        res = ccn_put(h, interest->interest_msg, interest->size);
         if (res >= 0) {
             interest->outstanding += 1;
             interest->lasttime = h->now;
@@ -529,42 +531,48 @@ static void
 ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
 {
     struct ccn_parsed_interest pi = {0};
-    struct ccn_indexbuf *comps = ccn_indexbuf_obtain(h);
+    struct ccn_upcall_info info = {0};
     int i;
     int res;
-    res = ccn_parse_interest(msg, size, &pi, comps);
+    info.h = h;
+    info.pi = &pi;
+    info.interest_comps = ccn_indexbuf_obtain(h);
+    res = ccn_parse_interest(msg, size, &pi, info.interest_comps);
     if (res >= 0) {
         /* This message is an Interest */
         enum ccn_upcall_kind upcall_kind = CCN_UPCALL_INTEREST;
-        if (h->interest_filters != NULL && comps->n > 0) {
+        info.interest_ccnb = msg;
+        if (h->interest_filters != NULL && info.interest_comps->n > 0) {
+            struct ccn_indexbuf *comps = info.interest_comps;
             size_t keystart = comps->buf[0];
             unsigned char *key = msg + keystart;
             struct interest_filter *entry;
             for (i = comps->n - 1; i >= 0; i--) {
                 entry = hashtb_lookup(h->interest_filters, key, comps->buf[i] - keystart);
                 if (entry != NULL) {
-                    res = (entry->action->p)(
-                        entry->action,
-                        upcall_kind,
-                        h, msg, size, comps, i, NULL, 0);
-                    if (res != -1)
+                    info.matched_comps = i;
+                    res = (entry->action->p)(entry->action, upcall_kind, &info);
+                    if (res == -1)
                         upcall_kind = CCN_UPCALL_CONSUMED_INTEREST;
                 }
             }
         }
         if (h->default_interest_action != NULL) {
+            info.matched_comps = 0;
             (h->default_interest_action->p)(
-                h->default_interest_action,
-                upcall_kind,
-                h, msg, size, comps, 0, NULL, 0);
+                h->default_interest_action, upcall_kind, &info);
         }
     }
     else {
         /* This message should be a ContentObject. */
         struct ccn_parsed_ContentObject obj = {0};
-        res = ccn_parse_ContentObject(msg, size, &obj, comps);
+        info.pco = &obj;
+        info.content_comps = ccn_indexbuf_obtain(h);
+        res = ccn_parse_ContentObject(msg, size, &obj, info.content_comps);
         if (res >= 0) {
+            info.content_ccnb = msg;
             if (h->interests_by_prefix != NULL) {
+                struct ccn_indexbuf *comps = info.content_comps;
                 size_t keystart = comps->buf[0];
                 unsigned char *key = msg + keystart;
                 struct expressed_interest *interest = NULL;
@@ -574,18 +582,28 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                     if (entry != NULL) {
                         for (interest = entry->list; interest != NULL; interest = interest->next) {
                             if (interest->target > 0 && interest->outstanding > 0) {
-                                // XXX - At this point we need to check whether the content matches the rest of the qualifiers on the interest before doing the upcall.
-                                interest->outstanding -= 1;
-                                res = (interest->action->p)(interest->action,
-                                                            CCN_UPCALL_CONTENT,
-                                                            h, msg, size, comps, i, NULL, 0); // XXX pass matched_ccnb
-                                if (res == CCN_UPCALL_RESULT_REEXPRESS)
-                                    ccn_refresh_interest(h, interest, key, comps->buf[i] - keystart);
-                                else {
-                                    interest->target = 0;
-                                    ccn_replace_handler(h, &(interest->action), NULL);
-                                    replace_morecomponents(interest, NULL, 0);
-                                    replace_template(interest, NULL);
+                                res = ccn_parse_interest(interest->interest_msg,
+                                                         interest->size,
+                                                         info.pi,
+                                                         info.interest_comps);
+                                if (res >= 0 &&
+                                    ccn_content_matches_interest(msg, size,
+                                                                 1, info.pco,
+                                                                 interest->interest_msg,
+                                                                 interest->size,
+                                                                 info.pi)) {
+                                    interest->outstanding -= 1;
+                                    info.matched_comps = i;
+                                    res = (interest->action->p)(interest->action,
+                                                                CCN_UPCALL_CONTENT,
+                                                                &info);
+                                    if (res == CCN_UPCALL_RESULT_REEXPRESS)
+                                        ccn_refresh_interest(h, interest, key, comps->buf[i] - keystart);
+                                    else {
+                                        interest->target = 0;
+                                        ccn_replace_handler(h, &(interest->action), NULL);
+                                        replace_interest_msg(interest, NULL);
+                                    }
                                 }
                             }
                         }
@@ -593,14 +611,16 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                 }
             }
             if (h->default_content_action != NULL) {
+                info.matched_comps = 0;
                 (h->default_content_action->p)(
                     h->default_content_action,
                     CCN_UPCALL_CONTENT,
-                    h, msg, size, comps, 0, NULL, 0);
+                    &info);
             }
         }
     }
-    ccn_indexbuf_release(h, comps);
+    ccn_indexbuf_release(h, info.interest_comps);
+    ccn_indexbuf_release(h, info.content_comps);
 }
 
 static int
@@ -656,14 +676,19 @@ ccn_age_interest(struct ccn *h,
                  struct expressed_interest *interest,
                  const unsigned char *key, size_t keysize)
 {
+    struct ccn_parsed_interest pi = {0};
+    struct ccn_upcall_info info = {0};
     int delta;
     int res;
+    int firstcall;
+    info.h = h;
+    info.pi = &pi;
+    firstcall = (interest->lasttime.tv_sec == 0);
     if (interest->lasttime.tv_sec + 30 < h->now.tv_sec) {
+        /* fixup so that delta does not overflow */
         interest->outstanding = 0;
-        ccn_refresh_interest(h, interest, key, keysize);
-        if (CCN_INTEREST_HALFLIFE_MICROSEC < h->refresh_us)
-            h->refresh_us = CCN_INTEREST_HALFLIFE_MICROSEC;
-        return;
+        interest->lasttime = h->now;
+        interest->lasttime.tv_sec -= 30;
     }
     delta = (h->now.tv_sec  - interest->lasttime.tv_sec)*1000000 +
     (h->now.tv_usec - interest->lasttime.tv_usec);
@@ -682,10 +707,18 @@ ccn_age_interest(struct ccn *h,
     }
     interest->lasttime.tv_usec -= delta;
     if (interest->target > 0 && interest->outstanding == 0) {
-        res = (interest->action->p)(
-                                    interest->action,
-                                    CCN_UPCALL_INTEREST_TIMED_OUT,
-                                    h, NULL, 0, NULL, 0, NULL, 0); // XXX pass matched_ccnb and other stuff
+        res = CCN_UPCALL_RESULT_REEXPRESS;
+        if (!firstcall) {
+            info.interest_comps = ccn_indexbuf_obtain(h);
+            res = ccn_parse_interest(interest->interest_msg,
+                                     interest->size,
+                                     info.pi,
+                                     info.interest_comps);
+            // XXX - check res
+            res = (interest->action->p)(interest->action,
+                                        CCN_UPCALL_INTEREST_TIMED_OUT,
+                                        &info);
+        }
         if (res == CCN_UPCALL_RESULT_REEXPRESS)
             ccn_refresh_interest(h, interest, key, keysize);
     }

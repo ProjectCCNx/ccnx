@@ -31,19 +31,16 @@ int
 incoming_content(
     struct ccn_closure *selfp,
     enum ccn_upcall_kind kind,
-    struct ccn *h,
-    const unsigned char *ccnb,    /* binary-format Interest or ContentObject */
-    size_t ccnb_size,             /* size in bytes */
-    struct ccn_indexbuf *comps,   /* component boundaries within ccnb */
-    int matched_comps,            /* number of components in registration */
-    const unsigned char *matched_ccnb, /* binary-format matched Interest */
-    size_t matched_ccnb_size
-)
+    struct ccn_upcall_info *info)
 {
     struct ccn_charbuf *c = NULL;
     struct ccn_charbuf *comp = NULL;
     struct ccn_charbuf *uri = NULL;
     struct ccn_charbuf *templ = NULL;
+    const unsigned char *ccnb = NULL;
+    size_t ccnb_size = 0;
+    struct ccn_indexbuf *comps = NULL;
+    int matched_comps = 0;
     int res;
     int i;
     struct upcalldata *data = selfp->data;
@@ -55,23 +52,27 @@ incoming_content(
         return(CCN_UPCALL_RESULT_REEXPRESS);
     if (kind != CCN_UPCALL_CONTENT) abort();
 
+    ccnb = info->content_ccnb;
+    ccnb_size = info->pco->offset[CCN_PCO_E];
+    comps = info->content_comps;
+    matched_comps = info->pi->prefix_comps;
     c = ccn_charbuf_create();
     comp = ccn_charbuf_create();
     uri = ccn_charbuf_create();
     templ = ccn_charbuf_create();
         
-    /* Recover the same prefix as before */
-    ccn_name_init(c);
-    c->length--;
-    ccn_charbuf_append(c, ccnb + comps->buf[0], comps->buf[matched_comps] - comps->buf[0]);
-    ccn_charbuf_append_closer(c);
-    
     if (matched_comps + 1 >= comps->n) {
         ccn_uri_append(c, ccnb, ccnb_size, 1);
         fprintf(stderr, "Giving up because item matches full prefix: %s\n", ccn_charbuf_as_string(uri));
         exit(1);
     }
 
+    /* Recover the same prefix as before */
+    ccn_name_init(c);
+    c->length--;
+    ccn_charbuf_append(c, ccnb + comps->buf[0], comps->buf[matched_comps] - comps->buf[0]);
+    ccn_charbuf_append_closer(c);
+    
     comp = ccn_charbuf_create();
     ccn_name_init(comp);
     comp->length--;
@@ -103,7 +104,7 @@ incoming_content(
         fprintf(stderr, "*** Interest packet is %d bytes\n", (int)templ->length);
         data->warn = data->warn * 8 / 5;
     }
-    ccn_express_interest(h, c, -1, selfp, templ);
+    ccn_express_interest(info->h, c, -1, selfp, templ);
     ccn_charbuf_destroy(&templ);
     ccn_charbuf_destroy(&c);
     ccn_charbuf_destroy(&uri);

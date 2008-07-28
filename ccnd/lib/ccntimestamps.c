@@ -14,23 +14,17 @@ struct mydata {
     int nseen;
 } mydata = {0};
 
-int
+enum ccn_upcall_res
 incoming_content(
     struct ccn_closure *selfp,
     enum ccn_upcall_kind kind,
-    struct ccn *h,
-    const unsigned char *ccnb,    /* binary-format Interest or ContentObject */
-    size_t ccnb_size,             /* size in bytes */
-    struct ccn_indexbuf *comps,   /* component boundaries within ccnb */
-    int matched_comps,            /* number of components in registration */
-    const unsigned char *matched_ccnb,
-    size_t matched_ccnb_size
-)
+    struct ccn_upcall_info *info)
 {
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d = NULL;
     int nest = 0;
     struct mydata *md = selfp->data;
+    size_t ccnb_size = 0;
     if (kind == CCN_UPCALL_FINAL) {
         // XXX - cleanup
         return(0);
@@ -40,17 +34,18 @@ incoming_content(
     }
     if (kind != CCN_UPCALL_CONTENT || md == NULL)
         return(-1);
+    ccnb_size = info->pco->offset[CCN_PCO_E];
     if (md->firstseen == NULL) {
         md->firstseen = calloc(1, ccnb_size);
-        memcpy(md->firstseen, ccnb, ccnb_size);
+        memcpy(md->firstseen, info->content_ccnb, ccnb_size);
         md->firstseensize = ccnb_size;
     }
-    else if (md->firstseensize == ccnb_size && 0 == memcmp(md->firstseen, ccnb, ccnb_size)) {
+    else if (md->firstseensize == ccnb_size && 0 == memcmp(md->firstseen, info->content_ccnb, ccnb_size)) {
         selfp->data = NULL;
         return(-1);
     }
     md->nseen++;
-    d = ccn_buf_decoder_start(&decoder, ccnb, ccnb_size);
+    d = ccn_buf_decoder_start(&decoder, info->content_ccnb, ccnb_size);
     if (ccn_buf_match_dtag(d, CCN_DTAG_ContentObject)) {
         nest = d->decoder.nest;
         ccn_buf_advance(d);
@@ -60,7 +55,7 @@ incoming_content(
             if (ccn_buf_match_dtag(d, CCN_DTAG_Timestamp)) {
                 ccn_buf_advance(d);
                 if (CCN_GET_TT_FROM_DSTATE(d->decoder.state) == CCN_UDATA) {
-                    fwrite(ccnb + d->decoder.index, 1, d->decoder.numval, stdout);
+                    fwrite(info->content_ccnb + d->decoder.index, 1, d->decoder.numval, stdout);
                     printf("\n");
                     break;
                 }

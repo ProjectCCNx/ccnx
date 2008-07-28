@@ -22,27 +22,40 @@ struct ccn;
 
 /* forward declarations */
 struct ccn_closure;
+struct ccn_upcall_info;
+struct ccn_parsed_interest;
+struct ccn_parsed_ContentObject;
 enum ccn_upcall_kind;
+enum ccn_upcall_res;
 
 /*
  * Types for implementing upcalls
  * To receive notifications of incoming interests and content, the
- * client is expected to create closures (using client-managed memory).
- * When ccnb is a ContentObject or for a CCN_UPCALL_INTEREST_TIMED_OUT event,
- * matched_ccnb corresponding Interest message, where this is applicable.
- * Otherwise matched_ccnb will be NULL.
+ * client create closures (using client-managed memory).
  */
-typedef int (*ccn_handler)(
+typedef enum ccn_upcall_res (*ccn_handler)(
     struct ccn_closure *selfp,
     enum ccn_upcall_kind kind,
-    struct ccn *h,
-    const unsigned char *ccnb,    /* binary-format Interest or ContentObject */
-    size_t ccnb_size,             /* size in bytes */
-    struct ccn_indexbuf *comps,   /* component boundaries within ccnb */
-    int matched_comps,            /* number of components in registration */
-    const unsigned char *matched_ccnb, /* binary-format matched Interest */
-    size_t matched_ccnb_size
+    struct ccn_upcall_info *info  /* details about the event */
 );
+
+/*
+ * The client is responsible for managing this piece of memory and the
+ * data therein. The refcount should be initially zero, and is used by the
+ * library to keep to track of multiple registrations of the same closure.
+ * When the count drops back to 0, the closure will be called with
+ * kind = CCN_UPCALL_FINAL so that it has an opportunity to clean up.
+ */
+struct ccn_closure {
+    ccn_handler p; 
+    void *data;         /* for client use */
+    intptr_t intdata;   /* for client use */
+    int refcount;       /* client should not update this directly */
+};
+
+/*
+ * This tells what kind of event the upcall is handling.
+ */
 enum ccn_upcall_kind {
     CCN_UPCALL_FINAL,       /* handler is about to be deregistered */
     CCN_UPCALL_INTEREST,    /* incoming interest */
@@ -50,10 +63,30 @@ enum ccn_upcall_kind {
     CCN_UPCALL_CONTENT,     /* incoming content */
     CCN_UPCALL_INTEREST_TIMED_OUT /* interest timed out */
 };
-struct ccn_closure {
-    ccn_handler p; 
-    void *data;    /* for client use */
-    int refcount;  /* client is not expected to update this directly */
+
+struct ccn_upcall_info {
+    struct ccn *h;              /* The ccn library handle */
+    /* Interest (incoming or matched) */
+    const unsigned char *interest_ccnb;
+    struct ccn_parsed_interest *pi;
+    struct ccn_indexbuf *interest_comps;
+    int matched_comps;
+    /* Incoming content for CCN_UPCALL_CONTENT - otherwise NULL*/
+    const unsigned char *content_ccnb;
+    struct ccn_parsed_ContentObject *pco;
+    struct ccn_indexbuf *content_comps;
+    /* Response message buffer */
+    // NYI - struct ccn_charbuf *response;
+};
+
+/*
+ * Upcalls return one of these values
+ * XXX - need more documentation
+ */
+enum ccn_upcall_res {
+    CCN_UPCALL_RESULT_ERR = -1,
+    CCN_UPCALL_RESULT_OK = 0,
+    CCN_UPCALL_RESULT_REEXPRESS = 1,
 };
 
 /*
@@ -145,8 +178,7 @@ enum ccn_content_type {
  */
 int
 ccn_auth_create_default(struct ccn_charbuf *c, /* output authenticator */
-			enum ccn_content_type Type /* input content type */
-			);
+			enum ccn_content_type Type);
 
 /*
  * ccn_auth_create: create authenticator in a charbuf 
@@ -179,7 +211,6 @@ ccn_auth_create(struct ccn_charbuf *c,
  * the upcall to register again with an interest modified to prevent matching
  * the same interest again.
  */
-#define CCN_UPCALL_RESULT_REEXPRESS 1
 int ccn_express_interest(struct ccn *h,
                          struct ccn_charbuf *namebuf,
                          int prefix_comps,

@@ -29,18 +29,10 @@ void printraw(const void *r, int n)
     }
 }
 
-int
-incoming_content(
-    struct ccn_closure *selfp,
-    enum ccn_upcall_kind kind,
-    struct ccn *h,
-    const unsigned char *ccnb,    /* binary-format Interest or ContentObject */
-    size_t ccnb_size,             /* size in bytes */
-    struct ccn_indexbuf *comps,   /* component boundaries within ccnb */
-    int matched_comps,            /* number of components in registration */
-    const unsigned char *matched_ccnb, /* binary-format matched Interest */
-    size_t matched_ccnb_size
-)
+enum ccn_upcall_res
+incoming_content(struct ccn_closure *selfp,
+                 enum ccn_upcall_kind kind,
+                 struct ccn_upcall_info *info)
 {
     if (kind == CCN_UPCALL_FINAL)
         return(0);
@@ -48,8 +40,8 @@ incoming_content(
         return(CCN_UPCALL_RESULT_REEXPRESS);
     if (kind != CCN_UPCALL_CONTENT)
         return(-1);
-    printf("Got content matching %d components:\n", matched_comps);
-    printraw(ccnb, ccnb_size);
+    printf("Got content matching %d components:\n", info->pi->prefix_comps);
+    printraw(info->content_ccnb, info->pco->offset[CCN_PCO_E]);
     return(0);
 }
 
@@ -61,27 +53,19 @@ static struct ccn_closure incoming_content_action = {
 static unsigned char rawbuf[1024*1024];
 static ssize_t rawlen;
 
-int
-outgoing_content(
-    struct ccn_closure *selfp,
-    enum ccn_upcall_kind kind,
-    struct ccn *h,
-    const unsigned char *ccnb,    /* binary-format Interest or ContentObject */
-    size_t ccnb_size,             /* size in bytes */
-    struct ccn_indexbuf *comps,   /* component boundaries within ccnb */
-    int matched_comps,            /* number of components in registration */
-    const unsigned char *matched_ccnb, /* binary-format matched Interest */
-    size_t matched_ccnb_size
-)
+enum ccn_upcall_res
+outgoing_content(struct ccn_closure *selfp,
+                 enum ccn_upcall_kind kind,
+                 struct ccn_upcall_info *info)
 {
     int res = 0;
     if (kind == CCN_UPCALL_FINAL) {
         printf("CCN_UPCALL_FINAL for outgoing_content()\n");
         return(res);
     }
-    printf("Got interest matching %d components, kind = %d\n", matched_comps, kind);
+    printf("Got interest matching %d components, kind = %d\n", info->matched_comps, kind);
     if (kind == CCN_UPCALL_INTEREST) {
-        res = ccn_put(h, rawbuf, rawlen);
+        res = ccn_put(info->h, rawbuf, rawlen);
         if (res == -1) {
             fprintf(stderr, "error sending data");
             return(-1);

@@ -27,15 +27,9 @@ struct handlerstate {
     } *items;
 };
 
-int interest_handler(struct ccn_closure *selfp,
-                  enum ccn_upcall_kind,
-                  struct ccn *h,
-                  const unsigned char *ccnb,    /* binary-format Interest or ContentObject */
-                  size_t ccnb_size,
-                  struct ccn_indexbuf *components,
-                int matched_components,
-                     const unsigned char *matched_ccnb,
-                     size_t matched_ccnb_size);
+enum ccn_upcall_res interest_handler(struct ccn_closure *selfp,
+                                     enum ccn_upcall_kind,
+                                     struct ccn_upcall_info *info);
 
 int
 main (int argc, char *argv[]) {
@@ -198,20 +192,15 @@ match_components(unsigned char *msg1, struct ccn_indexbuf *comp1,
     return (matched);
 }
 
-int
+enum ccn_upcall_res
 interest_handler(struct ccn_closure *selfp,
                  enum ccn_upcall_kind upcall_kind,
-                 struct ccn *h,
-                 const unsigned char *ccnb,    /* binary-format Interest or ContentObject */
-                 size_t ccnb_size,
-                 struct ccn_indexbuf *components,
-                 int matched_components,
-                 const unsigned char *matched_ccnb,
-                 size_t matched_ccnb_size) {
-
+                 struct ccn_upcall_info *info)
+{
     int i, c, mc, res;
     struct handlerstateitem item;
     struct handlerstate *state;
+    size_t ccnb_size = 0;
 
     state = selfp->data;
     switch(upcall_kind) {
@@ -224,12 +213,13 @@ interest_handler(struct ccn_closure *selfp,
         return (CCN_UPCALL_RESULT_REEXPRESS);
         
     case CCN_UPCALL_CONTENT:
+        ccnb_size = info->pco->offset[CCN_PCO_E];
         c = state->count;
         for (i = 0; i < c; i++) {
-            if (components->n == state->items[i].components->n) {
-                mc = match_components((unsigned char *)ccnb, components,
+            if (info->content_comps->n == state->items[i].components->n) {
+                mc = match_components((unsigned char *)info->content_ccnb, info->content_comps,
                                   state->items[i].contents, state->items[i].components);
-                if (mc == (components->n - 1)) {
+                if (mc == (info->content_comps->n - 1)) {
                     fprintf(stderr, "Duplicate content\n");
                     return (0);
                 }
@@ -244,7 +234,7 @@ interest_handler(struct ccn_closure *selfp,
         memset(&(state->items[c]), 0, sizeof(*(state->items)));
         state->items[c].components = ccn_indexbuf_create();
         /* XXX: probably should not have to do this re-parse of the content object */
-        res = ccn_parse_ContentObject((unsigned char *)ccnb, ccnb_size, &(state->items[c].x), state->items[c].components);
+        res = ccn_parse_ContentObject(info->content_ccnb, ccnb_size, &(state->items[c].x), state->items[c].components);
         if (res < 0) {
             fprintf(stderr, "- skipping: Not a ContentObject\n");
             ccn_indexbuf_destroy(&state->items[c].components);
@@ -254,7 +244,7 @@ interest_handler(struct ccn_closure *selfp,
         state->items[c].filename = "ephemeral";
         state->items[c].contents = malloc(ccnb_size);
         state->items[c].size = ccnb_size;
-        memcpy(state->items[c].contents, ccnb, ccnb_size);
+        memcpy(state->items[c].contents, info->content_ccnb, ccnb_size);
         state->count = c + 1;
         return (0);
 
@@ -265,10 +255,11 @@ interest_handler(struct ccn_closure *selfp,
     case CCN_UPCALL_INTEREST:
         c = state->count;
         for (i = 0; i < c; i++) {
-            mc = match_components((unsigned char *)ccnb, components,
+            // XXX - should use ccn_content_matches_interest() instead
+            mc = match_components((unsigned char *)info->interest_ccnb, info->interest_comps,
                                   state->items[i].contents, state->items[i].components);
-            if (mc == (components->n - 1)) {
-                ccn_put(h, state->items[i].contents, state->items[i].size);
+            if (mc >= (info->pi->prefix_comps)) {
+                ccn_put(info->h, state->items[i].contents, state->items[i].size);
                 fprintf(stderr, "Sending %s, matched %d components\n", state->items[i].filename, mc);
                 if (i < c - 1) {
                     item = state->items[i];

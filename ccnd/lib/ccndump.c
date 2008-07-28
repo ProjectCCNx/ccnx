@@ -21,23 +21,25 @@ int
 incoming_content(
     struct ccn_closure *selfp,
     enum ccn_upcall_kind kind,
-    struct ccn *h,
-    const unsigned char *ccnb,    /* binary-format Interest or ContentObject */
-    size_t ccnb_size,             /* size in bytes */
-    struct ccn_indexbuf *comps,   /* component boundaries within ccnb */
-    int matched_comps,            /* number of components in registration */
-    const unsigned char *matched_ccnb, /* binary-format matched Interest */
-    size_t matched_ccnb_size
-)
+    struct ccn_upcall_info *info)
 {
-    struct ccn_charbuf *c = ccn_charbuf_create();
-    struct ccn_charbuf *templ = ccn_charbuf_create();
+    struct ccn_charbuf *c = NULL;
+    struct ccn_charbuf *templ = NULL;
+    const unsigned char *ccnb = NULL;
+    size_t ccnb_size = 0;
+    struct ccn_indexbuf *comps = NULL;
+
     if (kind == CCN_UPCALL_FINAL)
         return(0);
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
         return(CCN_UPCALL_RESULT_REEXPRESS);
     if (kind != CCN_UPCALL_CONTENT)
         return(-1);
+    ccnb = info->content_ccnb;
+    ccnb_size = info->pco->offset[CCN_PCO_E];
+    comps = info->content_comps;
+    c = ccn_charbuf_create();
+    templ = ccn_charbuf_create();
     fwrite(ccnb, ccnb_size, 1, stdout);
     /* Use the name of the content just received as the resumption point */
     ccn_name_init(c);
@@ -45,7 +47,7 @@ incoming_content(
     ccn_charbuf_append(c, ccnb + comps->buf[0], comps->buf[comps->n-1] - comps->buf[0]);
     ccn_charbuf_append_closer(c);
     ccn_charbuf_append(templ, templ_ccnb, 15);
-    ccn_express_interest(h, c, 0, selfp, templ);
+    ccn_express_interest(info->h, c, 0, selfp, templ);
     ccn_charbuf_destroy(&templ);
     ccn_charbuf_destroy(&c);
     selfp->data = selfp; /* make not NULL to indicate we got something */
