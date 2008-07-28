@@ -141,16 +141,11 @@ enum ccn_content_type {
 /*
  * ccn_auth_create_default: create authenticator in a charbuf 
  * with defaults.
- * XXX - path needs documentation
  * Return value is 0, or -1 for error.
  */
 int
 ccn_auth_create_default(struct ccn_charbuf *c, /* output authenticator */
-			struct ccn_charbuf *signature, /* output signature */
-			enum ccn_content_type Type, /* input content type */
-			const struct ccn_charbuf *path, /* input path */
-			const void *content, /* input: raw content */
-			size_t length /* length of raw content */
+			enum ccn_content_type Type /* input content type */
 			);
 
 /*
