@@ -7,6 +7,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
@@ -16,23 +17,11 @@
 
 int
 ccn_auth_create_default(struct ccn_charbuf *c,
-		struct ccn_charbuf *signature,
-		enum ccn_content_type Type,
-		const struct ccn_charbuf *path,
-		const void *content, size_t length)
+                        enum ccn_content_type Type)
 {
-    unsigned char fakesig[32] = "nooooogoooodsiiiiig";
-    unsigned char fakepub[32] = {0};
     int res = 0;
 
-    res += ccn_auth_create(c, fakepub, sizeof(fakepub), NULL, Type, NULL);
-
-    res += ccn_charbuf_append_tt(signature, CCN_DTAG_Signature, CCN_DTAG);
-    res += ccn_charbuf_append_tt(signature, CCN_DTAG_SignatureBits, CCN_DTAG);
-    res += ccn_charbuf_append_tt(signature, sizeof(fakesig), CCN_BLOB);
-    res += ccn_charbuf_append(signature, fakesig, sizeof(fakesig));
-    res += ccn_charbuf_append_closer(signature);
-    res += ccn_charbuf_append_closer(signature);
+    res += ccn_auth_create(c, NULL, 0, NULL, Type, NULL);
 
     return (res == 0 ? 0 : -1);
 }
@@ -167,8 +156,6 @@ ccn_encode_Signature(struct ccn_charbuf *buf,
     return (res == 0 ? 0 : -1);
 }
 
-#include <openssl/evp.h>
-    
 int
 ccn_encode_ContentObject(struct ccn_charbuf *buf,
                          const struct ccn_charbuf *Name,
