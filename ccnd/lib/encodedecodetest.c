@@ -196,6 +196,7 @@ main (int argc, char *argv[]) {
     unsigned char pubkeyid[32] = {0};
     struct ccn_keystore *keystore = ccn_keystore_create();
     char keystore_name[1024] = {0};
+    char *bad_contents = NULL;
     int i;
 
     if (argc == 3 && strcmp(argv[1], "-o") == 0) {
@@ -244,12 +245,13 @@ main (int argc, char *argv[]) {
 	if (decode_message(buffer, cur_path, contents[0], strlen(contents[0]), ccn_keystore_public_key(keystore)) != 0) {
 	    result = 1;
 	}
-        contents[0][1] += 1;
+        bad_contents = strdup(contents[0]);
+        bad_contents[0] += 1;
         printf("Expect Decode mismatch: ");
-	if (decode_message(buffer, cur_path, contents[0], strlen(contents[0]), ccn_keystore_public_key(keystore)) == 0) {
+	if (decode_message(buffer, cur_path, bad_contents, strlen(bad_contents), ccn_keystore_public_key(keystore)) == 0) {
 	    result = 1;
 	}
-        contents[0][1] -= 1;
+        free(bad_contents);
     }
     path_destroy(&cur_path);
     ccn_charbuf_destroy(&buffer);
