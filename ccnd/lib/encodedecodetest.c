@@ -11,6 +11,7 @@
 #include <ccn/uri.h>
 #include <ccn/digest.h>
 #include <ccn/keystore.h>
+#include <ccn/signing.h>
 
 struct path {
     int count;
@@ -76,7 +77,7 @@ encode_message(struct ccn_charbuf *message, struct path * name_path, char *data,
 }
 
 int 
-decode_message(struct ccn_charbuf *message, struct path * name_path, char *data, size_t len) {
+decode_message(struct ccn_charbuf *message, struct path * name_path, char *data, size_t len, const void *verkey) {
     struct ccn_parsed_ContentObject content;
     struct ccn_indexbuf *comps = ccn_indexbuf_create();
     const unsigned char * content_value;
@@ -121,7 +122,12 @@ decode_message(struct ccn_charbuf *message, struct path * name_path, char *data,
 	printf("Decode mismatch of content\n");
 	res = -1;
     }
-    
+
+    if (ccn_verify_signature(message->buf, message->length, &content, comps, verkey) != 1) {
+        printf("Signature did not verify\n");
+        res = -1;
+    }
+
     ccn_indexbuf_destroy(&comps);
     return res;
     
@@ -235,9 +241,15 @@ main (int argc, char *argv[]) {
 	fd = open(outname, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU);
 	write(fd, buffer->buf, buffer->length);
 	close(fd);
-	if (decode_message(buffer, cur_path, contents[0], strlen(contents[0])) != 0) {
+	if (decode_message(buffer, cur_path, contents[0], strlen(contents[0]), ccn_keystore_public_key(keystore)) != 0) {
 	    result = 1;
 	}
+        contents[0][1] += 1;
+        printf("Expect Decode mismatch: ");
+	if (decode_message(buffer, cur_path, contents[0], strlen(contents[0]), ccn_keystore_public_key(keystore)) == 0) {
+	    result = 1;
+	}
+        contents[0][1] -= 1;
     }
     path_destroy(&cur_path);
     ccn_charbuf_destroy(&buffer);
@@ -252,7 +264,7 @@ main (int argc, char *argv[]) {
 	if (encode_message(buffer, cur_path, contents[i], strlen(contents[i]), ccn_keystore_private_key(keystore))) {
 	    printf("Failed encode\n");
             result = 1;
-	} else if (decode_message(buffer, cur_path, contents[i], strlen(contents[i]))) {
+	} else if (decode_message(buffer, cur_path, contents[i], strlen(contents[i]), ccn_keystore_public_key(keystore))) {
 	    printf("Failed decode\n");
             result = 1;
 	}
