@@ -17,6 +17,7 @@
 #include <ccn/ccn.h>
 #include <ccn/keystore.h>
 #include <ccn/digest.h>
+#include <ccn/signing.h>
 
 static unsigned char rawbuf[8801];
 
@@ -34,58 +35,6 @@ Bug(int line) {
     if (line)
         exit(1);
 }
-
-int
-ccn_verify_signature(const unsigned char *msg,
-                     size_t size,
-                     struct ccn_parsed_ContentObject *co,
-                     struct ccn_indexbuf *comps, const void *verification_pubkey)
-{
-    EVP_MD_CTX verc;
-    EVP_MD_CTX *ver_ctx = &verc;
-    int res;
-
-    const EVP_MD *digest = EVP_md_null();
-
-    const unsigned char *signature_bits = NULL;
-    size_t signature_bits_size = 0;
-
-    res = ccn_ref_tagged_BLOB(CCN_DTAG_SignatureBits, msg,
-                              co->offset[CCN_PCO_B_SignatureBits],
-                              co->offset[CCN_PCO_E_SignatureBits],
-                              &signature_bits,
-                              &signature_bits_size);
-    if (res < 0) FAIL((stderr, "Unable to get SignatureBits from object"));
-
-    if (co->offset[CCN_PCO_B_DigestAlgorithm] == co->offset[CCN_PCO_E_DigestAlgorithm]) {
-        digest = EVP_sha256();
-    }
-    else {
-        /* XXX - figure out what algorithm the OID represents */
-        fprintf(stderr, "not a DigestAlgorithm I understand right now\n");
-        return (-1);
-    }
-
-    EVP_MD_CTX_init(ver_ctx);
-    res = EVP_VerifyInit_ex(ver_ctx, digest, NULL);
-    if (!res) {
-        FAIL((stderr, "EVP_VerifyInit_ex"));
-    }
-
-    /* we sign from the beginning of the name through the end of the content */
-
-    size_t signed_size = co->offset[CCN_PCO_E_Content] - co->offset[CCN_PCO_B_Name];
-    res = EVP_VerifyUpdate(ver_ctx, msg + co->offset[CCN_PCO_B_Name], signed_size);
-
-    res = EVP_VerifyFinal(ver_ctx, signature_bits, signature_bits_size, (EVP_PKEY *)verification_pubkey);
-    EVP_MD_CTX_cleanup(ver_ctx);
-
-    if (res == 1)
-        return (1);
-    else
-        return (0);
-}
-
 
 int
 main(int argc, char **argv)
