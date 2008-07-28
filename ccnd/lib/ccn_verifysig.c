@@ -11,9 +11,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <openssl/evp.h>
-#include <openssl/x509.h>
-
 #include <ccn/ccn.h>
 #include <ccn/keystore.h>
 #include <ccn/digest.h>
@@ -21,19 +18,11 @@
 
 static unsigned char rawbuf[8801];
 
-#define FAIL(args) do { fprintf args; Bug(__LINE__); } while(0)
 #define MOAN(args) do { fprintf args; Moan(__LINE__); status = 1; } while(0)
 
 static void
 Moan(int line) {
     fprintf(stderr, " at ccn_verifysig.c:%d\n", line);
-}
-
-static void
-Bug(int line) {
-    Moan(line);
-    if (line)
-        exit(1);
 }
 
 int
@@ -56,7 +45,7 @@ main(int argc, char **argv)
     int good = 0;
     int bad = 0;
     
-    OpenSSL_add_all_digests();
+    /*    OpenSSL_add_all_digests(); */
     
     /* verify against the user's own public key until we have the infrastructure
      * to locate keys
