@@ -286,6 +286,7 @@ struct ccn_buf_decoder *ccn_buf_decoder_start(struct ccn_buf_decoder *d,
     const unsigned char *buf, size_t size);
 
 void ccn_buf_advance(struct ccn_buf_decoder *d);
+int ccn_buf_advance_past_element(struct ccn_buf_decoder *d);
 
 /* The match routines return a boolean - true for match */
 int ccn_buf_match_dtag(struct ccn_buf_decoder *d, enum ccn_dtag dtag);

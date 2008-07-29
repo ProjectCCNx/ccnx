@@ -107,6 +107,29 @@ ccn_buf_check_close(struct ccn_buf_decoder *d)
 }
 
 int
+ccn_buf_advance_past_element(struct ccn_buf_decoder *d)
+{
+    enum ccn_tt tt;
+    int nest;
+    if (d->decoder.state < 0)
+        return(d->decoder.state);
+    tt = CCN_GET_TT_FROM_DSTATE(d->decoder.state);
+    if (tt == CCN_DTAG || tt == CCN_TAG) {
+        nest = d->decoder.nest;
+        ccn_buf_advance(d);
+        while (d->decoder.state >= 0 && d->decoder.nest >= nest)
+            ccn_buf_advance(d);
+        /* The nest decrements before the closer is consumed */
+        ccn_buf_check_close(d);
+    }
+    else
+        return(-1);
+    if (d->decoder.state < 0)
+        return(d->decoder.state);
+    return (0);
+}
+
+int
 ccn_parse_required_tagged_BLOB(struct ccn_buf_decoder *d, enum ccn_dtag dtag,
 int minlen, int maxlen)
 {

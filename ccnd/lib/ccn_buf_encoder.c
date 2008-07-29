@@ -90,7 +90,6 @@ const char *
 ccn_content_name(enum ccn_content_type type)
 {
     switch (type) {
-    // XXX - these do not match up with schema/ccn.xsd
     case CCN_CONTENT_FRAGMENT:
 	return "FRAGMENT";
 	break;
