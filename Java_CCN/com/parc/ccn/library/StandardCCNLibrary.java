@@ -77,7 +77,11 @@ public class StandardCCNLibrary implements CCNLibrary {
 			} catch (ConfigurationException e) {
 				Library.logger().severe("Configuration exception initializing CCN library: " + e.getMessage());
 				throw new RuntimeException("Configuration exception initializing CCN library: " + e.getMessage(), e);
+			} catch (IOException e) {
+				Library.logger().severe("IO exception initializing CCN library: " + e.getMessage());
+				throw new RuntimeException("IO exception initializing CCN library: " + e.getMessage(), e);
 			}
+
 		}
 	}
 
@@ -87,7 +91,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 		CCNNetworkManager.getNetworkManager();
 	}
 
-	public StandardCCNLibrary() throws ConfigurationException {
+	public StandardCCNLibrary() throws ConfigurationException, IOException {
 		this(KeyManager.getDefaultKeyManager());
 	}
 
