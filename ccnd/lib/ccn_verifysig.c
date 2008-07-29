@@ -52,8 +52,11 @@ main(int argc, char **argv)
      */
     const void *verification_pubkey = NULL;
 
-    strcat(keystore_name, getenv("HOME"));
-    strcat(keystore_name, "/.ccn/.ccn_keystore");
+    strlcat(keystore_name, getenv("HOME"), sizeof(keystore_name));
+    if (strlcat(keystore_name, "/.ccn/.ccn_keystore", sizeof(keystore_name)) >= sizeof(keystore_name)) {
+        printf("Unable to construct keystore name\n");
+        exit(1);
+    }
     keystore = ccn_keystore_create();
     if (0 != ccn_keystore_init(keystore, keystore_name, "Th1s1sn0t8g00dp8ssw0rd.")) {
         printf("Failed to initialize keystore\n");
