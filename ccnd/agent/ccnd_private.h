@@ -168,6 +168,7 @@ void ccnd_msg(struct ccnd *, const char *, ...);
 void ccnd_debug_ccnb(struct ccnd *h,
                      int lineno,
                      const char *msg,
+                     struct face *face,
                      const unsigned char *ccnb,
                      size_t ccnb_size);
 

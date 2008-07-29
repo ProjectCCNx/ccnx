@@ -1,0 +1,16 @@
+PROGRAMS
+ccnd - CCN Daemon
+	options: none
+	arguments: none
+	environment variables:
+		CCND_DEBUG=
+			0 - no stderr messages
+			1 - default stderr messages (any non-zero value gets these)
+			2 - interest messages
+			4 - content messages
+			8 - matching details
+			bitwise OR these together for combinations; -1 gets everything
+		CCN_LOCAL_PORT=
+			UDP port for local clients (default 4485)
+
+ccnd_june08 - obsolete CCN Daemon

@@ -228,8 +228,10 @@ ccnd_msg(struct ccnd *h, const char *fmt, ...)
 {
     struct timeval t;
     va_list ap;
-    struct ccn_charbuf *b = ccn_charbuf_create();
-    
+    struct ccn_charbuf *b;
+    if (h->debug == 0)
+        return;
+    b = ccn_charbuf_create();
     gettimeofday(&t, NULL);
     ccn_charbuf_putf(b, "%d.%06u ccnd[%d]: %s\n",
         (int)t.tv_sec, (unsigned)t.tv_usec, (int)getpid(), fmt);
@@ -240,27 +242,32 @@ ccnd_msg(struct ccnd *h, const char *fmt, ...)
 
 void
 ccnd_debug_ccnb(struct ccnd *h,
-                     int lineno,
-                     const char *msg,
-                     const unsigned char *ccnb,
-                     size_t ccnb_size)
+                int lineno,
+                const char *msg,
+                struct face *face,
+                const unsigned char *ccnb,
+                size_t ccnb_size)
 {
     struct ccn_charbuf *c = ccn_charbuf_create();
     struct ccn_charbuf *nm = NULL;
     struct ccn_parsed_ContentObject parsed_ContentObject = {0};
     int res;
     ccn_charbuf_putf(c, "debug.%d %s ", lineno, msg);
+    if (face != NULL)
+        ccn_charbuf_putf(c, "%u ", face->faceid);
     ccn_uri_append(c, ccnb, ccnb_size, 1);
-    res = ccn_parse_ContentObject(ccnb, ccnb_size, &parsed_ContentObject, NULL);
     if (0) {
         /* Include the (implicit) content digest name component */
         /* XXX - do not need this because that component is explicit inside ccnd, but keep code around for possible reuse */
-        ccn_digest_ContentObject(ccnb, &parsed_ContentObject);
-        nm = ccn_charbuf_create();
-        ccn_name_init(nm);
-        ccn_name_append(nm, parsed_ContentObject.digest, parsed_ContentObject.digest_bytes);
-        ccn_uri_append(c, nm->buf, nm->length, 0);
-        ccn_charbuf_destroy(&nm);
+        res = ccn_parse_ContentObject(ccnb, ccnb_size, &parsed_ContentObject, NULL);
+        if (res >= 0) {
+            ccn_digest_ContentObject(ccnb, &parsed_ContentObject);
+            nm = ccn_charbuf_create();
+            ccn_name_init(nm);
+            ccn_name_append(nm, parsed_ContentObject.digest, parsed_ContentObject.digest_bytes);
+            ccn_uri_append(c, nm->buf, nm->length, 0);
+            ccn_charbuf_destroy(&nm);
+        }
     }
     ccnd_msg(h, "%s", ccn_charbuf_as_string(c));
     ccn_charbuf_destroy(&c);

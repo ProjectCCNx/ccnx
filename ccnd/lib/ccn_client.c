@@ -567,7 +567,7 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
         /* This message should be a ContentObject. */
         struct ccn_parsed_ContentObject obj = {0};
         info.pco = &obj;
-        info.content_comps = ccn_indexbuf_obtain(h);
+        info.content_comps = ccn_indexbuf_create();
         res = ccn_parse_ContentObject(msg, size, &obj, info.content_comps);
         if (res >= 0) {
             info.content_ccnb = msg;
@@ -620,7 +620,7 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
         }
     }
     ccn_indexbuf_release(h, info.interest_comps);
-    ccn_indexbuf_release(h, info.content_comps);
+    ccn_indexbuf_destroy(&info.content_comps);
 }
 
 static int

@@ -541,6 +541,10 @@ send_content(struct ccnd *h, struct face *face, struct content_entry *content)
 {
     struct ccn_charbuf *c = charbuf_obtain(h);
     int n, a, b, size;
+    size = content->key_size + content->tail_size;
+    if (h->debug & 4)
+        ccnd_debug_ccnb(h, __LINE__, "content_out", face,
+                        content->key, size);
     if ((face->flags & CCN_FACE_LINK) != 0)
         ccn_charbuf_append_tt(c, CCN_DTAG_CCNProtocolDataUnit, CCN_DTAG);
     /* Excise the message-digest name component */
@@ -548,9 +552,8 @@ send_content(struct ccnd *h, struct face *face, struct content_entry *content)
     if (n < 2) abort();
     a = content->comps[n - 2];
     b = content->comps[n - 1];
-    size = content->key_size + content->tail_size;
     if (b - a != 36)
-        ccnd_debug_ccnb(h, __LINE__, "strange_digest", content->key, size);
+        ccnd_debug_ccnb(h, __LINE__, "strange_digest", face, content->key, size);
     ccn_charbuf_append(c, content->key, a);
     ccn_charbuf_append(c, content->key + b, size - b);
     /* XXX - stuff interest here */
@@ -1025,10 +1028,10 @@ indexbuf_remove_element(struct ccn_indexbuf *x, size_t val)
 
 static int
 do_propagate(
-    struct ccn_schedule *sched,
-    void *clienth,
-    struct ccn_scheduled_event *ev,
-    int flags)
+             struct ccn_schedule *sched,
+             void *clienth,
+             struct ccn_scheduled_event *ev,
+             int flags)
 {
     struct ccnd *h = clienth;
     struct propagating_entry *pe = ev->evdata;
@@ -1037,8 +1040,9 @@ do_propagate(
         return(0);
     if (pe->outbound == NULL) {
         /* this is presumably an interest timeout */
-        if (h->debug)
+        if (h->debug & 2)
             ccnd_debug_ccnb(h, __LINE__, "interest_timeout",
+                            face_from_faceid(h, pe->faceid),
                             pe->interest_msg, pe->size);
         consume(pe);
         reap_needed(h, 0);
@@ -1050,6 +1054,9 @@ do_propagate(
         unsigned faceid = pe->outbound->buf[--pe->outbound->n];
         struct face *face = face_from_faceid(h, faceid);
         if (face != NULL) {
+            if (h->debug & 2)
+                ccnd_debug_ccnb(h, __LINE__, "interest_out", face,
+                                pe->interest_msg, pe->size);
             do_write_BFI(h, face, pe->interest_msg, pe->size);
             h->interests_sent += 1;
         }
@@ -1232,6 +1239,8 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
         h->interests_dropped += 1;
     }
     else {
+        if (h->debug & 10)
+            ccnd_debug_ccnb(h, __LINE__, "interest_in", face, msg, size);
         if (pi->orderpref > 1 || pi->prefix_comps != comps->n - 1)
             face->cached_accession = 0;
         namesize = comps->buf[pi->prefix_comps] - comps->buf[0];
@@ -1247,7 +1256,6 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
             content = NULL;
             last_match = NULL;
             // XXX test AnswerOriginKind here.
-            if (h->debug) ccnd_debug_ccnb(h, __LINE__, "interest", msg, size);
             content = NULL;
             if (face->cached_accession != 0) {
                 /* some help for old clients that are expecting suppression state */
@@ -1257,28 +1265,29 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
                     content_matches_interest_prefix(h, content, msg, 
                                                     comps, pi->prefix_comps))
                     content = content_from_accession(h, content_skiplist_next(h, content));
-                if (h->debug && content != NULL)
-                    ccnd_debug_ccnb(h, __LINE__, "resume", 
+                if (content != NULL && (h->debug & 8))
+                    ccnd_debug_ccnb(h, __LINE__, "resume", NULL,
                                     content->key, content->key_size + content->tail_size);
                 if (content != NULL &&
                     !content_matches_interest_prefix(h, content, msg,
                                                      comps, pi->prefix_comps)) {
-                    if (h->debug)
-                        ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", msg, size);
+                    if (h->debug & 8)
+                        ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL, msg, size);
                     content = NULL;
                 }
             }
             if (content == NULL) {
                 content = find_first_match_candidate(h, msg, pi);
-                if (h->debug && content != NULL)
-                    ccnd_debug_ccnb(h, __LINE__, "firstmatch", 
+                if (content != NULL && (h->debug & 8))
+                    ccnd_debug_ccnb(h, __LINE__, "firstmatch", NULL,
                                     content->key,
                                     content->key_size + content->tail_size);
                 if (content != NULL &&
                     !content_matches_interest_prefix(h, content, msg, comps, 
                                                      pi->prefix_comps)) {
-                    if (h->debug) ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", 
-                                                  msg, size);
+                    if (h->debug & 8)
+                        ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL,
+                                        msg, size);
                     content = NULL;
                 }
             }
@@ -1290,14 +1299,14 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
                         pi->prefix_comps != comps->n - 1 &&
                         content_matches_interest_prefix(h, content, msg,
                                                         comps, comps->n - 1)) {
-                        if (h->debug)
-                            ccnd_debug_ccnb(h, __LINE__, "skip_match",
+                        if (h->debug & 8)
+                            ccnd_debug_ccnb(h, __LINE__, "skip_match", NULL,
                                             content->key,
                                             content->key_size + content->tail_size);
                         goto move_along;
                     }
-                    if (h->debug)
-                        ccnd_debug_ccnb(h, __LINE__, "matches",
+                    if (h->debug & 8)
+                        ccnd_debug_ccnb(h, __LINE__, "matches", NULL, 
                                         content->key,
                                         content->key_size + content->tail_size);
                     if (pi->orderpref != 5) // XXX - should be symbolic
@@ -1311,8 +1320,8 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
                 if (content != NULL &&
                     !content_matches_interest_prefix(h, content, msg, 
                                                      comps, pi->prefix_comps)) {
-                    if (h->debug)
-                        ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch",
+                    if (h->debug & 8)
+                        ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL,
                                         content->key, 
                                         content->key_size + content->tail_size);
                     content = NULL;
@@ -1324,9 +1333,9 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
                 // XXX - this makes a little more work for ourselves, because we are about to consume this interest anyway.
                 propagate_interest(h, face, msg, size, pi, ipe);
                 matched = match_interests(h, content, NULL, face);
-                if (matched < 1)
+                if (matched < 1 && h->debug)
                     ccnd_debug_ccnb(h, __LINE__, "expected_match_did_not_happen",
-                                        content->key, 
+                                        face, content->key,
                                         content->key_size + content->tail_size);
                 face->cached_accession = content->accession;
                 matched = 1;
@@ -1398,14 +1407,14 @@ process_incoming_content(struct ccnd *h, struct face *face,
         (keysize = comps->buf[comps->n - 1]) > 65535 - 36) {
         ccnd_msg(h, "ContentObject with keysize %lu discarded",
                  (unsigned long)keysize);
-        ccnd_debug_ccnb(h, __LINE__, "oversize", msg, size);
+        ccnd_debug_ccnb(h, __LINE__, "oversize", face, msg, size);
         res = -__LINE__;
         goto Bail;
     }
     /* Make the content-digest name component explicit */
     ccn_digest_ContentObject(msg, &obj);
     if (obj.digest_bytes != 32) {
-        ccnd_debug_ccnb(h, __LINE__, "indigestible", msg, size);
+        ccnd_debug_ccnb(h, __LINE__, "indigestible", face, msg, size);
         goto Bail;
     }
     i = comps->buf[comps->n - 1];
@@ -1428,7 +1437,8 @@ process_incoming_content(struct ccnd *h, struct face *face,
                      obj.magic);
         }
     }
-    
+    if (h->debug & 4)
+        ccnd_debug_ccnb(h, __LINE__, "content_in", face, msg, size);
     keysize = obj.offset[CCN_PCO_B_Content];
     tail = msg + keysize;
     tailsize = size - keysize;
@@ -1439,8 +1449,8 @@ process_incoming_content(struct ccnd *h, struct face *face,
         if (tailsize != e->extsize ||
             0 != memcmp(tail, e->key + keysize, tailsize)) {
             ccnd_msg(h, "ContentObject name collision!!!!!");
-            ccnd_debug_ccnb(h, __LINE__, "new", msg, size);
-            ccnd_debug_ccnb(h, __LINE__, "old", e->key, e->keysize + e->extsize);
+            ccnd_debug_ccnb(h, __LINE__, "new", face, msg, size);
+            ccnd_debug_ccnb(h, __LINE__, "old", NULL, e->key, e->keysize + e->extsize);
             content = NULL;
             hashtb_delete(e); /* XXX - Mercilessly throw away both of them. */
             res = -__LINE__;
@@ -1449,7 +1459,7 @@ process_incoming_content(struct ccnd *h, struct face *face,
             h->content_dups_recvd++;
             ccnd_msg(h, "received duplicate ContentObject from %u (accession %llu)",
                      face->faceid, (unsigned long long)content->accession);
-            ccnd_debug_ccnb(h, __LINE__, "dup", msg, size);
+            ccnd_debug_ccnb(h, __LINE__, "dup", face, msg, size);
             /* Make note that this face knows about this content */
             // XXX - should distinguish the case that we were waiting
             //  to send this content - in that case we might have
@@ -1831,7 +1841,7 @@ ccnd_create(void)
     h = calloc(1, sizeof(*h));
     h->skiplinks = ccn_indexbuf_create();
     param.finalize_data = h;
-    h->face_limit = 10; /* soft limit */
+    h->face_limit = 128; /* soft limit */
     h->faces_by_faceid = calloc(h->face_limit, sizeof(h->faces_by_faceid[0]));
     param.finalize = &finalize_face;
     h->faces_by_fd = hashtb_create(sizeof(struct face), &param);
@@ -1852,8 +1862,13 @@ ccnd_create(void)
     hints.ai_socktype = SOCK_DGRAM;
     hints.ai_flags = AI_ADDRCONFIG;
     debugstr = getenv("CCND_DEBUG");
-    if (debugstr != NULL && debugstr[0] != 0)
-        h->debug = 1;
+    if (debugstr != NULL && debugstr[0] != 0) {
+        h->debug = atoi(debugstr);
+        if (h->debug == 0 && debugstr[0] != '0')
+            h->debug = 1;
+    }
+    else
+        h->debug = (1 << 16);
     portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
     if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
         portstr = "4485";
