@@ -86,7 +86,7 @@
    <!-- repository directory is likely to be created by running things
         so must be excluded from jar at least -->
 
-   <property name="build-excludes" value="bin/**, log/**, lib/**, libsrc/**, repository/**, build/**, testout/**"/>
+   <property name="build-excludes" value="bin/**, log/**, lib/**, libsrc/**, repository/**, build/**, testout/**, ktrace.out"/>
 
    <target name="compile">
        <mkdir dir="${build}"/>
