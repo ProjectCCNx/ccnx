@@ -38,7 +38,9 @@ main(int argc, char **argv)
     struct ccn_parsed_ContentObject *co = &obj;
     struct ccn_indexbuf *comps = ccn_indexbuf_create();
     struct ccn_keystore *keystore;
-    char keystore_name[1024] = {0};
+    char *home = getenv("HOME");
+    char *keystore_suffix = "/.ccn/ccn_keystore";
+    char *keystore_name = NULL;
 
     int status = 0;
     
@@ -52,11 +54,15 @@ main(int argc, char **argv)
      */
     const void *verification_pubkey = NULL;
 
-    strlcat(keystore_name, getenv("HOME"), sizeof(keystore_name));
-    if (strlcat(keystore_name, "/.ccn/.ccn_keystore", sizeof(keystore_name)) >= sizeof(keystore_name)) {
-        printf("Unable to construct keystore name\n");
+    if (home == NULL) {
+        printf("Unable to determine home directory for keystore\n");
         exit(1);
     }
+    keystore_name = calloc(1, strlen(home) + strlen(keystore_suffix) + 1);
+    
+    strcat(keystore_name, home);
+    strcat(keystore_name, keystore_suffix);
+
     keystore = ccn_keystore_create();
     if (0 != ccn_keystore_init(keystore, keystore_name, "Th1s1sn0t8g00dp8ssw0rd.")) {
         printf("Failed to initialize keystore\n");

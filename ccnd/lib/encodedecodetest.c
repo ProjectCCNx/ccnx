@@ -195,7 +195,10 @@ main (int argc, char *argv[]) {
     struct path * cur_path = NULL;
     unsigned char pubkeyid[32] = {0};
     struct ccn_keystore *keystore = ccn_keystore_create();
-    char keystore_name[1024] = {0};
+    char *home = getenv("HOME");
+    char *keystore_suffix = "/.ccn/ccn_keystore";
+    char *keystore_name = NULL;
+
     int i;
 
     if (argc == 3 && strcmp(argv[1], "-o") == 0) {
@@ -220,11 +223,15 @@ main (int argc, char *argv[]) {
     buffer->length = 0;
     printf("Done with authenticator\n");
 
-    strlcat(keystore_name, getenv("HOME"), sizeof(keystore_name));
-    if (strlcat(keystore_name, "/.ccn/.ccn_keystore", sizeof(keystore_name)) >= sizeof(keystore_name)) {
-        printf("Unable to construct keystore name\n");
-        result = 1;
+    if (home == NULL) {
+        printf("Unable to determine home directory for keystore\n");
+        exit(1);
     }
+    keystore_name = calloc(1, strlen(home) + strlen(keystore_suffix) + 1);
+    
+    strcat(keystore_name, home);
+    strcat(keystore_name, keystore_suffix);
+
     if (0 != ccn_keystore_init(keystore, keystore_name, "Th1s1sn0t8g00dp8ssw0rd.")) {
         printf("Failed to initialize keystore\n");
         result = 1;
