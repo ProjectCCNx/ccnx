@@ -2,6 +2,7 @@ package com.parc.ccn.data;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
@@ -9,6 +10,7 @@ import java.security.PublicKey;
 import java.security.SignatureException;
 import java.security.cert.CertificateEncodingException;
 import java.util.Arrays;
+import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -85,7 +87,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
     public ContentObject() {} // for use by decoders
     
     public ContentObject clone() {
-    	return new ContentObject(_name, _authenticator, _content.clone(), _signature.clone());
+    	return new ContentObject(_name.clone(), _authenticator.clone(), _content.clone(), _signature.clone());
     }
     
     public ContentName name() { 
@@ -334,12 +336,23 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 			}
 		}
 	
+		byte [] preparedContent = prepareContent(name, authenticator, content); 
 		// Now, check the signature.
 		boolean result = 
-			SignatureHelper.verify(prepareContent(name, authenticator, content),
+			SignatureHelper.verify(preparedContent,
 					signature.signature(),
 					(signature.digestAlgorithm() == null) ? DigestHelper.DEFAULT_DIGEST_ALGORITHM : signature.digestAlgorithm(),
 							publicKey);
+		if (!result) {
+			Library.logger().warning("Verification failure: " + name + " timestamp: " + authenticator.timestamp() + " signed content: " + 
+										DigestHelper.printBytes(DigestHelper.digest(preparedContent),SystemConfiguration.DEBUG_RADIX));
+			SystemConfiguration.logObject(Level.FINEST, "Verification failure:", new ContentObject(name, authenticator, content, signature));
+			if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
+				SystemConfiguration.outputDebugData(name, new ContentObject(name, authenticator, content, signature));
+			}
+		} else {
+			Library.logger().finer("Verification success: " + name + " timestamp: " + authenticator.timestamp() + " signed content: " + new BigInteger(1, DigestHelper.digest(preparedContent)).toString(SystemConfiguration.DEBUG_RADIX));
+		}
 		return result;
 		
 	}

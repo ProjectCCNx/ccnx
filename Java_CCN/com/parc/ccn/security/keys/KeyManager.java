@@ -27,9 +27,17 @@ import com.parc.ccn.data.security.PublisherKeyID;
 public abstract class KeyManager {
 	
 	public static final String DEFAULT_DIGEST_ALGORITHM = "SHA-256";
-
+	
+	protected static KeyManager _defaultKeyManager = null;
+	
 	public static KeyManager getDefaultKeyManager() throws ConfigurationException, IOException {
-		return new BasicKeyManager();
+		if (null != _defaultKeyManager) 
+			return _defaultKeyManager;
+		try {
+			return createKeyManager();
+		} catch (IOException io) {
+			throw new RuntimeException(io);
+		}
 	}
 	
 	/**
@@ -52,6 +60,13 @@ public abstract class KeyManager {
 			Library.warningStackTrace(e);
 			throw new RuntimeException("Error in system IO. Cannot get KeyManager.",e);
 		}
+	}
+	
+	protected static synchronized KeyManager createKeyManager() throws ConfigurationException, IOException {
+		if (null == _defaultKeyManager) {
+			_defaultKeyManager = new BasicKeyManager();
+		}
+		return _defaultKeyManager;
 	}
 	
 	public static KeyRepository getKeyRepository() {

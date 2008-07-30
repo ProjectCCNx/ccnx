@@ -59,11 +59,10 @@ public class puttap implements CCNInterestListener {
 			if ((null != verifyFlag) && (verifyFlag.equals("-s")))
 				verify = true;
 
-			// Set up tap so packets get written to file
-			CCNNetworkManager.getNetworkManager().setTap(tapName);
-			
 			// Get writing library 
 			StandardCCNLibrary library = new StandardCCNLibrary();
+			// Set up tap so packets get written to file
+			library.getNetworkManager().setTap(tapName);
 			
 			ContentName name = new ContentName(ccnName);
 			

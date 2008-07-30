@@ -3,10 +3,12 @@ package com.parc.ccn.data;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
@@ -47,6 +49,7 @@ public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
 			} else if (decoder.peekStartElement(ContentObject.CONTENT_OBJECT_ELEMENT)) {
 				ContentObject data = new ContentObject();
 				data.decode(decoder);
+				SystemConfiguration.logObject(Level.FINEST, "packetDecode", data);
 				_contents.add(data);
 			} else {
 				done = true;

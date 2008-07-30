@@ -8,6 +8,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
 
+import com.parc.ccn.Library;
+
 import sun.misc.BASE64Decoder;
 import sun.misc.BASE64Encoder;
 
@@ -22,13 +24,20 @@ public class TextXMLCodec {
 	
 	public static String codecName() { return CODEC_NAME; }
 
-	protected static DateFormat canonicalDateFormat = null;
-	protected static final String PAD_STRING = "00000000";
+	protected static DateFormat canonicalWriteDateFormat = null;
+	protected static DateFormat canonicalReadDateFormat = null;
+	protected static final String PAD_STRING = "000000000";
+	protected static final int NANO_LENGTH = 9;
 	
 	static {
-		canonicalDateFormat = 
-			new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.S'Z'");
-		canonicalDateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+		canonicalWriteDateFormat = 
+			new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+		/* new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.S'Z'"); // writing ns doesn't format leading 0's correctly */
+		canonicalWriteDateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+		canonicalReadDateFormat = 
+			new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+			// new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.S'Z'");
+		canonicalReadDateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
 	}
 
 	// Needs to handle null and 0-length elements.
@@ -52,26 +61,59 @@ public class TextXMLCodec {
 	 * @return
 	 */
 	public static String formatDateTime(Timestamp dateTime) {
-		// Need to put on fractional seconds (msec, nsec)
-		// as bits after the second...
-		// DKS TODO handle nanoseconds or give up on them.
-		String date = canonicalDateFormat.format(dateTime);
-		/* Nanoseconds are not handled by parser, so skip them here for now
-		long nanos = dateTime.getNanos() % 1000000;
-		if (nanos > 0) {
-			// we have real nanos
-			String nstr = Long.toString(nanos);
-			if (nstr.length() < 8) {
-				nstr = PAD_STRING.substring(0, (8-nstr.length())) + nstr + "Z";
+		// Handles nanoseconds
+		String date = ((SimpleDateFormat)canonicalWriteDateFormat.clone()).format(dateTime);
+		if (dateTime.getNanos() > 0) {
+			String ns = String.format(".%09d", dateTime.getNanos());
+			// now need to truncate trailing 0's
+			if (ns.endsWith("0")) {
+				// we know this has at least 1 non-0 character before the last 0's
+				int trailerEnd = ns.length()-2;
+				while ((ns.charAt(trailerEnd) == '0') && (trailerEnd > 0)) {
+					--trailerEnd;
+				}
+				ns = ns.substring(0,trailerEnd+1);
 			}
-			date = date.replace("Z", nstr);
+			Library.logger().finest("pre-nanos formatted timestamp: " + date + " nano string: " + ns);
+			date = date.replace("Z", ns) + "Z";
 		}
-		*/
+		Library.logger().finest("Timestamp: " + dateTime + " formatted timestamp: " + date);
 		return date;
 	}
 	
 	public static Timestamp parseDateTime(String strDateTime) throws ParseException {
-		Date thisDate = canonicalDateFormat.parse(strDateTime);
-		return new Timestamp(thisDate.getTime());
+		
+		// The read format parses ns correctly, but expects them to be there.
+		if (strDateTime.indexOf('.') < 0) {
+			Date noNsDate = ((SimpleDateFormat)canonicalWriteDateFormat.clone()).parse(strDateTime);
+			return new Timestamp(noNsDate.getTime());
+		}
+		
+		// Split on the .
+		String [] dateParts = strDateTime.split("\\.");
+		// Not sure whether we really need the clone here, but we're running into some
+		// odd parsing behavior...
+		Date thisDate = ((SimpleDateFormat)canonicalReadDateFormat.clone()).parse(dateParts[0]);
+		
+		Timestamp ts =  new Timestamp(thisDate.getTime());
+		// Deal with nanos. Parser ignores them, so don't have to pull them out.
+		int index = strDateTime.indexOf('.');
+		int nanos = 0;
+		if (index >= 0) {
+			try {
+				String nanostr = dateParts[1].substring(0, dateParts[1].length()-1); // remove trailing Z
+				nanostr = 
+					(nanostr.length() < NANO_LENGTH) ? (nanostr + PAD_STRING.substring(0, (NANO_LENGTH - nanostr.length()))) :
+															(nanostr);
+				nanos = Integer.valueOf(nanostr.toString());
+				ts.setNanos(nanos);
+				Library.logger().finest("Nanostr: " + nanostr + " originally: " + dateParts[1] + " nanos: " + nanos + " pre-nano ts parse: " + ts);
+			} catch (NumberFormatException nfe) {
+				Library.logger().info("Exception in parsing nanoseconds from time: " + strDateTime);
+			}
+		}
+		Library.logger().finest("Parsed timestamp: " + ts + " from string: " + strDateTime);
+		
+		return ts;
 	}
 }

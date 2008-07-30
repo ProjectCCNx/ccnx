@@ -81,6 +81,18 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
     	_certificate = certificate;
     }
     
+    protected KeyLocator(KeyName name, PublicKey key, X509Certificate certificate) {
+    	_keyName = name;
+    	_key = key;
+    	_certificate = certificate;
+    }
+    
+    public KeyLocator clone() {
+    	return new KeyLocator(name(),
+    						  key(),
+    						  certificate());
+    }
+    
     public KeyLocator() {} // for use by decoders
     
 	public PublicKey key() { return _key; }

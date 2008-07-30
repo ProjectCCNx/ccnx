@@ -129,6 +129,7 @@ public interface CCNLibrary extends CCNBase {
 			PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, IOException, InterruptedException;
 	
 	public ArrayList<ContentObject> get(String name) throws MalformedContentNameStringException, IOException, InterruptedException;
+	public ArrayList<ContentObject> get(ContentName name) throws IOException, InterruptedException;
 
 	/**
 	 * Get the latest version published by this publisher,

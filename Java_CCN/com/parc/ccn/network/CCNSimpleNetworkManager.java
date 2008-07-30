@@ -14,7 +14,6 @@ import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
@@ -56,7 +55,7 @@ import com.parc.ccn.security.keys.KeyManager;
  * @author smetters
  *
  */
-public class CCNNetworkManager implements Runnable {
+public class CCNSimpleNetworkManager implements Runnable {
 	
 	public static final int DEFAULT_AGENT_PORT = 4485;
 	public static final String PROP_AGENT_PORT = "ccn.agent.port";
@@ -68,7 +67,7 @@ public class CCNNetworkManager implements Runnable {
 	/**
 	 * Static singleton.
 	 */
-	protected static CCNNetworkManager _networkManager = null;
+	protected static CCNSimpleNetworkManager _networkManager = null;
 	
 	protected Thread _thread = null; // the main processing thread
 	protected ExecutorService _threadpool = null; // pool service for callback threads
@@ -78,7 +77,9 @@ public class CCNNetworkManager implements Runnable {
 	protected boolean _run = true;
 	protected KeyManager _keyManager;
 	protected ContentObject _keepalive; 
-	protected FileOutputStream _tapStream = null;
+	protected FileOutputStream _tapStreamOut = null;
+	protected FileOutputStream _tapStreamIn = null;
+
 	// Tables of interests/filters: users must synchronize on collection
 	protected InterestTable<InterestRegistration> _othersInterests = new InterestTable<InterestRegistration>();
 	protected InterestTable<InterestRegistration> _myInterests = new InterestTable<InterestRegistration>();
@@ -97,7 +98,9 @@ public class CCNNetworkManager implements Runnable {
 		public Semaphore sema = null;
 		public Object owner = null;
 		protected boolean deliveryPending = false;
+		
 		public abstract void deliver();
+		
 		public void invalidate() {
 			// There may be a pending delivery in progress, and it doesn't 
 			// happen while holding this lock because that would give the 
@@ -119,6 +122,7 @@ public class CCNNetworkManager implements Runnable {
 				Thread.yield();
 			}
 		}
+		
 		public void run() {
 			synchronized (this) {
 				// Mark us pending delivery, so that any invalidate() that comes 
@@ -184,6 +188,7 @@ public class CCNNetworkManager implements Runnable {
 		public final Interest interest;
 		protected ArrayList<ContentObject> data = new ArrayList<ContentObject>(1);
 		public Date lastRefresh;
+		
 		// All internal client interests must have an owner
 		public InterestRegistration(Interest i, CCNInterestListener l, Object owner) {
 			interest = i; 
@@ -202,11 +207,20 @@ public class CCNNetworkManager implements Runnable {
 		public synchronized void add(ContentObject obj) {
 			this.data.add(obj.clone());
 		}
-		public synchronized ArrayList<ContentObject> data() {
+		
+		/**
+		 * This used to be called just data, but its similarity
+		 * to a simple accessor made the fact that it cleared the data
+		 * really confusing and error-prone...
+		 * Pull the available data out for processing.
+		 * @return
+		 */
+		public synchronized ArrayList<ContentObject> popData() {
 			ArrayList<ContentObject> result = this.data;
 			this.data = new ArrayList<ContentObject>(1);
 			return result;
 		}
+		
 		public synchronized boolean isStanding() {
 			if (null != this.listener) {
 				return true;
@@ -218,6 +232,7 @@ public class CCNNetworkManager implements Runnable {
 		public synchronized boolean isInternal() {
 			return (null != owner);
 		}
+		
 		public void deliver() {
 			try {
 				if (null != this.listener) {
@@ -335,24 +350,22 @@ public class CCNNetworkManager implements Runnable {
 				return null;
 			}
 		}
-		public synchronized void write(CCNNetworkManager mgr) throws XMLStreamException {
+		
+		public synchronized void write(CCNSimpleNetworkManager mgr) throws XMLStreamException {
 			if (null != data) {
 				mgr.write(data);
 			} // else already invalidated, buffer may be no good, nothing to do
 		}
+		
 		public synchronized void copyTo(InterestRegistration ireg) {
 			if (null != data) {
 				ireg.add(data); // actual copying is here
 			} // else already invalidated, buffer may be no good, nothing to do
+			Library.logger().finest("copyTo: ireg " + ((Object)ireg).toString() + " data size: " + ireg.data.size());
 		}
 	}
 	
-	public static CCNSimpleNetworkManager getNetworkManager() {
-		return CCNSimpleNetworkManager.getNetworkManager();
-	}
-	
-/*
-	public static CCNNetworkManager getNetworkManager() { 
+	public static CCNSimpleNetworkManager getNetworkManager() { 
 		if (null != _networkManager) 
 			return _networkManager;
 		try {
@@ -361,16 +374,16 @@ public class CCNNetworkManager implements Runnable {
 			throw new RuntimeException(io);
 		}
 	}
-	*/
-	protected static synchronized CCNNetworkManager 
+	
+	protected static synchronized CCNSimpleNetworkManager 
 				createNetworkManager() throws IOException {
 		if (null == _networkManager) {
-			_networkManager = new CCNNetworkManager();
+			_networkManager = new CCNSimpleNetworkManager();
 		}
 		return _networkManager;
 	}
 	
-	protected CCNNetworkManager() throws IOException {
+	public CCNSimpleNetworkManager() throws IOException {
 		// Determine port at which to contact agent
 		int port = DEFAULT_AGENT_PORT;
 		String portval = System.getProperty(PROP_AGENT_PORT);
@@ -405,7 +418,8 @@ public class CCNNetworkManager implements Runnable {
 	 * @param filename
 	 */
 	public void setTap(String pathname) throws IOException {
-		_tapStream = new FileOutputStream(new File(pathname));
+		_tapStreamOut = new FileOutputStream(new File(pathname + "_out"));
+		_tapStreamIn = new FileOutputStream(new File(pathname + "_in"));
 	}
 	
 	/** Create a single special piece of content that we can send 
@@ -440,34 +454,23 @@ public class CCNNetworkManager implements Runnable {
 		}
 	}
 	
-	/**
-	 * Put a piece of data, blocking until there is Interest to consume so that 
-	 * flow control is maintained
-	 * TODO persistence protocol
-	 */
 	public CompleteName put(Object caller, ContentName name, ContentAuthenticator authenticator, 
-							byte[] content, Signature signature) throws IOException, InterruptedException {
+			byte[] content, Signature signature) throws IOException, InterruptedException {
 		CompleteName complete = new CompleteName(name, authenticator, signature);
 		Library.logger().fine("put: " + complete.name());
 		ContentObject co = new ContentObject(name, authenticator, content, signature); 
-		DataRegistration reg = new DataRegistration(co, true, caller);
-		// Add to internal processing queue
-		synchronized (_newData) {
-			_newData.add(reg);
+		
+		try {
+			write(co);
+		} catch (XMLStreamException xmlex) {
+			Library.logger().warning("Processing thread failure (Malformed datagram): " + xmlex.getMessage()); 
+			Library.warningStackTrace(xmlex);
 		}
-		_selector.wakeup();
-		Library.logger().finest("blocking for data " + complete.name() + " on " + reg.sema);
-		// Await interest consumption
-		reg.sema.acquire(); // currently no timeouts
-		Library.logger().finest("unblocked for data " + complete.name() + " on " + reg.sema);
-		// The main processing thread may have had to register this writer
-		// which must be undone here, but no harm if never registered
-		_writers.remove(reg);
-		reg.invalidate(); // make sure that buffer is ignored from here on
+		
 		return complete;
 		//return CCNRepositoryManager.getRepositoryManager().put(name, authenticator, signature, content);
 	}
-
+	
 	public ArrayList<ContentObject> get(Object caller, ContentName name, 
 									    ContentAuthenticator authenticator,
 									    boolean isRecursive) throws IOException, InterruptedException {
@@ -486,7 +489,7 @@ public class CCNNetworkManager implements Runnable {
 		// Typically the main processing thread will have registered the interest
 		// which must be undone here, but no harm if never registered
 		unregisterInterest(reg);
-		return reg.data();
+		return reg.popData();
 		//return CCNRepositoryManager.getRepositoryManager().get(name, authenticator, isRecursive);
 	}
 
@@ -583,13 +586,15 @@ public class CCNNetworkManager implements Runnable {
 		try {
 			byte[] bytes = packet.encode();
 			ByteBuffer datagram = ByteBuffer.wrap(bytes);
-			_channel.write(datagram);
-			Library.logger().finest("Wrote datagram (" + datagram.position() + " bytes)");
-			if (null != _tapStream) {
-				try {
-					_tapStream.write(bytes);
-				} catch (IOException io) {
-					Library.logger().warning("Unable to write packet to tap stream for debugging");
+			synchronized (_channel) {
+				_channel.write(datagram);
+				Library.logger().finest("Wrote datagram (" + datagram.position() + " bytes)");
+				if (null != _tapStreamOut) {
+					try {
+						_tapStreamOut.write(bytes);
+					} catch (IOException io) {
+						Library.logger().warning("Unable to write packet to tap stream for debugging");
+					}
 				}
 			}
 		} catch (IOException io) {
@@ -665,7 +670,9 @@ public class CCNNetworkManager implements Runnable {
 						// the ability to use wakeup, so there is no need to 
 						// inspect the selected-key set
 						datagram.clear(); // make ready for new read
-						_channel.read(datagram);
+						synchronized (_channel) {
+							_channel.read(datagram); // queue readers and writers
+						}
 						Library.logger().finest("Read datagram (" + datagram.position() + " bytes)");
 						_selector.selectedKeys().clear();
 						if (null != _error) {
@@ -673,7 +680,13 @@ public class CCNNetworkManager implements Runnable {
 							_error = null;
 						}
 						datagram.flip(); // make ready to decode
-						packet.clear(); // ended up with lingering data... DKS
+						if (null != _tapStreamIn) {
+							byte [] b = new byte[datagram.limit()];
+							datagram.get(b);
+							_tapStreamIn.write(b);
+							datagram.rewind();
+						}
+						packet.clear();
 						packet.decode(datagram);
 					} else {
 						// This was a timeout or wakeup, no data
@@ -693,56 +706,25 @@ public class CCNNetworkManager implements Runnable {
 					packet.clear();
 				}
 				
-				//--------------------------------- Process internal data (if any)
-				// Must do internal data first so all internal interests get delivery
-				// before a new external interest can be consumed by this data 
-				DataRegistration iData = null;
-				synchronized (_newData) { iData = _newData.poll(); }
-				while (null != iData) {
-					boolean consumer = deliverData(iData);
-					synchronized(_othersInterests) {
-						if (null != _othersInterests.removeMatch(iData.completeName())) {
-							consumer = true;
-						}
-					}
-					if (consumer) {
-						// Internal data goes to network only if there was Interest 
-						// either internal or external
-						iData.write(this);
-						// Do not release the put() until data has been completely
-						// delivered so that buffer may be reused
-						Library.logger().finest("releasing writer for " + iData.name() + " on " + iData.sema);
-						iData.sema.release();
-					} else {
-						// No interest to consume yet: hold on to this data for 
-						// future interest, which will keep the put thread blocked
-						_writers.add(iData);
-					}
-					synchronized (_newData) { iData = _newData.poll(); }
-				}
-
+				// If we got a data packet, hand it back to all the interested
+				// parties (registered interests and getters).
 				//--------------------------------- Process data from net (if any) 
 				for (ContentObject co : packet.data()) {
 					Library.logger().fine("Data from net: " + co.name());
+			//		SystemConfiguration.logObject("Data from net:", co);
+					
 					DataRegistration oData = new DataRegistration(co, false, null);
 					deliverData(oData);
 					// External data never goes back to network, never held onto here
 					// External data never has a thread waiting, so no need to release sema
 				}
 
-				//--------------------------------- Process internal interests (if any)
+				//--------------------------------- Write out internal interests (if any)
 				InterestRegistration iInterest = null;
 				synchronized (_newInterests) { iInterest = _newInterests.poll(); }
 				while (null != iInterest) {
-					if (!deliverInterest(iInterest) || null != iInterest.listener) {
-						// Unsatisfied temporary and all standing interests go to network
-						// This prevents internal interests from consuming data 
-						// so it never gets to agent to cache. 
-						// The only reason we will withhold data from the network
-						// is if there is not interest in it from anywhere
-						write(iInterest.interest);		
-						registerInterest(iInterest);
-					}
+					write(iInterest.interest);		
+					registerInterest(iInterest);
 					synchronized (_newInterests) { iInterest = _newInterests.poll(); }
 				}
 
@@ -750,12 +732,7 @@ public class CCNNetworkManager implements Runnable {
 				for (Interest interest : packet.interests()) {
 					Library.logger().fine("Interest from net: " + interest.name());
 					InterestRegistration oInterest = new InterestRegistration(interest, null, null);
-					if (!deliverInterest(oInterest)) {
-						// Record this known interest that has not already been consumed
-						synchronized (_othersInterests) {
-							_othersInterests.add(interest, oInterest);
-						}
-					}
+					deliverInterest(oInterest);
 					// External interests never go back to network
 				} // for interests
 				
@@ -771,7 +748,6 @@ public class CCNNetworkManager implements Runnable {
 							InterestRegistration reg = entry.value();
 							Library.logger().finer("Refresh interest: " + reg.interest.name());
 							write(reg.interest);
-							deliverInterest(reg);
 						}
 					}
 					lastsweep = new Date();
@@ -788,27 +764,9 @@ public class CCNNetworkManager implements Runnable {
 		Library.logger().info("Shutdown complete");
 	}
 
-	// Internal delivery of interests to pending writers and filter listeners
+	// Internal delivery of interests to pending filter listeners
 	// return true iff interest has been consumed by pending data already
 	protected boolean deliverInterest(InterestRegistration ireg) throws XMLStreamException {
-		// First pending writer with data gets to consume this interest
-		for (Iterator<DataRegistration> writeIter = _writers.iterator(); writeIter.hasNext();) {
-			DataRegistration dreg = (DataRegistration) writeIter.next();
-			if (dreg.owner != ireg.owner && ireg.interest.matches(dreg.completeName())) {
-				Library.logger().finer("Interest consumed by pending put: " + dreg.name());
-				writeIter.remove(); // avoid handing same data back to second get()
-				if (ireg.isInternal()) {
-					dreg.copyTo(ireg); // this is a copy of the data
-					_threadpool.execute(ireg);
-				}
-				// Any consuming data is sent to network to reach agent cache
-				// even if interest consumed is internal
-				dreg.write(this);
-				Library.logger().finest("releasing " + dreg.sema);
-				dreg.sema.release();
-				return true;
-			}
-		}
 		// Call any listeners with matching filters
 		synchronized (_myFilters) {
 			for (Filter filter : _myFilters.getValues(ireg.interest.name())) {
@@ -822,16 +780,13 @@ public class CCNNetworkManager implements Runnable {
 		return false;
 	}
 
-	// internal delivery of data, which may have originated locally
-	// or from the network.
+	// Deliver data to blocked getters and registered interests
 	protected boolean deliverData(DataRegistration dreg) throws XMLStreamException {
 		boolean consumer = false; // is there a consumer?
-
 		// Check local interests
 		synchronized (_myInterests) {
 			for (InterestRegistration ireg : _myInterests.getValues(dreg.completeName())) {
 				if (dreg.owner != ireg.owner) {
-					Library.logger().finer("Schedule delivery for data: " + dreg.completeName().name());
 					dreg.copyTo(ireg); // this is a copy of the data
 					_threadpool.execute(ireg);
 					if (ireg.isStanding() && dreg.isFromNet()) {

@@ -2,6 +2,7 @@ package com.parc.ccn.security.keys;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -24,17 +25,21 @@ import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherKeyID;
-import com.parc.ccn.network.CCNNetworkManager;
+import com.parc.ccn.network.CCNSimpleNetworkManager;
 import com.parc.ccn.security.crypto.certificates.CryptoUtil;
 
 public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	
 	protected static final boolean _DEBUG = true;
 	
+	protected  CCNSimpleNetworkManager _networkManager = null;
 	protected HashMap<ContentName,ContentObject> _keyMap = new HashMap<ContentName,ContentObject>();
 	protected HashMap<PublisherKeyID, ContentName> _idMap = new HashMap<PublisherKeyID,ContentName>();
 	
-	public KeyRepository() {}
+	public KeyRepository() throws IOException {
+		_networkManager = new CCNSimpleNetworkManager(); // maintain our own connection to the agent, so
+			// everyone can ask us for keys
+	}
 	
 	/**
 	 * Track an existing key object and make it available.
@@ -96,7 +101,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		}
 		
 		// DKS TODO -- do we want to put in a prefix filter...?
-		CCNNetworkManager.getNetworkManager().setInterestFilter(this, keyObject.name(), this);
+		_networkManager.setInterestFilter(this, keyObject.name(), this);
 	}
 
 	protected void recordKeyToFile(PublisherKeyID id, ContentObject keyObject) {
@@ -187,7 +192,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 			ContentObject keyObject = retrieve(it.next());
 			if (null != keyObject) {
 				try {
-					CCNNetworkManager.getNetworkManager().put(this, keyObject.name(), keyObject.authenticator(), keyObject.content(), keyObject.signature());
+					_networkManager.put(this, keyObject.name(), keyObject.authenticator(), keyObject.content(), keyObject.signature());
 				} catch (Exception e) {
 					Library.logger().info("KeyRepository::handleInterests, exception in put: " + e.getClass().getName() + " message: " + e.getMessage());
 					Library.infoStackTrace(e);

@@ -34,6 +34,7 @@ import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
 import com.parc.ccn.network.CCNNetworkManager;
+import com.parc.ccn.network.CCNSimpleNetworkManager;
 import com.parc.ccn.security.crypto.CCNMerkleTree;
 import com.parc.ccn.security.crypto.DigestHelper;
 import com.parc.ccn.security.keys.KeyManager;
@@ -70,6 +71,13 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 */
 	protected KeyManager _userKeyManager = null;
 	
+	/**
+	 * Allow separate per-instance to control reading/writing within
+	 * same app. Get default one if use static VM instance of StandardCCNLibrary,
+	 * but if you make a new instance, get a new connection to ccnd.
+	 */
+	protected CCNSimpleNetworkManager _networkManager = null;
+	
 	public static StandardCCNLibrary open() { 
 		synchronized (StandardCCNLibrary.class) {
 			try {
@@ -84,11 +92,41 @@ public class StandardCCNLibrary implements CCNLibrary {
 
 		}
 	}
+	
+	public static StandardCCNLibrary getLibrary() { 
+		if (null != _library) 
+			return _library;
+		try {
+			return createCCNLibrary();
+		} catch (ConfigurationException e) {
+			Library.logger().warning("Configuration exception attempting to create library: " + e.getMessage());
+			Library.warningStackTrace(e);
+			throw new RuntimeException("Error in system configuration. Cannot create library.",e);
+		} catch (IOException e) {
+			Library.logger().warning("IO exception attempting to create library: " + e.getMessage());
+			Library.warningStackTrace(e);
+			throw new RuntimeException("Error in system IO. Cannot create library.",e);
+		}
+	}
+
+	protected static synchronized StandardCCNLibrary 
+				createCCNLibrary() throws ConfigurationException, IOException {
+		if (null == _library) {
+			_library = new StandardCCNLibrary();
+		}
+		return _library;
+	}
 
 	public StandardCCNLibrary(KeyManager keyManager) {
 		_userKeyManager = keyManager;
 		// force initialization of network manager
-		CCNNetworkManager.getNetworkManager();
+		try {
+			_networkManager = new CCNSimpleNetworkManager();
+		} catch (IOException ex){
+			Library.logger().warning("IOException instantiating network manager: " + ex.getMessage());
+			ex.printStackTrace();
+			_networkManager = null;
+		}
 	}
 
 	public StandardCCNLibrary() throws ConfigurationException, IOException {
@@ -104,6 +142,23 @@ public class StandardCCNLibrary implements CCNLibrary {
 	}
 
 	public KeyManager keyManager() { return _userKeyManager; }
+	
+	public CCNSimpleNetworkManager getNetworkManager() { 
+		if (null == _networkManager) {
+			synchronized(this) {
+				if (null == _networkManager) {
+					try {
+						_networkManager = new CCNSimpleNetworkManager();
+					} catch (IOException ex){
+						Library.logger().warning("IOException instantiating network manager: " + ex.getMessage());
+						ex.printStackTrace();
+						_networkManager = null;
+					}
+				}
+			}
+		}
+		return _networkManager;
+	}
 
 	public PublisherKeyID getDefaultPublisher() {
 		return keyManager().getDefaultKeyID();
@@ -465,7 +520,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 			// the name -- not actual pieces of content --
 			// look only at ContentNames.
 			ArrayList<CompleteName> availableVersions = 
-				CCNNetworkManager.getNetworkManager().getChildren(new CompleteName(baseVersionName, null, null));
+				getNetworkManager().getChildren(new CompleteName(baseVersionName, null, null));
 			
 			if ((null == availableVersions) || (availableVersions.size() == 0)) {
 				// No existing version.
@@ -861,13 +916,13 @@ public class StandardCCNLibrary implements CCNLibrary {
 		// For now, this generates the root signature too, so can
 		// ask for the signature for each block.
     	CCNMerkleTree tree = 
-    		new CCNMerkleTree(name, baseNameIndex,
+    		new CCNMerkleTree(fragmentBase(fragmentRoot(name)), baseNameIndex,
     						  new ContentAuthenticator(publisher, timestamp, ContentType.FRAGMENT, locator),
     						  contentBlocks, false, blockCount, baseBlockIndex, signingKey);
 
 		for (int i = 0; i < blockCount; i++) {
 			try {
-				Library.logger().finest("putMerkleTree: writing block " + i + " of " + blockCount + " to name " + tree.blockName(i));
+				Library.logger().info("putMerkleTree: writing block " + i + " of " + blockCount + " to name " + tree.blockName(i));
 				put(tree.blockName(i), tree.blockAuthenticator(i), 
 						contentBlocks[i], tree.blockSignature(i));
 			} catch (IOException e) {
@@ -979,7 +1034,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 							byte[] content,
 							Signature signature) throws IOException, InterruptedException {
 
-		return CCNNetworkManager.getNetworkManager().put(this, name, authenticator, content, signature);
+		return getNetworkManager().put(this, name, authenticator, content, signature);
 	}
 
 	/**
@@ -1000,11 +1055,15 @@ public class StandardCCNLibrary implements CCNLibrary {
 	public ArrayList<ContentObject> get(ContentName name, 
 										ContentAuthenticator authenticator,
 										boolean isRecursive) throws IOException, InterruptedException {
-		return CCNNetworkManager.getNetworkManager().get(this, name, authenticator,isRecursive);
+		return getNetworkManager().get(this, name, authenticator,isRecursive);
 	}
 	
 	public ArrayList<ContentObject> get(String name) throws MalformedContentNameStringException, IOException, InterruptedException {
 		return get(new ContentName(name), null, false);
+	}
+	
+	public ArrayList<ContentObject> get(ContentName name) throws IOException, InterruptedException {
+		return get(name, null, false);
 	}
 
 	/**
@@ -1018,11 +1077,11 @@ public class StandardCCNLibrary implements CCNLibrary {
 			Interest interest,
 			CCNInterestListener listener) throws IOException {
 		// Will add the interest to the listener.
-		CCNNetworkManager.getNetworkManager().expressInterest(this, interest, listener);
+		getNetworkManager().expressInterest(this, interest, listener);
 	}
 
 	public void cancelInterest(Interest interest, CCNInterestListener listener) throws IOException {
-		CCNNetworkManager.getNetworkManager().cancelInterest(this, interest, listener);
+		getNetworkManager().cancelInterest(this, interest, listener);
 	}
 	
 	/**
@@ -1035,7 +1094,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * @throws IOException 
 	 */
 	public ArrayList<CompleteName> enumerate(Interest query) throws IOException {
-		return CCNNetworkManager.getNetworkManager().enumerate(query);		
+		return getNetworkManager().enumerate(query);		
 	}
 	
 	/**
@@ -1130,11 +1189,11 @@ public class StandardCCNLibrary implements CCNLibrary {
 
 	public void cancelInterestFilter(ContentName filter,
 			CCNFilterListener callbackListener) {
-		CCNNetworkManager.getNetworkManager().cancelInterestFilter(this, filter, callbackListener);		
+		getNetworkManager().cancelInterestFilter(this, filter, callbackListener);		
 	}
 
 	public void setInterestFilter(ContentName filter,
 			CCNFilterListener callbackListener) {
-		CCNNetworkManager.getNetworkManager().setInterestFilter(this, filter, callbackListener);
+		getNetworkManager().setInterestFilter(this, filter, callbackListener);
 	}
 }

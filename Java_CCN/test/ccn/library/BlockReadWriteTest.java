@@ -40,11 +40,10 @@ public class BlockReadWriteTest extends BaseLibraryTest {
 	}
 
 	@Override
-	public void getResults(String baseName, int count, CCNLibrary library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException {
+	public void getResults(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException {
 		
 		CCNLibrary useLibrary = libraries[0]; // looking for cause of semaphore problem...
-		ContentName parentName = new ContentName(baseName);
-		ContentName thisName = useLibrary.versionName(new ContentName(parentName, fileName), count);
+		ContentName thisName = useLibrary.versionName(new ContentName(baseName, fileName), count);
 		CCNDescriptor desc = useLibrary.open(new CompleteName(thisName, null, null), OpenMode.O_RDONLY);
 		Library.logger().info("Opened descriptor for reading: " + thisName);
 
@@ -71,10 +70,9 @@ public class BlockReadWriteTest extends BaseLibraryTest {
 	 * @throws InvalidKeyException 
 	 */
 	@Override
-	public void doPuts(String baseName, int count, CCNLibrary library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException, NoSuchAlgorithmException {
+	public void doPuts(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException, NoSuchAlgorithmException {
 		CCNLibrary useLibrary = libraries[1]; // looking for cause of semaphore problem...
-		ContentName parentName = new ContentName(baseName);
-		ContentName thisName = useLibrary.versionName(new ContentName(parentName, fileName), count);
+		ContentName thisName = useLibrary.versionName(new ContentName(baseName, fileName), count);
 		CCNDescriptor desc = useLibrary.open(new CompleteName(thisName, null, null), OpenMode.O_WRONLY);
 		
 		Library.logger().info("Opened descriptor for writing: " + thisName);

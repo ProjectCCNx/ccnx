@@ -31,9 +31,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		} else {
 			_components = new ArrayList<byte []>(components.length);
 			for (int i=0; i < components.length; ++i) {
-				byte [] c = new byte[components[i].length];
-				System.arraycopy(components[i],0,c,0,components[i].length);
-				_components.add(c);
+				_components.add(components[i].clone());
 			}
 		}
 	}

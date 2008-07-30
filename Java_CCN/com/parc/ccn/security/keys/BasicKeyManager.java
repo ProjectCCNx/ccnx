@@ -5,7 +5,6 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
@@ -13,28 +12,20 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.SignatureException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.security.spec.InvalidKeySpecException;
-import java.util.ArrayList;
-import java.util.Iterator;
-
-import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.config.UserConfiguration;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherKeyID;
-import com.parc.ccn.network.CCNRepositoryManager;
 import com.parc.ccn.security.crypto.certificates.BCX509CertificateGenerator;
-import com.parc.ccn.security.crypto.certificates.CryptoUtil;
 
 public class BasicKeyManager extends KeyManager {
 		
@@ -438,7 +429,7 @@ public class BasicKeyManager extends KeyManager {
 	@Override
 	public PublicKey getPublicKey(PublisherKeyID publisher) {
 		// TODO Auto-generated method stub
-		Library.logger().info("getPublicKey: retrieving key: " + publisher);
+		Library.logger().finer("getPublicKey: retrieving key: " + publisher);
 		if (_defaultKeyID.equals(publisher))
 			return _certificate.getPublicKey();
 		return null;
@@ -447,7 +438,7 @@ public class BasicKeyManager extends KeyManager {
 	@Override
 	public PrivateKey getSigningKey(PublisherID publisher) {
 		// TODO Auto-generated method stub
-		Library.logger().info("getSigningKey: retrieving key: " + publisher);
+		Library.logger().finer("getSigningKey: retrieving key: " + publisher);
 		if (_defaultKeyID.equals(publisher))
 			return _privateKey;
 		return null;
@@ -456,7 +447,7 @@ public class BasicKeyManager extends KeyManager {
 	@Override
 	public PrivateKey getSigningKey(PublisherKeyID publisher) {
 		// TODO Auto-generated method stub
-		Library.logger().info("getSigningKey: retrieving key: " + publisher);
+		Library.logger().finer("getSigningKey: retrieving key: " + publisher);
 		if (_defaultKeyID.equals(publisher))
 			return _privateKey;
 		return null;
@@ -465,7 +456,7 @@ public class BasicKeyManager extends KeyManager {
 	@Override
 	public PublicKey getPublicKey(PublisherKeyID publisherID, KeyLocator keyLocator) throws IOException, InterruptedException {
 		// TODO Auto-generated method stub
-		Library.logger().info("getPublicKey: retrieving key: " + publisherID + " located at: " + keyLocator);
+		Library.logger().finer("getPublicKey: retrieving key: " + publisherID + " located at: " + keyLocator);
 		// Do we have it locally.
 		PublicKey key = getPublicKey(publisherID);
 		if (null != key)

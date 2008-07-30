@@ -2,23 +2,34 @@ package test.ccn.data.util;
 
 import java.sql.Timestamp;
 import java.text.ParseException;
+import java.util.logging.Level;
 
 import junit.framework.Assert;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.util.TextXMLCodec;
 
 public class TextXMLCodecTest {
 
+	@BeforeClass
+	public static void setUpBeforeClass() throws Exception {
+	
+		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
+		Library.logger().setLevel(Level.INFO);
+	}
+	
 	@Test
 	public void testParseDateTime() {
 		Timestamp now = new Timestamp(System.currentTimeMillis());
+		/*
 		testDateTime(now);
 		
 		now.setNanos(384);
 		testDateTime(now);
-		
+		*/
 		now.setNanos(1105384);
 		testDateTime(now);
 		now.setNanos(550105384);
@@ -45,9 +56,9 @@ public class TextXMLCodecTest {
 			Assert.fail("Failed to parse date time: " + strDateTime);
 		}
 		System.out.println("Parsed version: " + parsedDateTime);
-		// Note that implementation only preserves msec, not nanos
-		testDateTime.setNanos((testDateTime.getNanos() / 1000000) * 1000000);
-//		System.out.println("Tested nanos: " + testDateTime.getNanos());
+		if (!parsedDateTime.equals(testDateTime)) {
+			System.out.println("Time : " + parsedDateTime + "(long: " + parsedDateTime.getTime() + ") does not equal " + testDateTime + "(long: " + testDateTime.getTime() + ")");
+		}
 		Assert.assertTrue(parsedDateTime.equals(testDateTime));
 	}
 

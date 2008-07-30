@@ -81,7 +81,12 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 
     public ContentAuthenticator() {}
         
-    public boolean empty() {
+	public ContentAuthenticator clone() {
+		// more clonage needed
+		return new ContentAuthenticator(publisherKeyID(), timestamp(), type(), keyLocator().clone());
+	}
+
+	public boolean empty() {
     	return (emptyPublisher() && emptyContentType() && 
     			emptyTimestamp());
     }

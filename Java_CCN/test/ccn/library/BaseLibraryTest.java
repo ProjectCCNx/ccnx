@@ -1,7 +1,6 @@
 package test.ccn.library;
 
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -11,6 +10,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Random;
 import java.util.concurrent.Semaphore;
 import java.util.logging.Level;
@@ -37,8 +37,14 @@ public class BaseLibraryTest {
 	protected static boolean exit = false;
 	protected static Throwable error = null; // for errors from other threads
 	public static int count = 55;
+	public static Random rand = new Random();
 	
 	protected static final String BASE_NAME = "/test/BaseLibraryTest/";
+	protected static ContentName PARENT_NAME = null;
+	
+	protected static final boolean DO_TAP = true;
+	
+	protected HashSet<Integer> _resultSet = new HashSet<Integer>();
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -49,6 +55,8 @@ public class BaseLibraryTest {
 
 	@Before
 	public void setUp() throws Exception {
+		if (null == PARENT_NAME)
+			PARENT_NAME = new ContentName(BASE_NAME);
 	}
 
 	public void genericGetPut(Thread putter, Thread getter) throws Throwable {
@@ -88,24 +96,28 @@ public class BaseLibraryTest {
 	@Test
 	public void testGetPut() throws Throwable {
 		System.out.println("TEST: PutThread/GetThread");
-		Thread putter = new Thread(new PutThread(count));
-		Thread getter = new Thread(new GetThread(count));
+		int id = rand.nextInt(1000);
+		Thread putter = new Thread(new PutThread(count, id));
+		Thread getter = new Thread(new GetThread(count, id));
 		genericGetPut(putter, getter);
 	}
 	
 	@Test
 	public void testGetServPut() throws Throwable {
 		System.out.println("TEST: PutThread/GetServer");
-		Thread putter = new Thread(new PutThread(count));
-		Thread getter = new Thread(new GetServer(count));
+		int id = rand.nextInt(1000);
+
+		Thread putter = new Thread(new PutThread(count, id));
+		Thread getter = new Thread(new GetServer(count, id));
 		genericGetPut(putter, getter);
 	}
 
 	@Test
 	public void testGetPutServ() throws Throwable {
 		System.out.println("TEST: PutServer/GetThread");
-		Thread putter = new Thread(new PutServer(count));
-		Thread getter = new Thread(new GetThread(count));
+		int id = rand.nextInt(1000);
+		Thread putter = new Thread(new PutServer(count, id));
+		Thread getter = new Thread(new GetThread(count, id));
 		genericGetPut(putter, getter);
 	}
 	
@@ -116,7 +128,8 @@ public class BaseLibraryTest {
 	 *
 	 */
 	public void checkGetResults(ArrayList<ContentObject> getResults) {
-		System.out.println("Got result: " + getResults.get(0).name());
+		if (0 < getResults.size())
+			System.out.println("Got result: " + getResults.get(0).name());
 	}
 	
 	public void checkPutResults(CompleteName putResult) {
@@ -137,15 +150,43 @@ public class BaseLibraryTest {
 	 * @throws InvalidKeyException 
 	 * @throws XMLStreamException 
 	 */
-	public void getResults(String baseName, int count, CCNLibrary library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException {
+	public void getResults(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException {
 		Random rand = new Random();
+	//	boolean done = false;
+		System.out.println("getResults: getting children of " + baseName);
 		for (int i = 0; i < count; i++) {
+	//	while (!done) {
 			Thread.sleep(rand.nextInt(50));
-			ArrayList<ContentObject> contents = library.get(baseName);
-			assertEquals(1, contents.size());
-			assertEquals(i, Integer.parseInt(new String(contents.get(0).content())));
-			System.out.println("Got " + i);
+			System.out.println("getResults getting " + baseName + " subitem " + i);
+			ArrayList<ContentObject> contents = library.get(new ContentName(baseName, Integer.toString(i)));
+			if (1 != contents.size()) {
+				Library.logger().info("Got " + contents.size() + " results at once!");
+			}
+			//assertEquals(1, contents.size());
+			for (int j=0; j < contents.size(); j++) {
+				if (contents.size() > 1) {
+					Library.logger().info("Content item: " + j + " name: " + contents.get(j).name());
+				}
+				try {
+					int val = Integer.parseInt(new String(contents.get(j).content()));
+					if (_resultSet.contains(val)) {
+						System.out.println("Got " + val + " again.");
+					} else {
+						System.out.println("Got " + val);
+					}
+					_resultSet.add(val);
+
+				} catch (NumberFormatException nfe) {
+					Library.logger().info("BaseLibraryTest: unexpected content - not integer. Name: " + contents.get(j).content());
+				}
+			}
+			//assertEquals(i, Integer.parseInt(new String(contents.get(0).content())));
 			checkGetResults(contents);
+			
+			if (_resultSet.size() == count) {
+				System.out.println("We have everything!");
+//				done = true; 
+			}
 		}
 		return;
 	}
@@ -161,11 +202,11 @@ public class BaseLibraryTest {
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
 	 */
-	public void doPuts(String baseName, int count, CCNLibrary library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException, NoSuchAlgorithmException {
+	public void doPuts(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException, NoSuchAlgorithmException {
 		Random rand = new Random();
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
-			CompleteName putName = library.put(baseName + new Integer(i).toString(), new Integer(i).toString());
+			CompleteName putName = library.put(new ContentName(baseName,new Integer(i).toString()), new Integer(i).toString().getBytes());
 			System.out.println("Put " + i + " done");
 			checkPutResults(putName);
 		}
@@ -174,14 +215,23 @@ public class BaseLibraryTest {
 	public class GetThread implements Runnable {
 		protected CCNLibrary library = StandardCCNLibrary.open();
 		int count = 0;
-		public GetThread(int n) {
+		int id = 0;
+		public GetThread(int n, int id) {
 			count = n;
+			this.id = id;
+			if (DO_TAP) {
+				try {
+					((StandardCCNLibrary)library).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_get");
+				} catch (IOException ie) {
+				}
+			}
 		}
 		public void run() {
 			try {
 				System.out.println("Get thread started");
-				getResults(BASE_NAME, count, library);
+				getResults(new ContentName(PARENT_NAME, Integer.toString(id)), count, library);
 				System.out.println("Get thread finished");
+				((StandardCCNLibrary)library).getNetworkManager().shutdown();
 			} catch (Throwable ex) {
 				error = ex;
 			}
@@ -191,14 +241,23 @@ public class BaseLibraryTest {
 	public class PutThread implements Runnable {
 		protected CCNLibrary library = StandardCCNLibrary.open();
 		int count = 0;
-		public PutThread(int n) {
+		int id = 0;
+		public PutThread(int n, int id) {
 			count = n;
+			this.id = id;
+			if (DO_TAP) {
+				try {
+					((StandardCCNLibrary)library).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_put");
+				} catch (IOException ie) {
+				}
+			}
 		}
 		public void run() {
 			try {
 				System.out.println("Put thread started");
-				doPuts(BASE_NAME, count, library);
+				doPuts(new ContentName(PARENT_NAME, Integer.toString(id)), count, library);
 				System.out.println("Put thread finished");
+				((StandardCCNLibrary)library).getNetworkManager().shutdown();
 			} catch (Throwable ex) {
 				error = ex;
 				Library.logger().finer("Exception in run: " + ex.getClass().getName() + " message: " + ex.getMessage());
@@ -212,18 +271,30 @@ public class BaseLibraryTest {
 		int count = 0;
 		int next = 0;
 		Semaphore sema = new Semaphore(0);
-		public GetServer(int n) {
+		HashSet<Integer> accumulatedResults = new HashSet<Integer>();
+		int id;
+		
+		public GetServer(int n, int id) {
 			count = n;
+			this.id = id;
+			if (DO_TAP) {
+				try {
+					((StandardCCNLibrary)library).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_get");
+				} catch (IOException ie) {
+				}
+			}
 		}
 		public void run() {
 			try {
 				System.out.println("GetServer started");
-				Interest interest = new Interest(BASE_NAME);
+				Interest interest = new Interest(new ContentName(PARENT_NAME, Integer.toString(id)));
 				// Register interest
 				library.expressInterest(interest, this);
 				// Block on semaphore until enough data has been received
 				sema.acquire();
 				library.cancelInterest(interest, this);
+				((StandardCCNLibrary)library).getNetworkManager().shutdown();
+
 			} catch (Throwable ex) {
 				error = ex;
 			}
@@ -237,13 +308,20 @@ public class BaseLibraryTest {
 		}
 		public synchronized int handleContent(ArrayList<ContentObject> results) {
 			for (ContentObject contentObject : results) {
-				assertEquals(next, Integer.parseInt(new String(contentObject.content())));
-				System.out.println("Got " + next);	
-				next++;
+				try {
+					int val = Integer.parseInt(new String(contentObject.content()));
+					if (!accumulatedResults.contains(val)) {
+						accumulatedResults.add(val);
+						System.out.println("Got " + val);	
+					}
+				} catch (NumberFormatException nfe) {
+					Library.logger().info("Unexpected content, " + contentObject.name() + " is not an integer!");
+				}
 			}
 			checkGetResults(results);
 			
-			if (next >= count) {
+			if (accumulatedResults.size() >= count) {
+				System.out.println("GetServer got all content: " + accumulatedResults.size() + ". Releasing semaphore.");
 				sema.release();
 			}
 			return 0;
@@ -261,20 +339,32 @@ public class BaseLibraryTest {
 		int next = 0;
 		Semaphore sema = new Semaphore(0);
 		ContentName name = null;
+		HashSet<Integer> accumulatedResults = new HashSet<Integer>();
+		int id;
 		
-		public PutServer(int n) {
+		public PutServer(int n, int id) {
 			count = n;
+			this.id = id;
+			if (DO_TAP) {
+				try {
+					((StandardCCNLibrary)library).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_put");
+				} catch (IOException ie) {
+				}
+			}
 		}
 		
 		public void run() {
 			try {
 				System.out.println("PutServer started");
 				// Register filter
-				name = new ContentName(BASE_NAME);
+				name = new ContentName(PARENT_NAME, Integer.toString(id));
 				library.setInterestFilter(name, this);
 				// Block on semaphore until enough data has been received
 				sema.acquire();
 				library.cancelInterestFilter(name, this);
+				System.out.println("PutServer finished.");
+				((StandardCCNLibrary)library).getNetworkManager().shutdown();
+
 			} catch (Throwable ex) {
 				error = ex;
 			}
@@ -284,12 +374,21 @@ public class BaseLibraryTest {
 			try {
 				for (Interest interest : interests) {
 					assertTrue(name.isPrefixOf(interest.name()));
-					CompleteName putName = library.put(BASE_NAME + new Integer(next).toString(), new Integer(next).toString());
-					System.out.println("Put " + next + " done");
-					checkPutResults(putName);
-					next++;
+					try {
+						int val = Integer.parseInt(new String(interest.name().component(interest.name().count()-1)));
+						System.out.println("Got interest in " + val);
+						if (!accumulatedResults.contains(val)) {
+							CompleteName putName = library.put(new ContentName(name, Integer.toString(val)), Integer.toString(next).getBytes());
+							System.out.println("Put " + val + " done");
+							checkPutResults(putName);
+							next++;
+							accumulatedResults.add(val);
+						}
+					} catch (NumberFormatException nfe) {
+						Library.logger().info("Unexpected interest, " + interest.name() + " does not end in an integer!");
+					}
 				}
-				if (next >= count) {
+				if (accumulatedResults.size() >= count) {
 					sema.release();
 				}
 			} catch (Throwable e) {
