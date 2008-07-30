@@ -52,6 +52,7 @@ static struct face *get_dgram_source(struct ccnd *h, struct face *face,
 static void content_skiplist_insert(struct ccnd *h, struct content_entry *content);
 static void content_skiplist_remove(struct ccnd *h, struct content_entry *content);
 static ccn_accession_t content_skiplist_next(struct ccnd *h, struct content_entry *content);
+static void reap_needed(struct ccnd *h, int init_delay_usec);
 static const char *unlink_this_at_exit = NULL;
 static void
 cleanup_at_exit(void)
@@ -424,7 +425,7 @@ consume(struct propagating_entry *pe)
 }
 
 static void
-finalize_interest(struct hashtb_enumerator *e)
+finalize_interestprefix(struct hashtb_enumerator *e)
 {
     struct interestprefix_entry *entry = e->data;
     if (entry->propagating_head != NULL) {
@@ -702,6 +703,8 @@ consume_matching_interests(struct ccnd *h,
             }
         }
     }
+    if (matches > 0)
+        reap_needed(h, 0);
     return(matches);
 }
 
@@ -732,55 +735,6 @@ match_interests(struct ccnd *h, struct content_entry *content,
     if (n_matched != 0)
         schedule_content_delivery(h, content);
     return(n_matched);
-}
-
-/*
- * age_interests:
- * This is called several times per interest halflife to age
- * the interest counters.  Returns the number of still-active counts.
- */
-#define CCN_INTEREST_AGING_MICROSEC (CCN_INTEREST_HALFLIFE_MICROSEC / 4)
-static int
-age_interests(struct ccnd *h)
-{
-    struct hashtb_enumerator ee;
-    struct hashtb_enumerator *e = &ee;
-    struct interestprefix_entry *ipe;
-    int n_active = 0;
-    hashtb_start(h->interestprefix_tab, e);
-    for (ipe = e->data; ipe != NULL; ipe = e->data) {
-#if 0 ///
-        n = ipe->counters->n;
-        if (n > 0)
-            ipe->idle = 0;
-        else if ((++ipe->idle) > 8) {
-            hashtb_delete(e);
-            continue;
-        }
-        for (i = 0; i < n; i++) {
-            size_t count = ipe->counters->buf[i];
-            if (count > CCN_UNIT_INTEREST) {
-                /* factor of approximately the fourth root of 1/2 */
-                ipe->counters->buf[i] = (count * 5 + 3) / 6;
-            }
-            else if (count > 0) {
-                ipe->counters->buf[i] -= 1;
-            }
-            else {
-                /* count was 0, remove this counter */
-                ipe->interested_faceid->buf[i] = ipe->interested_faceid->buf[n-1];
-                ipe->counters->buf[i] = ipe->counters->buf[n-1];
-                i -= 1;
-                n -= 1;
-                ipe->interested_faceid->n = ipe->counters->n = n;
-            }
-        }
-        n_active += n;
-#endif
-        hashtb_next(e);
-    }
-    hashtb_end(e);
-    return(n_active);
 }
 
 /*
@@ -834,6 +788,7 @@ check_dgram_faces(struct ccnd *h)
 /*
  * This checks for expired propagating interests.
  * Returns number that have gone away.
+ * Also retires unused interestprefix entries.
  */
 static int
 check_propagating(struct ccnd *h)
@@ -841,6 +796,8 @@ check_propagating(struct ccnd *h)
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     int count = 0;
+    struct interestprefix_entry *ipe;
+    struct propagating_entry *head;
     hashtb_start(h->propagating_tab, e);
     while (e->data != NULL) {
         struct propagating_entry *pe = e->data;
@@ -851,6 +808,16 @@ check_propagating(struct ccnd *h)
                 continue;
             }
             pe->size = (pe->size > 1); /* go around twice */
+        }
+        hashtb_next(e);
+    }
+    hashtb_end(e);
+    hashtb_start(h->interestprefix_tab, e);
+    for (ipe = e->data; ipe != NULL; ipe = e->data) {
+        head = ipe->propagating_head;
+        if (head == NULL || head == head->next) {
+            hashtb_delete(e);
+            continue;
         }
         hashtb_next(e);
     }
@@ -894,34 +861,6 @@ reap_needed(struct ccnd *h, int init_delay_usec)
 {
     if (h->reaper == NULL)
         h->reaper = ccn_schedule_event(h->sched, init_delay_usec, reap, NULL, 0);
-}
-
-static int
-aging_deamon(
-    struct ccn_schedule *sched,
-    void *clienth,
-    struct ccn_scheduled_event *ev,
-    int flags)
-{
-    struct ccnd *h = clienth;
-    (void)(sched);
-    if ((flags & CCN_SCHEDULE_CANCEL) == 0) {
-        age_interests(h);
-        if (hashtb_n(h->interestprefix_tab) != 0)
-            return(ev->evint);
-    }
-    /* nothing on the horizon, so go away */
-    h->age = NULL;
-    return(0);
-}
-
-static void
-aging_needed(struct ccnd *h)
-{
-    if (h->age == NULL) {
-        int period = CCN_INTEREST_AGING_MICROSEC;
-        h->age = ccn_schedule_event(h->sched, period, aging_deamon, NULL, period);
-    }
 }
 
 /*
@@ -1346,7 +1285,6 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
             }
         }
         hashtb_end(e);
-        aging_needed(h);
         if (!matched && pi->scope != 0)
             propagate_interest(h, face, msg, size, pi, ipe);
     }
@@ -1852,7 +1790,7 @@ ccnd_create(void)
     h->dgram_faces = hashtb_create(sizeof(struct face), &param);
     param.finalize = &finalize_content;
     h->content_tab = hashtb_create(sizeof(struct content_entry), &param);
-    param.finalize = &finalize_interest;
+    param.finalize = &finalize_interestprefix;
     h->interestprefix_tab = hashtb_create(sizeof(struct interestprefix_entry), &param);
     param.finalize = &finalize_propagating;
     h->propagating_tab = hashtb_create(sizeof(struct propagating_entry), &param);
