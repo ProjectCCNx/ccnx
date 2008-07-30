@@ -686,12 +686,16 @@ consume_matching_interests(struct ccnd *h,
     for (p = head->next; p != head; p = next) {
         next = p->next;
         if (p->interest_msg != NULL &&
-              ((face == NULL && face_from_faceid(h, p->faceid)) ||
-             p->faceid == face->faceid)) {
+            ((face == NULL && face_from_faceid(h, p->faceid) != NULL) ||
+             (face != NULL && p->faceid == face->faceid))) {
             if (ccn_content_matches_interest(content_msg, content_size, 1, pc,
                                              p->interest_msg, p->size, NULL)) {
                 k = content_faces_set_insert(content, p->faceid);
                 if (k >= content->nface_done) {
+                    if (h->debug & 8)
+                        ccnd_debug_ccnb(h, __LINE__, "consume",
+                                        face_from_faceid(h, p->faceid),
+                                        p->interest_msg, p->size);
                     matches += 1;
                     consume(p);
                 }
