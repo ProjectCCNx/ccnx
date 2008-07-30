@@ -387,7 +387,7 @@ content_matches_interest_qualifiers(struct ccnd *h,
     int ans;
     ans = ccn_content_matches_interest(content->key,
                                        content->key_size + content->tail_size,
-                                       1,
+                                       0,
                                        NULL,
                                        interest_msg,
                                        pi->offset[CCN_PI_E],
@@ -689,7 +689,7 @@ consume_matching_interests(struct ccnd *h,
         if (p->interest_msg != NULL &&
             ((face == NULL && face_from_faceid(h, p->faceid) != NULL) ||
              (face != NULL && p->faceid == face->faceid))) {
-            if (ccn_content_matches_interest(content_msg, content_size, 1, pc,
+            if (ccn_content_matches_interest(content_msg, content_size, 0, pc,
                                              p->interest_msg, p->size, NULL)) {
                 k = content_faces_set_insert(content, p->faceid);
                 if (k >= content->nface_done) {
