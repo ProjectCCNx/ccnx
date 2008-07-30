@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 D=`dirname "$0"`
 D="${D:-.}"
 test -e /tmp/.ccnd.sock && rm /tmp/.ccnd.sock && echo "GET /" | nc localhost 4485 > /dev/null && sleep 1
