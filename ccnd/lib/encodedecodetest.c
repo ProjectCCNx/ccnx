@@ -196,7 +196,7 @@ main (int argc, char *argv[]) {
     unsigned char pubkeyid[32] = {0};
     struct ccn_keystore *keystore = ccn_keystore_create();
     char *home = getenv("HOME");
-    char *keystore_suffix = "/.ccn/ccn_keystore";
+    char *keystore_suffix = "/.ccn/.ccn_keystore";
     char *keystore_name = NULL;
 
     int i;
@@ -234,7 +234,7 @@ main (int argc, char *argv[]) {
 
     if (0 != ccn_keystore_init(keystore, keystore_name, "Th1s1sn0t8g00dp8ssw0rd.")) {
         printf("Failed to initialize keystore\n");
-        result = 1;
+        exit(1);
     }
     printf("Encoding sample message data length %d\n", (int)strlen(contents[0]));
     cur_path = path_create(paths[0]);
