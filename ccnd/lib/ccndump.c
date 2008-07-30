@@ -46,6 +46,9 @@ incoming_content(
     c->length--;
     ccn_charbuf_append(c, ccnb + comps->buf[0], comps->buf[comps->n-1] - comps->buf[0]);
     ccn_charbuf_append_closer(c);
+    /* Use the full name, including digest, to ensure we move along */
+    ccn_digest_ContentObject(ccnb, info->pco);
+    ccn_name_append(c, info->pco->digest, info->pco->digest_bytes);
     ccn_charbuf_append(templ, templ_ccnb, 15);
     ccn_express_interest(info->h, c, 0, selfp, templ);
     ccn_charbuf_destroy(&templ);
