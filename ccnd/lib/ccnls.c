@@ -61,9 +61,9 @@ incoming_content(
     uri = ccn_charbuf_create();
     templ = ccn_charbuf_create();
         
-    if (matched_comps + 1 >= comps->n) {
+    if (matched_comps + 1 > comps->n) {
         ccn_uri_append(c, ccnb, ccnb_size, 1);
-        fprintf(stderr, "Giving up because item matches full prefix: %s\n", ccn_charbuf_as_string(uri));
+        fprintf(stderr, "How did this happen?  %s\n", ccn_charbuf_as_string(uri));
         exit(1);
     }
 
@@ -73,13 +73,21 @@ incoming_content(
     ccn_charbuf_append(c, ccnb + comps->buf[0], comps->buf[matched_comps] - comps->buf[0]);
     ccn_charbuf_append_closer(c);
     
+    
+    
     comp = ccn_charbuf_create();
     ccn_name_init(comp);
-    comp->length--;
-    ccn_charbuf_append(comp, ccnb + comps->buf[matched_comps],
-                       comps->buf[matched_comps + 1] - comps->buf[matched_comps]);
-    ccn_charbuf_append_closer(comp);
-    
+    if (matched_comps + 1 == comps->n) {
+        /* Reconstruct the implicit content digest component */
+        ccn_digest_ContentObject(ccnb, info->pco);
+        ccn_name_append(comp, info->pco->digest, info->pco->digest_bytes);
+    }
+    else {
+        comp->length--;
+        ccn_charbuf_append(comp, ccnb + comps->buf[matched_comps],
+                           comps->buf[matched_comps + 1] - comps->buf[matched_comps]);
+        ccn_charbuf_append_closer(comp);
+    }
     res = ccn_uri_append(uri, comp->buf, comp->length, 0);
     if (res < 0 || uri->length < 1)
         fprintf(stderr, "*** Error: ccnls line %d res=%d\n", __LINE__, res);
@@ -98,8 +106,8 @@ incoming_content(
         ccn_charbuf_append(templ, comp->buf + 1, comp->length - 2);
     }
     comp = NULL;
-    ccn_charbuf_append_closer(templ);
-    ccn_charbuf_append_closer(templ);
+    ccn_charbuf_append_closer(templ); /* </Exclude> */
+    ccn_charbuf_append_closer(templ); /* </Interest> */
     if (templ->length > data->warn) {
         fprintf(stderr, "*** Interest packet is %d bytes\n", (int)templ->length);
         data->warn = data->warn * 8 / 5;
