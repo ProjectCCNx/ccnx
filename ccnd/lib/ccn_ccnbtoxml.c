@@ -136,6 +136,21 @@ dict_name_from_number(int index, const struct ccn_dict_entry *dict, int n)
 static const char Base64[] =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
+static int
+is_text_encodable(unsigned char p[], size_t start, size_t length)
+{
+    size_t i;
+
+    if (length == 0) return (0);
+    for (i = 0; i < length; i++) {
+        char c = p[start + i];
+        if (0 == isascii(c)) return (0);
+        if (0 == isprint(c)) return (0);
+        if (c == '<' || c == '>' || c == '"' || c == '&') return (0);
+    }
+    return (1);
+}
+
 ssize_t
 ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
 {
@@ -256,11 +271,20 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                         case CCN_BLOB:
                             if (tagstate == 1) {
                                 tagstate = 0;
-                                printf(" ccnbencoding=\"base64Binary\">");
+                                if (is_text_encodable(p, i, numval)) {
+                                    printf(" ccnbencoding=\"text\">");
+                                    state =  6;
+                                }
+                                else {
+                                    printf(" ccnbencoding=\"base64Binary\">");
+                                    state = 10;
+                                }
                             }
-                            else
+                            else {
                                 fprintf(stderr, "blob not tagged in xml output\n");
-                            state = (numval == 0) ? 0 : 10;
+                                state = 10;
+                            }
+                            state = (numval == 0) ? 0 : state;
                             break;
                         case CCN_UDATA:
                             if (tagstate == 1) {
@@ -382,7 +406,7 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                     state = 0;
                 }
                 break;
-            case 6: /* processing instructions */
+            case 6: /* processing instructions and text blobs */
                 c = p[i++];
                 if (--numval == 0) {
                     state = 0;
