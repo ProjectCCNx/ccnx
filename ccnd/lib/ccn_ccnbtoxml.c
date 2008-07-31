@@ -147,7 +147,7 @@ is_text_encodable(unsigned char p[], size_t start, size_t length)
         char c = p[start + i];
         if (0 == isascii(c)) return (0);
         if (0 == isprint(c)) return (0);
-        if (c == '<' || c == '>' || c == '"' || c == '&') return (0);
+        if (c == '<' || c == '>' || c == '"' || c == '&' || c == '%' || c == '\'') return (0);
     }
     return (1);
 }
