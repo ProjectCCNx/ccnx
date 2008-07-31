@@ -20,6 +20,7 @@ struct ccn_encoder {
     struct ccn_charbuf *openudata;
     int is_base64binary;
     int is_hexBinary;
+    int is_text;
     int toss_white;
     const struct ccn_dict_entry *tagdict;
     int tagdict_count;
@@ -241,6 +242,13 @@ finish_openudata(struct ccn_encoder *u)
             return;
         }
     }
+    else if (u->is_text) {
+        u->is_text = 0;
+        emit_tt(u, u->openudata->length, CCN_BLOB);
+        emit_bytes(u, u->openudata->buf, u->openudata->length);
+        u->openudata->length = 0;
+        return;
+    }
     if (u->openudata->length != 0) {
         if (!(u->toss_white && all_whitespace(u->openudata))) {
             emit_tt(u, u->openudata->length, CCN_UDATA);
@@ -293,6 +301,7 @@ do_start_element(void *ud, const XML_Char *name,
     const XML_Char **att;
     int is_base64binary = 0;
     int is_hexBinary = 0;
+    int is_text = 0;
     emit_name(u, CCN_TAG, name);
     for (att = atts; att[0] != NULL; att += 2) {
         if (0 == strcmp(att[0], "ccnbencoding")) {
@@ -304,6 +313,10 @@ do_start_element(void *ud, const XML_Char *name,
                 is_hexBinary = 1;
                 continue;
             }
+            if (0 == strcmp(att[1], "text")) {
+                is_text = 1;
+                continue;
+            }
             fprintf(stderr, "warning - unknown ccnbencoding found (%s)\n", att[1]);
         }
         emit_name(u, CCN_ATTR, att[0]);
@@ -311,6 +324,7 @@ do_start_element(void *ud, const XML_Char *name,
     }
     u->is_base64binary = is_base64binary;
     u->is_hexBinary = is_hexBinary;
+    u->is_text = is_text;
 }
 
 static void
