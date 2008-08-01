@@ -1,6 +1,6 @@
 MORE_CFLAGS = -mt -Kpic
-MORE_LDLIBS = -L/usr/apache2/lib -lmtmalloc -lnsl -lsocket
-CPREFLAGS = -I../include -I/usr/local/ssl/include
+MORE_LDLIBS = -lmtmalloc -lnsl -lsocket -L/usr/sfw/lib -R/usr/sfw/lib
+CPREFLAGS = -I../include -I/usr/sfw/include
 SHEXT = so
 SHLIBNAME=libccn.$(SHEXT).1
 SHLIBDEPS=
