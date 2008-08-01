@@ -49,10 +49,11 @@ struct ccn_decoder {
     int tagdict_count;
     ccn_decoder_callback callback;
     void *callbackdata;
+    int force_base64;
 };
 
 struct ccn_decoder *
-ccn_decoder_create(void)
+ccn_decoder_create(int force_base64)
 {
     struct ccn_decoder *d;
     d = calloc(1, sizeof(*d));
@@ -64,6 +65,7 @@ ccn_decoder_create(void)
     d->schema = CCN_NO_SCHEMA;
     d->tagdict = ccn_dtag_dict.dict;
     d->tagdict_count = ccn_dtag_dict.count;
+    d->force_base64 = force_base64;
     return(d);
 }
 
@@ -145,9 +147,8 @@ is_text_encodable(unsigned char p[], size_t start, size_t length)
     if (length == 0) return (0);
     for (i = 0; i < length; i++) {
         char c = p[start + i];
-        if (0 == isascii(c)) return (0);
-        if (0 == isprint(c)) return (0);
-        if (c == '<' || c == '>' || c == '"' || c == '&' || c == '%' || c == '\'') return (0);
+        if (c < ' ' || c > '~') return (0);
+        if (c == '<' || c == '>' || c == '&') return (0);
     }
     return (1);
 }
@@ -272,7 +273,7 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                         case CCN_BLOB:
                             if (tagstate == 1) {
                                 tagstate = 0;
-                                if (is_text_encodable(p, i, numval)) {
+                                if (!d->force_base64 && is_text_encodable(p, i, numval)) {
                                     printf(" ccnbencoding=\"text\">");
                                     state =  6;
                                 }
@@ -530,7 +531,7 @@ process_fd(struct ccn_decoder *d, int fd)
 
 
 static int
-process_file(char *path)
+process_file(char *path, int force_base64)
 {
     int fd = 0;
     int res = 0;
@@ -544,7 +545,7 @@ process_file(char *path)
         }
     }
 
-    d = ccn_decoder_create();
+    d = ccn_decoder_create(force_base64);
     res = process_fd(d, fd);
     ccn_decoder_destroy(&d);
 
@@ -579,7 +580,7 @@ set_stdout(struct ccn_decoder *d, enum callback_kind kind, void *data)
 }
 
 static int
-process_split_file(char *base, char *path)
+process_split_file(char *base, char *path, int force_base64)
 {
     int fd = 0;
     int res = 0;
@@ -597,7 +598,7 @@ process_split_file(char *base, char *path)
     cs = calloc(1, sizeof(*cs));
     cs->fileprefix = base;
     cs->fragment = 0;
-    d = ccn_decoder_create();
+    d = ccn_decoder_create(force_base64);
     ccn_decoder_set_callback(d, set_stdout, cs);
     res = process_fd(d, fd);
     ccn_decoder_destroy(&d);
@@ -638,26 +639,56 @@ unsigned char test1[] = {
 int
 main(int argc, char **argv)
 {
+    extern char *optarg;
+    extern int optind, optopt;
+    int c;
+    int tflag = 0, bflag = 0, errflag = 0;
+    char *sarg = NULL;
     int i;
     int res = 0;
     struct ccn_decoder *d;
-    for (i = 1; argv[i] != 0; i++) {
-        fprintf(stderr, "<!-- Processing %s -->\n", argv[i]);
-        if (0 == strcmp(argv[i], "-test1")) {
-            d = ccn_decoder_create();
+
+    while ((c = getopt(argc, argv, ":tbqs:")) != -1) {
+        switch (c) {
+        case 't':
+            tflag = 1;
+            if (bflag || sarg) errflag = 1;
+            break;
+        case 'b':
+            bflag = 1;
+            if (tflag) errflag = 1;
+            break;
+        case 's':
+            sarg = optarg;
+            if (tflag) errflag = 1;
+            break;
+        case '?':
+            fprintf(stderr, "Unrecognized option: -%c\n", optopt);
+            errflag = 1;
+        }
+    }
+
+    if (errflag || (tflag && (optind < argc))) {
+        fprintf(stderr, "usage: %s -t | ([-b] [-s prefix] filename [filename...])\n", argv[0]);
+        exit(2);
+    }
+
+    if (tflag) {
+            d = ccn_decoder_create(1);
             res |= process_test(d, test1, sizeof(test1));
             ccn_decoder_destroy(&d);
-        } else if (0 == strcmp(argv[i], "-split")) {
-            if (argv[i + 1] == NULL || argv[i + 2] == NULL) {
-                res = 1;
-                break;
-            }
-            fprintf(stderr, "<!-- Processing %s into %s -->\n", argv[i + 2], argv[i + 1]);
-            res |= process_split_file(argv[i+1], argv[i+2]);
-            i += 2;
+            return (res);
+    }
+
+    for ( ; optind < argc; optind++) {
+        if (sarg) {
+            fprintf(stderr, "<!-- Processing %s into %s -->\n", argv[optind], sarg);
+            res |= process_split_file(sarg, argv[optind], bflag);
         }
-        else
-            res |= process_file(argv[i]);
+        else {
+            fprintf(stderr, "<!-- Processing %s -->\n", argv[optind]);
+            res |= process_file(argv[optind], bflag);
+        }
     }
     return(res);
 }
