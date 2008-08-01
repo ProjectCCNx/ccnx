@@ -1,6 +1,7 @@
 # $Id$
 W3REFS=XMLSchema.dtd XMLSchema.xsd datatypes.dtd xml.xsd
-FUZZED= ccn-schemabad01.xml ccn-schemabad02.xml ccn-schemabad04.xml ccn-schemabad10.xml ccn-schemabad11.xml
+FUZZED= ccn-schemabad01.xml ccn-schemabad02.xml ccn-schemabad04.xml ccn-bad06.xml ccn-schemabad10.xml ccn-bad11.xml
+DEBRIS= ccn-schemabad06.xml ccn-schemabad11.xml
 
 default all test: check
 
@@ -39,6 +40,12 @@ check: ccn.xsd ccn.dtd $(W3REFS) $(FUZZED) always
 
 always:
 
+# Generated "bad" test data obtained by tweaking the good examples.
+# The fuzzed targets named ccn-schemabad* have problems that the schema should
+# be able to catch, but that the DTD won't notice.
+# The fuzzed targets named ccn-bad* should be caught by both the schema and the DTD.
+# Review expectedfailures.out after changing things to make sure the shouldfail tests
+# are actually failing for the right reason.
 ccn-schemabad01.xml: ccn-test01.xml
 	sed -e '/Witness/s/BlahBlah/foo/' $? > $@
 
@@ -48,11 +55,11 @@ ccn-schemabad02.xml: ccn-test01.xml
 ccn-schemabad04.xml: ccn-test04.xml
 	sed -e '/NameComponentCount/s/[1-9]/E/' $? > $@
 
-ccn-schemabad06.xml: ccn-test06.xml
+ccn-bad06.xml: ccn-test06.xml
 	sed -e '/PublisherID type/s/ISSUER_KEY/ISSUER_KEYS/' $? > $@
 
 ccn-schemabad10.xml: ccn-test10.xml
 	sed -e '/Timestamp/s/11T16/11 16/' $? > $@
 
-ccn-schemabad11.xml: ccn-test11.xml
+ccn-bad11.xml: ccn-test11.xml
 	sed -e 's/<\/Bloom>/<\/Bloom><Bloom\/>/' $? > $@

@@ -127,7 +127,8 @@
 		 eliding it (default = sha-256). b) for now, sign the content
 		 directly rather than re-hashing it.  -->
 	<xs:element name="DigestAlgorithm" type="xs:string"
-					 default="2.16.840.1.101.3.4.2.1" minOccurs="0" maxOccurs="1" /> 
+					 default="2.16.840.1.101.3.4.2.1"
+                                         minOccurs="0" maxOccurs="1" /> 
 	<!-- A witness is additional information necessary to verify the
 		 signature in some algorithms. For elements authenticated
 		 using a Merkle Hash Tree, the witness information would be
@@ -188,7 +189,8 @@
                         minOccurs="0" maxOccurs="1"/>
     <xs:element name="Scope" type="xs:nonNegativeInteger"
 			minOccurs="0" maxOccurs="1"/>
-    <xs:element name="Count" type="xs:nonNegativeInteger"                                               minOccurs="0" maxOccurs="1"/>
+    <xs:element name="Count" type="xs:nonNegativeInteger"
+                        minOccurs="0" maxOccurs="1"/>
     <xs:element name="Nonce" type="Base64BinaryType"
 			minOccurs="0" maxOccurs="1"/>
     <xs:element name="ExperimentalResponseFilter" type="Base64BinaryType"
@@ -202,8 +204,11 @@
                         minOccurs="0" maxOccurs="1"/>
      <xs:element name="Bloom" type="Base64BinaryType"
                         minOccurs="0" maxOccurs="1"/>
-     <xs:element name="Component" type="Base64BinaryType"
-                        minOccurs="0"/> <!-- FIXTHIS - we need to be able to alternate Bs and Cs -->
+     <xs:sequence minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="Component" type="Base64BinaryType"/>
+        <xs:element name="Bloom" type="Base64BinaryType"
+                        minOccurs="0" maxOccurs="1"/>
+     </xs:sequence>
   </xs:sequence>
 </xs:complexType>
 

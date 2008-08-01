@@ -50,23 +50,22 @@
 		KeyLocator)>
 <!ATTLIST ContentAuthenticator %commonattrs;>
 
-<!ELEMENT Interest	(Name, NameComponentCount?, PublisherID?, Exclude?, OrderPreference?, AnswerOriginKind?, Scope?, Count?, Nonce?, ExperimentalResponseFilter?)>
+<!ELEMENT Interest	(Name,
+                         NameComponentCount?,
+                         PublisherID?,
+                         Exclude?,
+                         OrderPreference?,
+                         AnswerOriginKind?,
+                         Scope?,
+                         Count?,
+                         Nonce?,
+                         ExperimentalResponseFilter?)>
 <!ATTLIST Interest	%commonattrs;>
 
 <!ELEMENT PublisherID	(#PCDATA)>	<!-- base64Binary SHA-256 digest -->
 <!ATTLIST PublisherID   ccnbencoding CDATA #FIXED 'base64Binary'>
-<!ATTLIST PublisherID	type CDATA #REQUIRED> <!-- XXX - should be enum -->
+<!ATTLIST PublisherID	type (KEY|CERTIFICATE|ISSUER_KEY|ISSUER_CERTIFICATE) #REQUIRED>
 <!ATTLIST PublisherID	%commonattrs;>
-
-<!-- enum 
-<simpleType name="PublisherTypeType">
-  <restriction base="string">
-    <enumeration value="KEY"/>
-    <enumeration value="CERTIFICATE"/>
-    <enumeration value="ISSUER_KEY"/>
-    <enumeration value="ISSUER_CERTIFICATE"/>
-  </restriction>
-</simpleType> -->
 
 <!ELEMENT Exclude       (BloomSeed?, Bloom?, (Component, Bloom?)*)>
 

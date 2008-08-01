@@ -32,6 +32,9 @@
     <Exclude>
       <Bloom ccnbencoding="base64Binary">AA==</Bloom>
       <Component ccnbencoding="base64Binary">AQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Component>
+      <Component ccnbencoding="base64Binary">BQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Component>
+      <Bloom ccnbencoding="base64Binary">AA==</Bloom>
+      <Component ccnbencoding="base64Binary">CQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Component>
     </Exclude>
     <OrderPreference>5</OrderPreference>
   </Interest>
