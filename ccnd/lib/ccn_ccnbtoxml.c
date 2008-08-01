@@ -644,7 +644,6 @@ main(int argc, char **argv)
     int c;
     int tflag = 0, bflag = 0, errflag = 0;
     char *sarg = NULL;
-    int i;
     int res = 0;
     struct ccn_decoder *d;
 
