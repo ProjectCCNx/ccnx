@@ -197,7 +197,7 @@ interest_handler(struct ccn_closure *selfp,
                  enum ccn_upcall_kind upcall_kind,
                  struct ccn_upcall_info *info)
 {
-    int i, c, mc, res;
+    int i, c, mc, match, res;
     struct handlerstateitem item;
     struct handlerstate *state;
     size_t ccnb_size = 0;
@@ -255,12 +255,16 @@ interest_handler(struct ccn_closure *selfp,
     case CCN_UPCALL_INTEREST:
         c = state->count;
         for (i = 0; i < c; i++) {
-            // XXX - should use ccn_content_matches_interest() instead
-            mc = match_components((unsigned char *)info->interest_ccnb, info->interest_comps,
-                                  state->items[i].contents, state->items[i].components);
-            if (mc >= (info->pi->prefix_comps)) {
+            match = ccn_content_matches_interest(state->items[i].contents,
+                                                 state->items[i].size,
+                                                 1,
+                                                 NULL,
+                                                 info->interest_ccnb,
+                                                 info->pi->offset[CCN_PI_E],
+                                                 info->pi);
+            if (match) {
                 ccn_put(info->h, state->items[i].contents, state->items[i].size);
-                fprintf(stderr, "Sending %s, matched %d components\n", state->items[i].filename, mc);
+                fprintf(stderr, "Sending %s\n", state->items[i].filename);
                 if (i < c - 1) {
                     item = state->items[i];
                     memmove(&(state->items[i]), &(state->items[i+1]), sizeof(item) * ((c - 1) - i));
