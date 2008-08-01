@@ -11,6 +11,7 @@
 #ifndef CCN_CCN_DEFINED
 #define CCN_CCN_DEFINED
 
+#include <stdint.h>
 #include <ccn/coding.h>
 #include <ccn/charbuf.h>
 #include <ccn/indexbuf.h>
