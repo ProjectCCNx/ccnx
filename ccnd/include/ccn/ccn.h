@@ -26,13 +26,36 @@ struct ccn_closure;
 struct ccn_upcall_info;
 struct ccn_parsed_interest;
 struct ccn_parsed_ContentObject;
-enum ccn_upcall_kind;
-enum ccn_upcall_res;
 
 /*
  * Types for implementing upcalls
  * To receive notifications of incoming interests and content, the
  * client create closures (using client-managed memory).
+ */
+
+/*
+ * This tells what kind of event the upcall is handling.
+ */
+enum ccn_upcall_kind {
+    CCN_UPCALL_FINAL,       /* handler is about to be deregistered */
+    CCN_UPCALL_INTEREST,    /* incoming interest */
+    CCN_UPCALL_CONSUMED_INTEREST, /* incoming interest, someone has answered */
+    CCN_UPCALL_CONTENT,     /* incoming content */
+    CCN_UPCALL_INTEREST_TIMED_OUT /* interest timed out */
+};
+
+/*
+ * Upcalls return one of these values
+ * XXX - need more documentation
+ */
+enum ccn_upcall_res {
+    CCN_UPCALL_RESULT_ERR = -1,
+    CCN_UPCALL_RESULT_OK = 0,
+    CCN_UPCALL_RESULT_REEXPRESS = 1,
+};
+
+/*
+ * This is the procedure type for the closure's implementation.
  */
 typedef enum ccn_upcall_res (*ccn_handler)(
     struct ccn_closure *selfp,
@@ -54,17 +77,6 @@ struct ccn_closure {
     int refcount;       /* client should not update this directly */
 };
 
-/*
- * This tells what kind of event the upcall is handling.
- */
-enum ccn_upcall_kind {
-    CCN_UPCALL_FINAL,       /* handler is about to be deregistered */
-    CCN_UPCALL_INTEREST,    /* incoming interest */
-    CCN_UPCALL_CONSUMED_INTEREST, /* incoming interest, someone has answered */
-    CCN_UPCALL_CONTENT,     /* incoming content */
-    CCN_UPCALL_INTEREST_TIMED_OUT /* interest timed out */
-};
-
 struct ccn_upcall_info {
     struct ccn *h;              /* The ccn library handle */
     /* Interest (incoming or matched) */
@@ -72,22 +84,10 @@ struct ccn_upcall_info {
     struct ccn_parsed_interest *pi;
     struct ccn_indexbuf *interest_comps;
     int matched_comps;
-    /* Incoming content for CCN_UPCALL_CONTENT - otherwise NULL*/
+    /* Incoming content for CCN_UPCALL_CONTENT - otherwise NULL */
     const unsigned char *content_ccnb;
     struct ccn_parsed_ContentObject *pco;
     struct ccn_indexbuf *content_comps;
-    /* Response message buffer */
-    // NYI - struct ccn_charbuf *response;
-};
-
-/*
- * Upcalls return one of these values
- * XXX - need more documentation
- */
-enum ccn_upcall_res {
-    CCN_UPCALL_RESULT_ERR = -1,
-    CCN_UPCALL_RESULT_OK = 0,
-    CCN_UPCALL_RESULT_REEXPRESS = 1,
 };
 
 /*
