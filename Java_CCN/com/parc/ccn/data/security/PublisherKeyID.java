@@ -103,7 +103,7 @@ public class PublisherKeyID extends GenericXMLEncodable implements XMLEncodable,
 	}
 
 	public int compareTo(PublisherKeyID o) {
-		int result = DataUtils.compareTo(this.id(), o.id());
+		int result = DataUtils.compare(this.id(), o.id());
 		return result;
 	}
 

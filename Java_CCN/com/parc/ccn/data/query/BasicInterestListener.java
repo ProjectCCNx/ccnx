@@ -56,7 +56,7 @@ public abstract class BasicInterestListener implements CCNInterestListener {
 		return _interests.toArray(new Interest[_interests.size()]);
 	}
 
-	public abstract int handleContent(ArrayList<ContentObject> results);
+	public abstract Interest handleContent(ArrayList<ContentObject> results);
 
 	public boolean matchesInterest(CompleteName name) {
 		Iterator<Interest> iIt = _interests.iterator();

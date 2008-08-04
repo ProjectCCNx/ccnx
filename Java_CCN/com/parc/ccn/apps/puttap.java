@@ -118,9 +118,9 @@ public class puttap implements CCNInterestListener {
 		return null;
 	}
 
-	public int handleContent(ArrayList<ContentObject> results) {
+	public Interest handleContent(ArrayList<ContentObject> results) {
 		// Intentional no-op
-		return 0;
+		return null;
 	}
 
 	public void interestTimedOut(Interest interest) {

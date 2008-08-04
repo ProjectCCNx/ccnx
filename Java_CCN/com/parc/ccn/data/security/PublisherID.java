@@ -187,7 +187,7 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
     }
 
  	public int compareTo(PublisherID o) {
-		int result = DataUtils.compareTo(this.id(), o.id());
+		int result = DataUtils.compare(this.id(), o.id());
 		if (0 == result) {
 			result = typeToName(this.type()).compareTo(typeToName(o.type()));
 		}

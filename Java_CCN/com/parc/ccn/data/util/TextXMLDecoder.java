@@ -2,8 +2,6 @@ package com.parc.ccn.data.util;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.sql.Timestamp;
-import java.text.ParseException;
 import java.util.Iterator;
 import java.util.TreeMap;
 
@@ -14,7 +12,7 @@ import javax.xml.stream.events.Attribute;
 import javax.xml.stream.events.Characters;
 import javax.xml.stream.events.XMLEvent;
 
-public class TextXMLDecoder implements XMLDecoder {
+public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 
 	protected InputStream _istream = null;
 	protected XMLEventReader _reader = null;
@@ -138,19 +136,4 @@ public class TextXMLDecoder implements XMLDecoder {
 			throw new XMLStreamException(e.getMessage(), e);
 		}
 	}
-	
-	public Timestamp readDateTime(String startTag) throws XMLStreamException {
-		String strTimestamp = readUTF8Element(startTag);
-		Timestamp timestamp;
-		try {
-			timestamp = TextXMLCodec.parseDateTime(strTimestamp);
-		} catch (ParseException e) {
-			timestamp = null;
-		}
-		if (null == timestamp) {
-			throw new XMLStreamException("Cannot parse timestamp: " + strTimestamp);
-		}		
-		return timestamp;
-	}
-
 }

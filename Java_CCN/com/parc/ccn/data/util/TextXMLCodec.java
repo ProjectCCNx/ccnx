@@ -74,16 +74,15 @@ public class TextXMLCodec {
 				}
 				ns = ns.substring(0,trailerEnd+1);
 			}
-			Library.logger().finest("pre-nanos formatted timestamp: " + date + " nano string: " + ns);
 			date = date.replace("Z", ns) + "Z";
 		}
-		Library.logger().finest("Timestamp: " + dateTime + " formatted timestamp: " + date);
+		//Library.logger().finest("Timestamp: " + dateTime + " formatted timestamp: " + date);
 		return date;
 	}
 	
 	public static Timestamp parseDateTime(String strDateTime) throws ParseException {
 		
-		// The read format parses ns correctly, but expects them to be there.
+		// no . but has the Z 
 		if (strDateTime.indexOf('.') < 0) {
 			Date noNsDate = ((SimpleDateFormat)canonicalWriteDateFormat.clone()).parse(strDateTime);
 			return new Timestamp(noNsDate.getTime());
@@ -112,7 +111,7 @@ public class TextXMLCodec {
 				Library.logger().info("Exception in parsing nanoseconds from time: " + strDateTime);
 			}
 		}
-		Library.logger().finest("Parsed timestamp: " + ts + " from string: " + strDateTime);
+		//Library.logger().finest("Parsed timestamp: " + ts + " from string: " + strDateTime);
 		
 		return ts;
 	}

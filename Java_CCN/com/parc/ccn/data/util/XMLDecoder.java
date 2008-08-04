@@ -38,6 +38,11 @@ public interface XMLDecoder {
 	public byte [] readBinaryElement(String startTag, TreeMap<String,String> attributes) throws XMLStreamException;
 	
 	public byte [] readBinaryElement(String startTag) throws XMLStreamException;
+	
+	/**
+	 * Encapsulate integer parsing.
+	 */
+	public Integer readIntegerElement(String startTag) throws XMLStreamException;
 
 	/**
 	 * Encapsulate our handling of timestamps.

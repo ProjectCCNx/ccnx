@@ -77,7 +77,7 @@ public class BaseLibrarySink implements CCNInterestListener {
 		}
 	}
 	
-	public synchronized int handleContent(ArrayList<ContentObject> results) {
+	public synchronized Interest handleContent(ArrayList<ContentObject> results) {
 		try {
 			for (ContentObject contentObject : results) {
 				int value = contentObject.content()[0];
@@ -92,7 +92,7 @@ public class BaseLibrarySink implements CCNInterestListener {
 		} catch (Throwable e) {
 			error = e;
 		}
-		return 0;
+		return null;
 	}
 
 	public void addInterest(Interest interest) {

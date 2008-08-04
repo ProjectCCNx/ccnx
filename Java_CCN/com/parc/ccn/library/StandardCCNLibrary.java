@@ -977,6 +977,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	public static ContentName headerRoot(ContentName headerName) {
 		// Do we want to handle fragment roots, etc, here too?
 		if (!isHeader(headerName)) {
+			Library.logger().warning("Name " + headerName + " is not a header name.");
 			throw new IllegalArgumentException("Name " + headerName.toString() + " is not a header name.");
 		}
 		// Strip off any header-specific prefix info if we

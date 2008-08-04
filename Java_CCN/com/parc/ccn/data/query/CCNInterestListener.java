@@ -11,9 +11,9 @@ public interface CCNInterestListener {
 	 * Callback called when we get new results for our query.
 	 * @param results Change to a content object, as that is what
 	 * 			ccnd is currently handing back anyway.
-	 * @return
+	 * @return any updates to the standing interest to be expressed
 	 */
-    public int handleContent(ArrayList<ContentObject> results);
+    public Interest handleContent(ArrayList<ContentObject> results);
     
     /**
      * Notification that our query has timed out.

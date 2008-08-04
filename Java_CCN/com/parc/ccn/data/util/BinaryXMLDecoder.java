@@ -4,15 +4,13 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.sql.Timestamp;
-import java.text.ParseException;
 import java.util.TreeMap;
 
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
 
-public class BinaryXMLDecoder implements XMLDecoder {
+public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 	
 	protected static final int MARK_LEN = 512; // tag length in UTF-8 encoded bytes, plus length/val bytes
 	protected static final int DEBUG_MAX_LEN = 32768;
@@ -239,24 +237,5 @@ public class BinaryXMLDecoder implements XMLDecoder {
 		}
 		
 		return blob;
-	}
-	
-	/**
-	 * Right now we use the same format for timestamps as the text encoders,
-	 * but this allows us to switch.
-	 */
-	public Timestamp readDateTime(String startTag) throws XMLStreamException {
-		String strTimestamp = readUTF8Element(startTag);
-		Timestamp timestamp;
-		try {
-			timestamp = TextXMLCodec.parseDateTime(strTimestamp);
-		} catch (ParseException e) {
-			timestamp = null;
-		}
-		if (null == timestamp) {
-			throw new XMLStreamException("Cannot parse timestamp: " + strTimestamp);
-		}		
-		return timestamp;
-	}
-
+	}	
 }

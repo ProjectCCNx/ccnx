@@ -120,9 +120,9 @@ public class Signature extends GenericXMLEncodable implements XMLEncodable,
 			result = digestAlgorithm().compareTo((null == o.digestAlgorithm()) ? DigestHelper.DEFAULT_DIGEST_ALGORITHM : o.digestAlgorithm());
 		}
 		if (result == 0)
-			result = DataUtils.compareTo(witness(), o.witness());
+			result = DataUtils.compare(witness(), o.witness());
 		if (result == 0)
-			result = DataUtils.compareTo(this.signature(), o.signature());
+			result = DataUtils.compare(this.signature(), o.signature());
 		return result;
 	}
 

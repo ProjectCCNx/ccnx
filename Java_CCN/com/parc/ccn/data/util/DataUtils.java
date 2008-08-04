@@ -1,37 +1,96 @@
 package com.parc.ccn.data.util;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
 
 public class DataUtils {
 
-	public static int compareTo(byte [] arr1, byte [] arr2) {
-		if (null == arr1) {
-			if (null == arr2)
-				return 0;
+	public static <T extends Comparable<T>> int compare(T left, T right) {
+		int result = 0;
+		if (null != left) {
+			if (null == right) 
+				return 1; // sort nothing before something
+			result = left.compareTo(right);
+		} else {
+			if (null != right)
+				result = -1; // sort nothing before something
+			// else fall through and compare publishers
 			else
-				return -1;
+				result = 0; // null == null
 		}
-		if (null == arr2) {
-			if (null == arr1)
-				return 0;
-			else
-				return 1;
-		}
-		int len = (arr1.length>arr2.length) ? arr2.length : arr1.length;
-		for (int i=0; i < len; ++i) {
-			if (arr1[i] < arr2[i])
-				return -1;
-			else if (arr1[i] > arr2[i])
-				return 1;
-		}
-		// equal up to the minimum length.
-		if (arr1.length < arr2.length)
-			return -1;
-		else if (arr1.length > arr2.length)
-			return 1;
-		return 0;
+		return result;
 	}
 	
+	public static int compare(byte [] left, byte [] right) {
+		int result = 0;
+		if (null != left) {
+			if (null == right) {
+				result = 1;
+			} else {
+				// here we have the comparison.
+				int minlen = (left.length < right.length) ? left.length : right.length;
+				for (int i=0; i < minlen; ++i) {
+					if (left[i] < right[i]) {
+						result = -1;
+						break;
+					} else if (left[i] > right[i]) {
+						result = 1;
+						break;
+					}
+				}
+				if (result == 0) {
+					// ok, they're equal up to the minimum length
+					if (left.length < right.length) {
+						result = -1;
+					} else if (left.length > right.length) {
+						result = 1;
+					}
+					// else they're equal, result = 0
+				}
+			}
+		} else {
+			if (null != right)
+				result = -1; // sort nothing before something
+			// else fall through and compare publishers
+			else
+				result = 0; // null == null
+		}
+		return result;
+	}
+	
+	public static int compare(ArrayList<byte []> left, ArrayList<byte []> right) {
+
+		int result = 0;
+		if (null != left) {
+			if (null == right) {
+				result = 1;
+			} else {
+				// here we have the comparison.
+				int minlen = (left.size() < right.size()) ? left.size() : right.size();
+				for (int i=0; i < minlen; ++i) {
+					result = compare(left.get(i), right.get(i));
+					if (0 != result) break;
+				}
+				if (result == 0) {
+					// ok, they're equal up to the minimum length
+					if (left.size() < right.size()) {
+						result = -1;
+					} else if (left.size() > right.size()) {
+						result = 1;
+					}
+					// else they're equal, result = 0
+				}
+			}
+		} else {
+			if (null != right)
+				result = -1; // sort nothing before something
+			// else fall through and compare publishers
+			else
+				result = 0; // null == null
+		}
+		return result;
+	}
+
 	public static String printBytes(byte [] bytes) {
 		BigInteger bi = new BigInteger(1, bytes);
 		return bi.toString(16);

@@ -39,6 +39,11 @@ public interface XMLEncoder {
 			TreeMap<String,String> attributes) throws XMLStreamException;
 	
 	/**
+	 * Encapsulate string handling.
+	 */
+	public void writeIntegerElement(String tag, Integer value) throws XMLStreamException;
+	
+	/**
 	 * Encapsulate our handling of timestamps.
 	 */
 	public void writeDateTime(String tag, Timestamp dateTime) throws XMLStreamException;

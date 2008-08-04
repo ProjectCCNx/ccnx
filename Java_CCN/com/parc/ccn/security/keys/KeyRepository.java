@@ -217,9 +217,9 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		return null;
 	}
 
-	public int handleContent(ArrayList<ContentObject> results) {
+	public Interest handleContent(ArrayList<ContentObject> results) {
 		// TODO Auto-generated method stub
-		return 0;
+		return null;
 	}
 
 	public void interestTimedOut(Interest interest) {

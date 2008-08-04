@@ -249,7 +249,22 @@ public class CCNSimpleNetworkManager implements Runnable {
 					// Call into client code without holding any library locks
 					if (null != results) {
 						Library.logger().finer("Interest callback (" + results.size() + " data) for: " + this.interest.name());
-						listener.handleContent(results);
+						// Give the client a chance to modify the interest. Eventually, we will
+						// handle at least the case of excluding repeat of existing content for
+						// the client.
+						// DKS TODO tension here -- what object does client use to cancel?
+						// Original implementation had expressInterest return a descriptor
+						// used to cancel it, perhaps we should go back to that. Otherwise
+						// we may need to remember at least the original interest for cancellation,
+						// or a fingerprint representation that doesn't include the exclude filter.
+						// DKS even more interesting -- how do we update our interest? Do we?
+						// it's final now to avoid contention, but need to change it or change
+						// the registration.
+						Interest updatedInterest = listener.handleContent(results);
+						if ((null != updatedInterest) && (!this.interest.equals(updatedInterest))) {
+						//	this.interest = updatedInterest; // final, if we want to change it, have to play around
+							Library.logger().finer("Interest callback: updated interest to express: " + updatedInterest.name());
+						}
 					} else {
 						Library.logger().finer("Interest callback skipped (no data) for: " + this.interest.name());
 					}
@@ -790,7 +805,10 @@ public class CCNSimpleNetworkManager implements Runnable {
 					dreg.copyTo(ireg); // this is a copy of the data
 					_threadpool.execute(ireg);
 					if (ireg.isStanding() && dreg.isFromNet()) {
-						// refresh interest immediately
+						// we need to re-express the standing interest, however,
+						// the data processing may have changed the interest specification.
+						// at very least, it should have arranged for us not to get the
+						// exact same data as before
 						write(ireg.interest);
 					}
 					consumer = true;

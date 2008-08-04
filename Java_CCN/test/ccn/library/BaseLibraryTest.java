@@ -306,7 +306,7 @@ public class BaseLibraryTest {
 		public Interest[] getInterests() {
 			return null;
 		}
-		public synchronized int handleContent(ArrayList<ContentObject> results) {
+		public synchronized Interest handleContent(ArrayList<ContentObject> results) {
 			for (ContentObject contentObject : results) {
 				try {
 					int val = Integer.parseInt(new String(contentObject.content()));
@@ -324,7 +324,7 @@ public class BaseLibraryTest {
 				System.out.println("GetServer got all content: " + accumulatedResults.size() + ". Releasing semaphore.");
 				sema.release();
 			}
-			return 0;
+			return  null;
 		}
 		public void interestTimedOut(Interest interest) {
 		}

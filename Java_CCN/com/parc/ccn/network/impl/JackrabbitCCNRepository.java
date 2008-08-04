@@ -1400,7 +1400,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 
 	//----------------------------------------------- CCNInterestListener
 	
-	public int handleContent(ArrayList<ContentObject> results) {
+	public Interest handleContent(ArrayList<ContentObject> results) {
 		try {
 			for (ContentObject contentObject : results) {
 				put(contentObject.name(), contentObject.authenticator(), contentObject.content(), contentObject.signature());
@@ -1408,7 +1408,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		} catch (IOException e) {
 			Library.logger().warning(e.getMessage());
 		}
-		return 0;
+		return null;
 	}
 
 	public void addInterest(Interest interest) {

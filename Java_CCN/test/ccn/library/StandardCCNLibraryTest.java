@@ -311,7 +311,7 @@ public class StandardCCNLibraryTest {
 		}
 
 		@Override
-		public int handleContent(ArrayList<ContentObject> results) {
+		public Interest handleContent(ArrayList<ContentObject> results) {
 			byte[] content = null;
 			if (null != results) {
 				Iterator<ContentObject> rit = results.iterator();
@@ -338,7 +338,7 @@ public class StandardCCNLibraryTest {
 					}
 				}
 			}
-			return 0;
+			return null;
 		}
 	}
 

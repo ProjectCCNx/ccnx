@@ -71,11 +71,11 @@ public class watch extends Thread implements CCNInterestListener {
 		return (Interest[])_interests.toArray();
 	}
 	
-	public int handleContent(ArrayList<ContentObject> results) {
+	public Interest handleContent(ArrayList<ContentObject> results) {
 		for (int i=0; i < results.size(); ++i) {
 			System.out.println("New content: " + results.get(i).name());
 		}
-		return results.size();
+		return null;
 	}
 	
 	public boolean matchesInterest(CompleteName name) {

@@ -243,6 +243,7 @@ public class CCNDescriptor {
 		// root. We've altered the header semantics, so that
 		// we can just get headers rather than a plethora of
 		// fragments. 
+		Library.logger().fine("Opening header for " + name.name() + " at " + StandardCCNLibrary.headerName(nameToOpen));
 		_headerName = StandardCCNLibrary.headerName(nameToOpen);
 		
 		// This might not be unique - 

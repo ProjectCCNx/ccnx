@@ -358,7 +358,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		int len = (this.count() > o.count()) ? this.count() : o.count();
 		int componentResult = 0;
 		for (int i=0; i < len; ++i) {
-			componentResult = DataUtils.compareTo(this.component(i), o.component(i));
+			componentResult = DataUtils.compare(this.component(i), o.component(i));
 			if (0 != componentResult)
 				return componentResult;
 		}
