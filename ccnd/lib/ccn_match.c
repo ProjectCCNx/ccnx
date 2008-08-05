@@ -67,7 +67,7 @@ ccn_pubid_matches(const unsigned char *content_object,
             return(0);
     }
     return(1);
-};
+}
 
 int
 ccn_content_matches_interest(const unsigned char *content_object,
