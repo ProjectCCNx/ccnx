@@ -27,7 +27,7 @@ namecompare(const void *a, const void *b)
     return (ans);
 }
 
-int
+enum ccn_upcall_res
 incoming_content(
     struct ccn_closure *selfp,
     enum ccn_upcall_kind kind,
@@ -47,7 +47,7 @@ incoming_content(
     
     if (data->magic != 856372) abort();
     if (kind == CCN_UPCALL_FINAL)
-        return(0);
+        return(CCN_UPCALL_RESULT_OK);
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
         return(CCN_UPCALL_RESULT_REEXPRESS);
     if (kind != CCN_UPCALL_CONTENT) abort();
@@ -116,7 +116,7 @@ incoming_content(
     ccn_charbuf_destroy(&templ);
     ccn_charbuf_destroy(&c);
     ccn_charbuf_destroy(&uri);
-    return(0);
+    return(CCN_UPCALL_RESULT_OK);
 }
 
 /* Use some static data for this simple program */
