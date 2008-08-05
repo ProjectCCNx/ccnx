@@ -17,7 +17,7 @@ static const unsigned char templ_ccnb[15] =
         "\001\322\362\000\002\362\216\064"
         "\000\002\322\216\060\000\000";
 
-int
+enum ccn_upcall_res
 incoming_content(
     struct ccn_closure *selfp,
     enum ccn_upcall_kind kind,
@@ -30,11 +30,11 @@ incoming_content(
     struct ccn_indexbuf *comps = NULL;
 
     if (kind == CCN_UPCALL_FINAL)
-        return(0);
+        return(CCN_UPCALL_RESULT_OK);
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
         return(CCN_UPCALL_RESULT_REEXPRESS);
     if (kind != CCN_UPCALL_CONTENT)
-        return(-1);
+        return(CCN_UPCALL_RESULT_ERR);
     ccnb = info->content_ccnb;
     ccnb_size = info->pco->offset[CCN_PCO_E];
     comps = info->content_comps;
@@ -54,7 +54,7 @@ incoming_content(
     ccn_charbuf_destroy(&templ);
     ccn_charbuf_destroy(&c);
     selfp->data = selfp; /* make not NULL to indicate we got something */
-    return(0);
+    return(CCN_UPCALL_RESULT_OK);
 }
 
 /* Use some static data for this simple program */
