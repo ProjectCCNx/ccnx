@@ -3,21 +3,46 @@ package com.parc.ccn.security.crypto;
 import org.bouncycastle.asn1.DEROctetString;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 
-
+/**
+ * Modified to match Knuth, Vol 1 2.3.4.5. We represent
+ * trees as a special sublcass of extended binary
+ * trees, where empty subtrees are only present in one end
+ * of the tree.
+ * Tree nodes are numbered starting with 1, which is the
+ * root. 
+ * Tree nodes are stored in an array, with node i stored at index
+ * i-1 into the array.
+ * Incomplete binary trees are represented as multi-level extended
+ * binary trees -- lower-numbered leaves are represented in the
+ * upper half of the tree, in a layer one closer to the root than
+ * leaves in the complete subtree.
+ * 
+ * Total number of nodes in the tree = 2n + 1, where n is the number of leaves.
+ * 
+ * Taken in terms of node indices (where root == 1), the parent
+ * of node k is node floor(k/2), and hte children of node k are
+ * nodes 2k and 2k+1. Leaves are numbered from node n+1 through 
+ * 2n+1, where n is the number of leaves.
+ * 
+ * The sibling index of node k is (k xor 1).
+ * 
+ * Should we want to get fancy, we could have t-ary trees; the
+ * construction above works for tree with internal nodes (non-leaves)
+ * {1,2,...,n}.
+ * The parent of node k is the node floor((k+t-2)/t) = ceil((k-1)/t).
+ * The children of node k are:
+ * t(k-1)+2, t(k-1)+3,..., tk+1
+ * 
+ * Store internally as DEROctetStrings for more efficient
+ * encoding. 
+ */
 public class MerkleTree {
 	
-	protected static final int ROOT_NODE = 0;
-	
 	/**
-	 * Represent hashes as a binary tree.
-	 * _tree[0] = root
-	 * _tree[1], _tree[2] = 1st level
-	 * node i's children: _tree[2i+1],_tree[2i+2]
-	 * i's parent: floor(_tree[i-1/2])
-	 * the leaf nodes are the last n nodes
-	 * Store internally as DEROctetStrings for more efficient
-	 * encoding. 
+	 * Node index of 1 (array index of 0).
 	 */
+	protected static final int ROOT_NODE = 1;
+	
 	protected DEROctetString [] _tree;
 	protected int _numLeaves;
 	protected String _algorithm;
@@ -73,136 +98,106 @@ public class MerkleTree {
 	public String algorithm() { return _algorithm; }
 	
 	/**
-	 * Returns -1 if this node has no parent (is the root).
-	 * @param i
+	 * Returns 0 if this node has no parent (is the root).
+	 * @param i is a (1-based) node index.
 	 * @return
 	 */
-	public static int parent(int i) { 
-		if (i == ROOT_NODE) {
-			return -1;
-		}
-		return (int)Math.floor((i-1)/2.0); 
+	public static int parent(int nodeIndex) { 
+		return (int)Math.floor(nodeIndex/2.0); 
 	}
 	
 	/**
 	 * Will return size() if no left child.
-	 * @param i
+	 * @param nodeIndex
 	 * @return
 	 */
-	public int leftChild(int i) { return 2*i + 1; }
+	public int leftChild(int nodeIndex) { return 2*nodeIndex; }
 	
 	/**
 	 * Will return size() if no right child.
-	 * @param i
+	 * @param nodeIndex
 	 * @return
 	 */
-	public int rightChild(int i) { return 2*i + 2; }
+	public int rightChild(int nodeIndex) { return 2*nodeIndex + 1; }
 	
 	/**
-	 * Will return size() if requested to return sibling
-	 * of last node of an odd-sized tree. For root, returns -1.
-	 * @param i
-	 * @return
-	 * 0
-	 * 1    2
-	 * 3 4  5 6
+	 * Everything always has a sibling, in this formulation of 
+	 * (not-necessarily-complete binary trees). For root, returns 0.
 	 */
-	public static int sibling(int i) {
-		if (isLeft(i))
-			return i+1;
-		return i-1;
+	public static int sibling(int nodeIndex) {
+		return nodeIndex^1; // Java has xor! who knew?
 	}
 	
 	/**
 	 * Check internal node index (not translated to leaves) to see if it
 	 * is a left or right child. Internal nodes for a layer always start
-	 * with an odd index, as 0 is the root and the only layer with one
+	 * with an even index, as 1 is the root and the only layer with one
 	 * member. Every other layer has an even number of nodes (except for
-	 * possibly a dangling child at the end). So, left nodes have odd
-	 * indices, and right nodes have even ones.
-	 * @param i
+	 * possibly a dangling child at the end). So, left nodes have even
+	 * indices, and right nodes have odd ones.
+	 * @param nodeIndex
 	 * @return
 	 */
-	public static boolean isRight(int i) { return (0 == (i % 2)); }
-	public static boolean isLeft(int i) { return (0 != (i % 2)); }
-	
-	/**
-	 * Check a leaf node index to see if it is a left or right branch leaf.
-	 * In this case, we are considering indices only within the leaf layer
-	 * of the tree. The first (left) leaf has index 0, and left leaves have
-	 * even indices, and right leaves have odd ones.
-	 * @return
-	 */
-	public static boolean isLeftLeaf(int i) { return (0 == (i % 2)); }
-	public static boolean isRightLeaf(int i) { return (0 != (i % 2)); }
-	
+	public static boolean isRight(int nodeIndex) { return (0 != (nodeIndex % 2)); }
+	public static boolean isLeft(int nodeIndex) { return (0 == (nodeIndex % 2)); }
+		
 	public byte [] root() { 
 		if ((null == _tree) || (_tree.length == 0))
 			return new byte[0];
-		return _tree[ROOT_NODE].getOctets(); } 
-	public DEROctetString derRoot() { return _tree[ROOT_NODE]; }
+		return get(ROOT_NODE);
+	} 
+	
+	public DEROctetString derRoot() { return derGet(ROOT_NODE); }
 	public int size() { return _tree.length; }
 	
 	/**
-	 * Returns null if there is no node i.
-	 * @param i
+	 * Returns null if there is no node nodeIndex.
+	 * @param nodeIndex 1-based node index
 	 * @return
 	 */
-	public byte [] get(int i) { 
-		DEROctetString dv = derGet(i);
+	public byte [] get(int nodeIndex) { 
+		DEROctetString dv = derGet(nodeIndex);
 		if (null == dv)
 			return null;
 		return dv.getOctets(); 
 	}
 	
 	/**
-	 * Returns null if there is no node i.
-	 * @param i
+	 * Returns null if there is no node nodeIndex.
+	 * @param nodeIndex
 	 * @return
 	 */
-	public DEROctetString derGet(int i) { 
-		if ((i < 0) || (i >= size())) 
+	public DEROctetString derGet(int nodeIndex) { 
+		if ((nodeIndex < ROOT_NODE) || (nodeIndex > size())) 
 				return null;
-		return _tree[i]; 
+		return _tree[nodeIndex-1]; 
 	}
 
 	public int numLeaves() { return _numLeaves; }
 	
 	public static int nodeCount(int numLeaves) {
-		// How many entries do we need? 
-		// 2^(pathLength-1) - 1 
-		// gets us the number of nodes up to the level below ours.
-		// We then add in the number of leaves.
-		if (0 == numLeaves) return 0;
-		
-		int nodeCount = (int)(Math.pow(2.0,maxDepth(numLeaves)))-1;
-		nodeCount += numLeaves;
-		
-		return nodeCount;
+		// How many entries do we need? 2*numLeaves + 1
+		return 2*numLeaves-1;
 	}
 	
 	public int nodeCount() { return nodeCount(numLeaves()); }
 
-	public int firstLeaf() { return size() - numLeaves(); }
+	public int firstLeaf() { // node index of the 
+		// first leaf is either size()-numleaves(), or
+		// nodeIndex = numLeaves
+		return numLeaves();
+	}
 	
 	public int leafNodeIndex(int leafIndex) { return firstLeaf() + leafIndex; }
 	
-	public static int leafIndex(int leafNodeIndex) { 
-		int baseLog = (int)Math.floor(log2(leafNodeIndex + 1));
-		int baseLeaf = 1 << baseLog;
-		return (leafNodeIndex + 1 - baseLeaf);
-	}	
-		
 	/**
 	 * Retrieve just the leaf nodes. Returns null if there is
-	 * no leaf i.
-	 * @param i leaf index, starting at 0 for the first leaf.
+	 * no leaf leafIndex.
+	 * @param leafIndex leaf index, starting at 0 for the first leaf.
 	 * @return
 	 */
 	public byte [] leaf(int leafIndex) {
-		if ((leafIndex < 0) || (leafIndex > _numLeaves))
-			return null;
-		return _tree[firstLeaf() + leafIndex].getOctets(); 
+		return get(leafNodeIndex(leafIndex));
 	}
 	
 	/**
@@ -234,14 +229,16 @@ public class MerkleTree {
 	 */
 	public MerklePath path(int leafNum) {
 		
-		// Start at the leaf, pushing siblings.
+		// Start at the leaf, pushing siblings. We know we always have
+		// a complete path to the leaf.
 		int leafNode = leafNodeIndex(leafNum);
 		// We want to push nodes of the path onto the path structure
 		// in reverse order. We'd then like to turn them into bare
 		// arrays for efficiency. Java's stacks, though, turn them
-		// into arrays in the wrong order. So, let's make too big of
-		// a path and shrink it at the end.
-		DEROctetString [] resultStack = new DEROctetString[maxDepth(leafNode)];
+		// into arrays in the wrong order. So, make an array. With
+		// the extended binary tree, all paths are complete for their
+		// region of the tree.
+		DEROctetString [] resultStack = new DEROctetString[maxPathLength(leafNode)];
 		
 		// Start at the leaf, pushing siblings.
 		int node = leafNode;
@@ -260,23 +257,16 @@ public class MerkleTree {
 			
 			node = parent(node);
 		}
-		index++;
-		
-		if (index > 0) {
-			DEROctetString [] results = new DEROctetString[resultStack.length - index];
-			// Can't use 1.6 array operations...
-			System.arraycopy(resultStack, index, results, 0, results.length);
-			resultStack = results;
-		}
 		return new MerklePath(leafNode, resultStack);
 	}
 	
 	/**
-	 * What is the maximum path length to a node with this leaf node index?
+	 * What is the maximum path length to a node with this node index,
+	 * including its sibling but not the root?
 	 */
-	public static int maxPathLength(int leafNodeIndex) {
-		int baseLog = (int)Math.floor(MerkleTree.log2(leafNodeIndex + 1));
-		return baseLog+1;
+	public static int maxPathLength(int nodeIndex) {
+		int baseLog = (int)Math.floor(MerkleTree.log2(nodeIndex));
+		return baseLog;
 	}
 			
 	/**
@@ -287,37 +277,7 @@ public class MerkleTree {
 	 * @return
 	 */
 	public static int maxDepth(int numLeaves) {
-		// We can't assume a balanced binary tree; we may be fixed
-		// in our block sizes. 
-		// diff = 2^ceil(log2(numleaves)) - numleaves
-		// is the number of missing leaves between this tree
-		// and a balanced binary tree. If that difference
-		// is 0, pathlen is log2(numleaves) (if we don't include the root).
-		// Nodes with indices between 0 and 2^floor(log2(numleaves))-1
-		// are in a complete subtree, and have pathlengths of 
-		// epathlen = ceil(log2(numleaves)) as in a balanced tree.
-		// nodes = 8
-		// diff = 1, pathlen = epathlen - 1
-		// diff = 2, pathlen = epathlen - 1
-		// diff = 3, pathlen = epathlen - 2
-		// nodes = 16
-		// diff = 1, pathlen = epathlen - 1
-		// diff = 2, pathlen = epathlen - 1
-		// diff = 3, pathlen = epathlen - 2
-		// diff = 4, pathlen = epathlen - 1
-		// diff = 5, pathlen = epathlen - 2
-		// diff = 6, pathlen = epathlen - 2
-		// diff = 7, pathlen = epathlen - 3
-		// nodes = 32
-		// d = 8, p = e - 1
-		// d = 9, p = e - 2
-		// d = 10, p = e - 2
-		// d = 11, p = e - 3
-		// d = 12, p = e - 2
-		// d = 13, p = e - 3
-		// d = 14, p = e - 3
-		// d = 15, p = e - 4
-		// 
+
 		if (numLeaves == 0)
 			return 0;
 		if (numLeaves == 1)
@@ -338,7 +298,7 @@ public class MerkleTree {
 	protected void computeLeafValues(byte [][] contentBlocks, boolean isDigest, int blockOffset) {
 		// Hash the leaves
 		for (int i=0; i < numLeaves(); ++i) {
-			_tree[leafNodeIndex(i)] = 
+			_tree[leafNodeIndex(i)-1] = 
 				new DEROctetString(
 						(isDigest ? contentBlocks[i+blockOffset] : computeBlockDigest(i, blockOffset, contentBlocks)));
 		}
@@ -346,38 +306,26 @@ public class MerkleTree {
 	
 	protected void computeNodeValues() {
 		// Climb the tree
-		int firstNode = firstLeaf(); // DKS TODO Next coming out with null node values
-		int endNode = size()-1;
-		int nextLevelStart = parent(firstNode);
-		int nextLevelEnd = firstNode - 1;
-		
-		while (parent(firstNode) >= 0) {
-			for (int i = parent(firstNode); i <= parent(endNode); ++i) {
-				// leftChild(i) and rightChild(i) will each return size() if there is no
-				// such child, in which case the digest will ignore that child.
-				byte [] nodeDigest = DigestHelper.digest(_algorithm, get(leftChild(i)), get(rightChild(i))); 
-				_tree[i] = (null != nodeDigest) ? new DEROctetString(nodeDigest) : null;
-			}
-			firstNode = nextLevelStart;
-			endNode = nextLevelEnd;
-			nextLevelEnd = firstNode - 1;
-			nextLevelStart = parent(firstNode);
+		int firstNode = firstLeaf()-1;
+		for (int i=firstNode; i >= ROOT_NODE; --i) {
+			byte [] nodeDigest = DigestHelper.digest(algorithm(), get(leftChild(i)), get(rightChild(i)));
+			_tree[i-1] = new DEROctetString(nodeDigest);
 		}
 	}
 	
 	/**
 	 * Function for validating paths. Given a digest, it returns what node in
-	 * the tree has that digest. If no node has that digest, returns size(). 
+	 * the tree has that digest. If no node has that digest, returns 0. 
 	 * If argument is null, returns -1. Slow.
 	 */
 	public int getNodeIndex(DEROctetString node) {
 		if (null == node)
 			return -1;
-		for (int i=0; i < size(); ++i) {
+		for (int i=1; i <= size(); ++i) {
 			if (node.equals(derGet(i)))
 				return i;
 		}
-		return size();
+		return 0;
 	}
 	
 	public byte[] getRootAsEncodedDigest() {

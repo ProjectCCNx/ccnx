@@ -42,25 +42,6 @@ public class MerkleTreeTest {
 		}
 	}
 	
-	//@Test
-	public void testLNI() {
-		for (int i=0; i < 65; ++i) {
-	//		System.out.println("Tree with " + i + " leaves: " + MerkleTree.nodeCount(i) + " nodes and " + MerkleTree.maxDepth(i) + " max depth.");
-			//System.out.println("LeafNodeIndex: " + i + " LeafIndex: " + MerkleTree.leafIndex(i));
-		}
-		
-		for (int j=1; j < 128; ++j) {
-			int count = 0;
-			int node = j;
-			while (0 != node) {
-				if (MerkleTree.isRight(node))
-					count++;
-				node = MerkleTree.parent(node);
-			}
-			System.out.println("Leaf node index: " + j  + " leaf index: " + MerkleTree.leafIndex(j) + " max path len: " + MerkleTree.maxPathLength(j) + " max depth: " + MerkleTree.maxDepth(j) + " minimum path " + count);
-		}
-	}
-	
 	public static void testTree(int numLeaves, int nodeLength, boolean digest) {
 		try {
 			byte [][] data = makeContent(numLeaves, nodeLength, digest);
@@ -101,7 +82,7 @@ public class MerkleTreeTest {
 		MerklePath [] paths = new MerklePath[count];
 		for (int i=0; i < count; ++i) {
 			paths[i] = tree.path(i);
-		//	checkPath(tree, paths[i]);
+			//checkPath(tree, paths[i]);
 			byte [] root = paths[i].root(content[i],digest);
 			boolean result = Arrays.equals(root, tree.root());
 			if (!result) {
@@ -130,7 +111,7 @@ public class MerkleTreeTest {
 	protected static void checkPath(MerkleTree tree, MerklePath path) {
 		
 		// Check path against the tree, and see if it contains the hashes it should.
-		System.out.println("Checking path for leaf " + path.leafIndex() + " (nodeID: " + path.leafNodeIndex() + " path length: " + path.pathLength() + " num components: " + path.pathLength() + ")");
+		System.out.println("Checking path for nodeID: " + path.leafNodeIndex() + " path length: " + path.pathLength() + " num components: " + path.pathLength());
 		StringBuffer buf = new StringBuffer("Path nodes: ");
 		
 		for (int i=0; i < path.pathLength(); ++i) {

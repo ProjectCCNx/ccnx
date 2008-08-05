@@ -64,7 +64,7 @@ public class MerklePath {
 	 * @return
 	 */
 	public byte [] root(byte [] nodeContent, boolean isDigest) {
-		if ((leafNodeIndex() < 0) || (_path == null) ||
+		if ((leafNodeIndex() < MerkleTree.ROOT_NODE) || (_path == null) ||
 				(_path.length == 0) || (null == nodeContent)) {
 			throw new IllegalArgumentException("MerklePath value illegal -- cannot verify!");
 		}
@@ -79,69 +79,27 @@ public class MerklePath {
 		
 		int node = leafNodeIndex();
 		byte [] pathDigest = leafDigest;
-		int maxPathLength = MerkleTree.maxPathLength(node) - 1;
 		
-		// We have some trouble with nodes on the left end of the upper half of an
-		// incomplete tree. Split up the problem into easy and hard cases.
-		if (pathLength() == maxPathLength) {
-			// Full path, straightforward.
-			while (node != MerkleTree.ROOT_NODE) {
-				pathDigest = computeParent(node, length, pathDigest);
-				length--;
-				node = MerkleTree.parent(node);
-			}
-		} else {
-			// Short path. The pattern is a subtree, topped by 0 or more right
-			// nodes, then 1 or more left nodes, then 0 or more right node to the root.
-			
-			// If the leaf is a right node, move up till we find a left. Right nodes always have siblings.
-			// Know we won't get all the way to the root, or we'd have a full path.
-			while (MerkleTree.isRight(node)) {
-				pathDigest = MerkleTree.computeNodeDigest(entry(length-1).getOctets(), pathDigest);
-				length--;
-				node = MerkleTree.parent(node);
-			}
-						
-			// OK, the minimum path is what we need to make it out of here. The
-			// remainder is extra right children.
-			while (MerkleTree.ROOT_NODE != node) {
-				if (MerkleTree.isRight(node)) {
-					// We know we have a sibling.
-					pathDigest = MerkleTree.computeNodeDigest(entry(length-1).getOctets(), pathDigest);
-					length--;
-				} else {
-					// If we have an extra right node, take it.
-					if (length > minPath(node)) {
-						pathDigest = MerkleTree.computeNodeDigest(pathDigest, entry(length-1).getOctets());
-						length--;
-					} else {
-						pathDigest = MerkleTree.computeNodeDigest(pathDigest, null);						
-					}
-				}
-				node = MerkleTree.parent(node);				
-			}
+		// With the extended binary tree, this becomes simple -- all paths are
+		// full, it's just that some are shorter than others...
+		while (node != MerkleTree.ROOT_NODE) {
+			pathDigest = computeParent(node, length, pathDigest);
+			length--;
+			node = MerkleTree.parent(node);
 		}
 		return pathDigest;
 	}
 	
-	public static int minPath(int nodeIndex) {
-		int minPath = 0;
-		int parent = nodeIndex;
-		while (MerkleTree.ROOT_NODE != parent) {
-			if (MerkleTree.isRight(parent))
-				minPath++;
-			parent = MerkleTree.parent(parent);
-		}
-		return minPath;
-	}
-
+	/**
+	 * Entry in the path, where i is the index into the path array.
+	 * @param i
+	 * @return
+	 */
 	public DEROctetString entry(int i) {
 		if ((i < 0) || (i >= _path.length))
 			return null;
 		return _path[i];
 	}
-	
-	public int leafIndex() { return MerkleTree.leafIndex(_leafNodeIndex); }
 	
 	public int leafNodeIndex() { return _leafNodeIndex; }
 		
