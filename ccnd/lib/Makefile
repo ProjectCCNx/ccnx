@@ -7,19 +7,19 @@ COPT = -g
 PROGRAMS = ccn_ccnbtoxml ccn_splitccnb ccn_verifysig\
     hashtbtest matrixtest skel_decode_test \
     smoketestclientlib dataresponsetest ccntimestamps \
-    encodedecodetest ccndumpnames ccndump ccnls $(EXPAT_PROGRAMS)
+    encodedecodetest ccndumpnames ccndump ccnls ccnslurp $(EXPAT_PROGRAMS)
 EXPAT_PROGRAMS = ccn_xmltoccnb
 BROKEN_PROGRAMS =
 DEBRIS = libccn2.a
 CSRC = ccn_buf_decoder.c ccn_dtag_table.c ccn_buf_encoder.c ccn_charbuf.c \
-    ccn_indexbuf.c ccn_coding.c ccn_client.c  \
+    ccn_indexbuf.c ccn_coding.c ccn_client.c \
     ccn_ccnbtoxml.c ccn_xmltoccnb.c ccn_splitccnb.c \
     ccn_schedule.c ccn_matrix.c ccn_bloom.c ccn_name_util.c \
     ccn_match.c ccn_digest.c ccn_keystore.c ccn_signing.c \
     skel_decode_test.c \
     hashtb.c hashtbtest.c matrixtest.c \
     smoketestclientlib.c ccntimestamps.c ccndump.c ccndumpnames.c \
-    ccnls.c \
+    ccnls.c ccnslurp.c \
     ccn_verifysig.c dataresponsetest.c ccn_uri.c  encodedecodetest.c
 
 LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_dtag_table.o ccn_schedule.o ccn_matrix.o \
@@ -84,6 +84,9 @@ ccndumpnames: ccndumpnames.o
 
 ccnls: ccnls.o
 	$(CC) $(CFLAGS) -o $@ ccnls.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+
+ccnslurp: ccnslurp.o
+	$(CC) $(CFLAGS) -o $@ ccnslurp.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccn_digest.o:
 	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_digest.c
