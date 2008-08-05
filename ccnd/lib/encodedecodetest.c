@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 
 #include <ccn/ccn.h>
+#include <ccn/bloom.h>
 #include <ccn/uri.h>
 #include <ccn/digest.h>
 #include <ccn/keystore.h>
@@ -343,6 +344,7 @@ main (int argc, char *argv[]) {
     }
     ccn_charbuf_destroy(&buffer);
     ccn_charbuf_destroy(&uri_out);
+    printf("Message digest tests\n");
     do {
         printf("Unit test case %d\n", i++);
         struct ccn_digest *dg = ccn_digest_create(CCN_DIGEST_SHA256);
@@ -374,7 +376,74 @@ main (int argc, char *argv[]) {
         if (0 != memcmp(actual_digest, expected_digest, sizeof(expected_digest))) {
             printf("Failed: wrong digest\n");
             result = 1;
+            break;
         }
+    } while (0);
+    printf("Bloom filter tests\n");
+    do {
+        unsigned char seed1[4] = "1492";
+        const char *a[13] = {
+            "one", "two", "three", "four",
+            "five", "six", "seven", "eight",
+            "nine", "ten", "eleven", "twelve",
+            "thirteen"
+        };
+        struct ccn_bloom *b1 = NULL;
+        struct ccn_bloom *b2 = NULL;
+        int j, k, t1, t2;
+        unsigned short us;
+        
+        printf("Unit test case %d\n", i++);
+        b1 = ccn_bloom_create(13, seed1);
+        
+        for (j = 0; j < 13; j++)
+            if (ccn_bloom_match(b1, a[j], strlen(a[j]))) break;
+        if (j < 13) {
+            printf("Failed: \"%s\" matched empty Bloom filter\n", a[j]);
+            result = 1;
+            break;
+        }
+        printf("Unit test case %d\n", i++);
+        for (j = 0; j < 13; j++)
+            ccn_bloom_insert(b1, a[j], strlen(a[j]));
+        for (j = 0; j < 13; j++)
+            if (!ccn_bloom_match(b1, a[j], strlen(a[j]))) break;
+        if (j < 13) {
+            printf("Failed: \"%s\" not found when it should have been\n", a[j]);
+            result = 1;
+            break;
+        }
+        printf("Unit test case %d\n", i++);
+        for (j = 0, k = 0; j < 13; j++)
+            if (ccn_bloom_match(b1, a[j]+1, strlen(a[j]+1)))
+                k++;
+        if (k > 0) {
+            printf("Mmm, found %d false positives\n", k);
+            if (k > 2) {
+                result = 1;
+                break;
+            }
+        }
+        unsigned char seed2[5] = "aqfb\0";
+        for (; seed2[3] <= 'f'; seed2[3]++) {
+            printf("Unit test case %d (%4s)    ", i++, seed2);
+            b2 = ccn_bloom_create(13, seed2);
+            for (j = 0; j < 13; j++)
+                ccn_bloom_insert(b2, a[j], strlen(a[j]));
+            for (j = 0, k = 0, us = ~0; us > 0; us--) {
+                t1 = ccn_bloom_match(b1, &us, sizeof(us));
+                t2 = ccn_bloom_match(b2, &us, sizeof(us));
+                j += (t1 | t2);
+                k += (t1 & t2);
+            }
+            printf("either=%d both=%d wiresize=%d\n", j, k, ccn_bloom_wiresize(b1));
+            if (k > 12) {
+                printf("Failed: Bloom seeding may not be effective\n");
+                result = 1;
+            }
+            ccn_bloom_destroy(&b2);
+        }
+        ccn_bloom_destroy(&b1);
     } while (0);
     exit(result);
 }

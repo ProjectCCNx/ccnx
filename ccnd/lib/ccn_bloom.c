@@ -19,7 +19,7 @@ ccn_bloom_create(int estimated_members, const unsigned char seed[4])
     if (ans == NULL) return(ans);
     f = calloc(1, sizeof(*f));
     if (f != NULL) {
-        f->method = 's';
+        f->method = 'A';
         f->lg_bits = 13;
         /* try for about m = 12*n (m = bits in Bloom filter) */
         while (f->lg_bits > 3 && (1 << f->lg_bits) > n * 12)
@@ -51,7 +51,7 @@ ccn_bloom_validate_wire(const void *buf, size_t size)
         return (NULL);
     if (size != (sizeof(*f) - sizeof(f->bloom)) + (1 << (f->lg_bits - 3)))
         return (NULL);
-    if (!(f->reserved == 0 && f->method == 's'))
+    if (!(f->reserved == 0 && f->method == 'A'))
         return (NULL);
     return(f);
 }
@@ -84,26 +84,27 @@ ccn_bloom_destroy(struct ccn_bloom **bp)
         *bp = NULL;
     }
 }
+
 static int
-bloom_seed(const struct ccn_bloom_wire *f, const unsigned char *x)
+bloom_seed(const struct ccn_bloom_wire *f)
 {
     unsigned u;
     const unsigned char *s = f->seed;
-    u = ((s[0] + x[0]) << 24) |
-        ((s[1] + x[1]) << 16) |
-        ((s[2] + x[2]) << 8) |
-        (s[3] + x[3]);
+    u = ((s[0]) << 24) |
+        ((s[1]) << 16) |
+        ((s[2]) << 8) |
+        (s[3]);
     return(u & 0x7FFFFFFF);
 }
 
 static int
-bloom_nexthash(int s, unsigned char u)
+bloom_nexthash(int s, int u)
 {
     const int k = 13; /* use this many bits of feedback shift output */
     int b = s & ((1 << k) - 1);
     /* fsr primitive polynomial (modulo 2) x**31 + x**13 + 1 */
     s = ((s >> k) ^ (b << (31 - k)) ^ (b << (13 - k))) + u;
-    return(s);
+    return(s & 0x7FFFFFFF);
 }
 
 /*
@@ -112,64 +113,56 @@ bloom_nexthash(int s, unsigned char u)
  * means a collison has happened.
  */
 int
-ccn_bloom_insert(struct ccn_bloom *b, const void *digest, size_t size)
+ccn_bloom_insert(struct ccn_bloom *b, const void *key, size_t size)
 {
     
-    struct ccn_bloom_wire *f = b->wire;
     int d = 0;
-    int n = f->n_hash;
-    int m = (8*sizeof(f->bloom) - 1) & ((1 << f->lg_bits) - 1);
-    const unsigned char *hb = (const unsigned char *)digest;
-    int i, k, h, s;
-    if (size < 4)
-        return(0);
-    s = bloom_seed(f, hb);
-    for (k = 0; k < 4; k++)
-        s = bloom_nexthash(s, 0);
+    struct ccn_bloom_wire *f = b->wire;
+    int h, i, k, m, n, s;
+    const unsigned char *hb = (const unsigned char *)key;
+    n = f->n_hash;
+    m = (8*sizeof(f->bloom) - 1) & ((1 << f->lg_bits) - 1);
+    s = bloom_seed(f);
+    for (k = 0; k < size; k++)
+        s = bloom_nexthash(s, hb[k] + 1);
     for (i = 0; i < n; i++) {
-        if (k >= size)
-            k = 0;
+        s = bloom_nexthash(s, 0);
         h = s & m;
         if (0 == (f->bloom[h >> 3] & (1 << (h & 7)))) {
             f->bloom[h >> 3] |= (1 << (h & 7));
             d++;
         }
         f->bloom[h >> 3] |= (1 << (h & 7));
-        if (i + 1 == n) break;
-        s = bloom_nexthash(s, hb[k++]);
     }
     b->n += 1;
     return(d);
 }
 
 int
-ccn_bloom_match_wire(const struct ccn_bloom_wire *f, const void *digest, size_t size)
+ccn_bloom_match_wire(const struct ccn_bloom_wire *f, const void *key, size_t size)
 {
-    int n = f->n_hash;
-    int m = (8*sizeof(f->bloom) - 1) & ((1 << f->lg_bits) - 1);
-    const unsigned char *hb = (const unsigned char *)digest;
-    int i, k, h, s;
-    if (size < 4)
-        return(0);
-    s = bloom_seed(f, hb);
-    for (k = 0; k < 4; k++)
-        s = bloom_nexthash(s, 0);
+    int h, i, k, m, n, s;
+    const unsigned char *hb = (const unsigned char *)key;
+    n = f->n_hash;
+    m = (8*sizeof(f->bloom) - 1) & ((1 << f->lg_bits) - 1);
+    s = bloom_seed(f);
+    for (k = 0; k < size; k++)
+        s = bloom_nexthash(s, hb[k] + 1);
     for (i = 0; i < n; i++) {
+        s = bloom_nexthash(s, 0);
         if (k >= size)
             k = 0;
         h = s & m;
         if (0 == (f->bloom[h >> 3] & (1 << (h & 7))))
             return(0);
-        if (i + 1 == n) break;
-        s = bloom_nexthash(s, hb[k++]);
     }
     return(1);
 }
 
 int
-ccn_bloom_match(struct ccn_bloom *b, const void *digest, size_t size)
+ccn_bloom_match(struct ccn_bloom *b, const void *key, size_t size)
 {
-    return(ccn_bloom_match_wire(b->wire, digest, size));
+    return(ccn_bloom_match_wire(b->wire, key, size));
 }
 
 int
