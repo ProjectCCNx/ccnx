@@ -35,7 +35,7 @@ enum ccn_tt {
 
 enum ccn_ext_subtype {
     /* skip smallest values for now */
-    CCN_PROCESSING_INSTRUCTIONS = 16, /* <?name:U value:U?> */
+    CCN_PROCESSING_INSTRUCTIONS = 16 /* <?name:U value:U?> */
 };
 
 enum ccn_dtag {
@@ -82,7 +82,7 @@ enum ccn_dtag {
     CCN_DTAG_SignatureBits = 54,
     CCN_DTAG_DigestAlgorithm = 55,
     CCN_DTAG_CCNProtocolDataUnit = 17702112,
-    CCN_DTAG_ExperimentalResponseFilter = 23204960,
+    CCN_DTAG_ExperimentalResponseFilter = 23204960
 };
 
 struct ccn_dict_entry {
@@ -123,7 +123,7 @@ enum ccn_decoder_state {
     CCN_DSTATE_ERR_ATTR     = -2,       
     CCN_DSTATE_ERR_CODING   = -3,
     CCN_DSTATE_ERR_NEST     = -4, 
-    CCN_DSTATE_ERR_BUG      = -5,
+    CCN_DSTATE_ERR_BUG      = -5
 };
 
 /*

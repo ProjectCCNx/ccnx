@@ -5,7 +5,6 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <dirent.h>
 
 #include <ccn/ccn.h>
 #include <ccn/uri.h>
@@ -145,6 +144,7 @@ expected_res(int res, char code)
     if ('0' <= code && code <= '9')
         return(res == (code - '0'));
     abort(); // test program bug!!!
+    /* NOTREACHED */
 }
 
 static char all_chars_percent_encoded[256 * 3 + 1]; /* Computed */

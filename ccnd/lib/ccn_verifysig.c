@@ -2,18 +2,15 @@
  * Utility to check the signature on ccnb-formatted ContentObjects
  */
 
-#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 #include <ccn/ccn.h>
 #include <ccn/keystore.h>
-#include <ccn/digest.h>
 #include <ccn/signing.h>
 
 static unsigned char rawbuf[8801];

@@ -12,7 +12,6 @@
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
 #include <ccn/indexbuf.h>
-#include <ccn/digest.h>
 #include <ccn/signing.h>
 
 int
@@ -92,25 +91,18 @@ ccn_content_name(enum ccn_content_type type)
     switch (type) {
     case CCN_CONTENT_FRAGMENT:
 	return "FRAGMENT";
-	break;
     case CCN_CONTENT_LINK:
 	return "LINK";
-	break;
     case CCN_CONTENT_COLLECTION:
 	return "COLLECTION";
-	break;
     case CCN_CONTENT_LEAF:
 	return "LEAF";
-	break;
     case CCN_CONTENT_SESSION:
 	return "SESSION";
-	break;
     case CCN_CONTENT_HEADER:
 	return "HEADER";
-	break;
     case CCN_CONTENT_KEY:
 	return "KEY";
-	break;
     default:
 	return NULL;
     }
