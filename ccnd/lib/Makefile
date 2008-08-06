@@ -117,8 +117,7 @@ ccn_buf_decoder.o: ccn_buf_decoder.c ../include/ccn/ccn.h \
 ccn_dtag_table.o: ccn_dtag_table.c ../include/ccn/coding.h
 ccn_buf_encoder.o: ccn_buf_encoder.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/digest.h \
-  ../include/ccn/signing.h
+  ../include/ccn/indexbuf.h ../include/ccn/signing.h
 ccn_charbuf.o: ccn_charbuf.c ../include/ccn/charbuf.h
 ccn_indexbuf.o: ccn_indexbuf.c ../include/ccn/indexbuf.h
 ccn_coding.o: ccn_coding.c ../include/ccn/coding.h
@@ -129,8 +128,7 @@ ccn_ccnbtoxml.o: ccn_ccnbtoxml.c ../include/ccn/charbuf.h \
   ../include/ccn/coding.h
 ccn_xmltoccnb.o: ccn_xmltoccnb.c ../include/ccn/coding.h \
   ../include/ccn/charbuf.h
-ccn_splitccnb.o: ccn_splitccnb.c ../include/ccn/charbuf.h \
-  ../include/ccn/coding.h
+ccn_splitccnb.o: ccn_splitccnb.c ../include/ccn/coding.h
 ccn_schedule.o: ccn_schedule.c ../include/ccn/schedule.h
 ccn_matrix.o: ccn_matrix.c ../include/ccn/matrix.h \
   ../include/ccn/hashtb.h
@@ -163,10 +161,12 @@ ccndumpnames.o: ccndumpnames.c ../include/ccn/ccn.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccnls.o: ccnls.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
+ccnslurp.o: ccnslurp.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccn_verifysig.o: ccn_verifysig.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/keystore.h \
-  ../include/ccn/digest.h ../include/ccn/signing.h
+  ../include/ccn/signing.h
 dataresponsetest.o: dataresponsetest.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h
@@ -174,5 +174,6 @@ ccn_uri.o: ccn_uri.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
 encodedecodetest.o: encodedecodetest.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/uri.h ../include/ccn/digest.h \
-  ../include/ccn/keystore.h ../include/ccn/signing.h
+  ../include/ccn/indexbuf.h ../include/ccn/bloom.h ../include/ccn/uri.h \
+  ../include/ccn/digest.h ../include/ccn/keystore.h \
+  ../include/ccn/signing.h

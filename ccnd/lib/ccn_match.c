@@ -215,8 +215,12 @@ ccn_content_matches_interest(const unsigned char *content_object,
          * Now we have isolated the applicable Bloom filter.
          */
         if (bloom_size != 0) {
-            // Stubbed out. Pretend nextcomp matches, hence excluding this one.
-            return(0);
+            const struct ccn_bloom_wire *f = ccn_bloom_validate_wire(bloom, bloom_size);
+            /* If not a valid filter, treat like a false positive */
+            if (f == NULL)
+                return(0);
+            if (ccn_bloom_match_wire(f, nextcomp, nextcomp_size))
+                return(0);
         }
     exclude_checked: {}
     }

@@ -154,8 +154,18 @@ int ccn_name_append(struct ccn_charbuf *c, const void *component, size_t n);
  * component names from simple strings.
  * Return value is 0, or -1 for error
  */
-int 
-ccn_name_append_str(struct ccn_charbuf *c, const char *s);
+int ccn_name_append_str(struct ccn_charbuf *c, const char *s);
+
+/*
+ * ccn_name_append_components: add sequence of ccnb-encoded Components
+ *    to a ccnb-encoded Name
+ * start and stop are offsets from ccnb
+ * Return value is 0, or -1 for obvious error
+ */
+int ccn_name_append_components(struct ccn_charbuf *c,
+                               const unsigned char *ccnb,
+                               size_t start, size_t stop);
+
 
 /***********************************
  * Authenticators and signatures for content are constructed in charbufs

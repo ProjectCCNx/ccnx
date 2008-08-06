@@ -69,11 +69,7 @@ incoming_content(
 
     /* Recover the same prefix as before */
     ccn_name_init(c);
-    c->length--;
-    ccn_charbuf_append(c, ccnb + comps->buf[0], comps->buf[matched_comps] - comps->buf[0]);
-    ccn_charbuf_append_closer(c);
-    
-    
+    ccn_name_append_components(c, ccnb, comps->buf[0], comps->buf[matched_comps]);
     
     comp = ccn_charbuf_create();
     ccn_name_init(comp);
@@ -83,10 +79,9 @@ incoming_content(
         ccn_name_append(comp, info->pco->digest, info->pco->digest_bytes);
     }
     else {
-        comp->length--;
-        ccn_charbuf_append(comp, ccnb + comps->buf[matched_comps],
-                           comps->buf[matched_comps + 1] - comps->buf[matched_comps]);
-        ccn_charbuf_append_closer(comp);
+        ccn_name_append_components(comp, ccnb,
+                                   comps->buf[matched_comps],
+                                   comps->buf[matched_comps + 1]);
     }
     res = ccn_uri_append(uri, comp->buf, comp->length, 0);
     if (res < 0 || uri->length < 1)

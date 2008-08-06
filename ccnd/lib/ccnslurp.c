@@ -13,8 +13,8 @@
 struct upcalldata {
     int magic; /* 856372 */
     long *counter;
-    int n_excl;
     unsigned warn;
+    int n_excl;
     struct ccn_charbuf **excl; /* Array of n_excl items */
 };
 
@@ -49,6 +49,10 @@ incoming_content(
     
     if (data->magic != 856372) abort();
     if (kind == CCN_UPCALL_FINAL) {
+        for (i = 0; i < data->n_excl; i++)
+            ccn_charbuf_destroy(&(data->excl[i]));
+        if (data->excl != NULL)
+            free(data->excl);
         free(data);
         free(selfp);
         return(0);
@@ -76,9 +80,7 @@ incoming_content(
 
     /* Recover the same prefix as before */
     ccn_name_init(c);
-    c->length--;
-    ccn_charbuf_append(c, ccnb + comps->buf[0], comps->buf[matched_comps] - comps->buf[0]);
-    ccn_charbuf_append_closer(c);
+    ccn_name_append_components(c, ccnb, comps->buf[0], comps->buf[matched_comps]);
     
     comp = ccn_charbuf_create();
     ccn_name_init(comp);
@@ -88,10 +90,9 @@ incoming_content(
         ccn_name_append(comp, info->pco->digest, info->pco->digest_bytes);
     }
     else {
-        comp->length--;
-        ccn_charbuf_append(comp, ccnb + comps->buf[matched_comps],
-                           comps->buf[matched_comps + 1] - comps->buf[matched_comps]);
-        ccn_charbuf_append_closer(comp);
+        ccn_name_append_components(comp, ccnb,
+                                   comps->buf[matched_comps],
+                                   comps->buf[matched_comps + 1]);
     }
     data->excl = realloc(data->excl, (data->n_excl + 1) * sizeof(data->excl[0]));
     data->excl[data->n_excl++] = comp;

@@ -48,6 +48,22 @@ ccn_name_append_str(struct ccn_charbuf *c, const char *s)
     return (ccn_name_append(c, s, strlen(s)));
 }
 
+int
+ccn_name_append_components(struct ccn_charbuf *c,
+                           const unsigned char *ccnb,
+                           size_t start, size_t stop)
+{
+    int res;
+    if (c->length < 2 || start > stop)
+        return(-1);
+    c->length -= 1;
+    ccn_charbuf_reserve(c, stop - start + 1);
+    res = ccn_charbuf_append(c, ccnb + start, stop - start);
+    if (res == -1) return(res);
+    res = ccn_charbuf_append_closer(c);
+    return(res);
+}
+
 static int
 ccn_name_comp_get(const unsigned char *data,
                   const struct ccn_indexbuf *indexbuf,

@@ -43,9 +43,7 @@ incoming_content(
     fwrite(ccnb, ccnb_size, 1, stdout);
     /* Use the name of the content just received as the resumption point */
     ccn_name_init(c);
-    c->length--;
-    ccn_charbuf_append(c, ccnb + comps->buf[0], comps->buf[comps->n-1] - comps->buf[0]);
-    ccn_charbuf_append_closer(c);
+    ccn_name_append_components(c, ccnb, comps->buf[0], comps->buf[comps->n-1]);
     /* Use the full name, including digest, to ensure we move along */
     ccn_digest_ContentObject(ccnb, info->pco);
     ccn_name_append(c, info->pco->digest, info->pco->digest_bytes);
