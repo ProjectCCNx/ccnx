@@ -164,10 +164,12 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			if (null != additionalNameComponents()) {
 				// we know our specified name is a prefix of the result. 
 				// the number of additional components must be this value
-				// except at least resultName, and possibly name, do not contain
-				// the extra content digest name component... for now assume
-				// neither does, and count an exact match here as a 1-off
-				// match (for resultName's missing content digest)
+				// we add 1 here for the missing "virtual digest" component
+				// effectively on the end of resultName
+				// TODO DKS this doesn't match if we specify the digest in the interest
+				// though lengths will be handled properly (lengthDiff will come out 0,
+				// which will match additionalNameComponents(); except we won't
+				// compare to the content digest...)
 				int lengthDiff = resultName.count() - name().count() + 1;
 				if (!additionalNameComponents().equals(lengthDiff)) {
 					Library.logger().info("Interest match failed: " + lengthDiff + " more than the " + additionalNameComponents() + " components between expected " +
