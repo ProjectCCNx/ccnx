@@ -52,6 +52,7 @@
 
 <!ELEMENT Interest	(Name,
                          NameComponentCount?,
+                         AdditionalNameComponents?,
                          PublisherID?,
                          Exclude?,
                          OrderPreference?,
@@ -91,6 +92,7 @@
 <!ATTLIST PublisherKeyID ccnbencoding CDATA #FIXED 'base64Binary'>
 
 <!ELEMENT NameComponentCount (#PCDATA)> <!-- nonNegativeInteger -->
+<!ELEMENT AdditionalNameComponents (#PCDATA)> <!-- nonNegativeInteger -->
 <!ELEMENT Timestamp	(#PCDATA)>	<!-- dateTime -->
 <!ELEMENT Type		(#PCDATA)>	<!-- FRAGMENT, LINK, COLLECTION, LEAF, SESSION, HEADER, KEY -->
 <!ELEMENT ContentDigest	(#PCDATA)>	<!-- base64 encoding of DER-encoded DigestInfo -->

@@ -179,6 +179,8 @@
     <xs:element name="Name" type="NameType"/>
     <xs:element name="NameComponentCount" type="xs:nonNegativeInteger"
                         minOccurs="0" maxOccurs="1"/>
+    <xs:element name="AdditionalNameComponents" type="xs:nonNegativeInteger"
+                        minOccurs="0" maxOccurs="1"/>
     <xs:element name="PublisherID" type="PublisherIDType"
 			minOccurs="0" maxOccurs="1"/>
     <xs:element name="Exclude" type="ExcludeType"
