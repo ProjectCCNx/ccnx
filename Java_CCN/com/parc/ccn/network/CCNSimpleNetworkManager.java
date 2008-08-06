@@ -491,6 +491,14 @@ public class CCNSimpleNetworkManager implements Runnable {
 									    boolean isRecursive) throws IOException, InterruptedException {
 		Interest interest = new Interest(name);
 		Library.logger().fine("get: " + interest.name());
+		if (!isRecursive) {
+			// for the moment, assume we don't know the digest, and we're specifying
+			// the whole name up to the content digest
+			interest.additionalNameComponents(1); // can only have one component (the
+				// digest) beyond what we've specified
+				// DKS TODO we don't actually "know" about the extra name component,
+				// except sometimes... how do we do match?
+		}
 		InterestRegistration reg = new InterestRegistration(interest, null, caller);
 		// Add to internal processing queue
 		synchronized (_newInterests) {

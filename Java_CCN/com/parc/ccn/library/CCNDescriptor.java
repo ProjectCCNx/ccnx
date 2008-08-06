@@ -532,7 +532,7 @@ public class CCNDescriptor {
 
 		ContentName blockName = StandardCCNLibrary.fragmentName(_baseName, number);
 
-		ArrayList<ContentObject> blocks = _library.get(blockName, _headerAuthenticator, true);
+		ArrayList<ContentObject> blocks = _library.get(blockName, _headerAuthenticator, false);
 		
 		if ((null == blocks) || (blocks.size() == 0)) {
 			Library.logger().info("Cannot get block " + number + " of file " + _baseName + " expected block: " + blockName.toString());
