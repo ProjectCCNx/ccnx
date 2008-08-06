@@ -59,6 +59,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public static final String RECURSIVE_POSTFIX = "*";
 	
 	public static final String INTEREST_ELEMENT = "Interest";
+	public static final String ADDITIONAL_NAME_COMPONENTS = "AdditionalNameComponents";
 	public static final String ORDER_PREFERENCE = "OrderPreference";
 	public static final String ANSWER_ORIGIN_KIND = "AnswerOriginKind";
 	public static final String SCOPE_ELEMENT = "Scope";
@@ -67,6 +68,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public static final String RESPONSE_FILTER_ELEMENT = "ExperimentalResponseFilter";
 
 	protected ContentName _name;
+	protected Integer _additionalNameComponents;
 	// DKS TODO can we really support a PublisherID here, or just a PublisherKeyID?
 	protected PublisherID _publisher;
 	protected ExcludeFilter _excludeFilter;
@@ -84,6 +86,13 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @param name
 	 * @param authenticator
 	 */
+	public Interest(ContentName name, int additionalNameComponents,
+			   PublisherID publisher) {
+		_name = name;
+		_additionalNameComponents = additionalNameComponents;
+		_publisher = publisher;
+	}
+
 	public Interest(ContentName name, 
 				   PublisherID publisher) {
 		_name = name;
@@ -103,6 +112,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public ContentName name() { return _name; }
 	public void name(ContentName name) { _name = name; }
 	
+	public Integer additionalNameComponents() { return _additionalNameComponents;}
+	public void additionalNameComponents(int additionalNameComponents) { _additionalNameComponents = additionalNameComponents; }
+
 	public PublisherID publisherID() { return _publisher; }
 	public void publisherID(PublisherID publisherID) { _publisher = publisherID; }
 	
@@ -149,6 +161,16 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		// to get interest that matches everything, should
 		// use / (ROOT)
 		if (name().isPrefixOf(resultName)) {
+			if (null != additionalNameComponents()) {
+				// we know our specified name is a prefix of the result. 
+				// the number of additional components must be this value
+				int lengthDiff = resultName.count() - name().count();
+				if (!additionalNameComponents().equals(lengthDiff)) {
+					Library.logger().info("Interest match failed: more than " + additionalNameComponents() + " components between expected " +
+							name() + " and tested " + resultName);
+					return false;
+				}
+			}
 			if (null != publisherID()) {
 				if (null == resultPublisherKeyID) {
 					return false;
@@ -177,6 +199,10 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		_name = new ContentName();
 		_name.decode(decoder);
 		
+		if (decoder.peekStartElement(ADDITIONAL_NAME_COMPONENTS)) {
+			_additionalNameComponents = decoder.readIntegerElement(ADDITIONAL_NAME_COMPONENTS);
+		}
+				
 		if (decoder.peekStartElement(PublisherID.PUBLISHER_ID_ELEMENT)) {
 			_publisher = new PublisherID();
 			_publisher.decode(decoder);
@@ -224,6 +250,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		
 		name().encode(encoder);
 
+		if (null != additionalNameComponents()) 
+			encoder.writeIntegerElement(ADDITIONAL_NAME_COMPONENTS, additionalNameComponents());
+
 		if (null != publisherID())
 			publisherID().encode(encoder);
 		
@@ -258,6 +287,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		int result = DataUtils.compare(name(), o.name());
 		if (result != 0) return result;
 		
+		result = DataUtils.compare(additionalNameComponents(), o.additionalNameComponents());
+		if (result != 0) return result;
+		
 		result = DataUtils.compare(publisherID(), o.publisherID());
 		if (result != 0) return result;
 	
@@ -290,6 +322,10 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		final int prime = 31;
 		int result = 1;
 		result = prime
+			* result
+			+ ((_additionalNameComponents == null) ? 0 : _additionalNameComponents
+				.hashCode());
+		result = prime
 				* result
 				+ ((_answerOriginKind == null) ? 0 : _answerOriginKind
 						.hashCode());
@@ -317,6 +353,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		if (getClass() != obj.getClass())
 			return false;
 		Interest other = (Interest) obj;
+		if (_additionalNameComponents == null) {
+			if (other._additionalNameComponents != null)
+				return false;
+		} else if (!_additionalNameComponents.equals(other._additionalNameComponents))
+			return false;
 		if (_answerOriginKind == null) {
 			if (other._answerOriginKind != null)
 				return false;

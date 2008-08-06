@@ -260,7 +260,7 @@ public class CCNDescriptor {
 		// prefiltering? Can it mark objects as verified?
 		// do we want to use the low-level get, as the high-level
 		// one might unfragment?
-		ArrayList<ContentObject> headers = _library.get(_headerName, name.authenticator(),false);
+		ArrayList<ContentObject> headers = _library.get(_headerName, name.authenticator(), false);
 		
 		if ((null == headers) || (headers.size() == 0)) {
 			Library.logger().info("No available content named: " + _headerName.toString());
