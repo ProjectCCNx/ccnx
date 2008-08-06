@@ -29,7 +29,7 @@ namecompare(const void *a, const void *b)
     return (ans);
 }
 
-int
+enum ccn_upcall_res
 incoming_content(
     struct ccn_closure *selfp,
     enum ccn_upcall_kind kind,
