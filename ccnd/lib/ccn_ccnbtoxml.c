@@ -50,6 +50,7 @@ struct ccn_decoder {
     ccn_decoder_callback callback;
     void *callbackdata;
     int force_base64;
+    int base64_char_count;
 };
 
 struct ccn_decoder *
@@ -287,6 +288,7 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                                 state = 10;
                             }
                             state = (numval == 0) ? 0 : state;
+                            d->base64_char_count = 0;
                             break;
                         case CCN_UDATA:
                             if (tagstate == 1) {
@@ -442,36 +444,53 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
             case 10: /* base 64 BLOB - phase 0 */
                 c = p[i++];
                 printf("%c", Base64[c >> 2]);
+                d->base64_char_count++;
                 if (--numval == 0) {
                     printf("%c==", Base64[(c & 3) << 4]);
                     state = 0;
+                    d->base64_char_count += 3;
                 }
                 else {
                     d->bits = (c & 3);
                     state = 11;
                 }
+                if (d->force_base64 == 0 && d->base64_char_count >= 64) {
+                    d->base64_char_count = 0;
+                    printf("\n");
+                }
                 break;
             case 11: /* base 64 BLOB - phase 1 */
                 c = p[i++];
                 printf("%c", Base64[((d->bits & 3) << 4) + (c >> 4)]);
+                d->base64_char_count++;
                 if (--numval == 0) {
                     printf("%c=", Base64[(c & 0xF) << 2]);
                     state = 0;
+                    d->base64_char_count += 2;
                 }
                 else {
                     d->bits = (c & 0xF);
                     state = 12;
+                }
+                if (d->force_base64 == 0 && d->base64_char_count >= 64) {
+                    d->base64_char_count = 0;
+                    printf("\n");
                 }
                 break;
             case 12: /* base 64 BLOB - phase 2 */
                 c = p[i++];
                 printf("%c%c", Base64[((d->bits & 0xF) << 2) + (c >> 6)],
                                Base64[c & 0x3F]);
+                d->base64_char_count += 2;
                 if (--numval == 0) {
                     state = 0;
                 }
                 else {
                     state = 10;
+                }
+                if (d->force_base64 == 0 && d->base64_char_count >= 64) {
+                    d->base64_char_count = 0;
+                    printf("\n");
                 }
                 break;
             default:
