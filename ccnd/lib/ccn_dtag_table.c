@@ -44,8 +44,10 @@ static const struct ccn_dict_entry ccn_tagdict[] = {
     {CCN_DTAG_Witness, "Witness"},
     {CCN_DTAG_SignatureBits, "SignatureBits"},
     {CCN_DTAG_DigestAlgorithm, "DigestAlgorithm"},
+    {CCN_DTAG_BlockSize, "BlockSize"},
+    {CCN_DTAG_AdditionalNameComponents, "AdditionalNameComponents"},
     {CCN_DTAG_CCNProtocolDataUnit, "CCNProtocolDataUnit"},
-    {CCN_DTAG_ExperimentalResponseFilter, "ExperimentalResponseFilter"},
+    {CCN_DTAG_ExperimentalResponseFilter, "ExperimentalResponseFilter"}
 };
 
 const struct ccn_dict ccn_dtag_dict = {ARRAY_N(ccn_tagdict), ccn_tagdict};

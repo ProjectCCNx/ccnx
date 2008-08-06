@@ -81,6 +81,8 @@ enum ccn_dtag {
     CCN_DTAG_Witness = 53,
     CCN_DTAG_SignatureBits = 54,
     CCN_DTAG_DigestAlgorithm = 55,
+    CCN_DTAG_BlockSize = 56,
+    CCN_DTAG_AdditionalNameComponents = 57,
     CCN_DTAG_CCNProtocolDataUnit = 17702112,
     CCN_DTAG_ExperimentalResponseFilter = 23204960
 };

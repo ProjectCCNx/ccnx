@@ -459,6 +459,11 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
             ccn_indexbuf_destroy(&components);
             return(res);
         }
+        /* optional AdditionalNameComponents */
+        interest->offset[CCN_PI_B_AdditionalNameComponents] = d->decoder.token_index;
+        ccn_parse_optional_tagged_nonNegativeInteger(d,
+                         CCN_DTAG_AdditionalNameComponents);
+        interest->offset[CCN_PI_E_AdditionalNameComponents] = d->decoder.token_index;
         /* optional PublisherID */
         res = ccn_parse_PublisherID(d, interest);
         /* optional Exclude element */
@@ -580,6 +585,7 @@ ccn_parse_ContentObject(const unsigned char *msg, size_t size,
         res = ccn_parse_Name(d, &name, components);
         if (res < 0)
             d->decoder.state = -__LINE__;
+        x->name_ncomps = name.ncomp;
         x->offset[CCN_PCO_E_ComponentLast] = d->decoder.token_index - 1;
         x->offset[CCN_PCO_E_Name] = d->decoder.token_index;
         x->offset[CCN_PCO_B_ContentAuthenticator] = d->decoder.token_index;

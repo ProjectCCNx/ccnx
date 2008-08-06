@@ -108,6 +108,14 @@ ccn_content_matches_interest(const unsigned char *content_object,
     }
     if (!ccn_pubid_matches(content_object, pc, interest_msg, pi))
         return(0);
+    if (pi->offset[CCN_PI_B_AdditionalNameComponents] < pi->offset[CCN_PI_E_AdditionalNameComponents]) {
+        res = ccn_fetch_tagged_nonNegativeInteger(CCN_DTAG_AdditionalNameComponents,
+            interest_msg,
+            pi->offset[CCN_PI_B_AdditionalNameComponents],
+            pi->offset[CCN_PI_E_AdditionalNameComponents]);
+        if (res + pi->prefix_comps != pc->name_ncomps + (implicit_content_digest ? 1 : 0))
+            return(0);
+    }
     prefixstart = pi->offset[CCN_PI_B_Component0];
     prefixbytes = pi->offset[CCN_PI_E_LastPrefixComponent] - prefixstart;
     namecompstart = pc->offset[CCN_PCO_B_Component0];

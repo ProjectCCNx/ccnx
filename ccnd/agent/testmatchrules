@@ -60,8 +60,8 @@ echo lastin.ccnb
   <OrderPreference>5</OrderPreference>
 </Interest>
 END
-echo exactmatch.ccnb
-../lib/ccn_xmltoccnb -w - <<'END' > exactmatch.ccnb
+echo oexactmatch.ccnb
+../lib/ccn_xmltoccnb -w - <<'END' > oexactmatch.ccnb
 <Interest>
   <Name>
     <Component ccnbencoding="base64Binary">d3d3Lm55dGltZXMuY29t</Component>
@@ -78,6 +78,21 @@ echo exactmatch.ccnb
     <Component ccnbencoding="hexBinary">FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF</Component>
     <Bloom ccnbencoding="base64Binary">AA==</Bloom>
   </Exclude>
+</Interest>
+END
+echo exactmatch.ccnb
+../lib/ccn_xmltoccnb -w - <<'END' > exactmatch.ccnb
+<Interest>
+  <Name>
+    <Component ccnbencoding="base64Binary">d3d3Lm55dGltZXMuY29t</Component>
+    <Component ccnbencoding="base64Binary">MjAwOA==</Component>
+    <Component ccnbencoding="base64Binary">MDQ=</Component>
+    <Component ccnbencoding="base64Binary">MjM=</Component>
+    <Component ccnbencoding="base64Binary">dXM=</Component>
+    <Component ccnbencoding="base64Binary">MjJjbmQtcG9seWdhbXkuaHRtbA==</Component>
+    <Component ccnbencoding="base64Binary">MTMx</Component>
+  </Name>
+  <AdditionalNameComponents>2</AdditionalNameComponents>
 </Interest>
 END
 echo classic.ccnb

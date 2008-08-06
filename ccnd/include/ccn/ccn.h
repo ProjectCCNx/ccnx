@@ -353,6 +353,8 @@ enum ccn_parsed_interest_offsetid {
     CCN_PI_E_Name,
     CCN_PI_B_NameComponentCount /* = CCN_PI_E_Name */,
     CCN_PI_E_NameComponentCount,
+    CCN_PI_B_AdditionalNameComponents,
+    CCN_PI_E_AdditionalNameComponents,
     CCN_PI_B_PublisherID,
     CCN_PI_B_PublisherIDKeyDigest,
     CCN_PI_E_PublisherIDKeyDigest,
@@ -432,6 +434,7 @@ enum ccn_parsed_content_object_offsetid {
 
 struct ccn_parsed_ContentObject {
     int magic;
+    int name_ncomps;
     unsigned short offset[CCN_PCO_E+1];
     unsigned char digest[32];
     int digest_bytes;
