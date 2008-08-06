@@ -106,9 +106,13 @@ int ccn_verify_signature(const unsigned char *msg,
     size_t signed_size = co->offset[CCN_PCO_E_Content] - co->offset[CCN_PCO_B_Name];
     res = EVP_VerifyUpdate(ver_ctx, msg + co->offset[CCN_PCO_B_Name], signed_size);
 
-    res = EVP_VerifyFinal(ver_ctx, signature_bits, signature_bits_size, (EVP_PKEY *)verification_pubkey);
-    EVP_MD_CTX_cleanup(ver_ctx);
-
+    if (co->offset[CCN_PCO_B_Witness] != co->offset[CCN_PCO_E_Witness]) {
+        fprintf(stderr, "A witness is present, must be an MHT fragment\n");
+        return (-1);
+    } else {
+        res = EVP_VerifyFinal(ver_ctx, signature_bits, signature_bits_size, (EVP_PKEY *)verification_pubkey);
+        EVP_MD_CTX_cleanup(ver_ctx);
+    }
     if (res == 1)
         return (1);
     else
