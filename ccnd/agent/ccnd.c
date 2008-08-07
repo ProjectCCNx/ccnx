@@ -1119,26 +1119,8 @@ static int
 content_is_unblocked(struct content_entry *content,
         struct ccn_parsed_interest *pi, unsigned char *msg, unsigned faceid)
 {
-    const unsigned char *filtbuf = NULL;
-    size_t filtsize = 0;
-    const struct ccn_bloom_wire *f = NULL;
     int k;
-    if (pi->offset[CCN_PI_E_OTHER] > pi->offset[CCN_PI_B_OTHER]) {
-        struct ccn_buf_decoder decoder;
-        struct ccn_buf_decoder *d = ccn_buf_decoder_start(&decoder,
-                msg + pi->offset[CCN_PI_B_OTHER],
-                pi->offset[CCN_PI_E_OTHER] - pi->offset[CCN_PI_B_OTHER]);
-        if (ccn_buf_match_dtag(d, CCN_DTAG_ExperimentalResponseFilter)) {
-            ccn_buf_advance(d);
-            ccn_buf_match_blob(d, &filtbuf, &filtsize);
-            f = ccn_bloom_validate_wire(filtbuf, filtsize);
-        }
-    }
-    if (f != NULL || !use_short_term_blocking_state) {
-        if (f != NULL && content->sig_offset > 0 &&
-              ccn_bloom_match_wire(f, content->key + content->sig_offset, 32))
-            return(0);
-        /* Not in filter, so send even if we have sent before. */
+    if (!use_short_term_blocking_state) {
         k = indexbuf_member(content->faces, faceid);
         if (0 <= k && k < content->nface_done) {
             content->faces->buf[k] = ~0;
@@ -1222,7 +1204,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
             if (content == NULL) {
                 content = find_first_match_candidate(h, msg, pi);
                 if (content != NULL && (h->debug & 8))
-                    ccnd_debug_ccnb(h, __LINE__, "firstmatch", NULL,
+                    ccnd_debug_ccnb(h, __LINE__, "first_candidate", NULL,
                                     content->key,
                                     content->key_size + content->tail_size);
                 if (content != NULL &&
@@ -1237,8 +1219,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
             for (try = 0; content != NULL; try++) {
                 if (content_is_unblocked(content, pi, msg, face->faceid) &&
                     content_matches_interest_qualifiers(h, content, msg, pi, comps)) {
-                    if (try == 0 &&
-                        pi->orderpref == 4 &&
+                    if (pi->orderpref == 4 &&
                         pi->prefix_comps != comps->n - 1 &&
                         content_matches_interest_prefix(h, content, msg,
                                                         comps, comps->n - 1)) {

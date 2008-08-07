@@ -235,6 +235,28 @@ ccn_content_matches_interest(const unsigned char *content_object,
     /*
      * At this point the prefix match and exclude-by-next-component is done.
      */
+    /*
+     *  Test the Bloom filter by Signature
+     */
+    if (pi->offset[CCN_PI_E_OTHER] > pi->offset[CCN_PI_B_OTHER]) {
+        const struct ccn_bloom_wire *f = NULL;
+        d = ccn_buf_decoder_start(&decoder,
+                interest_msg + pi->offset[CCN_PI_B_OTHER],
+                pi->offset[CCN_PI_E_OTHER] - pi->offset[CCN_PI_B_OTHER]);
+        if (ccn_buf_match_dtag(d, CCN_DTAG_ExperimentalResponseFilter)) {
+            ccn_buf_advance(d);
+            bloom_size = 0;
+            ccn_buf_match_blob(d, &bloom, &bloom_size);
+            f = ccn_bloom_validate_wire(bloom, bloom_size);
+        }
+        if (f != NULL) {
+            /* Use the entire Signature element for this test */
+            size_t start = pc->offset[CCN_PCO_B_Signature];
+            size_t stop =  pc->offset[CCN_PCO_E_Signature];
+            if (ccn_bloom_match_wire(f, content_object + start, stop - start))
+                return(0);
+        }
+    }
     // test any other qualifiers here
     return(1);
 }
