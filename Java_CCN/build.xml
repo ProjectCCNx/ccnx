@@ -25,8 +25,8 @@
         required, so we have an authoritative list of dependencies -->
 
    <path id="classpath">
-       <pathelement location="${lib}/bcprov-jdk15-138.jar"/>
-<!--        <pathelement location="${lib}/bcprov-jdk16-138.jar"/> -->
+       <pathelement location="${lib}/bcprov-jdk15-140.jar"/>
+<!--        <pathelement location="${lib}/bcprov-jdk16-140.jar"/> -->
 <!--        <pathelement location="${lib}/commons-codec-1.2.jar"/> -->
 <!--        <pathelement location="${lib}/commons-httpclient-3.0.jar"/> -->
 <!--        <pathelement location="${lib}/derby-10.2.1.6.jar"/> -->

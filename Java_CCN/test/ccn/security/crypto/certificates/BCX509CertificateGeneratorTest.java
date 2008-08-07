@@ -804,11 +804,14 @@ public class BCX509CertificateGeneratorTest extends TestCase {
 
 		ASN1StreamParser ain = new ASN1StreamParser(inStream);
 		DEREncodable out = ain.readObject();
+		DERObject dobj = out.getDERObject();
 		
 		System.out.println("Read file: " + filename + " got object of type: " + out.getClass().getName());
-		System.out.println("Which is: " + out.getDERObject().getClass().getName());
-		System.out.println("And looks like: " + out.getDERObject().toString());
-		X509CertificateStructure structure = new X509CertificateStructure((DERSequence)out.getDERObject());
+		System.out.println("Which is: " + dobj.getClass().getName());
+		System.out.println("And looks like: " + dobj.toString());
+		
+		DERSequence ds = (DERSequence)dobj;
+		X509CertificateStructure structure = new X509CertificateStructure(ds);
 		System.out.println("Got structure.");
 		Enumeration<?> extoids = structure.getTBSCertificate().getExtensions().oids();
 
