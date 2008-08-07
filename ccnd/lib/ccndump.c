@@ -9,13 +9,30 @@
 /***********
 <Interest>
   <Name/>
-  <OrderPreference>4</OrderPreference>
   <Scope>0</Scope>
 </Interest>
 **********/
-static const unsigned char templ_ccnb[15] =
-        "\001\322\362\000\002\362\216\064"
-        "\000\002\322\216\060\000\000";
+struct ccn_charbuf *
+local_scope_template(void)
+{
+    struct ccn_charbuf *templ = ccn_charbuf_create();
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
+    ccn_charbuf_append_closer(templ); /* </Name> */
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Scope, CCN_DTAG);
+    ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
+    ccn_charbuf_append(templ, "0", 1);
+    ccn_charbuf_append_closer(templ); /* </Scope> */
+    ccn_charbuf_append_closer(templ); /* </Interest> */
+    return(templ);
+}
+
+static
+struct mydata {
+    unsigned char *firstseen;
+    size_t firstseensize;
+    int nseen;
+} mydata = {0};
 
 enum ccn_upcall_res
 incoming_content(
@@ -23,41 +40,37 @@ incoming_content(
     enum ccn_upcall_kind kind,
     struct ccn_upcall_info *info)
 {
-    struct ccn_charbuf *c = NULL;
-    struct ccn_charbuf *templ = NULL;
     const unsigned char *ccnb = NULL;
     size_t ccnb_size = 0;
-    struct ccn_indexbuf *comps = NULL;
+    struct mydata *md = selfp->data;
 
     if (kind == CCN_UPCALL_FINAL)
         return(CCN_UPCALL_RESULT_OK);
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
         return(CCN_UPCALL_RESULT_REEXPRESS);
-    if (kind != CCN_UPCALL_CONTENT)
+    if (kind != CCN_UPCALL_CONTENT || md == NULL)
         return(CCN_UPCALL_RESULT_ERR);
     ccnb = info->content_ccnb;
     ccnb_size = info->pco->offset[CCN_PCO_E];
-    comps = info->content_comps;
-    c = ccn_charbuf_create();
-    templ = ccn_charbuf_create();
+    if (md->firstseen == NULL) {
+        md->firstseen = calloc(1, ccnb_size);
+        memcpy(md->firstseen, info->content_ccnb, ccnb_size);
+        md->firstseensize = ccnb_size;
+    }
+    else if (md->firstseensize == ccnb_size &&
+             0 == memcmp(md->firstseen, ccnb, ccnb_size)) {
+        selfp->data = NULL;
+        return(CCN_UPCALL_RESULT_ERR);
+    }
+    md->nseen++;
     fwrite(ccnb, ccnb_size, 1, stdout);
-    /* Use the name of the content just received as the resumption point */
-    ccn_name_init(c);
-    ccn_name_append_components(c, ccnb, comps->buf[0], comps->buf[comps->n-1]);
-    /* Use the full name, including digest, to ensure we move along */
-    ccn_digest_ContentObject(ccnb, info->pco);
-    ccn_name_append(c, info->pco->digest, info->pco->digest_bytes);
-    ccn_charbuf_append(templ, templ_ccnb, 15);
-    ccn_express_interest(info->h, c, 0, selfp, templ);
-    ccn_charbuf_destroy(&templ);
-    ccn_charbuf_destroy(&c);
-    selfp->data = selfp; /* make not NULL to indicate we got something */
-    return(CCN_UPCALL_RESULT_OK);
+    return(CCN_UPCALL_RESULT_REEXPRESS);
 }
 
 /* Use some static data for this simple program */
 static struct ccn_closure incoming_content_action = {
-    .p = &incoming_content
+    .p = &incoming_content,
+    .data = &mydata
 };
 
 int
@@ -73,18 +86,22 @@ main(int argc, char **argv)
         exit(1);
     }
     c = ccn_charbuf_create();
-    templ = ccn_charbuf_create();
     /* set scope to only address ccnd */
-    ccn_charbuf_append(templ, templ_ccnb, 15);
+    templ = local_scope_template();
     ccn_name_init(c);
     ccn_express_interest(ccn, c, 0, &incoming_content_action, templ);
+    ccn_charbuf_destroy(&templ);
+    ccn_charbuf_destroy(&c);
     for (i = 0; i < 1000; i++) {
-        incoming_content_action.data = NULL;
         ccn_run(ccn, 100); /* stop if we run dry for 1/10 sec */
         fflush(stdout);
         if (incoming_content_action.data == NULL)
             break;
     }
     ccn_destroy(&ccn);
+    if (incoming_content_action.data != NULL) {
+        fprintf(stderr, "\nWarning: output from %s may be incomplete.\n", argv[0]);
+        exit(1);
+    }
     exit(0);
 }
