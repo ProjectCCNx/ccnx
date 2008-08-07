@@ -194,8 +194,11 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                         printf("</%s>", d->stringstack->buf + s->nameindex);
                     }
                     ccn_decoder_pop(d);
-                    if (d->stack == NULL && d->callback != NULL) {
-                        d->callback(d, CALLBACK_OBJECTEND, d->callbackdata);
+                    if (d->stack == NULL) {
+                        if (d->callback != NULL)
+                            d->callback(d, CALLBACK_OBJECTEND, d->callbackdata);
+                        else
+                            printf("\n");
                     }
                     break;
                 }
@@ -510,7 +513,6 @@ process_test(struct ccn_decoder *d, unsigned char *data, size_t n)
     size_t s;
     printf("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n");
     s = ccn_decoder_decode(d, data, n);
-    printf("\n");
     if (d->state != 0 || s < n || d->stack != NULL || d->tagstate != 0) {
         res = 1;
         fprintf(stderr, "error state %d after %d of %d chars\n",
