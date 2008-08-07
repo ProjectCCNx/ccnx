@@ -89,6 +89,7 @@ int ccn_verify_signature(const unsigned char *msg,
     size_t signature_bits_size = 0;
     const unsigned char *witness = NULL;
     size_t witness_size = 0;
+    int h, x;
 
     res = ccn_ref_tagged_BLOB(CCN_DTAG_SignatureBits, msg,
                               co->offset[CCN_PCO_B_SignatureBits],
@@ -149,13 +150,12 @@ int ccn_verify_signature(const unsigned char *msg,
         int node = ASN1_INTEGER_get(merkle_path_info->node);
         int hash_count = merkle_path_info->hashes->num;
         ASN1_OCTET_STRING *hash;
-        hash = (ASN1_OCTET_STRING *)merkle_path_info->hashes->data[0];
         fprintf(stderr, "A witness is present with an MHT OID\n");
-        fprintf(stderr, "This is node %d, with %d hashes\n", node, merkle_path_info->hashes->num);
-        for (int h = 0; h < merkle_path_info->hashes->num; h++) {
+        fprintf(stderr, "This is node %d, with %d hashes\n", node, hash_count);
+        for (h = 0; h < hash_count; h++) {
             hash = (ASN1_OCTET_STRING *)merkle_path_info->hashes->data[h];
             fprintf(stderr, "     hashes[%d] len = %d data = ", h, hash->length);
-            for (int x = 0; x < hash->length; x++) {
+            for (x = 0; x < hash->length; x++) {
                 fprintf(stderr, "%02x", hash->data[x]);
             }
             fprintf(stderr, "\n");
