@@ -145,7 +145,7 @@ int ccn_verify_signature(const unsigned char *msg,
         /* we're doing an MHT */
         ASN1_OBJECT_free(merkle_hash_tree_oid);
         /* DER-encoded in the digest_info's digest ASN.1 octet string is the Merkle path info */
-        merkle_path_info = d2i_MP_info(NULL, &(digest_info->digest->data), digest_info->digest->length);
+        merkle_path_info = d2i_MP_info(NULL, (const unsigned char **)&(digest_info->digest->data), digest_info->digest->length);
         /* XXX: debugging */
         int node = ASN1_INTEGER_get(merkle_path_info->node);
         int hash_count = merkle_path_info->hashes->num;
