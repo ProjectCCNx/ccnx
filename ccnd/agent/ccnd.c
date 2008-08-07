@@ -1221,6 +1221,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
                     content_matches_interest_qualifiers(h, content, msg, pi, comps)) {
                     if (pi->orderpref == 4 &&
                         pi->prefix_comps != comps->n - 1 &&
+                        comps->n == content->ncomps &&
                         content_matches_interest_prefix(h, content, msg,
                                                         comps, comps->n - 1)) {
                         if (h->debug & 8)
