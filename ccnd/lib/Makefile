@@ -15,7 +15,7 @@ CSRC = ccn_buf_decoder.c ccn_dtag_table.c ccn_buf_encoder.c ccn_charbuf.c \
     ccn_indexbuf.c ccn_coding.c ccn_client.c \
     ccn_ccnbtoxml.c ccn_xmltoccnb.c ccn_splitccnb.c \
     ccn_schedule.c ccn_matrix.c ccn_bloom.c ccn_name_util.c \
-    ccn_match.c ccn_digest.c ccn_keystore.c ccn_signing.c \
+    ccn_match.c ccn_digest.c ccn_keystore.c ccn_signing.c ccn_merkle_path_asn1.c \
     skel_decode_test.c \
     hashtb.c hashtbtest.c matrixtest.c \
     smoketestclientlib.c ccntimestamps.c ccndump.c ccndumpnames.c \
@@ -23,7 +23,7 @@ CSRC = ccn_buf_decoder.c ccn_dtag_table.c ccn_buf_encoder.c ccn_charbuf.c \
     ccn_verifysig.c dataresponsetest.c ccn_uri.c  encodedecodetest.c
 
 LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_dtag_table.o ccn_schedule.o ccn_matrix.o \
-    ccn_buf_decoder.o ccn_uri.o ccn_buf_encoder.o ccn_bloom.o ccn_name_util.o ccn_digest.o ccn_keystore.o ccn_signing.o ccn_match.o hashtb.o
+    ccn_buf_decoder.o ccn_uri.o ccn_buf_encoder.o ccn_bloom.o ccn_name_util.o ccn_digest.o ccn_keystore.o ccn_signing.o ccn_match.o hashtb.o ccn_merkle_path_asn1.o
 
 default: lib $(PROGRAMS)
 
@@ -97,11 +97,15 @@ ccn_keystore.o:
 ccn_signing.o:
 	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_signing.c
 
+ccn_merkle_path_asn1.o:
+	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_merkle_path_asn1.c
+
 ccn_verifysig.o:
 	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_verifysig.c
 
 ccn_verifysig: ccn_verifysig.o
 	$(CC) $(CFLAGS) -o $@ ccn_verifysig.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+
 
 clean:
 	rm -f *.o libccn.a libccn.1.$(SHEXT) $(PROGRAMS) depend
@@ -141,8 +145,10 @@ ccn_match.o: ccn_match.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/indexbuf.h ../include/ccn/digest.h
 ccn_digest.o: ccn_digest.c ../include/ccn/digest.h
 ccn_keystore.o: ccn_keystore.c
-ccn_signing.o: ccn_signing.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h
+ccn_signing.o: ccn_signing.c ../include/ccn/merklepathasn1.h \
+  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h
+ccn_merkle_path_asn1.o: ccn_merkle_path_asn1.c ../include/ccn/merklepathasn1.h
 skel_decode_test.o: skel_decode_test.c ../include/ccn/charbuf.h \
   ../include/ccn/coding.h
 hashtb.o: hashtb.c ../include/ccn/hashtb.h
