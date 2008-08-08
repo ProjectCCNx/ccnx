@@ -67,8 +67,15 @@ ccn_sigc_signature_max_size(struct ccn_sigc *ctx, void *priv_key)
     return (EVP_PKEY_size(priv_key));
 }
 
-int ccn_merkle_root_hash(const unsigned char *msg, size_t offset, size_t signed_size, EVP_MD_CTX *ver_ctx, const char *mht_info)
+int ccn_merkle_root_hash(const unsigned char *msg, size_t size,
+                         struct ccn_parsed_ContentObject *co,
+                         MP_info *merkle_path_info,
+                         unsigned char *result, size_t digest_size)
 {
+    /* TODO:
+     * walk up the Merkle path, adding left before right into the digest.
+     * and return the digest (root hash) to the caller.
+     */
     return (0);
 }
 int ccn_verify_signature(const unsigned char *msg,
@@ -113,11 +120,6 @@ int ccn_verify_signature(const unsigned char *msg,
     if (!res)
         return (-1);
 
-    /* we sign from the beginning of the name through the end of the content */
-
-    size_t signed_size = co->offset[CCN_PCO_E_Content] - co->offset[CCN_PCO_B_Name];
-    res = EVP_VerifyUpdate(ver_ctx, msg + co->offset[CCN_PCO_B_Name], signed_size);
-
     if (co->offset[CCN_PCO_B_Witness] != co->offset[CCN_PCO_E_Witness]) {
         /* The witness is a DigestInfo, where the octet-string therein encapsulates
          * a sequence of [integer (origin 1 node#), sequence of [octet-string]]
@@ -161,11 +163,19 @@ int ccn_verify_signature(const unsigned char *msg,
             fprintf(stderr, "\n");
         }
         /* XXX: end debugging */
+        /* In the MHT signature case, we signed/verify the root hash */
         return (-1);
     } else {
+        /*
+         * In the simple signature case, we signed/verify from the name through
+         * the end of the content.
+         */
+        size_t signed_size = co->offset[CCN_PCO_E_Content] - co->offset[CCN_PCO_B_Name];
+        res = EVP_VerifyUpdate(ver_ctx, msg + co->offset[CCN_PCO_B_Name], signed_size);
         res = EVP_VerifyFinal(ver_ctx, signature_bits, signature_bits_size, (EVP_PKEY *)verification_pubkey);
         EVP_MD_CTX_cleanup(ver_ctx);
     }
+
     if (res == 1)
         return (1);
     else
