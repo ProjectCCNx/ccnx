@@ -146,12 +146,10 @@ ccn_create(void)
 	    fprintf(stderr, "CCN_TAP path is too long: %s\n", s);
 	} else {
 	    h->tap = open(tap_name, O_WRONLY|O_APPEND|O_CREAT, S_IRWXU);
-	    if (h->tap == -1) {
+	    if (h->tap == -1)
 		perror("Unable to open CCN_TAP file");
-	    } else {
-		printf("CCN_TAP writing to %s\n", tap_name);
-		fflush(stdout);
-	    }
+	    else
+		fprintf(stderr, "CCN_TAP writing to %s\n", tap_name);
 	}
     } else {
 	h->tap = -1;
@@ -514,8 +512,7 @@ ccn_output_is_pending(struct ccn *h)
 }
 
 static void
-ccn_refresh_interest(struct ccn *h, struct expressed_interest *interest,
-                     const unsigned char *components, size_t components_size)
+ccn_refresh_interest(struct ccn *h, struct expressed_interest *interest)
 {
     int res;
     if (interest->outstanding < interest->target) {
@@ -593,12 +590,13 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                                                                  interest->size,
                                                                  info.pi)) {
                                     interest->outstanding -= 1;
+                                    info.interest_ccnb = interest->interest_msg;
                                     info.matched_comps = i;
                                     res = (interest->action->p)(interest->action,
                                                                 CCN_UPCALL_CONTENT,
                                                                 &info);
                                     if (res == CCN_UPCALL_RESULT_REEXPRESS)
-                                        ccn_refresh_interest(h, interest, key, comps->buf[i] - keystart);
+                                        ccn_refresh_interest(h, interest);
                                     else {
                                         interest->target = 0;
                                         ccn_replace_handler(h, &(interest->action), NULL);
@@ -720,7 +718,7 @@ ccn_age_interest(struct ccn *h,
                                         &info);
         }
         if (res == CCN_UPCALL_RESULT_REEXPRESS)
-            ccn_refresh_interest(h, interest, key, keysize);
+            ccn_refresh_interest(h, interest);
     }
 }
 
