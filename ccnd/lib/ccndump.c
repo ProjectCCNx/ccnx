@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ccn/ccn.h>
+#include <ccn/uri.h>
 
 /***********
 <Interest>
@@ -80,6 +81,7 @@ main(int argc, char **argv)
     struct ccn_charbuf *c = NULL;
     struct ccn_charbuf *templ = NULL;
     int i;
+    int res;
     ccn = ccn_create();
     if (ccn_connect(ccn, NULL) == -1) {
         perror("Could not connect to ccnd");
@@ -88,8 +90,18 @@ main(int argc, char **argv)
     c = ccn_charbuf_create();
     /* set scope to only address ccnd */
     templ = local_scope_template();
-    ccn_name_init(c);
-    ccn_express_interest(ccn, c, 0, &incoming_content_action, templ);
+    if (argv[1] == NULL)
+        ccn_name_init(c);
+    else {
+        res = ccn_name_from_uri(c, argv[1]);
+        if (res < 0) {
+            fprintf(stderr, "%s: bad ccn URI: %s\n", argv[0], argv[1]);
+            exit(1);
+        }
+        if (argv[2] != NULL)
+            fprintf(stderr, "%s warning: extra arguments ignored\n", argv[0]);
+    }
+    ccn_express_interest(ccn, c, -1, &incoming_content_action, templ);
     ccn_charbuf_destroy(&templ);
     ccn_charbuf_destroy(&c);
     for (i = 0; i < 1000; i++) {
