@@ -49,7 +49,7 @@ public class BaseLibrarySink implements CCNInterestListener {
 		Random rand = new Random();
 		for (int i = 0; i < BaseLibrarySource.count; i++) {
 			Thread.sleep(rand.nextInt(50));
-			ArrayList<ContentObject> contents = library.get("/BaseLibraryTest/gets");
+			ArrayList<ContentObject> contents = library.get("/BaseLibraryTest/gets/" + i);
 			assertEquals(1, contents.size());
 			int value = contents.get(0).content()[0];
 			// Note that we cannot be guaranteed to pick up every value:
@@ -81,8 +81,9 @@ public class BaseLibrarySink implements CCNInterestListener {
 		try {
 			for (ContentObject contentObject : results) {
 				int value = contentObject.content()[0];
-				assertEquals(next, value);
-				System.out.println("Got " + next);
+				// Don't expect something different anymore!
+                                //assertEquals(next, value);
+				System.out.println("Got " + value + "on try " + next);
 				next++;
 			}
 			checkGetResults(results);

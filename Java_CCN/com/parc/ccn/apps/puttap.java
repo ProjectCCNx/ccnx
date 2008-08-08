@@ -16,7 +16,7 @@ import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.util.BinaryXMLCodec;
 import com.parc.ccn.data.util.TextXMLCodec;
 import com.parc.ccn.library.StandardCCNLibrary;
-import com.parc.ccn.network.CCNNetworkManager;
+import com.parc.ccn.network.CCNSimpleNetworkManager;
 
 /**
  * Low-level writing of packets to file.  This program is designed to 
@@ -61,8 +61,9 @@ public class puttap implements CCNInterestListener {
 
 			// Get writing library 
 			StandardCCNLibrary library = new StandardCCNLibrary();
+			CCNSimpleNetworkManager manager = library.getNetworkManager();
 			// Set up tap so packets get written to file
-			library.getNetworkManager().setTap(tapName);
+			manager.setTap(tapName);
 			
 			ContentName name = new ContentName(ccnName);
 			
@@ -71,8 +72,11 @@ public class puttap implements CCNInterestListener {
 			// appears that there is an interest from a separate app
 			// because interest from the same app as the writer will 
 			// not consume the data and therefore will block
-			StandardCCNLibrary reader = new StandardCCNLibrary();
-			reader.expressInterest(new Interest(ccnName), this);
+			if (false) {
+				// new library semantics makes this unnecessary.
+				StandardCCNLibrary reader = new StandardCCNLibrary();
+				reader.expressInterest(new Interest(ccnName), this);
+			}
 			
 			PublicKey publicKey = null;
 			// If we're verifying, pull our default public key as that's what we're using.
@@ -93,7 +97,7 @@ public class puttap implements CCNInterestListener {
 	        }
 	        
 	        // Need to call shutdown directly on manager at this point
-	        CCNNetworkManager.getNetworkManager().shutdown();
+	        manager.shutdown();
 
 		} catch (Exception e) {
 			e.printStackTrace();

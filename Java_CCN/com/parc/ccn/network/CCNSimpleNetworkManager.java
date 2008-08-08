@@ -384,7 +384,8 @@ public class CCNSimpleNetworkManager implements Runnable {
 		if (null != _networkManager) 
 			return _networkManager;
 		try {
-		return createNetworkManager();
+			Library.logger().warning("getNetworkManager calling createNetworkManager");
+			return createNetworkManager();
 		} catch (IOException io) {
 			throw new RuntimeException(io);
 		}
@@ -393,6 +394,7 @@ public class CCNSimpleNetworkManager implements Runnable {
 	protected static synchronized CCNSimpleNetworkManager 
 				createNetworkManager() throws IOException {
 		if (null == _networkManager) {
+			Library.logger().warning("new CCNSimpleNetworkManager");
 			_networkManager = new CCNSimpleNetworkManager();
 		}
 		return _networkManager;
@@ -659,6 +661,10 @@ public class CCNSimpleNetworkManager implements Runnable {
 	// Thread method: this thread will handle reading datagrams and 
 	// the periodic re-expressing of standing interests
 	public void run() {
+		if (_run) {
+			Library.logger().warning("CCNSimpleNetworkManager run() called after shutdown");
+			return;
+		}
 		// Allocate datagram buffer: want to wrap array to ensure backed by
 		// array to permit decoding
 		byte[] buffer = new byte[MAX_PAYLOAD];
@@ -666,7 +672,7 @@ public class CCNSimpleNetworkManager implements Runnable {
 		WirePacket packet = new WirePacket();
 		Date lastsweep = new Date(); 
 		Date lastheartbeat = new Date(0);
-		Library.logger().info("CCNNetworkManager processing thread started");
+		Library.logger().info("CCNSimpleNetworkManager processing thread started");
 		while (_run) {
 			try {
 				
@@ -728,8 +734,11 @@ public class CCNSimpleNetworkManager implements Runnable {
 					_error = io;
 					packet.clear();
 				}
-				
-				// If we got a data packet, hand it back to all the interested
+                            if (!_run) {
+                                // exit immediately if wakeup for shutdown
+                                break;
+                            }
+                            // If we got a data packet, hand it back to all the interested
 				// parties (registered interests and getters).
 				//--------------------------------- Process data from net (if any) 
 				for (ContentObject co : packet.data()) {
@@ -780,7 +789,8 @@ public class CCNSimpleNetworkManager implements Runnable {
 				Library.logger().severe("Processing thread failure (Malformed datagram): " + xmlex.getMessage()); 
 				Library.warningStackTrace(xmlex);
 			} catch (Exception ex) {
-				Library.logger().severe("Processing thread failure (unknown): " + ex.getMessage());
+				Library.logger().severe("Processing thread failure (UNKNOWN): " + ex.getMessage());
+                                Library.warningStackTrace(ex);
 			}
 		}
 		_threadpool.shutdown();

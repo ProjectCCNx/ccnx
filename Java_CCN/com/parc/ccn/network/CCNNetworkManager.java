@@ -782,6 +782,7 @@ public class CCNNetworkManager implements Runnable {
 				Library.warningStackTrace(xmlex);
 			} catch (Exception ex) {
 				Library.logger().severe("Processing thread failure (unknown): " + ex.getMessage());
+                                Library.warningStackTrace(ex);
 			}
 		}
 		_threadpool.shutdown();
