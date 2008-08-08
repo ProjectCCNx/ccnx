@@ -4,6 +4,8 @@ D="${D:-.}"
 test -e /tmp/.ccnd.sock && rm /tmp/.ccnd.sock && echo "GET /" | nc localhost 4485 > /dev/null && sleep 1
 time "$D"/agent/ccnd "$@" &
 sleep 1
+find "$HOME/.ccn/keyCache" -name \*.ccnb | while read i; do nc -w 0 -u localhost 4485 < "$i" >/dev/null; done
+test -d "~/.ccn/keyCache" && type nc && (cat ~/.ccn/keyCache/*.ccnb | nc -U /tmp/.ccnd.sock)
 S="$D"/ccn-start-udplink-`uname -n`.sh
 test -f "$S" || echo '***' Please create $S script 'to start up udplink instance(s) for this machine'
 sh "$S"
