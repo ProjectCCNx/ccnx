@@ -67,17 +67,55 @@ ccn_sigc_signature_max_size(struct ccn_sigc *ctx, void *priv_key)
     return (EVP_PKEY_size(priv_key));
 }
 
+#define is_left(x) (0 == (x & 1))
+#define node_lr(x) (x & 1)
+#define sibling_of(x) (x ^ 1)
+#define parent_of(x) (x >> 1)
+
 int ccn_merkle_root_hash(const unsigned char *msg, size_t size,
                          struct ccn_parsed_ContentObject *co,
                          MP_info *merkle_path_info,
                          unsigned char *result, size_t digest_size)
 {
+    int node = ASN1_INTEGER_get(merkle_path_info->node);
+    int hash_count = merkle_path_info->hashes->num;
+    int hash_index = 0;
+    ASN1_OCTET_STRING *sibling_hash;
+    
     /* TODO:
      * walk up the Merkle path, adding left before right into the digest.
      * and return the digest (root hash) to the caller.
+     * What gets hashed for a fragment is exactly what would be hashed
+     * for a simple signature.
      */
+    /*
+     * This is the calculation for the node we're starting from
+     *   The digest type for the leaf node we'll take from the MHT OID
+     *
+     * EVP_MD_CTX_init(context);
+     * EVP_DigestInit_ex(context, digesttype, NULL);
+     * size_t data_size = co->offset[CCN_PCO_E_Content] - co->offset[CCN_PCO_B_Name];
+     * res = EVP_DigestUpdate(context, msg + co->offset[CCN_PCO_B_Name], data_size);
+     * res = EVP_DigestFinal_ex(context, &digestresult, &size);
+     * We can assume that, since we're using the same digest function, the
+     * result size will always be the same
+     */
+
+    while (node != 1) {
+        /*
+         * inhashp[node & 1] = &digestresult;
+         * inhashp[(node & 1) ^ 1] = (some function of...) (ASN1_OCTET_STRING *)merkle_path_info->hashes->data[hash_index++];
+         * check that the size of the merkle path hash is the same as the digest size...
+         * ... set up context, init, EVP_DigestUpdate(context, inhashp[0], size), EVP_DigestUpdate(context, inhashp[1], size)
+         * EVP_DigestFinal_ex(context, &digestresult, NULL);
+         * node = parent_of(node);
+         */
+        node = parent_of(node);
+    }
+    /* the root hash will be in the digestresult at this point */
     return (0);
 }
+
 int ccn_verify_signature(const unsigned char *msg,
                      size_t size,
                      struct ccn_parsed_ContentObject *co,
@@ -138,6 +176,7 @@ int ccn_verify_signature(const unsigned char *msg,
         /* digest_info->algor->algorithm->{length, data}
          * digest_info->digest->{length, type, data}
          */
+        /* ...2.2 is an MHT w/ SHA256 */
         ASN1_OBJECT *merkle_hash_tree_oid = OBJ_txt2obj("1.2.840.113550.11.1.2.2", 1);
         if (0 != OBJ_cmp(digest_info->algor->algorithm, merkle_hash_tree_oid)) {
             fprintf(stderr, "A witness is present without an MHT OID!\n");
@@ -162,6 +201,7 @@ int ccn_verify_signature(const unsigned char *msg,
             }
             fprintf(stderr, "\n");
         }
+        res = ccn_merkle_root_hash(msg, size, co, merkle_path_info, /*result*/NULL, /*size*/0);
         /* XXX: end debugging */
         /* In the MHT signature case, we signed/verify the root hash */
         return (-1);
