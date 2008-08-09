@@ -74,13 +74,20 @@ ccn_sigc_signature_max_size(struct ccn_sigc *ctx, void *priv_key)
 
 int ccn_merkle_root_hash(const unsigned char *msg, size_t size,
                          struct ccn_parsed_ContentObject *co,
+                         const EVP_MD *digest_type,
                          MP_info *merkle_path_info,
-                         unsigned char *result, size_t digest_size)
+                         unsigned char *result, size_t result_size)
 {
     int node = ASN1_INTEGER_get(merkle_path_info->node);
+    EVP_MD_CTX digest_context;
+    EVP_MD_CTX *digest_contextp = &digest_context;
+    size_t data_size;
+    unsigned char *digest_result;
+    unsigned int digest_result_size;
     int hash_count = merkle_path_info->hashes->num;
     int hash_index = 0;
     ASN1_OCTET_STRING *sibling_hash;
+    int res;
     
     /* TODO:
      * walk up the Merkle path, adding left before right into the digest.
@@ -100,6 +107,12 @@ int ccn_merkle_root_hash(const unsigned char *msg, size_t size,
      * We can assume that, since we're using the same digest function, the
      * result size will always be the same
      */
+    EVP_MD_CTX_init(digest_contextp);
+    EVP_DigestInit_ex(digest_contextp, digest_type, NULL);
+    data_size = co->offset[CCN_PCO_E_Content] - co->offset[CCN_PCO_B_Name];
+    res = EVP_DigestUpdate(digest_contextp, msg + co->offset[CCN_PCO_B_Name], data_size);
+    digest_result = calloc(1, EVP_MD_size(digest_type));
+    res = EVP_DigestFinal_ex(digest_contextp, digest_result, &digest_result_size);
 
     while (node != 1) {
         /*
@@ -129,6 +142,7 @@ int ccn_verify_signature(const unsigned char *msg,
     int res;
 
     const EVP_MD *digest = EVP_md_null();
+    const EVP_MD *merkle_path_digest = EVP_md_null();
 
     const unsigned char *signature_bits = NULL;
     size_t signature_bits_size = 0;
@@ -185,6 +199,7 @@ int ccn_verify_signature(const unsigned char *msg,
         }
         /* we're doing an MHT */
         ASN1_OBJECT_free(merkle_hash_tree_oid);
+        merkle_path_digest = EVP_sha256();
         /* DER-encoded in the digest_info's digest ASN.1 octet string is the Merkle path info */
         merkle_path_info = d2i_MP_info(NULL, (const unsigned char **)&(digest_info->digest->data), digest_info->digest->length);
         /* XXX: debugging */
@@ -201,7 +216,7 @@ int ccn_verify_signature(const unsigned char *msg,
             }
             fprintf(stderr, "\n");
         }
-        res = ccn_merkle_root_hash(msg, size, co, merkle_path_info, /*result*/NULL, /*size*/0);
+        res = ccn_merkle_root_hash(msg, size, co, merkle_path_digest, merkle_path_info, /*result*/NULL, /*size*/0);
         /* XXX: end debugging */
         /* In the MHT signature case, we signed/verify the root hash */
         return (-1);
