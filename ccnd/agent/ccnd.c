@@ -1177,10 +1177,8 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
         if (res == HT_NEW_ENTRY) {
             ccnd_msg(h, "New interest prefix");
         }
-        if (ipe != NULL) {
-            content = NULL;
+        if (ipe != NULL && pi->answerfrom != 0) {
             last_match = NULL;
-            // XXX test AnswerOriginKind here.
             content = NULL;
             if (face->cached_accession != 0) {
                 /* some help for old clients that are expecting suppression state */
@@ -1266,9 +1264,9 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
                 matched = 1;
             }
         }
-        hashtb_end(e);
         if (!matched && pi->scope != 0)
             propagate_interest(h, face, msg, size, pi, ipe);
+        hashtb_end(e);
     }
     indexbuf_release(h, comps);
 }

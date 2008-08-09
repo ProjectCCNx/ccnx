@@ -102,6 +102,10 @@ incoming_content(
     }
     comp = NULL;
     ccn_charbuf_append_closer(templ); /* </Exclude> */
+    ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
+    ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
+    ccn_charbuf_append(templ, "1", 1);
+    ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
     ccn_charbuf_append_closer(templ); /* </Interest> */
     if (templ->length > data->warn) {
         fprintf(stderr, "*** Interest packet is %d bytes\n", (int)templ->length);

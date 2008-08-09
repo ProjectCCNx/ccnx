@@ -476,6 +476,15 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
                          CCN_DTAG_OrderPreference);
         interest->offset[CCN_PI_E_OrderPreference] = d->decoder.token_index;
         if (interest->orderpref > 5)
+            return (d->decoder.state = -__LINE__);        
+        /* optional AnswerOriginKind */
+        interest->offset[CCN_PI_B_AnswerOriginKind] = d->decoder.token_index;
+        interest->answerfrom = ccn_parse_optional_tagged_nonNegativeInteger(d,
+                         CCN_DTAG_AnswerOriginKind);
+        interest->offset[CCN_PI_E_AnswerOriginKind] = d->decoder.token_index;
+        if (interest->answerfrom == -1)
+            interest->answerfrom = 3;
+        else if (interest->answerfrom > 1 && interest->answerfrom != 3)
             return (d->decoder.state = -__LINE__);
         /* optional Scope */
         interest->offset[CCN_PI_B_Scope] = d->decoder.token_index;

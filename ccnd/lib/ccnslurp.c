@@ -108,6 +108,10 @@ incoming_content(
     }
     comp = NULL;
     ccn_charbuf_append_closer(templ); /* </Exclude> */
+    ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
+    ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
+    ccn_charbuf_append(templ, "1", 1);
+    ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
     ccn_charbuf_append_closer(templ); /* </Interest> */
     if (templ->length > data->warn) {
         fprintf(stderr, "*** Interest packet is %d bytes\n", (int)templ->length);
@@ -127,9 +131,9 @@ incoming_content(
         cl->p = &incoming_content;
         cl->data = newdat;
         ccn_name_init(c);
-        c->length--;
-        ccn_charbuf_append(c, ccnb + comps->buf[0], comps->buf[matched_comps + 1] - comps->buf[0]);
-        ccn_charbuf_append_closer(c);
+        ccn_name_append_components(c, ccnb,
+                                   comps->buf[0],
+                                   comps->buf[matched_comps + 1]);
         ccn_express_interest(info->h, c, -1, cl, NULL);
     }
     else {

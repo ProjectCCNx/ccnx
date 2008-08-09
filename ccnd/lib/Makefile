@@ -148,7 +148,8 @@ ccn_keystore.o: ccn_keystore.c
 ccn_signing.o: ccn_signing.c ../include/ccn/merklepathasn1.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h
-ccn_merkle_path_asn1.o: ccn_merkle_path_asn1.c ../include/ccn/merklepathasn1.h
+ccn_merkle_path_asn1.o: ccn_merkle_path_asn1.c \
+  ../include/ccn/merklepathasn1.h
 skel_decode_test.o: skel_decode_test.c ../include/ccn/charbuf.h \
   ../include/ccn/coding.h
 hashtb.o: hashtb.c ../include/ccn/hashtb.h
@@ -161,7 +162,7 @@ ccntimestamps.o: ccntimestamps.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h
 ccndump.o: ccndump.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccndumpnames.o: ccndumpnames.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
