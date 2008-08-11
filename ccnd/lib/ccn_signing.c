@@ -84,9 +84,9 @@ int ccn_merkle_root_hash(const unsigned char *msg, size_t size,
     size_t data_size;
     unsigned char *digest_result;
     unsigned int digest_result_size;
-    int hash_count = merkle_path_info->hashes->num;
-    int hash_index = 0;
-    ASN1_OCTET_STRING *sibling_hash;
+    //int hash_count = merkle_path_info->hashes->num;
+    //int hash_index = 0;
+    //ASN1_OCTET_STRING *sibling_hash;
     int res;
     
     /* TODO:
