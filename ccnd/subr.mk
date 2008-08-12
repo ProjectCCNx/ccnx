@@ -14,5 +14,5 @@ coverage:
 
 
 depend: Makefile $(CSRC)
-	echo $(CSRC) | xargs gcc -MM $(CPREFLAGS) > depend
+	for i in $(CSRC); do gcc -MM $(CPREFLAGS) $$i; done > depend
 	tail -n `wc -l < depend` Makefile | diff - depend
