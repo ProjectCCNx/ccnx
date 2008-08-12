@@ -1174,9 +1174,6 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
         hashtb_start(h->interestprefix_tab, e);
         res = hashtb_seek(e, msg + comps->buf[0], namesize, 0);
         ipe = e->data;
-        if (res == HT_NEW_ENTRY) {
-            ccnd_msg(h, "New interest prefix");
-        }
         if (ipe != NULL && pi->answerfrom != 0) {
             last_match = NULL;
             content = NULL;
@@ -1369,7 +1366,7 @@ process_incoming_content(struct ccnd *h, struct face *face,
     content = e->data;
     if (res == HT_OLD_ENTRY) {
         if (tailsize != e->extsize ||
-            0 != memcmp(tail, e->key + keysize, tailsize)) {
+              0 != memcmp(tail, e->key + keysize, tailsize)) {
             ccnd_msg(h, "ContentObject name collision!!!!!");
             ccnd_debug_ccnb(h, __LINE__, "new", face, msg, size);
             ccnd_debug_ccnb(h, __LINE__, "old", NULL, e->key, e->keysize + e->extsize);

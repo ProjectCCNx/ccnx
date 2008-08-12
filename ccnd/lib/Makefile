@@ -194,3 +194,10 @@ encodedecodetest.o: encodedecodetest.c ../include/ccn/ccn.h \
   ../include/ccn/indexbuf.h ../include/ccn/bloom.h ../include/ccn/uri.h \
   ../include/ccn/digest.h ../include/ccn/keystore.h \
   ../include/ccn/signing.h
+ccnsendchunks.o: ccnsendchunks.c ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h ../include/ccn/uri.h \
+  ../include/ccn/keystore.h
+ccncatchunks.o: ccncatchunks.c ../include/ccn/bloom.h \
+  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h ../include/ccn/uri.h

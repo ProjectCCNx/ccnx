@@ -543,8 +543,14 @@ int ccn_encode_Content(struct ccn_charbuf *buf,
 const char *ccn_content_name(enum ccn_content_type type);
 
 /*
- * ccn_content_matches_interest:
- * XXX - ENODOC
+ * ccn_content_matches_interest: Test for a match
+ * Return 1 if the ccnb-encoded content_object matches the 
+ * ccnb-encoded interest_msg, otherwise 0.
+ * The implicit_content_digest boolean says whether or not the
+ * final name component is implicit (as in the on-wire format)
+ * or explicit (as within ccnd's content store).
+ * Valid parse information (pc and pi) may be provided to speed things
+ * up; if NULL they will be reconstructed.
  */
 int ccn_content_matches_interest(const unsigned char *content_object,
                                  size_t content_object_size,
