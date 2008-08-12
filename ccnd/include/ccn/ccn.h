@@ -282,6 +282,13 @@ int ccn_output_is_pending(struct ccn *h);
  */
 int ccn_run(struct ccn *h, int timeout);
 
+/*
+ * ccn_set_run_timeout: modify ccn_run timeout
+ * This may be called from an upcall to change the timeout value.
+ * The timeout is in milliseconds.  Returns old value.
+ */
+int ccn_set_run_timeout(struct ccn *h, int timeout);
+
 /***********************************
  * Binary decoding
  * These routines require the whole binary object be buffered.

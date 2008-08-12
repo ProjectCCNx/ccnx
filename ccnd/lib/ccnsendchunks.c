@@ -11,9 +11,9 @@
 #include <ccn/keystore.h>
 
 struct mydata {
-    unsigned char *firstseen;
-    size_t firstseensize;
-    int nseen;
+    int content_received;
+    int content_sent;
+    int outstanding;
 };
 
 enum ccn_upcall_res
@@ -22,31 +22,17 @@ incoming_content(
     enum ccn_upcall_kind kind,
     struct ccn_upcall_info *info)
 {
-    const unsigned char *ccnb = NULL;
-    size_t ccnb_size = 0;
     struct mydata *md = selfp->data;
 
     if (kind == CCN_UPCALL_FINAL)
         return(CCN_UPCALL_RESULT_OK);
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
-        return(CCN_UPCALL_RESULT_REEXPRESS);
+        return(CCN_UPCALL_RESULT_OK);
     if (kind != CCN_UPCALL_CONTENT || md == NULL)
         return(CCN_UPCALL_RESULT_ERR);
-    ccnb = info->content_ccnb;
-    ccnb_size = info->pco->offset[CCN_PCO_E];
-    if (md->firstseen == NULL) {
-        md->firstseen = calloc(1, ccnb_size);
-        memcpy(md->firstseen, info->content_ccnb, ccnb_size);
-        md->firstseensize = ccnb_size;
-    }
-    else if (md->firstseensize == ccnb_size &&
-             0 == memcmp(md->firstseen, ccnb, ccnb_size)) {
-        selfp->data = NULL;
-        return(CCN_UPCALL_RESULT_ERR);
-    }
-    md->nseen++;
-    fwrite(ccnb, ccnb_size, 1, stdout);
-    return(CCN_UPCALL_RESULT_REEXPRESS);
+    md->content_received++;
+    ccn_set_run_timeout(info->h, 0);
+    return(CCN_UPCALL_RESULT_OK);
 }
 
 enum ccn_upcall_res
@@ -55,31 +41,17 @@ incoming_interest(
     enum ccn_upcall_kind kind,
     struct ccn_upcall_info *info)
 {
-    const unsigned char *ccnb = NULL;
-    size_t ccnb_size = 0;
     struct mydata *md = selfp->data;
 
     if (kind == CCN_UPCALL_FINAL)
         return(CCN_UPCALL_RESULT_OK);
-    if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
-        return(CCN_UPCALL_RESULT_REEXPRESS);
-    if (kind != CCN_UPCALL_CONTENT || md == NULL)
+    if (kind != CCN_UPCALL_INTEREST || md == NULL)
         return(CCN_UPCALL_RESULT_ERR);
-    ccnb = info->content_ccnb;
-    ccnb_size = info->pco->offset[CCN_PCO_E];
-    if (md->firstseen == NULL) {
-        md->firstseen = calloc(1, ccnb_size);
-        memcpy(md->firstseen, info->content_ccnb, ccnb_size);
-        md->firstseensize = ccnb_size;
+    if ((info->pi->answerfrom & 2) != 0) {
+        md->outstanding += info->pi->count + 9;
+        ccn_set_run_timeout(info->h, 0);
     }
-    else if (md->firstseensize == ccnb_size &&
-             0 == memcmp(md->firstseen, ccnb, ccnb_size)) {
-        selfp->data = NULL;
-        return(CCN_UPCALL_RESULT_ERR);
-    }
-    md->nseen++;
-    fwrite(ccnb, ccnb_size, 1, stdout);
-    return(CCN_UPCALL_RESULT_REEXPRESS);
+    return(CCN_UPCALL_RESULT_OK);
 }
 
 ssize_t
@@ -108,6 +80,7 @@ main(int argc, char **argv)
     struct ccn_charbuf *root = NULL;
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *temp = NULL;
+    struct ccn_charbuf *templ = NULL;
     struct ccn_charbuf *authenticator = NULL;
     struct ccn_keystore *keystore = NULL;
     int i;
@@ -115,7 +88,9 @@ main(int argc, char **argv)
     int res;
     ssize_t read_res;
     unsigned char *buf = NULL;
-    
+    struct mydata mydata = { 0 };
+    struct ccn_closure in_content = {.p=&incoming_content, .data=&mydata};
+    struct ccn_closure in_interest = {.p=&incoming_interest, .data=&mydata};
     if (argv[1] == NULL) {
         fprintf(stderr,
                 "%s: Chops stdin into 1K blocks and sends them "
@@ -145,6 +120,7 @@ main(int argc, char **argv)
     root = name;
     name = ccn_charbuf_create();
     temp = ccn_charbuf_create();
+    templ = ccn_charbuf_create();
     authenticator = ccn_charbuf_create();
     keystore = ccn_keystore_create();
     temp->length = 0;
@@ -156,8 +132,31 @@ main(int argc, char **argv)
         printf("Failed to initialize keystore\n");
         exit(1);
     }
-    // XXX - fix this - should check to see whether stuff is already published.
-    // XXX - fix this - should flow-balance our output
+    
+    name->length = 0;
+    ccn_charbuf_append(name, root->buf, root->length);
+    
+    /* Set up a handler for interests */
+    ccn_set_interest_filter(ccn, name, &in_interest);
+    
+    /* Initiate check to see whether there is already something there. */
+    temp->length = 0;
+    ccn_charbuf_putf(temp, "%d", 0);
+    ccn_name_append(name, temp->buf, temp->length);
+    templ->length = 0;
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
+    ccn_charbuf_append_closer(templ); /* </Name> */
+    ccn_charbuf_append_tt(templ, CCN_DTAG_AdditionalNameComponents, CCN_DTAG);
+    ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
+    ccn_charbuf_append(templ, "1", 1);
+    ccn_charbuf_append_closer(templ); /* </AdditionalNameComponents> */
+    // XXX - use pubid
+    ccn_charbuf_append_closer(templ); /* </Interest> */
+    res = ccn_express_interest(ccn, name, -1, &in_content, templ);
+    if (res < 0) abort();
+    ccn_run(ccn, 0); /* send the interest out */
+
     for (i = 0;; i++) {
         read_res = read_full(0, buf, 1024);
         if (read_res < 0) {
@@ -194,14 +193,28 @@ main(int argc, char **argv)
             fprintf(stderr, "Failed to encode ContentObject (res == %d)\n", res);
             exit(1);
         }
+        if (i == 0) {
+            /* Finish check for old content */
+            if (mydata.content_received == 0)
+                ccn_run(ccn, 50);
+            if (mydata.content_received > 0) {
+                fprintf(stderr, "%s: name is in use: %s\n", argv[0], argv[1]);
+                exit(1);
+            }
+            mydata.outstanding++; /* the first one is free... */
+        }
         res = ccn_put(ccn, temp->buf, temp->length);
         if (res < 0) {
             fprintf(stderr, "ccn_put failed (res == %d)\n", res);
             exit(1);
         }
-        ccn_run(ccn, res * 100);
         if (read_res < 1024)
             break;
+        if (mydata.outstanding > 0)
+            mydata.outstanding--;
+        else
+            res = 10;
+        ccn_run(ccn, res * 100);
     }
     
     free(buf);

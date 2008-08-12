@@ -33,6 +33,7 @@ struct ccn {
     struct ccn_skeleton_decoder decoder;
     struct ccn_indexbuf *scratch_indexbuf;
     struct timeval now;
+    int timeout;
     int refresh_us;
     int err;
     int errline;
@@ -722,6 +723,13 @@ ccn_age_interest(struct ccn *h,
     }
 }
 
+int ccn_set_run_timeout(struct ccn *h, int timeout)
+{
+    int ans = h->timeout;
+    h->timeout = timeout;
+    return(ans);
+}
+
 int
 ccn_run(struct ccn *h, int timeout)
 {
@@ -735,6 +743,7 @@ ccn_run(struct ccn *h, int timeout)
     int res;
     memset(fds, 0, sizeof(fds));
     memset(&start, 0, sizeof(start));
+    h->timeout = timeout;
     while (h->sock != -1) {
         h->refresh_us = 5 * CCN_INTEREST_HALFLIFE_MICROSEC;
         gettimeofday(&h->now, NULL);
@@ -752,6 +761,7 @@ ccn_run(struct ccn *h, int timeout)
              }
              hashtb_end(e);
         }
+        timeout = h->timeout;
         if (start.tv_sec == 0)
             start = h->now;
         else if (timeout >= 0) {
