@@ -52,12 +52,6 @@ struct expressed_interest { /* keyed by components of name prefix */
     struct ccn_closure *action;
     unsigned char *interest_msg;
     size_t size;
-    //int prefix_comps;
-    //unsigned char *morecomponents;
-    //unsigned morecomponents_size;
-    //unsigned char *template_stuff;
-    //unsigned template_stuff_size;
-    //int repeat;
     int target;
     int outstanding;
     struct expressed_interest *next;
@@ -748,7 +742,7 @@ ccn_run(struct ccn *h, int timeout)
         h->refresh_us = 5 * CCN_INTEREST_HALFLIFE_MICROSEC;
         gettimeofday(&h->now, NULL);
         if (h->interests_by_prefix != NULL && !ccn_output_is_pending(h)) {
-             for (hashtb_start(h->interests_by_prefix, e); e->data != NULL; hashtb_next(e)) {
+             for (hashtb_start(h->interests_by_prefix, e); e->data != NULL;) {
                 entry = e->data;
                 for (ip = &(entry->list); (*ip) != NULL;) {
                     if ((*ip)->target != 0)
@@ -758,6 +752,10 @@ ccn_run(struct ccn *h, int timeout)
                     else
                         ip = &((*ip)->next);
                 }
+                if (entry->list == NULL)
+                    hashtb_delete(e);
+                else
+                    hashtb_next(e);
              }
              hashtb_end(e);
         }
