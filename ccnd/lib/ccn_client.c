@@ -711,6 +711,7 @@ ccn_age_interest(struct ccn *h,
             res = (interest->action->p)(interest->action,
                                         CCN_UPCALL_INTEREST_TIMED_OUT,
                                         &info);
+            ccn_indexbuf_release(h, info.interest_comps);
         }
         if (res == CCN_UPCALL_RESULT_REEXPRESS)
             ccn_refresh_interest(h, interest);

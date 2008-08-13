@@ -10,7 +10,7 @@ struct ccn_sigc {
 };
 
 struct ccn_sigc *
-ccn_sigc_create()
+ccn_sigc_create(void)
 {
     return (calloc(1, sizeof(struct ccn_sigc)));
 }
@@ -19,6 +19,8 @@ void
 ccn_sigc_destroy(struct ccn_sigc **ctx)
 {
     if (*ctx) {
+        // XXX - is it OK to call cleanup unconditionally?
+        EVP_MD_CTX_cleanup(&(*ctx)->context);
         free(*ctx);
         *ctx = NULL;
     }
