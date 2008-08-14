@@ -139,10 +139,10 @@ for i in firstin lastin nextsib lastsib exactmatch classic contenthash; do
     ./smoketestccnd -f $i.ccnb  -n 3 > $i.smokeout
 done
 echo Expect to see different answers because of suppressed matches against unsent content
-cat lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb | nc -U /tmp/.ccnd.sock -w 1 | nc -U /tmp/.ccnd.sock | ../lib/ccn_ccnbtoxml -split lastsibX10 -
+cat lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb | nc -U /tmp/.ccnd.sock -w 1 | nc -U /tmp/.ccnd.sock | ../lib/ccn_ccnbtoxml -s lastsibX10 -
 echo ==============================================================
 echo Timing gaps here probably will cause repeating of the same item
-for i in 0 1 2 3 4 5 6 7 8 9; do cat lastsib.ccnb; done | nc -U /tmp/.ccnd.sock -w 1 | nc -U /tmp/.ccnd.sock | ../lib/ccn_ccnbtoxml -split lastsibY10 -
+for i in 0 1 2 3 4 5 6 7 8 9; do cat lastsib.ccnb; done | nc -U /tmp/.ccnd.sock -w 1 | nc -U /tmp/.ccnd.sock | ../lib/ccn_ccnbtoxml -s lastsibY10 -
 echo ==============================================================
 rm /tmp/.ccnd.sock
 echo GET / | nc localhost 4485

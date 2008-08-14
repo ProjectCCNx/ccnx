@@ -32,7 +32,6 @@
 
 struct ccnd_stats {
     long total_interest_counts;
-    long total_content_suppressed;
     long total_flood_control;      /* done propagating, still recorded */
 };
 
@@ -54,14 +53,6 @@ ccnd_collect_stats(struct ccnd *h, struct ccnd_stats *ans)
         }
     }
     ans->total_interest_counts = sum;
-    hashtb_end(e);
-    for (sum = 0, hashtb_start(h->content_tab, e);
-                                  e->data != NULL; hashtb_next(e)) {
-        struct content_entry *content = e->data;
-        if (content->faces != NULL)
-            sum += content->faces->n;
-    }
-    ans->total_content_suppressed = sum;
     hashtb_end(e);
     for (sum = 0, hashtb_start(h->propagating_tab, e);
                                       e->data != NULL; hashtb_next(e)) {
@@ -106,7 +97,6 @@ collect_stats_html(struct ccnd *h)
         "<body>"
         "<p class='header' width='100%%'>%s ccnd[%d] local port %s</p>"
         "<div><b>Content items:</b> %llu accessioned, %d stored, %lu duplicate, %lu sent</div>"
-        "<div><b>Content supression:</b> %d</div>"
         "<div><b>Interests:</b> %d names, %ld pending, %ld propagating, %ld noted</div>"
         "<div><b>Interest totals:</b> %lu accepted, %lu dropped, %lu sent</div>"
         "<div><b>Active faces and listeners:</b> %d</div>"
@@ -117,13 +107,12 @@ collect_stats_html(struct ccnd *h)
         pid,
         portstr,
         (unsigned long long)h->accession,
-                hashtb_n(h->content_tab),
-                h->content_dups_recvd,
-                h->content_items_sent,
-        stats.total_content_suppressed,
+        hashtb_n(h->content_tab),
+        h->content_dups_recvd,
+        h->content_items_sent,
         hashtb_n(h->interestprefix_tab), stats.total_interest_counts,
-                hashtb_n(h->propagating_tab) - stats.total_flood_control,
-                stats.total_flood_control,
+        hashtb_n(h->propagating_tab) - stats.total_flood_control,
+        stats.total_flood_control,
         h->interests_accepted, h->interests_dropped, h->interests_sent,
         hashtb_n(h->faces_by_fd) + hashtb_n(h->dgram_faces));
     ans = strdup((char *)b->buf);
@@ -218,7 +207,6 @@ ccnd_stats_httpd_start(struct ccnd *h)
     freeaddrinfo(ai);
     ai = NULL;
     h->httpd_listener_fd = sock;
-    //ccn_schedule_event(h->sched, 1000000, &check_for_http_connection, NULL, sock);
     return(0);
 }
 
@@ -249,26 +237,10 @@ ccnd_debug_ccnb(struct ccnd *h,
                 size_t ccnb_size)
 {
     struct ccn_charbuf *c = ccn_charbuf_create();
-    struct ccn_charbuf *nm = NULL;
-    struct ccn_parsed_ContentObject parsed_ContentObject = {0};
-    int res;
     ccn_charbuf_putf(c, "debug.%d %s ", lineno, msg);
     if (face != NULL)
         ccn_charbuf_putf(c, "%u ", face->faceid);
     ccn_uri_append(c, ccnb, ccnb_size, 1);
-    if (0) {
-        /* Include the (implicit) content digest name component */
-        /* XXX - do not need this because that component is explicit inside ccnd, but keep code around for possible reuse */
-        res = ccn_parse_ContentObject(ccnb, ccnb_size, &parsed_ContentObject, NULL);
-        if (res >= 0) {
-            ccn_digest_ContentObject(ccnb, &parsed_ContentObject);
-            nm = ccn_charbuf_create();
-            ccn_name_init(nm);
-            ccn_name_append(nm, parsed_ContentObject.digest, parsed_ContentObject.digest_bytes);
-            ccn_uri_append(c, nm->buf, nm->length, 0);
-            ccn_charbuf_destroy(&nm);
-        }
-    }
     ccnd_msg(h, "%s", ccn_charbuf_as_string(c));
     ccn_charbuf_destroy(&c);
 }

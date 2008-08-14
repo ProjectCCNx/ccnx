@@ -45,15 +45,15 @@ static void do_write(struct ccnd *h, struct face *face,
 static void do_deferred_write(struct ccnd *h, int fd);
 static void run(struct ccnd *h);
 static void clean_needed(struct ccnd *h);
-static int get_signature_offset(struct ccn_parsed_ContentObject *pco,
-                         const unsigned char *msg);
 static struct face *get_dgram_source(struct ccnd *h, struct face *face,
                               struct sockaddr *addr, socklen_t addrlen);
 static void content_skiplist_insert(struct ccnd *h, struct content_entry *content);
 static void content_skiplist_remove(struct ccnd *h, struct content_entry *content);
-static ccn_accession_t content_skiplist_next(struct ccnd *h, struct content_entry *content);
+static ccn_accession_t
+            content_skiplist_next(struct ccnd *h, struct content_entry *content);
 static void reap_needed(struct ccnd *h, int init_delay_usec);
 static const char *unlink_this_at_exit = NULL;
+
 static void
 cleanup_at_exit(void)
 {
@@ -197,6 +197,11 @@ finalize_face(struct hashtb_enumerator *e)
     unsigned i = face->faceid & MAXFACES;
     if (i < h->face_limit && h->faces_by_faceid[i] == face) {
         h->faces_by_faceid[i] = NULL;
+        ccn_indexbuf_destroy(&face->send_queue);
+        if (face->sender != NULL) {
+            ccn_schedule_cancel(h->sched, face->sender);
+            face->sender = NULL;
+        }
         ccnd_msg(h, "releasing face id %u (slot %u)",
             face->faceid, face->faceid & MAXFACES);
         /* If face->addr is not NULL, it is our key so don't free it. */
@@ -253,16 +258,11 @@ finalize_content(struct hashtb_enumerator *e)
     unsigned i = entry->accession - h->accession_base;
     if (i < h->content_by_accession_window && h->content_by_accession[i] == entry) {
         content_skiplist_remove(h, entry);
-        if (entry->sender != NULL) {
-            ccn_schedule_cancel(h->sched, entry->sender);
-            entry->sender = NULL;
-        }
         h->content_by_accession[i] = NULL;
         if (entry->comps != NULL) {
             free(entry->comps);
             entry->comps = NULL;
         }
-        ccn_indexbuf_destroy(&entry->faces);
     }
     else
         ccnd_msg(h, "orphaned content %u", i);
@@ -375,24 +375,6 @@ content_matches_interest_prefix(struct ccnd *h,
                     prefixlen))
         return(0);
     return(1);
-}
-
-static int
-content_matches_interest_qualifiers(struct ccnd *h,
-                                    struct content_entry *content,
-                                    const unsigned char *interest_msg,
-                                    struct ccn_parsed_interest *pi,
-                                    struct ccn_indexbuf *comps)
-{
-    int ans;
-    ans = ccn_content_matches_interest(content->key,
-                                       content->key_size + content->tail_size,
-                                       0,
-                                       NULL,
-                                       interest_msg,
-                                       pi->offset[CCN_PI_E],
-                                       pi);
-    return(ans);
 }
 
 static ccn_accession_t
@@ -542,7 +524,7 @@ send_content(struct ccnd *h, struct face *face, struct content_entry *content)
 {
     struct ccn_charbuf *c = charbuf_obtain(h);
     int n, a, b, size;
-    size = content->key_size + content->tail_size;
+    size = content->size;
     if (h->debug & 4)
         ccnd_debug_ccnb(h, __LINE__, "content_out", face,
                         content->key, size);
@@ -570,6 +552,7 @@ send_content(struct ccnd *h, struct face *face, struct content_entry *content)
 static int
 choose_content_delay(struct ccnd *h, unsigned faceid, int content_flags)
 {
+    // XXX - if the face's send queue is long, we may want to delay less.
     struct face *face = face_from_faceid(h, faceid);
     int shift = (content_flags & CCN_CONTENT_ENTRY_SLOWSEND) ? 2 : 0;
     if (face == NULL)
@@ -587,31 +570,38 @@ content_sender(struct ccn_schedule *sched,
     struct ccn_scheduled_event *ev,
     int flags)
 {
+    int i, j;
     struct ccnd *h = clienth;
-    struct content_entry *content = ev->evdata;
+    struct content_entry *content = NULL;
+    struct face *face = face_from_faceid(h, ev->evint);
     (void)sched;
     
-    if (content == NULL ||
-        content != content_from_accession(h, content->accession)) {
-        ccnd_msg(h, "ccn.c:%d bogon", __LINE__);
+    if (face == NULL)
+        return(0);
+    if ((flags & CCN_SCHEDULE_CANCEL) != 0 || face->send_queue == NULL) {
+        face->sender = NULL;
         return(0);
     }
-    if ((flags & CCN_SCHEDULE_CANCEL) != 0 || content->faces == NULL) {
-        content->sender = NULL;
-        return(0);
-    }
-    while (content->nface_done < content->faces->n) {
-        unsigned faceid = content->faces->buf[content->nface_done++];
-        struct face *face = face_from_faceid(h, faceid);
-        if (face != NULL) {
+    /* Send the content at the head of the queue */
+    for (i = 0; i < face->send_queue->n; i++) {
+        content = content_from_accession(h, face->send_queue->buf[i]);
+        if (content != NULL) {
             send_content(h, face, content);
-            if (content->nface_done < content->faces->n)
-                return(choose_content_delay(h,
-                        content->faces->buf[content->nface_done],
-                        content->flags));
+            i++;
+            break;
         }
     }
-    content->sender = NULL;
+    /* Update queue */
+    for (j = 0; i < face->send_queue->n; i++, j++)
+        face->send_queue->buf[j] = face->send_queue->buf[i];
+    face->send_queue->n = j;
+    /* Determine when to run again */
+    for (i = 0; i < face->send_queue->n; i++) {
+        content = content_from_accession(h, face->send_queue->buf[i]);
+        if (content != NULL)
+            return(choose_content_delay(h, face->faceid, content->flags));
+    }
+    face->sender = NULL;
     return(0);
 }
 
@@ -634,31 +624,26 @@ indexbuf_unordered_set_insert(struct ccn_indexbuf *x, size_t val)
 }
 
 static int
-content_faces_set_insert(struct content_entry *content, unsigned faceid)
+face_send_queue_insert(struct ccnd *h, struct face *face, struct content_entry *content)
 {
-    if (content->faces == NULL) {
-        content->faces = ccn_indexbuf_create();
-        content->nface_done = 0;
+    int ans;
+    int delay;
+    if (face == NULL || content == NULL)
+        return(-1);
+    if (face->send_queue == NULL)
+        face->send_queue = ccn_indexbuf_create();
+    ans = indexbuf_unordered_set_insert(face->send_queue, content->accession);
+    if (face->sender == NULL) {
+        delay = choose_content_delay(h, face->faceid, content->flags);
+        face->sender = ccn_schedule_event(h->sched, delay,
+                                          content_sender, NULL, face->faceid);
     }
-    return (indexbuf_unordered_set_insert(content->faces, faceid));
+    return (ans);
 }
-
-static void
-schedule_content_delivery(struct ccnd *h, struct content_entry *content)
-{
-    if (content->sender == NULL &&
-          content->faces != NULL &&
-          content->faces->n > content->nface_done)
-        content->sender = ccn_schedule_event(h->sched,
-            choose_content_delay(h, content->faces->buf[content->nface_done],
-                                    content->flags),
-            content_sender, content, 0);
-}
-
 
 /*
  * consume_matching_interests: Consume matching interests
- * given a interestprefix_entry and piece of content.
+ * given an interestprefix_entry and a piece of content.
  * If face is not NULL, pay attention only to interests from that face.
  * It is allowed to pass NULL for pc, but if you have a (valid) one it
  * will avoid a re-parse.
@@ -677,13 +662,12 @@ consume_matching_interests(struct ccnd *h,
     struct propagating_entry *p;
     const unsigned char *content_msg;
     size_t content_size;
-    int k;
     
     head = ipe->propagating_head;
     if (head == NULL)
         return(0);
     content_msg = content->key;
-    content_size = content->key_size + content->tail_size;
+    content_size = content->size;
     for (p = head->next; p != head; p = next) {
         next = p->next;
         if (p->interest_msg != NULL &&
@@ -691,20 +675,16 @@ consume_matching_interests(struct ccnd *h,
              (face != NULL && p->faceid == face->faceid))) {
             if (ccn_content_matches_interest(content_msg, content_size, 0, pc,
                                              p->interest_msg, p->size, NULL)) {
-                k = content_faces_set_insert(content, p->faceid);
-                if (k >= content->nface_done) {
-                    if (h->debug & 8)
-                        ccnd_debug_ccnb(h, __LINE__, "consume",
-                                        face_from_faceid(h, p->faceid),
-                                        p->interest_msg, p->size);
-                    matches += 1;
-                    consume(p);
-                }
+                face_send_queue_insert(h, face_from_faceid(h, p->faceid), content);
+                if (h->debug & 8)
+                    ccnd_debug_ccnb(h, __LINE__, "consume",
+                                    face_from_faceid(h, p->faceid),
+                                    p->interest_msg, p->size);
+                matches += 1;
+                consume(p);
             }
         }
     }
-    if (matches > 0)
-        reap_needed(h, 0);
     return(matches);
 }
 
@@ -732,8 +712,6 @@ match_interests(struct ccnd *h, struct content_entry *content,
         if (ipe != NULL)
             n_matched += consume_matching_interests(h, ipe, content, pc, face);
     }
-    if (n_matched != 0)
-        schedule_content_delivery(h, content);
     return(n_matched);
 }
 
@@ -864,20 +842,17 @@ reap_needed(struct ccnd *h, int init_delay_usec)
 }
 
 /*
- * clean_deamon: weeds expired faceids out of the content table
- * and expires short-term blocking state.
+ * clean_deamon: periodic content cleaning
+ * Currently does not really do anything.
  */
 static int
-clean_deamon( // XXX - neworder
-             struct ccn_schedule *sched,
+clean_deamon(struct ccn_schedule *sched,
              void *clienth,
              struct ccn_scheduled_event *ev,
              int flags)
 {
     struct ccnd *h = clienth;
-    unsigned i;
     unsigned n;
-    struct content_entry* content;
     (void)(sched);
     (void)(ev);
     if ((flags & CCN_SCHEDULE_CANCEL) != 0) {
@@ -887,30 +862,6 @@ clean_deamon( // XXX - neworder
     n = h->accession - h->accession_base + 1;
     if (n > h->content_by_accession_window)
         n = h->content_by_accession_window;
-    for (i = 0; i < n; i++) {
-        content = h->content_by_accession[i];
-        if (content != NULL && content->faces != NULL) {
-            int j, k, d;
-            for (j = 0, k = 0, d = 0; j < content->faces->n; j++) {
-                unsigned faceid = content->faces->buf[j];
-                struct face *face = face_from_faceid(h, faceid);
-                if (face != NULL) {
-                    if (j < content->nface_old) {
-                        if ((face->flags & CCN_FACE_LINK) != 0)
-                            continue;
-                    }
-                    if (j < content->nface_done)
-                        d++;
-                    content->faces->buf[k++] = faceid;
-                }
-            }
-            if (k < content->faces->n) {
-                content->faces->n = k;
-                content->nface_done = d;
-            }
-            content->nface_old = d;
-        }
-    }
     return(15000000);
 }
 
@@ -1109,31 +1060,8 @@ is_duplicate_flooded(struct ccnd *h, unsigned char *msg, struct ccn_parsed_inter
     return(pe != NULL);
 }
 
-int use_short_term_blocking_state = 0;
-/*
- * content_is_unblocked: 
- * Decide whether to send content in response to the interest, which
- * we already know is a prefix match.
- */
-static int
-content_is_unblocked(struct content_entry *content,
-        struct ccn_parsed_interest *pi, unsigned char *msg, unsigned faceid)
-{
-    int k;
-    if (!use_short_term_blocking_state) {
-        k = indexbuf_member(content->faces, faceid);
-        if (0 <= k && k < content->nface_done) {
-            content->faces->buf[k] = ~0;
-            return(1);
-        }
-        /* Say no if we are already planning to send anyway */
-        return(k == -1);
-    }
-    return(indexbuf_member(content->faces, faceid) == -1);
-}
-
 static void
-process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
+process_incoming_interest(struct ccnd *h, struct face *face,
                           unsigned char *msg, size_t size)
 {
     struct hashtb_enumerator ee;
@@ -1141,6 +1069,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
     struct ccn_parsed_interest parsed_interest = {0};
     struct ccn_parsed_interest *pi = &parsed_interest;
     size_t namesize = 0;
+    int k;
     int res;
     int try;
     int matched;
@@ -1187,7 +1116,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
                     content = content_from_accession(h, content_skiplist_next(h, content));
                 if (content != NULL && (h->debug & 8))
                     ccnd_debug_ccnb(h, __LINE__, "resume", NULL,
-                                    content->key, content->key_size + content->tail_size);
+                                    content->key, content->size);
                 if (content != NULL &&
                     !content_matches_interest_prefix(h, content, msg,
                                                      comps, pi->prefix_comps)) {
@@ -1201,7 +1130,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
                 if (content != NULL && (h->debug & 8))
                     ccnd_debug_ccnb(h, __LINE__, "first_candidate", NULL,
                                     content->key,
-                                    content->key_size + content->tail_size);
+                                    content->size);
                 if (content != NULL &&
                     !content_matches_interest_prefix(h, content, msg, comps, 
                                                      pi->prefix_comps)) {
@@ -1212,8 +1141,9 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
                 }
             }
             for (try = 0; content != NULL; try++) {
-                if (content_is_unblocked(content, pi, msg, face->faceid) &&
-                    content_matches_interest_qualifiers(h, content, msg, pi, comps)) {
+                if (ccn_content_matches_interest(content->key,
+                                       content->size,
+                                       0, NULL, msg, size, pi)) {
                     if (pi->orderpref == 4 &&
                         pi->prefix_comps != comps->n - 1 &&
                         comps->n == content->ncomps &&
@@ -1222,13 +1152,13 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
                         if (h->debug & 8)
                             ccnd_debug_ccnb(h, __LINE__, "skip_match", NULL,
                                             content->key,
-                                            content->key_size + content->tail_size);
+                                            content->size);
                         goto move_along;
                     }
                     if (h->debug & 8)
                         ccnd_debug_ccnb(h, __LINE__, "matches", NULL, 
                                         content->key,
-                                        content->key_size + content->tail_size);
+                                        content->size);
                     if (pi->orderpref != 5) // XXX - should be symbolic
                         break;
                     last_match = content;
@@ -1243,20 +1173,24 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
                     if (h->debug & 8)
                         ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL,
                                         content->key, 
-                                        content->key_size + content->tail_size);
+                                        content->size);
                     content = NULL;
                 }
             }
             if (last_match != NULL)
                 content = last_match;
             if (content != NULL) {
-                // XXX - this makes a little more work for ourselves, because we are about to consume this interest anyway.
-                propagate_interest(h, face, msg, size, pi, ipe);
-                matched = match_interests(h, content, NULL, face);
-                if (matched < 1 && h->debug)
-                    ccnd_debug_ccnb(h, __LINE__, "expected_match_did_not_happen",
-                                        face, content->key,
-                                        content->key_size + content->tail_size);
+                /* Check to see if we are planning to send already */
+                k = indexbuf_member(face->send_queue, content->accession);
+                if (k == -1) {
+                    // XXX - this makes a little more work for ourselves, because we are about to consume this interest anyway.
+                    propagate_interest(h, face, msg, size, pi, ipe);
+                    matched = match_interests(h, content, NULL, face);
+                    if (matched < 1 && h->debug)
+                        ccnd_debug_ccnb(h, __LINE__, "expected_match_did_not_happen",
+                                            face, content->key,
+                                            content->size);
+                }
                 face->cached_accession = content->accession;
                 matched = 1;
             }
@@ -1266,34 +1200,6 @@ process_incoming_interest(struct ccnd *h, struct face *face,  // XXX! - neworder
         hashtb_end(e);
     }
     indexbuf_release(h, comps);
-}
-
-static int
-get_signature_offset(struct ccn_parsed_ContentObject *pco,
-                     const unsigned char *msg)
-{
-    struct ccn_buf_decoder decoder;
-    struct ccn_buf_decoder *d;
-    int start = pco->offset[CCN_PCO_B_Signature];
-    int stop  = pco->offset[CCN_PCO_E_Signature];
-    if (start < stop) {
-        d = ccn_buf_decoder_start(&decoder, msg + start, stop - start);
-        if (ccn_buf_match_dtag(d, CCN_DTAG_Signature)) {
-            ccn_buf_advance(d);
-            // XXX - only works for default sig
-            if (ccn_buf_match_dtag(d, CCN_DTAG_SignatureBits)) {
-                ccn_buf_advance(d);
-                if (ccn_buf_match_some_blob(d) && d->decoder.numval >= 32) {
-                    return(start + d->decoder.index);
-                }
-            }
-            if (ccn_buf_match_some_blob(d) && d->decoder.numval >= 32) {
-                    // XXX - this is for compatibilty - remove after July 2008
-                    return(start + d->decoder.index);
-            }
-        }
-    }
-    return(0);
 }
 
 static void
@@ -1379,32 +1285,17 @@ process_incoming_content(struct ccnd *h, struct face *face,
             ccnd_msg(h, "received duplicate ContentObject from %u (accession %llu)",
                      face->faceid, (unsigned long long)content->accession);
             ccnd_debug_ccnb(h, __LINE__, "dup", face, msg, size);
-            /* Make note that this face knows about this content */
-            // XXX - should distinguish the case that we were waiting
-            //  to send this content - in that case we might have
-            //  some other content we should send instead.
-            // Also, if we have a matching pending interest from this
-            //  face, we should consume it in some cases.
-            i = content_faces_set_insert(content, face->faceid);
-            if (i >= content->nface_done) {
-                content->faces->buf[i] = content->faces->buf[content->nface_done];
-                content->faces->buf[content->nface_done++] = face->faceid;
-            }
         }
     }
     else if (res == HT_NEW_ENTRY) {
         content->accession = ++(h->accession);
-        content->faces = ccn_indexbuf_create();
-        ccn_indexbuf_append_element(content->faces, face->faceid);
-        content->nface_done = 1;
         enroll_content(h, content);
         content->ncomps = comps->n;
         content->comps = calloc(comps->n, sizeof(comps[0]));
-        content->sig_offset = get_signature_offset(&obj, msg);
         content->key_size = e->keysize;
-        content->tail_size = e->extsize;
+        content->size = e->keysize + e->extsize;
         content->key = e->key;
-        if (content->comps != NULL && content->faces != NULL) {
+        if (content->comps != NULL) {
             for (i = 0; i < comps->n; i++)
                 content->comps[i] = comps->buf[i];
             content_skiplist_insert(h, content);
@@ -1426,6 +1317,16 @@ Bail:
         n_matches = match_interests(h, content, &obj, NULL);
         if (res == HT_NEW_ENTRY && n_matches == 0)
             content->flags |= CCN_CONTENT_ENTRY_SLOWSEND;
+        i = indexbuf_member(face->send_queue, content->accession);
+        if (i >= 0) {
+            /*
+             * In the case this consumed any interests from this source,
+             * don't send the content back
+             */
+            if (h->debug & 8)
+                ccnd_debug_ccnb(h, __LINE__, "content_nosend", face, msg, size);
+            face->send_queue->buf[i] = 0;
+        }
     }
 }
 
