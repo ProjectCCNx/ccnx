@@ -194,7 +194,7 @@ main(int argc, char **argv)
     cl = NULL;
     data = NULL;
     ccn_charbuf_destroy(&c);
-    for (i = 0; i < 1000; i++) {
+    for (i = 0;; i++) {
         n = counter;
         ccn_run(ccn, 1000); /* stop if we run dry for 1 sec */
         fflush(stdout);

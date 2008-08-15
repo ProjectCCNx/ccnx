@@ -11,6 +11,7 @@
 
 struct upcalldata {
     int magic; /* 856372 */
+    long *counter;
     int n_excl;
     unsigned warn;
     struct ccn_charbuf **excl; /* Array of n_excl items */
@@ -66,7 +67,7 @@ incoming_content(
         fprintf(stderr, "How did this happen?  %s\n", ccn_charbuf_as_string(uri));
         exit(1);
     }
-
+    data->counter[0]++;
     /* Recover the same prefix as before */
     ccn_name_init(c);
     ccn_name_append_components(c, ccnb, comps->buf[0], comps->buf[matched_comps]);
@@ -118,11 +119,6 @@ incoming_content(
     return(CCN_UPCALL_RESULT_OK);
 }
 
-/* Use some static data for this simple program */
-static struct ccn_closure incoming_content_action = {
-    .p = &incoming_content
-};
-
 void
 usage(const char *prog)
 {
@@ -140,6 +136,8 @@ main(int argc, char **argv)
     int i;
     int n;
     int res;
+    long counter = 0;
+    struct ccn_closure *cl = NULL;
     
     if (argv[1] == NULL || argv[2] != NULL)
         usage(argv[0]);
@@ -158,13 +156,18 @@ main(int argc, char **argv)
     data = calloc(1, sizeof(*data));
     data->magic = 856372;
     data->warn = 1492;
-    incoming_content_action.data = data;
-    ccn_express_interest(ccn, c, -1, &incoming_content_action, NULL);
-    for (i = 0; i < 1000; i++) {
-        n = data->n_excl;
+    data->counter = &counter;
+    cl = calloc(1, sizeof(*cl));
+    cl->p = &incoming_content;
+    cl->data = data;
+    ccn_express_interest(ccn, c, -1, cl, NULL);
+    cl = NULL;
+    data = NULL;
+    for (i = 0;; i++) {
+        n = counter;
         ccn_run(ccn, 500); /* stop if we run dry for 1/2 sec */
         fflush(stdout);
-        if (data->n_excl == n)
+        if (counter == n)
             break;
     }
     ccn_destroy(&ccn);
