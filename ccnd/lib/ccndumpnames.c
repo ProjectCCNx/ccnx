@@ -87,7 +87,7 @@ main(int argc, char **argv)
     
     ccn_name_init(c);
     ccn_express_interest(ccn, c, 0, &incoming_content_action, templ);
-    for (i = 0; i < 100; i++) {
+    for (i = 0;; i++) {
         incoming_content_action.data = NULL;
         ccn_run(ccn, 100); /* stop if we run dry for 1/10 sec */
         fflush(stdout);
