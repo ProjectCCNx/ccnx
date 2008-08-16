@@ -18,7 +18,7 @@ import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.library.StandardCCNLibrary;
 import com.parc.ccn.security.crypto.CCNMerkleTree;
-import com.parc.ccn.security.crypto.DigestHelper;
+import com.parc.ccn.security.crypto.CCNDigestHelper;
 
 public class CCNMerkleTreeTest {
 
@@ -88,14 +88,14 @@ public class CCNMerkleTreeTest {
 		if (digest)
 			tmpbuf = new byte[nodeLength];
 		
-		int blocklen = (digest ? DigestHelper.DEFAULT_DIGEST_LENGTH  : nodeLength);
+		int blocklen = (digest ? CCNDigestHelper.DEFAULT_DIGEST_LENGTH  : nodeLength);
 		
 		for (int i=0; i < numNodes; ++i) {
 			bufs[i] = new byte[blocklen];
 			
 			if (digest) {
 				_rand.nextBytes(tmpbuf);
-				bufs[i] = DigestHelper.digest(tmpbuf);
+				bufs[i] = CCNDigestHelper.digest(tmpbuf);
 			} else {
 				_rand.nextBytes(bufs[i]);
 			}

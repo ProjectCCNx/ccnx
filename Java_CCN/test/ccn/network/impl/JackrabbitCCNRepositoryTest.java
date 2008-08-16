@@ -45,7 +45,7 @@ import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.StandardCCNLibrary;
 import com.parc.ccn.network.impl.JackrabbitCCNRepository;
-import com.parc.ccn.security.crypto.certificates.BCX509CertificateGenerator;
+import com.parc.security.crypto.certificates.BCX509CertificateGenerator;
 
 public class JackrabbitCCNRepositoryTest {
 	

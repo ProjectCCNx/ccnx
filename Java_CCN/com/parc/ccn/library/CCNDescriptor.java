@@ -23,7 +23,7 @@ import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.library.CCNLibrary.OpenMode;
 import com.parc.ccn.security.crypto.CCNMerkleTree;
-import com.parc.ccn.security.crypto.DigestHelper;
+import com.parc.ccn.security.crypto.CCNDigestHelper;
 
 /**
  * An object which contains state operation for 
@@ -131,7 +131,7 @@ public class CCNDescriptor {
 
 	protected ContentAuthenticator.ContentType _type;
 	
-	protected DigestHelper _dh;
+	protected CCNDigestHelper _dh;
 	
 	protected ArrayList<byte []> _roots = new ArrayList<byte[]>();
 
@@ -214,7 +214,7 @@ public class CCNDescriptor {
 		_blockBuffers = new byte[BLOCK_BUF_COUNT][];
 		_baseBlockIndex = StandardCCNLibrary.baseFragment();
 		
-		_dh = new DigestHelper();
+		_dh = new CCNDigestHelper();
 	}
 	
 	/**

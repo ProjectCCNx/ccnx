@@ -13,8 +13,8 @@ import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.asn1.x509.DigestInfo;
 
-import com.parc.ccn.security.crypto.certificates.CryptoUtil;
-import com.parc.ccn.security.crypto.certificates.OIDLookup;
+import com.parc.security.crypto.certificates.CryptoUtil;
+import com.parc.security.crypto.certificates.OIDLookup;
 
 public class MerklePath {
 	
@@ -128,7 +128,7 @@ public class MerklePath {
 		byte [] encodedPath = encodablePath.getDEREncoded();
 		
 		// Wrap it up in a DigestInfo
-		return DigestHelper.digestEncoder(CCNMerkleTree.DEFAULT_MHT_ALGORITHM, encodedPath);
+		return CCNDigestHelper.digestEncoder(CCNMerkleTree.DEFAULT_MHT_ALGORITHM, encodedPath);
 	}
 	
 	public static boolean isMerklePath(DigestInfo info) {

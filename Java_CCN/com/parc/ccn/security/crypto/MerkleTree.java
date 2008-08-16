@@ -55,7 +55,7 @@ public class MerkleTree {
 	 * @param contentBlocks
 	 */
 	protected MerkleTree(String algorithm, int numLeaves) {
-		_algorithm = (null == algorithm) ? DigestHelper.DEFAULT_DIGEST_ALGORITHM : algorithm;
+		_algorithm = (null == algorithm) ? CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM : algorithm;
 		_numLeaves = numLeaves;
 		_tree = new DEROctetString[nodeCount()];
 		// Let calling constructor handle building the tree.
@@ -78,7 +78,7 @@ public class MerkleTree {
 	}
 	
 	public MerkleTree(byte [][] contentBlocks, boolean isDigest, int blockCount, int blockOffset) {
-		this(DigestHelper.DEFAULT_DIGEST_ALGORITHM, contentBlocks, isDigest, blockCount, blockOffset);
+		this(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, contentBlocks, isDigest, blockCount, blockOffset);
 	}
 	
 	/**
@@ -308,7 +308,7 @@ public class MerkleTree {
 		// Climb the tree
 		int firstNode = firstLeaf()-1;
 		for (int i=firstNode; i >= ROOT_NODE; --i) {
-			byte [] nodeDigest = DigestHelper.digest(algorithm(), get(leftChild(i)), get(rightChild(i)));
+			byte [] nodeDigest = CCNDigestHelper.digest(algorithm(), get(leftChild(i)), get(rightChild(i)));
 			_tree[i-1] = new DEROctetString(nodeDigest);
 		}
 	}
@@ -330,7 +330,7 @@ public class MerkleTree {
 	
 	public byte[] getRootAsEncodedDigest() {
 		// Take root and wrap it up as an encoded DigestInfo
-		return DigestHelper.digestEncoder(
+		return CCNDigestHelper.digestEncoder(
 				algorithm(), 
 				root());
 	}
@@ -346,11 +346,11 @@ public class MerkleTree {
 	}
 	
 	public static byte [] computeBlockDigest(String algorithm, byte [] block) {
-		return DigestHelper.digest(algorithm, block);		
+		return CCNDigestHelper.digest(algorithm, block);		
 	}
 
 	public static byte [] computeBlockDigest(byte [] block) {
-		return computeBlockDigest(DigestHelper.DEFAULT_DIGEST_ALGORITHM, block);		
+		return computeBlockDigest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, block);		
 	}
 	
 	/**
@@ -358,11 +358,11 @@ public class MerkleTree {
 	 * simply hash left alone.
 	 */
 	public static byte [] computeNodeDigest(String algorithm, byte [] left, byte [] right) {
-		return DigestHelper.digest(algorithm, left, right);
+		return CCNDigestHelper.digest(algorithm, left, right);
 	}
 	
 	public static byte [] computeNodeDigest(byte [] left, byte [] right) {
-		return computeNodeDigest(DigestHelper.DEFAULT_DIGEST_ALGORITHM, left, right);
+		return computeNodeDigest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, left, right);
 	}
 	
 	public static boolean isMerkleTree(AlgorithmIdentifier algorithmId) {

@@ -25,7 +25,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherKeyID;
-import com.parc.ccn.security.crypto.certificates.BCX509CertificateGenerator;
+import com.parc.security.crypto.certificates.BCX509CertificateGenerator;
 
 public class BasicKeyManager extends KeyManager {
 		

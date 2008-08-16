@@ -10,7 +10,7 @@ import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
-import com.parc.ccn.security.crypto.DigestHelper;
+import com.parc.ccn.security.crypto.CCNDigestHelper;
 
 /**
  * Helper wrapper class for publisher IDs.
@@ -40,7 +40,7 @@ public class PublisherKeyID extends GenericXMLEncodable implements XMLEncodable,
 	 * @param publisherID
 	 */
 	public PublisherKeyID(String publisherID) {
-		this(DigestHelper.scanBytes(publisherID, 32));
+		this(CCNDigestHelper.scanBytes(publisherID, 32));
 	}
 	
     public PublisherKeyID() {} // for use by decoders
@@ -110,6 +110,6 @@ public class PublisherKeyID extends GenericXMLEncodable implements XMLEncodable,
 	@Override
 	public String toString() {
 		// 	16 would be the most familiar option, but 32 is shorter
-		return DigestHelper.printBytes(id(), 32);
+		return CCNDigestHelper.printBytes(id(), 32);
 	}
 }

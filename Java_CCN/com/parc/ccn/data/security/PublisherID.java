@@ -15,8 +15,8 @@ import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
-import com.parc.ccn.security.crypto.DigestHelper;
-import com.parc.ccn.security.crypto.certificates.GenericX509CertificateGenerator;
+import com.parc.ccn.security.crypto.CCNDigestHelper;
+import com.parc.security.crypto.certificates.GenericX509CertificateGenerator;
 
 /**
  * Helper wrapper class for publisher IDs.
@@ -177,7 +177,7 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
         byte [] id = null;
         try {
             byte [] encoding = cert.getEncoded();
-            id = DigestHelper.digest(digestAlg, encoding);
+            id = CCNDigestHelper.digest(digestAlg, encoding);
         } catch (CertificateEncodingException e) {
 			Library.logger().warning("Cannot encode certificate in PublisherID.generateCertificateID: " + e.getMessage());
 			Library.warningStackTrace(e);
@@ -197,6 +197,6 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 	@Override
 	public String toString() {
 		// 	16 would be the most familiar option, but 32 is shorter
-		return typeToName(type()) + ":" + DigestHelper.printBytes(id(), 32);
+		return typeToName(type()) + ":" + CCNDigestHelper.printBytes(id(), 32);
 	}
 }

@@ -18,7 +18,7 @@ import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.Signature;
-import com.parc.ccn.security.crypto.certificates.BCX509CertificateGenerator;
+import com.parc.security.crypto.certificates.BCX509CertificateGenerator;
 
 public class ContentObjectTest {
 

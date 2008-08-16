@@ -25,8 +25,8 @@ import com.parc.ccn.data.util.XMLCodecFactory;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
-import com.parc.ccn.security.crypto.DigestHelper;
-import com.parc.ccn.security.crypto.SignatureHelper;
+import com.parc.ccn.security.crypto.CCNDigestHelper;
+import com.parc.ccn.security.crypto.CCNSignatureHelper;
 import com.parc.ccn.security.keys.KeyManager;
 
 /**
@@ -62,7 +62,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
     
     public ContentObject(ContentName name, ContentAuthenticator authenticator, byte [] content,
     					 Signature signature) {
-    	this(DigestHelper.DEFAULT_DIGEST_ALGORITHM, name, authenticator, content, signature);
+    	this(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, name, authenticator, content, signature);
     }
     
     /**
@@ -210,7 +210,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 		try {
 			byte [] toBeSigned = prepareContent(name, authenticator,content);
 			signature = 
-				SignatureHelper.sign(digestAlgorithm, 
+				CCNSignatureHelper.sign(digestAlgorithm, 
 									 toBeSigned,
 									 signingKey);
 			if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
@@ -230,9 +230,9 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 					 		   PrivateKey signingKey) 
 			throws SignatureException, InvalidKeyException {
 		try {
-			return sign(name, authenticator, content, DigestHelper.DEFAULT_DIGEST_ALGORITHM, signingKey);
+			return sign(name, authenticator, content, CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, signingKey);
 		} catch (NoSuchAlgorithmException e) {
-			Library.logger().warning("Cannot find default digest algorithm: " + DigestHelper.DEFAULT_DIGEST_ALGORITHM);
+			Library.logger().warning("Cannot find default digest algorithm: " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
 			Library.warningStackTrace(e);
 			throw new SignatureException(e);
 		}
@@ -288,7 +288,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 		}
 		
 		if (null != contentProxy) {
-			return SignatureHelper.verify(contentProxy, object.signature().signature(), object.signature().digestAlgorithm(), publicKey);
+			return CCNSignatureHelper.verify(contentProxy, object.signature().signature(), object.signature().digestAlgorithm(), publicKey);
 		}
 	
 		return verify(object.name(), object.authenticator(), object.content(), object.signature(), publicKey);
@@ -339,19 +339,19 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 		byte [] preparedContent = prepareContent(name, authenticator, content); 
 		// Now, check the signature.
 		boolean result = 
-			SignatureHelper.verify(preparedContent,
+			CCNSignatureHelper.verify(preparedContent,
 					signature.signature(),
-					(signature.digestAlgorithm() == null) ? DigestHelper.DEFAULT_DIGEST_ALGORITHM : signature.digestAlgorithm(),
+					(signature.digestAlgorithm() == null) ? CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM : signature.digestAlgorithm(),
 							publicKey);
 		if (!result) {
 			Library.logger().warning("Verification failure: " + name + " timestamp: " + authenticator.timestamp() + " signed content: " + 
-										DigestHelper.printBytes(DigestHelper.digest(preparedContent),SystemConfiguration.DEBUG_RADIX));
+										CCNDigestHelper.printBytes(CCNDigestHelper.digest(preparedContent),SystemConfiguration.DEBUG_RADIX));
 			SystemConfiguration.logObject(Level.FINEST, "Verification failure:", new ContentObject(name, authenticator, content, signature));
 			if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
 				SystemConfiguration.outputDebugData(name, new ContentObject(name, authenticator, content, signature));
 			}
 		} else {
-			Library.logger().finer("Verification success: " + name + " timestamp: " + authenticator.timestamp() + " signed content: " + new BigInteger(1, DigestHelper.digest(preparedContent)).toString(SystemConfiguration.DEBUG_RADIX));
+			Library.logger().finer("Verification success: " + name + " timestamp: " + authenticator.timestamp() + " signed content: " + new BigInteger(1, CCNDigestHelper.digest(preparedContent)).toString(SystemConfiguration.DEBUG_RADIX));
 		}
 		return result;
 		
@@ -381,9 +381,9 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 	
 		// Now, check the signature.
 		boolean result = 
-			SignatureHelper.verify(proxy,
+			CCNSignatureHelper.verify(proxy,
 					signature,
-					(digestAlgorithm == null) ? DigestHelper.DEFAULT_DIGEST_ALGORITHM : digestAlgorithm,
+					(digestAlgorithm == null) ? CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM : digestAlgorithm,
 							publicKey);
 		return result;
 	}
@@ -397,8 +397,8 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 		}
 		// Have to eventually handle various forms of witnesses...
 		byte [] blockDigest =
-			DigestHelper.digest(
-				DigestHelper.DEFAULT_DIGEST_ALGORITHM, 
+			CCNDigestHelper.digest(
+				CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, 
 				prepareContent(name(), authenticator(),content()));
 		return signature().computeProxy(blockDigest, true);
 	}

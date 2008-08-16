@@ -10,7 +10,7 @@ import test.ccn.data.XMLEncodableTester;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.security.crypto.DigestHelper;
+import com.parc.ccn.security.crypto.CCNDigestHelper;
 
 public class InterestTest {
 	
@@ -21,7 +21,7 @@ public class InterestTest {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		
-		byte [] testID = DigestHelper.digest(testName.getBytes());
+		byte [] testID = CCNDigestHelper.digest(testName.getBytes());
 		
 		tcn = new ContentName(testName);
 		pubID = new PublisherID(testID,PublisherID.PublisherType.ISSUER_KEY);

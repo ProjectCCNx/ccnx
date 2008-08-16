@@ -10,7 +10,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.security.crypto.DigestHelper;
+import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.crypto.MerklePath;
 import com.parc.ccn.security.crypto.MerkleTree;
 
@@ -60,14 +60,14 @@ public class MerkleTreeTest {
 		if (digest)
 			tmpbuf = new byte[nodeLength];
 		
-		int blocklen = (digest ? DigestHelper.DEFAULT_DIGEST_LENGTH  : nodeLength);
+		int blocklen = (digest ? CCNDigestHelper.DEFAULT_DIGEST_LENGTH  : nodeLength);
 		
 		for (int i=0; i < numNodes; ++i) {
 			bufs[i] = new byte[blocklen];
 			
 			if (digest) {
 				_rand.nextBytes(tmpbuf);
-				bufs[i] = DigestHelper.digest(tmpbuf);
+				bufs[i] = CCNDigestHelper.digest(tmpbuf);
 			} else {
 				_rand.nextBytes(bufs[i]);
 			}
@@ -94,7 +94,7 @@ public class MerkleTreeTest {
 			
 			try {
 				byte [] encodedPath = paths[i].derEncodedPath();
-				DigestInfo info = DigestHelper.digestDecoder(encodedPath);
+				DigestInfo info = CCNDigestHelper.digestDecoder(encodedPath);
 				MerklePath decoded = new MerklePath(info.getDigest());
 				if (!decoded.equals(paths[i])) {
 					System.out.println("Path " + i + " failed to encode and decode.");

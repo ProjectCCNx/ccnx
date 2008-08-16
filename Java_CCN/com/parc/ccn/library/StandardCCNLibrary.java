@@ -36,7 +36,7 @@ import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
 import com.parc.ccn.network.CCNNetworkManager;
 import com.parc.ccn.network.CCNSimpleNetworkManager;
 import com.parc.ccn.security.crypto.CCNMerkleTree;
-import com.parc.ccn.security.crypto.DigestHelper;
+import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.keys.KeyManager;
 
 /**
@@ -833,7 +833,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 						  baseFragment(), timestamp, publisher, locator, signingKey);
 		
 		// construct the headerBlockContents;
-		byte [] contentDigest = DigestHelper.digest(contents);
+		byte [] contentDigest = CCNDigestHelper.digest(contents);
 		return putHeader(name, contents.length, contentDigest, tree.root(),
 						 type, timestamp, publisher, locator, signingKey);
 	}

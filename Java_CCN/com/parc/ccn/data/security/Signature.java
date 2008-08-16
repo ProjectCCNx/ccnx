@@ -13,9 +13,9 @@ import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
-import com.parc.ccn.security.crypto.DigestHelper;
+import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.crypto.MerklePath;
-import com.parc.ccn.security.crypto.certificates.OIDLookup;
+import com.parc.security.crypto.certificates.OIDLookup;
 
 public class Signature extends GenericXMLEncodable implements XMLEncodable,
 		Comparable<Signature> {
@@ -56,7 +56,7 @@ public class Signature extends GenericXMLEncodable implements XMLEncodable,
 	
 	public String digestAlgorithm() {
 		if (null == _digestAlgorithm)
-			return DigestHelper.DEFAULT_DIGEST_ALGORITHM;
+			return CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM;
 		return _digestAlgorithm;
 	}
 	
@@ -88,7 +88,7 @@ public class Signature extends GenericXMLEncodable implements XMLEncodable,
 		
 		encoder.writeStartElement(SIGNATURE_ELEMENT);
 		
-		if ((null != digestAlgorithm()) && (!digestAlgorithm().equals(DigestHelper.DEFAULT_DIGEST_ALGORITHM))) {
+		if ((null != digestAlgorithm()) && (!digestAlgorithm().equals(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM))) {
 			encoder.writeElement(DIGEST_ALGORITHM_ELEMENT, OIDLookup.getDigestOID(digestAlgorithm()));
 		}
 		
@@ -115,9 +115,9 @@ public class Signature extends GenericXMLEncodable implements XMLEncodable,
 		int result = 0;
 		if (null == digestAlgorithm()) {
 			if (null != o.digestAlgorithm())
-				result = DigestHelper.DEFAULT_DIGEST_ALGORITHM.compareTo(o.digestAlgorithm());
+				result = CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM.compareTo(o.digestAlgorithm());
 		} else {
-			result = digestAlgorithm().compareTo((null == o.digestAlgorithm()) ? DigestHelper.DEFAULT_DIGEST_ALGORITHM : o.digestAlgorithm());
+			result = digestAlgorithm().compareTo((null == o.digestAlgorithm()) ? CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM : o.digestAlgorithm());
 		}
 		if (result == 0)
 			result = DataUtils.compare(witness(), o.witness());
@@ -146,11 +146,11 @@ public class Signature extends GenericXMLEncodable implements XMLEncodable,
 		Signature other = (Signature) obj;
 		if (null == digestAlgorithm()) {
 			if (null != other.digestAlgorithm())
-				if (!DigestHelper.DEFAULT_DIGEST_ALGORITHM.equals(other.digestAlgorithm()))
+				if (!CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM.equals(other.digestAlgorithm()))
 					return false;
 		} else {
 			if (!digestAlgorithm().equals((null == other.digestAlgorithm()) ? 
-							DigestHelper.DEFAULT_DIGEST_ALGORITHM : other.digestAlgorithm()))
+							CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM : other.digestAlgorithm()))
 				return false;
 		}
 		if (!Arrays.equals(_signature, other._signature))
@@ -164,7 +164,7 @@ public class Signature extends GenericXMLEncodable implements XMLEncodable,
 		if (null == witness())
 			return null;
 		
-		DigestInfo info = DigestHelper.digestDecoder(witness());
+		DigestInfo info = CCNDigestHelper.digestDecoder(witness());
 		
 		byte [] proxy = null;
 		

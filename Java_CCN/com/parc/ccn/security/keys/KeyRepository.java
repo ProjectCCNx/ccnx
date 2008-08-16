@@ -26,7 +26,7 @@ import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.network.CCNSimpleNetworkManager;
-import com.parc.ccn.security.crypto.certificates.CryptoUtil;
+import com.parc.security.crypto.certificates.CryptoUtil;
 
 public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	

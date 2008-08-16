@@ -84,7 +84,7 @@ public class CCNMerkleTree extends MerkleTree {
 			int blockOffset,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
 		// Allocate node array
-		super(DigestHelper.DEFAULT_DIGEST_ALGORITHM, blockCount);
+		super(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, blockCount);
 		
 		// Initialize fields we need for building tree.
 		_baseName = baseName;
@@ -122,7 +122,7 @@ public class CCNMerkleTree extends MerkleTree {
 			int baseBlockIndex, 
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
 		// Computes leaves and tree.
-		super(DigestHelper.DEFAULT_DIGEST_ALGORITHM, contentBlocks, isDigest, blockCount, baseBlockIndex);
+		super(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, contentBlocks, isDigest, blockCount, baseBlockIndex);
 		
 		_blockNames = nodeNames;
 		_authenticator = authenticator;
@@ -196,7 +196,7 @@ public class CCNMerkleTree extends MerkleTree {
 		// Right now, this will digest again. It's actually quite hard to get at the raw
 		// signature guts for various platforms to avoid re-digesting; too dependent on
 		// the sig alg used.
-		return SignatureHelper.sign(null, root, signingKey);
+		return CCNSignatureHelper.sign(null, root, signingKey);
 	}
 	
 	/**
@@ -216,8 +216,8 @@ public class CCNMerkleTree extends MerkleTree {
 		
 		byte[] blockDigest = null;
 		try {
-			blockDigest = DigestHelper.digest(
-									DigestHelper.DEFAULT_DIGEST_ALGORITHM, 
+			blockDigest = CCNDigestHelper.digest(
+									CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, 
 									ContentObject.prepareContent(blockName(leafIndex), blockAuthenticator(leafIndex),
 																	contentBlocks[leafIndex + blockOffset]));
 		} catch (XMLStreamException e) {

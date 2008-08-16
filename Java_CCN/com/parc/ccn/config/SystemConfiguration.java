@@ -13,7 +13,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.util.BinaryXMLCodec;
 import com.parc.ccn.data.util.XMLEncodable;
-import com.parc.ccn.security.crypto.DigestHelper;
+import com.parc.ccn.security.crypto.CCNDigestHelper;
 
 public class SystemConfiguration {
 	
@@ -166,7 +166,7 @@ public class SystemConfiguration {
 				}
 			}
 			
-			byte [] contentDigest = DigestHelper.digest(data);
+			byte [] contentDigest = CCNDigestHelper.digest(data);
 			String contentName = new BigInteger(1, contentDigest).toString(DEBUG_RADIX);
 			File outputFile = new File(outputParent, contentName);
 			
@@ -186,9 +186,9 @@ public class SystemConfiguration {
 	
 	public static void logObject(Level level, String message, ContentObject co) {
 		try {
-			byte [] coDigest = DigestHelper.digest(co.encode());
-			byte [] tbsDigest = DigestHelper.digest(ContentObject.prepareContent(co.name(), co.authenticator(), co.content()));
-			Library.logger().log(level, message + " name: " + co.name() +  " timestamp: " + co.authenticator().timestamp() + " digest: " + DigestHelper.printBytes(coDigest, DEBUG_RADIX) + " tbs: " + DigestHelper.printBytes(tbsDigest, DEBUG_RADIX));
+			byte [] coDigest = CCNDigestHelper.digest(co.encode());
+			byte [] tbsDigest = CCNDigestHelper.digest(ContentObject.prepareContent(co.name(), co.authenticator(), co.content()));
+			Library.logger().log(level, message + " name: " + co.name() +  " timestamp: " + co.authenticator().timestamp() + " digest: " + CCNDigestHelper.printBytes(coDigest, DEBUG_RADIX) + " tbs: " + CCNDigestHelper.printBytes(tbsDigest, DEBUG_RADIX));
 		} catch (XMLStreamException xs) {
 			Library.logger().log(level, "Cannot encode object for logging: " + co.name());
 		}
