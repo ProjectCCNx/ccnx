@@ -221,9 +221,18 @@ public class CCNSimpleNetworkManager implements Runnable {
 			return result;
 		}
 		
+		/**
+		 * Always return false for now, to deal with interest updating in 
+		 * callbacks. There are no standing interests anymore, only
+		 * unfulfilled interests which respond to data by calling a
+		 * listener.
+		 * @return
+		 */
 		public synchronized boolean isStanding() {
 			if (null != this.listener) {
-				return true;
+				// DKS dynamic interests
+				//return true;
+				return false;
 			} else {
 				return false;
 			}
@@ -261,10 +270,22 @@ public class CCNSimpleNetworkManager implements Runnable {
 						// it's final now to avoid contention, but need to change it or change
 						// the registration.
 						Interest updatedInterest = listener.handleContent(results);
-						if ((null != updatedInterest) && (!this.interest.equals(updatedInterest))) {
-						//	this.interest = updatedInterest; // final, if we want to change it, have to play around
-							Library.logger().finer("Interest callback: updated interest to express: " + updatedInterest.name());
+						
+						synchronized (this) {
+							// DKS -- dynamic interests, unregister the interest here and express new one if we have one
+							// previous interest is final, can't update it
+							this.deliveryPending = false;
+						   _networkManager.unregisterInterest(this);
 						}
+						
+						if ((null != updatedInterest) && (!this.interest.equals(updatedInterest))) {
+							Library.logger().finer("Interest callback: updated interest to express: " + updatedInterest.name());
+							// luckily we saved the listener
+							// if we want to cancel this one before we get any data, we need to remember the
+							// updated interest in the listener
+							_networkManager.expressInterest(this.owner, updatedInterest, listener);
+						}
+					
 					} else {
 						Library.logger().finer("Interest callback skipped (no data) for: " + this.interest.name());
 					}
@@ -378,6 +399,37 @@ public class CCNSimpleNetworkManager implements Runnable {
 			} // else already invalidated, buffer may be no good, nothing to do
 			Library.logger().finest("copyTo: ireg " + ((Object)ireg).toString() + " data size: " + ireg.data.size());
 		}
+		/** Create a single special piece of content that we can send 
+		 *  to the network to make the local agent aware of our presence 
+		 *  and the ephemeral UDP port to which we are listening.
+		 *  This method is an experiment that may never be used.
+		 * @throws IOException
+		 */
+		private void createKeepalive() throws IOException {
+			try {
+				// name
+				ContentName keepname = new ContentName(KEEPALIVE_NAME);
+				// contents = current date value
+				ByteBuffer bb = ByteBuffer.allocate(Long.SIZE/Byte.SIZE);
+				bb.putLong(new Date().getTime());
+				byte[] contents = bb.array();
+				// security bits
+				PrivateKey signingKey = _keyManager.getDefaultSigningKey();
+				KeyLocator locator = _keyManager.getKeyLocator(signingKey);
+				PublisherKeyID publisher =  _keyManager.getDefaultKeyID();
+				
+				_keepalive = new ContentObject(keepname, new ContentAuthenticator(publisher, ContentType.LEAF, locator),
+																				  contents, signingKey);
+			} catch (InvalidKeyException e) {
+				throw new IOException("CCNNetworkManager: bad default signing key: " + e.getMessage());
+			} catch (MalformedContentNameStringException e) {
+				throw new RuntimeException("CCNNetworkManager internal fault: malformed keep alive name");
+			} catch (SignatureException e) {
+				throw new IOException("CCNNetworkManager: signature failure: " + e.getMessage());
+			} catch (NullPointerException e) {
+				throw new RuntimeException("CCNNetworkManager: publisher;/keys not initialized properly");
+			}
+		}
 	}
 	
 	public static CCNSimpleNetworkManager getNetworkManager() { 
@@ -437,38 +489,6 @@ public class CCNSimpleNetworkManager implements Runnable {
 	public void setTap(String pathname) throws IOException {
 		_tapStreamOut = new FileOutputStream(new File(pathname + "_out"));
 		_tapStreamIn = new FileOutputStream(new File(pathname + "_in"));
-	}
-	
-	/** Create a single special piece of content that we can send 
-	 *  to the network to make the local agent aware of our presence 
-	 *  and the ephemeral UDP port to which we are listening.
-	 *  This method is an experiment that may never be used.
-	 * @throws IOException
-	 */
-	private void createKeepalive() throws IOException {
-		try {
-			// name
-			ContentName keepname = new ContentName(KEEPALIVE_NAME);
-			// contents = current date value
-			ByteBuffer bb = ByteBuffer.allocate(Long.SIZE/Byte.SIZE);
-			bb.putLong(new Date().getTime());
-			byte[] contents = bb.array();
-			// security bits
-			PrivateKey signingKey = _keyManager.getDefaultSigningKey();
-			KeyLocator locator = _keyManager.getKeyLocator(signingKey);
-			PublisherKeyID publisher =  _keyManager.getDefaultKeyID();
-			
-			_keepalive = new ContentObject(keepname, new ContentAuthenticator(publisher, ContentType.LEAF, locator),
-																			  contents, signingKey);
-		} catch (InvalidKeyException e) {
-			throw new IOException("CCNNetworkManager: bad default signing key: " + e.getMessage());
-		} catch (MalformedContentNameStringException e) {
-			throw new RuntimeException("CCNNetworkManager internal fault: malformed keep alive name");
-		} catch (SignatureException e) {
-			throw new IOException("CCNNetworkManager: signature failure: " + e.getMessage());
-		} catch (NullPointerException e) {
-			throw new RuntimeException("CCNNetworkManager: publisher;/keys not initialized properly");
-		}
 	}
 	
 	public CompleteName put(Object caller, ContentName name, ContentAuthenticator authenticator, 
@@ -823,10 +843,8 @@ public class CCNSimpleNetworkManager implements Runnable {
 					dreg.copyTo(ireg); // this is a copy of the data
 					_threadpool.execute(ireg);
 					if (ireg.isStanding() && dreg.isFromNet()) {
-						// we need to re-express the standing interest, however,
-						// the data processing may have changed the interest specification.
-						// at very least, it should have arranged for us not to get the
-						// exact same data as before
+						// we need to re-express the standing interest
+						// DKS dynamic interests -- nothing is standing anymore
 						write(ireg.interest);
 					}
 					consumer = true;
