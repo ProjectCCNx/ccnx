@@ -217,7 +217,7 @@ ccnd_msg(struct ccnd *h, const char *fmt, ...)
     struct timeval t;
     va_list ap;
     struct ccn_charbuf *b;
-    if (h->debug == 0)
+    if (h != NULL && h->debug == 0)
         return;
     b = ccn_charbuf_create();
     gettimeofday(&t, NULL);

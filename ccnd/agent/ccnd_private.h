@@ -154,7 +154,7 @@ struct propagating_entry {
     struct propagating_entry *prev;
     unsigned char *interest_msg;
     size_t size;
-    unsigned faceid;
+    unsigned faceid;            /* origin of the interest, dest for matches */
     struct ccn_indexbuf *outbound;
 };
 

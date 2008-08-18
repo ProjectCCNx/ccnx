@@ -935,7 +935,7 @@ do_propagate(
     if (pe->outbound == NULL) {
         /* this is presumably an interest timeout */
         if (h->debug & 2)
-            ccnd_debug_ccnb(h, __LINE__, "interest_timeout",
+            ccnd_debug_ccnb(h, __LINE__, "interest_expiry",
                             face_from_faceid(h, pe->faceid),
                             pe->interest_msg, pe->size);
         consume(pe);
@@ -963,6 +963,36 @@ do_propagate(
 }
 
 static int
+already_interested(struct ccnd *h, struct face *face,
+                      unsigned char *msg,
+                      struct ccn_parsed_interest *pi,
+                      struct interestprefix_entry *ipe)
+{
+    struct propagating_entry *head = ipe->propagating_head;
+    struct propagating_entry *p;
+    size_t presize = pi->offset[CCN_PI_B_Nonce];
+    size_t postsize = pi->offset[CCN_PI_E] - pi->offset[CCN_PI_E_Nonce];
+    size_t minsize = presize + postsize;
+    unsigned char *post = msg + pi->offset[CCN_PI_E_Nonce];
+    if (head != NULL) {
+        for (p = head->next; p != head; p = p->next) {
+            if (p->size > minsize &&
+                p->interest_msg != NULL &&
+                p->outbound != NULL &&
+                0 == memcmp(msg, p->interest_msg, presize) &&
+                0 == memcmp(post, p->interest_msg + p->size - postsize, postsize)) {
+                /* Matches everything but the Nonce */
+                // XXX - Count will come into play when implemented
+                // XXX - Should check p's age and return 0 if it has been too long
+                // XXX - If we had actual forwarding tables, would need to take that into account since the outbound set could differ in non-trivial ways
+                return(1);
+            }
+        }
+    }
+    return(0);
+}
+
+static int
 propagate_interest(struct ccnd *h, struct face *face,
                       unsigned char *msg, size_t msg_size,
                       struct ccn_parsed_interest *pi,
@@ -979,6 +1009,9 @@ propagate_interest(struct ccnd *h, struct face *face,
     size_t msg_out_size = msg_size;
     struct ccn_indexbuf *outbound = get_outbound_faces(h, face, msg, pi);
     int usec;
+    if (already_interested(h, face, msg, pi, ipe)) {
+        outbound->n = 0;
+    }
     if (outbound->n == 0)
         ccn_indexbuf_destroy(&outbound);
     if (pi->offset[CCN_PI_B_Nonce] == pi->offset[CCN_PI_E_Nonce]) {
@@ -1032,7 +1065,7 @@ propagate_interest(struct ccnd *h, struct face *face,
                 usec = CCN_INTEREST_HALFLIFE_MICROSEC;
             else
                 usec = nrand48(h->seed) % 8192;
-            ccn_schedule_event(h->sched, nrand48(h->seed) % 8192, do_propagate, pe, 0);
+            ccn_schedule_event(h->sched, usec, do_propagate, pe, 0);
         }
     }
     else if (res == HT_OLD_ENTRY) {
