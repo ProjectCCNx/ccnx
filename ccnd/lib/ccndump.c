@@ -104,7 +104,7 @@ main(int argc, char **argv)
     ccn_express_interest(ccn, c, -1, &incoming_content_action, templ);
     ccn_charbuf_destroy(&templ);
     ccn_charbuf_destroy(&c);
-    for (i = 0; i < 1000; i++) {
+    for (i = 0;; i++) {
         ccn_run(ccn, 100); /* stop if we run dry for 1/10 sec */
         fflush(stdout);
         if (incoming_content_action.data == NULL)
