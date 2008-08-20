@@ -237,10 +237,27 @@ ccnd_debug_ccnb(struct ccnd *h,
                 size_t ccnb_size)
 {
     struct ccn_charbuf *c = ccn_charbuf_create();
+    struct ccn_parsed_interest pi;
+    const unsigned char *nonce = NULL;
+    size_t nonce_size = 0;
+    size_t i;
     ccn_charbuf_putf(c, "debug.%d %s ", lineno, msg);
     if (face != NULL)
         ccn_charbuf_putf(c, "%u ", face->faceid);
     ccn_uri_append(c, ccnb, ccnb_size, 1);
+    ccn_charbuf_putf(c, " (%u bytes)", (unsigned)ccnb_size);
+    if (ccn_parse_interest(ccnb, ccnb_size, &pi, NULL) >= 0) {
+        ccn_ref_tagged_BLOB(CCN_DTAG_Nonce, ccnb,
+                  pi.offset[CCN_PI_B_Nonce],
+                  pi.offset[CCN_PI_E_Nonce],
+                  &nonce,
+                  &nonce_size);
+        if (nonce_size > 0) {
+            ccn_charbuf_putf(c, " ");
+            for (i = 0; i < nonce_size; i++)
+                ccn_charbuf_putf(c, "%02X", nonce[i]);
+        }
+    }
     ccnd_msg(h, "%s", ccn_charbuf_as_string(c));
     ccn_charbuf_destroy(&c);
 }
