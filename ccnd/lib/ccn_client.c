@@ -337,6 +337,10 @@ ccn_construct_interest(struct ccn *h,
             start = pi.offset[CCN_PI_E_NameComponentCount];
             size = pi.offset[CCN_PI_E_Count] - start;
             ccn_charbuf_append(c, interest_template->buf + start, size);
+            start = pi.offset[CCN_PI_B_OTHER];
+            size = pi.offset[CCN_PI_E_OTHER] - start;
+            if (size != 0)
+                ccn_charbuf_append(c, interest_template->buf + start, size);
         }
         else
             NOTE_ERR(h, EINVAL);
@@ -702,6 +706,7 @@ ccn_age_interest(struct ccn *h,
     if (interest->target > 0 && interest->outstanding == 0) {
         res = CCN_UPCALL_RESULT_REEXPRESS;
         if (!firstcall) {
+            info.interest_ccnb = interest->interest_msg;
             info.interest_comps = ccn_indexbuf_obtain(h);
             res = ccn_parse_interest(interest->interest_msg,
                                      interest->size,
