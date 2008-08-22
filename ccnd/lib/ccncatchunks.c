@@ -163,7 +163,7 @@ incoming_content(
     fwrite(data, data_size, 1, stdout);
     
     /* A short block signals EOF for us. */
-    if (ccnb_size < CHUNK_SIZE)
+    if (data_size < CHUNK_SIZE)
         exit(0);
     
     /* Ask for the next one */
