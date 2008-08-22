@@ -175,7 +175,9 @@ int
 ccn_bloom_wiresize(struct ccn_bloom *b)
 {
     // XXX - in principle, this could fold the filter if it is excessively large
-    struct ccn_bloom_wire *f = b->wire;
+    const struct ccn_bloom_wire *f = (b->wire);
+    if (f == NULL)
+        return(-1);
     return((sizeof(*f) - sizeof(f->bloom)) + (1 << (f->lg_bits - 3)));
 }
 
@@ -183,7 +185,8 @@ int
 ccn_bloom_store_wire(struct ccn_bloom *b, unsigned char *dest, size_t destsize)
 {
     // XXX - in principle, this could fold the filter if it is excessively large
-    if (destsize != ccn_bloom_wiresize(b))
+    int wiresize = ccn_bloom_wiresize(b);
+    if (wiresize < 0 || destsize != wiresize)
         return(-1);
     memcpy(dest, b->wire, destsize);
     return(0);
