@@ -47,7 +47,7 @@ ccn_bloom_validate_wire(const void *buf, size_t size)
         return (NULL);
     if (f->lg_bits > 13 || f->lg_bits < 3)
         return (NULL);
-    if (f->n_hash < 1 || f->n_hash > 16)
+    if (f->n_hash < 1 || f->n_hash > 32)
         return (NULL);
     if (size != (sizeof(*f) - sizeof(f->bloom)) + (1 << (f->lg_bits - 3)))
         return (NULL);
