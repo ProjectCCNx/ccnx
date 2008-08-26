@@ -547,7 +547,7 @@ send_content(struct ccnd *h, struct face *face, struct content_entry *content)
     charbuf_release(h, c);
 }
 
-#define CCN_DATA_PAUSE (16U*1024U)
+#define CCN_DATA_PAUSE (8U*1024U)
 
 static int
 choose_content_delay(struct ccnd *h, unsigned faceid, int content_flags)
@@ -1348,7 +1348,8 @@ Bail:
     if (res >= 0 && content != NULL) {
         int n_matches;
         n_matches = match_interests(h, content, &obj, NULL);
-        if (res == HT_NEW_ENTRY && n_matches == 0)
+        if (res == HT_NEW_ENTRY && n_matches == 0 &&
+              (face->flags && CCN_FACE_LINK) != 0)
             content->flags |= CCN_CONTENT_ENTRY_SLOWSEND;
         i = indexbuf_member(face->send_queue, content->accession);
         if (i >= 0) {
