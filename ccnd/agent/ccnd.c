@@ -1305,7 +1305,7 @@ process_incoming_content(struct ccnd *h, struct face *face,
     content = e->data;
     if (res == HT_OLD_ENTRY) {
         if (tailsize != e->extsize ||
-              0 != memcmp(tail, e->key + keysize, tailsize)) {
+              0 != memcmp(tail, ((unsigned char *)e->key) + keysize, tailsize)) {
             ccnd_msg(h, "ContentObject name collision!!!!!");
             ccnd_debug_ccnb(h, __LINE__, "new", face, msg, size);
             ccnd_debug_ccnb(h, __LINE__, "old", NULL, e->key, e->keysize + e->extsize);

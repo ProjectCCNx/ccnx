@@ -55,7 +55,7 @@ incoming_interest(
 }
 
 ssize_t
-read_full(int fd, void *buf, size_t size)
+read_full(int fd, unsigned char *buf, size_t size)
 {
     size_t i;
     ssize_t res = 0;
