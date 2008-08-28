@@ -175,7 +175,6 @@
 
    <target name="test-puttap" depends="jar">
        <mkdir dir="${testout}"/>
-       <!-- skip text puttap test
        <echo message="Running puttap tests"/>
        <java classname="com.parc.ccn.apps.puttap" classpathref="classpath-run" failonerror="true" output="${testout}/TEST-com.parc.cc.apps.puttap0.txt" fork="true">
            <arg value="0"/>
@@ -185,7 +184,6 @@
            <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
            <jvmarg line="${DEBUG_OPTIONS}"/>
        </java>
-       -->
        <echo message="Running binary puttap tests"/>
        <java classname="com.parc.ccn.apps.puttap" classpathref="classpath-run" failonerror="true" output="${testout}/TEST-com.parc.cc.apps.puttap1.txt" fork="true">
            <arg value="1"/>
