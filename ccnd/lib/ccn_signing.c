@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <string.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 #include <ccn/merklepathasn1.h>
@@ -78,56 +79,71 @@ int ccn_merkle_root_hash(const unsigned char *msg, size_t size,
                          struct ccn_parsed_ContentObject *co,
                          const EVP_MD *digest_type,
                          MP_info *merkle_path_info,
-                         unsigned char *result, size_t result_size)
+                         unsigned char *result, int result_size)
 {
     int node = ASN1_INTEGER_get(merkle_path_info->node);
     EVP_MD_CTX digest_context;
     EVP_MD_CTX *digest_contextp = &digest_context;
     size_t data_size;
-    unsigned char *digest_result;
-    unsigned int digest_result_size;
+    unsigned char *input_hash[2];
     //int hash_count = merkle_path_info->hashes->num;
-    //int hash_index = 0;
+    int hash_index = merkle_path_info->hashes->num - 1;
     //ASN1_OCTET_STRING *sibling_hash;
     int res;
     
-    /* TODO:
-     * walk up the Merkle path, adding left before right into the digest.
-     * and return the digest (root hash) to the caller.
-     * What gets hashed for a fragment is exactly what would be hashed
-     * for a simple signature.
-     */
+    if (result_size != EVP_MD_size(digest_type))
+        return -1;
+
     /*
      * This is the calculation for the node we're starting from
-     *   The digest type for the leaf node we'll take from the MHT OID
      *
-     * EVP_MD_CTX_init(context);
-     * EVP_DigestInit_ex(context, digesttype, NULL);
-     * size_t data_size = co->offset[CCN_PCO_E_Content] - co->offset[CCN_PCO_B_Name];
-     * res = EVP_DigestUpdate(context, msg + co->offset[CCN_PCO_B_Name], data_size);
-     * res = EVP_DigestFinal_ex(context, &digestresult, &size);
+     * The digest type for the leaf node we'll take from the MHT OID
      * We can assume that, since we're using the same digest function, the
-     * result size will always be the same
+     * result size will always be the same.
      */
+
     EVP_MD_CTX_init(digest_contextp);
     EVP_DigestInit_ex(digest_contextp, digest_type, NULL);
     data_size = co->offset[CCN_PCO_E_Content] - co->offset[CCN_PCO_B_Name];
     res = EVP_DigestUpdate(digest_contextp, msg + co->offset[CCN_PCO_B_Name], data_size);
-    digest_result = calloc(1, EVP_MD_size(digest_type));
-    res = EVP_DigestFinal_ex(digest_contextp, digest_result, &digest_result_size);
+    res = EVP_DigestFinal_ex(digest_contextp, result, NULL);
 
+    /* input_hash[0, 1] = address of hash for (left,right) node of parent
+     */
     while (node != 1) {
-        /*
-         * inhashp[node & 1] = &digestresult;
-         * inhashp[(node & 1) ^ 1] = (some function of...) (ASN1_OCTET_STRING *)merkle_path_info->hashes->data[hash_index++];
-         * check that the size of the merkle path hash is the same as the digest size...
-         * ... set up context, init, EVP_DigestUpdate(context, inhashp[0], size), EVP_DigestUpdate(context, inhashp[1], size)
-         * EVP_DigestFinal_ex(context, &digestresult, NULL);
-         * node = parent_of(node);
-         */
+        input_hash[node & 1] = result;
+        input_hash[(node & 1) ^ 1] = ((ASN1_OCTET_STRING *)merkle_path_info->hashes->data[hash_index])->data;
+        if (((ASN1_OCTET_STRING *)merkle_path_info->hashes->data[hash_index])->length != result_size)
+            return (-1);
+        hash_index -= 1;
+#ifdef DEBUG
+        fprintf(stderr, "node[%d].lefthash = ", parent_of(node));
+        for (int x = 0; x < result_size; x++) {
+            fprintf(stderr, "%02x", input_hash[0][x]);
+        }
+        fprintf(stderr, "\n");
+   
+        fprintf(stderr, "node[%d].righthash = ", parent_of(node));
+        for (int x = 0; x < result_size; x++) {
+            fprintf(stderr, "%02x", input_hash[1][x]);
+        }
+        fprintf(stderr, "\n");
+#endif
+        EVP_MD_CTX_init(digest_contextp);
+        EVP_DigestInit_ex(digest_contextp, digest_type, NULL);
+        res = EVP_DigestUpdate(digest_contextp, input_hash[0], result_size);
+        res = EVP_DigestUpdate(digest_contextp, input_hash[1], result_size);
+        res = EVP_DigestFinal_ex(digest_contextp, result, NULL);
         node = parent_of(node);
+   
+#ifdef DEBUG
+        fprintf(stderr, "yielding node[%d] hash = ", node);
+        for (int x = 0; x < result_size; x++) {
+            fprintf(stderr, "%02x", result[x]);
+        }
+        fprintf(stderr, "\n");
+#endif
     }
-    /* the root hash will be in the digestresult at this point */
     return (0);
 }
 
@@ -140,6 +156,8 @@ int ccn_verify_signature(const unsigned char *msg,
     EVP_MD_CTX *ver_ctx = &verc;
     X509_SIG *digest_info = NULL;
     MP_info *merkle_path_info = NULL;
+    unsigned char *root_hash;
+    size_t root_hash_size;
 
     int res;
 
@@ -150,7 +168,9 @@ int ccn_verify_signature(const unsigned char *msg,
     size_t signature_bits_size = 0;
     const unsigned char *witness = NULL;
     size_t witness_size = 0;
-    int h, x;
+#ifdef DEBUG
+    int x, h;
+#endif
 
     res = ccn_ref_tagged_BLOB(CCN_DTAG_SignatureBits, msg,
                               co->offset[CCN_PCO_B_SignatureBits],
@@ -204,7 +224,7 @@ int ccn_verify_signature(const unsigned char *msg,
         merkle_path_digest = EVP_sha256();
         /* DER-encoded in the digest_info's digest ASN.1 octet string is the Merkle path info */
         merkle_path_info = d2i_MP_info(NULL, (const unsigned char **)&(digest_info->digest->data), digest_info->digest->length);
-        /* XXX: debugging */
+#ifdef DEBUG
         int node = ASN1_INTEGER_get(merkle_path_info->node);
         int hash_count = merkle_path_info->hashes->num;
         ASN1_OCTET_STRING *hash;
@@ -218,10 +238,14 @@ int ccn_verify_signature(const unsigned char *msg,
             }
             fprintf(stderr, "\n");
         }
-        res = ccn_merkle_root_hash(msg, size, co, merkle_path_digest, merkle_path_info, /*result*/NULL, /*size*/0);
-        /* XXX: end debugging */
+#endif
         /* In the MHT signature case, we signed/verify the root hash */
-        return (-1);
+        root_hash_size = EVP_MD_size(merkle_path_digest);
+        root_hash = calloc(1, root_hash_size);
+        res = ccn_merkle_root_hash(msg, size, co, merkle_path_digest, merkle_path_info, root_hash, root_hash_size);
+        res = EVP_VerifyUpdate(ver_ctx, root_hash, root_hash_size);
+        res = EVP_VerifyFinal(ver_ctx, signature_bits, signature_bits_size, (EVP_PKEY *)verification_pubkey);
+        EVP_MD_CTX_cleanup(ver_ctx);
     } else {
         /*
          * In the simple signature case, we signed/verify from the name through
