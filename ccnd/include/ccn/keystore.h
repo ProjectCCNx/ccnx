@@ -13,7 +13,7 @@
 
 struct ccn_keystore;
 
-struct ccn_keystore *ccn_keystore_create();
+struct ccn_keystore *ccn_keystore_create(void);
 void ccn_keystore_destroy(struct ccn_keystore **p);
 int ccn_keystore_init(struct ccn_keystore *p, char *name, char *password);
 const void *ccn_keystore_private_key(struct ccn_keystore *p);
