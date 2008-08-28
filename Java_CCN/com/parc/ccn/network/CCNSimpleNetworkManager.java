@@ -67,7 +67,6 @@ public class CCNSimpleNetworkManager implements Runnable {
 	/**
 	 * Static singleton.
 	 */
-	protected static CCNSimpleNetworkManager _networkManager = null;
 	
 	protected Thread _thread = null; // the main processing thread
 	protected ExecutorService _threadpool = null; // pool service for callback threads
@@ -95,6 +94,7 @@ public class CCNSimpleNetworkManager implements Runnable {
 	// yet avoid delivery to a cancelled listener.
 	protected abstract class ListenerRegistration implements Runnable {
 		protected Object listener;
+		protected CCNSimpleNetworkManager manager;
 		public Semaphore sema = null;
 		public Object owner = null;
 		protected boolean deliveryPending = false;
@@ -190,7 +190,8 @@ public class CCNSimpleNetworkManager implements Runnable {
 		public Date lastRefresh;
 		
 		// All internal client interests must have an owner
-		public InterestRegistration(Interest i, CCNInterestListener l, Object owner) {
+		public InterestRegistration(CCNSimpleNetworkManager mgr, Interest i, CCNInterestListener l, Object owner) {
+			manager = mgr;
 			interest = i; 
 			listener = l;
 			this.owner = owner;
@@ -275,7 +276,7 @@ public class CCNSimpleNetworkManager implements Runnable {
 							// DKS -- dynamic interests, unregister the interest here and express new one if we have one
 							// previous interest is final, can't update it
 							this.deliveryPending = false;
-						   _networkManager.unregisterInterest(this);
+						    manager.unregisterInterest(this);
 						}
 						
 						if ((null != updatedInterest) && (!this.interest.equals(updatedInterest))) {
@@ -283,7 +284,7 @@ public class CCNSimpleNetworkManager implements Runnable {
 							// luckily we saved the listener
 							// if we want to cancel this one before we get any data, we need to remember the
 							// updated interest in the listener
-							_networkManager.expressInterest(this.owner, updatedInterest, listener);
+							manager.expressInterest(this.owner, updatedInterest, listener);
 						}
 					
 					} else {
@@ -317,8 +318,9 @@ public class CCNSimpleNetworkManager implements Runnable {
 		public ContentName name;
 		protected boolean deliveryPending = false;
 		protected ArrayList<Interest> interests= new ArrayList<Interest>(1);
-		public Filter(ContentName n, CCNFilterListener l, Object o) {
+		public Filter(CCNSimpleNetworkManager mgr, ContentName n, CCNFilterListener l, Object o) {
 			name = n; listener = l; owner = o;
+			manager = mgr;
 		}
 		public synchronized void add(Interest i) {
 			interests.add(i);
@@ -432,25 +434,11 @@ public class CCNSimpleNetworkManager implements Runnable {
 		}
 	}
 	
-	public static CCNSimpleNetworkManager getNetworkManager() { 
-		if (null != _networkManager) 
-			return _networkManager;
-		try {
-			Library.logger().warning("getNetworkManager calling createNetworkManager");
-			return createNetworkManager();
-		} catch (IOException io) {
-			throw new RuntimeException(io);
-		}
-	}
-	
-	protected static synchronized CCNSimpleNetworkManager 
-				createNetworkManager() throws IOException {
-		if (null == _networkManager) {
-			Library.logger().warning("new CCNSimpleNetworkManager");
-			_networkManager = new CCNSimpleNetworkManager();
-		}
-		return _networkManager;
-	}
+	/***************************************************************
+	 * NOTE: former statics getNetworkManager(), createNetworkManager()
+	 * are no longer appropriate given that there are multiple instances
+	 * of a network manager (one per library instance)
+	 ***************************************************************/
 	
 	public CCNSimpleNetworkManager() throws IOException {
 		// Determine port at which to contact agent
@@ -521,7 +509,7 @@ public class CCNSimpleNetworkManager implements Runnable {
 				// DKS TODO we don't actually "know" about the extra name component,
 				// except sometimes... how do we do match?
 		}
-		InterestRegistration reg = new InterestRegistration(interest, null, caller);
+		InterestRegistration reg = new InterestRegistration(this, interest, null, caller);
 		// Add to internal processing queue
 		synchronized (_newInterests) {
 			_newInterests.add(reg);
@@ -556,7 +544,7 @@ public class CCNSimpleNetworkManager implements Runnable {
 		}		
 	
 		Library.logger().fine("expressInterest: " + interest.name());
-		InterestRegistration reg = new InterestRegistration(interest, callbackListener, caller);
+		InterestRegistration reg = new InterestRegistration(this, interest, callbackListener, caller);
 		// Add to internal processing queue
 		// We leave actual registration to the processing thread so that 
 		// concurrency problems like double-delivery can be avoided
@@ -588,7 +576,7 @@ public class CCNSimpleNetworkManager implements Runnable {
 	public void setInterestFilter(Object caller, ContentName filter, CCNFilterListener callbackListener) {
 		Library.logger().fine("setInterestFilter: " + filter);
 		synchronized (_myFilters) {
-			_myFilters.add(filter, new Filter(filter, callbackListener, caller));
+			_myFilters.add(filter, new Filter(this, filter, callbackListener, caller));
 		}
 	}
 	
@@ -598,7 +586,7 @@ public class CCNSimpleNetworkManager implements Runnable {
 	public void cancelInterestFilter(Object caller, ContentName filter, CCNFilterListener callbackListener) {
 		Library.logger().fine("cancelInterestFilter: " + filter);
 		synchronized (_myFilters) {
-			Entry<Filter> found = _myFilters.remove(filter, new Filter(filter, callbackListener, caller));
+			Entry<Filter> found = _myFilters.remove(filter, new Filter(this, filter, callbackListener, caller));
 			if (null != found) {
 				found.value().invalidate();
 			}
@@ -665,7 +653,7 @@ public class CCNSimpleNetworkManager implements Runnable {
 	// external version: for use when we only have interest from client.  For all internal
 	// purposes we should unregister the InterestRegistration we already have
 	void unregisterInterest(Object caller, Interest interest, CCNInterestListener callbackListener) {
-		InterestRegistration reg = new InterestRegistration(interest, callbackListener, caller);
+		InterestRegistration reg = new InterestRegistration(this, interest, callbackListener, caller);
 		unregisterInterest(reg);
 	}
 	
@@ -783,7 +771,7 @@ public class CCNSimpleNetworkManager implements Runnable {
 				//--------------------------------- Process interests from net (if any)
 				for (Interest interest : packet.interests()) {
 					Library.logger().fine("Interest from net: " + interest.name());
-					InterestRegistration oInterest = new InterestRegistration(interest, null, null);
+					InterestRegistration oInterest = new InterestRegistration(this, interest, null, null);
 					deliverInterest(oInterest);
 					// External interests never go back to network
 				} // for interests

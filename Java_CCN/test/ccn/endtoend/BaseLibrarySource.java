@@ -25,13 +25,17 @@ import com.parc.ccn.library.StandardCCNLibrary;
 
 public class BaseLibrarySource implements CCNFilterListener {
 	public static int count = 43;
-	protected CCNLibrary library = StandardCCNLibrary.open();
+	protected CCNLibrary library = null;
 	ContentName name = null;
 	int next = 0;
 	protected static Throwable error = null; // for errors in callback
 	Semaphore sema = new Semaphore(0);
 	static Random rand;
 
+	public BaseLibrarySource() throws Throwable {
+		library = StandardCCNLibrary.open();
+	}
+	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing

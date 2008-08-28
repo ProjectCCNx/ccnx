@@ -129,7 +129,7 @@ public class JackrabbitCCNRepositoryTest {
 			
 			Library.logger().info("Getting local repository.");
 			repo = JackrabbitCCNRepository.getLocalJackrabbitRepository();
-			library = new StandardCCNLibrary();
+			library = StandardCCNLibrary.open();
 						
 		} catch (Exception ex) {
 			XMLEncodableTester.handleException(ex);

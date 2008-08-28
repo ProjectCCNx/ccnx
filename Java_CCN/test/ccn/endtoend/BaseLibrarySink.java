@@ -21,11 +21,15 @@ import com.parc.ccn.library.StandardCCNLibrary;
 // NOTE: This test requires ccnd to be running and complementary source process
 
 public class BaseLibrarySink implements CCNInterestListener {
-	CCNLibrary library = StandardCCNLibrary.open();
+	CCNLibrary library = null;
 	Semaphore sema = new Semaphore(0);
 	int next = 0;
 	protected static Throwable error = null; // for errors in callback
 
+	public BaseLibrarySink() throws Throwable {
+		library = StandardCCNLibrary.open();
+	}
+	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 	

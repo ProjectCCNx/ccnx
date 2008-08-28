@@ -78,16 +78,16 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 */
 	protected CCNSimpleNetworkManager _networkManager = null;
 	
-	public static StandardCCNLibrary open() { 
+	public static StandardCCNLibrary open() throws ConfigurationException, IOException { 
 		synchronized (StandardCCNLibrary.class) {
 			try {
 				return new StandardCCNLibrary();
 			} catch (ConfigurationException e) {
 				Library.logger().severe("Configuration exception initializing CCN library: " + e.getMessage());
-				throw new RuntimeException("Configuration exception initializing CCN library: " + e.getMessage(), e);
+				throw e;
 			} catch (IOException e) {
 				Library.logger().severe("IO exception initializing CCN library: " + e.getMessage());
-				throw new RuntimeException("IO exception initializing CCN library: " + e.getMessage(), e);
+				throw e;
 			}
 
 		}
@@ -117,7 +117,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 		return _library;
 	}
 
-	public StandardCCNLibrary(KeyManager keyManager) {
+	protected StandardCCNLibrary(KeyManager keyManager) {
 		_userKeyManager = keyManager;
 		// force initialization of network manager
 		try {
@@ -129,7 +129,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 		}
 	}
 
-	public StandardCCNLibrary() throws ConfigurationException, IOException {
+	protected StandardCCNLibrary() throws ConfigurationException, IOException {
 		this(KeyManager.getDefaultKeyManager());
 	}
 

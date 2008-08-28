@@ -106,7 +106,7 @@ public class watch extends Thread implements CCNInterestListener {
 		}
 		
 		try {
-			StandardCCNLibrary library = new StandardCCNLibrary();
+			StandardCCNLibrary library = StandardCCNLibrary.open();
 			// Watches content, prints out what it sees.
 			
 			watch listener = new watch(library);

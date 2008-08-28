@@ -60,7 +60,7 @@ public class puttap implements CCNInterestListener {
 				verify = true;
 
 			// Get writing library 
-			StandardCCNLibrary library = new StandardCCNLibrary();
+			StandardCCNLibrary library = StandardCCNLibrary.open();
 			CCNSimpleNetworkManager manager = library.getNetworkManager();
 			// Set up tap so packets get written to file
 			manager.setTap(tapName);
@@ -74,7 +74,7 @@ public class puttap implements CCNInterestListener {
 			// not consume the data and therefore will block
 			if (false) {
 				// new library semantics makes this unnecessary.
-				StandardCCNLibrary reader = new StandardCCNLibrary();
+				StandardCCNLibrary reader = StandardCCNLibrary.open();
 				reader.expressInterest(new Interest(ccnName), this);
 			}
 			

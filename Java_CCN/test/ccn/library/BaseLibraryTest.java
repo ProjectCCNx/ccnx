@@ -22,6 +22,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
@@ -213,10 +214,11 @@ public class BaseLibraryTest {
 	}
 	
 	public class GetThread implements Runnable {
-		protected CCNLibrary library = StandardCCNLibrary.open();
+		protected CCNLibrary library = null;
 		int count = 0;
 		int id = 0;
-		public GetThread(int n, int id) {
+		public GetThread(int n, int id) throws ConfigurationException, IOException {
+			library = StandardCCNLibrary.open();
 			count = n;
 			this.id = id;
 			if (DO_TAP) {
@@ -239,10 +241,11 @@ public class BaseLibraryTest {
 	}
 	
 	public class PutThread implements Runnable {
-		protected CCNLibrary library = StandardCCNLibrary.open();
+		protected CCNLibrary library = null;
 		int count = 0;
 		int id = 0;
-		public PutThread(int n, int id) {
+		public PutThread(int n, int id) throws ConfigurationException, IOException {
+			library = StandardCCNLibrary.open();
 			count = n;
 			this.id = id;
 			if (DO_TAP) {
@@ -267,14 +270,15 @@ public class BaseLibraryTest {
 	}
 	
 	public class GetServer implements Runnable, CCNInterestListener {
-		protected CCNLibrary library = StandardCCNLibrary.open();
+		protected CCNLibrary library = null;
 		int count = 0;
 		int next = 0;
 		Semaphore sema = new Semaphore(0);
 		HashSet<Integer> accumulatedResults = new HashSet<Integer>();
 		int id;
 		
-		public GetServer(int n, int id) {
+		public GetServer(int n, int id) throws ConfigurationException, IOException {
+			library = StandardCCNLibrary.open();
 			count = n;
 			this.id = id;
 			if (DO_TAP) {
@@ -334,7 +338,7 @@ public class BaseLibraryTest {
 	}
 	
 	public class PutServer implements Runnable, CCNFilterListener {
-		protected CCNLibrary library = StandardCCNLibrary.open();
+		protected CCNLibrary library = null;
 		int count = 0;
 		int next = 0;
 		Semaphore sema = new Semaphore(0);
@@ -342,7 +346,8 @@ public class BaseLibraryTest {
 		HashSet<Integer> accumulatedResults = new HashSet<Integer>();
 		int id;
 		
-		public PutServer(int n, int id) {
+		public PutServer(int n, int id) throws ConfigurationException, IOException {
+			library = StandardCCNLibrary.open();
 			count = n;
 			this.id = id;
 			if (DO_TAP) {

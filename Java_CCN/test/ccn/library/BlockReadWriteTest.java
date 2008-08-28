@@ -35,8 +35,8 @@ public class BlockReadWriteTest extends BaseLibraryTest {
 	
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
 		Library.logger().setLevel(Level.FINEST);
-		libraries[0] = new StandardCCNLibrary();
-		libraries[1] = new StandardCCNLibrary(); // force them to use separate ones.
+		libraries[0] = StandardCCNLibrary.open();
+		libraries[1] = StandardCCNLibrary.open(); // force them to use separate ones.
 	}
 
 	@Override

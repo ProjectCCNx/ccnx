@@ -347,9 +347,10 @@ public class CCNNetworkManager implements Runnable {
 		}
 	}
 	
-	public static CCNSimpleNetworkManager getNetworkManager() {
-		return CCNSimpleNetworkManager.getNetworkManager();
-	}
+	// Static getNetworkManager is deprecated 
+//	public static CCNSimpleNetworkManager getNetworkManager() {
+//		return CCNSimpleNetworkManager.getNetworkManager();
+//	}
 	
 /*
 	public static CCNNetworkManager getNetworkManager() { 

@@ -14,6 +14,7 @@ import junit.framework.Assert;
 import org.junit.Test;
 
 import com.parc.ccn.CCNBase;
+import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
@@ -36,7 +37,13 @@ public class StandardCCNLibraryTest {
 	protected static CCNLibrary library = null;
 
 	static {
-		library = StandardCCNLibrary.open();
+		try {
+			library = StandardCCNLibrary.open();
+		} catch (ConfigurationException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	@Test

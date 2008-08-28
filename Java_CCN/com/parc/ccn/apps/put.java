@@ -28,7 +28,7 @@ public class put {
 			// with random version.
 			ContentName argName = new ContentName(args[0]);
 			
-			StandardCCNLibrary library = new StandardCCNLibrary();
+			StandardCCNLibrary library = StandardCCNLibrary.open();
 			
 			if (args.length == 2) {
 				
