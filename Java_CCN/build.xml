@@ -174,6 +174,12 @@
    </target>
 
    <target name="test-puttap" depends="jar">
+       <!-- Note that puttap forces writes of encoded messages to a tap
+            file for testing and debugging purposes.  It does not 
+            need to have these messages reach any other process 
+            and so does NOT need any ccnd to be running.
+            We run against the test agent port just to avoid 
+            unnecessarily polluting the real ccnd cache on the machine -->
        <mkdir dir="${testout}"/>
        <echo message="Running puttap tests"/>
        <java classname="com.parc.ccn.apps.puttap" classpathref="classpath-run" failonerror="true" output="${testout}/TEST-com.parc.cc.apps.puttap0.txt" fork="true">
@@ -181,6 +187,7 @@
            <arg value="/CCNUnitTest/puttap"/>
            <arg file="${testout}/TEST-puttap0.out"/>
            <arg file="com/parc/ccn/apps/puttap.java"/>
+           <arg file="-s"/>
            <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
            <jvmarg line="${DEBUG_OPTIONS}"/>
        </java>
@@ -190,7 +197,8 @@
            <arg value="/CCNUnitTest/puttap"/>
            <arg file="${testout}/TEST-puttap1.out"/>
            <arg file="com/parc/ccn/apps/puttap.java"/>
-           <!-- <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/> -->
+           <arg file="-s"/>
+           <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
            <jvmarg line="${DEBUG_OPTIONS}"/>
        </java>
     </target>

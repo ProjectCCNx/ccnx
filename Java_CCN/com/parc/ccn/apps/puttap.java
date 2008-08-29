@@ -35,13 +35,18 @@ public class puttap implements CCNInterestListener {
 	public static void main(String[] args) {
 		if ((args.length < 4) || (args.length > 5)) {
 			usage();
-			return;
 		}
 		
-		new puttap().go(args[0], args[1], args[2], args[3], ((args.length == 5) ? args[4] : null));
+		boolean result = (new puttap().go(args[0], args[1], args[2], args[3], ((args.length == 5) ? args[4] : null)));
+		if (result) {
+			System.exit(0);
+		} else {
+			System.exit(1);
+		}
 	}
 	
-	public void go(String encFlag, String ccnName, String tapName, String readName, String verifyFlag) {
+	public boolean go(String encFlag, String ccnName, String tapName, String readName, String verifyFlag) {
+		CCNSimpleNetworkManager manager = null;
 		try {
 			if (encFlag.equals("0")) {
 				SystemConfiguration.setDefaultEncoding(TextXMLCodec.codecName());
@@ -52,7 +57,7 @@ public class puttap implements CCNInterestListener {
 			if (!theFile.exists()) {
 				System.out.println("No such file: " + readName);
 				usage();
-				return;
+				return false;
 			}
 			
 			boolean verify = false;
@@ -61,7 +66,7 @@ public class puttap implements CCNInterestListener {
 
 			// Get writing library 
 			StandardCCNLibrary library = StandardCCNLibrary.open();
-			CCNSimpleNetworkManager manager = library.getNetworkManager();
+			manager = library.getNetworkManager();
 			// Set up tap so packets get written to file
 			manager.setTap(tapName);
 			
@@ -89,18 +94,28 @@ public class puttap implements CCNInterestListener {
 	        int i = 0;
 	        while (is.read(bytes) >= 0) {
 	        	CompleteName cn = library.put(new ContentName(name, new Integer(i++).toString()), bytes);
+	        	if (!cn.validate()) {
+	        		Library.logger().severe("BAD COMPLETENAME: does not validate");
+	        		return false;
+	        	}
 	        	if (verify) {
 	        		if (!ContentObject.verify(cn.name(), cn.authenticator(), bytes, cn.signature(), publicKey)) {
-	        			Library.logger().info("BAD SIGNATURE: puttap: object failed to verify: " + cn.name());
+	        			Library.logger().severe("BAD SIGNATURE: puttap: object failed to verify: " + cn.name());
+	        			return false;
 	        		}
 	        	}
 	        }
 	        
-	        // Need to call shutdown directly on manager at this point
-	        manager.shutdown();
+	        return true;
 
 		} catch (Exception e) {
 			e.printStackTrace();
+			return false;
+		} finally {
+			if (null != manager) {
+		        // Need to call shutdown directly on manager at this point
+				manager.shutdown();
+			}
 		}
 
 	}

@@ -451,6 +451,8 @@ public class CCNSimpleNetworkManager implements Runnable {
 				throw new IOException("Invalid port '" + portval + "' specified in " + PROP_AGENT_PORT);
 			}
 			Library.logger().warning("Contacting CCN agent at non-standard port " + port + " based on property " + PROP_AGENT_PORT);
+		} else {
+			Library.logger().info("Contacting CCN agent at standard port " + port);
 		}
 		// Socket is to belong exclusively to run thread started here
 		_channel = DatagramChannel.open();
