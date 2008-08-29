@@ -163,14 +163,22 @@
 
    <target name="test-baselib" depends="jar">
        <mkdir dir="${testout}"/>
-       <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}">
-           <classpath>
-               <path refid="classpath-run"/>
-           </classpath>
-           <formatter type="brief" usefile="true"/>
-           <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-           <test todir="${testout}"  name="test.ccn.library.BaseLibraryTest"/>
-       </junit>
+       <parallel failonany="true">
+           <daemons>
+               <echo message="Running test ccnd on port ${TEST_PORT}"/>
+               <exec executable="${ccnd}" dir="${testout}" output="${testout}/TEST-ccnd0.txt">
+                   <env key="CCN_LOCAL_PORT" value="${TEST_PORT}"/>
+               </exec>
+           </daemons>
+           <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}">
+               <classpath>
+                   <path refid="classpath-run"/>
+               </classpath>
+               <formatter type="brief" usefile="true"/>
+               <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+               <test todir="${testout}"  name="test.ccn.library.BaseLibraryTest"/>
+           </junit>
+       </parallel>
    </target>
 
    <target name="test-puttap" depends="jar">
