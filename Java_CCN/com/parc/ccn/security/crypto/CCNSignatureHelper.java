@@ -114,4 +114,40 @@ public class CCNSignatureHelper extends SignatureHelper {
 				verificationKey);
 	}
 	
+	/**
+	 * Overrides to get correct default digest.
+	 */
+
+	public static byte [] sign(String digestAlgorithm,
+			byte [] toBeSigned,
+			PrivateKey signingKey) throws SignatureException, 
+			NoSuchAlgorithmException, InvalidKeyException {
+		return SignatureHelper.sign(((null == digestAlgorithm) || (digestAlgorithm.length() == 0)) ?
+				CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM : digestAlgorithm, toBeSigned, signingKey);
+	}
+
+	public static byte [] sign(String digestAlgorithm,
+			   byte [][] toBeSigneds,
+			   PrivateKey signingKey) throws SignatureException,
+			   	NoSuchAlgorithmException, InvalidKeyException {
+		return SignatureHelper.sign(((null == digestAlgorithm) || (digestAlgorithm.length() == 0)) ?
+					CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM : digestAlgorithm, toBeSigneds, signingKey);
+	}
+
+	public static boolean verify(
+			byte [][] data,
+			byte [] signature,
+			String digestAlgorithm,
+			PublicKey verificationKey) throws SignatureException, 
+						NoSuchAlgorithmException, InvalidKeyException {
+		return SignatureHelper.verify(data, signature,
+				((null == digestAlgorithm) || (digestAlgorithm.length() == 0)) ?
+						CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM : digestAlgorithm, verificationKey);
+	}
+	
+	public static boolean verify(byte [] data, byte [] signature, String digestAlgorithm,
+			PublicKey verificationKey) 
+	throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
+		return verify(new byte[][]{data}, signature, digestAlgorithm, verificationKey);
+	}
 }
