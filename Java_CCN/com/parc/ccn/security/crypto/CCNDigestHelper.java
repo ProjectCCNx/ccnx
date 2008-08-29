@@ -34,7 +34,8 @@ public class CCNDigestHelper extends DigestHelper {
 				encodedData[j] = additionalToBeSigneds[i];
 			}
 		}
-		return DigestHelper.digest(digestAlgorithm, 
+		return DigestHelper.digest(((null == digestAlgorithm) || (digestAlgorithm.length() == 0)) ?
+				CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM : digestAlgorithm, 
 									encodedData);
 	}
 	
