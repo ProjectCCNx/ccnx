@@ -598,8 +598,8 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                                         ccn_refresh_interest(h, interest);
                                     else {
                                         interest->target = 0;
-                                        ccn_replace_handler(h, &(interest->action), NULL);
                                         replace_interest_msg(interest, NULL);
+                                        ccn_replace_handler(h, &(interest->action), NULL);
                                     }
                                 }
                             }
@@ -720,6 +720,11 @@ ccn_age_interest(struct ccn *h,
         }
         if (res == CCN_UPCALL_RESULT_REEXPRESS)
             ccn_refresh_interest(h, interest);
+        else {
+            interest->target = 0;
+            replace_interest_msg(interest, NULL);
+            ccn_replace_handler(h, &(interest->action), NULL);
+        }
     }
 }
 
