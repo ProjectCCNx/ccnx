@@ -720,11 +720,8 @@ ccn_age_interest(struct ccn *h,
         }
         if (res == CCN_UPCALL_RESULT_REEXPRESS)
             ccn_refresh_interest(h, interest);
-        else {
+        else
             interest->target = 0;
-            replace_interest_msg(interest, NULL);
-            ccn_replace_handler(h, &(interest->action), NULL);
-        }
     }
 }
 
@@ -743,6 +740,7 @@ ccn_run(struct ccn *h, int timeout)
     struct timeval start;
     struct interests_by_prefix *entry;
     struct expressed_interest **ip;
+    struct expressed_interest *ie;
     struct pollfd fds[1];
     int millisec;
     int res;
@@ -755,9 +753,11 @@ ccn_run(struct ccn *h, int timeout)
         if (h->interests_by_prefix != NULL && !ccn_output_is_pending(h)) {
              for (hashtb_start(h->interests_by_prefix, e); e->data != NULL;) {
                 entry = e->data;
+                for (ie = entry->list; ie != NULL; ie = ie->next) {
+                    if (ie->target != 0)
+                        ccn_age_interest(h, ie, e->key, e->keysize);
+                }
                 for (ip = &(entry->list); (*ip) != NULL;) {
-                    if ((*ip)->target != 0)
-                        ccn_age_interest(h, (*ip), e->key, e->keysize);
                     if ((*ip)->target == 0)
                         (*ip) = ccn_destroy_interest(h, (*ip));
                     else
