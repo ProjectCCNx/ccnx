@@ -44,17 +44,18 @@ struct ccn {
 struct expressed_interest;
 
 struct interests_by_prefix {
+    int magic;
     struct expressed_interest *list;
 };
 
 struct expressed_interest { /* keyed by components of name prefix */
+    int magic;
     struct timeval lasttime;
     struct ccn_closure *action;
     unsigned char *interest_msg;
     size_t size;
     int target;
     int outstanding;
-    int magic;
     struct expressed_interest *next;
 };
 
@@ -291,6 +292,7 @@ ccn_destroy(struct ccn **hp)
     if (h->interests_by_prefix != NULL) {
         for (hashtb_start(h->interests_by_prefix, e); e->data != NULL; hashtb_next(e)) {
             struct interests_by_prefix *entry = e->data;
+            if (entry->magic != 0xeeee) abort();
             while (entry->list != NULL)
                 entry->list = ccn_destroy_interest(h, entry->list);
         }
@@ -427,6 +429,11 @@ ccn_express_interest(struct ccn *h,
         hashtb_end(e);
         return(res);
     }
+    if (res == HT_NEW_ENTRY) {
+        entry->magic = 0xeeee;
+        entry->list = NULL;
+    }
+    if (entry->magic != 0xeeee) abort();
     interest = calloc(1, sizeof(*interest));
     if (interest == NULL) {
         NOTE_ERRNO(h);
@@ -622,6 +629,7 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                 for (i = comps->n - 1; i >= 0; i--) {
                     entry = hashtb_lookup(h->interests_by_prefix, key, comps->buf[i] - keystart);
                     if (entry != NULL) {
+                        if (entry->magic != 0xeeee) abort();
                         for (interest = entry->list; interest != NULL; interest = interest->next) {
                             if (interest->target > 0 && interest->outstanding > 0) {
                                 res = ccn_parse_interest(interest->interest_msg,
@@ -788,6 +796,7 @@ ccn_age_interests(struct ccn *h)
     if (h->interests_by_prefix != NULL && !ccn_output_is_pending(h)) {
         for (hashtb_start(h->interests_by_prefix, e); e->data != NULL;) {
             entry = e->data;
+            if (entry->magic != 0xeeee) abort();
             ccn_check_interests(entry->list);
             if (entry->list == NULL)
                 hashtb_delete(e);
