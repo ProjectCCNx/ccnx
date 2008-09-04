@@ -58,7 +58,6 @@ incoming_content(
     comps = info->content_comps;
     matched_comps = info->pi->prefix_comps;
     c = ccn_charbuf_create();
-    comp = ccn_charbuf_create();
     uri = ccn_charbuf_create();
     templ = ccn_charbuf_create();
         
@@ -91,6 +90,7 @@ incoming_content(
         printf("%s\n", ccn_charbuf_as_string(uri) + 1);
     data->excl = realloc(data->excl, (data->n_excl + 1) * sizeof(data->excl[0]));
     data->excl[data->n_excl++] = comp;
+    comp = NULL;
     qsort(data->excl, data->n_excl, sizeof(data->excl[0]), &namecompare);
             
     ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
