@@ -39,6 +39,7 @@ struct ccn {
     int errline;
     int verbose_error;
     int tap;
+    int destroy_ok;
 };
 
 struct expressed_interest;
@@ -238,6 +239,7 @@ static struct expressed_interest *
 ccn_destroy_interest(struct ccn *h, struct expressed_interest *i)
 {
     struct expressed_interest *ans = i->next;
+    if (!h->destroy_ok) abort();
     if (i->magic != 0x7059e5f4) {
         ccn_gripe(i);
         return(NULL);
@@ -293,6 +295,7 @@ ccn_destroy(struct ccn **hp)
     ccn_disconnect(h);
     ccn_replace_handler(h, &(h->default_interest_action), NULL);
     ccn_replace_handler(h, &(h->default_content_action), NULL);
+    h->destroy_ok = 1;
     if (h->interests_by_prefix != NULL) {
         for (hashtb_start(h->interests_by_prefix, e); e->data != NULL; hashtb_next(e)) {
             struct interests_by_prefix *entry = e->data;
@@ -796,6 +799,8 @@ ccn_clean_all_interests(struct ccn *h)
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     struct interests_by_prefix *entry;
+    if (h->destroy_ok) abort();
+    h->destroy_ok = 1;
     for (hashtb_start(h->interests_by_prefix, e); e->data != NULL;) {
         entry = e->data;
         if (entry->magic != 0xeeee) abort();
@@ -806,6 +811,7 @@ ccn_clean_all_interests(struct ccn *h)
             hashtb_next(e);
     }
     hashtb_end(e);
+    h->destroy_ok = 0;
 }
 
 static void
