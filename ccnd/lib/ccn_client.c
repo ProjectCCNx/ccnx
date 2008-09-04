@@ -208,9 +208,19 @@ ccn_disconnect(struct ccn *h)
 }
 
 static void
+ccn_gripe(struct expressed_interest *i)
+{
+    fprintf(stderr, "BOTCH - (struct expressed_interest *)%p has bad magic value\n", (void *)i);
+}
+
+static void
 replace_interest_msg(struct expressed_interest *interest,
                      struct ccn_charbuf *cb)
 {
+    if (interest->magic != 0x7059e5f4) {
+        ccn_gripe(interest);
+        return;
+    }
     if (interest->interest_msg != NULL)
         free(interest->interest_msg);
     interest->interest_msg = NULL;
@@ -224,12 +234,6 @@ replace_interest_msg(struct expressed_interest *interest,
     }
 }
 
-static void
-ccn_gripe(struct expressed_interest *i)
-{
-    fprintf(stderr, "BOTCH - (struct expressed_interest *)%p double free attempted\n", (void *)i);
-}
-
 static struct expressed_interest *
 ccn_destroy_interest(struct ccn *h, struct expressed_interest *i)
 {
@@ -238,9 +242,9 @@ ccn_destroy_interest(struct ccn *h, struct expressed_interest *i)
         ccn_gripe(i);
         return(NULL);
     }
-    i->magic = 0;
     ccn_replace_handler(h, &(i->action), NULL);
     replace_interest_msg(i, NULL);
+    i->magic = -1;
     free(i);
     return(ans);
 }
@@ -787,19 +791,38 @@ ccn_age_interest(struct ccn *h,
 }
 
 static void
+ccn_clean_all_interests(struct ccn *h)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct interests_by_prefix *entry;
+    for (hashtb_start(h->interests_by_prefix, e); e->data != NULL;) {
+        entry = e->data;
+        if (entry->magic != 0xeeee) abort();
+        ccn_clean_interests_by_prefix(h, entry);
+        if (entry->list == NULL)
+            hashtb_delete(e);
+        else
+            hashtb_next(e);
+    }
+    hashtb_end(e);
+}
+
+static void
 ccn_age_interests(struct ccn *h)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     struct interests_by_prefix *entry;
     struct expressed_interest *ie;
+    int need_clean = 0;
     if (h->interests_by_prefix != NULL && !ccn_output_is_pending(h)) {
-        for (hashtb_start(h->interests_by_prefix, e); e->data != NULL;) {
+        for (hashtb_start(h->interests_by_prefix, e); e->data != NULL; hashtb_next(e)) {
             entry = e->data;
             if (entry->magic != 0xeeee) abort();
             ccn_check_interests(entry->list);
             if (entry->list == NULL)
-                hashtb_delete(e);
+                need_clean = 1;
             else {
                 for (ie = entry->list; ie != NULL; ie = ie->next) {
                     if (ie->target != 0)
@@ -807,13 +830,14 @@ ccn_age_interests(struct ccn *h)
                     if (ie->target == 0) {
                         ccn_replace_handler(h, &(ie->action), NULL);
                         replace_interest_msg(ie, NULL);
+                        need_clean = 1;
                     }
                 }
-                ccn_clean_interests_by_prefix(h, entry);
-                hashtb_next(e);
             }
         }
         hashtb_end(e);
+        if (need_clean)
+            ccn_clean_all_interests(h);
     }
 }
 
