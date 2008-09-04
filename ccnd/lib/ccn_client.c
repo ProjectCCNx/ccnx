@@ -712,10 +712,17 @@ ccn_age_interest(struct ccn *h,
                                      interest->size,
                                      info.pi,
                                      info.interest_comps);
-            // XXX - check res
-            res = (interest->action->p)(interest->action,
-                                        CCN_UPCALL_INTEREST_TIMED_OUT,
-                                        &info);
+            if (res >= 0)
+                res = (interest->action->p)(interest->action,
+                                            CCN_UPCALL_INTEREST_TIMED_OUT,
+                                            &info);
+            else {
+                int i;
+                fprintf(stderr, "URP!! interest has been corrupted ccn_client.c:%d\n", __LINE__);
+                for (i = 0; i < 120; i++) {
+                    sleep(1);
+                }
+            }
             ccn_indexbuf_release(h, info.interest_comps);
         }
         if (res == CCN_UPCALL_RESULT_REEXPRESS)

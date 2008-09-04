@@ -511,8 +511,10 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
         ccn_buf_check_close(d);
         interest->offset[CCN_PI_E] = d->decoder.index;
     }
+    else
+        return (d->decoder.state = -__LINE__);
     if (d->decoder.state < 0)
-        return(d->decoder.state);
+        return (d->decoder.state);
     if (d->decoder.index != size || !CCN_FINAL_DSTATE(d->decoder.state))
         return (CCN_DSTATE_ERR_CODING);
     return (ncomp);
