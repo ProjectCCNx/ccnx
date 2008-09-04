@@ -54,6 +54,7 @@ struct expressed_interest { /* keyed by components of name prefix */
     size_t size;
     int target;
     int outstanding;
+    int magic;
     struct expressed_interest *next;
 };
 
@@ -222,14 +223,58 @@ replace_interest_msg(struct expressed_interest *interest,
     }
 }
 
+static void
+ccn_gripe(struct expressed_interest *i)
+{
+    fprintf(stderr, "BOTCH - (struct expressed_interest *)%p double free attempted\n", (void *)i);
+}
+
 static struct expressed_interest *
 ccn_destroy_interest(struct ccn *h, struct expressed_interest *i)
 {
     struct expressed_interest *ans = i->next;
+    if (i->magic != 0x7059e5f4) {
+        ccn_gripe(i);
+        return(NULL);
+    }
+    i->magic = 0;
     ccn_replace_handler(h, &(i->action), NULL);
     replace_interest_msg(i, NULL);
     free(i);
     return(ans);
+}
+
+void
+ccn_check_interests(struct expressed_interest *list)
+{
+    struct expressed_interest *ie;
+    for (ie = list; ie != NULL; ie = ie->next) {
+        if (ie->magic != 0x7059e5f4) {
+            ccn_gripe(ie);
+            abort();
+        }
+    }
+}
+
+void
+ccn_clean_interests_by_prefix(struct ccn *h, struct interests_by_prefix *entry)
+{
+    struct expressed_interest *ie;
+    struct expressed_interest *next;
+    struct expressed_interest **ip;
+    ccn_check_interests(entry->list);
+    ip = &(entry->list);
+    for (ie = entry->list; ie != NULL; ie = next) {
+        next = ie->next;
+        if (ie->action == NULL)
+            ccn_destroy_interest(h, ie);
+        else {
+            (*ip) = ie;
+            ip = &(ie->next);
+        }
+    }
+    (*ip) = NULL;
+    ccn_check_interests(entry->list);
 }
 
 void
@@ -388,6 +433,7 @@ ccn_express_interest(struct ccn *h,
         hashtb_end(e);
         return(-1);
     }
+    interest->magic = 0x7059e5f4;
     ccn_construct_interest(h, namebuf, prefix_comps, interest_template, interest);
     if (interest->interest_msg == NULL) {
         free(interest);
@@ -732,7 +778,37 @@ ccn_age_interest(struct ccn *h,
     }
 }
 
-int ccn_set_run_timeout(struct ccn *h, int timeout)
+static void
+ccn_age_interests(struct ccn *h)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct interests_by_prefix *entry;
+    struct expressed_interest *ie;
+    if (h->interests_by_prefix != NULL && !ccn_output_is_pending(h)) {
+        for (hashtb_start(h->interests_by_prefix, e); e->data != NULL;) {
+            entry = e->data;
+            if (entry->list == NULL)
+                hashtb_delete(e);
+            else {
+                for (ie = entry->list; ie != NULL; ie = ie->next) {
+                    if (ie->target != 0)
+                        ccn_age_interest(h, ie, e->key, e->keysize);
+                    if (ie->target == 0) {
+                        ccn_replace_handler(h, &(ie->action), NULL);
+                        replace_interest_msg(ie, NULL);
+                    }
+                }
+                ccn_clean_interests_by_prefix(h, entry);
+                hashtb_next(e);
+            }
+        }
+        hashtb_end(e);
+    }
+}
+
+int
+ccn_set_run_timeout(struct ccn *h, int timeout)
 {
     int ans = h->timeout;
     h->timeout = timeout;
@@ -742,12 +818,7 @@ int ccn_set_run_timeout(struct ccn *h, int timeout)
 int
 ccn_run(struct ccn *h, int timeout)
 {
-    struct hashtb_enumerator ee;
-    struct hashtb_enumerator *e = &ee;
     struct timeval start;
-    struct interests_by_prefix *entry;
-    struct expressed_interest **ip;
-    struct expressed_interest *ie;
     struct pollfd fds[1];
     int millisec;
     int res;
@@ -757,32 +828,13 @@ ccn_run(struct ccn *h, int timeout)
     while (h->sock != -1) {
         h->refresh_us = 5 * CCN_INTEREST_HALFLIFE_MICROSEC;
         gettimeofday(&h->now, NULL);
-        if (h->interests_by_prefix != NULL && !ccn_output_is_pending(h)) {
-             for (hashtb_start(h->interests_by_prefix, e); e->data != NULL;) {
-                entry = e->data;
-                for (ie = entry->list; ie != NULL; ie = ie->next) {
-                    if (ie->target != 0)
-                        ccn_age_interest(h, ie, e->key, e->keysize);
-                }
-                for (ip = &(entry->list); (*ip) != NULL;) {
-                    if ((*ip)->target == 0)
-                        (*ip) = ccn_destroy_interest(h, (*ip));
-                    else
-                        ip = &((*ip)->next);
-                }
-                if (entry->list == NULL)
-                    hashtb_delete(e);
-                else
-                    hashtb_next(e);
-             }
-             hashtb_end(e);
-        }
+        ccn_age_interests(h);
         timeout = h->timeout;
         if (start.tv_sec == 0)
             start = h->now;
         else if (timeout >= 0) {
             millisec = (h->now.tv_sec  - start.tv_sec) *1000 +
-                       (h->now.tv_usec - start.tv_usec)/1000;
+            (h->now.tv_usec - start.tv_usec)/1000;
             if (millisec > timeout)
                 return(0);
         }
