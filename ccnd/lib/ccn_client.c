@@ -574,6 +574,10 @@ static void
 ccn_refresh_interest(struct ccn *h, struct expressed_interest *interest)
 {
     int res;
+    if (interest->magic != 0x7059e5f4) {
+        ccn_gripe(interest);
+        return;
+    }
     if (interest->outstanding < interest->target) {
         res = ccn_put(h, interest->interest_msg, interest->size);
         if (res >= 0) {
@@ -638,6 +642,9 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                     if (entry != NULL) {
                         if (entry->magic != 0xeeee) abort();
                         for (interest = entry->list; interest != NULL; interest = interest->next) {
+                            if (interest->magic != 0x7059e5f4) {
+                                ccn_gripe(interest);
+                            }
                             if (interest->target > 0 && interest->outstanding > 0) {
                                 res = ccn_parse_interest(interest->interest_msg,
                                                          interest->size,
@@ -655,6 +662,9 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                                     res = (interest->action->p)(interest->action,
                                                                 CCN_UPCALL_CONTENT,
                                                                 &info);
+                                    if (interest->magic != 0x7059e5f4) {
+                                        ccn_gripe(interest);
+                                    }
                                     if (res == CCN_UPCALL_RESULT_REEXPRESS)
                                         ccn_refresh_interest(h, interest);
                                     else {
@@ -739,6 +749,9 @@ ccn_age_interest(struct ccn *h,
     int delta;
     int res;
     int firstcall;
+    if (interest->magic != 0x7059e5f4) {
+        ccn_gripe(interest);
+    }
     info.h = h;
     info.pi = &pi;
     firstcall = (interest->lasttime.tv_sec == 0);
@@ -773,10 +786,14 @@ ccn_age_interest(struct ccn *h,
                                      interest->size,
                                      info.pi,
                                      info.interest_comps);
-            if (res >= 0)
+            if (res >= 0) {
                 res = (interest->action->p)(interest->action,
                                             CCN_UPCALL_INTEREST_TIMED_OUT,
                                             &info);
+                if (interest->magic != 0x7059e5f4) {
+                    ccn_gripe(interest);
+                }
+            }
             else {
                 int i;
                 fprintf(stderr, "URP!! interest has been corrupted ccn_client.c:%d\n", __LINE__);
