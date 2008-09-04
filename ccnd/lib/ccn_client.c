@@ -788,6 +788,7 @@ ccn_age_interests(struct ccn *h)
     if (h->interests_by_prefix != NULL && !ccn_output_is_pending(h)) {
         for (hashtb_start(h->interests_by_prefix, e); e->data != NULL;) {
             entry = e->data;
+            ccn_check_interests(entry->list);
             if (entry->list == NULL)
                 hashtb_delete(e);
             else {
