@@ -18,9 +18,8 @@ ccn_charbuf_destroy(struct ccn_charbuf **cbp)
 {
     struct ccn_charbuf *c = *cbp;
     if (c != NULL) {
-        if (c->buf != NULL) {
+        if (c->buf != NULL)
             free(c->buf);
-        }
         free(c);
         *cbp = NULL;
     }
@@ -42,6 +41,7 @@ ccn_charbuf_reserve(struct ccn_charbuf *c, size_t n)
         buf = realloc(c->buf, newsz);
         if (buf == NULL)
             return(NULL);
+        memset(buf + c->limit, 0, newsz - c->limit);
         c->buf = buf;
         c->limit = newsz;
     }
