@@ -39,13 +39,12 @@ struct ccn {
     int errline;
     int verbose_error;
     int tap;
-    int destroy_ok;
+    int running;
 };
 
 struct expressed_interest;
 
 struct interests_by_prefix {
-    int magic;
     struct expressed_interest *list;
 };
 
@@ -239,7 +238,6 @@ static struct expressed_interest *
 ccn_destroy_interest(struct ccn *h, struct expressed_interest *i)
 {
     struct expressed_interest *ans = i->next;
-    if (!h->destroy_ok) abort();
     if (i->magic != 0x7059e5f4) {
         ccn_gripe(i);
         return(NULL);
@@ -295,11 +293,9 @@ ccn_destroy(struct ccn **hp)
     ccn_disconnect(h);
     ccn_replace_handler(h, &(h->default_interest_action), NULL);
     ccn_replace_handler(h, &(h->default_content_action), NULL);
-    h->destroy_ok = 1;
     if (h->interests_by_prefix != NULL) {
         for (hashtb_start(h->interests_by_prefix, e); e->data != NULL; hashtb_next(e)) {
             struct interests_by_prefix *entry = e->data;
-            if (entry->magic != 0xeeee) abort();
             while (entry->list != NULL)
                 entry->list = ccn_destroy_interest(h, entry->list);
         }
@@ -436,11 +432,8 @@ ccn_express_interest(struct ccn *h,
         hashtb_end(e);
         return(res);
     }
-    if (res == HT_NEW_ENTRY) {
-        entry->magic = 0xeeee;
+    if (res == HT_NEW_ENTRY)
         entry->list = NULL;
-    }
-    if (entry->magic != 0xeeee) abort();
     interest = calloc(1, sizeof(*interest));
     if (interest == NULL) {
         NOTE_ERRNO(h);
@@ -640,7 +633,6 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                 for (i = comps->n - 1; i >= 0; i--) {
                     entry = hashtb_lookup(h->interests_by_prefix, key, comps->buf[i] - keystart);
                     if (entry != NULL) {
-                        if (entry->magic != 0xeeee) abort();
                         for (interest = entry->list; interest != NULL; interest = interest->next) {
                             if (interest->magic != 0x7059e5f4) {
                                 ccn_gripe(interest);
@@ -816,11 +808,8 @@ ccn_clean_all_interests(struct ccn *h)
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     struct interests_by_prefix *entry;
-    if (h->destroy_ok) abort();
-    h->destroy_ok = 1;
     for (hashtb_start(h->interests_by_prefix, e); e->data != NULL;) {
         entry = e->data;
-        if (entry->magic != 0xeeee) abort();
         ccn_clean_interests_by_prefix(h, entry);
         if (entry->list == NULL)
             hashtb_delete(e);
@@ -828,7 +817,6 @@ ccn_clean_all_interests(struct ccn *h)
             hashtb_next(e);
     }
     hashtb_end(e);
-    h->destroy_ok = 0;
 }
 
 static void
@@ -842,7 +830,6 @@ ccn_age_interests(struct ccn *h)
     if (h->interests_by_prefix != NULL && !ccn_output_is_pending(h)) {
         for (hashtb_start(h->interests_by_prefix, e); e->data != NULL; hashtb_next(e)) {
             entry = e->data;
-            if (entry->magic != 0xeeee) abort();
             ccn_check_interests(entry->list);
             if (entry->list == NULL)
                 need_clean = 1;
@@ -878,11 +865,18 @@ ccn_run(struct ccn *h, int timeout)
     struct timeval start;
     struct pollfd fds[1];
     int millisec;
-    int res;
+    int res = -1;
+    if (h->running != 0)
+        return(NOTE_ERR(h, EBUSY));
+    h->running = 1;
     memset(fds, 0, sizeof(fds));
     memset(&start, 0, sizeof(start));
     h->timeout = timeout;
-    while (h->sock != -1) {
+    for (;;) {
+        if (h->sock == -1) {
+            res = -1;
+            break;
+        }
         h->refresh_us = 5 * CCN_INTEREST_HALFLIFE_MICROSEC;
         gettimeofday(&h->now, NULL);
         ccn_age_interests(h);
@@ -892,8 +886,10 @@ ccn_run(struct ccn *h, int timeout)
         else if (timeout >= 0) {
             millisec = (h->now.tv_sec  - start.tv_sec) *1000 +
             (h->now.tv_usec - start.tv_usec)/1000;
-            if (millisec > timeout)
-                return(0);
+            if (millisec > timeout) {
+                res = 0;
+                break;
+            }
         }
         fds[0].fd = h->sock;
         fds[0].events = POLLIN;
@@ -903,8 +899,10 @@ ccn_run(struct ccn *h, int timeout)
         if (timeout >= 0 && timeout < millisec)
             millisec = timeout;
         res = poll(fds, 1, millisec);
-        if (res < 0 && errno != EINTR)
-            return (NOTE_ERRNO(h));
+        if (res < 0 && errno != EINTR) {
+            res = NOTE_ERRNO(h);
+            break;
+        }
         if (res > 0) {
             if ((fds[0].revents | POLLOUT) != 0)
                 ccn_pushout(h);
@@ -915,5 +913,8 @@ ccn_run(struct ccn *h, int timeout)
         if (h->err == ENOTCONN)
             ccn_disconnect(h);
     }
-    return(-1);
+    if (h->running != 1)
+        abort();
+    h->running = 0;
+    return(res);
 }
