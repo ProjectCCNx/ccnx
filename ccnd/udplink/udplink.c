@@ -22,7 +22,7 @@
 static struct options {
     const char *localsockname;
     const char *remotehostname;
-    struct addrinfo *multicastaddrinfo;
+    struct addrinfo *localif_for_mcast_addrinfo;
     char remoteport[8];
     char localport[8];
     unsigned int remoteifindex;
@@ -163,8 +163,8 @@ void process_options(int argc, char * const argv[], struct options *options) {
 	hints.ai_flags |= AI_NUMERICSERV;
 #endif
 	udplink_note("interface %s requested (port %s)\n", mcastoutstr, options->localport);
-	result = getaddrinfo(mcastoutstr, options->localport, &hints, &options->multicastaddrinfo);
-	if (result != 0 || options->multicastaddrinfo == NULL) {
+	result = getaddrinfo(mcastoutstr, options->localport, &hints, &options->localif_for_mcast_addrinfo);
+	if (result != 0 || options->localif_for_mcast_addrinfo == NULL) {
 	    udplink_fatal("getaddrinfo(\"%s\", ...): %s\n", mcastoutstr, gai_strerror(result));
 	}
     }
@@ -196,7 +196,7 @@ void process_options(int argc, char * const argv[], struct options *options) {
 }
 
 void
-set_multicast_sockopt(int socket, struct addrinfo *ai, struct options *options)
+set_multicast_sockopt(int socket_r, int socket_w, struct addrinfo *ai, struct options *options)
 {
     struct addrinfo hints;
     struct ip_mreq mreq;
@@ -213,21 +213,21 @@ set_multicast_sockopt(int socket, struct addrinfo *ai, struct options *options)
         if (options->logging > 1) udplink_note("IPv4 multicast\n");
 #ifdef IP_ADD_MEMBERSHIP
         memcpy((void *)&mreq.imr_multiaddr, &((struct sockaddr_in *)ai->ai_addr)->sin_addr, sizeof(mreq.imr_multiaddr));
-        if (options->multicastaddrinfo != NULL) {
-            memcpy((void *)&mreq.imr_interface.s_addr, &((struct sockaddr_in *)options->multicastaddrinfo->ai_addr)->sin_addr, sizeof(mreq.imr_interface.s_addr));
+        if (options->localif_for_mcast_addrinfo != NULL) {
+            memcpy((void *)&mreq.imr_interface.s_addr, &((struct sockaddr_in *)options->localif_for_mcast_addrinfo->ai_addr)->sin_addr, sizeof(mreq.imr_interface.s_addr));
         }
-        result = setsockopt(socket, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq));
+        result = setsockopt(socket_r, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq));
         if (result == -1) udplink_fatal("setsockopt(..., IP_ADD_MEMBERSHIP, ...): %s\n", strerror(errno));
 #endif
 #ifdef IP_MULTICAST_LOOP
         csockopt = 0;
-        result = setsockopt(socket, IPPROTO_IP, IP_MULTICAST_LOOP, &csockopt, sizeof(csockopt));
+        result = setsockopt(socket_w, IPPROTO_IP, IP_MULTICAST_LOOP, &csockopt, sizeof(csockopt));
         if (result == -1) udplink_fatal("setsockopt(..., IP_MULTICAST_LOOP, ...): %s\n", strerror(errno));
 #endif
 #ifdef IP_MULTICAST_TTL
         if (options->multicastttl > 0) {
             csockopt = options->multicastttl;
-            result = setsockopt(socket, IPPROTO_IP, IP_MULTICAST_TTL, &csockopt, sizeof(csockopt));
+            result = setsockopt(socket_w, IPPROTO_IP, IP_MULTICAST_TTL, &csockopt, sizeof(csockopt));
             if (result == -1) {
                 udplink_fatal("setsockopt(..., IP_MULTICAST_TTL, ...): %s\n", strerror(errno));
             }
@@ -240,14 +240,14 @@ set_multicast_sockopt(int socket, struct addrinfo *ai, struct options *options)
         if (options->remoteifindex > 0) {
             mreq6.ipv6mr_interface = options->remoteifindex;
         }
-        result = setsockopt(socket, IPPROTO_IPV6, IPV6_JOIN_GROUP, &mreq6, sizeof(mreq6));
+        result = setsockopt(socket_r, IPPROTO_IPV6, IPV6_JOIN_GROUP, &mreq6, sizeof(mreq6));
         if (result == -1) {
             udplink_fatal("setsockopt(..., IPV6_JOIN_GROUP, ...): %s\n", strerror(errno));
         }
 #endif
 #ifdef IPV6_MULTICAST_LOOP
         isockopt = 0;
-        result = setsockopt(socket, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &isockopt, sizeof(isockopt));
+        result = setsockopt(socket_w, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &isockopt, sizeof(isockopt));
         if (result == -1) {
             udplink_fatal("setsockopt(..., IPV6_MULTICAST_LOOP, ...): %s\n", strerror(errno));
         }
@@ -255,7 +255,7 @@ set_multicast_sockopt(int socket, struct addrinfo *ai, struct options *options)
 #ifdef IPV6_MULTICAST_HOPS
         if (options->multicastttl > 0) {
             isockopt = options->multicastttl;
-            result = setsockopt(socket, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &isockopt, sizeof(isockopt));
+            result = setsockopt(socket_w, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &isockopt, sizeof(isockopt));
             if (result == -1) {
                 udplink_fatal("setsockopt(..., IPV6_MULTICAST_LOOP, ...): %s\n", strerror(errno));
             }
@@ -287,7 +287,6 @@ main (int argc, char * const argv[]) {
     int remotesock_r = 0;
     char canonical_remote[NI_MAXHOST] = "";
     struct addrinfo *raddrinfo = NULL;
-    struct addrinfo *raddrinfoz = NULL;
     struct addrinfo *laddrinfo = NULL;
     struct addrinfo hints = {0};
     struct pollfd fds[2];
@@ -326,6 +325,7 @@ main (int argc, char * const argv[]) {
     hints.ai_flags |= AI_NUMERICSERV;
 #endif
 
+    /* data we need for later */
     result = getaddrinfo(options.remotehostname, options.remoteport, &hints, &raddrinfo);
     if (result != 0 || raddrinfo == NULL) {
         udplink_fatal("getaddrinfo(\"%s\", \"%s\", ...): %s\n", options.remotehostname, options.remoteport, gai_strerror(result));
@@ -333,51 +333,67 @@ main (int argc, char * const argv[]) {
 
     getnameinfo(raddrinfo->ai_addr, raddrinfo->ai_addrlen, canonical_remote, sizeof(canonical_remote), NULL, 0, 0);
 
-    remotesock_r = socket(raddrinfo->ai_family, raddrinfo->ai_socktype, 0);
-    if (remotesock_r == -1) {
-        udplink_fatal("socket: %s\n", strerror(errno));
-    }
-    result = setsockopt(remotesock_r, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
-    if (result == -1) {
-        udplink_fatal("setsockopt(remotesock_r, ..., SO_REUSEADDR, ...): %s\n", strerror(errno));
-    }
+
     hints.ai_family = raddrinfo->ai_family;
     hints.ai_flags = AI_PASSIVE;
 #ifdef AI_NUMERICSERV
     hints.ai_flags |= AI_NUMERICSERV;
 #endif
+
     result = getaddrinfo(NULL, options.localport, &hints, &laddrinfo);
     if (result != 0 || laddrinfo == NULL) {
         udplink_fatal("getaddrinfo(NULL, %s, ...): %s\n", options.localport, gai_strerror(result));
     }
-    if (options.multicastaddrinfo != NULL) {
-	/* We have a specific interface to bind to.  multicastaddrinfo
- 	   is actually the unicast ipv4 address of this interface. */
 
-        remotesock_w = socket(raddrinfo->ai_family, raddrinfo->ai_socktype, 0);
-        if (remotesock_w == -1) {
+    /* set up the remote side */
+    /*
+     * socket(PF_INET, SOCK_DGRAM, IPPROTO_IP) = 4	WRITER
+     * socket(PF_INET, SOCK_DGRAM, IPPROTO_IP) = 5	READER
+     * setsockopt(5, SOL_SOCKET, SO_REUSEADDR, [1], 4) = 0   READER
+     * bind(5, {sa_family=AF_INET, sin_port=htons(19649), sin_addr=inet_addr("224.18.14.21")}, 16) = 0    READER
+     * setsockopt(4, SOL_IP, IP_MULTICAST_TTL, [5], 4) = 0	WRITER
+     * setsockopt(5, SOL_IP, IP_ADD_MEMBERSHIP, "\340\22\16\25\r\2t[", 8) = 0    READER
+     * fcntl64(5, F_SETFD, 0x802) = 0
+     * bind(4, {sa_family=AF_INET, sin_port=htons(19649), sin_addr=inet_addr("13.2.116.91")}, 16) = 0	WRITER
+     */
+
+    remotesock_w = socket(raddrinfo->ai_family, raddrinfo->ai_socktype, 0);
+    if (remotesock_w == -1) {
+        udplink_fatal("socket: %s\n", strerror(errno));
+    }
+    remotesock_r = remotesock_w;
+
+    if (options.localif_for_mcast_addrinfo != NULL) {
+        /* We have a specific interface to bind to.  localif_for_mcast_addrinfo
+           is actually the unicast ipv4 address of this interface. */
+
+        remotesock_r = socket(raddrinfo->ai_family, raddrinfo->ai_socktype, 0);
+        if (remotesock_r == -1) {
             udplink_fatal("socket: %s\n", strerror(errno));
         }
-	result = bind(remotesock_w, options.multicastaddrinfo->ai_addr, options.multicastaddrinfo->ai_addrlen);
-        if (result == -1) {
-            udplink_fatal("bind(remotesock_w, local...): %s\n", strerror(errno));
-        }
+        result = setsockopt(remotesock_r, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+        if (result == -1) udplink_fatal("setsockopt(remotesock_r, ..., SO_REUSEADDR, ...)");
 
+        /* bind the listener to the multicast address */
+	result = bind(remotesock_r, raddrinfo->ai_addr, raddrinfo->ai_addrlen);
+        if (result == -1) {
+            udplink_fatal("bind(remotesock_r, local...): %s\n", strerror(errno));
+        }
     }
-    result = bind(remotesock_r, laddrinfo->ai_addr, laddrinfo->ai_addrlen);
-    if (result == -1 && errno == EADDRINUSE) {
-        
-        result = getaddrinfo(options.remotehostname, NULL, &hints, &raddrinfoz);
-        if (result == -1) udplink_fatal("getaddrinfo()");
-        result = bind(remotesock_r, raddrinfoz->ai_addr, raddrinfoz->ai_addrlen);
+
+    set_multicast_sockopt(remotesock_r, remotesock_w, raddrinfo, &options);
+
+    if (options.localif_for_mcast_addrinfo != NULL) {
+        result = bind(remotesock_w, options.localif_for_mcast_addrinfo->ai_addr, options.localif_for_mcast_addrinfo->ai_addrlen);
+    } else {
+        result = bind(remotesock_w, laddrinfo->ai_addr, laddrinfo->ai_addrlen);
     }
     if (result == -1) {
-        udplink_fatal("bind(remotesock_r, local...): %s\n", strerror(errno));
+        udplink_fatal("bind(remotesock_w, local...): %s\n", strerror(errno));
     }
 
     udplink_note("connected to %s:%s\n", canonical_remote, options.remoteport);
 
-    set_multicast_sockopt(remotesock_r, raddrinfo, &options);
 
     /* announce our presence to ccnd and request CCN PDU encapsulation */
     result = send(localsock_rw, CCN_EMPTY_PDU, CCN_EMPTY_PDU_LENGTH, 0);
@@ -389,15 +405,9 @@ main (int argc, char * const argv[]) {
 
     fds[0].fd = localsock_rw;
     fds[0].events = POLLIN;
-    if (remotesock_r != 0) {
-        fds[1].fd = remotesock_r;
-        fds[1].events = POLLIN;
-    } else {
-        /* no need to split the sockets for send and receive */
-        remotesock_w = remotesock_r;
-        fds[1].fd = remotesock_r;
-        fds[1].events = POLLIN;
-    }
+    fds[1].fd = remotesock_r;
+    fds[1].events = POLLIN;
+
     for (;;) {
         if (0 == (result = poll(fds, 2, -1))) continue;
         if (-1 == result) {
