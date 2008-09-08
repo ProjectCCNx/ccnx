@@ -287,6 +287,7 @@ main (int argc, char * const argv[]) {
     int remotesock_r = 0;
     char canonical_remote[NI_MAXHOST] = "";
     struct addrinfo *raddrinfo = NULL;
+    struct addrinfo *raddrinfoz = NULL;
     struct addrinfo *laddrinfo = NULL;
     struct addrinfo hints = {0};
     struct pollfd fds[2];
@@ -364,6 +365,12 @@ main (int argc, char * const argv[]) {
 
     }
     result = bind(remotesock_r, laddrinfo->ai_addr, laddrinfo->ai_addrlen);
+    if (result == -1 && errno == EADDRINUSE) {
+        
+        result = getaddrinfo(options.remotehostname, NULL, &hints, &raddrinfoz);
+        if (result == -1) udplink_fatal("getaddrinfo()");
+        result = bind(remotesock_r, raddrinfoz->ai_addr, raddrinfoz->ai_addrlen);
+    }
     if (result == -1) {
         udplink_fatal("bind(remotesock_r, local...): %s\n", strerror(errno));
     }
