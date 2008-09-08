@@ -286,8 +286,9 @@ changeloglevel(int s) {
 int
 main (int argc, char * const argv[]) {
     int result;
-    int localsock;
-    int remotesock;
+    int localsock = 0;
+    int remotesock = 0;
+    int remotesock_multirecv = 0;
     char canonical_remote[NI_MAXHOST] = "";
     struct addrinfo *raddrinfo = NULL;
     struct addrinfo *laddrinfo = NULL;
@@ -306,6 +307,7 @@ main (int argc, char * const argv[]) {
     struct sigaction sigact_changeloglevel;
     unsigned char *deferredbuf = NULL;
     size_t deferredlen = 0;
+    const int one = 1;
 
     process_options(argc, argv, &options);
     memset(&sigact_changeloglevel, 0, sizeof(sigact_changeloglevel));
@@ -351,8 +353,21 @@ main (int argc, char * const argv[]) {
     
     if (options.multicastaddrinfo != NULL) {
 	/* We have a specific interface to bind to.  multicastaddrinfo
- 	   is actually the unicast ipv4 address of this interface */
+ 	   is actually the unicast ipv4 address of this interface.
+           In this case, we need a separate socket for receiving the multicast packets */
+        result = setsockopt(remotesock, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+        if (result == -1) {
+            udplink_fatal("setsockopt(remotesock, ..., SO_REUSEADDR, ...): %s\n", strerror(errno));
+        }
 	result = bind(remotesock, options.multicastaddrinfo->ai_addr, options.multicastaddrinfo->ai_addrlen);
+        if (result == -1) {
+            udplink_fatal("bind(remotesock, local...): %s\n", strerror(errno));
+        }
+        remotesock_multirecv = socket(raddrinfo->ai_family, raddrinfo->ai_socktype, 0);
+        if (remotesock_multirecv == -1) {
+            udplink_fatal("socket: %s\n", strerror(errno));
+        }
+        result = bind(remotesock_multirecv, options.multicastaddrinfo->ai_addr, options.multicastaddrinfo->ai_addrlen);
     } else {
 	/* Default case with no specific interface: bind to laddrinfo 
            address obtained above, which should be unspecific network
@@ -377,9 +392,15 @@ main (int argc, char * const argv[]) {
 
     fds[0].fd = localsock;
     fds[0].events = POLLIN;
-    fds[1].fd = remotesock;
-    fds[1].events = POLLIN;
-
+    if (remotesock_multirecv != 0) {
+        fds[1].fd = remotesock_multirecv;
+        fds[1].events = POLLIN;
+    } else {
+        /* no need to split the sockets for send and receive */
+        remotesock_multirecv = remotesock;
+        fds[1].fd = remotesock;
+        fds[1].events = POLLIN;
+    }
     for (;;) {
         if (0 == (result = poll(fds, 2, -1))) continue;
         if (-1 == result) {
@@ -458,7 +479,7 @@ main (int argc, char * const argv[]) {
 
             memmove(rbuf, CCN_EMPTY_PDU, CCN_EMPTY_PDU_LENGTH - 1);
             recvbuf = &rbuf[CCN_EMPTY_PDU_LENGTH - 1];
-            recvlen = recvfrom(remotesock, recvbuf, sizeof(rbuf) - CCN_EMPTY_PDU_LENGTH,
+            recvlen = recvfrom(remotesock_multirecv, recvbuf, sizeof(rbuf) - CCN_EMPTY_PDU_LENGTH,
                                0, &from, &fromlen);
             if (options.logging > 0) {
                 if (from.sa_family == AF_INET) {
