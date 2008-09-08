@@ -359,15 +359,15 @@ main (int argc, char * const argv[]) {
         if (result == -1) {
             udplink_fatal("setsockopt(remotesock, ..., SO_REUSEADDR, ...): %s\n", strerror(errno));
         }
-	result = bind(remotesock, options.multicastaddrinfo->ai_addr, options.multicastaddrinfo->ai_addrlen);
-        if (result == -1) {
-            udplink_fatal("bind(remotesock, local...): %s\n", strerror(errno));
-        }
         remotesock_multirecv = socket(raddrinfo->ai_family, raddrinfo->ai_socktype, 0);
         if (remotesock_multirecv == -1) {
             udplink_fatal("socket: %s\n", strerror(errno));
         }
         result = bind(remotesock_multirecv, laddrinfo->ai_addr, laddrinfo->ai_addrlen);
+        if (result == -1) {
+            udplink_fatal("bind(remotesock_multirecv, local...): %s\n", strerror(errno));
+        }
+	result = bind(remotesock, options.multicastaddrinfo->ai_addr, options.multicastaddrinfo->ai_addrlen);
     } else {
 	/* Default case with no specific interface: bind to laddrinfo 
            address obtained above, which should be unspecific network
