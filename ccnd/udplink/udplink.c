@@ -367,7 +367,7 @@ main (int argc, char * const argv[]) {
         if (remotesock_multirecv == -1) {
             udplink_fatal("socket: %s\n", strerror(errno));
         }
-        result = bind(remotesock_multirecv, options.multicastaddrinfo->ai_addr, options.multicastaddrinfo->ai_addrlen);
+        result = bind(remotesock_multirecv, laddrinfo->ai_addr, laddrinfo->ai_addrlen);
     } else {
 	/* Default case with no specific interface: bind to laddrinfo 
            address obtained above, which should be unspecific network
