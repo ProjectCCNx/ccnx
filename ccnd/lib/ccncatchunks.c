@@ -225,16 +225,16 @@ main(int argc, char **argv)
     ccn_express_interest(ccn, name, -1, incoming, templ);
     ccn_charbuf_destroy(&name);
     /* Run a little while to see if there is anything there */
-    ccn_run(ccn, 100);
+    res = ccn_run(ccn, 200);
     if (incoming->intdata == 0) {
         fprintf(stderr, "%s: not found: %s\n", argv[0], argv[1]);
         exit(1);
     }
     /* We got something, run until end of data or somebody kills us */
-    while (1) {
+    while (res >= 0) {
         fflush(stdout);
-        ccn_run(ccn, 200);
+        res = ccn_run(ccn, 200);
     }
     ccn_destroy(&ccn);
-    exit(-1);
+    exit(res < 0);
 }
