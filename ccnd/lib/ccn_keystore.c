@@ -10,7 +10,7 @@ struct ccn_keystore {
 };
 
 struct ccn_keystore *
-ccn_keystore_create()
+ccn_keystore_create(void)
 {
     struct ccn_keystore *res = calloc(1, sizeof(*res));
     return (res);
