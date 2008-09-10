@@ -45,7 +45,7 @@ enum ccn_dtag {
     CCN_DTAG_Collection = 17,
     CCN_DTAG_CompleteName = 18,
     CCN_DTAG_Content = 19,
-    CCN_DTAG_ContentAuthenticator = 20,
+    CCN_DTAG_SignedInfo = 20,
     CCN_DTAG_ContentDigest = 21,
     CCN_DTAG_ContentHash = 22,
     CCN_DTAG_ContentObject = 23,
@@ -83,8 +83,11 @@ enum ccn_dtag {
     CCN_DTAG_DigestAlgorithm = 55,
     CCN_DTAG_BlockSize = 56,
     CCN_DTAG_AdditionalNameComponents = 57,
+    CCN_DTAG_FreshnessSeconds = 58,
     CCN_DTAG_CCNProtocolDataUnit = 17702112,
-    CCN_DTAG_ExperimentalResponseFilter = 23204960
+    CCN_DTAG_ExperimentalResponseFilter = 23204960,
+    /* old name for SignedInfo */
+    CCN_DTAG_ContentAuthenticator = CCN_DTAG_SignedInfo
 };
 
 struct ccn_dict_entry {

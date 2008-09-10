@@ -18,11 +18,7 @@ int
 ccn_auth_create_default(struct ccn_charbuf *c,
                         enum ccn_content_type Type)
 {
-    int res = 0;
-
-    res += ccn_auth_create(c, NULL, 0, NULL, Type, NULL);
-
-    return (res == 0 ? 0 : -1);
+    return (ccn_auth_create(c, NULL, 0, NULL, Type, NULL));
 }
 		
 int
@@ -43,44 +39,44 @@ ccn_auth_create(struct ccn_charbuf *c,
     if (publisher_key_id != NULL && publisher_key_id_size != 32)
         return (-1);
 
-    res += ccn_charbuf_append_tt(c, CCN_DTAG_ContentAuthenticator, CCN_DTAG);
+    res |= ccn_charbuf_append_tt(c, CCN_DTAG_ContentAuthenticator, CCN_DTAG);
 
-    res += ccn_charbuf_append_tt(c, CCN_DTAG_PublisherKeyID, CCN_DTAG);
+    res |= ccn_charbuf_append_tt(c, CCN_DTAG_PublisherKeyID, CCN_DTAG);
     if (publisher_key_id != NULL) {
-        res += ccn_charbuf_append_tt(c, publisher_key_id_size, CCN_BLOB);
-        res += ccn_charbuf_append(c, publisher_key_id, publisher_key_id_size);
+        res |= ccn_charbuf_append_tt(c, publisher_key_id_size, CCN_BLOB);
+        res |= ccn_charbuf_append(c, publisher_key_id, publisher_key_id_size);
     } else {
         /* obtain the default publisher key id and append it */
-        res += ccn_charbuf_append_tt(c, sizeof(fakepubkeyid), CCN_BLOB);
-        res += ccn_charbuf_append(c, fakepubkeyid, sizeof(fakepubkeyid));
+        res |= ccn_charbuf_append_tt(c, sizeof(fakepubkeyid), CCN_BLOB);
+        res |= ccn_charbuf_append(c, fakepubkeyid, sizeof(fakepubkeyid));
     }
-    res += ccn_charbuf_append_closer(c);
+    res |= ccn_charbuf_append_closer(c);
 
-    res += ccn_charbuf_append_tt(c, CCN_DTAG_Timestamp, CCN_DTAG);
+    res |= ccn_charbuf_append_tt(c, CCN_DTAG_Timestamp, CCN_DTAG);
     if (datetime != NULL) {
-        res += ccn_charbuf_append_tt(c, strlen(datetime), CCN_UDATA);
-        res += ccn_charbuf_append_string(c, datetime);
+        res |= ccn_charbuf_append_tt(c, strlen(datetime), CCN_UDATA);
+        res |= ccn_charbuf_append_string(c, datetime);
     }
     else {
         dt = ccn_charbuf_create();
-        res += ccn_charbuf_append_datetime_now(dt, CCN_DATETIME_PRECISION_USEC);
-        res += ccn_charbuf_append_tt(c, dt->length, CCN_UDATA);
-        res += ccn_charbuf_append_charbuf(c, dt);
+        res |= ccn_charbuf_append_datetime_now(dt, CCN_DATETIME_PRECISION_USEC);
+        res |= ccn_charbuf_append_tt(c, dt->length, CCN_UDATA);
+        res |= ccn_charbuf_append_charbuf(c, dt);
         ccn_charbuf_destroy(&dt);
     }
-    res += ccn_charbuf_append_closer(c);
+    res |= ccn_charbuf_append_closer(c);
 
-    res += ccn_charbuf_append_tt(c, CCN_DTAG_Type, CCN_DTAG);
-    res += ccn_charbuf_append_tt(c, strlen(typename), CCN_UDATA);
-    res += ccn_charbuf_append_string(c, typename);
-    res += ccn_charbuf_append_closer(c);
+    res |= ccn_charbuf_append_tt(c, CCN_DTAG_Type, CCN_DTAG);
+    res |= ccn_charbuf_append_tt(c, strlen(typename), CCN_UDATA);
+    res |= ccn_charbuf_append_string(c, typename);
+    res |= ccn_charbuf_append_closer(c);
 
     if (key_locator != NULL) {
 	/* key_locator is a sub-type that should already be encoded */
-	res += ccn_charbuf_append_charbuf(c, key_locator);
+	res |= ccn_charbuf_append_charbuf(c, key_locator);
     }
     
-    res += ccn_charbuf_append_closer(c);
+    res |= ccn_charbuf_append_closer(c);
 
     return (res == 0 ? 0 : -1);
 }
@@ -121,28 +117,28 @@ ccn_encode_Signature(struct ccn_charbuf *buf,
     if (signature == NULL)
         return (-1);
 
-    res += ccn_charbuf_append_tt(buf, CCN_DTAG_Signature, CCN_DTAG);
+    res |= ccn_charbuf_append_tt(buf, CCN_DTAG_Signature, CCN_DTAG);
 
     if (digest_algorithm != NULL) {
-        res += ccn_charbuf_append_tt(buf, CCN_DTAG_DigestAlgorithm, CCN_DTAG);
-        res += ccn_charbuf_append_tt(buf, strlen(digest_algorithm), CCN_UDATA);
-        res += ccn_charbuf_append_string(buf, digest_algorithm);
-        res += ccn_charbuf_append_closer(buf);
+        res |= ccn_charbuf_append_tt(buf, CCN_DTAG_DigestAlgorithm, CCN_DTAG);
+        res |= ccn_charbuf_append_tt(buf, strlen(digest_algorithm), CCN_UDATA);
+        res |= ccn_charbuf_append_string(buf, digest_algorithm);
+        res |= ccn_charbuf_append_closer(buf);
     }
 
     if (witness != NULL) {
-        res += ccn_charbuf_append_tt(buf, CCN_DTAG_Witness, CCN_DTAG);
-        res += ccn_charbuf_append_tt(buf, witness_size, CCN_BLOB);
-        res += ccn_charbuf_append(buf, witness, witness_size);
-        res += ccn_charbuf_append_closer(buf);
+        res |= ccn_charbuf_append_tt(buf, CCN_DTAG_Witness, CCN_DTAG);
+        res |= ccn_charbuf_append_tt(buf, witness_size, CCN_BLOB);
+        res |= ccn_charbuf_append(buf, witness, witness_size);
+        res |= ccn_charbuf_append_closer(buf);
     }
 
-    res += ccn_charbuf_append_tt(buf, CCN_DTAG_SignatureBits, CCN_DTAG);
-    res += ccn_charbuf_append_tt(buf, signature_size, CCN_BLOB);
-    res += ccn_charbuf_append(buf, signature, signature_size);
-    res += ccn_charbuf_append_closer(buf);
+    res |= ccn_charbuf_append_tt(buf, CCN_DTAG_SignatureBits, CCN_DTAG);
+    res |= ccn_charbuf_append_tt(buf, signature_size, CCN_BLOB);
+    res |= ccn_charbuf_append(buf, signature, signature_size);
+    res |= ccn_charbuf_append_closer(buf);
     
-    res += ccn_charbuf_append_closer(buf);
+    res |= ccn_charbuf_append_closer(buf);
 
     return (res == 0 ? 0 : -1);
 }
@@ -164,9 +160,9 @@ ccn_encode_ContentObject(struct ccn_charbuf *buf,
     struct ccn_charbuf *content_header;
 
     content_header = ccn_charbuf_create();
-    res += ccn_charbuf_append_tt(content_header, CCN_DTAG_Content, CCN_DTAG);
-    res += ccn_charbuf_append_tt(content_header, size, CCN_BLOB);
-    res += ccn_charbuf_append_closer(content_header);
+    res |= ccn_charbuf_append_tt(content_header, CCN_DTAG_Content, CCN_DTAG);
+    res |= ccn_charbuf_append_tt(content_header, size, CCN_BLOB);
+    res |= ccn_charbuf_append_closer(content_header);
 
     sig_ctx = ccn_sigc_create();
     if (sig_ctx == NULL) return (-1);
@@ -186,12 +182,12 @@ ccn_encode_ContentObject(struct ccn_charbuf *buf,
     }
     ccn_sigc_destroy(&sig_ctx);
 
-    res += ccn_charbuf_append_tt(buf, CCN_DTAG_ContentObject, CCN_DTAG);
-    res += ccn_encode_Signature(buf, digest_algorithm, NULL, 0, signature, signature_size);
-    res += ccn_charbuf_append_charbuf(buf, Name);
-    res += ccn_charbuf_append_charbuf(buf, ContentAuthenticator);
-    res += ccn_encode_Content(buf, data, size);
-    res += ccn_charbuf_append_closer(buf);
+    res |= ccn_charbuf_append_tt(buf, CCN_DTAG_ContentObject, CCN_DTAG);
+    res |= ccn_encode_Signature(buf, digest_algorithm, NULL, 0, signature, signature_size);
+    res |= ccn_charbuf_append_charbuf(buf, Name);
+    res |= ccn_charbuf_append_charbuf(buf, ContentAuthenticator);
+    res |= ccn_encode_Content(buf, data, size);
+    res |= ccn_charbuf_append_closer(buf);
     
     free(signature);
     ccn_charbuf_destroy(&content_header);
@@ -205,10 +201,10 @@ ccn_encode_Content(struct ccn_charbuf *buf,
 {
     int res = 0;
 
-    res += ccn_charbuf_append_tt(buf, CCN_DTAG_Content, CCN_DTAG);
-    res += ccn_charbuf_append_tt(buf, size, CCN_BLOB);
-    res += ccn_charbuf_append(buf, data, size);
-    res += ccn_charbuf_append_closer(buf);
+    res |= ccn_charbuf_append_tt(buf, CCN_DTAG_Content, CCN_DTAG);
+    res |= ccn_charbuf_append_tt(buf, size, CCN_BLOB);
+    res |= ccn_charbuf_append(buf, data, size);
+    res |= ccn_charbuf_append_closer(buf);
     
     return (res == 0 ? 0 : -1);
 }

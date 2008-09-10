@@ -134,7 +134,8 @@ struct content_entry {
     struct ccn_indexbuf *skiplinks; /* skiplist for content-ordered ops */
 };
 /* content_entry flags */
-#define CCN_CONTENT_ENTRY_SLOWSEND 1
+#define CCN_CONTENT_ENTRY_SLOWSEND  1
+#define CCN_CONTENT_ENTRY_STALE     2
 
 /*
  * The interestprefix hash table is keyed by the Component elements of the Name prefix

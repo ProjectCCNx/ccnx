@@ -1235,6 +1235,49 @@ process_incoming_interest(struct ccnd *h, struct face *face,
     indexbuf_release(h, comps);
 }
 
+static int
+expire_content(struct ccn_schedule *sched,
+               void *clienth,
+               struct ccn_scheduled_event *ev,
+               int flags)
+{
+    struct ccnd *h = clienth;
+    ccn_accession_t accession = ev->evint;
+    struct content_entry *content = NULL;
+    content = content_from_accession(h, accession);
+    if (content != NULL) {
+        if (h->debug & 4)
+            ccnd_debug_ccnb(h, __LINE__, "stale", NULL,
+                            content->key, content->size);
+        content->flags |= CCN_CONTENT_ENTRY_STALE;
+    }
+    return(0);
+}
+
+static void
+set_content_timer(struct ccnd *h, struct content_entry *content,
+                  struct ccn_parsed_ContentObject *pco)
+{
+    int seconds;
+    size_t start = pco->offset[CCN_PCO_B_FreshnessSeconds];
+    size_t stop  = pco->offset[CCN_PCO_E_FreshnessSeconds];
+    if (start == stop)
+        return;
+    seconds = ccn_fetch_tagged_nonNegativeInteger(
+                CCN_DTAG_FreshnessSeconds,
+                content->key,
+                start, stop);
+    if (seconds <= 0)
+        return;
+    if (seconds > ((1U<<31) / 1000000)) {
+        ccnd_debug_ccnb(h, __LINE__, "FreshnessSeconds_too_large", NULL,
+            content->key, pco->offset[CCN_PCO_E]);
+        return;
+    }
+    ccn_schedule_event(h->sched, seconds * 1000000,
+                       &expire_content, NULL, content->accession);
+}
+
 static void
 process_incoming_content(struct ccnd *h, struct face *face,
                          unsigned char *wire_msg, size_t wire_size)
@@ -1339,6 +1382,7 @@ process_incoming_content(struct ccnd *h, struct face *face,
             res = -__LINE__;
             content = NULL;
         }
+        set_content_timer(h, content, &obj);
     }
     hashtb_end(e);
 Bail:

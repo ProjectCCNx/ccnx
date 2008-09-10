@@ -525,7 +525,7 @@ struct parsed_KeyName {
     int PublisherID;
 };
 
-int
+static int
 ccn_parse_KeyName(struct ccn_buf_decoder *d, struct parsed_KeyName *x)
 {
     int res = -1;
@@ -575,6 +575,63 @@ ccn_parse_Signature(struct ccn_buf_decoder *d, struct ccn_parsed_ContentObject *
     return(res);
 }
 
+static int
+ccn_parse_SignedInfo(struct ccn_buf_decoder *d, struct ccn_parsed_ContentObject *x)
+{
+    x->offset[CCN_PCO_B_SignedInfo] = d->decoder.token_index;
+    if (ccn_buf_match_dtag(d, CCN_DTAG_SignedInfo)) {
+        ccn_buf_advance(d);
+        x->offset[CCN_PCO_B_CAUTH_PublisherKeyID] = d->decoder.token_index;
+        ccn_parse_required_tagged_BLOB(d, CCN_DTAG_PublisherKeyID, 16, 64);
+        x->offset[CCN_PCO_E_CAUTH_PublisherKeyID] = d->decoder.token_index;
+        
+        if (x->magic == -1)                                                     // XXX - compat
+            ccn_parse_optional_tagged_UDATA(d, CCN_DTAG_NameComponentCount);    // XXX - compat
+        
+        x->offset[CCN_PCO_B_CAUTH_Timestamp] = d->decoder.token_index;
+        ccn_parse_required_tagged_timestamp(d, CCN_DTAG_Timestamp);
+        x->offset[CCN_PCO_E_CAUTH_Timestamp] = d->decoder.token_index;
+        
+        x->offset[CCN_PCO_B_CAUTH_Type] = d->decoder.token_index;
+        ccn_parse_required_tagged_UDATA(d, CCN_DTAG_Type);
+        x->offset[CCN_PCO_E_CAUTH_Type] = d->decoder.token_index;
+        
+        x->offset[CCN_PCO_B_FreshnessSeconds] = d->decoder.token_index;
+        ccn_parse_optional_tagged_nonNegativeInteger(d, CCN_DTAG_FreshnessSeconds);
+        x->offset[CCN_PCO_E_FreshnessSeconds] = d->decoder.token_index;
+        
+        x->offset[CCN_PCO_B_CAUTH_KeyLocator] = d->decoder.token_index;
+        x->offset[CCN_PCO_B_CAUTH_Key_Certificate_KeyName] = d->decoder.token_index;
+        x->offset[CCN_PCO_E_CAUTH_Key_Certificate_KeyName] = d->decoder.token_index;
+        if (ccn_buf_match_dtag(d, CCN_DTAG_KeyLocator)) {
+            struct parsed_KeyName keyname = {-1, -1};
+            ccn_buf_advance(d);
+            x->offset[CCN_PCO_B_CAUTH_Key_Certificate_KeyName] = d->decoder.token_index;
+            if (ccn_buf_match_dtag(d, CCN_DTAG_Key)) {
+                (void)ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Key, 0, -1);
+            }
+            else if (ccn_buf_match_dtag(d, CCN_DTAG_Certificate)) {
+                (void)ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Certificate, 0, -1);
+            }
+            else {
+                (void)ccn_parse_KeyName(d, &keyname);
+            }
+            x->offset[CCN_PCO_E_CAUTH_Key_Certificate_KeyName] = d->decoder.token_index;
+            ccn_buf_check_close(d);
+        }
+        x->offset[CCN_PCO_E_CAUTH_KeyLocator] = d->decoder.token_index;
+        if (x->magic == -1)                                                     // XXX - compat
+            ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_ContentDigest, 16, -1);  // XXX - compat
+        ccn_buf_check_close(d);
+    }
+    else
+        d->decoder.state = -__LINE__;
+    x->offset[CCN_PCO_E_SignedInfo] = d->decoder.token_index;
+    if (d->decoder.state < 0)
+        return (d->decoder.state);
+    return(0);
+}
+
 int
 ccn_parse_ContentObject(const unsigned char *msg, size_t size,
                         struct ccn_parsed_ContentObject *x,
@@ -599,54 +656,10 @@ ccn_parse_ContentObject(const unsigned char *msg, size_t size,
         x->name_ncomps = name.ncomp;
         x->offset[CCN_PCO_E_ComponentLast] = d->decoder.token_index - 1;
         x->offset[CCN_PCO_E_Name] = d->decoder.token_index;
-        x->offset[CCN_PCO_B_ContentAuthenticator] = d->decoder.token_index;
-        if (ccn_buf_match_dtag(d, CCN_DTAG_ContentAuthenticator)) {
-            ccn_buf_advance(d);
-            x->offset[CCN_PCO_B_CAUTH_PublisherKeyID] = d->decoder.token_index;
-            ccn_parse_required_tagged_BLOB(d, CCN_DTAG_PublisherKeyID, 16, 64);
-            x->offset[CCN_PCO_E_CAUTH_PublisherKeyID] = d->decoder.token_index;
-            
-            if (x->magic == -1)                                                 // XXX - compat
-                ccn_parse_optional_tagged_UDATA(d, CCN_DTAG_NameComponentCount);// XXX - compat
-            
-            x->offset[CCN_PCO_B_CAUTH_Timestamp] = d->decoder.token_index;
-            ccn_parse_required_tagged_timestamp(d, CCN_DTAG_Timestamp);
-            x->offset[CCN_PCO_E_CAUTH_Timestamp] = d->decoder.token_index;
-            
-            x->offset[CCN_PCO_B_CAUTH_Type] = d->decoder.token_index;
-            ccn_parse_required_tagged_UDATA(d, CCN_DTAG_Type);
-            x->offset[CCN_PCO_E_CAUTH_Type] = d->decoder.token_index;
-            
-            x->offset[CCN_PCO_B_CAUTH_KeyLocator] = d->decoder.token_index;
-            x->offset[CCN_PCO_B_CAUTH_Key_Certificate_KeyName] = d->decoder.token_index;
-            x->offset[CCN_PCO_E_CAUTH_Key_Certificate_KeyName] = d->decoder.token_index;
-            if (ccn_buf_match_dtag(d, CCN_DTAG_KeyLocator)) {
-                struct parsed_KeyName keyname = {-1, -1};
-                ccn_buf_advance(d);
-                x->offset[CCN_PCO_B_CAUTH_Key_Certificate_KeyName] = d->decoder.token_index;
-                if (ccn_buf_match_dtag(d, CCN_DTAG_Key)) {
-                    (void)ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Key, 0, -1);
-                }
-                else if (ccn_buf_match_dtag(d, CCN_DTAG_Certificate)) {
-                    (void)ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Certificate, 0, -1);
-                }
-                else {
-                    (void)ccn_parse_KeyName(d, &keyname);
-                }
-                x->offset[CCN_PCO_E_CAUTH_Key_Certificate_KeyName] = d->decoder.token_index;
-                ccn_buf_check_close(d);
-            }
-            x->offset[CCN_PCO_E_CAUTH_KeyLocator] = d->decoder.token_index;
-            if (x->magic == -1)                                                 // XXX - compat
-                ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_ContentDigest, 16, -1);      // XXX - compat
-            ccn_buf_check_close(d);
-        }
-        else
-            d->decoder.state = -__LINE__;
-        x->offset[CCN_PCO_E_ContentAuthenticator] = d->decoder.token_index;
+        ccn_parse_SignedInfo(d, x);
         if (x->magic == -1 && ccn_buf_match_dtag(d, CCN_DTAG_Signature)) {      // XXX - compat
             x->offset[CCN_PCO_B_Signature] = d->decoder.token_index;            // XXX - compat
-            res = ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Signature, 16, -1);        // XXX - compat
+            res = ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Signature, 16, -1);// XXX - compat
             x->magic = 20080630;                                                // XXX - compat
             x->offset[CCN_PCO_E_Signature] = d->decoder.token_index;            // XXX - compat
         }                                                                       // XXX - compat

@@ -8,7 +8,7 @@ static const struct ccn_dict_entry ccn_tagdict[] = {
     {CCN_DTAG_Collection, "Collection"},
     {CCN_DTAG_CompleteName, "CompleteName"},
     {CCN_DTAG_Content, "Content"},
-    {CCN_DTAG_ContentAuthenticator, "ContentAuthenticator"},
+    {CCN_DTAG_SignedInfo, "SignedInfo"},
     {CCN_DTAG_ContentDigest, "ContentDigest"},
     {CCN_DTAG_ContentHash, "ContentHash"},
     {CCN_DTAG_ContentObject, "ContentObject"},
@@ -46,6 +46,7 @@ static const struct ccn_dict_entry ccn_tagdict[] = {
     {CCN_DTAG_DigestAlgorithm, "DigestAlgorithm"},
     {CCN_DTAG_BlockSize, "BlockSize"},
     {CCN_DTAG_AdditionalNameComponents, "AdditionalNameComponents"},
+    {CCN_DTAG_FreshnessSeconds, "FreshnessSeconds"},
     {CCN_DTAG_CCNProtocolDataUnit, "CCNProtocolDataUnit"},
     {CCN_DTAG_ExperimentalResponseFilter, "ExperimentalResponseFilter"}
 };
