@@ -6,7 +6,7 @@
   <Name>
     <Component ccnbencoding="base64Binary">dmdxO6LZm7UUoUdyt6EG3KrnkNJkjdaayBppbvfD</Component>
   </Name>
-  <ContentAuthenticator>
+  <SignedInfo>
     <PublisherKeyID ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherKeyID>
     <Timestamp>2008-07-11T16:58:35.432Z</Timestamp>
     <Type>LEAF</Type>
@@ -19,6 +19,6 @@
         </Name>
       </KeyName>
     </KeyLocator>
-  </ContentAuthenticator>
+  </SignedInfo>
   <Content ccnbencoding="base64Binary"/>
 </ContentObject>

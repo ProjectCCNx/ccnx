@@ -13,7 +13,7 @@
     <Component ccnbencoding="base64Binary">c21ldHRlcnM=</Component>
     <Component ccnbencoding="base64Binary">dGVzdDIudHh0</Component>
   </Name>
-  <ContentAuthenticator>
+  <SignedInfo>
     <PublisherKeyID ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherKeyID>
     <Timestamp>2008-02-11T16:54:36.671Z</Timestamp>
     <Type>LEAF</Type>
@@ -26,6 +26,6 @@
         </Name>
       </KeyName>
     </KeyLocator>
-  </ContentAuthenticator>
+  </SignedInfo>
   <Content ccnbencoding="base64Binary">AQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Content>
 </ContentObject>

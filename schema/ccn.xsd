@@ -74,31 +74,35 @@
   </xs:simpleContent>
 </xs:complexType>
     
-<xs:complexType name="ContentAuthenticatorType">
+<!-- Note: SignedInfo was formerly known as ContentAuthenticator -->
+<xs:complexType name="SignedInfoType">
   <xs:sequence>
     <xs:element name="PublisherKeyID" type="KeyIDType"/>
     <xs:element name="Timestamp" type="xs:dateTime"/> <!-- should be canonical -->
     <xs:element name="Type" type="ContentType"/>
-	<!-- Where to find the key to verify this content. Currently
-		 signed and mandatory, could maybe be unsigned and
-		 optional. In theory, then could be ommitted when the signer
+    <!-- The optional FreshnessSeconds indicates how many seconds a node
+                 should wait after the arrival of this ContentObject before
+                 marking it as stale. -->
+    <xs:element name="FreshnessSeconds" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
+    <!-- A KeyLocator tells where to find the key to verify this content.
+                 This is signed, but may be omitted when the signer
 		 is really sure that everyone on the path can find the
-		 key. Does not need to be signed; you can't verify the
-		 signature over it until you have the key, and by then you
-		 know whether it was correct or not. Not signing it also
-		 allows it to be replaced by updated information known to the
-		 forwarder.  DoS attacks mounted by ommitting it can be
+		 key. (In theory, does not need to be signed; you can't verify
+                 the signature over it until you have the key, and by then you
+		 know whether it was correct or not. Not signing it would also
+		 allow it to be replaced by updated information known to the
+		 forwarder.  DoS attacks mounted by omitting it can be
 		 mounted whether it is signed or not; as can attacks mounted
-		 by modifying it maliciously. The PublisherKeyID in the
-		 ContentAuthenticator is what is used as the real fast
-		 selector to identify the signer of this content, not the
-		 locator. The reason for leaving it in the signed component of
-		 the packet for now is the risk of selective DOS attacks - if
+		 by modifying it maliciously.) The PublisherKeyID in the
+		 SignedInfo is what is used as the real fast selector
+                 to identify the signer of this content, not the locator.
+                 The reason for leaving the locator in the signed component
+                 of the packet is the risk of selective DOS attacks - if
 		 credentials attached to a key can be found only by locating
 		 it within a certain namespace, one could replace the
 		 publisher's locator with another that pointed to the same key
 		 but made it seem as if it lacked those credentials. -->
-	<xs:element name="KeyLocator" type="KeyLocatorType" />
+    <xs:element name="KeyLocator" type="KeyLocatorType" minOccurs="0" maxOccurs="1"/>
   </xs:sequence>
 </xs:complexType>
 
@@ -129,7 +133,7 @@
 	<xs:element name="DigestAlgorithm" type="xs:string"
 					 default="2.16.840.1.101.3.4.2.1"
                                          minOccurs="0" maxOccurs="1" /> 
-	<!-- A witness is additional information necessary to verify the
+	<!-- A Witness is additional information necessary to verify the
 		 signature in some algorithms. For elements authenticated
 		 using a Merkle Hash Tree, the witness information would be
 		 the elements of the hash path through the tree. -->
@@ -146,10 +150,10 @@
 		 and Name+Authenticator for various applications. -->
 	<xs:element name="Signature" type="SignatureType"/>
 	<xs:element name="Name" type="NameType"/>
-	<xs:element name="ContentAuthenticator" type="ContentAuthenticatorType"/>
+	<xs:element name="SignedInfo" type="SignedInfoType"/>
 	<!-- The content to be signed. As there is no longer a proxy for
-		 (digest of) the content explicitly in the authenticator, you
-		 need the content itself to verify the signature. Because we
+             (digest of) the content explicitly in the authenticator, you
+             need the content itself to verify the signature. Because we
 	     generally need to compute the digest of the content anyway,
 	     we do so prior to signing. Given that, we either need to pick
 	     a standard digest algorithm for content and always use it
@@ -170,7 +174,7 @@
   <xs:sequence>
     <xs:element name="Signature" type="SignatureType"/>
     <xs:element name="Name" type="NameType"/>
-    <xs:element name="ContentAuthenticator" type="ContentAuthenticatorType"/>
+    <xs:element name="SignedInfo" type="SignedInfoType"/>
   </xs:sequence>
 </xs:complexType>
 

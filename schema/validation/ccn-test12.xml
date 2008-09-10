@@ -2,6 +2,21 @@
 <CCNProtocolDataUnit>
   <ContentObject>
     <Signature>
+      <SignatureBits ccnbencoding="base64Binary">okEd7rqcA9aY6ZQ4kYpHgPZKIMseZz2qrUxBYjsA0cF9P6cbM9O7FSo7</SignatureBits>
+    </Signature>
+    <Name>
+      <Component ccnbencoding="base64Binary">dmdxO6LZm7ZZoUdyt6EG3KrnkNJkjdaayBppbvfD</Component>
+    </Name>
+    <SignedInfo>
+      <PublisherKeyID ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherKeyID>
+      <Timestamp>2008-09-10T11:58:32.4Z</Timestamp>
+      <Type>LEAF</Type>
+      <!-- KeyLocator is optional -->
+    </SignedInfo>
+    <Content ccnbencoding="base64Binary"/>
+  </ContentObject>
+  <ContentObject>
+    <Signature>
       <SignatureBits ccnbencoding="base64Binary">okEd7rqcA9aY6ZQ4kYpHgQZKIMseZz2qrUxBYjsA0cF9P6cbM9O7FSo7</SignatureBits>
     </Signature>
     <Name>
@@ -11,6 +26,7 @@
       <PublisherKeyID ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherKeyID>
       <Timestamp>2008-02-11T16:58:35.432Z</Timestamp>
       <Type>LEAF</Type>
+      <FreshnessSeconds>42</FreshnessSeconds>
       <KeyLocator>
         <KeyName>
           <Name>
@@ -23,19 +39,4 @@
     </SignedInfo>
     <Content ccnbencoding="base64Binary"/>
   </ContentObject>
-  <Interest>
-    <Name>
-      <Component ccnbencoding="base64Binary">dGVzdA==</Component>
-      <Component ccnbencoding="base64Binary">YnJpZ2dz</Component>
-      <Component ccnbencoding="base64Binary">dGVzdC50eHQ=</Component>
-    </Name>
-    <Exclude>
-      <Bloom ccnbencoding="base64Binary">AA==</Bloom>
-      <Component ccnbencoding="base64Binary">AQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Component>
-      <Component ccnbencoding="base64Binary">BQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Component>
-      <Bloom ccnbencoding="base64Binary">AA==</Bloom>
-      <Component ccnbencoding="base64Binary">CQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Component>
-    </Exclude>
-    <OrderPreference>5</OrderPreference>
-  </Interest>
 </CCNProtocolDataUnit>

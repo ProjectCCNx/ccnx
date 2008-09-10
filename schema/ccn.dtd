@@ -8,7 +8,7 @@
 <!ELEMENT CCNProtocolDataUnit	((ContentObject | Interest)*)>
 <!ATTLIST CCNProtocolDataUnit	%commonattrs;>
 
-<!ELEMENT ContentObject	(Signature, Name, ContentAuthenticator, Content)>
+<!ELEMENT ContentObject	(Signature, Name, SignedInfo, Content)>
 <!ATTLIST ContentObject	%commonattrs;>
 
 <!ELEMENT Collection	(Link*)>
@@ -17,7 +17,7 @@
 <!ELEMENT Link    	(Name, LinkAuthenticator?)>
 <!ATTLIST Link		%commonattrs;>
 
-<!ELEMENT CompleteName	(Name, ContentAuthenticator, Signature)>
+<!ELEMENT CompleteName	(Name, SignedInfo, Signature)>
 <!ATTLIST CompleteName	%commonattrs;>
 
 <!ELEMENT LinkAuthenticator (PublisherID?, NameComponentCount?, Timestamp?, Type?, ContentDigest?)>
@@ -43,12 +43,12 @@
 <!ELEMENT Component	(#PCDATA)>	<!-- base64Binary -->
 <!ATTLIST Component     ccnbencoding CDATA #FIXED 'base64Binary'>
 
-<!ELEMENT ContentAuthenticator (
-		PublisherKeyID,
-		Timestamp,
-		Type,
-		KeyLocator)>
-<!ATTLIST ContentAuthenticator %commonattrs;>
+<!ELEMENT SignedInfo    (PublisherKeyID,
+                         Timestamp,
+                         Type,
+                         FreshnessSeconds?,
+                         KeyLocator?)>
+<!ATTLIST SignedInfo %commonattrs;>
 
 <!ELEMENT Interest	(Name,
                          NameComponentCount?,
@@ -94,7 +94,9 @@
 <!ELEMENT NameComponentCount (#PCDATA)> <!-- nonNegativeInteger -->
 <!ELEMENT AdditionalNameComponents (#PCDATA)> <!-- nonNegativeInteger -->
 <!ELEMENT Timestamp	(#PCDATA)>	<!-- dateTime -->
+<!ELEMENT FreshnessSeconds (#PCDATA)>	<!-- nonNegativeInteger -->
 <!ELEMENT Type		(#PCDATA)>	<!-- FRAGMENT, LINK, COLLECTION, LEAF, SESSION, HEADER, KEY -->
+
 <!ELEMENT ContentDigest	(#PCDATA)>	<!-- base64 encoding of DER-encoded DigestInfo -->
 <!ATTLIST ContentDigest ccnbencoding CDATA #FIXED 'base64Binary'>
 
