@@ -105,12 +105,12 @@ main(int argc, char **argv)
             status = 1;
             continue;
         }
-        if (co->offset[CCN_PCO_B_CAUTH_KeyLocator] != co->offset[CCN_PCO_E_CAUTH_KeyLocator]) {
+        if (co->offset[CCN_PCO_B_KeyLocator] != co->offset[CCN_PCO_E_KeyLocator]) {
             struct ccn_buf_decoder decoder;
             struct ccn_buf_decoder *d =
                 ccn_buf_decoder_start(&decoder,
-                                      rawbuf + co->offset[CCN_PCO_B_CAUTH_Key_Certificate_KeyName],
-                                      co->offset[CCN_PCO_E_CAUTH_Key_Certificate_KeyName] - co->offset[CCN_PCO_B_CAUTH_Key_Certificate_KeyName]);
+                                      rawbuf + co->offset[CCN_PCO_B_Key_Certificate_KeyName],
+                                      co->offset[CCN_PCO_E_Key_Certificate_KeyName] - co->offset[CCN_PCO_B_Key_Certificate_KeyName]);
             
            fprintf(stderr, "[has KeyLocator: ");
            if (ccn_buf_match_dtag(d, CCN_DTAG_KeyName)) fprintf(stderr, "KeyName] ");

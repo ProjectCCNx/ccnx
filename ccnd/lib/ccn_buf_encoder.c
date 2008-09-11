@@ -15,19 +15,20 @@
 #include <ccn/signing.h>
 
 int
-ccn_auth_create_default(struct ccn_charbuf *c,
+ccn_signed_info_create_default(struct ccn_charbuf *c,
                         enum ccn_content_type Type)
 {
-    return (ccn_auth_create(c, NULL, 0, NULL, Type, NULL));
+    return (ccn_signed_info_create(c, NULL, 0, NULL, Type, -1, NULL));
 }
 		
 int
-ccn_auth_create(struct ccn_charbuf *c,
-                const void *publisher_key_id,	/* input, sha256 hash */
-                size_t publisher_key_id_size, 	/* input, 32 for sha256 hashes */
-                const char *datetime,
-                enum ccn_content_type type,	/* input */
-                const struct ccn_charbuf *key_locator)	/* input, optional, ccnb encoded */
+ccn_signed_info_create(struct ccn_charbuf *c,
+                       const void *publisher_key_id,	/* input, sha256 hash */
+                       size_t publisher_key_id_size, 	/* input, 32 for sha256 hashes */
+                       const char *datetime,
+                       enum ccn_content_type type,	/* input */
+                       int freshness,			/* input, -1 means omit */
+                       const struct ccn_charbuf *key_locator)	/* input, optional, ccnb encoded */
 {
     int res = 0;
     const char *typename = ccn_content_name(type);
@@ -39,7 +40,7 @@ ccn_auth_create(struct ccn_charbuf *c,
     if (publisher_key_id != NULL && publisher_key_id_size != 32)
         return (-1);
 
-    res |= ccn_charbuf_append_tt(c, CCN_DTAG_ContentAuthenticator, CCN_DTAG);
+    res |= ccn_charbuf_append_tt(c, CCN_DTAG_SignedInfo, CCN_DTAG);
 
     res |= ccn_charbuf_append_tt(c, CCN_DTAG_PublisherKeyID, CCN_DTAG);
     if (publisher_key_id != NULL) {
@@ -70,6 +71,12 @@ ccn_auth_create(struct ccn_charbuf *c,
     res |= ccn_charbuf_append_tt(c, strlen(typename), CCN_UDATA);
     res |= ccn_charbuf_append_string(c, typename);
     res |= ccn_charbuf_append_closer(c);
+
+    if (freshness >= 0) {
+        res |= ccn_charbuf_append_tt(c, CCN_DTAG_FreshnessSeconds, CCN_DTAG);
+        res |= ccn_charbuf_append_non_negative_integer(c, freshness);
+        res |= ccn_charbuf_append_closer(c);
+    }
 
     if (key_locator != NULL) {
 	/* key_locator is a sub-type that should already be encoded */
@@ -236,3 +243,18 @@ ccn_charbuf_append_closer(struct ccn_charbuf *c)
     res = ccn_charbuf_append(c, &closer, 1);
     return(res);
 }
+
+int
+ccn_charbuf_append_non_negative_integer(struct ccn_charbuf *c, int nni)
+{
+    char nnistring[24];
+    int nnistringlen;
+    int res;
+
+    if (nni < 0) return (-1);
+    nnistringlen = snprintf(nnistring, sizeof(nnistring), "%d", nni);
+    res = ccn_charbuf_append_tt(c, nnistringlen, CCN_UDATA);
+    res |= ccn_charbuf_append_string(c, nnistring);
+    return (res);
+}
+

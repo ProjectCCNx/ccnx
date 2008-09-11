@@ -85,9 +85,7 @@ enum ccn_dtag {
     CCN_DTAG_AdditionalNameComponents = 57,
     CCN_DTAG_FreshnessSeconds = 58,
     CCN_DTAG_CCNProtocolDataUnit = 17702112,
-    CCN_DTAG_ExperimentalResponseFilter = 23204960,
-    /* old name for SignedInfo */
-    CCN_DTAG_ContentAuthenticator = CCN_DTAG_SignedInfo
+    CCN_DTAG_ExperimentalResponseFilter = 23204960
 };
 
 struct ccn_dict_entry {

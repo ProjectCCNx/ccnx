@@ -183,25 +183,27 @@ enum ccn_content_type {
 };
 
 /*
- * ccn_auth_create_default: create authenticator in a charbuf 
+ * ccn_signed_info_create_default: create signed info in a charbuf 
  * with defaults.
  * Return value is 0, or -1 for error.
  */
 int
-ccn_auth_create_default(struct ccn_charbuf *c, /* output authenticator */
+ccn_signed_info_create_default(struct ccn_charbuf *c, /* output signed info */
 			enum ccn_content_type Type);
 
 /*
- * ccn_auth_create: create authenticator in a charbuf 
+ * ccn_signed_info_create: create signed info in a charbuf 
  * Note that key_locator is optional (may be NULL) and is ccnb encoded
+ * Note that freshness is optional (-1 means omit)
  * Return value is 0, or -1 for error.
  */
 int
-ccn_auth_create(struct ccn_charbuf *c,
+ccn_signed_info_create(struct ccn_charbuf *c,
                 const void *publisher_key_id,	/* input, (sha256) hash */
                 size_t publisher_key_id_size, 	/* input, 32 for sha256 hashes */
                 const char *datetime,		/* input, NULL for "now" */
                 enum ccn_content_type type,	/* input */
+                int freshness,			/* input, -1 means omit */
                 const struct ccn_charbuf *key_locator);	/* input, optional, ccnb encoded */
 
 /***********************************
@@ -422,22 +424,20 @@ enum ccn_parsed_content_object_offsetid {
     CCN_PCO_E_ComponentLast = CCN_PCO_E_ComponentN,
     CCN_PCO_E_Name,
     CCN_PCO_B_SignedInfo,
-    CCN_PCO_B_ContentAuthenticator = CCN_PCO_B_SignedInfo,
-    CCN_PCO_B_CAUTH_PublisherKeyID,
-    CCN_PCO_E_CAUTH_PublisherKeyID,
-    CCN_PCO_B_CAUTH_Timestamp,
-    CCN_PCO_E_CAUTH_Timestamp,
-    CCN_PCO_B_CAUTH_Type,
-    CCN_PCO_E_CAUTH_Type,
+    CCN_PCO_B_PublisherKeyID,
+    CCN_PCO_E_PublisherKeyID,
+    CCN_PCO_B_Timestamp,
+    CCN_PCO_E_Timestamp,
+    CCN_PCO_B_Type,
+    CCN_PCO_E_Type,
     CCN_PCO_B_FreshnessSeconds,
     CCN_PCO_E_FreshnessSeconds,
-    CCN_PCO_B_CAUTH_KeyLocator,
+    CCN_PCO_B_KeyLocator,
     /* Exactly one of Key, Certificate, or KeyName will be present */
-    CCN_PCO_B_CAUTH_Key_Certificate_KeyName,
-    CCN_PCO_E_CAUTH_Key_Certificate_KeyName,
-    CCN_PCO_E_CAUTH_KeyLocator,
+    CCN_PCO_B_Key_Certificate_KeyName,
+    CCN_PCO_E_Key_Certificate_KeyName,
+    CCN_PCO_E_KeyLocator,
     CCN_PCO_E_SignedInfo,
-    CCN_PCO_E_ContentAuthenticator = CCN_PCO_E_SignedInfo,
     CCN_PCO_B_Content,
     CCN_PCO_E_Content,
     CCN_PCO_E
@@ -525,7 +525,7 @@ int ccn_content_get_value(const unsigned char *data, size_t data_size,
  * ccn_encode_ContentObject:
  *    buf: output buffer where encoded object is written
  *    Name: encoded name from ccn_name_init
- *    ContentAuthenticator: encoded authenticator from ccn_auth_create
+ *    SignedInfo: encoded info from ccn_signed_info_create
  *    data, size: the raw data to be encoded
  *    digest_algorithm: to be used for signing
  *    private_key: to be used for signing
@@ -533,7 +533,7 @@ int ccn_content_get_value(const unsigned char *data, size_t data_size,
 
 int ccn_encode_ContentObject(struct ccn_charbuf *buf,
                              const struct ccn_charbuf *Name,
-                             const struct ccn_charbuf *ContentAuthenticator,
+                             const struct ccn_charbuf *SignedInfo,
                              const void *data,
                              size_t size,
                              const char *digest_algorithm,
@@ -593,9 +593,17 @@ void ccn_perror(struct ccn *h, const char * s);
 int ccn_charbuf_append_tt(struct ccn_charbuf *c, size_t val, enum ccn_tt tt);
 
 /*
- * ccn_charbuf_append_tt: append a CCN_CLOSE
+ * ccn_charbuf_append_closer: append a CCN_CLOSE
  * Return value is 0, or -1 for error.
  */
 int ccn_charbuf_append_closer(struct ccn_charbuf *c);
+
+/*
+ * ccn_charbuf_append_non_negative_integer: append a non-negative integer
+ * as a UDATA for its string representation length, and the string for the
+ * integer value itself.
+ * Return value is 0, or -1 for error.
+ */
+int ccn_charbuf_append_non_negative_integer(struct ccn_charbuf *c, int nni);
 
 #endif

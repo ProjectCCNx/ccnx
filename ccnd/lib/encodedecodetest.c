@@ -46,7 +46,7 @@ void path_destroy(struct path **path) {
 int 
 encode_message(struct ccn_charbuf *message, struct path * name_path, char *data, size_t len, const void *pkey) {
     struct ccn_charbuf *path = ccn_charbuf_create();
-    struct ccn_charbuf *authenticator = ccn_charbuf_create();
+    struct ccn_charbuf *signed_info = ccn_charbuf_create();
     int i;
     int res;
 
@@ -59,19 +59,19 @@ encode_message(struct ccn_charbuf *message, struct path * name_path, char *data,
 	ccn_name_append_str(path, name_path->comps[i]);
     }
 
-    if (ccn_auth_create(authenticator, /*pubkeyid*/NULL, /*size*/0, /*datetime*/NULL, CCN_CONTENT_FRAGMENT, /*keylocator*/NULL) != 0) {
-	fprintf(stderr, "Failed to create authenticator\n");
+    if (ccn_signed_info_create(signed_info, /*pubkeyid*/NULL, /*size*/0, /*datetime*/NULL, CCN_CONTENT_FRAGMENT, 42, /*keylocator*/NULL) != 0) {
+	fprintf(stderr, "Failed to create signed_info\n");
         return (-1);
     }
 
-    res = ccn_encode_ContentObject(message, path, authenticator, data, len, NULL, pkey);
+    res = ccn_encode_ContentObject(message, path, signed_info, data, len, NULL, pkey);
 
     if (res != 0) {
 	fprintf(stderr, "Failed to encode ContentObject\n");
     }
 
     ccn_charbuf_destroy(&path);
-    ccn_charbuf_destroy(&authenticator);
+    ccn_charbuf_destroy(&signed_info);
 
     return (res);
 }
@@ -209,20 +209,20 @@ main (int argc, char *argv[]) {
 	exit(1);
     }
     buffer = ccn_charbuf_create();
-    printf("Creating authenticator\n");
-    res = ccn_auth_create(buffer, pubkeyid, sizeof(pubkeyid), NULL, CCN_CONTENT_FRAGMENT, NULL);
+    printf("Creating signed_info\n");
+    res = ccn_signed_info_create(buffer, pubkeyid, sizeof(pubkeyid), NULL, CCN_CONTENT_FRAGMENT, 42, NULL);
     if (res == -1) {
-        printf("Failed to create authenticator!\n");
+        printf("Failed to create signed_info!\n");
     }
     
     res = ccn_skeleton_decode(&dd, buffer->buf, buffer->length);
     if (!(res == buffer->length && dd.state == 0)) {
-        printf("Failed to decode authenticator!  Result %d State %d\n", (int)res, dd.state);
+        printf("Failed to decode signed_info!  Result %d State %d\n", (int)res, dd.state);
         result = 1;
     }
     memset(&dd, 0, sizeof(dd));
     buffer->length = 0;
-    printf("Done with authenticator\n");
+    printf("Done with signed_info\n");
 
     if (home == NULL) {
         printf("Unable to determine home directory for keystore\n");

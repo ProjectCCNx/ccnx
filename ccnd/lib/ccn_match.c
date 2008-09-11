@@ -50,9 +50,9 @@ ccn_pubid_matches(const unsigned char *content_object,
     pubidbytes = pi->offset[CCN_PI_E_PublisherIDKeyDigest] - pubidstart;
     if (pubidbytes > 0) {
         d = ccn_buf_decoder_start(&decoder,
-                                  content_object + pc->offset[CCN_PCO_B_CAUTH_PublisherKeyID],
-                                  (pc->offset[CCN_PCO_E_CAUTH_PublisherKeyID] -
-                                   pc->offset[CCN_PCO_B_CAUTH_PublisherKeyID]));
+                                  content_object + pc->offset[CCN_PCO_B_PublisherKeyID],
+                                  (pc->offset[CCN_PCO_E_PublisherKeyID] -
+                                   pc->offset[CCN_PCO_B_PublisherKeyID]));
         ccn_buf_advance(d);
         if (ccn_buf_match_some_blob(d)) {
             contentpubidstart = d->decoder.token_index;

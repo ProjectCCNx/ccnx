@@ -581,32 +581,32 @@ ccn_parse_SignedInfo(struct ccn_buf_decoder *d, struct ccn_parsed_ContentObject 
     x->offset[CCN_PCO_B_SignedInfo] = d->decoder.token_index;
     if (ccn_buf_match_dtag(d, CCN_DTAG_SignedInfo)) {
         ccn_buf_advance(d);
-        x->offset[CCN_PCO_B_CAUTH_PublisherKeyID] = d->decoder.token_index;
+        x->offset[CCN_PCO_B_PublisherKeyID] = d->decoder.token_index;
         ccn_parse_required_tagged_BLOB(d, CCN_DTAG_PublisherKeyID, 16, 64);
-        x->offset[CCN_PCO_E_CAUTH_PublisherKeyID] = d->decoder.token_index;
+        x->offset[CCN_PCO_E_PublisherKeyID] = d->decoder.token_index;
         
         if (x->magic == -1)                                                     // XXX - compat
             ccn_parse_optional_tagged_UDATA(d, CCN_DTAG_NameComponentCount);    // XXX - compat
         
-        x->offset[CCN_PCO_B_CAUTH_Timestamp] = d->decoder.token_index;
+        x->offset[CCN_PCO_B_Timestamp] = d->decoder.token_index;
         ccn_parse_required_tagged_timestamp(d, CCN_DTAG_Timestamp);
-        x->offset[CCN_PCO_E_CAUTH_Timestamp] = d->decoder.token_index;
+        x->offset[CCN_PCO_E_Timestamp] = d->decoder.token_index;
         
-        x->offset[CCN_PCO_B_CAUTH_Type] = d->decoder.token_index;
+        x->offset[CCN_PCO_B_Type] = d->decoder.token_index;
         ccn_parse_required_tagged_UDATA(d, CCN_DTAG_Type);
-        x->offset[CCN_PCO_E_CAUTH_Type] = d->decoder.token_index;
+        x->offset[CCN_PCO_E_Type] = d->decoder.token_index;
         
         x->offset[CCN_PCO_B_FreshnessSeconds] = d->decoder.token_index;
         ccn_parse_optional_tagged_nonNegativeInteger(d, CCN_DTAG_FreshnessSeconds);
         x->offset[CCN_PCO_E_FreshnessSeconds] = d->decoder.token_index;
         
-        x->offset[CCN_PCO_B_CAUTH_KeyLocator] = d->decoder.token_index;
-        x->offset[CCN_PCO_B_CAUTH_Key_Certificate_KeyName] = d->decoder.token_index;
-        x->offset[CCN_PCO_E_CAUTH_Key_Certificate_KeyName] = d->decoder.token_index;
+        x->offset[CCN_PCO_B_KeyLocator] = d->decoder.token_index;
+        x->offset[CCN_PCO_B_Key_Certificate_KeyName] = d->decoder.token_index;
+        x->offset[CCN_PCO_E_Key_Certificate_KeyName] = d->decoder.token_index;
         if (ccn_buf_match_dtag(d, CCN_DTAG_KeyLocator)) {
             struct parsed_KeyName keyname = {-1, -1};
             ccn_buf_advance(d);
-            x->offset[CCN_PCO_B_CAUTH_Key_Certificate_KeyName] = d->decoder.token_index;
+            x->offset[CCN_PCO_B_Key_Certificate_KeyName] = d->decoder.token_index;
             if (ccn_buf_match_dtag(d, CCN_DTAG_Key)) {
                 (void)ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Key, 0, -1);
             }
@@ -616,10 +616,10 @@ ccn_parse_SignedInfo(struct ccn_buf_decoder *d, struct ccn_parsed_ContentObject 
             else {
                 (void)ccn_parse_KeyName(d, &keyname);
             }
-            x->offset[CCN_PCO_E_CAUTH_Key_Certificate_KeyName] = d->decoder.token_index;
+            x->offset[CCN_PCO_E_Key_Certificate_KeyName] = d->decoder.token_index;
             ccn_buf_check_close(d);
         }
-        x->offset[CCN_PCO_E_CAUTH_KeyLocator] = d->decoder.token_index;
+        x->offset[CCN_PCO_E_KeyLocator] = d->decoder.token_index;
         if (x->magic == -1)                                                     // XXX - compat
             ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_ContentDigest, 16, -1);  // XXX - compat
         ccn_buf_check_close(d);

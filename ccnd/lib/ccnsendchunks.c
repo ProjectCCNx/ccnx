@@ -81,7 +81,7 @@ main(int argc, char **argv)
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *temp = NULL;
     struct ccn_charbuf *templ = NULL;
-    struct ccn_charbuf *authenticator = NULL;
+    struct ccn_charbuf *signed_info = NULL;
     struct ccn_keystore *keystore = NULL;
     int i;
     int status = 0;
@@ -121,7 +121,7 @@ main(int argc, char **argv)
     name = ccn_charbuf_create();
     temp = ccn_charbuf_create();
     templ = ccn_charbuf_create();
-    authenticator = ccn_charbuf_create();
+    signed_info = ccn_charbuf_create();
     keystore = ccn_keystore_create();
     temp->length = 0;
     ccn_charbuf_putf(temp, "%s/.ccn/.ccn_keystore", getenv("HOME"));
@@ -164,14 +164,16 @@ main(int argc, char **argv)
             read_res = 0;
             status = 1;
         }
-        authenticator->length = 0;
-        res = ccn_auth_create(authenticator,
-                              /*pubkeyid*/NULL, /*publisher_key_id_size*/0,
-                              /*datetime*/NULL,
-                              /*type*/CCN_CONTENT_LEAF,
-                              /*keylocator*/NULL);
+        signed_info->length = 0;
+        res = ccn_signed_info_create(signed_info,
+                                     /*pubkeyid*/NULL,
+                                     /*publisher_key_id_size*/0,
+                                     /*datetime*/NULL,
+                                     /*type*/CCN_CONTENT_LEAF,
+                                     /*freshness*/ -1,
+                                     /*keylocator*/NULL);
         if (res < 0) {
-            fprintf(stderr, "Failed to create authenticator (res == %d)\n", res);
+            fprintf(stderr, "Failed to create signed_info (res == %d)\n", res);
             exit(1);
         }
         name->length = 0;
@@ -184,7 +186,7 @@ main(int argc, char **argv)
         temp->length = 0;
         res = ccn_encode_ContentObject(temp,
                                        name,
-                                       authenticator,
+                                       signed_info,
                                        buf,
                                        read_res,
                                        NULL,
@@ -222,7 +224,7 @@ main(int argc, char **argv)
     ccn_charbuf_destroy(&root);
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&temp);
-    ccn_charbuf_destroy(&authenticator);
+    ccn_charbuf_destroy(&signed_info);
     ccn_keystore_destroy(&keystore);
     ccn_destroy(&ccn);
     exit(status);
