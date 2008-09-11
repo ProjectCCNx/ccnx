@@ -841,9 +841,29 @@ reap_needed(struct ccnd *h, int init_delay_usec)
         h->reaper = ccn_schedule_event(h->sched, init_delay_usec, reap, NULL, 0);
 }
 
+static int
+remove_content(struct ccnd *h, struct content_entry *content)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    int res;
+    if (content == NULL)
+        return(-1);
+    hashtb_start(h->content_tab, e);
+    res = hashtb_seek(e, content->key,
+                      content->key_size, content->size - content->key_size);
+    if (res != HT_OLD_ENTRY)
+        abort();
+    if (h->debug & 4)
+        ccnd_debug_ccnb(h, __LINE__, "remove", NULL,
+                        content->key, content->size);
+    hashtb_delete(e);
+    hashtb_end(e);
+    return(0);
+}
+
 /*
  * clean_deamon: periodic content cleaning
- * Currently does not really do anything.
  */
 static int
 clean_deamon(struct ccn_schedule *sched,
@@ -852,16 +872,66 @@ clean_deamon(struct ccn_schedule *sched,
              int flags)
 {
     struct ccnd *h = clienth;
-    unsigned n;
     (void)(sched);
     (void)(ev);
+    unsigned long n;
+    ccn_accession_t limit;
+    ccn_accession_t a;
+    ccn_accession_t min_stale;
+    int check_limit = 500;
+    struct content_entry *content = NULL;
+    int res = 0;
+    
     if ((flags & CCN_SCHEDULE_CANCEL) != 0) {
         h->clean = NULL;
         return(0);
     }
-    n = h->accession - h->accession_base + 1;
-    if (n > h->content_by_accession_window)
-        n = h->content_by_accession_window;
+    n = hashtb_n(h->content_tab);
+    if (n <= h->capacity)
+        return(15000000);
+    if (h->min_stale <= h->max_stale) {
+        /* clean out stale content first */
+        limit = h->max_stale;
+        if (limit > h->accession)
+            limit = h->accession;
+        min_stale = ~0;
+        a = ev->evint;
+        if (a <= h->min_stale || a > h->max_stale)
+            a = h->min_stale;
+        else
+            min_stale = h->min_stale;
+        for (; a <= limit && n > h->capacity; a++) {
+            if (check_limit-- <= 0) {
+                ev->evint = a;
+                break;
+            }
+            content = content_from_accession(h, a);
+            if (content != NULL &&
+                  (content->flags & CCN_CONTENT_ENTRY_STALE) != 0) {
+                res = remove_content(h, content);
+                if (res < 0) {
+                    if (a < min_stale)
+                        min_stale = a;
+                }
+                else {
+                    content = NULL;
+                    n -= 1;
+                }
+            }
+        }
+        if (min_stale < a)
+            h->min_stale = min_stale;
+        else if (a > limit) {
+            h->min_stale = ~0;
+            h->max_stale = 0;
+        }
+        else
+            h->min_stale = a;
+    }
+    // XXX - should remove non-stale content, too, if desperate
+    if (check_limit <= 0)
+        return(10000);
+    ev->evint = 0;
     return(15000000);
 }
 
@@ -1235,6 +1305,22 @@ process_incoming_interest(struct ccnd *h, struct face *face,
     indexbuf_release(h, comps);
 }
 
+static void
+mark_stale(struct ccnd *h, struct content_entry *content)
+{
+    ccn_accession_t accession = content->accession;
+    if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0)
+        return;
+    if (h->debug & 4)
+            ccnd_debug_ccnb(h, __LINE__, "stale", NULL,
+                            content->key, content->size);
+    content->flags |= CCN_CONTENT_ENTRY_STALE;
+    if (accession < h->min_stale)
+        h->min_stale = accession;
+    if (accession > h->max_stale)
+        h->max_stale = accession;
+}
+
 static int
 expire_content(struct ccn_schedule *sched,
                void *clienth,
@@ -1244,12 +1330,17 @@ expire_content(struct ccn_schedule *sched,
     struct ccnd *h = clienth;
     ccn_accession_t accession = ev->evint;
     struct content_entry *content = NULL;
+    int res;
+    if ((flags & CCN_SCHEDULE_CANCEL) != 0)
+        return(0);
     content = content_from_accession(h, accession);
     if (content != NULL) {
-        if (h->debug & 4)
-            ccnd_debug_ccnb(h, __LINE__, "stale", NULL,
-                            content->key, content->size);
-        content->flags |= CCN_CONTENT_ENTRY_STALE;
+        if (hashtb_n(h->content_tab) > h->capacity) {
+            res = remove_content(h, content);
+            if (res == 0)
+                return(0);
+        }
+        mark_stale(h, content);
     }
     return(0);
 }
@@ -1728,6 +1819,7 @@ ccnd_create(void)
     const char *sockname;
     const char *portstr;
     const char *debugstr;
+    const char *entrylimit;
     int fd;
     int res;
     struct ccnd *h;
@@ -1750,6 +1842,8 @@ ccnd_create(void)
     h->interestprefix_tab = hashtb_create(sizeof(struct interestprefix_entry), &param);
     param.finalize = &finalize_propagating;
     h->propagating_tab = hashtb_create(sizeof(struct propagating_entry), &param);
+    h->min_stale = ~0;
+    h->max_stale = 0;
     h->sched = ccn_schedule_create(h);
     h->oldformatcontentgrumble = 1;
     fd = create_local_listener(sockname, 42);
@@ -1767,6 +1861,13 @@ ccnd_create(void)
     }
     else
         h->debug = (1 << 16);
+    entrylimit = getenv("CCND_CAP");
+    h->capacity = ~0;
+    if (entrylimit != NULL && entrylimit[0] != 0) {
+        h->capacity = atol(entrylimit);
+        if (h->capacity <= 0)
+            h->capacity = 10;
+    }
     portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
     if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
         portstr = "4485";

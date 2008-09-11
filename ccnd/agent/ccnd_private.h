@@ -70,6 +70,9 @@ struct ccnd {
     unsigned content_by_accession_window;
     struct content_entry **content_by_accession;
     ccn_accession_t accession;
+    ccn_accession_t min_stale;
+    ccn_accession_t max_stale;
+    unsigned long capacity;         /* Can toss content if #items > capacity */
     unsigned long oldformatcontent;
     unsigned long oldformatcontentgrumble;
     unsigned long content_dups_recvd;

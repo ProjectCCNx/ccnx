@@ -170,7 +170,7 @@ main(int argc, char **argv)
                                      /*publisher_key_id_size*/0,
                                      /*datetime*/NULL,
                                      /*type*/CCN_CONTENT_LEAF,
-                                     /*freshness*/ -1,
+                                     /*freshness*/ 10,
                                      /*keylocator*/NULL);
         if (res < 0) {
             fprintf(stderr, "Failed to create signed_info (res == %d)\n", res);
