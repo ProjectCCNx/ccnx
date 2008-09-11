@@ -153,7 +153,7 @@ ccn_encode_Signature(struct ccn_charbuf *buf,
 int
 ccn_encode_ContentObject(struct ccn_charbuf *buf,
                          const struct ccn_charbuf *Name,
-                         const struct ccn_charbuf *ContentAuthenticator,
+                         const struct ccn_charbuf *SignedInfo,
                          const void *data,
                          size_t size,
                          const char *digest_algorithm,
@@ -176,7 +176,7 @@ ccn_encode_ContentObject(struct ccn_charbuf *buf,
 
     if (0 != ccn_sigc_init(sig_ctx, digest_algorithm)) return (-1);
     if (0 != ccn_sigc_update(sig_ctx, Name->buf, Name->length)) return (-1);
-    if (0 != ccn_sigc_update(sig_ctx, ContentAuthenticator->buf, ContentAuthenticator->length)) return (-1);
+    if (0 != ccn_sigc_update(sig_ctx, SignedInfo->buf, SignedInfo->length)) return (-1);
     if (0 != ccn_sigc_update(sig_ctx, content_header->buf, content_header->length - 1)) return (-1);
     if (0 != ccn_sigc_update(sig_ctx, data, size)) return (-1);
     if (0 != ccn_sigc_update(sig_ctx, content_header->buf + content_header->length - 1, 1)) return (-1);
@@ -192,7 +192,7 @@ ccn_encode_ContentObject(struct ccn_charbuf *buf,
     res |= ccn_charbuf_append_tt(buf, CCN_DTAG_ContentObject, CCN_DTAG);
     res |= ccn_encode_Signature(buf, digest_algorithm, NULL, 0, signature, signature_size);
     res |= ccn_charbuf_append_charbuf(buf, Name);
-    res |= ccn_charbuf_append_charbuf(buf, ContentAuthenticator);
+    res |= ccn_charbuf_append_charbuf(buf, SignedInfo);
     res |= ccn_encode_Content(buf, data, size);
     res |= ccn_charbuf_append_closer(buf);
     
