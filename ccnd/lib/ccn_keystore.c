@@ -1,12 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <openssl/pkcs12.h>
-
+#include <openssl/sha.h>
 
 struct ccn_keystore {
     int initialized;
     EVP_PKEY *private_key;
+    EVP_PKEY *public_key;
     X509 *certificate;
+    ssize_t pubkey_digest_length;
+    unsigned char pubkey_digest[SHA256_DIGEST_LENGTH];
 };
 
 struct ccn_keystore *
@@ -22,6 +25,8 @@ ccn_keystore_destroy(struct ccn_keystore **p)
     if (*p != NULL) {
         if ((*p)->private_key != NULL)
             EVP_PKEY_free((*p)->private_key);
+        if ((*p)->public_key != NULL)
+            EVP_PKEY_free((*p)->public_key);
         if ((*p)->certificate != NULL)
             X509_free((*p)->certificate);
         free(*p);
@@ -34,6 +39,7 @@ ccn_keystore_init(struct ccn_keystore *p, char *name, char *password)
 {
     FILE *fp;
     PKCS12 *keystore;
+    ssize_t digestlen;
     int res;
 
     OpenSSL_add_all_algorithms();
@@ -51,6 +57,12 @@ ccn_keystore_init(struct ccn_keystore *p, char *name, char *password)
     if (res == 0) {
         return (-1);
     }
+    p->public_key = X509_get_pubkey(p->certificate);
+    /* cache the public key digest to avoid work later */
+    if (1 != ASN1_item_digest(ASN1_ITEM_rptr(X509_PUBKEY), EVP_sha256(),
+                              X509_get_X509_PUBKEY(p->certificate),
+                              p->pubkey_digest, NULL)) return (-1);
+    p->pubkey_digest_length = SHA256_DIGEST_LENGTH;
     p->initialized = 1;
     return (0);
 }
@@ -61,7 +73,7 @@ ccn_keystore_private_key(struct ccn_keystore *p)
     if (0 == p->initialized)
         return (NULL);
 
-    return (const void *)(p->private_key);
+    return ((const void *)(p->private_key));
 }
 
 const void *
@@ -70,7 +82,21 @@ ccn_keystore_public_key(struct ccn_keystore *p)
     if (0 == p->initialized)
         return (NULL);
 
-    return (const void *)X509_get_pubkey(p->certificate);
+    return ((const void *)(p->public_key));
+}
+
+ssize_t
+ccn_keystore_public_key_digest_length(struct ccn_keystore *p)
+{
+    return ((0 == p->initialized) ? -1 : p->pubkey_digest_length);
+}
+
+const unsigned char *
+ccn_keystore_public_key_digest(struct ccn_keystore *p)
+{
+    if (0 == p->initialized)
+        return (NULL);
+    return (p->pubkey_digest);
 }
 
 const void *
@@ -79,5 +105,5 @@ ccn_keystore_certificate(struct ccn_keystore *p)
     if (0 == p->initialized)
         return (NULL);
 
-    return (const void *)(p->certificate);
+    return ((const void *)(p->certificate));
 }
