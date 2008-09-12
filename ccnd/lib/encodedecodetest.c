@@ -44,9 +44,8 @@ void path_destroy(struct path **path) {
 }
 
 int 
-encode_message(struct ccn_charbuf *message, struct path * name_path, char *data, size_t len, const void *pkey) {
+encode_message(struct ccn_charbuf *message, struct path * name_path, char *data, size_t len, struct ccn_charbuf *signed_info, const void *pkey) {
     struct ccn_charbuf *path = ccn_charbuf_create();
-    struct ccn_charbuf *signed_info = ccn_charbuf_create();
     int i;
     int res;
 
@@ -59,11 +58,6 @@ encode_message(struct ccn_charbuf *message, struct path * name_path, char *data,
 	ccn_name_append_str(path, name_path->comps[i]);
     }
 
-    if (ccn_signed_info_create(signed_info, /*pubkeyid*/NULL, /*size*/0, /*datetime*/NULL, CCN_CONTENT_FRAGMENT, 42, /*keylocator*/NULL) != 0) {
-	fprintf(stderr, "Failed to create signed_info\n");
-        return (-1);
-    }
-
     res = ccn_encode_ContentObject(message, path, signed_info, data, len, NULL, pkey);
 
     if (res != 0) {
@@ -71,8 +65,6 @@ encode_message(struct ccn_charbuf *message, struct path * name_path, char *data,
     }
 
     ccn_charbuf_destroy(&path);
-    ccn_charbuf_destroy(&signed_info);
-
     return (res);
 }
 
@@ -182,7 +174,8 @@ static const char *all_chars_percent_encoded_canon =
 
 int
 main (int argc, char *argv[]) {
-    struct ccn_charbuf *buffer;
+    struct ccn_charbuf *buffer = ccn_charbuf_create();
+    struct ccn_charbuf *signed_info = ccn_charbuf_create();
     struct ccn_skeleton_decoder dd = {0};
     ssize_t res;
     char *outname;
@@ -194,7 +187,6 @@ main (int argc, char *argv[]) {
     char * paths[] = { "/sip/protocol/parc.com/domain/foo/principal/invite/verb/119424355@127.0.0.1/id", 
 		       "/d/e/f", NULL};
     struct path * cur_path = NULL;
-    unsigned char pubkeyid[32] = {0};
     struct ccn_keystore *keystore = ccn_keystore_create();
     char *home = getenv("HOME");
     char *keystore_suffix = "/.ccn/.ccn_keystore";
@@ -208,21 +200,6 @@ main (int argc, char *argv[]) {
 	printf("Usage: %s -o <outfilename>\n", argv[0]);
 	exit(1);
     }
-    buffer = ccn_charbuf_create();
-    printf("Creating signed_info\n");
-    res = ccn_signed_info_create(buffer, pubkeyid, sizeof(pubkeyid), NULL, CCN_CONTENT_FRAGMENT, 42, NULL);
-    if (res == -1) {
-        printf("Failed to create signed_info!\n");
-    }
-    
-    res = ccn_skeleton_decode(&dd, buffer->buf, buffer->length);
-    if (!(res == buffer->length && dd.state == 0)) {
-        printf("Failed to decode signed_info!  Result %d State %d\n", (int)res, dd.state);
-        result = 1;
-    }
-    memset(&dd, 0, sizeof(dd));
-    buffer->length = 0;
-    printf("Done with signed_info\n");
 
     if (home == NULL) {
         printf("Unable to determine home directory for keystore\n");
@@ -237,9 +214,30 @@ main (int argc, char *argv[]) {
         printf("Failed to initialize keystore\n");
         exit(1);
     }
+
+    printf("Creating signed_info\n");
+    res = ccn_signed_info_create(signed_info,
+                                 /*pubkeyid*/ccn_keystore_public_key_digest(keystore),
+                                 /*publisher_key_id_size*/ccn_keystore_public_key_digest_length(keystore),
+                                 /*datetime*/NULL,
+                                 /*type*/CCN_CONTENT_FRAGMENT,
+                                 /*freshness*/ 42,
+                                 /*keylocator*/NULL);
+    if (res < 0) {
+        printf("Failed to create signed_info!\n");
+    }
+    
+    res = ccn_skeleton_decode(&dd, signed_info->buf, signed_info->length);
+    if (!(res == signed_info->length && dd.state == 0)) {
+        printf("Failed to decode signed_info!  Result %d State %d\n", (int)res, dd.state);
+        result = 1;
+    }
+    memset(&dd, 0, sizeof(dd));
+    printf("Done with signed_info\n");
+
     printf("Encoding sample message data length %d\n", (int)strlen(contents[0]));
     cur_path = path_create(paths[0]);
-    if (encode_message(buffer, cur_path, contents[0], strlen(contents[0]), ccn_keystore_private_key(keystore))) {
+    if (encode_message(buffer, cur_path, contents[0], strlen(contents[0]), signed_info, ccn_keystore_private_key(keystore))) {
 	printf("Failed to encode message!\n");
     } else {
 	printf("Encoded sample message length is %d\n", (int)buffer->length);
@@ -271,7 +269,7 @@ main (int argc, char *argv[]) {
 	printf("Unit test case %d\n", i);
 	cur_path = path_create(paths[i]);
 	buffer = ccn_charbuf_create();
-	if (encode_message(buffer, cur_path, contents[i], strlen(contents[i]), ccn_keystore_private_key(keystore))) {
+	if (encode_message(buffer, cur_path, contents[i], strlen(contents[i]), signed_info, ccn_keystore_private_key(keystore))) {
 	    printf("Failed encode\n");
             result = 1;
 	} else if (decode_message(buffer, cur_path, contents[i], strlen(contents[i]), ccn_keystore_public_key(keystore))) {

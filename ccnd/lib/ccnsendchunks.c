@@ -166,8 +166,8 @@ main(int argc, char **argv)
         }
         signed_info->length = 0;
         res = ccn_signed_info_create(signed_info,
-                                     /*pubkeyid*/NULL,
-                                     /*publisher_key_id_size*/0,
+                                     /*pubkeyid*/ccn_keystore_public_key_digest(keystore),
+                                     /*publisher_key_id_size*/ccn_keystore_public_key_digest_length(keystore),
                                      /*datetime*/NULL,
                                      /*type*/CCN_CONTENT_LEAF,
                                      /*freshness*/ -1,
