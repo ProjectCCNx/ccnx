@@ -7,7 +7,7 @@ COPT = -g
 PROGRAMS = ccn_ccnbtoxml ccn_splitccnb ccn_verifysig\
     hashtbtest matrixtest skel_decode_test \
     smoketestclientlib dataresponsetest ccntimestamps \
-    encodedecodetest ccndumpnames ccndump ccnls ccnslurp \
+    encodedecodetest ccndumpnames ccndump ccnrm ccnls ccnslurp \
     ccnsendchunks ccncatchunks \
     $(EXPAT_PROGRAMS)
 EXPAT_PROGRAMS = ccn_xmltoccnb
@@ -21,7 +21,7 @@ CSRC = ccn_buf_decoder.c ccn_dtag_table.c ccn_buf_encoder.c ccn_charbuf.c \
     ccn_merkle_path_asn1.c \
     skel_decode_test.c \
     hashtb.c hashtbtest.c matrixtest.c \
-    smoketestclientlib.c ccntimestamps.c ccndump.c ccndumpnames.c \
+    smoketestclientlib.c ccntimestamps.c ccndump.c ccnrm.c ccndumpnames.c \
     ccnls.c ccnslurp.c \
     ccn_verifysig.c dataresponsetest.c ccn_uri.c  encodedecodetest.c \
     ccnsendchunks.c ccncatchunks.c
@@ -88,6 +88,9 @@ ccndumpnames: ccndumpnames.o
 
 ccnls: ccnls.o
 	$(CC) $(CFLAGS) -o $@ ccnls.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+
+ccnrm: ccnrm.o
+	$(CC) $(CFLAGS) -o $@ ccnrm.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccnslurp: ccnslurp.o
 	$(CC) $(CFLAGS) -o $@ ccnslurp.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
@@ -172,6 +175,8 @@ ccntimestamps.o: ccntimestamps.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h
 ccndump.o: ccndump.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
+ccnrm.o: ccnrm.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccndumpnames.o: ccndumpnames.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \

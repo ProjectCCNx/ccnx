@@ -49,6 +49,7 @@ static struct face *get_dgram_source(struct ccnd *h, struct face *face,
                               struct sockaddr *addr, socklen_t addrlen);
 static void content_skiplist_insert(struct ccnd *h, struct content_entry *content);
 static void content_skiplist_remove(struct ccnd *h, struct content_entry *content);
+static void mark_stale(struct ccnd *h, struct content_entry *content);
 static ccn_accession_t
             content_skiplist_next(struct ccnd *h, struct content_entry *content);
 static void reap_needed(struct ccnd *h, int init_delay_usec);
@@ -1176,6 +1177,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,
     int res;
     int try;
     int matched;
+    int s_ok;
     struct interestprefix_entry *ipe = NULL;
     struct content_entry *content = NULL;
     struct content_entry *last_match = NULL;
@@ -1202,11 +1204,12 @@ process_incoming_interest(struct ccnd *h, struct face *face,
             face->cached_accession = 0;
         namesize = comps->buf[pi->prefix_comps] - comps->buf[0];
         h->interests_accepted += 1;
+        s_ok = (pi->answerfrom & CCN_AOK_STALE) != 0;
         matched = 0;
         hashtb_start(h->interestprefix_tab, e);
         res = hashtb_seek(e, msg + comps->buf[0], namesize, 0);
         ipe = e->data;
-        if (ipe != NULL && pi->answerfrom != 0) {
+        if (ipe != NULL && (pi->answerfrom & CCN_AOK_CS) != 0) {
             last_match = NULL;
             content = NULL;
             if (face->cached_accession != 0) {
@@ -1244,7 +1247,8 @@ process_incoming_interest(struct ccnd *h, struct face *face,
                 }
             }
             for (try = 0; content != NULL; try++) {
-                if (ccn_content_matches_interest(content->key,
+                if ((s_ok || (content->flags & CCN_CONTENT_ENTRY_STALE) == 0) &&
+                    ccn_content_matches_interest(content->key,
                                        content->size,
                                        0, NULL, msg, size, pi)) {
                     if (pi->orderpref == 4 &&
@@ -1294,6 +1298,8 @@ process_incoming_interest(struct ccnd *h, struct face *face,
                                             face, content->key,
                                             content->size);
                 }
+                if ((pi->answerfrom & CCN_AOK_EXPIRE) != 0)
+                    mark_stale(h, content);
                 face->cached_accession = content->accession;
                 matched = 1;
             }
@@ -1719,7 +1725,7 @@ run(struct ccnd *h)
     int specials = 2; /* local_listener_fd, httpd_listener_fd */
     for (;;) {
         usec = ccn_schedule_run(h->sched);
-        timeout_ms = (usec < 0) ? -1 : usec / 1000;
+        timeout_ms = (usec < 0) ? -1 : (usec / 1000);
         if (timeout_ms == 0 && prev_timeout_ms == 0)
             timeout_ms = 1;
         if (hashtb_n(h->faces_by_fd) + specials != h->nfds) {

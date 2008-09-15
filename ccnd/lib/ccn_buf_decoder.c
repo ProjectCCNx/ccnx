@@ -483,8 +483,9 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
                          CCN_DTAG_AnswerOriginKind);
         interest->offset[CCN_PI_E_AnswerOriginKind] = d->decoder.token_index;
         if (interest->answerfrom == -1)
-            interest->answerfrom = 3;
-        else if (interest->answerfrom > 1 && interest->answerfrom != 3)
+            interest->answerfrom = CCN_AOK_DEFAULT;
+        else if ((interest->answerfrom & CCN_AOK_NEW) != 0 &&
+                 (interest->answerfrom & CCN_AOK_CS) == 0)
             return (d->decoder.state = -__LINE__);
         /* optional Scope */
         interest->offset[CCN_PI_B_Scope] = d->decoder.token_index;
@@ -492,6 +493,9 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
                          CCN_DTAG_Scope);
         interest->offset[CCN_PI_E_Scope] = d->decoder.token_index;
         if (interest->scope > 9)
+                return (d->decoder.state = -__LINE__);
+        if ((interest->answerfrom & CCN_AOK_EXPIRE) != 0 &&
+            interest->scope != 0)
                 return (d->decoder.state = -__LINE__);
         /* optional Count */
         interest->offset[CCN_PI_B_Count] = d->decoder.token_index;

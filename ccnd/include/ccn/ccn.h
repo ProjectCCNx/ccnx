@@ -395,6 +395,15 @@ struct ccn_parsed_interest {
 };
 
 /*
+ * Bitmasks for AnswerOriginKind
+ */
+#define CCN_AOK_CS      0x1     /* Answer from content store */
+#define CCN_AOK_NEW     0x2     /* OK to produce new content */
+#define CCN_AOK_DEFAULT (CCN_AOK_CS | CCN_AOK_NEW)
+#define CCN_AOK_STALE   0x4     /* OK to answer with stale data */
+#define CCN_AOK_EXPIRE  0x10    /* Mark as stale (must have Scope 0) */
+
+/*
  * ccn_parse_interest:
  * Returns number of name components, or a negative value for an error.
  * Fills in *interest.
