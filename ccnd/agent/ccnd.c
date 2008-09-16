@@ -226,16 +226,42 @@ content_from_accession(struct ccnd *h, ccn_accession_t accession)
     return(ans);
 }
 
+static int
+cleanout_empties(struct ccnd *h)
+{
+    unsigned i = 0;
+    unsigned j = 0;
+    struct content_entry **a = h->content_by_accession;
+    unsigned window = h->content_by_accession_window;
+    if (a == NULL)
+        return(-1);
+    while (i < window && a[i] == NULL)
+        i++;
+    if (i == 0)
+        return(-1);
+    h->accession_base += i;
+    while (i < window)
+        a[j++] = a[i++];
+    while (j < window)
+        a[j++] = NULL;
+    return(0);
+}
+
 static void
 enroll_content(struct ccnd *h, struct content_entry *content)
 {
     unsigned new_window;
     struct content_entry **new_array;
-    struct content_entry **old_array = h->content_by_accession;
+    struct content_entry **old_array;
     unsigned i = 0;
     unsigned j = 0;
-    if (content->accession >= h->accession_base + h->content_by_accession_window) {
-        new_window = ((h->content_by_accession_window + 20) * 3 / 2);
+    unsigned window = h->content_by_accession_window;
+    if (content->accession >= h->accession_base + window &&
+          cleanout_empties(h) < 0) {
+        old_array = h->content_by_accession;
+        new_window = ((window + 20) * 3 / 2);
+        if (new_window < window)
+            return;
         new_array = calloc(new_window, sizeof(new_array[0]));
         if (new_array == NULL)
             return;
@@ -879,7 +905,7 @@ clean_deamon(struct ccn_schedule *sched,
     ccn_accession_t limit;
     ccn_accession_t a;
     ccn_accession_t min_stale;
-    int check_limit = 500;
+    int check_limit = 500;  /* Do not run for too long at once */
     struct content_entry *content = NULL;
     int res = 0;
     
@@ -931,7 +957,7 @@ clean_deamon(struct ccn_schedule *sched,
     }
     // XXX - should remove non-stale content, too, if desperate
     if (check_limit <= 0)
-        return(10000);
+        return(5000);
     ev->evint = 0;
     return(15000000);
 }
@@ -1337,11 +1363,15 @@ expire_content(struct ccn_schedule *sched,
     ccn_accession_t accession = ev->evint;
     struct content_entry *content = NULL;
     int res;
+    unsigned n;
     if ((flags & CCN_SCHEDULE_CANCEL) != 0)
         return(0);
     content = content_from_accession(h, accession);
     if (content != NULL) {
-        if (hashtb_n(h->content_tab) > h->capacity) {
+        n = hashtb_n(h->content_tab);
+        /* The fancy test here lets existing stale content go away, too. */
+        if ((n - (n >> 3)) > h->capacity ||
+            (n > h->capacity && h->min_stale > h->max_stale)) {
             res = remove_content(h, content);
             if (res == 0)
                 return(0);
@@ -1463,8 +1493,10 @@ process_incoming_content(struct ccnd *h, struct face *face,
     else if (res == HT_NEW_ENTRY) {
         content->accession = ++(h->accession);
         enroll_content(h, content);
-        content->ncomps = comps->n;
-        content->comps = calloc(comps->n, sizeof(comps[0]));
+        if (content == content_from_accession(h, content->accession)) {
+            content->ncomps = comps->n;
+            content->comps = calloc(comps->n, sizeof(comps[0]));
+        }
         content->key_size = e->keysize;
         content->size = e->keysize + e->extsize;
         content->key = e->key;
@@ -1472,14 +1504,15 @@ process_incoming_content(struct ccnd *h, struct face *face,
             for (i = 0; i < comps->n; i++)
                 content->comps[i] = comps->buf[i];
             content_skiplist_insert(h, content);
+            set_content_timer(h, content, &obj);
         }
         else {
-            perror("process_incoming_content");
+            ccnd_msg(h, "could not enroll ContentObject (accession %llu)",
+                (unsigned long long)content->accession);
             hashtb_delete(e);
             res = -__LINE__;
             content = NULL;
         }
-        set_content_timer(h, content, &obj);
     }
     hashtb_end(e);
 Bail:
