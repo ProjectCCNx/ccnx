@@ -48,7 +48,8 @@ incoming_interest(
     if (kind != CCN_UPCALL_INTEREST || md == NULL)
         return(CCN_UPCALL_RESULT_ERR);
     if ((info->pi->answerfrom & CCN_AOK_NEW) != 0) {
-        md->outstanding += info->pi->count + 9;
+        if (md->outstanding < info->pi->count + 9)
+            md->outstanding = info->pi->count + 9;
         ccn_set_run_timeout(info->h, 0);
     }
     return(CCN_UPCALL_RESULT_OK);
@@ -73,9 +74,21 @@ read_full(int fd, unsigned char *buf, size_t size)
     return(i);
 }
 
+static void
+usage(const char *progname)
+{
+        fprintf(stderr,
+                "%s [-h] [-x freshness_seconds] URI\n"
+                " Chops stdin into 1K blocks and sends them "
+                "as consecutively numbered ContentObjects "
+                "under the given uri\n", progname);
+        exit(1);
+}
+
 int
 main(int argc, char **argv)
 {
+    const char *progname = argv[0];
     struct ccn *ccn = NULL;
     struct ccn_charbuf *root = NULL;
     struct ccn_charbuf *name = NULL;
@@ -83,6 +96,7 @@ main(int argc, char **argv)
     struct ccn_charbuf *templ = NULL;
     struct ccn_charbuf *signed_info = NULL;
     struct ccn_keystore *keystore = NULL;
+    long expire = -1;
     int i;
     int status = 0;
     int res;
@@ -91,30 +105,37 @@ main(int argc, char **argv)
     struct mydata mydata = { 0 };
     struct ccn_closure in_content = {.p=&incoming_content, .data=&mydata};
     struct ccn_closure in_interest = {.p=&incoming_interest, .data=&mydata};
-    if (argv[1] == NULL) {
-        fprintf(stderr,
-                "%s: Chops stdin into 1K blocks and sends them "
-                "as consecutively numbered ContentObjects "
-                "under the given uri\n", argv[0]);
+    while ((res = getopt(argc, argv, "hx:")) != -1) {
+        switch (res) {
+            case 'x':
+                expire = atol(optarg);
+                if (expire <= 0)
+                    usage(progname);
+                break;
+            default:
+            case 'h':
+                usage(progname);
+                break;
+        }
+    }
+    argc -= optind;
+    argv += optind;
+    if (argv[0] == NULL)
+        usage(progname);
+    name = ccn_charbuf_create();
+    res = ccn_name_from_uri(name, argv[0]);
+    if (res < 0) {
+        fprintf(stderr, "%s: bad ccn URI: %s\n", progname, argv[0]);
         exit(1);
     }
-    else {
-        name = ccn_charbuf_create();
-        res = ccn_name_from_uri(name, argv[1]);
-        if (res < 0) {
-            fprintf(stderr, "%s: bad ccn URI: %s\n", argv[0], argv[1]);
-            exit(1);
-        }
-        if (argv[2] != NULL)
-            fprintf(stderr, "%s warning: extra arguments ignored\n", argv[0]);
-    }
+    if (argv[1] != NULL)
+        fprintf(stderr, "%s warning: extra arguments ignored\n", progname);
 
     ccn = ccn_create();
     if (ccn_connect(ccn, NULL) == -1) {
         perror("Could not connect to ccnd");
         exit(1);
     }
-    
     
     buf = calloc(1, 1024);
     root = name;
@@ -170,7 +191,7 @@ main(int argc, char **argv)
                                      /*publisher_key_id_size*/ccn_keystore_public_key_digest_length(keystore),
                                      /*datetime*/NULL,
                                      /*type*/CCN_CONTENT_LEAF,
-                                     /*freshness*/ -1,
+                                     /*freshness*/ expire,
                                      /*keylocator*/NULL);
         if (res < 0) {
             fprintf(stderr, "Failed to create signed_info (res == %d)\n", res);
@@ -198,9 +219,9 @@ main(int argc, char **argv)
         if (i == 0) {
             /* Finish check for old content */
             if (mydata.content_received == 0)
-                ccn_run(ccn, 50);
+                ccn_run(ccn, 100);
             if (mydata.content_received > 0) {
-                fprintf(stderr, "%s: name is in use: %s\n", argv[0], argv[1]);
+                fprintf(stderr, "%s: name is in use: %s\n", progname, argv[0]);
                 exit(1);
             }
             mydata.outstanding++; /* the first one is free... */
