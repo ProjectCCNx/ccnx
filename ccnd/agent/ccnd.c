@@ -217,13 +217,59 @@ static struct content_entry *
 content_from_accession(struct ccnd *h, ccn_accession_t accession)
 {
     struct content_entry *ans = NULL;
-    if (accession >= h->accession_base &&
-        accession < h->accession_base + h->content_by_accession_window) {
+    if (accession < h->accession_base) {
+        struct sparse_straggler_entry *entry;
+        entry = hashtb_lookup(h->sparse_straggler_tab,
+                              &accession, sizeof(accession));
+        if (entry != NULL)
+            ans = entry->content;
+    }
+    else if (accession < h->accession_base + h->content_by_accession_window) {
         ans = h->content_by_accession[accession - h->accession_base];
         if (ans != NULL && ans->accession != accession)
             ans = NULL;
     }
     return(ans);
+}
+
+static void
+cleanout_stragglers(struct ccnd *h)
+{
+    ccn_accession_t accession;
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct sparse_straggler_entry *entry = NULL;
+    struct content_entry **a = h->content_by_accession;
+    unsigned n_direct;
+    unsigned n_occupied;
+    unsigned window;
+    unsigned i;
+    if (h->accession <= h->accession_base || a[0] == NULL)
+        return;
+    n_direct = h->accession - h->accession_base;
+    if (n_direct < 1000)
+        return;
+    n_occupied = hashtb_n(h->content_tab) - hashtb_n(h->sparse_straggler_tab);
+    if (n_occupied >= (n_direct / 8))
+        return;
+    /* The direct lookup table is too sparse, so sweep stragglers */
+    hashtb_start(h->sparse_straggler_tab, e);
+    window = h->content_by_accession_window;
+    for (i = 0; i < window; i++) {
+        if (a[i] != NULL) {
+            if (n_occupied >= ((window - i) / 8))
+                break;
+            accession = h->accession_base + i;
+            hashtb_seek(e, &accession, sizeof(accession), 0);
+            entry = e->data;
+            if (entry != NULL && entry->content == NULL) {
+                entry->content = a[i];
+                a[i] = NULL;
+                n_occupied -= 1;
+            }
+        }
+    }
+    hashtb_end(e);
 }
 
 static int
@@ -235,6 +281,7 @@ cleanout_empties(struct ccnd *h)
     unsigned window = h->content_by_accession_window;
     if (a == NULL)
         return(-1);
+    cleanout_stragglers(h);
     while (i < window && a[i] == NULL)
         i++;
     if (i == 0)
@@ -256,8 +303,11 @@ enroll_content(struct ccnd *h, struct content_entry *content)
     unsigned i = 0;
     unsigned j = 0;
     unsigned window = h->content_by_accession_window;
-    if (content->accession >= h->accession_base + window &&
+    if ((content->accession - h->accession_base) >= window &&
           cleanout_empties(h) < 0) {
+        if (content->accession < h->accession_base)
+            return;
+        window = h->content_by_accession_window;
         old_array = h->content_by_accession;
         new_window = ((window + 20) * 3 / 2);
         if (new_window < window)
@@ -286,13 +336,26 @@ finalize_content(struct hashtb_enumerator *e)
     if (i < h->content_by_accession_window && h->content_by_accession[i] == entry) {
         content_skiplist_remove(h, entry);
         h->content_by_accession[i] = NULL;
-        if (entry->comps != NULL) {
-            free(entry->comps);
-            entry->comps = NULL;
-        }
     }
-    else
-        ccnd_msg(h, "orphaned content %u", i);
+    else {
+        struct hashtb_enumerator ee;
+        struct hashtb_enumerator *e = &ee;
+        hashtb_start(h->sparse_straggler_tab, e);
+        if (hashtb_seek(e, &entry->accession, sizeof(entry->accession), 0) == HT_NEW_ENTRY) {
+            ccnd_msg(h, "orphaned content %llu",
+                     (unsigned long long)(entry->accession));
+            hashtb_delete(e);
+            hashtb_end(e);
+            return;
+        }
+        content_skiplist_remove(h, entry);
+        hashtb_delete(e);
+        hashtb_end(e);
+    }
+    if (entry->comps != NULL) {
+        free(entry->comps);
+        entry->comps = NULL;
+    }
 }
 
 static int
@@ -614,6 +677,9 @@ content_sender(struct ccn_schedule *sched,
         content = content_from_accession(h, face->send_queue->buf[i]);
         if (content != NULL) {
             send_content(h, face, content);
+            /* face may have vanished, bail out if it did */
+            if (face_from_faceid(h, ev->evint) == 0)
+                return(0);
             i++;
             break;
         }
@@ -1700,6 +1766,10 @@ do_write(struct ccnd *h, struct face *face, unsigned char *data, size_t size)
     if (res == -1) {
         if (errno == EAGAIN)
             res = 0;
+        else if (errno == EPIPE) {
+            shutdown_client_fd(h, face->fd);
+            return;
+        }
         else {
             perror("ccnd: send");
             return;
@@ -1881,6 +1951,7 @@ ccnd_create(void)
     h->interestprefix_tab = hashtb_create(sizeof(struct interestprefix_entry), &param);
     param.finalize = &finalize_propagating;
     h->propagating_tab = hashtb_create(sizeof(struct propagating_entry), &param);
+    h->sparse_straggler_tab = hashtb_create(sizeof(struct sparse_straggler_entry), NULL);
     h->min_stale = ~0;
     h->max_stale = 0;
     h->sched = ccn_schedule_create(h);

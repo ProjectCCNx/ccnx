@@ -66,9 +66,12 @@ struct ccnd {
     struct ccn_schedule *sched;
     struct ccn_charbuf *scratch_charbuf;
     struct ccn_indexbuf *scratch_indexbuf;
+    /* Next three fields use for direct accession-to-content table */
     ccn_accession_t accession_base;
     unsigned content_by_accession_window;
     struct content_entry **content_by_accession;
+    /* The following holds stragglers that would otherwise bloat the above */
+    struct hashtb *sparse_straggler_tab; /* keyed by accession */
     ccn_accession_t accession;
     ccn_accession_t min_stale;
     ccn_accession_t max_stale;
@@ -139,6 +142,14 @@ struct content_entry {
 /* content_entry flags */
 #define CCN_CONTENT_ENTRY_SLOWSEND  1
 #define CCN_CONTENT_ENTRY_STALE     2
+
+/*
+ * The sparse_straggler hash table, keyed by accession, holds scattered
+ * entries that would bloat the direct content_by_accession table.
+ */
+struct sparse_straggler_entry {
+    struct content_entry *content;
+};
 
 /*
  * The interestprefix hash table is keyed by the Component elements of the Name prefix
