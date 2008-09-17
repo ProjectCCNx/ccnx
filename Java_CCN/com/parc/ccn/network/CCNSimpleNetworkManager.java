@@ -671,7 +671,7 @@ public class CCNSimpleNetworkManager implements Runnable {
 	// Thread method: this thread will handle reading datagrams and 
 	// the periodic re-expressing of standing interests
 	public void run() {
-		if (_run) {
+		if (! _run) {
 			Library.logger().warning("CCNSimpleNetworkManager run() called after shutdown");
 			return;
 		}

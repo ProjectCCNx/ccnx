@@ -84,10 +84,10 @@ public class BaseLibrarySink implements CCNInterestListener {
 	public synchronized Interest handleContent(ArrayList<ContentObject> results) {
 		try {
 			for (ContentObject contentObject : results) {
-				int value = contentObject.content()[0];
-				// Don't expect something different anymore!
-                                //assertEquals(next, value);
-				System.out.println("Got " + value + "on try " + next);
+				String objString = contentObject.name().toString();
+				Interest interest = new Interest(objString.substring(0, objString.lastIndexOf("/")) + "/" + new Integer(next).toString());
+				// Register interest
+				library.expressInterest(interest, this);
 				next++;
 			}
 			checkGetResults(results);

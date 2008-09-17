@@ -93,7 +93,6 @@ public class BaseLibrarySource implements CCNFilterListener {
 	
 	@Test
 	public void server() throws Throwable {
-		assert(count <= Byte.MAX_VALUE);
 		System.out.println("PutServer started");
 		// Register filter
 		name = new ContentName("/BaseLibraryTest/");
