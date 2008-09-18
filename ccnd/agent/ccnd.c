@@ -618,7 +618,7 @@ send_content(struct ccnd *h, struct face *face, struct content_entry *content)
         return;
     size = content->size;
     if (h->debug & 4)
-        ccnd_debug_ccnb(h, __LINE__, "content_out", face,
+        ccnd_debug_ccnb(h, __LINE__, "content_to", face,
                         content->key, size);
     if ((face->flags & CCN_FACE_LINK) != 0)
         ccn_charbuf_append_tt(c, CCN_DTAG_CCNProtocolDataUnit, CCN_DTAG);
@@ -1118,7 +1118,7 @@ do_propagate(
         struct face *face = face_from_faceid(h, faceid);
         if (face != NULL && (face->flags & CCN_FACE_NOSEND) != 0) {
             if (h->debug & 2)
-                ccnd_debug_ccnb(h, __LINE__, "interest_out", face,
+                ccnd_debug_ccnb(h, __LINE__, "interest_to", face,
                                 pe->interest_msg, pe->size);
             do_write_BFI(h, face, pe->interest_msg, pe->size);
             h->interests_sent += 1;
@@ -1298,7 +1298,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,
     }
     else {
         if (h->debug & 10)
-            ccnd_debug_ccnb(h, __LINE__, "interest_in", face, msg, size);
+            ccnd_debug_ccnb(h, __LINE__, "interest_from", face, msg, size);
         if (pi->orderpref > 1 || pi->prefix_comps != comps->n - 1)
             face->cached_accession = 0;
         namesize = comps->buf[pi->prefix_comps] - comps->buf[0];
@@ -1539,7 +1539,7 @@ process_incoming_content(struct ccnd *h, struct face *face,
         }
     }
     if (h->debug & 4)
-        ccnd_debug_ccnb(h, __LINE__, "content_in", face, msg, size);
+        ccnd_debug_ccnb(h, __LINE__, "content_from", face, msg, size);
     keysize = obj.offset[CCN_PCO_B_Content];
     tail = msg + keysize;
     tailsize = size - keysize;
