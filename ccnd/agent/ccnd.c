@@ -614,6 +614,8 @@ send_content(struct ccnd *h, struct face *face, struct content_entry *content)
 {
     struct ccn_charbuf *c = charbuf_obtain(h);
     int n, a, b, size;
+    if ((face->flags & CCN_FACE_NOSEND) != 0)
+        return;
     size = content->size;
     if (h->debug & 4)
         ccnd_debug_ccnb(h, __LINE__, "content_out", face,
@@ -668,10 +670,12 @@ content_sender(struct ccn_schedule *sched,
     
     if (face == NULL)
         return(0);
-    if ((flags & CCN_SCHEDULE_CANCEL) != 0 || face->send_queue == NULL) {
-        face->sender = NULL;
-        return(0);
-    }
+    if ((flags & CCN_SCHEDULE_CANCEL) != 0)
+        goto Bail;
+    if (face->send_queue == NULL)
+        goto Bail;
+    if ((face->flags & CCN_FACE_NOSEND) != 0)
+        goto Bail;
     /* Send the content at the head of the queue */
     for (i = 0; i < face->send_queue->n; i++) {
         content = content_from_accession(h, face->send_queue->buf[i]);
@@ -679,7 +683,7 @@ content_sender(struct ccn_schedule *sched,
             send_content(h, face, content);
             /* face may have vanished, bail out if it did */
             if (face_from_faceid(h, ev->evint) == 0)
-                return(0);
+                goto Bail;
             i++;
             break;
         }
@@ -694,6 +698,7 @@ content_sender(struct ccn_schedule *sched,
         if (content != NULL)
             return(choose_content_delay(h, face->faceid, content->flags));
     }
+Bail:
     face->sender = NULL;
     return(0);
 }
@@ -721,7 +726,7 @@ face_send_queue_insert(struct ccnd *h, struct face *face, struct content_entry *
 {
     int ans;
     int delay;
-    if (face == NULL || content == NULL)
+    if (face == NULL || content == NULL || (face->flags & CCN_FACE_NOSEND) != 0)
         return(-1);
     if (face->send_queue == NULL)
         face->send_queue = ccn_indexbuf_create();
@@ -1093,6 +1098,7 @@ do_propagate(
     struct ccnd *h = clienth;
     struct propagating_entry *pe = ev->evdata;
     (void)(sched);
+    int next_delay = 1;
     if (pe->interest_msg == NULL)
         return(0);
     if (pe->outbound == NULL) {
@@ -1110,19 +1116,20 @@ do_propagate(
     if (pe->outbound->n > 0) {
         unsigned faceid = pe->outbound->buf[--pe->outbound->n];
         struct face *face = face_from_faceid(h, faceid);
-        if (face != NULL) {
+        if (face != NULL && (face->flags & CCN_FACE_NOSEND) != 0) {
             if (h->debug & 2)
                 ccnd_debug_ccnb(h, __LINE__, "interest_out", face,
                                 pe->interest_msg, pe->size);
             do_write_BFI(h, face, pe->interest_msg, pe->size);
             h->interests_sent += 1;
+            next_delay = nrand48(h->seed) % 8192 + 500;
         }
     }
     if (pe->outbound->n == 0) {
         finished_propagating(pe);
         return(CCN_INTEREST_HALFLIFE_MICROSEC);
     }
-    return(nrand48(h->seed) % 8192 + 500);
+    return(next_delay);
 }
 
 static int
@@ -1752,6 +1759,8 @@ static void
 do_write(struct ccnd *h, struct face *face, unsigned char *data, size_t size)
 {
     ssize_t res;
+    if ((face->flags & CCN_FACE_NOSEND) != 0)
+        return;
     if (face->outbuf != NULL) {
         ccn_charbuf_append(face->outbuf, data, size);
         return;
@@ -1767,7 +1776,9 @@ do_write(struct ccnd *h, struct face *face, unsigned char *data, size_t size)
         if (errno == EAGAIN)
             res = 0;
         else if (errno == EPIPE) {
-            shutdown_client_fd(h, face->fd);
+            face->flags |= CCN_FACE_NOSEND;
+            face->outbufindex = 0;
+            ccn_charbuf_destroy(&face->outbuf);
             return;
         }
         else {
@@ -1797,6 +1808,12 @@ do_deferred_write(struct ccnd *h, int fd)
         if (sendlen > 0) {
             res = send(fd, face->outbuf->buf + face->outbufindex, sendlen, 0);
             if (res == -1) {
+                if (errno == EPIPE) {
+                    face->flags |= CCN_FACE_NOSEND;
+                    face->outbufindex = 0;
+                    ccn_charbuf_destroy(&face->outbuf);
+                    return;
+                }
                 perror("ccnd: send");
                 shutdown_client_fd(h, fd);
                 return;
