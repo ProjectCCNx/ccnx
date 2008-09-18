@@ -4,8 +4,16 @@ import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.Charset;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CoderResult;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.UnsupportedCharsetException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -171,13 +179,63 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		return nameBuf.toString();
 	} 
 	
+	/**
+	 * Print bytes in the syntax of the application/x-www-form-urlencoded
+	 * MIME format, including byte sequences that are not legal character
+	 * encodings in any character set.  All sub-sequences of the input 
+	 * bytes that are legal UTF-8 will be translated into the 
+	 * application/x-www-form-urlencoded format using the UTF-8 encoding 
+	 * scheme, just as java.net.URLEncoder would do if invoked with the
+	 * encoding name "UTF-8".  Those sub-sequences of input bytes that 
+	 * are not legal UTF-8 will be translated into application/x-www-form-urlencoded
+	 * byte representations.  Each byte is represented by the 3-character string 
+	 * "%xy", where xy is the two-digit hexadecimal representation of the byte.
+	 * The net result is that UTF-8 is preserved but that any arbitrary 
+	 * byte sequence is translated to a string representation that
+	 * can be parsed by parseComponent() to recover exactly the input sequence. 
+	 * @param bs input byte array
+	 * @return
+	 */
 	public static String componentPrint(byte[] bs) {
 		// NHB: Van is expecting the URI encoding rules
 		if (null == bs) {
 			return new String();
 		}
 		try {
-			return URLEncoder.encode(new String(bs), "UTF-8");
+			// Note that this would probably be more efficient as simple loop:
+			// In order to use the URLEncoder class to handle the 
+			// parts that are UTF-8 already, we decode the bytes into Java String
+			// as though they were UTF-8.  Wherever that fails
+			// (i.e. where byte sub-sequences are NOT legal UTF-8)
+			// we directly convert those bytes to the %xy output format.
+			// To get enough control over the decoding, we must use 
+			// the charset decoder and NOT simply new String(bs) because
+			// the String constructor will decode illegal UTF-8 sub-sequences
+			// with Unicode "Replacement Character" U+FFFD.
+			StringBuffer result = new StringBuffer();
+			Charset charset = Charset.forName("UTF-8");
+			CharsetDecoder decoder = charset.newDecoder();
+			// Leave nothing to defaults: we want to be notified on anything illegal
+			decoder.onMalformedInput(CodingErrorAction.REPORT);
+			decoder.onUnmappableCharacter(CodingErrorAction.REPORT);
+			ByteBuffer input = ByteBuffer.wrap(bs);
+			CharBuffer output = CharBuffer.allocate(((int)decoder.maxCharsPerByte()*bs.length)+1);
+			while (input.remaining() > 0) {
+				CoderResult cr = decoder.decode(input, output, true);
+				assert(!cr.isOverflow());
+				// URLEncode whatever was successfully decoded from UTF-8
+				output.flip();
+				result.append(URLEncoder.encode(output.toString(), "UTF-8"));
+				output.clear();
+				if (cr.isError()) {
+					for (int i=0; i<cr.length(); i++) {
+						result.append(String.format("%%%02X", input.get()));
+					}
+				}
+			}
+			return result.toString();
+		} catch (UnsupportedCharsetException e) {
+			throw new RuntimeException("UTF-8 not supported charset", e);
 		} catch (UnsupportedEncodingException e) {
 			throw new RuntimeException("UTF-8 not supported", e);
 		}
@@ -191,10 +249,48 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		return bi.toString(16);
 	}
 
+	/*
+	 * Parse component in the syntax of the application/x-www-form-urlencoded
+	 * MIME format, including representations of bytes that are not legal character
+	 * encodings in any character set.  This method is the inverse of 
+	 * printComponent() and for any input sequence of bytes it must be the case
+	 * that parseComponent(printComponent(input)) == input
+	 * @param name a single component of a name
+	 * @return
+     */
 	public static byte[] componentParse(String name) {
 		byte[] decodedName = null;
 		try {
-			decodedName = URLDecoder.decode(name, "UTF-8").getBytes();
+			ByteBuffer result = ByteBuffer.allocate(name.length());
+			for (int i = 0; i < name.length(); i++) {
+				if (name.charAt(i) == '%') {
+					// This is a byte string %xy where xy are hex digits
+					// Since the input string must be compatible with the output
+					// of componentPrint(), we may convert the byte values directly.
+					// There is no need to go through a character representation.
+					if (name.length()-1 < i+2) {
+						throw new IllegalArgumentException("malformed %xy byte representation: too short");
+					}
+					if (name.charAt(i+1) == '-') {
+						throw new IllegalArgumentException("malformed %xy byte representation: negative value not permitted");
+					}
+					try {
+						result.put(new Integer(Integer.parseInt(name.substring(i+1, i+3),16)).byteValue());
+					} catch (NumberFormatException e) {
+						throw new IllegalArgumentException("malformed %xy byte representation: not legal hex number",e);
+					}
+					i+=2; // for loop will increment by one more to get net +3 so past byte string
+				} else if (name.charAt(i) == '+') {
+					// This is the one character translated to a different one
+					result.put(" ".getBytes("UTF-8"));
+				} else {
+					// This character remains the same
+					result.put(name.substring(i, i+1).getBytes("UTF-8"));
+				}
+			}
+			result.flip();
+			decodedName = new byte[result.limit()];
+			System.arraycopy(result.array(), 0, decodedName, 0, result.limit());
 		} catch (UnsupportedEncodingException e) {
 			Library.logger().severe("UTF-8 not supported.");
 			throw new RuntimeException("UTF-8 not supported", e);

@@ -26,6 +26,18 @@ public class ContentNameTest {
 				0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c,
 				0x0d, 0x0e, 0x0f, 0x1f, 0x1b, 0x1c, 0x1d, 0x1e,
 				0x1f, 0x2e, 0x3c, 0x4a, 0x5c, 0x6d, 0x7e, 0xf};
+	// invalid: try byte sequences that should be invalid values in platform 
+	// character set.  Note java.lang.String is documented as having 
+	// unspecified behavior when given bytes that are not valid in the
+	// default charset.  These values are chosen as invalid for UTF-8.
+	// Java String encoding from UTF-8 replaces these invalid characters
+	// with the Unicode "Replacement Character" U+FFFD so a simple
+	// trip through String() to URL encoding and back will not be lossless!
+	public byte [] invalid = new byte[]{0x01, 0x00, 0x00, // valid  but with 0's
+				(byte) 0x80, (byte) 0xbc, // can't be first byte
+				(byte) 0xc0, (byte) 0xc1, // overlong encoding
+				(byte) 0xf5, (byte) 0xf9, (byte) 0xfc, // RFC3629 restricted
+			    (byte) 0xfe, (byte) 0xff}; // invalid: not defined
 	public String escapedSubName1 = "%62%72%69%67%67%73";
 	
 	@BeforeClass
@@ -125,6 +137,24 @@ public class ContentNameTest {
 		ContentName name2 = new ContentName(arr);
 		assertNotNull(name2);
 		System.out.println("Name 2: " + name2);
+	}
+
+	@Test
+	public void testInvalidContentNameByteArrayArray() throws MalformedContentNameStringException {
+		byte [][] arr = new byte[4][];
+		arr[0] = baseName.getBytes();
+		arr[1] = subName1.getBytes();
+		arr[2] = document1.getBytes();
+		System.out.println("Creating name from byte arrays with invalid values.");
+		ContentName name = new ContentName(3, arr);
+		assertNotNull(name);
+		System.out.println("Name: " + name);
+		arr[3] = invalid;
+		ContentName name2 = new ContentName(arr);
+		assertNotNull(name2);
+		System.out.println("Name 2: " + name2);
+		ContentName input = new ContentName(name2.toString());
+		assertEquals(input,name2);
 	}
 
 	@Test
