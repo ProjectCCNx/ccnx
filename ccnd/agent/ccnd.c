@@ -1058,9 +1058,12 @@ get_outbound_faces(struct ccnd *h,
         return(x);
     if (pi->scope == 1)
         blockmask = CCN_FACE_LINK;
+    // XXX looping to face_limit is ofent a (minir) waste of time
     for (i = 0; i < h->face_limit; i++)
-        if (a[i] != NULL && a[i] != from && ((a[i]->flags & blockmask) == 0))
+        if (a[i] != NULL && a[i] != from && ((a[i]->flags & blockmask) == 0)) {
             ccn_indexbuf_append_element(x, a[i]->faceid);
+            // ccnd_msg(h, "at %d adding %u", __LINE__, a[i]->faceid);
+        }
     return(x);
 }
 
@@ -1116,7 +1119,7 @@ do_propagate(
     if (pe->outbound->n > 0) {
         unsigned faceid = pe->outbound->buf[--pe->outbound->n];
         struct face *face = face_from_faceid(h, faceid);
-        if (face != NULL && (face->flags & CCN_FACE_NOSEND) != 0) {
+        if (face != NULL && (face->flags & CCN_FACE_NOSEND) == 0) {
             if (h->debug & 2)
                 ccnd_debug_ccnb(h, __LINE__, "interest_to", face,
                                 pe->interest_msg, pe->size);
@@ -1228,6 +1231,7 @@ propagate_interest(struct ccnd *h, struct face *face,
             pe->size = msg_out_size;
             pe->faceid = face->faceid;
             pe->outbound = outbound;
+            // ccnd_msg(h, "at %d outbound n=%d", __LINE__, outbound ? outbound->n : 0);
             outbound = NULL;
             link_propagating_interest_to_interest_entry(h, pe, ipe);
             res = 0;
@@ -1299,6 +1303,11 @@ process_incoming_interest(struct ccnd *h, struct face *face,
     else {
         if (h->debug & 10)
             ccnd_debug_ccnb(h, __LINE__, "interest_from", face, msg, size);
+        if (h->debug & 8)
+            ccnd_msg(h, "prefix_comps: %d, orderpref: %d, answerfrom: %d, scope: %d, count: %d, excl: %d, etc: %d",
+                     pi->prefix_comps, pi->orderpref, pi->answerfrom, pi->scope, pi->count,
+                     pi->offset[CCN_PI_E_Exclude] - pi->offset[CCN_PI_B_Exclude],
+                     pi->offset[CCN_PI_E_OTHER] - pi->offset[CCN_PI_B_OTHER]);
         if (pi->orderpref > 1 || pi->prefix_comps != comps->n - 1)
             face->cached_accession = 0;
         namesize = comps->buf[pi->prefix_comps] - comps->buf[0];
