@@ -39,7 +39,6 @@ ccn_keystore_init(struct ccn_keystore *p, char *name, char *password)
 {
     FILE *fp;
     PKCS12 *keystore;
-    ssize_t digestlen;
     int res;
 
     OpenSSL_add_all_algorithms();
