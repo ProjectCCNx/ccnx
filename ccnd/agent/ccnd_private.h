@@ -156,11 +156,9 @@ struct sparse_straggler_entry {
  * The interestprefix hash table is keyed by the Component elements of the Name prefix
  */
 struct interestprefix_entry {
-    unsigned char idle;
+    // unsigned char idle;
     struct propagating_entry *propagating_head;
 };
-/* The interest counters are scaled by a factor of CCN_UNIT_INTEREST */
-//#define CCN_UNIT_INTEREST 5
 
 /*
  * The propagating interest hash table is keyed by Nonce.
@@ -171,6 +169,7 @@ struct propagating_entry {
     unsigned char *interest_msg;
     size_t size;
     unsigned faceid;            /* origin of the interest, dest for matches */
+    int usec;                   /* usec until timeout */
     struct ccn_indexbuf *outbound;
 };
 

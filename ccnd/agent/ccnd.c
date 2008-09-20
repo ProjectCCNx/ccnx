@@ -494,6 +494,7 @@ consume(struct propagating_entry *pe)
         pe->prev->next = pe->next;
         pe->next = pe->prev = NULL;
     }
+    pe->usec = 0;
 }
 
 static void
@@ -774,7 +775,7 @@ consume_matching_interests(struct ccnd *h,
             if (ccn_content_matches_interest(content_msg, content_size, 0, pc,
                                              p->interest_msg, p->size, NULL)) {
                 face_send_queue_insert(h, face_from_faceid(h, p->faceid), content);
-                if (h->debug & 8)
+                if (h->debug & (16 | 8))
                     ccnd_debug_ccnb(h, __LINE__, "consume",
                                     face_from_faceid(h, p->faceid),
                                     p->interest_msg, p->size);
@@ -1058,7 +1059,7 @@ get_outbound_faces(struct ccnd *h,
         return(x);
     if (pi->scope == 1)
         blockmask = CCN_FACE_LINK;
-    // XXX looping to face_limit is ofent a (minir) waste of time
+    // XXX looping to face_limit is ofen a (minor) waste of time
     for (i = 0; i < h->face_limit; i++)
         if (a[i] != NULL && a[i] != from && ((a[i]->flags & blockmask) == 0)) {
             ccn_indexbuf_append_element(x, a[i]->faceid);
@@ -1092,8 +1093,28 @@ indexbuf_remove_element(struct ccn_indexbuf *x, size_t val)
 }
 
 static int
-do_propagate(
-             struct ccn_schedule *sched,
+pe_next_usec(struct ccnd *h,
+             struct propagating_entry *pe, int next_delay, int lineno)
+{
+    if (next_delay > pe->usec)
+        next_delay = pe->usec;
+    pe->usec -= next_delay;
+    if (h->debug & 16) {
+        struct ccn_charbuf *c = ccn_charbuf_create();
+        ccn_charbuf_putf(c, "%p.outbound.n=%d,usec=%d+%d",
+                         (void *)pe,
+                         pe->outbound ? pe->outbound->n : -1,
+                         next_delay, pe->usec);
+        ccnd_debug_ccnb(h, lineno, ccn_charbuf_as_string(c),
+                        face_from_faceid(h, pe->faceid),
+                        pe->interest_msg, pe->size);
+        ccn_charbuf_destroy(&c);
+    }
+    return(next_delay);
+}
+
+static int
+do_propagate(struct ccn_schedule *sched,
              void *clienth,
              struct ccn_scheduled_event *ev,
              int flags)
@@ -1102,22 +1123,26 @@ do_propagate(
     struct propagating_entry *pe = ev->evdata;
     (void)(sched);
     int next_delay = 1;
+    int n = 0;
     if (pe->interest_msg == NULL)
         return(0);
-    if (pe->outbound == NULL) {
-        /* this is presumably an interest timeout */
+    if (flags & CCN_SCHEDULE_CANCEL) {
+        consume(pe);
+        return(0);
+    }
+    if (pe->usec <= 0) {
         if (h->debug & 2)
             ccnd_debug_ccnb(h, __LINE__, "interest_expiry",
                             face_from_faceid(h, pe->faceid),
                             pe->interest_msg, pe->size);
         consume(pe);
         reap_needed(h, 0);
-        return(0);
+        return(0);        
     }
-    if (flags & CCN_SCHEDULE_CANCEL)
-        pe->outbound->n = 0;
-    if (pe->outbound->n > 0) {
-        unsigned faceid = pe->outbound->buf[--pe->outbound->n];
+    if (pe->outbound != NULL)
+        n = pe->outbound->n;
+    if (n > 0) {
+        unsigned faceid = pe->outbound->buf[n = --pe->outbound->n];
         struct face *face = face_from_faceid(h, faceid);
         if (face != NULL && (face->flags & CCN_FACE_NOSEND) == 0) {
             if (h->debug & 2)
@@ -1128,10 +1153,15 @@ do_propagate(
             next_delay = nrand48(h->seed) % 8192 + 500;
         }
     }
-    if (pe->outbound->n == 0) {
-        finished_propagating(pe);
-        return(CCN_INTEREST_HALFLIFE_MICROSEC);
+    if (n == 0) {
+        if (pe->usec <= CCN_INTEREST_HALFLIFE_MICROSEC * 3 / 4) {
+            finished_propagating(pe);
+            next_delay = CCN_INTEREST_HALFLIFE_MICROSEC;
+        }
+        else
+            next_delay = CCN_INTEREST_HALFLIFE_MICROSEC / 4;
     }
+    next_delay = pe_next_usec(h, pe, next_delay, __LINE__);
     return(next_delay);
 }
 
@@ -1151,13 +1181,14 @@ already_interested(struct ccnd *h, struct face *face,
         for (p = head->next; p != head; p = p->next) {
             if (p->size > minsize &&
                 p->interest_msg != NULL &&
-                p->outbound != NULL &&
+                p->usec > 0 &&
                 0 == memcmp(msg, p->interest_msg, presize) &&
                 0 == memcmp(post, p->interest_msg + p->size - postsize, postsize)) {
                 /* Matches everything but the Nonce */
                 // XXX - Count will come into play when implemented
-                // XXX - Should check p's age and return 0 if it has been too long
                 // XXX - If we had actual forwarding tables, would need to take that into account since the outbound set could differ in non-trivial ways
+                // XXX - If from same face, could lose resiliency against dropped packets
+                // XXX - If from different face, may still want to send this one there because we won't necessarily hear an answer otherwise
                 return(1);
             }
         }
@@ -1230,15 +1261,17 @@ propagate_interest(struct ccnd *h, struct face *face,
             pe->interest_msg = m;
             pe->size = msg_out_size;
             pe->faceid = face->faceid;
+            pe->usec = CCN_INTEREST_HALFLIFE_MICROSEC;
             pe->outbound = outbound;
             // ccnd_msg(h, "at %d outbound n=%d", __LINE__, outbound ? outbound->n : 0);
             outbound = NULL;
             link_propagating_interest_to_interest_entry(h, pe, ipe);
             res = 0;
             if (pe->outbound == NULL)
-                usec = CCN_INTEREST_HALFLIFE_MICROSEC;
+                usec = pe->usec;
             else
                 usec = nrand48(h->seed) % 8192;
+            usec = pe_next_usec(h, pe, usec, __LINE__);
             ccn_schedule_event(h->sched, usec, do_propagate, pe, 0);
         }
     }
@@ -1301,9 +1334,9 @@ process_incoming_interest(struct ccnd *h, struct face *face,
         h->interests_dropped += 1;
     }
     else {
-        if (h->debug & 10)
+        if (h->debug & (16 | 8 | 2))
             ccnd_debug_ccnb(h, __LINE__, "interest_from", face, msg, size);
-        if (h->debug & 8)
+        if (h->debug & 16)
             ccnd_msg(h, "prefix_comps: %d, orderpref: %d, answerfrom: %d, scope: %d, count: %d, excl: %d, etc: %d",
                      pi->prefix_comps, pi->orderpref, pi->answerfrom, pi->scope, pi->count,
                      pi->offset[CCN_PI_E_Exclude] - pi->offset[CCN_PI_B_Exclude],
