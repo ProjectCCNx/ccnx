@@ -138,9 +138,14 @@ main(int argc, char **argv)
     int res;
     long counter = 0;
     struct ccn_closure *cl = NULL;
-    
+    int timeout_ms = 500;
+    const char *env_timeout = getenv("CCN_LINGER");
+
     if (argv[1] == NULL || argv[2] != NULL)
         usage(argv[0]);
+
+    if (env_timeout != NULL && (i = atoi(env_timeout)) > 0)
+        timeout_ms = i * 1000;
 
     c = ccn_charbuf_create();
     res = ccn_name_from_uri(c, argv[1]);
@@ -165,7 +170,7 @@ main(int argc, char **argv)
     data = NULL;
     for (i = 0;; i++) {
         n = counter;
-        ccn_run(ccn, 500); /* stop if we run dry for 1/2 sec */
+        ccn_run(ccn, timeout_ms); /* stop if we run dry for 1/2 sec */
         fflush(stdout);
         if (counter == n)
             break;
