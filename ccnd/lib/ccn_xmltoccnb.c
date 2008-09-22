@@ -1,3 +1,7 @@
+/*
+ * ccn_xmltoccnb.c
+ * Utility to convert XML into ccn binary encoded data (ccnb).
+ */
 #include <fcntl.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -9,6 +13,20 @@
 
 #include <ccn/coding.h>
 #include <ccn/charbuf.h>
+
+static void
+usage(const char *progname)
+{
+    fprintf(stderr,
+            "usage: %s [-h] [-w] file ...\n"
+            " Utility to convert XML into ccn binary encoded data (ccnb)\n"
+            "  -h   print usage and exit\n"
+            "  -w   toss UDATA content consisting of only whitespace\n"
+            " use - for file to specify filter mode (stdin, stdout)\n"
+            " otherwise output files get .ccnb extension\n",
+            progname);
+    exit(1);
+}
 
 struct ccn_encoder_stack_item {
     size_t start;
@@ -453,7 +471,12 @@ main(int argc, char **argv)
     int i;
     int res = 0;
     int flags = 0;
+    if (argv[1] == NULL)
+        usage(argv[0]);
     for (i = 1; argv[i] != 0; i++) {
+        if (0 == strcmp(argv[i], "-h")) {
+            usage(argv[0]);
+        }
         if (0 == strcmp(argv[i], "-w")) {
             flags |= TOSS_WHITE;
             continue;
