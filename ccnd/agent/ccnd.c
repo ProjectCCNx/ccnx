@@ -1166,10 +1166,11 @@ do_propagate(struct ccn_schedule *sched,
 }
 
 static int
-already_interested(struct ccnd *h, struct face *face,
-                      unsigned char *msg,
-                      struct ccn_parsed_interest *pi,
-                      struct interestprefix_entry *ipe)
+adjust_outbound_for_existing_interests(struct ccnd *h, struct face *face,
+                                       unsigned char *msg,
+                                       struct ccn_parsed_interest *pi,
+                                       struct interestprefix_entry *ipe,
+                                       struct ccn_indexbuf *outbound)
 {
     struct propagating_entry *head = ipe->propagating_head;
     struct propagating_entry *p;
@@ -1177,7 +1178,11 @@ already_interested(struct ccnd *h, struct face *face,
     size_t postsize = pi->offset[CCN_PI_E] - pi->offset[CCN_PI_E_Nonce];
     size_t minsize = presize + postsize;
     unsigned char *post = msg + pi->offset[CCN_PI_E_Nonce];
-    if (head != NULL) {
+    int k = 0;
+    int max_redundant = 3; /* Allow this many dups from same face */
+    int i;
+    int n;
+    if (head != NULL && outbound != NULL) {
         for (p = head->next; p != head; p = p->next) {
             if (p->size > minsize &&
                 p->interest_msg != NULL &&
@@ -1187,9 +1192,36 @@ already_interested(struct ccnd *h, struct face *face,
                 /* Matches everything but the Nonce */
                 // XXX - Count will come into play when implemented
                 // XXX - If we had actual forwarding tables, would need to take that into account since the outbound set could differ in non-trivial ways
-                // XXX - If from same face, could lose resiliency against dropped packets
-                // XXX - If from different face, may still want to send this one there because we won't necessarily hear an answer otherwise
-                return(1);
+                // XXX - newly arrived faces might miss a few interests because of this tactic, but those will get repaired as interests time out.
+                if (face->faceid == p->faceid) {
+                    /*
+                     * This is one we've already seen before from the same face,
+                     * but dropping it unconditionally would lose resiliency
+                     * against dropped packets. Thus allow a few of them.
+                     */
+                    if ((++k) < max_redundant)
+                        continue;
+                    outbound->n = 0;
+                    return(1);
+                }
+                /*
+                 * The existing interest from another face will serve for us,
+                 * but we still need to send this interest there or we
+                 * could miss an answer from that direction. Note that
+                 * interests from two other faces could conspire to cover
+                 * this one completely.
+                 */
+                n = outbound->n;
+                outbound->n = 0;
+                for (i = 0; i < n; i++) {
+                    if (p->faceid == outbound->buf[i]) {
+                        outbound->buf[0] = p->faceid;
+                        outbound->n = 1;
+                        break;
+                    }
+                }
+                if (outbound->n == 0)
+                    return(1);
             }
         }
     }
@@ -1213,9 +1245,7 @@ propagate_interest(struct ccnd *h, struct face *face,
     size_t msg_out_size = msg_size;
     struct ccn_indexbuf *outbound = get_outbound_faces(h, face, msg, pi);
     int usec;
-    if (already_interested(h, face, msg, pi, ipe)) {
-        outbound->n = 0;
-    }
+    adjust_outbound_for_existing_interests(h, face, msg, pi, ipe, outbound);
     if (outbound->n == 0)
         ccn_indexbuf_destroy(&outbound);
     if (pi->offset[CCN_PI_B_Nonce] == pi->offset[CCN_PI_E_Nonce]) {
