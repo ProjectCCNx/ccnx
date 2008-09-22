@@ -623,7 +623,7 @@ set_stdout(struct ccn_decoder *d, enum callback_kind kind, void *data)
 }
 
 static int
-process_split_file(char *base, char *path, int force_base64, int suffix)
+process_split_file(char *base, char *path, int force_base64, int *suffix)
 {
     int fd = 0;
     int res = 0;
@@ -640,12 +640,11 @@ process_split_file(char *base, char *path, int force_base64, int suffix)
     
     cs = calloc(1, sizeof(*cs));
     cs->fileprefix = base;
-    cs->fragment = suffix;
+    cs->fragment = *suffix;
     d = ccn_decoder_create(force_base64);
     ccn_decoder_set_callback(d, set_stdout, cs);
     res = process_fd(d, fd);
-    if (res >= 0)
-        res = cs->fragment;
+    *suffix = cs->fragment;
     ccn_decoder_destroy(&d);
     if (fd > 0)
         close(fd);
@@ -689,8 +688,7 @@ main(int argc, char **argv)
     int tflag = 0, bflag = 0, errflag = 0;
     char *sarg = NULL;
     int res = 0;
-    int tres;
-    int suffix;
+    int suffix = 0;
     struct ccn_decoder *d;
 
     while ((c = getopt(argc, argv, ":htbqs:")) != -1) {
@@ -729,17 +727,13 @@ main(int argc, char **argv)
     for (suffix = 0; optind < argc; optind++) {
         if (sarg) {
             fprintf(stderr, "<!-- Processing %s into %s -->\n", argv[optind], sarg);
-            tres = process_split_file(sarg, argv[optind], bflag, suffix);
-            if (tres < 0)
-                (suffix++, res |= tres);
-            else
-                suffix = tres;
+            res |= process_split_file(sarg, argv[optind], bflag, &suffix);
         }
         else {
             fprintf(stderr, "<!-- Processing %s -->\n", argv[optind]);
             res |= process_file(argv[optind], bflag);
         }
     }
-    return(res < 0 ? 1 : 0);
+    return(res);
 }
 
