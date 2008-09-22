@@ -1,3 +1,8 @@
+/*
+ * ccn_ccnbtoxml.c
+ * Utility to convert ccn binary encoded data into XML form.
+ */
+
 #include <fcntl.h>
 #include <limits.h>
 #include <stddef.h>
@@ -10,6 +15,23 @@
 
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
+
+static void
+usage(const char *progname)
+{
+    fprintf(stderr,
+            "usage: %s [-h] [-t] [-b] [-s prefix] file ...\n"
+            " Utility to convert ccn binary encoded data into XML form.\n"
+            "  -t      test, when specified, should be only switch\n"
+            "  -b      force base64 output instead of text\n"
+            "  -s pat  provide a single pattern to be used when "
+            "splitting one or more input files\n"
+            " switches may not be mixed with file name arguments\n"
+            " use - for file to specify stdin\n"
+            " in absence of -s option, result is on stdout\n",
+            progname);
+    exit(1);
+}
 
 #define CCN_NO_SCHEMA INT_MIN
 #define CCN_UNKNOWN_SCHEMA (INT_MIN+1)
@@ -601,7 +623,7 @@ set_stdout(struct ccn_decoder *d, enum callback_kind kind, void *data)
 }
 
 static int
-process_split_file(char *base, char *path, int force_base64)
+process_split_file(char *base, char *path, int force_base64, int suffix)
 {
     int fd = 0;
     int res = 0;
@@ -618,12 +640,13 @@ process_split_file(char *base, char *path, int force_base64)
     
     cs = calloc(1, sizeof(*cs));
     cs->fileprefix = base;
-    cs->fragment = 0;
+    cs->fragment = suffix;
     d = ccn_decoder_create(force_base64);
     ccn_decoder_set_callback(d, set_stdout, cs);
     res = process_fd(d, fd);
+    if (res >= 0)
+        res = cs->fragment;
     ccn_decoder_destroy(&d);
-
     if (fd > 0)
         close(fd);
     return(res);
@@ -666,10 +689,15 @@ main(int argc, char **argv)
     int tflag = 0, bflag = 0, errflag = 0;
     char *sarg = NULL;
     int res = 0;
+    int tres;
+    int suffix;
     struct ccn_decoder *d;
 
-    while ((c = getopt(argc, argv, ":tbqs:")) != -1) {
+    while ((c = getopt(argc, argv, ":htbqs:")) != -1) {
         switch (c) {
+        case 'h':
+            usage(argv[0]);
+            break;
         case 't':
             tflag = 1;
             if (bflag || sarg) errflag = 1;
@@ -688,11 +716,9 @@ main(int argc, char **argv)
         }
     }
 
-    if (errflag || (tflag && (optind < argc))) {
-        fprintf(stderr, "usage: %s -t | ([-b] [-s prefix] filename [filename...])\n", argv[0]);
-        exit(2);
-    }
-
+    if (errflag || (tflag && (optind < argc)))
+        usage(argv[0]);
+    
     if (tflag) {
             d = ccn_decoder_create(1);
             res |= process_test(d, test1, sizeof(test1));
@@ -700,16 +726,20 @@ main(int argc, char **argv)
             return (res);
     }
 
-    for ( ; optind < argc; optind++) {
+    for (suffix = 0; optind < argc; optind++) {
         if (sarg) {
             fprintf(stderr, "<!-- Processing %s into %s -->\n", argv[optind], sarg);
-            res |= process_split_file(sarg, argv[optind], bflag);
+            tres = process_split_file(sarg, argv[optind], bflag, suffix);
+            if (tres < 0)
+                (suffix++, res |= tres);
+            else
+                suffix = tres;
         }
         else {
             fprintf(stderr, "<!-- Processing %s -->\n", argv[optind]);
             res |= process_file(argv[optind], bflag);
         }
     }
-    return(res);
+    return(res >= 0);
 }
 
