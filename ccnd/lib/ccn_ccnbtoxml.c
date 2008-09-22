@@ -740,6 +740,6 @@ main(int argc, char **argv)
             res |= process_file(argv[optind], bflag);
         }
     }
-    return(res >= 0);
+    return(res < 0 ? 1 : 0);
 }
 
