@@ -26,6 +26,7 @@ import com.parc.ccn.data.util.XMLEncoder;
 
 public class ContentName extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentName> {
 
+	public static final String SCHEME = "ccn:";
 	public static final String SEPARATOR = "/";
 	public static final ContentName ROOT = new ContentName(0, (ArrayList<byte []>)null);
 	private static final String CONTENT_NAME_ELEMENT = "Name";
@@ -49,10 +50,14 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			_components = null;
 		} else {
 			String[] parts;
+			String justname = name;
 			if (!name.startsWith(SEPARATOR)){
-				throw new MalformedContentNameStringException("ContentName strings must begin with " + SEPARATOR);
+				if (!name.startsWith(SCHEME + SEPARATOR)) {
+					throw new MalformedContentNameStringException("ContentName strings must begin with " + SEPARATOR + " or " + SCHEME + SEPARATOR);
+				}
+				justname = name.substring(SCHEME.length());
 			}
-			parts = name.split(SEPARATOR);
+			parts = justname.split(SEPARATOR);
 			if (parts.length == 0) {
 				// We've been asked to parse the root name.
 				_components = new ArrayList<byte []>(0);

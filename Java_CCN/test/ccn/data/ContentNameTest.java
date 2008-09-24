@@ -39,6 +39,7 @@ public class ContentNameTest {
 				(byte) 0xf5, (byte) 0xf9, (byte) 0xfc, // RFC3629 restricted
 			    (byte) 0xfe, (byte) 0xff}; // invalid: not defined
 	public String escapedSubName1 = "%62%72%69%67%67%73";
+	public String withScheme = "ccn:/test/briggs/test.txt";
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -89,6 +90,28 @@ public class ContentNameTest {
 		System.out.println("Name: " + name2);
 		assertEquals(name2.toString(), testString2);
 	
+		ContentName name3 = null;
+		System.out.println("ContentName: parsing name string \"" + withScheme +"\"");
+		try {
+			name3 = new ContentName(withScheme);
+		} catch (MalformedContentNameStringException e) {
+			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
+			e.printStackTrace();
+			name3 = null;
+		}
+		assertNotNull(name3);
+		System.out.println("Name: " + name3);
+		assertEquals(name3.toString(), withScheme.substring(4));
+		ContentName input3 = null;
+		try {
+			input3 = new ContentName(name3.toString());
+		} catch (MalformedContentNameStringException e) {
+			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
+			e.printStackTrace();
+			input3 = null;
+		}
+		assertEquals(input3,name3);
+
 	}
 	
 	@Test(expected=MalformedContentNameStringException.class)
