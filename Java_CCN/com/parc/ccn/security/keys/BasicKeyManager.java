@@ -231,7 +231,7 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	public ContentName getDefaultKeyName(byte [] keyID) {
 		ContentName keyDir =
-			new ContentName(UserConfiguration.defaultUserNamespace(), 
+			ContentName.fromNative(UserConfiguration.defaultUserNamespace(), 
 				   			UserConfiguration.defaultKeyName());
 		return new ContentName(keyDir, keyID);
 	}

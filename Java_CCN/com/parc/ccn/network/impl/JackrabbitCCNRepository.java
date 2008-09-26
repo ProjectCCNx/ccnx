@@ -1084,7 +1084,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		// Instead of using byteToString, use ContentName's
 		// componentPrint, which will get us human-readable
 		// versions of much stuff.
-		String str = ContentName.componentPrint(component);
+		String str = ContentName.componentPrintURI(component);
 		
 		// Technically before applying any of these quoting
 		// tricks, we need to make sure that the component
@@ -1196,13 +1196,13 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 			parseString = parseString.replace("_X002B_","+");
 
 		if (parseString.startsWith(LEADING_NUMBER_MARKER)) {
-			return ContentName.componentParse(parseString.substring(LEADING_NUMBER_MARKER.length()));
+			return ContentName.componentParseNative(parseString.substring(LEADING_NUMBER_MARKER.length()));
 		}
 		
 		if (parseString.startsWith(LEADING_DOT_MARKER)) {
-			return ContentName.componentParse(parseString.substring(LEADING_DOT_MARKER.length()));
+			return ContentName.componentParseNative(parseString.substring(LEADING_DOT_MARKER.length()));
 		}
-		return ContentName.componentParse(parseString);
+		return ContentName.componentParseNative(parseString);
 	}
 
 	protected static String publisherToString(byte [] publisherID) {

@@ -23,7 +23,7 @@ public class listchildren {
 			// List contents under all names given
 			
 			for (int i=0; i < args.length; ++i) {
-				ContentName argName = new ContentName(args[i]);
+				ContentName argName = ContentName.fromURI(args[i]);
 			
 				ArrayList<CompleteName> names = 
 					CCNRepositoryManager.getRepositoryManager().getChildren(new CompleteName(argName, null, null));

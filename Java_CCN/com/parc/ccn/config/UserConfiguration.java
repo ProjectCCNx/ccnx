@@ -43,9 +43,9 @@ public class UserConfiguration {
 			USER_NAME = System.getProperty("user.name");
 			FILE_SEP = System.getProperty("file.separator");
 			DEFAULT_CCN_NAMESPACE = 
-				new ContentName(DEFAULT_CCN_NAMESPACE_STRING);
+				ContentName.fromNative(DEFAULT_CCN_NAMESPACE_STRING);
 			DEFAULT_USER_NAMESPACE = 
-				new ContentName(DEFAULT_USER_NAMESPACE_AREA + 
+				ContentName.fromNative(DEFAULT_USER_NAMESPACE_AREA + 
 								ContentName.SEPARATOR +
 								USER_NAME);
 			

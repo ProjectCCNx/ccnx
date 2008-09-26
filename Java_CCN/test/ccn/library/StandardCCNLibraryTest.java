@@ -96,7 +96,7 @@ public class StandardCCNLibraryTest {
 		}
 
 		try {
-			name = new ContentName("/test/briggs/foo.txt");
+			name = ContentName.fromNative("/test/briggs/foo.txt");
 		} catch (MalformedContentNameStringException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -122,7 +122,7 @@ public class StandardCCNLibraryTest {
 		CompleteName revision2;
 
 		try {
-			ContentName keyName = new ContentName(key);
+			ContentName keyName = ContentName.fromNative(key);
 			revision1 = library.newVersion(keyName, data1);
 			revision2 = library.newVersion(keyName, data2);
 			int version1 = library.getVersionNumber(revision1.name());
@@ -140,9 +140,9 @@ public class StandardCCNLibraryTest {
 	public void testVersion() throws Exception {
 
 		String name = "/test/smetters/stuff/versioned_name";
-		ContentName cn = new ContentName(name);
+		ContentName cn = ContentName.fromNative(name);
 		String name2 = "/test/smetters/stuff/.directory";
-		ContentName cn2 = new ContentName(name2);
+		ContentName cn2 = ContentName.fromNative(name2);
 		String data = "The associated data.";
 		String newdata = "The new associated data.";
 
@@ -156,7 +156,7 @@ public class StandardCCNLibraryTest {
 		String key = "/test/smetters/values/data";
 		byte[] data1 = "data".getBytes();
 		try {
-			ContentName keyName = new ContentName(key);
+			ContentName keyName = ContentName.fromNative(key);
 			CompleteName name = library.put(keyName, data1);
 			System.out.println("Put under name: " + name.name());
 			ArrayList<ContentObject> results = 
@@ -298,7 +298,7 @@ public class StandardCCNLibraryTest {
 			String key = "/some_strange_key_we_should_never_find";
 			ArrayList<ContentObject> results = 
 				library.get(
-						new ContentName(key), null, false);
+						ContentName.fromNative(key), null, false);
 			Assert.assertTrue("found something when there shouldn't have been anything", results.size() == 0);
 		} catch (Exception e) {
 			System.out.println("Exception in testing recall: " + e.getClass().getName() + ": " + e.getMessage());
@@ -363,14 +363,14 @@ public class StandardCCNLibraryTest {
 			library.expressInterest(ik, 
 					tl);
 
-			library.put(new ContentName(key), data1);
+			library.put(ContentName.fromNative(key), data1);
 			// wait a little bit before we move on...
 			try {
 				Thread.sleep(1000);
 			} catch (InterruptedException e) {
 			}
 
-			library.put(new ContentName(key), data2);
+			library.put(ContentName.fromNative(key), data2);
 
 			// wait a little bit before we move on...
 			try {

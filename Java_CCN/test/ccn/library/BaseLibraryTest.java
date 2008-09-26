@@ -57,7 +57,7 @@ public class BaseLibraryTest {
 	@Before
 	public void setUp() throws Exception {
 		if (null == PARENT_NAME)
-			PARENT_NAME = new ContentName(BASE_NAME);
+			PARENT_NAME = ContentName.fromNative(BASE_NAME);
 	}
 
 	public void genericGetPut(Thread putter, Thread getter) throws Throwable {
@@ -159,7 +159,7 @@ public class BaseLibraryTest {
 	//	while (!done) {
 			Thread.sleep(rand.nextInt(50));
 			System.out.println("getResults getting " + baseName + " subitem " + i);
-			ArrayList<ContentObject> contents = library.get(new ContentName(baseName, Integer.toString(i)));
+			ArrayList<ContentObject> contents = library.get(ContentName.fromNative(baseName, Integer.toString(i)));
 			if (1 != contents.size()) {
 				Library.logger().info("Got " + contents.size() + " results at once!");
 			}
@@ -207,7 +207,7 @@ public class BaseLibraryTest {
 		Random rand = new Random();
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
-			CompleteName putName = library.put(new ContentName(baseName,new Integer(i).toString()), new Integer(i).toString().getBytes());
+			CompleteName putName = library.put(ContentName.fromNative(baseName,new Integer(i).toString()), new Integer(i).toString().getBytes());
 			System.out.println("Put " + i + " done");
 			checkPutResults(putName);
 		}
@@ -231,7 +231,7 @@ public class BaseLibraryTest {
 		public void run() {
 			try {
 				System.out.println("Get thread started");
-				getResults(new ContentName(PARENT_NAME, Integer.toString(id)), count, library);
+				getResults(ContentName.fromNative(PARENT_NAME, Integer.toString(id)), count, library);
 				System.out.println("Get thread finished");
 				((StandardCCNLibrary)library).getNetworkManager().shutdown();
 			} catch (Throwable ex) {
@@ -258,7 +258,7 @@ public class BaseLibraryTest {
 		public void run() {
 			try {
 				System.out.println("Put thread started");
-				doPuts(new ContentName(PARENT_NAME, Integer.toString(id)), count, library);
+				doPuts(ContentName.fromNative(PARENT_NAME, Integer.toString(id)), count, library);
 				System.out.println("Put thread finished");
 				((StandardCCNLibrary)library).getNetworkManager().shutdown();
 			} catch (Throwable ex) {
@@ -291,7 +291,7 @@ public class BaseLibraryTest {
 		public void run() {
 			try {
 				System.out.println("GetServer started");
-				Interest interest = new Interest(new ContentName(PARENT_NAME, Integer.toString(id)));
+				Interest interest = new Interest(ContentName.fromNative(PARENT_NAME, Integer.toString(id)));
 				// Register interest
 				library.expressInterest(interest, this);
 				// Block on semaphore until enough data has been received
@@ -362,7 +362,7 @@ public class BaseLibraryTest {
 			try {
 				System.out.println("PutServer started");
 				// Register filter
-				name = new ContentName(PARENT_NAME, Integer.toString(id));
+				name = ContentName.fromNative(PARENT_NAME, Integer.toString(id));
 				library.setInterestFilter(name, this);
 				// Block on semaphore until enough data has been received
 				sema.acquire();
@@ -383,7 +383,7 @@ public class BaseLibraryTest {
 						int val = Integer.parseInt(new String(interest.name().component(interest.name().count()-1)));
 						System.out.println("Got interest in " + val);
 						if (!accumulatedResults.contains(val)) {
-							CompleteName putName = library.put(new ContentName(name, Integer.toString(val)), Integer.toString(next).getBytes());
+							CompleteName putName = library.put(ContentName.fromNative(name, Integer.toString(val)), Integer.toString(next).getBytes());
 							System.out.println("Put " + val + " done");
 							checkPutResults(putName);
 							next++;

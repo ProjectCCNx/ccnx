@@ -70,7 +70,7 @@ public class puttap implements CCNInterestListener {
 			// Set up tap so packets get written to file
 			manager.setTap(tapName);
 			
-			ContentName name = new ContentName(ccnName);
+			ContentName name = ContentName.fromURI(ccnName);
 			
 			// Register standing interest so our put's will flow
 			// This must be through separate library instance so it 
@@ -93,7 +93,7 @@ public class puttap implements CCNInterestListener {
 	        byte[] bytes = new byte[CHUNK_SIZE];
 	        int i = 0;
 	        while (is.read(bytes) >= 0) {
-	        	CompleteName cn = library.put(new ContentName(name, new Integer(i++).toString()), bytes);
+	        	CompleteName cn = library.put(ContentName.fromNative(name, new Integer(i++).toString()), bytes);
 	        	if (!cn.validate()) {
 	        		Library.logger().severe("BAD COMPLETENAME: does not validate");
 	        		return false;

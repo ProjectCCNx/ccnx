@@ -410,7 +410,7 @@ public class CCNSimpleNetworkManager implements Runnable {
 		private void createKeepalive() throws IOException {
 			try {
 				// name
-				ContentName keepname = new ContentName(KEEPALIVE_NAME);
+				ContentName keepname = ContentName.fromNative(KEEPALIVE_NAME);
 				// contents = current date value
 				ByteBuffer bb = ByteBuffer.allocate(Long.SIZE/Byte.SIZE);
 				bb.putLong(new Date().getTime());

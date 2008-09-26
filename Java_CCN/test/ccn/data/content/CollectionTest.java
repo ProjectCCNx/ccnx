@@ -25,9 +25,9 @@ public class CollectionTest {
 	static final  String document1 = "intro.html";	
 	static final  String document2 = "key";	
 	static final String document3 = "cv.txt";
-	static ContentName name = new ContentName(new String[]{baseName, subName, document1});
-	static ContentName name2 = new ContentName(new String[]{baseName, subName, document2});
-	static ContentName name3 = new ContentName(new String[]{baseName, subName, document3});
+	static ContentName name = null;
+	static ContentName name2 = null; 
+	static ContentName name3 = null;
 	static ContentName name4 = null;
 	static ContentName [] ns = null;
 	static public byte [] contenthash1 = new byte[32];
@@ -41,7 +41,10 @@ public class CollectionTest {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		name4 = new ContentName("/parc/home/briggs/collaborators.txt");
+		name = ContentName.fromURI(new String[]{baseName, subName, document1});
+		name2 = ContentName.fromURI(new String[]{baseName, subName, document2});
+		name3 = ContentName.fromURI(new String[]{baseName, subName, document3});
+		name4 = ContentName.fromURI("/parc/home/briggs/collaborators.txt");
 		ns = new ContentName[]{name,name2,name3,name4};
 		Arrays.fill(contenthash1, (byte)2);
 		Arrays.fill(contenthash2, (byte)4);

@@ -26,7 +26,7 @@ public class get {
 			// If we get more than one, put underneath the first as parent.
 			// Ideally want to use newVersion to get latest version. Start
 			// with random version.
-			ContentName argName = new ContentName(args[0]);
+			ContentName argName = ContentName.fromURI(args[0]);
 			
 			StandardCCNLibrary library = StandardCCNLibrary.open();
 			

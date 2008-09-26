@@ -152,7 +152,7 @@ public class CCNMerkleTree extends MerkleTree {
 	}
 	
 	protected ContentName computeName(int leafIndex) {
-		return new ContentName(baseName(), Integer.toString(baseNameIndex() + leafIndex));
+		return ContentName.fromNative(baseName(), Integer.toString(baseNameIndex() + leafIndex));
 	}
 	
 	public int baseNameIndex() { return _baseNameIndex; }

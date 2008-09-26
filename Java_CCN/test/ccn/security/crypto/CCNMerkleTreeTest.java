@@ -25,8 +25,8 @@ public class CCNMerkleTreeTest {
 	protected static Random _rand = new Random(); // don't need SecureRandom
 	
 	protected static KeyPair _pair = null;
-	static ContentName keyname = new ContentName(new String[]{"test","keys","treeKey"});
-	static ContentName baseName = new ContentName(new String[]{"test","data","treeTest"});
+	static ContentName keyname = ContentName.fromNative(new String[]{"test","keys","treeKey"});
+	static ContentName baseName = ContentName.fromNative(new String[]{"test","data","treeTest"});
 
 	static KeyPair pair = null;
 	static PublisherKeyID publisher = null;
@@ -105,9 +105,9 @@ public class CCNMerkleTreeTest {
 	
 	public static void testTree(byte [][] content, int count, boolean digest) {
 		int version = _rand.nextInt(1000);
-		ContentName theName = new ContentName(baseName, "testDoc.txt");
-		theName = new ContentName(theName, StandardCCNLibrary.VERSION_MARKER);
-		theName = new ContentName(theName, Integer.toString(version));
+		ContentName theName = ContentName.fromNative(baseName, "testDoc.txt");
+		theName = ContentName.fromNative(theName, StandardCCNLibrary.VERSION_MARKER);
+		theName = ContentName.fromNative(theName, Integer.toString(version));
 		theName = StandardCCNLibrary.fragmentBase(theName);
 		
 		try {

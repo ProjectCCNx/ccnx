@@ -86,9 +86,9 @@ public class InterestTableTest {
 		Interest intB = new Interest("/a/b/c");
 		Interest intC = new Interest("/a/b/c/d");
 		
-		ContentName namA = new ContentName("/a/b/c");
-		ContentName namB = new ContentName("/a/b/c");
-		ContentName namC = new ContentName("/a/b/c/d");
+		ContentName namA = ContentName.fromNative("/a/b/c");
+		ContentName namB = ContentName.fromNative("/a/b/c");
+		ContentName namC = ContentName.fromNative("/a/b/c/d");
 		
 		InterestTable<Object> interests = new InterestTable<Object>();
 		interests.add(intA, null);
@@ -131,7 +131,7 @@ public class InterestTableTest {
 		bb.putLong(new Date().getTime());
 		byte[] contents = bb.array();
 		// security bits
-		KeyLocator locator = new KeyLocator(new ContentName("/key/" + pub.id().toString()));
+		KeyLocator locator = new KeyLocator(ContentName.fromNative("/key/" + pub.id().toString()));
 		// unique name		
 		return CompleteName.generateAuthenticatedName(
 				name, pub, ContentAuthenticator.now(),
@@ -147,7 +147,7 @@ public class InterestTableTest {
 	}
 
 	private void match(InterestTable<Integer> table, String name, int v) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
-		match(table, new ContentName(name), v);
+		match(table, ContentName.fromNative(name), v);
 	}
 	
 	private void removeMatch(InterestTable<Integer> table, ContentName name, int v) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
@@ -159,7 +159,7 @@ public class InterestTableTest {
 	}
 	
 	private void removeMatch(InterestTable<Integer> table, String name, int v) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
-		removeMatch(table, new ContentName(name), v);
+		removeMatch(table, ContentName.fromNative(name), v);
 	}
 	
 	private void remove(InterestTable<Integer> table, ContentName name, int v) {
@@ -171,7 +171,7 @@ public class InterestTableTest {
 	}
 
 	private void remove(InterestTable<Integer> table, String name, int v) throws MalformedContentNameStringException {
-		remove(table, new ContentName(name), v);
+		remove(table, ContentName.fromNative(name), v);
 	}
 	
 	private void noRemove(InterestTable<Integer> table, ContentName name, int v) {
@@ -183,7 +183,7 @@ public class InterestTableTest {
 	}
 	
 	private void noRemove(InterestTable<Integer> table, String name, int v) throws MalformedContentNameStringException {
-		noRemove(table, new ContentName(name), v);
+		noRemove(table, ContentName.fromNative(name), v);
 	}
 
 	private void noRemoveMatch(InterestTable<Integer> table, ContentName name) throws InvalidKeyException, SignatureException, MalformedContentNameStringException, ConfigurationException {
@@ -192,7 +192,7 @@ public class InterestTableTest {
 	}
 	
 	private void noRemoveMatch(InterestTable<Integer> table, String name) throws InvalidKeyException, SignatureException, MalformedContentNameStringException, ConfigurationException {
-		noRemoveMatch(table, new ContentName(name));
+		noRemoveMatch(table, ContentName.fromNative(name));
 	}
 	
 	private void noMatch(InterestTable<Integer> table, ContentName name) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
@@ -203,7 +203,7 @@ public class InterestTableTest {
 	}
 
 	private void noMatch(InterestTable<Integer> table, String name) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
-		noMatch(table, new ContentName(name));
+		noMatch(table, ContentName.fromNative(name));
 	}
 
 	private void matches(InterestTable<Integer> table, ContentName name, ContentName[] n, int[] v) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
@@ -226,9 +226,9 @@ public class InterestTableTest {
 	private void matches(InterestTable<Integer> table, String name, String[] n, int[] v) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
 		ContentName[] cn = new ContentName[n.length];
 		for (int i = 0; i < n.length; i++) {
-			cn[i] = new ContentName(n[i]);
+			cn[i] = ContentName.fromNative(n[i]);
 		}
-		matches(table, new ContentName(name), cn, v);
+		matches(table, ContentName.fromNative(name), cn, v);
 	}
 	
 	private void removeMatches(InterestTable<Integer> table, ContentName name, ContentName[] n, int[] v) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
@@ -251,9 +251,9 @@ public class InterestTableTest {
 	private void removeMatches(InterestTable<Integer> table, String name, String[] n, int[] v) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
 		ContentName[] cn = new ContentName[n.length];
 		for (int i = 0; i < n.length; i++) {
-			cn[i] = new ContentName(n[i]);
+			cn[i] = ContentName.fromNative(n[i]);
 		}
-		removeMatches(table, new ContentName(name), cn, v);
+		removeMatches(table, ContentName.fromNative(name), cn, v);
 	}
 	
 	private void addEntry(InterestTable<Integer> table, ContentName name, Integer value) throws MalformedContentNameStringException {
@@ -265,7 +265,7 @@ public class InterestTableTest {
 	}
 	
 	private void addEntry(InterestTable<Integer> table, String name, Integer value) throws MalformedContentNameStringException {
-		addEntry(table, new ContentName(name), value);
+		addEntry(table, ContentName.fromNative(name), value);
 	}
 
 	private void sizes(InterestTable<Integer> table, int s, int n) {

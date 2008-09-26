@@ -84,7 +84,7 @@ public class BaseLibrarySource implements CCNFilterListener {
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
 			byte[] content = getRandomContent(i);
-			CompleteName putName = library.put(new ContentName("/BaseLibraryTest/gets/" + new Integer(i).toString()), content);
+			CompleteName putName = library.put(ContentName.fromNative("/BaseLibraryTest/gets/" + new Integer(i).toString()), content);
 			System.out.println("Put " + i + " done: " + content.length + " content bytes");
 			checkPutResults(putName);
 		}
@@ -95,7 +95,7 @@ public class BaseLibrarySource implements CCNFilterListener {
 	public void server() throws Throwable {
 		System.out.println("PutServer started");
 		// Register filter
-		name = new ContentName("/BaseLibraryTest/");
+		name = ContentName.fromNative("/BaseLibraryTest/");
 		library.setInterestFilter(name, this);
 		// Block on semaphore until enough data has been received
 		sema.acquire();
@@ -113,7 +113,7 @@ public class BaseLibrarySource implements CCNFilterListener {
 			for (Interest interest : interests) {
 				assertTrue(name.isPrefixOf(interest.name()));
 				byte[] content = getRandomContent(next);
-				CompleteName putName = library.put(new ContentName("/BaseLibraryTest/server/" + new Integer(next).toString()), content);
+				CompleteName putName = library.put(ContentName.fromNative("/BaseLibraryTest/server/" + new Integer(next).toString()), content);
 				System.out.println("Put " + next + " done: " + content.length + " content bytes");
 				checkPutResults(putName);
 				next++;

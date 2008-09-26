@@ -40,7 +40,10 @@ public class ContentNameTest {
 			    (byte) 0xfe, (byte) 0xff}; // invalid: not defined
 	public String escapedSubName1 = "%62%72%69%67%67%73";
 	public String withScheme = "ccn:/test/briggs/test.txt";
-	
+	public String dotSlash = "ccn:/.../.%2e./...././.....///?...";
+//	public String dotSlashResolved = "ccn:/.../.../..../.....";
+	public String dotSlashResolved = "ccn:/.../.../..../...../%3F...";
+
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 	}
@@ -60,13 +63,15 @@ public class ContentNameTest {
 	@Test
 	public void testContentNameString() {
 		ContentName name;
+		
+		// simple string: /test/briggs/test.txt 
 		String testString = ContentName.SEPARATOR + baseName + ContentName.SEPARATOR +
 				subName1 + ContentName.SEPARATOR + 
 				document1;
 				
 		System.out.println("ContentName: parsing name string \"" + testString+"\"");
 		try {
-			name = new ContentName(testString);
+			name = ContentName.fromURI(testString);
 		} catch (MalformedContentNameStringException e) {
 			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
 			e.printStackTrace();
@@ -76,11 +81,12 @@ public class ContentNameTest {
 		System.out.println("Name: " + name);
 		assertEquals(name.toString(), testString);
 
+		// alternate simple string
 		String testString2 = ContentName.SEPARATOR;
 		ContentName name2 = null;
 		System.out.println("ContentName: parsing name string \"" + testString2+"\"");
 		try {
-			name2 = new ContentName(testString2);
+			name2 = ContentName.fromURI(testString2);
 		} catch (MalformedContentNameStringException e) {
 			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
 			e.printStackTrace();
@@ -90,10 +96,11 @@ public class ContentNameTest {
 		System.out.println("Name: " + name2);
 		assertEquals(name2.toString(), testString2);
 	
+		// string with ccn: scheme on front
 		ContentName name3 = null;
 		System.out.println("ContentName: parsing name string \"" + withScheme +"\"");
 		try {
-			name3 = new ContentName(withScheme);
+			name3 = ContentName.fromURI(withScheme);
 		} catch (MalformedContentNameStringException e) {
 			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
 			e.printStackTrace();
@@ -102,9 +109,10 @@ public class ContentNameTest {
 		assertNotNull(name3);
 		System.out.println("Name: " + name3);
 		assertEquals(name3.toString(), withScheme.substring(4));
+		
 		ContentName input3 = null;
 		try {
-			input3 = new ContentName(name3.toString());
+			input3 = ContentName.fromURI(name3.toString());
 		} catch (MalformedContentNameStringException e) {
 			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
 			e.printStackTrace();
@@ -112,13 +120,27 @@ public class ContentNameTest {
 		}
 		assertEquals(input3,name3);
 
+		// string with dots and slashes
+		ContentName name4 = null;
+		System.out.println("ContentName: parsing name string \"" + dotSlash +"\"");
+		try {
+			name4 = ContentName.fromURI(dotSlash);
+		} catch (MalformedContentNameStringException e) {
+			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
+			e.printStackTrace();
+			name4 = null;
+		}
+		assertNotNull(name4);
+		System.out.println("Name: " + name4);
+		assertEquals(name4.toString(), dotSlashResolved.substring(4));
+
 	}
 	
 	@Test(expected=MalformedContentNameStringException.class)
 	public void testContentNameStringException() throws MalformedContentNameStringException {
 		String testString = "expectingAnException";
 		System.out.println("ContentName: parsing name string \"" + testString+"\"");
-		new ContentName(testString);
+		ContentName.fromURI(testString);
 	}
 	
 	@Test
@@ -129,8 +151,8 @@ public class ContentNameTest {
 		subName1 + ContentName.SEPARATOR + 
 		document1;
 		String [] testStringParts = new String[]{baseName,subName1,document1};
-		name = new ContentName(testStringParts);
-		name2 = new ContentName(testString);
+		name = ContentName.fromURI(testStringParts);
+		name2 = ContentName.fromURI(testString);
 		assertEquals(name, name2);
 	}
 	
@@ -140,7 +162,7 @@ public class ContentNameTest {
 		String name2 = ContentName.SEPARATOR + escapedSubName1;
 		System.out.println("ContentName: comparing parsed \"" + name1 + "\" and \"" + name2 + "\"");
 		try {
-			assertEquals(new ContentName(name1), new ContentName(name2));
+			assertEquals(ContentName.fromURI(name1), ContentName.fromURI(name2));
 		} catch (MalformedContentNameStringException e) {
 			fail("Unexpected exception MalformedContentNameStringException during ContentName parsing");
 		}
@@ -176,7 +198,7 @@ public class ContentNameTest {
 		ContentName name2 = new ContentName(arr);
 		assertNotNull(name2);
 		System.out.println("Name 2: " + name2);
-		ContentName input = new ContentName(name2.toString());
+		ContentName input = ContentName.fromURI(name2.toString());
 		assertEquals(input,name2);
 	}
 
@@ -277,9 +299,9 @@ public class ContentNameTest {
 	 */
 	@Test 
 	public void testRelations() throws MalformedContentNameStringException {
-		ContentName small = new ContentName(ContentName.SEPARATOR + baseName + ContentName.SEPARATOR + subName1);
-		ContentName middle = new ContentName(small, subName2);
-		ContentName large = new ContentName(middle, document1);
+		ContentName small = ContentName.fromURI(ContentName.SEPARATOR + baseName + ContentName.SEPARATOR + subName1);
+		ContentName middle = ContentName.fromURI(small, subName2);
+		ContentName large = ContentName.fromURI(middle, document1);
 		
 		assertEquals(small, small);
 		assertEquals(middle, middle);

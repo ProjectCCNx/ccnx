@@ -26,7 +26,7 @@ public class KeyLocatorTest {
 	static final  String baseName = "test";
 	static final  String subName2 = "smetters";
 	static final  String document2 = "key";	
-	ContentName name = new ContentName(new String[]{baseName, subName2, document2});
+	static ContentName name = null;
 
 	static KeyPair pair = null;
 	static X509Certificate cert = null;
@@ -35,6 +35,7 @@ public class KeyLocatorTest {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		try {
+			name = ContentName.fromURI(new String[]{baseName, subName2, document2});
 			Security.addProvider(new BouncyCastleProvider());
 			
 			// generate key pair

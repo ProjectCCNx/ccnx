@@ -514,7 +514,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 		// right now use list children. Should be able to do
 		// it in Jackrabbit with XPath.
 		ContentName baseVersionName = 
-			new ContentName(versionRoot(name), VERSION_MARKER);
+			ContentName.fromNative(versionRoot(name), VERSION_MARKER);
 		try {
 			// Because we're just looking at children of
 			// the name -- not actual pieces of content --
@@ -611,7 +611,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 		int offset = name.containsWhere(VERSION_MARKER);
 		if (offset < 0)
 			return -1; // no version information.
-		return Integer.valueOf(ContentName.componentPrint(name.component(offset+1)));
+		return Integer.valueOf(ContentName.componentPrintURI(name.component(offset+1)));
 	}
 
 	/**
@@ -623,9 +623,8 @@ public class StandardCCNLibrary implements CCNLibrary {
 		ContentName baseName = name;
 		if (isVersioned(name))
 			baseName = versionRoot(name);
-		return new ContentName(baseName, 
-							   ContentName.componentParse(VERSION_MARKER),
-							   ContentName.componentParse(Integer.toString(version)));
+		return ContentName.fromNative(baseName, VERSION_MARKER,
+							   Integer.toString(version));
 	}
 	
 	public boolean isVersionOf(ContentName version, ContentName parent) {
@@ -647,7 +646,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	}
 
 	public CompleteName put(String name, String contents) throws SignatureException, MalformedContentNameStringException, IOException, InterruptedException {
-		return put(new ContentName(name), contents.getBytes());
+		return put(ContentName.fromURI(name), contents.getBytes());
 	}
 	
 	public CompleteName put(ContentName name, byte[] contents) 
@@ -1004,13 +1003,12 @@ public class StandardCCNLibrary implements CCNLibrary {
 	}
 	
 	public static ContentName fragmentBase(ContentName name) {
-		return new ContentName(fragmentRoot(name), FRAGMENT_MARKER);
+		return ContentName.fromNative(fragmentRoot(name), FRAGMENT_MARKER);
 	}
 	
 	public static ContentName fragmentName(ContentName name, int i) {
-		return new ContentName(name, 
-							ContentName.componentParse(FRAGMENT_MARKER),
-							ContentName.componentParse(Integer.toString(i)));
+		return ContentName.fromNative(name, FRAGMENT_MARKER,
+							Integer.toString(i));
 	}
 	
 	/**
@@ -1018,7 +1016,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 */
 	public static int getFragmentNumber(ContentName name) {
 		int offset = name.containsWhere(FRAGMENT_MARKER);
-		return Integer.valueOf(ContentName.componentPrint(name.component(offset+1)));
+		return Integer.valueOf(ContentName.componentPrintURI(name.component(offset+1)));
 	}
 	
 	/**
@@ -1060,7 +1058,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	}
 	
 	public ArrayList<ContentObject> get(String name) throws MalformedContentNameStringException, IOException, InterruptedException {
-		return get(new ContentName(name), null, false);
+		return get(ContentName.fromURI(name), null, false);
 	}
 	
 	public ArrayList<ContentObject> get(ContentName name) throws IOException, InterruptedException {

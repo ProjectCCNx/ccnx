@@ -59,13 +59,13 @@ public class JackrabbitCCNRepositoryTest {
 	static public String document4 = "the newer important document name.foo";	
 	static public String document5 = "thisisareallyreallyreallylongnamefortesting.foo";
 	static String [] arrName1 = new String[]{baseName,subName2,document1};
-	static ContentName name1 = new ContentName(arrName1);
+	static ContentName name1 = ContentName.fromNative(arrName1);
 	static String [] arrName2 = new String[]{baseName,subName1,document2};
-	static ContentName name2 = new ContentName(arrName2);
+	static ContentName name2 = ContentName.fromNative(arrName2);
 	static String [] arrName3 = new String[]{baseName,subName2,document4};
-	static ContentName name3 = new ContentName(arrName3);
+	static ContentName name3 = ContentName.fromNative(arrName3);
 	static String [] arrName4 = new String[]{baseName,subName1,document5};
-	static ContentName name4 = new ContentName(arrName4);
+	static ContentName name4 = ContentName.fromNative(arrName4);
 	static String [] testname = new String[]{"test", "smetters", "Activities", ".directory"};
 
 //	static String [] testname = new String[]{"parc.com", "home", "smetters", "Key", "_b_QVHo0jm3yle8hqO1eJtNtlIpoLf3xZKS_X002F_qexnCviNrs_X003D_"};
@@ -77,8 +77,8 @@ public class JackrabbitCCNRepositoryTest {
 	static String [] testBase = new String[] {"test", "smetters", "content", "versioned"};
 	static final int VERSION_COUNT = 5;
 	
-	static ContentName collectedBaseName = new ContentName(testBase);
-	static ContentName testCN = new ContentName(testname);
+	static ContentName collectedBaseName = ContentName.fromNative(testBase);
+	static ContentName testCN = ContentName.fromNative(testname);
 	static ContentAuthenticator testAuth = null;
 	static byte [] testSig = null;
 	
@@ -92,7 +92,7 @@ public class JackrabbitCCNRepositoryTest {
 	static final Date start = new Date(); 
 	static final Date end = new Date(start.getTime() + (60*60*24*365));
 	static final  String keydoc = "key";	
-	static ContentName keyname = new ContentName(new String[]{baseName, subName2, keydoc});
+	static ContentName keyname = ContentName.fromNative(new String[]{baseName, subName2, keydoc});
 
 	static KeyPair pair = null;
 	static X509Certificate cert = null;
@@ -205,7 +205,7 @@ public class JackrabbitCCNRepositoryTest {
 		try {
 			int index = new Random().nextInt(1000);
 			String collection = "Collection-" + Integer.toString(index);
-			ContentName startName = new ContentName(collectedBaseName, collection);
+			ContentName startName = ContentName.fromNative(collectedBaseName, collection);
 			for (int i=0; i < VERSION_COUNT; ++i) {
 				byte [] content = new Integer(i).toString().getBytes("UTF-8");
 				CompleteName inname = generateVersionedNameAndAuth(startName, i, content); 
@@ -230,7 +230,7 @@ public class JackrabbitCCNRepositoryTest {
 		try {
 			int index = new Random().nextInt(1000);
 			String collection = "Collection-" + Integer.toString(index);
-			ContentName startName = new ContentName(collectedBaseName, collection);
+			ContentName startName = ContentName.fromNative(collectedBaseName, collection);
 			for (int i=0; i < VERSION_COUNT; ++i) {
 				byte [] content = new Integer(i).toString().getBytes("UTF-8");
 				CompleteName inname = generateVersionedNameAndAuth(startName, i, content); 
@@ -263,7 +263,7 @@ public class JackrabbitCCNRepositoryTest {
 		try {
 			int index = new Random().nextInt(1000);
 			String collection = "Collection-" + Integer.toString(index);
-			ContentName startName = new ContentName(collectedBaseName, collection);
+			ContentName startName = ContentName.fromNative(collectedBaseName, collection);
 			for (int i=0; i < VERSION_COUNT; ++i) {
 				byte [] content = new Integer(i).toString().getBytes("UTF-8");
 				CompleteName inname = generateVersionedNameAndAuth(startName, i, content); 
@@ -296,7 +296,7 @@ public class JackrabbitCCNRepositoryTest {
 		try {
 			int index = new Random().nextInt(1000);
 			String collection = "Collection-" + Integer.toString(index);
-			ContentName startName = new ContentName(collectedBaseName, collection);
+			ContentName startName = ContentName.fromNative(collectedBaseName, collection);
 			for (int i=0; i < VERSION_COUNT; ++i) {
 				byte [] content = new Integer(i).toString().getBytes("UTF-8");
 				CompleteName inname = generateVersionedNameAndAuth(startName, i, content); 
@@ -329,7 +329,7 @@ public class JackrabbitCCNRepositoryTest {
 		try {
 			int index = new Random().nextInt(1000);
 			String collection = "Collection-" + Integer.toString(index);
-			ContentName startName = new ContentName(collectedBaseName, collection);
+			ContentName startName = ContentName.fromNative(collectedBaseName, collection);
 			for (int i=0; i < VERSION_COUNT; ++i) {
 				byte [] content = new Integer(i).toString().getBytes("UTF-8");
 				CompleteName inname = generateVersionedNameAndAuth(startName, i, content); 
@@ -360,19 +360,19 @@ public class JackrabbitCCNRepositoryTest {
 		
 		for (int i=0; i < names.length; ++i) {
 			Library.logger().info("Name: " + names[i]);
-			byte [] nameBytes = ContentName.componentParse(names[i]);
+			byte [] nameBytes = ContentName.componentParseNative(names[i]);
 			Library.logger().info("Parses into " + nameBytes.length + " bytes: " + 
 					DataUtils.printBytes(nameBytes));
 			
-			String unparse = ContentName.componentPrint(nameBytes);
+			String unparse = ContentName.componentPrintNative(nameBytes);
 			Library.logger().info("Prints back as: " + unparse);
 		}
 		
 		ContentName name3v6 = library.versionName(name3, 6);
 		Library.logger().info("Versioned name: " + name3v6);
 		
-		byte [] byteMarker = ContentName.componentParse(StandardCCNLibrary.VERSION_MARKER);
-		byte [] byteV = ContentName.componentParse(Integer.toString(6));
+		byte [] byteMarker = ContentName.componentParseNative(StandardCCNLibrary.VERSION_MARKER);
+		byte [] byteV = ContentName.componentParseNative(Integer.toString(6));
 		ContentName name3v6t2 = new ContentName(name3, 
 					byteMarker,
 					byteV);
@@ -405,7 +405,7 @@ public class JackrabbitCCNRepositoryTest {
 	public void testEnumerate() {
 		assertNotNull(repo);
 		String [] arrNameTop = new String[]{baseName};
-		ContentName nameTop = new ContentName(arrNameTop);
+		ContentName nameTop = ContentName.fromNative(arrNameTop);
 		try {
 			System.out.println("Enumerating: " + nameTop);
 			ArrayList<CompleteName> results = 

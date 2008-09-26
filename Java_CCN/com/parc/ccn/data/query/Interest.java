@@ -104,7 +104,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	}
 	
 	public Interest(String name) throws MalformedContentNameStringException {
-		this(new ContentName(name), null);
+		this(ContentName.fromURI(name), null);
 	}
 
 	public Interest() {} // for use by decoders

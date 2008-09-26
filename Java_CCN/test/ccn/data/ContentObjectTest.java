@@ -30,14 +30,14 @@ public class ContentObjectTest {
 				0x0d, 0x0e, 0x0f, 0x1f, 0x1b, 0x1c, 0x1d, 0x1e,
 				0x1f, 0x2e, 0x3c, 0x4a, 0x5c, 0x6d, 0x7e, 0xf};
 
-	static ContentName name = new ContentName(new String[]{baseName, subName2, document2});
+	static ContentName name; 
 
 	static final String rootDN = "C=US,O=Organization,OU=Organizational Unit,CN=Issuer";
 	static final String endDN = "C=US,O=Final Org,L=Locality,CN=Fred Jones,E=fred@final.org";
 	static final Date start = new Date(); 
 	static final Date end = new Date(start.getTime() + (60*60*24*365));
 	static final  String keydoc = "key";	
-	static ContentName keyname = new ContentName(new String[]{baseName, subName2, keydoc});
+	static ContentName keyname;
 
 	static KeyPair pair = null;
 	static X509Certificate cert = null;
@@ -51,6 +51,9 @@ public class ContentObjectTest {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		try {
+			name = ContentName.fromURI(new String[]{baseName, subName2, document2});
+			keyname = ContentName.fromURI(new String[]{baseName, subName2, keydoc});
+			
 			Security.addProvider(new BouncyCastleProvider());
 			
 			// generate key pair

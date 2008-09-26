@@ -23,7 +23,7 @@ public class InterestTest {
 		
 		byte [] testID = CCNDigestHelper.digest(testName.getBytes());
 		
-		tcn = new ContentName(testName);
+		tcn = ContentName.fromURI(testName);
 		pubID = new PublisherID(testID,PublisherID.PublisherType.ISSUER_KEY);
 	}
 

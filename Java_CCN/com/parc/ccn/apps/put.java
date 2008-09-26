@@ -26,7 +26,7 @@ public class put {
 			// If we get more than one, put underneath the first as parent.
 			// Ideally want to use newVersion to get latest version. Start
 			// with random version.
-			ContentName argName = new ContentName(args[0]);
+			ContentName argName = ContentName.fromURI(args[0]);
 			
 			StandardCCNLibrary library = StandardCCNLibrary.open();
 			
@@ -59,7 +59,7 @@ public class put {
 					byte [] contents = Utils.getBytesFromFile(theFile);
 					
 					// put as child of name
-					ContentName nodeName = new ContentName(argName, theFile.getName());
+					ContentName nodeName = ContentName.fromURI(argName, theFile.getName());
 					
 					// int version = new Random().nextInt(1000);
 					// would be version = library.latestVersion(argName) + 1;
