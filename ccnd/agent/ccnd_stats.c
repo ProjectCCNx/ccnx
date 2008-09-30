@@ -129,6 +129,8 @@ ccnd_stats_check_for_http_connection(struct ccnd *h)
     int fd;
     char *response = NULL;
     char buf[512] = "GET / ";
+    struct linger linger = { .l_onoff = 1, .l_linger = 1 };
+    
     if (h->httpd_listener_fd == -1)
         return(-1);
     fd = accept(h->httpd_listener_fd, NULL, 0);
@@ -142,6 +144,9 @@ ccnd_stats_check_for_http_connection(struct ccnd *h)
     //  problems on the client side (for unknown reasons).
     // fcntl(fd, F_SETFL, O_NONBLOCK);
     response = collect_stats_html(h);
+    res = setsockopt(fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
+    if (res == -1)
+        perror("setsockopt SO_LINGER");
     res = read(fd, buf, sizeof(buf));
     if ((res == -1 && errno == EAGAIN) || res >= 6) {
         if (0 == memcmp(buf, "GET / ", 6)) {
