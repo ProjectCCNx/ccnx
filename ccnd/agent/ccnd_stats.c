@@ -128,7 +128,7 @@ ccnd_stats_check_for_http_connection(struct ccnd *h)
     int res;
     int fd;
     char *response = NULL;
-    char buf[7] = "GET / ";
+    char buf[512] = "GET / ";
     if (h->httpd_listener_fd == -1)
         return(-1);
     fd = accept(h->httpd_listener_fd, NULL, 0);
@@ -142,9 +142,9 @@ ccnd_stats_check_for_http_connection(struct ccnd *h)
     //  problems on the client side (for unknown reasons).
     // fcntl(fd, F_SETFL, O_NONBLOCK);
     response = collect_stats_html(h);
-    res = read(fd, buf, sizeof(buf)-1);
-    if ((res == -1 && errno == EAGAIN) || res == sizeof(buf)-1) {
-        if (0 == strcmp(buf, "GET / ")) {
+    res = read(fd, buf, sizeof(buf));
+    if ((res == -1 && errno == EAGAIN) || res >= 6) {
+        if (0 == memcmp(buf, "GET / ", 6)) {
             write(fd, response, strlen(response));
         }
         else
