@@ -12,14 +12,18 @@
    <property name="junit-jar" location="${lib}/junit-4.3.1.jar"/>
    <property name="testout" location="testout"/>
    <property name="ccnd" location="../ccnd/agent/ccnd"/>
+   <property name="showoutput" value="no"/>
    <!-- To enable remote debugging, the incantation is 
 	"-Xdebug -Xrunjdwp:transport=dt_socket,address=8000,server=y,suspend=n" -->
    <property name="DEBUG_OPTIONS" value=""/>
    <!-- TEST_PORT is alternative ccnd port so we can run tests
         with an isolated ccnd rather than the "live" ccnd on the machine.
         Port 9 (discard) would be ideal but this needs to be a non-privileged
-        port. -->
-   <property name="TEST_PORT" value="1999"/>
+        port. We need 2 of them because if we start ccnd on a port for a test
+        then immediately try to restart it on the same port for the next test
+        the port may not have cleared yet -->
+   <property name="TEST_PORT_1" value="1998"/>
+   <property name="TEST_PORT_2" value="1999"/>
 
    <!-- CLASSPATH NOTE: This should be a minimal set of what is 
         required, so we have an authoritative list of dependencies -->
@@ -138,7 +142,7 @@
 
    <!-- test is for running all current automated tests to validate code -->
    <!-- test-baselib is broken right now, take it out -->
-   <target name="test" depends="test-data, test-puttap, test-endtoend">
+   <target name="test" depends="test-data, test-puttap, test-endtoend, test-read">
    </target>
 
    <target name="test-data" depends="jar">
@@ -148,7 +152,7 @@
                <path refid="classpath-run"/>
            </classpath>
            <formatter type="brief" usefile="true"/>
-           <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+           <sysproperty key="ccn.agent.port" value="${TEST_PORT_1}"/>
           
            <batchtest todir="${testout}">
                <fileset dir="${build}">
@@ -165,9 +169,9 @@
        <mkdir dir="${testout}"/>
        <parallel failonany="true">
            <daemons>
-               <echo message="Running test ccnd on port ${TEST_PORT}"/>
+               <echo message="Running test ccnd on port ${TEST_PORT_1}"/>
                <exec executable="${ccnd}" dir="${testout}" output="${testout}/TEST-ccnd0.txt">
-                   <env key="CCN_LOCAL_PORT" value="${TEST_PORT}"/>
+                   <env key="CCN_LOCAL_PORT" value="${TEST_PORT_1}"/>
                </exec>
            </daemons>
            <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}">
@@ -175,7 +179,7 @@
                    <path refid="classpath-run"/>
                </classpath>
                <formatter type="brief" usefile="true"/>
-               <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+               <sysproperty key="ccn.agent.port" value="${TEST_PORT_1}"/>
                <test todir="${testout}"  name="test.ccn.library.BaseLibraryTest"/>
            </junit>
        </parallel>
@@ -196,7 +200,7 @@
            <arg file="${testout}/TEST-puttap0.out"/>
            <arg file="com/parc/ccn/apps/puttap.java"/>
            <arg file="-s"/>
-           <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+           <sysproperty key="ccn.agent.port" value="${TEST_PORT_1}"/>
            <jvmarg line="${DEBUG_OPTIONS}"/>
        </java>
        <echo message="Running binary puttap tests"/>
@@ -206,7 +210,7 @@
            <arg file="${testout}/TEST-puttap1.out"/>
            <arg file="com/parc/ccn/apps/puttap.java"/>
            <arg file="-s"/>
-           <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+           <sysproperty key="ccn.agent.port" value="${TEST_PORT_1}"/>
            <jvmarg line="${DEBUG_OPTIONS}"/>
        </java>
     </target>
@@ -215,30 +219,50 @@
        <echo message="Running end-to-end test"/>
        <parallel failonany="true">
            <daemons>
-               <echo message="Running test ccnd on port ${TEST_PORT}"/>
+               <echo message="Running test ccnd on port ${TEST_PORT_1}"/>
                <exec executable="${ccnd}" dir="${testout}" output="${testout}/TEST-ccnd0.txt">
-                   <env key="CCN_LOCAL_PORT" value="${TEST_PORT}"/>
+                   <env key="CCN_LOCAL_PORT" value="${TEST_PORT_1}"/>
                </exec>
            </daemons>
            <!-- timeout more than 2X average so sure timeout == failure -->
-           <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perTest" timeout="30000" dir="${testout}">
+           <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perTest" timeout="60000" dir="${testout}" showoutput="${showoutput}">
                <classpath>
                    <path refid="classpath-run"/>
                </classpath>
                <formatter type="brief" usefile="true"/>
-               <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-               <test todir="${testout}"  name="test.ccn.endtoend.BaseLibrarySink"/>
+               <sysproperty key="ccn.agent.port" value="${TEST_PORT_1}"/>
+               <test todir="${testout}"  name="test.ccn.endtoend.EndToEndTestSource"/>
            </junit>
-           <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perTest" timeout="30000" dir="${testout}">
+           <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perTest" timeout="60000" dir="${testout}" showoutput="${showoutput}">
                <classpath>
                    <path refid="classpath-run"/>
                </classpath>
                <formatter type="brief" usefile="true"/>
-               <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-               <test todir="${testout}"  name="test.ccn.endtoend.BaseLibrarySource"/>
+               <sysproperty key="ccn.agent.port" value="${TEST_PORT_1}"/>
+               <test todir="${testout}"  name="test.ccn.endtoend.EndToEndTestSink"/>
            </junit>
        </parallel>
    </target>
+	
+	<target name="test-read" depends="jar">
+	       <echo message="Running read test"/>
+	       <parallel failonany="true">
+	           <daemons>
+	               <echo message="Running test ccnd on port ${TEST_PORT_2}"/>
+	               <exec executable="${ccnd}" dir="${testout}" output="${testout}/TEST-ccnd0.txt">
+	                   <env key="CCN_LOCAL_PORT" value="${TEST_PORT_2}"/>
+	               </exec>
+	           </daemons>
+	           <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perTest" timeout="60000" dir="${testout}" showoutput="${showoutput}">
+	               <classpath>
+	                   <path refid="classpath-run"/>
+	               </classpath>
+	               <formatter type="brief" usefile="true"/>
+	               <sysproperty key="ccn.agent.port" value="${TEST_PORT_2}"/>
+	               <test todir="${testout}"  name="test.ccn.data.read.ReadTest"/>
+	           </junit>
+	       </parallel>
+	   </target>
 
 </project>
 

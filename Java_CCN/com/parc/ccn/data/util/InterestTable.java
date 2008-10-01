@@ -266,12 +266,15 @@ public class InterestTable<V> {
 	 * non-null interest because this method matches only Interests in the table.
 	 * @param target - desired CompleteName
 	 * @return Entry of longest match if any, null if no match
+	 *
+	 * Comment by Paul Rasmussen - these used to try to use headMap as an optimization but 
+	 * that won't work because without examining the interest we can't know what subset of 
+	 * _contents might contain a matching interest. Also since headMap requires a bunch of 
+	 * compares I'm not so sure how much of an optimization it is anyway...
 	 */
 	public Entry<V> getMatch(CompleteName target) {
 		Entry<V> match = null;
-		ContentName headname = new ContentName(target.name(), new byte[] {0} ); // need to include equal item in headMap
-	    for (Iterator<ContentName> nameIt = _contents.headMap(headname).keySet().iterator(); nameIt.hasNext();) {
-			ContentName name = nameIt.next();
+		for (ContentName name : _contents.keySet()) {
 			if (name.isPrefixOf(target.name())) {
 				// Name match - is there an interest match here?
 				Entry<V> found = getMatchByName(name, target);
@@ -311,9 +314,7 @@ public class InterestTable<V> {
 	public List<Entry<V>> getMatches(CompleteName target) {
 		List<Entry<V>> matches = new ArrayList<Entry<V>>();
 		if (null != target) {
-			ContentName headname = new ContentName(target.name(), new byte[] {0} ); // need to include equal item in headMap
-			for (Iterator<ContentName> nameIt = _contents.headMap(headname).keySet().iterator(); nameIt.hasNext();) {
-				ContentName name = nameIt.next();
+			for (ContentName name : _contents.keySet()) {
 				if (name.isPrefixOf(target.name())) {
 					// Name match - is there an interest match here?
 					matches.addAll(getAllMatchByName(name, target));

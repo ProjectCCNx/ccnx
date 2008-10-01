@@ -2,6 +2,7 @@ package com.parc.ccn.library;
 
 import java.io.IOException;
 import java.security.InvalidKeyException;
+import java.security.InvalidParameterException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -251,6 +252,14 @@ public interface CCNLibrary extends CCNBase {
 	 */
 	public boolean verify(ContentObject object, PublicKey publicKey) 
 			throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException;
+	
+	/**
+	 * Medium level interface for retrieving pieces of a file
+	 */
+	public ArrayList<ContentObject> getNext(String name, int prefixCount) 
+					throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException;
+	public ArrayList<ContentObject> getNext(String name, byte[] content, int prefixCount)
+					throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException;
 	
 	/**
 	 * Approaches to read and write content. Low-level CCNBase returns

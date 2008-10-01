@@ -2,7 +2,6 @@ package com.parc.ccn.data;
 
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
-import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
@@ -13,7 +12,6 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.UnsupportedCharsetException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -33,6 +31,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	private static final String COMPONENT_ELEMENT = "Component";
 	
 	protected ArrayList<byte []>  _components;
+	protected Integer _prefixCount;
 	protected static class DotDotComponent extends Exception {}; // Need to strip off a component
 
     // Constructors
@@ -59,7 +58,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		
 	public ContentName(ContentName parent, byte [] name) {
 		this(parent.count() + 
-				((null != name) ? 1 : 0), parent.components());
+				((null != name) ? 1 : 0), parent.components(), parent.prefixCount());
 		if (null != name) {
 			byte [] c = new byte[name.length];
 			System.arraycopy(name,0,c,0,name.length);
@@ -70,7 +69,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public ContentName(ContentName parent, byte[] name1, byte[] name2) {
 		this (parent.count() +
 				((null != name1) ? 1 : 0) +
-				((null != name2) ? 1 : 0), parent.components());
+				((null != name2) ? 1 : 0), parent.components(), parent.prefixCount());
 		if (null != name1) {
 			byte [] c = new byte[name1.length];
 			System.arraycopy(name1,0,c,0,name1.length);
@@ -123,6 +122,11 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 				_components.add(components.get(i));
 			}
 		}
+	}
+	
+	public ContentName(int count, ArrayList<byte []>components, Integer prefixCount) {
+		this(count, components);
+		_prefixCount = prefixCount;
 	}
 	
 	/**
@@ -313,6 +317,15 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		}
 		return result;
 	}
+	
+	/**
+	 * As in fromNative(String name) except also sets a prefix length
+	 */
+	public static ContentName fromNative(String name, int prefixCount) throws MalformedContentNameStringException {
+		ContentName result = fromNative(name);
+		result._prefixCount = prefixCount;
+		return result;
+	}
 
 	/**
 	 * Return the <code>ContentName</code> created by appending one component
@@ -374,6 +387,10 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		
 	public ContentName parent() {
 		return new ContentName(count()-1, components());
+	}
+	
+	public Integer prefixCount() {
+		return _prefixCount;
 	}
 	
 	public String toString() {
@@ -856,9 +873,10 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public boolean isPrefixOf(ContentName other) {
 		if (null == other)
 			return false;
-		if (this.count() > other.count())
+		int count = _prefixCount == null ? count() : prefixCount();
+		if (count > other.count())
 			return false;
-		return this.equals(other, this.count());
+		return this.equals(other, count);
 	}
 	
 	public void encode(XMLEncoder encoder) throws XMLStreamException {

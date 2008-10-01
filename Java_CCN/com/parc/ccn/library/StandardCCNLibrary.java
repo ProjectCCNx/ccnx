@@ -2,6 +2,7 @@ package com.parc.ccn.library;
 
 import java.io.IOException;
 import java.security.InvalidKeyException;
+import java.security.InvalidParameterException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -33,10 +34,9 @@ import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
-import com.parc.ccn.network.CCNNetworkManager;
 import com.parc.ccn.network.CCNSimpleNetworkManager;
-import com.parc.ccn.security.crypto.CCNMerkleTree;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
+import com.parc.ccn.security.crypto.CCNMerkleTree;
 import com.parc.ccn.security.keys.KeyManager;
 
 /**
@@ -1194,5 +1194,37 @@ public class StandardCCNLibrary implements CCNLibrary {
 	public void setInterestFilter(ContentName filter,
 			CCNFilterListener callbackListener) {
 		getNetworkManager().setInterestFilter(this, filter, callbackListener);
+	}
+
+	/**
+	 * getNext - get next content after specified content
+	 */
+	public ArrayList<ContentObject> getNext(String name, byte [] content, int prefixCount)
+			throws MalformedContentNameStringException, IOException,
+			InterruptedException, InvalidParameterException {
+		ContentName cn;
+		if (null != content) {
+			ContentName prefix = ContentName.fromNative(name, prefixCount);
+			ContentObject co = new ContentObject(prefix, new ContentAuthenticator(null, ContentAuthenticator.ContentType.LEAF, null), 
+						content, (Signature)null); 
+			cn = new ContentName(prefix, co.contentDigest());
+		} else
+			cn = ContentName.fromNative(name, prefixCount);
+		if (prefixCount > cn.count())
+			throw new InvalidParameterException("Requested prefix count: " + prefixCount + 
+							" exceeds number of components: " + cn.count());
+		Interest interest = new Interest(cn);
+		interest.orderPreference(Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME);
+		return getNetworkManager().get(this, interest, null, true);
+	}
+	
+	public ArrayList<ContentObject> getNext(String name, int prefixCount) 
+			throws InvalidParameterException, MalformedContentNameStringException, 
+			IOException, InterruptedException {
+		return getNext(name, null, prefixCount);
+	}
+	
+	public byte[] getDigest(byte [] content) {
+		return CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, content);
 	}
 }

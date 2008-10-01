@@ -290,16 +290,21 @@ public class CCNSimpleNetworkManager implements Runnable {
 					} else {
 						Library.logger().finer("Interest callback skipped (no data) for: " + this.interest.name());
 					}
-				} else if (null != this.sema) {
-					Library.logger().finer("Data consumes pending get: " + this.interest.name());
-					// Waiting thread will pickup data -- wake it up
-					// If this interest came from net or waiting thread timed out,
-					// then no thread will be waiting but no harm is done
-					Library.logger().finest("releasing " + this.sema);
-					this.sema.release();
 				} else {
-					// this is no longer valid registration
-					Library.logger().finer("Interest callback skipped (not valid) for: " + this.interest.name());
+					synchronized (this) {
+						if (null != this.sema) {
+							Library.logger().finer("Data consumes pending get: " + this.interest.name());
+							// Waiting thread will pickup data -- wake it up
+							// If this interest came from net or waiting thread timed out,
+							// then no thread will be waiting but no harm is done
+							Library.logger().finest("releasing " + this.sema);
+							this.sema.release();
+						} 
+					}
+					if (null == this.sema) {
+						// this is no longer valid registration
+						Library.logger().finer("Interest callback skipped (not valid) for: " + this.interest.name());
+					}
 				}
 			} catch (Exception ex) {
 				Library.logger().warning("failed to deliver data: " + ex.toString());
@@ -502,6 +507,12 @@ public class CCNSimpleNetworkManager implements Runnable {
 									    ContentAuthenticator authenticator,
 									    boolean isRecursive) throws IOException, InterruptedException {
 		Interest interest = new Interest(name);
+		return get(caller, interest, authenticator, isRecursive);
+	}
+	
+	public ArrayList<ContentObject> get(Object caller, Interest interest, 
+									    ContentAuthenticator authenticator,
+									    boolean isRecursive) throws IOException, InterruptedException {
 		Library.logger().fine("get: " + interest.name());
 		if (!isRecursive) {
 			// for the moment, assume we don't know the digest, and we're specifying

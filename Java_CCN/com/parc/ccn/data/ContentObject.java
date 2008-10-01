@@ -434,5 +434,9 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 
 		return baos.toByteArray();
 	}
+	
+	public byte [] contentDigest() {
+		 return CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, content());
+	}
 
 }
