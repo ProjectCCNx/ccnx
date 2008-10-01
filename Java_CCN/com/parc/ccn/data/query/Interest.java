@@ -60,14 +60,23 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	
 	public static final String INTEREST_ELEMENT = "Interest";
 	public static final String ADDITIONAL_NAME_COMPONENTS = "AdditionalNameComponents";
+	public static final String NAME_COMPONENT_COUNT = "NameComponentCount";
 	public static final String ORDER_PREFERENCE = "OrderPreference";
 	public static final String ANSWER_ORIGIN_KIND = "AnswerOriginKind";
 	public static final String SCOPE_ELEMENT = "Scope";
 	public static final String COUNT_ELEMENT = "Count";
 	public static final String NONCE_ELEMENT = "Nonce";
 	public static final String RESPONSE_FILTER_ELEMENT = "ExperimentalResponseFilter";
+	
+	// OrderPreference values.  These are bitmapped
+	public static final int ORDER_PREFERENCE_LEFT = 0;		// bit 0
+	public static final int ORDER_PREFERENCE_RIGHT = 1;
+	public static final int ORDER_PREFERENCE_ORDER_ARRIVAL = 2;
+	public static final int	ORDER_PREFERENCE_ORDER_NAME = 4;	// User name space hierarchy for ordering
 
 	protected ContentName _name;
+	protected ContentName _prefixName;
+	protected Integer _nameComponentCount;
 	protected Integer _additionalNameComponents;
 	// DKS TODO can we really support a PublisherID here, or just a PublisherKeyID?
 	protected PublisherID _publisher;
@@ -86,17 +95,17 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @param name
 	 * @param authenticator
 	 */
-	public Interest(ContentName name, int additionalNameComponents,
+	public Interest(ContentName name, 
 			   PublisherID publisher) {
 		_name = name;
-		_additionalNameComponents = additionalNameComponents;
 		_publisher = publisher;
+		_nameComponentCount = _name.prefixCount();
 	}
-
-	public Interest(ContentName name, 
-				   PublisherID publisher) {
-		_name = name;
-		_publisher = publisher;
+	
+	public Interest(ContentName name, int additionalNameComponents,
+			   PublisherID publisher) {
+		this(name, publisher);
+		_additionalNameComponents = additionalNameComponents;
 	}
 	
 	public Interest(ContentName name) {
@@ -111,6 +120,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 
 	public ContentName name() { return _name; }
 	public void name(ContentName name) { _name = name; }
+	
+	public Integer nameComponentCount() { return _nameComponentCount;}
+	public void nameComponentCount(int nameComponentCount) { _nameComponentCount = nameComponentCount; }
 	
 	public Integer additionalNameComponents() { return _additionalNameComponents;}
 	public void additionalNameComponents(int additionalNameComponents) { _additionalNameComponents = additionalNameComponents; }
@@ -205,6 +217,10 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		_name = new ContentName();
 		_name.decode(decoder);
 		
+		if (decoder.peekStartElement(NAME_COMPONENT_COUNT)) {
+			_nameComponentCount = decoder.readIntegerElement(NAME_COMPONENT_COUNT);
+		}
+		
 		if (decoder.peekStartElement(ADDITIONAL_NAME_COMPONENTS)) {
 			_additionalNameComponents = decoder.readIntegerElement(ADDITIONAL_NAME_COMPONENTS);
 		}
@@ -255,6 +271,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		encoder.writeStartElement(INTEREST_ELEMENT);
 		
 		name().encode(encoder);
+		
+		if (null != nameComponentCount()) 
+			encoder.writeIntegerElement(NAME_COMPONENT_COUNT, nameComponentCount());
 
 		if (null != additionalNameComponents()) 
 			encoder.writeIntegerElement(ADDITIONAL_NAME_COMPONENTS, additionalNameComponents());
@@ -293,6 +312,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		int result = DataUtils.compare(name(), o.name());
 		if (result != 0) return result;
 		
+		result = DataUtils.compare(nameComponentCount(), o.nameComponentCount());
+		if (result != 0) return result;
+		
 		result = DataUtils.compare(additionalNameComponents(), o.additionalNameComponents());
 		if (result != 0) return result;
 		
@@ -329,6 +351,10 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		int result = 1;
 		result = prime
 			* result
+			+ ((_nameComponentCount == null) ? 0 : _nameComponentCount
+				.hashCode());
+		result = prime
+			* result
 			+ ((_additionalNameComponents == null) ? 0 : _additionalNameComponents
 				.hashCode());
 		result = prime
@@ -359,6 +385,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		if (getClass() != obj.getClass())
 			return false;
 		Interest other = (Interest) obj;
+		if (_nameComponentCount == null) {
+			if (other._nameComponentCount != null)
+				return false;
+		} else if (!_nameComponentCount.equals(other._nameComponentCount))
+			return false;
 		if (_additionalNameComponents == null) {
 			if (other._additionalNameComponents != null)
 				return false;
