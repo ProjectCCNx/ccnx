@@ -30,6 +30,8 @@
 
 #include "ccnd_private.h"
 
+#define CRLF "\r\n"
+
 struct ccnd_stats {
     long total_interest_counts;
     long total_flood_control;      /* done propagating, still recorded */
@@ -84,8 +86,6 @@ collect_stats_html(struct ccnd *h)
     
     ccnd_collect_stats(h, &stats);
     ccn_charbuf_putf(b,
-        "HTTP/0.9 200 OK\r\n"
-        "Content-Type: text/html; charset=utf-8\r\n\r\n"
         "<html>"
         "<head>"
         "<title>ccnd[%d]</title>"
@@ -121,15 +121,24 @@ collect_stats_html(struct ccnd *h)
     return(ans);
 }
 
-static const char *resp404 = "HTTP/0.9 404 Not Found\r\n";
+static const char *resp404 =
+    "HTTP/1.1 404 Not Found" CRLF
+    "Connection: close" CRLF CRLF;
+
+static const char *resp405 =
+    "HTTP/1.1 405 Method Not Allowed" CRLF
+    "Connection: close" CRLF CRLF;
+
 int
 ccnd_stats_check_for_http_connection(struct ccnd *h)
 {
     int res;
+    int hdrlen;
     int fd;
     char *response = NULL;
     char buf[512] = "GET / ";
     struct linger linger = { .l_onoff = 1, .l_linger = 1 };
+    struct timeval timeout = { .tv_sec = 0, .tv_usec = 100000 };
     
     if (h->httpd_listener_fd == -1)
         return(-1);
@@ -140,20 +149,29 @@ ccnd_stats_check_for_http_connection(struct ccnd *h)
         h->httpd_listener_fd = -1;
         return(-1);
     }
-    // XXX - the blocking read opens us to a D.O.S., but non-blocking causes
-    //  problems on the client side (for unknown reasons).
-    // fcntl(fd, F_SETFL, O_NONBLOCK);
     response = collect_stats_html(h);
+    /* Set linger to prevent quickly resetting the connection on close.*/
     res = setsockopt(fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
-    if (res == -1)
-        perror("setsockopt SO_LINGER");
+    /* Set a receive timeout so we don't end up waiting for very long. */
+    /* (This may fail on some platforms, if so we could block.) */
+    res = setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
     res = read(fd, buf, sizeof(buf));
-    if ((res == -1 && errno == EAGAIN) || res >= 6) {
+    if ((res == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) || res >= 6) {
         if (0 == memcmp(buf, "GET / ", 6)) {
-            write(fd, response, strlen(response));
+            res = strlen(response);
+            hdrlen = snprintf(buf, sizeof(buf),
+                              "HTTP/1.1 200 OK" CRLF
+                              "Content-Type: text/html; charset=utf-8" CRLF
+                              "Connection: close" CRLF
+                              "Content-Length: %d" CRLF CRLF,
+                              res);
+            write(fd, buf, hdrlen);
+            write(fd, response, res);
         }
-        else
+        else if (0 == memcmp(buf, "GET ", 4))
             write(fd, resp404, strlen(resp404));
+        else
+            write(fd, resp405, strlen(resp405));
     }
     close(fd);
     free(response);
