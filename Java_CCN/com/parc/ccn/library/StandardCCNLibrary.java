@@ -1223,8 +1223,4 @@ public class StandardCCNLibrary implements CCNLibrary {
 			IOException, InterruptedException {
 		return getNext(name, null, prefixCount);
 	}
-	
-	public byte[] getDigest(byte [] content) {
-		return CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, content);
-	}
 }
