@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ccn/bloom.h>
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/uri.h>
@@ -14,10 +15,32 @@ struct upcalldata {
     int magic; /* 856372 */
     long *counter;
     unsigned warn;
+    int flags;
     int n_excl;
     struct ccn_charbuf **excl; /* Array of n_excl items */
 };
+#define EXCLUDE_LOW 1
+#define EXCLUDE_HIGH 2
 
+/* Prototypes */
+static int namecompare(const void *a, const void *b);
+static struct upcalldata *get_my_data(struct ccn_closure *selfp);
+static void append_bf_all(struct ccn_charbuf *c);
+static int express_my_interest(struct ccn *h,
+                               struct ccn_closure *selfp,
+                               struct ccn_charbuf *name);
+static struct ccn_closure *split_my_excludes(struct ccn_closure *selfp);
+static enum ccn_upcall_res incoming_content(struct ccn_closure *selfp,
+                                            enum ccn_upcall_kind kind,
+                                            struct ccn_upcall_info *);
+static struct ccn_charbuf *ccn_charbuf_duplicate(struct ccn_charbuf *);
+
+/*
+ * Comparison operator for sorting the excl list with qsort.
+ * For convenience, the items in the excl array are
+ * charbufs containing ccnb-encoded Names of one component each.
+ * (This is not the most efficient representation.)
+ */
 static int /* for qsort */
 namecompare(const void *a, const void *b)
 {
@@ -29,7 +52,46 @@ namecompare(const void *a, const void *b)
     return (ans);
 }
 
-enum ccn_upcall_res
+static struct upcalldata *get_my_data(struct ccn_closure *selfp)
+{
+    struct upcalldata *data = selfp->data;
+    if (data->magic != 856372) abort();
+    return(data);
+}
+
+/*
+ * This upcall gets called for each piece of incoming content that
+ * matches one of our interests.  We need to issue a new interest that
+ * excludes another component at the current level, and perhaps also
+ * and interest to start exploring the next level.  Thus if the matched
+ * interest is
+ *   /a/b/c exclude {d,e,f,i,j,k}
+ * and we get
+ *   /a/b/c/g/h
+ * we would issue a new interest
+ *   /a/b/c exclude {d,e,f,g,i,j,k}
+ * to continue exploring the current level, plus a simple interest
+ *   /a/b/c/g
+ * to start exploring the next level as well.
+ *
+ * This does end up fetching each piece of content multiple times, once for
+ * each level in the name. The repeated requests will be answered from the local
+ * content store, though, and so should not generate extra network traffic.
+ * There is a lot of unanswerable interest generated, though.  
+ *
+ * To prevent the interests from becoming too huge, we may need to split them.
+ * Thus if the first new interest above were deemed too large, we could instead
+ * issue the two interests
+ *   /a/b/c exclude {d,e,f,g,*}
+ *   /a/b/c exclude {*,g,i,j,k}
+ * where * stands for a Bloom filter that excludes anything.  Note the
+ * repetiton of g to ensure that these two interests cover disjoint portions
+ * of the hierarchy. We need to keep track of the endpoint conditions
+ * as well as the excluded set in our upcall data.
+ * When a split happens, we need a new closure to track it, as we do when
+ * we start exploring a new level.
+ */
+static enum ccn_upcall_res
 incoming_content(
     struct ccn_closure *selfp,
     enum ccn_upcall_kind kind,
@@ -38,16 +100,14 @@ incoming_content(
     struct ccn_charbuf *c = NULL;
     struct ccn_charbuf *comp = NULL;
     struct ccn_charbuf *uri = NULL;
-    struct ccn_charbuf *templ = NULL;
     const unsigned char *ccnb = NULL;
     size_t ccnb_size = 0;
     struct ccn_indexbuf *comps = NULL;
     int matched_comps = 0;
     int res;
     int i;
-    struct upcalldata *data = selfp->data;
+    struct upcalldata *data = get_my_data(selfp);
     
-    if (data->magic != 856372) abort();
     if (kind == CCN_UPCALL_FINAL) {
         for (i = 0; i < data->n_excl; i++)
             ccn_charbuf_destroy(&(data->excl[i]));
@@ -67,7 +127,6 @@ incoming_content(
     matched_comps = info->pi->prefix_comps;
     c = ccn_charbuf_create();
     uri = ccn_charbuf_create();
-    templ = ccn_charbuf_create();
         
     if (matched_comps + 1 > comps->n) {
         ccn_uri_append(c, ccnb, ccnb_size, 1);
@@ -75,7 +134,7 @@ incoming_content(
         exit(1);
     }
     
-    data->counter[0]++;
+    data->counter[0]++; /* Tell main that something new came in */
 
     /* Recover the same prefix as before */
     ccn_name_init(c);
@@ -97,28 +156,13 @@ incoming_content(
     data->excl[data->n_excl++] = comp;
     comp = NULL;
     qsort(data->excl, data->n_excl, sizeof(data->excl[0]), &namecompare);
-            
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
-    ccn_charbuf_append(templ, c->buf, c->length); /* Name */
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Exclude, CCN_DTAG);
-    for (i = 0; i < data->n_excl; i++) {
-        comp = data->excl[i];
-        if (comp->length < 4) abort();
-        ccn_charbuf_append(templ, comp->buf + 1, comp->length - 2);
+    res = express_my_interest(info->h, selfp, c);
+    if (res == -1) {
+        struct ccn_closure *high = split_my_excludes(selfp);
+        if (high == NULL) abort();
+        express_my_interest(info->h, selfp, c);
+        express_my_interest(info->h, high, c);
     }
-    comp = NULL;
-    ccn_charbuf_append_closer(templ); /* </Exclude> */
-    ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
-    ccn_charbuf_append(templ, "1", 1);
-    ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
-    ccn_charbuf_append_closer(templ); /* </Interest> */
-    if (templ->length > data->warn) {
-        fprintf(stderr, "*** Interest packet is %d bytes\n", (int)templ->length);
-        data->warn = data->warn * 8 / 5;
-    }
-    ccn_express_interest(info->h, c, -1, selfp, templ);
-    
     /* Explore the next level, if there is one. */
     if (matched_comps + 2 < comps->n) {
         struct upcalldata *newdat = NULL;
@@ -127,6 +171,9 @@ incoming_content(
         newdat->magic = 856372;
         newdat->warn = 1492;
         newdat->counter = data->counter;
+        newdat->flags = 0;
+        newdat->n_excl = 0;
+        newdat->excl = NULL;
         cl = calloc(1, sizeof(*cl));
         cl->p = &incoming_content;
         cl->data = newdat;
@@ -143,10 +190,121 @@ incoming_content(
         else
             printf("%s\n", ccn_charbuf_as_string(uri));
     }
-    ccn_charbuf_destroy(&templ);
     ccn_charbuf_destroy(&c);
     ccn_charbuf_destroy(&uri);
     return(0);
+}
+
+/*
+ * Construct and send a new interest that uses the exclusion list.
+ * Return -1 if not sent because of packet size, 0 for success.
+ */
+static int
+express_my_interest(struct ccn *h,
+                    struct ccn_closure *selfp,
+                    struct ccn_charbuf *name)
+{
+    int ans;
+    struct ccn_charbuf *templ = NULL;
+    int i;
+    struct upcalldata *data = get_my_data(selfp);
+
+    templ = ccn_charbuf_create();
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
+    ccn_charbuf_append_closer(templ); /* </Name> */
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Exclude, CCN_DTAG);
+    if ((data->flags & EXCLUDE_LOW) != 0)
+        append_bf_all(templ);
+    for (i = 0; i < data->n_excl; i++) {
+        struct ccn_charbuf *comp = data->excl[i];
+        if (comp->length < 4) abort();
+        ccn_charbuf_append(templ, comp->buf + 1, comp->length - 2);
+    }
+    if ((data->flags & EXCLUDE_HIGH) != 0)
+        append_bf_all(templ);
+    ccn_charbuf_append_closer(templ); /* </Exclude> */
+    ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
+    ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
+    ccn_charbuf_append(templ, "1", 1);
+    ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
+    ccn_charbuf_append_closer(templ); /* </Interest> */
+    if (templ->length + name->length > data->warn + 2) {
+        fprintf(stderr, "*** Interest packet is %d bytes\n", (int)templ->length);
+        data->warn = data->warn * 8 / 5;
+    }
+    if (templ->length + name->length > 1450 && data->n_excl > 3)
+        ans = -1;
+    else {
+        ccn_express_interest(h, name, -1, selfp, templ);
+        ans = 0;
+    }
+    ccn_charbuf_destroy(&templ);
+    return(ans);
+}
+
+/*
+ * Build a new closure to handle the high half of the excludes, and modify the
+ * old closure to handle the low half.
+ */
+static struct ccn_closure *
+split_my_excludes(struct ccn_closure *selfp)
+{
+    int i;
+    int m;
+    struct upcalldata *newdat = NULL;
+    struct ccn_closure *cl;
+    struct upcalldata *data = get_my_data(selfp);
+    
+    if (data->n_excl < 3)
+        return NULL;
+    m = data->n_excl / 2;
+    newdat = calloc(1, sizeof(*newdat));
+    newdat->magic = 856372;
+    newdat->warn = 1492;
+    newdat->counter = data->counter;
+    newdat->n_excl = data->n_excl - m;
+    newdat->excl = calloc(newdat->n_excl, sizeof(newdat->excl[0]));
+    if (newdat->excl == NULL) {
+        free(newdat);
+        return(NULL);
+    }
+    newdat->excl[0] = ccn_charbuf_duplicate(data->excl[m]);
+    newdat->flags = data->flags | EXCLUDE_LOW;
+    for (i = 1; i < newdat->n_excl; i++) {
+        newdat->excl[i] = data->excl[m + i];
+        data->excl[m + i] = NULL;
+    }
+    data->n_excl = m + 1;
+    data->flags |= EXCLUDE_HIGH;
+    cl = calloc(1, sizeof(*cl));
+    cl->p = &incoming_content;
+    cl->data = newdat;
+    return(cl);
+}
+
+/*
+ * This appends a tagged, valid, fully-saturated Bloom filter, useful for
+ * excluding everything between two 'fenceposts' in an Exclude construct.
+ */
+static void
+append_bf_all(struct ccn_charbuf *c)
+{
+    unsigned char bf_all[9] = { 3, 1, 'A', 0, 0, 0, 0, 0, 0xFF };
+    const struct ccn_bloom_wire *b = ccn_bloom_validate_wire(bf_all, sizeof(bf_all));
+    if (b == NULL) abort();
+    ccn_charbuf_append_tt(c, CCN_DTAG_Bloom, CCN_DTAG);
+    ccn_charbuf_append_tt(c, sizeof(bf_all), CCN_BLOB);
+    ccn_charbuf_append(c, bf_all, sizeof(bf_all));
+    ccn_charbuf_append_closer(c);
+}
+
+static struct ccn_charbuf *
+ccn_charbuf_duplicate(struct ccn_charbuf *c)
+{
+    struct ccn_charbuf *ans = ccn_charbuf_create();
+    ccn_charbuf_append(ans, c->buf, c->length);
+    return(ans);
 }
 
 void
