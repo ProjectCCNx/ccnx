@@ -1,6 +1,7 @@
 package test.ccn.data.read;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 
@@ -9,7 +10,6 @@ import org.junit.Test;
 import test.ccn.endtoend.BaseLibrarySource;
 
 import com.parc.ccn.data.CompleteName;
-import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
@@ -30,27 +30,41 @@ public class ReadTest extends BaseLibrarySource implements CCNInterestListener {
 	
 	@Test
 	public void getNext() throws Throwable {
-		System.out.println("Read test started");
+		System.out.println("getNext test started");
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
-			byte[] content = new byte[] { new Integer(count -i).byteValue() };
-			library.put(ContentName.fromNative("/ReadTest/" + new Integer(i).toString()), content);
+			library.put("/getNext/" + Integer.toString(i), Integer.toString(count - i));
 		}
 		System.out.println("Put sequence finished");
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
-			int tValue = rand.nextInt(count -1);
-			ArrayList<ContentObject> results = library.getNext("/ReadTest/" + new Integer(tValue).toString(), 
-					new byte[] { new Integer(count - tValue).byteValue() }, 1);
+			int tValue = rand.nextInt(count - 1);
+			ArrayList<ContentObject> results = library.getNext("/getNext/" + new Integer(tValue).toString(), 
+					Integer.toString(count - tValue), 1);
 			for (ContentObject result : results) {
-				String resultAsString = result.name().toString();
-				int sep = resultAsString.lastIndexOf('/');
-				assertTrue(sep > 0);
-				int resultValue = Integer.parseInt(resultAsString.substring(sep + 1));
-				assertEquals(new Integer(resultValue), new Integer(tValue + 1));
+				checkResult(result, tValue + 1);
 			}
 		}
-		System.out.println("Read test finished");
+		System.out.println("getNext test finished");
+	}
+	
+	@Test
+	public void getLatest() throws Throwable {
+		int highest = 0;
+		System.out.println("getLatest test started");
+		for (int i = 0; i < count; i++) {
+			Thread.sleep(rand.nextInt(50));
+			int tValue = getRandomFromSet(count, false);
+			if (tValue > highest)
+				highest = tValue;
+			library.put("/getLatest/" + Integer.toString(tValue), Integer.toString(tValue));
+			Thread.sleep(rand.nextInt(50));
+			ArrayList<ContentObject> results = library.getLatest("/getLatest/" + Integer.toString(tValue), 1);
+			for (ContentObject result : results) {
+				checkResult(result, highest);
+			}
+		}
+		System.out.println("getLatest test finished");
 	}
 
 	public void addInterest(Interest interest) {}
@@ -69,6 +83,14 @@ public class ReadTest extends BaseLibrarySource implements CCNInterestListener {
 
 	public boolean matchesInterest(CompleteName name) {
 		return false;
+	}
+	
+	private void checkResult(ContentObject result, int value) {
+		String resultAsString = result.name().toString();
+		int sep = resultAsString.lastIndexOf('/');
+		assertTrue(sep > 0);
+		int resultValue = Integer.parseInt(resultAsString.substring(sep + 1));
+		assertEquals(new Integer(value), new Integer(resultValue));
 	}
 
 }

@@ -1,6 +1,7 @@
 package test.ccn.endtoend;
 
 
+import java.util.ArrayList;
 import java.util.Random;
 import java.util.concurrent.Semaphore;
 import java.util.logging.Level;
@@ -24,6 +25,7 @@ public class BaseLibrarySource {
 	protected static Throwable error = null; // for errors in callback
 	Semaphore sema = new Semaphore(0);
 	protected static Random rand;
+	private static ArrayList<Integer> currentSet;
 
 	public BaseLibrarySource() throws Throwable {
 		library = StandardCCNLibrary.open();
@@ -67,6 +69,28 @@ public class BaseLibrarySource {
 			result[i] = (i % 12 == 0) ? typebyte : valbyte; 
 			
 		}
+		return result;
+	}
+	
+	public int getRandomFromSet(int length, boolean reset) {
+		int result = -1;
+		if (reset || currentSet == null)
+			currentSet = new ArrayList<Integer>(length);
+		if (currentSet.size() >= length)
+			return result;
+		while (true) {
+			result = rand.nextInt(length);
+			boolean found = false;
+			for (int used : currentSet) {
+				if (used == result) {
+					found = true;
+					break;
+				}
+			}
+			if (!found)
+				break;
+		}
+		currentSet.add(result);
 		return result;
 	}
 }

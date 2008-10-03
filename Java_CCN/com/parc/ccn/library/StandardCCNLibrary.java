@@ -223,7 +223,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	public CompleteName removeFromCollection(
 			ContentName name,
 			CompleteName[] additionalContents) {
-		// TODO Auto-generated method stub
+		
 		return null;
 	}
 	
@@ -1199,28 +1199,44 @@ public class StandardCCNLibrary implements CCNLibrary {
 	/**
 	 * getNext - get next content after specified content
 	 */
-	public ArrayList<ContentObject> getNext(String name, byte [] content, int prefixCount)
+	public ArrayList<ContentObject> getNext(String name, String content, int prefixCount)
 			throws MalformedContentNameStringException, IOException,
 			InterruptedException, InvalidParameterException {
-		ContentName cn;
-		if (null != content) {
-			ContentName prefix = ContentName.fromNative(name, prefixCount);
-			ContentObject co = new ContentObject(prefix, new ContentAuthenticator(null, ContentAuthenticator.ContentType.LEAF, null), 
-						content, (Signature)null); 
-			cn = new ContentName(prefix, co.contentDigest());
-		} else
-			cn = ContentName.fromNative(name, prefixCount);
-		if (prefixCount > cn.count())
-			throw new InvalidParameterException("Requested prefix count: " + prefixCount + 
-							" exceeds number of components: " + cn.count());
-		Interest interest = new Interest(cn);
-		interest.orderPreference(Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME);
-		return getNetworkManager().get(this, interest, null, true);
+		return generalGet(name, content, new Integer(prefixCount), new Integer(Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME));
 	}
 	
 	public ArrayList<ContentObject> getNext(String name, int prefixCount) 
 			throws InvalidParameterException, MalformedContentNameStringException, 
 			IOException, InterruptedException {
 		return getNext(name, null, prefixCount);
+	}
+	
+	public ArrayList<ContentObject> getLatest(String name, int prefixCount) throws InvalidParameterException, MalformedContentNameStringException, 
+			IOException, InterruptedException {
+		return generalGet(name, null, new Integer(prefixCount), new Integer(Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME));
+	}
+	
+	private ContentName contentNameFromName(String name, String content, Integer prefixCount) 
+			throws MalformedContentNameStringException {
+		ContentName cn;
+		if (null != content) {
+			ContentName prefix = ContentName.fromNative(name, prefixCount);
+			ContentObject co = new ContentObject(prefix, new ContentAuthenticator(null, ContentAuthenticator.ContentType.LEAF, null), 
+						content.getBytes(), (Signature)null); 
+			cn = new ContentName(prefix, co.contentDigest());
+		} else
+			cn = ContentName.fromNative(name, prefixCount);
+		if (null != prefixCount && prefixCount > cn.count())
+			throw new InvalidParameterException("Requested prefix count: " + prefixCount + 
+							" exceeds number of components: " + cn.count());
+		return cn;
+	}
+
+	private ArrayList<ContentObject> generalGet(String name, String content, Integer prefixCount, Integer orderPreference) 
+			throws IOException, InterruptedException, MalformedContentNameStringException {
+		Interest interest = new Interest(contentNameFromName(name, content, prefixCount));
+		if (null != orderPreference)
+			interest.orderPreference(orderPreference);
+		return getNetworkManager().get(this, interest, null, true);
 	}
 }

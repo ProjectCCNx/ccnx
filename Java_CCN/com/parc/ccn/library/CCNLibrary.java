@@ -258,7 +258,9 @@ public interface CCNLibrary extends CCNBase {
 	 */
 	public ArrayList<ContentObject> getNext(String name, int prefixCount) 
 					throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException;
-	public ArrayList<ContentObject> getNext(String name, byte[] content, int prefixCount)
+	public ArrayList<ContentObject> getNext(String name, String content, int prefixCount)
+					throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException;
+	public ArrayList<ContentObject> getLatest(String name, int prefixCount) 
 					throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException;
 	
 	/**
@@ -319,5 +321,4 @@ public interface CCNLibrary extends CCNBase {
 	 * @return
 	 */
 	public boolean isLocal(CompleteName name);
-
 }

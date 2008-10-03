@@ -73,6 +73,15 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public static final int ORDER_PREFERENCE_RIGHT = 1;
 	public static final int ORDER_PREFERENCE_ORDER_ARRIVAL = 2;
 	public static final int	ORDER_PREFERENCE_ORDER_NAME = 4;	// User name space hierarchy for ordering
+	
+	/**
+	 * AnswerOriginKind values
+	 * These are bitmapped.  Default is 3. 2 is not allowed
+	 */
+	public static final int ANSWER_CONTENT_STORE = 1;
+	public static final int ANSWER_GENERATED = 2;
+	public static final int ANSWER_STALE = 4;		// Stale answer OK
+	public static final int MARK_STALE = 16;		// Must have Scope 0.  Michael calls this a "hack"
 
 	protected ContentName _name;
 	protected ContentName _prefixName;
