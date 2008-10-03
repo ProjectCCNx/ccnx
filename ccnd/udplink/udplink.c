@@ -528,7 +528,16 @@ main (int argc, char * const argv[]) {
                     udplink_fatal(__LINE__, "sendto(localsock_rw, rbuf, %ld): %s\n", (long) recvlen + CCN_EMPTY_PDU_LENGTH, strerror(errno));
                 }
             }
-            if (result != recvlen + CCN_EMPTY_PDU_LENGTH) abort();
+            if (result != recvlen + CCN_EMPTY_PDU_LENGTH) {
+                fds[1].events &= ~POLLIN;
+                fds[0].events |= POLLOUT;
+                deferredlen = recvlen + CCN_EMPTY_PDU_LENGTH - result;
+                deferredbuf = realloc(deferredbuf, deferredlen);
+                memcpy(deferredbuf, rbuf + result, deferredlen);
+                if (options.logging > 0)
+                    udplink_note("sendto(localsock_rw, rbuf, %ld): %s (deferred partial)\n", (long) deferredlen, strerror(errno));
+                continue;
+            }
             if (options.logging > 1) {
                 udplink_print_data("remote", rbuf, 0, recvlen + CCN_EMPTY_PDU_LENGTH);
             }
