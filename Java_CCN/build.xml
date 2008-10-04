@@ -170,7 +170,7 @@
        <parallel failonany="true">
            <daemons>
                <echo message="Running test ccnd on port ${TEST_PORT_1}"/>
-               <exec executable="${ccnd}" dir="${testout}" output="${testout}/TEST-ccnd0.txt">
+               <exec executable="${ccnd}" dir="${testout}" output="${testout}/TEST-ccnd-baselib.txt">
                    <env key="CCN_LOCAL_PORT" value="${TEST_PORT_1}"/>
                </exec>
            </daemons>
@@ -220,7 +220,7 @@
        <parallel failonany="true">
            <daemons>
                <echo message="Running test ccnd on port ${TEST_PORT_1}"/>
-               <exec executable="${ccnd}" dir="${testout}" output="${testout}/TEST-ccnd0.txt">
+               <exec executable="${ccnd}" dir="${testout}" output="${testout}/TEST-ccnd-endtoend.txt">
                    <env key="CCN_LOCAL_PORT" value="${TEST_PORT_1}"/>
                </exec>
            </daemons>
@@ -249,7 +249,7 @@
 	       <parallel failonany="true">
 	           <daemons>
 	               <echo message="Running test ccnd on port ${TEST_PORT_2}"/>
-	               <exec executable="${ccnd}" dir="${testout}" output="${testout}/TEST-ccnd0.txt">
+	               <exec executable="${ccnd}" dir="${testout}" output="${testout}/TEST-ccnd-read.txt">
 	                   <env key="CCN_LOCAL_PORT" value="${TEST_PORT_2}"/>
 	               </exec>
 	           </daemons>
