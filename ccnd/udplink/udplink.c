@@ -30,6 +30,13 @@ static struct options {
     int logging;
 } options = {NULL, NULL, NULL, "", "", 0, 0, 0};
 
+/*
+ * logging levels:
+ *  0 - print very little
+ *  1 - informational and sparse warnings
+ *  2 - one line per packet
+ *  3 - packet dumps
+ */
 
 void
 usage(char *name) {
@@ -62,15 +69,18 @@ udplink_note(char *format, ...)
 }
 
 void
-udplink_print_data(char *source, unsigned char *data, int start, int length)
+udplink_print_data(char *source, unsigned char *data, int start, int length, int logging)
 {
     int i;
-
-    udplink_note("%d bytes from %s:", length, source);
-    for (i = 0; i < length; i++) {
-        if ((i % 20) == 0) fprintf(stderr, "\n%4d: ", i);
-        if (((i + 10) % 20) == 0) fprintf(stderr, "| ");
-        fprintf(stderr, "%02x ", data[i + start]);
+    
+    udplink_note("%d bytes from %s", length, source);
+    if (logging > 2) {
+        fprintf(stderr, ":");
+        for (i = 0; i < length; i++) {
+            if ((i % 20) == 0) fprintf(stderr, "\n%4d: ", i);
+            if (((i + 10) % 20) == 0) fprintf(stderr, "| ");
+            fprintf(stderr, "%02x ", data[i + start]);
+        }
     }
     fprintf(stderr, "\n");
 }
@@ -210,7 +220,7 @@ set_multicast_sockopt(int socket_r, int socket_w, struct addrinfo *ai, struct op
     memset((void *)&mreq6, 0, sizeof(mreq6));
 
     if (ai->ai_family == PF_INET && IN_MULTICAST(ntohl(((struct sockaddr_in *)(ai->ai_addr))->sin_addr.s_addr))) {
-        if (options->logging > 1) udplink_note("IPv4 multicast\n");
+        if (options->logging > 0) udplink_note("IPv4 multicast\n");
 #ifdef IP_ADD_MEMBERSHIP
         memcpy((void *)&mreq.imr_multiaddr, &((struct sockaddr_in *)ai->ai_addr)->sin_addr, sizeof(mreq.imr_multiaddr));
         if (options->localif_for_mcast_addrinfo != NULL) {
@@ -234,7 +244,7 @@ set_multicast_sockopt(int socket_r, int socket_w, struct addrinfo *ai, struct op
         }
 #endif
     } else if (ai->ai_family == PF_INET6 && IN6_IS_ADDR_MULTICAST((&((struct sockaddr_in6 *)ai->ai_addr)->sin6_addr))) {
-        if (options->logging > 1) udplink_note("IPv6 multicast\n");
+        if (options->logging > 0) udplink_note("IPv6 multicast\n");
 #ifdef IPV6_JOIN_GROUP
         memcpy((void *)&mreq6.ipv6mr_multiaddr, &((struct sockaddr_in6 *)ai->ai_addr)->sin6_addr, sizeof(mreq6.ipv6mr_multiaddr));
         if (options->remoteifindex > 0) {
@@ -272,7 +282,7 @@ changeloglevel(int s) {
         udplink_note("logging disabled\n");
         break;
     case SIGUSR2:
-        if (options.logging < 100) options.logging++;
+        if (options.logging < 10) options.logging++;
         udplink_note("log level %d\n", options.logging);
         break;
     }
@@ -303,6 +313,8 @@ main (int argc, char * const argv[]) {
     struct sigaction sigact_changeloglevel;
     unsigned char *deferredbuf = NULL;
     size_t deferredlen = 0;
+    int dropped_count = 0;
+    size_t dropped_bytes = 0;
     const int one = 1;
 
     process_options(argc, argv, &options);
@@ -424,9 +436,29 @@ main (int argc, char * const argv[]) {
             fds[0].events &= ~POLLOUT;
             if (deferredlen > 0) {
                 result = send(localsock_rw, deferredbuf, deferredlen, 0);
-                if (result != deferredlen && options.logging > 1)
-                    udplink_note("sendto(local, deferredbuf, %ld): %s (deferred)\n", (long) deferredlen, strerror(errno));
-                deferredlen = 0;
+                if (result == -1 && (options.logging > 1 || errno != EAGAIN))
+                    udplink_note("sendto(local, deferredbuf, %ld):"
+                                 " %s (sending deferred)\n",
+                                 (long) deferredlen, strerror(errno));
+                if (result == deferredlen) {
+                    /* success, but report drops at this point */
+                    if (dropped_count != 0 && options.logging > 0) {
+                        udplink_note("dropped %d from remote (%ld bytes)\n",
+                                     dropped_count, (long)dropped_bytes);
+                        dropped_count = 0;
+                        dropped_bytes = 0;
+                    }
+                    deferredlen = 0;
+                }
+                else if (result > 0) {
+                    memmove(deferredbuf,
+                            deferredbuf + result,
+                            deferredlen - result);
+                    deferredlen -= result;
+                    fds[0].events |= POLLOUT;
+                }
+                else
+                    deferredlen = 0;
             }
         }
 
@@ -447,9 +479,8 @@ main (int argc, char * const argv[]) {
             charbuf->length += recvlen;
             dres = ccn_skeleton_decode(ld, lbuf, recvlen);
             while (ld->state == 0 && ld->nest == 0) {
-                if (options.logging > 1) {
-                    udplink_print_data("local", charbuf->buf, msgstart, ld->index - msgstart);
-                }
+                if (options.logging > 1)
+                    udplink_print_data("local", charbuf->buf, msgstart, ld->index - msgstart, options.logging);
                 result = send_remote_unencapsulated(remotesock_w, raddrinfo, charbuf->buf, msgstart, ld->index - msgstart);
                 if (result == -1) {
                     if (errno == EAGAIN) continue;
@@ -492,16 +523,21 @@ main (int argc, char * const argv[]) {
             recvbuf = &rbuf[CCN_EMPTY_PDU_LENGTH - 1];
             recvlen = recvfrom(remotesock_r, recvbuf, sizeof(rbuf) - CCN_EMPTY_PDU_LENGTH,
                                0, &from, &fromlen);
-            if (options.logging > 0) {
+            if (options.logging > 1) {
                 if (from.sa_family == AF_INET) {
                     inet_ntop(AF_INET, &((struct sockaddr_in *)&from)->sin_addr, addrbuf, sizeof(addrbuf));
                 } else {
                     inet_ntop(AF_INET6, &((struct sockaddr_in6 *)&from)->sin6_addr, addrbuf, sizeof(addrbuf));
                 }
-                udplink_note("%d bytes from %s\n", recvlen, addrbuf);
+                udplink_print_data(addrbuf, recvbuf, 0, recvlen, options.logging);
             }
             if (recvlen == sizeof(rbuf) - CCN_EMPTY_PDU_LENGTH) {
                 udplink_note("remote packet too large, discarded\n");
+                continue;
+            }
+            if (deferredlen != 0) {
+                dropped_count++;
+                dropped_bytes += recvlen;
                 continue;
             }
             /* encapsulate, and send the packet out on the local side */
@@ -516,6 +552,10 @@ main (int argc, char * const argv[]) {
             result = send(localsock_rw, rbuf, recvlen + CCN_EMPTY_PDU_LENGTH, 0);
             if (result == -1) {
                 if (errno == EAGAIN) {
+                    // XXX if we clear POLLIN the kernel may drop packets
+                    // when it runs out of udp buffer space. It's not clear
+                    // whether that is preferable to dropping them ourselves.
+                    //fds[1].events &= ~POLLIN;
                     fds[1].events &= ~POLLIN;
                     fds[0].events |= POLLOUT;
                     deferredbuf = realloc(deferredbuf, recvlen + CCN_EMPTY_PDU_LENGTH);
@@ -529,7 +569,7 @@ main (int argc, char * const argv[]) {
                 }
             }
             if (result != recvlen + CCN_EMPTY_PDU_LENGTH) {
-                fds[1].events &= ~POLLIN;
+                //fds[1].events &= ~POLLIN;
                 fds[0].events |= POLLOUT;
                 deferredlen = recvlen + CCN_EMPTY_PDU_LENGTH - result;
                 deferredbuf = realloc(deferredbuf, deferredlen);
@@ -537,9 +577,6 @@ main (int argc, char * const argv[]) {
                 if (options.logging > 0)
                     udplink_note("sendto(localsock_rw, rbuf, %ld): %s (deferred partial)\n", (long) deferredlen, strerror(errno));
                 continue;
-            }
-            if (options.logging > 1) {
-                udplink_print_data("remote", rbuf, 0, recvlen + CCN_EMPTY_PDU_LENGTH);
             }
         }
     }
