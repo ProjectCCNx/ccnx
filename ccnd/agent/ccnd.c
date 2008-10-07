@@ -1426,10 +1426,11 @@ process_incoming_interest(struct ccnd *h, struct face *face,
     }
     else if (pi->scope > 0 && pi->scope < 2 &&
              (face->flags & CCN_FACE_LINK) != 0) {
-        ccnd_msg(h, "Interest from %u out of scope - discarded", face->faceid);
-        res = -__LINE__;
+        ccnd_debug_ccnb(h, __LINE__, "interest_outofscope", face, msg, size);
     }
     else if (is_duplicate_flooded(h, msg, pi)) {
+        if (h->debug & 16)
+             ccnd_debug_ccnb(h, __LINE__, "interest_dup", face, msg, size);
         h->interests_dropped += 1;
     }
     else {
