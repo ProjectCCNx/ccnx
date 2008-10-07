@@ -25,10 +25,4 @@ size_t *ccn_indexbuf_reserve(struct ccn_indexbuf *c, size_t n);
 int ccn_indexbuf_append(struct ccn_indexbuf *c, const size_t *p, size_t n);
 int ccn_indexbuf_append_element(struct ccn_indexbuf *c, size_t v);
 
-/***********************************
- * Convenience functions for processing individual components based on 
- * indexbuf, especially as strings (though components need not be 
- * strings)
- */
-
 #endif
