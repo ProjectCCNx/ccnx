@@ -26,8 +26,9 @@
  * for the purposes of this header.
  */
 struct ccn_charbuf;
-struct hashtb;
+struct ccn_indexbuf;
 struct ccn_schedule;
+struct hashtb;
 
 /*
  * These are defined in this header.
@@ -83,6 +84,7 @@ struct ccnd {
     unsigned long interests_accepted;
     unsigned long interests_dropped;
     unsigned long interests_sent;
+    unsigned long interests_stuffed;
     unsigned short seed[3];
     int debug;
 };

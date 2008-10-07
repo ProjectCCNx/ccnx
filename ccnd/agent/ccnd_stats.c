@@ -98,7 +98,7 @@ collect_stats_html(struct ccnd *h)
         "<p class='header' width='100%%'>%s ccnd[%d] local port %s</p>"
         "<div><b>Content items:</b> %llu accessioned, %d stored, %d sparse, %lu duplicate, %lu sent</div>"
         "<div><b>Interests:</b> %d names, %ld pending, %ld propagating, %ld noted</div>"
-        "<div><b>Interest totals:</b> %lu accepted, %lu dropped, %lu sent</div>"
+        "<div><b>Interest totals:</b> %lu accepted, %lu dropped, %lu sent, %lu stuffed</div>"
         "<div><b>Active faces and listeners:</b> %d</div>"
         "</body>"
         "</html>",
@@ -114,7 +114,8 @@ collect_stats_html(struct ccnd *h)
         hashtb_n(h->interestprefix_tab), stats.total_interest_counts,
         hashtb_n(h->propagating_tab) - stats.total_flood_control,
         stats.total_flood_control,
-        h->interests_accepted, h->interests_dropped, h->interests_sent,
+        h->interests_accepted, h->interests_dropped,
+        h->interests_sent, h->interests_stuffed,
         hashtb_n(h->faces_by_fd) + hashtb_n(h->dgram_faces));
     ans = strdup((char *)b->buf);
     ccn_charbuf_destroy(&b);

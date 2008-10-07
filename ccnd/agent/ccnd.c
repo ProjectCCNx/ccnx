@@ -25,6 +25,7 @@
 #include <ccn/ccn.h>
 #include <ccn/ccnd.h>
 #include <ccn/charbuf.h>
+#include <ccn/indexbuf.h>
 #include <ccn/bloom.h>
 #include <ccn/hashtb.h>
 #include <ccn/schedule.h>
@@ -40,6 +41,7 @@ static void shutdown_client_fd(struct ccnd *h, int fd);
 static void process_input_message(struct ccnd *h, struct face *face,
                                   unsigned char *msg, size_t size, int pdu_ok);
 static void process_input(struct ccnd *h, int fd);
+static int ccn_stuff_interest(struct ccnd *h, struct face *face, struct ccn_charbuf *c);
 static void do_write(struct ccnd *h, struct face *face,
                      unsigned char *data, size_t size);
 static void do_deferred_write(struct ccnd *h, int fd);
@@ -632,7 +634,7 @@ send_content(struct ccnd *h, struct face *face, struct content_entry *content)
         ccnd_debug_ccnb(h, __LINE__, "strange_digest", face, content->key, size);
     ccn_charbuf_append(c, content->key, a);
     ccn_charbuf_append(c, content->key + b, size - b);
-    /* XXX - stuff interest here */
+    ccn_stuff_interest(h, face, c);
     if ((face->flags & CCN_FACE_LINK) != 0)
         ccn_charbuf_append_closer(c);
     do_write(h, face, c->buf, c->length);
@@ -720,6 +722,30 @@ indexbuf_unordered_set_insert(struct ccn_indexbuf *x, size_t val)
     if (ccn_indexbuf_append_element(x, val) < 0)
         return(-1);
     return(i);
+}
+
+/*
+ * Returns index at which the element was found,
+ * or -1 if the element was not found.
+ */
+static int
+indexbuf_unordered_set_remove(struct ccn_indexbuf *x, size_t val)
+{
+    int i;
+    int n;
+    if (x == NULL)
+        return (-1);
+    for (i = 0, n = x->n; i < n; i++) {
+        if (x->buf[i] == val) {
+            if (i + 1 < n)
+                memmove(&(x->buf[i]),
+                        &(x->buf[i + 1]),
+                        sizeof(x->buf[i]) * (n - i - 1));
+            x->n--;
+            return(i);
+        }
+    }
+    return(-1);
 }
 
 static int
@@ -815,24 +841,67 @@ match_interests(struct ccnd *h, struct content_entry *content,
 }
 
 /*
- * do_write_BFI:
- * This is temporary...
+ * stuff_and_write:
  */
 static void
-do_write_BFI(struct ccnd *h, struct face *face,
+stuff_and_write(struct ccnd *h, struct face *face,
              unsigned char *data, size_t size) {
     struct ccn_charbuf *c;
+    c = charbuf_obtain(h);
     if ((face->flags & CCN_FACE_LINK) != 0) {
-        c = charbuf_obtain(h);
         ccn_charbuf_reserve(c, size + 5);
         ccn_charbuf_append_tt(c, CCN_DTAG_CCNProtocolDataUnit, CCN_DTAG);
         ccn_charbuf_append(c, data, size);
+        ccn_stuff_interest(h, face, c);
         ccn_charbuf_append_closer(c);
-        do_write(h, face, c->buf, c->length);
-        charbuf_release(h, c);
-        return;
     }
-    do_write(h, face, data, size);
+    else {
+         ccn_charbuf_append(c, data, size);
+         ccn_stuff_interest(h, face, c);
+    }
+    do_write(h, face, c->buf, c->length);
+    charbuf_release(h, c);
+    return;
+}
+
+static int
+ccn_stuff_interest(struct ccnd *h, struct face *face, struct ccn_charbuf *c)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    int n_stuffed = 0;
+    /* Assume 1500 byte MTU, minus udp6 header overhead */
+    int remaining_space = 1500 - 48 - c->length;
+    if (remaining_space < 20)
+        return(0);
+    for (hashtb_start(h->interestprefix_tab, e);
+         remaining_space >= 20 && e->data != NULL; hashtb_next(e)) {
+        struct interestprefix_entry *ipe = e->data;
+        struct propagating_entry *head = ipe->propagating_head;
+        struct propagating_entry *p;
+        if (head != NULL) {
+            for (p = head->prev; p != head; p = p->prev) {
+                if (p->outbound != NULL && p->size <= remaining_space &&
+                      p->interest_msg != NULL &&
+                      indexbuf_unordered_set_remove(p->outbound, face->faceid) != -1) {
+                    remaining_space -= p->size;
+                    n_stuffed++;
+                    ccn_charbuf_append(c, p->interest_msg, p->size);
+                    h->interests_stuffed++;
+                    if (h->debug & 2)
+                        ccnd_debug_ccnb(h, __LINE__, "stuff_interest_to", face,
+                                        p->interest_msg, p->size);
+                    /*
+                     * Don't stuff multiple interests with same prefix
+                     * to avoid subverting attempts at redundancy.
+                     */
+                    break;
+                }
+            }
+        }
+    }
+    hashtb_end(e);
+    return(n_stuffed);
 }
 
 /*
@@ -1148,7 +1217,7 @@ do_propagate(struct ccn_schedule *sched,
             if (h->debug & 2)
                 ccnd_debug_ccnb(h, __LINE__, "interest_to", face,
                                 pe->interest_msg, pe->size);
-            do_write_BFI(h, face, pe->interest_msg, pe->size);
+            stuff_and_write(h, face, pe->interest_msg, pe->size);
             h->interests_sent += 1;
             next_delay = nrand48(h->seed) % 8192 + 500;
         }
