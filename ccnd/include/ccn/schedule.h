@@ -11,6 +11,8 @@
 #ifndef CCN_SCHEDULE_DEFINED
 #define CCN_SCHEDULE_DEFINED
 
+#include <stdint.h>
+
 struct ccn_schedule;
 struct ccn_scheduled_event;
 
