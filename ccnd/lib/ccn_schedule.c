@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <string.h>
-#include <sys/time.h>
 #include <ccn/schedule.h>
 
 /*
@@ -17,12 +16,13 @@ struct ccn_schedule_heap_item {
 
 struct ccn_schedule {
     void *clienth;
+    const struct ccn_gettime *clock;
     struct ccn_schedule_heap_item *heap;
     int heap_n;
     int heap_limit;
     int heap_height; /* this is validated just before use */
-    int now;      /* internal microsec corresponding to lasttime  */
-    struct timeval lasttime; /* actual time when we last checked  */
+    int now;         /* internal micros corresponding to lasttime  */
+    struct ccn_timeval lasttime; /* actual time when we last checked  */
     int time_has_passed; /* to prevent too-frequent time syscalls */
 };
 
@@ -46,18 +46,19 @@ update_epoch(struct ccn_schedule *sched)
 static void
 update_time(struct ccn_schedule *sched)
 {
-    struct timeval now = { 0 };
+    struct ccn_timeval now = { 0 };
     int elapsed;
     if (sched->time_has_passed < 0)
         return; /* For testing with clock stopped */
-    gettimeofday(&now, 0);
-    if ((unsigned)(now.tv_sec - sched->lasttime.tv_sec) >= INT_MAX/4000000) {
-        /* We have taken a large step forward or backward - do a repair */
+    sched->clock->gettime(sched->clock, &now);
+    // gettimeofday(&now, 0);
+    if ((unsigned)(now.s - sched->lasttime.s) >= INT_MAX/4000000) {
+        /* We have taken a backward or large step - do a repair */
         sched->lasttime = now;
     }
     sched->time_has_passed = 1;
-    elapsed = now.tv_usec - sched->lasttime.tv_usec +
-        1000000 * (now.tv_sec - sched->lasttime.tv_sec);
+    elapsed = now.micros - sched->lasttime.micros +
+        sched->clock->micros_per_base * (now.s - sched->lasttime.s);
     if (elapsed + sched->now < elapsed)
         update_epoch(sched);
     sched->now += elapsed;
@@ -65,12 +66,15 @@ update_time(struct ccn_schedule *sched)
 }
 
 struct ccn_schedule *
-ccn_schedule_create(void *clienth)
+ccn_schedule_create(void *clienth, const struct ccn_gettime *clock)
 {
     struct ccn_schedule *sched;
+    if (clock == NULL)
+        return(NULL);
     sched = calloc(1, sizeof(*sched));
     if (sched != NULL) {
         sched->clienth = clienth;
+        sched->clock = clock;
         update_time(sched);
     }
     return(sched);
@@ -86,27 +90,32 @@ ccn_schedule_destroy(struct ccn_schedule **schedp)
     }
 }
 
+const struct ccn_gettime *
+ccn_schedule_get_gettime(struct ccn_schedule *schedp) {
+    return(schedp->clock);
+}
+
 /*
  * heap_insert: insert a new item
  * n is the total heap size, counting the new item
  * h must satisfy (n >> h) == 1
  */
 static void
-heap_insert(struct ccn_schedule_heap_item *heap, int microsec,
+heap_insert(struct ccn_schedule_heap_item *heap, int micros,
             struct ccn_scheduled_event *ev, int h, int n)
 {
     int i;
     for (i = (n >> h); i < n; i = (n >> --h)) {
-        if (microsec <= heap[i-1].event_time) {
+        if (micros <= heap[i-1].event_time) {
             intptr_t d = heap[i-1].event_time;
             struct ccn_scheduled_event *e = heap[i-1].ev;
             heap[i-1].ev = ev;
-            heap[i-1].event_time = microsec;
-            microsec = d;
+            heap[i-1].event_time = micros;
+            micros = d;
             ev = e;
         }
     }
-    heap[n-1].event_time = microsec;
+    heap[n-1].event_time = micros;
     heap[n-1].ev = ev;
 }
 
@@ -118,14 +127,14 @@ static void
 heap_sift(struct ccn_schedule_heap_item *heap, int n)
 {
     int i, j;
-    int microsec;
+    int micros;
     if (n < 1)
         return;
-    microsec = heap[n-1].event_time;
+    micros = heap[n-1].event_time;
     for (i = 1, j = 2; j < n; i = j, j = 2 * j) {
         if (j + 1 < n && heap[j-1].event_time > heap[j].event_time)
             j += 1;
-        if (microsec < heap[j-1].event_time)
+        if (micros < heap[j-1].event_time)
             break;
         heap[i-1] = heap[j-1];
     }
@@ -141,16 +150,16 @@ heap_sift(struct ccn_schedule_heap_item *heap, int n)
 static struct ccn_scheduled_event *
 reschedule_event(
     struct ccn_schedule *sched,
-    int microsec,
+    int micros,
     struct ccn_scheduled_event *ev)
 {
     int lim;
     int n;
     int h;
     struct ccn_schedule_heap_item *heap;
-    if (microsec + sched->now < microsec)
+    if (micros + sched->now < micros)
         update_epoch(sched);
-    microsec += sched->now;
+    micros += sched->now;
     heap = sched->heap;
     n = sched->heap_n + 1;
     if (n > sched->heap_limit) {
@@ -167,7 +176,7 @@ reschedule_event(
         sched->heap_height = ++h;
     while ((n >> h) < 1)
         sched->heap_height = --h;
-    heap_insert(heap, microsec, ev, h, n);
+    heap_insert(heap, micros, ev, h, n);
     return(ev);
 }
 
@@ -177,7 +186,7 @@ reschedule_event(
 struct ccn_scheduled_event *
 ccn_schedule_event(
     struct ccn_schedule *sched,
-    int microsec,
+    int micros,
     ccn_scheduled_action action,
     void *evdata,
     intptr_t evint)
@@ -189,7 +198,7 @@ ccn_schedule_event(
     ev->evdata = evdata;
     ev->evint = evint;
     update_time(sched);
-    return(reschedule_event(sched, microsec, ev));
+    return(reschedule_event(sched, micros, ev));
 }
 
 /*
@@ -207,16 +216,16 @@ static void
 ccn_schedule_run_next(struct ccn_schedule *sched)
 {
     struct ccn_scheduled_event *ev;
-    int microsec;
+    int micros;
     int res;
     if (sched->heap_n == 0) return;
     ev = sched->heap[0].ev;
     sched->heap[0].ev = NULL;
-    microsec = sched->heap[0].event_time - sched->now;
+    micros = sched->heap[0].event_time - sched->now;
     heap_sift(sched->heap, sched->heap_n--);
     res = (ev->action)(sched, sched->clienth, ev, 0);
     if (res <= 0) {
-        free(ev); // XXX should quarantine this
+        free(ev); // XXX should maybe quarantine this
         return;
     }
     /*
@@ -224,15 +233,15 @@ ccn_schedule_run_next(struct ccn_schedule *sched)
      * event was originally scheduled, but if we have gotten
      * way behind, just use the current time.
      */
-    if (microsec < -10000000)
-        microsec = 0;
-    reschedule_event(sched, microsec + res, ev);
+    if (micros < -(int)(sched->clock->micros_per_base))
+        micros = 0;
+    reschedule_event(sched, micros + res, ev);
 }
 
 /*
  * ccn_schedule_run: do any scheduled events
  * This executes any scheduled actions whose time has come.
- * The return value is the number of microseconds until the next
+ * The return value is the number of micros until the next
  * scheduled event, or -1 if there are none.
  */
 int
@@ -253,6 +262,19 @@ ccn_schedule_run(struct ccn_schedule *sched)
 #ifdef TESTSCHEDULE
 // cc -g -o testschedule -DTESTSCHEDULE=main -I../include ccn_schedule.c
 #include <stdio.h>
+#include <sys/time.h>
+
+static void
+my_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
+{
+    struct timeval now = {0};
+    gettimeofday(&now, 0);
+    result->s = now.tv_sec;
+    result->micros = now.tv_usec;
+}
+
+static struct ccn_gettime gt = {"getTOD", &my_gettime, 1000000, NULL};
+
 static void
 testtick(struct ccn_schedule *sched)
 {
@@ -285,7 +307,7 @@ static int D(
 static struct ccn_schedule_heap_item tst[7];
 int TESTSCHEDULE()
 {
-    struct ccn_schedule *s = ccn_schedule_create(dd+5);
+    struct ccn_schedule *s = ccn_schedule_create(dd+5, &gt);
     int i;
     s->heap = tst; // for easy debugger display
     s->heap_limit = 7;

@@ -17,6 +17,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/un.h>
 #include <time.h>
@@ -2083,6 +2084,15 @@ ccnd_get_local_sockname(void)
     return(strdup(name_buf));
 }
 
+static void
+ccnd_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
+{
+    struct timeval now = {0};
+    gettimeofday(&now, 0);
+    result->s = now.tv_sec;
+    result->micros = now.tv_usec;
+}
+
 static struct ccnd *
 ccnd_create(void)
 {
@@ -2118,7 +2128,11 @@ ccnd_create(void)
     h->sparse_straggler_tab = hashtb_create(sizeof(struct sparse_straggler_entry), NULL);
     h->min_stale = ~0;
     h->max_stale = 0;
-    h->sched = ccn_schedule_create(h);
+    h->ticktock.descr[0] = 'C';
+    h->ticktock.micros_per_base = 1000000;
+    h->ticktock.gettime = &ccnd_gettime;
+    h->ticktock.data = h;
+    h->sched = ccn_schedule_create(h, &h->ticktock);
     h->oldformatcontentgrumble = 1;
     fd = create_local_listener(sockname, 42);
     if (fd == -1) fatal_err(sockname);

@@ -20,6 +20,7 @@
 #include <sys/types.h>
 
 #include <ccn/coding.h>
+#include <ccn/schedule.h>
 
 /*
  * These are defined in other ccn headers, but the incomplete types suffice
@@ -27,7 +28,6 @@
  */
 struct ccn_charbuf;
 struct ccn_indexbuf;
-struct ccn_schedule;
 struct hashtb;
 
 /*
@@ -64,6 +64,7 @@ struct ccnd {
     int httpd_listener_fd;
     nfds_t nfds;
     struct pollfd *fds;
+    struct ccn_gettime ticktock;
     struct ccn_schedule *sched;
     struct ccn_charbuf *scratch_charbuf;
     struct ccn_indexbuf *scratch_indexbuf;

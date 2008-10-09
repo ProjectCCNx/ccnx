@@ -17,6 +17,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/un.h>
 #include <time.h>
@@ -2037,6 +2038,17 @@ ccnd_get_local_sockname(void)
     return(strdup(name_buf));
 }
 
+static void
+my_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
+{
+    struct timeval now = {0};
+    gettimeofday(&now, 0);
+    result->s = now.tv_sec;
+    result->micros = now.tv_usec;
+}
+
+static struct ccn_gettime gettime = {"getTOD", &my_gettime, 1000000, NULL};
+
 static struct ccnd *
 ccnd_create(void) // XXX - neworder
 {
@@ -2067,7 +2079,7 @@ ccnd_create(void) // XXX - neworder
     param.finalize = &finalize_propagating;
     h->propagating_tab = hashtb_create(sizeof(struct propagating_entry), &param);
     h->backlinks = ccn_matrix_create();
-    h->sched = ccn_schedule_create(h);
+    h->sched = ccn_schedule_create(h, &gettime);
     fd = create_local_listener(sockname, 42);
     if (fd == -1) fatal_err(sockname);
     ccnd_msg(h, "listening on %s", sockname);
