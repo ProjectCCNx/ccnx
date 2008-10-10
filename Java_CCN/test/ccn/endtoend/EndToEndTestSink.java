@@ -55,12 +55,12 @@ public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestList
 	}
 	
 	public synchronized Interest handleContent(ArrayList<ContentObject> results) {
+		Interest interest = null;
 		try {
 			for (ContentObject contentObject : results) {
 				String objString = contentObject.name().toString();
-				Interest interest = new Interest(objString.substring(0, objString.lastIndexOf("/")) + "/" + new Integer(next).toString());
+				interest = new Interest(objString.substring(0, objString.lastIndexOf("/")) + "/" + new Integer(next).toString());
 				// Register interest
-				library.expressInterest(interest, this);
 				next++;
 			}
 			checkGetResults(results.get(0));
@@ -70,7 +70,7 @@ public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestList
 		} catch (Throwable e) {
 			error = e;
 		}
-		return null;
+		return interest;
 	}
 
 	public void addInterest(Interest interest) {
