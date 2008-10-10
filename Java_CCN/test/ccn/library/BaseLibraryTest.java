@@ -302,19 +302,20 @@ public class BaseLibraryTest {
 			return null;
 		}
 		public synchronized Interest handleContent(ArrayList<ContentObject> results) {
+			Interest newInterest = null;
 			for (ContentObject contentObject : results) {
 				try {
 					int val = Integer.parseInt(new String(contentObject.content()));
 					if (!accumulatedResults.contains(val)) {
 						accumulatedResults.add(val);
-						System.out.println("Got " + val);	
+						System.out.println("Got " + val);
+						if (accumulatedResults.size() < count) {
+							newInterest = Interest.next(contentObject);
+							break;
+						}
 					}
-					if (accumulatedResults.size() < count)
-						library.expressInterest(Interest.next(contentObject), this);
 				} catch (NumberFormatException nfe) {
 					Library.logger().info("Unexpected content, " + contentObject.name() + " is not an integer!");
-				} catch (IOException e) {
-					fail(e.getMessage());
 				}
 			}
 			checkGetResults(results.get(0));
@@ -323,10 +324,12 @@ public class BaseLibraryTest {
 				System.out.println("GetServer got all content: " + accumulatedResults.size() + ". Releasing semaphore.");
 				sema.release();
 			}
-			return  null;
+			return  newInterest;
 		}
+		
 		public void interestTimedOut(Interest interest) {
 		}
+		
 		public boolean matchesInterest(CompleteName name) {
 			return false;
 		}
