@@ -128,9 +128,8 @@ public class BaseLibraryTest {
 	 * @author smetters
 	 *
 	 */
-	public void checkGetResults(ArrayList<ContentObject> getResults) {
-		if (0 < getResults.size())
-			System.out.println("Got result: " + getResults.get(0).name());
+	public void checkGetResults(ContentObject getResults) {
+		System.out.println("Got result: " + getResults.name());
 	}
 	
 	public void checkPutResults(CompleteName putResult) {
@@ -159,27 +158,19 @@ public class BaseLibraryTest {
 	//	while (!done) {
 			Thread.sleep(rand.nextInt(50));
 			System.out.println("getResults getting " + baseName + " subitem " + i);
-			ArrayList<ContentObject> contents = library.get(ContentName.fromNative(baseName, Integer.toString(i)));
-			if (1 != contents.size()) {
-				Library.logger().info("Got " + contents.size() + " results at once!");
-			}
-			//assertEquals(1, contents.size());
-			for (int j=0; j < contents.size(); j++) {
-				if (contents.size() > 1) {
-					Library.logger().info("Content item: " + j + " name: " + contents.get(j).name());
+			ContentObject contents = library.get(ContentName.fromNative(baseName, Integer.toString(i)));
+		
+			try {
+				int val = Integer.parseInt(new String(contents.content()));
+				if (_resultSet.contains(val)) {
+					System.out.println("Got " + val + " again.");
+				} else {
+					System.out.println("Got " + val);
 				}
-				try {
-					int val = Integer.parseInt(new String(contents.get(j).content()));
-					if (_resultSet.contains(val)) {
-						System.out.println("Got " + val + " again.");
-					} else {
-						System.out.println("Got " + val);
-					}
-					_resultSet.add(val);
+				_resultSet.add(val);
 
-				} catch (NumberFormatException nfe) {
-					Library.logger().info("BaseLibraryTest: unexpected content - not integer. Name: " + contents.get(j).content());
-				}
+			} catch (NumberFormatException nfe) {
+				Library.logger().info("BaseLibraryTest: unexpected content - not integer. Name: " + contents.content());
 			}
 			//assertEquals(i, Integer.parseInt(new String(contents.get(0).content())));
 			checkGetResults(contents);
@@ -318,11 +309,15 @@ public class BaseLibraryTest {
 						accumulatedResults.add(val);
 						System.out.println("Got " + val);	
 					}
+					if (accumulatedResults.size() < count)
+						library.expressInterest(Interest.next(contentObject), this);
 				} catch (NumberFormatException nfe) {
 					Library.logger().info("Unexpected content, " + contentObject.name() + " is not an integer!");
+				} catch (IOException e) {
+					fail(e.getMessage());
 				}
 			}
-			checkGetResults(results);
+			checkGetResults(results.get(0));
 			
 			if (accumulatedResults.size() >= count) {
 				System.out.println("GetServer got all content: " + accumulatedResults.size() + ". Releasing semaphore.");

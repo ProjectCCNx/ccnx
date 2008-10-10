@@ -438,5 +438,13 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 	public byte [] contentDigest() {
 		 return CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, content());
 	}
+	
+	public static byte [] contentDigest(String content) {
+		 return CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, content.getBytes());
+	}
+	
+	public static byte [] contentDigest(byte [] content) {
+		 return CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, content);
+	}
 
 }

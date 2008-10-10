@@ -27,6 +27,7 @@ import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.CCNInterestListener;
+import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
@@ -574,31 +575,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 		
 		// Need recursive get. The currentName we have here is
 		// just the prefix of this version.
-		ArrayList<ContentObject> contents =
-			get(currentName, null, true);
-		
-		if (contents.size() > 1) {
-			Library.logger().info("Brain-dead getLatestVersion interface has " + contents.size() + " versions for name: " + name);
-			// We have multiple copies of the latest version.
-			// The immediate children of the name are either contents or headers.
-			// Find the most recent one.
-			ContentObject recentObject = null;
-			Iterator<ContentObject> cit = contents.iterator();
-			while (cit.hasNext()) {
-				ContentObject thisObject = cit.next();
-				
-				if ((null == recentObject) && 
-						(null != thisObject.authenticator())) {
-					recentObject = thisObject;
-				} else if ((null != thisObject.authenticator()) && 
-							(thisObject.authenticator().timestamp().after(recentObject.authenticator().timestamp()))) {
-					recentObject = thisObject;
-				}
-				return recentObject;
-			}
-		} else if (contents.size() > 0)
-			return contents.get(0);
-		return null;
+		return get(currentName, null, true);
 	}
 
 	/**
@@ -1051,18 +1028,23 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * DKS TODO: should this get at least verify?
 	 * @throws InterruptedException 
 	 */
-	public ArrayList<ContentObject> get(ContentName name, 
+	public ContentObject get(ContentName name, 
 										ContentAuthenticator authenticator,
 										boolean isRecursive) throws IOException, InterruptedException {
+		
 		return getNetworkManager().get(this, name, authenticator,isRecursive);
 	}
 	
-	public ArrayList<ContentObject> get(String name) throws MalformedContentNameStringException, IOException, InterruptedException {
-		return get(ContentName.fromURI(name), null, false);
+	public ContentObject get(ContentName name) throws IOException, InterruptedException {
+		return get(name, null, false);
 	}
 	
-	public ArrayList<ContentObject> get(ContentName name) throws IOException, InterruptedException {
-		return get(name, null, false);
+	/**
+	 * Experimental interface allowing direct gets via interest.
+	 * May be deprecated in the future
+	 */
+	public ContentObject get(Interest interest) throws IOException, InterruptedException {
+		return getNetworkManager().get(this, interest, null, true);
 	}
 
 	/**
@@ -1199,44 +1181,59 @@ public class StandardCCNLibrary implements CCNLibrary {
 	/**
 	 * getNext - get next content after specified content
 	 */
-	public ArrayList<ContentObject> getNext(String name, String content, int prefixCount)
+	public ContentObject getNext(ContentName name, ExcludeFilter omissions) 
+			throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException {
+		return generalGet(name, new Integer(Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME), omissions);
+	}
+	
+	public ContentObject getNext(ContentName name)
 			throws MalformedContentNameStringException, IOException,
 			InterruptedException, InvalidParameterException {
-		return generalGet(name, content, new Integer(prefixCount), new Integer(Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME));
+		return getNext(name, null);
 	}
 	
-	public ArrayList<ContentObject> getNext(String name, int prefixCount) 
+	public ContentObject getNext(ContentObject content, int prefixCount) 
 			throws InvalidParameterException, MalformedContentNameStringException, 
 			IOException, InterruptedException {
-		return getNext(name, null, prefixCount);
+		return getNext(contentObjectToContentName(content, prefixCount), null);
 	}
 	
-	public ArrayList<ContentObject> getLatest(String name, int prefixCount) throws InvalidParameterException, MalformedContentNameStringException, 
+	/**
+	 * Get last content in content stream
+	 */
+	public ContentObject getLatest(ContentName name, ExcludeFilter omissions) 
+			throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException {
+		return generalGet(name, new Integer(Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME), omissions);
+	}
+	
+	public ContentObject getLatest(ContentName name) throws InvalidParameterException, MalformedContentNameStringException, 
 			IOException, InterruptedException {
-		return generalGet(name, null, new Integer(prefixCount), new Integer(Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME));
+		return getLatest(name, null);
 	}
 	
-	private ContentName contentNameFromName(String name, String content, Integer prefixCount) 
-			throws MalformedContentNameStringException {
-		ContentName cn;
-		if (null != content) {
-			ContentName prefix = ContentName.fromNative(name, prefixCount);
-			ContentObject co = new ContentObject(prefix, new ContentAuthenticator(null, ContentAuthenticator.ContentType.LEAF, null), 
-						content.getBytes(), (Signature)null); 
-			cn = new ContentName(prefix, co.contentDigest());
-		} else
-			cn = ContentName.fromNative(name, prefixCount);
-		if (null != prefixCount && prefixCount > cn.count())
-			throw new InvalidParameterException("Requested prefix count: " + prefixCount + 
-							" exceeds number of components: " + cn.count());
-		return cn;
+	public ContentObject getLatest(ContentObject content, int prefixCount) throws InvalidParameterException, MalformedContentNameStringException, 
+			IOException, InterruptedException {
+		return getLatest(contentObjectToContentName(content, prefixCount), null);
 	}
-
-	private ArrayList<ContentObject> generalGet(String name, String content, Integer prefixCount, Integer orderPreference) 
+	
+	public ContentObject getExcept(ContentName name, ExcludeFilter omissions) throws InvalidParameterException, MalformedContentNameStringException, 
+			IOException, InterruptedException {
+		return null;
+	}
+	
+	private ContentName contentObjectToContentName(ContentObject content, int prefixCount) {
+		ContentName cocn = content.name();
+		cocn.components().add(content.contentDigest());
+		return new ContentName(cocn.count(), cocn.components(), new Integer(prefixCount));
+	}
+	
+	private ContentObject generalGet(ContentName name, Integer orderPreference, ExcludeFilter omissions) 
 			throws IOException, InterruptedException, MalformedContentNameStringException {
-		Interest interest = new Interest(contentNameFromName(name, content, prefixCount));
+		Interest interest = new Interest(name);
 		if (null != orderPreference)
 			interest.orderPreference(orderPreference);
+		if (null != omissions)
+			interest.excludeFilter(omissions);
 		return getNetworkManager().get(this, interest, null, true);
 	}
 }

@@ -503,14 +503,14 @@ public class CCNSimpleNetworkManager implements Runnable {
 		//return CCNRepositoryManager.getRepositoryManager().put(name, authenticator, signature, content);
 	}
 	
-	public ArrayList<ContentObject> get(Object caller, ContentName name, 
+	public ContentObject get(Object caller, ContentName name, 
 									    ContentAuthenticator authenticator,
 									    boolean isRecursive) throws IOException, InterruptedException {
 		Interest interest = new Interest(name);
 		return get(caller, interest, authenticator, isRecursive);
 	}
 	
-	public ArrayList<ContentObject> get(Object caller, Interest interest, 
+	public ContentObject get(Object caller, Interest interest, 
 									    ContentAuthenticator authenticator,
 									    boolean isRecursive) throws IOException, InterruptedException {
 		Library.logger().fine("get: " + interest.name());
@@ -535,8 +535,8 @@ public class CCNSimpleNetworkManager implements Runnable {
 		// Typically the main processing thread will have registered the interest
 		// which must be undone here, but no harm if never registered
 		unregisterInterest(reg);
-		return reg.popData();
-		//return CCNRepositoryManager.getRepositoryManager().get(name, authenticator, isRecursive);
+		ArrayList<ContentObject> result = reg.popData();
+		return result.size() > 0 ? result.get(0) : null;
 	}
 
 

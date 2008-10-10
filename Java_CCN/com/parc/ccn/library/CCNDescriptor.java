@@ -9,7 +9,6 @@ import java.security.SignatureException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -22,8 +21,8 @@ import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.library.CCNLibrary.OpenMode;
-import com.parc.ccn.security.crypto.CCNMerkleTree;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
+import com.parc.ccn.security.crypto.CCNMerkleTree;
 
 /**
  * An object which contains state operation for 
@@ -260,58 +259,37 @@ public class CCNDescriptor {
 		// prefiltering? Can it mark objects as verified?
 		// do we want to use the low-level get, as the high-level
 		// one might unfragment?
-		ArrayList<ContentObject> headers = _library.get(_headerName, name.authenticator(), false);
+		ContentObject header = _library.get(_headerName, name.authenticator(), false);
 		
-		if ((null == headers) || (headers.size() == 0)) {
+		if (null == header) {
 			Library.logger().info("No available content named: " + _headerName.toString());
 			throw new FileNotFoundException("No available content named: " + _headerName.toString());
 		}
-		// So for each header, we assume we have a potential document.
+		// So for the header, we assume we have a potential document.
 		
 		// First we verify. (Or should get have done this for us?)
 		// We don't bother complaining unless we have more than one
 		// header that matches. Given that we would complain for
 		// that, we need an enumerate that operates at this level.)
-		Iterator<ContentObject> headerIt = headers.iterator();
-		while (headerIt.hasNext()) {
-			ContentObject header = headerIt.next();
 			// TODO: DKS: should this be header.verify()?
 			// Need low-level verify as well as high-level verify...
 			// Low-level verify just checks that signer actually signed.
 			// High-level verify checks trust.
-			try {
-				if (!_library.verify(header, null)) {
-					Library.logger().warning("Found header: " + header.name().toString() + " that fails to verify.");
-					headerIt.remove();
-				}
-			} catch (Exception e) {
-				Library.logger().warning("Got an " + e.getClass().getName() + " exception attempting to verify header: " + header.name().toString() + ", treat as failure to verify.");
-				Library.warningStackTrace(e);
-				headerIt.remove();
+		try {
+			if (!_library.verify(header, null)) {
+				Library.logger().warning("Found header: " + header.name().toString() + " that fails to verify.");
 			}
-		}
-		if (headers.size() == 0) {
-			Library.logger().info("No available verifiable content named: " + _headerName.toString());
-			throw new FileNotFoundException("No available verifiable content named: " + _headerName.toString());
-		}
-		if (headers.size() > 1) {
-			Library.logger().info("Found " + headers.size() + " headers matching the name: " + _headerName.toString());
-			throw new IOException("CCNException: More than one (" + headers.size() + ") valid header found for name: " + _headerName.toString() + " in open!");
+		} catch (Exception e) {
+			Library.logger().warning("Got an " + e.getClass().getName() + " exception attempting to verify header: " + header.name().toString() + ", treat as failure to verify.");
+			Library.warningStackTrace(e);
 		}
 		
-		ContentObject headerObject = headers.get(0);
-		
-		if (headerObject == null) {
-			Library.logger().info("Found only null headers matching the name: " + _headerName.toString());
-			throw new IOException("CCNException: No non-null header found for name: " + _headerName.toString() + " in open!");
-		}
-		
-		_headerAuthenticator = headerObject.authenticator();
-		_baseName = StandardCCNLibrary.headerRoot(headerObject.name());
+		_headerAuthenticator = header.authenticator();
+		_baseName = StandardCCNLibrary.headerRoot(header.name());
 		
 		_header = new Header();
-		_header.decode(headerObject.content());
-		Library.logger().info("Opened " + headerObject.name() + " for reading. Total length: " + _header.length() + " blocksize: " + _header.blockSize() + " total blocks: " + blockCount());
+		_header.decode(header.content());
+		Library.logger().info("Opened " + header.name() + " for reading. Total length: " + _header.length() + " blocksize: " + _header.blockSize() + " total blocks: " + blockCount());
 	}
 	
 	/**
@@ -532,70 +510,51 @@ public class CCNDescriptor {
 
 		ContentName blockName = StandardCCNLibrary.fragmentName(_baseName, number);
 
-		ArrayList<ContentObject> blocks = _library.get(blockName, _headerAuthenticator, false);
+		ContentObject block = _library.get(blockName, _headerAuthenticator, false);
 		
-		if ((null == blocks) || (blocks.size() == 0)) {
+		if (null == block) {
 			Library.logger().info("Cannot get block " + number + " of file " + _baseName + " expected block: " + blockName.toString());
 			throw new IOException("Cannot get block " + number + " of file " + _baseName + " expected block: " + blockName.toString());
 		}
-		// So for each header, we assume we have a potential document.
+		// So for the block, we assume we have a potential document.
 		
 		// First we verify. (Or should get have done this for us?)
 		// We don't bother complaining unless we have more than one
 		// header that matches. Given that we would complain for
 		// that, we need an enumerate that operates at this level.)
-		Iterator<ContentObject> blockIt = blocks.iterator();
-		while (blockIt.hasNext()) {
-			ContentObject block = blockIt.next();
-			// TODO: DKS: should this be header.verify()?
-			// Need low-level verify as well as high-level verify...
-			// Low-level verify just checks that signer actually signed.
-			// High-level verify checks trust.
-			try {
-				// Compare to see whether this block matches the root signature we previously verified, if
-				// not, verify and store the current signature.
-				// We need to compute the proxy regardless.
-				byte [] proxy = block.computeProxy();
+		// TODO: DKS: should this be header.verify()?
+		// Need low-level verify as well as high-level verify...
+		// Low-level verify just checks that signer actually signed.
+		// High-level verify checks trust.
+		try {
+			// Compare to see whether this block matches the root signature we previously verified, if
+			// not, verify and store the current signature.
+			// We need to compute the proxy regardless.
+			byte [] proxy = block.computeProxy();
 
-				// OK, if we have an existing verified signature, and it matches this block's
-				// signature, the proxy ought to match as well.
-				if ((null != _verifiedRootSignature) || (Arrays.equals(_verifiedRootSignature, block.signature().signature()))) {
-					if ((null == proxy) || (null == _verifiedProxy) || (!Arrays.equals(_verifiedProxy, proxy))) {
-						Library.logger().warning("Found block: " + block.name().toString() + " whose digest fails to verify.");
-						blockIt.remove();
-					}
+			// OK, if we have an existing verified signature, and it matches this block's
+			// signature, the proxy ought to match as well.
+			if ((null != _verifiedRootSignature) || (Arrays.equals(_verifiedRootSignature, block.signature().signature()))) {
+				if ((null == proxy) || (null == _verifiedProxy) || (!Arrays.equals(_verifiedProxy, proxy))) {
+					Library.logger().warning("Found block: " + block.name().toString() + " whose digest fails to verify.");
+				}
+			} else {
+				// Verifying a new block. See if the signature verifies, otherwise store the signature
+				// and proxy.
+				if (!ContentObject.verify(proxy, block.signature().signature(), block.authenticator(), block.signature().digestAlgorithm(), null)) {
+					Library.logger().warning("Found block: " + block.name().toString() + " whose signature fails to verify.");		
 				} else {
-					// Verifying a new block. See if the signature verifies, otherwise store the signature
-					// and proxy.
-					if (!ContentObject.verify(proxy, block.signature().signature(), block.authenticator(), block.signature().digestAlgorithm(), null)) {
-						Library.logger().warning("Found block: " + block.name().toString() + " whose signature fails to verify.");
-						blockIt.remove();						
-					} else {
-						// Remember current verifiers
-						_verifiedRootSignature = block.signature().signature();
-						_verifiedProxy = proxy;
-					}
-				} 
-				Library.logger().info("Got block: " + block.name().toString() + ", verified.");
-			} catch (Exception e) {
-				Library.logger().warning("Got an " + e.getClass().getName() + " exception attempting to verify block: " + block.name().toString() + ", treat as failure to verify.");
-				Library.warningStackTrace(e);
-				blockIt.remove();
-			}
+					// Remember current verifiers
+					_verifiedRootSignature = block.signature().signature();
+					_verifiedProxy = proxy;
+				}
+			} 
+			Library.logger().info("Got block: " + block.name().toString() + ", verified.");
+		} catch (Exception e) {
+			Library.logger().warning("Got an " + e.getClass().getName() + " exception attempting to verify block: " + block.name().toString() + ", treat as failure to verify.");
+			Library.warningStackTrace(e);
 		}
-		if (blocks.size() == 0) {
-			Library.logger().info("No available verifiable content named: " + blockName.toString());
-			throw new FileNotFoundException("No available verifiable content named: " + blockName.toString());
-		}
-		if (blocks.size() > 1) {
-			Library.logger().info("Found " + blocks.size() + " blocks matching the name: " + blockName.toString());
-			throw new IOException("CCNException: More than one (" + blocks.size() + ") valid block found for name: " + blockName.toString() + " in open!");
-		}
-		if (blocks.get(0) == null) {
-			Library.logger().info("Found only null blocks matching the name: " + blockName.toString());
-			throw new IOException("CCNException: No non-null blocks found for name: " + blockName.toString() + " in open!");
-		}
-		return blocks.get(0);
+		return block;
 	}
 
 	protected int blockCount() {

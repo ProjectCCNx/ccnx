@@ -4,21 +4,13 @@ package test.ccn.endtoend;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
-import java.util.Random;
-import java.util.concurrent.Semaphore;
-import java.util.logging.Level;
 
-import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.Library;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.util.BinaryXMLCodec;
-import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.StandardCCNLibrary;
 
 //NOTE: This test requires ccnd to be running and complementary sink process 
 

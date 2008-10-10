@@ -61,14 +61,13 @@ public class StandardCCNLibraryTest {
 
 				// Just get by name, to test equivalent to current
 				// ONC interface.
-				ArrayList<ContentObject> theObject = 
-					library.get(theName.name(), null, false);
+				ContentObject theObject = library.get(theName.name(), null, false);
 
-				if (theObject.size() == 0) {
+				if (null == theObject) {
 					System.out.println("Missing content: enumerated name: " + theName.name() + " not gettable.");
 
 				} else {
-					System.out.println("Retrieved " + theObject.size() + " versions of enumerated name: " + theName.name());
+					System.out.println("Retrieved name: " + theName.name());
 				}
 			}
 
@@ -159,23 +158,19 @@ public class StandardCCNLibraryTest {
 			ContentName keyName = ContentName.fromNative(key);
 			CompleteName name = library.put(keyName, data1);
 			System.out.println("Put under name: " + name.name());
-			ArrayList<ContentObject> results = 
-				library.get(
-						name.name(), name.authenticator(), false);
+			ContentObject result = library.get(name.name(), name.authenticator(), false);
 
-			System.out.println("Querying for returned name, Got back: " + results.size() + " results.");
+			System.out.println("Querying for returned name, Got back: " + (result == null ? "0"  : "1") + " results.");
 
-			if (results.size() == 0) {
+			if (result == null) {
 				System.out.println("Didn't get back content we just put in.");
 				System.out.println("Put under name: " + keyName);
 				System.out.println("Final name: " + name.name());
 				//Assert.fail("Didn't get back content we just put!");
 
-				results = 
-					library.get(
-							name.name(), name.authenticator(), true);
+				result = library.get(name.name(), name.authenticator(), true);
 
-				System.out.println("Recursive querying for returned name, Got back: " + results.size() + " results.");
+				System.out.println("Recursive querying for returned name, Got back: " + (result == null ? "0"  : "1") + " results.");
 
 				ContentName parentName = name.name().parent();
 				System.out.println("Inserted name's parent same as key name? " + parentName.equals(keyName));
@@ -228,32 +223,24 @@ public class StandardCCNLibraryTest {
 
 
 			} else {
-				byte [] content = results.get(0).content();
+				byte [] content = result.content();
 				Assert.assertNotNull("No content associated with name we just put!", content);
 				Assert.assertTrue("didn't get back same data", new String(data1).equals(new String(content)));
 			}
 
-			results = 
-				library.get(
-						keyName, null, true);
+			result = library.get(keyName, null, true);
 
-			System.out.println("Querying for inserted name, Got back: " + results.size() + " results.");
+			System.out.println("Querying for inserted name, Got back: " 
+							+ (result == null ? "0"  : "1") + " results.");
 
-			if (results.size() == 0)
+			if (result == null)
 				Assert.fail("Didn't get back content we just put!");
 
-			Iterator<ContentObject> rit = results.iterator();
-			boolean gotit = false;
-			while (rit.hasNext()) {
-				ContentObject co = rit.next();
-				if (co.name().equals(name.name()) &&
-						co.authenticator().equals(name.authenticator())) {
-					System.out.println("Got back name we inserted.");
-					gotit = true;
-					break;
-				}
-			}
-			Assert.assertTrue("Didn't get back data we just inserted!",gotit);
+			if (result.name().equals(name.name()) &&
+					result.authenticator().equals(name.authenticator())) {
+				System.out.println("Got back name we inserted.");
+			} else
+				Assert.fail("Didn't get back data we just inserted!");
 		} catch (Exception e) {
 			System.out.println("Exception in testing recall: " + e.getClass().getName() + ": " + e.getMessage());
 			Assert.fail(e.getMessage());
@@ -296,10 +283,8 @@ public class StandardCCNLibraryTest {
 	public void testNotFound() throws Exception {
 		try {
 			String key = "/some_strange_key_we_should_never_find";
-			ArrayList<ContentObject> results = 
-				library.get(
-						ContentName.fromNative(key), null, false);
-			Assert.assertTrue("found something when there shouldn't have been anything", results.size() == 0);
+			ContentObject result = library.get(ContentName.fromNative(key), null, false);
+			Assert.assertTrue("found something when there shouldn't have been anything", result != null);
 		} catch (Exception e) {
 			System.out.println("Exception in testing recall: " + e.getClass().getName() + ": " + e.getMessage());
 			Assert.fail(e.getMessage());

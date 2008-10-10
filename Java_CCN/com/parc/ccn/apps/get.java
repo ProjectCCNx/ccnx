@@ -2,7 +2,6 @@ package com.parc.ccn.apps;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
 
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
@@ -33,18 +32,15 @@ public class get {
 			if (args.length == 2) {
 				// Adjust to use defragmenting interface, find latest
 				// version, etc...
-				ArrayList<ContentObject> objects = library.get(argName, null, true);
+				ContentObject object = library.get(argName, null, true);
 				
-				System.out.println("Retrieved " + objects.size() + " objects named: " + argName);
+				System.out.println("Retrieved an object named: " + argName);
 				System.out.println("Writing to file " + args[1]);
-				if (objects.size() > 0) {
-					// just handle first one for now
-				
-					FileOutputStream fos = new FileOutputStream(args[1]);
-					fos.write(objects.get(0).content());
-					fos.flush();
-					fos.close();
-				}
+			
+				FileOutputStream fos = new FileOutputStream(args[1]);
+				fos.write(object.content());
+				fos.flush();
+				fos.close();
 				
 			} else {
 				// put something more interesting here

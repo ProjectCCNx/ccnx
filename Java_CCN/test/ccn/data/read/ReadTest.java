@@ -10,6 +10,7 @@ import org.junit.Test;
 import test.ccn.endtoend.BaseLibrarySource;
 
 import com.parc.ccn.data.CompleteName;
+import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
@@ -39,11 +40,10 @@ public class ReadTest extends BaseLibrarySource implements CCNInterestListener {
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
 			int tValue = rand.nextInt(count - 1);
-			ArrayList<ContentObject> results = library.getNext("/getNext/" + new Integer(tValue).toString(), 
-					Integer.toString(count - tValue), 1);
-			for (ContentObject result : results) {
-				checkResult(result, tValue + 1);
-			}
+			ContentName prefix = ContentName.fromNative("/getNext/" + new Integer(tValue).toString(), 1);
+			ContentName cn = new ContentName(prefix, ContentObject.contentDigest(Integer.toString(count - tValue)));
+			ContentObject result = library.getNext(cn);
+			checkResult(result, tValue + 1);
 		}
 		System.out.println("getNext test finished");
 	}
@@ -59,10 +59,8 @@ public class ReadTest extends BaseLibrarySource implements CCNInterestListener {
 				highest = tValue;
 			library.put("/getLatest/" + Integer.toString(tValue), Integer.toString(tValue));
 			Thread.sleep(rand.nextInt(50));
-			ArrayList<ContentObject> results = library.getLatest("/getLatest/" + Integer.toString(tValue), 1);
-			for (ContentObject result : results) {
-				checkResult(result, highest);
-			}
+			ContentObject result = library.getLatest(ContentName.fromNative("/getLatest/" + Integer.toString(tValue), 1));
+			checkResult(result, highest);
 		}
 		System.out.println("getLatest test finished");
 	}

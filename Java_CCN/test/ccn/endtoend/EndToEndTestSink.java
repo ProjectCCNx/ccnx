@@ -4,19 +4,14 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.ArrayList;
 import java.util.Random;
-import java.util.concurrent.Semaphore;
-import java.util.logging.Level;
 
-import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.Library;
 import com.parc.ccn.data.CompleteName;
+import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.StandardCCNLibrary;
 
 // NOTE: This test requires ccnd to be running and complementary source process
 
@@ -32,9 +27,8 @@ public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestList
 		Random rand = new Random();
 		for (int i = 0; i < BaseLibrarySource.count; i++) {
 			Thread.sleep(rand.nextInt(50));
-			ArrayList<ContentObject> contents = library.get("/BaseLibraryTest/gets/" + i);
-			assertEquals(1, contents.size());
-			int value = contents.get(0).content()[0];
+			ContentObject contents = library.get(ContentName.fromNative("/BaseLibraryTest/gets/" + i));
+			int value = contents.content()[0];
 			// Note that we cannot be guaranteed to pick up every value:
 			// due to timing we may miss a value that arrives while we are not
 			// in the get()
@@ -69,7 +63,7 @@ public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestList
 				library.expressInterest(interest, this);
 				next++;
 			}
-			checkGetResults(results);
+			checkGetResults(results.get(0));
 			if (next >= BaseLibrarySource.count) {
 				sema.release();
 			}

@@ -680,14 +680,12 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	 * @throws RepositoryException 
 	 * @throws InvalidQueryException 
 	 */
-	public ArrayList<ContentObject> get(ContentName name, 
+	public ContentObject get(ContentName name, 
 										ContentAuthenticator authenticator,
 										boolean isRecursive) throws IOException {
 		
 		if (null == name) 
 			return null;
-		
-		ArrayList<ContentObject> objects = new ArrayList<ContentObject>();
 
 		try {
 			// Strips trailing '*' if there is one.
@@ -721,7 +719,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 					// DKS TODO: this is a temporary hack to mark CCN nodes.
 					// either need better query to only pull these out,
 					// which might need a different node type
-					objects.add(getContentObject(node));
+					return (getContentObject(node));
 				} 
 			}
 			// Library.logger().warning("Query returned " + iter.getSize() + " results, of which " + objects.size() + " were CCN nodes.");
@@ -730,7 +728,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 			Library.warningStackTrace(e);
 			throw new IOException("Invalid query or problem executing get: " + e.getMessage());
 		}
-		return objects;
+		return null;
 	}
 	
 	/**
@@ -1443,11 +1441,8 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		// need to handle multiple pieces of content intelligently
 		try {
 			for (Interest interest : interests) {
-				ArrayList<ContentObject> found = get(interest.name(), null, true);
-				if (found.size() > 0) {
-					ContentObject obj = found.get(0);
-					_library.put(obj.name(), obj.authenticator(), obj.content(), obj.signature());
-				}
+				ContentObject found = get(interest.name(), null, true);
+				_library.put(found.name(), found.authenticator(), found.content(), found.signature());
 			}
 		} catch (IOException e) {
 			Library.logger().warning(e.getMessage());

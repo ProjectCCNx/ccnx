@@ -36,7 +36,7 @@ public class BaseLibrarySink {
 	 * @author smetters
 	 *
 	 */
-	public void checkGetResults(ArrayList<ContentObject> getResults) {
-		System.out.println("Got result: " + getResults.get(0).name());
+	public void checkGetResults(ContentObject getResults) {
+		System.out.println("Got result: " + getResults.name());
 	}
 }

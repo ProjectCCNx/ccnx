@@ -19,6 +19,7 @@ import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.CCNInterestListener;
+import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
@@ -129,8 +130,12 @@ public interface CCNLibrary extends CCNBase {
 			PublisherKeyID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, IOException, InterruptedException;
 	
-	public ArrayList<ContentObject> get(String name) throws MalformedContentNameStringException, IOException, InterruptedException;
-	public ArrayList<ContentObject> get(ContentName name) throws IOException, InterruptedException;
+	public ContentObject get(ContentName name) throws IOException, InterruptedException;
+	
+	/*
+	 * Experimental interface - may be deprecated in the future
+	 */
+	public ContentObject get(Interest interest) throws IOException, InterruptedException;
 
 	/**
 	 * Get the latest version published by this publisher,
@@ -256,11 +261,19 @@ public interface CCNLibrary extends CCNBase {
 	/**
 	 * Medium level interface for retrieving pieces of a file
 	 */
-	public ArrayList<ContentObject> getNext(String name, int prefixCount) 
+	public ContentObject getNext(ContentName name) 
 					throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException;
-	public ArrayList<ContentObject> getNext(String name, String content, int prefixCount)
+	public ContentObject getNext(ContentName name, ExcludeFilter omissions) 
 					throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException;
-	public ArrayList<ContentObject> getLatest(String name, int prefixCount) 
+	public ContentObject getNext(ContentObject content, int prefixCount)
+					throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException;
+	public ContentObject getLatest(ContentName name) 
+					throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException;
+	public ContentObject getLatest(ContentObject content, int prefixCount) 
+					throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException;
+	public ContentObject getLatest(ContentName name, ExcludeFilter omissions) 
+					throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException;
+	public ContentObject getExcept(ContentName name, ExcludeFilter omissions) 
 					throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException;
 	
 	/**

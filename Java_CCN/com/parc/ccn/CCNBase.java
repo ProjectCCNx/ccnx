@@ -48,7 +48,7 @@ public interface CCNBase {
 	 * @throws IOException
 	 * @throws InterruptedException 
 	 */
-	public ArrayList<ContentObject> get(
+	public ContentObject get(
 			ContentName name,
 			ContentAuthenticator authenticator,
 			boolean isRecursive) throws IOException, InterruptedException;

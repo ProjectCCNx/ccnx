@@ -1,5 +1,6 @@
 package com.parc.ccn.data.query;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 
 import javax.xml.stream.XMLStreamException;
@@ -212,6 +213,21 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			}
 		}
 		return false;
+	}
+	
+	/**
+	 * Construct an interest that will give you the next content after the
+	 * argument ContentObject
+	 * @param co
+	 * @return
+	 */
+	public static Interest next(ContentObject co) {
+		ArrayList<byte []>components = co.name().components();
+		components.add(co.contentDigest());
+		ContentName nextName = new ContentName(components.size(), components, components.size() - 2);
+		Interest interest = new Interest(nextName);
+		interest.orderPreference(ORDER_PREFERENCE_LEFT | ORDER_PREFERENCE_ORDER_NAME);
+		return interest;
 	}
 	
 	public boolean recursive() { return true; }

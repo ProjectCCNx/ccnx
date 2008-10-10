@@ -147,21 +147,21 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 	 * We have applications that want both recursive and nonrecursive
 	 * behavior. Make that controllable, to let us decide whether
 	 * we need to support both in the final repository protocol.
-	 * @throws InterruptedException 
+	 * @throws InterruptedException
+	 * 
+	 * Paul R note - presumably this will be deprecated soon anyway but for now just get from the
+	 * first repository we see so we only return one thing and don't violate the API
 	 */
-	public ArrayList<ContentObject> get(ContentName name, 
+	public ContentObject get(ContentName name, 
 									    ContentAuthenticator authenticator,
 									    boolean isRecursive) throws IOException, InterruptedException {
-		// Primary no longer treated separately -- part of deprecating this entire class
-		//ArrayList<ContentObject> results = _primaryRepository.get(name, authenticator, isRecursive);
-		ArrayList<ContentObject> results = new ArrayList<ContentObject>();
 		
 		for (int i=0; i < _repositories.size(); ++i) {
 			if (null != _repositories.get(i)) {
-				results.addAll(_repositories.get(i).get(name, authenticator, isRecursive));
+				return (_repositories.get(i).get(name, authenticator, isRecursive));
 			}
 		}
-		return results;
+		return null;
 	}
 
 	/**

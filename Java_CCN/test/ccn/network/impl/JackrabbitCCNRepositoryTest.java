@@ -149,19 +149,17 @@ public class JackrabbitCCNRepositoryTest {
 	public void tearDown() throws Exception {
 	}
 
-	public void checkGetResults(ArrayList<ContentObject> getResults) {
+	public void checkGetResults(ContentObject getResults) {
 		boolean verifySig = false;
-		for (int i=0; i < getResults.size(); ++i) {
-			try {
-				verifySig = getResults.get(i).verify(pair.getPublic());
-				Library.logger().info("Get signature verified? " + verifySig);
-				assertTrue(verifySig);
-			} catch (Exception e) {
-				Library.logger().info("Exception in checkGetResults for name: " + getResults.get(i).name() +": " + e.getClass().getName() + " " + e.getMessage());
-				Library.infoStackTrace(e);
-				fail();			
-			}
-		} 
+		try {
+			verifySig = getResults.verify(pair.getPublic());
+			Library.logger().info("Get signature verified? " + verifySig);
+			assertTrue(verifySig);
+		} catch (Exception e) {
+			Library.logger().info("Exception in checkGetResults for name: " + getResults.name() +": " + e.getClass().getName() + " " + e.getMessage());
+			Library.infoStackTrace(e);
+			fail();			
+		}
 	}
 	
 	public void checkPutResults(CompleteName putResult) {
@@ -226,7 +224,7 @@ public class JackrabbitCCNRepositoryTest {
 		assertNotNull(repo);
 		
 		Library.logger().info("Adding content.");
-		ArrayList<ContentObject> retrievedNames = null;
+		ContentObject retrievedNames = null;
 		try {
 			int index = new Random().nextInt(1000);
 			String collection = "Collection-" + Integer.toString(index);
@@ -240,8 +238,8 @@ public class JackrabbitCCNRepositoryTest {
 
 				retrievedNames = repo.get(outname.name(), null, false);
 				
-				assertEquals(retrievedNames.size(), 1);
-				assertEquals(i, Integer.parseInt(new String(retrievedNames.get(0).content())));
+				assertTrue(retrievedNames != null);
+				assertEquals(i, Integer.parseInt(new String(retrievedNames.content())));
 				checkGetResults(retrievedNames);
 				System.out.println("Got " + i);
 			}
@@ -259,7 +257,7 @@ public class JackrabbitCCNRepositoryTest {
 		assertNotNull(repo);
 		
 		Library.logger().info("Adding content.");
-		ArrayList<ContentObject> retrievedNames = null;
+		ContentObject retrievedNames = null;
 		try {
 			int index = new Random().nextInt(1000);
 			String collection = "Collection-" + Integer.toString(index);
@@ -273,9 +271,9 @@ public class JackrabbitCCNRepositoryTest {
 			}
 			
 			retrievedNames = repo.get(startName, null, true);
-			Library.logger().info("Recursive retrieve, got " + retrievedNames.size() + " results, expected " + VERSION_COUNT + ".");
+			Library.logger().info("Recursive retrieve, got " + retrievedNames == null ? "0" : "1" + " results, expected " + VERSION_COUNT + ".");
 				
-			assertTrue(retrievedNames.size() >= VERSION_COUNT);
+			assertTrue(retrievedNames != null);
 			checkGetResults(retrievedNames);
 			
 		} catch (Exception e) {
@@ -292,7 +290,7 @@ public class JackrabbitCCNRepositoryTest {
 		assertNotNull(repo);
 		
 		Library.logger().info("Adding content.");
-		ArrayList<ContentObject> retrievedNames = null;
+		ContentObject retrievedNames = null;
 		try {
 			int index = new Random().nextInt(1000);
 			String collection = "Collection-" + Integer.toString(index);
@@ -306,8 +304,8 @@ public class JackrabbitCCNRepositoryTest {
 
 				retrievedNames = repo.get(outname.name(), outname.authenticator(), false);
 				
-				assertEquals(retrievedNames.size(), 1);
-				assertEquals(i, Integer.parseInt(new String(retrievedNames.get(0).content())));
+				assertTrue(retrievedNames != null);
+				assertEquals(i, Integer.parseInt(new String(retrievedNames.content())));
 				checkGetResults(retrievedNames);
 				System.out.println("Got " + i);
 			}
@@ -325,7 +323,7 @@ public class JackrabbitCCNRepositoryTest {
 		assertNotNull(repo);
 		
 		Library.logger().info("Adding content.");
-		ArrayList<ContentObject> retrievedNames = null;
+		ContentObject retrievedNames = null;
 		try {
 			int index = new Random().nextInt(1000);
 			String collection = "Collection-" + Integer.toString(index);
@@ -340,9 +338,9 @@ public class JackrabbitCCNRepositoryTest {
 			
 			ContentAuthenticator pubOnlyAuth = new ContentAuthenticator(pubID);
 			retrievedNames = repo.get(startName, pubOnlyAuth, true);
-			Library.logger().info("Recursive retrieve, got " + retrievedNames.size() + " results, expected " + VERSION_COUNT + ".");
+			Library.logger().info("Recursive retrieve, got " + retrievedNames == null ? "0"  : "1" + " results, expected " + VERSION_COUNT + ".");
 				
-			assertTrue(retrievedNames.size() >= VERSION_COUNT);
+			assertTrue(retrievedNames != null);
 			checkGetResults(retrievedNames);
 			
 		} catch (Exception e) {
