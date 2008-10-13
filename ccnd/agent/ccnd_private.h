@@ -156,11 +156,13 @@ struct sparse_straggler_entry {
 };
 
 /*
- * The interestprefix hash table is keyed by the Component elements of the Name prefix
+ * The interestprefix hash table is keyed by the Component elements of
+ * the Name prefix.
  */
 struct interestprefix_entry {
-    // unsigned char idle;
     struct propagating_entry *propagating_head;
+    unsigned src;                /* faceid of recent matching content */
+    unsigned osrc;               /* and of older matching content */
 };
 
 /*
