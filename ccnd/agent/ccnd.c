@@ -372,6 +372,8 @@ content_skiplist_findbefore(struct ccnd *h,
     struct ccn_indexbuf *c;
     struct content_entry *content;
     int order;
+    size_t start;
+    size_t end;
     
     c = h->skiplinks;
     for (i = n - 1; i >= 0; i--) {
@@ -381,7 +383,9 @@ content_skiplist_findbefore(struct ccnd *h,
             content = content_from_accession(h, c->buf[i]);
             if (content == NULL)
                 abort();
-            order = ccn_compare_names(content->key, content->key_size,
+            start = content->comps[0];
+            end = content->comps[content->ncomps - 1];
+            order = ccn_compare_names(content->key + start - 1, end - start + 2,
                                       key, keysize);
             if (order >= 0)
                 break;
@@ -400,13 +404,19 @@ content_skiplist_insert(struct ccnd *h, struct content_entry *content)
 {
     int d;
     int i;
+    size_t start;
+    size_t end;
     struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
     if (content->skiplinks != NULL) abort();
     for (d = 1; d < CCN_SKIPLIST_MAX_DEPTH - 1; d++)
         if ((nrand48(h->seed) & 3) != 0) break;
     while (h->skiplinks->n < d)
         ccn_indexbuf_append_element(h->skiplinks, 0);
-    i = content_skiplist_findbefore(h, content->key, content->key_size, pred);
+    start = content->comps[0];
+    end = content->comps[content->ncomps - 1];
+    i = content_skiplist_findbefore(h,
+                                    content->key + start - 1,
+                                    end - start + 2, pred);
     if (i < d)
         d = i; /* just in case */
     content->skiplinks = ccn_indexbuf_create();
@@ -421,9 +431,15 @@ content_skiplist_remove(struct ccnd *h, struct content_entry *content)
 {
     int i;
     int d;
+    size_t start;
+    size_t end;
     struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
     if (content->skiplinks == NULL) abort();
-    d = content_skiplist_findbefore(h, content->key, content->key_size, pred);
+    start = content->comps[0];
+    end = content->comps[content->ncomps - 1];
+    d = content_skiplist_findbefore(h,
+                                    content->key + start - 1,
+                                    end - start + 2, pred);
     if (d > content->skiplinks->n)
         d = content->skiplinks->n;
     for (i = 0; i < d; i++) {
@@ -440,8 +456,9 @@ find_first_match_candidate(struct ccnd *h,
 {
     int d;
     struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
-    size_t size = pi->offset[CCN_PI_E_Name];
-    d = content_skiplist_findbefore(h, interest_msg, size, pred);
+    size_t start = pi->offset[CCN_PI_B_Name];
+    size_t end = pi->offset[CCN_PI_E_Name];
+    d = content_skiplist_findbefore(h, interest_msg + start, end - start, pred);
     if (d == 0)
         return(NULL);
     return(content_from_accession(h, pred[0]->buf[0]));
