@@ -1465,7 +1465,7 @@ propagate_interest(struct ccnd *h, struct face *face,
 }
 
 static int
-is_duplicate_flooded(struct ccnd *h, unsigned char *msg, struct ccn_parsed_interest *pi)
+is_duplicate_flooded(struct ccnd *h, unsigned char *msg, struct ccn_parsed_interest *pi, unsigned faceid)
 {
     struct propagating_entry *pe = NULL;
     size_t nonce_start = pi->offset[CCN_PI_B_Nonce];
@@ -1473,7 +1473,12 @@ is_duplicate_flooded(struct ccnd *h, unsigned char *msg, struct ccn_parsed_inter
     if (nonce_size == 0)
         return(0);
     pe = hashtb_lookup(h->propagating_tab, msg + nonce_start, nonce_size);
-    return(pe != NULL);
+    if (pe != NULL) {
+        if (pe->outbound != NULL)
+            indexbuf_remove_element(pe->outbound, faceid);
+        return(1);
+    }
+    return(0);
 }
 
 static void
@@ -1506,7 +1511,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,
              (face->flags & CCN_FACE_LINK) != 0) {
         ccnd_debug_ccnb(h, __LINE__, "interest_outofscope", face, msg, size);
     }
-    else if (is_duplicate_flooded(h, msg, pi)) {
+    else if (is_duplicate_flooded(h, msg, pi, face->faceid)) {
         if (h->debug & 16)
              ccnd_debug_ccnb(h, __LINE__, "interest_dup", face, msg, size);
         h->interests_dropped += 1;
