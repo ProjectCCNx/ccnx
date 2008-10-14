@@ -941,10 +941,14 @@ ccn_stuff_interest(struct ccnd *h, struct face *face, struct ccn_charbuf *c)
         struct propagating_entry *p;
         if (head != NULL) {
             for (p = head->prev; p != head; p = p->prev) {
-                if (p->outbound != NULL && p->size <= remaining_space &&
+                if (p->outbound != NULL && p->outbound->n > 0 &&
+                      p->size <= remaining_space &&
                       p->interest_msg != NULL &&
+                      ((p->flags & CCN_PR_UNSENT) == 0 ||
+                        p->outbound->buf[p->outbound->n - 1] == face->faceid) &&
                       indexbuf_unordered_set_remove(p->outbound, face->faceid) != -1) {
                     remaining_space -= p->size;
+                    p->flags &= ~CCN_PR_UNSENT;
                     n_stuffed++;
                     ccn_charbuf_append(c, p->interest_msg, p->size);
                     h->interests_stuffed++;
@@ -1284,6 +1288,7 @@ do_propagate(struct ccn_schedule *sched,
             stuff_and_write(h, face, pe->interest_msg, pe->size);
             h->interests_sent += 1;
             next_delay = nrand48(h->seed) % 8192 + 500;
+            pe->flags &= ~CCN_PR_UNSENT;
         }
     }
     if (n == 0) {
@@ -1389,6 +1394,7 @@ propagate_interest(struct ccnd *h, struct face *face,
     size_t msg_out_size = msg_size;
     struct ccn_indexbuf *outbound = get_outbound_faces(h, face, msg, pi);
     int usec;
+    int delaymask;
     adjust_outbound_for_existing_interests(h, face, msg, pi, ipe, outbound);
     if (outbound->n == 0)
         ccn_indexbuf_destroy(&outbound);
@@ -1438,15 +1444,20 @@ propagate_interest(struct ccnd *h, struct face *face,
             pe->size = msg_out_size;
             pe->faceid = face->faceid;
             pe->usec = CCN_INTEREST_HALFLIFE_MICROSEC;
+            delaymask = 0xFFF;
+            if (outbound != NULL && outbound->n > 0 &&
+                  outbound->buf[outbound->n - 1] == ipe->src) {
+                pe->flags = CCN_PR_UNSENT;
+                delaymask = 0xFF;
+            }
             pe->outbound = outbound;
-            // ccnd_msg(h, "at %d outbound n=%d", __LINE__, outbound ? outbound->n : 0);
             outbound = NULL;
             link_propagating_interest_to_interest_entry(h, pe, ipe);
             res = 0;
             if (pe->outbound == NULL)
                 usec = pe->usec;
             else
-                usec = nrand48(h->seed) % 8192;
+                usec = (nrand48(h->seed) & delaymask) + 1;
             usec = pe_next_usec(h, pe, usec, __LINE__);
             ccn_schedule_event(h->sched, usec, do_propagate, pe, 0);
         }

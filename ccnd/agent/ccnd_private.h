@@ -171,12 +171,14 @@ struct interestprefix_entry {
 struct propagating_entry {
     struct propagating_entry *next;
     struct propagating_entry *prev;
+    struct ccn_indexbuf *outbound;
     unsigned char *interest_msg;
-    size_t size;
+    unsigned size;              /* size in bytes of interest_msg */
+    unsigned flags;             /* CCN_PR_xxx */
     unsigned faceid;            /* origin of the interest, dest for matches */
     int usec;                   /* usec until timeout */
-    struct ccn_indexbuf *outbound;
 };
+#define CCN_PR_UNSENT 1
 
 /* Consider a separate header for these */
 int ccnd_stats_httpd_start(struct ccnd *);
