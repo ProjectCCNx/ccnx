@@ -86,7 +86,6 @@ public class CCNSimpleNetworkManager implements Runnable {
 	protected List<DataRegistration> _writers = Collections.synchronizedList(new LinkedList<DataRegistration>());
 	// Queues of new arrivals from inside to be processed
 	protected Queue<DataRegistration> _newData = new LinkedList<DataRegistration>();
-	protected Queue<InterestRegistration> _newInterests = new LinkedList<InterestRegistration>();
 			
 	// Generic superclass for registration objects that may have a listener
 	// Handles invalidation and pending delivery consistently to enable 
@@ -543,11 +542,7 @@ public class CCNSimpleNetworkManager implements Runnable {
 				// except sometimes... how do we do match?
 		}
 		InterestRegistration reg = new InterestRegistration(this, interest, null, caller);
-		// Add to internal processing queue
-		synchronized (_newInterests) {
-			_newInterests.add(reg);
-		}
-		_selector.wakeup();
+		expressInterest(reg);
 		Library.logger().finest("blocking for " + interest.name() + " on " + reg.sema);
 		// Await data to consume the interest 
 		reg.sema.acquire(); // currently no timeouts
@@ -561,12 +556,7 @@ public class CCNSimpleNetworkManager implements Runnable {
 
 
 	/**
-	 * We express interests to both the repository and the ccnd. Eventually,
-	 * we won't express interests to the repository anymore; we do this currently
-	 * so that we get notified about what other local applications put into
-	 * the repository (which don't go through the ccnd).
-	 * The repository will handle notifying the listener for hits it sees;
-	 * we need to notify the listener for hits coming across the network.
+	 * We express interests to the ccnd and register them within the network manager
 	 */
 	public void expressInterest(
 			Object caller,
@@ -578,13 +568,17 @@ public class CCNSimpleNetworkManager implements Runnable {
 	
 		Library.logger().fine("expressInterest: " + interest.name());
 		InterestRegistration reg = new InterestRegistration(this, interest, callbackListener, caller);
-		// Add to internal processing queue
-		// We leave actual registration to the processing thread so that 
-		// concurrency problems like double-delivery can be avoided
-		synchronized (_newInterests) {
-			_newInterests.add(reg);
+		expressInterest(reg);
+	}
+	
+	private void expressInterest(InterestRegistration reg) throws IOException {
+		try {
+			registerInterest(reg);
+			write(reg.interest);
+		} catch (XMLStreamException e) {
+			unregisterInterest(reg);
+			throw new IOException(e.getMessage());
 		}
-		_selector.wakeup();
 	}
 	
 	/**
@@ -796,15 +790,6 @@ public class CCNSimpleNetworkManager implements Runnable {
 					deliverData(oData);
 					// External data never goes back to network, never held onto here
 					// External data never has a thread waiting, so no need to release sema
-				}
-
-				//--------------------------------- Write out internal interests (if any)
-				InterestRegistration iInterest = null;
-				synchronized (_newInterests) { iInterest = _newInterests.poll(); }
-				while (null != iInterest) {
-					write(iInterest.interest);		
-					registerInterest(iInterest);
-					synchronized (_newInterests) { iInterest = _newInterests.poll(); }
 				}
 
 				//--------------------------------- Process interests from net (if any)
