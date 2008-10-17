@@ -59,8 +59,12 @@ public class ReadTest extends BaseLibrarySource implements CCNInterestListener {
 				highest = tValue;
 			library.put("/getLatest/" + Integer.toString(tValue), Integer.toString(tValue));
 			Thread.sleep(rand.nextInt(50));
-			ContentObject result = library.getLatest(ContentName.fromNative("/getLatest/" + Integer.toString(tValue), 1));
-			checkResult(result, highest);
+			if (i > 1) {
+				if (tValue == highest)
+					tValue--;
+				ContentObject result = library.getLatest(ContentName.fromNative("/getLatest/" + Integer.toString(tValue), 1));
+				checkResult(result, highest);
+			}
 		}
 		System.out.println("getLatest test finished");
 	}

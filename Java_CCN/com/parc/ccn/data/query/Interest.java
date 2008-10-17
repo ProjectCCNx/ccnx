@@ -199,6 +199,14 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 					return false;
 				}
 			}
+			if (null != orderPreference()) {
+				/*
+				 * All we can check here is whether the test name is
+				 * > our name. Any set of orderPreference requires this
+				 */
+				if (resultName.compareTo(name()) <= 0)
+					return false;
+			}
 			if (null != publisherID()) {
 				if (null == resultPublisherKeyID) {
 					return false;

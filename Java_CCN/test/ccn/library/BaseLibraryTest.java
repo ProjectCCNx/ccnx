@@ -108,6 +108,7 @@ public class BaseLibraryTest {
 		System.out.println("TEST: PutThread/GetServer");
 		int id = rand.nextInt(1000);
 
+		//Library.logger().setLevel(Level.FINEST);
 		Thread putter = new Thread(new PutThread(count, id));
 		Thread getter = new Thread(new GetServer(count, id));
 		genericGetPut(putter, getter);
@@ -198,7 +199,7 @@ public class BaseLibraryTest {
 		Random rand = new Random();
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
-			CompleteName putName = library.put(ContentName.fromNative(baseName,new Integer(i).toString()), new Integer(i).toString().getBytes());
+			CompleteName putName = library.put(ContentName.fromNative(baseName, Integer.toString(i)), new Integer(i).toString().getBytes());
 			System.out.println("Put " + i + " done");
 			checkPutResults(putName);
 		}
@@ -309,11 +310,8 @@ public class BaseLibraryTest {
 					if (!accumulatedResults.contains(val)) {
 						accumulatedResults.add(val);
 						System.out.println("Got " + val);
-						if (accumulatedResults.size() < count) {
-							newInterest = Interest.next(contentObject);
-							break;
-						}
 					}
+					newInterest = Interest.next(contentObject);
 				} catch (NumberFormatException nfe) {
 					Library.logger().info("Unexpected content, " + contentObject.name() + " is not an integer!");
 				}

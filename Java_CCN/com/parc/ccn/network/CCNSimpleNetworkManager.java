@@ -205,8 +205,14 @@ public class CCNSimpleNetworkManager implements Runnable {
 		// We need this even when data comes from network, since receive
 		// buffer will be reused while recipient thread may proceed to read
 		// from buffer it is handed
-		public synchronized void add(ContentObject obj) {
-			this.data.add(obj.clone());
+		/**
+		 * Return true if data was added
+		 */
+		public synchronized boolean add(ContentObject obj) {
+			boolean hasData = (null == data);
+			if (!hasData)
+				this.data.add(obj.clone());
+			return !hasData;
 		}
 		
 		/**
@@ -259,9 +265,17 @@ public class CCNSimpleNetworkManager implements Runnable {
 					// Call into client code without holding any library locks
 					if (null != results) {
 						Library.logger().finer("Interest callback (" + results.size() + " data) for: " + this.interest.name());
-						// Give the client a chance to modify the interest. Eventually, we will
-						// handle at least the case of excluding repeat of existing content for
-						// the client.
+						
+						synchronized (this) {
+							// DKS -- dynamic interests, unregister the interest here and express new one if we have one
+							// previous interest is final, can't update it
+							this.deliveryPending = false;
+						}
+						manager.unregisterInterest(this);
+						
+						// paul r. note - contract says interest will be gone after the call into user's code.
+						// Eventually this may be modified for "pipelining".
+						
 						// DKS TODO tension here -- what object does client use to cancel?
 						// Original implementation had expressInterest return a descriptor
 						// used to cancel it, perhaps we should go back to that. Otherwise
@@ -271,13 +285,6 @@ public class CCNSimpleNetworkManager implements Runnable {
 						// it's final now to avoid contention, but need to change it or change
 						// the registration.
 						Interest updatedInterest = listener.handleContent(results);
-						
-						synchronized (this) {
-							// DKS -- dynamic interests, unregister the interest here and express new one if we have one
-							// previous interest is final, can't update it
-							this.deliveryPending = false;
-						    manager.unregisterInterest(this);
-						}
 						
 						if ((null != updatedInterest) && (!this.interest.equals(updatedInterest))) {
 							Library.logger().finer("Interest callback: updated interest to express: " + updatedInterest.name());
@@ -310,6 +317,16 @@ public class CCNSimpleNetworkManager implements Runnable {
 				Library.logger().warning("failed to deliver data: " + ex.toString());
 				Library.warningStackTrace(ex);
 			}
+		}
+		
+		public void run() {
+			synchronized (this) {
+				// For now only one piece of data may be delivered per InterestRegistration
+				// This might change when "pipelining" is implemented
+				if (deliveryPending)
+					return;
+			}
+			super.run();
 		}
 	}
 	
@@ -400,12 +417,15 @@ public class CCNSimpleNetworkManager implements Runnable {
 			} // else already invalidated, buffer may be no good, nothing to do
 		}
 		
-		public synchronized void copyTo(InterestRegistration ireg) {
+		public synchronized boolean copyTo(InterestRegistration ireg) {
+			boolean result = false;
 			if (null != data) {
-				ireg.add(data); // actual copying is here
+				result = ireg.add(data); // actual copying is here
 			} // else already invalidated, buffer may be no good, nothing to do
 			Library.logger().finest("copyTo: ireg " + ((Object)ireg).toString() + " data size: " + ireg.data.size());
+			return result;
 		}
+		
 		/** Create a single special piece of content that we can send 
 		 *  to the network to make the local agent aware of our presence 
 		 *  and the ephemeral UDP port to which we are listening.
@@ -670,6 +690,12 @@ public class CCNSimpleNetworkManager implements Runnable {
 		unregisterInterest(reg);
 	}
 	
+	/**
+	 * @param reg - registration to unregister
+	 * 
+	 * Important Note: This can indirectly need to obtain the lock for "reg" with the lock on
+	 * "myInterests" held.  Therefore it can't be called when holding the lock for "reg".
+	 */
 	void unregisterInterest(InterestRegistration reg) {
 		synchronized (_myInterests) {
 			Entry<InterestRegistration> found = _myInterests.remove(reg.interest, reg);
@@ -841,14 +867,15 @@ public class CCNSimpleNetworkManager implements Runnable {
 		synchronized (_myInterests) {
 			for (InterestRegistration ireg : _myInterests.getValues(dreg.completeName())) {
 				if (dreg.owner != ireg.owner) {
-					dreg.copyTo(ireg); // this is a copy of the data
-					_threadpool.execute(ireg);
-					if (ireg.isStanding() && dreg.isFromNet()) {
-						// we need to re-express the standing interest
-						// DKS dynamic interests -- nothing is standing anymore
-						write(ireg.interest);
+					if (dreg.copyTo(ireg)) { // this is a copy of the data
+						_threadpool.execute(ireg);
+						if (ireg.isStanding() && dreg.isFromNet()) {
+							// we need to re-express the standing interest
+							// DKS dynamic interests -- nothing is standing anymore
+							write(ireg.interest);
+						}
+						consumer = true;
 					}
-					consumer = true;
 				}
 			}
 		}

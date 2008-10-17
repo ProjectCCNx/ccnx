@@ -27,25 +27,22 @@ public class DataUtils {
 			if (null == right) {
 				result = 1;
 			} else {
-				// here we have the comparison.
-				int minlen = (left.length < right.length) ? left.length : right.length;
-				for (int i=0; i < minlen; ++i) {
-					if (left[i] < right[i]) {
-						result = -1;
-						break;
-					} else if (left[i] > right[i]) {
-						result = 1;
-						break;
+				// If a is shorter than b then a comes before b
+				if (left.length < right.length) {
+					result = -1;
+				} else if (left.length > right.length) {
+					result = 1;
+				} else {
+					// They have equal lengths - compare byte by byte
+					for (int i=0; i < left.length; ++i) {
+						if (left[i] < right[i]) {
+							result = -1;
+							break;
+						} else if (left[i] > right[i]) {
+							result = 1;
+							break;
+						}
 					}
-				}
-				if (result == 0) {
-					// ok, they're equal up to the minimum length
-					if (left.length < right.length) {
-						result = -1;
-					} else if (left.length > right.length) {
-						result = 1;
-					}
-					// else they're equal, result = 0
 				}
 			}
 		} else {
