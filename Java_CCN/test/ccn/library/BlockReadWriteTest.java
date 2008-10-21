@@ -22,7 +22,7 @@ import com.parc.ccn.library.StandardCCNLibrary;
 import com.parc.ccn.library.CCNLibrary.OpenMode;
 
 
-public class BlockReadWriteTest extends BaseLibraryTest {
+public class BlockReadWriteTest extends BasePutGetTest {
 	
 	protected static final String fileName = "medium_file.txt";
 	protected static final int CHUNK_SIZE = 512;

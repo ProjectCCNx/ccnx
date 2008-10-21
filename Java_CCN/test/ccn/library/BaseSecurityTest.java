@@ -10,7 +10,7 @@ import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentObject;
 
-public class BaseSecurityTest extends BaseLibraryTest {
+public class BaseSecurityTest extends BasePutGetTest {
 	
 	protected static final String testName = "/test/smetters/signTestContent.txt";
 	protected static final String testContent = "Mary had a little lamb. Its fleece was reasonably white for a sheep who'd been through that sort of thing.";

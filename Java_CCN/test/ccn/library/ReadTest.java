@@ -1,4 +1,4 @@
-package test.ccn.data.read;
+package test.ccn.library;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -7,9 +7,6 @@ import java.util.ArrayList;
 
 import org.junit.Test;
 
-import test.ccn.endtoend.BaseLibrarySource;
-
-import com.parc.ccn.CCNBase;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
@@ -25,7 +22,9 @@ import com.parc.ccn.library.CCNLibrary;
  *
  */
 
-public class ReadTest extends BaseLibrarySource implements CCNInterestListener {
+public class ReadTest extends BaseLibrary implements CCNInterestListener {
+	
+	private static ArrayList<Integer> currentSet;
 
 	public ReadTest() throws Throwable {
 		super();
@@ -95,6 +94,28 @@ public class ReadTest extends BaseLibrarySource implements CCNInterestListener {
 		assertTrue(sep > 0);
 		int resultValue = Integer.parseInt(resultAsString.substring(sep + 1));
 		assertEquals(new Integer(value), new Integer(resultValue));
+	}
+	
+	public int getRandomFromSet(int length, boolean reset) {
+		int result = -1;
+		if (reset || currentSet == null)
+			currentSet = new ArrayList<Integer>(length);
+		if (currentSet.size() >= length)
+			return result;
+		while (true) {
+			result = rand.nextInt(length);
+			boolean found = false;
+			for (int used : currentSet) {
+				if (used == result) {
+					found = true;
+					break;
+				}
+			}
+			if (!found)
+				break;
+		}
+		currentSet.add(result);
+		return result;
 	}
 
 }

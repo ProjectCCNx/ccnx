@@ -14,7 +14,6 @@ import junit.framework.Assert;
 import org.junit.Test;
 
 import com.parc.ccn.CCNBase;
-import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
@@ -23,7 +22,6 @@ import com.parc.ccn.data.query.BasicInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.StandardCCNLibrary;
 import com.parc.ccn.network.CCNRepositoryManager;
 
 
@@ -31,20 +29,8 @@ import com.parc.ccn.network.CCNRepositoryManager;
  * @author briggs,smetters
  *
  */
-public class StandardCCNLibraryTest {
+public class StandardCCNLibraryTest extends BaseLibrary {
 	static final String contentString = "This is a very small amount of content";
-
-	protected static CCNLibrary library = null;
-
-	static {
-		try {
-			library = StandardCCNLibrary.open();
-		} catch (ConfigurationException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
 	
 	private class NameSeen {
 		private ContentName name;
