@@ -236,7 +236,7 @@ public class JackrabbitCCNRepositoryTest {
 				checkPutResults(outname);
 				Library.logger().info("Added name, next will retrieve: " + outname.name());
 
-				retrievedNames = repo.get(outname.name(), null, false);
+				retrievedNames = repo.get(outname.name(), null, false, CCNLibrary.NO_TIMEOUT);
 				
 				assertTrue(retrievedNames != null);
 				assertEquals(i, Integer.parseInt(new String(retrievedNames.content())));
@@ -270,7 +270,7 @@ public class JackrabbitCCNRepositoryTest {
 				Library.logger().info("Added name: " + outname.name());
 			}
 			
-			retrievedNames = repo.get(startName, null, true);
+			retrievedNames = repo.get(startName, null, true, CCNLibrary.NO_TIMEOUT);
 			Library.logger().info("Recursive retrieve, got " + retrievedNames == null ? "0" : "1" + " results, expected " + VERSION_COUNT + ".");
 				
 			assertTrue(retrievedNames != null);
@@ -302,7 +302,7 @@ public class JackrabbitCCNRepositoryTest {
 				checkPutResults(outname);
 				Library.logger().info("Added name, next will retrieve: " + outname.name());
 
-				retrievedNames = repo.get(outname.name(), outname.authenticator(), false);
+				retrievedNames = repo.get(outname.name(), outname.authenticator(), false, CCNLibrary.NO_TIMEOUT);
 				
 				assertTrue(retrievedNames != null);
 				assertEquals(i, Integer.parseInt(new String(retrievedNames.content())));
@@ -337,7 +337,7 @@ public class JackrabbitCCNRepositoryTest {
 			}
 			
 			ContentAuthenticator pubOnlyAuth = new ContentAuthenticator(pubID);
-			retrievedNames = repo.get(startName, pubOnlyAuth, true);
+			retrievedNames = repo.get(startName, pubOnlyAuth, true, CCNLibrary.NO_TIMEOUT);
 			Library.logger().info("Recursive retrieve, got " + retrievedNames == null ? "0"  : "1" + " results, expected " + VERSION_COUNT + ".");
 				
 			assertTrue(retrievedNames != null);

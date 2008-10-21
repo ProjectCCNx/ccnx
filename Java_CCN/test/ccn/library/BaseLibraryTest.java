@@ -21,6 +21,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.CompleteName;
@@ -159,7 +160,7 @@ public class BaseLibraryTest {
 	//	while (!done) {
 			Thread.sleep(rand.nextInt(50));
 			System.out.println("getResults getting " + baseName + " subitem " + i);
-			ContentObject contents = library.get(ContentName.fromNative(baseName, Integer.toString(i)));
+			ContentObject contents = library.get(ContentName.fromNative(baseName, Integer.toString(i)), CCNBase.NO_TIMEOUT);
 		
 			try {
 				int val = Integer.parseInt(new String(contents.content()));
@@ -311,7 +312,7 @@ public class BaseLibraryTest {
 						accumulatedResults.add(val);
 						System.out.println("Got " + val);
 					}
-					newInterest = Interest.next(contentObject);
+					newInterest = Interest.next(contentObject, null);
 				} catch (NumberFormatException nfe) {
 					Library.logger().info("Unexpected content, " + contentObject.name() + " is not an integer!");
 				}

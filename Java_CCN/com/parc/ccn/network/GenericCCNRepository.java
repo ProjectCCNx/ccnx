@@ -120,7 +120,7 @@ public abstract class GenericCCNRepository implements CCNRepository {
 	/* (non-Javadoc)
 	 * @see com.parc.ccn.network.CCNRepository#get(com.parc.ccn.data.ContentName, com.parc.ccn.data.security.ContentAuthenticator)
 	 */
-	public abstract ContentObject get(ContentName name, ContentAuthenticator authenticator, boolean isRecursive) throws IOException;
+	public abstract ContentObject get(ContentName name, ContentAuthenticator authenticator, boolean isRecursive, long timeout) throws IOException;
 
 	/* (non-Javadoc)
 	 * @see com.parc.ccn.network.CCNRepository#put(com.parc.ccn.data.ContentName, com.parc.ccn.data.security.ContentAuthenticator, byte[])

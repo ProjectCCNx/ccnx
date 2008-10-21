@@ -150,7 +150,7 @@
    </target>
 
    <!-- test is for running all current automated tests to validate code -->
-   <target name="test" depends="test-data, test-puttap, test-baselib, test-endtoend, test-read">
+   <target name="test" depends="test-data, test-puttap, test-library, test-endtoend, test-read">
    </target>
 
    <target name="test-data" depends="jar">
@@ -173,7 +173,7 @@
        </junit>
    </target>
 
-   <target name="test-baselib" depends="jar, ccnd">
+   <target name="test-library" depends="jar, ccnd">
        <mkdir dir="${testout}"/>
            <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
                <classpath>
@@ -181,7 +181,12 @@
                </classpath>
                <formatter type="brief" usefile="true"/>
                <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-               <test todir="${testout}"  name="test.ccn.library.BaseLibraryTest"/>
+              
+           	   <batchtest todir="${testout}">
+   	               <fileset dir="${build}">
+   	                   <include name="test/ccn/library/*Test.class"/>
+   	               </fileset>
+           	  </batchtest>
            </junit>
    </target>
 

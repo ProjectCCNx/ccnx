@@ -154,11 +154,11 @@ public class CCNRepositoryManager extends DiscoveryManager implements CCNReposit
 	 */
 	public ContentObject get(ContentName name, 
 									    ContentAuthenticator authenticator,
-									    boolean isRecursive) throws IOException, InterruptedException {
+									    boolean isRecursive, long timeout) throws IOException, InterruptedException {
 		
 		for (int i=0; i < _repositories.size(); ++i) {
 			if (null != _repositories.get(i)) {
-				return (_repositories.get(i).get(name, authenticator, isRecursive));
+				return (_repositories.get(i).get(name, authenticator, isRecursive, timeout));
 			}
 		}
 		return null;

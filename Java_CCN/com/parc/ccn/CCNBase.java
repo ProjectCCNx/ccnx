@@ -1,7 +1,6 @@
 package com.parc.ccn;
 
 import java.io.IOException;
-import java.util.ArrayList;
 
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
@@ -18,6 +17,8 @@ import com.parc.ccn.data.security.Signature;
  *
  */
 public interface CCNBase {
+	
+	public final int NO_TIMEOUT = 0;
 	
 	/** 
 	 * Make a data item available to the CCN.
@@ -44,6 +45,7 @@ public interface CCNBase {
 	 * @param authenticator
 	 * @param isRecursive if false, just return content objects
 	 * 	associated with this name if any, or an empty list if none.
+	 * @param timeout milliseconds before timeout, 0 for no timeout
 	 * @return
 	 * @throws IOException
 	 * @throws InterruptedException 
@@ -51,7 +53,7 @@ public interface CCNBase {
 	public ContentObject get(
 			ContentName name,
 			ContentAuthenticator authenticator,
-			boolean isRecursive) throws IOException, InterruptedException;
+			boolean isRecursive, long timeout) throws IOException, InterruptedException;
 
 	/**
 	 * Query, or express an interest in particular

@@ -682,7 +682,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 	 */
 	public ContentObject get(ContentName name, 
 										ContentAuthenticator authenticator,
-										boolean isRecursive) throws IOException {
+										boolean isRecursive, long timeout) throws IOException {
 		
 		if (null == name) 
 			return null;
@@ -1441,7 +1441,7 @@ public class JackrabbitCCNRepository extends GenericCCNRepository implements CCN
 		// need to handle multiple pieces of content intelligently
 		try {
 			for (Interest interest : interests) {
-				ContentObject found = get(interest.name(), null, true);
+				ContentObject found = get(interest.name(), null, true, CCNLibrary.NO_TIMEOUT);
 				_library.put(found.name(), found.authenticator(), found.content(), found.signature());
 			}
 		} catch (IOException e) {

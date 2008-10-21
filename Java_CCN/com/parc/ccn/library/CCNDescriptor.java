@@ -117,6 +117,7 @@ public class CCNDescriptor {
 	 * this a different way.
 	 */
 	protected ContentObject _currentBlock = null;
+	protected boolean _atEOF = false;
 	protected int _blockOffset = 0; // read/write offset into current block
 	protected int _blockIndex = 0; // index into array of block buffers
 	protected byte [][] _blockBuffers = null;
@@ -259,7 +260,12 @@ public class CCNDescriptor {
 		// prefiltering? Can it mark objects as verified?
 		// do we want to use the low-level get, as the high-level
 		// one might unfragment?
-		ContentObject header = _library.get(_headerName, name.authenticator(), false);
+		
+		/*
+		 * Paul R TODO - Is a hardwired timeout here OK?  If not should we allow a
+		 * user specified timeout?
+		 */
+		ContentObject header = _library.get(_headerName, name.authenticator(), false, 5000);
 		
 		if (null == header) {
 			Library.logger().info("No available content named: " + _headerName.toString());
@@ -311,6 +317,9 @@ public class CCNDescriptor {
 		if (!openForReading())
 			throw new IOException("CCNDescriptor for content name: " + _baseName + " is not open for reading!");
 		
+		if (_atEOF)
+			return 0;
+		
 		int result = 0;
 		
 		// is this the first block?
@@ -333,6 +342,7 @@ public class CCNDescriptor {
 				// DKS make sure we don't miss a byte...
 				result = seek(StandardCCNLibrary.getFragmentNumber(_currentBlock.name())+1);
 				if (null == _currentBlock) {
+					_atEOF = true;
 					return lenRead;
 				}
 			}
@@ -510,7 +520,10 @@ public class CCNDescriptor {
 
 		ContentName blockName = StandardCCNLibrary.fragmentName(_baseName, number);
 
-		ContentObject block = _library.get(blockName, _headerAuthenticator, false);
+		/*
+		 * TODO: Paul R. Comment - as above what to do about timeouts?
+		 */
+		ContentObject block = _library.get(blockName, _headerAuthenticator, false, 5000);
 		
 		if (null == block) {
 			Library.logger().info("Cannot get block " + number + " of file " + _baseName + " expected block: " + blockName.toString());

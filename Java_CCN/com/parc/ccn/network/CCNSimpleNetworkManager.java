@@ -39,6 +39,7 @@ import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
 import com.parc.ccn.data.util.InterestTable;
 import com.parc.ccn.data.util.InterestTable.Entry;
+import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.security.keys.KeyManager;
 
 /**
@@ -187,9 +188,11 @@ public class CCNSimpleNetworkManager implements Runnable {
 		public final Interest interest;
 		protected ArrayList<ContentObject> data = new ArrayList<ContentObject>(1);
 		public Date lastRefresh;
+		public long timeout = CCNLibrary.NO_TIMEOUT;
 		
 		// All internal client interests must have an owner
-		public InterestRegistration(CCNSimpleNetworkManager mgr, Interest i, CCNInterestListener l, Object owner) {
+		public InterestRegistration(CCNSimpleNetworkManager mgr, Interest i, CCNInterestListener l, Object owner, 
+						long timeout) {
 			manager = mgr;
 			interest = i; 
 			listener = l;
@@ -198,6 +201,8 @@ public class CCNSimpleNetworkManager implements Runnable {
 				sema = new Semaphore(0);
 			}
 			lastRefresh = new Date();
+			if (timeout != CCNLibrary.NO_TIMEOUT)
+				this.timeout = lastRefresh.getTime() + timeout;
 		}
 		// Add a copy of data, not the original data object, so that 
 		// the recipient cannot disturb the buffers of the sender
@@ -524,14 +529,14 @@ public class CCNSimpleNetworkManager implements Runnable {
 	
 	public ContentObject get(Object caller, ContentName name, 
 									    ContentAuthenticator authenticator,
-									    boolean isRecursive) throws IOException, InterruptedException {
+									    boolean isRecursive, long timeout) throws IOException, InterruptedException {
 		Interest interest = new Interest(name);
-		return get(caller, interest, authenticator, isRecursive);
+		return get(caller, interest, authenticator, isRecursive, timeout);
 	}
 	
 	public ContentObject get(Object caller, Interest interest, 
 									    ContentAuthenticator authenticator,
-									    boolean isRecursive) throws IOException, InterruptedException {
+									    boolean isRecursive, long timeout) throws IOException, InterruptedException {
 		Library.logger().fine("get: " + interest.name());
 		if (!isRecursive) {
 			// for the moment, assume we don't know the digest, and we're specifying
@@ -541,7 +546,7 @@ public class CCNSimpleNetworkManager implements Runnable {
 				// DKS TODO we don't actually "know" about the extra name component,
 				// except sometimes... how do we do match?
 		}
-		InterestRegistration reg = new InterestRegistration(this, interest, null, caller);
+		InterestRegistration reg = new InterestRegistration(this, interest, null, caller, timeout);
 		expressInterest(reg);
 		Library.logger().finest("blocking for " + interest.name() + " on " + reg.sema);
 		// Await data to consume the interest 
@@ -567,7 +572,7 @@ public class CCNSimpleNetworkManager implements Runnable {
 		}		
 	
 		Library.logger().fine("expressInterest: " + interest.name());
-		InterestRegistration reg = new InterestRegistration(this, interest, callbackListener, caller);
+		InterestRegistration reg = new InterestRegistration(this, interest, callbackListener, caller, CCNLibrary.NO_TIMEOUT);
 		expressInterest(reg);
 	}
 	
@@ -680,7 +685,7 @@ public class CCNSimpleNetworkManager implements Runnable {
 	// external version: for use when we only have interest from client.  For all internal
 	// purposes we should unregister the InterestRegistration we already have
 	void unregisterInterest(Object caller, Interest interest, CCNInterestListener callbackListener) {
-		InterestRegistration reg = new InterestRegistration(this, interest, callbackListener, caller);
+		InterestRegistration reg = new InterestRegistration(this, interest, callbackListener, caller, CCNLibrary.NO_TIMEOUT);
 		unregisterInterest(reg);
 	}
 	
@@ -795,7 +800,7 @@ public class CCNSimpleNetworkManager implements Runnable {
 				//--------------------------------- Process interests from net (if any)
 				for (Interest interest : packet.interests()) {
 					Library.logger().fine("Interest from net: " + interest.name());
-					InterestRegistration oInterest = new InterestRegistration(this, interest, null, null);
+					InterestRegistration oInterest = new InterestRegistration(this, interest, null, null, CCNLibrary.NO_TIMEOUT);
 					deliverInterest(oInterest);
 					// External interests never go back to network
 				} // for interests
@@ -810,8 +815,12 @@ public class CCNSimpleNetworkManager implements Runnable {
 					synchronized (_myInterests) {
 						for (Entry<InterestRegistration> entry : _myInterests.values()) {
 							InterestRegistration reg = entry.value();
-							Library.logger().finer("Refresh interest: " + reg.interest.name());
-							write(reg.interest);
+							if (reg.timeout != CCNLibrary.NO_TIMEOUT && reg.timeout < new Date().getTime()) {
+								_threadpool.execute(reg);
+							} else {
+								Library.logger().finer("Refresh interest: " + reg.interest.name());
+								write(reg.interest);
+							}
 						}
 					}
 					lastsweep = new Date();

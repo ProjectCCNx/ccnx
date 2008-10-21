@@ -45,14 +45,41 @@ public class StandardCCNLibraryTest {
 			e.printStackTrace();
 		}
 	}
-
+	
+	private class NameSeen {
+		private ContentName name;
+		private boolean seen = false;
+		
+		private NameSeen(ContentName name) {
+			this.name = name;
+		}
+		
+		private boolean setSeen(CompleteName cn) {
+			if (name.isPrefixOf(cn.name())) {
+				seen = true;
+				return true;
+			}
+			return false;
+		}
+	}
+	
 	@Test
 	public void testEnumerate() {
 		Assert.assertNotNull(library);
 
 		try {
+			
+			ArrayList<NameSeen> testNames = new ArrayList<NameSeen>(3);
+			testNames.add(new NameSeen(ContentName.fromNative("/CPOF/foo")));
+			testNames.add(new NameSeen(ContentName.fromNative("/CPOF/bar/lid")));
+			testNames.add(new NameSeen(ContentName.fromNative("/CPOF/bar/jar")));
+			
+			for (int i = 0; i < testNames.size(); i++) {
+				library.put(testNames.get(i).name, Integer.toString(i).getBytes());
+			}
+			
 			ArrayList<CompleteName> availableNames =
-				library.enumerate(new Interest("/CPOF"));
+				library.enumerate(new Interest("/CPOF"), CCNLibrary.NO_TIMEOUT);
 
 			Iterator<CompleteName> nameIt = availableNames.iterator();
 
@@ -61,7 +88,7 @@ public class StandardCCNLibraryTest {
 
 				// Just get by name, to test equivalent to current
 				// ONC interface.
-				ContentObject theObject = library.get(theName.name(), null, false);
+				ContentObject theObject = library.get(theName.name(), 1000);
 
 				if (null == theObject) {
 					System.out.println("Missing content: enumerated name: " + theName.name() + " not gettable.");
@@ -69,6 +96,16 @@ public class StandardCCNLibraryTest {
 				} else {
 					System.out.println("Retrieved name: " + theName.name());
 				}
+				
+				for (NameSeen nt : testNames) {
+					if (nt.setSeen(theName))
+						break;
+				}
+			}
+			
+			for (NameSeen nt : testNames) {
+				if (!nt.seen)
+					Assert.fail("Didn't see name " + nt.name.toString() + " in enumeration");
 			}
 
 		} catch (Exception e) {
@@ -77,7 +114,6 @@ public class StandardCCNLibraryTest {
 			Assert.fail("Exception in testEnumerate: " + e.getMessage());
 		}
 	}
-
 
 	@Test
 	public void testPut() {
@@ -135,6 +171,9 @@ public class StandardCCNLibraryTest {
 		}	
 	}
 
+	/*
+	 * Commented out until the ContentName/digest questions can be resolved - paul r.
+
 	@Test
 	public void testVersion() throws Exception {
 
@@ -148,7 +187,7 @@ public class StandardCCNLibraryTest {
 		versionTest(cn, data.getBytes(), newdata.getBytes());
 		versionTest(cn2, data.getBytes(), newdata.getBytes());
 
-	}
+	} */
 
 	@Test
 	public void testRecall() {
@@ -158,7 +197,7 @@ public class StandardCCNLibraryTest {
 			ContentName keyName = ContentName.fromNative(key);
 			CompleteName name = library.put(keyName, data1);
 			System.out.println("Put under name: " + name.name());
-			ContentObject result = library.get(name.name(), name.authenticator(), false);
+			ContentObject result = library.get(name.name(), name.authenticator(), false, CCNBase.NO_TIMEOUT);
 
 			System.out.println("Querying for returned name, Got back: " + (result == null ? "0"  : "1") + " results.");
 
@@ -168,7 +207,7 @@ public class StandardCCNLibraryTest {
 				System.out.println("Final name: " + name.name());
 				//Assert.fail("Didn't get back content we just put!");
 
-				result = library.get(name.name(), name.authenticator(), true);
+				result = library.get(name.name(), name.authenticator(), true, 0);
 
 				System.out.println("Recursive querying for returned name, Got back: " + (result == null ? "0"  : "1") + " results.");
 
@@ -179,48 +218,12 @@ public class StandardCCNLibraryTest {
 					CCNRepositoryManager.getRepositoryManager().getChildren(new CompleteName(parentName, null, null));
 
 				System.out.println("GetChildren got " + parentChildren.size() + " children of expected parent.");
-				boolean isInThere = false;
 				for (int i=0; i < parentChildren.size(); ++i) {
 					if (parentChildren.get(i).name().equals(name.name())) {
 						System.out.println("Got a matching name. Authenticators match? " + name.authenticator().equals(parentChildren.get(i).authenticator()));
-						isInThere = true;
 						break;
 					}
 				}
-
-				parentChildren =
-					library.enumerate(new Interest(parentName));
-
-				System.out.println("Enumerate got " + parentChildren.size() + " children of expected parent.");
-				isInThere = false;
-				for (int i=0; i < parentChildren.size(); ++i) {
-					if (parentChildren.get(i).name().equals(name.name())) {
-						System.out.println("Got a matching name. Authenticators match? " + name.authenticator().equals(parentChildren.get(i).authenticator()));
-						isInThere = true;
-						break;
-					}
-				}
-				if (isInThere)
-					System.out.println("Found expected node among children of parent.");
-				else
-					System.out.println("Didn't find expected node among children of parent.");
-
-				ArrayList<CompleteName> enumerateResults = 
-					library.enumerate(new Interest(name.name()));
-				System.out.println("Got " + enumerateResults.size() + " matches for the name we just inserted.");
-				isInThere = false;
-				for (int i=0; i < enumerateResults.size(); ++i) {
-					if (enumerateResults.get(i).name().equals(name.name())) {
-						System.out.println("Got a matching name. Authenticators match? " + name.authenticator().equals(enumerateResults.get(i).authenticator()));
-						isInThere = true;
-						break;
-					}
-				}
-				if (isInThere)
-					System.out.println("Found expected node among enumeration of name.");
-				else
-					System.out.println("Didn't find expected node among enumeration of name.");
-
 
 			} else {
 				byte [] content = result.content();
@@ -228,7 +231,7 @@ public class StandardCCNLibraryTest {
 				Assert.assertTrue("didn't get back same data", new String(data1).equals(new String(content)));
 			}
 
-			result = library.get(keyName, null, true);
+			result = library.get(keyName, null, true, CCNBase.NO_TIMEOUT);
 
 			System.out.println("Querying for inserted name, Got back: " 
 							+ (result == null ? "0"  : "1") + " results.");
@@ -246,7 +249,6 @@ public class StandardCCNLibraryTest {
 			Assert.fail(e.getMessage());
 		}
 	}
-
 
 	public void versionTest(ContentName docName,
 			byte [] content1,
@@ -283,8 +285,8 @@ public class StandardCCNLibraryTest {
 	public void testNotFound() throws Exception {
 		try {
 			String key = "/some_strange_key_we_should_never_find";
-			ContentObject result = library.get(ContentName.fromNative(key), null, false);
-			Assert.assertTrue("found something when there shouldn't have been anything", result != null);
+			ContentObject result = library.get(ContentName.fromNative(key), null, false, 1000);
+			Assert.assertTrue("found something when there shouldn't have been anything", result == null);
 		} catch (Exception e) {
 			System.out.println("Exception in testing recall: " + e.getClass().getName() + ": " + e.getMessage());
 			Assert.fail(e.getMessage());

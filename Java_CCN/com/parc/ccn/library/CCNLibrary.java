@@ -130,12 +130,12 @@ public interface CCNLibrary extends CCNBase {
 			PublisherKeyID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, IOException, InterruptedException;
 	
-	public ContentObject get(ContentName name) throws IOException, InterruptedException;
+	public ContentObject get(ContentName name, long timeout) throws IOException, InterruptedException;
 	
 	/*
 	 * Experimental interface - may be deprecated in the future
 	 */
-	public ContentObject get(Interest interest) throws IOException, InterruptedException;
+	public ContentObject get(Interest interest, long timeout) throws IOException, InterruptedException;
 
 	/**
 	 * Get the latest version published by this publisher,
@@ -239,7 +239,7 @@ public interface CCNLibrary extends CCNBase {
 	 */
 	public void cancelInterestFilter(ContentName filter, CCNFilterListener callbackListener);
 	
-	public ArrayList<CompleteName> enumerate(Interest interest) throws IOException;
+	public ArrayList<CompleteName> enumerate(Interest interest, long timeout) throws IOException;
 
 	/**
 	 * High-level verify. Calls low-level verify, if we
@@ -261,19 +261,19 @@ public interface CCNLibrary extends CCNBase {
 	/**
 	 * Medium level interface for retrieving pieces of a file
 	 */
-	public ContentObject getNext(ContentName name) 
+	public ContentObject getNext(ContentName name, long timeout) 
 					throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException;
-	public ContentObject getNext(ContentName name, ExcludeFilter omissions) 
+	public ContentObject getNext(ContentName name, ExcludeFilter omissions, long timeout) 
 					throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException;
-	public ContentObject getNext(ContentObject content, int prefixCount)
+	public ContentObject getNext(ContentObject content, int prefixCount, long timeout)
 					throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException;
-	public ContentObject getLatest(ContentName name) 
+	public ContentObject getLatest(ContentName name, long timeout) 
 					throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException;
-	public ContentObject getLatest(ContentObject content, int prefixCount) 
+	public ContentObject getLatest(ContentObject content, int prefixCount, long timeout) 
 					throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException;
-	public ContentObject getLatest(ContentName name, ExcludeFilter omissions) 
+	public ContentObject getLatest(ContentName name, ExcludeFilter omissions, long timeout) 
 					throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException;
-	public ContentObject getExcept(ContentName name, ExcludeFilter omissions) 
+	public ContentObject getExcept(ContentName name, ExcludeFilter omissions, long timeout) 
 					throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException;
 	
 	/**

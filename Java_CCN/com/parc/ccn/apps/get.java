@@ -7,6 +7,7 @@ import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
+import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.StandardCCNLibrary;
 
 public class get {
@@ -32,7 +33,7 @@ public class get {
 			if (args.length == 2) {
 				// Adjust to use defragmenting interface, find latest
 				// version, etc...
-				ContentObject object = library.get(argName, null, true);
+				ContentObject object = library.get(argName, null, true, CCNLibrary.NO_TIMEOUT);
 				
 				System.out.println("Retrieved an object named: " + argName);
 				System.out.println("Writing to file " + args[1]);

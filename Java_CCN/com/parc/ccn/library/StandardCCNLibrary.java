@@ -521,7 +521,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 			// the name -- not actual pieces of content --
 			// look only at ContentNames.
 			ArrayList<CompleteName> availableVersions = 
-				getNetworkManager().getChildren(new CompleteName(baseVersionName, null, null));
+				enumerate(new Interest(baseVersionName), NO_TIMEOUT);
 			
 			if ((null == availableVersions) || (availableVersions.size() == 0)) {
 				// No existing version.
@@ -575,7 +575,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 		
 		// Need recursive get. The currentName we have here is
 		// just the prefix of this version.
-		return get(currentName, null, true);
+		return get(currentName, null, true, 0);
 	}
 
 	/**
@@ -1030,21 +1030,21 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 */
 	public ContentObject get(ContentName name, 
 										ContentAuthenticator authenticator,
-										boolean isRecursive) throws IOException, InterruptedException {
+										boolean isRecursive, long timeout) throws IOException, InterruptedException {
 		
-		return getNetworkManager().get(this, name, authenticator,isRecursive);
+		return getNetworkManager().get(this, name, authenticator,isRecursive, timeout);
 	}
 	
-	public ContentObject get(ContentName name) throws IOException, InterruptedException {
-		return get(name, null, false);
+	public ContentObject get(ContentName name, long timeout) throws IOException, InterruptedException {
+		return get(name, null, false, timeout);
 	}
 	
 	/**
 	 * Experimental interface allowing direct gets via interest.
 	 * May be deprecated in the future
 	 */
-	public ContentObject get(Interest interest) throws IOException, InterruptedException {
-		return getNetworkManager().get(this, interest, null, true);
+	public ContentObject get(Interest interest, long timeout) throws IOException, InterruptedException {
+		return getNetworkManager().get(this, interest, null, true, timeout);
 	}
 
 	/**
@@ -1074,8 +1074,22 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * @return
 	 * @throws IOException 
 	 */
-	public ArrayList<CompleteName> enumerate(Interest query) throws IOException {
-		return getNetworkManager().enumerate(query);		
+	public ArrayList<CompleteName> enumerate(Interest query, long timeout) throws IOException {
+		ArrayList<CompleteName> result = new ArrayList<CompleteName>();
+		Integer prefixCount = query.nameComponentCount() == null ? query.name().components().size() 
+				: query.nameComponentCount();
+		try {
+			while (true) {
+				ContentObject co = get(query, timeout == NO_TIMEOUT ? 5000 : timeout);
+				if (co == null)
+					break;
+				result.add(co.completeName());
+				query = Interest.next(co, prefixCount);
+			}
+			return result;
+		} catch (InterruptedException e) {
+			return null;
+		}
 	}
 	
 	/**
@@ -1181,42 +1195,42 @@ public class StandardCCNLibrary implements CCNLibrary {
 	/**
 	 * getNext - get next content after specified content
 	 */
-	public ContentObject getNext(ContentName name, ExcludeFilter omissions) 
+	public ContentObject getNext(ContentName name, ExcludeFilter omissions, long timeout) 
 			throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException {
-		return generalGet(name, new Integer(Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME), omissions);
+		return generalGet(name, new Integer(Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME), omissions, timeout);
 	}
 	
-	public ContentObject getNext(ContentName name)
+	public ContentObject getNext(ContentName name, long timeout)
 			throws MalformedContentNameStringException, IOException,
 			InterruptedException, InvalidParameterException {
-		return getNext(name, null);
+		return getNext(name, null, timeout);
 	}
 	
-	public ContentObject getNext(ContentObject content, int prefixCount) 
+	public ContentObject getNext(ContentObject content, int prefixCount, long timeout) 
 			throws InvalidParameterException, MalformedContentNameStringException, 
 			IOException, InterruptedException {
-		return getNext(contentObjectToContentName(content, prefixCount), null);
+		return getNext(contentObjectToContentName(content, prefixCount), null, timeout);
 	}
 	
 	/**
 	 * Get last content in content stream
 	 */
-	public ContentObject getLatest(ContentName name, ExcludeFilter omissions) 
+	public ContentObject getLatest(ContentName name, ExcludeFilter omissions, long timeout) 
 			throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException {
-		return generalGet(name, new Integer(Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME), omissions);
+		return generalGet(name, new Integer(Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME), omissions, timeout);
 	}
 	
-	public ContentObject getLatest(ContentName name) throws InvalidParameterException, MalformedContentNameStringException, 
+	public ContentObject getLatest(ContentName name, long timeout) throws InvalidParameterException, MalformedContentNameStringException, 
 			IOException, InterruptedException {
-		return getLatest(name, null);
+		return getLatest(name, null, timeout);
 	}
 	
-	public ContentObject getLatest(ContentObject content, int prefixCount) throws InvalidParameterException, MalformedContentNameStringException, 
+	public ContentObject getLatest(ContentObject content, int prefixCount, long timeout) throws InvalidParameterException, MalformedContentNameStringException, 
 			IOException, InterruptedException {
-		return getLatest(contentObjectToContentName(content, prefixCount), null);
+		return getLatest(contentObjectToContentName(content, prefixCount), null, timeout);
 	}
 	
-	public ContentObject getExcept(ContentName name, ExcludeFilter omissions) throws InvalidParameterException, MalformedContentNameStringException, 
+	public ContentObject getExcept(ContentName name, ExcludeFilter omissions, long timeout) throws InvalidParameterException, MalformedContentNameStringException, 
 			IOException, InterruptedException {
 		return null;
 	}
@@ -1227,13 +1241,13 @@ public class StandardCCNLibrary implements CCNLibrary {
 		return new ContentName(cocn.count(), cocn.components(), new Integer(prefixCount));
 	}
 	
-	private ContentObject generalGet(ContentName name, Integer orderPreference, ExcludeFilter omissions) 
+	private ContentObject generalGet(ContentName name, Integer orderPreference, ExcludeFilter omissions, long timeout) 
 			throws IOException, InterruptedException, MalformedContentNameStringException {
 		Interest interest = new Interest(name);
 		if (null != orderPreference)
 			interest.orderPreference(orderPreference);
 		if (null != omissions)
 			interest.excludeFilter(omissions);
-		return getNetworkManager().get(this, interest, null, true);
+		return getNetworkManager().get(this, interest, null, true, timeout);
 	}
 }

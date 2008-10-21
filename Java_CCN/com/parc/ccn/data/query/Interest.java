@@ -229,10 +229,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @param co
 	 * @return
 	 */
-	public static Interest next(ContentObject co) {
+	public static Interest next(ContentObject co, Integer prefixCount) {
 		ArrayList<byte []>components = co.name().components();
 		components.add(co.contentDigest());
-		ContentName nextName = new ContentName(components.size(), components, components.size() - 2);
+		ContentName nextName = new ContentName(components.size(), components, 
+				prefixCount == null ? components.size() - 2 : prefixCount);
 		Interest interest = new Interest(nextName);
 		interest.orderPreference(ORDER_PREFERENCE_LEFT | ORDER_PREFERENCE_ORDER_NAME);
 		return interest;

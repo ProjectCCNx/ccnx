@@ -1,6 +1,5 @@
 package test.ccn.endtoend;
 
-import java.util.ArrayList;
 import java.util.concurrent.Semaphore;
 import java.util.logging.Level;
 

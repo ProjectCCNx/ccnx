@@ -7,7 +7,6 @@ import java.io.InputStream;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
-import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -34,7 +33,7 @@ public class BlockReadWriteTest extends BaseLibraryTest {
 	public static void setUpBeforeClass() throws Exception {
 	
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
-		Library.logger().setLevel(Level.FINEST);
+		//Library.logger().setLevel(Level.FINEST);
 		libraries[0] = StandardCCNLibrary.open();
 		libraries[1] = StandardCCNLibrary.open(); // force them to use separate ones.
 	}
