@@ -879,8 +879,26 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		return this.equals(other, count);
 	}
 	
+	/**
+	 * Compare our name to the name of the ContentObject.
+	 * If our name is 1 component longer than the ContentObject
+	 * and no prefix count is set, our name might contain a digest.
+	 * In that case, try matching the content to the last component as
+	 * a digest.
+	 * 
+	 * @param other
+	 * @return
+	 */
 	public boolean isPrefixOf(ContentObject other) {
-		return isPrefixOf(other.name());
+		boolean match = isPrefixOf(other.name());
+		if (match || prefixCount() != null)
+			return match;
+		if (count() == other.name().count() + 1) {
+			if (DataUtils.compare(component(count() - 1), other.contentDigest()) == 0) {
+				return true;
+			}
+		}
+		return false;
 	}
 	
 	public void encode(XMLEncoder encoder) throws XMLStreamException {

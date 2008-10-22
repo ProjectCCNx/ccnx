@@ -239,14 +239,14 @@ public class InterestTableTest {
 	
 	private void removeMatches(InterestTable<Integer> table, ContentName name, ContentName[] n, int[] v) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
 		if (removeByMatch) {
-			List<InterestTable.Entry<Integer>> result = table.removeMatches(getCompleteName(name));
+			List<InterestTable.Entry<Integer>> result = table.removeMatches(getContentObject(name, 0));
 			assertEquals(v.length, result.size());
 			for (int i = 0; i < v.length; i++) {
 				assertEquals(v[i], result.get(i).value());
 				assertEquals(n[i], result.get(i).name());
 			}
 		} else {
-			List<Integer> result = table.removeValues(getCompleteName(name));
+			List<Integer> result = table.removeValues(getContentObject(name, 0));
 			assertEquals(v.length, result.size());
 			for (int i = 0; i < v.length; i++) {
 				assertEquals(v[i], result.get(i));

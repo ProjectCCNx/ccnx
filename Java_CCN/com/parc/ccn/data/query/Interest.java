@@ -166,7 +166,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	}
 	
 	public boolean matches(ContentObject result) {
-		return matches(result.name(), (null != result.authenticator()) ? result.authenticator().publisherKeyID() : null);
+		return matches(result, (null != result.authenticator()) ? result.authenticator().publisherKeyID() : null);
 	}
 
 	/**
@@ -177,48 +177,64 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @param resultPublisherKeyID
 	 * @return
 	 */
-	public boolean matches(ContentName resultName, PublisherKeyID resultPublisherKeyID) {
-		if (null == name() || null == resultName)
+	public boolean matches(ContentName name, PublisherKeyID resultPublisherKeyID) {
+		if (null == name() || null == name)
 			return false; // null name() should not happen, null arg can
 		// to get interest that matches everything, should
 		// use / (ROOT)
-		if (name().isPrefixOf(resultName)) {
-			if (null != additionalNameComponents()) {
-				// we know our specified name is a prefix of the result. 
-				// the number of additional components must be this value
-				// we add 1 here for the missing "virtual digest" component
-				// effectively on the end of resultName
-				// TODO DKS this doesn't match if we specify the digest in the interest
-				// though lengths will be handled properly (lengthDiff will come out 0,
-				// which will match additionalNameComponents(); except we won't
-				// compare to the content digest...)
-				int lengthDiff = resultName.count() - name().count() + 1;
-				if (!additionalNameComponents().equals(lengthDiff)) {
-					Library.logger().info("Interest match failed: " + lengthDiff + " more than the " + additionalNameComponents() + " components between expected " +
-							name() + " and tested " + resultName);
-					return false;
-				}
+		if (name().isPrefixOf(name)) {
+			return internalMatch(name, resultPublisherKeyID);
+		}
+		return false;
+	}
+	
+	public boolean matches(ContentObject compareData, PublisherKeyID resultPublisherKeyID) {
+		if (null == name() || null == compareData)
+			return false; // null name() should not happen, null arg can
+		// to get interest that matches everything, should
+		// use / (ROOT)
+		if (name().isPrefixOf(compareData)) {
+			return internalMatch(compareData.name(), resultPublisherKeyID);
+		}
+		return false;
+	}
+	
+	private boolean internalMatch(ContentName name, PublisherKeyID resultPublisherKeyID) {
+		if (null != additionalNameComponents()) {
+			// we know our specified name is a prefix of the result. 
+			// the number of additional components must be this value
+			// we add 1 here for the missing "virtual digest" component
+			// effectively on the end of resultName
+			// TODO DKS this doesn't match if we specify the digest in the interest
+			// though lengths will be handled properly (lengthDiff will come out 0,
+			// which will match additionalNameComponents(); except we won't
+			// compare to the content digest...)
+			int lengthDiff = name.count() - name().count() + 1;
+			if (!additionalNameComponents().equals(lengthDiff)) {
+				Library.logger().info("Interest match failed: " + lengthDiff + " more than the " + additionalNameComponents() + " components between expected " +
+						name() + " and tested " + name);
+				return false;
 			}
-			if (null != orderPreference()) {
-				/*
-				 * All we can check here is whether the test name is
-				 * > our name. Any set of orderPreference requires this
-				 */
-				if (resultName.compareTo(name()) <= 0)
-					return false;
+		}
+		if (null != orderPreference()) {
+			/*
+			 * All we can check here is whether the test name is
+			 * > our name. Any set of orderPreference requires this
+			 */
+			if (name.compareTo(name()) <= 0)
+				return false;
+		}
+		if (null != publisherID()) {
+			if (null == resultPublisherKeyID) {
+				return false;
 			}
-			if (null != publisherID()) {
-				if (null == resultPublisherKeyID) {
-					return false;
-				}
-				// Should this be more general?
-				// TODO DKS handle issuer
-				if (TrustManager.getTrustManager().matchesRole(publisherID(), resultPublisherKeyID)) {
-					return true;
-				}
-			} else {
+			// Should this be more general?
+			// TODO DKS handle issuer
+			if (TrustManager.getTrustManager().matchesRole(publisherID(), resultPublisherKeyID)) {
 				return true;
 			}
+		} else {
+			return true;
 		}
 		return false;
 	}

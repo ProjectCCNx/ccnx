@@ -157,9 +157,6 @@ public class StandardCCNLibraryTest extends BaseLibrary {
 		}	
 	}
 
-	/*
-	 * Commented out until the ContentName/digest questions can be resolved - paul r.
-
 	@Test
 	public void testVersion() throws Exception {
 
@@ -173,7 +170,7 @@ public class StandardCCNLibraryTest extends BaseLibrary {
 		versionTest(cn, data.getBytes(), newdata.getBytes());
 		versionTest(cn2, data.getBytes(), newdata.getBytes());
 
-	} */
+	}
 
 	@Test
 	public void testRecall() {

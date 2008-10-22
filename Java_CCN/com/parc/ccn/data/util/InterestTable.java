@@ -131,7 +131,7 @@ public class InterestTable<V> {
 	
 	// Internal: return all the entries having exactly the specified name,
 	// useful once you have found the matching names to collect entries from them
-	protected List<Holder<V>> getAllMatchByName(ContentName name, CompleteName target) {
+	protected List<Holder<V>> getAllMatchByName(ContentName name, ContentObject target) {
 		List<Holder<V>> matches = new ArrayList<Holder<V>>();
 		List<Holder<V>> list = _contents.get(name);
 		if (null != list) {
@@ -224,7 +224,7 @@ public class InterestTable<V> {
 		return result;
 	}
 	
-	protected List<Holder<V>> removeAllMatchByName(ContentName name, CompleteName target) {
+	protected List<Holder<V>> removeAllMatchByName(ContentName name, ContentObject target) {
 		List<Holder<V>> matches = new ArrayList<Holder<V>>();
 		List<Holder<V>> list = _contents.get(name);
 		if (null != list) {
@@ -318,7 +318,7 @@ public class InterestTable<V> {
 			for (ContentName name : _contents.keySet()) {
 				if (name.isPrefixOf(target)) {
 					// Name match - is there an interest match here?
-					matches.addAll(getAllMatchByName(name, target.completeName()));
+					matches.addAll(getAllMatchByName(name, target));
 				}
 			}
 			Collections.reverse(matches);
@@ -462,7 +462,7 @@ public class InterestTable<V> {
 	 * @param target - desired CompleteName
 	 * @return List of matches ordered from longest match to shortest, empty if no match
 	 */
-	public List<V> removeValues(CompleteName target) {
+	public List<V> removeValues(ContentObject target) {
 		List<V> result = new ArrayList<V>();
 		List<Entry<V>> matches = removeMatches(target);
 		for (Entry<V> entry : matches) {
@@ -481,7 +481,7 @@ public class InterestTable<V> {
 	 * @param target - desired CompleteName
 	 * @return List of matches ordered from longest match to shortest, empty if no match
 	 */
-	public List<Entry<V>> removeMatches(CompleteName target) {
+	public List<Entry<V>> removeMatches(ContentObject target) {
 		List<Entry<V>> matches = new ArrayList<Entry<V>>();
 		List<ContentName> names = new ArrayList<ContentName>();
 		ContentName headname = new ContentName(target.name(), new byte[] {0} ); // need to include equal item in headMap
