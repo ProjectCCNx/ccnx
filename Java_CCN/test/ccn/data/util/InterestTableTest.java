@@ -18,6 +18,7 @@ import org.junit.Test;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
@@ -138,12 +139,17 @@ public class InterestTableTest {
 						ContentAuthenticator.ContentType.LEAF, locator, contents, null);
 	}
 	
+	private ContentObject getContentObject(ContentName name, int value) throws InvalidKeyException, SignatureException, MalformedContentNameStringException, ConfigurationException {
+		CompleteName cn = getCompleteName(name);
+		return new ContentObject(cn, new Integer(value).toString().getBytes());
+	}
+	
 	private void match(InterestTable<Integer> table, ContentName name, int v) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
 		// Test both methods
 		assertEquals(v, (null == activeKeyID) ? table.getMatch(name).value() :
-												 table.getMatch(getCompleteName(name)).value());
+												 table.getMatch(getContentObject(name, v)).value());
 		assertEquals(v, (null == activeKeyID) ? table.getValue(name) :
-			 									table.getValue(getCompleteName(name)));
+			 									table.getValue(getContentObject(name,v)));
 	}
 
 	private void match(InterestTable<Integer> table, String name, int v) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
@@ -197,9 +203,9 @@ public class InterestTableTest {
 	
 	private void noMatch(InterestTable<Integer> table, ContentName name) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
 		assertNull((null == activeKeyID) ? table.getMatch(name) :
-									       table.getMatch(getCompleteName(name)));
+									       table.getMatch(getContentObject(name, 0)));
 		assertNull((null == activeKeyID) ? table.getValue(name) :
-		       							   table.getValue(getCompleteName(name)));
+		       							   table.getValue(getContentObject(name, 0)));
 	}
 
 	private void noMatch(InterestTable<Integer> table, String name) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
@@ -208,7 +214,7 @@ public class InterestTableTest {
 
 	private void matches(InterestTable<Integer> table, ContentName name, ContentName[] n, int[] v) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
 		List<InterestTable.Entry<Integer>> result = (null == activeKeyID) ? table.getMatches(name) :
-																			 table.getMatches(getCompleteName(name));
+																			 table.getMatches(getContentObject(name, 0));
 		assertEquals(v.length, result.size());
 		for (int i = 0; i < v.length; i++) {
 			assertEquals(v[i], result.get(i).value());
@@ -216,7 +222,7 @@ public class InterestTableTest {
 		}
 		
 		List<Integer> values = (null == activeKeyID) ? table.getValues(name) :
-			 								table.getValues(getCompleteName(name));
+			 								table.getValues(getContentObject(name, 0));
 		assertEquals(v.length, values.size());
 		for (int i=0; i < v.length; i++) {
 			assertEquals(v[i], values.get(i));

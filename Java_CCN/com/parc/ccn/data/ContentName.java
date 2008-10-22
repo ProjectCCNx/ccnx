@@ -879,6 +879,10 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		return this.equals(other, count);
 	}
 	
+	public boolean isPrefixOf(ContentObject other) {
+		return isPrefixOf(other.name());
+	}
+	
 	public void encode(XMLEncoder encoder) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");

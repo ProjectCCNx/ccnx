@@ -35,7 +35,7 @@ import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
-import com.parc.ccn.network.CCNSimpleNetworkManager;
+import com.parc.ccn.network.CCNNetworkManager;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.crypto.CCNMerkleTree;
 import com.parc.ccn.security.keys.KeyManager;
@@ -77,7 +77,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * same app. Get default one if use static VM instance of StandardCCNLibrary,
 	 * but if you make a new instance, get a new connection to ccnd.
 	 */
-	protected CCNSimpleNetworkManager _networkManager = null;
+	protected CCNNetworkManager _networkManager = null;
 	
 	public static StandardCCNLibrary open() throws ConfigurationException, IOException { 
 		synchronized (StandardCCNLibrary.class) {
@@ -122,7 +122,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 		_userKeyManager = keyManager;
 		// force initialization of network manager
 		try {
-			_networkManager = new CCNSimpleNetworkManager();
+			_networkManager = new CCNNetworkManager();
 		} catch (IOException ex){
 			Library.logger().warning("IOException instantiating network manager: " + ex.getMessage());
 			ex.printStackTrace();
@@ -144,12 +144,12 @@ public class StandardCCNLibrary implements CCNLibrary {
 
 	public KeyManager keyManager() { return _userKeyManager; }
 	
-	public CCNSimpleNetworkManager getNetworkManager() { 
+	public CCNNetworkManager getNetworkManager() { 
 		if (null == _networkManager) {
 			synchronized(this) {
 				if (null == _networkManager) {
 					try {
-						_networkManager = new CCNSimpleNetworkManager();
+						_networkManager = new CCNNetworkManager();
 					} catch (IOException ex){
 						Library.logger().warning("IOException instantiating network manager: " + ex.getMessage());
 						ex.printStackTrace();

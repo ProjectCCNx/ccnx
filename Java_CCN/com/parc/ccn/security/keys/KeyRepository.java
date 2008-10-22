@@ -25,19 +25,19 @@ import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherKeyID;
-import com.parc.ccn.network.CCNSimpleNetworkManager;
+import com.parc.ccn.network.CCNNetworkManager;
 import com.parc.security.crypto.certificates.CryptoUtil;
 
 public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	
 	protected static final boolean _DEBUG = true;
 	
-	protected  CCNSimpleNetworkManager _networkManager = null;
+	protected  CCNNetworkManager _networkManager = null;
 	protected HashMap<ContentName,ContentObject> _keyMap = new HashMap<ContentName,ContentObject>();
 	protected HashMap<PublisherKeyID, ContentName> _idMap = new HashMap<PublisherKeyID,ContentName>();
 	
 	public KeyRepository() throws IOException {
-		_networkManager = new CCNSimpleNetworkManager(); // maintain our own connection to the agent, so
+		_networkManager = new CCNNetworkManager(); // maintain our own connection to the agent, so
 			// everyone can ask us for keys
 	}
 	

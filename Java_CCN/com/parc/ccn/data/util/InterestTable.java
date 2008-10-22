@@ -10,7 +10,9 @@ import java.util.TreeMap;
 
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
+import com.parc.ccn.data.util.Copy_2_of_InterestTable.Entry;
 
 /**
  * Table of Interests, holding an arbitrary value for any  
@@ -250,7 +252,7 @@ public class InterestTable<V> {
 	 * @param target - desired CompleteName
 	 * @return Entry of longest match if any, null if no match
 	 */
-	public V getValue(CompleteName target) {
+	public V getValue(ContentObject target) {
 		Entry<V> match = getMatch(target);
 		if (null != match) {
 			return match.value();
@@ -272,14 +274,14 @@ public class InterestTable<V> {
 	 * _contents might contain a matching interest. Also since headMap requires a bunch of 
 	 * compares I'm not so sure how much of an optimization it is anyway...
 	 */
-	public Entry<V> getMatch(CompleteName target) {
+	public Entry<V> getMatch(ContentObject target) {
 		Entry<V> match = null;
 		for (ContentName name : _contents.keySet()) {
-			if (name.isPrefixOf(target.name())) {
+			if (name.isPrefixOf(target)) {
 				// Name match - is there an interest match here?
-				Entry<V> found = getMatchByName(name, target);
+				Entry<V> found = getMatchByName(name, target.completeName());
 				if (null != found) {
-					match = getMatchByName(name, target);
+					match = getMatchByName(name, target.completeName());
 				}
 			}
 	    }
@@ -287,11 +289,11 @@ public class InterestTable<V> {
 	}
 
 	/**
-	 * Get values of all matching Interests for a CompleteName.
+	 * Get values of all matching Interests for a ContentObject.
 	 * Any ContentName entries in the table will be 
 	 * ignored by this operation and any null values will be ignored.
 	 */
-	public List<V> getValues(CompleteName target) {
+	public List<V> getValues(ContentObject target) {
 		List<V> result = new ArrayList<V>();
 		List<Entry<V>> matches = getMatches(target);
 		for (Entry<V> entry : matches) {
@@ -311,13 +313,13 @@ public class InterestTable<V> {
 	 * @param target - desired CompleteName
 	 * @return List of matches, empty if no match
 	 */
-	public List<Entry<V>> getMatches(CompleteName target) {
+	public List<Entry<V>> getMatches(ContentObject target) {
 		List<Entry<V>> matches = new ArrayList<Entry<V>>();
 		if (null != target) {
 			for (ContentName name : _contents.keySet()) {
-				if (name.isPrefixOf(target.name())) {
+				if (name.isPrefixOf(target)) {
 					// Name match - is there an interest match here?
-					matches.addAll(getAllMatchByName(name, target));
+					matches.addAll(getAllMatchByName(name, target.completeName()));
 				}
 			}
 			Collections.reverse(matches);
@@ -381,9 +383,7 @@ public class InterestTable<V> {
 	 */
 	public List<Entry<V>> getMatches(ContentName target) {
 		List<Entry<V>> matches = new ArrayList<Entry<V>>();
-		ContentName headname = new ContentName(target, new byte[] {0} ); // need to include equal item in headMap
-	    for (Iterator<ContentName> nameIt = _contents.headMap(headname).keySet().iterator(); nameIt.hasNext();) {
-			ContentName name = nameIt.next();
+		for (ContentName name : _contents.keySet()) {
 			if (name.isPrefixOf(target)) {
 				matches.addAll(_contents.get(name));
 			}

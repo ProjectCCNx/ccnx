@@ -56,7 +56,7 @@ import com.parc.ccn.security.keys.KeyManager;
  * @author smetters
  *
  */
-public class CCNSimpleNetworkManager implements Runnable {
+public class CCNNetworkManager implements Runnable {
 	
 	public static final int DEFAULT_AGENT_PORT = 4485;
 	public static final String PROP_AGENT_PORT = "ccn.agent.port";
@@ -94,7 +94,7 @@ public class CCNSimpleNetworkManager implements Runnable {
 	// yet avoid delivery to a cancelled listener.
 	protected abstract class ListenerRegistration implements Runnable {
 		protected Object listener;
-		protected CCNSimpleNetworkManager manager;
+		protected CCNNetworkManager manager;
 		public Semaphore sema = null;
 		public Object owner = null;
 		protected boolean deliveryPending = false;
@@ -191,7 +191,7 @@ public class CCNSimpleNetworkManager implements Runnable {
 		public long timeout = CCNLibrary.NO_TIMEOUT;
 		
 		// All internal client interests must have an owner
-		public InterestRegistration(CCNSimpleNetworkManager mgr, Interest i, CCNInterestListener l, Object owner, 
+		public InterestRegistration(CCNNetworkManager mgr, Interest i, CCNInterestListener l, Object owner, 
 						long timeout) {
 			manager = mgr;
 			interest = i; 
@@ -344,7 +344,7 @@ public class CCNSimpleNetworkManager implements Runnable {
 		public ContentName name;
 		protected boolean deliveryPending = false;
 		protected ArrayList<Interest> interests= new ArrayList<Interest>(1);
-		public Filter(CCNSimpleNetworkManager mgr, ContentName n, CCNFilterListener l, Object o) {
+		public Filter(CCNNetworkManager mgr, ContentName n, CCNFilterListener l, Object o) {
 			name = n; listener = l; owner = o;
 			manager = mgr;
 		}
@@ -418,7 +418,7 @@ public class CCNSimpleNetworkManager implements Runnable {
 			}
 		}
 		
-		public synchronized void write(CCNSimpleNetworkManager mgr) throws XMLStreamException {
+		public synchronized void write(CCNNetworkManager mgr) throws XMLStreamException {
 			if (null != data) {
 				mgr.write(data);
 			} // else already invalidated, buffer may be no good, nothing to do
@@ -472,7 +472,7 @@ public class CCNSimpleNetworkManager implements Runnable {
 	 * of a network manager (one per library instance)
 	 ***************************************************************/
 	
-	public CCNSimpleNetworkManager() throws IOException {
+	public CCNNetworkManager() throws IOException {
 		// Determine port at which to contact agent
 		int port = DEFAULT_AGENT_PORT;
 		String portval = System.getProperty(PROP_AGENT_PORT);

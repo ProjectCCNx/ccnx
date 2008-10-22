@@ -65,12 +65,10 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
     	this(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, name, authenticator, content, signature);
     }
     
-    /**
-     * Helper function
-     */
-    public ContentObject(CompleteName completeName, byte [] content) {
-    	this(completeName.name(), completeName.authenticator(), content, completeName.signature());
-    }
+    public ContentObject(CompleteName name, byte [] content) {
+    	this(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, name.name(), name.authenticator(), content, 
+    			name.signature());
+	}
     
     /**
      * Generate an authenticator and a signature.

@@ -16,7 +16,7 @@ import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.util.BinaryXMLCodec;
 import com.parc.ccn.data.util.TextXMLCodec;
 import com.parc.ccn.library.StandardCCNLibrary;
-import com.parc.ccn.network.CCNSimpleNetworkManager;
+import com.parc.ccn.network.CCNNetworkManager;
 
 /**
  * Low-level writing of packets to file.  This program is designed to 
@@ -46,7 +46,7 @@ public class puttap implements CCNInterestListener {
 	}
 	
 	public boolean go(String encFlag, String ccnName, String tapName, String readName, String verifyFlag) {
-		CCNSimpleNetworkManager manager = null;
+		CCNNetworkManager manager = null;
 		try {
 			if (encFlag.equals("0")) {
 				SystemConfiguration.setDefaultEncoding(TextXMLCodec.codecName());
