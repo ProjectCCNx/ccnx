@@ -400,6 +400,9 @@ public class CCNSimpleNetworkManager implements Runnable {
 		public boolean isFromNet() {
 			return (null == sema);
 		}
+		public synchronized ContentObject data() {
+			return data;
+		}
 		public synchronized CompleteName completeName() {
 			if (null != data) {
 				return data.completeName();
@@ -859,7 +862,7 @@ public class CCNSimpleNetworkManager implements Runnable {
 		boolean consumer = false; // is there a consumer?
 		// Check local interests
 		synchronized (_myInterests) {
-			for (InterestRegistration ireg : _myInterests.getValues(dreg.completeName())) {
+			for (InterestRegistration ireg : _myInterests.getValues(dreg.data())) {
 				if (dreg.owner != ireg.owner) {
 					if (dreg.copyTo(ireg)) { // this is a copy of the data
 						_threadpool.execute(ireg);
