@@ -12,7 +12,6 @@ import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.util.Copy_2_of_InterestTable.Entry;
 
 /**
  * Table of Interests, holding an arbitrary value for any  
