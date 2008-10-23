@@ -84,9 +84,6 @@ public class CCNNetworkManager implements Runnable {
 	protected InterestTable<InterestRegistration> _othersInterests = new InterestTable<InterestRegistration>();
 	protected InterestTable<InterestRegistration> _myInterests = new InterestTable<InterestRegistration>();
 	protected InterestTable<Filter> _myFilters = new InterestTable<Filter>();
-	protected List<DataRegistration> _writers = Collections.synchronizedList(new LinkedList<DataRegistration>());
-	// Queues of new arrivals from inside to be processed
-	protected Queue<DataRegistration> _newData = new LinkedList<DataRegistration>();
 			
 	// Generic superclass for registration objects that may have a listener
 	// Handles invalidation and pending delivery consistently to enable 
@@ -375,96 +372,6 @@ public class CCNNetworkManager implements Runnable {
 		}
 	}
 	
-	/** 
-	 * Data registration: record of data that has not yet consumed interest.
-	 * @field data the data itself
-	 * @field sema semaphore used to block thread waiting for interest to consume or null
-	 * if data came from the network rather than an internal client
-	 * @return
-	 */
-	protected class DataRegistration {
-		protected ContentObject data = null;
-		public Semaphore sema = null;
-		public Object owner = null;
-		public DataRegistration(ContentObject d, boolean internal, Object own) {
-			data = d;
-			owner = own;
-			if (internal) {
-				sema = new Semaphore(0);
-			}
-		}
-		// On return from invalidate, buffers underlying data object may be reused safely
-		public synchronized void invalidate() {
-			data = null;
-		}
-		public boolean isFromNet() {
-			return (null == sema);
-		}
-		public synchronized ContentObject data() {
-			return data;
-		}
-		public synchronized CompleteName completeName() {
-			if (null != data) {
-				return data.completeName();
-			} else {
-				return null;
-			}
-		}
-		public synchronized ContentName name() {
-			if (null != data) {
-				return data.name();
-			} else {
-				return null;
-			}
-		}
-		
-		public synchronized void write(CCNNetworkManager mgr) throws XMLStreamException {
-			if (null != data) {
-				mgr.write(data);
-			} // else already invalidated, buffer may be no good, nothing to do
-		}
-		
-		public synchronized boolean copyTo(InterestRegistration ireg) {
-			boolean result = false;
-			if (null != data) {
-				result = ireg.add(data); // actual copying is here
-			} // else already invalidated, buffer may be no good, nothing to do
-			Library.logger().finest("copyTo: ireg " + ((Object)ireg).toString() + " data size: " + ireg.data.size());
-			return result;
-		}
-		
-		/** Create a single special piece of content that we can send 
-		 *  to the network to make the local agent aware of our presence 
-		 *  and the ephemeral UDP port to which we are listening.
-		 *  This method is an experiment that may never be used.
-		 * @throws IOException
-		 */
-		private void createKeepalive() throws IOException {
-			try {
-				// name
-				ContentName keepname = ContentName.fromNative(KEEPALIVE_NAME);
-				// contents = current date value
-				ByteBuffer bb = ByteBuffer.allocate(Long.SIZE/Byte.SIZE);
-				bb.putLong(new Date().getTime());
-				byte[] contents = bb.array();
-				// security bits
-				PrivateKey signingKey = _keyManager.getDefaultSigningKey();
-				KeyLocator locator = _keyManager.getKeyLocator(signingKey);
-				PublisherKeyID publisher =  _keyManager.getDefaultKeyID();
-				
-				_keepalive = new ContentObject(keepname, new ContentAuthenticator(publisher, ContentType.LEAF, locator),
-																				  contents, signingKey);
-			} catch (InvalidKeyException e) {
-				throw new IOException("CCNNetworkManager: bad default signing key: " + e.getMessage());
-			} catch (MalformedContentNameStringException e) {
-				throw new RuntimeException("CCNNetworkManager internal fault: malformed keep alive name");
-			} catch (SignatureException e) {
-				throw new IOException("CCNNetworkManager: signature failure: " + e.getMessage());
-			} catch (NullPointerException e) {
-				throw new RuntimeException("CCNNetworkManager: publisher;/keys not initialized properly");
-			}
-		}
-	}
 	
 	/***************************************************************
 	 * NOTE: former statics getNetworkManager(), createNetworkManager()
@@ -794,8 +701,7 @@ public class CCNNetworkManager implements Runnable {
 					Library.logger().fine("Data from net: " + co.name());
 			//		SystemConfiguration.logObject("Data from net:", co);
 					
-					DataRegistration oData = new DataRegistration(co, false, null);
-					deliverData(oData);
+					deliverData(co);
 					// External data never goes back to network, never held onto here
 					// External data never has a thread waiting, so no need to release sema
 				}
@@ -858,21 +764,14 @@ public class CCNNetworkManager implements Runnable {
 	}
 
 	// Deliver data to blocked getters and registered interests
-	protected boolean deliverData(DataRegistration dreg) throws XMLStreamException {
+	protected boolean deliverData(ContentObject co) throws XMLStreamException {
 		boolean consumer = false; // is there a consumer?
 		// Check local interests
 		synchronized (_myInterests) {
-			for (InterestRegistration ireg : _myInterests.getValues(dreg.data())) {
-				if (dreg.owner != ireg.owner) {
-					if (dreg.copyTo(ireg)) { // this is a copy of the data
-						_threadpool.execute(ireg);
-						if (ireg.isStanding() && dreg.isFromNet()) {
-							// we need to re-express the standing interest
-							// DKS dynamic interests -- nothing is standing anymore
-							write(ireg.interest);
-						}
-						consumer = true;
-					}
+			for (InterestRegistration ireg : _myInterests.getValues(co)) {
+				if (ireg.add(co)) { // this is a copy of the data
+					_threadpool.execute(ireg);
+					consumer = true;
 				}
 			}
 		}
