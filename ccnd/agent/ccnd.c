@@ -853,6 +853,50 @@ consume_matching_interests(struct ccnd *h,
     return(matches);
 }
 
+static void
+adjust_ipe_predicted_response(struct ccnd *h,
+                              struct interestprefix_entry *ipe, int up)
+{
+    unsigned t = ipe->usec;
+    if (up)
+        t = t + (t >> 3);
+    else
+        t = t - (t >> 7);
+    if (t < 127)
+        t = 127;
+    else if (t > 1000000)
+        t = 1000000;
+    ipe->usec = t;
+}
+
+static void
+adjust_predicted_response(struct ccnd *h, struct propagating_entry *pe, int up)
+{
+    struct ccn_indexbuf *comps = indexbuf_obtain(h);
+    struct ccn_parsed_interest parsed_interest = {0};
+    struct ccn_parsed_interest *pi = &parsed_interest;
+    struct interestprefix_entry *ipe;
+    int res;
+    size_t start;
+    size_t stop;
+    res = ccn_parse_interest(pe->interest_msg, pe->size, pi, comps);
+    if (res < 0 || pi->prefix_comps >= comps->n) abort();
+    start = comps->buf[0];
+    stop = comps->buf[pi->prefix_comps];
+    ipe = hashtb_lookup(h->interestprefix_tab,
+                        pe->interest_msg + start, stop - start);
+    if (ipe != NULL)
+        adjust_ipe_predicted_response(h, ipe, up);
+    if (pi->prefix_comps > 0) {
+        stop = comps->buf[pi->prefix_comps - 1];
+        ipe = hashtb_lookup(h->interestprefix_tab,
+                            pe->interest_msg + start, stop - start);
+        if (ipe != NULL)
+            adjust_ipe_predicted_response(h, ipe, up);
+    }
+    indexbuf_release(h, comps);
+}
+
 /*
  * Keep a little history about where matching content comes from.
  */
@@ -861,9 +905,11 @@ note_content_from(struct ccnd *h,
                   struct interestprefix_entry *ipe,
                   unsigned from_faceid)
 {
-    if (ipe->src == ~0)
+    if (ipe->src == from_faceid)
+        adjust_ipe_predicted_response(h, ipe, 0);
+    else if (ipe->src == ~0)
         ipe->src = from_faceid;
-    else if (ipe->src != from_faceid) {
+    else {
         ipe->osrc = ipe->src;
         ipe->src = from_faceid;
     }
@@ -885,16 +931,22 @@ match_interests(struct ccnd *h, struct content_entry *content,
                            struct face *face, struct face *from_face)
 {
     int n_matched = 0;
+    int new_matches;
     int ci;
+    int cm = 0;
     unsigned c0 = content->comps[0];
     const unsigned char *key = content->key + c0;
     for (ci = content->ncomps - 1; ci >= 0; ci--) {
         int size = content->comps[ci] - c0;
         struct interestprefix_entry *ipe = hashtb_lookup(h->interestprefix_tab, key, size);
         if (ipe != NULL) {
-            n_matched += consume_matching_interests(h, ipe, content, pc, face);
-            if (from_face != NULL && n_matched != 0)
+            new_matches = consume_matching_interests(h, ipe, content, pc, face);
+            if (from_face != NULL && (new_matches != 0 || ci + 1 == cm))
                 note_content_from(h, ipe, from_face->faceid);
+            if (new_matches != 0) {
+                cm = ci; /* update stats for this prefix and one shorter */
+                n_matched += new_matches;
+            }
         }
     }
     return(n_matched);
@@ -944,11 +996,15 @@ ccn_stuff_interest(struct ccnd *h, struct face *face, struct ccn_charbuf *c)
                 if (p->outbound != NULL && p->outbound->n > 0 &&
                       p->size <= remaining_space &&
                       p->interest_msg != NULL &&
+                      ((p->flags & (CCN_PR_STUFFED1 | CCN_PR_WAIT1)) == 0) &&
                       ((p->flags & CCN_PR_UNSENT) == 0 ||
                         p->outbound->buf[p->outbound->n - 1] == face->faceid) &&
                       indexbuf_unordered_set_remove(p->outbound, face->faceid) != -1) {
                     remaining_space -= p->size;
-                    p->flags &= ~CCN_PR_UNSENT;
+                    if ((p->flags & CCN_PR_UNSENT) != 0) {
+                        p->flags &= ~CCN_PR_UNSENT;
+                        p->flags |= CCN_PR_STUFFED1;
+                    }
                     n_stuffed++;
                     ccn_charbuf_append(c, p->interest_msg, p->size);
                     h->interests_stuffed++;
@@ -1260,12 +1316,17 @@ do_propagate(struct ccn_schedule *sched,
     struct propagating_entry *pe = ev->evdata;
     (void)(sched);
     int next_delay = 1;
+    int special_delay = 0;
     int n = 0;
     if (pe->interest_msg == NULL)
         return(0);
     if (flags & CCN_SCHEDULE_CANCEL) {
         consume(pe);
         return(0);
+    }
+    if ((pe->flags & CCN_PR_WAIT1) != 0) {
+        pe->flags &= ~CCN_PR_WAIT1;
+        adjust_predicted_response(h, pe, 1);
     }
     if (pe->usec <= 0) {
         if (h->debug & 2)
@@ -1278,17 +1339,26 @@ do_propagate(struct ccn_schedule *sched,
     }
     if (pe->outbound != NULL)
         n = pe->outbound->n;
-    if (n > 0) {
+    if ((pe->flags & CCN_PR_STUFFED1) != 0) {
+        pe->flags &= ~CCN_PR_STUFFED1;
+        pe->flags |= CCN_PR_WAIT1;
+        next_delay = special_delay = ev->evint;
+    }
+    else if (n > 0) {
         unsigned faceid = pe->outbound->buf[n = --pe->outbound->n];
         struct face *face = face_from_faceid(h, faceid);
         if (face != NULL && (face->flags & CCN_FACE_NOSEND) == 0) {
             if (h->debug & 2)
                 ccnd_debug_ccnb(h, __LINE__, "interest_to", face,
                                 pe->interest_msg, pe->size);
-            stuff_and_write(h, face, pe->interest_msg, pe->size);
             h->interests_sent += 1;
             next_delay = nrand48(h->seed) % 8192 + 500;
-            pe->flags &= ~CCN_PR_UNSENT;
+            if ((pe->flags & CCN_PR_UNSENT) != 0) {
+                pe->flags &= ~CCN_PR_UNSENT;
+                pe->flags |= CCN_PR_WAIT1;
+                next_delay = special_delay = ev->evint;
+            }
+            stuff_and_write(h, face, pe->interest_msg, pe->size);
         }
     }
     if (n == 0) {
@@ -1296,7 +1366,7 @@ do_propagate(struct ccn_schedule *sched,
             finished_propagating(pe);
             next_delay = CCN_INTEREST_HALFLIFE_MICROSEC;
         }
-        else
+        else if (special_delay == 0)
             next_delay = CCN_INTEREST_HALFLIFE_MICROSEC / 4;
     }
     next_delay = pe_next_usec(h, pe, next_delay, __LINE__);
@@ -1459,7 +1529,7 @@ propagate_interest(struct ccnd *h, struct face *face,
             else
                 usec = (nrand48(h->seed) & delaymask) + 1;
             usec = pe_next_usec(h, pe, usec, __LINE__);
-            ccn_schedule_event(h->sched, usec, do_propagate, pe, 0);
+            ccn_schedule_event(h->sched, usec, do_propagate, pe, ipe->usec);
         }
     }
     else if (res == HT_OLD_ENTRY) {
@@ -1551,10 +1621,11 @@ process_incoming_interest(struct ccnd *h, struct face *face,
         ipe = e->data;
         if (res == HT_NEW_ENTRY) {
             ipe->src = ipe->osrc = ~0;
+            ipe->usec = (nrand48(h->seed) % 4096U) + 8192;
             if (pi->prefix_comps > 0) {
                 /*
                  * Init src history from parent, if available.
-                 * Also make prefix entry one level up to capture some
+                 * Also create prefix entry one level up to capture some
                  * less-specific history.
                  */
                 res = hashtb_seek(e,
@@ -1562,11 +1633,14 @@ process_incoming_interest(struct ccnd *h, struct face *face,
                                   comps->buf[pi->prefix_comps-1] - comps->buf[0],
                                   0);
                 ppe = e->data;
-                if (res == HT_NEW_ENTRY)
+                if (res == HT_NEW_ENTRY) {
                     ppe->src = ppe->osrc = ~0;
+                    ppe->usec = ipe->usec;
+                }
                 else if (ppe != NULL) {
                     ipe->src = ppe->src;
                     ipe->osrc = ppe->osrc;
+                    ipe->usec = ppe->usec;
                 }
             }
         }

@@ -49,7 +49,7 @@ typedef unsigned ccn_accession_t;
 struct ccnd {
     struct hashtb *faces_by_fd;     /* keyed by fd */
     struct hashtb *dgram_faces;     /* keyed by sockaddr */
-    struct hashtb *content_tab;     /* keyed by initial fragment of ContentObject */
+    struct hashtb *content_tab; /* keyed by initial fragment of ContentObject */
     struct hashtb *interestprefix_tab; /* keyed by name prefix components */
     struct hashtb *propagating_tab; /* keyed by nonce */
     struct ccn_indexbuf *skiplinks; /* skiplist for content-ordered ops */
@@ -163,6 +163,7 @@ struct interestprefix_entry {
     struct propagating_entry *propagating_head;
     unsigned src;                /* faceid of recent matching content */
     unsigned osrc;               /* and of older matching content */
+    unsigned usec;               /* response-time prediction */
 };
 
 /*
@@ -178,7 +179,9 @@ struct propagating_entry {
     unsigned faceid;            /* origin of the interest, dest for matches */
     int usec;                   /* usec until timeout */
 };
-#define CCN_PR_UNSENT 1
+#define CCN_PR_UNSENT 1  /* interest has not been sent anywhere yet */
+#define CCN_PR_WAIT1  2  /* interest has been sent to one place */
+#define CCN_PR_STUFFED1 4 /* was stuffed before sent anywhere else */
 
 /* Consider a separate header for these */
 int ccnd_stats_httpd_start(struct ccnd *);
