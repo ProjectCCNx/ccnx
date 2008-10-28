@@ -1588,7 +1588,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,
     if (res < 0) {
         ccnd_msg(h, "error parsing Interest - code %d", res);
     }
-    else if (pi->scope > 0 && pi->scope < 2 &&
+    else if (pi->scope >= 0 && pi->scope < 2 &&
              (face->flags & CCN_FACE_LINK) != 0) {
         ccnd_debug_ccnb(h, __LINE__, "interest_outofscope", face, msg, size);
     }
