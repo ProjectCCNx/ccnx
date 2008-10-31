@@ -28,10 +28,17 @@ objtree:
 cleanall:
 	find . -type l -print -exec rm '{}' ';'
 
-MANIFEST:
+_manifester:
+	rm -f _manifester
+	test -d .svn && { type svn >/dev/null 2>/dev/null; } && ( echo svn list -R > _manifester; ) || :
+	test -f _manifester || ( git branch >/dev/null 2>/dev/null && echo git ls-files > _manifester; ) || :
+	test -f _manifester || ( echo false > _manifester )
+	
+MANIFEST: _manifester
 	echo MANIFEST > MANIFEST.new
-	svn list -R | grep -v -e '/$$' -e 'agent/5586.ccnb.gz' >> MANIFEST.new
+	sh _manifester | grep -v -e '/$$' -e 'agent/5586.ccnb.gz' >> MANIFEST.new
 	mv MANIFEST.new MANIFEST
+	rm _manifester
 
 FAVORITES: MANIFEST
 	./makefavorites
