@@ -16,6 +16,7 @@ import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
+import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.CompleteName;
@@ -26,14 +27,12 @@ import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.query.CCNFilterListener;
-import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherKeyID;
-import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
 import com.parc.ccn.network.CCNNetworkManager;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
@@ -41,7 +40,7 @@ import com.parc.ccn.security.crypto.CCNMerkleTree;
 import com.parc.ccn.security.keys.KeyManager;
 
 /**
- * A basic implementation of the CCNLibrary API. This
+ * An implementation of the basic CCN library.
  * rides on top of the CCNBase low-level interface. It uses
  * CCNNetworkManager to interface with a "real" virtual CCN,
  * and KeyManager to interface with the user's collection of
@@ -50,22 +49,36 @@ import com.parc.ccn.security.keys.KeyManager;
  * Need to expand get-side interface to allow querier better
  * access to signing information and trust path building.
  * 
- * @author smetters
+ * @author smetters,rasmussen
+ * 
+ * * <META> tag under which to store metadata (either on name or on version)
+ * <V> tag under which to put versions
+ * n/<V>/<number> -> points to header
+ * <B> tag under which to put actual fragments
+ * n/<V>/<number>/<B>/<number> -> fragments
+ * n/<latest>/1/2/... has pointer to latest version
+ *  -- use latest to get header of latest version, otherwise get via <v>/<n>
+ * configuration parameters:
+ * blocksize -- size of chunks to fragment into
+ * 
+ * get always reconstructs fragments and traverses links
+ * can getLink to get link info
  *
  */
-public class StandardCCNLibrary implements CCNLibrary {
+public class CCNLibrary extends CCNBase {
 
 	public static final String MARKER = "_";
-	public static final String VERSION_MARKER = MARKER + "v" + MARKER;
 	public static final String FRAGMENT_MARKER = MARKER + "b" + MARKER;
+	public static final String VERSION_MARKER = MARKER + "v" + MARKER;
 	public static final String CLIENT_METADATA_MARKER = MARKER + "meta" + MARKER;
 	public static final String HEADER_NAME = ".header"; // DKS currently not used; see below.
+	public enum OpenMode { O_RDONLY, O_WRONLY };
 	
 	static {
 		Security.addProvider(new BouncyCastleProvider());
 	}
 	
-	protected static StandardCCNLibrary _library = null;
+	protected static CCNLibrary _library = null;
 
 	/**
 	 * Do we want to do this this way, or everything static?
@@ -73,16 +86,15 @@ public class StandardCCNLibrary implements CCNLibrary {
 	protected KeyManager _userKeyManager = null;
 	
 	/**
-	 * Allow separate per-instance to control reading/writing within
-	 * same app. Get default one if use static VM instance of StandardCCNLibrary,
-	 * but if you make a new instance, get a new connection to ccnd.
+	 * Control whether fragments start at 0 or 1.
+	 * @return
 	 */
-	protected CCNNetworkManager _networkManager = null;
+	public static final int baseFragment() { return 0; }
 	
-	public static StandardCCNLibrary open() throws ConfigurationException, IOException { 
-		synchronized (StandardCCNLibrary.class) {
+	public static CCNLibrary open() throws ConfigurationException, IOException { 
+		synchronized (CCNLibrary.class) {
 			try {
-				return new StandardCCNLibrary();
+				return new CCNLibrary();
 			} catch (ConfigurationException e) {
 				Library.logger().severe("Configuration exception initializing CCN library: " + e.getMessage());
 				throw e;
@@ -90,11 +102,10 @@ public class StandardCCNLibrary implements CCNLibrary {
 				Library.logger().severe("IO exception initializing CCN library: " + e.getMessage());
 				throw e;
 			}
-
 		}
 	}
 	
-	public static StandardCCNLibrary getLibrary() { 
+	public static CCNLibrary getLibrary() { 
 		if (null != _library) 
 			return _library;
 		try {
@@ -110,15 +121,15 @@ public class StandardCCNLibrary implements CCNLibrary {
 		}
 	}
 
-	protected static synchronized StandardCCNLibrary 
+	protected static synchronized CCNLibrary 
 				createCCNLibrary() throws ConfigurationException, IOException {
 		if (null == _library) {
-			_library = new StandardCCNLibrary();
+			_library = new CCNLibrary();
 		}
 		return _library;
 	}
 
-	protected StandardCCNLibrary(KeyManager keyManager) {
+	protected CCNLibrary(KeyManager keyManager) {
 		_userKeyManager = keyManager;
 		// force initialization of network manager
 		try {
@@ -130,7 +141,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 		}
 	}
 
-	protected StandardCCNLibrary() throws ConfigurationException, IOException {
+	protected CCNLibrary() throws ConfigurationException, IOException {
 		this(KeyManager.getDefaultKeyManager());
 	}
 
@@ -214,6 +225,9 @@ public class StandardCCNLibrary implements CCNLibrary {
 		}
 	}
 
+	/**
+	 * Use the same publisherID that we used originally.
+	 */
 	public CompleteName addToCollection(
 			ContentName name,
 			CompleteName[] additionalContents) {
@@ -319,6 +333,14 @@ public class StandardCCNLibrary implements CCNLibrary {
 		}
 	}
 
+	/**
+	 * Return the link itself, not the content
+	 * pointed to by a link. 
+	 * @param name the identifier for the link to work on
+	 * @return returns null if not a link, or name refers to more than one object
+	 * @throws SignatureException
+	 * @throws IOException
+	 */
 	public ContentObject getLink(CompleteName name) {
 		if (!isLink(name))
 			return null;
@@ -326,6 +348,14 @@ public class StandardCCNLibrary implements CCNLibrary {
 		return null;
 	}
 
+	/**
+	 * Does this specific name point to a link?
+	 * Looks at local (cached) data only. 
+	 * If more than one piece of content matches
+	 * this CompleteName, returns false.
+	 * @param name
+	 * @return true if its a link, false if not. 
+	 */
 	public boolean isLink(CompleteName name) {
 		return (name.authenticator().type() == ContentType.LINK);
 	}
@@ -582,6 +612,8 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * Extract the version information from this name.
 	 * TODO DKS the fragment number variant of this is static to StandardCCNLibrary, they
 	 * 	probably ought to both be the same.
+	 * 
+	 * @param name
 	 * @return Version number, or -1 if not versioned.
 	 */
 	public int getVersionNumber(ContentName name) {
@@ -592,6 +624,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	}
 
 	/**
+	 * Compute the name of this version.
 	 * @param name
 	 * @param version
 	 * @return
@@ -604,6 +637,12 @@ public class StandardCCNLibrary implements CCNLibrary {
 							   Integer.toString(version));
 	}
 	
+	/**
+	 * Does this name represent a version of the given parent?
+	 * @param version
+	 * @param parent
+	 * @return
+	 */
 	public boolean isVersionOf(ContentName version, ContentName parent) {
 		if (!isVersioned(version))
 			return false;
@@ -622,6 +661,16 @@ public class StandardCCNLibrary implements CCNLibrary {
 		return name.cut(VERSION_MARKER);
 	}
 
+	/**
+	 * Publish a piece of content under a particular identity.
+	 * All of these automatically make the final name unique.
+	 * @param name
+	 * @param contents
+	 * @param publisher selects one of our identities to publish under
+	 * @throws SignatureException 
+	 * @throws IOException 
+	 * @throws InterruptedException 
+	 */
 	public CompleteName put(String name, String contents) throws SignatureException, MalformedContentNameStringException, IOException, InterruptedException {
 		return put(ContentName.fromURI(name), contents.getBytes());
 	}
@@ -653,7 +702,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 			throw new SignatureException(e);
 		}
 	}
-
+	
 	/**
 	 * If small enough, doesn't fragment. Otherwise, does.
 	 * Return CompleteName of the thing they put (in the case
@@ -725,6 +774,11 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * 
 	 * TODO: DKS: improve this to handle stream writes better.
 	 * What happens if we want to write a block at a time.
+	 *  * @param name
+	 * @param authenticator
+	 * @param signature
+	 * @param content
+	 * @return
 	 * @throws IOException 
 	 * @throws InterruptedException 
 	 **/
@@ -742,7 +796,6 @@ public class StandardCCNLibrary implements CCNLibrary {
 		if (null == publisher) {
 			publisher = keyManager().getPublisherKeyID(signingKey);
 		}
-	
 		if (contents.length >= Header.DEFAULT_BLOCKSIZE) {
 			return fragmentedPut(name, contents, type, publisher, locator, signingKey);
 		} else {
@@ -757,7 +810,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 			}
 		}
 	}
-
+	
 	/** 
 	 * Low-level fragmentation interface.
 	 * @param name
@@ -814,7 +867,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 						 type, timestamp, publisher, locator, signingKey);
 	}
 	
-	CompleteName putHeader(ContentName name, int contentLength, byte [] contentDigest, 
+	public CompleteName putHeader(ContentName name, int contentLength, byte [] contentDigest, 
 				byte [] contentTreeAuthenticator,
 				ContentAuthenticator.ContentType type,
 				Timestamp timestamp, 
@@ -862,13 +915,51 @@ public class StandardCCNLibrary implements CCNLibrary {
 	}
 	
 	/**
-	 * Control whether fragments start at 0 or 1.
+	 * Might want to make headerName not prefix of  rest of
+	 * name, but instead different subleaf. For example,
+	 * the header name of v.6 of name <name>
+	 * was originally <name>/_v_/6; could be 
+	 * <name>/_v_/6/.header or <name>/_v_/6/_m_/.header;
+	 * the full uniqueified names would be:
+	 * <name>/_v_/6/<sha256> or <name>/_v_/6/.header/<sha256>
+	 * or <name>/_v_/6/_m_/.header/<sha256>.
+	 * The first version has the problem that the
+	 * header name (without the unknown uniqueifier)
+	 * is the prefix of the block names; so we must use the
+	 * scheduler or other cleverness to get the header ahead of the blocks.
+	 * The second version of this makes it impossible to easily
+	 * write a reader that gets both single-block content and
+	 * fragmented content (and we don't want to turn the former
+	 * into always two-block content).
+	 * So having tried the second route, we're moving back to the former.
+	 * @param name
 	 * @return
 	 */
-	public static final int baseFragment() { return 0; }
-
+	public static ContentName headerName(ContentName name) {
+		// Want to make sure we don't add a header name
+		// to a fragment. Go back up to the fragment root.
+		// Currently no header name added.
+		if (isFragment(name)) {
+			// return new ContentName(fragmentRoot(name), HEADER_NAME);
+			return fragmentRoot(name);
+		}
+		// return new ContentName(name, HEADER_NAME);
+		return name;
+	}
 	
-	CCNMerkleTree putMerkleTree(
+	public static boolean isFragment(ContentName name) {
+		return name.contains(FRAGMENT_MARKER);
+	}
+	
+	public static ContentName fragmentRoot(ContentName name) {
+		return name.cut(FRAGMENT_MARKER);
+	}
+	
+	public static ContentName fragmentBase(ContentName name) {
+		return ContentName.fromNative(fragmentRoot(name), FRAGMENT_MARKER);
+	}
+	
+	public CCNMerkleTree putMerkleTree(
 			ContentName name, int baseNameIndex,
 			byte [][] contentBlocks, int blockCount, int baseBlockIndex, 
 			Timestamp timestamp,
@@ -912,39 +1003,6 @@ public class StandardCCNLibrary implements CCNLibrary {
 	}
 	
 	/**
-	 * Might want to make headerName not prefix of  rest of
-	 * name, but instead different subleaf. For example,
-	 * the header name of v.6 of name <name>
-	 * was originally <name>/_v_/6; could be 
-	 * <name>/_v_/6/.header or <name>/_v_/6/_m_/.header;
-	 * the full uniqueified names would be:
-	 * <name>/_v_/6/<sha256> or <name>/_v_/6/.header/<sha256>
-	 * or <name>/_v_/6/_m_/.header/<sha256>.
-	 * The first version has the problem that the
-	 * header name (without the unknown uniqueifier)
-	 * is the prefix of the block names; so we must use the
-	 * scheduler or other cleverness to get the header ahead of the blocks.
-	 * The second version of this makes it impossible to easily
-	 * write a reader that gets both single-block content and
-	 * fragmented content (and we don't want to turn the former
-	 * into always two-block content).
-	 * So having tried the second route, we're moving back to the former.
-	 * @param name
-	 * @return
-	 */
-	public static ContentName headerName(ContentName name) {
-		// Want to make sure we don't add a header name
-		// to a fragment. Go back up to the fragment root.
-		// Currently no header name added.
-		if (isFragment(name)) {
-			// return new ContentName(fragmentRoot(name), HEADER_NAME);
-			return fragmentRoot(name);
-		}
-		// return new ContentName(name, HEADER_NAME);
-		return name;
-	}
-	
-	/**
 	 * DKS not currently adding a header-specific prefix. A header, however,
 	 * should not be a fragment.
 	 * @param headerName
@@ -970,18 +1028,6 @@ public class StandardCCNLibrary implements CCNLibrary {
 	//	return (name.contains(HEADER_NAME));
 		return (!isFragment(name));
 	}
-
-	public static boolean isFragment(ContentName name) {
-		return name.contains(FRAGMENT_MARKER);
-	}
-	
-	public static ContentName fragmentRoot(ContentName name) {
-		return name.cut(FRAGMENT_MARKER);
-	}
-	
-	public static ContentName fragmentBase(ContentName name) {
-		return ContentName.fromNative(fragmentRoot(name), FRAGMENT_MARKER);
-	}
 	
 	public static ContentName fragmentName(ContentName name, int i) {
 		return ContentName.fromNative(name, FRAGMENT_MARKER,
@@ -1001,17 +1047,7 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * manager.
 	 */
 
-	/**
-	 * Implementation of CCNBase.put.
-	 * @throws InterruptedException 
-	 */
-	public CompleteName put(ContentName name, 
-							ContentAuthenticator authenticator,
-							byte[] content,
-							Signature signature) throws IOException, InterruptedException {
-
-		return getNetworkManager().put(this, name, authenticator, content, signature);
-	}
+	
 
 	/**
 	 * The low-level get just gets us blocks that match this
@@ -1045,24 +1081,6 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 */
 	public ContentObject get(Interest interest, long timeout) throws IOException, InterruptedException {
 		return getNetworkManager().get(this, interest, null, true, timeout);
-	}
-
-	/**
-	 * The rest of CCNBase. Pass it on to the CCNInterestManager to
-	 * forward to the network. Also express it to the
-	 * repositories we manage, particularly the primary.
-	 * Each might generate their own CCNQueryDescriptor,
-	 * so we need to group them together.
-	 */
-	public void expressInterest(
-			Interest interest,
-			CCNInterestListener listener) throws IOException {
-		// Will add the interest to the listener.
-		getNetworkManager().expressInterest(this, interest, listener);
-	}
-
-	public void cancelInterest(Interest interest, CCNInterestListener listener) throws IOException {
-		getNetworkManager().cancelInterest(this, interest, listener);
 	}
 	
 	/**
@@ -1130,6 +1148,40 @@ public class StandardCCNLibrary implements CCNLibrary {
 	}
 	
 	/**
+	 * Approaches to read and write content. Low-level CCNBase returns
+	 * a specific piece of content from the repository (e.g.
+	 * if you ask for a fragment, you get a fragment). Library
+	 * customers want the actual content, independent of
+	 * fragmentation. Can implement this in a variety of ways;
+	 * could verify fragments and reconstruct whole content
+	 * and return it all at once. Could (better) implement
+	 * file-like API -- open opens the header for a piece of
+	 * content, read verifies the necessary fragments to return
+	 * that much data and reads the corresponding content.
+	 * Open read/write or append does?
+	 * 
+	 * DKS: TODO -- state-based put() analogous to write()s in
+	 * blocks; also state-based read() that verifies. Start
+	 * with state-based read.
+	 */
+	
+	/**
+	 * Beginnings of file system interface. If name is not versioned,
+	 * for read, finds the latest version meeting the constraints.
+	 * For writes, probably also should figure out the next version
+	 * and open that for writing. Might get more complicated later;
+	 * a file system (e.g. FUSE) layer on top of this might get more
+	 * complicated still (e.g. mechanisms for detecting what the latest
+	 * version is to make a new one for writing right now can't detect
+	 * that we're already in the process of writing a given version).
+	 * For now, we constraint the types of open modes we know about.
+	 * We can't really append to an existing file, so we really can
+	 * only pretty much open for writing or reading.
+	 * @return a CCNDescriptor, which contains, among other things,
+	 * the actual name we are opening. It also contains things
+	 * like offsets and verification information.
+	 */
+	/**
 	 * Open this name for reading (for now). If the name
 	 * is versioned, open that version. Otherwise, open the
 	 * latest version. If the name is a fragment, just open that one.
@@ -1144,9 +1196,10 @@ public class StandardCCNLibrary implements CCNLibrary {
 	 * the low-level (CCNBase/CCNRepository/CCNNetwork) get.
 	 * @throws IOException 
 	 * @throws InterruptedException 
+	 * @throws XMLStreamException 
 	 */
 	public CCNDescriptor open(CompleteName name, OpenMode mode) throws IOException, InterruptedException, XMLStreamException {
-		return new CCNDescriptor(name, mode, this);
+		return new CCNDescriptor(name, mode, this); 
 	}
 		
 	public long read(CCNDescriptor ccnObject, byte [] buf, long 
@@ -1175,24 +1228,36 @@ public class StandardCCNLibrary implements CCNLibrary {
 	}
 	
 	/**
-	 * Implement naming convention about locality.
+	 * Does this name refer to a node that represents
+	 * local (protected) content?
+	 * @param name
+	 * @return
 	 */
 	public boolean isLocal(CompleteName name) {
 		// TODO Auto-generated method stub
 		return false;
 	}
 
+	/**
+	 * Unregister a standing interest filter
+	 */
 	public void cancelInterestFilter(ContentName filter,
 			CCNFilterListener callbackListener) {
 		getNetworkManager().cancelInterestFilter(this, filter, callbackListener);		
 	}
 
+	/**
+	 * Register a standing interest filter with callback to receive any 
+	 * matching interests seen
+	 */
 	public void setInterestFilter(ContentName filter,
 			CCNFilterListener callbackListener) {
 		getNetworkManager().setInterestFilter(this, filter, callbackListener);
 	}
 
 	/**
+	 * Medium level interface for retrieving pieces of a file
+	 *
 	 * getNext - get next content after specified content
 	 */
 	public ContentObject getNext(ContentName name, ExcludeFilter omissions, long timeout) 

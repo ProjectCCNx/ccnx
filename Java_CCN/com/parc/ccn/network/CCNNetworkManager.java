@@ -16,6 +16,7 @@ import java.util.concurrent.Semaphore;
 
 import javax.xml.stream.XMLStreamException;
 
+import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
@@ -176,7 +177,7 @@ public class CCNNetworkManager implements Runnable {
 		public final Interest interest;
 		protected ArrayList<ContentObject> data = new ArrayList<ContentObject>(1);
 		public Date lastRefresh;
-		public long timeout = CCNLibrary.NO_TIMEOUT;
+		public long timeout = CCNBase.NO_TIMEOUT;
 		
 		// All internal client interests must have an owner
 		public InterestRegistration(CCNNetworkManager mgr, Interest i, CCNInterestListener l, Object owner, 
@@ -189,7 +190,7 @@ public class CCNNetworkManager implements Runnable {
 				sema = new Semaphore(0);
 			}
 			lastRefresh = new Date();
-			if (timeout != CCNLibrary.NO_TIMEOUT)
+			if (timeout != CCNBase.NO_TIMEOUT)
 				this.timeout = lastRefresh.getTime() + timeout;
 		}
 		// Add a copy of data, not the original data object, so that 

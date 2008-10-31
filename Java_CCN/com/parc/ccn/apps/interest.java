@@ -5,7 +5,7 @@ import java.io.IOException;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.library.StandardCCNLibrary;
+import com.parc.ccn.library.CCNLibrary;
 
 public class interest {
 	
@@ -19,7 +19,7 @@ public class interest {
 		}
 		
 		try {
-			StandardCCNLibrary library = StandardCCNLibrary.open();
+			CCNLibrary library = CCNLibrary.open();
 			// List contents under all names given
 			for (int i=0; i < args.length; ++i) {
 				Interest interest = new Interest(args[i]);

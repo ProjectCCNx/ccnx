@@ -8,7 +8,6 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.StandardCCNLibrary;
 
 public class get {
 
@@ -28,7 +27,7 @@ public class get {
 			// with random version.
 			ContentName argName = ContentName.fromURI(args[0]);
 			
-			StandardCCNLibrary library = StandardCCNLibrary.open();
+			CCNLibrary library = CCNLibrary.open();
 			
 			if (args.length == 2) {
 				// Adjust to use defragmenting interface, find latest

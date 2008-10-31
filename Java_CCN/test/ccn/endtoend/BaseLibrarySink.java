@@ -8,7 +8,6 @@ import org.junit.BeforeClass;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.StandardCCNLibrary;
 
 // NOTE: This test requires ccnd to be running and complementary source process
 
@@ -19,7 +18,7 @@ public class BaseLibrarySink {
 	protected static Throwable error = null; // for errors in callback
 
 	public BaseLibrarySink() throws Throwable {
-		library = StandardCCNLibrary.open();
+		library = CCNLibrary.open();
 	}
 	
 	@BeforeClass

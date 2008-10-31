@@ -15,7 +15,7 @@ import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.util.BinaryXMLCodec;
 import com.parc.ccn.data.util.TextXMLCodec;
-import com.parc.ccn.library.StandardCCNLibrary;
+import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.network.CCNNetworkManager;
 
 /**
@@ -65,7 +65,7 @@ public class puttap implements CCNInterestListener {
 				verify = true;
 
 			// Get writing library 
-			StandardCCNLibrary library = StandardCCNLibrary.open();
+			CCNLibrary library = CCNLibrary.open();
 			manager = library.getNetworkManager();
 			// Set up tap so packets get written to file
 			manager.setTap(tapName);
@@ -79,7 +79,7 @@ public class puttap implements CCNInterestListener {
 			// not consume the data and therefore will block
 			if (false) {
 				// new library semantics makes this unnecessary.
-				StandardCCNLibrary reader = StandardCCNLibrary.open();
+				CCNLibrary reader = CCNLibrary.open();
 				reader.expressInterest(new Interest(ccnName), this);
 			}
 			

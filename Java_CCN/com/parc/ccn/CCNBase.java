@@ -9,52 +9,75 @@ import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.Signature;
+import com.parc.ccn.network.CCNNetworkManager;
 
 /**
  * DKS TODO this should change to reflect only the core CCN network
  * operations.
- * @author smetters
+ * @author smetters, rasmussen
  *
  */
-public interface CCNBase {
+public class CCNBase {
 	
-	public final int NO_TIMEOUT = 0;
-	
-	/** 
-	 * Make a data item available to the CCN.
-	 * @param name
-	 * @param authenticator
-	 * @param signature
-	 * @param content
-	 * @return
-	 * @throws IOException
-	 * @throws InterruptedException 
-	 */
-	public CompleteName put(ContentName name,
-						    ContentAuthenticator authenticator,
-						    byte [] content,
-						    Signature signature) throws IOException, InterruptedException;
+	public final static int NO_TIMEOUT = 0;
 	
 	/**
-	 * Retrieve any local content available for a
-	 * given name. Returns immediately.
-	 * For now, allow control of recursive vs non-recursive
-	 * gets, to determine whether this is key functionality.
-	 * Interests are always recursive.
-	 * @param name
-	 * @param authenticator
-	 * @param isRecursive if false, just return content objects
-	 * 	associated with this name if any, or an empty list if none.
-	 * @param timeout milliseconds before timeout, 0 for no timeout
-	 * @return
-	 * @throws IOException
+	 * Allow separate per-instance to control reading/writing within
+	 * same app. Get default one if use static VM instance of StandardCCNLibrary,
+	 * but if you make a new instance, get a new connection to ccnd.
+	 */
+	protected CCNNetworkManager _networkManager = null;
+	
+	public CCNNetworkManager getNetworkManager() { 
+		if (null == _networkManager) {
+			synchronized(this) {
+				if (null == _networkManager) {
+					try {
+						_networkManager = new CCNNetworkManager();
+					} catch (IOException ex){
+						Library.logger().warning("IOException instantiating network manager: " + ex.getMessage());
+						ex.printStackTrace();
+						_networkManager = null;
+					}
+				}
+			}
+		}
+		return _networkManager;
+	}
+	
+	/**
+	 * Implementation of CCNBase.put.
 	 * @throws InterruptedException 
 	 */
-	public ContentObject get(
-			ContentName name,
-			ContentAuthenticator authenticator,
-			boolean isRecursive, long timeout) throws IOException, InterruptedException;
+	public CompleteName put(ContentName name, 
+							ContentAuthenticator authenticator,
+							byte[] content,
+							Signature signature) throws IOException, InterruptedException {
 
+		return getNetworkManager().put(this, name, authenticator, content, signature);
+	}
+	
+	/**
+	 * The low-level get just gets us blocks that match this
+	 * name. (Have to think about metadata matches.) 
+	 * Trying to map this into a higher-order "get" that
+	 * unfragments and reads into a single buffer is challenging.
+	 * For now, let's just pass this one through to the bottom
+	 * level, and use open and read to defragment.
+	 * 
+	 * Note: the jackrabbit implementation (at least) does not
+	 * return an exact match to name if isRecursive is true -- it
+	 * returns only nodes underneath name.
+	 * 
+	 * DKS TODO: should this get at least verify?
+	 * @throws InterruptedException 
+	 */
+	public ContentObject get(ContentName name, 
+										ContentAuthenticator authenticator,
+										boolean isRecursive, long timeout) throws IOException, InterruptedException {
+		
+		return getNetworkManager().get(this, name, authenticator,isRecursive, timeout);
+	}
 	/**
 	 * Query, or express an interest in particular
 	 * content. This request is sent out over the
@@ -73,11 +96,20 @@ public interface CCNBase {
 	 * @return returns a unique identifier that can
 	 * 		be used to cancel this query.
 	 * @throws IOException
+	 * 
+	 * Pass it on to the CCNInterestManager to
+	 * forward to the network. Also express it to the
+	 * repositories we manage, particularly the primary.
+	 * Each might generate their own CCNQueryDescriptor,
+	 * so we need to group them together.
 	 */
 	public void expressInterest(
 			Interest interest,
-			CCNInterestListener callbackListener) throws IOException;
-	
+			CCNInterestListener listener) throws IOException {
+		// Will add the interest to the listener.
+		getNetworkManager().expressInterest(this, interest, listener);
+	}
+
 	/**
 	 * Cancel this interest. 
 	 * @param interest
@@ -85,6 +117,7 @@ public interface CCNBase {
 	 * 	requested by more than one listener.
 	 * @throws IOException
 	 */
-	public void cancelInterest(Interest interest, CCNInterestListener callbackListener) throws IOException;
-
+	public void cancelInterest(Interest interest, CCNInterestListener listener) throws IOException {
+		getNetworkManager().cancelInterest(this, interest, listener);
+	}
 }

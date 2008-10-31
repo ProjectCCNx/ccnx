@@ -12,7 +12,6 @@ import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.StandardCCNLibrary;
 
 public class watch extends Thread implements CCNInterestListener {
 	
@@ -106,7 +105,7 @@ public class watch extends Thread implements CCNInterestListener {
 		}
 		
 		try {
-			StandardCCNLibrary library = StandardCCNLibrary.open();
+			CCNLibrary library = CCNLibrary.open();
 			// Watches content, prints out what it sees.
 			
 			watch listener = new watch(library);

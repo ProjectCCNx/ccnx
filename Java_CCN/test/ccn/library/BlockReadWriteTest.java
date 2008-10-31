@@ -18,7 +18,6 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.library.CCNDescriptor;
 import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.StandardCCNLibrary;
 import com.parc.ccn.library.CCNLibrary.OpenMode;
 
 
@@ -34,8 +33,8 @@ public class BlockReadWriteTest extends BasePutGetTest {
 	
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
 		//Library.logger().setLevel(Level.FINEST);
-		libraries[0] = StandardCCNLibrary.open();
-		libraries[1] = StandardCCNLibrary.open(); // force them to use separate ones.
+		libraries[0] = CCNLibrary.open();
+		libraries[1] = CCNLibrary.open(); // force them to use separate ones.
 	}
 
 	@Override

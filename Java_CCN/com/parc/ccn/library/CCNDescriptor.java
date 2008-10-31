@@ -52,7 +52,7 @@ public class CCNDescriptor {
 	
 	public enum SeekWhence {SEEK_SET, SEEK_CUR, SEEK_END};
 	
-	protected StandardCCNLibrary _library = null;
+	protected CCNLibrary _library = null;
 	
 	protected OpenMode _mode = null;
 	
@@ -153,7 +153,7 @@ public class CCNDescriptor {
 						 PublisherKeyID publisher,
 						 KeyLocator locator,
 						 PrivateKey signingKey,
-						 StandardCCNLibrary library) throws XMLStreamException, IOException, InterruptedException {
+						 CCNLibrary library) throws XMLStreamException, IOException, InterruptedException {
 		_library = library; 
 		if (null == _library) {
 			throw new IllegalArgumentException("Unexpected null library in CCNDescriptor constructor!");
@@ -172,16 +172,16 @@ public class CCNDescriptor {
 	}
 	
 	public CCNDescriptor(CompleteName name,
-			 OpenMode mode, StandardCCNLibrary library) throws XMLStreamException, IOException, InterruptedException {
+			 OpenMode mode, CCNLibrary library) throws XMLStreamException, IOException, InterruptedException {
 		this(name, mode, null, null, null, library);
 	}
 
 		
 	protected void openForWriting(CompleteName name) {
 		ContentName nameToOpen = name.name();
-		if (StandardCCNLibrary.isFragment(name.name())) {
+		if (CCNLibrary.isFragment(name.name())) {
 			// DKS TODO: should we do this?
-			nameToOpen = StandardCCNLibrary.fragmentRoot(nameToOpen);
+			nameToOpen = CCNLibrary.fragmentRoot(nameToOpen);
 		}
 		
 		if (null != name.authenticator()) {
@@ -198,7 +198,7 @@ public class CCNDescriptor {
 			ContentName currentVersionName = 
 				_library.getLatestVersionName(nameToOpen, null);
 			if (null == currentVersionName) {
-				nameToOpen = _library.versionName(nameToOpen, StandardCCNLibrary.baseVersion());
+				nameToOpen = _library.versionName(nameToOpen, CCNLibrary.baseVersion());
 			} else {
 				nameToOpen = _library.versionName(currentVersionName, (_library.getVersionNumber(currentVersionName) + 1));
 			}
@@ -209,10 +209,10 @@ public class CCNDescriptor {
 		// we can just get headers rather than a plethora of
 		// fragments. 
 		_baseName = nameToOpen;
-		_headerName = StandardCCNLibrary.headerName(_baseName);
+		_headerName = CCNLibrary.headerName(_baseName);
 		
 		_blockBuffers = new byte[BLOCK_BUF_COUNT][];
-		_baseBlockIndex = StandardCCNLibrary.baseFragment();
+		_baseBlockIndex = CCNLibrary.baseFragment();
 		
 		_dh = new CCNDigestHelper();
 	}
@@ -227,9 +227,9 @@ public class CCNDescriptor {
 	protected void openForReading(CompleteName name) throws IOException, InterruptedException, XMLStreamException {
 
 		ContentName nameToOpen = name.name();
-		if (StandardCCNLibrary.isFragment(name.name())) {
+		if (CCNLibrary.isFragment(name.name())) {
 			// DKS TODO: should we do this?
-			nameToOpen = StandardCCNLibrary.fragmentRoot(nameToOpen);
+			nameToOpen = CCNLibrary.fragmentRoot(nameToOpen);
 		}
 		if (!_library.isVersioned(nameToOpen)) {
 			// if publisherID is null, will get any publisher
@@ -243,8 +243,8 @@ public class CCNDescriptor {
 		// root. We've altered the header semantics, so that
 		// we can just get headers rather than a plethora of
 		// fragments. 
-		Library.logger().fine("Opening header for " + name.name() + " at " + StandardCCNLibrary.headerName(nameToOpen));
-		_headerName = StandardCCNLibrary.headerName(nameToOpen);
+		Library.logger().fine("Opening header for " + name.name() + " at " + CCNLibrary.headerName(nameToOpen));
+		_headerName = CCNLibrary.headerName(nameToOpen);
 		
 		// This might not be unique - 
 		// we could have here either multiple versions of
@@ -291,7 +291,7 @@ public class CCNDescriptor {
 		}
 		
 		_headerAuthenticator = header.authenticator();
-		_baseName = StandardCCNLibrary.headerRoot(header.name());
+		_baseName = CCNLibrary.headerRoot(header.name());
 		
 		_header = new Header();
 		_header.decode(header.content());
@@ -340,7 +340,7 @@ public class CCNDescriptor {
 		while (lenToRead > 0) {
 			if (_blockOffset >= _currentBlock.content().length) {
 				// DKS make sure we don't miss a byte...
-				result = seek(StandardCCNLibrary.getFragmentNumber(_currentBlock.name())+1);
+				result = seek(CCNLibrary.getFragmentNumber(_currentBlock.name())+1);
 				if (null == _currentBlock) {
 					_atEOF = true;
 					return lenRead;
@@ -402,7 +402,7 @@ public class CCNDescriptor {
 			// do this in sync(), as we can't tell a manual sync from a close.
 			// Though that means a manual sync(); close(); on a short piece of
 			// content would end up with unnecessary fragmentation...
-			if ((_baseBlockIndex == StandardCCNLibrary.baseFragment()) && 
+			if ((_baseBlockIndex == CCNLibrary.baseFragment()) && 
 					((_blockIndex == 0) || ((_blockIndex == 1) && (_blockOffset == 0)))) {
 				// maybe need put with offset and length
 				if ((_blockIndex == 1) || (_blockOffset == _blockBuffers[0].length)) {
@@ -453,7 +453,7 @@ public class CCNDescriptor {
 				((_roots.size() > 0) ? _roots.get(0) : null),
 				_type,
 				_timestamp, _publisher, _locator, _signingKey);
-		Library.logger().info("Wrote header: " + StandardCCNLibrary.headerName(_baseName));
+		Library.logger().info("Wrote header: " + CCNLibrary.headerName(_baseName));
 	}
 	
 	public boolean openForReading() {
@@ -486,7 +486,7 @@ public class CCNDescriptor {
 			
 			int blockIncrement = (int)Math.floor(offset/_header.blockSize());
 			
-			int thisBlock = StandardCCNLibrary.getFragmentNumber(_currentBlock.name());
+			int thisBlock = CCNLibrary.getFragmentNumber(_currentBlock.name());
 			
 			seek(thisBlock+blockIncrement);
 			_blockOffset += offset % _header.blockSize();
@@ -503,22 +503,22 @@ public class CCNDescriptor {
 	public long tell() {
 		if (null == _currentBlock)
 			return 0;
-		return ((_header.blockSize() * StandardCCNLibrary.getFragmentNumber(_currentBlock.name())) + _blockOffset);
+		return ((_header.blockSize() * CCNLibrary.getFragmentNumber(_currentBlock.name())) + _blockOffset);
 	}
 	
 	protected ContentObject getBlock(int number) throws IOException, InterruptedException {
 		
 		// Return null if we go past the end.
-		if (number < StandardCCNLibrary.baseFragment()) 
-			throw new IOException("Illegal block number " + number + " below initial value " + StandardCCNLibrary.baseFragment() + ".");
+		if (number < CCNLibrary.baseFragment()) 
+			throw new IOException("Illegal block number " + number + " below initial value " + CCNLibrary.baseFragment() + ".");
 		
-		if (number >= (StandardCCNLibrary.baseFragment() + blockCount())) {
+		if (number >= (CCNLibrary.baseFragment() + blockCount())) {
 			// Past the last block.
-			Library.logger().info("Seek past the last block: " + number + " asked for, count available is: " + StandardCCNLibrary.baseFragment() + blockCount());
+			Library.logger().info("Seek past the last block: " + number + " asked for, count available is: " + CCNLibrary.baseFragment() + blockCount());
 			return null;
 		}
 
-		ContentName blockName = StandardCCNLibrary.fragmentName(_baseName, number);
+		ContentName blockName = CCNLibrary.fragmentName(_baseName, number);
 
 		/*
 		 * TODO: Paul R. Comment - as above what to do about timeouts?

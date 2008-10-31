@@ -31,7 +31,6 @@ import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.StandardCCNLibrary;
 
 public class BaseLibrary {
 
@@ -51,7 +50,7 @@ public class BaseLibrary {
 
 	static {
 		try {
-			library = StandardCCNLibrary.open();
+			library = CCNLibrary.open();
 		} catch (ConfigurationException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -193,12 +192,12 @@ public class BaseLibrary {
 		int count = 0;
 		int id = 0;
 		public GetThread(int n, int id) throws ConfigurationException, IOException {
-			library = StandardCCNLibrary.open();
+			library = CCNLibrary.open();
 			count = n;
 			this.id = id;
 			if (DO_TAP) {
 				try {
-					((StandardCCNLibrary)library).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_get");
+					((CCNLibrary)library).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_get");
 				} catch (IOException ie) {
 				}
 			}
@@ -208,7 +207,7 @@ public class BaseLibrary {
 				System.out.println("Get thread started");
 				getResults(ContentName.fromNative(PARENT_NAME, Integer.toString(id)), count, library);
 				System.out.println("Get thread finished");
-				((StandardCCNLibrary)library).getNetworkManager().shutdown();
+				((CCNLibrary)library).getNetworkManager().shutdown();
 			} catch (Throwable ex) {
 				error = ex;
 			}
@@ -220,12 +219,12 @@ public class BaseLibrary {
 		int count = 0;
 		int id = 0;
 		public PutThread(int n, int id) throws ConfigurationException, IOException {
-			library = StandardCCNLibrary.open();
+			library = CCNLibrary.open();
 			count = n;
 			this.id = id;
 			if (DO_TAP) {
 				try {
-					((StandardCCNLibrary)library).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_put");
+					((CCNLibrary)library).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_put");
 				} catch (IOException ie) {
 				}
 			}
@@ -235,7 +234,7 @@ public class BaseLibrary {
 				System.out.println("Put thread started");
 				doPuts(ContentName.fromNative(PARENT_NAME, Integer.toString(id)), count, library);
 				System.out.println("Put thread finished");
-				((StandardCCNLibrary)library).getNetworkManager().shutdown();
+				((CCNLibrary)library).getNetworkManager().shutdown();
 			} catch (Throwable ex) {
 				error = ex;
 				Library.logger().finer("Exception in run: " + ex.getClass().getName() + " message: " + ex.getMessage());
@@ -253,12 +252,12 @@ public class BaseLibrary {
 		int id;
 		
 		public GetServer(int n, int id) throws ConfigurationException, IOException {
-			library = StandardCCNLibrary.open();
+			library = CCNLibrary.open();
 			count = n;
 			this.id = id;
 			if (DO_TAP) {
 				try {
-					((StandardCCNLibrary)library).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_get");
+					((CCNLibrary)library).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_get");
 				} catch (IOException ie) {
 				}
 			}
@@ -272,7 +271,7 @@ public class BaseLibrary {
 				// Block on semaphore until enough data has been received
 				sema.acquire();
 				library.cancelInterest(interest, this);
-				((StandardCCNLibrary)library).getNetworkManager().shutdown();
+				((CCNLibrary)library).getNetworkManager().shutdown();
 
 			} catch (Throwable ex) {
 				error = ex;
@@ -326,12 +325,12 @@ public class BaseLibrary {
 		int id;
 		
 		public PutServer(int n, int id) throws ConfigurationException, IOException {
-			library = StandardCCNLibrary.open();
+			library = CCNLibrary.open();
 			count = n;
 			this.id = id;
 			if (DO_TAP) {
 				try {
-					((StandardCCNLibrary)library).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_put");
+					((CCNLibrary)library).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_put");
 				} catch (IOException ie) {
 				}
 			}
@@ -347,7 +346,7 @@ public class BaseLibrary {
 				sema.acquire();
 				library.cancelInterestFilter(name, this);
 				System.out.println("PutServer finished.");
-				((StandardCCNLibrary)library).getNetworkManager().shutdown();
+				((CCNLibrary)library).getNetworkManager().shutdown();
 
 			} catch (Throwable ex) {
 				error = ex;

@@ -13,7 +13,6 @@ import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.util.BinaryXMLCodec;
 import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.StandardCCNLibrary;
 
 //NOTE: This test requires ccnd to be running and complementary sink process 
 
@@ -28,7 +27,7 @@ public class BaseLibrarySource {
 	private static ArrayList<Integer> currentSet;
 
 	public BaseLibrarySource() throws Throwable {
-		library = StandardCCNLibrary.open();
+		library = CCNLibrary.open();
 	}
 	
 	@BeforeClass
