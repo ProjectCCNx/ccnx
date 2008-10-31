@@ -2291,6 +2291,7 @@ ccnd_create(void)
     const char *portstr;
     const char *debugstr;
     const char *entrylimit;
+    const char *nonlocalstr;
     int fd;
     int res;
     struct ccnd *h;
@@ -2329,6 +2330,11 @@ ccnd_create(void)
     hints.ai_family = PF_UNSPEC;
     hints.ai_socktype = SOCK_DGRAM;
     hints.ai_flags = AI_ADDRCONFIG;
+    nonlocalstr = getenv(CCN_NONLOCAL_UDP);
+    if (nonlocalstr != NULL && nonlocalstr[0] != 0) {
+	/* Add flag to retrieve interfaces other than loopback (localhost) */
+        hints.ai_flags |= AI_PASSIVE;
+    }
     debugstr = getenv("CCND_DEBUG");
     if (debugstr != NULL && debugstr[0] != 0) {
         h->debug = atoi(debugstr);

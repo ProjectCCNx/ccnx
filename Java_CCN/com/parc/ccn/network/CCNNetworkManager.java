@@ -48,7 +48,9 @@ import com.parc.ccn.security.keys.KeyManager;
 public class CCNNetworkManager implements Runnable {
 	
 	public static final int DEFAULT_AGENT_PORT = 4485;
+	public static final String DEFAULT_AGENT_HOST = "localhost";
 	public static final String PROP_AGENT_PORT = "ccn.agent.port";
+	public static final String PROP_AGENT_HOST = "ccn.agent.host";
 	public static final int MAX_PAYLOAD = 8800; // number of bytes in UDP payload
 	public static final int SOCKET_TIMEOUT = 1000; // period to wait in ms.
 	public static final int PERIOD = 1000; // period for occasional ops in ms.
@@ -371,20 +373,26 @@ public class CCNNetworkManager implements Runnable {
 	public CCNNetworkManager() throws IOException {
 		// Determine port at which to contact agent
 		int port = DEFAULT_AGENT_PORT;
+		String host = DEFAULT_AGENT_HOST;
 		String portval = System.getProperty(PROP_AGENT_PORT);
 		if (null != portval) {
 			try {
-			port = new Integer(portval);
+				port = new Integer(portval);
 			} catch (Exception ex) {
 				throw new IOException("Invalid port '" + portval + "' specified in " + PROP_AGENT_PORT);
 			}
-			Library.logger().warning("Contacting CCN agent at non-standard port " + port + " based on property " + PROP_AGENT_PORT);
-		} else {
-			Library.logger().info("Contacting CCN agent at standard port " + port);
+			Library.logger().warning("Non-standard CCN agent port " + port + " per property " + PROP_AGENT_PORT);
 		}
+		String hostval = System.getProperty(PROP_AGENT_HOST);
+		if (null != hostval && hostval.length() > 0) {
+			host = hostval;
+			Library.logger().warning("Non-standard CCN agent host " + host + " per property " + PROP_AGENT_HOST);
+		}
+		Library.logger().info("Contacting CCN agent at " + host + ":" + port);
+		
 		// Socket is to belong exclusively to run thread started here
 		_channel = DatagramChannel.open();
-		_channel.connect(new InetSocketAddress("localhost", port));
+		_channel.connect(new InetSocketAddress(host, port));
 		_channel.configureBlocking(false);
 		_selector = Selector.open();
 		_channel.register(_selector, SelectionKey.OP_READ);
