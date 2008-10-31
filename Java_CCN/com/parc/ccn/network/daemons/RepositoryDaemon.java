@@ -1,7 +1,11 @@
 package com.parc.ccn.network.daemons;
 
 import com.parc.ccn.Library;
-import com.parc.ccn.network.impl.JackrabbitCCNRepository;
+
+/**
+ * Comment by Paul Rasmussen - not currently workable due to references
+ * to JackrabbitCCNRepository commented out.
+ */
 
 /**
  * Top-level wrapper for standalone repositories that
@@ -19,7 +23,7 @@ public class RepositoryDaemon extends Daemon {
 	protected static class RepositoryWorkerThread extends Daemon.WorkerThread {
 
 		private static final long serialVersionUID = -6093561895394961537L;
-		JackrabbitCCNRepository _repository = null;
+		//JackrabbitCCNRepository _repository = null;
 
 		boolean _noNetwork = false;
 		boolean _started = false;
@@ -39,12 +43,12 @@ public class RepositoryDaemon extends Daemon {
 		public void initialize() {
 			// we start up a jackrabbit and let it run
 			Library.logger().info("Starting Jackrabbit repository...");
-			_repository = new JackrabbitCCNRepository();
+			//_repository = new JackrabbitCCNRepository();
 			Library.logger().info("...started.");
 		}
 		
 		public void finish() {
-			_repository.shutdown();
+			//_repository.shutdown();
 		}
 	}
 

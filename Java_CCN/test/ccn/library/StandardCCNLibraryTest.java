@@ -22,7 +22,6 @@ import com.parc.ccn.data.query.BasicInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.network.CCNRepositoryManager;
 
 
 /**
@@ -196,17 +195,6 @@ public class StandardCCNLibraryTest extends BaseLibrary {
 
 				ContentName parentName = name.name().parent();
 				System.out.println("Inserted name's parent same as key name? " + parentName.equals(keyName));
-
-				ArrayList<CompleteName> parentChildren =
-					CCNRepositoryManager.getRepositoryManager().getChildren(new CompleteName(parentName, null, null));
-
-				System.out.println("GetChildren got " + parentChildren.size() + " children of expected parent.");
-				for (int i=0; i < parentChildren.size(); ++i) {
-					if (parentChildren.get(i).name().equals(name.name())) {
-						System.out.println("Got a matching name. Authenticators match? " + name.authenticator().equals(parentChildren.get(i).authenticator()));
-						break;
-					}
-				}
 
 			} else {
 				byte [] content = result.content();

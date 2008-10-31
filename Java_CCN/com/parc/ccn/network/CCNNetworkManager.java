@@ -531,18 +531,6 @@ public class CCNNetworkManager implements Runnable {
 			}
 		}
 	}
-
-	public ArrayList<CompleteName> enumerate(Interest interest) throws IOException {
-		ArrayList<CompleteName> results = 
-			CCNRepositoryManager.getRepositoryManager().enumerate(interest);
-		return results;
-	}
-
-	public ArrayList<CompleteName> getChildren(CompleteName name) throws IOException {
-		ArrayList<CompleteName> results = 
-			CCNRepositoryManager.getRepositoryManager().getChildren(name);
-		return results;
-	}
 	
 	protected void write(ContentObject data) throws XMLStreamException {
 		WirePacket packet = new WirePacket(data);
