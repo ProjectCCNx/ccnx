@@ -9,8 +9,8 @@ import java.util.logging.Level;
 import org.junit.BeforeClass;
 
 import com.parc.ccn.Library;
-import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.util.BinaryXMLCodec;
 import com.parc.ccn.library.CCNLibrary;
 
@@ -43,7 +43,7 @@ public class BaseLibrarySource {
 	 * @author smetters
 	 *
 	 */
-	public void checkPutResults(CompleteName putResult) {
+	public void checkPutResults(ContentObject putResult) {
 		System.out.println("Put data: " + putResult.name());
 	}
 

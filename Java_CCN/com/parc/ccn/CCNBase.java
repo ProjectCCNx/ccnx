@@ -47,14 +47,13 @@ public class CCNBase {
 	
 	/**
 	 * Implementation of CCNBase.put.
-	 * @throws InterruptedException 
+	 * @param co
+	 * @return
+	 * @throws IOException
+	 * @throws InterruptedException
 	 */
-	public CompleteName put(ContentName name, 
-							ContentAuthenticator authenticator,
-							byte[] content,
-							Signature signature) throws IOException, InterruptedException {
-
-		return getNetworkManager().put(this, name, authenticator, content, signature);
+	public ContentObject put(ContentObject co) throws IOException, InterruptedException {
+		return getNetworkManager().put(co);
 	}
 	
 	/**

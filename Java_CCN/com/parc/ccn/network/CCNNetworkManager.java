@@ -18,7 +18,6 @@ import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
-import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.WirePacket;
@@ -26,7 +25,6 @@ import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
-import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.util.InterestTable;
 import com.parc.ccn.data.util.InterestTable.Entry;
 import com.parc.ccn.library.CCNLibrary;
@@ -418,12 +416,7 @@ public class CCNNetworkManager implements Runnable {
 		_tapStreamIn = new FileOutputStream(new File(pathname + "_in"));
 	}
 	
-	public CompleteName put(Object caller, ContentName name, ContentAuthenticator authenticator, 
-			byte[] content, Signature signature) throws IOException, InterruptedException {
-		CompleteName complete = new CompleteName(name, authenticator, signature);
-		Library.logger().fine("put: " + complete.name());
-		ContentObject co = new ContentObject(name, authenticator, content, signature); 
-		
+	public ContentObject put(ContentObject co) throws IOException, InterruptedException {	
 		try {
 			write(co);
 		} catch (XMLStreamException xmlex) {
@@ -431,7 +424,7 @@ public class CCNNetworkManager implements Runnable {
 			Library.warningStackTrace(xmlex);
 		}
 		
-		return complete;
+		return co;
 		//return CCNRepositoryManager.getRepositoryManager().put(name, authenticator, signature, content);
 	}
 	

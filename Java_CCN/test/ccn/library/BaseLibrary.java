@@ -115,7 +115,7 @@ public class BaseLibrary {
 		System.out.println("Got result: " + getResults.name());
 	}
 	
-	public void checkPutResults(CompleteName putResult) {
+	public void checkPutResults(ContentObject putResult) {
 		System.out.println("Put data: " + putResult.name());
 	}
 	
@@ -181,9 +181,9 @@ public class BaseLibrary {
 		Random rand = new Random();
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
-			CompleteName putName = library.put(ContentName.fromNative(baseName, Integer.toString(i)), new Integer(i).toString().getBytes());
+			ContentObject putResult = library.put(ContentName.fromNative(baseName, Integer.toString(i)), new Integer(i).toString().getBytes());
 			System.out.println("Put " + i + " done");
-			checkPutResults(putName);
+			checkPutResults(putResult);
 		}
 	}
 	
@@ -361,9 +361,9 @@ public class BaseLibrary {
 						int val = Integer.parseInt(new String(interest.name().component(interest.name().count()-1)));
 						System.out.println("Got interest in " + val);
 						if (!accumulatedResults.contains(val)) {
-							CompleteName putName = library.put(ContentName.fromNative(name, Integer.toString(val)), Integer.toString(next).getBytes());
+							ContentObject putResult = library.put(ContentName.fromNative(name, Integer.toString(val)), Integer.toString(next).getBytes());
 							System.out.println("Put " + val + " done");
-							checkPutResults(putName);
+							checkPutResults(putResult);
 							next++;
 							accumulatedResults.add(val);
 						}

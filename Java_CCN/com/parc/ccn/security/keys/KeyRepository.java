@@ -192,7 +192,8 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 			ContentObject keyObject = retrieve(it.next());
 			if (null != keyObject) {
 				try {
-					_networkManager.put(this, keyObject.name(), keyObject.authenticator(), keyObject.content(), keyObject.signature());
+					ContentObject co = new ContentObject(keyObject.name(), keyObject.authenticator(), keyObject.content(), keyObject.signature()); 
+					_networkManager.put(co);
 				} catch (Exception e) {
 					Library.logger().info("KeyRepository::handleInterests, exception in put: " + e.getClass().getName() + " message: " + e.getMessage());
 					Library.infoStackTrace(e);

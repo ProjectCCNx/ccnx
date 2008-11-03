@@ -5,8 +5,8 @@ import java.io.IOException;
 import java.security.SignatureException;
 
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.library.CCNLibrary;
 
@@ -43,7 +43,7 @@ public class put {
 				// put as name
 				// int version = new Random().nextInt(1000);
 				// would be version = library.latestVersion(argName) + 1;
-				CompleteName result = library.newVersion(argName, contents);
+				ContentObject result = library.newVersion(argName, contents);
 				
 				System.out.println("Inserted file " + args[1] + " as " + result.name());
 				System.exit(0);
@@ -63,7 +63,7 @@ public class put {
 					
 					// int version = new Random().nextInt(1000);
 					// would be version = library.latestVersion(argName) + 1;
-					CompleteName result = library.newVersion(nodeName, contents);
+					ContentObject result = library.newVersion(nodeName, contents);
 					
 					System.out.println("Inserted file " + args[i] + " as " + result.name());
 					

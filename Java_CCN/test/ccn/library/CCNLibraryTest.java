@@ -28,7 +28,7 @@ import com.parc.ccn.library.CCNLibrary;
  * @author briggs,smetters
  *
  */
-public class StandardCCNLibraryTest extends BaseLibrary {
+public class CCNLibraryTest extends BaseLibrary {
 	static final String contentString = "This is a very small amount of content";
 	
 	private class NameSeen {
@@ -122,8 +122,8 @@ public class StandardCCNLibraryTest extends BaseLibrary {
 			e.printStackTrace();
 		}
 		try {
-			CompleteName result = library.put(name, content, publisher);
-			System.out.println("Resulting CompleteName: " + result);
+			ContentObject result = library.put(name, content, publisher);
+			System.out.println("Resulting ContentObject: " + result);
 		} catch (SignatureException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -138,8 +138,8 @@ public class StandardCCNLibraryTest extends BaseLibrary {
 		String key = "/test/key";
 		byte[] data1 = "data".getBytes();
 		byte[] data2 = "newdata".getBytes();
-		CompleteName revision1;
-		CompleteName revision2;
+		ContentObject revision1;
+		ContentObject revision2;
 
 		try {
 			ContentName keyName = ContentName.fromNative(key);
@@ -177,7 +177,7 @@ public class StandardCCNLibraryTest extends BaseLibrary {
 		byte[] data1 = "data".getBytes();
 		try {
 			ContentName keyName = ContentName.fromNative(key);
-			CompleteName name = library.put(keyName, data1);
+			ContentObject name = library.put(keyName, data1);
 			System.out.println("Put under name: " + name.name());
 			ContentObject result = library.get(name.name(), name.authenticator(), false, CCNBase.NO_TIMEOUT);
 
@@ -214,7 +214,8 @@ public class StandardCCNLibraryTest extends BaseLibrary {
 					result.authenticator().equals(name.authenticator())) {
 				System.out.println("Got back name we inserted.");
 			} else
-				Assert.fail("Didn't get back data we just inserted!");
+				Assert.fail("Didn't get back data we just inserted - result name: " + result.name() + 
+						", auth: " + result.authenticator() + ", orig name: " + name.name() + ", auth: " + name.authenticator());
 		} catch (Exception e) {
 			System.out.println("Exception in testing recall: " + e.getClass().getName() + ": " + e.getMessage());
 			Assert.fail(e.getMessage());
@@ -225,8 +226,7 @@ public class StandardCCNLibraryTest extends BaseLibrary {
 			byte [] content1,
 			byte [] content2) throws Exception {
 
-		CompleteName 
-		version1 = library.newVersion(docName, content1);
+		ContentObject version1 = library.newVersion(docName, content1);
 		System.out.println("Inserted first version as: " + version1.name());
 		Assert.assertNotNull("New version is null!", version1);
 
@@ -236,7 +236,7 @@ public class StandardCCNLibraryTest extends BaseLibrary {
 		Assert.assertNotNull("Retrieved latest version of " + docName + " got null!", latestVersion);
 		System.out.println("Latest version name: " + latestVersion.name());
 
-		CompleteName version2 = 
+		ContentObject version2 = 
 			library.newVersion(docName, content2);
 
 		Assert.assertNotNull("New version is null!", version2);

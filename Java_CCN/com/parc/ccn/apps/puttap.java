@@ -93,7 +93,7 @@ public class puttap implements CCNInterestListener {
 	        byte[] bytes = new byte[CHUNK_SIZE];
 	        int i = 0;
 	        while (is.read(bytes) >= 0) {
-	        	CompleteName cn = library.put(ContentName.fromNative(name, new Integer(i++).toString()), bytes);
+	        	ContentObject cn = library.put(ContentName.fromNative(name, new Integer(i++).toString()), bytes);
 	        	if (!cn.validate()) {
 	        		Library.logger().severe("BAD COMPLETENAME: does not validate");
 	        		return false;

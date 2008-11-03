@@ -7,8 +7,8 @@ import java.util.ArrayList;
 
 import org.junit.Test;
 
-import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.Interest;
 
@@ -27,9 +27,9 @@ public class EndToEndTestSource extends BaseLibrarySource implements CCNFilterLi
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
 			byte[] content = getRandomContent(i);
-			CompleteName putName = library.put(ContentName.fromNative("/BaseLibraryTest/gets/" + new Integer(i).toString()), content);
+			ContentObject putResult = library.put(ContentName.fromNative("/BaseLibraryTest/gets/" + new Integer(i).toString()), content);
 			System.out.println("Put " + i + " done: " + content.length + " content bytes");
-			checkPutResults(putName);
+			checkPutResults(putResult);
 		}
 		System.out.println("Put sequence finished");
 	}
@@ -56,9 +56,9 @@ public class EndToEndTestSource extends BaseLibrarySource implements CCNFilterLi
 			for (Interest interest : interests) {
 				assertTrue(name.isPrefixOf(interest.name()));
 				byte[] content = getRandomContent(next);
-				CompleteName putName = library.put(ContentName.fromNative("/BaseLibraryTest/server/" + new Integer(next).toString()), content);
+				ContentObject putResult = library.put(ContentName.fromNative("/BaseLibraryTest/server/" + new Integer(next).toString()), content);
 				System.out.println("Put " + next + " done: " + content.length + " content bytes");
-				checkPutResults(putName);
+				checkPutResults(putResult);
 				next++;
 			}
 			if (next >= count) {

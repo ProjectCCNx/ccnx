@@ -33,6 +33,7 @@ import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
 import com.parc.ccn.network.CCNNetworkManager;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
@@ -176,11 +177,11 @@ public class CCNLibrary extends CCNBase {
 		return keyManager().getDefaultKeyID();
 	}
 
-	public CompleteName addCollection(ContentName name, Link [] contents) throws SignatureException, IOException, InterruptedException {
+	public ContentObject addCollection(ContentName name, Link [] contents) throws SignatureException, IOException, InterruptedException {
 		return addCollection(name, contents, getDefaultPublisher());
 	}
 
-	public CompleteName addCollection(
+	public ContentObject addCollection(
 			ContentName name, 
 			Link [] contents,
 			PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException {
@@ -197,7 +198,7 @@ public class CCNLibrary extends CCNBase {
 		}
 	}
 
-	public CompleteName addCollection(
+	public ContentObject addCollection(
 			ContentName name, 
 			Link[] contents,
 			PublisherKeyID publisher, KeyLocator locator,
@@ -271,12 +272,12 @@ public class CCNLibrary extends CCNBase {
 	 * @throws IOException 
 	 * @throws InterruptedException 
 	 */
-	public CompleteName link(ContentName src, ContentName target,
+	public ContentObject link(ContentName src, ContentName target,
 							 LinkAuthenticator targetAuthenticator) throws SignatureException, IOException, InterruptedException {
 		return link(src, target, targetAuthenticator, getDefaultPublisher());
 	}
 
-	public CompleteName link(ContentName src, ContentName target,
+	public ContentObject link(ContentName src, ContentName target,
 							LinkAuthenticator targetAuthenticator,
 							PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException {
 		try {
@@ -302,7 +303,7 @@ public class CCNLibrary extends CCNBase {
 	 * @throws InterruptedException 
 	 * @throws XMLStreamException 
 	 */
-	public CompleteName link(ContentName src, ContentName target,
+	public ContentObject link(ContentName src, ContentName target,
 							 LinkAuthenticator targetAuthenticator, 
 							 PublisherKeyID publisher, KeyLocator locator,
 							 PrivateKey signingKey) throws InvalidKeyException, SignatureException, 
@@ -372,7 +373,7 @@ public class CCNLibrary extends CCNBase {
 	 * the number...
 	 * @throws InterruptedException 
 	 */
-	public CompleteName newVersion(ContentName name,
+	public ContentObject newVersion(ContentName name,
 								   byte[] contents) throws SignatureException, IOException, InterruptedException {
 		return newVersion(name, contents, getDefaultPublisher());
 	}
@@ -386,7 +387,7 @@ public class CCNLibrary extends CCNBase {
 	 * identity.
 	 * @throws InterruptedException 
 	 */
-	public CompleteName newVersion(
+	public ContentObject newVersion(
 			ContentName name, 
 			byte[] contents,
 			PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException {
@@ -400,7 +401,7 @@ public class CCNLibrary extends CCNBase {
 	 * not who published the existing version.
 	 * @throws InterruptedException 
 	 */
-	public CompleteName newVersion(
+	public ContentObject newVersion(
 			ContentName name, 
 			byte[] contents,
 			ContentType type, // handle links and collections
@@ -497,7 +498,7 @@ public class CCNLibrary extends CCNBase {
 	 * This does the actual work of generating a new version's name and doing 
 	 * the corresponding put. Handles fragmentation.
 	 */
-	public CompleteName addVersion(
+	public ContentObject addVersion(
 			ContentName name, int version, byte [] contents,
 			ContentType type,
 			PublisherKeyID publisher, KeyLocator locator,
@@ -671,21 +672,32 @@ public class CCNLibrary extends CCNBase {
 	 * @throws IOException 
 	 * @throws InterruptedException 
 	 */
-	public CompleteName put(String name, String contents) throws SignatureException, MalformedContentNameStringException, IOException, InterruptedException {
+	public ContentObject put(String name, String contents) throws SignatureException, MalformedContentNameStringException, IOException, InterruptedException {
 		return put(ContentName.fromURI(name), contents.getBytes());
 	}
 	
-	public CompleteName put(ContentName name, byte[] contents) 
+	public ContentObject put(ContentName name, byte[] contents) 
 				throws SignatureException, IOException, InterruptedException {
 		return put(name, contents, getDefaultPublisher());
 	}
 
-	public CompleteName put(ContentName name, byte[] contents, 
+	public ContentObject put(ContentName name, byte[] contents, 
 							PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException {
 		return put(name, contents, ContentAuthenticator.ContentType.LEAF, publisher);
 	}
+	
+	public ContentObject put(ContentName name, 
+			ContentAuthenticator authenticator,
+			byte[] content,
+			Signature signature) throws IOException, InterruptedException {
+		CompleteName complete = new CompleteName(name, authenticator, signature);
+		Library.logger().fine("put: " + complete.name());
+		ContentObject co = new ContentObject(name, authenticator, content, signature); 
+	
+		return put(co);
+	}
 
-	public CompleteName put(ContentName name, byte[] contents, 
+	public ContentObject put(ContentName name, byte[] contents, 
 							ContentAuthenticator.ContentType type,
 							PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException {
 		try {
@@ -782,7 +794,7 @@ public class CCNLibrary extends CCNBase {
 	 * @throws IOException 
 	 * @throws InterruptedException 
 	 **/
-	public CompleteName put(ContentName name, byte [] contents,
+	public ContentObject put(ContentName name, byte [] contents,
 							ContentAuthenticator.ContentType type,
 							PublisherKeyID publisher, KeyLocator locator,
 							PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InterruptedException {
@@ -825,7 +837,7 @@ public class CCNLibrary extends CCNBase {
 	 * @throws IOException 
 	 * @throws InterruptedException 
 	 */
-	protected CompleteName fragmentedPut(ContentName name, byte [] contents,
+	protected ContentObject fragmentedPut(ContentName name, byte [] contents,
 										ContentAuthenticator.ContentType type,
 										PublisherKeyID publisher, KeyLocator locator,
 										PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InterruptedException {
@@ -867,7 +879,7 @@ public class CCNLibrary extends CCNBase {
 						 type, timestamp, publisher, locator, signingKey);
 	}
 	
-	public CompleteName putHeader(ContentName name, int contentLength, byte [] contentDigest, 
+	public ContentObject putHeader(ContentName name, int contentLength, byte [] contentDigest, 
 				byte [] contentTreeAuthenticator,
 				ContentAuthenticator.ContentType type,
 				Timestamp timestamp, 
@@ -901,7 +913,7 @@ public class CCNLibrary extends CCNBase {
 														new ContentAuthenticator(publisher, timestamp, ContentType.HEADER, locator),
 														encodedHeader,
 														signingKey);
-		CompleteName headerResult = null;
+		ContentObject headerResult = null;
 		try {
 			headerResult = 
 				put(headerObject.name(), headerObject.authenticator(),
