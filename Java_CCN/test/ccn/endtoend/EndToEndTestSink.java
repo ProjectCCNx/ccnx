@@ -73,17 +73,7 @@ public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestList
 		return interest;
 	}
 
-	public void addInterest(Interest interest) {
-	}
-
 	public void cancelInterests() {
-	}
-
-	public Interest[] getInterests() {
-		return null;
-	}
-
-	public void interestTimedOut(Interest interest) {
 	}
 
 	public boolean matchesInterest(ContentObject name) {

@@ -276,12 +276,7 @@ public class BaseLibrary {
 				error = ex;
 			}
 		}
-		public void addInterest(Interest interest) {
-		}
 		public void cancelInterests() {
-		}
-		public Interest[] getInterests() {
-			return null;
 		}
 		public synchronized Interest handleContent(ArrayList<ContentObject> results) {
 			Interest newInterest = null;
@@ -305,10 +300,6 @@ public class BaseLibrary {
 			}
 			return  newInterest;
 		}
-		
-		public void interestTimedOut(Interest interest) {
-		}
-		
 		public boolean matchesInterest(ContentObject name) {
 			return false;
 		}

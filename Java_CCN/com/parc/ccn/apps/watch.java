@@ -23,8 +23,6 @@ public class watch extends Thread implements CCNInterestListener {
 	public void initialize() {}
 	public void work() {}
 	
-	public void addInterest(Interest interest) {_interests.add(interest);}
-	
 	public void run() {
 		_stop = false;
 		initialize();
@@ -65,10 +63,6 @@ public class watch extends Thread implements CCNInterestListener {
 		}
 	}
 	
-	public Interest[] getInterests() {
-		return (Interest[])_interests.toArray();
-	}
-	
 	public Interest handleContent(ArrayList<ContentObject> results) {
 		for (int i=0; i < results.size(); ++i) {
 			System.out.println("New content: " + results.get(i).name());
@@ -88,11 +82,6 @@ public class watch extends Thread implements CCNInterestListener {
 		System.out.println("Canceled interest in: " + interest.name());
 	}
 	
-	public void interestTimedOut(Interest interest) {
-		// TODO Auto-generated method stub
-		
-	}
-
 
 	/**
 	 * @param args
@@ -113,7 +102,6 @@ public class watch extends Thread implements CCNInterestListener {
 				Interest interest = new Interest(args[i]);
 			
 				library.expressInterest(interest, listener);
-				listener.addInterest(interest);
 			} 
 			
 			listener.run();

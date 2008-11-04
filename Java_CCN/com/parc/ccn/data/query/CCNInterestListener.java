@@ -15,26 +15,6 @@ public interface CCNInterestListener {
     public Interest handleContent(ArrayList<ContentObject> results);
     
     /**
-     * Notification that our query has timed out.
-     * @param query
-     */
-    public void interestTimedOut(Interest interest);
-
-     /**
-     * Returns the queries we are listening for.
-     */
-    public Interest [] getInterests();
-    
-    /**
-     * This will be called by the repository/query
-     * target automatically. Implementations should
-     * track interests with a Set or similar method,
-     * so that calls to addInterest with the same interest
-     * don't result in multiple interests.
-     */
-    public void addInterest(Interest interest);
-    
-    /**
      * Does this ContentObject match one of our queries?
      * @param object
      * @return

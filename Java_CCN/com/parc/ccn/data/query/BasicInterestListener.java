@@ -33,10 +33,6 @@ public abstract class BasicInterestListener implements CCNInterestListener {
 		_interestProvider = interestProvider;
 	}
 	
-	public void addInterest(Interest interest) {
-		_interests.add(interest);
-	}
-	
 	public void cancelInterests() {
 		Iterator<Interest> it = _interests.iterator();
 		while (it.hasNext()) {
@@ -48,10 +44,6 @@ public abstract class BasicInterestListener implements CCNInterestListener {
 				Library.logger().warning("Exception canceling interest: " + e.getMessage());
 			}
 		}			
-	}
-
-	public Interest[] getInterests() {
-		return _interests.toArray(new Interest[_interests.size()]);
 	}
 
 	public boolean matchesInterest(ContentObject content) {
@@ -69,11 +61,6 @@ public abstract class BasicInterestListener implements CCNInterestListener {
 		Library.logger().info("Interest cancelled: " + interest.name());
 		// What happens if we do this in the middle of cancel interests?
 		_interestProvider.cancelInterest(interest, this);
-		_interests.remove(interest);
-	}
-
-	public void interestTimedOut(Interest interest) {
-		Library.logger().info("Interest timed out: " + interest.name());
 		_interests.remove(interest);
 	}
 }

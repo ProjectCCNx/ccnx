@@ -175,16 +175,14 @@ public class CCNLibrary extends CCNBase {
 		return keyManager().getDefaultKeyID();
 	}
 
-	public ContentObject addCollection(ContentName name, Link [] contents) throws SignatureException, IOException, InterruptedException {
-		return addCollection(name, contents, getDefaultPublisher());
+	public ContentObject put(ContentName name, Link [] references) throws SignatureException, IOException, InterruptedException {
+		return put(name, references, getDefaultPublisher());
 	}
 
-	public ContentObject addCollection(
-			ContentName name, 
-			Link [] contents,
-			PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException {
+	public ContentObject put(ContentName name, Link [] references, PublisherKeyID publisher) 
+				throws SignatureException, IOException, InterruptedException {
 		try {
-			return addCollection(name, contents, publisher, null, null);
+			return put(name, references, publisher, null, null);
 		} catch (InvalidKeyException e) {
 			Library.logger().warning("Default key invalid.");
 			Library.warningStackTrace(e);
@@ -196,13 +194,13 @@ public class CCNLibrary extends CCNBase {
 		}
 	}
 
-	public ContentObject addCollection(
+	public ContentObject put(
 			ContentName name, 
-			Link[] contents,
+			Link[] references,
 			PublisherKeyID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InterruptedException {
 		
-		Collection collectionData = new Collection(contents);
+		Collection collectionData = new Collection(references);
 
 		if (null == signingKey)
 			signingKey = keyManager().getDefaultSigningKey();
@@ -229,28 +227,28 @@ public class CCNLibrary extends CCNBase {
 	 */
 	public ContentObject addToCollection(
 			ContentName name,
-			ContentObject[] additionalContents) {
+			ContentObject[] references) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	public ContentObject removeFromCollection(
 			ContentName name,
-			ContentObject[] additionalContents) {
+			ContentObject[] references) {
 		
 		return null;
 	}
 	
 	public ContentObject updateCollection(
 			ContentName name,
-			Link [] contentsToAdd,
-			Link [] contentsToRemove) {
+			Link [] referencesToAdd,
+			Link [] referencesToRemove) {
 		return null;
 	}
 	
 	public ContentObject updateCollection(
 			ContentName name,
-			Link [] newContents) {
+			Link [] references) {
 		return null;
 	}
 
@@ -270,16 +268,16 @@ public class CCNLibrary extends CCNBase {
 	 * @throws IOException 
 	 * @throws InterruptedException 
 	 */
-	public ContentObject link(ContentName src, ContentName target,
+	public ContentObject link(ContentName reference, ContentName target,
 							 LinkAuthenticator targetAuthenticator) throws SignatureException, IOException, InterruptedException {
-		return link(src, target, targetAuthenticator, getDefaultPublisher());
+		return link(reference, target, targetAuthenticator, getDefaultPublisher());
 	}
 
-	public ContentObject link(ContentName src, ContentName target,
+	public ContentObject link(ContentName reference, ContentName target,
 							LinkAuthenticator targetAuthenticator,
 							PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException {
 		try {
-			return link(src,target,targetAuthenticator,publisher,null,null);
+			return link(reference,target,targetAuthenticator,publisher,null,null);
 		} catch (InvalidKeyException e) {
 			Library.logger().warning("Default key invalid.");
 			Library.warningStackTrace(e);
@@ -1269,7 +1267,7 @@ public class CCNLibrary extends CCNBase {
 	
 	public ContentObject getExcept(ContentName name, ExcludeFilter omissions, long timeout) throws InvalidParameterException, MalformedContentNameStringException, 
 			IOException, InterruptedException {
-		return null;
+		return generalGet(name, null, omissions, timeout);
 	}
 	
 	private ContentName contentObjectToContentName(ContentObject content, int prefixCount) {
