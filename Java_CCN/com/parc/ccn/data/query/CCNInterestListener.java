@@ -2,7 +2,6 @@ package com.parc.ccn.data.query;
 
 import java.util.ArrayList;
 
-import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentObject;
 
 public interface CCNInterestListener {
@@ -36,11 +35,11 @@ public interface CCNInterestListener {
     public void addInterest(Interest interest);
     
     /**
-     * Does this CompleteName match one of our queries?
+     * Does this ContentObject match one of our queries?
      * @param object
      * @return
      */
-    public boolean matchesInterest(CompleteName name);
+    public boolean matchesInterest(ContentObject content);
     
     /**
      * Cancel all the queries we are listening to.

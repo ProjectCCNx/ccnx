@@ -1,14 +1,12 @@
 package com.parc.ccn.data.query;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeSet;
 
 import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
-import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentObject;
 
 /**
@@ -56,13 +54,11 @@ public abstract class BasicInterestListener implements CCNInterestListener {
 		return _interests.toArray(new Interest[_interests.size()]);
 	}
 
-	public abstract Interest handleContent(ArrayList<ContentObject> results);
-
-	public boolean matchesInterest(CompleteName name) {
+	public boolean matchesInterest(ContentObject content) {
 		Iterator<Interest> iIt = _interests.iterator();
 		while (iIt.hasNext()) {
 			Interest it = iIt.next();
-			if ((null != it) && (it.matches(name))) {
+			if ((null != it) && (it.matches(content))) {
 				return true;
 			}
 		}

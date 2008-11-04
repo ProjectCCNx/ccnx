@@ -7,7 +7,6 @@ import java.util.ArrayList;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.config.SystemConfiguration;
-import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentObject;
 
 public class BaseSecurityTest extends BasePutGetTest {
@@ -35,7 +34,7 @@ public class BaseSecurityTest extends BasePutGetTest {
 		} 
 	}
 	
-	public void checkPutResults(CompleteName putResult) {
+	public void checkPutResults(ContentObject putResult) {
 		try {
 			// Reconsistute content and verify signature.
 			int val = Integer.parseInt(new String(putResult.name().component(putResult.name().count()-1)));

@@ -23,7 +23,6 @@ import org.junit.BeforeClass;
 import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
@@ -310,7 +309,7 @@ public class BaseLibrary {
 		public void interestTimedOut(Interest interest) {
 		}
 		
-		public boolean matchesInterest(CompleteName name) {
+		public boolean matchesInterest(ContentObject name) {
 			return false;
 		}
 	}

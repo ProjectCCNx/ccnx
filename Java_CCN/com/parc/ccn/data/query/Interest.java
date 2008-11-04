@@ -6,7 +6,6 @@ import java.util.Arrays;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
-import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
@@ -160,10 +159,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	
 	public byte [] responseFilter() { return _responseFilter; }
 	public void responseFilter(byte [] responseFilter) { _responseFilter = responseFilter; }
-	
-	public boolean matches(CompleteName result) {
-		return matches(result.name(), (null != result.authenticator()) ? result.authenticator().publisherKeyID() : null);
-	}
 	
 	public boolean matches(ContentObject result) {
 		return matches(result, (null != result.authenticator()) ? result.authenticator().publisherKeyID() : null);

@@ -19,7 +19,6 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
@@ -228,28 +227,28 @@ public class CCNLibrary extends CCNBase {
 	/**
 	 * Use the same publisherID that we used originally.
 	 */
-	public CompleteName addToCollection(
+	public ContentObject addToCollection(
 			ContentName name,
-			CompleteName[] additionalContents) {
+			ContentObject[] additionalContents) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
-	public CompleteName removeFromCollection(
+	public ContentObject removeFromCollection(
 			ContentName name,
-			CompleteName[] additionalContents) {
+			ContentObject[] additionalContents) {
 		
 		return null;
 	}
 	
-	public CompleteName updateCollection(
+	public ContentObject updateCollection(
 			ContentName name,
 			Link [] contentsToAdd,
 			Link [] contentsToRemove) {
 		return null;
 	}
 	
-	public CompleteName updateCollection(
+	public ContentObject updateCollection(
 			ContentName name,
 			Link [] newContents) {
 		return null;
@@ -341,8 +340,8 @@ public class CCNLibrary extends CCNBase {
 	 * @throws SignatureException
 	 * @throws IOException
 	 */
-	public ContentObject getLink(CompleteName name) {
-		if (!isLink(name))
+	public ContentObject getLink(ContentObject content) {
+		if (!isLink(content))
 			return null;
 		// Want the low-level get.
 		return null;
@@ -352,12 +351,12 @@ public class CCNLibrary extends CCNBase {
 	 * Does this specific name point to a link?
 	 * Looks at local (cached) data only. 
 	 * If more than one piece of content matches
-	 * this CompleteName, returns false.
+	 * this ContentObject, returns false.
 	 * @param name
 	 * @return true if its a link, false if not. 
 	 */
-	public boolean isLink(CompleteName name) {
-		return (name.authenticator().type() == ContentType.LINK);
+	public boolean isLink(ContentObject content) {
+		return (content.authenticator().type() == ContentType.LINK);
 	}
 
 	/**
@@ -460,7 +459,7 @@ public class CCNLibrary extends CCNBase {
 	 * @throws IOException
 	 * @throws InterruptedException
 	 */
-	public CompleteName newVersionName(
+	public ContentObject newVersionName(
 			ContentName name, int version, byte [] contents,
 			ContentType type,
 			PublisherKeyID publisher, KeyLocator locator,
@@ -484,8 +483,8 @@ public class CCNLibrary extends CCNBase {
 			type = ContentType.LEAF;
 		
 		ContentName versionedName = versionName(name, version);
-		CompleteName uniqueName =
-			CompleteName.generateAuthenticatedName(
+		ContentObject uniqueName =
+			ContentObject.generateAuthenticatedName(
 					versionedName, publisher, ContentAuthenticator.now(),
 					type, locator, contents, signingKey);
 
@@ -550,7 +549,7 @@ public class CCNLibrary extends CCNBase {
 			// Because we're just looking at children of
 			// the name -- not actual pieces of content --
 			// look only at ContentNames.
-			ArrayList<CompleteName> availableVersions = 
+			ArrayList<ContentObject> availableVersions = 
 				enumerate(new Interest(baseVersionName), NO_TIMEOUT);
 			
 			if ((null == availableVersions) || (availableVersions.size() == 0)) {
@@ -558,7 +557,7 @@ public class CCNLibrary extends CCNBase {
 				return null;
 			}
 			
-			Iterator<CompleteName> vit = availableVersions.iterator();
+			Iterator<ContentObject> vit = availableVersions.iterator();
 			
 			// DKS TODO
 			// Need to make sure we match our publisher criteria
@@ -568,9 +567,9 @@ public class CCNLibrary extends CCNBase {
 			// by someone in particular, not just things published
 			// by a particular signer).
 			int latestVersion = -1;
-			CompleteName latestVersionName = null;
+			ContentObject latestVersionName = null;
 			while (vit.hasNext()) {
-				CompleteName version = vit.next();
+				ContentObject version = vit.next();
 				int thisVersion =
 					getVersionNumber(version.name());
 				if (thisVersion > latestVersion) { 
@@ -578,8 +577,7 @@ public class CCNLibrary extends CCNBase {
 					latestVersionName = version;
 				}
 			}
-			// Should we rely on unique names? Or worry
-			// about CompleteNames? We only really have 
+			// Should we rely on unique names? We only really have 
 			// ContentNames here, so return just that.
 			return latestVersionName.name();
 			
@@ -689,10 +687,7 @@ public class CCNLibrary extends CCNBase {
 			ContentAuthenticator authenticator,
 			byte[] content,
 			Signature signature) throws IOException, InterruptedException {
-		CompleteName complete = new CompleteName(name, authenticator, signature);
-		Library.logger().fine("put: " + complete.name());
 		ContentObject co = new ContentObject(name, authenticator, content, signature); 
-	
 		return put(co);
 	}
 
@@ -716,7 +711,7 @@ public class CCNLibrary extends CCNBase {
 	
 	/**
 	 * If small enough, doesn't fragment. Otherwise, does.
-	 * Return CompleteName of the thing they put (in the case
+	 * Return ContentObject of the thing they put (in the case
 	 * of a fragmented thing, the header). That way the
 	 * caller can then also easily link to that thing if
 	 * it needs to, or put again with a different name.
@@ -1053,16 +1048,6 @@ public class CCNLibrary extends CCNBase {
 		return Integer.valueOf(ContentName.componentPrintURI(name.component(offset+1)));
 	}
 	
-	/**
-	 * @throws InterruptedException 
-	 * @throws IOException 
-	 * 
-	 */
-	public ContentObject get(ContentName name, ContentAuthenticator authenticator, long timeout) 
-			throws IOException, InterruptedException {	
-		return get(name, timeout);
-	}
-	
 	public ContentObject get(ContentName name, long timeout) throws IOException, InterruptedException {
 		Interest interest = new Interest(name);
 		return get(interest, timeout);
@@ -1083,10 +1068,6 @@ public class CCNLibrary extends CCNBase {
 		return get(interest, timeout);
 	}
 	
-	public ContentObject getNextLevel(ContentName name, ContentAuthenticator auth, long timeout) throws IOException, InterruptedException {
-		return getNextLevel(name, timeout);
-	}
-	
 	/**
 	 * Enumerate matches in the local repositories.
 	 * TODO: maybe filter out fragments, possibly other metadata.
@@ -1096,8 +1077,8 @@ public class CCNLibrary extends CCNBase {
 	 * @return
 	 * @throws IOException 
 	 */
-	public ArrayList<CompleteName> enumerate(Interest query, long timeout) throws IOException {
-		ArrayList<CompleteName> result = new ArrayList<CompleteName>();
+	public ArrayList<ContentObject> enumerate(Interest query, long timeout) throws IOException {
+		ArrayList<ContentObject> result = new ArrayList<ContentObject>();
 		Integer prefixCount = query.nameComponentCount() == null ? query.name().components().size() 
 				: query.nameComponentCount();
 		try {
@@ -1105,7 +1086,7 @@ public class CCNLibrary extends CCNBase {
 				ContentObject co = get(query, timeout == NO_TIMEOUT ? 5000 : timeout);
 				if (co == null)
 					break;
-				result.add(co.completeName());
+				result.add(co);
 				query = Interest.next(co, prefixCount);
 			}
 			return result;
@@ -1202,8 +1183,12 @@ public class CCNLibrary extends CCNBase {
 	 * @throws InterruptedException 
 	 * @throws XMLStreamException 
 	 */
-	public CCNDescriptor open(CompleteName name, OpenMode mode) throws IOException, InterruptedException, XMLStreamException {
-		return new CCNDescriptor(name, mode, this); 
+	public CCNDescriptor open(ContentObject content, OpenMode mode) throws IOException, InterruptedException, XMLStreamException {
+		return new CCNDescriptor(content, mode, this); 
+	}
+	
+	public CCNDescriptor open(ContentName name, OpenMode mode) throws IOException, InterruptedException, XMLStreamException {
+		return new CCNDescriptor(new ContentObject(name, null, null, (Signature)null), mode, this); 
 	}
 		
 	public long read(CCNDescriptor ccnObject, byte [] buf, long 
@@ -1237,7 +1222,7 @@ public class CCNLibrary extends CCNBase {
 	 * @param name
 	 * @return
 	 */
-	public boolean isLocal(CompleteName name) {
+	public boolean isLocal(ContentObject name) {
 		// TODO Auto-generated method stub
 		return false;
 	}

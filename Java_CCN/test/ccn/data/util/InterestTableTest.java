@@ -16,7 +16,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
@@ -122,11 +121,11 @@ public class InterestTableTest {
 		assertEquals(2, names.sizeNames());
 	}
 		
-	private CompleteName getCompleteName(ContentName name) throws ConfigurationException, InvalidKeyException, SignatureException, MalformedContentNameStringException {
-		return getCompleteName(name, activeKeyID);
+	private ContentObject getContentObject(ContentName name) throws ConfigurationException, InvalidKeyException, SignatureException, MalformedContentNameStringException {
+		return getContentObject(name, activeKeyID);
 	}
 	
-	private CompleteName getCompleteName(ContentName name, PublisherKeyID pub) throws ConfigurationException, InvalidKeyException, SignatureException, MalformedContentNameStringException {
+	private ContentObject getContentObject(ContentName name, PublisherKeyID pub) throws ConfigurationException, InvalidKeyException, SignatureException, MalformedContentNameStringException {
 		// contents = current date value
 		ByteBuffer bb = ByteBuffer.allocate(Long.SIZE/Byte.SIZE);
 		bb.putLong(new Date().getTime());
@@ -134,14 +133,14 @@ public class InterestTableTest {
 		// security bits
 		KeyLocator locator = new KeyLocator(ContentName.fromNative("/key/" + pub.id().toString()));
 		// unique name		
-		return CompleteName.generateAuthenticatedName(
+		return ContentObject.generateAuthenticatedName(
 				name, pub, ContentAuthenticator.now(),
 						ContentAuthenticator.ContentType.LEAF, locator, contents, null);
 	}
 	
 	private ContentObject getContentObject(ContentName name, int value) throws InvalidKeyException, SignatureException, MalformedContentNameStringException, ConfigurationException {
-		CompleteName cn = getCompleteName(name);
-		return new ContentObject(cn, new Integer(value).toString().getBytes());
+		ContentObject cn = getContentObject(name);
+		return new ContentObject(cn.name(), cn.authenticator(), new Integer(value).toString().getBytes(), cn.signature());
 	}
 	
 	private void match(InterestTable<Integer> table, ContentName name, int v) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
@@ -158,9 +157,9 @@ public class InterestTableTest {
 	
 	private void removeMatch(InterestTable<Integer> table, ContentName name, int v) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
 		if (removeByMatch) {
-			assertEquals(v, table.removeMatch(getCompleteName(name)).value());
+			assertEquals(v, table.removeMatch(getContentObject(name)).value());
 		} else {
-			assertEquals(v, table.removeValue(getCompleteName(name)));
+			assertEquals(v, table.removeValue(getContentObject(name)));
 		}
 	}
 	
@@ -193,8 +192,8 @@ public class InterestTableTest {
 	}
 
 	private void noRemoveMatch(InterestTable<Integer> table, ContentName name) throws InvalidKeyException, SignatureException, MalformedContentNameStringException, ConfigurationException {
-		assertNull(table.removeMatch(getCompleteName(name)));
-		assertNull(table.removeValue(getCompleteName(name)));
+		assertNull(table.removeMatch(getContentObject(name)));
+		assertNull(table.removeValue(getContentObject(name)));
 	}
 	
 	private void noRemoveMatch(InterestTable<Integer> table, String name) throws InvalidKeyException, SignatureException, MalformedContentNameStringException, ConfigurationException {
@@ -360,11 +359,11 @@ public class InterestTableTest {
 	
 	@Test
 	public void testMatchName() throws InvalidKeyException, MalformedContentNameStringException, SignatureException, ConfigurationException {
-		// First test names matching against names, no CompleteName
+		// First test names matching against names, no ContentObject
 		setID(-1);
 		runMatchName();
 		
-		// Next run CompleteName against names in table
+		// Next run ContentObject against names in table
 		setID(0);
 		runMatchName();
 	}

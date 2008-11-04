@@ -9,6 +9,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SignatureException;
 import java.security.cert.CertificateEncodingException;
+import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.logging.Level;
 
@@ -18,7 +19,10 @@ import com.parc.ccn.Library;
 import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.security.KeyLocator;
+import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.Signature;
+import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
 import com.parc.ccn.data.util.BinaryXMLCodec;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLCodecFactory;
@@ -65,11 +69,6 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
     	this(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, name, authenticator, content, signature);
     }
     
-    public ContentObject(CompleteName name, byte [] content) {
-    	this(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, name.name(), name.authenticator(), content, 
-    			name.signature());
-	}
-    
     /**
      * Generate an authenticator and a signature.
      * @throws SignatureException 
@@ -101,8 +100,6 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
     public Signature signature() { return _signature; }
     
     public void signature(Signature signature) { _signature = signature; }
-    
-    public CompleteName completeName() { return new CompleteName(name(), authenticator(), signature()); }
 
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		decoder.readStartElement(CONTENT_OBJECT_ELEMENT);
@@ -444,5 +441,35 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 	public static byte [] contentDigest(byte [] content) {
 		 return CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, content);
 	}
+	
+	/**
+	 * No longer need unique names, but keep API for now so
+	 * as to not break existing code.
+     * @param signingKey if null, only generates unique name
+     * 	and filled-in content authenticator. Can complete using
+     *  contentObject.authenticator.sign(contentObject.name, signingKey).
+     *  
+     * @return
+     * @throws SignatureException 
+     * @throws InvalidKeyException 
+     */
+	public static ContentObject generateAuthenticatedName(
+	   		ContentName name,
+    		PublisherKeyID publisher,
+    		Timestamp timestamp,
+    		ContentType type,
+    		KeyLocator locator,
+    		byte [] contentOrDigest, // may be already hashed
+    		//boolean isDigest, // should we digest it or is it already done?
+    		PrivateKey signingKey) throws SignatureException, InvalidKeyException {
+		
+		// Generate raw authenticator.
+		ContentAuthenticator authenticator = new ContentAuthenticator(publisher, timestamp, type, locator);
+		Signature signature = null;
+		if (null != signingKey)
+			signature = ContentObject.sign(name, authenticator, contentOrDigest, signingKey);
+		return new ContentObject(name, authenticator, null, signature);
+	}
+
 
 }

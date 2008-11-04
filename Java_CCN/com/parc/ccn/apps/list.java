@@ -4,8 +4,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
@@ -28,7 +28,7 @@ public class list {
 			for (int i=0; i < args.length; ++i) {
 				Interest interest = new Interest(args[i]);
 			
-				ArrayList<CompleteName> names = library.enumerate(interest, CCNLibrary.NO_TIMEOUT);
+				ArrayList<ContentObject> names = library.enumerate(interest, CCNLibrary.NO_TIMEOUT);
 				
 				System.out.println("Retrieved " + names.size() + " names matching: " + interest.name());
 				

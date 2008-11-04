@@ -13,13 +13,13 @@ import java.util.Arrays;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
-import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.library.CCNLibrary.OpenMode;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.crypto.CCNMerkleTree;
@@ -148,7 +148,7 @@ public class CCNDescriptor {
 	 * @throws InterruptedException 
 	 * @throws IOException 
 	 */
-	public CCNDescriptor(CompleteName name,
+	public CCNDescriptor(ContentObject content,
 						 OpenMode mode, 
 						 PublisherKeyID publisher,
 						 KeyLocator locator,
@@ -165,19 +165,24 @@ public class CCNDescriptor {
 		_signingKey = signingKey;
 		
 		if (_mode == OpenMode.O_RDONLY)
-			openForReading(name);
+			openForReading(content);
 		else if (_mode == OpenMode.O_WRONLY)
-			openForWriting(name);
+			openForWriting(content);
 		
 	}
 	
-	public CCNDescriptor(CompleteName name,
+	public CCNDescriptor(ContentObject content,
 			 OpenMode mode, CCNLibrary library) throws XMLStreamException, IOException, InterruptedException {
-		this(name, mode, null, null, null, library);
+		this(content, mode, null, null, null, library);
+	}
+	
+	public CCNDescriptor(ContentName name,
+			 OpenMode mode, CCNLibrary library) throws XMLStreamException, IOException, InterruptedException {
+		this(new ContentObject(name, null, null, (Signature)null), mode, null, null, null, library);
 	}
 
 		
-	protected void openForWriting(CompleteName name) {
+	protected void openForWriting(ContentObject name) {
 		ContentName nameToOpen = name.name();
 		if (CCNLibrary.isFragment(name.name())) {
 			// DKS TODO: should we do this?
@@ -224,10 +229,10 @@ public class CCNDescriptor {
 	 * @throws InterruptedException
 	 * @throws XMLStreamException
 	 */
-	protected void openForReading(CompleteName name) throws IOException, InterruptedException, XMLStreamException {
+	protected void openForReading(ContentObject content) throws IOException, InterruptedException, XMLStreamException {
 
-		ContentName nameToOpen = name.name();
-		if (CCNLibrary.isFragment(name.name())) {
+		ContentName nameToOpen = content.name();
+		if (CCNLibrary.isFragment(content.name())) {
 			// DKS TODO: should we do this?
 			nameToOpen = CCNLibrary.fragmentRoot(nameToOpen);
 		}
@@ -235,15 +240,15 @@ public class CCNDescriptor {
 			// if publisherID is null, will get any publisher
 			nameToOpen = 
 				_library.getLatestVersionName(nameToOpen,
-							(null != name.authenticator()) ? 
-									 name.authenticator().publisherKeyID() : null);
+							(null != content.authenticator()) ? 
+									 content.authenticator().publisherKeyID() : null);
 		}
 		// Should have name of root of version we want to
 		// open. Get the header block. Already stripped to
 		// root. We've altered the header semantics, so that
 		// we can just get headers rather than a plethora of
 		// fragments. 
-		Library.logger().fine("Opening header for " + name.name() + " at " + CCNLibrary.headerName(nameToOpen));
+		Library.logger().fine("Opening header for " + content.name() + " at " + CCNLibrary.headerName(nameToOpen));
 		_headerName = CCNLibrary.headerName(nameToOpen);
 		
 		// This might not be unique - 
@@ -265,7 +270,7 @@ public class CCNDescriptor {
 		 * Paul R TODO - Is a hardwired timeout here OK?  If not should we allow a
 		 * user specified timeout?
 		 */
-		ContentObject header = _library.getNextLevel(_headerName, name.authenticator(), 5000);
+		ContentObject header = _library.getNextLevel(_headerName, 5000);
 		
 		if (null == header) {
 			Library.logger().info("No available content named: " + _headerName.toString());
@@ -523,7 +528,7 @@ public class CCNDescriptor {
 		/*
 		 * TODO: Paul R. Comment - as above what to do about timeouts?
 		 */
-		ContentObject block = _library.getNextLevel(blockName, _headerAuthenticator, 5000);
+		ContentObject block = _library.getNextLevel(blockName, 5000);
 		
 		if (null == block) {
 			Library.logger().info("Cannot get block " + number + " of file " + _baseName + " expected block: " + blockName.toString());

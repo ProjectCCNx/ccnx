@@ -14,7 +14,6 @@ import junit.framework.Assert;
 import org.junit.Test;
 
 import com.parc.ccn.CCNBase;
-import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
@@ -39,8 +38,8 @@ public class CCNLibraryTest extends BaseLibrary {
 			this.name = name;
 		}
 		
-		private boolean setSeen(CompleteName cn) {
-			if (name.isPrefixOf(cn.name())) {
+		private boolean setSeen(ContentObject co) {
+			if (name.isPrefixOf(co.name())) {
 				seen = true;
 				return true;
 			}
@@ -63,13 +62,13 @@ public class CCNLibraryTest extends BaseLibrary {
 				library.put(testNames.get(i).name, Integer.toString(i).getBytes());
 			}
 			
-			ArrayList<CompleteName> availableNames =
+			ArrayList<ContentObject> availableNames =
 				library.enumerate(new Interest("/CPOF"), CCNLibrary.NO_TIMEOUT);
 
-			Iterator<CompleteName> nameIt = availableNames.iterator();
+			Iterator<ContentObject> nameIt = availableNames.iterator();
 
 			while (nameIt.hasNext()) {
-				CompleteName theName = nameIt.next();
+				ContentObject theName = nameIt.next();
 
 				// Just get by name, to test equivalent to current
 				// ONC interface.
@@ -179,7 +178,7 @@ public class CCNLibraryTest extends BaseLibrary {
 			ContentName keyName = ContentName.fromNative(key);
 			ContentObject name = library.put(keyName, data1);
 			System.out.println("Put under name: " + name.name());
-			ContentObject result = library.get(name.name(), name.authenticator(), CCNBase.NO_TIMEOUT);
+			ContentObject result = library.get(name.name(), CCNBase.NO_TIMEOUT);
 
 			System.out.println("Querying for returned name, Got back: " + (result == null ? "0"  : "1") + " results.");
 
@@ -189,7 +188,7 @@ public class CCNLibraryTest extends BaseLibrary {
 				System.out.println("Final name: " + name.name());
 				//Assert.fail("Didn't get back content we just put!");
 
-				result = library.get(name.name(), name.authenticator(), CCNBase.NO_TIMEOUT);
+				result = library.get(name.name(), CCNBase.NO_TIMEOUT);
 
 				System.out.println("Recursive querying for returned name, Got back: " + (result == null ? "0"  : "1") + " results.");
 
@@ -275,7 +274,6 @@ public class CCNLibraryTest extends BaseLibrary {
 			_mainThread = mainThread;
 		}
 
-		@Override
 		public Interest handleContent(ArrayList<ContentObject> results) {
 			byte[] content = null;
 			if (null != results) {

@@ -8,7 +8,6 @@ import java.util.ArrayList;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.config.SystemConfiguration;
-import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNInterestListener;
@@ -95,7 +94,7 @@ public class puttap implements CCNInterestListener {
 	        while (is.read(bytes) >= 0) {
 	        	ContentObject cn = library.put(ContentName.fromNative(name, new Integer(i++).toString()), bytes);
 	        	if (!cn.validate()) {
-	        		Library.logger().severe("BAD COMPLETENAME: does not validate");
+	        		Library.logger().severe("BAD CONTENTOBJECT: does not validate");
 	        		return false;
 	        	}
 	        	if (verify) {
@@ -146,7 +145,7 @@ public class puttap implements CCNInterestListener {
 		// Intentional no-op
 	}
 
-	public boolean matchesInterest(CompleteName name) {
+	public boolean matchesInterest(ContentObject name) {
 		// Intentional no-op
 		return false;
 	}

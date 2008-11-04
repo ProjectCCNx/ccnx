@@ -32,7 +32,9 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	
 	protected ArrayList<byte []>  _components;
 	protected Integer _prefixCount;
-	protected static class DotDotComponent extends Exception {}; // Need to strip off a component
+	protected static class DotDotComponent extends Exception { // Need to strip off a component
+		private static final long serialVersionUID = 4667513234636853164L;
+	}; 
 
     // Constructors
 	// ContentNames consist of a sequence of byte[] components which may not 

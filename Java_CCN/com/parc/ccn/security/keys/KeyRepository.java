@@ -15,7 +15,6 @@ import java.util.Iterator;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.config.UserConfiguration;
-import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNFilterListener;
@@ -228,7 +227,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 
 	}
 
-	public boolean matchesInterest(CompleteName name) {
+	public boolean matchesInterest(ContentObject content) {
 		// TODO Auto-generated method stub
 		return false;
 	}

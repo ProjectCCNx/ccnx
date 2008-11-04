@@ -13,7 +13,6 @@ import javax.xml.stream.XMLStreamException;
 import org.junit.BeforeClass;
 
 import com.parc.ccn.Library;
-import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.library.CCNDescriptor;
@@ -42,7 +41,7 @@ public class BlockReadWriteTest extends BasePutGetTest {
 		
 		CCNLibrary useLibrary = libraries[0]; // looking for cause of semaphore problem...
 		ContentName thisName = useLibrary.versionName(ContentName.fromNative(baseName, fileName), count);
-		CCNDescriptor desc = useLibrary.open(new CompleteName(thisName, null, null), OpenMode.O_RDONLY);
+		CCNDescriptor desc = useLibrary.open(thisName, OpenMode.O_RDONLY);
 		Library.logger().info("Opened descriptor for reading: " + thisName);
 
 		FileOutputStream os = new FileOutputStream(fileName + "_testout.txt");
@@ -71,7 +70,7 @@ public class BlockReadWriteTest extends BasePutGetTest {
 	public void doPuts(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException, NoSuchAlgorithmException {
 		CCNLibrary useLibrary = libraries[1]; // looking for cause of semaphore problem...
 		ContentName thisName = useLibrary.versionName(ContentName.fromNative(baseName, fileName), count);
-		CCNDescriptor desc = useLibrary.open(new CompleteName(thisName, null, null), OpenMode.O_WRONLY);
+		CCNDescriptor desc = useLibrary.open(thisName, OpenMode.O_WRONLY);
 		
 		Library.logger().info("Opened descriptor for writing: " + thisName);
 		
