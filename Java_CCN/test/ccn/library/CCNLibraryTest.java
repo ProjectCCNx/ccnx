@@ -179,7 +179,7 @@ public class CCNLibraryTest extends BaseLibrary {
 			ContentName keyName = ContentName.fromNative(key);
 			ContentObject name = library.put(keyName, data1);
 			System.out.println("Put under name: " + name.name());
-			ContentObject result = library.get(name.name(), name.authenticator(), false, CCNBase.NO_TIMEOUT);
+			ContentObject result = library.get(name.name(), name.authenticator(), CCNBase.NO_TIMEOUT);
 
 			System.out.println("Querying for returned name, Got back: " + (result == null ? "0"  : "1") + " results.");
 
@@ -189,7 +189,7 @@ public class CCNLibraryTest extends BaseLibrary {
 				System.out.println("Final name: " + name.name());
 				//Assert.fail("Didn't get back content we just put!");
 
-				result = library.get(name.name(), name.authenticator(), true, 0);
+				result = library.get(name.name(), name.authenticator(), CCNBase.NO_TIMEOUT);
 
 				System.out.println("Recursive querying for returned name, Got back: " + (result == null ? "0"  : "1") + " results.");
 
@@ -202,7 +202,7 @@ public class CCNLibraryTest extends BaseLibrary {
 				Assert.assertTrue("didn't get back same data", new String(data1).equals(new String(content)));
 			}
 
-			result = library.get(keyName, null, true, CCNBase.NO_TIMEOUT);
+			result = library.get(keyName, CCNBase.NO_TIMEOUT);
 
 			System.out.println("Querying for inserted name, Got back: " 
 							+ (result == null ? "0"  : "1") + " results.");
@@ -256,7 +256,7 @@ public class CCNLibraryTest extends BaseLibrary {
 	public void testNotFound() throws Exception {
 		try {
 			String key = "/some_strange_key_we_should_never_find";
-			ContentObject result = library.get(ContentName.fromNative(key), null, false, 1000);
+			ContentObject result = library.get(ContentName.fromNative(key), 1000);
 			Assert.assertTrue("found something when there shouldn't have been anything", result == null);
 		} catch (Exception e) {
 			System.out.println("Exception in testing recall: " + e.getClass().getName() + ": " + e.getMessage());

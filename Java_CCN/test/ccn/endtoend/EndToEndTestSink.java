@@ -28,7 +28,7 @@ public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestList
 		Random rand = new Random();
 		for (int i = 0; i < BaseLibrarySource.count; i++) {
 			Thread.sleep(rand.nextInt(50));
-			ContentObject contents = library.get(ContentName.fromNative("/BaseLibraryTest/gets/" + i), CCNLibrary.NO_TIMEOUT);
+			ContentObject contents = library.getNextLevel(ContentName.fromNative("/BaseLibraryTest/gets/" + i), CCNLibrary.NO_TIMEOUT);
 			int value = contents.content()[0];
 			// Note that we cannot be guaranteed to pick up every value:
 			// due to timing we may miss a value that arrives while we are not

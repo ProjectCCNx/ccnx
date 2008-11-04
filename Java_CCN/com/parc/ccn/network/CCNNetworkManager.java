@@ -24,7 +24,6 @@ import com.parc.ccn.data.WirePacket;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.util.InterestTable;
 import com.parc.ccn.data.util.InterestTable.Entry;
 import com.parc.ccn.library.CCNLibrary;
@@ -428,26 +427,9 @@ public class CCNNetworkManager implements Runnable {
 		//return CCNRepositoryManager.getRepositoryManager().put(name, authenticator, signature, content);
 	}
 	
-	public ContentObject get(Object caller, ContentName name, 
-									    ContentAuthenticator authenticator,
-									    boolean isRecursive, long timeout) throws IOException, InterruptedException {
-		Interest interest = new Interest(name);
-		return get(caller, interest, authenticator, isRecursive, timeout);
-	}
-	
-	public ContentObject get(Object caller, Interest interest, 
-									    ContentAuthenticator authenticator,
-									    boolean isRecursive, long timeout) throws IOException, InterruptedException {
+	public ContentObject get(Interest interest, long timeout) throws IOException, InterruptedException {
 		Library.logger().fine("get: " + interest.name());
-		if (!isRecursive) {
-			// for the moment, assume we don't know the digest, and we're specifying
-			// the whole name up to the content digest
-			interest.additionalNameComponents(1); // can only have one component (the
-				// digest) beyond what we've specified
-				// DKS TODO we don't actually "know" about the extra name component,
-				// except sometimes... how do we do match?
-		}
-		InterestRegistration reg = new InterestRegistration(this, interest, null, caller, timeout);
+		InterestRegistration reg = new InterestRegistration(this, interest, null, null, timeout);
 		expressInterest(reg);
 		Library.logger().finest("blocking for " + interest.name() + " on " + reg.sema);
 		// Await data to consume the interest 

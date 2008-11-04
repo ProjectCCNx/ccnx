@@ -265,7 +265,7 @@ public class CCNDescriptor {
 		 * Paul R TODO - Is a hardwired timeout here OK?  If not should we allow a
 		 * user specified timeout?
 		 */
-		ContentObject header = _library.get(_headerName, name.authenticator(), false, 5000);
+		ContentObject header = _library.getNextLevel(_headerName, name.authenticator(), 5000);
 		
 		if (null == header) {
 			Library.logger().info("No available content named: " + _headerName.toString());
@@ -523,7 +523,7 @@ public class CCNDescriptor {
 		/*
 		 * TODO: Paul R. Comment - as above what to do about timeouts?
 		 */
-		ContentObject block = _library.get(blockName, _headerAuthenticator, false, 5000);
+		ContentObject block = _library.getNextLevel(blockName, _headerAuthenticator, 5000);
 		
 		if (null == block) {
 			Library.logger().info("Cannot get block " + number + " of file " + _baseName + " expected block: " + blockName.toString());

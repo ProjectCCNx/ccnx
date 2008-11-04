@@ -32,7 +32,7 @@ public class get {
 			if (args.length == 2) {
 				// Adjust to use defragmenting interface, find latest
 				// version, etc...
-				ContentObject object = library.get(argName, null, true, CCNLibrary.NO_TIMEOUT);
+				ContentObject object = library.get(argName, CCNLibrary.NO_TIMEOUT);
 				
 				System.out.println("Retrieved an object named: " + argName);
 				System.out.println("Writing to file " + args[1]);

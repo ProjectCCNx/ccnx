@@ -341,10 +341,10 @@ public class BaseLibrary {
 				System.out.println("PutServer started");
 				// Register filter
 				name = ContentName.fromNative(PARENT_NAME, Integer.toString(id));
-				library.setInterestFilter(name, this);
+				library.registerFilter(name, this);
 				// Block on semaphore until enough data has been received
 				sema.acquire();
-				library.cancelInterestFilter(name, this);
+				library.unregisterFilter(name, this);
 				System.out.println("PutServer finished.");
 				((CCNLibrary)library).getNetworkManager().shutdown();
 

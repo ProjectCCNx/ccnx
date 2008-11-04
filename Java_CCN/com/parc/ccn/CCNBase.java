@@ -2,13 +2,11 @@ package com.parc.ccn;
 
 import java.io.IOException;
 
-import com.parc.ccn.data.CompleteName;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.ContentAuthenticator;
-import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.network.CCNNetworkManager;
 
 /**
@@ -57,26 +55,34 @@ public class CCNBase {
 	}
 	
 	/**
-	 * The low-level get just gets us blocks that match this
-	 * name. (Have to think about metadata matches.) 
-	 * Trying to map this into a higher-order "get" that
-	 * unfragments and reads into a single buffer is challenging.
-	 * For now, let's just pass this one through to the bottom
-	 * level, and use open and read to defragment.
-	 * 
-	 * Note: the jackrabbit implementation (at least) does not
-	 * return an exact match to name if isRecursive is true -- it
-	 * returns only nodes underneath name.
-	 * 
-	 * DKS TODO: should this get at least verify?
-	 * @throws InterruptedException 
+	 * Implementation of CCNBase get
+	 * @param interest
+	 * @param timeout
+	 * @return
+	 * @throws IOException
+	 * @throws InterruptedException
 	 */
-	public ContentObject get(ContentName name, 
-										ContentAuthenticator authenticator,
-										boolean isRecursive, long timeout) throws IOException, InterruptedException {
-		
-		return getNetworkManager().get(this, name, authenticator,isRecursive, timeout);
+	public ContentObject get(Interest interest, long timeout) throws IOException, InterruptedException {
+		return getNetworkManager().get(interest, timeout);
 	}
+	
+	/**
+	 * Register a standing interest filter with callback to receive any 
+	 * matching interests seen
+	 */
+	public void registerFilter(ContentName filter,
+			CCNFilterListener callbackListener) {
+		getNetworkManager().setInterestFilter(this, filter, callbackListener);
+	}
+	
+	/**
+	 * Unregister a standing interest filter
+	 */
+	public void unregisterFilter(ContentName filter,
+			CCNFilterListener callbackListener) {
+		getNetworkManager().cancelInterestFilter(this, filter, callbackListener);		
+	}
+	
 	/**
 	 * Query, or express an interest in particular
 	 * content. This request is sent out over the

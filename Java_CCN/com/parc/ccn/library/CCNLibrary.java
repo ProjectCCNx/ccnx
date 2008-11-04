@@ -26,7 +26,6 @@ import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.content.Link;
-import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
@@ -606,7 +605,7 @@ public class CCNLibrary extends CCNBase {
 		
 		// Need recursive get. The currentName we have here is
 		// just the prefix of this version.
-		return get(currentName, null, true, 0);
+		return get(currentName, 0);
 	}
 
 	/**
@@ -1055,44 +1054,37 @@ public class CCNLibrary extends CCNBase {
 	}
 	
 	/**
-	 * Implementation of CCNBase. Pass on to repository
-	 * manager.
-	 */
-
-	
-
-	/**
-	 * The low-level get just gets us blocks that match this
-	 * name. (Have to think about metadata matches.) 
-	 * Trying to map this into a higher-order "get" that
-	 * unfragments and reads into a single buffer is challenging.
-	 * For now, let's just pass this one through to the bottom
-	 * level, and use open and read to defragment.
-	 * 
-	 * Note: the jackrabbit implementation (at least) does not
-	 * return an exact match to name if isRecursive is true -- it
-	 * returns only nodes underneath name.
-	 * 
-	 * DKS TODO: should this get at least verify?
 	 * @throws InterruptedException 
+	 * @throws IOException 
+	 * 
 	 */
-	public ContentObject get(ContentName name, 
-										ContentAuthenticator authenticator,
-										boolean isRecursive, long timeout) throws IOException, InterruptedException {
-		
-		return getNetworkManager().get(this, name, authenticator,isRecursive, timeout);
+	public ContentObject get(ContentName name, ContentAuthenticator authenticator, long timeout) 
+			throws IOException, InterruptedException {	
+		return get(name, timeout);
 	}
 	
 	public ContentObject get(ContentName name, long timeout) throws IOException, InterruptedException {
-		return get(name, null, false, timeout);
+		Interest interest = new Interest(name);
+		return get(interest, timeout);
 	}
 	
 	/**
-	 * Experimental interface allowing direct gets via interest.
-	 * May be deprecated in the future
+	 * Return data one level below us in the hierarchy only
+	 * 
+	 * @param name
+	 * @param timeout
+	 * @return
+	 * @throws IOException
+	 * @throws InterruptedException
 	 */
-	public ContentObject get(Interest interest, long timeout) throws IOException, InterruptedException {
-		return getNetworkManager().get(this, interest, null, true, timeout);
+	public ContentObject getNextLevel(ContentName name, long timeout) throws IOException, InterruptedException {
+		Interest interest = new Interest(name);
+		interest.additionalNameComponents(1);
+		return get(interest, timeout);
+	}
+	
+	public ContentObject getNextLevel(ContentName name, ContentAuthenticator auth, long timeout) throws IOException, InterruptedException {
+		return getNextLevel(name, timeout);
 	}
 	
 	/**
@@ -1251,23 +1243,6 @@ public class CCNLibrary extends CCNBase {
 	}
 
 	/**
-	 * Unregister a standing interest filter
-	 */
-	public void cancelInterestFilter(ContentName filter,
-			CCNFilterListener callbackListener) {
-		getNetworkManager().cancelInterestFilter(this, filter, callbackListener);		
-	}
-
-	/**
-	 * Register a standing interest filter with callback to receive any 
-	 * matching interests seen
-	 */
-	public void setInterestFilter(ContentName filter,
-			CCNFilterListener callbackListener) {
-		getNetworkManager().setInterestFilter(this, filter, callbackListener);
-	}
-
-	/**
 	 * Medium level interface for retrieving pieces of a file
 	 *
 	 * getNext - get next content after specified content
@@ -1325,6 +1300,6 @@ public class CCNLibrary extends CCNBase {
 			interest.orderPreference(orderPreference);
 		if (null != omissions)
 			interest.excludeFilter(omissions);
-		return getNetworkManager().get(this, interest, null, true, timeout);
+		return get(interest, timeout);
 	}
 }

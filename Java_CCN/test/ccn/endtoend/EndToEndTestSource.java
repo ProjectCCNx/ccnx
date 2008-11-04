@@ -39,10 +39,10 @@ public class EndToEndTestSource extends BaseLibrarySource implements CCNFilterLi
 		System.out.println("PutServer started");
 		// Register filter
 		name = ContentName.fromNative("/BaseLibraryTest/");
-		library.setInterestFilter(name, this);
+		library.registerFilter(name, this);
 		// Block on semaphore until enough data has been received
 		sema.acquire();
-		library.cancelInterestFilter(name, this);
+		library.unregisterFilter(name, this);
 		if (null != error) {
 			throw error;
 		}
