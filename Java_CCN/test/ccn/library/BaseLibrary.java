@@ -276,9 +276,7 @@ public class BaseLibrary {
 				error = ex;
 			}
 		}
-		public void cancelInterests() {
-		}
-		public synchronized Interest handleContent(ArrayList<ContentObject> results) {
+		public synchronized Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
 			Interest newInterest = null;
 			for (ContentObject contentObject : results) {
 				try {
@@ -299,9 +297,6 @@ public class BaseLibrary {
 				sema.release();
 			}
 			return  newInterest;
-		}
-		public boolean matchesInterest(ContentObject name) {
-			return false;
 		}
 	}
 	

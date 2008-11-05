@@ -153,23 +153,6 @@ public class CCNLibrary extends CCNBase {
 	}
 
 	public KeyManager keyManager() { return _userKeyManager; }
-	
-	public CCNNetworkManager getNetworkManager() { 
-		if (null == _networkManager) {
-			synchronized(this) {
-				if (null == _networkManager) {
-					try {
-						_networkManager = new CCNNetworkManager();
-					} catch (IOException ex){
-						Library.logger().warning("IOException instantiating network manager: " + ex.getMessage());
-						ex.printStackTrace();
-						_networkManager = null;
-					}
-				}
-			}
-		}
-		return _networkManager;
-	}
 
 	public PublisherKeyID getDefaultPublisher() {
 		return keyManager().getDefaultKeyID();

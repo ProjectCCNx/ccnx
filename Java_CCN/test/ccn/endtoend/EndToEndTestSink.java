@@ -54,7 +54,7 @@ public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestList
 		}
 	}
 	
-	public synchronized Interest handleContent(ArrayList<ContentObject> results) {
+	public synchronized Interest handleContent(ArrayList<ContentObject> results, Interest matchInterest) {
 		Interest interest = null;
 		try {
 			for (ContentObject contentObject : results) {
@@ -71,12 +71,5 @@ public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestList
 			error = e;
 		}
 		return interest;
-	}
-
-	public void cancelInterests() {
-	}
-
-	public boolean matchesInterest(ContentObject name) {
-		return false;
 	}
 }

@@ -274,7 +274,7 @@ public class CCNNetworkManager implements Runnable {
 						// DKS even more interesting -- how do we update our interest? Do we?
 						// it's final now to avoid contention, but need to change it or change
 						// the registration.
-						Interest updatedInterest = listener.handleContent(results);
+						Interest updatedInterest = listener.handleContent(results, interest);
 						
 						if ((null != updatedInterest) && (!this.interest.equals(updatedInterest))) {
 							Library.logger().finer("Interest callback: updated interest to express: " + updatedInterest.name());
@@ -473,7 +473,7 @@ public class CCNNetworkManager implements Runnable {
 	 * Cancel this query with all the repositories we sent
 	 * it to.
 	 */
-	public void cancelInterest(Object caller, Interest interest, CCNInterestListener callbackListener) throws IOException {
+	public void cancelInterest(Object caller, Interest interest, CCNInterestListener callbackListener) {
 		if (null == callbackListener) {
 			throw new NullPointerException("cancelInterest: callbackListener cannot be null");
 		}

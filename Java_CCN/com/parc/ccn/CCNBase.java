@@ -122,7 +122,7 @@ public class CCNBase {
 	 * 	requested by more than one listener.
 	 * @throws IOException
 	 */
-	public void cancelInterest(Interest interest, CCNInterestListener listener) throws IOException {
+	public void cancelInterest(Interest interest, CCNInterestListener listener) {
 		getNetworkManager().cancelInterest(this, interest, listener);
 	}
 }

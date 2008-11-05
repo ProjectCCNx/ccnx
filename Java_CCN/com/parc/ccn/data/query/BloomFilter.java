@@ -6,7 +6,7 @@ package com.parc.ccn.data.query;
  * Implement bloom filter operations based on Michael Plass' C side implementation
  *
  */
-public class BloomFilter {
+public class BloomFilter implements Comparable<BloomFilter> {
 	private int lgBits;
 	private int nHash;
 	private byte [] seed;
@@ -69,6 +69,11 @@ public class BloomFilter {
 	    /* Michael's comment: fsr primitive polynomial (modulo 2) x**31 + x**13 + 1 */
 	    s = ((s >> k) ^ (b << (31 - k)) ^ (b << (13 - k))) + u;
 	    return(s & 0x7FFFFFFF);
+	}
+
+	public int compareTo(BloomFilter o) {
+		// TODO Auto-generated method stub
+		return 0;
 	}
 
 }

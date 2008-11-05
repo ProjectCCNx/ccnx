@@ -123,18 +123,8 @@ public class puttap implements CCNInterestListener {
 		System.out.println("usage: puttap 0|1 <ccnname> <tapname> <filename> [-s]");
 	}
 
-	public void cancelInterests() {
-		// Intentional no-op
-	}
-
-	public Interest handleContent(ArrayList<ContentObject> results) {
+	public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
 		// Intentional no-op
 		return null;
 	}
-
-	public boolean matchesInterest(ContentObject name) {
-		// Intentional no-op
-		return false;
-	}
-
 }

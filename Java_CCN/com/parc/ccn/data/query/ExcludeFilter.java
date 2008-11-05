@@ -1,11 +1,12 @@
 package com.parc.ccn.data.query;
 
+import java.security.InvalidParameterException;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.data.util.DataUtils;
+import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
@@ -15,61 +16,70 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 		Comparable<ExcludeFilter> {
 	
 	public static final String EXCLUDE_FILTER_ELEMENT = "Exclude";
-	public static final String BLOOM_SEED_ELEMENT = "BloomSeed";
-	public static final String BLOOM_ELEMENT = "Bloom";
-	public static final String COMPONENT_ELEMENT = "Component";
+	public static final String VALUES_ELEMENT = "Values";
 	
-	protected byte [] _bloomSeed;
-	protected byte [] _bloom;
-	protected ArrayList<byte []> _components;
+	protected ArrayList<ExcludeElement> _values;
 	
-	public ExcludeFilter(byte [] bloomSeed, byte [] bloom, ArrayList<byte []> components) {
-		_bloomSeed = bloomSeed;
-		_bloom = bloom;
-		_components = new ArrayList<byte[]>(components);
+	public ExcludeFilter(ArrayList<ExcludeElement> values) throws InvalidParameterException {
+		// Make sure the values are valid
+		boolean lastIsComponent = true;
+		ContentName lastName = null;
+		for (ExcludeElement ee : values) {
+			if (!ee._isComponent) {
+				if (!lastIsComponent)
+					throw new InvalidParameterException("Consecutive bloom filters in Exclude Filter");
+			} else {
+				if (lastName != null) {
+					if (lastName.compareTo(ee._name) >= 0) {
+						throw new InvalidParameterException("Components out of order in Exclude Filter");
+					}
+				}
+				lastName = ee._name;
+			}
+			lastIsComponent = ee._isComponent;
+		}
+		_values = new ArrayList<ExcludeElement>(values);
 	}
 	
 	public ExcludeFilter() {} // for use by decoders
 
-	public byte[] bloomSeed() {
-		return _bloomSeed;
-	}
-
-	public void bloomSeed(byte[] seed) {
-		_bloomSeed = seed;
-	}
-
-	public byte[] bloom() {
-		return _bloom;
-	}
-
-	public void bloom(byte[] _bloom) {
-		this._bloom = _bloom;
-	}
-
-	public ArrayList<byte []> components() {
-		return _components;
-	}
-
-	public void addComponent(byte[] component) {
-		this._components.add(component);
+	public ArrayList<ExcludeElement> values() {
+		return _values;
 	}
 	
+	/**
+	 * Exclude this co if it matches the filter
+	 * @param content
+	 * @return
+	 */
+	public boolean exclude(ContentObject content) {
+		for (ExcludeElement ee : values()) {
+			if (ee._isComponent) {
+				if (ee._name.equals(content.name()))
+					return true;
+			} else {
+				
+			}
+		}
+		return false;
+	}
+
+	// TODO should we be able to add values arbitrarily?
+	// If so, must be done in order
+	
 	public boolean empty() {
-		return ((null == bloomSeed()) && (null == bloom()) && ((null == components()) || (components().isEmpty())));
+		return ((null == values()) || (values().isEmpty()));
 	}
 
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		decoder.readStartElement(EXCLUDE_FILTER_ELEMENT);
 		
-		if (decoder.peekStartElement(BLOOM_SEED_ELEMENT)) {
-			_bloomSeed = decoder.readBinaryElement(BLOOM_SEED_ELEMENT);
-		}
-		if (decoder.peekStartElement(BLOOM_ELEMENT)) {
-			_bloom = decoder.readBinaryElement(BLOOM_ELEMENT);
-		}
-		while (decoder.peekStartElement(COMPONENT_ELEMENT)) {
-			_components.add(decoder.readBinaryElement(COMPONENT_ELEMENT));
+		_values = new ArrayList<ExcludeElement>();
+		
+		while (decoder.peekStartElement(VALUES_ELEMENT)) {
+			ExcludeElement ee = new ExcludeElement();
+			ee.decode(decoder);
+			_values.add(ee);
 		}
 		decoder.readEndElement();
 	}
@@ -84,15 +94,10 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 		
 		encoder.writeStartElement(EXCLUDE_FILTER_ELEMENT);
 
-		if (null != bloomSeed())
-			encoder.writeElement(BLOOM_SEED_ELEMENT, bloomSeed());
-
-		if (null != bloom())
-			encoder.writeElement(BLOOM_ELEMENT, bloom());
-
-		if (null != components()) {
-			for (byte [] component : components()) {
-				encoder.writeElement(COMPONENT_ELEMENT, component);
+		if (null != values()) {
+			encoder.writeStartElement(VALUES_ELEMENT);
+			for (ExcludeElement element : values()) {
+				element.encode(encoder);
 			}
 		}
 
@@ -105,13 +110,21 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 	}
 
 	public int compareTo(ExcludeFilter o) {
-		int result = DataUtils.compare(bloomSeed(), o.bloomSeed());
-		if (0 != result) return result;
-		
-		result = DataUtils.compare(bloom(), o.bloom());
-		if (0 != result) return result;
-		
-		result = DataUtils.compare(components(), o.components());
+		int result = 0;
+		if (values() == null && o.values() != null)
+			return -1;
+		if (_values != null) {
+			if (o.values() == null)
+				return 1;
+			result = values().size() - o.values().size();
+			if (0 != result) return result;
+			for (int i = 0; i < values().size(); i++) {
+				ExcludeElement ee = values().get(i);
+				result = ee.compareTo(o.values().get(i));
+				if (0 != result)
+					return result;
+			}
+		}
 		
 		return result;
 	}
@@ -120,32 +133,6 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + Arrays.hashCode(_bloom);
-		result = prime * result + Arrays.hashCode(_bloomSeed);
-		result = prime * result
-				+ ((_components == null) ? 0 : _components.hashCode());
 		return result;
 	}
-
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		ExcludeFilter other = (ExcludeFilter) obj;
-		if (!Arrays.equals(_bloom, other._bloom))
-			return false;
-		if (!Arrays.equals(_bloomSeed, other._bloomSeed))
-			return false;
-		if (_components == null) {
-			if (other._components != null)
-				return false;
-		} else if (!_components.equals(other._components))
-			return false;
-		return true;
-	}
-
 }

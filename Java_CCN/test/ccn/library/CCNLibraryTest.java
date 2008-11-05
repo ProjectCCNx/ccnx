@@ -274,7 +274,7 @@ public class CCNLibraryTest extends BaseLibrary {
 			_mainThread = mainThread;
 		}
 
-		public Interest handleContent(ArrayList<ContentObject> results) {
+		public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
 			byte[] content = null;
 			if (null != results) {
 				Iterator<ContentObject> rit = results.iterator();

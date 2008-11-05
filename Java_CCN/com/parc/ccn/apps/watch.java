@@ -52,30 +52,11 @@ public class watch extends Thread implements CCNInterestListener {
 		System.out.println("usage: watch <ccnname> [<ccnname>...]");
 	}
 	
-	public void cancelInterests() {
-		for (int i=0; i < _interests.size(); ++i) {
-			try {
-				_library.cancelInterest(_interests.get(i), this);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-	}
-	
-	public Interest handleContent(ArrayList<ContentObject> results) {
+	public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
 		for (int i=0; i < results.size(); ++i) {
 			System.out.println("New content: " + results.get(i).name());
 		}
 		return null;
-	}
-	
-	public boolean matchesInterest(ContentObject name) {
-		for (int i=0; i < _interests.size(); ++i) {
-			if (_interests.get(i).matches(name))
-				return true;
-		}
-		return false;
 	}
 	
 	public void interestCanceled(Interest interest) {

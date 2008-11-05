@@ -212,12 +212,13 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			}
 		}
 		if (null != orderPreference()) {
-			/*
-			 * All we can check here is whether the test name is
-			 * > our name. Any set of orderPreference requires this
-			 */
+			// All we can check here is whether the test name is > our name.
+			// Any set of orderPreference requires this
 			if (name.compareTo(name()) <= 0)
 				return false;
+		}
+		if (null != excludeFilter()) {
+			
 		}
 		if (null != publisherID()) {
 			if (null == resultPublisherKeyID) {
@@ -225,13 +226,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			}
 			// Should this be more general?
 			// TODO DKS handle issuer
-			if (TrustManager.getTrustManager().matchesRole(publisherID(), resultPublisherKeyID)) {
-				return true;
-			}
-		} else {
-			return true;
-		}
-		return false;
+			return TrustManager.getTrustManager().matchesRole(publisherID(), resultPublisherKeyID);
+		} 
+		return true;
 	}
 	
 	/**

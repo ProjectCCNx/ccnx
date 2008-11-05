@@ -69,14 +69,8 @@ public class ReadTest extends BaseLibrary implements CCNInterestListener {
 		System.out.println("getLatest test finished");
 	}
 
-	public void cancelInterests() {}
-
-	public Interest handleContent(ArrayList<ContentObject> results) {
+	public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
 		return null;
-	}
-
-	public boolean matchesInterest(ContentObject name) {
-		return false;
 	}
 	
 	private void checkResult(ContentObject result, int value) {
