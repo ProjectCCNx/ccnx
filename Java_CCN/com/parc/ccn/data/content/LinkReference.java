@@ -18,26 +18,26 @@ import com.parc.ccn.data.util.XMLEncoder;
  * @author smetters
  *
  */
-public class Link extends GenericXMLEncodable implements XMLEncodable {
+public class LinkReference extends GenericXMLEncodable implements XMLEncodable {
 	
 	protected static final String LINK_ELEMENT = "Link";
 	
 	protected ContentName _targetName;
 	protected LinkAuthenticator _targetAuthenticator = null;
 	
-	public Link(ContentName targetName, LinkAuthenticator targetAuthenticator) {
+	public LinkReference(ContentName targetName, LinkAuthenticator targetAuthenticator) {
 		_targetName = targetName;
 		_targetAuthenticator = targetAuthenticator;
 	}
 	
-	public Link(ContentName targetName) {
+	public LinkReference(ContentName targetName) {
 		this(targetName, null);
 	}
 	
 	/**
 	 * Decoding constructor.
 	 */
-	public Link() {}
+	public LinkReference() {}
 	
 	public ContentName targetName() { return _targetName; }
 	public LinkAuthenticator targetAuthenticator() { return _targetAuthenticator; }
@@ -96,7 +96,7 @@ public class Link extends GenericXMLEncodable implements XMLEncodable {
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		final Link other = (Link) obj;
+		final LinkReference other = (LinkReference) obj;
 		if (_targetAuthenticator == null) {
 			if (other._targetAuthenticator != null)
 				return false;

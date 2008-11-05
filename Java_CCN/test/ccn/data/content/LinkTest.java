@@ -9,7 +9,7 @@ import org.junit.Test;
 import test.ccn.data.XMLEncodableTester;
 
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.content.Link;
+import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherID;
@@ -62,9 +62,9 @@ public class LinkTest {
 	@Test
 	public void testEncodeOutputStream() {
 		for (int i=0; i < ns.length; ++i) {
-			Link l = new Link(ns[i],las[i]);
-			Link ldec = new Link();
-			Link lbdec = new Link();
+			LinkReference l = new LinkReference(ns[i],las[i]);
+			LinkReference ldec = new LinkReference();
+			LinkReference lbdec = new LinkReference();
 			XMLEncodableTester.encodeDecodeTest("Link_" + i, l, ldec, lbdec);
 		}
 	}

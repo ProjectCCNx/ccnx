@@ -24,12 +24,11 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Header;
-import com.parc.ccn.data.content.Link;
+import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
@@ -158,11 +157,11 @@ public class CCNLibrary extends CCNBase {
 		return keyManager().getDefaultKeyID();
 	}
 
-	public ContentObject put(ContentName name, Link [] references) throws SignatureException, IOException, InterruptedException {
+	public ContentObject put(ContentName name, LinkReference [] references) throws SignatureException, IOException, InterruptedException {
 		return put(name, references, getDefaultPublisher());
 	}
 
-	public ContentObject put(ContentName name, Link [] references, PublisherKeyID publisher) 
+	public ContentObject put(ContentName name, LinkReference [] references, PublisherKeyID publisher) 
 				throws SignatureException, IOException, InterruptedException {
 		try {
 			return put(name, references, publisher, null, null);
@@ -179,7 +178,7 @@ public class CCNLibrary extends CCNBase {
 
 	public ContentObject put(
 			ContentName name, 
-			Link[] references,
+			LinkReference[] references,
 			PublisherKeyID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InterruptedException {
 		
@@ -210,31 +209,25 @@ public class CCNLibrary extends CCNBase {
 	 */
 	public ContentObject addToCollection(
 			ContentName name,
-			ContentObject[] references) {
+			LinkReference [] references) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	public ContentObject removeFromCollection(
 			ContentName name,
-			ContentObject[] references) {
+			LinkReference [] references) {
 		
 		return null;
 	}
 	
 	public ContentObject updateCollection(
 			ContentName name,
-			Link [] referencesToAdd,
-			Link [] referencesToRemove) {
+			LinkReference [] referencesToAdd,
+			LinkReference [] referencesToRemove) {
 		return null;
 	}
 	
-	public ContentObject updateCollection(
-			ContentName name,
-			Link [] references) {
-		return null;
-	}
-
 	/**
 	 * Links are signed by the publisher of the link. However,
 	 * the content of the link is an XML document that contains
@@ -251,16 +244,14 @@ public class CCNLibrary extends CCNBase {
 	 * @throws IOException 
 	 * @throws InterruptedException 
 	 */
-	public ContentObject link(ContentName reference, ContentName target,
-							 LinkAuthenticator targetAuthenticator) throws SignatureException, IOException, InterruptedException {
-		return link(reference, target, targetAuthenticator, getDefaultPublisher());
+	public ContentObject link(ContentName name, LinkReference reference) throws SignatureException, IOException, InterruptedException {
+		return link(name, reference, getDefaultPublisher());
 	}
 
-	public ContentObject link(ContentName reference, ContentName target,
-							LinkAuthenticator targetAuthenticator,
+	public ContentObject link(ContentName name, LinkReference reference,
 							PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException {
 		try {
-			return link(reference,target,targetAuthenticator,publisher,null,null);
+			return link(name,reference,publisher,null,null);
 		} catch (InvalidKeyException e) {
 			Library.logger().warning("Default key invalid.");
 			Library.warningStackTrace(e);
@@ -282,15 +273,14 @@ public class CCNLibrary extends CCNBase {
 	 * @throws InterruptedException 
 	 * @throws XMLStreamException 
 	 */
-	public ContentObject link(ContentName src, ContentName target,
-							 LinkAuthenticator targetAuthenticator, 
+	public ContentObject link(ContentName name, LinkReference reference, 
 							 PublisherKeyID publisher, KeyLocator locator,
 							 PrivateKey signingKey) throws InvalidKeyException, SignatureException, 
 						NoSuchAlgorithmException, IOException, InterruptedException {
 
-		if ((null == src) || (null == target)) {
-			Library.logger().info("Link: src and target cannot be null.");
-			throw new IllegalArgumentException("Link: src and target cannot be null.");
+		if ((null == name) || (null == reference)) {
+			Library.logger().info("Link: name and reference cannot be null.");
+			throw new IllegalArgumentException("Link: name and reference cannot be null.");
 		}
 		
 		if (null == signingKey)
@@ -302,10 +292,9 @@ public class CCNLibrary extends CCNBase {
 		if (null == publisher) {
 			publisher = keyManager().getPublisherKeyID(signingKey);
 		}
-
-		Link linkData = new Link(target, targetAuthenticator);
+		
 		try {
-			return put(src, linkData.encode(), ContentType.LINK, publisher, locator, signingKey);
+			return put(name, reference.encode(), ContentType.LINK, publisher, locator, signingKey);
 		} catch (XMLStreamException e) {
 			Library.logger().warning("Cannot canonicalize a standard link!");
 			Library.warningStackTrace(e);
@@ -318,14 +307,16 @@ public class CCNLibrary extends CCNBase {
 	 * pointed to by a link. 
 	 * @param name the identifier for the link to work on
 	 * @return returns null if not a link, or name refers to more than one object
+	 * @throws InterruptedException 
+	 * @throws IOException 
 	 * @throws SignatureException
 	 * @throws IOException
 	 */
-	public ContentObject getLink(ContentObject content) {
+	public ContentObject getLink(ContentObject content, long timeout) throws IOException, InterruptedException {
 		if (!isLink(content))
 			return null;
 		// Want the low-level get.
-		return null;
+		return get(new Interest(content.name()), timeout);
 	}
 
 	/**
@@ -1050,7 +1041,7 @@ public class CCNLibrary extends CCNBase {
 	}
 	
 	/**
-	 * Enumerate matches in the local repositories.
+	 * Enumerate matches below query name in the hierarchy
 	 * TODO: maybe filter out fragments, possibly other metadata.
 	 * TODO: add in communication layer to talk just to
 	 * local repositories for v 2.0 protocol.
@@ -1164,12 +1155,14 @@ public class CCNLibrary extends CCNBase {
 	 * @throws InterruptedException 
 	 * @throws XMLStreamException 
 	 */
-	public CCNDescriptor open(ContentObject content, OpenMode mode) throws IOException, InterruptedException, XMLStreamException {
-		return new CCNDescriptor(content, mode, this); 
+	public CCNDescriptor open(ContentName name, PublisherKeyID publisher, KeyLocator locator, PrivateKey signingKey, OpenMode mode) 
+			throws IOException, InterruptedException, XMLStreamException {
+		ContentObject content = new ContentObject(name, null, null, (Signature)null);
+		return new CCNDescriptor(content, mode, publisher, locator, signingKey, this); 
 	}
 	
 	public CCNDescriptor open(ContentName name, OpenMode mode) throws IOException, InterruptedException, XMLStreamException {
-		return new CCNDescriptor(new ContentObject(name, null, null, (Signature)null), mode, this); 
+		return new CCNDescriptor(name, mode, this); 
 	}
 		
 	public long read(CCNDescriptor ccnObject, byte [] buf, long 
@@ -1196,17 +1189,6 @@ public class CCNLibrary extends CCNBase {
 	public void sync(CCNDescriptor ccnObject) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException {
 		ccnObject.sync();
 	}
-	
-	/**
-	 * Does this name refer to a node that represents
-	 * local (protected) content?
-	 * @param name
-	 * @return
-	 */
-	public boolean isLocal(ContentObject name) {
-		// TODO Auto-generated method stub
-		return false;
-	}
 
 	/**
 	 * Medium level interface for retrieving pieces of a file
@@ -1224,10 +1206,10 @@ public class CCNLibrary extends CCNBase {
 		return getNext(name, null, timeout);
 	}
 	
-	public ContentObject getNext(ContentObject content, int prefixCount, long timeout) 
+	public ContentObject getNext(ContentObject content, int prefixCount, ExcludeFilter ommissions, long timeout) 
 			throws InvalidParameterException, MalformedContentNameStringException, 
 			IOException, InterruptedException {
-		return getNext(contentObjectToContentName(content, prefixCount), null, timeout);
+		return getNext(contentObjectToContentName(content, prefixCount), ommissions, timeout);
 	}
 	
 	/**
