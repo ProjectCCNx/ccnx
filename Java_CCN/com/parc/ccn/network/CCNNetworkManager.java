@@ -13,6 +13,7 @@ import java.util.Date;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -26,7 +27,6 @@ import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.util.InterestTable;
 import com.parc.ccn.data.util.InterestTable.Entry;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.security.keys.KeyManager;
 
 /**
@@ -174,11 +174,9 @@ public class CCNNetworkManager implements Runnable {
 		public final Interest interest;
 		protected ArrayList<ContentObject> data = new ArrayList<ContentObject>(1);
 		public Date lastRefresh;
-		public long timeout = CCNBase.NO_TIMEOUT;
 		
 		// All internal client interests must have an owner
-		public InterestRegistration(CCNNetworkManager mgr, Interest i, CCNInterestListener l, Object owner, 
-						long timeout) {
+		public InterestRegistration(CCNNetworkManager mgr, Interest i, CCNInterestListener l, Object owner) {
 			manager = mgr;
 			interest = i; 
 			listener = l;
@@ -187,8 +185,6 @@ public class CCNNetworkManager implements Runnable {
 				sema = new Semaphore(0);
 			}
 			lastRefresh = new Date();
-			if (timeout != CCNBase.NO_TIMEOUT)
-				this.timeout = lastRefresh.getTime() + timeout;
 		}
 		// Add a copy of data, not the original data object, so that 
 		// the recipient cannot disturb the buffers of the sender
@@ -429,11 +425,14 @@ public class CCNNetworkManager implements Runnable {
 	
 	public ContentObject get(Interest interest, long timeout) throws IOException, InterruptedException {
 		Library.logger().fine("get: " + interest.name());
-		InterestRegistration reg = new InterestRegistration(this, interest, null, null, timeout);
+		InterestRegistration reg = new InterestRegistration(this, interest, null, null);
 		expressInterest(reg);
 		Library.logger().finest("blocking for " + interest.name() + " on " + reg.sema);
-		// Await data to consume the interest 
-		reg.sema.acquire(); // currently no timeouts
+		// Await data to consume the interest
+		if (timeout == CCNBase.NO_TIMEOUT)
+			reg.sema.acquire(); // currently no timeouts
+		else
+			reg.sema.tryAcquire(timeout, TimeUnit.MILLISECONDS);
 		Library.logger().finest("unblocked for " + interest.name() + " on " + reg.sema);
 		// Typically the main processing thread will have registered the interest
 		// which must be undone here, but no harm if never registered
@@ -455,7 +454,7 @@ public class CCNNetworkManager implements Runnable {
 		}		
 	
 		Library.logger().fine("expressInterest: " + interest.name());
-		InterestRegistration reg = new InterestRegistration(this, interest, callbackListener, caller, CCNLibrary.NO_TIMEOUT);
+		InterestRegistration reg = new InterestRegistration(this, interest, callbackListener, caller);
 		expressInterest(reg);
 	}
 	
@@ -556,7 +555,7 @@ public class CCNNetworkManager implements Runnable {
 	// external version: for use when we only have interest from client.  For all internal
 	// purposes we should unregister the InterestRegistration we already have
 	void unregisterInterest(Object caller, Interest interest, CCNInterestListener callbackListener) {
-		InterestRegistration reg = new InterestRegistration(this, interest, callbackListener, caller, CCNLibrary.NO_TIMEOUT);
+		InterestRegistration reg = new InterestRegistration(this, interest, callbackListener, caller);
 		unregisterInterest(reg);
 	}
 	
@@ -670,7 +669,7 @@ public class CCNNetworkManager implements Runnable {
 				//--------------------------------- Process interests from net (if any)
 				for (Interest interest : packet.interests()) {
 					Library.logger().fine("Interest from net: " + interest.name());
-					InterestRegistration oInterest = new InterestRegistration(this, interest, null, null, CCNLibrary.NO_TIMEOUT);
+					InterestRegistration oInterest = new InterestRegistration(this, interest, null, null);
 					deliverInterest(oInterest);
 					// External interests never go back to network
 				} // for interests
@@ -685,12 +684,8 @@ public class CCNNetworkManager implements Runnable {
 					synchronized (_myInterests) {
 						for (Entry<InterestRegistration> entry : _myInterests.values()) {
 							InterestRegistration reg = entry.value();
-							if (reg.timeout != CCNLibrary.NO_TIMEOUT && reg.timeout < new Date().getTime()) {
-								_threadpool.execute(reg);
-							} else {
-								Library.logger().finer("Refresh interest: " + reg.interest.name());
-								write(reg.interest);
-							}
+							Library.logger().finer("Refresh interest: " + reg.interest.name());
+							write(reg.interest);
 						}
 					}
 					lastsweep = new Date();
