@@ -218,7 +218,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 				return false;
 		}
 		if (null != excludeFilter()) {
-			
+			int componentIndex = name().prefixCount() != null ? name().prefixCount() : name().count();
+			if (excludeFilter().exclude(name.component(componentIndex)))
+				return false;
 		}
 		if (null != publisherID()) {
 			if (null == resultPublisherKeyID) {
@@ -272,7 +274,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			_publisher.decode(decoder);
 		}
 
-		if (decoder.peekStartElement(ExcludeFilter.EXCLUDE_FILTER_ELEMENT)) {
+		if (decoder.peekStartElement(ExcludeFilter.EXCLUDE_FILTER)) {
 			_excludeFilter = new ExcludeFilter();
 			_excludeFilter.decode(decoder);
 		}

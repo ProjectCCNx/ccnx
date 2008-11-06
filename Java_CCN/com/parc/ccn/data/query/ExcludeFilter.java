@@ -5,36 +5,58 @@ import java.util.ArrayList;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
 
+/**
+ * Terse documentation of these filters:
+ * 
+ * The filters are used to exclude content with components which match the filters 1 level
+ * below the prefix length of the interest.
+ * 
+ * Filters can contain 1-n "elements". The elements consist of either a component name
+ * or a bloom filter. The elements must contain one of the following:
+ * 
+ *  - A single bloom filter. If the component to be tested matches the filter, it is excluded.
+ *  - A series of ordered components, canonically increasing. If the component to be tested 
+ *       exactly matches any of these components, it is excluded.
+ *  - A mixture of bloom filters and components with the component elements canonically increasing.
+ *       2 bloom filters in a row are not allowed. The component to be tested is excluded if it
+ *       exactly matches one of the components or if it is canonically located between 2 components 
+ *       in the series of elements and it matches a bloom filter located between those 2 components.
+ *
+ * @author rasmusse
+ *
+ */
+
 public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 		Comparable<ExcludeFilter> {
 	
-	public static final String EXCLUDE_FILTER_ELEMENT = "Exclude";
-	public static final String VALUES_ELEMENT = "Values";
-	
+	public static final String EXCLUDE_FILTER = "ExcludeType";
+	public static final String BLOOM = "Bloom";
+	public static final String BLOOM_SEED = "BloomSeed";
+
 	protected ArrayList<ExcludeElement> _values;
 	
-	public ExcludeFilter(ArrayList<ExcludeElement> values) throws InvalidParameterException {
+	public ExcludeFilter(ArrayList<ExcludeElement> values) 
+				throws InvalidParameterException {
 		// Make sure the values are valid
 		boolean lastIsComponent = true;
-		ContentName lastName = null;
+		byte [] lastName = null;
 		for (ExcludeElement ee : values) {
 			if (!ee._isComponent) {
 				if (!lastIsComponent)
 					throw new InvalidParameterException("Consecutive bloom filters in Exclude Filter");
 			} else {
 				if (lastName != null) {
-					if (lastName.compareTo(ee._name) >= 0) {
+					if (DataUtils.compare(lastName, ee._component) >= 0) {
 						throw new InvalidParameterException("Components out of order in Exclude Filter");
 					}
 				}
-				lastName = ee._name;
+				lastName = ee._component;
 			}
 			lastIsComponent = ee._isComponent;
 		}
@@ -52,13 +74,26 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 	 * @param content
 	 * @return
 	 */
-	public boolean exclude(ContentObject content) {
-		for (ExcludeElement ee : values()) {
-			if (ee._isComponent) {
-				if (ee._name.equals(content.name()))
+	public boolean exclude(byte [] component) {
+		for (int i = 0; i < values().size(); i++) {
+			ExcludeElement ee = values().get(i);
+			if (ee.isComponent()) {
+				if (ee.exclude(component))
 					return true;
 			} else {
 				
+				// Bloom filter case. If the next component is less than us,
+				// we don't want to use this filter. If its the same, we go on
+				// and catch it at the next value
+				if (values().size() > i) {
+					byte [] nextComponent = values().get(i + 1).component();
+					if (DataUtils.compare(nextComponent, component) <= 0)
+						continue;
+				}
+				
+				// Finally test via the filter. Since our value is in between the components
+				// before and after we don't need to continue testing
+				return ee.exclude(component);
 			}
 		}
 		return false;
@@ -72,11 +107,17 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 	}
 
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		decoder.readStartElement(EXCLUDE_FILTER_ELEMENT);
+		decoder.readStartElement(EXCLUDE_FILTER);
+		
+		/*
+		 * XXX following should be eliminated when the schema changes
+		 */
+		decoder.readBinaryElement(BLOOM_SEED);
+		decoder.readBinaryElement(BLOOM);
 		
 		_values = new ArrayList<ExcludeElement>();
 		
-		while (decoder.peekStartElement(VALUES_ELEMENT)) {
+		while (decoder.peekStartElement(ExcludeElement.COMPONENT) || decoder.peekStartElement(BLOOM)) {
 			ExcludeElement ee = new ExcludeElement();
 			ee.decode(decoder);
 			_values.add(ee);
@@ -92,10 +133,15 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 		if (empty())
 			return;
 		
-		encoder.writeStartElement(EXCLUDE_FILTER_ELEMENT);
+		encoder.writeStartElement(EXCLUDE_FILTER);
+		
+		/*
+		 * XXX Following should be eliminated when schema changes
+		 */
+		encoder.writeElement(BLOOM_SEED, "0".getBytes());
+		encoder.writeElement(BLOOM, "0".getBytes());
 
 		if (null != values()) {
-			encoder.writeStartElement(VALUES_ELEMENT);
 			for (ExcludeElement element : values()) {
 				element.encode(encoder);
 			}
@@ -128,11 +174,21 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 		
 		return result;
 	}
-
-	@Override
-	public int hashCode() {
-		final int prime = 31;
-		int result = 1;
-		return result;
+	
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		ExcludeFilter other = (ExcludeFilter) obj;
+		if ((values().size() > other.values().size()))
+			return false;
+		for (int i=0; i < values().size(); ++i) {
+			if (!values().get(i).equals(other.values().get(i)))
+				return false;
+		}
+		return true;
 	}
 }

@@ -53,7 +53,6 @@ public class XMLEncodableTester {
 		}
 		System.out.println("Decoded " + label + ": " + decodeTarget);
 		assertEquals(toEncode, decodeTarget);
-		
 	}
 	
 	public static void handleException(Exception ex) {
