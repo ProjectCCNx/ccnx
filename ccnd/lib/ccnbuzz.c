@@ -39,9 +39,10 @@ static void
 usage(const char *progname)
 {
     fprintf(stderr,
-            "%s [-a] ccn:/a/b\n"
+            "%s [-a] [-n count] ccn:/a/b\n"
             "   Pre-reads stuff written by ccnsendchunks, produces no output\n"
-            "   -a - allow stale data\n",
+            "   -a - allow stale data\n"
+            "   -n count - specify number of pipeline slots\n",
             progname);
     exit(1);
 }
@@ -84,15 +85,20 @@ make_partition(unsigned i, int lg_n)
 {
     struct ccn_bloom_wire template = {0};
     struct ccn_bloom *ans = NULL;
+    unsigned j;
     
     if (lg_n > 13 || i >= (1U << lg_n)) abort();
-    template.lg_bits = lg_n;
+    if (lg_n >= 3)
+        template.lg_bits = lg_n;
+    else
+        template.lg_bits = 3;
     template.n_hash = 1;
     template.method = 'A';
     memset(template.bloom, ~0, sizeof(template.bloom));
-    template.bloom[i / 8] -= (1U << (i % 8));
-    printf("%02X\n", template.bloom[0]);
-    ans = ccn_bloom_from_wire(&template, 8 + (1 << (lg_n - 3)));
+    /* This loop is here to replicate out to a byte if lg_n < 3 */
+    for (j = i; j < (1U << template.lg_bits); j += (1U << lg_n))
+        template.bloom[j / 8] -= (1U << (j % 8));
+    ans = ccn_bloom_from_wire(&template, 8 + (1 << (template.lg_bits - 3)));
     return(ans);
 }
 
@@ -259,18 +265,29 @@ main(int argc, char **argv)
     struct mydata *mydata;
     int allow_stale = 0;
     int lg_n = 3;
+    unsigned n = 8;
     int i;
     
-    while ((ch = getopt(argc, argv, "ha")) != -1) {
+    while ((ch = getopt(argc, argv, "han:")) != -1) {
         switch (ch) {
             case 'a':
                 allow_stale = 1;
+                break;
+            case 'n':
+                n = atoi(optarg);
+                if (n < 2 || n > 8*1024) {
+                    fprintf(stderr, "invalid -n value\n");
+                    usage(argv[0]);
+                }
                 break;
             case 'h':
             default:
                 usage(argv[0]);
         }
     }
+    for (lg_n = 0; (1U << lg_n) < n; lg_n++)
+        continue;
+    n = 1U << lg_n;
     arg = argv[optind];
     if (arg == NULL)
         usage(argv[0]);
@@ -293,7 +310,7 @@ main(int argc, char **argv)
     mydata->allow_stale = allow_stale;
     incoming->data = mydata;
     
-    for (i = 0; i < (1 << lg_n); i++) {
+    for (i = 0; i < n; i++) {
         struct ccn_bloom *b = make_partition(i, lg_n);
         templ = make_template(mydata, NULL, b);
         ccn_express_interest(ccn, name, -1, incoming, templ);
