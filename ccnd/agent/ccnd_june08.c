@@ -1,5 +1,5 @@
 /*
- * ccnd.c
+ * ccnd_june08.c
  *  
  * Copyright 2008 Palo Alto Research Center, Inc. All rights reserved.
  * $Id$
@@ -22,7 +22,8 @@
 #include <sys/un.h>
 #include <time.h>
 #include <unistd.h>
-#if !defined(HAVE_GETADDRINFO) || !defined(HAVE_GETNAMEINFO)
+
+#if defined(NEED_GETADDRINFO_COMPAT)
     #include "getaddrinfo.h"
 #endif
 
@@ -2027,6 +2028,11 @@ ccnd_reseed(struct ccnd *h)
         h->seed[1] = (unsigned short)getpid(); /* better than no entropy */
         h->seed[2] = (unsigned short)time(NULL);
     }
+    /*
+     * The call to seed48 is needed by cygwin, and should be harmless
+     * on other platforms.
+     */
+    seed48(h->seed);
 }
 
 static const char *

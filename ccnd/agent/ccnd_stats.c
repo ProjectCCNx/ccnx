@@ -16,9 +16,9 @@
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <sys/utsname.h>
-
 #include <unistd.h>
-#if !defined(HAVE_GETADDRINFO) || !defined(HAVE_GETNAMEINFO)
+
+#if defined(NEED_GETADDRINFO_COMPAT)
     #include "getaddrinfo.h"
 #endif
 

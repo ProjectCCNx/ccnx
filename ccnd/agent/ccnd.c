@@ -22,7 +22,8 @@
 #include <sys/un.h>
 #include <time.h>
 #include <unistd.h>
-#if !defined(HAVE_GETADDRINFO) || !defined(HAVE_GETNAMEINFO)
+
+#if defined(NEED_GETADDRINFO_COMPAT)
     #include "getaddrinfo.h"
 #endif
 
@@ -2252,7 +2253,8 @@ static void
 ccnd_reseed(struct ccnd *h)
 {
     int fd;
-        fd = open("/dev/random", O_RDONLY);
+    
+    fd = open("/dev/random", O_RDONLY);
     if (fd != -1) {
         read(fd, h->seed, sizeof(h->seed));
         close(fd);
@@ -2261,9 +2263,11 @@ ccnd_reseed(struct ccnd *h)
         h->seed[1] = (unsigned short)getpid(); /* better than no entropy */
         h->seed[2] = (unsigned short)time(NULL);
     }
-#ifdef __CYGWIN__
+    /*
+     * The call to seed48 is needed by cygwin, and should be harmless
+     * on other platforms.
+     */
     seed48(h->seed);
-#endif
 }
 
 static const char *

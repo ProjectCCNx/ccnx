@@ -13,7 +13,8 @@
 #include <arpa/inet.h>
 #include <net/if.h>
 #include <netdb.h>
-#if !defined(HAVE_GETADDRINFO) || !defined(HAVE_GETNAMEINFO)
+
+#if defined(NEED_GETADDRINFO_COMPAT)
     #include "getaddrinfo.h"
     #include "dummyin6.h"
 #endif
