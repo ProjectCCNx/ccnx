@@ -506,12 +506,16 @@ finished_propagating(struct propagating_entry *pe)
 }
 
 static void
-consume(struct propagating_entry *pe)
+consume(struct ccnd *h, struct propagating_entry *pe)
 {
+    struct face *face = NULL;
     finished_propagating(pe);
     if (pe->interest_msg != NULL) {
         free(pe->interest_msg);
         pe->interest_msg = NULL;
+        face = face_from_faceid(h, pe->faceid);
+        if (face != NULL)
+            face->pending_interests -= 1;
     }
     if (pe->next != NULL) {
         pe->next->prev = pe->prev;
@@ -524,9 +528,10 @@ consume(struct propagating_entry *pe)
 static void
 finalize_interestprefix(struct hashtb_enumerator *e)
 {
+    struct ccnd *h = hashtb_get_param(e->ht, NULL);
     struct interestprefix_entry *entry = e->data;
     if (entry->propagating_head != NULL) {
-        consume(entry->propagating_head);
+        consume(h, entry->propagating_head);
         free(entry->propagating_head);
         entry->propagating_head = NULL;
     }
@@ -541,6 +546,7 @@ link_propagating_interest_to_interest_entry(struct ccnd *h,
         head = calloc(1, sizeof(*head));
         head->next = head;
         head->prev = head;
+        head->faceid = ~0;
         ipe->propagating_head = head;
     }
     pe->next = head;
@@ -551,7 +557,8 @@ link_propagating_interest_to_interest_entry(struct ccnd *h,
 static void
 finalize_propagating(struct hashtb_enumerator *e)
 {
-    consume(e->data);
+    struct ccnd *h = hashtb_get_param(e->ht, NULL);
+    consume(h, e->data);
 }
 
 static int
@@ -850,7 +857,7 @@ consume_matching_interests(struct ccnd *h,
                     ccnd_debug_ccnb(h, __LINE__, "consume", f,
                                     p->interest_msg, p->size);
                 matches += 1;
-                consume(p);
+                consume(h, p);
             }
         }
     }
@@ -1325,7 +1332,7 @@ do_propagate(struct ccn_schedule *sched,
     if (pe->interest_msg == NULL)
         return(0);
     if (flags & CCN_SCHEDULE_CANCEL) {
-        consume(pe);
+        consume(h, pe);
         return(0);
     }
     if ((pe->flags & CCN_PR_WAIT1) != 0) {
@@ -1337,7 +1344,7 @@ do_propagate(struct ccn_schedule *sched,
             ccnd_debug_ccnb(h, __LINE__, "interest_expiry",
                             face_from_faceid(h, pe->faceid),
                             pe->interest_msg, pe->size);
-        consume(pe);
+        consume(h, pe);
         reap_needed(h, 0);
         return(0);        
     }
@@ -1517,6 +1524,7 @@ propagate_interest(struct ccnd *h, struct face *face,
             pe->interest_msg = m;
             pe->size = msg_out_size;
             pe->faceid = face->faceid;
+            face->pending_interests += 1;
             pe->usec = CCN_INTEREST_HALFLIFE_MICROSEC;
             delaymask = 0xFFF;
             if (outbound != NULL && outbound->n > 0 &&

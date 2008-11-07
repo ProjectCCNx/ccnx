@@ -46,8 +46,9 @@ ccnd_collect_stats(struct ccnd *h, struct ccnd_stats *ans)
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     long sum;
+    unsigned i;
     for (sum = 0, hashtb_start(h->interestprefix_tab, e);
-                                   e->data != NULL; hashtb_next(e)) {
+                                         e->data != NULL; hashtb_next(e)) {
         struct interestprefix_entry *ipe = e->data;
         struct propagating_entry *head = ipe->propagating_head;
         struct propagating_entry *p;
@@ -67,7 +68,15 @@ ccnd_collect_stats(struct ccnd *h, struct ccnd_stats *ans)
     }
     ans->total_flood_control = sum;
     hashtb_end(e);
-
+    /* Do a consistency check on pending interest counts */
+    for (sum = 0, i = 0; i < h->face_limit; i++) {
+        struct face *face = h->faces_by_faceid[i];
+        if (face != NULL)
+            sum += face->pending_interests;
+    }
+    if (sum != ans->total_interest_counts)
+        ccnd_msg(h, "ccnd_collect_stats found inconsistency %ld != %ld\n",
+            (long)sum != (long)ans->total_interest_counts);
     return(0);
 }
 

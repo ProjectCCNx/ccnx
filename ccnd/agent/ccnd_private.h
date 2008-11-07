@@ -105,7 +105,7 @@ struct ccnd {
  */
 struct face {
     int fd;
-    int flags;
+    int flags;                  /* CCN_FACE_* below */
     unsigned faceid;            /* internal face id */
     unsigned recvcount;         /* for activity level monitoring */
     ccn_accession_t cached_accession; /* last matched */
@@ -117,6 +117,7 @@ struct face {
     struct ccn_charbuf *outbuf;
     const struct sockaddr *addr;
     socklen_t addrlen;
+    int pending_interests;
 };
 /* face flags */
 #define CCN_FACE_LINK   (1 << 0) /* Elements wrapped by CCNProtocolDataUnit */
