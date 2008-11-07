@@ -13,11 +13,25 @@
 #include <arpa/inet.h>
 #include <net/if.h>
 #include <netdb.h>
+#if !defined(HAVE_GETADDRINFO) || !defined(HAVE_GETNAMEINFO)
+    #include "getaddrinfo.h"
+    #include "dummyin6.h"
+#endif
 
 #include <ccn/ccn.h>
 #include <ccn/ccnd.h>
 
+void udplink_fatal(int line, char *format, ...);
+
 #define UDPMAXBUF 8800
+
+#ifdef __CYGWIN__
+/* if_nametoindex() is unsupported on cygwin */
+unsigned if_nametoindex(const char *ifname) { 
+    udplink_fatal(__LINE__, "interface name unsupported on cygwin");
+    return 0; 
+}
+#endif
 
 static struct options {
     const char *localsockname;
@@ -210,14 +224,18 @@ set_multicast_sockopt(int socket_r, int socket_w, struct addrinfo *ai, struct op
 {
     struct addrinfo hints;
     struct ip_mreq mreq;
+#ifdef IPV6_JOIN_GROUP
     struct ipv6_mreq mreq6;
+#endif
     unsigned char csockopt;
     unsigned int isockopt;
     int result;
 
     memset((void *)&hints, 0, sizeof(hints));
     memset((void *)&mreq, 0, sizeof(mreq));
+#ifdef IPV6_JOIN_GROUP
     memset((void *)&mreq6, 0, sizeof(mreq6));
+#endif
 
     if (ai->ai_family == PF_INET && IN_MULTICAST(ntohl(((struct sockaddr_in *)(ai->ai_addr))->sin_addr.s_addr))) {
         if (options->logging > 0) udplink_note("IPv4 multicast\n");

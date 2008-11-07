@@ -18,6 +18,9 @@
 #include <sys/utsname.h>
 
 #include <unistd.h>
+#if !defined(HAVE_GETADDRINFO) || !defined(HAVE_GETNAMEINFO)
+    #include "getaddrinfo.h"
+#endif
 
 #include <ccn/ccn.h>
 #include <ccn/ccnd.h>

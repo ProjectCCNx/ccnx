@@ -22,6 +22,9 @@
 #include <sys/un.h>
 #include <time.h>
 #include <unistd.h>
+#if !defined(HAVE_GETADDRINFO) || !defined(HAVE_GETNAMEINFO)
+    #include "getaddrinfo.h"
+#endif
 
 #include <ccn/ccn.h>
 #include <ccn/ccnd.h>
@@ -2258,6 +2261,9 @@ ccnd_reseed(struct ccnd *h)
         h->seed[1] = (unsigned short)getpid(); /* better than no entropy */
         h->seed[2] = (unsigned short)time(NULL);
     }
+#ifdef __CYGWIN__
+    seed48(h->seed);
+#endif
 }
 
 static const char *

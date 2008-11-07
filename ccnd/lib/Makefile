@@ -2,6 +2,7 @@ CFLAGS = $(COPT) $(CWARNFLAGS) $(CPREFLAGS) $(PLATCFLAGS)
 LDLIBS = -L../lib $(MORE_LDLIBS) -lccn
 EXPATLIBS = -lexpat
 CPREFLAGS = -I../include
+CCNLIBDIR = .
 COPT = -g
 
 PROGRAMS = ccn_ccnbtoxml ccn_splitccnb ccn_verifysig\

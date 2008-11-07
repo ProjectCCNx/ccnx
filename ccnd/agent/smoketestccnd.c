@@ -42,6 +42,7 @@ int main(int argc, char **argv)
     int binary = 0;
     char *filename = NULL;
     int rep = 1;
+    int recv_flags = 0;
     while ((c = getopt(argc, argv, "hf:n:")) != -1) {
         switch (c) {
             default:
@@ -68,6 +69,14 @@ int main(int argc, char **argv)
         perror("socket");
         exit(1);
     }
+#ifdef __CYGWIN__
+    if (fcntl(sock, F_SETFD, O_NONBLOCK) == -1) {
+      perror("fcntl");
+      exit(1);
+    }
+#else
+    recv_flags = MSG_DONTWAIT;
+#endif
     strncpy(addr.sun_path, "/tmp/.ccnd.sock", sizeof(addr.sun_path));
     addr.sun_family = AF_UNIX;
     res = connect(sock, (struct sockaddr *)&addr, sizeof(addr));
@@ -88,7 +97,7 @@ int main(int argc, char **argv)
         }
 	send(sock, rawbuf, rawlen, 0);
 	sleep(1);
-	rawlen = recv(sock, rawbuf, sizeof(rawbuf), MSG_DONTWAIT);
+	rawlen = recv(sock, rawbuf, sizeof(rawbuf), recv_flags);
         if (rawlen == -1 && errno == EAGAIN)
             continue;
         if (rawlen == -1) {
