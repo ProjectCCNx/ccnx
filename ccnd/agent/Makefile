@@ -4,9 +4,10 @@ CPREFLAGS = -I../include
 COPT = -g
 CCNLIBDIR = ../lib
 
-PROGRAMS = ccnd smoketestccnd ccnd_june08
+PROGRAMS = ccnd smoketestccnd
+DEBRIS = ccnd_june08
 BROKEN_PROGRAMS = 
-CSRC = ccnd.c ccnd_stats.c smoketestccnd.c ccnd_june08.c
+CSRC = ccnd.c ccnd_stats.c smoketestccnd.c
 HSRC = ccnd_private.h
 
 default: $(PROGRAMS)
@@ -18,9 +19,6 @@ $(PROGRAMS): $(CCNLIBDIR)/libccn.a
 CCND_OBJ = ccnd.o ccnd_stats.o
 ccnd: $(CCND_OBJ) 
 	$(CC) $(CFLAGS) -o $@ $(CCND_OBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
-
-ccnd_june08: ccnd_june08.o
-	$(CC) $(CFLAGS) -o $@ ccnd_june08.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 smoketestccnd: smoketestccnd.o
 	$(CC) $(CFLAGS) -o $@ smoketestccnd.o $(LDLIBS)
@@ -45,7 +43,3 @@ ccnd_stats.o: ccnd_stats.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/ccnd.h ../include/ccn/schedule.h ../include/ccn/hashtb.h \
   ../include/ccn/uri.h ccnd_private.h
 smoketestccnd.o: smoketestccnd.c
-ccnd_june08.o: ccnd_june08.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
-  ../include/ccn/ccnd.h ../include/ccn/hashtb.h ../include/ccn/matrix.h \
-  ../include/ccn/schedule.h
