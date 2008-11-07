@@ -1,0 +1,35 @@
+Notes on Building and Running on Windows under Cygwin
+
+As of this writing, udplink is not believed to work and other code has
+not all been tested.  Basic ccnd operation over IPv4 UDP works at least.
+
+CYGWIN INSTALLATION
+
+You need to install a number of the optional cygwin packages.  Just
+use the cygwin setup program to select these.  Please update this list
+if you find errors/omissions or things change.
+
+Category Devel
+~~~~~~~~~~~~~~
+autoconf (6-1)
+gcc (3.4.4-3)
+make (3.81-2)
+openssl-devel (0.9.8i-1)
+subversion (1.5.4-1)  [ok, just need this to get the code not build]
+
+Category Libs
+~~~~~~~~~~~~~
+crypt (1.1-1)
+expat (2.0.1-1)
+libexpat0 (1.95.8-2)
+libexpat1 (2.0.1-1)
+libexpat1-devel (2.0.1-1)
+openssl(0.9.8i-1)
+
+BUILDING CCND
+
+./configure
+[this will configure and one-time build the third-party getaddrinfo
+library which provides some functions missing on cygwin]
+make 
+
