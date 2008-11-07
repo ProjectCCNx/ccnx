@@ -1,0 +1,346 @@
+====
+nodename=localhost, servname=(null)
+flags=
+	canonname = (null)
+	host = 127.0.0.1
+	port = 0
+====
+nodename=not-exist, servname=(null)
+flags=
+	error: hostname nor servname provided, or not known
+====
+nodename=localhost, servname=(null)
+flags=
+	canonname = (null)
+	host = 127.0.0.1
+	port = 0
+====
+nodename=not-exist, servname=(null)
+flags=
+	error: hostname nor servname provided, or not known
+====
+nodename=127.0.0.1, servname=(null)
+flags=
+	canonname = (null)
+	host = 127.0.0.1
+	port = 0
+====
+nodename=255.255.255.254, servname=(null)
+flags=
+	canonname = (null)
+	host = 255.255.255.254
+	port = 0
+====
+nodename=(null), servname=telnet
+flags=
+	canonname = (null)
+	host = 127.0.0.1
+	port = 23
+====
+nodename=(null), servname=not-exist
+flags=
+	error: servname not supported for ai_socktype
+====
+nodename=(null), servname=512
+flags=
+	canonname = (null)
+	host = 127.0.0.1
+	port = 512
+====
+nodename=(null), servname=65534
+flags=
+	canonname = (null)
+	host = 127.0.0.1
+	port = 65534
+====
+nodename=localhost, servname=(null)
+flags=PASSIVE 
+	canonname = (null)
+	host = 127.0.0.1
+	port = 0
+====
+nodename=not-exist, servname=(null)
+flags=PASSIVE 
+	error: hostname nor servname provided, or not known
+====
+nodename=127.0.0.1, servname=(null)
+flags=PASSIVE 
+	canonname = (null)
+	host = 127.0.0.1
+	port = 0
+====
+nodename=255.255.255.254, servname=(null)
+flags=PASSIVE 
+	canonname = (null)
+	host = 255.255.255.254
+	port = 0
+====
+nodename=(null), servname=telnet
+flags=PASSIVE 
+	canonname = (null)
+	host = 0.0.0.0
+	port = 23
+====
+nodename=(null), servname=not-exist
+flags=PASSIVE 
+	error: servname not supported for ai_socktype
+====
+nodename=(null), servname=512
+flags=PASSIVE 
+	canonname = (null)
+	host = 0.0.0.0
+	port = 512
+====
+nodename=(null), servname=65534
+flags=PASSIVE 
+	canonname = (null)
+	host = 0.0.0.0
+	port = 65534
+====
+nodename=localhost, servname=(null)
+flags=CANONNAME 
+	canonname = localhost
+	host = 127.0.0.1
+	port = 0
+====
+nodename=not-exist, servname=(null)
+flags=CANONNAME 
+	error: hostname nor servname provided, or not known
+====
+nodename=127.0.0.1, servname=(null)
+flags=CANONNAME 
+	canonname = localhost
+	host = 127.0.0.1
+	port = 0
+====
+nodename=255.255.255.254, servname=(null)
+flags=CANONNAME 
+	canonname = 255.255.255.254
+	host = 255.255.255.254
+	port = 0
+====
+nodename=(null), servname=telnet
+flags=CANONNAME 
+	canonname = (null)
+	host = 127.0.0.1
+	port = 23
+====
+nodename=(null), servname=not-exist
+flags=CANONNAME 
+	error: servname not supported for ai_socktype
+====
+nodename=(null), servname=512
+flags=CANONNAME 
+	canonname = (null)
+	host = 127.0.0.1
+	port = 512
+====
+nodename=(null), servname=65534
+flags=CANONNAME 
+	canonname = (null)
+	host = 127.0.0.1
+	port = 65534
+====
+nodename=localhost, servname=(null)
+flags=NUMERICHOST 
+	error: hostname nor servname provided, or not known
+====
+nodename=not-exist, servname=(null)
+flags=NUMERICHOST 
+	error: hostname nor servname provided, or not known
+====
+nodename=127.0.0.1, servname=(null)
+flags=NUMERICHOST 
+	canonname = (null)
+	host = 127.0.0.1
+	port = 0
+====
+nodename=255.255.255.254, servname=(null)
+flags=NUMERICHOST 
+	canonname = (null)
+	host = 255.255.255.254
+	port = 0
+====
+nodename=(null), servname=telnet
+flags=NUMERICHOST 
+	error: hostname nor servname provided, or not known
+====
+nodename=(null), servname=not-exist
+flags=NUMERICHOST 
+	error: hostname nor servname provided, or not known
+====
+nodename=(null), servname=512
+flags=NUMERICHOST 
+	canonname = (null)
+	host = 127.0.0.1
+	port = 512
+====
+nodename=(null), servname=65534
+flags=NUMERICHOST 
+	canonname = (null)
+	host = 127.0.0.1
+	port = 65534
+====
+nodename=localhost, servname=(null)
+flags=CANONNAME PASSIVE 
+	canonname = localhost
+	host = 127.0.0.1
+	port = 0
+====
+nodename=not-exist, servname=(null)
+flags=CANONNAME PASSIVE 
+	error: hostname nor servname provided, or not known
+====
+nodename=127.0.0.1, servname=(null)
+flags=CANONNAME PASSIVE 
+	canonname = localhost
+	host = 127.0.0.1
+	port = 0
+====
+nodename=255.255.255.254, servname=(null)
+flags=CANONNAME PASSIVE 
+	canonname = 255.255.255.254
+	host = 255.255.255.254
+	port = 0
+====
+nodename=(null), servname=telnet
+flags=CANONNAME PASSIVE 
+	canonname = (null)
+	host = 0.0.0.0
+	port = 23
+====
+nodename=(null), servname=not-exist
+flags=CANONNAME PASSIVE 
+	error: servname not supported for ai_socktype
+====
+nodename=(null), servname=512
+flags=CANONNAME PASSIVE 
+	canonname = (null)
+	host = 0.0.0.0
+	port = 512
+====
+nodename=(null), servname=65534
+flags=CANONNAME PASSIVE 
+	canonname = (null)
+	host = 0.0.0.0
+	port = 65534
+====
+nodename=localhost, servname=(null)
+flags=NUMERICHOST PASSIVE 
+	error: hostname nor servname provided, or not known
+====
+nodename=not-exist, servname=(null)
+flags=NUMERICHOST PASSIVE 
+	error: hostname nor servname provided, or not known
+====
+nodename=127.0.0.1, servname=(null)
+flags=NUMERICHOST PASSIVE 
+	canonname = (null)
+	host = 127.0.0.1
+	port = 0
+====
+nodename=255.255.255.254, servname=(null)
+flags=NUMERICHOST PASSIVE 
+	canonname = (null)
+	host = 255.255.255.254
+	port = 0
+====
+nodename=(null), servname=telnet
+flags=NUMERICHOST PASSIVE 
+	error: hostname nor servname provided, or not known
+====
+nodename=(null), servname=not-exist
+flags=NUMERICHOST PASSIVE 
+	error: hostname nor servname provided, or not known
+====
+nodename=(null), servname=512
+flags=NUMERICHOST PASSIVE 
+	canonname = (null)
+	host = 0.0.0.0
+	port = 512
+====
+nodename=(null), servname=65534
+flags=NUMERICHOST PASSIVE 
+	canonname = (null)
+	host = 0.0.0.0
+	port = 65534
+====
+nodename=localhost, servname=(null)
+flags=NUMERICHOST CANONNAME 
+	error: hostname nor servname provided, or not known
+====
+nodename=not-exist, servname=(null)
+flags=NUMERICHOST CANONNAME 
+	error: hostname nor servname provided, or not known
+====
+nodename=127.0.0.1, servname=(null)
+flags=NUMERICHOST CANONNAME 
+	canonname = (null)
+	host = 127.0.0.1
+	port = 0
+====
+nodename=255.255.255.254, servname=(null)
+flags=NUMERICHOST CANONNAME 
+	canonname = (null)
+	host = 255.255.255.254
+	port = 0
+====
+nodename=(null), servname=telnet
+flags=NUMERICHOST CANONNAME 
+	error: hostname nor servname provided, or not known
+====
+nodename=(null), servname=not-exist
+flags=NUMERICHOST CANONNAME 
+	error: hostname nor servname provided, or not known
+====
+nodename=(null), servname=512
+flags=NUMERICHOST CANONNAME 
+	canonname = (null)
+	host = 127.0.0.1
+	port = 512
+====
+nodename=(null), servname=65534
+flags=NUMERICHOST CANONNAME 
+	canonname = (null)
+	host = 127.0.0.1
+	port = 65534
+====
+nodename=localhost, servname=(null)
+flags=NUMERICHOST CANONNAME PASSIVE 
+	error: hostname nor servname provided, or not known
+====
+nodename=not-exist, servname=(null)
+flags=NUMERICHOST CANONNAME PASSIVE 
+	error: hostname nor servname provided, or not known
+====
+nodename=127.0.0.1, servname=(null)
+flags=NUMERICHOST CANONNAME PASSIVE 
+	canonname = (null)
+	host = 127.0.0.1
+	port = 0
+====
+nodename=255.255.255.254, servname=(null)
+flags=NUMERICHOST CANONNAME PASSIVE 
+	canonname = (null)
+	host = 255.255.255.254
+	port = 0
+====
+nodename=(null), servname=telnet
+flags=NUMERICHOST CANONNAME PASSIVE 
+	error: hostname nor servname provided, or not known
+====
+nodename=(null), servname=not-exist
+flags=NUMERICHOST CANONNAME PASSIVE 
+	error: hostname nor servname provided, or not known
+====
+nodename=(null), servname=512
+flags=NUMERICHOST CANONNAME PASSIVE 
+	canonname = (null)
+	host = 0.0.0.0
+	port = 512
+====
+nodename=(null), servname=65534
+flags=NUMERICHOST CANONNAME PASSIVE 
+	canonname = (null)
+	host = 0.0.0.0
+	port = 65534

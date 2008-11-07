@@ -1,0 +1,184 @@
+====
+sa->sin_addr=127.0.0.1, sa->sin_port=512
+host=(non-null), hostlen=512, serv=(non-null), servlen=512
+flags=
+	host = localhost
+	serv = exec
+====
+sa->sin_addr=127.0.0.1, sa->sin_port=512
+host=(null), hostlen=512, serv=(null), servlen=512
+flags=
+	error: hostname nor servname provided, or not known
+====
+sa->sin_addr=127.0.0.1, sa->sin_port=512
+host=(non-null), hostlen=512, serv=(null), servlen=512
+flags=
+	host = localhost
+	serv = (null)
+====
+sa->sin_addr=127.0.0.1, sa->sin_port=512
+host=(non-null), hostlen=1, serv=(null), servlen=512
+flags=
+	error: An argument buffer overflowed
+====
+sa->sin_addr=255.255.255.254, sa->sin_port=512
+host=(non-null), hostlen=512, serv=(null), servlen=512
+flags=
+	host = 255.255.255.254
+	serv = (null)
+====
+sa->sin_addr=255.255.255.254, sa->sin_port=512
+host=(non-null), hostlen=1, serv=(null), servlen=512
+flags=
+	error: An argument buffer overflowed
+====
+sa->sin_addr=127.0.0.1, sa->sin_port=512
+host=(null), hostlen=0, serv=(non-null), servlen=512
+flags=
+	host = (null)
+	serv = exec
+====
+sa->sin_addr=127.0.0.1, sa->sin_port=512
+host=(null), hostlen=0, serv=(non-null), servlen=1
+flags=
+	error: An argument buffer overflowed
+====
+sa->sin_addr=127.0.0.1, sa->sin_port=65534
+host=(null), hostlen=0, serv=(non-null), servlen=512
+flags=
+	host = (null)
+	serv = 65534
+====
+sa->sin_addr=127.0.0.1, sa->sin_port=65534
+host=(null), hostlen=0, serv=(non-null), servlen=1
+flags=
+	error: An argument buffer overflowed
+====
+sa->sin_addr=127.0.0.1, sa->sin_port=512
+host=(non-null), hostlen=512, serv=(null), servlen=512
+flags=NUMERICHOST NUMERICSERV 
+	host = 127.0.0.1
+	serv = (null)
+====
+sa->sin_addr=127.0.0.1, sa->sin_port=512
+host=(non-null), hostlen=1, serv=(null), servlen=512
+flags=NUMERICHOST NUMERICSERV 
+	error: An argument buffer overflowed
+====
+sa->sin_addr=255.255.255.254, sa->sin_port=512
+host=(non-null), hostlen=512, serv=(null), servlen=512
+flags=NUMERICHOST NUMERICSERV 
+	host = 255.255.255.254
+	serv = (null)
+====
+sa->sin_addr=255.255.255.254, sa->sin_port=512
+host=(non-null), hostlen=1, serv=(null), servlen=512
+flags=NUMERICHOST NUMERICSERV 
+	error: An argument buffer overflowed
+====
+sa->sin_addr=127.0.0.1, sa->sin_port=512
+host=(null), hostlen=0, serv=(non-null), servlen=512
+flags=NUMERICHOST NUMERICSERV 
+	host = (null)
+	serv = 512
+====
+sa->sin_addr=127.0.0.1, sa->sin_port=512
+host=(null), hostlen=0, serv=(non-null), servlen=1
+flags=NUMERICHOST NUMERICSERV 
+	error: An argument buffer overflowed
+====
+sa->sin_addr=127.0.0.1, sa->sin_port=65534
+host=(null), hostlen=0, serv=(non-null), servlen=512
+flags=NUMERICHOST NUMERICSERV 
+	host = (null)
+	serv = 65534
+====
+sa->sin_addr=127.0.0.1, sa->sin_port=65534
+host=(null), hostlen=0, serv=(non-null), servlen=1
+flags=NUMERICHOST NUMERICSERV 
+	error: An argument buffer overflowed
+====
+sa->sin_addr=127.0.0.1, sa->sin_port=512
+host=(non-null), hostlen=512, serv=(null), servlen=512
+flags=NAMEREQD 
+	host = localhost
+	serv = (null)
+====
+sa->sin_addr=127.0.0.1, sa->sin_port=512
+host=(non-null), hostlen=1, serv=(null), servlen=512
+flags=NAMEREQD 
+	error: An argument buffer overflowed
+====
+sa->sin_addr=255.255.255.254, sa->sin_port=512
+host=(non-null), hostlen=512, serv=(null), servlen=512
+flags=NAMEREQD 
+	error: hostname nor servname provided, or not known
+====
+sa->sin_addr=255.255.255.254, sa->sin_port=512
+host=(non-null), hostlen=1, serv=(null), servlen=512
+flags=NAMEREQD 
+	error: hostname nor servname provided, or not known
+====
+sa->sin_addr=127.0.0.1, sa->sin_port=512
+host=(null), hostlen=0, serv=(non-null), servlen=512
+flags=NAMEREQD 
+	host = (null)
+	serv = exec
+====
+sa->sin_addr=127.0.0.1, sa->sin_port=512
+host=(null), hostlen=0, serv=(non-null), servlen=1
+flags=NAMEREQD 
+	error: An argument buffer overflowed
+====
+sa->sin_addr=127.0.0.1, sa->sin_port=65534
+host=(null), hostlen=0, serv=(non-null), servlen=512
+flags=NAMEREQD 
+	host = (null)
+	serv = 65534
+====
+sa->sin_addr=127.0.0.1, sa->sin_port=65534
+host=(null), hostlen=0, serv=(non-null), servlen=1
+flags=NAMEREQD 
+	error: An argument buffer overflowed
+====
+sa->sin_addr=127.0.0.1, sa->sin_port=512
+host=(non-null), hostlen=512, serv=(null), servlen=512
+flags=NUMERICHOST NUMERICSERV NAMEREQD 
+	error: hostname nor servname provided, or not known
+====
+sa->sin_addr=127.0.0.1, sa->sin_port=512
+host=(non-null), hostlen=1, serv=(null), servlen=512
+flags=NUMERICHOST NUMERICSERV NAMEREQD 
+	error: hostname nor servname provided, or not known
+====
+sa->sin_addr=255.255.255.254, sa->sin_port=512
+host=(non-null), hostlen=512, serv=(null), servlen=512
+flags=NUMERICHOST NUMERICSERV NAMEREQD 
+	error: hostname nor servname provided, or not known
+====
+sa->sin_addr=255.255.255.254, sa->sin_port=512
+host=(non-null), hostlen=1, serv=(null), servlen=512
+flags=NUMERICHOST NUMERICSERV NAMEREQD 
+	error: hostname nor servname provided, or not known
+====
+sa->sin_addr=127.0.0.1, sa->sin_port=512
+host=(null), hostlen=0, serv=(non-null), servlen=512
+flags=NUMERICHOST NUMERICSERV NAMEREQD 
+	host = (null)
+	serv = 512
+====
+sa->sin_addr=127.0.0.1, sa->sin_port=512
+host=(null), hostlen=0, serv=(non-null), servlen=1
+flags=NUMERICHOST NUMERICSERV NAMEREQD 
+	error: An argument buffer overflowed
+====
+sa->sin_addr=127.0.0.1, sa->sin_port=65534
+host=(null), hostlen=0, serv=(non-null), servlen=512
+flags=NUMERICHOST NUMERICSERV NAMEREQD 
+	host = (null)
+	serv = 65534
+====
+sa->sin_addr=127.0.0.1, sa->sin_port=65534
+host=(null), hostlen=0, serv=(non-null), servlen=1
+flags=NUMERICHOST NUMERICSERV NAMEREQD 
+	error: An argument buffer overflowed
