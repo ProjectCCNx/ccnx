@@ -76,7 +76,7 @@ ccnd_collect_stats(struct ccnd *h, struct ccnd_stats *ans)
     }
     if (sum != ans->total_interest_counts)
         ccnd_msg(h, "ccnd_collect_stats found inconsistency %ld != %ld\n",
-            (long)sum != (long)ans->total_interest_counts);
+            (long)sum, (long)ans->total_interest_counts);
     return(0);
 }
 
