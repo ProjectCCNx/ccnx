@@ -206,8 +206,6 @@
 
 <xs:complexType name="ExcludeType">
   <xs:sequence>
-     <xs:element name="BloomSeed" type="Base64BinaryType"
-                        minOccurs="0" maxOccurs="1"/>
      <xs:element name="Bloom" type="Base64BinaryType"
                         minOccurs="0" maxOccurs="1"/>
      <xs:sequence minOccurs="0" maxOccurs="unbounded">

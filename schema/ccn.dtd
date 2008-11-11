@@ -68,10 +68,7 @@
 <!ATTLIST PublisherID	type (KEY|CERTIFICATE|ISSUER_KEY|ISSUER_CERTIFICATE) #REQUIRED>
 <!ATTLIST PublisherID	%commonattrs;>
 
-<!ELEMENT Exclude       (BloomSeed?, Bloom?, (Component, Bloom?)*)>
-
-<!ELEMENT BloomSeed (#PCDATA)>      <!-- base64Binary -->
-<!ATTLIST BloomSeed ccnbencoding CDATA #FIXED 'base64Binary'>
+<!ELEMENT Exclude       (Bloom?, (Component, Bloom?)*)>
 
 <!ELEMENT Bloom (#PCDATA)>      <!-- base64Binary -->
 <!ATTLIST Bloom ccnbencoding CDATA #FIXED 'base64Binary'>
