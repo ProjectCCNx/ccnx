@@ -22,23 +22,17 @@ public class ExcludeElement extends GenericXMLEncodable implements XMLEncodable,
 	
 	BloomFilter _bloom = null;
 	byte [] _component = null;
-	boolean _isComponent;
 	
 	public ExcludeElement(byte [] component) {
 		_component = component;
-		_isComponent = true;
 	}
 	
-	public ExcludeElement(BloomFilter bloom) {
+	public ExcludeElement(byte[] component, BloomFilter bloom) {
+		this(component);
 		_bloom = bloom;
-		_isComponent = false;
 	}
 	
 	public ExcludeElement() {} // for use by decoders
-	
-	public boolean isComponent() {
-		return _isComponent;
-	}
 	
 	public byte [] component() {
 		return _component;
@@ -54,27 +48,19 @@ public class ExcludeElement extends GenericXMLEncodable implements XMLEncodable,
 	 * @return
 	 */
 	public boolean exclude(byte [] component) {
-		if (_isComponent) {
-			return (Arrays.equals(_component, component));
-		}
-		return _bloom.match(component);
+		return Arrays.equals(component(), component);
 	}
 
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		_isComponent = decoder.peekStartElement(COMPONENT);
-		if (_isComponent) {
-			_component = decoder.readBinaryElement(COMPONENT);
-		} else {
+		_component = decoder.readBinaryElement(COMPONENT);
+		if (decoder.peekStartElement(BLOOM))
 			_bloom = new BloomFilter(decoder.readBinaryElement(BLOOM));
-		}
 	}
 	
 	public void encode(XMLEncoder encoder) throws XMLStreamException {
-		if (_isComponent) {
-			encoder.writeElement(COMPONENT, _component);
-		} else {
-			encoder.writeElement(BLOOM, _bloom.bloom());
-		};
+		encoder.writeElement(COMPONENT, _component);
+		if (bloomFilter() != null)
+			encoder.writeElement(BLOOM, bloomFilter().bloom());
 	}
 	
 	public boolean validate() {
@@ -83,12 +69,16 @@ public class ExcludeElement extends GenericXMLEncodable implements XMLEncodable,
 	}
 	
 	public int compareTo(ExcludeElement o) {
-		if (_isComponent != o._isComponent)
-			return _isComponent ? 1 : -1; //arbitrary
-		if (_isComponent) {
-			return DataUtils.compare(_component, o._component);
-		}
-		return _bloom.compareTo(o._bloom);
+		int result = DataUtils.compare(component(), o.component());
+		if (0 != result)
+			return result;
+		if (bloomFilter() == null && o.bloomFilter() == null)
+			return 0;
+		if (bloomFilter() == null)
+			return 1;
+		if (o.bloomFilter() == null)
+			return -1;
+		return bloomFilter().compareTo(o.bloomFilter());
 	}
 	
 	public boolean equals(Object obj) {
@@ -99,14 +89,12 @@ public class ExcludeElement extends GenericXMLEncodable implements XMLEncodable,
 		if (getClass() != obj.getClass())
 			return false;
 		ExcludeElement other = (ExcludeElement) obj;
-		if (_isComponent) {
-			if (!other._isComponent)
-				return false;
-			return Arrays.equals(_component, other._component);
-		} else {
-			if (other._isComponent)
-				return false;
-		}
-		return true;
+		if (!Arrays.equals(component(), other.component()))
+			return false;
+		if (bloomFilter() == null && other.bloomFilter() == null)
+			return true;
+		if (bloomFilter() == null || other.bloomFilter() == null)
+			return false;
+		return bloomFilter().equals(other.bloomFilter());
 	}
 }

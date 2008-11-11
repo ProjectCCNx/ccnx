@@ -17,6 +17,7 @@ import com.parc.ccn.CCNBase;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
+import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.query.BasicInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherKeyID;
@@ -261,6 +262,17 @@ public class CCNLibraryTest extends BaseLibrary {
 			System.out.println("Exception in testing recall: " + e.getClass().getName() + ": " + e.getMessage());
 			Assert.fail(e.getMessage());
 		}
+	}
+	
+	@Test
+	public void testCollections() throws Exception {
+		ContentName baseName = ContentName.fromNative("/libraryTest/collectionTest/base");
+		ContentName collectionName = ContentName.fromNative("/libraryTest/collectionTest/myCollection");
+		LinkReference[] references = new LinkReference[2];
+		library.put(baseName, "base".getBytes());
+		references[0] = new LinkReference(ContentName.fromNative("/libraryTest/r1"));
+		references[1] = new LinkReference(ContentName.fromNative("/libraryTest/r2"));
+		library.put(collectionName, references);
 	}
 
 	class TestListener extends BasicInterestListener {

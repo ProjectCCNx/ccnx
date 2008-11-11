@@ -1,5 +1,9 @@
 package com.parc.ccn.data.query;
 
+import java.util.Arrays;
+
+import com.parc.ccn.data.util.DataUtils;
+
 /**
  * 
  * @author rasmusse
@@ -95,8 +99,11 @@ public class BloomFilter implements Comparable<BloomFilter> {
 	}
 
 	public int compareTo(BloomFilter o) {
-		// TODO Auto-generated method stub
-		return 0;
+		return DataUtils.compare(bloom(), o.bloom());
+	}
+	
+	public boolean equals(BloomFilter o) {
+		return Arrays.equals(bloom(), o.bloom());
 	}
 	
 	private long computeSeed() {

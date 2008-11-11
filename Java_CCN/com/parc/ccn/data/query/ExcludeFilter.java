@@ -44,21 +44,14 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 	public ExcludeFilter(ArrayList<ExcludeElement> values) 
 				throws InvalidParameterException {
 		// Make sure the values are valid
-		boolean lastIsComponent = true;
 		byte [] lastName = null;
 		for (ExcludeElement ee : values) {
-			if (!ee._isComponent) {
-				if (!lastIsComponent)
-					throw new InvalidParameterException("Consecutive bloom filters in Exclude Filter");
-			} else {
-				if (lastName != null) {
-					if (DataUtils.compare(lastName, ee._component) >= 0) {
-						throw new InvalidParameterException("Components out of order in Exclude Filter");
-					}
+			if (lastName != null) {
+				if (DataUtils.compare(lastName, ee._component) >= 0) {
+					throw new InvalidParameterException("Components out of order in Exclude Filter");
 				}
-				lastName = ee._component;
 			}
-			lastIsComponent = ee._isComponent;
+			lastName = ee._component;
 		}
 		_values = new ArrayList<ExcludeElement>(values);
 	}
@@ -77,14 +70,13 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 	public boolean exclude(byte [] component) {
 		for (int i = 0; i < values().size(); i++) {
 			ExcludeElement ee = values().get(i);
-			if (ee.isComponent()) {
-				if (ee.exclude(component))
-					return true;
-			} else {
+			if (ee.exclude(component))
+				return true;
 				
-				// Bloom filter case. If the next component is less than us,
-				// we don't want to use this filter. If its the same, we go on
-				// and catch it at the next value
+			// Bloom filter case. If the next component is less than us,
+			// we don't want to use this filter. If its the same, we go on
+			// and catch it at the next value
+			if (ee.bloomFilter() != null) {
 				if (values().size() > i) {
 					byte [] nextComponent = values().get(i + 1).component();
 					if (DataUtils.compare(nextComponent, component) <= 0)
@@ -93,7 +85,7 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 				
 				// Finally test via the filter. Since our value is in between the components
 				// before and after we don't need to continue testing
-				return ee.exclude(component);
+				return ee.bloomFilter().match(component);
 			}
 		}
 		return false;

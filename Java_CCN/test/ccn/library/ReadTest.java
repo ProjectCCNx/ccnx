@@ -29,9 +29,6 @@ public class ReadTest extends BaseLibrary implements CCNInterestListener {
 	
 	private static ArrayList<Integer> currentSet;
 	
-	private ExcludeElement c1 = null;
-	private ExcludeElement c2 = null;
-	private ExcludeElement b1 = null;
 	private byte [] bloomSeed = "burp".getBytes();
 	private ExcludeFilter ef = null;
 	
@@ -43,18 +40,16 @@ public class ReadTest extends BaseLibrary implements CCNInterestListener {
       	};
 	
 	private void excludeSetup() {
-		c1 = new ExcludeElement("aaaaaaaa".getBytes());
-		c2 = new ExcludeElement("zzzzzzzz".getBytes());
 		BloomFilter bf1 = new BloomFilter(13, bloomSeed);
-		b1 = new ExcludeElement(bf1);
-
+		ExcludeElement e1 = new ExcludeElement("aaaaaaaa".getBytes(), bf1);
+		ExcludeElement e2 = new ExcludeElement("zzzzzzzz".getBytes());
+		
 		for (String value : bloomTestValues) {
 			bf1.insert(value.getBytes());
 		}
 		ArrayList<ExcludeElement>excludes = new ArrayList<ExcludeElement>(3);
-		excludes.add(c1);
-		excludes.add(b1);
-		excludes.add(c2);
+		excludes.add(e1);
+		excludes.add(e2);
 		ef = new ExcludeFilter(excludes);
 	}
 

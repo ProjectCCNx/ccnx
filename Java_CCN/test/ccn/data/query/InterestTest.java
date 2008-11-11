@@ -26,10 +26,6 @@ public class InterestTest {
 	public static ContentName tcn = null;
 	public static PublisherID pubID = null;
 	
-	private ExcludeElement c1 = null;
-	private ExcludeElement c2 = null;
-	private ExcludeElement b1 = null;
-	private ExcludeElement b2 = null;
 	private byte [] bloomSeed = "burp".getBytes();
 	private ExcludeFilter ef = null;
 	
@@ -54,21 +50,24 @@ public class InterestTest {
 	}
 	
 	private void excludeSetup() {
-		c1 = new ExcludeElement("aaaaaaaa".getBytes());
-		c2 = new ExcludeElement("zzzzzzzz".getBytes());
 		BloomFilter bf1 = new BloomFilter(13, bloomSeed);
-		BloomFilter bf2 = new BloomFilter(10, "foob".getBytes());
-		b1 = new ExcludeElement(bf1);
-		b2 = new ExcludeElement(bf2);
-
+		ExcludeElement e1 = new ExcludeElement("aaaaaaaa".getBytes(), bf1);
+		ExcludeElement e2 = new ExcludeElement("zzzzzzzz".getBytes());
+		
+		try {
+			ArrayList<ExcludeElement>te = new ArrayList<ExcludeElement>(2);
+			te.add(e2);
+			te.add(e1);
+			new ExcludeFilter(te);
+			Assert.fail("Out of order exclude filter succeeded");
+		} catch (InvalidParameterException ipe) {}
 		
 		for (String value : bloomTestValues) {
 			bf1.insert(value.getBytes());
 		}
-		ArrayList<ExcludeElement>excludes = new ArrayList<ExcludeElement>(3);
-		excludes.add(c1);
-		excludes.add(b1);
-		excludes.add(c2);
+		ArrayList<ExcludeElement>excludes = new ArrayList<ExcludeElement>(2);
+		excludes.add(e1);
+		excludes.add(e2);
 		ef = new ExcludeFilter(excludes);
 	}
 
@@ -94,23 +93,6 @@ public class InterestTest {
 	@Test
 	public void testExcludeFilter() {
 		excludeSetup();
-		
-		ArrayList<ExcludeElement> bad1 = new ArrayList<ExcludeElement>(2);
-		bad1.add(c2);
-		bad1.add(c1);
-		try {
-			new ExcludeFilter(bad1);
-			Assert.fail("Out of order elements in ExcludeFilter succeeded!");
-		} catch (InvalidParameterException e) {}
-		
-		ArrayList<ExcludeElement>bad2 = new ArrayList<ExcludeElement>(3);
-		bad2.add(c1);
-		bad2.add(b1);
-		bad2.add(b2);
-		try {
-			new ExcludeFilter(bad2);
-			Assert.fail("Consecutive bloom filters in ExcludeFilter succeeded!");
-		} catch (InvalidParameterException e) {}
 		
 		Interest exPlain = new Interest(tcn);
 		exPlain.excludeFilter(ef);
