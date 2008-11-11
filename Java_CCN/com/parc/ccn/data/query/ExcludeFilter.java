@@ -35,7 +35,7 @@ import com.parc.ccn.data.util.XMLEncoder;
 public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 		Comparable<ExcludeFilter> {
 	
-	public static final String EXCLUDE_FILTER = "ExcludeType";
+	public static final String EXCLUDE_ELEMENT = "Exclude";
 	public static final String BLOOM = "Bloom";
 	public static final String BLOOM_SEED = "BloomSeed";
 
@@ -107,12 +107,12 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 	}
 
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		decoder.readStartElement(EXCLUDE_FILTER);
+		decoder.readStartElement(EXCLUDE_ELEMENT);
 		
 		/*
 		 * XXX following should be eliminated when the schema changes
 		 */
-		decoder.readBinaryElement(BLOOM_SEED);
+		//decoder.readBinaryElement(BLOOM_SEED);
 		decoder.readBinaryElement(BLOOM);
 		
 		_values = new ArrayList<ExcludeElement>();
@@ -132,13 +132,12 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 		// if everything is null, output nothing
 		if (empty())
 			return;
-		
-		encoder.writeStartElement(EXCLUDE_FILTER);
+		encoder.writeStartElement(EXCLUDE_ELEMENT);
 		
 		/*
 		 * XXX Following should be eliminated when schema changes
 		 */
-		encoder.writeElement(BLOOM_SEED, "0".getBytes());
+		//encoder.writeElement(BLOOM_SEED, "0".getBytes());
 		encoder.writeElement(BLOOM, "0".getBytes());
 
 		if (null != values()) {
@@ -147,7 +146,7 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 			}
 		}
 
-		encoder.writeEndElement();   				
+		encoder.writeEndElement();
 	}
 
 	public boolean validate() {

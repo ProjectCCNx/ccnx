@@ -5,11 +5,15 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.query.BloomFilter;
 import com.parc.ccn.data.query.CCNInterestListener;
+import com.parc.ccn.data.query.ExcludeElement;
+import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
 
@@ -24,13 +28,42 @@ import com.parc.ccn.library.CCNLibrary;
 public class ReadTest extends BaseLibrary implements CCNInterestListener {
 	
 	private static ArrayList<Integer> currentSet;
+	
+	private ExcludeElement c1 = null;
+	private ExcludeElement c2 = null;
+	private ExcludeElement b1 = null;
+	private byte [] bloomSeed = "burp".getBytes();
+	private ExcludeFilter ef = null;
+	
+	private String [] bloomTestValues = {
+            "one", "two", "three", "four",
+            "five", "six", "seven", "eight",
+            "nine", "ten", "eleven", "twelve",
+            "thirteen"
+      	};
+	
+	private void excludeSetup() {
+		c1 = new ExcludeElement("aaaaaaaa".getBytes());
+		c2 = new ExcludeElement("zzzzzzzz".getBytes());
+		BloomFilter bf1 = new BloomFilter(13, bloomSeed);
+		b1 = new ExcludeElement(bf1);
+
+		for (String value : bloomTestValues) {
+			bf1.insert(value.getBytes());
+		}
+		ArrayList<ExcludeElement>excludes = new ArrayList<ExcludeElement>(3);
+		excludes.add(c1);
+		excludes.add(b1);
+		excludes.add(c2);
+		ef = new ExcludeFilter(excludes);
+	}
 
 	public ReadTest() throws Throwable {
 		super();
 	}
 	
 	@Test
-	public void getNext() throws Throwable {
+	public void getNextTest() throws Throwable {
 		System.out.println("getNext test started");
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
@@ -49,7 +82,7 @@ public class ReadTest extends BaseLibrary implements CCNInterestListener {
 	}
 	
 	@Test
-	public void getLatest() throws Throwable {
+	public void getLatestTest() throws Throwable {
 		int highest = 0;
 		System.out.println("getLatest test started");
 		for (int i = 0; i < count; i++) {
@@ -67,6 +100,26 @@ public class ReadTest extends BaseLibrary implements CCNInterestListener {
 			}
 		}
 		System.out.println("getLatest test finished");
+	}
+	
+	@Test
+	public void getExceptTest() throws Throwable {
+		System.out.println("getExcept test started");
+		excludeSetup();
+		for (String value : bloomTestValues) {
+			Thread.sleep(rand.nextInt(50));
+			library.put("/getExceptTest/" + value, value);
+		}
+		library.put("/getExceptTest/aaaaaaaa", "aaaaaaaa");
+		library.put("/getExceptTest/zzzzzzzz", "zzzzzzzz");
+		ContentObject content = library.getExcept(ContentName.fromNative("/getExceptTest/"), ef, 1000);
+		Assert.assertTrue(content == null);
+		
+		String shouldGetIt = "/getExceptTest/weShouldGetThis";
+		library.put(shouldGetIt, shouldGetIt);
+		content = library.getExcept(ContentName.fromNative("/getExceptTest/"), ef, 1000);
+		assertEquals(content.name().toString(), shouldGetIt);
+		System.out.println("getExcept test finished");
 	}
 
 	public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {

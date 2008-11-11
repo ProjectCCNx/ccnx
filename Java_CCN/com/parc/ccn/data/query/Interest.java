@@ -274,7 +274,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			_publisher.decode(decoder);
 		}
 
-		if (decoder.peekStartElement(ExcludeFilter.EXCLUDE_FILTER)) {
+		if (decoder.peekStartElement(ExcludeFilter.EXCLUDE_ELEMENT)) {
 			_excludeFilter = new ExcludeFilter();
 			_excludeFilter.decode(decoder);
 		}
