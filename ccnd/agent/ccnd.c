@@ -197,19 +197,50 @@ use_i:
     return (face->faceid);
 }
 
+static struct content_queue *
+content_queue_create(unsigned usec)
+{
+    struct content_queue *q;
+    q = calloc(1, sizeof(*q));
+    if (q != NULL) {
+        q->usec = usec;
+        q->send_queue = ccn_indexbuf_create();
+        if (q->send_queue == NULL) {
+            free(q);
+            return(NULL);
+        }
+        q->sender = NULL;
+    }
+    return(q);
+}
+
+static void
+content_queue_destroy(struct ccnd *h, struct content_queue **pq)
+{
+    struct content_queue *q;
+    if (*pq != NULL) {
+        q = *pq;
+        ccn_indexbuf_destroy(&q->send_queue);
+        if (q->sender != NULL) {
+            ccn_schedule_cancel(h->sched, q->sender);
+            q->sender = NULL;
+        }
+        free(q);
+        *pq = NULL;
+    }
+}
+
 static void
 finalize_face(struct hashtb_enumerator *e)
 {
     struct ccnd *h = hashtb_get_param(e->ht, NULL);
     struct face *face = e->data;
     unsigned i = face->faceid & MAXFACES;
+    enum cq_delay_class c;
     if (i < h->face_limit && h->faces_by_faceid[i] == face) {
         h->faces_by_faceid[i] = NULL;
-        ccn_indexbuf_destroy(&face->send_queue);
-        if (face->sender != NULL) {
-            ccn_schedule_cancel(h->sched, face->sender);
-            face->sender = NULL;
-        }
+        for (c = 0; c < CCN_CQ_N; c++)
+            content_queue_destroy(h, &(face->q[c]));
         ccnd_msg(h, "releasing face id %u (slot %u)",
             face->faceid, face->faceid & MAXFACES);
         /* If face->addr is not NULL, it is our key so don't free it. */
@@ -671,21 +702,42 @@ send_content(struct ccnd *h, struct face *face, struct content_entry *content)
     charbuf_release(h, c);
 }
 
-#define CCN_DATA_PAUSE (8U*1024U)
+#define CCN_DATA_PAUSE (2000U)
 
 static int
-choose_content_delay(struct ccnd *h, unsigned faceid, int content_flags)
+choose_face_delay(struct ccnd *h, struct face *face, enum cq_delay_class c)
 {
-    // XXX - if the face's send queue is long, we may want to delay less.
-    struct face *face = face_from_faceid(h, faceid);
-    int shift = (content_flags & CCN_CONTENT_ENTRY_SLOWSEND) ? 2 : 0;
-    if (face == NULL)
-        return(1); /* Going nowhere, get it over with */
+    int shift = (c == CCN_CQ_SLOW) ? 2 : 0;
+    if (c == CCN_CQ_ASAP)
+        return(1);
     if ((face->flags & CCN_FACE_DGRAM) != 0)
-        return(100); /* localhost udp, delay just a little */
+        return(100 << shift); /* localhost udp, delay just a little */
     if ((face->flags & CCN_FACE_LINK) != 0) /* udplink or such, delay more */
-        return(((nrand48(h->seed) % CCN_DATA_PAUSE) + CCN_DATA_PAUSE/2) << shift);
+        return(CCN_DATA_PAUSE << shift);
     return(10); /* local stream, answer quickly */
+}
+
+static enum cq_delay_class
+choose_content_delay_class(struct ccnd *h, unsigned faceid, int content_flags)
+{
+    struct face *face = face_from_faceid(h, faceid);
+    if (face == NULL)
+        return(CCN_CQ_ASAP); /* Going nowhere, get it over with */
+    if ((face->flags & CCN_FACE_DGRAM) != 0)
+        return(CCN_CQ_NORMAL); /* localhost udp, delay just a little */
+    if ((face->flags & CCN_FACE_LINK) != 0) /* udplink or such, delay more */
+        return((content_flags & CCN_CONTENT_ENTRY_SLOWSEND) ? CCN_CQ_SLOW : CCN_CQ_NORMAL);
+    return(CCN_CQ_ASAP); /* local stream, answer quickly */
+}
+
+static unsigned
+randomize_content_delay(struct ccnd *h, unsigned usec)
+{
+    if (usec < 2)
+        return(1);
+    if (usec <= 20) // XXX - what is a good value for this?
+        return(usec); /* small value, don't bother to randomize */
+    return(nrand48(h->seed) % (2 * usec - 1) + 1);
 }
 
 static int
@@ -698,40 +750,42 @@ content_sender(struct ccn_schedule *sched,
     struct ccnd *h = clienth;
     struct content_entry *content = NULL;
     struct face *face = face_from_faceid(h, ev->evint);
+    struct content_queue *q = ev->evdata;
     (void)sched;
     
-    if (face == NULL)
-        return(0);
     if ((flags & CCN_SCHEDULE_CANCEL) != 0)
         goto Bail;
-    if (face->send_queue == NULL)
+    if (face == NULL)
+        goto Bail;
+    if (q->send_queue == NULL)
         goto Bail;
     if ((face->flags & CCN_FACE_NOSEND) != 0)
         goto Bail;
     /* Send the content at the head of the queue */
-    for (i = 0; i < face->send_queue->n; i++) {
-        content = content_from_accession(h, face->send_queue->buf[i]);
+    if (q->ready > q->send_queue->n)
+        q->ready = q->send_queue->n;
+    for (i = 0; i < q->ready; i++) {
+        content = content_from_accession(h, q->send_queue->buf[i]);
         if (content != NULL) {
             send_content(h, face, content);
             /* face may have vanished, bail out if it did */
-            if (face_from_faceid(h, ev->evint) == 0)
+            if (face_from_faceid(h, ev->evint) == NULL)
                 goto Bail;
-            i++;
-            break;
         }
     }
     /* Update queue */
-    for (j = 0; i < face->send_queue->n; i++, j++)
-        face->send_queue->buf[j] = face->send_queue->buf[i];
-    face->send_queue->n = j;
+    for (j = 0; i < q->send_queue->n; i++, j++)
+        q->send_queue->buf[j] = q->send_queue->buf[i];
+    q->send_queue->n = q->ready = j;
     /* Determine when to run again */
-    for (i = 0; i < face->send_queue->n; i++) {
-        content = content_from_accession(h, face->send_queue->buf[i]);
+    for (i = 0; i < q->send_queue->n; i++) {
+        content = content_from_accession(h, q->send_queue->buf[i]);
         if (content != NULL)
-            return(choose_content_delay(h, face->faceid, content->flags));
+            return(randomize_content_delay(h, q->usec));
     }
+    q->send_queue->n = q->ready = 0;
 Bail:
-    face->sender = NULL;
+    q->sender = NULL;
     return(0);
 }
 
@@ -803,15 +857,22 @@ face_send_queue_insert(struct ccnd *h, struct face *face, struct content_entry *
 {
     int ans;
     int delay;
+    enum cq_delay_class c;
+    struct content_queue *q;
     if (face == NULL || content == NULL || (face->flags & CCN_FACE_NOSEND) != 0)
         return(-1);
-    if (face->send_queue == NULL)
-        face->send_queue = ccn_indexbuf_create();
-    ans = indexbuf_unordered_set_insert(face->send_queue, content->accession);
-    if (face->sender == NULL) {
-        delay = choose_content_delay(h, face->faceid, content->flags);
-        face->sender = ccn_schedule_event(h->sched, delay,
-                                          content_sender, NULL, face->faceid);
+    c = choose_content_delay_class(h, face->faceid, content->flags);
+    if (face->q[c] == NULL)
+        face->q[c] = content_queue_create(choose_face_delay(h, face, c));
+    q = face->q[c];
+    if (q == NULL)
+        return(-1);
+    ans = indexbuf_unordered_set_insert(q->send_queue, content->accession);
+    if (q->sender == NULL) {
+        delay = randomize_content_delay(h, q->usec);
+        q->ready = q->send_queue->n;
+        q->sender = ccn_schedule_event(h->sched, delay,
+                                       content_sender, q, face->faceid);
     }
     return (ans);
 }
@@ -1613,12 +1674,20 @@ process_incoming_interest(struct ccnd *h, struct face *face,
         if (h->debug & (16 | 8 | 2))
             ccnd_debug_ccnb(h, __LINE__, "interest_from", face, msg, size);
         if (h->debug & 16)
-            ccnd_msg(h, "prefix_comps: %d, addl_comps: %d, orderpref: %d, answerfrom: %d, scope: %d, count: %d, excl: %d bytes, etc: %d bytes",
+            ccnd_msg(h,
+                     "prefix_comps: %d, "
+                     "addl_comps: %d, "
+                     "orderpref: %d, "
+                     "answerfrom: %d, "
+                     "scope: %d, "
+                     "count: %d, "
+                     "excl: %d bytes, "
+                     "etc: %d bytes",
                      pi->prefix_comps,
-                     ccn_fetch_tagged_nonNegativeInteger(
-                        CCN_DTAG_AdditionalNameComponents, msg,
-                        pi->offset[CCN_PI_B_AdditionalNameComponents],
-                        pi->offset[CCN_PI_E_AdditionalNameComponents]),
+                     ccn_fetch_tagged_nonNegativeInteger
+                        (CCN_DTAG_AdditionalNameComponents, msg,
+                         pi->offset[CCN_PI_B_AdditionalNameComponents],
+                         pi->offset[CCN_PI_E_AdditionalNameComponents]),
                      pi->orderpref, pi->answerfrom, pi->scope, pi->count,
                      pi->offset[CCN_PI_E_Exclude] - pi->offset[CCN_PI_B_Exclude],
                      pi->offset[CCN_PI_E_OTHER] - pi->offset[CCN_PI_B_OTHER]);
@@ -1674,7 +1743,8 @@ process_incoming_interest(struct ccnd *h, struct face *face,
                     !content_matches_interest_prefix(h, content, msg,
                                                      comps, pi->prefix_comps)) {
                     if (h->debug & 8)
-                        ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL, msg, size);
+                        ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL,
+                                        msg, size);
                     content = NULL;
                 }
             }
@@ -1735,7 +1805,10 @@ process_incoming_interest(struct ccnd *h, struct face *face,
                 content = last_match;
             if (content != NULL) {
                 /* Check to see if we are planning to send already */
-                k = indexbuf_member(face->send_queue, content->accession);
+                enum cq_delay_class c;
+                for (c = 0, k = -1; c < CCN_CQ_N && k == -1; c++)
+                    if (face->q[c] != NULL)
+                        k = indexbuf_member(face->q[c]->send_queue, content->accession);
                 if (k == -1) {
                     // XXX - this makes a little more work for ourselves, because we are about to consume this interest anyway.
                     propagate_interest(h, face, msg, size, pi, ipe);
@@ -1942,19 +2015,26 @@ Bail:
     cb = NULL;
     if (res >= 0 && content != NULL) {
         int n_matches;
+        enum cq_delay_class c;
+        struct content_queue *q;
         n_matches = match_interests(h, content, &obj, NULL, face);
         if (res == HT_NEW_ENTRY && n_matches == 0 &&
-              (face->flags && CCN_FACE_LINK) != 0)
+            (face->flags && CCN_FACE_LINK) != 0)
             content->flags |= CCN_CONTENT_ENTRY_SLOWSEND;
-        i = indexbuf_member(face->send_queue, content->accession);
-        if (i >= 0) {
-            /*
-             * In the case this consumed any interests from this source,
-             * don't send the content back
-             */
-            if (h->debug & 8)
-                ccnd_debug_ccnb(h, __LINE__, "content_nosend", face, msg, size);
-            face->send_queue->buf[i] = 0;
+        for (c = 0; c < CCN_CQ_N; c++) {
+            q = face->q[c];
+            if (q != NULL) {
+                i = indexbuf_member(q->send_queue, content->accession);
+                if (i >= 0) {
+                    /*
+                     * In the case this consumed any interests from this source,
+                     * don't send the content back
+                     */
+                    if (h->debug & 8)
+                        ccnd_debug_ccnb(h, __LINE__, "content_nosend", face, msg, size);
+                    q->send_queue->buf[i] = 0;
+                }
+            }
         }
     }
 }

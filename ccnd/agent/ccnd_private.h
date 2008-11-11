@@ -100,6 +100,20 @@ struct ccnd {
 #define FACESLOTBITS 18
 #define MAXFACES ((1U << FACESLOTBITS) - 1)
 
+struct content_queue {
+    unsigned usec;                   /* mean delay for this queue */
+    unsigned ready;                  /* # that have waited enough */
+    struct ccn_indexbuf *send_queue; /* accession numbers of pending content */
+    struct ccn_scheduled_event *sender;
+};
+
+enum cq_delay_class {
+    CCN_CQ_ASAP,
+    CCN_CQ_NORMAL,
+    CCN_CQ_SLOW,
+    CCN_CQ_N
+};
+
 /*
  * One of our active interfaces
  */
@@ -109,8 +123,7 @@ struct face {
     unsigned faceid;            /* internal face id */
     unsigned recvcount;         /* for activity level monitoring */
     ccn_accession_t cached_accession; /* last matched */
-    struct ccn_indexbuf *send_queue; /* accession numbers of pending content */
-    struct ccn_scheduled_event *sender;
+    struct content_queue *q[CCN_CQ_N]; /* outgoing content, per delay class */
     struct ccn_charbuf *inbuf;
     struct ccn_skeleton_decoder decoder;
     size_t outbufindex;
