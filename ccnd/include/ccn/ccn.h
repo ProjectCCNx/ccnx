@@ -16,6 +16,7 @@
 #include <ccn/charbuf.h>
 #include <ccn/indexbuf.h>
 
+// XXX - this is no longer a halflife, it should be renamed
 #define CCN_INTEREST_HALFLIFE_MICROSEC 4000000
 
 /* opaque declarations */
@@ -30,7 +31,7 @@ struct ccn_parsed_ContentObject;
 /*
  * Types for implementing upcalls
  * To receive notifications of incoming interests and content, the
- * client create closures (using client-managed memory).
+ * client creates closures (using client-managed memory).
  */
 
 /*
@@ -129,7 +130,7 @@ int ccn_disconnect(struct ccn *h);
 void ccn_destroy(struct ccn **hp);
 
 /***********************************
- * Writing Names:
+ * Writing Names
  * Names for interests are constructed in charbufs using 
  * the following routines.
  */
@@ -189,7 +190,7 @@ enum ccn_content_type {
  */
 int
 ccn_signed_info_create_default(struct ccn_charbuf *c, /* output signed info */
-			enum ccn_content_type Type);
+                               enum ccn_content_type Type);
 
 /*
  * ccn_signed_info_create: create signed info in a charbuf 
@@ -198,13 +199,14 @@ ccn_signed_info_create_default(struct ccn_charbuf *c, /* output signed info */
  * Return value is 0, or -1 for error.
  */
 int
-ccn_signed_info_create(struct ccn_charbuf *c,
-                const void *publisher_key_id,	/* input, (sha256) hash */
-                size_t publisher_key_id_size, 	/* input, 32 for sha256 hashes */
-                const char *datetime,		/* input, NULL for "now" */
-                enum ccn_content_type type,	/* input */
-                int freshness,			/* input, -1 means omit */
-                const struct ccn_charbuf *key_locator);	/* input, optional, ccnb encoded */
+ccn_signed_info_create(
+    struct ccn_charbuf *c,              /* filled with result */
+    const void *publisher_key_id,	/* input, (sha256) hash */
+    size_t publisher_key_id_size, 	/* input, 32 for sha256 hashes */
+    const char *datetime,		/* input, NULL for "now" */
+    enum ccn_content_type type,         /* input */
+    int freshness,			/* input, -1 means omit */
+    const struct ccn_charbuf *key_locator); /* input, optional, ccnb encoded */
 
 /***********************************
  * ccn_express_interest: 
@@ -293,7 +295,7 @@ int ccn_set_run_timeout(struct ccn *h, int timeout);
 
 /***********************************
  * Binary decoding
- * These routines require the whole binary object be buffered.
+ * These routines require that the whole binary object be buffered.
  */
 
 struct ccn_buf_decoder {
@@ -325,7 +327,7 @@ int ccn_buf_match_attr(struct ccn_buf_decoder *d, const char *s);
 void ccn_buf_check_close(struct ccn_buf_decoder *d);
 
 /*
- * ccn_ref_tagged_BLOB: Get address and size associated with a blob-valued element
+ * ccn_ref_tagged_BLOB: Get address & size associated with blob-valued element
  * Returns 0 for success, negative value for error.
  */
 int ccn_ref_tagged_BLOB(enum ccn_dtag tt,
@@ -546,8 +548,7 @@ int ccn_encode_ContentObject(struct ccn_charbuf *buf,
                              const void *data,
                              size_t size,
                              const char *digest_algorithm,
-                             const void *private_key
-                             );
+                             const void *private_key);
 
 /*
  * ccn_encode_Content:
@@ -570,7 +571,7 @@ const char *ccn_content_name(enum ccn_content_type type);
  * final name component is implicit (as in the on-wire format)
  * or explicit (as within ccnd's content store).
  * Valid parse information (pc and pi) may be provided to speed things
- * up; if NULL they will be reconstructed.
+ * up; if NULL they will be reconstructed internally.
  */
 int ccn_content_matches_interest(const unsigned char *content_object,
                                  size_t content_object_size,
