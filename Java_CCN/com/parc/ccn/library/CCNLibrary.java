@@ -10,6 +10,7 @@ import java.security.Security;
 import java.security.SignatureException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 
 import javax.xml.stream.XMLStreamException;
@@ -206,26 +207,61 @@ public class CCNLibrary extends CCNBase {
 
 	/**
 	 * Use the same publisherID that we used originally.
+	 * @throws InterruptedException 
+	 * @throws IOException 
+	 * @throws SignatureException 
 	 */
 	public ContentObject addToCollection(
 			ContentName name,
-			LinkReference [] references) {
-		// TODO Auto-generated method stub
-		return null;
+			LinkReference [] references,
+			long timeout) throws IOException, InterruptedException, SignatureException {
+		ArrayList<LinkReference> al = getCollectionReferences(name, timeout);
+		al.addAll(Arrays.asList(references));
+		return putCollectionReferences(name, al);
 	}
 
 	public ContentObject removeFromCollection(
 			ContentName name,
-			LinkReference [] references) {
-		
-		return null;
+			LinkReference [] references,
+			long timeout) throws IOException, InterruptedException, SignatureException {
+		ArrayList<LinkReference> al = removeCollectionReferences(name, references, timeout);
+		// XXX should we do anything different if there are no references left?
+		return putCollectionReferences(name, al);
 	}
 	
 	public ContentObject updateCollection(
 			ContentName name,
 			LinkReference [] referencesToAdd,
-			LinkReference [] referencesToRemove) {
-		return null;
+			LinkReference [] referencesToRemove,
+			long timeout) throws IOException, InterruptedException, SignatureException {
+		ArrayList<LinkReference> al = removeCollectionReferences(name, referencesToRemove, timeout);
+		al.addAll(Arrays.asList(referencesToAdd));
+		return putCollectionReferences(name, al);
+	}
+	
+	private ArrayList<LinkReference> getCollectionReferences(ContentName name, long timeout) throws IOException, InterruptedException {
+		Collection collection = getCollection(name, timeout);
+		return collection.contents();
+	}
+	
+	private ContentObject putCollectionReferences(ContentName name, ArrayList<LinkReference> references) throws SignatureException, IOException, InterruptedException {
+		LinkReference newReferences[] = new LinkReference[references.size()];
+		return put(name, references.toArray(newReferences));
+	}
+	
+	private ArrayList<LinkReference> removeCollectionReferences(ContentName name, LinkReference[] references, long timeout) throws IOException, InterruptedException {
+		ArrayList<LinkReference> al = getCollectionReferences(name, timeout);
+		Iterator<LinkReference> it = al.iterator();
+		while (it.hasNext()) {
+			LinkReference reference = it.next();
+			for (LinkReference removeReference : references) {
+				if (reference.equals(removeReference)) {
+					it.remove();
+					break;
+				}
+			}
+		}
+		return al;
 	}
 	
 	/**
@@ -312,11 +348,42 @@ public class CCNLibrary extends CCNBase {
 	 * @throws SignatureException
 	 * @throws IOException
 	 */
-	public ContentObject getLink(ContentObject content, long timeout) throws IOException, InterruptedException {
-		if (!isLink(content))
+	public LinkReference getLink(ContentName name, long timeout) throws IOException, InterruptedException {
+		ContentObject co = getLatestVersion(name, null, timeout);
+		if (co.authenticator().type() != ContentType.LINK)
+			throw new IOException("Content is not a link reference");
+		LinkReference reference = new LinkReference();
+		try {
+			reference.decode(co.content());
+		} catch (XMLStreamException e) {
+			// Shouldn't happen
+			e.printStackTrace();
+		}
+		return reference;
+	}
+	
+	/**
+	 * 
+	 * @param name
+	 * @param timeout
+	 * @return
+	 * @throws IOException
+	 * @throws InterruptedException
+	 */
+	public Collection getCollection(ContentName name, long timeout) throws IOException, InterruptedException{
+		ContentObject co = getLatestVersion(name, null, timeout);
+		if (null == co)
 			return null;
-		// Want the low-level get.
-		return get(new Interest(content.name()), timeout);
+		if (co.authenticator().type() != ContentType.COLLECTION)
+			throw new IOException("Content is not a collection");
+		Collection collection = new Collection();
+		try {
+			collection.decode(co.content());
+		} catch (XMLStreamException e) {
+			// Shouldn't happen
+			e.printStackTrace();
+		}
+		return collection;
 	}
 
 	/**
@@ -567,7 +634,7 @@ public class CCNLibrary extends CCNBase {
 	 * @throws IOException 
 	 * @throws InterruptedException 
 	 */
-	public ContentObject getLatestVersion(ContentName name, PublisherKeyID publisher) throws IOException, InterruptedException {
+	public ContentObject getLatestVersion(ContentName name, PublisherKeyID publisher, long timeout) throws IOException, InterruptedException {
 		ContentName currentName = getLatestVersionName(name, publisher);
 		
 		if (null == currentName) // no latest version
@@ -575,7 +642,7 @@ public class CCNLibrary extends CCNBase {
 		
 		// Need recursive get. The currentName we have here is
 		// just the prefix of this version.
-		return get(currentName, 0);
+		return get(currentName, timeout);
 	}
 
 	/**
@@ -1045,7 +1112,8 @@ public class CCNLibrary extends CCNBase {
 	 * TODO: maybe filter out fragments, possibly other metadata.
 	 * TODO: add in communication layer to talk just to
 	 * local repositories for v 2.0 protocol.
-	 * @param query At this point, always recursive.
+	 * @param query
+	 * @param timeout - microseconds
 	 * @return
 	 * @throws IOException 
 	 */
@@ -1194,6 +1262,17 @@ public class CCNLibrary extends CCNBase {
 	 * Medium level interface for retrieving pieces of a file
 	 *
 	 * getNext - get next content after specified content
+	 *
+	 * @param name - ContentName for base of get
+	 * @param prefixCount - next follows components of the name
+	 * 						through this count.
+	 * @param omissions - ExcludeFilter
+	 * @param timeout - milliseconds
+	 * @return
+	 * @throws MalformedContentNameStringException
+	 * @throws IOException
+	 * @throws InterruptedException
+	 * @throws InvalidParameterException
 	 */
 	public ContentObject getNext(ContentName name, ExcludeFilter omissions, long timeout) 
 			throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException {
@@ -1213,7 +1292,17 @@ public class CCNLibrary extends CCNBase {
 	}
 	
 	/**
-	 * Get last content in content stream
+	 * Get last content that follows name in similar manner to
+	 * getNext
+	 * 
+	 * @param name
+	 * @param omissions
+	 * @param timeout
+	 * @return
+	 * @throws MalformedContentNameStringException
+	 * @throws IOException
+	 * @throws InterruptedException
+	 * @throws InvalidParameterException
 	 */
 	public ContentObject getLatest(ContentName name, ExcludeFilter omissions, long timeout) 
 			throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException {
@@ -1230,6 +1319,17 @@ public class CCNLibrary extends CCNBase {
 		return getLatest(contentObjectToContentName(content, prefixCount), null, timeout);
 	}
 	
+	/**
+	 * 
+	 * @param name
+	 * @param omissions
+	 * @param timeout
+	 * @return
+	 * @throws InvalidParameterException
+	 * @throws MalformedContentNameStringException
+	 * @throws IOException
+	 * @throws InterruptedException
+	 */
 	public ContentObject getExcept(ContentName name, ExcludeFilter omissions, long timeout) throws InvalidParameterException, MalformedContentNameStringException, 
 			IOException, InterruptedException {
 		return generalGet(name, null, omissions, timeout);

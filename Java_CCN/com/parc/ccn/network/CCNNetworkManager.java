@@ -70,7 +70,6 @@ public class CCNNetworkManager implements Runnable {
 	protected FileOutputStream _tapStreamIn = null;
 
 	// Tables of interests/filters: users must synchronize on collection
-	protected InterestTable<InterestRegistration> _othersInterests = new InterestTable<InterestRegistration>();
 	protected InterestTable<InterestRegistration> _myInterests = new InterestTable<InterestRegistration>();
 	protected InterestTable<Filter> _myFilters = new InterestTable<Filter>();
 			
@@ -650,16 +649,17 @@ public class CCNNetworkManager implements Runnable {
 					_error = io;
 					packet.clear();
 				}
-                            if (!_run) {
-                                // exit immediately if wakeup for shutdown
-                                break;
-                            }
-                            // If we got a data packet, hand it back to all the interested
+                if (!_run) {
+                    // exit immediately if wakeup for shutdown
+                    break;
+                }
+                
+                // If we got a data packet, hand it back to all the interested
 				// parties (registered interests and getters).
 				//--------------------------------- Process data from net (if any) 
 				for (ContentObject co : packet.data()) {
 					Library.logger().fine("Data from net: " + co.name());
-			//		SystemConfiguration.logObject("Data from net:", co);
+					//	SystemConfiguration.logObject("Data from net:", co);
 					
 					deliverData(co);
 					// External data never goes back to network, never held onto here
@@ -704,8 +704,7 @@ public class CCNNetworkManager implements Runnable {
 	}
 
 	// Internal delivery of interests to pending filter listeners
-	// return true iff interest has been consumed by pending data already
-	protected boolean deliverInterest(InterestRegistration ireg) throws XMLStreamException {
+	protected void deliverInterest(InterestRegistration ireg) throws XMLStreamException {
 		// Call any listeners with matching filters
 		synchronized (_myFilters) {
 			for (Filter filter : _myFilters.getValues(ireg.interest.name())) {
@@ -716,21 +715,16 @@ public class CCNNetworkManager implements Runnable {
 				}
 			}
 		}
-		return false;
 	}
 
 	// Deliver data to blocked getters and registered interests
-	protected boolean deliverData(ContentObject co) throws XMLStreamException {
-		boolean consumer = false; // is there a consumer?
-		// Check local interests
+	protected void deliverData(ContentObject co) throws XMLStreamException {
 		synchronized (_myInterests) {
 			for (InterestRegistration ireg : _myInterests.getValues(co)) {
 				if (ireg.add(co)) { // this is a copy of the data
 					_threadpool.execute(ireg);
-					consumer = true;
 				}
 			}
 		}
-		return consumer;
 	}
 }

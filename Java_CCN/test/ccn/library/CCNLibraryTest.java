@@ -17,6 +17,7 @@ import com.parc.ccn.CCNBase;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
+import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.query.BasicInterestListener;
 import com.parc.ccn.data.query.Interest;
@@ -231,7 +232,7 @@ public class CCNLibraryTest extends BaseLibrary {
 		Assert.assertNotNull("New version is null!", version1);
 
 		ContentObject latestVersion =
-			library.getLatestVersion(docName, null);
+			library.getLatestVersion(docName, null, CCNLibrary.NO_TIMEOUT);
 
 		Assert.assertNotNull("Retrieved latest version of " + docName + " got null!", latestVersion);
 		System.out.println("Latest version name: " + latestVersion.name());
@@ -243,7 +244,7 @@ public class CCNLibraryTest extends BaseLibrary {
 		System.out.println("Inserted second version as: " + version2.name());
 
 		ContentObject newLatestVersion = 
-			library.getLatestVersion(docName, null);
+			library.getLatestVersion(docName, null, CCNLibrary.NO_TIMEOUT);
 		Assert.assertNotNull("Retrieved new latest version of " + docName + " got null!", newLatestVersion);
 		System.out.println("Latest version name: " + newLatestVersion.name());
 
@@ -264,15 +265,57 @@ public class CCNLibraryTest extends BaseLibrary {
 		}
 	}
 	
+	/**
+	 * TODO (paul r.) This test is a noop for the moment - will fill it out when Collections & Links have been
+	 * fully implemented
+	 * @throws Exception
+	 */
 	@Test
 	public void testCollections() throws Exception {
 		ContentName baseName = ContentName.fromNative("/libraryTest/collectionTest/base");
 		ContentName collectionName = ContentName.fromNative("/libraryTest/collectionTest/myCollection");
 		LinkReference[] references = new LinkReference[2];
-		library.put(baseName, "base".getBytes());
+		library.newVersion(baseName, "base".getBytes());
 		references[0] = new LinkReference(ContentName.fromNative("/libraryTest/r1"));
 		references[1] = new LinkReference(ContentName.fromNative("/libraryTest/r2"));
 		library.put(collectionName, references);
+		
+		try {
+			library.getCollection(baseName, 5000);
+			Assert.fail("getCollection for non-collection succeeded");
+		} catch (IOException ioe) {}
+		
+		// test getCollection
+		Collection collection = library.getCollection(collectionName, 5000);
+		ArrayList<LinkReference> checkReferences = collection.contents();
+		Assert.assertEquals(checkReferences.size(), 2);
+		Assert.assertEquals(references[0], checkReferences.get(0));
+		Assert.assertEquals(references[1], checkReferences.get(1));
+		
+		// test addToCollection
+		LinkReference[] newReferences = new LinkReference[2];
+		newReferences[0] = new LinkReference(ContentName.fromNative("/libraryTest/r3"));
+		newReferences[1] = new LinkReference(ContentName.fromNative("/libraryTest/r4"));
+		library.addToCollection(collectionName, newReferences, 5000);
+		collection = library.getCollection(collectionName, 5000);
+		checkReferences = collection.contents();
+		Assert.assertEquals(checkReferences.size(), 4);
+		Assert.assertEquals(newReferences[0], checkReferences.get(2));
+		Assert.assertEquals(newReferences[1], checkReferences.get(3));
+		
+		library.removeFromCollection(collectionName, newReferences, 5000);
+		collection = library.getCollection(collectionName, 5000);
+		checkReferences = collection.contents();
+		Assert.assertEquals(checkReferences.size(), 2);
+		Assert.assertEquals(references[0], checkReferences.get(0));
+		Assert.assertEquals(references[1], checkReferences.get(1));
+		
+		library.updateCollection(collectionName, newReferences, references, 5000);
+		collection = library.getCollection(collectionName, 5000);
+		checkReferences = collection.contents();
+		Assert.assertEquals(checkReferences.size(), 2);
+		Assert.assertEquals(newReferences[0], checkReferences.get(0));
+		Assert.assertEquals(newReferences[1], checkReferences.get(1));
 	}
 
 	class TestListener extends BasicInterestListener {
