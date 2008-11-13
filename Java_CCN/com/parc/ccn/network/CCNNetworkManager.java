@@ -10,6 +10,8 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
@@ -72,6 +74,46 @@ public class CCNNetworkManager implements Runnable {
 	// Tables of interests/filters: users must synchronize on collection
 	protected InterestTable<InterestRegistration> _myInterests = new InterestTable<InterestRegistration>();
 	protected InterestTable<Filter> _myFilters = new InterestTable<Filter>();
+	
+	private Timer _periodicTimer = null;
+	
+	/**
+	 * @author rasmusse
+	 * Do scheduled writes.
+	 */
+	private class PeriodicWriter extends TimerTask {
+		private boolean sendHeartBeat = false;
+		public void run() {
+			if (sendHeartBeat) {	// Every other time 
+				try {
+					ByteBuffer heartbeat = ByteBuffer.allocate(1);
+					_channel.write(heartbeat);
+				} catch (IOException io) {
+					// We do not see errors on send typically even if 
+					// agent is gone, so log each but do not track
+					Library.logger().warning("Error sending heartbeat packet");
+				}
+			}
+			sendHeartBeat = !sendHeartBeat;
+			
+			// Library.logger().finest("Refreshing interests (size " + _myInterests.size() + ")");
+
+			// Re-express all of the registered interests
+			// TODO re-express only those due to be re-expressed
+			try {
+				synchronized (_myInterests) {
+					for (Entry<InterestRegistration> entry : _myInterests.values()) {
+						InterestRegistration reg = entry.value();
+						Library.logger().finer("Refresh interest: " + reg.interest.name());
+						write(reg.interest);
+					}
+				}
+			} catch (XMLStreamException xmlex) {
+				Library.logger().severe("Processing thread failure (Malformed datagram): " + xmlex.getMessage()); 
+				Library.warningStackTrace(xmlex);
+			}
+		}
+	}
 			
 	// Generic superclass for registration objects that may have a listener
 	// Handles invalidation and pending delivery consistently to enable 
@@ -393,11 +435,17 @@ public class CCNNetworkManager implements Runnable {
 		_threadpool = Executors.newCachedThreadPool();
 		_thread = new Thread(this);
 		_thread.start();
+		
+		// Create timer for heartbeats and other periodic behavior
+		_periodicTimer = new Timer(true);
+		_periodicTimer.scheduleAtFixedRate(new PeriodicWriter(), PERIOD, PERIOD);
 	}
 	
 	public void shutdown() {
 		Library.logger().info("Shutdown requested");
 		_run = false;
+		if (_periodicTimer != null)
+			_periodicTimer.cancel();
 		_selector.wakeup();
 	}
 	
@@ -585,27 +633,9 @@ public class CCNNetworkManager implements Runnable {
 		byte[] buffer = new byte[MAX_PAYLOAD];
 		ByteBuffer datagram = ByteBuffer.wrap(buffer);
 		WirePacket packet = new WirePacket();
-		Date lastsweep = new Date(); 
-		Date lastheartbeat = new Date(0);
 		Library.logger().info("CCNSimpleNetworkManager processing thread started");
 		while (_run) {
 			try {
-				
-				//--------------------------------- Heartbeat
-				// Send 0-length packet to alert agent to our presence
-				if (new Date().getTime() - lastheartbeat.getTime() > (PERIOD * 2)) {
-
-//					Library.logger().finest("Heartbeat");
-					try {
-						ByteBuffer heartbeat = ByteBuffer.allocate(1);
-						_channel.write(heartbeat);
-						lastheartbeat = new Date();
-					} catch (IOException io) {
-						// We do not see errors on send typically even if 
-						// agent is gone, so log each but do not track
-						Library.logger().warning("Error sending heartbeat packet");
-					}
-				}
 				
 				//--------------------------------- Read and decode
 				try {
@@ -674,26 +704,6 @@ public class CCNNetworkManager implements Runnable {
 					// External interests never go back to network
 				} // for interests
 				
-				//--------------------------------- Trigger periodic behavior if time
-				if (new Date().getTime() - lastsweep.getTime() > PERIOD) {
-					// This is where we do all the periodic behavior
-//					Library.logger().finest("Refreshing interests (size " + _myInterests.size() + ")");
-
-					// Re-express all of the registered interests
-					// TODO re-express only those due to be re-expressed
-					synchronized (_myInterests) {
-						for (Entry<InterestRegistration> entry : _myInterests.values()) {
-							InterestRegistration reg = entry.value();
-							Library.logger().finer("Refresh interest: " + reg.interest.name());
-							write(reg.interest);
-						}
-					}
-					lastsweep = new Date();
-				}
-
-			} catch (XMLStreamException xmlex) {
-				Library.logger().severe("Processing thread failure (Malformed datagram): " + xmlex.getMessage()); 
-				Library.warningStackTrace(xmlex);
 			} catch (Exception ex) {
 				Library.logger().severe("Processing thread failure (UNKNOWN): " + ex.getMessage());
                                 Library.warningStackTrace(ex);
