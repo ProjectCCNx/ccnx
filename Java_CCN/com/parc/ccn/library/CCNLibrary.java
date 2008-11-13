@@ -157,6 +157,48 @@ public class CCNLibrary extends CCNBase {
 	public PublisherKeyID getDefaultPublisher() {
 		return keyManager().getDefaultKeyID();
 	}
+	
+	/**
+	 * TODO - provide other variants of put(name, reference)
+	 * @param name
+	 * @param reference
+	 * @return
+	 * @throws SignatureException
+	 * @throws IOException
+	 * @throws InterruptedException
+	 * @throws XMLStreamException
+	 * @throws NoSuchAlgorithmException 
+	 * @throws InvalidKeyException 
+	 */
+	public ContentObject put(ContentName name, LinkReference reference) throws SignatureException, IOException, 
+				InterruptedException, XMLStreamException, InvalidKeyException, NoSuchAlgorithmException {
+		return put(name, reference, null, null, null);
+	}
+	
+	public ContentObject put(
+			ContentName name, 
+			LinkReference reference,
+			PublisherKeyID publisher, KeyLocator locator,
+			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InterruptedException {
+		
+		if (null == signingKey)
+			signingKey = keyManager().getDefaultSigningKey();
+
+		if (null == locator)
+			locator = keyManager().getKeyLocator(signingKey);
+		
+		if (null == publisher) {
+			publisher = keyManager().getPublisherKeyID(signingKey);
+		}
+
+		try {
+			return put(name, reference.encode(), ContentType.LINK, publisher, locator, signingKey);
+		} catch (XMLStreamException e) {
+			Library.logger().warning("Cannot canonicalize a standard container!");
+			Library.warningStackTrace(e);
+			throw new IOException("Cannot canonicalize a standard container!");
+		}
+	}
 
 	public ContentObject put(ContentName name, LinkReference [] references) throws SignatureException, IOException, InterruptedException {
 		return put(name, references, getDefaultPublisher());
@@ -363,17 +405,46 @@ public class CCNLibrary extends CCNBase {
 	}
 	
 	/**
+	 * Turn ContentObject of type link into a LinkReference
+	 * @param co ContentObject
+	 * @return
+	 * @throws IOException
+	 */
+	public LinkReference decodeLinkReference(ContentObject co) throws IOException {
+		if (co.authenticator().type() != ContentType.LINK)
+			throw new IOException("Content is not a collection");
+		LinkReference reference = new LinkReference();
+		try {
+			reference.decode(co.content());
+		} catch (XMLStreamException e) {
+			// Shouldn't happen
+			e.printStackTrace();
+		}
+		return reference;
+	}
+	
+	/**
 	 * 
-	 * @param name
-	 * @param timeout
+	 * @param name - ContentName
+	 * @param timeout - milliseconds
 	 * @return
 	 * @throws IOException
 	 * @throws InterruptedException
 	 */
-	public Collection getCollection(ContentName name, long timeout) throws IOException, InterruptedException{
+	public Collection getCollection(ContentName name, long timeout) throws IOException, InterruptedException {
 		ContentObject co = getLatestVersion(name, null, timeout);
 		if (null == co)
 			return null;
+		return decodeCollection(co);
+	}
+	
+	/**
+	 * Turn ContentObject of COLLECTION type into a collection
+	 * @param co
+	 * @return
+	 * @throws IOException
+	 */
+	public Collection decodeCollection(ContentObject co) throws IOException {
 		if (co.authenticator().type() != ContentType.COLLECTION)
 			throw new IOException("Content is not a collection");
 		Collection collection = new Collection();
@@ -396,6 +467,59 @@ public class CCNLibrary extends CCNBase {
 	 */
 	public boolean isLink(ContentObject content) {
 		return (content.authenticator().type() == ContentType.LINK);
+	}
+	
+	/**
+	 * Deference links and collections
+	 * @param content
+	 * @param timeout
+	 * @return
+	 * @throws IOException 
+	 * @throws InterruptedException 
+	 */
+	public ArrayList<ContentObject> dereference(ContentObject content, long timeout) throws IOException, InterruptedException {
+		ArrayList<ContentObject> result = new ArrayList<ContentObject>();
+		if (null == content)
+			return null;
+		if (content.authenticator().type() == ContentType.LINK) {
+			LinkReference link = decodeLinkReference(content);
+			ContentObject linkCo = dereferenceLink(link, content.authenticator().publisherKeyID(), timeout);
+			if (linkCo == null) {
+				return null;
+			}
+			result.add(linkCo);
+		} else if (content.authenticator().type() == ContentType.COLLECTION) {
+			Collection collection = decodeCollection(content);
+			ArrayList<LinkReference> al = collection.contents();
+			for (LinkReference lr : al) {
+				ContentObject linkCo = dereferenceLink(lr, content.authenticator().publisherKeyID(), timeout);
+				if (linkCo != null)
+					result.add(linkCo);
+			}
+			if (result.size() == 0)
+				return null;
+		} else {
+			result.add(content);
+		}
+		return result;
+	}
+	
+	/**
+	 * Try to get the content referenced by the link. If it doesn't exist directly,
+	 * try to get the latest version below the name.
+	 * 
+	 * @param reference
+	 * @param publisher
+	 * @param timeout
+	 * @return
+	 * @throws IOException
+	 * @throws InterruptedException
+	 */
+	private ContentObject dereferenceLink(LinkReference reference, PublisherKeyID publisher, long timeout) throws IOException, InterruptedException {
+		ContentObject linkCo = get(reference.targetName(), timeout);
+		if (linkCo == null)
+			linkCo = getLatestVersion(reference.targetName(), publisher, timeout);
+		return linkCo;
 	}
 
 	/**

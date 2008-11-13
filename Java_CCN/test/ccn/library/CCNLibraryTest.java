@@ -26,7 +26,7 @@ import com.parc.ccn.library.CCNLibrary;
 
 
 /**
- * @author briggs,smetters
+ * @author briggs,smetters,rasmusse
  *
  */
 public class CCNLibraryTest extends BaseLibrary {
@@ -265,19 +265,43 @@ public class CCNLibraryTest extends BaseLibrary {
 		}
 	}
 	
-	/**
-	 * TODO (paul r.) This test is a noop for the moment - will fill it out when Collections & Links have been
-	 * fully implemented
-	 * @throws Exception
-	 */
+	@Test
+	public void testLinks() throws Exception {
+		ContentName baseName = ContentName.fromNative("/libraryTest/linkTest/base");
+		library.put(baseName, "base".getBytes());
+		LinkReference lr = new LinkReference(baseName);
+		ContentName linkName = ContentName.fromNative("/libraryTest/linkTest/l1");
+		library.put(linkName, lr);
+		ContentObject linkContent = library.get(linkName, 5000);
+		ArrayList<ContentObject> al = library.dereference(linkContent, 5000);
+		Assert.assertEquals(al.size(), 1);
+		ContentObject baseContent = al.get(0);
+		Assert.assertEquals(new String(baseContent.content()), "base");
+		LinkReference[] references = new LinkReference[2];
+		LinkReference lr2 = new LinkReference(baseName);
+		ContentName linkName2 = ContentName.fromNative("/libraryTest/linkTest/l2");
+		library.put(linkName2, lr2);
+		references[0] = lr;
+		references[1] = lr2;
+		ContentName c1 = ContentName.fromNative("/libraryTest/linkTest/collection");
+		library.put(c1, references);
+		ContentObject collectionContent = library.get(c1, 5000);
+		al = library.dereference(collectionContent, 5000);
+		Assert.assertEquals(al.size(), 2);
+		baseContent = al.get(0);
+		Assert.assertEquals(new String(baseContent.content()), "base");
+		baseContent = al.get(1);
+		Assert.assertEquals(new String(baseContent.content()), "base");
+	}
+	
 	@Test
 	public void testCollections() throws Exception {
 		ContentName baseName = ContentName.fromNative("/libraryTest/collectionTest/base");
 		ContentName collectionName = ContentName.fromNative("/libraryTest/collectionTest/myCollection");
 		LinkReference[] references = new LinkReference[2];
 		library.newVersion(baseName, "base".getBytes());
-		references[0] = new LinkReference(ContentName.fromNative("/libraryTest/r1"));
-		references[1] = new LinkReference(ContentName.fromNative("/libraryTest/r2"));
+		references[0] = new LinkReference(ContentName.fromNative("/libraryTest/collectionTest/r1"));
+		references[1] = new LinkReference(ContentName.fromNative("/libraryTest/collectionTest/r2"));
 		library.put(collectionName, references);
 		
 		try {
