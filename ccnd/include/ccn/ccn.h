@@ -38,10 +38,10 @@ struct ccn_parsed_ContentObject;
  * This tells what kind of event the upcall is handling.
  */
 enum ccn_upcall_kind {
-    CCN_UPCALL_FINAL,       /* handler is about to be deregistered */
-    CCN_UPCALL_INTEREST,    /* incoming interest */
+    CCN_UPCALL_FINAL,             /* handler is about to be deregistered */
+    CCN_UPCALL_INTEREST,          /* incoming interest */
     CCN_UPCALL_CONSUMED_INTEREST, /* incoming interest, someone has answered */
-    CCN_UPCALL_CONTENT,     /* incoming content */
+    CCN_UPCALL_CONTENT,           /* incoming content */
     CCN_UPCALL_INTEREST_TIMED_OUT /* interest timed out */
 };
 
@@ -292,6 +292,31 @@ int ccn_run(struct ccn *h, int timeout);
  * The timeout is in milliseconds.  Returns old value.
  */
 int ccn_set_run_timeout(struct ccn *h, int timeout);
+
+/***********************************
+ * Bulk data
+ */
+
+/*
+ * The client provides a ccn_seqfunc * (and perhaps a matching param)
+ * to specify the scheme for naming the content items in the sequence.
+ * Given the sequence number x, it should place in resultbuf the
+ * corresponding blob that that will be used in the final explicit
+ * Component of the Name of item x in the sequence.  This should
+ * act as a mathematical function, returning the same answer for a given x.
+ * (Ususally param will be NULL, but is provided in case it is needed.)
+ */
+typedef void ccn_seqfunc(uintmax_t x, void *param,
+                         struct ccn_charbuf *resultbuf);
+
+/*
+ * Ready-to-use sequencing functions
+ */
+extern ccn_seqfunc ccn_decimal_seqfunc;
+extern ccn_seqfunc ccn_binary_seqfunc;
+
+
+
 
 /***********************************
  * Binary decoding
