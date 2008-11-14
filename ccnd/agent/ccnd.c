@@ -596,6 +596,7 @@ static int
 create_local_listener(const char *sockname, int backlog)
 {
     int res;
+    int savedmask;
     int sock;
     struct sockaddr_un a = { 0 };
     res = unlink(sockname);
@@ -610,7 +611,9 @@ create_local_listener(const char *sockname, int backlog)
     sock = socket(AF_UNIX, SOCK_STREAM, 0);
     if (sock == -1)
         return(sock);
+    savedmask = umask(0111); /* socket should be R/W by anybody */
     res = bind(sock, (struct sockaddr *)&a, sizeof(a));
+    umask(res);
     if (res == -1) {
         close(sock);
         return(-1);

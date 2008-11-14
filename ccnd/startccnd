@@ -1,6 +1,8 @@
 #!/usr/bin/env sh
 D=`dirname "$0"`
 D="${D:-.}"
+: ${CCND_CAP:=50000}
+export CCND_CAP
 test -e /tmp/.ccnd.sock && rm /tmp/.ccnd.sock && echo "GET /" | nc localhost 4485 > /dev/null && sleep 1
 time "$D"/agent/ccnd "$@" &
 sleep 1
