@@ -25,7 +25,7 @@ import com.parc.ccn.library.CCNLibrary;
  *
  */
 
-public class ReadTest extends BaseLibrary implements CCNInterestListener {
+public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	
 	private static ArrayList<Integer> currentSet;
 	

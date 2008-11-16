@@ -2,7 +2,7 @@ package test.ccn.library;
 
 import org.junit.Test;
 
-public class BasePutGetTest extends BaseLibrary {
+public class BasePutGetTest extends LibraryTestBase {
 	
 	@Test
 	public void testGetPut() throws Throwable {

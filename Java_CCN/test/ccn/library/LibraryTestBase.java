@@ -31,7 +31,7 @@ import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
 
-public class BaseLibrary {
+public class LibraryTestBase {
 
 	protected static boolean exit = false;
 	protected static Throwable error = null; // for errors from other threads

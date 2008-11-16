@@ -29,7 +29,7 @@ import com.parc.ccn.library.CCNLibrary;
  * @author briggs,smetters,rasmusse
  *
  */
-public class CCNLibraryTest extends BaseLibrary {
+public class CCNLibraryTest extends LibraryTestBase {
 	static final String contentString = "This is a very small amount of content";
 	
 	private class NameSeen {
