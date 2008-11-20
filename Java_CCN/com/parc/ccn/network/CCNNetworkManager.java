@@ -32,17 +32,10 @@ import com.parc.ccn.data.util.InterestTable.Entry;
 import com.parc.ccn.security.keys.KeyManager;
 
 /**
- * Interface to the lowest CCN levels. Eventually will be
- * just the interface to ccnd, but right now also talks
- * directly to the repository, as we don't know how to
- * talk to the repository via ccnd yet. Most clients,
+ * Interface to the ccnd.  Most clients,
  * and the CCN library, will use this as the "CCN".
  * 
- * TODO DKS sort out interfaces -- CCNRepository is right now
- * the slight extension of CCNBase to add enumeration functionality.
- * Once we've figured out where that is to go, we can change what
- * this implements.
- * @author smetters
+ * @author smetters, rasmusse
  *
  */
 public class CCNNetworkManager implements Runnable {
@@ -255,27 +248,6 @@ public class CCNNetworkManager implements Runnable {
 			return result;
 		}
 		
-		/**
-		 * Always return false for now, to deal with interest updating in 
-		 * callbacks. There are no standing interests anymore, only
-		 * unfulfilled interests which respond to data by calling a
-		 * listener.
-		 * @return
-		 */
-		public synchronized boolean isStanding() {
-			if (null != this.listener) {
-				// DKS dynamic interests
-				//return true;
-				return false;
-			} else {
-				return false;
-			}
-		}
-		// Is this an internal interest? (i.e. not from net)
-		public synchronized boolean isInternal() {
-			return (null != owner);
-		}
-		
 		public void deliver() {
 			try {
 				if (null != this.listener) {
@@ -313,7 +285,10 @@ public class CCNNetworkManager implements Runnable {
 						// the registration.
 						Interest updatedInterest = listener.handleContent(results, interest);
 						
-						if ((null != updatedInterest) && (!this.interest.equals(updatedInterest))) {
+						// Possibly we should optimize here for the case where the same interest is returned back
+						// (now we would unregister it, then reregister it) but need to be careful that the timing
+						// behavior is right if we do that
+						if (null != updatedInterest) {
 							Library.logger().finer("Interest callback: updated interest to express: " + updatedInterest.name());
 							// luckily we saved the listener
 							// if we want to cancel this one before we get any data, we need to remember the
