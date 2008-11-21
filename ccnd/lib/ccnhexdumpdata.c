@@ -66,6 +66,7 @@ process_test(unsigned char *data, size_t n, struct fstate *perfilestate)
     size_t content_length;
     int res = 0;
     size_t s;
+    size_t i;
 
  retry:
     s = ccn_skeleton_decode(d, data, n);
@@ -86,7 +87,7 @@ process_test(unsigned char *data, size_t n, struct fstate *perfilestate)
                 fprintf(stderr, "unable to retrieve content value\n");
                 res = 1;
             }
-            for (int i = 0; i < content_length; i++) {
+            for (i = 0; i < content_length; i++) {
                 if (i % 16 == 0) printf("\n%08x ", i);
                 printf(" %02x", content_value[i]);
             }
@@ -110,7 +111,7 @@ process_test(unsigned char *data, size_t n, struct fstate *perfilestate)
             fprintf(stderr, "unable to retrieve content value\n");
             res = 1;
         }
-        for (int i = 0; i < content_length; i++) {
+        for (i = 0; i < content_length; i++) {
             if (i % 16 == 0) printf("\n%08x ", i);
             printf(" %02x", content_value[i]);
         }
