@@ -32,30 +32,6 @@ segment_prefix(char *path)
 }
 
 static int
-write_segment(unsigned char *data, size_t s, struct fstate *perfilestate)
-{
-    int ofd;
-    char ofile[256];
-    mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
-    int res;
-
-    sprintf(ofile, "%s-%05d.ccnb", perfilestate->prefix, perfilestate->segnum);
-    ofd = open(ofile, O_CREAT | O_WRONLY | O_TRUNC, mode);
-    if (ofd == -1) {
-        perror("open");
-        return (1);
-    }
-    res = write(ofd, data, s);
-    close(ofd);
-    if (res != s) {
-        perror("write");
-        return (1);
-    }
-    perfilestate->segnum++;
-    return (0);
-}
-
-static int
 process_test(unsigned char *data, size_t n, struct fstate *perfilestate)
 {
     struct ccn_skeleton_decoder skel_decoder = {0};
@@ -66,7 +42,7 @@ process_test(unsigned char *data, size_t n, struct fstate *perfilestate)
     size_t content_length;
     int res = 0;
     size_t s;
-    size_t i;
+    unsigned int i;
 
  retry:
     s = ccn_skeleton_decode(d, data, n);
