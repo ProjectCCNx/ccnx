@@ -20,6 +20,7 @@ struct options {
     const char *portstr;
     const char *remotehost;
     int n_packets;
+    int echo_server;
     size_t payload_size;
     int verbose;
 };
@@ -33,6 +34,7 @@ usage(char *prog) {
             "[-p source_port] "
             "[-s bytes ] "
             "[ -v ] "
+            "[ -e echo_responder_port ] "
             "remotehost [port]\n",
             prog);
     exit(1);
@@ -48,14 +50,20 @@ process_options(int argc, char *const argv[], struct options *options)
     options->verbose = 0;
     options->remotehost = NULL;
     options->n_packets = 1;
+    options->echo_server = 0;
     options->payload_size = 104;
     
-    for (optind = 1; (c = getopt(argc, argv, "c:hp:s:v")) != -1;) {
+    for (optind = 1; (c = getopt(argc, argv, "c:e:hp:s:v")) != -1;) {
         switch (c) {
             case 'c':
                 options->n_packets = atol(optarg);
                 if (options->n_packets < 1 || options->n_packets > 1000000)
                     fatal(__LINE__, "-c value invalid\n");
+                break;
+            case 'e':
+                options->sourceportstr = optarg;
+                options->echo_server = 1;
+                options->payload_size = 8800;
                 break;
             case 'p':
                 options->sourceportstr = optarg;
@@ -188,7 +196,7 @@ main(int argc, char *const argv[])
     if (sock == -1)
         fatal(__LINE__, "socket: %s\n", strerror(errno));
 
-    if (opt->verbose > 0)
+    if (opt->verbose > 0 && !opt->echo_server)
         report("contacting %s:%s", canonical_remote, canonical_service);
 
     res = bind(sock, laddrinfo->ai_addr, laddrinfo->ai_addrlen);
@@ -196,25 +204,45 @@ main(int argc, char *const argv[])
     if (res == -1)
         fatal(__LINE__, "bind(sock, local...): %s\n", strerror(errno));
 
-    for (i = 1; i <= opt->n_packets; i++) {
-        memset(buf, i & 0xff, size);
-        if (size >= sizeof(struct payload)) {
-            buf->seqno = htonl(i);
-            snprintf(buf->decimal, sizeof(buf->decimal), "%10u", i);
+    if (opt->echo_server) {
+        if (opt->verbose > 0)
+            report("echo server started, max packet count %d", opt->n_packets);
+        for (i = 1; i <= opt->n_packets; i++) {
+            responder_size = sizeof(responder);
+            dres = recvfrom(sock, buf, size, /*flags*/0,
+                            (struct sockaddr *)&responder, &responder_size);
+            if (opt->verbose > 1)
+                report("%ld byte packet received (echo)", (long)dres);
+            if (dres > 0) {
+                dres = sendto(sock, buf, dres, /*flags*/0,
+                              (struct sockaddr *)&responder, responder_size);
+                if (dres == -1)
+                    report("sendto(sock, buf, %ld, ...): %s",
+                           (long)size, strerror(errno));
+            }
         }
-        dres = sendto(sock, buf, size, /*flags*/0,
-                      raddrinfo->ai_addr, raddrinfo->ai_addrlen);
-        if (dres == -1)
-            report("sendto(sock, buf, %ld, ...): %s",
-                   (long)size,strerror(errno));
-        else if (opt->verbose > 1)
-            report("%ld byte packet sent", (long)dres);
-        
-        responder_size = sizeof(responder);
-        dres = recvfrom(sock, buf, size + 4, /*flags*/0,
-                        (struct sockaddr *)&responder, &responder_size);
-        if (opt->verbose > 1)
-            report("%ld byte packet received", (long)dres);
+    }
+    else {
+        for (i = 1; i <= opt->n_packets; i++) {
+            memset(buf, i & 0xff, size);
+            if (size >= sizeof(struct payload)) {
+                buf->seqno = htonl(i);
+                snprintf(buf->decimal, sizeof(buf->decimal), "%10u", i);
+            }
+            dres = sendto(sock, buf, size, /*flags*/0,
+                          raddrinfo->ai_addr, raddrinfo->ai_addrlen);
+            if (dres == -1)
+                report("sendto(sock, buf, %ld, ...): %s",
+                       (long)size, strerror(errno));
+            else if (opt->verbose > 1)
+                report("%ld byte packet sent", (long)dres);
+            
+            responder_size = sizeof(responder);
+            dres = recvfrom(sock, buf, size + 4, /*flags*/0,
+                            (struct sockaddr *)&responder, &responder_size);
+            if (opt->verbose > 1)
+                report("%ld byte packet received", (long)dres);
+        }
     }
     if (opt->verbose > 0)
         report("done");
