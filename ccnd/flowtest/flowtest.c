@@ -7,12 +7,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/time.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 #include <arpa/inet.h>
 #include <net/if.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include <sys/types.h>
 
 static const char *this_program = "flowtest";
 struct options {
@@ -44,13 +44,12 @@ process_options(int argc, char *const argv[], struct options *options)
     int c;
 
     options->sourceportstr = "0";
-    options->portstr = "echo";
+    options->portstr = "7"; /* echo */
     options->verbose = 0;
     options->remotehost = NULL;
     options->n_packets = 1;
     options->payload_size = 104;
     
-    optreset = 1;
     for (optind = 1; (c = getopt(argc, argv, "c:hp:s:v")) != -1;) {
         switch (c) {
             case 'c':
@@ -148,13 +147,9 @@ main(int argc, char *const argv[])
     struct addrinfo *raddrinfo = NULL;
     struct addrinfo *laddrinfo = NULL;
     struct addrinfo hints = {0};
-    struct sockaddr responder = {0};
+    struct sockaddr_storage responder = {0};
     socklen_t responder_size;
-    struct pollfd fds[2];
-    ssize_t msgstart = 0;
-    ssize_t recvlen = 0;
     ssize_t dres;
-    const int one = 1;
     struct options option_space = {0};
     struct options *opt = &option_space;
     int i;
@@ -217,7 +212,7 @@ main(int argc, char *const argv[])
         
         responder_size = sizeof(responder);
         dres = recvfrom(sock, buf, size + 4, /*flags*/0,
-                        &responder, &responder_size);
+                        (struct sockaddr *)&responder, &responder_size);
         if (opt->verbose > 1)
             report("%ld byte packet received", (long)dres);
     }
