@@ -1,10 +1,21 @@
-CFLAGS=-g
-include ../conf.mk
-default all: flowtest
+CFLAGS=	$(COPT) $(CWARNFLAGS) $(CPREFLAGS) $(PLATCFLAGS)
+PROGRAMS=	flowtest
+CSRC=		flowtest.c
+
+default all: $(PROGRAMS)
+
+flowtest: flowtest.o
+	$(CC) $(CFLAGS) -o $@ flowtest.o $(MORE_LDLIBS)
 
 clean:
-	rm -f *.o flowtest
-CSRC=	flowtest.c
-include ../subr.mk
-##########################
+	rm -f *.o $(PROGRAMS) depend
+	rm -rf *.dSYM $(DEBRIS)
+
+test: default
+	./flowtest -vv localhost
+
+###############################
+# Dependencies below here are checked by depend target
+# but must be updated manually.
+###############################
 flowtest.o: flowtest.c
