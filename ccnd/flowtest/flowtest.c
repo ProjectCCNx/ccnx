@@ -20,6 +20,7 @@ struct options {
     const char *portstr;
     const char *remotehost;
     int n_packets;
+    int pipeline;
     int echo_server;
     size_t payload_size;
     int verbose;
@@ -31,6 +32,7 @@ static void
 usage(char *prog) {
     fprintf(stderr, "Usage: %s "
             "[-c n_packets ] "
+            "[-l n_startup_burst ] "
             "[-p source_port] "
             "[-s bytes ] "
             "[ -v ] "
@@ -52,8 +54,9 @@ process_options(int argc, char *const argv[], struct options *options)
     options->n_packets = 1;
     options->echo_server = 0;
     options->payload_size = 104;
+    options->pipeline = 0;
     
-    for (optind = 1; (c = getopt(argc, argv, "c:e:hp:s:v")) != -1;) {
+    for (optind = 1; (c = getopt(argc, argv, "c:e:hl:p:s:v")) != -1;) {
         switch (c) {
             case 'c':
                 options->n_packets = atol(optarg);
@@ -64,6 +67,9 @@ process_options(int argc, char *const argv[], struct options *options)
                 options->sourceportstr = optarg;
                 options->echo_server = 1;
                 options->payload_size = 8800;
+                break;
+            case 'l':
+                options->pipeline = atol(optarg);
                 break;
             case 'p':
                 options->sourceportstr = optarg;
@@ -163,6 +169,11 @@ main(int argc, char *const argv[])
     int i;
     size_t size;
     struct payload *buf = NULL;
+    struct timeval timeout = {0};
+    struct timeval starttime = {0};
+    struct timeval stoptime = {0};
+    int timeouts = 0;
+    int missing = 0;
 
     process_options(argc, argv, opt);
 
@@ -204,6 +215,7 @@ main(int argc, char *const argv[])
     if (res == -1)
         fatal(__LINE__, "bind(sock, local...): %s\n", strerror(errno));
 
+    gettimeofday(&starttime, NULL);
     if (opt->echo_server) {
         if (opt->verbose > 0)
             report("echo server started, max packet count %d", opt->n_packets);
@@ -223,27 +235,95 @@ main(int argc, char *const argv[])
         }
     }
     else {
-        for (i = 1; i <= opt->n_packets; i++) {
-            memset(buf, i & 0xff, size);
-            if (size >= sizeof(struct payload)) {
-                buf->seqno = htonl(i);
-                snprintf(buf->decimal, sizeof(buf->decimal), "%10u", i);
+        int j;
+        int k;
+        int running = 1;
+        int start_recv = opt->pipeline;
+        int expect[256];
+        if (start_recv > 8)
+            start_recv = 8;
+        if (start_recv > opt->n_packets)
+            start_recv = opt->n_packets / 2;
+        memset(expect, ~0, sizeof(expect));
+        timeout.tv_usec = 1;
+        res = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+        if (res == -1)
+            report("setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, ...): %s", strerror(errno));
+        for (i = 0, j = 0; running && j + missing + timeouts < opt->n_packets;) {
+            for (k = 0; k < 2; k++) {
+                if (i < opt->n_packets && i <= j + opt->pipeline) {
+                    i++;
+                    memset(buf, i & 0xff, size);
+                    if (size >= sizeof(struct payload)) {
+                        buf->seqno = htonl(i);
+                        snprintf(buf->decimal, sizeof(buf->decimal), "%10u", i);
+                        if (expect[i & 0xff] != -1) {
+                            report("missed %d", expect[i & 0xff]);
+                            missing++;
+                        }
+                        expect[i & 0xff] = i;
+                    }
+                    dres = sendto(sock, buf, size, /*flags*/0,
+                                  raddrinfo->ai_addr, raddrinfo->ai_addrlen);
+                    if (dres == -1)
+                        report("sendto(sock, buf, %ld, ...): %s",
+                               (long)size, strerror(errno));
+                    else if (opt->verbose > 1)
+                        report("%ld byte packet sent %d(%02x)", (long)dres,
+                               i, (unsigned)buf->mod256);
+                }
             }
-            dres = sendto(sock, buf, size, /*flags*/0,
-                          raddrinfo->ai_addr, raddrinfo->ai_addrlen);
-            if (dres == -1)
-                report("sendto(sock, buf, %ld, ...): %s",
-                       (long)size, strerror(errno));
-            else if (opt->verbose > 1)
-                report("%ld byte packet sent", (long)dres);
-            
-            responder_size = sizeof(responder);
-            dres = recvfrom(sock, buf, size + 4, /*flags*/0,
-                            (struct sockaddr *)&responder, &responder_size);
-            if (opt->verbose > 1)
-                report("%ld byte packet received", (long)dres);
+            if (i > start_recv) {
+                responder_size = sizeof(responder);
+                dres = recvfrom(sock, buf, size + 4, /*flags*/0,
+                                (struct sockaddr *)&responder, &responder_size);
+                if (dres > 0) {
+                    if (dres >= sizeof(struct payload)) {
+                        int m = ntohl(buf->seqno);
+                        if (expect[buf->mod256] == m) {
+                            expect[buf->mod256] = -1;
+                            j++;
+                            if (m == opt->n_packets)
+                                running = 0;
+                        }
+                        else {
+                            report("%ld byte packet discarded, seqno %d not expected", (long)dres, m);
+                            continue;
+                        }
+                    }
+                    else if (expect[buf->mod256] != -1) {
+                        expect[buf->mod256] = -1;
+                        j++;
+                    }
+                    else {
+                        report("%ld byte packet discarded", (long)dres);
+                        continue;
+                    }
+                    if (opt->verbose > 1)
+                        report("%ld byte packet received (%02x)", (long)dres,
+                               (unsigned)buf->mod256);
+                }
+                if (dres == -1) {
+                    if (timeout.tv_usec < 500000) {
+                        timeout.tv_usec *= 2;
+                        setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+                    }
+                    else
+                        timeouts++;
+                }
+            }
         }
+        for (i = 0; i < 256; i++) {
+            if (expect[i] != -1) {
+                if (opt->verbose > 0)
+                    report("missed %d", expect[i]);
+                missing++;
+            }
+        }
+        if (opt->verbose > 0)
+            report("%d missing, adjusted timeout %d us", missing, (int)timeout.tv_usec);
     }
+    gettimeofday(&stoptime, NULL);
     if (opt->verbose > 0)
         report("done");
     close(sock);
