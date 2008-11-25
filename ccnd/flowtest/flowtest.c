@@ -172,8 +172,8 @@ main(int argc, char *const argv[])
     struct timeval timeout = {0};
     struct timeval starttime = {0};
     struct timeval stoptime = {0};
-    int timeouts = 0;
     int missing = 0;
+    int just_timed_out = 0;
 
     process_options(argc, argv, opt);
 
@@ -249,9 +249,10 @@ main(int argc, char *const argv[])
         res = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
         if (res == -1)
             report("setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, ...): %s", strerror(errno));
-        for (i = 0, j = 0; running && j + missing + timeouts < opt->n_packets;) {
+        for (i = 0, j = 0; running && j + missing < opt->n_packets;) {
             for (k = 0; k < 2; k++) {
-                if (i < opt->n_packets && i <= j + opt->pipeline) {
+                if (i < opt->n_packets && (just_timed_out || i <= j + missing + opt->pipeline)) {
+                    just_timed_out = 0;
                     i++;
                     memset(buf, i & 0xff, size);
                     if (size >= sizeof(struct payload)) {
@@ -304,12 +305,21 @@ main(int argc, char *const argv[])
                                (unsigned)buf->mod256);
                 }
                 if (dres == -1) {
+                    if (timeout.tv_usec > 100000) {
+                        just_timed_out = 1;
+                        for (k = 0; k < 256; k++) {
+                            if (expect[k] != -1) {
+                                if (opt->verbose > 0)
+                                    report("missed %d", expect[k]);
+                                expect[k] = -1;
+                                missing++;
+                            }
+                        }
+                    }
                     if (timeout.tv_usec < 500000) {
                         timeout.tv_usec *= 2;
                         setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
                     }
-                    else
-                        timeouts++;
                 }
             }
         }
