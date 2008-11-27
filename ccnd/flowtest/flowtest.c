@@ -26,13 +26,14 @@ struct options {
     int verbose;
 };
 
+static void report(const char *format, ...);
 static void fatal(int lineno, const char *format, ...);
 
 static void
 usage(char *prog) {
     fprintf(stderr, "Usage: %s "
             "[-c n_packets ] "
-            "[-l n_startup_burst ] "
+            "[-l pipeline_limit ] "
             "[-p source_port] "
             "[-s bytes ] "
             "[ -v ] "
@@ -70,6 +71,10 @@ process_options(int argc, char *const argv[], struct options *options)
                 break;
             case 'l':
                 options->pipeline = atol(optarg);
+                if (options->pipeline > 255) {
+                    options->pipeline = 255;
+                    report("limiting -l %d", options->pipeline);
+                }
                 break;
             case 'p':
                 options->sourceportstr = optarg;
@@ -173,7 +178,6 @@ main(int argc, char *const argv[])
     struct timeval starttime = {0};
     struct timeval stoptime = {0};
     int missing = 0;
-    int just_timed_out = 0;
 
     process_options(argc, argv, opt);
 
@@ -238,21 +242,17 @@ main(int argc, char *const argv[])
         int j;
         int k;
         int running = 1;
-        int start_recv = opt->pipeline;
-        int expect[256];
-        if (start_recv > 8)
-            start_recv = 8;
-        if (start_recv > opt->n_packets)
-            start_recv = opt->n_packets / 2;
+        int maxburst = 1;
+        int expect[256]; /* maps mod256 seqno to seqno */
+        int curwindow = 0;
         memset(expect, ~0, sizeof(expect));
-        timeout.tv_usec = 1;
+        timeout.tv_usec = 65535;
         res = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
         if (res == -1)
             report("setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, ...): %s", strerror(errno));
         for (i = 0, j = 0; running && j + missing < opt->n_packets;) {
-            for (k = 0; k < 2; k++) {
-                if (i < opt->n_packets && (just_timed_out || i <= j + missing + opt->pipeline)) {
-                    just_timed_out = 0;
+            for (k = 0; k < maxburst; k++) {
+                if (i <= j + missing + curwindow && i < opt->n_packets) {
                     i++;
                     memset(buf, i & 0xff, size);
                     if (size >= sizeof(struct payload)) {
@@ -274,59 +274,78 @@ main(int argc, char *const argv[])
                                i, (unsigned)buf->mod256);
                 }
             }
-            if (i > start_recv) {
-                responder_size = sizeof(responder);
-                dres = recvfrom(sock, buf, size + 4, /*flags*/0,
-                                (struct sockaddr *)&responder, &responder_size);
-                if (dres > 0) {
-                    if (dres >= sizeof(struct payload)) {
-                        int m = ntohl(buf->seqno);
-                        if (expect[buf->mod256] == m) {
-                            expect[buf->mod256] = -1;
-                            j++;
-                            if (m == opt->n_packets)
-                                running = 0;
-                        }
-                        else {
-                            report("%ld byte packet discarded, seqno %d not expected", (long)dres, m);
-                            continue;
-                        }
-                    }
-                    else if (expect[buf->mod256] != -1) {
+            responder_size = sizeof(responder);
+            dres = recvfrom(sock, buf, size + 4, /*flags*/0,
+                            (struct sockaddr *)&responder, &responder_size);
+            if (dres > 0) {
+                if (dres >= sizeof(struct payload)) {
+                    int m = ntohl(buf->seqno);
+                    if (expect[buf->mod256] == m) {
                         expect[buf->mod256] = -1;
-                        j++;
+                        if (m == opt->n_packets)
+                            running = 0;
                     }
                     else {
-                        report("%ld byte packet discarded", (long)dres);
+                        report("%ld byte packet discarded, seqno %d not expected", (long)dres, m);
+                        maxburst = 0;
                         continue;
                     }
-                    if (opt->verbose > 1)
-                        report("%ld byte packet received (%02x)", (long)dres,
-                               (unsigned)buf->mod256);
                 }
-                if (dres == -1) {
-                    if (timeout.tv_usec > 100000) {
-                        just_timed_out = 1;
-                        for (k = 0; k < 256; k++) {
-                            if (expect[k] != -1) {
-                                if (opt->verbose > 0)
-                                    report("missed %d", expect[k]);
-                                expect[k] = -1;
-                                missing++;
-                            }
+                else if (expect[buf->mod256] != -1) {
+                    /* can't be quite so careful for short packets */
+                    expect[buf->mod256] = -1;
+                }
+                else {
+                    report("%ld byte packet discarded", (long)dres);
+                    maxburst = 0;
+                    continue;
+                }
+                j++;
+                if (maxburst == 2 && timeout.tv_usec > 15) {
+                    timeout.tv_usec -= ((unsigned)timeout.tv_usec) >> 4;
+                    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+                }
+                maxburst = 2;
+                if (opt->verbose > 0 && curwindow + 1 == opt->pipeline) {
+                    curwindow++;
+                    report("(%d sent, %d recvd, %d missing, %d curwindow)",
+                        i, j, missing, curwindow);
+                }
+                else if (curwindow < opt->pipeline)
+                    curwindow++;
+                if (opt->verbose > 1)
+                    report("%ld byte packet received (%02x)", (long)dres,
+                           (unsigned)buf->mod256);
+            }
+            if (dres == -1) {
+                if (maxburst == 1)
+                    curwindow = 0;
+                maxburst = 1;
+                if (timeout.tv_usec < 500000)
+                    timeout.tv_usec *= 2;
+                else {
+                    for (k = i - 255; k <= i; k++) {
+                        if (expect[k & 0xff] != -1) {
+                            if (opt->verbose > 0)
+                                report("missed seqno %d (%d sent, %d recvd)",
+                                       expect[k & 0xff], i, j);
+                            expect[k & 0xff] = -1;
+                            missing++;
+                            break;
                         }
                     }
-                    if (timeout.tv_usec < 500000) {
-                        timeout.tv_usec *= 2;
-                        setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-                    }
+                    timeout.tv_usec = 999999;
                 }
+                if (opt->verbose > 0)
+                    report("setting timeout to %d us (%d sent, %d recvd, %d curwindow)",
+                        timeout.tv_usec, i, j, curwindow);
+                setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
             }
         }
-        for (i = 0; i < 256; i++) {
-            if (expect[i] != -1) {
+        for (k = 0; k < 256; k++) {
+            if (expect[k] != -1) {
                 if (opt->verbose > 0)
-                    report("missed %d", expect[i]);
+                    report("missed seqno %d", expect[k]);
                 missing++;
             }
         }
