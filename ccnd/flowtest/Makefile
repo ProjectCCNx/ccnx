@@ -13,7 +13,7 @@ clean:
 	rm -rf *.dSYM $(DEBRIS)
 
 test: default
-	./flowtest -vv localhost
+	./flowtest -c 30 -e 7777 localhost & ./flowtest -vv -c 31 -l 5  localhost 7777
 
 ###############################
 # Dependencies below here are checked by depend target
