@@ -298,10 +298,10 @@ public class CCNLibraryTest extends LibraryTestBase {
 	public void testCollections() throws Exception {
 		ContentName baseName = ContentName.fromNative("/libraryTest/collectionTest/base");
 		ContentName collectionName = ContentName.fromNative("/libraryTest/collectionTest/myCollection");
-		LinkReference[] references = new LinkReference[2];
+		ContentName[] references = new ContentName[2];
 		library.newVersion(baseName, "base".getBytes());
-		references[0] = new LinkReference(ContentName.fromNative("/libraryTest/collectionTest/r1"));
-		references[1] = new LinkReference(ContentName.fromNative("/libraryTest/collectionTest/r2"));
+		references[0] = ContentName.fromNative("/libraryTest/collectionTest/r1");
+		references[1] = ContentName.fromNative("/libraryTest/collectionTest/r2");
 		library.put(collectionName, references);
 		
 		try {
@@ -317,9 +317,9 @@ public class CCNLibraryTest extends LibraryTestBase {
 		Assert.assertEquals(references[1], checkReferences.get(1));
 		
 		// test addToCollection
-		LinkReference[] newReferences = new LinkReference[2];
-		newReferences[0] = new LinkReference(ContentName.fromNative("/libraryTest/r3"));
-		newReferences[1] = new LinkReference(ContentName.fromNative("/libraryTest/r4"));
+		ContentName[] newReferences = new ContentName[2];
+		newReferences[0] = ContentName.fromNative("/libraryTest/r3");
+		newReferences[1] = ContentName.fromNative("/libraryTest/r4");
 		library.addToCollection(collectionName, newReferences, 5000);
 		collection = library.getCollection(collectionName, 5000);
 		checkReferences = collection.contents();

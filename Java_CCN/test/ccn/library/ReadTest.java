@@ -5,7 +5,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 
-import org.junit.Assert;
 import org.junit.Test;
 
 import com.parc.ccn.data.ContentName;
@@ -31,6 +30,8 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	
 	private byte [] bloomSeed = "burp".getBytes();
 	private ExcludeFilter ef = null;
+	private static int excludeTestN = 35;
+	private static int excludeTestNExcludes = excludeTestN - 1;
 	
 	private String [] bloomTestValues = {
             "one", "two", "three", "four",
@@ -97,25 +98,47 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 		System.out.println("getLatest test finished");
 	}
 	
+	/*
 	@Test
-	public void getExceptTest() throws Throwable {
-		System.out.println("getExcept test started");
+	public void excludeFilterTest() throws Throwable {
+		System.out.println("excludeFilterTest test started");
 		excludeSetup();
 		for (String value : bloomTestValues) {
 			Thread.sleep(rand.nextInt(50));
-			library.put("/getExceptTest/" + value, value);
+			library.put("/excludeFilterTest/" + value, value);
 		}
-		library.put("/getExceptTest/aaaaaaaa", "aaaaaaaa");
-		library.put("/getExceptTest/zzzzzzzz", "zzzzzzzz");
-		ContentObject content = library.getExcept(ContentName.fromNative("/getExceptTest/"), ef, 1000);
+		library.put("/excludeFilterTest/aaaaaaaa", "aaaaaaaa");
+		library.put("/excludeFilterTeset/zzzzzzzz", "zzzzzzzz");
+		Interest interest = Interest.constructInterest(ContentName.fromNative("/excludeFilterTest/"), ef, null);
+		ContentObject content = library.get(interest, 1000);
 		Assert.assertTrue(content == null);
 		
-		String shouldGetIt = "/getExceptTest/weShouldGetThis";
+		String shouldGetIt = "/excludeFilterTest/weShouldGetThis";
 		library.put(shouldGetIt, shouldGetIt);
-		content = library.getExcept(ContentName.fromNative("/getExceptTest/"), ef, 1000);
+		content = library.get(interest, 1000);
+		Assert.assertFalse(content == null);
 		assertEquals(content.name().toString(), shouldGetIt);
-		System.out.println("getExcept test finished");
-	}
+		System.out.println("excludeFilterTest test finished");
+	} */
+	
+	/*
+	@Test
+	public void getExcludeTest() throws Throwable {
+		byte [][] excludes = new byte[excludeTestNExcludes][];
+		for (int i = 0; i < excludeTestN; i++) {
+			String value = new Integer(i).toString();
+			if (i < excludeTestNExcludes)
+				excludes[i] = value.getBytes();
+			String name = "/getExcludeTest/" + value;
+			library.put(name, value);
+		}
+		ContentObject content = library.getExcept(ContentName.fromNative("/getExcludeTest/"), excludes, 1000);
+		if (null == content || !Arrays.equals(content.content(), new Integer(excludeTestNExcludes).toString().getBytes())) {
+			// Try one more time in case we got a false positive
+			content = library.getExcept(ContentName.fromNative("/getExcludeTest/"), excludes, 1000);
+		}
+		assertEquals(content.content(), new Integer(excludeTestNExcludes).toString().getBytes());
+	} */
 
 	public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
 		return null;

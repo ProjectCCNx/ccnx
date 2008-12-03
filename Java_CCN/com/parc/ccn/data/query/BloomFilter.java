@@ -1,6 +1,7 @@
 package com.parc.ccn.data.query;
 
 import java.util.Arrays;
+import java.util.Random;
 
 import com.parc.ccn.data.util.DataUtils;
 
@@ -34,6 +35,14 @@ public class BloomFilter implements Comparable<BloomFilter> {
             _nHash = 2;           
         if (_nHash > 32)
             _nHash = 32;
+	}
+	
+	/*
+	 * Create a seed from random values
+	 */
+	public static void createSeed(byte[] seed) {
+		Random rand = new Random();
+		rand.nextBytes(seed);
 	}
 	
 	/**

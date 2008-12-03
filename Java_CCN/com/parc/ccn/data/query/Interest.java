@@ -2,6 +2,7 @@ package com.parc.ccn.data.query;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -96,6 +97,8 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	protected Integer _count;
 	protected byte [] _nonce;
 	protected byte [] _responseFilter;
+	
+	private static int OPTIMUM_FILTER_SIZE = 10;
 	
 	/**
 	 * TODO: DKS figure out how to handle encoding faster,
@@ -235,17 +238,94 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	
 	/**
 	 * Construct an interest that will give you the next content after the
-	 * argument ContentObject
-	 * @param co
+	 * argument name
+	 */
+	public static Interest next(ContentName name) {
+		return next(name, null);
+	}
+	
+	public static Interest next(ContentName name, byte[][] omissions) {
+		return constructInterest(name, constructFilter(omissions), new Integer(ORDER_PREFERENCE_LEFT | ORDER_PREFERENCE_ORDER_NAME));
+	}
+	
+	/**
+	 * Construct an Interest that will give you the last content after the argument name
+	 * @param name
 	 * @return
+	 */
+	public static Interest last(ContentName name) {
+		return last(name, null);
+	}
+	
+	public static Interest last(ContentName name, byte[] [] omissions) {
+		return constructInterest(name, constructFilter(omissions), new Integer(ORDER_PREFERENCE_RIGHT | ORDER_PREFERENCE_ORDER_NAME));
+	}
+	
+	/**
+	 * Construct an interest to exclude the objects in the filter
+	 * @param co
+	 * @param exclude
+	 * @return
+	 */
+	public static Interest exclude(ContentName name, byte[][] omissions) {
+		return constructInterest(name, constructFilter(omissions), null);
+	}
+	
+	public static ExcludeFilter constructFilter(byte [][] omissions) {
+		if (omissions == null || omissions.length == 0)
+			return null;
+		Comparator<byte[]> comparator = new ByteArrayCompare();
+		Arrays.sort(omissions, comparator);
+		ArrayList<ExcludeElement> elements = new ArrayList<ExcludeElement>();
+		int filterCount = 0;
+		boolean needNewElement = omissions.length <= OPTIMUM_FILTER_SIZE;
+		BloomFilter currentFilter = null;;
+		if (!needNewElement) {
+			currentFilter = createBloom();
+			elements.add(new ExcludeElement(null, currentFilter));
+		}
+		for (byte[] omission : omissions) {
+			if (filterCount > OPTIMUM_FILTER_SIZE) {
+				needNewElement = true;
+				filterCount = 0;
+			}
+			if (needNewElement) {
+				currentFilter = createBloom();
+				elements.add(new ExcludeElement(omission, currentFilter));
+				needNewElement = false;
+			} else {
+				currentFilter.insert(omission);
+				filterCount++;
+			}
+		}
+		return new ExcludeFilter(elements);
+	}
+	
+	private static BloomFilter createBloom() {
+		byte[] seed = new byte[4];
+		BloomFilter.createSeed(seed);
+		return new BloomFilter(OPTIMUM_FILTER_SIZE, seed);
+	}
+	
+	/**
+	 * Construct an interest that will give you the next content after the
+	 * argument ContentObject
 	 */
 	public static Interest next(ContentObject co, Integer prefixCount) {
 		ArrayList<byte []>components = co.name().components();
 		components.add(co.contentDigest());
 		ContentName nextName = new ContentName(components.size(), components, 
 				prefixCount == null ? components.size() - 2 : prefixCount);
-		Interest interest = new Interest(nextName);
-		interest.orderPreference(ORDER_PREFERENCE_LEFT | ORDER_PREFERENCE_ORDER_NAME);
+		return next(nextName);
+	}
+
+	public static Interest constructInterest(ContentName name,  ExcludeFilter filter,
+					Integer orderPreference) {
+		Interest interest = new Interest(name);
+		if (null != orderPreference)
+			interest.orderPreference(orderPreference);
+		if (null != filter)
+			interest.excludeFilter(filter);
 		return interest;
 	}
 	

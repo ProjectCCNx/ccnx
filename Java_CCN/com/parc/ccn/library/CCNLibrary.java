@@ -26,7 +26,6 @@ import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.content.LinkReference;
-import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
@@ -246,6 +245,30 @@ public class CCNLibrary extends CCNBase {
 			throw new IOException("Cannot canonicalize a standard container!");
 		}
 	}
+	
+	public ContentObject put(
+			ContentName name, 
+			ContentName[] references) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InterruptedException {
+		return put(name, references, null, null, null);
+	}
+	
+	public ContentObject put(
+			ContentName name, 
+			ContentName[] references,
+			PublisherKeyID publisher) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InterruptedException {
+		return put(name, references, publisher, null, null);
+	}
+	
+	public ContentObject put(
+			ContentName name, 
+			ContentName[] references,
+			PublisherKeyID publisher, KeyLocator locator,
+			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InterruptedException {
+		LinkReference[] lrs = new LinkReference[references.length];
+		for (int i = 0; i < lrs.length; i++)
+			lrs[i] = new LinkReference(references[i]);
+		return put(name, lrs, publisher, locator, signingKey);
+	}
 
 	/**
 	 * Use the same publisherID that we used originally.
@@ -255,48 +278,51 @@ public class CCNLibrary extends CCNBase {
 	 */
 	public ContentObject addToCollection(
 			ContentName name,
-			LinkReference [] references,
+			ContentName [] references,
 			long timeout) throws IOException, InterruptedException, SignatureException {
-		ArrayList<LinkReference> al = getCollectionReferences(name, timeout);
+		ArrayList<ContentName> al = getCollectionReferences(name, timeout);
 		al.addAll(Arrays.asList(references));
 		return putCollectionReferences(name, al);
 	}
 
 	public ContentObject removeFromCollection(
 			ContentName name,
-			LinkReference [] references,
+			ContentName [] references,
 			long timeout) throws IOException, InterruptedException, SignatureException {
-		ArrayList<LinkReference> al = removeCollectionReferences(name, references, timeout);
+		ArrayList<ContentName> al = removeCollectionReferences(name, references, timeout);
 		// XXX should we do anything different if there are no references left?
 		return putCollectionReferences(name, al);
 	}
 	
 	public ContentObject updateCollection(
 			ContentName name,
-			LinkReference [] referencesToAdd,
-			LinkReference [] referencesToRemove,
+			ContentName [] referencesToAdd,
+			ContentName [] referencesToRemove,
 			long timeout) throws IOException, InterruptedException, SignatureException {
-		ArrayList<LinkReference> al = removeCollectionReferences(name, referencesToRemove, timeout);
+		ArrayList<ContentName> al = removeCollectionReferences(name, referencesToRemove, timeout);
 		al.addAll(Arrays.asList(referencesToAdd));
 		return putCollectionReferences(name, al);
 	}
 	
-	private ArrayList<LinkReference> getCollectionReferences(ContentName name, long timeout) throws IOException, InterruptedException {
+	private ArrayList<ContentName> getCollectionReferences(ContentName name, long timeout) throws IOException, InterruptedException {
 		Collection collection = getCollection(name, timeout);
-		return collection.contents();
+		ArrayList<ContentName> list = new ArrayList<ContentName>();
+		for (LinkReference lr : collection.contents())
+			list.add(lr.targetName());
+		return list;
 	}
 	
-	private ContentObject putCollectionReferences(ContentName name, ArrayList<LinkReference> references) throws SignatureException, IOException, InterruptedException {
+	private ContentObject putCollectionReferences(ContentName name, ArrayList<ContentName> references) throws SignatureException, IOException, InterruptedException {
 		LinkReference newReferences[] = new LinkReference[references.size()];
 		return put(name, references.toArray(newReferences));
 	}
 	
-	private ArrayList<LinkReference> removeCollectionReferences(ContentName name, LinkReference[] references, long timeout) throws IOException, InterruptedException {
-		ArrayList<LinkReference> al = getCollectionReferences(name, timeout);
-		Iterator<LinkReference> it = al.iterator();
+	private ArrayList<ContentName> removeCollectionReferences(ContentName name, ContentName[] references, long timeout) throws IOException, InterruptedException {
+		ArrayList<ContentName> al = getCollectionReferences(name, timeout);
+		Iterator<ContentName> it = al.iterator();
 		while (it.hasNext()) {
-			LinkReference reference = it.next();
-			for (LinkReference removeReference : references) {
+			ContentName reference = it.next();
+			for (ContentName removeReference : references) {
 				if (reference.equals(removeReference)) {
 					it.remove();
 					break;
@@ -1398,9 +1424,9 @@ public class CCNLibrary extends CCNBase {
 	 * @throws InterruptedException
 	 * @throws InvalidParameterException
 	 */
-	public ContentObject getNext(ContentName name, ExcludeFilter omissions, long timeout) 
+	public ContentObject getNext(ContentName name, byte[][] omissions, long timeout) 
 			throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException {
-		return generalGet(name, new Integer(Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME), omissions, timeout);
+		return get(Interest.next(name, omissions), timeout);
 	}
 	
 	public ContentObject getNext(ContentName name, long timeout)
@@ -1409,10 +1435,10 @@ public class CCNLibrary extends CCNBase {
 		return getNext(name, null, timeout);
 	}
 	
-	public ContentObject getNext(ContentObject content, int prefixCount, ExcludeFilter ommissions, long timeout) 
+	public ContentObject getNext(ContentObject content, int prefixCount, byte[][] omissions, long timeout) 
 			throws InvalidParameterException, MalformedContentNameStringException, 
 			IOException, InterruptedException {
-		return getNext(contentObjectToContentName(content, prefixCount), ommissions, timeout);
+		return getNext(contentObjectToContentName(content, prefixCount), omissions, timeout);
 	}
 	
 	/**
@@ -1428,9 +1454,9 @@ public class CCNLibrary extends CCNBase {
 	 * @throws InterruptedException
 	 * @throws InvalidParameterException
 	 */
-	public ContentObject getLatest(ContentName name, ExcludeFilter omissions, long timeout) 
+	public ContentObject getLatest(ContentName name, byte[][] omissions, long timeout) 
 			throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException {
-		return generalGet(name, new Integer(Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME), omissions, timeout);
+		return get(Interest.last(name, omissions), timeout);
 	}
 	
 	public ContentObject getLatest(ContentName name, long timeout) throws InvalidParameterException, MalformedContentNameStringException, 
@@ -1454,24 +1480,14 @@ public class CCNLibrary extends CCNBase {
 	 * @throws IOException
 	 * @throws InterruptedException
 	 */
-	public ContentObject getExcept(ContentName name, ExcludeFilter omissions, long timeout) throws InvalidParameterException, MalformedContentNameStringException, 
+	public ContentObject getExcept(ContentName name, byte[][] omissions, long timeout) throws InvalidParameterException, MalformedContentNameStringException, 
 			IOException, InterruptedException {
-		return generalGet(name, null, omissions, timeout);
+		return get(Interest.exclude(name, omissions), timeout);
 	}
 	
 	private ContentName contentObjectToContentName(ContentObject content, int prefixCount) {
 		ContentName cocn = content.name();
 		cocn.components().add(content.contentDigest());
 		return new ContentName(cocn.count(), cocn.components(), new Integer(prefixCount));
-	}
-	
-	private ContentObject generalGet(ContentName name, Integer orderPreference, ExcludeFilter omissions, long timeout) 
-			throws IOException, InterruptedException, MalformedContentNameStringException {
-		Interest interest = new Interest(name);
-		if (null != orderPreference)
-			interest.orderPreference(orderPreference);
-		if (null != omissions)
-			interest.excludeFilter(omissions);
-		return get(interest, timeout);
 	}
 }

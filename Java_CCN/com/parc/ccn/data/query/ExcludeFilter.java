@@ -101,12 +101,6 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		decoder.readStartElement(EXCLUDE_ELEMENT);
 		
-		/*
-		 * XXX following should be eliminated when the schema changes
-		 */
-		//decoder.readBinaryElement(BLOOM_SEED);
-		decoder.readBinaryElement(BLOOM);
-		
 		_values = new ArrayList<ExcludeElement>();
 		
 		while (decoder.peekStartElement(ExcludeElement.COMPONENT) || decoder.peekStartElement(BLOOM)) {
@@ -125,12 +119,6 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 		if (empty())
 			return;
 		encoder.writeStartElement(EXCLUDE_ELEMENT);
-		
-		/*
-		 * XXX Following should be eliminated when schema changes
-		 */
-		//encoder.writeElement(BLOOM_SEED, "0".getBytes());
-		encoder.writeElement(BLOOM, "0".getBytes());
 
 		if (null != values()) {
 			for (ExcludeElement element : values()) {
