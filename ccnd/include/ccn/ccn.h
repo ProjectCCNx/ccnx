@@ -553,7 +553,7 @@ int
 ccn_name_comp_get(const unsigned char *data,
                   const struct ccn_indexbuf *indexbuf,
                   unsigned int i,
-                  const unsigned char **comp, size_t *size)
+                  const unsigned char **comp, size_t *size);
 
 /***********************************
  * Reading content objects
