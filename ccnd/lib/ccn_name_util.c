@@ -64,7 +64,7 @@ ccn_name_append_components(struct ccn_charbuf *c,
     return(res);
 }
 
-static int
+int
 ccn_name_comp_get(const unsigned char *data,
                   const struct ccn_indexbuf *indexbuf,
                   unsigned int i,
