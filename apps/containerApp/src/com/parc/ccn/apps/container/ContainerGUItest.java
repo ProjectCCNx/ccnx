@@ -31,14 +31,14 @@ public class ContainerGUItest extends JPanel implements ActionListener, CCNInter
 	 */
 	private static final long serialVersionUID = 7198145969014262490L;
 	protected JTextField textField;
-    protected JTextArea textArea;
+    protected static JTextArea textArea;
     final static String newline = "\n";
     protected CCNLibrary library;
     
     /* Model */
     protected Collection currentDirectory;
     
-    protected String collections;
+    protected ArrayList<ContentName> namedContent = new ArrayList<ContentName>();
     
     protected static final String DIRECTORY_NAME = "/parc.com/ContainerApp/Directory";
     protected static final long DEFAULT_TIMEOUT = 500;
@@ -82,13 +82,13 @@ public class ContainerGUItest extends JPanel implements ActionListener, CCNInter
 		Interest interest = new Interest(directoryName);
 		interest.orderPreference(new Integer(Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME));
 		
-   		// When I want to get some content 
+   		// When I want to get some content, not quite sure how these interest thingys work 
 		// library.expressInterest(interest, this);
     }
 
     public void actionPerformed(ActionEvent evt) {
         String text = textField.getText();
-        textArea.append(text + newline);
+        
         
         ContentName name = null;
 		try {
@@ -100,6 +100,12 @@ public class ContainerGUItest extends JPanel implements ActionListener, CCNInter
         //put content into ccnd
 		Library.logger().info(name.toString());
         currentDirectory.add(name);
+        
+        //add to model - actually we should be getting this from the listener
+        namedContent.add(name);
+        //repopulate the list with the 
+        populateList();
+        
         textField.selectAll();
 
         //Make sure the new text is visible, even if there
@@ -107,6 +113,14 @@ public class ContainerGUItest extends JPanel implements ActionListener, CCNInter
         textArea.setCaretPosition(textArea.getDocument().getLength());
     }
     
+    private void populateList()
+    {
+    	for(ContentName text:namedContent)
+    	{
+    		textArea.append(text.toString() + newline);	
+    	}
+    	
+    }
     /**
      * Create the GUI and show it.  For thread safety,
      * this method should be invoked from the
@@ -147,9 +161,10 @@ public class ContainerGUItest extends JPanel implements ActionListener, CCNInter
 		for (ContentObject result : results) {
 			try {
 				newCollection = library.decodeCollection(result);
-				String text = "New directory: " + result.name();
+				
 				Library.logger().info("New directory: " + result.name());
 				
+				//String text = "New directory: " + result.name();
 				//textArea.append(text + newline);
 			} catch (IOException e) {
 				continue;
