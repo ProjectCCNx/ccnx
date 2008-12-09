@@ -314,7 +314,9 @@ public class CCNLibrary extends CCNBase {
 	
 	private ContentObject putCollectionReferences(ContentName name, ArrayList<ContentName> references) throws SignatureException, IOException, InterruptedException {
 		LinkReference newReferences[] = new LinkReference[references.size()];
-		return put(name, references.toArray(newReferences));
+		for (int i = 0; i < references.size(); i++)
+			newReferences[i] = new LinkReference(references.get(i));
+		return put(name, newReferences);
 	}
 	
 	private ArrayList<ContentName> removeCollectionReferences(ContentName name, ContentName[] references, long timeout) throws IOException, InterruptedException {

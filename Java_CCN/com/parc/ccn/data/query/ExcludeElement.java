@@ -54,15 +54,17 @@ public class ExcludeElement extends GenericXMLEncodable implements XMLEncodable,
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		if (decoder.peekStartElement(COMPONENT))
 			_component = decoder.readBinaryElement(COMPONENT);
-		if (decoder.peekStartElement(BLOOM))
-			_bloom = new BloomFilter(decoder.readBinaryElement(BLOOM));
+		if (decoder.peekStartElement(BLOOM)) {
+			_bloom = new BloomFilter();
+			_bloom.decode(decoder);
+		}
 	}
 	
 	public void encode(XMLEncoder encoder) throws XMLStreamException {
 		if (component() != null)
 			encoder.writeElement(COMPONENT, _component);
 		if (bloomFilter() != null)
-			encoder.writeElement(BLOOM, bloomFilter().bloom());
+			bloomFilter().encode(encoder);
 	}
 	
 	public boolean validate() {

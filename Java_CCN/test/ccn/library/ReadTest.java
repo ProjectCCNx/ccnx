@@ -4,7 +4,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.parc.ccn.data.ContentName;
@@ -14,7 +16,7 @@ import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.ExcludeElement;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.data.util.DataUtils;
 
 /**
  * 
@@ -30,8 +32,6 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	
 	private byte [] bloomSeed = "burp".getBytes();
 	private ExcludeFilter ef = null;
-	private static int excludeTestN = 35;
-	private static int excludeTestNExcludes = excludeTestN - 1;
 	
 	private String [] bloomTestValues = {
             "one", "two", "three", "four",
@@ -42,7 +42,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	
 	private void excludeSetup() {
 		BloomFilter bf1 = new BloomFilter(13, bloomSeed);
-		ExcludeElement e1 = new ExcludeElement("aaaaaaaa".getBytes(), bf1);
+		ExcludeElement e1 = new ExcludeElement("aaa".getBytes(), bf1);
 		ExcludeElement e2 = new ExcludeElement("zzzzzzzz".getBytes());
 		
 		for (String value : bloomTestValues) {
@@ -71,7 +71,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 			int tValue = rand.nextInt(count - 1);
 			ContentName prefix = ContentName.fromNative("/getNext/" + new Integer(tValue).toString(), 1);
 			ContentName cn = new ContentName(prefix, ContentObject.contentDigest(Integer.toString(count - tValue)));
-			ContentObject result = library.getNext(cn, CCNLibrary.NO_TIMEOUT);
+			ContentObject result = library.getNext(cn, 1000);
 			checkResult(result, tValue + 1);
 		}
 		System.out.println("getNext test finished");
@@ -91,14 +91,13 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 			if (i > 1) {
 				if (tValue == highest)
 					tValue--;
-				ContentObject result = library.getLatest(ContentName.fromNative("/getLatest/" + Integer.toString(tValue), 1), CCNLibrary.NO_TIMEOUT);
+				ContentObject result = library.getLatest(ContentName.fromNative("/getLatest/" + Integer.toString(tValue), 1), 1000);
 				checkResult(result, highest);
 			}
 		}
 		System.out.println("getLatest test finished");
 	}
 	
-	/*
 	@Test
 	public void excludeFilterTest() throws Throwable {
 		System.out.println("excludeFilterTest test started");
@@ -107,7 +106,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 			Thread.sleep(rand.nextInt(50));
 			library.put("/excludeFilterTest/" + value, value);
 		}
-		library.put("/excludeFilterTest/aaaaaaaa", "aaaaaaaa");
+		library.put("/excludeFilterTest/aaa", "aaa");
 		library.put("/excludeFilterTeset/zzzzzzzz", "zzzzzzzz");
 		Interest interest = Interest.constructInterest(ContentName.fromNative("/excludeFilterTest/"), ef, null);
 		ContentObject content = library.get(interest, 1000);
@@ -119,26 +118,35 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 		Assert.assertFalse(content == null);
 		assertEquals(content.name().toString(), shouldGetIt);
 		System.out.println("excludeFilterTest test finished");
-	} */
+	}
 	
-	/*
 	@Test
 	public void getExcludeTest() throws Throwable {
-		byte [][] excludes = new byte[excludeTestNExcludes][];
-		for (int i = 0; i < excludeTestN; i++) {
+		System.out.println("getExclude test started");
+		// Try with single bloom filter
+		excludeTest("/getExcludeTest1", Interest.OPTIMUM_FILTER_SIZE/2);
+		// Try with multi part filter
+		excludeTest("/getExcludeTest2", Interest.OPTIMUM_FILTER_SIZE + 5);
+		System.out.println("getExclude test finished");
+	}
+	
+	private void excludeTest(String prefix, int nFilters) throws Throwable {
+		byte [][] excludes = new byte[nFilters - 1][];
+		for (int i = 0; i < nFilters; i++) {
 			String value = new Integer(i).toString();
-			if (i < excludeTestNExcludes)
+			if (i < (nFilters - 1))
 				excludes[i] = value.getBytes();
-			String name = "/getExcludeTest/" + value;
+			String name = prefix + "/" + value;
 			library.put(name, value);
 		}
-		ContentObject content = library.getExcept(ContentName.fromNative("/getExcludeTest/"), excludes, 1000);
-		if (null == content || !Arrays.equals(content.content(), new Integer(excludeTestNExcludes).toString().getBytes())) {
+		ContentObject content = library.getExcept(ContentName.fromNative(prefix + "/"), excludes, 50000);
+		if (null == content || !Arrays.equals(content.content(), new Integer((nFilters - 1)).toString().getBytes())) {
 			// Try one more time in case we got a false positive
-			content = library.getExcept(ContentName.fromNative("/getExcludeTest/"), excludes, 1000);
+			content = library.getExcept(ContentName.fromNative(prefix + "/"), excludes, 50000);
 		}
-		assertEquals(content.content(), new Integer(excludeTestNExcludes).toString().getBytes());
-	} */
+		Assert.assertFalse(content == null);
+		assertEquals(DataUtils.compare(content.content(), new Integer((nFilters - 1)).toString().getBytes()), 0);
+	}
 
 	public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
 		return null;

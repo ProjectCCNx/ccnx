@@ -77,7 +77,7 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 			// we don't want to use this filter. If its the same, we go on
 			// and catch it at the next value
 			if (ee.bloomFilter() != null) {
-				if (values().size() > i) {
+				if (values().size() > (i + 1)) {
 					byte [] nextComponent = values().get(i + 1).component();
 					if (DataUtils.compare(nextComponent, component) <= 0)
 						continue;

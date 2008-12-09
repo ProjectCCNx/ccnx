@@ -51,7 +51,7 @@ public class InterestTest {
 	
 	private void excludeSetup() {
 		BloomFilter bf1 = new BloomFilter(13, bloomSeed);
-		ExcludeElement e1 = new ExcludeElement("aaaaaaaa".getBytes(), bf1);
+		ExcludeElement e1 = new ExcludeElement("aaa".getBytes(), bf1);
 		ExcludeElement e2 = new ExcludeElement("zzzzzzzz".getBytes());
 		
 		try {

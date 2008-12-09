@@ -1,9 +1,16 @@
 package com.parc.ccn.data.query;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Random;
 
+import javax.xml.stream.XMLStreamException;
+
 import com.parc.ccn.data.util.DataUtils;
+import com.parc.ccn.data.util.XMLDecoder;
+import com.parc.ccn.data.util.XMLEncoder;
 
 /**
  * 
@@ -47,19 +54,11 @@ public class BloomFilter implements Comparable<BloomFilter> {
 	
 	/**
 	 * For decoding
-	 * @param bloom
 	 */
-	public BloomFilter(byte [] bloom) {
-		_bloom = bloom;
-	}
+	public BloomFilter() {}
 	
 	public void insert(byte [] key) {
-		long s = 0;
-		int shift = 24;
-		for (int i = 0; i < _seed.length && i < 4; i++) {
-			s |= _seed[i] << shift;
-			shift -= 8;
-		}
+		long s = computeSeed();
 		for (int i = 0; i < key.length; i++) 
 			s = nextHash(s, key[i] + 1);
 		long m = (8*_bloom.length - 1) & ((1 << _lgBits) - 1);
@@ -105,6 +104,37 @@ public class BloomFilter implements Comparable<BloomFilter> {
 	    // Michael's comment: fsr primitive polynomial (modulo 2) x**31 + x**13 + 1
 	    s = ((s >> k) ^ (b << (31 - k)) ^ (b << (13 - k))) + u;
 	    return(s & 0x7FFFFFFF);
+	}
+	
+	public void decode(XMLDecoder decoder) throws XMLStreamException {
+		ByteArrayInputStream bais = new ByteArrayInputStream(decoder.readBinaryElement(ExcludeElement.BLOOM));
+		_lgBits = bais.read();
+		_nHash = bais.read();
+		bais.skip(2); // method & reserved - ignored for now
+		_seed = new byte[4];
+		for (int i = 0; i < _seed.length; i++)
+			_seed[i] = (byte)bais.read();
+		int i = 0;
+		while (bais.available() > 0)
+			_bloom[i++] = (byte)bais.read();	
+	}
+	
+	public void encode(XMLEncoder encoder) throws XMLStreamException {
+		try {
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			baos.write((byte)_lgBits);
+			baos.write((byte)_nHash);
+			baos.write('A');	// "method" - must be 'A' for now
+			baos.write(0);		// "reserved" - must be 0 for now
+			baos.write(_seed);
+			int size = 1 << (_lgBits - 3);
+			for (int i = 0; i < size; i++)
+				baos.write(_bloom[i]);
+			encoder.writeElement(ExcludeElement.BLOOM, baos.toByteArray());
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	public int compareTo(BloomFilter o) {

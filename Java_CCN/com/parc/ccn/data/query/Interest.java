@@ -98,7 +98,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	protected byte [] _nonce;
 	protected byte [] _responseFilter;
 	
-	private static int OPTIMUM_FILTER_SIZE = 10;
+	public static int OPTIMUM_FILTER_SIZE = 100;
 	
 	/**
 	 * TODO: DKS figure out how to handle encoding faster,
@@ -278,7 +278,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		Arrays.sort(omissions, comparator);
 		ArrayList<ExcludeElement> elements = new ArrayList<ExcludeElement>();
 		int filterCount = 0;
-		boolean needNewElement = omissions.length <= OPTIMUM_FILTER_SIZE;
+		boolean needNewElement = omissions.length > OPTIMUM_FILTER_SIZE;
 		BloomFilter currentFilter = null;;
 		if (!needNewElement) {
 			currentFilter = createBloom();

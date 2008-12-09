@@ -313,8 +313,8 @@ public class CCNLibraryTest extends LibraryTestBase {
 		Collection collection = library.getCollection(collectionName, 5000);
 		ArrayList<LinkReference> checkReferences = collection.contents();
 		Assert.assertEquals(checkReferences.size(), 2);
-		Assert.assertEquals(references[0], checkReferences.get(0));
-		Assert.assertEquals(references[1], checkReferences.get(1));
+		Assert.assertEquals(references[0], checkReferences.get(0).targetName());
+		Assert.assertEquals(references[1], checkReferences.get(1).targetName());
 		
 		// test addToCollection
 		ContentName[] newReferences = new ContentName[2];
@@ -324,22 +324,22 @@ public class CCNLibraryTest extends LibraryTestBase {
 		collection = library.getCollection(collectionName, 5000);
 		checkReferences = collection.contents();
 		Assert.assertEquals(checkReferences.size(), 4);
-		Assert.assertEquals(newReferences[0], checkReferences.get(2));
-		Assert.assertEquals(newReferences[1], checkReferences.get(3));
+		Assert.assertEquals(newReferences[0], checkReferences.get(2).targetName());
+		Assert.assertEquals(newReferences[1], checkReferences.get(3).targetName());
 		
 		library.removeFromCollection(collectionName, newReferences, 5000);
 		collection = library.getCollection(collectionName, 5000);
 		checkReferences = collection.contents();
 		Assert.assertEquals(checkReferences.size(), 2);
-		Assert.assertEquals(references[0], checkReferences.get(0));
-		Assert.assertEquals(references[1], checkReferences.get(1));
+		Assert.assertEquals(references[0], checkReferences.get(0).targetName());
+		Assert.assertEquals(references[1], checkReferences.get(1).targetName());
 		
 		library.updateCollection(collectionName, newReferences, references, 5000);
 		collection = library.getCollection(collectionName, 5000);
 		checkReferences = collection.contents();
 		Assert.assertEquals(checkReferences.size(), 2);
-		Assert.assertEquals(newReferences[0], checkReferences.get(0));
-		Assert.assertEquals(newReferences[1], checkReferences.get(1));
+		Assert.assertEquals(newReferences[0], checkReferences.get(0).targetName());
+		Assert.assertEquals(newReferences[1], checkReferences.get(1).targetName());
 	}
 
 	class TestListener extends BasicInterestListener {
