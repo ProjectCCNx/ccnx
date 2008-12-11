@@ -74,16 +74,12 @@ public class ContainerGUItest extends JPanel implements ActionListener, CCNInter
     	directoryName = ContentName.fromNative(DIRECTORY_NAME);
     	currentDirectory = library.getCollection(directoryName, DEFAULT_TIMEOUT);
     	
+    	
     	if (null == currentDirectory) {
     		ContentObject currentObject = library.put(directoryName, new LinkReference[0]);
     		currentDirectory = library.decodeCollection(currentObject);
      	}
-//   		Interest interest = Interest.latestVersionInterest(directoryName);
-		Interest interest = new Interest(directoryName);
-		interest.orderPreference(new Integer(Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME));
-		
-   		// When I want to get some content, not quite sure how these interest thingys work 
-		// library.expressInterest(interest, this);
+
     }
 
     public void actionPerformed(ActionEvent evt) {
@@ -98,13 +94,56 @@ public class ContainerGUItest extends JPanel implements ActionListener, CCNInter
 			e.printStackTrace();
 		}
         //put content into ccnd
-		Library.logger().info(name.toString());
+		
+		//Library.logger().info(name.toString());
         currentDirectory.add(name);
-        
+                
+        try {
+			library.put(name.toString(), "testing");
+		} catch (SignatureException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (MalformedContentNameStringException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+//		Interest interest = Interest.latestVersionInterest(directoryName);
+		Interest interest = new Interest(directoryName);
+		interest.orderPreference(new Integer(Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME));
+		
+		
+   		// When I want to get some content, not quite sure how these interest thingy works 
+		try {
+			library.expressInterest(interest, this);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		try {
+			ContentObject result = library.get(interest, 100000);
+			Library.logger().info(result.name().toString());
+			namedContent.add(result.name());
+	        //repopulate the list with the 
+	        populateList();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
         //add to model - actually we should be getting this from the listener
-        namedContent.add(name);
+        //namedContent.add(name);
         //repopulate the list with the 
-        populateList();
+        //populateList();
         
         textField.selectAll();
 
@@ -164,6 +203,11 @@ public class ContainerGUItest extends JPanel implements ActionListener, CCNInter
 				
 				Library.logger().info("New directory: " + result.name());
 				
+				//add to model - actually we should be getting this from the listener
+		        namedContent.add(result.name());
+		        //repopulate the list with the 
+		        populateList();
+		        
 				//String text = "New directory: " + result.name();
 				//textArea.append(text + newline);
 			} catch (IOException e) {
@@ -172,7 +216,7 @@ public class ContainerGUItest extends JPanel implements ActionListener, CCNInter
 		}
 		if (null != newCollection) {
 			currentDirectory = newCollection;
-						
+									
 			// Call view to tell it model has changed
 			//String text = "Content Added to CCND";
 			//textArea.append(text + newline);

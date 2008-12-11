@@ -3,5 +3,6 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/CCN"/>
+	<classpathentry kind="lib" path="/CPOF/lib/ccn.jar" sourcepath="/CCN"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
