@@ -6,6 +6,11 @@ import java.io.IOException;
 import java.io.InputStream;
 
 public class Utils {
+	
+	public static void daemonize() {
+		System.out.close();
+		System.err.close();
+	}
 
 	public static byte[] getBytesFromFile(File file) throws IOException {
         InputStream is = new FileInputStream(file);

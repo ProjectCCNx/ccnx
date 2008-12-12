@@ -145,7 +145,7 @@ public class Daemon {
 		}
 	}
 	
-	public Daemon(String args[]) {_daemonName = "namelessDaemon";}
+	public Daemon() {_daemonName = "namelessDaemon";}
 	
 	public String daemonName() { return _daemonName; }
 	
@@ -160,6 +160,14 @@ public class Daemon {
 			e.printStackTrace();
 		}
 		System.exit(0);
+	}
+	
+	/**
+	 * Overridden by subclasses
+	 */
+	protected void initialize(String[] args, Daemon daemon) {
+		System.out.println("Unknown option " + args[1]);
+		daemon.usage();
 	}
 
 	/**
@@ -315,7 +323,7 @@ public class Daemon {
 		
 		Mode mode = Mode.MODE_UNKNOWN;
 
-		if (0 == args.length) { 
+		if (0 == args.length) {
 			mode = Mode.MODE_INTERACTIVE;
 		} else if (args[0].equals("-start")) {
 			mode = Mode.MODE_START;
@@ -323,35 +331,29 @@ public class Daemon {
 			mode = Mode.MODE_STOP;
 		} else if (args[0].equals("-daemon")) {
 			mode = Mode.MODE_DAEMON;
-		} else if (args.length == 1) {
-			mode = Mode.MODE_INTERACTIVE;
 		} else {
-			System.out.println("Unknown option " + args[1]);
-			daemon.usage();
-		}
+			daemon.initialize(args, daemon);
+			mode = Mode.MODE_INTERACTIVE;
+		} 
 
-		// enums are capable of very sophisticated behavior
-		// unfortunately, straightforward switching is not among it...
 		try {
-			if (mode == Mode.MODE_INTERACTIVE) {
+			switch (mode) {
+			  case MODE_INTERACTIVE:
 				Library.logger().info("Running " + daemon.daemonName() + " in the foreground.");
 				WorkerThread wt = daemon.createWorkerThread();
 				wt.start();
 				wt.join();
 				System.exit(0);
-			} else if (mode == Mode.MODE_START) {
+			  case MODE_START:
 				startDaemon(daemon.daemonName(), daemon.getClass().getName(), args);
 				System.exit(0);
-
-			} else if (mode == Mode.MODE_STOP) {
+			  case MODE_STOP:
 				stopDaemon(daemon.daemonName());
 				System.exit(0);
-
-			} else if (mode == Mode.MODE_DAEMON) {
+			  case MODE_DAEMON:
 				// this will sit in a loop
 				runAsDaemon(daemon);
-
-			} else {
+			  default:
 				daemon.usage();
 			}
 			
@@ -367,7 +369,7 @@ public class Daemon {
 		// Need to override in each subclass to make proper class.
 		Daemon daemon = null;
 		try {
-			daemon = new Daemon(args);
+			daemon = new Daemon();
 			runDaemon(daemon, args);
 		} catch (Exception e) {
 			Library.logger().warning("Error attempting to start daemon.");

@@ -18,7 +18,7 @@ import com.parc.ccn.Library;
  * @author smetters
  *
  */
-public class RepositoryDaemon extends Daemon {
+public class JackRabbitRepositoryDaemon extends Daemon {
 	
 	protected static class RepositoryWorkerThread extends Daemon.WorkerThread {
 
@@ -52,8 +52,8 @@ public class RepositoryDaemon extends Daemon {
 		}
 	}
 
-	public RepositoryDaemon(String args[]) {
-		super(args);
+	public JackRabbitRepositoryDaemon(String args[]) {
+		super();
 		_daemonName = "jackrabbitRepositoryDaemon";
 	}
 	
@@ -76,7 +76,7 @@ public class RepositoryDaemon extends Daemon {
 		// Need to override in each subclass to make proper class.
 		Daemon daemon = null;
 		try {
-			daemon = new RepositoryDaemon(args);
+			daemon = new JackRabbitRepositoryDaemon(args);
 			runDaemon(daemon, args);
 			
 		} catch (Exception e) {
