@@ -91,10 +91,32 @@ public class RFSTest {
 		ContentName longName = ContentName.fromNative("/repoTest/" + tooLongName);
 		repo.saveContent(CCNLibrary.getContent(longName, "Long name!".getBytes()));
 		checkData(repo, longName, "Long name!");
+		digest2 = CCNLibrary.getContent(longName, "Testing2".getBytes());
+		repo.saveContent(digest2);
+		digestName = new ContentName(longName, digest2.contentDigest());
+		checkData(repo, digestName, "Testing2");
+		
+		/*
+		System.out.println("Repotest - Testing get next and get last");
+		ContentName name1 = ContentName.fromNative("/repoTest/nextTest/aaa");
+		repo.saveContent(CCNLibrary.getContent(name1, "aaa".getBytes()));
+		ContentName name2 = ContentName.fromNative("/repoTest/nextTest/bbb");
+		repo.saveContent(CCNLibrary.getContent(name2, "bbb".getBytes()));
+		ContentName name3= ContentName.fromNative("/repoTest/nextTest/ccc");
+		repo.saveContent(CCNLibrary.getContent(name3, "ccc".getBytes()));
+		checkData(repo, Interest.next(name1), "bbb"); */
+		
+		System.out.println("Repotest - Testing reinitialization of repo");
+		repo = new RFSImpl();
+		repo.initialize(new String[] {"-root", _fileTestDir});
+		checkData(repo, longName, "Long name!");
 	}
 	
 	private void checkData(Repository repo, ContentName name, String data) throws RepositoryException {
-		Interest interest = new Interest(name);
+		checkData(repo, new Interest(name), data);
+		
+	}
+	private void checkData(Repository repo, Interest interest, String data) throws RepositoryException {
 		ContentObject testContent = repo.getContent(interest);
 		Assert.assertFalse(testContent == null);
 		Assert.assertEquals(new String(testContent.content()), data);		

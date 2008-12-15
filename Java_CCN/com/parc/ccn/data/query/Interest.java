@@ -51,7 +51,7 @@ import com.parc.ccn.security.keys.TrustManager;
  * </xs:sequence>
  * </xs:complexType>
  *
- * @author smetters
+ * @author smetters, rasmusse
  *
  */
 public class Interest extends GenericXMLEncodable implements XMLEncodable, Comparable<Interest> {

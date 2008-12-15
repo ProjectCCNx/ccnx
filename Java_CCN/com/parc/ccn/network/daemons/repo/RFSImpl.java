@@ -9,6 +9,7 @@ import java.io.StringWriter;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.StringTokenizer;
 import java.util.TreeMap;
 
 import org.apache.jackrabbit.util.Base64;
@@ -61,41 +62,101 @@ public class RFSImpl implements Repository {
 		_repositoryFile = new File(_repositoryRoot);
 		_repositoryFile.mkdirs();
 		_locker = new RFSLocks(_repositoryRoot + File.separator + META_DIR);
+		constructEncodedMap(new File(_repositoryRoot + File.separator + META_DIR + File.separator + ENCODED_FILES));
 		return outArgs;
 	}
+	
+	private void constructEncodedMap(File root) {
+		if (root.isDirectory()) {
+			File[] files = root.listFiles();
+			for (File file : files) {
+				if (file.isDirectory())
+					constructEncodedMap(file);
+				else if (file.isFile()) 
+					mapFromPath(file);
+			}
+		}
+	}
+	
+	private void mapFromPath(File file) {
+		StringTokenizer st = new StringTokenizer(file.getPath(), new String(File.separator));
+		ArrayList<byte[]> components = new ArrayList<byte[]>();
+		boolean encodedArea = false;
+		String currentValue = "";
+		while (st.hasMoreTokens()) {
+			String token = st.nextToken();
+			if (encodedArea) {
+				byte type = (byte)token.charAt(0);
+				switch (type) {
+				  case UTF8_COMPONENT:
+					  currentValue += token.substring(1);
+					  components.add(currentValue.getBytes());
+					  currentValue = "";
+					  break;
+				  case BASE64_COMPONENT:	// Not really supported yet
+					  currentValue = token.substring(1);
+					  break;
+				  case SPLIT_COMPONENT:
+					  currentValue += token.substring(1);
+					  break;
+				  default:
+					  currentValue += token;
+				  	  components.add(currentValue.getBytes());
+				  	  currentValue = "";
+					  break;
+				}
+			} else {
+				if (token.equals(ENCODED_FILES))
+					encodedArea = true;
+			}
+		}
+		byte [] digestComponent = components.remove(components.size() - 1);
+		ContentName cn = new ContentName(components.size(), components);
+		if (null != encodedFiles.get(cn)) {
+			components.add(components.size(), digestComponent);
+			cn = new ContentName(components.size(), components);
+		}
+		encodedFiles.put(cn, file);
+	}
 
-	/**
-	 * XXX - need to do much more to support the different interest behaviors here.
-	 * 
-	 * If the file exists directly, we assume its the right one.
-	 * If it has a subdirectory with one entry, we assume that's the digest.
-	 * If the file has no subdirectory and doesn't match directly, we assume the last element is a
-	 * digest and try converting it for a match.
-	 */
 	public ContentObject getContent(Interest interest) throws RepositoryException {
-		ContentName checkedName = checkReserved(interest.name());
-		File file = new File(_repositoryFile + checkedName.toString());
+		TreeMap<ContentName, File>possibleMatches = getPossibleMatches(interest.name());
+		File file = null;
+		for (ContentName name : possibleMatches.keySet()) {
+			if (interest.matches(name, null)) {
+				file = possibleMatches.get(name);
+				break;
+			}
+		}
+		if (null == file || !file.exists())
+			file = checkSpecialFiles(interest.name());
+		return getContentFromFile(file);
+	}
+	 
+	private TreeMap<ContentName, File> getPossibleMatches(ContentName name) {
+		TreeMap<ContentName, File> results = new TreeMap<ContentName, File>();
+		File file = new File(_repositoryFile + name.toString());
 		if (file.isDirectory()) {
-			File[] dirFiles = file.listFiles();
-			if (dirFiles.length > 0)
-				file = dirFiles[0]; // arbitrary for the moment
+			for (File f : file.listFiles()) {
+				results.put(new ContentName(name, f.getName().getBytes()), f);
+			}
 		} else {
 			if (!file.exists()) {
 				/*
 				 * Try converting last piece to digest form
 				 */
-				if (checkedName.count() > 1) {
+				if (name.count() > 1) {
 					// Convert last component to "digest as file" form
-					ContentName newName = checkedName.clone();
-					String cnDigestString = cnDigestString(interest.name());
-					newName.components().remove(newName.count() - 1);
-					file = new File(_repositoryFile + newName.toString() + File.separator + cnDigestString);
+					ContentName encodedName = encodeDigest(name);
+					results.put(name, new File(_repositoryFile + encodedName.toString()));
 				}
 			}
 		}
-		if (!file.exists())
-			file = checkSpecialFiles(interest.name());
-		return getContentFromFile(file);
+		for (ContentName encodedName : encodedFiles.keySet()) {
+			if (encodedName.isPrefixOf(name))
+				results.put(encodedName, encodedFiles.get(encodedName));
+		}
+		return results;
 	}
 	
 	private ContentObject getContentFromFile(File fileName) throws RepositoryException {
@@ -114,9 +175,8 @@ public class RFSImpl implements Repository {
 	}
 
 	public void saveContent(ContentObject content) throws RepositoryException {
-		ContentName name = checkReserved(content.name());
 		try {
-			saveContentToFile(name, content);
+			saveContentToFile(content.name(), content);
 			return;
 		} catch (RepositoryException re) {}
 		
@@ -139,7 +199,12 @@ public class RFSImpl implements Repository {
 		String filePathName = _repositoryRoot + name.toString();
 		File dirFile = new File(filePathName);
 		dirFile.mkdirs();
-		saveContentToFile(new File(filePathName, convertDigest(content)), content);
+		ContentName newName = checkReserved(content.name()).clone();
+		newName.components().add(convertDigest(content).getBytes());
+		File file = new File(_repositoryRoot, newName.toString());
+		saveContentToFile(file, content);
+		if (isReserved(newName))
+			encodedFiles.put(content.name(), file);
 	}
 	
 	private void saveContentToFile(File file, ContentObject content) throws RepositoryException {
@@ -170,6 +235,10 @@ public class RFSImpl implements Repository {
 			name = reservedName;
 		}
 		return name;
+	}
+	
+	private boolean isReserved(ContentName name) {
+		return Arrays.equals(name.component(0), META_DIR.getBytes());
 	}
 	
 	/**
@@ -203,13 +272,23 @@ public class RFSImpl implements Repository {
 		System.out.println("Special name is: " + name.toString());
 		File dirFile = new File(_repositoryRoot + specialName.toString());
 		dirFile.mkdirs();
-		File file = new File(_repositoryRoot + specialName.toString(), convertDigest(content));
-		encodedFiles.put(name.clone(), file);
+		String convertedDigest = convertDigest(content);
+		File file = new File(_repositoryRoot + specialName.toString(), 
+					new String(new byte[]{UTF8_COMPONENT}) + convertedDigest);
+		ContentName keyName = name.clone();
+		if (null != encodedFiles.get(name)) {
+			// We already have this with a different digest - add the digest to the key
+			keyName.components().add(convertedDigest.getBytes());
+		}
+		encodedFiles.put(keyName, file);
 		return file;
 	}
 	
 	private File checkSpecialFiles(ContentName name) {
-		return encodedFiles.get(name);
+		File file = encodedFiles.get(name);
+		if (null == file)
+			file = encodedFiles.get(encodeDigest(name));
+		return file;
 	}
 	
 	private String convertDigest(ContentObject content) {
@@ -241,5 +320,14 @@ public class RFSImpl implements Repository {
 	 */
 	private String cnDigestString(ContentName name) {
 		return convertValue(name.component(name.components().size() - 1));
+	}
+	
+	private ContentName encodeDigest(ContentName name) {
+		// Convert last component to "digest as file" form
+		ContentName newName = name.clone();
+		String cnDigestString = cnDigestString(newName);
+		newName.components().remove(newName.count() - 1);
+		newName.components().add(cnDigestString.getBytes());
+		return newName;
 	}
 }
