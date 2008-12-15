@@ -245,7 +245,10 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	}
 	
 	public static Interest next(ContentName name, byte[][] omissions) {
-		return constructInterest(name, constructFilter(omissions), new Integer(ORDER_PREFERENCE_LEFT | ORDER_PREFERENCE_ORDER_NAME));
+		ArrayList<byte []>components = name.components();
+		ContentName nextName = new ContentName(components.size(), components, 
+				name.prefixCount() == null ? components.size() - 1 : name.prefixCount());
+		return constructInterest(nextName, constructFilter(omissions), new Integer(ORDER_PREFERENCE_LEFT | ORDER_PREFERENCE_ORDER_NAME));
 	}
 	
 	/**
