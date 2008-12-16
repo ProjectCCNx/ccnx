@@ -69,6 +69,11 @@ public class RFSImpl implements Repository {
 		return outArgs;
 	}
 	
+	/**
+	 * Build initial map of encoded files already in the repository
+	 * 
+	 * @param root
+	 */
 	private void constructEncodedMap(File root) {
 		if (root.isDirectory()) {
 			File[] files = root.listFiles();
@@ -96,8 +101,10 @@ public class RFSImpl implements Repository {
 					  components.add(currentValue.getBytes());
 					  currentValue = "";
 					  break;
-				  case BASE64_COMPONENT:	// Not really supported yet
-					  currentValue = token.substring(1);
+				  case BASE64_COMPONENT:
+					  currentValue += new String(decodeBase64(token.substring(1)));
+					  components.add(currentValue.getBytes());
+					  currentValue = "";
 					  break;
 				  case SPLIT_COMPONENT:
 					  currentValue += token.substring(1);
@@ -125,8 +132,6 @@ public class RFSImpl implements Repository {
 	public ContentObject getContent(Interest interest) throws RepositoryException {
 		File file = getBestMatch(interest);
 		if (null == file || !file.exists())
-			file = checkSpecialFiles(interest.name());
-		if (null == file || !file.exists())
 			return null;
 		return getContentFromFile(file);
 	}
@@ -146,23 +151,27 @@ public class RFSImpl implements Repository {
 				possibleResults.put(name, possibleMatches.get(name));
 			}
 		}
-		File bestMatch = null;
+		ContentName bestMatch = null;
 		for (ContentName name : possibleResults.keySet()) {
 			if (bestMatch == null) {
-				bestMatch = possibleResults.get(name);
+				bestMatch = name;
 			} else {
-				if ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME))
-						== (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME)) {
-					if (possibleResults.get(name).compareTo(bestMatch) > 0)
-						bestMatch = possibleResults.get(name);
-				} else if ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME))
-						== (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME)) {
-					if (possibleResults.get(name).compareTo(bestMatch) < 0)
-						bestMatch = possibleResults.get(name);
+				if (interest.orderPreference()  != null) {
+					if ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME))
+							== (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME)) {
+						if (name.compareTo(bestMatch) > 0)
+							bestMatch = name;
+					} else if ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME))
+							== (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME)) {
+						if (name.compareTo(bestMatch) < 0)
+							bestMatch = name;
+					}
 				}
 			}
 		}
-		return bestMatch;
+		if (bestMatch == null)
+			return null;
+		return possibleResults.get(bestMatch);
 	}
 	
 	/**
@@ -173,25 +182,11 @@ public class RFSImpl implements Repository {
 	private TreeMap<ContentName, File> getPossibleMatches(ContentName name) {
 		TreeMap<ContentName, File> results = new TreeMap<ContentName, File>();
 		File file = new File(_repositoryFile + getStandardString(name));
-		if (file.isDirectory()) {
-			ContentName newName = name;
-			if (null != name.prefixCount())
-				newName = new ContentName(name.prefixCount(), name.components());
-			getAllFileResults(file, results, newName);
-		} else {
-			if (!file.exists()) {
-				/*
-				 * Try converting last piece to digest form
-				 */
-				if (name.count() > 1) {
-					// Convert last component to "digest as file" form
-					ContentName encodedName = encodeDigest(name);
-					results.put(name, new File(_repositoryFile + getStandardString(encodedName)));
-				}
-			}
-		}
+		ContentName lowerName = new ContentName(null != name.prefixCount() ? name.prefixCount() : name.count(),
+					name.components());
+		getAllFileResults(file, results, lowerName);
 		for (ContentName encodedName : encodedFiles.keySet()) {
-			if (encodedName.isPrefixOf(name))
+			if (name.isPrefixOf(encodedName))
 				results.put(encodedName, encodedFiles.get(encodedName));
 		}
 		return results;
@@ -207,12 +202,19 @@ public class RFSImpl implements Repository {
 	private void getAllFileResults(File file, TreeMap<ContentName, File> results, ContentName name) {
 		if (file.isDirectory()) {
 			for (File f : file.listFiles()) {
-				if (f.isDirectory()) {
-					getAllFileResults(f, results, new ContentName(name, f.getName().getBytes()));
-				} else {
-					byte[] decodedName = decodeBase64(f.getName());
-					results.put(new ContentName(name, decodedName), f);
-				}
+				getAllFileResults(f, results, new ContentName(name, f.getName().getBytes()));
+			}
+		} else if (file.exists()) {
+			ContentName decodedName = name.clone();
+			decodedName.components().remove(decodedName.count() - 1);
+			decodedName.components().add(decodeBase64(file.getName()));
+			results.put(decodedName, file);	
+		} else {
+			// Convert last component to "digest as file" form
+			ContentName encodedName = encodeDigest(name);
+			File encodedFile = new File(_repositoryFile + getStandardString(encodedName));
+			if (encodedFile.exists()) {
+				results.put(name, encodedFile);
 			}
 		}
 	}
@@ -262,7 +264,7 @@ public class RFSImpl implements Repository {
 		File file = new File(_repositoryRoot, getStandardString(newName));
 		saveContentToFile(file, content);
 		if (isReserved(newName))
-			encodedFiles.put(content.name(), file);
+			encodedFiles.put(new ContentName(content.name(), content.contentDigest()), file);
 	}
 	
 	private void saveContentToFile(File file, ContentObject content) throws RepositoryException {
@@ -327,25 +329,14 @@ public class RFSImpl implements Repository {
 			newComponents.add(baos.toByteArray());
 		}
 		ContentName specialName = new ContentName(newComponents.size(), newComponents);
-		System.out.println("Special name is: " + name.toString());
 		File dirFile = new File(_repositoryRoot + specialName.toString());
 		dirFile.mkdirs();
 		String convertedDigest = convertDigest(content);
 		File file = new File(_repositoryRoot + specialName.toString(), 
 					new String(new byte[]{UTF8_COMPONENT}) + convertedDigest);
 		ContentName keyName = name.clone();
-		if (null != encodedFiles.get(name)) {
-			// We already have this with a different digest - add the digest to the key
-			keyName.components().add(convertedDigest.getBytes());
-		}
+		keyName.components().add(content.contentDigest());
 		encodedFiles.put(keyName, file);
-		return file;
-	}
-	
-	private File checkSpecialFiles(ContentName name) {
-		File file = encodedFiles.get(name);
-		if (null == file)
-			file = encodedFiles.get(encodeDigest(name));
 		return file;
 	}
 	
