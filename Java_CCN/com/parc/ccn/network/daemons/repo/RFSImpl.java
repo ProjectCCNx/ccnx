@@ -6,6 +6,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.io.UnsupportedEncodingException;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -37,6 +38,8 @@ public class RFSImpl implements Repository {
 	public final static byte UTF8_COMPONENT = '0';
 	public final static byte BASE64_COMPONENT = '1';
 	public final static byte SPLIT_COMPONENT = '2';
+	
+	private final static String encoding = "UTF-8";
 	
 	private static String RESERVED_CLASH = "reserved";
 	private static String ENCODED_FILES = "encoded_files";
@@ -120,26 +123,61 @@ public class RFSImpl implements Repository {
 	}
 
 	public ContentObject getContent(Interest interest) throws RepositoryException {
-		TreeMap<ContentName, File>possibleMatches = getPossibleMatches(interest.name());
-		File file = null;
-		for (ContentName name : possibleMatches.keySet()) {
-			if (interest.matches(name, null)) {
-				file = possibleMatches.get(name);
-				break;
-			}
-		}
+		File file = getBestMatch(interest);
 		if (null == file || !file.exists())
 			file = checkSpecialFiles(interest.name());
+		if (null == file || !file.exists())
+			return null;
 		return getContentFromFile(file);
 	}
-	 
+	
+	/**
+	 * Go through all the "possible matches" and find the best one
+	 * to match the interest
+	 * 
+	 * @param interest
+	 * @return
+	 */
+	private File getBestMatch(Interest interest) {
+		TreeMap<ContentName, File> possibleResults = new TreeMap<ContentName, File>();
+		TreeMap<ContentName, File>possibleMatches = getPossibleMatches(interest.name());
+		for (ContentName name : possibleMatches.keySet()) {
+			if (interest.matches(name, null)) {
+				possibleResults.put(name, possibleMatches.get(name));
+			}
+		}
+		File bestMatch = null;
+		for (ContentName name : possibleResults.keySet()) {
+			if (bestMatch == null) {
+				bestMatch = possibleResults.get(name);
+			} else {
+				if ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME))
+						== (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME)) {
+					if (possibleResults.get(name).compareTo(bestMatch) > 0)
+						bestMatch = possibleResults.get(name);
+				} else if ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME))
+						== (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME)) {
+					if (possibleResults.get(name).compareTo(bestMatch) < 0)
+						bestMatch = possibleResults.get(name);
+				}
+			}
+		}
+		return bestMatch;
+	}
+	
+	/**
+	 * Pull out anything that might be a match to the interest. This includes
+	 * any file that matches the prefix and any member of the "encodedNames"
+	 * that matches the prefix.
+	 */
 	private TreeMap<ContentName, File> getPossibleMatches(ContentName name) {
 		TreeMap<ContentName, File> results = new TreeMap<ContentName, File>();
-		File file = new File(_repositoryFile + name.toString());
+		File file = new File(_repositoryFile + getStandardString(name));
 		if (file.isDirectory()) {
-			for (File f : file.listFiles()) {
-				results.put(new ContentName(name, f.getName().getBytes()), f);
-			}
+			ContentName newName = name;
+			if (null != name.prefixCount())
+				newName = new ContentName(name.prefixCount(), name.components());
+			getAllFileResults(file, results, newName);
 		} else {
 			if (!file.exists()) {
 				/*
@@ -148,7 +186,7 @@ public class RFSImpl implements Repository {
 				if (name.count() > 1) {
 					// Convert last component to "digest as file" form
 					ContentName encodedName = encodeDigest(name);
-					results.put(name, new File(_repositoryFile + encodedName.toString()));
+					results.put(name, new File(_repositoryFile + getStandardString(encodedName)));
 				}
 			}
 		}
@@ -157,6 +195,26 @@ public class RFSImpl implements Repository {
 				results.put(encodedName, encodedFiles.get(encodedName));
 		}
 		return results;
+	}
+	
+	/**
+	 * Recursively get all files below us and add them to the results
+	 * 
+	 * @param file
+	 * @param results
+	 * @param name
+	 */
+	private void getAllFileResults(File file, TreeMap<ContentName, File> results, ContentName name) {
+		if (file.isDirectory()) {
+			for (File f : file.listFiles()) {
+				if (f.isDirectory()) {
+					getAllFileResults(f, results, new ContentName(name, f.getName().getBytes()));
+				} else {
+					byte[] decodedName = decodeBase64(f.getName());
+					results.put(new ContentName(name, decodedName), f);
+				}
+			}
+		}
 	}
 	
 	private ContentObject getContentFromFile(File fileName) throws RepositoryException {
@@ -201,7 +259,7 @@ public class RFSImpl implements Repository {
 		dirFile.mkdirs();
 		ContentName newName = checkReserved(content.name()).clone();
 		newName.components().add(convertDigest(content).getBytes());
-		File file = new File(_repositoryRoot, newName.toString());
+		File file = new File(_repositoryRoot, getStandardString(newName));
 		saveContentToFile(file, content);
 		if (isReserved(newName))
 			encodedFiles.put(content.name(), file);
@@ -292,7 +350,7 @@ public class RFSImpl implements Repository {
 	}
 	
 	private String convertDigest(ContentObject content) {
-		return convertValue(content.contentDigest());
+		return convertToBase64(content.contentDigest());
 	}
 	
 	/**
@@ -303,13 +361,22 @@ public class RFSImpl implements Repository {
 	 * @param bytes
 	 * @return
 	 */
-	private String convertValue(byte[] bytes) {
+	private String convertToBase64(byte[] bytes) {
 		StringWriter writer = new StringWriter();
 		try {
 			Base64.encode(bytes, 0, bytes.length, writer);
 		} catch (IOException e) {}
 		String b64String = writer.toString();
 		return b64String.replace("/", "%slash%");
+	}
+	
+	private byte[] decodeBase64(String data) {
+		data = data.replace("%slash%", "/");
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		try {
+			Base64.decode(data, baos);
+		} catch (IOException e) {}
+		return baos.toByteArray();
 	}
 	
 	/**
@@ -319,7 +386,7 @@ public class RFSImpl implements Repository {
 	 * @return
 	 */
 	private String cnDigestString(ContentName name) {
-		return convertValue(name.component(name.components().size() - 1));
+		return convertToBase64(name.component(name.components().size() - 1));
 	}
 	
 	private ContentName encodeDigest(ContentName name) {
@@ -329,5 +396,25 @@ public class RFSImpl implements Repository {
 		newName.components().remove(newName.count() - 1);
 		newName.components().add(cnDigestString.getBytes());
 		return newName;
+	}
+	
+	/**
+	 * Get non URL encoded version of ContentName String
+	 * for use as filename
+	 * 
+	 * @param name
+	 * @return
+	 */
+	private String getStandardString(ContentName name) {
+		if (0 == name.count()) return File.separator;
+		StringBuffer nameBuf = new StringBuffer();
+		int count = (null == name.prefixCount()) ? name.count() : name.prefixCount();
+		for (int i=0; i < count; ++i) {
+			nameBuf.append(File.separator);
+			try {
+				nameBuf.append(new String(name.component(i), encoding));
+			} catch (UnsupportedEncodingException e) {}
+		}
+		return nameBuf.toString();
 	}
 }

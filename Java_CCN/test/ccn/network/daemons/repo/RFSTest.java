@@ -38,7 +38,7 @@ public class RFSTest {
 	
 	@AfterClass
 	public static void cleanup() throws Exception {
-		FileUtils.deleteDirectory(_fileTest);
+		//FileUtils.deleteDirectory(_fileTest);
 	}
 	
 	@Before
@@ -96,15 +96,16 @@ public class RFSTest {
 		digestName = new ContentName(longName, digest2.contentDigest());
 		checkData(repo, digestName, "Testing2");
 		
-		/*
 		System.out.println("Repotest - Testing get next and get last");
 		ContentName name1 = ContentName.fromNative("/repoTest/nextTest/aaa");
-		repo.saveContent(CCNLibrary.getContent(name1, "aaa".getBytes()));
+		ContentObject content1 = CCNLibrary.getContent(name1, "aaa".getBytes());
+		repo.saveContent(content1);
 		ContentName name2 = ContentName.fromNative("/repoTest/nextTest/bbb");
 		repo.saveContent(CCNLibrary.getContent(name2, "bbb".getBytes()));
 		ContentName name3= ContentName.fromNative("/repoTest/nextTest/ccc");
 		repo.saveContent(CCNLibrary.getContent(name3, "ccc".getBytes()));
-		checkData(repo, Interest.next(name1), "bbb"); */
+		checkData(repo, Interest.next(new ContentName(name1, content1.contentDigest(), 2)), "bbb");
+		checkData(repo, Interest.last(new ContentName(name1, content1.contentDigest(), 2)), "ccc");
 		
 		System.out.println("Repotest - Testing reinitialization of repo");
 		repo = new RFSImpl();
@@ -114,7 +115,6 @@ public class RFSTest {
 	
 	private void checkData(Repository repo, ContentName name, String data) throws RepositoryException {
 		checkData(repo, new Interest(name), data);
-		
 	}
 	private void checkData(Repository repo, Interest interest, String data) throws RepositoryException {
 		ContentObject testContent = repo.getContent(interest);
