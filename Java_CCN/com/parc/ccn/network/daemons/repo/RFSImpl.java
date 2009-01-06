@@ -43,14 +43,15 @@ public class RFSImpl implements Repository {
 	
 	private static String RESERVED_CLASH = "reserved";
 	private static String ENCODED_FILES = "encoded_files";
+	private static String INVALID_WINDOWS_CHARS = "<>:\"|?/";
 	
 	private static final int TOO_LONG_SIZE = 200;
 	
-	private String _repositoryRoot = "repo";
-	private File _repositoryFile;
-	private RFSLocks _locker;
+	protected String _repositoryRoot = "repo";
+	protected File _repositoryFile;
+	protected RFSLocks _locker;
 	
-	private TreeMap<ContentName, File> encodedFiles = new TreeMap<ContentName, File>();
+	protected TreeMap<ContentName, File> _encodedFiles = new TreeMap<ContentName, File>();
 	
 	public String[] initialize(String[] args) throws RepositoryException {
 		String[] outArgs = args;
@@ -102,8 +103,8 @@ public class RFSImpl implements Repository {
 					  currentValue = "";
 					  break;
 				  case BASE64_COMPONENT:
-					  currentValue += new String(decodeBase64(token.substring(1)));
-					  components.add(currentValue.getBytes());
+					  currentValue += token.substring(1);
+					  components.add(decodeBase64(currentValue));
 					  currentValue = "";
 					  break;
 				  case SPLIT_COMPONENT:
@@ -122,11 +123,11 @@ public class RFSImpl implements Repository {
 		}
 		byte [] digestComponent = components.remove(components.size() - 1);
 		ContentName cn = new ContentName(components.size(), components);
-		if (null != encodedFiles.get(cn)) {
+		if (null != _encodedFiles.get(cn)) {
 			components.add(components.size(), digestComponent);
 			cn = new ContentName(components.size(), components);
 		}
-		encodedFiles.put(cn, file);
+		_encodedFiles.put(cn, file);
 	}
 
 	public ContentObject getContent(Interest interest) throws RepositoryException {
@@ -185,15 +186,18 @@ public class RFSImpl implements Repository {
 		ContentName lowerName = new ContentName(null != name.prefixCount() ? name.prefixCount() : name.count(),
 					name.components());
 		getAllFileResults(file, results, lowerName);
-		for (ContentName encodedName : encodedFiles.keySet()) {
+		for (ContentName encodedName : _encodedFiles.keySet()) {
 			if (name.isPrefixOf(encodedName))
-				results.put(encodedName, encodedFiles.get(encodedName));
+				results.put(encodedName, _encodedFiles.get(encodedName));
 		}
 		return results;
 	}
 	
 	/**
-	 * Recursively get all files below us and add them to the results
+	 * Subprocess of getting "possible" matching results.
+	 * Recursively get all files below us and add them to the results.
+	 * If we are at a leaf, we want to decode the filename to a ContentName,
+	 * or encode the ContentName to a filename to check to see if it exists.
 	 * 
 	 * @param file
 	 * @param results
@@ -219,6 +223,12 @@ public class RFSImpl implements Repository {
 		}
 	}
 	
+	/**
+	 * Restore ContentObject from wire data on disk
+	 * @param fileName
+	 * @return
+	 * @throws RepositoryException
+	 */
 	private ContentObject getContentFromFile(File fileName) throws RepositoryException {
 		try {
 			FileInputStream fis = new FileInputStream(fileName);
@@ -235,38 +245,30 @@ public class RFSImpl implements Repository {
 	}
 
 	public void saveContent(ContentObject content) throws RepositoryException {
-		try {
-			saveContentToFile(content.name(), content);
-			return;
-		} catch (RepositoryException re) {}
-		
-		/*
-		 * If direct pathname doesn't work, try "special path"
-		 */
-		File file = getSpecialPath(content);
+		File file = null;
+		if (needsEncoding(content.name()))
+			file = getSpecialPath(content);
+		else {
+			ContentName newName = checkReserved(content.name()).clone();
+			newName.components().add(convertDigest(content).getBytes());
+			ContentName dirName = new ContentName(newName.count() - 1, newName.components());
+			File dirFile = new File(_repositoryRoot, getStandardString(dirName));
+			dirFile.mkdirs();
+			file = new File(_repositoryRoot, getStandardString(newName));
+			if (isEncoded(newName))
+				_encodedFiles.put(new ContentName(content.name(), content.contentDigest()), file);
+		}
 		saveContentToFile(file, content);
 	}
 	
 	/**
 	 * Algorithm is:
-	 *   Save wire data to fileName/<digest>
-	 *
-	 * @param fileName
+	 * Save wire data to fileName/<digest>
+	 * 
+	 * @param file
 	 * @param content
 	 * @throws RepositoryException
 	 */
-	private void saveContentToFile(ContentName name, ContentObject content) throws RepositoryException {
-		String filePathName = _repositoryRoot + name.toString();
-		File dirFile = new File(filePathName);
-		dirFile.mkdirs();
-		ContentName newName = checkReserved(content.name()).clone();
-		newName.components().add(convertDigest(content).getBytes());
-		File file = new File(_repositoryRoot, getStandardString(newName));
-		saveContentToFile(file, content);
-		if (isReserved(newName))
-			encodedFiles.put(new ContentName(content.name(), content.contentDigest()), file);
-	}
-	
 	private void saveContentToFile(File file, ContentObject content) throws RepositoryException {
 		try {
 			_locker.lock(file.getName());
@@ -297,12 +299,33 @@ public class RFSImpl implements Repository {
 		return name;
 	}
 	
-	private boolean isReserved(ContentName name) {
+	private boolean isEncoded(ContentName name) {
 		return Arrays.equals(name.component(0), META_DIR.getBytes());
 	}
 	
 	/**
+	 * Check to see if we will need to encode the filename corresponding
+	 * to a ContentName
+	 * @param name
+	 * @return
+	 */
+	private boolean needsEncoding(ContentName name) {
+		for (byte[] component : name.components()) {
+			if (component.length > TOO_LONG_SIZE)
+				return true;
+			for (byte b : component) {
+				if (INVALID_WINDOWS_CHARS.indexOf(b) >= 0)
+					return true;
+			}
+		}
+		return false;
+	}
+	
+	/**
 	 * Convert a non usable pathname into something we can use
+	 * XXX For now this only involves splitting up components that are
+	 * "too long".
+	 * 
 	 * @param name
 	 * @return
 	 */
@@ -313,30 +336,39 @@ public class RFSImpl implements Repository {
 		newComponents.add(META_DIR.getBytes());
 		newComponents.add(ENCODED_FILES.getBytes());
 		for (byte[] component : components) {
+			byte type = UTF8_COMPONENT;
+			byte[] modifiedComponent = component;
+			for (byte b : component) {
+				if (INVALID_WINDOWS_CHARS.indexOf(b) >= 0) {
+					 type = BASE64_COMPONENT;
+					 modifiedComponent = convertToBase64(component).getBytes();
+					 break;
+				}
+			}
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			int length = component.length;
+			int length = modifiedComponent.length;
 			int offset = 0;
 			while (length > TOO_LONG_SIZE) {
 				baos.write(SPLIT_COMPONENT);
-				baos.write(component, offset, TOO_LONG_SIZE);
+				baos.write(modifiedComponent, offset, TOO_LONG_SIZE);
 				newComponents.add(baos.toByteArray());
 				length -= TOO_LONG_SIZE;
 				offset += TOO_LONG_SIZE;
 				baos.reset();
 			}
-			baos.write(UTF8_COMPONENT);
-			baos.write(component, offset, length);
+			baos.write(type);
+			baos.write(modifiedComponent, offset, length);
 			newComponents.add(baos.toByteArray());
 		}
 		ContentName specialName = new ContentName(newComponents.size(), newComponents);
-		File dirFile = new File(_repositoryRoot + specialName.toString());
+		File dirFile = new File(_repositoryRoot + getStandardString(specialName));
 		dirFile.mkdirs();
 		String convertedDigest = convertDigest(content);
-		File file = new File(_repositoryRoot + specialName.toString(), 
+		File file = new File(_repositoryRoot + getStandardString(specialName), 
 					new String(new byte[]{UTF8_COMPONENT}) + convertedDigest);
 		ContentName keyName = name.clone();
 		keyName.components().add(content.contentDigest());
-		encodedFiles.put(keyName, file);
+		_encodedFiles.put(keyName, file);
 		return file;
 	}
 	

@@ -10,7 +10,6 @@ import java.security.Security;
 import java.security.SignatureException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
 
 import javax.xml.stream.XMLStreamException;
@@ -199,11 +198,22 @@ public class CCNLibrary extends CCNBase {
 		}
 	}
 
-	public ContentObject put(ContentName name, LinkReference [] references) throws SignatureException, IOException, InterruptedException {
+	/**
+	 * The following 3 methods create a Collection with the argument references,
+	 * put it, and return it. Note that fragmentation is not handled.
+	 * 
+	 * @param name
+	 * @param references
+	 * @return
+	 * @throws SignatureException
+	 * @throws IOException
+	 * @throws InterruptedException
+	 */
+	public Collection put(ContentName name, LinkReference [] references) throws SignatureException, IOException, InterruptedException {
 		return put(name, references, getDefaultPublisher());
 	}
 
-	public ContentObject put(ContentName name, LinkReference [] references, PublisherKeyID publisher) 
+	public Collection put(ContentName name, LinkReference [] references, PublisherKeyID publisher) 
 				throws SignatureException, IOException, InterruptedException {
 		try {
 			return put(name, references, publisher, null, null);
@@ -218,13 +228,11 @@ public class CCNLibrary extends CCNBase {
 		}
 	}
 
-	public ContentObject put(
+	public Collection put(
 			ContentName name, 
 			LinkReference[] references,
 			PublisherKeyID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InterruptedException {
-		
-		Collection collectionData = new Collection(references);
 
 		if (null == signingKey)
 			signingKey = keyManager().getDefaultSigningKey();
@@ -235,10 +243,12 @@ public class CCNLibrary extends CCNBase {
 		if (null == publisher) {
 			publisher = keyManager().getPublisherKeyID(signingKey);
 		}
-
+		
 		try {
-			return newVersion(name, collectionData.encode(), 
-								ContentType.COLLECTION, publisher);
+			Collection collection = new Collection(getNextVersionName(name), references, 
+					publisher, locator, signingKey);
+			put(collection);
+			return collection;
 		} catch (XMLStreamException e) {
 			Library.logger().warning("Cannot canonicalize a standard container!");
 			Library.warningStackTrace(e);
@@ -246,20 +256,20 @@ public class CCNLibrary extends CCNBase {
 		}
 	}
 	
-	public ContentObject put(
+	public Collection put(
 			ContentName name, 
 			ContentName[] references) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InterruptedException {
 		return put(name, references, null, null, null);
 	}
 	
-	public ContentObject put(
+	public Collection put(
 			ContentName name, 
 			ContentName[] references,
 			PublisherKeyID publisher) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InterruptedException {
 		return put(name, references, publisher, null, null);
 	}
 	
-	public ContentObject put(
+	public Collection put(
 			ContentName name, 
 			ContentName[] references,
 			PublisherKeyID publisher, KeyLocator locator,
@@ -269,69 +279,123 @@ public class CCNLibrary extends CCNBase {
 			lrs[i] = new LinkReference(references[i]);
 		return put(name, lrs, publisher, locator, signingKey);
 	}
+	
+
+	/**
+	 * 
+	 * @param name - ContentName
+	 * @param timeout - milliseconds
+	 * @return
+	 * @throws IOException
+	 * @throws InterruptedException
+	 * @throws XMLStreamException 
+	 */
+	public Collection getCollection(ContentName name, long timeout) throws IOException, InterruptedException, XMLStreamException {
+		ContentObject co = getLatestVersion(name, null, timeout);
+		if (null == co)
+			return null;
+		if (co.authenticator().type() != ContentType.COLLECTION)
+			throw new IOException("Content is not a collection");
+		Collection collection = Collection.contentToCollection(co);
+		return collection;
+	}
 
 	/**
 	 * Use the same publisherID that we used originally.
 	 * @throws InterruptedException 
 	 * @throws IOException 
 	 * @throws SignatureException 
+	 * @throws XMLStreamException 
+	 * @throws InvalidKeyException 
 	 */
-	public ContentObject addToCollection(
+	public Collection createCollection(
 			ContentName name,
+			ContentName [] references, PublisherKeyID publisher, KeyLocator locator,
+			PrivateKey signingKey) throws IOException, InterruptedException, SignatureException, 
+			XMLStreamException, InvalidKeyException {
+		LinkReference[] lrs = new LinkReference[references.length];
+		for (int i = 0; i < references.length; i++) {
+			lrs[i] = new LinkReference(references[i]);
+		}
+		return createCollection(name, lrs, publisher, locator, signingKey);
+	}
+	
+	public Collection createCollection(
+			ContentName name,
+			LinkReference [] references, PublisherKeyID publisher, KeyLocator locator,
+			PrivateKey signingKey) throws IOException, InterruptedException, SignatureException, 
+			XMLStreamException, InvalidKeyException {
+		if (null == signingKey)
+			signingKey = keyManager().getDefaultSigningKey();
+
+		if (null == locator)
+			locator = keyManager().getKeyLocator(signingKey);
+		
+		if (null == publisher) {
+			publisher = keyManager().getPublisherKeyID(signingKey);
+		}
+		return new Collection(name, references, publisher, locator, signingKey);
+	}
+	
+	public Collection addToCollection(
+			Collection collection,
 			ContentName [] references,
-			long timeout) throws IOException, InterruptedException, SignatureException {
-		ArrayList<ContentName> al = getCollectionReferences(name, timeout);
-		al.addAll(Arrays.asList(references));
-		return putCollectionReferences(name, al);
+			long timeout) throws IOException, InterruptedException, SignatureException, 
+			XMLStreamException, InvalidKeyException {
+		ArrayList<LinkReference> contents = collection.contents();
+		for (ContentName reference : references)
+			contents.add(new LinkReference(reference));
+		return updateCollection(collection, contents, null, null, null);
 	}
 
 	public ContentObject removeFromCollection(
-			ContentName name,
+			Collection collection,
 			ContentName [] references,
-			long timeout) throws IOException, InterruptedException, SignatureException {
-		ArrayList<ContentName> al = removeCollectionReferences(name, references, timeout);
-		// XXX should we do anything different if there are no references left?
-		return putCollectionReferences(name, al);
+			long timeout) throws IOException, InterruptedException, SignatureException, 
+			XMLStreamException, InvalidKeyException {
+		ArrayList<LinkReference> contents = collection.contents();
+		for (ContentName reference : references)
+			contents.remove(new LinkReference(reference));
+		return updateCollection(collection, contents, null, null, null);
 	}
 	
 	public ContentObject updateCollection(
-			ContentName name,
+			Collection collection,
 			ContentName [] referencesToAdd,
 			ContentName [] referencesToRemove,
-			long timeout) throws IOException, InterruptedException, SignatureException {
-		ArrayList<ContentName> al = removeCollectionReferences(name, referencesToRemove, timeout);
-		al.addAll(Arrays.asList(referencesToAdd));
-		return putCollectionReferences(name, al);
+			long timeout) throws IOException, InterruptedException, SignatureException, 
+			XMLStreamException, InvalidKeyException {
+		ArrayList<LinkReference> contents = collection.contents();
+		for (ContentName reference : referencesToAdd)
+			contents.add(new LinkReference(reference));
+		for (ContentName reference : referencesToRemove)
+			contents.remove(new LinkReference(reference));
+		return updateCollection(collection, contents, null, null, null);
 	}
 	
-	private ArrayList<ContentName> getCollectionReferences(ContentName name, long timeout) throws IOException, InterruptedException {
-		Collection collection = getCollection(name, timeout);
-		ArrayList<ContentName> list = new ArrayList<ContentName>();
-		for (LinkReference lr : collection.contents())
-			list.add(lr.targetName());
-		return list;
-	}
-	
-	private ContentObject putCollectionReferences(ContentName name, ArrayList<ContentName> references) throws SignatureException, IOException, InterruptedException {
-		LinkReference newReferences[] = new LinkReference[references.size()];
-		for (int i = 0; i < references.size(); i++)
-			newReferences[i] = new LinkReference(references.get(i));
-		return put(name, newReferences);
-	}
-	
-	private ArrayList<ContentName> removeCollectionReferences(ContentName name, ContentName[] references, long timeout) throws IOException, InterruptedException {
-		ArrayList<ContentName> al = getCollectionReferences(name, timeout);
-		Iterator<ContentName> it = al.iterator();
-		while (it.hasNext()) {
-			ContentName reference = it.next();
-			for (ContentName removeReference : references) {
-				if (reference.equals(removeReference)) {
-					it.remove();
-					break;
-				}
-			}
-		}
-		return al;
+	/**
+	 * Create a Collection with the next version name and the input
+	 * references and put it.  Note that this can't handle fragmentation.
+	 * 
+	 * @param oldCollection
+	 * @param references
+	 * @return
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 * @throws InterruptedException
+	 * @throws SignatureException 
+	 * @throws InvalidKeyException 
+	 */
+	private Collection updateCollection(Collection oldCollection, ArrayList<LinkReference> references,
+			 PublisherKeyID publisher, KeyLocator locator,
+			 PrivateKey signingKey) throws XMLStreamException, IOException, InterruptedException, 
+			 InvalidKeyException, SignatureException {
+		LinkReference[] newReferences = new LinkReference[references.size()];
+		references.toArray(newReferences);
+		Collection updatedCollection = createCollection(getNextVersionName(oldCollection.name()),
+				newReferences, publisher, locator, signingKey);
+		put(updatedCollection);
+		return updatedCollection;
 	}
 	
 	/**
@@ -452,40 +516,6 @@ public class CCNLibrary extends CCNBase {
 	}
 	
 	/**
-	 * 
-	 * @param name - ContentName
-	 * @param timeout - milliseconds
-	 * @return
-	 * @throws IOException
-	 * @throws InterruptedException
-	 */
-	public Collection getCollection(ContentName name, long timeout) throws IOException, InterruptedException {
-		ContentObject co = getLatestVersion(name, null, timeout);
-		if (null == co)
-			return null;
-		return decodeCollection(co);
-	}
-	
-	/**
-	 * Turn ContentObject of COLLECTION type into a collection
-	 * @param co
-	 * @return
-	 * @throws IOException
-	 */
-	public Collection decodeCollection(ContentObject co) throws IOException {
-		if (co.authenticator().type() != ContentType.COLLECTION)
-			throw new IOException("Content is not a collection");
-		Collection collection = new Collection();
-		try {
-			collection.decode(co.content());
-		} catch (XMLStreamException e) {
-			// Shouldn't happen
-			e.printStackTrace();
-		}
-		return collection;
-	}
-
-	/**
 	 * Does this specific name point to a link?
 	 * Looks at local (cached) data only. 
 	 * If more than one piece of content matches
@@ -504,8 +534,10 @@ public class CCNLibrary extends CCNBase {
 	 * @return
 	 * @throws IOException 
 	 * @throws InterruptedException 
+	 * @throws XMLStreamException 
 	 */
-	public ArrayList<ContentObject> dereference(ContentObject content, long timeout) throws IOException, InterruptedException {
+
+	public ArrayList<ContentObject> dereference(ContentObject content, long timeout) throws IOException, InterruptedException, XMLStreamException {
 		ArrayList<ContentObject> result = new ArrayList<ContentObject>();
 		if (null == content)
 			return null;
@@ -517,7 +549,7 @@ public class CCNLibrary extends CCNBase {
 			}
 			result.add(linkCo);
 		} else if (content.authenticator().type() == ContentType.COLLECTION) {
-			Collection collection = decodeCollection(content);
+			Collection collection = Collection.contentToCollection(content);
 			ArrayList<LinkReference> al = collection.contents();
 			for (LinkReference lr : al) {
 				ContentObject linkCo = dereferenceLink(lr, content.authenticator().publisherKeyID(), timeout);
@@ -530,7 +562,7 @@ public class CCNLibrary extends CCNBase {
 			result.add(content);
 		}
 		return result;
-	}
+	} 
 	
 	/**
 	 * Try to get the content referenced by the link. If it doesn't exist directly,
@@ -597,19 +629,7 @@ public class CCNLibrary extends CCNBase {
 			PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException {
 
 		try {
-			ContentName latestVersion = 
-				getLatestVersionName(name, null);
-		
-			int currentVersion = -1;
-			if (null != latestVersion)
-				// will return -1 if unversioned 
-				currentVersion = getVersionNumber(latestVersion);
-			
-			// This ends us up with version numbers starting
-			// at 0. If we want version numbers starting at 1,
-			// modify this and baseVersion.
-			return addVersion(name, currentVersion+1, contents, type, publisher, null, null);
-		
+			return addVersion(name, getNextVersionNumber(name), contents, type, publisher, null, null);
 		} catch (InvalidKeyException e) {
 			Library.logger().info("InvalidKeyException using default key.");
 			throw new SignatureException(e);
@@ -620,6 +640,21 @@ public class CCNLibrary extends CCNBase {
 			Library.logger().info("NoSuchAlgorithmException using default key.");
 			throw new SignatureException(e);
 		}
+	}
+	
+	private int getNextVersionNumber(ContentName name) {
+		ContentName latestVersion = 
+			getLatestVersionName(name, null);
+	
+		int currentVersion = baseVersion() - 1;
+		if (null != latestVersion)
+			// will return baseVersion() - 1 if unversioned 
+			currentVersion = getVersionNumber(latestVersion);
+		return currentVersion + 1;
+	}
+	
+	private ContentName getNextVersionName(ContentName name) {
+		return versionName(name, getNextVersionNumber(name));
 	}
 	
 	/**
@@ -808,7 +843,7 @@ public class CCNLibrary extends CCNBase {
 	public int getVersionNumber(ContentName name) {
 		int offset = name.containsWhere(VERSION_MARKER);
 		if (offset < 0)
-			return -1; // no version information.
+			return baseVersion() - 1; // no version information.
 		return Integer.valueOf(ContentName.componentPrintURI(name.component(offset+1)));
 	}
 
@@ -818,7 +853,7 @@ public class CCNLibrary extends CCNBase {
 	 * @param version
 	 * @return
 	 */
-	public ContentName versionName(ContentName name, int version) {
+	public static ContentName versionName(ContentName name, int version) {
 		ContentName baseName = name;
 		if (isVersioned(name))
 			baseName = versionRoot(name);
@@ -842,7 +877,7 @@ public class CCNLibrary extends CCNBase {
 		return parent.isPrefixOf(version);
 	}
 	
-	public boolean isVersioned(ContentName name) {
+	public static boolean isVersioned(ContentName name) {
 		return name.contains(VERSION_MARKER);
 	}
 

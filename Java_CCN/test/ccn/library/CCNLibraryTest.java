@@ -302,7 +302,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 		library.newVersion(baseName, "base".getBytes());
 		references[0] = ContentName.fromNative("/libraryTest/collectionTest/r1");
 		references[1] = ContentName.fromNative("/libraryTest/collectionTest/r2");
-		library.put(collectionName, references);
+		Collection collection = library.put(collectionName, references);
 		
 		try {
 			library.getCollection(baseName, 5000);
@@ -310,7 +310,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 		} catch (IOException ioe) {}
 		
 		// test getCollection
-		Collection collection = library.getCollection(collectionName, 5000);
+		collection = library.getCollection(collectionName, 5000);
 		ArrayList<LinkReference> checkReferences = collection.contents();
 		Assert.assertEquals(checkReferences.size(), 2);
 		Assert.assertEquals(references[0], checkReferences.get(0).targetName());
@@ -320,21 +320,21 @@ public class CCNLibraryTest extends LibraryTestBase {
 		ContentName[] newReferences = new ContentName[2];
 		newReferences[0] = ContentName.fromNative("/libraryTest/r3");
 		newReferences[1] = ContentName.fromNative("/libraryTest/r4");
-		library.addToCollection(collectionName, newReferences, 5000);
+		library.addToCollection(collection, newReferences, 5000);
 		collection = library.getCollection(collectionName, 5000);
 		checkReferences = collection.contents();
 		Assert.assertEquals(checkReferences.size(), 4);
 		Assert.assertEquals(newReferences[0], checkReferences.get(2).targetName());
 		Assert.assertEquals(newReferences[1], checkReferences.get(3).targetName());
 		
-		library.removeFromCollection(collectionName, newReferences, 5000);
+		library.removeFromCollection(collection, newReferences, 5000);
 		collection = library.getCollection(collectionName, 5000);
 		checkReferences = collection.contents();
 		Assert.assertEquals(checkReferences.size(), 2);
 		Assert.assertEquals(references[0], checkReferences.get(0).targetName());
 		Assert.assertEquals(references[1], checkReferences.get(1).targetName());
 		
-		library.updateCollection(collectionName, newReferences, references, 5000);
+		library.updateCollection(collection, newReferences, references, 5000);
 		collection = library.getCollection(collectionName, 5000);
 		checkReferences = collection.contents();
 		Assert.assertEquals(checkReferences.size(), 2);

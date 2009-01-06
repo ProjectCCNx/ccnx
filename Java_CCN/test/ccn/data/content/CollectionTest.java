@@ -3,8 +3,6 @@ package test.ccn.data.content;
 import java.sql.Timestamp;
 import java.util.Arrays;
 
-import junit.framework.Assert;
-
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -14,8 +12,11 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherID;
+import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.PublisherID.PublisherType;
 
 public class CollectionTest {
@@ -52,7 +53,7 @@ public class CollectionTest {
 		Arrays.fill(publisherid2, (byte)3);
 
 		pubID1 = new PublisherID(publisherid1, PublisherType.KEY);
-		pubID1 = new PublisherID(publisherid2, PublisherType.ISSUER_KEY);
+		pubID2 = new PublisherID(publisherid2, PublisherType.ISSUER_KEY);
 
 		las[0] = new LinkAuthenticator(pubID1);
 		las[1] = null;
@@ -69,19 +70,16 @@ public class CollectionTest {
 	}
 
 	@Test
-	public void testEncodeOutputStream() {
-		Collection c = new Collection(ls);
+	public void testEncodeOutputStream() throws Exception {
+		byte [] signaturebuf = new byte[64];
+		Arrays.fill(signaturebuf, (byte)1);
+		Signature signature = new Signature(signaturebuf);
+		
+		PublisherKeyID pubkey = new PublisherKeyID(publisherid1);
+		KeyLocator locator = new KeyLocator(ContentName.fromNative("/collectionTestKey"));
+		Collection c = new Collection(ContentName.fromNative("/test/collection"), ls, pubkey, locator, signature);
 		Collection cdec = new Collection();
 		Collection bcdec = new Collection();
 		XMLEncodableTester.encodeDecodeTest("Collection", c, cdec, bcdec);
 	}
-
-	@Test
-	public void testAddLink() {
-		LinkReference [] ls2 = new LinkReference[]{ls[0],ls[1],ls[2]};
-		Collection c1 = new Collection(ls2);
-		c1.add(ls[3]);
-		Assert.assertEquals(c1.size(), 4);
-	}
-
 }

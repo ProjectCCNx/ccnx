@@ -131,6 +131,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	}
 	
 	private void excludeTest(String prefix, int nFilters) throws Throwable {
+		System.out.println("Starting exclude test - nFilters is " + nFilters);
 		byte [][] excludes = new byte[nFilters - 1][];
 		for (int i = 0; i < nFilters; i++) {
 			String value = new Integer(i).toString();

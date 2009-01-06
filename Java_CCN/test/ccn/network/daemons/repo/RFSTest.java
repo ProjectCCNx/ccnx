@@ -96,6 +96,14 @@ public class RFSTest {
 		digestName = new ContentName(longName, digest2.contentDigest());
 		checkData(repo, digestName, "Testing2");
 		
+		System.out.println("Repotest - Testing invalid characters in name");
+		ContentName badCharName = ContentName.fromNative("/repoTest/" + "*x?y<z>u");
+		repo.saveContent(CCNLibrary.getContent(badCharName, "Funny characters!".getBytes()));
+		checkData(repo, badCharName, "Funny characters!");
+		ContentName badCharLongName = ContentName.fromNative("/repoTest/" + tooLongName + "*x?y<z>u");
+		repo.saveContent(CCNLibrary.getContent(badCharLongName, "Long and funny".getBytes()));
+		checkData(repo, badCharLongName, "Long and funny");
+		
 		System.out.println("Repotest - Testing different kinds of interests");
 		ContentName name1 = ContentName.fromNative("/repoTest/nextTest/aaa");
 		ContentObject content1 = CCNLibrary.getContent(name1, "aaa".getBytes());
@@ -134,6 +142,8 @@ public class RFSTest {
 		repo = new RFSImpl();
 		repo.initialize(new String[] {"-root", _fileTestDir});
 		checkData(repo, longName, "Long name!");
+		checkData(repo, badCharName, "Funny characters!");
+		checkData(repo, badCharLongName, "Long and funny");
 	}
 	
 	private void checkData(Repository repo, ContentName name, String data) throws RepositoryException {

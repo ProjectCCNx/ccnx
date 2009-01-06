@@ -198,14 +198,14 @@ public class CCNDescriptor {
 		// Assume if name is already versioned, caller knows what name
 		// to write. If caller specifies authentication information,
 		// ignore it for now.
-		if (!_library.isVersioned(nameToOpen)) {
+		if (!CCNLibrary.isVersioned(nameToOpen)) {
 			// if publisherID is null, will get any publisher
 			ContentName currentVersionName = 
 				_library.getLatestVersionName(nameToOpen, null);
 			if (null == currentVersionName) {
-				nameToOpen = _library.versionName(nameToOpen, CCNLibrary.baseVersion());
+				nameToOpen = CCNLibrary.versionName(nameToOpen, CCNLibrary.baseVersion());
 			} else {
-				nameToOpen = _library.versionName(currentVersionName, (_library.getVersionNumber(currentVersionName) + 1));
+				nameToOpen = CCNLibrary.versionName(currentVersionName, (_library.getVersionNumber(currentVersionName) + 1));
 			}
 		}
 		// Should have name of root of version we want to
@@ -236,7 +236,7 @@ public class CCNDescriptor {
 			// DKS TODO: should we do this?
 			nameToOpen = CCNLibrary.fragmentRoot(nameToOpen);
 		}
-		if (!_library.isVersioned(nameToOpen)) {
+		if (!CCNLibrary.isVersioned(nameToOpen)) {
 			// if publisherID is null, will get any publisher
 			nameToOpen = 
 				_library.getLatestVersionName(nameToOpen,

@@ -20,34 +20,34 @@ import com.parc.ccn.data.util.XMLEncoder;
  * @author smetters
  *
  */
-public class Collection extends GenericXMLEncodable implements XMLEncodable {
+public class CollectionData extends GenericXMLEncodable implements XMLEncodable {
 	
 	protected static final String COLLECTION_ELEMENT = "Collection";
 
 	protected ArrayList<LinkReference> _contents = new ArrayList<LinkReference>();
 	
-	public Collection(LinkReference destination) {
+	public CollectionData(LinkReference destination) {
 		_contents.add(destination);
 	}
 	
-	public Collection(ContentName destName) {
+	public CollectionData(ContentName destName) {
 		_contents.add(new LinkReference(destName));
 	}
 	
-	public Collection(LinkReference [] links) {
+	public CollectionData(LinkReference [] links) {
 		for (int i=0; i < links.length; ++i) {
 			_contents.add(links[i]);
 		}
 	}
 			
-	public Collection(ArrayList<LinkReference> contents) {
+	public CollectionData(ArrayList<LinkReference> contents) {
 		Iterator<LinkReference> it = contents.iterator();
 		while (it.hasNext()) {
 			_contents.add(it.next());
 		}
 	}
 	
-	public Collection() {
+	public CollectionData() {
 	}
 	
 	/**
@@ -142,7 +142,7 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable {
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		final Collection other = (Collection) obj;
+		final CollectionData other = (CollectionData) obj;
 		if (_contents == null) {
 			if (other._contents != null)
 				return false;
