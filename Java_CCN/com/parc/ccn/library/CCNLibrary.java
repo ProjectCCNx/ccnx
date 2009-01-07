@@ -887,22 +887,26 @@ public class CCNLibrary extends CCNBase {
 	
 	/**
 	 * Translate name/data to ContentObject with default values for
-	 * security parts
+	 * (most) security parts
 	 * 
 	 * Useful for testing - if nothing else
 	 * @return
 	 */
-	public static ContentObject getContent(ContentName name, byte[] contents) {
+	public static ContentObject getContent(ContentName name, byte[] contents, PublisherKeyID publisher) {
 		try {
 			KeyManager keyManager = KeyManager.getDefaultKeyManager();
 			PrivateKey signingKey = keyManager.getDefaultSigningKey();
-			KeyLocator locator = keyManager.getKeyLocator(signingKey);	
-			PublisherKeyID publisher = keyManager.getPublisherKeyID(signingKey);
+			KeyLocator locator = keyManager.getKeyLocator(signingKey);
+			if (publisher == null)
+				publisher = keyManager.getPublisherKeyID(signingKey);
 			return new ContentObject(name, new ContentAuthenticator(publisher, ContentAuthenticator.ContentType.LEAF, locator), contents, signingKey);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return null;
+	}
+	public static ContentObject getContent(ContentName name, byte[] contents) {
+		return getContent(name, contents, null);
 	}
 
 	/**
