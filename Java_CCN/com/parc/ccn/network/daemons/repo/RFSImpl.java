@@ -51,7 +51,7 @@ public class RFSImpl implements Repository {
 	protected File _repositoryFile;
 	protected RFSLocks _locker;
 	
-	protected TreeMap<ContentName, File> _encodedFiles = new TreeMap<ContentName, File>();
+	protected TreeMap<ContentName, ArrayList<File>> _encodedFiles = new TreeMap<ContentName, ArrayList<File>>();
 	
 	public String[] initialize(String[] args) throws RepositoryException {
 		String[] outArgs = args;
@@ -127,14 +127,11 @@ public class RFSImpl implements Repository {
 			components.add(components.size(), digestComponent);
 			cn = new ContentName(components.size(), components);
 		}
-		_encodedFiles.put(cn, file);
-	}
-
-	public ContentObject getContent(Interest interest) throws RepositoryException {
-		File file = getBestMatch(interest);
-		if (null == file || !file.exists())
-			return null;
-		return getContentFromFile(file);
+		ArrayList<File> files = _encodedFiles.get(cn);
+		if (files == null)
+			files = new ArrayList<File>();
+		files.add(file);
+		_encodedFiles.put(cn, files);
 	}
 	
 	/**
@@ -144,35 +141,61 @@ public class RFSImpl implements Repository {
 	 * @param interest
 	 * @return
 	 */
-	private File getBestMatch(Interest interest) {
-		TreeMap<ContentName, File> possibleResults = new TreeMap<ContentName, File>();
-		TreeMap<ContentName, File>possibleMatches = getPossibleMatches(interest.name());
+	public ContentObject getContent(Interest interest) throws RepositoryException {
+		TreeMap<ContentName, ArrayList<File>>possibleMatches = getPossibleMatches(interest.name());
+		
+		ContentObject bestMatch = null;
 		for (ContentName name : possibleMatches.keySet()) {
-			if (interest.matches(name, null)) {
-				possibleResults.put(name, possibleMatches.get(name));
-			}
-		}
-		ContentName bestMatch = null;
-		for (ContentName name : possibleResults.keySet()) {
 			if (bestMatch == null) {
-				bestMatch = name;
+				bestMatch = checkMatch(interest, name, possibleMatches.get(name));
 			} else {
 				if (interest.orderPreference()  != null) {
 					if ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME))
 							== (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME)) {
-						if (name.compareTo(bestMatch) > 0)
-							bestMatch = name;
+						if (name.compareTo(bestMatch.name()) > 0) {
+							ContentObject checkMatch = checkMatch(interest, name, possibleMatches.get(name));
+							if (checkMatch != null)
+								bestMatch = checkMatch;
+						}
 					} else if ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME))
 							== (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME)) {
-						if (name.compareTo(bestMatch) < 0)
-							bestMatch = name;
+						if (name.compareTo(bestMatch.name()) < 0) {
+							ContentObject checkMatch = checkMatch(interest, name, possibleMatches.get(name));
+							if (checkMatch != null)
+								bestMatch = checkMatch;
+						}				
 					}
 				}
 			}
 		}
-		if (bestMatch == null)
-			return null;
-		return possibleResults.get(bestMatch);
+		return bestMatch;
+	}
+	
+	/**
+	 * If the interest has no publisher ID we can optimize this by just checking the interest against the name
+	 * and only reading the content from the file if this check matches. This could potentially change if interest
+	 * has other features we might care about. Its probably OK that we try to match the interest twice in that
+	 * case though we could consider trying to optimize that also.
+	 * 
+	 * @param interest
+	 * @param name
+	 * @param file
+	 * @return
+	 * @throws RepositoryException
+	 */
+	private ContentObject checkMatch(Interest interest, ContentName name, ArrayList<File>files) throws RepositoryException {
+		for (File file: files) {
+			if (null == interest.publisherID()) {
+				if (!interest.matches(name, null))
+					return null;
+			}
+			ContentObject testMatch = getContentFromFile(file);
+			if (testMatch != null) {
+				if (interest.matches(testMatch))
+					return testMatch;
+			}
+		}
+		return null;
 	}
 	
 	/**
@@ -180,8 +203,8 @@ public class RFSImpl implements Repository {
 	 * any file that matches the prefix and any member of the "encodedNames"
 	 * that matches the prefix.
 	 */
-	private TreeMap<ContentName, File> getPossibleMatches(ContentName name) {
-		TreeMap<ContentName, File> results = new TreeMap<ContentName, File>();
+	private TreeMap<ContentName, ArrayList<File>> getPossibleMatches(ContentName name) {
+		TreeMap<ContentName, ArrayList<File>> results = new TreeMap<ContentName, ArrayList<File>>();
 		File file = new File(_repositoryFile + getStandardString(name));
 		ContentName lowerName = new ContentName(null != name.prefixCount() ? name.prefixCount() : name.count(),
 					name.components());
@@ -203,7 +226,7 @@ public class RFSImpl implements Repository {
 	 * @param results
 	 * @param name
 	 */
-	private void getAllFileResults(File file, TreeMap<ContentName, File> results, ContentName name) {
+	private void getAllFileResults(File file, TreeMap<ContentName, ArrayList<File>> results, ContentName name) {
 		if (file.isDirectory()) {
 			for (File f : file.listFiles()) {
 				getAllFileResults(f, results, new ContentName(name, f.getName().getBytes()));
@@ -212,13 +235,13 @@ public class RFSImpl implements Repository {
 			ContentName decodedName = name.clone();
 			decodedName.components().remove(decodedName.count() - 1);
 			decodedName.components().add(decodeBase64(file.getName()));
-			results.put(decodedName, file);	
+			addOneFileToMap(decodedName, file, results);	
 		} else {
 			// Convert last component to "digest as file" form
 			ContentName encodedName = encodeDigest(name);
 			File encodedFile = new File(_repositoryFile + getStandardString(encodedName));
 			if (encodedFile.exists()) {
-				results.put(name, encodedFile);
+				addOneFileToMap(name, encodedFile, results);
 			}
 		}
 	}
@@ -256,7 +279,15 @@ public class RFSImpl implements Repository {
 			dirFile.mkdirs();
 			file = new File(_repositoryRoot, getStandardString(newName));
 			if (isEncoded(newName))
-				_encodedFiles.put(new ContentName(content.name(), content.contentDigest()), file);
+				addOneFileToMap(new ContentName(content.name(), content.contentDigest()), file, _encodedFiles);
+			if (file.exists()) {
+				ContentObject prevContent = getContentFromFile(file);
+				if (prevContent != null) {
+					if (prevContent.equals(content))
+						return;
+				}
+				file = getSpecialPath(content);
+			}
 		}
 		saveContentToFile(file, content);
 	}
@@ -322,14 +353,13 @@ public class RFSImpl implements Repository {
 	}
 	
 	/**
-	 * Convert a non usable pathname into something we can use
-	 * XXX For now this only involves splitting up components that are
-	 * "too long".
+	 * Convert a non usable or already used pathname into something we can use
 	 * 
 	 * @param name
 	 * @return
+	 * @throws RepositoryException 
 	 */
-	private File getSpecialPath(ContentObject content) {
+	private File getSpecialPath(ContentObject content) throws RepositoryException {
 		ContentName name = content.name();
 		ArrayList<byte[]> components = name.components();
 		ArrayList<byte[]> newComponents = new ArrayList<byte[]>();
@@ -366,10 +396,60 @@ public class RFSImpl implements Repository {
 		String convertedDigest = convertDigest(content);
 		File file = new File(_repositoryRoot + getStandardString(specialName), 
 					new String(new byte[]{UTF8_COMPONENT}) + convertedDigest);
+		
+		/*
+		 * Handle content with the same digest as another digest
+		 * We put all files with the same digest in a directory using the
+		 * digest name as the directory name. So if we have a name clash
+		 * with a non-directory, this is the first name clash with an old
+		 * digest name and we need to remove the old data, change the file
+		 * to a directory, then put back the old data in the directory and
+		 * add the new data. If we already had a name clash, we can just
+		 * add the data to the new directory. Also we have to handle
+		 * fixing up the data in "_encodedFiles" here.
+		 */
+		ArrayList<File> files = _encodedFiles.get(content.name());
+		if (files == null)
+			files = new ArrayList<File>();
+		if (file.exists() && file.isFile()) {
+			ContentObject prevContent = getContentFromFile(file);
+			for (File oldFile : files) {
+				if (oldFile.equals(file)) {
+					files.remove(oldFile);
+					break;
+				}
+			}
+			file.delete();
+			file.mkdir();
+			try {
+				File prevFile = File.createTempFile("RFS", "xxx", file);
+				saveContentToFile(prevFile, prevContent);
+				files.add(prevFile);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		if (file.isDirectory()) {
+			try {
+				file = File.createTempFile("RFS", "xxx", file);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		
 		ContentName keyName = name.clone();
 		keyName.components().add(content.contentDigest());
-		_encodedFiles.put(keyName, file);
+		files.add(file);
+		_encodedFiles.put(keyName, files);
 		return file;
+	}
+	
+	private void addOneFileToMap(ContentName name, File file, TreeMap<ContentName, ArrayList<File>>map) {
+		ArrayList<File> files = new ArrayList<File>();
+		files.add(file);
+		map.put(name, files);	
 	}
 	
 	private String convertDigest(ContentObject content) {

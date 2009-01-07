@@ -1,6 +1,7 @@
 package test.ccn.network.daemons.repo;
 
 import java.io.File;
+import java.util.Arrays;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.AfterClass;
@@ -12,6 +13,8 @@ import org.junit.Test;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
+import com.parc.ccn.data.security.PublisherID;
+import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.network.daemons.repo.RFSImpl;
 import com.parc.ccn.network.daemons.repo.RFSLocks;
@@ -38,7 +41,7 @@ public class RFSTest {
 	
 	@AfterClass
 	public static void cleanup() throws Exception {
-		FileUtils.deleteDirectory(_fileTest);
+		//FileUtils.deleteDirectory(_fileTest);
 	}
 	
 	@Before
@@ -70,8 +73,14 @@ public class RFSTest {
 		
 		System.out.println("Repotest - Testing basic data");
 		ContentName name = ContentName.fromNative("/repoTest/data1");
-		repo.saveContent(CCNLibrary.getContent(name, "Here's my data!".getBytes()));
+		ContentObject content = CCNLibrary.getContent(name, "Here's my data!".getBytes());
+		repo.saveContent(content);
 		checkData(repo, name, "Here's my data!");
+		
+		/**
+		 * TODO - need to figure out some way to test that saving identical content more
+		 * than once doesn't result in multiple copies of the data
+		 */
 		
 		System.out.println("Repotest - Testing clashing data");
 		ContentName clashName = ContentName.fromNative("/" + RFSImpl.META_DIR + "/repoTest/data1");
@@ -83,6 +92,22 @@ public class RFSTest {
 		repo.saveContent(digest2);
 		ContentName digestName = new ContentName(name, digest2.contentDigest());
 		checkData(repo, digestName, "Testing2");
+		
+		System.out.println("Repotest - Testing same digest for different data and/or publisher");
+		byte [] publisher1 = new byte[32];
+		Arrays.fill(publisher1, (byte)1);
+		PublisherKeyID pkid1 = new PublisherKeyID(publisher1);
+		ContentObject digestSame1 = CCNLibrary.getContent(name, "Testing2".getBytes(), pkid1);
+		PublisherID pubID1 = new PublisherID(pkid1.id(), PublisherID.PublisherType.KEY);
+		repo.saveContent(digestSame1);
+		byte [] publisher2 = new byte[32];
+		Arrays.fill(publisher2, (byte)2);
+		PublisherKeyID pkid2 = new PublisherKeyID(publisher2);
+		ContentObject digestSame2 = CCNLibrary.getContent(name, "Testing2".getBytes(), pkid2);
+		PublisherID pubID2 = new PublisherID(pkid2.id(), PublisherID.PublisherType.KEY);
+		repo.saveContent(digestSame2);
+		checkDataAndPublisher(repo, name, "Testing2", pubID1);
+		checkDataAndPublisher(repo, name, "Testing2", pubID2);
 		
 		System.out.println("Repotest - Testing too long data");
 		String tooLongName = "0123456789";
@@ -144,6 +169,8 @@ public class RFSTest {
 		checkData(repo, longName, "Long name!");
 		checkData(repo, badCharName, "Funny characters!");
 		checkData(repo, badCharLongName, "Long and funny");
+		checkDataAndPublisher(repo, name, "Testing2", pubID1);
+		checkDataAndPublisher(repo, name, "Testing2", pubID2);
 	}
 	
 	private void checkData(Repository repo, ContentName name, String data) throws RepositoryException {
@@ -153,5 +180,13 @@ public class RFSTest {
 		ContentObject testContent = repo.getContent(interest);
 		Assert.assertFalse(testContent == null);
 		Assert.assertEquals(data, new String(testContent.content()));		
+	}
+	private void checkDataAndPublisher(Repository repo, ContentName name, String data, PublisherID publisher) 
+				throws RepositoryException {
+		Interest interest = new Interest(name, publisher);
+		ContentObject testContent = repo.getContent(interest);
+		Assert.assertFalse(testContent == null);
+		Assert.assertEquals(data, new String(testContent.content()));
+		Assert.assertTrue(Arrays.equals(testContent.authenticator().publisher(), publisher.id()));
 	}
 }
