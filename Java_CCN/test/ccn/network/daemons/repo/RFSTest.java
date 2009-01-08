@@ -41,7 +41,7 @@ public class RFSTest {
 	
 	@AfterClass
 	public static void cleanup() throws Exception {
-		//FileUtils.deleteDirectory(_fileTest);
+		FileUtils.deleteDirectory(_fileTest);
 	}
 	
 	@Before
