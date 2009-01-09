@@ -15,9 +15,8 @@ import org.junit.BeforeClass;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.library.CCNDescriptor;
 import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.CCNLibrary.OpenMode;
+import com.parc.ccn.library.io.CCNDescriptor;
 
 
 public class BlockReadWriteTest extends BasePutGetTest {
@@ -41,7 +40,8 @@ public class BlockReadWriteTest extends BasePutGetTest {
 		
 		CCNLibrary useLibrary = libraries[0]; // looking for cause of semaphore problem...
 		ContentName thisName = CCNLibrary.versionName(ContentName.fromNative(baseName, fileName), count);
-		CCNDescriptor desc = useLibrary.open(thisName, OpenMode.O_RDONLY);
+		CCNDescriptor desc = useLibrary.open(thisName, null);
+		desc.setTimeout(100);
 		Library.logger().info("Opened descriptor for reading: " + thisName);
 
 		FileOutputStream os = new FileOutputStream(fileName + "_testout.txt");
@@ -50,6 +50,10 @@ public class BlockReadWriteTest extends BasePutGetTest {
         while ((buflen = useLibrary.read(desc, bytes, 0, bytes.length)) > 0) {
         	Library.logger().info("Read " + buflen + " bytes from CCNDescriptor.");
         	os.write(bytes, 0, (int)buflen);
+        	if (desc.available() == 0) {
+        		Library.logger().info("Descriptor claims 0 bytes available.");
+        		//break;
+        	}
         }
         useLibrary.close(desc);
         Library.logger().info("Closed CCN reading CCNDescriptor.");
@@ -70,7 +74,7 @@ public class BlockReadWriteTest extends BasePutGetTest {
 	public void doPuts(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException, NoSuchAlgorithmException {
 		CCNLibrary useLibrary = libraries[1]; // looking for cause of semaphore problem...
 		ContentName thisName = CCNLibrary.versionName(ContentName.fromNative(baseName, fileName), count);
-		CCNDescriptor desc = useLibrary.open(thisName, OpenMode.O_WRONLY);
+		CCNDescriptor desc = useLibrary.open(thisName, null, null, null);
 		
 		Library.logger().info("Opened descriptor for writing: " + thisName);
 		
