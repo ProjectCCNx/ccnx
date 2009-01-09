@@ -31,6 +31,7 @@ import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
+import com.parc.ccn.library.io.CCNDescriptor;
 import com.parc.ccn.network.CCNNetworkManager;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.crypto.CCNMerkleTree;
@@ -1434,39 +1435,32 @@ public class CCNLibrary extends CCNBase {
 	 * @throws InterruptedException 
 	 * @throws XMLStreamException 
 	 */
-	public CCNDescriptor open(ContentName name, PublisherKeyID publisher, KeyLocator locator, PrivateKey signingKey, OpenMode mode) 
+	public CCNDescriptor open(ContentName name, PublisherKeyID publisher, 
+								KeyLocator locator, PrivateKey signingKey) 
 			throws IOException, InterruptedException, XMLStreamException {
-		ContentObject content = new ContentObject(name, null, null, (Signature)null);
-		return new CCNDescriptor(content, mode, publisher, locator, signingKey, this); 
+		return new CCNDescriptor(name, publisher, locator, signingKey, this); 
 	}
 	
-	public CCNDescriptor open(ContentName name, OpenMode mode) throws IOException, InterruptedException, XMLStreamException {
-		return new CCNDescriptor(name, mode, this); 
+	public CCNDescriptor open(ContentName name, PublisherKeyID publisher) 
+				throws XMLStreamException, IOException, InterruptedException {
+		return new CCNDescriptor(name, publisher, this);
 	}
-		
-	public long read(CCNDescriptor ccnObject, byte [] buf, long 
-											offset, long len) throws IOException, InterruptedException {
+	
+	public int read(CCNDescriptor ccnObject, byte [] buf, 
+					int offset, int len) throws IOException, InterruptedException {
 		return ccnObject.read(buf,offset,len);
 	}
 
-	public long write(CCNDescriptor ccnObject, byte [] buf, long offset, long len) throws IOException, InterruptedException, InvalidKeyException, SignatureException, NoSuchAlgorithmException {
-		return ccnObject.write(buf, offset, len);
+	public void write(CCNDescriptor ccnObject, byte [] buf, int offset, int len) throws IOException, InterruptedException, InvalidKeyException, SignatureException, NoSuchAlgorithmException {
+		ccnObject.write(buf, offset, len);
 	}
 
-	public int seek(CCNDescriptor ccnObject, long offset, CCNDescriptor.SeekWhence whence) throws IOException, InterruptedException {
-		return ccnObject.seek(offset, whence);
+	public void close(CCNDescriptor ccnObject) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException {
+		ccnObject.close();
 	}
 	
-	public long tell(CCNDescriptor ccnObject) {
-		return ccnObject.tell();
-	}
-	
-	public int close(CCNDescriptor ccnObject) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException {
-		return ccnObject.close();
-	}
-	
-	public void sync(CCNDescriptor ccnObject) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException {
-		ccnObject.sync();
+	public void flush(CCNDescriptor ccnObject) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException {
+		ccnObject.flush();
 	}
 
 	/**
@@ -1486,19 +1480,18 @@ public class CCNLibrary extends CCNBase {
 	 * @throws InvalidParameterException
 	 */
 	public ContentObject getNext(ContentName name, byte[][] omissions, long timeout) 
-			throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException {
+			throws IOException, InterruptedException {
 		return get(Interest.next(name, omissions), timeout);
 	}
 	
 	public ContentObject getNext(ContentName name, long timeout)
-			throws MalformedContentNameStringException, IOException,
+			throws IOException,
 			InterruptedException, InvalidParameterException {
 		return getNext(name, null, timeout);
 	}
 	
 	public ContentObject getNext(ContentObject content, int prefixCount, byte[][] omissions, long timeout) 
-			throws InvalidParameterException, MalformedContentNameStringException, 
-			IOException, InterruptedException {
+			throws IOException, InterruptedException {
 		return getNext(contentObjectToContentName(content, prefixCount), omissions, timeout);
 	}
 	
