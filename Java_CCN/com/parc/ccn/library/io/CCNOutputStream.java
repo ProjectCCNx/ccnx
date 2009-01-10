@@ -103,13 +103,13 @@ public class CCNOutputStream extends OutputStream {
 		try {
 			closeNetworkData();
 		} catch (InvalidKeyException e) {
-			throw new IOException("Cannot sign content -- invalid key!", e);
+			throw new IOException("Cannot sign content -- invalid key!: " + e.getMessage());
 		} catch (SignatureException e) {
-			throw new IOException("Cannot sign content -- signature failure!", e);
+			throw new IOException("Cannot sign content -- signature failure!: " + e.getMessage());
 		} catch (NoSuchAlgorithmException e) {
-			throw new IOException("Cannot sign content -- unknown algorithm!", e);
+			throw new IOException("Cannot sign content -- unknown algorithm!: " + e.getMessage());
 		} catch (InterruptedException e) {
-			throw new IOException("Low-level network failure!", e);
+			throw new IOException("Low-level network failure!: " + e.getMessage());
 		}
 	}
 
@@ -118,13 +118,13 @@ public class CCNOutputStream extends OutputStream {
 		try {
 			flushToNetwork();
 		} catch (InvalidKeyException e) {
-			throw new IOException("Cannot sign content -- invalid key!", e);
+			throw new IOException("Cannot sign content -- invalid key!: " + e.getMessage());
 		} catch (SignatureException e) {
-			throw new IOException("Cannot sign content -- signature failure!", e);
+			throw new IOException("Cannot sign content -- signature failure!: " + e.getMessage());
 		} catch (NoSuchAlgorithmException e) {
-			throw new IOException("Cannot sign content -- unknown algorithm!", e);
+			throw new IOException("Cannot sign content -- unknown algorithm!: " + e.getMessage());
 		} catch (InterruptedException e) {
-			throw new IOException("Low-level network failure!", e);
+			throw new IOException("Low-level network failure!: " + e.getMessage());
 		}
 	}
 
@@ -133,13 +133,13 @@ public class CCNOutputStream extends OutputStream {
 		try {
 			writeToNetwork(b, off, len);
 		} catch (InvalidKeyException e) {
-			throw new IOException("Cannot sign content -- invalid key!", e);
+			throw new IOException("Cannot sign content -- invalid key!: " + e.getMessage());
 		} catch (SignatureException e) {
-			throw new IOException("Cannot sign content -- signature failure!", e);
+			throw new IOException("Cannot sign content -- signature failure!: " + e.getMessage());
 		} catch (NoSuchAlgorithmException e) {
-			throw new IOException("Cannot sign content -- unknown algorithm!", e);
+			throw new IOException("Cannot sign content -- unknown algorithm!: " + e.getMessage());
 		} catch (InterruptedException e) {
-			throw new IOException("Low-level network failure!", e);
+			throw new IOException("Low-level network failure!: " + e.getMessage());
 		}
 	}
 
