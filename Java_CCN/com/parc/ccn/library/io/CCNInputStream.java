@@ -271,7 +271,6 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 		_library.expressInterest(headerInterest, this);
 	}
 
-	@Override
 	public Interest handleContent(ArrayList<ContentObject> results,
 								  Interest interest) {
 		// This gives us back the header.
