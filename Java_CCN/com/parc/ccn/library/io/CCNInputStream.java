@@ -339,7 +339,7 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 		try {
 			block = _library.getNextLevel(blockName, _timeout);
 		} catch (InterruptedException e) {
-			throw new IOException("Interrupted retrieving block: " + blockName, e);
+			throw new IOException("Interrupted retrieving block: " + blockName + ": " + e.getMessage());
 		}
 		
 		if (null == block) {
@@ -360,7 +360,7 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 			Library.logger().info("getNextBlock: getting block after " + _currentBlock.name());
 			return _library.getNext(_currentBlock, _currentBlock.name().count()-2, null, _timeout);
 		} catch (InterruptedException e) {
-			throw new IOException("Interrupted retrieving next block after: " + _currentBlock.name(), e);
+			throw new IOException("Interrupted retrieving next block after: " + _currentBlock.name() + ": " + e.getMessage());
 		}
 	}
 	
@@ -375,7 +375,7 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 			Library.logger().info("getFirstBlock: retrieved " + result.name());
 			return result;
 		} catch (InterruptedException e) {
-			throw new IOException("Interrupted retrieving first block: " + _baseName, e);
+			throw new IOException("Interrupted retrieving first block: " + _baseName + ": " + e.getMessage());
 		}
 	}
 	

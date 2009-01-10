@@ -29,10 +29,10 @@ public class CCNURLConnection extends URLConnection {
 			return new CCNInputStream(thisName);
 		} catch (MalformedContentNameStringException e) {
 			Library.logger().info("Cannot parse URI: " + this.url);
-			throw new IOException("Cannot parse URI: " + this.url, e);
+			throw new IOException("Cannot parse URI: " + this.url + ": " + e.getMessage());
 		} catch (XMLStreamException e) {
 			Library.logger().info("Cannot parse XML: " + e.getMessage());
-			throw new IOException("Cannot parse XML.", e);
+			throw new IOException("Cannot parse XML.: " + e.getMessage());
 		} catch (InterruptedException e) {
 			Library.logger().info("Interrupted trying to open name: " + thisName);
 			throw new IOException("Interrupted trying to open name: " + thisName);
