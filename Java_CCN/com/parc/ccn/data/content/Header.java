@@ -6,10 +6,12 @@ import java.util.HashMap;
 
 import javax.xml.stream.XMLStreamException;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
+import com.parc.ccn.library.CCNLibrary;
 
 /**
  * Mapping from a sequence to the underlying XML representation.
@@ -49,7 +51,6 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 	protected static final String MERKLE_ROOT_ELEMENT = "RootDigest";
 	
 	public static final int DEFAULT_BLOCKSIZE = 4096;
-	public static final int DEFAULT_START = 1;
 	
 	/**
 	 * Specific to simple block fragmentation.
@@ -94,12 +95,12 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 	public Header(int length,
 			  	  byte [] contentDigest,
 			  	  byte [] rootDigest) {
-		this(DEFAULT_START, (length + DEFAULT_BLOCKSIZE - 1) / DEFAULT_BLOCKSIZE, DEFAULT_BLOCKSIZE, length,
+		this(CCNLibrary.baseFragment(), (length + DEFAULT_BLOCKSIZE - 1) / DEFAULT_BLOCKSIZE, DEFAULT_BLOCKSIZE, length,
 			 contentDigest, rootDigest);
 	}
 	
 	public Header() {
-		this(DEFAULT_START, 0, DEFAULT_BLOCKSIZE, 0, null, null);
+		this(CCNLibrary.baseFragment(), 0, DEFAULT_BLOCKSIZE, 0, null, null);
 	}
 	
 	public int start() { 
@@ -234,5 +235,38 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 		return true;
 	}
 
+	public int[] positionToBlockLocation(long position) {
+		int [] blockLocation = new int[2];
+		Library.logger().info("Header: " + this);
+		Library.logger().info("position: " + position + " blockSize " + blockSize() + " position/blockSize " + position/blockSize() + " start: " + start());
+		blockLocation[0] = (int)(Math.floor(1.0*position/blockSize()));
+		blockLocation[1] = (int)(1.0*position % blockSize());
+		return blockLocation;
+	}
 
+	public long blockLocationToPosition(int block, int offset) {
+		if (offset > blockSize()) {
+			block += (int)(Math.floor(1.0*offset/blockSize()));
+			offset = (int)(1.0*offset % blockSize());
+		}
+		if (block >= blockCount()) {
+			return length();
+		}
+		return block*blockSize() + offset;
+	}
+
+	public int blockCount() {
+		return (int)(Math.ceil(1.0*length()/blockSize()));
+	}
+	
+	/**
+	 * Length of last block.
+	 * @return
+	 */
+	public int blockRemainder() {
+		int remainder = (int)(1.0*length() % blockSize());
+		if (remainder == 0)
+			return blockSize();
+		return remainder;
+	}
 }
