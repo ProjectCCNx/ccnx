@@ -131,6 +131,8 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 		}
 		return 0; /* unknown */
 	}
+	
+	public boolean eof() { return _atEOF; }
 		
 	@Override
 	public void close() throws IOException {
@@ -189,6 +191,7 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 		if (_atEOF)
 			return 0;
 				
+		Library.logger().info("CCNInputStream: reading " + len + " bytes into buffer of length " + buf.length + " at offset " + offset);
 		// is this the first block?
 		if (null == _currentBlock) {
 			_currentBlock = getFirstBlock();
@@ -219,6 +222,7 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 			offset += readCount;
 			lenToRead -= readCount;
 			lenRead += readCount;
+			Library.logger().info("     read " + readCount + " bytes for " + lenRead + " total, " + lenToRead + " remaining.");
 		}
 		return lenRead;
 	}
@@ -259,7 +263,7 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 			}
 			return n-blockOffset;
 		} else {
-			return read(null, 0, (int)n);
+			return readInternal(null, 0, (int)n);
 		}
 	}
 	
@@ -358,7 +362,9 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 	protected ContentObject getNextBlock() throws IOException {
 		try {
 			Library.logger().info("getNextBlock: getting block after " + _currentBlock.name());
-			return _library.getNext(_currentBlock, _currentBlock.name().count()-2, null, _timeout);
+			ContentObject nextBlock =  _library.getNext(_currentBlock, _currentBlock.name().count()-2, null, _timeout);
+			Library.logger().info("getNextBlock: retrieived " + nextBlock.name());
+			return nextBlock;
 		} catch (InterruptedException e) {
 			throw new IOException("Interrupted retrieving next block after: " + _currentBlock.name() + ": " + e.getMessage());
 		}
@@ -433,8 +439,45 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 		if (null == _header) {
 			return 0;
 		}
+		return _header.blockCount();
+	}
+
+	public long seek(long position) throws IOException {
+		Library.logger().info("Seeking stream to " + position + ": have header? " + ((_header == null) ? "no." : "yes."));
+		if (null != _header) {
+			int [] blockAndOffset = _header.positionToBlockLocation(position);
+			Library.logger().info("seek:  position: " + position + " block: " + blockAndOffset[0] + " offset: " + blockAndOffset[1]);
+			_currentBlock = getBlock(blockAndOffset[0]);
+			_blockOffset = blockAndOffset[1];
+			// Might be at end of stream, so different value than came in...
+			return _header.blockLocationToPosition(blockAndOffset[0], blockAndOffset[1]);
+		} else {
+			getFirstBlock();
+			return skip(position);
+		}
+	}
+
+	public long tell() {
+		if (null != _header) {
+			return _header.blockLocationToPosition(blockNumber(), _blockOffset);
+		} else {
+			return _blockOffset; // could implement a running count...
+		}
+	}
 	
-		return (int)(Math.ceil(1.0*_header.length()/_header.blockSize()));
+	public long length() {
+		if (null != _header)
+			return _header.length();
+		return 0;
+	}
+	
+	protected int blockNumber()  {
+		if (null == _currentBlock) {
+			return CCNLibrary.baseFragment();
+		} else {
+			String num = ContentName.componentPrintNative(_currentBlock.name().component(_currentBlock.name().count()-1));
+			return Integer.parseInt(num);
+		}
 	}
 }
 
