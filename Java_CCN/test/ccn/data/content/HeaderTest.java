@@ -16,6 +16,7 @@ import org.junit.Test;
 import test.ccn.data.XMLEncodableTester;
 
 import com.parc.ccn.data.content.*;
+import com.parc.ccn.library.CCNLibrary;
 
 /**
  * @author briggs
@@ -40,7 +41,7 @@ public class HeaderTest {
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
 		Header seq = new Header(length, digest, digest);
 		assertNotNull(seq);
-		assertEquals(Header.DEFAULT_START, seq.start());
+		assertEquals(CCNLibrary.baseFragment(), seq.start());
 		assertEquals(length, seq.length());
 		assertEquals(Header.DEFAULT_BLOCKSIZE, seq.blockSize());
 		assertEquals((length + Header.DEFAULT_BLOCKSIZE - 1) / Header.DEFAULT_BLOCKSIZE, seq.count());
@@ -51,7 +52,7 @@ public class HeaderTest {
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
 		Header seq = new Header(length, digest, digest);
 		assertNotNull(seq);
-		assertEquals(Header.DEFAULT_START, seq.start());
+		assertEquals(CCNLibrary.baseFragment(), seq.start());
 		assertEquals(length, seq.length());
 		assertEquals(Header.DEFAULT_BLOCKSIZE, seq.blockSize());
 		assertEquals(1, seq.count());
