@@ -3,284 +3,315 @@
 
 <project default="jar" name="java-ccn">
 
-   <!-- To avoid conflict with Eclipse, we build in 'build' not 'bin' -->
-       
-   <property name="lib" location="lib"/>
-   <property name="build" location="build"/>
-   <property name="jarfile-base" value="ccn.jar"/>
-   <property name="jarfile" location="${build}/${jarfile-base}"/>
-   <property name="junit-jar" location="${lib}/junit-4.3.1.jar"/>
-   <property name="testout" location="testout"/>
-   <property name="ccnd" location="../ccnd/agent/ccnd"/>
-   <property name="showoutput" value="no"/>
-   <!-- To enable remote debugging, the incantation is 
+	<!-- To avoid conflict with Eclipse, we build in 'build' not 'bin' -->
+	
+	<property name="lib" location="lib"/>
+	<property name="build" location="build"/>
+	<property name="jarfile-base" value="ccn.jar"/>
+	<property name="jarfile" location="${jarfile-base}"/>
+	<property name="junit-jar" location="${lib}/junit-4.3.1.jar"/>
+	<property name="testout" location="testout"/>
+	<property name="ccnd" location="../ccnd/agent/ccnd"/>
+	<property name="showoutput" value="no"/>
+	<property name="repozip" value="repotest.zip"/>
+	<property name="REPO_ROOT" value="repotest"/>
+	<!-- To enable remote debugging, the incantation is 
 	"-Xdebug -Xrunjdwp:transport=dt_socket,address=8000,server=y,suspend=n" -->
-   <property name="DEBUG_OPTIONS" value=""/>
-   <!-- TEST_PORT is alternative ccnd port so we can run tests
+	<property name="DEBUG_OPTIONS" value=""/>
+	<!-- TEST_PORT is alternative ccnd port so we can run tests
         with an isolated ccnd rather than the "live" ccnd on the machine.
         Port 9 (discard) would be ideal but this needs to be a non-privileged
         port. -->
-   <property name="TEST_PORT" value="1999"/>
+	<property name="TEST_PORT" value="1999"/>
 
-   <!-- CLASSPATH NOTE: This should be a minimal set of what is 
+	<!-- CLASSPATH NOTE: This should be a minimal set of what is 
         required, so we have an authoritative list of dependencies -->
 
-   <path id="classpath">
-	   <pathelement location="${lib}/parccalib-1.0.jar"/>
-       <pathelement location="${lib}/bcprov-jdk15-140.jar"/>
-<!--        <pathelement location="${lib}/bcprov-jdk16-140.jar"/> -->
-<!--        <pathelement location="${lib}/commons-codec-1.2.jar"/> -->
-<!--        <pathelement location="${lib}/commons-httpclient-3.0.jar"/> -->
-<!--        <pathelement location="${lib}/derby-10.2.1.6.jar"/> -->
-<!--        <pathelement location="${lib}/geronimo-jta_1.0.1B_spec-1.0.1.jar"/> -->
-       <pathelement location="${lib}/jackrabbit-api-1.4.jar"/>
-<!--        <pathelement location="${lib}/jackrabbit-classloader-1.4.jar"/> -->
-       <pathelement location="${lib}/jackrabbit-core-1.4.jar"/>
-<!--        <pathelement location="${lib}/jackrabbit-jca-1.4.jar"/> -->
-<!--        <pathelement location="${lib}/jackrabbit-jcr2spi-1.4.jar"/> -->
-       <pathelement location="${lib}/jackrabbit-jcr-commons-1.4.jar"/>
-       <pathelement location="${lib}/jackrabbit-jcr-rmi-1.4.jar"/>
-<!--        <pathelement location="${lib}/jackrabbit-jcr-server-1.4.jar"/> -->
-<!--        <pathelement location="${lib}/jackrabbit-jcr-servlet-1.4.jar"/> -->
-<!--        <pathelement location="${lib}/jackrabbit-jcr-tests-1.4.jar"/> -->
-<!--        <pathelement location="${lib}/jackrabbit-ocm-1.4.jar"/> -->
-<!--        <pathelement location="${lib}/jackrabbit-ocm-1.4-jdk14.jar"/> -->
-<!--        <pathelement location="${lib}/jackrabbit-ocm-nodemanagement-1.4.jar"/> -->
-<!--        <pathelement location="${lib}/jackrabbit-spi2jcr-1.4.jar"/> -->
-<!--        <pathelement location="${lib}/jackrabbit-webapp-1.4.jar"/> -->
-<!--        <pathelement location="${lib}/jackrabbit-webdav-1.4.jar"/> -->
-       <pathelement location="${lib}/jcr-1.0.jar"/>
-       <pathelement location="${lib}/jmdns.jar"/>
-<!--        <pathelement location="${lib}/jrpcgen.jar"/> -->
-       <pathelement location="${lib}/jsr173_api.jar"/>
-	   <pathelement location="${lib}/commons-io-1.4.jar"/>
-       <pathelement location="${junit-jar}"/>
-<!--        <pathelement location="${lib}/mock.jar"/> -->
-<!--        <pathelement location="${lib}/nekohtml-0.9.4.jar"/> -->
-<!--        <pathelement location="${lib}/oncrpc.jar"/> -->
-<!--        <pathelement location="${lib}/pdfbox-0.6.4.jar"/> -->
-<!--        <pathelement location="${lib}/poi-2.5.1-final-20040804.jar"/> -->
-<!--      <pathelement location="${lib}/portmap.jar"/> -->
-<!--        <pathelement location="${lib}/sjsxp.jar"/> -->
-<!--        <pathelement location="${lib}/xercesImpl-2.8.1.jar"/> -->
-<!--        <pathelement location="${lib}/xml-apis-1.3.03.jar"/> -->
-<!--        <pathelement location="${lib}/xmldsig.jar"/> -->
-<!--        <pathelement location="${lib}/xmlsec.jar"/> -->
-   </path>
+	<path id="classpath">
+		<pathelement location="${lib}/parccalib-1.0.jar"/>
+		<pathelement location="${lib}/bcprov-jdk15-140.jar"/>
+		<!--        <pathelement location="${lib}/bcprov-jdk16-140.jar"/> -->
+		<!--        <pathelement location="${lib}/commons-codec-1.2.jar"/> -->
+		<!--        <pathelement location="${lib}/commons-httpclient-3.0.jar"/> -->
+		<!--        <pathelement location="${lib}/derby-10.2.1.6.jar"/> -->
+		<!--        <pathelement location="${lib}/geronimo-jta_1.0.1B_spec-1.0.1.jar"/> -->
+		<pathelement location="${lib}/jackrabbit-api-1.4.jar"/>
+		<!--        <pathelement location="${lib}/jackrabbit-classloader-1.4.jar"/> -->
+		<pathelement location="${lib}/jackrabbit-core-1.4.jar"/>
+		<!--        <pathelement location="${lib}/jackrabbit-jca-1.4.jar"/> -->
+		<!--        <pathelement location="${lib}/jackrabbit-jcr2spi-1.4.jar"/> -->
+		<pathelement location="${lib}/jackrabbit-jcr-commons-1.4.jar"/>
+		<pathelement location="${lib}/jackrabbit-jcr-rmi-1.4.jar"/>
+		<!--        <pathelement location="${lib}/jackrabbit-jcr-server-1.4.jar"/> -->
+		<!--        <pathelement location="${lib}/jackrabbit-jcr-servlet-1.4.jar"/> -->
+		<!--        <pathelement location="${lib}/jackrabbit-jcr-tests-1.4.jar"/> -->
+		<!--        <pathelement location="${lib}/jackrabbit-ocm-1.4.jar"/> -->
+		<!--        <pathelement location="${lib}/jackrabbit-ocm-1.4-jdk14.jar"/> -->
+		<!--        <pathelement location="${lib}/jackrabbit-ocm-nodemanagement-1.4.jar"/> -->
+		<!--        <pathelement location="${lib}/jackrabbit-spi2jcr-1.4.jar"/> -->
+		<!--        <pathelement location="${lib}/jackrabbit-webapp-1.4.jar"/> -->
+		<!--        <pathelement location="${lib}/jackrabbit-webdav-1.4.jar"/> -->
+		<pathelement location="${lib}/jcr-1.0.jar"/>
+		<pathelement location="${lib}/jmdns.jar"/>
+		<!--        <pathelement location="${lib}/jrpcgen.jar"/> -->
+		<pathelement location="${lib}/jsr173_api.jar"/>
+		<pathelement location="${lib}/commons-io-1.4.jar"/>
+		<pathelement location="${junit-jar}"/>
+		<!--        <pathelement location="${lib}/mock.jar"/> -->
+		<!--        <pathelement location="${lib}/nekohtml-0.9.4.jar"/> -->
+		<!--        <pathelement location="${lib}/oncrpc.jar"/> -->
+		<!--        <pathelement location="${lib}/pdfbox-0.6.4.jar"/> -->
+		<!--        <pathelement location="${lib}/poi-2.5.1-final-20040804.jar"/> -->
+		<!--      <pathelement location="${lib}/portmap.jar"/> -->
+		<!--        <pathelement location="${lib}/sjsxp.jar"/> -->
+		<!--        <pathelement location="${lib}/xercesImpl-2.8.1.jar"/> -->
+		<!--        <pathelement location="${lib}/xml-apis-1.3.03.jar"/> -->
+		<!--        <pathelement location="${lib}/xmldsig.jar"/> -->
+		<!--        <pathelement location="${lib}/xmlsec.jar"/> -->
+	</path>
 
-   <path id="classpath-run">
-      <path refid="classpath"/>
-      <pathelement location="${jarfile}"/>
-      <pathelement location="${lib}/parccalib-1.0.jar"/>
-      <pathelement location="${lib}/bcprov-jdk15-140.jar"/>
-<!--        <pathelement location="${lib}/bcprov-jdk16-140.jar"/> -->
-      <pathelement location="${lib}/slf4j-api-1.3.0.jar"/>
-      <pathelement location="${lib}/slf4j-log4j12-1.3.0.jar"/>
-      <pathelement location="${lib}/log4j-1.2.13.jar"/>
-      <pathelement location="${lib}/jackrabbit-spi-commons-1.4.jar"/>
-      <pathelement location="${lib}/concurrent-1.3.4.jar"/>
-      <pathelement location="${lib}/commons-collections-3.1.jar"/>
-      <pathelement location="${lib}/jackrabbit-api-1.4.jar"/>
-      <pathelement location="${lib}/jackrabbit-spi-1.4.jar"/>
-      <pathelement location="${lib}/lucene-core-2.2.0.jar"/>
-      <pathelement location="${lib}/jackrabbit-text-extractors-1.4.jar"/>
-      <pathelement location="${lib}/jsr173_1.0_ri.jar"/>
-   	  <pathelement location="${lib}/commons-io-1.4.jar"/>
-<!--       <pathelement location="${lib}/jcl104-over-slf4j-1.3.0.jar"/> -->
-<!--       <pathelement location="${lib}/tm-extractors-0.4.jar"/> -->
-   </path>
+	<path id="classpath-run">
+		<path refid="classpath"/>
+		<pathelement location="${jarfile}"/>
+		<pathelement location="${lib}/parccalib-1.0.jar"/>
+		<pathelement location="${lib}/bcprov-jdk15-140.jar"/>
+		<!--        <pathelement location="${lib}/bcprov-jdk16-140.jar"/> -->
+		<pathelement location="${lib}/slf4j-api-1.3.0.jar"/>
+		<pathelement location="${lib}/slf4j-log4j12-1.3.0.jar"/>
+		<pathelement location="${lib}/log4j-1.2.13.jar"/>
+		<pathelement location="${lib}/jackrabbit-spi-commons-1.4.jar"/>
+		<pathelement location="${lib}/concurrent-1.3.4.jar"/>
+		<pathelement location="${lib}/commons-collections-3.1.jar"/>
+		<pathelement location="${lib}/jackrabbit-api-1.4.jar"/>
+		<pathelement location="${lib}/jackrabbit-spi-1.4.jar"/>
+		<pathelement location="${lib}/lucene-core-2.2.0.jar"/>
+		<pathelement location="${lib}/jackrabbit-text-extractors-1.4.jar"/>
+		<pathelement location="${lib}/jsr173_1.0_ri.jar"/>
+		<pathelement location="${lib}/commons-io-1.4.jar"/>
+		<!--       <pathelement location="${lib}/jcl104-over-slf4j-1.3.0.jar"/> -->
+		<!--       <pathelement location="${lib}/tm-extractors-0.4.jar"/> -->
+	</path>
 
-   <!-- repository directory is likely to be created by running things
+	<!-- repository directory is likely to be created by running things
         so must be excluded from jar at least -->
 
-   <property name="build-excludes" value="bin/**, log/**, lib/**, libsrc/**, repository/**, build/**, testout/**, ktrace.out, CCN_DEBUG_DATA/**"/>
+	<property name="build-excludes" value="bin/**, log/**, lib/**, libsrc/**, repository/**, build/**, testout/**, ktrace.out, CCN_DEBUG_DATA/**"/>
 
-   <target name="compile">
-       <mkdir dir="${build}"/>
-       <depend srcdir="." destdir="${build}" closure="yes"/>
-       <javac destdir="${build}"
+	<target name="compile">
+		<mkdir dir="${build}"/>
+		<depend srcdir="." destdir="${build}" closure="yes"/>
+		<javac destdir="${build}"
               srcdir="." excludes="${build-excludes}"
-              source="1.5" compiler="javac1.5" debug="on"> 
-           <classpath>
-               <path refid="classpath"/>
-           </classpath>
-       </javac>
-       <copy todir="${build}">
-           <fileset dir="." excludes="${build-excludes}, **/*.java"/>
-       </copy>
-   </target>
-
-   <target name="jar" depends="compile">
-       <jar compress="true" jarfile="${jarfile}" basedir="${build}">
-           <exclude name="**/.classpath"/>
-           <exclude name="**/.project"/>
-           <exclude name="repository/**"/>
-           <exclude name="${jarfile-base}"/>
-       </jar>
-   </target>
-
-   <target name="clean-test">
-       <delete dir="${testout}"/>       
-   </target>
-
-   <target name="clean" depends="clean-test">
-       <delete dir="${build}"/>       
-   </target>
-
-   <!-- Run targets: running components -->
-   <target name="run-repo" depends="jar">
-        <java classname="com.parc.ccn.network.daemons.RepositoryDaemon"
-              fork="true"
-              failonerror="true">
-            <classpath>
-                <path refid="classpath-run"/>
-            </classpath>
-            <arg value="-interactive"/>
-        </java>
-   </target>
-	
-   <target name="ccnd">
-		<mkdir dir="${testout}"/>
-	    <parallel failonany="true">
-	        <daemons>
-	            <echo message="Running test ccnd on port ${TEST_PORT}"/>
-	            <exec executable="${ccnd}" dir="${testout}" output="${testout}/TEST-ccnd-baselib.txt">
-	                <env key="CCN_LOCAL_PORT" value="${TEST_PORT}"/>
-	            </exec>
-	        </daemons>
-	    </parallel>
-   </target>
-
-   <!-- test is for running all current automated tests to validate code -->
-   <target name="test" depends="test-data, test-puttap, test-library, test-endtoend">
-   </target>
-
-   <target name="test-data" depends="jar">
-       <mkdir dir="${testout}"/>
-       <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}">
-           <classpath>
-               <path refid="classpath-run"/>
-           </classpath>
-           <formatter type="brief" usefile="true"/>
-           <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-          
-           <batchtest todir="${testout}">
-               <fileset dir="${build}">
-                   <include name="test/ccn/data/*Test.class"/>
-                   <include name="test/ccn/data/content/*Test*.class"/>
-               	   <include name="test/ccn/data/query/*Test*.class"/>
-                   <include name="test/ccn/data/security/*Test*.class"/>
-                   <include name="test/ccn/data/util/*Test*.class"/>
-               </fileset>
-           </batchtest>
-       </junit>
-   </target>
-
-   <target name="test-library" depends="jar, ccnd">
-       <mkdir dir="${testout}"/>
-           <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
-               <classpath>
-                   <path refid="classpath-run"/>
-               </classpath>
-               <formatter type="brief" usefile="true"/>
-               <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-              
-           	   <batchtest todir="${testout}">
-   	               <fileset dir="${build}">
-   	                   <include name="test/ccn/library/*Test.class"/>
-   	               </fileset>
-           	  </batchtest>
-           </junit>
-   </target>
-	
-	<!-- This target is for debugging only -->
-	<target name="test-read" depends="jar, ccnd">
-	   
-       <mkdir dir="${testout}"/>
-       <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
-           <classpath>
-               <path refid="classpath-run"/>
-           </classpath>
-           <formatter type="brief" usefile="true"/>
-           <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-          
-       	   <batchtest todir="${testout}">
-               <fileset dir="${build}">
-                   <include name="test/ccn/library/ReadTest.class"/>
-               </fileset>
-       	  </batchtest>
-       </junit>
-   </target>
-	
-	<target name="test-repo" depends="jar, ccnd">
-	   <mkdir dir="${testout}"/>
-	   <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
-	       <classpath>
-	           <path refid="classpath-run"/>
-	       </classpath>
-	       <formatter type="brief" usefile="true"/>
-	       <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-	      
-	   	   <batchtest todir="${testout}">
-	           <fileset dir="${build}">
-	               <include name="test/ccn/network/daemons/repo/*Test.class"/>
-	           </fileset>
-	   	  </batchtest>
-	   </junit>
+              source="1.5" compiler="javac1.5" debug="on">
+			<classpath>
+				<path refid="classpath"/>
+			</classpath>
+		</javac>
+		<copy todir="${build}">
+			<fileset dir="." excludes="${build-excludes}, **/*.java"/>
+		</copy>
 	</target>
 
-   <target name="test-puttap" depends="jar">
-       <!-- Note that puttap forces writes of encoded messages to a tap
+	<target name="jar" depends="compile">
+		<jar compress="true" jarfile="${jarfile}" basedir="${build}">
+			<exclude name="**/.classpath"/>
+			<exclude name="**/.project"/>
+			<exclude name="repository/**"/>
+			<exclude name="${jarfile-base}"/>
+		</jar>
+	</target>
+
+	<target name="clean-test">
+		<delete dir="${testout}"/>
+	</target>
+
+	<target name="clean" depends="clean-test">
+		<delete dir="${build}"/>
+	</target>
+
+	<!-- Run targets: running components -->
+	<target name="ccnd">
+		<mkdir dir="${testout}"/>
+		<parallel failonany="true">
+			<daemons>
+				<echo message="Running test ccnd on port ${TEST_PORT}"/>
+				<exec executable="${ccnd}" dir="${testout}" output="${testout}/TEST-ccnd-baselib.txt">
+					<env key="CCN_LOCAL_PORT" value="${TEST_PORT}"/>
+				</exec>
+			</daemons>
+		</parallel>
+	</target>
+
+	<target name="start-repo">
+		<java classname="com.parc.ccn.network.daemons.repo.RepositoryDaemon" fork="true" failonerror="true">
+			<classpath>
+				<path refid="classpath-run" />
+			</classpath>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}" />
+			<arg value="-start" />
+			<arg value="-root" />
+			<arg value="${REPO_ROOT}" />
+		</java>
+	</target>
+	
+	<target name="stop-repo">
+			<java classname="com.parc.ccn.network.daemons.repo.RepositoryDaemon" fork="true" failonerror="true">
+				<classpath>
+					<path refid="classpath-run" />
+				</classpath>
+				<sysproperty key="ccn.agent.port" value="${TEST_PORT}" />
+				<arg value="-stop" />
+			</java>
+		</target>
+
+	<!-- test is for running all current automated tests to validate code -->
+	<target name="test" depends="test-data, test-puttap, test-library, test-endtoend">
+	</target>
+
+	<target name="test-data" depends="jar">
+		<mkdir dir="${testout}"/>
+		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="brief" usefile="true"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+
+			<batchtest todir="${testout}">
+				<fileset dir="${build}">
+					<include name="test/ccn/data/*Test.class"/>
+					<include name="test/ccn/data/content/*Test*.class"/>
+					<include name="test/ccn/data/query/*Test*.class"/>
+					<include name="test/ccn/data/security/*Test*.class"/>
+					<include name="test/ccn/data/util/*Test*.class"/>
+				</fileset>
+			</batchtest>
+		</junit>
+	</target>
+
+	<target name="test-library" depends="jar, ccnd">
+		<mkdir dir="${testout}"/>
+		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="brief" usefile="true"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+
+			<batchtest todir="${testout}">
+				<fileset dir="${build}">
+					<include name="test/ccn/library/*Test.class"/>
+				</fileset>
+			</batchtest>
+		</junit>
+	</target>
+
+	<!-- This target is for debugging only -->
+	<target name="test-read" depends="jar, ccnd">
+
+		<mkdir dir="${testout}"/>
+		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="brief" usefile="true"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+
+			<batchtest todir="${testout}">
+				<fileset dir="${build}">
+					<include name="test/ccn/library/ReadTest.class"/>
+				</fileset>
+			</batchtest>
+		</junit>
+	</target>
+
+	<target name="test-repo" depends="jar">
+		<mkdir dir="${testout}"/>
+		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="brief" usefile="true"/>
+			<batchtest todir="${testout}">
+				<fileset dir="${build}">
+					<include name="test/ccn/network/daemons/repo/RFSTest.class"/>
+				</fileset>
+			</batchtest>
+		</junit>
+	</target>
+	
+	<target name="test-repo-read" depends="jar, ccnd">
+		<mkdir dir="${testout}"/>
+		<mkdir dir="${REPO_ROOT}"/>
+		<unzip src="${repozip}" dest="${REPO_ROOT}" />
+		<antcall target="start-repo" />
+		<junit printsummary="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="brief" usefile="true"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+			<batchtest todir="${testout}">
+				<fileset dir="${build}">
+					<include name="test/ccn/network/daemons/repo/RepoReadTest.class"/>
+				</fileset>
+			</batchtest>
+		</junit>
+		<antcall target="stop-repo" />
+	</target>
+
+	<target name="test-puttap" depends="jar">
+		<!-- Note that puttap forces writes of encoded messages to a tap
             file for testing and debugging purposes.  It does not 
             need to have these messages reach any other process 
             and so does NOT need any ccnd to be running.
             We run against the test agent port just to avoid 
             unnecessarily polluting the real ccnd cache on the machine -->
-       <mkdir dir="${testout}"/>
-       <echo message="Running puttap tests"/>
-       <java classname="com.parc.ccn.apps.puttap" classpathref="classpath-run" failonerror="true" output="${testout}/TEST-com.parc.cc.apps.puttap0.txt" fork="true">
-           <arg value="0"/>
-           <arg value="/CCNUnitTest/puttap"/>
-           <arg file="${testout}/TEST-puttap0.out"/>
-           <arg file="com/parc/ccn/apps/puttap.java"/>
-           <arg file="-s"/>
-           <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-           <jvmarg line="${DEBUG_OPTIONS}"/>
-       </java>
-       <echo message="Running binary puttap tests"/>
-       <java classname="com.parc.ccn.apps.puttap" classpathref="classpath-run" failonerror="true" output="${testout}/TEST-com.parc.cc.apps.puttap1.txt" fork="true">
-           <arg value="1"/>
-           <arg value="/CCNUnitTest/puttap"/>
-           <arg file="${testout}/TEST-puttap1.out"/>
-           <arg file="com/parc/ccn/apps/puttap.java"/>
-           <arg file="-s"/>
-           <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-           <jvmarg line="${DEBUG_OPTIONS}"/>
-       </java>
-    </target>
- 
-   <target name="test-endtoend" depends="jar, ccnd">
-       <echo message="Running end-to-end test"/>
-       <parallel failonany="true">
-           <!-- timeout more than 2X average so sure timeout == failure -->
-           <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perTest" timeout="60000" dir="${testout}" showoutput="${showoutput}">
-               <classpath>
-                   <path refid="classpath-run"/>
-               </classpath>
-               <formatter type="brief" usefile="true"/>
-               <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-               <test todir="${testout}"  name="test.ccn.endtoend.EndToEndTestSource"/>
-           </junit>
-           <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perTest" timeout="60000" dir="${testout}" showoutput="${showoutput}">
-               <classpath>
-                   <path refid="classpath-run"/>
-               </classpath>
-               <formatter type="brief" usefile="true"/>
-               <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-               <test todir="${testout}"  name="test.ccn.endtoend.EndToEndTestSink"/>
-           </junit>
-       </parallel>
-   </target>
+		<mkdir dir="${testout}"/>
+		<echo message="Running puttap tests"/>
+		<java classname="com.parc.ccn.apps.puttap" classpathref="classpath-run" failonerror="true" output="${testout}/TEST-com.parc.cc.apps.puttap0.txt" fork="true">
+			<arg value="0"/>
+			<arg value="/CCNUnitTest/puttap"/>
+			<arg file="${testout}/TEST-puttap0.out"/>
+			<arg file="com/parc/ccn/apps/puttap.java"/>
+			<arg file="-s"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+			<jvmarg line="${DEBUG_OPTIONS}"/>
+		</java>
+		<echo message="Running binary puttap tests"/>
+		<java classname="com.parc.ccn.apps.puttap" classpathref="classpath-run" failonerror="true" output="${testout}/TEST-com.parc.cc.apps.puttap1.txt" fork="true">
+			<arg value="1"/>
+			<arg value="/CCNUnitTest/puttap"/>
+			<arg file="${testout}/TEST-puttap1.out"/>
+			<arg file="com/parc/ccn/apps/puttap.java"/>
+			<arg file="-s"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+			<jvmarg line="${DEBUG_OPTIONS}"/>
+		</java>
+	</target>
+
+	<target name="test-endtoend" depends="jar, ccnd">
+		<echo message="Running end-to-end test"/>
+		<parallel failonany="true">
+			<!-- timeout more than 2X average so sure timeout == failure -->
+			<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perTest" timeout="60000" dir="${testout}" showoutput="${showoutput}">
+				<classpath>
+					<path refid="classpath-run"/>
+				</classpath>
+				<formatter type="brief" usefile="true"/>
+				<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+				<test todir="${testout}"  name="test.ccn.endtoend.EndToEndTestSource"/>
+			</junit>
+			<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perTest" timeout="60000" dir="${testout}" showoutput="${showoutput}">
+				<classpath>
+					<path refid="classpath-run"/>
+				</classpath>
+				<formatter type="brief" usefile="true"/>
+				<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+				<test todir="${testout}"  name="test.ccn.endtoend.EndToEndTestSink"/>
+			</junit>
+		</parallel>
+	</target>
 
 </project>
 

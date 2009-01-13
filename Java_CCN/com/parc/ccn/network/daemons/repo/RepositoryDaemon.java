@@ -38,8 +38,33 @@ public class RepositoryDaemon extends Daemon {
 	
 	private class FilterListener implements CCNFilterListener {
 
+		/**
+		 * For now we assume that we are only interested :-) in interests
+		 * that we can satisfy now. If the interest was satisfiable "later"
+		 * then the same ccnd that gave us the interest should also have
+		 * satisfied the interest that someone else had given it.
+		 */
 		public int handleInterests(ArrayList<Interest> interests) {
-			return 0;
+			int result = 0;
+			for (Interest interest : interests) {
+				try {
+					ContentObject content = _repo.getContent(interest);
+					if (content != null) {
+						_library.put(content);
+						result++;
+					}
+				} catch (RepositoryException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			return result;
 		}
 	}
 	
@@ -56,14 +81,16 @@ public class RepositoryDaemon extends Daemon {
 				ContentObject data = null;
 				do {
 					data = _dataQueue.poll();
-					if (data != null)
+					if (data != null) {
 						try {
 							_repo.saveContent(data);
 						} catch (RepositoryException e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
+					}
 				} while (data != null) ;
+				Thread.yield();  // Should we sleep?
 			}
 		}
 		
@@ -90,14 +117,14 @@ public class RepositoryDaemon extends Daemon {
 		}
 		
 		public void finish() {
-			//_repository.shutdown();
+			_started = false;
 		}
 	}
 	
 	public RepositoryDaemon() {
 		super();
 		_daemonName = "repository";
-		Library.logger().info("Starting interest server...");				
+		Library.logger().info("Starting " + _daemonName + "...");				
 		_started = true;
 		
 		try {
@@ -122,7 +149,8 @@ public class RepositoryDaemon extends Daemon {
 	
 	protected void usage() {
 		try {
-			System.out.println("usage: " + this.getClass().getName() + " [ [-root <directory>] -start | -stop | -interactive]");
+			System.out.println("usage: " + this.getClass().getName() + 
+						_repo.getUsage() + "[-start | -stop | -interactive]");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -134,7 +162,6 @@ public class RepositoryDaemon extends Daemon {
 	}
 	
 	public static void main(String[] args) {
-		
 		Daemon daemon = null;
 		try {
 			daemon = new RepositoryDaemon();

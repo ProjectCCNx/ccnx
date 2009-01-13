@@ -18,5 +18,9 @@ then
   echo 
   grep ccn_run /usr/local/bin/* 2>/dev/null | sed 's/^\/usr\/local\/bin\/\([^:]*\):.*$/\1/' | grep -v ccn_run | sort -u
 else
-  $JAVA -cp $CLASSPATH com.parc.ccn.network.daemons.RepositoryDaemon $*
+  if [ -n $CCN_LOCAL_PORT ]; then
+      $JAVA -cp $CLASSPATH -Dccn.agent.port=$CCN_LOCAL_PORT com.parc.ccn.network.daemons.repo.RepositoryDaemon -root $*
+  else
+    $JAVA -cp $CLASSPATH com.parc.ccn.network.daemons.repo.RepositoryDaemon -root $*
+  fi
 fi

@@ -18,6 +18,7 @@ import org.apache.jackrabbit.util.Base64;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.WirePacket;
+import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 
 /**
@@ -47,7 +48,7 @@ public class RFSImpl implements Repository {
 	
 	private static final int TOO_LONG_SIZE = 200;
 	
-	protected String _repositoryRoot = "repo";
+	protected String _repositoryRoot = null;
 	protected File _repositoryFile;
 	protected RFSLocks _locker;
 	
@@ -62,6 +63,9 @@ public class RFSImpl implements Repository {
 				_repositoryRoot = args[i + 1];
 				break;
 			}
+		}
+		if (_repositoryRoot == null) {
+			throw new InvalidParameterException();
 		}
 		_repositoryFile = new File(_repositoryRoot);
 		_repositoryFile.mkdirs();
@@ -519,5 +523,14 @@ public class RFSImpl implements Repository {
 			} catch (UnsupportedEncodingException e) {}
 		}
 		return nameBuf.toString();
+	}
+
+	public void expressInterest(Interest interest, CCNInterestListener listener)
+			throws IOException {
+		// TODO Auto-generated method stub
+	}
+	
+	public String getUsage() {
+		return " -root repository_root ";
 	}
 }

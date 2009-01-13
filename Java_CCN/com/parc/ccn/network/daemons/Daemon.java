@@ -6,6 +6,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -19,6 +20,7 @@ import java.rmi.server.UnicastRemoteObject;
 import java.util.Date;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.network.CCNNetworkManager;
 
 /**
  * Wrapper class for things that run as daemons. Based
@@ -206,6 +208,8 @@ public class Daemon {
 
 		String cmd = "java ";
 		// Need to put quotes around individual items, to cope with spaces in path names.
+		// paul r. - the above seems to break on my Mac anyway.  Commented awaiting further testing...
+		//
 		String classPath = System.getProperty("java.class.path");
 		String [] directories = null;
 		String sep = null;
@@ -223,13 +227,21 @@ public class Daemon {
 		if (null != directories) {
 			for (int i=1; i < directories.length; ++i) {
 				cp.append(sep);
-				cp.append("\"");
+				//cp.append("\"");
 				cp.append(directories[i]);
-				cp.append("\"");
+				//cp.append("\"");
 			}
 		}
 		
-		cmd += "-cp " + cp.toString() + " ";
+	    /**
+	     * Add properties
+	     * TODO - we might want to add them all but for now this is
+	     * the critical one
+	     */
+		String portval = System.getProperty(CCNNetworkManager.PROP_AGENT_PORT);
+		cmd += "-D" + CCNNetworkManager.PROP_AGENT_PORT + "=" + portval;
+		
+		cmd += " -cp " + cp.toString() + " ";
 
 		cmd += daemonClass + " ";
 		cmd += "-daemon";
@@ -239,12 +251,6 @@ public class Daemon {
 		}
 		Library.logger().info("Starting daemon with command line: " + cmd);
 
-		// TODO DKS -- for some reason the exec can't find the class...
-		// almost certainly because rmic not running to build the
-		// stub. Don't know best mech to implement this nicely
-		// without going to ant.
-		// Can start jackrabbit without this by adding a call
-		// to startLoop inside runAsDaemon...
 		FileOutputStream fos = new FileOutputStream("daemon_cmd.txt");
 		fos.write(cmd.getBytes());
 		fos.flush();
@@ -258,10 +264,15 @@ public class Daemon {
 				
 				// this should throw an exception
 				try {
+					InputStream childMsgs = child.getErrorStream();
 					int exitValue = child.exitValue();
 					// if we get here, the child has exited
 					Library.logger().warning("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
 					System.err.println("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
+					byte[] childMsgBytes = new byte[childMsgs.available()];
+					childMsgs.read(childMsgBytes);;
+					String childOutput = new String(childMsgBytes);
+					System.err.println("Messages from the child were: \"" + childOutput + "\"");
 					return;
 				} catch (IllegalThreadStateException e) {
 				}
@@ -330,6 +341,7 @@ public class Daemon {
 		} else if (args[0].equals("-stop")) {
 			mode = Mode.MODE_STOP;
 		} else if (args[0].equals("-daemon")) {
+			daemon.initialize(args, daemon);
 			mode = Mode.MODE_DAEMON;
 		} else {
 			daemon.initialize(args, daemon);
@@ -353,6 +365,7 @@ public class Daemon {
 			  case MODE_DAEMON:
 				// this will sit in a loop
 				runAsDaemon(daemon);
+				break;
 			  default:
 				daemon.usage();
 			}
