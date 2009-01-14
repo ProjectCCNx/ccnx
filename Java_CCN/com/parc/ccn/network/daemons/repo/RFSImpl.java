@@ -261,6 +261,7 @@ public class RFSImpl implements Repository {
 			FileInputStream fis = new FileInputStream(fileName);
 			byte[] buf = new byte[fis.available()];
 			fis.read(buf);
+			fis.close();
 			WirePacket packet = new WirePacket();
 			packet.decode(buf);
 			if (packet.data().size() == 1)

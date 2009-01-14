@@ -37,6 +37,7 @@ public class RFSLocks {
 			lockNo++;
 			FileOutputStream fos = new FileOutputStream(lockFile);
 			fos.write(fileName.getBytes());
+			fos.close();
 			map.put(fileName, lockFile);
 		} catch (IOException e) {
 			throw new RepositoryException(e.getMessage());
@@ -57,6 +58,7 @@ public class RFSLocks {
 				FileInputStream fis = new FileInputStream(lockFile);
 				byte [] buf = new byte[fis.available()];
 				fis.read(buf);
+				fis.close();
 				File targetFile = new File(new String(buf));
 				targetFile.delete();
 				lockFile.delete();
