@@ -70,7 +70,7 @@ public class RFSImpl implements Repository {
 		_repositoryFile = new File(_repositoryRoot);
 		_repositoryFile.mkdirs();
 		_locker = new RFSLocks(_repositoryRoot + File.separator + META_DIR);
-		constructEncodedMap(new File(_repositoryRoot + File.separator + META_DIR + File.separator + ENCODED_FILES));
+		constructEncodedMap(new File(_repositoryRoot + File.separator + META_DIR));
 		return outArgs;
 	}
 	
@@ -95,10 +95,13 @@ public class RFSImpl implements Repository {
 		StringTokenizer st = new StringTokenizer(file.getPath(), new String(File.separator));
 		ArrayList<byte[]> components = new ArrayList<byte[]>();
 		boolean encodedArea = false;
+		boolean reservedArea = false;
 		String currentValue = "";
 		while (st.hasMoreTokens()) {
 			String token = st.nextToken();
-			if (encodedArea) {
+			if (reservedArea) {
+				components.add(token.getBytes());
+			} else if (encodedArea) {
 				byte type = (byte)token.charAt(0);
 				switch (type) {
 				  case UTF8_COMPONENT:
@@ -123,6 +126,8 @@ public class RFSImpl implements Repository {
 			} else {
 				if (token.equals(ENCODED_FILES))
 					encodedArea = true;
+				if (token.equals(RESERVED_CLASH))
+					reservedArea = true;
 			}
 		}
 		byte [] digestComponent = components.remove(components.size() - 1);

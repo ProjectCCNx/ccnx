@@ -107,7 +107,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 			library.put("/excludeFilterTest/" + value, value);
 		}
 		library.put("/excludeFilterTest/aaa", "aaa");
-		library.put("/excludeFilterTeset/zzzzzzzz", "zzzzzzzz");
+		library.put("/excludeFilterTest/zzzzzzzz", "zzzzzzzz");
 		Interest interest = Interest.constructInterest(ContentName.fromNative("/excludeFilterTest/"), ef, null);
 		ContentObject content = library.get(interest, 1000);
 		Assert.assertTrue(content == null);

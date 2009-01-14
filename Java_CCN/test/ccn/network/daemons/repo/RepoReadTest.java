@@ -1,7 +1,6 @@
 package test.ccn.network.daemons.repo;
 
 import java.io.IOException;
-import java.util.Arrays;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -16,6 +15,7 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.network.daemons.repo.RFSImpl;
 
 /**
  * 
@@ -42,25 +42,25 @@ public class RepoReadTest extends LibraryTestBase {
 	@Test
 	public void testReadViaRepo() throws Throwable {
 		ContentName name = ContentName.fromNative("/repoTest/data1");
+		ContentName clashName = ContentName.fromNative("/" + RFSImpl.META_DIR + "/repoTest/data1");
+		ContentName digestName = new ContentName(name, ContentObject.contentDigest("Testing2"));
 		String tooLongName = "0123456789";
 		for (int i = 0; i < 30; i++)
 			tooLongName += "0123456789";
 		ContentName longName = ContentName.fromNative("/repoTest/" + tooLongName);
 		ContentName badCharName = ContentName.fromNative("/repoTest/" + "*x?y<z>u");
 		ContentName badCharLongName = ContentName.fromNative("/repoTest/" + tooLongName + "*x?y<z>u");
-		byte [] publisher1 = new byte[32];
-		Arrays.fill(publisher1, (byte)1);
-		PublisherKeyID pkid1 = new PublisherKeyID(publisher1);
-		PublisherID pubID1 = new PublisherID(pkid1.id(), PublisherID.PublisherType.KEY);
-		byte [] publisher2 = new byte[32];
-		Arrays.fill(publisher2, (byte)2);
-		PublisherKeyID pkid2 = new PublisherKeyID(publisher2);
-		PublisherID pubID2 = new PublisherID(pkid2.id(), PublisherID.PublisherType.KEY);
+		PublisherKeyID pkid1 = new PublisherKeyID("141qt881s6o92i9fneidpvdsu5sm00cfu0g7u5bbk3o3o6l4s57v");
+		PublisherKeyID pkid2 = new PublisherKeyID("12u9sl8h2oi5f132f97lon64l5al3bf7tj8p98lqgmdc5ovucahh");
+		
+		checkData(name, "Here's my data!");
+		checkData(clashName, "Clashing Name");
+		checkData(digestName, "Testing2");
 		checkData(longName, "Long name!");
 		checkData(badCharName, "Funny characters!");
 		checkData(badCharLongName, "Long and funny");
-		checkDataAndPublisher(name, "Testing2", pubID1);
-		checkDataAndPublisher(name, "Testing2", pubID2);
+		checkDataAndPublisher(name, "Testing2", pkid1);
+		checkDataAndPublisher(name, "Testing2", pkid2);
 	}
 	
 	private void checkData(ContentName name, String data) throws IOException, InterruptedException{
@@ -71,12 +71,12 @@ public class RepoReadTest extends LibraryTestBase {
 		Assert.assertFalse(testContent == null);
 		Assert.assertEquals(data, new String(testContent.content()));		
 	}
-	private void checkDataAndPublisher(ContentName name, String data, PublisherID publisher) 
+	private void checkDataAndPublisher(ContentName name, String data, PublisherKeyID publisher) 
 				throws IOException, InterruptedException {
-		Interest interest = new Interest(name, publisher);
+		Interest interest = new Interest(name, new PublisherID(publisher));
 		ContentObject testContent = library.get(interest, 10000);
 		Assert.assertFalse(testContent == null);
 		Assert.assertEquals(data, new String(testContent.content()));
-		Assert.assertTrue(Arrays.equals(testContent.authenticator().publisher(), publisher.id()));
+		Assert.assertTrue(testContent.authenticator().publisherKeyID().equals(publisher));
 	}
 }

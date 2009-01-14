@@ -898,8 +898,9 @@ public class CCNLibrary extends CCNBase {
 			KeyManager keyManager = KeyManager.getDefaultKeyManager();
 			PrivateKey signingKey = keyManager.getDefaultSigningKey();
 			KeyLocator locator = keyManager.getKeyLocator(signingKey);
-			if (publisher == null)
+			if (null == publisher) {
 				publisher = keyManager.getPublisherKeyID(signingKey);
+			}
 			return new ContentObject(name, new ContentAuthenticator(publisher, ContentAuthenticator.ContentType.LEAF, locator), contents, signingKey);
 		} catch (Exception e) {
 			e.printStackTrace();

@@ -1,7 +1,8 @@
 package test.ccn.network.daemons.repo;
 
 import java.io.File;
-import java.util.Arrays;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.AfterClass;
@@ -24,6 +25,9 @@ import com.parc.ccn.network.daemons.repo.RepositoryException;
 /**
  * 
  * @author rasmusse
+ * 
+ * Because it uses the default KeyManager, this test must be run
+ * with ccnd running.
  *
  */
 
@@ -94,20 +98,18 @@ public class RFSTest {
 		checkData(repo, digestName, "Testing2");
 		
 		System.out.println("Repotest - Testing same digest for different data and/or publisher");
-		byte [] publisher1 = new byte[32];
-		Arrays.fill(publisher1, (byte)1);
-		PublisherKeyID pkid1 = new PublisherKeyID(publisher1);
-		ContentObject digestSame1 = CCNLibrary.getContent(name, "Testing2".getBytes(), pkid1);
-		PublisherID pubID1 = new PublisherID(pkid1.id(), PublisherID.PublisherType.KEY);
+		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+		kpg.initialize(512); // go for fast
+		KeyPair pair1 = kpg.generateKeyPair();
+		PublisherKeyID pubKey1 = new PublisherKeyID(pair1.getPublic());
+		ContentObject digestSame1 = CCNLibrary.getContent(name, "Testing2".getBytes(), pubKey1);
 		repo.saveContent(digestSame1);
-		byte [] publisher2 = new byte[32];
-		Arrays.fill(publisher2, (byte)2);
-		PublisherKeyID pkid2 = new PublisherKeyID(publisher2);
-		ContentObject digestSame2 = CCNLibrary.getContent(name, "Testing2".getBytes(), pkid2);
-		PublisherID pubID2 = new PublisherID(pkid2.id(), PublisherID.PublisherType.KEY);
+		KeyPair pair2 = kpg.generateKeyPair();
+		PublisherKeyID pubKey2 = new PublisherKeyID(pair2.getPublic());
+		ContentObject digestSame2 = CCNLibrary.getContent(name, "Testing2".getBytes(), pubKey2);
 		repo.saveContent(digestSame2);
-		checkDataAndPublisher(repo, name, "Testing2", pubID1);
-		checkDataAndPublisher(repo, name, "Testing2", pubID2);
+		checkDataAndPublisher(repo, name, "Testing2", pubKey1);
+		checkDataAndPublisher(repo, name, "Testing2", pubKey2);
 		
 		System.out.println("Repotest - Testing too long data");
 		String tooLongName = "0123456789";
@@ -166,11 +168,12 @@ public class RFSTest {
 		System.out.println("Repotest - Testing reinitialization of repo");
 		repo = new RFSImpl();
 		repo.initialize(new String[] {"-root", _fileTestDir});
+		checkData(repo, clashName, "Clashing Name");
 		checkData(repo, longName, "Long name!");
 		checkData(repo, badCharName, "Funny characters!");
 		checkData(repo, badCharLongName, "Long and funny");
-		checkDataAndPublisher(repo, name, "Testing2", pubID1);
-		checkDataAndPublisher(repo, name, "Testing2", pubID2);
+		checkDataAndPublisher(repo, name, "Testing2", pubKey1);
+		checkDataAndPublisher(repo, name, "Testing2", pubKey2);
 	}
 	
 	private void checkData(Repository repo, ContentName name, String data) throws RepositoryException {
@@ -181,12 +184,12 @@ public class RFSTest {
 		Assert.assertFalse(testContent == null);
 		Assert.assertEquals(data, new String(testContent.content()));		
 	}
-	private void checkDataAndPublisher(Repository repo, ContentName name, String data, PublisherID publisher) 
+	private void checkDataAndPublisher(Repository repo, ContentName name, String data, PublisherKeyID publisher) 
 				throws RepositoryException {
-		Interest interest = new Interest(name, publisher);
+		Interest interest = new Interest(name, new PublisherID(publisher));
 		ContentObject testContent = repo.getContent(interest);
 		Assert.assertFalse(testContent == null);
 		Assert.assertEquals(data, new String(testContent.content()));
-		Assert.assertTrue(Arrays.equals(testContent.authenticator().publisher(), publisher.id()));
+		Assert.assertTrue(testContent.authenticator().publisherKeyID().equals(publisher));
 	}
 }

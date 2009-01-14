@@ -14,13 +14,19 @@ CLASSPATH=$CP1:$CP2
 
 if [ $# = 0 ]
 then
-  echo Possible commands:
-  echo 
-  grep ccn_run /usr/local/bin/* 2>/dev/null | sed 's/^\/usr\/local\/bin\/\([^:]*\):.*$/\1/' | grep -v ccn_run | sort -u
+  echo "usage: ccn_repo [stop | <pathname>]"
 else
-  if [ -n $CCN_LOCAL_PORT ]; then
-      $JAVA -cp $CLASSPATH -Dccn.agent.port=$CCN_LOCAL_PORT com.parc.ccn.network.daemons.repo.RepositoryDaemon -root $*
+  if [ "$1" = "stop" ]; then
+	  if [ -n $CCN_LOCAL_PORT ]; then
+	    $JAVA -cp $CLASSPATH -Dccn.agent.port=$CCN_LOCAL_PORT com.parc.ccn.network.daemons.repo.RepositoryDaemon -stop
+	  else
+	    $JAVA -cp $CLASSPATH com.parc.ccn.network.daemons.repo.RepositoryDaemon -stop
+	  fi
   else
-    $JAVA -cp $CLASSPATH com.parc.ccn.network.daemons.repo.RepositoryDaemon -root $*
+	  if [ -n $CCN_LOCAL_PORT ]; then
+	      $JAVA -cp $CLASSPATH -Dccn.agent.port=$CCN_LOCAL_PORT com.parc.ccn.network.daemons.repo.RepositoryDaemon -start -root $*
+	  else
+	    $JAVA -cp $CLASSPATH com.parc.ccn.network.daemons.repo.RepositoryDaemon -start -root $*
+	  fi
   fi
 fi
