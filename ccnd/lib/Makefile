@@ -48,7 +48,7 @@ libccn.a: $(LIB_OBJS)
 shared: $(SHLIBNAME)
 
 $(SHLIBNAME): libccn.a $(SHLIBDEPS)
-	$(LD) $(SHARED_LD_FLAGS) -o $@ libccn.a
+	$(LD) $(SHARED_LD_FLAGS) $(OPENSSL_LIBS) -lcrypto -o $@ libccn.a
 
 $(PROGRAMS): libccn.a
 

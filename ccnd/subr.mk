@@ -12,6 +12,7 @@ $(OBJDIR)/Makefile: Makefile
 coverage:
 	X () { test -f $$1 || return 0; gcov $$*; }; X *.gc??
 
+shared:
 
 depend: Makefile $(CSRC)
 	for i in $(CSRC); do gcc -MM $(CPREFLAGS) $$i; done > depend

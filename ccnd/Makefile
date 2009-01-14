@@ -3,7 +3,7 @@ SUBDIRS = lib agent udplink flowtest python
 OBJTREE = obj.`uname`
 MAKEF =  -f ../conf.mk -f Makefile -f ../conf.mk -f ../subr.mk
 
-default all clean depend coverage test:
+default all clean depend coverage test shared:
 	test -f conf.mk || touch conf.mk
 	test -d include/ccn || (test -d ../include/ccn && mkdir -p include && ln -s ../../include/ccn include/ccn)
 	test -f subr.mk || (test -f ../subr.mk && ln -s ../subr.mk)
