@@ -44,8 +44,8 @@ ccn_pubid_matches(const unsigned char *content_object,
     struct ccn_buf_decoder *d;
     int pubidstart;
     int pubidbytes;
-    int contentpubidstart;
-    int contentpubidbytes;
+    int contentpubidstart = 0;
+    int contentpubidbytes = 0;
     pubidstart = pi->offset[CCN_PI_B_PublisherIDKeyDigest];
     pubidbytes = pi->offset[CCN_PI_E_PublisherIDKeyDigest] - pubidstart;
     if (pubidbytes > 0) {
@@ -62,7 +62,7 @@ ccn_pubid_matches(const unsigned char *content_object,
         if (pubidbytes != contentpubidbytes)
             return(0); // This is fishy
         if (0 != memcmp(interest_msg + pubidstart,
-                        content_object + contentpubidbytes,
+                        content_object + contentpubidstart,
                         pubidbytes))
             return(0);
     }
