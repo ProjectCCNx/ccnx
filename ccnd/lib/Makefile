@@ -223,7 +223,8 @@ ccncatchunks.o: ccncatchunks.c ../include/ccn/bloom.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccncatchunks2.o: ccncatchunks2.c ../include/ccn/bloom.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/uri.h
+  ../include/ccn/indexbuf.h ../include/ccn/schedule.h \
+  ../include/ccn/uri.h
 ccnbuzz.o: ccnbuzz.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
