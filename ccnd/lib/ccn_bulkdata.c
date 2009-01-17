@@ -16,20 +16,28 @@
 #include <ccn/bloom.h>
 #include <ccn/ccn.h>
 
+/*
+ * Encode the number in decimal ascii
+ */
 void
 ccn_decimal_seqfunc(uintmax_t x, void *param, struct ccn_charbuf *resultbuf)
 {
-    (void)param;
+    (void)param; /* unused */
     assert(resultbuf->length == 0);
     ccn_charbuf_putf(resultbuf, "%ju", x);
 }
 
+/*
+ * Encode the number in big-endian binary, using one more than the
+ * minimum number of bytes (that is, the first byte is always zero).
+ */
 void
 ccn_binary_seqfunc(uintmax_t x, void *param, struct ccn_charbuf *resultbuf)
 {
     uintmax_t m;
     int n;
     unsigned char *b;
+    (void)param; /* unused */
     for (n = 0, m = 0; x < m; n++)
         m = (m << 8) | 0xff;
     b = ccn_charbuf_reserve(resultbuf, n + 1);
@@ -38,28 +46,35 @@ ccn_binary_seqfunc(uintmax_t x, void *param, struct ccn_charbuf *resultbuf)
         b[n] = x & 0xff;
 }
 
+/*
+ * Our private record of the state of the bulk data reception
+ */
 struct bulkdata {
-    ccn_seqfunc *seqfunc;
-    void *seqfunc_param;
-    struct pending *first;
-    struct ccn_closure *client;
-    uintmax_t next_expected;
+    ccn_seqfunc *seqfunc;           /* the sequence number scheme */
+    void *seqfunc_param;            /* parameters thereto, if needed */
+    struct pending *first;          /* start of list of pending items */
+    struct ccn_closure *client;     /* client-supplied upcall for delivery */
+    uintmax_t next_expected;        /* smallest undelivered sequence number */
     struct ccn_charbuf *name_prefix;
     int prefix_comps;
+    /* pubid, etc? */
 };
 
 struct pending {
-    struct pending *prev;
+    struct pending *prev;           /* links for doubly-linked list */
     struct pending *next;
     struct bulkdata *parent;
-    uintmax_t x;
-    struct ccn_closure closure;
-    unsigned char *content_ccnb;
+    uintmax_t x;                    /* sequence number for this item */
+    struct ccn_closure closure;     /* our closure for getting matching data */
+    unsigned char *content_ccnb;    /* the content that has arrived */
     size_t content_size;
 };
 
 static enum ccn_upcall_res deliver_content(struct ccn *h, struct bulkdata *b);
 static void express_bulkdata_interest(struct ccn *h, struct pending *b);
+// XXX - missing a way to create a struct bulkdata *
+// XXX - missing code to create new pendings
+
 
 static enum ccn_upcall_res
 imcoming_bulkdata(struct ccn_closure *selfp,
@@ -93,6 +108,7 @@ imcoming_bulkdata(struct ccn_closure *selfp,
     }
     /* XXX - check to see if seq comp matches, if not we have a hole to fill */
     
+    if (p->content_ccnb == NULL) {
     if (p->x == b->next_expected) {
         /* Good, we have in-order data to deliver to the caller */
         res = (*b->client->p)(b->client, CCN_UPCALL_CONTENT, info);
@@ -114,6 +130,7 @@ imcoming_bulkdata(struct ccn_closure *selfp,
         memcpy(p->content_ccnb, info->content_ccnb, size);
         p->content_size = size;
     }
+    }
     while (b->first != NULL && b->first->x == b->next_expected &&
            b->first->content_ccnb != NULL) {
         res = deliver_content(info->h, b);
@@ -125,25 +142,11 @@ imcoming_bulkdata(struct ccn_closure *selfp,
         return(CCN_UPCALL_RESULT_OK);
     }
     for (p = b->first; p->x >= b->next_expected; p = p->next) {
-        express_bulkdata_interest(info->h, p);
+        // XXX - this is not really right ...
+        if (p->content_ccnb == NULL)
+            express_bulkdata_interest(info->h, p);
     }
     return(CCN_UPCALL_RESULT_OK);
-}
-
-/*
- * This appends a tagged, valid, fully-saturated Bloom filter, useful for
- * excluding everything between two 'fenceposts' in an Exclude construct.
- */
-static void
-append_bf_all(struct ccn_charbuf *c)
-{
-    unsigned char bf_all[9] = { 3, 1, 'A', 0, 0, 0, 0, 0, 0xFF };
-    const struct ccn_bloom_wire *b = ccn_bloom_validate_wire(bf_all, sizeof(bf_all));
-    if (b == NULL) abort();
-    ccn_charbuf_append_tt(c, CCN_DTAG_Bloom, CCN_DTAG);
-    ccn_charbuf_append_tt(c, sizeof(bf_all), CCN_BLOB);
-    ccn_charbuf_append(c, bf_all, sizeof(bf_all));
-    ccn_charbuf_append_closer(c);
 }
 
 static void
@@ -167,21 +170,11 @@ express_bulkdata_interest(struct ccn *h, struct pending *p)
 
     ccn_charbuf_append(name, b->name_prefix->buf, b->name_prefix->length);
     
-    if (p->x > 0) {
-        seq->length = 0;
-        (*b->seqfunc)(p->x - 1, b->seqfunc_param, seq);
-        lob_start = name->length - 1;
-        prefix_comps = b->prefix_comps;
-        ccn_name_append(name, seq->buf, seq->length);
-        addl_comps = 2;
-    }
-    else {
-        seq->length = 0;
-        (*b->seqfunc)(p->x, b->seqfunc_param, seq);
-        ccn_name_append(name, seq->buf, seq->length);
-        prefix_comps = -1;
-        addl_comps = 1;
-    }
+    seq->length = 0;
+    (*b->seqfunc)(p->x, b->seqfunc_param, seq);
+    ccn_name_append(name, seq->buf, seq->length);
+    prefix_comps = -1;
+    addl_comps = 1;
     
     ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
 
@@ -192,22 +185,6 @@ express_bulkdata_interest(struct ccn *h, struct pending *p)
     ccn_charbuf_append_non_negative_integer(templ, addl_comps);
     ccn_charbuf_append_closer(templ); /* </AdditionalNameComponents> */
 
-    if (lob_start > 0) {
-        ccn_charbuf_append_tt(templ, CCN_DTAG_Exclude, CCN_DTAG);
-        append_bf_all(templ);
-        ccn_charbuf_append(templ,
-                           name->buf + lob_start,
-                           name->length - 1 - lob_start);
-        append_bf_all(templ);
-        seq->length = 0;
-        (*b->seqfunc)(p->x + 20, b->seqfunc_param, seq); // XXX - 20 should be var
-        ccn_charbuf_append_tt(templ, CCN_DTAG_Component, CCN_DTAG);
-        ccn_charbuf_append_tt(templ, seq->length, CCN_BLOB);
-        ccn_charbuf_append(templ, seq->buf, seq->length);
-        ccn_charbuf_append_closer(templ); /* </Component> */
-        append_bf_all(templ);
-        ccn_charbuf_append_closer(templ); /* </Exclude> */
-    }
     ccn_charbuf_append_closer(templ); /* </Interest> */
     res = ccn_express_interest(h, name, prefix_comps, &p->closure, templ);
     assert(res >= 0); // XXX - handle this better
