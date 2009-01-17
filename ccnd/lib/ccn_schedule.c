@@ -83,11 +83,27 @@ ccn_schedule_create(void *clienth, const struct ccn_gettime *clock)
 void
 ccn_schedule_destroy(struct ccn_schedule **schedp)
 {
-    if (*schedp != NULL) {
-        // XXX - there is other stuff to free
-        free(*schedp);
-        *schedp = NULL;
+    struct ccn_schedule *sched;
+    struct ccn_scheduled_event *ev;
+    struct ccn_schedule_heap_item *heap;
+    int n;
+    int i;
+    sched = *schedp;
+    if (sched == NULL)
+        return;
+    *schedp = NULL;
+    heap = sched->heap;
+    if (heap != NULL) {
+        n = sched->heap_n;
+        sched->heap = NULL;
+        for (i = 0; i < n; i++) {
+            ev = heap[i].ev;
+            (ev->action)(sched, sched->clienth, ev, CCN_SCHEDULE_CANCEL);
+            free(ev);
+        }
+        free(heap);
     }
+    free(sched);
 }
 
 const struct ccn_gettime *
