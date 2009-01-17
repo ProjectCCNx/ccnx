@@ -120,6 +120,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		_additionalNameComponents = additionalNameComponents;
 	}
 	
+	public Interest(ContentName name, int additionalNameComponents,
+				PublisherKeyID exactPublisher) {
+		this(name, additionalNameComponents, new PublisherID(exactPublisher));
+	}
+	
 	public Interest(ContentName name) {
 		this(name, null);
 	}

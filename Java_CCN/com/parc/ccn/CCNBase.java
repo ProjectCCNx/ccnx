@@ -19,6 +19,13 @@ public class CCNBase {
 	
 	public final static int NO_TIMEOUT = 0;
 	
+	/** 
+	 * DKS -- TODO temporary values to workaround problems in packet drops on the
+	 * 	local ccnd connection. 
+	 */
+	public static final boolean CONFIRM_PUTS = true;
+	public static final int CONFIRMATION_TIMEOUT = 10;
+	
 	/**
 	 * Allow separate per-instance to control reading/writing within
 	 * same app. Get default one if use static VM instance of StandardCCNLibrary,
@@ -51,7 +58,22 @@ public class CCNBase {
 	 * @throws InterruptedException
 	 */
 	public ContentObject put(ContentObject co) throws IOException, InterruptedException {
-		return getNetworkManager().put(co);
+		ContentObject reply = getNetworkManager().put(co);
+		// DKS -- total hack, but we're dropping stuff on the floor all over
+		// the place. We need an ack on the channel for localhost, according to
+		// Michael.
+		if (CONFIRM_PUTS) {
+		//	Interest readBackInterest = new Interest(co.name(), 0, co.authenticator().publisherKeyID());
+			Interest readBackInterest = new Interest(co.name());
+			ContentObject readBack = get(readBackInterest, CONFIRMATION_TIMEOUT);
+			while (null == readBack) {
+				Library.logger().info("Put failed, resubmitting " + co.name() + ".");
+				getNetworkManager().put(co);
+				readBack = get(readBackInterest, CONFIRMATION_TIMEOUT);
+			}
+			Library.logger().finer("Confirmed put, retrieived " + readBack.name());
+		}
+		return reply;
 	}
 	
 	/**

@@ -1,6 +1,7 @@
 package com.parc.ccn.library;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.security.InvalidKeyException;
 import java.security.InvalidParameterException;
 import java.security.NoSuchAlgorithmException;
@@ -36,6 +37,7 @@ import com.parc.ccn.network.CCNNetworkManager;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.crypto.CCNMerkleTree;
 import com.parc.ccn.security.keys.KeyManager;
+import com.parc.security.crypto.DigestHelper;
 
 /**
  * An implementation of the basic CCN library.
@@ -907,6 +909,7 @@ public class CCNLibrary extends CCNBase {
 		}
 		return null;
 	}
+	
 	public static ContentObject getContent(ContentName name, byte[] contents) {
 		return getContent(name, contents, null);
 	}
@@ -1099,13 +1102,16 @@ public class CCNLibrary extends CCNBase {
 		int from = 0;
 		byte[][] contentBlocks = new byte[nBlocks][];
 		Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+//		Library.logger().info("fragmentedPut: dividing content of " + contents.length + " into " + nBlocks + " of maximum length " + blockSize);
 		for (int i = 0; i < nBlocks; i++) {
 			int to = from + blockSize;
 			// nice Arrays operations not in 1.5
 			int end = (to < contents.length) ? to : contents.length;
 //			contentBlocks[i] = Arrays.copyOfRange(contents, from, (to < contents.length) ? to : contents.length);
 			contentBlocks[i] = new byte[end-from];
-			System.arraycopy(contents, from, contentBlocks[i], 0, (to < contents.length) ? to : contents.length);
+			System.arraycopy(contents, from, contentBlocks[i], 0, end-from);
+//			System.out.println("block " + i + " length " + (end-from) + " from " + from + " to " + to + " end " + end + " content max " + contents.length);
+			from += end-from;
 		}
 		
 		if (isFragment(name)) {
@@ -1234,6 +1240,13 @@ public class CCNLibrary extends CCNBase {
 			publisher = keyManager().getPublisherKeyID(signingKey);
 		}		
 		
+		byte [] md5 = DigestHelper.digest("MD5", contentBlocks);
+		int totallength = 0;
+		for (byte [] block: contentBlocks) {
+			totallength += block.length;
+		}
+		Library.logger().info("putMerkleTree: original content length " + totallength + " hash: 0x" + new BigInteger(1, md5).toString(16));
+		
 		// Digest of complete contents
 		// If we're going to unique-ify the block names
 		// (or just in general) we need to incorporate the names
@@ -1339,9 +1352,11 @@ public class CCNLibrary extends CCNBase {
 				ContentObject co = get(query, timeout == NO_TIMEOUT ? 5000 : timeout);
 				if (co == null)
 					break;
+				Library.logger().info("enumerate: retrieived " + co.name());
 				result.add(co);
 				query = Interest.next(co, prefixCount);
 			}
+			Library.logger().info("enumerate: retrieved " + result.size() + " objects.");
 			return result;
 		} catch (InterruptedException e) {
 			return null;

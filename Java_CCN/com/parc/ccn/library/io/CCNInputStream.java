@@ -114,6 +114,10 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 		this(name, null, null, null);
 	}
 	
+	public CCNInputStream(ContentName name, CCNLibrary library) throws XMLStreamException, IOException, InterruptedException {
+		this(name, null, null, library);
+	}
+	
 	public CCNInputStream(ContentName name, int blockNumber) throws XMLStreamException, IOException, InterruptedException {
 		this(name, blockNumber, null, null);
 	}
@@ -362,6 +366,14 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 	protected ContentObject getNextBlock() throws IOException {
 		try {
 			Library.logger().info("getNextBlock: getting block after " + _currentBlock.name());
+			if (null != _header) {
+				int expectedBlocks = _header.blockCount();
+				int blockIndex = blockIndex();
+				if (expectedBlocks <= blockIndex - CCNLibrary.baseFragment() + 1) {
+					_atEOF = true;
+					return null;
+				}
+			}
 			ContentObject nextBlock =  _library.getNext(_currentBlock, _currentBlock.name().count()-2, null, _timeout);
 			Library.logger().info("getNextBlock: retrieived " + nextBlock.name());
 			return nextBlock;
@@ -470,6 +482,8 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 			return _header.length();
 		return 0;
 	}
+	
+	public ContentName baseName() { return _baseName; }
 	
 	protected int blockNumber()  {
 		if (null == _currentBlock) {

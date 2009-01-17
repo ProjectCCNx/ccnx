@@ -1,6 +1,7 @@
 package com.parc.ccn.apps;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.SignatureException;
 
@@ -10,7 +11,7 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.library.CCNLibrary;
 
-public class put {
+public class put_file {
 
 	/**
 	 * @param args
@@ -40,12 +41,16 @@ public class put {
 				}
 				byte [] contents = Utils.getBytesFromFile(theFile);
 				
+				FileOutputStream testOut = new FileOutputStream("put_file.dat");
+				testOut.write(contents);
+				testOut.flush();
+				testOut.close();
 				// put as name
 				// int version = new Random().nextInt(1000);
 				// would be version = library.latestVersion(argName) + 1;
 				ContentObject result = library.newVersion(argName, contents);
 				
-				System.out.println("Inserted file " + args[1] + " as " + result.name());
+				System.out.println("Inserted file " + args[1] + " as " + result.name() + " byte count " + contents.length + ".");
 				System.exit(0);
 			} else {
 				for (int i=1; i < args.length; ++i) {
@@ -58,6 +63,11 @@ public class put {
 					}
 					byte [] contents = Utils.getBytesFromFile(theFile);
 					
+					FileOutputStream testOut = new FileOutputStream("put_file" + i + ".dat");
+					testOut.write(contents);
+					testOut.flush();
+					testOut.close();
+					
 					// put as child of name
 					ContentName nodeName = ContentName.fromURI(argName, theFile.getName());
 					
@@ -65,7 +75,7 @@ public class put {
 					// would be version = library.latestVersion(argName) + 1;
 					ContentObject result = library.newVersion(nodeName, contents);
 					
-					System.out.println("Inserted file " + args[i] + " as " + result.name());
+					System.out.println("Inserted file " + args[i] + " as " + result.name() + " byte count " + contents.length + ".");
 					
 				}
 			}
@@ -89,7 +99,7 @@ public class put {
 	}
 	
 	public static void usage() {
-		System.out.println("usage: put <ccnname> <filename> [<filename> ...]");
+		System.out.println("usage: put_file <ccnname> <filename> [<filename> ...]");
 	}
 
 }

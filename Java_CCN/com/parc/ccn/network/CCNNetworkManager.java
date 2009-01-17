@@ -532,6 +532,7 @@ public class CCNNetworkManager implements Runnable {
 	protected void write(ContentObject data) throws XMLStreamException {
 		WirePacket packet = new WirePacket(data);
 		writeInner(packet);
+		Library.logger().finest("Wrote content object: " + data.name());
 	}
 
 	protected void write(Interest interest) throws XMLStreamException {
@@ -544,8 +545,8 @@ public class CCNNetworkManager implements Runnable {
 			byte[] bytes = packet.encode();
 			ByteBuffer datagram = ByteBuffer.wrap(bytes);
 			synchronized (_channel) {
-				_channel.write(datagram);
-				Library.logger().finest("Wrote datagram (" + datagram.position() + " bytes)");
+				int result = _channel.write(datagram);
+				Library.logger().finest("Wrote datagram (" + datagram.position() + " bytes, result " + result + ")");
 				if (null != _tapStreamOut) {
 					try {
 						_tapStreamOut.write(bytes);
