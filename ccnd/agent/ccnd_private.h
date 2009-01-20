@@ -88,6 +88,7 @@ struct ccnd {
     unsigned long interests_stuffed;
     unsigned short seed[3];
     int debug;
+    int mtu;                        /* Target size for stuffing interests */
 };
 
 /*

@@ -1057,8 +1057,7 @@ ccn_stuff_interest(struct ccnd *h, struct face *face, struct ccn_charbuf *c)
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     int n_stuffed = 0;
-    /* Assume 1500 byte MTU, minus udp6 header overhead */
-    int remaining_space = 1500 - 48 - c->length;
+    int remaining_space = h->mtu - c->length;
     if (remaining_space < 20)
         return(0);
     for (hashtb_start(h->interestprefix_tab, e);
@@ -2393,6 +2392,7 @@ ccnd_create(void)
     const char *debugstr;
     const char *entrylimit;
     const char *nonlocalstr;
+    const char *mtu;
     int fd;
     int res;
     struct ccnd *h;
@@ -2450,6 +2450,15 @@ ccnd_create(void)
         h->capacity = atol(entrylimit);
         if (h->capacity <= 0)
             h->capacity = 10;
+    }
+    h->mtu = 0;
+    mtu = getenv("CCND_MTU");
+    if (mtu != NULL && mtu[0] != 0) {
+        h->mtu = atol(mtu);
+        if (h->mtu < 0)
+            h->mtu = 0;
+        if (h->mtu > 8800)
+            h->mtu = 8800;
     }
     portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
     if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
