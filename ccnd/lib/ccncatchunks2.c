@@ -1,18 +1,55 @@
 /*
  * Reads stuff written by ccnsendchunks, writes to stdout.
  */
+#include <sys/time.h>
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <sys/time.h>
 
 #include <ccn/bloom.h>
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/schedule.h>
 #include <ccn/uri.h>
+
+#define CHUNK_SIZE 1024
+#define PIPELIMIT (1U << 5)
+//#define GOT_HERE() fprintf(stderr, "LINE %d\n", __LINE__)
+#define GOT_HERE() ((void)(__LINE__))
+
+struct excludestuff;
+
+struct ooodata {
+    struct ccn_closure closure;     /* closure per slot */
+    unsigned char *raw_data;        /* content that has arrived out-of-order */
+    size_t raw_data_size;           /* its size (plus 1) in bytes */
+};
+
+struct mydata {
+    int allow_stale;
+    unsigned ooo_base;
+    unsigned ooo_count;
+    unsigned curwindow;
+    struct excludestuff *excl;
+    struct ccn_schedule *sched;
+    struct ccn_scheduled_event *report;
+    intmax_t interests_sent;
+    intmax_t pkts_recvd;
+    intmax_t delivered;
+    intmax_t junk;
+    intmax_t timeouts;
+    intmax_t dups;
+    struct ooodata ooo[PIPELIMIT];
+};
+
+struct excludestuff {
+    struct excludestuff* next;
+    unsigned char *data;
+    size_t size;
+};
 
 static void
 usage(const char *progname)
@@ -25,25 +62,6 @@ usage(const char *progname)
             progname);
     exit(1);
 }
-
-struct excludestuff;
-
-struct mydata {
-    int allow_stale;
-    struct excludestuff *excl;
-    struct ccn_schedule *sched;
-    struct ccn_scheduled_event *report;
-    intmax_t interests_sent;
-    intmax_t pkts_recvd;
-    intmax_t junk;
-    intmax_t timeouts;
-};
-
-struct excludestuff {
-    struct excludestuff* next;
-    unsigned char *data;
-    size_t size;
-};
 
 static void
 mygettime(const struct ccn_gettime *self, struct ccn_timeval *result)
@@ -63,22 +81,22 @@ static struct ccn_gettime myticker = {
 
 static int
 reporter(struct ccn_schedule *sched, void *clienth, 
- struct ccn_scheduled_event *ev, int flags)
+         struct ccn_scheduled_event *ev, int flags)
 {
     struct timeval now = {0};
     struct mydata *mydata = clienth;
     gettimeofday(&now, 0);
     fflush(stdout);
     fprintf(stderr,
-        "%ld.%06u ccncatchunks2[%d]: %jd isent, %jd recvd, %jd junk, %jd timeouts\n",
-        (long)now.tv_sec,
-        (unsigned)now.tv_usec,
-        (int)getpid(),
-    mydata->interests_sent,
-    mydata->pkts_recvd,
-    mydata->junk,
-    mydata->timeouts
-        );
+            "%ld.%06u ccncatchunks2[%d]: %jd isent, %jd recvd, %jd junk, %jd timeouts\n",
+            (long)now.tv_sec,
+            (unsigned)now.tv_usec,
+            (int)getpid(),
+            mydata->interests_sent,
+            mydata->pkts_recvd,
+            mydata->junk,
+            mydata->timeouts
+            );
     if ((flags & CCN_SCHEDULE_CANCEL) != 0) {
         mydata->report = NULL;
         return(0);
@@ -174,55 +192,100 @@ make_template(struct mydata *md, struct ccn_upcall_info *info)
     return(templ);
 }
 
-#define CHUNK_SIZE 1024
-
-enum ccn_upcall_res
-incoming_content(
-    struct ccn_closure *selfp,
-    enum ccn_upcall_kind kind,
-    struct ccn_upcall_info *info)
+static void
+ask_more(struct mydata *md, uintmax_t seq, struct ccn_upcall_info *info)
 {
+    const unsigned char *ib = NULL; /* info->interest_ccnb */
+    struct ccn_indexbuf *ic = NULL;
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *templ = NULL;
     struct ccn_charbuf *temp = NULL;
+    int res;
+    unsigned slot;
+    struct ccn_closure *cl = NULL;
+    
+    ib = info->interest_ccnb;
+    ic = info->interest_comps;
+    
+    name = ccn_charbuf_create();
+    temp = ccn_charbuf_create();
+    ccn_name_init(name);
+    if (ic->n < 2) abort();
+    res = ccn_name_append_components(name, ib, ic->buf[0], ic->buf[ic->n - 2]);
+    if (res < 0) abort();
+    
+    slot = seq % PIPELIMIT;
+    cl = &md->ooo[slot].closure;
+    if (cl->intdata == -1)
+        cl->intdata = seq;
+    assert(cl->intdata == seq);
+    assert(md->ooo[slot].raw_data_size == 0);
+    temp->length = 0;    
+    ccn_charbuf_putf(temp, "%ju", seq);
+    ccn_name_append(name, temp->buf, temp->length);
+    ccn_charbuf_destroy(&temp);
+    clear_excludes(md);
+    templ = make_template(md, info);
+    
+    res = ccn_express_interest(info->h, name, -1, cl, templ);
+    if (res < 0) abort();
+    md->interests_sent++;
+    ccn_charbuf_destroy(&templ);
+    ccn_charbuf_destroy(&name);
+    if (seq == md->delivered + md->ooo_count)
+        md->ooo_count++;
+}
+
+enum ccn_upcall_res
+incoming_content(
+                 struct ccn_closure *selfp,
+                 enum ccn_upcall_kind kind,
+                 struct ccn_upcall_info *info)
+{
     const unsigned char *ccnb = NULL;
     size_t ccnb_size = 0;
     const unsigned char *data = NULL;
     size_t data_size = 0;
-    const unsigned char *ib = NULL; /* info->interest_ccnb */
-    struct ccn_indexbuf *ic = NULL;
     int res;
     struct mydata *md = selfp->data;
+    unsigned slot;
     
-    if (kind == CCN_UPCALL_FINAL) {
-        if (md != NULL) {
-            clear_excludes(md);
-            selfp->data = NULL;
-            //XXX may need to clean up sched stuff; skip free for now.
-            //free(md);
-            md = NULL;
-        }
+    if (kind == CCN_UPCALL_FINAL)
         return(CCN_UPCALL_RESULT_OK);
-    }
+GOT_HERE();
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT) {
         md->timeouts++;
+        if (selfp->refcount > 1 || selfp->intdata == -1)
+            return(CCN_UPCALL_RESULT_OK);
         md->interests_sent++;
-        return(CCN_UPCALL_RESULT_REEXPRESS); // XXX - may need to reseed bloom filter
+        // XXX - may need to reseed bloom filter
+        return(CCN_UPCALL_RESULT_REEXPRESS);
     }
+GOT_HERE();
     if (kind != CCN_UPCALL_CONTENT)
         return(CCN_UPCALL_RESULT_ERR);
-    if (md == NULL)
-        selfp->data = md = calloc(1, sizeof(*md));
+    assert(md != NULL);
     md->pkts_recvd++;
+    if (selfp->intdata == -1) {
+        /* Outside the window we care about. Toss it. */
+        md->dups++;
+        return(CCN_UPCALL_RESULT_OK);
+    }
     ccnb = info->content_ccnb;
     ccnb_size = info->pco->offset[CCN_PCO_E];
-    ib = info->interest_ccnb;
-    ic = info->interest_comps;
     /* XXX - must verify sig, and make sure it is LEAF content */
     res = ccn_content_get_value(ccnb, ccnb_size, info->pco, &data, &data_size);
     if (res < 0) abort();
     if (data_size > CHUNK_SIZE) {
         /* For us this is spam. Need to try again, excluding this one. */
+        const unsigned char *ib = NULL; /* info->interest_ccnb */
+        struct ccn_indexbuf *ic = NULL;
+        struct ccn_charbuf *name = NULL;
+        struct ccn_charbuf *templ = NULL;
+        
+        ib = info->interest_ccnb;
+        ic = info->interest_comps;
+        
         md->junk++;
         fprintf(stderr, "*** skip spam at block %d\n", (int)selfp->intdata);
         name = ccn_charbuf_create();
@@ -239,35 +302,62 @@ incoming_content(
         ccn_charbuf_destroy(&name);
         return(CCN_UPCALL_RESULT_OK);
     }
-    
+GOT_HERE();
     /* OK, we will accept this block. */
-    
-    fwrite(data, data_size, 1, stdout);
-    
-    /* A short block signals EOF for us. */
-    if (data_size < CHUNK_SIZE) {
-        ccn_schedule_destroy(&md->sched);
-        exit(0);
+    slot = ((uintptr_t)selfp->intdata) % PIPELIMIT;
+    assert(selfp == &md->ooo[slot].closure);
+    if (slot != md->ooo_base || md->ooo_count == 0) {
+        /* out-of-order data, save for later */
+        struct ooodata *ooo = &md->ooo[slot];
+        if (ooo->raw_data_size == 0) {
+GOT_HERE();
+            ooo->raw_data = malloc(data_size);
+            memcpy(ooo->raw_data, data, data_size);
+            ooo->raw_data_size = data_size + 1;
+        }
+        else
+            md->dups++;
+        md->curwindow = 1;
     }
-    /* Ask for the next one */
-    name = ccn_charbuf_create();
-    ccn_name_init(name);
-    if (ic->n < 2) abort();
-    res = ccn_name_append_components(name, ib, ic->buf[0], ic->buf[ic->n - 2]);
-    if (res < 0) abort();
-    temp = ccn_charbuf_create();
-    ccn_charbuf_putf(temp, "%d", ++(selfp->intdata));
-    ccn_name_append(name, temp->buf, temp->length);
-    ccn_charbuf_destroy(&temp);
-    clear_excludes(md);
-    templ = make_template(md, info);
+    else {
+        assert(md->ooo[slot].raw_data_size == 0);
+        md->ooo[slot].closure.intdata = -1;
+        md->delivered++;
+GOT_HERE();
+        fwrite(data, data_size, 1, stdout);
+        /* A short block signals EOF for us. */
+        if (data_size < CHUNK_SIZE) {
+            ccn_schedule_destroy(&md->sched);
+            exit(0);
+        }
+        md->ooo_count--;
+        slot = (slot + 1) % PIPELIMIT;
+        if (md->curwindow < PIPELIMIT - 1)
+            md->curwindow++;
+        while (md->ooo_count > 0 && md->ooo[slot].raw_data_size != 0) {
+            struct ooodata *ooo = &md->ooo[slot];
+            md->delivered++;
+            fwrite(ooo->raw_data, ooo->raw_data_size - 1, 1, stdout);
+            /* A short block signals EOF for us. */
+            if (ooo->raw_data_size - 1 < CHUNK_SIZE) {
+                ccn_schedule_destroy(&md->sched);
+                exit(0);
+            }
+            free(ooo->raw_data);
+            ooo->raw_data = NULL;
+            ooo->raw_data_size = 0;
+            ooo->closure.intdata = -1;
+            slot = (slot + 1) % PIPELIMIT;
+            md->ooo_count--;
+        }
+        md->ooo_base = slot;
+    }
     
-    res = ccn_express_interest(info->h, name, -1, selfp, templ);
-    if (res < 0) abort();
-    md->interests_sent++;
-    
-    ccn_charbuf_destroy(&templ);
-    ccn_charbuf_destroy(&name);
+    /* Ask for the next one or two */
+    if (md->ooo_count < PIPELIMIT - 1)
+        ask_more(md, md->delivered + md->ooo_count, info);
+    if (md->ooo_count < md->curwindow)
+        ask_more(md, md->delivered + md->ooo_count, info);
     
     return(CCN_UPCALL_RESULT_OK);
 }
@@ -285,6 +375,7 @@ main(int argc, char **argv)
     char ch;
     struct mydata *mydata;
     int allow_stale = 0;
+    int i;
     
     while ((ch = getopt(argc, argv, "ha")) != -1) {
         switch (ch) {
@@ -313,14 +404,21 @@ main(int argc, char **argv)
         exit(1);
     }
     ccn_name_append(name, "0", 1);
-    incoming = calloc(1, sizeof(*incoming));
-    incoming->p = &incoming_content;
     mydata = calloc(1, sizeof(*mydata));
     mydata->allow_stale = allow_stale;
     mydata->excl = NULL;
     mydata->sched = ccn_schedule_create(mydata, &myticker);
     mydata->report = ccn_schedule_event(mydata->sched, 0, &reporter, NULL, 0);
-    incoming->data = mydata;
+    for (i = 0; i < PIPELIMIT; i++) {
+        incoming = &mydata->ooo[i].closure;
+        incoming->p = &incoming_content;
+        incoming->data = mydata;
+        incoming->intdata = -1;
+    }
+    mydata->ooo_base = 0;
+    mydata->ooo_count = 1;
+    incoming = &mydata->ooo[0].closure;
+    incoming->intdata = 0;
     templ = make_template(mydata, NULL);
     ccn_express_interest(ccn, name, -1, incoming, templ);
     mydata->interests_sent++;
@@ -328,7 +426,7 @@ main(int argc, char **argv)
     ccn_charbuf_destroy(&name);
     /* Run a little while to see if there is anything there */
     res = ccn_run(ccn, 500);
-    if (incoming->intdata == 0) {
+    if (mydata->delivered == 0) {
         fprintf(stderr, "%s: not found: %s\n", argv[0], arg);
         exit(1);
     }
