@@ -10,7 +10,7 @@ PROGRAMS = ccn_ccnbtoxml ccn_splitccnb ccn_verifysig\
     smoketestclientlib dataresponsetest ccntimestamps \
     encodedecodetest ccndumpnames ccndump ccnrm ccnls ccnslurp \
     ccnsendchunks ccncatchunks ccncatchunks2 ccnbuzz ccnhexdumpdata \
-    $(EXPAT_PROGRAMS)
+    signbenchtest $(EXPAT_PROGRAMS)
 EXPAT_PROGRAMS = ccn_xmltoccnb
 BROKEN_PROGRAMS =
 DEBRIS = libccn2.a
@@ -26,7 +26,8 @@ CSRC = ccn_buf_decoder.c ccn_dtag_table.c ccn_buf_encoder.c ccn_charbuf.c \
     smoketestclientlib.c ccntimestamps.c ccndump.c ccnrm.c ccndumpnames.c \
     ccnls.c ccnslurp.c \
     ccn_verifysig.c dataresponsetest.c ccn_uri.c  encodedecodetest.c \
-    ccnsendchunks.c ccncatchunks.c ccncatchunks2.c ccnbuzz.c ccnhexdumpdata.c
+    ccnsendchunks.c ccncatchunks.c ccncatchunks2.c ccnbuzz.c ccnhexdumpdata.c \
+    signbenchtest.c
 
 LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_dtag_table.o ccn_schedule.o ccn_matrix.o \
     ccn_buf_decoder.o ccn_uri.o ccn_buf_encoder.o ccn_bloom.o ccn_name_util.o ccn_digest.o ccn_keystore.o ccn_signing.o ccn_match.o hashtb.o ccn_merkle_path_asn1.o ccn_bulkdata.o
@@ -130,6 +131,11 @@ ccn_verifysig.o:
 ccn_verifysig: ccn_verifysig.o
 	$(CC) $(CFLAGS) -o $@ ccn_verifysig.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
+signbenchtest.o:
+	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c signbenchtest.c
+
+signbenchtest: signbenchtest.o
+	$(CC) $(CFLAGS) -o $@ signbenchtest.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto 
 
 clean:
 	rm -f *.o libccn.a libccn.1.$(SHEXT) $(PROGRAMS) depend
@@ -230,3 +236,5 @@ ccnbuzz.o: ccnbuzz.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccnhexdumpdata.o: ccnhexdumpdata.c ../include/ccn/coding.h \
   ../include/ccn/ccn.h ../include/ccn/charbuf.h ../include/ccn/indexbuf.h
+signbenchtest.o: signbenchtest.c ../include/ccn/ccn.h ../include/ccn/charbuf.h ../include/ccn/keystore.h
+

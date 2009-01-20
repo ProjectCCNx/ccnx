@@ -35,6 +35,12 @@ void ccn_charbuf_destroy(struct ccn_charbuf **cbp);
 unsigned char *ccn_charbuf_reserve(struct ccn_charbuf *c, size_t n);
 
 /*
+ * ccn_charbuf_reset: reset to empty for reuse
+ * Sets c->length to 0
+ */
+void ccn_charbuf_reset(struct ccn_charbuf *c);
+
+/*
  * ccn_charbuf_append: append character content
  */ 
 int ccn_charbuf_append(struct ccn_charbuf *c, const void *p, size_t n);

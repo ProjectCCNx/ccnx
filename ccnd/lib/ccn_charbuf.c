@@ -49,6 +49,14 @@ ccn_charbuf_reserve(struct ccn_charbuf *c, size_t n)
     return(buf);
 }
 
+void ccn_charbuf_reset(struct ccn_charbuf *c)
+{
+    if (c == NULL) {
+      return;
+    } 
+    c->length = 0;
+}
+
 int
 ccn_charbuf_append(struct ccn_charbuf *c, const void *p, size_t n)
 {
