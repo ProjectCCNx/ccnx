@@ -1,9 +1,12 @@
 /*
  * Dumps names of everything quickly retrievable to stdout
  */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/uri.h>
@@ -16,6 +19,40 @@
   <Scope>0</Scope>
 </Interest>
 **********/
+struct ccn_charbuf *
+local_scope_template(int allow_stale)
+{
+    struct ccn_charbuf *templ = ccn_charbuf_create();
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
+    /* <Name/> */
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
+    ccn_charbuf_append_closer(templ); /* </Name> */
+    /* <NameComponentCount>0</NameComponentCount> */
+    ccn_charbuf_append_tt(templ, CCN_DTAG_NameComponentCount, CCN_DTAG);
+    ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
+    ccn_charbuf_append(templ, "0", 1);
+    ccn_charbuf_append_closer(templ); /* </NameComponentCount> */
+    /* <OrderPreference>4</OrderPreference> */
+    ccn_charbuf_append_tt(templ, CCN_DTAG_OrderPreference, CCN_DTAG);
+    ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
+    ccn_charbuf_append(templ, "4", 1);
+    ccn_charbuf_append_closer(templ); /* </OrderPreference> */
+    if (allow_stale) {
+        /* <AnswerOriginKind>5</AnswerOriginKind> */
+        ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
+        ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
+        ccn_charbuf_putf(templ, "%d", (int)(CCN_AOK_CS + CCN_AOK_STALE));
+        ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
+    }
+    /* <Scope>0</Scope> */
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Scope, CCN_DTAG);
+    ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
+    ccn_charbuf_append(templ, "0", 1);
+    ccn_charbuf_append_closer(templ); /* </Scope> */
+    ccn_charbuf_append_closer(templ); /* </Interest> */
+    return(templ);
+}
+
 static const unsigned char templ_ccnb[20] =
         "\001\322\362\000\002\212\216\060"
         "\000\002\362\216\064\000\002\322"
@@ -54,10 +91,9 @@ incoming_content(
     /* Use the full name, including digest, to ensure we move along */
     ccn_digest_ContentObject(ccnb, info->pco);
     ccn_name_append(c, info->pco->digest, info->pco->digest_bytes);
-    templ = ccn_charbuf_create();
-    ccn_charbuf_append(templ, templ_ccnb, 20);
+    templ = local_scope_template(selfp->intdata);
     ccn_express_interest(info->h, c, 0, selfp, templ);
-    ccn_charbuf_destroy(&templ);
+    
     ccn_charbuf_destroy(&c);
     selfp->data = selfp; /* make not NULL to indicate we got something */
     return(0);
@@ -68,22 +104,47 @@ static struct ccn_closure incoming_content_action = {
     .p = &incoming_content
 };
 
+static void
+usage(const char *progname)
+{
+    fprintf(stderr,
+            "%s [-a]\n"
+            "   Dumps names of everything quickly retrievable\n"
+            "   -a - allow stale data\n",
+            progname);
+    exit(1);
+}
+
 int
 main(int argc, char **argv)
 {
     struct ccn *ccn = NULL;
     struct ccn_charbuf *c = NULL;
     struct ccn_charbuf *templ = NULL;
+    int allow_stale = 0;
     int i;
+    int ch;
+    
+    while ((ch = getopt(argc, argv, "ha")) != -1) {
+        switch (ch) {
+            case 'a':
+                allow_stale = 1;
+                break;
+            case 'h':
+            default:
+                usage(argv[0]);
+        }
+    }
+    
     ccn = ccn_create();
     if (ccn_connect(ccn, NULL) == -1) {
         perror("Could not connect to ccnd");
         exit(1);
     }
     c = ccn_charbuf_create();
-    templ = ccn_charbuf_create();
     /* set scope to only address ccnd */
-    ccn_charbuf_append(templ, templ_ccnb, 20);
+    templ = local_scope_template(allow_stale);
+    incoming_content_action.intdata = allow_stale;
     
     ccn_name_init(c);
     ccn_express_interest(ccn, c, 0, &incoming_content_action, templ);
