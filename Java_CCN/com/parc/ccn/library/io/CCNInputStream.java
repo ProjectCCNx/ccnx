@@ -136,7 +136,9 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 		return 0; /* unknown */
 	}
 	
-	public boolean eof() { return _atEOF; }
+	public boolean eof() { 
+		Library.logger().finer("Checking eof: there yet? " + _atEOF);
+		return _atEOF; }
 		
 	@Override
 	public void close() throws IOException {
@@ -195,7 +197,8 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 		if (_atEOF)
 			return 0;
 				
-		Library.logger().info("CCNInputStream: reading " + len + " bytes into buffer of length " + buf.length + " at offset " + offset);
+		Library.logger().info("CCNInputStream: reading " + len + " bytes into buffer of length " + 
+				((null != buf) ? buf.length : "null") + " at offset " + offset);
 		// is this the first block?
 		if (null == _currentBlock) {
 			_currentBlock = getFirstBlock();
@@ -251,6 +254,7 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 			
 			if (_header.count()-blockIndex < blocksToSkip) {
 				blocksToSkip = _header.count() - blockIndex - 1;
+				Library.logger().info("setting eof");
 				_atEOF = true;
 			}
 			
@@ -370,6 +374,7 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 				int expectedBlocks = _header.blockCount();
 				int blockIndex = blockIndex();
 				if (expectedBlocks <= blockIndex - CCNLibrary.baseFragment() + 1) {
+					Library.logger().info("setting eof");
 					_atEOF = true;
 					return null;
 				}
