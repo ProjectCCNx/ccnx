@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
+import java.util.concurrent.Semaphore;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -25,6 +26,7 @@ public class BlockReadWriteTest extends BasePutGetTest {
 	protected static final int CHUNK_SIZE = 512;
 	
 	protected static CCNLibrary libraries[] = new CCNLibrary[2];
+	private Semaphore sema = new Semaphore(0);
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -47,6 +49,7 @@ public class BlockReadWriteTest extends BasePutGetTest {
 		FileOutputStream os = new FileOutputStream(fileName + "_testout.txt");
         byte[] bytes = new byte[CHUNK_SIZE*3];
         long buflen = 0;
+        sema.acquire(); // Block until puts done
         while ((buflen = useLibrary.read(desc, bytes, 0, bytes.length)) > 0) {
         	Library.logger().info("Read " + buflen + " bytes from CCNDescriptor.");
         	os.write(bytes, 0, (int)buflen);
@@ -88,6 +91,7 @@ public class BlockReadWriteTest extends BasePutGetTest {
         }
         Library.logger().info("Finished writing. Closing CCN writing CCNDescriptor.");
         useLibrary.close(desc);
+        sema.release();
         Library.logger().info("Closed CCN writing CCNDescriptor.");
 	}
 	

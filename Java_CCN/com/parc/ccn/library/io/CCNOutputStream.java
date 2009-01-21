@@ -228,11 +228,26 @@ public class CCNOutputStream extends OutputStream {
 		// DKS TODO needs to cope with partial last block. 
 		if (null == _timestamp)
 			_timestamp = ContentAuthenticator.now();
+		
+		/**
+		 * Kludgy fix added by paul r. 1/20/08 - Right now the digest algorithm lower down the chain doesn't like
+		 * null pointers within the blockbuffers. So if this is the case, we create a temporary smaller "blockbuffer"
+		 * with only filled entries
+		 * XXX - Can the blockbuffers have holes?
+		 */
+		int bufferEnd = 0;
+		while (bufferEnd < _blockBuffers.length && null != _blockBuffers[bufferEnd])
+			bufferEnd++;
+		byte [][] buffersToUse = _blockBuffers;
+		if (bufferEnd < _blockBuffers.length) {
+			buffersToUse = new byte[bufferEnd][];
+			System.arraycopy(_blockBuffers, 0, buffersToUse, 0, bufferEnd);
+		}
 	
 		Library.logger().finer("sync: putting merkle tree to the network, " + (_blockIndex+1) + " blocks.");
 		// Generate Merkle tree (or other auth structure) and authenticators and put contents.
 		CCNMerkleTree tree =
-			_library.putMerkleTree(_baseName, _baseBlockIndex, _blockBuffers, _blockIndex+1, _baseBlockIndex,
+			_library.putMerkleTree(_baseName, _baseBlockIndex, buffersToUse, _blockIndex+1, _baseBlockIndex,
 								   _timestamp, _publisher, _locator, _signingKey);
 		_roots.add(tree.root());
 		

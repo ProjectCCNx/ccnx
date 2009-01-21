@@ -69,7 +69,9 @@ public class CCNBase {
 			while (null == readBack) {
 				Library.logger().info("Put failed, resubmitting " + co.name() + ".");
 				getNetworkManager().put(co);
-				readBack = get(readBackInterest, CONFIRMATION_TIMEOUT);
+				try {
+					readBack = get(readBackInterest, CONFIRMATION_TIMEOUT);
+				} catch (InterruptedException ie) {}
 			}
 			Library.logger().finer("Confirmed put, retrieived " + readBack.name());
 		}

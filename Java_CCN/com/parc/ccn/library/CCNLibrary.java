@@ -11,7 +11,6 @@ import java.security.Security;
 import java.security.SignatureException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Iterator;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -774,44 +773,18 @@ public class CCNLibrary extends CCNBase {
 		// it in Jackrabbit with XPath.
 		ContentName baseVersionName = 
 			ContentName.fromNative(versionRoot(name), VERSION_MARKER);
+		// Because we're just looking at children of
+		// the name -- not actual pieces of content --
+		// look only at ContentNames.
+		ContentObject lastVersion;
 		try {
-			// Because we're just looking at children of
-			// the name -- not actual pieces of content --
-			// look only at ContentNames.
-			ArrayList<ContentObject> availableVersions = 
-				enumerate(new Interest(baseVersionName), NO_TIMEOUT);
-			
-			if ((null == availableVersions) || (availableVersions.size() == 0)) {
-				// No existing version.
-				return null;
-			}
-			
-			Iterator<ContentObject> vit = availableVersions.iterator();
-			
-			// DKS TODO
-			// Need to make sure we match our publisher criteria
-			// if any. Really need to do this in original query,
-			// as filtering could be complex (want to be able to
-			// ask for items signed by anyone whose key was signed
-			// by someone in particular, not just things published
-			// by a particular signer).
-			int latestVersion = -1;
-			ContentObject latestVersionName = null;
-			while (vit.hasNext()) {
-				ContentObject version = vit.next();
-				int thisVersion =
-					getVersionNumber(version.name());
-				if (thisVersion > latestVersion) { 
-					latestVersion = thisVersion;
-					latestVersionName = version;
-				}
-			}
-			// Should we rely on unique names? We only really have 
-			// ContentNames here, so return just that.
-			return latestVersionName.name();
-			
-		} catch (IOException e) {
-			Library.logger().warning("IOException getting latest version number of name: " + name + ": " + e.getMessage());
+			// Hack by paul r. - this probably should have a timeout because we have to have
+			// one here - for now just use an arbitrary number
+			lastVersion = getLatest(baseVersionName, 5000);
+			if (null != lastVersion)		
+				return lastVersion.name();
+		} catch (Exception e) {
+			Library.logger().warning("Exception getting latest version number of name: " + name + ": " + e.getMessage());
 			Library.warningStackTrace(e);
 		}
 		return null;
