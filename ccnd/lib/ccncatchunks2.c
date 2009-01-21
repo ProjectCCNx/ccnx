@@ -37,6 +37,7 @@ struct mydata {
     unsigned sendtime;
     unsigned rtt;
     unsigned rtte;
+    unsigned backoff;
     struct ccn_charbuf *name;
     struct ccn_charbuf *templ;
     struct excludestuff *excl;
@@ -232,12 +233,26 @@ make_template(struct mydata *md)
     return(templ);
 }
 
+static struct ccn_charbuf *
+sequenced_name(struct mydata *md, uintmax_t seq)
+{
+    struct ccn_charbuf *name = NULL;
+    struct ccn_charbuf *temp = NULL;
+    
+    name = ccn_charbuf_create();
+    temp = ccn_charbuf_create();
+    ccn_charbuf_append(name, md->name->buf, md->name->length);
+    ccn_charbuf_putf(temp, "%ju", seq);
+    ccn_name_append(name, temp->buf, temp->length);
+    ccn_charbuf_destroy(&temp);
+    return(name);
+}
+
 static void
 ask_more(struct mydata *md, uintmax_t seq)
 {
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *templ = NULL;
-    struct ccn_charbuf *temp = NULL;
     int res;
     unsigned slot;
     struct ccn_closure *cl = NULL;
@@ -248,12 +263,7 @@ ask_more(struct mydata *md, uintmax_t seq)
         cl->intdata = seq;
     assert(cl->intdata == seq);
     assert(md->ooo[slot].raw_data_size == 0);
-    name = ccn_charbuf_create();
-    temp = ccn_charbuf_create();
-    ccn_charbuf_append(name, md->name->buf, md->name->length);
-    ccn_charbuf_putf(temp, "%ju", seq);
-    ccn_name_append(name, temp->buf, temp->length);
-    ccn_charbuf_destroy(&temp);
+    name = sequenced_name(md, seq);
     clear_excludes(md); // XXX Should not do this unconditionally
     templ = make_template(md);
     if (slot == 0)
@@ -265,6 +275,19 @@ ask_more(struct mydata *md, uintmax_t seq)
     ccn_charbuf_destroy(&name);
     if (seq == md->delivered + md->ooo_count)
         md->ooo_count++;
+    assert(seq >= md->delivered);
+    assert(seq < md->delivered + md->ooo_count);
+    assert(md->ooo_count < PIPELIMIT);
+}
+
+static enum ccn_upcall_res
+hole_filled(struct ccn_closure *selfp,
+    enum ccn_upcall_kind kind,
+    struct ccn_upcall_info *info)
+{
+    if (kind == CCN_UPCALL_FINAL)
+        free(selfp);
+    return(CCN_UPCALL_RESULT_OK);
 }
 
 static int
@@ -272,19 +295,43 @@ fill_holes(struct ccn_schedule *sched, void *clienth,
          struct ccn_scheduled_event *ev, int flags)
 {
     struct mydata *md = clienth;
-    unsigned slot;
+    struct ccn_charbuf *name = NULL;
+    struct ccn_charbuf *templ = NULL;
+    struct ccn_closure *cl = NULL;
+    unsigned backoff;
+    int delay;
+    
     if ((flags & CCN_SCHEDULE_CANCEL) != 0) {
         md->holefiller = NULL;
         return(0);
     }
-    slot = ((uintptr_t)md->delivered) % PIPELIMIT;
-    if (md->delivered == md->lastcheck && md->ooo[slot].closure.refcount < 2) {
-        md->holes++;
-        md->curwindow = 1;
-        ask_more(md, md->delivered);
+    backoff = md->backoff;
+    if (md->delivered == md->lastcheck && md->ooo_count > 0) {
+        if (backoff == 0) {
+            md->holes++;
+            md->curwindow = 1;
+            cl = calloc(1, sizeof(*cl));
+            cl->p = &hole_filled;
+            name = sequenced_name(md, md->delivered);
+            templ = make_template(md);
+            ccn_express_interest(md->h, name, -1, cl, templ);
+            md->interests_sent++;
+            fprintf(stderr, "Hole at %jd\n", md->delivered);
+            ccn_charbuf_destroy(&templ);
+            ccn_charbuf_destroy(&name);
+        }
+        if ((6000000 >> backoff) > md->rtte)
+            backoff++;
     }
-    md->lastcheck = md->delivered;
-    return(md->rtte + 1000);
+    else {
+        md->lastcheck = md->delivered;
+        backoff = 0;
+    }
+    md->backoff = backoff;
+    delay = (md->rtte << backoff);
+    if (delay < 10000)
+        delay = 10000;
+    return(delay);
 }
 
 enum ccn_upcall_res
@@ -407,7 +454,6 @@ GOT_HERE();
             free(ooo->raw_data);
             ooo->raw_data = NULL;
             ooo->raw_data_size = 0;
-            ooo->closure.intdata = -1;
             slot = (slot + 1) % PIPELIMIT;
             md->ooo_count--;
         }
