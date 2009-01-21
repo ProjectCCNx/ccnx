@@ -62,7 +62,7 @@ ccn_pubid_matches(const unsigned char *content_object,
         if (pubidbytes != contentpubidbytes)
             return(0); // This is fishy
         if (0 != memcmp(interest_msg + pubidstart,
-                        content_object + contentpubidstart,
+                        d->buf + contentpubidstart,
                         pubidbytes))
             return(0);
     }
