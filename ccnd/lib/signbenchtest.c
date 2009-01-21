@@ -83,7 +83,7 @@ main(int argc, char **argv)
   gettimeofday(&end, NULL);
   timersub(&end, &start, &duration);
 
-  printf("\nComplete in %d secs %d msecs\n", duration.tv_sec, duration.tv_usec);
+  printf("\nComplete in %d.%06u secs\n", (int)duration.tv_sec, (unsigned)duration.tv_usec);
 
   return(0);
 }

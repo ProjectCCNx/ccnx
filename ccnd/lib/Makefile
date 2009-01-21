@@ -236,5 +236,6 @@ ccnbuzz.o: ccnbuzz.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccnhexdumpdata.o: ccnhexdumpdata.c ../include/ccn/coding.h \
   ../include/ccn/ccn.h ../include/ccn/charbuf.h ../include/ccn/indexbuf.h
-signbenchtest.o: signbenchtest.c ../include/ccn/ccn.h ../include/ccn/charbuf.h ../include/ccn/keystore.h
-
+signbenchtest.o: signbenchtest.c ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h ../include/ccn/keystore.h

@@ -218,7 +218,7 @@ ccn_name_last_component_offset(const unsigned char *ccnb, size_t size)
 int
 ccn_name_from_uri(struct ccn_charbuf *c, const char *uri)
 {
-    int res;
+    int res = 0;
     struct ccn_charbuf *compbuf = NULL;
     const char *stop = uri + strlen(uri);
     const char *s = uri;
