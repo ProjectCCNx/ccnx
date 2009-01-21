@@ -29,19 +29,28 @@ struct ooodata {
 };
 
 struct mydata {
+    struct ccn *h;
     int allow_stale;
     unsigned ooo_base;
     unsigned ooo_count;
     unsigned curwindow;
+    unsigned sendtime;
+    unsigned rtt;
+    unsigned rtte;
+    struct ccn_charbuf *name;
+    struct ccn_charbuf *templ;
     struct excludestuff *excl;
     struct ccn_schedule *sched;
     struct ccn_scheduled_event *report;
+    struct ccn_scheduled_event *holefiller;
     intmax_t interests_sent;
     intmax_t pkts_recvd;
     intmax_t delivered;
     intmax_t junk;
+    intmax_t holes;
     intmax_t timeouts;
     intmax_t dups;
+    intmax_t lastcheck;
     struct ooodata ooo[PIPELIMIT];
 };
 
@@ -79,28 +88,59 @@ static struct ccn_gettime myticker = {
     NULL
 };
 
+static void
+update_rtt(struct mydata *md, int incoming)
+{
+    struct timeval now = {0};
+    unsigned t, delta, rtte;
+    gettimeofday(&now, 0);
+    t = ((unsigned)(now.tv_sec) * 1000000) + (unsigned)(now.tv_usec);
+    if (incoming) {
+        delta = t - md->sendtime;
+        md->rtt = delta;
+        if (delta <= 30000000) {
+            rtte = md->rtte;
+            if (delta > rtte)
+                rtte = rtte + (rtte >> 3);
+            else
+                rtte = rtte - (rtte >> 7);
+            if (rtte < 127)
+                rtte = delta;
+            md->rtte = rtte;
+        }
+    }
+    else
+        md->sendtime = t;
+}
+
 static int
 reporter(struct ccn_schedule *sched, void *clienth, 
          struct ccn_scheduled_event *ev, int flags)
 {
     struct timeval now = {0};
-    struct mydata *mydata = clienth;
+    struct mydata *md = clienth;
     gettimeofday(&now, 0);
     fflush(stdout);
     fprintf(stderr,
-            "%ld.%06u ccncatchunks2[%d]: %jd isent, %jd recvd, %jd junk, %jd timeouts\n",
+            "%ld.%06u ccncatchunks2[%d]: "
+            "%jd isent, %jd recvd, %jd junk, %jd holes, %jd t/o, "
+            "%u curwin, %u rtt, %u rtte\n",
             (long)now.tv_sec,
             (unsigned)now.tv_usec,
             (int)getpid(),
-            mydata->interests_sent,
-            mydata->pkts_recvd,
-            mydata->junk,
-            mydata->timeouts
+            md->interests_sent,
+            md->pkts_recvd,
+            md->junk,
+            md->holes,
+            md->timeouts,
+            md->curwindow,
+            md->rtt,
+            md->rtte
             );
     if ((flags & CCN_SCHEDULE_CANCEL) != 0) {
-        mydata->report = NULL;
+        md->report = NULL;
         return(0);
-    }    
+    }
     return(3000000);
 }
 
@@ -151,7 +191,7 @@ note_new_exclusion(struct mydata *md, const unsigned char *ccnb,
 }
 
 struct ccn_charbuf *
-make_template(struct mydata *md, struct ccn_upcall_info *info)
+make_template(struct mydata *md)
 {
     struct ccn_charbuf *templ = ccn_charbuf_create();
     int nexcl;
@@ -193,10 +233,8 @@ make_template(struct mydata *md, struct ccn_upcall_info *info)
 }
 
 static void
-ask_more(struct mydata *md, uintmax_t seq, struct ccn_upcall_info *info)
+ask_more(struct mydata *md, uintmax_t seq)
 {
-    const unsigned char *ib = NULL; /* info->interest_ccnb */
-    struct ccn_indexbuf *ic = NULL;
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *templ = NULL;
     struct ccn_charbuf *temp = NULL;
@@ -204,36 +242,49 @@ ask_more(struct mydata *md, uintmax_t seq, struct ccn_upcall_info *info)
     unsigned slot;
     struct ccn_closure *cl = NULL;
     
-    ib = info->interest_ccnb;
-    ic = info->interest_comps;
-    
-    name = ccn_charbuf_create();
-    temp = ccn_charbuf_create();
-    ccn_name_init(name);
-    if (ic->n < 2) abort();
-    res = ccn_name_append_components(name, ib, ic->buf[0], ic->buf[ic->n - 2]);
-    if (res < 0) abort();
-    
     slot = seq % PIPELIMIT;
     cl = &md->ooo[slot].closure;
     if (cl->intdata == -1)
         cl->intdata = seq;
     assert(cl->intdata == seq);
     assert(md->ooo[slot].raw_data_size == 0);
-    temp->length = 0;    
+    name = ccn_charbuf_create();
+    temp = ccn_charbuf_create();
+    ccn_charbuf_append(name, md->name->buf, md->name->length);
     ccn_charbuf_putf(temp, "%ju", seq);
     ccn_name_append(name, temp->buf, temp->length);
     ccn_charbuf_destroy(&temp);
-    clear_excludes(md);
-    templ = make_template(md, info);
-    
-    res = ccn_express_interest(info->h, name, -1, cl, templ);
+    clear_excludes(md); // XXX Should not do this unconditionally
+    templ = make_template(md);
+    if (slot == 0)
+        update_rtt(md, 0);
+    res = ccn_express_interest(md->h, name, -1, cl, templ);
     if (res < 0) abort();
     md->interests_sent++;
     ccn_charbuf_destroy(&templ);
     ccn_charbuf_destroy(&name);
     if (seq == md->delivered + md->ooo_count)
         md->ooo_count++;
+}
+
+static int
+fill_holes(struct ccn_schedule *sched, void *clienth, 
+         struct ccn_scheduled_event *ev, int flags)
+{
+    struct mydata *md = clienth;
+    unsigned slot;
+    if ((flags & CCN_SCHEDULE_CANCEL) != 0) {
+        md->holefiller = NULL;
+        return(0);
+    }
+    slot = ((uintptr_t)md->delivered) % PIPELIMIT;
+    if (md->delivered == md->lastcheck && md->ooo[slot].closure.refcount < 2) {
+        md->holes++;
+        md->curwindow = 1;
+        ask_more(md, md->delivered);
+    }
+    md->lastcheck = md->delivered;
+    return(md->rtte + 1000);
 }
 
 enum ccn_upcall_res
@@ -250,14 +301,17 @@ incoming_content(
     struct mydata *md = selfp->data;
     unsigned slot;
     
-    if (kind == CCN_UPCALL_FINAL)
+    if (kind == CCN_UPCALL_FINAL) {
+        selfp->intdata = -1;
         return(CCN_UPCALL_RESULT_OK);
+    }
 GOT_HERE();
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT) {
         md->timeouts++;
         if (selfp->refcount > 1 || selfp->intdata == -1)
             return(CCN_UPCALL_RESULT_OK);
         md->interests_sent++;
+        md->curwindow = 1;
         // XXX - may need to reseed bloom filter
         return(CCN_UPCALL_RESULT_REEXPRESS);
     }
@@ -293,9 +347,11 @@ GOT_HERE();
         note_new_exclusion(md, ccnb,
                            info->pco->offset[CCN_PCO_B_Signature],
                            info->pco->offset[CCN_PCO_E_Signature]);
-        templ = make_template(md, info);
+        templ = make_template(md);
         res = ccn_express_interest(info->h, name, -1, selfp, templ);
         md->interests_sent++;
+        if (((uintptr_t)selfp->intdata) % PIPELIMIT == 0)
+            update_rtt(md, 0);
         if (res < 0)
             abort();
         ccn_charbuf_destroy(&templ);
@@ -311,16 +367,21 @@ GOT_HERE();
         struct ooodata *ooo = &md->ooo[slot];
         if (ooo->raw_data_size == 0) {
 GOT_HERE();
+            if (slot == 0)
+                update_rtt(md, 1);
             ooo->raw_data = malloc(data_size);
             memcpy(ooo->raw_data, data, data_size);
             ooo->raw_data_size = data_size + 1;
         }
         else
             md->dups++;
-        md->curwindow = 1;
+        if (md->curwindow > 1)
+            md->curwindow--;
     }
     else {
         assert(md->ooo[slot].raw_data_size == 0);
+        if (slot == 0)
+            update_rtt(md, 1);
         md->ooo[slot].closure.intdata = -1;
         md->delivered++;
 GOT_HERE();
@@ -354,10 +415,10 @@ GOT_HERE();
     }
     
     /* Ask for the next one or two */
-    if (md->ooo_count < PIPELIMIT - 1)
-        ask_more(md, md->delivered + md->ooo_count, info);
     if (md->ooo_count < md->curwindow)
-        ask_more(md, md->delivered + md->ooo_count, info);
+        ask_more(md, md->delivered + md->ooo_count);
+    if (md->ooo_count < md->curwindow)
+        ask_more(md, md->delivered + md->ooo_count);
     
     return(CCN_UPCALL_RESULT_OK);
 }
@@ -367,7 +428,6 @@ main(int argc, char **argv)
 {
     struct ccn *ccn = NULL;
     struct ccn_charbuf *name = NULL;
-    struct ccn_charbuf *templ = NULL;
     struct ccn_closure *incoming = NULL;
     const char *arg = NULL;
     int res;
@@ -403,12 +463,15 @@ main(int argc, char **argv)
         perror("Could not connect to ccnd");
         exit(1);
     }
-    ccn_name_append(name, "0", 1);
+    
     mydata = calloc(1, sizeof(*mydata));
+    mydata->h = ccn;
+    mydata->name = name;
     mydata->allow_stale = allow_stale;
     mydata->excl = NULL;
     mydata->sched = ccn_schedule_create(mydata, &myticker);
     mydata->report = ccn_schedule_event(mydata->sched, 0, &reporter, NULL, 0);
+    mydata->holefiller = ccn_schedule_event(mydata->sched, 10000, &fill_holes, NULL, 0);
     for (i = 0; i < PIPELIMIT; i++) {
         incoming = &mydata->ooo[i].closure;
         incoming->p = &incoming_content;
@@ -416,14 +479,9 @@ main(int argc, char **argv)
         incoming->intdata = -1;
     }
     mydata->ooo_base = 0;
-    mydata->ooo_count = 1;
-    incoming = &mydata->ooo[0].closure;
-    incoming->intdata = 0;
-    templ = make_template(mydata, NULL);
-    ccn_express_interest(ccn, name, -1, incoming, templ);
-    mydata->interests_sent++;
-    ccn_charbuf_destroy(&templ);
-    ccn_charbuf_destroy(&name);
+    mydata->ooo_count = 0;
+    mydata->curwindow = 1;
+    ask_more(mydata, 0);
     /* Run a little while to see if there is anything there */
     res = ccn_run(ccn, 500);
     if (mydata->delivered == 0) {
