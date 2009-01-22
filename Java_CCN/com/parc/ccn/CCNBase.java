@@ -57,24 +57,31 @@ public class CCNBase {
 	 * @throws IOException
 	 * @throws InterruptedException
 	 */
-	public ContentObject put(ContentObject co) throws IOException, InterruptedException {
-		ContentObject reply = getNetworkManager().put(co);
-		// DKS -- total hack, but we're dropping stuff on the floor all over
-		// the place. We need an ack on the channel for localhost, according to
-		// Michael.
-		if (CONFIRM_PUTS) {
-		//	Interest readBackInterest = new Interest(co.name(), 0, co.authenticator().publisherKeyID());
-			Interest readBackInterest = new Interest(co.name());
-			ContentObject readBack = get(readBackInterest, CONFIRMATION_TIMEOUT);
-			while (null == readBack) {
-				Library.logger().info("Put failed, resubmitting " + co.name() + ".");
-				getNetworkManager().put(co);
-				try {
-					readBack = get(readBackInterest, CONFIRMATION_TIMEOUT);
-				} catch (InterruptedException ie) {}
+	public ContentObject put(ContentObject co) throws IOException {
+		boolean interrupted = false;
+		ContentObject reply = null;
+		do {
+			try {
+				reply = getNetworkManager().put(co);
+			
+				// DKS -- total hack, but we're dropping stuff on the floor all over
+				// the place. We need an ack on the channel for localhost, according to
+				// Michael.
+				if (CONFIRM_PUTS) {
+				//	Interest readBackInterest = new Interest(co.name(), 0, co.authenticator().publisherKeyID());
+					Interest readBackInterest = new Interest(co.name());
+					ContentObject readBack = get(readBackInterest, CONFIRMATION_TIMEOUT);
+					while (null == readBack) {
+						Library.logger().info("Put failed, resubmitting " + co.name() + ".");
+						getNetworkManager().put(co);
+						readBack = get(readBackInterest, CONFIRMATION_TIMEOUT);
+					}
+					Library.logger().finer("Confirmed put, retrieived " + readBack.name());
+				}
+			} catch (InterruptedException e) {
+				interrupted = true;
 			}
-			Library.logger().finer("Confirmed put, retrieived " + readBack.name());
-		}
+		} while (interrupted);
 		return reply;
 	}
 	
@@ -86,8 +93,12 @@ public class CCNBase {
 	 * @throws IOException
 	 * @throws InterruptedException
 	 */
-	public ContentObject get(Interest interest, long timeout) throws IOException, InterruptedException {
-		return getNetworkManager().get(interest, timeout);
+	public ContentObject get(Interest interest, long timeout) throws IOException {
+		while (true) {
+			try {
+				return getNetworkManager().get(interest, timeout);
+			} catch (InterruptedException e) {}
+		}
 	}
 	
 	/**

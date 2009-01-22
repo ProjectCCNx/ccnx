@@ -1320,20 +1320,18 @@ public class CCNLibrary extends CCNBase {
 		ArrayList<ContentObject> result = new ArrayList<ContentObject>();
 		Integer prefixCount = query.nameComponentCount() == null ? query.name().components().size() 
 				: query.nameComponentCount();
-		try {
-			while (true) {
-				ContentObject co = get(query, timeout == NO_TIMEOUT ? 5000 : timeout);
-				if (co == null)
-					break;
-				Library.logger().info("enumerate: retrieived " + co.name());
-				result.add(co);
-				query = Interest.next(co, prefixCount);
-			}
-			Library.logger().info("enumerate: retrieved " + result.size() + " objects.");
-			return result;
-		} catch (InterruptedException e) {
-			return null;
+		// This won't work without a correct order preference
+		query.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME | Interest.ORDER_PREFERENCE_LEFT);
+		while (true) {
+			ContentObject co = get(query, timeout == NO_TIMEOUT ? 5000 : timeout);
+			if (co == null)
+				break;
+			Library.logger().info("enumerate: retrieved " + co.name());
+			result.add(co);
+			query = Interest.next(co, prefixCount);
 		}
+		Library.logger().info("enumerate: retrieved " + result.size() + " objects.");
+		return result;
 	}
 	
 	/**

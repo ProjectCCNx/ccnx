@@ -82,16 +82,16 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 		int highest = 0;
 		System.out.println("getLatest test started");
 		for (int i = 0; i < count; i++) {
-			Thread.sleep(rand.nextInt(50));
 			int tValue = getRandomFromSet(count, false);
 			if (tValue > highest)
 				highest = tValue;
-			library.put("/getLatest/" + Integer.toString(tValue), Integer.toString(tValue));
-			Thread.sleep(rand.nextInt(50));
+			String name = "/getLatest/" + Integer.toString(tValue);
+			System.out.println("Putting " + name);
+			library.put(name, Integer.toString(tValue));
 			if (i > 1) {
 				if (tValue == highest)
 					tValue--;
-				ContentObject result = library.getLatest(ContentName.fromNative("/getLatest/" + Integer.toString(tValue), 1), 1000);
+				ContentObject result = library.getLatest(ContentName.fromNative("/getLatest/" + Integer.toString(tValue), 1), 5000);
 				checkResult(result, highest);
 			}
 		}
@@ -103,7 +103,6 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 		System.out.println("excludeFilterTest test started");
 		excludeSetup();
 		for (String value : bloomTestValues) {
-			Thread.sleep(rand.nextInt(50));
 			library.put("/excludeFilterTest/" + value, value);
 		}
 		library.put("/excludeFilterTest/aaa", "aaa");

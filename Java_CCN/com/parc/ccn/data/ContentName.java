@@ -754,6 +754,8 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			if (!Arrays.equals(other.component(i), this.component(i)))
 					return false;
 		}
+		if (prefixCount() != other.prefixCount())
+			return false;
 		return true;
 	}
 
@@ -765,7 +767,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * 	  components, take this as the whole thing.
 	 * @return
 	 */
-	public boolean equals(ContentName obj, int componentCount) {
+	private boolean equals(ContentName obj, int componentCount) {
 		if (this == obj)
 			return true;
 		if (obj == null)
@@ -941,6 +943,16 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			return -1;
 		else if (this.count() > o.count())
 			return 1;
+		if (this.prefixCount() == null && o.prefixCount() != null)
+			return -1;
+		if (this.prefixCount() != null && o.prefixCount() == null)
+			return 1;
+		if (this.prefixCount() != null) {
+			if (this.prefixCount() < o.prefixCount())
+				return -1;
+			if (this.prefixCount() > o.prefixCount())
+				return 1;
+		}
 		return 0;
 	}
 }
