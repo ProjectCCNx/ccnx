@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,8 +53,9 @@ dump_udp_packet(pcap_dumper_t *dump_file,
                 unsigned char *ip_dest_addr, /* localhost if NULL */
                 unsigned short udp_src_port, /* 55555 if 0 */
                 unsigned short udp_dest_port, /* 4485 if 0 */
-                const unsigned char *data, size_t data_len) { /* data; could be whole ccnb, could
+                const unsigned char *data, size_t data_len,  /* data; could be whole ccnb, could
                                                            just be contents */
+                struct timeval *ts) { /* timing info */
 
     unsigned char pktbuf[MAX_PACKET];
     uint32_t llc_val = PF_INET; // in host byte order
@@ -101,6 +103,11 @@ dump_udp_packet(pcap_dumper_t *dump_file,
     memcpy(&pktbuf[DATA_OFFSET], data, data_len);
 
     pcap_header.len = pcap_header.caplen = frame_len;
+    if (NULL != ts) {
+        pcap_header.ts.tv_sec = ts->tv_sec;
+        pcap_header.ts.tv_usec = ts->tv_usec;
+    }
+
     pcap_dump((unsigned char *)dump_file, &pcap_header, &pktbuf[0]);
 
     if (0 != pcap_dump_flush(dump_file)) {
@@ -139,7 +146,7 @@ retry:
         if (s < n) {
             if (!content_only) {
                 if (dump_udp_packet(pcap_out, ip_src_addr, ip_dest_addr, 
-                                    udp_src_port, udp_dest_port, data, s) != 0) {
+                                    udp_src_port, udp_dest_port, data, s, NULL) != 0) {
                     res = 2;
                 }
             } else {
@@ -151,7 +158,7 @@ retry:
                     res = 1;
                 } else if (dump_udp_packet(pcap_out, ip_src_addr, ip_dest_addr, 
                                            udp_src_port, udp_dest_port, 
-                                           content_value, content_length) != 0) {
+                                           content_value, content_length, NULL) != 0) {
                     res = 2;
                 }
             }
@@ -173,7 +180,7 @@ retry:
     } else {
         if (!content_only) {
             if (dump_udp_packet(pcap_out, ip_src_addr, ip_dest_addr, 
-                                udp_src_port, udp_dest_port, data, s) != 0) {
+                                udp_src_port, udp_dest_port, data, s, NULL) != 0) {
                 res = 2;
             }
         } else {
@@ -184,7 +191,7 @@ retry:
                 fprintf(stderr, "unable to retrieve content value\n");
                 res = 1;
             } else if (dump_udp_packet(pcap_out, ip_src_addr, ip_dest_addr, 
-                                       udp_src_port, udp_dest_port, content_value, content_length) != 0) {
+                                       udp_src_port, udp_dest_port, content_value, content_length, NULL) != 0) {
                 res = 2;
             }
         }
