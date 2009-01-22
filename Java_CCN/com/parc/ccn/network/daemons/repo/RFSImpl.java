@@ -5,7 +5,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
@@ -13,7 +12,8 @@ import java.util.Arrays;
 import java.util.StringTokenizer;
 import java.util.TreeMap;
 
-import org.apache.jackrabbit.util.Base64;
+import sun.misc.BASE64Decoder;
+import sun.misc.BASE64Encoder;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
@@ -475,21 +475,16 @@ public class RFSImpl implements Repository {
 	 * @return
 	 */
 	private String convertToBase64(byte[] bytes) {
-		StringWriter writer = new StringWriter();
-		try {
-			Base64.encode(bytes, 0, bytes.length, writer);
-		} catch (IOException e) {}
-		String b64String = writer.toString();
+		String b64String = new BASE64Encoder().encode(bytes);
 		return b64String.replace("/", "%slash%");
 	}
 	
-	private byte[] decodeBase64(String data) {
-		data = data.replace("%slash%", "/");
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+	private byte [] decodeBase64(String data) {
 		try {
-			Base64.decode(data, baos);
-		} catch (IOException e) {}
-		return baos.toByteArray();
+			return new BASE64Decoder().decodeBuffer(data);
+		} catch (IOException e) {
+			return new byte[0]; // TODO error handling...
+		}
 	}
 	
 	/**
