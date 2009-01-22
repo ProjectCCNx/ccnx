@@ -130,6 +130,12 @@
 	</target>
 
 	<!-- Run targets: running components -->
+
+        <target name="dumpclasspath" depends="jar">
+                <pathconvert pathsep=":" property="classpatharg" refid="classpath-run"/>
+                <echo message="${classpatharg}" file=".antclasspath"/>
+        </target>
+
 	<target name="ccnd">
 		<mkdir dir="${testout}"/>
 		<parallel failonany="true">

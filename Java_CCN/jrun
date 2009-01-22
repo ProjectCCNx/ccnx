@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# This is a convenience script that uses a special ant target "run"
+# to execute an arbitrary class with arguments from the command line.
+
+CLASSNAME=$1
+ant -quiet dumpclasspath
+CPARG=`cat .antclasspath`
+env CLASSPATH="$CPARG" java $*
+
+
