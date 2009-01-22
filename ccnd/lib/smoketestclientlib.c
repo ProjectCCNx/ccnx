@@ -34,14 +34,14 @@ incoming_content(struct ccn_closure *selfp,
                  struct ccn_upcall_info *info)
 {
     if (kind == CCN_UPCALL_FINAL)
-        return(0);
+        return(CCN_UPCALL_RESULT_OK);
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
         return(CCN_UPCALL_RESULT_REEXPRESS);
     if (kind != CCN_UPCALL_CONTENT)
-        return(-1);
+        return(CCN_UPCALL_RESULT_ERR);
     printf("Got content matching %d components:\n", info->pi->prefix_comps);
     printraw(info->content_ccnb, info->pco->offset[CCN_PCO_E]);
-    return(0);
+    return(CCN_UPCALL_RESULT_OK);
 }
 
 /* Use some static data for this simple program */
@@ -60,23 +60,23 @@ outgoing_content(struct ccn_closure *selfp,
     int res = 0;
     if (kind == CCN_UPCALL_FINAL) {
         printf("CCN_UPCALL_FINAL for outgoing_content()\n");
-        return(res);
+        return(CCN_UPCALL_RESULT_ERR);
     }
     printf("Got interest matching %d components, kind = %d\n", info->matched_comps, kind);
     if (kind == CCN_UPCALL_INTEREST) {
         res = ccn_put(info->h, rawbuf, rawlen);
         if (res == -1) {
             fprintf(stderr, "error sending data");
-            return(-1);
+            return(CCN_UPCALL_RESULT_ERR);
         }
         else {
             printf("Sent my content:\n");
             printraw(rawbuf, rawlen);
-            return(0);
+            return(CCN_UPCALL_RESULT_INTEREST_CONSUMED);
         }
     }
     else
-        return(-1);
+        return(CCN_UPCALL_RESULT_ERR);
 }
 
 static struct ccn_closure interest_filter = {

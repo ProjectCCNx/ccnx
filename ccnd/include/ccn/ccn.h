@@ -52,7 +52,8 @@ enum ccn_upcall_kind {
 enum ccn_upcall_res {
     CCN_UPCALL_RESULT_ERR = -1,
     CCN_UPCALL_RESULT_OK = 0,
-    CCN_UPCALL_RESULT_REEXPRESS = 1
+    CCN_UPCALL_RESULT_REEXPRESS = 1,
+    CCN_UPCALL_RESULT_INTEREST_CONSUMED = 2
 };
 
 /*

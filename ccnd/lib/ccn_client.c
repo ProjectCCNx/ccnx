@@ -587,6 +587,7 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
     struct ccn_upcall_info info = {0};
     int i;
     int res;
+    enum ccn_upcall_res ures;
     info.h = h;
     info.pi = &pi;
     info.interest_comps = ccn_indexbuf_obtain(h);
@@ -604,8 +605,8 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                 entry = hashtb_lookup(h->interest_filters, key, comps->buf[i] - keystart);
                 if (entry != NULL) {
                     info.matched_comps = i;
-                    res = (entry->action->p)(entry->action, upcall_kind, &info);
-                    if (res == -1)
+                    ures = (entry->action->p)(entry->action, upcall_kind, &info);
+                    if (ures == CCN_UPCALL_RESULT_INTEREST_CONSUMED)
                         upcall_kind = CCN_UPCALL_CONSUMED_INTEREST;
                 }
             }
@@ -651,13 +652,13 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                                     interest->outstanding -= 1;
                                     info.interest_ccnb = interest->interest_msg;
                                     info.matched_comps = i;
-                                    res = (interest->action->p)(interest->action,
-                                                                CCN_UPCALL_CONTENT,
-                                                                &info);
+                                    ures = (interest->action->p)(interest->action,
+                                                                 CCN_UPCALL_CONTENT,
+                                                                 &info);
                                     if (interest->magic != 0x7059e5f4) {
                                         ccn_gripe(interest);
                                     }
-                                    if (res == CCN_UPCALL_RESULT_REEXPRESS)
+                                    if (ures == CCN_UPCALL_RESULT_REEXPRESS)
                                         ccn_refresh_interest(h, interest);
                                     else {
                                         interest->target = 0;
@@ -740,10 +741,10 @@ ccn_age_interest(struct ccn *h,
     struct ccn_upcall_info info = {0};
     int delta;
     int res;
+    enum ccn_upcall_res ures;
     int firstcall;
-    if (interest->magic != 0x7059e5f4) {
+    if (interest->magic != 0x7059e5f4)
         ccn_gripe(interest);
-    }
     info.h = h;
     info.pi = &pi;
     firstcall = (interest->lasttime.tv_sec == 0);
@@ -770,7 +771,7 @@ ccn_age_interest(struct ccn *h,
     }
     interest->lasttime.tv_usec -= delta;
     if (interest->target > 0 && interest->outstanding == 0) {
-        res = CCN_UPCALL_RESULT_REEXPRESS;
+        ures = CCN_UPCALL_RESULT_REEXPRESS;
         if (!firstcall) {
             info.interest_ccnb = interest->interest_msg;
             info.interest_comps = ccn_indexbuf_obtain(h);
@@ -779,12 +780,11 @@ ccn_age_interest(struct ccn *h,
                                      info.pi,
                                      info.interest_comps);
             if (res >= 0) {
-                res = (interest->action->p)(interest->action,
-                                            CCN_UPCALL_INTEREST_TIMED_OUT,
-                                            &info);
-                if (interest->magic != 0x7059e5f4) {
+                ures = (interest->action->p)(interest->action,
+                                             CCN_UPCALL_INTEREST_TIMED_OUT,
+                                             &info);
+                if (interest->magic != 0x7059e5f4)
                     ccn_gripe(interest);
-                }
             }
             else {
                 int i;
@@ -792,10 +792,11 @@ ccn_age_interest(struct ccn *h,
                 for (i = 0; i < 120; i++) {
                     sleep(1);
                 }
+                ures = CCN_UPCALL_RESULT_ERR;
             }
             ccn_indexbuf_release(h, info.interest_comps);
         }
-        if (res == CCN_UPCALL_RESULT_REEXPRESS)
+        if (ures == CCN_UPCALL_RESULT_REEXPRESS)
             ccn_refresh_interest(h, interest);
         else
             interest->target = 0;
