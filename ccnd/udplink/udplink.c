@@ -484,6 +484,7 @@ main (int argc, char * const argv[]) {
         /* process local data */
         if (fds[0].revents & (POLLIN)) {
             unsigned char *lbuf = ccn_charbuf_reserve(charbuf, 32);
+            int tries;
             if (charbuf->length == 0) {
                 memset(ld, 0, sizeof(*ld));
             }
@@ -497,12 +498,19 @@ main (int argc, char * const argv[]) {
             }
             charbuf->length += recvlen;
             dres = ccn_skeleton_decode(ld, lbuf, recvlen);
+            tries = 0;
             while (ld->state == 0 && ld->nest == 0) {
                 if (options.logging > 1)
                     udplink_print_data("local", charbuf->buf, msgstart, ld->index - msgstart, options.logging);
                 result = send_remote_unencapsulated(remotesock_w, raddrinfo, charbuf->buf, msgstart, ld->index - msgstart);
                 if (result == -1) {
                     if (errno == EAGAIN) continue;
+                    if (errno == EPERM && (tries++ < 3)) {
+                        /* don't die right away on this, it may be because the local firewall was set to drop some of the packets */
+                        if (options.logging > 0)
+                            udplink_note("sendto(remotesock_w, rbuf, %ld): %s (will retry)\n", (long) ld->index - msgstart, strerror(errno));
+                        continue;
+                    }
                     udplink_fatal(__LINE__, "sendto(remotesock_w, rbuf, %ld): %s\n", (long)ld->index - msgstart, strerror(errno));
                 }
                 else if (result == -2) {
@@ -580,7 +588,7 @@ main (int argc, char * const argv[]) {
                     deferredbuf = realloc(deferredbuf, recvlen + CCN_EMPTY_PDU_LENGTH);
                     deferredlen = recvlen + CCN_EMPTY_PDU_LENGTH;
                     memcpy(deferredbuf, rbuf, deferredlen);
-                    if (options.logging > 0)
+                    if (options.logging > 1)
                         udplink_note("sendto(localsock_rw, rbuf, %ld): %s (deferred)\n", (long) deferredlen, strerror(errno));
                     continue;
                 } else {
