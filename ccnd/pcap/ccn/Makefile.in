@@ -15,7 +15,7 @@
 @SET_MAKE@
 
 # Makefile.am
-# Automake file for AgentX plugin
+# Automake file for CCN plugin
 #
 # $Id: Makefile.am 24488 2008-02-27 16:18:30Z stig $
 #
@@ -109,15 +109,15 @@ am__strip_dir = `echo $$p | sed -e 's|^.*/||'`;
 am__installdirs = "$(DESTDIR)$(plugindir)"
 pluginLTLIBRARIES_INSTALL = $(INSTALL)
 LTLIBRARIES = $(plugin_LTLIBRARIES)
-agentx_la_DEPENDENCIES =
+ccn_la_DEPENDENCIES =
 am__objects_1 = packet-ccn.lo
 am__objects_2 =
-am_agentx_la_OBJECTS = plugin.lo $(am__objects_1) $(am__objects_2) \
+am_ccn_la_OBJECTS = plugin.lo $(am__objects_1) $(am__objects_2) \
 	$(am__objects_2)
-agentx_la_OBJECTS = $(am_agentx_la_OBJECTS)
-agentx_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
+ccn_la_OBJECTS = $(am_ccn_la_OBJECTS)
+ccn_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
-	$(agentx_la_LDFLAGS) $(LDFLAGS) -o $@
+	$(ccn_la_LDFLAGS) $(LDFLAGS) -o $@
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -130,8 +130,8 @@ CCLD = $(CC)
 LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
-SOURCES = $(agentx_la_SOURCES)
-DIST_SOURCES = $(agentx_la_SOURCES)
+SOURCES = $(ccn_la_SOURCES)
+DIST_SOURCES = $(ccn_la_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -394,16 +394,16 @@ DISSECTOR_INCLUDES =
 # used to generate "plugin.c".
 DISSECTOR_SUPPORT_SRC = 
 @HAVE_WARNINGS_AS_ERRORS_TRUE@AM_CFLAGS = -Werror
-plugin_LTLIBRARIES = agentx.la
-agentx_la_SOURCES = \
+plugin_LTLIBRARIES = ccn.la
+ccn_la_SOURCES = \
 	plugin.c \
 	moduleinfo.h \
 	$(DISSECTOR_SRC) \
 	$(DISSECTOR_SUPPORT_SRC) \
 	$(DISSECTOR_INCLUDES)
 
-agentx_la_LDFLAGS = -module -avoid-version
-agentx_la_LIBADD = @PLUGIN_LIBS@
+ccn_la_LDFLAGS = -module -avoid-version
+ccn_la_LIBADD = @PLUGIN_LIBS@
 
 #
 # Currently plugin.c can be included in the distribution because
@@ -496,8 +496,8 @@ clean-pluginLTLIBRARIES:
 	  echo "rm -f \"$${dir}/so_locations\""; \
 	  rm -f "$${dir}/so_locations"; \
 	done
-agentx.la: $(agentx_la_OBJECTS) $(agentx_la_DEPENDENCIES) 
-	$(agentx_la_LINK) -rpath $(plugindir) $(agentx_la_OBJECTS) $(agentx_la_LIBADD) $(LIBS)
+ccn.la: $(ccn_la_OBJECTS) $(ccn_la_DEPENDENCIES) 
+	$(ccn_la_LINK) -rpath $(plugindir) $(ccn_la_OBJECTS) $(ccn_la_LIBADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)

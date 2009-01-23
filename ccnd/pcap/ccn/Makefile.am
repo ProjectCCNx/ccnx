@@ -1,5 +1,5 @@
 # Makefile.am
-# Automake file for AgentX plugin
+# Automake file for CCN plugin
 #
 # $Id: Makefile.am 24488 2008-02-27 16:18:30Z stig $
 #
@@ -32,15 +32,15 @@ endif
 
 plugindir = @plugindir@
 
-plugin_LTLIBRARIES = agentx.la
-agentx_la_SOURCES = \
+plugin_LTLIBRARIES = ccn.la
+ccn_la_SOURCES = \
 	plugin.c \
 	moduleinfo.h \
 	$(DISSECTOR_SRC) \
 	$(DISSECTOR_SUPPORT_SRC) \
 	$(DISSECTOR_INCLUDES)
-agentx_la_LDFLAGS = -module -avoid-version
-agentx_la_LIBADD = @PLUGIN_LIBS@
+ccn_la_LDFLAGS = -module -avoid-version
+ccn_la_LIBADD = @PLUGIN_LIBS@
 
 # Libs must be cleared, or else libtool won't create a shared module.
 # If your module needs to be linked against any particular libraries,

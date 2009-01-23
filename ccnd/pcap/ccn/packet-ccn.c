@@ -81,7 +81,7 @@ dissect_ccn(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 	}
 }
 
-static void 
+static gboolean
 dissect_ccn_heur(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 {
     int is_ccn = 0;  /* eventually, have to guess... */
