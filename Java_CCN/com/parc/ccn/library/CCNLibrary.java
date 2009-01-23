@@ -1344,12 +1344,7 @@ public class CCNLibrary extends CCNBase {
 		// This won't work without a correct order preference
 		query.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME | Interest.ORDER_PREFERENCE_LEFT);
 		while (true) {
-			ContentObject co = null;
-			try {
-				co = get(query, timeout == NO_TIMEOUT ? 5000 : timeout);
-			} catch (InterruptedException ex) {
-				// fine, let it count as nothing received.
-			}
+			ContentObject co = get(query, timeout == NO_TIMEOUT ? 5000 : timeout);
 			if (co == null)
 				break;
 			Library.logger().info("enumerate: retrieved " + co.name());
