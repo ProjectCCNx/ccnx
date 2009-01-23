@@ -401,7 +401,7 @@ process_fd(int fd, FILE *outfile, int flags)
         res |= 1;
     }
     if (XML_Parse(p, buf, 0, 1) != XML_STATUS_OK) {
-        fprintf(stderr, "xml parse error line %d\n", XML_GetCurrentLineNumber(p));
+      fprintf(stderr, "xml parse error line %ll\n", XML_GetCurrentLineNumber(p));
         res |= 1;
     }
     XML_ParserFree(p);
