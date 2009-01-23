@@ -242,3 +242,5 @@ ccnhexdumpdata.o: ccnhexdumpdata.c ../include/ccn/coding.h \
 signbenchtest.o: signbenchtest.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/keystore.h
+ccndumppcap.o: ccndumppcap.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h
