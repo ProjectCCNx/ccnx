@@ -82,6 +82,7 @@ const struct ccn_bloom_wire *
 /*
  * ccn_bloom_match_wire: Test membership using on-wire representation
  * Caller is expected to have validated f.
+ * Returns true to indicate a match.
  */
 int ccn_bloom_match_wire(const struct ccn_bloom_wire *f,
                          const void *key, size_t size);
