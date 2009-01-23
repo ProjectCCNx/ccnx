@@ -66,6 +66,8 @@ struct interest_filter { /* keyed by components of name */
 #define NOTE_ERR(h, e) (h->err = (e), h->errline = __LINE__, ccn_note_err(h))
 #define NOTE_ERRNO(h) NOTE_ERR(h, errno)
 
+static void ccn_refresh_interest(struct ccn *, struct expressed_interest *);
+
 void
 ccn_perror(struct ccn *h, const char * s)
 {
@@ -452,6 +454,8 @@ ccn_express_interest(struct ccn *h,
     interest->next = entry->list;
     entry->list = interest;
     hashtb_end(e);
+    /* Actually send the interest out right away */
+    ccn_refresh_interest(h, interest);
     return(0);
 }
 
@@ -538,9 +542,8 @@ ccn_put(struct ccn *h, const void *p, size_t length)
         ccn_charbuf_append(h->outbuf, p, length); // XXX - check res
         return (ccn_pushout(h));
     }
-    if (h->tap != -1) {
+    if (h->tap != -1)
 	write(h->tap, p, length);
-    }
     res = write(h->sock, p, length);
     if (res == length)
         return(0);
@@ -907,9 +910,8 @@ ccn_run(struct ccn *h, int timeout)
         if (res > 0) {
             if ((fds[0].revents | POLLOUT) != 0)
                 ccn_pushout(h);
-            if ((fds[0].revents | POLLIN) != 0) {
+            if ((fds[0].revents | POLLIN) != 0)
                 ccn_process_input(h);
-            }
         }
         if (h->err == ENOTCONN)
             ccn_disconnect(h);
