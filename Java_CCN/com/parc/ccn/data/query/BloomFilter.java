@@ -2,7 +2,6 @@ package com.parc.ccn.data.query;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -16,17 +15,18 @@ import com.parc.ccn.data.util.XMLEncoder;
  * 
  * @author rasmusse
  * Implement bloom filter operations based on Michael Plass' C side implementation
- *
  */
 public class BloomFilter implements Comparable<BloomFilter> {
 	private int _lgBits;
 	private int _nHash;
-	private byte [] _seed;
+	private short [] _seed;
 	private byte [] _bloom = new byte[1024];
 	private int _size = 0;
 	
 	public BloomFilter(int size, byte [] seed) {
-		_seed = seed;
+		_seed = new short[seed.length];
+		for (int i = 0; i < seed.length; i++)
+			_seed[i] = (short)((seed[i]) & 0xff);
 		_size = size;
 		/*
 		 * Michael's comment: try for about m = 12*n (m = bits in Bloom filter)
@@ -95,7 +95,10 @@ public class BloomFilter implements Comparable<BloomFilter> {
 	}
 	
 	public byte[] seed() {
-		return _seed;
+		byte [] outSeed = new byte[_seed.length];
+		for (int i = 0; i < _seed.length; i++)
+			outSeed[i] = (byte) _seed[i];
+		return outSeed;
 	}
 	
 	private long nextHash(long s, int u) {
@@ -111,7 +114,7 @@ public class BloomFilter implements Comparable<BloomFilter> {
 		_lgBits = bais.read();
 		_nHash = bais.read();
 		bais.skip(2); // method & reserved - ignored for now
-		_seed = new byte[4];
+		_seed = new short[4];
 		for (int i = 0; i < _seed.length; i++)
 			_seed[i] = (byte)bais.read();
 		int i = 0;
@@ -120,21 +123,17 @@ public class BloomFilter implements Comparable<BloomFilter> {
 	}
 	
 	public void encode(XMLEncoder encoder) throws XMLStreamException {
-		try {
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			baos.write((byte)_lgBits);
-			baos.write((byte)_nHash);
-			baos.write('A');	// "method" - must be 'A' for now
-			baos.write(0);		// "reserved" - must be 0 for now
-			baos.write(_seed);
-			int size = 1 << (_lgBits - 3);
-			for (int i = 0; i < size; i++)
-				baos.write(_bloom[i]);
-			encoder.writeElement(ExcludeElement.BLOOM, baos.toByteArray());
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		baos.write((byte)_lgBits);
+		baos.write((byte)_nHash);
+		baos.write('A');	// "method" - must be 'A' for now
+		baos.write(0);		// "reserved" - must be 0 for now
+		for (int i = 0; i < _seed.length; i++)
+			baos.write((byte)_seed[i]);
+		int size = 1 << (_lgBits - 3);
+		for (int i = 0; i < size; i++)
+			baos.write(_bloom[i]);
+		encoder.writeElement(ExcludeElement.BLOOM, baos.toByteArray());
 	}
 
 	public int compareTo(BloomFilter o) {
@@ -146,7 +145,7 @@ public class BloomFilter implements Comparable<BloomFilter> {
 	}
 	
 	private long computeSeed() {
-		int u = ((_seed[0]) << 24) |((_seed[1]) << 16) |((_seed[2]) << 8) | (_seed[3]);
+		long u = ((_seed[0]) << 24) |((_seed[1]) << 16) |((_seed[2]) << 8) | (_seed[3]);
 		return u & 0x7FFFFFFF;
 	}
 
