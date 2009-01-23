@@ -43,6 +43,7 @@ public class CCNOutputStream extends OutputStream {
 	protected int _blockIndex = 0; // index into array of block buffers
 	protected byte [][] _blockBuffers = null;
 	protected int _baseBlockIndex; // base index of current set of block buffers.
+	protected int _blockSize = Header.DEFAULT_BLOCKSIZE;
 	
 	protected Timestamp _timestamp; // timestamp we use for writing, set to first time we write
 	
@@ -262,7 +263,7 @@ public class CCNOutputStream extends OutputStream {
 	
 	protected void writeHeader() throws InvalidKeyException, SignatureException, IOException, InterruptedException {
 		// What do we put in the header if we have multiple merkle trees?
-		_library.putHeader(_baseName, (int)_totalLength, _dh.digest(), 
+		_library.putHeader(_baseName, (int)_totalLength, _blockSize, _dh.digest(), 
 				((_roots.size() > 0) ? _roots.get(0) : null),
 				_type,
 				_timestamp, _publisher, _locator, _signingKey);

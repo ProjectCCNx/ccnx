@@ -44,6 +44,8 @@ public class CCNNetworkManager implements Runnable {
 	public static final String DEFAULT_AGENT_HOST = "localhost";
 	public static final String PROP_AGENT_PORT = "ccn.agent.port";
 	public static final String PROP_AGENT_HOST = "ccn.agent.host";
+	public static final String PROP_TAP = "ccn.tap";
+	public static final String ENV_TAP = "CCN_TAP"; // match C library
 	public static final int MAX_PAYLOAD = 8800; // number of bytes in UDP payload
 	public static final int SOCKET_TIMEOUT = 1000; // period to wait in ms.
 	public static final int PERIOD = 1000; // period for occasional ops in ms.
@@ -400,6 +402,18 @@ public class CCNNetworkManager implements Runnable {
 		}
 		Library.logger().info("Contacting CCN agent at " + host + ":" + port);
 		
+		String tapname = System.getProperty(PROP_TAP);
+		if (null == tapname) {
+			tapname = System.getenv(ENV_TAP);
+		}
+		if (null != tapname) {
+			long msecs = new Date().getTime();
+			long secs = msecs/1000;
+			msecs = msecs % 1000;
+			String unique_tapname = tapname + "-T" + Thread.currentThread().getId() +
+								    "-" + secs + "-" + msecs;
+			setTap(unique_tapname);
+		}
 		// Socket is to belong exclusively to run thread started here
 		_channel = DatagramChannel.open();
 		_channel.connect(new InetSocketAddress(host, port));
@@ -422,15 +436,37 @@ public class CCNNetworkManager implements Runnable {
 		if (_periodicTimer != null)
 			_periodicTimer.cancel();
 		_selector.wakeup();
+		try {
+			setTap(null);
+		} catch (IOException io) {
+			// Ignore since we're shutting down
+		}
 	}
 	
 	/**
 	 * Turn on writing of all packets to a file for test/debug
+	 * Overrides any previous setTap or environment/property setting.
+	 * Pass null to turn off tap.
 	 * @param filename
 	 */
 	public void setTap(String pathname) throws IOException {
-		_tapStreamOut = new FileOutputStream(new File(pathname + "_out"));
-		_tapStreamIn = new FileOutputStream(new File(pathname + "_in"));
+		// Turn off any active tap
+		if (null != _tapStreamOut) {
+			FileOutputStream closingStream = _tapStreamOut;
+			_tapStreamOut = null;
+			closingStream.close();
+		}
+		if (null != _tapStreamIn) {
+			FileOutputStream closingStream = _tapStreamIn;
+			_tapStreamIn = null;
+			closingStream.close();
+		}
+
+		if (pathname != null && pathname.length() > 0) {
+			_tapStreamOut = new FileOutputStream(new File(pathname + "_out"));
+			_tapStreamIn = new FileOutputStream(new File(pathname + "_in"));
+			Library.logger().info("Tap writing to " + pathname);
+		}
 	}
 	
 	public ContentObject put(ContentObject co) throws IOException, InterruptedException {	

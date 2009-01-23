@@ -73,6 +73,8 @@ public class CCNLibrary extends CCNBase {
 	public static final String HEADER_NAME = ".header"; // DKS currently not used; see below.
 	public enum OpenMode { O_RDONLY, O_WRONLY };
 	
+	public static final String PROP_BLOCK_SIZE = "ccn.lib.blocksize";
+	
 	static {
 		Security.addProvider(new BouncyCastleProvider());
 	}
@@ -83,6 +85,8 @@ public class CCNLibrary extends CCNBase {
 	 * Do we want to do this this way, or everything static?
 	 */
 	protected KeyManager _userKeyManager = null;
+	
+	protected int _blockSize = Header.DEFAULT_BLOCKSIZE;
 	
 	/**
 	 * Control whether fragments start at 0 or 1.
@@ -133,6 +137,15 @@ public class CCNLibrary extends CCNBase {
 		// force initialization of network manager
 		try {
 			_networkManager = new CCNNetworkManager();
+			String blockString = System.getProperty(PROP_BLOCK_SIZE);
+			if (null != blockString) {
+				try {
+					_blockSize = new Integer(blockString).intValue();
+					Library.logger().info("Using specified fragmentation block size " + _blockSize);
+				} catch (NumberFormatException e) {
+					// Do nothing
+				}
+			}
 		} catch (IOException ex){
 			Library.logger().warning("IOException instantiating network manager: " + ex.getMessage());
 			ex.printStackTrace();
@@ -152,6 +165,14 @@ public class CCNLibrary extends CCNBase {
 		_userKeyManager = keyManager;
 	}
 
+	/**
+	 * Set the fragmentation block size to use
+	 * @param blockSize
+	 */
+	public void setBlockSize(int blockSize) {
+	
+	}
+	
 	public KeyManager keyManager() { return _userKeyManager; }
 
 	public PublisherKeyID getDefaultPublisher() {
@@ -694,8 +715,8 @@ public class CCNLibrary extends CCNBase {
 			PrivateKey signingKey) throws SignatureException, 
 			InvalidKeyException, NoSuchAlgorithmException, IOException, InterruptedException {
 
-		if (contents.length > Header.DEFAULT_BLOCKSIZE)
-			throw new IOException("newVersionName currently only handles non-fragmenting content smaller than: " + Header.DEFAULT_BLOCKSIZE);
+		if (contents.length > _blockSize)
+			throw new IOException("newVersionName currently only handles non-fragmenting content smaller than: " + _blockSize);
 
 		if (null == signingKey)
 			signingKey = keyManager().getDefaultSigningKey();
@@ -1030,7 +1051,7 @@ public class CCNLibrary extends CCNBase {
 		if (null == publisher) {
 			publisher = keyManager().getPublisherKeyID(signingKey);
 		}
-		if (contents.length >= Header.DEFAULT_BLOCKSIZE) {
+		if (contents.length >= _blockSize) {
 			return fragmentedPut(name, contents, type, publisher, locator, signingKey);
 		} else {
 			try {
@@ -1070,7 +1091,7 @@ public class CCNLibrary extends CCNBase {
 		// (with hash tree, block identifier, timestamp -- SQLDateTime)
 		// insert header using mid-level insert, low-level insert for actual blocks.
 		// We should implement a non-fragmenting put.   Won't do block stuff, will need to do latest version stuff.
-		int blockSize = Header.DEFAULT_BLOCKSIZE;
+		int blockSize = _blockSize;
 		int nBlocks = (contents.length + blockSize - 1) / blockSize;
 		int from = 0;
 		byte[][] contentBlocks = new byte[nBlocks][];
@@ -1100,11 +1121,11 @@ public class CCNLibrary extends CCNBase {
 		
 		// construct the headerBlockContents;
 		byte [] contentDigest = CCNDigestHelper.digest(contents);
-		return putHeader(name, contents.length, contentDigest, tree.root(),
+		return putHeader(name, contents.length, blockSize, contentDigest, tree.root(),
 						 type, timestamp, publisher, locator, signingKey);
 	}
 	
-	public ContentObject putHeader(ContentName name, int contentLength, byte [] contentDigest, 
+	public ContentObject putHeader(ContentName name, int contentLength, int blockSize, byte [] contentDigest, 
 				byte [] contentTreeAuthenticator,
 				ContentAuthenticator.ContentType type,
 				Timestamp timestamp, 
@@ -1121,7 +1142,7 @@ public class CCNLibrary extends CCNBase {
 			publisher = keyManager().getPublisherKeyID(signingKey);
 		}		
 		
-		Header header = new Header(contentLength, contentDigest, contentTreeAuthenticator);
+		Header header = new Header(contentLength, contentDigest, contentTreeAuthenticator, blockSize);
 		byte[] encodedHeader = null;
 		try {
 			encodedHeader = header.encode();
@@ -1323,7 +1344,12 @@ public class CCNLibrary extends CCNBase {
 		// This won't work without a correct order preference
 		query.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME | Interest.ORDER_PREFERENCE_LEFT);
 		while (true) {
-			ContentObject co = get(query, timeout == NO_TIMEOUT ? 5000 : timeout);
+			ContentObject co = null;
+			try {
+				co = get(query, timeout == NO_TIMEOUT ? 5000 : timeout);
+			} catch (InterruptedException ex) {
+				// fine, let it count as nothing received.
+			}
 			if (co == null)
 				break;
 			Library.logger().info("enumerate: retrieved " + co.name());

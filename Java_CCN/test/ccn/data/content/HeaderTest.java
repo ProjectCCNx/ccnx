@@ -39,7 +39,7 @@ public class HeaderTest {
 	public void testHeaderConstructor2() {
 		int length = 77295;
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
-		Header seq = new Header(length, digest, digest);
+		Header seq = new Header(length, digest, digest, Header.DEFAULT_BLOCKSIZE);
 		assertNotNull(seq);
 		assertEquals(CCNLibrary.baseFragment(), seq.start());
 		assertEquals(length, seq.length());
@@ -50,7 +50,7 @@ public class HeaderTest {
 	public void testHeaderConstructor3() {
 		int length = Header.DEFAULT_BLOCKSIZE;
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
-		Header seq = new Header(length, digest, digest);
+		Header seq = new Header(length, digest, digest, Header.DEFAULT_BLOCKSIZE);
 		assertNotNull(seq);
 		assertEquals(CCNLibrary.baseFragment(), seq.start());
 		assertEquals(length, seq.length());
@@ -82,7 +82,7 @@ public class HeaderTest {
 	@Test
 	public void testDecodeInputStream() {
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
-		Header seqIn = new Header(83545, digest, digest);
+		Header seqIn = new Header(83545, digest, digest, Header.DEFAULT_BLOCKSIZE);
 		Header seqOut = new Header();
 
 

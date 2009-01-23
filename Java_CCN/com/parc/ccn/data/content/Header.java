@@ -94,8 +94,8 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 	 */
 	public Header(int length,
 			  	  byte [] contentDigest,
-			  	  byte [] rootDigest) {
-		this(CCNLibrary.baseFragment(), (length + DEFAULT_BLOCKSIZE - 1) / DEFAULT_BLOCKSIZE, DEFAULT_BLOCKSIZE, length,
+			  	  byte [] rootDigest, int blockSize) {
+		this(CCNLibrary.baseFragment(), (length + blockSize - 1) / blockSize, blockSize, length,
 			 contentDigest, rootDigest);
 	}
 	
