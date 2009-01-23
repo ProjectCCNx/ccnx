@@ -310,14 +310,17 @@ ccn_charbuf_duplicate(struct ccn_charbuf *c)
 void
 usage(const char *prog)
 {
-    errno = EINVAL;
-    perror(prog);
+    fprintf(stderr,
+	    "%s URI\n"
+	    " Attempt to pull everything under given uri "
+	    " and print out names of found content to stdout\n", prog);
     exit(1);
 }
 
 int
 main(int argc, char **argv)
 {
+    const char *progname = argv[0];
     struct ccn *ccn = NULL;
     struct ccn_charbuf *c = NULL;
     struct upcalldata *data = NULL;
@@ -332,8 +335,10 @@ main(int argc, char **argv)
 
     c = ccn_charbuf_create();
     res = ccn_name_from_uri(c, argv[1]);
-    if (res < 0)
-        usage(argv[0]);
+    if (res < 0) {
+        fprintf(stderr, "%s: bad ccn URI: %s\n", progname, argv[1]);
+        exit(1);
+    }
         
     ccn = ccn_create();
     if (ccn_connect(ccn, NULL) == -1) {
