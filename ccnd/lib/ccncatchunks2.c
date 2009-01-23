@@ -61,6 +61,9 @@ struct excludestuff {
     size_t size;
 };
 
+static int fill_holes(struct ccn_schedule *sched, void *clienth, 
+                      struct ccn_scheduled_event *ev, int flags);
+
 static void
 usage(const char *progname)
 {
@@ -109,6 +112,8 @@ update_rtt(struct mydata *md, int incoming)
                 rtte = delta;
             md->rtte = rtte;
         }
+        if (md->holefiller == NULL)
+            md->holefiller = ccn_schedule_event(md->sched, 10000, &fill_holes, NULL, 0);
     }
     else
         md->sendtime = t;
@@ -517,7 +522,7 @@ main(int argc, char **argv)
     mydata->excl = NULL;
     mydata->sched = ccn_schedule_create(mydata, &myticker);
     mydata->report = ccn_schedule_event(mydata->sched, 0, &reporter, NULL, 0);
-    mydata->holefiller = ccn_schedule_event(mydata->sched, 10000, &fill_holes, NULL, 0);
+    mydata->holefiller = NULL;
     for (i = 0; i < PIPELIMIT; i++) {
         incoming = &mydata->ooo[i].closure;
         incoming->p = &incoming_content;
