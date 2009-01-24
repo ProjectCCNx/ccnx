@@ -63,9 +63,6 @@ public class get_file {
 		} catch (IOException e) {
 			System.out.println("Cannot write file or read content. " + e.getMessage());
 			e.printStackTrace();
-		} catch (InterruptedException e) {
-			System.out.println("Cannnot retrieive content. " + e.getMessage());
-			e.printStackTrace();
 		} catch (XMLStreamException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

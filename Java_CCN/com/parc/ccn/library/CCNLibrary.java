@@ -1307,7 +1307,7 @@ public class CCNLibrary extends CCNBase {
 		return Integer.valueOf(ContentName.componentPrintURI(name.component(offset+1)));
 	}
 	
-	public ContentObject get(ContentName name, long timeout) throws IOException, InterruptedException {
+	public ContentObject get(ContentName name, long timeout) throws IOException {
 		Interest interest = new Interest(name);
 		return get(interest, timeout);
 	}
@@ -1319,9 +1319,8 @@ public class CCNLibrary extends CCNBase {
 	 * @param timeout
 	 * @return
 	 * @throws IOException
-	 * @throws InterruptedException
 	 */
-	public ContentObject getNextLevel(ContentName name, long timeout) throws IOException, InterruptedException {
+	public ContentObject getNextLevel(ContentName name, long timeout) throws IOException {
 		Interest interest = new Interest(name);
 		interest.additionalNameComponents(1);
 		return get(interest, timeout);
@@ -1445,7 +1444,7 @@ public class CCNLibrary extends CCNBase {
 	 */
 	public CCNDescriptor open(ContentName name, PublisherKeyID publisher, 
 								KeyLocator locator, PrivateKey signingKey) 
-			throws IOException, InterruptedException, XMLStreamException {
+			throws IOException, XMLStreamException {
 		return new CCNDescriptor(name, publisher, locator, signingKey, this); 
 	}
 	

@@ -33,9 +33,6 @@ public class CCNURLConnection extends URLConnection {
 		} catch (XMLStreamException e) {
 			Library.logger().info("Cannot parse XML: " + e.getMessage());
 			throw new IOException("Cannot parse XML.: " + e.getMessage());
-		} catch (InterruptedException e) {
-			Library.logger().info("Interrupted trying to open name: " + thisName);
-			throw new IOException("Interrupted trying to open name: " + thisName);
 		}
 	}
 }

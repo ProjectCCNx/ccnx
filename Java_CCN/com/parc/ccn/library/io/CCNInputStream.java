@@ -37,6 +37,10 @@ import com.parc.ccn.library.CCNLibrary;
  */
 public class CCNInputStream extends InputStream implements CCNInterestListener {
 	
+	protected static int MAX_TIMEOUT = 100; // How long to wait for a block before we decide we're
+											 // done with a stream, if there is no header to tell us
+											 // how long the stream is.
+	
 	protected CCNLibrary _library = null;
 	
 	protected ContentObject _currentBlock = null;
@@ -81,9 +85,10 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 	protected byte [] _verifiedRootSignature = null;
 	protected byte [] _verifiedProxy = null;
 	
-	protected int _timeout = CCNBase.NO_TIMEOUT;
+	protected int _timeout = MAX_TIMEOUT; // Don't block forever, even if the user hasn't specified a timeout.
 
-	public CCNInputStream(ContentName name, Integer startingBlockIndex, PublisherKeyID publisher, CCNLibrary library) throws XMLStreamException, IOException, InterruptedException {
+	public CCNInputStream(ContentName name, Integer startingBlockIndex, PublisherKeyID publisher, 
+						  CCNLibrary library) throws XMLStreamException, IOException {
 		if (null == name)
 			throw new IllegalArgumentException("Name cannot be null!");
 		
@@ -106,19 +111,20 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 		retrieveHeader(_baseName, (null != publisher) ? new PublisherID(publisher) : null);
 	}
 	
-	public CCNInputStream(ContentName name, PublisherKeyID publisher, CCNLibrary library) throws XMLStreamException, IOException, InterruptedException {
+	public CCNInputStream(ContentName name, PublisherKeyID publisher, CCNLibrary library) 
+					throws XMLStreamException, IOException {
 		this(name, null, publisher, library);
 	}
 	
-	public CCNInputStream(ContentName name) throws XMLStreamException, IOException, InterruptedException {
+	public CCNInputStream(ContentName name) throws XMLStreamException, IOException {
 		this(name, null, null, null);
 	}
 	
-	public CCNInputStream(ContentName name, CCNLibrary library) throws XMLStreamException, IOException, InterruptedException {
+	public CCNInputStream(ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
 		this(name, null, null, library);
 	}
 	
-	public CCNInputStream(ContentName name, int blockNumber) throws XMLStreamException, IOException, InterruptedException {
+	public CCNInputStream(ContentName name, int blockNumber) throws XMLStreamException, IOException {
 		this(name, blockNumber, null, null);
 	}
 	
@@ -331,7 +337,7 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 	protected ContentObject getBlock(int number) throws IOException {
 		
 		if (null != _header) {
-			// Return null if we go past the end.
+			// Return null if we go past the end, if we know where the end is.
 			if (number < _header.start()) 
 				throw new IOException("Illegal block number " + number + " below initial value " + _header.start() + ".");
 		
@@ -348,12 +354,7 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 		/*
 		 * TODO: Paul R. Comment - as above what to do about timeouts?
 		 */
-		ContentObject block;
-		try {
-			block = _library.getNextLevel(blockName, _timeout);
-		} catch (InterruptedException e) {
-			throw new IOException("Interrupted retrieving block: " + blockName + ": " + e.getMessage());
-		}
+		ContentObject block = _library.getNextLevel(blockName, _timeout);
 		
 		if (null == block) {
 			Library.logger().info("Cannot get block " + number + " of file " + _baseName + " expected block: " + blockName.toString());
@@ -371,34 +372,51 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 	protected ContentObject getNextBlock() throws IOException {
 		Library.logger().info("getNextBlock: getting block after " + _currentBlock.name());
 		int local_timeout;
+		int accumulated_timeout = _timeout;
 		int expectedBlocks = -1;
-		// Loop until we know where eof is
-		while (true) {
-
+		// Loop until we know where eof is OR we time out. Could allow user to specify timeout.
+		
+		// DKS -- problem -- if you really do want to specify NO_TIMEOUT, that value is
+		// currently 0 (rather than, say, -1) -- so you can't tell the difference between
+		// counting down to 0 left and a specified timeout of 0.
+		while ((accumulated_timeout > 0) || (_timeout == CCNBase.NO_TIMEOUT)) {
 			if (null != _header) {
 				local_timeout = _timeout;
 				expectedBlocks = _header.blockCount();
 				int blockIndex = blockIndex();
 				if (expectedBlocks <= blockIndex - CCNLibrary.baseFragment() + 1) {
-					Library.logger().info("setting eof");
+					Library.logger().info("Reached last block -- setting eof");
 					_atEOF = true;
 					return null;
 				}
 			} else {
 				// We don't have header yet, so block only briefly to wait
+				// DKS - We may never get a header, and have to be prepared to cope
+				// with that -- many stream types don't have a header.
 				local_timeout = 2;
 			}
-			ContentObject nextBlock =  _library.getNext(_currentBlock, _currentBlock.name().count()-2, null, local_timeout);
+			ContentObject nextBlock =  
+					_library.getNext(_currentBlock, _currentBlock.name().count()-2, null, local_timeout);
 			if (null != nextBlock) {
 				Library.logger().info("getNextBlock: retrieved " + nextBlock.name());
 				return nextBlock;
 			} else if (expectedBlocks >= 0) {
 				throw new IOException("Timeout retrieving next block after: " + _currentBlock.name());
 			} else {
-				// We're waiting for header to arrive -- go around loop
+				// We're waiting for header to arrive, if there is one -- go around loop
 				// TODO: Fix to decrement user's timeout by accumulated time waiting for header
+				accumulated_timeout -= local_timeout;
 			}
 		}
+		// We only get here if we time out without a next block or a header. If no header,
+		// assume eof.
+		if (null != _header) {
+			// belt and suspenders, I don't think we ever get here...
+			throw new IOException("Timeout retrieving next block after: " + _currentBlock.name());
+		}
+		Library.logger().info("Timed out looking for last block of unknown-length stream -- setting eof.");
+		_atEOF = true;
+		return null;
 	}
 	
 	protected ContentObject getFirstBlock() throws IOException {
@@ -406,14 +424,10 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 			return getBlock(_startingBlockIndex);
 		}
 		// DKS TODO FIX - use get left child; the following is a first stab at that.
-		try {
-			Library.logger().info("getFirstBlock: getting " + _baseName);
-			ContentObject result =  _library.get(_baseName, _timeout);
-			Library.logger().info("getFirstBlock: retrieved " + result.name());
-			return result;
-		} catch (InterruptedException e) {
-			throw new IOException("Interrupted retrieving first block: " + _baseName + ": " + e.getMessage());
-		}
+		Library.logger().info("getFirstBlock: getting " + _baseName);
+		ContentObject result =  _library.get(_baseName, _timeout);
+		Library.logger().info("getFirstBlock: retrieved " + result.name());
+		return result;
 	}
 	
 	boolean verifyBlock(ContentObject block) {
@@ -461,9 +475,14 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 	}
 
 	public int blockIndex() {
-		if (null == _currentBlock)
-			return 0;
-		return CCNLibrary.getFragmentNumber(_currentBlock.name());
+		if (null == _currentBlock) {
+			return CCNLibrary.baseFragment();
+		} else {
+			// This needs to work on streaming content that is not traditional fragments,
+			// and so cannot use CCNLibrary.getFragmentNumber.
+			String num = ContentName.componentPrintNative(_currentBlock.name().component(_currentBlock.name().count()-2));
+			return Integer.parseInt(num);
+		}
 	}
 
 	protected int blockCount() {
@@ -490,7 +509,7 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 
 	public long tell() {
 		if (null != _header) {
-			return _header.blockLocationToPosition(blockNumber(), _blockOffset);
+			return _header.blockLocationToPosition(blockIndex(), _blockOffset);
 		} else {
 			return _blockOffset; // could implement a running count...
 		}
@@ -503,14 +522,5 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 	}
 	
 	public ContentName baseName() { return _baseName; }
-	
-	protected int blockNumber()  {
-		if (null == _currentBlock) {
-			return CCNLibrary.baseFragment();
-		} else {
-			String num = ContentName.componentPrintNative(_currentBlock.name().component(_currentBlock.name().count()-1));
-			return Integer.parseInt(num);
-		}
-	}
 }
 

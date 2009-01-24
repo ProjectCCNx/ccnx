@@ -37,14 +37,14 @@ public class CCNDescriptor {
 	 * Open for reading. This does getLatestVersion, etc on name, and assumes fragmentation.
 	 */
 	public CCNDescriptor(ContentName name, PublisherKeyID publisher, CCNLibrary library) 
-				throws XMLStreamException, IOException, InterruptedException {
+				throws XMLStreamException, IOException {
 		
 		openForReading(name, publisher, library);
 	}
 	
 	public CCNDescriptor(ContentName name, PublisherKeyID publisher,
 			   KeyLocator locator, PrivateKey signingKey,
-			   CCNLibrary library) throws XMLStreamException, IOException, InterruptedException {
+			   CCNLibrary library) throws XMLStreamException, IOException {
 		openForWriting(name, publisher, locator, signingKey, library);
 	}
 	
@@ -60,7 +60,8 @@ public class CCNDescriptor {
 	 * @throws InterruptedException
 	 * @throws XMLStreamException
 	 */
-	protected void openForReading(ContentName name, PublisherKeyID publisher, CCNLibrary library) throws IOException, InterruptedException, XMLStreamException {
+	protected void openForReading(ContentName name, PublisherKeyID publisher, CCNLibrary library) 
+				throws IOException, XMLStreamException {
 
 		ContentName nameToOpen = name;
 		if (CCNLibrary.isFragment(nameToOpen)) {
@@ -79,7 +80,7 @@ public class CCNDescriptor {
 
 	protected void openForWriting(ContentName name, PublisherKeyID publisher,
 			   KeyLocator locator, PrivateKey signingKey,
-			   CCNLibrary library) throws XMLStreamException, IOException, InterruptedException {
+			   CCNLibrary library) throws XMLStreamException, IOException {
 		ContentName nameToOpen = name;
 		if (CCNLibrary.isFragment(name)) {
 			// DKS TODO: should we do this?

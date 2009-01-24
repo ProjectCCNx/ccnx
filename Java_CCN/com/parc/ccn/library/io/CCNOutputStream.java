@@ -59,7 +59,7 @@ public class CCNOutputStream extends OutputStream {
 
 	public CCNOutputStream(ContentName name, PublisherKeyID publisher,
 						   KeyLocator locator, PrivateKey signingKey,
-						   CCNLibrary library) throws XMLStreamException, IOException, InterruptedException {
+						   CCNLibrary library) throws XMLStreamException, IOException {
 		_library = library; 
 		if (null == _library) {
 			_library = CCNLibrary.getLibrary();
