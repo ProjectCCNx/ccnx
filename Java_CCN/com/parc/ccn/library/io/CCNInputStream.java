@@ -479,8 +479,11 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 			return CCNLibrary.baseFragment();
 		} else {
 			// This needs to work on streaming content that is not traditional fragments,
-			// and so cannot use CCNLibrary.getFragmentNumber.
-			String num = ContentName.componentPrintNative(_currentBlock.name().component(_currentBlock.name().count()-2));
+			// and so cannot use CCNLibrary.getFragmentNumber. In my hands, count() does not
+			// count the digest component of the name, and so this gives me back the component
+			// I want.
+			String num = ContentName.componentPrintNative(_currentBlock.name().component(_currentBlock.name().count()-1));
+			Library.logger().info("Name: " + _currentBlock.name() + " component " + num);
 			return Integer.parseInt(num);
 		}
 	}
