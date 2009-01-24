@@ -718,6 +718,11 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		return _components.size(); 
 	}
 
+	/**
+	 * Get the i'th component, indexed from 0.
+	 * @param i
+	 * @return
+	 */
 	public byte[] component(int i) { 
 		if ((null == _components) || (i >= _components.size())) return null;
 		return _components.get(i);

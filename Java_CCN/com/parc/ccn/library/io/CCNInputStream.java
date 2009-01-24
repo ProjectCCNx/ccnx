@@ -309,6 +309,7 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 						_header = new Header();
 						// DKS TODO -- this will swap around when headers become subclasses of content object
 						_header.decode(co.content());
+						Library.logger().fine("Found header specifies " + _header.blockCount() + " blocks");
 						return null; // done
 					}
 				} catch (Exception e) {
@@ -368,22 +369,35 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 	}
 	
 	protected ContentObject getNextBlock() throws IOException {
-		try {
-			Library.logger().info("getNextBlock: getting block after " + _currentBlock.name());
+		Library.logger().info("getNextBlock: getting block after " + _currentBlock.name());
+		int local_timeout;
+		int expectedBlocks = -1;
+		// Loop until we know where eof is
+		while (true) {
+
 			if (null != _header) {
-				int expectedBlocks = _header.blockCount();
+				local_timeout = _timeout;
+				expectedBlocks = _header.blockCount();
 				int blockIndex = blockIndex();
 				if (expectedBlocks <= blockIndex - CCNLibrary.baseFragment() + 1) {
 					Library.logger().info("setting eof");
 					_atEOF = true;
 					return null;
 				}
+			} else {
+				// We don't have header yet, so block only briefly to wait
+				local_timeout = 2;
 			}
-			ContentObject nextBlock =  _library.getNext(_currentBlock, _currentBlock.name().count()-2, null, _timeout);
-			Library.logger().info("getNextBlock: retrieived " + nextBlock.name());
-			return nextBlock;
-		} catch (InterruptedException e) {
-			throw new IOException("Interrupted retrieving next block after: " + _currentBlock.name() + ": " + e.getMessage());
+			ContentObject nextBlock =  _library.getNext(_currentBlock, _currentBlock.name().count()-2, null, local_timeout);
+			if (null != nextBlock) {
+				Library.logger().info("getNextBlock: retrieved " + nextBlock.name());
+				return nextBlock;
+			} else if (expectedBlocks >= 0) {
+				throw new IOException("Timeout retrieving next block after: " + _currentBlock.name());
+			} else {
+				// We're waiting for header to arrive -- go around loop
+				// TODO: Fix to decrement user's timeout by accumulated time waiting for header
+			}
 		}
 	}
 	
@@ -449,7 +463,7 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 	public int blockIndex() {
 		if (null == _currentBlock)
 			return 0;
-		return (Integer.parseInt(ContentName.componentPrintNative(_currentBlock.name().component(_currentBlock.name().count()-1))));
+		return CCNLibrary.getFragmentNumber(_currentBlock.name());
 	}
 
 	protected int blockCount() {

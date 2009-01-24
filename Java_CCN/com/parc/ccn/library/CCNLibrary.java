@@ -1488,18 +1488,18 @@ public class CCNLibrary extends CCNBase {
 	 * @throws InvalidParameterException
 	 */
 	public ContentObject getNext(ContentName name, byte[][] omissions, long timeout) 
-			throws IOException, InterruptedException {
+			throws IOException {
 		return get(Interest.next(name, omissions), timeout);
 	}
 	
 	public ContentObject getNext(ContentName name, long timeout)
 			throws IOException,
-			InterruptedException, InvalidParameterException {
+			InvalidParameterException {
 		return getNext(name, null, timeout);
 	}
 	
 	public ContentObject getNext(ContentObject content, int prefixCount, byte[][] omissions, long timeout) 
-			throws IOException, InterruptedException {
+			throws IOException {
 		return getNext(contentObjectToContentName(content, prefixCount), omissions, timeout);
 	}
 	

@@ -41,10 +41,6 @@ public class put_file {
 				}
 				byte [] contents = Utils.getBytesFromFile(theFile);
 				
-				FileOutputStream testOut = new FileOutputStream("put_file.dat");
-				testOut.write(contents);
-				testOut.flush();
-				testOut.close();
 				// put as name
 				// int version = new Random().nextInt(1000);
 				// would be version = library.latestVersion(argName) + 1;
