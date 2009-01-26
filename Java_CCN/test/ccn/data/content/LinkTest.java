@@ -11,13 +11,17 @@ import test.ccn.data.XMLEncodableTester;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherID;
+import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.PublisherID.PublisherType;
 
 public class LinkTest {
 
 	static final  String baseName = "test";
+	static final  String linkBaseName = "link";
 	static final  String subName = "smetters";
 	static final  String document1 = "intro.html";	
 	static final  String document2 = "key";	
@@ -27,6 +31,11 @@ public class LinkTest {
 	static ContentName name3 = null;
 	static ContentName name4 = null;
 	static ContentName [] ns = null;
+	static ContentName linkName = null;
+	static ContentName linkName2 = null;
+	static ContentName linkName3 = null;
+	static ContentName linkName4 = null;
+	static ContentName [] ls = null;
 	static public byte [] contenthash1 = new byte[32];
 	static public byte [] contenthash2 = new byte[32];
 	static public byte [] publisherid1 = new byte[32];
@@ -42,6 +51,11 @@ public class LinkTest {
 		name3 = ContentName.fromURI(new String[]{baseName, subName, document3});
 		name4 = ContentName.fromURI("/parc/home/briggs/collaborators.txt");
 		ns = new ContentName[]{name,name2,name3,name4};
+		linkName = ContentName.fromURI(new String[]{linkBaseName, subName, document1});
+		linkName2 = ContentName.fromURI(new String[]{linkBaseName, subName, document2});
+		linkName3 = ContentName.fromURI(new String[]{linkBaseName, subName, document3});
+		linkName4 = ContentName.fromURI("/link/home/briggs/collaborators.txt");
+		ls = new ContentName[]{linkName,linkName2,linkName3,linkName4};
 		Arrays.fill(contenthash1, (byte)2);
 		Arrays.fill(contenthash2, (byte)4);
 		Arrays.fill(publisherid1, (byte)6);
@@ -60,9 +74,16 @@ public class LinkTest {
 	}
 
 	@Test
-	public void testEncodeOutputStream() {
+	public void testEncodeOutputStream() throws Exception {
+		byte [] signaturebuf = new byte[64];
+		Arrays.fill(signaturebuf, (byte)1);
+		Signature signature = new Signature(signaturebuf);
+		
+		PublisherKeyID pubkey = new PublisherKeyID(publisherid1);
+		KeyLocator locator = new KeyLocator(ContentName.fromNative("/collectionTestKey"));
+		
 		for (int i=0; i < ns.length; ++i) {
-			LinkReference l = new LinkReference(ns[i],las[i]);
+			LinkReference l = new LinkReference(ns[i],ls[i], las[i], pubkey, locator, signature);
 			LinkReference ldec = new LinkReference();
 			LinkReference lbdec = new LinkReference();
 			XMLEncodableTester.encodeDecodeTest("Link_" + i, l, ldec, lbdec);

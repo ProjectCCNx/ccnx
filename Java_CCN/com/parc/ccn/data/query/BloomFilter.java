@@ -19,6 +19,12 @@ import com.parc.ccn.data.util.XMLEncoder;
 public class BloomFilter implements Comparable<BloomFilter> {
 	private int _lgBits;
 	private int _nHash;
+	
+	/*
+	 * I am using a short for seed internally - even though it's
+	 * supposed to be a byte array - to get around unsigned arithmetic 
+	 * issues. Is there a better way to handle this?
+	 */
 	private short [] _seed;
 	private byte [] _bloom = new byte[1024];
 	private int _size = 0;

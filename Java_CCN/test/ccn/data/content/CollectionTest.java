@@ -10,7 +10,7 @@ import test.ccn.data.XMLEncodableTester;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.Collection;
-import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.content.LinkReferenceData;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.LinkAuthenticator;
@@ -38,7 +38,7 @@ public class CollectionTest {
 	static PublisherID pubID1 = null;	
 	static PublisherID pubID2 = null;	
 	static LinkAuthenticator [] las = new LinkAuthenticator[4];
-	static LinkReference [] ls = null;
+	static LinkReferenceData [] ls = null;
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -63,9 +63,9 @@ public class CollectionTest {
 				ContentAuthenticator.ContentType.LEAF, contenthash1);
 
 
-		ls = new LinkReference[4];
+		ls = new LinkReferenceData[4];
 		for (int i=0; i < ls.length; ++i) {
-			ls[i] = new LinkReference(ns[i],las[i]);
+			ls[i] = new LinkReferenceData(ns[i],las[i]);
 		}
 	}
 

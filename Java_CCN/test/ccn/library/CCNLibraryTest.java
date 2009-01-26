@@ -18,7 +18,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.content.Collection;
-import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.content.LinkReferenceData;
 import com.parc.ccn.data.query.BasicInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherKeyID;
@@ -128,8 +128,6 @@ public class CCNLibraryTest extends LibraryTestBase {
 		} catch (SignatureException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
-			e.printStackTrace();
-		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
 	}
@@ -269,7 +267,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 	public void testLinks() throws Exception {
 		ContentName baseName = ContentName.fromNative("/libraryTest/linkTest/base");
 		library.put(baseName, "base".getBytes());
-		LinkReference lr = new LinkReference(baseName);
+		LinkReferenceData lr = new LinkReferenceData(baseName);
 		ContentName linkName = ContentName.fromNative("/libraryTest/linkTest/l1");
 		library.put(linkName, lr);
 		ContentObject linkContent = library.get(linkName, 5000);
@@ -277,8 +275,8 @@ public class CCNLibraryTest extends LibraryTestBase {
 		Assert.assertEquals(al.size(), 1);
 		ContentObject baseContent = al.get(0);
 		Assert.assertEquals(new String(baseContent.content()), "base");
-		LinkReference[] references = new LinkReference[2];
-		LinkReference lr2 = new LinkReference(baseName);
+		LinkReferenceData[] references = new LinkReferenceData[2];
+		LinkReferenceData lr2 = new LinkReferenceData(baseName);
 		ContentName linkName2 = ContentName.fromNative("/libraryTest/linkTest/l2");
 		library.put(linkName2, lr2);
 		references[0] = lr;
@@ -311,7 +309,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 		
 		// test getCollection
 		collection = library.getCollection(collectionName, 5000);
-		ArrayList<LinkReference> checkReferences = collection.contents();
+		ArrayList<LinkReferenceData> checkReferences = collection.contents();
 		Assert.assertEquals(checkReferences.size(), 2);
 		Assert.assertEquals(references[0], checkReferences.get(0).targetName());
 		Assert.assertEquals(references[1], checkReferences.get(1).targetName());

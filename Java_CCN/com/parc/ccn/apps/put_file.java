@@ -87,9 +87,6 @@ public class put_file {
 		} catch (SignatureException e) {
 			System.out.println("Cannnot insert content. " + e.getMessage());
 			e.printStackTrace();
-		} catch (InterruptedException e) {
-			System.out.println("Cannnot insert content. " + e.getMessage());
-			e.printStackTrace();
 		}
 
 	}

@@ -5,7 +5,6 @@ import java.util.Iterator;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
@@ -24,28 +23,7 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 	
 	protected static final String COLLECTION_ELEMENT = "Collection";
 
-	protected ArrayList<LinkReference> _contents = new ArrayList<LinkReference>();
-	
-	public CollectionData(LinkReference destination) {
-		_contents.add(destination);
-	}
-	
-	public CollectionData(ContentName destName) {
-		_contents.add(new LinkReference(destName));
-	}
-	
-	public CollectionData(LinkReference [] links) {
-		for (int i=0; i < links.length; ++i) {
-			_contents.add(links[i]);
-		}
-	}
-			
-	public CollectionData(ArrayList<LinkReference> contents) {
-		Iterator<LinkReference> it = contents.iterator();
-		while (it.hasNext()) {
-			_contents.add(it.next());
-		}
-	}
+	protected ArrayList<LinkReferenceData> _contents = new ArrayList<LinkReferenceData>();
 	
 	public CollectionData() {
 	}
@@ -64,20 +42,16 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 		newCollection.decode(encodedCollection);
 		return newCollection;
 	}
-	public ArrayList<LinkReference> contents() { 
+	public ArrayList<LinkReferenceData> contents() { 
 		return _contents; 
 	}
 		
-	public LinkReference get(int i) {
+	public LinkReferenceData get(int i) {
 		return contents().get(i);
 	}
 	
-	public void add(LinkReference content) {
+	public void add(LinkReferenceData content) {
 		_contents.add(content);
-	}
-	
-	public void add(ContentName name) {
-		_contents.add(new LinkReference(name, null));
 	}
 	
 	public void remove(int i) {
@@ -100,9 +74,9 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 		
 		decoder.readStartElement(COLLECTION_ELEMENT);
 
-		LinkReference link = null;
+		LinkReferenceData link = null;
 		while (decoder.peekStartElement(LinkReference.LINK_ELEMENT)) {
-			link = new LinkReference();
+			link = new LinkReferenceData();
 			link.decode(decoder);
 			add(link);
 		}
@@ -114,9 +88,9 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		encoder.writeStartElement(COLLECTION_ELEMENT);
-		Iterator<LinkReference> linkIt = contents().iterator();
+		Iterator<LinkReferenceData> linkIt = contents().iterator();
 		while (linkIt.hasNext()) {
-			LinkReference link = linkIt.next();
+			LinkReferenceData link = linkIt.next();
 			link.encode(encoder);
 		}
 		encoder.writeEndElement();   		

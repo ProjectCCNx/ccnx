@@ -60,9 +60,9 @@ public class CCNDescriptor {
 	 * @throws InterruptedException
 	 * @throws XMLStreamException
 	 */
+
 	protected void openForReading(ContentName name, PublisherKeyID publisher, CCNLibrary library) 
 				throws IOException, XMLStreamException {
-
 		ContentName nameToOpen = name;
 		if (CCNLibrary.isFragment(nameToOpen)) {
 			// DKS TODO: should we do this?

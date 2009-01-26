@@ -25,6 +25,7 @@ import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.content.LinkReferenceData;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
@@ -186,21 +187,20 @@ public class CCNLibrary extends CCNBase {
 	 * @return
 	 * @throws SignatureException
 	 * @throws IOException
-	 * @throws InterruptedException
 	 * @throws XMLStreamException
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
 	 */
-	public ContentObject put(ContentName name, LinkReference reference) throws SignatureException, IOException, 
-				InterruptedException, XMLStreamException, InvalidKeyException, NoSuchAlgorithmException {
+	public ContentObject put(ContentName name, LinkReferenceData reference) throws SignatureException, IOException, 
+				XMLStreamException, InvalidKeyException, NoSuchAlgorithmException {
 		return put(name, reference, null, null, null);
 	}
 	
 	public ContentObject put(
 			ContentName name, 
-			LinkReference reference,
+			LinkReferenceData reference,
 			PublisherKeyID publisher, KeyLocator locator,
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InterruptedException {
+			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException{
 		
 		if (null == signingKey)
 			signingKey = keyManager().getDefaultSigningKey();
@@ -230,14 +230,13 @@ public class CCNLibrary extends CCNBase {
 	 * @return
 	 * @throws SignatureException
 	 * @throws IOException
-	 * @throws InterruptedException
 	 */
-	public Collection put(ContentName name, LinkReference [] references) throws SignatureException, IOException, InterruptedException {
+	public Collection put(ContentName name, LinkReferenceData [] references) throws SignatureException, IOException {
 		return put(name, references, getDefaultPublisher());
 	}
 
-	public Collection put(ContentName name, LinkReference [] references, PublisherKeyID publisher) 
-				throws SignatureException, IOException, InterruptedException {
+	public Collection put(ContentName name, LinkReferenceData [] references, PublisherKeyID publisher) 
+				throws SignatureException, IOException {
 		try {
 			return put(name, references, publisher, null, null);
 		} catch (InvalidKeyException e) {
@@ -253,9 +252,9 @@ public class CCNLibrary extends CCNBase {
 
 	public Collection put(
 			ContentName name, 
-			LinkReference[] references,
+			LinkReferenceData[] references,
 			PublisherKeyID publisher, KeyLocator locator,
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InterruptedException {
+			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 
 		if (null == signingKey)
 			signingKey = keyManager().getDefaultSigningKey();
@@ -281,14 +280,14 @@ public class CCNLibrary extends CCNBase {
 	
 	public Collection put(
 			ContentName name, 
-			ContentName[] references) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InterruptedException {
+			ContentName[] references) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 		return put(name, references, null, null, null);
 	}
 	
 	public Collection put(
 			ContentName name, 
 			ContentName[] references,
-			PublisherKeyID publisher) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InterruptedException {
+			PublisherKeyID publisher) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 		return put(name, references, publisher, null, null);
 	}
 	
@@ -296,10 +295,10 @@ public class CCNLibrary extends CCNBase {
 			ContentName name, 
 			ContentName[] references,
 			PublisherKeyID publisher, KeyLocator locator,
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InterruptedException {
-		LinkReference[] lrs = new LinkReference[references.length];
+			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+		LinkReferenceData[] lrs = new LinkReferenceData[references.length];
 		for (int i = 0; i < lrs.length; i++)
-			lrs[i] = new LinkReference(references[i]);
+			lrs[i] = new LinkReferenceData(references[i]);
 		return put(name, lrs, publisher, locator, signingKey);
 	}
 	
@@ -310,10 +309,9 @@ public class CCNLibrary extends CCNBase {
 	 * @param timeout - milliseconds
 	 * @return
 	 * @throws IOException
-	 * @throws InterruptedException
 	 * @throws XMLStreamException 
 	 */
-	public Collection getCollection(ContentName name, long timeout) throws IOException, InterruptedException, XMLStreamException {
+	public Collection getCollection(ContentName name, long timeout) throws IOException, XMLStreamException {
 		ContentObject co = getLatestVersion(name, null, timeout);
 		if (null == co)
 			return null;
@@ -325,7 +323,6 @@ public class CCNLibrary extends CCNBase {
 
 	/**
 	 * Use the same publisherID that we used originally.
-	 * @throws InterruptedException 
 	 * @throws IOException 
 	 * @throws SignatureException 
 	 * @throws XMLStreamException 
@@ -334,19 +331,19 @@ public class CCNLibrary extends CCNBase {
 	public Collection createCollection(
 			ContentName name,
 			ContentName [] references, PublisherKeyID publisher, KeyLocator locator,
-			PrivateKey signingKey) throws IOException, InterruptedException, SignatureException, 
+			PrivateKey signingKey) throws IOException, SignatureException, 
 			XMLStreamException, InvalidKeyException {
-		LinkReference[] lrs = new LinkReference[references.length];
+		LinkReferenceData[] lrs = new LinkReferenceData[references.length];
 		for (int i = 0; i < references.length; i++) {
-			lrs[i] = new LinkReference(references[i]);
+			lrs[i] = new LinkReferenceData(references[i]);
 		}
 		return createCollection(name, lrs, publisher, locator, signingKey);
 	}
 	
 	public Collection createCollection(
 			ContentName name,
-			LinkReference [] references, PublisherKeyID publisher, KeyLocator locator,
-			PrivateKey signingKey) throws IOException, InterruptedException, SignatureException, 
+			LinkReferenceData [] references, PublisherKeyID publisher, KeyLocator locator,
+			PrivateKey signingKey) throws IOException, SignatureException, 
 			XMLStreamException, InvalidKeyException {
 		if (null == signingKey)
 			signingKey = keyManager().getDefaultSigningKey();
@@ -363,22 +360,22 @@ public class CCNLibrary extends CCNBase {
 	public Collection addToCollection(
 			Collection collection,
 			ContentName [] references,
-			long timeout) throws IOException, InterruptedException, SignatureException, 
+			long timeout) throws IOException, SignatureException, 
 			XMLStreamException, InvalidKeyException {
-		ArrayList<LinkReference> contents = collection.contents();
+		ArrayList<LinkReferenceData> contents = collection.contents();
 		for (ContentName reference : references)
-			contents.add(new LinkReference(reference));
+			contents.add(new LinkReferenceData(reference));
 		return updateCollection(collection, contents, null, null, null);
 	}
 
 	public ContentObject removeFromCollection(
 			Collection collection,
 			ContentName [] references,
-			long timeout) throws IOException, InterruptedException, SignatureException, 
+			long timeout) throws IOException, SignatureException, 
 			XMLStreamException, InvalidKeyException {
-		ArrayList<LinkReference> contents = collection.contents();
+		ArrayList<LinkReferenceData> contents = collection.contents();
 		for (ContentName reference : references)
-			contents.remove(new LinkReference(reference));
+			contents.remove(new LinkReferenceData(reference));
 		return updateCollection(collection, contents, null, null, null);
 	}
 	
@@ -386,13 +383,13 @@ public class CCNLibrary extends CCNBase {
 			Collection collection,
 			ContentName [] referencesToAdd,
 			ContentName [] referencesToRemove,
-			long timeout) throws IOException, InterruptedException, SignatureException, 
+			long timeout) throws IOException, SignatureException, 
 			XMLStreamException, InvalidKeyException {
-		ArrayList<LinkReference> contents = collection.contents();
+		ArrayList<LinkReferenceData> contents = collection.contents();
 		for (ContentName reference : referencesToAdd)
-			contents.add(new LinkReference(reference));
+			contents.add(new LinkReferenceData(reference));
 		for (ContentName reference : referencesToRemove)
-			contents.remove(new LinkReference(reference));
+			contents.remove(new LinkReferenceData(reference));
 		return updateCollection(collection, contents, null, null, null);
 	}
 	
@@ -405,20 +402,36 @@ public class CCNLibrary extends CCNBase {
 	 * @return
 	 * @throws XMLStreamException
 	 * @throws IOException
-	 * @throws InterruptedException
 	 * @throws SignatureException 
 	 * @throws InvalidKeyException 
 	 */
-	private Collection updateCollection(Collection oldCollection, ArrayList<LinkReference> references,
+	private Collection updateCollection(Collection oldCollection, ArrayList<LinkReferenceData> references,
 			 PublisherKeyID publisher, KeyLocator locator,
-			 PrivateKey signingKey) throws XMLStreamException, IOException, InterruptedException, 
+			 PrivateKey signingKey) throws XMLStreamException, IOException,
 			 InvalidKeyException, SignatureException {
-		LinkReference[] newReferences = new LinkReference[references.size()];
+		LinkReferenceData[] newReferences = new LinkReferenceData[references.size()];
 		references.toArray(newReferences);
 		Collection updatedCollection = createCollection(getNextVersionName(oldCollection.name()),
 				newReferences, publisher, locator, signingKey);
 		put(updatedCollection);
 		return updatedCollection;
+	}
+	
+	public LinkReference createLink(
+			ContentName name,
+			ContentName linkName, PublisherKeyID publisher, KeyLocator locator,
+			PrivateKey signingKey) throws IOException, SignatureException, 
+			XMLStreamException, InvalidKeyException {
+		if (null == signingKey)
+			signingKey = keyManager().getDefaultSigningKey();
+
+		if (null == locator)
+			locator = keyManager().getKeyLocator(signingKey);
+		
+		if (null == publisher) {
+			publisher = keyManager().getPublisherKeyID(signingKey);
+		}
+		return new LinkReference(name, linkName, publisher, locator, signingKey);
 	}
 	
 	/**
@@ -435,14 +448,13 @@ public class CCNLibrary extends CCNBase {
 	 * @param destAuthenticator can be null
 	 * @throws SignatureException 
 	 * @throws IOException 
-	 * @throws InterruptedException 
 	 */
-	public ContentObject link(ContentName name, LinkReference reference) throws SignatureException, IOException, InterruptedException {
+	public ContentObject link(ContentName name, LinkReferenceData reference) throws SignatureException, IOException {
 		return link(name, reference, getDefaultPublisher());
 	}
 
-	public ContentObject link(ContentName name, LinkReference reference,
-							PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException {
+	public ContentObject link(ContentName name, LinkReferenceData reference,
+							PublisherKeyID publisher) throws SignatureException, IOException {
 		try {
 			return link(name,reference,publisher,null,null);
 		} catch (InvalidKeyException e) {
@@ -463,13 +475,12 @@ public class CCNLibrary extends CCNBase {
 	 * @throws SignatureException 
 	 * @throws InvalidKeyException 
 	 * @throws IOException 
-	 * @throws InterruptedException 
 	 * @throws XMLStreamException 
 	 */
-	public ContentObject link(ContentName name, LinkReference reference, 
+	public ContentObject link(ContentName name, LinkReferenceData reference, 
 							 PublisherKeyID publisher, KeyLocator locator,
 							 PrivateKey signingKey) throws InvalidKeyException, SignatureException, 
-						NoSuchAlgorithmException, IOException, InterruptedException {
+						NoSuchAlgorithmException, IOException {
 
 		if ((null == name) || (null == reference)) {
 			Library.logger().info("Link: name and reference cannot be null.");
@@ -500,12 +511,12 @@ public class CCNLibrary extends CCNBase {
 	 * pointed to by a link. 
 	 * @param name the identifier for the link to work on
 	 * @return returns null if not a link, or name refers to more than one object
-	 * @throws InterruptedException 
+
 	 * @throws IOException 
 	 * @throws SignatureException
 	 * @throws IOException
 	 */
-	public LinkReference getLink(ContentName name, long timeout) throws IOException, InterruptedException {
+	public LinkReference getLink(ContentName name, long timeout) throws IOException {
 		ContentObject co = getLatestVersion(name, null, timeout);
 		if (co.authenticator().type() != ContentType.LINK)
 			throw new IOException("Content is not a link reference");
@@ -556,16 +567,15 @@ public class CCNLibrary extends CCNBase {
 	 * @param timeout
 	 * @return
 	 * @throws IOException 
-	 * @throws InterruptedException 
 	 * @throws XMLStreamException 
 	 */
 
-	public ArrayList<ContentObject> dereference(ContentObject content, long timeout) throws IOException, InterruptedException, XMLStreamException {
+	public ArrayList<ContentObject> dereference(ContentObject content, long timeout) throws IOException, XMLStreamException {
 		ArrayList<ContentObject> result = new ArrayList<ContentObject>();
 		if (null == content)
 			return null;
 		if (content.authenticator().type() == ContentType.LINK) {
-			LinkReference link = decodeLinkReference(content);
+			LinkReference link = LinkReference.contentToLinkReference(content);
 			ContentObject linkCo = dereferenceLink(link, content.authenticator().publisherKeyID(), timeout);
 			if (linkCo == null) {
 				return null;
@@ -573,8 +583,8 @@ public class CCNLibrary extends CCNBase {
 			result.add(linkCo);
 		} else if (content.authenticator().type() == ContentType.COLLECTION) {
 			Collection collection = Collection.contentToCollection(content);
-			ArrayList<LinkReference> al = collection.contents();
-			for (LinkReference lr : al) {
+			ArrayList<LinkReferenceData> al = collection.contents();
+			for (LinkReferenceData lr : al) {
 				ContentObject linkCo = dereferenceLink(lr, content.authenticator().publisherKeyID(), timeout);
 				if (linkCo != null)
 					result.add(linkCo);
@@ -596,9 +606,15 @@ public class CCNLibrary extends CCNBase {
 	 * @param timeout
 	 * @return
 	 * @throws IOException
-	 * @throws InterruptedException
 	 */
-	private ContentObject dereferenceLink(LinkReference reference, PublisherKeyID publisher, long timeout) throws IOException, InterruptedException {
+	private ContentObject dereferenceLink(LinkReferenceData reference, PublisherKeyID publisher, long timeout) throws IOException {
+		ContentObject linkCo = get(reference.targetName(), timeout);
+		if (linkCo == null)
+			linkCo = getLatestVersion(reference.targetName(), publisher, timeout);
+		return linkCo;
+	}
+	
+	private ContentObject dereferenceLink(LinkReference reference, PublisherKeyID publisher, long timeout) throws IOException {
 		ContentObject linkCo = get(reference.targetName(), timeout);
 		if (linkCo == null)
 			linkCo = getLatestVersion(reference.targetName(), publisher, timeout);
@@ -615,10 +631,9 @@ public class CCNLibrary extends CCNBase {
 	 * Even if we've read it, it isn't atomic -- by the time
 	 * we write our new version, someone else might have updated
 	 * the number...
-	 * @throws InterruptedException 
 	 */
 	public ContentObject newVersion(ContentName name,
-								   byte[] contents) throws SignatureException, IOException, InterruptedException {
+								   byte[] contents) throws SignatureException, IOException {
 		return newVersion(name, contents, getDefaultPublisher());
 	}
 
@@ -629,12 +644,11 @@ public class CCNLibrary extends CCNBase {
 	 * @param publisher Who we want to publish this as,
 	 * not who published the existing version. If null, uses the default publishing
 	 * identity.
-	 * @throws InterruptedException 
 	 */
 	public ContentObject newVersion(
 			ContentName name, 
 			byte[] contents,
-			PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException {
+			PublisherKeyID publisher) throws SignatureException, IOException {
 		return newVersion(name, contents, ContentType.LEAF, publisher);
 	}
 	
@@ -643,13 +657,12 @@ public class CCNLibrary extends CCNBase {
 	 * primarily to handle links and collections. Could be made protected.
 	 * @param publisher Who we want to publish this as,
 	 * not who published the existing version.
-	 * @throws InterruptedException 
 	 */
 	public ContentObject newVersion(
 			ContentName name, 
 			byte[] contents,
 			ContentType type, // handle links and collections
-			PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException {
+			PublisherKeyID publisher) throws SignatureException, IOException {
 
 		try {
 			return addVersion(name, getNextVersionNumber(name), contents, type, publisher, null, null);
@@ -706,14 +719,13 @@ public class CCNLibrary extends CCNBase {
 	 * @throws InvalidKeyException
 	 * @throws NoSuchAlgorithmException
 	 * @throws IOException
-	 * @throws InterruptedException
 	 */
 	public ContentObject newVersionName(
 			ContentName name, int version, byte [] contents,
 			ContentType type,
 			PublisherKeyID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws SignatureException, 
-			InvalidKeyException, NoSuchAlgorithmException, IOException, InterruptedException {
+			InvalidKeyException, NoSuchAlgorithmException, IOException {
 
 		if (contents.length > _blockSize)
 			throw new IOException("newVersionName currently only handles non-fragmenting content smaller than: " + _blockSize);
@@ -750,7 +762,7 @@ public class CCNLibrary extends CCNBase {
 			ContentType type,
 			PublisherKeyID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws SignatureException, 
-			InvalidKeyException, NoSuchAlgorithmException, IOException, InterruptedException {
+			InvalidKeyException, NoSuchAlgorithmException, IOException {
 
 		if (null == signingKey)
 			signingKey = keyManager().getDefaultSigningKey();
@@ -816,9 +828,8 @@ public class CCNLibrary extends CCNBase {
 	 * are fragmented. Maybe make this a simple interface
 	 * that puts them back together and returns a byte []?
 	 * @throws IOException 
-	 * @throws InterruptedException 
 	 */
-	public ContentObject getLatestVersion(ContentName name, PublisherKeyID publisher, long timeout) throws IOException, InterruptedException {
+	public ContentObject getLatestVersion(ContentName name, PublisherKeyID publisher, long timeout) throws IOException {
 		ContentName currentName = getLatestVersionName(name, publisher);
 		
 		if (null == currentName) // no latest version
@@ -916,33 +927,32 @@ public class CCNLibrary extends CCNBase {
 	 * @param publisher selects one of our identities to publish under
 	 * @throws SignatureException 
 	 * @throws IOException 
-	 * @throws InterruptedException 
 	 */
-	public ContentObject put(String name, String contents) throws SignatureException, MalformedContentNameStringException, IOException, InterruptedException {
+	public ContentObject put(String name, String contents) throws SignatureException, MalformedContentNameStringException, IOException {
 		return put(ContentName.fromURI(name), contents.getBytes());
 	}
 	
 	public ContentObject put(ContentName name, byte[] contents) 
-				throws SignatureException, IOException, InterruptedException {
+				throws SignatureException, IOException {
 		return put(name, contents, getDefaultPublisher());
 	}
 
 	public ContentObject put(ContentName name, byte[] contents, 
-							PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException {
+							PublisherKeyID publisher) throws SignatureException, IOException {
 		return put(name, contents, ContentAuthenticator.ContentType.LEAF, publisher);
 	}
 	
 	public ContentObject put(ContentName name, 
 			ContentAuthenticator authenticator,
 			byte[] content,
-			Signature signature) throws IOException, InterruptedException {
+			Signature signature) throws IOException {
 		ContentObject co = new ContentObject(name, authenticator, content, signature); 
 		return put(co);
 	}
 
 	public ContentObject put(ContentName name, byte[] contents, 
 							ContentAuthenticator.ContentType type,
-							PublisherKeyID publisher) throws SignatureException, IOException, InterruptedException {
+							PublisherKeyID publisher) throws SignatureException, IOException {
 		try {
 			return put(name, contents, type, publisher, 
 					   null, null);
@@ -1035,12 +1045,11 @@ public class CCNLibrary extends CCNBase {
 	 * @param content
 	 * @return
 	 * @throws IOException 
-	 * @throws InterruptedException 
 	 **/
 	public ContentObject put(ContentName name, byte [] contents,
 							ContentAuthenticator.ContentType type,
 							PublisherKeyID publisher, KeyLocator locator,
-							PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InterruptedException {
+							PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 	
 		if (null == signingKey)
 			signingKey = keyManager().getDefaultSigningKey();
@@ -1078,12 +1087,11 @@ public class CCNLibrary extends CCNBase {
 	 * @throws SignatureException
 	 * @throws NoSuchAlgorithmException
 	 * @throws IOException 
-	 * @throws InterruptedException 
 	 */
 	protected ContentObject fragmentedPut(ContentName name, byte [] contents,
 										ContentAuthenticator.ContentType type,
 										PublisherKeyID publisher, KeyLocator locator,
-										PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InterruptedException {
+										PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 		// This will call into CCNBase after picking appropriate credentials
 		// take content, blocksize (static), divide content into array of 
 		// content blocks, call hash fn for each block, call fn to build merkle
@@ -1130,7 +1138,7 @@ public class CCNLibrary extends CCNBase {
 				ContentAuthenticator.ContentType type,
 				Timestamp timestamp, 
 				PublisherKeyID publisher, KeyLocator locator,
-				PrivateKey signingKey) throws IOException, InvalidKeyException, SignatureException, InterruptedException {
+				PrivateKey signingKey) throws IOException, InvalidKeyException, SignatureException {
 
 		if (null == signingKey)
 			signingKey = keyManager().getDefaultSigningKey();
@@ -1222,7 +1230,7 @@ public class CCNLibrary extends CCNBase {
 			byte [][] contentBlocks, int blockCount, int baseBlockIndex, 
 			Timestamp timestamp,
 			PublisherKeyID publisher, KeyLocator locator,
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException {
+			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 
 		if (null == signingKey)
 			signingKey = keyManager().getDefaultSigningKey();
@@ -1343,7 +1351,8 @@ public class CCNLibrary extends CCNBase {
 		// This won't work without a correct order preference
 		query.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME | Interest.ORDER_PREFERENCE_LEFT);
 		while (true) {
-			ContentObject co = get(query, timeout == NO_TIMEOUT ? 5000 : timeout);
+			ContentObject co = null;
+			co = get(query, timeout == NO_TIMEOUT ? 5000 : timeout);
 			if (co == null)
 				break;
 			Library.logger().info("enumerate: retrieved " + co.name());
@@ -1439,7 +1448,6 @@ public class CCNLibrary extends CCNBase {
 	 * rather than the other way 'round. So these should use
 	 * the low-level (CCNBase/CCNRepository/CCNNetwork) get.
 	 * @throws IOException 
-	 * @throws InterruptedException 
 	 * @throws XMLStreamException 
 	 */
 	public CCNDescriptor open(ContentName name, PublisherKeyID publisher, 
@@ -1449,24 +1457,24 @@ public class CCNLibrary extends CCNBase {
 	}
 	
 	public CCNDescriptor open(ContentName name, PublisherKeyID publisher) 
-				throws XMLStreamException, IOException, InterruptedException {
+				throws XMLStreamException, IOException {
 		return new CCNDescriptor(name, publisher, this);
 	}
 	
 	public int read(CCNDescriptor ccnObject, byte [] buf, 
-					int offset, int len) throws IOException, InterruptedException {
+					int offset, int len) throws IOException {
 		return ccnObject.read(buf,offset,len);
 	}
 
-	public void write(CCNDescriptor ccnObject, byte [] buf, int offset, int len) throws IOException, InterruptedException, InvalidKeyException, SignatureException, NoSuchAlgorithmException {
+	public void write(CCNDescriptor ccnObject, byte [] buf, int offset, int len) throws IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException {
 		ccnObject.write(buf, offset, len);
 	}
 
-	public void close(CCNDescriptor ccnObject) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException {
+	public void close(CCNDescriptor ccnObject) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 		ccnObject.close();
 	}
 	
-	public void flush(CCNDescriptor ccnObject) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException {
+	public void flush(CCNDescriptor ccnObject) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 		ccnObject.flush();
 	}
 
@@ -1483,7 +1491,6 @@ public class CCNLibrary extends CCNBase {
 	 * @return
 	 * @throws MalformedContentNameStringException
 	 * @throws IOException
-	 * @throws InterruptedException
 	 * @throws InvalidParameterException
 	 */
 	public ContentObject getNext(ContentName name, byte[][] omissions, long timeout) 
@@ -1492,8 +1499,7 @@ public class CCNLibrary extends CCNBase {
 	}
 	
 	public ContentObject getNext(ContentName name, long timeout)
-			throws IOException,
-			InvalidParameterException {
+			throws IOException, InvalidParameterException {
 		return getNext(name, null, timeout);
 	}
 	
@@ -1512,21 +1518,20 @@ public class CCNLibrary extends CCNBase {
 	 * @return
 	 * @throws MalformedContentNameStringException
 	 * @throws IOException
-	 * @throws InterruptedException
 	 * @throws InvalidParameterException
 	 */
 	public ContentObject getLatest(ContentName name, byte[][] omissions, long timeout) 
-			throws MalformedContentNameStringException, IOException, InterruptedException, InvalidParameterException {
+			throws MalformedContentNameStringException, IOException, InvalidParameterException {
 		return get(Interest.last(name, omissions), timeout);
 	}
 	
 	public ContentObject getLatest(ContentName name, long timeout) throws InvalidParameterException, MalformedContentNameStringException, 
-			IOException, InterruptedException {
+			IOException {
 		return getLatest(name, null, timeout);
 	}
 	
 	public ContentObject getLatest(ContentObject content, int prefixCount, long timeout) throws InvalidParameterException, MalformedContentNameStringException, 
-			IOException, InterruptedException {
+			IOException {
 		return getLatest(contentObjectToContentName(content, prefixCount), null, timeout);
 	}
 	
@@ -1539,10 +1544,9 @@ public class CCNLibrary extends CCNBase {
 	 * @throws InvalidParameterException
 	 * @throws MalformedContentNameStringException
 	 * @throws IOException
-	 * @throws InterruptedException
 	 */
 	public ContentObject getExcept(ContentName name, byte[][] omissions, long timeout) throws InvalidParameterException, MalformedContentNameStringException, 
-			IOException, InterruptedException {
+			IOException {
 		return get(Interest.exclude(name, omissions), timeout);
 	}
 	
