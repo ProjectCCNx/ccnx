@@ -1149,29 +1149,22 @@ public class CCNLibrary extends CCNBase {
 		if (null == publisher) {
 			publisher = keyManager().getPublisherKeyID(signingKey);
 		}		
-		
-		Header header = new Header(contentLength, contentDigest, contentTreeAuthenticator, blockSize);
-		byte[] encodedHeader = null;
+
+		// Add another differentiator to avoid making header
+		// name prefix of other valid names?
+		ContentName headerName = headerName(name);
+		Header header;
 		try {
-			encodedHeader = header.encode();
+			header = new Header(headerName, contentLength, contentDigest, contentTreeAuthenticator, blockSize,
+															publisher, locator, signingKey);
 		} catch (XMLStreamException e) {
 			Library.logger().warning("This should not happen: we cannot encode our own header!");
 			Library.warningStackTrace(e);
 			throw new IOException("This should not happen: we cannot encode our own header!" + e.getMessage());
 		}
-
-		// Add another differentiator to avoid making header
-		// name prefix of other valid names?
-		ContentName headerName = headerName(name);
-		ContentObject headerObject = new ContentObject(headerName, 
-														new ContentAuthenticator(publisher, timestamp, ContentType.HEADER, locator),
-														encodedHeader,
-														signingKey);
 		ContentObject headerResult = null;
 		try {
-			headerResult = 
-				put(headerObject.name(), headerObject.authenticator(),
-					headerObject.content(), headerObject.signature());
+			headerResult = put(header);
 		} catch (IOException e) {
 			Library.logger().warning("This should not happen: we cannot put our own header!");
 			Library.warningStackTrace(e);

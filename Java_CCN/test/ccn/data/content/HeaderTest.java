@@ -3,31 +3,54 @@
  */
 package test.ccn.data.content;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.PrivateKey;
 
 import javax.xml.stream.XMLStreamException;
 
-
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import test.ccn.data.XMLEncodableTester;
 
-import com.parc.ccn.data.content.*;
+import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.content.Header;
+import com.parc.ccn.data.security.KeyLocator;
+import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.library.CCNLibrary;
 
 /**
- * @author briggs
+ * @author briggs, rasmusse
  *
  */
 public class HeaderTest {
+	
+	static PublisherKeyID pubKey = null;
+	static public byte [] publisherid1 = new byte[32];
+	static public PrivateKey signingKey;
+	static public KeyLocator locator;
+	
+	@BeforeClass
+	public static void setUpBeforeClass() throws Exception {
+		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+		kpg.initialize(512); // go for fast
+		KeyPair pair = kpg.generateKeyPair();
+		signingKey = pair.getPrivate();
+		pubKey = new PublisherKeyID(publisherid1);
+		locator = new KeyLocator(ContentName.fromNative("/headerTest1"));
+	}
 
 	@Test
-	public void testHeaderConstructor() {
+	public void testHeaderConstructor() throws Exception {
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
-		Header seq = new Header(1, 1, 8192, 2, digest, digest);
+		Header seq = new Header(ContentName.fromNative("/headerTest1"), 1, 1, 8192, 2, digest, digest,
+				pubKey, locator, signingKey);
 		assertNotNull(seq);
 		assertEquals(1, seq.start());
 		assertEquals(1, seq.count());
@@ -36,10 +59,11 @@ public class HeaderTest {
 	}
 
 	@Test
-	public void testHeaderConstructor2() {
+	public void testHeaderConstructor2() throws Exception {
 		int length = 77295;
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
-		Header seq = new Header(length, digest, digest, Header.DEFAULT_BLOCKSIZE);
+		Header seq = new Header(ContentName.fromNative("/headerTest1"), length, digest, digest, Header.DEFAULT_BLOCKSIZE,
+				pubKey, locator, signingKey);
 		assertNotNull(seq);
 		assertEquals(CCNLibrary.baseFragment(), seq.start());
 		assertEquals(length, seq.length());
@@ -47,10 +71,11 @@ public class HeaderTest {
 		assertEquals((length + Header.DEFAULT_BLOCKSIZE - 1) / Header.DEFAULT_BLOCKSIZE, seq.count());
 	}
 	@Test
-	public void testHeaderConstructor3() {
+	public void testHeaderConstructor3() throws Exception {
 		int length = Header.DEFAULT_BLOCKSIZE;
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
-		Header seq = new Header(length, digest, digest, Header.DEFAULT_BLOCKSIZE);
+		Header seq = new Header(ContentName.fromNative("/headerTest1"), length, digest, digest, Header.DEFAULT_BLOCKSIZE,
+				pubKey, locator, signingKey);
 		assertNotNull(seq);
 		assertEquals(CCNLibrary.baseFragment(), seq.start());
 		assertEquals(length, seq.length());
@@ -58,9 +83,10 @@ public class HeaderTest {
 		assertEquals(1, seq.count());
 	}
 	@Test
-	public void testEncodeOutputStream() {
+	public void testEncodeOutputStream() throws Exception {
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
-		Header seq = new Header(1, 1, 8192, 2, digest, digest);
+		Header seq = new Header(ContentName.fromNative("/headerTest1"), 1, 1, 8192, 2, digest, digest,
+				pubKey, locator, signingKey);
 
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		System.out.println("Encoding header...");
@@ -80,9 +106,10 @@ public class HeaderTest {
 	}
 
 	@Test
-	public void testDecodeInputStream() {
+	public void testDecodeInputStream() throws Exception {
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
-		Header seqIn = new Header(83545, digest, digest, Header.DEFAULT_BLOCKSIZE);
+		Header seqIn = new Header(ContentName.fromNative("/headerTest1"), 83545, digest, digest, Header.DEFAULT_BLOCKSIZE,
+				pubKey, locator, signingKey);
 		Header seqOut = new Header();
 
 
