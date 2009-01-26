@@ -1,19 +1,13 @@
 package com.parc.ccn.data.content;
 
-import java.security.InvalidKeyException;
-import java.security.PrivateKey;
-import java.security.SignatureException;
-
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.ContentAuthenticator;
-import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.LinkAuthenticator;
-import com.parc.ccn.data.security.PublisherKeyID;
-import com.parc.ccn.data.security.Signature;
-import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
+import com.parc.ccn.data.util.GenericXMLEncodable;
+import com.parc.ccn.data.util.XMLDecoder;
+import com.parc.ccn.data.util.XMLEncodable;
+import com.parc.ccn.data.util.XMLEncoder;
 
 /**
  * Mapping from a link to the underlying XML representation.
@@ -24,42 +18,20 @@ import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
  * @author smetters
  *
  */
-public class LinkReference extends ContentObject {
-	protected LinkReferenceData _data;
+public class LinkReference extends GenericXMLEncodable implements XMLEncodable {
 	
 	protected static final String LINK_ELEMENT = "Link";
-	public LinkReference(ContentName name,
-			 ContentName targetName,
-			 LinkAuthenticator targetAuthenticator,
-			 PublisherKeyID publisher,
-			 KeyLocator locator,
-			 Signature signature
-			 ) throws XMLStreamException {
-		super(name, new ContentAuthenticator(publisher, ContentType.LINK, locator), null, 
-				(Signature)null);
-		_signature = signature;
-		_data = new LinkReferenceData(targetName, targetAuthenticator);
-		_content = _data.encode();
+	
+	protected ContentName _targetName;
+	protected LinkAuthenticator _targetAuthenticator = null;
+	
+	public LinkReference(ContentName targetName, LinkAuthenticator targetAuthenticator) {
+		_targetName = targetName;
+		_targetAuthenticator = targetAuthenticator;
 	}
 	
-	public LinkReference(ContentName name,
-			 ContentName targetName,
-			 LinkAuthenticator targetAuthenticator,
-			 PublisherKeyID publisher, 
-			 KeyLocator locator,
-			 PrivateKey signingKey
-			 ) throws XMLStreamException, InvalidKeyException, SignatureException {
-		this(name, targetName, targetAuthenticator, publisher, locator, (Signature)null);
-		_signature = sign(name, authenticator(), _content, signingKey);
-	}
-	
-	public LinkReference(ContentName name,
-			 ContentName targetName,
-			 PublisherKeyID publisher, 
-			 KeyLocator locator,
-			 PrivateKey signingKey
-			 ) throws XMLStreamException, InvalidKeyException, SignatureException {
-		this(name, targetName, null, publisher, locator, (Signature)null);
+	public LinkReference(ContentName targetName) {
+		this(targetName, null);
 	}
 	
 	/**
@@ -67,18 +39,74 @@ public class LinkReference extends ContentObject {
 	 */
 	public LinkReference() {}
 	
-	public static LinkReference contentToLinkReference(ContentObject co) throws XMLStreamException {
-		LinkReference reference = new LinkReference();
-		reference.decode(co.encode());
-		reference.decodeData();
-		return reference;
+	public ContentName targetName() { return _targetName; }
+	public LinkAuthenticator targetAuthenticator() { return _targetAuthenticator; }
+		
+	/**
+	 * XML format:
+	 * @throws XMLStreamException 
+	 * 
+	 */
+	
+	public void decode(XMLDecoder decoder) throws XMLStreamException {
+		decoder.readStartElement(LINK_ELEMENT);
+
+		_targetName = new ContentName();
+		_targetName.decode(decoder);
+		
+		if (decoder.peekStartElement(LinkAuthenticator.LINK_AUTHENTICATOR_ELEMENT)) {
+			_targetAuthenticator = new LinkAuthenticator();
+			_targetAuthenticator.decode(decoder);
+		}
+
+		decoder.readEndElement();
+	}
+
+	public void encode(XMLEncoder encoder) throws XMLStreamException {
+
+		encoder.writeStartElement(LINK_ELEMENT);
+		_targetName.encode(encoder);
+		if (null != _targetAuthenticator)
+			_targetAuthenticator.encode(encoder);
+		encoder.writeEndElement();   		
 	}
 	
-	private void decodeData() throws XMLStreamException {
-		_data = new LinkReferenceData();
-		_data.decode(_content);
+	public boolean validate() {
+		return (null != targetName());
 	}
-	
-	public ContentName targetName() { return _data.targetName(); }
-	public LinkAuthenticator targetAuthenticator() { return _data._targetAuthenticator; }	
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime
+				* result
+				+ ((_targetAuthenticator == null) ? 0 : _targetAuthenticator
+						.hashCode());
+		result = prime * result
+				+ ((_targetName == null) ? 0 : _targetName.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		final LinkReference other = (LinkReference) obj;
+		if (_targetAuthenticator == null) {
+			if (other._targetAuthenticator != null)
+				return false;
+		} else if (!_targetAuthenticator.equals(other._targetAuthenticator))
+			return false;
+		if (_targetName == null) {
+			if (other._targetName != null)
+				return false;
+		} else if (!_targetName.equals(other._targetName))
+			return false;
+		return true;
+	}
 }

@@ -23,7 +23,7 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 	
 	protected static final String COLLECTION_ELEMENT = "Collection";
 
-	protected ArrayList<LinkReferenceData> _contents = new ArrayList<LinkReferenceData>();
+	protected ArrayList<LinkReference> _contents = new ArrayList<LinkReference>();
 	
 	public CollectionData() {
 	}
@@ -42,15 +42,15 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 		newCollection.decode(encodedCollection);
 		return newCollection;
 	}
-	public ArrayList<LinkReferenceData> contents() { 
+	public ArrayList<LinkReference> contents() { 
 		return _contents; 
 	}
 		
-	public LinkReferenceData get(int i) {
+	public LinkReference get(int i) {
 		return contents().get(i);
 	}
 	
-	public void add(LinkReferenceData content) {
+	public void add(LinkReference content) {
 		_contents.add(content);
 	}
 	
@@ -58,7 +58,7 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 		_contents.remove(i);
 	}
 	
-	public void remove(LinkReference content) {
+	public void remove(Link content) {
 		_contents.remove(content);
 	}
 	
@@ -74,9 +74,9 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 		
 		decoder.readStartElement(COLLECTION_ELEMENT);
 
-		LinkReferenceData link = null;
-		while (decoder.peekStartElement(LinkReference.LINK_ELEMENT)) {
-			link = new LinkReferenceData();
+		LinkReference link = null;
+		while (decoder.peekStartElement(Link.LINK_ELEMENT)) {
+			link = new LinkReference();
 			link.decode(decoder);
 			add(link);
 		}
@@ -88,9 +88,9 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		encoder.writeStartElement(COLLECTION_ELEMENT);
-		Iterator<LinkReferenceData> linkIt = contents().iterator();
+		Iterator<LinkReference> linkIt = contents().iterator();
 		while (linkIt.hasNext()) {
-			LinkReferenceData link = linkIt.next();
+			LinkReference link = linkIt.next();
 			link.encode(encoder);
 		}
 		encoder.writeEndElement();   		

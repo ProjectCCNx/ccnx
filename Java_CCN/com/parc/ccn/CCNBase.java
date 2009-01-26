@@ -17,7 +17,7 @@ import com.parc.ccn.network.CCNNetworkManager;
  */
 public class CCNBase {
 	
-	public final static int NO_TIMEOUT = 0;
+	public final static int NO_TIMEOUT = -1;
 	
 	/** 
 	 * DKS -- TODO temporary values to workaround problems in packet drops on the

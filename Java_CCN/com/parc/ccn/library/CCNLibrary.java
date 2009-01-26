@@ -24,8 +24,8 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Header;
+import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.content.LinkReference;
-import com.parc.ccn.data.content.LinkReferenceData;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
@@ -191,14 +191,14 @@ public class CCNLibrary extends CCNBase {
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
 	 */
-	public ContentObject put(ContentName name, LinkReferenceData reference) throws SignatureException, IOException, 
+	public ContentObject put(ContentName name, LinkReference reference) throws SignatureException, IOException, 
 				XMLStreamException, InvalidKeyException, NoSuchAlgorithmException {
 		return put(name, reference, null, null, null);
 	}
 	
 	public ContentObject put(
 			ContentName name, 
-			LinkReferenceData reference,
+			LinkReference reference,
 			PublisherKeyID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException{
 		
@@ -231,11 +231,11 @@ public class CCNLibrary extends CCNBase {
 	 * @throws SignatureException
 	 * @throws IOException
 	 */
-	public Collection put(ContentName name, LinkReferenceData [] references) throws SignatureException, IOException {
+	public Collection put(ContentName name, LinkReference [] references) throws SignatureException, IOException {
 		return put(name, references, getDefaultPublisher());
 	}
 
-	public Collection put(ContentName name, LinkReferenceData [] references, PublisherKeyID publisher) 
+	public Collection put(ContentName name, LinkReference [] references, PublisherKeyID publisher) 
 				throws SignatureException, IOException {
 		try {
 			return put(name, references, publisher, null, null);
@@ -252,7 +252,7 @@ public class CCNLibrary extends CCNBase {
 
 	public Collection put(
 			ContentName name, 
-			LinkReferenceData[] references,
+			LinkReference[] references,
 			PublisherKeyID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 
@@ -296,9 +296,9 @@ public class CCNLibrary extends CCNBase {
 			ContentName[] references,
 			PublisherKeyID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
-		LinkReferenceData[] lrs = new LinkReferenceData[references.length];
+		LinkReference[] lrs = new LinkReference[references.length];
 		for (int i = 0; i < lrs.length; i++)
-			lrs[i] = new LinkReferenceData(references[i]);
+			lrs[i] = new LinkReference(references[i]);
 		return put(name, lrs, publisher, locator, signingKey);
 	}
 	
@@ -333,16 +333,16 @@ public class CCNLibrary extends CCNBase {
 			ContentName [] references, PublisherKeyID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws IOException, SignatureException, 
 			XMLStreamException, InvalidKeyException {
-		LinkReferenceData[] lrs = new LinkReferenceData[references.length];
+		LinkReference[] lrs = new LinkReference[references.length];
 		for (int i = 0; i < references.length; i++) {
-			lrs[i] = new LinkReferenceData(references[i]);
+			lrs[i] = new LinkReference(references[i]);
 		}
 		return createCollection(name, lrs, publisher, locator, signingKey);
 	}
 	
 	public Collection createCollection(
 			ContentName name,
-			LinkReferenceData [] references, PublisherKeyID publisher, KeyLocator locator,
+			LinkReference [] references, PublisherKeyID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws IOException, SignatureException, 
 			XMLStreamException, InvalidKeyException {
 		if (null == signingKey)
@@ -362,9 +362,9 @@ public class CCNLibrary extends CCNBase {
 			ContentName [] references,
 			long timeout) throws IOException, SignatureException, 
 			XMLStreamException, InvalidKeyException {
-		ArrayList<LinkReferenceData> contents = collection.contents();
+		ArrayList<LinkReference> contents = collection.contents();
 		for (ContentName reference : references)
-			contents.add(new LinkReferenceData(reference));
+			contents.add(new LinkReference(reference));
 		return updateCollection(collection, contents, null, null, null);
 	}
 
@@ -373,9 +373,9 @@ public class CCNLibrary extends CCNBase {
 			ContentName [] references,
 			long timeout) throws IOException, SignatureException, 
 			XMLStreamException, InvalidKeyException {
-		ArrayList<LinkReferenceData> contents = collection.contents();
+		ArrayList<LinkReference> contents = collection.contents();
 		for (ContentName reference : references)
-			contents.remove(new LinkReferenceData(reference));
+			contents.remove(new LinkReference(reference));
 		return updateCollection(collection, contents, null, null, null);
 	}
 	
@@ -385,11 +385,11 @@ public class CCNLibrary extends CCNBase {
 			ContentName [] referencesToRemove,
 			long timeout) throws IOException, SignatureException, 
 			XMLStreamException, InvalidKeyException {
-		ArrayList<LinkReferenceData> contents = collection.contents();
+		ArrayList<LinkReference> contents = collection.contents();
 		for (ContentName reference : referencesToAdd)
-			contents.add(new LinkReferenceData(reference));
+			contents.add(new LinkReference(reference));
 		for (ContentName reference : referencesToRemove)
-			contents.remove(new LinkReferenceData(reference));
+			contents.remove(new LinkReference(reference));
 		return updateCollection(collection, contents, null, null, null);
 	}
 	
@@ -405,11 +405,11 @@ public class CCNLibrary extends CCNBase {
 	 * @throws SignatureException 
 	 * @throws InvalidKeyException 
 	 */
-	private Collection updateCollection(Collection oldCollection, ArrayList<LinkReferenceData> references,
+	private Collection updateCollection(Collection oldCollection, ArrayList<LinkReference> references,
 			 PublisherKeyID publisher, KeyLocator locator,
 			 PrivateKey signingKey) throws XMLStreamException, IOException,
 			 InvalidKeyException, SignatureException {
-		LinkReferenceData[] newReferences = new LinkReferenceData[references.size()];
+		LinkReference[] newReferences = new LinkReference[references.size()];
 		references.toArray(newReferences);
 		Collection updatedCollection = createCollection(getNextVersionName(oldCollection.name()),
 				newReferences, publisher, locator, signingKey);
@@ -417,7 +417,7 @@ public class CCNLibrary extends CCNBase {
 		return updatedCollection;
 	}
 	
-	public LinkReference createLink(
+	public Link createLink(
 			ContentName name,
 			ContentName linkName, PublisherKeyID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws IOException, SignatureException, 
@@ -431,7 +431,7 @@ public class CCNLibrary extends CCNBase {
 		if (null == publisher) {
 			publisher = keyManager().getPublisherKeyID(signingKey);
 		}
-		return new LinkReference(name, linkName, publisher, locator, signingKey);
+		return new Link(name, linkName, publisher, locator, signingKey);
 	}
 	
 	/**
@@ -449,11 +449,11 @@ public class CCNLibrary extends CCNBase {
 	 * @throws SignatureException 
 	 * @throws IOException 
 	 */
-	public ContentObject link(ContentName name, LinkReferenceData reference) throws SignatureException, IOException {
+	public ContentObject link(ContentName name, LinkReference reference) throws SignatureException, IOException {
 		return link(name, reference, getDefaultPublisher());
 	}
 
-	public ContentObject link(ContentName name, LinkReferenceData reference,
+	public ContentObject link(ContentName name, LinkReference reference,
 							PublisherKeyID publisher) throws SignatureException, IOException {
 		try {
 			return link(name,reference,publisher,null,null);
@@ -477,7 +477,7 @@ public class CCNLibrary extends CCNBase {
 	 * @throws IOException 
 	 * @throws XMLStreamException 
 	 */
-	public ContentObject link(ContentName name, LinkReferenceData reference, 
+	public ContentObject link(ContentName name, LinkReference reference, 
 							 PublisherKeyID publisher, KeyLocator locator,
 							 PrivateKey signingKey) throws InvalidKeyException, SignatureException, 
 						NoSuchAlgorithmException, IOException {
@@ -516,11 +516,11 @@ public class CCNLibrary extends CCNBase {
 	 * @throws SignatureException
 	 * @throws IOException
 	 */
-	public LinkReference getLink(ContentName name, long timeout) throws IOException {
+	public Link getLink(ContentName name, long timeout) throws IOException {
 		ContentObject co = getLatestVersion(name, null, timeout);
 		if (co.authenticator().type() != ContentType.LINK)
 			throw new IOException("Content is not a link reference");
-		LinkReference reference = new LinkReference();
+		Link reference = new Link();
 		try {
 			reference.decode(co.content());
 		} catch (XMLStreamException e) {
@@ -536,10 +536,10 @@ public class CCNLibrary extends CCNBase {
 	 * @return
 	 * @throws IOException
 	 */
-	public LinkReference decodeLinkReference(ContentObject co) throws IOException {
+	public Link decodeLinkReference(ContentObject co) throws IOException {
 		if (co.authenticator().type() != ContentType.LINK)
 			throw new IOException("Content is not a collection");
-		LinkReference reference = new LinkReference();
+		Link reference = new Link();
 		try {
 			reference.decode(co.content());
 		} catch (XMLStreamException e) {
@@ -575,7 +575,7 @@ public class CCNLibrary extends CCNBase {
 		if (null == content)
 			return null;
 		if (content.authenticator().type() == ContentType.LINK) {
-			LinkReference link = LinkReference.contentToLinkReference(content);
+			Link link = Link.contentToLinkReference(content);
 			ContentObject linkCo = dereferenceLink(link, content.authenticator().publisherKeyID(), timeout);
 			if (linkCo == null) {
 				return null;
@@ -583,8 +583,8 @@ public class CCNLibrary extends CCNBase {
 			result.add(linkCo);
 		} else if (content.authenticator().type() == ContentType.COLLECTION) {
 			Collection collection = Collection.contentToCollection(content);
-			ArrayList<LinkReferenceData> al = collection.contents();
-			for (LinkReferenceData lr : al) {
+			ArrayList<LinkReference> al = collection.contents();
+			for (LinkReference lr : al) {
 				ContentObject linkCo = dereferenceLink(lr, content.authenticator().publisherKeyID(), timeout);
 				if (linkCo != null)
 					result.add(linkCo);
@@ -607,14 +607,14 @@ public class CCNLibrary extends CCNBase {
 	 * @return
 	 * @throws IOException
 	 */
-	private ContentObject dereferenceLink(LinkReferenceData reference, PublisherKeyID publisher, long timeout) throws IOException {
+	private ContentObject dereferenceLink(LinkReference reference, PublisherKeyID publisher, long timeout) throws IOException {
 		ContentObject linkCo = get(reference.targetName(), timeout);
 		if (linkCo == null)
 			linkCo = getLatestVersion(reference.targetName(), publisher, timeout);
 		return linkCo;
 	}
 	
-	private ContentObject dereferenceLink(LinkReference reference, PublisherKeyID publisher, long timeout) throws IOException {
+	private ContentObject dereferenceLink(Link reference, PublisherKeyID publisher, long timeout) throws IOException {
 		ContentObject linkCo = get(reference.targetName(), timeout);
 		if (linkCo == null)
 			linkCo = getLatestVersion(reference.targetName(), publisher, timeout);

@@ -9,7 +9,7 @@ import org.junit.Test;
 import test.ccn.data.XMLEncodableTester;
 
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.security.ContentAuthenticator;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.LinkAuthenticator;
@@ -83,9 +83,9 @@ public class LinkTest {
 		KeyLocator locator = new KeyLocator(ContentName.fromNative("/collectionTestKey"));
 		
 		for (int i=0; i < ns.length; ++i) {
-			LinkReference l = new LinkReference(ns[i],ls[i], las[i], pubkey, locator, signature);
-			LinkReference ldec = new LinkReference();
-			LinkReference lbdec = new LinkReference();
+			Link l = new Link(ns[i],ls[i], las[i], pubkey, locator, signature);
+			Link ldec = new Link();
+			Link lbdec = new Link();
 			XMLEncodableTester.encodeDecodeTest("Link_" + i, l, ldec, lbdec);
 		}
 	}

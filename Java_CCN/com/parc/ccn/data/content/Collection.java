@@ -24,7 +24,7 @@ public class Collection extends ContentObject {
 	protected CollectionData _data = new CollectionData();
 	
 	public Collection(ContentName name,
-			 LinkReferenceData[] references,
+			 LinkReference[] references,
 			 PublisherKeyID publisher, 
 			 KeyLocator locator,
 			 Signature signature
@@ -32,7 +32,7 @@ public class Collection extends ContentObject {
 		super(name, new ContentAuthenticator(publisher, ContentType.COLLECTION, locator), null, 
 				(Signature)null);
 		if (null != references) {
-			for (LinkReferenceData reference : references) {
+			for (LinkReference reference : references) {
 				_data.add(reference);
 			}
 		}
@@ -41,7 +41,7 @@ public class Collection extends ContentObject {
 	}
 	
 	public Collection(ContentName name,
-			 LinkReferenceData[] references,
+			 LinkReference[] references,
 			 PublisherKeyID publisher, 
 			 KeyLocator locator,
 			 PrivateKey signingKey
@@ -52,7 +52,7 @@ public class Collection extends ContentObject {
 
 	public Collection() {} // for use by decoders
 	
-	public ArrayList<LinkReferenceData> contents() { 
+	public ArrayList<LinkReference> contents() { 
 		return _data.contents(); 
 	}
 	
@@ -68,7 +68,7 @@ public class Collection extends ContentObject {
 		_data.decode(_content);
 	}
 		
-	public LinkReferenceData get(int i) {
+	public LinkReference get(int i) {
 		return contents().get(i);
 	}
 	
