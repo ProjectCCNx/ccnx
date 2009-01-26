@@ -186,7 +186,6 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 	 * @param offset the offset into buf at which to write data
 	 * @param len the number of bytes to write
 	 * @return
-	 * @throws InterruptedException 
 	 * @throws IOException 
 	 */
 	@Override
