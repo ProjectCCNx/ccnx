@@ -13,7 +13,7 @@
 
 #define FRESHNESS 10 
 #define COUNT 3000
-#define PAYLOAD_SIZE 32
+#define PAYLOAD_SIZE 51
 
 int
 main(int argc, char **argv)
@@ -65,10 +65,17 @@ main(int argc, char **argv)
       fflush(stdout);
     }
     ccn_name_init(path);
-    ccn_name_append_str(path, "test");
-    ccn_name_append_str(path, "benchmark");
+    ccn_name_append_str(path, "rtp");
+    ccn_name_append_str(path, "protocol");
+    ccn_name_append_str(path, "13.2.117.34");
+    ccn_name_append_str(path, "domain");
+    ccn_name_append_str(path, "smetters");
+    ccn_name_append_str(path, "principal");
+    ccn_name_append_str(path, "2021915340");
+    ccn_name_append_str(path, "id");
     ccn_charbuf_putf(seq, "%u", i);
     ccn_name_append(path, seq->buf, seq->length);
+    ccn_name_append_str(path, "seq");
   
     res = ccn_encode_ContentObject(/* out */ message,
 				   path, signed_info, 
