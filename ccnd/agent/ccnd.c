@@ -396,10 +396,12 @@ finalize_content(struct hashtb_enumerator *e)
     }
 }
 
+
 static int
 content_skiplist_findbefore(struct ccnd *h,
                             const unsigned char *key,
                             size_t keysize,
+                            struct content_entry *wanted_old,
                             struct ccn_indexbuf **ans)
 {
     int i;
@@ -422,7 +424,9 @@ content_skiplist_findbefore(struct ccnd *h,
             end = content->comps[content->ncomps - 1];
             order = ccn_compare_names(content->key + start - 1, end - start + 2,
                                       key, keysize);
-            if (order >= 0)
+            if (order > 0)
+                break;
+            if (order == 0 && (wanted_old == content || wanted_old == NULL))
                 break;
             if (content->skiplinks == NULL || i >= content->skiplinks->n)
                 abort();
@@ -451,7 +455,7 @@ content_skiplist_insert(struct ccnd *h, struct content_entry *content)
     end = content->comps[content->ncomps - 1];
     i = content_skiplist_findbefore(h,
                                     content->key + start - 1,
-                                    end - start + 2, pred);
+                                    end - start + 2, NULL, pred);
     if (i < d)
         d = i; /* just in case */
     content->skiplinks = ccn_indexbuf_create();
@@ -474,7 +478,7 @@ content_skiplist_remove(struct ccnd *h, struct content_entry *content)
     end = content->comps[content->ncomps - 1];
     d = content_skiplist_findbefore(h,
                                     content->key + start - 1,
-                                    end - start + 2, pred);
+                                    end - start + 2, content, pred);
     if (d > content->skiplinks->n)
         d = content->skiplinks->n;
     for (i = 0; i < d; i++) {
@@ -493,7 +497,8 @@ find_first_match_candidate(struct ccnd *h,
     struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
     size_t start = pi->offset[CCN_PI_B_Name];
     size_t end = pi->offset[CCN_PI_E_Name];
-    d = content_skiplist_findbefore(h, interest_msg + start, end - start, pred);
+    d = content_skiplist_findbefore(h, interest_msg + start, end - start,
+                                    NULL, pred);
     if (d == 0)
         return(NULL);
     return(content_from_accession(h, pred[0]->buf[0]));
