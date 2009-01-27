@@ -264,6 +264,7 @@
 			</batchtest>
 		</junit>
 		<antcall target="stop-repo" />
+		<delete dir="${REPO_ROOT}" />
 	</target>
 
 	<target name="test-puttap" depends="jar, ccnd">
