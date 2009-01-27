@@ -16,7 +16,6 @@ import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
 import com.parc.ccn.data.util.XMLDecoder;
-import com.parc.ccn.data.util.XMLEncoder;
 import com.parc.ccn.library.CCNLibrary;
 
 /**
@@ -97,15 +96,9 @@ public class Header extends ContentObject  {
 		return header;
 	}
 	
-	/**
-	 * XXX I guess this should be a noop since the data is already encoded...
-	 */
-	public void encode(XMLEncoder encoder) throws XMLStreamException {
-	}
-	
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		_data = new HeaderData();
-		_data.decode(decoder);
+		super.decode(decoder);
+		decodeData();
 	}
 	
 	private void decodeData() throws XMLStreamException {

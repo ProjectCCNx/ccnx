@@ -81,15 +81,9 @@ public class Link extends ContentObject {
 		_data.decode(_content);
 	}
 	
-	/**
-	 * XXX I guess this should be a noop since the data is already encoded...
-	 */
-	public void encode(XMLEncoder encoder) throws XMLStreamException {
-	}
-	
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		_data = new LinkReference();
-		_data.decode(decoder);
+		super.decode(decoder);
+		decodeData();
 	}
 	public ContentName targetName() { return _data.targetName(); }
 	public LinkAuthenticator targetAuthenticator() { return _data._targetAuthenticator; }	

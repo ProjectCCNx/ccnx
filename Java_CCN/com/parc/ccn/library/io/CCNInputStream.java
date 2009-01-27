@@ -311,10 +311,7 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 					} else {
 						_headerName = co.name();
 						_headerAuthenticator = co.authenticator();
-						Header header = new Header();
-						// DKS TODO -- this will swap around when headers become subclasses of content object
-						header.decode(co.content());
-						_header = header; // Don't want to do this until we've decoded it to avoid races
+						_header = Header.contentToHeader(co);
 						Library.logger().fine("Found header specifies " + _header.blockCount() + " blocks");
 						return null; // done
 					}
