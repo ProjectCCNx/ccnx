@@ -14,6 +14,8 @@ import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
+import com.parc.ccn.data.util.XMLDecoder;
+import com.parc.ccn.data.util.XMLEncoder;
 
 /**
  * 
@@ -66,6 +68,17 @@ public class Collection extends ContentObject {
 	private void decodeData() throws XMLStreamException {
 		_data = new CollectionData();
 		_data.decode(_content);
+	}
+	
+	/**
+	 * XXX I guess this should be a noop since the data is already encoded...
+	 */
+	public void encode(XMLEncoder encoder) throws XMLStreamException {
+	}
+	
+	public void decode(XMLDecoder decoder) throws XMLStreamException {
+		_data = new CollectionData();
+		_data.decode(decoder);
 	}
 		
 	public LinkReference get(int i) {
