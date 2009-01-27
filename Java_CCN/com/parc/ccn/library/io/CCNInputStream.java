@@ -426,7 +426,8 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 		// DKS TODO FIX - use get left child; the following is a first stab at that.
 		Library.logger().info("getFirstBlock: getting " + _baseName);
 		ContentObject result =  _library.get(_baseName, _timeout);
-		Library.logger().info("getFirstBlock: retrieved " + result.name());
+		if (null != result)
+			Library.logger().info("getFirstBlock: retrieved " + result.name());
 		return result;
 	}
 	

@@ -15,7 +15,6 @@ import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
 import com.parc.ccn.data.util.XMLDecoder;
-import com.parc.ccn.data.util.XMLEncoder;
 
 /**
  * Mapping from a link to the underlying XML representation.
