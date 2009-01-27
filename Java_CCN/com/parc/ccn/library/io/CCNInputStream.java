@@ -394,8 +394,11 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 				// with that -- many stream types don't have a header.
 				local_timeout = 2;
 			}
+			// prefixCount note: next block name must exactly match current except
+			// for the index itself which is the final component of the name we 
+			// have, so we use count()-1.
 			ContentObject nextBlock =  
-					_library.getNext(_currentBlock, _currentBlock.name().count()-2, null, local_timeout);
+					_library.getNext(_currentBlock, _currentBlock.name().count()-1, null, local_timeout);
 			if (null != nextBlock) {
 				Library.logger().info("getNextBlock: retrieved " + nextBlock.name());
 				return nextBlock;

@@ -1544,7 +1544,7 @@ public class CCNLibrary extends CCNBase {
 	}
 	
 	private ContentName contentObjectToContentName(ContentObject content, int prefixCount) {
-		ContentName cocn = content.name();
+		ContentName cocn = content.name().clone();
 		cocn.components().add(content.contentDigest());
 		return new ContentName(cocn.count(), cocn.components(), new Integer(prefixCount));
 	}
