@@ -481,6 +481,7 @@ public class RFSImpl implements Repository {
 	
 	private byte [] decodeBase64(String data) {
 		try {
+			data = data.replace("%slash%", "/");
 			return new BASE64Decoder().decodeBuffer(data);
 		} catch (IOException e) {
 			return new byte[0]; // TODO error handling...
