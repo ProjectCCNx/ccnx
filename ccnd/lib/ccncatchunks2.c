@@ -34,6 +34,7 @@ struct mydata {
     unsigned ooo_base;
     unsigned ooo_count;
     unsigned curwindow;
+    unsigned maxwindow;
     unsigned sendtime;
     unsigned rtt;
     unsigned rtte;
@@ -68,10 +69,11 @@ static void
 usage(const char *progname)
 {
     fprintf(stderr,
-            "%s [-a] ccn:/a/b\n"
+            "%s [-a] [-p n] ccn:/a/b\n"
             "   Reads stuff written by ccnsendchunks under"
             " the given uri and writes to stdout\n"
-            "   -a - allow stale data\n",
+            "   -a - allow stale data\n"
+            "   -p n - use up to n pipeline slots\n",
             progname);
     exit(1);
 }
@@ -445,7 +447,7 @@ GOT_HERE();
         }
         md->ooo_count--;
         slot = (slot + 1) % PIPELIMIT;
-        if (md->curwindow < PIPELIMIT - 1)
+        if (md->curwindow < md->maxwindow)
             md->curwindow++;
         while (md->ooo_count > 0 && md->ooo[slot].raw_data_size != 0) {
             struct ooodata *ooo = &md->ooo[slot];
@@ -487,11 +489,22 @@ main(int argc, char **argv)
     struct mydata *mydata;
     int allow_stale = 0;
     int i;
+    unsigned maxwindow = PIPELIMIT-1;
     
-    while ((ch = getopt(argc, argv, "ha")) != -1) {
+    if (maxwindow > 31)
+        maxwindow = 31;
+    
+    while ((ch = getopt(argc, argv, "hap:")) != -1) {
         switch (ch) {
             case 'a':
                 allow_stale = 1;
+                break;
+            case 'p':
+                res = atoi(optarg);
+                if (1 <= res && res < PIPELIMIT)
+                    maxwindow = res;
+                else
+                    usage(argv[0]);
                 break;
             case 'h':
             default:
@@ -523,6 +536,7 @@ main(int argc, char **argv)
     mydata->sched = ccn_schedule_create(mydata, &myticker);
     mydata->report = ccn_schedule_event(mydata->sched, 0, &reporter, NULL, 0);
     mydata->holefiller = NULL;
+    mydata->maxwindow = maxwindow;
     for (i = 0; i < PIPELIMIT; i++) {
         incoming = &mydata->ooo[i].closure;
         incoming->p = &incoming_content;
