@@ -7,7 +7,6 @@ import java.util.Arrays;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
@@ -37,9 +36,10 @@ import com.parc.ccn.library.CCNLibrary;
  */
 public class CCNInputStream extends InputStream implements CCNInterestListener {
 	
-	protected static int MAX_TIMEOUT = 100; // How long to wait for a block before we decide we're
+	protected static final int MAX_TIMEOUT = 600; // How long to wait for a block before we decide we're
 											 // done with a stream, if there is no header to tell us
 											 // how long the stream is.
+	protected static final int BLOCK_TIMEOUT = 200; //Default how long to wait to get back a block
 	
 	protected CCNLibrary _library = null;
 	
@@ -368,17 +368,15 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 	
 	protected ContentObject getNextBlock() throws IOException {
 		Library.logger().info("getNextBlock: getting block after " + _currentBlock.name());
-		int local_timeout;
 		int accumulated_timeout = _timeout;
 		int expectedBlocks = -1;
+		
+		// DKS - We may never get a header, and have to be prepared to cope
+		// with that -- many stream types don't have a header.
 		// Loop until we know where eof is OR we time out. Could allow user to specify timeout.
 		
-		// DKS -- problem -- if you really do want to specify NO_TIMEOUT, that value is
-		// currently 0 (rather than, say, -1) -- so you can't tell the difference between
-		// counting down to 0 left and a specified timeout of 0.
-		while ((accumulated_timeout > 0) || (_timeout == CCNBase.NO_TIMEOUT)) {
+		while (accumulated_timeout > 0) {
 			if (null != _header) {
-				local_timeout = _timeout;
 				expectedBlocks = _header.blockCount();
 				int blockIndex = blockIndex();
 				if (expectedBlocks <= blockIndex - CCNLibrary.baseFragment() + 1) {
@@ -386,17 +384,13 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 					_atEOF = true;
 					return null;
 				}
-			} else {
-				// We don't have header yet, so block only briefly to wait
-				// DKS - We may never get a header, and have to be prepared to cope
-				// with that -- many stream types don't have a header.
-				local_timeout = 2;
 			}
+			
 			// prefixCount note: next block name must exactly match current except
 			// for the index itself which is the final component of the name we 
 			// have, so we use count()-1.
 			ContentObject nextBlock =  
-					_library.getNext(_currentBlock, _currentBlock.name().count()-1, null, local_timeout);
+					_library.getNext(_currentBlock, _currentBlock.name().count()-1, null, BLOCK_TIMEOUT);
 			if (null != nextBlock) {
 				Library.logger().info("getNextBlock: retrieved " + nextBlock.name());
 				return nextBlock;
@@ -405,7 +399,7 @@ public class CCNInputStream extends InputStream implements CCNInterestListener {
 			} else {
 				// We're waiting for header to arrive, if there is one -- go around loop
 				// TODO: Fix to decrement user's timeout by accumulated time waiting for header
-				accumulated_timeout -= local_timeout;
+				accumulated_timeout -= BLOCK_TIMEOUT;
 			}
 		}
 		// We only get here if we time out without a next block or a header. If no header,
