@@ -171,7 +171,7 @@
 		</target>
 
 	<!-- test is for running all current automated tests to validate code -->
-	<target name="test" depends="test-data, test-puttap, test-library, test-endtoend">
+	<target name="test" depends="test-data, test-puttap, test-library, test-network, test-endtoend">
 	</target>
 
 	<target name="test-data" depends="jar">
@@ -207,6 +207,23 @@
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="test/ccn/library/*Test.class"/>
+				</fileset>
+			</batchtest>
+		</junit>
+	</target>
+	
+	<target name="test-network" depends="jar, ccnd">
+		<mkdir dir="${testout}"/>
+		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="brief" usefile="true"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+
+			<batchtest todir="${testout}">
+				<fileset dir="${build}">
+					<include name="test/ccn/network/*Test.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
