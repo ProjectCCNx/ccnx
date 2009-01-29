@@ -16,7 +16,7 @@
 #include <ccn/uri.h>
 
 #define CHUNK_SIZE 1024
-#define PIPELIMIT (1U << 5)
+#define PIPELIMIT (1U << 6)
 //#define GOT_HERE() fprintf(stderr, "LINE %d\n", __LINE__)
 #define GOT_HERE() ((void)(__LINE__))
 
