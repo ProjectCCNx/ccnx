@@ -78,8 +78,8 @@ static void
 usage(const char *progname)
 {
         fprintf(stderr,
-                "%s [-h] [-x freshness_seconds] URI\n"
-                " Chops stdin into 1K blocks and sends them "
+                "%s [-h] [-x freshness_seconds] [-b blocksize] URI\n"
+                " Chops stdin into blocks (1K by default) and sends them "
                 "as consecutively numbered ContentObjects "
                 "under the given uri\n", progname);
         exit(1);
@@ -97,6 +97,7 @@ main(int argc, char **argv)
     struct ccn_charbuf *signed_info = NULL;
     struct ccn_keystore *keystore = NULL;
     long expire = -1;
+    long blocksize = 1024;
     int i;
     int status = 0;
     int res;
@@ -105,12 +106,15 @@ main(int argc, char **argv)
     struct mydata mydata = { 0 };
     struct ccn_closure in_content = {.p=&incoming_content, .data=&mydata};
     struct ccn_closure in_interest = {.p=&incoming_interest, .data=&mydata};
-    while ((res = getopt(argc, argv, "hx:")) != -1) {
+    while ((res = getopt(argc, argv, "hx:b:")) != -1) {
         switch (res) {
             case 'x':
                 expire = atol(optarg);
                 if (expire <= 0)
                     usage(progname);
+                break;
+	    case 'b':
+	        blocksize = atol(optarg);
                 break;
             default:
             case 'h':
@@ -137,7 +141,7 @@ main(int argc, char **argv)
         exit(1);
     }
     
-    buf = calloc(1, 1024);
+    buf = calloc(1, blocksize);
     root = name;
     name = ccn_charbuf_create();
     temp = ccn_charbuf_create();
@@ -179,7 +183,7 @@ main(int argc, char **argv)
     ccn_run(ccn, 0); /* send the interest out */
 
     for (i = 0;; i++) {
-        read_res = read_full(0, buf, 1024);
+        read_res = read_full(0, buf, blocksize);
         if (read_res < 0) {
             perror("read");
             read_res = 0;
@@ -231,7 +235,7 @@ main(int argc, char **argv)
             fprintf(stderr, "ccn_put failed (res == %d)\n", res);
             exit(1);
         }
-        if (read_res < 1024)
+        if (read_res < blocksize)
             break;
         if (mydata.outstanding > 0)
             mydata.outstanding--;
