@@ -48,7 +48,8 @@ public class CCNNetworkManager implements Runnable {
 	public static final String ENV_TAP = "CCN_TAP"; // match C library
 	public static final int MAX_PAYLOAD = 8800; // number of bytes in UDP payload
 	public static final int SOCKET_TIMEOUT = 1000; // period to wait in ms.
-	public static final int PERIOD = 1000; // period for occasional ops in ms.
+	public static final int PERIOD = 2000; // period for occasional ops in ms.
+	public static final int MAX_PERIOD = PERIOD * 16;
 	public static final String KEEPALIVE_NAME = "/HereIAm";
 	
 	/**
@@ -77,30 +78,33 @@ public class CCNNetworkManager implements Runnable {
 	 * Do scheduled writes.
 	 */
 	private class PeriodicWriter extends TimerTask {
-		private boolean sendHeartBeat = false;
 		public void run() {
-			if (sendHeartBeat) {	// Every other time 
-				try {
-					ByteBuffer heartbeat = ByteBuffer.allocate(1);
-					_channel.write(heartbeat);
-				} catch (IOException io) {
-					// We do not see errors on send typically even if 
-					// agent is gone, so log each but do not track
-					Library.logger().warning("Error sending heartbeat packet");
-				}
+
+			// Send heartbeat
+			try {
+				ByteBuffer heartbeat = ByteBuffer.allocate(1);
+				_channel.write(heartbeat);
+			} catch (IOException io) {
+				// We do not see errors on send typically even if 
+				// agent is gone, so log each but do not track
+				Library.logger().warning("Error sending heartbeat packet");
 			}
-			sendHeartBeat = !sendHeartBeat;
 			
 			// Library.logger().finest("Refreshing interests (size " + _myInterests.size() + ")");
 
-			// Re-express all of the registered interests
-			// TODO re-express only those due to be re-expressed
+			// Re-express interests that need to be re-expressed
+			long ourTime = new Date().getTime();
 			try {
 				synchronized (_myInterests) {
 					for (Entry<InterestRegistration> entry : _myInterests.values()) {
 						InterestRegistration reg = entry.value();
-						Library.logger().finer("Refresh interest: " + reg.interest.name());
-						write(reg.interest);
+						if (ourTime > reg.nextRefresh) {
+							Library.logger().finer("Refresh interest: " + reg.interest.name());
+							reg.nextRefreshPeriod = (reg.nextRefreshPeriod * 2) > MAX_PERIOD ? MAX_PERIOD
+									: reg.nextRefreshPeriod * 2;
+							reg.nextRefresh += reg.nextRefreshPeriod;
+							write(reg.interest);
+						}
 					}
 				}
 			} catch (XMLStreamException xmlex) {
@@ -209,7 +213,8 @@ public class CCNNetworkManager implements Runnable {
 	protected class InterestRegistration extends ListenerRegistration {
 		public final Interest interest;
 		protected ArrayList<ContentObject> data = new ArrayList<ContentObject>(1);
-		public Date lastRefresh;
+		protected long nextRefresh;
+		protected long nextRefreshPeriod = PERIOD;
 		
 		// All internal client interests must have an owner
 		public InterestRegistration(CCNNetworkManager mgr, Interest i, CCNInterestListener l, Object owner) {
@@ -220,7 +225,7 @@ public class CCNNetworkManager implements Runnable {
 			if (null == listener) {
 				sema = new Semaphore(0);
 			}
-			lastRefresh = new Date();
+			nextRefresh = new Date().getTime() + nextRefreshPeriod;
 		}
 		// Add a copy of data, not the original data object, so that 
 		// the recipient cannot disturb the buffers of the sender
