@@ -51,6 +51,8 @@ public class RFSImpl implements Repository {
 	protected String _repositoryRoot = null;
 	protected File _repositoryFile;
 	protected RFSLocks _locker;
+	protected Policy _policy = null;
+	protected ArrayList<Interest> _nameSpaceInterests = new ArrayList<Interest>();
 	
 	protected TreeMap<ContentName, ArrayList<File>> _encodedFiles = new TreeMap<ContentName, ArrayList<File>>();
 	
@@ -61,7 +63,18 @@ public class RFSImpl implements Repository {
 				if (args.length < i + 2)
 					throw new InvalidParameterException();
 				_repositoryRoot = args[i + 1];
-				break;
+				i++;
+			} else if (args[i].equals("-policy")) {
+				if (args.length < i + 2)
+					throw new InvalidParameterException();
+				Policy policy = new BasicPolicy();
+				File policyFile = new File(args[i + 1]);
+				try {
+					policy.update(new FileInputStream(policyFile));
+				} catch (Exception e) {
+					throw new InvalidParameterException();
+				}
+				setPolicy(policy);
 			}
 		}
 		if (_repositoryRoot == null) {
@@ -71,6 +84,15 @@ public class RFSImpl implements Repository {
 		_repositoryFile.mkdirs();
 		_locker = new RFSLocks(_repositoryRoot + File.separator + META_DIR);
 		constructEncodedMap(new File(_repositoryRoot + File.separator + META_DIR));
+		
+		if (_policy == null) {
+			try {
+				Interest nameSpaceInterest = new Interest(ContentName.fromNative("/"));
+				nameSpaceInterest.answerOriginKind(0);
+				_nameSpaceInterests.add(nameSpaceInterest);
+			} catch (MalformedContentNameStringException e) {}
+		}
+	
 		return outArgs;
 	}
 	
@@ -532,7 +554,7 @@ public class RFSImpl implements Repository {
 	}
 
 	public void setPolicy(Policy policy) {
-		// TODO Auto-generated method stub
+		_policy = policy;
 	}
 
 	public Interest getPolicyInterest() {
@@ -540,13 +562,7 @@ public class RFSImpl implements Repository {
 		return null;
 	}
 
-	public Interest getNamespaceInterest() {
-		Interest nameSpaceInterest;
-		try {
-			nameSpaceInterest = new Interest(ContentName.fromNative("/"));
-			nameSpaceInterest.answerOriginKind(0);
-			return nameSpaceInterest;
-		} catch (MalformedContentNameStringException e) {}
-		return null;
+	public ArrayList<Interest> getNamespaceInterests() {
+		return _nameSpaceInterests;
 	}
 }

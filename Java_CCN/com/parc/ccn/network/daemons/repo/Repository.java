@@ -1,5 +1,7 @@
 package com.parc.ccn.network.daemons.repo;
 
+import java.util.ArrayList;
+
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
 
@@ -38,7 +40,7 @@ public interface Repository {
 	 * Get namespace interest
 	 * @return
 	 */
-	public Interest getNamespaceInterest();
+	public ArrayList<Interest> getNamespaceInterests();
 	
 	/**
 	 * Get interest to receive policy changes for the repository

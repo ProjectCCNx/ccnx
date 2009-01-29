@@ -1,11 +1,10 @@
 package com.parc.ccn.network.daemons.repo;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentLinkedQueue;
-
-import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
@@ -17,6 +16,8 @@ import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.network.daemons.Daemon;
 
 /**
+ * High level repository implementation. Handles communication with
+ * ccnd. Low level takes care of actual storage.
  * 
  * @author rasmusse
  *
@@ -30,6 +31,16 @@ public class RepositoryDaemon extends Daemon {
 	private CCNLibrary _library = null;
 	private boolean _started = false;
 	private Policy _policy = null;
+	private ArrayList<InterestAndListener> _repoInterests = new ArrayList<InterestAndListener>();
+	
+	private class InterestAndListener {
+		private Interest interest;
+		private CCNInterestListener listener;
+		private InterestAndListener(Interest interest, CCNInterestListener listener) {
+			this.interest = interest;
+			this.listener = listener;
+		}
+	}
 	
 	private class DataListener implements CCNInterestListener {
 		private ConcurrentLinkedQueue<ContentObject> queue;
@@ -102,7 +113,8 @@ public class RepositoryDaemon extends Daemon {
 						try {
 							_policy.update(new ByteArrayInputStream(policy.content()));
 							_repo.setPolicy(_policy);
-						} catch (XMLStreamException e) {
+							resetNameSpaceInterests();
+						} catch (Exception e) {
 							e.printStackTrace();
 						}
 					}
@@ -119,15 +131,12 @@ public class RepositoryDaemon extends Daemon {
 		public void initialize() {
 			
 			FilterListener filterListener = new FilterListener();
-			DataListener contentListener = new DataListener(_dataQueue);
 			DataListener policyListener = new DataListener(_policyQueue);
 			try {
 				Interest policyInterest = _repo.getPolicyInterest();
 				if (policyInterest != null)
 					_library.expressInterest(policyInterest, policyListener);
-				Interest repoInterest = _repo.getNamespaceInterest();
-				if (repoInterest != null)
-					_library.expressInterest(repoInterest, contentListener);
+				resetNameSpaceInterests();
 				_library.registerFilter(ContentName.fromNative("/"), filterListener);
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -177,6 +186,42 @@ public class RepositoryDaemon extends Daemon {
 
 	protected WorkerThread createWorkerThread() {
 		return new RepositoryWorkerThread(daemonName());
+	}
+	
+	private void resetNameSpaceInterests() throws IOException {
+		ArrayList<InterestAndListener> newIL = new ArrayList<InterestAndListener>();
+		ArrayList<Interest> newInterests = _repo.getNamespaceInterests();
+		if (newInterests == null)
+			newInterests = new ArrayList<Interest>();
+		ArrayList<InterestAndListener> unMatchedOld = new ArrayList<InterestAndListener>();
+		ArrayList<Interest> unMatchedNew = new ArrayList<Interest>();
+		getUnMatched(_repoInterests, newInterests, unMatchedOld, unMatchedNew);
+		for (InterestAndListener oldInterest : unMatchedOld) {
+			_library.cancelInterest(oldInterest.interest, oldInterest.listener);
+		}
+		for (Interest newInterest : unMatchedNew) {
+			DataListener listener = new DataListener(_dataQueue);
+			_library.expressInterest(newInterest, listener);
+			newIL.add(new InterestAndListener(newInterest, listener));
+		}
+		_repoInterests = newIL;
+	}
+	
+	private void getUnMatched(ArrayList<InterestAndListener> oldIn, ArrayList<Interest> newIn, 
+			ArrayList<InterestAndListener> oldOut, ArrayList<Interest>newOut) {
+		newOut.addAll(newIn);
+		for (InterestAndListener ial : oldIn) {
+			boolean matched = false;
+			for (Interest interest : newIn) {
+				if (ial.interest.equals(interest)) {
+					newOut.remove(interest);
+					matched = true;
+					break;
+				}
+			}
+			if (!matched)
+				oldOut.add(ial);
+		}
 	}
 	
 	public static void main(String[] args) {
