@@ -1,9 +1,6 @@
 package com.parc.ccn.network.daemons.repo;
 
-import java.io.IOException;
-
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 
 /**
@@ -38,13 +35,22 @@ public interface Repository {
 	public ContentObject getContent(Interest interest) throws RepositoryException;
 	
 	/**
-	 * Set up a standing interest
-	 * @param interest
-	 * @param listener
-	 * @throws IOException
+	 * Get namespace interest
+	 * @return
 	 */
-	public void expressInterest(Interest interest, CCNInterestListener listener) 
-				throws IOException;
+	public Interest getNamespaceInterest();
+	
+	/**
+	 * Get interest to receive policy changes for the repository
+	 * @return
+	 */
+	public Interest getPolicyInterest();
+	
+	/**
+	 * Set the policy with XML based policy
+	 * @param policy
+	 */
+	public void setPolicy(Policy policy);
 	
 	/**
 	 * Get required arguments for this implementation

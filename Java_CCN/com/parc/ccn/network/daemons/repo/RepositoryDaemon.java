@@ -1,14 +1,15 @@
 package com.parc.ccn.network.daemons.repo;
 
-import java.io.IOException;
+import java.io.ByteArrayInputStream;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import javax.xml.stream.XMLStreamException;
+
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
@@ -25,13 +26,20 @@ public class RepositoryDaemon extends Daemon {
 	
 	private Repository _repo = null;
 	private ConcurrentLinkedQueue<ContentObject> _dataQueue = new ConcurrentLinkedQueue<ContentObject>();
+	private ConcurrentLinkedQueue<ContentObject> _policyQueue = new ConcurrentLinkedQueue<ContentObject>();
 	private CCNLibrary _library = null;
 	private boolean _started = false;
+	private Policy _policy = null;
 	
-	private class ContentListener implements CCNInterestListener {
+	private class DataListener implements CCNInterestListener {
+		private ConcurrentLinkedQueue<ContentObject> queue;
+		
+		private DataListener(ConcurrentLinkedQueue<ContentObject> queue) {
+			this.queue = queue;
+		}
 		public Interest handleContent(ArrayList<ContentObject> results,
 				Interest interest) {
-			_dataQueue.addAll(results);
+			queue.addAll(results);
 			return interest;
 		}
 	}
@@ -53,13 +61,9 @@ public class RepositoryDaemon extends Daemon {
 						_library.put(content);
 						result++;
 					}
-				} catch (RepositoryException e) {
-					// TODO Auto-generated catch block
+				} catch (Exception e) {
 					e.printStackTrace();
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} 
+				}
 			}
 			return result;
 		}
@@ -82,11 +86,28 @@ public class RepositoryDaemon extends Daemon {
 						try {
 							_repo.saveContent(data);
 						} catch (RepositoryException e) {
-							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
 					}
 				} while (data != null) ;
+				
+				/*
+				 * TODO - for now we only accept policy in one
+				 * content object chunk
+				 */
+				ContentObject policy = null;
+				do {
+					policy = _policyQueue.poll();
+					if (policy != null) {
+						try {
+							_policy.update(new ByteArrayInputStream(policy.content()));
+							_repo.setPolicy(_policy);
+						} catch (XMLStreamException e) {
+							e.printStackTrace();
+						}
+					}
+				} while (data != null) ;
+				
 				Thread.yield();  // Should we sleep?
 			}
 		}
@@ -98,17 +119,17 @@ public class RepositoryDaemon extends Daemon {
 		public void initialize() {
 			
 			FilterListener filterListener = new FilterListener();
-			ContentListener contentListener = new ContentListener();
+			DataListener contentListener = new DataListener(_dataQueue);
+			DataListener policyListener = new DataListener(_policyQueue);
 			try {
-				Interest repoInterest = new Interest(ContentName.fromNative("/"));
-				repoInterest.answerOriginKind(0);
-				_library.expressInterest(repoInterest, contentListener);
+				Interest policyInterest = _repo.getPolicyInterest();
+				if (policyInterest != null)
+					_library.expressInterest(policyInterest, policyListener);
+				Interest repoInterest = _repo.getNamespaceInterest();
+				if (repoInterest != null)
+					_library.expressInterest(repoInterest, contentListener);
 				_library.registerFilter(ContentName.fromNative("/"), filterListener);
-			} catch (MalformedContentNameStringException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
+			} catch (Exception e) {
 				e.printStackTrace();
 			}
 		}
@@ -127,6 +148,7 @@ public class RepositoryDaemon extends Daemon {
 		try {
 			_library = CCNLibrary.open();
 			_repo = new RFSImpl();
+			_policy = new BasicPolicy();
 		} catch (Exception e1) {
 			e1.printStackTrace();
 			System.exit(0);
@@ -139,7 +161,6 @@ public class RepositoryDaemon extends Daemon {
 		} catch (InvalidParameterException ipe) {
 			usage();
 		} catch (RepositoryException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}

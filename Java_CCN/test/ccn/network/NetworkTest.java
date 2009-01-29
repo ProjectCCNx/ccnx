@@ -3,6 +3,7 @@ package test.ccn.network;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -60,7 +61,7 @@ public class NetworkTest {
 		// Sleep long enough that the interest must be re-expressed
 		Thread.sleep(8000);  
 		library.put("/networkTest/aaa", "aaa");
-		sema.acquire();
+		sema.tryAcquire(1000, TimeUnit.MILLISECONDS);
 		Assert.assertTrue(gotData);
 	}
 	

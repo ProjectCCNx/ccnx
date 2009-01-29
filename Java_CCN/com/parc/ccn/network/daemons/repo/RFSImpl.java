@@ -17,8 +17,8 @@ import sun.misc.BASE64Encoder;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.WirePacket;
-import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 
 /**
@@ -527,12 +527,26 @@ public class RFSImpl implements Repository {
 		return nameBuf.toString();
 	}
 
-	public void expressInterest(Interest interest, CCNInterestListener listener)
-			throws IOException {
-		// TODO Auto-generated method stub
-	}
-	
 	public String getUsage() {
 		return " -root repository_root ";
+	}
+
+	public void setPolicy(Policy policy) {
+		// TODO Auto-generated method stub
+	}
+
+	public Interest getPolicyInterest() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public Interest getNamespaceInterest() {
+		Interest nameSpaceInterest;
+		try {
+			nameSpaceInterest = new Interest(ContentName.fromNative("/"));
+			nameSpaceInterest.answerOriginKind(0);
+			return nameSpaceInterest;
+		} catch (MalformedContentNameStringException e) {}
+		return null;
 	}
 }
