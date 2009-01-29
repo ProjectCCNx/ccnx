@@ -40,6 +40,9 @@ public class get_file {
 			FileOutputStream output = new FileOutputStream(theFile);
 			
 			CCNInputStream input = new CCNInputStream(argName, library);
+			if (args.length > 2) {
+				input.setTimeout(new Integer(args[2]).intValue()); 
+			}
 			byte [] buffer = new byte[readsize];
 			
 			int readcount = 0;
@@ -71,7 +74,7 @@ public class get_file {
 	}
 	
 	public static void usage() {
-		System.out.println("usage: get_file <ccnname> <filename>");
+		System.out.println("usage: get_file <ccnname> <filename> [<timeoutms>]");
 	}
 
 }
