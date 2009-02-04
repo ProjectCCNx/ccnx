@@ -34,6 +34,7 @@ import com.parc.ccn.network.daemons.repo.RepositoryException;
 public class RFSTest {
 	
 	private static String _fileTestDir = "fileTestDir";
+	private static String _policyTestFile = "test/ccn/network/daemons/repo/PolicyTest.xml";
 	private static File _fileTest;
 	
 	@BeforeClass
@@ -174,6 +175,21 @@ public class RFSTest {
 		checkData(repo, badCharLongName, "Long and funny");
 		checkDataAndPublisher(repo, name, "Testing2", pubKey1);
 		checkDataAndPublisher(repo, name, "Testing2", pubKey2);
+	}
+	
+	@Test
+	public void testPolicy() throws Exception {
+		Repository repo = new RFSImpl();
+		repo.initialize(new String[] {"-root", _fileTestDir, "-policy", _policyTestFile});
+		ContentName name = ContentName.fromNative("/testNameSpace/data1");
+		ContentObject content = CCNLibrary.getContent(name, "Here's my data!".getBytes());
+		repo.saveContent(content);
+		checkData(repo, name, "Here's my data!");
+		ContentName outOfNameSpaceName = ContentName.fromNative("/anotherNameSpace/data1");
+		ContentObject oonsContent = CCNLibrary.getContent(name, "Shouldn't see this".getBytes());
+		repo.saveContent(oonsContent);
+		ContentObject testContent = repo.getContent(new Interest(outOfNameSpaceName));
+		Assert.assertTrue(testContent == null);
 	}
 	
 	private void checkData(Repository repo, ContentName name, String data) throws RepositoryException {

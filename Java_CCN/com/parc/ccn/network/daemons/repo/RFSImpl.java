@@ -72,7 +72,7 @@ public class RFSImpl implements Repository {
 				try {
 					policy.update(new FileInputStream(policyFile));
 				} catch (Exception e) {
-					throw new InvalidParameterException();
+					throw new InvalidParameterException(e.getMessage());
 				}
 				setPolicy(policy);
 			}
@@ -87,9 +87,7 @@ public class RFSImpl implements Repository {
 		
 		if (_policy == null) {
 			try {
-				Interest nameSpaceInterest = new Interest(ContentName.fromNative("/"));
-				nameSpaceInterest.answerOriginKind(0);
-				_nameSpaceInterests.add(nameSpaceInterest);
+				addNameSpaceInterest(ContentName.fromNative("/"));
 			} catch (MalformedContentNameStringException e) {}
 		}
 	
@@ -385,7 +383,7 @@ public class RFSImpl implements Repository {
 	}
 	
 	/**
-	 * Convert a non usable or already used pathname into something we can use
+	 * Convert a non usable or already used pathname into something usable and unique
 	 * 
 	 * @param name
 	 * @return
@@ -555,6 +553,10 @@ public class RFSImpl implements Repository {
 
 	public void setPolicy(Policy policy) {
 		_policy = policy;
+		ArrayList<ContentName> newNameSpace = _policy.getNameSpace();
+		_nameSpaceInterests.clear();
+		for (ContentName name : newNameSpace)
+			addNameSpaceInterest(name);
 	}
 
 	public Interest getPolicyInterest() {
@@ -564,5 +566,11 @@ public class RFSImpl implements Repository {
 
 	public ArrayList<Interest> getNamespaceInterests() {
 		return _nameSpaceInterests;
+	}
+	
+	private void addNameSpaceInterest(ContentName name) {
+		Interest nameSpaceInterest = new Interest(name);
+		nameSpaceInterest.answerOriginKind(0);
+		_nameSpaceInterests.add(nameSpaceInterest);
 	}
 }
