@@ -22,6 +22,21 @@ import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.crypto.CCNMerkleTree;
 
+/**
+ * This particular output stream class embodies the following assumptions:
+ * - content is buffered
+ * - content is automatically fragmented, using the standard library fragmentation
+ *    mechanisms, independently of the block size in which it is written
+ * - content is written with an associated header
+ * - content is authenticated using Merkle Hash Trees; each time flush() is called,
+ *    available buffered data is written in a new MHT. The number of blocks in each
+ *    MHT is a maximum of BLOCK_BUF_COUNT (TODO: calculate overhead), and a minimum of
+ *    the number of blocks with data when flush() is called.
+ *    
+ * TODO contemplate renaming this class.
+ * @author smetters
+ *
+ */
 public class CCNOutputStream extends OutputStream {
 
 	/**
