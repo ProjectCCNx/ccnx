@@ -1,6 +1,12 @@
 package test.ccn.network.daemons.repo;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.security.SignatureException;
+import java.util.logging.Level;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -10,25 +16,29 @@ import org.junit.Test;
 
 import test.ccn.library.LibraryTestBase;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.network.daemons.repo.RFSImpl;
+import com.parc.ccn.network.daemons.repo.Repository;
 
 /**
  * 
  * @author rasmusse
  * 
- * To run this test you must first unzip repotest.zip into a
- * directory and then run the ccnd and the repository with that
- * directory as its root.
+ * To run this test you must first unzip repotest.zip into the directory "repotest"
+ * and then run the ccnd and the repository with that directory as its root.
  */
 
 public class RepoReadTest extends LibraryTestBase {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
+		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
+		Library.logger().setLevel(Level.INFO);
 	}
 	
 	@AfterClass
@@ -63,6 +73,27 @@ public class RepoReadTest extends LibraryTestBase {
 		checkDataAndPublisher(name, "Testing2", pkid2);
 	}
 	
+	@Test
+	public void testPolicyViaCCN() throws Exception {
+		String hostName;
+		try {
+			hostName = InetAddress.getLocalHost().getHostName();
+		} catch (UnknownHostException e) {
+			hostName = InetAddress.getLocalHost().getHostAddress();
+		}
+		FileInputStream fis = new FileInputStream("test/ccn/network/daemons/repo/PolicyTest.xml");
+		byte [] content = new byte[fis.available()];
+		fis.read(content);
+		fis.close();
+		
+		System.out.println("Testing namespace policy setting");
+		checkNameSpace("/repoTest/data2", true);
+		library.put(ContentName.fromNative("/" + hostName + Repository.REPO_POLICY), content);
+		Thread.sleep(1000);
+		checkNameSpace("/repoTest/data3", false);
+		checkNameSpace("/testNameSpace/data1", true);
+	}
+	
 	private void checkData(ContentName name, String data) throws IOException, InterruptedException{
 		checkData(new Interest(name), data);
 	}
@@ -78,5 +109,17 @@ public class RepoReadTest extends LibraryTestBase {
 		Assert.assertFalse(testContent == null);
 		Assert.assertEquals(data, new String(testContent.content()));
 		Assert.assertTrue(testContent.authenticator().publisherKeyID().equals(publisher));
+	}
+	
+	private void checkNameSpace(String contentName, boolean expected) throws MalformedContentNameStringException, 
+				SignatureException, IOException, InterruptedException {
+		ContentName name = ContentName.fromNative(contentName);
+		library.put(name, "Testing 1 2 3".getBytes());
+		Thread.sleep(1000);
+		File testFile = new File("repoTest" + contentName);
+		if (expected)
+			Assert.assertTrue(testFile.exists());
+		else
+			Assert.assertFalse(testFile.exists());
 	}
 }

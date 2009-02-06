@@ -1,6 +1,7 @@
 package test.ccn.network.daemons.repo;
 
 import java.io.File;
+import java.security.InvalidParameterException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 
@@ -35,6 +36,7 @@ public class RFSTest {
 	
 	private static String _fileTestDir = "fileTestDir";
 	private static String _policyTestFile = "test/ccn/network/daemons/repo/PolicyTest.xml";
+	private static String _BadPolicyTestFile = "test/ccn/network/daemons/repo/BadPolicyTest.xml";
 	private static File _fileTest;
 	
 	@BeforeClass
@@ -180,6 +182,10 @@ public class RFSTest {
 	@Test
 	public void testPolicy() throws Exception {
 		Repository repo = new RFSImpl();
+		try {
+			repo.initialize(new String[] {"-root", _fileTestDir, "-policy", _BadPolicyTestFile});
+			Assert.fail("Bad policy file succeeded");
+		} catch (InvalidParameterException ipe) {}
 		repo.initialize(new String[] {"-root", _fileTestDir, "-policy", _policyTestFile});
 		ContentName name = ContentName.fromNative("/testNameSpace/data1");
 		ContentObject content = CCNLibrary.getContent(name, "Here's my data!".getBytes());

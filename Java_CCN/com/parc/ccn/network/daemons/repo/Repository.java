@@ -16,6 +16,8 @@ import com.parc.ccn.data.query.Interest;
 
 public interface Repository {
 	
+	public static final String REPO_POLICY = "/ccn/repository/policy.xml";
+	
 	/**
 	 * Initialize the repository
 	 * @param args - user arguments to the repository

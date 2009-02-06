@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.logging.Level;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
@@ -44,12 +45,15 @@ public class RepositoryDaemon extends Daemon {
 	
 	private class DataListener implements CCNInterestListener {
 		private ConcurrentLinkedQueue<ContentObject> queue;
+		private String name = null;		// For debugging
 		
-		private DataListener(ConcurrentLinkedQueue<ContentObject> queue) {
+		private DataListener(ConcurrentLinkedQueue<ContentObject> queue, String name) {
 			this.queue = queue;
+			this.name = name;
 		}
 		public Interest handleContent(ArrayList<ContentObject> results,
 				Interest interest) {
+			Library.logger().finer("Interest callback on queue: " + name + " (" + results.size() + " data) for: " + interest.name());
 			queue.addAll(results);
 			return interest;
 		}
@@ -95,6 +99,8 @@ public class RepositoryDaemon extends Daemon {
 					data = _dataQueue.poll();
 					if (data != null) {
 						try {
+System.out.println("Saving content: " + data.name().toString());
+							Library.logger().finer("Saving content in: " + data.name().toString());
 							_repo.saveContent(data);
 						} catch (RepositoryException e) {
 							e.printStackTrace();
@@ -131,7 +137,7 @@ public class RepositoryDaemon extends Daemon {
 		public void initialize() {
 			
 			FilterListener filterListener = new FilterListener();
-			DataListener policyListener = new DataListener(_policyQueue);
+			DataListener policyListener = new DataListener(_policyQueue, "Policy");
 			try {
 				Interest policyInterest = _repo.getPolicyInterest();
 				if (policyInterest != null)
@@ -165,6 +171,21 @@ public class RepositoryDaemon extends Daemon {
 	}
 	
 	public void initialize(String[] args, Daemon daemon) {
+		for (int i = 0; i < args.length; i++) {
+			if (args[i].equals("-log")) {
+				if (args.length < i + 2) {
+					usage();
+					return;
+				}
+				try {
+					Level level = Level.parse(args[i + 1]);
+					Library.logger().setLevel(level);
+				} catch (IllegalArgumentException iae) {
+					usage();
+					return;
+				}
+			}
+		}
 		try {
 			_repo.initialize(args);
 		} catch (InvalidParameterException ipe) {
@@ -177,7 +198,7 @@ public class RepositoryDaemon extends Daemon {
 	protected void usage() {
 		try {
 			System.out.println("usage: " + this.getClass().getName() + 
-						_repo.getUsage() + "[-start | -stop | -interactive]");
+						_repo.getUsage() + "[-start | -stop | -interactive] [-log <level>]");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -200,7 +221,7 @@ public class RepositoryDaemon extends Daemon {
 			_library.cancelInterest(oldInterest.interest, oldInterest.listener);
 		}
 		for (Interest newInterest : unMatchedNew) {
-			DataListener listener = new DataListener(_dataQueue);
+			DataListener listener = new DataListener(_dataQueue, "Data");
 			_library.expressInterest(newInterest, listener);
 			newIL.add(new InterestAndListener(newInterest, listener));
 		}

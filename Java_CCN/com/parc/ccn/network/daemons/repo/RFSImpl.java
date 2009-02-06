@@ -6,6 +6,8 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -560,8 +562,23 @@ public class RFSImpl implements Repository {
 	}
 
 	public Interest getPolicyInterest() {
-		// TODO Auto-generated method stub
-		return null;
+		String hostName = null;
+		try {
+			hostName = InetAddress.getLocalHost().getHostName();
+		} catch (UnknownHostException e) {
+			try {
+				hostName = InetAddress.getLocalHost().getHostAddress();
+			} catch (UnknownHostException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+				return null;
+			}
+		}
+		try {
+			return new Interest(ContentName.fromNative("/" + hostName + REPO_POLICY));
+		} catch (MalformedContentNameStringException e) {
+			return null;
+		}
 	}
 
 	public ArrayList<Interest> getNamespaceInterests() {
