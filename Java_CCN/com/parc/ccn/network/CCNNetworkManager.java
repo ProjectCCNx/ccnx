@@ -100,8 +100,10 @@ public class CCNNetworkManager implements Runnable {
 						InterestRegistration reg = entry.value();
 						if (ourTime > reg.nextRefresh) {
 							Library.logger().finer("Refresh interest: " + reg.interest.name());
-							reg.nextRefreshPeriod = (reg.nextRefreshPeriod * 2) > MAX_PERIOD ? MAX_PERIOD
-									: reg.nextRefreshPeriod * 2;
+							// Temporarily back out refresh period decay to allow the repository
+							// to work with an "eavesdropping interest"
+							//reg.nextRefreshPeriod = (reg.nextRefreshPeriod * 2) > MAX_PERIOD ? MAX_PERIOD
+									//: reg.nextRefreshPeriod * 2;
 							reg.nextRefresh += reg.nextRefreshPeriod;
 							write(reg.interest);
 						}
