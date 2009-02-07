@@ -17,13 +17,13 @@ then
   echo "usage: ccn_repo [stop | <pathname>]"
 else
   if [ "$1" = "stop" ]; then
-	  if [ -n $CCN_LOCAL_PORT ]; then
+	  if [ -n "$CCN_LOCAL_PORT" ]; then
 	    $JAVA -cp $CLASSPATH -Dccn.agent.port=$CCN_LOCAL_PORT com.parc.ccn.network.daemons.repo.RepositoryDaemon -stop
 	  else
 	    $JAVA -cp $CLASSPATH com.parc.ccn.network.daemons.repo.RepositoryDaemon -stop
 	  fi
   else
-	  if [ -n $CCN_LOCAL_PORT ]; then
+	  if [ -n "$CCN_LOCAL_PORT" ]; then
 	      $JAVA -cp $CLASSPATH -Dccn.agent.port=$CCN_LOCAL_PORT com.parc.ccn.network.daemons.repo.RepositoryDaemon -start -root $*
 	  else
 	    $JAVA -cp $CLASSPATH com.parc.ccn.network.daemons.repo.RepositoryDaemon -start -root $*

@@ -3,9 +3,11 @@ package com.parc.ccn.network.daemons.repo;
 import java.io.InputStream;
 import java.util.ArrayList;
 
+import javax.xml.namespace.QName;
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.events.Attribute;
 import javax.xml.stream.events.XMLEvent;
 
 import com.parc.ccn.data.ContentName;
@@ -56,7 +58,7 @@ public class BasicPolicy implements Policy {
 		if (!event.isStartDocument()) {
 			throw new XMLStreamException("Expected start document, got: " + event.toString());
 		}
-		parseXML(reader, null, POLICY, false);
+		parseXML(reader, null, null, POLICY, false);
 		reader.close();
 		if (_version == null)
 			throw new XMLStreamException("No version in policy file");
@@ -67,14 +69,31 @@ public class BasicPolicy implements Policy {
 	}
 	
 	/**
-	 * For now we only expect the values "policy" and "namespace"
+	 * For now we only expect the values "policy", "version", and "namespace"
 	 * @param reader
 	 * @param expectedValue
 	 * @return
 	 * @throws XMLStreamException
 	 */
-	private XMLEvent parseXML(XMLEventReader reader, String value, String expectedValue, boolean started) throws XMLStreamException {
-		XMLEvent event = reader.nextEvent();
+	private XMLEvent parseXML(XMLEventReader reader, XMLEvent event, String value, String expectedValue, boolean started) 
+				throws XMLStreamException {
+		if (started) {
+			switch (PolicyValue.valueFromString(value)) {
+			case VERSION:
+				QName id = new QName("id");
+				Attribute idAttr = event.asStartElement().getAttributeByName(id);
+				if (idAttr != null) {
+					if (!idAttr.getValue().trim().equals("1.0"))
+						throw new XMLStreamException("Bad version in policy file");
+					_version = value;
+				}
+				break;
+			default:
+				break;
+			}
+		}
+		
+		event = reader.nextEvent();
 		boolean finished = false;
 		while (!finished) {
 			if (event.isStartElement()) {
@@ -85,8 +104,9 @@ public class BasicPolicy implements Policy {
 					event = reader.nextEvent();
 					value = expectedValue;
 					expectedValue = null;
-				} else
-					event = parseXML(reader, startValue, null, true);
+				} else {
+					event = parseXML(reader, event, startValue, null, true);
+				}
 			} else if (event.isEndElement()) {
 				String newValue = event.asEndElement().getName().toString();
 				if (!newValue.toUpperCase().equals(value.toUpperCase()))
@@ -103,12 +123,6 @@ public class BasicPolicy implements Policy {
 						} catch (MalformedContentNameStringException e) {
 							throw new XMLStreamException("Malformed value in namespace: " + charValue);
 						}
-						break;
-					case VERSION:
-						charValue = event.asCharacters().getData();
-						if (!charValue.trim().equals("1.0"))
-							throw new XMLStreamException("Bad version in policy file");
-						_version = value;
 						break;
 					default:
 						break;
