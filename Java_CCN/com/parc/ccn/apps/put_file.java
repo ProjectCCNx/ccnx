@@ -2,15 +2,12 @@ package com.parc.ccn.apps;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.security.SignatureException;
 
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNDescriptor;
@@ -47,18 +44,7 @@ public class put_file {
 				}
 				
 				CCNDescriptor ccnd = library.open(argName, library.getDefaultPublisher(), null, null);
-				FileInputStream fis = new FileInputStream(theFile);
-				int size = BLOCK_SIZE;
-				byte [] buffer = new byte[BLOCK_SIZE];
-				do {
-					if (size > fis.available())
-						size = fis.available();
-					if (size > 0) {
-						fis.read(buffer, 0, size);
-						ccnd.write(buffer, 0, size);
-					}
-				} while (size > fis.available());
-				ccnd.close();
+				do_write(ccnd, theFile);
 				
 				System.out.println("Inserted file " + args[1] + ".");
 				System.exit(0);
@@ -71,21 +57,21 @@ public class put_file {
 						usage();
 						return;
 					}
-					byte [] contents = Utils.getBytesFromFile(theFile);
 					
-					FileOutputStream testOut = new FileOutputStream("put_file" + i + ".dat");
-					testOut.write(contents);
-					testOut.flush();
-					testOut.close();
+					//FileOutputStream testOut = new FileOutputStream("put_file" + i + ".dat");
+					//testOut.write(contents);
+					//testOut.flush();
+					//testOut.close();
 					
 					// put as child of name
 					ContentName nodeName = ContentName.fromURI(argName, theFile.getName());
 					
 					// int version = new Random().nextInt(1000);
 					// would be version = library.latestVersion(argName) + 1;
-					ContentObject result = library.newVersion(nodeName, contents);
+					CCNDescriptor ccnd = library.open(nodeName, library.getDefaultPublisher(), null, null);
+					do_write(ccnd, theFile);
 					
-					System.out.println("Inserted file " + args[i] + " as " + result.name() + " byte count " + contents.length + ".");
+					System.out.println("Inserted file " + args[i] + ".");
 					
 				}
 			}
@@ -98,14 +84,26 @@ public class put_file {
 		} catch (IOException e) {
 			System.out.println("Cannot read file. " + e.getMessage());
 			e.printStackTrace();
-		} catch (SignatureException e) {
-			System.out.println("Cannnot insert content. " + e.getMessage());
-			e.printStackTrace();
 		} catch (XMLStreamException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
+	}
+	
+	private static void do_write(CCNDescriptor ccnd, File file) throws IOException {
+		FileInputStream fis = new FileInputStream(file);
+		int size = BLOCK_SIZE;
+		byte [] buffer = new byte[BLOCK_SIZE];
+		do {
+			if (size > fis.available())
+				size = fis.available();
+			if (size > 0) {
+				fis.read(buffer, 0, size);
+				ccnd.write(buffer, 0, size);
+			}
+		} while (size > fis.available());
+		ccnd.close();
 	}
 	
 	public static void usage() {
