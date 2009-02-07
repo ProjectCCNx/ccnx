@@ -1,17 +1,23 @@
 package com.parc.ccn.apps;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.SignatureException;
+
+import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.io.CCNDescriptor;
 
 public class put_file {
+	
+	private static int BLOCK_SIZE = 8096;
 
 	/**
 	 * @param args
@@ -39,14 +45,22 @@ public class put_file {
 					usage();
 					return;
 				}
-				byte [] contents = Utils.getBytesFromFile(theFile);
 				
-				// put as name
-				// int version = new Random().nextInt(1000);
-				// would be version = library.latestVersion(argName) + 1;
-				ContentObject result = library.newVersion(argName, contents);
+				CCNDescriptor ccnd = library.open(argName, library.getDefaultPublisher(), null, null);
+				FileInputStream fis = new FileInputStream(theFile);
+				int size = BLOCK_SIZE;
+				byte [] buffer = new byte[BLOCK_SIZE];
+				do {
+					if (size > fis.available())
+						size = fis.available();
+					if (size > 0) {
+						fis.read(buffer, 0, size);
+						ccnd.write(buffer, 0, size);
+					}
+				} while (size > fis.available());
+				ccnd.close();
 				
-				System.out.println("Inserted file " + args[1] + " as " + result.name() + " byte count " + contents.length + ".");
+				System.out.println("Inserted file " + args[1] + ".");
 				System.exit(0);
 			} else {
 				for (int i=1; i < args.length; ++i) {
@@ -86,6 +100,9 @@ public class put_file {
 			e.printStackTrace();
 		} catch (SignatureException e) {
 			System.out.println("Cannnot insert content. " + e.getMessage());
+			e.printStackTrace();
+		} catch (XMLStreamException e) {
+			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
