@@ -99,7 +99,6 @@ public class RepositoryDaemon extends Daemon {
 					data = _dataQueue.poll();
 					if (data != null) {
 						try {
-System.out.println("Saving content: " + data.name().toString());
 							Library.logger().finer("Saving content in: " + data.name().toString());
 							_repo.saveContent(data);
 						} catch (RepositoryException e) {
