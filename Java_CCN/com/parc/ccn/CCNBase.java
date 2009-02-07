@@ -68,7 +68,7 @@ public class CCNBase {
 				// the place. We need an ack on the channel for localhost, according to
 				// Michael.
 				if (CONFIRM_PUTS) {
-				//	Interest readBackInterest = new Interest(co.name(), 0, co.authenticator().publisherKeyID());
+				//	Interest readBackInterest = new Interest(co.name(), 0, co.signedInfo().publisherKeyID());
 					Interest readBackInterest = new Interest(co.name());
 					ContentObject readBack = get(readBackInterest, CONFIRMATION_TIMEOUT);
 					while (null == readBack) {
@@ -130,12 +130,6 @@ public class CCNBase {
 	 * content immediately and others by callback;
 	 * we separate the two for now to simplify the
 	 * interface.
-	 * @param name
-	 * @param authenticator
-	 * @param callbackListener
-	 * @return returns a unique identifier that can
-	 * 		be used to cancel this query.
-	 * @throws IOException
 	 * 
 	 * Pass it on to the CCNInterestManager to
 	 * forward to the network. Also express it to the

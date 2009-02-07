@@ -38,7 +38,7 @@ public class BaseSecurityTest extends BasePutGetTest {
 		try {
 			// Reconsistute content and verify signature.
 			int val = Integer.parseInt(new String(putResult.name().component(putResult.name().count()-1)));
-			ContentObject co = new ContentObject(putResult.name(), putResult.authenticator(), Integer.toString(val).getBytes(), putResult.signature());
+			ContentObject co = new ContentObject(putResult.name(), putResult.signedInfo(), Integer.toString(val).getBytes(), putResult.signature());
 			boolean b = co.verify(null);
 			if (!b) {
 				SystemConfiguration.logObject("checkPutResults: verification failed", co);

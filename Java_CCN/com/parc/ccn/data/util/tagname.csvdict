@@ -4,7 +4,7 @@
 17,Collection
 18,CompleteName
 19,Content
-20,ContentAuthenticator
+20,SignedInfo
 21,ContentDigest
 22,ContentHash
 23,ContentObject
@@ -42,6 +42,6 @@
 55,DigestAlgorithm
 56,BlockSize
 57,AdditionalNameComponents
-58,ExcludeType
+58,FreshnessSeconds
 17702112,CCNProtocolDataUnit
 23204960,ExperimentalResponseFilter

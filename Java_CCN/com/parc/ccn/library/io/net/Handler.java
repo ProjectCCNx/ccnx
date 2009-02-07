@@ -1,4 +1,4 @@
-package com.parc.ccn.library.io;
+package com.parc.ccn.library.io.net;
 
 import java.io.IOException;
 import java.net.URL;

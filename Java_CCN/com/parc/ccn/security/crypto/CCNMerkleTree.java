@@ -10,7 +10,7 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.Signature;
 
 /**
@@ -48,7 +48,7 @@ public class CCNMerkleTree extends MerkleTree {
 	
 	ContentName _baseName = null;
 	int _baseNameIndex;
-	ContentAuthenticator _authenticator = null;
+	SignedInfo _signedInfo = null;
 	ContentName [] _blockNames = null;
 	
 	byte [] _rootSignature = null;
@@ -77,7 +77,7 @@ public class CCNMerkleTree extends MerkleTree {
 	public CCNMerkleTree(
 			ContentName baseName, 
 			int baseNameIndex,
-			ContentAuthenticator authenticator,
+			SignedInfo authenticator,
 			byte[][] contentBlocks,
 			boolean isDigest,
 			int blockCount,
@@ -89,7 +89,7 @@ public class CCNMerkleTree extends MerkleTree {
 		// Initialize fields we need for building tree.
 		_baseName = baseName;
 		_baseNameIndex = baseNameIndex;
-		_authenticator = authenticator;
+		_signedInfo = authenticator;
 
 		// Computes leaves and tree.
 		initializeTree(contentBlocks, isDigest, blockOffset);
@@ -115,7 +115,7 @@ public class CCNMerkleTree extends MerkleTree {
 	 */
 	public CCNMerkleTree(
 			ContentName [] nodeNames, 
-			ContentAuthenticator authenticator,
+			SignedInfo authenticator,
 			byte[][] contentBlocks,
 			boolean isDigest,
 			int blockCount,
@@ -125,7 +125,7 @@ public class CCNMerkleTree extends MerkleTree {
 		super(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, contentBlocks, isDigest, blockCount, baseBlockIndex);
 		
 		_blockNames = nodeNames;
-		_authenticator = authenticator;
+		_signedInfo = authenticator;
 		_rootSignature = computeRootSignature(root(), signingKey);
 	}
 
@@ -158,9 +158,9 @@ public class CCNMerkleTree extends MerkleTree {
 	public int baseNameIndex() { return _baseNameIndex; }
 	public ContentName baseName() { return _baseName; }
 	
-	public ContentAuthenticator blockAuthenticator(int i) {
-		// Eventually allow for separate authenticators
-		return _authenticator;
+	public SignedInfo blockSignedInfo(int i) {
+		// Eventually allow for separate signedInfos
+		return _signedInfo;
 	}
 	
 	public Signature blockSignature(int leafIndex) {
@@ -183,7 +183,7 @@ public class CCNMerkleTree extends MerkleTree {
 	 * @return
 	 */
 	public ContentObject block(int leafIndex, byte [] blockContent) {
-		return new ContentObject(blockName(leafIndex), blockAuthenticator(leafIndex), blockContent, blockSignature(leafIndex));
+		return new ContentObject(blockName(leafIndex), blockSignedInfo(leafIndex), blockContent, blockSignature(leafIndex));
 	}
 		
 	protected Signature computeSignature(int leafIndex) {
@@ -201,7 +201,7 @@ public class CCNMerkleTree extends MerkleTree {
 	
 	/**
 	 * We need to incorporate the name of the content block
-	 * and the authenticator into the leaf digest of the tree.
+	 * and the signedInfo into the leaf digest of the tree.
 	 * Essentially, we want the leaf digest to be the same thing
 	 * we would use for signing a stand-alone leaf.
 	 * @param leafIndex
@@ -212,13 +212,13 @@ public class CCNMerkleTree extends MerkleTree {
 	protected byte [] computeBlockDigest(int leafIndex, int blockOffset, byte [][] contentBlocks) {
 
 		// Computing the leaf digest.
-		//new XMLEncodable[]{name, authenticator}, new byte[][]{content},
+		//new XMLEncodable[]{name, signedInfo}, new byte[][]{content},
 		
 		byte[] blockDigest = null;
 		try {
 			blockDigest = CCNDigestHelper.digest(
 									CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, 
-									ContentObject.prepareContent(blockName(leafIndex), blockAuthenticator(leafIndex),
+									ContentObject.prepareContent(blockName(leafIndex), blockSignedInfo(leafIndex),
 																	contentBlocks[leafIndex + blockOffset]));
 		} catch (XMLStreamException e) {
 			Library.logger().info("Exception in computeBlockDigest, leaf: " + leafIndex + " out of " + numLeaves() + " type: " + e.getClass().getName() + ": " + e.getMessage());

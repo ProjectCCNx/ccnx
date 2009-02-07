@@ -20,7 +20,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherKeyID;
@@ -134,13 +134,13 @@ public class InterestTableTest {
 		KeyLocator locator = new KeyLocator(ContentName.fromNative("/key/" + pub.id().toString()));
 		// unique name		
 		return ContentObject.generateAuthenticatedName(
-				name, pub, ContentAuthenticator.now(),
-						ContentAuthenticator.ContentType.LEAF, locator, contents, null);
+				name, pub, SignedInfo.now(),
+						SignedInfo.ContentType.LEAF, locator, contents, null);
 	}
 	
 	private ContentObject getContentObject(ContentName name, int value) throws InvalidKeyException, SignatureException, MalformedContentNameStringException, ConfigurationException {
 		ContentObject cn = getContentObject(name);
-		return new ContentObject(cn.name(), cn.authenticator(), new Integer(value).toString().getBytes(), cn.signature());
+		return new ContentObject(cn.name(), cn.signedInfo(), new Integer(value).toString().getBytes(), cn.signature());
 	}
 	
 	private void match(InterestTable<Integer> table, ContentName name, int v) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {

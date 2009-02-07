@@ -1,7 +1,6 @@
 package com.parc.ccn.library.io;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
@@ -15,7 +14,7 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.Header;
-import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.library.CCNLibrary;
@@ -37,7 +36,7 @@ import com.parc.ccn.security.crypto.CCNMerkleTree;
  * @author smetters
  *
  */
-public class CCNOutputStream extends OutputStream {
+public class CCNOutputStream extends CCNAbstractOutputStream {
 
 	/**
 	 * Maximum number of blocks we keep around before we build a
@@ -46,27 +45,13 @@ public class CCNOutputStream extends OutputStream {
 	 */
 	protected static final int BLOCK_BUF_COUNT = 128;
 	
-	protected CCNLibrary _library = null;
-	
-	/** 
-	 * The name for the content fragments, up to just before the sequence number.
-	 */
-	protected ContentName _baseName = null;
-	
 	protected int _totalLength = 0;
 	protected int _blockOffset = 0; // offset into current block
-	protected int _blockIndex = 0; // index into array of block buffers
 	protected byte [][] _blockBuffers = null;
 	protected int _baseBlockIndex; // base index of current set of block buffers.
 	protected int _blockSize = Header.DEFAULT_BLOCKSIZE;
 	
 	protected Timestamp _timestamp; // timestamp we use for writing, set to first time we write
-	
-	protected PublisherKeyID _publisher;
-	protected KeyLocator _locator;
-	protected PrivateKey _signingKey;
-
-	protected ContentAuthenticator.ContentType _type;
 	
 	protected CCNDigestHelper _dh;
 	
@@ -75,13 +60,8 @@ public class CCNOutputStream extends OutputStream {
 	public CCNOutputStream(ContentName name, PublisherKeyID publisher,
 						   KeyLocator locator, PrivateKey signingKey,
 						   CCNLibrary library) throws XMLStreamException, IOException {
-		_library = library; 
-		if (null == _library) {
-			_library = CCNLibrary.getLibrary();
-		}
-		_publisher = publisher;
-		_locator = locator;
-		_signingKey = signingKey;
+		
+		super(publisher, locator, signingKey, library);
 		
 		ContentName nameToOpen = name;
 		if (CCNLibrary.isFragment(nameToOpen)) {
@@ -159,17 +139,6 @@ public class CCNOutputStream extends OutputStream {
 		}
 	}
 
-	@Override
-	public void write(byte[] b) throws IOException {
-		write(b, 0, b.length);
-	}
-
-	@Override
-	public void write(int b) throws IOException {
-		byte buf[] = {(byte)b};
-		write(buf, 0, 1);
-	}
-	
 	protected int writeToNetwork(byte[] buf, long offset, long len) throws IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException {
 		if ((len <= 0) || (null == buf) || (buf.length == 0) || (offset >= buf.length))
 			throw new IllegalArgumentException("Invalid argument!");
@@ -243,7 +212,7 @@ public class CCNOutputStream extends OutputStream {
 	protected void flushToNetwork() throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException {
 		// DKS TODO needs to cope with partial last block. 
 		if (null == _timestamp)
-			_timestamp = ContentAuthenticator.now();
+			_timestamp = SignedInfo.now();
 		
 		/**
 		 * Kludgy fix added by paul r. 1/20/08 - Right now the digest algorithm lower down the chain doesn't like
@@ -261,7 +230,7 @@ public class CCNOutputStream extends OutputStream {
 		}
 	
 		Library.logger().finer("sync: putting merkle tree to the network, " + (_blockIndex+1) + " blocks.");
-		// Generate Merkle tree (or other auth structure) and authenticators and put contents.
+		// Generate Merkle tree (or other auth structure) and signedInfos and put contents.
 		CCNMerkleTree tree =
 			_library.putMerkleTree(_baseName, _baseBlockIndex, buffersToUse, _blockIndex+1, _baseBlockIndex,
 								   _timestamp, _publisher, _locator, _signingKey);

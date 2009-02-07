@@ -20,7 +20,7 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherKeyID;
@@ -78,9 +78,9 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		try {
 			keyObject = new ContentObject(
 									 keyName,
-									 new ContentAuthenticator(keyID,
-											 				  ContentAuthenticator.now(),
-											 				  ContentAuthenticator.ContentType.LEAF,
+									 new SignedInfo(keyID,
+											 				  SignedInfo.now(),
+											 				  SignedInfo.ContentType.LEAF,
 											 				  locatorLocator),
 									 encodedKey,
 									 signingKey);
@@ -158,7 +158,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 			if (null != publisherID) {
 				if (TrustManager.getTrustManager().matchesRole(
 						publisherID,
-						result.authenticator().publisherKeyID())) {
+						result.signedInfo().publisherKeyID())) {
 					return result;
 				}
 			}
@@ -191,7 +191,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 			ContentObject keyObject = retrieve(it.next());
 			if (null != keyObject) {
 				try {
-					ContentObject co = new ContentObject(keyObject.name(), keyObject.authenticator(), keyObject.content(), keyObject.signature()); 
+					ContentObject co = new ContentObject(keyObject.name(), keyObject.signedInfo(), keyObject.content(), keyObject.signature()); 
 					_networkManager.put(co);
 				} catch (Exception e) {
 					Library.logger().info("KeyRepository::handleInterests, exception in put: " + e.getClass().getName() + " message: " + e.getMessage());

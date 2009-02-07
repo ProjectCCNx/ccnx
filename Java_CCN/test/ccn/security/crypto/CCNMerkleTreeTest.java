@@ -13,7 +13,7 @@ import org.junit.Test;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.library.CCNLibrary;
@@ -113,7 +113,7 @@ public class CCNMerkleTreeTest {
 		try {
 			// TODO DKS Need to do offset versions with different ranges of fragments
 			// Generate a merkle tree. Verify each path for the content.
-			CCNMerkleTree tree = new CCNMerkleTree(theName, 0, new ContentAuthenticator(publisher, null, nameLoc),
+			CCNMerkleTree tree = new CCNMerkleTree(theName, 0, new SignedInfo(publisher, null, nameLoc),
 													content, digest, count, 0, pair.getPrivate());
 		
 			System.out.println("Constructed tree of " + count + " blocks (of " + content.length + "), numleaves: " + 

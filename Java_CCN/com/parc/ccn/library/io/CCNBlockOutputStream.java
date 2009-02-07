@@ -1,7 +1,6 @@
 package com.parc.ccn.library.io;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
@@ -10,7 +9,7 @@ import java.security.SignatureException;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.library.CCNLibrary;
@@ -40,31 +39,17 @@ import com.parc.ccn.library.CCNLibrary;
  * @author smetters
  *
  */
-public class CCNBlockOutputStream extends OutputStream {
+public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 
 	public enum SequenceNumberType {SEQUENCE_FIXED_INCREMENT, SEQUENCE_BYTE_COUNT};
 	protected static final int DEFAULT_INCREMENT = 1;
 	protected static final int DEFAULT_SCALE = 1;
 
-	protected CCNLibrary _library = null;
-	
-	/** 
-	 * The name for the content fragments, up to just before the sequence number.
-	 */
-	protected ContentName _baseName = null;
-	
 	protected SequenceNumberType _sequenceType = SequenceNumberType.SEQUENCE_FIXED_INCREMENT;
-	protected int _blockIndex = CCNLibrary.baseFragment(); // current block index
 	protected int _blockWidth = DEFAULT_INCREMENT; // increment for fixed-width block naming
 	protected int _blockScale = DEFAULT_SCALE;
 	protected int _bytesWritten = 0; // byte count for offset
 	
-	// If these are null, the library defaults will be used.
-	protected PublisherKeyID _publisher;
-	protected KeyLocator _locator;
-	protected PrivateKey _signingKey;
-	protected ContentAuthenticator.ContentType _type;
-
 	/**
 	 * Default, fixed increment, sequential-numbered blocks (unless overridden on write).
 	 * @param name
@@ -75,19 +60,11 @@ public class CCNBlockOutputStream extends OutputStream {
 	 * @throws XMLStreamException
 	 * @throws IOException
 	 */
-	public CCNBlockOutputStream(ContentName baseName, ContentAuthenticator.ContentType type,
+	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type,
 								PublisherKeyID publisher,
 								KeyLocator locator, PrivateKey signingKey,
 								CCNLibrary library) throws XMLStreamException, IOException {
-		_library = library; 
-		if (null == _library) {
-			_library = CCNLibrary.getLibrary();
-		}
-		
-		// If these are null, the library defaults will be used.
-		_publisher = publisher;
-		_locator = locator;
-		_signingKey = signingKey;
+		super(publisher, locator, signingKey, library);
 		
 		_type = type;
 
@@ -105,7 +82,7 @@ public class CCNBlockOutputStream extends OutputStream {
 		_baseName = nameToOpen;
 	}
 	
-	public CCNBlockOutputStream(ContentName baseName, ContentAuthenticator.ContentType type) throws XMLStreamException, IOException {
+	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type) throws XMLStreamException, IOException {
 		this(baseName, type, null, null, null, null);
 	}
 	
@@ -149,14 +126,9 @@ public class CCNBlockOutputStream extends OutputStream {
 	public void write(byte[] b, int off, int len) throws IOException {
 		byte [] tempBuf = new byte[len];
 		System.arraycopy(b,off,tempBuf,0,len);
-		write(tempBuf);
+		write(tempBuf, null);
 	}
 
-	@Override
-	public void write(byte[] b) throws IOException {
-		write(b, -1);
-	}
-	
 	/**
 	 * Force the value of the block index. This resets future counter-based
 	 * indices, if they are used.
@@ -180,11 +152,5 @@ public class CCNBlockOutputStream extends OutputStream {
 		} catch (NoSuchAlgorithmException e) {
 			throw new IOException("Cannot sign content -- unknown algorithm!: " + e.getMessage());
 		} 
-	}
-
-	@Override
-	public void write(int b) throws IOException {
-		byte buf[] = {(byte)b};
-		write(buf, 0, 1);
 	}
 }

@@ -1,4 +1,4 @@
-package com.parc.ccn.library.io;
+package com.parc.ccn.library.io.net;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -10,6 +10,7 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
+import com.parc.ccn.library.io.CCNInputStream;
 
 public class CCNURLConnection extends URLConnection {
 

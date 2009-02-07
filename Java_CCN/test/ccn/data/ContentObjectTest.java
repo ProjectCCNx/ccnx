@@ -14,7 +14,7 @@ import org.junit.Test;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.Signature;
@@ -46,7 +46,7 @@ public class ContentObjectTest {
 	static public byte [] contenthash = new byte[32];
 	static public byte [] publisherid = new byte[32];
 	static PublisherKeyID pubkey = null;	
-	static ContentAuthenticator auth = null;
+	static SignedInfo auth = null;
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -81,9 +81,9 @@ public class ContentObjectTest {
 			
 			pubkey = new PublisherKeyID(publisherid);
 			
-			auth = new ContentAuthenticator(pubkey,
+			auth = new SignedInfo(pubkey,
 					new Timestamp(System.currentTimeMillis()), 
-					ContentAuthenticator.ContentType.LEAF, 
+					SignedInfo.ContentType.LEAF, 
 					nameLoc);
 		} catch (Exception ex) {
 			XMLEncodableTester.handleException(ex);

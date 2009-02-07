@@ -27,11 +27,11 @@ import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.Signature;
-import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
+import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.io.CCNDescriptor;
 import com.parc.ccn.network.CCNNetworkManager;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
@@ -315,7 +315,7 @@ public class CCNLibrary extends CCNBase {
 		ContentObject co = getLatestVersion(name, null, timeout);
 		if (null == co)
 			return null;
-		if (co.authenticator().type() != ContentType.COLLECTION)
+		if (co.signedInfo().type() != ContentType.COLLECTION)
 			throw new IOException("Content is not a collection");
 		Collection collection = Collection.contentToCollection(co);
 		return collection;
@@ -518,7 +518,7 @@ public class CCNLibrary extends CCNBase {
 	 */
 	public Link getLink(ContentName name, long timeout) throws IOException {
 		ContentObject co = getLatestVersion(name, null, timeout);
-		if (co.authenticator().type() != ContentType.LINK)
+		if (co.signedInfo().type() != ContentType.LINK)
 			throw new IOException("Content is not a link reference");
 		Link reference = new Link();
 		try {
@@ -537,7 +537,7 @@ public class CCNLibrary extends CCNBase {
 	 * @throws IOException
 	 */
 	public Link decodeLinkReference(ContentObject co) throws IOException {
-		if (co.authenticator().type() != ContentType.LINK)
+		if (co.signedInfo().type() != ContentType.LINK)
 			throw new IOException("Content is not a collection");
 		Link reference = new Link();
 		try {
@@ -558,7 +558,7 @@ public class CCNLibrary extends CCNBase {
 	 * @return true if its a link, false if not. 
 	 */
 	public boolean isLink(ContentObject content) {
-		return (content.authenticator().type() == ContentType.LINK);
+		return (content.signedInfo().type() == ContentType.LINK);
 	}
 	
 	/**
@@ -574,18 +574,18 @@ public class CCNLibrary extends CCNBase {
 		ArrayList<ContentObject> result = new ArrayList<ContentObject>();
 		if (null == content)
 			return null;
-		if (content.authenticator().type() == ContentType.LINK) {
+		if (content.signedInfo().type() == ContentType.LINK) {
 			Link link = Link.contentToLinkReference(content);
-			ContentObject linkCo = dereferenceLink(link, content.authenticator().publisherKeyID(), timeout);
+			ContentObject linkCo = dereferenceLink(link, content.signedInfo().publisherKeyID(), timeout);
 			if (linkCo == null) {
 				return null;
 			}
 			result.add(linkCo);
-		} else if (content.authenticator().type() == ContentType.COLLECTION) {
+		} else if (content.signedInfo().type() == ContentType.COLLECTION) {
 			Collection collection = Collection.contentToCollection(content);
 			ArrayList<LinkReference> al = collection.contents();
 			for (LinkReference lr : al) {
-				ContentObject linkCo = dereferenceLink(lr, content.authenticator().publisherKeyID(), timeout);
+				ContentObject linkCo = dereferenceLink(lr, content.signedInfo().publisherKeyID(), timeout);
 				if (linkCo != null)
 					result.add(linkCo);
 			}
@@ -700,7 +700,7 @@ public class CCNLibrary extends CCNBase {
 	public static final int baseVersion() { return 0; }
 	
 	/**
-	 * Generates the name and authenticator for the new version of a given name.
+	 * Generates the name and signedInfo for the new version of a given name.
 	 * NOTE: This currently believes it is generating the name of a piece of content,
 	 *  and is only happy doing so for atomic pieces of content below the fragmentation
 	 *  threshold. It will throw an exception for pieces of content larger than that.
@@ -746,7 +746,7 @@ public class CCNLibrary extends CCNBase {
 		ContentName versionedName = versionName(name, version);
 		ContentObject uniqueName =
 			ContentObject.generateAuthenticatedName(
-					versionedName, publisher, ContentAuthenticator.now(),
+					versionedName, publisher, SignedInfo.now(),
 					type, locator, contents, signingKey);
 
 		return uniqueName;
@@ -908,7 +908,7 @@ public class CCNLibrary extends CCNBase {
 			if (null == publisher) {
 				publisher = keyManager.getPublisherKeyID(signingKey);
 			}
-			return new ContentObject(name, new ContentAuthenticator(publisher, ContentAuthenticator.ContentType.LEAF, locator), contents, signingKey);
+			return new ContentObject(name, new SignedInfo(publisher, SignedInfo.ContentType.LEAF, locator), contents, signingKey);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -939,19 +939,19 @@ public class CCNLibrary extends CCNBase {
 
 	public ContentObject put(ContentName name, byte[] contents, 
 							PublisherKeyID publisher) throws SignatureException, IOException {
-		return put(name, contents, ContentAuthenticator.ContentType.LEAF, publisher);
+		return put(name, contents, SignedInfo.ContentType.LEAF, publisher);
 	}
 	
 	public ContentObject put(ContentName name, 
-			ContentAuthenticator authenticator,
+			SignedInfo signedInfo,
 			byte[] content,
 			Signature signature) throws IOException {
-		ContentObject co = new ContentObject(name, authenticator, content, signature); 
+		ContentObject co = new ContentObject(name, signedInfo, content, signature); 
 		return put(co);
 	}
 
 	public ContentObject put(ContentName name, byte[] contents, 
-							ContentAuthenticator.ContentType type,
+							SignedInfo.ContentType type,
 							PublisherKeyID publisher) throws SignatureException, IOException {
 		try {
 			return put(name, contents, type, publisher, 
@@ -1020,13 +1020,13 @@ public class CCNLibrary extends CCNBase {
 	 * or by including the fragment names in the block information
 	 * incorporated in the hash tree for signing (see below).
 	 * So, what we use for unfragmented data is the digest of 
-	 * the content authenticator without the signature in it; 
+	 * the content signedInfo without the signature in it; 
 	 * which in turn contains the digest
 	 * of the content itself, as well as the publisher ID and
 	 * the timestamp (which will make it unique). When we generate
-	 * the signature, we still sign the name, the content authenticator,
+	 * the signature, we still sign the name, the content signedInfo,
 	 * and the content, as we cannot guarantee that the content
-	 * authenticator digest has been incorporated in the name.
+	 * signedInfo digest has been incorporated in the name.
 	 * 
 	 * For fragmented data, we only generate one signature,
 	 * on the root of the Merkle hash tree. For that we use
@@ -1047,7 +1047,7 @@ public class CCNLibrary extends CCNBase {
 	 * @throws IOException 
 	 **/
 	public ContentObject put(ContentName name, byte [] contents,
-							ContentAuthenticator.ContentType type,
+							SignedInfo.ContentType type,
 							PublisherKeyID publisher, KeyLocator locator,
 							PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 	
@@ -1065,8 +1065,8 @@ public class CCNLibrary extends CCNBase {
 		} else {
 			try {
 				// Generate signature
-				ContentObject co = new ContentObject(name, new ContentAuthenticator(publisher, type, locator), contents, signingKey);
-				return put(co.name(), co.authenticator(), co.content(), co.signature());
+				ContentObject co = new ContentObject(name, new SignedInfo(publisher, type, locator), contents, signingKey);
+				return put(co.name(), co.signedInfo(), co.content(), co.signature());
 			} catch (IOException e) {
 				Library.logger().warning("This should not happen: put failed with an IOExceptoin.");
 				Library.warningStackTrace(e);
@@ -1089,7 +1089,7 @@ public class CCNLibrary extends CCNBase {
 	 * @throws IOException 
 	 */
 	protected ContentObject fragmentedPut(ContentName name, byte [] contents,
-										ContentAuthenticator.ContentType type,
+										SignedInfo.ContentType type,
 										PublisherKeyID publisher, KeyLocator locator,
 										PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 		// This will call into CCNBase after picking appropriate credentials
@@ -1135,7 +1135,7 @@ public class CCNLibrary extends CCNBase {
 	
 	public ContentObject putHeader(ContentName name, int contentLength, int blockSize, byte [] contentDigest, 
 				byte [] contentTreeAuthenticator,
-				ContentAuthenticator.ContentType type,
+				SignedInfo.ContentType type,
 				Timestamp timestamp, 
 				PublisherKeyID publisher, KeyLocator locator,
 				PrivateKey signingKey) throws IOException, InvalidKeyException, SignatureException {
@@ -1245,18 +1245,18 @@ public class CCNLibrary extends CCNBase {
 		// Digest of complete contents
 		// If we're going to unique-ify the block names
 		// (or just in general) we need to incorporate the names
-		// and authenticators in the MerkleTree blocks. 
+		// and signedInfos in the MerkleTree blocks. 
 		// For now, this generates the root signature too, so can
 		// ask for the signature for each block.
     	CCNMerkleTree tree = 
     		new CCNMerkleTree(fragmentBase(fragmentRoot(name)), baseNameIndex,
-    						  new ContentAuthenticator(publisher, timestamp, ContentType.FRAGMENT, locator),
+    						  new SignedInfo(publisher, timestamp, ContentType.FRAGMENT, locator),
     						  contentBlocks, false, blockCount, baseBlockIndex, signingKey);
 
 		for (int i = 0; i < blockCount; i++) {
 			try {
 				Library.logger().info("putMerkleTree: writing block " + i + " of " + blockCount + " to name " + tree.blockName(i));
-				put(tree.blockName(i), tree.blockAuthenticator(i), 
+				put(tree.blockName(i), tree.blockSignedInfo(i), 
 						contentBlocks[i], tree.blockSignature(i));
 			} catch (IOException e) {
 				Library.logger().warning("This should not happen: we cannot put our own blocks!");
@@ -1375,9 +1375,9 @@ public class CCNLibrary extends CCNBase {
 		
 		try {
 			if (null == publicKey) {
-				publicKey = KeyManager.getKeyRepository().getPublicKey(object.authenticator().publisherKeyID(), object.authenticator().keyLocator());
+				publicKey = KeyManager.getKeyRepository().getPublicKey(object.signedInfo().publisherKeyID(), object.signedInfo().keyLocator());
 				if (null == publicKey) {
-					Library.logger().info("Cannot retrieve key for publisher " + object.authenticator().publisherKeyID() + " to verify conten: " + object.name());
+					Library.logger().info("Cannot retrieve key for publisher " + object.signedInfo().publisherKeyID() + " to verify conten: " + object.name());
 					return false;
 				}
 			}

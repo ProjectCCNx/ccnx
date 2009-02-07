@@ -187,8 +187,8 @@ public class SystemConfiguration {
 	public static void logObject(Level level, String message, ContentObject co) {
 		try {
 			byte [] coDigest = CCNDigestHelper.digest(co.encode());
-			byte [] tbsDigest = CCNDigestHelper.digest(ContentObject.prepareContent(co.name(), co.authenticator(), co.content()));
-			Library.logger().log(level, message + " name: " + co.name() +  " timestamp: " + co.authenticator().timestamp() + " digest: " + CCNDigestHelper.printBytes(coDigest, DEBUG_RADIX) + " tbs: " + CCNDigestHelper.printBytes(tbsDigest, DEBUG_RADIX));
+			byte [] tbsDigest = CCNDigestHelper.digest(ContentObject.prepareContent(co.name(), co.signedInfo(), co.content()));
+			Library.logger().log(level, message + " name: " + co.name() +  " timestamp: " + co.signedInfo().timestamp() + " digest: " + CCNDigestHelper.printBytes(coDigest, DEBUG_RADIX) + " tbs: " + CCNDigestHelper.printBytes(tbsDigest, DEBUG_RADIX));
 		} catch (XMLStreamException xs) {
 			Library.logger().log(level, "Cannot encode object for logging: " + co.name());
 		}

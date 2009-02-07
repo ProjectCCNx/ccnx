@@ -11,7 +11,7 @@ import com.parc.ccn.data.util.XMLEncoder;
 /**
  * We sometimes need to refer to the "complete" name
  * of an object -- the unique combination of a ContentName
- * and a ContentAuthenticator. The authenticator can
+ * and a SignedInfo. The authenticator can
  * be null, as can any of its fields.
  * @author smetters
  *
@@ -79,7 +79,7 @@ public class KeyName extends GenericXMLEncodable implements XMLEncodable {
 	
 	public boolean validate() {
 		// DKS -- do we do recursive validation?
-		// null authenticator ok
+		// null signedInfo ok
 		return (null != name());
 	}
 

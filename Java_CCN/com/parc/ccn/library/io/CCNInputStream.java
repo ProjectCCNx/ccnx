@@ -11,7 +11,7 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.library.CCNLibrary;
@@ -52,13 +52,13 @@ public class CCNInputStream extends CCNAbstractInputStream implements CCNInteres
 
 	protected ContentName _headerName = null;
 	/**
-	 * The content authenticator associated with the 
+	 * The content signedInfo associated with the 
 	 * corresponding header information. We only need
 	 * the publisher ID and the root object content digest,
 	 * but might want to have access to the other
 	 * authentication information.
 	 */
-	protected ContentAuthenticator _headerAuthenticator = null;
+	protected SignedInfo _headerSignedInfo = null;
 	
 	/**
 	 * The header information for that object, once
@@ -219,10 +219,10 @@ public class CCNInputStream extends CCNAbstractInputStream implements CCNInteres
 								  Interest interest) {
 		// This gives us back the header.
 		for (ContentObject co : results) {
-			Library.logger().info("CCNInputStream: retrieved header: " + co.name() + " type: " + co.authenticator().typeName());
+			Library.logger().info("CCNInputStream: retrieved header: " + co.name() + " type: " + co.signedInfo().typeName());
 			if (null != _header) {
 				continue;
-			} else if (co.authenticator().type() == ContentAuthenticator.ContentType.HEADER) {
+			} else if (co.signedInfo().type() == SignedInfo.ContentType.HEADER) {
 				// First we verify. (Or should get have done this for us?)
 				// We don't bother complaining unless we have more than one
 				// header that matches. Given that we would complain for
@@ -237,7 +237,7 @@ public class CCNInputStream extends CCNAbstractInputStream implements CCNInteres
 						return interest; // try again
 					} else {
 						_headerName = co.name();
-						_headerAuthenticator = co.authenticator();
+						_headerSignedInfo = co.signedInfo();
 						_header = Header.contentToHeader(co);
 						Library.logger().fine("Found header specifies " + _header.blockCount() + " blocks");
 						return null; // done

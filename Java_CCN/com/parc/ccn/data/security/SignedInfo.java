@@ -11,14 +11,15 @@ import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
 
-public class ContentAuthenticator extends GenericXMLEncodable implements XMLEncodable {
+public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 
 	public enum ContentType {FRAGMENT, LINK, COLLECTION, LEAF, SESSION, HEADER};
     protected static final HashMap<ContentType, String> ContentTypeNames = new HashMap<ContentType, String>();
     protected static final HashMap<String, ContentType> ContentNameTypes = new HashMap<String, ContentType>();
-    public static final String CONTENT_AUTHENTICATOR_ELEMENT = "ContentAuthenticator";
+    public static final String SIGNED_INFO_ELEMENT = "SignedInfo";
     protected static final String TIMESTAMP_ELEMENT = "Timestamp";
     protected static final String CONTENT_TYPE_ELEMENT = "Type";
+    protected static final String FRESHNESS_SECONDS_ELEMENT = "FreshnessSeconds";
     
     static {
         ContentTypeNames.put(ContentType.FRAGMENT, "FRAGMENT");
@@ -39,8 +40,9 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     protected Timestamp		_timestamp;
     protected ContentType 	_type;
     protected KeyLocator 	_locator;
+    protected Integer 		_freshnessSeconds;
    
-    public ContentAuthenticator(
+    public SignedInfo(
     		PublisherKeyID publisher, 
 			Timestamp timestamp, 
 			ContentType type,
@@ -55,7 +57,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
     	this._locator = locator;
      }
     
-    public ContentAuthenticator(
+    public SignedInfo(
     		PublisherKeyID publisher, 
 			ContentType type,
 			KeyLocator locator
@@ -67,24 +69,24 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
      * For queries.
      * @param publisher
      */
-    public ContentAuthenticator(PublisherKeyID publisher) {
+    public SignedInfo(PublisherKeyID publisher) {
     	super();
     	this._publisher = publisher;
     }
 
-    public ContentAuthenticator(ContentAuthenticator other) {
+    public SignedInfo(SignedInfo other) {
     	this(other.publisherKeyID(), 
     		 other.timestamp(),
     		 other.type(), 
        		 other.keyLocator());
     }
 
-    public ContentAuthenticator() {}
+    public SignedInfo() {}
         
-	public ContentAuthenticator clone() {
+	public SignedInfo clone() {
 		// more clonage needed
 		KeyLocator kl = keyLocator();
-		return new ContentAuthenticator(publisherKeyID(), timestamp(), type(), null == kl ? null : kl.clone());
+		return new SignedInfo(publisherKeyID(), timestamp(), type(), null == kl ? null : kl.clone());
 	}
 
 	public boolean empty() {
@@ -128,6 +130,19 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 	public void timestamp(Timestamp timestamp) {
 		this._timestamp = timestamp;
 	}
+	
+	public Integer freshnessSeconds() {
+		return _freshnessSeconds;
+	}
+	
+	public void freshnessSeconds(int seconds) {
+		_freshnessSeconds = new Integer(seconds);
+	}
+	
+	public boolean emptyFreshnessSeconds() {
+		return (null == _freshnessSeconds);
+	}
+	
 	public ContentType type() {
 		return _type;
 	}
@@ -155,7 +170,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 	public void keyLocator(KeyLocator locator) { _locator = locator; }
 	
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		decoder.readStartElement(CONTENT_AUTHENTICATOR_ELEMENT);
+		decoder.readStartElement(SIGNED_INFO_ELEMENT);
 		
 		if (decoder.peekStartElement(PublisherKeyID.PUBLISHER_KEY_ID_ELEMENT)) {
 			_publisher = new PublisherKeyID();
@@ -170,8 +185,12 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 			String strType = decoder.readUTF8Element(CONTENT_TYPE_ELEMENT);
 			_type = nameToType(strType);
 			if (null == _type) {
-				throw new XMLStreamException("Cannot parse authenticator type: " + strType);
+				throw new XMLStreamException("Cannot parse signedInfo type: " + strType);
 			}
+		}
+		
+		if (decoder.peekStartElement(FRESHNESS_SECONDS_ELEMENT)) {
+			_freshnessSeconds = decoder.readIntegerElement(FRESHNESS_SECONDS_ELEMENT);
 		}
 		
 		if (decoder.peekStartElement(KeyLocator.KEY_LOCATOR_ELEMENT)) {
@@ -186,7 +205,7 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		encoder.writeStartElement(CONTENT_AUTHENTICATOR_ELEMENT);
+		encoder.writeStartElement(SIGNED_INFO_ELEMENT);
 		
 		if (!emptyPublisher()) {
 			publisherKeyID().encode(encoder);
@@ -201,6 +220,10 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 		
 		if (!emptyContentType()) {
 			encoder.writeElement(CONTENT_TYPE_ELEMENT, typeName());
+		}
+		
+		if (!emptyFreshnessSeconds()) {
+			encoder.writeIntegerElement(FRESHNESS_SECONDS_ELEMENT, freshnessSeconds());
 		}
 		
 		if (!emptyKeyLocator()) {
@@ -222,50 +245,5 @@ public class ContentAuthenticator extends GenericXMLEncodable implements XMLEnco
 		return new Timestamp(System.currentTimeMillis());
 	}
 
-	@Override
-	public int hashCode() {
-		final int prime = 31;
-		int result = 1;
-		result = prime * result
-				+ ((_locator == null) ? 0 : _locator.hashCode());
-		result = prime * result
-				+ ((_publisher == null) ? 0 : _publisher.hashCode());
-		result = prime * result
-				+ ((_timestamp == null) ? 0 : _timestamp.hashCode());
-		result = prime * result + ((_type == null) ? 0 : _type.hashCode());
-		return result;
-	}
-
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		final ContentAuthenticator other = (ContentAuthenticator) obj;
-		if (_locator == null) {
-			if (other._locator != null)
-				return false;
-		} else if (!_locator.equals(other._locator))
-			return false;
-		if (_publisher == null) {
-			if (other._publisher != null)
-				return false;
-		} else if (!_publisher.equals(other._publisher))
-			return false;
-		if (_timestamp == null) {
-			if (other._timestamp != null)
-				return false;
-		} else if (!_timestamp.equals(other._timestamp))
-			return false;
-		if (_type == null) {
-			if (other._type != null)
-				return false;
-		} else if (!_type.equals(other._type))
-			return false;
-		return true;
-	}
 	
 }

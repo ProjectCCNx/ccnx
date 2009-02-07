@@ -183,7 +183,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 			} else {
 				// Verifying a new block. See if the signature verifies, otherwise store the signature
 				// and proxy.
-				if (!ContentObject.verify(proxy, block.signature().signature(), block.authenticator(), block.signature().digestAlgorithm(), null)) {
+				if (!ContentObject.verify(proxy, block.signature().signature(), block.signedInfo(), block.signature().digestAlgorithm(), null)) {
 					Library.logger().warning("Found block: " + block.name().toString() + " whose signature fails to verify.");		
 				} else {
 					// Remember current verifiers

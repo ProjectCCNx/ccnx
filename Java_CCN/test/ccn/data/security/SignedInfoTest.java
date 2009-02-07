@@ -15,12 +15,12 @@ import org.junit.Test;
 import test.ccn.data.XMLEncodableTester;
 
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.security.crypto.certificates.BCX509CertificateGenerator;
 
-public class ContentAuthenticatorTest {
+public class SignedInfoTest {
 
 	static final String baseName = "test";
 	static final String subName2 = "smetters";
@@ -87,31 +87,31 @@ public class ContentAuthenticatorTest {
 
 	@Test
 	public void testDecodeInputStream() {
-		ContentAuthenticator nca = new ContentAuthenticator(
+		SignedInfo nca = new SignedInfo(
 				pubkey, 
 				new Timestamp(System.currentTimeMillis()), 
-				ContentAuthenticator.ContentType.LEAF, 
+				SignedInfo.ContentType.LEAF, 
 				nameLoc);
-		ContentAuthenticator dnca = new ContentAuthenticator();
-		ContentAuthenticator bdnca = new ContentAuthenticator();
-		XMLEncodableTester.encodeDecodeTest("ContentAuthenticator(name)", nca, dnca, bdnca);
+		SignedInfo dnca = new SignedInfo();
+		SignedInfo bdnca = new SignedInfo();
+		XMLEncodableTester.encodeDecodeTest("SignedInfo(name)", nca, dnca, bdnca);
 
-		ContentAuthenticator kca = new ContentAuthenticator(
+		SignedInfo kca = new SignedInfo(
 				pubkey, 
 				new Timestamp(System.currentTimeMillis()), 
-				ContentAuthenticator.ContentType.LEAF, 
+				SignedInfo.ContentType.LEAF, 
 				keyLoc);
-		ContentAuthenticator dkca = new ContentAuthenticator();
-		ContentAuthenticator bdkca = new ContentAuthenticator();
-		XMLEncodableTester.encodeDecodeTest("ContentAuthenticator(key)", kca, dkca, bdkca);
+		SignedInfo dkca = new SignedInfo();
+		SignedInfo bdkca = new SignedInfo();
+		XMLEncodableTester.encodeDecodeTest("SignedInfo(key)", kca, dkca, bdkca);
 
-		ContentAuthenticator cca = new ContentAuthenticator(pubkey, 
+		SignedInfo cca = new SignedInfo(pubkey, 
 				new Timestamp(System.currentTimeMillis()), 
-				ContentAuthenticator.ContentType.LEAF, 
+				SignedInfo.ContentType.LEAF, 
 				certLoc);
-		ContentAuthenticator dcca = new ContentAuthenticator();
-		ContentAuthenticator bdcca = new ContentAuthenticator();
-		XMLEncodableTester.encodeDecodeTest("ContentAuthenticator(cert)", cca, dcca, bdcca);
+		SignedInfo dcca = new SignedInfo();
+		SignedInfo bdcca = new SignedInfo();
+		XMLEncodableTester.encodeDecodeTest("SignedInfo(cert)", cca, dcca, bdcca);
 		
 	}
 

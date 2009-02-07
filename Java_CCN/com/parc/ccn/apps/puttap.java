@@ -98,7 +98,7 @@ public class puttap implements CCNInterestListener {
 	        		return false;
 	        	}
 	        	if (verify) {
-	        		if (!ContentObject.verify(cn.name(), cn.authenticator(), bytes, cn.signature(), publicKey)) {
+	        		if (!ContentObject.verify(cn.name(), cn.signedInfo(), bytes, cn.signature(), publicKey)) {
 	        			Library.logger().severe("BAD SIGNATURE: puttap: object failed to verify: " + cn.name());
 	        			return false;
 	        		}

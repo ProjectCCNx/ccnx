@@ -107,7 +107,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 		ContentName name = null;
 		byte[] content = null;
-//		ContentAuthenticator.ContentType type = ContentAuthenticator.ContentType.LEAF;
+//		SignedInfo.ContentType type = SignedInfo.ContentType.LEAF;
 		PublisherKeyID publisher = null;
 
 		try {
@@ -210,11 +210,11 @@ public class CCNLibraryTest extends LibraryTestBase {
 				Assert.fail("Didn't get back content we just put!");
 
 			if (result.name().equals(name.name()) &&
-					result.authenticator().equals(name.authenticator())) {
+					result.signedInfo().equals(name.signedInfo())) {
 				System.out.println("Got back name we inserted.");
 			} else
 				Assert.fail("Didn't get back data we just inserted - result name: " + result.name() + 
-						", auth: " + result.authenticator() + ", orig name: " + name.name() + ", auth: " + name.authenticator());
+						", auth: " + result.signedInfo() + ", orig name: " + name.name() + ", auth: " + name.signedInfo());
 		} catch (Exception e) {
 			System.out.println("Exception in testing recall: " + e.getClass().getName() + ": " + e.getMessage());
 			Assert.fail(e.getMessage());

@@ -10,11 +10,11 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.HeaderData.FragmentationType;
-import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.Signature;
-import com.parc.ccn.data.security.ContentAuthenticator.ContentType;
+import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.library.CCNLibrary;
 
@@ -44,7 +44,7 @@ public class Header extends ContentObject  {
 			 KeyLocator locator,
 			 Signature signature
 			 ) throws XMLStreamException {
-		super(name, new ContentAuthenticator(publisher, ContentType.HEADER, locator), null, 
+		super(name, new SignedInfo(publisher, ContentType.HEADER, locator), null, 
 				(Signature)null);
 		_signature = signature;
 		_data = new HeaderData(start, count, blockSize, length, contentDigest, rootDigest);
@@ -61,7 +61,7 @@ public class Header extends ContentObject  {
 			 PrivateKey signingKey
 			 ) throws XMLStreamException, InvalidKeyException, SignatureException {
 		this(name, start, count, blockSize, length, contentDigest, rootDigest, publisher, locator, (Signature)null);
-		_signature = sign(name, authenticator(), _content, signingKey);
+		_signature = sign(name, signedInfo(), _content, signingKey);
 	}
 	
 	public Header(ContentName name,

@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import javax.xml.stream.XMLStreamException;
 
+import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.PublisherKeyID;
@@ -22,6 +23,7 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 	public CCNBlockInputStream(ContentName baseName, Integer startingBlockIndex, 
 							   PublisherKeyID publisher, CCNLibrary library) throws XMLStreamException, IOException {
 		super(baseName, startingBlockIndex, publisher, library);
+		setTimeout(CCNBase.NO_TIMEOUT);
 	}
 
 	public CCNBlockInputStream(ContentName baseName, PublisherKeyID publisher, CCNLibrary library) 

@@ -19,13 +19,13 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
    
     protected PublisherID	_publisher = null;
     protected Timestamp		_timestamp = null;
-    protected ContentAuthenticator.ContentType 	_type = null;
+    protected SignedInfo.ContentType 	_type = null;
     protected byte []		_contentDigest = null; // encoded DigestInfo
     
     public LinkAuthenticator(
     		PublisherID publisher, 
 			Timestamp timestamp, 
-			ContentAuthenticator.ContentType type, 
+			SignedInfo.ContentType type, 
        		byte [] contentDigest) {
     	super();
     	this._publisher = publisher;
@@ -100,10 +100,10 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 		this._timestamp = timestamp;
 	}
 	
-	public ContentAuthenticator.ContentType type() {
+	public SignedInfo.ContentType type() {
 		return _type;
 	}
-	public void type(ContentAuthenticator.ContentType type) {
+	public void type(SignedInfo.ContentType type) {
 		this._type = type;
 	}
 	
@@ -164,7 +164,7 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 
 		if (decoder.peekStartElement(CONTENT_TYPE_ELEMENT)) {
 			String strType = decoder.readUTF8Element(CONTENT_TYPE_ELEMENT);
-			_type = ContentAuthenticator.nameToType(strType);
+			_type = SignedInfo.nameToType(strType);
 			if (null == _type) {
 				throw new XMLStreamException("Cannot parse authenticator type: " + strType);
 			}
@@ -198,7 +198,7 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 		}
 		
 		if (!emptyContentType()) {
-			encoder.writeElement(CONTENT_TYPE_ELEMENT, ContentAuthenticator.typeToName(type()));
+			encoder.writeElement(CONTENT_TYPE_ELEMENT, SignedInfo.typeToName(type()));
 		}
 		
 		if (!emptyContentDigest()) {

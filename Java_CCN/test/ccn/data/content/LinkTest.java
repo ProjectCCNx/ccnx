@@ -10,7 +10,7 @@ import test.ccn.data.XMLEncodableTester;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.Link;
-import com.parc.ccn.data.security.ContentAuthenticator;
+import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherID;
@@ -69,7 +69,7 @@ public class LinkTest {
 		las[2] = new LinkAuthenticator(pubID2, new Timestamp(System.currentTimeMillis()),
 									   null, contenthash2);
 		las[3] = new LinkAuthenticator(pubID1, new Timestamp(System.currentTimeMillis()),
-				   ContentAuthenticator.ContentType.LEAF, contenthash1);
+				   SignedInfo.ContentType.LEAF, contenthash1);
 		
 	}
 

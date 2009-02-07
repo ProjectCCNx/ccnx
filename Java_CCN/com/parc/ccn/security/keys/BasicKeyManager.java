@@ -354,7 +354,7 @@ public class BasicKeyManager extends KeyManager {
 			try {
 				if (TrustManager.getTrustManager().matchesRole(
 						locator.name().publisher(), 
-						potentialKey.authenticator().publisherKeyID())) {
+						potentialKey.signedInfo().publisherKeyID())) {
 					// DKS TODO remove the above check
 
 					// First pull the key data. 
@@ -374,7 +374,7 @@ public class BasicKeyManager extends KeyManager {
 							keyObject = potentialKey;
 							theKey = key;
 						} else {
-							if (potentialKey.authenticator().timestamp().after(keyObject.authenticator().timestamp())) {
+							if (potentialKey.signedInfo().timestamp().after(keyObject.signedInfo().timestamp())) {
 								keyObject = potentialKey;
 								theKey = key;
 							}
@@ -387,7 +387,7 @@ public class BasicKeyManager extends KeyManager {
 							keyObject = potentialKey;
 							theKey = key;
 						} else {
-							if (potentialKey.authenticator().timestamp().after(keyObject.authenticator().timestamp())) {
+							if (potentialKey.signedInfo().timestamp().after(keyObject.signedInfo().timestamp())) {
 								keyObject = potentialKey;
 								theKey = key;
 							}

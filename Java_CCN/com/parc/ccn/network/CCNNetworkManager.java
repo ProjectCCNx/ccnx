@@ -485,7 +485,7 @@ public class CCNNetworkManager implements Runnable {
 		}
 		
 		return co;
-		//return CCNRepositoryManager.getRepositoryManager().put(name, authenticator, signature, content);
+		//return CCNRepositoryManager.getRepositoryManager().put(name, signedInfo, signature, content);
 	}
 	
 	public ContentObject get(Interest interest, long timeout) throws IOException, InterruptedException {

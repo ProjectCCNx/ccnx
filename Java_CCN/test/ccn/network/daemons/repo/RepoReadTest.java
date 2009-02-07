@@ -108,7 +108,7 @@ public class RepoReadTest extends LibraryTestBase {
 		ContentObject testContent = library.get(interest, 10000);
 		Assert.assertFalse(testContent == null);
 		Assert.assertEquals(data, new String(testContent.content()));
-		Assert.assertTrue(testContent.authenticator().publisherKeyID().equals(publisher));
+		Assert.assertTrue(testContent.signedInfo().publisherKeyID().equals(publisher));
 	}
 	
 	private void checkNameSpace(String contentName, boolean expected) throws MalformedContentNameStringException, 

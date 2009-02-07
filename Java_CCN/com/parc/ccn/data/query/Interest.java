@@ -105,7 +105,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * and how to handle shorter version of names without
 	 * copying, particularly without 1.6 array ops.
 	 * @param name
-	 * @param authenticator
+	 * @param publisher
 	 */
 	public Interest(ContentName name, 
 			   PublisherID publisher) {
@@ -169,7 +169,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public void responseFilter(byte [] responseFilter) { _responseFilter = responseFilter; }
 	
 	public boolean matches(ContentObject result) {
-		return matches(result, (null != result.authenticator()) ? result.authenticator().publisherKeyID() : null);
+		return matches(result, (null != result.signedInfo()) ? result.signedInfo().publisherKeyID() : null);
 	}
 
 	/**
