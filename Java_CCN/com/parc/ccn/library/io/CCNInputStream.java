@@ -94,16 +94,18 @@ public class CCNInputStream extends CCNAbstractInputStream implements CCNInteres
 	
 	@Override
 	public int available() throws IOException {
+		int available = 0;
 		if (null != _header) {
-			return (int)(_header.length() - (blockIndex()-_header.start())*_header.blockSize() - _blockOffset);
+			available =  (int)(_header.length() - (blockIndex()-_header.start())*_header.blockSize() - _blockOffset);
 		} else if (null != _currentBlock) {
-			return _currentBlock.content().length - _blockOffset;
+			available =  _currentBlock.content().length - _blockOffset;
 		}
-		return 0; /* unknown */
+		Library.logger().info("available(): " + available);
+		return available; /* unknown */
 	}
 	
 	public boolean eof() { 
-		Library.logger().finer("Checking eof: there yet? " + _atEOF);
+		Library.logger().info("Checking eof: there yet? " + _atEOF);
 		return _atEOF; 
 	}
 		
