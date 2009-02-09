@@ -9,7 +9,7 @@ PROGRAMS = ccn_ccnbtoxml ccn_splitccnb ccn_verifysig\
     hashtbtest matrixtest skel_decode_test \
     smoketestclientlib dataresponsetest ccntimestamps \
     encodedecodetest ccndumpnames ccndump ccnrm ccnls ccnslurp \
-    ccnsendchunks ccncatchunks ccncatchunks2 ccnbuzz ccnhexdumpdata \
+    ccnsendchunks ccncatchunks ccncatchunks2 ccnbuzz ccnget ccnhexdumpdata \
     signbenchtest ccndumppcap $(EXPAT_PROGRAMS)
 EXPAT_PROGRAMS = ccn_xmltoccnb
 BROKEN_PROGRAMS =
@@ -26,7 +26,7 @@ CSRC = ccn_buf_decoder.c ccn_dtag_table.c ccn_buf_encoder.c ccn_charbuf.c \
     smoketestclientlib.c ccntimestamps.c ccndump.c ccnrm.c ccndumpnames.c \
     ccnls.c ccnslurp.c \
     ccn_verifysig.c dataresponsetest.c ccn_uri.c  encodedecodetest.c \
-    ccnsendchunks.c ccncatchunks.c ccncatchunks2.c ccnbuzz.c ccnhexdumpdata.c \
+    ccnsendchunks.c ccncatchunks.c ccncatchunks2.c ccnbuzz.c ccnget.c ccnhexdumpdata.c \
     signbenchtest.c ccndumppcap.c
 
 LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_dtag_table.o ccn_schedule.o ccn_matrix.o \
@@ -109,6 +109,9 @@ ccncatchunks2: ccncatchunks2.o
 
 ccnbuzz: ccnbuzz.o
 	$(CC) $(CFLAGS) -o $@ ccnbuzz.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+
+ccnget: ccnget.o
+	$(CC) $(CFLAGS) -o $@ ccnget.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccnhexdumpdata: ccnhexdumpdata.o
 	$(CC) $(CFLAGS) -o $@ ccnhexdumpdata.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
@@ -235,6 +238,9 @@ ccncatchunks2.o: ccncatchunks2.c ../include/ccn/bloom.h \
   ../include/ccn/indexbuf.h ../include/ccn/schedule.h \
   ../include/ccn/uri.h
 ccnbuzz.o: ccnbuzz.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h ../include/ccn/uri.h
+ccnget.o: ccnget.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccnhexdumpdata.o: ccnhexdumpdata.c ../include/ccn/coding.h \

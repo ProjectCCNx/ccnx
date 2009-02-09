@@ -294,6 +294,27 @@ int ccn_run(struct ccn *h, int timeout);
  */
 int ccn_set_run_timeout(struct ccn *h, int timeout);
 
+/*
+ * ccn_get: Get a single matching ContentObject
+ * This is a convenience for getting a single matching ContentObject.
+ * Blocks until a matching ContentObject arrives or there is a timeout.
+ * If h is NULL or ccn_get is called from inside an upcall, a new connection
+ * will be used and upcalls from other requests will not be processed while
+ * ccn_get is active.
+ * The pcobuf and compsbuf arguments may be supplied to save the work of
+ * re-parsing the ContentObject.  Either or both may be NULL if this
+ * information is not actually needed.
+ * Returns 0 for success, -1 for an error.
+ */
+int ccn_get(struct ccn *h,
+            struct ccn_charbuf *name,
+            int prefix_comps,
+            struct ccn_charbuf *interest_template,
+            int timeout_ms,
+            struct ccn_charbuf *resultbuf,
+            struct ccn_parsed_ContentObject *pcobuf,
+            struct ccn_indexbuf *compsbuf);
+
 /***********************************
  * Bulk data
  */

@@ -578,6 +578,8 @@ ccn_refresh_interest(struct ccn *h, struct expressed_interest *interest)
         res = ccn_put(h, interest->interest_msg, interest->size);
         if (res >= 0) {
             interest->outstanding += 1;
+            if (h->now.tv_sec == 0)
+                gettimeofday(&h->now, NULL);
             interest->lasttime = h->now;
         }
     }
@@ -921,3 +923,98 @@ ccn_run(struct ccn *h, int timeout)
     h->running = 0;
     return(res);
 }
+
+/* This is the upcall for implementing ccn_get() */
+struct simple_get_data {
+    struct ccn_closure closure;
+    struct ccn_charbuf *resultbuf;
+    struct ccn_parsed_ContentObject *pcobuf;
+    struct ccn_indexbuf *compsbuf;
+    int res;
+};
+
+static enum ccn_upcall_res
+handle_simple_incoming_content(
+    struct ccn_closure *selfp,
+    enum ccn_upcall_kind kind,
+    struct ccn_upcall_info *info)
+{
+    struct simple_get_data *md = selfp->data;
+    
+    if (kind == CCN_UPCALL_FINAL) {
+        if (selfp != &md->closure)
+            abort();
+        free(md);
+        return(CCN_UPCALL_RESULT_OK);
+    }
+    if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
+        return(selfp->intdata ? CCN_UPCALL_RESULT_REEXPRESS : CCN_UPCALL_RESULT_OK);
+    if (kind != CCN_UPCALL_CONTENT)
+        return(CCN_UPCALL_RESULT_ERR);
+    if (md->resultbuf != NULL) {
+        md->resultbuf->length = 0;
+        ccn_charbuf_append(md->resultbuf,
+                           info->content_ccnb, info->pco->offset[CCN_PCO_E]);
+    }
+    if (md->pcobuf != NULL)
+        memcpy(md->pcobuf, info->pco, sizeof(*md->pcobuf));
+    if (md->compsbuf != NULL) {
+        md->compsbuf->n = 0;
+        ccn_indexbuf_append(md->compsbuf,
+                            info->content_comps->buf, info->content_comps->n);
+    }
+    md->res = 0;
+    ccn_set_run_timeout(info->h, 0);
+    return(CCN_UPCALL_RESULT_OK);
+}
+
+int
+ccn_get(struct ccn *h,
+        struct ccn_charbuf *name,
+        int prefix_comps,
+        struct ccn_charbuf *interest_template,
+        int timeout_ms,
+        struct ccn_charbuf *resultbuf,
+        struct ccn_parsed_ContentObject *pcobuf,
+        struct ccn_indexbuf *compsbuf)
+{
+    struct ccn *orig_h = h;
+    int res;
+    struct simple_get_data *md;
+    
+    if (h == NULL || h->running) {
+        h = ccn_create();
+        if (h == NULL)
+            return(-1);
+        res = ccn_connect(h, NULL);
+        if (res < 0) {
+            ccn_destroy(&h);
+            return(-1);
+        }
+    }
+    md = calloc(1, sizeof(*md));
+    md->resultbuf = resultbuf;
+    md->pcobuf = pcobuf;
+    md->compsbuf = compsbuf;
+    md->res = -1;
+    md->closure.p = &handle_simple_incoming_content;
+    md->closure.data = md;
+    md->closure.intdata = 1; /* tell upcall to re-express if needed*/
+    md->closure.refcount = 1;
+    res = ccn_express_interest(h, name, prefix_comps, &md->closure, interest_template);
+    if (res >= 0)
+        res = ccn_run(h, timeout_ms);
+    if (res >= 0)
+        res = md->res;
+    md->resultbuf = NULL;
+    md->pcobuf = NULL;
+    md->compsbuf = NULL;
+    md->closure.intdata = 0;
+    md->closure.refcount--;
+    if (md->closure.refcount == 0)
+        free(md);
+    if (h != orig_h)
+        ccn_destroy(&h);
+    return(res);
+}
+
