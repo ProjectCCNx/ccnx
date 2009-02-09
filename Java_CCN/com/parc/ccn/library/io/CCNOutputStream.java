@@ -146,11 +146,6 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		long bytesToWrite = len;
 
 		while (bytesToWrite > 0) {
-			if (_blockIndex >= BLOCK_BUF_COUNT) {
-				Library.logger().fine("write: about to sync one tree's worth of blocks (" + BLOCK_BUF_COUNT +") to the network.");
-				flush();
-			}
-
 			if (null == _blockBuffers[_blockIndex]) {
 				_blockBuffers[_blockIndex] = new byte[Header.DEFAULT_BLOCKSIZE];
 				_blockOffset = 0;
@@ -168,8 +163,13 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 
 			if (_blockOffset >= _blockBuffers[_blockIndex].length) {
 				Library.logger().finer("write: finished writing block " + _blockIndex);
-				++_blockIndex;
-				_blockOffset = 0;
+				if (_blockIndex+1 >= BLOCK_BUF_COUNT) {
+					Library.logger().fine("write: about to sync one tree's worth of blocks (" + BLOCK_BUF_COUNT +") to the network.");
+					flush();
+				} else {
+					++_blockIndex;
+					_blockOffset = 0;
+				}
 			}
 		}
 		_totalLength += len;
@@ -218,21 +218,20 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		 * Kludgy fix added by paul r. 1/20/08 - Right now the digest algorithm lower down the chain doesn't like
 		 * null pointers within the blockbuffers. So if this is the case, we create a temporary smaller "blockbuffer"
 		 * with only filled entries
+		 * DKS -- removed kludgy fix. There should be no holes in the 
+		 * blockbuffers, if there are, there is a different bug somewhere
+		 * else.
+		 * There are larger issues with buffers and sync, we should discuss.
 		 * XXX - Can the blockbuffers have holes?
+		 *     DKS: no. The blockCount argument to putMerkleTree is intended to tell
+		 *     it how many of the blockBuffers array it should touch (are non-null).
+		 *     If there are holes, there are a bigger problem.
 		 */
-		int bufferEnd = 0;
-		while (bufferEnd < _blockBuffers.length && null != _blockBuffers[bufferEnd])
-			bufferEnd++;
-		byte [][] buffersToUse = _blockBuffers;
-		if (bufferEnd < _blockBuffers.length) {
-			buffersToUse = new byte[bufferEnd][];
-			System.arraycopy(_blockBuffers, 0, buffersToUse, 0, bufferEnd);
-		}
 	
-		Library.logger().finer("sync: putting merkle tree to the network, " + (_blockIndex+1) + " blocks.");
+		Library.logger().info("sync: putting merkle tree to the network, " + (_blockIndex+1) + " blocks.");
 		// Generate Merkle tree (or other auth structure) and signedInfos and put contents.
 		CCNMerkleTree tree =
-			_library.putMerkleTree(_baseName, _baseBlockIndex, buffersToUse, _blockIndex+1, _baseBlockIndex,
+			_library.putMerkleTree(_baseName, _baseBlockIndex, _blockBuffers, _blockIndex+1, 0,
 								   _timestamp, _publisher, _locator, _signingKey);
 		_roots.add(tree.root());
 		
@@ -241,8 +240,13 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			if (null != _blockBuffers[i])
 				Arrays.fill(_blockBuffers[i], 0, _blockBuffers[i].length, (byte)0);
 		}
-		_baseBlockIndex += _blockIndex;
+		_baseBlockIndex += _blockIndex+1;
 		_blockIndex = 0;
+		// DKS TODO -- look at flush behavior. Arrange it so that
+		// file stream interface flushes only to last block, not partial
+		// block, except on close; so all blocks are complete. Other
+		// streams might want partial blocks.
+		_blockOffset = 0; // if we flush with a partial last block, we still flush it...
 	}
 	
 	protected void writeHeader() throws InvalidKeyException, SignatureException, IOException, InterruptedException {

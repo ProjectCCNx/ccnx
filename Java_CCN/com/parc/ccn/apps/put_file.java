@@ -6,6 +6,7 @@ import java.io.IOException;
 
 import javax.xml.stream.XMLStreamException;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
@@ -42,6 +43,7 @@ public class put_file {
 					usage();
 					return;
 				}
+				Library.logger().info("put_file: putting file " + args[1] + " bytes: " + theFile.length());
 				
 				CCNDescriptor ccnd = library.open(argName, library.getDefaultPublisher(), null, null);
 				do_write(ccnd, theFile);
@@ -96,13 +98,15 @@ public class put_file {
 		int size = BLOCK_SIZE;
 		byte [] buffer = new byte[BLOCK_SIZE];
 		do {
+			Library.logger().info("do_write: " + fis.available() + " bytes left.");
 			if (size > fis.available())
 				size = fis.available();
 			if (size > 0) {
 				fis.read(buffer, 0, size);
 				ccnd.write(buffer, 0, size);
+				Library.logger().info("do_write: wrote " + size + " bytes.");
 			}
-		} while (size > fis.available());
+		} while (fis.available() > 0);
 		ccnd.close();
 	}
 	
