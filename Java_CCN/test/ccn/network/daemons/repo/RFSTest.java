@@ -32,15 +32,14 @@ import com.parc.ccn.network.daemons.repo.RepositoryException;
  *
  */
 
-public class RFSTest {
+public class RFSTest extends RepoTestBase {
 	
 	private static String _fileTestDir = "fileTestDir";
-	private static String _policyTestFile = "test/ccn/network/daemons/repo/PolicyTest.xml";
-	private static String _BadPolicyTestFile = "test/ccn/network/daemons/repo/BadPolicyTest.xml";
 	private static File _fileTest;
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
+		RepoTestBase.setUpBeforeClass();
 		_fileTest = new File(_fileTestDir);
 		FileUtils.deleteDirectory(_fileTest);
 		_fileTest.mkdirs();
@@ -48,11 +47,13 @@ public class RFSTest {
 	
 	@AfterClass
 	public static void cleanup() throws Exception {
+		RepoTestBase.cleanup();
 		FileUtils.deleteDirectory(_fileTest);
 	}
 	
 	@Before
 	public void setUp() throws Exception {
+		super.setUp();
 	}
 	
 	@Test
@@ -181,12 +182,14 @@ public class RFSTest {
 	
 	@Test
 	public void testPolicy() throws Exception {
+		createGoodPolicy(true);
+		createBadPolicy(true);
 		Repository repo = new RFSImpl();
 		try {
-			repo.initialize(new String[] {"-root", _fileTestDir, "-policy", _BadPolicyTestFile});
+			repo.initialize(new String[] {"-root", _fileTestDir, "-policy", _badPolicyFileName});
 			Assert.fail("Bad policy file succeeded");
 		} catch (InvalidParameterException ipe) {}
-		repo.initialize(new String[] {"-root", _fileTestDir, "-policy", _policyTestFile});
+		repo.initialize(new String[] {"-root", _fileTestDir, "-policy", _policyFileName});
 		ContentName name = ContentName.fromNative("/testNameSpace/data1");
 		ContentObject content = CCNLibrary.getContent(name, "Here's my data!".getBytes());
 		repo.saveContent(content);

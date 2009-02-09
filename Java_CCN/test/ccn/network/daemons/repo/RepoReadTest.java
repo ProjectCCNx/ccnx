@@ -1,10 +1,7 @@
 package test.ccn.network.daemons.repo;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.security.SignatureException;
 import java.util.logging.Level;
 
@@ -13,8 +10,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-
-import test.ccn.library.LibraryTestBase;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
@@ -34,7 +29,7 @@ import com.parc.ccn.network.daemons.repo.Repository;
  * and then run the ccnd and the repository with that directory as its root.
  */
 
-public class RepoReadTest extends LibraryTestBase {
+public class RepoReadTest extends RepoTestBase {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
@@ -75,20 +70,10 @@ public class RepoReadTest extends LibraryTestBase {
 	
 	@Test
 	public void testPolicyViaCCN() throws Exception {
-		String hostName;
-		try {
-			hostName = InetAddress.getLocalHost().getHostName();
-		} catch (UnknownHostException e) {
-			hostName = InetAddress.getLocalHost().getHostAddress();
-		}
-		FileInputStream fis = new FileInputStream("test/ccn/network/daemons/repo/PolicyTest.xml");
-		byte [] content = new byte[fis.available()];
-		fis.read(content);
-		fis.close();
-		
+		createGoodPolicy(false);
 		System.out.println("Testing namespace policy setting");
 		checkNameSpace("/repoTest/data2", true);
-		library.put(ContentName.fromNative("/" + hostName + Repository.REPO_POLICY), content);
+		library.put(ContentName.fromNative(Repository.REPO_POLICY), _policyContent);
 		Thread.sleep(1000);
 		checkNameSpace("/repoTest/data3", false);
 		checkNameSpace("/testNameSpace/data1", true);

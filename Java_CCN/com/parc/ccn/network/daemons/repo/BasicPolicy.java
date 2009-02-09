@@ -1,6 +1,10 @@
 package com.parc.ccn.network.daemons.repo;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 
 import javax.xml.namespace.QName;
@@ -11,7 +15,9 @@ import javax.xml.stream.events.Attribute;
 import javax.xml.stream.events.XMLEvent;
 
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
+import com.parc.ccn.library.CCNLibrary;
 
 /**
  * 
@@ -22,11 +28,29 @@ public class BasicPolicy implements Policy {
 	
 	public static final String POLICY = "POLICY";
 	
-	private String _version;
+	private String _version = null;
+	private String _hostName = null;
+	private byte [] _content = null;
+	private boolean hostNameSet = false;
+	
+	public BasicPolicy() {
+		try {
+			_hostName = InetAddress.getLocalHost().getHostName();
+		} catch (UnknownHostException e) {
+			try {
+				_hostName = InetAddress.getLocalHost().getHostAddress();
+			} catch (UnknownHostException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+				return;
+			}
+		}
+	}
 	
 	private enum PolicyValue {
 		VERSION ("VERSION"),
 		NAMESPACE ("NAMESPACE"),
+		HOSTNAME ("HOSTNAME"),
 		UNKNOWN();
 		
 		private String _stringValue = null;
@@ -50,18 +74,30 @@ public class BasicPolicy implements Policy {
 	
 	private ArrayList<ContentName> nameSpace = new ArrayList<ContentName>(0);
 
-	public void update(InputStream stream) throws XMLStreamException {
+	public boolean update(InputStream stream) throws XMLStreamException, IOException {
+		_content = new byte[stream.available()];
+		stream.read(_content);
+		stream.close();
+		ByteArrayInputStream bais = new ByteArrayInputStream(_content);
 		XMLInputFactory factory = XMLInputFactory.newInstance();
-		XMLEventReader reader = factory.createXMLEventReader(stream);
+		XMLEventReader reader = factory.createXMLEventReader(bais);
 		XMLEvent event = reader.nextEvent();
 		_version = null;
+		hostNameSet = false;
 		if (!event.isStartDocument()) {
 			throw new XMLStreamException("Expected start document, got: " + event.toString());
 		}
-		parseXML(reader, null, null, POLICY, false);
+		try {
+			parseXML(reader, null, null, POLICY, false);
+		} catch (RepositoryException e) {
+			return false; // wrong hostname - i.e. not for us
+		}
 		reader.close();
 		if (_version == null)
 			throw new XMLStreamException("No version in policy file");
+		if (!hostNameSet)
+			throw new XMLStreamException("No hostname in policy file");
+		return true;
 	}
 
 	public ArrayList<ContentName> getNameSpace() {
@@ -74,9 +110,10 @@ public class BasicPolicy implements Policy {
 	 * @param expectedValue
 	 * @return
 	 * @throws XMLStreamException
+	 * @throws RepositoryException 
 	 */
 	private XMLEvent parseXML(XMLEventReader reader, XMLEvent event, String value, String expectedValue, boolean started) 
-				throws XMLStreamException {
+				throws XMLStreamException, RepositoryException {
 		if (started) {
 			switch (PolicyValue.valueFromString(value)) {
 			case VERSION:
@@ -124,6 +161,13 @@ public class BasicPolicy implements Policy {
 							throw new XMLStreamException("Malformed value in namespace: " + charValue);
 						}
 						break;
+					case HOSTNAME:
+						charValue = event.asCharacters().getData();
+						String hostName = charValue.trim();
+						if (!hostName.equals(_hostName))
+							throw new RepositoryException("Wrong host");
+						hostNameSet = true;
+						break;
 					default:
 						break;
 					}
@@ -134,5 +178,15 @@ public class BasicPolicy implements Policy {
 			}
 		}
 		return event;
+	}
+
+	public String getHostname() {
+		return _hostName;
+	}
+
+	public ContentObject getPolicyContent() {
+		try {
+			return CCNLibrary.getContent(ContentName.fromNative(Repository.REPO_POLICY), _content);
+		} catch (MalformedContentNameStringException e) {return null;}	// shouldn't happen
 	}
 }

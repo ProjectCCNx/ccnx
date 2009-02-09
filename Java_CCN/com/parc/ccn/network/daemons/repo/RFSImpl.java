@@ -1,18 +1,19 @@
 package com.parc.ccn.network.daemons.repo;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.StringTokenizer;
 import java.util.TreeMap;
+
+import javax.xml.stream.XMLStreamException;
 
 import sun.misc.BASE64Decoder;
 import sun.misc.BASE64Encoder;
@@ -22,13 +23,14 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.WirePacket;
 import com.parc.ccn.data.query.Interest;
+import com.parc.ccn.library.CCNLibrary;
 
 /**
  * An initial implementation of the repository using a file system
  * based repository.  We are using the XMLEncodeable representation to
  * represent content on the disk
  * 
- * Note: This layer purposefully should not make any calls into the
+ * Note: This layer purposefully should not make any non-static calls into the
  * CCN library
  * 
  * @author rasmusse
@@ -36,6 +38,8 @@ import com.parc.ccn.data.query.Interest;
  */
 
 public class RFSImpl implements Repository {
+	
+	public final static String CURRENT_VERSION = "1.0";
 	
 	public final static String META_DIR = ".meta";
 	public final static byte UTF8_COMPONENT = '0';
@@ -59,6 +63,7 @@ public class RFSImpl implements Repository {
 	protected TreeMap<ContentName, ArrayList<File>> _encodedFiles = new TreeMap<ContentName, ArrayList<File>>();
 	
 	public String[] initialize(String[] args) throws RepositoryException {
+		boolean policyFromFile = false;
 		String[] outArgs = args;
 		for (int i = 0; i < args.length; i++) {
 			if (args[i].equals("-root")) {
@@ -67,6 +72,7 @@ public class RFSImpl implements Repository {
 				_repositoryRoot = args[i + 1];
 				i++;
 			} else if (args[i].equals("-policy")) {
+				policyFromFile = true;
 				if (args.length < i + 2)
 					throw new InvalidParameterException();
 				Policy policy = new BasicPolicy();
@@ -86,6 +92,42 @@ public class RFSImpl implements Repository {
 		_repositoryFile.mkdirs();
 		_locker = new RFSLocks(_repositoryRoot + File.separator + META_DIR);
 		constructEncodedMap(new File(_repositoryRoot + File.separator + META_DIR));
+		
+		/*
+		 * Get & check version or create one if there isn't one yet
+		 * TODO - At some point we want to care more about publisher ID, etc. here
+		 */
+		try {
+			ContentObject versionObject = getContent(new Interest(ContentName.fromNative(REPO_VERSION)));
+			if (versionObject == null) {
+				versionObject = CCNLibrary.getContent(ContentName.fromNative(REPO_VERSION), 
+						CURRENT_VERSION.getBytes());
+				saveContent(versionObject);
+			} else {
+				if (!Arrays.equals(CURRENT_VERSION.getBytes(), versionObject.content()))
+					throw new RepositoryException("Incorrect repository version: " 
+							+ new String(versionObject.content()));
+			}
+		} catch (MalformedContentNameStringException e) {}
+		
+		/*
+		 * Read policy file from disk if it exists and we didn't read it in as an argument.
+		 * Otherwise save the new policy to disk.
+		 */
+		if (!policyFromFile) {
+			try {
+				ContentObject policyObject = getContent(new Interest(ContentName.fromNative(REPO_POLICY)));
+				if (policyObject != null) {
+					ByteArrayInputStream bais = new ByteArrayInputStream(policyObject.content());
+					_policy.update(bais);
+					setPolicy(_policy);
+				}
+			} catch (MalformedContentNameStringException e) {} // None of this should happen
+			  catch (XMLStreamException e) {} 
+			  catch (IOException e) {}
+		} else {
+			saveContent(_policy.getPolicyContent());
+		}
 		
 		if (_policy == null) {
 			try {
@@ -562,20 +604,10 @@ public class RFSImpl implements Repository {
 	}
 
 	public Interest getPolicyInterest() {
-		String hostName = null;
 		try {
-			hostName = InetAddress.getLocalHost().getHostName();
-		} catch (UnknownHostException e) {
-			try {
-				hostName = InetAddress.getLocalHost().getHostAddress();
-			} catch (UnknownHostException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-				return null;
-			}
-		}
-		try {
-			return new Interest(ContentName.fromNative("/" + hostName + REPO_POLICY));
+			Interest policyInterest = new Interest(ContentName.fromNative(REPO_POLICY));
+			policyInterest.answerOriginKind(0);
+			return policyInterest;
 		} catch (MalformedContentNameStringException e) {
 			return null;
 		}

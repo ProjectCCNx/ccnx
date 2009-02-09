@@ -16,6 +16,7 @@ import com.parc.ccn.data.query.Interest;
 
 public interface Repository {
 	
+	public static final String REPO_VERSION = "/ccn/repository/version";
 	public static final String REPO_POLICY = "/ccn/repository/policy.xml";
 	
 	/**
