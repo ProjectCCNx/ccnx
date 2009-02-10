@@ -233,6 +233,43 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 		encoder.writeEndElement();   		
 	}
 	
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		final SignedInfo other = (SignedInfo) obj;
+		if (publisherKeyID() == null) {
+			if (other.publisherKeyID() != null)
+				return false;
+		} else if (!publisherKeyID().equals(other.publisherKeyID()))
+			return false;
+		if (timestamp() == null) {
+			if (other.timestamp() != null)
+				return false;
+		} else if (!timestamp().equals(other.timestamp()))
+			return false;
+		if (type() == null) {
+			if (other.type() != null)
+				return false;
+		} else if (!type().equals(other.type()))
+			return false;
+		if (keyLocator() == null) {
+			if (other.keyLocator() != null)
+				return false;
+		} else if (!keyLocator().equals(other.keyLocator()))
+			return false;
+		if (freshnessSeconds() == null) {
+			if (other.freshnessSeconds() != null)
+				return false;
+		} else if (!freshnessSeconds().equals(other.freshnessSeconds()))
+			return false;
+		return true;
+	}
+	
 	public boolean validate() {
 		// We don't do partial matches any more, even though encoder/decoder
 		// is still pretty generous.
