@@ -25,6 +25,10 @@ objtree:
 	done
 	cd $(OBJTREE) && ../configure
 
+install: lib/libccn.a
+	cp -p lib/libccn.a /usr/local/lib/
+	cp -r include/ccn /usr/local/include/
+
 cleanall:
 	find . -type l -print -exec rm '{}' ';'
 
@@ -33,7 +37,7 @@ _manifester:
 	test -d .svn && { type svn >/dev/null 2>/dev/null; } && ( echo svn list -R > _manifester; ) || :
 	test -f _manifester || ( git branch >/dev/null 2>/dev/null && echo git ls-files > _manifester; ) || :
 	test -f _manifester || ( echo false > _manifester )
-	
+
 MANIFEST: _manifester
 	echo MANIFEST > MANIFEST.new
 	sh _manifester | grep -v -e '/$$' -e 'agent/5586.ccnb.gz' >> MANIFEST.new
