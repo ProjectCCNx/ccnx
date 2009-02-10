@@ -1,6 +1,7 @@
 package com.parc.ccn.data.security;
 
 import java.sql.Timestamp;
+import java.util.Arrays;
 import java.util.HashMap;
 
 import javax.xml.stream.XMLStreamException;
@@ -268,6 +269,18 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 		} else if (!freshnessSeconds().equals(other.freshnessSeconds()))
 			return false;
 		return true;
+	}
+	
+	@Override
+	public int hashCode() {
+		final int PRIME = 31;
+		int result = 1;
+		result = PRIME * result + ((_publisher == null) ? 0 : _publisher.hashCode());
+		result = PRIME * result + ((_timestamp == null) ? 0 : _timestamp.hashCode());
+		result = PRIME * result + ((_type == null) ? 0 : _type.hashCode());
+		result = PRIME * result + ((_locator == null) ? 0 : _locator.hashCode());
+		result = PRIME * result + ((_freshnessSeconds == null) ? 0 : _freshnessSeconds.hashCode());
+		return result;
 	}
 	
 	public boolean validate() {
