@@ -1,7 +1,6 @@
 package com.parc.ccn.library;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.security.InvalidKeyException;
 import java.security.InvalidParameterException;
 import java.security.NoSuchAlgorithmException;
@@ -27,17 +26,16 @@ import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.Signature;
+import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.io.CCNDescriptor;
 import com.parc.ccn.network.CCNNetworkManager;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.crypto.CCNMerkleTree;
 import com.parc.ccn.security.keys.KeyManager;
-import com.parc.security.crypto.DigestHelper;
 
 /**
  * An implementation of the basic CCN library.
@@ -1125,7 +1123,8 @@ public class CCNLibrary extends CCNBase {
 		CCNMerkleTree tree = 
 			putMerkleTree(fragmentBaseName, baseFragment(),
 						  contentBlocks, contentBlocks.length, 
-						  baseFragment(), timestamp, publisher, locator, signingKey);
+						  0, contentBlocks[contentBlocks.length-1].length, 
+						  timestamp, publisher, locator, signingKey);
 		
 		// construct the headerBlockContents;
 		byte [] contentDigest = CCNDigestHelper.digest(contents);
@@ -1218,9 +1217,63 @@ public class CCNLibrary extends CCNBase {
 		return ContentName.fromNative(fragmentRoot(name), FRAGMENT_MARKER);
 	}
 	
+	/**
+	 * Puts a single block of content using a fragment naming convention.
+	 * @param name
+	 * @param fragmentNumber
+	 * @param content
+	 * @param timestamp
+	 * @param publisher
+	 * @param locator
+	 * @param signingKey
+	 * @return
+	 * @throws IOException 
+	 * @throws NoSuchAlgorithmException 
+	 * @throws SignatureException 
+	 * @throws InvalidKeyException 
+	 */
+	public ContentObject putFragment(ContentName name, int fragmentNumber, byte [] contents,
+									 Timestamp timestamp, PublisherKeyID publisher, KeyLocator locator,
+									 PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+		if (null == signingKey)
+			signingKey = keyManager().getDefaultSigningKey();
+
+		if (null == locator)
+			locator = keyManager().getKeyLocator(signingKey);
+		
+		if (null == publisher) {
+			publisher = keyManager().getPublisherKeyID(signingKey);
+		}		
+
+		// DKS TODO -- non-string integers in names
+		// DKS TODO -- change fragment markers
+		return put(ContentName.fromNative(fragmentBase(fragmentRoot(name)),
+								   						Integer.toString(fragmentNumber)),
+				   contents, ContentType.FRAGMENT, publisher, locator, signingKey);
+	}
+	
+	/**
+	 * Puts an entire Merkle tree worth of content using fragment naming conventions.
+	 * @param name
+	 * @param baseNameIndex
+	 * @param contentBlocks array of blocks of data, not all may be used
+	 * @param blockCount how many blocks of the array to use - number of leaves in the tree
+	 * @param lastBlockLength last block may not be full of data
+	 * @param baseBlockIndex
+	 * @param timestamp
+	 * @param publisher
+	 * @param locator
+	 * @param signingKey
+	 * @return
+	 * @throws InvalidKeyException
+	 * @throws SignatureException
+	 * @throws NoSuchAlgorithmException
+	 * @throws IOException
+	 */
 	public CCNMerkleTree putMerkleTree(
 			ContentName name, int baseNameIndex,
-			byte [][] contentBlocks, int blockCount, int baseBlockIndex, 
+			byte [][] contentBlocks, int blockCount, 
+			int baseBlockIndex, int lastBlockLength,
 			Timestamp timestamp,
 			PublisherKeyID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
@@ -1235,25 +1288,19 @@ public class CCNLibrary extends CCNBase {
 			publisher = keyManager().getPublisherKeyID(signingKey);
 		}		
 		
-		byte [] md5 = DigestHelper.digest("MD5", contentBlocks);
-		int totallength = 0;
-		for (byte [] block: contentBlocks) {
-			totallength += block.length;
-		}
-		Library.logger().info("putMerkleTree: original content length " + totallength + " hash: 0x" + new BigInteger(1, md5).toString(16));
-		
 		// Digest of complete contents
 		// If we're going to unique-ify the block names
 		// (or just in general) we need to incorporate the names
 		// and signedInfos in the MerkleTree blocks. 
 		// For now, this generates the root signature too, so can
 		// ask for the signature for each block.
+		// DKS TODO -- change fragment markers
     	CCNMerkleTree tree = 
     		new CCNMerkleTree(fragmentBase(fragmentRoot(name)), baseNameIndex,
     						  new SignedInfo(publisher, timestamp, ContentType.FRAGMENT, locator),
-    						  contentBlocks, false, blockCount, baseBlockIndex, signingKey);
+    						  contentBlocks, false, blockCount, baseBlockIndex, lastBlockLength, signingKey);
 
-		for (int i = 0; i < blockCount; i++) {
+		for (int i = 0; i < blockCount-1; i++) {
 			try {
 				Library.logger().info("putMerkleTree: writing block " + i + " of " + blockCount + " to name " + tree.blockName(i));
 				put(tree.blockName(i), tree.blockSignedInfo(i), 
@@ -1264,6 +1311,25 @@ public class CCNLibrary extends CCNBase {
 				throw e;
 			}
 		}
+		// last block
+		byte [] lastBlock;
+		if (lastBlockLength < contentBlocks[blockCount-1].length) {
+			lastBlock = new byte[lastBlockLength];
+			System.arraycopy(contentBlocks[blockCount-1], 0, lastBlock, 0, lastBlockLength);
+		} else {
+			lastBlock = contentBlocks[blockCount-1];
+		}
+		try {
+			Library.logger().info("putMerkleTree: writing last block of " + blockCount + " to name " + tree.blockName(blockCount-1));
+			put(tree.blockName(blockCount-1), tree.blockSignedInfo(blockCount-1), 
+				lastBlock, tree.blockSignature(blockCount-1));
+		} catch (IOException e) {
+			Library.logger().warning("This should not happen: we cannot put our own last block!");
+			Library.warningStackTrace(e);
+			throw e;
+		}
+		
+		
 		// Caller needs both root signature and root itself. For now, give back the tree.
 		return tree;
 	}

@@ -77,7 +77,7 @@ public class MerkleTreeTest {
 	
 	public static void testTree(byte [][] content, int count, boolean digest) {
 		// Generate a merkle tree. Verify each path for the content.
-		MerkleTree tree = new MerkleTree(content, digest, count, 0);
+		MerkleTree tree = new MerkleTree(content, digest, count, 0, content[count-1].length);
 				
 		MerklePath [] paths = new MerklePath[count];
 		for (int i=0; i < count; ++i) {

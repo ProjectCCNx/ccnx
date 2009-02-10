@@ -236,8 +236,8 @@ public class LibraryTestBase {
 				((CCNLibrary)library).getNetworkManager().shutdown();
 			} catch (Throwable ex) {
 				error = ex;
-				Library.logger().finer("Exception in run: " + ex.getClass().getName() + " message: " + ex.getMessage());
-				Library.logStackTrace(Level.FINEST, ex);
+				Library.logger().warning("Exception in run: " + ex.getClass().getName() + " message: " + ex.getMessage());
+				Library.logStackTrace(Level.WARNING, ex);
 			}
 		}
 	}

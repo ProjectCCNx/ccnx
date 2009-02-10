@@ -81,7 +81,8 @@ public class CCNMerkleTree extends MerkleTree {
 			byte[][] contentBlocks,
 			boolean isDigest,
 			int blockCount,
-			int blockOffset,
+			int baseBlockIndex,
+			int lastBlockLength,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
 		// Allocate node array
 		super(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, blockCount);
@@ -92,7 +93,7 @@ public class CCNMerkleTree extends MerkleTree {
 		_signedInfo = authenticator;
 
 		// Computes leaves and tree.
-		initializeTree(contentBlocks, isDigest, blockOffset);
+		initializeTree(contentBlocks, isDigest, baseBlockIndex, lastBlockLength);
 		
 		_rootSignature = computeRootSignature(root(), signingKey);
 	}
@@ -108,7 +109,8 @@ public class CCNMerkleTree extends MerkleTree {
 	 * @param contentBlocks
 	 * @param isDigest
 	 * @param blockCount
-	 * @param baseBlockIndex
+	 * @param baseBlockIndex which block in the contentBlocks array to start from
+	 * @param lastBlockBytes how many bytes of the last block to use
 	 * @throws NoSuchAlgorithmException 
 	 * @throws SignatureException 
 	 * @throws InvalidKeyException 
@@ -120,9 +122,10 @@ public class CCNMerkleTree extends MerkleTree {
 			boolean isDigest,
 			int blockCount,
 			int baseBlockIndex, 
+			int lastBlockBytes,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
 		// Computes leaves and tree.
-		super(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, contentBlocks, isDigest, blockCount, baseBlockIndex);
+		super(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, contentBlocks, isDigest, blockCount, baseBlockIndex, lastBlockBytes);
 		
 		_blockNames = nodeNames;
 		_signedInfo = authenticator;
@@ -152,6 +155,7 @@ public class CCNMerkleTree extends MerkleTree {
 	}
 	
 	protected ContentName computeName(int leafIndex) {
+		// DKS TODO -- non-string integers in names
 		return ContentName.fromNative(baseName(), Integer.toString(baseNameIndex() + leafIndex));
 	}
 	
@@ -209,17 +213,25 @@ public class CCNMerkleTree extends MerkleTree {
 	 * @return
 	 * @throws  
 	 */
-	protected byte [] computeBlockDigest(int leafIndex, int blockOffset, byte [][] contentBlocks) {
+	protected byte [] computeBlockDigest(int leafIndex, int baseBlockIndex, byte [][] contentBlocks, int lastBlockBytes) {
 
 		// Computing the leaf digest.
 		//new XMLEncodable[]{name, signedInfo}, new byte[][]{content},
 		
 		byte[] blockDigest = null;
+		int index = leafIndex + baseBlockIndex;
+		
+		byte[] content = contentBlocks[index];
+		if ((index == (contentBlocks.length-1)) && (lastBlockBytes < contentBlocks[index].length)) {
+			// short last block
+			content = new byte[lastBlockBytes]; // easier than passing this info all the way down...
+			System.arraycopy(contentBlocks[index], 0, content, 0, lastBlockBytes);
+		}
 		try {
 			blockDigest = CCNDigestHelper.digest(
 									CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, 
 									ContentObject.prepareContent(blockName(leafIndex), blockSignedInfo(leafIndex),
-																	contentBlocks[leafIndex + blockOffset]));
+																	content));
 		} catch (XMLStreamException e) {
 			Library.logger().info("Exception in computeBlockDigest, leaf: " + leafIndex + " out of " + numLeaves() + " type: " + e.getClass().getName() + ": " + e.getMessage());
 			// DKS todo -- what to throw?

@@ -114,7 +114,9 @@ public class CCNMerkleTreeTest {
 			// TODO DKS Need to do offset versions with different ranges of fragments
 			// Generate a merkle tree. Verify each path for the content.
 			CCNMerkleTree tree = new CCNMerkleTree(theName, 0, new SignedInfo(publisher, null, nameLoc),
-													content, digest, count, 0, pair.getPrivate());
+													content, digest, count, 0, 
+													content[count-1].length,
+													pair.getPrivate());
 		
 			System.out.println("Constructed tree of " + count + " blocks (of " + content.length + "), numleaves: " + 
 										tree.numLeaves() + " max pathlength: " + tree.maxDepth());

@@ -45,7 +45,7 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 
 	protected int readInternal(byte [] buf, int offset, int len) throws IOException {
 		
-		Library.logger().info("CCNInputStream: reading " + len + " bytes into buffer of length " + 
+		Library.logger().info("CCNBlockInputStream: reading " + len + " bytes into buffer of length " + 
 				((null != buf) ? buf.length : "null") + " at offset " + offset);
 		// is this the first block?
 		if (null == _currentBlock) {
@@ -74,6 +74,7 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 			System.arraycopy(_currentBlock.content(), _blockOffset, buf, offset, readCount);
 		}
 		_blockOffset += readCount;
+		Library.logger().info("CCNBlockInputStream: read " + readCount + " bytes from block " + _currentBlock.name());
 		return readCount;
 	}
 }

@@ -49,6 +49,7 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 	protected int _blockWidth = DEFAULT_INCREMENT; // increment for fixed-width block naming
 	protected int _blockScale = DEFAULT_SCALE;
 	protected int _bytesWritten = 0; // byte count for offset
+	protected SignedInfo.ContentType _type;
 	
 	/**
 	 * Default, fixed increment, sequential-numbered blocks (unless overridden on write).

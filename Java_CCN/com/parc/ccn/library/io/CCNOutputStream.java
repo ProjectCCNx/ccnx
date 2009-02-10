@@ -48,7 +48,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	protected int _totalLength = 0;
 	protected int _blockOffset = 0; // offset into current block
 	protected byte [][] _blockBuffers = null;
-	protected int _baseBlockIndex; // base index of current set of block buffers.
+	protected int _baseNameIndex; // base name index of current set of block buffers.
 	protected int _blockSize = Header.DEFAULT_BLOCKSIZE;
 	
 	protected Timestamp _timestamp; // timestamp we use for writing, set to first time we write
@@ -89,7 +89,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		// fragments. 
 		_baseName = nameToOpen;
 		_blockBuffers = new byte[BLOCK_BUF_COUNT][];
-		_baseBlockIndex = CCNLibrary.baseFragment();
+		_baseNameIndex = CCNLibrary.baseFragment();
 		
 		_dh = new CCNDigestHelper();
 	}
@@ -111,8 +111,12 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 
 	@Override
 	public void flush() throws IOException {
+		flush(false); // if there is a partial block, don't flush it
+	}
+	
+	protected void flush(boolean flushLastBlock) throws IOException {
 		try {
-			flushToNetwork();
+			flushToNetwork(flushLastBlock);
 		} catch (InvalidKeyException e) {
 			throw new IOException("Cannot sign content -- invalid key!: " + e.getMessage());
 		} catch (SignatureException e) {
@@ -155,33 +159,35 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			long toWriteNow = (thisBufAvail > bytesToWrite) ? bytesToWrite : thisBufAvail;
 
 			System.arraycopy(buf, (int)offset, _blockBuffers[_blockIndex], (int)_blockOffset, (int)toWriteNow);
-			_dh.update(buf, (int) offset, (int)toWriteNow);
+			_dh.update(buf, (int) offset, (int)toWriteNow); // add to running digest of data
 
-			bytesToWrite -= toWriteNow; 
-			_blockOffset += toWriteNow;
-			Library.logger().finer("write: added " + toWriteNow + " bytes to block. blockIndex: " + _blockIndex + " ( " + (BLOCK_BUF_COUNT-_blockIndex-1) + " left)  blockOffset: " + _blockOffset + "( " + (thisBufAvail - toWriteNow) + " left in block).");
+			bytesToWrite -= toWriteNow; // amount of data left to write in current call
+			_blockOffset += toWriteNow; // write offset into current block buffer
+			offset += toWriteNow; // read offset into input buffer
+			_totalLength += toWriteNow; // increment here so we can write log entries on partial writes
+			Library.logger().info("write: added " + toWriteNow + " bytes to block. blockIndex: " + _blockIndex + " ( " + (BLOCK_BUF_COUNT-_blockIndex-1) + " left)  blockOffset: " + _blockOffset + "( " + (thisBufAvail - toWriteNow) + " left in block), " + _totalLength + " written.");
 
 			if (_blockOffset >= _blockBuffers[_blockIndex].length) {
-				Library.logger().finer("write: finished writing block " + _blockIndex);
+				Library.logger().info("write: finished writing block " + _blockIndex);
 				if (_blockIndex+1 >= BLOCK_BUF_COUNT) {
-					Library.logger().fine("write: about to sync one tree's worth of blocks (" + BLOCK_BUF_COUNT +") to the network.");
-					flush();
+					// We're out of buffers. Time to flush to the network.
+					Library.logger().info("write: about to sync one tree's worth of blocks (" + BLOCK_BUF_COUNT +") to the network.");
+					flush(); // will reset _blockIndex and _blockOffset
 				} else {
-					++_blockIndex;
+					++_blockIndex; // move to next block buffer
 					_blockOffset = 0;
 				}
 			}
 		}
-		_totalLength += len;
 		return 0;
 	}
 	
 	protected void closeNetworkData() throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InterruptedException {
-		// Special case; if we don't need to fragment, don't. Can't
-		// do this in sync(), as we can't tell a manual sync from a close.
-		// Though that means a manual sync(); close(); on a short piece of
-		// content would end up with unnecessary fragmentation...
-		if ((_baseBlockIndex == CCNLibrary.baseFragment()) && 
+		// Special case; if we don't need to fragment, don't; write a single block
+		// with no header in the place we would normally write the header. Can't
+		// do this in flush(), as we wouldn't know here whether to write a header or
+		// not, and flush() wouldn't know not to use a fragment marker in the name.
+		if ((_baseNameIndex == CCNLibrary.baseFragment()) && 
 				((_blockIndex == 0) || ((_blockIndex == 1) && (_blockOffset == 0)))) {
 			// maybe need put with offset and length
 			if ((_blockIndex == 1) || (_blockOffset == _blockBuffers[0].length)) {
@@ -194,25 +200,28 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 				_library.put(_baseName, tempBuf, _type, _publisher, _locator, _signingKey);
 			}
 		} else {
-			// DKS TODO Needs to cope with partial last block.
-			flush();
+			Library.logger().info("closeNetworkData: final flush, wrote " + _totalLength + " bytes.");
+			flush(true); // true means write out the partial last block, if there is one
 			writeHeader();
 		}
 	}
 
 	/** 
-	 * DKS TODO: make it easier to write streams with block names that say correspond
-	 *  to byte or time offsets... Right now this API focuses on writing fragmented files.
+	 * @param flushLastBlock Do we flush a partially-filled last block in the current set
+	 *   of byte buffers? Not normally, we want to fill blocks. So if a user calls a manual
+	 *   flush(), we want to flush all full buffers, but not a last partial -- readers of
+	 *   this block-fragmented content (other streams make other sorts of fragments, this one
+	 *   is designed for files of same block size) expect all fragments but the last to be
+	 *   the same size. The only time we flush a last partial is on close(), when it is the
+	 *   last block of the data. This flag, passed in only by internal methods, tells us it's
+	 *   time to do that.
 	 * @throws InvalidKeyException
 	 * @throws SignatureException
 	 * @throws NoSuchAlgorithmException
 	 * @throws InterruptedException
 	 * @throws IOException
 	 */
-	protected void flushToNetwork() throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException {
-		// DKS TODO needs to cope with partial last block. 
-		if (null == _timestamp)
-			_timestamp = SignedInfo.now();
+	protected void flushToNetwork(boolean flushLastBlock) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException {		// DKS TODO needs to cope with partial last block. 
 		
 		/**
 		 * Kludgy fix added by paul r. 1/20/08 - Right now the digest algorithm lower down the chain doesn't like
@@ -227,26 +236,91 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		 *     it how many of the blockBuffers array it should touch (are non-null).
 		 *     If there are holes, there are a bigger problem.
 		 */
-	
-		Library.logger().info("sync: putting merkle tree to the network, " + (_blockIndex+1) + " blocks.");
-		// Generate Merkle tree (or other auth structure) and signedInfos and put contents.
-		CCNMerkleTree tree =
-			_library.putMerkleTree(_baseName, _baseBlockIndex, _blockBuffers, _blockIndex+1, 0,
-								   _timestamp, _publisher, _locator, _signingKey);
-		_roots.add(tree.root());
 		
-		// Set contents of blocks to 0
-		for (int i=0; i < _blockBuffers.length; ++i) {
+		/**
+		 * Partial last block handling. If we are in the middle of writing a file, we only
+		 * flush complete blocks. We can be on a complete block boundary in one of two ways,
+		 * either _blockOffset = 0, and _blockIndex is the count of blocks to write, or
+		 * _blockOffset >= the length of the current block, and _blockIndex+1 is the count
+		 * of blocks to write. Rather than requiring the caller to promise to only use
+		 * one of these options, handle both, by collapsing them into a single case.
+		 */
+		if (0 == _blockOffset) {
+			if (0 == _blockIndex) {
+				// nothing to write
+				return;
+			}
+			_blockIndex -= 1;
+			_blockOffset = _blockBuffers[_blockIndex].length;
+		} else if ((0 == _blockIndex) && (_blockOffset < _blockBuffers[_blockIndex].length) && (!flushLastBlock)) {
+			// only a partial block written, and we're not flushing those yet, nothing to write
+			return;
+		}
+	
+		if (null == _timestamp)
+			_timestamp = SignedInfo.now();
+		
+		// Two cases: if we're flushing only a single block, we can put it out with a 
+		// straight signature without a Merkle Tree. The reading/verification code will
+		// cope just fine with a single file written in a mix of MHT and straight signature
+		int blockWriteCount = _blockIndex; // default -- skip partial
+		boolean preservePartial = false;
+		// verified blocks.
+		if (0 == _blockIndex) {
+			// single block to write. if we get here, it should be a full block. We only write
+			// partials in response to close(), and close() on a single-block write is a 
+			// single-block file which is handled separately. warn.
+			blockWriteCount++;
+			
+			Library.logger().info("flush: putting single block to the network.");
+			
+			if (_blockOffset < _blockBuffers[_blockIndex].length) {
+				Library.logger().warning("flush(): asked to write last partial block of a single block file: " + _blockOffset + " bytes, block total is " + _blockBuffers[_blockIndex].length + ", should have been written as a raw single-block file by close()!");
+				byte [] tempBuf = new byte[_blockOffset];
+				System.arraycopy(_blockBuffers[_blockIndex],0,tempBuf,0,_blockOffset);
+				_library.putFragment(_baseName, _baseNameIndex, tempBuf, _timestamp, _publisher, _locator, _signingKey);
+			} else {
+				_library.putFragment(_baseName, _baseNameIndex, _blockBuffers[_blockIndex], _timestamp, _publisher, _locator, _signingKey);				
+			}
+		} else {
+			// Now, we have a set of buffers. Do we have a partial last block we want to preserve?
+			// We know that _blockOffset points into a partially or completely full block, not at the
+			// bottom of the next block (see above). We also know we have at least 2 blocks.
+			int lastBlockSize = _blockBuffers[_blockIndex-1].length;
+			if (flushLastBlock || (_blockOffset >= _blockBuffers[_blockIndex].length)) {
+				// last block is full or we're flushing
+				blockWriteCount++;
+				lastBlockSize = _blockOffset;
+			} else {
+				preservePartial = true;
+			}
+						
+			Library.logger().info("flush: putting merkle tree to the network, " + (blockWriteCount) + " blocks.");
+			// Generate Merkle tree (or other auth structure) and signedInfos and put contents.
+			// We always flush all the blocks starting from 0, so the baseBlockIndex is always 0.
+			CCNMerkleTree tree =
+				_library.putMerkleTree(_baseName, _baseNameIndex, _blockBuffers, blockWriteCount, 0, lastBlockSize,
+								   		_timestamp, _publisher, _locator, _signingKey);
+			_roots.add(tree.root());
+		}
+		
+		int startEraseBlock = 0;
+		if (preservePartial) {
+			startEraseBlock = 1;
+			System.arraycopy(_blockBuffers[_blockIndex], 0, _blockBuffers[0], 0, _blockOffset);
+			Arrays.fill(_blockBuffers[0], _blockOffset, _blockBuffers[0].length, (byte)0);
+		}
+		// Set contents of blocks to 0, except potentially first.
+		for (int i=startEraseBlock; i < _blockBuffers.length; ++i) {
 			if (null != _blockBuffers[i])
 				Arrays.fill(_blockBuffers[i], 0, _blockBuffers[i].length, (byte)0);
 		}
-		_baseBlockIndex += _blockIndex+1;
-		_blockIndex = 0;
-		// DKS TODO -- look at flush behavior. Arrange it so that
-		// file stream interface flushes only to last block, not partial
-		// block, except on close; so all blocks are complete. Other
-		// streams might want partial blocks.
-		_blockOffset = 0; // if we flush with a partial last block, we still flush it...
+		
+		// Increment names
+		_baseNameIndex += blockWriteCount;
+		_blockIndex = 0; // we always move down to block 0, even if we preserve a partial
+		if (!preservePartial)
+			_blockOffset = 0; 
 	}
 	
 	protected void writeHeader() throws InvalidKeyException, SignatureException, IOException, InterruptedException {

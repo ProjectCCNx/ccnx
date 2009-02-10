@@ -71,14 +71,15 @@ public class MerkleTree {
 	 * 	  with our default algorithm (true)? (default algorithm: DigestHelper.DEFAULT_DIGEST_ALGORITHM)
 	 */
 	public MerkleTree(String algorithm, 
-					  byte [][] contentBlocks, boolean isDigest, int blockCount, int blockOffset) {
+					  byte [][] contentBlocks, boolean isDigest, int blockCount, 
+					  int baseBlockIndex, int lastBlockBytes) {
 		this(algorithm, blockCount);
 		
-		initializeTree(contentBlocks, isDigest, blockOffset);
+		initializeTree(contentBlocks, isDigest, baseBlockIndex, lastBlockBytes);
 	}
 	
-	public MerkleTree(byte [][] contentBlocks, boolean isDigest, int blockCount, int blockOffset) {
-		this(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, contentBlocks, isDigest, blockCount, blockOffset);
+	public MerkleTree(byte [][] contentBlocks, boolean isDigest, int blockCount, int baseBlockIndex, int lastBlockBytes) {
+		this(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, contentBlocks, isDigest, blockCount, baseBlockIndex, lastBlockBytes);
 	}
 	
 	/**
@@ -86,11 +87,11 @@ public class MerkleTree {
 	 * building tree.
 	 * @return
 	 */
-	protected void initializeTree(byte [][] contentBlocks, boolean isDigest, int blockOffset) {
-		if ((blockOffset < 0) || (contentBlocks.length-blockOffset < numLeaves()))
-			throw new IllegalArgumentException("MerkleTree: cannot build tree from more blocks than given! Have " + (contentBlocks.length-blockOffset) + " blocks, asked to use: " + (numLeaves()));
+	protected void initializeTree(byte [][] contentBlocks, boolean isDigest, int baseBlockIndex, int lastBlockBytes) {
+		if ((baseBlockIndex < 0) || (contentBlocks.length-baseBlockIndex < numLeaves()))
+			throw new IllegalArgumentException("MerkleTree: cannot build tree from more blocks than given! Have " + (contentBlocks.length-baseBlockIndex) + " blocks, asked to use: " + (numLeaves()));
 		
-		computeLeafValues(contentBlocks, isDigest, blockOffset);
+		computeLeafValues(contentBlocks, isDigest, baseBlockIndex, lastBlockBytes);
 		computeNodeValues();		
 	}
 	
@@ -292,15 +293,18 @@ public class MerkleTree {
 	/**
 	 * Compute the raw digest of the content blocks, and format them appropriately.
 	 * @param contentBlocks
+	 * @param baseBlockIndex first block in the array to use
+	 * @param lastBlockLength number of bytes of the last block to use; N/A if isDigest is true
 	 * @param isDigest if the content is already digested (must use the default digest algorithm, for
 	 * 	now; we can change that if there is  a need).
 	 */
-	protected void computeLeafValues(byte [][] contentBlocks, boolean isDigest, int blockOffset) {
+	protected void computeLeafValues(byte [][] contentBlocks, boolean isDigest, int baseBlockIndex, int lastBlockBytes) {
 		// Hash the leaves
 		for (int i=0; i < numLeaves(); ++i) {
 			_tree[leafNodeIndex(i)-1] = 
 				new DEROctetString(
-						(isDigest ? contentBlocks[i+blockOffset] : computeBlockDigest(i, blockOffset, contentBlocks)));
+						(isDigest ? contentBlocks[i+baseBlockIndex] : 
+									computeBlockDigest(i, baseBlockIndex, contentBlocks, lastBlockBytes)));
 		}
 	}
 	
@@ -339,14 +343,29 @@ public class MerkleTree {
 	 * Separate this out so that it can be overridden.
 	 * @param leafIndex
 	 * @param contentBlocks
+	 * @param lastBlockBytes the number of bytes of the last block to use, can be smaller than
+	 *    the number available
 	 * @return
 	 */
-	protected byte [] computeBlockDigest(int leafIndex, int blockOffset, byte [][] contentBlocks) {
+	protected byte [] computeBlockDigest(int leafIndex, int blockOffset, byte [][] contentBlocks, int lastBlockBytes) {
+		if ((leafIndex + blockOffset) == (contentBlocks.length-1))
+			computeBlockDigest(_algorithm, contentBlocks[leafIndex+blockOffset], 0, lastBlockBytes);
 		return computeBlockDigest(_algorithm, contentBlocks[leafIndex+blockOffset]);
 	}
 	
 	public static byte [] computeBlockDigest(String algorithm, byte [] block) {
 		return CCNDigestHelper.digest(algorithm, block);		
+	}
+
+	public static byte [] computeBlockDigest(String algorithm, byte [] block, int offset, int length) {
+		byte [] tmpBuf = null;
+		if ((offset != 0) || (length != block.length)) {
+			tmpBuf = new byte[length];
+			System.arraycopy(block, offset, tmpBuf, 0, length);
+		} else {
+			tmpBuf = block;
+		}
+		return CCNDigestHelper.digest(algorithm, tmpBuf);		
 	}
 
 	public static byte [] computeBlockDigest(byte [] block) {
