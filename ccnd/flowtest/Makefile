@@ -1,7 +1,7 @@
 CFLAGS=	$(COPT) $(CWARNFLAGS) $(CPREFLAGS) $(PLATCFLAGS)
+INSTALLED_PROGRAMS=
 PROGRAMS=	flowtest
 CSRC=		flowtest.c
-COPT=		-g
 
 default all: $(PROGRAMS)
 

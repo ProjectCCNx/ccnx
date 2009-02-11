@@ -5,15 +5,22 @@ CPREFLAGS = -I../include
 CCNLIBDIR = .
 COPT = -g
 
-PROGRAMS = ccn_ccnbtoxml ccn_splitccnb ccn_verifysig\
+INSTALLED_PROGRAMS = \
+    ccn_ccnbtoxml ccn_splitccnb ccntimestamps ccndumpnames ccnrm ccnls ccnslurp \
+    ccnsendchunks ccncatchunks ccncatchunks2 \
+    ccnget ccnhexdumpdata $(EXPAT_PROGRAMS)
+
+PROGRAMS = $(INSTALLED_PROGRAMS) \
+    ccn_verifysig \
     hashtbtest matrixtest skel_decode_test \
-    smoketestclientlib dataresponsetest ccntimestamps \
-    encodedecodetest ccndumpnames ccndump ccnrm ccnls ccnslurp \
-    ccnsendchunks ccncatchunks ccncatchunks2 ccnbuzz ccnget ccnhexdumpdata \
-    signbenchtest ccndumppcap $(EXPAT_PROGRAMS)
+    smoketestclientlib dataresponsetest  \
+    encodedecodetest  ccndump  \
+    ccnbuzz  \
+    signbenchtest ccndumppcap
+
 EXPAT_PROGRAMS = ccn_xmltoccnb
 BROKEN_PROGRAMS =
-DEBRIS = libccn2.a
+DEBRIS = 
 CSRC = ccn_buf_decoder.c ccn_dtag_table.c ccn_buf_encoder.c ccn_charbuf.c \
     ccn_indexbuf.c ccn_coding.c ccn_client.c \
     ccn_ccnbtoxml.c ccn_xmltoccnb.c ccn_splitccnb.c \
@@ -29,10 +36,19 @@ CSRC = ccn_buf_decoder.c ccn_dtag_table.c ccn_buf_encoder.c ccn_charbuf.c \
     ccnsendchunks.c ccncatchunks.c ccncatchunks2.c ccnbuzz.c ccnget.c ccnhexdumpdata.c \
     signbenchtest.c ccndumppcap.c
 
+LIBS = libccn.a
 LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_dtag_table.o ccn_schedule.o ccn_matrix.o \
     ccn_buf_decoder.o ccn_uri.o ccn_buf_encoder.o ccn_bloom.o ccn_name_util.o ccn_digest.o ccn_keystore.o ccn_signing.o ccn_match.o hashtb.o ccn_merkle_path_asn1.o ccn_bulkdata.o
 
 default: lib $(PROGRAMS)
+
+install: install_headers
+install_headers:
+	test -d $(INSTALL_INCLUDE) && mkdir -p $(INSTALL_INCLUDE)/ccn && cp ../include/ccn/*.h $(INSTALL_INCLUDE)/ccn	
+
+uninstall: uninstall_headers
+uninstall_headers:
+	$(RM) -r $(INSTALL_INCLUDE)/ccn
 
 shlib: $(SHLIBNAME)
 

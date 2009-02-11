@@ -3,7 +3,7 @@ SUBDIRS = lib agent udplink flowtest python
 OBJTREE = obj.`uname`
 MAKEF =  -f ../conf.mk -f Makefile -f ../conf.mk -f ../subr.mk
 
-default all clean depend coverage test shared:
+default all clean depend coverage test shared install uninstall:
 	test -f conf.mk || touch conf.mk
 	test -d include/ccn || (test -d ../include/ccn && mkdir -p include && ln -s ../../include/ccn include/ccn)
 	test -f subr.mk || (test -f ../subr.mk && ln -s ../subr.mk)
@@ -24,10 +24,6 @@ objtree:
 	     || exit 1);						\
 	done
 	cd $(OBJTREE) && ../configure
-
-install: lib/libccn.a
-	cp lib/libccn.a /usr/local/lib/
-	mkdir -p /usr/local/include/ccn && cp include/ccn/*.h  /usr/local/include/ccn/.
 
 cleanall:
 	find . -type l -print -exec rm '{}' ';'

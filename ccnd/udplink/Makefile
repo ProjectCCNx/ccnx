@@ -4,7 +4,8 @@ CPREFLAGS = -I../include
 COPT = -g 
 CCNLIBDIR = ../lib
 
-PROGRAMS = udplink
+INSTALLED_PROGRAMS = udplink
+PROGRAMS = $(INSTALLED_PROGRAMS)
 CSRC = udplink.c
 
 default all: $(PROGRAMS)

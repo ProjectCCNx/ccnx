@@ -13,12 +13,24 @@ TryScript () {
  sh "$SCRIPT" "$@"
 }
 
+ProvideDefault () {
+ grep '^'${1}'[ 	]*=' conf.mk > /dev/null && return 0
+ echo $* >> conf.mk
+}
+
 test -f conf.mk && mv conf.mk conf.mk~
 echo '#' generated `date` `uname -nsrv` > conf.mk
 TryAppend "`uname`"
 TryAppend "`uname -sr | sed -e 's/ /-/g'`"
 TryScript "`uname`" "$@"
 TryScript "python" "$@"
+ProvideDefault INSTALL_BASE = ${INSTALL_BASE:-/usr/local}
+ProvideDefault INSTALL_INCLUDE = '$(INSTALL_BASE)/include'
+ProvideDefault INSTALL_LIB = '$(INSTALL_BASE)/lib'
+ProvideDefault INSTALL_BIN = '$(INSTALL_BASE)/bin'
+ProvideDefault INSTALL = install
+ProvideDefault RM = rm -f
+
 echo ============= conf.mk =============>&2
 cat conf.mk				>&2
 echo ===================================>&2

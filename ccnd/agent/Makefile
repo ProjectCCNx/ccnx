@@ -4,7 +4,8 @@ CPREFLAGS = -I../include
 COPT = -g
 CCNLIBDIR = ../lib
 
-PROGRAMS = ccnd smoketestccnd
+INSTALLED_PROGRAMS = ccnd
+PROGRAMS = $(INSTALLED_PROGRAMS) smoketestccnd
 DEBRIS = ccnd_june08
 BROKEN_PROGRAMS = 
 CSRC = ccnd.c ccnd_stats.c smoketestccnd.c
