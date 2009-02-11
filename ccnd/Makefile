@@ -26,8 +26,8 @@ objtree:
 	cd $(OBJTREE) && ../configure
 
 install: lib/libccn.a
-	cp -p lib/libccn.a /usr/local/lib/
-	cp -r include/ccn /usr/local/include/
+	cp lib/libccn.a /usr/local/lib/
+	mkdir -p /usr/local/include/ccn && cp include/ccn/*.h  /usr/local/include/ccn/.
 
 cleanall:
 	find . -type l -print -exec rm '{}' ';'
