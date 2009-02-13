@@ -226,7 +226,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 				return false;
 		}
 		if (null != excludeFilter()) {
-			int componentIndex = name().prefixCount() != null ? name().prefixCount() : name().count();
+			int componentIndex = name.prefixCount() != null ? name.prefixCount() - 1 : name.count() - 1;
 			if (excludeFilter().exclude(name.component(componentIndex)))
 				return false;
 		}
