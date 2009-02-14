@@ -1,17 +1,23 @@
 package com.parc.ccn.network.daemons.repo;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.security.InvalidParameterException;
+import java.security.SignatureException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Level;
 
+import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.CCNInterestListener;
+import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.network.daemons.Daemon;
@@ -28,60 +34,65 @@ public class RepositoryDaemon extends Daemon {
 	
 	private Repository _repo = null;
 	private ConcurrentLinkedQueue<ContentObject> _dataQueue = new ConcurrentLinkedQueue<ContentObject>();
-	private ConcurrentLinkedQueue<ContentObject> _policyQueue = new ConcurrentLinkedQueue<ContentObject>();
+	private ConcurrentLinkedQueue<Interest> _interestQueue = new ConcurrentLinkedQueue<Interest>();
 	private CCNLibrary _library = null;
 	private boolean _started = false;
-	private Policy _policy = null;
-	private ArrayList<InterestAndListener> _repoInterests = new ArrayList<InterestAndListener>();
+	private ArrayList<NameAndListener> _repoFilters = new ArrayList<NameAndListener>();
+	private ArrayList<DataListener> _currentListeners = new ArrayList<DataListener>();
+	private ExcludeFilter markerFilter;
 	
-	private class InterestAndListener {
-		private Interest interest;
-		private CCNInterestListener listener;
-		private InterestAndListener(Interest interest, CCNInterestListener listener) {
-			this.interest = interest;
-			this.listener = listener;
-		}
-	}
+	public static final int PERIOD = 1000; // period for interest timeout check in ms.
 	
-	private class DataListener implements CCNInterestListener {
-		private ConcurrentLinkedQueue<ContentObject> queue;
-		private String name = null;		// For debugging
-		
-		private DataListener(ConcurrentLinkedQueue<ContentObject> queue, String name) {
-			this.queue = queue;
+	private class NameAndListener {
+		private ContentName name;
+		private CCNFilterListener listener;
+		private NameAndListener(ContentName name, CCNFilterListener listener) {
 			this.name = name;
-		}
-		public Interest handleContent(ArrayList<ContentObject> results,
-				Interest interest) {
-			Library.logger().finer("Interest callback on queue: " + name + " (" + results.size() + " data) for: " + interest.name());
-			queue.addAll(results);
-			return interest;
+			this.listener = listener;
 		}
 	}
 	
 	private class FilterListener implements CCNFilterListener {
 
-		/**
-		 * For now we assume that we are only interested :-) in interests
-		 * that we can satisfy now. If the interest was satisfiable "later"
-		 * then the same ccnd that gave us the interest should also have
-		 * satisfied the interest that someone else had given it.
-		 */
 		public int handleInterests(ArrayList<Interest> interests) {
-			int result = 0;
-			for (Interest interest : interests) {
-				try {
-					ContentObject content = _repo.getContent(interest);
-					if (content != null) {
-						_library.put(content);
-						result++;
-					}
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-			return result;
+			_interestQueue.addAll(interests);
+			return interests.size();
 		}
+	}
+	
+	private class DataListener implements CCNInterestListener {
+		private long _timer;
+		private Interest _interest;
+		
+		private DataListener(Interest interest) {
+			_interest = interest;
+			_timer = new Date().getTime();
+		}
+		
+		public Interest handleContent(ArrayList<ContentObject> results,
+				Interest interest) {
+			_dataQueue.addAll(results);
+			_timer = new Date().getTime();
+			return Interest.constructInterest(interest.name(), 
+						markerFilter, new Integer(Interest.ORDER_PREFERENCE_LEFT 
+								| Interest.ORDER_PREFERENCE_ORDER_NAME));
+		}
+	}
+	
+	private class InterestTimer extends TimerTask {
+
+		public void run() {
+			long currentTime = new Date().getTime();
+			synchronized(_currentListeners) {
+				for (int i = 0; i < _currentListeners.size(); i++) {
+					DataListener listener = _currentListeners.get(i);
+					if ((currentTime - listener._timer) > PERIOD) {
+						_library.cancelInterest(listener._interest, listener);
+						_currentListeners.remove(i--);
+					}
+				}	
+			}	
+		}	
 	}
 	
 	protected class RepositoryWorkerThread extends Daemon.WorkerThread {
@@ -94,58 +105,60 @@ public class RepositoryDaemon extends Daemon {
 		
 		public void work() {
 			while (_started) {
+				
 				ContentObject data = null;
 				do {
 					data = _dataQueue.poll();
 					if (data != null) {
 						try {
-							Library.logger().finer("Saving content in: " + data.name().toString());
-							_repo.saveContent(data);
-						} catch (RepositoryException e) {
-							e.printStackTrace();
-						}
-					}
-				} while (data != null) ;
-				
-				/*
-				 * TODO - for now we only accept policy in one
-				 * content object chunk
-				 */
-				ContentObject policy = null;
-				do {
-					policy = _policyQueue.poll();
-					if (policy != null) {
-						try {
-							_policy.update(new ByteArrayInputStream(policy.content()));
-							_repo.setPolicy(_policy);
-							resetNameSpaceInterests();
+							if (_repo.checkPolicyUpdate(data)) {
+								resetNameSpace();
+							} else {
+								Library.logger().finer("Saving content in: " + data.name().toString());
+								_repo.saveContent(data);
+							}
 						} catch (Exception e) {
 							e.printStackTrace();
 						}
 					}
 				} while (data != null) ;
 				
+				Interest interest = null;
+				do {
+					interest = _interestQueue.poll();
+					if (interest != null)
+					try {
+						byte[] marker = interest.name().component(interest.name().count() - 1);
+						if (Arrays.equals(marker, CCNBase.REPO_START_WRITE)) {
+							startReadProcess(interest);
+						} else {
+							ContentObject content = _repo.getContent(interest);
+							if (content != null) {
+								_library.put(content);
+							}
+						}
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				} while (interest != null);
+				
 				Thread.yield();  // Should we sleep?
 			}
 		}
 		
-		/**
-		 * Express our interest in "everything" and get all interests forwarded
-		 * from the ccnd
-		 */
 		public void initialize() {
-			
-			FilterListener filterListener = new FilterListener();
-			DataListener policyListener = new DataListener(_policyQueue, "Policy");
 			try {
-				Interest policyInterest = _repo.getPolicyInterest();
-				if (policyInterest != null)
-					_library.expressInterest(policyInterest, policyListener);
-				resetNameSpaceInterests();
-				_library.registerFilter(ContentName.fromNative("/"), filterListener);
+				resetNameSpace();
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
+			
+			byte[][]markerOmissions = new byte[1][];
+			markerOmissions[0] = CCNBase.REPO_START_WRITE;
+			markerFilter = Interest.constructFilter(markerOmissions);
+			
+			Timer periodicTimer = new Timer(true);
+			periodicTimer.scheduleAtFixedRate(new InterestTimer(), PERIOD, PERIOD);
 		}
 		
 		public void finish() {
@@ -162,7 +175,6 @@ public class RepositoryDaemon extends Daemon {
 		try {
 			_library = CCNLibrary.open();
 			_repo = new RFSImpl();
-			_policy = new BasicPolicy();
 		} catch (Exception e1) {
 			e1.printStackTrace();
 			System.exit(0);
@@ -208,39 +220,59 @@ public class RepositoryDaemon extends Daemon {
 		return new RepositoryWorkerThread(daemonName());
 	}
 	
-	private void resetNameSpaceInterests() throws IOException {
-		ArrayList<InterestAndListener> newIL = new ArrayList<InterestAndListener>();
-		ArrayList<Interest> newInterests = _repo.getNamespaceInterests();
-		if (newInterests == null)
-			newInterests = new ArrayList<Interest>();
-		ArrayList<InterestAndListener> unMatchedOld = new ArrayList<InterestAndListener>();
-		ArrayList<Interest> unMatchedNew = new ArrayList<Interest>();
-		getUnMatched(_repoInterests, newInterests, unMatchedOld, unMatchedNew);
-		for (InterestAndListener oldInterest : unMatchedOld) {
-			_library.cancelInterest(oldInterest.interest, oldInterest.listener);
+	private void resetNameSpace() throws IOException {
+		ArrayList<NameAndListener> newIL = new ArrayList<NameAndListener>();
+		ArrayList<ContentName> newNameSpace = _repo.getNamespace();
+		if (newNameSpace == null)
+			newNameSpace = new ArrayList<ContentName>();
+		ArrayList<NameAndListener> unMatchedOld = new ArrayList<NameAndListener>();
+		ArrayList<ContentName> unMatchedNew = new ArrayList<ContentName>();
+		getUnMatched(_repoFilters, newNameSpace, unMatchedOld, unMatchedNew);
+		for (NameAndListener oldName : unMatchedOld) {
+			_library.unregisterFilter(oldName.name, oldName.listener);
 		}
-		for (Interest newInterest : unMatchedNew) {
-			DataListener listener = new DataListener(_dataQueue, "Data");
-			_library.expressInterest(newInterest, listener);
-			newIL.add(new InterestAndListener(newInterest, listener));
+		for (ContentName newName : unMatchedNew) {
+			FilterListener listener = new FilterListener();
+			_library.registerFilter(newName, listener);
+			newIL.add(new NameAndListener(newName, listener));
 		}
-		_repoInterests = newIL;
+		_repoFilters = newIL;
 	}
 	
-	private void getUnMatched(ArrayList<InterestAndListener> oldIn, ArrayList<Interest> newIn, 
-			ArrayList<InterestAndListener> oldOut, ArrayList<Interest>newOut) {
+	private void getUnMatched(ArrayList<NameAndListener> oldIn, ArrayList<ContentName> newIn, 
+			ArrayList<NameAndListener> oldOut, ArrayList<ContentName>newOut) {
 		newOut.addAll(newIn);
-		for (InterestAndListener ial : oldIn) {
+		for (NameAndListener ial : oldIn) {
 			boolean matched = false;
-			for (Interest interest : newIn) {
-				if (ial.interest.equals(interest)) {
-					newOut.remove(interest);
+			for (ContentName name : newIn) {
+				if (ial.name.equals(name)) {
+					newOut.remove(name);
 					matched = true;
 					break;
 				}
 			}
 			if (!matched)
 				oldOut.add(ial);
+		}
+	}
+	
+	private void startReadProcess(Interest interest) {
+		ContentName listeningName = new ContentName(interest.name().count() - 1, 
+				interest.name().components(), interest.name().prefixCount());
+		try {
+			DataListener listener = new DataListener(interest);
+			synchronized(_currentListeners) {
+				_currentListeners.add(listener);
+			}
+			Interest readInterest = Interest.constructInterest(listeningName, markerFilter, null);
+			_library.expressInterest(readInterest, listener);
+			_library.put(interest.name(), _repo.getRepoInfo());
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (SignatureException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 	

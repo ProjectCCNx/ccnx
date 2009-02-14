@@ -4,6 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -23,7 +24,6 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.WirePacket;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.library.CCNLibrary;
 
 /**
  * An initial implementation of the repository using a file system
@@ -50,7 +50,14 @@ public class RFSImpl implements Repository {
 	
 	private static String RESERVED_CLASH = "reserved";
 	private static String ENCODED_FILES = "encoded_files";
+	private static String REPO_PRIVATE = "private";
+	private static String VERSION = "version";
+	private static String REPO_LOCALNAME = "local";
+	private static String REPO_GLOBALPREFIX = "global";
 	private static String INVALID_WINDOWS_CHARS = "<>:\"|?/";
+	
+	private static String DEFAULT_LOCAL_NAME = "Repository";
+	private static String DEFAULT_GLOBAL_NAME = "/parc.com/csl/ccn/Repos";
 	
 	private static final int TOO_LONG_SIZE = 200;
 	
@@ -58,13 +65,19 @@ public class RFSImpl implements Repository {
 	protected File _repositoryFile;
 	protected RFSLocks _locker;
 	protected Policy _policy = null;
-	protected ArrayList<Interest> _nameSpaceInterests = new ArrayList<Interest>();
+	protected RFSRepoInfo _info = null;
+	protected ArrayList<ContentName> _nameSpace = new ArrayList<ContentName>();
 	
 	protected TreeMap<ContentName, ArrayList<File>> _encodedFiles = new TreeMap<ContentName, ArrayList<File>>();
 	
 	public String[] initialize(String[] args) throws RepositoryException {
 		boolean policyFromFile = false;
+		boolean nameFromArgs = false;
+		boolean globalFromArgs = false;
+		String localName = DEFAULT_LOCAL_NAME;
+		String globalPrefix = DEFAULT_GLOBAL_NAME;
 		String[] outArgs = args;
+		Policy policy = new BasicPolicy(null);
 		for (int i = 0; i < args.length; i++) {
 			if (args[i].equals("-root")) {
 				if (args.length < i + 2)
@@ -75,40 +88,49 @@ public class RFSImpl implements Repository {
 				policyFromFile = true;
 				if (args.length < i + 2)
 					throw new InvalidParameterException();
-				Policy policy = new BasicPolicy();
 				File policyFile = new File(args[i + 1]);
 				try {
 					policy.update(new FileInputStream(policyFile));
 				} catch (Exception e) {
 					throw new InvalidParameterException(e.getMessage());
 				}
-				setPolicy(policy);
+			} else if (args[i].equals("-local")) {
+				if (args.length < i + 2)
+					throw new InvalidParameterException();
+				localName = args[i + 1];
+				nameFromArgs = true;
+			} else if (args[i].equals("-global")) {
+				if (args.length < i + 2)
+					throw new InvalidParameterException();
+				globalPrefix = args[i + 1];
+				globalFromArgs = true;
 			}
 		}
 		if (_repositoryRoot == null) {
 			throw new InvalidParameterException();
 		}
+		
 		_repositoryFile = new File(_repositoryRoot);
 		_repositoryFile.mkdirs();
 		_locker = new RFSLocks(_repositoryRoot + File.separator + META_DIR);
-		constructEncodedMap(new File(_repositoryRoot + File.separator + META_DIR));
+		constructEncodedMap(new File(_repositoryRoot + File.separator + META_DIR + File.separator + ENCODED_FILES));
+		constructEncodedMap(new File(_repositoryRoot + File.separator + META_DIR + File.separator + RESERVED_CLASH));
 		
-		/*
-		 * Get & check version or create one if there isn't one yet
-		 * TODO - At some point we want to care more about publisher ID, etc. here
-		 */
+		String version = checkFile(VERSION, CURRENT_VERSION, false);
+		if (version != null && !version.equals(CURRENT_VERSION))
+			throw new RepositoryException("Bad repository version: " + version);
+		
+		String checkName = checkFile(REPO_LOCALNAME, localName, nameFromArgs);
+		localName = checkName != null ? checkName : localName;
+		
+		checkName = checkFile(REPO_GLOBALPREFIX, globalPrefix, globalFromArgs);
+		globalPrefix = checkName != null ? checkName : globalPrefix;
+		
 		try {
-			ContentObject versionObject = getContent(new Interest(ContentName.fromNative(REPO_VERSION)));
-			if (versionObject == null) {
-				versionObject = CCNLibrary.getContent(ContentName.fromNative(REPO_VERSION), 
-						CURRENT_VERSION.getBytes());
-				saveContent(versionObject);
-			} else {
-				if (!Arrays.equals(CURRENT_VERSION.getBytes(), versionObject.content()))
-					throw new RepositoryException("Incorrect repository version: " 
-							+ new String(versionObject.content()));
-			}
-		} catch (MalformedContentNameStringException e) {}
+			_info = new RFSRepoInfo(localName, globalPrefix);
+		} catch (MalformedContentNameStringException e1) {
+			throw new RepositoryException(e1.getMessage());
+		}
 		
 		/*
 		 * Read policy file from disk if it exists and we didn't read it in as an argument.
@@ -116,22 +138,23 @@ public class RFSImpl implements Repository {
 		 */
 		if (!policyFromFile) {
 			try {
-				ContentObject policyObject = getContent(new Interest(ContentName.fromNative(REPO_POLICY)));
+				ContentObject policyObject = getContent(
+						new Interest(ContentName.fromNative(REPO_NAMESPACE + "/" + _info.getName() + "/" + REPO_POLICY)));
 				if (policyObject != null) {
 					ByteArrayInputStream bais = new ByteArrayInputStream(policyObject.content());
-					_policy.update(bais);
-					setPolicy(_policy);
+					policy.update(bais);
 				}
 			} catch (MalformedContentNameStringException e) {} // None of this should happen
 			  catch (XMLStreamException e) {} 
 			  catch (IOException e) {}
 		} else {
-			saveContent(_policy.getPolicyContent());
+			saveContent(policy.getPolicyContent());
 		}
+		setPolicy(policy);
 		
-		if (_policy == null) {
+		if (_nameSpace.size() == 0) {
 			try {
-				addNameSpaceInterest(ContentName.fromNative("/"));
+				_nameSpace.add(ContentName.fromNative("/"));
 			} catch (MalformedContentNameStringException e) {}
 		}
 	
@@ -205,6 +228,61 @@ public class RFSImpl implements Repository {
 			files = new ArrayList<File>();
 		files.add(file);
 		_encodedFiles.put(cn, files);
+	}
+	
+	/**
+	 * Check data file - create new one if none exists
+	 * @throws RepositoryException
+	 */
+	private String checkFile(String fileName, String contents, boolean forceWrite) throws RepositoryException {
+		File dirFile = new File(_repositoryRoot + File.separator + META_DIR + File.separator + REPO_PRIVATE);
+		File file = new File(_repositoryRoot + File.separator + META_DIR + File.separator + REPO_PRIVATE
+					+ File.separator + fileName);
+		
+		try {
+			if (!forceWrite && file.exists()) {
+				FileInputStream fis = new FileInputStream(file);
+				byte [] content = new byte[fis.available()];
+				fis.read(content);
+				fis.close();
+				return new String(content);
+			} else {
+				dirFile.mkdirs();
+				file.createNewFile();
+				FileOutputStream fos = new FileOutputStream(file);
+				fos.write(contents.getBytes());
+				fos.close();
+				return null;
+			}
+		} catch (FileNotFoundException e) {} catch (IOException e) {
+			throw new RepositoryException(e.getMessage());
+		}
+		return null;
+	}
+	
+	/**
+	 * Check for data routed for the repository and take special
+	 * action if it is.  Returns true if data is for repository.
+	 * 
+	 * @param co
+	 * @return
+	 */
+	public boolean checkPolicyUpdate(ContentObject co) {
+		if (_info.getPolicyName().isPrefixOf(co)) {
+			ByteArrayInputStream bais = new ByteArrayInputStream(co.content());
+			try {
+				_policy.update(bais);
+				_nameSpace = _policy.getNameSpace();
+			} catch (XMLStreamException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			return true;
+		}
+		return false;
 	}
 	
 	/**
@@ -534,18 +612,21 @@ public class RFSImpl implements Repository {
 	 * Convert input bytes to Base64 encoding, then remove '/'
 	 * since this can be included
 	 * For now we replace / with "%slash%"
+	 * ... and \n with "%return%
 	 * TODO - need to check this out on PCs
 	 * @param bytes
 	 * @return
 	 */
 	private String convertToBase64(byte[] bytes) {
 		String b64String = new BASE64Encoder().encode(bytes);
-		return b64String.replace("/", "%slash%");
+		b64String = b64String.replace("/", "%slash%");
+		return b64String.replace("\n", "%return%");
 	}
 	
 	private byte [] decodeBase64(String data) {
 		try {
 			data = data.replace("%slash%", "/");
+			data = data.replace("%return%", "\n");
 			return new BASE64Decoder().decodeBuffer(data);
 		} catch (IOException e) {
 			return new byte[0]; // TODO error handling...
@@ -592,34 +673,28 @@ public class RFSImpl implements Repository {
 	}
 
 	public String getUsage() {
-		return " -root repository_root ";
+		return " -root repository_root [-policy policy_file] [-local local_name] [-global global_prefix]\n";
 	}
 
 	public void setPolicy(Policy policy) {
 		_policy = policy;
 		ArrayList<ContentName> newNameSpace = _policy.getNameSpace();
-		_nameSpaceInterests.clear();
+		_nameSpace.clear();
 		for (ContentName name : newNameSpace)
-			addNameSpaceInterest(name);
-	}
-
-	public Interest getPolicyInterest() {
-		try {
-			Interest policyInterest = new Interest(ContentName.fromNative(REPO_POLICY));
-			policyInterest.answerOriginKind(0);
-			return policyInterest;
-		} catch (MalformedContentNameStringException e) {
-			return null;
-		}
-	}
-
-	public ArrayList<Interest> getNamespaceInterests() {
-		return _nameSpaceInterests;
+			_nameSpace.add(name);
 	}
 	
-	private void addNameSpaceInterest(ContentName name) {
-		Interest nameSpaceInterest = new Interest(name);
-		nameSpaceInterest.answerOriginKind(0);
-		_nameSpaceInterests.add(nameSpaceInterest);
+	public ArrayList<ContentName> getNamespace() {
+		return _nameSpace;
+	}
+	
+	public byte[] getRepoInfo() {
+		try {
+			return _info.encode();
+		} catch (XMLStreamException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		}
 	}
 }

@@ -2,6 +2,7 @@ package com.parc.ccn.network.daemons.repo;
 
 import java.util.ArrayList;
 
+import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
 
@@ -15,9 +16,9 @@ import com.parc.ccn.data.query.Interest;
  */
 
 public interface Repository {
-	
-	public static final String REPO_VERSION = "/ccn/repository/version";
-	public static final String REPO_POLICY = "/ccn/repository/policy.xml";
+
+	public static final String REPO_POLICY = "policy.xml";
+	public static final String REPO_NAMESPACE = "/ccn/repository";
 	
 	/**
 	 * Initialize the repository
@@ -43,19 +44,30 @@ public interface Repository {
 	 * Get namespace interest
 	 * @return
 	 */
-	public ArrayList<Interest> getNamespaceInterests();
-	
-	/**
-	 * Get interest to receive policy changes for the repository
-	 * @return
-	 */
-	public Interest getPolicyInterest();
+	public ArrayList<ContentName> getNamespace();
 	
 	/**
 	 * Set the policy with XML based policy
 	 * @param policy
 	 */
 	public void setPolicy(Policy policy);
+	
+	/**
+	 * Get information about repository to return to write
+	 * requestor.
+	 * 
+	 * @return
+	 */
+	public byte [] getRepoInfo();
+	
+	/**
+	 * Check whether data is a policy update. Update the
+	 * policy if so
+	 * @param co
+	 * @return true if policy update data
+	 */
+	public boolean checkPolicyUpdate(ContentObject co);
+	
 	
 	/**
 	 * Get required arguments for this implementation

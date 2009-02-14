@@ -29,7 +29,5 @@ public interface Policy {
 
 	public ArrayList<ContentName> getNameSpace();
 	
-	public String getHostname();
-	
 	public ContentObject getPolicyContent();
 }

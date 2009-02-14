@@ -1,9 +1,8 @@
 package test.ccn.network.daemons.repo;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
-import java.security.SignatureException;
-import java.util.logging.Level;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -11,13 +10,12 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 import com.parc.ccn.network.daemons.repo.RFSImpl;
 import com.parc.ccn.network.daemons.repo.Repository;
 
@@ -32,8 +30,7 @@ import com.parc.ccn.network.daemons.repo.Repository;
 public class RepoReadTest extends RepoTestBase {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
-		Library.logger().setLevel(Level.INFO);
+		RepoTestBase.setUpBeforeClass();
 	}
 	
 	@AfterClass
@@ -55,8 +52,9 @@ public class RepoReadTest extends RepoTestBase {
 		ContentName longName = ContentName.fromNative("/repoTest/" + tooLongName);
 		ContentName badCharName = ContentName.fromNative("/repoTest/" + "*x?y<z>u");
 		ContentName badCharLongName = ContentName.fromNative("/repoTest/" + tooLongName + "*x?y<z>u");
-		PublisherKeyID pkid1 = new PublisherKeyID("141qt881s6o92i9fneidpvdsu5sm00cfu0g7u5bbk3o3o6l4s57v");
-		PublisherKeyID pkid2 = new PublisherKeyID("12u9sl8h2oi5f132f97lon64l5al3bf7tj8p98lqgmdc5ovucahh");
+		PublisherKeyID pkid1 = new PublisherKeyID("9s4o5j263snpdl59phc5vf0jhpqgdtghg155smuo2gbnk5ui8f3");
+		//PublisherKeyID pkid2 = new PublisherKeyID("1paij2p7setof6ognk3b34q0hesnv1jpov07h9qvqnveqahv9ml2");
+		PublisherKeyID pkid2 = new PublisherKeyID("-6ldct6o3h27gp7f8bsksr5veh380uc670voem50580h5le0m9au");
 		
 		checkData(name, "Here's my data!");
 		checkData(clashName, "Clashing Name");
@@ -70,10 +68,16 @@ public class RepoReadTest extends RepoTestBase {
 	
 	@Test
 	public void testPolicyViaCCN() throws Exception {
-		createGoodPolicy(false);
 		System.out.println("Testing namespace policy setting");
 		checkNameSpace("/repoTest/data2", true);
-		library.put(ContentName.fromNative(Repository.REPO_POLICY), _policyContent);
+		FileInputStream fis = new FileInputStream(_topdir + "/test/ccn/network/daemons/repo/policyTest.xml");
+		byte [] content = new byte[fis.available()];
+		fis.read(content);
+		fis.close();
+		RepositoryOutputStream ros = new RepositoryOutputStream(ContentName.fromNative(_globalPrefix + '/' + 
+				_repoName + '/' + Repository.REPO_POLICY), null, null, null, library);
+		ros.write(content, 0, content.length);
+		ros.close();
 		Thread.sleep(1000);
 		checkNameSpace("/repoTest/data3", false);
 		checkNameSpace("/testNameSpace/data1", true);
@@ -96,12 +100,15 @@ public class RepoReadTest extends RepoTestBase {
 		Assert.assertTrue(testContent.signedInfo().publisherKeyID().equals(publisher));
 	}
 	
-	private void checkNameSpace(String contentName, boolean expected) throws MalformedContentNameStringException, 
-				SignatureException, IOException, InterruptedException {
+	private void checkNameSpace(String contentName, boolean expected) throws Exception {
 		ContentName name = ContentName.fromNative(contentName);
-		library.put(name, "Testing 1 2 3".getBytes());
-		Thread.sleep(1000);
-		File testFile = new File("repoTest" + contentName);
+		RepositoryOutputStream ros = new RepositoryOutputStream(name, null, null, null, library);
+		byte [] data = "Testing 1 2 3".getBytes();
+		ros.write(data, 0, data.length);
+		ContentName baseName = ros.getBaseName();
+		ros.close();
+		Thread.sleep(4000);
+		File testFile = new File("repoTest" + baseName);
 		if (expected)
 			Assert.assertTrue(testFile.exists());
 		else

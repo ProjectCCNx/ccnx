@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<policy>
+	<version id="1.0"/>
+	<name> TestRepository </name>
+	<namespace> /testNameSpace </namespace>
+	<namespace> /testNameSpace2 </namespace>
+</policy>
+

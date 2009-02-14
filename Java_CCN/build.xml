@@ -18,6 +18,7 @@
 	<!-- To enable remote debugging, the incantation is 
 	"-Xdebug -Xrunjdwp:transport=dt_socket,address=8000,server=y,suspend=n" -->
 	<property name="DEBUG_OPTIONS" value=""/>
+	<property name="TOP_DIR" value=".."/>
 	<!-- TEST_PORT is alternative ccnd port so we can run tests
         with an isolated ccnd rather than the "live" ccnd on the machine.
         Port 9 (discard) would be ideal but this needs to be a non-privileged
@@ -248,13 +249,15 @@
 		</junit>
 	</target>
 
-	<target name="test-repo" depends="jar">
+	<target name="test-repo" depends="jar, ccnd">
 		<mkdir dir="${testout}"/>
 		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
 			<formatter type="brief" usefile="true"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="test/ccn/network/daemons/repo/RFSTest.class"/>

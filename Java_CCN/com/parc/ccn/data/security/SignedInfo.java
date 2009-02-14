@@ -1,7 +1,6 @@
 package com.parc.ccn.data.security;
 
 import java.sql.Timestamp;
-import java.util.Arrays;
 import java.util.HashMap;
 
 import javax.xml.stream.XMLStreamException;

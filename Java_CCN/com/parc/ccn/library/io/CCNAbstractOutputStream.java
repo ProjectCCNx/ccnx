@@ -5,7 +5,6 @@ import java.io.OutputStream;
 import java.security.PrivateKey;
 
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.library.CCNLibrary;
@@ -21,7 +20,6 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 	protected PublisherKeyID _publisher;
 	protected KeyLocator _locator;
 	protected PrivateKey _signingKey;
-	protected SignedInfo.ContentType _type;
 
 	public CCNAbstractOutputStream(PublisherKeyID publisher,
 								   KeyLocator locator, PrivateKey signingKey,
@@ -48,6 +46,10 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 	public void write(int b) throws IOException {
 		byte buf[] = {(byte)b};
 		write(buf, 0, 1);
+	}
+	
+	public ContentName getBaseName() {
+		return _baseName;
 	}
 
 }

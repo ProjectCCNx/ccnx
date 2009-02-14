@@ -1129,12 +1129,11 @@ public class CCNLibrary extends CCNBase {
 		// construct the headerBlockContents;
 		byte [] contentDigest = CCNDigestHelper.digest(contents);
 		return putHeader(name, contents.length, blockSize, contentDigest, tree.root(),
-						 type, timestamp, publisher, locator, signingKey);
+						 timestamp, publisher, locator, signingKey);
 	}
 	
 	public ContentObject putHeader(ContentName name, int contentLength, int blockSize, byte [] contentDigest, 
 				byte [] contentTreeAuthenticator,
-				SignedInfo.ContentType type,
 				Timestamp timestamp, 
 				PublisherKeyID publisher, KeyLocator locator,
 				PrivateKey signingKey) throws IOException, InvalidKeyException, SignatureException {

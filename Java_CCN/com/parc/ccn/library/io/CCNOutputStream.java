@@ -17,6 +17,7 @@ import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.crypto.CCNMerkleTree;
@@ -192,12 +193,12 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			// maybe need put with offset and length
 			if ((_blockIndex == 1) || (_blockOffset == _blockBuffers[0].length)) {
 				Library.logger().finest("close(): writing single-block file in one put, length: " + _blockBuffers[0].length);
-				_library.put(_baseName, _blockBuffers[0], _type, _publisher, _locator, _signingKey);
+				_library.put(_baseName, _blockBuffers[0], ContentType.LEAF, _publisher, _locator, _signingKey);
 			} else {
 				byte [] tempBuf = new byte[_blockOffset];
 				System.arraycopy(_blockBuffers[0],0,tempBuf,0,_blockOffset);
 				Library.logger().finest("close(): writing single-block file in one put, copied buffer length = " + _blockOffset);
-				_library.put(_baseName, tempBuf, _type, _publisher, _locator, _signingKey);
+				_library.put(_baseName, tempBuf, ContentType.LEAF, _publisher, _locator, _signingKey);
 			}
 		} else {
 			Library.logger().info("closeNetworkData: final flush, wrote " + _totalLength + " bytes.");
@@ -327,7 +328,6 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		// What do we put in the header if we have multiple merkle trees?
 		_library.putHeader(_baseName, (int)_totalLength, _blockSize, _dh.digest(), 
 				((_roots.size() > 0) ? _roots.get(0) : null),
-				_type,
 				_timestamp, _publisher, _locator, _signingKey);
 		Library.logger().info("Wrote header: " + CCNLibrary.headerName(_baseName));
 	}
