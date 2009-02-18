@@ -28,6 +28,18 @@ import com.parc.ccn.network.daemons.Daemon;
  * 
  * @author rasmusse
  *
+ * Some notes:
+ * We use a policy file to decide which namespaces to save. The policy file
+ * is currently parsed within the lower level.
+ * 
+ * We can't just express an interest in anything that's within the namespaces
+ * that we want to save within, because we will keep getting back the same
+ * content over and over again if we do that. Instead the clients trigger a
+ * write to the repository by expressing an interest in contentName +
+ * "write_marker" (CCNBase.REPO_START_WRITE). When we see this we write back
+ * some information then express an interest in the contentName without the
+ * "write_marker" to get the initial block, then express interest in blocks
+ * after the initial block for this particular write.
  */
 
 public class RepositoryDaemon extends Daemon {
@@ -73,9 +85,19 @@ public class RepositoryDaemon extends Daemon {
 				Interest interest) {
 			_dataQueue.addAll(results);
 			_timer = new Date().getTime();
-			return Interest.constructInterest(interest.name(), 
-						markerFilter, new Integer(Interest.ORDER_PREFERENCE_LEFT 
-								| Interest.ORDER_PREFERENCE_ORDER_NAME));
+			if (results.size() > 0) {
+				
+				/*
+				 * Compute new interest. Its basically a next, but since we want to register it, we
+				 * don't do a getNext here. Also we need to set the prefix 1 before the last component
+				 * so we get all the blocks
+				 */
+				ContentObject co = results.get(0);
+				ContentName nextName = new ContentName(co.name(), co.contentDigest(), co.name().count() - 1);
+				return Interest.constructInterest(nextName,  markerFilter, 
+							new Integer(Interest.ORDER_PREFERENCE_LEFT  | Interest.ORDER_PREFERENCE_ORDER_NAME));
+			}
+			return null;
 		}
 	}
 	

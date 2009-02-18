@@ -27,7 +27,7 @@ import com.parc.ccn.network.daemons.repo.Repository;
  * and then run the ccnd and the repository with that directory as its root.
  */
 
-public class RepoReadTest extends RepoTestBase {
+public class RepoIOTest extends RepoTestBase {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		RepoTestBase.setUpBeforeClass();
@@ -81,6 +81,19 @@ public class RepoReadTest extends RepoTestBase {
 		Thread.sleep(1000);
 		checkNameSpace("/repoTest/data3", false);
 		checkNameSpace("/testNameSpace/data1", true);
+	}
+	
+	@Test
+	public void testWriteToRepo() throws Exception {
+		System.out.println("Testing writing streams to repo");
+		library.setBlockSize(100);
+		byte [] data = new byte[4000];
+		byte value = 1;
+		for (int i = 0; i < data.length; i++)
+			data[i] = value++;
+		RepositoryOutputStream ros = new RepositoryOutputStream(ContentName.fromNative("/repoTest/stream"), null, null, null, library);
+		ros.write(data, 0, data.length);
+		ros.close();
 	}
 	
 	private void checkData(ContentName name, String data) throws IOException, InterruptedException{

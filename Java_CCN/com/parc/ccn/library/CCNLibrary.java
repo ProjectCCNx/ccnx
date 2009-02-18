@@ -169,7 +169,7 @@ public class CCNLibrary extends CCNBase {
 	 * @param blockSize
 	 */
 	public void setBlockSize(int blockSize) {
-	
+		_blockSize = blockSize;
 	}
 	
 	public KeyManager keyManager() { return _userKeyManager; }
