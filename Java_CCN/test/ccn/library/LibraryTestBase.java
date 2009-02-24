@@ -36,12 +36,15 @@ public class LibraryTestBase {
 	protected static boolean exit = false;
 	protected static Throwable error = null; // for errors from other threads
 	public static int count = 55;
+	//public static int count = 5;
 	public static Random rand = new Random();
 	
 	protected static final String BASE_NAME = "/test/BaseLibraryTest/";
 	protected static ContentName PARENT_NAME = null;
 	
 	protected static final boolean DO_TAP = true;
+	
+	protected static int CONFIRMATION_TIMEOUT = 10;
 	
 	protected HashSet<Integer> _resultSet = new HashSet<Integer>();
 	
@@ -206,7 +209,7 @@ public class LibraryTestBase {
 				System.out.println("Get thread started");
 				getResults(ContentName.fromNative(PARENT_NAME, Integer.toString(id)), count, library);
 				System.out.println("Get thread finished");
-				((CCNLibrary)library).getNetworkManager().shutdown();
+				library.shutdown();
 			} catch (Throwable ex) {
 				error = ex;
 			}
@@ -231,9 +234,10 @@ public class LibraryTestBase {
 		public void run() {
 			try {
 				System.out.println("Put thread started");
+				library.setupFlowControl(PARENT_NAME);
 				doPuts(ContentName.fromNative(PARENT_NAME, Integer.toString(id)), count, library);
 				System.out.println("Put thread finished");
-				((CCNLibrary)library).getNetworkManager().shutdown();
+				library.shutdown();
 			} catch (Throwable ex) {
 				error = ex;
 				Library.logger().warning("Exception in run: " + ex.getClass().getName() + " message: " + ex.getMessage());
@@ -324,6 +328,7 @@ public class LibraryTestBase {
 		public void run() {
 			try {
 				System.out.println("PutServer started");
+				library.setupFlowControl(PARENT_NAME);
 				// Register filter
 				name = ContentName.fromNative(PARENT_NAME, Integer.toString(id));
 				library.registerFilter(name, this);
@@ -364,6 +369,5 @@ public class LibraryTestBase {
 			}
 			return 0;
 		}
-		
 	}
 }

@@ -22,11 +22,13 @@ public class RFSRepoInfo extends GenericXMLEncodable implements XMLEncodable{
 	protected ContentName _policyName;
 	
 	private static final String LOCAL_NAME_ELEMENT = "RepositoryName";
-	private static final String GLOBAL_PREFIX_ELEMENT = "RepositoryPrefix";
+	private static final String GLOBAL_PREFIX_ELEMENT = "/RepositoryPrefix";
 	
 	public RFSRepoInfo(String name, String globalPrefix) throws MalformedContentNameStringException {
 		_name = name;
 		_globalPrefix = globalPrefix;
+		if (!_globalPrefix.startsWith("/"))
+			_globalPrefix = "/" + _globalPrefix;
 		_policyName = ContentName.fromNative(_globalPrefix + '/' + _name 
 				+ '/' + Repository.REPO_POLICY);
 	}

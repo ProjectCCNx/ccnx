@@ -76,11 +76,8 @@ public class puttap implements CCNInterestListener {
 			// appears that there is an interest from a separate app
 			// because interest from the same app as the writer will 
 			// not consume the data and therefore will block
-			if (false) {
-				// new library semantics makes this unnecessary.
-				CCNLibrary reader = CCNLibrary.open();
-				reader.expressInterest(new Interest(ccnName), this);
-			}
+			CCNLibrary reader = CCNLibrary.open();
+			reader.expressInterest(new Interest(ccnName), this);
 			
 			PublicKey publicKey = null;
 			// If we're verifying, pull our default public key as that's what we're using.
@@ -121,6 +118,7 @@ public class puttap implements CCNInterestListener {
 
 	public static void usage() {
 		System.out.println("usage: puttap 0|1 <ccnname> <tapname> <filename> [-s]");
+		System.exit(1);
 	}
 
 	public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {

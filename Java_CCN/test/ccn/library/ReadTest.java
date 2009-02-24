@@ -60,6 +60,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	
 	@Test
 	public void getNextTest() throws Throwable {
+		library.setupFlowControl("/getNext");
 		System.out.println("getNext test started");
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
@@ -81,6 +82,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	public void getLatestTest() throws Throwable {
 		int highest = 0;
 		System.out.println("getLatest test started");
+		library.setupFlowControl("/getLatest");
 		for (int i = 0; i < count; i++) {
 			int tValue = getRandomFromSet(count, false);
 			if (tValue > highest)
@@ -102,6 +104,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	public void excludeFilterTest() throws Throwable {
 		System.out.println("excludeFilterTest test started");
 		excludeSetup();
+		library.setupFlowControl("/excludeFilterTest");
 		for (String value : bloomTestValues) {
 			library.put("/excludeFilterTest/" + value, value);
 		}
@@ -130,6 +133,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	}
 	
 	private void excludeTest(String prefix, int nFilters) throws Throwable {
+		library.setupFlowControl(prefix);
 		System.out.println("Starting exclude test - nFilters is " + nFilters);
 		byte [][] excludes = new byte[nFilters - 1][];
 		for (int i = 0; i < nFilters; i++) {
@@ -153,6 +157,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	}
 	
 	private void checkResult(ContentObject result, int value) {
+		assertTrue(result != null);
 		String resultAsString = result.name().toString();
 		int sep = resultAsString.lastIndexOf('/');
 		assertTrue(sep > 0);

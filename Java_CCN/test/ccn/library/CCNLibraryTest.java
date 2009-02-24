@@ -56,6 +56,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 		try {
 			
 			ArrayList<NameSeen> testNames = new ArrayList<NameSeen>(3);
+			library.setupFlowControl(ContentName.fromNative("/CPOF"));
 			testNames.add(new NameSeen(ContentName.fromNative("/CPOF/foo")));
 			testNames.add(new NameSeen(ContentName.fromNative("/CPOF/bar/lid")));
 			testNames.add(new NameSeen(ContentName.fromNative("/CPOF/bar/jar")));
@@ -142,6 +143,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 		try {
 			ContentName keyName = ContentName.fromNative(key);
+			library.setupFlowControl(keyName);
 			revision1 = library.newVersion(keyName, data1);
 			revision2 = library.newVersion(keyName, data2);
 			int version1 = library.getVersionNumber(revision1.name());
@@ -176,6 +178,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 		byte[] data1 = "data".getBytes();
 		try {
 			ContentName keyName = ContentName.fromNative(key);
+			library.setupFlowControl(keyName);
 			ContentObject name = library.put(keyName, data1);
 			System.out.println("Put under name: " + name.name());
 			ContentObject result = library.get(name.name(), CCNBase.NO_TIMEOUT);
@@ -225,6 +228,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 			byte [] content1,
 			byte [] content2) throws Exception {
 
+		library.setupFlowControl(docName);
 		ContentObject version1 = library.newVersion(docName, content1);
 		System.out.println("Inserted first version as: " + version1.name());
 		Assert.assertNotNull("New version is null!", version1);
@@ -266,6 +270,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 	@Test
 	public void testLinks() throws Exception {
 		ContentName baseName = ContentName.fromNative("/libraryTest/linkTest/base");
+		library.setupFlowControl("/libraryTest");
 		library.put(baseName, "base".getBytes());
 		LinkReference lr = new LinkReference(baseName);
 		ContentName linkName = ContentName.fromNative("/libraryTest/linkTest/l1");
@@ -295,6 +300,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 	@Test
 	public void testCollections() throws Exception {
 		ContentName baseName = ContentName.fromNative("/libraryTest/collectionTest/base");
+		library.setupFlowControl(baseName);
 		ContentName collectionName = ContentName.fromNative("/libraryTest/collectionTest/myCollection");
 		ContentName[] references = new ContentName[2];
 		library.newVersion(baseName, "base".getBytes());
@@ -396,6 +402,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 			library.expressInterest(ik, 
 					tl);
 
+			library.setupFlowControl(ContentName.fromNative(key));
 			library.put(ContentName.fromNative(key), data1);
 			// wait a little bit before we move on...
 			try {

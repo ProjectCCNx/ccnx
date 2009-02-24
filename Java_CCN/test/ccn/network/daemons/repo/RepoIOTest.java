@@ -3,6 +3,7 @@ package test.ccn.network.daemons.repo;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Arrays;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -15,9 +16,10 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherKeyID;
-import com.parc.ccn.library.io.repo.RepositoryOutputStream;
+import com.parc.ccn.library.io.repo.RepositoryDescriptor;
 import com.parc.ccn.network.daemons.repo.RFSImpl;
 import com.parc.ccn.network.daemons.repo.Repository;
+import com.parc.ccn.network.daemons.repo.RepositoryException;
 
 /**
  * 
@@ -28,6 +30,9 @@ import com.parc.ccn.network.daemons.repo.Repository;
  */
 
 public class RepoIOTest extends RepoTestBase {
+	
+	protected static String _repoTestDir = "repotest";
+	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		RepoTestBase.setUpBeforeClass();
@@ -74,8 +79,8 @@ public class RepoIOTest extends RepoTestBase {
 		byte [] content = new byte[fis.available()];
 		fis.read(content);
 		fis.close();
-		RepositoryOutputStream ros = new RepositoryOutputStream(ContentName.fromNative(_globalPrefix + '/' + 
-				_repoName + '/' + Repository.REPO_POLICY), null, null, null, library);
+		RepositoryDescriptor ros = library.repoOpen(ContentName.fromNative(_globalPrefix + '/' + 
+				_repoName + '/' + Repository.REPO_POLICY), library.getDefaultPublisher(), null, null);
 		ros.write(content, 0, content.length);
 		ros.close();
 		Thread.sleep(1000);
@@ -91,18 +96,25 @@ public class RepoIOTest extends RepoTestBase {
 		byte value = 1;
 		for (int i = 0; i < data.length; i++)
 			data[i] = value++;
-		RepositoryOutputStream ros = new RepositoryOutputStream(ContentName.fromNative("/repoTest/stream"), null, null, null, library);
+		RepositoryDescriptor ros = library.repoOpen(ContentName.fromNative("/testNameSpace/stream"), library.getDefaultPublisher(), null, null);
 		ros.write(data, 0, data.length);
 		ros.close();
+		Thread.sleep(5000);
+		for (int i = 0; i < 40; i++) {
+			byte [] testData = new byte[100];
+			System.arraycopy(data, i * 100, testData, 0, 100);
+			String blockName = "/testNameSpace/stream/_v_/0/_b_/" + new Integer(i).toString();
+			checkDataFromFile(blockName, testData);
+		}
 	}
 	
 	private void checkData(ContentName name, String data) throws IOException, InterruptedException{
-		checkData(new Interest(name), data);
+		checkData(new Interest(name), data.getBytes());
 	}
-	private void checkData(Interest interest, String data) throws IOException, InterruptedException{
+	private void checkData(Interest interest, byte[] data) throws IOException, InterruptedException{
 		ContentObject testContent = library.get(interest, 10000);
 		Assert.assertFalse(testContent == null);
-		Assert.assertEquals(data, new String(testContent.content()));		
+		Assert.assertTrue(Arrays.equals(data, testContent.content()));		
 	}
 	private void checkDataAndPublisher(ContentName name, String data, PublisherKeyID publisher) 
 				throws IOException, InterruptedException {
@@ -112,16 +124,25 @@ public class RepoIOTest extends RepoTestBase {
 		Assert.assertEquals(data, new String(testContent.content()));
 		Assert.assertTrue(testContent.signedInfo().publisherKeyID().equals(publisher));
 	}
+	private void checkDataFromFile(String name, byte[] data) throws RepositoryException {
+		File testFile = new File(_repoTestDir + File.separator + name);
+		Assert.assertTrue(testFile.isDirectory());
+		File [] contents = testFile.listFiles();
+		Assert.assertFalse(contents == null);
+		Assert.assertTrue(contents.length == 1);
+		ContentObject co = RFSImpl.getContentFromFile(contents[0]);
+		Assert.assertTrue(Arrays.equals(data, co.content()));		
+	}
 	
 	private void checkNameSpace(String contentName, boolean expected) throws Exception {
 		ContentName name = ContentName.fromNative(contentName);
-		RepositoryOutputStream ros = new RepositoryOutputStream(name, null, null, null, library);
+		RepositoryDescriptor ros = library.repoOpen(name, library.getDefaultPublisher(), null, null);
 		byte [] data = "Testing 1 2 3".getBytes();
 		ros.write(data, 0, data.length);
 		ContentName baseName = ros.getBaseName();
 		ros.close();
-		Thread.sleep(4000);
-		File testFile = new File("repoTest" + baseName);
+		Thread.sleep(20000);
+		File testFile = new File("repotest" + baseName);
 		if (expected)
 			Assert.assertTrue(testFile.exists());
 		else

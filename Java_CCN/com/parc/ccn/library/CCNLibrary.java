@@ -10,6 +10,9 @@ import java.security.Security;
 import java.security.SignatureException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.Set;
+import java.util.TreeMap;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -25,13 +28,17 @@ import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
+import com.parc.ccn.data.util.InterestTable;
+import com.parc.ccn.data.util.InterestTable.Entry;
 import com.parc.ccn.library.io.CCNDescriptor;
+import com.parc.ccn.library.io.repo.RepositoryDescriptor;
 import com.parc.ccn.network.CCNNetworkManager;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.crypto.CCNMerkleTree;
@@ -63,7 +70,7 @@ import com.parc.ccn.security.keys.KeyManager;
  * can getLink to get link info
  *
  */
-public class CCNLibrary extends CCNBase {
+public class CCNLibrary extends CCNBase implements CCNFilterListener {
 
 	public static final String MARKER = "_";
 	public static final String FRAGMENT_MARKER = MARKER + "b" + MARKER;
@@ -92,6 +99,14 @@ public class CCNLibrary extends CCNBase {
 	 * @return
 	 */
 	public static final int baseFragment() { return 0; }
+	
+	protected TreeMap<ContentName, ContentObject> _holdingArea = new TreeMap<ContentName, ContentObject>();
+	protected InterestTable<UnmatchedInterest> _unmatchedInterests = new InterestTable<UnmatchedInterest>();
+	protected ArrayList<ContentName> _filteredNames = new ArrayList<ContentName>();
+	
+	private class UnmatchedInterest {
+		long timestamp = new Date().getTime();
+	}
 	
 	public static CCNLibrary open() throws ConfigurationException, IOException { 
 		synchronized (CCNLibrary.class) {
@@ -940,12 +955,141 @@ public class CCNLibrary extends CCNBase {
 		return put(name, contents, SignedInfo.ContentType.LEAF, publisher);
 	}
 	
+	/**
+	 * Implement flow control here
+	 */
+	private boolean _shutdownWait = false;
+	private boolean _flowControlEnabled = true;
+	
+	public void setupFlowControl(ContentName name) {
+		_filteredNames.add(name);
+		registerFilter(name, this);
+	}
+	
+	public void setupFlowControl(String name) throws MalformedContentNameStringException {
+		setupFlowControl(ContentName.fromNative(name));
+	}
+	
+	public void disableFlowControl() {
+		_flowControlEnabled = false;
+	}
+	
 	public ContentObject put(ContentName name, 
 			SignedInfo signedInfo,
 			byte[] content,
 			Signature signature) throws IOException {
-		ContentObject co = new ContentObject(name, signedInfo, content, signature); 
-		return put(co);
+		ContentObject co = new ContentObject(name, signedInfo, content, signature);
+		if (_flowControlEnabled) {
+			Entry<UnmatchedInterest> match = null;
+			synchronized (this) {
+				match = _unmatchedInterests.removeMatch(co);
+				if (match == null) {
+					_holdingArea.put(co.name(), co);
+				} else {
+					put(co);
+				}
+			}
+		} else
+			put(co);
+		return co;
+	}
+	
+	public int handleInterests(ArrayList<Interest> interests) {
+		for (Interest interest : interests) {
+			synchronized (this) {
+				ContentObject co = getBestMatch(interest);
+				if (co != null) {
+					_holdingArea.remove(co.name());
+					try {
+						put(co);
+						if (_shutdownWait && _holdingArea.size() == 0) {
+							synchronized (_holdingArea) {
+								_holdingArea.notify();
+							}
+						}
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					
+				} else {
+					_unmatchedInterests.add(interest, new UnmatchedInterest());
+				}
+			}
+		}
+		return interests.size();
+	}
+	
+	/**
+	 * Try to optimize this by giving preference to "getNext" which is
+	 * presumably going to be the most common kind of get. So we first try
+	 * on a tailmap following the interest, and if that doesn't get us 
+	 * anything, we try all the data.
+	 * XXX there are probably better ways to optimize this that I haven't
+	 * thought of yet also...
+	 * 
+	 * @param interest
+	 * @param set
+	 * @return
+	 */
+	public ContentObject getBestMatch(Interest interest) {
+		// paul r - following seems broken for some reason - I'll try
+		// to sort it out later
+		//SortedMap<ContentName, ContentObject> matchMap = _holdingArea.tailMap(interest.name());
+		//ContentObject result = getBestMatch(interest, matchMap.keySet());
+		//if (result != null)
+		//	return result;
+		return getBestMatch(interest, _holdingArea.keySet());
+	}
+	
+	private ContentObject getBestMatch(Interest interest, Set<ContentName> set) {
+		ContentObject bestMatch = null;
+		for (ContentName name : set) {
+			ContentObject result = _holdingArea.get(name);
+			if (interest.orderPreference()  != null) {
+				if ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME))
+						== (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME)) { //next
+					if (interest.matches(result))
+						return result;
+				} else if ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME))
+						== (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME)) { //last
+					if (interest.matches(result)) {
+						if (bestMatch == null)
+							bestMatch = result;
+						else {
+							if (name.compareTo(bestMatch.name()) < 0) {
+								bestMatch = result;
+							}
+						}
+					} else
+						return bestMatch;
+				}
+			} else
+				if (interest.matches(result))
+					return result;
+		}
+		return bestMatch;
+	}
+	
+	/**
+	 * Shutdown but wait for puts to drain first
+	 */
+	public void shutdown() {
+		if (_holdingArea.size() > 0) {
+			_shutdownWait = true;
+			boolean _interrupted;
+			do {
+				_interrupted = false;
+				try {
+					synchronized (_holdingArea) {
+						_holdingArea.wait();
+					}
+				} catch (InterruptedException ie) {
+					_interrupted = true;
+				}
+			} while (_interrupted);
+		}
+		getNetworkManager().shutdown();
 	}
 
 	public ContentObject put(ContentName name, byte[] contents, 
@@ -1377,6 +1521,22 @@ public class CCNLibrary extends CCNBase {
 		Interest interest = new Interest(name);
 		return get(interest, timeout);
 	}
+		
+	public ContentObject get(Interest interest, long timeout) throws IOException {
+		/*
+		 * If this name is in the flow control tree, short circuit
+		 * interest handling to directly release puts
+		 */
+		for (ContentName fName : _filteredNames) {
+			if (fName.isPrefixOf(interest.name())) {
+				ArrayList<Interest> list = new ArrayList<Interest>();
+				list.add(interest);
+				handleInterests(list);
+				break;
+			}
+		}
+		return super.get(interest, timeout);
+	}
 	
 	/**
 	 * Return data one level below us in the hierarchy only
@@ -1511,12 +1671,20 @@ public class CCNLibrary extends CCNBase {
 	public CCNDescriptor open(ContentName name, PublisherKeyID publisher, 
 								KeyLocator locator, PrivateKey signingKey) 
 			throws IOException, XMLStreamException {
+		setupFlowControl(name);
 		return new CCNDescriptor(name, publisher, locator, signingKey, this); 
 	}
 	
 	public CCNDescriptor open(ContentName name, PublisherKeyID publisher) 
 				throws XMLStreamException, IOException {
 		return new CCNDescriptor(name, publisher, this);
+	}
+	
+	public RepositoryDescriptor repoOpen(ContentName name, PublisherKeyID publisher, 
+			KeyLocator locator, PrivateKey signingKey) 
+				throws IOException, XMLStreamException {
+		setupFlowControl(name);
+		return new RepositoryDescriptor(name, publisher, locator, signingKey, this); 
 	}
 	
 	public int read(CCNDescriptor ccnObject, byte [] buf, 

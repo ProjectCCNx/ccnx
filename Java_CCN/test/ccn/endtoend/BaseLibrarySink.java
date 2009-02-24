@@ -12,18 +12,14 @@ import com.parc.ccn.library.CCNLibrary;
 // NOTE: This test requires ccnd to be running and complementary source process
 
 public class BaseLibrarySink {
-	CCNLibrary library = null;
+	static CCNLibrary library = null;
 	Semaphore sema = new Semaphore(0);
 	int next = 0;
 	protected static Throwable error = null; // for errors in callback
-
-	public BaseLibrarySink() throws Throwable {
-		library = CCNLibrary.open();
-	}
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-	
+		library = CCNLibrary.open();
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
 		Library.logger().setLevel(Level.FINEST);
 	}

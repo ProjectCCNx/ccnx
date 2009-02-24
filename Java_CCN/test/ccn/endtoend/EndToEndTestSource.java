@@ -16,13 +16,10 @@ import com.parc.ccn.data.query.Interest;
 
 public class EndToEndTestSource extends BaseLibrarySource implements CCNFilterListener {
 	
-	public EndToEndTestSource() throws Throwable {
-		super();
-	}
-	
 	@Test
 	public void puts() throws Throwable {
 		assert(count <= Byte.MAX_VALUE);
+		library.setupFlowControl("/BaseLibraryTest");
 		System.out.println("Put sequence started");
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
@@ -38,6 +35,7 @@ public class EndToEndTestSource extends BaseLibrarySource implements CCNFilterLi
 	public void server() throws Throwable {
 		System.out.println("PutServer started");
 		// Register filter
+		library.disableFlowControl();
 		name = ContentName.fromNative("/BaseLibraryTest/");
 		library.registerFilter(name, this);
 		// Block on semaphore until enough data has been received

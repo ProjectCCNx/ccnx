@@ -126,6 +126,7 @@ public class CCNNetworkManager implements Runnable {
 		public Semaphore sema = null;
 		public Object owner = null;
 		protected boolean deliveryPending = false;
+		protected long id;
 		
 		public abstract void deliver();
 		
@@ -142,8 +143,9 @@ public class CCNNetworkManager implements Runnable {
 					// along from doing anything.
 					this.listener = null;
 					this.sema = null;
-					// Return only if no delivery is in progress now
-					if (!deliveryPending) {
+					// Return only if no delivery is in progress now (or if we are
+					// called out of our own handler)
+					if (!deliveryPending || (Thread.currentThread().getId() == id)) {
 						return;
 					}
 				}
@@ -152,6 +154,7 @@ public class CCNNetworkManager implements Runnable {
 		}
 		
 		public void run() {
+			id = Thread.currentThread().getId();
 			synchronized (this) {
 				// Mark us pending delivery, so that any invalidate() that comes 
 				// along will not return until delivery has finished
@@ -369,8 +372,9 @@ public class CCNNetworkManager implements Runnable {
 						listener = (CCNFilterListener)this.listener;
 					}
 				}
-				// Call into client code without holding any library locks
-				if (null != results) {
+				
+				if (null != results) {								
+					// Call into client code without holding any library locks
 					Library.logger().finer("Filter callback (" + results.size() + " interests) for: " + name);
 					listener.handleInterests(results);
 				} else {
@@ -437,6 +441,11 @@ public class CCNNetworkManager implements Runnable {
 		_periodicTimer.scheduleAtFixedRate(new PeriodicWriter(), PERIOD, PERIOD);
 	}
 	
+	/**
+	 * 
+	 * @param putWait - wait for all puts to be output before
+	 * 					shutting down the server.
+	 */
 	public void shutdown() {
 		Library.logger().info("Shutdown requested");
 		_run = false;
@@ -479,11 +488,10 @@ public class CCNNetworkManager implements Runnable {
 	public ContentObject put(ContentObject co) throws IOException, InterruptedException {	
 		try {
 			write(co);
-		} catch (XMLStreamException xmlex) {
-			Library.logger().warning("Processing thread failure (Malformed datagram): " + xmlex.getMessage()); 
-			Library.warningStackTrace(xmlex);
+		} catch (XMLStreamException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
-		
 		return co;
 		//return CCNRepositoryManager.getRepositoryManager().put(name, signedInfo, signature, content);
 	}
@@ -728,12 +736,14 @@ public class CCNNetworkManager implements Runnable {
                                 Library.warningStackTrace(ex);
 			}
 		}
+		
 		_threadpool.shutdown();
 		Library.logger().info("Shutdown complete");
 	}
 
 	// Internal delivery of interests to pending filter listeners
 	protected void deliverInterest(InterestRegistration ireg) throws XMLStreamException {
+		
 		// Call any listeners with matching filters
 		synchronized (_myFilters) {
 			for (Filter filter : _myFilters.getValues(ireg.interest.name())) {

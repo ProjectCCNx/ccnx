@@ -30,6 +30,7 @@ public class NetworkTest {
 	protected static CCNLibrary library = null;
 	private Semaphore sema = new Semaphore(0);
 	private boolean gotData = false;
+	Interest testInterest = null;
 	
 	static {
 		try {
@@ -55,13 +56,14 @@ public class NetworkTest {
 		/*
 		 * Test re-expression of interest
 		 */
-		Interest interest = new Interest("/networkTest/aaa");
+		testInterest = new Interest("/networkTest/aaa");
+		library.disableFlowControl();
 		TestListener tl = new TestListener();
-		library.expressInterest(interest, tl);
+		library.expressInterest(testInterest, tl);
 		// Sleep long enough that the interest must be re-expressed
 		Thread.sleep(8000);  
 		library.put("/networkTest/aaa", "aaa");
-		sema.tryAcquire(1000, TimeUnit.MILLISECONDS);
+		sema.tryAcquire(4000, TimeUnit.MILLISECONDS);
 		Assert.assertTrue(gotData);
 	}
 	
@@ -75,6 +77,11 @@ public class NetworkTest {
 				gotData = true;
 			}
 			sema.release();
+			
+			/*
+			 * Test call of cancel in handler doesn't hang
+			 */
+			library.cancelInterest(testInterest, this);
 			return null;
 		}
 	}

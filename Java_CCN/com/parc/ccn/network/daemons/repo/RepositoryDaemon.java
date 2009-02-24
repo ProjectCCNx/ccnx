@@ -196,6 +196,7 @@ public class RepositoryDaemon extends Daemon {
 		
 		try {
 			_library = CCNLibrary.open();
+			_library.disableFlowControl();
 			_repo = new RFSImpl();
 		} catch (Exception e1) {
 			e1.printStackTrace();

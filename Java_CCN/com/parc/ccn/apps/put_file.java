@@ -16,12 +16,18 @@ import com.parc.ccn.library.io.CCNDescriptor;
 public class put_file {
 	
 	private static int BLOCK_SIZE = 8096;
+	private static boolean rawMode = false;
 
 	/**
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		if (args.length < 2) {
+		int startArg = 0;
+		if (args.length > 0 && args[0].equals("-raw")) {
+			startArg++;
+			rawMode = true;
+		}
+		if (args.length < startArg + 2) {
 			usage();
 			return;
 		}
@@ -31,27 +37,31 @@ public class put_file {
 			// If we get more than one, put underneath the first as parent.
 			// Ideally want to use newVersion to get latest version. Start
 			// with random version.
-			ContentName argName = ContentName.fromURI(args[0]);
+			ContentName argName = ContentName.fromURI(args[startArg]);
 			
 			CCNLibrary library = CCNLibrary.open();
 			
-			if (args.length == 2) {
+			if (args.length == (startArg + 2)) {
 				
-				File theFile = new File(args[1]);
+				File theFile = new File(args[startArg + 1]);
 				if (!theFile.exists()) {
-					System.out.println("No such file: " + args[1]);
+					System.out.println("No such file: " + args[startArg + 1]);
 					usage();
 					return;
 				}
-				Library.logger().info("put_file: putting file " + args[1] + " bytes: " + theFile.length());
+				Library.logger().info("put_file: putting file " + args[startArg + 1] + " bytes: " + theFile.length());
 				
-				CCNDescriptor ccnd = library.open(argName, library.getDefaultPublisher(), null, null);
+				CCNDescriptor ccnd;
+				if (rawMode)
+					ccnd = library.open(argName, library.getDefaultPublisher(), null, null);
+				else
+					ccnd = library.repoOpen(argName, library.getDefaultPublisher(), null, null);
 				do_write(ccnd, theFile);
 				
-				System.out.println("Inserted file " + args[1] + ".");
+				System.out.println("Inserted file " + args[startArg + 1] + ".");
 				System.exit(0);
 			} else {
-				for (int i=1; i < args.length; ++i) {
+				for (int i=startArg + 1; i < args.length; ++i) {
 					
 					File theFile = new File(args[i]);
 					if (!theFile.exists()) {
@@ -70,7 +80,11 @@ public class put_file {
 					
 					// int version = new Random().nextInt(1000);
 					// would be version = library.latestVersion(argName) + 1;
-					CCNDescriptor ccnd = library.open(nodeName, library.getDefaultPublisher(), null, null);
+					CCNDescriptor ccnd;
+					if (rawMode)
+						ccnd = library.open(nodeName, library.getDefaultPublisher(), null, null);
+					else
+						ccnd = library.repoOpen(nodeName, library.getDefaultPublisher(), null, null);
 					do_write(ccnd, theFile);
 					
 					System.out.println("Inserted file " + args[i] + ".");
@@ -81,7 +95,7 @@ public class put_file {
 			System.out.println("Configuration exception in put: " + e.getMessage());
 			e.printStackTrace();
 		} catch (MalformedContentNameStringException e) {
-			System.out.println("Malformed name: " + args[0] + " " + e.getMessage());
+			System.out.println("Malformed name: " + args[startArg] + " " + e.getMessage());
 			e.printStackTrace();
 		} catch (IOException e) {
 			System.out.println("Cannot read file. " + e.getMessage());
@@ -111,7 +125,7 @@ public class put_file {
 	}
 	
 	public static void usage() {
-		System.out.println("usage: put_file <ccnname> <filename> [<filename> ...]");
+		System.out.println("usage: put_file [-raw] <ccnname> <filename> [<filename> ...]");
 	}
 
 }

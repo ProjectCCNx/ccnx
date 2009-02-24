@@ -16,10 +16,6 @@ import com.parc.ccn.library.CCNLibrary;
 // NOTE: This test requires ccnd to be running and complementary source process
 
 public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestListener {
-	
-	public EndToEndTestSink() throws Throwable {
-		super();
-	}
 
 	@Test
 	public void gets() throws Throwable {

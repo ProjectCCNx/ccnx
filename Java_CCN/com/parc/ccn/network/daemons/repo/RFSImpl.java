@@ -403,7 +403,7 @@ public class RFSImpl implements Repository {
 	 * @return
 	 * @throws RepositoryException
 	 */
-	private ContentObject getContentFromFile(File fileName) throws RepositoryException {
+	public static ContentObject getContentFromFile(File fileName) throws RepositoryException {
 		try {
 			FileInputStream fis = new FileInputStream(fileName);
 			byte[] buf = new byte[fis.available()];

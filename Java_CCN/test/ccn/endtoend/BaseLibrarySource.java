@@ -18,20 +18,17 @@ import com.parc.ccn.library.CCNLibrary;
 
 public class BaseLibrarySource {
 	public static int count = 43;
-	protected CCNLibrary library = null;
+	protected static CCNLibrary library = null;
 	ContentName name = null;
 	int next = 0;
 	protected static Throwable error = null; // for errors in callback
 	Semaphore sema = new Semaphore(0);
 	protected static Random rand;
 	private static ArrayList<Integer> currentSet;
-
-	public BaseLibrarySource() throws Throwable {
-		library = CCNLibrary.open();
-	}
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
+		library = CCNLibrary.open();
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
 		Library.logger().setLevel(Level.INFO);
 		rand = new Random();

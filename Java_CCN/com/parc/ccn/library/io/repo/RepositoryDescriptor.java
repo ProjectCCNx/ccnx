@@ -22,7 +22,7 @@ import com.parc.ccn.library.io.CCNDescriptor;
  *
  */
 
-public class RepositoryOutputStream extends CCNDescriptor {
+public class RepositoryDescriptor extends CCNDescriptor {
 	
 	CCNLibrary _library;
 	
@@ -34,15 +34,11 @@ public class RepositoryOutputStream extends CCNDescriptor {
 		}
 	}
 
-	public RepositoryOutputStream(ContentName name, PublisherKeyID publisher,
+	public RepositoryDescriptor(ContentName name, PublisherKeyID publisher,
 			KeyLocator locator, PrivateKey signingKey, CCNLibrary library)
 			throws XMLStreamException, IOException {
 		super(name, publisher, locator, signingKey, library);
 		this._library = library;
-	}
-
-	public void close() throws IOException {
-		super.close();
 		ContentName repoWriteName = new ContentName(_output.getBaseName(), CCNBase.REPO_START_WRITE);
 		_library.expressInterest(new Interest(repoWriteName), new RepoListener());
 	}
