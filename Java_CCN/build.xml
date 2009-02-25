@@ -271,7 +271,7 @@
 		<mkdir dir="${REPO_ROOT}"/>
 		<unzip src="${repozip}" dest="${REPO_ROOT}" />
 		<antcall target="start-repo" />
-		<junit printsummary="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}" timeout="60000">
+		<junit printsummary="yes" fork="on" forkmode="perBatch" showoutput="${showoutput}">
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>

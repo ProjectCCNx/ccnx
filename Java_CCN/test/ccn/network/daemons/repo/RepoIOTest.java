@@ -141,7 +141,7 @@ public class RepoIOTest extends RepoTestBase {
 		ros.write(data, 0, data.length);
 		ContentName baseName = ros.getBaseName();
 		ros.close();
-		Thread.sleep(20000);
+		Thread.sleep(5000);
 		File testFile = new File("repotest" + baseName);
 		if (expected)
 			Assert.assertTrue(testFile.exists());
