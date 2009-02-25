@@ -917,6 +917,8 @@ ccn_run(struct ccn *h, int timeout)
         }
         if (h->err == ENOTCONN)
             ccn_disconnect(h);
+        if (h->timeout == 0)
+            break;
     }
     if (h->running != 1)
         abort();
