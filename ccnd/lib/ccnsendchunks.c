@@ -180,7 +180,6 @@ main(int argc, char **argv)
     ccn_charbuf_append_closer(templ); /* </Interest> */
     res = ccn_express_interest(ccn, name, -1, &in_content, templ);
     if (res < 0) abort();
-    ccn_run(ccn, 0); /* send the interest out */
 
     for (i = 0;; i++) {
         read_res = read_full(0, buf, blocksize);
