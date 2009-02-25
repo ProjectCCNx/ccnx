@@ -266,12 +266,12 @@
 		</junit>
 	</target>
 	
-	<target name="test-repo-read" depends="jar, ccnd">
+	<target name="test-repo-io" depends="jar, ccnd">
 		<mkdir dir="${testout}"/>
 		<mkdir dir="${REPO_ROOT}"/>
 		<unzip src="${repozip}" dest="${REPO_ROOT}" />
 		<antcall target="start-repo" />
-		<junit printsummary="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
+		<junit printsummary="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}" timeout="60000">
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
@@ -279,7 +279,7 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
-					<include name="test/ccn/network/daemons/repo/RepoReadTest.class"/>
+					<include name="test/ccn/network/daemons/repo/RepoIOTest.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
