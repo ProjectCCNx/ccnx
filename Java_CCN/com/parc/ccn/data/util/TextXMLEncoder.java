@@ -70,8 +70,12 @@ public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 	public void writeStartElement(String tag) throws XMLStreamException {
 		writeStartElement(tag, null);
 	}
+	
+	public void writeStartElement(String tag, TreeMap<String, String> attributes) throws XMLStreamException {
+		writeStartElement(tag, attributes, null);
+	}
 
-	public void writeStartElement(String tag, TreeMap<String, String> attributes)
+	public void writeStartElement(String tag, TreeMap<String, String> attributes, BinaryXMLDictionary dictionary)
 			throws XMLStreamException {
 		_writer.writeStartElement(TextXMLCodec.CCN_NAMESPACE, tag);
 		if (_isFirstElement) {
@@ -92,5 +96,12 @@ public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 
 	public void writeEndElement() throws XMLStreamException {
 		_writer.writeEndElement();
+	}
+
+	public BinaryXMLDictionary popXMLDictionary() {
+		return null;
+	}
+
+	public void pushXMLDictionary(BinaryXMLDictionary dictionary) {
 	}
 }

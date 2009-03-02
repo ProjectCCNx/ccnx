@@ -28,17 +28,20 @@ public class BasicPolicy implements Policy {
 	
 	private String _version = null;
 	private byte [] _content = null;
-	private String _name = null;
-	private boolean nameMatched = false;
+	private String _globalName = null;
+	private String _localName = null;
+	private boolean _localNameMatched = false;
+	private boolean _globalNameMatched = false;
 	
 	public BasicPolicy(String name) {
-		this._name = name;
+		this._localName = name;
 	}
 	
 	private enum PolicyValue {
 		VERSION ("VERSION"),
 		NAMESPACE ("NAMESPACE"),
-		NAME ("NAME"),
+		GLOBALNAME ("GLOBALNAME"),
+		LOCALNAME ("LOCALNAME"),
 		UNKNOWN();
 		
 		private String _stringValue = null;
@@ -62,7 +65,7 @@ public class BasicPolicy implements Policy {
 	
 	private ArrayList<ContentName> nameSpace = new ArrayList<ContentName>(0);
 
-	public boolean update(InputStream stream) throws XMLStreamException, IOException {
+	public boolean update(InputStream stream, boolean fromNet) throws XMLStreamException, IOException {
 		_content = new byte[stream.available()];
 		stream.read(_content);
 		stream.close();
@@ -71,20 +74,23 @@ public class BasicPolicy implements Policy {
 		XMLEventReader reader = factory.createXMLEventReader(bais);
 		XMLEvent event = reader.nextEvent();
 		_version = null;
-		nameMatched = false;
+		_localNameMatched = false;
+		_globalNameMatched = false;
 		if (!event.isStartDocument()) {
 			throw new XMLStreamException("Expected start document, got: " + event.toString());
 		}
 		try {
-			parseXML(reader, null, null, POLICY, false);
+			parseXML(reader, null, null, POLICY, false, fromNet);
 		} catch (RepositoryException e) {
 			return false; // wrong hostname - i.e. not for us
 		}
 		reader.close();
 		if (_version == null)
 			throw new XMLStreamException("No version in policy file");
-		if (!nameMatched)
-			throw new XMLStreamException("No hostname in policy file");
+		if (!_localNameMatched)
+			throw new XMLStreamException("No local name in policy file");
+		if (!_globalNameMatched)
+			throw new XMLStreamException("No global name in policy file");
 		return true;
 	}
 
@@ -100,7 +106,8 @@ public class BasicPolicy implements Policy {
 	 * @throws XMLStreamException
 	 * @throws RepositoryException 
 	 */
-	private XMLEvent parseXML(XMLEventReader reader, XMLEvent event, String value, String expectedValue, boolean started) 
+	private XMLEvent parseXML(XMLEventReader reader, XMLEvent event, String value, String expectedValue, boolean started,
+				boolean fromNet) 
 				throws XMLStreamException, RepositoryException {
 		if (started) {
 			switch (PolicyValue.valueFromString(value)) {
@@ -130,7 +137,7 @@ public class BasicPolicy implements Policy {
 					value = expectedValue;
 					expectedValue = null;
 				} else {
-					event = parseXML(reader, event, startValue, null, true);
+					event = parseXML(reader, event, startValue, null, true, fromNet);
 				}
 			} else if (event.isEndElement()) {
 				String newValue = event.asEndElement().getName().toString();
@@ -149,12 +156,28 @@ public class BasicPolicy implements Policy {
 							throw new XMLStreamException("Malformed value in namespace: " + charValue);
 						}
 						break;
-					case NAME:
+					case LOCALNAME:
 						charValue = event.asCharacters().getData();
-						String name = charValue.trim();
-						if (!checkMatch(name))
-							throw new RepositoryException("Repository doesn't match");
-						nameMatched = true;
+						String localName = charValue.trim();
+						if (fromNet) {
+							if (!checkMatch(localName, _localName))
+								throw new RepositoryException("Repository local name doesn't match");
+						} else
+							_localName = localName;
+						_localNameMatched = true;
+						break;
+					case GLOBALNAME:
+						charValue = event.asCharacters().getData();
+						String globalName = charValue.trim();
+						if (fromNet) {
+							if (!checkMatch(globalName, _globalName))
+								throw new RepositoryException("Repository global name doesn't match");
+						} else {
+							if (!globalName.startsWith("/"))
+								globalName = "/" + globalName;
+							_globalName = globalName;
+						}
+						_globalNameMatched = true;
 						break;
 					default:
 						break;
@@ -170,16 +193,16 @@ public class BasicPolicy implements Policy {
 
 	public ContentObject getPolicyContent() {
 		try {
-			return CCNLibrary.getContent(ContentName.fromNative(
-					Repository.REPO_NAMESPACE + "/" + _name + "/" + Repository.REPO_POLICY), 
+			return CCNLibrary.getContent(ContentName.fromNative(_globalName + "/" + _localName +
+					"/" + Repository.REPO_DATA + "/" + Repository.REPO_POLICY), 
 					_content);
 		} catch (MalformedContentNameStringException e) {return null;}	// shouldn't happen
 	}
 	
-	private boolean checkMatch(String name) {
-		if (_name == null)
+	private boolean checkMatch(String name, String matchName) {
+		if (matchName == null)
 			return true;
-		if (name.equals(_name))
+		if (name.equals(matchName))
 			return true;
 		return false;
 	}

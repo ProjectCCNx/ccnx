@@ -43,7 +43,5 @@
 56,BlockSize
 57,AdditionalNameComponents
 58,FreshnessSeconds
-59,RepositoryName
-60,RepositoryPrefix
 17702112,CCNProtocolDataUnit
 23204960,ExperimentalResponseFilter

@@ -15,6 +15,8 @@
 	<property name="showoutput" value="no"/>
 	<property name="repozip" value="repotest.zip"/>
 	<property name="REPO_ROOT" value="repotest"/>
+	<property name="REPO_LOCAL" value="TestRepository"/>
+	<property name="REPO_GLOBAL" value="parc.com/csl/ccn/repositories"/>
 	<!-- To enable remote debugging, the incantation is 
 	"-Xdebug -Xrunjdwp:transport=dt_socket,address=8000,server=y,suspend=n" -->
 	<property name="DEBUG_OPTIONS" value=""/>
@@ -158,6 +160,10 @@
 			<arg value="-start" />
 			<arg value="-root" />
 			<arg value="${REPO_ROOT}" />
+			<arg value="-local" />
+			<arg value="${REPO_LOCAL}" />
+			<arg value="-global" />
+			<arg value="${REPO_GLOBAL}" />
 		</java>
 	</target>
 	
@@ -171,7 +177,8 @@
 			</java>
 		</target>
 
-	<!-- test is for running all current automated tests to validate code -->
+	<!-- test is for running all current automated tests to validate code 
+	     For now repo tests are left out. Use test-repo for that -->
 	<target name="test" depends="test-data, test-puttap, test-library, test-network, test-endtoend">
 	</target>
 
@@ -248,8 +255,11 @@
 			</batchtest>
 		</junit>
 	</target>
+	
+	<target name="test-repo" depends="test-repo-structure, test-repo-io">
+	</target>
 
-	<target name="test-repo" depends="jar, ccnd">
+	<target name="test-repo-structure" depends="jar, ccnd">
 		<mkdir dir="${testout}"/>
 		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
 			<classpath>

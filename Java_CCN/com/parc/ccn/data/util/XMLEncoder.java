@@ -47,4 +47,8 @@ public interface XMLEncoder {
 	 * Encapsulate our handling of timestamps.
 	 */
 	public void writeDateTime(String tag, Timestamp dateTime) throws XMLStreamException;
+	
+	public void pushXMLDictionary(BinaryXMLDictionary dictionary);
+	
+	public BinaryXMLDictionary popXMLDictionary();
 }

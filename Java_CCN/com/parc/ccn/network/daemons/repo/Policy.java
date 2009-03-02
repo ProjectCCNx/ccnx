@@ -25,7 +25,7 @@ public interface Policy {
 	 * @throws XMLStreamException
 	 * @throws IOException
 	 */
-	boolean update(InputStream stream) throws XMLStreamException, IOException;
+	boolean update(InputStream stream, boolean fromNet) throws XMLStreamException, IOException;
 
 	public ArrayList<ContentName> getNameSpace();
 	

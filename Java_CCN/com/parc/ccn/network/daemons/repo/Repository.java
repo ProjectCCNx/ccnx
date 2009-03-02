@@ -19,6 +19,7 @@ public interface Repository {
 
 	public static final String REPO_POLICY = "policy.xml";
 	public static final String REPO_NAMESPACE = "/ccn/repository";
+	public static final String REPO_DATA = "data";
 	
 	/**
 	 * Initialize the repository

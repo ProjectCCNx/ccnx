@@ -90,7 +90,7 @@ public class RFSImpl implements Repository {
 					throw new InvalidParameterException();
 				File policyFile = new File(args[i + 1]);
 				try {
-					policy.update(new FileInputStream(policyFile));
+					policy.update(new FileInputStream(policyFile), false);
 				} catch (Exception e) {
 					throw new InvalidParameterException(e.getMessage());
 				}
@@ -103,6 +103,8 @@ public class RFSImpl implements Repository {
 				if (args.length < i + 2)
 					throw new InvalidParameterException();
 				globalPrefix = args[i + 1];
+				if (!globalPrefix.startsWith("/"))
+					globalPrefix = "/" + globalPrefix;
 				globalFromArgs = true;
 			}
 		}
@@ -142,7 +144,7 @@ public class RFSImpl implements Repository {
 						new Interest(ContentName.fromNative(REPO_NAMESPACE + "/" + _info.getName() + "/" + REPO_POLICY)));
 				if (policyObject != null) {
 					ByteArrayInputStream bais = new ByteArrayInputStream(policyObject.content());
-					policy.update(bais);
+					policy.update(bais, false);
 				}
 			} catch (MalformedContentNameStringException e) {} // None of this should happen
 			  catch (XMLStreamException e) {} 
@@ -271,7 +273,7 @@ public class RFSImpl implements Repository {
 		if (_info.getPolicyName().isPrefixOf(co)) {
 			ByteArrayInputStream bais = new ByteArrayInputStream(co.content());
 			try {
-				_policy.update(bais);
+				_policy.update(bais, true);
 				_nameSpace = _policy.getNameSpace();
 			} catch (XMLStreamException e) {
 				// TODO Auto-generated catch block

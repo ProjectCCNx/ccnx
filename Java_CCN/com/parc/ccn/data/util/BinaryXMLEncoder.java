@@ -5,6 +5,7 @@ import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.Stack;
 import java.util.TreeMap;
 
 import javax.xml.stream.XMLStreamException;
@@ -14,7 +15,7 @@ import com.parc.ccn.Library;
 public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 	
 	protected OutputStream _ostream = null;
-	protected BinaryXMLDictionary _dictionary = null;
+	protected Stack<BinaryXMLDictionary> _dictionary = new Stack<BinaryXMLDictionary>();
 	
 	public BinaryXMLEncoder() {
 		this(null);
@@ -22,9 +23,9 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 
 	public BinaryXMLEncoder(BinaryXMLDictionary dictionary) {
 		if (null == dictionary)
-			_dictionary = BinaryXMLDictionary.getDefaultDictionary();
+			_dictionary.push(BinaryXMLDictionary.getDefaultDictionary());
 		else
-			_dictionary = dictionary;
+			_dictionary.push(dictionary);
 	}
 	
 	public void beginEncoding(OutputStream ostream) throws XMLStreamException {
@@ -81,7 +82,7 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 	
 	public void writeStartElement(String tag, TreeMap<String,String> attributes) throws XMLStreamException {
 		try {
-			long dictionaryVal = _dictionary.encodeTag(tag);
+			long dictionaryVal = _dictionary.peek().encodeTag(tag);
 			
 			if (dictionaryVal < 0) {
 				Library.logger().info("Unexpected: tag found that is not in our dictionary: " + tag);
@@ -105,7 +106,7 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 					String strValue = attributes.get(strAttr);
 					
 					// TODO DKS are attributes in different dictionary? right now not using DATTRS
-					long dictionaryAttr = _dictionary.encodeAttr(strAttr);
+					long dictionaryAttr = _dictionary.peek().encodeAttr(strAttr);
 					if (dictionaryAttr < 0) {
 						// not in dictionary, encode as attr
 						// compressed format wants length of tag represented as length-1
@@ -135,5 +136,13 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 		} catch (IOException e) {
 			throw new XMLStreamException(e.getMessage(),e);
 		}
+	}
+
+	public BinaryXMLDictionary popXMLDictionary() {
+		return _dictionary.pop();
+	}
+
+	public void pushXMLDictionary(BinaryXMLDictionary dictionary) {
+		_dictionary.push(dictionary);
 	}
 }

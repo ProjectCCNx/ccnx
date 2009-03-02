@@ -21,7 +21,7 @@ public class RepoTestBase extends LibraryTestBase {
 	protected static String _topdir;
 	protected static String _fileTestDir = "fileTestDir";
 	protected static String _repoName = "TestRepository";
-	protected static String _globalPrefix = "/parc.com/csl/ccn/Repos";
+	protected static String _globalPrefix = "/parc.com/csl/ccn/repositories";
 	protected static File _fileTest;
 	
 	@BeforeClass

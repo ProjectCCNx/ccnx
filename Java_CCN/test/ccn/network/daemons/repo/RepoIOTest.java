@@ -80,7 +80,8 @@ public class RepoIOTest extends RepoTestBase {
 		fis.read(content);
 		fis.close();
 		RepositoryDescriptor ros = library.repoOpen(ContentName.fromNative(_globalPrefix + '/' + 
-				_repoName + '/' + Repository.REPO_POLICY), library.getDefaultPublisher(), null, null);
+				_repoName + '/' + Repository.REPO_DATA + '/' + Repository.REPO_POLICY), 
+				library.getDefaultPublisher(), null, null);
 		ros.write(content, 0, content.length);
 		ros.close();
 		Thread.sleep(1000);
