@@ -1198,7 +1198,7 @@ reap(
         check_propagating(h);
         check_comm_file(h);
         if (hashtb_n(h->dgram_faces) > 0 || hashtb_n(h->propagating_tab) > 0)
-            return(2 * CCN_INTEREST_HALFLIFE_MICROSEC);
+            return(2 * CCN_INTEREST_LIFETIME_MICROSEC);
     }
     /* nothing on the horizon, so go away */
     h->reaper = NULL;
@@ -1441,12 +1441,12 @@ do_propagate(struct ccn_schedule *sched,
         }
     }
     if (n == 0) {
-        if (pe->usec <= CCN_INTEREST_HALFLIFE_MICROSEC * 3 / 4) {
+        if (pe->usec <= CCN_INTEREST_LIFETIME_MICROSEC * 3 / 4) {
             finished_propagating(pe);
-            next_delay = CCN_INTEREST_HALFLIFE_MICROSEC;
+            next_delay = CCN_INTEREST_LIFETIME_MICROSEC;
         }
         else if (special_delay == 0)
-            next_delay = CCN_INTEREST_HALFLIFE_MICROSEC / 4;
+            next_delay = CCN_INTEREST_LIFETIME_MICROSEC / 4;
     }
     next_delay = pe_next_usec(h, pe, next_delay, __LINE__);
     return(next_delay);
@@ -1593,7 +1593,7 @@ propagate_interest(struct ccnd *h, struct face *face,
             pe->size = msg_out_size;
             pe->faceid = face->faceid;
             face->pending_interests += 1;
-            pe->usec = CCN_INTEREST_HALFLIFE_MICROSEC;
+            pe->usec = CCN_INTEREST_LIFETIME_MICROSEC;
             delaymask = 0xFFF;
             if (outbound != NULL && outbound->n > 0 &&
                   outbound->buf[outbound->n - 1] == ipe->src) {
@@ -2105,7 +2105,7 @@ get_dgram_source(struct ccnd *h, struct face *face,
             source->flags |= CCN_FACE_DGRAM;
             res = enroll_face(h, source);
             ccnd_msg(h, "accepted datagram client id=%d", res);
-            reap_needed(h, CCN_INTEREST_HALFLIFE_MICROSEC);
+            reap_needed(h, CCN_INTEREST_LIFETIME_MICROSEC);
         }
         source->recvcount++;
     }

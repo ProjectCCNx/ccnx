@@ -761,14 +761,14 @@ ccn_age_interest(struct ccn *h,
     }
     delta = (h->now.tv_sec  - interest->lasttime.tv_sec)*1000000 +
     (h->now.tv_usec - interest->lasttime.tv_usec);
-    while (delta >= CCN_INTEREST_HALFLIFE_MICROSEC) {
+    while (delta >= CCN_INTEREST_LIFETIME_MICROSEC) {
         interest->outstanding /= 2;
-        delta -= CCN_INTEREST_HALFLIFE_MICROSEC;
+        delta -= CCN_INTEREST_LIFETIME_MICROSEC;
     }
     if (delta < 0)
         delta = 0;
-    if (CCN_INTEREST_HALFLIFE_MICROSEC - delta < h->refresh_us)
-        h->refresh_us = CCN_INTEREST_HALFLIFE_MICROSEC - delta;
+    if (CCN_INTEREST_LIFETIME_MICROSEC - delta < h->refresh_us)
+        h->refresh_us = CCN_INTEREST_LIFETIME_MICROSEC - delta;
     interest->lasttime = h->now;
     while (delta > interest->lasttime.tv_usec) {
         delta -= 1000000;
@@ -883,7 +883,7 @@ ccn_run(struct ccn *h, int timeout)
             res = -1;
             break;
         }
-        h->refresh_us = 5 * CCN_INTEREST_HALFLIFE_MICROSEC;
+        h->refresh_us = 5 * CCN_INTEREST_LIFETIME_MICROSEC;
         gettimeofday(&h->now, NULL);
         ccn_age_interests(h);
         timeout = h->timeout;

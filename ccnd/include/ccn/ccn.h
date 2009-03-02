@@ -16,8 +16,7 @@
 #include <ccn/charbuf.h>
 #include <ccn/indexbuf.h>
 
-// XXX - this is no longer a halflife, it should be renamed
-#define CCN_INTEREST_HALFLIFE_MICROSEC 4000000
+#define CCN_INTEREST_LIFETIME_MICROSEC 4000000
 
 /* opaque declarations */
 struct ccn;
