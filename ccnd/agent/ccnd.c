@@ -2348,13 +2348,15 @@ static void
 ccnd_reseed(struct ccnd *h)
 {
     int fd;
+    ssize_t res;
     
+    res = -1;
     fd = open("/dev/random", O_RDONLY);
     if (fd != -1) {
-        read(fd, h->seed, sizeof(h->seed));
+        res = read(fd, h->seed, sizeof(h->seed));
         close(fd);
     }
-    else {
+    if (res != sizeof(h->seed)) {
         h->seed[1] = (unsigned short)getpid(); /* better than no entropy */
         h->seed[2] = (unsigned short)time(NULL);
     }

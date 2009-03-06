@@ -70,7 +70,7 @@ main(int argc, char **argv)
     res = ccn_get(NULL, name, -1, templ, 3000, resultbuf, NULL, NULL);
     
     if (res >= 0)
-        fwrite(resultbuf->buf, resultbuf->length, 1, stdout);
+        res = fwrite(resultbuf->buf, resultbuf->length, 1, stdout) - 1;
     ccn_charbuf_destroy(&resultbuf);
     ccn_charbuf_destroy(&templ);
     ccn_charbuf_destroy(&name);

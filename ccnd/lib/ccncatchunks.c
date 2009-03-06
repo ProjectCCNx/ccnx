@@ -137,6 +137,7 @@ incoming_content(
     size_t ccnb_size = 0;
     const unsigned char *data = NULL;
     size_t data_size = 0;
+    size_t written;
     const unsigned char *ib = NULL; /* info->interest_ccnb */
     struct ccn_indexbuf *ic = NULL;
     int res;
@@ -183,7 +184,9 @@ incoming_content(
     
     /* OK, we will accept this block. */
     
-    fwrite(data, data_size, 1, stdout);
+    written = fwrite(data, data_size, 1, stdout);
+    if (written != 1)
+        exit(1);
     
     /* A short block signals EOF for us. */
     if (data_size < CHUNK_SIZE)

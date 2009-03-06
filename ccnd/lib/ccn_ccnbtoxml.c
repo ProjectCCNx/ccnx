@@ -607,12 +607,15 @@ set_stdout(struct ccn_decoder *d, enum callback_kind kind, void *data)
 {
     struct callback_state *cs = (struct callback_state *)data;
     char filename[256];
+    FILE *fp;
     switch (kind) {
     case CALLBACK_INITIAL:
     case CALLBACK_OBJECTEND:
         snprintf(filename, sizeof(filename), "%s%05d.xml", cs->fileprefix, cs->fragment++);
         fprintf(stderr, " <!-- attaching stdout to %s --!>\n", filename);
-        freopen(filename, "w+", stdout);
+        fp = freopen(filename, "w+", stdout);
+        if (fp == NULL)
+            perror(filename);
         break;
     case CALLBACK_FINAL:
         fflush(stdout);

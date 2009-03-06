@@ -178,13 +178,13 @@ ccnd_stats_check_for_http_connection(struct ccnd *h)
                               "Connection: close" CRLF
                               "Content-Length: %d" CRLF CRLF,
                               res);
-            write(fd, buf, hdrlen);
-            write(fd, response, res);
+            (void)write(fd, buf, hdrlen);
+            (void)write(fd, response, res);
         }
         else if (0 == memcmp(buf, "GET ", 4))
-            write(fd, resp404, strlen(resp404));
+            (void)write(fd, resp404, strlen(resp404));
         else
-            write(fd, resp405, strlen(resp405));
+            (void)write(fd, resp405, strlen(resp405));
     }
     close(fd);
     free(response);

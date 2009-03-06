@@ -75,7 +75,7 @@ incoming_content(
         return(CCN_UPCALL_RESULT_ERR);
     }
     md->nseen++;
-    fwrite(ccnb, ccnb_size, 1, stdout);
+    (void)fwrite(ccnb, ccnb_size, 1, stdout);
     return(CCN_UPCALL_RESULT_REEXPRESS);
 }
 
@@ -148,7 +148,7 @@ main(int argc, char **argv)
             break;
     }
     ccn_destroy(&ccn);
-    if (incoming_content_action.data != NULL) {
+    if (incoming_content_action.data != NULL || ferror(stdout)) {
         fprintf(stderr, "\nWarning: output from %s may be incomplete.\n", argv[0]);
         exit(1);
     }

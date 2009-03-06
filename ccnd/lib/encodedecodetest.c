@@ -178,7 +178,7 @@ main (int argc, char *argv[]) {
     struct ccn_charbuf *signed_info = ccn_charbuf_create();
     struct ccn_skeleton_decoder dd = {0};
     ssize_t res;
-    char *outname;
+    char *outname = NULL;
     int fd;
     int result = 0;
     char * contents[] = {"INVITE sip:foo@parc.com SIP/2.0\nVia: SIP/2.0/UDP 127.0.0.1:5060;rport;branch=z9hG4bK519044721\nFrom: <sip:jthornto@13.2.117.52>;tag=2105643453\nTo: Test User <sip:foo@parc.com>\nCall-ID: 119424355@127.0.0.1\nCSeq: 20 INVITE\nContact: <sip:jthornto@127.0.0.1:5060>\nMax-Forwards: 70\nUser-Agent: Linphone-1.7.1/eXosip\nSubject: Phone call\nExpires: 120\nAllow: INVITE, ACK, CANCEL, BYE, OPTIONS, REFER, SUBSCRIBE, NOTIFY, MESSAGE\nContent-Type: application/sdp\nContent-Length:   448\n\nv=0\no=jthornto 123456 654321 IN IP4 127.0.0.1\ns=A conversation\nc=IN IP4 127.0.0.1\nt=0 0\nm=audio 7078 RTP/AVP 111 110 0 3 8 101\na=rtpmap:111 speex/16000/1\na=rtpmap:110 speex/8000/1\na=rtpmap:0 PCMU/8000/1\na=rtpmap:3 GSM/8000/1\na=rtpmap:8 PCMA/8000/1\na=rtpmap:101 telephone-event/8000\na=fmtp:101 0-11\nm=video 9078 RTP/AVP 97 98 99\na=rtpmap:97 theora/90000\na=rtpmap:98 H263-1998/90000\na=fmtp:98 CIF=1;QCIF=1\na=rtpmap:99 MP4V-ES/90000\n", 
@@ -247,14 +247,19 @@ main (int argc, char *argv[]) {
 	    printf("Failed to decode!  Result %d State %d\n", (int)res, dd.state);
 	    result = 1;
 	}
-	fd = open(outname, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU);
-	write(fd, buffer->buf, buffer->length);
-	close(fd);
-	if (decode_message(buffer, cur_path, contents[0], strlen(contents[0]), ccn_keystore_public_key(keystore)) != 0) {
+        if (outname != NULL) {
+            fd = open(outname, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU);
+            if (fd == -1)
+                perror(outname);
+            (void)write(fd, buffer->buf, buffer->length);
+            close(fd);
+	}
+        if (decode_message(buffer, cur_path, contents[0], strlen(contents[0]), ccn_keystore_public_key(keystore)) != 0) {
 	    result = 1;
 	}
         printf("Expect signature verification failure: ");
-        buffer->buf[buffer->length - 20] += 1;
+        if (buffer->length >= 20)
+            buffer->buf[buffer->length - 20] += 1;
 	if (decode_message(buffer, cur_path, contents[0], strlen(contents[0]), ccn_keystore_public_key(keystore)) == 0) {
 	    result = 1;
 	}

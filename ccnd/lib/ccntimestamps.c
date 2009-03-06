@@ -25,6 +25,7 @@ incoming_content(
     int nest = 0;
     struct mydata *md = selfp->data;
     size_t ccnb_size = 0;
+    size_t written;
     if (kind == CCN_UPCALL_FINAL) {
         // XXX - cleanup
         return(0);
@@ -55,7 +56,11 @@ incoming_content(
             if (ccn_buf_match_dtag(d, CCN_DTAG_Timestamp)) {
                 ccn_buf_advance(d);
                 if (CCN_GET_TT_FROM_DSTATE(d->decoder.state) == CCN_UDATA) {
-                    fwrite(info->content_ccnb + d->decoder.index, 1, d->decoder.numval, stdout);
+                    written = fwrite(info->content_ccnb + d->decoder.index, 1, d->decoder.numval, stdout);
+                    if (written != d->decoder.numval) {
+                        fprintf(stderr, "*** error writing stdout\n");
+                        exit(1);
+                    }
                     printf("\n");
                     break;
                 }

@@ -157,7 +157,8 @@ ccn_encoder_destroy(struct ccn_encoder **cbp)
 static void
 emit_bytes(struct ccn_encoder *u, const void *p, size_t length)
 {
-    fwrite(p, 1, length, u->outfile);
+    /* Write errors to files are checked with ferror before close. */
+    (void)fwrite(p, 1, length, u->outfile);
 }
 
 static void
@@ -451,6 +452,11 @@ process_file(char *path, int flags)
         fflush(outfile);
     }
     if (outfile != NULL && outfile != stdout) {
+        if (ferror(outfile)) {
+            res |= 1;
+            fprintf(stderr, " %s: output error\n", outname);
+            clearerr(outfile);
+        }
         fclose(outfile);
         if (res == 0)
             fprintf(stderr, " %s written.\n", outname);

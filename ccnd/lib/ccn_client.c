@@ -44,19 +44,19 @@ struct ccn {
 
 struct expressed_interest;
 
-struct interests_by_prefix {
+struct interests_by_prefix { /* keyed by components of name prefix */
     struct expressed_interest *list;
 };
 
-struct expressed_interest { /* keyed by components of name prefix */
-    int magic;
-    struct timeval lasttime;
-    struct ccn_closure *action;
-    unsigned char *interest_msg;
-    size_t size;
-    int target;
-    int outstanding;
-    struct expressed_interest *next;
+struct expressed_interest {
+    int magic;                   /* for sanity checking */
+    struct timeval lasttime;     /* time most recently expressed */
+    struct ccn_closure *action;  /* handler for incoming content */
+    unsigned char *interest_msg; /* the interest message as sent */
+    size_t size;                 /* its size in bytes */
+    int target;                  /* how many we want outstanding (0 or 1) */
+    int outstanding;             /* number currently outstanding (0 or 1) */
+    struct expressed_interest *next; /* link to next in list */
 };
 
 struct interest_filter { /* keyed by components of name */
@@ -542,8 +542,14 @@ ccn_put(struct ccn *h, const void *p, size_t length)
         ccn_charbuf_append(h->outbuf, p, length); // XXX - check res
         return (ccn_pushout(h));
     }
-    if (h->tap != -1)
-	write(h->tap, p, length);
+    if (h->tap != -1) {
+	res = write(h->tap, p, length);
+        if (res == -1) {
+            NOTE_ERRNO(h);
+            (void)close(h->tap);
+            h->tap = -1;
+        }
+    }
     res = write(h->sock, p, length);
     if (res == length)
         return(0);
@@ -760,12 +766,12 @@ ccn_age_interest(struct ccn *h,
         interest->lasttime.tv_sec -= 30;
     }
     delta = (h->now.tv_sec  - interest->lasttime.tv_sec)*1000000 +
-    (h->now.tv_usec - interest->lasttime.tv_usec);
-    while (delta >= CCN_INTEREST_LIFETIME_MICROSEC) {
-        interest->outstanding /= 2;
-        delta -= CCN_INTEREST_LIFETIME_MICROSEC;
+            (h->now.tv_usec - interest->lasttime.tv_usec);
+    if (delta >= CCN_INTEREST_LIFETIME_MICROSEC) {
+        interest->outstanding = 0;
+        delta = 0;
     }
-    if (delta < 0)
+    else if (delta < 0)
         delta = 0;
     if (CCN_INTEREST_LIFETIME_MICROSEC - delta < h->refresh_us)
         h->refresh_us = CCN_INTEREST_LIFETIME_MICROSEC - delta;
@@ -794,9 +800,8 @@ ccn_age_interest(struct ccn *h,
             else {
                 int i;
                 fprintf(stderr, "URP!! interest has been corrupted ccn_client.c:%d\n", __LINE__);
-                for (i = 0; i < 120; i++) {
+                for (i = 0; i < 120; i++)
                     sleep(1);
-                }
                 ures = CCN_UPCALL_RESULT_ERR;
             }
             ccn_indexbuf_release(h, info.interest_comps);
@@ -1019,4 +1024,3 @@ ccn_get(struct ccn *h,
         ccn_destroy(&h);
     return(res);
 }
-

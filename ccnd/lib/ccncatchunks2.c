@@ -351,6 +351,7 @@ incoming_content(
     size_t ccnb_size = 0;
     const unsigned char *data = NULL;
     size_t data_size = 0;
+    size_t written;
     int res;
     struct mydata *md = selfp->data;
     unsigned slot;
@@ -439,7 +440,9 @@ GOT_HERE();
         md->ooo[slot].closure.intdata = -1;
         md->delivered++;
 GOT_HERE();
-        fwrite(data, data_size, 1, stdout);
+        written = fwrite(data, data_size, 1, stdout);
+        if (written != 1)
+            exit(1);
         /* A short block signals EOF for us. */
         if (data_size < CHUNK_SIZE) {
             ccn_schedule_destroy(&md->sched);
@@ -452,7 +455,9 @@ GOT_HERE();
         while (md->ooo_count > 0 && md->ooo[slot].raw_data_size != 0) {
             struct ooodata *ooo = &md->ooo[slot];
             md->delivered++;
-            fwrite(ooo->raw_data, ooo->raw_data_size - 1, 1, stdout);
+            written = fwrite(ooo->raw_data, ooo->raw_data_size - 1, 1, stdout);
+            if (written != 1)
+                exit(1);
             /* A short block signals EOF for us. */
             if (ooo->raw_data_size - 1 < CHUNK_SIZE) {
                 ccn_schedule_destroy(&md->sched);
