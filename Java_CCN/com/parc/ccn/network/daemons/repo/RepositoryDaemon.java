@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Level;
 
@@ -52,6 +53,7 @@ public class RepositoryDaemon extends Daemon {
 	private ArrayList<NameAndListener> _repoFilters = new ArrayList<NameAndListener>();
 	private ArrayList<DataListener> _currentListeners = new ArrayList<DataListener>();
 	private ExcludeFilter markerFilter;
+	private TreeMap<ContentName, ContentName> _unacked = new TreeMap<ContentName, ContentName>();
 	
 	public static final int PERIOD = 1000; // period for interest timeout check in ms.
 	
@@ -138,6 +140,10 @@ public class RepositoryDaemon extends Daemon {
 							} else {
 								Library.logger().finer("Saving content in: " + data.name().toString());
 								_repo.saveContent(data);
+								if (_unacked.get(data.name()) != null) {
+									_library.put(data.name(), _repo.getRepoInfo(data.name()));
+									_unacked.remove(data.name());
+								}			
 							}
 						} catch (Exception e) {
 							e.printStackTrace();
@@ -149,22 +155,33 @@ public class RepositoryDaemon extends Daemon {
 				do {
 					interest = _interestQueue.poll();
 					if (interest != null)
-					try {
-						byte[] marker = interest.name().component(interest.name().count() - 1);
-						if (Arrays.equals(marker, CCNBase.REPO_START_WRITE)) {
-							startReadProcess(interest);
-						} else {
-							ContentObject content = _repo.getContent(interest);
-							if (content != null) {
-								_library.put(content);
-							}
-						}
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
+						processIncomingInterest(interest);
 				} while (interest != null);
 				
 				Thread.yield();  // Should we sleep?
+			}
+		}
+		
+		private void processIncomingInterest(Interest interest) {
+			try {
+				byte[] marker = interest.name().component(interest.name().count() - 1);
+				if (Arrays.equals(marker, CCNBase.REPO_START_WRITE)) {
+					startReadProcess(interest);
+				} else if (Arrays.equals(marker, CCNBase.REPO_REQUEST_ACK)) {
+					ContentName syncResult = new ContentName(interest.name().count() - 1, interest.name().components());
+					ContentObject testContent = _repo.getContent(new Interest(syncResult));
+					if (testContent != null)
+						_library.put(interest.name(), _repo.getRepoInfo(syncResult));
+					else
+						_unacked.put(syncResult, syncResult);
+				} else {
+					ContentObject content = _repo.getContent(interest);
+					if (content != null) {
+						_library.put(content);
+					}
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
 		}
 		
@@ -289,7 +306,7 @@ public class RepositoryDaemon extends Daemon {
 			}
 			Interest readInterest = Interest.constructInterest(listeningName, markerFilter, null);
 			_library.expressInterest(readInterest, listener);
-			_library.put(interest.name(), _repo.getRepoInfo());
+			_library.put(interest.name(), _repo.getRepoInfo(null));
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

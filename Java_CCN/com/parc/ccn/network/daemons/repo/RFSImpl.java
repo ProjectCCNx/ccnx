@@ -65,7 +65,7 @@ public class RFSImpl implements Repository {
 	protected File _repositoryFile;
 	protected RFSLocks _locker;
 	protected Policy _policy = null;
-	protected RFSRepoInfo _info = null;
+	protected RepositoryInfo _info = null;
 	protected ArrayList<ContentName> _nameSpace = new ArrayList<ContentName>();
 	
 	protected TreeMap<ContentName, ArrayList<File>> _encodedFiles = new TreeMap<ContentName, ArrayList<File>>();
@@ -129,7 +129,7 @@ public class RFSImpl implements Repository {
 		globalPrefix = checkName != null ? checkName : globalPrefix;
 		
 		try {
-			_info = new RFSRepoInfo(localName, globalPrefix);
+			_info = new RepositoryInfo(localName, globalPrefix, CURRENT_VERSION);
 		} catch (MalformedContentNameStringException e1) {
 			throw new RepositoryException(e1.getMessage());
 		}
@@ -141,7 +141,7 @@ public class RFSImpl implements Repository {
 		if (!policyFromFile) {
 			try {
 				ContentObject policyObject = getContent(
-						new Interest(ContentName.fromNative(REPO_NAMESPACE + "/" + _info.getName() + "/" + REPO_POLICY)));
+						new Interest(ContentName.fromNative(REPO_NAMESPACE + "/" + _info.getLocalName() + "/" + REPO_POLICY)));
 				if (policyObject != null) {
 					ByteArrayInputStream bais = new ByteArrayInputStream(policyObject.content());
 					policy.update(bais, false);
@@ -690,13 +690,19 @@ public class RFSImpl implements Repository {
 		return _nameSpace;
 	}
 	
-	public byte[] getRepoInfo() {
+	public byte[] getRepoInfo(ContentName name) {
 		try {
-			return _info.encode();
+			RepositoryInfo rri = _info;
+			if (name != null)
+				rri = new RepositoryInfo(_info.getLocalName(), _info.getGlobalPrefix(), CURRENT_VERSION, name);	
+			return rri.encode();
 		} catch (XMLStreamException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			return null;
+		} catch (MalformedContentNameStringException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
+		return null;
 	}
 }

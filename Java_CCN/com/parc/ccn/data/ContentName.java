@@ -27,7 +27,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public static final String SCHEME = "ccn:";
 	public static final String SEPARATOR = "/";
 	public static final ContentName ROOT = new ContentName(0, (ArrayList<byte []>)null);
-	private static final String CONTENT_NAME_ELEMENT = "Name";
+	public static final String CONTENT_NAME_ELEMENT = "Name";
 	private static final String COMPONENT_ELEMENT = "Component";
 	
 	protected ArrayList<byte []>  _components;

@@ -136,4 +136,10 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 			throw new XMLStreamException(e.getMessage(), e);
 		}
 	}
+
+	public BinaryXMLDictionary popXMLDictionary() {
+		return null;
+	}
+
+	public void pushXMLDictionary(BinaryXMLDictionary dictionary) {}
 }

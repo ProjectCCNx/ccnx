@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Stack;
 import java.util.TreeMap;
 
 import javax.xml.stream.XMLStreamException;
@@ -15,8 +16,9 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 	protected static final int MARK_LEN = 512; // tag length in UTF-8 encoded bytes, plus length/val bytes
 	protected static final int DEBUG_MAX_LEN = 32768;
 	
+	protected Stack<BinaryXMLDictionary> _dictionary = new Stack<BinaryXMLDictionary>();
+	
 	protected InputStream _istream = null;
-	protected BinaryXMLDictionary _dictionary = null;
 	
 	public BinaryXMLDecoder() {
 		this(null);
@@ -24,9 +26,9 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 
 	public BinaryXMLDecoder(BinaryXMLDictionary dictionary) {
 		if (null == dictionary)
-			_dictionary = BinaryXMLDictionary.getDefaultDictionary();
+			_dictionary.push(BinaryXMLDictionary.getDefaultDictionary());
 		else
-			_dictionary = dictionary;
+			_dictionary.push(dictionary);
 	}
 	
 	public void beginDecoding(InputStream istream) throws XMLStreamException {
@@ -62,7 +64,7 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 				decodedTag = BinaryXMLCodec.decodeUString(_istream, (int)tv.val()+1);
 				
 			} else if (tv.type() == BinaryXMLCodec.XML_DTAG) {
-				decodedTag = _dictionary.decodeTag(tv.val());					
+				decodedTag = _dictionary.peek().decodeTag(tv.val());					
 			}
 			
 			if ((null ==  decodedTag) || (!decodedTag.equals(startTag))) {
@@ -90,7 +92,7 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 					
 					} else if (BinaryXMLCodec.XML_DATTR == thisTV.type()) {
 						// DKS TODO are attributes same or different dictionary?
-						attributeName = _dictionary.decodeTag(tv.val());
+						attributeName = _dictionary.peek().decodeTag(tv.val());
 						if (null == attributeName) {
 							throw new XMLStreamException("Unknown DATTR value" + tv.val());
 						}
@@ -137,7 +139,7 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 				decodedTag = BinaryXMLCodec.decodeUString(_istream, (int)tv.val()+1);
 
 			} else if (tv.type() == BinaryXMLCodec.XML_DTAG) {
-				decodedTag = _dictionary.decodeTag(tv.val());					
+				decodedTag = _dictionary.peek().decodeTag(tv.val());					
 			}
 
 			if ((null !=  decodedTag) && (decodedTag.equals(startTag))) {
@@ -237,5 +239,14 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 		}
 		
 		return blob;
+	}
+
+	public BinaryXMLDictionary popXMLDictionary() {
+		_dictionary.pop();
+		return null;
+	}
+
+	public void pushXMLDictionary(BinaryXMLDictionary dictionary) {
+		_dictionary.push(dictionary);
 	}	
 }

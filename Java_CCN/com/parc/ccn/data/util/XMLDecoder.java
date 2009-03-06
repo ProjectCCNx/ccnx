@@ -48,4 +48,8 @@ public interface XMLDecoder {
 	 * Encapsulate our handling of timestamps.
 	 */
 	public Timestamp readDateTime(String startTag) throws XMLStreamException;
+	
+	public void pushXMLDictionary(BinaryXMLDictionary dictionary);
+	
+	public BinaryXMLDictionary popXMLDictionary();
 }

@@ -12,6 +12,7 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Set;
+import java.util.Stack;
 import java.util.TreeMap;
 
 import javax.xml.stream.XMLStreamException;
@@ -70,7 +71,7 @@ import com.parc.ccn.security.keys.KeyManager;
  * can getLink to get link info
  *
  */
-public class CCNLibrary extends CCNBase implements CCNFilterListener {
+public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackEnd {
 
 	public static final String MARKER = "_";
 	public static final String FRAGMENT_MARKER = MARKER + "b" + MARKER;
@@ -93,6 +94,8 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener {
 	protected KeyManager _userKeyManager = null;
 	
 	protected int _blockSize = Header.DEFAULT_BLOCKSIZE;
+	
+	protected Stack<CCNIOBackEnd> backEnd = new Stack<CCNIOBackEnd>();
 	
 	/**
 	 * Control whether fragments start at 0 or 1.
@@ -148,6 +151,7 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener {
 
 	protected CCNLibrary(KeyManager keyManager) {
 		_userKeyManager = keyManager;
+		backEnd.push(this);
 		// force initialization of network manager
 		try {
 			_networkManager = new CCNNetworkManager();
@@ -986,11 +990,11 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener {
 				if (match == null) {
 					_holdingArea.put(co.name(), co);
 				} else {
-					put(co);
+					backEnd.peek().putBackEnd(co);
 				}
 			}
 		} else
-			put(co);
+			backEnd.peek().putBackEnd(co);
 		return co;
 	}
 	
@@ -1780,5 +1784,19 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener {
 		ContentName cocn = content.name().clone();
 		cocn.components().add(content.contentDigest());
 		return new ContentName(cocn.count(), cocn.components(), new Integer(prefixCount));
+	}
+
+	public void putBackEnd(ContentObject co) throws IOException {
+		put(co);
+	}
+	
+	public void pushBackEnd(CCNIOBackEnd backEnd) {
+		this.backEnd.push(backEnd);
+	}
+	
+	public CCNIOBackEnd popBackEnd() {
+		if (backEnd.size() > 1)
+			return backEnd.pop();
+		return null;
 	}
 }

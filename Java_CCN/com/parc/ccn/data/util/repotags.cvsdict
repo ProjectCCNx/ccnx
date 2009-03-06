@@ -1,2 +1,5 @@
 1,RepositoryName
 2,RepositoryPrefix
+3,RepositoryVersion
+4,RepositoryInfoType
+5,RepositoryInfoVersion

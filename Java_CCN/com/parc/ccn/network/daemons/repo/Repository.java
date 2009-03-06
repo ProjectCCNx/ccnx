@@ -55,11 +55,11 @@ public interface Repository {
 	
 	/**
 	 * Get information about repository to return to write
-	 * requestor.
+	 * requestor, possibly with confirmation filename for sync
 	 * 
 	 * @return
 	 */
-	public byte [] getRepoInfo();
+	public byte [] getRepoInfo(ContentName name);
 	
 	/**
 	 * Check whether data is a policy update. Update the
