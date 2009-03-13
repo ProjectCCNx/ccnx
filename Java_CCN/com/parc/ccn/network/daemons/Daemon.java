@@ -239,7 +239,8 @@ public class Daemon {
 	     * the critical one
 	     */
 		String portval = System.getProperty(CCNNetworkManager.PROP_AGENT_PORT);
-		cmd += "-D" + CCNNetworkManager.PROP_AGENT_PORT + "=" + portval;
+		if (portval != null)
+			cmd += "-D" + CCNNetworkManager.PROP_AGENT_PORT + "=" + portval;
 		
 		cmd += " -cp " + cp.toString() + " ";
 
