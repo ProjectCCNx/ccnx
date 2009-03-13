@@ -34,6 +34,8 @@ public class Daemon {
 
 	protected String _daemonName = null;
 	protected static DaemonListenerClass _daemonListener = null;
+	
+	public static final String PROP_DAEMON_MEMORY = "ccn.daemon.memory";
 
 	/**
 	 * Interface describing the RMI server object sitting inside
@@ -235,12 +237,15 @@ public class Daemon {
 		
 	    /**
 	     * Add properties
-	     * TODO - we might want to add them all but for now this is
-	     * the critical one
+	     * TODO - we might want to add them all but for now these are
+	     * the critical ones
 	     */
 		String portval = System.getProperty(CCNNetworkManager.PROP_AGENT_PORT);
 		if (portval != null)
-			cmd += "-D" + CCNNetworkManager.PROP_AGENT_PORT + "=" + portval;
+			cmd += "-D" + CCNNetworkManager.PROP_AGENT_PORT + "=" + portval + " ";
+		String memval = System.getProperty(PROP_DAEMON_MEMORY);
+		if (memval != null)
+			cmd += "-Xmx" + memval;
 		
 		cmd += " -cp " + cp.toString() + " ";
 
