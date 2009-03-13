@@ -376,8 +376,7 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	
 	public Collection addToCollection(
 			Collection collection,
-			ContentName [] references,
-			long timeout) throws IOException, SignatureException, 
+			ContentName [] references) throws IOException, SignatureException, 
 			XMLStreamException, InvalidKeyException {
 		ArrayList<LinkReference> contents = collection.contents();
 		for (ContentName reference : references)
@@ -387,8 +386,7 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 
 	public ContentObject removeFromCollection(
 			Collection collection,
-			ContentName [] references,
-			long timeout) throws IOException, SignatureException, 
+			ContentName [] references) throws IOException, SignatureException, 
 			XMLStreamException, InvalidKeyException {
 		ArrayList<LinkReference> contents = collection.contents();
 		for (ContentName reference : references)
@@ -399,8 +397,7 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	public ContentObject updateCollection(
 			Collection collection,
 			ContentName [] referencesToAdd,
-			ContentName [] referencesToRemove,
-			long timeout) throws IOException, SignatureException, 
+			ContentName [] referencesToRemove) throws IOException, SignatureException, 
 			XMLStreamException, InvalidKeyException {
 		ArrayList<LinkReference> contents = collection.contents();
 		for (ContentName reference : referencesToAdd)
@@ -982,7 +979,9 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 			SignedInfo signedInfo,
 			byte[] content,
 			Signature signature) throws IOException {
-		ContentObject co = new ContentObject(name, signedInfo, content, signature);
+		byte [] contentHold = new byte[content.length];
+		System.arraycopy(content, 0, contentHold, 0, content.length);
+		ContentObject co = new ContentObject(name, signedInfo, contentHold, signature);
 		if (_flowControlEnabled) {
 			Entry<UnmatchedInterest> match = null;
 			synchronized (this) {
@@ -1075,10 +1074,7 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 		return bestMatch;
 	}
 	
-	/**
-	 * Shutdown but wait for puts to drain first
-	 */
-	public void shutdown() {
+	public void waitForPutDrain() {
 		if (_holdingArea.size() > 0) {
 			_shutdownWait = true;
 			boolean _interrupted;
@@ -1093,6 +1089,13 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 				}
 			} while (_interrupted);
 		}
+	}
+	
+	/**
+	 * Shutdown but wait for puts to drain first
+	 */
+	public void shutdown() {
+		waitForPutDrain();
 		getNetworkManager().shutdown();
 	}
 

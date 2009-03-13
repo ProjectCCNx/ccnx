@@ -14,7 +14,7 @@ import com.parc.ccn.library.CCNLibrary;
 
 public abstract class CCNAbstractInputStream extends InputStream {
 
-	protected static final int MAX_TIMEOUT = 600;
+	protected static final int MAX_TIMEOUT = 2000;
 	protected static final int BLOCK_TIMEOUT = 200;
 
 	protected CCNLibrary _library = null;
@@ -127,6 +127,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		}
 		return block;
 	}
+	
 
 	protected ContentObject getNextBlock() throws IOException {
 		Library.logger().info("getNextBlock: getting block after " + _currentBlock.name());
@@ -135,7 +136,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		// for the index itself which is the final component of the name we 
 		// have, so we use count()-1.
 		ContentObject nextBlock =  
-			_library.getNext(_currentBlock, _currentBlock.name().count()-1, null, BLOCK_TIMEOUT);
+			_library.getNext(_currentBlock, _currentBlock.name().count()-1, null, _timeout);
 		if (null != nextBlock) {
 			Library.logger().info("getNextBlock: retrieved " + nextBlock.name());
 			return nextBlock;

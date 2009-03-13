@@ -268,17 +268,24 @@ public class RFSImpl implements Repository {
 	 * 
 	 * @param co
 	 * @return
+	 * @throws RepositoryException 
 	 */
-	public boolean checkPolicyUpdate(ContentObject co) {
+	public boolean checkPolicyUpdate(ContentObject co) throws RepositoryException {
 		if (_info.getPolicyName().isPrefixOf(co)) {
 			ByteArrayInputStream bais = new ByteArrayInputStream(co.content());
 			try {
 				_policy.update(bais, true);
 				_nameSpace = _policy.getNameSpace();
+				ContentName policyName = ContentName.fromNative(REPO_NAMESPACE + "/" + _info.getLocalName() + "/" + REPO_POLICY);
+				ContentObject policyCo = new ContentObject(policyName, co.signedInfo(), co.content(), co.signature());
+   				saveContent(policyCo);
 			} catch (XMLStreamException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (MalformedContentNameStringException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
@@ -295,6 +302,17 @@ public class RFSImpl implements Repository {
 	 * @return
 	 */
 	public ContentObject getContent(Interest interest) throws RepositoryException {
+		/*
+		 * TODO - sometime soon we're going to care about publisherID here
+		 * TODO - also we probably need to check for other "special names"
+		 */
+		Interest policyInterest = new Interest(_info.getPolicyName());
+		if (policyInterest.matches(interest.name(), null)) {
+			try {
+				interest = 
+						new Interest(ContentName.fromNative(REPO_NAMESPACE + "/" + _info.getLocalName() + "/" + REPO_POLICY));
+			} catch (MalformedContentNameStringException e) {}
+		}
 		TreeMap<ContentName, ArrayList<File>>possibleMatches = getPossibleMatches(interest.name());
 		
 		ContentObject bestMatch = null;
@@ -690,11 +708,11 @@ public class RFSImpl implements Repository {
 		return _nameSpace;
 	}
 	
-	public byte[] getRepoInfo(ContentName name) {
+	public byte[] getRepoInfo(ArrayList<ContentName> names) {
 		try {
 			RepositoryInfo rri = _info;
-			if (name != null)
-				rri = new RepositoryInfo(_info.getLocalName(), _info.getGlobalPrefix(), CURRENT_VERSION, name);	
+			if (names != null)
+				rri = new RepositoryInfo(_info.getLocalName(), _info.getGlobalPrefix(), CURRENT_VERSION, names);	
 			return rri.encode();
 		} catch (XMLStreamException e) {
 			// TODO Auto-generated catch block

@@ -246,7 +246,12 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * argument name
 	 */
 	public static Interest next(ContentName name) {
-		return next(name, null);
+		return next(name, (byte[][])null);
+	}
+	
+	public static Interest next(ContentName name, int prefixCount) {
+		ContentName newName = new ContentName(prefixCount, name.components());
+		return next(newName, (byte[][])null);
 	}
 	
 	public static Interest next(ContentName name, byte[][] omissions) {

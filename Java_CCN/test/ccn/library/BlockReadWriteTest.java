@@ -11,6 +11,7 @@ import java.util.concurrent.Semaphore;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.junit.Assert;
 import org.junit.BeforeClass;
 
 import com.parc.ccn.Library;
@@ -25,7 +26,7 @@ public class BlockReadWriteTest extends BasePutGetTest {
 	protected static final String fileName = "medium_file.txt";
 	protected static final int CHUNK_SIZE = 512;
 	
-	protected static CCNLibrary libraries[] = new CCNLibrary[2];
+	protected static CCNLibrary _putLibrary;
 	private Semaphore sema = new Semaphore(0);
 
 	@BeforeClass
@@ -33,33 +34,33 @@ public class BlockReadWriteTest extends BasePutGetTest {
 	
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
 		//Library.logger().setLevel(Level.FINEST);
-		libraries[0] = CCNLibrary.open();
-		libraries[1] = CCNLibrary.open(); // force them to use separate ones.
+		_putLibrary = CCNLibrary.open();
 	}
 
 	@Override
 	public void getResults(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException {
-		
-		CCNLibrary useLibrary = libraries[0]; // looking for cause of semaphore problem...
 		ContentName thisName = CCNLibrary.versionName(ContentName.fromNative(baseName, fileName), count);
-		CCNDescriptor desc = useLibrary.open(thisName, null);
-		desc.setTimeout(100);
+		sema.acquire(); // Block until puts started
+		CCNDescriptor desc = library.open(thisName, null);
+		//desc.setTimeout(5000);
 		Library.logger().info("Opened descriptor for reading: " + thisName);
 
 		FileOutputStream os = new FileOutputStream(fileName + "_testout.txt");
-        byte[] bytes = new byte[CHUNK_SIZE*3];
-        long buflen = 0;
-        sema.acquire(); // Block until puts done
-        while ((buflen = useLibrary.read(desc, bytes, 0, bytes.length)) > 0) {
+		byte[] compareBytes = TEST_LONG_CONTENT.getBytes();
+        byte[] bytes = new byte[compareBytes.length];
+        int buflen;
+        int slot = 0;
+        while ((buflen = library.read(desc, bytes, slot, CHUNK_SIZE * 3)) > 0) {
         	Library.logger().info("Read " + buflen + " bytes from CCNDescriptor.");
         	os.write(bytes, 0, (int)buflen);
         	if (desc.available() == 0) {
         		Library.logger().info("Descriptor claims 0 bytes available.");
-        		//break;
         	}
+        	slot += buflen;
         }
-        useLibrary.close(desc);
+        library.close(desc);
         Library.logger().info("Closed CCN reading CCNDescriptor.");
+        Assert.assertArrayEquals(bytes, compareBytes);  
 	}
 	
 	/**
@@ -75,9 +76,9 @@ public class BlockReadWriteTest extends BasePutGetTest {
 	 */
 	@Override
 	public void doPuts(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException, NoSuchAlgorithmException {
-		CCNLibrary useLibrary = libraries[1]; // looking for cause of semaphore problem...
 		ContentName thisName = CCNLibrary.versionName(ContentName.fromNative(baseName, fileName), count);
-		CCNDescriptor desc = useLibrary.open(thisName, null, null, null);
+		CCNDescriptor desc = _putLibrary.open(thisName, null, null, null);     
+		sema.release();	// put channel open
 		
 		Library.logger().info("Opened descriptor for writing: " + thisName);
 		
@@ -86,12 +87,11 @@ public class BlockReadWriteTest extends BasePutGetTest {
         byte[] bytes = new byte[CHUNK_SIZE];
         int buflen = 0;
         while ((buflen = is.read(bytes)) >= 0) {
-        	useLibrary.write(desc, bytes, 0, buflen);
+        	_putLibrary.write(desc, bytes, 0, buflen);
         	Library.logger().info("Wrote " + buflen + " bytes to CCNDescriptor.");
         }
         Library.logger().info("Finished writing. Closing CCN writing CCNDescriptor.");
-        useLibrary.close(desc);
-        sema.release();
+        _putLibrary.close(desc);
         Library.logger().info("Closed CCN writing CCNDescriptor.");
 	}
 	
@@ -760,6 +760,6 @@ public class BlockReadWriteTest extends BasePutGetTest {
     	"justo dui semper leo, eget commodo metus velit a felis. Donec\n" +
     	"vestibulum hendrerit odio. Sed quis nisl nullam.\n";
 
-	protected static final String TEST_LONG_CONTENT = TEST_CONTENT + TEST_MEDIUM_CONTENT + TEST_LOREM_IPSUM_CONTENT;
+	public static final String TEST_LONG_CONTENT = TEST_CONTENT + TEST_MEDIUM_CONTENT + TEST_LOREM_IPSUM_CONTENT;
 
 }

@@ -59,15 +59,16 @@ public interface Repository {
 	 * 
 	 * @return
 	 */
-	public byte [] getRepoInfo(ContentName name);
+	public byte [] getRepoInfo(ArrayList<ContentName> names);
 	
 	/**
 	 * Check whether data is a policy update. Update the
 	 * policy if so
 	 * @param co
 	 * @return true if policy update data
+	 * @throws RepositoryException 
 	 */
-	public boolean checkPolicyUpdate(ContentObject co);
+	public boolean checkPolicyUpdate(ContentObject co) throws RepositoryException;
 	
 	
 	/**

@@ -1,6 +1,7 @@
 package com.parc.ccn.network.daemons.repo;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 import javax.xml.stream.XMLStreamException;
@@ -25,7 +26,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	protected String _repoVersion = null;
 	protected String _localName = null;
 	protected String _globalPrefix = null;
-	protected ContentName _name = null;
+	protected ArrayList<ContentName> _names = new ArrayList<ContentName>();
 	protected ContentName _policyName;
 	protected RepoInfoType _type = RepoInfoType.INFO;
 	
@@ -84,9 +85,9 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 				+ '/' + Repository.REPO_DATA + '/' + Repository.REPO_POLICY);
 	}
 	
-	public RepositoryInfo(String localName, String globalPrefix, String version, ContentName name) throws MalformedContentNameStringException {
+	public RepositoryInfo(String localName, String globalPrefix, String version, ArrayList<ContentName> names) throws MalformedContentNameStringException {
 		this(localName, globalPrefix, version);
-		_name = name;
+		_names.addAll(names);
 		_type = RepoInfoType.DATA;
 	}
 	
@@ -104,8 +105,8 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		return _policyName;
 	}
 	
-	public ContentName getName() {
-		return _name;
+	public ArrayList<ContentName> getNames() {
+		return _names;
 	}
 	
 	public RepoInfoType getType() {
@@ -128,9 +129,10 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		_globalPrefix = new String(decoder.readBinaryElement(GLOBAL_PREFIX_ELEMENT));
 		_localName = new String(decoder.readBinaryElement(LOCAL_NAME_ELEMENT));
 		decoder.popXMLDictionary();
-		if (decoder.peekStartElement(ContentName.CONTENT_NAME_ELEMENT)) {
-			_name = new ContentName();
-			_name.decode(decoder);
+		while (decoder.peekStartElement(ContentName.CONTENT_NAME_ELEMENT)) {
+			ContentName name = new ContentName();
+			name.decode(decoder);
+			_names.add(name);
 		}
 	}
 
@@ -142,8 +144,9 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		encoder.writeElement(GLOBAL_PREFIX_ELEMENT, _globalPrefix.getBytes());
 		encoder.writeElement(LOCAL_NAME_ELEMENT, _localName.getBytes());
 		encoder.popXMLDictionary();
-		if (_name != null) {
-			_name.encode(encoder);
+		if (_names.size() > 0) {
+			for (ContentName name : _names)
+				name.encode(encoder);
 		}
 	}
 

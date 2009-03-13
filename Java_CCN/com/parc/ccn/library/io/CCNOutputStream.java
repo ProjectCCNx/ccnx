@@ -99,6 +99,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	public void close() throws IOException {
 		try {
 			closeNetworkData();
+			_library.waitForPutDrain();
 		} catch (InvalidKeyException e) {
 			throw new IOException("Cannot sign content -- invalid key!: " + e.getMessage());
 		} catch (SignatureException e) {

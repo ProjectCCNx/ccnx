@@ -48,12 +48,18 @@ public class RepositoryDescriptor extends CCNDescriptor {
 							break;		// not our repository
 						if (!repoInfo.getGlobalPrefix().equals(_repoPrefix))
 							break;		// not our repository
-						_backend.ack(repoInfo.getName());
+						for (ContentName name : repoInfo.getNames())
+							_backend.ack(name);
+						if (! _backend.flushComplete())
+							_backend.sendAckRequest();
 						break;
 					default:
 						break;
 					}
 				} catch (XMLStreamException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
@@ -79,8 +85,13 @@ public class RepositoryDescriptor extends CCNDescriptor {
 	
 	public void close() throws IOException {
 		super.close();
+		_backend.close();
 		while (!_backend.flushComplete())
 			Thread.yield();
 		_library.popBackEnd();
+	}
+	
+	public void setAck(boolean flag) {
+		_backend.setAck(flag);
 	}
 }

@@ -51,6 +51,7 @@ public class CCNNetworkManager implements Runnable {
 	public static final int PERIOD = 2000; // period for occasional ops in ms.
 	public static final int MAX_PERIOD = PERIOD * 16;
 	public static final String KEEPALIVE_NAME = "/HereIAm";
+
 	
 	/**
 	 * Static singleton.
@@ -79,17 +80,9 @@ public class CCNNetworkManager implements Runnable {
 	 */
 	private class PeriodicWriter extends TimerTask {
 		public void run() {
-
-			// Send heartbeat
-			try {
-				ByteBuffer heartbeat = ByteBuffer.allocate(1);
-				_channel.write(heartbeat);
-			} catch (IOException io) {
-				// We do not see errors on send typically even if 
-				// agent is gone, so log each but do not track
-				Library.logger().warning("Error sending heartbeat packet");
-			}
 			
+			heartbeat();
+
 			// Library.logger().finest("Refreshing interests (size " + _myInterests.size() + ")");
 
 			// Re-express interests that need to be re-expressed
@@ -113,6 +106,18 @@ public class CCNNetworkManager implements Runnable {
 				Library.logger().severe("Processing thread failure (Malformed datagram): " + xmlex.getMessage()); 
 				Library.warningStackTrace(xmlex);
 			}
+		}
+	}
+	
+	// Send heartbeat
+	private void heartbeat() {
+		try {
+			ByteBuffer heartbeat = ByteBuffer.allocate(1);
+			_channel.write(heartbeat);
+		} catch (IOException io) {
+			// We do not see errors on send typically even if 
+			// agent is gone, so log each but do not track
+			Library.logger().warning("Error sending heartbeat packet");
 		}
 	}
 			
@@ -425,12 +430,15 @@ public class CCNNetworkManager implements Runnable {
 								    "-" + secs + "-" + msecs;
 			setTap(unique_tapname);
 		}
+		
 		// Socket is to belong exclusively to run thread started here
 		_channel = DatagramChannel.open();
 		_channel.connect(new InetSocketAddress(host, port));
 		_channel.configureBlocking(false);
 		_selector = Selector.open();
 		_channel.register(_selector, SelectionKey.OP_READ);
+		heartbeat();
+		
 		// Create callback threadpool and main processing thread
 		_threadpool = Executors.newCachedThreadPool();
 		_thread = new Thread(this);
@@ -561,7 +569,7 @@ public class CCNNetworkManager implements Runnable {
 	 * matching interests seen
 	 */
 	public void setInterestFilter(Object caller, ContentName filter, CCNFilterListener callbackListener) {
-		Library.logger().fine("setInterestFilter: " + filter);
+		//Library.logger().fine("setInterestFilter: " + filter);
 		synchronized (_myFilters) {
 			_myFilters.add(filter, new Filter(this, filter, callbackListener, caller));
 		}
@@ -619,7 +627,7 @@ public class CCNNetworkManager implements Runnable {
 	 */
 	InterestRegistration registerInterest(InterestRegistration reg) {
 		// Add to standing interests table
-		Library.logger().finest("registerInterest for " + reg.interest.name());
+		Library.logger().finest("registerInterest for " + reg.interest.name() + " and obj is " + _myInterests.hashCode());
 		synchronized (_myInterests) {
 			_myInterests.add(reg.interest, reg);
 		}
@@ -743,7 +751,6 @@ public class CCNNetworkManager implements Runnable {
 
 	// Internal delivery of interests to pending filter listeners
 	protected void deliverInterest(InterestRegistration ireg) throws XMLStreamException {
-		
 		// Call any listeners with matching filters
 		synchronized (_myFilters) {
 			for (Filter filter : _myFilters.getValues(ireg.interest.name())) {

@@ -11,9 +11,9 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.library.CCNLibrary;
 
 /**

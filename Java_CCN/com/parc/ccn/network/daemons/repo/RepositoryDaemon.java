@@ -139,12 +139,14 @@ public class RepositoryDaemon extends Daemon {
 								resetNameSpace();
 							} else {
 								Library.logger().finer("Saving content in: " + data.name().toString());
-								_repo.saveContent(data);
-								if (_unacked.get(data.name()) != null) {
-									_library.put(data.name(), _repo.getRepoInfo(data.name()));
-									_unacked.remove(data.name());
-								}			
+								_repo.saveContent(data);		
 							}
+							if (_unacked.get(data.name()) != null) {
+								ArrayList<ContentName> names = new ArrayList<ContentName>();
+								names.add(data.name());
+								_library.put(data.name(), _repo.getRepoInfo(names));
+								_unacked.remove(data.name());
+							}	
 						} catch (Exception e) {
 							e.printStackTrace();
 						}
@@ -168,11 +170,21 @@ public class RepositoryDaemon extends Daemon {
 				if (Arrays.equals(marker, CCNBase.REPO_START_WRITE)) {
 					startReadProcess(interest);
 				} else if (Arrays.equals(marker, CCNBase.REPO_REQUEST_ACK)) {
+					
+					/*
+					 * Collect as many names that we have as we can and send them all back in one "repoInfo"
+					 */
 					ContentName syncResult = new ContentName(interest.name().count() - 1, interest.name().components());
 					ContentObject testContent = _repo.getContent(new Interest(syncResult));
-					if (testContent != null)
-						_library.put(interest.name(), _repo.getRepoInfo(syncResult));
-					else
+					if (testContent != null) {
+						ArrayList<ContentName> names = new ArrayList<ContentName>();
+						int i = 0;
+						while (testContent != null && ++i < 20) {
+							names.add(testContent.name());
+							testContent = _repo.getContent(Interest.next(testContent.name()));
+						}
+						_library.put(interest.name(), _repo.getRepoInfo(names));
+					} else
 						_unacked.put(syncResult, syncResult);
 				} else {
 					ContentObject content = _repo.getContent(interest);
@@ -192,8 +204,9 @@ public class RepositoryDaemon extends Daemon {
 				e.printStackTrace();
 			}
 			
-			byte[][]markerOmissions = new byte[1][];
+			byte[][]markerOmissions = new byte[2][];
 			markerOmissions[0] = CCNBase.REPO_START_WRITE;
+			markerOmissions[1] = CCNBase.REPO_REQUEST_ACK;
 			markerFilter = Interest.constructFilter(markerOmissions);
 			
 			Timer periodicTimer = new Timer(true);

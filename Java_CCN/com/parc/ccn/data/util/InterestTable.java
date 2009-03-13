@@ -24,6 +24,8 @@ import com.parc.ccn.data.query.Interest;
  */
 
 public class InterestTable<V> {
+public static int snort = 1;
+public String id = "# " + snort++;
 
 	public interface Entry<T> {
 		/**

@@ -180,6 +180,7 @@ public class LibraryTestBase {
 	 * @throws InvalidKeyException 
 	 */
 	public void doPuts(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException, NoSuchAlgorithmException {
+		library.setupFlowControl(PARENT_NAME);
 		Random rand = new Random();
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
@@ -234,7 +235,6 @@ public class LibraryTestBase {
 		public void run() {
 			try {
 				System.out.println("Put thread started");
-				library.setupFlowControl(PARENT_NAME);
 				doPuts(ContentName.fromNative(PARENT_NAME, Integer.toString(id)), count, library);
 				System.out.println("Put thread finished");
 				library.shutdown();
