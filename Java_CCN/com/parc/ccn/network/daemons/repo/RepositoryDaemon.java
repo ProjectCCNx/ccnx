@@ -6,6 +6,7 @@ import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.TreeMap;
@@ -55,7 +56,7 @@ public class RepositoryDaemon extends Daemon {
 	private ExcludeFilter markerFilter;
 	private TreeMap<ContentName, ContentName> _unacked = new TreeMap<ContentName, ContentName>();
 	
-	public static final int PERIOD = 1000; // period for interest timeout check in ms.
+	public static final int PERIOD = 2000; // period for interest timeout check in ms.
 	
 	private class NameAndListener {
 		private ContentName name;
@@ -76,9 +77,11 @@ public class RepositoryDaemon extends Daemon {
 	
 	private class DataListener implements CCNInterestListener {
 		private long _timer;
+		private Interest _origInterest;
 		private Interest _interest;
 		
-		private DataListener(Interest interest) {
+		private DataListener(Interest origInterest, Interest interest) {
+			_origInterest = interest;
 			_interest = interest;
 			_timer = new Date().getTime();
 		}
@@ -96,8 +99,9 @@ public class RepositoryDaemon extends Daemon {
 				 */
 				ContentObject co = results.get(0);
 				ContentName nextName = new ContentName(co.name(), co.contentDigest(), co.name().count() - 1);
-				return Interest.constructInterest(nextName,  markerFilter, 
+				_interest = Interest.constructInterest(nextName,  markerFilter, 
 							new Integer(Interest.ORDER_PREFERENCE_LEFT  | Interest.ORDER_PREFERENCE_ORDER_NAME));
+				return _interest;
 			}
 			return null;
 		}
@@ -108,13 +112,16 @@ public class RepositoryDaemon extends Daemon {
 		public void run() {
 			long currentTime = new Date().getTime();
 			synchronized(_currentListeners) {
-				for (int i = 0; i < _currentListeners.size(); i++) {
-					DataListener listener = _currentListeners.get(i);
-					if ((currentTime - listener._timer) > PERIOD) {
-						_library.cancelInterest(listener._interest, listener);
-						_currentListeners.remove(i--);
+				if (_currentListeners.size() > 0) {
+					Iterator<DataListener> iterator = _currentListeners.iterator();
+					while (iterator.hasNext()) {
+						DataListener listener = iterator.next();
+						if ((currentTime - listener._timer) > PERIOD) {
+							_library.cancelInterest(listener._interest, listener);
+							iterator.remove();
+						}
 					}
-				}	
+				}
 			}	
 		}	
 	}
@@ -310,14 +317,18 @@ public class RepositoryDaemon extends Daemon {
 	}
 	
 	private void startReadProcess(Interest interest) {
+		for (DataListener listener : _currentListeners) {
+			if (listener._origInterest.equals(interest))
+				return;
+		}
 		ContentName listeningName = new ContentName(interest.name().count() - 1, 
 				interest.name().components(), interest.name().prefixCount());
 		try {
-			DataListener listener = new DataListener(interest);
+			Interest readInterest = Interest.constructInterest(listeningName, markerFilter, null);
+			DataListener listener = new DataListener(interest, readInterest);
 			synchronized(_currentListeners) {
 				_currentListeners.add(listener);
 			}
-			Interest readInterest = Interest.constructInterest(listeningName, markerFilter, null);
 			_library.expressInterest(readInterest, listener);
 			_library.put(interest.name(), _repo.getRepoInfo(null));
 		} catch (IOException e) {

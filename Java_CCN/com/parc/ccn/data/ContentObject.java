@@ -18,10 +18,10 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
-import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.Signature;
+import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.data.util.BinaryXMLCodec;
 import com.parc.ccn.data.util.GenericXMLEncodable;
@@ -39,7 +39,7 @@ import com.parc.ccn.security.keys.KeyManager;
  * @author smetters
  *
  */
-public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
+public class ContentObject extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentObject> {
 	
 	public static boolean DEBUG_SIGNING = false;
 	
@@ -471,5 +471,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable {
 		return new ContentObject(name, signedInfo, null, signature);
 	}
 
-
+	public int compareTo(ContentObject o) {
+		return name().compareTo(o.name());
+	}
 }
