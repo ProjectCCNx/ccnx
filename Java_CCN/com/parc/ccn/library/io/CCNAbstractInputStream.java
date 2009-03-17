@@ -109,6 +109,14 @@ public abstract class CCNAbstractInputStream extends InputStream {
 
 		ContentName blockName = new ContentName(_baseName, ContentName.componentParseNative(Integer.toString(number)));
 
+		if(_currentBlock!=null){
+			//what block do we have right now?  maybe we already have it
+			if(currentBlockNumber() == number){
+				//we already have this block..
+				return _currentBlock;
+			}
+		}
+		
 		Library.logger().info("getBlock: getting block " + blockName);
 		/*
 		 * TODO: Paul R. Comment - as above what to do about timeouts?
@@ -139,6 +147,12 @@ public abstract class CCNAbstractInputStream extends InputStream {
 			_library.getNext(_currentBlock, _currentBlock.name().count()-1, null, _timeout);
 		if (null != nextBlock) {
 			Library.logger().info("getNextBlock: retrieved " + nextBlock.name());
+			
+			// Now need to verify the block we got
+			if (!verifyBlock(nextBlock)) {
+				return null;
+			}
+			
 			return nextBlock;
 		} 
 		Library.logger().info("Timed out looking for block of stream.");
@@ -152,8 +166,13 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		// DKS TODO FIX - use get left child; the following is a first stab at that.
 		Library.logger().info("getFirstBlock: getting " + _baseName);
 		ContentObject result =  _library.get(_baseName, _timeout);
-		if (null != result)
+		if (null != result){
 			Library.logger().info("getFirstBlock: retrieved " + result.name());
+			// Now need to verify the block we got
+			if (!verifyBlock(result)) {
+				return null;
+			}	
+		}
 		return result;
 	}
 
@@ -214,4 +233,13 @@ public abstract class CCNAbstractInputStream extends InputStream {
 			return Integer.parseInt(num);
 		}
 	}
+	
+	protected int currentBlockNumber(){
+		int ind = -1;
+		if(_currentBlock!=null)
+			ind = Integer.valueOf(_currentBlock.name().stringComponent(_currentBlock.name().count()-1));
+		//Library.logger().info("checking block number: "+ind);
+		return ind;
+	}
+	
 }
