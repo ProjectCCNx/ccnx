@@ -527,5 +527,9 @@ public String id = "# " + snort++;
 	public int sizeNames() {
 		return _contents.size();
 	}
+	
+	public void clear() {
+		_contents.clear();
+	}
 
 }

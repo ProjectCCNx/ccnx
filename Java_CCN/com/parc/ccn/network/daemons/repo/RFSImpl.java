@@ -302,17 +302,7 @@ public class RFSImpl implements Repository {
 	 * @return
 	 */
 	public ContentObject getContent(Interest interest) throws RepositoryException {
-		/*
-		 * TODO - sometime soon we're going to care about publisherID here
-		 * TODO - also we probably need to check for other "special names"
-		 */
-		Interest policyInterest = new Interest(_info.getPolicyName());
-		if (policyInterest.matches(interest.name(), null)) {
-			try {
-				interest = 
-						new Interest(ContentName.fromNative(REPO_NAMESPACE + "/" + _info.getLocalName() + "/" + REPO_POLICY));
-			} catch (MalformedContentNameStringException e) {}
-		}
+		
 		TreeMap<ContentName, ArrayList<File>>possibleMatches = getPossibleMatches(interest.name());
 		
 		ContentObject bestMatch = null;
@@ -320,6 +310,9 @@ public class RFSImpl implements Repository {
 			if (bestMatch == null) {
 				bestMatch = checkMatch(interest, name, possibleMatches.get(name));
 			} else {
+				/*
+				 * Must test in this order since ORDER_PREFERENCE_LEFT is 0
+				 */
 				if (interest.orderPreference()  != null) {
 					if ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME))
 							== (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME)) {

@@ -17,6 +17,7 @@ import com.parc.ccn.data.query.ExcludeElement;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.util.DataUtils;
+import com.parc.ccn.library.CCNFlowControl;
 
 /**
  * 
@@ -60,11 +61,11 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	
 	@Test
 	public void getNextTest() throws Throwable {
-		library.setupFlowControl("/getNext");
+		CCNFlowControl cf = new CCNFlowControl("/getNext", library);
 		System.out.println("getNext test started");
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
-			library.put("/getNext/" + Integer.toString(i), Integer.toString(count - i));
+			library.put(cf, "/getNext/" + Integer.toString(i), Integer.toString(count - i));
 		}
 		System.out.println("Put sequence finished");
 		for (int i = 0; i < count; i++) {
@@ -72,7 +73,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 			int tValue = rand.nextInt(count - 1);
 			ContentName prefix = ContentName.fromNative("/getNext/" + new Integer(tValue).toString(), 1);
 			ContentName cn = new ContentName(prefix, ContentObject.contentDigest(Integer.toString(count - tValue)));
-			ContentObject result = library.getNext(cn, 1000);
+			ContentObject result = library.getNext(cf, cn, 1000);
 			checkResult(result, tValue + 1);
 		}
 		System.out.println("getNext test finished");
@@ -82,18 +83,18 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	public void getLatestTest() throws Throwable {
 		int highest = 0;
 		System.out.println("getLatest test started");
-		library.setupFlowControl("/getLatest");
+		CCNFlowControl cf = new CCNFlowControl("/getLatest", library);
 		for (int i = 0; i < count; i++) {
 			int tValue = getRandomFromSet(count, false);
 			if (tValue > highest)
 				highest = tValue;
 			String name = "/getLatest/" + Integer.toString(tValue);
 			System.out.println("Putting " + name);
-			library.put(name, Integer.toString(tValue));
+			library.put(cf, name, Integer.toString(tValue));
 			if (i > 1) {
 				if (tValue == highest)
 					tValue--;
-				ContentObject result = library.getLatest(ContentName.fromNative("/getLatest/" + Integer.toString(tValue), 1), 5000);
+				ContentObject result = library.getLatest(cf, ContentName.fromNative("/getLatest/" + Integer.toString(tValue), 1), 5000);
 				checkResult(result, highest);
 			}
 		}
@@ -104,19 +105,19 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	public void excludeFilterTest() throws Throwable {
 		System.out.println("excludeFilterTest test started");
 		excludeSetup();
-		library.setupFlowControl("/excludeFilterTest");
+		CCNFlowControl cf = new CCNFlowControl("/excludeFilterTest", library);
 		for (String value : bloomTestValues) {
-			library.put("/excludeFilterTest/" + value, value);
+			library.put(cf, "/excludeFilterTest/" + value, value);
 		}
-		library.put("/excludeFilterTest/aaa", "aaa");
-		library.put("/excludeFilterTest/zzzzzzzz", "zzzzzzzz");
+		library.put(cf, "/excludeFilterTest/aaa", "aaa");
+		library.put(cf, "/excludeFilterTest/zzzzzzzz", "zzzzzzzz");
 		Interest interest = Interest.constructInterest(ContentName.fromNative("/excludeFilterTest/"), ef, null);
-		ContentObject content = library.get(interest, 1000);
+		ContentObject content = library.get(cf, interest, 1000);
 		Assert.assertTrue(content == null);
 		
 		String shouldGetIt = "/excludeFilterTest/weShouldGetThis";
-		library.put(shouldGetIt, shouldGetIt);
-		content = library.get(interest, 1000);
+		library.put(cf, shouldGetIt, shouldGetIt);
+		content = library.get(cf, interest, 1000);
 		Assert.assertFalse(content == null);
 		assertEquals(content.name().toString(), shouldGetIt);
 		System.out.println("excludeFilterTest test finished");
@@ -133,7 +134,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	}
 	
 	private void excludeTest(String prefix, int nFilters) throws Throwable {
-		library.setupFlowControl(prefix);
+		CCNFlowControl cf = new CCNFlowControl(prefix, library);
 		System.out.println("Starting exclude test - nFilters is " + nFilters);
 		byte [][] excludes = new byte[nFilters - 1][];
 		for (int i = 0; i < nFilters; i++) {
@@ -141,12 +142,12 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 			if (i < (nFilters - 1))
 				excludes[i] = value.getBytes();
 			String name = prefix + "/" + value;
-			library.put(name, value);
+			library.put(cf, name, value);
 		}
-		ContentObject content = library.getExcept(ContentName.fromNative(prefix + "/"), excludes, 50000);
+		ContentObject content = library.getExcept(cf, ContentName.fromNative(prefix + "/"), excludes, 50000);
 		if (null == content || !Arrays.equals(content.content(), new Integer((nFilters - 1)).toString().getBytes())) {
 			// Try one more time in case we got a false positive
-			content = library.getExcept(ContentName.fromNative(prefix + "/"), excludes, 50000);
+			content = library.getExcept(cf, ContentName.fromNative(prefix + "/"), excludes, 50000);
 		}
 		Assert.assertFalse(content == null);
 		assertEquals(DataUtils.compare(content.content(), new Integer((nFilters - 1)).toString().getBytes()), 0);

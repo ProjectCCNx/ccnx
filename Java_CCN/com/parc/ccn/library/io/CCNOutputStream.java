@@ -60,9 +60,9 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 
 	public CCNOutputStream(ContentName name, PublisherKeyID publisher,
 						   KeyLocator locator, PrivateKey signingKey,
-						   CCNLibrary library) throws XMLStreamException, IOException {
+						   CCNDescriptor desc) throws XMLStreamException, IOException {
 		
-		super(publisher, locator, signingKey, library);
+		super(publisher, locator, signingKey, desc);
 		
 		ContentName nameToOpen = name;
 		if (CCNLibrary.isFragment(nameToOpen)) {
@@ -76,7 +76,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		if (!CCNLibrary.isVersioned(nameToOpen)) {
 			// if publisherID is null, will get any publisher
 			ContentName currentVersionName = 
-				_library.getLatestVersionName(nameToOpen, null);
+				_library.getLatestVersionName(_desc, nameToOpen, null);
 			if (null == currentVersionName) {
 				nameToOpen = CCNLibrary.versionName(nameToOpen, CCNLibrary.baseVersion());
 			} else {
@@ -99,7 +99,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	public void close() throws IOException {
 		try {
 			closeNetworkData();
-			_library.waitForPutDrain();
+			_desc.waitForPutDrain();
 		} catch (InvalidKeyException e) {
 			throw new IOException("Cannot sign content -- invalid key!: " + e.getMessage());
 		} catch (SignatureException e) {
@@ -194,12 +194,12 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			// maybe need put with offset and length
 			if ((_blockIndex == 1) || (_blockOffset == _blockBuffers[0].length)) {
 				Library.logger().finest("close(): writing single-block file in one put, length: " + _blockBuffers[0].length);
-				_library.put(_baseName, _blockBuffers[0], ContentType.LEAF, _publisher, _locator, _signingKey);
+				_library.put(_desc, _baseName, _blockBuffers[0], ContentType.LEAF, _publisher, _locator, _signingKey);
 			} else {
 				byte [] tempBuf = new byte[_blockOffset];
 				System.arraycopy(_blockBuffers[0],0,tempBuf,0,_blockOffset);
 				Library.logger().finest("close(): writing single-block file in one put, copied buffer length = " + _blockOffset);
-				_library.put(_baseName, tempBuf, ContentType.LEAF, _publisher, _locator, _signingKey);
+				_library.put(_desc, _baseName, tempBuf, ContentType.LEAF, _publisher, _locator, _signingKey);
 			}
 		} else {
 			Library.logger().info("closeNetworkData: final flush, wrote " + _totalLength + " bytes.");
@@ -280,9 +280,9 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 				Library.logger().warning("flush(): asked to write last partial block of a single block file: " + _blockOffset + " bytes, block total is " + _blockBuffers[_blockIndex].length + ", should have been written as a raw single-block file by close()!");
 				byte [] tempBuf = new byte[_blockOffset];
 				System.arraycopy(_blockBuffers[_blockIndex],0,tempBuf,0,_blockOffset);
-				_library.putFragment(_baseName, _baseNameIndex, tempBuf, _timestamp, _publisher, _locator, _signingKey);
+				_library.putFragment(_desc, _baseName, _baseNameIndex, tempBuf, _timestamp, _publisher, _locator, _signingKey);
 			} else {
-				_library.putFragment(_baseName, _baseNameIndex, _blockBuffers[_blockIndex], _timestamp, _publisher, _locator, _signingKey);				
+				_library.putFragment(_desc, _baseName, _baseNameIndex, _blockBuffers[_blockIndex], _timestamp, _publisher, _locator, _signingKey);				
 			}
 		} else {
 			// Now, we have a set of buffers. Do we have a partial last block we want to preserve?
@@ -301,7 +301,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			// Generate Merkle tree (or other auth structure) and signedInfos and put contents.
 			// We always flush all the blocks starting from 0, so the baseBlockIndex is always 0.
 			CCNMerkleTree tree =
-				_library.putMerkleTree(_baseName, _baseNameIndex, _blockBuffers, blockWriteCount, 0, lastBlockSize,
+				_library.putMerkleTree(_desc, _baseName, _baseNameIndex, _blockBuffers, blockWriteCount, 0, lastBlockSize,
 								   		_timestamp, _publisher, _locator, _signingKey);
 			_roots.add(tree.root());
 		}

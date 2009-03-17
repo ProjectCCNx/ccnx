@@ -8,6 +8,7 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 
 /**
@@ -27,7 +28,7 @@ import com.parc.ccn.library.CCNLibrary;
  * @author smetters
  *
  */
-public class CCNDescriptor {
+public class CCNDescriptor extends CCNFlowControl {
 	
 	public enum SeekWhence {SEEK_SET, SEEK_CUR, SEEK_END};
 	protected CCNInputStream _input = null;
@@ -38,19 +39,15 @@ public class CCNDescriptor {
 	 */
 	public CCNDescriptor(ContentName name, PublisherKeyID publisher, CCNLibrary library) 
 				throws XMLStreamException, IOException {
-		
+		super(library);
 		openForReading(name, publisher, library);
 	}
 	
 	public CCNDescriptor(ContentName name, PublisherKeyID publisher,
 			   KeyLocator locator, PrivateKey signingKey,
 			   CCNLibrary library) throws XMLStreamException, IOException {
+		super(name, library);
 		openForWriting(name, publisher, locator, signingKey, library);
-	}
-	
-	public void setTimeout(int timeout) {
-		if (openForReading())
-			_input.setTimeout(timeout);
 	}
 	
 	/**
@@ -71,11 +68,11 @@ public class CCNDescriptor {
 			if (!CCNLibrary.isVersioned(nameToOpen)) {
 				// if publisherID is null, will get any publisher
 				nameToOpen = 
-					library.getLatestVersionName(nameToOpen, publisher);
+					library.getLatestVersionName(this, nameToOpen, publisher);
 			}
 			nameToOpen = new ContentName(nameToOpen, ContentName.componentParseNative(CCNLibrary.FRAGMENT_MARKER));
 		}
-		_input = new CCNInputStream(nameToOpen, publisher, library);
+		_input = new CCNInputStream(nameToOpen, publisher, this);
 	}
 
 	protected void openForWriting(ContentName name, PublisherKeyID publisher,
@@ -92,14 +89,14 @@ public class CCNDescriptor {
 		if (!CCNLibrary.isVersioned(nameToOpen)) {
 			// if publisherID is null, will get any publisher
 			ContentName currentVersionName = 
-				library.getLatestVersionName(nameToOpen, null);
+				library.getLatestVersionName(this, nameToOpen, null);
 			if (null == currentVersionName) {
 				nameToOpen = CCNLibrary.versionName(nameToOpen, CCNLibrary.baseVersion());
 			} else {
 				nameToOpen = CCNLibrary.versionName(currentVersionName, (library.getVersionNumber(currentVersionName) + 1));
 			}
 		}
-		_output = new CCNOutputStream(name, publisher, locator, signingKey, library);
+		_output = new CCNOutputStream(name, publisher, locator, signingKey, this);
 	}
 
 	public int available() throws IOException {
@@ -127,11 +124,19 @@ public class CCNDescriptor {
 		if (null != _output)
 			_output.flush();
 	}
+	
+	public boolean eof() { 
+		return openForReading() ? _input.eof() : false;
+	}
 
 	public int read(byte[] buf, int offset, int len) throws IOException {
 		if (null != _input)
 			return _input.read(buf, offset, len);
 		throw new IOException("Descriptor not open for reading!");
+	}
+	
+	public int read(byte[] b) throws IOException {
+		return read(b, 0, b.length);
 	}
 
 	public void write(byte[] buf, int offset, int len) throws IOException {
@@ -140,5 +145,9 @@ public class CCNDescriptor {
 			return;
 		}
 		throw new IOException("Descriptor not open for writing!");
+	}
+	
+	public CCNLibrary getLibrary() {
+		return _library;
 	}
 }

@@ -29,6 +29,7 @@ import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
+import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 
 public class LibraryTestBase {
@@ -179,12 +180,12 @@ public class LibraryTestBase {
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
 	 */
-	public void doPuts(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException, NoSuchAlgorithmException {
-		library.setupFlowControl(PARENT_NAME);
+	public void doPuts(CCNFlowControl cf, ContentName baseName, int count, CCNLibrary library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException, NoSuchAlgorithmException {
+
 		Random rand = new Random();
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
-			ContentObject putResult = library.put(ContentName.fromNative(baseName, Integer.toString(i)), new Integer(i).toString().getBytes());
+			ContentObject putResult = library.put(cf, ContentName.fromNative(baseName, Integer.toString(i)), new Integer(i).toString().getBytes());
 			System.out.println("Put " + i + " done");
 			checkPutResults(putResult);
 		}
@@ -210,7 +211,6 @@ public class LibraryTestBase {
 				System.out.println("Get thread started");
 				getResults(ContentName.fromNative(PARENT_NAME, Integer.toString(id)), count, library);
 				System.out.println("Get thread finished");
-				library.shutdown();
 			} catch (Throwable ex) {
 				error = ex;
 			}
@@ -235,9 +235,10 @@ public class LibraryTestBase {
 		public void run() {
 			try {
 				System.out.println("Put thread started");
-				doPuts(ContentName.fromNative(PARENT_NAME, Integer.toString(id)), count, library);
+				CCNFlowControl cf = new CCNFlowControl(PARENT_NAME, library);
+				doPuts(cf, ContentName.fromNative(PARENT_NAME, Integer.toString(id)), count, library);
 				System.out.println("Put thread finished");
-				library.shutdown();
+				cf.shutdown();
 			} catch (Throwable ex) {
 				error = ex;
 				Library.logger().warning("Exception in run: " + ex.getClass().getName() + " message: " + ex.getMessage());
@@ -312,6 +313,7 @@ public class LibraryTestBase {
 		ContentName name = null;
 		HashSet<Integer> accumulatedResults = new HashSet<Integer>();
 		int id;
+		CCNFlowControl cf = null;
 		
 		public PutServer(int n, int id) throws ConfigurationException, IOException {
 			library = CCNLibrary.open();
@@ -328,7 +330,7 @@ public class LibraryTestBase {
 		public void run() {
 			try {
 				System.out.println("PutServer started");
-				library.setupFlowControl(PARENT_NAME);
+				cf = new CCNFlowControl(PARENT_NAME, library);
 				// Register filter
 				name = ContentName.fromNative(PARENT_NAME, Integer.toString(id));
 				library.registerFilter(name, this);
@@ -351,7 +353,7 @@ public class LibraryTestBase {
 						int val = Integer.parseInt(new String(interest.name().component(interest.name().count()-1)));
 						System.out.println("Got interest in " + val);
 						if (!accumulatedResults.contains(val)) {
-							ContentObject putResult = library.put(ContentName.fromNative(name, Integer.toString(val)), Integer.toString(next).getBytes());
+							ContentObject putResult = library.put(cf, ContentName.fromNative(name, Integer.toString(val)), Integer.toString(next).getBytes());
 							System.out.println("Put " + val + " done");
 							checkPutResults(putResult);
 							next++;

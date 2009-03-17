@@ -8,7 +8,6 @@ import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.PublisherKeyID;
-import com.parc.ccn.library.CCNLibrary;
 
 /**
  * This input stream expects to do packet-oriented reading of
@@ -21,22 +20,22 @@ import com.parc.ccn.library.CCNLibrary;
 public class CCNBlockInputStream extends CCNAbstractInputStream {
 
 	public CCNBlockInputStream(ContentName baseName, Integer startingBlockIndex, 
-							   PublisherKeyID publisher, CCNLibrary library) throws XMLStreamException, IOException {
-		super(baseName, startingBlockIndex, publisher, library);
-		setTimeout(CCNBase.NO_TIMEOUT);
+							   PublisherKeyID publisher, CCNDescriptor desc) throws XMLStreamException, IOException {
+		super(baseName, startingBlockIndex, publisher, desc);
+		_desc.setTimeout(CCNBase.NO_TIMEOUT);
 	}
 
-	public CCNBlockInputStream(ContentName baseName, PublisherKeyID publisher, CCNLibrary library) 
+	public CCNBlockInputStream(ContentName baseName, PublisherKeyID publisher, CCNDescriptor desc) 
 															throws XMLStreamException, IOException {
-		this(baseName, null, publisher, library);
+		this(baseName, null, publisher, desc);
 	}
 
 	public CCNBlockInputStream(ContentName baseName) throws XMLStreamException, IOException {
 		this(baseName, null, null, null);
 	}
 
-	public CCNBlockInputStream(ContentName baseName, CCNLibrary library) throws XMLStreamException, IOException {
-		this(baseName, null, null, library);
+	public CCNBlockInputStream(ContentName baseName, CCNDescriptor desc) throws XMLStreamException, IOException {
+		this(baseName, null, null, desc);
 	}
 
 	public CCNBlockInputStream(ContentName baseName, int blockNumber) throws XMLStreamException, IOException {

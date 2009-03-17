@@ -10,7 +10,7 @@ import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.io.CCNInputStream;
+import com.parc.ccn.library.io.CCNDescriptor;
 
 public class get_file {
 
@@ -39,7 +39,7 @@ public class get_file {
 			}
 			FileOutputStream output = new FileOutputStream(theFile);
 			
-			CCNInputStream input = new CCNInputStream(argName, library);
+			CCNDescriptor input = library.open(argName, null);
 			if (args.length > 2) {
 				input.setTimeout(new Integer(args[2]).intValue()); 
 			}
@@ -54,7 +54,7 @@ public class get_file {
 				output.flush();
 			}
 
-			System.out.println("Retrieved content " + args[1] + " as " + input.baseName() + " got " + readtotal + " bytes.");
+			System.out.println("Retrieved content " + args[1] + " got " + readtotal + " bytes.");
 			System.exit(0);
 
 		} catch (ConfigurationException e) {

@@ -12,6 +12,7 @@ import com.parc.ccn.library.CCNLibrary;
 public abstract class CCNAbstractOutputStream extends OutputStream {
 
 	protected CCNLibrary _library = null;
+	protected CCNDescriptor _desc = null;
 	/** 
 	 * The name for the content fragments, up to just before the sequence number.
 	 */
@@ -23,9 +24,10 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 
 	public CCNAbstractOutputStream(PublisherKeyID publisher,
 								   KeyLocator locator, PrivateKey signingKey,
-								   CCNLibrary library) {
+								   CCNDescriptor desc) {
 		super();
-		_library = library; 
+		_desc = desc;
+		_library = desc.getLibrary();
 		if (null == _library) {
 			_library = CCNLibrary.getLibrary();
 		}

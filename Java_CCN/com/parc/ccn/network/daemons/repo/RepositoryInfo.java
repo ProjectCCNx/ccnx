@@ -123,6 +123,10 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		decoder.pushXMLDictionary(_dictionary);
+		if (!decoder.peekStartElement(REPO_INFO_TYPE_ELEMENT)) {
+			_type = RepoInfoType.UNKNOWN;
+			return;
+		}
 		_type = RepoInfoType.valueFromString(new String(decoder.readBinaryElement(REPO_INFO_TYPE_ELEMENT)));
 		_version = new String(decoder.readBinaryElement(REPO_INFO_VERSION_ELEMENT));
 		_repoVersion = new String(decoder.readBinaryElement(REPO_VERSION_ELEMENT));

@@ -10,10 +10,6 @@ import java.security.Security;
 import java.security.SignatureException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.Set;
-import java.util.Stack;
-import java.util.TreeMap;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -29,15 +25,11 @@ import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.content.LinkReference;
-import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
-import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
-import com.parc.ccn.data.util.InterestTable;
-import com.parc.ccn.data.util.InterestTable.Entry;
 import com.parc.ccn.library.io.CCNDescriptor;
 import com.parc.ccn.library.io.repo.RepositoryDescriptor;
 import com.parc.ccn.network.CCNNetworkManager;
@@ -71,7 +63,7 @@ import com.parc.ccn.security.keys.KeyManager;
  * can getLink to get link info
  *
  */
-public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackEnd {
+public class CCNLibrary extends CCNBase {
 
 	public static final String MARKER = "_";
 	public static final String FRAGMENT_MARKER = MARKER + "b" + MARKER;
@@ -95,21 +87,11 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	
 	protected int _blockSize = Header.DEFAULT_BLOCKSIZE;
 	
-	protected Stack<CCNIOBackEnd> backEnd = new Stack<CCNIOBackEnd>();
-	
 	/**
 	 * Control whether fragments start at 0 or 1.
 	 * @return
 	 */
 	public static final int baseFragment() { return 0; }
-	
-	protected TreeMap<ContentName, ContentObject> _holdingArea = new TreeMap<ContentName, ContentObject>();
-	protected InterestTable<UnmatchedInterest> _unmatchedInterests = new InterestTable<UnmatchedInterest>();
-	protected ArrayList<ContentName> _filteredNames = new ArrayList<ContentName>();
-	
-	private class UnmatchedInterest {
-		long timestamp = new Date().getTime();
-	}
 	
 	public static CCNLibrary open() throws ConfigurationException, IOException { 
 		synchronized (CCNLibrary.class) {
@@ -151,7 +133,6 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 
 	protected CCNLibrary(KeyManager keyManager) {
 		_userKeyManager = keyManager;
-		backEnd.push(this);
 		// force initialization of network manager
 		try {
 			_networkManager = new CCNNetworkManager();
@@ -208,12 +189,13 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
 	 */
-	public ContentObject put(ContentName name, LinkReference reference) throws SignatureException, IOException, 
+	public ContentObject put(CCNFlowControl cf, ContentName name, LinkReference reference) throws SignatureException, IOException, 
 				XMLStreamException, InvalidKeyException, NoSuchAlgorithmException {
-		return put(name, reference, null, null, null);
+		return put(cf, name, reference, null, null, null);
 	}
 	
 	public ContentObject put(
+			CCNFlowControl cf,
 			ContentName name, 
 			LinkReference reference,
 			PublisherKeyID publisher, KeyLocator locator,
@@ -230,7 +212,7 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 		}
 
 		try {
-			return put(name, reference.encode(), ContentType.LINK, publisher, locator, signingKey);
+			return put(cf, name, reference.encode(), ContentType.LINK, publisher, locator, signingKey);
 		} catch (XMLStreamException e) {
 			Library.logger().warning("Cannot canonicalize a standard container!");
 			Library.warningStackTrace(e);
@@ -248,14 +230,14 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	 * @throws SignatureException
 	 * @throws IOException
 	 */
-	public Collection put(ContentName name, LinkReference [] references) throws SignatureException, IOException {
-		return put(name, references, getDefaultPublisher());
+	public Collection put(CCNFlowControl cf, ContentName name, LinkReference [] references) throws SignatureException, IOException {
+		return put(cf, name, references, getDefaultPublisher());
 	}
 
-	public Collection put(ContentName name, LinkReference [] references, PublisherKeyID publisher) 
+	public Collection put(CCNFlowControl cf, ContentName name, LinkReference [] references, PublisherKeyID publisher) 
 				throws SignatureException, IOException {
 		try {
-			return put(name, references, publisher, null, null);
+			return put(cf, name, references, publisher, null, null);
 		} catch (InvalidKeyException e) {
 			Library.logger().warning("Default key invalid.");
 			Library.warningStackTrace(e);
@@ -268,6 +250,7 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	}
 
 	public Collection put(
+			CCNFlowControl cf,
 			ContentName name, 
 			LinkReference[] references,
 			PublisherKeyID publisher, KeyLocator locator,
@@ -284,7 +267,7 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 		}
 		
 		try {
-			Collection collection = new Collection(getNextVersionName(name), references, 
+			Collection collection = new Collection(getNextVersionName(cf, name), references, 
 					publisher, locator, signingKey);
 			put(collection);
 			return collection;
@@ -296,19 +279,22 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	}
 	
 	public Collection put(
+			CCNFlowControl cf,
 			ContentName name, 
 			ContentName[] references) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
-		return put(name, references, null, null, null);
+		return put(cf, name, references, null, null, null);
 	}
 	
 	public Collection put(
+			CCNFlowControl cf,
 			ContentName name, 
 			ContentName[] references,
 			PublisherKeyID publisher) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
-		return put(name, references, publisher, null, null);
+		return put(cf, name, references, publisher, null, null);
 	}
 	
 	public Collection put(
+			CCNFlowControl cf,
 			ContentName name, 
 			ContentName[] references,
 			PublisherKeyID publisher, KeyLocator locator,
@@ -316,7 +302,7 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 		LinkReference[] lrs = new LinkReference[references.length];
 		for (int i = 0; i < lrs.length; i++)
 			lrs[i] = new LinkReference(references[i]);
-		return put(name, lrs, publisher, locator, signingKey);
+		return put(cf, name, lrs, publisher, locator, signingKey);
 	}
 	
 
@@ -328,8 +314,8 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	 * @throws IOException
 	 * @throws XMLStreamException 
 	 */
-	public Collection getCollection(ContentName name, long timeout) throws IOException, XMLStreamException {
-		ContentObject co = getLatestVersion(name, null, timeout);
+	public Collection getCollection(CCNFlowControl cf, ContentName name, long timeout) throws IOException, XMLStreamException {
+		ContentObject co = getLatestVersion(cf, name, null, timeout);
 		if (null == co)
 			return null;
 		if (co.signedInfo().type() != ContentType.COLLECTION)
@@ -375,26 +361,29 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	}
 	
 	public Collection addToCollection(
+			CCNFlowControl cf,
 			Collection collection,
 			ContentName [] references) throws IOException, SignatureException, 
 			XMLStreamException, InvalidKeyException {
 		ArrayList<LinkReference> contents = collection.contents();
 		for (ContentName reference : references)
 			contents.add(new LinkReference(reference));
-		return updateCollection(collection, contents, null, null, null);
+		return updateCollection(cf, collection, contents, null, null, null);
 	}
 
 	public ContentObject removeFromCollection(
+			CCNFlowControl cf,
 			Collection collection,
 			ContentName [] references) throws IOException, SignatureException, 
 			XMLStreamException, InvalidKeyException {
 		ArrayList<LinkReference> contents = collection.contents();
 		for (ContentName reference : references)
 			contents.remove(new LinkReference(reference));
-		return updateCollection(collection, contents, null, null, null);
+		return updateCollection(cf, collection, contents, null, null, null);
 	}
 	
 	public ContentObject updateCollection(
+			CCNFlowControl cf,
 			Collection collection,
 			ContentName [] referencesToAdd,
 			ContentName [] referencesToRemove) throws IOException, SignatureException, 
@@ -404,7 +393,7 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 			contents.add(new LinkReference(reference));
 		for (ContentName reference : referencesToRemove)
 			contents.remove(new LinkReference(reference));
-		return updateCollection(collection, contents, null, null, null);
+		return updateCollection(cf, collection, contents, null, null, null);
 	}
 	
 	/**
@@ -419,13 +408,13 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	 * @throws SignatureException 
 	 * @throws InvalidKeyException 
 	 */
-	private Collection updateCollection(Collection oldCollection, ArrayList<LinkReference> references,
+	private Collection updateCollection(CCNFlowControl cf, Collection oldCollection, ArrayList<LinkReference> references,
 			 PublisherKeyID publisher, KeyLocator locator,
 			 PrivateKey signingKey) throws XMLStreamException, IOException,
 			 InvalidKeyException, SignatureException {
 		LinkReference[] newReferences = new LinkReference[references.size()];
 		references.toArray(newReferences);
-		Collection updatedCollection = createCollection(getNextVersionName(oldCollection.name()),
+		Collection updatedCollection = createCollection(getNextVersionName(cf, oldCollection.name()),
 				newReferences, publisher, locator, signingKey);
 		put(updatedCollection);
 		return updatedCollection;
@@ -463,14 +452,14 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	 * @throws SignatureException 
 	 * @throws IOException 
 	 */
-	public ContentObject link(ContentName name, LinkReference reference) throws SignatureException, IOException {
-		return link(name, reference, getDefaultPublisher());
+	public ContentObject link(CCNFlowControl cf, ContentName name, LinkReference reference) throws SignatureException, IOException {
+		return link(cf, name, reference, getDefaultPublisher());
 	}
 
-	public ContentObject link(ContentName name, LinkReference reference,
+	public ContentObject link(CCNFlowControl cf, ContentName name, LinkReference reference,
 							PublisherKeyID publisher) throws SignatureException, IOException {
 		try {
-			return link(name,reference,publisher,null,null);
+			return link(cf, name,reference,publisher,null,null);
 		} catch (InvalidKeyException e) {
 			Library.logger().warning("Default key invalid.");
 			Library.warningStackTrace(e);
@@ -491,7 +480,7 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	 * @throws IOException 
 	 * @throws XMLStreamException 
 	 */
-	public ContentObject link(ContentName name, LinkReference reference, 
+	public ContentObject link(CCNFlowControl cf, ContentName name, LinkReference reference, 
 							 PublisherKeyID publisher, KeyLocator locator,
 							 PrivateKey signingKey) throws InvalidKeyException, SignatureException, 
 						NoSuchAlgorithmException, IOException {
@@ -512,7 +501,7 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 		}
 		
 		try {
-			return put(name, reference.encode(), ContentType.LINK, publisher, locator, signingKey);
+			return put(cf, name, reference.encode(), ContentType.LINK, publisher, locator, signingKey);
 		} catch (XMLStreamException e) {
 			Library.logger().warning("Cannot canonicalize a standard link!");
 			Library.warningStackTrace(e);
@@ -530,8 +519,8 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	 * @throws SignatureException
 	 * @throws IOException
 	 */
-	public Link getLink(ContentName name, long timeout) throws IOException {
-		ContentObject co = getLatestVersion(name, null, timeout);
+	public Link getLink(CCNFlowControl cf, ContentName name, long timeout) throws IOException {
+		ContentObject co = getLatestVersion(cf, name, null, timeout);
 		if (co.signedInfo().type() != ContentType.LINK)
 			throw new IOException("Content is not a link reference");
 		Link reference = new Link();
@@ -584,13 +573,13 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	 * @throws XMLStreamException 
 	 */
 
-	public ArrayList<ContentObject> dereference(ContentObject content, long timeout) throws IOException, XMLStreamException {
+	public ArrayList<ContentObject> dereference(CCNFlowControl cf, ContentObject content, long timeout) throws IOException, XMLStreamException {
 		ArrayList<ContentObject> result = new ArrayList<ContentObject>();
 		if (null == content)
 			return null;
 		if (content.signedInfo().type() == ContentType.LINK) {
 			Link link = Link.contentToLinkReference(content);
-			ContentObject linkCo = dereferenceLink(link, content.signedInfo().publisherKeyID(), timeout);
+			ContentObject linkCo = dereferenceLink(cf, link, content.signedInfo().publisherKeyID(), timeout);
 			if (linkCo == null) {
 				return null;
 			}
@@ -599,7 +588,7 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 			Collection collection = Collection.contentToCollection(content);
 			ArrayList<LinkReference> al = collection.contents();
 			for (LinkReference lr : al) {
-				ContentObject linkCo = dereferenceLink(lr, content.signedInfo().publisherKeyID(), timeout);
+				ContentObject linkCo = dereferenceLink(cf, lr, content.signedInfo().publisherKeyID(), timeout);
 				if (linkCo != null)
 					result.add(linkCo);
 			}
@@ -621,17 +610,17 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	 * @return
 	 * @throws IOException
 	 */
-	private ContentObject dereferenceLink(LinkReference reference, PublisherKeyID publisher, long timeout) throws IOException {
-		ContentObject linkCo = get(reference.targetName(), timeout);
+	private ContentObject dereferenceLink(CCNFlowControl cf, LinkReference reference, PublisherKeyID publisher, long timeout) throws IOException {
+		ContentObject linkCo = get(cf, reference.targetName(), timeout);
 		if (linkCo == null)
-			linkCo = getLatestVersion(reference.targetName(), publisher, timeout);
+			linkCo = getLatestVersion(cf, reference.targetName(), publisher, timeout);
 		return linkCo;
 	}
 	
-	private ContentObject dereferenceLink(Link reference, PublisherKeyID publisher, long timeout) throws IOException {
-		ContentObject linkCo = get(reference.targetName(), timeout);
+	private ContentObject dereferenceLink(CCNFlowControl cf, Link reference, PublisherKeyID publisher, long timeout) throws IOException {
+		ContentObject linkCo = get(cf, reference.targetName(), timeout);
 		if (linkCo == null)
-			linkCo = getLatestVersion(reference.targetName(), publisher, timeout);
+			linkCo = getLatestVersion(cf, reference.targetName(), publisher, timeout);
 		return linkCo;
 	}
 
@@ -646,9 +635,9 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	 * we write our new version, someone else might have updated
 	 * the number...
 	 */
-	public ContentObject newVersion(ContentName name,
+	public ContentObject newVersion(CCNFlowControl cf, ContentName name,
 								   byte[] contents) throws SignatureException, IOException {
-		return newVersion(name, contents, getDefaultPublisher());
+		return newVersion(cf, name, contents, getDefaultPublisher());
 	}
 
 	/**
@@ -660,10 +649,11 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	 * identity.
 	 */
 	public ContentObject newVersion(
+			CCNFlowControl cf,
 			ContentName name, 
 			byte[] contents,
 			PublisherKeyID publisher) throws SignatureException, IOException {
-		return newVersion(name, contents, ContentType.LEAF, publisher);
+		return newVersion(cf, name, contents, ContentType.LEAF, publisher);
 	}
 	
 	/**
@@ -673,13 +663,14 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	 * not who published the existing version.
 	 */
 	public ContentObject newVersion(
+			CCNFlowControl cf,
 			ContentName name, 
 			byte[] contents,
 			ContentType type, // handle links and collections
 			PublisherKeyID publisher) throws SignatureException, IOException {
 
 		try {
-			return addVersion(name, getNextVersionNumber(name), contents, type, publisher, null, null);
+			return addVersion(cf, name, getNextVersionNumber(cf, name), contents, type, publisher, null, null);
 		} catch (InvalidKeyException e) {
 			Library.logger().info("InvalidKeyException using default key.");
 			throw new SignatureException(e);
@@ -692,9 +683,9 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 		}
 	}
 	
-	private int getNextVersionNumber(ContentName name) {
+	private int getNextVersionNumber(CCNFlowControl cf, ContentName name) {
 		ContentName latestVersion = 
-			getLatestVersionName(name, null);
+			getLatestVersionName(cf, name, null);
 	
 		int currentVersion = baseVersion() - 1;
 		if (null != latestVersion)
@@ -703,8 +694,8 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 		return currentVersion + 1;
 	}
 	
-	private ContentName getNextVersionName(ContentName name) {
-		return versionName(name, getNextVersionNumber(name));
+	private ContentName getNextVersionName(CCNFlowControl cf, ContentName name) {
+		return versionName(name, getNextVersionNumber(cf, name));
 	}
 	
 	/**
@@ -772,7 +763,7 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	 * the corresponding put. Handles fragmentation.
 	 */
 	public ContentObject addVersion(
-			ContentName name, int version, byte [] contents,
+			CCNFlowControl cf, ContentName name, int version, byte [] contents,
 			ContentType type,
 			PublisherKeyID publisher, KeyLocator locator,
 			PrivateKey signingKey) throws SignatureException, 
@@ -796,7 +787,7 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 		ContentName versionedName = versionName(name, version);
 
 		// put result
-		return put(versionedName, contents, 
+		return put(cf, versionedName, contents, 
 				 	type, publisher, locator, signingKey);
 	}
 
@@ -809,7 +800,7 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	 * DKS TODO match on publisher key id, or full publisher options?
 	 * @return If null, no existing version found.
 	 */
-	public ContentName getLatestVersionName(ContentName name, PublisherKeyID publisher) {
+	public ContentName getLatestVersionName(CCNFlowControl cf, ContentName name, PublisherKeyID publisher) {
 		// Challenge -- Dan's proposed latest version syntax,
 		// <name>/latestversion/1/2/3... works well if there
 		// are 12 versions, not if there are a million. 
@@ -827,7 +818,7 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 		try {
 			// Hack by paul r. - this probably should have a timeout because we have to have
 			// one here - for now just use an arbitrary number
-			lastVersion = getLatest(baseVersionName, 5000);
+			lastVersion = getLatest(cf, baseVersionName, 5000);
 			if (null != lastVersion)		
 				return lastVersion.name();
 		} catch (Exception e) {
@@ -843,15 +834,15 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	 * that puts them back together and returns a byte []?
 	 * @throws IOException 
 	 */
-	public ContentObject getLatestVersion(ContentName name, PublisherKeyID publisher, long timeout) throws IOException {
-		ContentName currentName = getLatestVersionName(name, publisher);
+	public ContentObject getLatestVersion(CCNFlowControl cf, ContentName name, PublisherKeyID publisher, long timeout) throws IOException {
+		ContentName currentName = getLatestVersionName(cf, name, publisher);
 		
 		if (null == currentName) // no latest version
 			return null;
 		
 		// Need recursive get. The currentName we have here is
 		// just the prefix of this version.
-		return get(currentName, timeout);
+		return get(cf, currentName, timeout);
 	}
 
 	/**
@@ -942,168 +933,30 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	 * @throws SignatureException 
 	 * @throws IOException 
 	 */
-	public ContentObject put(String name, String contents) throws SignatureException, MalformedContentNameStringException, IOException {
-		return put(ContentName.fromURI(name), contents.getBytes());
+	public ContentObject put(ContentName name, byte[] contents, 
+			PublisherKeyID publisher) throws SignatureException, IOException {
+		return put(new CCNFlowControl(this), name, contents, SignedInfo.ContentType.LEAF, publisher);
 	}
 	
-	public ContentObject put(ContentName name, byte[] contents) 
+	public ContentObject put(CCNFlowControl cf, String name, String contents) throws SignatureException, MalformedContentNameStringException, IOException {
+		return put(cf, ContentName.fromURI(name), contents.getBytes());
+	}
+	
+	public ContentObject put(CCNFlowControl cf, ContentName name, byte[] contents) 
 				throws SignatureException, IOException {
-		return put(name, contents, getDefaultPublisher());
+		return put(cf, name, contents, getDefaultPublisher());
 	}
 
-	public ContentObject put(ContentName name, byte[] contents, 
+	public ContentObject put(CCNFlowControl cf, ContentName name, byte[] contents, 
 							PublisherKeyID publisher) throws SignatureException, IOException {
-		return put(name, contents, SignedInfo.ContentType.LEAF, publisher);
-	}
-	
-	/**
-	 * Implement flow control here
-	 */
-	private boolean _shutdownWait = false;
-	private boolean _flowControlEnabled = true;
-	
-	public void setupFlowControl(ContentName name) {
-		_filteredNames.add(name);
-		registerFilter(name, this);
-	}
-	
-	public void setupFlowControl(String name) throws MalformedContentNameStringException {
-		setupFlowControl(ContentName.fromNative(name));
-	}
-	
-	public void disableFlowControl() {
-		_flowControlEnabled = false;
-	}
-	
-	public ContentObject put(ContentName name, 
-			SignedInfo signedInfo,
-			byte[] content,
-			Signature signature) throws IOException {
-		byte [] contentHold = new byte[content.length];
-		System.arraycopy(content, 0, contentHold, 0, content.length);
-		ContentObject co = new ContentObject(name, signedInfo, contentHold, signature);
-		if (_flowControlEnabled) {
-			Entry<UnmatchedInterest> match = null;
-			synchronized (this) {
-				match = _unmatchedInterests.removeMatch(co);
-				if (match == null) {
-					_holdingArea.put(co.name(), co);
-				} else {
-					backEnd.peek().putBackEnd(co);
-				}
-			}
-		} else
-			backEnd.peek().putBackEnd(co);
-		return co;
-	}
-	
-	public int handleInterests(ArrayList<Interest> interests) {
-		for (Interest interest : interests) {
-			synchronized (this) {
-				ContentObject co = getBestMatch(interest);
-				if (co != null) {
-					_holdingArea.remove(co.name());
-					try {
-						put(co);
-						if (_shutdownWait && _holdingArea.size() == 0) {
-							synchronized (_holdingArea) {
-								_holdingArea.notify();
-							}
-						}
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-					
-				} else {
-					_unmatchedInterests.add(interest, new UnmatchedInterest());
-				}
-			}
-		}
-		return interests.size();
-	}
-	
-	/**
-	 * Try to optimize this by giving preference to "getNext" which is
-	 * presumably going to be the most common kind of get. So we first try
-	 * on a tailmap following the interest, and if that doesn't get us 
-	 * anything, we try all the data.
-	 * XXX there are probably better ways to optimize this that I haven't
-	 * thought of yet also...
-	 * 
-	 * @param interest
-	 * @param set
-	 * @return
-	 */
-	public ContentObject getBestMatch(Interest interest) {
-		// paul r - following seems broken for some reason - I'll try
-		// to sort it out later
-		//SortedMap<ContentName, ContentObject> matchMap = _holdingArea.tailMap(interest.name());
-		//ContentObject result = getBestMatch(interest, matchMap.keySet());
-		//if (result != null)
-		//	return result;
-		return getBestMatch(interest, _holdingArea.keySet());
-	}
-	
-	private ContentObject getBestMatch(Interest interest, Set<ContentName> set) {
-		ContentObject bestMatch = null;
-		for (ContentName name : set) {
-			ContentObject result = _holdingArea.get(name);
-			if (interest.orderPreference()  != null) {
-				if ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME))
-						== (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME)) { //next
-					if (interest.matches(result))
-						return result;
-				} else if ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME))
-						== (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME)) { //last
-					if (interest.matches(result)) {
-						if (bestMatch == null)
-							bestMatch = result;
-						else {
-							if (name.compareTo(bestMatch.name()) < 0) {
-								bestMatch = result;
-							}
-						}
-					} else
-						return bestMatch;
-				}
-			} else
-				if (interest.matches(result))
-					return result;
-		}
-		return bestMatch;
-	}
-	
-	public void waitForPutDrain() {
-		if (_holdingArea.size() > 0) {
-			_shutdownWait = true;
-			boolean _interrupted;
-			do {
-				_interrupted = false;
-				try {
-					synchronized (_holdingArea) {
-						_holdingArea.wait();
-					}
-				} catch (InterruptedException ie) {
-					_interrupted = true;
-				}
-			} while (_interrupted);
-		}
-	}
-	
-	/**
-	 * Shutdown but wait for puts to drain first
-	 */
-	public void shutdown() {
-		waitForPutDrain();
-		getNetworkManager().shutdown();
+		return put(cf, name, contents, SignedInfo.ContentType.LEAF, publisher);
 	}
 
-	public ContentObject put(ContentName name, byte[] contents, 
+	public ContentObject put(CCNFlowControl cf, ContentName name, byte[] contents, 
 							SignedInfo.ContentType type,
 							PublisherKeyID publisher) throws SignatureException, IOException {
 		try {
-			return put(name, contents, type, publisher, 
+			return put(cf, name, contents, type, publisher, 
 					   null, null);
 		} catch (InvalidKeyException e) {
 			Library.logger().info("InvalidKeyException using default key.");
@@ -1195,7 +1048,7 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	 * @return
 	 * @throws IOException 
 	 **/
-	public ContentObject put(ContentName name, byte [] contents,
+	public ContentObject put(CCNFlowControl cf, ContentName name, byte [] contents,
 							SignedInfo.ContentType type,
 							PublisherKeyID publisher, KeyLocator locator,
 							PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
@@ -1210,12 +1063,12 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 			publisher = keyManager().getPublisherKeyID(signingKey);
 		}
 		if (contents.length >= _blockSize) {
-			return fragmentedPut(name, contents, type, publisher, locator, signingKey);
+			return fragmentedPut(cf, name, contents, type, publisher, locator, signingKey);
 		} else {
 			try {
 				// Generate signature
 				ContentObject co = new ContentObject(name, new SignedInfo(publisher, type, locator), contents, signingKey);
-				return put(co.name(), co.signedInfo(), co.content(), co.signature());
+				return cf.put(co.name(), co.signedInfo(), co.content(), co.signature());
 			} catch (IOException e) {
 				Library.logger().warning("This should not happen: put failed with an IOExceptoin.");
 				Library.warningStackTrace(e);
@@ -1237,7 +1090,7 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	 * @throws NoSuchAlgorithmException
 	 * @throws IOException 
 	 */
-	protected ContentObject fragmentedPut(ContentName name, byte [] contents,
+	protected ContentObject fragmentedPut(CCNFlowControl cf, ContentName name, byte [] contents,
 										SignedInfo.ContentType type,
 										PublisherKeyID publisher, KeyLocator locator,
 										PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
@@ -1272,7 +1125,7 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 		ContentName fragmentBaseName = fragmentBase(name);
 		
 		CCNMerkleTree tree = 
-			putMerkleTree(fragmentBaseName, baseFragment(),
+			putMerkleTree(cf, fragmentBaseName, baseFragment(),
 						  contentBlocks, contentBlocks.length, 
 						  0, contentBlocks[contentBlocks.length-1].length, 
 						  timestamp, publisher, locator, signingKey);
@@ -1382,7 +1235,7 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	 * @throws SignatureException 
 	 * @throws InvalidKeyException 
 	 */
-	public ContentObject putFragment(ContentName name, int fragmentNumber, byte [] contents,
+	public ContentObject putFragment(CCNFlowControl cf, ContentName name, int fragmentNumber, byte [] contents,
 									 Timestamp timestamp, PublisherKeyID publisher, KeyLocator locator,
 									 PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 		if (null == signingKey)
@@ -1397,7 +1250,7 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 
 		// DKS TODO -- non-string integers in names
 		// DKS TODO -- change fragment markers
-		return put(ContentName.fromNative(fragmentBase(fragmentRoot(name)),
+		return put(cf, ContentName.fromNative(fragmentBase(fragmentRoot(name)),
 								   						Integer.toString(fragmentNumber)),
 				   contents, ContentType.FRAGMENT, publisher, locator, signingKey);
 	}
@@ -1421,7 +1274,7 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	 * @throws IOException
 	 */
 	public CCNMerkleTree putMerkleTree(
-			ContentName name, int baseNameIndex,
+			CCNFlowControl cf, ContentName name, int baseNameIndex,
 			byte [][] contentBlocks, int blockCount, 
 			int baseBlockIndex, int lastBlockLength,
 			Timestamp timestamp,
@@ -1453,7 +1306,7 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 		for (int i = 0; i < blockCount-1; i++) {
 			try {
 				Library.logger().info("putMerkleTree: writing block " + i + " of " + blockCount + " to name " + tree.blockName(i));
-				put(tree.blockName(i), tree.blockSignedInfo(i), 
+				cf.put(tree.blockName(i), tree.blockSignedInfo(i), 
 						contentBlocks[i], tree.blockSignature(i));
 			} catch (IOException e) {
 				Library.logger().warning("This should not happen: we cannot put our own blocks!");
@@ -1471,7 +1324,7 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 		}
 		try {
 			Library.logger().info("putMerkleTree: writing last block of " + blockCount + " to name " + tree.blockName(blockCount-1));
-			put(tree.blockName(blockCount-1), tree.blockSignedInfo(blockCount-1), 
+			cf.put(tree.blockName(blockCount-1), tree.blockSignedInfo(blockCount-1), 
 				lastBlock, tree.blockSignature(blockCount-1));
 		} catch (IOException e) {
 			Library.logger().warning("This should not happen: we cannot put our own last block!");
@@ -1524,25 +1377,19 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 		return Integer.valueOf(ContentName.componentPrintURI(name.component(offset+1)));
 	}
 	
+	public ContentObject get(CCNFlowControl cf, ContentName name, long timeout) throws IOException {
+		Interest interest = new Interest(name);
+		return get(cf, interest, timeout);
+	}
+		
+	public ContentObject get(CCNFlowControl cf, Interest interest, long timeout) throws IOException {
+		cf.shortCircuit(interest);
+		return get(interest, timeout);
+	}
+	
 	public ContentObject get(ContentName name, long timeout) throws IOException {
 		Interest interest = new Interest(name);
 		return get(interest, timeout);
-	}
-		
-	public ContentObject get(Interest interest, long timeout) throws IOException {
-		/*
-		 * If this name is in the flow control tree, short circuit
-		 * interest handling to directly release puts
-		 */
-		for (ContentName fName : _filteredNames) {
-			if (fName.isPrefixOf(interest.name())) {
-				ArrayList<Interest> list = new ArrayList<Interest>();
-				list.add(interest);
-				handleInterests(list);
-				break;
-			}
-		}
-		return super.get(interest, timeout);
 	}
 	
 	/**
@@ -1553,10 +1400,10 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	 * @return
 	 * @throws IOException
 	 */
-	public ContentObject getNextLevel(ContentName name, long timeout) throws IOException {
+	public ContentObject getNextLevel(CCNFlowControl cf, ContentName name, long timeout) throws IOException {
 		Interest interest = new Interest(name);
 		interest.additionalNameComponents(1);
-		return get(interest, timeout);
+		return get(cf, interest, timeout);
 	}
 	
 	/**
@@ -1569,7 +1416,7 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	 * @return
 	 * @throws IOException 
 	 */
-	public ArrayList<ContentObject> enumerate(Interest query, long timeout) throws IOException {
+	public ArrayList<ContentObject> enumerate(CCNFlowControl cf, Interest query, long timeout) throws IOException {
 		ArrayList<ContentObject> result = new ArrayList<ContentObject>();
 		Integer prefixCount = query.nameComponentCount() == null ? query.name().components().size() 
 				: query.nameComponentCount();
@@ -1577,7 +1424,7 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 		query.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME | Interest.ORDER_PREFERENCE_LEFT);
 		while (true) {
 			ContentObject co = null;
-			co = get(query, timeout == NO_TIMEOUT ? 5000 : timeout);
+			co = get(cf, query, timeout == NO_TIMEOUT ? 5000 : timeout);
 			if (co == null)
 				break;
 			Library.logger().info("enumerate: retrieved " + co.name());
@@ -1586,6 +1433,10 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 		}
 		Library.logger().info("enumerate: retrieved " + result.size() + " objects.");
 		return result;
+	}
+	
+	public ArrayList<ContentObject> enumerate(Interest query, long timeout) throws IOException {
+		return enumerate(new CCNFlowControl(this), query, timeout);
 	}
 	
 	/**
@@ -1678,7 +1529,6 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	public CCNDescriptor open(ContentName name, PublisherKeyID publisher, 
 								KeyLocator locator, PrivateKey signingKey) 
 			throws IOException, XMLStreamException {
-		setupFlowControl(name);
 		return new CCNDescriptor(name, publisher, locator, signingKey, this); 
 	}
 	
@@ -1690,7 +1540,6 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	public RepositoryDescriptor repoOpen(ContentName name, PublisherKeyID publisher, 
 			KeyLocator locator, PrivateKey signingKey) 
 				throws IOException, XMLStreamException {
-		setupFlowControl(name);
 		return new RepositoryDescriptor(name, publisher, locator, signingKey, this); 
 	}
 	
@@ -1726,19 +1575,19 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	 * @throws IOException
 	 * @throws InvalidParameterException
 	 */
-	public ContentObject getNext(ContentName name, byte[][] omissions, long timeout) 
+	public ContentObject getNext(CCNFlowControl cf, ContentName name, byte[][] omissions, long timeout) 
 			throws IOException {
-		return get(Interest.next(name, omissions), timeout);
+		return get(cf, Interest.next(name, omissions), timeout);
 	}
 	
-	public ContentObject getNext(ContentName name, long timeout)
+	public ContentObject getNext(CCNFlowControl cf, ContentName name, long timeout)
 			throws IOException, InvalidParameterException {
-		return getNext(name, null, timeout);
+		return getNext(cf, name, null, timeout);
 	}
 	
-	public ContentObject getNext(ContentObject content, int prefixCount, byte[][] omissions, long timeout) 
+	public ContentObject getNext(CCNFlowControl cf, ContentObject content, int prefixCount, byte[][] omissions, long timeout) 
 			throws IOException {
-		return getNext(contentObjectToContentName(content, prefixCount), omissions, timeout);
+		return getNext(cf, contentObjectToContentName(content, prefixCount), omissions, timeout);
 	}
 	
 	/**
@@ -1753,19 +1602,19 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	 * @throws IOException
 	 * @throws InvalidParameterException
 	 */
-	public ContentObject getLatest(ContentName name, byte[][] omissions, long timeout) 
+	public ContentObject getLatest(CCNFlowControl cf, ContentName name, byte[][] omissions, long timeout) 
 			throws MalformedContentNameStringException, IOException, InvalidParameterException {
-		return get(Interest.last(name, omissions), timeout);
+		return get(cf, Interest.last(name, omissions), timeout);
 	}
 	
-	public ContentObject getLatest(ContentName name, long timeout) throws InvalidParameterException, MalformedContentNameStringException, 
+	public ContentObject getLatest(CCNFlowControl cf, ContentName name, long timeout) throws InvalidParameterException, MalformedContentNameStringException, 
 			IOException {
-		return getLatest(name, null, timeout);
+		return getLatest(cf, name, null, timeout);
 	}
 	
-	public ContentObject getLatest(ContentObject content, int prefixCount, long timeout) throws InvalidParameterException, MalformedContentNameStringException, 
+	public ContentObject getLatest(CCNFlowControl cf, ContentObject content, int prefixCount, long timeout) throws InvalidParameterException, MalformedContentNameStringException, 
 			IOException {
-		return getLatest(contentObjectToContentName(content, prefixCount), null, timeout);
+		return getLatest(cf, contentObjectToContentName(content, prefixCount), null, timeout);
 	}
 	
 	/**
@@ -1778,28 +1627,14 @@ public class CCNLibrary extends CCNBase implements CCNFilterListener, CCNIOBackE
 	 * @throws MalformedContentNameStringException
 	 * @throws IOException
 	 */
-	public ContentObject getExcept(ContentName name, byte[][] omissions, long timeout) throws InvalidParameterException, MalformedContentNameStringException, 
+	public ContentObject getExcept(CCNFlowControl cf, ContentName name, byte[][] omissions, long timeout) throws InvalidParameterException, MalformedContentNameStringException, 
 			IOException {
-		return get(Interest.exclude(name, omissions), timeout);
+		return get(cf, Interest.exclude(name, omissions), timeout);
 	}
 	
 	private ContentName contentObjectToContentName(ContentObject content, int prefixCount) {
 		ContentName cocn = content.name().clone();
 		cocn.components().add(content.contentDigest());
 		return new ContentName(cocn.count(), cocn.components(), new Integer(prefixCount));
-	}
-
-	public void putBackEnd(ContentObject co) throws IOException {
-		put(co);
-	}
-	
-	public void pushBackEnd(CCNIOBackEnd backEnd) {
-		this.backEnd.push(backEnd);
-	}
-	
-	public CCNIOBackEnd popBackEnd() {
-		if (backEnd.size() > 1)
-			return backEnd.pop();
-		return null;
 	}
 }

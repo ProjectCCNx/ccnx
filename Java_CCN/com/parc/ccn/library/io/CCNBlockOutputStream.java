@@ -64,8 +64,8 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type,
 								PublisherKeyID publisher,
 								KeyLocator locator, PrivateKey signingKey,
-								CCNLibrary library) throws XMLStreamException, IOException {
-		super(publisher, locator, signingKey, library);
+								CCNDescriptor desc) throws XMLStreamException, IOException {
+		super(publisher, locator, signingKey, desc);
 		
 		_type = type;
 
@@ -144,7 +144,7 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 				updateBlockIndex();
 			}
 			ContentName blockName = ContentName.fromNative(_baseName, Integer.toString(_blockIndex));
-			_library.put(blockName, b, _type, _publisher, _locator, _signingKey);
+			_library.put(_desc, blockName, b, _type, _publisher, _locator, _signingKey);
 			_bytesWritten += b.length;
 		} catch (InvalidKeyException e) {
 			throw new IOException("Cannot sign content -- invalid key!: " + e.getMessage());

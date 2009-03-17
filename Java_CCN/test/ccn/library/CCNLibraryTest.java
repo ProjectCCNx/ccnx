@@ -22,6 +22,7 @@ import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.query.BasicInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 
 
@@ -56,17 +57,17 @@ public class CCNLibraryTest extends LibraryTestBase {
 		try {
 			
 			ArrayList<NameSeen> testNames = new ArrayList<NameSeen>(3);
-			library.setupFlowControl(ContentName.fromNative("/CPOF"));
+			CCNFlowControl cf = new CCNFlowControl("/CPOF", library);
 			testNames.add(new NameSeen(ContentName.fromNative("/CPOF/foo")));
 			testNames.add(new NameSeen(ContentName.fromNative("/CPOF/bar/lid")));
 			testNames.add(new NameSeen(ContentName.fromNative("/CPOF/bar/jar")));
 			
 			for (int i = 0; i < testNames.size(); i++) {
-				library.put(testNames.get(i).name, Integer.toString(i).getBytes());
+				library.put(cf, testNames.get(i).name, Integer.toString(i).getBytes());
 			}
 			
 			ArrayList<ContentObject> availableNames =
-				library.enumerate(new Interest("/CPOF"), CCNLibrary.NO_TIMEOUT);
+				library.enumerate(cf, new Interest("/CPOF"), CCNLibrary.NO_TIMEOUT);
 
 			Iterator<ContentObject> nameIt = availableNames.iterator();
 
@@ -75,7 +76,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 				// Just get by name, to test equivalent to current
 				// ONC interface.
-				ContentObject theObject = library.get(theName.name(), 1000);
+				ContentObject theObject = library.get(cf, theName.name(), 1000);
 
 				if (null == theObject) {
 					System.out.println("Missing content: enumerated name: " + theName.name() + " not gettable.");
@@ -143,9 +144,9 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 		try {
 			ContentName keyName = ContentName.fromNative(key);
-			library.setupFlowControl(keyName);
-			revision1 = library.newVersion(keyName, data1);
-			revision2 = library.newVersion(keyName, data2);
+			CCNFlowControl cf = new CCNFlowControl(keyName, library);
+			revision1 = library.newVersion(cf, keyName, data1);
+			revision2 = library.newVersion(cf, keyName, data2);
 			int version1 = library.getVersionNumber(revision1.name());
 			int version2 = library.getVersionNumber(revision2.name());
 			System.out.println("Version1: " + version1 + " version2: " + version2);
@@ -178,10 +179,10 @@ public class CCNLibraryTest extends LibraryTestBase {
 		byte[] data1 = "data".getBytes();
 		try {
 			ContentName keyName = ContentName.fromNative(key);
-			library.setupFlowControl(keyName);
-			ContentObject name = library.put(keyName, data1);
+			CCNFlowControl cf = new CCNFlowControl(keyName, library);
+			ContentObject name = library.put(cf, keyName, data1);
 			System.out.println("Put under name: " + name.name());
-			ContentObject result = library.get(name.name(), CCNBase.NO_TIMEOUT);
+			ContentObject result = library.get(cf, name.name(), CCNBase.NO_TIMEOUT);
 
 			System.out.println("Querying for returned name, Got back: " + (result == null ? "0"  : "1") + " results.");
 
@@ -191,7 +192,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 				System.out.println("Final name: " + name.name());
 				//Assert.fail("Didn't get back content we just put!");
 
-				result = library.get(name.name(), CCNBase.NO_TIMEOUT);
+				result = library.get(cf, name.name(), CCNBase.NO_TIMEOUT);
 
 				System.out.println("Recursive querying for returned name, Got back: " + (result == null ? "0"  : "1") + " results.");
 
@@ -204,7 +205,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 				Assert.assertTrue("didn't get back same data", new String(data1).equals(new String(content)));
 			}
 
-			result = library.get(keyName, CCNBase.NO_TIMEOUT);
+			result = library.get(cf, keyName, CCNBase.NO_TIMEOUT);
 
 			System.out.println("Querying for inserted name, Got back: " 
 							+ (result == null ? "0"  : "1") + " results.");
@@ -228,25 +229,25 @@ public class CCNLibraryTest extends LibraryTestBase {
 			byte [] content1,
 			byte [] content2) throws Exception {
 
-		library.setupFlowControl(docName);
-		ContentObject version1 = library.newVersion(docName, content1);
+		CCNFlowControl cf = new CCNFlowControl(docName, library);
+		ContentObject version1 = library.newVersion(cf, docName, content1);
 		System.out.println("Inserted first version as: " + version1.name());
 		Assert.assertNotNull("New version is null!", version1);
 
 		ContentObject latestVersion =
-			library.getLatestVersion(docName, null, CCNLibrary.NO_TIMEOUT);
+			library.getLatestVersion(cf, docName, null, CCNLibrary.NO_TIMEOUT);
 
 		Assert.assertNotNull("Retrieved latest version of " + docName + " got null!", latestVersion);
 		System.out.println("Latest version name: " + latestVersion.name());
 
 		ContentObject version2 = 
-			library.newVersion(docName, content2);
+			library.newVersion(cf, docName, content2);
 
 		Assert.assertNotNull("New version is null!", version2);
 		System.out.println("Inserted second version as: " + version2.name());
 
 		ContentObject newLatestVersion = 
-			library.getLatestVersion(docName, null, CCNLibrary.NO_TIMEOUT);
+			library.getLatestVersion(cf, docName, null, CCNLibrary.NO_TIMEOUT);
 		Assert.assertNotNull("Retrieved new latest version of " + docName + " got null!", newLatestVersion);
 		System.out.println("Latest version name: " + newLatestVersion.name());
 
@@ -270,26 +271,26 @@ public class CCNLibraryTest extends LibraryTestBase {
 	@Test
 	public void testLinks() throws Exception {
 		ContentName baseName = ContentName.fromNative("/libraryTest/linkTest/base");
-		library.setupFlowControl("/libraryTest");
-		library.put(baseName, "base".getBytes());
+		CCNFlowControl cf = new CCNFlowControl("/libraryTest", library);
+		library.put(cf, baseName, "base".getBytes());
 		LinkReference lr = new LinkReference(baseName);
 		ContentName linkName = ContentName.fromNative("/libraryTest/linkTest/l1");
-		library.put(linkName, lr);
-		ContentObject linkContent = library.get(linkName, 5000);
-		ArrayList<ContentObject> al = library.dereference(linkContent, 5000);
+		library.put(cf, linkName, lr);
+		ContentObject linkContent = library.get(cf, linkName, 5000);
+		ArrayList<ContentObject> al = library.dereference(cf, linkContent, 5000);
 		Assert.assertEquals(al.size(), 1);
 		ContentObject baseContent = al.get(0);
 		Assert.assertEquals(new String(baseContent.content()), "base");
 		LinkReference[] references = new LinkReference[2];
 		LinkReference lr2 = new LinkReference(baseName);
 		ContentName linkName2 = ContentName.fromNative("/libraryTest/linkTest/l2");
-		library.put(linkName2, lr2);
+		library.put(cf, linkName2, lr2);
 		references[0] = lr;
 		references[1] = lr2;
 		ContentName c1 = ContentName.fromNative("/libraryTest/linkTest/collection");
-		library.put(c1, references);
-		ContentObject collectionContent = library.get(c1, 5000);
-		al = library.dereference(collectionContent, 5000);
+		library.put(cf, c1, references);
+		ContentObject collectionContent = library.get(cf, c1, 5000);
+		al = library.dereference(cf, collectionContent, 5000);
 		Assert.assertEquals(al.size(), 2);
 		baseContent = al.get(0);
 		Assert.assertEquals(new String(baseContent.content()), "base");
@@ -300,21 +301,21 @@ public class CCNLibraryTest extends LibraryTestBase {
 	@Test
 	public void testCollections() throws Exception {
 		ContentName baseName = ContentName.fromNative("/libraryTest/collectionTest/base");
-		library.setupFlowControl(baseName);
+		CCNFlowControl cf = new CCNFlowControl(baseName, library);
 		ContentName collectionName = ContentName.fromNative("/libraryTest/collectionTest/myCollection");
 		ContentName[] references = new ContentName[2];
-		library.newVersion(baseName, "base".getBytes());
+		library.newVersion(cf, baseName, "base".getBytes());
 		references[0] = ContentName.fromNative("/libraryTest/collectionTest/r1");
 		references[1] = ContentName.fromNative("/libraryTest/collectionTest/r2");
-		Collection collection = library.put(collectionName, references);
+		Collection collection = library.put(cf, collectionName, references);
 		
 		try {
-			library.getCollection(baseName, 5000);
+			library.getCollection(cf, baseName, 5000);
 			Assert.fail("getCollection for non-collection succeeded");
 		} catch (IOException ioe) {}
 		
 		// test getCollection
-		collection = library.getCollection(collectionName, 5000);
+		collection = library.getCollection(cf, collectionName, 5000);
 		ArrayList<LinkReference> checkReferences = collection.contents();
 		Assert.assertEquals(checkReferences.size(), 2);
 		Assert.assertEquals(references[0], checkReferences.get(0).targetName());
@@ -324,22 +325,22 @@ public class CCNLibraryTest extends LibraryTestBase {
 		ContentName[] newReferences = new ContentName[2];
 		newReferences[0] = ContentName.fromNative("/libraryTest/r3");
 		newReferences[1] = ContentName.fromNative("/libraryTest/r4");
-		library.addToCollection(collection, newReferences);
-		collection = library.getCollection(collectionName, 5000);
+		library.addToCollection(cf, collection, newReferences);
+		collection = library.getCollection(cf, collectionName, 5000);
 		checkReferences = collection.contents();
 		Assert.assertEquals(checkReferences.size(), 4);
 		Assert.assertEquals(newReferences[0], checkReferences.get(2).targetName());
 		Assert.assertEquals(newReferences[1], checkReferences.get(3).targetName());
 		
-		library.removeFromCollection(collection, newReferences);
-		collection = library.getCollection(collectionName, 5000);
+		library.removeFromCollection(cf, collection, newReferences);
+		collection = library.getCollection(cf, collectionName, 5000);
 		checkReferences = collection.contents();
 		Assert.assertEquals(checkReferences.size(), 2);
 		Assert.assertEquals(references[0], checkReferences.get(0).targetName());
 		Assert.assertEquals(references[1], checkReferences.get(1).targetName());
 		
-		library.updateCollection(collection, newReferences, references);
-		collection = library.getCollection(collectionName, 5000);
+		library.updateCollection(cf, collection, newReferences, references);
+		collection = library.getCollection(cf, collectionName, 5000);
 		checkReferences = collection.contents();
 		Assert.assertEquals(checkReferences.size(), 2);
 		Assert.assertEquals(newReferences[0], checkReferences.get(0).targetName());
@@ -402,15 +403,15 @@ public class CCNLibraryTest extends LibraryTestBase {
 			library.expressInterest(ik, 
 					tl);
 
-			library.setupFlowControl(ContentName.fromNative(key));
-			library.put(ContentName.fromNative(key), data1);
+			CCNFlowControl cf = new CCNFlowControl(key, library);
+			library.put(cf, ContentName.fromNative(key), data1);
 			// wait a little bit before we move on...
 			try {
 				Thread.sleep(1000);
 			} catch (InterruptedException e) {
 			}
 
-			library.put(ContentName.fromNative(key), data2);
+			library.put(cf, ContentName.fromNative(key), data2);
 
 			// wait a little bit before we move on...
 			try {

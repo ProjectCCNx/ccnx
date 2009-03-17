@@ -11,6 +11,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
+import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 
 // NOTE: This test requires ccnd to be running and complementary source process
@@ -23,7 +24,7 @@ public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestList
 		Random rand = new Random();
 		for (int i = 0; i < BaseLibrarySource.count; i++) {
 			Thread.sleep(rand.nextInt(50));
-			ContentObject contents = library.getNextLevel(ContentName.fromNative("/BaseLibraryTest/gets/" + i), CCNLibrary.NO_TIMEOUT);
+			ContentObject contents = library.getNextLevel(new CCNFlowControl(library), ContentName.fromNative("/BaseLibraryTest/gets/" + i), CCNLibrary.NO_TIMEOUT);
 			int value = contents.content()[0];
 			// Note that we cannot be guaranteed to pick up every value:
 			// due to timing we may miss a value that arrives while we are not

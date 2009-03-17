@@ -9,7 +9,6 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.TreeMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Level;
 
@@ -21,6 +20,7 @@ import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
+import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.network.daemons.Daemon;
 
@@ -47,14 +47,14 @@ import com.parc.ccn.network.daemons.Daemon;
 public class RepositoryDaemon extends Daemon {
 	
 	private Repository _repo = null;
-	private ConcurrentLinkedQueue<ContentObject> _dataQueue = new ConcurrentLinkedQueue<ContentObject>();
 	private ConcurrentLinkedQueue<Interest> _interestQueue = new ConcurrentLinkedQueue<Interest>();
 	private CCNLibrary _library = null;
 	private boolean _started = false;
 	private ArrayList<NameAndListener> _repoFilters = new ArrayList<NameAndListener>();
 	private ArrayList<DataListener> _currentListeners = new ArrayList<DataListener>();
 	private ExcludeFilter markerFilter;
-	private TreeMap<ContentName, ContentName> _unacked = new TreeMap<ContentName, ContentName>();
+	private ArrayList<Interest> _ackRequests = new ArrayList<Interest>();
+	private CCNFlowControl _flowControl = null;
 	
 	public static final int PERIOD = 2000; // period for interest timeout check in ms.
 	
@@ -79,6 +79,8 @@ public class RepositoryDaemon extends Daemon {
 		private long _timer;
 		private Interest _origInterest;
 		private Interest _interest;
+		private ConcurrentLinkedQueue<ContentObject> _dataQueue = new ConcurrentLinkedQueue<ContentObject>();
+		private ArrayList<ContentObject> _unacked = new ArrayList<ContentObject>();
 		
 		private DataListener(Interest origInterest, Interest interest) {
 			_origInterest = interest;
@@ -104,6 +106,10 @@ public class RepositoryDaemon extends Daemon {
 				return _interest;
 			}
 			return null;
+		}
+		
+		public ContentObject get() {
+			return _dataQueue.poll();
 		}
 	}
 	
@@ -138,27 +144,45 @@ public class RepositoryDaemon extends Daemon {
 			while (_started) {
 				
 				ContentObject data = null;
-				do {
-					data = _dataQueue.poll();
-					if (data != null) {
-						try {
-							if (_repo.checkPolicyUpdate(data)) {
-								resetNameSpace();
-							} else {
-								Library.logger().finer("Saving content in: " + data.name().toString());
-								_repo.saveContent(data);		
+				for (DataListener listener : _currentListeners) {
+					do {
+						data = listener.get();
+						if (data != null) {
+							try {
+								if (_repo.checkPolicyUpdate(data)) {
+									resetNameSpace();
+								} else {
+									Library.logger().finer("Saving content in: " + data.name().toString());
+									_repo.saveContent(data);		
+								}
+								
+								/*
+								 * If an ack had already been requested answer it now.  Otherwise
+								 * add to the unacked queue to get ready for later ack.
+								 */
+								Iterator<Interest> iterator = _ackRequests.iterator();
+								boolean found = false;
+								while (iterator.hasNext()) {
+									Interest interest = iterator.next();
+									if (interest.matches(data)) {
+										iterator.remove();
+										if (!found) {
+											ArrayList<ContentName> names = new ArrayList<ContentName>();
+											names.add(data.name());
+											ContentName putName = new ContentName(data.name(), CCNBase.REPO_REQUEST_ACK);
+											_library.put(_flowControl, putName, _repo.getRepoInfo(names));
+										}
+										found = true;
+									}
+								}
+								if (!found)
+									listener._unacked.add(data);
+							} catch (Exception e) {
+								e.printStackTrace();
 							}
-							if (_unacked.get(data.name()) != null) {
-								ArrayList<ContentName> names = new ArrayList<ContentName>();
-								names.add(data.name());
-								_library.put(data.name(), _repo.getRepoInfo(names));
-								_unacked.remove(data.name());
-							}	
-						} catch (Exception e) {
-							e.printStackTrace();
 						}
-					}
-				} while (data != null) ;
+					} while (data != null) ;
+				}
 				
 				Interest interest = null;
 				do {
@@ -178,21 +202,38 @@ public class RepositoryDaemon extends Daemon {
 					startReadProcess(interest);
 				} else if (Arrays.equals(marker, CCNBase.REPO_REQUEST_ACK)) {
 					
-					/*
-					 * Collect as many names that we have as we can and send them all back in one "repoInfo"
-					 */
-					ContentName syncResult = new ContentName(interest.name().count() - 1, interest.name().components());
-					ContentObject testContent = _repo.getContent(new Interest(syncResult));
-					if (testContent != null) {
-						ArrayList<ContentName> names = new ArrayList<ContentName>();
-						int i = 0;
-						while (testContent != null && ++i < 20) {
-							names.add(testContent.name());
-							testContent = _repo.getContent(Interest.next(testContent.name()));
+					ContentName ackResult = new ContentName(interest.name().count() - 1, interest.name().components());
+					Interest ackInterest = new Interest(ackResult);
+					boolean noMatch = true;
+					for (DataListener listener : _currentListeners) {
+						
+						/*
+						 * Find the DataListener with values to Ack
+						 */
+						boolean found = false;
+						for (ContentObject co : listener._unacked) {
+							if (ackInterest.matches(co)) {
+								found = true;
+								break;
+							}
 						}
-						_library.put(interest.name(), _repo.getRepoInfo(names));
-					} else
-						_unacked.put(syncResult, syncResult);
+						if (!found)
+							continue;
+						noMatch = false;
+						
+						/*
+						 * For now just send back all the names we have in one package
+						 * Possibly later we may want to make sure they match
+						 */
+						ArrayList<ContentName> names = new ArrayList<ContentName>();
+						for (ContentObject co : listener._unacked) {
+							names.add(co.name());
+						}
+						listener._unacked.clear();
+						_library.put(_flowControl, interest.name(), _repo.getRepoInfo(names));
+					}
+					if (noMatch)
+						_ackRequests.add(ackInterest);		
 				} else {
 					ContentObject content = _repo.getContent(interest);
 					if (content != null) {
@@ -233,7 +274,7 @@ public class RepositoryDaemon extends Daemon {
 		
 		try {
 			_library = CCNLibrary.open();
-			_library.disableFlowControl();
+			_flowControl = new CCNFlowControl(_library);
 			_repo = new RFSImpl();
 		} catch (Exception e1) {
 			e1.printStackTrace();
@@ -329,8 +370,8 @@ public class RepositoryDaemon extends Daemon {
 			synchronized(_currentListeners) {
 				_currentListeners.add(listener);
 			}
+			_library.put(_flowControl, interest.name(), _repo.getRepoInfo(null));
 			_library.expressInterest(readInterest, listener);
-			_library.put(interest.name(), _repo.getRepoInfo(null));
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
