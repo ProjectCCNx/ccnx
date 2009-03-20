@@ -11,23 +11,22 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.library.CCNFlowControl;
+import com.parc.ccn.library.CCNSegmenter;
 
 //NOTE: This test requires ccnd to be running and complementary sink process 
 
 public class EndToEndTestSource extends BaseLibrarySource implements CCNFilterListener {
-	
-	private CCNFlowControl _serverFlowControl = null;
+	protected CCNSegmenter _segmenter;
 	
 	@Test
 	public void puts() throws Throwable {
 		assert(count <= Byte.MAX_VALUE);
-		CCNFlowControl cf = new CCNFlowControl("/BaseLibraryTest", library);
 		System.out.println("Put sequence started");
+		CCNSegmenter segmenter = new CCNSegmenter("/BaseLibraryTest/gets/", library);
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
 			byte[] content = getRandomContent(i);
-			ContentObject putResult = library.put(cf, ContentName.fromNative("/BaseLibraryTest/gets/" + new Integer(i).toString()), content);
+			ContentObject putResult = segmenter.put(ContentName.fromNative("/BaseLibraryTest/gets/" + new Integer(i).toString()), content);
 			System.out.println("Put " + i + " done: " + content.length + " content bytes");
 			checkPutResults(putResult);
 		}
@@ -37,8 +36,8 @@ public class EndToEndTestSource extends BaseLibrarySource implements CCNFilterLi
 	@Test
 	public void server() throws Throwable {
 		System.out.println("PutServer started");
-		_serverFlowControl = new CCNFlowControl(library);
 		name = ContentName.fromNative("/BaseLibraryTest/");
+		_segmenter = new CCNSegmenter(name, library);
 		library.registerFilter(name, this);
 		// Block on semaphore until enough data has been received
 		sema.acquire();
@@ -56,7 +55,7 @@ public class EndToEndTestSource extends BaseLibrarySource implements CCNFilterLi
 			for (Interest interest : interests) {
 				assertTrue(name.isPrefixOf(interest.name()));
 				byte[] content = getRandomContent(next);
-				ContentObject putResult = library.put(_serverFlowControl, ContentName.fromNative("/BaseLibraryTest/server/" + new Integer(next).toString()), content);
+				ContentObject putResult = _segmenter.put(ContentName.fromNative("/BaseLibraryTest/server/" + new Integer(next).toString()), content);
 				System.out.println("Put " + next + " done: " + content.length + " content bytes");
 				checkPutResults(putResult);
 				next++;

@@ -14,8 +14,8 @@ import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.CCNSegmenter;
 
 /**
  * This should eventually have more tests but for now at least we will
@@ -57,13 +57,13 @@ public class NetworkTest {
 		/*
 		 * Test re-expression of interest
 		 */
+		CCNSegmenter segmenter = new CCNSegmenter("/networkTest", library);
 		testInterest = new Interest("/networkTest/aaa");
-		CCNFlowControl cf = new CCNFlowControl(library);
 		TestListener tl = new TestListener();
 		library.expressInterest(testInterest, tl);
 		// Sleep long enough that the interest must be re-expressed
 		Thread.sleep(8000);  
-		library.put(cf, "/networkTest/aaa", "aaa");
+		segmenter.put("/networkTest/aaa", "aaa");
 		sema.tryAcquire(4000, TimeUnit.MILLISECONDS);
 		Assert.assertTrue(gotData);
 	}

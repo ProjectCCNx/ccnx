@@ -14,10 +14,9 @@ import com.parc.ccn.library.CCNLibrary;
 
 public abstract class CCNAbstractInputStream extends InputStream {
 
-	protected static final int BLOCK_TIMEOUT = 200;
+	protected static final int MAX_TIMEOUT = 2000;
 
-	protected CCNLibrary _library = null;
-	protected CCNDescriptor _desc = null;
+	protected CCNLibrary _library;
 
 	protected ContentObject _currentBlock = null;
 	protected int _blockOffset = 0;
@@ -30,6 +29,8 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	protected ContentName _baseName = null;
 	protected PublisherKeyID _publisher = null;
 	protected Integer _startingBlockIndex = null;
+	protected int _timeout = MAX_TIMEOUT;
+	
 	/**
 	 * If this content uses Merkle Hash Trees or other structures to amortize
 	 * signature cost, we can amortize verification cost as well by caching verification
@@ -42,18 +43,18 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	protected byte [] _verifiedProxy = null;
 
 	public CCNAbstractInputStream(ContentName baseName, Integer startingBlockIndex, 
-							PublisherKeyID publisher, CCNDescriptor desc) throws XMLStreamException, IOException {
+			PublisherKeyID publisher, CCNLibrary library) throws XMLStreamException, IOException {
 		super();
 		
 		if (null == baseName)
 			throw new IllegalArgumentException("baseName cannot be null!");
-
-		_desc = desc; 
-		if (null == _library) {
-			_library = CCNLibrary.getLibrary();
+			
+			_library = library; 
+			if (null == _library) {
+				_library = CCNLibrary.getLibrary();
 		}
 		_publisher = publisher;	
-
+		
 		// So, we assume the name we get in is up to but not including the sequence
 		// numbers, whatever they happen to be. If a starting block is given, we
 		// open from there, otherwise we open from the leftmost number available.
@@ -62,6 +63,10 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		// content, the baseName needs the fragment marker on it.
 		_baseName = baseName;
 		_startingBlockIndex = startingBlockIndex;
+	}
+	
+	public void setTimeout(int timeout) {
+		_timeout = timeout;
 	}
 
 	@Override
@@ -117,7 +122,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		/*
 		 * TODO: Paul R. Comment - as above what to do about timeouts?
 		 */
-		ContentObject block = _library.getNextLevel(_desc, blockName, _desc.getTimeout());
+		ContentObject block = _library.getNextLevel(blockName, _timeout);
 
 		if (null == block) {
 			Library.logger().info("Cannot get block " + number + " of file " + _baseName + " expected block: " + blockName.toString());
@@ -140,7 +145,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		// for the index itself which is the final component of the name we 
 		// have, so we use count()-1.
 		ContentObject nextBlock =  
-			_library.getNext(_desc, _currentBlock, _currentBlock.name().count()-1, null, _desc.getTimeout());
+			_library.getNext(_currentBlock, _currentBlock.name().count()-1, null, _timeout);
 		if (null != nextBlock) {
 			Library.logger().info("getNextBlock: retrieved " + nextBlock.name());
 			
@@ -161,7 +166,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		}
 		// DKS TODO FIX - use get left child; the following is a first stab at that.
 		Library.logger().info("getFirstBlock: getting " + _baseName);
-		ContentObject result =  _library.get(_desc, _baseName, _desc.getTimeout());
+		ContentObject result =  _library.get(_baseName, _timeout);
 		if (null != result){
 			Library.logger().info("getFirstBlock: retrieved " + result.name());
 			// Now need to verify the block we got

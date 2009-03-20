@@ -11,7 +11,8 @@ import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.io.CCNDescriptor;
+import com.parc.ccn.library.io.CCNOutputStream;
+import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 
 public class put_file {
 	
@@ -51,12 +52,12 @@ public class put_file {
 				}
 				Library.logger().info("put_file: putting file " + args[startArg + 1] + " bytes: " + theFile.length());
 				
-				CCNDescriptor ccnd;
+				CCNOutputStream ostream;
 				if (rawMode)
-					ccnd = library.open(argName, library.getDefaultPublisher(), null, null);
+					ostream = new CCNOutputStream(argName, library.getDefaultPublisher(), null, null, library);
 				else
-					ccnd = library.repoOpen(argName, library.getDefaultPublisher(), null, null);
-				do_write(ccnd, theFile);
+					ostream = new RepositoryOutputStream(argName, library.getDefaultPublisher(), null, null, library);
+				do_write(ostream, theFile);
 				
 				System.out.println("Inserted file " + args[startArg + 1] + ".");
 				System.exit(0);
@@ -80,12 +81,12 @@ public class put_file {
 					
 					// int version = new Random().nextInt(1000);
 					// would be version = library.latestVersion(argName) + 1;
-					CCNDescriptor ccnd;
+					CCNOutputStream ostream;
 					if (rawMode)
-						ccnd = library.open(nodeName, library.getDefaultPublisher(), null, null);
+						ostream = new CCNOutputStream(nodeName, null, null, null, library);
 					else
-						ccnd = library.repoOpen(nodeName, library.getDefaultPublisher(), null, null);
-					do_write(ccnd, theFile);
+						ostream = new RepositoryOutputStream(nodeName, null, null, null, library);
+					do_write(ostream, theFile);
 					
 					System.out.println("Inserted file " + args[i] + ".");
 					
@@ -107,7 +108,7 @@ public class put_file {
 
 	}
 	
-	private static void do_write(CCNDescriptor ccnd, File file) throws IOException {
+	private static void do_write(CCNOutputStream ostream, File file) throws IOException {
 		FileInputStream fis = new FileInputStream(file);
 		int size = BLOCK_SIZE;
 		byte [] buffer = new byte[BLOCK_SIZE];
@@ -117,11 +118,11 @@ public class put_file {
 				size = fis.available();
 			if (size > 0) {
 				fis.read(buffer, 0, size);
-				ccnd.write(buffer, 0, size);
+				ostream.write(buffer, 0, size);
 				Library.logger().info("do_write: wrote " + size + " bytes.");
 			}
 		} while (fis.available() > 0);
-		ccnd.close();
+		ostream.close();
 	}
 	
 	public static void usage() {

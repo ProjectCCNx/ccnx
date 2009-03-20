@@ -16,7 +16,7 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherKeyID;
-import com.parc.ccn.library.io.repo.RepositoryDescriptor;
+import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 import com.parc.ccn.network.daemons.repo.RFSImpl;
 import com.parc.ccn.network.daemons.repo.Repository;
 import com.parc.ccn.network.daemons.repo.RepositoryException;
@@ -79,7 +79,7 @@ public class RepoIOTest extends RepoTestBase {
 		byte [] content = new byte[fis.available()];
 		fis.read(content);
 		fis.close();
-		RepositoryDescriptor ros = library.repoOpen(ContentName.fromNative(_globalPrefix + '/' + 
+		RepositoryOutputStream ros = library.repoOpen(ContentName.fromNative(_globalPrefix + '/' + 
 				_repoName + '/' + Repository.REPO_DATA + '/' + Repository.REPO_POLICY), 
 				library.getDefaultPublisher(), null, null);
 		ros.write(content, 0, content.length);
@@ -97,7 +97,7 @@ public class RepoIOTest extends RepoTestBase {
 		byte value = 1;
 		for (int i = 0; i < data.length; i++)
 			data[i] = value++;
-		RepositoryDescriptor ros = library.repoOpen(ContentName.fromNative("/testNameSpace/stream"), library.getDefaultPublisher(), null, null);
+		RepositoryOutputStream ros = library.repoOpen(ContentName.fromNative("/testNameSpace/stream"), library.getDefaultPublisher(), null, null);
 		ros.write(data, 0, data.length);
 		ros.close();
 		Thread.sleep(5000);
@@ -137,7 +137,7 @@ public class RepoIOTest extends RepoTestBase {
 	
 	private void checkNameSpace(String contentName, boolean expected) throws Exception {
 		ContentName name = ContentName.fromNative(contentName);
-		RepositoryDescriptor ros = library.repoOpen(name, library.getDefaultPublisher(), null, null);
+		RepositoryOutputStream ros = library.repoOpen(name, library.getDefaultPublisher(), null, null);
 		byte [] data = "Testing 1 2 3".getBytes();
 		ros.write(data, 0, data.length);
 		ContentName baseName = ros.getBaseName();

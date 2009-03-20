@@ -1,7 +1,6 @@
 package com.parc.ccn.library.io.repo;
 
 import java.io.IOException;
-import java.security.PrivateKey;
 import java.util.ArrayList;
 import java.util.TreeMap;
 
@@ -12,23 +11,12 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.io.CCNDescriptor;
+import com.parc.ccn.library.CCNSegmenter;
 import com.parc.ccn.network.daemons.repo.RepositoryInfo;
 
-/**
- * Set up a CCNOutputStream that can talk to a repository
- * @author rasmusse
- *
- */
-
-public class RepositoryDescriptor extends CCNDescriptor {
-	
-	protected String _repoName;
-	protected String _repoPrefix;
+public class RepositorySegmenter extends CCNSegmenter {
 	
 	protected static final int ACK_BLOCK_SIZE = 20;
 	
@@ -36,10 +24,12 @@ public class RepositoryDescriptor extends CCNDescriptor {
 	protected TreeMap<ContentName, ContentObject> _unacked = new TreeMap<ContentName, ContentObject>();
 	protected int _blocksSinceAck = 0;
 	protected ContentName _lastAcked = null;
+	protected Interest _ackInterest = null;
+	protected String _repoName;
+	protected String _repoPrefix;
 	protected RepoListener _listener = null;
 	protected Interest _writeInterest = null;
-	protected Interest _ackInterest = null;
-	
+
 	private class RepoListener implements CCNInterestListener {
 
 		public Interest handleContent(ArrayList<ContentObject> results,
@@ -63,10 +53,8 @@ public class RepositoryDescriptor extends CCNDescriptor {
 							break;		// not our repository
 						for (ContentName name : repoInfo.getNames())
 							ack(name);
-						if (!flushComplete())
+						if (flushComplete())
 							sendAckRequest();
-						else
-							_ackInterest = null;
 						break;
 					default:
 						break;
@@ -83,48 +71,20 @@ public class RepositoryDescriptor extends CCNDescriptor {
 		}
 	}
 
-	public RepositoryDescriptor(ContentName name, PublisherKeyID publisher,
-			KeyLocator locator, PrivateKey signingKey, CCNLibrary library)
-			throws XMLStreamException, IOException {
-		super(name, publisher, locator, signingKey, library);
-		_unmatchedInterests.clear();	// Remove possible leftover interests from "getLatestVersion"
-		ContentName repoWriteName = new ContentName(_output.getBaseName(), CCNBase.REPO_START_WRITE);
+	public RepositorySegmenter(ContentName name, CCNLibrary library) {
+		super(name, library);
+		// TODO Auto-generated constructor stub
+	}
+	
+	public void init(ContentName name) throws IOException {
+		clearUnmatchedInterests();	// Remove possible leftover interests from "getLatestVersion"
+		ContentName repoWriteName = new ContentName(name, CCNBase.REPO_START_WRITE);
 		_listener = new RepoListener();
 		_writeInterest = new Interest(repoWriteName);
 		_library.expressInterest(_writeInterest, _listener);
 	}
 	
-	public ContentName getBaseName() {
-		return _output.getBaseName();
-	}
-	
-	public void close() throws IOException {
-		super.close();
-		sendAckRequest();
-		synchronized(this) {
-			int nUnacked = _unacked.size();
-			while (!flushComplete()) {
-				boolean interrupted = true;
-				while (interrupted) {
-				interrupted = false;
-					try {
-						wait(_timeout);
-					} catch (InterruptedException e) {
-						interrupted = true;
-					}
-				}
-				if (_unacked.size() == nUnacked)
-					return;
-			}
-		}
-		
-		cancelInterests();
-		if (!flushComplete()) {
-			throw new IOException("No ack from repository");
-		}
-	}
-
-	public void put(ContentObject co) throws IOException {
+	public ContentObject put(ContentObject co) throws IOException {
 		super.put(co);
 		if (_useAck) {
 			_unacked.put(co.name(), co);
@@ -133,6 +93,7 @@ public class RepositoryDescriptor extends CCNDescriptor {
 				_blocksSinceAck = 0;
 			}
 		}
+		return co;
 	}
 
 	/**
@@ -165,7 +126,7 @@ public class RepositoryDescriptor extends CCNDescriptor {
 		return _useAck ? _unacked.size() == 0 : true;
 	}
 	
-	private void sendAckRequest() throws IOException {
+	public void sendAckRequest() throws IOException {
 		if (_unacked.size() > 0) {
 			ArrayList<byte[]> components = new ArrayList<byte[]>();
 			if (_lastAcked == null) {
@@ -187,10 +148,36 @@ public class RepositoryDescriptor extends CCNDescriptor {
 		}
 	}
 	
+	public void close() throws IOException {
+		sendAckRequest();
+		synchronized(this) {
+			int nUnacked = _unacked.size();
+			while (!flushComplete()) {
+				boolean interrupted = true;
+				while (interrupted) {
+				interrupted = false;
+					try {
+						wait(getTimeout());
+					} catch (InterruptedException e) {
+						interrupted = true;
+					}
+				}
+				if (_unacked.size() == nUnacked)
+					return;
+			}
+		}
+		
+		cancelInterests();
+		if (!flushComplete()) {
+			throw new IOException("No ack from repository");
+		}
+	}
+	
 	private void cancelInterests() {
 		if (_writeInterest != null)
 			_library.cancelInterest(_writeInterest, _listener);
 		if (_ackInterest != null)
 			_library.cancelInterest(_ackInterest, _listener);
 	}
+
 }

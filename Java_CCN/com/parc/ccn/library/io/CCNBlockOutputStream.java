@@ -9,10 +9,11 @@ import java.security.SignatureException;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.CCNSegmenter;
 
 /**
  * This class acts as a packet-oriented stream of data. It might be
@@ -64,8 +65,8 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type,
 								PublisherKeyID publisher,
 								KeyLocator locator, PrivateKey signingKey,
-								CCNDescriptor desc) throws XMLStreamException, IOException {
-		super(publisher, locator, signingKey, desc);
+								CCNSegmenter cw) throws XMLStreamException, IOException {
+		super(publisher, locator, signingKey, cw);
 		
 		_type = type;
 
@@ -144,7 +145,7 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 				updateBlockIndex();
 			}
 			ContentName blockName = ContentName.fromNative(_baseName, Integer.toString(_blockIndex));
-			_library.put(_desc, blockName, b, _type, _publisher, _locator, _signingKey);
+			_writer.put(blockName, b, _type, _publisher, _locator, _signingKey);
 			_bytesWritten += b.length;
 		} catch (InvalidKeyException e) {
 			throw new IOException("Cannot sign content -- invalid key!: " + e.getMessage());

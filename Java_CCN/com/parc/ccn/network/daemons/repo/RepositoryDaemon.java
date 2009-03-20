@@ -20,8 +20,8 @@ import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.CCNSegmenter;
 import com.parc.ccn.network.daemons.Daemon;
 
 /**
@@ -54,7 +54,7 @@ public class RepositoryDaemon extends Daemon {
 	private ArrayList<DataListener> _currentListeners = new ArrayList<DataListener>();
 	private ExcludeFilter markerFilter;
 	private ArrayList<Interest> _ackRequests = new ArrayList<Interest>();
-	private CCNFlowControl _flowControl = null;
+	private CCNSegmenter _segmenter = null;
 	
 	public static final int PERIOD = 2000; // period for interest timeout check in ms.
 	
@@ -170,7 +170,7 @@ public class RepositoryDaemon extends Daemon {
 											ArrayList<ContentName> names = new ArrayList<ContentName>();
 											names.add(data.name());
 											ContentName putName = new ContentName(data.name(), CCNBase.REPO_REQUEST_ACK);
-											_library.put(_flowControl, putName, _repo.getRepoInfo(names));
+											_segmenter.put(putName, _repo.getRepoInfo(names));
 										}
 										found = true;
 									}
@@ -230,7 +230,7 @@ public class RepositoryDaemon extends Daemon {
 							names.add(co.name());
 						}
 						listener._unacked.clear();
-						_library.put(_flowControl, interest.name(), _repo.getRepoInfo(names));
+						_segmenter.put(interest.name(), _repo.getRepoInfo(names));
 					}
 					if (noMatch)
 						_ackRequests.add(ackInterest);		
@@ -274,8 +274,8 @@ public class RepositoryDaemon extends Daemon {
 		
 		try {
 			_library = CCNLibrary.open();
-			_flowControl = new CCNFlowControl(_library);
 			_repo = new RFSImpl();
+			_segmenter = new CCNSegmenter("/", _library);
 		} catch (Exception e1) {
 			e1.printStackTrace();
 			System.exit(0);
@@ -370,7 +370,7 @@ public class RepositoryDaemon extends Daemon {
 			synchronized(_currentListeners) {
 				_currentListeners.add(listener);
 			}
-			_library.put(_flowControl, interest.name(), _repo.getRepoInfo(null));
+			_segmenter.put(interest.name(), _repo.getRepoInfo(null));
 			_library.expressInterest(readInterest, listener);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block

@@ -6,6 +6,7 @@ import java.util.Date;
 import java.util.Set;
 import java.util.TreeMap;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
@@ -35,22 +36,12 @@ public class CCNFlowControl implements CCNFilterListener {
 	private boolean _flowControlEnabled = true;
 	
 	/**
-	 * Disabled flow control constructor
-	 * @param library
-	 */
-	public CCNFlowControl(CCNLibrary library) {
-		_library = library;
-		_flowControlEnabled = false;
-	}
-	
-	/**
 	 * Enabled flow control constructor
 	 * @param name
 	 * @param library
 	 */
 	public CCNFlowControl(ContentName name, CCNLibrary library) {
-		this(library);
-		_flowControlEnabled = true;
+		_library = library;
 		_filteredNames.add(name);
 		_library.registerFilter(name, this);
 	}
@@ -67,6 +58,10 @@ public class CCNFlowControl implements CCNFilterListener {
 		byte [] contentHold = new byte[content.length];
 		System.arraycopy(content, 0, contentHold, 0, content.length);
 		ContentObject co = new ContentObject(name, signedInfo, contentHold, signature);
+		return put(co);
+	}
+	
+	public ContentObject put(ContentObject co) throws IOException {
 		if (_flowControlEnabled) {
 			Entry<UnmatchedInterest> match = null;
 			synchronized (this) {
@@ -74,26 +69,24 @@ public class CCNFlowControl implements CCNFilterListener {
 				if (match == null) {
 					_holdingArea.put(co.name(), co);
 				} else {
-					put(co);
+					_library.put(co);
 				}
 			}
 		} else
-			put(co);
+			_library.put(co);
 		return co;
-	}
-	
-	public void put(ContentObject co) throws IOException {
-		_library.put(co);
 	}
 	
 	public int handleInterests(ArrayList<Interest> interests) {
 		for (Interest interest : interests) {
 			synchronized (this) {
+Library.logger().info("saw interest: " + interest.name());
 				ContentObject co = getBestMatch(interest);
 				if (co != null) {
+Library.logger().info("matched");
 					_holdingArea.remove(co.name());
 					try {
-						put(co);
+						_library.put(co);
 						if (_shutdownWait && _holdingArea.size() == 0) {
 							synchronized (_holdingArea) {
 								_holdingArea.notify();
@@ -187,21 +180,6 @@ public class CCNFlowControl implements CCNFilterListener {
 		}
 	}
 	
-	/*
-	 * If this name is in the flow control tree, short circuit
-	 * interest handling to directly release puts
-	 */
-	public void shortCircuit(Interest interest) {
-		for (ContentName fName : _filteredNames) {
-			if (fName.isPrefixOf(interest.name())) {
-				ArrayList<Interest> list = new ArrayList<Interest>();
-				list.add(interest);
-				handleInterests(list);
-				break;
-			}
-		}
-	}
-	
 	public void setTimeout(int timeout) {
 		_timeout = timeout;
 	}
@@ -217,5 +195,13 @@ public class CCNFlowControl implements CCNFilterListener {
 	public void shutdown() throws IOException {
 		waitForPutDrain();
 		_library.getNetworkManager().shutdown();
+	}
+	
+	public CCNLibrary getLibrary() {
+		return _library;
+	}
+	
+	public void clearUnmatchedInterests() {
+		_unmatchedInterests.clear();
 	}
 }

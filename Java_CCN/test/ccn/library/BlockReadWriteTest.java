@@ -17,7 +17,6 @@ import org.junit.BeforeClass;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNDescriptor;
 
@@ -28,7 +27,7 @@ public class BlockReadWriteTest extends BasePutGetTest {
 	protected static final int CHUNK_SIZE = 512;
 	
 	protected static CCNLibrary _putLibrary;
-	private Semaphore sema = new Semaphore(0);
+	protected Semaphore sema = new Semaphore(0);
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -76,7 +75,7 @@ public class BlockReadWriteTest extends BasePutGetTest {
 	 * @throws InvalidKeyException 
 	 */
 	@Override
-	public void doPuts(CCNFlowControl cf, ContentName baseName, int count, CCNLibrary library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException, NoSuchAlgorithmException {
+	public void doPuts(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException, NoSuchAlgorithmException {
 		ContentName thisName = CCNLibrary.versionName(ContentName.fromNative(baseName, fileName), count);
 		CCNDescriptor desc = _putLibrary.open(thisName, null, null, null);     
 		sema.release();	// put channel open

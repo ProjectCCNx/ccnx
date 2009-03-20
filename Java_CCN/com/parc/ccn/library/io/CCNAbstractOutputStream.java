@@ -8,11 +8,12 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.CCNSegmenter;
 
 public abstract class CCNAbstractOutputStream extends OutputStream {
 
 	protected CCNLibrary _library = null;
-	protected CCNDescriptor _desc = null;
+	protected CCNSegmenter _writer = null;
 	/** 
 	 * The name for the content fragments, up to just before the sequence number.
 	 */
@@ -24,10 +25,10 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 
 	public CCNAbstractOutputStream(PublisherKeyID publisher,
 								   KeyLocator locator, PrivateKey signingKey,
-								   CCNDescriptor desc) {
+								   CCNSegmenter cw) {
 		super();
-		_desc = desc;
-		_library = desc.getLibrary();
+		_writer = cw;
+		_library = _writer.getLibrary();
 		if (null == _library) {
 			_library = CCNLibrary.getLibrary();
 		}
@@ -53,5 +54,8 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 	public ContentName getBaseName() {
 		return _baseName;
 	}
-
+	
+	public CCNSegmenter getWriter() {
+		return _writer;
+	}
 }
