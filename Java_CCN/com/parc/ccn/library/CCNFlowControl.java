@@ -80,10 +80,8 @@ public class CCNFlowControl implements CCNFilterListener {
 	public int handleInterests(ArrayList<Interest> interests) {
 		for (Interest interest : interests) {
 			synchronized (this) {
-Library.logger().info("saw interest: " + interest.name());
 				ContentObject co = getBestMatch(interest);
 				if (co != null) {
-Library.logger().info("matched");
 					_holdingArea.remove(co.name());
 					try {
 						_library.put(co);
