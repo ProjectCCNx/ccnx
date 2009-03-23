@@ -1,14 +1,17 @@
 package test.ccn.data;
 
+import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.Security;
+import java.security.SignatureException;
 import java.security.cert.X509Certificate;
 import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.Date;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -97,6 +100,21 @@ public class ContentObjectTest {
 		ContentObject tdco = new ContentObject();
 		ContentObject bdco = new ContentObject();
 		XMLEncodableTester.encodeDecodeTest("ContentObject", co, tdco, bdco);
+	}
+	
+	@Test
+	public void testImmutable() {
+		try {
+			ContentObject co = new ContentObject(name, auth, document2.getBytes(), pair.getPrivate());
+			byte [] bs = co.content();
+			bs[0] = 1;
+			Signature sig = co.signature();
+			sig.signature()[0] = 2;
+		} catch (InvalidKeyException e) {
+			Assert.fail("Invalid key exception: " + e.getMessage());
+		} catch (SignatureException e) {
+			Assert.fail("Signature exception: " + e.getMessage());
+		}
 	}
 
 }

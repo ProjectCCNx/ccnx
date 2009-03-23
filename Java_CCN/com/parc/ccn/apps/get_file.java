@@ -39,7 +39,7 @@ public class get_file {
 			}
 			FileOutputStream output = new FileOutputStream(theFile);
 			
-			CCNDescriptor input = library.open(argName, null);
+			CCNDescriptor input = new CCNDescriptor(argName, null, library);
 			if (args.length > 2) {
 				input.setTimeout(new Integer(args[2]).intValue()); 
 			}

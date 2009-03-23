@@ -18,6 +18,7 @@ import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNInputStream;
 import com.parc.ccn.library.io.CCNOutputStream;
+import com.parc.ccn.library.profiles.VersioningProfile;
 
 /**
  * 
@@ -29,7 +30,7 @@ public class StreamTest extends BlockReadWriteTest {
 	
 	@Override
 	public void getResults(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException {
-		ContentName thisName = CCNLibrary.versionName(ContentName.fromNative(baseName, fileName), count);
+		ContentName thisName = VersioningProfile.versionName(ContentName.fromNative(baseName, fileName), count);
 		sema.acquire(); // Block until puts started
 		CCNInputStream istream = new CCNInputStream(thisName, library);
 		//desc.setTimeout(5000);
@@ -67,7 +68,7 @@ public class StreamTest extends BlockReadWriteTest {
 	@Override
 	public void doPuts(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, 
 				SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException, NoSuchAlgorithmException {
-		ContentName thisName = CCNLibrary.versionName(ContentName.fromNative(baseName, fileName), count);
+		ContentName thisName = VersioningProfile.versionName(ContentName.fromNative(baseName, fileName), count);
 		CCNOutputStream ostream = new CCNOutputStream(thisName, null, null, null, library);
 		sema.release();	// put channel open
 		

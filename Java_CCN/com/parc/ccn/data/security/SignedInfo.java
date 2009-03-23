@@ -13,7 +13,7 @@ import com.parc.ccn.data.util.XMLEncoder;
 
 public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 
-	public enum ContentType {FRAGMENT, LINK, COLLECTION, LEAF, SESSION, HEADER};
+	public enum ContentType {FRAGMENT, LINK, COLLECTION, LEAF, SESSION, HEADER, KEY};
     protected static final HashMap<ContentType, String> ContentTypeNames = new HashMap<ContentType, String>();
     protected static final HashMap<String, ContentType> ContentNameTypes = new HashMap<String, ContentType>();
     public static final String SIGNED_INFO_ELEMENT = "SignedInfo";
@@ -28,12 +28,14 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
         ContentTypeNames.put(ContentType.LEAF, "LEAF");
         ContentTypeNames.put(ContentType.SESSION, "SESSION");
         ContentTypeNames.put(ContentType.HEADER, "HEADER");
+        ContentTypeNames.put(ContentType.KEY, "KEY");
         ContentNameTypes.put("FRAGMENT", ContentType.FRAGMENT);
         ContentNameTypes.put("LINK", ContentType.LINK);
         ContentNameTypes.put("COLLECTION", ContentType.COLLECTION);
         ContentNameTypes.put("LEAF", ContentType.LEAF);
         ContentNameTypes.put("SESSION", ContentType.SESSION);
         ContentNameTypes.put("HEADER", ContentType.HEADER);
+        ContentNameTypes.put("KEY", ContentType.KEY);
     }
     
     protected PublisherKeyID _publisher;
@@ -112,62 +114,39 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
     	return (null == _locator); 
     }
     
- 	public byte[] publisher() {
-		return _publisher.id();
-	}
-	public PublisherKeyID publisherKeyID() {
-		return _publisher;
-	}
-	public void publisher(byte[] publisher) {
-		this._publisher = new PublisherKeyID(publisher);
-	}
-	public void publisher(PublisherKeyID publisherKeyID) {
-		this._publisher = publisherKeyID;
-	}
-	public Timestamp timestamp() {
-		return _timestamp;
-	}
-	public void timestamp(Timestamp timestamp) {
-		this._timestamp = timestamp;
-	}
+    /**
+     * DKS -- start by returning final versions of members, will refactor
+     * to store as final.
+     * @return
+     */
+ 	public final byte[] publisher() { return _publisher.id(); }
+ 	
+	public final PublisherKeyID publisherKeyID() { return _publisher; }
+
+	public final Timestamp timestamp() { return _timestamp; }
 	
-	public Integer freshnessSeconds() {
-		return _freshnessSeconds;
-	}
+	public final KeyLocator keyLocator() { return _locator; }
 	
-	public void freshnessSeconds(int seconds) {
-		_freshnessSeconds = new Integer(seconds);
-	}
+	public final int freshnessSeconds() { return _freshnessSeconds; }
 	
 	public boolean emptyFreshnessSeconds() {
 		return (null == _freshnessSeconds);
 	}
 	
-	public ContentType type() {
-		return _type;
-	}
-	public void type(ContentType type) {
-		this._type = type;
-	}
+	public final ContentType type() { return _type; }
 	
-	public String typeName() {
-		return typeToName(type());
-	}
+	public String typeName() { return typeToName(type()); }
 	
-	public static String typeToName(ContentType type) {
+	public static final String typeToName(ContentType type) {
 		if (ContentTypeNames.get(type) == null) {
 			Library.logger().warning("Cannot find name for type: " + type);
 		}
 		return ContentTypeNames.get(type);
 	}
 
-	public static ContentType nameToType(String name) {
+	public static final ContentType nameToType(String name) {
 		return ContentNameTypes.get(name);
 	}
-	
-	public KeyLocator keyLocator() { return _locator; }
-	
-	public void keyLocator(KeyLocator locator) { _locator = locator; }
 	
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		decoder.readStartElement(SIGNED_INFO_ELEMENT);
@@ -262,10 +241,10 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 				return false;
 		} else if (!keyLocator().equals(other.keyLocator()))
 			return false;
-		if (freshnessSeconds() == null) {
-			if (other.freshnessSeconds() != null)
+		if (emptyFreshnessSeconds()) {
+			if (other.emptyFreshnessSeconds())
 				return false;
-		} else if (!freshnessSeconds().equals(other.freshnessSeconds()))
+		} else if (freshnessSeconds() != other.freshnessSeconds())
 			return false;
 		return true;
 	}

@@ -395,7 +395,7 @@ public class CCNInputStream extends CCNAbstractInputStream implements CCNInteres
 					// Low-level verify just checks that signer actually signed.
 					// High-level verify checks trust.
 				try {
-					if (!_library.verify(co, null)) {
+					if (!co.verify(null)) {
 						Library.logger().warning("Found header: " + co.name().toString() + " that fails to verify.");
 						return interest; // try again
 					} else {

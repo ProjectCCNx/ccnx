@@ -12,11 +12,11 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
+import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.CCNSegmenter;
 import com.parc.ccn.network.daemons.repo.RepositoryInfo;
 
-public class RepositorySegmenter extends CCNSegmenter {
+public class RepositorySegmenter extends CCNFlowControl {
 	
 	protected static final int ACK_BLOCK_SIZE = 20;
 	

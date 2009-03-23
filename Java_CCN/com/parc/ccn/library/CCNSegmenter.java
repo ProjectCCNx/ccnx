@@ -10,114 +10,129 @@ import java.sql.Timestamp;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.content.Header;
-import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
+import com.parc.ccn.library.profiles.SegmentationProfile;
+import com.parc.ccn.library.profiles.SegmentationProfile.SegmentNumberType;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.crypto.CCNMerkleTree;
 
-public class CCNSegmenter extends CCNFlowControl {
+public class CCNSegmenter {
 
-	public CCNSegmenter(ContentName name, CCNLibrary library) {
-		super(name, library);
+	public static final String PROP_BLOCK_SIZE = "ccn.lib.blocksize";
+	public static final String HEADER_NAME = ".header"; // DKS currently not used; see below.
+
+	protected int _blockSize = SegmentationProfile.DEFAULT_BLOCKSIZE;
+	protected int _blockIncrement = SegmentationProfile.DEFAULT_INCREMENT;
+	protected int _blockScale = SegmentationProfile.DEFAULT_SCALE;
+	protected SegmentNumberType _sequenceType = SegmentNumberType.SEGMENT_FIXED_INCREMENT;
+	
+	protected CCNLibrary _library;
+	// Eventually may not contain this; callers may access it exogenously.
+	protected CCNFlowControl _flowControl;
+	
+	protected ContentName _baseName;
+	protected ContentType _type;
+	protected PrivateKey _signingKey; // eventually separate into signing object
+	protected KeyLocator _locator;
+	
+	/**
+	 * Eventually add encryption.
+	 * @param baseName
+	 * @param locator
+	 * @param signingKey
+	 */
+	@Deprecated // potentially, TBD
+	CCNSegmenter(ContentName baseName, ContentType type, KeyLocator locator, PrivateKey signingKey,
+				CCNFlowControl flowControl) {
+		this(flowControl);
+		
+		ContentName nameToOpen = baseName;
+		// If someone gave us a fragment name, at least strip that.
+		if (SegmentationProfile.isSegment(nameToOpen)) {
+			 nameToOpen = SegmentationProfile.segmentRoot(nameToOpen);
+		}
+		_type = type;
+
+		if (SegmentationProfile.isSegment(nameToOpen)) {
+			// DKS TODO: should we do this?
+			nameToOpen = SegmentationProfile.segmentRoot(nameToOpen);
+		}
+
+		// Don't go looking for or adding versions. Might be unversioned,
+		// unfragmented content (e.g. RTP streams). Assume caller knows
+		// what name they want.
+		_baseName = nameToOpen;	
 	}
 	
-	public CCNSegmenter(String name, CCNLibrary library) throws MalformedContentNameStringException {
-		super(name, library);
+	@Deprecated // potentially, TBD
+	CCNSegmenter(ContentName baseName, ContentType type, KeyLocator locator, PrivateKey signingKey,
+				CCNLibrary library) {
+		this(baseName, type, locator, signingKey, new CCNFlowControl(baseName, library));
+	}
+	
+	public CCNSegmenter(CCNFlowControl flowControl) {
+		_flowControl = flowControl;
+		_library = flowControl.getLibrary();
+		initializeBlockSize();
+	}
+	
+	protected void initializeBlockSize() {
+		String blockString = System.getProperty(PROP_BLOCK_SIZE);
+		if (null != blockString) {
+			try {
+				_blockSize = new Integer(blockString).intValue();
+				Library.logger().info("Using specified fragmentation block size " + _blockSize);
+			} catch (NumberFormatException e) {
+				// Do nothing
+				Library.logger().warning("Error: malformed property value " + PROP_BLOCK_SIZE + ": " + blockString + " should be an integer.");
+			}
+		}
 	}
 	
 	/**
-	 * TODO - provide other variants of put(name, reference)
-	 * @param name
-	 * @param reference
-	 * @return
-	 * @throws SignatureException
-	 * @throws IOException
-	 * @throws XMLStreamException
-	 * @throws NoSuchAlgorithmException 
-	 * @throws InvalidKeyException 
+	 * Set the fragmentation block size to use
+	 * @param blockSize
 	 */
-	public ContentObject put(ContentName name, LinkReference reference) throws SignatureException, IOException, 
-				XMLStreamException, InvalidKeyException, NoSuchAlgorithmException {
-		return put(name, reference, null, null, null);
+	public void setBlockSize(int blockSize) {
+		_blockSize = blockSize;
 	}
 	
-	public ContentObject put(
-			ContentName name, 
-			LinkReference reference,
-			PublisherKeyID publisher, KeyLocator locator,
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException{
-		
-		if (null == signingKey)
-			signingKey = _library.keyManager().getDefaultSigningKey();
-
-		if (null == locator)
-			locator = _library.keyManager().getKeyLocator(signingKey);
-		
-		if (null == publisher) {
-			publisher = _library.keyManager().getPublisherKeyID(signingKey);
-		}
-
-		try {
-			return put(name, reference.encode(), ContentType.LINK, publisher, locator, signingKey);
-		} catch (XMLStreamException e) {
-			Library.logger().warning("Cannot canonicalize a standard container!");
-			Library.warningStackTrace(e);
-			throw new IOException("Cannot canonicalize a standard container!");
-		}
+	public int getBlockSize() {
+		return _blockSize;
 	}
+
+	public void useByteCountSequenceNumbers() {
+		setSequenceType(SegmentNumberType.SEGMENT_BYTE_COUNT);
+		setBlockScale(1);
+	}
+
+	public void useFixedIncrementSequenceNumbers(int increment) {
+		setSequenceType(SegmentNumberType.SEGMENT_FIXED_INCREMENT);
+		setBlockIncrement(increment);
+	}
+
+	public void useScaledByteCountSequenceNumbers(int scale) {
+		setSequenceType(SegmentNumberType.SEGMENT_BYTE_COUNT);
+		setBlockScale(scale);
+	}
+	
+	public void setSequenceType(SegmentNumberType seqType) { _sequenceType = seqType; }
 	
 	/**
-	 * Publish a piece of content under a particular identity.
-	 * All of these automatically make the final name unique.
-	 * @param name
-	 * @param contents
-	 * @param publisher selects one of our identities to publish under
-	 * @throws SignatureException 
-	 * @throws IOException 
+	 * Set increment between block numbers.
+	 * @param blockWidth
 	 */
-	public ContentObject put(ContentName name, byte[] contents, 
-			PublisherKeyID publisher) throws SignatureException, IOException {
-		return put(name, contents, SignedInfo.ContentType.LEAF, publisher);
-	}
+	public void setBlockIncrement(int blockIncrement) { _blockIncrement = blockIncrement; }
 	
-	public ContentObject put(String name, String contents) throws SignatureException, MalformedContentNameStringException, IOException {
-		return put(ContentName.fromURI(name), contents.getBytes());
-	}
+	public void setBlockScale(int blockScale) { _blockScale = blockScale; }
 	
-	public ContentObject put(ContentName name, byte[] contents) 
-				throws SignatureException, IOException {
-		return put(name, contents, _library.getDefaultPublisher());
-	}
-
-	public ContentObject put(CCNFlowControl cf, ContentName name, byte[] contents, 
-							PublisherKeyID publisher) throws SignatureException, IOException {
-		return put(name, contents, SignedInfo.ContentType.LEAF, publisher);
-	}
-
-	public ContentObject put(ContentName name, byte[] contents, 
-							SignedInfo.ContentType type,
-							PublisherKeyID publisher) throws SignatureException, IOException {
-		try {
-			return put(name, contents, type, publisher, 
-					   null, null);
-		} catch (InvalidKeyException e) {
-			Library.logger().info("InvalidKeyException using default key.");
-			throw new SignatureException(e);
-		} catch (SignatureException e) {
-			Library.logger().info("SignatureException using default key.");
-			throw e;
-		} catch (NoSuchAlgorithmException e) {
-			Library.logger().info("NoSuchAlgorithmException using default key.");
-			throw new SignatureException(e);
-		}
-	}
 	
 	/**
 	 * If small enough, doesn't fragment. Otherwise, does.
@@ -211,90 +226,18 @@ public class CCNSegmenter extends CCNFlowControl {
 		if (null == publisher) {
 			publisher = _library.keyManager().getPublisherKeyID(signingKey);
 		}
-		if (contents.length >= _library.getBlockSize()) {
+		if (contents.length >= getBlockSize()) {
 			return fragmentedPut(name, contents, type, publisher, locator, signingKey);
 		} else {
 			try {
 				// Generate signature
 				ContentObject co = new ContentObject(name, new SignedInfo(publisher, type, locator), contents, signingKey);
-				return put(co.name(), co.signedInfo(), co.content(), co.signature());
+				return _flowControl.put(co);
 			} catch (IOException e) {
 				Library.logger().warning("This should not happen: put failed with an IOExceptoin.");
 				Library.warningStackTrace(e);
 				throw e;
 			}
-		}
-	}
-	
-	/**
-	 * Links are signed by the publisher of the link. However,
-	 * the content of the link is an XML document that contains
-	 * a complete name, including an indication of who the linker
-	 * trusts to write the linked document (or to extend the
-	 * linked-to hierarchy). The type of key referred to in the
-	 * linked-to name is any of the usual types (key, cert, or
-	 * name), but it can play one of two roles -- SIGNER, or
-	 * the direct signer of the content, or CERTIFIER, the
-	 * person who must have certified whoever's key signed
-	 * the linked-to content. 
-	 * @param destAuthenticator can be null
-	 * @throws SignatureException 
-	 * @throws IOException 
-	 */
-	public ContentObject link(CCNFlowControl cf, ContentName name, LinkReference reference) throws SignatureException, IOException {
-		return link(cf, name, reference, _library.getDefaultPublisher());
-	}
-
-	public ContentObject link(CCNFlowControl cf, ContentName name, LinkReference reference,
-							PublisherKeyID publisher) throws SignatureException, IOException {
-		try {
-			return link(cf, name,reference,publisher,null,null);
-		} catch (InvalidKeyException e) {
-			Library.logger().warning("Default key invalid.");
-			Library.warningStackTrace(e);
-			throw new SignatureException(e);
-		} catch (NoSuchAlgorithmException e) {
-			Library.logger().warning("Default key has invalid algorithm.");
-			Library.warningStackTrace(e);
-			throw new SignatureException(e);
-		}
-	}
-
-	/**
-	 * TODO: better answer than throwing an exception on invalid
-	 * args.
-	 * @throws NoSuchAlgorithmException 
-	 * @throws SignatureException 
-	 * @throws InvalidKeyException 
-	 * @throws IOException 
-	 * @throws XMLStreamException 
-	 */
-	public ContentObject link(CCNFlowControl cf, ContentName name, LinkReference reference, 
-							 PublisherKeyID publisher, KeyLocator locator,
-							 PrivateKey signingKey) throws InvalidKeyException, SignatureException, 
-						NoSuchAlgorithmException, IOException {
-
-		if ((null == name) || (null == reference)) {
-			Library.logger().info("Link: name and reference cannot be null.");
-			throw new IllegalArgumentException("Link: name and reference cannot be null.");
-		}
-		
-		if (null == signingKey)
-			signingKey = _library.keyManager().getDefaultSigningKey();
-
-		if (null == locator)
-			locator = _library.keyManager().getKeyLocator(signingKey);
-		
-		if (null == publisher) {
-			publisher = _library.keyManager().getPublisherKeyID(signingKey);
-		}
-		
-		try {
-			return put(name, reference.encode(), ContentType.LINK, publisher, locator, signingKey);
-		} catch (XMLStreamException e) {
-			Library.logger().warning("Cannot canonicalize a standard link!");
-			Library.warningStackTrace(e);
-			throw new IOException("Cannot canonicalize a standard link! " + e.getMessage());
 		}
 	}
 	
@@ -322,7 +265,7 @@ public class CCNSegmenter extends CCNFlowControl {
 		// (with hash tree, block identifier, timestamp -- SQLDateTime)
 		// insert header using mid-level insert, low-level insert for actual blocks.
 		// We should implement a non-fragmenting put.   Won't do block stuff, will need to do latest version stuff.
-		int blockSize = _library.getBlockSize();
+		int blockSize = getBlockSize();
 		int nBlocks = (contents.length + blockSize - 1) / blockSize;
 		int from = 0;
 		byte[][] contentBlocks = new byte[nBlocks][];
@@ -339,14 +282,14 @@ public class CCNSegmenter extends CCNFlowControl {
 			from += end-from;
 		}
 		
-		if (CCNLibrary.isFragment(name)) {
+		if (SegmentationProfile.isSegment(name)) {
 			Library.logger().info("Asked to store fragments under fragment name: " + name + ". Stripping fragment information");
 		}
 		
-		ContentName fragmentBaseName = CCNLibrary.fragmentBase(name);
+		ContentName fragmentBaseName = SegmentationProfile.segmentRoot(name);
 		
 		CCNMerkleTree tree = 
-			putMerkleTree(fragmentBaseName, CCNLibrary.baseFragment(),
+			putMerkleTree(fragmentBaseName, SegmentationProfile.baseSegment(),
 						  contentBlocks, contentBlocks.length, 
 						  0, contentBlocks[contentBlocks.length-1].length, 
 						  timestamp, publisher, locator, signingKey);
@@ -387,7 +330,7 @@ public class CCNSegmenter extends CCNFlowControl {
 		}
 		ContentObject headerResult = null;
 		try {
-			headerResult = put(header);
+			headerResult = _flowControl.put(header);
 		} catch (IOException e) {
 			Library.logger().warning("This should not happen: we cannot put our own header!");
 			Library.warningStackTrace(e);
@@ -421,9 +364,9 @@ public class CCNSegmenter extends CCNFlowControl {
 		// Want to make sure we don't add a header name
 		// to a fragment. Go back up to the fragment root.
 		// Currently no header name added.
-		if (CCNLibrary.isFragment(name)) {
+		if (SegmentationProfile.isSegment(name)) {
 			// return new ContentName(fragmentRoot(name), HEADER_NAME);
-			return CCNLibrary.fragmentRoot(name);
+			return SegmentationProfile.segmentRoot(name);
 		}
 		// return new ContentName(name, HEADER_NAME);
 		return name;
@@ -459,7 +402,7 @@ public class CCNSegmenter extends CCNFlowControl {
 
 		// DKS TODO -- non-string integers in names
 		// DKS TODO -- change fragment markers
-		return put(ContentName.fromNative(CCNLibrary.fragmentBase(CCNLibrary.fragmentRoot(name)),
+		return put(ContentName.fromNative(SegmentationProfile.segmentRoot(name),
 								   						Integer.toString(fragmentNumber)),
 				   contents, ContentType.FRAGMENT, publisher, locator, signingKey);
 	}
@@ -508,15 +451,14 @@ public class CCNSegmenter extends CCNFlowControl {
 		// ask for the signature for each block.
 		// DKS TODO -- change fragment markers
     	CCNMerkleTree tree = 
-    		new CCNMerkleTree(CCNLibrary.fragmentBase(CCNLibrary.fragmentRoot(name)), baseNameIndex,
+    		new CCNMerkleTree(SegmentationProfile.segmentRoot(name), baseNameIndex,
     						  new SignedInfo(publisher, timestamp, ContentType.FRAGMENT, locator),
     						  contentBlocks, false, blockCount, baseBlockIndex, lastBlockLength, signingKey);
 
 		for (int i = 0; i < blockCount-1; i++) {
 			try {
 				Library.logger().info("putMerkleTree: writing block " + i + " of " + blockCount + " to name " + tree.blockName(i));
-				put(tree.blockName(i), tree.blockSignedInfo(i), 
-						contentBlocks[i], tree.blockSignature(i));
+				_flowControl.put(tree.block(i, contentBlocks[i]));
 			} catch (IOException e) {
 				Library.logger().warning("This should not happen: we cannot put our own blocks!");
 				Library.warningStackTrace(e);
@@ -533,8 +475,7 @@ public class CCNSegmenter extends CCNFlowControl {
 		}
 		try {
 			Library.logger().info("putMerkleTree: writing last block of " + blockCount + " to name " + tree.blockName(blockCount-1));
-			put(tree.blockName(blockCount-1), tree.blockSignedInfo(blockCount-1), 
-				lastBlock, tree.blockSignature(blockCount-1));
+			_flowControl.put(tree.block(blockCount-1, lastBlock));
 		} catch (IOException e) {
 			Library.logger().warning("This should not happen: we cannot put our own last block!");
 			Library.warningStackTrace(e);
@@ -547,95 +488,6 @@ public class CCNSegmenter extends CCNFlowControl {
 	}
 	
 
-	/**
-	 * This does the actual work of generating a new version's name and doing 
-	 * the corresponding put. Handles fragmentation.
-	 */
-	public ContentObject addVersion(
-			ContentName name, int version, byte [] contents,
-			ContentType type,
-			PublisherKeyID publisher, KeyLocator locator,
-			PrivateKey signingKey) throws SignatureException, 
-			InvalidKeyException, NoSuchAlgorithmException, IOException {
-
-		if (null == signingKey)
-			signingKey = _library.keyManager().getDefaultSigningKey();
-
-		if (null == locator)
-			locator = _library.keyManager().getKeyLocator(signingKey);
-		
-		if (null == publisher) {
-			publisher = _library.keyManager().getPublisherKeyID(signingKey);
-		}
-		
-		if (null == type)
-			type = ContentType.LEAF;
-		
-		// Construct new name
-		// <name>/<VERSION_MARKER>/<version_number>
-		ContentName versionedName = CCNLibrary.versionName(name, version);
-
-		// put result
-		return put(versionedName, contents, 
-				 	type, publisher, locator, signingKey);
-	}
-	
-	/**
-	 * Publishes a new version of this name with the given contents. First
-	 * attempts to figure out the most recent version of that name, and
-	 * then increments that to get the intended version number.
-	 * 
-	 * Right now have all sorts of uncertainties in versioning --
-	 * do we know the latest version number of a piece of content?
-	 * Even if we've read it, it isn't atomic -- by the time
-	 * we write our new version, someone else might have updated
-	 * the number...
-	 */
-	public ContentObject newVersion(ContentName name,
-								   byte[] contents) throws SignatureException, IOException {
-		return newVersion(name, contents, _library.getDefaultPublisher());
-	}
-
-	/**
-	 * A specialization of newVersion that allows control of the identity to
-	 * publish under. 
-	 * 
-	 * @param publisher Who we want to publish this as,
-	 * not who published the existing version. If null, uses the default publishing
-	 * identity.
-	 */
-	public ContentObject newVersion(
-			ContentName name, 
-			byte[] contents,
-			PublisherKeyID publisher) throws SignatureException, IOException {
-		return newVersion(name, contents, ContentType.LEAF, publisher);
-	}
-	
-	/**
-	 * A further specialization of newVersion that allows specification of the content type,
-	 * primarily to handle links and collections. Could be made protected.
-	 * @param publisher Who we want to publish this as,
-	 * not who published the existing version.
-	 */
-	public ContentObject newVersion(
-			ContentName name, 
-			byte[] contents,
-			ContentType type, // handle links and collections
-			PublisherKeyID publisher) throws SignatureException, IOException {
-
-		try {
-			return addVersion(name, _library.getNextVersionNumber(name), contents, type, publisher, null, null);
-		} catch (InvalidKeyException e) {
-			Library.logger().info("InvalidKeyException using default key.");
-			throw new SignatureException(e);
-		} catch (SignatureException e) {
-			Library.logger().info("SignatureException using default key.");
-			throw e;
-		} catch (NoSuchAlgorithmException e) {
-			Library.logger().info("NoSuchAlgorithmException using default key.");
-			throw new SignatureException(e);
-		}
-	}
 	
 	/**
 	 * DKS not currently adding a header-specific prefix. A header, however,
@@ -661,20 +513,7 @@ public class CCNSegmenter extends CCNFlowControl {
 		// that it wasn't a fragment. With separate name,
 		// easier to handle.
 	//	return (name.contains(HEADER_NAME));
-		return (!CCNLibrary.isFragment(name));
-	}
-	
-	public static ContentName fragmentName(ContentName name, int i) {
-		return ContentName.fromNative(name, CCNLibrary.FRAGMENT_MARKER,
-							Integer.toString(i));
-	}
-	
-	/**
-	 * Extract the fragment information from this name.
-	 */
-	public static int getFragmentNumber(ContentName name) {
-		int offset = name.containsWhere(CCNLibrary.FRAGMENT_MARKER);
-		return Integer.valueOf(ContentName.componentPrintURI(name.component(offset+1)));
+		return (!SegmentationProfile.isSegment(name));
 	}
 
 }

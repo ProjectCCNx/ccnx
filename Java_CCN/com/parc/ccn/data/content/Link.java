@@ -8,15 +8,25 @@ import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.Signature;
+import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.data.util.XMLDecoder;
 
 /**
+ * Links are signed by the publisher of the link. However,
+ * the content of the link is an XML document that contains
+ * a complete name, including an indication of who the linker
+ * trusts to write the linked document (or to extend the
+ * linked-to hierarchy). The type of key referred to in the
+ * linked-to name is any of the usual types (key, cert, or
+ * name), but it can play one of two roles -- SIGNER, or
+ * the direct signer of the content, or CERTIFIER, the
+ * person who must have certified whoever's key signed
+ * the linked-to content. 
  * Mapping from a link to the underlying XML representation.
  * Basically a Link is a content object containing
  * a name and optionally some content authentication

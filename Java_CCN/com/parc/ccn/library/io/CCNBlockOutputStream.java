@@ -8,12 +8,15 @@ import java.security.SignatureException;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.junit.Assert;
+
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.SignedInfo;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNSegmenter;
+import com.parc.ccn.library.profiles.SegmentationProfile;
+import com.parc.ccn.library.profiles.SegmentationProfile.SegmentNumberType;
 
 /**
  * This class acts as a packet-oriented stream of data. It might be
@@ -42,13 +45,9 @@ import com.parc.ccn.library.CCNSegmenter;
  */
 public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 
-	public enum SequenceNumberType {SEQUENCE_FIXED_INCREMENT, SEQUENCE_BYTE_COUNT};
-	protected static final int DEFAULT_INCREMENT = 1;
-	protected static final int DEFAULT_SCALE = 1;
-
-	protected SequenceNumberType _sequenceType = SequenceNumberType.SEQUENCE_FIXED_INCREMENT;
-	protected int _blockWidth = DEFAULT_INCREMENT; // increment for fixed-width block naming
-	protected int _blockScale = DEFAULT_SCALE;
+	protected SegmentNumberType _sequenceType = SegmentNumberType.SEGMENT_FIXED_INCREMENT;
+	protected int _blockWidth = SegmentationProfile.DEFAULT_INCREMENT; // increment for fixed-width block naming
+	protected int _blockScale = SegmentationProfile.DEFAULT_SCALE;
 	protected int _bytesWritten = 0; // byte count for offset
 	protected SignedInfo.ContentType _type;
 	
@@ -73,9 +72,9 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 		ContentName nameToOpen = baseName;
 		
 		// If someone gave us a fragment name, at least strip that.
-		if (CCNLibrary.isFragment(nameToOpen)) {
+		if (SegmentationProfile.isSegment(nameToOpen)) {
 			// DKS TODO: should we do this?
-			nameToOpen = CCNLibrary.fragmentRoot(nameToOpen);
+			nameToOpen = SegmentationProfile.segmentRoot(nameToOpen);
 		}
 
 		// Don't go looking for or adding versions. Might be unversioned,
@@ -87,43 +86,7 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type) throws XMLStreamException, IOException {
 		this(baseName, type, null, null, null, null);
 	}
-	
-	public void useByteCountSequenceNumbers() {
-		setSequenceType(SequenceNumberType.SEQUENCE_BYTE_COUNT);
-		setBlockScale(1);
-	}
-
-	public void useFixedIncrementSequenceNumbers(int increment) {
-		setSequenceType(SequenceNumberType.SEQUENCE_FIXED_INCREMENT);
-		setBlockWidth(increment);
-	}
-
-	public void useScaledByteCountSequenceNumbers(int scale) {
-		setSequenceType(SequenceNumberType.SEQUENCE_BYTE_COUNT);
-		setBlockScale(scale);
-	}
-	
-	public void setSequenceType(SequenceNumberType seqType) { _sequenceType = seqType; }
-	
-	/**
-	 * Set increment between block numbers.
-	 * @param blockWidth
-	 */
-	public void setBlockWidth(int blockWidth) { _blockWidth = blockWidth; }
-	
-	public void setBlockScale(int blockScale) { _blockScale = blockScale; }
-	
-	protected void updateBlockIndex() {
-		switch(_sequenceType) {
-			case SEQUENCE_FIXED_INCREMENT:
-				_blockIndex += _blockWidth;
-				break;
-			case SEQUENCE_BYTE_COUNT:
-				_blockIndex = _bytesWritten * _blockScale; // if not scaling, blockScale set to 1
-				break;
-		}
-	}
-	
+		
 	@Override
 	public void write(byte[] b, int off, int len) throws IOException {
 		byte [] tempBuf = new byte[len];
@@ -144,6 +107,7 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 				// compute automatically
 				updateBlockIndex();
 			}
+			Assert.fail("Need to fix block numbering!");
 			ContentName blockName = ContentName.fromNative(_baseName, Integer.toString(_blockIndex));
 			_writer.put(blockName, b, _type, _publisher, _locator, _signingKey);
 			_bytesWritten += b.length;
@@ -155,4 +119,16 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 			throw new IOException("Cannot sign content -- unknown algorithm!: " + e.getMessage());
 		} 
 	}
+	
+	protected void updateBlockIndex() {
+		switch(_sequenceType) {
+			case SEGMENT_FIXED_INCREMENT:
+				_blockIndex += _blockWidth;
+				break;
+			case SEGMENT_BYTE_COUNT:
+				_blockIndex = _bytesWritten * _blockScale; // if not scaling, blockScale set to 1
+				break;
+		}
+	}
+
 }

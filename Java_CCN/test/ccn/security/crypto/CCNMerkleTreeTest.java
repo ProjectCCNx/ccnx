@@ -13,12 +13,13 @@ import org.junit.Test;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
-import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.security.crypto.CCNMerkleTree;
+import com.parc.ccn.data.security.SignedInfo;
+import com.parc.ccn.library.profiles.SegmentationProfile;
+import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
+import com.parc.ccn.security.crypto.CCNMerkleTree;
 
 public class CCNMerkleTreeTest {
 
@@ -106,9 +107,7 @@ public class CCNMerkleTreeTest {
 	public static void testTree(byte [][] content, int count, boolean digest) {
 		int version = _rand.nextInt(1000);
 		ContentName theName = ContentName.fromNative(baseName, "testDoc.txt");
-		theName = ContentName.fromNative(theName, CCNLibrary.VERSION_MARKER);
-		theName = ContentName.fromNative(theName, Integer.toString(version));
-		theName = CCNLibrary.fragmentBase(theName);
+		theName = VersioningProfile.versionName(theName, version);
 		
 		try {
 			// TODO DKS Need to do offset versions with different ranges of fragments

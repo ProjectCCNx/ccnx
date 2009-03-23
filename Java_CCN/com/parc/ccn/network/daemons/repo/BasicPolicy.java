@@ -12,10 +12,10 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.events.Attribute;
 import javax.xml.stream.events.XMLEvent;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.library.CCNLibrary;
 
 /**
  * 
@@ -193,10 +193,23 @@ public class BasicPolicy implements Policy {
 
 	public ContentObject getPolicyContent() {
 		try {
-			return CCNLibrary.getContent(ContentName.fromNative(_globalName + "/" + _localName +
+			// TODO WARNING: this code should not call a generic content builder meant for
+			// making test content. The repository needs to have its own set of keys, manage
+			// them and use them rather than using the default key manager (which will pull
+			// keys from whatever user keystore that started the repo). The repo should build
+			// a keystore for its own use, and when it starts up instantiate a key manager
+			// that uses that keystore. That key manager should be used for all of its
+			// operations.
+			return ContentObject.buildContentObject(ContentName.fromNative(_globalName + "/" + _localName +
 					"/" + Repository.REPO_DATA + "/" + Repository.REPO_POLICY), 
 					_content);
-		} catch (MalformedContentNameStringException e) {return null;}	// shouldn't happen
+		} catch (MalformedContentNameStringException e) {
+			// shouldn't happen 
+			// TODO DKS: if it shouldn't happen, throw a big warning if it does -- don't silently
+			// return null, which could cause all sorts of cascading problems. 
+			Library.logger().severe("SHOULD NOT HAPPEN: Unexpected MalformedContentNameStringException: " + e.getMessage());
+			return null;
+		}	
 	}
 	
 	private boolean checkMatch(String name, String matchName) {

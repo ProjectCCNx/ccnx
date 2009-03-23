@@ -23,7 +23,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
-import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.profiles.SegmentationProfile;
 
 /**
  * @author briggs, rasmusse
@@ -62,24 +62,24 @@ public class HeaderTest {
 	public void testHeaderConstructor2() throws Exception {
 		int length = 77295;
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
-		Header seq = new Header(ContentName.fromNative("/headerTest1"), length, digest, digest, Header.DEFAULT_BLOCKSIZE,
+		Header seq = new Header(ContentName.fromNative("/headerTest1"), length, digest, digest, SegmentationProfile.DEFAULT_BLOCKSIZE,
 				pubKey, locator, signingKey);
 		assertNotNull(seq);
-		assertEquals(CCNLibrary.baseFragment(), seq.start());
+		assertEquals(SegmentationProfile.baseSegment(), seq.start());
 		assertEquals(length, seq.length());
-		assertEquals(Header.DEFAULT_BLOCKSIZE, seq.blockSize());
-		assertEquals((length + Header.DEFAULT_BLOCKSIZE - 1) / Header.DEFAULT_BLOCKSIZE, seq.count());
+		assertEquals(SegmentationProfile.DEFAULT_BLOCKSIZE, seq.blockSize());
+		assertEquals((length + SegmentationProfile.DEFAULT_BLOCKSIZE - 1) / SegmentationProfile.DEFAULT_BLOCKSIZE, seq.count());
 	}
 	@Test
 	public void testHeaderConstructor3() throws Exception {
-		int length = Header.DEFAULT_BLOCKSIZE;
+		int length = SegmentationProfile.DEFAULT_BLOCKSIZE;
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
-		Header seq = new Header(ContentName.fromNative("/headerTest1"), length, digest, digest, Header.DEFAULT_BLOCKSIZE,
+		Header seq = new Header(ContentName.fromNative("/headerTest1"), length, digest, digest, SegmentationProfile.DEFAULT_BLOCKSIZE,
 				pubKey, locator, signingKey);
 		assertNotNull(seq);
-		assertEquals(CCNLibrary.baseFragment(), seq.start());
+		assertEquals(SegmentationProfile.baseSegment(), seq.start());
 		assertEquals(length, seq.length());
-		assertEquals(Header.DEFAULT_BLOCKSIZE, seq.blockSize());
+		assertEquals(SegmentationProfile.DEFAULT_BLOCKSIZE, seq.blockSize());
 		assertEquals(1, seq.count());
 	}
 	@Test
@@ -108,7 +108,7 @@ public class HeaderTest {
 	@Test
 	public void testDecodeInputStream() throws Exception {
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
-		Header seqIn = new Header(ContentName.fromNative("/headerTest1"), 83545, digest, digest, Header.DEFAULT_BLOCKSIZE,
+		Header seqIn = new Header(ContentName.fromNative("/headerTest1"), 83545, digest, digest, SegmentationProfile.DEFAULT_BLOCKSIZE,
 				pubKey, locator, signingKey);
 		Header seqOut = new Header();
 

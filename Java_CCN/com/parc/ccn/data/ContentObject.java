@@ -9,7 +9,6 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SignatureException;
 import java.security.cert.CertificateEncodingException;
-import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.logging.Level;
 
@@ -49,9 +48,18 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	protected ContentName _name;
 	protected SignedInfo _signedInfo;
     protected byte [] _content;
-	protected Signature _signature; // DKS might want to use Signature type
-    public String _digestAlgorithm = null; 
-    
+	protected Signature _signature; 
+     
+    /**
+     * We copy the content when we get it. The intent is for this object to
+     * be immutable. Rules for constructor immutability are explained well
+     * here: 
+     * @param digestAlgorithm
+     * @param name
+     * @param signedInfo
+     * @param content
+     * @param signature already immutable
+     */
     public ContentObject(String digestAlgorithm, // prefer OID
     					 ContentName name,
     					 SignedInfo signedInfo,
@@ -60,7 +68,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
     					 ) {
     	_name = name;
     	_signedInfo = signedInfo;
-    	_content = content;
+    	_content = content.clone();
     	_signature = signature;
     }
     
@@ -81,26 +89,58 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
     	_signature = sign(name, signedInfo, content, signingKey);
     }
     
-    public ContentObject() {} // for use by decoders
+    /**
+     * Used for testing.
+     */
+	public static ContentObject buildContentObject(ContentName name, byte[] contents, 
+						  						   PublisherKeyID publisher,
+						  						   KeyManager keyManager) {
+		try {
+			if (null == keyManager) {
+				keyManager = KeyManager.getDefaultKeyManager();
+			}
+			PrivateKey signingKey = keyManager.getSigningKey(publisher);
+			if ((null == publisher) || (null == signingKey)) {
+				signingKey = keyManager.getDefaultSigningKey();
+				publisher = keyManager.getPublisherKeyID(signingKey);
+			}
+			KeyLocator locator = keyManager.getKeyLocator(signingKey);
+			return new ContentObject(name, new SignedInfo(publisher, SignedInfo.ContentType.LEAF, locator), contents, signingKey);
+		} catch (Exception e) {
+			Library.logger().warning("Cannot build content object for publisher: " + publisher);
+			Library.infoStackTrace(e);
+		}
+		return null;
+	}
+	
+	public static ContentObject buildContentObject(ContentName name, byte [] contents) {
+		return buildContentObject(name, contents, null, null);
+	}
+    			   
+	public static ContentObject buildContentObject(ContentName name, byte [] contents, PublisherKeyID publisher) {
+		return buildContentObject(name, contents, publisher, null);
+	}
+
+	public ContentObject() {} // for use by decoders
     
     public ContentObject clone() {
-    	return new ContentObject(_name.clone(), _signedInfo.clone(), _content.clone(), _signature.clone());
+    	// Constructor will clone the _content, signedInfo and signature are immutable types.
+    	return new ContentObject(_name.clone(), _signedInfo, _content, _signature);
     }
     
-    public ContentName name() { 
-    	return _name;
-    }
+    /**
+     * DKS -- return these as final for now; stopgap till refactor that makes
+     * internal version final.
+     * @return
+     */
+    public final ContentName name() { return _name; }
     
-    public SignedInfo signedInfo() { 
-    	return _signedInfo;
-    }
+    public final SignedInfo signedInfo() { return _signedInfo;}
     
-    public byte [] content() { return _content; }
+    public final byte [] content() { return _content; }
     
-    public Signature signature() { return _signature; }
+    public final Signature signature() { return _signature; }
     
-    public void signature(Signature signature) { _signature = signature; }
-
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		decoder.readStartElement(CONTENT_OBJECT_ELEMENT);
 
@@ -442,36 +482,38 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		 return CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, content);
 	}
 	
-	/**
-	 * No longer need unique names, but keep API for now so
-	 * as to not break existing code.
-     * @param signingKey if null, only generates unique name
-     * 	and filled-in content signedInfo. Can complete using
-     *  contentObject.signedInfo.sign(contentObject.name, signingKey).
-     *  
-     * @return
-     * @throws SignatureException 
-     * @throws InvalidKeyException 
-     */
-	public static ContentObject generateAuthenticatedName(
-	   		ContentName name,
-    		PublisherKeyID publisher,
-    		Timestamp timestamp,
-    		ContentType type,
-    		KeyLocator locator,
-    		byte [] contentOrDigest, // may be already hashed
-    		//boolean isDigest, // should we digest it or is it already done?
-    		PrivateKey signingKey) throws SignatureException, InvalidKeyException {
-		
-		// Generate raw signedInfo.
-		SignedInfo signedInfo = new SignedInfo(publisher, timestamp, type, locator);
-		Signature signature = null;
-		if (null != signingKey)
-			signature = ContentObject.sign(name, signedInfo, contentOrDigest, signingKey);
-		return new ContentObject(name, signedInfo, null, signature);
-	}
-
 	public int compareTo(ContentObject o) {
 		return name().compareTo(o.name());
+	}
+	
+	/**
+	 * Type-checkers for built-in types.
+	 */
+	public boolean isType(ContentType type) {
+		return signedInfo().type().equals(type);
+	}
+
+	public boolean isFragment() {
+		return isType(ContentType.FRAGMENT);
+	}
+	
+	public boolean isLink() {
+		return isType(ContentType.LINK);
+	}
+	
+	public boolean isLeaf() {
+		return isType(ContentType.LEAF);
+	}
+	
+	public boolean isCollection() {
+		return isType(ContentType.COLLECTION);
+	}
+	
+	public boolean isSession() {
+		return isType(ContentType.SESSION);
+	}
+	
+	public boolean isKey() {
+		return isType(ContentType.KEY);
 	}
 }

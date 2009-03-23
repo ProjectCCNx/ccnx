@@ -92,12 +92,12 @@ public class RepoIOTest extends RepoTestBase {
 	@Test
 	public void testWriteToRepo() throws Exception {
 		System.out.println("Testing writing streams to repo");
-		library.setBlockSize(100);
 		byte [] data = new byte[4000];
 		byte value = 1;
 		for (int i = 0; i < data.length; i++)
 			data[i] = value++;
 		RepositoryOutputStream ros = library.repoOpen(ContentName.fromNative("/testNameSpace/stream"), library.getDefaultPublisher(), null, null);
+		ros.setBlockSize(100);
 		ros.write(data, 0, data.length);
 		ros.close();
 		Thread.sleep(5000);

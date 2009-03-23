@@ -46,22 +46,21 @@ public class Signature extends GenericXMLEncodable implements XMLEncodable,
 	
 	public Signature() {} // for use by decoders
 	
-	public byte [] signature() { return _signature; }
+	/**
+	 * DKS return these as final for now, eventually change decode/constructor
+	 * relationship so they are final internally.
+	 * @return
+	 */
+	public final byte [] signature() { return _signature; }
 	
-	public void signature(byte [] signature) { _signature = signature; }
-	
-	public byte [] witness() { return _witness; }
+	public final byte [] witness() { return _witness; }
 
-	public void witness(byte [] witness) { _witness = witness; }
-	
 	public String digestAlgorithm() {
 		if (null == _digestAlgorithm)
 			return CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM;
 		return _digestAlgorithm;
 	}
 	
-	public void digestAlgorithm(String digestAlgorithm) { _digestAlgorithm = digestAlgorithm; }
-
 	@Override
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		decoder.readStartElement(SIGNATURE_ELEMENT);

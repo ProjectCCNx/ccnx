@@ -11,6 +11,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.profiles.SegmentationProfile;
 
 public abstract class CCNAbstractInputStream extends InputStream {
 
@@ -223,7 +224,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 
 	public int blockIndex() {
 		if (null == _currentBlock) {
-			return CCNLibrary.baseFragment();
+			return SegmentationProfile.baseSegment();
 		} else {
 			// This needs to work on streaming content that is not traditional fragments,
 			// and so cannot use CCNLibrary.getFragmentNumber. In my hands, count() does not

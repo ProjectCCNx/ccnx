@@ -7,7 +7,7 @@ import static org.junit.Assert.fail;
 import java.nio.ByteBuffer;
 import java.security.InvalidKeyException;
 import java.security.SignatureException;
-import java.util.Date;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Random;
 
@@ -20,10 +20,11 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.Signature;
+import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.PublisherID.PublisherType;
 import com.parc.ccn.data.util.InterestTable;
 
@@ -37,6 +38,9 @@ public class InterestTableTest {
 	// code can be run under different conditions
 	static public PublisherKeyID activeKeyID = null;
 	static public PublisherID activeID = null;
+	// None of the signatures in this test are real, as there are no keys
+	// corresponding to the publisherID's used.
+	static public Signature fakeSignature = null;
 	
 	// removeByMatch controls whether remove operations are tested
 	// via the removeMatch* (true) or the removeValue* (false) methods 
@@ -58,6 +62,9 @@ public class InterestTableTest {
 				ids[i] = new PublisherID(publisher, PublisherType.KEY);
 				keyids[i] = new PublisherKeyID(publisher);
 			}
+			byte [] fakeSigBytes = new byte[128];
+			rnd.nextBytes(fakeSigBytes);
+			fakeSignature = new Signature(fakeSigBytes);
 			
 		} catch (Exception ex) {
 			ex.printStackTrace();
@@ -127,15 +134,16 @@ public class InterestTableTest {
 	
 	private ContentObject getContentObject(ContentName name, PublisherKeyID pub) throws ConfigurationException, InvalidKeyException, SignatureException, MalformedContentNameStringException {
 		// contents = current date value
+		Timestamp now = SignedInfo.now();
 		ByteBuffer bb = ByteBuffer.allocate(Long.SIZE/Byte.SIZE);
-		bb.putLong(new Date().getTime());
+		bb.putLong(now.getTime());
 		byte[] contents = bb.array();
 		// security bits
 		KeyLocator locator = new KeyLocator(ContentName.fromNative("/key/" + pub.id().toString()));
+		SignedInfo si = new SignedInfo(pub, now, SignedInfo.ContentType.LEAF, locator);
 		// unique name		
-		return ContentObject.generateAuthenticatedName(
-				name, pub, SignedInfo.now(),
-						SignedInfo.ContentType.LEAF, locator, contents, null);
+		return new ContentObject(
+				ContentName.fromNative(name, Long.toString(now.getTime())), si, contents, fakeSignature);
 	}
 	
 	private ContentObject getContentObject(ContentName name, int value) throws InvalidKeyException, SignatureException, MalformedContentNameStringException, ConfigurationException {

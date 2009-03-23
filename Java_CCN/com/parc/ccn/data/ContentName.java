@@ -441,7 +441,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @param bs input byte array
 	 * @return
 	 */
-	public static String componentPrintURI(byte[] bs) {
+	public static String componentPrintURI(byte[] bs, int offset, int length) {
 		// NHB: Van is expecting the URI encoding rules
 		if (null == bs || bs.length == 0) {
 			// Empty component represented by three '.'
@@ -464,8 +464,8 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			// Leave nothing to defaults: we want to be notified on anything illegal
 			decoder.onMalformedInput(CodingErrorAction.REPORT);
 			decoder.onUnmappableCharacter(CodingErrorAction.REPORT);
-			ByteBuffer input = ByteBuffer.wrap(bs);
-			CharBuffer output = CharBuffer.allocate(((int)decoder.maxCharsPerByte()*bs.length)+1);
+			ByteBuffer input = ByteBuffer.wrap(bs, offset, length);
+			CharBuffer output = CharBuffer.allocate(((int)decoder.maxCharsPerByte()*length)+1);
 			while (input.remaining() > 0) {
 				CoderResult cr = decoder.decode(input, output, true);
 				assert(!cr.isOverflow());
@@ -493,6 +493,10 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		} catch (UnsupportedEncodingException e) {
 			throw new RuntimeException("UTF-8 not supported", e);
 		}
+	}
+	
+	public static String componentPrintURI(byte [] bs) {
+		return componentPrintURI(bs, 0, bs.length);
 	}
 	
 	public static String componentPrintNative(byte[] bs) {
@@ -723,9 +727,15 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @param i
 	 * @return
 	 */
-	public byte[] component(int i) { 
+	public final byte[] component(int i) { 
 		if ((null == _components) || (i >= _components.size())) return null;
 		return _components.get(i);
+	}
+	
+	public final byte [] lastComponent() {
+		if (null == _components)
+			return null;
+		return _components.get(_components.size()-1);
 	}
 	
 	public String stringComponent(int i) {

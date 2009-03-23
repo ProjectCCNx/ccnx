@@ -24,6 +24,7 @@ import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNSegmenter;
+import com.parc.ccn.library.profiles.VersioningProfile;
 
 
 /**
@@ -148,8 +149,8 @@ public class CCNLibraryTest extends LibraryTestBase {
 			CCNSegmenter segmenter = new CCNSegmenter(keyName, library);
 			revision1 = segmenter.newVersion(keyName, data1);
 			revision2 = segmenter.newVersion(keyName, data2);
-			int version1 = library.getVersionNumber(revision1.name());
-			int version2 = library.getVersionNumber(revision2.name());
+			int version1 = VersioningProfile.getVersionNumber(revision1.name());
+			int version2 = VersioningProfile.getVersionNumber(revision2.name());
 			System.out.println("Version1: " + version1 + " version2: " + version2);
 			Assert.assertTrue("Revisions are strange", 
 					version2 > version1);
@@ -252,9 +253,9 @@ public class CCNLibraryTest extends LibraryTestBase {
 		Assert.assertNotNull("Retrieved new latest version of " + docName + " got null!", newLatestVersion);
 		System.out.println("Latest version name: " + newLatestVersion.name());
 
-		Assert.assertTrue("Version is not a version of the parent name!", library.isVersionOf(version1.name(), docName));
-		Assert.assertTrue("Version is not a version of the parent name!", library.isVersionOf(version2.name(), docName));
-		Assert.assertTrue("Version numbers don't increase!", library.getVersionNumber(version2.name()) > library.getVersionNumber(version1.name()));
+		Assert.assertTrue("Version is not a version of the parent name!", VersioningProfile.isVersionOf(version1.name(), docName));
+		Assert.assertTrue("Version is not a version of the parent name!", VersioningProfile.isVersionOf(version2.name(), docName));
+		Assert.assertTrue("Version numbers don't increase!", VersioningProfile.getVersionNumber(version2.name()) > VersioningProfile.getVersionNumber(version1.name()));
 	}
 
 	@Test
@@ -368,7 +369,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 					content = co.content();
 					String strContent = new String(content);
-					System.out.println("Got update for " + co.name() + ": " + strContent + " (revision " + library.getVersionNumber(co.name()) + ")");
+					System.out.println("Got update for " + co.name() + ": " + strContent + " (revision " + VersioningProfile.getVersionNumber(co.name()) + ")");
 					_count++;
 					switch(_count) {
 					case 1:

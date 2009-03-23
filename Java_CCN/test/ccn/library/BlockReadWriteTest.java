@@ -19,6 +19,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNDescriptor;
+import com.parc.ccn.library.profiles.VersioningProfile;
 
 
 public class BlockReadWriteTest extends BasePutGetTest {
@@ -26,7 +27,6 @@ public class BlockReadWriteTest extends BasePutGetTest {
 	protected static final String fileName = "medium_file.txt";
 	protected static final int CHUNK_SIZE = 512;
 	
-	protected static CCNLibrary _putLibrary;
 	protected Semaphore sema = new Semaphore(0);
 
 	@BeforeClass
@@ -34,14 +34,13 @@ public class BlockReadWriteTest extends BasePutGetTest {
 	
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
 		//Library.logger().setLevel(Level.FINEST);
-		_putLibrary = CCNLibrary.open();
 	}
 
 	@Override
 	public void getResults(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException {
-		ContentName thisName = CCNLibrary.versionName(ContentName.fromNative(baseName, fileName), count);
+		ContentName thisName = VersioningProfile.versionName(ContentName.fromNative(baseName, fileName), count);
 		sema.acquire(); // Block until puts started
-		CCNDescriptor desc = library.open(thisName, null);
+		CCNDescriptor desc = new CCNDescriptor(thisName, null, library);
 		//desc.setTimeout(5000);
 		Library.logger().info("Opened descriptor for reading: " + thisName);
 
@@ -50,7 +49,7 @@ public class BlockReadWriteTest extends BasePutGetTest {
         byte[] bytes = new byte[compareBytes.length];
         int buflen;
         int slot = 0;
-        while ((buflen = library.read(desc, bytes, slot, CHUNK_SIZE * 3)) > 0) {
+        while ((buflen = desc.read(bytes, slot, CHUNK_SIZE * 3)) > 0) {
         	Library.logger().info("Read " + buflen + " bytes from CCNDescriptor.");
         	os.write(bytes, 0, (int)buflen);
         	if (desc.available() == 0) {
@@ -58,7 +57,7 @@ public class BlockReadWriteTest extends BasePutGetTest {
         	}
         	slot += buflen;
         }
-        library.close(desc);
+        desc.close();
         Library.logger().info("Closed CCN reading CCNDescriptor.");
         Assert.assertArrayEquals(bytes, compareBytes);  
 	}
@@ -76,8 +75,8 @@ public class BlockReadWriteTest extends BasePutGetTest {
 	 */
 	@Override
 	public void doPuts(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException, NoSuchAlgorithmException {
-		ContentName thisName = CCNLibrary.versionName(ContentName.fromNative(baseName, fileName), count);
-		CCNDescriptor desc = _putLibrary.open(thisName, null, null, null);     
+		ContentName thisName = VersioningProfile.versionName(ContentName.fromNative(baseName, fileName), count);
+		CCNDescriptor desc = new CCNDescriptor(thisName, null, null, null, library);     
 		sema.release();	// put channel open
 		
 		Library.logger().info("Opened descriptor for writing: " + thisName);
@@ -87,11 +86,11 @@ public class BlockReadWriteTest extends BasePutGetTest {
         byte[] bytes = new byte[CHUNK_SIZE];
         int buflen = 0;
         while ((buflen = is.read(bytes)) >= 0) {
-        	_putLibrary.write(desc, bytes, 0, buflen);
+        	desc.write(bytes, 0, buflen);
         	Library.logger().info("Wrote " + buflen + " bytes to CCNDescriptor.");
         }
         Library.logger().info("Finished writing. Closing CCN writing CCNDescriptor.");
-        _putLibrary.close(desc);
+        desc.close();
         Library.logger().info("Closed CCN writing CCNDescriptor.");
 	}
 	

@@ -31,6 +31,7 @@ import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.io.CCNDescriptor;
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
+import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.network.CCNNetworkManager;
 import com.parc.ccn.security.keys.KeyManager;
 
@@ -62,27 +63,16 @@ import com.parc.ccn.security.keys.KeyManager;
  */
 public class CCNLibrary extends CCNBase {
 
-	public static final String MARKER = "_";
-	public static final String VERSION_MARKER = MARKER + "v" + MARKER;
-	public static final String HEADER_NAME = ".header"; // DKS currently not used; see below.
-	public enum OpenMode { O_RDONLY, O_WRONLY };
-	
-	public static final String PROP_BLOCK_SIZE = "ccn.lib.blocksize";
-	
 	static {
 		Security.addProvider(new BouncyCastleProvider());
 	}
 	
 	protected static CCNLibrary _library = null;
 
-	protected int _blockSize = Header.DEFAULT_BLOCKSIZE;
-
 	/**
 	 * Do we want to do this this way, or everything static?
 	 */
 	protected KeyManager _userKeyManager = null;
-	public static final String CLIENT_METADATA_MARKER = MARKER + "meta" + MARKER;
-	public static final String FRAGMENT_MARKER = MARKER + "b" + MARKER;
 
 	
 	public static CCNLibrary open() throws ConfigurationException, IOException { 
@@ -128,15 +118,6 @@ public class CCNLibrary extends CCNBase {
 		// force initialization of network manager
 		try {
 			_networkManager = new CCNNetworkManager();
-			String blockString = System.getProperty(PROP_BLOCK_SIZE);
-			if (null != blockString) {
-				try {
-					_blockSize = new Integer(blockString).intValue();
-					Library.logger().info("Using specified fragmentation block size " + _blockSize);
-				} catch (NumberFormatException e) {
-					// Do nothing
-				}
-			}
 		} catch (IOException ex){
 			Library.logger().warning("IOException instantiating network manager: " + ex.getMessage());
 			ex.printStackTrace();
@@ -162,18 +143,10 @@ public class CCNLibrary extends CCNBase {
 		return keyManager().getDefaultKeyID();
 	}
 	
-	/**
-	 * Set the fragmentation block size to use
-	 * @param blockSize
-	 */
-	public void setBlockSize(int blockSize) {
-		_blockSize = blockSize;
-	}
 	
-	public int getBlockSize() {
-		return _blockSize;
-	}
-
+	/**
+	 * DKS -- TODO -- collection and link functions move to collection and link, respectively
+	 */
 	/**
 	 * The following 3 methods create a Collection with the argument references,
 	 * put it, and return it. Note that fragmentation is not handled.
@@ -428,18 +401,6 @@ public class CCNLibrary extends CCNBase {
 	}
 	
 	/**
-	 * Does this specific name point to a link?
-	 * Looks at local (cached) data only. 
-	 * If more than one piece of content matches
-	 * this ContentObject, returns false.
-	 * @param name
-	 * @return true if its a link, false if not. 
-	 */
-	public boolean isLink(ContentObject content) {
-		return (content.signedInfo().type() == ContentType.LINK);
-	}
-	
-	/**
 	 * Deference links and collections
 	 * @param content
 	 * @param timeout
@@ -500,117 +461,6 @@ public class CCNLibrary extends CCNBase {
 	}
 
 	
-	public int getNextVersionNumber(ContentName name) {
-		ContentName latestVersion = 
-			getLatestVersionName(name, null);
-	
-		int currentVersion = baseVersion() - 1;
-		if (null != latestVersion)
-			// will return baseVersion() - 1 if unversioned 
-			currentVersion = getVersionNumber(latestVersion);
-		return currentVersion + 1;
-	}
-	
-	private ContentName getNextVersionName(ContentName name) {
-		return versionName(name, getNextVersionNumber(name));
-	}
-	
-	/**
-	 * Control whether versions start at 0 or 1.
-	 * @return
-	 */
-	public static final int baseVersion() { return 0; }
-	
-	/**
-	 * Generates the name and signedInfo for the new version of a given name.
-	 * NOTE: This currently believes it is generating the name of a piece of content,
-	 *  and is only happy doing so for atomic pieces of content below the fragmentation
-	 *  threshold. It will throw an exception for pieces of content larger than that.
-	 *  
-	 * TODO DKS do something cleverer.
-	 * Generates the complete name for this piece of leaf content. 
-	 * @param name The base name to version.
-	 * @param version The version to publish.
-	 * @param contents The (undigested) contents. Must be smaller than the fragmentation threshold for now.
-	 * @param type The desired type, or null for default.
-	 * @param publisher The desired publisher, or null for default.
-	 * @param locator The desired key locator, or null for default.
-	 * @param signingKey The desired signing key, or null for default.
-	 * @return
-	 * @throws SignatureException
-	 * @throws InvalidKeyException
-	 * @throws NoSuchAlgorithmException
-	 * @throws IOException
-	 */
-	public ContentObject newVersionName(
-			ContentName name, int version, byte [] contents,
-			ContentType type,
-			PublisherKeyID publisher, KeyLocator locator,
-			PrivateKey signingKey) throws SignatureException, 
-			InvalidKeyException, NoSuchAlgorithmException, IOException {
-
-		if (contents.length > _blockSize)
-			throw new IOException("newVersionName currently only handles non-fragmenting content smaller than: " + _blockSize);
-
-		if (null == signingKey)
-			signingKey = keyManager().getDefaultSigningKey();
-
-		if (null == locator)
-			locator = keyManager().getKeyLocator(signingKey);
-
-		if (null == publisher) {
-			publisher = keyManager().getPublisherKeyID(signingKey);
-		}
-
-		if (null == type)
-			type = ContentType.LEAF;
-		
-		ContentName versionedName = versionName(name, version);
-		ContentObject uniqueName =
-			ContentObject.generateAuthenticatedName(
-					versionedName, publisher, SignedInfo.now(),
-					type, locator, contents, signingKey);
-
-		return uniqueName;
-	}
-
-	/**
-	 * Because getting just the latest version number would
-	 * require getting the latest version name first, 
-	 * just get the latest version name and allow caller
-	 * to pull number.
-	 * DKS TODO return complete name -- of header? Or what...
-	 * DKS TODO match on publisher key id, or full publisher options?
-	 * @return If null, no existing version found.
-	 */
-	public ContentName getLatestVersionName(ContentName name, PublisherKeyID publisher) {
-		// Challenge -- Dan's proposed latest version syntax,
-		// <name>/latestversion/1/2/3... works well if there
-		// are 12 versions, not if there are a million. 
-		// Need to do a limited get/enumerate just to get version
-		// names, without enumerating all the blocks.
-		// DKS TODO general way of doing this
-		// right now use list children. Should be able to do
-		// it in Jackrabbit with XPath.
-		ContentName baseVersionName = 
-			ContentName.fromNative(versionRoot(name), VERSION_MARKER);
-		// Because we're just looking at children of
-		// the name -- not actual pieces of content --
-		// look only at ContentNames.
-		ContentObject lastVersion;
-		try {
-			// Hack by paul r. - this probably should have a timeout because we have to have
-			// one here - for now just use an arbitrary number
-			lastVersion = getLatest(baseVersionName, 5000);
-			if (null != lastVersion)		
-				return lastVersion.name();
-		} catch (Exception e) {
-			Library.logger().warning("Exception getting latest version number of name: " + name + ": " + e.getMessage());
-			Library.warningStackTrace(e);
-		}
-		return null;
-	}
-	
 	/**
 	 * Things are not as simple as this. Most things
 	 * are fragmented. Maybe make this a simple interface
@@ -628,86 +478,6 @@ public class CCNLibrary extends CCNBase {
 		return get(currentName, timeout);
 	}
 
-	/**
-	 * Extract the version information from this name.
-	 * TODO DKS the fragment number variant of this is static to StandardCCNLibrary, they
-	 * 	probably ought to both be the same.
-	 * 
-	 * @param name
-	 * @return Version number, or -1 if not versioned.
-	 */
-	public int getVersionNumber(ContentName name) {
-		int offset = name.containsWhere(VERSION_MARKER);
-		if (offset < 0)
-			return baseVersion() - 1; // no version information.
-		return Integer.valueOf(ContentName.componentPrintURI(name.component(offset+1)));
-	}
-
-	/**
-	 * Compute the name of this version.
-	 * @param name
-	 * @param version
-	 * @return
-	 */
-	public static ContentName versionName(ContentName name, int version) {
-		ContentName baseName = name;
-		if (isVersioned(name))
-			baseName = versionRoot(name);
-		return ContentName.fromNative(baseName, VERSION_MARKER,
-							   Integer.toString(version));
-	}
-	
-	/**
-	 * Does this name represent a version of the given parent?
-	 * @param version
-	 * @param parent
-	 * @return
-	 */
-	public boolean isVersionOf(ContentName version, ContentName parent) {
-		if (!isVersioned(version))
-			return false;
-		
-		if (isVersioned(parent))
-			parent = versionRoot(parent);
-		
-		return parent.isPrefixOf(version);
-	}
-	
-	public static boolean isVersioned(ContentName name) {
-		return name.contains(VERSION_MARKER);
-	}
-
-	public static ContentName versionRoot(ContentName name) {
-		return name.cut(VERSION_MARKER);
-	}
-	
-	/**
-	 * Translate name/data to ContentObject with default values for
-	 * (most) security parts
-	 * 
-	 * Useful for testing - if nothing else
-	 * @return
-	 */
-	public static ContentObject getContent(ContentName name, byte[] contents, PublisherKeyID publisher) {
-		try {
-			KeyManager keyManager = KeyManager.getDefaultKeyManager();
-			PrivateKey signingKey = keyManager.getDefaultSigningKey();
-			KeyLocator locator = keyManager.getKeyLocator(signingKey);
-			if (null == publisher) {
-				publisher = keyManager.getPublisherKeyID(signingKey);
-			}
-			return new ContentObject(name, new SignedInfo(publisher, SignedInfo.ContentType.LEAF, locator), contents, signingKey);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		return null;
-	}
-	
-	public static ContentObject getContent(ContentName name, byte[] contents) {
-		return getContent(name, contents, null);
-	}
-	
-	
 	public ContentObject get(ContentName name, long timeout) throws IOException {
 		Interest interest = new Interest(name);
 		return super.get(interest, timeout);
@@ -756,42 +526,6 @@ public class CCNLibrary extends CCNBase {
 		return result;
 	}
 	
-	/**
-	 * High-level verify. Calls low-level verify, if we
-	 * don't think this has been verified already. Probably
-	 * need to separate to keep the two apart.
-	 * @param object
-	 * @param publicKey The key to use to verify the signature,
-	 * 	or null if the key should be retrieved using the key 
-	 *  locator.
-	 * @return
-	 * @throws XMLStreamException 
-	 * @throws NoSuchAlgorithmException 
-	 * @throws SignatureException 
-	 * @throws InvalidKeyException 
-	 */
-	public boolean verify(ContentObject object, PublicKey publicKey) 
-			throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException {
-		
-		try {
-			if (null == publicKey) {
-				publicKey = KeyManager.getKeyRepository().getPublicKey(object.signedInfo().publisherKeyID(), object.signedInfo().keyLocator());
-				if (null == publicKey) {
-					Library.logger().info("Cannot retrieve key for publisher " + object.signedInfo().publisherKeyID() + " to verify conten: " + object.name());
-					return false;
-				}
-			}
-			if (!object.verify(publicKey)) {
-				Library.logger().warning("Low-level verify failed on " + object.name());
-			}
-		} catch (Exception e) {
-			Library.logger().warning("Exception " + e.getClass().getName() + " during verify: " + e.getMessage());
-			Library.warningStackTrace(e);
-		}
-		return true;
-		// TODO DKS
-		//throw new UnsupportedOperationException("Implement me!");
-	}
 	
 	/**
 	 * Approaches to read and write content. Low-level CCNBase returns
@@ -811,71 +545,12 @@ public class CCNLibrary extends CCNBase {
 	 * with state-based read.
 	 */
 	
-	/**
-	 * Beginnings of file system interface. If name is not versioned,
-	 * for read, finds the latest version meeting the constraints.
-	 * For writes, probably also should figure out the next version
-	 * and open that for writing. Might get more complicated later;
-	 * a file system (e.g. FUSE) layer on top of this might get more
-	 * complicated still (e.g. mechanisms for detecting what the latest
-	 * version is to make a new one for writing right now can't detect
-	 * that we're already in the process of writing a given version).
-	 * For now, we constraint the types of open modes we know about.
-	 * We can't really append to an existing file, so we really can
-	 * only pretty much open for writing or reading.
-	 * @return a CCNDescriptor, which contains, among other things,
-	 * the actual name we are opening. It also contains things
-	 * like offsets and verification information.
-	 */
-	/**
-	 * Open this name for reading (for now). If the name
-	 * is versioned, open that version. Otherwise, open the
-	 * latest version. If the name is a fragment, just open that one.
-	 * Implicitly implements query match.
-	 * Currently suggests can query match only on publisher...
-	 * need to systematize this. Some of this might want
-	 * to move into CCNDescriptor.
-	 * 
-	 * For now, it looks like the library-level (defragmenting)
-	 * get will be implemented in terms of these operations,
-	 * rather than the other way 'round. So these should use
-	 * the low-level (CCNBase/CCNRepository/CCNNetwork) get.
-	 * @throws IOException 
-	 * @throws XMLStreamException 
-	 */
-	public CCNDescriptor open(ContentName name, PublisherKeyID publisher, 
-								KeyLocator locator, PrivateKey signingKey) 
-			throws IOException, XMLStreamException {
-		return new CCNDescriptor(name, publisher, locator, signingKey, this); 
-	}
-	
-	public CCNDescriptor open(ContentName name, PublisherKeyID publisher) 
-				throws XMLStreamException, IOException {
-		return new CCNDescriptor(name, publisher, this);
-	}
-	
 	public RepositoryOutputStream repoOpen(ContentName name, PublisherKeyID publisher, 
 			KeyLocator locator, PrivateKey signingKey) 
 				throws IOException, XMLStreamException {
 		return new RepositoryOutputStream(name, publisher, locator, signingKey, this); 
 	}
 	
-	public int read(CCNDescriptor ccnObject, byte [] buf, 
-					int offset, int len) throws IOException {
-		return ccnObject.read(buf,offset,len);
-	}
-
-	public void write(CCNDescriptor ccnObject, byte [] buf, int offset, int len) throws IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException {
-		ccnObject.write(buf, offset, len);
-	}
-
-	public void close(CCNDescriptor ccnObject) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
-		ccnObject.close();
-	}
-	
-	public void flush(CCNDescriptor ccnObject) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
-		ccnObject.flush();
-	}
 
 	/**
 	 * Medium level interface for retrieving pieces of a file
@@ -954,22 +629,4 @@ public class CCNLibrary extends CCNBase {
 		cocn.components().add(content.contentDigest());
 		return new ContentName(cocn.count(), cocn.components(), new Integer(prefixCount));
 	}
-
-	public static ContentName fragmentBase(ContentName name) {
-		return ContentName.fromNative(fragmentRoot(name), FRAGMENT_MARKER);
-	}
-
-	public static ContentName fragmentRoot(ContentName name) {
-		return name.cut(FRAGMENT_MARKER);
-	}
-
-	public static boolean isFragment(ContentName name) {
-		return name.contains(FRAGMENT_MARKER);
-	}
-
-	/**
-	 * Control whether fragments start at 0 or 1.
-	 * @return
-	 */
-	public static final int baseFragment() { return 0; }
 }

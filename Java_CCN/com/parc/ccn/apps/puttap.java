@@ -15,7 +15,7 @@ import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.util.BinaryXMLCodec;
 import com.parc.ccn.data.util.TextXMLCodec;
 import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.CCNSegmenter;
+import com.parc.ccn.library.io.CCNWriter;
 import com.parc.ccn.network.CCNNetworkManager;
 
 /**
@@ -89,9 +89,9 @@ public class puttap implements CCNInterestListener {
 	        InputStream is = new FileInputStream(theFile);
 	        byte[] bytes = new byte[CHUNK_SIZE];
 	        int i = 0;
-	        CCNSegmenter segmenter = new CCNSegmenter(name, library);
+	        CCNWriter writer = new CCNWriter(library);
 	        while (is.read(bytes) >= 0) {
-	        	ContentObject cn = segmenter.put(ContentName.fromNative(name, new Integer(i++).toString()), bytes);
+	        	ContentObject cn = writer.put(ContentName.fromNative(name, new Integer(i++).toString()), bytes);
 	        	if (!cn.validate()) {
 	        		Library.logger().severe("BAD CONTENTOBJECT: does not validate");
 	        		return false;

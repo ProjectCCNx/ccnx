@@ -9,18 +9,13 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.profiles.SegmentationProfile;
+import com.parc.ccn.library.profiles.VersioningProfile;
 
 /**
- * An object which contains state operation for 
- * multi-block (multi-name) operations, such as
- * traditional file system-style read and write
- * operations. First pass implementation considers
- * a given piece of content to consist of a 
- * header together with some number of blocks.
- * Initially implemented for requirements of read;
- * write requirements more complex and will be
- * added in. This is also currently optimized
- * for straight reads; should also implement seek.
+ * Right now, this has turned into a wrapper to input and output
+ * stream that knows about versioning. It should probably mutate into
+ * something else.
  * 
  * This object uses the library functions to do verification
  * and build trust.
@@ -29,7 +24,9 @@ import com.parc.ccn.library.CCNLibrary;
  */
 public class CCNDescriptor {
 	
+	public enum OpenMode { O_RDONLY, O_WRONLY }
 	public enum SeekWhence {SEEK_SET, SEEK_CUR, SEEK_END};
+	
 	protected CCNInputStream _input = null;
 	protected CCNOutputStream _output = null;
 	
@@ -58,11 +55,11 @@ public class CCNDescriptor {
 	protected void openForReading(ContentName name, PublisherKeyID publisher, CCNLibrary library) 
 				throws IOException, XMLStreamException {
 		ContentName nameToOpen = name;
-		if (CCNLibrary.isFragment(nameToOpen)) {
+		if (SegmentationProfile.isSegment(nameToOpen)) {
 			// DKS TODO: should we do this?
-			nameToOpen = CCNLibrary.fragmentRoot(nameToOpen);
+			nameToOpen = SegmentationProfile.segmentRoot(nameToOpen);
 		} else {
-			if (!CCNLibrary.isVersioned(nameToOpen)) {
+			if (!VersioningProfile.isVersioned(nameToOpen)) {
 				// if publisherID is null, will get any publisher
 				nameToOpen = 
 					library.getLatestVersionName(nameToOpen, publisher);
@@ -76,21 +73,21 @@ public class CCNDescriptor {
 			   KeyLocator locator, PrivateKey signingKey,
 			   CCNLibrary library) throws XMLStreamException, IOException {
 		ContentName nameToOpen = name;
-		if (CCNLibrary.isFragment(name)) {
+		if (SegmentationProfile.isSegment(name)) {
 			// DKS TODO: should we do this?
-			nameToOpen = CCNLibrary.fragmentRoot(nameToOpen);
+			nameToOpen = SegmentationProfile.segmentRoot(nameToOpen);
 		}
 		// Assume if name is already versioned, caller knows what name
 		// to write. If caller specifies authentication information,
 		// ignore it for now.
-		if (!CCNLibrary.isVersioned(nameToOpen)) {
+		if (!VersioningProfile.isVersioned(nameToOpen)) {
 			// if publisherID is null, will get any publisher
 			ContentName currentVersionName = 
 				library.getLatestVersionName(nameToOpen, null);
 			if (null == currentVersionName) {
-				nameToOpen = CCNLibrary.versionName(nameToOpen, CCNLibrary.baseVersion());
+				nameToOpen = VersioningProfile.versionName(nameToOpen, VersioningProfile.baseVersion());
 			} else {
-				nameToOpen = CCNLibrary.versionName(currentVersionName, (library.getVersionNumber(currentVersionName) + 1));
+				nameToOpen = VersioningProfile.versionName(currentVersionName, (VersioningProfile.getVersionNumber(currentVersionName) + 1));
 			}
 		}
 		_output = new CCNOutputStream(name, publisher, locator, signingKey, library);

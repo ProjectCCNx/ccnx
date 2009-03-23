@@ -11,8 +11,6 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.Signature;
-import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.util.InterestTable;
 import com.parc.ccn.data.util.InterestTable.Entry;
 
@@ -50,16 +48,8 @@ public class CCNFlowControl implements CCNFilterListener {
 		this(ContentName.fromNative(name), library);
 	}
 	
-	public ContentObject put(ContentName name, 
-			SignedInfo signedInfo,
-			byte[] content,
-			Signature signature) throws IOException {
-		byte [] contentHold = new byte[content.length];
-		System.arraycopy(content, 0, contentHold, 0, content.length);
-		ContentObject co = new ContentObject(name, signedInfo, contentHold, signature);
-		return put(co);
-	}
-	
+	// TODO DKS: should this add the name to the registered filter?
+	// or at least add it if it doesn't match what's there already?
 	public ContentObject put(ContentObject co) throws IOException {
 		if (_flowControlEnabled) {
 			Entry<UnmatchedInterest> match = null;

@@ -21,6 +21,9 @@ public class RepositoryOutputStream extends CCNOutputStream {
 	
 	protected RepositorySegmenter _segmenter;
 
+	/**
+	 * DKS TODO -- CCNOutputStream will let sublcasses specify flow control.
+	 */
 	public RepositoryOutputStream(ContentName name, PublisherKeyID publisher,
 			KeyLocator locator, PrivateKey signingKey, CCNLibrary library)
 			throws XMLStreamException, IOException {

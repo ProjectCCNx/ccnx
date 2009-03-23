@@ -13,13 +13,14 @@ import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNSegmenter;
+import com.parc.ccn.library.profiles.SegmentationProfile;
+import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.crypto.CCNMerkleTree;
 
@@ -51,7 +52,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	protected int _blockOffset = 0; // offset into current block
 	protected byte [][] _blockBuffers = null;
 	protected int _baseNameIndex; // base name index of current set of block buffers.
-	protected int _blockSize = Header.DEFAULT_BLOCKSIZE;
+	protected int _blockSize = SegmentationProfile.DEFAULT_BLOCKSIZE;
 	
 	protected Timestamp _timestamp; // timestamp we use for writing, set to first time we write
 	
@@ -66,22 +67,22 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		super(publisher, locator, signingKey, cw);
 		
 		ContentName nameToOpen = name;
-		if (CCNLibrary.isFragment(nameToOpen)) {
+		if (SegmentationProfile.isSegment(nameToOpen)) {
 			// DKS TODO: should we do this?
-			nameToOpen = CCNLibrary.fragmentRoot(nameToOpen);
+			nameToOpen = SegmentationProfile.segmentRoot(nameToOpen);
 		}
 				
 		// Assume if name is already versioned, caller knows what name
 		// to write. If caller specifies authentication information,
 		// ignore it for now.
-		if (!CCNLibrary.isVersioned(nameToOpen)) {
+		if (!VersioningProfile.isVersioned(nameToOpen)) {
 			// if publisherID is null, will get any publisher
 			ContentName currentVersionName = 
 				_library.getLatestVersionName(nameToOpen, null);
 			if (null == currentVersionName) {
-				nameToOpen = CCNLibrary.versionName(nameToOpen, CCNLibrary.baseVersion());
+				nameToOpen = VersioningProfile.versionName(nameToOpen, VersioningProfile.baseVersion());
 			} else {
-				nameToOpen = CCNLibrary.versionName(currentVersionName, (_library.getVersionNumber(currentVersionName) + 1));
+				nameToOpen = VersioningProfile.versionName(currentVersionName, (VersioningProfile.getVersionNumber(currentVersionName) + 1));
 			}
 		}
 		// Should have name of root of version we want to
@@ -91,7 +92,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		// fragments. 
 		_baseName = nameToOpen;
 		_blockBuffers = new byte[BLOCK_BUF_COUNT][];
-		_baseNameIndex = CCNLibrary.baseFragment();
+		_baseNameIndex = SegmentationProfile.baseSegment();
 		
 		_dh = new CCNDigestHelper();
 	}
@@ -100,6 +101,18 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			   KeyLocator locator, PrivateKey signingKey,
 			   CCNLibrary library) throws XMLStreamException, IOException {
 		this(name, publisher, locator, signingKey, new CCNSegmenter(name, library));
+	}
+
+	/**
+	 * Set the fragmentation block size to use
+	 * @param blockSize
+	 */
+	public void setBlockSize(int blockSize) {
+		_blockSize = blockSize;
+	}
+	
+	public int getBlockSize() {
+		return _blockSize;
 	}
 
 	@Override
@@ -160,7 +173,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 
 		while (bytesToWrite > 0) {
 			if (null == _blockBuffers[_blockIndex]) {
-				_blockBuffers[_blockIndex] = new byte[Header.DEFAULT_BLOCKSIZE];
+				_blockBuffers[_blockIndex] = new byte[SegmentationProfile.DEFAULT_BLOCKSIZE];
 				_blockOffset = 0;
 			}
 
@@ -196,7 +209,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		// with no header in the place we would normally write the header. Can't
 		// do this in flush(), as we wouldn't know here whether to write a header or
 		// not, and flush() wouldn't know not to use a fragment marker in the name.
-		if ((_baseNameIndex == CCNLibrary.baseFragment()) && 
+		if ((_baseNameIndex == SegmentationProfile.baseSegment()) && 
 				((_blockIndex == 0) || ((_blockIndex == 1) && (_blockOffset == 0)))) {
 			// maybe need put with offset and length
 			if ((_blockIndex == 1) || (_blockOffset == _blockBuffers[0].length)) {

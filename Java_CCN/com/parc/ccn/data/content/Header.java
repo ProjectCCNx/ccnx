@@ -16,7 +16,7 @@ import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.data.util.XMLDecoder;
-import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.profiles.SegmentationProfile;
 
 /**
  * Mapping from a sequence to the underlying XML representation.
@@ -32,8 +32,6 @@ public class Header extends ContentObject  {
 
 	public static final String HEADER_ELEMENT = "Header";
 	public static final String START_ELEMENT = "Start";
-	
-	public static final int DEFAULT_BLOCKSIZE = 4096;
 	
 	public Header(ContentName name,
 			 int start, int count, 
@@ -72,7 +70,7 @@ public class Header extends ContentObject  {
 			 KeyLocator locator,
 			 PrivateKey signingKey
 			 ) throws XMLStreamException, InvalidKeyException, SignatureException {
-		this(name, CCNLibrary.baseFragment(), (length + blockSize - 1) / blockSize, blockSize, length,
+		this(name, SegmentationProfile.baseSegment(), (length + blockSize - 1) / blockSize, blockSize, length,
 				 contentDigest, rootDigest, publisher, locator, signingKey);
 	}
 	
@@ -81,7 +79,7 @@ public class Header extends ContentObject  {
 			 KeyLocator locator,
 			 PrivateKey signingKey
 			 ) throws XMLStreamException, InvalidKeyException, SignatureException {
-		this(name, CCNLibrary.baseFragment(), 0, DEFAULT_BLOCKSIZE, 0, null, null, publisher, locator, (Signature)null);
+		this(name, SegmentationProfile.baseSegment(), 0, SegmentationProfile.DEFAULT_BLOCKSIZE, 0, null, null, publisher, locator, (Signature)null);
 	}
 	
 	/**
