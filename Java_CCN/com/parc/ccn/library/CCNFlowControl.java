@@ -3,6 +3,7 @@ package com.parc.ccn.library;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -13,6 +14,18 @@ import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.util.InterestTable;
 import com.parc.ccn.data.util.InterestTable.Entry;
+
+/**
+ * Implements rudimentary flow control by matching content objects
+ * with interests before actually putting them out to ccnd.
+ * 
+ * Holds content objects until a matching interest is seen and holds
+ * interests and matches immediately if a content object matching a
+ * held interest is put.
+ * 
+ * @author rasmusse
+ *
+ */
 
 public class CCNFlowControl implements CCNFilterListener {
 	
@@ -48,9 +61,66 @@ public class CCNFlowControl implements CCNFilterListener {
 		this(ContentName.fromNative(name), library);
 	}
 	
-	// TODO DKS: should this add the name to the registered filter?
-	// or at least add it if it doesn't match what's there already?
+	public CCNFlowControl(CCNLibrary library) {
+		_library = library;
+	}
+	
+	/**
+	 * Add a new namespace to the controller
+	 * @param name
+	 */
+	public void addNameSpace(ContentName name) {
+		Iterator<ContentName> it = _filteredNames.iterator();
+		while (it.hasNext()) {
+			ContentName filteredName = it.next();
+			if (filteredName.isPrefixOf(name))
+				return;		// Already part of filter
+			if (name.isPrefixOf(filteredName)) {
+				_library.unregisterFilter(filteredName, this);
+				it.remove();
+			}
+		}
+		_filteredNames.add(name);
+		_library.registerFilter(name, this);
+	}
+	
+	/**
+	 * Add content objects to this flow controller
+	 * @param cos
+	 * @throws IOException
+	 */
+	public void put(ArrayList<ContentObject> cos) throws IOException {
+		for (ContentObject co : cos) {
+			put(co);
+		}
+	}
+	
+	/**
+	 * Add namespace and content at the same time
+	 * @param co
+	 * @throws IOException 
+	 * @throws IOException
+	 */
+	public void put(ContentName name, ArrayList<ContentObject> cos) throws IOException {
+		addNameSpace(name);
+		put(cos);
+	}
+	
+	public ContentObject put(ContentName name, ContentObject co) throws IOException {
+		addNameSpace(name);
+		return put(co);
+	}
+	
 	public ContentObject put(ContentObject co) throws IOException {
+		for (ContentName name : _filteredNames) {
+			if (!name.isPrefixOf(co.name()))
+				throw new IOException("Flow control: co name \"" + co.name() 
+						+ "\" is not in the flow control namespace");
+		}
+		return waitForMatch(co);
+	}
+	
+	private ContentObject waitForMatch(ContentObject co) throws IOException {
 		if (_flowControlEnabled) {
 			Entry<UnmatchedInterest> match = null;
 			synchronized (this) {
