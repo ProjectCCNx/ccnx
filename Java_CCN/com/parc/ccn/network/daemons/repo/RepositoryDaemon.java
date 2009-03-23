@@ -81,11 +81,18 @@ public class RepositoryDaemon extends Daemon {
 		private Interest _interest;
 		private ConcurrentLinkedQueue<ContentObject> _dataQueue = new ConcurrentLinkedQueue<ContentObject>();
 		private ArrayList<ContentObject> _unacked = new ArrayList<ContentObject>();
+		private boolean _haveHeader = false;
+		private boolean _sawBlock = false;
+		private ContentName _headerName = null;
+		private Interest _headerInterest = null;
 		
 		private DataListener(Interest origInterest, Interest interest) {
 			_origInterest = interest;
 			_interest = interest;
+			_headerName = _interest.name().clone();
 			_timer = new Date().getTime();
+			_headerInterest = new Interest(_headerName);
+			_headerInterest.additionalNameComponents(1);
 		}
 		
 		public Interest handleContent(ArrayList<ContentObject> results,
@@ -93,13 +100,32 @@ public class RepositoryDaemon extends Daemon {
 			_dataQueue.addAll(results);
 			_timer = new Date().getTime();
 			if (results.size() > 0) {
+				ContentObject co = results.get(0);
+				
+				if (!_haveHeader) {
+					/*
+					 * Handle headers specifically. If we haven't seen one yet ask for it specifically
+					 */
+					if (co.name().equals(_headerName)) {
+						_haveHeader = true;
+						if (_sawBlock)
+							return null;
+					} else {
+						try {
+							_library.expressInterest(_headerInterest, this);
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+					}
+				}
 				
 				/*
 				 * Compute new interest. Its basically a next, but since we want to register it, we
 				 * don't do a getNext here. Also we need to set the prefix 1 before the last component
 				 * so we get all the blocks
 				 */
-				ContentObject co = results.get(0);
+				_sawBlock = true;
 				ContentName nextName = new ContentName(co.name(), co.contentDigest(), co.name().count() - 1);
 				_interest = Interest.constructInterest(nextName,  markerFilter, 
 							new Integer(Interest.ORDER_PREFERENCE_LEFT  | Interest.ORDER_PREFERENCE_ORDER_NAME));
@@ -124,6 +150,7 @@ public class RepositoryDaemon extends Daemon {
 						DataListener listener = iterator.next();
 						if ((currentTime - listener._timer) > PERIOD) {
 							_library.cancelInterest(listener._interest, listener);
+							_library.cancelInterest(listener._headerInterest, listener);
 							iterator.remove();
 						}
 					}

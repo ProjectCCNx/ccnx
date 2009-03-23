@@ -6,7 +6,6 @@ import java.util.Date;
 import java.util.Set;
 import java.util.TreeMap;
 
-import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
