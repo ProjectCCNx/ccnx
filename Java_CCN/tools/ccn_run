@@ -11,6 +11,11 @@ CP1=`echo $CP1 | sed "s/ /:/g"`
 CP2=`echo $CP2 | sed "s/ /:/g"`
 
 CLASSPATH=$CP1:$CP2
+PORTARG=
+
+if [ ! "$CCN_LOCAL_PORT" = "" ]; then
+  PORTARG="-Dccn.agent.port=$CCN_LOCAL_PORT"
+fi
 
 if [ $# = 0 ]
 then
@@ -18,5 +23,5 @@ then
   echo 
   grep ccn_run /usr/local/bin/* 2>/dev/null | sed 's/^\/usr\/local\/bin\/\([^:]*\):.*$/\1/' | grep -v ccn_run | sort -u
 else
-  $JAVA -cp $CLASSPATH com.parc.ccn.apps.$*
+  $JAVA -cp $CLASSPATH $PORTARG com.parc.ccn.apps.$*
 fi
