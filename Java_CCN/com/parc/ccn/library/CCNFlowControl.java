@@ -70,6 +70,8 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * @param name
 	 */
 	public void addNameSpace(ContentName name) {
+		if (!_flowControlEnabled)
+			return;
 		Iterator<ContentName> it = _filteredNames.iterator();
 		while (it.hasNext()) {
 			ContentName filteredName = it.next();
@@ -82,6 +84,26 @@ public class CCNFlowControl implements CCNFilterListener {
 		}
 		_filteredNames.add(name);
 		_library.registerFilter(name, this);
+	}
+	
+	/**
+	 * For now we don't have anyway to remove a partial namespace from
+	 * flow control (would we want to do that?) so for now we only allow
+	 * removal of a namespace if it actually matches something that was
+	 * registered
+	 * 
+	 * @param name
+	 */
+	public void removeNameSpace(ContentName name) {
+		Iterator<ContentName> it = _filteredNames.iterator();
+		while (it.hasNext()) {
+			ContentName filteredName = it.next();
+			if (filteredName.equals(name)) {
+				_library.unregisterFilter(filteredName, this);
+				it.remove();
+				break;
+			}
+		}
 	}
 	
 	/**
@@ -112,10 +134,12 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	public ContentObject put(ContentObject co) throws IOException {
-		for (ContentName name : _filteredNames) {
-			if (!name.isPrefixOf(co.name()))
-				throw new IOException("Flow control: co name \"" + co.name() 
-						+ "\" is not in the flow control namespace");
+		if (_flowControlEnabled) {
+			for (ContentName name : _filteredNames) {
+				if (!name.isPrefixOf(co.name()))
+					throw new IOException("Flow control: co name \"" + co.name() 
+							+ "\" is not in the flow control namespace");
+			}
 		}
 		return waitForMatch(co);
 	}
@@ -260,5 +284,15 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	public void clearUnmatchedInterests() {
 		_unmatchedInterests.clear();
+	}
+	
+	public void enable() {
+		_flowControlEnabled = true;
+	}
+	
+	public void disable() {
+		for (ContentName name : _filteredNames)
+			removeNameSpace(name);
+		_flowControlEnabled = false;
 	}
 }
