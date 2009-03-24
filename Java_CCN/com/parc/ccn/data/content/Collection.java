@@ -30,8 +30,7 @@ public class Collection extends ContentObject {
 			 KeyLocator locator,
 			 Signature signature
 			 ) throws XMLStreamException {
-		super(name, new SignedInfo(publisher, ContentType.COLLECTION, locator), null, 
-				(Signature)null);
+		super(name, new SignedInfo(publisher, ContentType.COLLECTION, locator));
 		if (null != references) {
 			for (LinkReference reference : references) {
 				_data.add(reference);

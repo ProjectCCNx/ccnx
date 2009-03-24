@@ -69,7 +69,8 @@ public class Header extends ContentObject  {
 			 KeyLocator locator,
 			 PrivateKey signingKey
 			 ) throws XMLStreamException, InvalidKeyException, SignatureException {
-		this(name, SegmentationProfile.baseSegment(), (length + blockSize - 1) / blockSize, blockSize, length,
+		this(name, SegmentationProfile.baseSegment(), 
+				(length + blockSize - 1) / blockSize, blockSize, length,
 				 contentDigest, rootDigest, publisher, locator, signingKey);
 	}
 	
@@ -78,7 +79,9 @@ public class Header extends ContentObject  {
 			 KeyLocator locator,
 			 PrivateKey signingKey
 			 ) throws XMLStreamException, InvalidKeyException, SignatureException {
-		this(name, SegmentationProfile.baseSegment(), 0, SegmentationProfile.DEFAULT_BLOCKSIZE, 0, null, null, publisher, locator, (Signature)null);
+		this(name, SegmentationProfile.baseSegment(), 0, 
+					SegmentationProfile.DEFAULT_BLOCKSIZE, 0, null, null, 
+					publisher, locator, signingKey);
 	}
 	
 	/**

@@ -11,11 +11,13 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.parc.ccn.config.ConfigurationException;
+import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNWriter;
+import com.parc.ccn.library.profiles.SegmentationProfile;
 
 /**
  * This should eventually have more tests but for now at least we will
@@ -61,9 +63,58 @@ public class NetworkTest {
 		testInterest = new Interest("/networkTest/aaa");
 		TestListener tl = new TestListener();
 		library.expressInterest(testInterest, tl);
+		Thread.sleep(80);  
+		writer.put("/networkTest/aaa", "aaa");
+		sema.tryAcquire(4000, TimeUnit.MILLISECONDS);
+		Assert.assertTrue(gotData);
+	}
+	
+	@Test
+	public void testNetworkManagerFixedPrefix() throws Exception {
+		
+		/*
+		 * Test re-expression of interest
+		 */
+		CCNWriter writer = new CCNWriter(library);
+		testInterest = new Interest("/networkTest/ddd");
+		TestListener tl = new TestListener();
+		library.expressInterest(testInterest, tl);
+		Thread.sleep(80);  
+		writer.put("/networkTest/ddd", "ddd");
+		sema.tryAcquire(4000, TimeUnit.MILLISECONDS);
+		Assert.assertTrue(gotData);
+	}
+	
+	@Test
+	public void testNetworkManagerBackwards() throws Exception {
+		
+		/*
+		 * Test re-expression of interest
+		 */
+		CCNWriter writer = new CCNWriter("/networkTest", library);
+		testInterest = new Interest("/networkTest/bbb");
+		TestListener tl = new TestListener();
+		writer.put("/networkTest/bbb", "bbb");
+		Thread.sleep(80);  
+		library.expressInterest(testInterest, tl);
+		sema.tryAcquire(4000, TimeUnit.MILLISECONDS);
+		Assert.assertTrue(gotData);
+	}
+
+
+	@Test
+	public void testInterestReexpression() throws Exception {
+		
+		/*
+		 * Test re-expression of interest
+		 */
+		CCNWriter writer = new CCNWriter("/networkTest", library);
+		testInterest = new Interest("/networkTest/ccc");
+		TestListener tl = new TestListener();
+		library.expressInterest(testInterest, tl);
 		// Sleep long enough that the interest must be re-expressed
 		Thread.sleep(8000);  
-		writer.put("/networkTest/aaa", "aaa");
+		writer.put("/networkTest/ccc", "ccc");
 		sema.tryAcquire(4000, TimeUnit.MILLISECONDS);
 		Assert.assertTrue(gotData);
 	}
@@ -74,7 +125,8 @@ public class NetworkTest {
 				Interest interest) {
 			Assert.assertFalse(results == null);
 			for (ContentObject co : results) {
-				Assert.assertEquals("aaa", new String(co.content()));
+				ContentName nameBase = SegmentationProfile.segmentRoot(co.name());
+				Assert.assertEquals(nameBase.stringComponent(nameBase.count()-1), new String(co.content()));
 				gotData = true;
 			}
 			sema.release();

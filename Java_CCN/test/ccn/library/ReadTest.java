@@ -74,8 +74,9 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 			int tValue = rand.nextInt(count - 1);
 			// DKS -- getNext was returning null here. Not clear what it's trying to do, could be interacting badly with
 			// introduction of default fragment marker (which the above changes try to work around). Likely prefix count is wrong.
-			ContentName prefix = SegmentationProfile.segmentName(ContentName.fromNative("/getNext/" + new Integer(tValue).toString(), 1), SegmentationProfile.baseSegment());
-			ContentName cn = new ContentName(prefix, ContentObject.contentDigest(Integer.toString(count - tValue)));
+			// prefix of 1 should take care of that; though it's odd that that's a member of the name,
+			// not the interest...
+			ContentName cn = new ContentName(ContentName.fromNative("/getNext/" + new Integer(tValue).toString(), 1), ContentObject.contentDigest(Integer.toString(count - tValue)));
 			ContentObject result = library.getNext(cn, 1000);
 			checkResult(result, tValue + 1);
 		}

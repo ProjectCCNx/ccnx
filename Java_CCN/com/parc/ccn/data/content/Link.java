@@ -48,8 +48,7 @@ public class Link extends ContentObject {
 			 KeyLocator locator,
 			 Signature signature
 			 ) throws XMLStreamException {
-		super(name, new SignedInfo(publisher, ContentType.LINK, locator), null, 
-				(Signature)null);
+		super(name, new SignedInfo(publisher, ContentType.LINK, locator));
 		_signature = signature;
 		_data = target;
 		_content = _data.encode();
@@ -82,7 +81,7 @@ public class Link extends ContentObject {
 			 KeyLocator locator,
 			 PrivateKey signingKey
 			 ) throws XMLStreamException, InvalidKeyException, SignatureException {
-		this(name, new LinkReference(targetName, targetAuthenticator), publisher, locator, (Signature)null);
+		this(name, new LinkReference(targetName, targetAuthenticator), publisher, locator, signingKey);
 	}
 	
 	public Link(ContentName name,
@@ -91,7 +90,7 @@ public class Link extends ContentObject {
 			 KeyLocator locator,
 			 PrivateKey signingKey
 			 ) throws XMLStreamException, InvalidKeyException, SignatureException {
-		this(name, targetName, null, publisher, locator, (Signature)null);
+		this(name, targetName, null, publisher, locator, signingKey);
 	}
 	
 	/**
