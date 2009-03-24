@@ -42,8 +42,7 @@ public class Header extends ContentObject  {
 			 KeyLocator locator,
 			 Signature signature
 			 ) throws XMLStreamException {
-		super(name, new SignedInfo(publisher, ContentType.HEADER, locator), null, 
-				(Signature)null);
+		super(name, new SignedInfo(publisher, ContentType.HEADER, locator));
 		_signature = signature;
 		_data = new HeaderData(start, count, blockSize, length, contentDigest, rootDigest);
 		_content = _data.encode();

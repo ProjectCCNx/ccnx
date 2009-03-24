@@ -23,7 +23,7 @@ import com.parc.ccn.data.query.BasicInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.CCNSegmenter;
+import com.parc.ccn.library.io.CCNWriter;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
 
@@ -57,14 +57,14 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 		try {
 			
-			CCNSegmenter segmenter = new CCNSegmenter("/CPOF", library);
+			CCNWriter writer = new CCNWriter("/CPOF", library);
 			ArrayList<NameSeen> testNames = new ArrayList<NameSeen>(3);
 			testNames.add(new NameSeen(ContentName.fromNative("/CPOF/foo")));
 			testNames.add(new NameSeen(ContentName.fromNative("/CPOF/bar/lid")));
 			testNames.add(new NameSeen(ContentName.fromNative("/CPOF/bar/jar")));
 			
 			for (int i = 0; i < testNames.size(); i++) {
-				segmenter.put(testNames.get(i).name, Integer.toString(i).getBytes());
+				writer.put(testNames.get(i).name, Integer.toString(i).getBytes());
 			}
 			
 			ArrayList<ContentObject> availableNames =
@@ -126,7 +126,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 			e.printStackTrace();
 		}
 		try {
-			CCNSegmenter segmenter = new CCNSegmenter(name, library);
+			CCNWriter segmenter = new CCNWriter(name, library);
 			ContentObject result = segmenter.put(name, content, publisher);
 			System.out.println("Resulting ContentObject: " + result);
 		} catch (SignatureException e) {
@@ -146,11 +146,11 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 		try {
 			ContentName keyName = ContentName.fromNative(key);
-			CCNSegmenter segmenter = new CCNSegmenter(keyName, library);
+			CCNWriter segmenter = new CCNWriter(keyName, library);
 			revision1 = segmenter.newVersion(keyName, data1);
 			revision2 = segmenter.newVersion(keyName, data2);
-			int version1 = VersioningProfile.getVersionNumber(revision1.name());
-			int version2 = VersioningProfile.getVersionNumber(revision2.name());
+			long version1 = VersioningProfile.getVersionNumber(revision1.name());
+			long version2 = VersioningProfile.getVersionNumber(revision2.name());
 			System.out.println("Version1: " + version1 + " version2: " + version2);
 			Assert.assertTrue("Revisions are strange", 
 					version2 > version1);
@@ -181,7 +181,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 		byte[] data1 = "data".getBytes();
 		try {
 			ContentName keyName = ContentName.fromNative(key);
-			CCNSegmenter segmenter = new CCNSegmenter(keyName, library);
+			CCNWriter segmenter = new CCNWriter(keyName, library);
 			ContentObject name = segmenter.put(keyName, data1);
 			System.out.println("Put under name: " + name.name());
 			ContentObject result = library.get(name.name(), CCNBase.NO_TIMEOUT);
@@ -231,8 +231,8 @@ public class CCNLibraryTest extends LibraryTestBase {
 			byte [] content1,
 			byte [] content2) throws Exception {
 
-		CCNSegmenter segmenter = new CCNSegmenter(docName, library);
-		ContentObject version1 = segmenter.newVersion(docName, content1);
+		CCNWriter writer = new CCNWriter(docName, library);
+		ContentObject version1 = writer.newVersion(docName, content1);
 		System.out.println("Inserted first version as: " + version1.name());
 		Assert.assertNotNull("New version is null!", version1);
 
@@ -243,7 +243,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 		System.out.println("Latest version name: " + latestVersion.name());
 
 		ContentObject version2 = 
-			segmenter.newVersion(docName, content2);
+			writer.newVersion(docName, content2);
 
 		Assert.assertNotNull("New version is null!", version2);
 		System.out.println("Inserted second version as: " + version2.name());
@@ -273,11 +273,11 @@ public class CCNLibraryTest extends LibraryTestBase {
 	@Test
 	public void testLinks() throws Exception {
 		ContentName baseName = ContentName.fromNative("/libraryTest/linkTest/base");
-		CCNSegmenter segmenter = new CCNSegmenter(baseName, library);
-		segmenter.put(baseName, "base".getBytes());
+		CCNWriter writer = new CCNWriter(baseName, library);
+		writer.put(baseName, "base".getBytes());
 		LinkReference lr = new LinkReference(baseName);
 		ContentName linkName = ContentName.fromNative("/libraryTest/linkTest/l1");
-		segmenter.put(linkName, lr);
+		library.put(linkName, lr);
 		ContentObject linkContent = library.get(linkName, 5000);
 		ArrayList<ContentObject> al = library.dereference(linkContent, 5000);
 		Assert.assertEquals(al.size(), 1);
@@ -286,7 +286,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 		LinkReference[] references = new LinkReference[2];
 		LinkReference lr2 = new LinkReference(baseName);
 		ContentName linkName2 = ContentName.fromNative("/libraryTest/linkTest/l2");
-		segmenter.put(linkName2, lr2);
+		library.put(linkName2, lr2);
 		references[0] = lr;
 		references[1] = lr2;
 		ContentName c1 = ContentName.fromNative("/libraryTest/linkTest/collection");
@@ -303,10 +303,10 @@ public class CCNLibraryTest extends LibraryTestBase {
 	@Test
 	public void testCollections() throws Exception {
 		ContentName baseName = ContentName.fromNative("/libraryTest/collectionTest/base");
-		CCNSegmenter segmenter = new CCNSegmenter(baseName, library);
+		CCNWriter writer = new CCNWriter(baseName, library);
 		ContentName collectionName = ContentName.fromNative("/libraryTest/collectionTest/myCollection");
 		ContentName[] references = new ContentName[2];
-		segmenter.newVersion(baseName, "base".getBytes());
+		writer.newVersion(baseName, "base".getBytes());
 		references[0] = ContentName.fromNative("/libraryTest/collectionTest/r1");
 		references[1] = ContentName.fromNative("/libraryTest/collectionTest/r2");
 		Collection collection = library.put(collectionName, references);
@@ -400,19 +400,19 @@ public class CCNLibraryTest extends LibraryTestBase {
 		byte[] data2 = "data2".getBytes();
 
 		try {
-			CCNSegmenter segmenter = new CCNSegmenter(key, library);
+			CCNWriter writer = new CCNWriter(key, library);
 			Interest ik = new Interest(key);
 			TestListener tl = new TestListener(library, ik, mainThread);
 			library.expressInterest(ik, 
 					tl);
-			segmenter.put(ContentName.fromNative(key), data1);
+			writer.put(ContentName.fromNative(key), data1);
 			// wait a little bit before we move on...
 			try {
 				Thread.sleep(1000);
 			} catch (InterruptedException e) {
 			}
 
-			segmenter.put(ContentName.fromNative(key), data2);
+			writer.put(ContentName.fromNative(key), data2);
 
 			// wait a little bit before we move on...
 			try {

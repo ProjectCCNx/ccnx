@@ -43,12 +43,15 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
     protected ContentType 	_type;
     protected KeyLocator 	_locator;
     protected Integer 		_freshnessSeconds;
+    protected Integer		_lastSegment; // DKS TODO -- add to schema (Michael), encoder/decoder
    
     public SignedInfo(
     		PublisherKeyID publisher, 
 			Timestamp timestamp, 
 			ContentType type,
-			KeyLocator locator
+			KeyLocator locator,
+			Integer freshnessSeconds,
+			Integer lastSegment
 			) {
     	super();
     	this._publisher = publisher;
@@ -57,7 +60,18 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
     		this._timestamp = now();
     	this._type = type;
     	this._locator = locator;
+    	this._freshnessSeconds = freshnessSeconds;
+    	this._lastSegment = lastSegment;
      }
+    
+    public SignedInfo(
+    		PublisherKeyID publisher, 
+			Timestamp timestamp, 
+			ContentType type,
+			KeyLocator locator) {
+    	this(publisher, timestamp, type, locator, null, null);
+    }
+
     
     public SignedInfo(
     		PublisherKeyID publisher, 
@@ -67,28 +81,31 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
     	this(publisher, null, type, locator);
     }
  
-    /**
-     * For queries.
-     * @param publisher
-     */
-    public SignedInfo(PublisherKeyID publisher) {
-    	super();
-    	this._publisher = publisher;
+    public SignedInfo(
+    		PublisherKeyID publisher, 
+			ContentType type,
+			KeyLocator locator,
+			Integer freshnessSeconds,
+			Integer lastSegment
+			) {
+    	this(publisher, null, type, locator, freshnessSeconds, lastSegment);
     }
 
     public SignedInfo(SignedInfo other) {
-    	this(other.publisherKeyID(), 
-    		 other.timestamp(),
-    		 other.type(), 
-       		 other.keyLocator());
+    	this(other.getPublisherKeyID(), 
+    		 other.getTimestamp(),
+    		 other.getType(), 
+       		 other.getKeyLocator(),
+       		 other.getFreshnessSeconds(),
+       		 other.getLastSegment());
     }
 
     public SignedInfo() {}
         
 	public SignedInfo clone() {
 		// more clonage needed
-		KeyLocator kl = keyLocator();
-		return new SignedInfo(publisherKeyID(), timestamp(), type(), null == kl ? null : kl.clone());
+		KeyLocator kl = getKeyLocator();
+		return new SignedInfo(getPublisherKeyID(), getTimestamp(), getType(), null == kl ? null : kl.clone());
 	}
 
 	public boolean empty() {
@@ -97,7 +114,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
     }
     
     public boolean emptyPublisher() {
-    	if ((null != publisherKeyID()) && (0 != publisher().length))
+    	if ((null != getPublisherKeyID()) && (0 != getPublisher().length))
     		return false;
     	return true;
     }
@@ -119,23 +136,32 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
      * to store as final.
      * @return
      */
- 	public final byte[] publisher() { return _publisher.id(); }
+ 	public final byte[] getPublisher() { return _publisher.id(); }
  	
-	public final PublisherKeyID publisherKeyID() { return _publisher; }
+	public final PublisherKeyID getPublisherKeyID() { return _publisher; }
 
-	public final Timestamp timestamp() { return _timestamp; }
+	public final Timestamp getTimestamp() { return _timestamp; }
 	
-	public final KeyLocator keyLocator() { return _locator; }
+	public final KeyLocator getKeyLocator() { return _locator; }
 	
-	public final int freshnessSeconds() { return _freshnessSeconds; }
+	public final int getFreshnessSeconds() { return _freshnessSeconds; }
 	
 	public boolean emptyFreshnessSeconds() {
 		return (null == _freshnessSeconds);
 	}
 	
-	public final ContentType type() { return _type; }
+	public final int getLastSegment() { return _lastSegment; }
 	
-	public String typeName() { return typeToName(type()); }
+	public boolean emptyLastSegment() {
+		return (null == _lastSegment);
+	}
+	
+	// Do we want to make this an immutable type (or merely an immutable member of ContentObject?)
+	public void setLastSegment(int lastSegment) { _lastSegment = lastSegment; }
+
+	public final ContentType getType() { return _type; }
+	
+	public String getTypeName() { return typeToName(getType()); }
 	
 	public static final String typeToName(ContentType type) {
 		if (ContentTypeNames.get(type) == null) {
@@ -172,6 +198,8 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 			_freshnessSeconds = decoder.readIntegerElement(FRESHNESS_SECONDS_ELEMENT);
 		}
 		
+		// DKS TODO -- last timestamp
+		
 		if (decoder.peekStartElement(KeyLocator.KEY_LOCATOR_ELEMENT)) {
 			_locator = new KeyLocator();
 			_locator.decode(decoder);
@@ -187,26 +215,27 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 		encoder.writeStartElement(SIGNED_INFO_ELEMENT);
 		
 		if (!emptyPublisher()) {
-			publisherKeyID().encode(encoder);
+			getPublisherKeyID().encode(encoder);
 		}
 
 		// TODO DKS - make match correct XML timestamp format
 		// dateTime	1999-05-31T13:20:00.000-05:00
 		// currently writing 2007-10-23 21:36:05.828
 		if (!emptyTimestamp()) {
-			encoder.writeDateTime(TIMESTAMP_ELEMENT, timestamp());
+			encoder.writeDateTime(TIMESTAMP_ELEMENT, getTimestamp());
 		}
 		
 		if (!emptyContentType()) {
-			encoder.writeElement(CONTENT_TYPE_ELEMENT, typeName());
+			encoder.writeElement(CONTENT_TYPE_ELEMENT, getTypeName());
 		}
 		
 		if (!emptyFreshnessSeconds()) {
-			encoder.writeIntegerElement(FRESHNESS_SECONDS_ELEMENT, freshnessSeconds());
+			encoder.writeIntegerElement(FRESHNESS_SECONDS_ELEMENT, getFreshnessSeconds());
 		}
+		// DKS TODO -- last timestamp
 		
 		if (!emptyKeyLocator()) {
-			keyLocator().encode(encoder);
+			getKeyLocator().encode(encoder);
 		}
 
 		encoder.writeEndElement();   		
@@ -221,30 +250,35 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 		if (getClass() != obj.getClass())
 			return false;
 		final SignedInfo other = (SignedInfo) obj;
-		if (publisherKeyID() == null) {
-			if (other.publisherKeyID() != null)
+		if (getPublisherKeyID() == null) {
+			if (other.getPublisherKeyID() != null)
 				return false;
-		} else if (!publisherKeyID().equals(other.publisherKeyID()))
+		} else if (!getPublisherKeyID().equals(other.getPublisherKeyID()))
 			return false;
-		if (timestamp() == null) {
-			if (other.timestamp() != null)
+		if (getTimestamp() == null) {
+			if (other.getTimestamp() != null)
 				return false;
-		} else if (!timestamp().equals(other.timestamp()))
+		} else if (!getTimestamp().equals(other.getTimestamp()))
 			return false;
-		if (type() == null) {
-			if (other.type() != null)
+		if (getType() == null) {
+			if (other.getType() != null)
 				return false;
-		} else if (!type().equals(other.type()))
+		} else if (!getType().equals(other.getType()))
 			return false;
-		if (keyLocator() == null) {
-			if (other.keyLocator() != null)
+		if (getKeyLocator() == null) {
+			if (other.getKeyLocator() != null)
 				return false;
-		} else if (!keyLocator().equals(other.keyLocator()))
+		} else if (!getKeyLocator().equals(other.getKeyLocator()))
 			return false;
 		if (emptyFreshnessSeconds()) {
-			if (other.emptyFreshnessSeconds())
+			if (!other.emptyFreshnessSeconds())
 				return false;
-		} else if (freshnessSeconds() != other.freshnessSeconds())
+		} else if (getFreshnessSeconds() != other.getFreshnessSeconds())
+			return false;
+		if (emptyLastSegment()) {
+			if (!other.emptyLastSegment())
+				return false;
+		} else if (getLastSegment() != other.getLastSegment())
 			return false;
 		return true;
 	}
@@ -258,6 +292,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 		result = PRIME * result + ((_type == null) ? 0 : _type.hashCode());
 		result = PRIME * result + ((_locator == null) ? 0 : _locator.hashCode());
 		result = PRIME * result + ((_freshnessSeconds == null) ? 0 : _freshnessSeconds.hashCode());
+		result = PRIME * result + ((_lastSegment == null) ? 0 : _lastSegment.hashCode());
 		return result;
 	}
 	
@@ -271,7 +306,5 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 
 	public static Timestamp now() {
 		return new Timestamp(System.currentTimeMillis());
-	}
-
-	
+	}	
 }

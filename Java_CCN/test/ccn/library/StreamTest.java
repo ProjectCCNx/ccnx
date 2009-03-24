@@ -69,7 +69,7 @@ public class StreamTest extends BlockReadWriteTest {
 	public void doPuts(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, 
 				SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException, NoSuchAlgorithmException {
 		ContentName thisName = VersioningProfile.versionName(ContentName.fromNative(baseName, fileName), count);
-		CCNOutputStream ostream = new CCNOutputStream(thisName, null, null, null, library);
+		CCNOutputStream ostream = new CCNOutputStream(thisName, null, null, library);
 		sema.release();	// put channel open
 		
 		Library.logger().info("Opened descriptor for writing: " + thisName);

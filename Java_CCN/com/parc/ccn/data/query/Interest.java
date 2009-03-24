@@ -169,7 +169,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public void responseFilter(byte [] responseFilter) { _responseFilter = responseFilter; }
 	
 	public boolean matches(ContentObject result) {
-		return matches(result, (null != result.signedInfo()) ? result.signedInfo().publisherKeyID() : null);
+		return matches(result, (null != result.signedInfo()) ? result.signedInfo().getPublisherKeyID() : null);
 	}
 
 	/**

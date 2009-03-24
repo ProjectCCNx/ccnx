@@ -10,8 +10,9 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.Signature;
+import com.parc.ccn.data.security.SignedInfo;
+import com.parc.ccn.library.profiles.SegmentationProfile;
 
 /**
  * This class extends your basic Merkle tree to 
@@ -155,8 +156,8 @@ public class CCNMerkleTree extends MerkleTree {
 	}
 	
 	protected ContentName computeName(int leafIndex) {
-		// DKS TODO -- non-string integers in names
-		return ContentName.fromNative(baseName(), Integer.toString(baseNameIndex() + leafIndex));
+		// DKS TODO -- support other segmentation patterns
+		return SegmentationProfile.segmentName(baseName(), baseNameIndex() + leafIndex);
 	}
 	
 	public int baseNameIndex() { return _baseNameIndex; }

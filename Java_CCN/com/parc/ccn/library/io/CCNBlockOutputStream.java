@@ -3,7 +3,6 @@ package com.parc.ccn.library.io;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
 import java.security.SignatureException;
 
 import javax.xml.stream.XMLStreamException;
@@ -14,6 +13,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.SignedInfo;
+import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNSegmenter;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.SegmentationProfile.SegmentNumberType;
@@ -62,10 +62,10 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 	 * @throws IOException
 	 */
 	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type,
-								PublisherKeyID publisher,
-								KeyLocator locator, PrivateKey signingKey,
-								CCNSegmenter cw) throws XMLStreamException, IOException {
-		super(publisher, locator, signingKey, cw);
+								KeyLocator locator, PublisherKeyID publisher,
+								CCNFlowControl flowControl) throws XMLStreamException, IOException {
+		// DKS TODO -- this stream defines a certain set of segmenter behaviors, set them up
+		super(locator, publisher, new CCNSegmenter(flowControl));
 		
 		_type = type;
 
@@ -84,7 +84,7 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 	}
 	
 	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type) throws XMLStreamException, IOException {
-		this(baseName, type, null, null, null, null);
+		this(baseName, type, null, null, null);
 	}
 		
 	@Override
@@ -109,7 +109,7 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 			}
 			Assert.fail("Need to fix block numbering!");
 			ContentName blockName = ContentName.fromNative(_baseName, Integer.toString(_blockIndex));
-			_writer.put(blockName, b, _type, _publisher, _locator, _signingKey);
+			_segmenter.put(blockName, b, _type, _locator, _publisher);
 			_bytesWritten += b.length;
 		} catch (InvalidKeyException e) {
 			throw new IOException("Cannot sign content -- invalid key!: " + e.getMessage());

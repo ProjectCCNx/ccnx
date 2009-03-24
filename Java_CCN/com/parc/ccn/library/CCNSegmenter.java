@@ -26,63 +26,39 @@ import com.parc.ccn.security.crypto.CCNMerkleTree;
 public class CCNSegmenter {
 
 	public static final String PROP_BLOCK_SIZE = "ccn.lib.blocksize";
-	public static final String HEADER_NAME = ".header"; // DKS currently not used; see below.
-
 	protected int _blockSize = SegmentationProfile.DEFAULT_BLOCKSIZE;
 	protected int _blockIncrement = SegmentationProfile.DEFAULT_INCREMENT;
 	protected int _blockScale = SegmentationProfile.DEFAULT_SCALE;
 	protected SegmentNumberType _sequenceType = SegmentNumberType.SEGMENT_FIXED_INCREMENT;
-	
+
 	protected CCNLibrary _library;
 	// Eventually may not contain this; callers may access it exogenously.
 	protected CCNFlowControl _flowControl;
-	
-	protected ContentName _baseName;
-	protected ContentType _type;
-	protected PrivateKey _signingKey; // eventually separate into signing object
-	protected KeyLocator _locator;
-	
+
 	/**
-	 * Eventually add encryption.
+	 * Eventually add encryption, allow control of authentication algorithm.
 	 * @param baseName
 	 * @param locator
 	 * @param signingKey
 	 */
-	@Deprecated // potentially, TBD
-	CCNSegmenter(ContentName baseName, ContentType type, KeyLocator locator, PrivateKey signingKey,
-				CCNFlowControl flowControl) {
-		this(flowControl);
-		
-		ContentName nameToOpen = baseName;
-		// If someone gave us a fragment name, at least strip that.
-		if (SegmentationProfile.isSegment(nameToOpen)) {
-			 nameToOpen = SegmentationProfile.segmentRoot(nameToOpen);
-		}
-		_type = type;
-
-		if (SegmentationProfile.isSegment(nameToOpen)) {
-			// DKS TODO: should we do this?
-			nameToOpen = SegmentationProfile.segmentRoot(nameToOpen);
-		}
-
-		// Don't go looking for or adding versions. Might be unversioned,
-		// unfragmented content (e.g. RTP streams). Assume caller knows
-		// what name they want.
-		_baseName = nameToOpen;	
+	public CCNSegmenter() throws ConfigurationException, IOException {
+		this(CCNLibrary.open());
 	}
-	
-	@Deprecated // potentially, TBD
-	CCNSegmenter(ContentName baseName, ContentType type, KeyLocator locator, PrivateKey signingKey,
-				CCNLibrary library) {
-		this(baseName, type, locator, signingKey, new CCNFlowControl(baseName, library));
+
+	public CCNSegmenter(CCNLibrary library) {
+		this(new CCNFlowControl(library));
 	}
-	
+
 	public CCNSegmenter(CCNFlowControl flowControl) {
+		if ((null == flowControl) || (null == flowControl.getLibrary())) {
+			// Tries to get a library or make a flow control, yell if we fail.
+			throw new IllegalArgumentException("CCNSegmenter: must provide a valid library or flow controller.");
+		} 
 		_flowControl = flowControl;
-		_library = flowControl.getLibrary();
+		_library = _flowControl.getLibrary();
 		initializeBlockSize();
 	}
-	
+
 	protected void initializeBlockSize() {
 		String blockString = System.getProperty(PROP_BLOCK_SIZE);
 		if (null != blockString) {
@@ -96,6 +72,10 @@ public class CCNSegmenter {
 		}
 	}
 	
+	public CCNLibrary getLibrary() { return _library; }
+	
+	public CCNFlowControl getFlowControl() { return _flowControl; }
+
 	/**
 	 * Set the fragmentation block size to use
 	 * @param blockSize
@@ -103,7 +83,7 @@ public class CCNSegmenter {
 	public void setBlockSize(int blockSize) {
 		_blockSize = blockSize;
 	}
-	
+
 	public int getBlockSize() {
 		return _blockSize;
 	}
@@ -122,18 +102,18 @@ public class CCNSegmenter {
 		setSequenceType(SegmentNumberType.SEGMENT_BYTE_COUNT);
 		setBlockScale(scale);
 	}
-	
+
 	public void setSequenceType(SegmentNumberType seqType) { _sequenceType = seqType; }
-	
+
 	/**
 	 * Set increment between block numbers.
 	 * @param blockWidth
 	 */
 	public void setBlockIncrement(int blockIncrement) { _blockIncrement = blockIncrement; }
-	
+
 	public void setBlockScale(int blockScale) { _blockScale = blockScale; }
-	
-	
+
+
 	/**
 	 * If small enough, doesn't fragment. Otherwise, does.
 	 * Return ContentObject of the thing they put (in the case
@@ -213,36 +193,68 @@ public class CCNSegmenter {
 	 * @throws IOException 
 	 **/
 	public ContentObject put(ContentName name, byte [] contents,
-							SignedInfo.ContentType type,
-							PublisherKeyID publisher, KeyLocator locator,
-							PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
-	
-		if (null == signingKey)
-			signingKey = _library.keyManager().getDefaultSigningKey();
+			SignedInfo.ContentType type,
+			Integer freshnessSeconds, boolean lastBlocks,
+			KeyLocator locator, 
+			PublisherKeyID publisher) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+
+		if (null == publisher) {
+			publisher = _library.keyManager().getDefaultKeyID();
+		}
+		PrivateKey signingKey = _library.keyManager().getSigningKey(publisher);
 
 		if (null == locator)
 			locator = _library.keyManager().getKeyLocator(signingKey);
-		
-		if (null == publisher) {
-			publisher = _library.keyManager().getPublisherKeyID(signingKey);
+
+		if (null == type) {
+			// DKS TODO -- default to DATA
+			type = ContentType.FRAGMENT;
 		}
+
+		// Remove existing segmentation markers on end of name, at point right
+		// before put. If do it sooner, have to re-do it just to be sure.
+		if (SegmentationProfile.isSegment(name)) {
+			Library.logger().info("Asked to store fragments under fragment name: " + name + ". Stripping fragment information");
+		}
+
+		// DKS TODO -- take encryption overhead into account
 		if (contents.length >= getBlockSize()) {
-			return fragmentedPut(name, contents, type, publisher, locator, signingKey);
+			return fragmentedPut(name, contents, type, freshnessSeconds, lastBlocks, locator, publisher);
 		} else {
 			try {
-				// Generate signature
-				ContentObject co = new ContentObject(name, new SignedInfo(publisher, type, locator), contents, signingKey);
-				return _flowControl.put(co);
+				// We should only get here on a single-fragment object, where the lastBlocks
+				// argument is false (omitted).
+				return putFragment(name, SegmentationProfile.baseSegment(), contents, type,
+						null, freshnessSeconds, SegmentationProfile.baseSegment(),
+						locator, publisher);
 			} catch (IOException e) {
-				Library.logger().warning("This should not happen: put failed with an IOExceptoin.");
+				Library.logger().warning("This should not happen: put failed with an IOException.");
 				Library.warningStackTrace(e);
 				throw e;
 			}
 		}
 	}
-	
+
+	public ContentObject put(
+			ContentName name, byte [] contents,
+			SignedInfo.ContentType type,
+			boolean lastBlocks,
+			KeyLocator locator, 
+			PublisherKeyID publisher) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+		return put(name, contents, type, null, lastBlocks, locator, publisher);
+	}
+
+	public ContentObject put(
+			ContentName name, byte [] contents,
+			SignedInfo.ContentType type,
+			KeyLocator locator, 
+			PublisherKeyID publisher) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+		return put(name, contents, type, false, locator, publisher);
+	}
+
 	/** 
-	 * Low-level fragmentation interface.
+	 * Low-level fragmentation interface. Assume arguments have been cleaned
+	 * prior to arrival -- name is not already segmented, type is set, etc.
 	 * @param name
 	 * @param contents
 	 * @param type
@@ -254,75 +266,73 @@ public class CCNSegmenter {
 	 * @throws NoSuchAlgorithmException
 	 * @throws IOException 
 	 */
-	protected ContentObject fragmentedPut(ContentName name, byte [] contents,
-										SignedInfo.ContentType type,
-										PublisherKeyID publisher, KeyLocator locator,
-										PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+	protected ContentObject fragmentedPut(
+			ContentName name, byte [] contents,
+			SignedInfo.ContentType type,
+			Integer freshnessSeconds, boolean lastBlocks,
+			KeyLocator locator, 
+			PublisherKeyID publisher) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+
 		// This will call into CCNBase after picking appropriate credentials
 		// take content, blocksize (static), divide content into array of 
 		// content blocks, call hash fn for each block, call fn to build merkle
 		// hash tree.   Build header, for each block, get authinfo for block,
 		// (with hash tree, block identifier, timestamp -- SQLDateTime)
 		// insert header using mid-level insert, low-level insert for actual blocks.
-		// We should implement a non-fragmenting put.   Won't do block stuff, will need to do latest version stuff.
 		int blockSize = getBlockSize();
 		int nBlocks = (contents.length + blockSize - 1) / blockSize;
 		int from = 0;
 		byte[][] contentBlocks = new byte[nBlocks][];
-		Timestamp timestamp = new Timestamp(System.currentTimeMillis());
-//		Library.logger().info("fragmentedPut: dividing content of " + contents.length + " into " + nBlocks + " of maximum length " + blockSize);
+		
+		// DKS TODO -- drop number of copies; only do copies into content objects.
+		//		Library.logger().info("fragmentedPut: dividing content of " + contents.length + " into " + nBlocks + " of maximum length " + blockSize);
 		for (int i = 0; i < nBlocks; i++) {
 			int to = from + blockSize;
 			// nice Arrays operations not in 1.5
 			int end = (to < contents.length) ? to : contents.length;
-//			contentBlocks[i] = Arrays.copyOfRange(contents, from, (to < contents.length) ? to : contents.length);
+			//			contentBlocks[i] = Arrays.copyOfRange(contents, from, (to < contents.length) ? to : contents.length);
 			contentBlocks[i] = new byte[end-from];
 			System.arraycopy(contents, from, contentBlocks[i], 0, end-from);
-//			System.out.println("block " + i + " length " + (end-from) + " from " + from + " to " + to + " end " + end + " content max " + contents.length);
+			//			System.out.println("block " + i + " length " + (end-from) + " from " + from + " to " + to + " end " + end + " content max " + contents.length);
 			from += end-from;
 		}
-		
-		if (SegmentationProfile.isSegment(name)) {
-			Library.logger().info("Asked to store fragments under fragment name: " + name + ". Stripping fragment information");
-		}
-		
-		ContentName fragmentBaseName = SegmentationProfile.segmentRoot(name);
-		
+
+		Timestamp timestamp = SignedInfo.now();
+
 		CCNMerkleTree tree = 
-			putMerkleTree(fragmentBaseName, SegmentationProfile.baseSegment(),
-						  contentBlocks, contentBlocks.length, 
-						  0, contentBlocks[contentBlocks.length-1].length, 
-						  timestamp, publisher, locator, signingKey);
-		
+			putMerkleTree(name, SegmentationProfile.baseSegment(),
+					contentBlocks, contentBlocks.length, 
+					0, contentBlocks[contentBlocks.length-1].length, type,
+					timestamp, freshnessSeconds, lastBlocks, locator, publisher);
+
 		// construct the headerBlockContents;
 		byte [] contentDigest = CCNDigestHelper.digest(contents);
 		return putHeader(name, contents.length, blockSize, contentDigest, tree.root(),
-						 timestamp, publisher, locator, signingKey);
+				timestamp, locator, publisher);
 	}
-	
-	public ContentObject putHeader(ContentName name, int contentLength, int blockSize, byte [] contentDigest, 
-				byte [] contentTreeAuthenticator,
-				Timestamp timestamp, 
-				PublisherKeyID publisher, KeyLocator locator,
-				PrivateKey signingKey) throws IOException, InvalidKeyException, SignatureException {
 
-		if (null == signingKey)
-			signingKey = _library.keyManager().getDefaultSigningKey();
+	public ContentObject putHeader(
+			ContentName name, int contentLength, int blockSize, byte [] contentDigest, 
+			byte [] contentTreeAuthenticator,
+			Timestamp timestamp, 
+			KeyLocator locator, 
+			PublisherKeyID publisher) throws IOException, InvalidKeyException, SignatureException {
+
+		if (null == publisher) {
+			publisher = _library.keyManager().getDefaultKeyID();
+		}
+		PrivateKey signingKey = _library.keyManager().getSigningKey(publisher);
 
 		if (null == locator)
 			locator = _library.keyManager().getKeyLocator(signingKey);
-		
-		if (null == publisher) {
-			publisher = _library.keyManager().getPublisherKeyID(signingKey);
-		}		
 
 		// Add another differentiator to avoid making header
 		// name prefix of other valid names?
-		ContentName headerName = headerName(name);
+		ContentName headerName = SegmentationProfile.headerName(name);
 		Header header;
 		try {
 			header = new Header(headerName, contentLength, contentDigest, contentTreeAuthenticator, blockSize,
-															publisher, locator, signingKey);
+					publisher, locator, signingKey);
 		} catch (XMLStreamException e) {
 			Library.logger().warning("This should not happen: we cannot encode our own header!");
 			Library.warningStackTrace(e);
@@ -338,40 +348,7 @@ public class CCNSegmenter {
 		}
 		return headerResult;		
 	}
-	
-	/**
-	 * Might want to make headerName not prefix of  rest of
-	 * name, but instead different subleaf. For example,
-	 * the header name of v.6 of name <name>
-	 * was originally <name>/_v_/6; could be 
-	 * <name>/_v_/6/.header or <name>/_v_/6/_m_/.header;
-	 * the full uniqueified names would be:
-	 * <name>/_v_/6/<sha256> or <name>/_v_/6/.header/<sha256>
-	 * or <name>/_v_/6/_m_/.header/<sha256>.
-	 * The first version has the problem that the
-	 * header name (without the unknown uniqueifier)
-	 * is the prefix of the block names; so we must use the
-	 * scheduler or other cleverness to get the header ahead of the blocks.
-	 * The second version of this makes it impossible to easily
-	 * write a reader that gets both single-block content and
-	 * fragmented content (and we don't want to turn the former
-	 * into always two-block content).
-	 * So having tried the second route, we're moving back to the former.
-	 * @param name
-	 * @return
-	 */
-	public static ContentName headerName(ContentName name) {
-		// Want to make sure we don't add a header name
-		// to a fragment. Go back up to the fragment root.
-		// Currently no header name added.
-		if (SegmentationProfile.isSegment(name)) {
-			// return new ContentName(fragmentRoot(name), HEADER_NAME);
-			return SegmentationProfile.segmentRoot(name);
-		}
-		// return new ContentName(name, HEADER_NAME);
-		return name;
-	}
-	
+
 	/**
 	 * Puts a single block of content using a fragment naming convention.
 	 * @param name
@@ -387,26 +364,40 @@ public class CCNSegmenter {
 	 * @throws SignatureException 
 	 * @throws InvalidKeyException 
 	 */
-	public ContentObject putFragment(ContentName name, int fragmentNumber, byte [] contents,
-									 Timestamp timestamp, PublisherKeyID publisher, KeyLocator locator,
-									 PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
-		if (null == signingKey)
-			signingKey = _library.keyManager().getDefaultSigningKey();
+	public ContentObject putFragment(
+			ContentName name, long fragmentNumber, byte [] contents,
+			ContentType type, 
+			Timestamp timestamp, 
+			Integer freshnessSeconds, Integer lastSegment,
+			KeyLocator locator, 
+			PublisherKeyID publisher) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+
+		if (null == publisher) {
+			publisher = _library.keyManager().getDefaultKeyID();
+		}
+		PrivateKey signingKey = _library.keyManager().getSigningKey(publisher);
 
 		if (null == locator)
 			locator = _library.keyManager().getKeyLocator(signingKey);
-		
-		if (null == publisher) {
-			publisher = _library.keyManager().getPublisherKeyID(signingKey);
-		}		
 
-		// DKS TODO -- non-string integers in names
-		// DKS TODO -- change fragment markers
-		return put(ContentName.fromNative(SegmentationProfile.segmentRoot(name),
-								   						Integer.toString(fragmentNumber)),
-				   contents, ContentType.FRAGMENT, publisher, locator, signingKey);
+		if (null == type) {
+			// DKS TODO -- default to DATA
+			type = ContentType.FRAGMENT;
+		}
+
+		ContentName rootName = SegmentationProfile.segmentRoot(name);
+		_flowControl.addNameSpace(rootName);
+
+		ContentObject co = 
+			new ContentObject(SegmentationProfile.segmentName(rootName, 
+					SegmentationProfile.baseSegment()),
+					new SignedInfo(publisher, 
+							type, locator,
+							freshnessSeconds, lastSegment), 
+							contents, signingKey);
+		return _flowControl.put(co);
 	}
-	
+
 	/**
 	 * Puts an entire Merkle tree worth of content using fragment naming conventions.
 	 * @param name
@@ -429,31 +420,40 @@ public class CCNSegmenter {
 			ContentName name, int baseNameIndex,
 			byte [][] contentBlocks, int blockCount, 
 			int baseBlockIndex, int lastBlockLength,
+			ContentType type, 
 			Timestamp timestamp,
-			PublisherKeyID publisher, KeyLocator locator,
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+			Integer freshnessSeconds, boolean lastBlocks,
+			KeyLocator locator, 
+			PublisherKeyID publisher) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 
-		if (null == signingKey)
-			signingKey = _library.keyManager().getDefaultSigningKey();
+		if (null == publisher) {
+			publisher = _library.keyManager().getDefaultKeyID();
+		}
+		PrivateKey signingKey = _library.keyManager().getSigningKey(publisher);
 
 		if (null == locator)
 			locator = _library.keyManager().getKeyLocator(signingKey);
-		
-		if (null == publisher) {
-			publisher = _library.keyManager().getPublisherKeyID(signingKey);
-		}		
-		
+
+		ContentName rootName = SegmentationProfile.segmentRoot(name);
+		_flowControl.addNameSpace(rootName);
+
+		if (null == type) {
+			// DKS TODO -- default to DATA
+			type = ContentType.FRAGMENT;
+		}
 		// Digest of complete contents
 		// If we're going to unique-ify the block names
 		// (or just in general) we need to incorporate the names
 		// and signedInfos in the MerkleTree blocks. 
 		// For now, this generates the root signature too, so can
 		// ask for the signature for each block.
-		// DKS TODO -- change fragment markers
-    	CCNMerkleTree tree = 
-    		new CCNMerkleTree(SegmentationProfile.segmentRoot(name), baseNameIndex,
-    						  new SignedInfo(publisher, timestamp, ContentType.FRAGMENT, locator),
-    						  contentBlocks, false, blockCount, baseBlockIndex, lastBlockLength, signingKey);
+		// DKS TODO -- enable different fragment numbering schemes
+		// DKS TODO -- limit number of copies in creation of MerkleTree -- have to make
+		//  a copy when making CO, don't make extra ones.
+		CCNMerkleTree tree = 
+			new CCNMerkleTree(rootName, baseNameIndex,
+					new SignedInfo(publisher, timestamp, type, locator),
+					contentBlocks, false, blockCount, baseBlockIndex, lastBlockLength, signingKey);
 
 		for (int i = 0; i < blockCount-1; i++) {
 			try {
@@ -480,40 +480,10 @@ public class CCNSegmenter {
 			Library.logger().warning("This should not happen: we cannot put our own last block!");
 			Library.warningStackTrace(e);
 			throw e;
-		}
-		
-		
+		}		
+
 		// Caller needs both root signature and root itself. For now, give back the tree.
 		return tree;
-	}
-	
-
-	
-	/**
-	 * DKS not currently adding a header-specific prefix. A header, however,
-	 * should not be a fragment.
-	 * @param headerName
-	 * @return
-	 */
-	public static ContentName headerRoot(ContentName headerName) {
-		// Do we want to handle fragment roots, etc, here too?
-		if (!isHeader(headerName)) {
-			Library.logger().warning("Name " + headerName + " is not a header name.");
-			throw new IllegalArgumentException("Name " + headerName.toString() + " is not a header name.");
-		}
-		// Strip off any header-specific prefix info if we
-		// add any. If not present, does nothing. Would be faster not to bother
-		// calling at all.
-		// return headerName.cut(HEADER_NAME); 
-		return headerName;
-	}
-	
-	public static boolean isHeader(ContentName name) {
-		// with on-path header, no way to tell except
-		// that it wasn't a fragment. With separate name,
-		// easier to handle.
-	//	return (name.contains(HEADER_NAME));
-		return (!SegmentationProfile.isSegment(name));
 	}
 
 }

@@ -5,7 +5,6 @@ import java.security.InvalidKeyException;
 import java.security.InvalidParameterException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
-import java.security.PublicKey;
 import java.security.Security;
 import java.security.SignatureException;
 import java.util.ArrayList;
@@ -21,15 +20,12 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.content.Collection;
-import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
-import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
-import com.parc.ccn.library.io.CCNDescriptor;
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.network.CCNNetworkManager;
@@ -146,7 +142,43 @@ public class CCNLibrary extends CCNBase {
 	
 	/**
 	 * DKS -- TODO -- collection and link functions move to collection and link, respectively
+	 * @throws IOException 
+	 * @throws NoSuchAlgorithmException 
+	 * @throws SignatureException 
+	 * @throws InvalidKeyException 
 	 */
+	public Link put(ContentName name, LinkReference target) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+		return put(name, target, null, null, null);
+	}
+	
+	public Link put(
+			ContentName name, 
+			LinkReference target,
+			PublisherKeyID publisher, KeyLocator locator,
+			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+
+		if (null == signingKey)
+			signingKey = keyManager().getDefaultSigningKey();
+
+		if (null == locator)
+			locator = keyManager().getKeyLocator(signingKey);
+		
+		if (null == publisher) {
+			publisher = keyManager().getPublisherKeyID(signingKey);
+		}
+		
+		try {
+			Link link = new Link(VersioningProfile.versionName(name), target, 
+					publisher, locator, signingKey);
+			put(link);
+			return link;
+		} catch (XMLStreamException e) {
+			Library.logger().warning("Cannot canonicalize a standard container!");
+			Library.warningStackTrace(e);
+			throw new IOException("Cannot canonicalize a standard container!");
+		}
+	}
+
 	/**
 	 * The following 3 methods create a Collection with the argument references,
 	 * put it, and return it. Note that fragmentation is not handled.
@@ -193,7 +225,7 @@ public class CCNLibrary extends CCNBase {
 		}
 		
 		try {
-			Collection collection = new Collection(getNextVersionName(name), references, 
+			Collection collection = new Collection(VersioningProfile.versionName(name), references, 
 					publisher, locator, signingKey);
 			put(collection);
 			return collection;
@@ -241,7 +273,7 @@ public class CCNLibrary extends CCNBase {
 		ContentObject co = getLatestVersion(name, null, timeout);
 		if (null == co)
 			return null;
-		if (co.signedInfo().type() != ContentType.COLLECTION)
+		if (co.signedInfo().getType() != ContentType.COLLECTION)
 			throw new IOException("Content is not a collection");
 		Collection collection = Collection.contentToCollection(co);
 		return collection;
@@ -334,7 +366,7 @@ public class CCNLibrary extends CCNBase {
 			 InvalidKeyException, SignatureException {
 		LinkReference[] newReferences = new LinkReference[references.size()];
 		references.toArray(newReferences);
-		Collection updatedCollection = createCollection(getNextVersionName(oldCollection.name()),
+		Collection updatedCollection = createCollection(VersioningProfile.versionName(oldCollection.name()),
 				newReferences, publisher, locator, signingKey);
 		put(updatedCollection);
 		return updatedCollection;
@@ -369,7 +401,7 @@ public class CCNLibrary extends CCNBase {
 	 */
 	public Link getLink(ContentName name, long timeout) throws IOException {
 		ContentObject co = getLatestVersion(name, null, timeout);
-		if (co.signedInfo().type() != ContentType.LINK)
+		if (co.signedInfo().getType() != ContentType.LINK)
 			throw new IOException("Content is not a link reference");
 		Link reference = new Link();
 		try {
@@ -388,7 +420,7 @@ public class CCNLibrary extends CCNBase {
 	 * @throws IOException
 	 */
 	public Link decodeLinkReference(ContentObject co) throws IOException {
-		if (co.signedInfo().type() != ContentType.LINK)
+		if (co.signedInfo().getType() != ContentType.LINK)
 			throw new IOException("Content is not a collection");
 		Link reference = new Link();
 		try {
@@ -413,18 +445,18 @@ public class CCNLibrary extends CCNBase {
 		ArrayList<ContentObject> result = new ArrayList<ContentObject>();
 		if (null == content)
 			return null;
-		if (content.signedInfo().type() == ContentType.LINK) {
+		if (content.signedInfo().getType() == ContentType.LINK) {
 			Link link = Link.contentToLinkReference(content);
-			ContentObject linkCo = dereferenceLink(link, content.signedInfo().publisherKeyID(), timeout);
+			ContentObject linkCo = dereferenceLink(link, content.signedInfo().getPublisherKeyID(), timeout);
 			if (linkCo == null) {
 				return null;
 			}
 			result.add(linkCo);
-		} else if (content.signedInfo().type() == ContentType.COLLECTION) {
+		} else if (content.signedInfo().getType() == ContentType.COLLECTION) {
 			Collection collection = Collection.contentToCollection(content);
 			ArrayList<LinkReference> al = collection.contents();
 			for (LinkReference lr : al) {
-				ContentObject linkCo = dereferenceLink(lr, content.signedInfo().publisherKeyID(), timeout);
+				ContentObject linkCo = dereferenceLink(lr, content.signedInfo().getPublisherKeyID(), timeout);
 				if (linkCo != null)
 					result.add(linkCo);
 			}
@@ -465,17 +497,17 @@ public class CCNLibrary extends CCNBase {
 	 * Things are not as simple as this. Most things
 	 * are fragmented. Maybe make this a simple interface
 	 * that puts them back together and returns a byte []?
+	 * DKS TODO -- doesn't use publisher
 	 * @throws IOException 
 	 */
 	public ContentObject getLatestVersion(ContentName name, PublisherKeyID publisher, long timeout) throws IOException {
-		ContentName currentName = getLatestVersionName(name, publisher);
 		
-		if (null == currentName) // no latest version
-			return null;
-		
-		// Need recursive get. The currentName we have here is
-		// just the prefix of this version.
-		return get(currentName, timeout);
+		if (VersioningProfile.isVersioned(name)) {
+			return getLatest(name, timeout);
+		} else {
+			ContentName firstVersionName = VersioningProfile.versionName(name, VersioningProfile.baseVersion());
+			return getLatest(firstVersionName, timeout);
+		}
 	}
 
 	public ContentObject get(ContentName name, long timeout) throws IOException {
@@ -545,10 +577,10 @@ public class CCNLibrary extends CCNBase {
 	 * with state-based read.
 	 */
 	
-	public RepositoryOutputStream repoOpen(ContentName name, PublisherKeyID publisher, 
-			KeyLocator locator, PrivateKey signingKey) 
+	public RepositoryOutputStream repoOpen(ContentName name, 
+			KeyLocator locator, PublisherKeyID publisher) 
 				throws IOException, XMLStreamException {
-		return new RepositoryOutputStream(name, publisher, locator, signingKey, this); 
+		return new RepositoryOutputStream(name, locator, publisher, this); 
 	}
 	
 
@@ -595,16 +627,16 @@ public class CCNLibrary extends CCNBase {
 	 * @throws InvalidParameterException
 	 */
 	public ContentObject getLatest(ContentName name, byte[][] omissions, long timeout) 
-			throws MalformedContentNameStringException, IOException, InvalidParameterException {
+			throws IOException, InvalidParameterException {
 		return get(Interest.last(name, omissions), timeout);
 	}
 	
-	public ContentObject getLatest(ContentName name, long timeout) throws InvalidParameterException, MalformedContentNameStringException, 
+	public ContentObject getLatest(ContentName name, long timeout) throws InvalidParameterException, 
 			IOException {
 		return getLatest(name, null, timeout);
 	}
 	
-	public ContentObject getLatest(ContentObject content, int prefixCount, long timeout) throws InvalidParameterException, MalformedContentNameStringException, 
+	public ContentObject getLatest(ContentObject content, int prefixCount, long timeout) throws InvalidParameterException, 
 			IOException {
 		return getLatest(contentObjectToContentName(content, prefixCount), null, timeout);
 	}

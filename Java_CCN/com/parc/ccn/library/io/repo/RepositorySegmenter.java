@@ -35,7 +35,7 @@ public class RepositorySegmenter extends CCNFlowControl {
 		public Interest handleContent(ArrayList<ContentObject> results,
 				Interest interest) {
 			for (ContentObject co : results) {
-				if (co.signedInfo().type() != ContentType.LEAF)
+				if (co.signedInfo().getType() != ContentType.LEAF)
 					continue;
 				RepositoryInfo repoInfo = new RepositoryInfo();
 				try {

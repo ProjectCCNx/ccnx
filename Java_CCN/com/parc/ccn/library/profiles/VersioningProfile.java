@@ -128,6 +128,17 @@ public class VersioningProfile implements CCNProfile {
 		
 		return parent.isPrefixOf(version);
 	}
+	
+	public static long getVersionNumber(ContentName version) {
+		if (isVersioned(version)) {
+			byte [] fcomp = version.component(version.count() - 2);
+			// Will behave properly with everything but first fragment of fragmented content.
+			if (fcomp.length == 1)
+				return 0;
+			return Long.valueOf(ContentName.componentPrintURI(fcomp, 1, fcomp.length-1));
+		}
+		return -1; // unexpected, but not invalid		
+	}
 
 	/**
 	 * Extract the version information from this name.
@@ -136,8 +147,8 @@ public class VersioningProfile implements CCNProfile {
 	 * 
 	 * @param name
 	 * @return Version number, or -1 if not versioned.
-	 */
-	public static int getVersionNumber(ContentName name) {
+
+/*	public static int getVersionNumber(ContentName name) {
 		int offset = name.containsWhere(VERSION_MARKER);
 		if (offset < 0)
 			return VersioningProfile.baseVersion() - 1; // no version information.
@@ -159,7 +170,7 @@ public class VersioningProfile implements CCNProfile {
 	private ContentName getNextVersionName(ContentName name) {
 		return VersioningProfile.versionName(name, getNextVersionNumber(name));
 	}
-	
+*/	
 	/**
 	 * Because getting just the latest version number would
 	 * require getting the latest version name first, 
@@ -169,7 +180,7 @@ public class VersioningProfile implements CCNProfile {
 	 * DKS TODO match on publisher key id, or full publisher options?
 	 * @return If null, no existing version found.
 	 */
-	public ContentName getLatestVersionName(ContentName name, PublisherKeyID publisher) {
+/*	public ContentName getLatestVersionName(ContentName name, PublisherKeyID publisher) {
 		// Challenge -- Dan's proposed latest version syntax,
 		// <name>/latestversion/1/2/3... works well if there
 		// are 12 versions, not if there are a million. 
@@ -196,7 +207,7 @@ public class VersioningProfile implements CCNProfile {
 		}
 		return null;
 	}
-
+*/
 	/**
 	 * Control whether versions start at 0 or 1.
 	 * @return

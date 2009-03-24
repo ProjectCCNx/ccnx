@@ -1,7 +1,6 @@
 package com.parc.ccn.library.io.repo;
 
 import java.io.IOException;
-import java.security.PrivateKey;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -19,21 +18,22 @@ import com.parc.ccn.library.io.CCNOutputStream;
 
 public class RepositoryOutputStream extends CCNOutputStream {
 	
-	protected RepositorySegmenter _segmenter;
+	protected RepositorySegmenter _repoFlowControl;
 
-	/**
-	 * DKS TODO -- CCNOutputStream will let sublcasses specify flow control.
-	 */
-	public RepositoryOutputStream(ContentName name, PublisherKeyID publisher,
-			KeyLocator locator, PrivateKey signingKey, CCNLibrary library)
+	public RepositoryOutputStream(ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
+		this(name, null, null, library);
+	}
+	
+	public RepositoryOutputStream(ContentName name, 
+			KeyLocator locator, PublisherKeyID publisher, CCNLibrary library)
 			throws XMLStreamException, IOException {
-		super(name, publisher, locator, signingKey, new RepositorySegmenter(name, library));
-		_segmenter = (RepositorySegmenter)_writer;
-		_segmenter.init(getBaseName());
+		super(name, locator, publisher, new RepositorySegmenter(name, library));
+		_repoFlowControl = (RepositorySegmenter)_segmenter.getFlowControl();
+		_repoFlowControl.init(getBaseName());
 	}
 	
 	public void close() throws IOException {
 		super.close();
-		_segmenter.close();
+		_repoFlowControl.close();
 	}
 }

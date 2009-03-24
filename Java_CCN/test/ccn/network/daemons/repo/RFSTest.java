@@ -213,6 +213,6 @@ public class RFSTest extends RepoTestBase {
 		ContentObject testContent = repo.getContent(interest);
 		Assert.assertFalse(testContent == null);
 		Assert.assertEquals(data, new String(testContent.content()));
-		Assert.assertTrue(testContent.signedInfo().publisherKeyID().equals(publisher));
+		Assert.assertTrue(testContent.signedInfo().getPublisherKeyID().equals(publisher));
 	}
 }

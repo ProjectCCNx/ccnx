@@ -7,7 +7,9 @@ import java.util.ArrayList;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.config.SystemConfiguration;
+import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.library.profiles.SegmentationProfile;
 
 public class BaseSecurityTest extends BasePutGetTest {
 	
@@ -36,8 +38,10 @@ public class BaseSecurityTest extends BasePutGetTest {
 	
 	public void checkPutResults(ContentObject putResult) {
 		try {
-			// Reconsistute content and verify signature.
-			int val = Integer.parseInt(new String(putResult.name().component(putResult.name().count()-1)));
+			// Check content and verify signature.
+			// If we have a static fragmentation marker, remove it.
+			ContentName baseName = SegmentationProfile.segmentRoot(putResult.name());
+			int val = Integer.parseInt(new String(baseName.component(baseName.count()-1)));
 			ContentObject co = new ContentObject(putResult.name(), putResult.signedInfo(), Integer.toString(val).getBytes(), putResult.signature());
 			boolean b = co.verify(null);
 			if (!b) {

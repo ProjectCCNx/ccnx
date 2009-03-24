@@ -32,6 +32,9 @@ import com.parc.ccn.data.util.XMLDecoder;
  * a name and optionally some content authentication
  * information to specify whose value for the name
  * to take.
+ * 
+ * DKS TODO -- needs massive refactoring, to a CCN-backed,
+ * fragmented object. 
  * @author smetters
  *
  */
@@ -40,8 +43,7 @@ public class Link extends ContentObject {
 	
 	protected static final String LINK_ELEMENT = "Link";
 	public Link(ContentName name,
-			 ContentName targetName,
-			 LinkAuthenticator targetAuthenticator,
+			 LinkReference target,
 			 PublisherKeyID publisher,
 			 KeyLocator locator,
 			 Signature signature
@@ -49,10 +51,30 @@ public class Link extends ContentObject {
 		super(name, new SignedInfo(publisher, ContentType.LINK, locator), null, 
 				(Signature)null);
 		_signature = signature;
-		_data = new LinkReference(targetName, targetAuthenticator);
+		_data = target;
 		_content = _data.encode();
 	}
 	
+	public Link(ContentName name,
+			 ContentName targetName,
+			 LinkAuthenticator targetAuthenticator,
+			 PublisherKeyID publisher,
+			 KeyLocator locator,
+			 Signature signature
+			 ) throws XMLStreamException {
+		this(name, new LinkReference(targetName, targetAuthenticator), publisher, locator, signature);
+	}
+
+	public Link(ContentName name,
+			 LinkReference target,
+			 PublisherKeyID publisher, 
+			 KeyLocator locator,
+			 PrivateKey signingKey
+			 ) throws XMLStreamException, InvalidKeyException, SignatureException {
+		this(name, target, publisher, locator, (Signature)null);
+		_signature = sign(name, signedInfo(), _content, signingKey);
+	}
+
 	public Link(ContentName name,
 			 ContentName targetName,
 			 LinkAuthenticator targetAuthenticator,
@@ -60,8 +82,7 @@ public class Link extends ContentObject {
 			 KeyLocator locator,
 			 PrivateKey signingKey
 			 ) throws XMLStreamException, InvalidKeyException, SignatureException {
-		this(name, targetName, targetAuthenticator, publisher, locator, (Signature)null);
-		_signature = sign(name, signedInfo(), _content, signingKey);
+		this(name, new LinkReference(targetName, targetAuthenticator), publisher, locator, (Signature)null);
 	}
 	
 	public Link(ContentName name,

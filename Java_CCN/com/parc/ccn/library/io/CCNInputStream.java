@@ -15,7 +15,7 @@ import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.CCNSegmenter;
+import com.parc.ccn.library.profiles.SegmentationProfile;
 
 /**
  * Perform sequential reads on any block-oriented CCN content, namely that
@@ -371,10 +371,10 @@ public class CCNInputStream extends CCNAbstractInputStream implements CCNInteres
 	}
 	
 	protected void retrieveHeader(ContentName baseName, PublisherID publisher) throws IOException {
-		Interest headerInterest = new Interest(CCNSegmenter.headerName(baseName), publisher);
+		Interest headerInterest = new Interest(SegmentationProfile.headerName(baseName), publisher);
 		headerInterest.additionalNameComponents(1);
 		Library.logger().info("retrieveHeader: base name " + baseName);
-		Library.logger().info("retrieveHeader: header name " + CCNSegmenter.headerName(baseName));
+		Library.logger().info("retrieveHeader: header name " + SegmentationProfile.headerName(baseName));
 		_library.expressInterest(headerInterest, this);
 	}
 
@@ -382,10 +382,10 @@ public class CCNInputStream extends CCNAbstractInputStream implements CCNInteres
 								  Interest interest) {
 		// This gives us back the header.
 		for (ContentObject co : results) {
-			Library.logger().info("CCNInputStream: retrieved header: " + co.name() + " type: " + co.signedInfo().typeName());
+			Library.logger().info("CCNInputStream: retrieved header: " + co.name() + " type: " + co.signedInfo().getTypeName());
 			if (null != _header) {
 				continue;
-			} else if (co.signedInfo().type() == SignedInfo.ContentType.HEADER) {
+			} else if (co.signedInfo().getType() == SignedInfo.ContentType.HEADER) {
 				// First we verify. (Or should get have done this for us?)
 				// We don't bother complaining unless we have more than one
 				// header that matches. Given that we would complain for

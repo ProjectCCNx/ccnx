@@ -3,7 +3,6 @@ package com.parc.ccn.library.io;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
 import java.security.SignatureException;
 
 import com.parc.ccn.Library;
@@ -27,11 +26,18 @@ import com.parc.ccn.library.profiles.VersioningProfile;
  */
 public class CCNWriter {
 	
-	protected CCNLibrary _library;
 	protected CCNSegmenter _segmenter;
 	
+	public CCNWriter(ContentName namespace, CCNLibrary library) {
+		this(new CCNFlowControl(namespace, library));
+	}
+	
+	public CCNWriter(String namespace, CCNLibrary library) throws MalformedContentNameStringException {
+		this(new CCNFlowControl(ContentName.fromNative(namespace), library));
+	}
+
 	public CCNWriter(CCNLibrary library) {
-		_library = library;
+		this(new CCNFlowControl(library));
 	}
 
 	public CCNWriter(CCNFlowControl flowControl) {
@@ -48,8 +54,8 @@ public class CCNWriter {
 	 * @throws IOException 
 	 */
 	public ContentObject put(ContentName name, byte[] contents, 
-			PublisherKeyID publisher) throws SignatureException, IOException {
-		return put(name, contents, SignedInfo.ContentType.LEAF, publisher);
+							PublisherKeyID publisher) throws SignatureException, IOException {
+		return put(name, contents, null, publisher);
 	}
 	
 	public ContentObject put(String name, String contents) throws SignatureException, MalformedContentNameStringException, IOException {
@@ -58,28 +64,28 @@ public class CCNWriter {
 	
 	public ContentObject put(ContentName name, byte[] contents) 
 				throws SignatureException, IOException {
-		return put(name, contents, _library.getDefaultPublisher());
+		return put(name, contents, null);
 	}
 
 	public ContentObject put(CCNFlowControl cf, ContentName name, byte[] contents, 
 							PublisherKeyID publisher) throws SignatureException, IOException {
-		return put(name, contents, SignedInfo.ContentType.LEAF, publisher);
+		return put(name, contents, null, publisher);
 	}
 
 	public ContentObject put(ContentName name, byte[] contents, 
 							SignedInfo.ContentType type,
 							PublisherKeyID publisher) throws SignatureException, IOException {
 		try {
-			return _segmenter.put(name, contents, type, publisher, 
-					   				null, null);
+			return _segmenter.put(name, contents, type, null, 
+					   				publisher);
 		} catch (InvalidKeyException e) {
-			Library.logger().info("InvalidKeyException using default key.");
+			Library.logger().info("InvalidKeyException using key for publisher " + publisher + ".");
 			throw new SignatureException(e);
 		} catch (SignatureException e) {
-			Library.logger().info("SignatureException using default key.");
+			Library.logger().info("SignatureException using key for publisher " + publisher + ".");
 			throw e;
 		} catch (NoSuchAlgorithmException e) {
-			Library.logger().info("NoSuchAlgorithmException using default key.");
+			Library.logger().info("NoSuchAlgorithmException using key for publisher " + publisher + ".");
 			throw new SignatureException(e);
 		}
 	}
@@ -88,33 +94,19 @@ public class CCNWriter {
 	 * This does the actual work of generating a new version's name and doing 
 	 * the corresponding put. Handles fragmentation.
 	 */
-	public ContentObject addVersion(
-			ContentName name, int version, byte [] contents,
+	public ContentObject newVersion(
+			ContentName name, byte [] contents,
 			ContentType type,
-			PublisherKeyID publisher, KeyLocator locator,
-			PrivateKey signingKey) throws SignatureException, 
+			KeyLocator locator, PublisherKeyID publisher) throws SignatureException, 
 			InvalidKeyException, NoSuchAlgorithmException, IOException {
-
-		if (null == signingKey)
-			signingKey = _library.keyManager().getDefaultSigningKey();
-
-		if (null == locator)
-			locator = _library.keyManager().getKeyLocator(signingKey);
-		
-		if (null == publisher) {
-			publisher = _library.keyManager().getPublisherKeyID(signingKey);
-		}
-		
-		if (null == type)
-			type = ContentType.LEAF;
 		
 		// Construct new name
 		// <name>/<VERSION_MARKER>/<version_number>
-		ContentName versionedName = VersioningProfile.versionName(name, version);
+		ContentName versionedName = VersioningProfile.versionName(name);
 
-		// put result
+		// put result; segmenter will fill in defaults
 		return _segmenter.put(versionedName, contents, 
-				 				 type, publisher, locator, signingKey);
+				 			  type, locator, publisher);
 	}
 	
 	/**
@@ -127,10 +119,12 @@ public class CCNWriter {
 	 * Even if we've read it, it isn't atomic -- by the time
 	 * we write our new version, someone else might have updated
 	 * the number...
+	 * @throws NoSuchAlgorithmException 
+	 * @throws InvalidKeyException 
 	 */
 	public ContentObject newVersion(ContentName name,
-								   byte[] contents) throws SignatureException, IOException {
-		return newVersion(name, contents, _library.getDefaultPublisher());
+								    byte[] contents) throws SignatureException, IOException, InvalidKeyException, NoSuchAlgorithmException {
+		return newVersion(name, contents, null);
 	}
 
 	/**
@@ -140,39 +134,14 @@ public class CCNWriter {
 	 * @param publisher Who we want to publish this as,
 	 * not who published the existing version. If null, uses the default publishing
 	 * identity.
+	 * @throws NoSuchAlgorithmException 
+	 * @throws InvalidKeyException 
 	 */
 	public ContentObject newVersion(
 			ContentName name, 
 			byte[] contents,
-			PublisherKeyID publisher) throws SignatureException, IOException {
-		return newVersion(name, contents, ContentType.LEAF, publisher);
+			PublisherKeyID publisher) throws SignatureException, IOException, InvalidKeyException, NoSuchAlgorithmException {
+		return newVersion(name, contents, null, null, publisher);
 	}
 	
-	/**
-	 * A further specialization of newVersion that allows specification of the content type,
-	 * primarily to handle links and collections. Could be made protected.
-	 * @param publisher Who we want to publish this as,
-	 * not who published the existing version.
-	 */
-	public ContentObject newVersion(
-			ContentName name, 
-			byte[] contents,
-			ContentType type, // handle links and collections
-			PublisherKeyID publisher) throws SignatureException, IOException {
-
-		try {
-			// DKS TODO fix versioning with versioning profile changes
-			return addVersion(name, _library.getNextVersionNumber(name), contents, type, publisher, null, null);
-		} catch (InvalidKeyException e) {
-			Library.logger().info("InvalidKeyException using default key.");
-			throw new SignatureException(e);
-		} catch (SignatureException e) {
-			Library.logger().info("SignatureException using default key.");
-			throw e;
-		} catch (NoSuchAlgorithmException e) {
-			Library.logger().info("NoSuchAlgorithmException using default key.");
-			throw new SignatureException(e);
-		}
-	}
-
 }

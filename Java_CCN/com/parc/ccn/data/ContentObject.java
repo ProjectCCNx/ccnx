@@ -90,6 +90,16 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
     }
     
     /**
+     * DKS - temporary subclass constructor to get around brokenness in current
+     * header, etc implementation. Remove after those no longer derive from CO.
+     */
+    protected ContentObject(ContentName name, SignedInfo signedInfo) {
+    	_name = name;
+    	_signedInfo = signedInfo;
+    	// must set content and signature.
+    }
+    
+    /**
      * Used for testing.
      */
 	public static ContentObject buildContentObject(ContentName name, byte[] contents, 
@@ -358,16 +368,16 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			try {
 				publicKey = 
 					KeyManager.getKeyManager().getPublicKey(
-						signedInfo.publisherKeyID(),
-						signedInfo.keyLocator());
+						signedInfo.getPublisherKeyID(),
+						signedInfo.getKeyLocator());
 
 				if (null == publicKey) {
 					throw new SignatureException("Cannot obtain public key to verify object: " + name + ". Key locator: " + 
-						signedInfo.keyLocator());
+						signedInfo.getKeyLocator());
 				}
 			} catch (IOException e) {
 				throw new SignatureException("Cannot obtain public key to verify object: " + name + ". Key locator: " + 
-						signedInfo.keyLocator() + " exception: " + e.getMessage(), e);				
+						signedInfo.getKeyLocator() + " exception: " + e.getMessage(), e);				
 			}
 		}
 	
@@ -379,14 +389,14 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 					(signature.digestAlgorithm() == null) ? CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM : signature.digestAlgorithm(),
 							publicKey);
 		if (!result) {
-			Library.logger().warning("Verification failure: " + name + " timestamp: " + signedInfo.timestamp() + " signed content: " + 
+			Library.logger().warning("Verification failure: " + name + " timestamp: " + signedInfo.getTimestamp() + " signed content: " + 
 										CCNDigestHelper.printBytes(CCNDigestHelper.digest(preparedContent),SystemConfiguration.DEBUG_RADIX));
 			SystemConfiguration.logObject(Level.FINEST, "Verification failure:", new ContentObject(name, signedInfo, content, signature));
 			if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
 				SystemConfiguration.outputDebugData(name, new ContentObject(name, signedInfo, content, signature));
 			}
 		} else {
-			Library.logger().finer("Verification success: " + name + " timestamp: " + signedInfo.timestamp() + " signed content: " + new BigInteger(1, CCNDigestHelper.digest(preparedContent)).toString(SystemConfiguration.DEBUG_RADIX));
+			Library.logger().finer("Verification success: " + name + " timestamp: " + signedInfo.getTimestamp() + " signed content: " + new BigInteger(1, CCNDigestHelper.digest(preparedContent)).toString(SystemConfiguration.DEBUG_RADIX));
 		}
 		return result;
 		
@@ -401,16 +411,16 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			try {
 				publicKey = 
 					KeyManager.getKeyManager().getPublicKey(
-						signedInfo.publisherKeyID(),
-						signedInfo.keyLocator());
+						signedInfo.getPublisherKeyID(),
+						signedInfo.getKeyLocator());
 
 				if (null == publicKey) {
 					throw new SignatureException("Cannot obtain public key to verify object. Key locator: " + 
-						signedInfo.keyLocator());
+						signedInfo.getKeyLocator());
 				}
 			} catch (IOException e) {
 				throw new SignatureException("Cannot obtain public key to verify object. Key locator: " + 
-						signedInfo.keyLocator() + " exception: " + e.getMessage(), e);				
+						signedInfo.getKeyLocator() + " exception: " + e.getMessage(), e);				
 			}
 		}
 	
@@ -434,7 +444,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		byte [] blockDigest =
 			CCNDigestHelper.digest(
 				CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, 
-				prepareContent(name(), signedInfo(),content()));
+				prepareContent(name(), signedInfo(), content()));
 		return signature().computeProxy(blockDigest, true);
 	}
 	
@@ -490,7 +500,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	 * Type-checkers for built-in types.
 	 */
 	public boolean isType(ContentType type) {
-		return signedInfo().type().equals(type);
+		return signedInfo().getType().equals(type);
 	}
 
 	public boolean isFragment() {

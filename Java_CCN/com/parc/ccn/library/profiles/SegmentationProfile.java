@@ -2,6 +2,7 @@ package com.parc.ccn.library.profiles;
 
 import java.math.BigInteger;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 
 /**
@@ -36,6 +37,8 @@ public class SegmentationProfile implements CCNProfile {
 	public static final byte NO_SEGMENT_POSTFIX = 0x00;
 	public static final byte [] FIRST_SEGMENT_MARKER = new byte[]{SEGMENT_MARKER};
 	public static final byte [] NO_SEGMENT_MARKER = new byte[]{SEGMENT_MARKER, NO_SEGMENT_POSTFIX};
+
+	public static final String HEADER_NAME = ".header"; // DKS currently not used; see below.
 
 	/**
 	 * What does its fragment number mean?
@@ -74,13 +77,14 @@ public class SegmentationProfile implements CCNProfile {
 			baseName = segmentRoot(name);
 		}
 		byte [] fcomp = null;
-		if (0 == index) {
+		if (baseSegment() == index) {
 			fcomp = FIRST_SEGMENT_MARKER;
 		} else {
 			byte [] iarr = BigInteger.valueOf(index).toByteArray();
-			fcomp = new byte[iarr.length + 1];
+			fcomp = new byte[iarr.length + ((0 == iarr[0]) ? 0 : 1)];
 			fcomp[0] = SEGMENT_MARKER;
-			System.arraycopy(iarr, 0, fcomp, 0, iarr.length);
+			int offset = ((0 == iarr[0]) ? 1 : 0);
+			System.arraycopy(iarr, offset, fcomp, 1, iarr.length-offset);
 		}
 		return new ContentName(baseName, fcomp);
 	}
@@ -97,5 +101,67 @@ public class SegmentationProfile implements CCNProfile {
 			return Long.valueOf(ContentName.componentPrintURI(fcomp, 1, fcomp.length-1));
 		}
 		return -1; // unexpected, but not invalid
+	}
+
+	/**
+	 * DKS -- may remove headers entirely, or more likely move to a file metadata
+	 * profile. For now, leave the code here temporarily.
+	 * DKS not currently adding a header-specific prefix. A header, however,
+	 * should not be a fragment.
+	 * @param headerName
+	 * @return
+	 */
+	public static ContentName headerRoot(ContentName headerName) {
+		// Do we want to handle fragment roots, etc, here too?
+		if (!SegmentationProfile.isHeader(headerName)) {
+			Library.logger().warning("Name " + headerName + " is not a header name.");
+			throw new IllegalArgumentException("Name " + headerName.toString() + " is not a header name.");
+		}
+		// Strip off any header-specific prefix info if we
+		// add any. If not present, does nothing. Would be faster not to bother
+		// calling at all.
+		// return headerName.cut(HEADER_NAME); 
+		return headerName;
+	}
+
+	public static boolean isHeader(ContentName name) {
+		// with on-path header, no way to tell except
+		// that it wasn't a fragment. With separate name,
+		// easier to handle.
+	//	return (name.contains(HEADER_NAME));
+		return (!isSegment(name));
+	}
+
+	/**
+	 * Might want to make headerName not prefix of  rest of
+	 * name, but instead different subleaf. For example,
+	 * the header name of v.6 of name <name>
+	 * was originally <name>/_v_/6; could be 
+	 * <name>/_v_/6/.header or <name>/_v_/6/_m_/.header;
+	 * the full uniqueified names would be:
+	 * <name>/_v_/6/<sha256> or <name>/_v_/6/.header/<sha256>
+	 * or <name>/_v_/6/_m_/.header/<sha256>.
+	 * The first version has the problem that the
+	 * header name (without the unknown uniqueifier)
+	 * is the prefix of the block names; so we must use the
+	 * scheduler or other cleverness to get the header ahead of the blocks.
+	 * The second version of this makes it impossible to easily
+	 * write a reader that gets both single-block content and
+	 * fragmented content (and we don't want to turn the former
+	 * into always two-block content).
+	 * So having tried the second route, we're moving back to the former.
+	 * @param name
+	 * @return
+	 */
+	public static ContentName headerName(ContentName name) {
+		// Want to make sure we don't add a header name
+		// to a fragment. Go back up to the fragment root.
+		// Currently no header name added.
+		if (isSegment(name)) {
+			// return new ContentName(fragmentRoot(name), HEADER_NAME);
+			return segmentRoot(name);
+		}
+		// return new ContentName(name, HEADER_NAME);
+		return name;
 	}
 }

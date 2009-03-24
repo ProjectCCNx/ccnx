@@ -76,7 +76,7 @@ public class BlockReadWriteTest extends BasePutGetTest {
 	@Override
 	public void doPuts(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException, NoSuchAlgorithmException {
 		ContentName thisName = VersioningProfile.versionName(ContentName.fromNative(baseName, fileName), count);
-		CCNDescriptor desc = new CCNDescriptor(thisName, null, null, null, library);     
+		CCNDescriptor desc = new CCNDescriptor(thisName, null, null, library);     
 		sema.release();	// put channel open
 		
 		Library.logger().info("Opened descriptor for writing: " + thisName);

@@ -54,9 +54,9 @@ public class put_file {
 				
 				CCNOutputStream ostream;
 				if (rawMode)
-					ostream = new CCNOutputStream(argName, library.getDefaultPublisher(), null, null, library);
+					ostream = new CCNOutputStream(argName, library);
 				else
-					ostream = new RepositoryOutputStream(argName, library.getDefaultPublisher(), null, null, library);
+					ostream = new RepositoryOutputStream(argName, library);
 				do_write(ostream, theFile);
 				
 				System.out.println("Inserted file " + args[startArg + 1] + ".");
@@ -83,9 +83,9 @@ public class put_file {
 					// would be version = library.latestVersion(argName) + 1;
 					CCNOutputStream ostream;
 					if (rawMode)
-						ostream = new CCNOutputStream(nodeName, null, null, null, library);
+						ostream = new CCNOutputStream(nodeName, library);
 					else
-						ostream = new RepositoryOutputStream(nodeName, null, null, null, library);
+						ostream = new RepositoryOutputStream(nodeName, library);
 					do_write(ostream, theFile);
 					
 					System.out.println("Inserted file " + args[i] + ".");

@@ -80,8 +80,8 @@ public class RepoIOTest extends RepoTestBase {
 		fis.read(content);
 		fis.close();
 		RepositoryOutputStream ros = library.repoOpen(ContentName.fromNative(_globalPrefix + '/' + 
-				_repoName + '/' + Repository.REPO_DATA + '/' + Repository.REPO_POLICY), 
-				library.getDefaultPublisher(), null, null);
+				_repoName + '/' + Repository.REPO_DATA + '/' + Repository.REPO_POLICY), null,
+				library.getDefaultPublisher());
 		ros.write(content, 0, content.length);
 		ros.close();
 		Thread.sleep(1000);
@@ -96,7 +96,8 @@ public class RepoIOTest extends RepoTestBase {
 		byte value = 1;
 		for (int i = 0; i < data.length; i++)
 			data[i] = value++;
-		RepositoryOutputStream ros = library.repoOpen(ContentName.fromNative("/testNameSpace/stream"), library.getDefaultPublisher(), null, null);
+		RepositoryOutputStream ros = library.repoOpen(ContentName.fromNative("/testNameSpace/stream"), 
+														null, library.getDefaultPublisher());
 		ros.setBlockSize(100);
 		ros.write(data, 0, data.length);
 		ros.close();
@@ -123,7 +124,7 @@ public class RepoIOTest extends RepoTestBase {
 		ContentObject testContent = library.get(interest, 10000);
 		Assert.assertFalse(testContent == null);
 		Assert.assertEquals(data, new String(testContent.content()));
-		Assert.assertTrue(testContent.signedInfo().publisherKeyID().equals(publisher));
+		Assert.assertTrue(testContent.signedInfo().getPublisherKeyID().equals(publisher));
 	}
 	private void checkDataFromFile(String name, byte[] data) throws RepositoryException {
 		File testFile = new File(_repoTestDir + File.separator + name);
@@ -137,7 +138,7 @@ public class RepoIOTest extends RepoTestBase {
 	
 	private void checkNameSpace(String contentName, boolean expected) throws Exception {
 		ContentName name = ContentName.fromNative(contentName);
-		RepositoryOutputStream ros = library.repoOpen(name, library.getDefaultPublisher(), null, null);
+		RepositoryOutputStream ros = library.repoOpen(name, null, library.getDefaultPublisher());
 		byte [] data = "Testing 1 2 3".getBytes();
 		ros.write(data, 0, data.length);
 		ContentName baseName = ros.getBaseName();

@@ -3,7 +3,6 @@ package com.parc.ccn.library.io;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
 import java.security.SignatureException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -17,6 +16,7 @@ import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
+import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNSegmenter;
 import com.parc.ccn.library.profiles.SegmentationProfile;
@@ -35,7 +35,6 @@ import com.parc.ccn.security.crypto.CCNMerkleTree;
  *    MHT is a maximum of BLOCK_BUF_COUNT (TODO: calculate overhead), and a minimum of
  *    the number of blocks with data when flush() is called.
  *    
- * TODO contemplate renaming this class.
  * @author smetters
  *
  */
@@ -47,43 +46,49 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * paths and signatures and so on.
 	 */
 	protected static final int BLOCK_BUF_COUNT = 128;
-	
+
 	protected int _totalLength = 0;
 	protected int _blockOffset = 0; // offset into current block
 	protected byte [][] _blockBuffers = null;
 	protected int _baseNameIndex; // base name index of current set of block buffers.
 	protected int _blockSize = SegmentationProfile.DEFAULT_BLOCKSIZE;
-	
+
 	protected Timestamp _timestamp; // timestamp we use for writing, set to first time we write
-	
+
 	protected CCNDigestHelper _dh;
-	
+
 	protected ArrayList<byte []> _roots = new ArrayList<byte[]>();
 
-	public CCNOutputStream(ContentName name, PublisherKeyID publisher,
-						   KeyLocator locator, PrivateKey signingKey,
-						   CCNSegmenter cw) throws XMLStreamException, IOException {
-		
-		super(publisher, locator, signingKey, cw);
-		
+	public CCNOutputStream(ContentName name, 
+			KeyLocator locator, PublisherKeyID publisher,
+			CCNLibrary library) throws XMLStreamException, IOException {
+		this(name, locator, publisher, new CCNSegmenter(library));
+	}
+	
+	public CCNOutputStream(ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
+		this(name, null, null, library);
+	}
+
+	protected CCNOutputStream(ContentName name, 
+			KeyLocator locator, PublisherKeyID publisher,
+			CCNSegmenter segmenter) throws XMLStreamException, IOException {
+
+		super(locator, publisher, segmenter);
+
 		ContentName nameToOpen = name;
 		if (SegmentationProfile.isSegment(nameToOpen)) {
 			// DKS TODO: should we do this?
 			nameToOpen = SegmentationProfile.segmentRoot(nameToOpen);
 		}
-				
+
 		// Assume if name is already versioned, caller knows what name
 		// to write. If caller specifies authentication information,
 		// ignore it for now.
+		// DKS TODO -- do we want this stream to version on output?
 		if (!VersioningProfile.isVersioned(nameToOpen)) {
 			// if publisherID is null, will get any publisher
-			ContentName currentVersionName = 
-				_library.getLatestVersionName(nameToOpen, null);
-			if (null == currentVersionName) {
-				nameToOpen = VersioningProfile.versionName(nameToOpen, VersioningProfile.baseVersion());
-			} else {
-				nameToOpen = VersioningProfile.versionName(currentVersionName, (VersioningProfile.getVersionNumber(currentVersionName) + 1));
-			}
+			nameToOpen = 
+				VersioningProfile.versionName(nameToOpen);
 		}
 		// Should have name of root of version we want to
 		// open. Get the header block. Already stripped to
@@ -93,14 +98,14 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		_baseName = nameToOpen;
 		_blockBuffers = new byte[BLOCK_BUF_COUNT][];
 		_baseNameIndex = SegmentationProfile.baseSegment();
-		
+
 		_dh = new CCNDigestHelper();
 	}
-	
-	public CCNOutputStream(ContentName name, PublisherKeyID publisher,
-			   KeyLocator locator, PrivateKey signingKey,
-			   CCNLibrary library) throws XMLStreamException, IOException {
-		this(name, publisher, locator, signingKey, new CCNSegmenter(name, library));
+
+	protected CCNOutputStream(ContentName name, 
+			KeyLocator locator, PublisherKeyID publisher,
+			CCNFlowControl flowControl) throws XMLStreamException, IOException {
+		this(name, locator, publisher, new CCNSegmenter(flowControl));
 	}
 
 	/**
@@ -110,7 +115,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	public void setBlockSize(int blockSize) {
 		_blockSize = blockSize;
 	}
-	
+
 	public int getBlockSize() {
 		return _blockSize;
 	}
@@ -119,7 +124,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	public void close() throws IOException {
 		try {
 			closeNetworkData();
-			_writer.waitForPutDrain();
+			_segmenter.getFlowControl().waitForPutDrain();
 		} catch (InvalidKeyException e) {
 			throw new IOException("Cannot sign content -- invalid key!: " + e.getMessage());
 		} catch (SignatureException e) {
@@ -135,7 +140,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	public void flush() throws IOException {
 		flush(false); // if there is a partial block, don't flush it
 	}
-	
+
 	protected void flush(boolean flushLastBlock) throws IOException {
 		try {
 			flushToNetwork(flushLastBlock);
@@ -203,7 +208,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		}
 		return 0;
 	}
-	
+
 	protected void closeNetworkData() throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InterruptedException {
 		// Special case; if we don't need to fragment, don't; write a single block
 		// with no header in the place we would normally write the header. Can't
@@ -214,12 +219,13 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			// maybe need put with offset and length
 			if ((_blockIndex == 1) || (_blockOffset == _blockBuffers[0].length)) {
 				Library.logger().finest("close(): writing single-block file in one put, length: " + _blockBuffers[0].length);
-				_writer.put(_baseName, _blockBuffers[0], ContentType.LEAF, _publisher, _locator, _signingKey);
+				_segmenter.put(_baseName, _blockBuffers[0], ContentType.LEAF, 
+						_locator, _publisher);
 			} else {
 				byte [] tempBuf = new byte[_blockOffset];
 				System.arraycopy(_blockBuffers[0],0,tempBuf,0,_blockOffset);
 				Library.logger().finest("close(): writing single-block file in one put, copied buffer length = " + _blockOffset);
-				_writer.put(_baseName, tempBuf, ContentType.LEAF, _publisher, _locator, _signingKey);
+				_segmenter.put(_baseName, tempBuf, ContentType.LEAF, _locator, _publisher);
 			}
 		} else {
 			Library.logger().info("closeNetworkData: final flush, wrote " + _totalLength + " bytes.");
@@ -243,8 +249,8 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * @throws InterruptedException
 	 * @throws IOException
 	 */
-	protected void flushToNetwork(boolean flushLastBlock) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException {		// DKS TODO needs to cope with partial last block. 
-		
+	protected void flushToNetwork(boolean flushLastBlock) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException {		
+
 		/**
 		 * Kludgy fix added by paul r. 1/20/08 - Right now the digest algorithm lower down the chain doesn't like
 		 * null pointers within the blockbuffers. So if this is the case, we create a temporary smaller "blockbuffer"
@@ -258,7 +264,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		 *     it how many of the blockBuffers array it should touch (are non-null).
 		 *     If there are holes, there are a bigger problem.
 		 */
-		
+
 		/**
 		 * Partial last block handling. If we are in the middle of writing a file, we only
 		 * flush complete blocks. We can be on a complete block boundary in one of two ways,
@@ -278,10 +284,10 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			// only a partial block written, and we're not flushing those yet, nothing to write
 			return;
 		}
-	
+
 		if (null == _timestamp)
 			_timestamp = SignedInfo.now();
-		
+
 		// Two cases: if we're flushing only a single block, we can put it out with a 
 		// straight signature without a Merkle Tree. The reading/verification code will
 		// cope just fine with a single file written in a mix of MHT and straight signature
@@ -293,16 +299,17 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			// partials in response to close(), and close() on a single-block write is a 
 			// single-block file which is handled separately. warn.
 			blockWriteCount++;
-			
+
 			Library.logger().info("flush: putting single block to the network.");
-			
+
+			// DKS TODO -- think about types, freshness, fix markers for impending last block/first block
 			if (_blockOffset < _blockBuffers[_blockIndex].length) {
 				Library.logger().warning("flush(): asked to write last partial block of a single block file: " + _blockOffset + " bytes, block total is " + _blockBuffers[_blockIndex].length + ", should have been written as a raw single-block file by close()!");
 				byte [] tempBuf = new byte[_blockOffset];
 				System.arraycopy(_blockBuffers[_blockIndex],0,tempBuf,0,_blockOffset);
-				_writer.putFragment(_baseName, _baseNameIndex, tempBuf, _timestamp, _publisher, _locator, _signingKey);
+				_segmenter.putFragment(_baseName, _baseNameIndex, tempBuf, ContentType.FRAGMENT, _timestamp, null, null, _locator, _publisher);
 			} else {
-				_writer.putFragment(_baseName, _baseNameIndex, _blockBuffers[_blockIndex], _timestamp, _publisher, _locator, _signingKey);				
+				_segmenter.putFragment(_baseName, _baseNameIndex, _blockBuffers[_blockIndex], ContentType.FRAGMENT, _timestamp, null, null, _locator, _publisher);				
 			}
 		} else {
 			// Now, we have a set of buffers. Do we have a partial last block we want to preserve?
@@ -316,16 +323,17 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			} else {
 				preservePartial = true;
 			}
-						
+
 			Library.logger().info("flush: putting merkle tree to the network, " + (blockWriteCount) + " blocks.");
 			// Generate Merkle tree (or other auth structure) and signedInfos and put contents.
 			// We always flush all the blocks starting from 0, so the baseBlockIndex is always 0.
+			// DKS TODO fix last block marking
 			CCNMerkleTree tree =
-				_writer.putMerkleTree(_baseName, _baseNameIndex, _blockBuffers, blockWriteCount, 0, lastBlockSize,
-								   		_timestamp, _publisher, _locator, _signingKey);
+				_segmenter.putMerkleTree(_baseName, _baseNameIndex, _blockBuffers, blockWriteCount, 0, lastBlockSize,
+						ContentType.LEAF, _timestamp, null, false, _locator, _publisher);
 			_roots.add(tree.root());
 		}
-		
+
 		int startEraseBlock = 0;
 		if (preservePartial) {
 			startEraseBlock = 1;
@@ -337,20 +345,20 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			if (null != _blockBuffers[i])
 				Arrays.fill(_blockBuffers[i], 0, _blockBuffers[i].length, (byte)0);
 		}
-		
+
 		// Increment names
 		_baseNameIndex += blockWriteCount;
 		_blockIndex = 0; // we always move down to block 0, even if we preserve a partial
 		if (!preservePartial)
 			_blockOffset = 0; 
 	}
-	
+
 	protected void writeHeader() throws InvalidKeyException, SignatureException, IOException, InterruptedException {
 		// What do we put in the header if we have multiple merkle trees?
-		_writer.putHeader(_baseName, (int)_totalLength, _blockSize, _dh.digest(), 
+		_segmenter.putHeader(_baseName, (int)_totalLength, _blockSize, _dh.digest(), 
 				((_roots.size() > 0) ? _roots.get(0) : null),
-				_timestamp, _publisher, _locator, _signingKey);
-		Library.logger().info("Wrote header: " + CCNSegmenter.headerName(_baseName));
+				_timestamp, _locator, _publisher);
+		Library.logger().info("Wrote header: " + SegmentationProfile.headerName(_baseName));
 	}
 
 }

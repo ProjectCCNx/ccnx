@@ -1,11 +1,11 @@
 package com.parc.ccn.library.io;
 
 import java.io.IOException;
-import java.security.PrivateKey;
 
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.library.CCNLibrary;
@@ -23,58 +23,50 @@ import com.parc.ccn.library.profiles.VersioningProfile;
  *
  */
 public class CCNDescriptor {
-	
+
 	public enum OpenMode { O_RDONLY, O_WRONLY }
 	public enum SeekWhence {SEEK_SET, SEEK_CUR, SEEK_END};
-	
+
 	protected CCNInputStream _input = null;
 	protected CCNOutputStream _output = null;
-	
+
 	/**
 	 * Open for reading. This does getLatestVersion, etc on name, and assumes fragmentation.
 	 */
 	public CCNDescriptor(ContentName name, PublisherKeyID publisher, CCNLibrary library) 
-				throws XMLStreamException, IOException {
+	throws XMLStreamException, IOException {
 		openForReading(name, publisher, library);
 	}
-	
-	public CCNDescriptor(ContentName name, PublisherKeyID publisher,
-			   KeyLocator locator, PrivateKey signingKey,
-			   CCNLibrary library) throws XMLStreamException, IOException {
-		openForWriting(name, publisher, locator, signingKey, library);
+
+	public CCNDescriptor(ContentName name, 
+			KeyLocator locator, PublisherKeyID publisher,
+			CCNLibrary library) throws XMLStreamException, IOException {
+		openForWriting(name, locator, publisher, library);
 	}
-	
-	/**
-	 * DKS TODO: Needs to handle both single-put and fragmented content.
-	 * @param name
-	 * @throws IOException
-	 * @throws InterruptedException
-	 * @throws XMLStreamException
-	 */
 
 	protected void openForReading(ContentName name, PublisherKeyID publisher, CCNLibrary library) 
-				throws IOException, XMLStreamException {
+	throws IOException, XMLStreamException {
 		ContentName nameToOpen = name;
 		if (SegmentationProfile.isSegment(nameToOpen)) {
-			// DKS TODO: should we do this?
 			nameToOpen = SegmentationProfile.segmentRoot(nameToOpen);
-		} else {
-			if (!VersioningProfile.isVersioned(nameToOpen)) {
-				// if publisherID is null, will get any publisher
-				nameToOpen = 
-					library.getLatestVersionName(nameToOpen, publisher);
-			}
-			nameToOpen = new ContentName(nameToOpen, ContentName.componentParseNative(CCNLibrary.FRAGMENT_MARKER));
+		} 
+
+		// DKS TODO -- test versioning
+		if (!VersioningProfile.isVersioned(nameToOpen)) {
+			// if publisherID is null, will get any publisher
+			ContentObject latestVersion = library.getLatestVersion(nameToOpen, publisher, CCNAbstractInputStream.MAX_TIMEOUT);
+			nameToOpen = 
+				SegmentationProfile.segmentRoot(latestVersion.name());
 		}
+
 		_input = new CCNInputStream(nameToOpen, publisher, library);
 	}
 
-	protected void openForWriting(ContentName name, PublisherKeyID publisher,
-			   KeyLocator locator, PrivateKey signingKey,
-			   CCNLibrary library) throws XMLStreamException, IOException {
+	protected void openForWriting(ContentName name, 
+			KeyLocator locator, PublisherKeyID publisher,
+			CCNLibrary library) throws XMLStreamException, IOException {
 		ContentName nameToOpen = name;
 		if (SegmentationProfile.isSegment(name)) {
-			// DKS TODO: should we do this?
 			nameToOpen = SegmentationProfile.segmentRoot(nameToOpen);
 		}
 		// Assume if name is already versioned, caller knows what name
@@ -82,15 +74,10 @@ public class CCNDescriptor {
 		// ignore it for now.
 		if (!VersioningProfile.isVersioned(nameToOpen)) {
 			// if publisherID is null, will get any publisher
-			ContentName currentVersionName = 
-				library.getLatestVersionName(nameToOpen, null);
-			if (null == currentVersionName) {
-				nameToOpen = VersioningProfile.versionName(nameToOpen, VersioningProfile.baseVersion());
-			} else {
-				nameToOpen = VersioningProfile.versionName(currentVersionName, (VersioningProfile.getVersionNumber(currentVersionName) + 1));
-			}
+			nameToOpen = 
+				VersioningProfile.versionName(nameToOpen);
 		}
-		_output = new CCNOutputStream(name, publisher, locator, signingKey, library);
+		_output = new CCNOutputStream(nameToOpen, locator, publisher, library);
 	}
 
 	public int available() throws IOException {
@@ -118,7 +105,7 @@ public class CCNDescriptor {
 		if (null != _output)
 			_output.flush();
 	}
-	
+
 	public boolean eof() { 
 		return openForReading() ? _input.eof() : false;
 	}
@@ -128,7 +115,7 @@ public class CCNDescriptor {
 			return _input.read(buf, offset, len);
 		throw new IOException("Descriptor not open for reading!");
 	}
-	
+
 	public int read(byte[] b) throws IOException {
 		return read(b, 0, b.length);
 	}
@@ -140,7 +127,7 @@ public class CCNDescriptor {
 		}
 		throw new IOException("Descriptor not open for writing!");
 	}
-	
+
 	public void setTimeout(int timeout) {
 		if (null != _input)
 			_input.setTimeout(timeout);

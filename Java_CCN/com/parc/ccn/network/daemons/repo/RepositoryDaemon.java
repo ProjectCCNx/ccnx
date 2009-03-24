@@ -21,7 +21,6 @@ import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.CCNSegmenter;
 import com.parc.ccn.library.io.CCNWriter;
 import com.parc.ccn.network.daemons.Daemon;
 
@@ -303,7 +302,7 @@ public class RepositoryDaemon extends Daemon {
 		try {
 			_library = CCNLibrary.open();
 			_repo = new RFSImpl();
-			_writer = new CCNWriter("/", _library);
+			_writer = new CCNWriter(_library);
 		} catch (Exception e1) {
 			e1.printStackTrace();
 			System.exit(0);

@@ -158,7 +158,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 			if (null != publisherID) {
 				if (TrustManager.getTrustManager().matchesRole(
 						publisherID,
-						result.signedInfo().publisherKeyID())) {
+						result.signedInfo().getPublisherKeyID())) {
 					return result;
 				}
 			}

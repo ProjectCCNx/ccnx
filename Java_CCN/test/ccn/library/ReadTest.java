@@ -17,7 +17,8 @@ import com.parc.ccn.data.query.ExcludeElement;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.util.DataUtils;
-import com.parc.ccn.library.CCNSegmenter;
+import com.parc.ccn.library.io.CCNWriter;
+import com.parc.ccn.library.profiles.SegmentationProfile;
 
 /**
  * 
@@ -62,16 +63,18 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	@Test
 	public void getNextTest() throws Throwable {
 		System.out.println("getNext test started");
-		CCNSegmenter segmenter = new CCNSegmenter("/getNext", library);
+		CCNWriter writer = new CCNWriter("/getNext", library);
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
-			segmenter.put("/getNext/" + Integer.toString(i), Integer.toString(count - i));
+			writer.put("/getNext/" + Integer.toString(i), Integer.toString(count - i));
 		}
 		System.out.println("Put sequence finished");
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
 			int tValue = rand.nextInt(count - 1);
-			ContentName prefix = ContentName.fromNative("/getNext/" + new Integer(tValue).toString(), 1);
+			// DKS -- getNext was returning null here. Not clear what it's trying to do, could be interacting badly with
+			// introduction of default fragment marker (which the above changes try to work around). Likely prefix count is wrong.
+			ContentName prefix = SegmentationProfile.segmentName(ContentName.fromNative("/getNext/" + new Integer(tValue).toString(), 1), SegmentationProfile.baseSegment());
 			ContentName cn = new ContentName(prefix, ContentObject.contentDigest(Integer.toString(count - tValue)));
 			ContentObject result = library.getNext(cn, 1000);
 			checkResult(result, tValue + 1);
@@ -83,18 +86,19 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	public void getLatestTest() throws Throwable {
 		int highest = 0;
 		System.out.println("getLatest test started");
-		CCNSegmenter segmenter = new CCNSegmenter("/getLatest", library);
+		CCNWriter writer = new CCNWriter("/getLatest", library);
 		for (int i = 0; i < count; i++) {
 			int tValue = getRandomFromSet(count, false);
 			if (tValue > highest)
 				highest = tValue;
 			String name = "/getLatest/" + Integer.toString(tValue);
 			System.out.println("Putting " + name);
-			segmenter.put(name, Integer.toString(tValue));
+			writer.put(name, Integer.toString(tValue));
 			if (i > 1) {
 				if (tValue == highest)
 					tValue--;
-				ContentObject result = library.getLatest(ContentName.fromNative("/getLatest/" + Integer.toString(tValue), 1), 5000);
+				ContentName cn = SegmentationProfile.segmentName(ContentName.fromNative("/getNext/" + new Integer(tValue).toString(), 1), SegmentationProfile.baseSegment());
+				ContentObject result = library.getLatest(cn, 5000);
 				checkResult(result, highest);
 			}
 		}
@@ -105,18 +109,18 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	public void excludeFilterTest() throws Throwable {
 		System.out.println("excludeFilterTest test started");
 		excludeSetup();
-		CCNSegmenter segmenter = new CCNSegmenter("/excludeFilterTest", library);
+		CCNWriter writer = new CCNWriter("/excludeFilterTest", library);
 		for (String value : bloomTestValues) {
-			segmenter.put("/excludeFilterTest/" + value, value);
+			writer.put("/excludeFilterTest/" + value, value);
 		}
-		segmenter.put("/excludeFilterTest/aaa", "aaa");
-		segmenter.put("/excludeFilterTest/zzzzzzzz", "zzzzzzzz");
+		writer.put("/excludeFilterTest/aaa", "aaa");
+		writer.put("/excludeFilterTest/zzzzzzzz", "zzzzzzzz");
 		Interest interest = Interest.constructInterest(ContentName.fromNative("/excludeFilterTest/"), ef, null);
 		ContentObject content = library.get(interest, 1000);
 		Assert.assertTrue(content == null);
 		
 		String shouldGetIt = "/excludeFilterTest/weShouldGetThis";
-		segmenter.put(shouldGetIt, shouldGetIt);
+		writer.put(shouldGetIt, shouldGetIt);
 		content = library.get(interest, 1000);
 		Assert.assertFalse(content == null);
 		assertEquals(content.name().toString(), shouldGetIt);
@@ -136,14 +140,14 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	private void excludeTest(String prefix, int nFilters) throws Throwable {
 	
 		System.out.println("Starting exclude test - nFilters is " + nFilters);
-		CCNSegmenter segmenter = new CCNSegmenter(prefix, library);
+		CCNWriter writer = new CCNWriter(prefix, library);
 		byte [][] excludes = new byte[nFilters - 1][];
 		for (int i = 0; i < nFilters; i++) {
 			String value = new Integer(i).toString();
 			if (i < (nFilters - 1))
 				excludes[i] = value.getBytes();
 			String name = prefix + "/" + value;
-			segmenter.put(name, value);
+			writer.put(name, value);
 		}
 		ContentObject content = library.getExcept(ContentName.fromNative(prefix + "/"), excludes, 50000);
 		if (null == content || !Arrays.equals(content.content(), new Integer((nFilters - 1)).toString().getBytes())) {
@@ -160,7 +164,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	
 	private void checkResult(ContentObject result, int value) {
 		assertTrue(result != null);
-		String resultAsString = result.name().toString();
+		String resultAsString = SegmentationProfile.segmentRoot(result.name()).toString();
 		int sep = resultAsString.lastIndexOf('/');
 		assertTrue(sep > 0);
 		int resultValue = Integer.parseInt(resultAsString.substring(sep + 1));
