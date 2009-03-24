@@ -3,12 +3,8 @@ package com.parc.ccn.library.profiles;
 import java.math.BigInteger;
 import java.sql.Timestamp;
 
-import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.SignedInfo;
-import com.parc.ccn.library.CCNLibrary;
 
 /**
  * From Michael's writeup:
@@ -54,7 +50,7 @@ public class VersioningProfile implements CCNProfile {
 			byte [] varr = BigInteger.valueOf(version).toByteArray();
 			vcomp = new byte[varr.length + 1];
 			vcomp[0] = VERSION_MARKER;
-			System.arraycopy(varr, 0, vcomp, 0, varr.length);
+			System.arraycopy(varr, 0, vcomp, 1, varr.length);
 		}
 		return new ContentName(baseName, vcomp);
 	}
