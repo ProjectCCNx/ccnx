@@ -29,7 +29,18 @@ public class XMLEncodableTester {
 		// Should match, both match toEncode
 		assertEquals(decodeTargetText, decodeTargetBinary);
 	}
-	
+
+	public static void encodeDecodeByteArrayTest(String label,
+			XMLEncodable toEncode,
+			XMLEncodable decodeTargetText,
+			XMLEncodable decodeTargetBinary) {
+
+		encodeDecodeByteArrayTest(TextXMLCodec.codecName(), label, toEncode, decodeTargetText);
+		encodeDecodeByteArrayTest(BinaryXMLCodec.codecName(), label, toEncode, decodeTargetBinary);
+		// Should match, both match toEncode
+		assertEquals(decodeTargetText, decodeTargetBinary);
+	}
+
 	public static void encodeDecodeTest(String codec,
 										String label, 
 										XMLEncodable toEncode, 
@@ -48,6 +59,29 @@ public class XMLEncodableTester {
 		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
 		try {
 			decodeTarget.decode(bais, codec);
+		} catch (XMLStreamException e) {
+			handleException(e);
+		}
+		System.out.println("Decoded " + label + ": " + decodeTarget);
+		assertEquals(toEncode, decodeTarget);
+	}
+
+	public static void encodeDecodeByteArrayTest(String codec,
+			String label, 
+			XMLEncodable toEncode, 
+			XMLEncodable decodeTarget) {
+		System.out.println("Encoding " + label + "(" + codec + "):");
+		byte [] bao = null;
+		try {
+			bao = toEncode.encode(codec);
+		} catch (XMLStreamException e) {
+			handleException(e);
+		}
+		System.out.println("Encoded " + label + ": " );
+
+		System.out.println("Decoding " + label + ": ");
+		try {
+			decodeTarget.decode(bao, codec);
 		} catch (XMLStreamException e) {
 			handleException(e);
 		}
