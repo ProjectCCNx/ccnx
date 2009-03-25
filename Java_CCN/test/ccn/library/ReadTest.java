@@ -65,18 +65,19 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 		System.out.println("getNext test started");
 		CCNWriter writer = new CCNWriter("/getNext", putLibrary);
 		for (int i = 0; i < count; i++) {
-			Thread.sleep(rand.nextInt(50));
 			writer.put("/getNext/" + Integer.toString(i), Integer.toString(count - i));
+			Thread.sleep(rand.nextInt(50));
+			
+			// Pull it into ccnd so we have everything there to check nexts from
+			ContentObject testCo = getLibrary.get(ContentName.fromNative("/getNext/" + Integer.toString(i)), 1000);
+			Assert.assertTrue(testCo != null);
 		}
 		System.out.println("Put sequence finished");
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
 			int tValue = rand.nextInt(count - 1);
-			// DKS -- getNext was returning null here. Not clear what it's trying to do, could be interacting badly with
-			// introduction of default fragment marker (which the above changes try to work around). Likely prefix count is wrong.
-			// prefix of 1 should take care of that; though it's odd that that's a member of the name,
-			// not the interest...
-			ContentName cn = new ContentName(ContentName.fromNative("/getNext/" + new Integer(tValue).toString(), 1), ContentObject.contentDigest(Integer.toString(count - tValue)));
+			ContentName cn = new ContentName(ContentName.fromNative("/getNext/" + new Integer(tValue).toString(), 1), 
+					ContentObject.contentDigest(Integer.toString(count - tValue)));
 			ContentObject result = getLibrary.getNext(cn, 1000);
 			checkResult(result, tValue + 1);
 		}
@@ -95,10 +96,17 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 			String name = "/getLatest/" + Integer.toString(tValue);
 			System.out.println("Putting " + name);
 			writer.put(name, Integer.toString(tValue));
+			
+			// Make sure ccnd has what we're looking for
+			Thread.sleep(500);
+			ContentObject testCo = getLibrary.get(ContentName.fromNative(name), 1000);
+			Assert.assertTrue(testCo != null);
+			
 			if (i > 1) {
 				if (tValue == highest)
 					tValue--;
-				ContentName cn = SegmentationProfile.segmentName(ContentName.fromNative("/getNext/" + new Integer(tValue).toString(), 1), SegmentationProfile.baseSegment());
+				ContentName cn = SegmentationProfile.segmentName(
+						ContentName.fromNative("/getLatest/" + new Integer(tValue).toString(), 1), SegmentationProfile.baseSegment());
 				ContentObject result = getLibrary.getLatest(cn, 5000);
 				checkResult(result, highest);
 			}

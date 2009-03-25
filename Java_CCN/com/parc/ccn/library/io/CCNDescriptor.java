@@ -8,9 +8,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
-import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.CCNSegmenter;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
@@ -79,8 +77,7 @@ public class CCNDescriptor {
 			nameToOpen = 
 				VersioningProfile.versionName(nameToOpen);
 		}
-		_output = new CCNOutputStream(nameToOpen, locator, publisher, 
-				new CCNSegmenter(new CCNFlowControl(name, library)));
+		_output = new CCNOutputStream(nameToOpen, locator, publisher, library);
 	}
 
 	public int available() throws IOException {

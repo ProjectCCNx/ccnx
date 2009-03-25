@@ -62,7 +62,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	public CCNOutputStream(ContentName name, 
 			KeyLocator locator, PublisherKeyID publisher,
 			CCNLibrary library) throws XMLStreamException, IOException {
-		this(name, locator, publisher, new CCNSegmenter(library));
+		this(name, locator, publisher, new CCNSegmenter(new CCNFlowControl(name, library)));
 	}
 	
 	public CCNOutputStream(ContentName name, CCNLibrary library) throws XMLStreamException, IOException {

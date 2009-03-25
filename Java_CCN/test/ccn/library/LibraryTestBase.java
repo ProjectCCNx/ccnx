@@ -295,7 +295,9 @@ public class LibraryTestBase {
 						accumulatedResults.add(val);
 						System.out.println("Got " + val);
 					}
-					newInterest = Interest.next(contentObject, null);
+					ContentName newName = new ContentName(contentObject.name(), contentObject.contentDigest(), 
+							contentObject.name().count() - 2);
+					newInterest = Interest.next(newName);
 				} catch (NumberFormatException nfe) {
 					Library.logger().info("Unexpected content, " + contentObject.name() + " is not an integer!");
 				}
