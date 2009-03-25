@@ -5,6 +5,8 @@ CPREFLAGS = -I../include
 CCNLIBDIR = .
 COPT = -g
 
+# FIXTHIS programs in the lib directory?
+
 INSTALLED_PROGRAMS = \
     ccn_ccnbtoxml ccn_splitccnb ccntimestamps ccndumpnames ccnrm ccnls ccnslurp \
     ccnsendchunks ccncatchunks ccncatchunks2 \
