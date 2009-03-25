@@ -52,6 +52,21 @@ public class Collection extends ContentObject {
 
 	public Collection() {} // for use by decoders
 	
+	/**
+	 * Need to make final objects sometimes, for which we
+	 * need an atomic create from byte array option. But
+	 * if we do it with a constructor, we run into the problem
+	 * that each subclass must reimplement it, to be sure
+	 * that their members are constructed prior to decoding.
+	 * So do it this way.
+	 * @throws XMLStreamException 
+	 */
+	public static Collection newCollection(byte [] encodedCollection) throws XMLStreamException {
+		Collection newCollection = new Collection();
+		newCollection.decode(encodedCollection);
+		return newCollection;
+	}
+
 	public ArrayList<LinkReference> contents() { 
 		return _data.contents(); 
 	}
@@ -78,4 +93,5 @@ public class Collection extends ContentObject {
 	}
 	
 	public int size() { return contents().size(); }
+
 }

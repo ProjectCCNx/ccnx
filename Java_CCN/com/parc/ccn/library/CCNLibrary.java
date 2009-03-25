@@ -486,9 +486,9 @@ public class CCNLibrary extends CCNBase {
 	}
 	
 	private ContentObject dereferenceLink(Link reference, PublisherKeyID publisher, long timeout) throws IOException {
-		ContentObject linkCo = get(reference.targetName(), timeout);
+		ContentObject linkCo = get(reference.getTargetName(), timeout);
 		if (linkCo == null)
-			linkCo = getLatestVersion(reference.targetName(), publisher, timeout);
+			linkCo = getLatestVersion(reference.getTargetName(), publisher, timeout);
 		return linkCo;
 	}
 

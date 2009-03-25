@@ -114,6 +114,7 @@ public class Link extends ContentObject {
 		super.decode(decoder);
 		decodeData();
 	}
-	public ContentName targetName() { return _data.targetName(); }
-	public LinkAuthenticator targetAuthenticator() { return _data._targetAuthenticator; }	
+	public ContentName getTargetName() { return _data.targetName(); }
+	public LinkAuthenticator getTargetAuthenticator() { return _data._targetAuthenticator; }
+	public LinkReference getReference() { return _data; }
 }
