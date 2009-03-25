@@ -92,5 +92,15 @@ public class DataUtils {
 		BigInteger bi = new BigInteger(1, bytes);
 		return bi.toString(16);
 	}
+	
+	public boolean arrayEquals(byte[] left, byte[] right, int length) {
+		if (left.length < length || right.length < length)
+			return false;
+		for (int i = 0; i < length; i++) {
+			if (left[i] != right[i])
+				return false;
+		}
+		return true;
+	}
 
 }

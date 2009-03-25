@@ -79,9 +79,9 @@ public class RepoIOTest extends RepoTestBase {
 		byte [] content = new byte[fis.available()];
 		fis.read(content);
 		fis.close();
-		RepositoryOutputStream ros = library.repoOpen(ContentName.fromNative(_globalPrefix + '/' + 
+		RepositoryOutputStream ros = putLibrary.repoOpen(ContentName.fromNative(_globalPrefix + '/' + 
 				_repoName + '/' + Repository.REPO_DATA + '/' + Repository.REPO_POLICY), null,
-				library.getDefaultPublisher());
+				putLibrary.getDefaultPublisher());
 		ros.write(content, 0, content.length);
 		ros.close();
 		Thread.sleep(1000);
@@ -96,8 +96,8 @@ public class RepoIOTest extends RepoTestBase {
 		byte value = 1;
 		for (int i = 0; i < data.length; i++)
 			data[i] = value++;
-		RepositoryOutputStream ros = library.repoOpen(ContentName.fromNative("/testNameSpace/stream"), 
-														null, library.getDefaultPublisher());
+		RepositoryOutputStream ros = putLibrary.repoOpen(ContentName.fromNative("/testNameSpace/stream"), 
+														null, putLibrary.getDefaultPublisher());
 		ros.setBlockSize(100);
 		ros.write(data, 0, data.length);
 		ros.close();
@@ -105,8 +105,8 @@ public class RepoIOTest extends RepoTestBase {
 		for (int i = 0; i < 40; i++) {
 			byte [] testData = new byte[100];
 			System.arraycopy(data, i * 100, testData, 0, 100);
-			String blockName = "/testNameSpace/stream/_v_/0/_b_/" + new Integer(i).toString();
-			checkDataFromFile(blockName, testData);
+			String blockName = "/testNameSpace/stream";
+			checkDataFromFile(blockName, testData, i);
 		}
 	}
 	
@@ -114,31 +114,33 @@ public class RepoIOTest extends RepoTestBase {
 		checkData(new Interest(name), data.getBytes());
 	}
 	private void checkData(Interest interest, byte[] data) throws IOException, InterruptedException{
-		ContentObject testContent = library.get(interest, 10000);
+		ContentObject testContent = getLibrary.get(interest, 10000);
 		Assert.assertFalse(testContent == null);
 		Assert.assertTrue(Arrays.equals(data, testContent.content()));		
 	}
 	private void checkDataAndPublisher(ContentName name, String data, PublisherKeyID publisher) 
 				throws IOException, InterruptedException {
 		Interest interest = new Interest(name, new PublisherID(publisher));
-		ContentObject testContent = library.get(interest, 10000);
+		ContentObject testContent = getLibrary.get(interest, 10000);
 		Assert.assertFalse(testContent == null);
 		Assert.assertEquals(data, new String(testContent.content()));
 		Assert.assertTrue(testContent.signedInfo().getPublisherKeyID().equals(publisher));
 	}
-	private void checkDataFromFile(String name, byte[] data) throws RepositoryException {
+	private void checkDataFromFile(String name, byte[] data, int block) throws RepositoryException {
 		File testFile = new File(_repoTestDir + File.separator + name);
 		Assert.assertTrue(testFile.isDirectory());
 		File [] contents = testFile.listFiles();
 		Assert.assertFalse(contents == null);
 		Assert.assertTrue(contents.length == 1);
+		contents = contents[0].listFiles();
+		Assert.assertFalse(contents == null);
 		ContentObject co = RFSImpl.getContentFromFile(contents[0]);
 		Assert.assertTrue(Arrays.equals(data, co.content()));		
 	}
 	
 	private void checkNameSpace(String contentName, boolean expected) throws Exception {
 		ContentName name = ContentName.fromNative(contentName);
-		RepositoryOutputStream ros = library.repoOpen(name, null, library.getDefaultPublisher());
+		RepositoryOutputStream ros = putLibrary.repoOpen(name, null, putLibrary.getDefaultPublisher());
 		byte [] data = "Testing 1 2 3".getBytes();
 		ros.write(data, 0, data.length);
 		ContentName baseName = ros.getBaseName();

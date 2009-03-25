@@ -52,7 +52,7 @@ public class RepositoryDaemon extends Daemon {
 	private boolean _started = false;
 	private ArrayList<NameAndListener> _repoFilters = new ArrayList<NameAndListener>();
 	private ArrayList<DataListener> _currentListeners = new ArrayList<DataListener>();
-	private ExcludeFilter markerFilter;
+	private ExcludeFilter _markerFilter;
 	private ArrayList<Interest> _ackRequests = new ArrayList<Interest>();
 	private CCNWriter _writer = null;
 	
@@ -85,6 +85,7 @@ public class RepositoryDaemon extends Daemon {
 		private boolean _sawBlock = false;
 		private ContentName _headerName = null;
 		private Interest _headerInterest = null;
+		private byte[][] _headerExcludes = null;
 		
 		private DataListener(Interest origInterest, Interest interest) {
 			_origInterest = interest;
@@ -105,12 +106,26 @@ public class RepositoryDaemon extends Daemon {
 				if (!_haveHeader) {
 					/*
 					 * Handle headers specifically. If we haven't seen one yet ask for it specifically
+					 * Note that we have to exclude the block names, otherwise we could just keep getting
+					 * them back.
 					 */
 					if (co.name().equals(_headerName)) {
 						_haveHeader = true;
 						if (_sawBlock)
 							return null;
 					} else {
+						int nExcludes = _headerExcludes == null ? 1 : _headerExcludes.length + 1;
+						byte [][] newHeaderExcludes = new byte[nExcludes][];
+						if (nExcludes > 1) {
+							for (int i = 0; i < _headerExcludes.length; i++)
+								newHeaderExcludes[i] = _headerExcludes[i];
+						}
+						newHeaderExcludes[nExcludes - 1] = new byte[co.name().component(co.name().count() - 1).length];
+						System.arraycopy(co.name().component(co.name().count() - 1), 0, newHeaderExcludes[nExcludes - 1], 0, 
+								newHeaderExcludes[nExcludes - 1].length);
+						_headerExcludes = newHeaderExcludes;
+						ExcludeFilter filter = Interest.constructFilter(_headerExcludes);
+						_headerInterest.excludeFilter(filter);
 						try {
 							_library.expressInterest(_headerInterest, this);
 						} catch (IOException e) {
@@ -127,7 +142,7 @@ public class RepositoryDaemon extends Daemon {
 				 */
 				_sawBlock = true;
 				ContentName nextName = new ContentName(co.name(), co.contentDigest(), co.name().count() - 1);
-				_interest = Interest.constructInterest(nextName,  markerFilter, 
+				_interest = Interest.constructInterest(nextName,  _markerFilter, 
 							new Integer(Interest.ORDER_PREFERENCE_LEFT  | Interest.ORDER_PREFERENCE_ORDER_NAME));
 				return _interest;
 			}
@@ -171,44 +186,46 @@ public class RepositoryDaemon extends Daemon {
 			while (_started) {
 				
 				ContentObject data = null;
-				for (DataListener listener : _currentListeners) {
-					do {
-						data = listener.get();
-						if (data != null) {
-							try {
-								if (_repo.checkPolicyUpdate(data)) {
-									resetNameSpace();
-								} else {
-									Library.logger().finer("Saving content in: " + data.name().toString());
-									_repo.saveContent(data);		
-								}
-								
-								/*
-								 * If an ack had already been requested answer it now.  Otherwise
-								 * add to the unacked queue to get ready for later ack.
-								 */
-								Iterator<Interest> iterator = _ackRequests.iterator();
-								boolean found = false;
-								while (iterator.hasNext()) {
-									Interest interest = iterator.next();
-									if (interest.matches(data)) {
-										iterator.remove();
-										if (!found) {
-											ArrayList<ContentName> names = new ArrayList<ContentName>();
-											names.add(data.name());
-											ContentName putName = new ContentName(data.name(), CCNBase.REPO_REQUEST_ACK);
-											_writer.put(putName, _repo.getRepoInfo(names));
-										}
-										found = true;
+				synchronized (_currentListeners) {
+					for (DataListener listener : _currentListeners) {
+						do {
+							data = listener.get();
+							if (data != null) {
+								try {
+									if (_repo.checkPolicyUpdate(data)) {
+										resetNameSpace();
+									} else {
+										Library.logger().finer("Saving content in: " + data.name().toString());
+										_repo.saveContent(data);		
 									}
+									
+									/*
+									 * If an ack had already been requested answer it now.  Otherwise
+									 * add to the unacked queue to get ready for later ack.
+									 */
+									Iterator<Interest> iterator = _ackRequests.iterator();
+									boolean found = false;
+									while (iterator.hasNext()) {
+										Interest interest = iterator.next();
+										if (interest.matches(data)) {
+											iterator.remove();
+											if (!found) {
+												ArrayList<ContentName> names = new ArrayList<ContentName>();
+												names.add(data.name());
+												ContentName putName = new ContentName(data.name(), CCNBase.REPO_REQUEST_ACK);
+												_writer.put(putName, _repo.getRepoInfo(names));
+											}
+											found = true;
+										}
+									}
+									if (!found)
+										listener._unacked.add(data);
+								} catch (Exception e) {
+									e.printStackTrace();
 								}
-								if (!found)
-									listener._unacked.add(data);
-							} catch (Exception e) {
-								e.printStackTrace();
 							}
-						}
-					} while (data != null) ;
+						} while (data != null) ;
+					}
 				}
 				
 				Interest interest = null;
@@ -282,7 +299,7 @@ public class RepositoryDaemon extends Daemon {
 			byte[][]markerOmissions = new byte[2][];
 			markerOmissions[0] = CCNBase.REPO_START_WRITE;
 			markerOmissions[1] = CCNBase.REPO_REQUEST_ACK;
-			markerFilter = Interest.constructFilter(markerOmissions);
+			_markerFilter = Interest.constructFilter(markerOmissions);
 			
 			Timer periodicTimer = new Timer(true);
 			periodicTimer.scheduleAtFixedRate(new InterestTimer(), PERIOD, PERIOD);
@@ -303,6 +320,16 @@ public class RepositoryDaemon extends Daemon {
 			_library = CCNLibrary.open();
 			_repo = new RFSImpl();
 			_writer = new CCNWriter(_library);
+			
+			/*
+			 * At some point we may want to refactor the code to
+			 * write repository info back in a stream.  But for now
+			 * we're just doing a simple put and the writer could be
+			 * writing anywhere so the simplest thing to do is to just
+			 * disable flow control
+			 */
+			_writer.disableFlowControl();
+			
 		} catch (Exception e1) {
 			e1.printStackTrace();
 			System.exit(0);
@@ -392,7 +419,7 @@ public class RepositoryDaemon extends Daemon {
 		ContentName listeningName = new ContentName(interest.name().count() - 1, 
 				interest.name().components(), interest.name().prefixCount());
 		try {
-			Interest readInterest = Interest.constructInterest(listeningName, markerFilter, null);
+			Interest readInterest = Interest.constructInterest(listeningName, _markerFilter, null);
 			DataListener listener = new DataListener(interest, readInterest);
 			synchronized(_currentListeners) {
 				_currentListeners.add(listener);

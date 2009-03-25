@@ -9,6 +9,7 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
@@ -145,8 +146,11 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		// prefixCount note: next block name must exactly match current except
 		// for the index itself which is the final component of the name we 
 		// have, so we use count()-1.
-		ContentObject nextBlock =  
-			_library.getNext(_currentBlock, _currentBlock.name().count()-1, null, _timeout);
+		ContentName nextName = new ContentName(_currentBlock.name(), _currentBlock.contentDigest(), 
+					_currentBlock.name().count()-1);
+		Interest nextInterest = Interest.next(nextName);
+		nextInterest.additionalNameComponents(2);
+		ContentObject nextBlock = _library.get(nextInterest, _timeout);
 		if (null != nextBlock) {
 			Library.logger().info("getNextBlock: retrieved " + nextBlock.name());
 			

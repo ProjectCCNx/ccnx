@@ -30,14 +30,16 @@ import com.parc.ccn.library.profiles.SegmentationProfile;
  */
 
 public class NetworkTest {
-	protected static CCNLibrary library = null;
+	protected static CCNLibrary putLibrary = null;
+	protected static CCNLibrary getLibrary = null;
 	private Semaphore sema = new Semaphore(0);
 	private boolean gotData = false;
 	Interest testInterest = null;
 	
 	static {
 		try {
-			library = CCNLibrary.open();
+			putLibrary = CCNLibrary.open();
+			getLibrary = CCNLibrary.open();
 		} catch (ConfigurationException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -59,10 +61,10 @@ public class NetworkTest {
 		/*
 		 * Test re-expression of interest
 		 */
-		CCNWriter writer = new CCNWriter("/networkTest", library);
+		CCNWriter writer = new CCNWriter("/networkTest", putLibrary);
 		testInterest = new Interest("/networkTest/aaa");
 		TestListener tl = new TestListener();
-		library.expressInterest(testInterest, tl);
+		getLibrary.expressInterest(testInterest, tl);
 		Thread.sleep(80);  
 		writer.put("/networkTest/aaa", "aaa");
 		sema.tryAcquire(4000, TimeUnit.MILLISECONDS);
@@ -75,10 +77,10 @@ public class NetworkTest {
 		/*
 		 * Test re-expression of interest
 		 */
-		CCNWriter writer = new CCNWriter(library);
+		CCNWriter writer = new CCNWriter(putLibrary);
 		testInterest = new Interest("/networkTest/ddd");
 		TestListener tl = new TestListener();
-		library.expressInterest(testInterest, tl);
+		getLibrary.expressInterest(testInterest, tl);
 		Thread.sleep(80);  
 		writer.put("/networkTest/ddd", "ddd");
 		sema.tryAcquire(4000, TimeUnit.MILLISECONDS);
@@ -91,12 +93,12 @@ public class NetworkTest {
 		/*
 		 * Test re-expression of interest
 		 */
-		CCNWriter writer = new CCNWriter("/networkTest", library);
+		CCNWriter writer = new CCNWriter("/networkTest", putLibrary);
 		testInterest = new Interest("/networkTest/bbb");
 		TestListener tl = new TestListener();
 		writer.put("/networkTest/bbb", "bbb");
 		Thread.sleep(80);  
-		library.expressInterest(testInterest, tl);
+		getLibrary.expressInterest(testInterest, tl);
 		sema.tryAcquire(4000, TimeUnit.MILLISECONDS);
 		Assert.assertTrue(gotData);
 	}
@@ -108,10 +110,10 @@ public class NetworkTest {
 		/*
 		 * Test re-expression of interest
 		 */
-		CCNWriter writer = new CCNWriter("/networkTest", library);
+		CCNWriter writer = new CCNWriter("/networkTest", putLibrary);
 		testInterest = new Interest("/networkTest/ccc");
 		TestListener tl = new TestListener();
-		library.expressInterest(testInterest, tl);
+		getLibrary.expressInterest(testInterest, tl);
 		// Sleep long enough that the interest must be re-expressed
 		Thread.sleep(8000);  
 		writer.put("/networkTest/ccc", "ccc");
@@ -134,7 +136,7 @@ public class NetworkTest {
 			/*
 			 * Test call of cancel in handler doesn't hang
 			 */
-			library.cancelInterest(testInterest, this);
+			getLibrary.cancelInterest(testInterest, this);
 			return null;
 		}
 	}

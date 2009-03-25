@@ -53,11 +53,12 @@ public class CCNLibraryTest extends LibraryTestBase {
 	
 	@Test
 	public void testEnumerate() {
-		Assert.assertNotNull(library);
+		Assert.assertNotNull(putLibrary);
+		Assert.assertNotNull(getLibrary);
 
 		try {
 			
-			CCNWriter writer = new CCNWriter("/CPOF", library);
+			CCNWriter writer = new CCNWriter("/CPOF", putLibrary);
 			ArrayList<NameSeen> testNames = new ArrayList<NameSeen>(3);
 			testNames.add(new NameSeen(ContentName.fromNative("/CPOF/foo")));
 			testNames.add(new NameSeen(ContentName.fromNative("/CPOF/bar/lid")));
@@ -68,7 +69,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 			}
 			
 			ArrayList<ContentObject> availableNames =
-				library.enumerate(new Interest("/CPOF"), CCNLibrary.NO_TIMEOUT);
+				getLibrary.enumerate(new Interest("/CPOF"), CCNLibrary.NO_TIMEOUT);
 
 			Iterator<ContentObject> nameIt = availableNames.iterator();
 
@@ -77,7 +78,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 				// Just get by name, to test equivalent to current
 				// ONC interface.
-				ContentObject theObject = library.get(theName.name(), 1000);
+				ContentObject theObject = getLibrary.get(theName.name(), 1000);
 
 				if (null == theObject) {
 					System.out.println("Missing content: enumerated name: " + theName.name() + " not gettable.");
@@ -106,7 +107,8 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 	@Test
 	public void testPut() {
-		Assert.assertNotNull(library);
+		Assert.assertNotNull(putLibrary);
+		Assert.assertNotNull(getLibrary);
 
 		ContentName name = null;
 		byte[] content = null;
@@ -126,7 +128,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 			e.printStackTrace();
 		}
 		try {
-			CCNWriter segmenter = new CCNWriter(name, library);
+			CCNWriter segmenter = new CCNWriter(name, putLibrary);
 			ContentObject result = segmenter.put(name, content, publisher);
 			System.out.println("Resulting ContentObject: " + result);
 		} catch (SignatureException e) {
@@ -146,7 +148,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 		try {
 			ContentName keyName = ContentName.fromNative(key);
-			CCNWriter segmenter = new CCNWriter(keyName, library);
+			CCNWriter segmenter = new CCNWriter(keyName, putLibrary);
 			revision1 = segmenter.newVersion(keyName, data1);
 			revision2 = segmenter.newVersion(keyName, data2);
 			long version1 = VersioningProfile.getVersionNumber(revision1.name());
@@ -181,10 +183,10 @@ public class CCNLibraryTest extends LibraryTestBase {
 		byte[] data1 = "data".getBytes();
 		try {
 			ContentName keyName = ContentName.fromNative(key);
-			CCNWriter segmenter = new CCNWriter(keyName, library);
+			CCNWriter segmenter = new CCNWriter(keyName, putLibrary);
 			ContentObject name = segmenter.put(keyName, data1);
 			System.out.println("Put under name: " + name.name());
-			ContentObject result = library.get(name.name(), CCNBase.NO_TIMEOUT);
+			ContentObject result = getLibrary.get(name.name(), CCNBase.NO_TIMEOUT);
 
 			System.out.println("Querying for returned name, Got back: " + (result == null ? "0"  : "1") + " results.");
 
@@ -194,7 +196,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 				System.out.println("Final name: " + name.name());
 				//Assert.fail("Didn't get back content we just put!");
 
-				result = library.get(name.name(), CCNBase.NO_TIMEOUT);
+				result = getLibrary.get(name.name(), CCNBase.NO_TIMEOUT);
 
 				System.out.println("Recursive querying for returned name, Got back: " + (result == null ? "0"  : "1") + " results.");
 
@@ -207,7 +209,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 				Assert.assertTrue("didn't get back same data", new String(data1).equals(new String(content)));
 			}
 
-			result = library.get(keyName, CCNBase.NO_TIMEOUT);
+			result = getLibrary.get(keyName, CCNBase.NO_TIMEOUT);
 
 			System.out.println("Querying for inserted name, Got back: " 
 							+ (result == null ? "0"  : "1") + " results.");
@@ -231,13 +233,13 @@ public class CCNLibraryTest extends LibraryTestBase {
 			byte [] content1,
 			byte [] content2) throws Exception {
 
-		CCNWriter writer = new CCNWriter(docName, library);
+		CCNWriter writer = new CCNWriter(docName, putLibrary);
 		ContentObject version1 = writer.newVersion(docName, content1);
 		System.out.println("Inserted first version as: " + version1.name());
 		Assert.assertNotNull("New version is null!", version1);
 
 		ContentObject latestVersion =
-			library.getLatestVersion(docName, null, CCNLibrary.NO_TIMEOUT);
+			getLibrary.getLatestVersion(docName, null, CCNLibrary.NO_TIMEOUT);
 
 		Assert.assertNotNull("Retrieved latest version of " + docName + " got null!", latestVersion);
 		System.out.println("Latest version name: " + latestVersion.name());
@@ -249,7 +251,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 		System.out.println("Inserted second version as: " + version2.name());
 
 		ContentObject newLatestVersion = 
-			library.getLatestVersion(docName, null, CCNLibrary.NO_TIMEOUT);
+			getLibrary.getLatestVersion(docName, null, CCNLibrary.NO_TIMEOUT);
 		Assert.assertNotNull("Retrieved new latest version of " + docName + " got null!", newLatestVersion);
 		System.out.println("Latest version name: " + newLatestVersion.name());
 
@@ -262,7 +264,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 	public void testNotFound() throws Exception {
 		try {
 			String key = "/some_strange_key_we_should_never_find";
-			ContentObject result = library.get(ContentName.fromNative(key), 1000);
+			ContentObject result = getLibrary.get(ContentName.fromNative(key), 1000);
 			Assert.assertTrue("found something when there shouldn't have been anything", result == null);
 		} catch (Exception e) {
 			System.out.println("Exception in testing recall: " + e.getClass().getName() + ": " + e.getMessage());
@@ -273,26 +275,26 @@ public class CCNLibraryTest extends LibraryTestBase {
 	@Test
 	public void testLinks() throws Exception {
 		ContentName baseName = ContentName.fromNative("/libraryTest/linkTest/base");
-		CCNWriter writer = new CCNWriter(baseName, library);
+		CCNWriter writer = new CCNWriter(baseName, putLibrary);
 		writer.put(baseName, "base".getBytes());
 		LinkReference lr = new LinkReference(baseName);
 		ContentName linkName = ContentName.fromNative("/libraryTest/linkTest/l1");
-		library.put(linkName, lr);
-		ContentObject linkContent = library.get(linkName, 5000);
-		ArrayList<ContentObject> al = library.dereference(linkContent, 5000);
+		putLibrary.put(linkName, lr);
+		ContentObject linkContent = getLibrary.get(linkName, 5000);
+		ArrayList<ContentObject> al = getLibrary.dereference(linkContent, 5000);
 		Assert.assertEquals(al.size(), 1);
 		ContentObject baseContent = al.get(0);
 		Assert.assertEquals(new String(baseContent.content()), "base");
 		LinkReference[] references = new LinkReference[2];
 		LinkReference lr2 = new LinkReference(baseName);
 		ContentName linkName2 = ContentName.fromNative("/libraryTest/linkTest/l2");
-		library.put(linkName2, lr2);
+		putLibrary.put(linkName2, lr2);
 		references[0] = lr;
 		references[1] = lr2;
 		ContentName c1 = ContentName.fromNative("/libraryTest/linkTest/collection");
-		library.put(c1, references);
-		ContentObject collectionContent = library.get(c1, 5000);
-		al = library.dereference(collectionContent, 5000);
+		putLibrary.put(c1, references);
+		ContentObject collectionContent = getLibrary.get(c1, 5000);
+		al = getLibrary.dereference(collectionContent, 5000);
 		Assert.assertEquals(al.size(), 2);
 		baseContent = al.get(0);
 		Assert.assertEquals(new String(baseContent.content()), "base");
@@ -303,21 +305,21 @@ public class CCNLibraryTest extends LibraryTestBase {
 	@Test
 	public void testCollections() throws Exception {
 		ContentName baseName = ContentName.fromNative("/libraryTest/collectionTest/base");
-		CCNWriter writer = new CCNWriter(baseName, library);
+		CCNWriter writer = new CCNWriter(baseName, putLibrary);
 		ContentName collectionName = ContentName.fromNative("/libraryTest/collectionTest/myCollection");
 		ContentName[] references = new ContentName[2];
 		writer.newVersion(baseName, "base".getBytes());
 		references[0] = ContentName.fromNative("/libraryTest/collectionTest/r1");
 		references[1] = ContentName.fromNative("/libraryTest/collectionTest/r2");
-		Collection collection = library.put(collectionName, references);
+		Collection collection = putLibrary.put(collectionName, references);
 		
 		try {
-			library.getCollection(baseName, 5000);
+			getLibrary.getCollection(baseName, 5000);
 			Assert.fail("getCollection for non-collection succeeded");
 		} catch (IOException ioe) {}
 		
 		// test getCollection
-		collection = library.getCollection(collectionName, 5000);
+		collection = getLibrary.getCollection(collectionName, 5000);
 		ArrayList<LinkReference> checkReferences = collection.contents();
 		Assert.assertEquals(checkReferences.size(), 2);
 		Assert.assertEquals(references[0], checkReferences.get(0).targetName());
@@ -327,22 +329,22 @@ public class CCNLibraryTest extends LibraryTestBase {
 		ContentName[] newReferences = new ContentName[2];
 		newReferences[0] = ContentName.fromNative("/libraryTest/r3");
 		newReferences[1] = ContentName.fromNative("/libraryTest/r4");
-		library.addToCollection(collection, newReferences);
-		collection = library.getCollection(collectionName, 5000);
+		getLibrary.addToCollection(collection, newReferences);
+		collection = getLibrary.getCollection(collectionName, 5000);
 		checkReferences = collection.contents();
 		Assert.assertEquals(checkReferences.size(), 4);
 		Assert.assertEquals(newReferences[0], checkReferences.get(2).targetName());
 		Assert.assertEquals(newReferences[1], checkReferences.get(3).targetName());
 		
-		library.removeFromCollection(collection, newReferences);
-		collection = library.getCollection(collectionName, 5000);
+		putLibrary.removeFromCollection(collection, newReferences);
+		collection = getLibrary.getCollection(collectionName, 5000);
 		checkReferences = collection.contents();
 		Assert.assertEquals(checkReferences.size(), 2);
 		Assert.assertEquals(references[0], checkReferences.get(0).targetName());
 		Assert.assertEquals(references[1], checkReferences.get(1).targetName());
 		
-		library.updateCollection(collection, newReferences, references);
-		collection = library.getCollection(collectionName, 5000);
+		putLibrary.updateCollection(collection, newReferences, references);
+		collection = getLibrary.getCollection(collectionName, 5000);
 		checkReferences = collection.contents();
 		Assert.assertEquals(checkReferences.size(), 2);
 		Assert.assertEquals(newReferences[0], checkReferences.get(0).targetName());
@@ -400,10 +402,10 @@ public class CCNLibraryTest extends LibraryTestBase {
 		byte[] data2 = "data2".getBytes();
 
 		try {
-			CCNWriter writer = new CCNWriter(key, library);
+			CCNWriter writer = new CCNWriter(key, putLibrary);
 			Interest ik = new Interest(key);
-			TestListener tl = new TestListener(library, ik, mainThread);
-			library.expressInterest(ik, 
+			TestListener tl = new TestListener(getLibrary, ik, mainThread);
+			getLibrary.expressInterest(ik, 
 					tl);
 			writer.put(ContentName.fromNative(key), data1);
 			// wait a little bit before we move on...
@@ -420,7 +422,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 			} catch (InterruptedException e) {
 			}
 
-			library.cancelInterest(ik, tl);
+			getLibrary.cancelInterest(ik, tl);
 
 		} catch (Exception e) {
 			System.out.println("Exception in testing interests: " + e.getClass().getName() + ": " + e.getMessage());

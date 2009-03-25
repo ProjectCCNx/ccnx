@@ -63,7 +63,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	@Test
 	public void getNextTest() throws Throwable {
 		System.out.println("getNext test started");
-		CCNWriter writer = new CCNWriter("/getNext", library);
+		CCNWriter writer = new CCNWriter("/getNext", putLibrary);
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
 			writer.put("/getNext/" + Integer.toString(i), Integer.toString(count - i));
@@ -77,7 +77,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 			// prefix of 1 should take care of that; though it's odd that that's a member of the name,
 			// not the interest...
 			ContentName cn = new ContentName(ContentName.fromNative("/getNext/" + new Integer(tValue).toString(), 1), ContentObject.contentDigest(Integer.toString(count - tValue)));
-			ContentObject result = library.getNext(cn, 1000);
+			ContentObject result = getLibrary.getNext(cn, 1000);
 			checkResult(result, tValue + 1);
 		}
 		System.out.println("getNext test finished");
@@ -87,7 +87,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	public void getLatestTest() throws Throwable {
 		int highest = 0;
 		System.out.println("getLatest test started");
-		CCNWriter writer = new CCNWriter("/getLatest", library);
+		CCNWriter writer = new CCNWriter("/getLatest", putLibrary);
 		for (int i = 0; i < count; i++) {
 			int tValue = getRandomFromSet(count, false);
 			if (tValue > highest)
@@ -99,7 +99,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 				if (tValue == highest)
 					tValue--;
 				ContentName cn = SegmentationProfile.segmentName(ContentName.fromNative("/getNext/" + new Integer(tValue).toString(), 1), SegmentationProfile.baseSegment());
-				ContentObject result = library.getLatest(cn, 5000);
+				ContentObject result = getLibrary.getLatest(cn, 5000);
 				checkResult(result, highest);
 			}
 		}
@@ -110,19 +110,19 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	public void excludeFilterTest() throws Throwable {
 		System.out.println("excludeFilterTest test started");
 		excludeSetup();
-		CCNWriter writer = new CCNWriter("/excludeFilterTest", library);
+		CCNWriter writer = new CCNWriter("/excludeFilterTest", putLibrary);
 		for (String value : bloomTestValues) {
 			writer.put("/excludeFilterTest/" + value, value);
 		}
 		writer.put("/excludeFilterTest/aaa", "aaa");
 		writer.put("/excludeFilterTest/zzzzzzzz", "zzzzzzzz");
 		Interest interest = Interest.constructInterest(ContentName.fromNative("/excludeFilterTest/"), ef, null);
-		ContentObject content = library.get(interest, 1000);
+		ContentObject content = getLibrary.get(interest, 1000);
 		Assert.assertTrue(content == null);
 		
 		String shouldGetIt = "/excludeFilterTest/weShouldGetThis";
 		writer.put(shouldGetIt, shouldGetIt);
-		content = library.get(interest, 1000);
+		content = getLibrary.get(interest, 1000);
 		Assert.assertFalse(content == null);
 		assertEquals(content.name().toString(), shouldGetIt);
 		System.out.println("excludeFilterTest test finished");
@@ -141,7 +141,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	private void excludeTest(String prefix, int nFilters) throws Throwable {
 	
 		System.out.println("Starting exclude test - nFilters is " + nFilters);
-		CCNWriter writer = new CCNWriter(prefix, library);
+		CCNWriter writer = new CCNWriter(prefix, putLibrary);
 		byte [][] excludes = new byte[nFilters - 1][];
 		for (int i = 0; i < nFilters; i++) {
 			String value = new Integer(i).toString();
@@ -150,10 +150,10 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 			String name = prefix + "/" + value;
 			writer.put(name, value);
 		}
-		ContentObject content = library.getExcept(ContentName.fromNative(prefix + "/"), excludes, 50000);
+		ContentObject content = getLibrary.getExcept(ContentName.fromNative(prefix + "/"), excludes, 50000);
 		if (null == content || !Arrays.equals(content.content(), new Integer((nFilters - 1)).toString().getBytes())) {
 			// Try one more time in case we got a false positive
-			content = library.getExcept(ContentName.fromNative(prefix + "/"), excludes, 50000);
+			content = getLibrary.getExcept(ContentName.fromNative(prefix + "/"), excludes, 50000);
 		}
 		Assert.assertFalse(content == null);
 		assertEquals(DataUtils.compare(content.content(), new Integer((nFilters - 1)).toString().getBytes()), 0);

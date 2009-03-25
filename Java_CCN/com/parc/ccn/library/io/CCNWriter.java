@@ -144,4 +144,21 @@ public class CCNWriter {
 		return newVersion(name, contents, null, null, publisher);
 	}
 	
+	public CCNFlowControl getFlowControl() {
+		return _segmenter.getFlowControl();
+	}
+	
+	/**
+	 * Warning - calling this risks packet drops. It should only
+	 * be used for tests or other special circumstances in which
+	 * you "know what you are doing".
+	 */
+	public void disableFlowControl() {
+		getFlowControl().disable();
+	}
+	
+	public void close() throws IOException {
+		_segmenter.getFlowControl().waitForPutDrain();
+	}
+	
 }

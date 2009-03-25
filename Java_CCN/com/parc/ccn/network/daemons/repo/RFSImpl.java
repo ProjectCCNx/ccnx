@@ -24,6 +24,8 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.WirePacket;
 import com.parc.ccn.data.query.Interest;
+import com.parc.ccn.library.profiles.SegmentationProfile;
+import com.parc.ccn.library.profiles.VersioningProfile;
 
 /**
  * An initial implementation of the repository using a file system
@@ -48,16 +50,25 @@ public class RFSImpl implements Repository {
 	
 	private final static String encoding = "UTF-8";
 	
-	private static String RESERVED_CLASH = "reserved";
-	private static String ENCODED_FILES = "encoded_files";
-	private static String REPO_PRIVATE = "private";
-	private static String VERSION = "version";
-	private static String REPO_LOCALNAME = "local";
-	private static String REPO_GLOBALPREFIX = "global";
-	private static String INVALID_WINDOWS_CHARS = "<>:\"|?/";
+	private static final String RESERVED_CLASH = "reserved";
+	private static final String ENCODED_FILES = "encoded_files";
+	private static final String REPO_PRIVATE = "private";
+	private static final String VERSION = "version";
+	private static final String REPO_LOCALNAME = "local";
+	private static final String REPO_GLOBALPREFIX = "global";
+	private static final String INVALID_WINDOWS_CHARS = "<>:\"|?/";
+	private static final byte[] INVALID_UTF8_BYTES = {(byte)0xf5, (byte)0xf6, (byte)0xf7, (byte)0xf8, 
+												(byte)0xf9, (byte)0xfa, (byte)0xfb, (byte)0xfc, 
+												(byte)0xfd, (byte)0xfe, (byte)0xff,
+												(byte)0xc0, (byte)0xc1};
 	
 	private static String DEFAULT_LOCAL_NAME = "Repository";
 	private static String DEFAULT_GLOBAL_NAME = "/parc.com/csl/ccn/Repos";
+	
+	private static final String REPLACE_SLASH = "%slash%";
+	private static final String REPLACE_RETURN = "%return%";
+	private static final String REPLACE_VERSION = "%version%";
+	private static final String REPLACE_SEGMENT = "%segment%";
 	
 	private static final int TOO_LONG_SIZE = 200;
 	
@@ -401,8 +412,8 @@ public class RFSImpl implements Repository {
 			decodedName.components().add(decodeBase64(file.getName()));
 			addOneFileToMap(decodedName, file, results);	
 		} else {
-			// Convert last component to "digest as file" form
-			ContentName encodedName = encodeDigest(name);
+			// Convert to name we can use as a file
+			ContentName encodedName = encodeStandardElements(name);
 			File encodedFile = new File(_repositoryFile + getStandardString(encodedName));
 			if (encodedFile.exists()) {
 				addOneFileToMap(name, encodedFile, results);
@@ -438,6 +449,7 @@ public class RFSImpl implements Repository {
 			file = getSpecialPath(content);
 		else {
 			ContentName newName = checkReserved(content.name()).clone();
+			newName = encodeVersionAndSegment(newName);
 			newName.components().add(convertDigest(content).getBytes());
 			ContentName dirName = new ContentName(newName.count() - 1, newName.components());
 			File dirFile = new File(_repositoryRoot, getStandardString(dirName));
@@ -509,12 +521,68 @@ public class RFSImpl implements Repository {
 		for (byte[] component : name.components()) {
 			if (component.length > TOO_LONG_SIZE)
 				return true;
-			for (byte b : component) {
-				if (INVALID_WINDOWS_CHARS.indexOf(b) >= 0)
+			if (needsEncoding(component))
+				return true;
+		}
+		return false;
+	}
+	
+	private boolean needsEncoding(byte[] component) {
+		for (int i = 0; i < component.length; i++) {
+			if (INVALID_WINDOWS_CHARS.indexOf(component[i]) >= 0)
+				return true;
+			for (byte ib : INVALID_UTF8_BYTES) {
+				
+				/*
+				 * Don't auto encode versions or segments
+				 */
+				if (i == 0) {
+					if (component[i] == SegmentationProfile.SEGMENT_MARKER ||
+							component[i] == VersioningProfile.VERSION_MARKER)
+						continue;
+				}
+				if (component[i] == ib) {
 					return true;
+				}
 			}
 		}
 		return false;
+	}
+	
+	/**
+	 * If we just put versioned and/or segmented files into the "encoded" space
+	 * practically everything would be encoded so we encode/decode these specially
+	 * 
+	 * @param name
+	 * @return
+	 */
+	public ContentName encodeVersionAndSegment(ContentName name) {
+		byte[][] newComponents = new byte[name.count()][];
+		encodeVersionAndSegment(name, newComponents, name.count());
+		return new ContentName(newComponents);
+	}
+	
+	private void encodeVersionAndSegment(ContentName name, byte[][] components, int count) {
+		for (int i = 0; i < count; i++) {
+			components[i] = encodeComponent(name.component(i));
+		}
+	}
+	
+	private byte[] encodeComponent(byte[] component) {
+		if (component[0] == VersioningProfile.VERSION_MARKER || 
+				component[0] == SegmentationProfile.SEGMENT_MARKER) {
+			String startString = component[0] == VersioningProfile.VERSION_MARKER ? REPLACE_VERSION : REPLACE_SEGMENT;
+			String conversionString = "";
+			if (component.length > 1) {
+				byte[] conversionBytes = new byte[component.length - 1];
+				System.arraycopy(component, 1, conversionBytes, 0, component.length);
+				conversionString = convertToBase64(conversionBytes);
+			}
+			return (startString + conversionString).getBytes();
+		}
+		byte[] newComponent = new byte[component.length];
+		System.arraycopy(component, 0, newComponent, 0, component.length);
+		return component;
 	}
 	
 	/**
@@ -532,14 +600,9 @@ public class RFSImpl implements Repository {
 		newComponents.add(ENCODED_FILES.getBytes());
 		for (byte[] component : components) {
 			byte type = UTF8_COMPONENT;
-			byte[] modifiedComponent = component;
-			for (byte b : component) {
-				if (INVALID_WINDOWS_CHARS.indexOf(b) >= 0) {
-					 type = BASE64_COMPONENT;
-					 modifiedComponent = convertToBase64(component).getBytes();
-					 break;
-				}
-			}
+			byte[] modifiedComponent = encodeComponent(component);
+			if (needsEncoding(modifiedComponent))
+				 modifiedComponent = convertToBase64(component).getBytes();
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			int length = modifiedComponent.length;
 			int offset = 0;
@@ -632,14 +695,14 @@ public class RFSImpl implements Repository {
 	 */
 	private String convertToBase64(byte[] bytes) {
 		String b64String = new BASE64Encoder().encode(bytes);
-		b64String = b64String.replace("/", "%slash%");
-		return b64String.replace("\n", "%return%");
+		b64String = b64String.replace("/", REPLACE_SLASH);
+		return b64String.replace("\n", REPLACE_RETURN);
 	}
 	
 	private byte [] decodeBase64(String data) {
 		try {
-			data = data.replace("%slash%", "/");
-			data = data.replace("%return%", "\n");
+			data = data.replace(REPLACE_SLASH, "/");
+			data = data.replace(REPLACE_RETURN, "\n");
 			return new BASE64Decoder().decodeBuffer(data);
 		} catch (IOException e) {
 			return new byte[0]; // TODO error handling...
@@ -656,13 +719,15 @@ public class RFSImpl implements Repository {
 		return convertToBase64(name.component(name.components().size() - 1));
 	}
 	
-	private ContentName encodeDigest(ContentName name) {
+	private ContentName encodeStandardElements(ContentName name) {
 		// Convert last component to "digest as file" form
 		ContentName newName = name.clone();
 		String cnDigestString = cnDigestString(newName);
-		newName.components().remove(newName.count() - 1);
-		newName.components().add(cnDigestString.getBytes());
-		return newName;
+		
+		byte[][] newComponents = new byte[name.count()][];
+		encodeVersionAndSegment(name, newComponents, name.count() - 1);
+		newComponents[name.count() - 1] = cnDigestString.getBytes();
+		return new ContentName(newComponents);
 	}
 	
 	/**

@@ -50,11 +50,14 @@ public class LibraryTestBase {
 	
 	protected HashSet<Integer> _resultSet = new HashSet<Integer>();
 	
-	protected static CCNLibrary library = null;
+	protected static CCNLibrary putLibrary = null;
+	protected static CCNLibrary getLibrary = null;
+
 
 	static {
 		try {
-			library = CCNLibrary.open();
+			putLibrary = CCNLibrary.open();
+			getLibrary = CCNLibrary.open();
 		} catch (ConfigurationException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -191,6 +194,7 @@ public class LibraryTestBase {
 			System.out.println("Put " + i + " done");
 			checkPutResults(putResult);
 		}
+		writer.close();
 	}
 	
 	public class GetThread implements Runnable {

@@ -95,10 +95,14 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * @param name
 	 */
 	public void removeNameSpace(ContentName name) {
+		removeNameSpace(name, false);
+	}
+	
+	private void removeNameSpace(ContentName name, boolean all) {
 		Iterator<ContentName> it = _filteredNames.iterator();
 		while (it.hasNext()) {
 			ContentName filteredName = it.next();
-			if (filteredName.equals(name)) {
+			if (all || filteredName.equals(name)) {
 				_library.unregisterFilter(filteredName, this);
 				it.remove();
 				break;
@@ -241,7 +245,8 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	public void waitForPutDrain() throws IOException {
-		if (_holdingArea.size() > 0) {
+		int startSize = _holdingArea.size();
+		while (_holdingArea.size() > 0) {
 			_shutdownWait = true;
 			boolean _interrupted;
 			do {
@@ -255,9 +260,10 @@ public class CCNFlowControl implements CCNFilterListener {
 				}
 			} while (_interrupted);
 			
-			if (_holdingArea.size() > 0) {
+			if (_holdingArea.size() == startSize) {
 				throw new IOException("Put(s) with no matching interests");
 			}
+			startSize = _holdingArea.size();
 		}
 	}
 	
@@ -290,9 +296,13 @@ public class CCNFlowControl implements CCNFilterListener {
 		_flowControlEnabled = true;
 	}
 	
+	/**
+	 * Warning - calling this risks packet drops. It should only
+	 * be used for tests or other special circumstances in which
+	 * you "know what you are doing".
+	 */
 	public void disable() {
-		for (ContentName name : _filteredNames)
-			removeNameSpace(name);
+		removeNameSpace(null, true);
 		_flowControlEnabled = false;
 	}
 }

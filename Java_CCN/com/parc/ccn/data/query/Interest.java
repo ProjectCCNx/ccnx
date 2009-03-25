@@ -212,7 +212,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			// though lengths will be handled properly (lengthDiff will come out 0,
 			// which will match additionalNameComponents(); except we won't
 			// compare to the content digest...)
-			int lengthDiff = name.count() - name().count() + 1;
+			int ourCount = null != name.prefixCount() ? name.prefixCount() : name.count();
+			int nameCount = null != name().prefixCount() ? name().prefixCount() : name().count();
+			int lengthDiff = ourCount - nameCount + 1;
 			if (!additionalNameComponents().equals(lengthDiff)) {
 				Library.logger().fine("Interest match failed: " + lengthDiff + " more than the " + additionalNameComponents() + " components between expected " +
 						name() + " and tested " + name);
