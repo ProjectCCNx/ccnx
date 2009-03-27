@@ -123,6 +123,8 @@ public class BloomFilter implements Comparable<BloomFilter> {
 		_seed = new short[4];
 		for (int i = 0; i < _seed.length; i++)
 			_seed[i] = (byte)bais.read();
+		for (int i = 0; i < _seed.length; i++)
+			_seed[i] = (short)((_seed[i]) & 0xff);
 		int i = 0;
 		while (bais.available() > 0)
 			_bloom[i++] = (byte)bais.read();	
