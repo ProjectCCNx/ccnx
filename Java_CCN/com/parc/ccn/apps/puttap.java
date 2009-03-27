@@ -89,7 +89,7 @@ public class puttap implements CCNInterestListener {
 	        InputStream is = new FileInputStream(theFile);
 	        byte[] bytes = new byte[CHUNK_SIZE];
 	        int i = 0;
-	        CCNWriter writer = new CCNWriter(library);
+	        CCNWriter writer = new CCNWriter(name, library);
 	        while (is.read(bytes) >= 0) {
 	        	ContentObject cn = writer.put(ContentName.fromNative(name, new Integer(i++).toString()), bytes);
 	        	if (!cn.validate()) {

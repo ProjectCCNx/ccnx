@@ -1,11 +1,9 @@
 package test.ccn.endtoend;
 
 import java.util.concurrent.Semaphore;
-import java.util.logging.Level;
 
 import org.junit.BeforeClass;
 
-import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.library.CCNLibrary;
 
@@ -21,7 +19,7 @@ public class BaseLibrarySink {
 	public static void setUpBeforeClass() throws Exception {
 		library = CCNLibrary.open();
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
-		Library.logger().setLevel(Level.FINEST);
+		// Library.logger().setLevel(Level.FINEST);
 	}
 
 	/**
