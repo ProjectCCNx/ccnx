@@ -3,6 +3,7 @@ package com.parc.ccn.data.query;
 import java.util.ArrayList;
 
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.library.profiles.VersionMissingException;
 
 public interface CCNInterestListener {
 	
@@ -12,7 +13,8 @@ public interface CCNInterestListener {
 	 * 			ccnd is currently handing back anyway.
 	 * @param interest Interest that we matched
 	 * @return new Interest to be expressed
+	 * @throws VersionMissingException 
 	 */
-    public Interest handleContent(ArrayList<ContentObject> results, Interest interest);
+    public Interest handleContent(ArrayList<ContentObject> results, Interest interest) throws VersionMissingException;
     
 }

@@ -24,6 +24,7 @@ import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNWriter;
+import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
 
@@ -362,7 +363,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 			_mainThread = mainThread;
 		}
 
-		public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
+		public Interest handleContent(ArrayList<ContentObject> results, Interest interest) throws VersionMissingException {
 			byte[] content = null;
 			if (null != results) {
 				Iterator<ContentObject> rit = results.iterator();

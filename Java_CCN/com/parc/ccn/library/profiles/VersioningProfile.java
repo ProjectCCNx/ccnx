@@ -2,6 +2,7 @@ package com.parc.ccn.library.profiles;
 
 import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.lang.Exception;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.SignedInfo;
@@ -59,7 +60,7 @@ public class VersioningProfile implements CCNProfile {
 		// Timestamps go up to ns
 		// DKS -- TODO FIX, wrong value
 
-		long versionns = version.getTime() * 1000000 + version.getNanos();
+		long versionns = version.getTime() * 1000000000 + version.getNanos();
 		return versionName(name, versionns*1000); // 48 bits till year 4147
 	}
 	
@@ -125,15 +126,19 @@ public class VersioningProfile implements CCNProfile {
 		return parent.isPrefixOf(version);
 	}
 	
-	public static long getVersionNumber(ContentName version) {
-		if (isVersioned(version)) {
-			byte [] fcomp = version.component(version.count() - 2);
-			// Will behave properly with everything but first fragment of fragmented content.
-			if (fcomp.length == 1)
-				return 0;
-			return Long.valueOf(ContentName.componentPrintURI(fcomp, 1, fcomp.length-1));
+	public static long getVersionNumber(ContentName name) throws VersionMissingException {
+		byte [] vm = null;
+		if (SegmentationProfile.isSegment(name)) {
+			vm = name.component(name.count()-2);
+		} else {
+			vm = name.lastComponent(); // no fragment number, unusual
 		}
-		return -1; // unexpected, but not invalid		
+		if ((null == vm) || (0 == vm.length) || (VERSION_MARKER != vm[0]))
+			throw new VersionMissingException();
+		
+		byte [] versionData = new byte[vm.length - 1];
+		System.arraycopy(vm, 1, versionData, 0, vm.length - 1);
+		return new BigInteger(versionData).longValue();
 	}
 
 	/**
