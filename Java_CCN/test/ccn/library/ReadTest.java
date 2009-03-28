@@ -132,7 +132,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 		writer.put(shouldGetIt, shouldGetIt);
 		content = getLibrary.get(interest, 1000);
 		Assert.assertFalse(content == null);
-		assertEquals(content.name().toString(), shouldGetIt);
+		assertTrue(content.name().toString().startsWith(shouldGetIt));
 		System.out.println("excludeFilterTest test finished");
 	}
 	
