@@ -87,6 +87,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
     					 byte [] content, PrivateKey signingKey) throws InvalidKeyException, SignatureException {
     	this(name, signedInfo, content, (Signature)null);
     	_signature = sign(name, signedInfo, content, signingKey);
+    	Library.logger().info("Created content object: " + name + " timestamp: " + signedInfo.getTimestamp());
     }
     
     /**

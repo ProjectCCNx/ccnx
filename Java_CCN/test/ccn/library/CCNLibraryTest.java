@@ -14,6 +14,7 @@ import junit.framework.Assert;
 import org.junit.Test;
 
 import com.parc.ccn.CCNBase;
+import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
@@ -184,8 +185,8 @@ public class CCNLibraryTest extends LibraryTestBase {
 		byte[] data1 = "data".getBytes();
 		try {
 			ContentName keyName = ContentName.fromNative(key);
-			CCNWriter segmenter = new CCNWriter(keyName, putLibrary);
-			ContentObject name = segmenter.put(keyName, data1);
+			CCNWriter writer = new CCNWriter(keyName, putLibrary);
+			ContentObject name = writer.put(keyName, data1);
 			System.out.println("Put under name: " + name.name());
 			ContentObject result = getLibrary.get(name.name(), CCNBase.NO_TIMEOUT);
 
@@ -221,9 +222,12 @@ public class CCNLibraryTest extends LibraryTestBase {
 			if (result.name().equals(name.name()) &&
 					result.signedInfo().equals(name.signedInfo())) {
 				System.out.println("Got back name we inserted.");
-			} else
+			} else {
+				Library.logger().warning("Didn't get back data we just inserted:\n  result: " + result.name() + " (time: " + result.signedInfo().getTimestamp() + 
+										")\n   orig: " + name.name() + " (time: " + name.signedInfo().getTimestamp() + ")");
 				Assert.fail("Didn't get back data we just inserted - result name: " + result.name() + 
-						", auth: " + result.signedInfo() + ", orig name: " + name.name() + ", auth: " + name.signedInfo());
+						", auth: " + result.signedInfo() + " - orig name: " + name.name() + ", auth: " + name.signedInfo());
+			}
 		} catch (Exception e) {
 			System.out.println("Exception in testing recall: " + e.getClass().getName() + ": " + e.getMessage());
 			Assert.fail(e.getMessage());

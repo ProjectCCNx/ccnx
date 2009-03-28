@@ -225,7 +225,9 @@ public class CCNSegmenter {
 				// We should only get here on a single-fragment object, where the lastBlocks
 				// argument is false (omitted).
 				return putFragment(name, SegmentationProfile.baseSegment(), contents, type,
-						null, freshnessSeconds, SegmentationProfile.baseSegment(),
+						null, freshnessSeconds, null, // SegmentationProfile.baseSegment(), // DKS TODO -- when can deserialize, put this here
+																					// right now it's not going out on the wire, so coming
+																					// back off wire null.
 						locator, publisher);
 			} catch (IOException e) {
 				Library.logger().warning("This should not happen: put failed with an IOException.");
@@ -395,6 +397,7 @@ public class CCNSegmenter {
 							type, locator,
 							freshnessSeconds, lastSegment), 
 							contents, signingKey);
+		Library.logger().info("CCNSegmenter: putting " + co.name() + " (timestamp: " + co.signedInfo().getTimestamp() + ")");
 		return _flowControl.put(co);
 	}
 
