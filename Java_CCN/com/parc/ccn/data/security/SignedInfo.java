@@ -11,6 +11,25 @@ import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
 
+/**
+ * SignedInfo is the metadata portion of a ContentObject that contains information about that
+ * object which is signed by the publisher. It requires loose consistency within that publisher
+ * only -- it lets you order things with the same name, things like that. From the security
+ * point of view it acts primarily as a nonce, and we use a timestamp for it to make it slightly
+ * more useful than a random nonce.
+ * <p>
+ * You can think of the SignedInfo as
+ * <br>
+ * a) the stuff "about" a piece of CCN data that it is legal to expect routers to understand and
+ *    use (as opposed to names, which are opaque), which is
+ * <br>
+ * b) pulled out as metadata rather than baked into the names both to allow this opaqueness and
+ *    to deal with the fact that name matching is strictly component-wise ordered (you can't
+ *    look for /parc/foo/&#42;/bar for reasons of routing efficiency, except through a slower
+ *    search style interaction), and these items want to be matched in any order -- in other
+ *    words, sometimes you want to find /obj/<timestamp> and sometimes /obj/<publisher> and
+ *    you can't decide which should go first in the name.
+ */
 public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 
 	public enum ContentType {FRAGMENT, LINK, COLLECTION, LEAF, SESSION, HEADER, KEY};
