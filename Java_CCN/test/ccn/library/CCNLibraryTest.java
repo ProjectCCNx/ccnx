@@ -153,8 +153,8 @@ public class CCNLibraryTest extends LibraryTestBase {
 			CCNWriter segmenter = new CCNWriter(keyName, putLibrary);
 			revision1 = segmenter.newVersion(keyName, data1);
 			revision2 = segmenter.newVersion(keyName, data2);
-			long version1 = VersioningProfile.getVersionNumber(revision1.name());
-			long version2 = VersioningProfile.getVersionNumber(revision2.name());
+			long version1 = VersioningProfile.getVersionAsLong(revision1.name());
+			long version2 = VersioningProfile.getVersionAsLong(revision2.name());
 			System.out.println("Version1: " + version1 + " version2: " + version2);
 			Assert.assertTrue("Revisions are strange", 
 					version2 > version1);
@@ -262,7 +262,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 		Assert.assertTrue("Version is not a version of the parent name!", VersioningProfile.isVersionOf(version1.name(), docName));
 		Assert.assertTrue("Version is not a version of the parent name!", VersioningProfile.isVersionOf(version2.name(), docName));
-		Assert.assertTrue("Version numbers don't increase!", VersioningProfile.getVersionNumber(version2.name()) > VersioningProfile.getVersionNumber(version1.name()));
+		Assert.assertTrue("Version numbers don't increase!", VersioningProfile.getVersionAsLong(version2.name()) > VersioningProfile.getVersionAsLong(version1.name()));
 	}
 
 	@Test
@@ -376,7 +376,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 					content = co.content();
 					String strContent = new String(content);
-					System.out.println("Got update for " + co.name() + ": " + strContent + " (revision " + VersioningProfile.getVersionNumber(co.name()) + ")");
+					System.out.println("Got update for " + co.name() + ": " + strContent + " (revision " + VersioningProfile.getVersionAsLong(co.name()) + ")");
 					_count++;
 					switch(_count) {
 					case 1:
