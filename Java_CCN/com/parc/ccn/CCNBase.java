@@ -60,6 +60,7 @@ public class CCNBase {
 		boolean interrupted = false;
 		do {
 			try {
+				Library.logger().finest("Putting content on wire: " + co.name());
 				return getNetworkManager().put(co);
 				
 					// DKS -- total hack, but we're dropping stuff on the floor all over

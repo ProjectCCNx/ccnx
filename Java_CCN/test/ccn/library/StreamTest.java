@@ -1,6 +1,7 @@
 package test.ccn.library;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -18,6 +19,7 @@ import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNInputStream;
 import com.parc.ccn.library.io.CCNOutputStream;
+import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
 /**
@@ -27,6 +29,10 @@ import com.parc.ccn.library.profiles.VersioningProfile;
  */
 
 public class StreamTest extends BlockReadWriteTest {
+	
+	static int longSegments = (TEST_LONG_CONTENT.length()/SegmentationProfile.DEFAULT_BLOCKSIZE);
+	static int minSegments = 128;
+	static int numIterations = ((int)(minSegments/longSegments) + 1);
 	
 	@Override
 	public void getResults(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException {
@@ -40,18 +46,23 @@ public class StreamTest extends BlockReadWriteTest {
 		byte[] compareBytes = TEST_LONG_CONTENT.getBytes();
         byte[] bytes = new byte[compareBytes.length];
         int buflen;
-        int slot = 0;
-        while ((buflen = istream.read(bytes, slot, CHUNK_SIZE * 3)) > 0) {
-        	Library.logger().info("Read " + buflen + " bytes from CCNDescriptor.");
-        	os.write(bytes, 0, (int)buflen);
-        	if (istream.available() == 0) {
-        		Library.logger().info("Descriptor claims 0 bytes available.");
+        for (int i=0; i < numIterations; ++i) {
+            int toRead = CHUNK_SIZE * 3;
+            int slot = 0;
+            while ((buflen = istream.read(bytes, slot, toRead)) > 0) {
+        		Library.logger().info("Read " + buflen + " bytes from CCNDescriptor.");
+        		os.write(bytes, 0, (int)buflen);
+        		if (istream.available() == 0) {
+        			Library.logger().info("Stream claims 0 bytes available.");
+        		}
+        		slot += buflen;
+        		toRead = ((compareBytes.length - slot) > CHUNK_SIZE * 3) ? (CHUNK_SIZE * 3) : (compareBytes.length - slot);
         	}
-        	slot += buflen;
+        	Assert.assertArrayEquals(bytes, compareBytes);  
         }
+
         istream.close();
-        Library.logger().info("Closed CCN reading CCNDescriptor.");
-        Assert.assertArrayEquals(bytes, compareBytes);  
+        Library.logger().info("Closed CCN reading CCNInputStream.");
 	}
 	
 	/**
@@ -72,10 +83,19 @@ public class StreamTest extends BlockReadWriteTest {
 		CCNOutputStream ostream = new CCNOutputStream(thisName, null, null, library);
 		sema.release();	// put channel open
 		
-		Library.logger().info("Opened descriptor for writing: " + thisName);
+		Library.logger().info("Opened output stream for writing: " + thisName);
+		Library.logger().info("Writing " + TEST_LONG_CONTENT.length() + " bytes, " +
+						(TEST_LONG_CONTENT.length()/ostream.getBlockSize()) + " segments (" + numIterations + " iterations of content");
+		
+		ByteArrayOutputStream bigBAOS = new ByteArrayOutputStream();
+		for (int i=0; i < numIterations; ++i) {
+			bigBAOS.write(TEST_LONG_CONTENT.getBytes());
+		}
 		
 		// Dump the file in small packets
-		InputStream is = new ByteArrayInputStream(TEST_LONG_CONTENT.getBytes());
+		//InputStream is = new ByteArrayInputStream(TEST_LONG_CONTENT.getBytes());
+		InputStream is = new ByteArrayInputStream(bigBAOS.toByteArray());
+
         byte[] bytes = new byte[CHUNK_SIZE];
         int buflen = 0;
         while ((buflen = is.read(bytes)) >= 0) {

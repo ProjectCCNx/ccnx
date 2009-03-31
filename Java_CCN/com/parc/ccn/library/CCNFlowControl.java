@@ -7,6 +7,7 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeMap;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
@@ -154,6 +155,7 @@ public class CCNFlowControl implements CCNFilterListener {
 			synchronized (this) {
 				match = _unmatchedInterests.removeMatch(co);
 				if (match == null) {
+					Library.logger().finest("Holding " + co.name());
 					_holdingArea.put(co.name(), co);
 				} else {
 					_library.put(co);
@@ -169,6 +171,7 @@ public class CCNFlowControl implements CCNFilterListener {
 			synchronized (this) {
 				ContentObject co = getBestMatch(interest);
 				if (co != null) {
+					Library.logger().finest("Found content " + co.name() + " matching interest: " + interest.name());
 					_holdingArea.remove(co.name());
 					try {
 						_library.put(co);
@@ -178,11 +181,12 @@ public class CCNFlowControl implements CCNFilterListener {
 							}
 						}
 					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
+						Library.logger().warning("IOException in handleInterests: " + e.getClass().getName() + ": " + e.getMessage());
+						Library.warningStackTrace(e);
 					}
 					
 				} else {
+					Library.logger().finest("No content matching pending interest: " + interest.name() + ", holding.");
 					_unmatchedInterests.add(interest, new UnmatchedInterest());
 				}
 			}
