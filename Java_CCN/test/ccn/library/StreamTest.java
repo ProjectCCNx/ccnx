@@ -102,6 +102,7 @@ public class StreamTest extends BlockReadWriteTest {
         	ostream.write(bytes, 0, buflen);
         	Library.logger().info("Wrote " + buflen + " bytes to CCNDescriptor.");
         }
+        ostream.flush();
         Library.logger().info("Finished writing. Closing CCN writing CCNDescriptor.");
         ostream.close();
         Library.logger().info("Closed CCN writing CCNDescriptor.");

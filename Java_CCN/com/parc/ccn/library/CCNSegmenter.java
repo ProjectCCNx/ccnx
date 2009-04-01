@@ -392,7 +392,7 @@ public class CCNSegmenter {
 
 		ContentObject co = 
 			new ContentObject(SegmentationProfile.segmentName(rootName, 
-					SegmentationProfile.baseSegment()),
+					fragmentNumber),
 					new SignedInfo(publisher, 
 							type, locator,
 							freshnessSeconds, lastSegment), 

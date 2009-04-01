@@ -297,17 +297,23 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		if (0 == _blockIndex) {
 			// single block to write. if we get here, it should be a full block. We only write
 			// partials in response to close(), and close() on a single-block write is a 
-			// single-block file which is handled separately. warn.
+			// single-block file which is handled separately. We might get here if someone
+			// calls flush() immediately prior to calling close(); there is a risk if we
+			// don't flush that they might actually not call close...
 			blockWriteCount++;
 
-			Library.logger().info("flush: putting single block to the network.");
+			Library.logger().info("flush: asked to put a single block to the network.");
 
 			// DKS TODO -- think about types, freshness, fix markers for impending last block/first block
 			if (_blockOffset < _blockBuffers[_blockIndex].length) {
-				Library.logger().warning("flush(): asked to write last partial block of a single block file: " + _blockOffset + " bytes, block total is " + _blockBuffers[_blockIndex].length + ", should have been written as a raw single-block file by close()!");
+				if (!flushLastBlock) {
+					Library.logger().warning("flush(): asked to write last partial block when not calling close. Assume close() will be called next, flush then.");
+					return;
+				}
+				Library.logger().warning("flush(): writing hanging partial last block of file: " + _blockOffset + " bytes, block total is " + _blockBuffers[_blockIndex].length + ", called by close().");
 				byte [] tempBuf = new byte[_blockOffset];
 				System.arraycopy(_blockBuffers[_blockIndex],0,tempBuf,0,_blockOffset);
-				_segmenter.putFragment(_baseName, _baseNameIndex, tempBuf, ContentType.FRAGMENT, _timestamp, null, null, _locator, _publisher);
+				_segmenter.putFragment(_baseName, _baseNameIndex, tempBuf, ContentType.LEAF, _timestamp, null, null, _locator, _publisher);
 			} else {
 				_segmenter.putFragment(_baseName, _baseNameIndex, _blockBuffers[_blockIndex], ContentType.FRAGMENT, _timestamp, null, null, _locator, _publisher);				
 			}
@@ -329,7 +335,8 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			// We always flush all the blocks starting from 0, so the baseBlockIndex is always 0.
 			// DKS TODO fix last block marking
 			CCNMerkleTree tree =
-				_segmenter.putMerkleTree(_baseName, _baseNameIndex, _blockBuffers, blockWriteCount, 0, lastBlockSize,
+				_segmenter.putMerkleTree(_baseName, _baseNameIndex, _blockBuffers, 
+							blockWriteCount, 0, lastBlockSize,
 						ContentType.LEAF, _timestamp, null, false, _locator, _publisher);
 			_roots.add(tree.root());
 		}
