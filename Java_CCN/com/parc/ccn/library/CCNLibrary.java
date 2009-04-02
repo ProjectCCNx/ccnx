@@ -516,16 +516,18 @@ public class CCNLibrary extends CCNBase {
 	}
 	
 	/**
-	 * Return data one level below us in the hierarchy only
+	 * Return data the specified number of levels below us in the
+	 * hierarchy
 	 * 
 	 * @param name
+	 * @param level
 	 * @param timeout
 	 * @return
 	 * @throws IOException
 	 */
-	public ContentObject getNextLevel(ContentName name, long timeout) throws IOException {
+	public ContentObject getLower(ContentName name, int level, long timeout) throws IOException {
 		Interest interest = new Interest(name);
-		interest.additionalNameComponents(1);
+		interest.additionalNameComponents(level);
 		return get(interest, timeout);
 	}
 	

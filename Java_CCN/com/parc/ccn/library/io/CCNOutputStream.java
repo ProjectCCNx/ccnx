@@ -114,6 +114,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 */
 	public void setBlockSize(int blockSize) {
 		_blockSize = blockSize;
+		_segmenter.setBlockSize(blockSize);
 	}
 
 	public int getBlockSize() {

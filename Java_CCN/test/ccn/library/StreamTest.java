@@ -12,6 +12,7 @@ import java.security.SignatureException;
 import javax.xml.stream.XMLStreamException;
 
 import org.junit.Assert;
+import org.junit.BeforeClass;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
@@ -34,12 +35,18 @@ public class StreamTest extends BlockReadWriteTest {
 	static int minSegments = 128;
 	static int numIterations = ((int)(minSegments/longSegments) + 1);
 	
+	@BeforeClass
+	public static void setUpBeforeClass() throws Exception {
+		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
+		//Library.logger().setLevel(Level.FINEST);
+	}
+	
 	@Override
 	public void getResults(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException {
 		ContentName thisName = VersioningProfile.versionName(ContentName.fromNative(baseName, fileName), count);
 		sema.acquire(); // Block until puts started
 		CCNInputStream istream = new CCNInputStream(thisName, library);
-		//desc.setTimeout(5000);
+		istream.setTimeout(8000);
 		Library.logger().info("Opened descriptor for reading: " + baseName);
 
 		FileOutputStream os = new FileOutputStream(fileName + "_testout.txt");

@@ -73,6 +73,11 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		_prefixCount = prefixCount;
 	}
 	
+	public ContentName(ContentName name, int prefixCount) {
+		this(name, null);
+		_prefixCount = prefixCount;
+	}
+	
 	public ContentName(ContentName parent, byte[] name1, byte[] name2) {
 		this (parent.count() +
 				((null != name1) ? 1 : 0) +

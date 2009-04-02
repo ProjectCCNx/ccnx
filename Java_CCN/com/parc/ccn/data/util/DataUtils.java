@@ -35,10 +35,10 @@ public class DataUtils {
 				} else {
 					// They have equal lengths - compare byte by byte
 					for (int i=0; i < left.length; ++i) {
-						if (left[i] < right[i]) {
+						if ((short)(left[i] & 0xff) < (short)(right[i] & 0xff)) {
 							result = -1;
 							break;
-						} else if (left[i] > right[i]) {
+						} else if ((short)(left[i] & 0xff) > (short)(right[i] & 0xff)) {
 							result = 1;
 							break;
 						}

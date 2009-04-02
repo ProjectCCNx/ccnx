@@ -110,7 +110,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	 **/
 	protected ContentObject getBlock(int number) throws IOException {
 
-		ContentName blockName = new ContentName(_baseName, ContentName.componentParseNative(Integer.toString(number)));
+		ContentName blockName = SegmentationProfile.segmentName(_baseName, SegmentationProfile.baseSegment() + number);
 
 		if(_currentBlock!=null){
 			//what block do we have right now?  maybe we already have it
@@ -124,7 +124,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		/*
 		 * TODO: Paul R. Comment - as above what to do about timeouts?
 		 */
-		ContentObject block = _library.getNextLevel(blockName, _timeout);
+		ContentObject block = _library.getLower(blockName, 1, _timeout);
 
 		if (null == block) {
 			Library.logger().info("Cannot get block " + number + " of file " + _baseName + " expected block: " + blockName.toString());
@@ -171,7 +171,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		}
 		// DKS TODO FIX - use get left child; the following is a first stab at that.
 		Library.logger().info("getFirstBlock: getting " + _baseName);
-		ContentObject result =  _library.get(_baseName, _timeout);
+		ContentObject result =  _library.getLower(_baseName, 2, _timeout);
 		if (null != result){
 			Library.logger().info("getFirstBlock: retrieved " + result.name());
 			// Now need to verify the block we got
