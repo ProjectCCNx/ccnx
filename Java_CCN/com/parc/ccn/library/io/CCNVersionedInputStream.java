@@ -75,12 +75,13 @@ public class CCNVersionedInputStream extends CCNInputStream {
 		// This might get us the header instead...
 		ContentObject result =  _library.getLatestVersion(_baseName, null, _timeout);
 		if (null != result){
-			Library.logger().info("getFirstBlock: retrieved " + result.name());
+			Library.logger().info("getFirstBlock: retrieved " + result.name() + " type: " + result.signedInfo().getTypeName());
 			if (result.signedInfo().getType() == ContentType.HEADER) {
 				if (!addHeader(result)) { // verifies
 					Library.logger().warning("Retrieved header in getFirstBlock, but failed to process it.");
 				}
 				_baseName = SegmentationProfile.headerRoot(result.name());
+				Library.logger().info("Retrieved header, setting _baseName to " + _baseName + " calling CCNInputStream.getFirstBlock.");
 				// now we know the version
 				return super.getFirstBlock();
 			}
