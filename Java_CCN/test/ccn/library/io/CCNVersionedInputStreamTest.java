@@ -37,7 +37,7 @@ public class CCNVersionedInputStreamTest {
 	static byte [] latestVersionDigest;
 	static CCNLibrary outputLibrary;
 	static CCNLibrary inputLibrary;
-	static final int MAX_FILE_SIZE = 1024*1024; // 1 MB
+	static final int MAX_FILE_SIZE = 1024*400; // 1024*1024; // 1 MB
 	static final int BUF_SIZE = 4096;
 	
 
