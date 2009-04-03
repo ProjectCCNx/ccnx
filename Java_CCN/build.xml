@@ -146,6 +146,7 @@
 				<echo message="Running test ccnd on port ${TEST_PORT}"/>
 				<exec executable="${ccnd}" dir="${testout}" output="${testout}/TEST-ccnd-baselib.txt">
 					<env key="CCN_LOCAL_PORT" value="${TEST_PORT}"/>
+					<env key="CCND_DEBUG" value="-1"/>
 				</exec>
 			</daemons>
 		</parallel>
