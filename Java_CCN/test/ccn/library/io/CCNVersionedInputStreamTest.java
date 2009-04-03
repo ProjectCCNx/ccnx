@@ -21,6 +21,7 @@ import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNInputStream;
 import com.parc.ccn.library.io.CCNOutputStream;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
+import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
@@ -29,16 +30,19 @@ public class CCNVersionedInputStreamTest {
 	static ContentName defaultStreamName;
 	static ContentName firstVersionName;
 	static int firstVersionLength;
+	static int firstVersionMaxSegment;
 	static byte [] firstVersionDigest;
 	static ContentName middleVersionName;
 	static int middleVersionLength;
+	static int middleVersionMaxSegment;
 	static byte [] middleVersionDigest;
 	static ContentName latestVersionName;
 	static int latestVersionLength;
+	static int latestVersionMaxSegment;
 	static byte [] latestVersionDigest;
 	static CCNLibrary outputLibrary;
 	static CCNLibrary inputLibrary;
-	static final int MAX_FILE_SIZE = 1024*400; // 1024*1024; // 1 MB
+	static final int MAX_FILE_SIZE = 1024*1024; // 1 MB
 	static final int BUF_SIZE = 4096;
 	
 
@@ -52,15 +56,18 @@ public class CCNVersionedInputStreamTest {
 		defaultStreamName = ContentName.fromNative("/test/stream/versioning/LongOutput.bin");
 		
 		firstVersionName = VersioningProfile.versionName(defaultStreamName);
-		firstVersionLength = randBytes.nextInt(MAX_FILE_SIZE);;
+		firstVersionLength = randBytes.nextInt(MAX_FILE_SIZE);
+		firstVersionMaxSegment = (int)Math.ceil(firstVersionLength/SegmentationProfile.DEFAULT_BLOCKSIZE);
 		firstVersionDigest = writeFileFloss(firstVersionName, firstVersionLength, randBytes);
 		
 		middleVersionName = VersioningProfile.versionName(defaultStreamName);
-		middleVersionLength = randBytes.nextInt(MAX_FILE_SIZE);;
+		middleVersionLength = randBytes.nextInt(MAX_FILE_SIZE);
+		middleVersionMaxSegment = (int)Math.ceil(middleVersionLength/SegmentationProfile.DEFAULT_BLOCKSIZE);
 		middleVersionDigest = writeFileFloss(middleVersionName, middleVersionLength, randBytes);
 
 		latestVersionName = VersioningProfile.versionName(defaultStreamName);
-		latestVersionLength = randBytes.nextInt(MAX_FILE_SIZE);;
+		latestVersionLength = randBytes.nextInt(MAX_FILE_SIZE);
+		latestVersionMaxSegment = (int)Math.ceil(latestVersionLength/SegmentationProfile.DEFAULT_BLOCKSIZE);
 		latestVersionDigest = writeFileFloss(latestVersionName, latestVersionLength, randBytes);
 		
 	}
@@ -137,8 +144,11 @@ public class CCNVersionedInputStreamTest {
 	public void testCCNVersionedInputStreamContentNameLongPublisherKeyIDCCNLibrary() {
 		try {
 			// we can make a new library; as long as we don't use the outputLibrary it should work
-			CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName, 3, outputLibrary.getDefaultPublisher(), inputLibrary);
-			CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, 3, outputLibrary.getDefaultPublisher(), inputLibrary);
+			CCNVersionedInputStream vfirst = 
+				new CCNVersionedInputStream(firstVersionName, 
+						((3 > firstVersionMaxSegment) ? firstVersionMaxSegment : 3), outputLibrary.getDefaultPublisher(), inputLibrary);
+			CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, 
+					((3 > latestVersionMaxSegment) ? latestVersionMaxSegment : 3), outputLibrary.getDefaultPublisher(), inputLibrary);
 			testArgumentRunner(vfirst, vlatest);
 		} catch (XMLStreamException e) {
 			e.printStackTrace();
@@ -239,8 +249,8 @@ public class CCNVersionedInputStreamTest {
 	public void testCCNVersionedInputStreamContentNameInt() {
 		try {
 			// we can make a new library; as long as we don't use the outputLibrary it should work
-			CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName, 4);
-			CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, 4);
+			CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName, ((4 > firstVersionMaxSegment) ? firstVersionMaxSegment : 4));
+			CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, ((4 > latestVersionMaxSegment) ? latestVersionMaxSegment : 4));
 			testArgumentRunner(vfirst, vlatest);
 		} catch (XMLStreamException e) {
 			e.printStackTrace();
