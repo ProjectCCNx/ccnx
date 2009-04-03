@@ -20,7 +20,6 @@ import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNSegmenter;
 import com.parc.ccn.library.profiles.SegmentationProfile;
-import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.crypto.CCNMerkleTree;
 
@@ -81,15 +80,6 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			nameToOpen = SegmentationProfile.segmentRoot(nameToOpen);
 		}
 
-		// Assume if name is already versioned, caller knows what name
-		// to write. If caller specifies authentication information,
-		// ignore it for now.
-		// DKS TODO -- do we want this stream to version on output?
-		if (!VersioningProfile.isVersioned(nameToOpen)) {
-			// if publisherID is null, will get any publisher
-			nameToOpen = 
-				VersioningProfile.versionName(nameToOpen);
-		}
 		// Should have name of root of version we want to
 		// open. Get the header block. Already stripped to
 		// root. We've altered the header semantics, so that
