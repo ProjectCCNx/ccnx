@@ -8,7 +8,7 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import test.ccn.data.XMLEncodableTester;
+import test.ccn.data.util.XMLEncodableTester;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.CollectionData;

@@ -5,7 +5,7 @@ import java.util.Arrays;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import test.ccn.data.XMLEncodableTester;
+import test.ccn.data.util.XMLEncodableTester;
 
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherID.PublisherType;

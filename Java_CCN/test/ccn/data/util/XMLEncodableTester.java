@@ -1,4 +1,4 @@
-package test.ccn.data;
+package test.ccn.data.util;
 
 import static org.junit.Assert.assertEquals;
 
