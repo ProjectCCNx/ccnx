@@ -110,7 +110,9 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	 **/
 	protected ContentObject getBlock(int number) throws IOException {
 
-		ContentName blockName = SegmentationProfile.segmentName(_baseName, SegmentationProfile.baseSegment() + number);
+        // Block name requested should be interpreted literally, not taken
+        // relative to baseSegment().
+		ContentName blockName = SegmentationProfile.segmentName(_baseName, number);
 
 		if(_currentBlock!=null){
 			//what block do we have right now?  maybe we already have it
