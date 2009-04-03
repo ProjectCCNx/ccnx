@@ -22,7 +22,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 
 	protected ContentObject _currentBlock = null;
 	protected int _blockOffset = 0;
-	protected int _blockIndex = 0;
+	protected long _blockIndex = 0;
 	
 	/**
 	 * This is the name we are querying against, prior to each
@@ -48,12 +48,12 @@ public abstract class CCNAbstractInputStream extends InputStream {
 			PublisherKeyID publisher, CCNLibrary library) throws XMLStreamException, IOException {
 		super();
 		
-		if (null == baseName)
+		if (null == baseName) {
 			throw new IllegalArgumentException("baseName cannot be null!");
-			
-			_library = library; 
-			if (null == _library) {
-				_library = CCNLibrary.getLibrary();
+		}
+		_library = library; 
+		if (null == _library) {
+			_library = CCNLibrary.getLibrary();
 		}
 		_publisher = publisher;	
 		
@@ -67,6 +67,21 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		_startingBlockIndex = startingBlockIndex;
 	}
 	
+	public CCNAbstractInputStream(ContentObject starterBlock, CCNLibrary library) {
+		super();
+		if (null == starterBlock) {
+			throw new IllegalArgumentException("starterBlock cannot be null!");
+		}
+		_library = library; 
+		if (null == _library) {
+			_library = CCNLibrary.getLibrary();
+		}
+		_currentBlock = starterBlock;
+		_publisher = starterBlock.signedInfo().getPublisherKeyID();
+		_baseName = SegmentationProfile.segmentRoot(starterBlock.name());
+		_blockIndex = SegmentationProfile.getSegmentNumber(starterBlock.name());
+	}
+
 	public void setTimeout(int timeout) {
 		_timeout = timeout;
 	}
@@ -107,6 +122,9 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	/**
 	 * Three navigation options: get first (leftmost) block, get next block,
 	 * or get a specific block.
+	 * TODO DKS: this won't work on sequence-numbered data as sequence numbers
+	 * 		aren't just indices. Relative motion works, but absolute motion
+	 * 		won't unless we know that everyone is using our sequence number encoding.
 	 **/
 	protected ContentObject getBlock(int number) throws IOException {
 
@@ -114,9 +132,9 @@ public abstract class CCNAbstractInputStream extends InputStream {
         // relative to baseSegment().
 		ContentName blockName = SegmentationProfile.segmentName(_baseName, number);
 
-		if(_currentBlock!=null){
+		if (_currentBlock!=null){
 			//what block do we have right now?  maybe we already have it
-			if(currentBlockNumber() == number){
+			if (currentBlockNumber() == number){
 				//we already have this block..
 				return _currentBlock;
 			}

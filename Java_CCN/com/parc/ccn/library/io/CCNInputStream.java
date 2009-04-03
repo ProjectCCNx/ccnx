@@ -68,10 +68,10 @@ public class CCNInputStream extends CCNAbstractInputStream implements CCNInteres
 	protected Header _header = null;
 	
 	public CCNInputStream(ContentName name, Integer startingBlockIndex, PublisherKeyID publisher, 
-			  CCNLibrary library) throws XMLStreamException, IOException {
+			CCNLibrary library) throws XMLStreamException, IOException {
 
-	super(name, startingBlockIndex, publisher, library);
-	
+		super(name, startingBlockIndex, publisher, library);
+
 		// Asynchronously attempt to retrieve a header block, if one exists.
 		retrieveHeader(_baseName, (null != publisher) ? new PublisherID(publisher) : null);
 	}
@@ -91,6 +91,10 @@ public class CCNInputStream extends CCNAbstractInputStream implements CCNInteres
 	
 	public CCNInputStream(ContentName name, int blockNumber) throws XMLStreamException, IOException {
 		this(name, blockNumber, null, null);
+	}
+	
+	public CCNInputStream(ContentObject starterBlock, CCNLibrary library) throws XMLStreamException, IOException {
+		super(starterBlock, library);
 	}
 	
 	@Override

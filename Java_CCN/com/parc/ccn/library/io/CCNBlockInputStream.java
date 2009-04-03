@@ -7,6 +7,7 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.library.CCNLibrary;
 
@@ -43,6 +44,10 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 		this(baseName, blockNumber, null, null);
 	}
 	
+	public CCNBlockInputStream(ContentObject starterBlock, CCNLibrary library) throws XMLStreamException, IOException {
+		super(starterBlock, library);
+	}
+
 	protected int readInternal(byte [] buf, int offset, int len) throws IOException {
 		
 		Library.logger().info("CCNBlockInputStream: reading " + len + " bytes into buffer of length " + 
