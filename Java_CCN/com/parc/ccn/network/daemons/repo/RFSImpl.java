@@ -42,7 +42,7 @@ import com.parc.ccn.library.profiles.VersioningProfile;
 
 public class RFSImpl implements Repository {
 	
-	public final static String CURRENT_VERSION = "1.0";
+	public final static String CURRENT_VERSION = "1.1";
 	
 	public final static String META_DIR = ".meta";
 	public final static byte UTF8_COMPONENT = '0';
@@ -132,7 +132,7 @@ public class RFSImpl implements Repository {
 		constructEncodedMap(new File(_repositoryRoot + File.separator + META_DIR + File.separator + RESERVED_CLASH));
 		
 		String version = checkFile(VERSION, CURRENT_VERSION, false);
-		if (version != null && !version.equals(CURRENT_VERSION))
+		if (version != null && !version.trim().equals(CURRENT_VERSION))
 			throw new RepositoryException("Bad repository version: " + version);
 		
 		String checkName = checkFile(REPO_LOCALNAME, localName, nameFromArgs);
@@ -208,7 +208,7 @@ public class RFSImpl implements Repository {
 				switch (type) {
 				  case UTF8_COMPONENT:
 					  currentValue += token.substring(1);
-					  components.add(currentValue.getBytes());
+					  components.add(decodeComponent(currentValue.getBytes()));
 					  currentValue = "";
 					  break;
 				  case BASE64_COMPONENT:

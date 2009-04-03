@@ -58,18 +58,17 @@ public class RepoIOTest extends RepoTestBase {
 		ContentName longName = ContentName.fromNative("/repoTest/" + tooLongName);
 		ContentName badCharName = ContentName.fromNative("/repoTest/" + "*x?y<z>u");
 		ContentName badCharLongName = ContentName.fromNative("/repoTest/" + tooLongName + "*x?y<z>u");
-		PublisherKeyID pkid1 = new PublisherKeyID("9s4o5j263snpdl59phc5vf0jhpqgdtghg155smuo2gbnk5ui8f3");
+		//PublisherKeyID pkid1 = new PublisherKeyID("9s4o5j263snpdl59phc5vf0jhpqgdtghg155smuo2gbnk5ui8f3");
 		//PublisherKeyID pkid2 = new PublisherKeyID("1paij2p7setof6ognk3b34q0hesnv1jpov07h9qvqnveqahv9ml2");
-		PublisherKeyID pkid2 = new PublisherKeyID("-6ldct6o3h27gp7f8bsksr5veh380uc670voem50580h5le0m9au");
+		//PublisherKeyID pkid2 = new PublisherKeyID("-6ldct6o3h27gp7f8bsksr5veh380uc670voem50580h5le0m9au");
 		
 		checkData(name, "Here's my data!");
-		checkData(clashName, "Clashing Name");
 		checkData(digestName, "Testing2");
 		checkData(longName, "Long name!");
 		checkData(badCharName, "Funny characters!");
 		checkData(badCharLongName, "Long and funny");
-		checkDataAndPublisher(name, "Testing2", pkid1);
-		checkDataAndPublisher(name, "Testing2", pkid2);
+		//checkDataAndPublisher(name, "Testing2", pkid1);
+		//checkDataAndPublisher(name, "Testing2", pkid2);
 	}
 	
 	@Test
@@ -136,9 +135,10 @@ public class RepoIOTest extends RepoTestBase {
 		Assert.assertTrue(testFile.isDirectory());
 		File [] contents = testFile.listFiles();
 		Assert.assertFalse(contents == null);
-		Assert.assertTrue(contents.length == 1);
-		contents = contents[0].listFiles();
-		Assert.assertFalse(contents == null);
+		//if (contents.length == 1) {
+			//contents = contents[0].listFiles();
+			//Assert.assertFalse(contents == null);
+		//}
 		byte[] segmentBytes = new byte[block == 0 ? 1 : 2];
 		segmentBytes[0] = SegmentationProfile.SEGMENT_MARKER;
 		if (block > 0)

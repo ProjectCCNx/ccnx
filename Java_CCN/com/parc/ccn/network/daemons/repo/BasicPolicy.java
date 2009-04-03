@@ -115,7 +115,7 @@ public class BasicPolicy implements Policy {
 				QName id = new QName("id");
 				Attribute idAttr = event.asStartElement().getAttributeByName(id);
 				if (idAttr != null) {
-					if (!idAttr.getValue().trim().equals("1.0"))
+					if (!idAttr.getValue().trim().equals(RFSImpl.CURRENT_VERSION))
 						throw new XMLStreamException("Bad version in policy file");
 					_version = value;
 				}
