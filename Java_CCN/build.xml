@@ -194,10 +194,10 @@
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="test/ccn/data/*Test.class"/>
-					<include name="test/ccn/data/content/*Test*.class"/>
-					<include name="test/ccn/data/query/*Test*.class"/>
-					<include name="test/ccn/data/security/*Test*.class"/>
-					<include name="test/ccn/data/util/*Test*.class"/>
+					<include name="test/ccn/data/content/*Test.class"/>
+					<include name="test/ccn/data/query/*Test.class"/>
+					<include name="test/ccn/data/security/*Test.class"/>
+					<include name="test/ccn/data/util/*Test.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
