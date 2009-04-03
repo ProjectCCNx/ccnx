@@ -10,7 +10,7 @@ ccn-bad06.xml:4: element PublisherID: Schemas validity error : Element 'Publishe
 ccn-bad06.xml:4: element PublisherID: Schemas validity error : Element 'PublisherID', attribute 'type': 'ISSUER_KEYS' is not a valid value of the atomic type 'PublisherTypeType'.
 ccn-bad06.xml fails to validate
 ./shouldfail xmllint --noout --schema ccn.xsd ccn-bad11.xml
-ccn-bad11.xml:4: element Bloom: Schemas validity error : Element 'Bloom': This element is not expected. Expected is ( Component ).
+ccn-bad11.xml:5: element Bloom: Schemas validity error : Element 'Bloom': This element is not expected. Expected is ( Component ).
 ccn-bad11.xml fails to validate
 ./shouldfail xmllint --noout --schema ccn.xsd ccn-schemabad01.xml
 ccn-schemabad01.xml:5: element Witness: Schemas validity error : Element 'Witness': 'foo' is not a valid value of the atomic type 'xs:base64Binary'.
@@ -35,7 +35,7 @@ Document ccn-bad02.xml does not validate against ccn.dtd
 ccn-bad06.xml:4: element PublisherID: validity error : Value "ISSUER_KEYS" for attribute type of PublisherID is not among the enumerated set
 Document ccn-bad06.xml does not validate against ccn.dtd
 ./shouldfail xmllint --noout --dtdvalid ccn.dtd ccn-bad11.xml
-ccn-bad11.xml:4: element Exclude: validity error : Element Exclude content does not follow the DTD, expecting (Bloom? , (Component , Bloom?)*), got (Bloom Bloom)
+ccn-bad11.xml:4: element Exclude: validity error : Element Exclude content does not follow the DTD, expecting (Bloom? , (Component , Bloom?)*), got (Bloom Bloom )
 Document ccn-bad11.xml does not validate against ccn.dtd
 ./shouldfail xmllint --noout --dtdvalid ccn.dtd ccn-dtdbad00.xml
 ccn-dtdbad00.xml:1: parser error : Document is empty
