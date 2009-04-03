@@ -90,17 +90,27 @@ public class SegmentationProfile implements CCNProfile {
 	}
 
 	/**
-	 * Extract the fragment information from this name.
+	 * Extract the segment information from this name. Try to return any valid
+	 * number encoded in the last name component, be it either a raw big-endian
+	 * encoding of a number, or more likely, a properly-formatted segment
+	 * number with segment marker. 
+ 	 * @throws NumberFormatException if neither number type found in last name component
 	 */
-	public static long getSegmentNumber(ContentName name) {
+	public static long getSegmentNumber(ContentName name) throws NumberFormatException {
+		byte [] fcomp = name.lastComponent();
 		if (isSegment(name)) {
-			byte [] fcomp = name.lastComponent();
 			// Will behave properly with everything but first fragment of fragmented content.
 			if (fcomp.length == 1)
 				return 0;
-			return Long.valueOf(ContentName.componentPrintURI(fcomp, 1, fcomp.length-1));
-		}
-		return -1; // unexpected, but not invalid
+			byte [] ftemp = new byte[fcomp.length-1];
+			System.arraycopy(fcomp, 1, ftemp, 0, fcomp.length-1);
+			fcomp = ftemp;
+		} 
+		// If this isn't formatted as one of our segment numbers, suspect it might
+		// be a sequence (e.g. a packet stream), and attempt to read the last name
+		// component as a number.
+		BigInteger value = new BigInteger(1, fcomp);
+		return value.longValue();
 	}
 
 	/**

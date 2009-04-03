@@ -21,7 +21,7 @@ import com.parc.ccn.library.CCNLibrary;
  */
 public class CCNBlockInputStream extends CCNAbstractInputStream {
 
-	public CCNBlockInputStream(ContentName baseName, Integer startingBlockIndex, 
+	public CCNBlockInputStream(ContentName baseName, Long startingBlockIndex, 
 							   PublisherKeyID publisher, CCNLibrary library) throws XMLStreamException, IOException {
 		super(baseName, startingBlockIndex, publisher, library);
 		setTimeout(CCNBase.NO_TIMEOUT);
@@ -40,7 +40,7 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 		this(baseName, null, null, library);
 	}
 
-	public CCNBlockInputStream(ContentName baseName, int blockNumber) throws XMLStreamException, IOException {
+	public CCNBlockInputStream(ContentName baseName, long blockNumber) throws XMLStreamException, IOException {
 		this(baseName, blockNumber, null, null);
 	}
 	

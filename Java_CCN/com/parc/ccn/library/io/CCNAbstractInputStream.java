@@ -30,7 +30,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	 */
 	protected ContentName _baseName = null;
 	protected PublisherKeyID _publisher = null;
-	protected Integer _startingBlockIndex = null;
+	protected Long _startingBlockIndex = null;
 	protected int _timeout = MAX_TIMEOUT;
 	
 	/**
@@ -44,7 +44,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	protected byte [] _verifiedRootSignature = null;
 	protected byte [] _verifiedProxy = null;
 
-	public CCNAbstractInputStream(ContentName baseName, Integer startingBlockIndex, 
+	public CCNAbstractInputStream(ContentName baseName, Long startingBlockIndex, 
 			PublisherKeyID publisher, CCNLibrary library) throws XMLStreamException, IOException {
 		super();
 		
@@ -61,10 +61,15 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		// numbers, whatever they happen to be. If a starting block is given, we
 		// open from there, otherwise we open from the leftmost number available.
 		// We assume by the time you've called this, you have a specific version or
-		// whatever you want to open -- this doesn't crawl versions. If you have fragmented
-		// content, the baseName needs the fragment marker on it.
+		// whatever you want to open -- this doesn't crawl versions.  If you don't
+		// offer a starting block index, but instead offer the name of a specific
+		// segment, this will use that segment as the starting block. 
+		if ((null == startingBlockIndex)  && (SegmentationProfile.isSegment(baseName))) {
+			_startingBlockIndex = SegmentationProfile.getSegmentNumber(baseName);
+		} else {
+			_startingBlockIndex = startingBlockIndex;
+		}
 		_baseName = baseName;
-		_startingBlockIndex = startingBlockIndex;
 	}
 	
 	public CCNAbstractInputStream(ContentObject starterBlock, CCNLibrary library) {
@@ -79,7 +84,11 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		_currentBlock = starterBlock;
 		_publisher = starterBlock.signedInfo().getPublisherKeyID();
 		_baseName = SegmentationProfile.segmentRoot(starterBlock.name());
-		_blockIndex = SegmentationProfile.getSegmentNumber(starterBlock.name());
+		try {
+			_startingBlockIndex = SegmentationProfile.getSegmentNumber(starterBlock.name());
+		} catch (NumberFormatException nfe) {
+			_startingBlockIndex = null;
+		}
 	}
 
 	public void setTimeout(int timeout) {
@@ -122,17 +131,17 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	/**
 	 * Three navigation options: get first (leftmost) block, get next block,
 	 * or get a specific block.
-	 * TODO DKS: this won't work on sequence-numbered data as sequence numbers
-	 * 		aren't just indices. Relative motion works, but absolute motion
-	 * 		won't unless we know that everyone is using our sequence number encoding.
+	 * Have to assume that everyone is using our segment number encoding. Probably
+	 * easier to ask raw streams to use that encoding (e.g. for packet numbers)
+	 * than to flag streams as to whether they are using integers or segments.
 	 **/
-	protected ContentObject getBlock(int number) throws IOException {
+	protected ContentObject getBlock(long number) throws IOException {
 
         // Block name requested should be interpreted literally, not taken
         // relative to baseSegment().
 		ContentName blockName = SegmentationProfile.segmentName(_baseName, number);
 
-		if (_currentBlock!=null){
+		if (_currentBlock != null) {
 			//what block do we have right now?  maybe we already have it
 			if (currentBlockNumber() == number){
 				//we already have this block..
@@ -212,8 +221,9 @@ public abstract class CCNAbstractInputStream extends InputStream {
 			// We could have several options here. This block could be simply signed.
 			// or this could be part of a Merkle Hash Tree. If the latter, we could
 			// already have its signing information.
-			if (null == block.signature().witness())
+			if (null == block.signature().witness()) {
 				return block.verify(null);
+			}
 
 			// Compare to see whether this block matches the root signature we previously verified, if
 			// not, verify and store the current signature.
@@ -246,26 +256,23 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		return true;
 	}
 
-	public int blockIndex() {
+	public long blockIndex() {
 		if (null == _currentBlock) {
 			return SegmentationProfile.baseSegment();
 		} else {
-			// This needs to work on streaming content that is not traditional fragments,
-			// and so cannot use CCNLibrary.getFragmentNumber. In my hands, count() does not
-			// count the digest component of the name, and so this gives me back the component
-			// I want.
-			String num = ContentName.componentPrintNative(_currentBlock.name().component(_currentBlock.name().count()-1));
-			Library.logger().info("Name: " + _currentBlock.name() + " component " + num);
-			return Integer.parseInt(num);
+			// This needs to work on streaming content that is not traditional fragments.
+			// The segmentation profile tries to do that, though it is seeming like the
+			// new segment representation means we will have to assume that representation
+			// even for stream content.
+			return SegmentationProfile.getSegmentNumber(_currentBlock.name());
 		}
 	}
 	
-	protected int currentBlockNumber(){
-		int ind = -1;
-		if(_currentBlock!=null)
-			ind = Integer.valueOf(_currentBlock.name().stringComponent(_currentBlock.name().count()-1));
-		//Library.logger().info("checking block number: "+ind);
-		return ind;
+	protected long currentBlockNumber(){
+		if (null == _currentBlock) {
+			return -1; // make sure we don't match inappropriately
+		}
+		return blockIndex();
 	}
 	
 }

@@ -19,11 +19,12 @@ import com.parc.ccn.library.profiles.SegmentationProfile;
 
 /**
  * Perform sequential reads on any block-oriented CCN content, namely that
- * where the name component after the specified name prefix is an integer, and the
- * content blocks are indicated by increasing (but not necessarily sequential)
- * integers. For example, a file could be divided into sequential blocks,
- * while an audio stream might have blocks named by time offsets into the
- * stream. 
+ * where the name component after the specified name prefix is an optionally
+ * segment-encoded integer, and the content blocks are indicated by 
+ * monotonically increasing (but not necessarily sequential)
+ * optionally segment-encoded integers. For example, a file could be 
+ * divided into sequential blocks, while an audio stream might have 
+ * blocks named by time offsets into the stream. 
  * 
  * This input stream will read from a sequence of blocks, authenticating
  * each as it goes, and caching what information it can. All it assumes
@@ -40,7 +41,9 @@ import com.parc.ccn.library.profiles.SegmentationProfile;
  * content fragments dynamically when possible to fill out the requested number
  * of bytes.
  * 
- * TODO change sequence numbers from strings to binary.
+ * TODO remove header handling from here, add use of lastSegment marker in
+ *    blocks leading up to the end. Headers, in whatever form they evolve
+ *    into, will be used only by higher-level streams.
  * @author smetters
  *
  */
@@ -49,7 +52,7 @@ public class CCNInputStream extends CCNAbstractInputStream implements CCNInteres
 	protected boolean _atEOF = false;
 	protected int _readlimit = 0;
 	protected int _markOffset = 0;
-	protected int _markBlock = 0;
+	protected long _markBlock = 0;
 
 	protected ContentName _headerName = null;
 	/**
@@ -67,7 +70,7 @@ public class CCNInputStream extends CCNAbstractInputStream implements CCNInteres
 	 */
 	protected Header _header = null;
 	
-	public CCNInputStream(ContentName name, Integer startingBlockIndex, PublisherKeyID publisher, 
+	public CCNInputStream(ContentName name, Long startingBlockIndex, PublisherKeyID publisher, 
 			CCNLibrary library) throws XMLStreamException, IOException {
 
 		super(name, startingBlockIndex, publisher, library);
@@ -89,7 +92,7 @@ public class CCNInputStream extends CCNAbstractInputStream implements CCNInteres
 		this(name, null, null, library);
 	}
 	
-	public CCNInputStream(ContentName name, int blockNumber) throws XMLStreamException, IOException {
+	public CCNInputStream(ContentName name, long blockNumber) throws XMLStreamException, IOException {
 		this(name, blockNumber, null, null);
 	}
 	
@@ -196,28 +199,27 @@ public class CCNInputStream extends CCNAbstractInputStream implements CCNInteres
 		
 		Library.logger().info("in skip("+n+")");
 		
-		if (n < 0)
+		if (n < 0) {
 			return 0;
+		}
 		
-		if(null==_header){
+		if (null == _header){
 			return readInternal(null,0, (int)n);
 		}
 		
 		int[] toGetBlockAndOffset = null;
 		long toGetPosition = 0;
 		
-		int currentBlock = -1;
+		long currentBlock = -1;
 		int currentBlockOffset = 0;
 		long currentPosition = 0;
 		
-		
-		if(_currentBlock==null){
+		if (_currentBlock == null) {
 			//we do not have a block already
 			//skip position is n
 			currentPosition = 0;
 			toGetPosition = n;
-		}
-		else{
+		} else {
 		    //we already have a block...  need to handle some tricky cases
 			currentBlock = blockIndex();
 			currentBlockOffset = _blockOffset;
@@ -225,7 +227,7 @@ public class CCNInputStream extends CCNAbstractInputStream implements CCNInteres
 			toGetPosition = currentPosition + n;
 		}
 		//make sure we don't skip past end of the object
-		if(toGetPosition >= _header.length()){
+		if (toGetPosition >= _header.length()) {
 			toGetPosition = _header.length();
 			_atEOF = true;
 		}
@@ -234,30 +236,30 @@ public class CCNInputStream extends CCNAbstractInputStream implements CCNInteres
 		
 		//make sure the position makes sense
 		//is this a valid block?
-		if(toGetBlockAndOffset[0] >= _header.blockCount()){
+		if (toGetBlockAndOffset[0] >= _header.blockCount()){
 			//this is not a valid block number, subtract 1
-			if(toGetBlockAndOffset[0] > 0)
+			if (toGetBlockAndOffset[0] > 0) {
 				toGetBlockAndOffset[0]--;
+			}
 			//now we have the last block if the position was too long
 		}
 		
 		//is the offset > 0?
-		if(toGetBlockAndOffset[1] < 0)
+		if (toGetBlockAndOffset[1] < 0) {
 			toGetBlockAndOffset[1] = 0;
+		}
 			
 		//now we should get the block and check the offset
 		getBlock(toGetBlockAndOffset[0]);
-		if(_currentBlock==null){
+		if (_currentBlock == null) {
 			//we had an error getting the block
 			throw new IOException("Error getting block "+toGetBlockAndOffset[0]+" in CCNInputStream.skip("+n+")");
-		}
-		else{
+		} else {
 			//we have a valid block!
 			//first make sure the offset is valid
-			if(toGetBlockAndOffset[1] <= _currentBlock.content().length){
+			if (toGetBlockAndOffset[1] <= _currentBlock.content().length) {
 				//this is good, our offset is somewhere in this block
-			}
-			else{
+			} else {
 				//our offset is past the end of our block, reset to the end.
 				toGetBlockAndOffset[1] = _currentBlock.content().length;
 			}
@@ -398,27 +400,35 @@ public class CCNInputStream extends CCNAbstractInputStream implements CCNInteres
 					// Need low-level verify as well as high-level verify...
 					// Low-level verify just checks that signer actually signed.
 					// High-level verify checks trust.
-				try {
-					if (!co.verify(null)) {
-						Library.logger().warning("Found header: " + co.name().toString() + " that fails to verify.");
-						return interest; // try again
-					} else {
-						_headerName = co.name();
-						_headerSignedInfo = co.signedInfo();
-						_header = Header.contentToHeader(co);
-						Library.logger().fine("Found header specifies " + _header.blockCount() + " blocks");
-						return null; // done
-					}
-				} catch (Exception e) {
-					Library.logger().warning("Got an " + e.getClass().getName() + " exception attempting to verify or decode header: " + co.name().toString() + ", treat as failure to verify.");
-					Library.warningStackTrace(e);
-					return interest; // try again
+				if (!addHeader(co)) {
+					return interest;
 				}
+				return null; // done
 			}
 		}
-		if (null == _header)
+		if (null == _header) { 
 			return interest;
+		}
 		return null;
+	}
+	
+	protected boolean addHeader(ContentObject headerObject) {
+		try {
+			if (!headerObject.verify(null)) {
+				Library.logger().warning("Found header: " + headerObject.name().toString() + " that fails to verify.");
+				return false;
+			} else {
+				_headerName = headerObject.name();
+				_headerSignedInfo = headerObject.signedInfo();
+				_header = Header.contentToHeader(headerObject);
+				Library.logger().fine("Found header specifies " + _header.blockCount() + " blocks");
+				return true; // done
+			}
+		} catch (Exception e) {
+			Library.logger().warning("Got an " + e.getClass().getName() + " exception attempting to verify or decode header: " + headerObject.name().toString() + ", treat as failure to verify.");
+			Library.warningStackTrace(e);
+			return false; // try again
+		}
 	}
 	
 	protected int blockCount() {
@@ -442,13 +452,13 @@ public class CCNInputStream extends CCNAbstractInputStream implements CCNInteres
 			int [] blockAndOffset = _header.positionToBlockLocation(position);
 			Library.logger().info("seek:  position: " + position + " block: " + blockAndOffset[0] + " offset: " + blockAndOffset[1]);
 			Library.logger().info("currently have block "+ currentBlockNumber());
-			if(currentBlockNumber() == blockAndOffset[0]){
+			if (currentBlockNumber() == blockAndOffset[0]) {
 				//already have the correct block
-				if(_blockOffset == blockAndOffset[1]){
+				if (_blockOffset == blockAndOffset[1]){
 					//already have the correct offset
-				}
-				else
+				} else {
 					_blockOffset = blockAndOffset[1];
+				}
 				return position;
 			
 			}
@@ -457,8 +467,10 @@ public class CCNInputStream extends CCNAbstractInputStream implements CCNInteres
 			_blockOffset = blockAndOffset[1];
 			long check = _header.blockLocationToPosition(blockAndOffset[0], blockAndOffset[1]);
 			Library.logger().info("current position: block "+blockAndOffset[0]+" _blockOffset "+_blockOffset+" ("+check+")");
-			if(_currentBlock!=null)
+
+			if (_currentBlock != null) {
 				_atEOF=false;
+			}
 			// Might be at end of stream, so different value than came in...
 			//long check = _header.blockLocationToPosition(blockAndOffset[0], blockAndOffset[1]);
 			//Library.logger().info("return val check: "+check);
@@ -483,8 +495,9 @@ public class CCNInputStream extends CCNAbstractInputStream implements CCNInteres
 	}
 	
 	public long length() {
-		if (null != _header)
+		if (null != _header) {
 			return _header.length();
+		}
 		return 0;
 	}
 	

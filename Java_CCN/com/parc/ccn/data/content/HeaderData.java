@@ -49,10 +49,10 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 	/**
 	 * Specific to simple block fragmentation.
 	 */
-	protected int _start;	// starting block number ( >= 0)
-	protected int _count;	// number of blocks in sequence (>= 0)
+	protected long _start;	// starting block number ( >= 0)
+	protected long _count;	// number of blocks in sequence (>= 0)
 	protected int _blockSize; // size in bytes(?) of a block (> 0)
-	protected int _length; // total length in bytes (? same unit as _blockSize) to account for partial last block (>= 0)
+	protected long _length; // total length in bytes (? same unit as _blockSize) to account for partial last block (>= 0)
 
 	
 	/**
@@ -70,8 +70,8 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 	 * @param blockSize
 	 * @param length
 	 */
-	public HeaderData(int start, int count, 
-				  int blockSize, int length,
+	public HeaderData(long start, long count, 
+				  int blockSize, long length,
 				  byte [] contentDigest,
 				  byte [] rootDigest) {
 		_start = start;
@@ -88,16 +88,16 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 	 */
 	public HeaderData() {}
 	
-	public int start() { 
+	public long start() { 
 		return _start;
 	}
-	public int count() { 
+	public long count() { 
 		return _count;
 	}
 	public int blockSize() { 
 		return _blockSize;
 	}
-	public int length() { 
+	public long length() { 
 		return _length;
 	}
 	
@@ -155,10 +155,10 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		encoder.writeStartElement(Header.HEADER_ELEMENT);
-		encoder.writeElement(Header.START_ELEMENT,	 Integer.toString(_start));
-		encoder.writeElement(COUNT_ELEMENT,	 Integer.toString(_count));
-		encoder.writeElement(BLOCKSIZE_ELEMENT,	 Integer.toString(_blockSize));
-		encoder.writeElement(LENGTH_ELEMENT,	Integer.toString(_length));
+		encoder.writeElement(Header.START_ELEMENT,	 Long.toString(_start));
+		encoder.writeElement(COUNT_ELEMENT,	 Long.toString(_count));
+		encoder.writeElement(BLOCKSIZE_ELEMENT,	 Long.toString(_blockSize));
+		encoder.writeElement(LENGTH_ELEMENT,	Long.toString(_length));
 		encoder.writeElement(CONTENT_DIGEST_ELEMENT, contentDigest());
 		if (null != rootDigest())
 			encoder.writeElement(MERKLE_ROOT_ELEMENT, rootDigest());
@@ -185,9 +185,12 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + _blockSize;
-		result = prime * result + _count;
-		result = prime * result + _length;
-		result = prime * result + _start;
+		result = prime * result + Arrays.hashCode(_contentDigest);
+		result = prime * result + (int) (_count ^ (_count >>> 32));
+		result = prime * result + (int) (_length ^ (_length >>> 32));
+		result = prime * result + Arrays.hashCode(_rootDigest);
+		result = prime * result + (int) (_start ^ (_start >>> 32));
+		result = prime * result + ((_type == null) ? 0 : _type.hashCode());
 		return result;
 	}
 
@@ -199,23 +202,23 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		final HeaderData other = (HeaderData) obj;
-		if (_length != other._length)
+		HeaderData other = (HeaderData) obj;
+		if (_blockSize != other._blockSize)
+			return false;
+		if (!Arrays.equals(_contentDigest, other._contentDigest))
 			return false;
 		if (_count != other._count)
 			return false;
+		if (_length != other._length)
+			return false;
+		if (!Arrays.equals(_rootDigest, other._rootDigest))
+			return false;
 		if (_start != other._start)
 			return false;
-		if (_blockSize != other._blockSize)
-			return false;
 		if (_type == null) {
-			if (other.type() != null)
+			if (other._type != null)
 				return false;
-		} else if (!_type.equals(other.type()))
-			return false;
-		if (!Arrays.equals(rootDigest(), other.rootDigest()))
-			return false;
-		if (!Arrays.equals(contentDigest(), other.contentDigest()))
+		} else if (!_type.equals(other._type))
 			return false;
 		return true;
 	}
@@ -229,7 +232,7 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 		return blockLocation;
 	}
 
-	public long blockLocationToPosition(int block, int offset) {
+	public long blockLocationToPosition(long block, int offset) {
 		if (offset > blockSize()) {
 			block += (int)(Math.floor(1.0*offset/blockSize()));
 			offset = (int)(1.0*offset % blockSize());

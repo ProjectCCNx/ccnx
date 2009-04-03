@@ -34,8 +34,8 @@ public class Header extends ContentObject  {
 	public static final String START_ELEMENT = "Start";
 	
 	public Header(ContentName name,
-			 int start, int count, 
-			 int blockSize, int length,
+			 long start, long count, 
+			 int blockSize, long length,
 			 byte [] contentDigest,
 			 byte [] rootDigest,
 			 PublisherKeyID publisher,
@@ -49,8 +49,8 @@ public class Header extends ContentObject  {
 	}
 	
 	public Header(ContentName name,
-			 int start, int count, 
-			 int blockSize, int length,
+			long start, long count, 
+			 int blockSize, long length,
 			 byte [] contentDigest,
 			 byte [] rootDigest,
 			 PublisherKeyID publisher,
@@ -62,7 +62,7 @@ public class Header extends ContentObject  {
 	}
 	
 	public Header(ContentName name,
-			 int length,
+			long length,
 		  	 byte [] contentDigest,
 		  	 byte [] rootDigest, int blockSize,
 			 PublisherKeyID publisher,
@@ -106,16 +106,16 @@ public class Header extends ContentObject  {
 		_data.decode(_content);
 	}
 	
-	public int start() { 
+	public long start() { 
 		return _data.start();
 	}
-	public int count() { 
+	public long count() { 
 		return _data.count();
 	}
 	public int blockSize() { 
 		return _data.blockSize();
 	}
-	public int length() { 
+	public long length() { 
 		return _data.length();
 	}
 	
@@ -143,7 +143,7 @@ public class Header extends ContentObject  {
 		return _data.positionToBlockLocation(position);
 	}
 
-	public long blockLocationToPosition(int block, int offset) {
+	public long blockLocationToPosition(long block, int offset) {
 		return _data.blockLocationToPosition(block, offset);
 	}
 
