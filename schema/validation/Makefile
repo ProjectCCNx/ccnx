@@ -18,15 +18,15 @@ ccn.dtd:
 	ln -s ../ccn.dtd
 
 clean:
-	rm -f $(W3REFS) $(FUZZED)
+	rm -f $(W3REFS) $(FUZZED) expectedfailures.out
 	test -L ccn.xsd && rm ccn.xsd || :
 	test -L ccn.dtd && rm ccn.dtd || :
-	: ===> expectedfailures.out
 
 pretty:
 	echo ccn-test??.xml | xargs -n 1 sh prettify.sh
 
 check: ccn.xsd ccn.dtd $(W3REFS) $(FUZZED) always
+	@:> expectedfailures.out
 	xmllint --noout --schema XMLSchema.xsd XMLSchema.xsd || ./oops
 	xmllint --noout ccn.xsd
 	@echo === ccn.xsd is well-formed
@@ -37,6 +37,10 @@ check: ccn.xsd ccn.dtd $(W3REFS) $(FUZZED) always
 	xmllint --noout --dtdvalid ccn.dtd ccn-test??.xml
 	ls ccn-schemabad??.xml ccn-bad??.xml | while read i && ./shouldfail xmllint --noout --schema ccn.xsd "$$i"; do :; done
 	ls ccn-dtdbad??.xml ccn-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid ccn.dtd "$$i"; do :; done
+	@diff expectedfailures.ref expectedfailures.out || :
+	: --------------------------- :
+	: Schema validation complete  :
+	: --------------------------- :
 
 always:
 
