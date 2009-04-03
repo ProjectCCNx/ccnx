@@ -48,10 +48,11 @@ public class RFSImpl implements Repository {
 	public final static byte BASE64_COMPONENT = '1';
 	public final static byte SPLIT_COMPONENT = '2';
 	
+	public static final String ENCODED_FILES = "encoded_files";
+	
 	private final static String encoding = "UTF-8";
 	
 	private static final String RESERVED_CLASH = "reserved";
-	private static final String ENCODED_FILES = "encoded_files";
 	private static final String REPO_PRIVATE = "private";
 	private static final String VERSION = "version";
 	private static final String REPO_LOCALNAME = "local";
@@ -68,7 +69,7 @@ public class RFSImpl implements Repository {
 	private static final String REPLACE_SLASH = "%slash%";
 	private static final String REPLACE_RETURN = "%return%";
 	private static final String REPLACE_VERSION = "%version%";
-	private static final String REPLACE_SEGMENT = "%segment%";
+	public static final String REPLACE_SEGMENT = "%segment%";
 	
 	private static final int TOO_LONG_SIZE = 200;
 	
@@ -531,16 +532,15 @@ public class RFSImpl implements Repository {
 		for (int i = 0; i < component.length; i++) {
 			if (INVALID_WINDOWS_CHARS.indexOf(component[i]) >= 0)
 				return true;
+			/*
+			 * Don't auto encode versions or segments
+			 */
+			if (i == 0) {
+				if (component[i] == SegmentationProfile.SEGMENT_MARKER ||
+						component[i] == VersioningProfile.VERSION_MARKER)
+					continue;
+			}
 			for (byte ib : INVALID_UTF8_BYTES) {
-				
-				/*
-				 * Don't auto encode versions or segments
-				 */
-				if (i == 0) {
-					if (component[i] == SegmentationProfile.SEGMENT_MARKER ||
-							component[i] == VersioningProfile.VERSION_MARKER)
-						continue;
-				}
 				if (component[i] == ib) {
 					return true;
 				}
@@ -562,20 +562,20 @@ public class RFSImpl implements Repository {
 		return new ContentName(newComponents);
 	}
 	
-	private void encodeVersionAndSegment(ContentName name, byte[][] components, int count) {
+	public void encodeVersionAndSegment(ContentName name, byte[][] components, int count) {
 		for (int i = 0; i < count; i++) {
 			components[i] = encodeComponent(name.component(i));
 		}
 	}
 	
-	private byte[] encodeComponent(byte[] component) {
+	public static byte[] encodeComponent(byte[] component) {
 		if (component[0] == VersioningProfile.VERSION_MARKER || 
 				component[0] == SegmentationProfile.SEGMENT_MARKER) {
 			String startString = component[0] == VersioningProfile.VERSION_MARKER ? REPLACE_VERSION : REPLACE_SEGMENT;
 			String conversionString = "";
 			if (component.length > 1) {
 				byte[] conversionBytes = new byte[component.length - 1];
-				System.arraycopy(component, 1, conversionBytes, 0, component.length);
+				System.arraycopy(component, 1, conversionBytes, 0, conversionBytes.length);
 				conversionString = convertToBase64(conversionBytes);
 			}
 			return (startString + conversionString).getBytes();
@@ -693,7 +693,7 @@ public class RFSImpl implements Repository {
 	 * @param bytes
 	 * @return
 	 */
-	private String convertToBase64(byte[] bytes) {
+	private static String convertToBase64(byte[] bytes) {
 		String b64String = new BASE64Encoder().encode(bytes);
 		b64String = b64String.replace("/", REPLACE_SLASH);
 		return b64String.replace("\n", REPLACE_RETURN);

@@ -82,10 +82,10 @@ public class RepositoryDaemon extends Daemon {
 		private ConcurrentLinkedQueue<ContentObject> _dataQueue = new ConcurrentLinkedQueue<ContentObject>();
 		private ArrayList<ContentObject> _unacked = new ArrayList<ContentObject>();
 		private boolean _haveHeader = false;
+		private boolean _sentHeaderInterest = false;
 		private boolean _sawBlock = false;
 		private ContentName _headerName = null;
 		private Interest _headerInterest = null;
-		private byte[][] _headerExcludes = null;
 		
 		private DataListener(Interest origInterest, Interest interest) {
 			_origInterest = interest;
@@ -98,55 +98,48 @@ public class RepositoryDaemon extends Daemon {
 		
 		public Interest handleContent(ArrayList<ContentObject> results,
 				Interest interest) {
-			_dataQueue.addAll(results);
-			_timer = new Date().getTime();
-			if (results.size() > 0) {
-				ContentObject co = results.get(0);
-				
-				if (!_haveHeader) {
-					/*
-					 * Handle headers specifically. If we haven't seen one yet ask for it specifically
-					 * Note that we have to exclude the block names, otherwise we could just keep getting
-					 * them back.
-					 */
-					if (co.name().equals(_headerName)) {
-						_haveHeader = true;
-						if (_sawBlock)
-							return null;
-					} else {
-						int nExcludes = _headerExcludes == null ? 1 : _headerExcludes.length + 1;
-						byte [][] newHeaderExcludes = new byte[nExcludes][];
-						if (nExcludes > 1) {
-							for (int i = 0; i < _headerExcludes.length; i++)
-								newHeaderExcludes[i] = _headerExcludes[i];
-						}
-						newHeaderExcludes[nExcludes - 1] = new byte[co.name().component(co.name().count() - 1).length];
-						System.arraycopy(co.name().component(co.name().count() - 1), 0, newHeaderExcludes[nExcludes - 1], 0, 
-								newHeaderExcludes[nExcludes - 1].length);
-						_headerExcludes = newHeaderExcludes;
-						ExcludeFilter filter = Interest.constructFilter(_headerExcludes);
-						_headerInterest.excludeFilter(filter);
-						try {
-							_library.expressInterest(_headerInterest, this);
-						} catch (IOException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
+			synchronized (this) {
+				_dataQueue.addAll(results);
+				_timer = new Date().getTime();
+				if (results.size() > 0) {
+					ContentObject co = results.get(0);
+					Library.logger().info("Saw data: " + co.name());
+					
+					if (!_haveHeader) {
+						/*
+						 * Handle headers specifically. If we haven't seen one yet ask for it specifically
+						 */
+						if (co.name().equals(_headerName)) {
+							_haveHeader = true;
+							if (_sawBlock)
+								return null;
+						} else {
+							if (!_sentHeaderInterest) {
+								try {
+									_library.expressInterest(_headerInterest, this);
+									_sentHeaderInterest = true;
+								} catch (IOException e) {
+									// TODO Auto-generated catch block
+									e.printStackTrace();
+								}
+							}
 						}
 					}
+					
+					/*
+					 * Compute new interest. Its basically a next, but since we want to register it, we
+					 * don't do a getNext here. Also we need to set the prefix 1 before the last component
+					 * so we get all the blocks
+					 */
+					_sawBlock = true;
+					ContentName nextName = new ContentName(co.name(), co.contentDigest(), co.name().count() - 1);
+					_interest = Interest.constructInterest(nextName,  _markerFilter, 
+								new Integer(Interest.ORDER_PREFERENCE_LEFT  | Interest.ORDER_PREFERENCE_ORDER_NAME));
+					_interest.additionalNameComponents(2);
+					return _interest;
 				}
-				
-				/*
-				 * Compute new interest. Its basically a next, but since we want to register it, we
-				 * don't do a getNext here. Also we need to set the prefix 1 before the last component
-				 * so we get all the blocks
-				 */
-				_sawBlock = true;
-				ContentName nextName = new ContentName(co.name(), co.contentDigest(), co.name().count() - 1);
-				_interest = Interest.constructInterest(nextName,  _markerFilter, 
-							new Integer(Interest.ORDER_PREFERENCE_LEFT  | Interest.ORDER_PREFERENCE_ORDER_NAME));
-				return _interest;
+				return null;
 			}
-			return null;
 		}
 		
 		public ContentObject get() {
@@ -249,35 +242,39 @@ public class RepositoryDaemon extends Daemon {
 					ContentName ackResult = new ContentName(interest.name().count() - 1, interest.name().components());
 					Interest ackInterest = new Interest(ackResult);
 					boolean noMatch = true;
-					for (DataListener listener : _currentListeners) {
-						
-						/*
-						 * Find the DataListener with values to Ack
-						 */
-						boolean found = false;
-						for (ContentObject co : listener._unacked) {
-							if (ackInterest.matches(co)) {
-								found = true;
-								break;
+					ArrayList<ContentName> names = new ArrayList<ContentName>();
+					synchronized(_currentListeners) {
+						for (DataListener listener : _currentListeners) {
+							
+							/*
+							 * Find the DataListener with values to Ack
+							 */
+							boolean found = false;
+							for (ContentObject co : listener._unacked) {
+								if (ackInterest.matches(co)) {
+									found = true;
+									break;
+								}
 							}
+							if (!found)
+								continue;
+							noMatch = false;
+							
+							/*
+							 * For now just send back all the names we have in one package
+							 * Possibly later we may want to make sure they match
+							 */
+							for (ContentObject co : listener._unacked) {
+								names.add(co.name());
+							}
+							listener._unacked.clear();
+							break;
 						}
-						if (!found)
-							continue;
-						noMatch = false;
-						
-						/*
-						 * For now just send back all the names we have in one package
-						 * Possibly later we may want to make sure they match
-						 */
-						ArrayList<ContentName> names = new ArrayList<ContentName>();
-						for (ContentObject co : listener._unacked) {
-							names.add(co.name());
-						}
-						listener._unacked.clear();
-						_writer.put(interest.name(), _repo.getRepoInfo(names));
 					}
 					if (noMatch)
-						_ackRequests.add(ackInterest);		
+						_ackRequests.add(ackInterest);
+					else
+						_writer.put(interest.name(), _repo.getRepoInfo(names));
 				} else {
 					ContentObject content = _repo.getContent(interest);
 					if (content != null) {
