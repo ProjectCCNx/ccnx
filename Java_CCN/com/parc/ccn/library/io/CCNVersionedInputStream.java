@@ -1,6 +1,7 @@
 package com.parc.ccn.library.io;
 
 import java.io.IOException;
+import java.sql.Timestamp;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -12,6 +13,7 @@ import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
+import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
 /**
@@ -71,7 +73,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 		}
 		Library.logger().info("getFirstBlock: getting latest version of " + _baseName);
 		// This might get us the header instead...
-		ContentObject result =  _library.getLatest(_baseName, _timeout);
+		ContentObject result =  _library.getLatestVersion(_baseName, null, _timeout);
 		if (null != result){
 			Library.logger().info("getFirstBlock: retrieved " + result.name());
 			if (result.signedInfo().getType() == ContentType.HEADER) {
@@ -96,5 +98,11 @@ public class CCNVersionedInputStream extends CCNInputStream {
 			}
 		}
 		return result;
+	}
+	
+	public Timestamp getVersionAsTimestamp() throws VersionMissingException {
+		if (null == _baseName)
+			throw new VersionMissingException("Have not yet retrieved content name!");
+		return VersioningProfile.getVersionAsTimestamp(_baseName);
 	}
 }
