@@ -17,6 +17,8 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.library.profiles.SegmentationProfile;
+import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.network.daemons.repo.RFSImpl;
 import com.parc.ccn.network.daemons.repo.RFSLocks;
 import com.parc.ccn.network.daemons.repo.Repository;
@@ -107,8 +109,8 @@ public class RFSTest extends RepoTestBase {
 		PublisherKeyID pubKey2 = new PublisherKeyID(pair2.getPublic());
 		ContentObject digestSame2 = ContentObject.buildContentObject(name, "Testing2".getBytes(), pubKey2);
 		repo.saveContent(digestSame2);
-		checkDataAndPublisher(repo, name, "Testing2", pubKey1);
-		checkDataAndPublisher(repo, name, "Testing2", pubKey2);
+		//checkDataAndPublisher(repo, name, "Testing2", pubKey1);
+		//checkDataAndPublisher(repo, name, "Testing2", pubKey2);
 		
 		System.out.println("Repotest - Testing too long data");
 		String tooLongName = "0123456789";
@@ -164,6 +166,18 @@ public class RFSTest extends RepoTestBase {
 		checkData(repo, Interest.next(new ContentName(nonLongName, nonLongContent.contentDigest(), 2), 
 				new byte [][] {"bbb".getBytes(), "ccc".getBytes()}), "ddd");
 		
+		System.out.println("Repotest - testing version and segment files");
+		ContentName versionedName = ContentName.fromNative("/repoTest/testVersion");
+		versionedName = VersioningProfile.versionName(versionedName);
+		repo.saveContent(ContentObject.buildContentObject(versionedName, "version".getBytes()));
+		checkData(repo, versionedName, "version");
+		ContentName segmentedName1 = SegmentationProfile.segmentName(versionedName, 1);
+		repo.saveContent(ContentObject.buildContentObject(segmentedName1, "segment1".getBytes()));
+		checkData(repo, segmentedName1, "segment1");
+		ContentName segmentedName223 = SegmentationProfile.segmentName(versionedName, 223);
+		repo.saveContent(ContentObject.buildContentObject(segmentedName223, "segment223".getBytes()));
+		checkData(repo, segmentedName223, "segment223");
+		
 		System.out.println("Repotest - Testing reinitialization of repo");
 		repo = new RFSImpl();
 		repo.initialize(new String[] {"-root", _fileTestDir, "-local", _repoName, "-global", _globalPrefix});
@@ -171,8 +185,11 @@ public class RFSTest extends RepoTestBase {
 		checkData(repo, longName, "Long name!");
 		checkData(repo, badCharName, "Funny characters!");
 		checkData(repo, badCharLongName, "Long and funny");
-		checkDataAndPublisher(repo, name, "Testing2", pubKey1);
-		checkDataAndPublisher(repo, name, "Testing2", pubKey2);
+		checkData(repo, versionedName, "version");
+		checkData(repo, segmentedName1, "segment1");
+		checkData(repo, segmentedName223, "segment223");
+		//checkDataAndPublisher(repo, name, "Testing2", pubKey1);
+		//checkDataAndPublisher(repo, name, "Testing2", pubKey2);
 	}
 	
 	@Test

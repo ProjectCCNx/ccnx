@@ -24,6 +24,7 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.WirePacket;
 import com.parc.ccn.data.query.Interest;
+import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
@@ -322,25 +323,37 @@ public class RFSImpl implements Repository {
 			if (bestMatch == null) {
 				bestMatch = checkMatch(interest, name, possibleMatches.get(name));
 			} else {
-				/*
-				 * Must test in this order since ORDER_PREFERENCE_LEFT is 0
-				 */
+				ContentObject checkMatch = null;
 				if (interest.orderPreference()  != null) {
+					/*
+					 * Must test in this order since ORDER_PREFERENCE_LEFT is 0
+					 */
 					if ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME))
 							== (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME)) {
 						if (name.compareTo(bestMatch.name()) > 0) {
-							ContentObject checkMatch = checkMatch(interest, name, possibleMatches.get(name));
+							checkMatch = checkMatch(interest, name, possibleMatches.get(name));
 							if (checkMatch != null)
 								bestMatch = checkMatch;
 						}
 					} else if ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME))
 							== (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME)) {
 						if (name.compareTo(bestMatch.name()) < 0) {
-							ContentObject checkMatch = checkMatch(interest, name, possibleMatches.get(name));
+							checkMatch = checkMatch(interest, name, possibleMatches.get(name));
 							if (checkMatch != null)
 								bestMatch = checkMatch;
 						}				
 					}
+				} else
+					checkMatch = checkMatch(interest, name, possibleMatches.get(name));
+				
+				/*
+				 * Try to get the closest match in size
+				 */
+				if (checkMatch != null) {
+					int cOffset = checkMatch.name().count() - interest.name().count();
+					int bOffset = bestMatch.name().count() - interest.name().count();
+					if (cOffset < bOffset)
+						bestMatch = checkMatch;
 				}
 			}
 		}
@@ -408,7 +421,7 @@ public class RFSImpl implements Repository {
 				getAllFileResults(f, results, new ContentName(name, f.getName().getBytes()));
 			}
 		} else if (file.exists()) {
-			ContentName decodedName = name.clone();
+			ContentName decodedName = decodeVersionAndSegment(name);
 			decodedName.components().remove(decodedName.count() - 1);
 			decodedName.components().add(decodeBase64(file.getName()));
 			addOneFileToMap(decodedName, file, results);	
@@ -416,8 +429,15 @@ public class RFSImpl implements Repository {
 			// Convert to name we can use as a file
 			ContentName encodedName = encodeStandardElements(name);
 			File encodedFile = new File(_repositoryFile + getStandardString(encodedName));
-			if (encodedFile.exists()) {
-				addOneFileToMap(name, encodedFile, results);
+			if (encodedFile.isDirectory()) {
+				getAllFileResults(encodedFile, results, encodedName);
+			}
+			else {
+				encodedName = encodeDigest(encodedName);
+				encodedFile = new File(_repositoryFile + getStandardString(encodedName));
+				if (encodedFile.exists()) {
+					addOneFileToMap(name, encodedFile, results);
+				}
 			}
 		}
 	}
@@ -582,7 +602,44 @@ public class RFSImpl implements Repository {
 		}
 		byte[] newComponent = new byte[component.length];
 		System.arraycopy(component, 0, newComponent, 0, component.length);
-		return component;
+		return newComponent;
+	}
+	
+	public ContentName decodeVersionAndSegment(ContentName name) {
+		byte[][] newComponents = new byte[name.count()][];
+		decodeVersionAndSegment(name, newComponents, name.count());
+		return new ContentName(newComponents);
+	}
+	
+	public void decodeVersionAndSegment(ContentName name, byte[][] components, int count) {
+		for (int i = 0; i < count; i++) {
+			components[i] = decodeComponent(name.component(i));
+		}
+	}
+	
+	public static byte[] decodeComponent(byte[] component) {
+		byte decodeByte = '0';
+		int size = 0;
+		String decodeString = new String(component);
+		if (DataUtils.arrayEquals(component, REPLACE_VERSION.getBytes(), REPLACE_VERSION.getBytes().length)) {
+			decodeByte = VersioningProfile.VERSION_MARKER;
+			size = REPLACE_VERSION.getBytes().length;
+		}
+		if (DataUtils.arrayEquals(component, REPLACE_SEGMENT.getBytes(), REPLACE_SEGMENT.getBytes().length)) {
+			decodeByte = SegmentationProfile.SEGMENT_MARKER;
+			size = REPLACE_SEGMENT.getBytes().length;
+		}
+		byte[] newComponent;
+		if (decodeByte != '0') {
+			byte[] decodeBytes = decodeBase64(decodeString.substring(size));
+			newComponent = new byte[decodeBytes.length + 1];
+			newComponent[0] = decodeByte;
+			System.arraycopy(decodeBytes, 0, newComponent, 1, decodeBytes.length);
+		} else {
+			newComponent = new byte[component.length];
+			System.arraycopy(component, 0, newComponent, 0, component.length);
+		}
+		return newComponent;
 	}
 	
 	/**
@@ -601,8 +658,10 @@ public class RFSImpl implements Repository {
 		for (byte[] component : components) {
 			byte type = UTF8_COMPONENT;
 			byte[] modifiedComponent = encodeComponent(component);
-			if (needsEncoding(modifiedComponent))
-				 modifiedComponent = convertToBase64(component).getBytes();
+			if (needsEncoding(modifiedComponent)) {
+				type = BASE64_COMPONENT;
+				modifiedComponent = convertToBase64(component).getBytes();
+			}
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			int length = modifiedComponent.length;
 			int offset = 0;
@@ -699,7 +758,7 @@ public class RFSImpl implements Repository {
 		return b64String.replace("\n", REPLACE_RETURN);
 	}
 	
-	private byte [] decodeBase64(String data) {
+	private static byte [] decodeBase64(String data) {
 		try {
 			data = data.replace(REPLACE_SLASH, "/");
 			data = data.replace(REPLACE_RETURN, "\n");
@@ -720,14 +779,18 @@ public class RFSImpl implements Repository {
 	}
 	
 	private ContentName encodeStandardElements(ContentName name) {
+		byte[][] newComponents = new byte[name.count()][];
+		encodeVersionAndSegment(name, newComponents, name.count());
+		return new ContentName(newComponents);
+	}
+		
+	private ContentName encodeDigest(ContentName name) {
 		// Convert last component to "digest as file" form
 		ContentName newName = name.clone();
 		String cnDigestString = cnDigestString(newName);
-		
-		byte[][] newComponents = new byte[name.count()][];
-		encodeVersionAndSegment(name, newComponents, name.count() - 1);
-		newComponents[name.count() - 1] = cnDigestString.getBytes();
-		return new ContentName(newComponents);
+		newName.components().remove(newName.count() - 1);
+		newName.components().add(cnDigestString.getBytes());
+		return newName;
 	}
 	
 	/**

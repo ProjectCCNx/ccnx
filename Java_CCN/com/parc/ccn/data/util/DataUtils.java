@@ -93,7 +93,7 @@ public class DataUtils {
 		return bi.toString(16);
 	}
 	
-	public boolean arrayEquals(byte[] left, byte[] right, int length) {
+	public static boolean arrayEquals(byte[] left, byte[] right, int length) {
 		if (left.length < length || right.length < length)
 			return false;
 		for (int i = 0; i < length; i++) {
