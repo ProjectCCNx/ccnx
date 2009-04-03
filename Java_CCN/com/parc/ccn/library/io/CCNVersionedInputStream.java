@@ -31,13 +31,20 @@ import com.parc.ccn.library.profiles.VersioningProfile;
  * are working with, to make sure we continue to get blocks
  * from the same version (even if, say someone writes another
  * version on top of us).
+ * 
+ * TODO -- outstanding concern -- depending on when the header arrives,
+ * the response of this class may differ (not entirely clear). Given
+ * that we're moving away from headers, perhaps, this may not be an
+ * issue, but it brings up the point that we have to write unit tests
+ * that seed ccnd or the repo with potentially complicating data and
+ * make sure we can still retrieve it.
  * @author smetters
  *
  */
 public class CCNVersionedInputStream extends CCNInputStream {
 
 	public CCNVersionedInputStream(ContentName name,
-			Long startingBlockIndex, PublisherKeyID publisher,
+			long startingBlockIndex, PublisherKeyID publisher,
 			CCNLibrary library) throws XMLStreamException, IOException {
 		super(name, startingBlockIndex, publisher, library);
 	}
@@ -57,9 +64,9 @@ public class CCNVersionedInputStream extends CCNInputStream {
 		super(name, library);
 	}
 
-	public CCNVersionedInputStream(ContentName name, int blockNumber)
+	public CCNVersionedInputStream(ContentName name, long startingBlockIndex)
 			throws XMLStreamException, IOException {
-		super(name, blockNumber);
+		this(name, startingBlockIndex, null, null);
 	}
 
 	public CCNVersionedInputStream(ContentObject starterBlock,
@@ -69,7 +76,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 	
 	protected ContentObject getFirstBlock() throws IOException {
 		if (VersioningProfile.isVersioned(_baseName)) {
-			super.getFirstBlock();
+			return super.getFirstBlock();
 		}
 		Library.logger().info("getFirstBlock: getting latest version of " + _baseName);
 		// This might get us the header instead...

@@ -1,8 +1,8 @@
 package test.ccn.library.io;
 
-import static org.junit.Assert.fail;
-
 import java.io.IOException;
+import java.io.InputStream;
+import java.security.DigestInputStream;
 import java.security.DigestOutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -10,12 +10,13 @@ import java.util.Random;
 
 import javax.xml.stream.XMLStreamException;
 
-import junit.framework.Assert;
-
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNInputStream;
 import com.parc.ccn.library.io.CCNOutputStream;
@@ -102,69 +103,128 @@ public class CCNVersionedInputStreamTest {
 	    }.start();
 	}
 	
-	public static void readFile(ContentName completeName, int fileLength) throws IOException, XMLStreamException {
+	public static byte [] readFile(ContentName completeName, int fileLength) throws XMLStreamException, IOException {
 		CCNInputStream inputStream = new CCNInputStream(completeName);
+		System.out.println("Reading file : " + completeName);
+		return readFile(inputStream, fileLength);
+	}
+	
+	public static byte [] readFile(InputStream inputStream, int fileLength) throws IOException, XMLStreamException {
+		
+		DigestInputStream dis = null;
+		try {
+			dis = new DigestInputStream(inputStream, MessageDigest.getInstance("SHA1"));
+		} catch (NoSuchAlgorithmException e) {
+			Library.logger().severe("No SHA1 available!");
+			Assert.fail("No SHA1 available!");
+		}
 		int elapsed = 0;
 		int read = 0;
 		byte [] bytes = new byte[BUF_SIZE];
-		System.out.println("Reading file : " + completeName);
 		while (elapsed < fileLength) {
-			read = inputStream.read(bytes);
+			read = dis.read(bytes);
 			elapsed += read;
 			if (read == 0) {
 				System.out.println("Ran out of things to read at " + elapsed + " bytes out of " + fileLength);
 				break;
 			}
-			System.out.println(completeName + " read " + elapsed + " bytes out of " + fileLength);
+			System.out.println(" read " + elapsed + " bytes out of " + fileLength);
 		}
+		return dis.getMessageDigest().digest();
 	}
 	
 	@Test
 	public void testCCNVersionedInputStreamContentNameLongPublisherKeyIDCCNLibrary() {
-		fail("Not yet implemented");
+		try {
+			// we can make a new library; as long as we don't use the outputLibrary it should work
+			CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName, 3, outputLibrary.getDefaultPublisher(), inputLibrary);
+			CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, 3, outputLibrary.getDefaultPublisher(), inputLibrary);
+			testArgumentRunner(vfirst, vlatest);
+		} catch (XMLStreamException e) {
+			e.printStackTrace();
+			Assert.fail("XMLStreamException: " + e.getMessage());
+		} catch (IOException e) {
+			e.printStackTrace();
+			Assert.fail("IOException: " + e.getMessage());
+		}
 	}
 
 	@Test
 	public void testCCNVersionedInputStreamContentNamePublisherKeyIDCCNLibrary() {
-		fail("Not yet implemented");
+		try {
+			// we can make a new library; as long as we don't use the outputLibrary it should work
+			CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName, outputLibrary.getDefaultPublisher(), inputLibrary);
+			CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, outputLibrary.getDefaultPublisher(), inputLibrary);
+			testArgumentRunner(vfirst, vlatest);
+		} catch (XMLStreamException e) {
+			e.printStackTrace();
+			Assert.fail("XMLStreamException: " + e.getMessage());
+		} catch (IOException e) {
+			e.printStackTrace();
+			Assert.fail("IOException: " + e.getMessage());
+		}
 	}
 
 	@Test
 	public void testCCNVersionedInputStreamContentName() {
-		fail("Not yet implemented");
+		try {
+			// we can make a new library; as long as we don't use the outputLibrary it should work
+			CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName);
+			CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName);
+			testArgumentRunner(vfirst, vlatest);
+		} catch (XMLStreamException e) {
+			e.printStackTrace();
+			Assert.fail("XMLStreamException: " + e.getMessage());
+		} catch (IOException e) {
+			e.printStackTrace();
+			Assert.fail("IOException: " + e.getMessage());
+		}
 	}
 
 	@Test
 	public void testCCNVersionedInputStreamContentNameCCNLibrary() {
+		
 		try {
-			CCNVersionedInputStream vis = new CCNVersionedInputStream(firstVersionName, inputLibrary);
-			Assert.assertEquals(vis.baseName(), firstVersionName);
-			Assert.assertEquals(VersioningProfile.versionRoot(vis.baseName()), defaultStreamName);
-			byte b = (byte)vis.read();
+			CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName, inputLibrary);
+			CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, inputLibrary);
+			testArgumentRunner(vfirst, vlatest);
+		} catch (XMLStreamException e) {
+			e.printStackTrace();
+			Assert.fail("XMLStreamException: " + e.getMessage());
+		} catch (IOException e) {
+			e.printStackTrace();
+			Assert.fail("IOException: " + e.getMessage());
+		}
+	}
+	
+	protected void testArgumentRunner(CCNVersionedInputStream vfirst,
+									  CCNVersionedInputStream vlatest) {
+		try {
+			Assert.assertEquals(vfirst.baseName(), firstVersionName);
+			Assert.assertEquals(VersioningProfile.versionRoot(vfirst.baseName()), defaultStreamName);
+			byte b = (byte)vfirst.read();
 			if (b != b) {
 				// suppress warning...
 			}
 			Assert.assertEquals(VersioningProfile.getVersionAsTimestamp(firstVersionName), 
-								VersioningProfile.getVersionAsTimestamp(vis.baseName()));
+								VersioningProfile.getVersionAsTimestamp(vfirst.baseName()));
 			Assert.assertEquals(VersioningProfile.getVersionAsTimestamp(firstVersionName),
-							    vis.getVersionAsTimestamp());
+							    vfirst.getVersionAsTimestamp());
 
-			CCNVersionedInputStream vls = new CCNVersionedInputStream(defaultStreamName, inputLibrary);
 			System.out.println("Opened stream on latest version, expected: " + latestVersionName + " got: " + 
-								vls.baseName());
-			b = (byte)vls.read();
+								vlatest.baseName());
+			b = (byte)vlatest.read();
 			System.out.println("Post-read: Opened stream on latest version, expected: " + latestVersionName + " got: " + 
-					vls.baseName());
-			Assert.assertEquals(vls.baseName(), latestVersionName);
-			Assert.assertEquals(VersioningProfile.versionRoot(vls.baseName()), defaultStreamName);
+					vlatest.baseName());
+			Assert.assertEquals(vlatest.baseName(), latestVersionName);
+			Assert.assertEquals(VersioningProfile.versionRoot(vlatest.baseName()), defaultStreamName);
+			Assert.assertEquals(VersioningProfile.getVersionAsLong(latestVersionName), 
+					VersioningProfile.getVersionAsLong(vlatest.baseName()));
 			Assert.assertEquals(VersioningProfile.getVersionAsTimestamp(latestVersionName), 
-								VersioningProfile.getVersionAsTimestamp(vis.baseName()));
+								VersioningProfile.getVersionAsTimestamp(vlatest.baseName()));
 			Assert.assertEquals(VersioningProfile.getVersionAsTimestamp(latestVersionName),
-					vls.getVersionAsTimestamp());
+					vlatest.getVersionAsTimestamp());
 		
-		} catch (XMLStreamException e) {
-			e.printStackTrace();
-			Assert.fail("XMLStreamException: " + e.getMessage());
 		} catch (IOException e) {
 			e.printStackTrace();
 			Assert.fail("IOException: " + e.getMessage());
@@ -172,41 +232,63 @@ public class CCNVersionedInputStreamTest {
 			e.printStackTrace();
 			Assert.fail("VersionMissingException: " + e.getMessage());
 		}
+
 	}
 
 	@Test
 	public void testCCNVersionedInputStreamContentNameInt() {
-		fail("Not yet implemented");
+		try {
+			// we can make a new library; as long as we don't use the outputLibrary it should work
+			CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName, 4);
+			CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, 4);
+			testArgumentRunner(vfirst, vlatest);
+		} catch (XMLStreamException e) {
+			e.printStackTrace();
+			Assert.fail("XMLStreamException: " + e.getMessage());
+		} catch (IOException e) {
+			e.printStackTrace();
+			Assert.fail("IOException: " + e.getMessage());
+		}
 	}
 
 	@Test
 	public void testCCNVersionedInputStreamContentObjectCCNLibrary() {
-		fail("Not yet implemented");
-	}
-
-	@Test
-	public void testSkip() {
-		fail("Not yet implemented");
-	}
-
-	@Test
-	public void testReset() {
-		fail("Not yet implemented");
-	}
-
-	@Test
-	public void testRead() {
-		fail("Not yet implemented");
+		try {
+			// we can make a new library; as long as we don't use the outputLibrary it should work
+			ContentObject firstVersionBlock = inputLibrary.get(firstVersionName, 1000);
+			ContentObject latestVersionBlock = inputLibrary.getLatest(defaultStreamName, 1000);
+			CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionBlock, inputLibrary);
+			CCNVersionedInputStream vlatest = new CCNVersionedInputStream(latestVersionBlock, inputLibrary);
+			testArgumentRunner(vfirst, vlatest);
+		} catch (XMLStreamException e) {
+			e.printStackTrace();
+			Assert.fail("XMLStreamException: " + e.getMessage());
+		} catch (IOException e) {
+			e.printStackTrace();
+			Assert.fail("IOException: " + e.getMessage());
+		}
 	}
 
 	@Test
 	public void testReadByteArray() {
-		fail("Not yet implemented");
-	}
-
-	@Test
-	public void testReadByteArrayIntInt() {
-		fail("Not yet implemented");
+		// Test other forms of read in superclass test.
+		try {
+			CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName, inputLibrary);
+			byte [] readDigest = readFile(vfirst, firstVersionLength);
+			Assert.assertArrayEquals(firstVersionDigest, readDigest);
+			CCNVersionedInputStream vmiddle = new CCNVersionedInputStream(middleVersionName, inputLibrary);
+			readDigest = readFile(vmiddle, middleVersionLength);
+			Assert.assertArrayEquals(middleVersionDigest, readDigest);
+			CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, inputLibrary);
+			readDigest = readFile(vlatest, latestVersionLength);
+			Assert.assertArrayEquals(latestVersionDigest, readDigest);
+		} catch (XMLStreamException e) {
+			e.printStackTrace();
+			Assert.fail("XMLStreamException: " + e.getMessage());
+		} catch (IOException e) {
+			e.printStackTrace();
+			Assert.fail("IOException: " + e.getMessage());
+		}
 	}
 
 }
