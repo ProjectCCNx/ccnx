@@ -117,7 +117,8 @@ public class CCNNameEnumerator implements CCNFilterListener{
 		System.out.println("we recieved interests matching our prefix...");
 
 		System.out.println("we have a match on "+p.toString());
-		callback.handleNameEnumerator(p, results);
+		if(_registeredPrefixes.contains(p))
+			callback.handleNameEnumerator(p, results);
 		
 		return results.size();
 	}

@@ -65,8 +65,10 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		for(LinkReference lr: net.names){
 			System.out.println("got name: "+lr.targetName());
 			Assert.assertTrue(lr.targetName().toString().equals("/name1") || lr.targetName().toString().equals("/name2"));
-		}	
+		}
+		
 	}
+	
 	
 		
 	@Test
@@ -94,6 +96,18 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		Assert.assertFalse(ne.cancelPrefix(prefix1));
 		
 	}
+	
+	@Test
+	public void testGetCallbackAfterCancel(){
+		
+		net.names = null;
+		
+		ne.handleContent(createNameList(), net.prefix1);
+		
+		Assert.assertNull(net.names);
+		
+	}
+	
 	/*
 	public static void nameEnumeratorSetup(){
 		net.ne = new CCNNameEnumerator(_library, net);
