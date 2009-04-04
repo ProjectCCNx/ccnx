@@ -738,7 +738,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 	
 	public final byte [] lastComponent() {
-		if (null == _components)
+		if (null == _components || _components.size() == 0)
 			return null;
 		return _components.get(_components.size()-1);
 	}
