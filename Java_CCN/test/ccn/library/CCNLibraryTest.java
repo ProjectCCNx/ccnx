@@ -367,32 +367,37 @@ public class CCNLibraryTest extends LibraryTestBase {
 			_mainThread = mainThread;
 		}
 
-		public Interest handleContent(ArrayList<ContentObject> results, Interest interest) throws VersionMissingException {
+		public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
 			byte[] content = null;
-			if (null != results) {
-				Iterator<ContentObject> rit = results.iterator();
-				while (rit.hasNext()) {
-					ContentObject co = rit.next();
+			try {
+				if (null != results) {
+					Iterator<ContentObject> rit = results.iterator();
+					while (rit.hasNext()) {
+						ContentObject co = rit.next();
 
-					content = co.content();
-					String strContent = new String(content);
-					System.out.println("Got update for " + co.name() + ": " + strContent + " (revision " + VersioningProfile.getVersionAsLong(co.name()) + ")");
-					_count++;
-					switch(_count) {
-					case 1:
-						Assert.assertEquals("data1", strContent);
-						System.out.println("Got data1 back!");
-						_mainThread.interrupt();
-						break;
-					case 2: 
-						Assert.assertEquals("data2", strContent);
-						System.out.println("Got data2 back!");
-						_mainThread.interrupt();
-						break;
-					default:
-						Assert.fail("Somehow got a third update");
+						content = co.content();
+						String strContent = new String(content);
+						System.out.println("Got update for " + co.name() + ": " + strContent + 
+								" (revision " + VersioningProfile.getVersionAsLong(co.name()) + ")");
+						_count++;
+						switch(_count) {
+						case 1:
+							Assert.assertEquals("data1", strContent);
+							System.out.println("Got data1 back!");
+							_mainThread.interrupt();
+							break;
+						case 2: 
+							Assert.assertEquals("data2", strContent);
+							System.out.println("Got data2 back!");
+							_mainThread.interrupt();
+							break;
+						default:
+							Assert.fail("Somehow got a third update");
+						}
 					}
 				}
+			} catch (VersionMissingException vex) {
+				Assert.fail("Should have version.");
 			}
 			return null;
 		}

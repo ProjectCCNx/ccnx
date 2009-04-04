@@ -15,6 +15,6 @@ public interface CCNInterestListener {
 	 * @return new Interest to be expressed
 	 * @throws VersionMissingException 
 	 */
-    public Interest handleContent(ArrayList<ContentObject> results, Interest interest) throws VersionMissingException;
+    public Interest handleContent(ArrayList<ContentObject> results, Interest interest);
     
 }
