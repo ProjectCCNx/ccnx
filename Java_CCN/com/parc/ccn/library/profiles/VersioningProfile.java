@@ -55,7 +55,7 @@ public class VersioningProfile implements CCNProfile {
 	 * @see #versionName(ContentName, long)
 	 */
 	public static ContentName versionName(ContentName name, Timestamp version) {
-		return versionName(name, version.getTime() * 4096L + (version.getNanos() * 4096L + 500000000L) / 1000000000L);
+		return versionName(name, (version.getTime() / 1000 ) * 4096L + (version.getNanos() * 4096L + 500000000L) / 1000000000L);
 	}
 	
 	/**
@@ -79,6 +79,10 @@ public class VersioningProfile implements CCNProfile {
 		return (null != vm) && (0 != vm.length) && (VERSION_MARKER == vm[0]);
 	}
 
+	/**
+	 * Take a name which may have a segment component and a version component
+	 * and strip them if present.
+	 */
 	public static ContentName versionRoot(ContentName name) {
 		int offset = 0;
 		if (SegmentationProfile.isSegment(name)) {
