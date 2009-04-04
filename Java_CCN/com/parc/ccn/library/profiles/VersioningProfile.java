@@ -76,7 +76,7 @@ public class VersioningProfile implements CCNProfile {
 		} else {
 			vm = name.lastComponent(); // no fragment number, unusual
 		}
-		return (null != vm) && (0 != vm.length) && (VERSION_MARKER == vm[0]);
+		return (null != vm) && (0 != vm.length) && (VERSION_MARKER == vm[0]) && ((vm.length == 1) || (vm[1] != 0));
 	}
 
 	/**
