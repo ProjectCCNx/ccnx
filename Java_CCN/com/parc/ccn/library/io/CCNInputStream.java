@@ -102,8 +102,9 @@ public class CCNInputStream extends CCNAbstractInputStream implements CCNInteres
 	
 	@Override
 	public int available() throws IOException {
-		
-		if(_currentBlock!=null){
+		if (_atEOF)
+			return 0;
+		if (_currentBlock != null){
 			return _currentBlock.content().length - _blockOffset;
 		}
 		else{
@@ -136,6 +137,7 @@ public class CCNInputStream extends CCNAbstractInputStream implements CCNInteres
 		_readlimit = readlimit;
 		_markBlock = blockIndex();
 		_markOffset = _blockOffset;
+		Library.logger().info("mark: block: " + blockIndex() + " offset: " + _blockOffset);
 	}
 
 	@Override
@@ -145,18 +147,24 @@ public class CCNInputStream extends CCNAbstractInputStream implements CCNInteres
 
 	protected int readInternal(byte [] buf, int offset, int len) throws IOException {
 		
-		if (_atEOF)
-			return 0;
+		if (_atEOF) {
+			return -1;
+		}
 		
-		Library.logger().info("CCNInputStream: reading " + len + " bytes into buffer of length " + 
+		Library.logger().finer(baseName() + ": reading " + len + " bytes into buffer of length " + 
 				((null != buf) ? buf.length : "null") + " at offset " + offset);
 		// is this the first block?
 		if (null == _currentBlock) {
 			_currentBlock = getFirstBlock();
 			_blockOffset = 0;
-			if (null == _currentBlock)
-				return 0; // nothing to read
+			if (null == _currentBlock) {
+				_atEOF = true;
+				return -1; // nothing to read
+			}
 		} 
+		Library.logger().finer("reading from block: " + _currentBlock.name() + " length: " + 
+				_currentBlock.content().length +
+				" at offset " + _blockOffset);
 		
 		// Now we have a block in place. Read from it. If we run out of block before
 		// we've read len bytes, pull next block.
@@ -170,19 +178,25 @@ public class CCNInputStream extends CCNAbstractInputStream implements CCNInteres
 				if (null == _currentBlock) {
 					Library.logger().info("next block was null, setting _atEOF");
 					_atEOF = true;
-					return lenRead;
+					if (lenRead > 0) {
+						return lenRead;
+					}
+					return -1; // no bytes read, at eof
 				}
+				Library.logger().info("now reading from block: " + _currentBlock.name() + " length: " + 
+						_currentBlock.content().length +
+						" at offset " + _blockOffset);
 			}
 			int readCount = ((_currentBlock.content().length - _blockOffset) > lenToRead) ? lenToRead : (_currentBlock.content().length - _blockOffset);
 			if (null != buf) {} // use for skip
-				Library.logger().info("before arraycopy: content length "+_currentBlock.content().length+" _blockOffset "+_blockOffset+" dst length "+buf.length+" dst index "+offset+" len to copy "+readCount);
+				Library.logger().finest("before arraycopy: content length "+_currentBlock.content().length+" _blockOffset "+_blockOffset+" dst length "+buf.length+" dst index "+offset+" len to copy "+readCount);
 				System.arraycopy(_currentBlock.content(), _blockOffset, buf, offset, readCount);
 			
 			_blockOffset += readCount;
 			offset += readCount;
 			lenToRead -= readCount;
 			lenRead += readCount;
-			Library.logger().info("     read " + readCount + " bytes for " + lenRead + " total, " + lenToRead + " remaining.");
+			Library.logger().finest("     read " + readCount + " bytes for " + lenRead + " total, " + lenToRead + " remaining.");
 			
 		}
 		return lenRead;
@@ -190,8 +204,10 @@ public class CCNInputStream extends CCNAbstractInputStream implements CCNInteres
 
 	@Override
 	public synchronized void reset() throws IOException {
-		getBlock(_markBlock);
+		_currentBlock = getBlock(_markBlock);
 		_blockOffset = _markOffset;
+		_atEOF = false;
+		Library.logger().info("reset: block: " + blockIndex() + " offset: " + _blockOffset + " eof? " + _atEOF);
 	}
 	
 	@Override

@@ -98,8 +98,10 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	@Override
 	public int read() throws IOException {
 		byte [] b = new byte[1];
-		read(b, 0, 1);
-		return b[0];
+		if (read(b, 0, 1) < 0) {
+			return -1;
+		}
+		return (0x000000FF & b[0]);
 	}
 
 	@Override
@@ -114,7 +116,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	 * @param buf the buffer into which to write.
 	 * @param offset the offset into buf at which to write data
 	 * @param len the number of bytes to write
-	 * @return
+	 * @return -1 if at EOF, or number of bytes read
 	 * @throws IOException 
 	 */
 	@Override
@@ -122,7 +124,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 
 		if (null == buf)
 			throw new NullPointerException("Buffer cannot be null!");
-
+		
 		return readInternal(buf, offset, len);
 	}
 	

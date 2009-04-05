@@ -135,6 +135,13 @@ public class BinaryXMLCodec  {
 		do {
 			next = istream.read();
 			
+			if (next < 0) {
+				if (istream instanceof com.parc.ccn.library.io.CCNInputStream) {
+					Library.logger().info("Reached EOF in decodeTypeAndVal.");
+				}
+				return null; // at EOF
+			}
+			
 			if (0 == (next & XML_TT_NO_MORE)) {
 				val = val << XML_REG_VAL_BITS;
 				val |= (next & XML_REG_VAL_MASK);
@@ -190,9 +197,9 @@ public class BinaryXMLCodec  {
 	public static byte [] decodeBlob(InputStream istream) throws IOException {
 		TypeAndVal tv = decodeTypeAndVal(istream);
 		
-		if (XML_BLOB != tv.type()) {
+		if ((null == tv) || (XML_BLOB != tv.type())) {
 			throw new IOException("Unexpected type, expected XML_BLOB " + XML_BLOB + "," +
-					" got " + tv.type());
+					" got " + ((null != tv) ? tv.type() : "not a tag."));
 		}
 		return decodeBlob(istream, (int)tv.val());
 	}
@@ -220,9 +227,9 @@ public class BinaryXMLCodec  {
 	public static String decodeUString(InputStream istream) throws IOException {
 		TypeAndVal tv = decodeTypeAndVal(istream);
 		
-		if (XML_UDATA != tv.type()) {
+		if ((null == tv) || (XML_UDATA != tv.type())) {
 			throw new IOException("Unexpected type, expected XML_USTRING " + XML_UDATA + "," +
-					" got " + tv.type());
+					" got " + ((null != tv) ? tv.type() : "not a tag."));
 		}
 		return decodeUString(istream, (int)tv.val());
 	}
@@ -275,7 +282,9 @@ public class BinaryXMLCodec  {
 	}
 
 	public static void encodeBlob(OutputStream ostream, byte [] blob) throws IOException {
-		encodeTypeAndVal(XML_BLOB, blob.length, ostream);
-		ostream.write(blob);
+		encodeTypeAndVal(XML_BLOB, ((null == blob) ? 0 : blob.length), ostream);
+		if (null != blob) {
+			ostream.write(blob);
+		}
 	}
 }

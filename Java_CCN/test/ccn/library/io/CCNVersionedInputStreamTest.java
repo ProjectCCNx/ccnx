@@ -130,11 +130,11 @@ public class CCNVersionedInputStreamTest {
 		byte [] bytes = new byte[BUF_SIZE];
 		while (elapsed < fileLength) {
 			read = dis.read(bytes);
-			elapsed += read;
-			if (read == 0) {
+			if (read <= 0) {
 				System.out.println("Ran out of things to read at " + elapsed + " bytes out of " + fileLength);
 				break;
 			}
+			elapsed += read;
 			System.out.println(" read " + elapsed + " bytes out of " + fileLength);
 		}
 		return dis.getMessageDigest().digest();

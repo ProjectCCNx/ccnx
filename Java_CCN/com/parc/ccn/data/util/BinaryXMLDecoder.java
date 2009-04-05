@@ -56,6 +56,10 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 		try {
 			BinaryXMLCodec.TypeAndVal tv = BinaryXMLCodec.decodeTypeAndVal(_istream);
 			
+			if (null == tv) {
+				throw new XMLStreamException("Expected start element: " + startTag + " got something not a tag.");
+			}
+			
 			String decodedTag = null;
 			
 			if (tv.type() == BinaryXMLCodec.XML_TAG) {
@@ -126,25 +130,29 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 			// a special exception subtype, or redo the work here.
 			BinaryXMLCodec.TypeAndVal tv = BinaryXMLCodec.decodeTypeAndVal(_istream);
 
-			String decodedTag = null;
+			if (null != tv) {
 
-			if (tv.type() == BinaryXMLCodec.XML_TAG) {
-				Library.logger().info("Unexpected: got tag in peekStartElement; looking for tag " + startTag + " got length: " + (int)tv.val()+1);
+				String decodedTag = null;
 
-				if (tv.val()+1 > DEBUG_MAX_LEN) {
-					throw new XMLStreamException("Decoding error: length " + tv.val()+1 + " longer than expected maximum length!");
+				if (tv.type() == BinaryXMLCodec.XML_TAG) {
+					Library.logger().info("Unexpected: got tag in peekStartElement; looking for tag " + startTag + " got length: " + (int)tv.val()+1);
+
+					if (tv.val()+1 > DEBUG_MAX_LEN) {
+						throw new XMLStreamException("Decoding error: length " + tv.val()+1 + " longer than expected maximum length!");
+					}
+
+					// Tag value represents length-1 as tags can never be empty.
+					decodedTag = BinaryXMLCodec.decodeUString(_istream, (int)tv.val()+1);
+
+				} else if (tv.type() == BinaryXMLCodec.XML_DTAG) {
+					decodedTag = _dictionary.peek().decodeTag(tv.val());					
 				}
 
-				// Tag value represents length-1 as tags can never be empty.
-				decodedTag = BinaryXMLCodec.decodeUString(_istream, (int)tv.val()+1);
+				if ((null !=  decodedTag) && (decodedTag.equals(startTag))) {
+					isCorrectTag = true;
+				}
+			} // else, not a type and val, probably an end element. rewind and return false.
 
-			} else if (tv.type() == BinaryXMLCodec.XML_DTAG) {
-				decodedTag = _dictionary.peek().decodeTag(tv.val());					
-			}
-
-			if ((null !=  decodedTag) && (decodedTag.equals(startTag))) {
-				isCorrectTag = true;
-			}
 		} catch (XMLStreamException e) {
 			try {
 				_istream.reset();
