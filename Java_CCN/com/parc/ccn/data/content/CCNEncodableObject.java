@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import javax.xml.stream.XMLStreamException;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.PublisherKeyID;
@@ -11,6 +12,8 @@ import com.parc.ccn.data.util.EncodableObject;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNInputStream;
+import com.parc.ccn.library.io.CCNOutputStream;
+import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
 /**
@@ -74,18 +77,57 @@ public class CCNEncodableObject<E extends GenericXMLEncodable> extends Encodable
 		this(type, name, null, library);
 	}
 	
-	public void update() {
-		// TODO
+	public void update() throws XMLStreamException, IOException {
+		if (null == _currentName) {
+			throw new IllegalStateException("Cannot retrieve an object without giving a name!");
+		}
+		// Look for latest version.
+		update(VersioningProfile.versionRoot(_currentName));
 	}
 	
-	public void update(ContentName name) {
-		// TODO
+	/**
+	 * Load data into object. If name is versioned, load that version. If
+	 * name is not versioned, look for latest version. CCNInputStream doesn't
+	 * have that property at the moment.
+	 * @param name
+	 * @throws IOException 
+	 * @throws XMLStreamException 
+	 */
+	public void update(ContentName name) throws XMLStreamException, IOException {
+		// Either get the latest version name and call CCNInputStream, or
+		// better yet, use the appropriate versioning stream.
+		CCNInputStream is = new CCNInputStream(name, _library);
+		update(is);
+		_currentName = is.baseName();
 	}
 	
-	public void save() {
+	public void update(ContentObject object) throws XMLStreamException, IOException {
+		CCNInputStream is = new CCNInputStream(object, _library);
+		update(is);
+		_currentName = SegmentationProfile.segmentRoot(object.name());
+	}
+	
+	/**
+	 * Save to existing name, if content is dirty. Update version.
+	 * @throws IOException 
+	 * @throws XMLStreamException 
+	 */
+	public void save() throws XMLStreamException, IOException {
 		if (null == _currentName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
+		save(VersioningProfile.versionName(_currentName));
+	}
+	
+	/**
+	 * Save content to specific name. If versioned, assume that is the desired
+	 * version. If not, add a version to it.
+	 * @param name
+	 * @throws IOException 
+	 * @throws XMLStreamException 
+	 */
+	public void save(ContentName name) throws XMLStreamException, IOException {
+		// move object to this name
 		// TODO
 		// need to make sure we get back the actual name we're using,
 		// even if output stream does automatic versioning
@@ -93,13 +135,21 @@ public class CCNEncodableObject<E extends GenericXMLEncodable> extends Encodable
 		// either writes the object or not; we need to only make a new name if we do
 		// write the object, and figure out if that's happened. Also need to make
 		// parent behavior just write, put the dirty check higher in the state.
-		
-		// need to make sure output stream
-	}
-	
-	public void save(ContentName name) {
-		// move object to this name
-		// TODO
+		if (!isDirty()) { // Should we check potentially dirty?
+			Library.logger().info("Object not dirty. Not saving.");
+		}
+		if (null == name) {
+			throw new IllegalStateException("Cannot save an object without giving it a name!");
+		}
+		// CCNOutputStream will currently version an unversioned name, but dont'
+		// expect it should continue doing that. If it gets a versioned name, will respect it.
+		CCNOutputStream cos = new CCNOutputStream(name, _library);
+		save(cos); // superclass stream save. calls flush and close on a wrapping
+					// digest stream; want to make sure we end up with a single non-MHT signed
+				    // block and no header on small objects
+		cos.close();
+		_currentName = name;
+		setPotentiallyDirty(false);
 	}
 	
 	/**
