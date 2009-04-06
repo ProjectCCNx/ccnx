@@ -72,6 +72,20 @@ public class CCNVersionedInputStreamTest {
 		
 	}
 	
+	/**
+	 * Trick to get around lack of repo. We want the test below to read data out of
+	 * ccnd. Problem is to do that, we have to get it into ccnd. This pre-loads
+	 * ccnd with data by "flossing" it -- starting up a reader thread that will
+	 * pull our generated data into ccnd for us, where it will wait till we read
+	 * it back out.
+	 * @param completeName
+	 * @param fileLength
+	 * @param randBytes
+	 * @return
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 * @throws NoSuchAlgorithmException
+	 */
 	public static byte [] writeFileFloss(ContentName completeName, int fileLength, Random randBytes) throws XMLStreamException, IOException, NoSuchAlgorithmException {
 		CCNOutputStream stockOutputStream = new CCNOutputStream(completeName, outputLibrary);
 		
