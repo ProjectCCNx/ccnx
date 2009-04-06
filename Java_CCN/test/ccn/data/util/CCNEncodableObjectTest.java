@@ -66,7 +66,7 @@ public class CCNEncodableObjectTest {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		oldLevel = Library.logger().getLevel();
-		Library.logger().setLevel(Level.FINEST);
+	//	Library.logger().setLevel(Level.FINEST);
 		
 		library = CCNLibrary.open();
 		namespace = ContentName.fromURI(new String[]{baseName, subName, document1});
@@ -129,9 +129,9 @@ public class CCNEncodableObjectTest {
 		Assert.assertTrue("Failed to produce expected exception.", caught);
 		
 		try {
-			CCNEncodableCollectionData ecd0 = new CCNEncodableCollectionData(empty, library);
-			CCNEncodableCollectionData ecd1 = new CCNEncodableCollectionData(ns[1], small1);
-			CCNEncodableCollectionData ecd2 = new CCNEncodableCollectionData(small1);
+			CCNEncodableCollectionData ecd0 = new CCNEncodableCollectionData(namespace, empty, library);
+			CCNEncodableCollectionData ecd1 = new CCNEncodableCollectionData(namespace, small1);
+			CCNEncodableCollectionData ecd2 = new CCNEncodableCollectionData(namespace, small1);
 			CCNEncodableCollectionData ecd3 = new CCNEncodableCollectionData(ns[1], big, library);
 
 			Flosser flosser = new Flosser(namespace);
@@ -139,7 +139,7 @@ public class CCNEncodableObjectTest {
 			
 			ecd0.save(ns[0]);
 			System.out.println("Version for empty collection: " + ecd0.getVersion());
-			ecd1.save();
+			ecd1.save(ns[1]);
 			ecd2.save(ns[1]); 
 			System.out.println("Versions for matching collection content: " + ecd1.getVersion() + " " + ecd2.getVersion());
 			Assert.assertFalse(ecd1.equals(ecd2));
