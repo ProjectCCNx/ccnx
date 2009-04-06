@@ -12,6 +12,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
+import javax.xml.stream.XMLStreamException;
+
 import com.parc.ccn.Library;
 
 /**
@@ -80,7 +82,26 @@ public class SerializedObject<E extends Serializable>{
 	 */
 	protected E data() { return _data; }
 	
+	/**
+	 * Base behavior -- always write when asked.
+	 * @param output
+	 * @throws IOException
+	 * @throws XMLStreamException
+	 */
 	public void save(OutputStream output) throws IOException {
+		if (null == _data) {
+			throw new InvalidObjectException("No data to save!");
+		}
+		internalWriteObject(output);
+	}
+	
+	/**
+	 * Write only if necessary.
+	 * @param output
+	 * @throws IOException
+	 * @throws XMLStreamException
+	 */
+	public void saveIfDirty(OutputStream output) throws IOException {
 		if (null == _data) {
 			throw new InvalidObjectException("No data to save!");
 		} if (null == _lastSaved) {
@@ -122,6 +143,9 @@ public class SerializedObject<E extends Serializable>{
 		}	
 	}
 	
+	protected boolean isPotentiallyDirty() { return _potentiallyDirty; }
+	protected void setPotentiallyDirty(boolean dirty) { _potentiallyDirty = dirty; }
+
 	protected void internalWriteObject(OutputStream output) throws IOException {
 		try {
 			// Problem -- can't wrap the OOS in a DOS, need to do it the other way round.
@@ -134,7 +158,7 @@ public class SerializedObject<E extends Serializable>{
 			dos.flush();
 			oos.close();
 			_lastSaved = dos.getMessageDigest().digest();
-			_potentiallyDirty = false;
+			setPotentiallyDirty(false);
 		} catch (NoSuchAlgorithmException e) {
 			Library.logger().warning("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
 			throw new RuntimeException("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
