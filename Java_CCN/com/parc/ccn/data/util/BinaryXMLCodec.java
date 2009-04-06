@@ -142,6 +142,14 @@ public class BinaryXMLCodec  {
 				return null; // at EOF
 			}
 			
+			// If leading byte is 0, we are at an end marker, not a start marker;
+			// last byte of TV will have type and high bit set. Previous bytes
+			// are packed number representation, so leading 0 not legal. Either
+			// error or we're just peeking.
+			if ((0 == next) && (0 == val)) {
+				return null;
+			}
+			
 			if (0 == (next & XML_TT_NO_MORE)) {
 				val = val << XML_REG_VAL_BITS;
 				val |= (next & XML_REG_VAL_MASK);
