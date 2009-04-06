@@ -17,7 +17,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import test.ccn.data.content.CCNEncodableCollectionData;
-import test.ccn.util.Flosser;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;

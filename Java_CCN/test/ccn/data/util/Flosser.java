@@ -1,4 +1,4 @@
-package test.ccn.util;
+package test.ccn.data.util;
 
 import java.io.IOException;
 import java.util.ArrayList;
