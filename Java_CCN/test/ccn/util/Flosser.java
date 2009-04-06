@@ -1,11 +1,11 @@
 package test.ccn.util;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.Map.Entry;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
@@ -16,13 +16,19 @@ import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.ExcludeElement;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
+import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNLibrary;
 
 /**
  *  A class to help write tests without a repo. Pulls things
  *  through ccnd, under a set of namespaces.
  *  Cheesy -- uses excludes to not get the same content back.
- *  Will saturate bloom filter eventually.
+ *  
+ *  TODO FIX -- not entirely correct. Gets more duplicates than it needs to.
+ *  
+ *  See CCNVersionedInputStream for related stream-based flossing code.
+ *  The "floss" term refers to "mental floss" -- think a picture of
+ *  someone running dental floss in and out through their ears.
  * @author smetters
  *
  */
@@ -66,6 +72,15 @@ public class Flosser implements CCNInterestListener {
 			// update the interest. follow process used by ccnslurp.
             // exclude the next component of this object, and set up a
             // separate interest to explore its children.
+			// first, remove the interest from our list as we aren't going to
+			// reexpress it in exactly the same way
+			for (Entry<ContentName, Interest> entry : _interests.entrySet()) {
+				if (entry.getValue().equals(interest)) {
+					_interests.remove(entry.getKey());
+					break;
+				}
+			}
+			
             int prefixCount = (null != interest.name().prefixCount()) ? interest.name().prefixCount() :
                 interest.name().count();
             // DKS TODO should the count above be count()-1 and this just prefixCount?
@@ -77,14 +92,14 @@ public class Flosser implements CCNInterestListener {
             		Library.logger().finest("Creating new exclude filter for interest " + interest.name());
             	} else {
             		if (interest.excludeFilter().exclude(result.contentDigest())) {
-            			Library.logger().fine("We should have already excluded content digest: " + printBytesAsHex(result.contentDigest()) + " prefix count: " + interest.name().prefixCount());
+            			Library.logger().fine("We should have already excluded content digest: " + DataUtils.printBytes(result.contentDigest()) + " prefix count: " + interest.name().prefixCount());
             		} else {
             			// Has to be in order...
             			Library.logger().finest("Adding child component to exclude.");
             			interest.excludeFilter().values().add(new ExcludeElement(result.contentDigest()));
             		}
             	}
-            	Library.logger().finer("Excluding content digest: " + printBytesAsHex(result.contentDigest()) + " onto interest " + interest.name() + " total excluded: " + interest.excludeFilter().values().size());
+            	Library.logger().finer("Excluding content digest: " + DataUtils.printBytes(result.contentDigest()) + " onto interest " + interest.name() + " total excluded: " + interest.excludeFilter().values().size());
             } else {
                	if (null == interest.excludeFilter()) {
                		ArrayList<ExcludeElement> excludes = new ArrayList<ExcludeElement>();
@@ -120,6 +135,14 @@ public class Flosser implements CCNInterestListener {
 		return interest;
 	}
 	
+	public void stop() {
+		Library.logger().info("Stop flossing.");
+		for (Interest interest : _interests.values()) {
+			Library.logger().info("Cancelling pending interest: " + interest);
+			_library.cancelInterest(interest, this);
+		}
+	}
+	
 	public void logNamespaces() {
 		Set<ContentName> namespaces = getNamespaces();
 		for (ContentName name : namespaces) {
@@ -128,12 +151,12 @@ public class Flosser implements CCNInterestListener {
 	}
 	public Set<ContentName> getNamespaces() { return _interests.keySet(); }
 
+	/**
+	 * Override in subclasses that want to do something more interesting than log.
+	 * @param result
+	 */
 	protected void processContent(ContentObject result) {
-		Library.logger().info("Flosser got: " + result.name() + " Digest: " + printBytesAsHex(result.contentDigest()));
+		Library.logger().info("Flosser got: " + result.name() + " Digest: " + DataUtils.printBytes(result.contentDigest()));
 	}
 	
-	public static String printBytesAsHex(byte [] value) {
-		BigInteger bi = new BigInteger(1, value);
-		return bi.toString(16);
-	}
 }
