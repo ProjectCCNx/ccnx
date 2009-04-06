@@ -126,6 +126,7 @@ public class CCNEncodableObject<E extends GenericXMLEncodable> extends Encodable
 	 * @throws XMLStreamException 
 	 */
 	public void update(ContentName name) throws XMLStreamException, IOException {
+		Library.logger().info("Updating object to " + name);
 		CCNVersionedInputStream is = new CCNVersionedInputStream(name, _library);
 		update(is);
 	}
