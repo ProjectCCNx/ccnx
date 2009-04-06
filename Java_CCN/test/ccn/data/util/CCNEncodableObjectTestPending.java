@@ -131,6 +131,7 @@ public class CCNEncodableObjectTestPending {
 		}
 		Assert.assertTrue("Failed to produce expected exception.", caught);
 		
+		Flosser flosser = null;
 		try {
 			CCNEncodableCollectionData ecd0 = new CCNEncodableCollectionData(namespace, empty, library);
 			CCNEncodableCollectionData ecd1 = new CCNEncodableCollectionData(namespace, small1);
@@ -138,7 +139,7 @@ public class CCNEncodableObjectTestPending {
 			CCNEncodableCollectionData ecd3 = new CCNEncodableCollectionData(namespace, big, library);
 			CCNEncodableCollectionData ecd4 = new CCNEncodableCollectionData(namespace, empty, library);
 
-			Flosser flosser = new Flosser(namespace);
+			flosser = new Flosser(namespace);
 			flosser.logNamespaces();
 			
 			ecd0.save(ns[2]);
@@ -215,10 +216,13 @@ public class CCNEncodableObjectTestPending {
 			fail("Exception: " + e.getClass().getName() + ": " + e.getMessage());
 		} finally {
 			try {
-				Thread.sleep(10000000);
-			} catch (InterruptedException e) {
+				flosser.stop();
+//				Thread.sleep(10000000);
+				
+			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
+				Assert.fail("Exception " + e.getClass().getName() +": " + e.getMessage());
 			}
 
 		}
