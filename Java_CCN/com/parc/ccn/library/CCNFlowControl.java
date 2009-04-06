@@ -53,8 +53,11 @@ public class CCNFlowControl implements CCNFilterListener {
 	 */
 	public CCNFlowControl(ContentName name, CCNLibrary library) {
 		_library = library;
-		_filteredNames.add(name);
-		_library.registerFilter(name, this);
+		if (name != null) {
+			Library.logger().finest("adding namespace: " + name);
+			_filteredNames.add(name);
+			_library.registerFilter(name, this);
+		}
 	}
 	
 	public CCNFlowControl(String name, CCNLibrary library) 
@@ -83,6 +86,7 @@ public class CCNFlowControl implements CCNFilterListener {
 				it.remove();
 			}
 		}
+		Library.logger().finest("adding namespace: " + name);
 		_filteredNames.add(name);
 		_library.registerFilter(name, this);
 	}
@@ -106,6 +110,7 @@ public class CCNFlowControl implements CCNFilterListener {
 			if (all || filteredName.equals(name)) {
 				_library.unregisterFilter(filteredName, this);
 				it.remove();
+				Library.logger().finest("removing namespace: " + name);
 				break;
 			}
 		}

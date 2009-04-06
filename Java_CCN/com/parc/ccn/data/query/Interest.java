@@ -224,24 +224,33 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		if (null != orderPreference()) {
 			// All we can check here is whether the test name is > our name.
 			// Any set of orderPreference requires this
-			if (name.compareTo(name()) <= 0)
+			if (name.compareTo(name()) <= 0) {
+				Library.logger().finest("Interest match failed. orderPreference is " + orderPreference() +
+						" and name " + name + " comes before our name " + name());
 				return false;
+			}
 		}
 		if (null != excludeFilter()) {
 			int componentIndex = name().prefixCount() != null ? name().prefixCount() : name().count();
 			if (name.count() > componentIndex) {
-				if (excludeFilter().exclude(name.component(componentIndex)))
+				if (excludeFilter().exclude(name.component(componentIndex))) {
+					Library.logger().finest("Interest match failed. " + name + " has more components than our name " +
+							name() + " and the component after our prefix count " + name.prefixCount() + " is excluded.");
 					return false;
+				}
 			}
 		}
 		if (null != publisherID()) {
 			if (null == resultPublisherKeyID) {
-				return false;
+				Library.logger().finest("Interest match failed, target " + name + " doesn't specify a publisherID and we require a particular one.");
+				return false; 
 			}
 			// Should this be more general?
 			// TODO DKS handle issuer
+			Library.logger().finest("Interest match handed off to trust manager for name: " + name);
 			return TrustManager.getTrustManager().matchesRole(publisherID(), resultPublisherKeyID);
 		} 
+		Library.logger().finest("Interest match succeeded to name: " + name);
 		return true;
 	}
 	
