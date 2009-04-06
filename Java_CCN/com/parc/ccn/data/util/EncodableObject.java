@@ -3,28 +3,26 @@ package com.parc.ccn.data.util;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.OutputStream;
-import java.io.Serializable;
 import java.security.DigestOutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
+import javax.xml.stream.XMLStreamException;
+
 import com.parc.ccn.Library;
 
 /**
- * Prototypical wrapper around a Serializable object. Expand to variants
+ * Prototypical wrapper around an XMLEncodable object. Expand to variants
  * for CCNObjects. 
  * TODO - synchronization
  * @author smetters
  *
  * @param <E>
  */
-public class SerializedObject<E extends Serializable>{
+public class EncodableObject<E extends XMLEncodable>{
 	
-
 	public static final String DEFAULT_DIGEST = "SHA-1"; // OK for now.
 	
 	Class<E> _type;
@@ -32,19 +30,33 @@ public class SerializedObject<E extends Serializable>{
 	byte [] _lastSaved = null;
 	boolean _potentiallyDirty = true;
 	
-	public SerializedObject(Class<E> type) {
+	public EncodableObject(Class<E> type) {
 		_type = type;
 		// _data = new E(); // subclass constructors must do
 	}
 	
-	public SerializedObject(Class<E> type, E data) {
+	public EncodableObject(Class<E> type, E data) {
 		this(type);
 		_data = data;
 	}
+
+	protected E factory() throws IOException {
+		E newE;
+		try {
+			newE = _type.newInstance();
+		} catch (InstantiationException e) {
+			Library.logger().warning("Cannot wrap class " + _type.getName() + " -- impossible to construct instances!");
+			throw new IOException("Cannot wrap class " + _type.getName() + " -- impossible to construct instances!");
+		} catch (IllegalAccessException e) {
+			Library.logger().warning("Cannot wrap class " + _type.getName() + " -- cannot access default constructor!");
+			throw new IOException("Cannot wrap class " + _type.getName() + " -- cannot access default constructor!");
+		}
+		return newE;
+	}
 	
-	public void update(InputStream input) throws IOException, ClassNotFoundException {
-		ObjectInputStream ois = new ObjectInputStream(input);
-		Object newData = ois.readObject();
+	public void update(InputStream input) throws IOException, XMLStreamException {
+		E newData = factory();
+		newData.decode(input);
 		if (null == _data) {
 			Library.logger().info("Update -- first initialization.");
 			_data = _type.cast(newData);
@@ -81,7 +93,7 @@ public class SerializedObject<E extends Serializable>{
 	 */
 	protected E data() { return _data; }
 	
-	public void save(OutputStream output) throws IOException {
+	public void save(OutputStream output) throws IOException, XMLStreamException {
 		if (null == _data) {
 			throw new InvalidObjectException("No data to save!");
 		} if (null == _lastSaved) {
@@ -97,17 +109,15 @@ public class SerializedObject<E extends Serializable>{
 		}
 	}
 	
-	protected boolean isDirty() throws IOException {
+	protected boolean isDirty() throws XMLStreamException, IOException {
 		try {
 			// Problem -- can't wrap the OOS in a DOS, need to do it the other way round.
 			DigestOutputStream dos = new DigestOutputStream(new NullOutputStream(), 
 											MessageDigest.getInstance(DEFAULT_DIGEST));
-			ObjectOutputStream oos = new ObjectOutputStream(dos);
 			
-			oos.writeObject(_data);
-			oos.flush();
+			_data.encode(dos);
 			dos.flush();
-			oos.close();
+			dos.close();
 			byte [] currentValue = dos.getMessageDigest().digest();
 			
 			if (Arrays.equals(currentValue, _lastSaved)) {
@@ -123,17 +133,15 @@ public class SerializedObject<E extends Serializable>{
 		}	
 	}
 	
-	protected void internalWriteObject(OutputStream output) throws IOException {
+	protected void internalWriteObject(OutputStream output) throws IOException, XMLStreamException {
 		try {
 			// Problem -- can't wrap the OOS in a DOS, need to do it the other way round.
 			DigestOutputStream dos = new DigestOutputStream(output, 
 					MessageDigest.getInstance(DEFAULT_DIGEST));
-			ObjectOutputStream oos = new ObjectOutputStream(dos);
-		
-			oos.writeObject(_data);
-			oos.flush();
+			
+			_data.encode(dos);
 			dos.flush();
-			oos.close();
+			dos.close();
 			_lastSaved = dos.getMessageDigest().digest();
 			_potentiallyDirty = false;
 		} catch (NoSuchAlgorithmException e) {
@@ -159,7 +167,7 @@ public class SerializedObject<E extends Serializable>{
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		SerializedObject<?> other = (SerializedObject<?>) obj;
+		EncodableObject<?> other = (EncodableObject<?>) obj;
 		if (_type == null) {
 			if (other._type != null)
 				return false;
