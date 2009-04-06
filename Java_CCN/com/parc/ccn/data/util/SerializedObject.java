@@ -132,10 +132,10 @@ public class SerializedObject<E extends Serializable>{
 			
 			if (Arrays.equals(currentValue, _lastSaved)) {
 				Library.logger().info("Last saved value for object still current.");
-				return true;
+				return false;
 			} else {
 				Library.logger().info("Last saved value for object not current -- object changed.");
-				return false;
+				return true;
 			}
 		} catch (NoSuchAlgorithmException e) {
 			Library.logger().warning("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
