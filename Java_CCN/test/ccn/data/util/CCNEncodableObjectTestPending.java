@@ -40,7 +40,7 @@ import com.parc.security.crypto.DigestHelper;
  * @author smetters
  *
  */
-public class CCNEncodableObjectTest {
+public class CCNEncodableObjectTestPending {
 	
 	static final  String baseName = "test";
 	static final  String subName = "smetters";
