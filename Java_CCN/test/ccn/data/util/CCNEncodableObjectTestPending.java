@@ -163,6 +163,7 @@ public class CCNEncodableObjectTestPending {
 			CCNVersionedInputStream vis = new CCNVersionedInputStream(ecd1.getName());
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			byte [] buf = new byte[128];
+			// Will incur a timeout
 			while (!vis.eof()) {
 				int read = vis.read(buf);
 				baos.write(buf, 0, read);
@@ -176,6 +177,7 @@ public class CCNEncodableObjectTestPending {
 			
 			CCNVersionedInputStream vis3 = new CCNVersionedInputStream(ecd1.getName());
 			ByteArrayOutputStream baos2 = new ByteArrayOutputStream();
+			// Will incur a timeout
 			while (!vis3.eof()) {
 				int val = vis3.read();
 				if (val < 0)
