@@ -12,6 +12,13 @@ import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.util.CCNEncodableObject;
 import com.parc.ccn.library.CCNLibrary;
 
+/**
+ * This will become the new Collection class once its functionality is merged
+ * with existing Collections. Put it here temporarily so as to be able to test
+ * CCNEncodableObject itself.
+ * @author smetters
+ *
+ */
 public class CCNEncodableCollectionData extends CCNEncodableObject<CollectionData> {
 
 	public CCNEncodableCollectionData(CCNLibrary library) {
