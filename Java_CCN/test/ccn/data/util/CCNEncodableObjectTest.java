@@ -5,16 +5,21 @@ import static org.junit.Assert.fail;
 import java.io.IOException;
 import java.io.InvalidObjectException;
 import java.sql.Timestamp;
+import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.util.Arrays;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import test.ccn.data.content.CCNEncodableCollectionData;
+import test.ccn.utils.Flosser;
 
+import com.parc.ccn.Library;
+import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.CollectionData;
 import com.parc.ccn.data.content.LinkReference;
@@ -29,10 +34,11 @@ public class CCNEncodableObjectTest {
 	
 	static final  String baseName = "test";
 	static final  String subName = "smetters";
-	static final  String document1 = "intro.html";	
+	static final  String document1 = "report";	
 	static final  String document2 = "key";	
 	static final String document3 = "cv.txt";
 	static final String prefix = "drawing_";
+	static ContentName namespace;
 	static ContentName [] ns = null;
 	static public byte [] contenthash1 = new byte[32];
 	static public byte [] contenthash2 = new byte[32];
@@ -49,14 +55,24 @@ public class CCNEncodableObjectTest {
 	static CollectionData empty;
 	static CollectionData big;
 	static CCNLibrary library;
+	
+	static Level oldLevel;
+	
+	@AfterClass
+	public static void tearDownAfterClass() throws Exception {
+		Library.logger().setLevel(oldLevel);
+	}
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
+		oldLevel = Library.logger().getLevel();
+		Library.logger().setLevel(Level.FINEST);
+		
 		library = CCNLibrary.open();
+		namespace = ContentName.fromURI(new String[]{baseName, subName, document1});
 		ns = new ContentName[NUM_LINKS];
 		for (int i=0; i < NUM_LINKS; ++i) {
-			ns[i] = ContentName.fromURI(new String[]{baseName, subName, document1, 
-										prefix+Integer.toString(i)});
+			ns[i] = ContentName.fromNative(namespace, prefix+Integer.toString(i));
 		}
 		Arrays.fill(publisherid1, (byte)6);
 		Arrays.fill(publisherid2, (byte)3);
@@ -96,29 +112,34 @@ public class CCNEncodableObjectTest {
 	@Test
 	public void testSaveUpdate() {
 		boolean caught = false;
-		CCNEncodableCollectionData emptycoll = new CCNEncodableCollectionData(library);
 		try {
+			CCNEncodableCollectionData emptycoll = new CCNEncodableCollectionData();
 			NullOutputStream nos = new NullOutputStream();
 			emptycoll.save(nos);
 		} catch (InvalidObjectException iox) {
 			// this is what we expect to happen
 			caught = true;
 		} catch (IOException ie) {
-			Assert.fail("Unexpectd IOException!");
+			Assert.fail("Unexpected IOException!");
 		} catch (XMLStreamException e) {
-			Assert.fail("Unexpectd IOException!");
+			Assert.fail("Unexpected XMLStreamException!");
+		} catch (ConfigurationException e) {
+			Assert.fail("Unexpected ConfigurationException!");
 		}
 		Assert.assertTrue("Failed to produce expected exception.", caught);
 		
-		CCNEncodableCollectionData ecd0 = new CCNEncodableCollectionData(empty, library);
-		CCNEncodableCollectionData ecd1 = new CCNEncodableCollectionData(small1);
-		CCNEncodableCollectionData ecd2 = new CCNEncodableCollectionData(small1);
-		CCNEncodableCollectionData ecd3 = new CCNEncodableCollectionData(big);
-
 		try {
+			CCNEncodableCollectionData ecd0 = new CCNEncodableCollectionData(empty, library);
+			CCNEncodableCollectionData ecd1 = new CCNEncodableCollectionData(ns[1], small1);
+			CCNEncodableCollectionData ecd2 = new CCNEncodableCollectionData(small1);
+			CCNEncodableCollectionData ecd3 = new CCNEncodableCollectionData(ns[1], big, library);
+
+			Flosser flosser = new Flosser(namespace);
+			flosser.logNamespaces();
+			
 			ecd0.save(ns[0]);
 			System.out.println("Version for empty collection: " + ecd0.getVersion());
-			ecd1.save(ns[1]);
+			ecd1.save();
 			ecd2.save(ns[1]); 
 			System.out.println("Versions for matching collection content: " + ecd1.getVersion() + " " + ecd2.getVersion());
 			Assert.assertFalse(ecd1.equals(ecd2));
@@ -135,6 +156,8 @@ public class CCNEncodableObjectTest {
 			fail("IOException! " + e.getMessage());
 		} catch (XMLStreamException e) {
 			fail("XMLStreamException! " + e.getMessage());
+		} catch (ConfigurationException e) {
+			fail("ConfigurationException! " + e.getMessage());
 		}
 	}
 }

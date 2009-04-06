@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import javax.xml.stream.XMLStreamException;
 
+import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.CollectionData;
@@ -17,18 +18,25 @@ public class CCNEncodableCollectionData extends CCNEncodableObject<CollectionDat
 		super(CollectionData.class, library);
 	}
 	
-	public CCNEncodableCollectionData() {
-		super(CollectionData.class, null);
+	public CCNEncodableCollectionData() throws ConfigurationException, IOException {
+		super(CollectionData.class);
+	}
+
+	public CCNEncodableCollectionData(ContentName name, CollectionData data, CCNLibrary library) {
+		super(CollectionData.class, name, data, library);
 	}
 
 	public CCNEncodableCollectionData(CollectionData data, CCNLibrary library) {
 		super(CollectionData.class, data, library);
 	}
 	
-	public CCNEncodableCollectionData(CollectionData data) {
-		super(CollectionData.class, data, null);
+	public CCNEncodableCollectionData(CollectionData data) throws ConfigurationException, IOException {
+		super(CollectionData.class, data);
 	}
 
+	public CCNEncodableCollectionData(ContentName name, CollectionData data) throws ConfigurationException, IOException {
+		super(CollectionData.class, name, data);
+	}
 	/**
 	 * Construct an object from stored CCN data.
 	 * @param type
@@ -64,7 +72,7 @@ public class CCNEncodableCollectionData extends CCNEncodableObject<CollectionDat
 		super(CollectionData.class, name, library);
 	}
 
-	public CCNEncodableCollectionData(ContentName name) throws XMLStreamException, IOException {
-		super(CollectionData.class, name, null);
+	public CCNEncodableCollectionData(ContentName name) throws XMLStreamException, IOException, ConfigurationException {
+		super(CollectionData.class, name);
 	}
 }

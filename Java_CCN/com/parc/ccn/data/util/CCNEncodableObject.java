@@ -6,14 +6,15 @@ import java.sql.Timestamp;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNInputStream;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
 import com.parc.ccn.library.io.CCNVersionedOutputStream;
-import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
@@ -27,17 +28,38 @@ public class CCNEncodableObject<E extends GenericXMLEncodable> extends Encodable
 	
 	ContentName _currentName;
 	CCNLibrary _library;
+	CCNFlowControl _flowControl;
 
+	public CCNEncodableObject(Class<E> type) throws ConfigurationException, IOException {
+		this(type, CCNLibrary.open());
+	}
+	
 	public CCNEncodableObject(Class<E> type, CCNLibrary library) {
 		super(type);
 		_library = library;
+		_flowControl = new CCNFlowControl(_library);
+	}
+	
+	public CCNEncodableObject(Class<E> type, ContentName name, E data, CCNLibrary library) {
+		super(type, data);
+		_currentName = name;
+		_library = library;
+		_flowControl = new CCNFlowControl(name, _library);
+	}
+	
+	public CCNEncodableObject(Class<E> type, ContentName name, E data) throws ConfigurationException, IOException {
+		this(type,name, data, CCNLibrary.open());
 	}
 	
 	public CCNEncodableObject(Class<E> type, E data, CCNLibrary library) {
-		super(type, data);
-		_library = library;
+		this(type, null, data, library);
+		_flowControl = new CCNFlowControl(_library);
 	}
 	
+	public CCNEncodableObject(Class<E> type, E data) throws ConfigurationException, IOException {
+		this(type, data, CCNLibrary.open());
+	}
+
 	/**
 	 * Construct an object from stored CCN data.
 	 * @param type
@@ -47,8 +69,7 @@ public class CCNEncodableObject<E extends GenericXMLEncodable> extends Encodable
 	 * @throws IOException
 	 */
 	public CCNEncodableObject(Class<E> type, ContentObject content, CCNLibrary library) throws XMLStreamException, IOException {
-		super(type);
-		_library = library;
+		this(type, library);
 		CCNVersionedInputStream is = new CCNVersionedInputStream(content, library);
 		is.seek(0); // In case we start with something other than the first fragment.
 		update(is);
@@ -72,8 +93,20 @@ public class CCNEncodableObject<E extends GenericXMLEncodable> extends Encodable
 		update(is);
 	}
 	
+	/**
+	 * Read constructor -- opens existing object.
+	 * @param type
+	 * @param name
+	 * @param library
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 */
 	public CCNEncodableObject(Class<E> type, ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
-		this(type, name, null, library);
+		this(type, name, (PublisherKeyID)null, library);
+	}
+	
+	public CCNEncodableObject(Class<E> type, ContentName name) throws XMLStreamException, IOException, ConfigurationException {
+		this(type, name, CCNLibrary.open());
 	}
 	
 	public void update() throws XMLStreamException, IOException {
@@ -95,18 +128,17 @@ public class CCNEncodableObject<E extends GenericXMLEncodable> extends Encodable
 	public void update(ContentName name) throws XMLStreamException, IOException {
 		CCNVersionedInputStream is = new CCNVersionedInputStream(name, _library);
 		update(is);
-		_currentName = is.baseName();
 	}
 	
 	public void update(ContentObject object) throws XMLStreamException, IOException {
 		CCNInputStream is = new CCNInputStream(object, _library);
 		update(is);
-		_currentName = SegmentationProfile.segmentRoot(object.name());
 	}
 	
 	public void update(CCNInputStream inputStream) throws IOException, XMLStreamException {
 		super.update(inputStream);
 		_currentName = inputStream.baseName();
+		_flowControl.addNameSpace(_currentName);
 	}
 	
 	/**
@@ -137,6 +169,7 @@ public class CCNEncodableObject<E extends GenericXMLEncodable> extends Encodable
 		// either writes the object or not; we need to only make a new name if we do
 		// write the object, and figure out if that's happened. Also need to make
 		// parent behavior just write, put the dirty check higher in the state.
+		
 		if (!isDirty()) { // Should we check potentially dirty?
 			Library.logger().info("Object not dirty. Not saving.");
 			return;
@@ -144,9 +177,10 @@ public class CCNEncodableObject<E extends GenericXMLEncodable> extends Encodable
 		if (null == name) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
+		_flowControl.addNameSpace(name);
 		// CCNVersionedOutputStream will version an unversioned name. 
 		// If it gets a versioned name, will respect it.
-		CCNVersionedOutputStream cos = new CCNVersionedOutputStream(name, _library);
+		CCNVersionedOutputStream cos = new CCNVersionedOutputStream(name, null, null, _flowControl);
 		save(cos); // superclass stream save. calls flush and close on a wrapping
 					// digest stream; want to make sure we end up with a single non-MHT signed
 				    // block and no header on small objects
