@@ -202,13 +202,16 @@ public class EncodableObject<E extends XMLEncodable>{
 	}
 	
 	public boolean contentEquals(Object obj) {
+		if (getClass() != obj.getClass())
+			return false;
+		EncodableObject<?> other = (EncodableObject<?>) obj;
 		if (_data == null) {
-			if (obj != null) {
+			if (other._data != null) {
 				return false;
 			} else {
 				return true;
 			}
 		}
-		return _data.equals(obj);
+		return _data.equals(other._data);
 	}
 }
