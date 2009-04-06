@@ -27,14 +27,13 @@ public class SerializedObject<E extends Serializable>{
 
 	public static final String DEFAULT_DIGEST = "SHA-1"; // OK for now.
 	
-	Class<E> _type;
-	E _data;
-	byte [] _lastSaved = null;
-	boolean _potentiallyDirty = true;
+	private Class<E> _type;
+	private E _data;
+	protected byte [] _lastSaved = null;
+	protected boolean _potentiallyDirty = true;
 	
 	public SerializedObject(Class<E> type) {
 		_type = type;
-		// _data = new E(); // subclass constructors must do
 	}
 	
 	public SerializedObject(Class<E> type, E data) {

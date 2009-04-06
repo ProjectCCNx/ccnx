@@ -25,14 +25,13 @@ public class EncodableObject<E extends XMLEncodable>{
 	
 	public static final String DEFAULT_DIGEST = "SHA-1"; // OK for now.
 	
-	Class<E> _type;
-	E _data;
-	byte [] _lastSaved = null;
-	boolean _potentiallyDirty = true;
+	private Class<E> _type;
+	private E _data;
+	protected byte [] _lastSaved = null;
+	protected boolean _potentiallyDirty = true;
 	
 	public EncodableObject(Class<E> type) {
 		_type = type;
-		// _data = new E(); // subclass constructors must do
 	}
 	
 	public EncodableObject(Class<E> type, E data) {
@@ -100,9 +99,8 @@ public class EncodableObject<E extends XMLEncodable>{
 			// Definitely save the object
 			internalWriteObject(output);
 		} else if (_potentiallyDirty) {
-			// Prep for CCN -- don't want to save unless it's really worth signing a new
-			// version. Of course, for standard, non-CCN streams, it would be cheaper to
-			// just rewrite the thing. But for us, be paranoid.
+			// For CCN we don't want to write the thing unless we need to. But 
+			// in general, probably want to write every time we're asked.
 			if (isDirty()) {
 				internalWriteObject(output);
 			}
