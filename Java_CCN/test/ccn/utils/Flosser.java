@@ -14,6 +14,7 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.ExcludeElement;
+import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
 
@@ -48,7 +49,7 @@ public class Flosser implements CCNInterestListener {
 		// other places. Prefix count should be in the interest, not the name.
 		ContentName interestNamespace = new ContentName(namespace, namespace.count());
 		if (_interests.containsKey(namespace)) {
-			Library.logger().info("Already handling namespace: " + namespace);
+			Library.logger().fine("Already handling namespace: " + namespace);
 			return;
 		}
 		Interest namespaceInterest = new Interest(interestNamespace);
@@ -60,6 +61,7 @@ public class Flosser implements CCNInterestListener {
 								  Interest interest) {
 		// Parameterized behavior that subclasses can override.
 		for (ContentObject result : results) {
+			Library.logger().fine("Got content for interest " + interest);
 			processContent(result);
 			// update the interest. follow process used by ccnslurp.
             // exclude the next component of this object, and set up a
@@ -69,26 +71,36 @@ public class Flosser implements CCNInterestListener {
             // DKS TODO should the count above be count()-1 and this just prefixCount?
             if (prefixCount == result.name().count()) {
             	if (null == interest.excludeFilter()) {
-            		interest.excludeFilter(Interest.constructFilter(new byte[][]{result.contentDigest()}));
+              		ArrayList<ExcludeElement> excludes = new ArrayList<ExcludeElement>();
+               		excludes.add(new ExcludeElement(result.contentDigest()));
+            		interest.excludeFilter(new ExcludeFilter(excludes));
+            		Library.logger().finest("Creating new exclude filter for interest " + interest.name());
             	} else {
             		if (interest.excludeFilter().exclude(result.contentDigest())) {
-            			Library.logger().info("We should have already excluded content digest: " + printBytesAsHex(result.contentDigest()));
+            			Library.logger().fine("We should have already excluded content digest: " + printBytesAsHex(result.contentDigest()) + " prefix count: " + interest.name().prefixCount());
             		} else {
+            			// Has to be in order...
+            			Library.logger().finest("Adding child component to exclude.");
             			interest.excludeFilter().values().add(new ExcludeElement(result.contentDigest()));
             		}
             	}
-            	Library.logger().info("Excluding content digest: " + printBytesAsHex(result.contentDigest()) + " onto interest " + interest.name() + " total excluded: " + interest.excludeFilter().values().size());
+            	Library.logger().finer("Excluding content digest: " + printBytesAsHex(result.contentDigest()) + " onto interest " + interest.name() + " total excluded: " + interest.excludeFilter().values().size());
             } else {
                	if (null == interest.excludeFilter()) {
-            		interest.excludeFilter(Interest.constructFilter(new byte[][]{result.name().component(prefixCount)}));
-            	} else {
+               		ArrayList<ExcludeElement> excludes = new ArrayList<ExcludeElement>();
+               		excludes.add(new ExcludeElement(result.name().component(prefixCount)));
+            		interest.excludeFilter(new ExcludeFilter(excludes));
+            		Library.logger().finest("Creating new exclude filter for interest " + interest.name());
+           	} else {
                     if (interest.excludeFilter().exclude(result.name().component(prefixCount))) {
-            			Library.logger().info("We should have already excluded child component: " + ContentName.componentPrintURI(result.name().component(prefixCount)));                   	
+            			Library.logger().fine("We should have already excluded child component: " + ContentName.componentPrintURI(result.name().component(prefixCount)) + " prefix count: " + interest.name().prefixCount());                   	
                     } else {
+                    	// Has to be in order...
+                    	Library.logger().finest("Adding child component to exclude.");
             			interest.excludeFilter().values().add(new ExcludeElement(result.name().component(prefixCount)));                    	
                     }
             	}
-               	Library.logger().info("Excluding child " + ContentName.componentPrintURI(result.name().component(prefixCount)) + " total excluded: " + interest.excludeFilter().values().size());
+               	Library.logger().finer("Excluding child " + ContentName.componentPrintURI(result.name().component(prefixCount)) + " total excluded: " + interest.excludeFilter().values().size());
                 // DKS TODO might need to split to matchedComponents like ccnslurp
                 ContentName newNamespace = null;
                 try {

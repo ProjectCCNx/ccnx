@@ -132,26 +132,33 @@ public class CCNEncodableObjectTest {
 			CCNEncodableCollectionData ecd0 = new CCNEncodableCollectionData(namespace, empty, library);
 			CCNEncodableCollectionData ecd1 = new CCNEncodableCollectionData(namespace, small1);
 			CCNEncodableCollectionData ecd2 = new CCNEncodableCollectionData(namespace, small1);
-			CCNEncodableCollectionData ecd3 = new CCNEncodableCollectionData(ns[1], big, library);
+			CCNEncodableCollectionData ecd3 = new CCNEncodableCollectionData(namespace, big, library);
 
 			Flosser flosser = new Flosser(namespace);
 			flosser.logNamespaces();
 			
-			ecd0.save(ns[0]);
+			ecd0.save(ns[2]);
 			System.out.println("Version for empty collection: " + ecd0.getVersion());
 			ecd1.save(ns[1]);
 			ecd2.save(ns[1]); 
+			System.out.println("ecd1 name: " + ecd1.getName());
+			System.out.println("ecd2 name: " + ecd2.getName());
 			System.out.println("Versions for matching collection content: " + ecd1.getVersion() + " " + ecd2.getVersion());
 			Assert.assertFalse(ecd1.equals(ecd2));
 			Assert.assertTrue(ecd1.contentEquals(ecd2));
 			ecd0.update(ecd1.getName());
 			Assert.assertEquals(ecd0, ecd1);
+			System.out.println("Update works!");
 			// latest version
 			ecd0.update();
 			Assert.assertEquals(ecd0, ecd2);
-			ecd3.save(ns[1]);
+			System.out.println("Update really works!");
+
+			ecd3.save(ns[2]);
 			ecd0.update();
 			Assert.assertEquals(ecd0, ecd3);
+			System.out.println("Update really really works!");
+
 		} catch (IOException e) {
 			fail("IOException! " + e.getMessage());
 		} catch (XMLStreamException e) {

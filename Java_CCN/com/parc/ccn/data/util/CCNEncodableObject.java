@@ -185,7 +185,7 @@ public class CCNEncodableObject<E extends GenericXMLEncodable> extends Encodable
 					// digest stream; want to make sure we end up with a single non-MHT signed
 				    // block and no header on small objects
 		cos.close();
-		_currentName = name;
+		_currentName = cos.getBaseName();
 		setPotentiallyDirty(false);
 	}
 	
