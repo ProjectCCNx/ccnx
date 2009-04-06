@@ -1,4 +1,4 @@
-package com.parc.ccn.data.content;
+package com.parc.ccn.data.util;
 
 import java.io.IOException;
 import java.sql.Timestamp;
@@ -11,7 +11,8 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNInputStream;
-import com.parc.ccn.library.io.CCNOutputStream;
+import com.parc.ccn.library.io.CCNVersionedInputStream;
+import com.parc.ccn.library.io.CCNVersionedOutputStream;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;
@@ -48,7 +49,7 @@ public class CCNEncodableObject<E extends GenericXMLEncodable> extends Encodable
 	public CCNEncodableObject(Class<E> type, ContentObject content, CCNLibrary library) throws XMLStreamException, IOException {
 		super(type);
 		_library = library;
-		CCNInputStream is = new CCNInputStream(content, library);
+		CCNVersionedInputStream is = new CCNVersionedInputStream(content, library);
 		is.seek(0); // In case we start with something other than the first fragment.
 		update(is);
 	}
@@ -67,9 +68,7 @@ public class CCNEncodableObject<E extends GenericXMLEncodable> extends Encodable
 	public CCNEncodableObject(Class<E> type, ContentName name, PublisherKeyID publisher, CCNLibrary library) throws XMLStreamException, IOException {
 		super(type);
 		_library = library;
-		// DKS TODO need to use an input stream type that given a specific version
-		// will pull it, but given an unversioned name will pull the latest version.
-		CCNInputStream is = new CCNInputStream(name, publisher, library);
+		CCNVersionedInputStream is = new CCNVersionedInputStream(name, publisher, library);
 		update(is);
 	}
 	
@@ -94,9 +93,7 @@ public class CCNEncodableObject<E extends GenericXMLEncodable> extends Encodable
 	 * @throws XMLStreamException 
 	 */
 	public void update(ContentName name) throws XMLStreamException, IOException {
-		// Either get the latest version name and call CCNInputStream, or
-		// better yet, use the appropriate versioning stream.
-		CCNInputStream is = new CCNInputStream(name, _library);
+		CCNVersionedInputStream is = new CCNVersionedInputStream(name, _library);
 		update(is);
 		_currentName = is.baseName();
 	}
@@ -105,6 +102,11 @@ public class CCNEncodableObject<E extends GenericXMLEncodable> extends Encodable
 		CCNInputStream is = new CCNInputStream(object, _library);
 		update(is);
 		_currentName = SegmentationProfile.segmentRoot(object.name());
+	}
+	
+	public void update(CCNInputStream inputStream) throws IOException, XMLStreamException {
+		super.update(inputStream);
+		_currentName = inputStream.baseName();
 	}
 	
 	/**
@@ -137,13 +139,14 @@ public class CCNEncodableObject<E extends GenericXMLEncodable> extends Encodable
 		// parent behavior just write, put the dirty check higher in the state.
 		if (!isDirty()) { // Should we check potentially dirty?
 			Library.logger().info("Object not dirty. Not saving.");
+			return;
 		}
 		if (null == name) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
-		// CCNOutputStream will currently version an unversioned name, but dont'
-		// expect it should continue doing that. If it gets a versioned name, will respect it.
-		CCNOutputStream cos = new CCNOutputStream(name, _library);
+		// CCNVersionedOutputStream will version an unversioned name. 
+		// If it gets a versioned name, will respect it.
+		CCNVersionedOutputStream cos = new CCNVersionedOutputStream(name, _library);
 		save(cos); // superclass stream save. calls flush and close on a wrapping
 					// digest stream; want to make sure we end up with a single non-MHT signed
 				    // block and no header on small objects
@@ -163,5 +166,35 @@ public class CCNEncodableObject<E extends GenericXMLEncodable> extends Encodable
 			e.printStackTrace();
 			return null;
 		}
+	}
+	
+	public ContentName getName() {
+		return _currentName;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = super.hashCode();
+		result = prime * result
+				+ ((_currentName == null) ? 0 : _currentName.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (!super.equals(obj))
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		CCNEncodableObject<?> other = (CCNEncodableObject<?>) obj;
+		if (_currentName == null) {
+			if (other._currentName != null)
+				return false;
+		} else if (!_currentName.equals(other._currentName))
+			return false;
+		return true;
 	}
 }
