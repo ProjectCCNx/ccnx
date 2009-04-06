@@ -13,6 +13,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.CCNInterestListener;
+import com.parc.ccn.data.query.ExcludeElement;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
 
@@ -46,6 +47,10 @@ public class Flosser implements CCNInterestListener {
 		// This is bad -- have to set prefix count on name which might be used
 		// other places. Prefix count should be in the interest, not the name.
 		ContentName interestNamespace = new ContentName(namespace, namespace.count());
+		if (_interests.containsKey(namespace)) {
+			Library.logger().info("Already handling namespace: " + namespace);
+			return;
+		}
 		Interest namespaceInterest = new Interest(interestNamespace);
 		_interests.put(interestNamespace, namespaceInterest);
 		_library.expressInterest(namespaceInterest, this);
@@ -66,20 +71,35 @@ public class Flosser implements CCNInterestListener {
             	if (null == interest.excludeFilter()) {
             		interest.excludeFilter(Interest.constructFilter(new byte[][]{result.contentDigest()}));
             	} else {
-            		interest.excludeFilter().exclude(result.contentDigest());
+            		if (interest.excludeFilter().exclude(result.contentDigest())) {
+            			Library.logger().info("We should have already excluded content digest: " + printBytesAsHex(result.contentDigest()));
+            		} else {
+            			interest.excludeFilter().values().add(new ExcludeElement(result.contentDigest()));
+            		}
             	}
+            	Library.logger().info("Excluding content digest: " + printBytesAsHex(result.contentDigest()) + " onto interest " + interest.name() + " total excluded: " + interest.excludeFilter().values().size());
             } else {
                	if (null == interest.excludeFilter()) {
-            		interest.excludeFilter(Interest.constructFilter(new byte[][]{result.name().component(prefixCount-1)}));
+            		interest.excludeFilter(Interest.constructFilter(new byte[][]{result.name().component(prefixCount)}));
             	} else {
-                    interest.excludeFilter().exclude(result.name().component(prefixCount-1));
+                    if (interest.excludeFilter().exclude(result.name().component(prefixCount))) {
+            			Library.logger().info("We should have already excluded child component: " + ContentName.componentPrintURI(result.name().component(prefixCount)));                   	
+                    } else {
+            			interest.excludeFilter().values().add(new ExcludeElement(result.name().component(prefixCount)));                    	
+                    }
             	}
+               	Library.logger().info("Excluding child " + ContentName.componentPrintURI(result.name().component(prefixCount)) + " total excluded: " + interest.excludeFilter().values().size());
                 // DKS TODO might need to split to matchedComponents like ccnslurp
                 ContentName newNamespace = null;
                 try {
-                	newNamespace = new ContentName(interest.name(), 
-                    		result.name().component(interest.name().count()-1));
-                handleNamespace(newNamespace);
+                	if (interest.name().count() == result.name().count()) {
+                		newNamespace = new ContentName(interest.name(), result.contentDigest());
+                	} else {
+                		newNamespace = new ContentName(interest.name(), 
+                			result.name().component(interest.name().count()));
+                	}
+                	Library.logger().info("Adding new namespace: " + newNamespace);
+                	handleNamespace(newNamespace);
                 } catch (IOException ioex) {
                 	Library.logger().warning("IOException picking up namespace: " + newNamespace);
                 }
