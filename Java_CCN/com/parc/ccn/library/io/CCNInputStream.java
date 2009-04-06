@@ -137,7 +137,7 @@ public class CCNInputStream extends CCNAbstractInputStream implements CCNInteres
 		_readlimit = readlimit;
 		_markBlock = blockIndex();
 		_markOffset = _blockOffset;
-		Library.logger().info("mark: block: " + blockIndex() + " offset: " + _blockOffset);
+		Library.logger().finer("mark: block: " + blockIndex() + " offset: " + _blockOffset);
 	}
 
 	@Override
@@ -207,7 +207,7 @@ public class CCNInputStream extends CCNAbstractInputStream implements CCNInteres
 		_currentBlock = getBlock(_markBlock);
 		_blockOffset = _markOffset;
 		_atEOF = false;
-		Library.logger().info("reset: block: " + blockIndex() + " offset: " + _blockOffset + " eof? " + _atEOF);
+		Library.logger().finer("reset: block: " + blockIndex() + " offset: " + _blockOffset + " eof? " + _atEOF);
 	}
 	
 	@Override
