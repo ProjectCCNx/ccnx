@@ -165,6 +165,14 @@ public class CCNEncodableObjectTest {
 			fail("XMLStreamException! " + e.getMessage());
 		} catch (ConfigurationException e) {
 			fail("ConfigurationException! " + e.getMessage());
+		} finally {
+			try {
+				Thread.sleep(1000000);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
 		}
 	}
 }
