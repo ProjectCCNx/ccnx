@@ -2,6 +2,7 @@ package test.ccn.data.util;
 
 import static org.junit.Assert.fail;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InvalidObjectException;
 import java.sql.Timestamp;
@@ -16,7 +17,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import test.ccn.data.content.CCNEncodableCollectionData;
-import test.ccn.utils.Flosser;
+import test.ccn.util.Flosser;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
@@ -29,8 +30,10 @@ import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.PublisherID.PublisherType;
 import com.parc.ccn.data.util.NullOutputStream;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.io.CCNVersionedInputStream;
+import com.parc.security.crypto.DigestHelper;
 
-public class CCNEncodableObjectTest {
+public class CCNEncodableObjectTestPending {
 	
 	static final  String baseName = "test";
 	static final  String subName = "smetters";
@@ -133,6 +136,7 @@ public class CCNEncodableObjectTest {
 			CCNEncodableCollectionData ecd1 = new CCNEncodableCollectionData(namespace, small1);
 			CCNEncodableCollectionData ecd2 = new CCNEncodableCollectionData(namespace, small1);
 			CCNEncodableCollectionData ecd3 = new CCNEncodableCollectionData(namespace, big, library);
+			CCNEncodableCollectionData ecd4 = new CCNEncodableCollectionData(namespace, empty, library);
 
 			Flosser flosser = new Flosser(namespace);
 			flosser.logNamespaces();
@@ -146,6 +150,40 @@ public class CCNEncodableObjectTest {
 			System.out.println("Versions for matching collection content: " + ecd1.getVersion() + " " + ecd2.getVersion());
 			Assert.assertFalse(ecd1.equals(ecd2));
 			Assert.assertTrue(ecd1.contentEquals(ecd2));
+			CCNVersionedInputStream vis = new CCNVersionedInputStream(ecd1.getName());
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			byte [] buf = new byte[128];
+			while (!vis.eof()) {
+				int read = vis.read(buf);
+				baos.write(buf, 0, read);
+			}
+			System.out.println("Read " + baos.toByteArray().length + " bytes, digest: " + 
+					DigestHelper.printBytes(DigestHelper.digest(baos.toByteArray()), 16));
+
+			CollectionData newData = new CollectionData();
+			newData.decode(baos.toByteArray());
+			System.out.println("Decoded collection data: " + newData);
+			
+			CCNVersionedInputStream vis3 = new CCNVersionedInputStream(ecd1.getName());
+			ByteArrayOutputStream baos2 = new ByteArrayOutputStream();
+			while (!vis3.eof()) {
+				int val = vis3.read();
+				if (val < 0)
+					break;
+				baos2.write((byte)val);
+			}
+			System.out.println("Read " + baos2.toByteArray().length + " bytes, digest: " + 
+					DigestHelper.printBytes(DigestHelper.digest(baos2.toByteArray()), 16));
+
+			CollectionData newData3 = new CollectionData();
+			newData3.decode(baos2.toByteArray());
+			System.out.println("Decoded collection data: " + newData3);
+
+			CCNVersionedInputStream vis2 = new CCNVersionedInputStream(ecd1.getName());
+			CollectionData newData2 = new CollectionData();
+			newData2.decode(vis2);
+			System.out.println("Decoded collection data from stream: " + newData);
+
 			ecd0.update(ecd1.getName());
 			Assert.assertEquals(ecd0, ecd1);
 			System.out.println("Update works!");
@@ -156,18 +194,28 @@ public class CCNEncodableObjectTest {
 
 			ecd3.save(ns[2]);
 			ecd0.update();
-			Assert.assertEquals(ecd0, ecd3);
+			ecd4.update(ns[2]);
+			System.out.println("ns[2]: " + ns[2]);
+			System.out.println("ecd3 name: " + ecd3.getName());
+			System.out.println("ecd0 name: " + ecd0.getName());
+			Assert.assertFalse(ecd0.equals(ecd3));
+			Assert.assertEquals(ecd3, ecd4);
 			System.out.println("Update really really works!");
 
 		} catch (IOException e) {
 			fail("IOException! " + e.getMessage());
 		} catch (XMLStreamException e) {
+			e.printStackTrace();
+
 			fail("XMLStreamException! " + e.getMessage());
 		} catch (ConfigurationException e) {
 			fail("ConfigurationException! " + e.getMessage());
+		} catch (Exception e) {
+			e.printStackTrace();
+			fail("Exception: " + e.getClass().getName() + ": " + e.getMessage());
 		} finally {
 			try {
-				Thread.sleep(1000000);
+				Thread.sleep(10000000);
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
