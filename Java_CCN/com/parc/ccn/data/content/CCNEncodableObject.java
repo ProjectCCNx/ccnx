@@ -14,6 +14,7 @@ import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNInputStream;
 import com.parc.ccn.library.io.CCNOutputStream;
 import com.parc.ccn.library.profiles.SegmentationProfile;
+import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
 /**
@@ -160,6 +161,12 @@ public class CCNEncodableObject<E extends GenericXMLEncodable> extends Encodable
 		if ((null == _currentName) || (null == _lastSaved)) {
 			return null;
 		}
-		return VersioningProfile.getVersionNumber(_currentName);
+		try {
+			return VersioningProfile.getVersionNumber(_currentName);
+		} catch (VersionMissingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return new Long(0);
+		}
 	}
 }
