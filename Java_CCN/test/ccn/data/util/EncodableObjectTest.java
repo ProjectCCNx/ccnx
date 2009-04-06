@@ -24,7 +24,7 @@ import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.PublisherID.PublisherType;
 import com.parc.ccn.data.util.NullOutputStream;
 
-public class EncodableCollectionDataTest {
+public class EncodableObjectTest {
 	
 	static final  String baseName = "test";
 	static final  String subName = "smetters";
