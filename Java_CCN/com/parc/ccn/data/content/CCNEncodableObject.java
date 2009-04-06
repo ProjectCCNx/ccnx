@@ -1,6 +1,7 @@
 package com.parc.ccn.data.content;
 
 import java.io.IOException;
+import java.sql.Timestamp;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -153,20 +154,16 @@ public class CCNEncodableObject<E extends GenericXMLEncodable> extends Encodable
 		setPotentiallyDirty(false);
 	}
 	
-	/**
-	 * DKS TODO -- return timestamp instead of name?
-	 * @return
-	 */
-	public Long getVersion() {
+	public Timestamp getVersion() {
 		if ((null == _currentName) || (null == _lastSaved)) {
 			return null;
 		}
 		try {
-			return VersioningProfile.getVersionNumber(_currentName);
+			return VersioningProfile.getVersionAsTimestamp(_currentName);
 		} catch (VersionMissingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			return new Long(0);
+			return null;
 		}
 	}
 }
