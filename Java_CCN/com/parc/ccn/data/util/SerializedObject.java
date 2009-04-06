@@ -196,4 +196,14 @@ public class SerializedObject<E extends Serializable>{
 		return true;
 	}
 
+	public boolean contentEquals(Object obj) {
+		if (_data == null) {
+			if (obj != null) {
+				return false;
+			} else {
+				return true;
+			}
+		}
+		return _data.equals(obj);
+	}
 }
