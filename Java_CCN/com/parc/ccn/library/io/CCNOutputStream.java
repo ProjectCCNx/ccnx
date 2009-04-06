@@ -183,7 +183,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			_blockOffset += toWriteNow; // write offset into current block buffer
 			offset += toWriteNow; // read offset into input buffer
 			_totalLength += toWriteNow; // increment here so we can write log entries on partial writes
-			Library.logger().info("write: added " + toWriteNow + " bytes to block. blockIndex: " + _blockIndex + " ( " + (BLOCK_BUF_COUNT-_blockIndex-1) + " left)  blockOffset: " + _blockOffset + "( " + (thisBufAvail - toWriteNow) + " left in block), " + _totalLength + " written.");
+			Library.logger().finest("write: added " + toWriteNow + " bytes to block. blockIndex: " + _blockIndex + " ( " + (BLOCK_BUF_COUNT-_blockIndex-1) + " left)  blockOffset: " + _blockOffset + "( " + (thisBufAvail - toWriteNow) + " left in block), " + _totalLength + " written.");
 
 			if (_blockOffset >= _blockBuffers[_blockIndex].length) {
 				Library.logger().info("write: finished writing block " + _blockIndex);
