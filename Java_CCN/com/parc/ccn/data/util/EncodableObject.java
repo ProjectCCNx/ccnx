@@ -139,10 +139,10 @@ public class EncodableObject<E extends XMLEncodable>{
 			
 			if (Arrays.equals(currentValue, _lastSaved)) {
 				Library.logger().info("Last saved value for object still current.");
-				return true;
+				return false;
 			} else {
 				Library.logger().info("Last saved value for object not current -- object changed.");
-				return false;
+				return true;
 			}
 		} catch (NoSuchAlgorithmException e) {
 			Library.logger().warning("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
@@ -200,5 +200,15 @@ public class EncodableObject<E extends XMLEncodable>{
 			return false;
 		return true;
 	}
-
+	
+	public boolean contentEquals(Object obj) {
+		if (_data == null) {
+			if (obj != null) {
+				return false;
+			} else {
+				return true;
+			}
+		}
+		return _data.equals(obj);
+	}
 }
