@@ -41,7 +41,7 @@ import com.parc.security.crypto.DigestHelper;
  * @author smetters
  *
  */
-public class CCNEncodableObjectTestPending {
+public class CCNEncodableObjectTest {
 	
 	static final  String baseName = "test";
 	static final  String subName = "smetters";
@@ -76,6 +76,7 @@ public class CCNEncodableObjectTestPending {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
+		System.out.println("Making stuff.");
 		oldLevel = Library.logger().getLevel();
 	//	Library.logger().setLevel(Level.FINEST);
 		
