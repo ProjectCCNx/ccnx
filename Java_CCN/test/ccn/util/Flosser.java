@@ -112,7 +112,8 @@ public class Flosser implements CCNInterestListener {
                     } else {
                     	// Has to be in order...
                     	Library.logger().finest("Adding child component to exclude.");
-            			interest.excludeFilter().values().add(new ExcludeElement(result.name().component(prefixCount)));                    	
+            			interest.excludeFilter().values().add(
+            					new ExcludeElement(result.name().component(prefixCount)));                    	
                     }
             	}
                	Library.logger().finer("Excluding child " + ContentName.componentPrintURI(result.name().component(prefixCount)) + " total excluded: " + interest.excludeFilter().values().size());
