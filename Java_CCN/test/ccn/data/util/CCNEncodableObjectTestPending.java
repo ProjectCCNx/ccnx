@@ -33,6 +33,14 @@ import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
 import com.parc.security.crypto.DigestHelper;
 
+/**
+ * Works. Called TestPending for now to keep it out of the automated
+ * test suite till it's ready. Currently very slow, as it's timing
+ * out lots of blocks. End of stream markers will help with that, as
+ * will potentially better binary ccnb decoding.
+ * @author smetters
+ *
+ */
 public class CCNEncodableObjectTestPending {
 	
 	static final  String baseName = "test";
@@ -132,6 +140,7 @@ public class CCNEncodableObjectTestPending {
 		Assert.assertTrue("Failed to produce expected exception.", caught);
 		
 		Flosser flosser = null;
+		boolean done = false;
 		try {
 			CCNEncodableCollectionData ecd0 = new CCNEncodableCollectionData(namespace, empty, library);
 			CCNEncodableCollectionData ecd1 = new CCNEncodableCollectionData(namespace, small1);
@@ -202,6 +211,7 @@ public class CCNEncodableObjectTestPending {
 			Assert.assertFalse(ecd0.equals(ecd3));
 			Assert.assertEquals(ecd3, ecd4);
 			System.out.println("Update really really works!");
+			done = true;
 
 		} catch (IOException e) {
 			fail("IOException! " + e.getMessage());
@@ -216,8 +226,9 @@ public class CCNEncodableObjectTestPending {
 			fail("Exception: " + e.getClass().getName() + ": " + e.getMessage());
 		} finally {
 			try {
+				if (!done) // if we have an error, stick around long enough to debug
+					Thread.sleep(100000);
 				flosser.stop();
-//				Thread.sleep(10000000);
 				
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
