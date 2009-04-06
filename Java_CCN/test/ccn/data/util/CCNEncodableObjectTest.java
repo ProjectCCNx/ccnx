@@ -33,14 +33,13 @@ import com.parc.ccn.library.io.CCNVersionedInputStream;
 import com.parc.security.crypto.DigestHelper;
 
 /**
- * Works. Called TestPending for now to keep it out of the automated
- * test suite till it's ready. Currently very slow, as it's timing
+ * Works. Currently very slow, as it's timing
  * out lots of blocks. End of stream markers will help with that, as
  * will potentially better binary ccnb decoding.
  * @author smetters
  *
  */
-public class CCNEncodableObjectTestPending {
+public class CCNEncodableObjectTest {
 	
 	static final  String baseName = "test";
 	static final  String subName = "smetters";

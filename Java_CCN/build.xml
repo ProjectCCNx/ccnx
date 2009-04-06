@@ -183,7 +183,7 @@
 	<target name="test" depends="test-data, test-puttap, test-library, test-network, test-endtoend">
 	</target>
 
-	<target name="test-data" depends="jar">
+	<target name="test-data" depends="jar, ccnd">
 		<mkdir dir="${testout}"/>
 		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}">
 			<classpath>
