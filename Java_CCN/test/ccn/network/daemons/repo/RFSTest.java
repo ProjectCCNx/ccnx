@@ -2,8 +2,6 @@ package test.ccn.network.daemons.repo;
 
 import java.io.File;
 import java.security.InvalidParameterException;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.AfterClass;
