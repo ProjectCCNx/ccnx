@@ -2,7 +2,10 @@ package com.parc.ccn.data.util;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+import java.io.Serializable;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -20,35 +23,35 @@ import com.parc.ccn.library.io.CCNVersionedInputStream;
  *
  * @param <E>
  */
-public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject<E> {
+public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObject<E> {
 	
-	public CCNEncodableObject(Class<E> type) throws ConfigurationException, IOException {
+	public CCNSerializableObject(Class<E> type) throws ConfigurationException, IOException {
 		this(type, CCNLibrary.open());
 	}
 	
-	public CCNEncodableObject(Class<E> type, CCNLibrary library) {
+	public CCNSerializableObject(Class<E> type, CCNLibrary library) {
 		super(type);
 		_library = library;
 		_flowControl = new CCNFlowControl(_library);
 	}
 	
-	public CCNEncodableObject(Class<E> type, ContentName name, E data, CCNLibrary library) {
+	public CCNSerializableObject(Class<E> type, ContentName name, E data, CCNLibrary library) {
 		super(type, data);
 		_currentName = name;
 		_library = library;
 		_flowControl = new CCNFlowControl(name, _library);
 	}
 	
-	public CCNEncodableObject(Class<E> type, ContentName name, E data) throws ConfigurationException, IOException {
+	public CCNSerializableObject(Class<E> type, ContentName name, E data) throws ConfigurationException, IOException {
 		this(type,name, data, CCNLibrary.open());
 	}
 	
-	public CCNEncodableObject(Class<E> type, E data, CCNLibrary library) {
+	public CCNSerializableObject(Class<E> type, E data, CCNLibrary library) {
 		this(type, null, data, library);
 		_flowControl = new CCNFlowControl(_library);
 	}
 	
-	public CCNEncodableObject(Class<E> type, E data) throws ConfigurationException, IOException {
+	public CCNSerializableObject(Class<E> type, E data) throws ConfigurationException, IOException {
 		this(type, data, CCNLibrary.open());
 	}
 
@@ -61,7 +64,7 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 	 * @throws IOException
 	 * @throws ClassNotFoundException 
 	 */
-	public CCNEncodableObject(Class<E> type, ContentObject content, CCNLibrary library) throws XMLStreamException, IOException, ClassNotFoundException {
+	public CCNSerializableObject(Class<E> type, ContentObject content, CCNLibrary library) throws XMLStreamException, IOException, ClassNotFoundException {
 		this(type, library);
 		CCNVersionedInputStream is = new CCNVersionedInputStream(content, library);
 		is.seek(0); // In case we start with something other than the first fragment.
@@ -80,7 +83,7 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 	 * @throws IOException
 	 * @throws ClassNotFoundException 
 	 */
-	public CCNEncodableObject(Class<E> type, ContentName name, PublisherKeyID publisher, CCNLibrary library) throws XMLStreamException, IOException, ClassNotFoundException {
+	public CCNSerializableObject(Class<E> type, ContentName name, PublisherKeyID publisher, CCNLibrary library) throws XMLStreamException, IOException, ClassNotFoundException {
 		super(type);
 		_library = library;
 		CCNVersionedInputStream is = new CCNVersionedInputStream(name, publisher, library);
@@ -96,25 +99,29 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 	 * @throws IOException
 	 * @throws ClassNotFoundException 
 	 */
-	public CCNEncodableObject(Class<E> type, ContentName name, CCNLibrary library) throws XMLStreamException, IOException, ClassNotFoundException {
+	public CCNSerializableObject(Class<E> type, ContentName name, CCNLibrary library) throws XMLStreamException, IOException, ClassNotFoundException {
 		this(type, name, (PublisherKeyID)null, library);
 	}
 	
-	public CCNEncodableObject(Class<E> type, ContentName name) throws XMLStreamException, IOException, ConfigurationException, ClassNotFoundException {
+	public CCNSerializableObject(Class<E> type, ContentName name) throws XMLStreamException, IOException, ConfigurationException, ClassNotFoundException {
 		this(type, name, CCNLibrary.open());
 	}
 
 	@Override
 	protected Object readObjectImpl(InputStream input) throws IOException,
 			XMLStreamException, ClassNotFoundException {
-		E newData = factory();
-		newData.decode(input);	
+		ObjectInputStream ois = new ObjectInputStream(input);
+		Object newData = ois.readObject();
 		return newData;
 	}
 
 	@Override
 	protected void writeObjectImpl(OutputStream output) throws IOException,
 			XMLStreamException {
-		_data.encode(output);
+		ObjectOutputStream oos = new ObjectOutputStream(output);		
+		oos.writeObject(_data);
+		oos.flush();
+		output.flush();
+		oos.close();
 	}
 }
