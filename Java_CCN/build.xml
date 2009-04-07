@@ -178,9 +178,8 @@
 			</java>
 		</target>
 
-	<!-- test is for running all current automated tests to validate code 
-	     For now repo tests are left out. Use test-repo for that -->
-	<target name="test" depends="test-data, test-puttap, test-library, test-network, test-endtoend">
+	<!-- test is for running all current automated tests to validate code -->
+	<target name="test" depends="test-data, test-puttap, test-library, test-network, test-endtoend, test-repo">
 	</target>
 
 	<target name="test-data" depends="jar, ccnd">
@@ -288,7 +287,7 @@
 			</classpath>
 			<formatter type="brief" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<batchtest todir="${testout}">
+			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="test/ccn/network/daemons/repo/RepoIOTest.class"/>
 				</fileset>
