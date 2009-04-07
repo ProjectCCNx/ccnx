@@ -211,6 +211,7 @@ interest_handler(struct ccn_closure *selfp,
         return (CCN_UPCALL_RESULT_REEXPRESS);
         
     case CCN_UPCALL_CONTENT:
+    case CCN_UPCALL_CONTENT_UNVERIFIED:
         ccnb_size = info->pco->offset[CCN_PCO_E];
         c = state->count;
         for (i = 0; i < c; i++) {
@@ -245,6 +246,10 @@ interest_handler(struct ccn_closure *selfp,
         memcpy(state->items[c].contents, info->content_ccnb, ccnb_size);
         state->count = c + 1;
         return (0);
+
+    case CCN_UPCALL_CONTENT_BAD:
+	fprintf(stderr, "Content signature verification failed! Discarding.\n");
+	return (-1);
 
     case CCN_UPCALL_CONSUMED_INTEREST:
         fprintf(stderr, "Upcall consumed interest\n");

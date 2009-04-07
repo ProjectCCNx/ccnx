@@ -40,8 +40,10 @@ enum ccn_upcall_kind {
     CCN_UPCALL_FINAL,             /* handler is about to be deregistered */
     CCN_UPCALL_INTEREST,          /* incoming interest */
     CCN_UPCALL_CONSUMED_INTEREST, /* incoming interest, someone has answered */
-    CCN_UPCALL_CONTENT,           /* incoming content */
-    CCN_UPCALL_INTEREST_TIMED_OUT /* interest timed out */
+    CCN_UPCALL_CONTENT,           /* incoming verified content */
+    CCN_UPCALL_INTEREST_TIMED_OUT,/* interest timed out */
+    CCN_UPCALL_CONTENT_UNVERIFIED,/* content that has not been verified */
+    CCN_UPCALL_CONTENT_BAD        /* verification failed */
 };
 
 /*
@@ -85,7 +87,7 @@ struct ccn_upcall_info {
     struct ccn_parsed_interest *pi;
     struct ccn_indexbuf *interest_comps;
     int matched_comps;
-    /* Incoming content for CCN_UPCALL_CONTENT - otherwise NULL */
+    /* Incoming content for CCN_UPCALL_CONTENT* - otherwise NULL */
     const unsigned char *content_ccnb;
     struct ccn_parsed_ContentObject *pco;
     struct ccn_indexbuf *content_comps;
@@ -110,7 +112,7 @@ int ccn_connect(struct ccn *h, const char *name);
 /*
  * ccn_get_connection_fd: get connection socket fd
  * This is in case the client needs to know the associated
- * fd, e.g. for use in select/poll.
+ * file descriptor, e.g. for use in select/poll.
  * The client should not use this fd for actual I/O.
  * Normal return value is the fd for the connection.
  * Returns -1 if the handle is not connected.
@@ -391,7 +393,7 @@ int ccn_fetch_tagged_nonNegativeInteger(enum ccn_dtag tt,
  * wire representation, with the start and end of each major element and
  * a few of the inportant sub-elements.  The following enum allows those
  * array items to be referred to symbolically.  The *_B_* indices correspond
- * to beginning offsets and the *_E_* indices correspond to ending offests.
+ * to beginning offsets and the *_E_* indices correspond to ending offsets.
  * An omitted element has its beginning and ending offset equal to each other.
  * Normally these offsets will end up in non-decreasing order.
  * Some aliasing tricks may be played here, e.g. since
@@ -504,7 +506,7 @@ struct ccn_parsed_ContentObject {
     int magic;
     int name_ncomps;
     unsigned short offset[CCN_PCO_E+1];
-    unsigned char digest[32];
+    unsigned char digest[32];	/* Computed only when needed */
     int digest_bytes;
 };
 
