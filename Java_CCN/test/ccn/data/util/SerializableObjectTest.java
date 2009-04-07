@@ -9,6 +9,8 @@ import java.io.InvalidObjectException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 
+import javax.xml.stream.XMLStreamException;
+
 import org.bouncycastle.util.Arrays;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -32,7 +34,7 @@ public class SerializedObjectTest {
 	@Test
 	public void testSave() {
 		boolean caught = false;
-		SerializedPublicKey empty = new SerializedPublicKey();
+		SerializablePublicKey empty = new SerializablePublicKey();
 		try {
 			NullOutputStream nos = new NullOutputStream();
 			empty.save(nos);
@@ -41,12 +43,14 @@ public class SerializedObjectTest {
 			caught = true;
 		} catch (IOException ie) {
 			Assert.fail("Unexpectd IOException!");
+		} catch (XMLStreamException e) {
+			Assert.fail("Unexpectd XMLStreamException!");
 		}
 		Assert.assertTrue("Failed to produce expected exception.", caught);
 		
-		SerializedPublicKey spk1 = new SerializedPublicKey(kp1.getPublic());
-		SerializedPublicKey spk2 = new SerializedPublicKey(kp1.getPublic());
-		SerializedPublicKey spk3 = new SerializedPublicKey(kp2.getPublic());
+		SerializablePublicKey spk1 = new SerializablePublicKey(kp1.getPublic());
+		SerializablePublicKey spk2 = new SerializablePublicKey(kp1.getPublic());
+		SerializablePublicKey spk3 = new SerializablePublicKey(kp2.getPublic());
 
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		ByteArrayOutputStream baos2 = new ByteArrayOutputStream();
@@ -63,14 +67,16 @@ public class SerializedObjectTest {
 			System.out.println("Saved two public keys, lengths " + baos.toByteArray().length + " and " + baos3.toByteArray().length);
 		} catch (IOException e) {
 			fail("IOException! " + e.getMessage());
+		} catch (XMLStreamException e) {
+			fail("XMLStreamException! " + e.getMessage());
 		}
 	}
 	
 	@Test
 	public void testUpdate() {
-		SerializedPublicKey spk1 = new SerializedPublicKey(kp1.getPublic());
-		SerializedPublicKey spk2 = new SerializedPublicKey();
-		SerializedPublicKey spk3 = new SerializedPublicKey(kp2.getPublic());
+		SerializablePublicKey spk1 = new SerializablePublicKey(kp1.getPublic());
+		SerializablePublicKey spk2 = new SerializablePublicKey();
+		SerializablePublicKey spk3 = new SerializablePublicKey(kp2.getPublic());
 
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		ByteArrayOutputStream baos3 = new ByteArrayOutputStream();
@@ -89,6 +95,8 @@ public class SerializedObjectTest {
 			fail("IOException! " + e.getMessage());
 		} catch (ClassNotFoundException e) {
 			fail("ClassNotFoundException! " + e.getMessage());
+		} catch (XMLStreamException e) {
+			fail("XMLStreamException! " + e.getMessage());
 		}
 	}
 
