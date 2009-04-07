@@ -17,14 +17,14 @@ import javax.xml.stream.XMLStreamException;
  *
  * @param <E>
  */
-public class SerializedObject<E extends Serializable> extends NetworkObject<E> {
+public class SerializableObject<E extends Serializable> extends NetworkObject<E> {
 	
 
-	public SerializedObject(Class<E> type) {
+	public SerializableObject(Class<E> type) {
 		super(type);
 	}
 	
-	public SerializedObject(Class<E> type, E data) {
+	public SerializableObject(Class<E> type, E data) {
 		super(type, data);
 	}
 		
@@ -38,8 +38,7 @@ public class SerializedObject<E extends Serializable> extends NetworkObject<E> {
 	@Override
 	protected void writeObjectImpl(OutputStream output) throws IOException,
 			XMLStreamException {
-		ObjectOutputStream oos = new ObjectOutputStream(output);
-		
+		ObjectOutputStream oos = new ObjectOutputStream(output);		
 		oos.writeObject(_data);
 		oos.flush();
 		output.flush();

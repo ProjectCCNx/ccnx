@@ -6,19 +6,19 @@ import java.security.PublicKey;
 import com.parc.ccn.data.util.SerializableObject;
 
 /**
- * Used in SerializedObjectTest.
+ * Used in SerializableObjectTest.
  * @author smetters
  *
  */
-public class SerializedPublicKey extends SerializableObject<PublicKey> implements Serializable {
+public class SerializablePublicKey extends SerializableObject<PublicKey> implements Serializable {
 	
 	private static final long serialVersionUID = 1235874939485391189L;
 
-	public SerializedPublicKey() {
+	public SerializablePublicKey() {
 		super(PublicKey.class);
 	}
 	
-	public SerializedPublicKey(PublicKey publicKey) {
+	public SerializablePublicKey(PublicKey publicKey) {
 		super(PublicKey.class, publicKey);
 	}
 

@@ -18,7 +18,7 @@ import org.junit.Test;
 
 import com.parc.ccn.data.util.NullOutputStream;
 
-public class SerializedObjectTest {
+public class SerializableObjectTest {
 	
 	static KeyPair kp1 = null;
 	static KeyPair kp2 = null;
