@@ -184,6 +184,9 @@ public class RFSTest extends RepoTestBase {
 		repo = new RFSImpl();
 		repo.initialize(new String[] {"-root", _fileTestDir, "-local", _repoName, "-global", _globalPrefix});
 		checkData(repo, clashName, "Clashing Name");
+		// Since we have 2 pieces of data with the name "longName" we need to compute the
+		// digest to make sure we get the right data.
+		longName = new ContentName(longName, ContentObject.contentDigest("Long name!"));
 		checkData(repo, longName, "Long name!");
 		checkData(repo, badCharName, "Funny characters!");
 		checkData(repo, badCharLongName, "Long and funny");

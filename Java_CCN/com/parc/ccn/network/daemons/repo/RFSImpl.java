@@ -233,11 +233,8 @@ public class RFSImpl implements Repository {
 			}
 		}
 		byte [] digestComponent = components.remove(components.size() - 1);
+		components.add(components.size(), decodeBase64(new String(digestComponent)));
 		ContentName cn = new ContentName(components.size(), components);
-		if (null != _encodedFiles.get(cn)) {
-			components.add(components.size(), digestComponent);
-			cn = new ContentName(components.size(), components);
-		}
 		ArrayList<File> files = _encodedFiles.get(cn);
 		if (files == null)
 			files = new ArrayList<File>();
@@ -399,7 +396,10 @@ public class RFSImpl implements Repository {
 					name.components());
 		getAllFileResults(file, results, lowerName);
 		for (ContentName encodedName : _encodedFiles.keySet()) {
-			if (name.isPrefixOf(encodedName))
+			/*
+			 * Either piece could have a digest. This will be cleaner when we know this for sure
+			 */
+			if (encodedName.isPrefixOf(name) || name.isPrefixOf(encodedName))
 				results.put(encodedName, _encodedFiles.get(encodedName));
 		}
 		return results;

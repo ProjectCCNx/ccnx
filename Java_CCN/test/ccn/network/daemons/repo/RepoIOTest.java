@@ -51,7 +51,7 @@ public class RepoIOTest extends RepoTestBase {
 	public void testReadViaRepo() throws Throwable {
 		ContentName name = ContentName.fromNative("/repoTest/data1");
 		
-		// Since we have 2 pieces of data with the name /repoTest/data1 we need to compete both
+		// Since we have 2 pieces of data with the name /repoTest/data1 we need to compute both
 		// digests to make sure we get the right data.
 		ContentName name1 = new ContentName(name, ContentObject.contentDigest("Here's my data!"));
 		ContentName clashName = ContentName.fromNative("/" + RFSImpl.META_DIR + "/repoTest/data1");
@@ -59,7 +59,10 @@ public class RepoIOTest extends RepoTestBase {
 		String tooLongName = "0123456789";
 		for (int i = 0; i < 30; i++)
 			tooLongName += "0123456789";
+		
+		// Have 2 pieces of data with the same name here too.
 		ContentName longName = ContentName.fromNative("/repoTest/" + tooLongName);
+		longName = new ContentName(longName, ContentObject.contentDigest("Long name!"));
 		ContentName badCharName = ContentName.fromNative("/repoTest/" + "*x?y<z>u");
 		ContentName badCharLongName = ContentName.fromNative("/repoTest/" + tooLongName + "*x?y<z>u");
 		//PublisherKeyID pkid1 = new PublisherKeyID("9s4o5j263snpdl59phc5vf0jhpqgdtghg155smuo2gbnk5ui8f3");
