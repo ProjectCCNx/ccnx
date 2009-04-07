@@ -10,7 +10,7 @@
     <SignedInfo>
       <PublisherKeyID ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherKeyID>
       <Timestamp>2008-02-11T16:58:35.432Z</Timestamp>
-      <Type>LEAF</Type>
+      <Type>DATA</Type>
       <KeyLocator>
         <KeyName>
           <Name>

@@ -45,7 +45,7 @@
 
 <!ELEMENT SignedInfo    (PublisherKeyID,
                          Timestamp,
-                         Type,
+                         Type?,
                          FreshnessSeconds?,
                          KeyLocator?)>
 <!ATTLIST SignedInfo %commonattrs;>
@@ -92,7 +92,7 @@
 <!ELEMENT AdditionalNameComponents (#PCDATA)> <!-- nonNegativeInteger -->
 <!ELEMENT Timestamp	(#PCDATA)>	<!-- dateTime -->
 <!ELEMENT FreshnessSeconds (#PCDATA)>	<!-- nonNegativeInteger -->
-<!ELEMENT Type		(#PCDATA)>	<!-- FRAGMENT, LINK, COLLECTION, LEAF, SESSION, HEADER, KEY -->
+<!ELEMENT Type		(#PCDATA)>	<!-- DATA, LINK, COLLECTION, SESSION, HEADER, KEY -->
 
 <!ELEMENT ContentDigest	(#PCDATA)>	<!-- base64 encoding of DER-encoded DigestInfo -->
 <!ATTLIST ContentDigest ccnbencoding CDATA #FIXED 'base64Binary'>

@@ -13,7 +13,7 @@
     <PublisherKeyID ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=
         </PublisherKeyID>
     <Timestamp>2008-07-11T15:19:40.42Z</Timestamp>
-    <Type>LEAF</Type>
+    <!-- Type is optional (DATA) -->
     <KeyLocator>
       <Key ccnbencoding="base64Binary">MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAIS1Wt50GDXWhk2j/gflHoJh6UgZ+I1W5Jx4xVZM3lP6jFbWu+wcEios+KpjrQnFwqGNPH+TyKWH/DLHo5X1L0sCAwEAAQ==</Key>
     </KeyLocator>

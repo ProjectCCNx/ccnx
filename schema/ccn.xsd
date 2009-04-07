@@ -79,7 +79,7 @@
   <xs:sequence>
     <xs:element name="PublisherKeyID" type="KeyIDType"/>
     <xs:element name="Timestamp" type="xs:dateTime"/> <!-- should be canonical -->
-    <xs:element name="Type" type="ContentType"/>
+    <xs:element name="Type" type="ContentType" minOccurs="0" maxOccurs="1"/>
     <!-- The optional FreshnessSeconds indicates how many seconds a node
                  should wait after the arrival of this ContentObject before
                  marking it as stale. -->
@@ -253,10 +253,9 @@
 <!-- enum -->
 <xs:simpleType name="ContentType">
   <xs:restriction base="xs:string">
-    <xs:enumeration value="FRAGMENT"/>
+    <xs:enumeration value="DATA"/>
     <xs:enumeration value="LINK"/>
     <xs:enumeration value="COLLECTION"/>
-    <xs:enumeration value="LEAF"/>
     <xs:enumeration value="SESSION"/>
     <xs:enumeration value="HEADER"/>
     <xs:enumeration value="KEY"/>
