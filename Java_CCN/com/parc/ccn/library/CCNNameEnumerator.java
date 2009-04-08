@@ -1,17 +1,27 @@
 package com.parc.ccn.library;
 
+import java.io.IOException;
+import java.security.InvalidKeyException;
+import java.security.PrivateKey;
+import java.security.SignatureException;
 import java.util.ArrayList;
 
 import javax.xml.stream.XMLStreamException;
 
+import test.ccn.data.content.CCNEncodableCollectionData;
+
+import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.content.Collection;
+import com.parc.ccn.data.content.CollectionData;
 import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.query.BasicNameEnumeratorListener;
 import com.parc.ccn.data.query.CCNFilterListener;
+import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
+import com.parc.ccn.data.security.Signature;
+
 
 
 /**
@@ -33,24 +43,17 @@ import com.parc.ccn.data.query.Interest;
  *
  */
 
-public class CCNNameEnumerator implements CCNFilterListener{
+public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener{
 
 	protected CCNLibrary _library = null;
 	protected ArrayList<ContentName> _registeredPrefixes = new ArrayList<ContentName>();
 	protected BasicNameEnumeratorListener callback; 
+	protected ArrayList<ContentName> _registeredNames = new ArrayList<ContentName>();
 	
-	
-	public CCNNameEnumerator(ContentName prefix, CCNLibrary library, BasicNameEnumeratorListener c){
+	public CCNNameEnumerator(ContentName prefix, CCNLibrary library, BasicNameEnumeratorListener c) throws IOException{
 		_library = library;
-		if(!_registeredPrefixes.contains(prefix))
-			_registeredPrefixes.add(prefix);
-		_library.registerFilter(prefix, this);
 		callback = c;
-	}
-
-	public CCNNameEnumerator(String prefix, CCNLibrary library, BasicNameEnumeratorListener c) throws MalformedContentNameStringException{
-		this(ContentName.fromNative(prefix), library, c);
-		
+		registerPrefix(prefix);
 	}
 	
 	public CCNNameEnumerator(CCNLibrary library, BasicNameEnumeratorListener c){
@@ -58,26 +61,26 @@ public class CCNNameEnumerator implements CCNFilterListener{
 		callback = c;
 	}
 	
-	public void registerPrefix(ContentName prefix){
+	public void registerPrefix(ContentName prefix) throws IOException{
 		
-		if(!_registeredPrefixes.contains(prefix))
+		if(!_registeredPrefixes.contains(prefix)){
 			_registeredPrefixes.add(prefix);
+			
+			System.out.println("Registered Prefix");
+			System.out.println("creating Interest");
+			
+			Interest pi = new Interest(prefix);
+			_library.expressInterest(pi, this);
+			System.out.println("expressed Interest");
+
+		}
 	}
 	
-	public void registerPrefix(String prefix) throws MalformedContentNameStringException{
-		ContentName p = ContentName.fromNative(prefix);
-		if(!_registeredPrefixes.contains(p))
-			_registeredPrefixes.add(p);
-	}
 	
 	public boolean cancelPrefix(ContentName prefix){
 		return _registeredPrefixes.remove(prefix);
 	}
 	
-	public boolean cancelPrefix(String prefix) throws MalformedContentNameStringException{
-		ContentName p = ContentName.fromNative(prefix);
-		return _registeredPrefixes.remove(p);
-	}
 	
 	public ArrayList<ContentName> parseCollection(Collection c){
 		ArrayList<ContentName> names = new ArrayList<ContentName>();
@@ -88,9 +91,8 @@ public class CCNNameEnumerator implements CCNFilterListener{
 		return names;
 	}
 	
-	// TODO  What is the returned int for?
 	
-	public int handleContent(ArrayList<ContentObject> results, Interest interest) {
+	public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
 		
 		System.out.println("we recieved interests matching our prefix...");
 		
@@ -107,14 +109,16 @@ public class CCNNameEnumerator implements CCNFilterListener{
 			}
 		}
 		
-		return results.size();
+		//TODO modify interest to exclude the current version?  use getNext?
+
+		return interest;
 	}
 	
 	// temporary workaround to test the callback without actually processing ContentObjects
 	
 	public int handleContent(ArrayList<LinkReference> results, ContentName p) {
 		
-		System.out.println("we recieved interests matching our prefix...");
+		System.out.println("we recieved content matching our prefix...");
 
 		System.out.println("we have a match on "+p.toString());
 		if(_registeredPrefixes.contains(p))
@@ -125,9 +129,113 @@ public class CCNNameEnumerator implements CCNFilterListener{
 	
 	
 	public int handleInterests(ArrayList<Interest> interests) {
-		// TODO Auto-generated method stub
+		System.out.println("Received Interests matching my filter!");
+		
+		//ArrayList<LinkReference> names = new ArrayList<LinkReference>();
+		ContentName collectionName = null;
+		LinkReference match;
+		CollectionData cd;
+				
+		//TODO add check for NameEnumeration marker
+		for(Interest i: interests){
+			System.out.println("processing interest: "+i.name().toString());
+			collectionName = i.name().clone();
+			cd = new CollectionData();
+			//names.clear();
+			for(ContentName n: _registeredNames){
+				System.out.println("checking registered name: "+n.toString());
+				if(i.name().isPrefixOf(n)){
+					ContentName tempName = n.clone();
+					System.out.println("we have a match! ("+tempName.toString()+")");
+					System.out.println("prefix size "+i.name().count()+" registered name size "+n.count());
+					byte[] tn = n.component(i.name().count());
+					byte[][] na = new byte[1][tn.length];
+					na[0] = tn;
+					tempName = new ContentName(na);
+					match = new LinkReference(tempName);
+					//names.add(match);
+					if(!cd.contents().contains(match)){
+						cd.add(match);
+						System.out.println("added name to response: "+tempName);
+					}
+				}
+			}
+			
+			if(cd.size()>0){
+				System.out.println("we have a response to send back for "+i.name().toString());
+				try{
+					
+					//the following 5 lines are to be deleted after Collections are refactored
+					LinkReference[] temp = new LinkReference[cd.contents().size()];
+					for(int x = 0; x < cd.contents().size(); x++)
+						temp[x] = cd.contents().get(x);
+					Collection coll = new Collection(collectionName, temp, null, null, (Signature)null);
+					if(coll.validate())
+					_library.put(coll);
+					
+					
+					CCNEncodableCollectionData ecd = new CCNEncodableCollectionData(collectionName, cd);
+					ecd.save();
+					System.out.println("saved ecd.  name: "+ecd.getName());
+
+				}
+				catch(IOException e){
+					
+				}
+				catch (XMLStreamException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (ConfigurationException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				//} catch (InvalidKeyException e) {
+					// TODO Auto-generated catch block
+					//e.printStackTrace();
+				//} catch (SignatureException e) {
+					// TODO Auto-generated catch block
+				//	e.printStackTrace();
+				}
+			}
+			
+		}
+		
+		
 		return 0;
 	}
 
+	public boolean containsRegisteredName(ContentName name){
+		if(name==null){
+			System.err.println("trying to check for null registered name");
+			return false;
+		}
+		if(_registeredNames.contains(name))
+			return true;
+		else
+			return false;
+	}
+	
+	public void registerNameSpace(ContentName name){
+		
+		if(!_registeredNames.contains(name)){
+			_registeredNames.add(name);
+			System.out.println("registered "+ name.toString()+") as namespace");
+			_library.registerFilter(name, this);
+		}
+		
+	}
+	
+	public void registerNameForResponses(ContentName name){
+
+		if(name==null){
+			System.err.println("The content name for registerNameForResponses was null, ignoring");
+			return;
+		}
+		
+		_library.registerFilter(name, this);
+		if(!_registeredNames.contains(name)){
+		  _registeredNames.add(name);
+		  System.out.println("registered "+ name.toString()+") for responses");		  
+		}
+	}
 	
 }
