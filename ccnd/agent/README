@@ -12,5 +12,26 @@ ccnd - CCN Daemon
 			bitwise OR these together for combinations; -1 gets everything
 		CCN_LOCAL_PORT=
 			UDP port for local clients (default 4485)
+			Also affects name of unix-domain socket
+		CCN_NONLOCAL_UDP=
+			Set to anything, listens for "local" port on all interfaces.
+			This is for debugging.
+		CCND_CAP=
+			Capacity limit in ContentObjects.
+			Not an absolute limit.
+		CCND_MTU=
+			Packet size in bytes.
+			If set, interest stuffing is allowed within this budget.
+			Single items larger than this are not precluded.
 
-ccnd_june08 - obsolete CCN Daemon
+smoketestccnd - simple-minded program for excercising ccnd
+	options: -t millisconds - sets the timeout for recv operations
+	arguments: ( send <filename> | recv | kill | timeo <millisconds> ) ...
+		send <filename> sends the literal contents of the file to the ccnd.
+			The file should be in ccnd format.
+		recv receives data from ccnd and dumps it to stdout.
+			Subject to timeout.
+		kill tries to get the ccnd to shut down.
+		timeo <millisconds> changes the timeout for subsequent recvs.
+	environment variables:
+		CCN_LOCAL_PORT as for ccnd

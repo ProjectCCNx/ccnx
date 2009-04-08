@@ -1,0 +1,30 @@
+#!/bin/sh
+# This script is useful for regenerating fortunes.ccnb when the
+# schemas have changed.  The reference versions will have to
+# be adjusted as well.
+export CCN_LOCAL_PORT=8912
+ccnd &
+sleep .1
+for i in ~/.ccn/*/*.ccnb; do ./smoketestccnd send $i; done
+ccnsendchunks /local/test/fortunes/trust <<EOF
+TRUST ME:
+	Translation of the Latin "caveat emptor."
+EOF
+ccnsendchunks /local/test/fortunes/doubt <<EOF
+When in doubt, follow your heart.
+EOF
+ccnsendchunks /local/test/fortunes/revenue <<EOF
+For 20 dollars, I'll give you a good fortune next time ...
+EOF
+ccnsendchunks /local/test/fortunes/success <<EOF
+If A equals success, then the formula is A = X + Y + Z.  X is work.  Y
+is play.  Z is keep your mouth shut.
+		-- Albert Einstein
+EOF
+ccnsendchunks /local/test/fortunes/not/included <<EOF
+This fortune intentionally not included.
+EOF
+
+../lib/ccndump > fortunes.ccnb
+./smoketestccnd kill
+wait

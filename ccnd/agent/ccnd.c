@@ -60,6 +60,7 @@ static void mark_stale(struct ccnd *h, struct content_entry *content);
 static ccn_accession_t
             content_skiplist_next(struct ccnd *h, struct content_entry *content);
 static void reap_needed(struct ccnd *h, int init_delay_usec);
+static void check_comm_file(struct ccnd *h);
 static const char *unlink_this_at_exit = NULL;
 
 static void
@@ -678,6 +679,7 @@ shutdown_client_fd(struct ccnd *h, int fd)
     ccn_charbuf_destroy(&face->outbuf);
     hashtb_delete(e);
     hashtb_end(e);
+    check_comm_file(h);
 }
 
 static void

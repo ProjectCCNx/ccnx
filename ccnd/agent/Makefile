@@ -28,9 +28,12 @@ clean:
 	rm -f *.o *.a $(PROGRAMS) $(BROKEN_PROGRAMS) depend
 	rm -rf *.dSYM $(DEBRIS)
 
-test:   ccnd smoketestccnd
-	./testmatchrules
-        
+check test:   ccnd smoketestccnd
+	./testbasics
+	: ---------------------- :
+	:  ccnd unit tests pass  :
+	: ---------------------- :
+
 ###############################
 # Dependencies below here are checked by depend target
 # but must be updated manually.
@@ -43,4 +46,4 @@ ccnd_stats.o: ccnd_stats.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
   ../include/ccn/ccnd.h ../include/ccn/schedule.h ../include/ccn/hashtb.h \
   ../include/ccn/uri.h ccnd_private.h
-smoketestccnd.o: smoketestccnd.c
+smoketestccnd.o: smoketestccnd.c ../include/ccn/ccnd.h
