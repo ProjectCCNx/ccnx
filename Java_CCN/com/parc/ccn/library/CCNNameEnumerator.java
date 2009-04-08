@@ -21,6 +21,7 @@ import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.Signature;
+import com.parc.ccn.library.profiles.VersioningProfile;
 
 
 
@@ -94,13 +95,24 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 	
 	public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
 		
-		System.out.println("we recieved interests matching our prefix...");
-		
+		System.out.println("we recieved a Collection matching our prefix...");
+		Collection collection;
+		ArrayList<ContentName> names = new ArrayList<ContentName>();
+		ArrayList<LinkReference> links;
+		ContentName responseName = null;
 		if(results!=null){
 			for(ContentObject c: results){
 				System.out.println("we have a match on "+interest.name());
+				responseName = c.name();
 				try{
-					callback.handleNameEnumerator(interest.name(), Collection.contentToCollection(c).contents());
+					collection = Collection.contentToCollection(c);
+					links = collection.contents();
+					for(LinkReference l: links){
+						names.add(l.targetName());
+						System.out.println("names: "+l.targetName());
+					}
+					//callback.handleNameEnumerator(interest.name(), Collection.contentToCollection(c).contents());
+					callback.handleNameEnumerator(interest.name(), names);
 				}
 				catch(XMLStreamException e){
 					e.printStackTrace();
@@ -108,21 +120,34 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 				}		
 			}
 		}
-		
-		//TODO modify interest to exclude the current version?  use getNext?
-
-		return interest;
+		Interest newInterest = interest;
+		if(responseName!=null){
+			//TODO modify interest to exclude the current version?  use getNext?
+			newInterest = Interest.last(responseName);
+			//newInterest.orderPreference(newInterest.nameComponentCount()-2);
+			//interest.
+			System.out.println("new interest name: "+newInterest.name()+" total components: "+newInterest.nameComponentCount());
+			try{
+			System.out.println("version: "+VersioningProfile.getVersionAsTimestamp(responseName));
+			}
+			catch(Exception e){}
+		}
+		return newInterest;
 	}
 	
 	// temporary workaround to test the callback without actually processing ContentObjects
 	
-	public int handleContent(ArrayList<LinkReference> results, ContentName p) {
+	//public int handleContent(ArrayList<LinkReference> results, ContentName p) {
+	public int handleContent(ArrayList<ContentName> results, ContentName p) {
 		
 		System.out.println("we recieved content matching our prefix...");
 
 		System.out.println("we have a match on "+p.toString());
-		if(_registeredPrefixes.contains(p))
+		if(_registeredPrefixes.contains(p)){
+			
 			callback.handleNameEnumerator(p, results);
+			
+		}
 		
 		return results.size();
 	}
@@ -165,7 +190,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 				System.out.println("we have a response to send back for "+i.name().toString());
 				try{
 					
-					//the following 5 lines are to be deleted after Collections are refactored
+					//the following 6 lines are to be deleted after Collections are refactored
 					LinkReference[] temp = new LinkReference[cd.contents().size()];
 					for(int x = 0; x < cd.contents().size(); x++)
 						temp[x] = cd.contents().get(x);
@@ -173,9 +198,8 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 					if(coll.validate())
 					_library.put(coll);
 					
-					
 					CCNEncodableCollectionData ecd = new CCNEncodableCollectionData(collectionName, cd);
-					ecd.save();
+					//ecd.save();
 					System.out.println("saved ecd.  name: "+ecd.getName());
 
 				}
@@ -188,12 +212,6 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 				} catch (ConfigurationException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
-				//} catch (InvalidKeyException e) {
-					// TODO Auto-generated catch block
-					//e.printStackTrace();
-				//} catch (SignatureException e) {
-					// TODO Auto-generated catch block
-				//	e.printStackTrace();
 				}
 			}
 			

@@ -13,6 +13,7 @@ public interface BasicNameEnumeratorListener {
  * @param  collectionData  The list of Link objects corresponding to the names in the local namespace  
  * @return int number of Link objects in CollectionData
  */
-public int handleNameEnumerator(ContentName prefix, ArrayList<LinkReference> names);
+//public int handleNameEnumerator(ContentName prefix, ArrayList<LinkReference> names);
+	public int handleNameEnumerator(ContentName prefix, ArrayList<ContentName> names);
 
 }

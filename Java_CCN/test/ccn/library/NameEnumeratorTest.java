@@ -11,12 +11,7 @@ import org.junit.Test;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.content.Collection;
-import com.parc.ccn.data.content.CollectionData;
-import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.query.BasicNameEnumeratorListener;
-import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNNameEnumerator;
 
@@ -45,7 +40,8 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 	
 	String prefix1String = "/parc.com/registerTest";
 	String prefix1StringError = "/park.com/registerTest";
-	ArrayList<LinkReference> names;
+	//ArrayList<LinkReference> names;
+	ArrayList<ContentName> names;
 	ContentName prefix1;
 	ContentName c1;
 	ContentName c2;
@@ -130,6 +126,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 
 		Assert.assertNotNull(putLibrary);
 		Assert.assertNotNull(getLibrary);
+		
 		int attempts = 0;
 		try{
 			while(net.names==null && attempts < 50){
@@ -137,8 +134,8 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 				attempts++;
 			}
 			
-			//the names are registered...
-			System.out.println("response has been generated");
+			//we either broke out of loop or the names are here
+			System.out.println("done waiting for results to arrive");
 		}
 		catch(InterruptedException e){
 			System.err.println("error waiting for names to be registered by name enumeration responder");
@@ -146,9 +143,13 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		}
 		
 		
-		for(LinkReference lr: net.names){
-			System.out.println("got name: "+lr.targetName());
-			Assert.assertTrue(lr.targetName().toString().equals("/name1") || lr.targetName().toString().equals("/name2"));
+		//for(LinkReference lr: net.names){
+		for(ContentName cn: net.names){
+			//System.out.println("got name: "+lr.targetName());
+			//Assert.assertTrue(lr.targetName().toString().equals("/name1") || lr.targetName().toString().equals("/name2"));
+			System.out.println("got name: "+cn.toString());
+			Assert.assertTrue(cn.toString().equals("/name1") || cn.toString().equals("/name2"));
+			
 		}
 		
 	}
@@ -225,27 +226,34 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		}
 	}
 
-	public int handleNameEnumerator(ContentName p, ArrayList<LinkReference> n) {
+	//public int handleNameEnumerator(ContentName p, ArrayList<LinkReference> n) {
+	public int handleNameEnumerator(ContentName p, ArrayList<ContentName> n) {
 		
 		System.out.println("got a callback!");
 		
 		net.names = n;
 		System.out.println("here are the returned names: ");
-		for(LinkReference l: net.names)
-			System.out.println(l.toString()+" ("+p.toString()+l.toString()+")");
+		//for(LinkReference l: net.names)
+		//	System.out.println(l.toString()+" ("+p.toString()+l.toString()+")");
+		for(ContentName cn: net.names)
+			System.out.println(cn.toString()+" ("+p.toString()+cn.toString()+")");
 		
 		return 0;
 	}
 	
-	public ArrayList<LinkReference> createNameList(){
-		ArrayList<LinkReference> n = new ArrayList<LinkReference>();
+	//public ArrayList<LinkReference> createNameList(){
+	public ArrayList<ContentName> createNameList(){
+		//ArrayList<LinkReference> n = new ArrayList<LinkReference>();
+		ArrayList<ContentName> n = new ArrayList<ContentName>();
 		
 		try{
 			ContentName c1 = ContentName.fromNative("/name1");
 			ContentName c2 = ContentName.fromNative("/name2");
 			
-			n.add(new LinkReference(c1));
-			n.add(new LinkReference(c2));
+			//n.add(new LinkReference(c1));
+			//n.add(new LinkReference(c2));
+			n.add(c1);
+			n.add(c2);
 		}
 		catch(Exception e){
 			e.printStackTrace();
