@@ -1,7 +1,7 @@
 /*
  * ccn_buf_decoder.c
  *  
- * Copyright 2008 Palo Alto Research Center, Inc. All rights reserved.
+ * Copyright 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
  * $Id$
  */
 
@@ -11,9 +11,6 @@
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
 #include <ccn/indexbuf.h>
-
-// XXX - stdio is for temporary debug stuff
-//#include <stdio.h>
 
 struct ccn_buf_decoder *
 ccn_buf_decoder_start(struct ccn_buf_decoder *d,
@@ -432,7 +429,6 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
             return(res);
         interest->offset[CCN_PI_B_LastPrefixComponent] = name.lastcomp;
         interest->offset[CCN_PI_E_LastPrefixComponent] = d->decoder.token_index - 1;
-        //interest->offset[CCN_PI_B_ComponentLast] = name.lastcomp;
         interest->offset[CCN_PI_E_ComponentLast] = d->decoder.token_index - 1;
         interest->offset[CCN_PI_E_Name] = d->decoder.token_index;
         ncomp = name.ncomp;
@@ -589,9 +585,6 @@ ccn_parse_SignedInfo(struct ccn_buf_decoder *d, struct ccn_parsed_ContentObject 
         ccn_parse_required_tagged_BLOB(d, CCN_DTAG_PublisherKeyID, 16, 64);
         x->offset[CCN_PCO_E_PublisherKeyID] = d->decoder.token_index;
         
-        if (x->magic == -1)                                                     // XXX - compat
-            ccn_parse_optional_tagged_UDATA(d, CCN_DTAG_NameComponentCount);    // XXX - compat
-        
         x->offset[CCN_PCO_B_Timestamp] = d->decoder.token_index;
         ccn_parse_required_tagged_timestamp(d, CCN_DTAG_Timestamp);
         x->offset[CCN_PCO_E_Timestamp] = d->decoder.token_index;
@@ -624,8 +617,6 @@ ccn_parse_SignedInfo(struct ccn_buf_decoder *d, struct ccn_parsed_ContentObject 
             ccn_buf_check_close(d);
         }
         x->offset[CCN_PCO_E_KeyLocator] = d->decoder.token_index;
-        if (x->magic == -1)                                                     // XXX - compat
-            ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_ContentDigest, 16, -1);  // XXX - compat
         ccn_buf_check_close(d);
     }
     else
@@ -644,14 +635,12 @@ ccn_parse_ContentObject(const unsigned char *msg, size_t size,
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d = ccn_buf_decoder_start(&decoder, msg, size);
     int res;
-    x->magic = -1;
+    x->magic = 20080711;
     x->digest_bytes = 0;
     if (ccn_buf_match_dtag(d, CCN_DTAG_ContentObject)) {
         struct parsed_Name name;
         ccn_buf_advance(d);
         res = ccn_parse_Signature(d, x);
-        if (res >= 0)
-            x->magic = 20080711;
         x->offset[CCN_PCO_B_Name] = d->decoder.token_index;
         x->offset[CCN_PCO_B_Component0] = d->decoder.index;
         res = ccn_parse_Name(d, &name, components);
@@ -661,12 +650,6 @@ ccn_parse_ContentObject(const unsigned char *msg, size_t size,
         x->offset[CCN_PCO_E_ComponentLast] = d->decoder.token_index - 1;
         x->offset[CCN_PCO_E_Name] = d->decoder.token_index;
         ccn_parse_SignedInfo(d, x);
-        if (x->magic == -1 && ccn_buf_match_dtag(d, CCN_DTAG_Signature)) {      // XXX - compat
-            x->offset[CCN_PCO_B_Signature] = d->decoder.token_index;            // XXX - compat
-            res = ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Signature, 16, -1);// XXX - compat
-            x->magic = 20080630;                                                // XXX - compat
-            x->offset[CCN_PCO_E_Signature] = d->decoder.token_index;            // XXX - compat
-        }                                                                       // XXX - compat
         x->offset[CCN_PCO_B_Content] = d->decoder.token_index;
         ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Content, 0, -1);
         x->offset[CCN_PCO_E_Content] = d->decoder.token_index;
@@ -677,8 +660,6 @@ ccn_parse_ContentObject(const unsigned char *msg, size_t size,
         d->decoder.state = -__LINE__;
     if (d->decoder.index != size || !CCN_FINAL_DSTATE(d->decoder.state))
         return (CCN_DSTATE_ERR_CODING);
-    if (x->magic < 0)
-        return(-1);
     return(0);
 }
 
@@ -747,7 +728,6 @@ ccn_compare_names(const unsigned char *a, size_t asize,
     size_t bcsize;
     int cmp = 0;
     int more_a;
-    // fprintf(stderr, "############\n");
     for (;;) {
         more_a = ccn_buf_match_dtag(aa, CCN_DTAG_Component);
         cmp = more_a - ccn_buf_match_dtag(bb, CCN_DTAG_Component);
@@ -760,7 +740,6 @@ ccn_compare_names(const unsigned char *a, size_t asize,
             ccn_buf_advance(aa);
         if (ccn_buf_match_blob(bb, &bcp, &bcsize))
             ccn_buf_advance(bb);
-        // fprintf(stderr, "%s : %s\n", acp, bcp);
         cmp = acsize - bcsize;
         if (cmp != 0)
             break;
@@ -770,7 +749,6 @@ ccn_compare_names(const unsigned char *a, size_t asize,
         ccn_buf_check_close(aa);
         ccn_buf_check_close(bb);
     }
-    // fprintf(stderr, "ccn_compare_names returning %d\n", cmp);
     return (cmp);
 }
 
