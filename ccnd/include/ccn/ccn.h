@@ -54,7 +54,8 @@ enum ccn_upcall_res {
     CCN_UPCALL_RESULT_ERR = -1,
     CCN_UPCALL_RESULT_OK = 0,
     CCN_UPCALL_RESULT_REEXPRESS = 1,
-    CCN_UPCALL_RESULT_INTEREST_CONSUMED = 2
+    CCN_UPCALL_RESULT_INTEREST_CONSUMED = 2,
+    CCN_UPCALL_RESULT_VERIFY = 3		/* force an unverified result to be verified */
 };
 
 /*
