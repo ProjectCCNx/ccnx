@@ -9,9 +9,8 @@
     </Name>
     <SignedInfo>
       <PublisherKeyID ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherKeyID>
-      <Timestamp>2008-09-10T11:58:32.4Z</Timestamp>
+      <Timestamp ccnbencoding="base64Binary">BIx7ZoZm</Timestamp>
       <Type>DATA</Type>
-      <!-- KeyLocator is optional -->
     </SignedInfo>
     <Content ccnbencoding="base64Binary"/>
   </ContentObject>
@@ -24,7 +23,7 @@
     </Name>
     <SignedInfo>
       <PublisherKeyID ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherKeyID>
-      <Timestamp>2008-02-11T16:58:35.432Z</Timestamp>
+      <Timestamp ccnbencoding="base64Binary">BHsH67bp</Timestamp>
       <Type>DATA</Type>
       <FreshnessSeconds>42</FreshnessSeconds>
       <KeyLocator>

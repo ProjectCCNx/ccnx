@@ -8,7 +8,7 @@
   </Name>
   <SignedInfo>
     <PublisherKeyID ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherKeyID>
-    <Timestamp>2008-07-11T16:58:35.432Z</Timestamp>
+    <Timestamp ccnbencoding="base64Binary">BId5E7bp</Timestamp>
     <Type>DATA</Type>
     <KeyLocator>
       <KeyName>

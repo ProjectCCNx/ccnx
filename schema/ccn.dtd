@@ -89,9 +89,14 @@
 <!ATTLIST PublisherKeyID ccnbencoding CDATA #FIXED 'base64Binary'>
 
 <!ELEMENT NameComponentCount (#PCDATA)> <!-- nonNegativeInteger -->
+
 <!ELEMENT AdditionalNameComponents (#PCDATA)> <!-- nonNegativeInteger -->
-<!ELEMENT Timestamp	(#PCDATA)>	<!-- dateTime -->
+
+<!ELEMENT Timestamp	(#PCDATA)>	<!-- binary, 12 bit fraction -->
+<!ATTLIST Timestamp	ccnbencoding CDATA #FIXED 'base64Binary'>
+
 <!ELEMENT FreshnessSeconds (#PCDATA)>	<!-- nonNegativeInteger -->
+
 <!ELEMENT Type		(#PCDATA)>	<!-- DATA, LINK, COLLECTION, SESSION, HEADER, KEY -->
 
 <!ELEMENT ContentDigest	(#PCDATA)>	<!-- base64 encoding of DER-encoded DigestInfo -->

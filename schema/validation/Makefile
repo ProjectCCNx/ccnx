@@ -63,7 +63,7 @@ ccn-bad06.xml: ccn-test06.xml
 	sed -e '/PublisherID type/s/ISSUER_KEY/ISSUER_KEYS/' $? > $@
 
 ccn-schemabad10.xml: ccn-test10.xml
-	sed -e '/Timestamp/s/11T16/11 16/' $? > $@
+	sed -e '/Timestamp/s/BHsH/+B+A+D+T/' $? > $@
 
 ccn-bad11.xml: ccn-test11.xml
 	sed -e 's/<\/Bloom>/<\/Bloom><Bloom\/>/' $? > $@

@@ -22,7 +22,8 @@ ccn-schemabad02.xml fails to validate
 ccn-schemabad04.xml:8: element NameComponentCount: Schemas validity error : Element 'NameComponentCount': 'E' is not a valid value of the atomic type 'xs:nonNegativeInteger'.
 ccn-schemabad04.xml fails to validate
 ./shouldfail xmllint --noout --schema ccn.xsd ccn-schemabad10.xml
-ccn-schemabad10.xml:12: element Timestamp: Schemas validity error : Element 'Timestamp': '2008-02-11 16:58:35.432Z' is not a valid value of the atomic type 'xs:dateTime'.
+ccn-schemabad10.xml:12: element Timestamp: Schemas validity error : Element 'Timestamp': [facet 'length'] The value has a length of '9'; this differs from the allowed length of '6'.
+ccn-schemabad10.xml:12: element Timestamp: Schemas validity error : Element 'Timestamp': '+B+A+D+T67bp' is not a valid value of the atomic type 'BinaryTime12'.
 ccn-schemabad10.xml fails to validate
 ./shouldfail xmllint --noout --dtdvalid ccn.dtd ccn-bad01.xml
 ccn-bad01.xml:1: parser error : Start tag expected, '<' not found

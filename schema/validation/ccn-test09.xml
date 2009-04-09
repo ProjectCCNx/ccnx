@@ -4,16 +4,12 @@
     <SignatureBits ccnbencoding="base64Binary">FakeBits</SignatureBits>
   </Signature>
   <Name>
-    <Component ccnbencoding="base64Binary">dmdxO6LZm7UUoUdyt6EG3KrnkNJkjdaayBppbvfD
-        </Component>
-    <Component ccnbencoding="base64Binary">ZG1keE82TFptN1VVb1VkeXQ2RUczS3Jua05Ka2pkYWF5QnBwYnZmRA==
-        </Component>
+    <Component ccnbencoding="base64Binary">dmdxO6LZm7UUoUdyt6EG3KrnkNJkjdaayBppbvfD</Component>
+    <Component ccnbencoding="base64Binary">ZG1keE82TFptN1VVb1VkeXQ2RUczS3Jua05Ka2pkYWF5QnBwYnZmRA==</Component>
   </Name>
   <SignedInfo>
-    <PublisherKeyID ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=
-        </PublisherKeyID>
-    <Timestamp>2008-07-11T15:19:40.42Z</Timestamp>
-    <!-- Type is optional (DATA) -->
+    <PublisherKeyID ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherKeyID>
+    <Timestamp ccnbencoding="base64Binary">BId3oMa4</Timestamp>
     <KeyLocator>
       <Key ccnbencoding="base64Binary">MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAIS1Wt50GDXWhk2j/gflHoJh6UgZ+I1W5Jx4xVZM3lP6jFbWu+wcEios+KpjrQnFwqGNPH+TyKWH/DLHo5X1L0sCAwEAAQ==</Key>
     </KeyLocator>
