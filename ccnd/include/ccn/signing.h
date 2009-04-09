@@ -20,6 +20,6 @@ int ccn_sigc_update(struct ccn_sigc *ctx, const void *data, size_t size);
 int ccn_sigc_final(struct ccn_sigc *ctx, const void *signature, size_t *size, const void *priv_key);
 size_t ccn_sigc_signature_max_size(struct ccn_sigc *ctx, const void *priv_key);
 int ccn_verify_signature(const unsigned char *msg, size_t size, struct ccn_parsed_ContentObject *co,
-                         struct ccn_indexbuf *comps, const void *verification_pubkey);
+                         const void *verification_pubkey);
 
 #endif

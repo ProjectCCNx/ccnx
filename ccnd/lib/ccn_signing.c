@@ -150,7 +150,7 @@ int ccn_merkle_root_hash(const unsigned char *msg, size_t size,
 int ccn_verify_signature(const unsigned char *msg,
                      size_t size,
                      struct ccn_parsed_ContentObject *co,
-                     struct ccn_indexbuf *comps, const void *verification_pubkey)
+                     const void *verification_pubkey)
 {
     EVP_MD_CTX verc;
     EVP_MD_CTX *ver_ctx = &verc;
