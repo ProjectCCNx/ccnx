@@ -298,7 +298,7 @@
 	</target>
 	
 	<!-- Requires remote repo running -->
-	<target name="test-remote-repo" depends="jar, ccnd">
+	<target name="test-remote-repo" depends="jar">
 		<mkdir dir="${testout}"/>
 			<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
 				<classpath>
