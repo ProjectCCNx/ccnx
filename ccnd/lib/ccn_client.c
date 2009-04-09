@@ -19,6 +19,7 @@
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
 #include <ccn/hashtb.h>
+#include <ccn/signing.h>
 
 struct ccn {
     int sock;
@@ -32,6 +33,7 @@ struct ccn {
     struct ccn_closure *default_interest_action;
     struct ccn_skeleton_decoder decoder;
     struct ccn_indexbuf *scratch_indexbuf;
+    struct hashtb *keys;	/* KEYS */
     struct timeval now;
     int timeout;
     int refresh_us;
@@ -312,6 +314,13 @@ ccn_destroy(struct ccn **hp)
         hashtb_end(e);
         hashtb_destroy(&(h->interest_filters));
     }
+    if (h->keys != NULL) {	/* KEYS */
+        for (hashtb_start(h->keys, e); e->data != NULL; hashtb_next(e)) {
+            free(e->data);
+        }
+        hashtb_end(e);
+        hashtb_destroy(&(h->keys));
+    }
     ccn_charbuf_destroy(&h->interestbuf);
     ccn_indexbuf_destroy(&h->scratch_indexbuf);
     if (h->tap != -1) {
@@ -591,6 +600,16 @@ ccn_refresh_interest(struct ccn *h, struct expressed_interest *interest)
     }
 }
 
+static int
+ccn_locate_key(struct ccn *h,
+               unsigned char *msg,
+               size_t size,
+               struct ccn_parsed_ContentObject *pco,
+               void **pubkey)
+{
+    return (-1);
+}
+
 static void
 ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
 {
@@ -660,18 +679,29 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                                                                  interest->interest_msg,
                                                                  interest->size,
                                                                  info.pi)) {
+                                    enum ccn_upcall_kind upcall_kind; /* KEYS */
+                                    void *pubkey = NULL;
+                                    res = ccn_locate_key(h, msg, size, info.pco, &pubkey);
+                                    if (res >= 0) {	/* we have the pubkey, use it to verify the msg */
+                                        res = ccn_verify_signature(msg, size, info.pco, pubkey);
+                                        upcall_kind = (res == 1) ? CCN_UPCALL_CONTENT : CCN_UPCALL_CONTENT_BAD;
+                                    } else {
+                                        upcall_kind = CCN_UPCALL_CONTENT;    /* KEYS: must be CCN_UPCALL_CONTENT_UNVERIFIED */
+                                    }
                                     interest->outstanding -= 1;
                                     info.interest_ccnb = interest->interest_msg;
                                     info.matched_comps = i;
                                     ures = (interest->action->p)(interest->action,
-                                                                 CCN_UPCALL_CONTENT,
+                                                                 upcall_kind,
                                                                  &info);
                                     if (interest->magic != 0x7059e5f4) {
                                         ccn_gripe(interest);
                                     }
                                     if (ures == CCN_UPCALL_RESULT_REEXPRESS)
                                         ccn_refresh_interest(h, interest);
-                                    else {
+                                    else if (ures == CCN_UPCALL_RESULT_VERIFY) { /* KEYS */
+                                        /* XXX - what do we really need to do here... */
+                                    } else {
                                         interest->target = 0;
                                         replace_interest_msg(interest, NULL);
                                         ccn_replace_handler(h, &(interest->action), NULL);
@@ -683,10 +713,19 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                 }
             }
             if (h->default_content_action != NULL) {
+                enum ccn_upcall_kind upcall_kind; /* KEYS */
+                void *pubkey = NULL;
+                res = ccn_locate_key(h, msg, size, info.pco, &pubkey);
+                if (res >= 0) {	/* we have the pubkey, use it to verify the msg */
+                    res = ccn_verify_signature(msg, size, info.pco, pubkey);
+                    upcall_kind = (res == 1) ? CCN_UPCALL_CONTENT : CCN_UPCALL_CONTENT_BAD;
+                } else {
+                    upcall_kind = CCN_UPCALL_CONTENT;    /* KEYS: must be CCN_UPCALL_CONTENT_UNVERIFIED */
+                }
                 info.matched_comps = 0;
                 (h->default_content_action->p)(
                     h->default_content_action,
-                    CCN_UPCALL_CONTENT,
+                    upcall_kind,
                     &info);
             }
         }
@@ -1024,3 +1063,4 @@ ccn_get(struct ccn *h,
         ccn_destroy(&h);
     return(res);
 }
+
