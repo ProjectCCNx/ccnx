@@ -296,6 +296,25 @@
 		<antcall target="stop-repo" />
 		<delete dir="${REPO_ROOT}" />
 	</target>
+	
+	<!-- Requires remote repo running -->
+	<target name="test-remote-repo" depends="jar, ccnd">
+		<mkdir dir="${testout}"/>
+			<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
+				<classpath>
+					<path refid="classpath-run"/>
+				</classpath>
+				<formatter type="brief" usefile="true"/>
+				<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+				<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
+				<batchtest todir="${testout}">
+					<fileset dir="${build}">
+						<include name="test/ccn/network/daemons/repo/RepoIOTest.class"/>
+					</fileset>
+				</batchtest>
+			</junit>
+	</target>
+
 
 	<target name="test-puttap" depends="jar, ccnd">
 		<!-- Note that puttap forces writes of encoded messages to a tap
