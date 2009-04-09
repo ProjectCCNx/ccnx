@@ -118,7 +118,7 @@ main(int argc, char **argv)
            if (ccn_buf_match_dtag(d, CCN_DTAG_Key)) fprintf(stderr, "Key] ");
         }
 
-        res = ccn_verify_signature(rawbuf, size, co, comps, verification_pubkey);
+        res = ccn_verify_signature(rawbuf, size, co, verification_pubkey);
         
         if (res != 1) {
             fprintf(stderr, "Signature failed to verify\n");
