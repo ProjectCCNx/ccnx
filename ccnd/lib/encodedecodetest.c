@@ -115,7 +115,7 @@ decode_message(struct ccn_charbuf *message, struct path * name_path, char *data,
 	res = -1;
     }
 
-    if (ccn_verify_signature(message->buf, message->length, &content, comps, verkey) != 1) {
+    if (ccn_verify_signature(message->buf, message->length, &content, verkey) != 1) {
         printf("Signature did not verify\n");
         res = -1;
     }
