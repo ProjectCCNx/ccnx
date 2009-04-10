@@ -214,6 +214,7 @@
 
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
+					<exclude name="test/ccn/library/NameEnumeratorTest.class"/>
 					<include name="test/ccn/library/*Test.class"/>
 				</fileset>
 			</batchtest>
