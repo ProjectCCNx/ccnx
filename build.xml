@@ -10,6 +10,12 @@
            <arg file="Java_CCN/com/parc/ccn/data/util/tagname.csvdict"/>
        </exec>
 
+        <exec executable="configure" resolveExecutable="true" failonerror="true" dir="ccnd">
+        </exec>
+        <exec executable="make" failonerror="true" dir="ccnd">
+            <arg value="all"/>
+        </exec>
+
         <subant failonerror="true"
                 verbose="true">
             <!-- as the order of building matters, use a file list -->
@@ -20,12 +26,19 @@
     </target>
 
     <target name="clean">
+        <exec executable="make" failonerror="true" dir="ccnd">
+            <arg value="clean"/>
+        </exec>
+
         <subant target="clean" failonerror="true">
             <fileset dir="." includes="*/build.xml"/>
         </subant>
     </target>
 
     <target name="test">
+        <exec executable="make" failonerror="true" dir="ccnd">
+            <arg value="test"/>
+        </exec>
         <subant target="test" failonerror="true" verbose="true">
             <fileset dir="." includes="*/build.xml"/>
         </subant>
