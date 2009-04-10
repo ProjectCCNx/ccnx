@@ -572,7 +572,10 @@ main (int argc, char * const argv[]) {
             memset(rd, 0, sizeof(*rd));
             dres = ccn_skeleton_decode(rd, rbuf, recvlen + CCN_EMPTY_PDU_LENGTH);
             if (rd->state != 0 || dres != (recvlen + CCN_EMPTY_PDU_LENGTH)) {
-                udplink_note("remote data protocol error\n");
+                if (recvlen == 1)
+                    udplink_note("remote data protocol error (1 byte recv): likely heartbeat from app sending to wrong port\n");
+                else
+                    udplink_note("remote data protocol error\n");
                 continue;
             }
 
