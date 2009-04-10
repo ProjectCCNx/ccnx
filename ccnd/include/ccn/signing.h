@@ -21,5 +21,7 @@ int ccn_sigc_final(struct ccn_sigc *ctx, const void *signature, size_t *size, co
 size_t ccn_sigc_signature_max_size(struct ccn_sigc *ctx, const void *priv_key);
 int ccn_verify_signature(const unsigned char *msg, size_t size, struct ccn_parsed_ContentObject *co,
                          const void *verification_pubkey);
+void *ccn_d2i_pubkey(const unsigned char *p, size_t size);
+size_t ccn_pubkey_size(void *pubkey);
 
 #endif

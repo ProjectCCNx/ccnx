@@ -262,3 +262,17 @@ int ccn_verify_signature(const unsigned char *msg,
     else
         return (0);
 }
+
+void *
+ccn_d2i_pubkey(const unsigned char *p, size_t size)
+{
+    const unsigned char **pp = &p;
+    return d2i_PUBKEY(NULL, pp, size);
+}
+
+size_t
+ccn_pubkey_size(void *pubkey)
+{
+    return (EVP_PKEY_size(pubkey));
+}
+
