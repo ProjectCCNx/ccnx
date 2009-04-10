@@ -47,7 +47,7 @@ public class RemoteRepoIOGetTest extends RepoTestBase {
 	
 	private ContentObject checkContent(ContentName contentName, boolean expected) throws Exception {
 		Interest interest = new Interest(contentName);
-		ContentObject co = getLibrary.get(interest, 10000);
+		ContentObject co = getLibrary.get(interest, 20000);
 		if (expected)
 			Assert.assertTrue(co != null);
 		else
