@@ -6,8 +6,7 @@ This is not XML.
 ccn-bad02.xml:1: element a: Schemas validity error : Element 'a': No matching global declaration available for the validation root.
 ccn-bad02.xml fails to validate
 ./shouldfail xmllint --noout --schema ccn.xsd ccn-bad06.xml
-ccn-bad06.xml:4: element PublisherID: Schemas validity error : Element 'PublisherID', attribute 'type': [facet 'enumeration'] The value 'ISSUER_KEYS' is not an element of the set {'KEY', 'CERTIFICATE', 'ISSUER_KEY', 'ISSUER_CERTIFICATE'}.
-ccn-bad06.xml:4: element PublisherID: Schemas validity error : Element 'PublisherID', attribute 'type': 'ISSUER_KEYS' is not a valid value of the atomic type 'PublisherTypeType'.
+ccn-bad06.xml:4: element SpublisherIssuerKeyDigest: Schemas validity error : Element 'SpublisherIssuerKeyDigest': This element is not expected. Expected is one of ( NameComponentCount, AdditionalNameComponents, PublisherPublicKeyDigest, PublisherCertificateDigest, PublisherIssuerKeyDigest, PublisherIssuerCertificateDigest, Exclude, OrderPreference, AnswerOriginKind, Scope ).
 ccn-bad06.xml fails to validate
 ./shouldfail xmllint --noout --schema ccn.xsd ccn-bad11.xml
 ccn-bad11.xml:5: element Bloom: Schemas validity error : Element 'Bloom': This element is not expected. Expected is ( Component ).
@@ -39,7 +38,9 @@ This is not XML.
 ccn-bad02.xml:1: element a: validity error : No declaration for element a
 Document ccn-bad02.xml does not validate against ccn.dtd
 ./shouldfail xmllint --noout --dtdvalid ccn.dtd ccn-bad06.xml
-ccn-bad06.xml:4: element PublisherID: validity error : Value "ISSUER_KEYS" for attribute type of PublisherID is not among the enumerated set
+ccn-bad06.xml:2: element Interest: validity error : Element Interest content does not follow the DTD, expecting (Name , NameComponentCount? , AdditionalNameComponents? , (PublisherPublicKeyDigest | PublisherCertificateDigest | PublisherIssuerKeyDigest | PublisherIssuerCertificateDigest)? , Exclude? , OrderPreference? , AnswerOriginKind? , Scope? , Count? , Nonce? , ExperimentalResponseFilter?), got (Name SpublisherIssuerKeyDigest OrderPreference )
+ccn-bad06.xml:4: element SpublisherIssuerKeyDigest: validity error : No declaration for element SpublisherIssuerKeyDigest
+ccn-bad06.xml:4: element SpublisherIssuerKeyDigest: validity error : No declaration for attribute ccnbencoding of element SpublisherIssuerKeyDigest
 Document ccn-bad06.xml does not validate against ccn.dtd
 ./shouldfail xmllint --noout --dtdvalid ccn.dtd ccn-bad11.xml
 ccn-bad11.xml:4: element Exclude: validity error : Element Exclude content does not follow the DTD, expecting (Bloom? , (Component , Bloom?)*), got (Bloom Bloom )

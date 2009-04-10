@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <Interest>
   <Name/>
-  <PublisherID type="ISSUER_KEY" ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherID>
+  <PublisherIssuerKeyDigest ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherIssuerKeyDigest>
   <OrderPreference>4</OrderPreference>
 </Interest>

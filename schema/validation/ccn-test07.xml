@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <Interest>
   <Name/>
-  <PublisherID type="ISSUER_CERTIFICATE" ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherID>
+  <PublisherIssuerCertificateDigest ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherIssuerCertificateDigest>
   <OrderPreference>4</OrderPreference>
 </Interest>

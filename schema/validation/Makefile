@@ -72,7 +72,7 @@ ccn-schemabad04.xml: ccn-test04.xml
 
 check: ccn-bad06.xml
 ccn-bad06.xml: ccn-test06.xml
-	sed -e '/PublisherID type/s/ISSUER_KEY/ISSUER_KEYS/' $? > $@
+	sed -e 's/Publisher/Spublisher/g' $? > $@
 
 check: ccn-schemabad10.xml
 ccn-schemabad10.xml: ccn-test10.xml

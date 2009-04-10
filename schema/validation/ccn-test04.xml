@@ -7,7 +7,7 @@
   </Name>
   <NameComponentCount>1</NameComponentCount>
   <AdditionalNameComponents>0</AdditionalNameComponents>
-  <PublisherID type="KEY" ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherID>
+  <PublisherPublicKeyDigest ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherPublicKeyDigest>
   <OrderPreference>4</OrderPreference>
   <AnswerOriginKind>3</AnswerOriginKind>
   <Scope>1</Scope>
