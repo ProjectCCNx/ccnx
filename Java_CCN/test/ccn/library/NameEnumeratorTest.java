@@ -129,7 +129,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		
 		int attempts = 0;
 		try{
-			while(net.names==null && attempts < 50){
+			while(net.names==null && attempts < 500){
 				Thread.sleep(rand.nextInt(50));
 				attempts++;
 			}
@@ -149,11 +149,56 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 			//Assert.assertTrue(lr.targetName().toString().equals("/name1") || lr.targetName().toString().equals("/name2"));
 			System.out.println("got name: "+cn.toString());
 			Assert.assertTrue(cn.toString().equals("/name1") || cn.toString().equals("/name2"));
-			
 		}
 		
 	}
 	
+	@Test
+	public void testGetCallbackNoResponse(){
+		Assert.assertNotNull(putLibrary);
+		Assert.assertNotNull(getLibrary);
+		Assert.assertNotNull(getne);
+		
+		
+		net.names = null;
+		ContentName p1 = null;
+		
+		try{
+			p1 = ContentName.fromNative(prefix1String+"NoNames");
+		}
+		catch(Exception e){
+			Assert.fail("Could not create ContentName from "+prefix1String+"NoNames");
+		}
+		
+		System.out.println("registering prefix: "+p1.toString());
+		
+		try{
+			getne.registerPrefix(p1);
+		}
+		catch(IOException e){
+			System.err.println("error registering prefix");
+			e.printStackTrace();
+			Assert.fail();
+		}
+	
+		
+		int attempts = 0;
+		try{
+			while(net.names==null && attempts < 50){
+				Thread.sleep(rand.nextInt(50));
+				attempts++;
+			}
+			//we either broke out of loop or the names are here
+			System.out.println("done waiting for results to arrive");
+			Assert.assertNull(net.names);
+			getne.cancelPrefix(p1);
+		}
+		catch(InterruptedException e){
+			System.err.println("error waiting for names to be registered by name enumeration responder");
+			Assert.fail();
+		}
+		
+	}
 	
 		
 	@Test

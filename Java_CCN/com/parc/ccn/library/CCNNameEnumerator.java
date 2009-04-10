@@ -46,6 +46,9 @@ import com.parc.ccn.library.profiles.VersioningProfile;
 
 public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener{
 
+	public static final byte NAME_ENUMERATION_MARKER = (byte)0xFE;
+	public static final byte [] NEMARKER = new byte []{NAME_ENUMERATION_MARKER};
+	
 	protected CCNLibrary _library = null;
 	protected ArrayList<ContentName> _registeredPrefixes = new ArrayList<ContentName>();
 	protected BasicNameEnumeratorListener callback; 
@@ -70,15 +73,20 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			System.out.println("Registered Prefix");
 			System.out.println("creating Interest");
 			
-			Interest pi = new Interest(prefix);
+			ContentName prefixMarked = new ContentName(prefix, NEMARKER);
+			
+			Interest pi = new Interest(prefixMarked);
 			_library.expressInterest(pi, this);
-			System.out.println("expressed Interest");
-
+			
+			System.out.println("expressed Interest: "+prefixMarked.toString());
 		}
 	}
 	
 	
 	public boolean cancelPrefix(ContentName prefix){
+		//need to cancel the behind the scenes interests and remove from the local ArrayList
+		
+		//_library.cancelInterest(interest, this);
 		return _registeredPrefixes.remove(prefix);
 	}
 	
@@ -96,10 +104,22 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 	public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
 		
 		System.out.println("we recieved a Collection matching our prefix...");
+		
+		if(interest.name().contains(NEMARKER)){
+			//the NEMarker is in the name...  good!
+		}
+		else{
+			//NEMARKER missing...  we have a problem
+			System.err.println("the name enumeration marker is missing...  shouldn't have gotten this callback");
+			_library.cancelInterest(interest, this);
+			return null;
+		}
 		Collection collection;
 		ArrayList<ContentName> names = new ArrayList<ContentName>();
 		ArrayList<LinkReference> links;
 		ContentName responseName = null;
+		
+		
 		if(results!=null){
 			for(ContentObject c: results){
 				System.out.println("we have a match on "+interest.name());
@@ -111,8 +131,8 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 						names.add(l.targetName());
 						System.out.println("names: "+l.targetName());
 					}
-					//callback.handleNameEnumerator(interest.name(), Collection.contentToCollection(c).contents());
-					callback.handleNameEnumerator(interest.name(), names);
+					//strip off NEMarker before passing through callback
+					callback.handleNameEnumerator(interest.name().cut(NEMARKER), names);
 				}
 				catch(XMLStreamException e){
 					e.printStackTrace();
@@ -124,11 +144,11 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 		if(responseName!=null){
 			//TODO modify interest to exclude the current version?  use getNext?
 			newInterest = Interest.last(responseName);
-			//newInterest.orderPreference(newInterest.nameComponentCount()-2);
+			newInterest.orderPreference(newInterest.name().count()-1);
 			//interest.
-			System.out.println("new interest name: "+newInterest.name()+" total components: "+newInterest.nameComponentCount());
+			System.out.println("new interest name: "+newInterest.name()+" total components: "+newInterest.name().count());
 			try{
-			System.out.println("version: "+VersioningProfile.getVersionAsTimestamp(responseName));
+				System.out.println("version: "+VersioningProfile.getVersionAsTimestamp(responseName));
 			}
 			catch(Exception e){}
 		}
@@ -137,18 +157,22 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 	
 	// temporary workaround to test the callback without actually processing ContentObjects
 	
-	//public int handleContent(ArrayList<LinkReference> results, ContentName p) {
 	public int handleContent(ArrayList<ContentName> results, ContentName p) {
 		
 		System.out.println("we recieved content matching our prefix...");
-
-		System.out.println("we have a match on "+p.toString());
-		if(_registeredPrefixes.contains(p)){
-			
-			callback.handleNameEnumerator(p, results);
-			
-		}
 		
+		//Need to make sure the response has the NEMarker in it
+		if(!p.contains(NEMARKER)){
+			System.err.println("something is wrong...  we should have had the Name Enumeration Marker in the name");
+		}
+		else{
+			System.out.println("we have a match on "+p.toString()+" and the NEMarker is in there!");
+			if(_registeredPrefixes.contains(p)){
+			
+				callback.handleNameEnumerator(p, results);
+			
+			}
+		}
 		return results.size();
 	}
 	
@@ -156,38 +180,52 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 	public int handleInterests(ArrayList<Interest> interests) {
 		System.out.println("Received Interests matching my filter!");
 		
-		//ArrayList<LinkReference> names = new ArrayList<LinkReference>();
 		ContentName collectionName = null;
 		LinkReference match;
 		CollectionData cd;
 				
-		//TODO add check for NameEnumeration marker
+		//TODO check for version...  not really needed when new Collection type is integrated...
+			//alternative...  check if dirty and write out now if it is...  
+		//Verify NameEnumeration Marker is in the name
+		int markerIndex = -1;
+		ContentName name = null;
+		
 		for(Interest i: interests){
-			System.out.println("processing interest: "+i.name().toString());
+			name = i.name().clone();
+			System.out.println("processing interest: "+name.toString());
 			collectionName = i.name().clone();
 			cd = new CollectionData();
-			//names.clear();
-			for(ContentName n: _registeredNames){
-				System.out.println("checking registered name: "+n.toString());
-				if(i.name().isPrefixOf(n)){
-					ContentName tempName = n.clone();
-					System.out.println("we have a match! ("+tempName.toString()+")");
-					System.out.println("prefix size "+i.name().count()+" registered name size "+n.count());
-					byte[] tn = n.component(i.name().count());
-					byte[][] na = new byte[1][tn.length];
-					na[0] = tn;
-					tempName = new ContentName(na);
-					match = new LinkReference(tempName);
-					//names.add(match);
-					if(!cd.contents().contains(match)){
-						cd.add(match);
-						System.out.println("added name to response: "+tempName);
+			//Verify NameEnumeration Marker is in the name
+			if(!name.contains(NEMARKER)){
+				//Skip...  we don't handle these
+			}
+			else{
+				System.out.println("this interest contains the NE marker!");
+				name = name.cut(NEMARKER);
+
+				for(ContentName n: _registeredNames){
+					System.out.println("checking registered name: "+n.toString());
+					if(name.isPrefixOf(n)){
+						ContentName tempName = n.clone();
+						System.out.println("we have a match! ("+tempName.toString()+")");
+						System.out.println("prefix size "+name.count()+" registered name size "+n.count());
+						byte[] tn = n.component(name.count());
+						byte[][] na = new byte[1][tn.length];
+						na[0] = tn;
+						tempName = new ContentName(na);
+						match = new LinkReference(tempName);
+						//names.add(match);
+						if(!cd.contents().contains(match)){
+							cd.add(match);
+							System.out.println("added name to response: "+tempName);
+						}
 					}
 				}
 			}
 			
 			if(cd.size()>0){
 				System.out.println("we have a response to send back for "+i.name().toString());
+				System.out.println("Collection Name: "+collectionName.toString());
 				try{
 					
 					//the following 6 lines are to be deleted after Collections are refactored
@@ -213,6 +251,10 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
+			}
+			else{
+				System.out.println("this interest did not have any matching names...  not returning anything.");
+				
 			}
 			
 		}
