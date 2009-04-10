@@ -39,3 +39,5 @@ ccnd/lib/signbenchtest
 ccnd/lib/skel_decode_test
 ccnd/lib/smoketestclientlib
 ccnd/udplink/udplink
+*~
+*.jar
