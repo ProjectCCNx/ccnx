@@ -48,3 +48,5 @@ tar:	ccnd.tar
 ccnd.tar: MANIFEST
 	tar cf ccnd.tar -T MANIFEST
 	mv MANIFEST 00MANIFEST
+
+.PHONY: test
