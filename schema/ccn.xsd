@@ -268,15 +268,20 @@
   </xs:restriction>
 </xs:simpleType>
 
-<!-- enum -->
-<xs:simpleType name="ContentType">
-  <xs:restriction base="xs:string">
+<xs:complexType name="ContentType">
+  <xs:simpleContent>
+    <xs:extension base="ContentTypeType">
+      <xs:attribute name="ccnbencoding" type="xs:string" fixed="base64Binary"/>
+    </xs:extension>
+  </xs:simpleContent>
+</xs:complexType>
+
+<xs:simpleType name="ContentTypeType">
+  <xs:restriction base="xs:base64Binary">
+    <xs:length value="3" fixed="true"/>
     <xs:enumeration value="DATA"/>
     <xs:enumeration value="LINK"/>
-    <xs:enumeration value="COLLECTION"/>
-    <xs:enumeration value="SESSION"/>
-    <xs:enumeration value="HEADER"/>
-    <xs:enumeration value="KEY"/>
+    <xs:enumeration value="KEY="/>
   </xs:restriction>
 </xs:simpleType>
 

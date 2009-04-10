@@ -16,7 +16,6 @@
   <SignedInfo>
     <PublisherKeyID ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherKeyID>
     <Timestamp ccnbencoding="base64Binary">BHsH3Mq8</Timestamp>
-    <Type>DATA</Type>
     <KeyLocator>
       <KeyName>
         <Name>

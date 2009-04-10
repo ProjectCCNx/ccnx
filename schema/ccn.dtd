@@ -97,7 +97,8 @@
 
 <!ELEMENT FreshnessSeconds (#PCDATA)>	<!-- nonNegativeInteger -->
 
-<!ELEMENT Type		(#PCDATA)>	<!-- DATA, LINK, COLLECTION, SESSION, HEADER, KEY -->
+<!ELEMENT Type		(#PCDATA)>	<!-- DATA, LINK, KEY= -->
+<!ATTLIST Type          ccnbencoding CDATA #FIXED 'base64Binary'>
 
 <!ELEMENT ContentDigest	(#PCDATA)>	<!-- base64 encoding of DER-encoded DigestInfo -->
 <!ATTLIST ContentDigest ccnbencoding CDATA #FIXED 'base64Binary'>

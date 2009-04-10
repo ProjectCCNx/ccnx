@@ -25,6 +25,12 @@ ccn-schemabad04.xml fails to validate
 ccn-schemabad10.xml:12: element Timestamp: Schemas validity error : Element 'Timestamp': [facet 'length'] The value has a length of '9'; this differs from the allowed length of '6'.
 ccn-schemabad10.xml:12: element Timestamp: Schemas validity error : Element 'Timestamp': '+B+A+D+T67bp' is not a valid value of the atomic type 'BinaryTime12'.
 ccn-schemabad10.xml fails to validate
+./shouldfail xmllint --noout --schema ccn.xsd ccn-schemabad12.xml
+ccn-schemabad12.xml:13: element Type: Schemas validity error : Element 'Type': [facet 'enumeration'] The value 'FUZZ' is not an element of the set {'DATA', 'LINK', 'KEY='}.
+ccn-schemabad12.xml:13: element Type: Schemas validity error : Element 'Type': 'FUZZ' is not a valid value of the atomic type 'ContentTypeType'.
+ccn-schemabad12.xml:27: element Type: Schemas validity error : Element 'Type': [facet 'enumeration'] The value 'FUZZ' is not an element of the set {'DATA', 'LINK', 'KEY='}.
+ccn-schemabad12.xml:27: element Type: Schemas validity error : Element 'Type': 'FUZZ' is not a valid value of the atomic type 'ContentTypeType'.
+ccn-schemabad12.xml fails to validate
 ./shouldfail xmllint --noout --dtdvalid ccn.dtd ccn-bad01.xml
 ccn-bad01.xml:1: parser error : Start tag expected, '<' not found
 This is not XML.
