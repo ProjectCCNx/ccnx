@@ -5,6 +5,11 @@
 <!ENTITY % commonattrs
 	"xmlns %URI; #FIXED 'http://www.parc.com/ccn'">
 
+<!ENTITY % publisherid "PublisherPublicKeyDigest        |
+                        PublisherCertificateDigest      |
+                        PublisherIssuerKeyDigest        |
+                        PublisherIssuerCertificateDigest">
+
 <!ELEMENT CCNProtocolDataUnit	((ContentObject | Interest)*)>
 <!ATTLIST CCNProtocolDataUnit	%commonattrs;>
 
@@ -20,7 +25,7 @@
 <!ELEMENT CompleteName	(Name, SignedInfo, Signature)>
 <!ATTLIST CompleteName	%commonattrs;>
 
-<!ELEMENT LinkAuthenticator (PublisherID?, NameComponentCount?, Timestamp?, Type?, ContentDigest?)>
+<!ELEMENT LinkAuthenticator ((%publisherid;)?, NameComponentCount?, Timestamp?, Type?, ContentDigest?)>
 <!ATTLIST LinkAuthenticator %commonattrs;>
 
 <!ELEMENT Header	(Start, Count, BlockSize, Length, RootDigest, ContentDigest?)>
@@ -53,7 +58,7 @@
 <!ELEMENT Interest	(Name,
                          NameComponentCount?,
                          AdditionalNameComponents?,
-                         PublisherID?,
+                         (%publisherid;)?,
                          Exclude?,
                          OrderPreference?,
                          AnswerOriginKind?,
@@ -63,10 +68,21 @@
                          ExperimentalResponseFilter?)>
 <!ATTLIST Interest	%commonattrs;>
 
-<!ELEMENT PublisherID	(#PCDATA)>	<!-- base64Binary SHA-256 digest -->
-<!ATTLIST PublisherID   ccnbencoding CDATA #FIXED 'base64Binary'>
-<!ATTLIST PublisherID	type (KEY|CERTIFICATE|ISSUER_KEY|ISSUER_CERTIFICATE) #REQUIRED>
-<!ATTLIST PublisherID	%commonattrs;>
+<!ELEMENT PublisherPublicKeyDigest	(#PCDATA)>	<!-- base64Binary SHA-256 digest -->
+<!ATTLIST PublisherPublicKeyDigest   ccnbencoding CDATA #FIXED 'base64Binary'>
+<!ATTLIST PublisherPublicKeyDigest	%commonattrs;>
+
+<!ELEMENT PublisherCertificateDigest	(#PCDATA)>	<!-- base64Binary SHA-256 digest -->
+<!ATTLIST PublisherCertificateDigest   ccnbencoding CDATA #FIXED 'base64Binary'>
+<!ATTLIST PublisherCertificateDigest	%commonattrs;>
+
+<!ELEMENT PublisherIssuerKeyDigest	(#PCDATA)>	<!-- base64Binary SHA-256 digest -->
+<!ATTLIST PublisherIssuerKeyDigest   ccnbencoding CDATA #FIXED 'base64Binary'>
+<!ATTLIST PublisherIssuerKeyDigest	%commonattrs;>
+
+<!ELEMENT PublisherIssuerCertificateDigest	(#PCDATA)>	<!-- base64Binary SHA-256 digest -->
+<!ATTLIST PublisherIssuerCertificateDigest   ccnbencoding CDATA #FIXED 'base64Binary'>
+<!ATTLIST PublisherIssuerCertificateDigest	%commonattrs;>
 
 <!ELEMENT Exclude       (Bloom?, (Component, Bloom?)*)>
 
@@ -121,5 +137,5 @@
 <!ELEMENT SignatureBits (#PCDATA)>	<!-- base64Binary -->
 <!ATTLIST SignatureBits ccnbencoding CDATA #FIXED 'base64Binary'>
 
-<!ELEMENT KeyName	(Name, PublisherID?)>
+<!ELEMENT KeyName	(Name, (%publisherid;)?)>
 <!ATTLIST KeyName	%commonattrs;>

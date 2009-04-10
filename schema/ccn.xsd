@@ -40,7 +40,12 @@
 
 <xs:complexType name="LinkAuthenticatorType">
   <xs:sequence>
-    <xs:element name="PublisherID" type="PublisherIDType" minOccurs="0" maxOccurs="1"/>
+    <xs:choice minOccurs="0" maxOccurs="1">
+        <xs:element name="PublisherPublicKeyDigest" type="KeyIDType"/>
+        <xs:element name="PublisherCertificateDigest" type="KeyIDType"/>
+        <xs:element name="PublisherIssuerKeyDigest" type="KeyIDType"/>
+        <xs:element name="PublisherIssuerCertificateDigest" type="KeyIDType"/>
+    </xs:choice>
     <xs:element name="NameComponentCount" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
     <xs:element name="Timestamp" type="TimestampType" minOccurs="0" maxOccurs="1"/>
     <xs:element name="Type" type="ContentType" minOccurs="0" maxOccurs="1"/>
@@ -196,6 +201,16 @@
   </xs:sequence>
 </xs:complexType>
 
+<!-- XXX - figure out how to use this type instead of duplicating the choice inline.  -->
+<xs:complexType name="PublisherDigestType">
+  <xs:choice>
+    <xs:element name="PublisherPublicKeyDigest" type="KeyIDType"/>
+    <xs:element name="PublisherCertificateDigest" type="KeyIDType"/>
+    <xs:element name="PublisherIssuerKeyDigest" type="KeyIDType"/>
+    <xs:element name="PublisherIssuerCertificateDigest" type="KeyIDType"/>
+  </xs:choice>
+</xs:complexType>
+
 <xs:complexType name="InterestType">
   <xs:sequence>
     <xs:element name="Name" type="NameType"/>
@@ -203,8 +218,12 @@
                         minOccurs="0" maxOccurs="1"/>
     <xs:element name="AdditionalNameComponents" type="xs:nonNegativeInteger"
                         minOccurs="0" maxOccurs="1"/>
-    <xs:element name="PublisherID" type="PublisherIDType"
-			minOccurs="0" maxOccurs="1"/>
+    <xs:choice minOccurs="0" maxOccurs="1">
+        <xs:element name="PublisherPublicKeyDigest" type="KeyIDType"/>
+        <xs:element name="PublisherCertificateDigest" type="KeyIDType"/>
+        <xs:element name="PublisherIssuerKeyDigest" type="KeyIDType"/>
+        <xs:element name="PublisherIssuerCertificateDigest" type="KeyIDType"/>
+    </xs:choice>
     <xs:element name="Exclude" type="ExcludeType"
                         minOccurs="0" maxOccurs="1"/>
     <xs:element name="OrderPreference" type="xs:nonNegativeInteger"
@@ -299,8 +318,12 @@
 <xs:complexType name="KeyNameType">
   <xs:sequence>
     <xs:element name="Name" type="NameType"/>
-    <xs:element name="PublisherID" type="PublisherIDType"
-			minOccurs="0" maxOccurs="1"/>
+    <xs:choice minOccurs="0" maxOccurs="1">
+        <xs:element name="PublisherPublicKeyDigest" type="KeyIDType"/>
+        <xs:element name="PublisherCertificateDigest" type="KeyIDType"/>
+        <xs:element name="PublisherIssuerKeyDigest" type="KeyIDType"/>
+        <xs:element name="PublisherIssuerCertificateDigest" type="KeyIDType"/>
+    </xs:choice>
   </xs:sequence>
 </xs:complexType>
 
