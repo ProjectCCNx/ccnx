@@ -607,6 +607,46 @@ ccn_locate_key(struct ccn *h,
                struct ccn_parsed_ContentObject *pco,
                void **pubkey)
 {
+    int res;
+    const unsigned char *pkeyid;
+    size_t pkeyid_size;
+    void *entry;
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
+
+    if (h->keys == NULL) {
+        h->keys = hashtb_create(sizeof(void *), NULL);
+        if (h->keys == NULL)
+            return (NOTE_ERRNO(h));
+    }
+    res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherKeyID, msg,
+                              pco->offset[CCN_PCO_B_PublisherKeyID],
+                              pco->offset[CCN_PCO_E_PublisherKeyID],
+                              &pkeyid, &pkeyid_size);
+    if (res < 0)
+        return (NOTE_ERR(h, res));
+    entry = hashtb_lookup(h->keys, pkeyid, pkeyid_size);
+    if (entry != NULL) {
+        *pubkey = entry;
+        return (0);
+    }
+    /* Is a key locator present? */
+    if (pco->offset[CCN_PCO_B_KeyLocator] == pco->offset[CCN_PCO_E_KeyLocator])
+        return (-1);
+    /* Use the key locator */
+    d = ccn_buf_decoder_start(&decoder, msg + pco->offset[CCN_PCO_B_Key_Certificate_KeyName],
+                              pco->offset[CCN_PCO_E_Key_Certificate_KeyName] -
+                              pco->offset[CCN_PCO_B_Key_Certificate_KeyName]);
+    if (ccn_buf_match_dtag(d, CCN_DTAG_KeyName)) {
+        /* KEYS create an interest in the key name, set up a callback that will
+         * insert the key into the h->keys hashtb for the calling handle
+         */
+    }
+    else if (ccn_buf_match_dtag(d, CCN_DTAG_Certificate)) {
+    }
+    else if (ccn_buf_match_dtag(d, CCN_DTAG_Key)) {
+    }
+
     return (-1);
 }
 
