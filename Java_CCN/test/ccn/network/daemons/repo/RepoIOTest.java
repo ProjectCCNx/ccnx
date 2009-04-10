@@ -136,7 +136,7 @@ public class RepoIOTest extends RepoTestBase {
 		Assert.assertEquals(data, new String(testContent.content()));
 		Assert.assertTrue(testContent.signedInfo().getPublisherKeyID().equals(publisher));
 	}
-	private boolean checkDataFromFile(File testFile, byte[] data, int block, boolean inMeta) throws RepositoryException {
+	protected boolean checkDataFromFile(File testFile, byte[] data, int block, boolean inMeta) throws RepositoryException {
 		if (!testFile.isDirectory()) {
 			return false;
 		}
@@ -173,7 +173,7 @@ public class RepoIOTest extends RepoTestBase {
 		return true;
 	}
 	
-	private void checkNameSpace(String contentName, boolean expected) throws Exception {
+	protected void checkNameSpace(String contentName, boolean expected) throws Exception {
 		ContentName name = ContentName.fromNative(contentName);
 		RepositoryOutputStream ros = putLibrary.repoOpen(name, null, putLibrary.getDefaultPublisher());
 		byte [] data = "Testing 1 2 3".getBytes();
