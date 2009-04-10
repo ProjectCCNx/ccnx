@@ -163,7 +163,7 @@ ccndumppcap: ccndumppcap.o
 
 clean:
 	rm -f *.o libccn.a libccn.1.$(SHEXT) $(PROGRAMS) depend
-	rm -rf *.dSYM $(DEBRIS)
+	rm -rf *.dSYM $(DEBRIS) *% *~
 
 ###############################
 # Dependencies below here are checked by depend target
