@@ -36,6 +36,8 @@ public class Daemon {
 	protected static DaemonListenerClass _daemonListener = null;
 	
 	public static final String PROP_DAEMON_MEMORY = "ccn.daemon.memory";
+	public static final String PROP_DAEMON_DEBUG_PORT = "ccn.daemon.debug";
+	public static final String PROP_DAEMON_OUTPUT = "ccn.daemon.output";
 
 	/**
 	 * Interface describing the RMI server object sitting inside
@@ -247,6 +249,10 @@ public class Daemon {
 		if (memval != null)
 			cmd += "-Xmx" + memval;
 		
+		String debugPort = System.getProperty(PROP_DAEMON_DEBUG_PORT);
+		if (debugPort != null)
+			cmd += " -Xrunjdwp:transport=dt_socket,address=" + debugPort + ",server=y,suspend=n";
+		
 		cmd += " -cp " + cp.toString() + " ";
 
 		cmd += daemonClass + " ";
@@ -263,7 +269,12 @@ public class Daemon {
 		fos.close();
 		
 		Process child = Runtime.getRuntime().exec(cmd);
-
+		
+		String outputFile = System.getProperty(PROP_DAEMON_OUTPUT);
+		if (outputFile != null) {
+			new DaemonOutput(child.getInputStream(), outputFile);
+		}
+		
 		while (!getRMIFile(daemonName).exists()) {
 			try {
 				Thread.sleep(200);
@@ -288,14 +299,30 @@ public class Daemon {
 		}
 
 		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName)));
-
-		DaemonListener l = (DaemonListener)in.readObject();		
+		DaemonListener l = (DaemonListener)in.readObject();
 
 		boolean b = false;
 		b = l.startLoop();
 		// use of b is to deflect warnings
 		System.out.println("Started daemon " + daemonName + "." + (b ? "" : ""));
 		Library.logger().info("Started daemon " + daemonName + ".");
+		
+		/*
+		 * To log output at this level we have to keep running until the daemon exits
+		 */
+		if (outputFile != null) {
+			boolean running = true;
+			while (running) {
+				try {
+					Thread.sleep(1000);
+					child.exitValue();
+					running = false;
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IllegalThreadStateException e) {}
+			}
+		}
 	}
 
 	protected static void stopDaemon(String daemonName) throws FileNotFoundException, IOException, ClassNotFoundException {

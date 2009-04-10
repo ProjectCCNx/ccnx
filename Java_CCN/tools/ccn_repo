@@ -12,28 +12,34 @@ CP2=`echo $CP2 | sed "s/ /:/g"`
 
 CLASSPATH=$CP1:$CP2
 MEMORY=
+DEBUG_PORT=
+OUTPUT_FILE=
+LOCAL_PORT=
 
 if [ $# = 0 ]
 then
   echo "usage: ccn_repo [stop | <pathname>]"
 else
-  if [ $# > 1 ]
-  then
-  	  if [ "$2" = "-memory" ]; then
-  	      MEMORY="-Dccn.daemon.memory=$3"
-  	  fi
+  if [ ! "$CCN_LOCAL_PORT" = "" ]; then
+  	  LOCAL_PORT="-Dccn.agent.port=$CCN_LOCAL_PORT"
   fi
+  while [ $# > 3 ]; do
+  	  if [ "$1" = "-memory" ]; then
+  	      MEMORY="-Dccn.daemon.memory=$2"
+  	      shift 2
+  	  elif [ "$1" = "-debug" ]; then
+  	      DEBUG_PORT="-Dccn.daemon.debug=$2"
+  	      shift 2
+  	  elif [ "$1" = "-output" ]; then
+  	      OUTPUT_FILE="-Dccn.daemon.output=$2"
+  	      shift 2
+  	  else
+  	  	  break
+  	  fi
+  done
   if [ "$1" = "stop" ]; then
-	  if [ "$CCN_LOCAL_PORT" = "" ]; then
-	    $JAVA -cp $CLASSPATH com.parc.ccn.network.daemons.repo.RepositoryDaemon -stop
-	  else
-	    $JAVA -cp $CLASSPATH -Dccn.agent.port=$CCN_LOCAL_PORT com.parc.ccn.network.daemons.repo.RepositoryDaemon -stop
-	  fi
+	  $JAVA -cp $CLASSPATH $LOCAL_PORT com.parc.ccn.network.daemons.repo.RepositoryDaemon -stop
   else
-	  if [ "$CCN_LOCAL_PORT" = "" ]; then
-	      $JAVA -cp $CLASSPATH $MEMORY com.parc.ccn.network.daemons.repo.RepositoryDaemon -start -root $*
-	  else
-	      $JAVA -cp $CLASSPATH $MEMORY -Dccn.agent.port=$CCN_LOCAL_PORT com.parc.ccn.network.daemons.repo.RepositoryDaemon -start -root $*
-	  fi
+	  $JAVA -cp $CLASSPATH $MEMORY $DEBUG_PORT $OUTPUT_FILE $LOCAL_PORT com.parc.ccn.network.daemons.repo.RepositoryDaemon -start -root $*
   fi
 fi
