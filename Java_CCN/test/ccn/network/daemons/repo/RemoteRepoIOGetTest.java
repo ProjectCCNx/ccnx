@@ -9,7 +9,6 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.profiles.SegmentationProfile;
-import com.parc.ccn.library.profiles.VersioningProfile;
 
 /**
  * For now to run this you need to first run the RepoIoPutTest, then restart
@@ -35,13 +34,10 @@ public class RemoteRepoIOGetTest extends RepoTestBase {
 		for (int i = 0; i < data.length; i++)
 			data[i] = value++;
 		
-		ContentName versionedName = VersioningProfile.versionName(ContentName.fromNative("/testNameSpace/stream"));
-		ContentObject currentName = getLibrary.getLatestVersion(versionedName, null, 5000);
-		Assert.assertTrue(currentName != null);
 		for (int i = 0; i < 40; i++) {
 			byte [] testData = new byte[100];
 			System.arraycopy(data, i * 100, testData, 0, 100);
-			checkData(currentName, testData, i);
+			checkData(ContentName.fromNative("/testNameSpace/stream"), testData, i);
 		}
 	}
 	
@@ -51,7 +47,7 @@ public class RemoteRepoIOGetTest extends RepoTestBase {
 	
 	private ContentObject checkContent(ContentName contentName, boolean expected) throws Exception {
 		Interest interest = new Interest(contentName);
-		ContentObject co = getLibrary.get(interest, 5000);
+		ContentObject co = getLibrary.get(interest, 10000);
 		if (expected)
 			Assert.assertTrue(co != null);
 		else
@@ -59,8 +55,8 @@ public class RemoteRepoIOGetTest extends RepoTestBase {
 		return co;
 	}
 	
-	private void checkData(ContentObject currentName, byte[] testData, int i) throws Exception {
-		ContentName segmentedName = SegmentationProfile.segmentName(currentName.name(), i);
+	private void checkData(ContentName currentName, byte[] testData, int i) throws Exception {
+		ContentName segmentedName = SegmentationProfile.segmentName(currentName, i);
 		ContentObject co = checkContent(segmentedName, true);
 		Assert.assertTrue(Arrays.equals(testData, co.content()));
 	}
