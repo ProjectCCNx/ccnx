@@ -52,6 +52,7 @@
                          Timestamp,
                          Type?,
                          FreshnessSeconds?,
+                         FinalBlockID?,
                          KeyLocator?)>
 <!ATTLIST SignedInfo %commonattrs;>
 
@@ -112,6 +113,9 @@
 <!ATTLIST Timestamp	ccnbencoding CDATA #FIXED 'base64Binary'>
 
 <!ELEMENT FreshnessSeconds (#PCDATA)>	<!-- nonNegativeInteger -->
+
+<!ELEMENT FinalBlockID  (#PCDATA)>	<!-- base64Binary -->
+<!ATTLIST FinalBlockID  ccnbencoding CDATA #FIXED 'base64Binary'>
 
 <!ELEMENT Type		(#PCDATA)>	<!-- DATA, KEY=, LINK, NACK -->
 <!ATTLIST Type          ccnbencoding CDATA #FIXED 'base64Binary'>

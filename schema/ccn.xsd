@@ -107,6 +107,13 @@
                  should wait after the arrival of this ContentObject before
                  marking it as stale. -->
     <xs:element name="FreshnessSeconds" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
+    <!-- The optional FinalBlockID indicates the identifier of the final block
+                 in a sequence of fragments.  It should be present in the
+                 final block itself, and may also be present in other fragments
+                 to provide advanced warning of the end to consumers.  The
+                 value here should be equal to the last explicit Name Component
+                 of the final block. -->
+    <xs:element name="FinalBlockID" type="Base64BinaryType" minOccurs="0" maxOccurs="1"/>
     <!-- A KeyLocator tells where to find the key to verify this content.
                  This is signed, but may be omitted when the signer
 		 is really sure that everyone on the path can find the
