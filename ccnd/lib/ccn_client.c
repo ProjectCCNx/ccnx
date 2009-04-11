@@ -314,9 +314,15 @@ ccn_destroy(struct ccn **hp)
         hashtb_end(e);
         hashtb_destroy(&(h->interest_filters));
     }
+
+
+    /* XXX: remove this and rewrite as a finalizer on the hash table */
     if (h->keys != NULL) {	/* KEYS */
         for (hashtb_start(h->keys, e); e->data != NULL; hashtb_next(e)) {
-            free(e->data);
+            void **entry = e->data;
+            if (*entry != NULL)
+                free(*entry);
+            *entry = NULL;
         }
         hashtb_end(e);
         hashtb_destroy(&(h->keys));
@@ -600,6 +606,72 @@ ccn_refresh_interest(struct ccn *h, struct expressed_interest *interest)
     }
 }
 
+static enum ccn_upcall_res
+handle_key(
+    struct ccn_closure *selfp,
+    enum ccn_upcall_kind kind,
+    struct ccn_upcall_info *info)
+{
+    struct ccn *h = info->h;
+    const unsigned char *ccnb = NULL;
+    size_t ccnb_size = 0;
+    const unsigned char *data = NULL;
+    size_t data_size = 0;
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    void **entry;
+    int res;
+    
+    switch(kind) {
+    case CCN_UPCALL_FINAL:
+        free(selfp);
+        return(CCN_UPCALL_RESULT_OK);
+    case CCN_UPCALL_INTEREST_TIMED_OUT:
+        return(CCN_UPCALL_RESULT_REEXPRESS);
+    case CCN_UPCALL_CONTENT:
+    case CCN_UPCALL_CONTENT_UNVERIFIED:
+        break;
+    default:
+        return (CCN_UPCALL_RESULT_ERR);
+    }
+
+    /* XXX: should check that it is an object of type KEY */
+    ccnb = info->content_ccnb;
+    ccnb_size = info->pco->offset[CCN_PCO_E];
+    ccn_digest_ContentObject(ccnb, info->pco);
+    if (info->pco->digest_bytes != sizeof(info->pco->digest)) {
+        return(NOTE_ERR(h, EINVAL));
+    }
+    hashtb_start(selfp->data, e);
+    res = hashtb_seek(e, (void *)info->pco->digest, info->pco->digest_bytes, 0);
+    if (res < 0) {
+        hashtb_end(e);
+        return(NOTE_ERRNO(h));
+    }
+    entry = e->data;
+    if (res == HT_NEW_ENTRY) {
+        void *public_key;
+        size_t public_key_size;
+        res = ccn_content_get_value(ccnb, ccnb_size, info->pco, &data, &data_size);
+        if (res < 0) {
+            hashtb_delete(e);
+            hashtb_end(e);
+            return(NOTE_ERRNO(h));
+        }
+        public_key = ccn_d2i_pubkey(data, data_size);
+        public_key_size = ccn_pubkey_size(public_key);
+        *entry = calloc(1, public_key_size);
+        if (*entry == NULL) {
+            hashtb_delete(e);
+            hashtb_end(e);
+            return(NOTE_ERRNO(h));
+        }
+        memcpy(*entry, public_key, public_key_size);
+    }
+    hashtb_end(e);
+    return(CCN_UPCALL_RESULT_OK);
+}
+
 static int
 ccn_locate_key(struct ccn *h,
                unsigned char *msg,
@@ -610,7 +682,7 @@ ccn_locate_key(struct ccn *h,
     int res;
     const unsigned char *pkeyid;
     size_t pkeyid_size;
-    void *entry;
+    void **entry;
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d;
 
@@ -627,7 +699,7 @@ ccn_locate_key(struct ccn *h,
         return (NOTE_ERR(h, res));
     entry = hashtb_lookup(h->keys, pkeyid, pkeyid_size);
     if (entry != NULL) {
-        *pubkey = entry;
+        *pubkey = *entry;
         return (0);
     }
     /* Is a key locator present? */
@@ -641,6 +713,18 @@ ccn_locate_key(struct ccn *h,
         /* KEYS create an interest in the key name, set up a callback that will
          * insert the key into the h->keys hashtb for the calling handle
          */
+        struct ccn_charbuf *key_name = ccn_charbuf_create();
+        struct ccn_closure *key_closure = calloc(1, sizeof(*key_closure));
+        if (key_closure == NULL)
+            return (NOTE_ERRNO(h));
+        key_closure->p = &handle_key;
+        key_closure->data = h->keys;
+        res = ccn_name_init(key_name);
+        res = ccn_name_append_components(key_name, msg,
+                                         pco->offset[CCN_PCO_B_Component0],
+                                         pco->offset[CCN_PCO_E_ComponentLast]);
+        res = ccn_express_interest(h, key_name, -1, key_closure, NULL);
+        ccn_charbuf_destroy(&key_name);
     }
     else if (ccn_buf_match_dtag(d, CCN_DTAG_Certificate)) {
     }
@@ -726,7 +810,7 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                                         res = ccn_verify_signature(msg, size, info.pco, pubkey);
                                         upcall_kind = (res == 1) ? CCN_UPCALL_CONTENT : CCN_UPCALL_CONTENT_BAD;
                                     } else {
-                                        upcall_kind = CCN_UPCALL_CONTENT;    /* KEYS: must be CCN_UPCALL_CONTENT_UNVERIFIED */
+                                        upcall_kind = CCN_UPCALL_CONTENT_UNVERIFIED;
                                     }
                                     interest->outstanding -= 1;
                                     info.interest_ccnb = interest->interest_msg;
@@ -760,9 +844,10 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                     res = ccn_verify_signature(msg, size, info.pco, pubkey);
                     upcall_kind = (res == 1) ? CCN_UPCALL_CONTENT : CCN_UPCALL_CONTENT_BAD;
                 } else {
-                    upcall_kind = CCN_UPCALL_CONTENT;    /* KEYS: must be CCN_UPCALL_CONTENT_UNVERIFIED */
+                    upcall_kind = CCN_UPCALL_CONTENT_UNVERIFIED;
                 }
                 info.matched_comps = 0;
+                /* XXX: shouldn't ignore the result of the default content handler */
                 (h->default_content_action->p)(
                     h->default_content_action,
                     upcall_kind,
