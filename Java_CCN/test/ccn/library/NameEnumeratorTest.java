@@ -11,6 +11,7 @@ import org.junit.Test;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.BasicNameEnumeratorListener;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNNameEnumerator;
@@ -37,6 +38,8 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 	ContentName name2;
 	String name2aString = "/parc.com/registerTest/name2/namea";
 	ContentName name2a;
+	String name1StringDirty = "/parc.com/registerTest/name1TestDirty";
+	ContentName name1Dirty;
 	
 	String prefix1String = "/parc.com/registerTest";
 	String prefix1StringError = "/park.com/registerTest";
@@ -151,7 +154,92 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 			Assert.assertTrue(cn.toString().equals("/name1") || cn.toString().equals("/name2"));
 		}
 		
+		//now add new name
+		try{
+			net.name1Dirty = ContentName.fromNative(name1StringDirty);
+			putne.registerNameForResponses(net.name1Dirty);
+			
+			while(!putne.containsRegisteredName(net.name1Dirty)){
+				Thread.sleep(rand.nextInt(50));
+			}
+				
+			//the names are registered...
+			System.out.println("the new name is now registered to trigger the dirty flag");
+		}
+		catch(InterruptedException e){
+			System.err.println("error waiting for names to be registered by name enumeration responder");
+			Assert.fail();
+		}
+		catch (MalformedContentNameStringException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+						
 	}
+	/*  NOT WORKING AT THE MOMENT:  new collection name is not matching the next interest name
+	@Test
+	public void testGetCallbackDirty(){
+
+		Assert.assertNotNull(putLibrary);
+		Assert.assertNotNull(getLibrary);
+		
+		int attempts = 0;
+		try{
+			while(net.names==null && attempts < 1000){
+				Thread.sleep(rand.nextInt(50));
+				attempts++;
+			}
+			
+			//we either broke out of loop or the names are here
+			System.out.println("done waiting for results to arrive");
+		}
+		catch(InterruptedException e){
+			System.err.println("error waiting for names to be registered by name enumeration responder");
+			Assert.fail();
+		}
+		
+		
+		//for(LinkReference lr: net.names){
+		Assert.assertTrue(net.names.size()==3);
+		for(ContentName cn: net.names){
+			//System.out.println("got name: "+lr.targetName());
+			//Assert.assertTrue(lr.targetName().toString().equals("/name1") || lr.targetName().toString().equals("/name2"));
+			System.out.println("got name: "+cn.toString());
+			Assert.assertTrue(cn.toString().equals("/name1") || cn.toString().equals("/name2") || cn.toString().equals("/name1TestDirty"));
+		}
+	}
+	*/
+
+	@Test
+	public void testCancelPrefix(){
+		Assert.assertNotNull(putLibrary);
+		Assert.assertNotNull(getLibrary);
+		Assert.assertNotNull(getne);
+		
+		System.out.println("testing prefix cancel");
+		
+		//ContentName prefix1 = null;
+		ContentName prefix1Error = null;
+		
+		try{
+			//prefix1 = ContentName.fromNative(prefix1String);
+			prefix1Error = ContentName.fromNative(prefix1StringError);
+		}
+		catch(Exception e){
+			e.printStackTrace();
+			Assert.fail("Could not create ContentName from "+prefix1String);
+		}
+		
+		//try to remove a prefix not registered
+		Assert.assertFalse(getne.cancelPrefix(prefix1Error));
+		//remove the registered name
+		Assert.assertTrue(getne.cancelPrefix(net.prefix1));
+		//try to remove the registered name again
+		Assert.assertFalse(getne.cancelPrefix(prefix1));
+		
+		net.names = null;
+	}
+	
 	
 	@Test
 	public void testGetCallbackNoResponse(){
@@ -184,7 +272,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		
 		int attempts = 0;
 		try{
-			while(net.names==null && attempts < 50){
+			while(net.names==null && attempts < 100){
 				Thread.sleep(rand.nextInt(50));
 				attempts++;
 			}
@@ -201,32 +289,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 	}
 	
 		
-	@Test
-	public void testCancelPrefix(){
-		Assert.assertNotNull(putLibrary);
-		Assert.assertNotNull(getLibrary);
-		Assert.assertNotNull(getne);
-		
-		//ContentName prefix1 = null;
-		ContentName prefix1Error = null;
-		
-		try{
-			//prefix1 = ContentName.fromNative(prefix1String);
-			prefix1Error = ContentName.fromNative(prefix1StringError);
-		}
-		catch(Exception e){
-			e.printStackTrace();
-			Assert.fail("Could not create ContentName from "+prefix1String);
-		}
-		
-		//try to remove a prefix not registered
-		Assert.assertFalse(getne.cancelPrefix(prefix1Error));
-		//remove the registered name
-		Assert.assertTrue(getne.cancelPrefix(net.prefix1));
-		//try to remove the registered name again
-		Assert.assertFalse(getne.cancelPrefix(prefix1));
-		
-	}
+
 	
 	@Test
 	public void testGetCallbackAfterCancel(){
