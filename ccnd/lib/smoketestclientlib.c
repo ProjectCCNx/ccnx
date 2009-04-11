@@ -37,7 +37,7 @@ incoming_content(struct ccn_closure *selfp,
         return(CCN_UPCALL_RESULT_OK);
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
         return(CCN_UPCALL_RESULT_REEXPRESS);
-    if (kind != CCN_UPCALL_CONTENT)
+    if (kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_UNVERIFIED)
         return(CCN_UPCALL_RESULT_ERR);
     printf("Got content matching %d components:\n", info->pi->prefix_comps);
     printraw(info->content_ccnb, info->pco->offset[CCN_PCO_E]);

@@ -154,7 +154,7 @@ incoming_content(
     }
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
         return(CCN_UPCALL_RESULT_REEXPRESS); // XXX - may need to reseed bloom filter
-    if (kind != CCN_UPCALL_CONTENT)
+    if (kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_UNVERIFIED)
         return(CCN_UPCALL_RESULT_ERR);
     if (md == NULL)
         selfp->data = md = calloc(1, sizeof(*md));

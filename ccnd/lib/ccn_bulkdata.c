@@ -98,7 +98,10 @@ imcoming_bulkdata(struct ccn_closure *selfp,
                 free(p->content_ccnb);
             free(p);
             return(CCN_UPCALL_RESULT_OK);
-        case CCN_UPCALL_CONTENT:
+	case CCN_UPCALL_CONTENT:
+    	case CCN_UPCALL_CONTENT_UNVERIFIED:
+	case CCN_UPCALL_CONTENT_BAD:
+            /* XXX - should we be returning bad (signature failed) content */
             break;
         case CCN_UPCALL_INTEREST_TIMED_OUT:
             /* XXX - may want to give client a chance to decide */ 
@@ -111,7 +114,7 @@ imcoming_bulkdata(struct ccn_closure *selfp,
     if (p->content_ccnb == NULL) {
     if (p->x == b->next_expected) {
         /* Good, we have in-order data to deliver to the caller */
-        res = (*b->client->p)(b->client, CCN_UPCALL_CONTENT, info);
+        res = (*b->client->p)(b->client, kind, info);
         if (res == CCN_UPCALL_RESULT_OK) {
             b->next_expected += 1;
             b->first = (p == p->next) ? NULL : p->next;

@@ -119,7 +119,7 @@ incoming_content(
     }
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
         return(0);
-    if (kind != CCN_UPCALL_CONTENT) abort();
+    if (kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_UNVERIFIED) abort();
 
     ccnb = info->content_ccnb;
     ccnb_size = info->pco->offset[CCN_PCO_E];

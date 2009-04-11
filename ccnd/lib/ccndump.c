@@ -60,7 +60,7 @@ incoming_content(
         return(CCN_UPCALL_RESULT_OK);
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
         return(CCN_UPCALL_RESULT_REEXPRESS);
-    if (kind != CCN_UPCALL_CONTENT || md == NULL)
+    if ((kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_UNVERIFIED) || md == NULL)
         return(CCN_UPCALL_RESULT_ERR);
     ccnb = info->content_ccnb;
     ccnb_size = info->pco->offset[CCN_PCO_E];

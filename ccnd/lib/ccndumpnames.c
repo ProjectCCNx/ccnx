@@ -73,7 +73,7 @@ incoming_content(
         return(0);
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
         return(CCN_UPCALL_RESULT_REEXPRESS);
-    if (kind != CCN_UPCALL_CONTENT)
+    if (kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_UNVERIFIED)
         return(-1);
     ccnb = info->content_ccnb;
     ccnb_size = info->pco->offset[CCN_PCO_E];
@@ -81,7 +81,8 @@ incoming_content(
     c = ccn_charbuf_create();
     res = ccn_uri_append(c, ccnb, ccnb_size, 1);
     if (res >= 0)
-        printf("%s\n", ccn_charbuf_as_string(c));
+        printf("%s%s\n", ccn_charbuf_as_string(c),
+               kind == CCN_UPCALL_CONTENT ? " [verified]" : " [unverified]");
     else
         fprintf(stderr, "*** Error: ccndumpnames line %d kind=%d res=%d\n",
             __LINE__, kind, res);

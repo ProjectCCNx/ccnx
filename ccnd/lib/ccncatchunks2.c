@@ -371,7 +371,7 @@ GOT_HERE();
         return(CCN_UPCALL_RESULT_REEXPRESS);
     }
 GOT_HERE();
-    if (kind != CCN_UPCALL_CONTENT)
+    if (kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_UNVERIFIED)
         return(CCN_UPCALL_RESULT_ERR);
     assert(md != NULL);
     md->pkts_recvd++;

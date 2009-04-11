@@ -33,7 +33,7 @@ incoming_content(
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT) {
         return(0); /* don't re-express */
     }
-    if (kind != CCN_UPCALL_CONTENT || md == NULL)
+    if ((kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_UNVERIFIED) || md == NULL)
         return(-1);
     ccnb_size = info->pco->offset[CCN_PCO_E];
     if (md->firstseen == NULL) {

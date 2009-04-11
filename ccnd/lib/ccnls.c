@@ -51,7 +51,7 @@ incoming_content(
         return(CCN_UPCALL_RESULT_OK);
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
         return(CCN_UPCALL_RESULT_REEXPRESS);
-    if (kind != CCN_UPCALL_CONTENT) abort();
+    if (kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_UNVERIFIED) abort();
 
     ccnb = info->content_ccnb;
     ccnb_size = info->pco->offset[CCN_PCO_E];
@@ -87,7 +87,8 @@ incoming_content(
     if (res < 0 || uri->length < 1)
         fprintf(stderr, "*** Error: ccnls line %d res=%d\n", __LINE__, res);
     else
-        printf("%s\n", ccn_charbuf_as_string(uri) + 1);
+        printf("%s%s\n", ccn_charbuf_as_string(uri) + 1,
+               kind == CCN_UPCALL_CONTENT ? " [verified]" : " [unverified]");
     data->excl = realloc(data->excl, (data->n_excl + 1) * sizeof(data->excl[0]));
     data->excl[data->n_excl++] = comp;
     comp = NULL;
