@@ -157,7 +157,8 @@ public class Flosser implements CCNInterestListener {
 	 * @param result
 	 */
 	protected void processContent(ContentObject result) {
-		Library.logger().info("Flosser got: " + result.name() + " Digest: " + DataUtils.printBytes(result.contentDigest()));
+		Library.logger().info("Flosser got: " + result.name() + " Digest: " + 
+				DataUtils.printBytes(result.contentDigest()));
 	}
 	
 }
