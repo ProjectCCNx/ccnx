@@ -7,7 +7,7 @@
     <Component ccnbencoding="base64Binary">dmdxO6LZm7UUoUdyt6EG3KrnkNJkjdaayBppbvfD</Component>
   </Name>
   <SignedInfo>
-    <PublisherKeyID ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherKeyID>
+    <PublisherPublicKeyDigest ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherPublicKeyDigest>
     <Timestamp ccnbencoding="base64Binary">BId5E7bp</Timestamp>
     <Type ccnbencoding="base64Binary">DATA</Type>
     <KeyLocator>

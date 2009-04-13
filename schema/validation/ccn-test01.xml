@@ -14,7 +14,7 @@
     <Component ccnbencoding="base64Binary">dGVzdDIudHh0</Component>
   </Name>
   <SignedInfo>
-    <PublisherKeyID ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherKeyID>
+    <PublisherPublicKeyDigest ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherPublicKeyDigest>
     <Timestamp ccnbencoding="base64Binary">BHsH3Mq8</Timestamp>
     <KeyLocator>
       <KeyName>

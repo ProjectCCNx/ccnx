@@ -8,7 +8,7 @@
       <Component ccnbencoding="base64Binary">dmdxO6LZm7ZZoUdyt6EG3KrnkNJkjdaayBppbvfD</Component>
     </Name>
     <SignedInfo>
-      <PublisherKeyID ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherKeyID>
+      <PublisherPublicKeyDigest ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherPublicKeyDigest>
       <Timestamp ccnbencoding="base64Binary">BIx7ZoZm</Timestamp>
       <Type>DATA</Type>
     </SignedInfo>
@@ -22,7 +22,7 @@
       <Component ccnbencoding="base64Binary">dmdxO6LZm7UUoUdyt6EG3KrnkNJkjdaayBppbvfD</Component>
     </Name>
     <SignedInfo>
-      <PublisherKeyID ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherKeyID>
+      <PublisherPublicKeyDigest ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherPublicKeyDigest>
       <Timestamp ccnbencoding="base64Binary">BHsH67bp</Timestamp>
       <Type>DATA</Type>
       <FreshnessSeconds>42</FreshnessSeconds>

@@ -41,10 +41,10 @@
 <xs:complexType name="LinkAuthenticatorType">
   <xs:sequence>
     <xs:choice minOccurs="0" maxOccurs="1">
-        <xs:element name="PublisherPublicKeyDigest" type="KeyIDType"/>
-        <xs:element name="PublisherCertificateDigest" type="KeyIDType"/>
-        <xs:element name="PublisherIssuerKeyDigest" type="KeyIDType"/>
-        <xs:element name="PublisherIssuerCertificateDigest" type="KeyIDType"/>
+        <xs:element name="PublisherPublicKeyDigest" type="DigestType"/>
+        <xs:element name="PublisherCertificateDigest" type="DigestType"/>
+        <xs:element name="PublisherIssuerKeyDigest" type="DigestType"/>
+        <xs:element name="PublisherIssuerCertificateDigest" type="DigestType"/>
     </xs:choice>
     <xs:element name="NameComponentCount" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
     <xs:element name="Timestamp" type="TimestampType" minOccurs="0" maxOccurs="1"/>
@@ -100,7 +100,7 @@
 <!-- Note: SignedInfo was formerly known as ContentAuthenticator -->
 <xs:complexType name="SignedInfoType">
   <xs:sequence>
-    <xs:element name="PublisherKeyID" type="KeyIDType"/>
+    <xs:element name="PublisherPublicKeyDigest" type="DigestType"/>
     <xs:element name="Timestamp" type="TimestampType"/>
     <xs:element name="Type" type="ContentType" minOccurs="0" maxOccurs="1"/>
     <!-- The optional FreshnessSeconds indicates how many seconds a node
@@ -211,10 +211,10 @@
 <!-- XXX - figure out how to use this type instead of duplicating the choice inline.  -->
 <xs:complexType name="PublisherDigestType">
   <xs:choice>
-    <xs:element name="PublisherPublicKeyDigest" type="KeyIDType"/>
-    <xs:element name="PublisherCertificateDigest" type="KeyIDType"/>
-    <xs:element name="PublisherIssuerKeyDigest" type="KeyIDType"/>
-    <xs:element name="PublisherIssuerCertificateDigest" type="KeyIDType"/>
+    <xs:element name="PublisherPublicKeyDigest" type="DigestType"/>
+    <xs:element name="PublisherCertificateDigest" type="DigestType"/>
+    <xs:element name="PublisherIssuerKeyDigest" type="DigestType"/>
+    <xs:element name="PublisherIssuerCertificateDigest" type="DigestType"/>
   </xs:choice>
 </xs:complexType>
 
@@ -226,10 +226,10 @@
     <xs:element name="AdditionalNameComponents" type="xs:nonNegativeInteger"
                         minOccurs="0" maxOccurs="1"/>
     <xs:choice minOccurs="0" maxOccurs="1">
-        <xs:element name="PublisherPublicKeyDigest" type="KeyIDType"/>
-        <xs:element name="PublisherCertificateDigest" type="KeyIDType"/>
-        <xs:element name="PublisherIssuerKeyDigest" type="KeyIDType"/>
-        <xs:element name="PublisherIssuerCertificateDigest" type="KeyIDType"/>
+        <xs:element name="PublisherPublicKeyDigest" type="DigestType"/>
+        <xs:element name="PublisherCertificateDigest" type="DigestType"/>
+        <xs:element name="PublisherIssuerKeyDigest" type="DigestType"/>
+        <xs:element name="PublisherIssuerCertificateDigest" type="DigestType"/>
     </xs:choice>
     <xs:element name="Exclude" type="ExcludeType"
                         minOccurs="0" maxOccurs="1"/>
@@ -260,16 +260,7 @@
   </xs:sequence>
 </xs:complexType>
 
-<xs:complexType name="PublisherIDType">
-  <xs:simpleContent>
-    <xs:extension base="SHA256Digest">
-      <xs:attribute name="type" type="PublisherTypeType" use="required"/>
-      <xs:attribute name="ccnbencoding" type="xs:string" fixed="base64Binary"/>
-    </xs:extension>
-  </xs:simpleContent>
-</xs:complexType>
-
-<xs:complexType name="KeyIDType">
+<xs:complexType name="DigestType">
   <xs:simpleContent>
     <xs:extension base="SHA256Digest">
       <xs:attribute name="ccnbencoding" type="xs:string" fixed="base64Binary"/>
@@ -284,16 +275,6 @@
     </xs:restriction>
 </xs:simpleType>
 
-<!-- enum -->
-<xs:simpleType name="PublisherTypeType">
-  <xs:restriction base="xs:string">
-    <xs:enumeration value="KEY"/>
-    <xs:enumeration value="CERTIFICATE"/>
-    <xs:enumeration value="ISSUER_KEY"/>
-    <xs:enumeration value="ISSUER_CERTIFICATE"/>
-  </xs:restriction>
-</xs:simpleType>
-
 <xs:complexType name="ContentType">
   <xs:simpleContent>
     <xs:extension base="ContentTypeType">
@@ -306,6 +287,7 @@
   <xs:restriction base="xs:base64Binary">
     <xs:length value="3" fixed="true"/>
     <xs:enumeration value="DATA"/>
+    <xs:enumeration value="GONE"/>
     <xs:enumeration value="KEY="/>
     <xs:enumeration value="LINK"/>
     <xs:enumeration value="NACK"/>
@@ -326,10 +308,10 @@
   <xs:sequence>
     <xs:element name="Name" type="NameType"/>
     <xs:choice minOccurs="0" maxOccurs="1">
-        <xs:element name="PublisherPublicKeyDigest" type="KeyIDType"/>
-        <xs:element name="PublisherCertificateDigest" type="KeyIDType"/>
-        <xs:element name="PublisherIssuerKeyDigest" type="KeyIDType"/>
-        <xs:element name="PublisherIssuerCertificateDigest" type="KeyIDType"/>
+        <xs:element name="PublisherPublicKeyDigest" type="DigestType"/>
+        <xs:element name="PublisherCertificateDigest" type="DigestType"/>
+        <xs:element name="PublisherIssuerKeyDigest" type="DigestType"/>
+        <xs:element name="PublisherIssuerCertificateDigest" type="DigestType"/>
     </xs:choice>
   </xs:sequence>
 </xs:complexType>

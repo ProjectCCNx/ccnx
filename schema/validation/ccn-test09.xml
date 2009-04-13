@@ -10,7 +10,7 @@
     <Component ccnbencoding="base64Binary">+Co=</Component>
   </Name>
   <SignedInfo>
-    <PublisherKeyID ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherKeyID>
+    <PublisherPublicKeyDigest ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherPublicKeyDigest>
     <Timestamp ccnbencoding="base64Binary">BId3oMa4</Timestamp>
     <FinalBlockID ccnbencoding="base64Binary">+Co=</FinalBlockID>
     <KeyLocator>

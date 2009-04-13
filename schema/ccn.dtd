@@ -48,7 +48,7 @@
 <!ELEMENT Component	(#PCDATA)>	<!-- base64Binary -->
 <!ATTLIST Component     ccnbencoding CDATA #FIXED 'base64Binary'>
 
-<!ELEMENT SignedInfo    (PublisherKeyID,
+<!ELEMENT SignedInfo    (PublisherPublicKeyDigest,
                          Timestamp,
                          Type?,
                          FreshnessSeconds?,
@@ -102,9 +102,6 @@
 <!ELEMENT ExperimentalResponseFilter (#PCDATA)>      <!-- base64Binary -->
 <!ATTLIST ExperimentalResponseFilter ccnbencoding CDATA #FIXED 'base64Binary'>
 
-<!ELEMENT PublisherKeyID (#PCDATA)>	<!-- base64Binary SHA-256 digest -->
-<!ATTLIST PublisherKeyID ccnbencoding CDATA #FIXED 'base64Binary'>
-
 <!ELEMENT NameComponentCount (#PCDATA)> <!-- nonNegativeInteger -->
 
 <!ELEMENT AdditionalNameComponents (#PCDATA)> <!-- nonNegativeInteger -->
@@ -117,7 +114,7 @@
 <!ELEMENT FinalBlockID  (#PCDATA)>	<!-- base64Binary -->
 <!ATTLIST FinalBlockID  ccnbencoding CDATA #FIXED 'base64Binary'>
 
-<!ELEMENT Type		(#PCDATA)>	<!-- DATA, KEY=, LINK, NACK -->
+<!ELEMENT Type		(#PCDATA)>	<!-- DATA, GONE, KEY=, LINK, NACK -->
 <!ATTLIST Type          ccnbencoding CDATA #FIXED 'base64Binary'>
 
 <!ELEMENT ContentDigest	(#PCDATA)>	<!-- base64 encoding of DER-encoded DigestInfo -->

@@ -25,9 +25,9 @@ ccn-schemabad10.xml:12: element Timestamp: Schemas validity error : Element 'Tim
 ccn-schemabad10.xml:12: element Timestamp: Schemas validity error : Element 'Timestamp': '+B+A+D+T67bp' is not a valid value of the atomic type 'BinaryTime12'.
 ccn-schemabad10.xml fails to validate
 ./shouldfail xmllint --noout --schema ccn.xsd ccn-schemabad12.xml
-ccn-schemabad12.xml:13: element Type: Schemas validity error : Element 'Type': [facet 'enumeration'] The value 'FUZZ' is not an element of the set {'DATA', 'KEY=', 'LINK', 'NACK'}.
+ccn-schemabad12.xml:13: element Type: Schemas validity error : Element 'Type': [facet 'enumeration'] The value 'FUZZ' is not an element of the set {'DATA', 'GONE', 'KEY=', 'LINK', 'NACK'}.
 ccn-schemabad12.xml:13: element Type: Schemas validity error : Element 'Type': 'FUZZ' is not a valid value of the atomic type 'ContentTypeType'.
-ccn-schemabad12.xml:27: element Type: Schemas validity error : Element 'Type': [facet 'enumeration'] The value 'FUZZ' is not an element of the set {'DATA', 'KEY=', 'LINK', 'NACK'}.
+ccn-schemabad12.xml:27: element Type: Schemas validity error : Element 'Type': [facet 'enumeration'] The value 'FUZZ' is not an element of the set {'DATA', 'GONE', 'KEY=', 'LINK', 'NACK'}.
 ccn-schemabad12.xml:27: element Type: Schemas validity error : Element 'Type': 'FUZZ' is not a valid value of the atomic type 'ContentTypeType'.
 ccn-schemabad12.xml fails to validate
 ./shouldfail xmllint --noout --dtdvalid ccn.dtd ccn-bad01.xml
