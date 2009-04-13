@@ -76,8 +76,8 @@ public class CCNWriter {
 							SignedInfo.ContentType type,
 							PublisherKeyID publisher) throws SignatureException, IOException {
 		try {
-			return _segmenter.put(name, contents, type, null, 
-					   				publisher);
+			return _segmenter.put(name, contents, 0, ((null == contents) ? 0 : contents.length),
+								  true, type, null, null, publisher);
 		} catch (InvalidKeyException e) {
 			Library.logger().info("InvalidKeyException using key for publisher " + publisher + ".");
 			throw new SignatureException(e);
@@ -105,8 +105,9 @@ public class CCNWriter {
 		ContentName versionedName = VersioningProfile.versionName(name);
 
 		// put result; segmenter will fill in defaults
-		return _segmenter.put(versionedName, contents, 
-				 			  type, locator, publisher);
+		return _segmenter.put(versionedName, contents, 0, ((null == contents) ? 0 : contents.length),
+							  true,
+				 			  type, null, locator, publisher);
 	}
 	
 	/**

@@ -35,7 +35,12 @@ public interface XMLEncoder {
 	
 	public void writeElement(String tag, byte [] binaryContent) throws XMLStreamException;
 	
+	public void writeElement(String tag, byte [] binaryContent, int offset, int length) throws XMLStreamException;
+	
 	public void writeElement(String tag, byte [] binaryContent, 
+			TreeMap<String,String> attributes) throws XMLStreamException;
+
+	public void writeElement(String tag, byte [] binaryContent, int offset, int length,
 			TreeMap<String,String> attributes) throws XMLStreamException;
 	
 	/**

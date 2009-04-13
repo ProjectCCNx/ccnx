@@ -1,6 +1,7 @@
 package com.parc.ccn.data.util;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.ParseException;
@@ -47,6 +48,13 @@ public class TextXMLCodec {
 		return new BASE64Encoder().encode(element);
 	}
 	
+	public static String encodeBinaryElement(byte [] element, int offset, int length) {
+		if ((null == element) || (0 == element.length)) 
+			return new String("");
+		ByteBuffer bbuf = ByteBuffer.wrap(element, offset, length);
+		return new BASE64Encoder().encode(bbuf);
+	}
+
 	public static byte [] decodeBinaryElement(String element) throws IOException {
 		if ((null == element) || (0 == element.length()))
 			return new byte[0];

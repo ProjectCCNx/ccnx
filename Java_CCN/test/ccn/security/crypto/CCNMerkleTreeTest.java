@@ -120,7 +120,7 @@ public class CCNMerkleTreeTest {
 										tree.numLeaves() + " max pathlength: " + tree.maxDepth());
 		
 			for (int i=0; i < count; ++i) {
-				ContentObject block = tree.block(i, content[i]);
+				ContentObject block = tree.block(i, content[i], 0, content[i].length);
 				boolean result = block.verify(pair.getPublic());
 	//			if (!result)
 					System.out.println("Block name: " + tree.blockName(i) + " num "  + i + " verified? " + result);

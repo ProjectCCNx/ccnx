@@ -2,7 +2,6 @@ package com.parc.ccn.data;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.math.BigInteger;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
@@ -23,6 +22,7 @@ import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.data.util.BinaryXMLCodec;
+import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLCodecFactory;
 import com.parc.ccn.data.util.XMLDecoder;
@@ -39,73 +39,130 @@ import com.parc.ccn.security.keys.KeyManager;
  *
  */
 public class ContentObject extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentObject> {
-	
+
 	public static boolean DEBUG_SIGNING = false;
-	
+
 	protected static final String CONTENT_OBJECT_ELEMENT = "ContentObject";
 	protected static final String CONTENT_ELEMENT = "Content";
-	
+
 	protected ContentName _name;
 	protected SignedInfo _signedInfo;
-    protected byte [] _content;
+	protected byte [] _content;
 	protected Signature _signature; 
-     
-    /**
-     * We copy the content when we get it. The intent is for this object to
-     * be immutable. Rules for constructor immutability are explained well
-     * here: 
-     * @param digestAlgorithm
-     * @param name
-     * @param signedInfo
-     * @param content
-     * @param signature already immutable
-     */
-    public ContentObject(String digestAlgorithm, // prefer OID
-    					 ContentName name,
-    					 SignedInfo signedInfo,
-    					 byte [] content,
-    					 Signature signature
-    					 ) {
-    	_name = name;
-    	_signedInfo = signedInfo;
-    	_content = content.clone();
-    	_signature = signature;
-    }
-    
-    public ContentObject(ContentName name, SignedInfo signedInfo, byte [] content,
-    					 Signature signature) {
-    	this(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, name, signedInfo, content, signature);
-    }
-    
-    /**
-     * Generate a signedInfo and a signature.
-     * @throws SignatureException 
-     * @throws InvalidKeyException 
-     */
-    public ContentObject(ContentName name, 
-    					 SignedInfo signedInfo,
-    					 byte [] content, PrivateKey signingKey) throws InvalidKeyException, SignatureException {
-    	this(name, signedInfo, content, (Signature)null);
-    	_signature = sign(name, signedInfo, content, signingKey);
-    	Library.logger().info("Created content object: " + name + " timestamp: " + signedInfo.getTimestamp());
-    }
-    
-    /**
-     * DKS - temporary subclass constructor to get around brokenness in current
-     * header, etc implementation. Remove after those no longer derive from CO.
-     */
-    protected ContentObject(ContentName name, SignedInfo signedInfo) {
-    	_name = name;
-    	_signedInfo = signedInfo;
-    	// must set content and signature.
-    }
-    
-    /**
-     * Used for testing.
-     */
+
+	/**
+	 * We copy the content when we get it. The intent is for this object to
+	 * be immutable. Rules for constructor immutability are explained well
+	 * here: 
+	 * @param digestAlgorithm
+	 * @param name
+	 * @param signedInfo
+	 * @param content
+	 * @param signature already immutable
+	 */
+	public ContentObject(String digestAlgorithm, // prefer OID
+			ContentName name,
+			SignedInfo signedInfo,
+			byte [] content,
+			Signature signature
+	) {
+		_name = name;
+		_signedInfo = signedInfo;
+		_content = content.clone();
+		_signature = signature;
+	}
+
+	public ContentObject(String digestAlgorithm, // prefer OID
+			ContentName name,
+			SignedInfo signedInfo,
+			byte [] content, int offset, int length,
+			Signature signature) {
+
+		_name = name;
+		_signedInfo = signedInfo;
+		_content = new byte[length];
+		System.arraycopy(content, offset, _content, 0, length);
+		_signature = signature;
+		if ((null != signature) && SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
+			try {
+				byte [] digest = CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, this.encode());
+				byte [] tbsdigest = CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, prepareContent(name, signedInfo, content, offset, length));
+				Library.logger().info("Created content object: " + name + " timestamp: " + signedInfo.getTimestamp() + " encoded digest: " + DataUtils.printBytes(digest) + " tbs content: " + DataUtils.printBytes(tbsdigest));
+				Library.logger().info("Signature: " + this.signature());
+				if (!this.verify(KeyManager.getKeyManager().getDefaultPublicKey())) {
+					Library.logger().warning("ContentObject: " + name + " (length: " + length + ", digest: " + DataUtils.printBytes(contentDigest()) + ") " +
+					" fails to verify!");
+				} else {
+					Library.logger().info("ContentObject: " + name + " (length: " + length + ", digest: " + DataUtils.printBytes(contentDigest()) + ") " +
+					" verified OK.");				
+				}
+			} catch (Exception e) {
+				Library.logger().warning("Exception attempting to verify signature: " + e.getClass().getName() + ": " + e.getMessage());
+				Library.warningStackTrace(e);
+			}
+		}
+	}
+
+	public ContentObject(ContentName name, SignedInfo signedInfo, byte [] content,
+			Signature signature) {
+		this(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, name, signedInfo, content, signature);
+	}
+
+	public ContentObject(ContentName name, SignedInfo signedInfo, 
+			byte [] content, int offset, int length,
+			Signature signature) {
+		this(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, name, signedInfo, content, offset, length, signature);
+	}
+
+	/**
+	 * Generate a signedInfo and a signature.
+	 * @throws SignatureException 
+	 * @throws InvalidKeyException 
+	 */
+	public ContentObject(ContentName name, 
+			SignedInfo signedInfo,
+			byte [] content, int offset, int length,
+			PrivateKey signingKey) throws InvalidKeyException, SignatureException {
+		this(name, signedInfo, content, offset, length, (Signature)null);
+		_signature = sign(name, signedInfo, content, offset, length, signingKey);
+		if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
+			Library.logger().info("Created content object: " + name + " timestamp: " + signedInfo.getTimestamp());
+			try {
+				if (!this.verify(null)) {
+					Library.logger().warning("ContentObject: " + name + " (length: " + length + ", digest: " + DataUtils.printBytes(contentDigest()) + ") " +
+					" fails to verify!");
+				} else {
+					Library.logger().info("ContentObject: " + name + " (length: " + length + ", digest: " + DataUtils.printBytes(contentDigest()) + ") " +
+					" verified OK.");				
+				}
+			} catch (Exception e) {
+				Library.logger().warning("Exception attempting to verify signature: " + e.getClass().getName() + ": " + e.getMessage());
+				Library.warningStackTrace(e);
+			}
+		}
+	}
+
+	public ContentObject(ContentName name, 
+			SignedInfo signedInfo,
+			byte [] content, PrivateKey signingKey) throws InvalidKeyException, SignatureException {
+		this(name, signedInfo, content, 0, ((null == content) ? 0 : content.length), signingKey);
+	}
+	/**
+	 * DKS - temporary subclass constructor to get around brokenness in current
+	 * header, etc implementation. Remove after those no longer derive from CO.
+	 */
+	protected ContentObject(ContentName name, SignedInfo signedInfo) {
+		_name = name;
+		_signedInfo = signedInfo;
+		// must set content and signature.
+	}
+
+	/**
+	 * Used for testing.
+	 */
 	public static ContentObject buildContentObject(ContentName name, byte[] contents, 
-						  						   PublisherKeyID publisher,
-						  						   KeyManager keyManager) {
+			PublisherKeyID publisher,
+			KeyManager keyManager) {
 		try {
 			if (null == keyManager) {
 				keyManager = KeyManager.getDefaultKeyManager();
@@ -123,47 +180,47 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		}
 		return null;
 	}
-	
+
 	public static ContentObject buildContentObject(ContentName name, byte [] contents) {
 		return buildContentObject(name, contents, null, null);
 	}
-    			   
+
 	public static ContentObject buildContentObject(ContentName name, byte [] contents, PublisherKeyID publisher) {
 		return buildContentObject(name, contents, publisher, null);
 	}
 
 	public ContentObject() {} // for use by decoders
-    
-    public ContentObject clone() {
-    	// Constructor will clone the _content, signedInfo and signature are immutable types.
-    	return new ContentObject(_name.clone(), _signedInfo, _content, _signature);
-    }
-    
-    /**
-     * DKS -- return these as final for now; stopgap till refactor that makes
-     * internal version final.
-     * @return
-     */
-    public final ContentName name() { return _name; }
-    
-    public final SignedInfo signedInfo() { return _signedInfo;}
-    
-    public final byte [] content() { return _content; }
-    
-    public final Signature signature() { return _signature; }
-    
+
+	public ContentObject clone() {
+		// Constructor will clone the _content, signedInfo and signature are immutable types.
+		return new ContentObject(_name.clone(), _signedInfo, _content, _signature);
+	}
+
+	/**
+	 * DKS -- return these as final for now; stopgap till refactor that makes
+	 * internal version final.
+	 * @return
+	 */
+	public final ContentName name() { return _name; }
+
+	public final SignedInfo signedInfo() { return _signedInfo;}
+
+	public final byte [] content() { return _content; }
+
+	public final Signature signature() { return _signature; }
+
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		decoder.readStartElement(CONTENT_OBJECT_ELEMENT);
 
 		_signature = new Signature();
 		_signature.decode(decoder);
-		
+
 		_name = new ContentName();
 		_name.decode(decoder);
-		
+
 		_signedInfo = new SignedInfo();
 		_signedInfo.decode(decoder);
-		
+
 		_content = decoder.readBinaryElement(CONTENT_ELEMENT);
 
 		decoder.readEndElement();
@@ -184,7 +241,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 
 		encoder.writeEndElement();   		
 	}
-	
+
 	public boolean validate() { 
 		// recursive?
 		// null content ok
@@ -230,7 +287,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			return false;
 		return true;
 	}
-	
+
 	/**
 	 * Generate a signature on a name-content mapping. This
 	 * signature is specific to both this content signedInfo
@@ -244,52 +301,53 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	 * @throws InvalidKeyException 
 	 */
 	public static Signature sign(ContentName name, 
-					 		   SignedInfo signedInfo,
-					 		   byte [] content,
-					 		   String digestAlgorithm, 
-					 		   PrivateKey signingKey) 
-		throws SignatureException, InvalidKeyException, NoSuchAlgorithmException {
-		
+			SignedInfo signedInfo,
+			byte [] content, int offset, int length,
+			String digestAlgorithm, 
+			PrivateKey signingKey) 
+	throws SignatureException, InvalidKeyException, NoSuchAlgorithmException {
+
 		// Build XML document
 		byte [] signature = null;
-		
+
 		try {
-			byte [] toBeSigned = prepareContent(name, signedInfo,content);
+			byte [] toBeSigned = prepareContent(name, signedInfo, content, offset, length);
 			signature = 
 				CCNSignatureHelper.sign(digestAlgorithm, 
-									 toBeSigned,
-									 signingKey);
+						toBeSigned,
+						signingKey);
 			if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
 				SystemConfiguration.outputDebugData(name, toBeSigned);
 			}
-			
+
 		} catch (XMLStreamException e) {
 			Library.handleException("Exception encoding internally-generated XML name!", e);
 			throw new SignatureException(e);
 		}
 		return new Signature(digestAlgorithm, null, signature);
 	}
-	
+
 	public static Signature sign(ContentName name, 
-					 		   SignedInfo signedInfo,
-					 		   byte [] content,
-					 		   PrivateKey signingKey) 
-			throws SignatureException, InvalidKeyException {
+			SignedInfo signedInfo,
+			byte [] content, int offset, int length,
+			PrivateKey signingKey) 
+	throws SignatureException, InvalidKeyException {
 		try {
-			return sign(name, signedInfo, content, CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, signingKey);
+			return sign(name, signedInfo, content, offset, length,
+					CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, signingKey);
 		} catch (NoSuchAlgorithmException e) {
 			Library.logger().warning("Cannot find default digest algorithm: " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
 			Library.warningStackTrace(e);
 			throw new SignatureException(e);
 		}
 	}
-	
+
 	public boolean verify(PublicKey publicKey) 
-					throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, 
-								XMLStreamException, InterruptedException {
+	throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, 
+	XMLStreamException, InterruptedException {
 		return verify(this, publicKey);
 	}
-	
+
 	/**
 	 * Want to verify a content object. First compute the 
 	 * witness result (e.g. Merkle path root, or possibly content
@@ -316,8 +374,8 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	 * @throws InterruptedException 
 	 */
 	public static boolean verify(ContentObject object,
-								 PublicKey publicKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException, InterruptedException {
-		
+			PublicKey publicKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException, InterruptedException {
+
 		// Start with the cheap part. Derive the content proxy that was signed. This is
 		// either the root of the MerkleHash tree, the content itself, or the digest of
 		// the content. 
@@ -332,11 +390,11 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			Library.logger().info("Encoding exception attempting to verify content digest for object: " + object.name() + ". Signature verification fails.");
 			return false;
 		}
-		
+
 		if (null != contentProxy) {
 			return CCNSignatureHelper.verify(contentProxy, object.signature().signature(), object.signature().digestAlgorithm(), publicKey);
 		}
-	
+
 		return verify(object.name(), object.signedInfo(), object.content(), object.signature(), publicKey);
 	}
 
@@ -361,7 +419,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			byte [] content,
 			Signature signature,
 			PublicKey publicKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException, InterruptedException {
-	
+
 		if (null == publicKey) {
 			// Get a copy of the public key.
 			// Simple routers will install key manager that
@@ -369,19 +427,19 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			try {
 				publicKey = 
 					KeyManager.getKeyManager().getPublicKey(
-						signedInfo.getPublisherKeyID(),
-						signedInfo.getKeyLocator());
+							signedInfo.getPublisherKeyID(),
+							signedInfo.getKeyLocator());
 
 				if (null == publicKey) {
 					throw new SignatureException("Cannot obtain public key to verify object: " + name + ". Key locator: " + 
-						signedInfo.getKeyLocator());
+							signedInfo.getKeyLocator());
 				}
 			} catch (IOException e) {
 				throw new SignatureException("Cannot obtain public key to verify object: " + name + ". Key locator: " + 
 						signedInfo.getKeyLocator() + " exception: " + e.getMessage(), e);				
 			}
 		}
-	
+
 		byte [] preparedContent = prepareContent(name, signedInfo, content); 
 		// Now, check the signature.
 		boolean result = 
@@ -390,17 +448,19 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 					(signature.digestAlgorithm() == null) ? CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM : signature.digestAlgorithm(),
 							publicKey);
 		if (!result) {
-			Library.logger().warning("Verification failure: " + name + " timestamp: " + signedInfo.getTimestamp() + " signed content: " + 
-										CCNDigestHelper.printBytes(CCNDigestHelper.digest(preparedContent),SystemConfiguration.DEBUG_RADIX));
+			Library.logger().warning("Verification failure: " + name + " timestamp: " + signedInfo.getTimestamp() + " content length: " + content.length + 
+					" content digest: " + DataUtils.printBytes(ContentObject.contentDigest(content)) + " signed content: " + 
+					DataUtils.printBytes(CCNDigestHelper.digest(((signature.digestAlgorithm() == null) ? CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM : signature.digestAlgorithm()), preparedContent)));
 			SystemConfiguration.logObject(Level.FINEST, "Verification failure:", new ContentObject(name, signedInfo, content, signature));
 			if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
 				SystemConfiguration.outputDebugData(name, new ContentObject(name, signedInfo, content, signature));
 			}
 		} else {
-			Library.logger().finer("Verification success: " + name + " timestamp: " + signedInfo.getTimestamp() + " signed content: " + new BigInteger(1, CCNDigestHelper.digest(preparedContent)).toString(SystemConfiguration.DEBUG_RADIX));
+			Library.logger().finer("Verification success: " + name + " timestamp: " + signedInfo.getTimestamp() + 
+					" signed content: " + DataUtils.printBytes(CCNDigestHelper.digest(preparedContent)));
 		}
 		return result;
-		
+
 	}
 
 	public static boolean verify(byte[] proxy, byte [] signature, SignedInfo signedInfo,
@@ -412,19 +472,19 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			try {
 				publicKey = 
 					KeyManager.getKeyManager().getPublicKey(
-						signedInfo.getPublisherKeyID(),
-						signedInfo.getKeyLocator());
+							signedInfo.getPublisherKeyID(),
+							signedInfo.getKeyLocator());
 
 				if (null == publicKey) {
 					throw new SignatureException("Cannot obtain public key to verify object. Key locator: " + 
-						signedInfo.getKeyLocator());
+							signedInfo.getKeyLocator());
 				}
 			} catch (IOException e) {
 				throw new SignatureException("Cannot obtain public key to verify object. Key locator: " + 
 						signedInfo.getKeyLocator() + " exception: " + e.getMessage(), e);				
 			}
 		}
-	
+
 		// Now, check the signature.
 		boolean result = 
 			CCNSignatureHelper.verify(proxy,
@@ -442,30 +502,46 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			return null;
 		}
 		// Have to eventually handle various forms of witnesses...
-		byte [] blockDigest =
-			CCNDigestHelper.digest(
-				CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, 
-				prepareContent(name(), signedInfo(), content()));
+		byte[] blockDigest;
+		try {
+			blockDigest = CCNDigestHelper.digest(
+					CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, 
+					prepareContent(name(), signedInfo(), content()));
+		} catch (NoSuchAlgorithmException e) {
+			// DKS --big configuration problem
+			Library.logger().warning("Fatal Error: cannot find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
+			throw new RuntimeException("Error: can't find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM + "!  " + e.toString());
+		}
 		return signature().computeProxy(blockDigest, true);
 	}
-	
+
+	public static byte [] prepareContent(ContentName name, 
+			SignedInfo signedInfo, 
+			byte [] content) throws XMLStreamException {
+		return prepareContent(name, signedInfo, content, 0, 
+				((null == content) ? 0 : content.length));
+	}
+
 	/**
 	 * Prepare digest for signature.
+	 * DKS TODO -- limit extra copies -- shouldn't be returning a byte array
+	 * that is just digested.
 	 * @return
 	 */
 	public static byte [] prepareContent(ContentName name, 
-										SignedInfo signedInfo, byte [] content) throws XMLStreamException {
+			SignedInfo signedInfo, 
+			byte [] content, int offset, int length) throws XMLStreamException {
 		if ((null == name) || (null == signedInfo) || (null == content)) {
 			Library.logger().info("Name, signedInfo and content must not be null.");
 			throw new XMLStreamException("prepareContent: name, signedInfo and content must not be null.");
 		}
-		
+
 		// Do setup. Binary codec doesn't write a preamble or anything.
 		// If allow to pick, text encoder would sometimes write random stuff...
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		XMLEncoder encoder = XMLCodecFactory.getEncoder(BinaryXMLCodec.CODEC_NAME);
 		encoder.beginEncoding(baos);
-		
+
 		// We include the tags in what we verify, to allow routers to merely
 		// take a chunk of data from the packet and sign/verify it en masse
 		name.encode(encoder);
@@ -474,29 +550,35 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		// sign the same thing, plus it's really hard to do the automated codec
 		// stuff without doing a whole document, unless we do some serious
 		// rearranging.
-		encoder.writeElement(CONTENT_ELEMENT, content);
+		encoder.writeElement(CONTENT_ELEMENT, content, offset, length);
 
 		encoder.endEncoding();	
 
 		return baos.toByteArray();
 	}
-	
+
 	public byte [] contentDigest() {
-		 return CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, content());
+		return contentDigest(content());
 	}
-	
+
 	public static byte [] contentDigest(String content) {
-		 return CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, content.getBytes());
+		return contentDigest(content.getBytes());
 	}
-	
+
 	public static byte [] contentDigest(byte [] content) {
-		 return CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, content);
+		try {
+			return CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, content);
+		} catch (NoSuchAlgorithmException e) {
+			// DKS --big configuration problem
+			Library.logger().warning("Fatal Error: cannot find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
+			throw new RuntimeException("Error: can't find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM + "!  " + e.toString());
+		}
 	}
-	
+
 	public int compareTo(ContentObject o) {
 		return name().compareTo(o.name());
 	}
-	
+
 	/**
 	 * Type-checkers for built-in types.
 	 */
@@ -507,23 +589,23 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	public boolean isFragment() {
 		return isType(ContentType.FRAGMENT);
 	}
-	
+
 	public boolean isLink() {
 		return isType(ContentType.LINK);
 	}
-	
+
 	public boolean isLeaf() {
 		return isType(ContentType.LEAF);
 	}
-	
+
 	public boolean isCollection() {
 		return isType(ContentType.COLLECTION);
 	}
-	
+
 	public boolean isSession() {
 		return isType(ContentType.SESSION);
 	}
-	
+
 	public boolean isKey() {
 		return isType(ContentType.KEY);
 	}

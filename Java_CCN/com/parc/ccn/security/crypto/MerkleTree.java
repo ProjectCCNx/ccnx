@@ -1,7 +1,11 @@
 package com.parc.ccn.security.crypto;
 
+import java.security.NoSuchAlgorithmException;
+
 import org.bouncycastle.asn1.DEROctetString;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
+
+import com.parc.security.Library;
 
 /**
  * Modified to match Knuth, Vol 1 2.3.4.5. We represent
@@ -69,25 +73,51 @@ public class MerkleTree {
 	 * @param baseBlockIndex the offset into the contentBlocks array at which to start.
 	 * @param isDigest are the content blocks raw content (false), or are they already digested
 	 * 	  with our default algorithm (true)? (default algorithm: DigestHelper.DEFAULT_DIGEST_ALGORITHM)
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public MerkleTree(String algorithm, 
 					  byte [][] contentBlocks, boolean isDigest, int blockCount, 
-					  int baseBlockIndex, int lastBlockBytes) {
-		this(algorithm, blockCount);
-		
+					  int baseBlockIndex, int lastBlockBytes) throws NoSuchAlgorithmException {
+		this(algorithm, blockCount);		
 		initializeTree(contentBlocks, isDigest, baseBlockIndex, lastBlockBytes);
 	}
 	
-	public MerkleTree(byte [][] contentBlocks, boolean isDigest, int blockCount, int baseBlockIndex, int lastBlockBytes) {
-		this(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, contentBlocks, isDigest, blockCount, baseBlockIndex, lastBlockBytes);
+	public MerkleTree(byte [] content, int offset, int length, int blockWidth) {
+		this(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, (int)Math.ceil((1.0*length)/blockWidth));		
+		try {
+			initializeTree(content, offset, length, blockWidth);
+		} catch (NoSuchAlgorithmException e) {
+			// DKS --big configuration problem
+			Library.logger().warning("Fatal Error: cannot find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
+			throw new RuntimeException("Error: can't find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM + "!  " + e.toString());
+		}
+	}
+
+	public MerkleTree(String algorithm, byte [] content, int offset, int length,
+					  int blockWidth) throws NoSuchAlgorithmException {
+		this(algorithm, blockCount(length, blockWidth));
+		initializeTree(content, offset, length, blockWidth);
+	}
+
+	public MerkleTree(byte [][] contentBlocks, boolean isDigest, 
+					  int blockCount, int baseBlockIndex, int lastBlockBytes) {
+		this(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, blockCount);		
+		try {
+			initializeTree(contentBlocks, isDigest, baseBlockIndex, lastBlockBytes);
+		} catch (NoSuchAlgorithmException e) {
+			// DKS --big configuration problem
+			Library.logger().warning("Fatal Error: cannot find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
+			throw new RuntimeException("Error: can't find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM + "!  " + e.toString());
+		}
 	}
 	
 	/**
 	 * Separate this out to allow subclasses to initialize members before
 	 * building tree.
 	 * @return
+	 * @throws NoSuchAlgorithmException 
 	 */
-	protected void initializeTree(byte [][] contentBlocks, boolean isDigest, int baseBlockIndex, int lastBlockBytes) {
+	protected void initializeTree(byte [][] contentBlocks, boolean isDigest, int baseBlockIndex, int lastBlockBytes) throws NoSuchAlgorithmException {
 		if ((baseBlockIndex < 0) || (contentBlocks.length-baseBlockIndex < numLeaves()))
 			throw new IllegalArgumentException("MerkleTree: cannot build tree from more blocks than given! Have " + (contentBlocks.length-baseBlockIndex) + " blocks, asked to use: " + (numLeaves()));
 		
@@ -95,6 +125,19 @@ public class MerkleTree {
 		computeNodeValues();		
 	}
 	
+	/**
+	 * Separate this out to allow subclasses to initialize members before
+	 * building tree.
+	 * @return
+	 * @throws NoSuchAlgorithmException 
+	 */
+	protected void initializeTree(byte [] content, int offset, int length, int blockWidth) throws NoSuchAlgorithmException {
+		if ((offset < 0) || (length > content.length) || (blockCount(length, blockWidth) < numLeaves()))
+			throw new IllegalArgumentException("MerkleTree: cannot build tree from more blocks than given! Have " + blockCount(length, blockWidth) + " blocks, asked to use: " + (numLeaves()));
+		
+		computeLeafValues(content, offset, length, blockWidth);
+		computeNodeValues();		
+	}
 	
 	public String algorithm() { return _algorithm; }
 	
@@ -297,8 +340,9 @@ public class MerkleTree {
 	 * @param lastBlockLength number of bytes of the last block to use; N/A if isDigest is true
 	 * @param isDigest if the content is already digested (must use the default digest algorithm, for
 	 * 	now; we can change that if there is  a need).
+	 * @throws NoSuchAlgorithmException 
 	 */
-	protected void computeLeafValues(byte [][] contentBlocks, boolean isDigest, int baseBlockIndex, int lastBlockBytes) {
+	protected void computeLeafValues(byte [][] contentBlocks, boolean isDigest, int baseBlockIndex, int lastBlockBytes) throws NoSuchAlgorithmException {
 		// Hash the leaves
 		for (int i=0; i < numLeaves(); ++i) {
 			_tree[leafNodeIndex(i)-1] = 
@@ -308,7 +352,26 @@ public class MerkleTree {
 		}
 	}
 	
-	protected void computeNodeValues() {
+	/**
+	 * Compute the raw digest of the content blocks, and format them appropriately.
+	 * @param contentBlocks
+	 * @param baseBlockIndex first block in the array to use
+	 * @param lastBlockLength number of bytes of the last block to use; N/A if isDigest is true
+	 * @param isDigest if the content is already digested (must use the default digest algorithm, for
+	 * 	now; we can change that if there is  a need).
+	 * @throws NoSuchAlgorithmException 
+	 */
+	protected void computeLeafValues(byte [] content, int offset, int length, int blockWidth) throws NoSuchAlgorithmException {
+		// Hash the leaves
+		for (int i=0; i < numLeaves(); ++i) {
+			_tree[leafNodeIndex(i)-1] = 
+				new DEROctetString(
+						(computeBlockDigest(algorithm(), content, offset + (blockWidth*i), 
+											((i < numLeaves()-1) ? blockWidth : (length - (blockWidth*i))))));
+		}
+	}
+
+	protected void computeNodeValues() throws NoSuchAlgorithmException {
 		// Climb the tree
 		int firstNode = firstLeaf()-1;
 		for (int i=firstNode; i >= ROOT_NODE; --i) {
@@ -346,42 +409,59 @@ public class MerkleTree {
 	 * @param lastBlockBytes the number of bytes of the last block to use, can be smaller than
 	 *    the number available
 	 * @return
+	 * @throws NoSuchAlgorithmException 
 	 */
-	protected byte [] computeBlockDigest(int leafIndex, int blockOffset, byte [][] contentBlocks, int lastBlockBytes) {
+	protected byte [] computeBlockDigest(int leafIndex, int blockOffset, byte [][] contentBlocks, int lastBlockBytes) throws NoSuchAlgorithmException {
 		if ((leafIndex + blockOffset) == (contentBlocks.length-1))
-			computeBlockDigest(_algorithm, contentBlocks[leafIndex+blockOffset], 0, lastBlockBytes);
+			computeBlockDigest(leafIndex, contentBlocks[leafIndex+blockOffset], 0, lastBlockBytes);
 		return computeBlockDigest(_algorithm, contentBlocks[leafIndex+blockOffset]);
 	}
 	
-	public static byte [] computeBlockDigest(String algorithm, byte [] block) {
+	protected byte [] computeBlockDigest(int leafIndex, byte [] block, int offset, int length) throws NoSuchAlgorithmException {
+		return CCNDigestHelper.digest(_algorithm, block, offset, length);		
+	}
+	
+	public static byte [] computeBlockDigest(String algorithm, byte [] block) throws NoSuchAlgorithmException {
 		return CCNDigestHelper.digest(algorithm, block);		
 	}
 
-	public static byte [] computeBlockDigest(String algorithm, byte [] block, int offset, int length) {
-		byte [] tmpBuf = null;
-		if ((offset != 0) || (length != block.length)) {
-			tmpBuf = new byte[length];
-			System.arraycopy(block, offset, tmpBuf, 0, length);
-		} else {
-			tmpBuf = block;
-		}
-		return CCNDigestHelper.digest(algorithm, tmpBuf);		
+	public static byte [] computeBlockDigest(String algorithm, byte [] block, int offset, int length) throws NoSuchAlgorithmException {
+		return CCNDigestHelper.digest(algorithm, block, offset, length);		
 	}
 
+	/**
+	 * DKS TODO - used by MerklePath to compute digest for root without
+	 * properly recovering OID from encoded path.
+	 * @param block
+	 * @return
+	 */
 	public static byte [] computeBlockDigest(byte [] block) {
-		return computeBlockDigest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, block);		
+		try {
+			return computeBlockDigest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, block);
+		} catch (NoSuchAlgorithmException e) {
+			// DKS --big configuration problem
+			Library.logger().warning("Fatal Error: cannot find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
+			throw new RuntimeException("Error: can't find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM + "!  " + e.toString());
+		}		
 	}
 	
 	/**
 	 * Compute an intermediate node. If this is a last left child (right is null),
 	 * simply hash left alone.
+	 * @throws NoSuchAlgorithmException 
 	 */
-	public static byte [] computeNodeDigest(String algorithm, byte [] left, byte [] right) {
+	public static byte [] computeNodeDigest(String algorithm, byte [] left, byte [] right) throws NoSuchAlgorithmException {
 		return CCNDigestHelper.digest(algorithm, left, right);
 	}
 	
 	public static byte [] computeNodeDigest(byte [] left, byte [] right) {
-		return computeNodeDigest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, left, right);
+		try {
+			return computeNodeDigest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, left, right);
+		} catch (NoSuchAlgorithmException e) {
+			// DKS --big configuration problem
+			Library.logger().warning("Fatal Error: cannot find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
+			throw new RuntimeException("Error: can't find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM + "!  " + e.toString());
+		}		
 	}
 	
 	public static boolean isMerkleTree(AlgorithmIdentifier algorithmId) {
@@ -394,5 +474,10 @@ public class MerkleTree {
 	
 	public static double log2(int arg) {
 		return Math.log(arg)/Math.log(2);
+	}
+	
+	public static int blockCount(int length, int blockWidth) {
+		return (length + blockWidth - 1) / blockWidth;
+	//	return (int)Math.ceil((1.0*length)/blockWidth);
 	}
 }

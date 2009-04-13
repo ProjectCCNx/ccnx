@@ -64,12 +64,30 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 		writeElement(tag, binaryContent, null);
 	}
 
+	public void writeElement(String tag, byte[] binaryContent, int offset, int length)
+			throws XMLStreamException {
+		writeElement(tag, binaryContent, offset, length, null);
+	}
+
 	public void writeElement(String tag, byte[] binaryContent,
 			TreeMap<String, String> attributes)
 			throws XMLStreamException {
 		try {
 			writeStartElement(tag, attributes);
 			BinaryXMLCodec.encodeBlob(_ostream, binaryContent);
+			writeEndElement();
+		} catch (IOException e) {
+			throw new XMLStreamException(e.getMessage(), e);
+		}
+	}
+
+	public void writeElement(String tag, byte[] binaryContent,
+			int offset, int length,
+			TreeMap<String, String> attributes)
+			throws XMLStreamException {
+		try {
+			writeStartElement(tag, attributes);
+			BinaryXMLCodec.encodeBlob(_ostream, binaryContent, offset, length);
 			writeEndElement();
 		} catch (IOException e) {
 			throw new XMLStreamException(e.getMessage(), e);

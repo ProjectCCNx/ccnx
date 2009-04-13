@@ -71,7 +71,7 @@ public class Link extends ContentObject {
 			 PrivateKey signingKey
 			 ) throws XMLStreamException, InvalidKeyException, SignatureException {
 		this(name, target, publisher, locator, (Signature)null);
-		_signature = sign(name, signedInfo(), _content, signingKey);
+		_signature = sign(name, signedInfo(), _content, 0, _content.length, signingKey);
 	}
 
 	public Link(ContentName name,

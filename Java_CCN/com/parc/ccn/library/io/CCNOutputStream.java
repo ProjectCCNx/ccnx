@@ -210,13 +210,13 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			// maybe need put with offset and length
 			if ((_blockIndex == 1) || (_blockOffset == _blockBuffers[0].length)) {
 				Library.logger().finest("close(): writing single-block file in one put, length: " + _blockBuffers[0].length);
-				_segmenter.put(_baseName, _blockBuffers[0], ContentType.LEAF, 
-						_locator, _publisher);
+				_segmenter.put(_baseName, _blockBuffers[0], 0, _blockBuffers[0].length, true,
+							   ContentType.LEAF, 
+							   null, _locator, _publisher);
 			} else {
-				byte [] tempBuf = new byte[_blockOffset];
-				System.arraycopy(_blockBuffers[0],0,tempBuf,0,_blockOffset);
 				Library.logger().finest("close(): writing single-block file in one put, copied buffer length = " + _blockOffset);
-				_segmenter.put(_baseName, tempBuf, ContentType.LEAF, _locator, _publisher);
+				_segmenter.put(_baseName, _blockBuffers[0], 0, _blockOffset, true,
+							   ContentType.LEAF, null, _locator, _publisher);
 			}
 		} else {
 			Library.logger().info("closeNetworkData: final flush, wrote " + _totalLength + " bytes.");
@@ -302,11 +302,13 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 					return;
 				}
 				Library.logger().warning("flush(): writing hanging partial last block of file: " + _blockOffset + " bytes, block total is " + _blockBuffers[_blockIndex].length + ", called by close().");
-				byte [] tempBuf = new byte[_blockOffset];
-				System.arraycopy(_blockBuffers[_blockIndex],0,tempBuf,0,_blockOffset);
-				_segmenter.putFragment(_baseName, _baseNameIndex, tempBuf, ContentType.LEAF, _timestamp, null, null, _locator, _publisher);
+				_segmenter.putFragment(_baseName, _baseNameIndex, 
+									   _blockBuffers[_blockIndex], 0, _blockOffset, 
+									   ContentType.LEAF, _timestamp, null, null, _locator, _publisher);
 			} else {
-				_segmenter.putFragment(_baseName, _baseNameIndex, _blockBuffers[_blockIndex], ContentType.FRAGMENT, _timestamp, null, null, _locator, _publisher);				
+				_segmenter.putFragment(_baseName, _baseNameIndex, 
+									   _blockBuffers[_blockIndex], 0, _blockBuffers[_blockIndex].length,
+									   ContentType.FRAGMENT, _timestamp, null, null, _locator, _publisher);				
 			}
 		} else {
 			// Now, we have a set of buffers. Do we have a partial last block we want to preserve?
@@ -321,7 +323,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 				preservePartial = true;
 			}
 
-			Library.logger().info("flush: putting merkle tree to the network, " + (blockWriteCount) + " blocks.");
+			Library.logger().info("flush: putting merkle tree to the network, " + blockWriteCount + " blocks, last block length " + lastBlockSize + " flushing final blocks? " + flushLastBlock + ".");
 			// Generate Merkle tree (or other auth structure) and signedInfos and put contents.
 			// We always flush all the blocks starting from 0, so the baseBlockIndex is always 0.
 			// DKS TODO fix last block marking
@@ -345,6 +347,8 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		}
 
 		// Increment names
+		// DKS TODO -- allow for name increments to be handled by segmenter
+		// how stateless should it be?
 		_baseNameIndex += blockWriteCount;
 		_blockIndex = 0; // we always move down to block 0, even if we preserve a partial
 		if (!preservePartial)

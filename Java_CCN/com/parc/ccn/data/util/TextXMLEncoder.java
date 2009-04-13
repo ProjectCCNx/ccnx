@@ -54,6 +54,11 @@ public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 		writeElement(tag, binaryContent, null);
 	}
 
+	public void writeElement(String tag, byte[] binaryContent, int offset, int length)
+			throws XMLStreamException {
+		writeElement(tag, binaryContent, offset, length, null);
+	}
+
 	public void writeElement(String tag, byte[] binaryContent,
 			TreeMap<String, String> attributes) throws XMLStreamException {
 		if (null == attributes) {
@@ -64,6 +69,19 @@ public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 		}
 		writeStartElement(tag, attributes);
 		_writer.writeCharacters(TextXMLCodec.encodeBinaryElement(binaryContent));
+		writeEndElement();
+	}
+
+	public void writeElement(String tag, byte[] binaryContent, int offset, int length,
+			TreeMap<String, String> attributes) throws XMLStreamException {
+		if (null == attributes) {
+			attributes = new TreeMap<String,String>();
+		}
+		if (!attributes.containsKey(TextXMLCodec.BINARY_ATTRIBUTE)) {
+			attributes.put(TextXMLCodec.BINARY_ATTRIBUTE, TextXMLCodec.BINARY_ATTRIBUTE_VALUE);
+		}
+		writeStartElement(tag, attributes);
+		_writer.writeCharacters(TextXMLCodec.encodeBinaryElement(binaryContent, offset, length));
 		writeEndElement();
 	}
 

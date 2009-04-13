@@ -290,9 +290,13 @@ public class BinaryXMLCodec  {
 	}
 
 	public static void encodeBlob(OutputStream ostream, byte [] blob) throws IOException {
-		encodeTypeAndVal(XML_BLOB, ((null == blob) ? 0 : blob.length), ostream);
+		encodeBlob(ostream, blob, 0, ((null == blob) ? 0 : blob.length));
+	}
+	
+	public static void encodeBlob(OutputStream ostream, byte [] blob, int offset, int length) throws IOException {
+		encodeTypeAndVal(XML_BLOB, length, ostream);
 		if (null != blob) {
-			ostream.write(blob);
+			ostream.write(blob, offset, length);
 		}
 	}
 }
