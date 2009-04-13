@@ -15,6 +15,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.library.CCNLibrary;
@@ -95,6 +96,8 @@ public class CCNVersionedInputStreamTest {
 		int nextBufSize = 0;
 		boolean firstBuf = true;
 		System.out.println("Writing file: " + completeName + " bytes: " + fileLength);
+		final double probFlush = .1;
+		
 		while (elapsed < fileLength) {
 			nextBufSize = ((fileLength - elapsed) > BUF_SIZE) ? BUF_SIZE : (fileLength - elapsed);
 			randBytes.nextBytes(bytes);
@@ -105,6 +108,10 @@ public class CCNVersionedInputStreamTest {
 				firstBuf = false;
 			}
 			System.out.println(completeName + " wrote " + elapsed + " out of " + fileLength + " bytes.");
+			if (randBytes.nextDouble() < probFlush) {
+				System.out.println("Flushing buffers.");
+				digestStreamWrapper.flush();
+			}
 		}
 		digestStreamWrapper.close();
 		System.out.println("Finished writing file " + completeName);
