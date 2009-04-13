@@ -127,6 +127,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			ContentName prefixMarked = new ContentName(prefix, NEMARKER, prefix.count()+1);
 			
 			Interest pi = new Interest(prefixMarked);
+			System.out.println("interest name: "+pi.name().toString()+" prefix: "+pi.name().prefixCount()+" order preference "+pi.orderPreference());
 			NERequest n = new NERequest(prefix);
 			n.addInterest(pi);
 			_currentRequests.add(n);
@@ -364,7 +365,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 		
 		if(!_registeredNames.contains(name)){
 			_registeredNames.add(name);
-			System.out.println("registered "+ name.toString()+") as namespace");
+			System.out.println("registered "+ name.toString()+" as namespace");
 			_library.registerFilter(name, this);
 		}
 		
@@ -376,8 +377,8 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			System.err.println("The content name for registerNameForResponses was null, ignoring");
 			return;
 		}
-		
-		_library.registerFilter(name, this);
+		//Do not need to register each name as a filter...  the namespace should cover it
+		//_library.registerFilter(name, this);
 		if(!_registeredNames.contains(name)){
 		  _registeredNames.add(name);
 		  System.out.println("registered "+ name.toString()+") for responses");		  
