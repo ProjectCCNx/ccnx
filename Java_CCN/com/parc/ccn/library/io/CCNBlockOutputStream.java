@@ -7,8 +7,6 @@ import java.security.SignatureException;
 
 import javax.xml.stream.XMLStreamException;
 
-import org.junit.Assert;
-
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
@@ -45,10 +43,6 @@ import com.parc.ccn.library.profiles.SegmentationProfile.SegmentNumberType;
  */
 public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 
-	protected SegmentNumberType _sequenceType = SegmentNumberType.SEGMENT_FIXED_INCREMENT;
-	protected int _blockWidth = SegmentationProfile.DEFAULT_INCREMENT; // increment for fixed-width block naming
-	protected int _blockScale = SegmentationProfile.DEFAULT_SCALE;
-	protected int _bytesWritten = 0; // byte count for offset
 	protected SignedInfo.ContentType _type;
 	
 	/**
@@ -64,7 +58,7 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type,
 								KeyLocator locator, PublisherKeyID publisher,
 								CCNFlowControl flowControl) throws XMLStreamException, IOException {
-		// DKS TODO -- this stream defines a certain set of segmenter behaviors, set them up
+
 		super(locator, publisher, new CCNSegmenter(flowControl));
 		
 		_type = type;
@@ -87,30 +81,26 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 		this(baseName, type, null, null, null);
 	}
 		
-	@Override
-	public void write(byte[] b, int off, int len) throws IOException {
-		byte [] tempBuf = new byte[len];
-		System.arraycopy(b,off,tempBuf,0,len);
-		write(tempBuf, null);
+	public void useByteCountSequenceNumbers() {
+		getSegmenter().setSequenceType(SegmentNumberType.SEGMENT_BYTE_COUNT);
+		getSegmenter().setBlockScale(1);
 	}
 
-	/**
-	 * Force the value of the block index. This resets future counter-based
-	 * indices, if they are used.
-	 */
-	public void write(byte[] b, Integer blockIndex) throws IOException {
+	public void useFixedIncrementSequenceNumbers(int increment) {
+		getSegmenter().setSequenceType(SegmentNumberType.SEGMENT_FIXED_INCREMENT);
+		getSegmenter().setBlockIncrement(increment);
+	}
+
+	public void useScaledByteCountSequenceNumbers(int scale) {
+		getSegmenter().setSequenceType(SegmentNumberType.SEGMENT_BYTE_COUNT);
+		getSegmenter().setBlockScale(scale);
+	}
+
+	@Override
+	public void write(byte[] b, int off, int len) throws IOException {
 		try {
-			// DKS TODO -- change from string sequence numbers to binary.
-			if (blockIndex != null) {
-				_blockIndex = blockIndex; // reset block index
-			} else {
-				// compute automatically
-				updateBlockIndex();
-			}
-			Assert.fail("Need to fix block numbering!");
-			ContentName blockName = ContentName.fromNative(_baseName, Integer.toString(_blockIndex));
-			_segmenter.put(blockName, b, _type, _locator, _publisher);
-			_bytesWritten += b.length;
+			getSegmenter().putFragment(_baseName, _blockIndex, b, off, len, null, 
+									  null, null, null, null, null);
 		} catch (InvalidKeyException e) {
 			throw new IOException("Cannot sign content -- invalid key!: " + e.getMessage());
 		} catch (SignatureException e) {
@@ -118,17 +108,7 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 		} catch (NoSuchAlgorithmException e) {
 			throw new IOException("Cannot sign content -- unknown algorithm!: " + e.getMessage());
 		} 
+		// DKS TODO use segmenter numbering scheme
+		_blockIndex++;
 	}
-	
-	protected void updateBlockIndex() {
-		switch(_sequenceType) {
-			case SEGMENT_FIXED_INCREMENT:
-				_blockIndex += _blockWidth;
-				break;
-			case SEGMENT_BYTE_COUNT:
-				_blockIndex = _bytesWritten * _blockScale; // if not scaling, blockScale set to 1
-				break;
-		}
-	}
-
 }
