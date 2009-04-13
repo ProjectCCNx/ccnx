@@ -10,7 +10,7 @@
     <SignedInfo>
       <PublisherPublicKeyDigest ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherPublicKeyDigest>
       <Timestamp ccnbencoding="base64Binary">BIx7ZoZm</Timestamp>
-      <Type>DATA</Type>
+      <Type ccnbencoding="base64Binary">DATA</Type>
     </SignedInfo>
     <Content ccnbencoding="base64Binary"/>
   </ContentObject>
@@ -24,7 +24,7 @@
     <SignedInfo>
       <PublisherPublicKeyDigest ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherPublicKeyDigest>
       <Timestamp ccnbencoding="base64Binary">BHsH67bp</Timestamp>
-      <Type>DATA</Type>
+      <Type ccnbencoding="base64Binary">DATA</Type>
       <FreshnessSeconds>42</FreshnessSeconds>
       <KeyLocator>
         <KeyName>

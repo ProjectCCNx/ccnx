@@ -84,4 +84,4 @@ ccn-bad11.xml: ccn-test11.xml
 
 check: ccn-schemabad12.xml
 ccn-schemabad12.xml: ccn-test12.xml
-	sed -e 's/Type>DATA/Type>FUZZ/' $? > $@
+	sed -e 's/>DATA/>FUZZ/' $? > $@

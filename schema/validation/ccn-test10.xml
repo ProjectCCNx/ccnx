@@ -10,7 +10,7 @@
     <SignedInfo>
       <PublisherPublicKeyDigest ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherPublicKeyDigest>
       <Timestamp ccnbencoding="base64Binary">BHsH67bp</Timestamp>
-      <Type>DATA</Type>
+      <Type ccnbencoding="base64Binary">DATA</Type>
       <KeyLocator>
         <KeyName>
           <Name>
