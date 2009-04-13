@@ -24,6 +24,7 @@ TryAppend "`uname`"
 TryAppend "`uname -sr | sed -e 's/ /-/g'`"
 TryScript "`uname`" "$@"
 TryScript "python" "$@"
+ProvideDefault PCAP_PROGRAMS = ccndumppcap
 ProvideDefault INSTALL_BASE = ${INSTALL_BASE:-/usr/local}
 ProvideDefault INSTALL_INCLUDE = '$(INSTALL_BASE)/include'
 ProvideDefault INSTALL_LIB = '$(INSTALL_BASE)/lib'

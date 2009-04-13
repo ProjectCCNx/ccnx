@@ -10,7 +10,7 @@ COPT = -g
 INSTALLED_PROGRAMS = \
     ccn_ccnbtoxml ccn_splitccnb ccntimestamps ccndumpnames ccnrm ccnls ccnslurp \
     ccnsendchunks ccncatchunks ccncatchunks2 \
-    ccnget ccnhexdumpdata $(EXPAT_PROGRAMS)
+    ccnget ccnhexdumpdata $(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)
 
 PROGRAMS = $(INSTALLED_PROGRAMS) \
     ccn_verifysig \
@@ -18,9 +18,10 @@ PROGRAMS = $(INSTALLED_PROGRAMS) \
     smoketestclientlib dataresponsetest  \
     encodedecodetest  ccndump  \
     ccnbuzz  \
-    signbenchtest ccndumppcap
+    signbenchtest $(PCAP_PROGRAMS)
 
 EXPAT_PROGRAMS = ccn_xmltoccnb
+#PCAP_PROGRAMS = ccndumppcap
 BROKEN_PROGRAMS =
 DEBRIS = 
 CSRC = ccn_buf_decoder.c ccn_dtag_table.c ccn_buf_encoder.c ccn_charbuf.c \
@@ -181,7 +182,7 @@ ccn_indexbuf.o: ccn_indexbuf.c ../include/ccn/indexbuf.h
 ccn_coding.o: ccn_coding.c ../include/ccn/coding.h
 ccn_client.o: ccn_client.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
-  ../include/ccn/ccnd.h ../include/ccn/hashtb.h
+  ../include/ccn/ccnd.h ../include/ccn/hashtb.h ../include/ccn/signing.h
 ccn_ccnbtoxml.o: ccn_ccnbtoxml.c ../include/ccn/charbuf.h \
   ../include/ccn/coding.h
 ccn_xmltoccnb.o: ccn_xmltoccnb.c ../include/ccn/coding.h \
