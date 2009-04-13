@@ -3,6 +3,8 @@ package com.parc.ccn.data.util;
 import java.math.BigInteger;
 import java.util.ArrayList;
 
+import com.parc.ccn.config.SystemConfiguration;
+
 public class DataUtils {
 
 	public static <T extends Comparable<T>> int compare(T left, T right) {
@@ -89,6 +91,11 @@ public class DataUtils {
 	}
 
 	public static String printBytes(byte [] bytes) {
+		BigInteger bi = new BigInteger(1, bytes);
+		return bi.toString(SystemConfiguration.DEBUG_RADIX);
+	}
+	
+	public static String printHexBytes(byte [] bytes) {
 		BigInteger bi = new BigInteger(1, bytes);
 		return bi.toString(16);
 	}
