@@ -1,5 +1,7 @@
 package com.parc.ccn.security.crypto;
 
+import java.security.NoSuchAlgorithmException;
+
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
@@ -11,15 +13,16 @@ public class CCNDigestHelper extends DigestHelper {
 	public static String DEFAULT_DIGEST_ALGORITHM = "SHA-256";
 	// public static String DEFAULT_DIGEST_ALGORITHM = "SHA-1";
 	public static int DEFAULT_DIGEST_LENGTH = 64;
-	
+		
 	/**
 	 * Same digest preparation algorithm as ContentObject.
 	 * @throws XMLStreamException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public static byte [] digestLeaf(
 			String digestAlgorithm,
 			XMLEncodable [] toBeSigneds,
-			byte [][] additionalToBeSigneds) throws XMLStreamException {
+			byte [][] additionalToBeSigneds) throws XMLStreamException, NoSuchAlgorithmException {
 		
 		if (null == toBeSigneds) {
 			Library.logger().info("Value to be signed must not be null.");

@@ -1,5 +1,6 @@
 package com.parc.ccn.data.security;
 
+import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
@@ -169,10 +170,17 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 
 	public static byte [] generateCertificateID(X509Certificate cert) throws CertificateEncodingException {
-		return generateCertificateID(PUBLISHER_ID_DIGEST_ALGORITHM, cert);
+		try {
+			return generateCertificateID(PUBLISHER_ID_DIGEST_ALGORITHM, cert);
+		} catch (NoSuchAlgorithmException e) {
+			// DKS --big configuration problem
+			Library.logger().warning("Fatal Error: cannot find default algorithm " + PUBLISHER_ID_DIGEST_ALGORITHM);
+			throw new RuntimeException("Error: can't find default algorithm " + PUBLISHER_ID_DIGEST_ALGORITHM + "!  " + e.toString());
+		}
 	}
 	
-    public static byte [] generateCertificateID(String digestAlg, X509Certificate cert) throws CertificateEncodingException  {
+    public static byte [] generateCertificateID(String digestAlg, X509Certificate cert) 
+    							throws CertificateEncodingException, NoSuchAlgorithmException  {
     	
         byte [] id = null;
         try {
