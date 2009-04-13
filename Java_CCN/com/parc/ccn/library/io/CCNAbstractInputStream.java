@@ -11,6 +11,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 
@@ -204,7 +205,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		Library.logger().info("getFirstBlock: getting " + _baseName);
 		ContentObject result =  _library.getLower(_baseName, 2, _timeout);
 		if (null != result){
-			Library.logger().info("getFirstBlock: retrieved " + result.name());
+			Library.logger().info("getFirstBlock: retrieved " + result.name() + " type: " + result.signedInfo().getTypeName());
 			// Now need to verify the block we got
 			if (!verifyBlock(result)) {
 				return null;
@@ -234,15 +235,20 @@ public abstract class CCNAbstractInputStream extends InputStream {
 
 			// OK, if we have an existing verified signature, and it matches this block's
 			// signature, the proxy ought to match as well.
-			if ((null != _verifiedRootSignature) || (Arrays.equals(_verifiedRootSignature, block.signature().signature()))) {
+			if ((null != _verifiedRootSignature) && (Arrays.equals(_verifiedRootSignature, block.signature().signature()))) {
 				if ((null == proxy) || (null == _verifiedProxy) || (!Arrays.equals(_verifiedProxy, proxy))) {
-					Library.logger().warning("Found block: " + block.name().toString() + " whose digest fails to verify.");
+					Library.logger().warning("Found block: " + block.name() + " whose digest fails to verify; block length: " + block.content().length);
+					Library.logger().finer("Verification failure: " + block.name() + " timestamp: " + block.signedInfo().getTimestamp() + " content length: " + block.content().length + 
+							" content digest: " + DataUtils.printBytes(block.contentDigest()) + " proxy: " + 
+							DataUtils.printBytes(proxy) + " expected proxy: " + DataUtils.printBytes(_verifiedProxy));
+	 				return false;
 				}
 			} else {
 				// Verifying a new block. See if the signature verifies, otherwise store the signature
 				// and proxy.
 				if (!ContentObject.verify(proxy, block.signature().signature(), block.signedInfo(), block.signature().digestAlgorithm(), null)) {
-					Library.logger().warning("Found block: " + block.name().toString() + " whose signature fails to verify.");		
+					Library.logger().warning("Found block: " + block.name().toString() + " whose signature fails to verify; block length: " + block.content().length + ".");
+					return false;
 				} else {
 					// Remember current verifiers
 					_verifiedRootSignature = block.signature().signature();
