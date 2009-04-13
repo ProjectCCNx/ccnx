@@ -166,7 +166,7 @@ public class SystemConfiguration {
 				}
 			}
 			
-			byte [] contentDigest = CCNDigestHelper.digest(data);
+			byte [] contentDigest = CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, data);
 			String contentName = new BigInteger(1, contentDigest).toString(DEBUG_RADIX);
 			File outputFile = new File(outputParent, contentName);
 			
