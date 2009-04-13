@@ -40,6 +40,7 @@ public class LibraryTestBase {
 	public static int count = 55;
 	//public static int count = 5;
 	public static Random rand = new Random();
+	public static final int WAIT_DELAY = 50000;
 	
 	protected static final String BASE_NAME = "/test/BaseLibraryTest/";
 	protected static ContentName PARENT_NAME = null;
@@ -84,8 +85,8 @@ public class LibraryTestBase {
 			Thread.sleep(20);
 			Date start = new Date();
 			getter.start();
-			putter.join(50000);
-			getter.join(50000);
+			putter.join(WAIT_DELAY);
+			getter.join(WAIT_DELAY);
 			boolean good = true;
 			exit = true;
 			if (getter.getState() != Thread.State.TERMINATED) {

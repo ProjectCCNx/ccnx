@@ -77,9 +77,9 @@ public class MerkleTree {
 	 */
 	public MerkleTree(String algorithm, 
 					  byte [][] contentBlocks, boolean isDigest, int blockCount, 
-					  int baseBlockIndex, int lastBlockBytes) throws NoSuchAlgorithmException {
+					  int baseBlockIndex, int lastBlockLength) throws NoSuchAlgorithmException {
 		this(algorithm, blockCount);		
-		initializeTree(contentBlocks, isDigest, baseBlockIndex, lastBlockBytes);
+		initializeTree(contentBlocks, isDigest, baseBlockIndex, lastBlockLength);
 	}
 	
 	public MerkleTree(byte [] content, int offset, int length, int blockWidth) {
@@ -100,10 +100,10 @@ public class MerkleTree {
 	}
 
 	public MerkleTree(byte [][] contentBlocks, boolean isDigest, 
-					  int blockCount, int baseBlockIndex, int lastBlockBytes) {
+					  int blockCount, int baseBlockIndex, int lastBlockLength) {
 		this(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, blockCount);		
 		try {
-			initializeTree(contentBlocks, isDigest, baseBlockIndex, lastBlockBytes);
+			initializeTree(contentBlocks, isDigest, baseBlockIndex, lastBlockLength);
 		} catch (NoSuchAlgorithmException e) {
 			// DKS --big configuration problem
 			Library.logger().warning("Fatal Error: cannot find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
@@ -117,11 +117,11 @@ public class MerkleTree {
 	 * @return
 	 * @throws NoSuchAlgorithmException 
 	 */
-	protected void initializeTree(byte [][] contentBlocks, boolean isDigest, int baseBlockIndex, int lastBlockBytes) throws NoSuchAlgorithmException {
+	protected void initializeTree(byte [][] contentBlocks, boolean isDigest, int baseBlockIndex, int lastBlockLength) throws NoSuchAlgorithmException {
 		if ((baseBlockIndex < 0) || (contentBlocks.length-baseBlockIndex < numLeaves()))
 			throw new IllegalArgumentException("MerkleTree: cannot build tree from more blocks than given! Have " + (contentBlocks.length-baseBlockIndex) + " blocks, asked to use: " + (numLeaves()));
 		
-		computeLeafValues(contentBlocks, isDigest, baseBlockIndex, lastBlockBytes);
+		computeLeafValues(contentBlocks, isDigest, baseBlockIndex, lastBlockLength);
 		computeNodeValues();		
 	}
 	
@@ -342,13 +342,13 @@ public class MerkleTree {
 	 * 	now; we can change that if there is  a need).
 	 * @throws NoSuchAlgorithmException 
 	 */
-	protected void computeLeafValues(byte [][] contentBlocks, boolean isDigest, int baseBlockIndex, int lastBlockBytes) throws NoSuchAlgorithmException {
+	protected void computeLeafValues(byte [][] contentBlocks, boolean isDigest, int baseBlockIndex, int lastBlockLength) throws NoSuchAlgorithmException {
 		// Hash the leaves
 		for (int i=0; i < numLeaves(); ++i) {
 			_tree[leafNodeIndex(i)-1] = 
 				new DEROctetString(
 						(isDigest ? contentBlocks[i+baseBlockIndex] : 
-									computeBlockDigest(i, baseBlockIndex, contentBlocks, lastBlockBytes)));
+									computeBlockDigest(i, contentBlocks, baseBlockIndex, lastBlockLength)));
 		}
 	}
 	
@@ -404,17 +404,22 @@ public class MerkleTree {
 
 	/**
 	 * Separate this out so that it can be overridden.
-	 * @param leafIndex
-	 * @param contentBlocks
-	 * @param lastBlockBytes the number of bytes of the last block to use, can be smaller than
+	 * @param leafIndex The number of the leaf we are computing.
+	 * @param contentBlocks The array of content blocks containing the leaf content.
+	 * @param baseBlockIndex The first content block in the array containing leaf content (if rolling buffers).
+	 * 					  numLeaves() blocks contain leaf content, so the last block used is blockOffset+numLeaves().
+	 * @param lastBlockLength the number of bytes of the last block to use, can be smaller than
 	 *    the number available
 	 * @return
 	 * @throws NoSuchAlgorithmException 
 	 */
-	protected byte [] computeBlockDigest(int leafIndex, int blockOffset, byte [][] contentBlocks, int lastBlockBytes) throws NoSuchAlgorithmException {
-		if ((leafIndex + blockOffset) == (contentBlocks.length-1))
-			computeBlockDigest(leafIndex, contentBlocks[leafIndex+blockOffset], 0, lastBlockBytes);
-		return computeBlockDigest(_algorithm, contentBlocks[leafIndex+blockOffset]);
+	protected byte [] computeBlockDigest(int leafIndex, byte [][] contentBlocks, int baseBlockIndex, int lastBlockLength) throws NoSuchAlgorithmException {
+		if ((leafIndex + baseBlockIndex) > contentBlocks.length) 
+			throw new IllegalArgumentException("Cannot ask for a leaf beyond the number of available blocks!");
+		// Are we on the last block?
+		if ((leafIndex + baseBlockIndex) == (baseBlockIndex + numLeaves() - 1))
+			computeBlockDigest(leafIndex, contentBlocks[leafIndex+baseBlockIndex], 0, lastBlockLength);
+		return computeBlockDigest(_algorithm, contentBlocks[leafIndex+baseBlockIndex]);
 	}
 	
 	protected byte [] computeBlockDigest(int leafIndex, byte [] block, int offset, int length) throws NoSuchAlgorithmException {

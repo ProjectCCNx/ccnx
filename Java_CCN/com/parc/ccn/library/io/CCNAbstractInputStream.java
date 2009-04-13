@@ -238,7 +238,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 			if ((null != _verifiedRootSignature) && (Arrays.equals(_verifiedRootSignature, block.signature().signature()))) {
 				if ((null == proxy) || (null == _verifiedProxy) || (!Arrays.equals(_verifiedProxy, proxy))) {
 					Library.logger().warning("Found block: " + block.name() + " whose digest fails to verify; block length: " + block.content().length);
-					Library.logger().finer("Verification failure: " + block.name() + " timestamp: " + block.signedInfo().getTimestamp() + " content length: " + block.content().length + 
+					Library.logger().info("Verification failure: " + block.name() + " timestamp: " + block.signedInfo().getTimestamp() + " content length: " + block.content().length + 
 							" content digest: " + DataUtils.printBytes(block.contentDigest()) + " proxy: " + 
 							DataUtils.printBytes(proxy) + " expected proxy: " + DataUtils.printBytes(_verifiedProxy));
 	 				return false;

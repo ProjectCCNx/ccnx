@@ -15,6 +15,7 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.library.CCNLibrary;
@@ -34,6 +35,7 @@ public class BlockReadWriteTest extends BasePutGetTest {
 	
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
 		//Library.logger().setLevel(Level.FINEST);
+		//SystemConfiguration.setDebugFlag("DEBUG_SIGNATURES");
 	}
 
 	@Override

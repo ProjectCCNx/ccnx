@@ -71,7 +71,7 @@ public class CCNMerkleTree extends MerkleTree {
 	 * @param contentBlocks
 	 * @param isDigest
 	 * @param blockCount the number of blocks of the contentBlocks array to use
-	 * @param blockOffset the offset into the contentBlocks array at which to start
+	 * @param baseBlockIndex the point in the contentBlocks array at which to start
 	 * @throws NoSuchAlgorithmException 
 	 * @throws SignatureException 
 	 * @throws InvalidKeyException 
@@ -257,8 +257,8 @@ public class CCNMerkleTree extends MerkleTree {
 	 * @throws  
 	 */
 	@Override
-	protected byte [] computeBlockDigest(int leafIndex, int baseBlockIndex, 
-											byte [][] contentBlocks, int lastBlockBytes) {
+	protected byte [] computeBlockDigest(int leafIndex, byte [][] contentBlocks, int baseBlockIndex, 
+										 int lastBlockLength) {
 
 		// Computing the leaf digest.
 		//new XMLEncodable[]{name, signedInfo}, new byte[][]{content},
@@ -266,13 +266,17 @@ public class CCNMerkleTree extends MerkleTree {
 		byte[] blockDigest = null;
 		int index = leafIndex + baseBlockIndex;
 
+		if (index > contentBlocks.length) 
+			throw new IllegalArgumentException("Cannot ask for a leaf beyond the number of available blocks!");
+		
 		try {
-			if ((index == (contentBlocks.length-1)) && (lastBlockBytes < contentBlocks[index].length)) {
+			// Are we on the last block?
+			if ((index == (baseBlockIndex + numLeaves() - 1)) && (lastBlockLength < contentBlocks[index].length)) {
 				// short last block
 				blockDigest = CCNDigestHelper.digest(
 						CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, 
 						ContentObject.prepareContent(blockName(leafIndex), blockSignedInfo(leafIndex),
-								contentBlocks[index], 0, lastBlockBytes));
+								contentBlocks[index], 0, lastBlockLength));
 			} else {
 				blockDigest = CCNDigestHelper.digest(
 						CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, 

@@ -126,6 +126,7 @@ public class CCNMerkleTreeTest {
 					System.out.println("Block name: " + tree.blockName(i) + " num "  + i + " verified? " + result);
 				Assert.assertTrue("Path " + i + " failed to verify.", result);
 			}
+			tree = null;
 		} catch (Exception e) {
 			System.out.println("Exception in testTree: " + e.getClass().getName() + ": " + e.getMessage());
 			e.printStackTrace();
