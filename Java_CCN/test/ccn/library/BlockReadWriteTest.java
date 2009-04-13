@@ -15,7 +15,6 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 
 import com.parc.ccn.Library;
-import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.library.CCNLibrary;
