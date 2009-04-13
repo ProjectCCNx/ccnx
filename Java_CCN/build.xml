@@ -31,7 +31,7 @@
         required, so we have an authoritative list of dependencies -->
 
 	<path id="classpath">
-		<pathelement location="${lib}/parccalib-1.0.jar"/>
+		<pathelement location="${lib}/parccalib-1.1.jar"/>
 		<pathelement location="${lib}/bcprov-jdk15-140.jar"/>
 		<!--        <pathelement location="${lib}/bcprov-jdk16-140.jar"/> -->
 		<!--        <pathelement location="${lib}/commons-codec-1.2.jar"/> -->
@@ -76,7 +76,7 @@
 	<path id="classpath-run">
 		<path refid="classpath"/>
 		<pathelement location="${jarfile}"/>
-		<pathelement location="${lib}/parccalib-1.0.jar"/>
+		<pathelement location="${lib}/parccalib-1.1.jar"/>
 		<pathelement location="${lib}/bcprov-jdk15-140.jar"/>
 		<!--        <pathelement location="${lib}/bcprov-jdk16-140.jar"/> -->
 		<pathelement location="${lib}/slf4j-api-1.3.0.jar"/>
