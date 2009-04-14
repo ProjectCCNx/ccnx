@@ -287,6 +287,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		return last(name, null);
 	}
 	
+	public static Interest last(ContentName name, int prefixCount) {
+		ContentName newName = new ContentName(prefixCount, name.components());
+		return last(newName, (byte[][])null);
+	}
+	
 	public static Interest last(ContentName name, byte[] [] omissions) {
 		return nextOrLast(name, omissions, new Integer(ORDER_PREFERENCE_RIGHT | ORDER_PREFERENCE_ORDER_NAME));
 	}

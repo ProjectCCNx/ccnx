@@ -91,6 +91,10 @@ public class CCNFlowControl implements CCNFilterListener {
 		_library.registerFilter(name, this);
 	}
 	
+	public void addNameSpace(String name) throws MalformedContentNameStringException {
+		addNameSpace(ContentName.fromNative(name));
+	}
+	
 	/**
 	 * For now we don't have anyway to remove a partial namespace from
 	 * flow control (would we want to do that?) so for now we only allow
@@ -145,11 +149,16 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	public ContentObject put(ContentObject co) throws IOException {
 		if (_flowControlEnabled) {
+			boolean found = false;
 			for (ContentName name : _filteredNames) {
-				if (!name.isPrefixOf(co.name()))
-					throw new IOException("Flow control: co name \"" + co.name() 
-							+ "\" is not in the flow control namespace");
+				if (name.isPrefixOf(co.name())) {
+					found = true;
+					break;
+				}
 			}
+			if (!found)
+				throw new IOException("Flow control: co name \"" + co.name() 
+					+ "\" is not in the flow control namespace");
 		}
 		return waitForMatch(co);
 	}
@@ -230,21 +239,20 @@ public class CCNFlowControl implements CCNFilterListener {
 			 * right don't look the same
 			 */
 			if (interest.orderPreference()  != null) {
-				if ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME))
-						== (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME)) { //last
-					if (interest.matches(result)) {
-						if (bestMatch == null)
+				if (interest.matches(result)) {
+					if (bestMatch == null)
+						bestMatch = result;
+					if ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME))
+							== (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME)) { //last
+						if (name.compareTo(bestMatch.name()) > 0) {
 							bestMatch = result;
-						else {
-							if (name.compareTo(bestMatch.name()) < 0) {
-								bestMatch = result;
-							}
 						}
+					} else if ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME))
+							== (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME)) { //next
+						if (name.compareTo(bestMatch.name()) < 0) {
+							bestMatch = result;
+						}				
 					}
-				} else if ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME))
-						== (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME)) { //next
-					if (interest.matches(result))
-						return result;
 				}
 			} else
 				if (interest.matches(result))

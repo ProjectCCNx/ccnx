@@ -124,7 +124,12 @@ public class CCNLibrary extends CCNBase {
 	protected CCNLibrary() throws ConfigurationException, IOException {
 		this(KeyManager.getDefaultKeyManager());
 	}
-
+	
+	/*
+	 * For testing only
+	 */
+	protected CCNLibrary(boolean useNetwork) {}
+	
 	public void setKeyManager(KeyManager keyManager) {
 		if (null == keyManager) {
 			Library.logger().warning("StandardCCNLibrary::setKeyManager: Key manager cannot be null!");
@@ -512,7 +517,7 @@ public class CCNLibrary extends CCNBase {
 
 	public ContentObject get(ContentName name, long timeout) throws IOException {
 		Interest interest = new Interest(name);
-		return super.get(interest, timeout);
+		return get(interest, timeout);
 	}
 	
 	/**
@@ -611,6 +616,11 @@ public class CCNLibrary extends CCNBase {
 		return getNext(name, null, timeout);
 	}
 	
+	public ContentObject getNext(ContentName name, int prefixCount, long timeout)
+			throws IOException, InvalidParameterException {
+		return get(Interest.next(name, prefixCount), timeout);
+	}
+	
 	public ContentObject getNext(ContentObject content, int prefixCount, byte[][] omissions, long timeout) 
 			throws IOException {
 		return getNext(contentObjectToContentName(content, prefixCount), omissions, timeout);
@@ -636,6 +646,11 @@ public class CCNLibrary extends CCNBase {
 	public ContentObject getLatest(ContentName name, long timeout) throws InvalidParameterException, 
 			IOException {
 		return getLatest(name, null, timeout);
+	}
+	
+	public ContentObject getLatest(ContentName name, int prefixCount, long timeout) throws InvalidParameterException, 
+			IOException {
+		return get(Interest.last(name, prefixCount), timeout);
 	}
 	
 	public ContentObject getLatest(ContentObject content, int prefixCount, long timeout) throws InvalidParameterException, 
