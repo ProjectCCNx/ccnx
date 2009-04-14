@@ -3,7 +3,6 @@ package com.parc.ccn.data.query;
 import java.util.ArrayList;
 
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.library.profiles.VersionMissingException;
 
 public interface CCNInterestListener {
 	
