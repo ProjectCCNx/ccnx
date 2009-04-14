@@ -127,6 +127,8 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			ContentName prefixMarked = new ContentName(prefix, NEMARKER, prefix.count()+1);
 			
 			Interest pi = new Interest(prefixMarked);
+			pi.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME);
+			
 			System.out.println("interest name: "+pi.name().toString()+" prefix: "+pi.name().prefixCount()+" order preference "+pi.orderPreference());
 			NERequest n = new NERequest(prefix);
 			n.addInterest(pi);
@@ -320,12 +322,16 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 					for(int x = 0; x < cd.contents().size(); x++)
 						temp[x] = cd.contents().get(x);
 					Collection coll = new Collection(collectionName, temp, null, null, (Signature)null);
-					if(coll.validate())
-					_library.put(coll);
+					if(coll.validate()){
+						_library.put(coll);
+						System.out.println("called _library.put() with our collection!");
+					}
+					else
+						System.err.println("ERROR with collection.validate!!!!");
 					
-					CCNEncodableCollectionData ecd = new CCNEncodableCollectionData(collectionName, cd);
+					//CCNEncodableCollectionData ecd = new CCNEncodableCollectionData(collectionName, cd);
 					//ecd.save();
-					System.out.println("saved ecd.  name: "+ecd.getName());
+					//System.out.println("saved ecd.  name: "+ecd.getName());
 					r.clean();
 
 				}
@@ -335,10 +341,10 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 				catch (XMLStreamException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
-				} catch (ConfigurationException e) {
+				}// catch (ConfigurationException e) {
 					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
+					//e.printStackTrace();
+				//}
 			}
 			else{
 				System.out.println("this interest did not have any matching names...  not returning anything.");
