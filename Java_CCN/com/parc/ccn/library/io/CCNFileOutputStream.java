@@ -47,8 +47,7 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 
 	protected void writeHeader() throws InvalidKeyException, SignatureException, IOException, InterruptedException {
 		// What do we put in the header if we have multiple merkle trees?
-		putHeader(_baseName, (int)_totalLength, _blockSize, _dh.digest(), 
-				((_roots.size() > 0) ? _roots.get(0) : null),
+		putHeader(_baseName, (int)_totalLength, _blockSize, _dh.digest(), null,
 				_timestamp, _locator, _publisher);
 		Library.logger().info("Wrote header: " + SegmentationProfile.headerName(_baseName));
 	}
