@@ -78,10 +78,9 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	public int available() throws IOException {
 		if (_atEOF)
 			return 0;
-		if (_currentBlock != null){
+		if (_currentBlock != null) {
 			return _currentBlock.content().length - _blockOffset;
-		}
-		else{
+		} else {
 			return 0;
 		}
 			
