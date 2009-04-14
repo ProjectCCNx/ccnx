@@ -152,6 +152,21 @@
 		</parallel>
 	</target>
 
+        <!-- Run a ccnd on test port but not as daemon (i.e. keep running
+             even if nothing else running under ant.  This is useful
+             if you need to separately start a ccnd, for instance 
+             to support tests that don't work when ant runs under cygwin -->
+	<target name="ccnd-testport">
+		<mkdir dir="${testout}"/>
+		<parallel failonany="true">
+			<echo message="Running test ccnd on port ${TEST_PORT}"/>
+			<exec executable="${ccnd}" dir="${testout}" output="${testout}/TEST-ccnd-baselib.txt">
+				<env key="CCN_LOCAL_PORT" value="${TEST_PORT}"/>
+				<env key="CCND_DEBUG" value="-1"/>
+			</exec>
+		</parallel>
+	</target>
+
 	<target name="start-repo">
 		<java classname="com.parc.ccn.network.daemons.repo.RepositoryDaemon" fork="true" failonerror="true">
 			<classpath>
