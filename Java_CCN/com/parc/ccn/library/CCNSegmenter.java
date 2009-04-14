@@ -17,7 +17,8 @@ import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.SegmentationProfile.SegmentNumberType;
-import com.parc.ccn.security.crypto.CCNMerkleTree;
+import com.parc.ccn.security.crypto.CCNAggregatedSigner;
+import com.parc.ccn.security.crypto.CCNMerkleTreeSigner;
 
 /**
  * This class combines basic segmentation, signing and encryption; 
@@ -66,6 +67,9 @@ public class CCNSegmenter {
 	protected CCNLibrary _library;
 	// Eventually may not contain this; callers may access it exogenously.
 	protected CCNFlowControl _flowControl;
+	
+	// Handle multi-block amortized signing. If null, default to single-block signing.
+	protected CCNAggregatedSigner _bulkSigner;
 
 	/**
 	 * Eventually add encryption, allow control of authentication algorithm.
@@ -81,13 +85,26 @@ public class CCNSegmenter {
 		this(new CCNFlowControl(library));
 	}
 
+	/**
+	 * Create an object with default Merkle hash tree aggregated signing.
+	 * @param flowControl
+	 */
 	public CCNSegmenter(CCNFlowControl flowControl) {
+		this(flowControl, null);
+	}
+
+	public CCNSegmenter(CCNFlowControl flowControl, CCNAggregatedSigner signer) {
 		if ((null == flowControl) || (null == flowControl.getLibrary())) {
 			// Tries to get a library or make a flow control, yell if we fail.
 			throw new IllegalArgumentException("CCNSegmenter: must provide a valid library or flow controller.");
 		} 
 		_flowControl = flowControl;
 		_library = _flowControl.getLibrary();
+		if (null == signer) {
+			_bulkSigner = new CCNMerkleTreeSigner();
+		} else {
+			_bulkSigner = signer; // if null, default to merkle tree
+		}
 		initializeBlockSize();
 	}
 
@@ -235,7 +252,7 @@ public class CCNSegmenter {
 	 **/
 	public ContentObject put(
 			ContentName name, byte [] content, int offset, int length,
-			boolean lastBlocks,
+			boolean lastSegments,
 			SignedInfo.ContentType type,
 			Integer freshnessSeconds, 
 			KeyLocator locator, 
@@ -261,8 +278,9 @@ public class CCNSegmenter {
 		}
 
 		// DKS TODO -- take encryption overhead into account
+		// DKS TODO -- hook up last segment
 		if (length >= getBlockSize()) {
-			return fragmentedPut(name, content, offset, length, lastBlocks,
+			return fragmentedPut(name, content, offset, length, null,
 								 type, freshnessSeconds, locator, publisher);
 		} else {
 			try {
@@ -283,25 +301,6 @@ public class CCNSegmenter {
 		}
 	}
 
-	public ContentObject update(
-			ContentName name, 
-			byte [] contents, int offset, int length,
-			SignedInfo.ContentType type,
-			KeyLocator locator, 
-			PublisherKeyID publisher) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
-		return put(name, contents, offset, length, false, type, null, locator, publisher);
-	}
-
-	public ContentObject finish(
-			ContentName name, 
-			byte [] contents, int offset, int length,
-			SignedInfo.ContentType type,
-			Integer freshnessSeconds, 
-			KeyLocator locator, 
-			PublisherKeyID publisher) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
-		return put(name, contents, offset, length, true, type, freshnessSeconds, locator, publisher);
-	}
-
 	/** 
 	 * Low-level fragmentation interface. Assume arguments have been cleaned
 	 * prior to arrival -- name is not already segmented, type is set, etc.
@@ -319,11 +318,27 @@ public class CCNSegmenter {
 	protected ContentObject fragmentedPut(
 			ContentName name, 
 			byte [] content, int offset, int length,
-			boolean lastBlocks,
+			Integer lastSegment,
 			SignedInfo.ContentType type,
 			Integer freshnessSeconds, 
 			KeyLocator locator, 
 			PublisherKeyID publisher) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+		
+		return fragmentedPut(name, SegmentationProfile.baseSegment(),
+				content, offset, length, getBlockSize(), type,
+				null, freshnessSeconds, lastSegment, locator, publisher);
+	}
+	
+	public ContentObject fragmentedPut(
+			ContentName name, int baseNameIndex,
+			byte [] content, int offset, int length, int blockWidth,
+			ContentType type, 
+			Timestamp timestamp,
+			Integer freshnessSeconds, Integer lastSegment,
+			KeyLocator locator, 
+			PublisherKeyID publisher) throws InvalidKeyException, 
+									SignatureException, NoSuchAlgorithmException, IOException {
+		
 
 		// This will call into CCNBase after picking appropriate credentials
 		// take content, blocksize (static), divide content into array of 
@@ -331,16 +346,59 @@ public class CCNSegmenter {
 		// hash tree.   Build header, for each block, get authinfo for block,
 		// (with hash tree, block identifier, timestamp -- SQLDateTime)
 		// insert header using mid-level insert, low-level insert for actual blocks.
-		Timestamp timestamp = SignedInfo.now();
-
-		CCNMerkleTree tree = 
-			putMerkleTree(name, SegmentationProfile.baseSegment(),
-						content, offset, length, getBlockSize(), type,
-						timestamp, freshnessSeconds, lastBlocks, locator, publisher);
+		ContentObject result = 
+			_bulkSigner.putBlocks(this, name, baseNameIndex,
+						content, offset, length, blockWidth, type,
+						timestamp, freshnessSeconds, lastSegment, locator, publisher);
 		// Used to return header. Now return first block.
-		return tree.block(SegmentationProfile.baseSegment(), content, offset, 
-						 ((length > getBlockSize()) ? getBlockSize() : length));
+		return result;
 	}
+
+	public ContentObject fragmentedPut(
+			ContentName name, int baseNameIndex,
+			byte [][] contentBlocks, int blockCount, 
+			int baseBlockIndex, int lastBlockLength,
+			ContentType type, 
+			Timestamp timestamp,
+			Integer freshnessSeconds, Integer lastSegment,
+			KeyLocator locator, 
+			PublisherKeyID publisher) throws InvalidKeyException, SignatureException, 
+											 NoSuchAlgorithmException, IOException {
+		
+		ContentObject result = 
+			_bulkSigner.putBlocks(this, name, baseNameIndex,
+						contentBlocks, blockCount, baseBlockIndex, lastBlockLength, type,
+						timestamp, freshnessSeconds, lastSegment, locator, publisher);
+		// Used to return header. Now return first block.
+		return result;
+	}
+
+	/**
+	 * DKS TODO -- may need to be tweaked
+	 * 
+	 * Use this to put a set of unrelated content blocks. May need
+	 * fancier version that allows sub-itemst to segment.
+	 * @params names the individual names of the content items to put
+	 */
+	public ContentObject fragmentedPut(
+			ContentName [] names, 
+			byte [][] contentBlocks, int blockCount, 
+			int baseBlockIndex, int lastBlockLength,
+			ContentType type, 
+			Timestamp timestamp,
+			Integer freshnessSeconds, Integer lastSegment,
+			KeyLocator locator, 
+			PublisherKeyID publisher) throws InvalidKeyException, SignatureException, 
+											 NoSuchAlgorithmException, IOException {
+
+		ContentObject result = 
+			_bulkSigner.putBlocks(this, names, 
+						contentBlocks, blockCount, baseBlockIndex, lastBlockLength, type,
+						timestamp, freshnessSeconds, lastSegment, locator, publisher);
+		// Used to return header. Now return first block.
+		return result;
+	}
+
 
 	/**
 	 * Puts a single block of content using a fragment naming convention.
@@ -384,158 +442,12 @@ public class CCNSegmenter {
 
 		ContentObject co = 
 			new ContentObject(SegmentationProfile.segmentName(rootName, 
-															  fragmentNumber),
-							  new SignedInfo(publisher, 
-											 type, locator,
-										     freshnessSeconds, lastSegment), 
-							  content, offset, length, signingKey);
+					fragmentNumber),
+					new SignedInfo(publisher, timestamp,
+							type, locator,
+							freshnessSeconds, lastSegment), 
+							content, offset, length, signingKey);
 		Library.logger().info("CCNSegmenter: putting " + co.name() + " (timestamp: " + co.signedInfo().getTimestamp() + ", length: " + length + ")");
 		return _flowControl.put(co);
-	}
-
-	/**
-	 * Puts an entire Merkle tree worth of content using fragment naming conventions.
-	 * @param name
-	 * @param baseNameIndex
-	 * @param contentBlocks array of blocks of data, not all may be used
-	 * @param blockCount how many blocks of the array to use - number of leaves in the tree
-	 * @param lastBlockLength last block may not be full of data
-	 * @param baseBlockIndex
-	 * @param timestamp
-	 * @param publisher
-	 * @param locator
-	 * @param signingKey
-	 * @return
-	 * @throws InvalidKeyException
-	 * @throws SignatureException
-	 * @throws NoSuchAlgorithmException
-	 * @throws IOException
-	 */
-	public CCNMerkleTree putMerkleTree(
-			ContentName name, int baseNameIndex,
-			byte [][] contentBlocks, int blockCount, 
-			int baseBlockIndex, int lastBlockLength,
-			ContentType type, 
-			Timestamp timestamp,
-			Integer freshnessSeconds, boolean lastBlocks,
-			KeyLocator locator, 
-			PublisherKeyID publisher) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
-
-		if (null == publisher) {
-			publisher = _library.keyManager().getDefaultKeyID();
-		}
-		PrivateKey signingKey = _library.keyManager().getSigningKey(publisher);
-
-		if (null == locator)
-			locator = _library.keyManager().getKeyLocator(signingKey);
-
-		ContentName rootName = SegmentationProfile.segmentRoot(name);
-		_flowControl.addNameSpace(rootName);
-
-		if (null == type) {
-			// DKS TODO -- default to DATA
-			type = ContentType.FRAGMENT;
-		}
-		// Digest of complete contents
-		// If we're going to unique-ify the block names
-		// (or just in general) we need to incorporate the names
-		// and signedInfos in the MerkleTree blocks. 
-		// For now, this generates the root signature too, so can
-		// ask for the signature for each block.
-		// DKS TODO -- enable different fragment numbering schemes
-		// DKS TODO -- limit number of copies in creation of MerkleTree -- have to make
-		//  a copy when making CO, don't make extra ones.
-		CCNMerkleTree tree = 
-			new CCNMerkleTree(rootName, baseNameIndex,
-					new SignedInfo(publisher, timestamp, type, locator),
-					contentBlocks, false, blockCount, baseBlockIndex, lastBlockLength, signingKey);
-
-		for (int i = 0; i < blockCount-1; i++) {
-			try {
-				Library.logger().info("putMerkleTree: writing block " + i + " of " + blockCount + " to name " + tree.blockName(i));
-				_flowControl.put(tree.block(i, contentBlocks[i], 0, contentBlocks[i].length));
-			} catch (IOException e) {
-				Library.logger().warning("This should not happen: we cannot put our own blocks!");
-				Library.warningStackTrace(e);
-				throw e;
-			}
-		}
-		// last block
-		try {
-			Library.logger().info("putMerkleTree: writing last block of " + blockCount + " to name " + tree.blockName(blockCount-1) + " length: " + lastBlockLength);
-			_flowControl.put(tree.block(blockCount-1, contentBlocks[blockCount-1], 0, lastBlockLength));
-		} catch (IOException e) {
-			Library.logger().warning("This should not happen: we cannot put our own last block!");
-			Library.warningStackTrace(e);
-			throw e;
-		}		
-
-		// Caller needs both root signature and root itself. For now, give back the tree.
-		return tree;
-	}
-
-	public CCNMerkleTree putMerkleTree(
-			ContentName name, int baseNameIndex,
-			byte [] content, int offset, int length, int blockWidth,
-			ContentType type, 
-			Timestamp timestamp,
-			Integer freshnessSeconds, boolean lastBlocks,
-			KeyLocator locator, 
-			PublisherKeyID publisher) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
-
-		if (null == publisher) {
-			publisher = _library.keyManager().getDefaultKeyID();
-		}
-		PrivateKey signingKey = _library.keyManager().getSigningKey(publisher);
-
-		if (null == locator)
-			locator = _library.keyManager().getKeyLocator(signingKey);
-
-		ContentName rootName = SegmentationProfile.segmentRoot(name);
-		_flowControl.addNameSpace(rootName);
-
-		if (null == type) {
-			// DKS TODO -- default to DATA
-			type = ContentType.FRAGMENT;
-		}
-		// Digest of complete contents
-		// If we're going to unique-ify the block names
-		// (or just in general) we need to incorporate the names
-		// and signedInfos in the MerkleTree blocks. 
-		// For now, this generates the root signature too, so can
-		// ask for the signature for each block.
-		// DKS TODO -- enable different fragment numbering schemes
-		// DKS TODO -- limit number of copies in creation of MerkleTree -- have to make
-		//  a copy when making CO, don't make extra ones.
-		// DKS TODO -- handling of lastBlocks flag in signed info.
-		CCNMerkleTree tree = 
-			new CCNMerkleTree(rootName, baseNameIndex,
-					new SignedInfo(publisher, timestamp, type, locator),
-					content, offset, length, blockWidth, signingKey);
-
-		for (int i = 0; i < tree.numLeaves()-1; i++) {
-			try {
-				Library.logger().info("putMerkleTree: writing block " + i + " of " + tree.numLeaves() + " to name " + tree.blockName(i));
-				_flowControl.put(tree.block(i, content, i*blockWidth, blockWidth));
-			} catch (IOException e) {
-				Library.logger().warning("This should not happen: we cannot put our own blocks!");
-				Library.warningStackTrace(e);
-				throw e;
-			}
-		}
-		// last block
-		try {
-			Library.logger().info("putMerkleTree: writing last block of " + tree.numLeaves() + 
-									" to name " + tree.blockName(tree.numLeaves()-1) + " its length: " + (length - (blockWidth*(tree.numLeaves()-1))) + " (blocks: " + blockWidth + ")");
-			_flowControl.put(tree.block(tree.numLeaves()-1, content, (blockWidth*(tree.numLeaves()-1)), 
-											(length - (blockWidth*(tree.numLeaves()-1)))));
-		} catch (IOException e) {
-			Library.logger().warning("This should not happen: we cannot put our own last block!");
-			Library.warningStackTrace(e);
-			throw e;
-		}		
-
-		// Caller needs both root signature and root itself. For now, give back the tree.
-		return tree;
 	}
 }

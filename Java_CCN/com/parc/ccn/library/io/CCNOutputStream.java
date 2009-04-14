@@ -5,7 +5,6 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 import java.sql.Timestamp;
-import java.util.ArrayList;
 import java.util.Arrays;
 
 import javax.xml.stream.XMLStreamException;
@@ -21,7 +20,6 @@ import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNSegmenter;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
-import com.parc.ccn.security.crypto.CCNMerkleTree;
 
 /**
  * This particular output stream class embodies the following assumptions:
@@ -55,8 +53,6 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	protected Timestamp _timestamp; // timestamp we use for writing, set to first time we write
 
 	protected CCNDigestHelper _dh;
-
-	protected ArrayList<byte []> _roots = new ArrayList<byte[]>();
 
 	public CCNOutputStream(ContentName name, 
 			KeyLocator locator, PublisherKeyID publisher,
@@ -239,13 +235,6 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	protected void flushToNetwork(boolean flushLastBlock) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException {		
 
 		/**
-		 * Kludgy fix added by paul r. 1/20/08 - Right now the digest algorithm lower down the chain doesn't like
-		 * null pointers within the blockbuffers. So if this is the case, we create a temporary smaller "blockbuffer"
-		 * with only filled entries
-		 * DKS -- removed kludgy fix. There should be no holes in the 
-		 * blockbuffers, if there are, there is a different bug somewhere
-		 * else.
-		 * There are larger issues with buffers and sync, we should discuss.
 		 * XXX - Can the blockbuffers have holes?
 		 *     DKS: no. The blockCount argument to putMerkleTree is intended to tell
 		 *     it how many of the blockBuffers array it should touch (are non-null).
@@ -323,11 +312,9 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			// Generate Merkle tree (or other auth structure) and signedInfos and put contents.
 			// We always flush all the blocks starting from 0, so the baseBlockIndex is always 0.
 			// DKS TODO fix last block marking
-			CCNMerkleTree tree =
-				_segmenter.putMerkleTree(_baseName, _baseNameIndex, _blockBuffers, 
-							blockWriteCount, 0, lastBlockSize,
-						ContentType.LEAF, _timestamp, null, false, _locator, _publisher);
-			_roots.add(tree.root());
+			_segmenter.fragmentedPut(_baseName, _baseNameIndex, _blockBuffers, 
+					blockWriteCount, 0, lastBlockSize,
+					ContentType.LEAF, _timestamp, null, null, _locator, _publisher);
 		}
 
 		int startEraseBlock = 0;
