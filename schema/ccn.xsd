@@ -288,7 +288,7 @@
     <xs:length value="3" fixed="true"/>
     <xs:enumeration value="DATA"/>
     <xs:enumeration value="GONE"/>
-    <xs:enumeration value="KEY="/>
+    <xs:enumeration value="KEY/"/>
     <xs:enumeration value="LINK"/>
     <xs:enumeration value="NACK"/>
   </xs:restriction>
