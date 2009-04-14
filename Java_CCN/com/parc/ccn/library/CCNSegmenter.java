@@ -51,6 +51,9 @@ import com.parc.ccn.security.crypto.CCNMerkleTreeSigner;
  * within this class. Even better, provide functionality that let client stream
  * classes limit copies (e.g. by partially creating data-filled content objects,
  * and not signing them till flush()). But start with the former.
+ * 
+ *  
+ * DKS TODO -- sort out name increments for all segmenter clients
  * @author smetters
  *
  */

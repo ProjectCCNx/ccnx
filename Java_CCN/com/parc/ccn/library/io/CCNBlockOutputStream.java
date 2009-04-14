@@ -11,10 +11,12 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.SignedInfo;
+import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNSegmenter;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.SegmentationProfile.SegmentNumberType;
+import com.parc.ccn.security.crypto.CCNBlockSigner;
 
 /**
  * This class acts as a packet-oriented stream of data. It might be
@@ -23,14 +25,9 @@ import com.parc.ccn.library.profiles.SegmentationProfile.SegmentNumberType;
  * where each block is named according to the base name concatenated with a
  * sequence number identifying the specific block. 
  * 
- * Each call to write writes an individual CCN data item. There is no buffering,
- * content is immediately flushed to the network. Each block is individually
- * signed using the specified algorithm and key.
- * 
- * For now, it is very low-level and makes no assumptions about the structure
- * of the name prefix it uses. It assumes the caller has sorted out issues
- * about versioning and fragmentation markers, if any are necessary. On
- * the C library side, it mimics the behavior of ccnsendchunks.
+ * Each call to write writes one or more individual ContentObjects. The
+ * maximum size is given by parameters of the segmenter used; if buffers
+ * are larger than that size they are output as multiple fragments.
  * 
  * It does offer flexible content name increment options. The creator
  * can specify an initial block id (default is 0), and an increment (default 1)
@@ -38,6 +35,7 @@ import com.parc.ccn.library.profiles.SegmentationProfile.SegmentNumberType;
  * in the running stream, or by another integer metric (e.g. time offset),
  * by supplying a multiplier to conver the byte offset into a metric value.
  * Finally, writers can specify the block identifier with a write.
+ * 
  * @author smetters
  *
  */
@@ -59,7 +57,7 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 								KeyLocator locator, PublisherKeyID publisher,
 								CCNFlowControl flowControl) throws XMLStreamException, IOException {
 
-		super(locator, publisher, new CCNSegmenter(flowControl));
+		super(locator, publisher, new CCNSegmenter(flowControl, new CCNBlockSigner()));
 		
 		_type = type;
 
@@ -95,12 +93,11 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 		getSegmenter().setSequenceType(SegmentNumberType.SEGMENT_BYTE_COUNT);
 		getSegmenter().setBlockScale(scale);
 	}
-
+	
 	@Override
 	public void write(byte[] b, int off, int len) throws IOException {
 		try {
-			getSegmenter().putFragment(_baseName, _blockIndex, b, off, len, null, 
-									  null, null, null, null, null);
+			getSegmenter().put(_baseName, b, off, len, false, ContentType.FRAGMENT, null, null, null);
 		} catch (InvalidKeyException e) {
 			throw new IOException("Cannot sign content -- invalid key!: " + e.getMessage());
 		} catch (SignatureException e) {
@@ -108,7 +105,6 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 		} catch (NoSuchAlgorithmException e) {
 			throw new IOException("Cannot sign content -- unknown algorithm!: " + e.getMessage());
 		} 
-		// DKS TODO use segmenter numbering scheme
-		_blockIndex++;
 	}
+
 }
