@@ -15,7 +15,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.parc.ccn.Library;
-import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.library.CCNLibrary;
