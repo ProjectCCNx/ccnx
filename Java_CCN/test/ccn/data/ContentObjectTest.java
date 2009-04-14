@@ -1,5 +1,6 @@
 package test.ccn.data;
 
+import java.io.FileOutputStream;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -47,11 +48,14 @@ public class ContentObjectTest {
 	static KeyPair pair = null;
 	static X509Certificate cert = null;
 	static KeyLocator nameLoc = null;
+	static KeyLocator keyLoc = null;
 	static public Signature signature;
 	static public byte [] contenthash = new byte[32];
 	static public byte [] publisherid = new byte[32];
 	static PublisherKeyID pubkey = null;	
 	static SignedInfo auth = null;
+	static SignedInfo authKey = null;
+
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -77,6 +81,7 @@ public class ContentObjectTest {
 					pair.getPrivate(),
 					null);
 			nameLoc = new KeyLocator(keyname);
+			keyLoc = new KeyLocator(pair.getPublic());
 			
 			byte [] signaturebuf = new byte[64];
 			Arrays.fill(signaturebuf, (byte)1);
@@ -90,6 +95,10 @@ public class ContentObjectTest {
 					new Timestamp(System.currentTimeMillis()), 
 					SignedInfo.ContentType.LEAF, 
 					nameLoc);
+			authKey = new SignedInfo(pubkey,
+					new Timestamp(System.currentTimeMillis()), 
+					SignedInfo.ContentType.LEAF, 
+					keyLoc);
 		} catch (Exception ex) {
 			XMLEncodableTester.handleException(ex);
 			System.out.println("Unable To Initialize Test!!!");
@@ -98,10 +107,27 @@ public class ContentObjectTest {
 
 	@Test
 	public void testDecodeInputStream() {
-		ContentObject co = new ContentObject(name, auth, document3, signature);
-		ContentObject tdco = new ContentObject();
-		ContentObject bdco = new ContentObject();
-		XMLEncodableTester.encodeDecodeTest("ContentObject", co, tdco, bdco);
+		try {
+			ContentObject co = new ContentObject(name, auth, document3, pair.getPrivate());
+			ContentObject tdco = new ContentObject();
+			ContentObject bdco = new ContentObject();
+			XMLEncodableTester.encodeDecodeTest("ContentObject", co, tdco, bdco);
+			Assert.assertTrue(co.verify(pair.getPublic()));
+			ContentObject cokey = new ContentObject(name, authKey, document3, pair.getPrivate());
+			ContentObject tdcokey = new ContentObject();
+			ContentObject bdcokey = new ContentObject();
+			XMLEncodableTester.encodeDecodeTest("ContentObjectKey", cokey, tdcokey, bdcokey);
+			Assert.assertTrue(cokey.verify(pair.getPublic()));
+			// Dump one to file for testing on the C side.
+		//	FileOutputStream fdump = new FileOutputStream("ContentObjectKey.ccnb");
+		//	cokey.encode(fdump);
+		//	fdump.flush();
+		//	fdump.close();
+		} catch (Exception e) {
+			System.out.println("Exception : " + e.getClass().getName() + ": " + e.getMessage());
+			e.printStackTrace();
+			Assert.fail("Exception: " + e.getClass().getName() + ": " + e.getMessage());
+		}
 	}
 	
 	@Test
