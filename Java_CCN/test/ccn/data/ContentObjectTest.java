@@ -1,6 +1,5 @@
 package test.ccn.data;
 
-import java.io.FileOutputStream;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -20,10 +19,10 @@ import test.ccn.data.util.XMLEncodableTester;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.Signature;
+import com.parc.ccn.data.security.SignedInfo;
 import com.parc.security.crypto.certificates.BCX509CertificateGenerator;
 
 public class ContentObjectTest {
