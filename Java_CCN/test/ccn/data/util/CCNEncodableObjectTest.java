@@ -227,8 +227,10 @@ public class CCNEncodableObjectTest {
 			fail("Exception: " + e.getClass().getName() + ": " + e.getMessage());
 		} finally {
 			try {
-				if (!done) // if we have an error, stick around long enough to debug
+				if (!done) { // if we have an error, stick around long enough to debug
 					Thread.sleep(100000);
+					System.out.println("Done sleeping, finishing.");
+				}
 				flosser.stop();
 				
 			} catch (Exception e) {
