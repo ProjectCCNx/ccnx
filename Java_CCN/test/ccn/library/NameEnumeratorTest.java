@@ -145,7 +145,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 			Assert.fail();
 		}
 		
-		
+		Assert.assertNotNull(net.names);
 		//for(LinkReference lr: net.names){
 		for(ContentName cn: net.names){
 			//System.out.println("got name: "+lr.targetName());
@@ -176,13 +176,14 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		}
 						
 	}
-	/*  NOT WORKING AT THE MOMENT:  new collection name is not matching the next interest name
+
 	@Test
 	public void testGetCallbackDirty(){
 
 		Assert.assertNotNull(putLibrary);
 		Assert.assertNotNull(getLibrary);
 		
+		net.names = null;
 		int attempts = 0;
 		try{
 			while(net.names==null && attempts < 1000){
@@ -208,7 +209,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 			Assert.assertTrue(cn.toString().equals("/name1") || cn.toString().equals("/name2") || cn.toString().equals("/name1TestDirty"));
 		}
 	}
-	*/
+	
 
 	@Test
 	public void testCancelPrefix(){

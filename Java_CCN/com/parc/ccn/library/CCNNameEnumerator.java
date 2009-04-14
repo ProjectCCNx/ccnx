@@ -321,13 +321,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 					LinkReference[] temp = new LinkReference[cd.contents().size()];
 					for(int x = 0; x < cd.contents().size(); x++)
 						temp[x] = cd.contents().get(x);
-					Collection coll = new Collection(collectionName, temp, null, null, (Signature)null);
-					if(coll.validate()){
-						_library.put(coll);
-						System.out.println("called _library.put() with our collection!");
-					}
-					else
-						System.err.println("ERROR with collection.validate!!!!");
+					_library.put(collectionName, temp);
 					
 					//CCNEncodableCollectionData ecd = new CCNEncodableCollectionData(collectionName, cd);
 					//ecd.save();
@@ -338,13 +332,10 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 				catch(IOException e){
 					
 				}
-				catch (XMLStreamException e) {
+				catch (SignatureException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
-				}// catch (ConfigurationException e) {
-					// TODO Auto-generated catch block
-					//e.printStackTrace();
-				//}
+				}
 			}
 			else{
 				System.out.println("this interest did not have any matching names...  not returning anything.");
