@@ -1,21 +1,14 @@
 package com.parc.ccn.library.io;
 
 import java.io.IOException;
-import java.util.ArrayList;
 
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.content.Header;
-import com.parc.ccn.data.query.CCNInterestListener;
-import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherKeyID;
-import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.profiles.SegmentationProfile;
 
 /**
  * Perform sequential reads on any block-oriented CCN content, namely that
@@ -47,36 +40,17 @@ import com.parc.ccn.library.profiles.SegmentationProfile;
  * @author smetters
  *
  */
-public class CCNInputStream extends CCNAbstractInputStream implements CCNInterestListener {
+public class CCNInputStream extends CCNAbstractInputStream {
 	
 	protected boolean _atEOF = false;
 	protected int _readlimit = 0;
 	protected int _markOffset = 0;
 	protected long _markBlock = 0;
 
-	protected ContentName _headerName = null;
-	/**
-	 * The content signedInfo associated with the 
-	 * corresponding header information. We only need
-	 * the publisher ID and the root object content digest,
-	 * but might want to have access to the other
-	 * authentication information.
-	 */
-	protected SignedInfo _headerSignedInfo = null;
-	
-	/**
-	 * The header information for that object, once
-	 * we've read it. 
-	 */
-	protected Header _header = null;
-	
 	public CCNInputStream(ContentName name, Long startingBlockIndex, PublisherKeyID publisher, 
 			CCNLibrary library) throws XMLStreamException, IOException {
 
 		super(name, startingBlockIndex, publisher, library);
-
-		// Asynchronously attempt to retrieve a header block, if one exists.
-		retrieveHeader(_baseName, (null != publisher) ? new PublisherID(publisher) : null);
 	}
 	
 	public CCNInputStream(ContentName name, PublisherKeyID publisher, CCNLibrary library) 
@@ -219,301 +193,24 @@ public class CCNInputStream extends CCNAbstractInputStream implements CCNInteres
 			return 0;
 		}
 		
-		if (null == _header){
-			return readInternal(null,0, (int)n);
-		}
-		
-		int[] toGetBlockAndOffset = null;
-		long toGetPosition = 0;
-		
-		long currentBlock = -1;
-		int currentBlockOffset = 0;
-		long currentPosition = 0;
-		
-		if (_currentBlock == null) {
-			//we do not have a block already
-			//skip position is n
-			currentPosition = 0;
-			toGetPosition = n;
-		} else {
-		    //we already have a block...  need to handle some tricky cases
-			currentBlock = blockIndex();
-			currentBlockOffset = _blockOffset;
-			currentPosition = _header.blockLocationToPosition(currentBlock, currentBlockOffset);
-			toGetPosition = currentPosition + n;
-		}
-		//make sure we don't skip past end of the object
-		if (toGetPosition >= _header.length()) {
-			toGetPosition = _header.length();
-			_atEOF = true;
-		}
-			
-		toGetBlockAndOffset = _header.positionToBlockLocation(toGetPosition);
-		
-		//make sure the position makes sense
-		//is this a valid block?
-		if (toGetBlockAndOffset[0] >= _header.blockCount()){
-			//this is not a valid block number, subtract 1
-			if (toGetBlockAndOffset[0] > 0) {
-				toGetBlockAndOffset[0]--;
-			}
-			//now we have the last block if the position was too long
-		}
-		
-		//is the offset > 0?
-		if (toGetBlockAndOffset[1] < 0) {
-			toGetBlockAndOffset[1] = 0;
-		}
-			
-		//now we should get the block and check the offset
-		getBlock(toGetBlockAndOffset[0]);
-		if (_currentBlock == null) {
-			//we had an error getting the block
-			throw new IOException("Error getting block "+toGetBlockAndOffset[0]+" in CCNInputStream.skip("+n+")");
-		} else {
-			//we have a valid block!
-			//first make sure the offset is valid
-			if (toGetBlockAndOffset[1] <= _currentBlock.content().length) {
-				//this is good, our offset is somewhere in this block
-			} else {
-				//our offset is past the end of our block, reset to the end.
-				toGetBlockAndOffset[1] = _currentBlock.content().length;
-			}
-			_blockOffset = toGetBlockAndOffset[1];
-			return _header.blockLocationToPosition(toGetBlockAndOffset[0], toGetBlockAndOffset[1]) - currentPosition;
-		}
-		
-		/*
-		 This is the second version of the code...  to be removed when above is tested
-		
-		
-		if (null != _header) {
-					
-			
-			// Calculate where to go to.
-			int blockIndex = blockIndex();
-			Library.logger().info("current block content length check: "+_currentBlock.content().length);
-			//long blockOffset = n-((null == _currentBlock || currentBlockNumber() == 0) ? 0 : (_currentBlock.content().length-_blockOffset));
-			//if(blockOffset < 0)
-			//	blockOffset = _blockOffset;
-			
-			long blockOffset = 0;
-			int blocksToSkip = 0;
-			
-			//Library.logger().info("Currently in block "+blockIndex+" with _blockOffset "+_blockOffset+" wanting to skip "+n+" bytes:  total blocks "+_header.count()+" total size "+_header.length());
-			
-			if(null == _currentBlock){
-				//we do not have a current block, use the base offset
-				Library.logger().info("do not have a current block...");
-				_blockOffset = (int)n;
-				return n;
-			}
-			else{
-				Library.logger().info("Currently in block "+blockIndex+" with _blockOffset "+_blockOffset+" wanting to skip "+n+" bytes:  total blocks "+_header.count()+" total size "+_header.length());
-				//we already have a block
-				//need to check if we need to skip over a block (or more) completely
-				if(_currentBlock.content().length - _blockOffset > n){
-					//there are more bytes left in our current block then we want to skip	
-					_blockOffset = _blockOffset + (int)n;
-					return n;
-				}
-				else{
-					//we want to skip more than we have left in our current block
-					//will this cause us to go past the end of the content?
-					//this assumes blocks start with 0
-					int targetByte = _header.blockSize() * blockIndex + _blockOffset + (int)n;
-					if(targetByte > _header.length()){
-						long adjustedSkip = n - (targetByte - _header.length()); 
-						//this would put us past the end...
-						getBlock(_header.count() - 1);
-						if(_currentBlock!=null)
-							_blockOffset = _currentBlock.content().length;
-						else
-							_blockOffset = 0;
-						Library.logger().info("setting eof");
-						_atEOF = true;
-					    return adjustedSkip;
-					}
-					else{
-						//how many blocks do we need to skip?
-						//first subtract out the remainder of this block
-						blockOffset = n - (_currentBlock.content().length - _blockOffset);
-						//now divide the rest to skip by the block size
-						blocksToSkip = (int)(1.0*blockOffset/_header.blockSize());
-						blockOffset = blockOffset - blocksToSkip*_header.blockSize();
-						getBlock(blockIndex + blocksToSkip);
-						if(_currentBlock !=null){
-							if(blockOffset < _currentBlock.content().length){
-								_blockOffset = (int)blockOffset;
-								return n;
-							}
-							else{
-								_blockOffset = _currentBlock.content().length;
-								return n - (blockOffset - _currentBlock.content().length);
-							}
-						}
-						else{
-							//we had an error getting the needed block...  need to handle
-							throw new IOException("Error getting block "+blockIndex + blocksToSkip+" in CCNInputStream.skip("+n+")");
-						}			
-					}
-				}
-			}
-			*/		
-			/*old code
-			int blocksToSkip = (int)(1.0*blockOffset/_header.blockSize());
-			
-			Library.logger().info("_blockOffset "+_blockOffset+" blocksToSkip "+blocksToSkip);
-			
-			if (_header.count()-blockIndex < blocksToSkip) {
-				blocksToSkip = _header.count() - blockIndex - 1;
-				Library.logger().info("setting eof");
-				_atEOF = true;
-			}
-			
-			blockOffset -= blocksToSkip*_header.blockSize();
-			
-			getBlock(blockIndex + blocksToSkip);
-			
-			if (blockOffset < _currentBlock.content().length) {
-				_blockOffset = (int)blockOffset;
-				blockOffset = 0;
-			} else {
-				_blockOffset = _currentBlock.content().length;
-				blockOffset -= _currentBlock.content().length;				
-			}
-			return n-blockOffset;
-			*/
-		/*
-		} else {
-			return readInternal(null, 0, (int)n);
-		}
-		*/
-		
-	}
-	
-	protected void retrieveHeader(ContentName baseName, PublisherID publisher) throws IOException {
-		Interest headerInterest = new Interest(SegmentationProfile.headerName(baseName), publisher);
-		headerInterest.additionalNameComponents(1);
-		Library.logger().info("retrieveHeader: base name " + baseName);
-		Library.logger().info("retrieveHeader: header name " + SegmentationProfile.headerName(baseName));
-		_library.expressInterest(headerInterest, this);
-	}
-
-	public Interest handleContent(ArrayList<ContentObject> results,
-								  Interest interest) {
-		// This gives us back the header.
-		for (ContentObject co : results) {
-			Library.logger().info("CCNInputStream: retrieved header: " + co.name() + " type: " + co.signedInfo().getTypeName());
-			if (null != _header) {
-				continue;
-			} else if (co.signedInfo().getType() == SignedInfo.ContentType.HEADER) {
-				// First we verify. (Or should get have done this for us?)
-				// We don't bother complaining unless we have more than one
-				// header that matches. Given that we would complain for
-				// that, we need an enumerate that operates at this level.)
-					// TODO: DKS: should this be header.verify()?
-					// Need low-level verify as well as high-level verify...
-					// Low-level verify just checks that signer actually signed.
-					// High-level verify checks trust.
-				if (!addHeader(co)) {
-					return interest;
-				}
-				return null; // done
-			}
-		}
-		if (null == _header) { 
-			return interest;
-		}
-		return null;
-	}
-	
-	protected boolean addHeader(ContentObject headerObject) {
-		try {
-			if (!headerObject.verify(null)) {
-				Library.logger().warning("Found header: " + headerObject.name().toString() + " that fails to verify.");
-				return false;
-			} else {
-				_headerName = headerObject.name();
-				_headerSignedInfo = headerObject.signedInfo();
-				_header = Header.contentToHeader(headerObject);
-				Library.logger().fine("Found header specifies " + _header.blockCount() + " blocks");
-				return true; // done
-			}
-		} catch (Exception e) {
-			Library.logger().warning("Got an " + e.getClass().getName() + " exception attempting to verify or decode header: " + headerObject.name().toString() + ", treat as failure to verify.");
-			Library.warningStackTrace(e);
-			return false; // try again
-		}
+		return readInternal(null,0, (int)n);
 	}
 	
 	protected int blockCount() {
-		if (null == _header) {
-			return 0;
-		}
-		return _header.blockCount();
+		return 0;
 	}
 
-	//protected int currentBlockNumber(){
-	//	int ind = -1;
-	//	if(_currentBlock!=null)
-	//		ind = Integer.valueOf(_currentBlock.name().stringComponent(_currentBlock.name().count()-1));
-	//	//Library.logger().info("checking block number: "+ind);
-	//	return ind;
-	//}
-	
 	public long seek(long position) throws IOException {
-		Library.logger().info("Seeking stream to " + position + ": have header? " + ((_header == null) ? "no." : "yes."));
-		if (null != _header) {
-			int [] blockAndOffset = _header.positionToBlockLocation(position);
-			Library.logger().info("seek:  position: " + position + " block: " + blockAndOffset[0] + " offset: " + blockAndOffset[1]);
-			Library.logger().info("currently have block "+ currentBlockNumber());
-			if (currentBlockNumber() == blockAndOffset[0]) {
-				//already have the correct block
-				if (_blockOffset == blockAndOffset[1]){
-					//already have the correct offset
-				} else {
-					_blockOffset = blockAndOffset[1];
-				}
-				return position;
-			
-			}
-			
-			_currentBlock = getBlock(blockAndOffset[0]);
-			_blockOffset = blockAndOffset[1];
-			long check = _header.blockLocationToPosition(blockAndOffset[0], blockAndOffset[1]);
-			Library.logger().info("current position: block "+blockAndOffset[0]+" _blockOffset "+_blockOffset+" ("+check+")");
-
-			if (_currentBlock != null) {
-				_atEOF=false;
-			}
-			// Might be at end of stream, so different value than came in...
-			//long check = _header.blockLocationToPosition(blockAndOffset[0], blockAndOffset[1]);
-			//Library.logger().info("return val check: "+check);
-			
-			//return _header.blockLocationToPosition(blockAndOffset[0], blockAndOffset[1]);
-			//skip(check);
-			
-			//Library.logger().info(" _blockOffset "+_blockOffset);
-			return check;
-		} else {
-			getFirstBlock();
-			return skip(position);
-		}
+		Library.logger().info("Seeking stream to " + position);
+		getFirstBlock();
+		return skip(position);
 	}
 
 	public long tell() {
-		if (null != _header) {
-			return _header.blockLocationToPosition(blockIndex(), _blockOffset);
-		} else {
-			return _blockOffset; // could implement a running count...
-		}
+		return _blockOffset; // could implement a running count...
 	}
 	
 	public long length() {
-		if (null != _header) {
-			return _header.length();
-		}
 		return 0;
 	}
 	

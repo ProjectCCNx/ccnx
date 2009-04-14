@@ -7,20 +7,16 @@ import java.security.PrivateKey;
 import java.security.SignatureException;
 import java.sql.Timestamp;
 
-import javax.xml.stream.XMLStreamException;
-
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherKeyID;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.SegmentationProfile.SegmentNumberType;
-import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.crypto.CCNMerkleTree;
 
 /**
@@ -341,49 +337,9 @@ public class CCNSegmenter {
 			putMerkleTree(name, SegmentationProfile.baseSegment(),
 						content, offset, length, getBlockSize(), type,
 						timestamp, freshnessSeconds, lastBlocks, locator, publisher);
-
-		// construct the headerBlockContents;
-		byte [] contentDigest = CCNDigestHelper.digest(content);
-		return putHeader(name, content.length, getBlockSize(), contentDigest, tree.root(),
-				timestamp, locator, publisher);
-	}
-
-	public ContentObject putHeader(
-			ContentName name, int contentLength, int blockSize, byte [] contentDigest, 
-			byte [] contentTreeAuthenticator,
-			Timestamp timestamp, 
-			KeyLocator locator, 
-			PublisherKeyID publisher) throws IOException, InvalidKeyException, SignatureException {
-
-		if (null == publisher) {
-			publisher = _library.keyManager().getDefaultKeyID();
-		}
-		PrivateKey signingKey = _library.keyManager().getSigningKey(publisher);
-
-		if (null == locator)
-			locator = _library.keyManager().getKeyLocator(signingKey);
-
-		// Add another differentiator to avoid making header
-		// name prefix of other valid names?
-		ContentName headerName = SegmentationProfile.headerName(name);
-		Header header;
-		try {
-			header = new Header(headerName, contentLength, contentDigest, contentTreeAuthenticator, blockSize,
-					publisher, locator, signingKey);
-		} catch (XMLStreamException e) {
-			Library.logger().warning("This should not happen: we cannot encode our own header!");
-			Library.warningStackTrace(e);
-			throw new IOException("This should not happen: we cannot encode our own header!" + e.getMessage());
-		}
-		ContentObject headerResult = null;
-		try {
-			headerResult = _flowControl.put(header);
-		} catch (IOException e) {
-			Library.logger().warning("This should not happen: we cannot put our own header!");
-			Library.warningStackTrace(e);
-			throw e;
-		}
-		return headerResult;		
+		// Used to return header. Now return first block.
+		return tree.block(SegmentationProfile.baseSegment(), content, offset, 
+						 ((length > getBlockSize()) ? getBlockSize() : length));
 	}
 
 	/**

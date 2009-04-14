@@ -81,10 +81,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		}
 
 		// Should have name of root of version we want to
-		// open. Get the header block. Already stripped to
-		// root. We've altered the header semantics, so that
-		// we can just get headers rather than a plethora of
-		// fragments. 
+		// open. 
 		_baseName = nameToOpen;
 		_blockBuffers = new byte[BLOCK_BUF_COUNT][];
 		_baseNameIndex = SegmentationProfile.baseSegment();
@@ -221,7 +218,6 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		} else {
 			Library.logger().info("closeNetworkData: final flush, wrote " + _totalLength + " bytes.");
 			flush(true); // true means write out the partial last block, if there is one
-			writeHeader();
 		}
 	}
 
@@ -354,13 +350,4 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		if (!preservePartial)
 			_blockOffset = 0; 
 	}
-
-	protected void writeHeader() throws InvalidKeyException, SignatureException, IOException, InterruptedException {
-		// What do we put in the header if we have multiple merkle trees?
-		_segmenter.putHeader(_baseName, (int)_totalLength, _blockSize, _dh.digest(), 
-				((_roots.size() > 0) ? _roots.get(0) : null),
-				_timestamp, _locator, _publisher);
-		Library.logger().info("Wrote header: " + SegmentationProfile.headerName(_baseName));
-	}
-
 }

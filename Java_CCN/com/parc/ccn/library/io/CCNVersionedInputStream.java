@@ -8,9 +8,7 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherKeyID;
-import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersionMissingException;
@@ -83,22 +81,12 @@ public class CCNVersionedInputStream extends CCNInputStream {
 		ContentObject result =  _library.getLatestVersion(_baseName, null, _timeout);
 		if (null != result){
 			Library.logger().info("getFirstBlock: retrieved " + result.name() + " type: " + result.signedInfo().getTypeName());
-			if (result.signedInfo().getType() == ContentType.HEADER) {
-				if (!addHeader(result)) { // verifies
-					Library.logger().warning("Retrieved header in getFirstBlock, but failed to process it.");
-				}
-				_baseName = SegmentationProfile.headerRoot(result.name());
-				Library.logger().info("Retrieved header, setting _baseName to " + _baseName + " calling CCNInputStream.getFirstBlock.");
-				// now we know the version
-				return super.getFirstBlock();
-			}
 			// Now need to verify the block we got
 			if (!verifyBlock(result)) {
 				return null;
 			}
 			// Now we know the version
 			_baseName = SegmentationProfile.segmentRoot(result.name());
-			retrieveHeader(_baseName, new PublisherID(result.signedInfo().getPublisherKeyID()));
 			// This is unlikely -- we ask for a specific segment of the latest
 			// version... in that case, we pull the first segment, then seek.
 			if (null != _startingBlockIndex) {
