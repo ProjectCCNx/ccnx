@@ -129,6 +129,8 @@ public class CCNInputStream extends CCNAbstractInputStream {
 				((null != buf) ? buf.length : "null") + " at offset " + offset);
 		// is this the first block?
 		if (null == _currentBlock) {
+			if (_atEOF)
+				return -1;
 			_currentBlock = getFirstBlock();
 			_blockOffset = 0;
 			if (null == _currentBlock) {
@@ -150,7 +152,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 				_currentBlock = getNextBlock();
 				_blockOffset = 0;
 				if (null == _currentBlock) {
-					Library.logger().info("next block was null, setting _atEOF");
+					Library.logger().info("next block was null, setting _atEOF, returning " + ((lenRead > 0) ? lenRead : -1));
 					_atEOF = true;
 					if (lenRead > 0) {
 						return lenRead;

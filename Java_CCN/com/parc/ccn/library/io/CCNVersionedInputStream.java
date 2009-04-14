@@ -77,7 +77,8 @@ public class CCNVersionedInputStream extends CCNInputStream {
 			return super.getFirstBlock();
 		}
 		Library.logger().info("getFirstBlock: getting latest version of " + _baseName);
-		// This might get us the header instead...
+		// This might get us the header instead...(until we change the name), or most likely the rightmost child of
+		// the rightmost child -- the last segment instead of the first.
 		ContentObject result =  _library.getLatestVersion(_baseName, null, _timeout);
 		if (null != result){
 			Library.logger().info("getFirstBlock: retrieved " + result.name() + " type: " + result.signedInfo().getTypeName());
@@ -91,6 +92,9 @@ public class CCNVersionedInputStream extends CCNInputStream {
 			// version... in that case, we pull the first segment, then seek.
 			if (null != _startingBlockIndex) {
 				return getBlock(_startingBlockIndex);
+			} else {
+				Library.logger().info("Have version information going back for first segment.");
+				return super.getFirstBlock(); // now that we have the latest version, go back for the first block.
 			}
 		}
 		return result;
