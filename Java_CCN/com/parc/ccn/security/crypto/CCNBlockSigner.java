@@ -25,7 +25,7 @@ public class CCNBlockSigner implements CCNAggregatedSigner {
 			ContentName name, int baseNameIndex,
 			byte[][] contentBlocks, int blockCount, int baseBlockIndex,
 			int lastBlockLength, ContentType type, Timestamp timestamp,
-			Integer freshnessSeconds, int lastSegment, KeyLocator locator,
+			Integer freshnessSeconds, Integer lastSegment, KeyLocator locator,
 			PublisherKeyID publisher) throws InvalidKeyException,
 			SignatureException, NoSuchAlgorithmException, IOException {
 		
@@ -48,7 +48,7 @@ public class CCNBlockSigner implements CCNAggregatedSigner {
 			ContentName[] names, byte[][] contentBlocks,
 			int blockCount, int baseBlockIndex, int lastBlockLength,
 			ContentType type, Timestamp timestamp, Integer freshnessSeconds,
-			int lastSegment, KeyLocator locator, PublisherKeyID publisher)
+			Integer lastSegment, KeyLocator locator, PublisherKeyID publisher)
 			throws InvalidKeyException, SignatureException,
 			NoSuchAlgorithmException, IOException {
 		
@@ -72,7 +72,7 @@ public class CCNBlockSigner implements CCNAggregatedSigner {
 			ContentName name, int baseNameIndex,
 			byte[] content, int offset, int length, int blockWidth,
 			ContentType type, Timestamp timestamp, Integer freshnessSeconds,
-			int lastSegment, KeyLocator locator, PublisherKeyID publisher)
+			Integer lastSegment, KeyLocator locator, PublisherKeyID publisher)
 			throws InvalidKeyException, SignatureException,
 			NoSuchAlgorithmException, IOException {
 		
