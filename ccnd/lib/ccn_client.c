@@ -682,6 +682,10 @@ ccn_locate_key(struct ccn *h,
     int res;
     const unsigned char *pkeyid;
     size_t pkeyid_size;
+    const unsigned char *dkey;
+    size_t dkey_size;
+    void *pkey;
+    size_t pkey_size;
     void **entry;
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d;
@@ -726,9 +730,19 @@ ccn_locate_key(struct ccn *h,
         res = ccn_express_interest(h, key_name, -1, key_closure, NULL);
         ccn_charbuf_destroy(&key_name);
     }
-    else if (ccn_buf_match_dtag(d, CCN_DTAG_Certificate)) {
-    }
     else if (ccn_buf_match_dtag(d, CCN_DTAG_Key)) {
+        res = ccn_ref_tagged_BLOB(CCN_DTAG_Key, msg,
+                                  pco->offset[CCN_PCO_B_Key_Certificate_KeyName],
+                                  pco->offset[CCN_PCO_E_Key_Certificate_KeyName],
+                                  &dkey, &dkey_size);
+        pkey = ccn_d2i_pubkey(dkey, dkey_size);
+        pkey_size = ccn_pubkey_size(pkey);
+        /* XXX: need to put this into the hashtable instead of just returning it */
+        *pubkey = calloc(1, pkey_size);
+        memcpy(*pubkey, pkey, pkey_size);
+        return (0);
+    }
+    else if (ccn_buf_match_dtag(d, CCN_DTAG_Certificate)) {
     }
 
     return (-1);
