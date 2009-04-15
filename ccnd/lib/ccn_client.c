@@ -1135,7 +1135,7 @@ handle_simple_incoming_content(
     }
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
         return(selfp->intdata ? CCN_UPCALL_RESULT_REEXPRESS : CCN_UPCALL_RESULT_OK);
-    if (kind != CCN_UPCALL_CONTENT)
+    if (kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_UNVERIFIED)
         return(CCN_UPCALL_RESULT_ERR);
     if (md->resultbuf != NULL) {
         md->resultbuf->length = 0;
@@ -1185,7 +1185,7 @@ ccn_get(struct ccn *h,
     md->res = -1;
     md->closure.p = &handle_simple_incoming_content;
     md->closure.data = md;
-    md->closure.intdata = 1; /* tell upcall to re-express if needed*/
+    md->closure.intdata = 1; /* tell upcall to re-express if needed */
     md->closure.refcount = 1;
     res = ccn_express_interest(h, name, prefix_comps, &md->closure, interest_template);
     if (res >= 0)
