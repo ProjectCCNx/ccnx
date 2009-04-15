@@ -9,6 +9,7 @@
 #include <ccn/ccn.h>
 #include <ccn/uri.h>
 #include <ccn/keystore.h>
+#include <ccn/signing.h>
 
 struct mydata {
     int content_received;
@@ -181,10 +182,19 @@ main(int argc, char **argv)
     ccn_charbuf_append_closer(templ); /* </Interest> */
     res = ccn_express_interest(ccn, name, -1, &in_content, templ);
     if (res < 0) abort();
+    
     /* Construct a key locator contining the key itself */
-    /* XXX - need a function to pull the encoded public key out of a keychain */
-    keylocator = NULL;
-
+    keylocator = ccn_charbuf_create();
+    ccn_charbuf_append_tt(keylocator, CCN_DTAG_KeyLocator, CCN_DTAG);
+    ccn_charbuf_append_tt(keylocator, CCN_DTAG_Key, CCN_DTAG);
+    res = ccn_append_pubkey_blob(keylocator, ccn_keystore_public_key(keystore));
+    if (res < 0)
+        ccn_charbuf_destroy(&keylocator);
+    else {
+        ccn_charbuf_append_closer(keylocator); /* </Key> */
+        ccn_charbuf_append_closer(keylocator); /* </KeyLocator> */
+    }
+    
     for (i = 0;; i++) {
         read_res = read_full(0, buf, blocksize);
         if (read_res < 0) {

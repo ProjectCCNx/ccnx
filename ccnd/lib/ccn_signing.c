@@ -4,6 +4,7 @@
 #include <openssl/x509.h>
 #include <ccn/merklepathasn1.h>
 #include <ccn/ccn.h>
+#include <ccn/signing.h>
 
 struct ccn_sigc {
     EVP_MD_CTX context;
@@ -270,9 +271,37 @@ ccn_d2i_pubkey(const unsigned char *p, size_t size)
     return d2i_PUBKEY(NULL, pp, size);
 }
 
-size_t
-ccn_pubkey_size(void *pubkey)
+void
+ccn_i_pubkey_free(void *i_pubkey)
 {
-    return (EVP_PKEY_size(pubkey));
+    EVP_PKEY_free(i_pubkey);
 }
 
+size_t
+ccn_pubkey_size(void *i_pubkey)
+{
+    return (EVP_PKEY_size(i_pubkey));
+}
+
+int
+ccn_append_pubkey_blob(struct ccn_charbuf *c, void *i_pubkey)
+{
+    int res;
+    size_t bytes;
+    unsigned char *p = NULL;
+    res = i2d_PUBKEY((EVP_PKEY *)i_pubkey, NULL);
+    if (res < 0)
+        return(-1);
+    bytes = res;
+    res = ccn_charbuf_append_tt(c, bytes, CCN_BLOB);
+    if (res < 0)
+        return(-1);
+    p = ccn_charbuf_reserve(c, bytes);
+    if (p == NULL)
+        return(-1);
+    res = i2d_PUBKEY((EVP_PKEY *)i_pubkey, &p);
+    if (res != (int)bytes)
+        return(-1);
+    c->length += bytes;
+    return(bytes);
+}
