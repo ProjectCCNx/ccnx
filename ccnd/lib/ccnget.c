@@ -15,10 +15,11 @@ static void
 usage(const char *progname)
 {
     fprintf(stderr,
-            "%s [-a] ccn:/a/b\n"
+            "%s [-a] [-c] ccn:/a/b\n"
             "   Get one content item matching the name prefix and write it to stdout"
             "\n"
-            "   -a - allow stale data\n",
+            "   -a - allow stale data\n"
+            "   -c - content only, not full ccnb\n",
             progname);
     exit(1);
 }
@@ -30,14 +31,21 @@ main(int argc, char **argv)
     struct ccn_charbuf *templ = NULL;
     struct ccn_charbuf *resultbuf = NULL;
     const char *arg = NULL;
+    struct ccn_parsed_ContentObject pcobuf = { 0 };
     int res;
     char ch;
     int allow_stale = 0;
+    int content_only = 0;
+    unsigned char *ptr;
+    size_t length;
     
-    while ((ch = getopt(argc, argv, "ha")) != -1) {
+    while ((ch = getopt(argc, argv, "hac")) != -1) {
         switch (ch) {
             case 'a':
                 allow_stale = 1;
+                break;
+            case 'c':
+                content_only = 1;
                 break;
             case 'h':
             default:
@@ -67,10 +75,14 @@ main(int argc, char **argv)
         ccn_charbuf_append_closer(templ); /* </Interest> */
     }
     resultbuf = ccn_charbuf_create();
-    res = ccn_get(NULL, name, -1, templ, 3000, resultbuf, NULL, NULL);
-    
-    if (res >= 0)
-        res = fwrite(resultbuf->buf, resultbuf->length, 1, stdout) - 1;
+    res = ccn_get(NULL, name, -1, templ, 3000, resultbuf, &pcobuf, NULL);
+    if (res >= 0) {
+        ptr = resultbuf->buf;
+        length = resultbuf->length;
+        if (content_only)
+            ccn_content_get_value(ptr, length, &pcobuf, &pcobuf, &length);
+        res = fwrite(ptr, length, 1, stdout) - 1;
+    }
     ccn_charbuf_destroy(&resultbuf);
     ccn_charbuf_destroy(&templ);
     ccn_charbuf_destroy(&name);
