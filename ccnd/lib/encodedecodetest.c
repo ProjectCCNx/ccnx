@@ -220,8 +220,9 @@ main (int argc, char *argv[]) {
                                  /*pubkeyid*/ccn_keystore_public_key_digest(keystore),
                                  /*publisher_key_id_size*/ccn_keystore_public_key_digest_length(keystore),
                                  /*datetime*/NULL,
-                                 /*type*/CCN_CONTENT_FRAGMENT,
+                                 /*type*/CCN_CONTENT_GONE,
                                  /*freshness*/ 42,
+                                 /*finalblockid*/NULL,
                                  /*keylocator*/NULL);
     if (res < 0) {
         printf("Failed to create signed_info!\n");

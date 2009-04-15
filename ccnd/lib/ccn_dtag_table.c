@@ -47,6 +47,11 @@ static const struct ccn_dict_entry ccn_tagdict[] = {
     {CCN_DTAG_BlockSize, "BlockSize"},
     {CCN_DTAG_AdditionalNameComponents, "AdditionalNameComponents"},
     {CCN_DTAG_FreshnessSeconds, "FreshnessSeconds"},
+    {CCN_DTAG_FinalBlockID, "FinalBlockID"},
+    {CCN_DTAG_PublisherPublicKeyDigest, "PublisherPublicKeyDigest"},
+    {CCN_DTAG_PublisherCertificateDigest, "PublisherCertificateDigest"},
+    {CCN_DTAG_PublisherIssuerKeyDigest, "PublisherIssuerKeyDigest"},
+    {CCN_DTAG_PublisherIssuerCertificateDigest, "PublisherIssuerCertificateDigest"},
     {CCN_DTAG_CCNProtocolDataUnit, "CCNProtocolDataUnit"},
     {CCN_DTAG_ExperimentalResponseFilter, "ExperimentalResponseFilter"}
 };

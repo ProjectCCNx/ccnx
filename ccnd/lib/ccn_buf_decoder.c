@@ -239,7 +239,22 @@ ccn_parse_PublisherID(struct ccn_buf_decoder *d, struct ccn_parsed_interest *pi)
     unsigned keystart = pubstart;
     unsigned keyend = pubstart;
     unsigned pubend = pubstart;
-    if (ccn_buf_match_dtag(d, CCN_DTAG_PublisherID)) {
+    iskey = ccn_buf_match_dtag(d, CCN_DTAG_PublisherPublicKeyDigest);
+    if (iskey                                                          ||
+        ccn_buf_match_dtag(d, CCN_DTAG_PublisherCertificateDigest)     ||
+        ccn_buf_match_dtag(d, CCN_DTAG_PublisherIssuerKeyDigest)       ||
+        ccn_buf_match_dtag(d, CCN_DTAG_PublisherIssuerCertificateDigest)) {
+        res = d->decoder.element_index;
+        ccn_buf_advance(d);
+        keystart = d->decoder.token_index;
+        if (!ccn_buf_match_some_blob(d))
+            return (d->decoder.state = -__LINE__);
+        ccn_buf_advance(d);
+        keyend = d->decoder.token_index;
+        ccn_buf_check_close(d);
+        pubend = d->decoder.token_index;
+    }
+    if (ccn_buf_match_dtag(d, CCN_DTAG_PublisherID)) { // XXX - downrev compat
         res = d->decoder.element_index;
         ccn_buf_advance(d);
         if (!ccn_buf_match_attr(d, "type"))
@@ -258,7 +273,7 @@ ccn_parse_PublisherID(struct ccn_buf_decoder *d, struct ccn_parsed_interest *pi)
         ccn_buf_advance(d);
         keyend = d->decoder.token_index;
         ccn_buf_check_close(d);
-        pubend = d->decoder.token_index;
+        pubend = d->decoder.token_index;        // XXX - end downrev compat
     }
     if (d->decoder.state < 0)
         return (d->decoder.state);
@@ -334,7 +349,15 @@ ccn_parse_timestamp(struct ccn_buf_decoder *d)
     int n;
     if (d->decoder.state < 0)
         return(d->decoder.state);
+    if (CCN_GET_TT_FROM_DSTATE(d->decoder.state) == CCN_BLOB) {
+        /* New-style binary timestamp, 12-bit fraction */
+        n = d->decoder.numval;
+        if (n < 3 || n > 7)
+            return(d->decoder.state = -__LINE__);
+        ccn_buf_advance(d);
+    }
     if (CCN_GET_TT_FROM_DSTATE(d->decoder.state) == CCN_UDATA) {
+        /* This is for some temporary back-compatibility */
         p = d->buf + d->decoder.index;
         n = d->decoder.numval;
         if (n < 8 || n > 40)
@@ -578,24 +601,37 @@ ccn_parse_Signature(struct ccn_buf_decoder *d, struct ccn_parsed_ContentObject *
 static int
 ccn_parse_SignedInfo(struct ccn_buf_decoder *d, struct ccn_parsed_ContentObject *x)
 {
+    struct ccn_skeleton_decoder savedstate;
     x->offset[CCN_PCO_B_SignedInfo] = d->decoder.token_index;
     if (ccn_buf_match_dtag(d, CCN_DTAG_SignedInfo)) {
         ccn_buf_advance(d);
-        x->offset[CCN_PCO_B_PublisherKeyID] = d->decoder.token_index;
-        ccn_parse_required_tagged_BLOB(d, CCN_DTAG_PublisherKeyID, 16, 64);
-        x->offset[CCN_PCO_E_PublisherKeyID] = d->decoder.token_index;
+        x->offset[CCN_PCO_B_PublisherPublicKeyDigest] = d->decoder.token_index;
+        if (ccn_buf_match_dtag(d, CCN_DTAG_PublisherKeyID))
+            ccn_parse_required_tagged_BLOB(d, CCN_DTAG_PublisherKeyID, 16, 64); // XXX - compatibility
+        else
+            ccn_parse_required_tagged_BLOB(d, CCN_DTAG_PublisherPublicKeyDigest, 16, 64);
+        x->offset[CCN_PCO_E_PublisherPublicKeyDigest] = d->decoder.token_index;
         
         x->offset[CCN_PCO_B_Timestamp] = d->decoder.token_index;
         ccn_parse_required_tagged_timestamp(d, CCN_DTAG_Timestamp);
         x->offset[CCN_PCO_E_Timestamp] = d->decoder.token_index;
         
         x->offset[CCN_PCO_B_Type] = d->decoder.token_index;
-        ccn_parse_required_tagged_UDATA(d, CCN_DTAG_Type);
+        savedstate = d->decoder;
+        ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_Type, 3, 3);
+        if (d->decoder.state < 0) { // Temporary compatibility
+            d->decoder = savedstate;
+            ccn_parse_required_tagged_UDATA(d, CCN_DTAG_Type);
+        }
         x->offset[CCN_PCO_E_Type] = d->decoder.token_index;
         
         x->offset[CCN_PCO_B_FreshnessSeconds] = d->decoder.token_index;
         ccn_parse_optional_tagged_nonNegativeInteger(d, CCN_DTAG_FreshnessSeconds);
         x->offset[CCN_PCO_E_FreshnessSeconds] = d->decoder.token_index;
+        
+        x->offset[CCN_PCO_B_FinalBlockID] = d->decoder.token_index;
+        ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_FinalBlockID, 1, -1);
+        x->offset[CCN_PCO_E_FinalBlockID] = d->decoder.token_index;
         
         x->offset[CCN_PCO_B_KeyLocator] = d->decoder.token_index;
         x->offset[CCN_PCO_B_Key_Certificate_KeyName] = d->decoder.token_index;

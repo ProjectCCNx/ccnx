@@ -55,7 +55,7 @@ echo Testing contenthash
 END
 
 ./smoketestccnd -t 100 send contenthash.ccnb recv > contenthash.out || Fail
-diff contenthash.ref contenthash.out || Fail
+diff contenthash.ref contenthash.out || Fail contenthash.out does not match expected
 
 echo Testing that fetch with bad hash does not succeed
 ../lib/ccn_xmltoccnb -w - <<'END' > contentmishash.ccnb

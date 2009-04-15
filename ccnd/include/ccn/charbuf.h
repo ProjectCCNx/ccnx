@@ -46,6 +46,13 @@ void ccn_charbuf_reset(struct ccn_charbuf *c);
 int ccn_charbuf_append(struct ccn_charbuf *c, const void *p, size_t n);
 
 /*
+ * ccn_charbuf_append: append n bytes of val
+ * The n low-order bytes are appended in network byte order (big-endian) 
+ */ 
+int ccn_charbuf_append_value(struct ccn_charbuf *c, unsigned val, unsigned n);
+
+
+/*
  * ccn_charbuf_append_charbuf: append content from another charbuf
  */ 
 int ccn_charbuf_append_charbuf(struct ccn_charbuf *c, const struct ccn_charbuf *i);

@@ -46,8 +46,9 @@ main(int argc, char **argv)
 			       /* pubkeyid */ ccn_keystore_public_key_digest(keystore),
 			       /* publisher_key_id_size */ ccn_keystore_public_key_digest_length(keystore),
 			       /* datetime */ NULL,
-			       /* type */ CCN_CONTENT_LEAF,
+			       /* type */ CCN_CONTENT_DATA,
 			       /* freshness */ FRESHNESS,
+                               /*finalblockid*/ NULL,
 			       /* keylocator */ NULL);
 
   srandom(time(NULL));

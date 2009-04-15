@@ -69,6 +69,22 @@ ccn_charbuf_append(struct ccn_charbuf *c, const void *p, size_t n)
 }
 
 int
+ccn_charbuf_append_value(struct ccn_charbuf *c, unsigned val, unsigned n)
+{
+    unsigned char *dst;
+    unsigned i;
+    if (n > sizeof(val))
+        return(-1);
+    dst = ccn_charbuf_reserve(c, n);
+    if (dst == NULL)
+        return(-1);
+    for (i = 0; i < n; i++)
+        dst[i] = (unsigned char)(val >> (8 * (n-1-i)));
+    c->length += n;
+    return(0);
+}
+
+int
 ccn_charbuf_append_charbuf(struct ccn_charbuf *c, const struct ccn_charbuf *in)
 {
   return(ccn_charbuf_append(c, in->buf, in->length));

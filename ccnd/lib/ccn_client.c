@@ -695,9 +695,9 @@ ccn_locate_key(struct ccn *h,
         if (h->keys == NULL)
             return (NOTE_ERRNO(h));
     }
-    res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherKeyID, msg,
-                              pco->offset[CCN_PCO_B_PublisherKeyID],
-                              pco->offset[CCN_PCO_E_PublisherKeyID],
+    res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest, msg,
+                              pco->offset[CCN_PCO_B_PublisherPublicKeyDigest],
+                              pco->offset[CCN_PCO_E_PublisherPublicKeyDigest],
                               &pkeyid, &pkeyid_size);
     if (res < 0)
         return (NOTE_ERR(h, res));

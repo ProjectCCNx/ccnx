@@ -95,6 +95,7 @@ main(int argc, char **argv)
     struct ccn_charbuf *temp = NULL;
     struct ccn_charbuf *templ = NULL;
     struct ccn_charbuf *signed_info = NULL;
+    struct ccn_charbuf *keylocator = NULL;
     struct ccn_keystore *keystore = NULL;
     long expire = -1;
     long blocksize = 1024;
@@ -180,6 +181,9 @@ main(int argc, char **argv)
     ccn_charbuf_append_closer(templ); /* </Interest> */
     res = ccn_express_interest(ccn, name, -1, &in_content, templ);
     if (res < 0) abort();
+    /* Construct a key locator contining the key itself */
+    /* XXX - need a function to pull the encoded public key out of a keychain */
+    keylocator = NULL;
 
     for (i = 0;; i++) {
         read_res = read_full(0, buf, blocksize);
@@ -193,9 +197,12 @@ main(int argc, char **argv)
                                      /*pubkeyid*/ccn_keystore_public_key_digest(keystore),
                                      /*publisher_key_id_size*/ccn_keystore_public_key_digest_length(keystore),
                                      /*datetime*/NULL,
-                                     /*type*/CCN_CONTENT_LEAF,
+                                     /*type*/CCN_CONTENT_DATA,
                                      /*freshness*/ expire,
-                                     /*keylocator*/NULL);
+                                     /*finalblockid*/NULL,
+                                     keylocator);
+        /* Put the keylocator in the first block only. */
+        ccn_charbuf_destroy(&keylocator);
         if (res < 0) {
             fprintf(stderr, "Failed to create signed_info (res == %d)\n", res);
             exit(1);

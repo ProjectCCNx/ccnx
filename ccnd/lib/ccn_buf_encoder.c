@@ -18,7 +18,7 @@ int
 ccn_signed_info_create_default(struct ccn_charbuf *c,
                         enum ccn_content_type Type)
 {
-    return (ccn_signed_info_create(c, NULL, 0, NULL, Type, -1, NULL));
+    return (ccn_signed_info_create(c, NULL, 0, NULL, Type, -1, NULL, NULL));
 }
 		
 int
@@ -28,26 +28,24 @@ ccn_signed_info_create(struct ccn_charbuf *c,
                        const char *datetime,
                        enum ccn_content_type type,	/* input */
                        int freshness,			/* input, -1 means omit */
+                       const struct ccn_charbuf *finalblockid,  /* input, NULL means omit */
                        const struct ccn_charbuf *key_locator)	/* input, optional, ccnb encoded */
 {
     int res = 0;
-    const char *typename = ccn_content_name(type);
     struct ccn_charbuf *dt;
     const char fakepubkeyid[32] = {0};
  
-    if (typename == NULL)
-	return (-1);
     if (publisher_key_id != NULL && publisher_key_id_size != 32)
         return (-1);
 
     res |= ccn_charbuf_append_tt(c, CCN_DTAG_SignedInfo, CCN_DTAG);
 
-    res |= ccn_charbuf_append_tt(c, CCN_DTAG_PublisherKeyID, CCN_DTAG);
+    res |= ccn_charbuf_append_tt(c, CCN_DTAG_PublisherPublicKeyDigest, CCN_DTAG);
     if (publisher_key_id != NULL) {
         res |= ccn_charbuf_append_tt(c, publisher_key_id_size, CCN_BLOB);
         res |= ccn_charbuf_append(c, publisher_key_id, publisher_key_id_size);
     } else {
-        /* obtain the default publisher key id and append it */
+        /* XXX - obtain the default publisher key id and append it */
         res |= ccn_charbuf_append_tt(c, sizeof(fakepubkeyid), CCN_BLOB);
         res |= ccn_charbuf_append(c, fakepubkeyid, sizeof(fakepubkeyid));
     }
@@ -67,14 +65,22 @@ ccn_signed_info_create(struct ccn_charbuf *c,
     }
     res |= ccn_charbuf_append_closer(c);
 
-    res |= ccn_charbuf_append_tt(c, CCN_DTAG_Type, CCN_DTAG);
-    res |= ccn_charbuf_append_tt(c, strlen(typename), CCN_UDATA);
-    res |= ccn_charbuf_append_string(c, typename);
-    res |= ccn_charbuf_append_closer(c);
+    if (type != CCN_CONTENT_DATA) {
+        res |= ccn_charbuf_append_tt(c, CCN_DTAG_Type, CCN_DTAG);
+        res |= ccn_charbuf_append_tt(c, 3, CCN_BLOB);
+        res |= ccn_charbuf_append_value(c, type, 3);
+        res |= ccn_charbuf_append_closer(c);
+    }
 
     if (freshness >= 0) {
         res |= ccn_charbuf_append_tt(c, CCN_DTAG_FreshnessSeconds, CCN_DTAG);
         res |= ccn_charbuf_append_non_negative_integer(c, freshness);
+        res |= ccn_charbuf_append_closer(c);
+    }
+
+    if (finalblockid != NULL) {
+        res |= ccn_charbuf_append_tt(c, CCN_DTAG_FinalBlockID, CCN_DTAG);
+        res |= ccn_charbuf_append_charbuf(c, finalblockid);
         res |= ccn_charbuf_append_closer(c);
     }
 
@@ -86,29 +92,6 @@ ccn_signed_info_create(struct ccn_charbuf *c,
     res |= ccn_charbuf_append_closer(c);
 
     return (res == 0 ? 0 : -1);
-}
-
-const char *
-ccn_content_name(enum ccn_content_type type)
-{
-    switch (type) {
-    case CCN_CONTENT_FRAGMENT:
-	return "FRAGMENT";
-    case CCN_CONTENT_LINK:
-	return "LINK";
-    case CCN_CONTENT_COLLECTION:
-	return "COLLECTION";
-    case CCN_CONTENT_LEAF:
-	return "LEAF";
-    case CCN_CONTENT_SESSION:
-	return "SESSION";
-    case CCN_CONTENT_HEADER:
-	return "HEADER";
-    case CCN_CONTENT_KEY:
-	return "KEY";
-    default:
-	return NULL;
-    }
 }
 
 int

@@ -177,13 +177,11 @@ int ccn_name_append_components(struct ccn_charbuf *c,
  */
 
 enum ccn_content_type {
-    CCN_CONTENT_FRAGMENT,
-    CCN_CONTENT_LINK,
-    CCN_CONTENT_COLLECTION,
-    CCN_CONTENT_LEAF,
-    CCN_CONTENT_SESSION,
-    CCN_CONTENT_HEADER,
-    CCN_CONTENT_KEY
+    CCN_CONTENT_DATA = 0x0C04C0,
+    CCN_CONTENT_GONE = 0x18E344,
+    CCN_CONTENT_KEY  = 0x28463F,
+    CCN_CONTENT_LINK = 0x2C834A,
+    CCN_CONTENT_NACK = 0x34008A
 };
 
 /*
@@ -209,6 +207,7 @@ ccn_signed_info_create(
     const char *datetime,		/* input, NULL for "now" */
     enum ccn_content_type type,         /* input */
     int freshness,			/* input, -1 means omit */
+    const struct ccn_charbuf *finalblockid, /* input, NULL means omit */
     const struct ccn_charbuf *key_locator); /* input, optional, ccnb encoded */
 
 /***********************************
@@ -415,7 +414,7 @@ enum ccn_parsed_interest_offsetid {
     CCN_PI_E_NameComponentCount,
     CCN_PI_B_AdditionalNameComponents,
     CCN_PI_E_AdditionalNameComponents,
-    CCN_PI_B_PublisherID,
+    CCN_PI_B_PublisherID, // XXX - rename
     CCN_PI_B_PublisherIDKeyDigest,
     CCN_PI_E_PublisherIDKeyDigest,
     CCN_PI_E_PublisherID,
@@ -484,14 +483,16 @@ enum ccn_parsed_content_object_offsetid {
     CCN_PCO_E_ComponentLast = CCN_PCO_E_ComponentN,
     CCN_PCO_E_Name,
     CCN_PCO_B_SignedInfo,
-    CCN_PCO_B_PublisherKeyID,
-    CCN_PCO_E_PublisherKeyID,
+    CCN_PCO_B_PublisherPublicKeyDigest,
+    CCN_PCO_E_PublisherPublicKeyDigest,
     CCN_PCO_B_Timestamp,
     CCN_PCO_E_Timestamp,
     CCN_PCO_B_Type,
     CCN_PCO_E_Type,
     CCN_PCO_B_FreshnessSeconds,
     CCN_PCO_E_FreshnessSeconds,
+    CCN_PCO_B_FinalBlockID,
+    CCN_PCO_E_FinalBlockID,
     CCN_PCO_B_KeyLocator,
     /* Exactly one of Key, Certificate, or KeyName will be present */
     CCN_PCO_B_Key_Certificate_KeyName,
