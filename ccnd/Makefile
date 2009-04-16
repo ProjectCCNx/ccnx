@@ -1,5 +1,4 @@
-# $Id$
-SUBDIRS = lib agent udplink python
+SUBDIRS = lib agent udplink python tests
 OBJTREE = obj.`uname`
 MAKEF =  -f ../conf.mk -f Makefile -f ../conf.mk -f ../subr.mk
 

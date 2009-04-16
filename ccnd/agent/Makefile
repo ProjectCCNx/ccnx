@@ -10,7 +10,8 @@ DEBRIS = ccnd_june08
 BROKEN_PROGRAMS = 
 CSRC = ccnd.c ccnd_stats.c smoketestccnd.c
 HSRC = ccnd_private.h
-
+SCRIPTSRC = testbasics fortunes.ccnb contenthash.ref anything.ref
+ 
 default: $(PROGRAMS)
 
 all: default $(BROKEN_PROGRAMS)
@@ -28,7 +29,7 @@ clean:
 	rm -f *.o *.a $(PROGRAMS) $(BROKEN_PROGRAMS) depend
 	rm -rf *.dSYM $(DEBRIS)
 
-check test:   ccnd smoketestccnd
+check test: ccnd smoketestccnd $(SCRIPTSRC)
 	./testbasics
 	: ---------------------- :
 	:  ccnd unit tests pass  :
