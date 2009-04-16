@@ -162,7 +162,6 @@ express_bulkdata_interest(struct ccn *h, struct pending *p)
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *templ = NULL;
     struct ccn_charbuf *seq = NULL;
-    size_t lob_start = 0;
     
     b = p->parent;
     if (b == NULL)
