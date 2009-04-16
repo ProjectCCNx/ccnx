@@ -1,6 +1,6 @@
 # $Id$
 W3REFS=XMLSchema.dtd XMLSchema.xsd datatypes.dtd xml.xsd
-FUZZED= ccn-bad11.xml ccn-bad06.xml ccn-schemabad10.xml ccn-schemabad01.xml ccn-schemabad02.xml ccn-schemabad12.xml ccn-schemabad04.xml
+FUZZED= ccn-bad11.xml ccn-bad06.xml ccn-bad09.xml ccn-schemabad10.xml ccn-schemabad01.xml ccn-schemabad02.xml ccn-schemabad12.xml ccn-schemabad04.xml
 
 default all test: check
 
@@ -62,9 +62,9 @@ check: ccn-schemabad02.xml
 ccn-schemabad02.xml: ccn-test01.xml
 	sed -e '/Witness/s/BlahBlah/bad!/' $? > $@
 
-check: ccn-bad02.xml
-ccn-bad02.xml: ccn-test02.xml
-	sed -e 's/^.*Timestamp.*$//' $? > $@
+check: ccn-bad09.xml
+ccn-bad09.xml: ccn-test09.xml
+	sed -e 's/^.*Timestamp.*$$//' $? > $@
 
 check: ccn-schemabad04.xml
 ccn-schemabad04.xml: ccn-test04.xml

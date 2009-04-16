@@ -2,12 +2,15 @@
 ccn-bad01.xml:1: parser error : Start tag expected, '<' not found
 This is not XML.
 ^
-./shouldfail xmllint --noout --schema ccn.xsd ccn-bad02.xml
-ccn-bad02.xml:1: element a: Schemas validity error : Element 'a': No matching global declaration available for the validation root.
-ccn-bad02.xml fails to validate
+./shouldfail xmllint --noout --schema ccn.xsd ccn-bad03.xml
+ccn-bad03.xml:1: element a: Schemas validity error : Element 'a': No matching global declaration available for the validation root.
+ccn-bad03.xml fails to validate
 ./shouldfail xmllint --noout --schema ccn.xsd ccn-bad06.xml
 ccn-bad06.xml:4: element SpublisherIssuerKeyDigest: Schemas validity error : Element 'SpublisherIssuerKeyDigest': This element is not expected. Expected is one of ( NameComponentCount, AdditionalNameComponents, PublisherPublicKeyDigest, PublisherCertificateDigest, PublisherIssuerKeyDigest, PublisherIssuerCertificateDigest, Exclude, OrderPreference, AnswerOriginKind, Scope ).
 ccn-bad06.xml fails to validate
+./shouldfail xmllint --noout --schema ccn.xsd ccn-bad09.xml
+ccn-bad09.xml:15: element FinalBlockID: Schemas validity error : Element 'FinalBlockID': This element is not expected. Expected is ( Timestamp ).
+ccn-bad09.xml fails to validate
 ./shouldfail xmllint --noout --schema ccn.xsd ccn-bad11.xml
 ccn-bad11.xml:5: element Bloom: Schemas validity error : Element 'Bloom': This element is not expected. Expected is ( Component ).
 ccn-bad11.xml fails to validate
@@ -34,14 +37,17 @@ ccn-schemabad12.xml fails to validate
 ccn-bad01.xml:1: parser error : Start tag expected, '<' not found
 This is not XML.
 ^
-./shouldfail xmllint --noout --dtdvalid ccn.dtd ccn-bad02.xml
-ccn-bad02.xml:1: element a: validity error : No declaration for element a
-Document ccn-bad02.xml does not validate against ccn.dtd
+./shouldfail xmllint --noout --dtdvalid ccn.dtd ccn-bad03.xml
+ccn-bad03.xml:1: element a: validity error : No declaration for element a
+Document ccn-bad03.xml does not validate against ccn.dtd
 ./shouldfail xmllint --noout --dtdvalid ccn.dtd ccn-bad06.xml
 ccn-bad06.xml:2: element Interest: validity error : Element Interest content does not follow the DTD, expecting (Name , NameComponentCount? , AdditionalNameComponents? , (PublisherPublicKeyDigest | PublisherCertificateDigest | PublisherIssuerKeyDigest | PublisherIssuerCertificateDigest)? , Exclude? , OrderPreference? , AnswerOriginKind? , Scope? , Count? , Nonce? , ExperimentalResponseFilter?), got (Name SpublisherIssuerKeyDigest OrderPreference )
 ccn-bad06.xml:4: element SpublisherIssuerKeyDigest: validity error : No declaration for element SpublisherIssuerKeyDigest
 ccn-bad06.xml:4: element SpublisherIssuerKeyDigest: validity error : No declaration for attribute ccnbencoding of element SpublisherIssuerKeyDigest
 Document ccn-bad06.xml does not validate against ccn.dtd
+./shouldfail xmllint --noout --dtdvalid ccn.dtd ccn-bad09.xml
+ccn-bad09.xml:12: element SignedInfo: validity error : Element SignedInfo content does not follow the DTD, expecting (PublisherPublicKeyDigest , Timestamp , Type? , FreshnessSeconds? , FinalBlockID? , KeyLocator?), got (PublisherPublicKeyDigest FinalBlockID KeyLocator )
+Document ccn-bad09.xml does not validate against ccn.dtd
 ./shouldfail xmllint --noout --dtdvalid ccn.dtd ccn-bad11.xml
 ccn-bad11.xml:4: element Exclude: validity error : Element Exclude content does not follow the DTD, expecting (Bloom? , (Component , Bloom?)*), got (Bloom Bloom )
 Document ccn-bad11.xml does not validate against ccn.dtd
