@@ -11,7 +11,7 @@ static const struct ccn_dict_entry ccn_tagdict[] = {
     {CCN_DTAG_SignedInfo, "SignedInfo"},
     {CCN_DTAG_ContentDigest, "ContentDigest"},
     {CCN_DTAG_ContentHash, "ContentHash"},
-    {CCN_DTAG_ContentObject, "ContentObject"},
+    {CCN_DTAG_ContentObjectV20080711, "ContentObjectV20080711"},
     {CCN_DTAG_Count, "Count"},
     {CCN_DTAG_Header, "Header"},
     {CCN_DTAG_Interest, "Interest"},
@@ -52,6 +52,7 @@ static const struct ccn_dict_entry ccn_tagdict[] = {
     {CCN_DTAG_PublisherCertificateDigest, "PublisherCertificateDigest"},
     {CCN_DTAG_PublisherIssuerKeyDigest, "PublisherIssuerKeyDigest"},
     {CCN_DTAG_PublisherIssuerCertificateDigest, "PublisherIssuerCertificateDigest"},
+    {CCN_DTAG_ContentObject, "ContentObject"},
     {CCN_DTAG_CCNProtocolDataUnit, "CCNProtocolDataUnit"},
     {CCN_DTAG_ExperimentalResponseFilter, "ExperimentalResponseFilter"}
 };

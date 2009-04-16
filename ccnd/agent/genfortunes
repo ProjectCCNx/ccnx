@@ -5,7 +5,7 @@
 export CCN_LOCAL_PORT=8912
 ccnd &
 sleep .1
-for i in ~/.ccn/*/*.ccnb; do ./smoketestccnd send $i; done
+# for i in ~/.ccn/*/*.ccnb; do ./smoketestccnd send $i; done
 ccnsendchunks /local/test/fortunes/trust <<EOF
 TRUST ME:
 	Translation of the Latin "caveat emptor."

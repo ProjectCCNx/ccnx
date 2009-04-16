@@ -1960,7 +1960,7 @@ process_incoming_content(struct ccnd *h, struct face *face,
     res = ccn_parse_ContentObject(msg, size, &obj, comps);
     if (res < 0) abort(); /* must have just messed up */
     
-    if (obj.magic != 20080711) {
+    if (obj.magic != 20090415) {
         if (++(h->oldformatcontent) == h->oldformatcontentgrumble) {
             h->oldformatcontentgrumble *= 10;
             ccnd_msg(h, "downrev content items received: %d (%d)",
@@ -2078,7 +2078,8 @@ process_input_message(struct ccnd *h, struct face *face,
             process_incoming_interest(h, face, msg, size);
             return;
         }
-        else if (d->numval == CCN_DTAG_ContentObject) {
+        else if (d->numval == CCN_DTAG_ContentObject ||
+                 d->numval == CCN_DTAG_ContentObjectV20080711) {
             process_incoming_content(h, face, msg, size);
             return;
         }

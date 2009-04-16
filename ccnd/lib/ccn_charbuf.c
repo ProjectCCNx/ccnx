@@ -124,6 +124,7 @@ ccn_charbuf_putf(struct ccn_charbuf *c, const char *fmt, ...)
     return(-1);
 }
 
+/* This formats time into xs:dateTime format */
 int
 ccn_charbuf_append_datetime(struct ccn_charbuf *c, time_t secs, int nsecs)
 {
@@ -147,30 +148,6 @@ ccn_charbuf_append_datetime(struct ccn_charbuf *c, time_t secs, int nsecs)
     }
     timestring[timelen++] = 'Z';
     res = ccn_charbuf_append(c, timestring, timelen);
-    return (res);
-}
-
-int
-ccn_charbuf_append_datetime_now(struct ccn_charbuf *c, int precision)
-{
-    struct timeval now;
-    int res;
-    int r = 1;
-
-    gettimeofday(&now, NULL);
-
-    if (precision < 0)
-        return (-1);
-    if (precision < CCN_DATETIME_PRECISION_USEC) {
-        for (; precision < CCN_DATETIME_PRECISION_USEC; precision++)
-            r *= 10;
-        now.tv_usec = r * ((now.tv_usec + (r / 2)) / r);
-        if (now.tv_usec >= 1000000) {
-            now.tv_sec++;
-            now.tv_usec -= 1000000;
-        }
-    }
-    res = ccn_charbuf_append_datetime(c, now.tv_sec, now.tv_usec * 1000);
     return (res);
 }
 

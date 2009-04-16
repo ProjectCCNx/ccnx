@@ -64,6 +64,28 @@ incoming_content(
                     printf("\n");
                     break;
                 }
+                if (CCN_GET_TT_FROM_DSTATE(d->decoder.state) == CCN_BLOB) {
+                    double dt = 0.0;
+                    long jt;
+                    const unsigned char *p = info->content_ccnb + d->decoder.index;
+                    int n = d->decoder.numval;
+                    int i;
+                    struct ccn_charbuf *tbuf = ccn_charbuf_create();
+                     
+                    for (i = 0; i < n; i++)
+                        dt = dt * 256.0 + (double)(p[i]);
+                    dt /= 4096.0;
+                    jt = dt; /* truncates */
+                    ccn_charbuf_append_datetime(tbuf, jt, (dt-(double)jt) * 1000000000.0);
+                    written = fwrite(tbuf->buf, 1, tbuf->length, stdout);
+                    if (written != tbuf->length) {
+                        fprintf(stderr, "*** error writing stdout\n");
+                        exit(1);
+                    }
+                    printf("\n");
+                    ccn_charbuf_destroy(&tbuf);
+                    break;
+                }
             }
             ccn_buf_advance(d);
         }

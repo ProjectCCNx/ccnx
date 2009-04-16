@@ -204,7 +204,7 @@ ccn_signed_info_create(
     struct ccn_charbuf *c,              /* filled with result */
     const void *publisher_key_id,	/* input, (sha256) hash */
     size_t publisher_key_id_size, 	/* input, 32 for sha256 hashes */
-    const char *datetime,		/* input, NULL for "now" */
+    const struct ccn_charbuf *timestamp,/* input ccnb blob, NULL for "now" */
     enum ccn_content_type type,         /* input */
     int freshness,			/* input, -1 means omit */
     const struct ccn_charbuf *finalblockid, /* input, NULL means omit */
@@ -675,5 +675,22 @@ int ccn_charbuf_append_closer(struct ccn_charbuf *c);
  * Return value is 0, or -1 for error.
  */
 int ccn_charbuf_append_non_negative_integer(struct ccn_charbuf *c, int nni);
+
+/*
+ * ccn_charbuf_append_timestamp_blob: append a binary timestamp
+ * as a BLOB using the ccn binary Timestamp representation (12-bit fraction).
+ * Return value is 0, or -1 for error.
+ * If marker >= 0, the low-order byte is used as a marker byte, useful for
+ * some content naming conventions (versioning, in particular).
+ */
+#define CCN_MARKER_NONE -1
+#define CCN_MARKER_VERSION 0xFD
+int ccn_charbuf_append_timestamp_blob(struct ccn_charbuf *c, int marker, intmax_t secs, int nsecs);
+
+/*
+ * ccn_charbuf_append_now_blob:
+ * as above, using the current time
+ */
+int ccn_charbuf_append_now_blob(struct ccn_charbuf *c, int marker);
 
 #endif

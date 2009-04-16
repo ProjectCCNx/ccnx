@@ -80,7 +80,7 @@ main(int argc, char **argv)
         ptr = resultbuf->buf;
         length = resultbuf->length;
         if (content_only)
-            ccn_content_get_value(ptr, length, &pcobuf, &pcobuf, &length);
+            ccn_content_get_value(ptr, length, &pcobuf, &ptr, &length);
         res = fwrite(ptr, length, 1, stdout) - 1;
     }
     ccn_charbuf_destroy(&resultbuf);

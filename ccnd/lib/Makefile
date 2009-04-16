@@ -202,7 +202,7 @@ ccn_digest.o: ccn_digest.c ../include/ccn/digest.h
 ccn_keystore.o: ccn_keystore.c
 ccn_signing.o: ccn_signing.c ../include/ccn/merklepathasn1.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h
+  ../include/ccn/indexbuf.h ../include/ccn/signing.h
 ccn_bulkdata.o: ccn_bulkdata.c ../include/ccn/bloom.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h
@@ -248,7 +248,7 @@ encodedecodetest.o: encodedecodetest.c ../include/ccn/ccn.h \
 ccnsendchunks.o: ccnsendchunks.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h \
-  ../include/ccn/keystore.h
+  ../include/ccn/keystore.h ../include/ccn/signing.h
 ccncatchunks.o: ccncatchunks.c ../include/ccn/bloom.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h

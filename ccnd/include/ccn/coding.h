@@ -48,7 +48,7 @@ enum ccn_dtag {
     CCN_DTAG_SignedInfo = 20,
     CCN_DTAG_ContentDigest = 21,
     CCN_DTAG_ContentHash = 22,
-    CCN_DTAG_ContentObject = 23,
+    CCN_DTAG_ContentObjectV20080711 = 23, /* Deprecated */
     CCN_DTAG_Count = 24,
     CCN_DTAG_Header = 25,
     CCN_DTAG_Interest = 26,
@@ -89,6 +89,7 @@ enum ccn_dtag {
     CCN_DTAG_PublisherCertificateDigest = 61,
     CCN_DTAG_PublisherIssuerKeyDigest = 62,
     CCN_DTAG_PublisherIssuerCertificateDigest = 63,
+    CCN_DTAG_ContentObject = 64,	/* V20080415 */
     CCN_DTAG_CCNProtocolDataUnit = 17702112,
     CCN_DTAG_ExperimentalResponseFilter = 23204960
 };

@@ -355,6 +355,7 @@ ccn_parse_timestamp(struct ccn_buf_decoder *d)
         if (n < 3 || n > 7)
             return(d->decoder.state = -__LINE__);
         ccn_buf_advance(d);
+        return(0);
     }
     if (CCN_GET_TT_FROM_DSTATE(d->decoder.state) == CCN_UDATA) {
         /* This is for some temporary back-compatibility */
@@ -601,12 +602,11 @@ ccn_parse_Signature(struct ccn_buf_decoder *d, struct ccn_parsed_ContentObject *
 static int
 ccn_parse_SignedInfo(struct ccn_buf_decoder *d, struct ccn_parsed_ContentObject *x)
 {
-    struct ccn_skeleton_decoder savedstate;
     x->offset[CCN_PCO_B_SignedInfo] = d->decoder.token_index;
     if (ccn_buf_match_dtag(d, CCN_DTAG_SignedInfo)) {
         ccn_buf_advance(d);
         x->offset[CCN_PCO_B_PublisherPublicKeyDigest] = d->decoder.token_index;
-        if (ccn_buf_match_dtag(d, CCN_DTAG_PublisherKeyID))
+        if (x->magic < 20090415 && ccn_buf_match_dtag(d, CCN_DTAG_PublisherKeyID))
             ccn_parse_required_tagged_BLOB(d, CCN_DTAG_PublisherKeyID, 16, 64); // XXX - compatibility
         else
             ccn_parse_required_tagged_BLOB(d, CCN_DTAG_PublisherPublicKeyDigest, 16, 64);
@@ -617,12 +617,10 @@ ccn_parse_SignedInfo(struct ccn_buf_decoder *d, struct ccn_parsed_ContentObject 
         x->offset[CCN_PCO_E_Timestamp] = d->decoder.token_index;
         
         x->offset[CCN_PCO_B_Type] = d->decoder.token_index;
-        savedstate = d->decoder;
-        ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_Type, 3, 3);
-        if (d->decoder.state < 0) { // Temporary compatibility
-            d->decoder = savedstate;
+        if (x->magic >= 20090415)
+            ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_Type, 3, 3);
+        else
             ccn_parse_required_tagged_UDATA(d, CCN_DTAG_Type);
-        }
         x->offset[CCN_PCO_E_Type] = d->decoder.token_index;
         
         x->offset[CCN_PCO_B_FreshnessSeconds] = d->decoder.token_index;
@@ -671,9 +669,12 @@ ccn_parse_ContentObject(const unsigned char *msg, size_t size,
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d = ccn_buf_decoder_start(&decoder, msg, size);
     int res;
-    x->magic = 20080711;
+    x->magic = 20090415;
     x->digest_bytes = 0;
-    if (ccn_buf_match_dtag(d, CCN_DTAG_ContentObject)) {
+    res = ccn_buf_match_dtag(d, CCN_DTAG_ContentObjectV20080711); // XXX - downrev
+    if (res)
+        x->magic = 20080711;                                      // XXX - downrev
+    if (res || ccn_buf_match_dtag(d, CCN_DTAG_ContentObject)) {
         struct parsed_Name name;
         ccn_buf_advance(d);
         res = ccn_parse_Signature(d, x);
@@ -728,7 +729,9 @@ ccn_buf_decoder_start_at_components(struct ccn_buf_decoder *d,
     ccn_buf_decoder_start(d, buf, buflen);
     while (ccn_buf_match_dtag(d, CCN_DTAG_Name) ||
            ccn_buf_match_dtag(d, CCN_DTAG_Interest) ||
-           ccn_buf_match_dtag(d, CCN_DTAG_ContentObject)) {
+           ccn_buf_match_dtag(d, CCN_DTAG_ContentObject) ||
+           ccn_buf_match_dtag(d, CCN_DTAG_ContentObjectV20080711) /* XXX - downrev */
+           ) {
         ccn_buf_advance(d);
         ccn_parse_Signature(d, NULL);
     }

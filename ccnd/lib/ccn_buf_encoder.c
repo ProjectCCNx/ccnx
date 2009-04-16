@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/time.h>
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
@@ -25,14 +26,13 @@ int
 ccn_signed_info_create(struct ccn_charbuf *c,
                        const void *publisher_key_id,	/* input, sha256 hash */
                        size_t publisher_key_id_size, 	/* input, 32 for sha256 hashes */
-                       const char *datetime,
+                       const struct ccn_charbuf *timestamp,/* input ccnb blob, NULL for "now" */
                        enum ccn_content_type type,	/* input */
                        int freshness,			/* input, -1 means omit */
                        const struct ccn_charbuf *finalblockid,  /* input, NULL means omit */
                        const struct ccn_charbuf *key_locator)	/* input, optional, ccnb encoded */
 {
     int res = 0;
-    struct ccn_charbuf *dt;
     const char fakepubkeyid[32] = {0};
  
     if (publisher_key_id != NULL && publisher_key_id_size != 32)
@@ -52,17 +52,10 @@ ccn_signed_info_create(struct ccn_charbuf *c,
     res |= ccn_charbuf_append_closer(c);
 
     res |= ccn_charbuf_append_tt(c, CCN_DTAG_Timestamp, CCN_DTAG);
-    if (datetime != NULL) {
-        res |= ccn_charbuf_append_tt(c, strlen(datetime), CCN_UDATA);
-        res |= ccn_charbuf_append_string(c, datetime);
-    }
-    else {
-        dt = ccn_charbuf_create();
-        res |= ccn_charbuf_append_datetime_now(dt, CCN_DATETIME_PRECISION_USEC);
-        res |= ccn_charbuf_append_tt(c, dt->length, CCN_UDATA);
-        res |= ccn_charbuf_append_charbuf(c, dt);
-        ccn_charbuf_destroy(&dt);
-    }
+    if (timestamp != NULL)
+        res |= ccn_charbuf_append_charbuf(c, timestamp);
+    else
+        res |= ccn_charbuf_append_now_blob(c, CCN_MARKER_NONE);
     res |= ccn_charbuf_append_closer(c);
 
     if (type != CCN_CONTENT_DATA) {
@@ -238,6 +231,47 @@ ccn_charbuf_append_non_negative_integer(struct ccn_charbuf *c, int nni)
     nnistringlen = snprintf(nnistring, sizeof(nnistring), "%d", nni);
     res = ccn_charbuf_append_tt(c, nnistringlen, CCN_UDATA);
     res |= ccn_charbuf_append_string(c, nnistring);
+    return (res);
+}
+
+int
+ccn_charbuf_append_timestamp_blob(struct ccn_charbuf *c, int marker, intmax_t secs, int nsecs)
+{
+    int i;
+    int n;
+    intmax_t ts;
+    unsigned char *p;
+    if (secs <= 0 || nsecs < 0 || nsecs > 999999999)
+        return(-1);
+    n = 2;
+    for (ts = secs >> 4; n < 7 && ts != 0; ts >>= 8)
+        n++;
+    ccn_charbuf_append_tt(c, n + (marker >= 0), CCN_BLOB);
+    if (marker >= 0)
+        ccn_charbuf_append_value(c, marker, 1);
+    p = ccn_charbuf_reserve(c, n);
+    if (p == NULL)
+        return(-1);
+    ts = secs >> 4;
+    for (i = 0; i < n - 2; i++)
+        p[i] = ts >> (8 * (n - 3 - i));
+    /* arithmetic contortions are to avoid overflowing 31 bits */
+    ts = ((secs & 15) << 12) + ((nsecs / 5 * 8 + 195312) / 390625);
+    for (i = n - 2; i < n; i++)
+        p[i] = ts >> (8 * (n - 1 - i));
+    c->length += n;
+    return(0);
+}
+
+int
+ccn_charbuf_append_now_blob(struct ccn_charbuf *c, int marker)
+{
+    struct timeval now;
+    int res;
+
+    gettimeofday(&now, NULL);
+
+    res = ccn_charbuf_append_timestamp_blob(c, marker, now.tv_sec, now.tv_usec * 1000);
     return (res);
 }
 

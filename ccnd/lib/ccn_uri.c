@@ -68,7 +68,9 @@ ccn_uri_append(struct ccn_charbuf *c,
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d = ccn_buf_decoder_start(&decoder, ccnb, size);
     if (ccn_buf_match_dtag(d, CCN_DTAG_Interest) ||
-        ccn_buf_match_dtag(d, CCN_DTAG_ContentObject)) {
+        ccn_buf_match_dtag(d, CCN_DTAG_ContentObject) ||
+        ccn_buf_match_dtag(d, CCN_DTAG_ContentObjectV20080711) // XXX - downrev
+        ) {
         ccn_buf_advance(d);
         if (ccn_buf_match_dtag(d, CCN_DTAG_Signature))
             ccn_buf_advance_past_element(d);
