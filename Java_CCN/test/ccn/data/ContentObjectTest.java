@@ -118,10 +118,11 @@ public class ContentObjectTest {
 			XMLEncodableTester.encodeDecodeTest("ContentObjectKey", cokey, tdcokey, bdcokey);
 			Assert.assertTrue(cokey.verify(pair.getPublic()));
 			// Dump one to file for testing on the C side.
-			java.io.FileOutputStream fdump = new java.io.FileOutputStream("ContentObject.ccnb");
+		/*	java.io.FileOutputStream fdump = new java.io.FileOutputStream("ContentObject.ccnb");
 			co.encode(fdump);
 			fdump.flush();
 			fdump.close();
+			*/
 		} catch (Exception e) {
 			System.out.println("Exception : " + e.getClass().getName() + ": " + e.getMessage());
 			e.printStackTrace();
