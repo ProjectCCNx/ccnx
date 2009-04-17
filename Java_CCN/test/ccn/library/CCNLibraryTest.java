@@ -9,6 +9,8 @@ import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.Iterator;
 
+import javax.xml.stream.XMLStreamException;
+
 import junit.framework.Assert;
 
 import org.junit.Test;
@@ -321,7 +323,11 @@ public class CCNLibraryTest extends LibraryTestBase {
 		try {
 			getLibrary.getCollection(baseName, 5000);
 			Assert.fail("getCollection for non-collection succeeded");
-		} catch (IOException ioe) {}
+		} catch (IOException ioe) {
+		} catch (XMLStreamException ex) {
+			// this is what we actually expect
+		}
+	
 		
 		// test getCollection
 		collection = getLibrary.getCollection(collectionName, 5000);
@@ -374,11 +380,21 @@ public class CCNLibraryTest extends LibraryTestBase {
 					Iterator<ContentObject> rit = results.iterator();
 					while (rit.hasNext()) {
 						ContentObject co = rit.next();
+						System.out.println("handleContent: got " + co.name());
 
 						content = co.content();
 						String strContent = new String(content);
-						System.out.println("Got update for " + co.name() + ": " + strContent + 
+						
+						if (VersioningProfile.isVersioned(co.name())) {
+							// We're writing this content using CCNWriter.put. That interface
+							// does *not* version content for you, at least at the moment. 
+							// TODO We need to decide whether we expect it to. So don't require
+							// versioning here yet. 
+							System.out.println("Got update for " + co.name() + ": " + strContent + 
 								" (revision " + VersioningProfile.getVersionAsLong(co.name()) + ")");
+						} else {
+							System.out.println("Got update for " + co.name() + ": " + strContent);
+						}
 						_count++;
 						switch(_count) {
 						case 1:
@@ -397,7 +413,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 					}
 				}
 			} catch (VersionMissingException vex) {
-				Assert.fail("Should have version.");
+				Assert.fail("No version when expecting one -- though be careful to make sure we should have been.");
 			}
 			return null;
 		}
