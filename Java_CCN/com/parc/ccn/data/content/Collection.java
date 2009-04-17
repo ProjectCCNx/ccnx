@@ -72,8 +72,7 @@ public class Collection extends ContentObject {
 	
 	public static Collection contentToCollection(ContentObject co) throws XMLStreamException {
 		Collection collection = new Collection();
-		collection.decode(co.encode());
-		collection.decodeData();
+		collection.decode(co.encode()); // calls decodeData
 		return collection;
 	}
 	
