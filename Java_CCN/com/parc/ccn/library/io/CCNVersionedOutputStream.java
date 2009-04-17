@@ -7,6 +7,7 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
+import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNSegmenter;
@@ -17,7 +18,7 @@ public class CCNVersionedOutputStream extends CCNOutputStream {
 	public CCNVersionedOutputStream(ContentName name, KeyLocator locator,
 			PublisherPublicKeyDigest publisher, CCNLibrary library)
 			throws XMLStreamException, IOException {
-		this(name, locator, publisher, new CCNSegmenter(new CCNFlowControl(name, library)));
+		this(name, locator, publisher, null, new CCNSegmenter(new CCNFlowControl(name, library)));
 	}
 
 	public CCNVersionedOutputStream(ContentName name, CCNLibrary library)
@@ -36,15 +37,15 @@ public class CCNVersionedOutputStream extends CCNOutputStream {
 	 * @throws IOException
 	 */
 	public CCNVersionedOutputStream(ContentName name, KeyLocator locator,
-			PublisherPublicKeyDigest publisher, CCNSegmenter segmenter)
+			PublisherPublicKeyDigest publisher, ContentType type, CCNSegmenter segmenter)
 			throws XMLStreamException, IOException {
 		super((VersioningProfile.isVersioned(name) ? name : VersioningProfile.versionName(name)), 
-				locator, publisher, segmenter);
+				locator, publisher, type, segmenter);
 	}
 
 	public CCNVersionedOutputStream(ContentName name, KeyLocator locator,
 			PublisherPublicKeyDigest publisher, CCNFlowControl flowControl)
 			throws XMLStreamException, IOException {
-		this(name, locator, publisher, new CCNSegmenter(flowControl));
+		this(name, locator, publisher, null, new CCNSegmenter(flowControl));
 	}
 }

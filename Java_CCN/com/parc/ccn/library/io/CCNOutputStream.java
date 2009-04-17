@@ -27,7 +27,7 @@ import com.parc.ccn.security.crypto.CCNDigestHelper;
  * - content is automatically fragmented, using the standard library fragmentation
  *    mechanisms, independently of the block size in which it is written
  * - content is written with an associated header
- * - content is authenticated using Merkle Hash Trees; each time flush() is called,
+ * - content is authenticated using a bulk signer (e.g. a MHT); each time flush() is called,
  *    available buffered data is written in a new MHT. The number of blocks in each
  *    MHT is a maximum of BLOCK_BUF_COUNT (TODO: calculate overhead), and a minimum of
  *    the number of blocks with data when flush() is called.
@@ -51,36 +51,48 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	protected int _blockSize = SegmentationProfile.DEFAULT_BLOCKSIZE;
 
 	protected Timestamp _timestamp; // timestamp we use for writing, set to first time we write
+	protected ContentType _type; // null == DATA
 
 	protected CCNDigestHelper _dh;
 
 	public CCNOutputStream(ContentName name, 
 			KeyLocator locator, PublisherPublicKeyDigest publisher,
 			CCNLibrary library) throws XMLStreamException, IOException {
-		this(name, locator, publisher, new CCNSegmenter(new CCNFlowControl(name, library)));
+		this(name, locator, publisher, null, new CCNSegmenter(new CCNFlowControl(name, library)));
 	}
 	
+	public CCNOutputStream(ContentName name, 
+			KeyLocator locator, PublisherPublicKeyDigest publisher, ContentType type,
+			CCNLibrary library) throws XMLStreamException, IOException {
+		this(name, locator, publisher, type, new CCNSegmenter(new CCNFlowControl(name, library)));
+	}
+
 	public CCNOutputStream(ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
 		this(name, null, null, library);
 	}
 
+	public CCNOutputStream(ContentName name, ContentType type, CCNLibrary library) throws XMLStreamException, IOException {
+		this(name, null, null, type, library);
+	}
+
 	protected CCNOutputStream(ContentName name, 
-			KeyLocator locator, PublisherPublicKeyDigest publisher,
+			KeyLocator locator, PublisherPublicKeyDigest publisher, ContentType type,
 			CCNSegmenter segmenter) throws XMLStreamException, IOException {
 
 		super(locator, publisher, segmenter);
 
 		ContentName nameToOpen = name;
 		if (SegmentationProfile.isSegment(nameToOpen)) {
-			// DKS TODO: should we do this?
 			nameToOpen = SegmentationProfile.segmentRoot(nameToOpen);
+			// DKS -- should we offset output index to next one? might have closed
+			// previous stream, so likely not
 		}
 
-		// Should have name of root of version we want to
-		// open. 
+		// Should have name of root of version we want to open. 
 		_baseName = nameToOpen;
 		_blockBuffers = new byte[BLOCK_BUF_COUNT][];
 		_baseNameIndex = SegmentationProfile.baseSegment();
+		_type = type; // null = DATA
 
 		_dh = new CCNDigestHelper();
 	}
@@ -88,7 +100,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	protected CCNOutputStream(ContentName name, 
 			KeyLocator locator, PublisherPublicKeyDigest publisher,
 			CCNFlowControl flowControl) throws XMLStreamException, IOException {
-		this(name, locator, publisher, new CCNSegmenter(flowControl));
+		this(name, locator, publisher, null, new CCNSegmenter(flowControl));
 	}
 
 	/**

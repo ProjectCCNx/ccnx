@@ -15,6 +15,7 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
+import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNSegmenter;
@@ -34,9 +35,9 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 	}
 
 	public CCNFileOutputStream(ContentName name, KeyLocator locator,
-			PublisherPublicKeyDigest publisher, CCNSegmenter segmenter)
+			PublisherPublicKeyDigest publisher, ContentType type, CCNSegmenter segmenter)
 			throws XMLStreamException, IOException {
-		super(name, locator, publisher, segmenter);
+		super(name, locator, publisher, type, segmenter);
 	}
 
 	public CCNFileOutputStream(ContentName name, KeyLocator locator,
