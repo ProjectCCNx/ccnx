@@ -44,6 +44,14 @@ public class SegmentationProfile implements CCNProfile {
 	 * What does its fragment number mean?
 	 */
 	public enum SegmentNumberType {SEGMENT_FIXED_INCREMENT, SEGMENT_BYTE_COUNT}
+	
+	/**
+	 * Default blocksize. This must be a multiple of the block size of standard
+	 * encryption algorithms (generally, 128 bits = 16 bytes; conservatively
+	 * 256 bits = 32 bytes, really conservatively, support 192 bits = 24 bytes;
+	 * so 32 bytes with unused bytes in the 192-bit case (otherwise we'd have
+	 * to use the LCM, 96 bytes, which is really inefficient).
+	 */
 	public static final int DEFAULT_BLOCKSIZE = 4096;
 	public static final int DEFAULT_INCREMENT = 1;
 	public static final int DEFAULT_SCALE = 1;
@@ -55,9 +63,16 @@ public class SegmentationProfile implements CCNProfile {
 	public static final int baseSegment() { return BASE_SEGMENT; }
 	
 	public static boolean isUnsegmented(ContentName name) {
-		byte [] fm = name.lastComponent();
-		return ((null == fm) || (0 == fm.length) || (SEGMENT_MARKER != fm[0]) || 
-					((fm.length > 1) && (NO_SEGMENT_POSTFIX == fm[1])));
+		return isNotSegmentMarker(name.lastComponent());
+	}
+	
+	public static boolean isNotSegmentMarker(byte [] potentialSegmentID) {
+		return ((null == potentialSegmentID) || (0 == potentialSegmentID.length) || (SEGMENT_MARKER != potentialSegmentID[0]) || 
+				((potentialSegmentID.length > 1) && (NO_SEGMENT_POSTFIX == potentialSegmentID[1])));		
+	}
+	
+	public static boolean isSegmentMarker(byte [] potentialSegmentID) {
+		return (!isNotSegmentMarker(potentialSegmentID));
 	}
 
 	public static boolean isSegment(ContentName name) {
@@ -76,17 +91,39 @@ public class SegmentationProfile implements CCNProfile {
 		if (isSegment(name)) {
 			baseName = segmentRoot(name);
 		}
-		byte [] fcomp = null;
-		if (baseSegment() == index) {
-			fcomp = FIRST_SEGMENT_MARKER;
+		return new ContentName(baseName, getSegmentID(index));
+	}
+	
+	public static byte [] getSegmentID(long segmentNumber) {
+		
+		byte [] segmentID = null;
+		if (baseSegment() == segmentNumber) {
+			segmentID = FIRST_SEGMENT_MARKER;
 		} else {
-			byte [] iarr = BigInteger.valueOf(index).toByteArray();
-			fcomp = new byte[iarr.length + ((0 == iarr[0]) ? 0 : 1)];
-			fcomp[0] = SEGMENT_MARKER;
+			byte [] iarr = BigInteger.valueOf(segmentNumber).toByteArray();
+			segmentID = new byte[iarr.length + ((0 == iarr[0]) ? 0 : 1)];
+			segmentID[0] = SEGMENT_MARKER;
 			int offset = ((0 == iarr[0]) ? 1 : 0);
-			System.arraycopy(iarr, offset, fcomp, 1, iarr.length-offset);
+			System.arraycopy(iarr, offset, segmentID, 1, iarr.length-offset);
 		}
-		return new ContentName(baseName, fcomp);
+		return segmentID;
+	}
+	
+	public static long getSegmentNumber(byte [] segmentID) {
+		
+		if (isSegmentMarker(segmentID)) {
+			// Will behave properly with everything but first fragment of fragmented content.
+			if (segmentID.length == 1)
+				return 0;
+			byte [] ftemp = new byte[segmentID.length-1];
+			System.arraycopy(segmentID, 1, ftemp, 0, segmentID.length-1);
+			segmentID = ftemp;
+		} 
+		// If this isn't formatted as one of our segment numbers, suspect it might
+		// be a sequence (e.g. a packet stream), and attempt to read the last name
+		// component as a number.
+		BigInteger value = new BigInteger(1, segmentID);
+		return value.longValue();
 	}
 
 	/**
@@ -96,21 +133,8 @@ public class SegmentationProfile implements CCNProfile {
 	 * number with segment marker. 
  	 * @throws NumberFormatException if neither number type found in last name component
 	 */
-	public static long getSegmentNumber(ContentName name) throws NumberFormatException {
-		byte [] fcomp = name.lastComponent();
-		if (isSegment(name)) {
-			// Will behave properly with everything but first fragment of fragmented content.
-			if (fcomp.length == 1)
-				return 0;
-			byte [] ftemp = new byte[fcomp.length-1];
-			System.arraycopy(fcomp, 1, ftemp, 0, fcomp.length-1);
-			fcomp = ftemp;
-		} 
-		// If this isn't formatted as one of our segment numbers, suspect it might
-		// be a sequence (e.g. a packet stream), and attempt to read the last name
-		// component as a number.
-		BigInteger value = new BigInteger(1, fcomp);
-		return value.longValue();
+	public static long getSegmentNumber(ContentName name) {
+		return getSegmentNumber(name.lastComponent());
 	}
 
 	/**
