@@ -158,8 +158,7 @@ public abstract class NetworkObject<E> {
 			DigestOutputStream dos = new DigestOutputStream(output, 
 					MessageDigest.getInstance(DEFAULT_DIGEST));
 			writeObjectImpl(dos);
-			dos.flush();
-			dos.close();
+			dos.flush(); // do not close the dos, as it will close output. allow caller to do that.
 			_lastSaved = dos.getMessageDigest().digest();
 			setPotentiallyDirty(false);
 		} catch (NoSuchAlgorithmException e) {

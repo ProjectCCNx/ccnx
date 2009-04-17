@@ -104,7 +104,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> {
 		// CCNVersionedOutputStream will version an unversioned name. 
 		// If it gets a versioned name, will respect it.
 		CCNVersionedOutputStream cos = new CCNVersionedOutputStream(name, null, null, _flowControl);
-		save(cos); // superclass stream save. calls flush and close on a wrapping
+		save(cos); // superclass stream save. calls flush but not close on a wrapping
 		// digest stream; want to make sure we end up with a single non-MHT signed
 		// block and no header on small objects
 		cos.close();
