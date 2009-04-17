@@ -19,7 +19,7 @@ ProvideDefault () {
 }
 
 test -f conf.mk && mv conf.mk conf.mk~
-echo '#' generated `date` `uname -nsrv` > conf.mk
+echo '#' generated `uname -nsrv` > conf.mk
 TryAppend "`uname`"
 TryAppend "`uname -sr | sed -e 's/ /-/g'`"
 TryScript "`uname`" "$@"
@@ -35,3 +35,5 @@ ProvideDefault RM = rm -f
 echo ============= conf.mk =============>&2
 cat conf.mk				>&2
 echo ===================================>&2
+test -f conf.mk~ || exit 0
+cmp conf.mk~ conf.mk || make clean
