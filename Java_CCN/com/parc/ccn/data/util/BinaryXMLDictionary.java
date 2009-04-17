@@ -85,7 +85,8 @@ public class BinaryXMLDictionary {
 			line = reader.readLine();
 			String [] parts = line.split(",");
 			
-			if (parts.length != 2) {
+			// Format: <num>,<name>[,<modifier>]  where <modifier> is one of Deprecated or Obsolete
+			if (parts.length > 3) {
 				if (parts.length != 0) // if 0, just empty line
 					Library.logger().info("Dictionary: " + dictionaryFile + ":  Cannot parse dictionary line: " + line);
 				continue;
