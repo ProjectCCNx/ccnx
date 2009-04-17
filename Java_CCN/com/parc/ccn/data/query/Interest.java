@@ -385,7 +385,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			_additionalNameComponents = decoder.readIntegerElement(ADDITIONAL_NAME_COMPONENTS);
 		}
 				
-		if (decoder.peekStartElement(PublisherID.PUBLISHER_ID_ELEMENT)) {
+		if (PublisherID.peek(decoder)) {
 			_publisher = new PublisherID();
 			_publisher.decode(decoder);
 		}
