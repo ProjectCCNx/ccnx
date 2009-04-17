@@ -92,7 +92,7 @@ ccn_encode_Signature(struct ccn_charbuf *buf,
                      const char *digest_algorithm,
                      const void *witness,
                      size_t witness_size,
-                     const void *signature,
+                     const struct ccn_signature *signature,
                      size_t signature_size)
 {
     int res = 0;
@@ -133,12 +133,12 @@ ccn_encode_ContentObject(struct ccn_charbuf *buf,
                          const void *data,
                          size_t size,
                          const char *digest_algorithm,
-                         const void *private_key
+                         const struct ccn_pkey *private_key
                          )
 {
     int res = 0;
     struct ccn_sigc *sig_ctx;
-    unsigned char *signature;
+    struct ccn_signature *signature;
     size_t signature_size;
     struct ccn_charbuf *content_header;
 
@@ -157,7 +157,7 @@ ccn_encode_ContentObject(struct ccn_charbuf *buf,
     if (0 != ccn_sigc_update(sig_ctx, data, size)) return (-1);
     if (0 != ccn_sigc_update(sig_ctx, content_header->buf + content_header->length - 1, 1)) return (-1);
 
-    signature = calloc(1, ccn_sigc_signature_max_size(sig_ctx, private_key));
+    signature = (struct ccn_signature *)calloc(1, ccn_sigc_signature_max_size(sig_ctx, private_key));
     if (signature == NULL) return (-1);
     if (0 != ccn_sigc_final(sig_ctx, signature, &signature_size, private_key)) {
         free(signature);

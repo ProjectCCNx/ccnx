@@ -55,20 +55,20 @@ ccn_sigc_update(struct ccn_sigc *ctx, const void *data, size_t size)
 }
 
 int
-ccn_sigc_final(struct ccn_sigc *ctx, const void *signature, size_t *size, void *priv_key)
+ccn_sigc_final(struct ccn_sigc *ctx, struct ccn_signature *signature, size_t *size, const struct ccn_pkey *priv_key)
 {
     unsigned int sig_size;
 
-    if (0 == EVP_SignFinal(&ctx->context, (unsigned char *)signature, &sig_size, priv_key))
+    if (0 == EVP_SignFinal(&ctx->context, (unsigned char *)signature, &sig_size, (EVP_PKEY *)priv_key))
         return (-1);
     *size = sig_size;
     return (0);
 }
 
 size_t
-ccn_sigc_signature_max_size(struct ccn_sigc *ctx, void *priv_key)
+ccn_sigc_signature_max_size(struct ccn_sigc *ctx, const struct ccn_pkey *priv_key)
 {
-    return (EVP_PKEY_size(priv_key));
+    return (EVP_PKEY_size((EVP_PKEY *)priv_key));
 }
 
 #define is_left(x) (0 == (x & 1))
@@ -77,7 +77,7 @@ ccn_sigc_signature_max_size(struct ccn_sigc *ctx, void *priv_key)
 #define parent_of(x) (x >> 1)
 
 int ccn_merkle_root_hash(const unsigned char *msg, size_t size,
-                         struct ccn_parsed_ContentObject *co,
+                         const struct ccn_parsed_ContentObject *co,
                          const EVP_MD *digest_type,
                          MP_info *merkle_path_info,
                          unsigned char *result, int result_size)
@@ -150,8 +150,8 @@ int ccn_merkle_root_hash(const unsigned char *msg, size_t size,
 
 int ccn_verify_signature(const unsigned char *msg,
                      size_t size,
-                     struct ccn_parsed_ContentObject *co,
-                     const void *verification_pubkey)
+                     const struct ccn_parsed_ContentObject *co,
+                     const struct ccn_pkey *verification_pubkey)
 {
     EVP_MD_CTX verc;
     EVP_MD_CTX *ver_ctx = &verc;
@@ -264,27 +264,27 @@ int ccn_verify_signature(const unsigned char *msg,
         return (0);
 }
 
-void *
+struct ccn_pkey *
 ccn_d2i_pubkey(const unsigned char *p, size_t size)
 {
     const unsigned char **pp = &p;
-    return d2i_PUBKEY(NULL, pp, size);
+    return ((struct ccn_pkey *)d2i_PUBKEY(NULL, pp, size));
 }
 
 void
-ccn_i_pubkey_free(void *i_pubkey)
+ccn_pubkey_free(struct ccn_pkey *i_pubkey)
 {
-    EVP_PKEY_free(i_pubkey);
+    EVP_PKEY_free((EVP_PKEY *)i_pubkey);
 }
 
 size_t
-ccn_pubkey_size(void *i_pubkey)
+ccn_pubkey_size(const struct ccn_pkey *i_pubkey)
 {
-    return (EVP_PKEY_size(i_pubkey));
+    return (EVP_PKEY_size((EVP_PKEY *)i_pubkey));
 }
 
 int
-ccn_append_pubkey_blob(struct ccn_charbuf *c, void *i_pubkey)
+ccn_append_pubkey_blob(struct ccn_charbuf *c, const struct ccn_pkey *i_pubkey)
 {
     int res;
     size_t bytes;

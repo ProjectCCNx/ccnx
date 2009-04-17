@@ -20,6 +20,7 @@
 
 /* opaque declarations */
 struct ccn;
+struct ccn_pkey;
 
 /* forward declarations */
 struct ccn_closure;
@@ -608,7 +609,7 @@ int ccn_encode_ContentObject(struct ccn_charbuf *buf,
                              const void *data,
                              size_t size,
                              const char *digest_algorithm,
-                             const void *private_key);
+                             const struct ccn_pkey *private_key);
 
 /*
  * ccn_encode_Content:
