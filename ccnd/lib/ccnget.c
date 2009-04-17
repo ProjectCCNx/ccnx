@@ -36,7 +36,7 @@ main(int argc, char **argv)
     char ch;
     int allow_stale = 0;
     int content_only = 0;
-    unsigned char *ptr;
+    const unsigned char *ptr;
     size_t length;
     
     while ((ch = getopt(argc, argv, "hac")) != -1) {
