@@ -28,6 +28,8 @@ public interface XMLDecoder {
 
 	public boolean peekStartElement(String startTag) throws XMLStreamException;
 	
+	public String peekStartElement() throws XMLStreamException;
+	
 	public void readEndElement() throws XMLStreamException;
 
 	public String readUTF8Element(String startTag,

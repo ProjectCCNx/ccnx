@@ -73,9 +73,17 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 		}
 	}
 
-	public boolean peekStartElement(String startTag) throws XMLStreamException {
+	public String peekStartElement() throws XMLStreamException {
 		XMLEvent event = _reader.peek();
-		if ((null == event) || !event.isStartElement() || (!startTag.equals(event.asStartElement().getName().getLocalPart()))) {
+		if ((null == event) || !event.isStartElement()) {
+			return null;
+		}
+		return event.asStartElement().getName().getLocalPart();
+	}
+
+	public boolean peekStartElement(String startTag) throws XMLStreamException {
+		String decodedTag = peekStartElement();
+		if ((null == decodedTag) || (!startTag.equals(decodedTag))) {
 			return false;
 		}	
 		return true;

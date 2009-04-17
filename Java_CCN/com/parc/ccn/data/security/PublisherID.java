@@ -6,7 +6,6 @@ import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.TreeMap;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -20,7 +19,9 @@ import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.security.crypto.certificates.GenericX509CertificateGenerator;
 
 /**
- * Helper wrapper class for publisher IDs.
+ * Helper wrapper class for publisher IDs. This encodes and decodes
+ * as one of 4 inline options, one of which also appears separately
+ * as the PublisherPublicKeyDigest.
  * @author smetters
  *
  */
@@ -33,18 +34,19 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
     protected static final HashMap<PublisherType, String> TypeNames = new HashMap<PublisherType, String>();
     protected static final HashMap<String, PublisherType> NameTypes = new HashMap<String, PublisherType>();
     
-    public static final String PUBLISHER_ID_ELEMENT = "PublisherID";
-    protected static final String PUBLISHER_TYPE_ATTRIBUTE = "type";
+    public static final String PUBLISHER_CERTIFICATE_DIGEST_ELEMENT = "PublisherCertificateDigest";
+    public static final String PUBLISHER_ISSUER_KEY_DIGEST = "PublisherIssuerKeyDigest";
+    public static final String PUBLISHER_ISSUER_CERTFICIATE_DIGEST = "PublisherIssuerCertificateDigest";
     
     static {
-        TypeNames.put(PublisherType.KEY, "KEY");
-        TypeNames.put(PublisherType.CERTIFICATE, "CERTIFICATE");
-        TypeNames.put(PublisherType.ISSUER_KEY, "ISSUER_KEY");
-        TypeNames.put(PublisherType.ISSUER_CERTIFICATE, "ISSUER_CERTIFICATE");
-        NameTypes.put("KEY", PublisherType.KEY);
-        NameTypes.put("CERTIFICATE", PublisherType.CERTIFICATE);
-        NameTypes.put("ISSUER_KEY", PublisherType.ISSUER_KEY);
-        NameTypes.put("ISSUER_CERTIFICATE", PublisherType.ISSUER_CERTIFICATE);
+        TypeNames.put(PublisherType.KEY, PublisherPublicKeyDigest.PUBLISHER_PUBLIC_KEY_DIGEST_ELEMENT);
+        TypeNames.put(PublisherType.CERTIFICATE, PUBLISHER_CERTIFICATE_DIGEST_ELEMENT);
+        TypeNames.put(PublisherType.ISSUER_KEY, PUBLISHER_ISSUER_KEY_DIGEST);
+        TypeNames.put(PublisherType.ISSUER_CERTIFICATE, PUBLISHER_ISSUER_CERTFICIATE_DIGEST);
+        NameTypes.put(PublisherPublicKeyDigest.PUBLISHER_PUBLIC_KEY_DIGEST_ELEMENT, PublisherType.KEY);
+        NameTypes.put(PUBLISHER_CERTIFICATE_DIGEST_ELEMENT, PublisherType.CERTIFICATE);
+        NameTypes.put(PUBLISHER_ISSUER_KEY_DIGEST, PublisherType.ISSUER_KEY);
+        NameTypes.put(PUBLISHER_ISSUER_CERTFICIATE_DIGEST, PublisherType.ISSUER_CERTIFICATE);
     }
 
     protected byte [] _publisherID;
@@ -56,11 +58,14 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
     }
     
     public PublisherID(X509Certificate cert, boolean isIssuer) throws CertificateEncodingException {
-    	_publisherID = generateCertificateID(cert);
+    	_publisherID = generateCertificateDigest(cert);
     	_publisherType = isIssuer ? PublisherType.ISSUER_CERTIFICATE : PublisherType.CERTIFICATE;
     }
 	
 	public PublisherID(byte [] publisherID, PublisherType publisherType) {
+		if ((null == publisherID) || (publisherID.length != PUBLISHER_ID_LEN)) {
+			throw new IllegalArgumentException("Invalid publisherID!");
+		}
 		// Alas, Arrays.copyOf doesn't exist in 1.5, and we'd like
 		// to be mostly 1.5 compatible for the macs...
 		// _publisherPublicKeyDigest = Arrays.copyOf(publisherID, PUBLISHER_ID_LEN);
@@ -131,24 +136,28 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 	public static PublisherType nameToType(String name) {
 		return NameTypes.get(name);
 	}
+	
+	public static boolean isPublisherType(String name) {
+		return NameTypes.containsKey(name);
+	}
 
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		
-		// The format of a publisher ID is:
-		// <PublisherID type=<type>>id content</PublisherID>
-		TreeMap<String,String> attributes = new TreeMap<String,String>();
-
-		_publisherID = decoder.readBinaryElement(PUBLISHER_ID_ELEMENT, attributes);
-		if (null == _publisherID) {
+		// We have a choice here of one of 4 binary element types.
+		String nextTag = decoder.peekStartElement();
+		
+		if (null == nextTag) {
 			throw new XMLStreamException("Cannot parse publisher ID.");
-		}
-		// Don't check number of attributes -- binary encoding attr may have been added.
-		if (!attributes.containsKey(PUBLISHER_TYPE_ATTRIBUTE)) {
-			throw new XMLStreamException("Cannot parse publisher ID: did not get expected attribute: " + PUBLISHER_TYPE_ATTRIBUTE);
-		}
-		_publisherType = nameToType(attributes.get(PUBLISHER_TYPE_ATTRIBUTE));
+		} 
+		
+		_publisherType = nameToType(nextTag); 
+		
 		if (null == _publisherType) {
-			throw new XMLStreamException("Cannot parse publisher ID: unknown publisher type: " + attributes.get(PUBLISHER_TYPE_ATTRIBUTE));
+			throw new XMLStreamException("Invalid publisher ID, got unexpected type: " + nextTag);
+		}
+		_publisherID = decoder.readBinaryElement(nextTag);
+		if (null == _publisherID) {
+			throw new XMLStreamException("Cannot parse publisher ID of type : " + nextTag + ".");
 		}
 	}
 
@@ -156,22 +165,19 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		// The format of a publisher ID is:
-		// <PublisherID type=<type> id_content />
-		TreeMap<String,String> attributes = new TreeMap<String,String>();
-		attributes.put(PUBLISHER_TYPE_ATTRIBUTE,typeToName(type()));
+		// The format of a publisher ID is a choice, a binary element tagged with
+		// one of the 4 publisher types.
 		
-		encoder.writeElement(PUBLISHER_ID_ELEMENT, id(),
-								attributes);
+		encoder.writeElement(typeToName(type()), id());
 	}
 	
 	public boolean validate() {
 		return ((null != id() && (null != type())));
 	}
 
-	public static byte [] generateCertificateID(X509Certificate cert) throws CertificateEncodingException {
+	public static byte [] generateCertificateDigest(X509Certificate cert) throws CertificateEncodingException {
 		try {
-			return generateCertificateID(PUBLISHER_ID_DIGEST_ALGORITHM, cert);
+			return generateCertificateDigest(PUBLISHER_ID_DIGEST_ALGORITHM, cert);
 		} catch (NoSuchAlgorithmException e) {
 			// DKS --big configuration problem
 			Library.logger().warning("Fatal Error: cannot find default algorithm " + PUBLISHER_ID_DIGEST_ALGORITHM);
@@ -179,7 +185,7 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 		}
 	}
 	
-    public static byte [] generateCertificateID(String digestAlg, X509Certificate cert) 
+    public static byte [] generateCertificateDigest(String digestAlg, X509Certificate cert) 
     							throws CertificateEncodingException, NoSuchAlgorithmException  {
     	
         byte [] id = null;

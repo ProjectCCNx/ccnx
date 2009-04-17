@@ -114,17 +114,24 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 			throw new XMLStreamException("readStartElement", e);
 		}
 	}
-
+	
 	public boolean peekStartElement(String startTag) throws XMLStreamException {
+		String decodedTag = peekStartElement();
+		if ((null !=  decodedTag) && (decodedTag.equals(startTag))) {
+			return true;
+		}
+		return false;
+	}
+
+	public String peekStartElement() throws XMLStreamException {
 		if (!_istream.markSupported()) {
 			Library.logger().info("Cannot peek -- stream without marking ability!");
 			throw new XMLStreamException("No lookahead in stream!");
 		}
 
-		boolean isCorrectTag = false; 
-
 		_istream.mark(MARK_LEN);
 
+		String decodedTag = null;
 		try {
 			// Have to distinguish genuine errors from wrong tags. Could either use
 			// a special exception subtype, or redo the work here.
@@ -132,25 +139,20 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 
 			if (null != tv) {
 
-				String decodedTag = null;
-
 				if (tv.type() == BinaryXMLCodec.XML_TAG) {
-					Library.logger().info("Unexpected: got tag in peekStartElement; looking for tag " + startTag + " got length: " + (int)tv.val()+1);
-
 					if (tv.val()+1 > DEBUG_MAX_LEN) {
 						throw new XMLStreamException("Decoding error: length " + tv.val()+1 + " longer than expected maximum length!");
 					}
 
 					// Tag value represents length-1 as tags can never be empty.
 					decodedTag = BinaryXMLCodec.decodeUString(_istream, (int)tv.val()+1);
+					
+					Library.logger().info("Unexpected: got text tag in peekStartElement; length: " + (int)tv.val()+1 + " decoded tag = " + decodedTag);
 
 				} else if (tv.type() == BinaryXMLCodec.XML_DTAG) {
 					decodedTag = _dictionary.peek().decodeTag(tv.val());					
 				}
 
-				if ((null !=  decodedTag) && (decodedTag.equals(startTag))) {
-					isCorrectTag = true;
-				}
 			} // else, not a type and val, probably an end element. rewind and return false.
 
 		} catch (XMLStreamException e) {
@@ -186,7 +188,7 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 				throw new XMLStreamException("Cannot reset stream! " + e.getMessage(), e);
 			}
 		}
-		return isCorrectTag;
+		return decodedTag;
 	}
 
 	public void readEndElement() throws XMLStreamException {
