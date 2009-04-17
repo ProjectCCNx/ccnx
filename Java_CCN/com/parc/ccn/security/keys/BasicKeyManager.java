@@ -24,14 +24,14 @@ import com.parc.ccn.config.UserConfiguration;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.security.crypto.certificates.BCX509CertificateGenerator;
 
 public class BasicKeyManager extends KeyManager {
 		
 	protected KeyStore _keystore = null;
 	protected String _defaultAlias = null;
-	protected PublisherKeyID _defaultKeyID = null;
+	protected PublisherPublicKeyDigest _defaultKeyID = null;
 	protected X509Certificate _certificate = null;
 	protected PrivateKey _privateKey = null;
 	protected KeyLocator _keyLocator = null;
@@ -95,7 +95,7 @@ public class BasicKeyManager extends KeyManager {
 			}
 		    _privateKey = entry.getPrivateKey();
 		    _certificate = (X509Certificate)entry.getCertificate();
-		    _defaultKeyID = new PublisherKeyID(_certificate.getPublicKey());
+		    _defaultKeyID = new PublisherPublicKeyDigest(_certificate.getPublicKey());
 
 		    // Check to make sure we've published information about
 		    // this key. (e.g. in testing, we may frequently
@@ -207,7 +207,7 @@ public class BasicKeyManager extends KeyManager {
 		throw new ConfigurationException(message, e);
 	}
 
-	public PublisherKeyID getDefaultKeyID() {
+	public PublisherPublicKeyDigest getDefaultKeyID() {
 		return _defaultKeyID;
 	}
 
@@ -276,7 +276,7 @@ public class BasicKeyManager extends KeyManager {
 	 * @throws IOException
 	 * @throws InterruptedException 
 	 */
-	public PublicKey getKey(PublisherKeyID desiredKeyID,
+	public PublicKey getKey(PublisherPublicKeyDigest desiredKeyID,
 							KeyLocator locator) throws IOException, InterruptedException {
 		
 		if (null != locator.certificate())
@@ -427,7 +427,7 @@ public class BasicKeyManager extends KeyManager {
 	}
 
 	@Override
-	public PublicKey getPublicKey(PublisherKeyID publisher) {
+	public PublicKey getPublicKey(PublisherPublicKeyDigest publisher) {
 		// TODO Auto-generated method stub
 		Library.logger().finer("getPublicKey: retrieving key: " + publisher);
 		if (_defaultKeyID.equals(publisher))
@@ -445,7 +445,7 @@ public class BasicKeyManager extends KeyManager {
 	}
 
 	@Override
-	public PrivateKey getSigningKey(PublisherKeyID publisher) {
+	public PrivateKey getSigningKey(PublisherPublicKeyDigest publisher) {
 		// TODO Auto-generated method stub
 		Library.logger().finer("getSigningKey: retrieving key: " + publisher);
 		if (_defaultKeyID.equals(publisher))
@@ -454,7 +454,7 @@ public class BasicKeyManager extends KeyManager {
 	}
 
 	@Override
-	public PublicKey getPublicKey(PublisherKeyID publisherID, KeyLocator keyLocator) throws IOException, InterruptedException {
+	public PublicKey getPublicKey(PublisherPublicKeyDigest publisherID, KeyLocator keyLocator) throws IOException, InterruptedException {
 		// TODO Auto-generated method stub
 		Library.logger().finer("getPublicKey: retrieving key: " + publisherID + " located at: " + keyLocator);
 		// Do we have it locally.
@@ -465,7 +465,7 @@ public class BasicKeyManager extends KeyManager {
 	}
 
 	@Override
-	public PublisherKeyID getPublisherKeyID(PrivateKey signingKey) {
+	public PublisherPublicKeyDigest getPublisherKeyID(PrivateKey signingKey) {
 		if (_privateKey.equals(signingKey))
 			return _defaultKeyID;
 		return null;

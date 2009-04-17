@@ -15,7 +15,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.network.daemons.repo.RFSImpl;
@@ -65,9 +65,9 @@ public class RepoIOTest extends RepoTestBase {
 		longName = new ContentName(longName, ContentObject.contentDigest("Long name!"));
 		ContentName badCharName = ContentName.fromNative("/repoTest/" + "*x?y<z>u");
 		ContentName badCharLongName = ContentName.fromNative("/repoTest/" + tooLongName + "*x?y<z>u");
-		//PublisherKeyID pkid1 = new PublisherKeyID("9s4o5j263snpdl59phc5vf0jhpqgdtghg155smuo2gbnk5ui8f3");
-		//PublisherKeyID pkid2 = new PublisherKeyID("1paij2p7setof6ognk3b34q0hesnv1jpov07h9qvqnveqahv9ml2");
-		//PublisherKeyID pkid2 = new PublisherKeyID("-6ldct6o3h27gp7f8bsksr5veh380uc670voem50580h5le0m9au");
+		//PublisherPublicKeyDigest pkid1 = new PublisherPublicKeyDigest("9s4o5j263snpdl59phc5vf0jhpqgdtghg155smuo2gbnk5ui8f3");
+		//PublisherPublicKeyDigest pkid2 = new PublisherPublicKeyDigest("1paij2p7setof6ognk3b34q0hesnv1jpov07h9qvqnveqahv9ml2");
+		//PublisherPublicKeyDigest pkid2 = new PublisherPublicKeyDigest("-6ldct6o3h27gp7f8bsksr5veh380uc670voem50580h5le0m9au");
 		
 		checkData(name1, "Here's my data!");
 		checkData(clashName, "Clashing Name");
@@ -128,7 +128,7 @@ public class RepoIOTest extends RepoTestBase {
 		Assert.assertFalse(testContent == null);
 		Assert.assertTrue(Arrays.equals(data, testContent.content()));		
 	}
-	private void checkDataAndPublisher(ContentName name, String data, PublisherKeyID publisher) 
+	private void checkDataAndPublisher(ContentName name, String data, PublisherPublicKeyDigest publisher) 
 				throws IOException, InterruptedException {
 		Interest interest = new Interest(name, new PublisherID(publisher));
 		ContentObject testContent = getLibrary.get(interest, 10000);

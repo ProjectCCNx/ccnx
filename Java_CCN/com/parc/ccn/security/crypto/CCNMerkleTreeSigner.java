@@ -11,7 +11,7 @@ import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNSegmenter;
@@ -27,7 +27,7 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 			byte[][] contentBlocks, int blockCount, int baseBlockIndex,
 			int lastBlockLength, ContentType type, Timestamp timestamp,
 			Integer freshnessSeconds, Integer lastSegment, KeyLocator locator,
-			PublisherKeyID publisher) throws InvalidKeyException,
+			PublisherPublicKeyDigest publisher) throws InvalidKeyException,
 			SignatureException, NoSuchAlgorithmException, IOException {
 		
 		if (null == publisher) {
@@ -87,7 +87,7 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 			ContentName[] names, byte[][] contentBlocks,
 			int blockCount, int baseBlockIndex, int lastBlockLength,
 			ContentType type, Timestamp timestamp, Integer freshnessSeconds,
-			Integer lastSegment, KeyLocator locator, PublisherKeyID publisher)
+			Integer lastSegment, KeyLocator locator, PublisherPublicKeyDigest publisher)
 			throws InvalidKeyException, SignatureException,
 			NoSuchAlgorithmException, IOException {
 		
@@ -146,7 +146,7 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 			ContentName name, int baseNameIndex,
 			byte[] content, int offset, int length, int blockWidth,
 			ContentType type, Timestamp timestamp, Integer freshnessSeconds,
-			Integer lastSegment, KeyLocator locator, PublisherKeyID publisher)
+			Integer lastSegment, KeyLocator locator, PublisherPublicKeyDigest publisher)
 			throws InvalidKeyException, SignatureException,
 			NoSuchAlgorithmException, IOException {
 		if (null == publisher) {

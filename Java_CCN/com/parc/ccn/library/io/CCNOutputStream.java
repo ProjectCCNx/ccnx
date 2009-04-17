@@ -12,7 +12,7 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNFlowControl;
@@ -55,7 +55,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	protected CCNDigestHelper _dh;
 
 	public CCNOutputStream(ContentName name, 
-			KeyLocator locator, PublisherKeyID publisher,
+			KeyLocator locator, PublisherPublicKeyDigest publisher,
 			CCNLibrary library) throws XMLStreamException, IOException {
 		this(name, locator, publisher, new CCNSegmenter(new CCNFlowControl(name, library)));
 	}
@@ -65,7 +65,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	}
 
 	protected CCNOutputStream(ContentName name, 
-			KeyLocator locator, PublisherKeyID publisher,
+			KeyLocator locator, PublisherPublicKeyDigest publisher,
 			CCNSegmenter segmenter) throws XMLStreamException, IOException {
 
 		super(locator, publisher, segmenter);
@@ -86,7 +86,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	}
 
 	protected CCNOutputStream(ContentName name, 
-			KeyLocator locator, PublisherKeyID publisher,
+			KeyLocator locator, PublisherPublicKeyDigest publisher,
 			CCNFlowControl flowControl) throws XMLStreamException, IOException {
 		this(name, locator, publisher, new CCNSegmenter(flowControl));
 	}

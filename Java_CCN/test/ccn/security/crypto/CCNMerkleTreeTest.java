@@ -14,7 +14,7 @@ import org.junit.Test;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
@@ -29,7 +29,7 @@ public class CCNMerkleTreeTest {
 	static ContentName baseName = ContentName.fromNative(new String[]{"test","data","treeTest"});
 
 	static KeyPair pair = null;
-	static PublisherKeyID publisher = null;
+	static PublisherPublicKeyDigest publisher = null;
 	static KeyLocator nameLoc = null;
 	
 	@BeforeClass
@@ -41,7 +41,7 @@ public class CCNMerkleTreeTest {
 			KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
 			kpg.initialize(512); // go for fast
 			pair = kpg.generateKeyPair();
-			publisher = new PublisherKeyID(pair.getPublic());
+			publisher = new PublisherPublicKeyDigest(pair.getPublic());
 			nameLoc = new KeyLocator(keyname);
 		} catch (Exception e) {
 			System.out.println("Exception in test setup: " + e.getMessage());

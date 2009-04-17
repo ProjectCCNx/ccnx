@@ -7,7 +7,7 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
@@ -33,18 +33,18 @@ public class CCNDescriptor {
 	/**
 	 * Open for reading. This does getLatestVersion, etc on name, and assumes fragmentation.
 	 */
-	public CCNDescriptor(ContentName name, PublisherKeyID publisher, CCNLibrary library) 
+	public CCNDescriptor(ContentName name, PublisherPublicKeyDigest publisher, CCNLibrary library) 
 	throws XMLStreamException, IOException {
 		openForReading(name, publisher, library);
 	}
 
 	public CCNDescriptor(ContentName name, 
-			KeyLocator locator, PublisherKeyID publisher,
+			KeyLocator locator, PublisherPublicKeyDigest publisher,
 			CCNLibrary library) throws XMLStreamException, IOException {
 		openForWriting(name, locator, publisher, library);
 	}
 
-	protected void openForReading(ContentName name, PublisherKeyID publisher, CCNLibrary library) 
+	protected void openForReading(ContentName name, PublisherPublicKeyDigest publisher, CCNLibrary library) 
 	throws IOException, XMLStreamException {
 		ContentName nameToOpen = name;
 		if (SegmentationProfile.isSegment(nameToOpen)) {
@@ -63,7 +63,7 @@ public class CCNDescriptor {
 	}
 
 	protected void openForWriting(ContentName name, 
-			KeyLocator locator, PublisherKeyID publisher,
+			KeyLocator locator, PublisherPublicKeyDigest publisher,
 			CCNLibrary library) throws XMLStreamException, IOException {
 		ContentName nameToOpen = name;
 		if (SegmentationProfile.isSegment(name)) {

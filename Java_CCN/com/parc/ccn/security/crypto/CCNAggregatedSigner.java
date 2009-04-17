@@ -9,7 +9,7 @@ import java.sql.Timestamp;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNSegmenter;
 
@@ -48,7 +48,7 @@ public interface CCNAggregatedSigner {
 			Timestamp timestamp,
 			Integer freshnessSeconds, Integer lastSegment,
 			KeyLocator locator, 
-			PublisherKeyID publisher) throws InvalidKeyException, SignatureException, 
+			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, 
 											 NoSuchAlgorithmException, IOException;
 
 
@@ -82,7 +82,7 @@ public interface CCNAggregatedSigner {
 			Timestamp timestamp,
 			Integer freshnessSeconds, Integer lastSegment,
 			KeyLocator locator, 
-			PublisherKeyID publisher) throws InvalidKeyException, SignatureException, 
+			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, 
 											 NoSuchAlgorithmException, IOException;
 
 	public ContentObject putBlocks(
@@ -93,7 +93,7 @@ public interface CCNAggregatedSigner {
 			Timestamp timestamp,
 			Integer freshnessSeconds, Integer lastSegment,
 			KeyLocator locator, 
-			PublisherKeyID publisher) throws InvalidKeyException, 
+			PublisherPublicKeyDigest publisher) throws InvalidKeyException, 
 									SignatureException, NoSuchAlgorithmException, IOException;
 
 	

@@ -14,7 +14,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.network.daemons.repo.RFSImpl;
@@ -104,11 +104,11 @@ public class RFSTest extends RepoTestBase {
 		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
 		kpg.initialize(512); // go for fast
 		KeyPair pair1 = kpg.generateKeyPair();
-		PublisherKeyID pubKey1 = new PublisherKeyID(pair1.getPublic());
+		PublisherPublicKeyDigest pubKey1 = new PublisherPublicKeyDigest(pair1.getPublic());
 		ContentObject digestSame1 = ContentObject.buildContentObject(name, "Testing2".getBytes(), pubKey1);
 		repo.saveContent(digestSame1);
 		KeyPair pair2 = kpg.generateKeyPair();
-		PublisherKeyID pubKey2 = new PublisherKeyID(pair2.getPublic());
+		PublisherPublicKeyDigest pubKey2 = new PublisherPublicKeyDigest(pair2.getPublic());
 		ContentObject digestSame2 = ContentObject.buildContentObject(name, "Testing2".getBytes(), pubKey2);
 		repo.saveContent(digestSame2);
 		checkDataAndPublisher(repo, name, "Testing2", pubKey1);
@@ -229,7 +229,7 @@ public class RFSTest extends RepoTestBase {
 		Assert.assertFalse(testContent == null);
 		Assert.assertEquals(data, new String(testContent.content()));		
 	}
-	private void checkDataAndPublisher(Repository repo, ContentName name, String data, PublisherKeyID publisher) 
+	private void checkDataAndPublisher(Repository repo, ContentName name, String data, PublisherPublicKeyDigest publisher) 
 				throws RepositoryException {
 		Interest interest = new Interest(name, new PublisherID(publisher));
 		ContentObject testContent = repo.getContent(interest);

@@ -12,7 +12,7 @@ import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNLibrary;
@@ -46,14 +46,14 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	protected Header _header = null;
 	
 	public CCNFileInputStream(ContentName name, Long startingBlockIndex,
-			PublisherKeyID publisher, CCNLibrary library)
+			PublisherPublicKeyDigest publisher, CCNLibrary library)
 			throws XMLStreamException, IOException {
 		super(name, startingBlockIndex, publisher, library);
 		// Asynchronously attempt to retrieve a header block, if one exists.
 		retrieveHeader(_baseName, (null != publisher) ? new PublisherID(publisher) : null);
 	}
 
-	public CCNFileInputStream(ContentName name, PublisherKeyID publisher,
+	public CCNFileInputStream(ContentName name, PublisherPublicKeyDigest publisher,
 			CCNLibrary library) throws XMLStreamException, IOException {
 		this(name, null, publisher, library);
 	}

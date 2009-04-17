@@ -10,7 +10,7 @@ import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
@@ -30,7 +30,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	 * fragment/segment number.
 	 */
 	protected ContentName _baseName = null;
-	protected PublisherKeyID _publisher = null;
+	protected PublisherPublicKeyDigest _publisher = null;
 	protected Long _startingBlockIndex = null;
 	protected int _timeout = MAX_TIMEOUT;
 	
@@ -46,7 +46,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	protected byte [] _verifiedProxy = null;
 
 	public CCNAbstractInputStream(ContentName baseName, Long startingBlockIndex, 
-			PublisherKeyID publisher, CCNLibrary library) throws XMLStreamException, IOException {
+			PublisherPublicKeyDigest publisher, CCNLibrary library) throws XMLStreamException, IOException {
 		super();
 		
 		if (null == baseName) {

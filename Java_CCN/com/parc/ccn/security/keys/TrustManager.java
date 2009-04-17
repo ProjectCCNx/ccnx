@@ -3,7 +3,7 @@ package com.parc.ccn.security.keys;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 
 /**
  * Front-end for key repository, both our keys
@@ -43,6 +43,6 @@ public abstract class TrustManager {
 	 * @param thisKey
 	 * @return
 	 */
-	public abstract boolean matchesRole(PublisherID desiredRole, PublisherKeyID thisKey);
+	public abstract boolean matchesRole(PublisherID desiredRole, PublisherPublicKeyDigest thisKey);
 
 }

@@ -14,7 +14,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNSegmenter;
@@ -23,7 +23,7 @@ import com.parc.ccn.library.profiles.SegmentationProfile;
 public class CCNFileOutputStream extends CCNVersionedOutputStream {
 
 	public CCNFileOutputStream(ContentName name, KeyLocator locator,
-			PublisherKeyID publisher, CCNLibrary library)
+			PublisherPublicKeyDigest publisher, CCNLibrary library)
 			throws XMLStreamException, IOException {
 		super(name, locator, publisher, library);
 	}
@@ -34,13 +34,13 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 	}
 
 	public CCNFileOutputStream(ContentName name, KeyLocator locator,
-			PublisherKeyID publisher, CCNSegmenter segmenter)
+			PublisherPublicKeyDigest publisher, CCNSegmenter segmenter)
 			throws XMLStreamException, IOException {
 		super(name, locator, publisher, segmenter);
 	}
 
 	public CCNFileOutputStream(ContentName name, KeyLocator locator,
-			PublisherKeyID publisher, CCNFlowControl flowControl)
+			PublisherPublicKeyDigest publisher, CCNFlowControl flowControl)
 			throws XMLStreamException, IOException {
 		super(name, locator, publisher, flowControl);
 	}
@@ -71,7 +71,7 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 			byte [] contentTreeAuthenticator,
 			Timestamp timestamp, 
 			KeyLocator locator, 
-			PublisherKeyID publisher) throws IOException, InvalidKeyException, SignatureException {
+			PublisherPublicKeyDigest publisher) throws IOException, InvalidKeyException, SignatureException {
 
 		if (null == publisher) {
 			publisher = _library.keyManager().getDefaultKeyID();

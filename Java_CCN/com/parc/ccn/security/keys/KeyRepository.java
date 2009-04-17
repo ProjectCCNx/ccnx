@@ -23,7 +23,7 @@ import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.network.CCNNetworkManager;
 import com.parc.security.crypto.certificates.CryptoUtil;
 
@@ -33,7 +33,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	
 	protected  CCNNetworkManager _networkManager = null;
 	protected HashMap<ContentName,ContentObject> _keyMap = new HashMap<ContentName,ContentObject>();
-	protected HashMap<PublisherKeyID, ContentName> _idMap = new HashMap<PublisherKeyID,ContentName>();
+	protected HashMap<PublisherPublicKeyDigest, ContentName> _idMap = new HashMap<PublisherPublicKeyDigest,ContentName>();
 	
 	public KeyRepository() throws IOException {
 		_networkManager = new CCNNetworkManager(); // maintain our own connection to the agent, so
@@ -60,7 +60,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	 * @return
 	 * @throws ConfigurationException
 	 */
-	public void publishKey(ContentName keyName, PublicKey key, PublisherKeyID keyID, PrivateKey signingKey) throws ConfigurationException {
+	public void publishKey(ContentName keyName, PublicKey key, PublisherPublicKeyDigest keyID, PrivateKey signingKey) throws ConfigurationException {
 		byte [] encodedKey = key.getEncoded();
 		// Need a key locator to stick in data entry for
 		// locator. Could use key itself, but then would have
@@ -91,7 +91,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	}
 	
 	public void remember(PublicKey theKey, ContentObject keyObject) {
-		PublisherKeyID id = new PublisherKeyID(theKey);
+		PublisherPublicKeyDigest id = new PublisherPublicKeyDigest(theKey);
 		_idMap.put(id, keyObject.name());
 		_keyMap.put(keyObject.name(), keyObject);
 		
@@ -103,7 +103,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		_networkManager.setInterestFilter(this, keyObject.name(), this);
 	}
 
-	protected void recordKeyToFile(PublisherKeyID id, ContentObject keyObject) {
+	protected void recordKeyToFile(PublisherPublicKeyDigest id, ContentObject keyObject) {
 		File keyDir = new File(UserConfiguration.keyRepositoryDirectory());
 		if (!keyDir.exists()) {
 			if (!keyDir.mkdirs()) {
@@ -132,7 +132,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		Library.logger().info("Logged key " + id.toString() + " to file: " + keyFile.getAbsolutePath());
 	}
 
-	public PublicKey getPublicKey(PublisherKeyID desiredKeyID, KeyLocator locator) throws CertificateEncodingException, InvalidKeySpecException, NoSuchAlgorithmException {
+	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator) throws CertificateEncodingException, InvalidKeySpecException, NoSuchAlgorithmException {
 		ContentName name = _idMap.get(desiredKeyID);
 		if (null != name) {
 			ContentObject keyObject = _keyMap.get(name);

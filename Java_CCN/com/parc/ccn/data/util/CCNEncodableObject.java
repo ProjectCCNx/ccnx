@@ -9,7 +9,7 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
@@ -80,7 +80,7 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 	 * @throws IOException
 	 * @throws ClassNotFoundException 
 	 */
-	public CCNEncodableObject(Class<E> type, ContentName name, PublisherKeyID publisher, CCNLibrary library) throws XMLStreamException, IOException, ClassNotFoundException {
+	public CCNEncodableObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher, CCNLibrary library) throws XMLStreamException, IOException, ClassNotFoundException {
 		super(type);
 		_library = library;
 		CCNVersionedInputStream is = new CCNVersionedInputStream(name, publisher, library);
@@ -97,7 +97,7 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 	 * @throws ClassNotFoundException 
 	 */
 	public CCNEncodableObject(Class<E> type, ContentName name, CCNLibrary library) throws XMLStreamException, IOException, ClassNotFoundException {
-		this(type, name, (PublisherKeyID)null, library);
+		this(type, name, (PublisherPublicKeyDigest)null, library);
 	}
 	
 	public CCNEncodableObject(Class<E> type, ContentName name) throws XMLStreamException, IOException, ConfigurationException, ClassNotFoundException {

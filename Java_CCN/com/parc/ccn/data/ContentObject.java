@@ -17,7 +17,7 @@ import com.parc.ccn.Library;
 import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
@@ -161,7 +161,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	 * Used for testing.
 	 */
 	public static ContentObject buildContentObject(ContentName name, byte[] contents, 
-			PublisherKeyID publisher,
+			PublisherPublicKeyDigest publisher,
 			KeyManager keyManager) {
 		try {
 			if (null == keyManager) {
@@ -185,7 +185,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		return buildContentObject(name, contents, null, null);
 	}
 
-	public static ContentObject buildContentObject(ContentName name, byte [] contents, PublisherKeyID publisher) {
+	public static ContentObject buildContentObject(ContentName name, byte [] contents, PublisherPublicKeyDigest publisher) {
 		return buildContentObject(name, contents, publisher, null);
 	}
 

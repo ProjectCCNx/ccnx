@@ -11,7 +11,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
@@ -88,7 +88,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	protected ContentName _prefixName;
 	protected Integer _nameComponentCount;
 	protected Integer _additionalNameComponents;
-	// DKS TODO can we really support a PublisherID here, or just a PublisherKeyID?
+	// DKS TODO can we really support a PublisherID here, or just a PublisherPublicKeyDigest?
 	protected PublisherID _publisher;
 	protected ExcludeFilter _excludeFilter;
 	protected Integer _orderPreference;
@@ -121,7 +121,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	}
 	
 	public Interest(ContentName name, int additionalNameComponents,
-				PublisherKeyID exactPublisher) {
+				PublisherPublicKeyDigest exactPublisher) {
 		this(name, additionalNameComponents, new PublisherID(exactPublisher));
 	}
 	
@@ -180,7 +180,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @param resultPublisherKeyID
 	 * @return
 	 */
-	public boolean matches(ContentName name, PublisherKeyID resultPublisherKeyID) {
+	public boolean matches(ContentName name, PublisherPublicKeyDigest resultPublisherKeyID) {
 		if (null == name() || null == name)
 			return false; // null name() should not happen, null arg can
 		// to get interest that matches everything, should
@@ -191,7 +191,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		return false;
 	}
 	
-	public boolean matches(ContentObject compareData, PublisherKeyID resultPublisherKeyID) {
+	public boolean matches(ContentObject compareData, PublisherPublicKeyDigest resultPublisherKeyID) {
 		if (null == name() || null == compareData)
 			return false; // null name() should not happen, null arg can
 		// to get interest that matches everything, should
@@ -202,7 +202,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		return false;
 	}
 	
-	private boolean internalMatch(ContentName name, PublisherKeyID resultPublisherKeyID) {
+	private boolean internalMatch(ContentName name, PublisherPublicKeyDigest resultPublisherKeyID) {
 		if (null != additionalNameComponents()) {
 			// we know our specified name is a prefix of the result. 
 			// the number of additional components must be this value

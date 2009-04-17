@@ -5,7 +5,7 @@ import java.io.OutputStream;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNSegmenter;
 
@@ -19,7 +19,7 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 	protected ContentName _baseName = null;
 	protected int _blockIndex = 0;
 	protected KeyLocator _locator;
-	protected PublisherKeyID _publisher;
+	protected PublisherPublicKeyDigest _publisher;
 
 	/**
 	 * The behavior of an output stream derived class is determined
@@ -31,7 +31,7 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 	 * @param segmenter
 	 */
 	public CCNAbstractOutputStream(KeyLocator locator, 
-								   PublisherKeyID publisher,
+								   PublisherPublicKeyDigest publisher,
 								   CCNSegmenter segmenter) {
 		super();
 		_segmenter = segmenter;

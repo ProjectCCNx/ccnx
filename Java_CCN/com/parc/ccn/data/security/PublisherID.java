@@ -69,7 +69,7 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 		_publisherType = publisherType;
 	}
 	
-	public PublisherID(PublisherKeyID keyID) {
+	public PublisherID(PublisherPublicKeyDigest keyID) {
 		this(keyID.id(), PublisherType.KEY);
 	}
 	
@@ -97,9 +97,9 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 			return true;
 		if (obj == null)
 			return false;
-		if (PublisherKeyID.class == obj.getClass()) {
+		if (PublisherPublicKeyDigest.class == obj.getClass()) {
 			if (PublisherType.KEY == this.type())
-				return (Arrays.equals(_publisherID, ((PublisherKeyID)obj).id()));
+				return (Arrays.equals(_publisherID, ((PublisherPublicKeyDigest)obj).id()));
 			// TODO DKS fill in...
 			throw new UnsupportedOperationException("Have to finish up equals!");			
 		}

@@ -11,7 +11,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.HeaderData.FragmentationType;
 import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
@@ -38,7 +38,7 @@ public class Header extends ContentObject  {
 			 int blockSize, long length,
 			 byte [] contentDigest,
 			 byte [] rootDigest,
-			 PublisherKeyID publisher,
+			 PublisherPublicKeyDigest publisher,
 			 KeyLocator locator,
 			 Signature signature
 			 ) throws XMLStreamException {
@@ -53,7 +53,7 @@ public class Header extends ContentObject  {
 			 int blockSize, long length,
 			 byte [] contentDigest,
 			 byte [] rootDigest,
-			 PublisherKeyID publisher,
+			 PublisherPublicKeyDigest publisher,
 			 KeyLocator locator,
 			 PrivateKey signingKey
 			 ) throws XMLStreamException, InvalidKeyException, SignatureException {
@@ -65,7 +65,7 @@ public class Header extends ContentObject  {
 			long length,
 		  	 byte [] contentDigest,
 		  	 byte [] rootDigest, int blockSize,
-			 PublisherKeyID publisher,
+			 PublisherPublicKeyDigest publisher,
 			 KeyLocator locator,
 			 PrivateKey signingKey
 			 ) throws XMLStreamException, InvalidKeyException, SignatureException {
@@ -75,7 +75,7 @@ public class Header extends ContentObject  {
 	}
 	
 	public Header(ContentName name,
-			 PublisherKeyID publisher, 
+			 PublisherPublicKeyDigest publisher, 
 			 KeyLocator locator,
 			 PrivateKey signingKey
 			 ) throws XMLStreamException, InvalidKeyException, SignatureException {

@@ -11,7 +11,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.data.util.XMLDecoder;
@@ -26,7 +26,7 @@ public class Collection extends ContentObject {
 	
 	public Collection(ContentName name,
 			 LinkReference[] references,
-			 PublisherKeyID publisher, 
+			 PublisherPublicKeyDigest publisher, 
 			 KeyLocator locator,
 			 Signature signature
 			 ) throws XMLStreamException {
@@ -42,7 +42,7 @@ public class Collection extends ContentObject {
 	
 	public Collection(ContentName name,
 			 LinkReference[] references,
-			 PublisherKeyID publisher, 
+			 PublisherPublicKeyDigest publisher, 
 			 KeyLocator locator,
 			 PrivateKey signingKey
 			 ) throws XMLStreamException, InvalidKeyException, SignatureException {

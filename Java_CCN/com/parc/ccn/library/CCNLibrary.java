@@ -24,7 +24,7 @@ import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 import com.parc.ccn.library.profiles.VersioningProfile;
@@ -140,7 +140,7 @@ public class CCNLibrary extends CCNBase {
 	
 	public KeyManager keyManager() { return _userKeyManager; }
 
-	public PublisherKeyID getDefaultPublisher() {
+	public PublisherPublicKeyDigest getDefaultPublisher() {
 		return keyManager().getDefaultKeyID();
 	}
 	
@@ -159,7 +159,7 @@ public class CCNLibrary extends CCNBase {
 	public Link put(
 			ContentName name, 
 			LinkReference target,
-			PublisherKeyID publisher, KeyLocator locator,
+			PublisherPublicKeyDigest publisher, KeyLocator locator,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 
 		if (null == signingKey)
@@ -198,7 +198,7 @@ public class CCNLibrary extends CCNBase {
 		return put(name, references, getDefaultPublisher());
 	}
 
-	public Collection put(ContentName name, LinkReference [] references, PublisherKeyID publisher) 
+	public Collection put(ContentName name, LinkReference [] references, PublisherPublicKeyDigest publisher) 
 				throws SignatureException, IOException {
 		try {
 			return put(name, references, publisher, null, null);
@@ -216,7 +216,7 @@ public class CCNLibrary extends CCNBase {
 	public Collection put(
 			ContentName name, 
 			LinkReference[] references,
-			PublisherKeyID publisher, KeyLocator locator,
+			PublisherPublicKeyDigest publisher, KeyLocator locator,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 
 		if (null == signingKey)
@@ -250,14 +250,14 @@ public class CCNLibrary extends CCNBase {
 	public Collection put(
 			ContentName name, 
 			ContentName[] references,
-			PublisherKeyID publisher) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 		return put(name, references, publisher, null, null);
 	}
 	
 	public Collection put(
 			ContentName name, 
 			ContentName[] references,
-			PublisherKeyID publisher, KeyLocator locator,
+			PublisherPublicKeyDigest publisher, KeyLocator locator,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 		LinkReference[] lrs = new LinkReference[references.length];
 		for (int i = 0; i < lrs.length; i++)
@@ -293,7 +293,7 @@ public class CCNLibrary extends CCNBase {
 	 */
 	public Collection createCollection(
 			ContentName name,
-			ContentName [] references, PublisherKeyID publisher, KeyLocator locator,
+			ContentName [] references, PublisherPublicKeyDigest publisher, KeyLocator locator,
 			PrivateKey signingKey) throws IOException, SignatureException, 
 			XMLStreamException, InvalidKeyException {
 		LinkReference[] lrs = new LinkReference[references.length];
@@ -305,7 +305,7 @@ public class CCNLibrary extends CCNBase {
 	
 	public Collection createCollection(
 			ContentName name,
-			LinkReference [] references, PublisherKeyID publisher, KeyLocator locator,
+			LinkReference [] references, PublisherPublicKeyDigest publisher, KeyLocator locator,
 			PrivateKey signingKey) throws IOException, SignatureException, 
 			XMLStreamException, InvalidKeyException {
 		if (null == signingKey)
@@ -366,7 +366,7 @@ public class CCNLibrary extends CCNBase {
 	 * @throws InvalidKeyException 
 	 */
 	private Collection updateCollection(Collection oldCollection, ArrayList<LinkReference> references,
-			 PublisherKeyID publisher, KeyLocator locator,
+			 PublisherPublicKeyDigest publisher, KeyLocator locator,
 			 PrivateKey signingKey) throws XMLStreamException, IOException,
 			 InvalidKeyException, SignatureException {
 		LinkReference[] newReferences = new LinkReference[references.size()];
@@ -379,7 +379,7 @@ public class CCNLibrary extends CCNBase {
 	
 	public Link createLink(
 			ContentName name,
-			ContentName linkName, PublisherKeyID publisher, KeyLocator locator,
+			ContentName linkName, PublisherPublicKeyDigest publisher, KeyLocator locator,
 			PrivateKey signingKey) throws IOException, SignatureException, 
 			XMLStreamException, InvalidKeyException {
 		if (null == signingKey)
@@ -483,14 +483,14 @@ public class CCNLibrary extends CCNBase {
 	 * @return
 	 * @throws IOException
 	 */
-	private ContentObject dereferenceLink(LinkReference reference, PublisherKeyID publisher, long timeout) throws IOException {
+	private ContentObject dereferenceLink(LinkReference reference, PublisherPublicKeyDigest publisher, long timeout) throws IOException {
 		ContentObject linkCo = get(reference.targetName(), timeout);
 		if (linkCo == null)
 			linkCo = getLatestVersion(reference.targetName(), publisher, timeout);
 		return linkCo;
 	}
 	
-	private ContentObject dereferenceLink(Link reference, PublisherKeyID publisher, long timeout) throws IOException {
+	private ContentObject dereferenceLink(Link reference, PublisherPublicKeyDigest publisher, long timeout) throws IOException {
 		ContentObject linkCo = get(reference.getTargetName(), timeout);
 		if (linkCo == null)
 			linkCo = getLatestVersion(reference.getTargetName(), publisher, timeout);
@@ -505,7 +505,7 @@ public class CCNLibrary extends CCNBase {
 	 * DKS TODO -- doesn't use publisher
 	 * @throws IOException 
 	 */
-	public ContentObject getLatestVersion(ContentName name, PublisherKeyID publisher, long timeout) throws IOException {
+	public ContentObject getLatestVersion(ContentName name, PublisherPublicKeyDigest publisher, long timeout) throws IOException {
 		
 		if (VersioningProfile.isVersioned(name)) {
 			return getLatest(name, timeout);
@@ -585,7 +585,7 @@ public class CCNLibrary extends CCNBase {
 	 */
 	
 	public RepositoryOutputStream repoOpen(ContentName name, 
-			KeyLocator locator, PublisherKeyID publisher) 
+			KeyLocator locator, PublisherPublicKeyDigest publisher) 
 				throws IOException, XMLStreamException {
 		return new RepositoryOutputStream(name, locator, publisher, this); 
 	}

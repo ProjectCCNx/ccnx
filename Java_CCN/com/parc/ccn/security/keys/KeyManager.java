@@ -9,7 +9,7 @@ import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 
 /**
  * Front-end for key repository, both our keys
@@ -77,7 +77,7 @@ public abstract class KeyManager {
 	 * Get our default keys.
 	 * @return
 	 */
-	public abstract PublisherKeyID getDefaultKeyID();
+	public abstract PublisherPublicKeyDigest getDefaultKeyID();
 
 	public abstract PrivateKey getDefaultSigningKey();
 	public abstract PublicKey getDefaultPublicKey();
@@ -91,15 +91,15 @@ public abstract class KeyManager {
 	 * @return
 	 */
 	public abstract PublicKey getPublicKey(String alias);
-	public abstract PublicKey getPublicKey(PublisherKeyID publisher);
+	public abstract PublicKey getPublicKey(PublisherPublicKeyDigest publisher);
 
-	public abstract PublisherKeyID getPublisherKeyID(PrivateKey signingKey);
+	public abstract PublisherPublicKeyDigest getPublisherKeyID(PrivateKey signingKey);
 
 	public abstract KeyLocator getKeyLocator(PrivateKey signingKey);
 
 	public abstract PrivateKey getSigningKey(String alias);
 	public abstract PrivateKey getSigningKey(PublisherID publisher);
-	public abstract PrivateKey getSigningKey(PublisherKeyID publisherKeyID);
+	public abstract PrivateKey getSigningKey(PublisherPublicKeyDigest publisherKeyID);
 	
 
 	/**
@@ -111,9 +111,9 @@ public abstract class KeyManager {
 	 * @throws IOException 
 	 * @throws InterruptedException 
 	 */
-	public abstract PublicKey getPublicKey(PublisherKeyID publisherKeyID, KeyLocator keyLocator) throws IOException, InterruptedException;
+	public abstract PublicKey getPublicKey(PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator) throws IOException, InterruptedException;
 
-	public abstract PublicKey getKey(PublisherKeyID desiredKeyID,
+	public abstract PublicKey getKey(PublisherPublicKeyDigest desiredKeyID,
 									KeyLocator locator) throws IOException, InterruptedException;
 	
 	

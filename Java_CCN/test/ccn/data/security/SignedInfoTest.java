@@ -17,7 +17,7 @@ import test.ccn.data.util.XMLEncodableTester;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.security.crypto.certificates.BCX509CertificateGenerator;
 
 public class SignedInfoTest {
@@ -47,7 +47,7 @@ public class SignedInfoTest {
 	
 	static public byte [] signature = new byte[256];
 	static public byte [] publisherid = new byte[32];
-	static PublisherKeyID pubkey = null;	
+	static PublisherPublicKeyDigest pubkey = null;	
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -78,7 +78,7 @@ public class SignedInfoTest {
 			Arrays.fill(signature, (byte)1);
 			Arrays.fill(publisherid, (byte)3);
 			
-			pubkey = new PublisherKeyID(publisherid);
+			pubkey = new PublisherPublicKeyDigest(publisherid);
 		} catch (Exception ex) {
 			XMLEncodableTester.handleException(ex);
 			System.out.println("Unable To Initialize Test!!!");

@@ -1,6 +1,7 @@
 package com.parc.ccn.data.util;
 
 import java.math.BigInteger;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 
 import com.parc.ccn.config.SystemConfiguration;
@@ -109,5 +110,31 @@ public class DataUtils {
 		}
 		return true;
 	}
+	
+	/**
+	 * Converts a timestamp into a fixed point representation, with 12 bits in the fractional
+	 * component, and adds this to the ContentName as a version field. The timestamp is rounded
+	 * to the nearest value in the fixed point representation.
+	 * <p>
+	 * This allows versions to be recorded as a timestamp with a 1/4096 second accuracy.
+	 */
+	public static byte [] timestampToBinaryTime12(Timestamp timestamp) {
+		long timeVal = (timestamp.getTime() / 1000) * 4096L + (timestamp.getNanos() * 4096L + 500000000L) / 1000000000L;
+		return BigInteger.valueOf(timeVal).toByteArray();
+	}
+	
+	public static Timestamp binaryTime12ToTimestamp(byte [] binaryTime12) {
+		if ((null == binaryTime12) || (binaryTime12.length == 0)) {
+			throw new IllegalArgumentException("Invalid binary time!");
+		} else if (binaryTime12.length > 6) {
+			throw new IllegalArgumentException("Time unacceptably far in the future, can't decode: " + printHexBytes(binaryTime12));
+		}
+		long time = new BigInteger(binaryTime12).longValue();
+
+		Timestamp ts = new Timestamp((time / 4096L) * 1000L);
+		ts.setNanos((int)(((time % 4096L) * 1000000000L) / 4096L));
+		return ts;
+	}
+
 
 }

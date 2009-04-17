@@ -22,7 +22,7 @@ import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.PublisherID.PublisherType;
@@ -32,11 +32,11 @@ public class InterestTableTest {
 
 
 	static public PublisherID ids[] = new PublisherID[3];
-	static public PublisherKeyID keyids[] = new PublisherKeyID[3];
+	static public PublisherPublicKeyDigest keyids[] = new PublisherPublicKeyDigest[3];
 
 	// IDs are parameters that establish test condition so same 
 	// code can be run under different conditions
-	static public PublisherKeyID activeKeyID = null;
+	static public PublisherPublicKeyDigest activeKeyID = null;
 	static public PublisherID activeID = null;
 	// None of the signatures in this test are real, as there are no keys
 	// corresponding to the publisherID's used.
@@ -60,7 +60,7 @@ public class InterestTableTest {
 				// Note that when this was first written, trust matching
 				// could not handle anything more complicated than a KEY
 				ids[i] = new PublisherID(publisher, PublisherType.KEY);
-				keyids[i] = new PublisherKeyID(publisher);
+				keyids[i] = new PublisherPublicKeyDigest(publisher);
 			}
 			byte [] fakeSigBytes = new byte[128];
 			rnd.nextBytes(fakeSigBytes);
@@ -132,7 +132,7 @@ public class InterestTableTest {
 		return getContentObject(name, activeKeyID);
 	}
 	
-	private ContentObject getContentObject(ContentName name, PublisherKeyID pub) throws ConfigurationException, InvalidKeyException, SignatureException, MalformedContentNameStringException {
+	private ContentObject getContentObject(ContentName name, PublisherPublicKeyDigest pub) throws ConfigurationException, InvalidKeyException, SignatureException, MalformedContentNameStringException {
 		// contents = current date value
 		Timestamp now = SignedInfo.now();
 		ByteBuffer bb = ByteBuffer.allocate(Long.SIZE/Byte.SIZE);

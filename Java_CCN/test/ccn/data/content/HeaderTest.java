@@ -22,7 +22,7 @@ import test.ccn.data.util.XMLEncodableTester;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 
 /**
@@ -31,7 +31,7 @@ import com.parc.ccn.library.profiles.SegmentationProfile;
  */
 public class HeaderTest {
 	
-	static PublisherKeyID pubKey = null;
+	static PublisherPublicKeyDigest pubKey = null;
 	static public byte [] publisherid1 = new byte[32];
 	static public PrivateKey signingKey;
 	static public KeyLocator locator;
@@ -42,7 +42,7 @@ public class HeaderTest {
 		kpg.initialize(512); // go for fast
 		KeyPair pair = kpg.generateKeyPair();
 		signingKey = pair.getPrivate();
-		pubKey = new PublisherKeyID(publisherid1);
+		pubKey = new PublisherPublicKeyDigest(publisherid1);
 		locator = new KeyLocator(ContentName.fromNative("/headerTest1"));
 	}
 

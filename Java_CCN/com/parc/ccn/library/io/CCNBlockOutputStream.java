@@ -9,7 +9,7 @@ import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNFlowControl;
@@ -54,7 +54,7 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 	 * @throws IOException
 	 */
 	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type,
-								KeyLocator locator, PublisherKeyID publisher,
+								KeyLocator locator, PublisherPublicKeyDigest publisher,
 								CCNFlowControl flowControl) throws XMLStreamException, IOException {
 
 		super(locator, publisher, new CCNSegmenter(flowControl, new CCNBlockSigner()));

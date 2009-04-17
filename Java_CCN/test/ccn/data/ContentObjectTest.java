@@ -20,7 +20,7 @@ import test.ccn.data.util.XMLEncodableTester;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.security.crypto.certificates.BCX509CertificateGenerator;
@@ -51,7 +51,7 @@ public class ContentObjectTest {
 	static public Signature signature;
 	static public byte [] contenthash = new byte[32];
 	static public byte [] publisherid = new byte[32];
-	static PublisherKeyID pubkey = null;	
+	static PublisherPublicKeyDigest pubkey = null;	
 	static SignedInfo auth = null;
 	static SignedInfo authKey = null;
 
@@ -88,7 +88,7 @@ public class ContentObjectTest {
 			Arrays.fill(contenthash, (byte)2);
 			Arrays.fill(publisherid, (byte)3);
 			
-			pubkey = new PublisherKeyID(publisherid);
+			pubkey = new PublisherPublicKeyDigest(publisherid);
 			
 			auth = new SignedInfo(pubkey,
 					new Timestamp(System.currentTimeMillis()), 

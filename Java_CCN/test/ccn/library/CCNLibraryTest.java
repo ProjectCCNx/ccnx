@@ -22,7 +22,7 @@ import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.query.BasicInterestListener;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNWriter;
 import com.parc.ccn.library.profiles.VersionMissingException;
@@ -115,7 +115,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 		ContentName name = null;
 		byte[] content = null;
 //		SignedInfo.ContentType type = SignedInfo.ContentType.LEAF;
-		PublisherKeyID publisher = null;
+		PublisherPublicKeyDigest publisher = null;
 
 		try {
 			content = contentString.getBytes("UTF-8");	

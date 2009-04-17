@@ -10,7 +10,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNFlowControl;
@@ -54,7 +54,7 @@ public class CCNWriter {
 	 * @throws IOException 
 	 */
 	public ContentObject put(ContentName name, byte[] contents, 
-							PublisherKeyID publisher) throws SignatureException, IOException {
+							PublisherPublicKeyDigest publisher) throws SignatureException, IOException {
 		return put(name, contents, null, publisher);
 	}
 	
@@ -68,13 +68,13 @@ public class CCNWriter {
 	}
 
 	public ContentObject put(CCNFlowControl cf, ContentName name, byte[] contents, 
-							PublisherKeyID publisher) throws SignatureException, IOException {
+							PublisherPublicKeyDigest publisher) throws SignatureException, IOException {
 		return put(name, contents, null, publisher);
 	}
 
 	public ContentObject put(ContentName name, byte[] contents, 
 							SignedInfo.ContentType type,
-							PublisherKeyID publisher) throws SignatureException, IOException {
+							PublisherPublicKeyDigest publisher) throws SignatureException, IOException {
 		try {
 			return _segmenter.put(name, contents, 0, ((null == contents) ? 0 : contents.length),
 								  true, type, null, null, publisher);
@@ -97,7 +97,7 @@ public class CCNWriter {
 	public ContentObject newVersion(
 			ContentName name, byte [] contents,
 			ContentType type,
-			KeyLocator locator, PublisherKeyID publisher) throws SignatureException, 
+			KeyLocator locator, PublisherPublicKeyDigest publisher) throws SignatureException, 
 			InvalidKeyException, NoSuchAlgorithmException, IOException {
 		
 		// Construct new name
@@ -141,7 +141,7 @@ public class CCNWriter {
 	public ContentObject newVersion(
 			ContentName name, 
 			byte[] contents,
-			PublisherKeyID publisher) throws SignatureException, IOException, InvalidKeyException, NoSuchAlgorithmException {
+			PublisherPublicKeyDigest publisher) throws SignatureException, IOException, InvalidKeyException, NoSuchAlgorithmException {
 		return newVersion(name, contents, null, null, publisher);
 	}
 	

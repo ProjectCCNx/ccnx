@@ -8,7 +8,7 @@ import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.CollectionData;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.util.CCNEncodableObject;
 import com.parc.ccn.library.CCNLibrary;
 
@@ -73,7 +73,7 @@ public class CCNEncodableCollectionData extends CCNEncodableObject<CollectionDat
 	 * @throws IOException
 	 * @throws ClassNotFoundException 
 	 */
-	public CCNEncodableCollectionData(ContentName name, PublisherKeyID publisher, CCNLibrary library) throws XMLStreamException, IOException, ClassNotFoundException {
+	public CCNEncodableCollectionData(ContentName name, PublisherPublicKeyDigest publisher, CCNLibrary library) throws XMLStreamException, IOException, ClassNotFoundException {
 		super(CollectionData.class, name, publisher, library);
 	}
 	

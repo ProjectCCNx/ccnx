@@ -8,7 +8,7 @@ import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.library.CCNLibrary;
 
 /**
@@ -22,12 +22,12 @@ import com.parc.ccn.library.CCNLibrary;
 public class CCNBlockInputStream extends CCNAbstractInputStream {
 
 	public CCNBlockInputStream(ContentName baseName, Long startingBlockIndex, 
-							   PublisherKeyID publisher, CCNLibrary library) throws XMLStreamException, IOException {
+							   PublisherPublicKeyDigest publisher, CCNLibrary library) throws XMLStreamException, IOException {
 		super(baseName, startingBlockIndex, publisher, library);
 		setTimeout(CCNBase.NO_TIMEOUT);
 	}
 
-	public CCNBlockInputStream(ContentName baseName, PublisherKeyID publisher, CCNLibrary library) 
+	public CCNBlockInputStream(ContentName baseName, PublisherPublicKeyDigest publisher, CCNLibrary library) 
 															throws XMLStreamException, IOException {
 		this(baseName, null, publisher, library);
 	}

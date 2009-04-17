@@ -7,7 +7,7 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.library.CCNLibrary;
 
 /**
@@ -47,13 +47,13 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	protected int _markOffset = 0;
 	protected long _markBlock = 0;
 
-	public CCNInputStream(ContentName name, Long startingBlockIndex, PublisherKeyID publisher, 
+	public CCNInputStream(ContentName name, Long startingBlockIndex, PublisherPublicKeyDigest publisher, 
 			CCNLibrary library) throws XMLStreamException, IOException {
 
 		super(name, startingBlockIndex, publisher, library);
 	}
 	
-	public CCNInputStream(ContentName name, PublisherKeyID publisher, CCNLibrary library) 
+	public CCNInputStream(ContentName name, PublisherPublicKeyDigest publisher, CCNLibrary library) 
 			throws XMLStreamException, IOException {
 		this(name, null, publisher, library);
 	}

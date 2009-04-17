@@ -10,7 +10,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.LinkAuthenticator;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
@@ -44,7 +44,7 @@ public class Link extends ContentObject {
 	protected static final String LINK_ELEMENT = "Link";
 	public Link(ContentName name,
 			 LinkReference target,
-			 PublisherKeyID publisher,
+			 PublisherPublicKeyDigest publisher,
 			 KeyLocator locator,
 			 Signature signature
 			 ) throws XMLStreamException {
@@ -57,7 +57,7 @@ public class Link extends ContentObject {
 	public Link(ContentName name,
 			 ContentName targetName,
 			 LinkAuthenticator targetAuthenticator,
-			 PublisherKeyID publisher,
+			 PublisherPublicKeyDigest publisher,
 			 KeyLocator locator,
 			 Signature signature
 			 ) throws XMLStreamException {
@@ -66,7 +66,7 @@ public class Link extends ContentObject {
 
 	public Link(ContentName name,
 			 LinkReference target,
-			 PublisherKeyID publisher, 
+			 PublisherPublicKeyDigest publisher, 
 			 KeyLocator locator,
 			 PrivateKey signingKey
 			 ) throws XMLStreamException, InvalidKeyException, SignatureException {
@@ -77,7 +77,7 @@ public class Link extends ContentObject {
 	public Link(ContentName name,
 			 ContentName targetName,
 			 LinkAuthenticator targetAuthenticator,
-			 PublisherKeyID publisher, 
+			 PublisherPublicKeyDigest publisher, 
 			 KeyLocator locator,
 			 PrivateKey signingKey
 			 ) throws XMLStreamException, InvalidKeyException, SignatureException {
@@ -86,7 +86,7 @@ public class Link extends ContentObject {
 	
 	public Link(ContentName name,
 			 ContentName targetName,
-			 PublisherKeyID publisher, 
+			 PublisherPublicKeyDigest publisher, 
 			 KeyLocator locator,
 			 PrivateKey signingKey
 			 ) throws XMLStreamException, InvalidKeyException, SignatureException {

@@ -17,17 +17,17 @@ import com.parc.ccn.security.crypto.CCNDigestHelper;
  * @author smetters
  *
  */
-public class PublisherKeyID extends GenericXMLEncodable implements XMLEncodable, Comparable<PublisherKeyID> {
+public class PublisherPublicKeyDigest extends GenericXMLEncodable implements XMLEncodable, Comparable<PublisherPublicKeyDigest> {
     
-    public static final String PUBLISHER_KEY_ID_ELEMENT = "PublisherKeyID";
+    public static final String PUBLISHER_KEY_ID_ELEMENT = "PublisherPublicKeyDigest";
 
     protected byte [] _publisherID;
     
-    public PublisherKeyID(PublicKey key) {
+    public PublisherPublicKeyDigest(PublicKey key) {
     	_publisherID = PublisherID.generateID(key);
     }
     	
-	public PublisherKeyID(byte [] publisherID) {
+	public PublisherPublicKeyDigest(byte [] publisherID) {
 		// Alas, Arrays.copyOf doesn't exist in 1.5, and we'd like
 		// to be mostly 1.5 compatible for the macs...
 		// _publisherID = Arrays.copyOf(publisherID, PUBLISHER_ID_LEN);
@@ -39,11 +39,11 @@ public class PublisherKeyID extends GenericXMLEncodable implements XMLEncodable,
 	 * Expects the equivalent of publisherKeyID.toString
 	 * @param publisherID
 	 */
-	public PublisherKeyID(String publisherID) {
+	public PublisherPublicKeyDigest(String publisherID) {
 		this(CCNDigestHelper.scanBytes(publisherID, 32));
 	}
 	
-    public PublisherKeyID() {} // for use by decoders
+    public PublisherPublicKeyDigest() {} // for use by decoders
 	
 	public byte [] id() { return _publisherID; }
 	
@@ -73,7 +73,7 @@ public class PublisherKeyID extends GenericXMLEncodable implements XMLEncodable,
 			return obj.equals(this); // put complex implementation in one place
 		if (getClass() != obj.getClass())
 			return false;
-		final PublisherKeyID other = (PublisherKeyID) obj;
+		final PublisherPublicKeyDigest other = (PublisherPublicKeyDigest) obj;
 		if (!Arrays.equals(_publisherID, other._publisherID))
 			return false;
 		return true;
@@ -102,7 +102,7 @@ public class PublisherKeyID extends GenericXMLEncodable implements XMLEncodable,
 		return (null != id());
 	}
 
-	public int compareTo(PublisherKeyID o) {
+	public int compareTo(PublisherPublicKeyDigest o) {
 		int result = DataUtils.compare(this.id(), o.id());
 		return result;
 	}

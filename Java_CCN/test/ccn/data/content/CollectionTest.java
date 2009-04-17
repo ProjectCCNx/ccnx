@@ -15,7 +15,7 @@ import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.PublisherID.PublisherType;
 
@@ -75,7 +75,7 @@ public class CollectionTest {
 		Arrays.fill(signaturebuf, (byte)1);
 		Signature signature = new Signature(signaturebuf);
 		
-		PublisherKeyID pubkey = new PublisherKeyID(publisherid1);
+		PublisherPublicKeyDigest pubkey = new PublisherPublicKeyDigest(publisherid1);
 		KeyLocator locator = new KeyLocator(ContentName.fromNative("/collectionTestKey"));
 		Collection c = new Collection(ContentName.fromNative("/test/collection"), ls, pubkey, locator, signature);
 		Collection cdec = new Collection();

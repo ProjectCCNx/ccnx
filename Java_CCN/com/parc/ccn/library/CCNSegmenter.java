@@ -12,7 +12,7 @@ import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.profiles.SegmentationProfile;
@@ -259,7 +259,7 @@ public class CCNSegmenter {
 			SignedInfo.ContentType type,
 			Integer freshnessSeconds, 
 			KeyLocator locator, 
-			PublisherKeyID publisher) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 
 		if (null == publisher) {
 			publisher = _library.keyManager().getDefaultKeyID();
@@ -325,7 +325,7 @@ public class CCNSegmenter {
 			SignedInfo.ContentType type,
 			Integer freshnessSeconds, 
 			KeyLocator locator, 
-			PublisherKeyID publisher) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 		
 		return fragmentedPut(name, SegmentationProfile.baseSegment(),
 				content, offset, length, getBlockSize(), type,
@@ -339,7 +339,7 @@ public class CCNSegmenter {
 			Timestamp timestamp,
 			Integer freshnessSeconds, Integer lastSegment,
 			KeyLocator locator, 
-			PublisherKeyID publisher) throws InvalidKeyException, 
+			PublisherPublicKeyDigest publisher) throws InvalidKeyException, 
 									SignatureException, NoSuchAlgorithmException, IOException {
 		
 
@@ -365,7 +365,7 @@ public class CCNSegmenter {
 			Timestamp timestamp,
 			Integer freshnessSeconds, Integer lastSegment,
 			KeyLocator locator, 
-			PublisherKeyID publisher) throws InvalidKeyException, SignatureException, 
+			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, 
 											 NoSuchAlgorithmException, IOException {
 		
 		ContentObject result = 
@@ -391,7 +391,7 @@ public class CCNSegmenter {
 			Timestamp timestamp,
 			Integer freshnessSeconds, Integer lastSegment,
 			KeyLocator locator, 
-			PublisherKeyID publisher) throws InvalidKeyException, SignatureException, 
+			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, 
 											 NoSuchAlgorithmException, IOException {
 
 		ContentObject result = 
@@ -425,7 +425,7 @@ public class CCNSegmenter {
 			Timestamp timestamp, 
 			Integer freshnessSeconds, Integer lastSegment,
 			KeyLocator locator, 
-			PublisherKeyID publisher) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 
 		if (null == publisher) {
 			publisher = _library.keyManager().getDefaultKeyID();

@@ -57,7 +57,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
         ContentNameTypes.put("KEY", ContentType.KEY);
     }
     
-    protected PublisherKeyID _publisher;
+    protected PublisherPublicKeyDigest _publisher;
     protected Timestamp		_timestamp;
     protected ContentType 	_type;
     protected KeyLocator 	_locator;
@@ -65,7 +65,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
     protected Integer		_lastSegment; // DKS TODO -- add to schema (Michael), encoder/decoder
    
     public SignedInfo(
-    		PublisherKeyID publisher, 
+    		PublisherPublicKeyDigest publisher, 
 			Timestamp timestamp, 
 			ContentType type,
 			KeyLocator locator,
@@ -84,7 +84,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
      }
     
     public SignedInfo(
-    		PublisherKeyID publisher, 
+    		PublisherPublicKeyDigest publisher, 
 			Timestamp timestamp, 
 			ContentType type,
 			KeyLocator locator) {
@@ -93,7 +93,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 
     
     public SignedInfo(
-    		PublisherKeyID publisher, 
+    		PublisherPublicKeyDigest publisher, 
 			ContentType type,
 			KeyLocator locator
 			) {
@@ -101,7 +101,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
     }
  
     public SignedInfo(
-    		PublisherKeyID publisher, 
+    		PublisherPublicKeyDigest publisher, 
 			ContentType type,
 			KeyLocator locator,
 			Integer freshnessSeconds,
@@ -157,7 +157,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
      */
  	public final byte[] getPublisher() { return _publisher.id(); }
  	
-	public final PublisherKeyID getPublisherKeyID() { return _publisher; }
+	public final PublisherPublicKeyDigest getPublisherKeyID() { return _publisher; }
 
 	public final Timestamp getTimestamp() { return _timestamp; }
 	
@@ -196,8 +196,8 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		decoder.readStartElement(SIGNED_INFO_ELEMENT);
 		
-		if (decoder.peekStartElement(PublisherKeyID.PUBLISHER_KEY_ID_ELEMENT)) {
-			_publisher = new PublisherKeyID();
+		if (decoder.peekStartElement(PublisherPublicKeyDigest.PUBLISHER_KEY_ID_ELEMENT)) {
+			_publisher = new PublisherPublicKeyDigest();
 			_publisher.decode(decoder);
 		}
 

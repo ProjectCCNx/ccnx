@@ -8,7 +8,7 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.PublisherKeyID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersionMissingException;
@@ -42,12 +42,12 @@ import com.parc.ccn.library.profiles.VersioningProfile;
 public class CCNVersionedInputStream extends CCNInputStream {
 
 	public CCNVersionedInputStream(ContentName name,
-			long startingBlockIndex, PublisherKeyID publisher,
+			long startingBlockIndex, PublisherPublicKeyDigest publisher,
 			CCNLibrary library) throws XMLStreamException, IOException {
 		super(name, startingBlockIndex, publisher, library);
 	}
 
-	public CCNVersionedInputStream(ContentName name, PublisherKeyID publisher,
+	public CCNVersionedInputStream(ContentName name, PublisherPublicKeyDigest publisher,
 			CCNLibrary library) throws XMLStreamException, IOException {
 		super(name, publisher, library);
 	}
