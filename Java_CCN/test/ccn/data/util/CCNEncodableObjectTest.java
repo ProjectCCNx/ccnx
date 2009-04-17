@@ -150,6 +150,7 @@ public class CCNEncodableObjectTest {
 			flosser = new Flosser(namespace);
 			flosser.logNamespaces();
 			
+			flosser.handleNamespace(ns[2]);
 			ecd0.save(ns[2]);
 			System.out.println("Version for empty collection: " + ecd0.getVersion());
 			ecd1.save(ns[1]);
@@ -165,7 +166,8 @@ public class CCNEncodableObjectTest {
 			// Will incur a timeout
 			while (!vis.eof()) {
 				int read = vis.read(buf);
-				baos.write(buf, 0, read);
+				if (read > 0)
+					baos.write(buf, 0, read);
 			}
 			System.out.println("Read " + baos.toByteArray().length + " bytes, digest: " + 
 					DigestHelper.printBytes(DigestHelper.digest(baos.toByteArray()), 16));
