@@ -89,9 +89,9 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 				byte [] tbsdigest = CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, prepareContent(name, signedInfo, content, offset, length));
 				Library.logger().info("Created content object: " + name + " timestamp: " + signedInfo.getTimestamp() + " encoded digest: " + DataUtils.printBytes(digest) + " tbs content: " + DataUtils.printBytes(tbsdigest));
 				Library.logger().info("Signature: " + this.signature());
-				if (!this.verify(KeyManager.getKeyManager().getDefaultPublicKey())) {
-					Library.logger().warning("ContentObject: " + name + " (length: " + length + ", digest: " + DataUtils.printBytes(contentDigest()) + ") " +
-					" fails to verify!");
+				if (!this.verify(null)) {
+					Library.logger().warning("ContentObject: " + name + " (length: " + length + ", data digest: " + DataUtils.printBytes(contentDigest()) + 
+					 ") " + " fails to verify!");
 				} else {
 					Library.logger().info("ContentObject: " + name + " (length: " + length + ", digest: " + DataUtils.printBytes(contentDigest()) + ") " +
 					" verified OK.");				
@@ -393,6 +393,25 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		}
 
 		if (null != contentProxy) {
+			if (null == publicKey) {
+				// Get a copy of the public key.
+				// Simple routers will install key manager that
+				// will just pull from CCN.
+				try {
+					publicKey = 
+						KeyManager.getKeyManager().getPublicKey(
+								object.signedInfo().getPublisherKeyID(),
+								object.signedInfo().getKeyLocator());
+
+					if (null == publicKey) {
+						throw new SignatureException("Cannot obtain public key to verify object: " + object.name() + ". Key locator: " + 
+								object.signedInfo().getKeyLocator());
+					}
+				} catch (IOException e) {
+					throw new SignatureException("Cannot obtain public key to verify object: " + object.name() + ". Key locator: " + 
+							object.signedInfo().getKeyLocator() + " exception: " + e.getMessage(), e);				
+				}
+			}
 			return CCNSignatureHelper.verify(contentProxy, object.signature().signature(), object.signature().digestAlgorithm(), publicKey);
 		}
 
@@ -503,16 +522,8 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			return null;
 		}
 		// Have to eventually handle various forms of witnesses...
-		byte[] blockDigest;
-		try {
-			blockDigest = CCNDigestHelper.digest(
-					CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, 
+		byte[] blockDigest = CCNDigestHelper.digest(
 					prepareContent(name(), signedInfo(), content()));
-		} catch (NoSuchAlgorithmException e) {
-			// DKS --big configuration problem
-			Library.logger().warning("Fatal Error: cannot find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
-			throw new RuntimeException("Error: can't find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM + "!  " + e.toString());
-		}
 		return signature().computeProxy(blockDigest, true);
 	}
 
@@ -567,13 +578,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	}
 
 	public static byte [] contentDigest(byte [] content) {
-		try {
-			return CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, content);
-		} catch (NoSuchAlgorithmException e) {
-			// DKS --big configuration problem
-			Library.logger().warning("Fatal Error: cannot find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
-			throw new RuntimeException("Error: can't find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM + "!  " + e.toString());
-		}
+		return CCNDigestHelper.digest(content);
 	}
 
 	public int compareTo(ContentObject o) {
