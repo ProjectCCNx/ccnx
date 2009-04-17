@@ -96,7 +96,7 @@ public class ContentObjectTest {
 					nameLoc);
 			authKey = new SignedInfo(pubkey,
 					new Timestamp(System.currentTimeMillis()), 
-					SignedInfo.ContentType.DATA, 
+					SignedInfo.ContentType.KEY, 
 					keyLoc);
 		} catch (Exception ex) {
 			XMLEncodableTester.handleException(ex);
@@ -118,10 +118,10 @@ public class ContentObjectTest {
 			XMLEncodableTester.encodeDecodeTest("ContentObjectKey", cokey, tdcokey, bdcokey);
 			Assert.assertTrue(cokey.verify(pair.getPublic()));
 			// Dump one to file for testing on the C side.
-		//	FileOutputStream fdump = new FileOutputStream("ContentObjectKey.ccnb");
-		//	cokey.encode(fdump);
-		//	fdump.flush();
-		//	fdump.close();
+			java.io.FileOutputStream fdump = new java.io.FileOutputStream("ContentObject.ccnb");
+			co.encode(fdump);
+			fdump.flush();
+			fdump.close();
 		} catch (Exception e) {
 			System.out.println("Exception : " + e.getClass().getName() + ": " + e.getMessage());
 			e.printStackTrace();
