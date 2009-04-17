@@ -150,7 +150,6 @@ public class CCNEncodableObjectTest {
 			flosser = new Flosser(namespace);
 			flosser.logNamespaces();
 			
-			flosser.handleNamespace(ns[2]);
 			ecd0.save(ns[2]);
 			System.out.println("Version for empty collection: " + ecd0.getVersion());
 			ecd1.save(ns[1]);
