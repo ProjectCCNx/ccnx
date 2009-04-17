@@ -31,7 +31,6 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	private static final String COMPONENT_ELEMENT = "Component";
 	
 	protected ArrayList<byte []>  _components;
-	protected Integer _prefixCount;
 	protected static class DotDotComponent extends Exception { // Need to strip off a component
 		private static final long serialVersionUID = 4667513234636853164L;
 	}; 
@@ -60,7 +59,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		
 	public ContentName(ContentName parent, byte [] name) {
 		this(parent.count() + 
-				((null != name) ? 1 : 0), parent.components(), parent.prefixCount());
+				((null != name) ? 1 : 0), parent.components());
 		if (null != name) {
 			byte [] c = new byte[name.length];
 			System.arraycopy(name,0,c,0,name.length);
@@ -68,20 +67,10 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		}
 	}
 	
-	public ContentName(ContentName parent, byte [] name, int prefixCount) {
-		this(parent, name);
-		_prefixCount = prefixCount;
-	}
-	
-	public ContentName(ContentName name, int prefixCount) {
-		this(name, null);
-		_prefixCount = prefixCount;
-	}
-	
 	public ContentName(ContentName parent, byte[] name1, byte[] name2) {
 		this (parent.count() +
 				((null != name1) ? 1 : 0) +
-				((null != name2) ? 1 : 0), parent.components(), parent.prefixCount());
+				((null != name2) ? 1 : 0), parent.components());
 		if (null != name1) {
 			byte [] c = new byte[name1.length];
 			System.arraycopy(name1,0,c,0,name1.length);
@@ -134,11 +123,6 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 				_components.add(components.get(i));
 			}
 		}
-	}
-	
-	public ContentName(int count, ArrayList<byte []>components, Integer prefixCount) {
-		this(count, components);
-		_prefixCount = prefixCount;
 	}
 	
 	/**
@@ -329,15 +313,6 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		}
 		return result;
 	}
-	
-	/**
-	 * As in fromNative(String name) except also sets a prefix length
-	 */
-	public static ContentName fromNative(String name, int prefixCount) throws MalformedContentNameStringException {
-		ContentName result = fromNative(name);
-		result._prefixCount = prefixCount;
-		return result;
-	}
 
 	/**
 	 * Return the <code>ContentName</code> created by appending one component
@@ -399,10 +374,6 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		
 	public ContentName parent() {
 		return new ContentName(count()-1, components());
-	}
-	
-	public Integer prefixCount() {
-		return _prefixCount;
 	}
 	
 	public String toString() {
@@ -759,6 +730,49 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		
 		decoder.readEndElement();
 	}
+	
+	public boolean isPrefixOf(ContentName name) {
+		return isPrefixOf(name, count());
+	}
+	
+	public boolean isPrefixOf(ContentName name, int count) {
+		if (null == name)
+			return false;
+		if (count > name.count())
+			return false;
+		for (int i=0; i < count; ++i) {
+			if (!Arrays.equals(name.component(i), component(i)))
+					return false;
+		}
+		return true;
+	}
+	
+	/**
+	 * Compare our name to the name of the ContentObject.
+	 * If our name is 1 component longer than the ContentObject
+	 * and no prefix count is set, our name might contain a digest.
+	 * In that case, try matching the content to the last component as
+	 * a digest.
+	 * 
+	 * @param other
+	 * @return
+	 */
+
+	public boolean isPrefixOf(ContentObject other) {
+		return isPrefixOf(other, count());
+	}
+	
+	public boolean isPrefixOf(ContentObject other, int count) {
+		boolean match = isPrefixOf(other.name(), count);
+		if (match || count() != count)
+			return match;
+		if (count() == other.name().count() + 1) {
+			if (DataUtils.compare(component(count() - 1), other.contentDigest()) == 0) {
+				return true;
+			}
+		}
+		return false;
+	}
 
 	public boolean equals(Object obj) {
 		if (this == obj)
@@ -774,34 +788,9 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			if (!Arrays.equals(other.component(i), this.component(i)))
 					return false;
 		}
-		if (prefixCount() != other.prefixCount())
-			return false;
 		return true;
 	}
-
-	/**
-	 * Check prefix match up to the first componentCount 
-	 * components.
-	 * @param obj
-	 * @param componentCount if larger than the number of
-	 * 	  components, take this as the whole thing.
-	 * @return
-	 */
-	private boolean equals(ContentName obj, int componentCount) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if ((componentCount > this.count()) && 
-				(obj.count() != this.count()))
-			return false;
-		for (int i=0; i < componentCount; ++i) {
-			if (!Arrays.equals(obj.component(i), this.component(i)))
-					return false;
-		}
-		return true;
-	}
-
+	
 	/**
 	 * Parses the canonical URI representation.
 	 * @param str
@@ -899,37 +888,6 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		}
 	}
 	
-	public boolean isPrefixOf(ContentName other) {
-		if (null == other)
-			return false;
-		int count = _prefixCount == null ? count() : prefixCount();
-		if (count > other.count())
-			return false;
-		return this.equals(other, count);
-	}
-	
-	/**
-	 * Compare our name to the name of the ContentObject.
-	 * If our name is 1 component longer than the ContentObject
-	 * and no prefix count is set, our name might contain a digest.
-	 * In that case, try matching the content to the last component as
-	 * a digest.
-	 * 
-	 * @param other
-	 * @return
-	 */
-	public boolean isPrefixOf(ContentObject other) {
-		boolean match = isPrefixOf(other.name());
-		if (match || prefixCount() != null)
-			return match;
-		if (count() == other.name().count() + 1) {
-			if (DataUtils.compare(component(count() - 1), other.contentDigest()) == 0) {
-				return true;
-			}
-		}
-		return false;
-	}
-	
 	public void encode(XMLEncoder encoder) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
@@ -965,16 +923,6 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			return -1;
 		else if (this.count() > o.count())
 			return 1;
-		if (this.prefixCount() == null && o.prefixCount() != null)
-			return -1;
-		if (this.prefixCount() != null && o.prefixCount() == null)
-			return 1;
-		if (this.prefixCount() != null) {
-			if (this.prefixCount() < o.prefixCount())
-				return -1;
-			if (this.prefixCount() > o.prefixCount())
-				return 1;
-		}
 		return 0;
 	}
 }

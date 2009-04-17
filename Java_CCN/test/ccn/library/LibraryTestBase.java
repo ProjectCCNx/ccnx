@@ -1,7 +1,6 @@
 package test.ccn.library;
 
 
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -296,9 +295,9 @@ public class LibraryTestBase {
 						accumulatedResults.add(val);
 						System.out.println("Got " + val);
 					}
-					ContentName newName = new ContentName(contentObject.name(), contentObject.contentDigest(), 
-							contentObject.name().count() - 2);
+					ContentName newName = new ContentName(contentObject.name(), contentObject.contentDigest());
 					newInterest = Interest.next(newName);
+					newInterest.nameComponentCount(contentObject.name().count() - 2);
 				} catch (NumberFormatException nfe) {
 					Library.logger().info("Unexpected content, " + contentObject.name() + " is not an integer!");
 				}
@@ -357,7 +356,6 @@ public class LibraryTestBase {
 		public synchronized int handleInterests(ArrayList<Interest> interests) {
 			try {
 				for (Interest interest : interests) {
-					assertTrue(name.isPrefixOf(interest.name()));
 					try {
 						int val = Integer.parseInt(new String(interest.name().component(interest.name().count()-1)));
 						System.out.println("Got interest in " + val);

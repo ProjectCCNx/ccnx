@@ -111,7 +111,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			   PublisherID publisher) {
 		_name = name;
 		_publisher = publisher;
-		_nameComponentCount = _name.prefixCount();
 	}
 	
 	public Interest(ContentName name, int additionalNameComponents,
@@ -185,7 +184,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			return false; // null name() should not happen, null arg can
 		// to get interest that matches everything, should
 		// use / (ROOT)
-		if (name().isPrefixOf(name)) {
+		if (isPrefixOf(name)) {
 			return internalMatch(name, resultPublisherKeyID);
 		}
 		return false;
@@ -196,7 +195,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			return false; // null name() should not happen, null arg can
 		// to get interest that matches everything, should
 		// use / (ROOT)
-		if (name().isPrefixOf(compareData)) {
+		if (isPrefixOf(compareData)) {
 			return internalMatch(compareData.name(), resultPublisherKeyID);
 		}
 		return false;
@@ -212,9 +211,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			// though lengths will be handled properly (lengthDiff will come out 0,
 			// which will match additionalNameComponents(); except we won't
 			// compare to the content digest...)
-			int ourCount = null != name.prefixCount() ? name.prefixCount() : name.count();
-			int nameCount = null != name().prefixCount() ? name().prefixCount() : name().count();
-			int lengthDiff = ourCount - nameCount + 1;
+			int nameCount = name.count();
+			int ourCount = null != nameComponentCount() ? nameComponentCount() : name().count();
+			int lengthDiff = nameCount - ourCount + 1;
 			if (!additionalNameComponents().equals(lengthDiff)) {
 				Library.logger().fine("Interest match failed: " + lengthDiff + " more than the " + additionalNameComponents() + " components between expected " +
 						name() + " and tested " + name);
@@ -231,11 +230,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			}
 		}
 		if (null != excludeFilter()) {
-			int componentIndex = name().prefixCount() != null ? name().prefixCount() : name().count();
+			int componentIndex = nameComponentCount() != null ? nameComponentCount() : name().count();
 			if (name.count() > componentIndex) {
 				if (excludeFilter().exclude(name.component(componentIndex))) {
 					Library.logger().finest("Interest match failed. " + name + " has more components than our name " +
-							name() + " and the component after our prefix count " + name.prefixCount() + " is excluded.");
+							name() + " and the component after our prefix count " + nameComponentCount() + " is excluded.");
 					return false;
 				}
 			}
@@ -259,23 +258,21 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * argument name
 	 */
 	public static Interest next(ContentName name) {
-		return next(name, (byte[][])null);
+		return next(name, (byte[][])null, null);
 	}
 	
 	public static Interest next(ContentName name, int prefixCount) {
-		ContentName newName = new ContentName(prefixCount, name.components());
-		return next(newName, (byte[][])null);
+		return next(name, (byte[][])null, prefixCount);
 	}
 	
-	public static Interest next(ContentName name, byte[][] omissions) {
-		return nextOrLast(name, omissions, new Integer(ORDER_PREFERENCE_LEFT | ORDER_PREFERENCE_ORDER_NAME));
+	public static Interest next(ContentName name, byte[][] omissions, Integer prefixCount) {
+		return nextOrLast(name, omissions, new Integer(ORDER_PREFERENCE_LEFT | ORDER_PREFERENCE_ORDER_NAME), prefixCount);
 	}
 	
-	private static Interest nextOrLast(ContentName name, byte[][] omissions, Integer order)  {
-		ArrayList<byte []>components = name.components();
-		ContentName nextName = new ContentName(components.size(), components, 
-				name.prefixCount() == null ? components.size() - 1 : name.prefixCount());
-		return constructInterest(nextName, constructFilter(omissions), order);
+	private static Interest nextOrLast(ContentName name, byte[][] omissions, Integer order, Integer prefixCount)  {
+		if (null == prefixCount)
+			prefixCount = name.count() - 1;
+		return constructInterest(name, constructFilter(omissions), order, prefixCount);
 	}
 	
 	/**
@@ -284,16 +281,16 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @return
 	 */
 	public static Interest last(ContentName name) {
-		return last(name, null);
+		return last(name, null, null);
 	}
 	
 	public static Interest last(ContentName name, int prefixCount) {
 		ContentName newName = new ContentName(prefixCount, name.components());
-		return last(newName, (byte[][])null);
+		return last(newName, (byte[][])null, prefixCount);
 	}
 	
-	public static Interest last(ContentName name, byte[] [] omissions) {
-		return nextOrLast(name, omissions, new Integer(ORDER_PREFERENCE_RIGHT | ORDER_PREFERENCE_ORDER_NAME));
+	public static Interest last(ContentName name, byte[] [] omissions, Integer prefixCount) {
+		return nextOrLast(name, omissions, new Integer(ORDER_PREFERENCE_RIGHT | ORDER_PREFERENCE_ORDER_NAME), prefixCount);
 	}
 	
 	/**
@@ -303,7 +300,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @return
 	 */
 	public static Interest exclude(ContentName name, byte[][] omissions) {
-		return constructInterest(name, constructFilter(omissions), null);
+		return constructInterest(name, constructFilter(omissions), null, null);
 	}
 	
 	public static ExcludeFilter constructFilter(byte [][] omissions) {
@@ -347,24 +344,45 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * argument ContentObject
 	 */
 	public static Interest next(ContentObject co, Integer prefixCount) {
-		ArrayList<byte []>components = co.name().components();
+		ArrayList<byte []>components = byteArrayClone(co.name().components());
 		components.add(co.contentDigest());
-		ContentName nextName = new ContentName(components.size(), components, 
-				prefixCount == null ? components.size() - 2 : prefixCount);
-		return next(nextName);
+		ContentName nextName = new ContentName(components.size(), components);
+		return next(nextName, prefixCount == null ? components.size() - 2 : prefixCount);
 	}
 
 	public static Interest constructInterest(ContentName name,  ExcludeFilter filter,
-					Integer orderPreference) {
+					Integer orderPreference, Integer prefixCount) {
 		Interest interest = new Interest(name);
 		if (null != orderPreference)
 			interest.orderPreference(orderPreference);
 		if (null != filter)
 			interest.excludeFilter(filter);
+		if (null != prefixCount)
+			interest.nameComponentCount(prefixCount);
 		return interest;
 	}
 	
+	public boolean isPrefixOf(ContentName name) {
+		int count = nameComponentCount() == null ? name().count() : nameComponentCount();
+		return name().isPrefixOf(name, count);
+	}
+	
+	public boolean isPrefixOf(ContentObject other) {
+		int count = nameComponentCount() == null ? name().count() : nameComponentCount();
+		return name().isPrefixOf(other, count);
+	}
+	
 	public boolean recursive() { return true; }
+	
+	private static ArrayList<byte[]> byteArrayClone(ArrayList<byte[]> input) {
+		ArrayList<byte[]> al = new ArrayList<byte[]>();
+		for (int i = 0; i < input.size(); i++) {
+			byte[] value = new byte[input.get(i).length];
+			System.arraycopy(input.get(i), 0, value, 0, input.get(i).length);
+			al.add(value);
+		}
+		return al;
+	}
 	
 	/**
 	 * Thought about encoding and decoding as flat -- no wrapping
@@ -378,7 +396,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		
 		if (decoder.peekStartElement(NAME_COMPONENT_COUNT)) {
 			_nameComponentCount = decoder.readIntegerElement(NAME_COMPONENT_COUNT);
-			_name = new ContentName(_name.count(), _name.components(), _nameComponentCount);
+			_name = new ContentName(_nameComponentCount, _name.components());
 		}
 		
 		if (decoder.peekStartElement(ADDITIONAL_NAME_COMPONENTS)) {

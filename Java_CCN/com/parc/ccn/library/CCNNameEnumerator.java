@@ -6,9 +6,6 @@ import java.util.ArrayList;
 
 import javax.xml.stream.XMLStreamException;
 
-import test.ccn.data.content.CCNEncodableCollectionData;
-
-import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.Collection;
@@ -18,7 +15,6 @@ import com.parc.ccn.data.query.BasicNameEnumeratorListener;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.library.profiles.VersioningProfile;
 
 
 
@@ -127,10 +123,11 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 		//System.out.println("Registered Prefix");
 		//System.out.println("creating Interest");
 			
-		ContentName prefixMarked = new ContentName(prefix, NEMARKER, prefix.count()+1);
+		ContentName prefixMarked = new ContentName(prefix, NEMARKER);
 			
 		Interest pi = new Interest(prefixMarked);
 		pi.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME);
+		pi.nameComponentCount(prefix.count() + 1);
 			
 		//System.out.println("interest name: "+pi.name().toString()+" prefix: "+pi.name().prefixCount()+" order preference "+pi.orderPreference());
 		r.addInterest(pi);
@@ -191,7 +188,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			for(ContentObject c: results){
 				//System.out.println("we have a match on "+interest.name());
 				//responseName = c.name();
-				responseName = new ContentName(c.name(), c.contentDigest(), interest.name().prefixCount());
+				responseName = new ContentName(c.name(), c.contentDigest());
 				
 				try{
 					collection = Collection.contentToCollection(c);
@@ -214,6 +211,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			newInterest = Interest.last(responseName);
 			//newInterest.orderPreference(newInterest.name().count()-2);
 			newInterest.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME);// | Interest.ORDER_PREFERENCE_RIGHT);
+			newInterest.nameComponentCount(interest.nameComponentCount());
 			NERequest ner = getCurrentRequest(interest.name().cut(NEMARKER));
 			ner.removeInterest(interest);
 			ner.addInterest(newInterest);
@@ -273,7 +271,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			else{
 				//System.out.println("this interest contains the NE marker!");
 				name = name.cut(NEMARKER);
-				collectionName = new ContentName(name, NEMARKER, name.count()+1);
+				collectionName = new ContentName(name, NEMARKER);
 				
 				
 				boolean skip = false;
@@ -346,7 +344,8 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			}
 			else{
 				//System.out.println("this interest did not have any matching names...  not returning anything.");
-				r.clean();
+				if (r != null)
+					r.clean();
 			}
 		}
 		

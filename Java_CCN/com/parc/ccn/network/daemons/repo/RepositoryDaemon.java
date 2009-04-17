@@ -132,9 +132,10 @@ public class RepositoryDaemon extends Daemon {
 					 * so we get all the blocks
 					 */
 					_sawBlock = true;
-					ContentName nextName = new ContentName(co.name(), co.contentDigest(), co.name().count() - 1);
+					ContentName nextName = new ContentName(co.name(), co.contentDigest());
 					_interest = Interest.constructInterest(nextName,  _markerFilter, 
-								new Integer(Interest.ORDER_PREFERENCE_LEFT  | Interest.ORDER_PREFERENCE_ORDER_NAME));
+								new Integer(Interest.ORDER_PREFERENCE_LEFT  | Interest.ORDER_PREFERENCE_ORDER_NAME), 
+								co.name().count() - 1);
 					_interest.additionalNameComponents(2);
 					return _interest;
 				}
@@ -413,10 +414,12 @@ public class RepositoryDaemon extends Daemon {
 			if (listener._origInterest.equals(interest))
 				return;
 		}
-		ContentName listeningName = new ContentName(interest.name().count() - 1, 
-				interest.name().components(), interest.name().prefixCount());
+		ContentName listeningName = new ContentName(interest.name().count() - 1, interest.name().components());
 		try {
-			Interest readInterest = Interest.constructInterest(listeningName, _markerFilter, null);
+			Integer count = interest.nameComponentCount();
+			if (count != null && count > listeningName.count())
+				count = null;
+			Interest readInterest = Interest.constructInterest(listeningName, _markerFilter, null, count);
 			DataListener listener = new DataListener(interest, readInterest);
 			synchronized(_currentListeners) {
 				_currentListeners.add(listener);

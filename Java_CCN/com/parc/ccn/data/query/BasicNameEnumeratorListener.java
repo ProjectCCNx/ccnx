@@ -3,7 +3,6 @@ package com.parc.ccn.data.query;
 import java.util.ArrayList;
 
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.content.LinkReference;
 
 
 public interface BasicNameEnumeratorListener {

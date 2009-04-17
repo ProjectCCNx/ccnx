@@ -51,16 +51,13 @@ public class Flosser implements CCNInterestListener {
 	}
 	
 	public void handleNamespace(ContentName namespace) throws IOException {
-		// This is bad -- have to set prefix count on name which might be used
-		// other places. Prefix count should be in the interest, not the name.
-		ContentName interestNamespace = new ContentName(namespace, namespace.count());
 		if (_interests.containsKey(namespace)) {
 			Library.logger().fine("Already handling namespace: " + namespace);
 			return;
 		}
 		Library.logger().info("Flosser: handling namespace: " + namespace);
-		Interest namespaceInterest = new Interest(interestNamespace);
-		_interests.put(interestNamespace, namespaceInterest);
+		Interest namespaceInterest = new Interest(namespace);
+		_interests.put(namespace, namespaceInterest);
 		_library.expressInterest(namespaceInterest, this);
 	}
 
@@ -82,7 +79,7 @@ public class Flosser implements CCNInterestListener {
 				}
 			}
 			
-            int prefixCount = (null != interest.name().prefixCount()) ? interest.name().prefixCount() :
+            int prefixCount = (null != interest.nameComponentCount()) ? interest.nameComponentCount() :
                 interest.name().count();
             // DKS TODO should the count above be count()-1 and this just prefixCount?
             if (prefixCount == result.name().count()) {
@@ -93,7 +90,7 @@ public class Flosser implements CCNInterestListener {
             		Library.logger().finest("Creating new exclude filter for interest " + interest.name());
             	} else {
             		if (interest.excludeFilter().exclude(result.contentDigest())) {
-            			Library.logger().fine("We should have already excluded content digest: " + DataUtils.printBytes(result.contentDigest()) + " prefix count: " + interest.name().prefixCount());
+            			Library.logger().fine("We should have already excluded content digest: " + DataUtils.printBytes(result.contentDigest()) + " prefix count: " + interest.nameComponentCount());
             		} else {
             			// Has to be in order...
             			Library.logger().finest("Adding child component to exclude.");
@@ -109,7 +106,7 @@ public class Flosser implements CCNInterestListener {
             		Library.logger().finest("Creating new exclude filter for interest " + interest.name());
            	} else {
                     if (interest.excludeFilter().exclude(result.name().component(prefixCount))) {
-            			Library.logger().fine("We should have already excluded child component: " + ContentName.componentPrintURI(result.name().component(prefixCount)) + " prefix count: " + interest.name().prefixCount());                   	
+            			Library.logger().fine("We should have already excluded child component: " + ContentName.componentPrintURI(result.name().component(prefixCount)) + " prefix count: " + interest.nameComponentCount());                   	
                     } else {
                     	// Has to be in order...
                     	Library.logger().finest("Adding child component to exclude.");

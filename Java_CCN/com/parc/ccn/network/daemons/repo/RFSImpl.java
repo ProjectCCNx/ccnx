@@ -399,7 +399,7 @@ public class RFSImpl implements Repository {
 			/*
 			 * Either piece could have a digest. This will be cleaner when we know this for sure
 			 */
-			if (encodedName.isPrefixOf(interest.name()) || interest.name().isPrefixOf(encodedName))
+			if (encodedName.isPrefixOf(interest.name()) || interest.isPrefixOf(encodedName))
 				results.put(encodedName, _encodedFiles.get(encodedName));
 		}
 		return results;

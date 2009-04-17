@@ -76,9 +76,9 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
 			int tValue = rand.nextInt(count - 1);
-			ContentName cn = new ContentName(ContentName.fromNative("/getNext/" + new Integer(tValue).toString(), 1), 
+			ContentName cn = new ContentName(ContentName.fromNative("/getNext/" + new Integer(tValue).toString()), 
 					ContentObject.contentDigest(Integer.toString(count - tValue)));
-			ContentObject result = getLibrary.getNext(cn, 1000);
+			ContentObject result = getLibrary.getNext(cn, 1, 1000);
 			checkResult(result, tValue + 1);
 		}
 		System.out.println("getNext test finished");
@@ -106,8 +106,8 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 				if (tValue == highest)
 					tValue--;
 				ContentName cn = SegmentationProfile.segmentName(
-						ContentName.fromNative("/getLatest/" + new Integer(tValue).toString(), 1), SegmentationProfile.baseSegment());
-				ContentObject result = getLibrary.getLatest(cn, 5000);
+						ContentName.fromNative("/getLatest/" + new Integer(tValue).toString()), SegmentationProfile.baseSegment());
+				ContentObject result = getLibrary.getLatest(cn, 1, 5000);
 				checkResult(result, highest);
 			}
 		}
@@ -124,7 +124,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 		}
 		writer.put("/excludeFilterTest/aaa", "aaa");
 		writer.put("/excludeFilterTest/zzzzzzzz", "zzzzzzzz");
-		Interest interest = Interest.constructInterest(ContentName.fromNative("/excludeFilterTest/"), ef, null);
+		Interest interest = Interest.constructInterest(ContentName.fromNative("/excludeFilterTest/"), ef, null, null);
 		ContentObject content = getLibrary.get(interest, 1000);
 		Assert.assertTrue(content == null);
 		

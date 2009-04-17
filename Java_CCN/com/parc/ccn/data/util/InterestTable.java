@@ -282,12 +282,9 @@ public class InterestTable<V> {
 		Library.logger().finest("target: " + target.name());
 		Entry<V> match = null;
 		for (ContentName name : _contents.keySet()) {
-			if (name.isPrefixOf(target)) {
-				// Name match - is there an interest match here?
-				Entry<V> found = getMatchByName(name, target);
-				if (null != found)
-					match = found;
-			}
+			Entry<V> found = getMatchByName(name, target);
+			if (null != found)
+				match = found;
 	    }
 		return match;
 	}
@@ -325,10 +322,8 @@ public class InterestTable<V> {
 		List<Entry<V>> matches = new ArrayList<Entry<V>>();
 		if (null != target) {
 			for (ContentName name : _contents.keySet()) {
-				if (name.isPrefixOf(target)) {
-					// Name match - is there an interest match here?
-					matches.addAll(getAllMatchByName(name, target));
-				}
+				// Name match - is there an interest match here?
+				matches.addAll(getAllMatchByName(name, target));
 			}
 			Collections.reverse(matches);
 		}

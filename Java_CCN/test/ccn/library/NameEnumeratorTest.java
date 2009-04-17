@@ -201,6 +201,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		
 		
 		//for(LinkReference lr: net.names){
+		Assert.assertTrue(net.names != null);
 		Assert.assertTrue(net.names.size()==3);
 		for(ContentName cn: net.names){
 			//System.out.println("got name: "+lr.targetName());

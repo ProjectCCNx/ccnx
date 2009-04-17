@@ -146,10 +146,10 @@ public class RFSTest extends RepoTestBase {
 		repo.saveContent(ContentObject.buildContentObject(name4, "ddd".getBytes()));
 		ContentName name5= ContentName.fromNative("/repoTest/nextTest/eee");
 		repo.saveContent(ContentObject.buildContentObject(name5, "eee".getBytes()));
-		checkData(repo, Interest.next(new ContentName(name1, content1.contentDigest(), 2)), "bbb");
-		checkData(repo, Interest.last(new ContentName(name1, content1.contentDigest(), 2)), "eee");
-		checkData(repo, Interest.next(new ContentName(name1, content1.contentDigest(), 2), 
-				new byte [][] {"bbb".getBytes(), "ccc".getBytes()}), "ddd");
+		checkData(repo, Interest.next(new ContentName(name1, content1.contentDigest()), 2), "bbb");
+		checkData(repo, Interest.last(new ContentName(name1, content1.contentDigest()), 2), "eee");
+		checkData(repo, Interest.next(new ContentName(name1, content1.contentDigest()), 
+				new byte [][] {"bbb".getBytes(), "ccc".getBytes()}, 2), "ddd");
 		
 		System.out.println("Repotest - Testing different kinds of interests in a mixture of encoded/standard data");
 		ContentName nonLongName = ContentName.fromNative("/repoTestLong/nextTestLong/aaa");
@@ -163,10 +163,10 @@ public class RFSTest extends RepoTestBase {
 		repo.saveContent(ContentObject.buildContentObject(longName3, "ddd".getBytes()));
 		ContentName longName4 = ContentName.fromNative("/repoTestLong/nextTestLong/eee/" + tooLongName);
 		repo.saveContent(ContentObject.buildContentObject(longName4, "eee".getBytes()));
-		checkData(repo, Interest.next(new ContentName(nonLongName, nonLongContent.contentDigest(), 2)), "bbb");
-		checkData(repo, Interest.last(new ContentName(nonLongName, nonLongContent.contentDigest(), 2)), "eee");
-		checkData(repo, Interest.next(new ContentName(nonLongName, nonLongContent.contentDigest(), 2), 
-				new byte [][] {"bbb".getBytes(), "ccc".getBytes()}), "ddd");
+		checkData(repo, Interest.next(new ContentName(nonLongName, nonLongContent.contentDigest()), 2), "bbb");
+		checkData(repo, Interest.last(new ContentName(nonLongName, nonLongContent.contentDigest()), 2), "eee");
+		checkData(repo, Interest.next(new ContentName(nonLongName, nonLongContent.contentDigest()), 
+				new byte [][] {"bbb".getBytes(), "ccc".getBytes()}, 2), "ddd");
 		
 		System.out.println("Repotest - testing version and segment files");
 		ContentName versionedName = ContentName.fromNative("/repoTest/testVersion");

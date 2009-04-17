@@ -178,9 +178,9 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		// prefixCount note: next block name must exactly match current except
 		// for the index itself which is the final component of the name we 
 		// have, so we use count()-1.
-		ContentName nextName = new ContentName(_currentBlock.name(), _currentBlock.contentDigest(), 
-					_currentBlock.name().count()-1);
+		ContentName nextName = new ContentName(_currentBlock.name(), _currentBlock.contentDigest());
 		Interest nextInterest = Interest.next(nextName);
+		nextInterest.nameComponentCount(_currentBlock.name().count() - 1);
 		nextInterest.additionalNameComponents(2);
 		ContentObject nextBlock = _library.get(nextInterest, _timeout);
 		if (null != nextBlock) {

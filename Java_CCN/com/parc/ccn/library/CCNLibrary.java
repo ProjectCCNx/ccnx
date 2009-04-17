@@ -620,7 +620,7 @@ public class CCNLibrary extends CCNBase {
 	 */
 	public ContentObject getNext(ContentName name, byte[][] omissions, long timeout) 
 			throws IOException {
-		return get(Interest.next(name, omissions), timeout);
+		return get(Interest.next(name, omissions, null), timeout);
 	}
 	
 	public ContentObject getNext(ContentName name, long timeout)
@@ -652,7 +652,7 @@ public class CCNLibrary extends CCNBase {
 	 */
 	public ContentObject getLatest(ContentName name, byte[][] omissions, long timeout) 
 			throws IOException, InvalidParameterException {
-		return get(Interest.last(name, omissions), timeout);
+		return get(Interest.last(name, omissions, null), timeout);
 	}
 	
 	public ContentObject getLatest(ContentName name, long timeout) throws InvalidParameterException, 
@@ -688,6 +688,6 @@ public class CCNLibrary extends CCNBase {
 	private ContentName contentObjectToContentName(ContentObject content, int prefixCount) {
 		ContentName cocn = content.name().clone();
 		cocn.components().add(content.contentDigest());
-		return new ContentName(cocn.count(), cocn.components(), new Integer(prefixCount));
+		return new ContentName(prefixCount, cocn.components());
 	}
 }
