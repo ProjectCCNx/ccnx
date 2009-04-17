@@ -281,7 +281,7 @@ public class RFSImpl implements Repository {
 	 * @throws RepositoryException 
 	 */
 	public boolean checkPolicyUpdate(ContentObject co) throws RepositoryException {
-		if (_info.getPolicyName().isPrefixOf(co)) {
+		if (_info.getPolicyName().isPrefixOf(co.name())) {
 			ByteArrayInputStream bais = new ByteArrayInputStream(co.content());
 			try {
 				_policy.update(bais, true);
@@ -313,7 +313,7 @@ public class RFSImpl implements Repository {
 	 */
 	public ContentObject getContent(Interest interest) throws RepositoryException {
 		
-		TreeMap<ContentName, ArrayList<File>>possibleMatches = getPossibleMatches(interest.name());
+		TreeMap<ContentName, ArrayList<File>>possibleMatches = getPossibleMatches(interest);
 		
 		ContentObject bestMatch = null;
 		for (ContentName name : possibleMatches.keySet()) {
@@ -389,17 +389,17 @@ public class RFSImpl implements Repository {
 	 * any file that matches the prefix and any member of the "encodedNames"
 	 * that matches the prefix.
 	 */
-	private TreeMap<ContentName, ArrayList<File>> getPossibleMatches(ContentName name) {
+	private TreeMap<ContentName, ArrayList<File>> getPossibleMatches(Interest interest) {
 		TreeMap<ContentName, ArrayList<File>> results = new TreeMap<ContentName, ArrayList<File>>();
-		File file = new File(_repositoryFile + getStandardString(name));
-		ContentName lowerName = new ContentName(null != name.prefixCount() ? name.prefixCount() : name.count(),
-					name.components());
+		File file = new File(_repositoryFile + getStandardString(interest.name()));
+		ContentName lowerName = new ContentName(null != interest.nameComponentCount() ? interest.nameComponentCount() : interest.name().count(),
+					interest.name().components());
 		getAllFileResults(file, results, lowerName);
 		for (ContentName encodedName : _encodedFiles.keySet()) {
 			/*
 			 * Either piece could have a digest. This will be cleaner when we know this for sure
 			 */
-			if (encodedName.isPrefixOf(name) || name.isPrefixOf(encodedName))
+			if (encodedName.isPrefixOf(interest.name()) || interest.name().isPrefixOf(encodedName))
 				results.put(encodedName, _encodedFiles.get(encodedName));
 		}
 		return results;
@@ -803,8 +803,7 @@ public class RFSImpl implements Repository {
 	private String getStandardString(ContentName name) {
 		if (0 == name.count()) return File.separator;
 		StringBuffer nameBuf = new StringBuffer();
-		int count = (null == name.prefixCount()) ? name.count() : name.prefixCount();
-		for (int i=0; i < count; ++i) {
+		for (int i=0; i < name.count(); ++i) {
 			nameBuf.append(File.separator);
 			try {
 				nameBuf.append(new String(name.component(i), encoding));
