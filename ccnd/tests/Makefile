@@ -5,10 +5,10 @@ default all:
 	@: nothing to do in tests
 
 clean:
-	rm -rf logs depend
+	rm -rf log logs depend
 
 check test:
-	mkdir -p logs
+	mkdir -p log
 	: ------------------------- :
 	:                           :
 	: ------------------------- :
