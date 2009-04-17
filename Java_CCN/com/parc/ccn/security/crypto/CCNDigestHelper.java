@@ -1,6 +1,7 @@
 package com.parc.ccn.security.crypto;
 
 import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateEncodingException;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -13,6 +14,13 @@ public class CCNDigestHelper extends DigestHelper {
 	public static String DEFAULT_DIGEST_ALGORITHM = "SHA-256";
 	// public static String DEFAULT_DIGEST_ALGORITHM = "SHA-1";
 	public static int DEFAULT_DIGEST_LENGTH = 64;
+	
+	public CCNDigestHelper() {
+		super();
+		if (!_md.getAlgorithm().equals(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM)) {
+			Library.logger().severe("Incorrect constructor in CCNDigestHelper -- picking up wrong digest algorithm!");
+		}
+	}
 		
 	/**
 	 * Same digest preparation algorithm as ContentObject.
@@ -41,5 +49,28 @@ public class CCNDigestHelper extends DigestHelper {
 				CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM : digestAlgorithm, 
 									encodedData);
 	}
+
+	@Override
+	public String getDefaultDigest() { return DEFAULT_DIGEST_ALGORITHM; }
 	
+	public static byte [] digest(byte [] content, int offset, int length) {
+		CCNDigestHelper dh = new CCNDigestHelper();
+		dh.update(content, offset, length);
+		return dh.digest();
+	}
+	
+	public static byte [] digest(byte [][] contents) {
+		CCNDigestHelper dh = new CCNDigestHelper();
+		for (int i=0; i < contents.length; ++i) {
+			dh.update(contents[i], 0, contents[i].length);
+		}
+		return dh.digest();
+	}	
+
+	public static byte [] encodedDigest(byte [] content) throws CertificateEncodingException {
+		byte [] digest = digest(content);
+		return digestEncoder(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, digest);
+	}
+
+
 }
