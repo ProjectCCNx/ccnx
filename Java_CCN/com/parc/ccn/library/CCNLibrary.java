@@ -568,7 +568,8 @@ public class CCNLibrary extends CCNBase {
 			co = get(query, timeout == NO_TIMEOUT ? 5000 : timeout);
 			if (co == null)
 				break;
-			Library.logger().info("enumerate: retrieved " + co.name());
+			Library.logger().info("enumerate: retrieved " + co.name() + 
+					" digest: " + ContentName.componentPrintURI(co.contentDigest()) + " on query: " + query.name() + " prefix count: " + prefixCount);
 			result.add(co);
 			query = Interest.next(co, prefixCount);
 		}
