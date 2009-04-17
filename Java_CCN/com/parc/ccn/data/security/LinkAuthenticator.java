@@ -13,22 +13,26 @@ import com.parc.ccn.data.util.XMLEncoder;
 public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodable {
 
     public static final String LINK_AUTHENTICATOR_ELEMENT = "LinkAuthenticator";
+    public static final String NAME_COMPONENT_COUNT_ELEMENT = "NameComponentCount";
     protected static final String TIMESTAMP_ELEMENT = "Timestamp";
     protected static final String CONTENT_TYPE_ELEMENT = "Type";
     protected static final String CONTENT_DIGEST_ELEMENT = "ContentDigest";
    
     protected PublisherID	_publisher = null;
+    protected Integer		_nameComponentCount = null;
     protected Timestamp		_timestamp = null;
     protected SignedInfo.ContentType 	_type = null;
     protected byte []		_contentDigest = null; // encoded DigestInfo
     
     public LinkAuthenticator(
     		PublisherID publisher, 
+    		Integer nameComponentCount,
 			Timestamp timestamp, 
 			SignedInfo.ContentType type, 
        		byte [] contentDigest) {
     	super();
     	this._publisher = publisher;
+    	this._nameComponentCount = nameComponentCount;
     	this._timestamp = timestamp;
     	this._type = type;
     	this._contentDigest = contentDigest;
@@ -43,6 +47,7 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
     
     public boolean empty() {
     	return (emptyPublisher() && 
+    			emptyNameComponentCount() &&
     			emptyTimestamp() &&
     			emptyContentType() &&
     			emptyContentDigest());
@@ -52,6 +57,10 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
     	if ((null != publisherID()) && (0 != publisher().length))
     		return false;
     	return true;
+    }
+    
+    public boolean emptyNameComponentCount() { 
+    	return (null == _nameComponentCount);
     }
     
     public boolean emptyContentDigest() {
@@ -64,7 +73,6 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
     	return (null == _type);
     }
     
-
     public boolean emptyTimestamp() {
     	return (null == _timestamp);
     }
@@ -92,7 +100,11 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 	public void publisher(byte[] publisher, PublisherID.PublisherType publisherType) {
 		this._publisher = new PublisherID(publisher, publisherType);
 	}
-
+	
+	public int nameComponentCount() { return _nameComponentCount; }
+	public void nameComponentCount(int nameComponentCount) { _nameComponentCount = new Integer(nameComponentCount); }
+	public void clearNameComponentCount() { _nameComponentCount = null; }
+	
 	public Timestamp timestamp() {
 		return _timestamp;
 	}
@@ -107,55 +119,16 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 		this._type = type;
 	}
 	
-	@Override
-	public int hashCode() {
-		final int PRIME = 31;
-		int result = 1;
-		result = PRIME * result + Arrays.hashCode(_contentDigest);
-		result = PRIME * result + ((_publisher == null) ? 0 : _publisher.hashCode());;
-		result = PRIME * result + ((_timestamp == null) ? 0 : _timestamp.hashCode());
-		result = PRIME * result + ((_type == null) ? 0 : _type.hashCode());
-		return result;
-	}
-	
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		final LinkAuthenticator other = (LinkAuthenticator) obj;
-		if (_contentDigest == null) {
-			if (other._contentDigest != null)
-				return false;
-		} else if (!Arrays.equals(_contentDigest, other._contentDigest))
-			return false;
-		if (_publisher == null) {
-			if (other._publisher != null)
-				return false;
-		} else if (!_publisher.equals(other._publisher))
-			return false;
-		if (_timestamp == null) {
-			if (other._timestamp != null)
-				return false;
-		} else if (!_timestamp.equals(other._timestamp))
-			return false;
-		if (_type == null) {
-			if (other.type() != null)
-				return false;
-		} else if (!_type.equals(other.type()))
-			return false;
-		return true;
-	}
-
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		decoder.readStartElement(LINK_AUTHENTICATOR_ELEMENT);
 		
 		if (PublisherID.peek(decoder)) {
 			_publisher = new PublisherID();
 			_publisher.decode(decoder);
+		}
+
+		if (decoder.peekStartElement(NAME_COMPONENT_COUNT_ELEMENT)) {
+			_nameComponentCount = decoder.readIntegerElement(NAME_COMPONENT_COUNT_ELEMENT);
 		}
 
 		if (decoder.peekStartElement(TIMESTAMP_ELEMENT)) {
@@ -190,9 +163,10 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 			publisherID().encode(encoder);
 		}
 
-		// TODO DKS - make match correct XML timestamp format
-		// dateTime	1999-05-31T13:20:00.000-05:00
-		// currently writing 2007-10-23 21:36:05.828
+		if (!emptyNameComponentCount()) {
+			encoder.writeIntegerElement(NAME_COMPONENT_COUNT_ELEMENT, nameComponentCount());
+		}
+
 		if (!emptyTimestamp()) {
 			encoder.writeDateTime(TIMESTAMP_ELEMENT, timestamp());
 		}
@@ -210,6 +184,57 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 	public boolean validate() {
 		// any of the fields could be null when used 
 		// as a partial-match pattern
+		return true;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + Arrays.hashCode(_contentDigest);
+		result = prime
+				* result
+				+ ((_nameComponentCount == null) ? 0 : _nameComponentCount
+						.hashCode());
+		result = prime * result
+				+ ((_publisher == null) ? 0 : _publisher.hashCode());
+		result = prime * result
+				+ ((_timestamp == null) ? 0 : _timestamp.hashCode());
+		result = prime * result + ((_type == null) ? 0 : _type.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		LinkAuthenticator other = (LinkAuthenticator) obj;
+		if (!Arrays.equals(_contentDigest, other._contentDigest))
+			return false;
+		if (_nameComponentCount == null) {
+			if (other._nameComponentCount != null)
+				return false;
+		} else if (!_nameComponentCount.equals(other._nameComponentCount))
+			return false;
+		if (_publisher == null) {
+			if (other._publisher != null)
+				return false;
+		} else if (!_publisher.equals(other._publisher))
+			return false;
+		if (_timestamp == null) {
+			if (other._timestamp != null)
+				return false;
+		} else if (!_timestamp.equals(other._timestamp))
+			return false;
+		if (_type == null) {
+			if (other._type != null)
+				return false;
+		} else if (!_type.equals(other._type))
+			return false;
 		return true;
 	}
 }
