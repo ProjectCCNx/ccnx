@@ -58,6 +58,7 @@ public class Flosser implements CCNInterestListener {
 			Library.logger().fine("Already handling namespace: " + namespace);
 			return;
 		}
+		Library.logger().info("Flosser: handling namespace: " + namespace);
 		Interest namespaceInterest = new Interest(interestNamespace);
 		_interests.put(interestNamespace, namespaceInterest);
 		_library.expressInterest(namespaceInterest, this);
