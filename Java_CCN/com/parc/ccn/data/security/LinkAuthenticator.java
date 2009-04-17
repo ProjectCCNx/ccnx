@@ -5,6 +5,7 @@ import java.util.Arrays;
 
 import javax.xml.stream.XMLStreamException;
 
+import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
@@ -33,8 +34,12 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
     	super();
     	this._publisher = publisher;
     	this._nameComponentCount = nameComponentCount;
-    	this._timestamp = timestamp;
-    	this._type = type;
+       	if (null != timestamp) {
+    	   	// Lower resolution of time to only what we can represent on the wire;
+        	// this allows decode(encode(timestamp)) == timestamp
+        	this._timestamp = DataUtils.roundTimestamp(timestamp);
+    	}
+     	this._type = type;
     	this._contentDigest = contentDigest;
     }
     	    
@@ -109,7 +114,11 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 		return _timestamp;
 	}
 	public void timestamp(Timestamp timestamp) {
-		this._timestamp = timestamp;
+      	if (null != timestamp) {
+    	   	// Lower resolution of time to only what we can represent on the wire;
+        	// this allows decode(encode(timestamp)) == timestamp
+        	this._timestamp = DataUtils.roundTimestamp(timestamp);
+    	}
 	}
 	
 	public SignedInfo.ContentType type() {

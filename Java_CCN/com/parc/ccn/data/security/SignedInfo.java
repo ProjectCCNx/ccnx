@@ -97,13 +97,14 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 			) {
     	super();
     	this._publisher = publisher;
-    	this._timestamp = timestamp;
-    	if (null == this._timestamp) {
+    	if (null == timestamp) {
     		this._timestamp = now(); // msec only
-    	} 
-    	// Lower resolution of time to only what we can represent on the wire;
+    	} else {
+    		this._timestamp = timestamp;
+    	}
+	   	// Lower resolution of time to only what we can represent on the wire;
     	// this allows decode(encode(timestamp)) == timestamp
-    	this._timestamp.setNanos((int)(((_timestamp.getNanos() % 4096L) * 1000000000L) / 4096L));
+    	this._timestamp = DataUtils.roundTimestamp(this._timestamp);
     	
     	this._type = (null == type) ? ContentType.DATA : type;
     	this._locator = locator;

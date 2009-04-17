@@ -145,4 +145,13 @@ public class DataUtils {
 		long timeVal2 = (t2.getTime() / 1000) * 4096L + (t2.getNanos() * 4096L + 500000000L) / 1000000000L;
 		return (timeVal1 == timeVal2);
 	}
+	
+	/**
+	 * Rounding function for timestamps.
+	 */
+	public static Timestamp roundTimestamp(Timestamp origTimestamp) {
+		Timestamp newTimestamp = (Timestamp)origTimestamp.clone();
+	   	newTimestamp.setNanos((int)(((newTimestamp.getNanos() % 4096L) * 1000000000L) / 4096L));
+	   	return newTimestamp;
+	}
 }

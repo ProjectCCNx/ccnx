@@ -105,12 +105,14 @@ public class ContentObjectTest {
 	@Test
 	public void testDecodeInputStream() {
 		try {
-			ContentObject cokey = new ContentObject(name, authKey, document3, pair.getPrivate());
+			ContentObject cokey = 
+				new ContentObject(name, authKey, document3, pair.getPrivate());
 			ContentObject tdcokey = new ContentObject();
 			ContentObject bdcokey = new ContentObject();
 			XMLEncodableTester.encodeDecodeTest("ContentObjectKey", cokey, tdcokey, bdcokey);
 			Assert.assertTrue(cokey.verify(pair.getPublic()));
-			ContentObject co = new ContentObject(name, auth, document3, pair.getPrivate());
+			ContentObject co = 
+				new ContentObject(name, auth, document3, pair.getPrivate());
 			ContentObject tdco = new ContentObject();
 			ContentObject bdco = new ContentObject();
 			XMLEncodableTester.encodeDecodeTest("ContentObject", co, tdco, bdco);
