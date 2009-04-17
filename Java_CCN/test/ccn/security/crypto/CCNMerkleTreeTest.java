@@ -16,6 +16,7 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo;
+import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.crypto.CCNMerkleTree;
@@ -30,7 +31,7 @@ public class CCNMerkleTreeTest {
 
 	static KeyPair pair = null;
 	static PublisherPublicKeyDigest publisher = null;
-	static KeyLocator nameLoc = null;
+	static KeyLocator keyLoc = null;
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -42,7 +43,7 @@ public class CCNMerkleTreeTest {
 			kpg.initialize(512); // go for fast
 			pair = kpg.generateKeyPair();
 			publisher = new PublisherPublicKeyDigest(pair.getPublic());
-			nameLoc = new KeyLocator(keyname);
+			keyLoc = new KeyLocator(pair.getPublic());
 		} catch (Exception e) {
 			System.out.println("Exception in test setup: " + e.getMessage());
 			e.printStackTrace();
@@ -70,6 +71,16 @@ public class CCNMerkleTreeTest {
 		}
 	}
 	
+	@Test
+	public void testMerkleTreeBuf() {
+		int [] sizes = new int[]{128,256,512,4096};
+		System.out.println("Testing small trees.");
+		for (int i=10; i < 515; ++i) {
+			int buflen = i*sizes[i%sizes.length];
+			testBufTree(buflen,buflen-_rand.nextInt(buflen/2),sizes[i%sizes.length]);
+		}
+	}
+
 	public static void testTree(int numLeaves, int nodeLength, boolean digest) {
 		try {
 			byte [][] data = makeContent(numLeaves, nodeLength, digest);
@@ -80,6 +91,16 @@ public class CCNMerkleTreeTest {
 		}
 	}
 	
+	public static void testBufTree(int bufLength, int testLength, int blockWidth) {
+		try {
+			byte [] data = makeContent(bufLength);
+			testTree(data, testLength, blockWidth);
+		} catch (Exception e) {
+			System.out.println("Building tree of " + testLength + " bytes. Caught a " + e.getClass().getName() + " exception: " + e.getMessage());
+			e.printStackTrace();
+		}
+	}
+
 	public static byte [][] makeContent(int numNodes, int nodeLength, boolean digest) {
 		
 		byte [][] bufs = new byte[numNodes][];
@@ -103,6 +124,14 @@ public class CCNMerkleTreeTest {
 		return bufs;
 	}
 	
+	public static byte [] makeContent(int length) {
+		
+		byte [] buf = new byte[length];
+		_rand.nextBytes(buf);
+
+		return buf;
+	}
+
 	public static void testTree(byte [][] content, int count, boolean digest) {
 		int version = _rand.nextInt(1000);
 		ContentName theName = ContentName.fromNative(baseName, "testDoc.txt");
@@ -111,7 +140,7 @@ public class CCNMerkleTreeTest {
 		try {
 			// TODO DKS Need to do offset versions with different ranges of fragments
 			// Generate a merkle tree. Verify each path for the content.
-			CCNMerkleTree tree = new CCNMerkleTree(theName, 0, new SignedInfo(publisher, null, nameLoc),
+			CCNMerkleTree tree = new CCNMerkleTree(theName, 0, new SignedInfo(publisher, null, keyLoc),
 													content, digest, count, 0, 
 													content[count-1].length,
 													pair.getPrivate());
@@ -123,7 +152,16 @@ public class CCNMerkleTreeTest {
 				ContentObject block = tree.block(i, content[i], 0, content[i].length);
 				boolean result = block.verify(pair.getPublic());
 	//			if (!result)
-					System.out.println("Block name: " + tree.blockName(i) + " num "  + i + " verified? " + result);
+				System.out.println("Block name: " + tree.blockName(i) + " num "  + i + " verified? " + result + " content: " + DataUtils.printBytes(block.contentDigest()));
+				if (!result) {
+					System.out.println("Raw content digest: " + DataUtils.printBytes(CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, content[i], 0, content[i].length)) +
+							" object content digest:  " + DataUtils.printBytes(CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, block.content())));
+					byte [] objdigest = CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, block.encode());
+					byte [] tbsdigest = CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, ContentObject.prepareContent(block.name(), block.signedInfo(), content[i], 0, content[i].length));
+					System.out.println("Raw content digest: " + DataUtils.printBytes(CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, content[i], 0, content[i].length)) +
+							" object content digest:  " + DataUtils.printBytes(CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, block.content())));
+					System.out.println("Block: " + block.name() + " timestamp: " + block.signedInfo().getTimestamp() + " encoded digest: " + DataUtils.printBytes(objdigest) + " tbs content: " + DataUtils.printBytes(tbsdigest));
+				}
 				Assert.assertTrue("Path " + i + " failed to verify.", result);
 			}
 			tree = null;
@@ -134,4 +172,52 @@ public class CCNMerkleTreeTest {
 		}
 	}
 	
+	public static void testTree(byte [] content, int length, int blockWidth) {
+		int version = _rand.nextInt(1000);
+		ContentName theName = ContentName.fromNative(baseName, "testDocBuffer.txt");
+		theName = VersioningProfile.versionName(theName, version);
+		
+		try {
+			// TODO DKS Need to do offset versions with different ranges of fragments
+			// Generate a merkle tree. Verify each path for the content.
+			CCNMerkleTree tree = new CCNMerkleTree(theName, 0, new SignedInfo(publisher, null, keyLoc),
+													content, 0, length, blockWidth,
+													pair.getPrivate());
+		
+			System.out.println("Constructed tree of " + length + " bytes (of " + content.length + "), numleaves: " + 
+										tree.numLeaves() + " max pathlength: " + tree.maxDepth());
+		
+			ContentObject block;
+			for (int i=0; i < tree.numLeaves()-1; ++i) {
+				block = tree.block(i, content, i*blockWidth, blockWidth);
+				boolean result = block.verify(pair.getPublic());
+				System.out.println("Block name: " + tree.blockName(i) + " num "  + i + " verified? " + result + ", content: " + DataUtils.printBytes(block.contentDigest()));
+				if (!result) {
+					byte [] digest = CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, block.encode());
+					byte [] tbsdigest = CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, ContentObject.prepareContent(block.name(), block.signedInfo(), content, i*blockWidth, blockWidth));
+					System.out.println("Raw content digest: " + DataUtils.printBytes(CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, content, i*blockWidth, blockWidth)) +
+							" object content digest:  " + DataUtils.printBytes(CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, block.content())));
+					System.out.println("Block: " + block.name() + " timestamp: " + block.signedInfo().getTimestamp() + " encoded digest: " + DataUtils.printBytes(digest) + " tbs content: " + DataUtils.printBytes(tbsdigest));
+				}
+				Assert.assertTrue("Path " + i + " failed to verify.", result);
+			}
+			block = tree.block(tree.numLeaves()-1, content, (tree.numLeaves()-1)*blockWidth, length - ((tree.numLeaves()-1)*blockWidth));
+			boolean result = block.verify(pair.getPublic());
+			System.out.println("Block name: " + tree.blockName(tree.numLeaves()-1) + " num "  + (tree.numLeaves()-1) + " verified? " + result + " content: " + DataUtils.printBytes(block.contentDigest()));
+			//	if (!result) {
+			System.out.println("Raw content digest: " + 
+					DataUtils.printBytes(CCNDigestHelper.digest(
+												CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, 
+												content, ((tree.numLeaves()-1)*blockWidth), 
+												(length - ((tree.numLeaves()-1)*blockWidth)))) +
+					" object content digest:  " + 
+					DataUtils.printBytes(CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, block.content())));
+			//}
+			tree = null;
+		} catch (Exception e) {
+			System.out.println("Exception in testTree: " + e.getClass().getName() + ": " + e.getMessage());
+			e.printStackTrace();
+			Assert.fail(e.getMessage());
+		}
+	}
 }
