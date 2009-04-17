@@ -19,46 +19,46 @@ import com.parc.ccn.security.crypto.CCNDigestHelper;
  */
 public class PublisherPublicKeyDigest extends GenericXMLEncodable implements XMLEncodable, Comparable<PublisherPublicKeyDigest> {
     
-    public static final String PUBLISHER_KEY_ID_ELEMENT = "PublisherPublicKeyDigest";
+    public static final String PUBLISHER_PUBLIC_KEY_DIGEST_ELEMENT = "PublisherPublicKeyDigest";
 
-    protected byte [] _publisherID;
+    protected byte [] _publisherPublicKeyDigest;
     
     public PublisherPublicKeyDigest(PublicKey key) {
-    	_publisherID = PublisherID.generateID(key);
+    	_publisherPublicKeyDigest = PublisherID.generatePublicKeyDigest(key);
     }
     	
-	public PublisherPublicKeyDigest(byte [] publisherID) {
+	public PublisherPublicKeyDigest(byte [] publisherPublicKeyDigest) {
 		// Alas, Arrays.copyOf doesn't exist in 1.5, and we'd like
 		// to be mostly 1.5 compatible for the macs...
-		// _publisherID = Arrays.copyOf(publisherID, PUBLISHER_ID_LEN);
-		_publisherID = new byte[PublisherID.PUBLISHER_ID_LEN];
-		System.arraycopy(publisherID, 0, _publisherID, 0, PublisherID.PUBLISHER_ID_LEN);
+		// _publisherPublicKeyDigest = Arrays.copyOf(publisherID, PUBLISHER_ID_LEN);
+		_publisherPublicKeyDigest = new byte[PublisherID.PUBLISHER_ID_LEN];
+		System.arraycopy(publisherPublicKeyDigest, 0, _publisherPublicKeyDigest, 0, PublisherID.PUBLISHER_ID_LEN);
 	}	
 	
 	/**
 	 * Expects the equivalent of publisherKeyID.toString
-	 * @param publisherID
+	 * @param publisherPublicKeyDigest
 	 */
-	public PublisherPublicKeyDigest(String publisherID) {
-		this(CCNDigestHelper.scanBytes(publisherID, 32));
+	public PublisherPublicKeyDigest(String publisherPublicKeyDigest) {
+		this(CCNDigestHelper.scanBytes(publisherPublicKeyDigest, 32));
 	}
 	
     public PublisherPublicKeyDigest() {} // for use by decoders
 	
-	public byte [] id() { return _publisherID; }
+	public byte [] digest() { return _publisherPublicKeyDigest; }
 	
 	@Override
 	public int hashCode() {
 		final int PRIME = 31;
 		int result = 1;
-		result = PRIME * result + Arrays.hashCode(_publisherID);
+		result = PRIME * result + Arrays.hashCode(_publisherPublicKeyDigest);
 		return result;
 	}
 	
 	public boolean equals(PublisherID publisher) {
 		if (PublisherID.PublisherType.KEY != publisher.type()) 
 			return false;
-		if (!Arrays.equals(id(), publisher.id()))
+		if (!Arrays.equals(digest(), publisher.id()))
 			return false;
 		return true;
 	}
@@ -74,7 +74,7 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable implements XML
 		if (getClass() != obj.getClass())
 			return false;
 		final PublisherPublicKeyDigest other = (PublisherPublicKeyDigest) obj;
-		if (!Arrays.equals(_publisherID, other._publisherID))
+		if (!Arrays.equals(_publisherPublicKeyDigest, other._publisherPublicKeyDigest))
 			return false;
 		return true;
 	}
@@ -83,9 +83,9 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable implements XML
 		
 		// The format of a publisher ID is an octet string.
 
-		_publisherID = decoder.readBinaryElement(PUBLISHER_KEY_ID_ELEMENT);
-		if (null == _publisherID) {
-			throw new XMLStreamException("Cannot parse publisher key ID.");
+		_publisherPublicKeyDigest = decoder.readBinaryElement(PUBLISHER_PUBLIC_KEY_DIGEST_ELEMENT);
+		if (null == _publisherPublicKeyDigest) {
+			throw new XMLStreamException("Cannot parse publisher key digest.");
 		}
 	}
 
@@ -95,21 +95,21 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable implements XML
 		}
 		// The format of a publisher ID is:
 		// <PublisherID type=<type> id_content />
-		encoder.writeElement(PUBLISHER_KEY_ID_ELEMENT,id());
+		encoder.writeElement(PUBLISHER_PUBLIC_KEY_DIGEST_ELEMENT,digest());
 	}
 	
 	public boolean validate() {
-		return (null != id());
+		return (null != digest());
 	}
 
 	public int compareTo(PublisherPublicKeyDigest o) {
-		int result = DataUtils.compare(this.id(), o.id());
+		int result = DataUtils.compare(this.digest(), o.digest());
 		return result;
 	}
 
 	@Override
 	public String toString() {
 		// 	16 would be the most familiar option, but 32 is shorter
-		return CCNDigestHelper.printBytes(id(), 32);
+		return CCNDigestHelper.printBytes(digest(), 32);
 	}
 }

@@ -102,7 +102,7 @@ public class BasicKeyManager extends KeyManager {
 		    // nuke the contents of our repository even though the
 		    // key remains, so need to republish). Or the first
 		    // time we load this keystore, we need to publish.
-		    ContentName keyName = getDefaultKeyName(_defaultKeyID.id());
+		    ContentName keyName = getDefaultKeyName(_defaultKeyID.digest());
 		    _keyLocator = new KeyLocator(keyName, new PublisherID(_defaultKeyID));
 			Library.logger().info("Default key locator: " + _keyLocator);
 			// JDT TODO Restore publishing info about this key. Commented-out for 

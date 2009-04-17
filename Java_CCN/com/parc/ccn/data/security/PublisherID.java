@@ -51,7 +51,7 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
     protected PublisherType _publisherType;
     
     public PublisherID(PublicKey key, boolean isIssuer) {
-    	_publisherID = generateID(key);
+    	_publisherID = generatePublicKeyDigest(key);
     	_publisherType = isIssuer ? PublisherType.ISSUER_KEY : PublisherType.KEY;
     }
     
@@ -63,14 +63,14 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 	public PublisherID(byte [] publisherID, PublisherType publisherType) {
 		// Alas, Arrays.copyOf doesn't exist in 1.5, and we'd like
 		// to be mostly 1.5 compatible for the macs...
-		// _publisherID = Arrays.copyOf(publisherID, PUBLISHER_ID_LEN);
+		// _publisherPublicKeyDigest = Arrays.copyOf(publisherID, PUBLISHER_ID_LEN);
 		_publisherID = new byte[PUBLISHER_ID_LEN];
 		System.arraycopy(publisherID, 0, _publisherID, 0, publisherID.length);
 		_publisherType = publisherType;
 	}
 	
 	public PublisherID(PublisherPublicKeyDigest keyID) {
-		this(keyID.id(), PublisherType.KEY);
+		this(keyID.digest(), PublisherType.KEY);
 	}
 	
     public PublisherID() {} // for use by decoders
@@ -78,7 +78,7 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 	public byte [] id() { return _publisherID; }
 	public PublisherType type() { return _publisherType; }
 	
-	public static byte [] generateID(PublicKey key) {
+	public static byte [] generatePublicKeyDigest(PublicKey key) {
 		return GenericX509CertificateGenerator.generateKeyID(PUBLISHER_ID_DIGEST_ALGORITHM, key);
 	}
 
@@ -99,7 +99,7 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 			return false;
 		if (PublisherPublicKeyDigest.class == obj.getClass()) {
 			if (PublisherType.KEY == this.type())
-				return (Arrays.equals(_publisherID, ((PublisherPublicKeyDigest)obj).id()));
+				return (Arrays.equals(_publisherID, ((PublisherPublicKeyDigest)obj).digest()));
 			// TODO DKS fill in...
 			throw new UnsupportedOperationException("Have to finish up equals!");			
 		}

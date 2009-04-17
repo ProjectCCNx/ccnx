@@ -139,7 +139,7 @@ public class InterestTableTest {
 		bb.putLong(now.getTime());
 		byte[] contents = bb.array();
 		// security bits
-		KeyLocator locator = new KeyLocator(ContentName.fromNative("/key/" + pub.id().toString()));
+		KeyLocator locator = new KeyLocator(ContentName.fromNative("/key/" + pub.digest().toString()));
 		SignedInfo si = new SignedInfo(pub, now, SignedInfo.ContentType.LEAF, locator);
 		// unique name		
 		return new ContentObject(

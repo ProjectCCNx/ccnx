@@ -155,7 +155,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
      * to store as final.
      * @return
      */
- 	public final byte[] getPublisher() { return _publisher.id(); }
+ 	public final byte[] getPublisher() { return _publisher.digest(); }
  	
 	public final PublisherPublicKeyDigest getPublisherKeyID() { return _publisher; }
 
@@ -196,7 +196,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		decoder.readStartElement(SIGNED_INFO_ELEMENT);
 		
-		if (decoder.peekStartElement(PublisherPublicKeyDigest.PUBLISHER_KEY_ID_ELEMENT)) {
+		if (decoder.peekStartElement(PublisherPublicKeyDigest.PUBLISHER_PUBLIC_KEY_DIGEST_ELEMENT)) {
 			_publisher = new PublisherPublicKeyDigest();
 			_publisher.decode(decoder);
 		}
