@@ -1,8 +1,5 @@
 package com.parc.ccn.data.util;
 
-import java.sql.Timestamp;
-import java.text.ParseException;
-
 import javax.xml.stream.XMLStreamException;
 
 public abstract class GenericXMLDecoder implements XMLDecoder {
@@ -16,17 +13,4 @@ public abstract class GenericXMLDecoder implements XMLDecoder {
 		return value;
 	}
 	
-	public Timestamp readDateTime(String startTag) throws XMLStreamException {
-		String strTimestamp = readUTF8Element(startTag);
-		Timestamp timestamp;
-		try {
-			timestamp = TextXMLCodec.parseDateTime(strTimestamp);
-		} catch (ParseException e) {
-			timestamp = null;
-		}
-		if (null == timestamp) {
-			throw new XMLStreamException("Cannot parse timestamp: " + strTimestamp);
-		}		
-		return timestamp;
-	}
 }

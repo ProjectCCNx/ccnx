@@ -3,6 +3,7 @@ package com.parc.ccn.data.util;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.sql.Timestamp;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.Stack;
@@ -92,6 +93,14 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 		} catch (IOException e) {
 			throw new XMLStreamException(e.getMessage(), e);
 		}
+	}
+
+	/**
+	 * Compact binary encoding of time. Same as used for versions.
+	 */
+	public void writeDateTime(String tag, Timestamp dateTime) throws XMLStreamException {
+		writeElement(tag, 
+				DataUtils.timestampToBinaryTime12(dateTime));
 	}
 
 	public void writeStartElement(String tag) throws XMLStreamException {
