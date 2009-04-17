@@ -17,7 +17,6 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 	 * The name for the content fragments, up to just before the sequence number.
 	 */
 	protected ContentName _baseName = null;
-	protected int _blockIndex = 0;
 	protected KeyLocator _locator;
 	protected PublisherPublicKeyDigest _publisher;
 
