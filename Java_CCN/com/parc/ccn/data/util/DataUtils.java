@@ -119,11 +119,7 @@ public class DataUtils {
 	 * This allows versions to be recorded as a timestamp with a 1/4096 second accuracy.
 	 */
 	public static byte [] timestampToBinaryTime12(Timestamp timestamp) {
-		// DKS temp hack
-		// long nanos = timestamp.getNanos();
-		long nanos = (long)Math.round(timestamp.getNanos() / 1000000.0) * 1000000L;
-		long timeVal = (timestamp.getTime() / 1000) * 4096L + (nanos * 4096L + 500000000L) / 1000000000L;
-		System.out.println("Rounding nanos to: " + nanos + " nanos: " + timestamp.getNanos() + ": " + (long)(timestamp.getNanos() / 1000000L));
+		long timeVal = (timestamp.getTime() / 1000) * 4096L + (timestamp.getNanos() * 4096L + 500000000L) / 1000000000L;
 		return BigInteger.valueOf(timeVal).toByteArray();
 	}
 	
@@ -136,13 +132,17 @@ public class DataUtils {
 		long time = new BigInteger(binaryTime12).longValue();
 
 		Timestamp ts = new Timestamp((time / 4096L) * 1000L);
-		long nanos = ((int)(((time % 4096L) * 1000000000L) / 4096L));
-		// DKS temporary hack
-		long rnanos = (long)Math.round(nanos / 1000000.0) * 1000000L;
-		System.out.println("Nanos: " + nanos + "div: " + (nanos / 1000000.0) + " rounded: " + rnanos + " int: " + (int)rnanos);
-		ts.setNanos((int)rnanos);
-		//ts.setNanos((int)(((time % 4096L) * 1000000000L) / 4096L));
+		ts.setNanos((int)(((time % 4096L) * 1000000000L) / 4096L));
 
 		return ts;
+	}
+	
+	/**
+	 * Compare timestamps taking into account the resolution lost in the conversion above.
+	 */
+	public static boolean timestampEquals(Timestamp t1, Timestamp t2) {
+		long timeVal1 = (t1.getTime() / 1000) * 4096L + (t1.getNanos() * 4096L + 500000000L) / 1000000000L;
+		long timeVal2 = (t2.getTime() / 1000) * 4096L + (t2.getNanos() * 4096L + 500000000L) / 1000000000L;
+		return (timeVal1 == timeVal2);
 	}
 }

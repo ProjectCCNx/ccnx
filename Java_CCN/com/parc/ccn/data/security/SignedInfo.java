@@ -101,8 +101,9 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
     	if (null == this._timestamp) {
     		this._timestamp = now(); // msec only
     	} 
-    	// DKS -- temporary hack
-    	this._timestamp.setNanos((int)(Math.round(_timestamp.getNanos() / 1000000.0) * 1000000L));
+    	// Lower resolution of time to only what we can represent on the wire;
+    	// this allows decode(encode(timestamp)) == timestamp
+    	this._timestamp.setNanos((int)(((_timestamp.getNanos() % 4096L) * 1000000000L) / 4096L));
     	
     	this._type = (null == type) ? ContentType.DATA : type;
     	this._locator = locator;
