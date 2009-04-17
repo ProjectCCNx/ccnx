@@ -29,6 +29,9 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException,
 			SignatureException, NoSuchAlgorithmException, IOException {
 		
+		if (blockCount == 0)
+			return baseNameIndex;
+		
 		if (null == publisher) {
 			publisher = segmenter.getFlowControl().getLibrary().keyManager().getDefaultKeyID();
 		}
@@ -43,6 +46,24 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 		if (null == type) {
 			type = ContentType.DATA;
 		}
+
+		byte [] finalBlockID = null;
+		if (null != finalSegmentIndex) {
+			if (finalSegmentIndex.equals(CCNSegmenter.LAST_SEGMENT)) {
+				long length = 0;
+				for (int j = baseBlockIndex; j < baseBlockIndex + blockCount - 1; j++) {
+					length += contentBlocks[j].length;
+				}
+				// don't include last block length; want intervening byte count before the last block
+				
+				// compute final segment number
+				finalBlockID = SegmentationProfile.getSegmentID(
+						segmenter.lastSegmentIndex(baseNameIndex, length, blockCount));
+			} else {
+				finalBlockID = SegmentationProfile.getSegmentID(finalSegmentIndex);
+			}
+		}
+
 		// Digest of complete contents
 		// If we're going to unique-ify the block names
 		// (or just in general) we need to incorporate the names
@@ -54,7 +75,7 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 		//  a copy when making CO, don't make extra ones.
 		CCNMerkleTree tree = 
 			new CCNMerkleTree(rootName, baseNameIndex,
-					new SignedInfo(publisher, timestamp, type, locator),
+					new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
 					contentBlocks, false, blockCount, baseBlockIndex, lastBlockLength, signingKey);
 
 		for (int i = 0; i < blockCount-1; i++) {
@@ -90,6 +111,9 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 			throws InvalidKeyException, SignatureException,
 			NoSuchAlgorithmException, IOException {
 		
+		if (blockCount == 0)
+			return SegmentationProfile.baseSegment();
+		
 		if (null == publisher) {
 			publisher = segmenter.getFlowControl().getLibrary().keyManager().getDefaultKeyID();
 		}
@@ -101,6 +125,19 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 		if (null == type) {
 			type = ContentType.DATA;
 		}
+
+		// finalBlockID makes no sense for this method unless the blocks really are
+		// already segmented. But this function likely going away...
+		byte [] finalBlockID = null;
+		if (null != finalSegmentIndex) {
+			if (finalSegmentIndex.equals(CCNSegmenter.LAST_SEGMENT)) {
+				// compute final segment number
+				finalBlockID = names[blockCount-1].lastComponent();
+			} else {
+				finalBlockID = SegmentationProfile.getSegmentID(finalSegmentIndex);
+			}
+		}
+		
 		// Digest of complete contents
 		// If we're going to unique-ify the block names
 		// (or just in general) we need to incorporate the names
@@ -112,7 +149,7 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 		//  a copy when making CO, don't make extra ones.
 		CCNMerkleTree tree = 
 			new CCNMerkleTree(names,
-					new SignedInfo(publisher, timestamp, type, locator),
+					new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
 					contentBlocks, false, blockCount, baseBlockIndex, lastBlockLength, signingKey);
 
 		for (int i = 0; i < blockCount-1; i++) {
@@ -136,8 +173,7 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 			throw e;
 		}		
 
-		return segmenter.nextSegmentIndex(SegmentationProfile.getSegmentNumber(tree.blockName(blockCount-1)),
-				  						  lastBlockLength);
+		return SegmentationProfile.baseSegment();
 	}
 
 	public long putBlocks(
@@ -148,6 +184,10 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 			Long finalSegmentIndex, KeyLocator locator, PublisherPublicKeyDigest publisher)
 			throws InvalidKeyException, SignatureException,
 			NoSuchAlgorithmException, IOException {
+		
+		if (length == 0)
+			return baseNameIndex;
+		
 		if (null == publisher) {
 			publisher = segmenter.getFlowControl().getLibrary().keyManager().getDefaultKeyID();
 		}
@@ -162,6 +202,21 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 		if (null == type) {
 			type = ContentType.DATA;
 		}
+		
+		byte [] finalBlockID = null;
+		if (null != finalSegmentIndex) {
+			if (finalSegmentIndex.equals(CCNSegmenter.LAST_SEGMENT)) {
+				// compute final segment number
+				// compute final segment number; which might be this one if blockCount == 1
+				int blockCount = CCNMerkleTree.blockCount(length, blockWidth);
+				finalBlockID = SegmentationProfile.getSegmentID(
+					segmenter.lastSegmentIndex(baseNameIndex, (blockCount-1)*blockWidth, 
+												blockCount));
+			} else {
+				finalBlockID = SegmentationProfile.getSegmentID(finalSegmentIndex);
+			}
+		}
+		
 		// Digest of complete contents
 		// If we're going to unique-ify the block names
 		// (or just in general) we need to incorporate the names
@@ -174,7 +229,7 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 		// DKS TODO -- handling of lastBlocks flag in signed info.
 		CCNMerkleTree tree = 
 			new CCNMerkleTree(rootName, baseNameIndex,
-					new SignedInfo(publisher, timestamp, type, locator),
+					new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
 					content, offset, length, blockWidth, signingKey);
 
 		for (int i = 0; i < tree.numLeaves()-1; i++) {

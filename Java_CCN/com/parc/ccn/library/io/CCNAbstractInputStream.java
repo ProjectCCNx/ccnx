@@ -173,6 +173,20 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	
 
 	protected ContentObject getNextBlock() throws IOException {
+		
+		// Check to see if finalBlockID is the current block. If so, there should
+		// be no next block. (If the writer makes a mistake and guesses the wrong
+		// value for finalBlockID, they won't put that wrong value in the block they're
+		// guessing itself -- in less they want to try to extend a "closed" stream.
+		// Normally by the time they write that block, they either know they're done or not.
+		if (null != _currentBlock.signedInfo().getFinalBlockID()) {
+			if (Arrays.equals(_currentBlock.signedInfo().getFinalBlockID(), _currentBlock.name().lastComponent())) {
+				Library.logger().info("getNextBlock: there is no next block. We have block: " + 
+						DataUtils.printHexBytes(_currentBlock.name().lastComponent()) + " which is marked as the final block.");
+				return null;
+			}
+		}
+		
 		Library.logger().info("getNextBlock: getting block after " + _currentBlock.name());
 
 		// prefixCount note: next block name must exactly match current except

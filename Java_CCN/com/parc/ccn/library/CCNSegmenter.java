@@ -466,4 +466,16 @@ public class CCNSegmenter {
 			return lastSegmentNumber + 1;
 		}
 	}
+
+	public Long lastSegmentIndex(long currentSegmentNumber, long bytesIntervening, int blocksRemaining) {
+		if (SegmentNumberType.SEGMENT_FIXED_INCREMENT == _sequenceType) {
+			return currentSegmentNumber + (getBlockIncrement() * (blocksRemaining - 1));
+		} else if (SegmentNumberType.SEGMENT_BYTE_COUNT == _sequenceType) {
+			// don't want this, want number of bytes prior to last block
+			return currentSegmentNumber + (getByteScale() * bytesIntervening);
+		} else {
+			Library.logger().warning("Unknown segmentation type: " + _sequenceType);
+			return currentSegmentNumber + (blocksRemaining - 1);
+		}
+	}
 }
