@@ -39,7 +39,8 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
     protected static final String TIMESTAMP_ELEMENT = "Timestamp";
     protected static final String CONTENT_TYPE_ELEMENT = "Type";
     protected static final String FRESHNESS_SECONDS_ELEMENT = "FreshnessSeconds";
-    
+    protected static final String FINAL_BLOCK_ID_ELEMENT = "FinalBlockID";
+
     static {
         ContentTypeNames.put(ContentType.FRAGMENT, "FRAGMENT");
         ContentTypeNames.put(ContentType.LINK, "LINK");
@@ -62,7 +63,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
     protected ContentType 	_type;
     protected KeyLocator 	_locator;
     protected Integer 		_freshnessSeconds;
-    protected Integer		_lastSegment; // DKS TODO -- add to schema (Michael), encoder/decoder
+    protected Integer		_finalBlockID; 
    
     public SignedInfo(
     		PublisherPublicKeyDigest publisher, 
@@ -70,7 +71,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 			ContentType type,
 			KeyLocator locator,
 			Integer freshnessSeconds,
-			Integer lastSegment
+			Integer finalBlockID
 			) {
     	super();
     	this._publisher = publisher;
@@ -80,7 +81,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
     	this._type = type;
     	this._locator = locator;
     	this._freshnessSeconds = freshnessSeconds;
-    	this._lastSegment = lastSegment;
+    	this._finalBlockID = finalBlockID;
      }
     
     public SignedInfo(
@@ -105,9 +106,9 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 			ContentType type,
 			KeyLocator locator,
 			Integer freshnessSeconds,
-			Integer lastSegment
+			Integer finalBlockID
 			) {
-    	this(publisher, null, type, locator, freshnessSeconds, lastSegment);
+    	this(publisher, null, type, locator, freshnessSeconds, finalBlockID);
     }
 
     public SignedInfo(SignedInfo other) {
@@ -116,7 +117,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
     		 other.getType(), 
        		 other.getKeyLocator(),
        		 other.getFreshnessSeconds(),
-       		 other.getLastSegment());
+       		 other.getFinalBlockID());
     }
 
     public SignedInfo() {}
@@ -169,14 +170,14 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 		return (null == _freshnessSeconds);
 	}
 	
-	public final int getLastSegment() { return _lastSegment; }
+	public final int getFinalBlockID() { return _finalBlockID; }
 	
-	public boolean emptyLastSegment() {
-		return (null == _lastSegment);
+	public boolean emptyFinalBlockID() {
+		return (null == _finalBlockID);
 	}
 	
 	// Do we want to make this an immutable type (or merely an immutable member of ContentObject?)
-	public void setLastSegment(int lastSegment) { _lastSegment = lastSegment; }
+	public void setFinalBlockID(int finalBlockID) { _finalBlockID = finalBlockID; }
 
 	public final ContentType getType() { return _type; }
 	
@@ -217,7 +218,9 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 			_freshnessSeconds = decoder.readIntegerElement(FRESHNESS_SECONDS_ELEMENT);
 		}
 		
-		// DKS TODO -- last timestamp
+		if (decoder.peekStartElement(FINAL_BLOCK_ID_ELEMENT)) {
+			_finalBlockID = decoder.readIntegerElement(FINAL_BLOCK_ID_ELEMENT);
+		}
 		
 		if (decoder.peekStartElement(KeyLocator.KEY_LOCATOR_ELEMENT)) {
 			_locator = new KeyLocator();
@@ -251,8 +254,11 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 		if (!emptyFreshnessSeconds()) {
 			encoder.writeIntegerElement(FRESHNESS_SECONDS_ELEMENT, getFreshnessSeconds());
 		}
-		// DKS TODO -- last timestamp
-		
+
+		if (!emptyFinalBlockID()) {
+			encoder.writeIntegerElement(FINAL_BLOCK_ID_ELEMENT, getFinalBlockID());
+		}
+
 		if (!emptyKeyLocator()) {
 			getKeyLocator().encode(encoder);
 		}
@@ -294,10 +300,10 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 				return false;
 		} else if (getFreshnessSeconds() != other.getFreshnessSeconds())
 			return false;
-		if (emptyLastSegment()) {
-			if (!other.emptyLastSegment())
+		if (emptyFinalBlockID()) {
+			if (!other.emptyFinalBlockID())
 				return false;
-		} else if (getLastSegment() != other.getLastSegment())
+		} else if (getFinalBlockID() != other.getFinalBlockID())
 			return false;
 		return true;
 	}
@@ -311,7 +317,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 		result = PRIME * result + ((_type == null) ? 0 : _type.hashCode());
 		result = PRIME * result + ((_locator == null) ? 0 : _locator.hashCode());
 		result = PRIME * result + ((_freshnessSeconds == null) ? 0 : _freshnessSeconds.hashCode());
-		result = PRIME * result + ((_lastSegment == null) ? 0 : _lastSegment.hashCode());
+		result = PRIME * result + ((_finalBlockID == null) ? 0 : _finalBlockID.hashCode());
 		return result;
 	}
 	
