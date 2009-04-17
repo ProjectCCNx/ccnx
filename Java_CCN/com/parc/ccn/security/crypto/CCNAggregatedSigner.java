@@ -46,7 +46,7 @@ public interface CCNAggregatedSigner {
 			int baseBlockIndex, int lastBlockLength,
 			ContentType type, 
 			Timestamp timestamp,
-			Integer freshnessSeconds, Integer lastSegment,
+			Integer freshnessSeconds, byte [] finalBlockID,
 			KeyLocator locator, 
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, 
 											 NoSuchAlgorithmException, IOException;
@@ -80,7 +80,7 @@ public interface CCNAggregatedSigner {
 			int baseBlockIndex, int lastBlockLength,
 			ContentType type, 
 			Timestamp timestamp,
-			Integer freshnessSeconds, Integer lastSegment,
+			Integer freshnessSeconds, byte [] finalBlockID,
 			KeyLocator locator, 
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, 
 											 NoSuchAlgorithmException, IOException;
@@ -91,7 +91,7 @@ public interface CCNAggregatedSigner {
 			byte [] content, int offset, int length, int blockWidth,
 			ContentType type, 
 			Timestamp timestamp,
-			Integer freshnessSeconds, Integer lastSegment,
+			Integer freshnessSeconds, byte [] finalBlockID,
 			KeyLocator locator, 
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, 
 									SignatureException, NoSuchAlgorithmException, IOException;

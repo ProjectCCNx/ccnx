@@ -26,7 +26,7 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 			ContentName name, int baseNameIndex,
 			byte[][] contentBlocks, int blockCount, int baseBlockIndex,
 			int lastBlockLength, ContentType type, Timestamp timestamp,
-			Integer freshnessSeconds, Integer lastSegment, KeyLocator locator,
+			Integer freshnessSeconds, byte [] finalBlockID, KeyLocator locator,
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException,
 			SignatureException, NoSuchAlgorithmException, IOException {
 		
@@ -86,7 +86,7 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 			ContentName[] names, byte[][] contentBlocks,
 			int blockCount, int baseBlockIndex, int lastBlockLength,
 			ContentType type, Timestamp timestamp, Integer freshnessSeconds,
-			Integer lastSegment, KeyLocator locator, PublisherPublicKeyDigest publisher)
+			byte [] lastSegment, KeyLocator locator, PublisherPublicKeyDigest publisher)
 			throws InvalidKeyException, SignatureException,
 			NoSuchAlgorithmException, IOException {
 		
@@ -144,7 +144,7 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 			ContentName name, int baseNameIndex,
 			byte[] content, int offset, int length, int blockWidth,
 			ContentType type, Timestamp timestamp, Integer freshnessSeconds,
-			Integer lastSegment, KeyLocator locator, PublisherPublicKeyDigest publisher)
+			byte [] finalBlockID, KeyLocator locator, PublisherPublicKeyDigest publisher)
 			throws InvalidKeyException, SignatureException,
 			NoSuchAlgorithmException, IOException {
 		if (null == publisher) {

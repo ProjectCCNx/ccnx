@@ -320,7 +320,7 @@ public class CCNSegmenter {
 	protected ContentObject fragmentedPut(
 			ContentName name, 
 			byte [] content, int offset, int length,
-			Integer lastSegment,
+			byte [] finalBlockID,
 			SignedInfo.ContentType type,
 			Integer freshnessSeconds, 
 			KeyLocator locator, 
@@ -328,7 +328,7 @@ public class CCNSegmenter {
 		
 		return fragmentedPut(name, SegmentationProfile.baseSegment(),
 				content, offset, length, getBlockSize(), type,
-				null, freshnessSeconds, lastSegment, locator, publisher);
+				null, freshnessSeconds, finalBlockID, locator, publisher);
 	}
 	
 	public ContentObject fragmentedPut(
@@ -336,7 +336,7 @@ public class CCNSegmenter {
 			byte [] content, int offset, int length, int blockWidth,
 			ContentType type, 
 			Timestamp timestamp,
-			Integer freshnessSeconds, Integer lastSegment,
+			Integer freshnessSeconds, byte [] finalBlockID,
 			KeyLocator locator, 
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, 
 									SignatureException, NoSuchAlgorithmException, IOException {
@@ -351,7 +351,7 @@ public class CCNSegmenter {
 		ContentObject result = 
 			_bulkSigner.putBlocks(this, name, baseNameIndex,
 						content, offset, length, blockWidth, type,
-						timestamp, freshnessSeconds, lastSegment, locator, publisher);
+						timestamp, freshnessSeconds, finalBlockID, locator, publisher);
 		// Used to return header. Now return first block.
 		return result;
 	}
@@ -362,7 +362,7 @@ public class CCNSegmenter {
 			int baseBlockIndex, int lastBlockLength,
 			ContentType type, 
 			Timestamp timestamp,
-			Integer freshnessSeconds, Integer lastSegment,
+			Integer freshnessSeconds, byte [] finalBlockID,
 			KeyLocator locator, 
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, 
 											 NoSuchAlgorithmException, IOException {
@@ -370,7 +370,7 @@ public class CCNSegmenter {
 		ContentObject result = 
 			_bulkSigner.putBlocks(this, name, baseNameIndex,
 						contentBlocks, blockCount, baseBlockIndex, lastBlockLength, type,
-						timestamp, freshnessSeconds, lastSegment, locator, publisher);
+						timestamp, freshnessSeconds, finalBlockID, locator, publisher);
 		// Used to return header. Now return first block.
 		return result;
 	}
@@ -388,7 +388,7 @@ public class CCNSegmenter {
 			int baseBlockIndex, int lastBlockLength,
 			ContentType type, 
 			Timestamp timestamp,
-			Integer freshnessSeconds, Integer lastSegment,
+			Integer freshnessSeconds, byte [] finalBlockID,
 			KeyLocator locator, 
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, 
 											 NoSuchAlgorithmException, IOException {
@@ -396,7 +396,7 @@ public class CCNSegmenter {
 		ContentObject result = 
 			_bulkSigner.putBlocks(this, names, 
 						contentBlocks, blockCount, baseBlockIndex, lastBlockLength, type,
-						timestamp, freshnessSeconds, lastSegment, locator, publisher);
+						timestamp, freshnessSeconds, finalBlockID, locator, publisher);
 		// Used to return header. Now return first block.
 		return result;
 	}
@@ -422,7 +422,7 @@ public class CCNSegmenter {
 			byte [] content, int offset, int length,
 			ContentType type, 
 			Timestamp timestamp, 
-			Integer freshnessSeconds, Integer lastSegment,
+			Integer freshnessSeconds, byte [] finalBlockID,
 			KeyLocator locator, 
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 
@@ -446,7 +446,7 @@ public class CCNSegmenter {
 					fragmentNumber),
 					new SignedInfo(publisher, timestamp,
 							type, locator,
-							freshnessSeconds, lastSegment), 
+							freshnessSeconds, finalBlockID), 
 							content, offset, length, signingKey);
 		Library.logger().info("CCNSegmenter: putting " + co.name() + " (timestamp: " + co.signedInfo().getTimestamp() + ", length: " + length + ")");
 		return _flowControl.put(co);
