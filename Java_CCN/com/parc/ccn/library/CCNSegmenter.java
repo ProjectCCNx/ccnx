@@ -7,6 +7,10 @@ import java.security.PrivateKey;
 import java.security.SignatureException;
 import java.sql.Timestamp;
 
+import javax.crypto.Cipher;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
@@ -44,6 +48,11 @@ import com.parc.ccn.security.crypto.CCNMerkleTreeSigner;
  *    to meet a desired net data length with potential block expansion, and encrypt.
  *    Other specs used to generate K and IV from higher-level data.
  *    
+ *    For this, we use the standard Java encryption mechanisms, augmented by
+ *    alternative providers (e.g. BouncyCastle for AES-CTR). We just need
+ *    a Cipher, a SecretKeySpec, and an IvParameterSpec holding the relevant
+ *    key data.
+ *    
  * Overall, attempt to minimize copying of data. Data must be copied into final
  * ContentObjects returned by the signing operations. On the way, it may need
  * to pass through a block encrypter, which may perform local copies. Higher-level
@@ -73,6 +82,11 @@ public class CCNSegmenter {
 	
 	// Handle multi-block amortized signing. If null, default to single-block signing.
 	protected CCNAggregatedSigner _bulkSigner;
+	
+	// Encryption/decryption handler
+	protected Cipher _cipher;
+	protected SecretKeySpec _encryptionKey;
+	protected IvParameterSpec _iv;
 
 	/**
 	 * Eventually add encryption, allow control of authentication algorithm.
@@ -81,13 +95,20 @@ public class CCNSegmenter {
 	 * @param signingKey
 	 */
 	public CCNSegmenter() throws ConfigurationException, IOException {
-		this(CCNLibrary.open());
+		this(null, null, null);
+	}
+	
+	public CCNSegmenter(Cipher cipher, SecretKeySpec encryptionKey, IvParameterSpec iv) throws ConfigurationException, IOException {
+		this(CCNLibrary.open(), cipher, encryptionKey, iv);
 	}
 
 	public CCNSegmenter(CCNLibrary library) {
 		this(new CCNFlowControl(library));
 	}
 
+	public CCNSegmenter(CCNLibrary library, Cipher cipher, SecretKeySpec encryptionKey, IvParameterSpec iv) {
+		this(new CCNFlowControl(library), null, cipher, encryptionKey, iv);
+	}
 	/**
 	 * Create an object with default Merkle hash tree aggregated signing.
 	 * @param flowControl
@@ -95,8 +116,13 @@ public class CCNSegmenter {
 	public CCNSegmenter(CCNFlowControl flowControl) {
 		this(flowControl, null);
 	}
-
+	
 	public CCNSegmenter(CCNFlowControl flowControl, CCNAggregatedSigner signer) {
+		this(flowControl, signer, null, null, null);
+	}
+
+	public CCNSegmenter(CCNFlowControl flowControl, CCNAggregatedSigner signer,
+						Cipher cipher, SecretKeySpec encryptionKey, IvParameterSpec iv) {
 		if ((null == flowControl) || (null == flowControl.getLibrary())) {
 			// Tries to get a library or make a flow control, yell if we fail.
 			throw new IllegalArgumentException("CCNSegmenter: must provide a valid library or flow controller.");
@@ -108,6 +134,9 @@ public class CCNSegmenter {
 		} else {
 			_bulkSigner = signer; // if null, default to merkle tree
 		}
+		_cipher = cipher;
+		_encryptionKey = encryptionKey;
+		_iv = iv;
 		initializeBlockSize();
 	}
 
