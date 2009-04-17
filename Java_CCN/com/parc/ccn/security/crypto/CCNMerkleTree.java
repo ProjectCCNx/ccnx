@@ -8,10 +8,13 @@ import java.security.SignatureException;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.config.SystemConfiguration;
+import com.parc.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.SignedInfo;
+import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 
 /**
@@ -318,6 +321,12 @@ public class CCNMerkleTree extends MerkleTree {
 									ContentObject.prepareContent(blockName(leafIndex), 
 																 blockSignedInfo(leafIndex),
 																 content, offset, length));
+			if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
+				Library.logger().info("offset: " + offset + " block length: " + length + " blockDigest " + 
+						DataUtils.printBytes(blockDigest) + " content digest: " + 
+						DataUtils.printBytes(CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM,
+																	content, offset, length)));
+			}
 		} catch (XMLStreamException e) {
 			Library.logger().info("Exception in computeBlockDigest, leaf: " + leafIndex + " out of " + numLeaves() + " type: " + e.getClass().getName() + ": " + e.getMessage());
 			// DKS todo -- what to throw?
