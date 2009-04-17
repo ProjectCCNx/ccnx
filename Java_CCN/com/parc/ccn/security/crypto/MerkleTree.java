@@ -366,7 +366,7 @@ public class MerkleTree {
 		for (int i=0; i < numLeaves(); ++i) {
 			_tree[leafNodeIndex(i)-1] = 
 				new DEROctetString(
-						(computeBlockDigest(algorithm(), content, offset + (blockWidth*i), 
+						(computeBlockDigest(i, content, offset + (blockWidth*i), 
 											((i < numLeaves()-1) ? blockWidth : (length - (blockWidth*i))))));
 		}
 	}
