@@ -50,7 +50,6 @@ public class ContentObjectTest {
 	static KeyLocator keyLoc = null;
 	static public Signature signature;
 	static public byte [] contenthash = new byte[32];
-	static public byte [] publisherid = new byte[32];
 	static PublisherPublicKeyDigest pubkey = null;	
 	static SignedInfo auth = null;
 	static SignedInfo authKey = null;
@@ -86,9 +85,8 @@ public class ContentObjectTest {
 			Arrays.fill(signaturebuf, (byte)1);
 			signature = new Signature(signaturebuf);
 			Arrays.fill(contenthash, (byte)2);
-			Arrays.fill(publisherid, (byte)3);
 			
-			pubkey = new PublisherPublicKeyDigest(publisherid);
+			pubkey = new PublisherPublicKeyDigest(pair.getPublic());
 			
 			auth = new SignedInfo(pubkey,
 					new Timestamp(System.currentTimeMillis()), 
@@ -107,16 +105,16 @@ public class ContentObjectTest {
 	@Test
 	public void testDecodeInputStream() {
 		try {
-			ContentObject co = new ContentObject(name, auth, document3, pair.getPrivate());
-			ContentObject tdco = new ContentObject();
-			ContentObject bdco = new ContentObject();
-			XMLEncodableTester.encodeDecodeTest("ContentObject", co, tdco, bdco);
-			Assert.assertTrue(co.verify(pair.getPublic()));
 			ContentObject cokey = new ContentObject(name, authKey, document3, pair.getPrivate());
 			ContentObject tdcokey = new ContentObject();
 			ContentObject bdcokey = new ContentObject();
 			XMLEncodableTester.encodeDecodeTest("ContentObjectKey", cokey, tdcokey, bdcokey);
 			Assert.assertTrue(cokey.verify(pair.getPublic()));
+			ContentObject co = new ContentObject(name, auth, document3, pair.getPrivate());
+			ContentObject tdco = new ContentObject();
+			ContentObject bdco = new ContentObject();
+			XMLEncodableTester.encodeDecodeTest("ContentObject", co, tdco, bdco);
+			Assert.assertTrue(co.verify(pair.getPublic()));
 			// Dump one to file for testing on the C side.
 		/*	java.io.FileOutputStream fdump = new java.io.FileOutputStream("ContentObject.ccnb");
 			co.encode(fdump);
