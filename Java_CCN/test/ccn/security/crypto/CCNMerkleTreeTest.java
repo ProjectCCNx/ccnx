@@ -65,7 +65,8 @@ public class CCNMerkleTreeTest {
 		}
 		
 		System.out.println("Testing large trees.");
-		int [] nodecounts = new int[]{1000,1001,1025,1098,1536,1575,2053,5147,8900,9998,9999,10000};
+		int [] nodecounts = new int[]{1000,1001,1025,1098,1536,1575,2053,5147,8900,9998};
+//		int [] nodecounts = new int[]{1000,1001,1025,1098,1536,1575,2053,5147,8900,9998,9999,10000};
 		for (int i=0; i < nodecounts.length; ++i) {
 			testTree(nodecounts[i],sizes[i%sizes.length],false);
 		}
@@ -151,15 +152,14 @@ public class CCNMerkleTreeTest {
 			for (int i=0; i < count; ++i) {
 				ContentObject block = tree.block(i, content[i], 0, content[i].length);
 				boolean result = block.verify(pair.getPublic());
-	//			if (!result)
 				System.out.println("Block name: " + tree.blockName(i) + " num "  + i + " verified? " + result + " content: " + DataUtils.printBytes(block.contentDigest()));
 				if (!result) {
-					System.out.println("Raw content digest: " + DataUtils.printBytes(CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, content[i], 0, content[i].length)) +
-							" object content digest:  " + DataUtils.printBytes(CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, block.content())));
-					byte [] objdigest = CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, block.encode());
-					byte [] tbsdigest = CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, ContentObject.prepareContent(block.name(), block.signedInfo(), content[i], 0, content[i].length));
-					System.out.println("Raw content digest: " + DataUtils.printBytes(CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, content[i], 0, content[i].length)) +
-							" object content digest:  " + DataUtils.printBytes(CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, block.content())));
+					System.out.println("Raw content digest: " + DataUtils.printBytes(CCNDigestHelper.digest(content[i], 0, content[i].length)) +
+							" object content digest:  " + DataUtils.printBytes(CCNDigestHelper.digest(block.content())));
+					byte [] objdigest = CCNDigestHelper.digest(block.encode());
+					byte [] tbsdigest = CCNDigestHelper.digest(ContentObject.prepareContent(block.name(), block.signedInfo(), content[i], 0, content[i].length));
+					System.out.println("Raw content digest: " + DataUtils.printBytes(CCNDigestHelper.digest(content[i], 0, content[i].length)) +
+							" object content digest:  " + DataUtils.printBytes(CCNDigestHelper.digest(block.content())));
 					System.out.println("Block: " + block.name() + " timestamp: " + block.signedInfo().getTimestamp() + " encoded digest: " + DataUtils.printBytes(objdigest) + " tbs content: " + DataUtils.printBytes(tbsdigest));
 				}
 				Assert.assertTrue("Path " + i + " failed to verify.", result);
@@ -193,10 +193,10 @@ public class CCNMerkleTreeTest {
 				boolean result = block.verify(pair.getPublic());
 				System.out.println("Block name: " + tree.blockName(i) + " num "  + i + " verified? " + result + ", content: " + DataUtils.printBytes(block.contentDigest()));
 				if (!result) {
-					byte [] digest = CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, block.encode());
-					byte [] tbsdigest = CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, ContentObject.prepareContent(block.name(), block.signedInfo(), content, i*blockWidth, blockWidth));
-					System.out.println("Raw content digest: " + DataUtils.printBytes(CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, content, i*blockWidth, blockWidth)) +
-							" object content digest:  " + DataUtils.printBytes(CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, block.content())));
+					byte [] digest = CCNDigestHelper.digest(block.encode());
+					byte [] tbsdigest = CCNDigestHelper.digest(ContentObject.prepareContent(block.name(), block.signedInfo(), content, i*blockWidth, blockWidth));
+					System.out.println("Raw content digest: " + DataUtils.printBytes(CCNDigestHelper.digest(content, i*blockWidth, blockWidth)) +
+							" object content digest:  " + DataUtils.printBytes(CCNDigestHelper.digest(block.content())));
 					System.out.println("Block: " + block.name() + " timestamp: " + block.signedInfo().getTimestamp() + " encoded digest: " + DataUtils.printBytes(digest) + " tbs content: " + DataUtils.printBytes(tbsdigest));
 				}
 				Assert.assertTrue("Path " + i + " failed to verify.", result);
@@ -204,15 +204,14 @@ public class CCNMerkleTreeTest {
 			block = tree.block(tree.numLeaves()-1, content, (tree.numLeaves()-1)*blockWidth, length - ((tree.numLeaves()-1)*blockWidth));
 			boolean result = block.verify(pair.getPublic());
 			System.out.println("Block name: " + tree.blockName(tree.numLeaves()-1) + " num "  + (tree.numLeaves()-1) + " verified? " + result + " content: " + DataUtils.printBytes(block.contentDigest()));
-			//	if (!result) {
-			System.out.println("Raw content digest: " + 
-					DataUtils.printBytes(CCNDigestHelper.digest(
-												CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, 
-												content, ((tree.numLeaves()-1)*blockWidth), 
-												(length - ((tree.numLeaves()-1)*blockWidth)))) +
-					" object content digest:  " + 
-					DataUtils.printBytes(CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, block.content())));
-			//}
+			if (!result) {
+				System.out.println("Raw content digest: " + 
+						DataUtils.printBytes(CCNDigestHelper.digest(
+								content, ((tree.numLeaves()-1)*blockWidth), 
+								(length - ((tree.numLeaves()-1)*blockWidth)))) +
+								" object content digest:  " + 
+								DataUtils.printBytes(CCNDigestHelper.digest(block.content())));
+			}
 			tree = null;
 		} catch (Exception e) {
 			System.out.println("Exception in testTree: " + e.getClass().getName() + ": " + e.getMessage());

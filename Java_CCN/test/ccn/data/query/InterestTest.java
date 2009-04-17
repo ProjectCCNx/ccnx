@@ -39,7 +39,7 @@ public class InterestTest {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		
-		byte [] testID = CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, testName.getBytes());
+		byte [] testID = CCNDigestHelper.digest(testName.getBytes());
 		
 		tcn = ContentName.fromURI(testName);
 		pubID = new PublisherID(testID,PublisherID.PublisherType.ISSUER_KEY);

@@ -85,8 +85,8 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		_signature = signature;
 		if ((null != signature) && SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
 			try {
-				byte [] digest = CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, this.encode());
-				byte [] tbsdigest = CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, prepareContent(name, signedInfo, content, offset, length));
+				byte [] digest = CCNDigestHelper.digest(this.encode());
+				byte [] tbsdigest = CCNDigestHelper.digest(prepareContent(name, signedInfo, content, offset, length));
 				Library.logger().info("Created content object: " + name + " timestamp: " + signedInfo.getTimestamp() + " encoded digest: " + DataUtils.printBytes(digest) + " tbs content: " + DataUtils.printBytes(tbsdigest));
 				Library.logger().info("Signature: " + this.signature());
 				if (!this.verify(null)) {

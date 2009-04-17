@@ -22,6 +22,10 @@ public class CCNDigestHelper extends DigestHelper {
 		}
 	}
 		
+	public CCNDigestHelper(String digestAlgorithm) throws NoSuchAlgorithmException {
+		super(digestAlgorithm);
+	}
+
 	/**
 	 * Same digest preparation algorithm as ContentObject.
 	 * @throws XMLStreamException 
@@ -53,10 +57,56 @@ public class CCNDigestHelper extends DigestHelper {
 	@Override
 	public String getDefaultDigest() { return DEFAULT_DIGEST_ALGORITHM; }
 	
+    public static byte[] digest(byte [] content) {
+		if (null == content) {
+			throw new IllegalArgumentException("Content cannot be null!");
+		}
+		return digest(content, 0, content.length);
+	}
+	
+	public static byte [] digest(String digestAlgorithm, byte [] content) throws NoSuchAlgorithmException {
+		if (null == content) {
+			throw new IllegalArgumentException("Content cannot be null!");
+		}
+		return digest(digestAlgorithm, content, 0, content.length);
+	}
+
 	public static byte [] digest(byte [] content, int offset, int length) {
 		CCNDigestHelper dh = new CCNDigestHelper();
 		dh.update(content, offset, length);
 		return dh.digest();
+	}
+	
+	/**
+	 * Need to handle this here to cope with digestAlgorithm = null correctly.
+	 * @param digestAlgorithm
+	 * @param content
+	 * @param offset
+	 * @param length
+	 * @return
+	 * @throws NoSuchAlgorithmException
+	 */
+	public static byte [] digest(String digestAlgorithm, byte [] content, int offset, int length) throws NoSuchAlgorithmException {
+		CCNDigestHelper dh = new CCNDigestHelper(digestAlgorithm);
+		dh.update(content, offset, length);
+		return dh.digest();
+	}
+
+	public static byte[] digest(byte [] content1, byte [] content2) {
+		return digest(new byte [][]{content1, content2});
+	}
+	
+	/**
+	 * Helper functions for building Merkle hash trees. Returns digest of
+	 * two concatenated byte arrays. If either is null, simply includes
+	 * the non-null array.
+	 * @param content1
+	 * @param content2
+	 * @return
+	 * @throws NoSuchAlgorithmException 
+	 */
+	public static byte [] digest(String digestAlgorithm, byte [] content1, byte [] content2) throws NoSuchAlgorithmException {
+		return digest(digestAlgorithm, new byte [][]{content1, content2});
 	}
 	
 	public static byte [] digest(byte [][] contents) {
@@ -67,10 +117,29 @@ public class CCNDigestHelper extends DigestHelper {
 		return dh.digest();
 	}	
 
+	public static byte [] digest(String digestAlgorithm, byte [][] contents) throws NoSuchAlgorithmException {
+		CCNDigestHelper dh = new CCNDigestHelper(digestAlgorithm);
+		for (int i=0; i < contents.length; ++i) {
+			dh.update(contents[i], 0, contents[i].length);
+		}
+		return dh.digest();
+	}
+
+	/**
+	 * Digests some data and wraps it in a DigestInfo.
+	 * @param digestAlgorithm
+	 * @param content
+	 * @return
+	 * @throws CertificateEncodingException
+	 * @throws NoSuchAlgorithmException 
+	 */
+	public static byte [] encodedDigest(String digestAlgorithm, byte [] content) throws CertificateEncodingException, NoSuchAlgorithmException {
+		byte [] digest = digest(digestAlgorithm, content);
+		return digestEncoder(digestAlgorithm, digest);
+	}
+	
 	public static byte [] encodedDigest(byte [] content) throws CertificateEncodingException {
 		byte [] digest = digest(content);
 		return digestEncoder(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, digest);
 	}
-
-
 }
