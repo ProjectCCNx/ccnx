@@ -69,9 +69,11 @@ import com.parc.ccn.security.crypto.CCNMerkleTreeSigner;
 public class CCNSegmenter {
 
 	public static final String PROP_BLOCK_SIZE = "ccn.lib.blocksize";
+	public static final Long LAST_SEGMENT = Long.valueOf(-1);
+	
 	protected int _blockSize = SegmentationProfile.DEFAULT_BLOCKSIZE;
 	protected int _blockIncrement = SegmentationProfile.DEFAULT_INCREMENT;
-	protected int _blockScale = SegmentationProfile.DEFAULT_SCALE;
+	protected int _byteScale = SegmentationProfile.DEFAULT_SCALE;
 	protected SegmentNumberType _sequenceType = SegmentNumberType.SEGMENT_FIXED_INCREMENT;
 	
 	protected int _nextBlock  = SegmentationProfile.baseSegment();
@@ -188,7 +190,7 @@ public class CCNSegmenter {
 
 	public void useByteCountSequenceNumbers() {
 		setSequenceType(SegmentNumberType.SEGMENT_BYTE_COUNT);
-		setBlockScale(1);
+		setByteScale(1);
 	}
 
 	public void useFixedIncrementSequenceNumbers(int increment) {
@@ -198,7 +200,7 @@ public class CCNSegmenter {
 
 	public void useScaledByteCountSequenceNumbers(int scale) {
 		setSequenceType(SegmentNumberType.SEGMENT_BYTE_COUNT);
-		setBlockScale(scale);
+		setByteScale(scale);
 	}
 
 	public void setSequenceType(SegmentNumberType seqType) { _sequenceType = seqType; }
@@ -208,81 +210,28 @@ public class CCNSegmenter {
 	 * @param blockWidth
 	 */
 	public void setBlockIncrement(int blockIncrement) { _blockIncrement = blockIncrement; }
+	public int getBlockIncrement() { return _blockIncrement; }
 
-	public void setBlockScale(int blockScale) { _blockScale = blockScale; }
+	public void setByteScale(int byteScale) { _byteScale = byteScale; }
+	public int getByteScale() { return _byteScale; }
 
 
 	/**
+	 * Put a complete data item, potentially fragmented. The
+	 * assumption of this API is that this single call puts
+	 * all the blocks of the item; if multiple calls to the
+	 * segmenter will be required to output an item, use other
+	 * methods to manage segment identifiers.
+	 * 
 	 * If small enough, doesn't fragment. Otherwise, does.
 	 * Return ContentObject of the thing they put (in the case
-	 * of a fragmented thing, the header). That way the
+	 * of a fragmented thing, the first fragment). That way the
 	 * caller can then also easily link to that thing if
 	 * it needs to, or put again with a different name.
-	 * 
-	 * We want to generate a unique name (just considering
-	 * the name part) for transport and routing layer efficiency. 
-	 * We want to do this in a way that
-	 * gives us the following properties:
-	 * <ol>
-	 * <li>General CCN nodes do not need to understand any
-	 *   name components.
-	 * <li>General CCN nodes can verify content signatures if
-	 * 	 they feel so inclined. That means that any components
-	 *   added to the name to make it unique must be signed
-	 *   along with the rest of the name.
-	 * <li>General CCN nodes need to know as few algorithms
-	 *   for verifying content signatures as possible; at
-	 *   minimum one for leaf content and one for fragmented
-	 *   content (probably also one for streamed content).
-	 * <li>If a particular CCN node wishes to interpret the
-	 * 	 content of the additional component (or query over it),
-	 * 	 they can, but we don't require them to be able to.
-	 * <li>Making content names unique shouldn't interfere with
-	 * 	 making names or content private. Content can be encrypted
-	 *   before hashing; name components could be encrypted even
-	 *   after uniquification (so no one can tell that two blocks
-	 *   have the same content, or even anything about the block
-	 *   that maps to a name).
-	 * </ol>
-	 * Requiring the result to be unique means that the additional
-	 * component added can't simply be the content digest, or
-	 * the publisher ID. Either of these could be useful, but
-	 * neither is guaranteed to be unique. The signature is guaranteed
-	 * to be unique, but including the signature in the name itself
-	 * (or the digest of the signature, etc) means that the name
-	 * cannot be completely signed -- as the signature can't be
-	 * included in the name for signing. At least the user-intended
-	 * part of the name must signed, and including the signature
-	 * in a distinguished component of the name means that CCN
-	 * nodes must understand what parts of the name are signed
-	 * and what aren't. While this is necessarily true, e.g. for
-	 * fragmented data (see below), you either need a way to
-	 * verify the remainder of the name (which is possible for
-	 * fragmented data), or only require users to sign name prefixes.
-	 * It is much better to require verification of the entire
-	 * name, either by signing it completely (for unfragmented data),
-	 * or by including the fragment names in the block information
-	 * incorporated in the hash tree for signing (see below).
-	 * So, what we use for unfragmented data is the digest of 
-	 * the content signedInfo without the signature in it; 
-	 * which in turn contains the digest
-	 * of the content itself, as well as the publisher ID and
-	 * the timestamp (which will make it unique). When we generate
-	 * the signature, we still sign the name, the content signedInfo,
-	 * and the content, as we cannot guarantee that the content
-	 * signedInfo digest has been incorporated in the name.
-	 * 
-	 * For fragmented data, we only generate one signature,
-	 * on the root of the Merkle hash tree. For that we use
-	 * this same process to generate a unique name from the
-	 * content name and content information. However, we then
-	 * decorate that name to create the individual block names;
-	 * rather than have CCN nodes understand how to separate
-	 * that decoration and verify it, we incorporate the block
-	 * names into the Merkle hash tree.
-	 * 
+	 * If multi-fragment, uses the naming profile and specified
+	 * bulk signer (default: MHT) to generate names and signatures.
 	 **/
-	public ContentObject put(
+	public long put(
 			ContentName name, byte [] content, int offset, int length,
 			boolean lastSegments,
 			SignedInfo.ContentType type,
@@ -333,23 +282,34 @@ public class CCNSegmenter {
 	}
 
 	/** 
-	 * Low-level fragmentation interface. Assume arguments have been cleaned
+	 * Low-level segmentation interface. Assume arguments have been cleaned
 	 * prior to arrival -- name is not already segmented, type is set, etc.
+	 * 
+	 * Starts segmentation at segment SegmentationProfile().baseSegment().
 	 * @param name
-	 * @param contents
+	 * @param content content buffer containing content to put
+	 * @param offset offset into buffer at which to start reading content to put
+	 * @param length number of bytes of buffer to put
+	 * @param finalSegmentIndex the expected segment number of the last segment of this stream,
+	 * 				null to omit, Long(-1) to set as the last segment of this put, whatever
+	 * 				its number turns out to be
 	 * @param type
-	 * @param publisher
+	 * @param freshnessSeconds the number of seconds this content should be considered fresh, or null
+	 * 			to leave unset
 	 * @param locator
-	 * @param signingKey
+	 * @param publisher
+	 * @return returns the segment identifier for the next segment to be written, if any.
+	 * 		If the caller doesn't want to override this, they can hand this number back
+	 * 	    to a subsequent call to fragmentedPut.
 	 * @throws InvalidKeyException
 	 * @throws SignatureException
 	 * @throws NoSuchAlgorithmException
 	 * @throws IOException 
 	 */
-	protected ContentObject fragmentedPut(
+	protected long fragmentedPut(
 			ContentName name, 
 			byte [] content, int offset, int length,
-			byte [] finalBlockID,
+			Long finalSegmentIndex,
 			SignedInfo.ContentType type,
 			Integer freshnessSeconds, 
 			KeyLocator locator, 
@@ -357,15 +317,19 @@ public class CCNSegmenter {
 		
 		return fragmentedPut(name, SegmentationProfile.baseSegment(),
 				content, offset, length, getBlockSize(), type,
-				null, freshnessSeconds, finalBlockID, locator, publisher);
+				null, freshnessSeconds, finalSegmentIndex, locator, publisher);
 	}
 	
-	public ContentObject fragmentedPut(
-			ContentName name, int baseNameIndex,
+	/** 
+	 * @see CCNSegmenter#fragmentedPut(ContentName, byte[], int, int, Long, ContentType, Integer, KeyLocator, PublisherPublicKeyDigest)
+	 * Starts segmentation at segment SegmentationProfile().baseSegment().
+	 */
+	public long fragmentedPut(
+			ContentName name, long baseSegmentNumber,
 			byte [] content, int offset, int length, int blockWidth,
 			ContentType type, 
 			Timestamp timestamp,
-			Integer freshnessSeconds, byte [] finalBlockID,
+			Integer freshnessSeconds, Long finalSegmentIndex,
 			KeyLocator locator, 
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, 
 									SignatureException, NoSuchAlgorithmException, IOException {
@@ -377,29 +341,29 @@ public class CCNSegmenter {
 		// hash tree.   Build header, for each block, get authinfo for block,
 		// (with hash tree, block identifier, timestamp -- SQLDateTime)
 		// insert header using mid-level insert, low-level insert for actual blocks.
-		ContentObject result = 
-			_bulkSigner.putBlocks(this, name, baseNameIndex,
+		long result = 
+			_bulkSigner.putBlocks(this, name, baseSegmentNumber,
 						content, offset, length, blockWidth, type,
-						timestamp, freshnessSeconds, finalBlockID, locator, publisher);
+						timestamp, freshnessSeconds, finalSegmentIndex, locator, publisher);
 		// Used to return header. Now return first block.
 		return result;
 	}
 
-	public ContentObject fragmentedPut(
-			ContentName name, int baseNameIndex,
+	public long fragmentedPut(
+			ContentName name, long baseSegmentNumber,
 			byte [][] contentBlocks, int blockCount, 
-			int baseBlockIndex, int lastBlockLength,
+			int firstBlockIndex, int lastBlockLength,
 			ContentType type, 
 			Timestamp timestamp,
-			Integer freshnessSeconds, byte [] finalBlockID,
+			Integer freshnessSeconds, Long finalSegmentIndex,
 			KeyLocator locator, 
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, 
 											 NoSuchAlgorithmException, IOException {
 		
-		ContentObject result = 
-			_bulkSigner.putBlocks(this, name, baseNameIndex,
-						contentBlocks, blockCount, baseBlockIndex, lastBlockLength, type,
-						timestamp, freshnessSeconds, finalBlockID, locator, publisher);
+		long result = 
+			_bulkSigner.putBlocks(this, name, baseSegmentNumber,
+						contentBlocks, blockCount, firstBlockIndex, lastBlockLength, type,
+						timestamp, freshnessSeconds, finalSegmentIndex, locator, publisher);
 		// Used to return header. Now return first block.
 		return result;
 	}
@@ -408,33 +372,30 @@ public class CCNSegmenter {
 	 * DKS TODO -- may need to be tweaked
 	 * 
 	 * Use this to put a set of unrelated content blocks. May need
-	 * fancier version that allows sub-itemst to segment.
+	 * fancier version that allows sub-itemst to segment. Doesn't return
+	 * a segment identifier, as it would make no sense.
 	 * @params names the individual names of the content items to put
 	 */
-	public ContentObject fragmentedPut(
+	public void fragmentedPut(
 			ContentName [] names, 
 			byte [][] contentBlocks, int blockCount, 
-			int baseBlockIndex, int lastBlockLength,
+			int firstBlockIndex, int lastBlockLength,
 			ContentType type, 
 			Timestamp timestamp,
-			Integer freshnessSeconds, byte [] finalBlockID,
+			Integer freshnessSeconds, Long finalSegmentIndex,
 			KeyLocator locator, 
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, 
 											 NoSuchAlgorithmException, IOException {
-
-		ContentObject result = 
-			_bulkSigner.putBlocks(this, names, 
-						contentBlocks, blockCount, baseBlockIndex, lastBlockLength, type,
-						timestamp, freshnessSeconds, finalBlockID, locator, publisher);
-		// Used to return header. Now return first block.
-		return result;
+		_bulkSigner.putBlocks(this, names, 
+				contentBlocks, blockCount, firstBlockIndex, lastBlockLength, type,
+				timestamp, freshnessSeconds, finalSegmentIndex, locator, publisher);
 	}
 
 
 	/**
 	 * Puts a single block of content using a fragment naming convention.
 	 * @param name
-	 * @param fragmentNumber
+	 * @param segmentNumber
 	 * @param content
 	 * @param timestamp
 	 * @param publisher
@@ -446,12 +407,12 @@ public class CCNSegmenter {
 	 * @throws SignatureException 
 	 * @throws InvalidKeyException 
 	 */
-	public ContentObject putFragment(
-			ContentName name, long fragmentNumber, 
+	public long putFragment(
+			ContentName name, long segmentNumber, 
 			byte [] content, int offset, int length,
 			ContentType type, 
 			Timestamp timestamp, 
-			Integer freshnessSeconds, byte [] finalBlockID,
+			Integer freshnessSeconds, Long finalSegmentIndex,
 			KeyLocator locator, 
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 
@@ -469,15 +430,40 @@ public class CCNSegmenter {
 
 		ContentName rootName = SegmentationProfile.segmentRoot(name);
 		_flowControl.addNameSpace(rootName);
+		
+		byte [] finalBlockID = ((null == finalSegmentIndex) ? null : 
+								((finalSegmentIndex.equals(LAST_SEGMENT)) ? 
+										SegmentationProfile.getSegmentID(segmentNumber) : 
+											SegmentationProfile.getSegmentID(finalSegmentIndex)));
 
 		ContentObject co = 
 			new ContentObject(SegmentationProfile.segmentName(rootName, 
-					fragmentNumber),
+					segmentNumber),
 					new SignedInfo(publisher, timestamp,
 							type, locator,
-							freshnessSeconds, finalBlockID), 
+							freshnessSeconds, 
+							finalBlockID), 
 							content, offset, length, signingKey);
 		Library.logger().info("CCNSegmenter: putting " + co.name() + " (timestamp: " + co.signedInfo().getTimestamp() + ", length: " + length + ")");
-		return _flowControl.put(co);
+		_flowControl.put(co);
+		
+		return nextSegmentIndex(segmentNumber, content.length);
+	}
+	
+	/**
+	 * Increment segment number according to the profile.
+	 * @param lastSegmentNumber
+	 * @param lastSegmentLength
+	 * @return
+	 */
+	public long nextSegmentIndex(long lastSegmentNumber, long lastSegmentLength) {
+		if (SegmentNumberType.SEGMENT_FIXED_INCREMENT == _sequenceType) {
+			return lastSegmentNumber + getBlockIncrement();
+		} else if (SegmentNumberType.SEGMENT_BYTE_COUNT == _sequenceType) {
+			return lastSegmentNumber + (getByteScale() * lastSegmentLength);
+		} else {
+			Library.logger().warning("Unknown segmentation type: " + _sequenceType);
+			return lastSegmentNumber + 1;
+		}
 	}
 }

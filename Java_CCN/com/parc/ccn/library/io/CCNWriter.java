@@ -7,7 +7,6 @@ import java.security.SignatureException;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
@@ -53,31 +52,32 @@ public class CCNWriter {
 	 * @throws SignatureException 
 	 * @throws IOException 
 	 */
-	public ContentObject put(ContentName name, byte[] contents, 
+	public ContentName put(ContentName name, byte[] contents, 
 							PublisherPublicKeyDigest publisher) throws SignatureException, IOException {
 		return put(name, contents, null, publisher);
 	}
 	
-	public ContentObject put(String name, String contents) throws SignatureException, MalformedContentNameStringException, IOException {
+	public ContentName put(String name, String contents) throws SignatureException, MalformedContentNameStringException, IOException {
 		return put(ContentName.fromURI(name), contents.getBytes());
 	}
 	
-	public ContentObject put(ContentName name, byte[] contents) 
+	public ContentName put(ContentName name, byte[] contents) 
 				throws SignatureException, IOException {
 		return put(name, contents, null);
 	}
 
-	public ContentObject put(CCNFlowControl cf, ContentName name, byte[] contents, 
+	public ContentName put(CCNFlowControl cf, ContentName name, byte[] contents, 
 							PublisherPublicKeyDigest publisher) throws SignatureException, IOException {
 		return put(name, contents, null, publisher);
 	}
 
-	public ContentObject put(ContentName name, byte[] contents, 
+	public ContentName put(ContentName name, byte[] contents, 
 							SignedInfo.ContentType type,
 							PublisherPublicKeyDigest publisher) throws SignatureException, IOException {
 		try {
-			return _segmenter.put(name, contents, 0, ((null == contents) ? 0 : contents.length),
+			_segmenter.put(name, contents, 0, ((null == contents) ? 0 : contents.length),
 								  true, type, null, null, publisher);
+			return name;
 		} catch (InvalidKeyException e) {
 			Library.logger().info("InvalidKeyException using key for publisher " + publisher + ".");
 			throw new SignatureException(e);
@@ -94,7 +94,7 @@ public class CCNWriter {
 	 * This does the actual work of generating a new version's name and doing 
 	 * the corresponding put. Handles fragmentation.
 	 */
-	public ContentObject newVersion(
+	public ContentName newVersion(
 			ContentName name, byte [] contents,
 			ContentType type,
 			KeyLocator locator, PublisherPublicKeyDigest publisher) throws SignatureException, 
@@ -105,9 +105,10 @@ public class CCNWriter {
 		ContentName versionedName = VersioningProfile.versionName(name);
 
 		// put result; segmenter will fill in defaults
-		return _segmenter.put(versionedName, contents, 0, ((null == contents) ? 0 : contents.length),
+		_segmenter.put(versionedName, contents, 0, ((null == contents) ? 0 : contents.length),
 							  true,
 				 			  type, null, locator, publisher);
+		return versionedName;
 	}
 	
 	/**
@@ -123,7 +124,7 @@ public class CCNWriter {
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
 	 */
-	public ContentObject newVersion(ContentName name,
+	public ContentName newVersion(ContentName name,
 								    byte[] contents) throws SignatureException, IOException, InvalidKeyException, NoSuchAlgorithmException {
 		return newVersion(name, contents, null);
 	}
@@ -138,7 +139,7 @@ public class CCNWriter {
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
 	 */
-	public ContentObject newVersion(
+	public ContentName newVersion(
 			ContentName name, 
 			byte[] contents,
 			PublisherPublicKeyDigest publisher) throws SignatureException, IOException, InvalidKeyException, NoSuchAlgorithmException {

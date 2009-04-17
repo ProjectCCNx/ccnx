@@ -51,7 +51,7 @@ public class CCNMerkleTree extends MerkleTree {
 	public static final String DEFAULT_MHT_ALGORITHM = "SHA256MHT";
 	
 	ContentName _baseName = null;
-	int _baseNameIndex;
+	long _baseNameIndex;
 	SignedInfo _signedInfo = null;
 	ContentName [] _blockNames = null;
 	
@@ -81,7 +81,7 @@ public class CCNMerkleTree extends MerkleTree {
 	 */
 	public CCNMerkleTree(
 			ContentName baseName, 
-			int baseNameIndex,
+			long baseNameIndex,
 			SignedInfo authenticator,
 			byte[][] contentBlocks,
 			boolean isDigest,
@@ -108,7 +108,7 @@ public class CCNMerkleTree extends MerkleTree {
 	 */
 	public CCNMerkleTree(
 			ContentName baseName, 
-			int baseNameIndex,
+			long baseNameIndex,
 			SignedInfo authenticator,
 			byte[] content, int offset, int length,
 			int blockWidth,
@@ -191,7 +191,7 @@ public class CCNMerkleTree extends MerkleTree {
 		return SegmentationProfile.segmentName(baseName(), baseNameIndex() + leafIndex);
 	}
 	
-	public int baseNameIndex() { return _baseNameIndex; }
+	public long baseNameIndex() { return _baseNameIndex; }
 	public ContentName baseName() { return _baseName; }
 	
 	public SignedInfo blockSignedInfo(int i) {
@@ -277,23 +277,17 @@ public class CCNMerkleTree extends MerkleTree {
 			if ((index == (baseBlockIndex + numLeaves() - 1)) && (lastBlockLength < contentBlocks[index].length)) {
 				// short last block
 				blockDigest = CCNDigestHelper.digest(
-						CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, 
 						ContentObject.prepareContent(blockName(leafIndex), blockSignedInfo(leafIndex),
 								contentBlocks[index], 0, lastBlockLength));
 			} else {
 				blockDigest = CCNDigestHelper.digest(
-						CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, 
 						ContentObject.prepareContent(blockName(leafIndex), blockSignedInfo(leafIndex),
 								contentBlocks[index], 0, contentBlocks[index].length));
 			}
 		} catch (XMLStreamException e) {
 			Library.logger().info("Exception in computeBlockDigest, leaf: " + leafIndex + " out of " + numLeaves() + " type: " + e.getClass().getName() + ": " + e.getMessage());
 			// DKS todo -- what to throw?
-		} catch (NoSuchAlgorithmException e) {
-			// DKS --big configuration problem
-			Library.logger().warning("Fatal Error: cannot find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
-			throw new RuntimeException("Error: can't find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM + "!  " + e.toString());
-		}
+		} 
 
 		return blockDigest;
 	}
@@ -317,24 +311,18 @@ public class CCNMerkleTree extends MerkleTree {
 		byte[] blockDigest = null;
 		try {
 			blockDigest = CCNDigestHelper.digest(
-									CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, 
 									ContentObject.prepareContent(blockName(leafIndex), 
 																 blockSignedInfo(leafIndex),
 																 content, offset, length));
 			if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
 				Library.logger().info("offset: " + offset + " block length: " + length + " blockDigest " + 
 						DataUtils.printBytes(blockDigest) + " content digest: " + 
-						DataUtils.printBytes(CCNDigestHelper.digest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM,
-																	content, offset, length)));
+						DataUtils.printBytes(CCNDigestHelper.digest(content, offset, length)));
 			}
 		} catch (XMLStreamException e) {
 			Library.logger().info("Exception in computeBlockDigest, leaf: " + leafIndex + " out of " + numLeaves() + " type: " + e.getClass().getName() + ": " + e.getMessage());
 			// DKS todo -- what to throw?
-		} catch (NoSuchAlgorithmException e) {
-			// DKS --big configuration problem
-			Library.logger().warning("Fatal Error: cannot find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
-			throw new RuntimeException("Error: can't find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM + "!  " + e.toString());
-		}
+		} 
 
 		return blockDigest;
 	}

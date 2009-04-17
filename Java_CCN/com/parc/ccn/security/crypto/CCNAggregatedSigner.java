@@ -7,7 +7,6 @@ import java.security.SignatureException;
 import java.sql.Timestamp;
 
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
@@ -39,14 +38,14 @@ public interface CCNAggregatedSigner {
 	 * @param baseBlockIndex first block to use
 	 * @param lastBlockLength how many bytes of last block to use
 	 */
-	public ContentObject putBlocks(
+	public long putBlocks(
 			CCNSegmenter segmenter,
-			ContentName name, int baseNameIndex,
+			ContentName name, long baseNameIndex,
 			byte [][] contentBlocks, int blockCount, 
 			int baseBlockIndex, int lastBlockLength,
 			ContentType type, 
 			Timestamp timestamp,
-			Integer freshnessSeconds, byte [] finalBlockID,
+			Integer freshnessSeconds, Long finalSegmentIndex,
 			KeyLocator locator, 
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, 
 											 NoSuchAlgorithmException, IOException;
@@ -73,25 +72,25 @@ public interface CCNAggregatedSigner {
 	 * @throws NoSuchAlgorithmException
 	 * @throws IOException
 	 */
-	public ContentObject putBlocks(
+	public long putBlocks(
 			CCNSegmenter segmenter,
 			ContentName [] names, 
 			byte [][] contentBlocks, int blockCount, 
 			int baseBlockIndex, int lastBlockLength,
 			ContentType type, 
 			Timestamp timestamp,
-			Integer freshnessSeconds, byte [] finalBlockID,
+			Integer freshnessSeconds, Long finalSegmentIndex,
 			KeyLocator locator, 
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, 
 											 NoSuchAlgorithmException, IOException;
 
-	public ContentObject putBlocks(
+	public long putBlocks(
 			CCNSegmenter segmenter,
-			ContentName name, int baseNameIndex,
+			ContentName name, long baseNameIndex,
 			byte [] content, int offset, int length, int blockWidth,
 			ContentType type, 
 			Timestamp timestamp,
-			Integer freshnessSeconds, byte [] finalBlockID,
+			Integer freshnessSeconds, Long finalSegmentIndex,
 			KeyLocator locator, 
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, 
 									SignatureException, NoSuchAlgorithmException, IOException;

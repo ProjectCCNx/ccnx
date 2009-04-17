@@ -7,11 +7,11 @@ import java.security.SignatureException;
 import java.sql.Timestamp;
 
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNSegmenter;
+import com.parc.ccn.library.profiles.SegmentationProfile;
 
 /**
  * An unaggregating aggregated signer. Signs each block individually.
@@ -20,79 +20,78 @@ import com.parc.ccn.library.CCNSegmenter;
  */
 public class CCNBlockSigner implements CCNAggregatedSigner {
 
-	public ContentObject putBlocks(			
+	public long putBlocks(			
 			CCNSegmenter segmenter,
-			ContentName name, int baseNameIndex,
+			ContentName name, long baseNameIndex,
 			byte[][] contentBlocks, int blockCount, int baseBlockIndex,
 			int lastBlockLength, ContentType type, Timestamp timestamp,
-			Integer freshnessSeconds, byte [] finalBlockID, KeyLocator locator,
+			Integer freshnessSeconds, Long finalSegmentIndex, KeyLocator locator,
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException,
 			SignatureException, NoSuchAlgorithmException, IOException {
 		
-		ContentObject result = segmenter.putFragment(name, baseNameIndex, contentBlocks[0], 0, 
+		long nextSegmentIndex = segmenter.putFragment(name, baseNameIndex, contentBlocks[0], 0, 
 				contentBlocks[0].length, type, timestamp, freshnessSeconds, 
-				finalBlockID, locator, publisher);
+				finalSegmentIndex, locator, publisher);
 		for (int i=baseBlockIndex+1; i < (baseBlockIndex + blockCount - 1); ++i) {
-			segmenter.putFragment(name, baseNameIndex + i, contentBlocks[i], 0, 
+			nextSegmentIndex = segmenter.putFragment(name, nextSegmentIndex, contentBlocks[i], 0, 
 					contentBlocks[i].length, type, timestamp, freshnessSeconds, 
-					finalBlockID, locator, publisher);
+					finalSegmentIndex, locator, publisher);
 		}
-		segmenter.putFragment(name, baseNameIndex + blockCount - 1, contentBlocks[baseBlockIndex + blockCount - 1], 0, 
+		nextSegmentIndex = segmenter.putFragment(name, nextSegmentIndex, contentBlocks[baseBlockIndex + blockCount - 1], 0, 
 				lastBlockLength, type, timestamp, freshnessSeconds, 
-				finalBlockID, locator, publisher);
-		return result;
+				finalSegmentIndex, locator, publisher);
+		return nextSegmentIndex;
 	}
 
-	public ContentObject putBlocks(
+	public long putBlocks(
 			CCNSegmenter segmenter,
 			ContentName[] names, byte[][] contentBlocks,
 			int blockCount, int baseBlockIndex, int lastBlockLength,
 			ContentType type, Timestamp timestamp, Integer freshnessSeconds,
-			byte [] finalBlockID, KeyLocator locator, PublisherPublicKeyDigest publisher)
+			Long finalSegmentIndex, KeyLocator locator, PublisherPublicKeyDigest publisher)
 			throws InvalidKeyException, SignatureException,
 			NoSuchAlgorithmException, IOException {
 		
-		ContentObject result = segmenter.putFragment(names[0], 0, contentBlocks[0], 0, 
+		segmenter.putFragment(names[0], SegmentationProfile.baseSegment(), contentBlocks[0], 0, 
 				contentBlocks[0].length, type, timestamp, freshnessSeconds, 
-				finalBlockID, locator, publisher);
+				finalSegmentIndex, locator, publisher);
 		for (int i=baseBlockIndex+1; i < (baseBlockIndex + blockCount - 1); ++i) {
-			segmenter.putFragment(names[i], i, contentBlocks[i], 0, 
+			segmenter.putFragment(names[i], SegmentationProfile.baseSegment(), contentBlocks[i], 0, 
 					contentBlocks[i].length, type, timestamp, freshnessSeconds, 
-					finalBlockID, locator, publisher);
+					finalSegmentIndex, locator, publisher);
 		}
-		segmenter.putFragment(names[blockCount - 1], baseBlockIndex + blockCount - 1,
+		segmenter.putFragment(names[blockCount - 1], SegmentationProfile.baseSegment(),
 				contentBlocks[baseBlockIndex + blockCount - 1], 0, 
 				lastBlockLength, type, timestamp, freshnessSeconds, 
-				finalBlockID, locator, publisher);
-		return result;
+				finalSegmentIndex, locator, publisher);
+		return SegmentationProfile.baseSegment();
 	}
 
-	public ContentObject putBlocks(
+	public long putBlocks(
 			CCNSegmenter segmenter,
-			ContentName name, int baseNameIndex,
+			ContentName name, long baseNameIndex,
 			byte[] content, int offset, int length, int blockWidth,
 			ContentType type, Timestamp timestamp, Integer freshnessSeconds,
-			byte [] finalBlockID, KeyLocator locator, PublisherPublicKeyDigest publisher)
-			throws InvalidKeyException, SignatureException,
-			NoSuchAlgorithmException, IOException {
-		
-		ContentObject result = segmenter.putFragment(name, baseNameIndex, content,
+			Long finalSegmentIndex, KeyLocator locator, PublisherPublicKeyDigest publisher)
+	throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+
+		long nextSegmentIndex = segmenter.putFragment(name, baseNameIndex, content,
 				0, ((length < blockWidth) ? length : blockWidth), type, timestamp, freshnessSeconds, 
-				finalBlockID, locator, publisher);
+				finalSegmentIndex, locator, publisher);
 		if (length > blockWidth) {
 			int numBlocks = MerkleTree.blockCount(length, blockWidth);
 			int i = 1;
 			for (i=1; i < (numBlocks - 1); ++i) {
-				segmenter.putFragment(name, baseNameIndex + i, content, i*blockWidth, 
+				nextSegmentIndex = segmenter.putFragment(name, nextSegmentIndex, content, i*blockWidth, 
 						blockWidth, type, timestamp, freshnessSeconds, 
-						finalBlockID, locator, publisher);
+						finalSegmentIndex, locator, publisher);
 			}
-			segmenter.putFragment(name, baseNameIndex+i, content,
+			nextSegmentIndex = segmenter.putFragment(name, nextSegmentIndex, content,
 					i*blockWidth, 
 					(((length % blockWidth) == 0) ? blockWidth : (length % blockWidth)), 
 					type, timestamp, freshnessSeconds, 
-					finalBlockID, locator, publisher);	
+					finalSegmentIndex, locator, publisher);	
 		}
-		return result;
+		return nextSegmentIndex;
 	}
 }

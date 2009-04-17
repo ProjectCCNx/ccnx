@@ -56,7 +56,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	protected int _totalLength = 0; // elapsed length written
 	protected int _blockOffset = 0; // write pointer - offset into the write buffer at which to write
 	protected byte [] _buffer = null;
-	protected int _baseNameIndex; // base name index of the current set of data to output;
+	protected long _baseNameIndex; // base name index of the current set of data to output;
 								  // incremented according to the segmentation profile.
 	protected Timestamp _timestamp; // timestamp we use for writing, set to first time we write
 	protected ContentType _type; // null == DATA
@@ -272,13 +272,11 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		// cope just fine with a single file written in a mix of MHT and straight signature
 		boolean preservePartial = false;
 		int saveBytes = 0;
-		int blockWriteCount = 0;
 		// verified blocks.
 		if (_blockOffset <= getBlockSize()) {
 			// Single block to write. If we get here, we are forcing a flush (see above
 			// discussion about holding back partial or even a single full block till
 			// forced flush/close in order to set finalBlockID).
-			blockWriteCount++;
 
 			Library.logger().info("flush: asked to put a single block to the network.");
 
@@ -288,9 +286,11 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			} else {
 				Library.logger().warning("flush(): writing single full block of file: " + _baseName);
 			}
-			_segmenter.putFragment(_baseName, _baseNameIndex, 
+			_baseNameIndex = 
+				_segmenter.putFragment(_baseName, _baseNameIndex, 
 					_buffer, 0, _blockOffset, 
-					_type, _timestamp, null, SegmentationProfile.getSegmentID(_baseNameIndex), _locator, _publisher);
+					_type, _timestamp, null, _baseNameIndex, 
+					_locator, _publisher);
 		} else {
 			// Now, we have a partially or completely full buffer. Do we have a partial last block we want to preserve?
 			// If we're not flushing, we want to save a final block (whole or partial) and move
@@ -308,8 +308,11 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			// Generate Merkle tree (or other auth structure) and signedInfos and put contents.
 			// We always flush all the blocks starting from 0, so the baseBlockIndex is always 0.
 			// DKS TODO fix last block marking
-			_segmenter.fragmentedPut(_baseName, _baseNameIndex, _buffer, 0, _blockOffset-saveBytes, getBlockSize(),
-									 _type, _timestamp, null, new byte[0], _locator, _publisher);
+			_baseNameIndex = 
+				_segmenter.fragmentedPut(_baseName, _baseNameIndex, _buffer, 0, _blockOffset-saveBytes, getBlockSize(),
+									     _type, _timestamp, null, 
+									     (flushLastBlock ? CCNSegmenter.LAST_SEGMENT : null), 
+									     _locator, _publisher);
 		}
 
 		if (preservePartial) {
@@ -319,10 +322,5 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		} else {
 			_blockOffset = 0;
 		}
-
-		// Increment names
-		// DKS TODO -- allow for name increments to be handled by segmenter
-		// how stateless should it be?
-		_baseNameIndex += blockWriteCount;
 	}
 }

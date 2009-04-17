@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import org.junit.Test;
 
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.io.CCNWriter;
@@ -26,7 +25,7 @@ public class EndToEndTestSource extends BaseLibrarySource implements CCNFilterLi
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
 			byte[] content = getRandomContent(i);
-			ContentObject putResult = writer.put(ContentName.fromNative("/BaseLibraryTest/gets/" + new Integer(i).toString()), content);
+			ContentName putResult = writer.put(ContentName.fromNative("/BaseLibraryTest/gets/" + new Integer(i).toString()), content);
 			System.out.println("Put " + i + " done: " + content.length + " content bytes");
 			checkPutResults(putResult);
 		}
@@ -56,7 +55,7 @@ public class EndToEndTestSource extends BaseLibrarySource implements CCNFilterLi
 			for (Interest interest : interests) {
 				assertTrue(name.isPrefixOf(interest.name()));
 				byte[] content = getRandomContent(next);
-				ContentObject putResult = _writer.put(ContentName.fromNative("/BaseLibraryTest/server/" + new Integer(next).toString()), content);
+				ContentName putResult = _writer.put(ContentName.fromNative("/BaseLibraryTest/server/" + new Integer(next).toString()), content);
 				System.out.println("Put " + next + " done: " + content.length + " content bytes");
 				checkPutResults(putResult);
 				next++;

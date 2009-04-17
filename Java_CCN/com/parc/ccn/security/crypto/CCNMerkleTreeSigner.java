@@ -9,7 +9,6 @@ import java.sql.Timestamp;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo;
@@ -22,11 +21,11 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 	public CCNMerkleTreeSigner() {
 	}
 
-	public ContentObject putBlocks(CCNSegmenter segmenter,
-			ContentName name, int baseNameIndex,
+	public long putBlocks(CCNSegmenter segmenter,
+			ContentName name, long baseNameIndex,
 			byte[][] contentBlocks, int blockCount, int baseBlockIndex,
 			int lastBlockLength, ContentType type, Timestamp timestamp,
-			Integer freshnessSeconds, byte [] finalBlockID, KeyLocator locator,
+			Integer freshnessSeconds, Long finalSegmentIndex, KeyLocator locator,
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException,
 			SignatureException, NoSuchAlgorithmException, IOException {
 		
@@ -78,15 +77,16 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 			throw e;
 		}		
 
-		return tree.block(0, contentBlocks[0], 0, contentBlocks[0].length);
+		return segmenter.nextSegmentIndex(SegmentationProfile.getSegmentNumber(tree.blockName(blockCount-1)),
+										  lastBlockLength);
 	}
 
-	public ContentObject putBlocks(
+	public long putBlocks(
 			CCNSegmenter segmenter,
 			ContentName[] names, byte[][] contentBlocks,
 			int blockCount, int baseBlockIndex, int lastBlockLength,
 			ContentType type, Timestamp timestamp, Integer freshnessSeconds,
-			byte [] finalBlockID, KeyLocator locator, PublisherPublicKeyDigest publisher)
+			Long finalSegmentIndex, KeyLocator locator, PublisherPublicKeyDigest publisher)
 			throws InvalidKeyException, SignatureException,
 			NoSuchAlgorithmException, IOException {
 		
@@ -136,15 +136,16 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 			throw e;
 		}		
 
-		return tree.block(0, contentBlocks[0], 0, contentBlocks[0].length);
+		return segmenter.nextSegmentIndex(SegmentationProfile.getSegmentNumber(tree.blockName(blockCount-1)),
+				  						  lastBlockLength);
 	}
 
-	public ContentObject putBlocks(
+	public long putBlocks(
 			CCNSegmenter segmenter,
-			ContentName name, int baseNameIndex,
+			ContentName name, long baseNameIndex,
 			byte[] content, int offset, int length, int blockWidth,
 			ContentType type, Timestamp timestamp, Integer freshnessSeconds,
-			byte [] finalBlockID, KeyLocator locator, PublisherPublicKeyDigest publisher)
+			Long finalSegmentIndex, KeyLocator locator, PublisherPublicKeyDigest publisher)
 			throws InvalidKeyException, SignatureException,
 			NoSuchAlgorithmException, IOException {
 		if (null == publisher) {
@@ -198,7 +199,9 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 			throw e;
 		}		
 
-		return tree.block(0, content, 0, blockWidth);
+		return segmenter.nextSegmentIndex(
+				SegmentationProfile.getSegmentNumber(tree.blockName(tree.numLeaves()-1)),
+				(length - (blockWidth*(tree.numLeaves()-1))));
 	}
 
 }

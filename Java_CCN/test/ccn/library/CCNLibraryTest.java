@@ -5,7 +5,9 @@ package test.ccn.library;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.math.BigInteger;
 import java.security.SignatureException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Iterator;
 
@@ -25,8 +27,10 @@ import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.query.BasicInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
+import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNWriter;
+import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
@@ -133,8 +137,8 @@ public class CCNLibraryTest extends LibraryTestBase {
 		}
 		try {
 			CCNWriter segmenter = new CCNWriter(name, putLibrary);
-			ContentObject result = segmenter.put(name, content, publisher);
-			System.out.println("Resulting ContentObject: " + result);
+			ContentName result = segmenter.put(name, content, publisher);
+			System.out.println("Resulting ContentName: " + result);
 		} catch (SignatureException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -147,16 +151,16 @@ public class CCNLibraryTest extends LibraryTestBase {
 		String key = "/test/key";
 		byte[] data1 = "data".getBytes();
 		byte[] data2 = "newdata".getBytes();
-		ContentObject revision1;
-		ContentObject revision2;
+		ContentName revision1;
+		ContentName revision2;
 
 		try {
 			ContentName keyName = ContentName.fromNative(key);
 			CCNWriter segmenter = new CCNWriter(keyName, putLibrary);
 			revision1 = segmenter.newVersion(keyName, data1);
 			revision2 = segmenter.newVersion(keyName, data2);
-			long version1 = VersioningProfile.getVersionAsLong(revision1.name());
-			long version2 = VersioningProfile.getVersionAsLong(revision2.name());
+			long version1 = VersioningProfile.getVersionAsLong(revision1);
+			long version2 = VersioningProfile.getVersionAsLong(revision2);
 			System.out.println("Version1: " + version1 + " version2: " + version2);
 			Assert.assertTrue("Revisions are strange", 
 					version2 > version1);
@@ -184,33 +188,34 @@ public class CCNLibraryTest extends LibraryTestBase {
 	@Test
 	public void testRecall() {
 		String key = "/test/smetters/values/data";
-		byte[] data1 = "data".getBytes();
+		Timestamp time = SignedInfo.now();
 		try {
 			ContentName keyName = ContentName.fromNative(key);
 			CCNWriter writer = new CCNWriter(keyName, putLibrary);
-			ContentObject name = writer.put(keyName, data1);
-			System.out.println("Put under name: " + name.name());
-			ContentObject result = getLibrary.get(name.name(), CCNBase.NO_TIMEOUT);
+			ContentName name = writer.put(keyName, BigInteger.valueOf(time.getTime()).toByteArray());
+			System.out.println("Put under name: " + name);
+			ContentObject result = getLibrary.get(name, CCNBase.NO_TIMEOUT);
 
 			System.out.println("Querying for returned name, Got back: " + (result == null ? "0"  : "1") + " results.");
 
 			if (result == null) {
 				System.out.println("Didn't get back content we just put in.");
 				System.out.println("Put under name: " + keyName);
-				System.out.println("Final name: " + name.name());
+				System.out.println("Final name: " + name);
 				//Assert.fail("Didn't get back content we just put!");
 
-				result = getLibrary.get(name.name(), CCNBase.NO_TIMEOUT);
+				result = getLibrary.get(name, CCNBase.NO_TIMEOUT);
 
 				System.out.println("Recursive querying for returned name, Got back: " + (result == null ? "0"  : "1") + " results.");
 
-				ContentName parentName = name.name().parent();
+				ContentName parentName = name.parent();
 				System.out.println("Inserted name's parent same as key name? " + parentName.equals(keyName));
 
 			} else {
 				byte [] content = result.content();
 				Assert.assertNotNull("No content associated with name we just put!", content);
-				Assert.assertTrue("didn't get back same data", new String(data1).equals(new String(content)));
+				Assert.assertTrue("didn't get back same data", 
+						time.equals(new Timestamp(new BigInteger(1, content).longValue())));
 			}
 
 			result = getLibrary.get(keyName, CCNBase.NO_TIMEOUT);
@@ -221,14 +226,20 @@ public class CCNLibraryTest extends LibraryTestBase {
 			if (result == null)
 				Assert.fail("Didn't get back content we just put!");
 
-			if (result.name().equals(name.name()) &&
-					result.signedInfo().equals(name.signedInfo())) {
+			if (SegmentationProfile.segmentRoot(result.name()).equals(name) &&
+					time.equals(new Timestamp(new BigInteger(1, result.content()).longValue()))) {
 				System.out.println("Got back name we inserted.");
 			} else {
-				Library.logger().warning("Didn't get back data we just inserted:\n  result: " + result.name() + " (time: " + result.signedInfo().getTimestamp() + 
-										")\n   orig: " + name.name() + " (time: " + name.signedInfo().getTimestamp() + ")");
-				Assert.fail("Didn't get back data we just inserted - result name: " + result.name() + 
-						", auth: " + result.signedInfo() + " - orig name: " + name.name() + ", auth: " + name.signedInfo());
+				Library.logger().warning("Didn't get back data we just inserted:\n  result: " + result.name() + 
+								" (write time: " + result.signedInfo().getTimestamp() + 
+								   " content time: " + new Timestamp(new BigInteger(1, result.content()).longValue()) +
+										")\n   orig: " + name + 
+										" (time: " + time + ")");
+				Assert.fail("Didn't get back data we just inserted - result name: " + 
+						SegmentationProfile.segmentRoot(result.name()) + 
+						", auth: " + result.signedInfo() + " - orig name: " + name + "\n, orig time: " +
+						time + " time content: " + 
+						new Timestamp(new BigInteger(1, result.content()).longValue()));
 			}
 		} catch (Exception e) {
 			System.out.println("Exception in testing recall: " + e.getClass().getName() + ": " + e.getMessage());
@@ -241,8 +252,8 @@ public class CCNLibraryTest extends LibraryTestBase {
 			byte [] content2) throws Exception {
 
 		CCNWriter writer = new CCNWriter(docName, putLibrary);
-		ContentObject version1 = writer.newVersion(docName, content1);
-		System.out.println("Inserted first version as: " + version1.name());
+		ContentName version1 = writer.newVersion(docName, content1);
+		System.out.println("Inserted first version as: " + version1);
 		Assert.assertNotNull("New version is null!", version1);
 
 		ContentObject latestVersion =
@@ -251,20 +262,20 @@ public class CCNLibraryTest extends LibraryTestBase {
 		Assert.assertNotNull("Retrieved latest version of " + docName + " got null!", latestVersion);
 		System.out.println("Latest version name: " + latestVersion.name());
 
-		ContentObject version2 = 
+		ContentName version2 = 
 			writer.newVersion(docName, content2);
 
 		Assert.assertNotNull("New version is null!", version2);
-		System.out.println("Inserted second version as: " + version2.name());
+		System.out.println("Inserted second version as: " + version2);
 
 		ContentObject newLatestVersion = 
 			getLibrary.getLatestVersion(docName, null, CCNLibrary.NO_TIMEOUT);
 		Assert.assertNotNull("Retrieved new latest version of " + docName + " got null!", newLatestVersion);
 		System.out.println("Latest version name: " + newLatestVersion.name());
 
-		Assert.assertTrue("Version is not a version of the parent name!", VersioningProfile.isVersionOf(version1.name(), docName));
-		Assert.assertTrue("Version is not a version of the parent name!", VersioningProfile.isVersionOf(version2.name(), docName));
-		Assert.assertTrue("Version numbers don't increase!", VersioningProfile.getVersionAsLong(version2.name()) > VersioningProfile.getVersionAsLong(version1.name()));
+		Assert.assertTrue("Version is not a version of the parent name!", VersioningProfile.isVersionOf(version1, docName));
+		Assert.assertTrue("Version is not a version of the parent name!", VersioningProfile.isVersionOf(version2, docName));
+		Assert.assertTrue("Version numbers don't increase!", VersioningProfile.getVersionAsLong(version2) > VersioningProfile.getVersionAsLong(version1));
 	}
 
 	@Test

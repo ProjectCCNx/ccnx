@@ -3,10 +3,8 @@ package com.parc.ccn.apps;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
-import java.security.PublicKey;
 import java.util.ArrayList;
 
-import com.parc.ccn.Library;
 import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
@@ -37,7 +35,7 @@ public class puttap implements CCNInterestListener {
 			usage();
 		}
 		
-		boolean result = (new puttap().go(args[0], args[1], args[2], args[3], ((args.length == 5) ? args[4] : null)));
+		boolean result = (new puttap().go(args[0], args[1], args[2], args[3]));
 		if (result) {
 			System.exit(0);
 		} else {
@@ -45,7 +43,7 @@ public class puttap implements CCNInterestListener {
 		}
 	}
 	
-	public boolean go(String encFlag, String ccnName, String tapName, String readName, String verifyFlag) {
+	public boolean go(String encFlag, String ccnName, String tapName, String readName) {
 		CCNNetworkManager manager = null;
 		try {
 			if (encFlag.equals("0")) {
@@ -60,10 +58,6 @@ public class puttap implements CCNInterestListener {
 				return false;
 			}
 			
-			boolean verify = false;
-			if ((null != verifyFlag) && (verifyFlag.equals("-s")))
-				verify = true;
-
 			// Get writing library 
 			CCNLibrary library = CCNLibrary.open();
 			manager = library.getNetworkManager();
@@ -80,28 +74,17 @@ public class puttap implements CCNInterestListener {
 			CCNLibrary reader = CCNLibrary.open();
 			reader.expressInterest(new Interest(ccnName), this);
 			
-			PublicKey publicKey = null;
-			// If we're verifying, pull our default public key as that's what we're using.
-			if (verify)
-				publicKey = library.keyManager().getDefaultPublicKey();
-
+			// Remove automatic verification at this level. Can put it back in at
+			// the tap level. CCNWriter is a segmenting writer, it makes no real
+			// sense for it to return "a" ContentObject to verify.
+			
 			// Dump the file in small packets
 	        InputStream is = new FileInputStream(theFile);
 	        byte[] bytes = new byte[CHUNK_SIZE];
 	        int i = 0;
 	        CCNWriter writer = new CCNWriter(name, library);
 	        while (is.read(bytes) >= 0) {
-	        	ContentObject cn = writer.put(ContentName.fromNative(name, new Integer(i++).toString()), bytes);
-	        	if (!cn.validate()) {
-	        		Library.logger().severe("BAD CONTENTOBJECT: does not validate");
-	        		return false;
-	        	}
-	        	if (verify) {
-	        		if (!ContentObject.verify(cn.name(), cn.signedInfo(), bytes, cn.signature(), publicKey)) {
-	        			Library.logger().severe("BAD SIGNATURE: puttap: object failed to verify: " + cn.name());
-	        			return false;
-	        		}
-	        	}
+	        	writer.put(ContentName.fromNative(name, new Integer(i++).toString()), bytes);
 	        }
 	        
 	        return true;
@@ -119,7 +102,7 @@ public class puttap implements CCNInterestListener {
 	}
 
 	public static void usage() {
-		System.out.println("usage: puttap 0|1 <ccnname> <tapname> <filename> [-s]");
+		System.out.println("usage: puttap 0|1 <ccnname> <tapname> <filename>");
 		System.exit(1);
 	}
 

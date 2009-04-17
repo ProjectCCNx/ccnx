@@ -81,7 +81,7 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 		
 	public void useByteCountSequenceNumbers() {
 		getSegmenter().setSequenceType(SegmentNumberType.SEGMENT_BYTE_COUNT);
-		getSegmenter().setBlockScale(1);
+		getSegmenter().setByteScale(1);
 	}
 
 	public void useFixedIncrementSequenceNumbers(int increment) {
@@ -91,7 +91,7 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 
 	public void useScaledByteCountSequenceNumbers(int scale) {
 		getSegmenter().setSequenceType(SegmentNumberType.SEGMENT_BYTE_COUNT);
-		getSegmenter().setBlockScale(scale);
+		getSegmenter().setByteScale(scale);
 	}
 	
 	@Override
