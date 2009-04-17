@@ -92,6 +92,9 @@ public class BinaryXMLDictionary {
 				continue;
 			} 
 			
+			if ((parts.length == 3) && ((parts[2].equals("Deprecated") || (parts[2].equals("Obsolete"))))) {
+				continue; // skip old stuff
+			}
 			Long value = Long.valueOf(parts[0]);
 			String tag = parts[1];
 			
