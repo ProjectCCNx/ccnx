@@ -56,7 +56,7 @@ public class KeyName extends GenericXMLEncodable implements XMLEncodable {
 		_name = new ContentName();
 		_name.decode(decoder);
 		
-		if (decoder.peekStartElement(PublisherID.PUBLISHER_ID_ELEMENT)) {
+		if (PublisherID.peek(decoder)) {
 			_publisher = new PublisherID();
 			_publisher.decode(decoder);
 		}

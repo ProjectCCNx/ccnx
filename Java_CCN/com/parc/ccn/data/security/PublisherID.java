@@ -140,6 +140,15 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 	public static boolean isPublisherType(String name) {
 		return NameTypes.containsKey(name);
 	}
+	
+	/**
+	 * This is a choice. Make it possible for users of this class to peek it
+	 * when it might be optional, without them having to know about the structure.
+	 */
+	public static boolean peek(XMLDecoder decoder) throws XMLStreamException {
+		String nextTag = decoder.peekStartElement();
+		return (null != nameToType(nextTag));
+	}
 
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		

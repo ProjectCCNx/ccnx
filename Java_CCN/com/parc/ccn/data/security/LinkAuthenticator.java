@@ -153,7 +153,7 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		decoder.readStartElement(LINK_AUTHENTICATOR_ELEMENT);
 		
-		if (decoder.peekStartElement(PublisherID.PUBLISHER_ID_ELEMENT)) {
+		if (PublisherID.peek(decoder)) {
 			_publisher = new PublisherID();
 			_publisher.decode(decoder);
 		}
