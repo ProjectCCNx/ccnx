@@ -30,6 +30,7 @@ import com.parc.security.crypto.certificates.CryptoUtil;
 public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	
 	protected static final boolean _DEBUG = true;
+	public static final long DEFAULT_KEY_TIMEOUT = 2000;
 	
 	protected  CCNNetworkManager _networkManager = null;
 	protected HashMap<ContentName,ContentObject> _keyMap = new HashMap<ContentName,ContentObject>();
@@ -118,7 +119,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		File keyFile  = new File(keyDir, id.toString() + ".ccnb");
 		if (keyFile.exists()) {
 			Library.logger().info("Already stored key " + id.toString() + " to file.");
-			return;
+			// return; // temporarily store it anyway, to overwrite old-format data.
 		}
 		
 		try {
@@ -133,12 +134,14 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	}
 
 	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator) throws CertificateEncodingException, InvalidKeySpecException, NoSuchAlgorithmException {
+		ContentObject keyObject = null;
 		ContentName name = _idMap.get(desiredKeyID);
 		if (null != name) {
-			ContentObject keyObject = _keyMap.get(name);
+			keyObject = _keyMap.get(name);
 			if (null != keyObject)
 				return CryptoUtil.getPublicKey(keyObject.content());
 		}
+
 		if (locator.type() != KeyLocator.KeyLocatorType.NAME) {
 			Library.logger().info("This is silly: asking the repository to retrieve for me a key I already have...");
 			if (locator.type() == KeyLocator.KeyLocatorType.KEY) {
@@ -147,7 +150,19 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 				return locator.certificate().getPublicKey();
 			}
 		} else {
-			
+			// DKS TODO -- better key retrieval
+			/*
+			try {
+				keyObject = _networkManager.get(new Interest(name), DEFAULT_KEY_TIMEOUT);
+			} catch (IOException e) {
+				Library.logger().warning("IOException attempting to retrieve key: " + name + ": " + e.getMessage());
+				Library.warningStackTrace(e);
+			} catch (InterruptedException e) {
+				Library.logger().warning("Interrupted attempting to retrieve key: " + name + ": " + e.getMessage());
+			}
+			if (null != keyObject)
+				return CryptoUtil.getPublicKey(keyObject.content());
+				*/
 		}
 		return null;
 	}
