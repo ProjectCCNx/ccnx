@@ -169,6 +169,7 @@ int ccn_verify_signature(const unsigned char *msg,
     size_t signature_bits_size = 0;
     const unsigned char *witness = NULL;
     size_t witness_size = 0;
+    EVP_PKEY *pkey = (EVP_PKEY *)verification_pubkey;
 #ifdef DEBUG
     int x, h;
 #endif
@@ -245,7 +246,7 @@ int ccn_verify_signature(const unsigned char *msg,
         root_hash = calloc(1, root_hash_size);
         res = ccn_merkle_root_hash(msg, size, co, merkle_path_digest, merkle_path_info, root_hash, root_hash_size);
         res = EVP_VerifyUpdate(ver_ctx, root_hash, root_hash_size);
-        res = EVP_VerifyFinal(ver_ctx, signature_bits, signature_bits_size, (EVP_PKEY *)verification_pubkey);
+        res = EVP_VerifyFinal(ver_ctx, signature_bits, signature_bits_size, pkey);
         EVP_MD_CTX_cleanup(ver_ctx);
     } else {
         /*
@@ -254,7 +255,7 @@ int ccn_verify_signature(const unsigned char *msg,
          */
         size_t signed_size = co->offset[CCN_PCO_E_Content] - co->offset[CCN_PCO_B_Name];
         res = EVP_VerifyUpdate(ver_ctx, msg + co->offset[CCN_PCO_B_Name], signed_size);
-        res = EVP_VerifyFinal(ver_ctx, signature_bits, signature_bits_size, (EVP_PKEY *)verification_pubkey);
+        res = EVP_VerifyFinal(ver_ctx, signature_bits, signature_bits_size, pkey);
         EVP_MD_CTX_cleanup(ver_ctx);
     }
 
@@ -267,20 +268,26 @@ int ccn_verify_signature(const unsigned char *msg,
 struct ccn_pkey *
 ccn_d2i_pubkey(const unsigned char *p, size_t size)
 {
-    const unsigned char **pp = &p;
-    return ((struct ccn_pkey *)d2i_PUBKEY(NULL, pp, size));
+    const unsigned char *q = p;
+    EVP_PKEY *ans;
+    ans = d2i_PUBKEY(NULL, &q, size);
+    return ((struct ccn_pkey *)ans);
 }
 
 void
 ccn_pubkey_free(struct ccn_pkey *i_pubkey)
 {
-    EVP_PKEY_free((EVP_PKEY *)i_pubkey);
+    EVP_PKEY *pkey = (EVP_PKEY *)i_pubkey;
+    EVP_PKEY_free(pkey);
 }
 
 size_t
 ccn_pubkey_size(const struct ccn_pkey *i_pubkey)
 {
-    return (EVP_PKEY_size((EVP_PKEY *)i_pubkey));
+    size_t ans;
+    EVP_PKEY *pkey = (EVP_PKEY *)i_pubkey;
+    ans = EVP_PKEY_size(pkey);
+    return (ans);
 }
 
 int

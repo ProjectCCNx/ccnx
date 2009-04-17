@@ -667,7 +667,7 @@ handle_key(
             return(NOTE_ERRNO(h));
         }
         memcpy(*entry, public_key, public_key_size);
-        ccn_pubkey_free(public_key);
+        // XXX - cannot do it this way :ccn_pubkey_free(public_key);
     }
     hashtb_end(e);
     return(CCN_UPCALL_RESULT_OK);
