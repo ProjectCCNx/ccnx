@@ -73,17 +73,17 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 
 		KeyLocator locatorLocator = 
 			new KeyLocator(keyName, new PublisherID(keyID));
-		
+
 		ContentObject keyObject = null;
 		try {
 			keyObject = new ContentObject(
-									 keyName,
-									 new SignedInfo(keyID,
-											 				  SignedInfo.now(),
-											 				  SignedInfo.ContentType.LEAF,
-											 				  locatorLocator),
-									 encodedKey,
-									 signingKey);
+					keyName,
+					new SignedInfo(keyID,
+							SignedInfo.now(),
+							SignedInfo.ContentType.KEY,
+							locatorLocator),
+							encodedKey,
+							signingKey);
 		} catch (Exception e) {
 			BasicKeyManager.generateConfigurationException("Exception generating key locator and publishing key.", e);
 		}

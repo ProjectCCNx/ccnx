@@ -173,7 +173,8 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 				publisher = keyManager.getPublisherKeyID(signingKey);
 			}
 			KeyLocator locator = keyManager.getKeyLocator(signingKey);
-			return new ContentObject(name, new SignedInfo(publisher, SignedInfo.ContentType.LEAF, locator), contents, signingKey);
+			return new ContentObject(name, 
+							         new SignedInfo(publisher, SignedInfo.ContentType.DATA, locator), contents, signingKey);
 		} catch (Exception e) {
 			Library.logger().warning("Cannot build content object for publisher: " + publisher);
 			Library.infoStackTrace(e);
@@ -586,24 +587,20 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		return signedInfo().getType().equals(type);
 	}
 
-	public boolean isFragment() {
-		return isType(ContentType.FRAGMENT);
+	public boolean isData() {
+		return isType(ContentType.DATA);
 	}
 
 	public boolean isLink() {
 		return isType(ContentType.LINK);
 	}
 
-	public boolean isLeaf() {
-		return isType(ContentType.LEAF);
+	public boolean isGone() {
+		return isType(ContentType.GONE);
 	}
 
-	public boolean isCollection() {
-		return isType(ContentType.COLLECTION);
-	}
-
-	public boolean isSession() {
-		return isType(ContentType.SESSION);
+	public boolean isNACK() {
+		return isType(ContentType.NACK);
 	}
 
 	public boolean isKey() {

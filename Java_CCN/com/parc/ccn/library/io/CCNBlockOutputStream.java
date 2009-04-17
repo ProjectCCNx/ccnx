@@ -97,7 +97,7 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 	@Override
 	public void write(byte[] b, int off, int len) throws IOException {
 		try {
-			getSegmenter().put(_baseName, b, off, len, false, ContentType.FRAGMENT, null, null, null);
+			getSegmenter().put(_baseName, b, off, len, false, ContentType.DATA, null, null, null);
 		} catch (InvalidKeyException e) {
 			throw new IOException("Cannot sign content -- invalid key!: " + e.getMessage());
 		} catch (SignatureException e) {

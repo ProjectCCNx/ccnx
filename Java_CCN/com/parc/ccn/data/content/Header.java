@@ -14,7 +14,6 @@ import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.SignedInfo;
-import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 
@@ -42,7 +41,7 @@ public class Header extends ContentObject  {
 			 KeyLocator locator,
 			 Signature signature
 			 ) throws XMLStreamException {
-		super(name, new SignedInfo(publisher, ContentType.HEADER, locator));
+		super(name, new SignedInfo(publisher, locator));
 		_signature = signature;
 		_data = new HeaderData(start, count, blockSize, length, contentDigest, rootDigest);
 		_content = _data.encode();

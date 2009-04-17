@@ -100,7 +100,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 			Library.logger().info("CCNInputStream: retrieved header: " + co.name() + " type: " + co.signedInfo().getTypeName());
 			if (null != _header) {
 				continue;
-			} else if (co.signedInfo().getType() == SignedInfo.ContentType.HEADER) {
+			} else if (co.signedInfo().getType() == SignedInfo.ContentType.DATA) {
 				// First we verify. (Or should get have done this for us?)
 				// We don't bother complaining unless we have more than one
 				// header that matches. Given that we would complain for
@@ -149,7 +149,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 		ContentObject result =  _library.getLatestVersion(_baseName, null, _timeout);
 		if (null != result){
 			Library.logger().info("getFirstBlock: retrieved " + result.name() + " type: " + result.signedInfo().getTypeName());
-			if (result.signedInfo().getType() == ContentType.HEADER) {
+			if (result.signedInfo().getType() == ContentType.DATA) {
 				if (!addHeader(result)) { // verifies
 					Library.logger().warning("Retrieved header in getFirstBlock, but failed to process it.");
 				}

@@ -9,11 +9,10 @@ import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.Signature;
-import com.parc.ccn.data.security.SignedInfo.ContentType;
+import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.util.XMLDecoder;
 
 /**
@@ -30,7 +29,7 @@ public class Collection extends ContentObject {
 			 KeyLocator locator,
 			 Signature signature
 			 ) throws XMLStreamException {
-		super(name, new SignedInfo(publisher, ContentType.COLLECTION, locator));
+		super(name, new SignedInfo(publisher, locator));
 		if (null != references) {
 			for (LinkReference reference : references) {
 				_data.add(reference);
@@ -93,5 +92,30 @@ public class Collection extends ContentObject {
 	}
 	
 	public int size() { return contents().size(); }
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = super.hashCode();
+		result = prime * result + ((_data == null) ? 0 : _data.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (!super.equals(obj))
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Collection other = (Collection) obj;
+		if (_data == null) {
+			if (other._data != null)
+				return false;
+		} else if (!_data.equals(other._data))
+			return false;
+		return true;
+	}
 
 }

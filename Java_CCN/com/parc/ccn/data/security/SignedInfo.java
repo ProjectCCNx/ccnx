@@ -1,11 +1,14 @@
 package com.parc.ccn.data.security;
 
 import java.sql.Timestamp;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Map.Entry;
 
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
@@ -32,30 +35,49 @@ import com.parc.ccn.data.util.XMLEncoder;
  */
 public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 
-	public enum ContentType {FRAGMENT, LINK, COLLECTION, LEAF, SESSION, HEADER, KEY};
+	public enum ContentType {DATA, GONE, KEY, LINK, NACK};
+    public static final byte [] DATA_VAL = new byte[]{(byte)0x0c, (byte)0x04, (byte)0xc0};
+    public static final byte [] GONE_VAL = new byte[]{(byte)0x18, (byte)0xe3, (byte)0x44};
+    public static final byte [] KEY_VAL = new byte[]{(byte)0x28, (byte)0x46, (byte)0x3f};
+    public static final byte [] LINK_VAL = new byte[]{(byte)0x2c, (byte)0x83, (byte)0x4a};
+    public static final byte [] NACK_VAL = new byte[]{(byte)0x34, (byte)0x00, (byte)0x8a};
+
     protected static final HashMap<ContentType, String> ContentTypeNames = new HashMap<ContentType, String>();
     protected static final HashMap<String, ContentType> ContentNameTypes = new HashMap<String, ContentType>();
+    protected static final HashMap<ContentType, byte[]> ContentTypeValues = new HashMap<ContentType, byte[]>();
+    // This doesn't actually work as a hash table; lookup of byte [] doesn't have a proper hashCode function.
+    // turns into object ==.
+    protected static final HashMap<byte[], ContentType> ContentValueTypes = new HashMap<byte[], ContentType>();
+ 
     public static final String SIGNED_INFO_ELEMENT = "SignedInfo";
     protected static final String TIMESTAMP_ELEMENT = "Timestamp";
     protected static final String CONTENT_TYPE_ELEMENT = "Type";
     protected static final String FRESHNESS_SECONDS_ELEMENT = "FreshnessSeconds";
     protected static final String FINAL_BLOCK_ID_ELEMENT = "FinalBlockID";
 
+    // These are encoded as 3-byte binary values, whose base64 encodings 
+    // are chosen to make sense and look like the tags.
     static {
-        ContentTypeNames.put(ContentType.FRAGMENT, "FRAGMENT");
+        ContentTypeNames.put(ContentType.DATA, "DATA");
+        ContentTypeNames.put(ContentType.GONE, "GONE");
+        ContentTypeNames.put(ContentType.KEY, "KEY/");
         ContentTypeNames.put(ContentType.LINK, "LINK");
-        ContentTypeNames.put(ContentType.COLLECTION, "COLLECTION");
-        ContentTypeNames.put(ContentType.LEAF, "LEAF");
-        ContentTypeNames.put(ContentType.SESSION, "SESSION");
-        ContentTypeNames.put(ContentType.HEADER, "HEADER");
-        ContentTypeNames.put(ContentType.KEY, "KEY");
-        ContentNameTypes.put("FRAGMENT", ContentType.FRAGMENT);
+        ContentTypeNames.put(ContentType.NACK, "NACK");
+        ContentNameTypes.put("DATA", ContentType.DATA);
+        ContentNameTypes.put("GONE", ContentType.GONE);
+        ContentNameTypes.put("KEY/", ContentType.KEY);
         ContentNameTypes.put("LINK", ContentType.LINK);
-        ContentNameTypes.put("COLLECTION", ContentType.COLLECTION);
-        ContentNameTypes.put("LEAF", ContentType.LEAF);
-        ContentNameTypes.put("SESSION", ContentType.SESSION);
-        ContentNameTypes.put("HEADER", ContentType.HEADER);
-        ContentNameTypes.put("KEY", ContentType.KEY);
+        ContentNameTypes.put("NACK", ContentType.NACK);
+        ContentTypeValues.put(ContentType.DATA, DATA_VAL);
+        ContentTypeValues.put(ContentType.GONE, GONE_VAL);
+        ContentTypeValues.put(ContentType.KEY, KEY_VAL);
+        ContentTypeValues.put(ContentType.LINK, LINK_VAL);
+        ContentTypeValues.put(ContentType.NACK, NACK_VAL);
+        ContentValueTypes.put(DATA_VAL, ContentType.DATA);
+        ContentValueTypes.put(GONE_VAL, ContentType.GONE);
+        ContentValueTypes.put(KEY_VAL, ContentType.KEY);
+        ContentValueTypes.put(LINK_VAL, ContentType.LINK);
+        ContentValueTypes.put(NACK_VAL, ContentType.NACK);
     }
     
     protected PublisherPublicKeyDigest _publisher;
@@ -63,7 +85,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
     protected ContentType 	_type;
     protected KeyLocator 	_locator;
     protected Integer 		_freshnessSeconds;
-    protected Integer		_finalBlockID; 
+    protected byte []		_finalBlockID; 
    
     public SignedInfo(
     		PublisherPublicKeyDigest publisher, 
@@ -71,14 +93,14 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 			ContentType type,
 			KeyLocator locator,
 			Integer freshnessSeconds,
-			Integer finalBlockID
+			byte [] finalBlockID
 			) {
     	super();
     	this._publisher = publisher;
     	this._timestamp = timestamp;
     	if (null == this._timestamp)
     		this._timestamp = now();
-    	this._type = type;
+    	this._type = (null == type) ? ContentType.DATA : type;
     	this._locator = locator;
     	this._freshnessSeconds = freshnessSeconds;
     	this._finalBlockID = finalBlockID;
@@ -103,10 +125,17 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
  
     public SignedInfo(
     		PublisherPublicKeyDigest publisher, 
+			KeyLocator locator
+			) {
+    	this(publisher, null, null, locator);
+    }
+ 
+    public SignedInfo(
+    		PublisherPublicKeyDigest publisher, 
 			ContentType type,
 			KeyLocator locator,
 			Integer freshnessSeconds,
-			Integer finalBlockID
+			byte [] finalBlockID
 			) {
     	this(publisher, null, type, locator, freshnessSeconds, finalBlockID);
     }
@@ -125,11 +154,13 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 	public SignedInfo clone() {
 		// more clonage needed
 		KeyLocator kl = getKeyLocator();
-		return new SignedInfo(getPublisherKeyID(), getTimestamp(), getType(), null == kl ? null : kl.clone());
+		return new SignedInfo(getPublisherKeyID(), getTimestamp(), getType(), 
+								null == kl ? null : kl.clone(),
+								getFreshnessSeconds(), getFinalBlockID());
 	}
 
 	public boolean empty() {
-    	return (emptyPublisher() && emptyContentType() && 
+    	return (emptyPublisher() && defaultContentType() && 
     			emptyTimestamp());
     }
     
@@ -139,8 +170,8 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
     	return true;
     }
         
-    public boolean emptyContentType() { 
-    	return (null == _type);
+    public boolean defaultContentType() { 
+    	return ((null == _type) || (ContentType.DATA == _type));
     }
     
     public boolean emptyTimestamp() {
@@ -170,16 +201,20 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 		return (null == _freshnessSeconds);
 	}
 	
-	public final int getFinalBlockID() { return _finalBlockID; }
+	public final byte [] getFinalBlockID() { return _finalBlockID; }
 	
 	public boolean emptyFinalBlockID() {
 		return (null == _finalBlockID);
 	}
 	
 	// Do we want to make this an immutable type (or merely an immutable member of ContentObject?)
-	public void setFinalBlockID(int finalBlockID) { _finalBlockID = finalBlockID; }
+	public void setFinalBlockID(byte [] finalBlockID) { _finalBlockID = finalBlockID; }
 
-	public final ContentType getType() { return _type; }
+	public final ContentType getType() { 
+		if (null == _type)
+			return ContentType.DATA;
+		return _type; 
+	}
 	
 	public String getTypeName() { return typeToName(getType()); }
 	
@@ -192,6 +227,30 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 
 	public static final ContentType nameToType(String name) {
 		return ContentNameTypes.get(name);
+	}
+	
+	public byte [] getTypeValue() { return typeToValue(getType()); }
+	
+	public static final byte [] typeToValue(ContentType type) {
+		if (ContentTypeValues.get(type) == null) {
+			Library.logger().warning("Cannot find name for type: " + type);
+		}
+		return ContentTypeValues.get(type);
+	}
+
+	/**
+	 * Unfortunately, straight hash table lookup doesn't work right on byte array
+	 * keys. Have to do straight comparison. Could speed it up from linear
+	 * search, but for 5 types, might not matter.
+	 * @param value
+	 * @return
+	 */
+	public static final ContentType valueToType(byte [] value) {
+		for (Entry<byte [], ContentType> entry : ContentValueTypes.entrySet()) {
+			if (Arrays.equals(value, entry.getKey()))
+				return entry.getValue();
+		}
+		return null;
 	}
 	
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
@@ -207,11 +266,13 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 		}
 
 		if (decoder.peekStartElement(CONTENT_TYPE_ELEMENT)) {
-			String strType = decoder.readUTF8Element(CONTENT_TYPE_ELEMENT);
-			_type = nameToType(strType);
+			byte [] binType = decoder.readBinaryElement(CONTENT_TYPE_ELEMENT);
+			_type = valueToType(binType);
 			if (null == _type) {
-				throw new XMLStreamException("Cannot parse signedInfo type: " + strType);
+				throw new XMLStreamException("Cannot parse signedInfo type: " + DataUtils.printHexBytes(binType) + " " + binType.length + " bytes.");
 			}
+		} else {
+			_type = ContentType.DATA; // default
 		}
 		
 		if (decoder.peekStartElement(FRESHNESS_SECONDS_ELEMENT)) {
@@ -219,7 +280,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 		}
 		
 		if (decoder.peekStartElement(FINAL_BLOCK_ID_ELEMENT)) {
-			_finalBlockID = decoder.readIntegerElement(FINAL_BLOCK_ID_ELEMENT);
+			_finalBlockID = decoder.readBinaryElement(FINAL_BLOCK_ID_ELEMENT);
 		}
 		
 		if (decoder.peekStartElement(KeyLocator.KEY_LOCATOR_ELEMENT)) {
@@ -247,8 +308,9 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 			encoder.writeDateTime(TIMESTAMP_ELEMENT, getTimestamp());
 		}
 		
-		if (!emptyContentType()) {
-			encoder.writeElement(CONTENT_TYPE_ELEMENT, getTypeName());
+		if (!defaultContentType()) {
+			// DATA is default, element is optional, so omit if DATA
+			encoder.writeElement(CONTENT_TYPE_ELEMENT, getTypeValue());
 		}
 		
 		if (!emptyFreshnessSeconds()) {
@@ -256,7 +318,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 		}
 
 		if (!emptyFinalBlockID()) {
-			encoder.writeIntegerElement(FINAL_BLOCK_ID_ELEMENT, getFinalBlockID());
+			encoder.writeElement(FINAL_BLOCK_ID_ELEMENT, getFinalBlockID());
 		}
 
 		if (!emptyKeyLocator()) {
@@ -264,61 +326,6 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 		}
 
 		encoder.writeEndElement();   		
-	}
-	
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		final SignedInfo other = (SignedInfo) obj;
-		if (getPublisherKeyID() == null) {
-			if (other.getPublisherKeyID() != null)
-				return false;
-		} else if (!getPublisherKeyID().equals(other.getPublisherKeyID()))
-			return false;
-		if (getTimestamp() == null) {
-			if (other.getTimestamp() != null)
-				return false;
-		} else if (!getTimestamp().equals(other.getTimestamp()))
-			return false;
-		if (getType() == null) {
-			if (other.getType() != null)
-				return false;
-		} else if (!getType().equals(other.getType()))
-			return false;
-		if (getKeyLocator() == null) {
-			if (other.getKeyLocator() != null)
-				return false;
-		} else if (!getKeyLocator().equals(other.getKeyLocator()))
-			return false;
-		if (emptyFreshnessSeconds()) {
-			if (!other.emptyFreshnessSeconds())
-				return false;
-		} else if (getFreshnessSeconds() != other.getFreshnessSeconds())
-			return false;
-		if (emptyFinalBlockID()) {
-			if (!other.emptyFinalBlockID())
-				return false;
-		} else if (getFinalBlockID() != other.getFinalBlockID())
-			return false;
-		return true;
-	}
-	
-	@Override
-	public int hashCode() {
-		final int PRIME = 31;
-		int result = 1;
-		result = PRIME * result + ((_publisher == null) ? 0 : _publisher.hashCode());
-		result = PRIME * result + ((_timestamp == null) ? 0 : _timestamp.hashCode());
-		result = PRIME * result + ((_type == null) ? 0 : _type.hashCode());
-		result = PRIME * result + ((_locator == null) ? 0 : _locator.hashCode());
-		result = PRIME * result + ((_freshnessSeconds == null) ? 0 : _freshnessSeconds.hashCode());
-		result = PRIME * result + ((_finalBlockID == null) ? 0 : _finalBlockID.hashCode());
-		return result;
 	}
 	
 	public boolean validate() {
@@ -331,5 +338,63 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 
 	public static Timestamp now() {
 		return new Timestamp(System.currentTimeMillis());
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + Arrays.hashCode(_finalBlockID);
+		result = prime
+				* result
+				+ ((_freshnessSeconds == null) ? 0 : _freshnessSeconds
+						.hashCode());
+		result = prime * result
+				+ ((_locator == null) ? 0 : _locator.hashCode());
+		result = prime * result
+				+ ((_publisher == null) ? 0 : _publisher.hashCode());
+		result = prime * result
+				+ ((_timestamp == null) ? 0 : _timestamp.hashCode());
+		result = prime * result + ((_type == null) ? 0 : _type.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		SignedInfo other = (SignedInfo) obj;
+		if (!Arrays.equals(_finalBlockID, other._finalBlockID))
+			return false;
+		if (_freshnessSeconds == null) {
+			if (other._freshnessSeconds != null)
+				return false;
+		} else if (!_freshnessSeconds.equals(other._freshnessSeconds))
+			return false;
+		if (_locator == null) {
+			if (other._locator != null)
+				return false;
+		} else if (!_locator.equals(other._locator))
+			return false;
+		if (_publisher == null) {
+			if (other._publisher != null)
+				return false;
+		} else if (!_publisher.equals(other._publisher))
+			return false;
+		if (_timestamp == null) {
+			if (other._timestamp != null)
+				return false;
+		} else if (!_timestamp.equals(other._timestamp))
+			return false;
+		if (_type == null) {
+			if (other._type != null)
+				return false;
+		} else if (!_type.equals(other._type))
+			return false;
+		return true;
 	}	
 }

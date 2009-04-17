@@ -270,8 +270,7 @@ public class CCNSegmenter {
 			locator = _library.keyManager().getKeyLocator(signingKey);
 
 		if (null == type) {
-			// DKS TODO -- default to DATA
-			type = ContentType.FRAGMENT;
+			type = ContentType.DATA;
 		}
 
 		// Remove existing segmentation markers on end of name, at point right
@@ -436,8 +435,7 @@ public class CCNSegmenter {
 			locator = _library.keyManager().getKeyLocator(signingKey);
 
 		if (null == type) {
-			// DKS TODO -- default to DATA
-			type = ContentType.FRAGMENT;
+			type = ContentType.DATA;
 		}
 
 		ContentName rootName = SegmentationProfile.segmentRoot(name);

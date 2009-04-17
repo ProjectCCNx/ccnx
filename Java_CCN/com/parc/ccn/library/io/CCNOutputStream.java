@@ -204,12 +204,12 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			if ((_blockIndex == 1) || (_blockOffset == _blockBuffers[0].length)) {
 				Library.logger().finest("close(): writing single-block file in one put, length: " + _blockBuffers[0].length);
 				_segmenter.put(_baseName, _blockBuffers[0], 0, _blockBuffers[0].length, true,
-							   ContentType.LEAF, 
+							   ContentType.DATA, 
 							   null, _locator, _publisher);
 			} else {
 				Library.logger().finest("close(): writing single-block file in one put, copied buffer length = " + _blockOffset);
 				_segmenter.put(_baseName, _blockBuffers[0], 0, _blockOffset, true,
-							   ContentType.LEAF, null, _locator, _publisher);
+							   ContentType.DATA, null, _locator, _publisher);
 			}
 		} else {
 			Library.logger().info("closeNetworkData: final flush, wrote " + _totalLength + " bytes.");
@@ -289,11 +289,11 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 				Library.logger().warning("flush(): writing hanging partial last block of file: " + _blockOffset + " bytes, block total is " + _blockBuffers[_blockIndex].length + ", called by close().");
 				_segmenter.putFragment(_baseName, _baseNameIndex, 
 									   _blockBuffers[_blockIndex], 0, _blockOffset, 
-									   ContentType.LEAF, _timestamp, null, null, _locator, _publisher);
+									   ContentType.DATA, _timestamp, null, null, _locator, _publisher);
 			} else {
 				_segmenter.putFragment(_baseName, _baseNameIndex, 
 									   _blockBuffers[_blockIndex], 0, _blockBuffers[_blockIndex].length,
-									   ContentType.FRAGMENT, _timestamp, null, null, _locator, _publisher);				
+									   ContentType.DATA, _timestamp, null, null, _locator, _publisher);				
 			}
 		} else {
 			// Now, we have a set of buffers. Do we have a partial last block we want to preserve?
@@ -314,7 +314,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			// DKS TODO fix last block marking
 			_segmenter.fragmentedPut(_baseName, _baseNameIndex, _blockBuffers, 
 					blockWriteCount, 0, lastBlockSize,
-					ContentType.LEAF, _timestamp, null, null, _locator, _publisher);
+					ContentType.DATA, _timestamp, null, null, _locator, _publisher);
 		}
 
 		int startEraseBlock = 0;

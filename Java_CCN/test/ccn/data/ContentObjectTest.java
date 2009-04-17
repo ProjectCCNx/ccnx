@@ -92,11 +92,11 @@ public class ContentObjectTest {
 			
 			auth = new SignedInfo(pubkey,
 					new Timestamp(System.currentTimeMillis()), 
-					SignedInfo.ContentType.LEAF, 
+					SignedInfo.ContentType.DATA, 
 					nameLoc);
 			authKey = new SignedInfo(pubkey,
 					new Timestamp(System.currentTimeMillis()), 
-					SignedInfo.ContentType.LEAF, 
+					SignedInfo.ContentType.DATA, 
 					keyLoc);
 		} catch (Exception ex) {
 			XMLEncodableTester.handleException(ex);

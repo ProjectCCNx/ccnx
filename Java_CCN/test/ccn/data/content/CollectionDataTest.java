@@ -56,9 +56,9 @@ public class CollectionDataTest {
 
 		las[0] = new LinkAuthenticator(pubID1);
 		las[1] = null;
-		las[2] = new LinkAuthenticator(pubID2, null,
-				SignedInfo.ContentType.LEAF, contenthash1);
-		las[3] = new LinkAuthenticator(pubID1, new Timestamp(System.currentTimeMillis()),
+		las[2] = new LinkAuthenticator(pubID2, null, null,
+				SignedInfo.ContentType.DATA, contenthash1);
+		las[3] = new LinkAuthenticator(pubID1, null, new Timestamp(System.currentTimeMillis()),
 				null, contenthash1);
 
 
@@ -129,8 +129,8 @@ public class CollectionDataTest {
 		}
 		cd.remove(lrs[0]);
 		Assert.assertEquals(cd.get(0), lrs[1]);
-		LinkAuthenticator la2alt = new LinkAuthenticator(pubID2, null,
-				SignedInfo.ContentType.LEAF, contenthash1);
+		LinkAuthenticator la2alt = new LinkAuthenticator(pubID2, null, null,
+				SignedInfo.ContentType.DATA, contenthash1);
 
 		LinkReference lr2alt = new LinkReference(name3.clone(), la2alt);
 		cd.remove(lr2alt);

@@ -8,6 +8,8 @@ import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.Date;
 
+import junit.framework.Assert;
+
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -18,6 +20,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
+import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.security.crypto.certificates.BCX509CertificateGenerator;
 
 public class SignedInfoTest {
@@ -84,13 +87,34 @@ public class SignedInfoTest {
 			System.out.println("Unable To Initialize Test!!!");
 		}	
 	}
+	
+	@Test
+	public void testTypes() {
+		Assert.assertEquals(SignedInfo.nameToType(SignedInfo.typeToName(ContentType.LINK)), SignedInfo.ContentType.LINK);
+		Assert.assertEquals(SignedInfo.nameToType(SignedInfo.typeToName(ContentType.KEY)), SignedInfo.ContentType.KEY);
+		Assert.assertEquals(SignedInfo.nameToType(SignedInfo.typeToName(ContentType.DATA)), SignedInfo.ContentType.DATA);
+		Assert.assertEquals(SignedInfo.nameToType(SignedInfo.typeToName(ContentType.NACK)), SignedInfo.ContentType.NACK);
+		Assert.assertEquals(SignedInfo.nameToType(SignedInfo.typeToName(ContentType.GONE)), SignedInfo.ContentType.GONE);
+		Assert.assertEquals(SignedInfo.valueToType(SignedInfo.typeToValue(ContentType.LINK)), SignedInfo.ContentType.LINK);
+		Assert.assertEquals(SignedInfo.valueToType(SignedInfo.typeToValue(ContentType.KEY)), SignedInfo.ContentType.KEY);
+		Assert.assertEquals(SignedInfo.valueToType(SignedInfo.typeToValue(ContentType.DATA)), SignedInfo.ContentType.DATA);
+		Assert.assertEquals(SignedInfo.valueToType(SignedInfo.typeToValue(ContentType.GONE)), SignedInfo.ContentType.GONE);
+		Assert.assertEquals(SignedInfo.valueToType(SignedInfo.LINK_VAL), SignedInfo.ContentType.LINK);
+		Assert.assertEquals(SignedInfo.valueToType(SignedInfo.KEY_VAL), SignedInfo.ContentType.KEY);
+		Assert.assertEquals(SignedInfo.valueToType(SignedInfo.DATA_VAL), SignedInfo.ContentType.DATA);
+		Assert.assertEquals(SignedInfo.valueToType(SignedInfo.NACK_VAL), SignedInfo.ContentType.NACK);
+		Assert.assertEquals(SignedInfo.valueToType(SignedInfo.GONE_VAL), SignedInfo.ContentType.GONE);
+		byte [] key = new byte[3];
+		System.arraycopy(SignedInfo.KEY_VAL, 0, key, 0, key.length);
+		Assert.assertEquals(SignedInfo.valueToType(key), SignedInfo.ContentType.KEY);
+	}
 
 	@Test
 	public void testDecodeInputStream() {
 		SignedInfo nca = new SignedInfo(
 				pubkey, 
 				new Timestamp(System.currentTimeMillis()), 
-				SignedInfo.ContentType.LEAF, 
+				SignedInfo.ContentType.DATA, 
 				nameLoc);
 		SignedInfo dnca = new SignedInfo();
 		SignedInfo bdnca = new SignedInfo();
@@ -99,7 +123,7 @@ public class SignedInfoTest {
 		SignedInfo kca = new SignedInfo(
 				pubkey, 
 				new Timestamp(System.currentTimeMillis()), 
-				SignedInfo.ContentType.LEAF, 
+				SignedInfo.ContentType.KEY, 
 				keyLoc);
 		SignedInfo dkca = new SignedInfo();
 		SignedInfo bdkca = new SignedInfo();
@@ -107,7 +131,7 @@ public class SignedInfoTest {
 
 		SignedInfo cca = new SignedInfo(pubkey, 
 				new Timestamp(System.currentTimeMillis()), 
-				SignedInfo.ContentType.LEAF, 
+				SignedInfo.ContentType.LINK, 
 				certLoc);
 		SignedInfo dcca = new SignedInfo();
 		SignedInfo bdcca = new SignedInfo();

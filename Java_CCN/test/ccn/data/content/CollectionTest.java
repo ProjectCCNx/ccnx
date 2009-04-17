@@ -57,10 +57,10 @@ public class CollectionTest {
 
 		las[0] = new LinkAuthenticator(pubID1);
 		las[1] = null;
-		las[2] = new LinkAuthenticator(pubID1, new Timestamp(System.currentTimeMillis()),
+		las[2] = new LinkAuthenticator(pubID1, null, new Timestamp(System.currentTimeMillis()),
 				null, contenthash1);
-		las[3] = new LinkAuthenticator(pubID1, new Timestamp(System.currentTimeMillis()),
-				SignedInfo.ContentType.LEAF, contenthash1);
+		las[3] = new LinkAuthenticator(pubID1, null, new Timestamp(System.currentTimeMillis()),
+				SignedInfo.ContentType.DATA, contenthash1);
 
 
 		ls = new LinkReference[4];

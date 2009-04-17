@@ -42,8 +42,7 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 		segmenter.getFlowControl().addNameSpace(rootName);
 
 		if (null == type) {
-			// DKS TODO -- default to DATA
-			type = ContentType.FRAGMENT;
+			type = ContentType.DATA;
 		}
 		// Digest of complete contents
 		// If we're going to unique-ify the block names
@@ -100,8 +99,7 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 			locator = segmenter.getFlowControl().getLibrary().keyManager().getKeyLocator(signingKey);
 
 		if (null == type) {
-			// DKS TODO -- default to DATA
-			type = ContentType.FRAGMENT;
+			type = ContentType.DATA;
 		}
 		// Digest of complete contents
 		// If we're going to unique-ify the block names
@@ -161,8 +159,7 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 		segmenter.getFlowControl().addNameSpace(rootName);
 
 		if (null == type) {
-			// DKS TODO -- default to DATA
-			type = ContentType.FRAGMENT;
+			type = ContentType.DATA;
 		}
 		// Digest of complete contents
 		// If we're going to unique-ify the block names

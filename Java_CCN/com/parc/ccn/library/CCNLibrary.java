@@ -278,8 +278,8 @@ public class CCNLibrary extends CCNBase {
 		ContentObject co = getLatestVersion(name, null, timeout);
 		if (null == co)
 			return null;
-		if (co.signedInfo().getType() != ContentType.COLLECTION)
-			throw new IOException("Content is not a collection");
+		if (co.signedInfo().getType() != ContentType.DATA)
+			throw new IOException("Content is not data, so can't be a collection.");
 		Collection collection = Collection.contentToCollection(co);
 		return collection;
 	}
@@ -439,6 +439,7 @@ public class CCNLibrary extends CCNBase {
 	
 	/**
 	 * Deference links and collections
+	 * DKS TODO -- should it dereference collections?
 	 * @param content
 	 * @param timeout
 	 * @return
@@ -457,16 +458,26 @@ public class CCNLibrary extends CCNBase {
 				return null;
 			}
 			result.add(linkCo);
-		} else if (content.signedInfo().getType() == ContentType.COLLECTION) {
-			Collection collection = Collection.contentToCollection(content);
-			ArrayList<LinkReference> al = collection.contents();
-			for (LinkReference lr : al) {
-				ContentObject linkCo = dereferenceLink(lr, content.signedInfo().getPublisherKeyID(), timeout);
-				if (linkCo != null)
-					result.add(linkCo);
+		} else if (content.signedInfo().getType() == ContentType.DATA) {
+			try {
+				Collection collection = Collection.contentToCollection(content);
+			
+				if (null != collection) {
+					ArrayList<LinkReference> al = collection.contents();
+					for (LinkReference lr : al) {
+						ContentObject linkCo = dereferenceLink(lr, content.signedInfo().getPublisherKeyID(), timeout);
+						if (linkCo != null)
+							result.add(linkCo);
+					}
+					if (result.size() == 0)
+						return null;
+				} else { // else, not a collection
+					result.add(content);
+				}
+			} catch (XMLStreamException xe) {
+				// not a collection
+				result.add(content);
 			}
-			if (result.size() == 0)
-				return null;
 		} else {
 			result.add(content);
 		}

@@ -92,13 +92,13 @@ public class CCNEncodableObjectTest {
 
 		las[0] = new LinkAuthenticator(pubID1);
 		las[1] = null;
-		las[2] = new LinkAuthenticator(pubID2, null,
-				SignedInfo.ContentType.LEAF, contenthash1);
-		las[3] = new LinkAuthenticator(pubID1, new Timestamp(System.currentTimeMillis()),
+		las[2] = new LinkAuthenticator(pubID2, null, null,
+				SignedInfo.ContentType.DATA, contenthash1);
+		las[3] = new LinkAuthenticator(pubID1, null, new Timestamp(System.currentTimeMillis()),
 				null, contenthash1);
 		
 		for (int j=4; j < NUM_LINKS; ++j) {
-			las[j] = new LinkAuthenticator(pubID2, new Timestamp(System.currentTimeMillis()),null, null);
+			las[j] = new LinkAuthenticator(pubID2, null, new Timestamp(System.currentTimeMillis()),null, null);
  		}
 
 		lrs = new LinkReference[NUM_LINKS];

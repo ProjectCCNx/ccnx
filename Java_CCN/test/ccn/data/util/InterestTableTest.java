@@ -140,7 +140,7 @@ public class InterestTableTest {
 		byte[] contents = bb.array();
 		// security bits
 		KeyLocator locator = new KeyLocator(ContentName.fromNative("/key/" + pub.digest().toString()));
-		SignedInfo si = new SignedInfo(pub, now, SignedInfo.ContentType.LEAF, locator);
+		SignedInfo si = new SignedInfo(pub, now, SignedInfo.ContentType.DATA, locator);
 		// unique name		
 		return new ContentObject(
 				ContentName.fromNative(name, Long.toString(now.getTime())), si, contents, fakeSignature);
