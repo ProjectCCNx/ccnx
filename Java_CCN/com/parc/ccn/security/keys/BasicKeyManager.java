@@ -20,7 +20,9 @@ import java.security.spec.InvalidKeySpecException;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
+import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.config.UserConfiguration;
+import com.parc.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
@@ -108,8 +110,16 @@ public class BasicKeyManager extends KeyManager {
 			// JDT TODO Restore publishing info about this key. Commented-out for 
 			// now to enable unit test with no repo.
 		    if (null == getKey(_defaultKeyID, _keyLocator)) {
+		    	boolean resetFlag = false;
+		    	if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
+		    		resetFlag = true;
+		    		SystemConfiguration.setDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES, false);
+		    	}
 		    	keyRepository().publishKey(_keyLocator.name().name(), _certificate.getPublicKey(), 
 		    								_defaultKeyID, _privateKey);
+		    	if (resetFlag) {
+		    		SystemConfiguration.setDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES, true);
+		    	}
 		    }
 		
 		} catch (Exception e) {
