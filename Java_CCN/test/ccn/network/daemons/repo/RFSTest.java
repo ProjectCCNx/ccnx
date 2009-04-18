@@ -41,10 +41,12 @@ public class RFSTest extends RepoTestBase {
 		_fileTest.mkdirs();
 	}
 	
-	@AfterClass
-	public static void cleanup() throws Exception {
-		FileUtils.deleteDirectory(_fileTest);
-	}
+	// Purposely don't delete the directory so we can build the zip file
+	// for the IO test in ant and also can examine it in case of failure
+	//@AfterClass
+	//public static void cleanup() throws Exception {
+	//	FileUtils.deleteDirectory(_fileTest);
+	//}
 	
 	@Before
 	public void setUp() throws Exception {
