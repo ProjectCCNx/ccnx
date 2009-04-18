@@ -36,11 +36,11 @@
     </target>
 
     <target name="test">
-        <exec executable="make" failonerror="true" dir="ccnd">
-            <arg value="test"/>
-        </exec>
         <subant target="test" failonerror="true" verbose="true">
             <fileset dir="." includes="*/build.xml"/>
         </subant>
+        <exec executable="make" failonerror="true" dir="ccnd">
+            <arg value="test"/>
+        </exec>
     </target>
 </project>
