@@ -168,7 +168,7 @@
 	</target>
 
 	<target name="start-repo">
-		<java classname="com.parc.ccn.network.daemons.repo.RepositoryDaemon" fork="true" failonerror="true">
+		<java classname="com.parc.ccn.network.daemons.repo.RepositoryDaemon" fork="true" failonerror="true" output = "${testout}/TEST-repo-daemon.txt">
 			<classpath>
 				<path refid="classpath-run" />
 			</classpath>
@@ -184,7 +184,7 @@
 	</target>
 	
 	<target name="stop-repo">
-			<java classname="com.parc.ccn.network.daemons.repo.RepositoryDaemon" fork="true" failonerror="true">
+			<java classname="com.parc.ccn.network.daemons.repo.RepositoryDaemon" fork="true" failonerror="true" output = "${testout}/TEST-repo-daemon.txt">
 				<classpath>
 					<path refid="classpath-run" />
 				</classpath>
