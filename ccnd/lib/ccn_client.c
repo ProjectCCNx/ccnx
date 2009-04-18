@@ -136,6 +136,7 @@ ccn_create(void)
         return(h);
     h->sock = -1;
     h->interestbuf = ccn_charbuf_create();
+    h->keys = hashtb_create(sizeof(struct ccn_pkey *), NULL);
     s = getenv("CCN_DEBUG");
     h->verbose_error = (s != NULL && s[0] != 0);
     s = getenv("CCN_TAP");
@@ -606,6 +607,92 @@ ccn_refresh_interest(struct ccn *h, struct expressed_interest *interest)
     }
 }
 
+static int
+ccn_get_content_type(const unsigned char *ccnb,
+                     const struct ccn_parsed_ContentObject *pco)
+{
+    enum ccn_content_type type;
+    unsigned int typeu;
+    const unsigned char *typebytes;
+    size_t typesize;
+    int res;
+
+    if (pco->offset[CCN_PCO_B_Type] == pco->offset[CCN_PCO_E_Type]) {
+        type = CCN_CONTENT_DATA;
+        return(type);
+    }
+    res = ccn_ref_tagged_BLOB(CCN_DTAG_Type, ccnb,
+                              pco->offset[CCN_PCO_B_Type],
+                              pco->offset[CCN_PCO_E_Type],
+                              &typebytes, &typesize);
+    if (res < 0 || typesize != 3) {
+        return(-1);
+    }
+
+    typeu = (typebytes[0] << 16) | (typebytes[1] << 8) | typebytes[2];
+    switch (typeu) {
+    case CCN_CONTENT_DATA:
+    case CCN_CONTENT_GONE:
+    case CCN_CONTENT_KEY:
+    case CCN_CONTENT_LINK:
+    case CCN_CONTENT_NACK:
+        type = typeu;
+        return (type);
+    default:
+        return (-1);
+    }
+}
+
+static int
+ccn_cache_key(struct ccn *h, const unsigned char *ccnb, size_t size, struct ccn_parsed_ContentObject *pco)
+{
+    int type;
+    struct ccn_pkey **entry;
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    int res;
+
+    type = ccn_get_content_type(ccnb, pco);
+    if (type != CCN_CONTENT_KEY) {
+        return (0);
+    }
+
+    ccn_digest_ContentObject(ccnb, pco);
+    if (pco->digest_bytes != sizeof(pco->digest)) {
+        return(NOTE_ERR(h, EINVAL));
+    }
+
+    hashtb_start(h->keys, e);
+    res = hashtb_seek(e, (void *)pco->digest, pco->digest_bytes, 0);
+    if (res < 0) {
+        hashtb_end(e);
+        return(NOTE_ERRNO(h));
+    }
+    entry = e->data;
+    if (res == HT_NEW_ENTRY) {
+        struct ccn_pkey *pkey;
+        const unsigned char *data = NULL;
+        size_t data_size = 0;
+
+        res = ccn_content_get_value(ccnb, size, pco, &data, &data_size);
+        if (res < 0) {
+            hashtb_delete(e);
+            hashtb_end(e);
+            return(NOTE_ERRNO(h));
+        }
+        pkey = ccn_d2i_pubkey(data, data_size);
+        if (pkey == NULL) {
+            hashtb_delete(e);
+            hashtb_end(e);
+            return(NOTE_ERRNO(h));
+        }
+        *entry = pkey;
+    }
+    hashtb_end(e);
+    return (0);
+
+}
+
 static enum ccn_upcall_res
 handle_key(
     struct ccn_closure *selfp,
@@ -615,11 +702,6 @@ handle_key(
     struct ccn *h = info->h;
     const unsigned char *ccnb = NULL;
     size_t ccnb_size = 0;
-    const unsigned char *data = NULL;
-    size_t data_size = 0;
-    struct hashtb_enumerator ee;
-    struct hashtb_enumerator *e = &ee;
-    void **entry;
     int res;
     
     switch(kind) {
@@ -635,42 +717,14 @@ handle_key(
         return (CCN_UPCALL_RESULT_ERR);
     }
 
-    /* XXX: should check that it is an object of type KEY */
     ccnb = info->content_ccnb;
     ccnb_size = info->pco->offset[CCN_PCO_E];
-    ccn_digest_ContentObject(ccnb, info->pco);
-    if (info->pco->digest_bytes != sizeof(info->pco->digest)) {
-        return(NOTE_ERR(h, EINVAL));
+
+    if (info->pco->offset[CCN_PCO_B_Type] == info->pco->offset[CCN_PCO_E_Type]) {
+        return(CCN_UPCALL_RESULT_OK);
     }
-    hashtb_start(selfp->data, e);
-    res = hashtb_seek(e, (void *)info->pco->digest, info->pco->digest_bytes, 0);
-    if (res < 0) {
-        hashtb_end(e);
-        return(NOTE_ERRNO(h));
-    }
-    entry = e->data;
-    if (res == HT_NEW_ENTRY) {
-        void *public_key;
-        size_t public_key_size;
-        res = ccn_content_get_value(ccnb, ccnb_size, info->pco, &data, &data_size);
-        if (res < 0) {
-            hashtb_delete(e);
-            hashtb_end(e);
-            return(NOTE_ERRNO(h));
-        }
-        public_key = ccn_d2i_pubkey(data, data_size);
-        public_key_size = ccn_pubkey_size(public_key);
-        *entry = calloc(1, public_key_size);
-        if (*entry == NULL) {
-            hashtb_delete(e);
-            hashtb_end(e);
-            return(NOTE_ERRNO(h));
-        }
-        memcpy(*entry, public_key, public_key_size);
-        // XXX - cannot do it this way :ccn_pubkey_free(public_key);
-    }
-    hashtb_end(e);
-    return(CCN_UPCALL_RESULT_OK);
+    res = ccn_cache_key(h, ccnb, ccnb_size, info->pco);
+    return ((res < 0) ? CCN_UPCALL_RESULT_ERR : CCN_UPCALL_RESULT_OK);
 }
 
 static int
@@ -678,13 +732,11 @@ ccn_locate_key(struct ccn *h,
                unsigned char *msg,
                size_t size,
                struct ccn_parsed_ContentObject *pco,
-               void **pubkey)
+               struct ccn_pkey **pubkey)
 {
     int res;
     const unsigned char *pkeyid;
     size_t pkeyid_size;
-    const unsigned char *dkey;
-    size_t dkey_size;
     void *pkey;
     size_t pkey_size;
     void **entry;
@@ -692,10 +744,9 @@ ccn_locate_key(struct ccn *h,
     struct ccn_buf_decoder *d;
 
     if (h->keys == NULL) {
-        h->keys = hashtb_create(sizeof(void *), NULL);
-        if (h->keys == NULL)
-            return (NOTE_ERRNO(h));
+        return (NOTE_ERR(h, EINVAL));
     }
+
     res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest, msg,
                               pco->offset[CCN_PCO_B_PublisherPublicKeyDigest],
                               pco->offset[CCN_PCO_E_PublisherPublicKeyDigest],
@@ -732,15 +783,14 @@ ccn_locate_key(struct ccn *h,
         ccn_charbuf_destroy(&key_name);
     }
     else if (ccn_buf_match_dtag(d, CCN_DTAG_Key)) {
+        const unsigned char *dkey;
+        size_t dkey_size;
         res = ccn_ref_tagged_BLOB(CCN_DTAG_Key, msg,
                                   pco->offset[CCN_PCO_B_Key_Certificate_KeyName],
                                   pco->offset[CCN_PCO_E_Key_Certificate_KeyName],
                                   &dkey, &dkey_size);
-        pkey = ccn_d2i_pubkey(dkey, dkey_size);
-        pkey_size = ccn_pubkey_size(pkey);
         /* XXX: need to put this into the hashtable instead of just returning it */
-        *pubkey = calloc(1, pkey_size);
-        memcpy(*pubkey, pkey, pkey_size);
+        *pubkey = ccn_d2i_pubkey(dkey, dkey_size);
         return (0);
     }
     else if (ccn_buf_match_dtag(d, CCN_DTAG_Certificate)) {
@@ -819,7 +869,11 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                                                                  interest->size,
                                                                  info.pi)) {
                                     enum ccn_upcall_kind upcall_kind; /* KEYS */
-                                    void *pubkey = NULL;
+                                    struct ccn_pkey *pubkey = NULL;
+                                    int type = ccn_get_content_type(msg, info.pco);
+                                    if (type == CCN_CONTENT_KEY) {
+                                        res = ccn_cache_key(h, msg, size, info.pco);
+                                    }
                                     res = ccn_locate_key(h, msg, size, info.pco, &pubkey);
                                     if (res >= 0) {	/* we have the pubkey, use it to verify the msg */
                                         res = ccn_verify_signature(msg, size, info.pco, pubkey);
@@ -853,7 +907,11 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
             }
             if (h->default_content_action != NULL) {
                 enum ccn_upcall_kind upcall_kind; /* KEYS */
-                void *pubkey = NULL;
+                struct ccn_pkey *pubkey = NULL;
+                int type = ccn_get_content_type(msg, info.pco);
+                if (type == CCN_CONTENT_KEY) {
+                    res = ccn_cache_key(h, msg, size, info.pco);
+                }
                 res = ccn_locate_key(h, msg, size, info.pco, &pubkey);
                 if (res >= 0) {	/* we have the pubkey, use it to verify the msg */
                     res = ccn_verify_signature(msg, size, info.pco, pubkey);
