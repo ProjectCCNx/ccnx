@@ -43,7 +43,9 @@ LIBS = libccn.a
 LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_dtag_table.o ccn_schedule.o ccn_matrix.o \
     ccn_buf_decoder.o ccn_uri.o ccn_buf_encoder.o ccn_bloom.o ccn_name_util.o ccn_digest.o ccn_keystore.o ccn_signing.o ccn_match.o hashtb.o ccn_merkle_path_asn1.o ccn_bulkdata.o
 
-default: lib $(PROGRAMS)
+default all: lib $(PROGRAMS)
+# Don't try to build shared libs right now.
+# all: shlib $(BROKEN_PROGRAMS)
 
 install: install_headers
 install_headers:
@@ -54,8 +56,6 @@ uninstall_headers:
 	$(RM) -r $(INSTALL_INCLUDE)/ccn
 
 shlib: $(SHLIBNAME)
-
-all: default shlib $(BROKEN_PROGRAMS)
 
 lib: libccn.a
 
