@@ -1,0 +1,8 @@
+AFTER : test_single_ccnd
+BEFORE : test_single_ccnd_teardown
+type jot || SkipTest no jot available
+NAME=ccn:/test_short_stuff/$$
+jot 100 | ccnsendchunks $NAME
+trap "rm tmp$$" 0
+ccncatchunks $NAME > tmp$$
+jot 100 | diff - tmp$$

@@ -1,0 +1,14 @@
+# Functions for supporting the test_* scripts
+
+BEFORE () {
+  : Used by testdriver for determining test order
+}
+
+AFTER () {
+  : Used by testdriver for determining test order
+}
+
+SkipTest () {
+  echo "***" Skipping $TESTNAME - $*
+  exit 9
+}

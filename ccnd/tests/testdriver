@@ -1,0 +1,60 @@
+#!/usr/bin/env sh
+#
+# This orchestrates the execution of various test scripts
+#
+# Test scripts should live in the same directory as this script
+# and should have whitespace-free names matching test_*
+# These are coded using Bourne shell syntax.
+#
+# Stylized commands of the form
+# AFTER : test_foo test_bar
+# BEFORE : test_baz
+# are used to order the tests, where there are dependencies.
+# Naturally, independent tests are to be preferred where possible.
+
+# Run out of out own subdirectory
+cd $(dirname "$0")
+
+# Set up PATH so the tested programs are used, rather than any that
+# might be installed.
+export PATH=.:../agent:../lib:$PATH
+
+# Keep track of failed tests and skipped tests
+: > FAILING
+: > SKIPPED
+# Also keep track of status codes
+rm -rf STATUS
+mkdir STATUS
+
+GetTestNames () {
+   echo test_*
+}
+
+ExtractDeps () {
+  for i in "$@"; do
+    sed -n -e 's/^AFTER : //p' $i | xargs -n 1 echo  | while read j; do test -f "$j" && echo $j $i; done
+    sed -n -e 's/^BEFORE : //p' $i | xargs -n 1 echo | while read j; do test -f "$j" && echo $i $j; done
+    echo $i $i
+  done
+}
+
+RunTest () {
+  ( . settings; . functions; echo === $1 >&2; . $1 )
+  STATUS=$?
+  echo $STATUS >&2
+  case $STATUS in
+    0) ;;
+    9) echo $1 >> SKIPPED;;
+    *) echo '***' $1 Failed >&2; echo $1 >> FAILING;;
+  esac
+  echo $STATUS > STATUS/$1
+  return $STATUS
+}
+
+SetExitCode () {
+  : | diff -u - FAILING
+}
+
+ExtractDeps $(GetTestNames) | tsort | while read TEST; do RunTest $TEST; done
+
+SetExitCode

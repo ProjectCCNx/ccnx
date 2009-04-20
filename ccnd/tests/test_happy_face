@@ -1,0 +1,3 @@
+BEFORE : test_dummy13
+AFTER : test_setup
+echo ":-)"
