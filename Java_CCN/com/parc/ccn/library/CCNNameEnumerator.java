@@ -337,7 +337,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 				catch(IOException e){
 					
 				}
-				catch (SignatureException e) {
+				catch(SignatureException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}

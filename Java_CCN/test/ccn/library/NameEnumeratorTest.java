@@ -3,12 +3,9 @@ package test.ccn.library;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Random;
-import java.util.logging.Level;
 
-import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
@@ -18,17 +15,14 @@ import com.parc.ccn.library.CCNNameEnumerator;
 
 import junit.framework.Assert;
 
-//public class NameEnumeratorTest extends BasePutGetTest implements BasicNameEnumeratorListener{
 public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 	
-	//static CCNLibrary _library;
-	static CCNLibrary putLibrary;
-	static CCNLibrary getLibrary;
-	static CCNNameEnumerator putne;
-	static CCNNameEnumerator getne;
-	static NameEnumeratorTest net;
-	
-	public static Random rand = new Random();
+	CCNLibrary putLibrary;
+	CCNLibrary getLibrary;
+	CCNNameEnumerator putne;
+	CCNNameEnumerator getne;
+
+	Random rand = new Random();
 
 	String namespaceString = "/parc.com";
 	ContentName namespace;
@@ -43,48 +37,69 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 	
 	String prefix1String = "/parc.com/registerTest";
 	String prefix1StringError = "/park.com/registerTest";
-	//ArrayList<LinkReference> names;
 	ArrayList<ContentName> names;
 	ContentName prefix1;
 	ContentName c1;
 	ContentName c2;
 	
-	
 	@Test
-	public void testCreateEnumerator(){
+	public void testNameEnumerator(){
+		
+		System.out.println("Starting CCNNameEnumerator Test");
+		
+		//set up CCN libraries for testing
+		setLibraries();
+		
+		//verify that everything is set up
 		Assert.assertNotNull(putLibrary);
 		Assert.assertNotNull(getLibrary);
-		System.out.println("checking if we created a name enumerator");
-
 		Assert.assertNotNull(putne);
 		Assert.assertNotNull(getne);
+		
+		//tests that the names are properly registered (namespace and object names)
+		testRegisterName();
+		
+		//tests that prefixes are properly registered for exploring the namespace
+		testRegisterPrefix();
+		
+		//tests that an ArrayList of ContentNames was received for the registered prefix
+		testGetCallback();
+		
+		//register additional name to trigger (set responser dirty flag) a new response by the responder
+		registerAdditionalName();
+		
+		//verify that the new response with an updated list of names was received.
+		testGetCallbackDirty();
+		
+		//test that registered prefixes and their interests are canceled
+		testCancelPrefix();
+		
+		//verify that we only get a response for names with the correct prefix and that are active
+		testGetCallbackNoResponse();
 	}
 	
-	@Test
+	
 	public void testRegisterName(){
-		Assert.assertNotNull(putLibrary);
-		Assert.assertNotNull(getLibrary);
-		Assert.assertNotNull(putne);
 		
 		try{
-			net.namespace = ContentName.fromNative(namespaceString);
-			net.name1 = ContentName.fromNative(name1String);
-			net.name2 = ContentName.fromNative(name2String);
-			net.name2a = ContentName.fromNative(name2aString);
+			namespace = ContentName.fromNative(namespaceString);
+			name1 = ContentName.fromNative(name1String);
+			name2 = ContentName.fromNative(name2String);
+			name2a = ContentName.fromNative(name2aString);
 		}
 		catch(Exception e){
 			Assert.fail("Could not create ContentName from "+name1String +" or "+name2String);
 		}
 		
-		putne.registerNameSpace(net.namespace);
-		putne.registerNameForResponses(net.name1);
-		putne.registerNameForResponses(net.name2);
-		putne.registerNameForResponses(net.name2a);
+		putne.registerNameSpace(namespace);
+		putne.registerNameForResponses(name1);
+		putne.registerNameForResponses(name2);
+		putne.registerNameForResponses(name2a);
 		ContentName nullName = null;
 		putne.registerNameForResponses(nullName);
 		
 		try{
-			while(!putne.containsRegisteredName(net.name2a)){
+			while(!putne.containsRegisteredName(name2a)){
 				Thread.sleep(rand.nextInt(50));
 			}
 			
@@ -98,23 +113,20 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		
 	}
 	
-	@Test
+	
 	public void testRegisterPrefix(){
-		Assert.assertNotNull(putLibrary);
-		Assert.assertNotNull(getLibrary);
-		Assert.assertNotNull(getne);
-		
+
 		try{
-			net.prefix1 = ContentName.fromNative(prefix1String);
+			prefix1 = ContentName.fromNative(prefix1String);
 		}
 		catch(Exception e){
 			Assert.fail("Could not create ContentName from "+prefix1String);
 		}
 		
-		System.out.println("registering prefix: "+net.prefix1.toString());
+		System.out.println("registering prefix: "+prefix1.toString());
 		
 		try{
-			getne.registerPrefix(net.prefix1);
+			getne.registerPrefix(prefix1);
 		}
 		catch(IOException e){
 			System.err.println("error registering prefix");
@@ -124,15 +136,13 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		
 	}
 	
-	@Test
+	
 	public void testGetCallback(){
 
-		Assert.assertNotNull(putLibrary);
-		Assert.assertNotNull(getLibrary);
 		
 		int attempts = 0;
 		try{
-			while(net.names==null && attempts < 500){
+			while(names==null && attempts < 500){
 				Thread.sleep(rand.nextInt(50));
 				attempts++;
 			}
@@ -145,21 +155,24 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 			Assert.fail();
 		}
 		
-		Assert.assertNotNull(net.names);
-		//for(LinkReference lr: net.names){
-		for(ContentName cn: net.names){
-			//System.out.println("got name: "+lr.targetName());
-			//Assert.assertTrue(lr.targetName().toString().equals("/name1") || lr.targetName().toString().equals("/name2"));
+		Assert.assertNotNull(names);
+		
+		for(ContentName cn: names){
 			System.out.println("got name: "+cn.toString());
 			Assert.assertTrue(cn.toString().equals("/name1") || cn.toString().equals("/name2"));
 		}
 		
+		names = null;
+			
+	}
+	
+	public void registerAdditionalName(){
 		//now add new name
 		try{
-			net.name1Dirty = ContentName.fromNative(name1StringDirty);
-			putne.registerNameForResponses(net.name1Dirty);
+			name1Dirty = ContentName.fromNative(name1StringDirty);
+			putne.registerNameForResponses(name1Dirty);
 			
-			while(!putne.containsRegisteredName(net.name1Dirty)){
+			while(!putne.containsRegisteredName(name1Dirty)){
 				Thread.sleep(rand.nextInt(50));
 			}
 				
@@ -177,16 +190,12 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 						
 	}
 
-	@Test
+	
 	public void testGetCallbackDirty(){
 
-		Assert.assertNotNull(putLibrary);
-		Assert.assertNotNull(getLibrary);
-		
-		net.names = null;
 		int attempts = 0;
 		try{
-			while(net.names==null && attempts < 1000){
+			while(names==null && attempts < 1000){
 				Thread.sleep(rand.nextInt(50));
 				attempts++;
 			}
@@ -198,33 +207,23 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 			System.err.println("error waiting for names to be registered by name enumeration responder");
 			Assert.fail();
 		}
-		
-		
-		//for(LinkReference lr: net.names){
-		Assert.assertTrue(net.names != null);
-		Assert.assertTrue(net.names.size()==3);
-		for(ContentName cn: net.names){
-			//System.out.println("got name: "+lr.targetName());
-			//Assert.assertTrue(lr.targetName().toString().equals("/name1") || lr.targetName().toString().equals("/name2"));
+
+		Assert.assertTrue(names.size()==3);
+		for(ContentName cn: names){
 			System.out.println("got name: "+cn.toString());
 			Assert.assertTrue(cn.toString().equals("/name1") || cn.toString().equals("/name2") || cn.toString().equals("/name1TestDirty"));
 		}
+		names = null;
 	}
 	
 
-	@Test
 	public void testCancelPrefix(){
-		Assert.assertNotNull(putLibrary);
-		Assert.assertNotNull(getLibrary);
-		Assert.assertNotNull(getne);
-		
+
 		System.out.println("testing prefix cancel");
 		
-		//ContentName prefix1 = null;
 		ContentName prefix1Error = null;
 		
 		try{
-			//prefix1 = ContentName.fromNative(prefix1String);
 			prefix1Error = ContentName.fromNative(prefix1StringError);
 		}
 		catch(Exception e){
@@ -235,22 +234,15 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		//try to remove a prefix not registered
 		Assert.assertFalse(getne.cancelPrefix(prefix1Error));
 		//remove the registered name
-		Assert.assertTrue(getne.cancelPrefix(net.prefix1));
+		Assert.assertTrue(getne.cancelPrefix(prefix1));
 		//try to remove the registered name again
 		Assert.assertFalse(getne.cancelPrefix(prefix1));
-		
-		net.names = null;
+
 	}
 	
 	
-	@Test
 	public void testGetCallbackNoResponse(){
-		Assert.assertNotNull(putLibrary);
-		Assert.assertNotNull(getLibrary);
-		Assert.assertNotNull(getne);
-		
-		
-		net.names = null;
+
 		ContentName p1 = null;
 		
 		try{
@@ -274,13 +266,13 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		
 		int attempts = 0;
 		try{
-			while(net.names==null && attempts < 100){
+			while(names==null && attempts < 100){
 				Thread.sleep(rand.nextInt(50));
 				attempts++;
 			}
 			//we either broke out of loop or the names are here
 			System.out.println("done waiting for results to arrive");
-			Assert.assertNull(net.names);
+			Assert.assertNull(names);
 			getne.cancelPrefix(p1);
 		}
 		catch(InterruptedException e){
@@ -293,83 +285,47 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		
 
 	
-	@Test
 	public void testGetCallbackAfterCancel(){
-		Assert.assertNotNull(putLibrary);
-		Assert.assertNotNull(getLibrary);
-		net.names = null;
-		
-		//getne.handleContent(createNameList(), net.prefix1);
-		
-		Assert.assertNull(net.names);
-		
+		//assert names are still null in case we got a response even though the request was canceled
+		Assert.assertNull(names);
 	}
 	
-	/*
-	public static void nameEnumeratorSetup(){
-		net.ne = new CCNNameEnumerator(_library, net);
-	}
-	*/
 	
-	public void setLibraries(CCNLibrary l1, CCNLibrary l2){
-		putLibrary = l1;
-		getLibrary = l2;
-		putne = new CCNNameEnumerator(l1, net);
-		getne = new CCNNameEnumerator(l2, net);
+	/* 
+	 * function to open and set the put and get libraries
+	 * also creates and sets the Name Enumerator Objects
+	 * 
+	 */
+	public void setLibraries(){
+		try{
+			putLibrary = CCNLibrary.open();
+			getLibrary = CCNLibrary.open();
+			putne = new CCNNameEnumerator(putLibrary, this);
+			getne = new CCNNameEnumerator(getLibrary, this);
+		}
+		catch(ConfigurationException e){
+			e.printStackTrace();
+			Assert.fail("Failed to open libraries for tests");
+		}
+		catch(IOException e){
+			e.printStackTrace();
+			Assert.fail("Failed to open libraries for tests");
+		}
 	}
     
 	
-	
-	@BeforeClass
-	public static void setup(){
-		System.out.println("Starting CCNNameEnumerator Test");
-		net = new NameEnumeratorTest();
-		try {
-			net.setLibraries(CCNLibrary.open(), CCNLibrary.open());
-			//net.setLibrary(CCNLibrary.open());
-			Library.logger().setLevel(Level.FINEST);
-			//net.nameEnumeratorSetup();
-		} catch (ConfigurationException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
 
-	//public int handleNameEnumerator(ContentName p, ArrayList<LinkReference> n) {
 	public int handleNameEnumerator(ContentName p, ArrayList<ContentName> n) {
 		
 		System.out.println("got a callback!");
 		
-		net.names = n;
+		names = n;
 		System.out.println("here are the returned names: ");
-		//for(LinkReference l: net.names)
-		//	System.out.println(l.toString()+" ("+p.toString()+l.toString()+")");
-		for(ContentName cn: net.names)
+
+		for(ContentName cn: names)
 			System.out.println(cn.toString()+" ("+p.toString()+cn.toString()+")");
 		
 		return 0;
-	}
-	
-	//public ArrayList<LinkReference> createNameList(){
-	public ArrayList<ContentName> createNameList(){
-		//ArrayList<LinkReference> n = new ArrayList<LinkReference>();
-		ArrayList<ContentName> n = new ArrayList<ContentName>();
-		
-		try{
-			ContentName c1 = ContentName.fromNative("/name1");
-			ContentName c2 = ContentName.fromNative("/name2");
-			
-			//n.add(new LinkReference(c1));
-			//n.add(new LinkReference(c2));
-			n.add(c1);
-			n.add(c2);
-		}
-		catch(Exception e){
-			e.printStackTrace();
-			Assert.fail("Could not create ContentName from "+prefix1String);
-		}
-		return n;
 	}
 	
 }
