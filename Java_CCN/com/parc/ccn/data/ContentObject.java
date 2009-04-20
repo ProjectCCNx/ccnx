@@ -2,6 +2,7 @@ package com.parc.ccn.data;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
@@ -66,10 +67,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			byte [] content,
 			Signature signature
 	) {
-		_name = name;
-		_signedInfo = signedInfo;
-		_content = content.clone();
-		_signature = signature;
+		this(name, signedInfo, content, 0, ((null == content) ? 0 : content.length), signature);
 	}
 
 	public ContentObject(String digestAlgorithm, // prefer OID
@@ -99,6 +97,39 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			} catch (Exception e) {
 				Library.logger().warning("Exception attempting to verify signature: " + e.getClass().getName() + ": " + e.getMessage());
 				Library.warningStackTrace(e);
+			}
+		}
+	}
+
+	/**
+	 * Minimum-copy constructor.
+	 * @param digestAlgorithm
+	 * @param name
+	 * @param signedInfo
+	 * @param contentStream a stream from which to read a block of content
+	 * @param length number of bytes to try to read; will size content to this
+	 * 		or to the number of bytes left in the stream, whichever is smaller. 
+	 * DKS TODO -- need timeout?
+	 * 
+	 * Set signature with setSignature or sign once it's constructed.
+	 * @throws IOException  if no bytes left in stream
+	 */
+	public ContentObject(String digestAlgorithm, // prefer OID
+			ContentName name,
+			SignedInfo signedInfo,
+			InputStream contentStream, int length) throws IOException {
+
+		_name = name;
+		_signedInfo = signedInfo;
+		_content = new byte[length];
+		int count = contentStream.read(_content);
+		if (count < _content.length) {
+			if (count < 0) {
+				throw new IOException("End of stream reached when building content object!");
+			} else {
+				byte [] newContent = new byte[count];
+				System.arraycopy(_content, 0, newContent, 0, count);
+				_content = newContent;
 			}
 		}
 	}
@@ -174,7 +205,8 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			}
 			KeyLocator locator = keyManager.getKeyLocator(signingKey);
 			return new ContentObject(name, 
-							         new SignedInfo(publisher, SignedInfo.ContentType.DATA, locator), contents, signingKey);
+							         new SignedInfo(publisher, SignedInfo.ContentType.DATA, locator), 
+							         contents, signingKey);
 		} catch (Exception e) {
 			Library.logger().warning("Cannot build content object for publisher: " + publisher);
 			Library.infoStackTrace(e);
@@ -287,6 +319,21 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		if (!Arrays.equals(_content, other._content))
 			return false;
 		return true;
+	}
+	
+	/**
+	 * External function to set signature if generating it some special way
+	 * (e.g. with a bulk signer).
+	 * @param signature
+	 */
+	public void setSignature(Signature signature) {
+		if (null != _signature) {
+			Library.logger().warning("Setting signature on content object: " + name() + " after signature already set!");
+		}
+		if (null == signature) {
+			Library.logger().warning("Setting signature to null on content object: " + name());
+		}
+		_signature = signature;
 	}
 
 	/**
