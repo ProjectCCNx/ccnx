@@ -24,6 +24,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 
 	Random rand = new Random();
 
+	
 	String namespaceString = "/parc.com";
 	ContentName namespace;
 	String name1String = "/parc.com/registerTest/name1";
