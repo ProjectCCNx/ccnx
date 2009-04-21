@@ -286,11 +286,12 @@
 <xs:simpleType name="ContentTypeType">
   <xs:restriction base="xs:base64Binary">
     <xs:length value="3" fixed="true"/>
-    <xs:enumeration value="DATA"/>
-    <xs:enumeration value="GONE"/>
-    <xs:enumeration value="KEY/"/>
-    <xs:enumeration value="LINK"/>
-    <xs:enumeration value="NACK"/>
+    <xs:enumeration value="DATA"/> <!-- default when Type element is absent -->
+    <xs:enumeration value="ENCR"/> <!-- content is encrypted -->
+    <xs:enumeration value="GONE"/> <!-- whiteout marker -->
+    <xs:enumeration value="KEY/"/> <!-- public key -->
+    <xs:enumeration value="LINK"/> <!-- link -->
+    <xs:enumeration value="NACK"/> <!-- no content at this time -->
   </xs:restriction>
 </xs:simpleType>
 

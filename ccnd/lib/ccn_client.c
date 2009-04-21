@@ -632,6 +632,7 @@ ccn_get_content_type(const unsigned char *ccnb,
     typeu = (typebytes[0] << 16) | (typebytes[1] << 8) | typebytes[2];
     switch (typeu) {
     case CCN_CONTENT_DATA:
+    case CCN_CONTENT_ENCR:
     case CCN_CONTENT_GONE:
     case CCN_CONTENT_KEY:
     case CCN_CONTENT_LINK:

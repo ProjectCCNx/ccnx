@@ -114,7 +114,7 @@
 <!ELEMENT FinalBlockID  (#PCDATA)>	<!-- base64Binary -->
 <!ATTLIST FinalBlockID  ccnbencoding CDATA #FIXED 'base64Binary'>
 
-<!ELEMENT Type		(#PCDATA)>	<!-- DATA, GONE, KEY/, LINK, NACK -->
+<!ELEMENT Type		(#PCDATA)>	<!-- DATA, ENCR, GONE, KEY/, LINK, NACK -->
 <!ATTLIST Type          ccnbencoding CDATA #FIXED 'base64Binary'>
 
 <!ELEMENT ContentDigest	(#PCDATA)>	<!-- base64 encoding of DER-encoded DigestInfo -->
