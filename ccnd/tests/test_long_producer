@@ -1,5 +1,5 @@
 AFTER : test_single_ccnd
 type jot || SkipTest no jot available
 NAME=ccn:/test/long/jot
-jot 400000 | ccnsendchunks -x 300 $NAME &
+jot $LONG_LINES | ccnsendchunks -x 300 $NAME &
 echo Long producer started

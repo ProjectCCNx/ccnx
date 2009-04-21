@@ -3,6 +3,6 @@ BEFORE : test_single_ccnd_teardown
 type jot || SkipTest no jot available
 NAME=ccn:/test/long/jot
 jot 100 | ccnsendchunks $NAME
-jot 400000 > tmp$$
+jot $LONG_LINES > tmp$$
 trap "rm tmp$$" 0
 ccncatchunks2 $NAME | dd bs=1k | cmp - tmp$$
