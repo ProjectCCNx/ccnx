@@ -53,6 +53,7 @@ struct mydata {
     intmax_t timeouts;
     intmax_t dups;
     intmax_t lastcheck;
+    intmax_t unverified;
     struct ooodata ooo[PIPELIMIT];
 };
 
@@ -131,7 +132,7 @@ reporter(struct ccn_schedule *sched, void *clienth,
     fflush(stdout);
     fprintf(stderr,
             "%ld.%06u ccncatchunks2[%d]: "
-            "%jd isent, %jd recvd, %jd junk, %jd holes, %jd t/o, "
+            "%jd isent, %jd recvd, %jd junk, %jd holes, %jd t/o, %jd unvrf, "
             "%u curwin, %u rtt, %u rtte\n",
             (long)now.tv_sec,
             (unsigned)now.tv_usec,
@@ -141,6 +142,7 @@ reporter(struct ccn_schedule *sched, void *clienth,
             md->junk,
             md->holes,
             md->timeouts,
+            md->unverified,
             md->curwindow,
             md->rtt,
             md->rtte
@@ -375,6 +377,7 @@ GOT_HERE();
         return(CCN_UPCALL_RESULT_ERR);
     assert(md != NULL);
     md->pkts_recvd++;
+    if (kind == CCN_UPCALL_CONTENT_UNVERIFIED) md->unverified++;
     if (selfp->intdata == -1) {
         /* Outside the window we care about. Toss it. */
         md->dups++;
