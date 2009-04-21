@@ -619,7 +619,7 @@ create_local_listener(const char *sockname, int backlog)
         return(sock);
     savedmask = umask(0111); /* socket should be R/W by anybody */
     res = bind(sock, (struct sockaddr *)&a, sizeof(a));
-    umask(res);
+    umask(savedmask);
     if (res == -1) {
         close(sock);
         return(-1);
