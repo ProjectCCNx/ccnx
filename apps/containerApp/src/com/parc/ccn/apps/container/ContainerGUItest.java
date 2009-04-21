@@ -1,418 +1,372 @@
 package com.parc.ccn.apps.container;
 
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.io.IOException;
-import java.net.URL;
-import java.security.InvalidKeyException;
-import java.security.SignatureException;
-import java.util.ArrayList;
+/**
+ * This application that requires the following additional files:
+ *   NathanTreeHelp.html
+ *    arnold.html
+ *    bloch.html
+ *    chan.html
+ *    jls.html
+ *    swingtutorial.html
+ *    tutorial.html
+ *    tutorialcont.html
+ *    vm.html
+ */
+//import FileNode;
 
+import javax.swing.JEditorPane;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
+import javax.swing.JSplitPane;
 import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
+
 import javax.swing.JTree;
-import javax.swing.event.TreeSelectionEvent;
-import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.TreeSelectionModel;
-import javax.xml.stream.XMLStreamException;
+import javax.swing.event.TreeExpansionEvent;
+import javax.swing.event.TreeExpansionListener;
+import javax.swing.event.TreeSelectionEvent;
+import javax.swing.event.TreeSelectionListener;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.data.content.Collection;
-import com.parc.ccn.data.content.LinkReference;
-import com.parc.ccn.data.query.CCNInterestListener;
-import com.parc.ccn.data.query.Interest;
+import com.parc.ccn.data.query.BasicNameEnumeratorListener;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.CCNNameEnumerator;
 
-public class ContainerGUItest extends JPanel implements ActionListener, CCNInterestListener {
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.logging.Level;
+import java.io.IOException;
+import java.awt.Dimension;
+import java.awt.GridLayout;
+
+public class ContainerGUItest extends JPanel
+                      implements BasicNameEnumeratorListener {
     /**
 	 * 
 	 */
-	private static final long serialVersionUID = 7198145969014262490L;
-	protected JTextField textField;
-    protected static JTextArea textArea;
-    final static String newline = "\n";
-    protected CCNLibrary library;
-    private static JTree tree;
+	private static final long serialVersionUID = 8291979948494547958L;
+	private JEditorPane htmlPane;
+    private JTree tree;
+    private URL helpURL;
+    private static boolean DEBUG = false;
 
+    //Optionally play with line styles.  Possible values are
+    //"Angled" (the default), "Horizontal", and "None".
+    private static boolean playWithLineStyle = false;
+    private static String lineStyle = "Horizontal";
     
-    /* Model */
-    protected Collection currentDirectory;
+    //Optionally set the look and feel.
+    private static boolean useSystemLookAndFeel = false;
+    protected JTextField m_display;
+
+    private ArrayList<ContentName> names;
     
-    protected ArrayList<ContentName> namedContent = new ArrayList<ContentName>();
-    
-    protected static final String DIRECTORY_NAME = "/parc.com/ContainerApp/Directory";
-    protected static final String CONTENT_PREFIX = "/parc.com/ContainerApp/Content";
-    protected static final long DEFAULT_TIMEOUT = 500;
-    protected ContentName directoryName = null;
-    protected ContentName contentPrefix = null;
-    
-    public ContainerGUItest() throws ConfigurationException, IOException, MalformedContentNameStringException, InterruptedException, SignatureException {    	
-    	super(new GridBagLayout());
-   		
-   		// have View load up currentDirectory
-    	
-        textField = new JTextField(20);
-        textField.addActionListener(this);
+    public ContainerGUItest() {
+        super(new GridLayout(1,0));
 
-        textArea = new JTextArea(5, 20);
-        textArea.setEditable(false);
-        JScrollPane scrollPane = new JScrollPane(textArea);
+        //Create the nodes.
+        DefaultMutableTreeNode top =
+            new DefaultMutableTreeNode("parc.com");
+        createNodes(top);
 
-        //Add Components to this panel.
-        GridBagConstraints c = new GridBagConstraints();
-        c.gridwidth = GridBagConstraints.REMAINDER;
+        //Create a tree that allows one selection at a time.
+        tree = new JTree(top);
+        tree.getSelectionModel().setSelectionMode
+                (TreeSelectionModel.SINGLE_TREE_SELECTION);
 
-        c.fill = GridBagConstraints.HORIZONTAL;
-        add(textField, c);
+        //Listen for when the selection changes.
+       // tree.addTreeSelectionListener(this);
 
-        c.fill = GridBagConstraints.BOTH;
-        c.weightx = 1.0;
-        c.weighty = 1.0;
-        add(scrollPane, c);
-        
+        if (playWithLineStyle) {
+            System.out.println("line style = " + lineStyle);
+            tree.putClientProperty("JTree.lineStyle", lineStyle);
+        }
 
-        
-        
-      //CCN Stuff
-    	library = CCNLibrary.open();
-    	directoryName = ContentName.fromNative(DIRECTORY_NAME);
-    	contentPrefix = ContentName.fromNative(CONTENT_PREFIX);
-    	
-    	//ContentObject directoryObject = library.getLatest(directoryName, DEFAULT_TIMEOUT);
-    	   	
-     	//if (null == directoryObject) {
-    	//	directoryObject = library.put(directoryName, new LinkReference[0]);
-    	//}
-     	
-		try {
-			currentDirectory = library.getCollection(directoryName, DEFAULT_TIMEOUT);
-		} catch (XMLStreamException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-			//library.decodeCollection(directoryObject);
+        //Create the scroll pane and add the tree to it. 
+        JScrollPane treeView = new JScrollPane(tree);
 
-		namedContent.clear();
-		for (LinkReference lr : currentDirectory.contents()) {
-			namedContent.add(lr.targetName());
-		}
-        //repopulate the list with the 
-        populateList();
-        Library.logger().info("Initial directory contents: " + currentDirectory.size() + " items.");
-    			
-   		// When I want to get some content, not quite sure how these interest thingy works 
-		try {
-			// DKS temporary hack to say "last (latest version) object *after* this one"
-			Interest interest = Interest.next(currentDirectory, null);
-			interest.orderPreference(Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME);
-			Library.logger().info("Expressing initial interest: " + interest.name());
-			library.expressInterest(interest, this);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+        //Create the HTML viewing pane.
+        htmlPane = new JEditorPane();
+        htmlPane.setEditable(false);
+        initHelp();
+        JScrollPane htmlView = new JScrollPane(htmlPane);
+
+        //Add the scroll panes to a split pane.
+        JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+        splitPane.setTopComponent(treeView);
+        splitPane.setBottomComponent(htmlView);
+
+        Dimension minimumSize = new Dimension(100, 50);
+        htmlView.setMinimumSize(minimumSize);
+        treeView.setMinimumSize(minimumSize);
+        splitPane.setDividerLocation(100); 
+        splitPane.setPreferredSize(new Dimension(500, 300));
+
+        //Add the split pane to this panel.
+        add(splitPane);
     }
 
-
-
     
-    
+//    // Make sure expansion is threaded and updating the tree model
+//    // only occurs within the event dispatching thread.
+//    class DirExpansionListener implements TreeExpansionListener
+//    {
+//        public void treeExpanded(TreeExpansionEvent event)
+//        {
+//            final DefaultMutableTreeNode node = getTreeNode(
+//                event.getPath());
+//            final FileNode fnode = getFileNode(node);
+//
+//            Thread runner = new Thread() 
+//            {
+//              public void run() 
+//              {
+//                if (fnode != null && fnode.expand(node)) 
+//                {
+//                  Runnable runnable = new Runnable() 
+//                  {
+//                    public void run() 
+//                    {
+//                       m_model.reload(node);
+//                    }
+//                  };
+//                  SwingUtilities.invokeLater(runnable);
+//                }
+//              }
+//            };
+//            runner.start();
+//        }
+//
+//        public void treeCollapsed(TreeExpansionEvent event) {}
+//    }
 
-    
-    public void actionPerformed(ActionEvent evt) {
-        String text = textField.getText();
-        
-        
-        ContentName name = null;
-		try {
-			name = ContentName.fromNative(contentPrefix + "/"+ text);
-		} catch (MalformedContentNameStringException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-        //put content into ccnd
-		
-		//Library.logger().info(name.toString());
-       // currentDirectory.add(name);
-        try {
-			//ContentObject newDirectory = library.addToCollection(directoryName, new ContentName[]{name}, 0);
-			currentDirectory = library.addToCollection(currentDirectory, new ContentName[]{name},DEFAULT_TIMEOUT);
-			
-			//currentDirectory = library.decodeCollection(newDirectory);
-			library.put(name, text.getBytes());
-			Library.logger().info("Put new directory (" + currentDirectory.size() + " items): " + name);
-		} catch (SignatureException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		} /*catch (InterruptedException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-/*
-		try {
-			ContentObject result = library.get(interest, 100000);
-			Library.logger().info(result.name().toString());
-			namedContent.add(result.name());
-	        //repopulate the list with the 
-	        populateList();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		*/
-        //add to model - actually we should be getting this from the listener
-        //namedContent.add(name);
-        //repopulate the list with the 
-        //populateList();
- catch (InvalidKeyException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (XMLStreamException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-        
-        textField.selectAll();
+  class DirSelectionListener 
+    implements TreeSelectionListener 
+  {
+	  /** Required by TreeSelectionListener interface. */
+	    public void valueChanged(TreeSelectionEvent e) {
+	        DefaultMutableTreeNode node = (DefaultMutableTreeNode)
+	                           tree.getLastSelectedPathComponent();
 
-        //Make sure the new text is visible, even if there
-        //was a selection in the text area.
-        textArea.setCaretPosition(textArea.getDocument().getLength());
-    }
-    
-    private void populateList()
+	        if (node == null) return;
+
+	        Object nodeInfo = node.getUserObject();
+	        if (node.isLeaf()) {
+	            Name name = (Name)nodeInfo;
+	            displayURL(name.fileURL);
+	            if (DEBUG) {
+	                System.out.print(name.fileURL + ":  \n    ");
+	            }
+	        } else {
+	            displayURL(helpURL); 
+	        }
+	        if (DEBUG) {
+	            System.out.println(nodeInfo.toString());
+	        }
+	    }
+	  /*
+public void valueChanged(TreeSelectionEvent event)
     {
-    	textArea.setText("");
-    	for(ContentName text:namedContent)
-    	{
-    		textArea.append(text.toString() + newline);	
-    	}
-    	
+      DefaultMutableTreeNode node = getTreeNode(
+        event.getPath());
+      FileNode fnode = getFileNode(node);
+      if (fnode != null)
+        m_display.setText(fnode.getFile().
+          getAbsolutePath());
+      else
+        m_display.setText("");
     }
+    */
+  }
+     
+    private class Name {
+        public String name;
+        public URL fileURL;
+
+        public Name(String nameString, String filename) {
+            name = nameString;
+            fileURL = getClass().getResource(filename);
+            if (fileURL == null) {
+                System.err.println("Couldn't find file: "
+                                   + filename);
+            }
+        }
+
+        public String toString() {
+            return name;
+        }
+    }
+
+    private void initHelp() {
+        String s = "NathanTreeHelp.html";
+        helpURL = getClass().getResource(s);
+        if (helpURL == null) {
+            System.err.println("Couldn't open help file: " + s);
+        } else if (DEBUG) {
+            System.out.println("Help URL is " + helpURL);
+        }
+
+        displayURL(helpURL);
+    }
+
+    private void displayURL(URL url) {
+        try {
+            if (url != null) {
+                htmlPane.setPage(url);
+            } else { //null url
+		htmlPane.setText("File Not Found");
+                if (DEBUG) {
+                    System.out.println("Attempted to display a null URL.");
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Attempted to read a bad URL: " + url);
+        }
+    }
+
+    private void createNodes(DefaultMutableTreeNode top) {
+        DefaultMutableTreeNode category = null;
+        DefaultMutableTreeNode name = null;
+
+
+
+        category = new DefaultMutableTreeNode("registerTest");
+        top.add(category);
+        
+
+        name = new DefaultMutableTreeNode(new Name
+            ("name1",
+            "testcontent.html"));
+        category.add(name);
+
+
+        name = new DefaultMutableTreeNode(new Name
+        		("name2",
+                "testcontent.html"));
+        category.add(name);
+
+
+        name = new DefaultMutableTreeNode(new Name
+        		("name3",
+                "testcontent.html"));
+        category.add(name);
+
+
+        name = new DefaultMutableTreeNode(new Name
+        		("name4",
+                "testcontent.html"));
+        category.add(name);
+
+        category = new DefaultMutableTreeNode("registerTest2");
+        top.add(category);
+        
+        name = new DefaultMutableTreeNode(new Name
+        		("name11",
+                "testcontent.html"));
+        category.add(name);
+
+
+        name = new DefaultMutableTreeNode(new Name
+        		("name22",
+                "testcontent.html"));
+        category.add(name);
+
+
+
+
+        name = new DefaultMutableTreeNode(new Name
+        		("name33",
+                "testcontent.html"));
+        category.add(name);
+
+
+        name = new DefaultMutableTreeNode(new Name
+        		("name44",
+                "testcontent.html"));
+        category.add(name);
+    }
+        
     /**
      * Create the GUI and show it.  For thread safety,
      * this method should be invoked from the
      * event dispatch thread.
      */
     private static void createAndShowGUI() {
+        if (useSystemLookAndFeel) {
+            try {
+                UIManager.setLookAndFeel(
+                    UIManager.getSystemLookAndFeelClassName());
+            } catch (Exception e) {
+                System.err.println("Couldn't use system look and feel.");
+            }
+        }
+
         //Create and set up the window.
-        JFrame frame = new JFrame("Testing The Containers");
+        JFrame frame = new JFrame("Container GUI Test");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        //Add contents to the window.
-        try {
-			frame.add(new ContainerGUItest());
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} 
+        //Add content to the window.
+        frame.add(new ContainerGUItest());
+
         //Display the window.
         frame.pack();
         frame.setVisible(true);
     }
 
-    public static class HelloWorldFrame extends JFrame {
-
-    	public void main(String args[]) {
-    		new HelloWorldFrame();
-    	}
-    	HelloWorldFrame() {
-    		JLabel jlbHelloWorld = new JLabel("hello world");
-    		add(jlbHelloWorld);
-    		
-            //tree browser related
-            DefaultMutableTreeNode top =
-                new DefaultMutableTreeNode("CCN");
-            createNodes(top);
-            tree = new JTree(top);
-            
-            tree.getSelectionModel().setSelectionMode
-            (TreeSelectionModel.SINGLE_TREE_SELECTION);
-
-            //Listen for when the selection changes.
-            //tree.addTreeSelectionListener((TreeSelectionListener) this);
-
-            JScrollPane treeView = new JScrollPane(tree);
-            add(treeView);
-    		
-    		
-    		this.setSize(100, 100);
-    		// pack();
-    		setVisible(true);
-    	}
+    private static void nameEnumerationTest()
+    {
+    	System.out.println("Starting CCNNameEnumerator Test");
+		GUINameEnumerator net = new GUINameEnumerator();
+		try {
+			net.setLibraries(CCNLibrary.open(), CCNLibrary.open());
+			//net.setLibrary(CCNLibrary.open());
+			Library.logger().setLevel(Level.FINEST);
+			//net.nameEnumeratorSetup();
+		} catch (ConfigurationException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}	
     	
-    	// Tree functions    
-        private void createNodes(DefaultMutableTreeNode top) {
-            DefaultMutableTreeNode category = null;
-            DefaultMutableTreeNode book = null;
-            
-            category = new DefaultMutableTreeNode("CCN STUFF");
-            top.add(category);
-            
-            
-            book = new DefaultMutableTreeNode(new BookInfo
-                ("More CCN Stuff",
-                "CCN/Location"));
-            category.add(book);
-            
-            
-            book = new DefaultMutableTreeNode(new BookInfo
-                ("Look at all this CCN Stuff",
-                "CCN/Location"));
-            category.add(book);
-            
-            
-            book = new DefaultMutableTreeNode(new BookInfo
-                ("Is this yet more CCN Stuff",
-                "CCN/location"));
-            category.add(book);
-
-            //...add more books for programmers...
-
-            category = new DefaultMutableTreeNode("CCN Stuff in another container");
-            top.add(category);
-
-            //VM
-            book = new DefaultMutableTreeNode(new BookInfo
-                ("CCN Stuff someplace else",
-                 "CCN/location"));
-            category.add(book);
-
-            //Language Spec
-            book = new DefaultMutableTreeNode(new BookInfo
-                ("Other CCN Stuff",
-                 "CCN/location"));
-            category.add(book);
-        }
-
-        //more tree relates stuff
-        public void valueChanged(TreeSelectionEvent e) {
-        	//Returns the last path element of the selection.
-        	//This method is useful only when the selection model allows a single selection.
-        	    DefaultMutableTreeNode node = (DefaultMutableTreeNode)
-        	                       tree.getLastSelectedPathComponent();
-
-        	    if (node == null)
-        	    //Nothing is selected.	
-        	    return;
-
-        	    Object nodeInfo = node.getUserObject();
-        	    if (node.isLeaf()) {
-        	        BookInfo book = (BookInfo)nodeInfo;
-        	        //displayURL(book.bookURL);
-        	    } else {
-        	        //displayURL(helpURL); 
-        	    }
-        	}
-    // For the tree demo
-        private class BookInfo {
-            public String bookName;
-            public URL bookURL;
-
-            public BookInfo(String book, String filename) {
-                bookName = book;
-               /* bookURL = getClass().getResource(filename);
-                if (bookURL == null) {
-                    System.err.println("Couldn't find file: "
-                                       + filename);
-                }*/
-            }
-
-            public String toString() {
-                return bookName;
-            }
-        }
-
-        /*private void displayURL(URL url) {
-            try {
-                if (url != null) {
-                    htmlPane.setPage(url);
-                } else { //null url
-    		htmlPane.setText("File Not Found");
-                    if (DEBUG) {
-                        System.out.println("Attempted to display a null URL.");
-                    }
-                }
-            } catch (IOException e) {
-                System.err.println("Attempted to read a bad URL: " + url);
-            }
-        }*/
+		
+		//put names into the repository
+		//todo - parse items based off of types
+		//on click display names 
+		net.RegisterName();
+		net.registerPrefix();
+		net.getCallback();
+		net.getCallbackDirty();	
+    	
     }
-
+   
+    	
     public static void main(String[] args) {
         //Schedule a job for the event dispatch thread:
         //creating and showing this application's GUI.
         javax.swing.SwingUtilities.invokeLater(new Runnable() {
             public void run() {
-            	new HelloWorldFrame();
-                createAndShowGUI();
+                nameEnumerationTest();
+            	createAndShowGUI();
+                
             }
         });
-    
     }
 
-	//@Override
-	public Interest handleContent(ArrayList<ContentObject> results,
-			Interest interest) {
-		Collection newCollection = null;
-		ContentObject collectionObject = null;
-		for (ContentObject result : results) {
-			try {
-				newCollection = Collection.contentToCollection(result);
-				//library.decodeCollection(result);
-				
-				Library.logger().info("New directory: " + result.name());
-				
-				collectionObject = result;	
-				
-				//String text = "New directory: " + result.name();
-				//textArea.append(text + newline);
-			} 
-			 catch (XMLStreamException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-		if (null != newCollection) {
-			currentDirectory = newCollection;
-			//add to model - actually we should be getting this from the listener
-			namedContent.clear();
-			for (LinkReference lr : currentDirectory.contents()) {
-				namedContent.add(lr.targetName());
-			}
-	        //repopulate the list with the 
-	        populateList();
-	        									
-			// Call view to tell it model has changed
-			//String text = "Content Added to CCND";
-			//textArea.append(text + newline);
-		}
+	public int handleNameEnumerator(ContentName prefix, ArrayList<ContentName> n) {
 		
-		Interest newInterest = null;
-		if (null != collectionObject) {
-			newInterest = Interest.next(collectionObject, null);
-			newInterest.orderPreference(Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME);
-			Library.logger().info("Reexpressing incremented interest: " + newInterest);
-		} else {
-			Library.logger().info("Reexpressing vanilla interest: " + newInterest);
-			newInterest = Interest.last(directoryName);
-		}
-		return newInterest;
+		System.out.println("got a callback!");
+		this.names = n;
+		System.out.println("here are the returned names: ");
+		for(ContentName cn: this.names)
+			System.out.println(cn.toString()+" ("+prefix.toString()+cn.toString()+")");		
+		return 0;
 	}
+	
+	
 }

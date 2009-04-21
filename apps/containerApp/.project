@@ -3,6 +3,7 @@
 	<name>containerApp</name>
 	<comment></comment>
 	<projects>
+		<project>CCN</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
