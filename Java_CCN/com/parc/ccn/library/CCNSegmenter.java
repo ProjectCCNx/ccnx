@@ -7,7 +7,6 @@ import java.security.PrivateKey;
 import java.security.SignatureException;
 import java.sql.Timestamp;
 
-import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -86,9 +85,9 @@ public class CCNSegmenter {
 	protected CCNAggregatedSigner _bulkSigner;
 	
 	// Encryption/decryption handler
-	protected Cipher _cipher;
+	protected String _encryptionAlgorithm; // in Java standard form, default CCNCipherFactory.DEFAULT_CIPHER_MODE.
 	protected SecretKeySpec _encryptionKey;
-	protected IvParameterSpec _iv;
+	protected IvParameterSpec _masterIV;
 
 	/**
 	 * Eventually add encryption, allow control of authentication algorithm.
@@ -100,16 +99,18 @@ public class CCNSegmenter {
 		this(null, null, null);
 	}
 	
-	public CCNSegmenter(Cipher cipher, SecretKeySpec encryptionKey, IvParameterSpec iv) throws ConfigurationException, IOException {
-		this(CCNLibrary.open(), cipher, encryptionKey, iv);
+	public CCNSegmenter(String encryptionAlgorithm, 
+						SecretKeySpec encryptionKey, IvParameterSpec masterIV) throws ConfigurationException, IOException {
+		this(CCNLibrary.open(), encryptionAlgorithm, encryptionKey, masterIV);
 	}
 
 	public CCNSegmenter(CCNLibrary library) {
 		this(new CCNFlowControl(library));
 	}
 
-	public CCNSegmenter(CCNLibrary library, Cipher cipher, SecretKeySpec encryptionKey, IvParameterSpec iv) {
-		this(new CCNFlowControl(library), null, cipher, encryptionKey, iv);
+	public CCNSegmenter(CCNLibrary library, String encryptionAlgorithm, 
+							SecretKeySpec encryptionKey, IvParameterSpec masterIV) {
+		this(new CCNFlowControl(library), null, encryptionAlgorithm, encryptionKey, masterIV);
 	}
 	/**
 	 * Create an object with default Merkle hash tree aggregated signing.
@@ -124,7 +125,7 @@ public class CCNSegmenter {
 	}
 
 	public CCNSegmenter(CCNFlowControl flowControl, CCNAggregatedSigner signer,
-						Cipher cipher, SecretKeySpec encryptionKey, IvParameterSpec iv) {
+						String encryptionAlgorithm, SecretKeySpec encryptionKey, IvParameterSpec masterIV) {
 		if ((null == flowControl) || (null == flowControl.getLibrary())) {
 			// Tries to get a library or make a flow control, yell if we fail.
 			throw new IllegalArgumentException("CCNSegmenter: must provide a valid library or flow controller.");
@@ -136,9 +137,10 @@ public class CCNSegmenter {
 		} else {
 			_bulkSigner = signer; // if null, default to merkle tree
 		}
-		_cipher = cipher;
+		
+		_encryptionAlgorithm = encryptionAlgorithm;
 		_encryptionKey = encryptionKey;
-		_iv = iv;
+		_masterIV = masterIV;
 		initializeBlockSize();
 	}
 
@@ -467,6 +469,14 @@ public class CCNSegmenter {
 		}
 	}
 
+	/**
+	 * Compute the index of the last block of a set of segments, according to the
+	 * profile.
+	 * @param currentSegmentNumber
+	 * @param bytesIntervening
+	 * @param blocksRemaining
+	 * @return
+	 */
 	public Long lastSegmentIndex(long currentSegmentNumber, long bytesIntervening, int blocksRemaining) {
 		if (SegmentNumberType.SEGMENT_FIXED_INCREMENT == _sequenceType) {
 			return currentSegmentNumber + (getBlockIncrement() * (blocksRemaining - 1));
