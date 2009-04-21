@@ -9,6 +9,7 @@ import java.sql.Timestamp;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo;
@@ -70,9 +71,6 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 		// and signedInfos in the MerkleTree blocks. 
 		// For now, this generates the root signature too, so can
 		// ask for the signature for each block.
-		// DKS TODO -- enable different fragment numbering schemes
-		// DKS TODO -- limit number of copies in creation of MerkleTree -- have to make
-		//  a copy when making CO, don't make extra ones.
 		CCNMerkleTree tree = 
 			new CCNMerkleTree(rootName, baseNameIndex,
 					new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
@@ -149,10 +147,6 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 		// and signedInfos in the MerkleTree blocks. 
 		// For now, this generates the root signature too, so can
 		// ask for the signature for each block.
-		// DKS TODO -- enable different fragment numbering schemes
-		// DKS TODO -- limit number of copies in creation of MerkleTree -- have to make
-		//  a copy when making CO, don't make extra ones.
-		// DKS TODO -- handling of lastBlocks flag in signed info.
 		CCNMerkleTree tree = 
 			new CCNMerkleTree(rootName, baseNameIndex,
 					new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
@@ -183,6 +177,34 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 		return segmenter.nextSegmentIndex(
 				SegmentationProfile.getSegmentNumber(tree.blockName(tree.numLeaves()-1)),
 				(length - (blockWidth*(tree.numLeaves()-1))));
+	}
+
+	public void putBlocks(
+			CCNSegmenter segmenter,
+			ContentObject [] contentObjects, 
+			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, 
+											 NoSuchAlgorithmException, IOException {
+		
+		if (null == publisher) {
+			publisher = segmenter.getFlowControl().getLibrary().keyManager().getDefaultKeyID();
+		}
+		PrivateKey signingKey = segmenter.getFlowControl().getLibrary().keyManager().getSigningKey(publisher);
+
+		// Generate the signatures for these objects.
+		CCNMerkleTree tree = 
+			new CCNMerkleTree(contentObjects, signingKey);
+
+		for (ContentObject co : contentObjects) {
+			try {
+				Library.logger().info("putMerkleTree: writing block " + co.name() + " of " + tree.numLeaves() + " to name " + tree.blockName(i));
+				segmenter.getFlowControl().addNameSpace(SegmentationProfile.segmentRoot(co.name()));
+				segmenter.getFlowControl().put(co);
+			} catch (IOException e) {
+				Library.logger().warning("This should not happen: we cannot put our own blocks!");
+				Library.warningStackTrace(e);
+				throw e;
+			}
+		}
 	}
 
 }
