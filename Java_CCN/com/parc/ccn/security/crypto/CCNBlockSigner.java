@@ -3,11 +3,13 @@ package com.parc.ccn.security.crypto;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
 import java.security.SignatureException;
 import java.sql.Timestamp;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
@@ -101,5 +103,22 @@ public class CCNBlockSigner implements CCNAggregatedSigner {
 					finalSegmentIndex, locator, publisher);	
 		}
 		return nextSegmentIndex;
+	}
+	
+	public void putBlocks(
+			CCNSegmenter segmenter,
+			ContentObject [] contentObjects, 
+			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, 
+											 NoSuchAlgorithmException, IOException {
+			
+		if (null == publisher) {
+			publisher = segmenter.getFlowControl().getLibrary().keyManager().getDefaultKeyID();
+		}
+		PrivateKey signingKey = segmenter.getFlowControl().getLibrary().keyManager().getSigningKey(publisher);
+
+		for (ContentObject co : contentObjects) {
+			co.sign(signingKey);
+			segmenter.getFlowControl().put(co);
+		}
 	}
 }
