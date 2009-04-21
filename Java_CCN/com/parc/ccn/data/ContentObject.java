@@ -336,6 +336,16 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		_signature = signature;
 	}
 
+	public void sign(PrivateKey signingKey) throws InvalidKeyException, SignatureException {
+		// Use _content to avoid case where content() might want to clone.
+		setSignature(sign(this.name(), this.signedInfo(), this._content, 0, this._content.length, signingKey));
+	}
+	
+	public void sign(String digestAlgorithm, PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
+		setSignature(sign(this.name(), this.signedInfo(), this._content, 0, this._content.length, 
+						digestAlgorithm, signingKey));
+	}
+
 	/**
 	 * Generate a signature on a name-content mapping. This
 	 * signature is specific to both this content signedInfo
