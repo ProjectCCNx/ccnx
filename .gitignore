@@ -49,3 +49,4 @@ ccnd/agent/contenthash.out
 ccnd/agent/contentmishash.ccnb
 *~
 *.jar
+ccnd/ccn-start-udplink-*.parc.xerox.com.sh
