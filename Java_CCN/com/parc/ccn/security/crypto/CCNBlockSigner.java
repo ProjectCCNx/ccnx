@@ -12,7 +12,6 @@ import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNSegmenter;
-import com.parc.ccn.library.profiles.SegmentationProfile;
 
 /**
  * An unaggregating aggregated signer. Signs each block individually.
@@ -60,46 +59,6 @@ public class CCNBlockSigner implements CCNAggregatedSigner {
 				lastBlockLength, type, timestamp, freshnessSeconds, 
 				finalSegmentIndex, locator, publisher);
 		return nextSegmentIndex;
-	}
-
-	public long putBlocks(
-			CCNSegmenter segmenter,
-			ContentName[] names, byte[][] contentBlocks,
-			int blockCount, int baseBlockIndex, int lastBlockLength,
-			ContentType type, Timestamp timestamp, Integer freshnessSeconds,
-			Long finalSegmentIndex, KeyLocator locator, PublisherPublicKeyDigest publisher)
-			throws InvalidKeyException, SignatureException,
-			NoSuchAlgorithmException, IOException {
-		
-		if (blockCount == 0) 
-			return SegmentationProfile.baseSegment();
-
-		// finalBlockID makes no sense for this method unless the blocks really are
-		// already segmented. But this function likely going away...
-		// fill in the last segment. Otherwise we're all set.
-		if ((null != finalSegmentIndex) && (finalSegmentIndex.equals(CCNSegmenter.LAST_SEGMENT))) {
-			
-			// setting this for this case makes little sense, but this whole function is probably
-			// going away..
-			finalSegmentIndex = SegmentationProfile.getSegmentNumber(names[blockCount-1].lastComponent());
-		}
-
-		segmenter.putFragment(names[0], SegmentationProfile.baseSegment(), contentBlocks[baseBlockIndex], 0, 
-				contentBlocks[baseBlockIndex].length, type, timestamp, freshnessSeconds, 
-				finalSegmentIndex, locator, publisher);
-		if (blockCount == 1) 
-			return SegmentationProfile.baseSegment();;
-
-		for (int i=baseBlockIndex+1; i < (baseBlockIndex + blockCount - 1); ++i) {
-			segmenter.putFragment(names[i-(baseBlockIndex+1)], SegmentationProfile.baseSegment(), contentBlocks[i], 0, 
-					contentBlocks[i].length, type, timestamp, freshnessSeconds, 
-					finalSegmentIndex, locator, publisher);
-		}
-		segmenter.putFragment(names[blockCount - 1], SegmentationProfile.baseSegment(),
-				contentBlocks[baseBlockIndex + blockCount - 1], 0, 
-				lastBlockLength, type, timestamp, freshnessSeconds, 
-				finalSegmentIndex, locator, publisher);
-		return SegmentationProfile.baseSegment();
 	}
 
 	public long putBlocks(

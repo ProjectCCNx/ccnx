@@ -371,30 +371,6 @@ public class CCNSegmenter {
 	}
 
 	/**
-	 * DKS TODO -- may need to be tweaked
-	 * 
-	 * Use this to put a set of unrelated content blocks. May need
-	 * fancier version that allows sub-itemst to segment. Doesn't return
-	 * a segment identifier, as it would make no sense.
-	 * @params names the individual names of the content items to put
-	 */
-	public void fragmentedPut(
-			ContentName [] names, 
-			byte [][] contentBlocks, int blockCount, 
-			int firstBlockIndex, int lastBlockLength,
-			ContentType type, 
-			Timestamp timestamp,
-			Integer freshnessSeconds, Long finalSegmentIndex,
-			KeyLocator locator, 
-			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, 
-											 NoSuchAlgorithmException, IOException {
-		_bulkSigner.putBlocks(this, names, 
-				contentBlocks, blockCount, firstBlockIndex, lastBlockLength, type,
-				timestamp, freshnessSeconds, finalSegmentIndex, locator, publisher);
-	}
-
-
-	/**
 	 * Puts a single block of content using a fragment naming convention.
 	 * @param name
 	 * @param segmentNumber

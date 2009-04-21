@@ -50,40 +50,6 @@ public interface CCNAggregatedSigner {
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, 
 											 NoSuchAlgorithmException, IOException;
 
-
-	/**
-	 * DKS TODO -- may need to be tweaked
-	 * 
-	 * Use this to put a set of unrelated content blocks.
-	 * @param names
-	 * @param contentBlocks
-	 * @param blockCount
-	 * @param baseBlockIndex
-	 * @param lastBlockLength
-	 * @param type
-	 * @param timestamp
-	 * @param freshnessSeconds
-	 * @param lastBlocks
-	 * @param locator
-	 * @param publisher
-	 * @return
-	 * @throws InvalidKeyException
-	 * @throws SignatureException
-	 * @throws NoSuchAlgorithmException
-	 * @throws IOException
-	 */
-	public long putBlocks(
-			CCNSegmenter segmenter,
-			ContentName [] names, 
-			byte [][] contentBlocks, int blockCount, 
-			int baseBlockIndex, int lastBlockLength,
-			ContentType type, 
-			Timestamp timestamp,
-			Integer freshnessSeconds, Long finalSegmentIndex,
-			KeyLocator locator, 
-			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, 
-											 NoSuchAlgorithmException, IOException;
-
 	public long putBlocks(
 			CCNSegmenter segmenter,
 			ContentName name, long baseNameIndex,
