@@ -237,11 +237,11 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 		} else {
 			//we have a valid block!
 			//first make sure the offset is valid
-			if (toGetBlockAndOffset[1] <= _currentBlock.content().length) {
+			if (toGetBlockAndOffset[1] <= _currentBlock.contentLength()) {
 				//this is good, our offset is somewhere in this block
 			} else {
 				//our offset is past the end of our block, reset to the end.
-				toGetBlockAndOffset[1] = _currentBlock.content().length;
+				toGetBlockAndOffset[1] = _currentBlock.contentLength();
 			}
 			_blockOffset = toGetBlockAndOffset[1];
 			return _header.blockLocationToPosition(toGetBlockAndOffset[0], toGetBlockAndOffset[1]) - currentPosition;

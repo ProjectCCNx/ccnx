@@ -62,7 +62,7 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 		
 		// Now we have a block in place. Read from it. If we run out of block before
 		// we've read len bytes, return what we read. On next read, pull next block.
-		int remainingBytes = _currentBlock.content().length - _blockOffset;
+		int remainingBytes = _currentBlock.contentLength() - _blockOffset;
 		
 		if (remainingBytes <= 0) {
 			_currentBlock = getNextBlock();
@@ -71,7 +71,7 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 				// in socket implementation, this would be EAGAIN
 				return 0;
 			}
-			remainingBytes = _currentBlock.content().length;
+			remainingBytes = _currentBlock.contentLength();
 		}
 		// Read minimum of remainder of this block and available buffer.
 		int readCount = (remainingBytes > len) ? len : remainingBytes;

@@ -251,8 +251,8 @@ public abstract class CCNAbstractInputStream extends InputStream {
 			// signature, the proxy ought to match as well.
 			if ((null != _verifiedRootSignature) && (Arrays.equals(_verifiedRootSignature, block.signature().signature()))) {
 				if ((null == proxy) || (null == _verifiedProxy) || (!Arrays.equals(_verifiedProxy, proxy))) {
-					Library.logger().warning("Found block: " + block.name() + " whose digest fails to verify; block length: " + block.content().length);
-					Library.logger().info("Verification failure: " + block.name() + " timestamp: " + block.signedInfo().getTimestamp() + " content length: " + block.content().length + 
+					Library.logger().warning("Found block: " + block.name() + " whose digest fails to verify; block length: " + block.contentLength());
+					Library.logger().info("Verification failure: " + block.name() + " timestamp: " + block.signedInfo().getTimestamp() + " content length: " + block.contentLength() + 
 							" content digest: " + DataUtils.printBytes(block.contentDigest()) + " proxy: " + 
 							DataUtils.printBytes(proxy) + " expected proxy: " + DataUtils.printBytes(_verifiedProxy));
 	 				return false;
@@ -261,7 +261,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 				// Verifying a new block. See if the signature verifies, otherwise store the signature
 				// and proxy.
 				if (!ContentObject.verify(proxy, block.signature().signature(), block.signedInfo(), block.signature().digestAlgorithm(), null)) {
-					Library.logger().warning("Found block: " + block.name().toString() + " whose signature fails to verify; block length: " + block.content().length + ".");
+					Library.logger().warning("Found block: " + block.name().toString() + " whose signature fails to verify; block length: " + block.contentLength() + ".");
 					return false;
 				} else {
 					// Remember current verifiers

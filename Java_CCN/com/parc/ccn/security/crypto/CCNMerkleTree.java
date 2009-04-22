@@ -149,7 +149,7 @@ public class CCNMerkleTree extends MerkleTree {
 			// DKS -- need to make sure content() doesn't clone
 			_tree[leafNodeIndex(i)-1] = 
 				new DEROctetString(computeBlockDigest(i, contentObjects[i].content(), 
-													  0, contentObjects[i].content().length));
+													  0, contentObjects[i].contentLength()));
 		}
 	}
 

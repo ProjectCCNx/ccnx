@@ -368,7 +368,7 @@ public class BasicKeyManager extends KeyManager {
 					// DKS TODO remove the above check
 
 					// First pull the key data. 
-					if ((null == potentialKey.content()) || (0 == potentialKey.content().length)) {
+					if ((null == potentialKey.content()) || (0 == potentialKey.contentLength())) {
 						continue;
 					}
 					
