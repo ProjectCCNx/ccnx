@@ -132,6 +132,17 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	/**
+	 * Add content objects to this flow controller
+	 * @param cos
+	 * @throws IOException
+	 */
+	public void put(ContentObject [] cos) throws IOException {
+		for (ContentObject co : cos) {
+			put(co);
+		}
+	}
+
+	/**
 	 * Add namespace and content at the same time
 	 * @param co
 	 * @throws IOException 
