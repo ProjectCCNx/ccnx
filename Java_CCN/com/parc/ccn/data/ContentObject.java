@@ -134,6 +134,13 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		}
 	}
 
+	public ContentObject(
+			ContentName name,
+			SignedInfo signedInfo,
+			InputStream contentStream, int length) throws IOException {
+		this(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, name, signedInfo, contentStream, length);
+	}
+	
 	public ContentObject(ContentName name, SignedInfo signedInfo, byte [] content,
 			Signature signature) {
 		this(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, name, signedInfo, content, signature);
