@@ -78,6 +78,7 @@ public class CCNCipherFactory {
 	 * @throws NoSuchAlgorithmException 
 	 */
 	public static Cipher getSegmentEncryptionCipher(
+			Cipher optionalExistingCipherToInitialize,
 			String encAlgorithm, 
 			SecretKeySpec secretKey,
 			IvParameterSpec masterIV, 
@@ -89,11 +90,17 @@ public class CCNCipherFactory {
 		// needs an IV it will make one, which you can ask it for and transfer to the
 		// other end somehow.
 		// DKS -- TODO eventually.
-		if ((null == encAlgorithm) || (null == secretKey) || (null == masterIV)) {
-			throw new InvalidAlgorithmParameterException("Algorithm, key and IV cannot be null!");
+		if (((null == encAlgorithm) && (null == optionalExistingCipherToInitialize)) || (null == secretKey) || (null == masterIV)) {
+			throw new InvalidAlgorithmParameterException("Algorithm (or cipher), key and IV cannot be null!");
 		}
 		
-		Cipher cipher = Cipher.getInstance(encAlgorithm);
+		Cipher cipher = null;
+		if ((null != optionalExistingCipherToInitialize) && 
+					(optionalExistingCipherToInitialize.getAlgorithm().equals(encAlgorithm))) {
+			cipher = optionalExistingCipherToInitialize;
+		} else {
+			cipher = Cipher.getInstance(encAlgorithm);
+		}
 		
 		// Construct the IV/initial counter.
 		if (0 == cipher.getBlockSize()) {
@@ -113,6 +120,7 @@ public class CCNCipherFactory {
 	
 	
 	public static Cipher getSegmentDecryptionCipher(
+			Cipher optionalExistingCipherToInitialize,
 			String encAlgorithm, 
 			SecretKeySpec secretKey,
 			IvParameterSpec masterIV, 
@@ -124,11 +132,17 @@ public class CCNCipherFactory {
 		// needs an IV it will make one, which you can ask it for and transfer to the
 		// other end somehow.
 		// DKS -- TODO eventually.
-		if ((null == encAlgorithm) || (null == secretKey) || (null == masterIV)) {
-			throw new InvalidAlgorithmParameterException("Algorithm, key and IV cannot be null!");
+		if (((null == encAlgorithm) && (null == optionalExistingCipherToInitialize)) || (null == secretKey) || (null == masterIV)) {
+			throw new InvalidAlgorithmParameterException("Algorithm (or cipher), key and IV cannot be null!");
 		}
 		
-		Cipher cipher = Cipher.getInstance(encAlgorithm);
+		Cipher cipher = null;
+		if ((null != optionalExistingCipherToInitialize) && 
+					(optionalExistingCipherToInitialize.getAlgorithm().equals(encAlgorithm))) {
+			cipher = optionalExistingCipherToInitialize;
+		} else {
+			cipher = Cipher.getInstance(encAlgorithm);
+		}
 		
 		// Construct the IV/initial counter.
 		if (0 == cipher.getBlockSize()) {
