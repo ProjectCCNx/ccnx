@@ -6,6 +6,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.SignatureException;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentObject;
 
 public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
@@ -15,10 +16,12 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException, 
 											 NoSuchAlgorithmException, IOException {
 		
-		// Generate the signatures for these objects.
+		// Generate the signatures for these objects. This sets the 
+		// signatures as a side effect
+		// DKS TODO remove side effect behavior.
 		CCNMerkleTree tree = 
 			new CCNMerkleTree(contentObjects, signingKey);
-		tree.setSignatures();
+		Library.logger().info("Signed tree of " + tree.numLeaves() + " leaves, " + tree.nodeCount() + " nodes.");
 	}
 
 }
