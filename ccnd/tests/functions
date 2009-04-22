@@ -8,7 +8,23 @@ AFTER () {
   : Used by testdriver for determining test order
 }
 
+Fail () {
+  echo "***" Failing $TESTNAME - $*
+  exit 1
+}
+
 SkipTest () {
   echo "***" Skipping $TESTNAME - $*
   exit 9
+}
+
+WithCCND () {
+  local port;
+  port=$((CCN_LOCAL_PORT_BASE+$1))
+  shift
+  CCN_LOCAL_PORT=$port "$@"
+}
+
+RunTest () {
+  ( . settings; . functions; . $1 )
 }
