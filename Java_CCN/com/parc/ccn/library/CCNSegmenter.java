@@ -16,11 +16,13 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
+import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.SegmentationProfile.SegmentNumberType;
 import com.parc.ccn.security.crypto.CCNAggregatedSigner;
+import com.parc.ccn.security.crypto.CCNMerkleTree;
 import com.parc.ccn.security.crypto.CCNMerkleTreeSigner;
 
 /**
@@ -343,12 +345,55 @@ public class CCNSegmenter {
 		// hash tree.   Build header, for each block, get authinfo for block,
 		// (with hash tree, block identifier, timestamp -- SQLDateTime)
 		// insert header using mid-level insert, low-level insert for actual blocks.
-		long result = 
-			_bulkSigner.putBlocks(this, name, baseSegmentNumber,
-						content, offset, length, blockWidth, type,
-						timestamp, freshnessSeconds, finalSegmentIndex, locator, publisher);
-		// Used to return header. Now return first block.
-		return result;
+		if (length == 0)
+			return baseSegmentNumber;
+		
+		if (null == publisher) {
+			publisher = getFlowControl().getLibrary().keyManager().getDefaultKeyID();
+		}
+		PrivateKey signingKey = getFlowControl().getLibrary().keyManager().getSigningKey(publisher);
+
+		if (null == locator)
+			locator = getFlowControl().getLibrary().keyManager().getKeyLocator(signingKey);
+
+		ContentName rootName = SegmentationProfile.segmentRoot(name);
+		getFlowControl().addNameSpace(rootName);
+
+		if (null == type) {
+			type = ContentType.DATA;
+		}
+		
+		byte [] finalBlockID = null;
+		if (null != finalSegmentIndex) {
+			if (finalSegmentIndex.equals(CCNSegmenter.LAST_SEGMENT)) {
+				// compute final segment number
+				// compute final segment number; which might be this one if blockCount == 1
+				int blockCount = CCNMerkleTree.blockCount(length, blockWidth);
+				finalBlockID = SegmentationProfile.getSegmentID(
+					lastSegmentIndex(baseSegmentNumber, (blockCount-1)*blockWidth, 
+												blockCount));
+			} else {
+				finalBlockID = SegmentationProfile.getSegmentID(finalSegmentIndex);
+			}
+		}
+		
+		ContentObject [] contentObjects = 
+			buildBlocks(rootName, baseSegmentNumber, 
+					new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
+					content, offset, length, blockWidth);
+
+		// Digest of complete contents
+		// If we're going to unique-ify the block names
+		// (or just in general) we need to incorporate the names
+		// and signedInfos in the MerkleTree blocks. 
+		// For now, this generates the root signature too, so can
+		// ask for the signature for each block.
+		_bulkSigner.signBlocks(contentObjects, signingKey);
+		getFlowControl().put(contentObjects);
+
+		return nextSegmentIndex(
+				SegmentationProfile.getSegmentNumber(contentObjects[contentObjects.length - 1].name()), 
+				contentObjects[contentObjects.length - 1].content().length);
 	}
 
 	public long fragmentedPut(
@@ -360,14 +405,60 @@ public class CCNSegmenter {
 			Integer freshnessSeconds, Long finalSegmentIndex,
 			KeyLocator locator, 
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, 
-											 NoSuchAlgorithmException, IOException {
-		
-		long result = 
-			_bulkSigner.putBlocks(this, name, baseSegmentNumber,
-						contentBlocks, blockCount, firstBlockIndex, lastBlockLength, type,
-						timestamp, freshnessSeconds, finalSegmentIndex, locator, publisher);
-		// Used to return header. Now return first block.
-		return result;
+			NoSuchAlgorithmException, IOException {
+
+		if (blockCount == 0)
+			return baseSegmentNumber;
+
+		if (null == publisher) {
+			publisher = getFlowControl().getLibrary().keyManager().getDefaultKeyID();
+		}
+		PrivateKey signingKey = getFlowControl().getLibrary().keyManager().getSigningKey(publisher);
+
+		if (null == locator)
+			locator = getFlowControl().getLibrary().keyManager().getKeyLocator(signingKey);
+
+		ContentName rootName = SegmentationProfile.segmentRoot(name);
+		getFlowControl().addNameSpace(rootName);
+
+		if (null == type) {
+			type = ContentType.DATA;
+		}
+
+		byte [] finalBlockID = null;
+		if (null != finalSegmentIndex) {
+			if (finalSegmentIndex.equals(CCNSegmenter.LAST_SEGMENT)) {
+				long length = 0;
+				for (int j = firstBlockIndex; j < firstBlockIndex + blockCount - 1; j++) {
+					length += contentBlocks[j].length;
+				}
+				// don't include last block length; want intervening byte count before the last block
+
+				// compute final segment number
+				finalBlockID = SegmentationProfile.getSegmentID(
+						lastSegmentIndex(baseSegmentNumber, length, blockCount));
+			} else {
+				finalBlockID = SegmentationProfile.getSegmentID(finalSegmentIndex);
+			}
+		}
+
+		ContentObject [] contentObjects = 
+			buildBlocks(rootName, baseSegmentNumber, 
+					new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
+					contentBlocks, false, blockCount, firstBlockIndex, lastBlockLength);
+
+		// Digest of complete contents
+		// If we're going to unique-ify the block names
+		// (or just in general) we need to incorporate the names
+		// and signedInfos in the MerkleTree blocks. 
+		// For now, this generates the root signature too, so can
+		// ask for the signature for each block.
+		_bulkSigner.signBlocks(contentObjects, signingKey);
+		getFlowControl().put(contentObjects);
+
+		return nextSegmentIndex(
+				SegmentationProfile.getSegmentNumber(contentObjects[firstBlockIndex + blockCount - 1].name()), 
+				contentObjects[firstBlockIndex + blockCount - 1].content().length);
 	}
 
 	/**
@@ -428,6 +519,78 @@ public class CCNSegmenter {
 		return nextSegmentIndex(segmentNumber, content.length);
 	}
 	
+	protected ContentObject[] buildBlocks(ContentName rootName,
+			long baseSegmentNumber, SignedInfo signedInfo, 
+			byte[] content, int offset, int length, int blockWidth) {
+		
+		int blockCount = CCNMerkleTree.blockCount(length, blockWidth);
+		ContentObject [] blocks = new ContentObject[blockCount];
+
+		long nextSegmentIndex = baseSegmentNumber;
+		blocks[0] =  
+			new ContentObject(
+					SegmentationProfile.segmentName(rootName, nextSegmentIndex),
+					signedInfo,
+					content, 0, ((length < blockWidth) ? length : blockWidth), (Signature)null);
+		nextSegmentIndex = nextSegmentIndex(nextSegmentIndex, ((length < blockWidth) ? length : blockWidth));
+
+		if (length > blockWidth) {
+			int i = 1;
+			for (i=1; i < (blockCount - 1); ++i) {
+				blocks[i] =  
+					new ContentObject(
+							SegmentationProfile.segmentName(rootName, nextSegmentIndex),
+							signedInfo,
+							content, i*blockWidth, blockWidth, (Signature)null);
+				nextSegmentIndex = nextSegmentIndex(nextSegmentIndex, blockWidth);
+			}
+			blocks[i] =  
+				new ContentObject(
+						SegmentationProfile.segmentName(rootName, nextSegmentIndex),
+						signedInfo,
+						content, i*blockWidth, 
+						(((length % blockWidth) == 0) ? blockWidth : (length % blockWidth)),
+						(Signature)null);
+		}
+		return blocks;
+	}
+
+	protected ContentObject[] buildBlocks(ContentName rootName,
+			long baseSegmentNumber, SignedInfo signedInfo,
+			byte[][] contentBlocks, boolean isDigest, int blockCount,
+			int firstBlockIndex, int lastBlockLength) {
+		
+		ContentObject [] blocks = new ContentObject[blockCount];
+		if (blockCount == 0)
+			return blocks;
+
+		long nextSegmentIndex = baseSegmentNumber;
+		blocks[0] =  
+			new ContentObject(
+					SegmentationProfile.segmentName(rootName, nextSegmentIndex),
+					signedInfo,
+					contentBlocks[firstBlockIndex], 0, contentBlocks[firstBlockIndex].length, (Signature)null);
+		nextSegmentIndex = nextSegmentIndex(nextSegmentIndex, contentBlocks[firstBlockIndex].length);
+
+		int i;
+		for (i=firstBlockIndex+1; i < (firstBlockIndex + blockCount - 1); ++i) {
+			blocks[i] =  
+				new ContentObject(
+						SegmentationProfile.segmentName(rootName, nextSegmentIndex),
+						signedInfo,
+						contentBlocks[i], (Signature)null);
+			nextSegmentIndex = nextSegmentIndex(nextSegmentIndex, contentBlocks[i].length);
+		}
+		blocks[i] =  
+			new ContentObject(
+					SegmentationProfile.segmentName(rootName, nextSegmentIndex),
+					signedInfo,
+					contentBlocks[i], 0, lastBlockLength,
+					(Signature)null);
+		return blocks;
+	}
+
+
 	/**
 	 * Increment segment number according to the profile.
 	 * @param lastSegmentNumber
