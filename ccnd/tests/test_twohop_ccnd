@@ -1,7 +1,7 @@
 AFTER : test_long_consumer2
 BEFORE : test_single_ccnd_teardown test_twohop_ccnd_teardown
 # ccnd 0 is already running and loaded with some data
-SkipTest Not ready quite yet ...
+#SkipTest Not ready quite yet ...
 WithCCND 1 ccnd &
 WithCCND 2 ccnd &
 WithCCND 3 ccnd &
@@ -21,11 +21,11 @@ Linkup () {
 
 Linkup 0 1
 Linkup 1 2
-Linkup 1 3 -ddd
+Linkup 1 3 -dd 2>spur_link.out
 sleep 1
 
 # hack to get second direction
-ccnget -c ccn:/nosuchcontent | wc -l
+ccnget  ccn:/nosuchcontent >/dev/null &
 
 #WithCCND 2 RunTest test_long_consumer
 #test 1 -eq `WithCCND 3 ccndumpnames | wc -l` || Fail spur ccnd should only have one item
