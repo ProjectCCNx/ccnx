@@ -62,7 +62,7 @@ public class CCNMerkleTree extends MerkleTree {
 	Signature [] _signatures = null;
 	
 	ContentObject [] _blockObjects = null;
-		
+	
 	/**
 	 * Constructor for a CCNMerkleTree, that takes a base
 	 * name and adds a counter to the end of it to make the block
@@ -129,7 +129,8 @@ public class CCNMerkleTree extends MerkleTree {
 		_rootSignature = computeRootSignature(root(), signingKey);
 	}
 	
-	public CCNMerkleTree(ContentObject [] contentObjects, PrivateKey signingKey) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+	public CCNMerkleTree(ContentObject [] contentObjects, 
+			PrivateKey signingKey) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
 
 		super(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, ((null != contentObjects) ? contentObjects.length : 0));
 		_blockObjects = contentObjects;
@@ -205,6 +206,16 @@ public class CCNMerkleTree extends MerkleTree {
 	}
 	
 	/**
+	 * Sets the signatures of all the blockObjects.
+	 * TODO DKS refactor this class to remove unused stuff.
+	 */
+	public void setSignatures() {
+		for (int i=0; i < numLeaves(); ++i) {
+			blockSignature(i); // DKS TODO refactor, sets signature as a side effect
+		}
+	}
+	
+	/**
 	 * Helper function
 	 * @param i
 	 * @return
@@ -254,7 +265,7 @@ public class CCNMerkleTree extends MerkleTree {
 			// DKS -- need to make sure content() doesn't clone
 			_tree[leafNodeIndex(i)-1] = 
 				new DEROctetString(computeBlockDigest(i, contentObjects[i].content(), 
-													 0, contentObjects[i].content().length));
+													  0, contentObjects[i].content().length));
 		}
 	}
 
