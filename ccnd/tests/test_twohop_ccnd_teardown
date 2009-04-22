@@ -1,2 +1,6 @@
 AFTER : test_single_ccnd_teardown
 for i in 1 2 3; do WithCCND $i smoketestccnd kill; done
+type pkill && pkill ccnd
+sleep 1
+netstat -an | grep 900[0123]
+sleep 1

@@ -28,5 +28,4 @@ WithCCND 2 ccnget ccn:/ |:
 WithCCND 3 ccnget ccn:/ |:
 
 WithCCND 2 RunTest test_long_consumer
-
-test 1 -eq `WithCCND 3 ccndumpnames | wc -l` || Fail spur ccnd should only have one item
+#test 1 -eq `WithCCND 3 ccndumpnames | wc -l` || Fail spur ccnd should only have one item
