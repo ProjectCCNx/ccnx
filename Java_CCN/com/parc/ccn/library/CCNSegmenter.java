@@ -45,9 +45,15 @@ import com.parc.ccn.security.crypto.CCNMerkleTreeSigner;
  *    or amortized signing, first Merkle Hash Tree based amortization, later
  *    options for other things.
  * c) stock low-level encryption. Given a key K, an IV, and a chosen encryption
- *    algorithm (standard: AES-CTR, also support AES-CBC), segment content so as
+ *    algorithm (standard: AES-CTR, also eventually AES-CBC and other padded
+ *    block cipher options), segment content so as
  *    to meet a desired net data length with potential block expansion, and encrypt.
  *    Other specs used to generate K and IV from higher-level data.
+ *    
+ *    For block ciphers, we require a certain amount of extra space in the
+ *    blocks to accommodate padding (a minimum of 1 bytes for PKCS5 padding,
+ *    for example). 
+ *    DKS TODO -- deal with the padding and length expansion
  *    
  *    For this, we use the standard Java encryption mechanisms, augmented by
  *    alternative providers (e.g. BouncyCastle for AES-CTR). We just need
