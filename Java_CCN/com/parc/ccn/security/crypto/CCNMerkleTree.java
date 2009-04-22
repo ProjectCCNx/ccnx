@@ -7,6 +7,8 @@ import java.security.SignatureException;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.bouncycastle.asn1.DEROctetString;
+
 import com.parc.ccn.Library;
 import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
@@ -127,40 +129,13 @@ public class CCNMerkleTree extends MerkleTree {
 		_rootSignature = computeRootSignature(root(), signingKey);
 	}
 	
-	/**
-	 * Constructor for a CCNMerkleTree, that takes a list of names.
-	 * @param baseName The base name for the content.
-	 * @param baseIndex The index of the first block.
-	 * @param publisher The publisher ID of the signer.
-	 * @param timestamp
-	 * @param contentBlocks
-	 * @param isDigest
-	 * @param blockCount
-	 * @param baseBlockIndex which block in the contentBlocks array to start from
-	 * @param lastBlockBytes how many bytes of the last block to use
-	 * @throws NoSuchAlgorithmException 
-	 * @throws SignatureException 
-	 * @throws InvalidKeyException 
-	 */
-	public CCNMerkleTree(
-			ContentName [] nodeNames, 
-			SignedInfo authenticator,
-			byte[][] contentBlocks,
-			boolean isDigest,
-			int blockCount,
-			int baseBlockIndex, 
-			int lastBlockLength,
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
-		// Computes leaves and tree.
-		super(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, blockCount);
-		
-		// Initialize fields we need for building tree.
-		_blockNames = nodeNames;
-		_signedInfo = authenticator;
+	public CCNMerkleTree(ContentObject [] contentObjects, PrivateKey signingKey) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
 
-		// Computes leaves and tree.
-		initializeTree(contentBlocks, isDigest, baseBlockIndex, lastBlockLength);
+		super(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, ((null != contentObjects) ? contentObjects.length : 0));
+		_blockObjects = contentObjects;
 		
+		// Compute leaves and tree
+		initializeTree(contentObjects);
 		_rootSignature = computeRootSignature(root(), signingKey);
 	}
 
@@ -173,12 +148,15 @@ public class CCNMerkleTree extends MerkleTree {
 	 * @return
 	 */
 	public ContentName blockName(int leafIndex) {
+		if ((leafIndex < 0) || (leafIndex > _blockNames.length))
+			throw new IllegalArgumentException("Index out of range!");
+				
+		if ((null != _blockObjects) && (leafIndex < _blockObjects.length) && (null != _blockObjects[leafIndex])) 
+			return _blockObjects[leafIndex].name();
+		
 		if (null == _blockNames) {
 			_blockNames = new ContentName[numLeaves()];
 		}
-		
-		if ((leafIndex < 0) || (leafIndex > _blockNames.length))
-			throw new IllegalArgumentException("Index out of range!");
 		
 		if (null == _blockNames[leafIndex]) {
 			_blockNames[leafIndex] = computeName(leafIndex);
@@ -194,18 +172,31 @@ public class CCNMerkleTree extends MerkleTree {
 	public long baseNameIndex() { return _baseNameIndex; }
 	public ContentName baseName() { return _baseName; }
 	
-	public SignedInfo blockSignedInfo(int i) {
-		// Eventually allow for separate signedInfos
+	public SignedInfo blockSignedInfo(int leafIndex) {
+		if ((leafIndex < 0) || (leafIndex > _blockNames.length))
+			throw new IllegalArgumentException("Index out of range!");
+		
+		if ((null != _blockObjects) && (null != _blockObjects[leafIndex])) {
+			return _blockObjects[leafIndex].signedInfo();
+		}
+			// Eventually allow for separate signedInfos
 		return _signedInfo;
 	}
 	
 	public Signature blockSignature(int leafIndex) {
+		if ((leafIndex < 0) || (leafIndex > _blockNames.length))
+			throw new IllegalArgumentException("Index out of range!");
+		
+		if ((null != _blockObjects) && (null != _blockObjects[leafIndex])) {
+			if (null == _blockObjects[leafIndex].signature()) {
+				_blockObjects[leafIndex].setSignature(computeSignature(leafIndex));
+			}
+			return _blockObjects[leafIndex].signature();
+		}
+		
 		if (null == _signatures) {
 			_signatures = new Signature[numLeaves()];
 		}
-		
-		if ((leafIndex < 0) || (leafIndex > _signatures.length))
-			throw new IllegalArgumentException("Index out of range!");
 		
 		if (null == _signatures[leafIndex]) {
 			_signatures[leafIndex] = computeSignature(leafIndex);
@@ -236,6 +227,14 @@ public class CCNMerkleTree extends MerkleTree {
 		return _blockObjects[leafIndex];
 	}
 		
+	protected void initializeTree(ContentObject [] contentObjects) throws NoSuchAlgorithmException {
+		if (contentObjects.length < numLeaves())
+			throw new IllegalArgumentException("MerkleTree: cannot build tree from more blocks than given! Have " + contentObjects.length + " blocks, asked to use: " + (numLeaves()));
+		
+		computeLeafValues(contentObjects);
+		computeNodeValues();		
+	}
+
 	protected Signature computeSignature(int leafIndex) {
 		MerklePath path = path(leafIndex);
 		return new Signature(path.derEncodedPath(), rootSignature());		
@@ -249,6 +248,16 @@ public class CCNMerkleTree extends MerkleTree {
 		return CCNSignatureHelper.sign(null, root, signingKey);
 	}
 	
+	protected void computeLeafValues(ContentObject [] contentObjects) throws NoSuchAlgorithmException {
+		// Hash the leaves
+		for (int i=0; i < numLeaves(); ++i) {
+			// DKS -- need to make sure content() doesn't clone
+			_tree[leafNodeIndex(i)-1] = 
+				new DEROctetString(computeBlockDigest(i, contentObjects[i].content(), 
+													 0, contentObjects[i].content().length));
+		}
+	}
+
 	/**
 	 * We need to incorporate the name of the content block
 	 * and the signedInfo into the leaf digest of the tree.

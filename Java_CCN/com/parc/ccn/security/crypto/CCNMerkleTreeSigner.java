@@ -196,7 +196,7 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 
 		for (ContentObject co : contentObjects) {
 			try {
-				Library.logger().info("putMerkleTree: writing block " + co.name() + " of " + tree.numLeaves() + " to name " + tree.blockName(i));
+				Library.logger().info("putMerkleTree: writing block " + co.name() + " of " + tree.numLeaves());
 				segmenter.getFlowControl().addNameSpace(SegmentationProfile.segmentRoot(co.name()));
 				segmenter.getFlowControl().put(co);
 			} catch (IOException e) {
