@@ -201,7 +201,7 @@
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
-			<formatter type="brief" usefile="true"/>
+			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 
 			<batchtest todir="${testout}">
@@ -222,7 +222,7 @@
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
-			<formatter type="brief" usefile="true"/>
+			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 
 			<batchtest todir="${testout}">
@@ -239,7 +239,7 @@
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
-			<formatter type="brief" usefile="true"/>
+			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 
 			<batchtest todir="${testout}">
@@ -258,7 +258,7 @@
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
-			<formatter type="brief" usefile="true"/>
+			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 
 			<batchtest todir="${testout}">
@@ -277,7 +277,7 @@
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
-			<formatter type="brief" usefile="true"/>
+			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<batchtest todir="${testout}">
@@ -313,7 +313,7 @@
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
-			<formatter type="brief" usefile="true"/>
+			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<batchtest todir="${testout}" >
@@ -332,7 +332,7 @@
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
-			<formatter type="brief" usefile="true"/>
+			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<batchtest todir="${testout}">
@@ -349,7 +349,7 @@
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
-			<formatter type="brief" usefile="true"/>
+			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<batchtest todir="${testout}">
@@ -404,7 +404,7 @@
 				<classpath>
 					<path refid="classpath-run"/>
 				</classpath>
-				<formatter type="brief" usefile="true"/>
+				<formatter type="xml" usefile="true"/>
 				<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 				<test todir="${testout}"  name="test.ccn.endtoend.EndToEndTestSource"/>
 			</junit>
@@ -412,7 +412,7 @@
 				<classpath>
 					<path refid="classpath-run"/>
 				</classpath>
-				<formatter type="brief" usefile="true"/>
+				<formatter type="xml" usefile="true"/>
 				<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 				<test todir="${testout}"  name="test.ccn.endtoend.EndToEndTestSink"/>
 			</junit>
