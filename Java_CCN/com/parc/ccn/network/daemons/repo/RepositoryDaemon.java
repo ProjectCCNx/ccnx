@@ -16,6 +16,7 @@ import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.ExcludeFilter;
@@ -23,6 +24,7 @@ import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNWriter;
 import com.parc.ccn.network.daemons.Daemon;
+import com.parc.ccn.library.CCNNameEnumerator;
 
 /**
  * High level repository implementation. Handles communication with
@@ -225,7 +227,7 @@ public class RepositoryDaemon extends Daemon {
 				Interest interest = null;
 				do {
 					interest = _interestQueue.poll();
-					if (interest != null)
+					if(interest != null)
 						processIncomingInterest(interest);
 				} while (interest != null);
 				
@@ -234,6 +236,7 @@ public class RepositoryDaemon extends Daemon {
 		}
 		
 		private void processIncomingInterest(Interest interest) {
+			
 			try {
 				byte[] marker = interest.name().component(interest.name().count() - 1);
 				if (Arrays.equals(marker, CCNBase.REPO_START_WRITE)) {
@@ -276,7 +279,39 @@ public class RepositoryDaemon extends Daemon {
 						_ackRequests.add(ackInterest);
 					else
 						_writer.put(interest.name(), _repo.getRepoInfo(names));
-				} else {
+				}
+				else if(interest.name().contains(CCNNameEnumerator.NEMARKER)){
+					//the name enumerator marker won't be at the end if the interest is a followup (created with .last())
+					//else if(Arrays.equals(marker, CCNNameEnumerator.NEMARKER)){
+					//System.out.println("handling interest: "+interest.name().toString());
+					ContentName prefixName = interest.name().cut(CCNNameEnumerator.NEMARKER);
+					ArrayList<ContentName> names = _repo.getNamesWithPrefix(interest);
+					if(names!=null){
+						try{
+							ContentName collectionName = new ContentName(prefixName, CCNNameEnumerator.NEMARKER);
+							//the following 6 lines are to be deleted after Collections are refactored
+							LinkReference[] temp = new LinkReference[names.size()];
+							for(int x = 0; x < names.size(); x++)
+								temp[x] = new LinkReference(names.get(x));
+							_library.put(collectionName, temp);
+							
+							//CCNEncodableCollectionData ecd = new CCNEncodableCollectionData(collectionName, cd);
+							//ecd.save();
+							//System.out.println("saved ecd.  name: "+ecd.getName());
+						}
+						catch(IOException e){
+							
+						}
+						catch(SignatureException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+					}
+					synchronized(_currentListeners){
+						_interestQueue.remove(interest);
+					}
+				}
+				else {
 					ContentObject content = _repo.getContent(interest);
 					if (content != null) {
 						_library.put(content);

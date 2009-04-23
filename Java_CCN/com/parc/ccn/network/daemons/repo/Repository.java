@@ -76,5 +76,11 @@ public interface Repository {
 	 * @return
 	 */
 	public String getUsage();
-
+	
+	/**
+	 * Get names to respond to name enumeration requests
+	 * @param Interest
+	 * @return ArrayList<ContentName>
+	 */
+    public ArrayList<ContentName> getNamesWithPrefix(Interest i);
 }

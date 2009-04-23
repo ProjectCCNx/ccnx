@@ -9,22 +9,26 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.InvalidParameterException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.StringTokenizer;
 import java.util.TreeMap;
+import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
 import sun.misc.BASE64Decoder;
 import sun.misc.BASE64Encoder;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.WirePacket;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.util.DataUtils;
+import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
@@ -84,6 +88,10 @@ public class RFSImpl implements Repository {
 	protected TreeMap<ContentName, ArrayList<File>> _encodedFiles = new TreeMap<ContentName, ArrayList<File>>();
 	
 	public String[] initialize(String[] args) throws RepositoryException {
+		
+		Library.logger().setLevel(Level.FINEST);
+
+		
 		boolean policyFromFile = false;
 		boolean nameFromArgs = false;
 		boolean globalFromArgs = false;
@@ -842,5 +850,62 @@ public class RFSImpl implements Repository {
 			e.printStackTrace();
 		}
 		return null;
+	}
+
+	@Override
+	public ArrayList<ContentName> getNamesWithPrefix(Interest i) {
+		ArrayList<ContentName> names = new ArrayList<ContentName>();
+		ContentName n1 = null;
+		ArrayList<File> files = null;
+		long lastTS = 0;
+		Timestamp interestTS = null;
+		byte[][] na = new byte[1][1];
+		try{
+			interestTS = VersioningProfile.getVersionAsTimestamp(i.name());
+		}
+		catch(Exception e){
+			interestTS = null;
+			
+		}
+		ContentName cropped = i.name().cut(CCNNameEnumerator.NEMARKER);
+		
+		Interest croppedInterest = new Interest(cropped);
+		croppedInterest.orderPreference(i.orderPreference());
+		croppedInterest.nameComponentCount(i.nameComponentCount()-1);
+		
+		Library.logger().finest("Getting names with prefix = "+croppedInterest.name().toString());
+		TreeMap<ContentName, ArrayList<File>>possibleMatches = getPossibleMatches(croppedInterest);
+		for (ContentName name : possibleMatches.keySet()) {
+			files = possibleMatches.get(name);
+			for(File f: files){
+				
+				if(f.lastModified() > lastTS){
+					lastTS = f.lastModified();
+				}
+			}
+			
+			na[0] = name.component(cropped.count());
+			n1 = new ContentName(na);
+			if(!names.contains(n1)){
+				names.add(n1);
+			}
+
+		}
+		try{
+			interestTS = VersioningProfile.getVersionAsTimestamp(i.name());
+		}
+		catch(Exception e){
+			interestTS = null;
+		}
+		
+		
+		if(names.size()>0 && (interestTS == null || interestTS.getTime() < lastTS))
+			return names;
+		else{
+			if(names.size() > 0)
+				Library.logger().finest("No new names for this prefix since the last request, dropping request and not responding.");
+			return null;
+		}
+
 	}
 }
