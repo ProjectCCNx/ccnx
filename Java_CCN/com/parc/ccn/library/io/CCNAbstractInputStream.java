@@ -3,10 +3,13 @@ package com.parc.ccn.library.io;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 import javax.crypto.Cipher;
+import javax.crypto.CipherInputStream;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -205,7 +208,33 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	
 	/**
 	 * Set up current block for reading, including prep for decryption if necessary.
+	 * Called after getBlock/getFirstBlock/getNextBlock, which take care of verifying
+	 * the block for us. So we assume newBlock is valid.
+	 * @throws NoSuchPaddingException 
+	 * @throws NoSuchAlgorithmException 
+	 * @throws InvalidAlgorithmParameterException 
+	 * @throws InvalidKeyException 
 	 */
+	protected void setCurrentBlock(ContentObject newBlock) throws InvalidKeyException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchPaddingException {
+		_currentBlock = null;
+		_currentBlockStream = null;
+		_blockReadStream = null;
+		if (null == newBlock) {
+			Library.logger().info("Setting current block to null! Did a block fail to verify?");
+			return;
+		}
+		
+		_currentBlock = newBlock;
+		_currentBlockStream = new ByteArrayInputStream(_currentBlock.content());
+		if (null != _cipher) {
+			_cipher = CCNCipherFactory.getSegmentDecryptionCipher(_cipher, _cipher.getAlgorithm(), 
+																  _encryptionKey, _masterIV, 
+										SegmentationProfile.getSegmentNumber(_currentBlock.name()));
+			_blockReadStream = new CipherInputStream(_currentBlockStream, _cipher);
+		} else {
+			_blockReadStream = _currentBlockStream;
+		}
+	}
 
 	/**
 	 * Three navigation options: get first (leftmost) block, get next block,
