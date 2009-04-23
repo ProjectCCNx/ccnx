@@ -134,6 +134,13 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		}
 	}
 
+	public ContentObject(
+			ContentName name,
+			SignedInfo signedInfo,
+			InputStream contentStream, int length) throws IOException {
+		this(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, name, signedInfo, contentStream, length);
+	}
+	
 	public ContentObject(ContentName name, SignedInfo signedInfo, byte [] content,
 			Signature signature) {
 		this(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, name, signedInfo, content, signature);
@@ -238,7 +245,19 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 
 	public final SignedInfo signedInfo() { return _signedInfo;}
 
+	/**
+	 * Final here doesn't really make it immutable. There have been
+	 * proposals to clone() the content on return, but many places use this
+	 * and it would be expensive.
+	 * @return
+	 */
 	public final byte [] content() { return _content; }
+	
+	/**
+	 * Avoid problems where content().length might be expensive.
+	 * @return
+	 */
+	public final int contentLength() { return ((null == _content) ? 0 : _content.length); }
 
 	public final Signature signature() { return _signature; }
 
@@ -336,6 +355,31 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		_signature = signature;
 	}
 
+	public void sign(PrivateKey signingKey) throws InvalidKeyException, SignatureException {
+		// Use _content to avoid case where content() might want to clone.
+		setSignature(sign(this.name(), this.signedInfo(), this._content, 0, this._content.length, signingKey));
+	}
+	
+	public void sign(String digestAlgorithm, PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
+		setSignature(sign(this.name(), this.signedInfo(), this._content, 0, this._content.length, 
+						digestAlgorithm, signingKey));
+	}
+
+	public static Signature sign(ContentName name, 
+			SignedInfo signedInfo,
+			byte [] content, int offset, int length,
+			PrivateKey signingKey) 
+	throws SignatureException, InvalidKeyException {
+		try {
+			return sign(name, signedInfo, content, offset, length,
+					CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, signingKey);
+		} catch (NoSuchAlgorithmException e) {
+			Library.logger().warning("Cannot find default digest algorithm: " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
+			Library.warningStackTrace(e);
+			throw new SignatureException(e);
+		}
+	}
+
 	/**
 	 * Generate a signature on a name-content mapping. This
 	 * signature is specific to both this content signedInfo
@@ -354,10 +398,10 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			String digestAlgorithm, 
 			PrivateKey signingKey) 
 	throws SignatureException, InvalidKeyException, NoSuchAlgorithmException {
-
+	
 		// Build XML document
 		byte [] signature = null;
-
+	
 		try {
 			byte [] toBeSigned = prepareContent(name, signedInfo, content, offset, length);
 			signature = 
@@ -367,27 +411,12 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
 				SystemConfiguration.outputDebugData(name, toBeSigned);
 			}
-
+	
 		} catch (XMLStreamException e) {
 			Library.handleException("Exception encoding internally-generated XML name!", e);
 			throw new SignatureException(e);
 		}
 		return new Signature(digestAlgorithm, null, signature);
-	}
-
-	public static Signature sign(ContentName name, 
-			SignedInfo signedInfo,
-			byte [] content, int offset, int length,
-			PrivateKey signingKey) 
-	throws SignatureException, InvalidKeyException {
-		try {
-			return sign(name, signedInfo, content, offset, length,
-					CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, signingKey);
-		} catch (NoSuchAlgorithmException e) {
-			Library.logger().warning("Cannot find default digest algorithm: " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
-			Library.warningStackTrace(e);
-			throw new SignatureException(e);
-		}
 	}
 
 	public boolean verify(PublicKey publicKey) 

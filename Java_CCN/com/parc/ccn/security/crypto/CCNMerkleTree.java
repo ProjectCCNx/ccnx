@@ -7,6 +7,8 @@ import java.security.SignatureException;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.bouncycastle.asn1.DEROctetString;
+
 import com.parc.ccn.Library;
 import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
@@ -15,7 +17,6 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.util.DataUtils;
-import com.parc.ccn.library.profiles.SegmentationProfile;
 
 /**
  * This class extends your basic Merkle tree to 
@@ -50,118 +51,24 @@ public class CCNMerkleTree extends MerkleTree {
 	
 	public static final String DEFAULT_MHT_ALGORITHM = "SHA256MHT";
 	
-	ContentName _baseName = null;
-	long _baseNameIndex;
-	SignedInfo _signedInfo = null;
-	ContentName [] _blockNames = null;
-	
 	byte [] _rootSignature = null;
-	
-	Signature [] _signatures = null;
-	
 	ContentObject [] _blockObjects = null;
-		
-	/**
-	 * Constructor for a CCNMerkleTree, that takes a base
-	 * name and adds a counter to the end of it to make the block
-	 * names.
-	 * @param baseName The base name for the content.
-	 * @param baseNameIndex The index of the first block with respect to the actual content (e.g.
-	 * 	the fragment number, for auto-generated names). This will be incorporated into the name
-	 * 	for the block.
-	 * @param publisher The publisher ID of the signer.
-	 * @param timestamp
-	 * @param contentBlocks
-	 * @param isDigest
-	 * @param blockCount the number of blocks of the contentBlocks array to use
-	 * @param baseBlockIndex the point in the contentBlocks array at which to start
-	 * @throws NoSuchAlgorithmException 
-	 * @throws SignatureException 
-	 * @throws InvalidKeyException 
-	 */
-	public CCNMerkleTree(
-			ContentName baseName, 
-			long baseNameIndex,
-			SignedInfo authenticator,
-			byte[][] contentBlocks,
-			boolean isDigest,
-			int blockCount,
-			int baseBlockIndex,
-			int lastBlockLength,
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
-		// Allocate node array
-		super(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, blockCount);
-		
-		// Initialize fields we need for building tree.
-		_baseName = baseName;
-		_baseNameIndex = baseNameIndex;
-		_signedInfo = authenticator;
-
-		// Computes leaves and tree.
-		initializeTree(contentBlocks, isDigest, baseBlockIndex, lastBlockLength);
-		
-		_rootSignature = computeRootSignature(root(), signingKey);
-	}
-
-	/**
-	 * Same, only builds blocks out of one contiguous buffer.
-	 */
-	public CCNMerkleTree(
-			ContentName baseName, 
-			long baseNameIndex,
-			SignedInfo authenticator,
-			byte[] content, int offset, int length,
-			int blockWidth,
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
-		// Allocate node array
-		super(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, blockCount(length, blockWidth));
-		
-		// Initialize fields we need for building tree.
-		_baseName = baseName;
-		_baseNameIndex = baseNameIndex;
-		_signedInfo = authenticator;
-
-		// Computes leaves and tree.
-		initializeTree(content, offset, length, blockWidth);
-		
-		_rootSignature = computeRootSignature(root(), signingKey);
-	}
 	
-	/**
-	 * Constructor for a CCNMerkleTree, that takes a list of names.
-	 * @param baseName The base name for the content.
-	 * @param baseIndex The index of the first block.
-	 * @param publisher The publisher ID of the signer.
-	 * @param timestamp
-	 * @param contentBlocks
-	 * @param isDigest
-	 * @param blockCount
-	 * @param baseBlockIndex which block in the contentBlocks array to start from
-	 * @param lastBlockBytes how many bytes of the last block to use
-	 * @throws NoSuchAlgorithmException 
-	 * @throws SignatureException 
-	 * @throws InvalidKeyException 
-	 */
-	public CCNMerkleTree(
-			ContentName [] nodeNames, 
-			SignedInfo authenticator,
-			byte[][] contentBlocks,
-			boolean isDigest,
-			int blockCount,
-			int baseBlockIndex, 
-			int lastBlockLength,
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
-		// Computes leaves and tree.
-		super(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, blockCount);
-		
-		// Initialize fields we need for building tree.
-		_blockNames = nodeNames;
-		_signedInfo = authenticator;
+	public CCNMerkleTree(ContentObject [] contentObjects, 
+			PrivateKey signingKey) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
 
-		// Computes leaves and tree.
-		initializeTree(contentBlocks, isDigest, baseBlockIndex, lastBlockLength);
+		super(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, ((null != contentObjects) ? contentObjects.length : 0));
+		_blockObjects = contentObjects;
+		if (null == _blockObjects) {
+			throw new IllegalArgumentException("Contained objects cannot be null!");
+		}
 		
+		// Compute leaves and tree
+		// DKS TODO -- all we're essentially doing is running the constructor now.
+		// Maybe make a static method to process blocks.
+		initializeTree(contentObjects);
 		_rootSignature = computeRootSignature(root(), signingKey);
+		setSignatures();
 	}
 
 	public byte [] rootSignature() { return _rootSignature; }
@@ -173,69 +80,56 @@ public class CCNMerkleTree extends MerkleTree {
 	 * @return
 	 */
 	public ContentName blockName(int leafIndex) {
-		if (null == _blockNames) {
-			_blockNames = new ContentName[numLeaves()];
-		}
-		
-		if ((leafIndex < 0) || (leafIndex > _blockNames.length))
+		if ((leafIndex < 0) || (leafIndex > _blockObjects.length))
 			throw new IllegalArgumentException("Index out of range!");
-		
-		if (null == _blockNames[leafIndex]) {
-			_blockNames[leafIndex] = computeName(leafIndex);
-		}
-		return _blockNames[leafIndex];
+				
+		if ((null != _blockObjects) && (leafIndex < _blockObjects.length) && (null != _blockObjects[leafIndex])) 
+			return _blockObjects[leafIndex].name();
+		return null;
 	}
 	
-	protected ContentName computeName(int leafIndex) {
-		// DKS TODO -- support other segmentation patterns
-		return SegmentationProfile.segmentName(baseName(), baseNameIndex() + leafIndex);
-	}
-	
-	public long baseNameIndex() { return _baseNameIndex; }
-	public ContentName baseName() { return _baseName; }
-	
-	public SignedInfo blockSignedInfo(int i) {
-		// Eventually allow for separate signedInfos
-		return _signedInfo;
-	}
-	
-	public Signature blockSignature(int leafIndex) {
-		if (null == _signatures) {
-			_signatures = new Signature[numLeaves()];
-		}
-		
-		if ((leafIndex < 0) || (leafIndex > _signatures.length))
-			throw new IllegalArgumentException("Index out of range!");
-		
-		if (null == _signatures[leafIndex]) {
-			_signatures[leafIndex] = computeSignature(leafIndex);
-		}
-		return _signatures[leafIndex];
-	}
-	
-	/**
-	 * Helper function
-	 * @param i
-	 * @return
-	 */
-	public ContentObject block(int leafIndex, byte [] blockContent, int offset, int length) {
-		if (null == _blockObjects) {
-			_blockObjects = new ContentObject[numLeaves()];
-		}
-		
+	public SignedInfo blockSignedInfo(int leafIndex) {
 		if ((leafIndex < 0) || (leafIndex > _blockObjects.length))
 			throw new IllegalArgumentException("Index out of range!");
 		
-		if (null == _blockObjects[leafIndex]) {
-			_blockObjects[leafIndex] = 
-				new ContentObject(blockName(leafIndex), 
-								  blockSignedInfo(leafIndex), 
-								  blockContent, offset, length,
-								  blockSignature(leafIndex));
+		if ((null != _blockObjects) && (null != _blockObjects[leafIndex])) {
+			return _blockObjects[leafIndex].signedInfo();
 		}
-		return _blockObjects[leafIndex];
+		return null;
 	}
+	
+	public Signature blockSignature(int leafIndex) {
+		if ((leafIndex < 0) || (leafIndex > _blockObjects.length))
+			throw new IllegalArgumentException("Index out of range!");
 		
+		if ((null != _blockObjects) && (null != _blockObjects[leafIndex])) {
+			if (null == _blockObjects[leafIndex].signature()) {
+				_blockObjects[leafIndex].setSignature(computeSignature(leafIndex));
+			}
+			return _blockObjects[leafIndex].signature();
+		}
+		
+		return null;
+	}
+	
+	/**
+	 * Sets the signatures of all the blockObjects.
+	 * TODO DKS refactor this class to remove unused stuff.
+	 */
+	public void setSignatures() {
+		for (int i=0; i < numLeaves(); ++i) {
+			blockSignature(i); // DKS TODO refactor, sets signature as a side effect
+		}
+	}
+			
+	protected void initializeTree(ContentObject [] contentObjects) throws NoSuchAlgorithmException {
+		if (contentObjects.length < numLeaves())
+			throw new IllegalArgumentException("MerkleTree: cannot build tree from more blocks than given! Have " + contentObjects.length + " blocks, asked to use: " + (numLeaves()));
+		
+		computeLeafValues(contentObjects);
+		computeNodeValues();		
+	}
+
 	protected Signature computeSignature(int leafIndex) {
 		MerklePath path = path(leafIndex);
 		return new Signature(path.derEncodedPath(), rootSignature());		
@@ -249,47 +143,14 @@ public class CCNMerkleTree extends MerkleTree {
 		return CCNSignatureHelper.sign(null, root, signingKey);
 	}
 	
-	/**
-	 * We need to incorporate the name of the content block
-	 * and the signedInfo into the leaf digest of the tree.
-	 * Essentially, we want the leaf digest to be the same thing
-	 * we would use for signing a stand-alone leaf.
-	 * @param leafIndex
-	 * @param contentBlocks
-	 * @return
-	 * @throws  
-	 */
-	@Override
-	protected byte [] computeBlockDigest(int leafIndex, byte [][] contentBlocks, int baseBlockIndex, 
-										 int lastBlockLength) {
-
-		// Computing the leaf digest.
-		//new XMLEncodable[]{name, signedInfo}, new byte[][]{content},
-
-		byte[] blockDigest = null;
-		int index = leafIndex + baseBlockIndex;
-
-		if (index > contentBlocks.length) 
-			throw new IllegalArgumentException("Cannot ask for a leaf beyond the number of available blocks!");
-		
-		try {
-			// Are we on the last block?
-			if ((index == (baseBlockIndex + numLeaves() - 1)) && (lastBlockLength < contentBlocks[index].length)) {
-				// short last block
-				blockDigest = CCNDigestHelper.digest(
-						ContentObject.prepareContent(blockName(leafIndex), blockSignedInfo(leafIndex),
-								contentBlocks[index], 0, lastBlockLength));
-			} else {
-				blockDigest = CCNDigestHelper.digest(
-						ContentObject.prepareContent(blockName(leafIndex), blockSignedInfo(leafIndex),
-								contentBlocks[index], 0, contentBlocks[index].length));
-			}
-		} catch (XMLStreamException e) {
-			Library.logger().info("Exception in computeBlockDigest, leaf: " + leafIndex + " out of " + numLeaves() + " type: " + e.getClass().getName() + ": " + e.getMessage());
-			// DKS todo -- what to throw?
-		} 
-
-		return blockDigest;
+	protected void computeLeafValues(ContentObject [] contentObjects) throws NoSuchAlgorithmException {
+		// Hash the leaves
+		for (int i=0; i < numLeaves(); ++i) {
+			// DKS -- need to make sure content() doesn't clone
+			_tree[leafNodeIndex(i)-1] = 
+				new DEROctetString(computeBlockDigest(i, contentObjects[i].content(), 
+													  0, contentObjects[i].contentLength()));
+		}
 	}
 
 	/**

@@ -2071,6 +2071,8 @@ process_incoming_inject(struct ccnd *h, struct face *face,
     size_t start;
     size_t stop;
     int res;
+    int fd;
+    struct sockaddr *addrp = NULL;
     
     /* XXX - check sender rights here */
     d = ccn_buf_decoder_start(&decoder, inject_msg, wire_size);
@@ -2085,6 +2087,7 @@ process_incoming_inject(struct ccnd *h, struct face *face,
                               &ptr, &size);
     if (res < 0 || size > sizeof(addr)) return;
     memcpy(&addr, ptr, size);
+    addrp = (struct sockaddr *)&addr;
     imsg = inject_msg + stop;
     isize = wire_size - stop - 1;
     res = ccn_parse_interest(imsg, isize, &pi_buf, NULL);
@@ -2092,7 +2095,15 @@ process_incoming_inject(struct ccnd *h, struct face *face,
     /* Caller has parsed skeleton, so we're done parsing now. */
     ccnd_debug_ccnb(h, __LINE__, "inject", face, imsg, isize);
     if (sotype != SOCK_DGRAM) return;
-    
+    if (addrp->sa_family == AF_INET)
+        fd = h->udp4_fd;
+    else if (addrp->sa_family == AF_INET6)
+        fd = h->udp6_fd;
+    else
+        fd = -1;
+    res = sendto(fd, imsg, isize, 0, &addr, size);
+    if (res == -1)
+        perror("sendto"); // XXX - improve error report
 }
 
 static void
@@ -2521,6 +2532,7 @@ ccnd_create(void)
         if (h->mtu > 8800)
             h->mtu = 8800;
     }
+    h->udp4_fd = h->udp6_fd = -1;
     portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
     if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
         portstr = "4485";
@@ -2543,6 +2555,14 @@ ccnd_create(void)
                 face = e->data;
                 face->fd = fd;
                 face->flags |= CCN_FACE_DGRAM;
+                if (a->ai_family == AF_INET) {
+                    face->flags |= CCN_FACE_INET;
+                    h->udp4_fd = fd;
+                }
+                else if (a->ai_family == AF_INET6) {
+                    face->flags |= CCN_FACE_INET6;
+                    h->udp6_fd = fd;
+                }
                 hashtb_end(e);
                 ccnd_msg(h, "accepting datagrams on fd %d", fd);
             }

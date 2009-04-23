@@ -7,7 +7,6 @@ import java.security.PrivateKey;
 import java.security.SignatureException;
 import java.sql.Timestamp;
 
-import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -17,11 +16,13 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
+import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.SegmentationProfile.SegmentNumberType;
 import com.parc.ccn.security.crypto.CCNAggregatedSigner;
+import com.parc.ccn.security.crypto.CCNMerkleTree;
 import com.parc.ccn.security.crypto.CCNMerkleTreeSigner;
 
 /**
@@ -44,9 +45,15 @@ import com.parc.ccn.security.crypto.CCNMerkleTreeSigner;
  *    or amortized signing, first Merkle Hash Tree based amortization, later
  *    options for other things.
  * c) stock low-level encryption. Given a key K, an IV, and a chosen encryption
- *    algorithm (standard: AES-CTR, also support AES-CBC), segment content so as
+ *    algorithm (standard: AES-CTR, also eventually AES-CBC and other padded
+ *    block cipher options), segment content so as
  *    to meet a desired net data length with potential block expansion, and encrypt.
  *    Other specs used to generate K and IV from higher-level data.
+ *    
+ *    For block ciphers, we require a certain amount of extra space in the
+ *    blocks to accommodate padding (a minimum of 1 bytes for PKCS5 padding,
+ *    for example). 
+ *    DKS TODO -- deal with the padding and length expansion
  *    
  *    For this, we use the standard Java encryption mechanisms, augmented by
  *    alternative providers (e.g. BouncyCastle for AES-CTR). We just need
@@ -86,9 +93,9 @@ public class CCNSegmenter {
 	protected CCNAggregatedSigner _bulkSigner;
 	
 	// Encryption/decryption handler
-	protected Cipher _cipher;
+	protected String _encryptionAlgorithm; // in Java standard form, default CCNCipherFactory.DEFAULT_CIPHER_MODE.
 	protected SecretKeySpec _encryptionKey;
-	protected IvParameterSpec _iv;
+	protected IvParameterSpec _masterIV;
 
 	/**
 	 * Eventually add encryption, allow control of authentication algorithm.
@@ -100,16 +107,18 @@ public class CCNSegmenter {
 		this(null, null, null);
 	}
 	
-	public CCNSegmenter(Cipher cipher, SecretKeySpec encryptionKey, IvParameterSpec iv) throws ConfigurationException, IOException {
-		this(CCNLibrary.open(), cipher, encryptionKey, iv);
+	public CCNSegmenter(String encryptionAlgorithm, 
+						SecretKeySpec encryptionKey, IvParameterSpec masterIV) throws ConfigurationException, IOException {
+		this(CCNLibrary.open(), encryptionAlgorithm, encryptionKey, masterIV);
 	}
 
 	public CCNSegmenter(CCNLibrary library) {
 		this(new CCNFlowControl(library));
 	}
 
-	public CCNSegmenter(CCNLibrary library, Cipher cipher, SecretKeySpec encryptionKey, IvParameterSpec iv) {
-		this(new CCNFlowControl(library), null, cipher, encryptionKey, iv);
+	public CCNSegmenter(CCNLibrary library, String encryptionAlgorithm, 
+							SecretKeySpec encryptionKey, IvParameterSpec masterIV) {
+		this(new CCNFlowControl(library), null, encryptionAlgorithm, encryptionKey, masterIV);
 	}
 	/**
 	 * Create an object with default Merkle hash tree aggregated signing.
@@ -124,7 +133,7 @@ public class CCNSegmenter {
 	}
 
 	public CCNSegmenter(CCNFlowControl flowControl, CCNAggregatedSigner signer,
-						Cipher cipher, SecretKeySpec encryptionKey, IvParameterSpec iv) {
+						String encryptionAlgorithm, SecretKeySpec encryptionKey, IvParameterSpec masterIV) {
 		if ((null == flowControl) || (null == flowControl.getLibrary())) {
 			// Tries to get a library or make a flow control, yell if we fail.
 			throw new IllegalArgumentException("CCNSegmenter: must provide a valid library or flow controller.");
@@ -136,9 +145,10 @@ public class CCNSegmenter {
 		} else {
 			_bulkSigner = signer; // if null, default to merkle tree
 		}
-		_cipher = cipher;
+		
+		_encryptionAlgorithm = encryptionAlgorithm;
 		_encryptionKey = encryptionKey;
-		_iv = iv;
+		_masterIV = masterIV;
 		initializeBlockSize();
 	}
 
@@ -341,12 +351,55 @@ public class CCNSegmenter {
 		// hash tree.   Build header, for each block, get authinfo for block,
 		// (with hash tree, block identifier, timestamp -- SQLDateTime)
 		// insert header using mid-level insert, low-level insert for actual blocks.
-		long result = 
-			_bulkSigner.putBlocks(this, name, baseSegmentNumber,
-						content, offset, length, blockWidth, type,
-						timestamp, freshnessSeconds, finalSegmentIndex, locator, publisher);
-		// Used to return header. Now return first block.
-		return result;
+		if (length == 0)
+			return baseSegmentNumber;
+		
+		if (null == publisher) {
+			publisher = getFlowControl().getLibrary().keyManager().getDefaultKeyID();
+		}
+		PrivateKey signingKey = getFlowControl().getLibrary().keyManager().getSigningKey(publisher);
+
+		if (null == locator)
+			locator = getFlowControl().getLibrary().keyManager().getKeyLocator(signingKey);
+
+		ContentName rootName = SegmentationProfile.segmentRoot(name);
+		getFlowControl().addNameSpace(rootName);
+
+		if (null == type) {
+			type = ContentType.DATA;
+		}
+		
+		byte [] finalBlockID = null;
+		if (null != finalSegmentIndex) {
+			if (finalSegmentIndex.equals(CCNSegmenter.LAST_SEGMENT)) {
+				// compute final segment number
+				// compute final segment number; which might be this one if blockCount == 1
+				int blockCount = CCNMerkleTree.blockCount(length, blockWidth);
+				finalBlockID = SegmentationProfile.getSegmentID(
+					lastSegmentIndex(baseSegmentNumber, (blockCount-1)*blockWidth, 
+												blockCount));
+			} else {
+				finalBlockID = SegmentationProfile.getSegmentID(finalSegmentIndex);
+			}
+		}
+		
+		ContentObject [] contentObjects = 
+			buildBlocks(rootName, baseSegmentNumber, 
+					new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
+					content, offset, length, blockWidth);
+
+		// Digest of complete contents
+		// If we're going to unique-ify the block names
+		// (or just in general) we need to incorporate the names
+		// and signedInfos in the MerkleTree blocks. 
+		// For now, this generates the root signature too, so can
+		// ask for the signature for each block.
+		_bulkSigner.signBlocks(contentObjects, signingKey);
+		getFlowControl().put(contentObjects);
+
+		return nextSegmentIndex(
+				SegmentationProfile.getSegmentNumber(contentObjects[contentObjects.length - 1].name()), 
+				contentObjects[contentObjects.length - 1].content().length);
 	}
 
 	public long fragmentedPut(
@@ -358,39 +411,61 @@ public class CCNSegmenter {
 			Integer freshnessSeconds, Long finalSegmentIndex,
 			KeyLocator locator, 
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, 
-											 NoSuchAlgorithmException, IOException {
-		
-		long result = 
-			_bulkSigner.putBlocks(this, name, baseSegmentNumber,
-						contentBlocks, blockCount, firstBlockIndex, lastBlockLength, type,
-						timestamp, freshnessSeconds, finalSegmentIndex, locator, publisher);
-		// Used to return header. Now return first block.
-		return result;
-	}
+			NoSuchAlgorithmException, IOException {
 
-	/**
-	 * DKS TODO -- may need to be tweaked
-	 * 
-	 * Use this to put a set of unrelated content blocks. May need
-	 * fancier version that allows sub-itemst to segment. Doesn't return
-	 * a segment identifier, as it would make no sense.
-	 * @params names the individual names of the content items to put
-	 */
-	public void fragmentedPut(
-			ContentName [] names, 
-			byte [][] contentBlocks, int blockCount, 
-			int firstBlockIndex, int lastBlockLength,
-			ContentType type, 
-			Timestamp timestamp,
-			Integer freshnessSeconds, Long finalSegmentIndex,
-			KeyLocator locator, 
-			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, 
-											 NoSuchAlgorithmException, IOException {
-		_bulkSigner.putBlocks(this, names, 
-				contentBlocks, blockCount, firstBlockIndex, lastBlockLength, type,
-				timestamp, freshnessSeconds, finalSegmentIndex, locator, publisher);
-	}
+		if (blockCount == 0)
+			return baseSegmentNumber;
 
+		if (null == publisher) {
+			publisher = getFlowControl().getLibrary().keyManager().getDefaultKeyID();
+		}
+		PrivateKey signingKey = getFlowControl().getLibrary().keyManager().getSigningKey(publisher);
+
+		if (null == locator)
+			locator = getFlowControl().getLibrary().keyManager().getKeyLocator(signingKey);
+
+		ContentName rootName = SegmentationProfile.segmentRoot(name);
+		getFlowControl().addNameSpace(rootName);
+
+		if (null == type) {
+			type = ContentType.DATA;
+		}
+
+		byte [] finalBlockID = null;
+		if (null != finalSegmentIndex) {
+			if (finalSegmentIndex.equals(CCNSegmenter.LAST_SEGMENT)) {
+				long length = 0;
+				for (int j = firstBlockIndex; j < firstBlockIndex + blockCount - 1; j++) {
+					length += contentBlocks[j].length;
+				}
+				// don't include last block length; want intervening byte count before the last block
+
+				// compute final segment number
+				finalBlockID = SegmentationProfile.getSegmentID(
+						lastSegmentIndex(baseSegmentNumber, length, blockCount));
+			} else {
+				finalBlockID = SegmentationProfile.getSegmentID(finalSegmentIndex);
+			}
+		}
+
+		ContentObject [] contentObjects = 
+			buildBlocks(rootName, baseSegmentNumber, 
+					new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
+					contentBlocks, false, blockCount, firstBlockIndex, lastBlockLength);
+
+		// Digest of complete contents
+		// If we're going to unique-ify the block names
+		// (or just in general) we need to incorporate the names
+		// and signedInfos in the MerkleTree blocks. 
+		// For now, this generates the root signature too, so can
+		// ask for the signature for each block.
+		_bulkSigner.signBlocks(contentObjects, signingKey);
+		getFlowControl().put(contentObjects);
+
+		return nextSegmentIndex(
+				SegmentationProfile.getSegmentNumber(contentObjects[firstBlockIndex + blockCount - 1].name()), 
+				contentObjects[firstBlockIndex + blockCount - 1].content().length);
+	}
 
 	/**
 	 * Puts a single block of content using a fragment naming convention.
@@ -450,6 +525,78 @@ public class CCNSegmenter {
 		return nextSegmentIndex(segmentNumber, content.length);
 	}
 	
+	protected ContentObject[] buildBlocks(ContentName rootName,
+			long baseSegmentNumber, SignedInfo signedInfo, 
+			byte[] content, int offset, int length, int blockWidth) {
+		
+		int blockCount = CCNMerkleTree.blockCount(length, blockWidth);
+		ContentObject [] blocks = new ContentObject[blockCount];
+
+		long nextSegmentIndex = baseSegmentNumber;
+		blocks[0] =  
+			new ContentObject(
+					SegmentationProfile.segmentName(rootName, nextSegmentIndex),
+					signedInfo,
+					content, 0, ((length < blockWidth) ? length : blockWidth), (Signature)null);
+		nextSegmentIndex = nextSegmentIndex(nextSegmentIndex, ((length < blockWidth) ? length : blockWidth));
+
+		if (length > blockWidth) {
+			int i = 1;
+			for (i=1; i < (blockCount - 1); ++i) {
+				blocks[i] =  
+					new ContentObject(
+							SegmentationProfile.segmentName(rootName, nextSegmentIndex),
+							signedInfo,
+							content, i*blockWidth, blockWidth, (Signature)null);
+				nextSegmentIndex = nextSegmentIndex(nextSegmentIndex, blockWidth);
+			}
+			blocks[i] =  
+				new ContentObject(
+						SegmentationProfile.segmentName(rootName, nextSegmentIndex),
+						signedInfo,
+						content, i*blockWidth, 
+						(((length % blockWidth) == 0) ? blockWidth : (length % blockWidth)),
+						(Signature)null);
+		}
+		return blocks;
+	}
+
+	protected ContentObject[] buildBlocks(ContentName rootName,
+			long baseSegmentNumber, SignedInfo signedInfo,
+			byte[][] contentBlocks, boolean isDigest, int blockCount,
+			int firstBlockIndex, int lastBlockLength) {
+		
+		ContentObject [] blocks = new ContentObject[blockCount];
+		if (blockCount == 0)
+			return blocks;
+
+		long nextSegmentIndex = baseSegmentNumber;
+		blocks[0] =  
+			new ContentObject(
+					SegmentationProfile.segmentName(rootName, nextSegmentIndex),
+					signedInfo,
+					contentBlocks[firstBlockIndex], 0, contentBlocks[firstBlockIndex].length, (Signature)null);
+		nextSegmentIndex = nextSegmentIndex(nextSegmentIndex, contentBlocks[firstBlockIndex].length);
+
+		int i;
+		for (i=firstBlockIndex+1; i < (firstBlockIndex + blockCount - 1); ++i) {
+			blocks[i] =  
+				new ContentObject(
+						SegmentationProfile.segmentName(rootName, nextSegmentIndex),
+						signedInfo,
+						contentBlocks[i], (Signature)null);
+			nextSegmentIndex = nextSegmentIndex(nextSegmentIndex, contentBlocks[i].length);
+		}
+		blocks[i] =  
+			new ContentObject(
+					SegmentationProfile.segmentName(rootName, nextSegmentIndex),
+					signedInfo,
+					contentBlocks[i], 0, lastBlockLength,
+					(Signature)null);
+		return blocks;
+	}
+
+
 	/**
 	 * Increment segment number according to the profile.
 	 * @param lastSegmentNumber
@@ -467,6 +614,14 @@ public class CCNSegmenter {
 		}
 	}
 
+	/**
+	 * Compute the index of the last block of a set of segments, according to the
+	 * profile.
+	 * @param currentSegmentNumber
+	 * @param bytesIntervening
+	 * @param blocksRemaining
+	 * @return
+	 */
 	public Long lastSegmentIndex(long currentSegmentNumber, long bytesIntervening, int blocksRemaining) {
 		if (SegmentNumberType.SEGMENT_FIXED_INCREMENT == _sequenceType) {
 			return currentSegmentNumber + (getBlockIncrement() * (blocksRemaining - 1));

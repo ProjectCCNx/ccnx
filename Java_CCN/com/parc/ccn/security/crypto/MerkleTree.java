@@ -482,6 +482,8 @@ public class MerkleTree {
 	}
 	
 	public static int blockCount(int length, int blockWidth) {
+		if (0 == length)
+			return 0;
 		return (length + blockWidth - 1) / blockWidth;
 	//	return (int)Math.ceil((1.0*length)/blockWidth);
 	}

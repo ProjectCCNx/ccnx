@@ -79,7 +79,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 		if (_atEOF)
 			return 0;
 		if (_currentBlock != null) {
-			return _currentBlock.content().length - _blockOffset;
+			return _currentBlock.contentLength() - _blockOffset;
 		} else {
 			return 0;
 		}
@@ -89,7 +89,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 		//	available =  (int)(_header.length() - blockIndex()*_header.blockSize() - _blockOffset);
 		//	//available =  (int)(_header.length() - (blockIndex()-_header.start())*_header.blockSize() - _blockOffset);
 		//} else if (null != _currentBlock) {
-		//	available =  _currentBlock.content().length - _blockOffset;
+		//	available =  _currentBlock.contentLength() - _blockOffset;
 		//}
 		//Library.logger().info("available(): " + available);
 		//return available; /* unknown */
@@ -138,7 +138,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 			}
 		} 
 		Library.logger().finer("reading from block: " + _currentBlock.name() + " length: " + 
-				_currentBlock.content().length +
+				_currentBlock.contentLength() +
 				" at offset " + _blockOffset);
 		
 		// Now we have a block in place. Read from it. If we run out of block before
@@ -146,7 +146,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 		int lenToRead = len;
 		int lenRead = 0;
 		while (lenToRead > 0) {
-			if (_blockOffset >= _currentBlock.content().length) {
+			if (_blockOffset >= _currentBlock.contentLength()) {
 				// DKS make sure we don't miss a byte...
 				_currentBlock = getNextBlock();
 				_blockOffset = 0;
@@ -159,12 +159,12 @@ public class CCNInputStream extends CCNAbstractInputStream {
 					return -1; // no bytes read, at eof
 				}
 				Library.logger().info("now reading from block: " + _currentBlock.name() + " length: " + 
-						_currentBlock.content().length +
+						_currentBlock.contentLength() +
 						" at offset " + _blockOffset);
 			}
-			int readCount = ((_currentBlock.content().length - _blockOffset) > lenToRead) ? lenToRead : (_currentBlock.content().length - _blockOffset);
+			int readCount = ((_currentBlock.contentLength() - _blockOffset) > lenToRead) ? lenToRead : (_currentBlock.contentLength() - _blockOffset);
 			if (null != buf) {} // use for skip
-				Library.logger().finest("before arraycopy: content length "+_currentBlock.content().length+" _blockOffset "+_blockOffset+" dst length "+buf.length+" dst index "+offset+" len to copy "+readCount);
+				Library.logger().finest("before arraycopy: content length "+_currentBlock.contentLength()+" _blockOffset "+_blockOffset+" dst length "+buf.length+" dst index "+offset+" len to copy "+readCount);
 				System.arraycopy(_currentBlock.content(), _blockOffset, buf, offset, readCount);
 			
 			_blockOffset += readCount;

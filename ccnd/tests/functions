@@ -25,6 +25,18 @@ WithCCND () {
   CCN_LOCAL_PORT=$port "$@"
 }
 
+ExpectLines () {
+  local file lines minimum maximum
+  lines=`wc -l < $1` || Fail
+  file=$1
+  minimum=$2
+  maximum=$3
+  shift 3
+  test $lines -ge $minimum || Fail Expecting at least $minimum lines in ${file}, got $lines $*
+  test $lines -le $maximum || Fail Expecting at most $maximum lines in ${file}, got $lines $*
+  return 0
+}
+
 RunTest () {
   ( . settings; . functions; . $1 )
 }

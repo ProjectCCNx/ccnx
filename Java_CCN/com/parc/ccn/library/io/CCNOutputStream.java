@@ -53,7 +53,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 */
 	protected static final int BLOCK_BUF_COUNT = 128;
 
-	protected int _totalLength = 0; // elapsed length written
+	protected long _totalLength = 0; // elapsed length written
 	protected int _blockOffset = 0; // write pointer - offset into the write buffer at which to write
 	protected byte [] _buffer = null;
 	protected long _baseNameIndex; // base name index of the current set of data to output;
@@ -322,5 +322,9 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		} else {
 			_blockOffset = 0;
 		}
+	}
+	
+	protected long lengthWritten() { 
+		return _totalLength;
 	}
 }

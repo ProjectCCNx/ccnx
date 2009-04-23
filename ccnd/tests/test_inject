@@ -1,0 +1,18 @@
+AFTER : test_single_ccnd
+BEFORE : test_long_consumer
+ping -c 1 $((0x$TESTHOST_IPV4_HEX)) || SkipTest Cannot ping test host
+ccn_xmltoccnb -w - > inject.ccnb <<EOF
+<?xml version="1.0"?>
+<Inject>
+  <SOType>2</SOType>
+  <Address ccnbencoding="hexBinary">10 02 1185 $TESTHOST_IPV4_HEX 0000000000000000</Address>
+  <Interest>
+    <Name>
+      <Component ccnbencoding="text">parc.com</Component>
+    </Name>
+  </Interest>
+</Inject>
+EOF
+trap "rm inject.ccnb" 0
+echo '***' CHECK FOR CCND DEBUG MESSAGE:
+smoketestccnd -t 50 send inject.ccnb recv
