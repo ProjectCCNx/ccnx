@@ -1,5 +1,6 @@
 package com.parc.ccn.library.io;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.NoSuchAlgorithmException;
@@ -28,8 +29,9 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	protected CCNLibrary _library;
 
 	protected ContentObject _currentBlock = null;
+	protected ByteArrayInputStream _currentBlockStream = null;
+	protected InputStream _blockReadStream = null; // includes filters, etc.
 	protected int _blockOffset = 0;
-	protected long _blockIndex = 0;
 	
 	/**
 	 * This is the name we are querying against, prior to each
@@ -200,6 +202,10 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	}
 	
 	protected abstract int readInternal(byte [] buf, int offset, int len) throws IOException;
+	
+	/**
+	 * Set up current block for reading, including prep for decryption if necessary.
+	 */
 
 	/**
 	 * Three navigation options: get first (leftmost) block, get next block,
