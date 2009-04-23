@@ -49,5 +49,8 @@
 62,PublisherIssuerKeyDigest
 63,PublisherIssuerCertificateDigest
 64,ContentObject,20090415
+2048,Address
+2049,SOType
+2050,Inject
 17702112,CCNProtocolDataUnit
 23204960,ExperimentalResponseFilter

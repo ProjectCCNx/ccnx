@@ -140,3 +140,12 @@
 
 <!ELEMENT KeyName	(Name, (%publisherid;)?)>
 <!ATTLIST KeyName	%commonattrs;>
+
+<!ELEMENT Inject	(SOType, Address, Interest)>
+<!ATTLIST Inject	%commonattrs;>
+
+<!ELEMENT SOType (#PCDATA)> <!-- nonNegativeInteger -->
+
+<!ELEMENT Address  (#PCDATA)> <!-- base64Binary -->
+<!ATTLIST Address ccnbencoding CDATA #FIXED 'base64Binary'>
+
