@@ -124,7 +124,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 			return -1;
 		}
 		
-		Library.logger().finer(baseName() + ": reading " + len + " bytes into buffer of length " + 
+		Library.logger().info(baseName() + ": reading " + len + " bytes into buffer of length " + 
 				((null != buf) ? buf.length : "null") + " at offset " + offset);
 		// is this the first block?
 		if (null == _currentBlock) {
@@ -207,7 +207,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 
 	public long seek(long position) throws IOException {
 		Library.logger().info("Seeking stream to " + position);
-		getFirstBlock();
+		setCurrentBlock(getFirstBlock());
 		return skip(position);
 	}
 
