@@ -2,8 +2,13 @@ package com.parc.ccn.library.io;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
+import javax.crypto.Cipher;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
@@ -14,6 +19,7 @@ import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
+import com.parc.ccn.security.crypto.CCNCipherFactory;
 
 public abstract class CCNAbstractInputStream extends InputStream {
 
@@ -35,6 +41,13 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	protected int _timeout = MAX_TIMEOUT;
 	
 	/**
+	 *  Encryption/decryption handler
+	 */
+	protected Cipher _cipher;
+	protected SecretKeySpec _encryptionKey;
+	protected IvParameterSpec _masterIV;
+	
+	/**
 	 * If this content uses Merkle Hash Trees or other structures to amortize
 	 * signature cost, we can amortize verification cost as well by caching verification
 	 * data. Store the currently-verified root signature, so we don't have to re-verify;
@@ -45,8 +58,10 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	protected byte [] _verifiedRootSignature = null;
 	protected byte [] _verifiedProxy = null;
 
-	public CCNAbstractInputStream(ContentName baseName, Long startingBlockIndex, 
-			PublisherPublicKeyDigest publisher, CCNLibrary library) throws XMLStreamException, IOException {
+	public CCNAbstractInputStream(
+			ContentName baseName, Long startingBlockIndex,
+			PublisherPublicKeyDigest publisher, CCNLibrary library) 
+					throws XMLStreamException, IOException {
 		super();
 		
 		if (null == baseName) {
@@ -73,7 +88,36 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		_baseName = baseName;
 	}
 	
-	public CCNAbstractInputStream(ContentObject starterBlock, CCNLibrary library) {
+	public CCNAbstractInputStream(
+			ContentName baseName, Long startingBlockIndex,
+			String encryptionAlgorithm, 
+			SecretKeySpec encryptionKey, IvParameterSpec masterIV,
+			PublisherPublicKeyDigest publisher, CCNLibrary library) 
+					throws XMLStreamException, IOException, NoSuchAlgorithmException, NoSuchPaddingException {
+		
+		this(baseName, startingBlockIndex, publisher, library);
+		
+		if (null != encryptionAlgorithm) {
+			if (!encryptionAlgorithm.equals(CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM)) {
+				Library.logger().warning("Right now the only encryption algorithm we support is: " + 
+						CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM + ", " + encryptionAlgorithm + 
+						" will come later.");
+				throw new NoSuchAlgorithmException("Right now the only encryption algorithm we support is: " + 
+						CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM + ", " + encryptionAlgorithm + 
+						" will come later.");
+			}
+			_cipher = Cipher.getInstance(encryptionAlgorithm);
+			_encryptionKey = encryptionKey;
+			_masterIV = masterIV;
+		} else {
+			if ((null != encryptionKey) || (null != masterIV)) {
+				Library.logger().warning("Encryption key or IV specified, but no algorithm provided. Ignoring.");
+			}
+		}
+	}
+	
+	public CCNAbstractInputStream(ContentObject starterBlock, 			
+			CCNLibrary library)  {
 		super();
 		if (null == starterBlock) {
 			throw new IllegalArgumentException("starterBlock cannot be null!");
@@ -89,6 +133,32 @@ public abstract class CCNAbstractInputStream extends InputStream {
 			_startingBlockIndex = SegmentationProfile.getSegmentNumber(starterBlock.name());
 		} catch (NumberFormatException nfe) {
 			_startingBlockIndex = null;
+		}
+	}
+
+	public CCNAbstractInputStream(ContentObject starterBlock, 			
+			String encryptionAlgorithm, 
+			SecretKeySpec encryptionKey, IvParameterSpec masterIV,
+			CCNLibrary library) throws NoSuchAlgorithmException, NoSuchPaddingException {
+
+		this(starterBlock, library);
+		
+		if (null != encryptionAlgorithm) {
+			if (!encryptionAlgorithm.equals(CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM)) {
+				Library.logger().warning("Right now the only encryption algorithm we support is: " + 
+						CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM + ", " + encryptionAlgorithm + 
+						" will come later.");
+				throw new NoSuchAlgorithmException("Right now the only encryption algorithm we support is: " + 
+						CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM + ", " + encryptionAlgorithm + 
+						" will come later.");
+			}
+			_cipher = Cipher.getInstance(encryptionAlgorithm);
+			_encryptionKey = encryptionKey;
+			_masterIV = masterIV;
+		} else {
+			if ((null != encryptionKey) || (null != masterIV)) {
+				Library.logger().warning("Encryption key or IV specified, but no algorithm provided. Ignoring.");
+			}
 		}
 	}
 
