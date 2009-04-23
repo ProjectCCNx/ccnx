@@ -56,32 +56,31 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 				((null != buf) ? buf.length : "null") + " at offset " + offset);
 		// is this the first block?
 		if (null == _currentBlock) {
-			_currentBlock = getFirstBlock();
-			_blockOffset = 0;
+			setCurrentBlock(getFirstBlock());
 			if (null == _currentBlock)
 				return 0; // nothing to read
 		} 
 		
 		// Now we have a block in place. Read from it. If we run out of block before
 		// we've read len bytes, return what we read. On next read, pull next block.
-		int remainingBytes = _currentBlock.contentLength() - _blockOffset;
+		int remainingBytes = _blockReadStream.available();
 		
 		if (remainingBytes <= 0) {
-			_currentBlock = getNextBlock();
-			_blockOffset = 0;
+			setCurrentBlock(getNextBlock());
 			if (null == _currentBlock) {
 				// in socket implementation, this would be EAGAIN
 				return 0;
 			}
-			remainingBytes = _currentBlock.contentLength();
+			remainingBytes = _blockReadStream.available();
 		}
 		// Read minimum of remainder of this block and available buffer.
-		int readCount = (remainingBytes > len) ? len : remainingBytes;
+		long readCount = (remainingBytes > len) ? len : remainingBytes;
 		if (null != buf) { // use for skip
-			System.arraycopy(_currentBlock.content(), _blockOffset, buf, offset, readCount);
+			readCount = _blockReadStream.read(buf, offset, len);
+		} else {
+			readCount = _blockReadStream.skip(len);
 		}
-		_blockOffset += readCount;
 		Library.logger().info("CCNBlockInputStream: read " + readCount + " bytes from block " + _currentBlock.name());
-		return readCount;
+		return (int)readCount;
 	}
 }
