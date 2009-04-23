@@ -1,7 +1,9 @@
 package com.parc.ccn.library.io;
 
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
 
+import javax.crypto.NoSuchPaddingException;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.CCNBase;
@@ -22,30 +24,30 @@ import com.parc.ccn.library.CCNLibrary;
 public class CCNBlockInputStream extends CCNAbstractInputStream {
 
 	public CCNBlockInputStream(ContentName baseName, Long startingBlockIndex, 
-							   PublisherPublicKeyDigest publisher, CCNLibrary library) throws XMLStreamException, IOException {
-		super(baseName, startingBlockIndex, publisher, library);
+							   PublisherPublicKeyDigest publisher, CCNLibrary library) throws XMLStreamException, IOException, NoSuchAlgorithmException, NoSuchPaddingException {
+		super(baseName, startingBlockIndex, null, null, null, publisher, library);
 		setTimeout(CCNBase.NO_TIMEOUT);
 	}
 
 	public CCNBlockInputStream(ContentName baseName, PublisherPublicKeyDigest publisher, CCNLibrary library) 
-															throws XMLStreamException, IOException {
+															throws XMLStreamException, IOException, NoSuchAlgorithmException, NoSuchPaddingException {
 		this(baseName, null, publisher, library);
 	}
 
-	public CCNBlockInputStream(ContentName baseName) throws XMLStreamException, IOException {
+	public CCNBlockInputStream(ContentName baseName) throws XMLStreamException, IOException, NoSuchAlgorithmException, NoSuchPaddingException {
 		this(baseName, null, null, null);
 	}
 
-	public CCNBlockInputStream(ContentName baseName, CCNLibrary library) throws XMLStreamException, IOException {
+	public CCNBlockInputStream(ContentName baseName, CCNLibrary library) throws XMLStreamException, IOException, NoSuchAlgorithmException, NoSuchPaddingException {
 		this(baseName, null, null, library);
 	}
 
-	public CCNBlockInputStream(ContentName baseName, long blockNumber) throws XMLStreamException, IOException {
+	public CCNBlockInputStream(ContentName baseName, long blockNumber) throws XMLStreamException, IOException, NoSuchAlgorithmException, NoSuchPaddingException {
 		this(baseName, blockNumber, null, null);
 	}
 	
-	public CCNBlockInputStream(ContentObject starterBlock, CCNLibrary library) throws XMLStreamException, IOException {
-		super(starterBlock, library);
+	public CCNBlockInputStream(ContentObject starterBlock, CCNLibrary library) throws XMLStreamException, IOException, NoSuchAlgorithmException, NoSuchPaddingException {
+		super(starterBlock, null, null, null, library);
 	}
 
 	protected int readInternal(byte [] buf, int offset, int len) throws IOException {

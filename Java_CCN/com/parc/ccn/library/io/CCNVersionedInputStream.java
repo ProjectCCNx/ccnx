@@ -6,6 +6,7 @@ import java.sql.Timestamp;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
@@ -53,7 +54,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 	}
 
 	public CCNVersionedInputStream(ContentName name) throws XMLStreamException,
-			IOException {
+			IOException, ConfigurationException {
 		super(name);
 	}
 
@@ -64,7 +65,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 
 	public CCNVersionedInputStream(ContentName name, long startingBlockIndex)
 			throws XMLStreamException, IOException {
-		this(name, startingBlockIndex, null, null);
+		super(name, startingBlockIndex);
 	}
 
 	public CCNVersionedInputStream(ContentObject starterBlock,
