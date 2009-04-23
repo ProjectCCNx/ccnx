@@ -40,7 +40,7 @@ ExtractDeps () {
 
 RunTest () {
   export TESTNAME=$1
-  ( . settings; . functions; echo === $1 >&2; . $1 )
+  ( . settings; . functions; . preamble; echo === $1 >&2; . $1 )
   STATUS=$?
   echo $STATUS >&2
   case $STATUS in
