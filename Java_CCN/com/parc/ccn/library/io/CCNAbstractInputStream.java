@@ -34,7 +34,6 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	protected ContentObject _currentBlock = null;
 	protected ByteArrayInputStream _currentBlockStream = null;
 	protected InputStream _blockReadStream = null; // includes filters, etc.
-	protected int _blockOffset = 0;
 	
 	/**
 	 * This is the name we are querying against, prior to each
@@ -210,12 +209,13 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	 * Set up current block for reading, including prep for decryption if necessary.
 	 * Called after getBlock/getFirstBlock/getNextBlock, which take care of verifying
 	 * the block for us. So we assume newBlock is valid.
+	 * @throws IOException 
 	 * @throws NoSuchPaddingException 
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidAlgorithmParameterException 
 	 * @throws InvalidKeyException 
 	 */
-	protected void setCurrentBlock(ContentObject newBlock) throws InvalidKeyException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchPaddingException {
+	protected void setCurrentBlock(ContentObject newBlock) throws IOException {
 		_currentBlock = null;
 		_currentBlockStream = null;
 		_blockReadStream = null;
@@ -227,9 +227,23 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		_currentBlock = newBlock;
 		_currentBlockStream = new ByteArrayInputStream(_currentBlock.content());
 		if (null != _cipher) {
-			_cipher = CCNCipherFactory.getSegmentDecryptionCipher(_cipher, _cipher.getAlgorithm(), 
-																  _encryptionKey, _masterIV, 
-										SegmentationProfile.getSegmentNumber(_currentBlock.name()));
+			try {
+				_cipher = CCNCipherFactory.getSegmentDecryptionCipher(_cipher, _cipher.getAlgorithm(), 
+																	  _encryptionKey, _masterIV, 
+											SegmentationProfile.getSegmentNumber(_currentBlock.name()));
+			} catch (InvalidKeyException e) {
+				Library.logger().warning("InvalidKeyException: " + e.getMessage());
+				throw new IOException("InvalidKeyException: " + e.getMessage());
+			} catch (InvalidAlgorithmParameterException e) {
+				Library.logger().warning("InvalidAlgorithmParameterException: " + e.getMessage());
+				throw new IOException("InvalidAlgorithmParameterException: " + e.getMessage());
+			} catch (NoSuchAlgorithmException e) {
+				Library.logger().warning("Unexpected NoSuchAlgorithmException using an algorithm we have already verified! " +  _cipher.getAlgorithm());
+				throw new IOException("Unexpected NoSuchAlgorithmException using an algorithm we have already verified! " +  _cipher.getAlgorithm());
+			} catch (NoSuchPaddingException e) {
+				Library.logger().warning("Unexpected NoSuchPaddingException using an algorithm we have already verified! " +  _cipher.getAlgorithm());
+				throw new IOException("Unexpected NoSuchPaddingException using an algorithm we have already verified! " +  _cipher.getAlgorithm());
+			}
 			_blockReadStream = new CipherInputStream(_currentBlockStream, _cipher);
 		} else {
 			_blockReadStream = _currentBlockStream;
