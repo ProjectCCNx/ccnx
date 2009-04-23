@@ -110,7 +110,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 		} else {
 			_markOffset = _currentBlock.contentLength() - _currentBlockStream.available();
 		}
-		Library.logger().finer("mark: block: " + blockIndex() + " offset: " + _blockOffset);
+		Library.logger().finer("mark: block: " + blockIndex() + " offset: " + _markOffset);
 	}
 
 	@Override
@@ -130,26 +130,25 @@ public class CCNInputStream extends CCNAbstractInputStream {
 		if (null == _currentBlock) {
 			if (_atEOF)
 				return -1;
-			_currentBlock = getFirstBlock();
-			_blockOffset = 0;
-			if (null == _currentBlock) {
+			ContentObject firstBlock = getFirstBlock();
+			if (null == firstBlock) {
 				_atEOF = true;
 				return -1; // nothing to read
 			}
+			setCurrentBlock(firstBlock);
 		} 
 		Library.logger().finer("reading from block: " + _currentBlock.name() + " length: " + 
-				_currentBlock.contentLength() +
-				" at offset " + _blockOffset);
+				_currentBlock.contentLength());
 		
 		// Now we have a block in place. Read from it. If we run out of block before
 		// we've read len bytes, pull next block.
 		int lenToRead = len;
 		int lenRead = 0;
+		long readCount = 0;
 		while (lenToRead > 0) {
-			if (_blockOffset >= _currentBlock.contentLength()) {
+			if (0 == _blockReadStream.available()) {
 				// DKS make sure we don't miss a byte...
-				_currentBlock = getNextBlock();
-				_blockOffset = 0;
+				setCurrentBlock(getNextBlock());
 				if (null == _currentBlock) {
 					Library.logger().info("next block was null, setting _atEOF, returning " + ((lenRead > 0) ? lenRead : -1));
 					_atEOF = true;
@@ -159,20 +158,24 @@ public class CCNInputStream extends CCNAbstractInputStream {
 					return -1; // no bytes read, at eof
 				}
 				Library.logger().info("now reading from block: " + _currentBlock.name() + " length: " + 
-						_currentBlock.contentLength() +
-						" at offset " + _blockOffset);
+						_currentBlock.contentLength());
 			}
-			int readCount = ((_currentBlock.contentLength() - _blockOffset) > lenToRead) ? lenToRead : (_currentBlock.contentLength() - _blockOffset);
-			if (null != buf) {} // use for skip
-				Library.logger().finest("before arraycopy: content length "+_currentBlock.contentLength()+" _blockOffset "+_blockOffset+" dst length "+buf.length+" dst index "+offset+" len to copy "+readCount);
-				System.arraycopy(_currentBlock.content(), _blockOffset, buf, offset, readCount);
+			if (null != buf) {  // use for skip
+				Library.logger().finest("before block read: content length "+_currentBlock.contentLength()+" position "+ tell() +" available: " + _blockReadStream.available() + " dst length "+buf.length+" dst index "+offset+" len to read "+lenToRead);
+				// Read as many bytes as we can
+				readCount = _blockReadStream.read(buf, offset, lenToRead);
+			} else {
+				readCount = _blockReadStream.skip(lenToRead);
+			}
 			
-			_blockOffset += readCount;
-			offset += readCount;
-			lenToRead -= readCount;
-			lenRead += readCount;
-			Library.logger().finest("     read " + readCount + " bytes for " + lenRead + " total, " + lenToRead + " remaining.");
-			
+			if (readCount < 0) {
+				Library.logger().info("Tried to read at end of block, go get next block.");
+			} else {
+				offset += readCount;
+				lenToRead -= readCount;
+				lenRead += readCount;
+				Library.logger().finest("     read " + readCount + " bytes for " + lenRead + " total, " + lenToRead + " remaining.");
+			}
 		}
 		return lenRead;
 	}
