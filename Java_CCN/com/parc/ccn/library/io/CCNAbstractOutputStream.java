@@ -62,4 +62,8 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 	public CCNSegmenter getSegmenter() {
 		return _segmenter;
 	}
+	
+	public void setTimeout(int timeout) {
+		getSegmenter().setTimeout(timeout);
+	}
 }

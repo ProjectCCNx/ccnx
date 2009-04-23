@@ -150,9 +150,10 @@
 					<env key="CCND_DEBUG" value="-1"/>
 				</exec>
 			</daemons>
-                        <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
-                        <sleep seconds="1"/>
+            <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
+            <sleep seconds="1"/>
 		</parallel>
+		<sleep seconds="1"/>
 	</target>
 
         <!-- Run a ccnd on test port but not as daemon (i.e. keep running
@@ -190,9 +191,10 @@
 					<arg value="${REPO_GLOBAL}" />
 				</java>
 			</daemons>
-                        <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
-                        <sleep seconds="1"/>
+            <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
+            <sleep seconds="1"/>
 		</parallel>
+		<sleep seconds="1"/>
 	</target>
 
 	<!-- test is for running all current automated tests to validate code -->
@@ -272,6 +274,25 @@
 			</batchtest>
 		</junit>
 	</target>
+	
+	<!-- This target is for debugging only -->
+		<target name="test-blockreadwrite" depends="jar, ccnd">
+
+			<mkdir dir="${testout}"/>
+			<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
+				<classpath>
+					<path refid="classpath-run"/>
+				</classpath>
+				<formatter type="xml" usefile="true"/>
+				<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+
+				<batchtest todir="${testout}">
+					<fileset dir="${build}">
+						<include name="test/ccn/library/BlockReadWriteTest.class"/>
+					</fileset>
+				</batchtest>
+			</junit>
+		</target>
 	
 	<target name="test-repo" depends="test-repo-structure, test-repo-io">
 	</target>

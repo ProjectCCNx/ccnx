@@ -42,7 +42,7 @@ public class BlockReadWriteTest extends BasePutGetTest {
 		ContentName thisName = VersioningProfile.versionName(ContentName.fromNative(baseName, fileName), count);
 		sema.acquire(); // Block until puts started
 		CCNDescriptor desc = new CCNDescriptor(thisName, null, library);
-		//desc.setTimeout(5000);
+		desc.setTimeout(5000);
 		Library.logger().info("Opened descriptor for reading: " + thisName);
 
 		FileOutputStream os = new FileOutputStream(fileName + "_testout.txt");
@@ -77,7 +77,8 @@ public class BlockReadWriteTest extends BasePutGetTest {
 	@Override
 	public void doPuts(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException, NoSuchAlgorithmException {
 		ContentName thisName = VersioningProfile.versionName(ContentName.fromNative(baseName, fileName), count);
-		CCNDescriptor desc = new CCNDescriptor(thisName, null, null, library);     
+		CCNDescriptor desc = new CCNDescriptor(thisName, null, null, library);
+		desc.setTimeout(5000);
 		sema.release();	// put channel open
 		
 		Library.logger().info("Opened descriptor for writing: " + thisName);

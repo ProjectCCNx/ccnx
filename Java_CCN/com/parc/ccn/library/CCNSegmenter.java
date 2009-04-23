@@ -478,4 +478,8 @@ public class CCNSegmenter {
 			return currentSegmentNumber + (blocksRemaining - 1);
 		}
 	}
+	
+	public void setTimeout(int timeout) {
+		getFlowControl().setTimeout(timeout);
+	}
 }

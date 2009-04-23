@@ -163,4 +163,7 @@ public class CCNWriter {
 		_segmenter.getFlowControl().waitForPutDrain();
 	}
 	
+	public void setTimeout(int timeout) {
+		getFlowControl().setTimeout(timeout);
+	}
 }
