@@ -190,6 +190,8 @@
 					<arg value="${REPO_GLOBAL}" />
 				</java>
 			</daemons>
+                        <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
+                        <sleep seconds="1"/>
 		</parallel>
 	</target>
 
