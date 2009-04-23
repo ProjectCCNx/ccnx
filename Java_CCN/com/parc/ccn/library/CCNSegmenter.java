@@ -103,7 +103,6 @@ public class CCNSegmenter {
 	
 	// Encryption/decryption handler
 	protected Cipher _cipher;
-	protected String _encryptionAlgorithm; // in Java standard form, default CCNCipherFactory.DEFAULT_CIPHER_MODE.
 	protected SecretKeySpec _encryptionKey;
 	protected IvParameterSpec _masterIV;
 
