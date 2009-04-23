@@ -1,8 +1,7 @@
 /*
  * ccnd.c
  *  
- * Copyright 2008 Palo Alto Research Center, Inc. All rights reserved.
- * $Id$
+ * Copyright 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
  */
 
 #include <errno.h>
@@ -2049,6 +2048,54 @@ Bail:
 }
 
 static void
+process_incoming_inject(struct ccnd *h, struct face *face,
+                        unsigned char *inject_msg, size_t wire_size)
+{
+    /*
+     * This is a special message that should only come from a trusted party.
+     * For now, we're a lottle too trusting and take anything from
+     * a unix-domain socket (which cannot be remote).
+     * The purpose of this is for the helper program to inject
+     * an Interest message to a specific destination in order to
+     * establish the a conversation.
+     */
+    struct sockaddr_storage addr = {0};
+    struct ccn_parsed_interest pi_buf = {0};
+    int sotype;
+    const unsigned char *ptr;
+    unsigned char *imsg;
+    size_t isize; 
+    size_t size;
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
+    size_t start;
+    size_t stop;
+    int res;
+    
+    /* XXX - check sender rights here */
+    d = ccn_buf_decoder_start(&decoder, inject_msg, wire_size);
+    ccn_buf_advance(d); /* Caller has checked outer DTAG */
+    sotype = ccn_parse_optional_tagged_nonNegativeInteger(d, CCN_DTAG_SOType);
+    if (sotype < 0) return;
+    start = d->decoder.token_index;
+    ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Address, 4, sizeof(addr));
+    stop = d->decoder.token_index;
+    if (d->decoder.state < 0 || wire_size < stop + 1) return;
+    res = ccn_ref_tagged_BLOB(CCN_DTAG_Address, inject_msg, start, stop,
+                              &ptr, &size);
+    if (res < 0 || size > sizeof(addr)) return;
+    memcpy(&addr, ptr, size);
+    imsg = inject_msg + stop;
+    isize = wire_size - stop - 1;
+    res = ccn_parse_interest(imsg, isize, &pi_buf, NULL);
+    if (res < 0) return;
+    /* Caller has parsed skeleton, so we're done parsing now. */
+    ccnd_debug_ccnb(h, __LINE__, "inject", face, imsg, isize);
+    if (sotype != SOCK_DGRAM) return;
+    
+}
+
+static void
 process_input_message(struct ccnd *h, struct face *face,
                       unsigned char *msg, size_t size, int pdu_ok)
 {
@@ -2081,6 +2128,10 @@ process_input_message(struct ccnd *h, struct face *face,
         else if (d->numval == CCN_DTAG_ContentObject ||
                  d->numval == CCN_DTAG_ContentObjectV20080711) {
             process_incoming_content(h, face, msg, size);
+            return;
+        }
+        else if (d->numval == CCN_DTAG_Inject) {
+            process_incoming_inject(h, face, msg, size);
             return;
         }
     }
