@@ -2072,6 +2072,7 @@ process_incoming_inject(struct ccnd *h, struct face *face,
     size_t stop;
     int res;
     int fd;
+    struct sockaddr *addrp = NULL;
     
     /* XXX - check sender rights here */
     d = ccn_buf_decoder_start(&decoder, inject_msg, wire_size);
@@ -2086,7 +2087,7 @@ process_incoming_inject(struct ccnd *h, struct face *face,
                               &ptr, &size);
     if (res < 0 || size > sizeof(addr)) return;
     memcpy(&addr, ptr, size);
-    if (size != addr.ss_len) return;
+    addrp = (struct sockaddr *)&addr;
     imsg = inject_msg + stop;
     isize = wire_size - stop - 1;
     res = ccn_parse_interest(imsg, isize, &pi_buf, NULL);
@@ -2094,9 +2095,9 @@ process_incoming_inject(struct ccnd *h, struct face *face,
     /* Caller has parsed skeleton, so we're done parsing now. */
     ccnd_debug_ccnb(h, __LINE__, "inject", face, imsg, isize);
     if (sotype != SOCK_DGRAM) return;
-    if (addr.ss_family == AF_INET)
+    if (addrp->sa_family == AF_INET)
         fd = h->udp4_fd;
-    else if (addr.ss_family == AF_INET6)
+    else if (addrp->sa_family == AF_INET6)
         fd = h->udp6_fd;
     else
         fd = -1;
