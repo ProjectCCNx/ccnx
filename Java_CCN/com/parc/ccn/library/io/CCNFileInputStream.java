@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
-import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.Header;
@@ -60,7 +59,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	}
 
 	public CCNFileInputStream(ContentName name) throws XMLStreamException,
-			IOException, ConfigurationException {
+			IOException {
 		super(name);
 		// Asynchronously attempt to retrieve a header block, if one exists.
 		retrieveHeader(_baseName, null);

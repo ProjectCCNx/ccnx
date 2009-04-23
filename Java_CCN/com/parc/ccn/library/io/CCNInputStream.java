@@ -5,7 +5,6 @@ import java.io.IOException;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
-import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
@@ -59,8 +58,8 @@ public class CCNInputStream extends CCNAbstractInputStream {
 		this(name, null, publisher, library);
 	}
 	
-	public CCNInputStream(ContentName name) throws XMLStreamException, IOException, ConfigurationException {
-		this(name, CCNLibrary.open());
+	public CCNInputStream(ContentName name) throws XMLStreamException, IOException {
+		this(name, null);
 	}
 	
 	public CCNInputStream(ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
