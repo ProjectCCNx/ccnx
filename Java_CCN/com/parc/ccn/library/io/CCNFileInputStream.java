@@ -202,7 +202,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 		} else {
 		    //we already have a block...  need to handle some tricky cases
 			currentBlock = blockIndex();
-			currentBlockOffset = _blockOffset;
+			currentBlockOffset = (int)super.tell();
 			currentPosition = _header.blockLocationToPosition(currentBlock, currentBlockOffset);
 			toGetPosition = currentPosition + n;
 		}
@@ -230,7 +230,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 		}
 			
 		//now we should get the block and check the offset
-		getBlock(toGetBlockAndOffset[0]);
+		setCurrentBlock(getBlock(toGetBlockAndOffset[0]));
 		if (_currentBlock == null) {
 			//we had an error getting the block
 			throw new IOException("Error getting block "+toGetBlockAndOffset[0]+" in CCNInputStream.skip("+n+")");
@@ -243,7 +243,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 				//our offset is past the end of our block, reset to the end.
 				toGetBlockAndOffset[1] = _currentBlock.contentLength();
 			}
-			_blockOffset = toGetBlockAndOffset[1];
+			_blockReadStream.skip(toGetBlockAndOffset[1]);
 			return _header.blockLocationToPosition(toGetBlockAndOffset[0], toGetBlockAndOffset[1]) - currentPosition;
 		}
 	}
@@ -265,19 +265,21 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 			Library.logger().info("currently have block "+ currentBlockNumber());
 			if (currentBlockNumber() == blockAndOffset[0]) {
 				//already have the correct block
-				if (_blockOffset == blockAndOffset[1]){
+				if (super.tell() == blockAndOffset[1]){
 					//already have the correct offset
 				} else {
-					_blockOffset = blockAndOffset[1];
+					// Reset and skip.
+					_blockReadStream.reset();
+					_blockReadStream.skip(blockAndOffset[1]);
 				}
 				return position;
 			
 			}
 			
-			_currentBlock = getBlock(blockAndOffset[0]);
-			_blockOffset = blockAndOffset[1];
+			setCurrentBlock(getBlock(blockAndOffset[0]));
+			super.skip(blockAndOffset[1]);
 			long check = _header.blockLocationToPosition(blockAndOffset[0], blockAndOffset[1]);
-			Library.logger().info("current position: block "+blockAndOffset[0]+" _blockOffset "+_blockOffset+" ("+check+")");
+			Library.logger().info("current position: block "+blockAndOffset[0]+" _blockOffset "+super.tell()+" ("+check+")");
 
 			if (_currentBlock != null) {
 				_atEOF=false;
@@ -299,7 +301,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	@Override
 	public long tell() {
 		if (null != _header) {
-			return _header.blockLocationToPosition(blockIndex(), _blockOffset);
+			return _header.blockLocationToPosition(blockIndex(), (int)super.tell());
 		} else {
 			return super.tell();
 		}
