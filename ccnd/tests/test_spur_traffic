@@ -1,0 +1,7 @@
+AFTER : test_twohop_ccnd
+COUNT=`wc -l < spur_link.out`
+# We expect some traffic to have made it to the spur, but not too much.
+test $COUNT -gt 30 || Fail less spur traffic than expected - $COUNT
+test $COUNT -lt 120 || Fail more spur traffic than expected - $COUNT
+echo Spur traffic $COUNT is within expected bounds
+rm spur_link.out

@@ -17,7 +17,7 @@ cd $(dirname "$0")
 
 # Set up PATH so the tested programs are used, rather than any that
 # might be installed.
-export PATH=.:../agent:../lib:$PATH:./stubs
+export PATH=.:../agent:../lib:../udplink:$PATH:./stubs
 
 # Keep track of failed tests and skipped tests
 : > FAILING
@@ -39,6 +39,7 @@ ExtractDeps () {
 }
 
 RunTest () {
+  export TESTNAME=$1
   ( . settings; . functions; echo === $1 >&2; . $1 )
   STATUS=$?
   echo $STATUS >&2

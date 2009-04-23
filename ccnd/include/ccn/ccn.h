@@ -373,6 +373,15 @@ int ccn_buf_match_udata(struct ccn_buf_decoder *d, const char *s);
 
 int ccn_buf_match_attr(struct ccn_buf_decoder *d, const char *s);
 
+int ccn_parse_required_tagged_BLOB(struct ccn_buf_decoder *d,
+                                   enum ccn_dtag dtag,
+                                   int minlen, int maxlen);
+int ccn_parse_optional_tagged_BLOB(struct ccn_buf_decoder *d,
+                                   enum ccn_dtag dtag,
+                                   int minlen, int maxlen);
+int ccn_parse_optional_tagged_nonNegativeInteger(struct ccn_buf_decoder *d,
+                                   enum ccn_dtag dtag);
+
 /* ccn_buf_check_close enters an error state if element closer not found */
 void ccn_buf_check_close(struct ccn_buf_decoder *d);
 

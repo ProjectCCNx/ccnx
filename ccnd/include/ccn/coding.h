@@ -90,6 +90,9 @@ enum ccn_dtag {
     CCN_DTAG_PublisherIssuerKeyDigest = 62,
     CCN_DTAG_PublisherIssuerCertificateDigest = 63,
     CCN_DTAG_ContentObject = 64,	/* V20080415 */
+    CCN_DTAG_Address = 2048,
+    CCN_DTAG_SOType = 2049,
+    CCN_DTAG_Inject = 2050,
     CCN_DTAG_CCNProtocolDataUnit = 17702112,
     CCN_DTAG_ExperimentalResponseFilter = 23204960
 };

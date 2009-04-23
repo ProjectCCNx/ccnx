@@ -317,4 +317,13 @@
   </xs:sequence>
 </xs:complexType>
 
+<xs:element name="Inject" type="InjectType"/>
+<xs:complexType name="InjectType">
+  <xs:sequence>
+      <xs:element name="SOType" type="xs:nonNegativeInteger"/>
+      <xs:element name="Address" type="Base64BinaryType"/>
+      <xs:element name="Interest" type="InterestType"/>
+  </xs:sequence>
+</xs:complexType>
+
 </xs:schema>

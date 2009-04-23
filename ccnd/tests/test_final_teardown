@@ -1,0 +1,5 @@
+AFTER : test_single_ccnd_teardown test_twohop_ccnd_teardown
+type pkill && pkill ccnd 2>/dev/null
+sleep 1
+netstat -an | grep -e 900[0123] -e 91[0123][0123]
+:
