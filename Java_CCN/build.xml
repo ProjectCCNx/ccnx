@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- This is an ant project file, see http://ant.apache.org/ -->
 
+<!-- NOTES
+  Do not use antcall with tests that depend on ccnd, because this 
+  can result in more than one ccnd being run at the same time.
+  If you stick to dependencies with one level of ant the ccnd
+  will never be run twice regardless of the number of test targets
+  that require it.
+  --> 
+
 <project default="jar" name="java-ccn">
 
 	<!-- To avoid conflict with Eclipse, we build in 'build' not 'bin' -->
@@ -296,6 +304,10 @@
 	</target>
 	
 	<target name="run-repo-structure-test" depends="jar, ccnd">
+		<mkdir dir="${testout}"/>
+		<delete dir="${REPO_FILETEST}"/>
+                <!-- Note that REPO_FILETEST will be produced by the RFSTest
+                     due to hard-coded file name in the test code -->
 		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
 			<classpath>
 				<path refid="classpath-run"/>
@@ -312,10 +324,7 @@
 	</target>
 	
 	<!-- This is for generating the repotest.zip file -->
-	<target name="generate-repotest-zip" depends="jar, ccnd">
-		<mkdir dir="${testout}"/>
-		<delete dir="${REPO_FILETEST}"/>
-		<antcall target="run-repo-structure-test"/>
+	<target name="generate-repotest-zip" depends="jar, ccnd, run-repo-structure-test">
 		<zip destfile="${repozip}"
 		    basedir="${REPO_FILETEST}"
 		    update="true">
@@ -323,10 +332,7 @@
 		<delete dir="${REPO_FILETEST}" />
 	</target>
 
-	<target name="test-repo-structure" depends="jar, ccnd">
-		<mkdir dir="${testout}"/>
-		<delete dir="${REPO_FILETEST}"/>
-		<antcall target="run-repo-structure-test"/>
+	<target name="test-repo-structure" depends="jar, ccnd, run-repo-structure-test">
 		<delete dir="${REPO_FILETEST}" />
 	</target>
 	
