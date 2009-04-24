@@ -16,6 +16,7 @@
 #include <strings.h>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <netdb.h>
 
 #if defined(NEED_GETADDRINFO_COMPAT)
@@ -111,7 +112,6 @@ incoming_interest(
             inject->length += ilength;
 
             res |= ccn_charbuf_append_closer(inject); /* </Inject> */
-            write(1, inject->buf, inject->length);
             if (res == 0)
                 res = ccn_put(info->h, inject->buf, inject->length);
             if (res != 0) ccndc_warn(__LINE__, "ccn_put failed\n");
@@ -221,9 +221,7 @@ read_configfile(const char *filename, struct routing *rt)
 
     }
     fclose(cfg);
-    if (configerrors < 0)
-        return (configerrors);
-    
+    return (configerrors);
 }
 int
 main(int argc, char **argv)
