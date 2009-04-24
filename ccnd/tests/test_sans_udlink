@@ -3,6 +3,7 @@ BEFORE : test_single_ccnd_teardown
 # Uses the ability to inject an interst message to get two ccnds to
 # talk to each other.
 # Uses ipv4 localhost to connect to the preloaded ccnd
+uname -s | grep SunOS && SkipTest canned sockaddr will not work on Solaris
 WithCCND 5 ccnd &
 test $CCN_LOCAL_PORT -eq $((0x2328)) || SkipTest FIXME
 ccn_xmltoccnb -w - > inject.ccnb <<EOF
