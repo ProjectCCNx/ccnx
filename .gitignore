@@ -53,4 +53,8 @@ ccnd/agent/contentmishash.ccnb
 ccnd/ccn-start-udplink-*.parc.xerox.com.sh
 *.c.flc
 *.out
-
+ccnd/tests/FAILING
+ccnd/tests/SKIPPED
+ccnd/tests/STATUS/
+ccnd/tests/deps.out
+ccnd/tests/sorted-deps.out
