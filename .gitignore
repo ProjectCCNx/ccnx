@@ -15,6 +15,7 @@ apps/email/bin/com/
 ccnd/agent/ccnd
 ccnd/agent/smoketestccnd
 ccnd/conf.mk
+ccnd/ccndc/ccndc
 ccnd/flowtest/flowtest
 ccnd/lib/ccn_ccnbtoxml
 ccnd/lib/ccn_splitccnb
@@ -51,3 +52,5 @@ ccnd/agent/contentmishash.ccnb
 *.jar
 ccnd/ccn-start-udplink-*.parc.xerox.com.sh
 *.c.flc
+*.out
+

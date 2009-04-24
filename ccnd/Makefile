@@ -1,4 +1,4 @@
-SUBDIRS = lib agent udplink python tests
+SUBDIRS = lib agent ccndc udplink python tests
 OBJTREE = obj.`uname`
 MAKEF =  -f ../conf.mk -f Makefile -f ../conf.mk -f ../subr.mk
 
