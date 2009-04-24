@@ -168,6 +168,8 @@ public class CCNSegmenter {
 						CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM + ", " + encryptionAlgorithm + 
 						" will come later.");
 			}
+			// Make this here so we throw NoSuchAlgorithmException now if it's going to happen.
+			// Use this as a container to mark the algorithm going forward.
 			_cipher = Cipher.getInstance(encryptionAlgorithm);
 			_encryptionKey = encryptionKey;
 			_masterIV = masterIV;
@@ -552,9 +554,9 @@ public class CCNSegmenter {
 
 		if (null != _cipher) {
 			try {
-				_cipher = CCNCipherFactory.getSegmentEncryptionCipher(_cipher, _cipher.getAlgorithm(), 
-															         _encryptionKey, _masterIV, segmentNumber);
-				content = _cipher.doFinal(content, offset, length);
+				Cipher thisCipher = CCNCipherFactory.getSegmentEncryptionCipher(_cipher, _cipher.getAlgorithm(), 
+															         			_encryptionKey, _masterIV, segmentNumber);
+				content = thisCipher.doFinal(content, offset, length);
 				offset = 0;
 				length = content.length;
 				// Override content type to mark encryption.
@@ -605,11 +607,12 @@ public class CCNSegmenter {
 		
 		ByteArrayInputStream dataStream = new ByteArrayInputStream(content, offset, length);
 		InputStream inputStream = dataStream;
+		Cipher thisCipher = null;
 		if (null != _cipher) {
 			// DKS TODO -- move to streaming version to cut down copies. Here using input
 			// streams, eventually push down with this at the end of an output stream.
 			try {
-				_cipher = CCNCipherFactory.getSegmentEncryptionCipher(_cipher, _cipher.getAlgorithm(), 
+				thisCipher = CCNCipherFactory.getSegmentEncryptionCipher(_cipher, _cipher.getAlgorithm(), 
 															         _encryptionKey, _masterIV, nextSegmentIndex);
 				// Override content type to mark encryption.
 				// Note: we don't require that writers use our facilities for encryption, so
@@ -625,7 +628,7 @@ public class CCNSegmenter {
 				Library.logger().warning("Unexpected NoSuchPaddingException for an algorithm we have already used!");
 				throw new InvalidAlgorithmParameterException("Unexpected NoSuchPaddingException for an algorithm we have already used!", e);
 			}
-			inputStream = new CipherInputStream(dataStream, _cipher);
+			inputStream = new CipherInputStream(dataStream, thisCipher);
 		} 
 		
 		for (int i=0; i < blockCount; ++i) {
@@ -684,9 +687,9 @@ public class CCNSegmenter {
 			blockContent = contentBlocks[i];
 			if (null != _cipher) {
 				try {
-					_cipher = CCNCipherFactory.getSegmentEncryptionCipher(_cipher, _cipher.getAlgorithm(), 
+					Cipher thisCipher = CCNCipherFactory.getSegmentEncryptionCipher(_cipher, _cipher.getAlgorithm(), 
 																         _encryptionKey, _masterIV, nextSegmentIndex);
-					blockContent = _cipher.doFinal(contentBlocks[i]);
+					blockContent = thisCipher.doFinal(contentBlocks[i]);
 
 					// Override content type to mark encryption.
 					// Note: we don't require that writers use our facilities for encryption, so
@@ -720,9 +723,9 @@ public class CCNSegmenter {
 		blockContent = contentBlocks[i];
 		if (null != _cipher) {
 			try {
-				_cipher = CCNCipherFactory.getSegmentEncryptionCipher(_cipher, _cipher.getAlgorithm(), 
+				Cipher thisCipher = CCNCipherFactory.getSegmentEncryptionCipher(_cipher, _cipher.getAlgorithm(), 
 															         _encryptionKey, _masterIV, nextSegmentIndex);
-				blockContent = _cipher.doFinal(contentBlocks[i], 0, lastBlockLength);
+				blockContent = thisCipher.doFinal(contentBlocks[i], 0, lastBlockLength);
 				lastBlockLength = blockContent.length;
 				
 			} catch (NoSuchAlgorithmException e) {
