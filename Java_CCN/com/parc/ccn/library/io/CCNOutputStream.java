@@ -1,6 +1,7 @@
 package com.parc.ccn.library.io;
 
 import java.io.IOException;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
@@ -163,7 +164,9 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			throw new IOException("Cannot sign content -- unknown algorithm!: " + e.getMessage());
 		} catch (InterruptedException e) {
 			throw new IOException("Low-level network failure!: " + e.getMessage());
-		}
+		} catch (InvalidAlgorithmParameterException e) {
+			throw new IOException("Cannot encrypt content -- bad algorithm parameter!: " + e.getMessage());
+		} 
 	}
 
 	@Override
@@ -235,8 +238,9 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * @throws NoSuchAlgorithmException
 	 * @throws InterruptedException
 	 * @throws IOException
+	 * @throws InvalidAlgorithmParameterException 
 	 */
-	protected void flushToNetwork(boolean flushLastBlock) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException {		
+	protected void flushToNetwork(boolean flushLastBlock) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException, InvalidAlgorithmParameterException {		
 
 		/**
 		 * XXX - Can the blockbuffers have holes?

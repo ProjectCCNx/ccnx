@@ -50,7 +50,9 @@ public class BlockReadWriteTest extends BasePutGetTest {
         byte[] bytes = new byte[compareBytes.length];
         int buflen;
         int slot = 0;
-        while ((buflen = desc.read(bytes, slot, CHUNK_SIZE * 3)) > 0) {
+        // if you ask for more data than you can hold, it's an error, even if you
+        // know that not that much will come back
+        while ((buflen = desc.read(bytes, slot, Math.min(CHUNK_SIZE * 3, bytes.length - slot))) > 0) {
         	Library.logger().info("Read " + buflen + " bytes from CCNDescriptor.");
         	os.write(bytes, 0, (int)buflen);
         	if (desc.available() == 0) {
