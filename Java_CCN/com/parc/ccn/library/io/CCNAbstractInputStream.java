@@ -20,6 +20,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
+import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
@@ -247,6 +248,9 @@ public abstract class CCNAbstractInputStream extends InputStream {
 			_blockReadStream = new CipherInputStream(_currentBlockStream, _cipher);
 		} else {
 			_blockReadStream = _currentBlockStream;
+			if (_currentBlock.signedInfo().getType().equals(ContentType.ENCR)) {
+				Library.logger().warning("Asked to read encrypted content, but not given a key to decrypt it. Decryption happening at higher level?");
+			}
 		}
 	}
 

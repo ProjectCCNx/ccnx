@@ -221,12 +221,20 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 	// Do we want to make this an immutable type (or merely an immutable member of ContentObject?)
 	public void setFinalBlockID(byte [] finalBlockID) { _finalBlockID = finalBlockID; }
 
+	public void setType(ContentType type) {
+		if (null == type) {
+			_type = ContentType.DATA;
+		} else {
+			_type = type;
+		}
+	}
+	
 	public final ContentType getType() { 
 		if (null == _type)
 			return ContentType.DATA;
 		return _type; 
 	}
-	
+
 	public String getTypeName() { return typeToName(getType()); }
 	
 	public static final String typeToName(ContentType type) {
