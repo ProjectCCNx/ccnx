@@ -151,6 +151,8 @@ public class CCNSegmenter {
 		} else {
 			_bulkSigner = signer; // if null, default to merkle tree
 		}
+		
+		initializeBlockSize();
 	}
 
 	public CCNSegmenter(CCNFlowControl flowControl, CCNAggregatedSigner signer,
@@ -174,8 +176,6 @@ public class CCNSegmenter {
 				Library.logger().warning("Encryption key or IV specified, but no algorithm provided. Ignoring.");
 			}
 		}
-		
-		initializeBlockSize();
 	}
 
 	protected void initializeBlockSize() {
