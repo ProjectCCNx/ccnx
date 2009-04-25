@@ -25,6 +25,7 @@ import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.security.crypto.CCNCipherFactory;
+import com.parc.ccn.security.crypto.ContentKeys;
 
 public abstract class CCNAbstractInputStream extends InputStream {
 
@@ -95,29 +96,24 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	
 	public CCNAbstractInputStream(
 			ContentName baseName, Long startingBlockIndex,
-			String encryptionAlgorithm, 
-			SecretKeySpec encryptionKey, IvParameterSpec masterIV,
+			ContentKeys keys,
 			PublisherPublicKeyDigest publisher, CCNLibrary library) 
 					throws XMLStreamException, IOException, NoSuchAlgorithmException, NoSuchPaddingException {
 		
 		this(baseName, startingBlockIndex, publisher, library);
 		
-		if (null != encryptionAlgorithm) {
-			if (!encryptionAlgorithm.equals(CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM)) {
+		if (null != keys) {
+			if (!keys.encryptionAlgorithm.equals(CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM)) {
 				Library.logger().warning("Right now the only encryption algorithm we support is: " + 
-						CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM + ", " + encryptionAlgorithm + 
+						CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM + ", " + keys.encryptionAlgorithm + 
 						" will come later.");
 				throw new NoSuchAlgorithmException("Right now the only encryption algorithm we support is: " + 
-						CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM + ", " + encryptionAlgorithm + 
+						CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM + ", " + keys.encryptionAlgorithm + 
 						" will come later.");
 			}
-			_cipher = Cipher.getInstance(encryptionAlgorithm);
-			_encryptionKey = encryptionKey;
-			_masterIV = masterIV;
-		} else {
-			if ((null != encryptionKey) || (null != masterIV)) {
-				Library.logger().warning("Encryption key or IV specified, but no algorithm provided. Ignoring.");
-			}
+			_cipher = Cipher.getInstance(keys.encryptionAlgorithm);
+			_encryptionKey = keys.encryptionKey;
+			_masterIV = keys.masterIV;
 		}
 	}
 	

@@ -33,6 +33,7 @@ import com.parc.ccn.security.crypto.CCNAggregatedSigner;
 import com.parc.ccn.security.crypto.CCNCipherFactory;
 import com.parc.ccn.security.crypto.CCNMerkleTree;
 import com.parc.ccn.security.crypto.CCNMerkleTreeSigner;
+import com.parc.ccn.security.crypto.ContentKeys;
 
 /**
  * This class combines basic segmentation, signing and encryption; 
@@ -118,18 +119,16 @@ public class CCNSegmenter {
 		this(CCNLibrary.open());
 	}
 	
-	public CCNSegmenter(String encryptionAlgorithm, 
-						SecretKeySpec encryptionKey, IvParameterSpec masterIV) throws ConfigurationException, IOException, NoSuchAlgorithmException, NoSuchPaddingException {
-		this(CCNLibrary.open(), encryptionAlgorithm, encryptionKey, masterIV);
+	public CCNSegmenter(ContentKeys keys) throws ConfigurationException, IOException, NoSuchAlgorithmException, NoSuchPaddingException {
+		this(CCNLibrary.open(), keys);
 	}
 
 	public CCNSegmenter(CCNLibrary library) {
 		this(new CCNFlowControl(library));
 	}
 
-	public CCNSegmenter(CCNLibrary library, String encryptionAlgorithm, 
-							SecretKeySpec encryptionKey, IvParameterSpec masterIV) throws NoSuchAlgorithmException, NoSuchPaddingException {
-		this(new CCNFlowControl(library), null, encryptionAlgorithm, encryptionKey, masterIV);
+	public CCNSegmenter(CCNLibrary library, ContentKeys keys) throws NoSuchAlgorithmException, NoSuchPaddingException {
+		this(new CCNFlowControl(library), null, null);
 	}
 	/**
 	 * Create an object with default Merkle hash tree aggregated signing.
@@ -156,25 +155,25 @@ public class CCNSegmenter {
 	}
 
 	public CCNSegmenter(CCNFlowControl flowControl, CCNAggregatedSigner signer,
-						String encryptionAlgorithm, SecretKeySpec encryptionKey, IvParameterSpec masterIV) throws NoSuchAlgorithmException, NoSuchPaddingException {
+						ContentKeys keys) throws NoSuchAlgorithmException, NoSuchPaddingException {
 		this(flowControl, signer);
 		
-		if (null != encryptionAlgorithm) {
-			if (!encryptionAlgorithm.equals(CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM)) {
+		if (null != keys.encryptionAlgorithm) {
+			if (!keys.encryptionAlgorithm.equals(CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM)) {
 				Library.logger().warning("Right now the only encryption algorithm we support is: " + 
-						CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM + ", " + encryptionAlgorithm + 
+						CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM + ", " + keys.encryptionAlgorithm + 
 						" will come later.");
 				throw new NoSuchAlgorithmException("Right now the only encryption algorithm we support is: " + 
-						CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM + ", " + encryptionAlgorithm + 
+						CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM + ", " + keys.encryptionAlgorithm + 
 						" will come later.");
 			}
 			// Make this here so we throw NoSuchAlgorithmException now if it's going to happen.
 			// Use this as a container to mark the algorithm going forward.
-			_cipher = Cipher.getInstance(encryptionAlgorithm);
-			_encryptionKey = encryptionKey;
-			_masterIV = masterIV;
+			_cipher = Cipher.getInstance(keys.encryptionAlgorithm);
+			_encryptionKey = keys.encryptionKey;
+			_masterIV = keys.masterIV;
 		} else {
-			if ((null != encryptionKey) || (null != masterIV)) {
+			if ((null != keys.encryptionKey) || (null != keys.masterIV)) {
 				Library.logger().warning("Encryption key or IV specified, but no algorithm provided. Ignoring.");
 			}
 		}

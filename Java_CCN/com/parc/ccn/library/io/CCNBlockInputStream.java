@@ -25,7 +25,7 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 
 	public CCNBlockInputStream(ContentName baseName, Long startingBlockIndex, 
 							   PublisherPublicKeyDigest publisher, CCNLibrary library) throws XMLStreamException, IOException, NoSuchAlgorithmException, NoSuchPaddingException {
-		super(baseName, startingBlockIndex, null, null, null, publisher, library);
+		super(baseName, startingBlockIndex, null, publisher, library);
 		setTimeout(CCNBase.NO_TIMEOUT);
 	}
 
