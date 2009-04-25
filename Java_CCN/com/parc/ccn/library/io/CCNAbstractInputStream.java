@@ -225,6 +225,8 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		_currentBlockStream = new ByteArrayInputStream(_currentBlock.content());
 		if (null != _cipher) {
 			try {
+				// Reuse of current block OK. Don't expect to have two separate readers
+				// independently use this stream without state confusion anyway.
 				_cipher = CCNCipherFactory.getSegmentDecryptionCipher(_cipher, _cipher.getAlgorithm(), 
 																	  _encryptionKey, _masterIV, 
 											SegmentationProfile.getSegmentNumber(_currentBlock.name()));

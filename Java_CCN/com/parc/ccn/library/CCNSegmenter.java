@@ -93,8 +93,6 @@ public class CCNSegmenter {
 	protected int _byteScale = SegmentationProfile.DEFAULT_SCALE;
 	protected SegmentNumberType _sequenceType = SegmentNumberType.SEGMENT_FIXED_INCREMENT;
 	
-	protected int _nextBlock  = SegmentationProfile.baseSegment();
-
 	protected CCNLibrary _library;
 	// Eventually may not contain this; callers may access it exogenously.
 	protected CCNFlowControl _flowControl;
@@ -553,7 +551,8 @@ public class CCNSegmenter {
 
 		if (null != _cipher) {
 			try {
-				Cipher thisCipher = CCNCipherFactory.getSegmentEncryptionCipher(_cipher, _cipher.getAlgorithm(), 
+				// Make a separate cipher, so this segmenter can be used by multiple callers at once.
+				Cipher thisCipher = CCNCipherFactory.getSegmentEncryptionCipher(null, _cipher.getAlgorithm(), 
 															         			_encryptionKey, _masterIV, segmentNumber);
 				content = thisCipher.doFinal(content, offset, length);
 				offset = 0;
@@ -611,7 +610,8 @@ public class CCNSegmenter {
 			// DKS TODO -- move to streaming version to cut down copies. Here using input
 			// streams, eventually push down with this at the end of an output stream.
 			try {
-				thisCipher = CCNCipherFactory.getSegmentEncryptionCipher(_cipher, _cipher.getAlgorithm(), 
+				// Make a separate cipher, so this segmenter can be used by multiple callers at once.
+				thisCipher = CCNCipherFactory.getSegmentEncryptionCipher(null, _cipher.getAlgorithm(), 
 															         _encryptionKey, _masterIV, nextSegmentIndex);
 				// Override content type to mark encryption.
 				// Note: we don't require that writers use our facilities for encryption, so
@@ -686,7 +686,8 @@ public class CCNSegmenter {
 			blockContent = contentBlocks[i];
 			if (null != _cipher) {
 				try {
-					Cipher thisCipher = CCNCipherFactory.getSegmentEncryptionCipher(_cipher, _cipher.getAlgorithm(), 
+					// Make a separate cipher, so this segmenter can be used by multiple callers at once.
+					Cipher thisCipher = CCNCipherFactory.getSegmentEncryptionCipher(null, _cipher.getAlgorithm(), 
 																         _encryptionKey, _masterIV, nextSegmentIndex);
 					blockContent = thisCipher.doFinal(contentBlocks[i]);
 
@@ -722,7 +723,7 @@ public class CCNSegmenter {
 		blockContent = contentBlocks[i];
 		if (null != _cipher) {
 			try {
-				Cipher thisCipher = CCNCipherFactory.getSegmentEncryptionCipher(_cipher, _cipher.getAlgorithm(), 
+				Cipher thisCipher = CCNCipherFactory.getSegmentEncryptionCipher(null, _cipher.getAlgorithm(), 
 															         _encryptionKey, _masterIV, nextSegmentIndex);
 				blockContent = thisCipher.doFinal(contentBlocks[i], 0, lastBlockLength);
 				lastBlockLength = blockContent.length;
