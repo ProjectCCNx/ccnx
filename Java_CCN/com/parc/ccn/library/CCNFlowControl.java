@@ -32,7 +32,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	protected CCNLibrary _library = null;
 	
-	protected static final int MAX_TIMEOUT = 2000;
+	protected static final int MAX_TIMEOUT = 10000;
 	protected int _timeout = MAX_TIMEOUT;
 	
 	protected TreeMap<ContentName, ContentObject> _holdingArea = new TreeMap<ContentName, ContentObject>();
