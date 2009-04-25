@@ -64,6 +64,34 @@ ccndc_warn(int line, char *format, ...)
     vfprintf(stderr, format, ap);
 }
 
+int
+ccn_inject_create(struct ccn_charbuf *c,
+                      const int sotype,
+                      const struct sockaddr *addr,
+                      const socklen_t addr_size,
+                      const unsigned char *interest,
+                      size_t interest_size)
+{
+    unsigned char *ucp = NULL;
+    int res;
+
+    res = ccn_charbuf_append_tt(c, CCN_DTAG_Inject, CCN_DTAG);
+    res |= ccn_charbuf_append_tt(c, CCN_DTAG_SOType, CCN_DTAG);
+    res |= ccn_charbuf_append_non_negative_integer(c, sotype);
+    res |= ccn_charbuf_append_closer(c); /* </SOtype> */
+    res |= ccn_charbuf_append_tt(c, CCN_DTAG_Address, CCN_DTAG);
+    res |= ccn_charbuf_append_tt(c, addr_size, CCN_BLOB);
+    ucp = ccn_charbuf_reserve(c, addr_size);
+    memcpy(ucp, addr, addr_size);
+    c->length += addr_size;
+    res |= ccn_charbuf_append_closer(c); /* </Address> */
+    ucp = ccn_charbuf_reserve(c, interest_size);
+    memcpy(ucp, interest, interest_size);
+    c->length += interest_size;
+    res |= ccn_charbuf_append_closer(c); /* </Inject> */
+    return (res);
+}
+
 enum ccn_upcall_res
 incoming_interest(
                   struct ccn_closure *selfp,
@@ -82,36 +110,18 @@ incoming_interest(
         return(CCN_UPCALL_RESULT_ERR);
   
     for (i = 0; i < rt->nEntries; i++) {
-        int start = pi->offset[CCN_PI_B_Name];
-        int ilength = pi->offset[CCN_PI_E];
+        int name = pi->offset[CCN_PI_B_Name];
+        int ccnb_size = pi->offset[CCN_PI_E];
         int inlength = pi->offset[CCN_PI_E_Name] - pi->offset[CCN_PI_B_Name];
         int nlength = rt->rib[i].name->length;
 
-        if (inlength >= nlength && 0 == memcmp(rt->rib[i].name->buf, &ccnb[start], nlength - 1)) {
+        if (inlength >= nlength && 0 == memcmp(rt->rib[i].name->buf, &ccnb[name], nlength - 1)) {
             struct ccn_charbuf *inject = ccn_charbuf_create();
             int socktype = rt->rib[i].addrinfo->ai_socktype;
-            socklen_t socklen = rt->rib[i].addrinfo->ai_addrlen;
+            socklen_t addr_size = rt->rib[i].addrinfo->ai_addrlen;
             struct sockaddr *addr = rt->rib[i].addrinfo->ai_addr;
-            unsigned char *ucp = NULL;
 
-            res = ccn_charbuf_append_tt(inject, CCN_DTAG_Inject, CCN_DTAG);
-
-            res |= ccn_charbuf_append_tt(inject, CCN_DTAG_SOType, CCN_DTAG);
-            res |= ccn_charbuf_append_non_negative_integer(inject, socktype);
-            res |= ccn_charbuf_append_closer(inject); /* </SOtype> */
-
-            res |= ccn_charbuf_append_tt(inject, CCN_DTAG_Address, CCN_DTAG);
-            res |= ccn_charbuf_append_tt(inject, socklen, CCN_BLOB);
-            ucp = ccn_charbuf_reserve(inject, socklen);
-            memcpy(ucp, addr, socklen);
-            inject->length += socklen;
-            res |= ccn_charbuf_append_closer(inject); /* </Address> */
-
-            ucp = ccn_charbuf_reserve(inject, ilength);
-            memcpy(ucp, ccnb, ilength);
-            inject->length += ilength;
-
-            res |= ccn_charbuf_append_closer(inject); /* </Inject> */
+            res = ccn_inject_create(inject, socktype, addr, addr_size, ccnb, ccnb_size);
             if (res == 0)
                 res = ccn_put(info->h, inject->buf, inject->length);
             if (res != 0) ccndc_warn(__LINE__, "ccn_put failed\n");
