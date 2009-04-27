@@ -156,7 +156,7 @@ public class CCNSegmenter {
 						ContentKeys keys) throws NoSuchAlgorithmException, NoSuchPaddingException {
 		this(flowControl, signer);
 		
-		if (null != keys.encryptionAlgorithm) {
+		if (null != keys) {
 			if (!keys.encryptionAlgorithm.equals(CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM)) {
 				Library.logger().warning("Right now the only encryption algorithm we support is: " + 
 						CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM + ", " + keys.encryptionAlgorithm + 
@@ -170,10 +170,6 @@ public class CCNSegmenter {
 			_cipher = Cipher.getInstance(keys.encryptionAlgorithm);
 			_encryptionKey = keys.encryptionKey;
 			_masterIV = keys.masterIV;
-		} else {
-			if ((null != keys.encryptionKey) || (null != keys.masterIV)) {
-				Library.logger().warning("Encryption key or IV specified, but no algorithm provided. Ignoring.");
-			}
 		}
 	}
 
