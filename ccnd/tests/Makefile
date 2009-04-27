@@ -5,7 +5,7 @@ default all:
 	@: nothing to do in tests
 
 clean:
-	rm -rf log logs depend STATUS SKIPPED FAILING
+	rm -rf log logs depend STATUS SKIPPED FAILING *.out
 
 check test:
 	mkdir -p log
