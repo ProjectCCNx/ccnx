@@ -300,7 +300,7 @@
 			</junit>
 		</target>
 	
-	<target name="test-repo" depends="test-repo-structure, test-repo-io">
+	<target name="test-repo" depends="test-repo-structure, test-repo-name-responder, test-repo-io">
 	</target>
 	
 	<target name="run-repo-structure-test" depends="jar, ccnd">
@@ -404,7 +404,7 @@
 					</fileset>
 				</batchtest>
 			</junit>
-			<delete dir="${REPO_ROOT}"/>
+			<!-- <delete dir="${REPO_ROOT}"/> -->
 		</target>
 
 

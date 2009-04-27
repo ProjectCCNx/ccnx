@@ -23,7 +23,8 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 	CCNLibrary getLibrary;
 	CCNNameEnumerator getne;
 	
-	String prefix1String = "/repoTest/nameEnumerate";
+	String prefix1String = RepoTestBase._globalPrefix+"/nameEnumerate";
+	//String prefix1String = "/repoTest/nameEnumerate";
 	ContentName prefix1;
 	
 	Random rand = new Random();
@@ -75,7 +76,7 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 			ros.close();
 		}
 		catch(IOException ex){
-			Assert.fail("could not put the content into the repo.");
+			Assert.fail("could not put the content into the repo ("+contentName+")");
 		}
 		catch (MalformedContentNameStringException e) {
 			e.printStackTrace();
