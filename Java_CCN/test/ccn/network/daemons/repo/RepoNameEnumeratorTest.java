@@ -1,6 +1,5 @@
 package test.ccn.network.daemons.repo;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Random;
@@ -10,6 +9,7 @@ import javax.xml.stream.XMLStreamException;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
@@ -19,13 +19,11 @@ import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.BasicNameEnumeratorListener;
 
 
-//test is currently hardcoded and only works for Rebecca with a remote ccnd and repo running  
-
 public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 	CCNLibrary getLibrary;
 	CCNNameEnumerator getne;
 	
-	String prefix1String = "/parc.com/test";
+	String prefix1String = "/repoTest/nameEnumerate";
 	ContentName prefix1;
 	
 	Random rand = new Random();
@@ -63,8 +61,6 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 		//make sure we don't hear about this one
 		testGetResponse(3);
 		
-		cleanRepo();
-		
 	}
 	
 	
@@ -73,15 +69,10 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 		ContentName name;
 		try {
 			name = ContentName.fromNative(contentName);
-
 			RepositoryOutputStream ros = putLibrary.repoOpen(name, null, putLibrary.getDefaultPublisher());
 			byte [] data = "Testing 1 2 3".getBytes();
 			ros.write(data, 0, data.length);
-			ContentName baseName = ros.getBaseName();
 			ros.close();
-			Thread.sleep(1000);
-			File testFile = new File("/home/rbraynar/repocache" + baseName);
-			Assert.assertTrue(testFile.exists());
 		}
 		catch(IOException ex){
 			Assert.fail("could not put the content into the repo.");
@@ -92,18 +83,13 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 		} catch (XMLStreamException e) {
 			e.printStackTrace();
 			Assert.fail("Could not open repo output stream for test.");
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-			Assert.fail("error while sleeping during put");
 		}
-
-		
 	}
 	
 	
 	@Override
 	public int handleNameEnumerator(ContentName prefix, ArrayList<ContentName> names) {
-		System.out.println("I got a response!!!!");
+		Library.logger().info("I got a response from the name enumerator!");
 		if(names1 == null)
 			names1 = names;
 		else if(names2 == null)
@@ -150,7 +136,7 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 			Assert.fail("Could not create ContentName from "+prefix1String);
 		}
 		
-		System.out.println("registering prefix: "+prefix1.toString());
+		Library.logger().info("registering prefix: "+prefix1.toString());
 		
 		try{
 			getne.registerPrefix(prefix1);
@@ -199,28 +185,6 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 		else if(count == 3){
 			Assert.assertNull(names3);
 		}
-	}
-	
-	private void cleanRepo(){
-		//need to remove the files I added...
-		File testFile = new File("/home/rbraynar/repocache/parc.com/test");
-		ArrayList<File> filesToDelete = new ArrayList<File>();
-		for(File f1: testFile.listFiles()){
-			for(File f2: f1.listFiles()){
-				for(File f3: f2.listFiles())
-					filesToDelete.add(f3);
-				filesToDelete.add(f2);
-			}
-			filesToDelete.add(f1);
-		}
-		filesToDelete.add(testFile);
-		
-		while(filesToDelete.size()>0)
-			filesToDelete.remove(0).delete();
-		
-			
-
-		
 	}
 	
 }

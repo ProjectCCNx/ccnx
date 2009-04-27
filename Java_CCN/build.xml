@@ -388,6 +388,24 @@
 			</batchtest>
 		</junit>
 		</target>
+	
+	<target name="test-repo-name-responder" depends="jar, ccnd, repo">
+			<mkdir dir="${testout}"/>
+			<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
+				<classpath>
+					<path refid="classpath-run"/>
+				</classpath>
+				<formatter type="xml" usefile="true"/>
+				<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+				<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
+				<batchtest todir="${testout}" >
+					<fileset dir="${build}">
+						<include name="test/ccn/network/daemons/repo/RepoNameEnumeratorTest.class"/>
+					</fileset>
+				</batchtest>
+			</junit>
+			<delete dir="${REPO_ROOT}"/>
+		</target>
 
 
 	<target name="test-puttap" depends="jar, ccnd">
