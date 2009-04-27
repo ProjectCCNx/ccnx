@@ -1,2 +1,1 @@
-AFTER : test_single_ccnd_teardown
 for i in 1 2 3; do WithCCND $i smoketestccnd -t 50 recv kill; done

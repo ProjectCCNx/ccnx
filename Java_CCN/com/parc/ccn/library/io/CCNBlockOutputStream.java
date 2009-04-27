@@ -1,6 +1,7 @@
 package com.parc.ccn.library.io;
 
 import java.io.IOException;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
@@ -104,6 +105,8 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 			throw new IOException("Cannot sign content -- signature failure!: " + e.getMessage());
 		} catch (NoSuchAlgorithmException e) {
 			throw new IOException("Cannot sign content -- unknown algorithm!: " + e.getMessage());
+		} catch (InvalidAlgorithmParameterException e) {
+			throw new IOException("Cannot encrypt content -- bad algorithm parameter!: " + e.getMessage());
 		} 
 	}
 

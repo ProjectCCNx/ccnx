@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -83,6 +84,11 @@ int main(int argc, char **argv)
             CCN_DEFAULT_LOCAL_SOCKNAME);
     addr.sun_family = AF_UNIX;
     res = connect(sock, (struct sockaddr *)&addr, sizeof(addr));
+    if (res == -1 && errno == ENOENT) {
+        /* Retry after a delay in case ccnd was just starting up. */
+        sleep(1);
+        res = connect(sock, (struct sockaddr *)&addr, sizeof(addr));
+    }
     if (res == -1) {
         perror((char *)addr.sun_path);
         exit(1);

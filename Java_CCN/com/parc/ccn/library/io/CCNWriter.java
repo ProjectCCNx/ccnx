@@ -1,6 +1,7 @@
 package com.parc.ccn.library.io;
 
 import java.io.IOException;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
@@ -87,18 +88,21 @@ public class CCNWriter {
 		} catch (NoSuchAlgorithmException e) {
 			Library.logger().info("NoSuchAlgorithmException using key for publisher " + publisher + ".");
 			throw new SignatureException(e);
-		}
+		} catch (InvalidAlgorithmParameterException e) {
+			throw new IOException("Cannot encrypt content -- bad algorithm parameter!: " + e.getMessage());
+		} 
 	}
 
 	/**
 	 * This does the actual work of generating a new version's name and doing 
 	 * the corresponding put. Handles fragmentation.
+	 * @throws InvalidAlgorithmParameterException 
 	 */
 	public ContentName newVersion(
 			ContentName name, byte [] contents,
 			ContentType type,
 			KeyLocator locator, PublisherPublicKeyDigest publisher) throws SignatureException, 
-			InvalidKeyException, NoSuchAlgorithmException, IOException {
+			InvalidKeyException, NoSuchAlgorithmException, IOException, InvalidAlgorithmParameterException {
 		
 		// Construct new name
 		// <name>/<VERSION_MARKER>/<version_number>
@@ -123,9 +127,10 @@ public class CCNWriter {
 	 * the number...
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
+	 * @throws InvalidAlgorithmParameterException 
 	 */
 	public ContentName newVersion(ContentName name,
-								    byte[] contents) throws SignatureException, IOException, InvalidKeyException, NoSuchAlgorithmException {
+								    byte[] contents) throws SignatureException, IOException, InvalidKeyException, NoSuchAlgorithmException, InvalidAlgorithmParameterException {
 		return newVersion(name, contents, null);
 	}
 
@@ -138,11 +143,12 @@ public class CCNWriter {
 	 * identity.
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
+	 * @throws InvalidAlgorithmParameterException 
 	 */
 	public ContentName newVersion(
 			ContentName name, 
 			byte[] contents,
-			PublisherPublicKeyDigest publisher) throws SignatureException, IOException, InvalidKeyException, NoSuchAlgorithmException {
+			PublisherPublicKeyDigest publisher) throws SignatureException, IOException, InvalidKeyException, NoSuchAlgorithmException, InvalidAlgorithmParameterException {
 		return newVersion(name, contents, null, null, publisher);
 	}
 	
@@ -163,4 +169,7 @@ public class CCNWriter {
 		_segmenter.getFlowControl().waitForPutDrain();
 	}
 	
+	public void setTimeout(int timeout) {
+		getFlowControl().setTimeout(timeout);
+	}
 }

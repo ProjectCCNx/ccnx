@@ -1,15 +1,19 @@
-SUBDIRS = lib agent udplink python tests
+SUBDIRS = lib agent ccndc udplink python tests
 OBJTREE = obj.`uname`
 MAKEF =  -f ../conf.mk -f Makefile -f ../conf.mk -f ../subr.mk
 
-default all clean depend coverage test shared install uninstall:
-	test -f conf.mk || touch conf.mk
+default all clean depend coverage test check shared install uninstall: conf.mk
 	test -d include/ccn || (test -d ../include/ccn && mkdir -p include && ln -s ../../include/ccn include/ccn)
 	test -f subr.mk || (test -f ../subr.mk && ln -s ../subr.mk)
 	for i in $(SUBDIRS); do         \
 	  (cd "$$i" && pwd && $(MAKE) $(MAKEF) SRCDIR=../$(SRCDIR)/$$i $@) || exit 1;	\
 	done
 	@test -d $(OBJTREE) && echo "+++ NOTE - $(OBJTREE) exists" ||:
+
+conf.mk:
+	./configure
+
+test check: default
 
 objtree:
 	mkdir -p $(OBJTREE)

@@ -1,10 +1,7 @@
 package test.ccn.library;
 
-import java.util.logging.Level;
-
 import org.junit.Test;
 
-import com.parc.ccn.Library;
 import com.parc.ccn.config.SystemConfiguration;
 
 public class BasePutGetTest extends LibraryTestBase {
@@ -12,7 +9,7 @@ public class BasePutGetTest extends LibraryTestBase {
 	@Test
 	public void testGetPut() throws Throwable {
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
-		Library.logger().setLevel(Level.FINEST);
+		// Library.logger().setLevel(Level.FINEST);
 		SystemConfiguration.setDebugFlag(SystemConfiguration.DEBUGGING_FLAGS.DEBUG_SIGNATURES, true);
 		System.out.println("TEST: PutThread/GetThread");
 		int id = rand.nextInt(1000);

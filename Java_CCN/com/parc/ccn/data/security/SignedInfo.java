@@ -35,8 +35,9 @@ import com.parc.ccn.data.util.XMLEncoder;
  */
 public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 
-	public enum ContentType {DATA, GONE, KEY, LINK, NACK};
+	public enum ContentType {DATA, ENCR, GONE, KEY, LINK, NACK};
     public static final byte [] DATA_VAL = new byte[]{(byte)0x0c, (byte)0x04, (byte)0xc0};
+    public static final byte [] ENCR_VAL = new byte[]{(byte)0xd0, (byte)0x10, (byte)0x91};
     public static final byte [] GONE_VAL = new byte[]{(byte)0x18, (byte)0xe3, (byte)0x44};
     public static final byte [] KEY_VAL = new byte[]{(byte)0x28, (byte)0x46, (byte)0x3f};
     public static final byte [] LINK_VAL = new byte[]{(byte)0x2c, (byte)0x83, (byte)0x4a};
@@ -59,21 +60,25 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
     // are chosen to make sense and look like the tags.
     static {
         ContentTypeNames.put(ContentType.DATA, "DATA");
+        ContentTypeNames.put(ContentType.ENCR, "ENCR");
         ContentTypeNames.put(ContentType.GONE, "GONE");
         ContentTypeNames.put(ContentType.KEY, "KEY/");
         ContentTypeNames.put(ContentType.LINK, "LINK");
         ContentTypeNames.put(ContentType.NACK, "NACK");
         ContentNameTypes.put("DATA", ContentType.DATA);
+        ContentNameTypes.put("ENCR", ContentType.ENCR);
         ContentNameTypes.put("GONE", ContentType.GONE);
         ContentNameTypes.put("KEY/", ContentType.KEY);
         ContentNameTypes.put("LINK", ContentType.LINK);
         ContentNameTypes.put("NACK", ContentType.NACK);
         ContentTypeValues.put(ContentType.DATA, DATA_VAL);
+        ContentTypeValues.put(ContentType.ENCR, ENCR_VAL);
         ContentTypeValues.put(ContentType.GONE, GONE_VAL);
         ContentTypeValues.put(ContentType.KEY, KEY_VAL);
         ContentTypeValues.put(ContentType.LINK, LINK_VAL);
         ContentTypeValues.put(ContentType.NACK, NACK_VAL);
         ContentValueTypes.put(DATA_VAL, ContentType.DATA);
+        ContentValueTypes.put(ENCR_VAL, ContentType.ENCR);
         ContentValueTypes.put(GONE_VAL, ContentType.GONE);
         ContentValueTypes.put(KEY_VAL, ContentType.KEY);
         ContentValueTypes.put(LINK_VAL, ContentType.LINK);
@@ -216,12 +221,20 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 	// Do we want to make this an immutable type (or merely an immutable member of ContentObject?)
 	public void setFinalBlockID(byte [] finalBlockID) { _finalBlockID = finalBlockID; }
 
+	public void setType(ContentType type) {
+		if (null == type) {
+			_type = ContentType.DATA;
+		} else {
+			_type = type;
+		}
+	}
+	
 	public final ContentType getType() { 
 		if (null == _type)
 			return ContentType.DATA;
 		return _type; 
 	}
-	
+
 	public String getTypeName() { return typeToName(getType()); }
 	
 	public static final String typeToName(ContentType type) {

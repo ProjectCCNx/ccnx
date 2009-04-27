@@ -1,6 +1,7 @@
 package com.parc.ccn.library.io;
 
 import java.io.IOException;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
@@ -53,7 +54,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 */
 	protected static final int BLOCK_BUF_COUNT = 128;
 
-	protected int _totalLength = 0; // elapsed length written
+	protected long _totalLength = 0; // elapsed length written
 	protected int _blockOffset = 0; // write pointer - offset into the write buffer at which to write
 	protected byte [] _buffer = null;
 	protected long _baseNameIndex; // base name index of the current set of data to output;
@@ -64,15 +65,15 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	protected CCNDigestHelper _dh;
 
 	public CCNOutputStream(ContentName name, 
-			KeyLocator locator, PublisherPublicKeyDigest publisher,
-			CCNLibrary library) throws XMLStreamException, IOException {
-		this(name, locator, publisher, null, new CCNSegmenter(new CCNFlowControl(name, library)));
-	}
-	
-	public CCNOutputStream(ContentName name, 
 			KeyLocator locator, PublisherPublicKeyDigest publisher, ContentType type,
 			CCNLibrary library) throws XMLStreamException, IOException {
 		this(name, locator, publisher, type, new CCNSegmenter(new CCNFlowControl(name, library)));
+	}
+
+	public CCNOutputStream(ContentName name,
+			KeyLocator locator, PublisherPublicKeyDigest publisher,
+			CCNLibrary library) throws XMLStreamException, IOException {
+		this(name, locator, publisher, null, new CCNSegmenter(new CCNFlowControl(name, library)));
 	}
 
 	public CCNOutputStream(ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
@@ -163,7 +164,9 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			throw new IOException("Cannot sign content -- unknown algorithm!: " + e.getMessage());
 		} catch (InterruptedException e) {
 			throw new IOException("Low-level network failure!: " + e.getMessage());
-		}
+		} catch (InvalidAlgorithmParameterException e) {
+			throw new IOException("Cannot encrypt content -- bad algorithm parameter!: " + e.getMessage());
+		} 
 	}
 
 	@Override
@@ -235,8 +238,9 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * @throws NoSuchAlgorithmException
 	 * @throws InterruptedException
 	 * @throws IOException
+	 * @throws InvalidAlgorithmParameterException 
 	 */
-	protected void flushToNetwork(boolean flushLastBlock) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException {		
+	protected void flushToNetwork(boolean flushLastBlock) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException, InvalidAlgorithmParameterException {		
 
 		/**
 		 * XXX - Can the blockbuffers have holes?
@@ -322,5 +326,9 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		} else {
 			_blockOffset = 0;
 		}
+	}
+	
+	protected long lengthWritten() { 
+		return _totalLength;
 	}
 }

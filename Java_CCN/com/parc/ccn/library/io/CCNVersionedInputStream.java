@@ -64,7 +64,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 
 	public CCNVersionedInputStream(ContentName name, long startingBlockIndex)
 			throws XMLStreamException, IOException {
-		this(name, startingBlockIndex, null, null);
+		super(name, startingBlockIndex);
 	}
 
 	public CCNVersionedInputStream(ContentObject starterBlock,
