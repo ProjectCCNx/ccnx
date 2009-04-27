@@ -1,8 +1,7 @@
 /*
  * ccnd.c
  *  
- * Copyright 2008 Palo Alto Research Center, Inc. All rights reserved.
- * $Id$
+ * Copyright 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
  */
 
 #include <errno.h>
@@ -619,7 +618,7 @@ create_local_listener(const char *sockname, int backlog)
         return(sock);
     savedmask = umask(0111); /* socket should be R/W by anybody */
     res = bind(sock, (struct sockaddr *)&a, sizeof(a));
-    umask(res);
+    umask(savedmask);
     if (res == -1) {
         close(sock);
         return(-1);
@@ -2049,6 +2048,65 @@ Bail:
 }
 
 static void
+process_incoming_inject(struct ccnd *h, struct face *face,
+                        unsigned char *inject_msg, size_t wire_size)
+{
+    /*
+     * This is a special message that should only come from a trusted party.
+     * For now, we're a lottle too trusting and take anything from
+     * a unix-domain socket (which cannot be remote).
+     * The purpose of this is for the helper program to inject
+     * an Interest message to a specific destination in order to
+     * establish the a conversation.
+     */
+    struct sockaddr_storage addr = {0};
+    struct ccn_parsed_interest pi_buf = {0};
+    int sotype;
+    const unsigned char *ptr;
+    unsigned char *imsg;
+    size_t isize; 
+    size_t size;
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
+    size_t start;
+    size_t stop;
+    int res;
+    int fd;
+    struct sockaddr *addrp = NULL;
+    
+    /* XXX - check sender rights here */
+    d = ccn_buf_decoder_start(&decoder, inject_msg, wire_size);
+    ccn_buf_advance(d); /* Caller has checked outer DTAG */
+    sotype = ccn_parse_optional_tagged_nonNegativeInteger(d, CCN_DTAG_SOType);
+    if (sotype < 0) return;
+    start = d->decoder.token_index;
+    ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Address, 4, sizeof(addr));
+    stop = d->decoder.token_index;
+    if (d->decoder.state < 0 || wire_size < stop + 1) return;
+    res = ccn_ref_tagged_BLOB(CCN_DTAG_Address, inject_msg, start, stop,
+                              &ptr, &size);
+    if (res < 0 || size > sizeof(addr)) return;
+    memcpy(&addr, ptr, size);
+    addrp = (struct sockaddr *)&addr;
+    imsg = inject_msg + stop;
+    isize = wire_size - stop - 1;
+    res = ccn_parse_interest(imsg, isize, &pi_buf, NULL);
+    if (res < 0) return;
+    /* Caller has parsed skeleton, so we're done parsing now. */
+    ccnd_debug_ccnb(h, __LINE__, "inject", face, imsg, isize);
+    if (sotype != SOCK_DGRAM) return;
+    if (addrp->sa_family == AF_INET)
+        fd = h->udp4_fd;
+    else if (addrp->sa_family == AF_INET6)
+        fd = h->udp6_fd;
+    else
+        fd = -1;
+    res = sendto(fd, imsg, isize, 0, &addr, size);
+    if (res == -1)
+        perror("sendto"); // XXX - improve error report
+}
+
+static void
 process_input_message(struct ccnd *h, struct face *face,
                       unsigned char *msg, size_t size, int pdu_ok)
 {
@@ -2081,6 +2139,10 @@ process_input_message(struct ccnd *h, struct face *face,
         else if (d->numval == CCN_DTAG_ContentObject ||
                  d->numval == CCN_DTAG_ContentObjectV20080711) {
             process_incoming_content(h, face, msg, size);
+            return;
+        }
+        else if (d->numval == CCN_DTAG_Inject) {
+            process_incoming_inject(h, face, msg, size);
             return;
         }
     }
@@ -2470,6 +2532,7 @@ ccnd_create(void)
         if (h->mtu > 8800)
             h->mtu = 8800;
     }
+    h->udp4_fd = h->udp6_fd = -1;
     portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
     if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
         portstr = "4485";
@@ -2492,6 +2555,14 @@ ccnd_create(void)
                 face = e->data;
                 face->fd = fd;
                 face->flags |= CCN_FACE_DGRAM;
+                if (a->ai_family == AF_INET) {
+                    face->flags |= CCN_FACE_INET;
+                    h->udp4_fd = fd;
+                }
+                else if (a->ai_family == AF_INET6) {
+                    face->flags |= CCN_FACE_INET6;
+                    h->udp6_fd = fd;
+                }
                 hashtb_end(e);
                 ccnd_msg(h, "accepting datagrams on fd %d", fd);
             }

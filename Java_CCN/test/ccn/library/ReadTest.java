@@ -69,7 +69,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 			Thread.sleep(rand.nextInt(50));
 			
 			// Pull it into ccnd so we have everything there to check nexts from
-			ContentObject testCo = getLibrary.get(ContentName.fromNative("/getNext/" + Integer.toString(i)), 1000);
+			ContentObject testCo = getLibrary.get(ContentName.fromNative("/getNext/" + Integer.toString(i)), 3000);
 			Assert.assertTrue(testCo != null);
 		}
 		System.out.println("Put sequence finished");
@@ -78,7 +78,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 			int tValue = rand.nextInt(count - 1);
 			ContentName cn = new ContentName(ContentName.fromNative("/getNext/" + new Integer(tValue).toString()), 
 					ContentObject.contentDigest(Integer.toString(count - tValue)));
-			ContentObject result = getLibrary.getNext(cn, 1, 1000);
+			ContentObject result = getLibrary.getNext(cn, 1, 3000);
 			checkResult(result, tValue + 1);
 		}
 		System.out.println("getNext test finished");
@@ -99,7 +99,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 			
 			// Make sure ccnd has what we're looking for
 			Thread.sleep(500);
-			ContentObject testCo = getLibrary.get(ContentName.fromNative(name), 1000);
+			ContentObject testCo = getLibrary.get(ContentName.fromNative(name), 3000);
 			Assert.assertTrue(testCo != null);
 			
 			if (i > 1) {
@@ -125,12 +125,12 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 		writer.put("/excludeFilterTest/aaa", "aaa");
 		writer.put("/excludeFilterTest/zzzzzzzz", "zzzzzzzz");
 		Interest interest = Interest.constructInterest(ContentName.fromNative("/excludeFilterTest/"), ef, null, null);
-		ContentObject content = getLibrary.get(interest, 1000);
+		ContentObject content = getLibrary.get(interest, 3000);
 		Assert.assertTrue(content == null);
 		
 		String shouldGetIt = "/excludeFilterTest/weShouldGetThis";
 		writer.put(shouldGetIt, shouldGetIt);
-		content = getLibrary.get(interest, 1000);
+		content = getLibrary.get(interest, 3000);
 		Assert.assertFalse(content == null);
 		assertTrue(content.name().toString().startsWith(shouldGetIt));
 		System.out.println("excludeFilterTest test finished");

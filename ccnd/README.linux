@@ -6,6 +6,8 @@ libssl-dev
 libpcap-dev
 libexpat1-dev
 
-A couple of others are also desirable.
+These are also desirable:
+athena-jot
+
 For example:
-sudo apt-get install subversion python-dev libssl-dev libpcap-dev libexpat1-dev
+sudo apt-get install git-core python-dev libssl-dev libpcap-dev libexpat1-dev athena-jot

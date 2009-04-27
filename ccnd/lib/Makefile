@@ -59,8 +59,16 @@ shlib: $(SHLIBNAME)
 
 lib: libccn.a
 
-test: default encodedecodetest
+test: default keystore_check encodedecodetest
 	./encodedecodetest -o /dev/null
+
+keystore_check: ccn_initkeystore.sh
+	test -f $$HOME/.ccn/.ccn_keystore || $(MAKE) new_keystore
+
+new_keystore:
+	@echo === CCN Keystore not found in your home directory
+	@echo === I will create one for you now '(^C to abort)'
+	sleep 1 && sh ccn_initkeystore.sh && sleep 3 && mv .ccn $(HOME)
 
 libccn.a: $(LIB_OBJS)
 	ar cru $@ $(LIB_OBJS)
@@ -182,7 +190,8 @@ ccn_indexbuf.o: ccn_indexbuf.c ../include/ccn/indexbuf.h
 ccn_coding.o: ccn_coding.c ../include/ccn/coding.h
 ccn_client.o: ccn_client.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
-  ../include/ccn/ccnd.h ../include/ccn/hashtb.h ../include/ccn/signing.h
+  ../include/ccn/ccnd.h ../include/ccn/digest.h ../include/ccn/hashtb.h \
+  ../include/ccn/signing.h
 ccn_ccnbtoxml.o: ccn_ccnbtoxml.c ../include/ccn/charbuf.h \
   ../include/ccn/coding.h
 ccn_xmltoccnb.o: ccn_xmltoccnb.c ../include/ccn/coding.h \

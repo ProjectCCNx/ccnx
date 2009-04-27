@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- This is an ant project file, see http://ant.apache.org/ -->
 
+<!-- NOTES
+  Do not use antcall with tests that depend on ccnd, because this 
+  can result in more than one ccnd being run at the same time.
+  If you stick to dependencies with one level of ant the ccnd
+  will never be run twice regardless of the number of test targets
+  that require it.
+  --> 
+
 <project default="jar" name="java-ccn">
 
 	<!-- To avoid conflict with Eclipse, we build in 'build' not 'bin' -->
@@ -150,6 +158,8 @@
 					<env key="CCND_DEBUG" value="-1"/>
 				</exec>
 			</daemons>
+                        <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
+                        <sleep seconds="1"/>
 		</parallel>
 	</target>
 
@@ -188,6 +198,8 @@
 					<arg value="${REPO_GLOBAL}" />
 				</java>
 			</daemons>
+                        <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
+                        <sleep seconds="1"/>
 		</parallel>
 	</target>
 
@@ -201,7 +213,7 @@
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
-			<formatter type="brief" usefile="true"/>
+			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 
 			<batchtest todir="${testout}">
@@ -222,7 +234,7 @@
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
-			<formatter type="brief" usefile="true"/>
+			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 
 			<batchtest todir="${testout}">
@@ -239,7 +251,7 @@
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
-			<formatter type="brief" usefile="true"/>
+			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 
 			<batchtest todir="${testout}">
@@ -258,7 +270,7 @@
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
-			<formatter type="brief" usefile="true"/>
+			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 
 			<batchtest todir="${testout}">
@@ -269,15 +281,38 @@
 		</junit>
 	</target>
 	
+	<!-- This target is for debugging only -->
+		<target name="test-blockreadwrite" depends="jar, ccnd">
+
+			<mkdir dir="${testout}"/>
+			<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
+				<classpath>
+					<path refid="classpath-run"/>
+				</classpath>
+				<formatter type="xml" usefile="true"/>
+				<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+
+				<batchtest todir="${testout}">
+					<fileset dir="${build}">
+						<include name="test/ccn/library/BlockReadWriteTest.class"/>
+					</fileset>
+				</batchtest>
+			</junit>
+		</target>
+	
 	<target name="test-repo" depends="test-repo-structure, test-repo-io">
 	</target>
 	
 	<target name="run-repo-structure-test" depends="jar, ccnd">
+		<mkdir dir="${testout}"/>
+		<delete dir="${REPO_FILETEST}"/>
+                <!-- Note that REPO_FILETEST will be produced by the RFSTest
+                     due to hard-coded file name in the test code -->
 		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
-			<formatter type="brief" usefile="true"/>
+			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<batchtest todir="${testout}">
@@ -289,10 +324,7 @@
 	</target>
 	
 	<!-- This is for generating the repotest.zip file -->
-	<target name="generate-repotest-zip" depends="jar, ccnd">
-		<mkdir dir="${testout}"/>
-		<delete dir="${REPO_FILETEST}"/>
-		<antcall target="run-repo-structure-test"/>
+	<target name="generate-repotest-zip" depends="jar, ccnd, run-repo-structure-test">
 		<zip destfile="${repozip}"
 		    basedir="${REPO_FILETEST}"
 		    update="true">
@@ -300,10 +332,7 @@
 		<delete dir="${REPO_FILETEST}" />
 	</target>
 
-	<target name="test-repo-structure" depends="jar, ccnd">
-		<mkdir dir="${testout}"/>
-		<delete dir="${REPO_FILETEST}"/>
-		<antcall target="run-repo-structure-test"/>
+	<target name="test-repo-structure" depends="jar, ccnd, run-repo-structure-test">
 		<delete dir="${REPO_FILETEST}" />
 	</target>
 	
@@ -313,7 +342,7 @@
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
-			<formatter type="brief" usefile="true"/>
+			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<batchtest todir="${testout}" >
@@ -332,7 +361,7 @@
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
-			<formatter type="brief" usefile="true"/>
+			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<batchtest todir="${testout}">
@@ -349,7 +378,7 @@
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
-			<formatter type="brief" usefile="true"/>
+			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<batchtest todir="${testout}">
@@ -404,7 +433,7 @@
 				<classpath>
 					<path refid="classpath-run"/>
 				</classpath>
-				<formatter type="brief" usefile="true"/>
+				<formatter type="xml" usefile="true"/>
 				<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 				<test todir="${testout}"  name="test.ccn.endtoend.EndToEndTestSource"/>
 			</junit>
@@ -412,7 +441,7 @@
 				<classpath>
 					<path refid="classpath-run"/>
 				</classpath>
-				<formatter type="brief" usefile="true"/>
+				<formatter type="xml" usefile="true"/>
 				<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 				<test todir="${testout}"  name="test.ccn.endtoend.EndToEndTestSink"/>
 			</junit>

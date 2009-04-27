@@ -32,7 +32,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	protected CCNLibrary _library = null;
 	
-	protected static final int MAX_TIMEOUT = 2000;
+	protected static final int MAX_TIMEOUT = 10000;
 	protected int _timeout = MAX_TIMEOUT;
 	
 	protected TreeMap<ContentName, ContentObject> _holdingArea = new TreeMap<ContentName, ContentObject>();
@@ -132,6 +132,17 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	/**
+	 * Add content objects to this flow controller
+	 * @param cos
+	 * @throws IOException
+	 */
+	public void put(ContentObject [] cos) throws IOException {
+		for (ContentObject co : cos) {
+			put(co);
+		}
+	}
+
+	/**
 	 * Add namespace and content at the same time
 	 * @param co
 	 * @throws IOException 
@@ -186,17 +197,17 @@ public class CCNFlowControl implements CCNFilterListener {
 				ContentObject co = getBestMatch(interest);
 				if (co != null) {
 					Library.logger().finest("Found content " + co.name() + " matching interest: " + interest.name());
-					_holdingArea.remove(co.name());
-					try {
-						_library.put(co);
-						if (_shutdownWait && _holdingArea.size() == 0) {
-							synchronized (_holdingArea) {
+					synchronized (_holdingArea) {
+						_holdingArea.remove(co.name());
+						try {
+							_library.put(co);
+							if (_shutdownWait && _holdingArea.size() == 0) {
 								_holdingArea.notify();
 							}
+						} catch (IOException e) {
+							Library.logger().warning("IOException in handleInterests: " + e.getClass().getName() + ": " + e.getMessage());
+							Library.warningStackTrace(e);
 						}
-					} catch (IOException e) {
-						Library.logger().warning("IOException in handleInterests: " + e.getClass().getName() + ": " + e.getMessage());
-						Library.warningStackTrace(e);
 					}
 					
 				} else {
@@ -277,10 +288,12 @@ public class CCNFlowControl implements CCNFilterListener {
 				}
 			} while (_interrupted);
 			
-			if (_holdingArea.size() == startSize) {
-				throw new IOException("Put(s) with no matching interests");
+			synchronized (_holdingArea) {
+				if (_holdingArea.size() == startSize) {
+					throw new IOException("Put(s) with no matching interests");
+				}
+				startSize = _holdingArea.size();
 			}
-			startSize = _holdingArea.size();
 		}
 	}
 	

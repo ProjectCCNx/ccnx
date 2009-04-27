@@ -62,6 +62,8 @@ struct ccnd {
     struct ccn_scheduled_event *clean;
     int local_listener_fd;
     int httpd_listener_fd;
+    int udp4_fd;
+    int udp6_fd;
     nfds_t nfds;
     struct pollfd *fds;
     struct ccn_gettime ticktock;
@@ -136,6 +138,8 @@ struct face {
 /* face flags */
 #define CCN_FACE_LINK   (1 << 0) /* Elements wrapped by CCNProtocolDataUnit */
 #define CCN_FACE_DGRAM  (1 << 1) /* Datagram interface, respect packets */
+#define CCN_FACE_INET   (1 << 4) /* IPv4 */
+#define CCN_FACE_INET6  (1 << 6) /* IPv6 */
 #define CCN_FACE_NOSEND (1 << 8) /* Don't send anymore */
 
 /*

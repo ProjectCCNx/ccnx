@@ -35,12 +35,16 @@
         </subant>
     </target>
 
-    <target name="test">
+    <target name="test-c">
+        <exec executable="make" failonerror="true" dir="ccnd">
+            <arg value="test"/>
+	</exec>
+    </target>
+    <target name="test-java">
         <subant target="test" failonerror="true" verbose="true">
             <fileset dir="." includes="*/build.xml"/>
         </subant>
-        <exec executable="make" failonerror="true" dir="ccnd">
-            <arg value="test"/>
-        </exec>
+    </target>
+    <target name="test" depends="test-c,test-java">
     </target>
 </project>

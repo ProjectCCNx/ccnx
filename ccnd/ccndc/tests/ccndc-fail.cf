@@ -1,0 +1,15 @@
+#
+# ccndc configuration file with errors
+#
+http:/wrongscheme	udp	localhost
+ccn:\urisyntax/		tcp	localhost
+ccn:/parc.com/test	badtype	kea.parc.xerox.com
+ccn:/missinghost	udp
+ccn:/missinghost+tab	udp	
+ccn:/parc.com/portzero	udp	kea.parc.xerox.com 0
+ccn:/parc.com/portneg	udp	kea.parc.xerox.com -1
+ccn:/parc.com/port2big	udp	kea.parc.xerox.com 65536
+ccn:/parc.com/portalpha	udp	kea.parc.xerox.com abc
+
+
+

@@ -179,6 +179,7 @@ int ccn_name_append_components(struct ccn_charbuf *c,
 
 enum ccn_content_type {
     CCN_CONTENT_DATA = 0x0C04C0,
+    CCN_CONTENT_ENCR = 0x10D091,
     CCN_CONTENT_GONE = 0x18E344,
     CCN_CONTENT_KEY  = 0x28463F,
     CCN_CONTENT_LINK = 0x2C834A,
@@ -371,6 +372,15 @@ int ccn_buf_match_blob(struct ccn_buf_decoder *d,
 int ccn_buf_match_udata(struct ccn_buf_decoder *d, const char *s);
 
 int ccn_buf_match_attr(struct ccn_buf_decoder *d, const char *s);
+
+int ccn_parse_required_tagged_BLOB(struct ccn_buf_decoder *d,
+                                   enum ccn_dtag dtag,
+                                   int minlen, int maxlen);
+int ccn_parse_optional_tagged_BLOB(struct ccn_buf_decoder *d,
+                                   enum ccn_dtag dtag,
+                                   int minlen, int maxlen);
+int ccn_parse_optional_tagged_nonNegativeInteger(struct ccn_buf_decoder *d,
+                                   enum ccn_dtag dtag);
 
 /* ccn_buf_check_close enters an error state if element closer not found */
 void ccn_buf_check_close(struct ccn_buf_decoder *d);

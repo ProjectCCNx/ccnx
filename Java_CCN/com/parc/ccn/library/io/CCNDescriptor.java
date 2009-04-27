@@ -131,6 +131,8 @@ public class CCNDescriptor {
 	public void setTimeout(int timeout) {
 		if (null != _input)
 			_input.setTimeout(timeout);
+		else
+			_output.setTimeout(timeout);
 	}
 
 }

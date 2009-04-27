@@ -18,6 +18,7 @@
 #include <ccn/ccnd.h>
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
+#include <ccn/digest.h>
 #include <ccn/hashtb.h>
 #include <ccn/signing.h>
 
@@ -320,9 +321,9 @@ ccn_destroy(struct ccn **hp)
     /* XXX: remove this and rewrite as a finalizer on the hash table */
     if (h->keys != NULL) {	/* KEYS */
         for (hashtb_start(h->keys, e); e->data != NULL; hashtb_next(e)) {
-            void **entry = e->data;
+            struct ccn_pkey **entry = e->data;
             if (*entry != NULL)
-                free(*entry);
+                ccn_pubkey_free(*entry);
             *entry = NULL;
         }
         hashtb_end(e);
@@ -632,6 +633,7 @@ ccn_get_content_type(const unsigned char *ccnb,
     typeu = (typebytes[0] << 16) | (typebytes[1] << 8) | typebytes[2];
     switch (typeu) {
     case CCN_CONTENT_DATA:
+    case CCN_CONTENT_ENCR:
     case CCN_CONTENT_GONE:
     case CCN_CONTENT_KEY:
     case CCN_CONTENT_LINK:
@@ -737,9 +739,7 @@ ccn_locate_key(struct ccn *h,
     int res;
     const unsigned char *pkeyid;
     size_t pkeyid_size;
-    void *pkey;
-    size_t pkey_size;
-    void **entry;
+    struct ccn_pkey **entry;
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d;
 
@@ -785,15 +785,43 @@ ccn_locate_key(struct ccn *h,
     else if (ccn_buf_match_dtag(d, CCN_DTAG_Key)) {
         const unsigned char *dkey;
         size_t dkey_size;
+        struct ccn_digest *digest = NULL;
+        unsigned char *key_digest = NULL;
+        size_t key_digest_size;
+        struct hashtb_enumerator ee;
+        struct hashtb_enumerator *e = &ee;
+
         res = ccn_ref_tagged_BLOB(CCN_DTAG_Key, msg,
                                   pco->offset[CCN_PCO_B_Key_Certificate_KeyName],
                                   pco->offset[CCN_PCO_E_Key_Certificate_KeyName],
                                   &dkey, &dkey_size);
-        /* XXX: need to put this into the hashtable instead of just returning it */
         *pubkey = ccn_d2i_pubkey(dkey, dkey_size);
+        digest = ccn_digest_create(CCN_DIGEST_SHA256);
+        ccn_digest_init(digest);
+        key_digest_size = ccn_digest_size(digest);
+        key_digest = calloc(1, key_digest_size);
+        if (key_digest == NULL) abort();
+        res = ccn_digest_update(digest, dkey, dkey_size);
+        if (res < 0) abort();
+        res = ccn_digest_final(digest, key_digest, key_digest_size);
+        if (res < 0) abort();
+        ccn_digest_destroy(&digest);
+        hashtb_start(h->keys, e);
+        res = hashtb_seek(e, (void *)key_digest, key_digest_size, 0);
+        free(key_digest);
+        if (res < 0) {
+            hashtb_end(e);
+            return(NOTE_ERRNO(h));
+        }
+        entry = e->data;
+        if (res == HT_NEW_ENTRY) {
+            *entry = *pubkey;
+        }
+        hashtb_end(e);
         return (0);
     }
     else if (ccn_buf_match_dtag(d, CCN_DTAG_Certificate)) {
+        /* XXX: what should we really do in this case */
     }
 
     return (-1);

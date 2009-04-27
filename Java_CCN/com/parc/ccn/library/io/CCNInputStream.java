@@ -59,7 +59,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	}
 	
 	public CCNInputStream(ContentName name) throws XMLStreamException, IOException {
-		this(name, null, null, null);
+		this(name, null);
 	}
 	
 	public CCNInputStream(ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
@@ -76,20 +76,16 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	
 	@Override
 	public int available() throws IOException {
-		if (_atEOF)
+		if (null == _blockReadStream)
 			return 0;
-		if (_currentBlock != null) {
-			return _currentBlock.content().length - _blockOffset;
-		} else {
-			return 0;
-		}
+		return _blockReadStream.available();
 			
 		//int available = 0;
 		//if (null != _header) {
 		//	available =  (int)(_header.length() - blockIndex()*_header.blockSize() - _blockOffset);
 		//	//available =  (int)(_header.length() - (blockIndex()-_header.start())*_header.blockSize() - _blockOffset);
 		//} else if (null != _currentBlock) {
-		//	available =  _currentBlock.content().length - _blockOffset;
+		//	available =  _currentBlock.contentLength() - _blockOffset;
 		//}
 		//Library.logger().info("available(): " + available);
 		//return available; /* unknown */
@@ -109,8 +105,12 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	public synchronized void mark(int readlimit) {
 		_readlimit = readlimit;
 		_markBlock = blockIndex();
-		_markOffset = _blockOffset;
-		Library.logger().finer("mark: block: " + blockIndex() + " offset: " + _blockOffset);
+		if (null == _currentBlockStream) {
+			_markOffset = 0;
+		} else {
+			_markOffset = _currentBlock.contentLength() - _currentBlockStream.available();
+		}
+		Library.logger().finer("mark: block: " + blockIndex() + " offset: " + _markOffset);
 	}
 
 	@Override
@@ -124,32 +124,31 @@ public class CCNInputStream extends CCNAbstractInputStream {
 			return -1;
 		}
 		
-		Library.logger().finer(baseName() + ": reading " + len + " bytes into buffer of length " + 
+		Library.logger().info(baseName() + ": reading " + len + " bytes into buffer of length " + 
 				((null != buf) ? buf.length : "null") + " at offset " + offset);
 		// is this the first block?
 		if (null == _currentBlock) {
 			if (_atEOF)
 				return -1;
-			_currentBlock = getFirstBlock();
-			_blockOffset = 0;
-			if (null == _currentBlock) {
+			ContentObject firstBlock = getFirstBlock();
+			if (null == firstBlock) {
 				_atEOF = true;
 				return -1; // nothing to read
 			}
+			setCurrentBlock(firstBlock);
 		} 
 		Library.logger().finer("reading from block: " + _currentBlock.name() + " length: " + 
-				_currentBlock.content().length +
-				" at offset " + _blockOffset);
+				_currentBlock.contentLength());
 		
 		// Now we have a block in place. Read from it. If we run out of block before
 		// we've read len bytes, pull next block.
 		int lenToRead = len;
 		int lenRead = 0;
+		long readCount = 0;
 		while (lenToRead > 0) {
-			if (_blockOffset >= _currentBlock.content().length) {
+			if (0 == _blockReadStream.available()) {
 				// DKS make sure we don't miss a byte...
-				_currentBlock = getNextBlock();
-				_blockOffset = 0;
+				setCurrentBlock(getNextBlock());
 				if (null == _currentBlock) {
 					Library.logger().info("next block was null, setting _atEOF, returning " + ((lenRead > 0) ? lenRead : -1));
 					_atEOF = true;
@@ -159,30 +158,35 @@ public class CCNInputStream extends CCNAbstractInputStream {
 					return -1; // no bytes read, at eof
 				}
 				Library.logger().info("now reading from block: " + _currentBlock.name() + " length: " + 
-						_currentBlock.content().length +
-						" at offset " + _blockOffset);
+						_currentBlock.contentLength());
 			}
-			int readCount = ((_currentBlock.content().length - _blockOffset) > lenToRead) ? lenToRead : (_currentBlock.content().length - _blockOffset);
-			if (null != buf) {} // use for skip
-				Library.logger().finest("before arraycopy: content length "+_currentBlock.content().length+" _blockOffset "+_blockOffset+" dst length "+buf.length+" dst index "+offset+" len to copy "+readCount);
-				System.arraycopy(_currentBlock.content(), _blockOffset, buf, offset, readCount);
+			if (null != buf) {  // use for skip
+				Library.logger().finest("before block read: content length "+_currentBlock.contentLength()+" position "+ tell() +" available: " + _blockReadStream.available() + " dst length "+buf.length+" dst index "+offset+" len to read "+lenToRead);
+				// Read as many bytes as we can
+				readCount = _blockReadStream.read(buf, offset, lenToRead);
+			} else {
+				readCount = _blockReadStream.skip(lenToRead);
+			}
 			
-			_blockOffset += readCount;
-			offset += readCount;
-			lenToRead -= readCount;
-			lenRead += readCount;
-			Library.logger().finest("     read " + readCount + " bytes for " + lenRead + " total, " + lenToRead + " remaining.");
-			
+			if (readCount < 0) {
+				Library.logger().info("Tried to read at end of block, go get next block.");
+			} else {
+				offset += readCount;
+				lenToRead -= readCount;
+				lenRead += readCount;
+				Library.logger().finest("     read " + readCount + " bytes for " + lenRead + " total, " + lenToRead + " remaining.");
+			}
 		}
 		return lenRead;
 	}
 
 	@Override
 	public synchronized void reset() throws IOException {
-		_currentBlock = getBlock(_markBlock);
-		_blockOffset = _markOffset;
+		setCurrentBlock(getBlock(_markBlock));
+		// TODO -- test -- may have trouble with intervening cipher stream
+		_blockReadStream.skip(_markOffset);
 		_atEOF = false;
-		Library.logger().finer("reset: block: " + blockIndex() + " offset: " + _blockOffset + " eof? " + _atEOF);
+		Library.logger().finer("reset: block: " + blockIndex() + " offset: " + _markOffset + " eof? " + _atEOF);
 	}
 	
 	@Override
@@ -203,12 +207,12 @@ public class CCNInputStream extends CCNAbstractInputStream {
 
 	public long seek(long position) throws IOException {
 		Library.logger().info("Seeking stream to " + position);
-		getFirstBlock();
+		setCurrentBlock(getFirstBlock());
 		return skip(position);
 	}
 
 	public long tell() {
-		return _blockOffset; // could implement a running count...
+		return _currentBlock.contentLength() - _currentBlockStream.available(); // could implement a running count...
 	}
 	
 	public long length() {
