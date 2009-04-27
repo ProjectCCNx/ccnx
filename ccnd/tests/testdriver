@@ -53,7 +53,7 @@ RunTest () {
 }
 
 SetExitCode () {
-  : | diff -u - FAILING
+  : | cmp -s - FAILING
 }
 
 # ExtractDeps $(GetTestNames) > deps.out
@@ -61,4 +61,5 @@ SetExitCode () {
 
 ExtractDeps $(GetTestNames) | tsort | while read TEST; do RunTest $TEST; done
 
+grep test_ SKIPPED FAILING
 SetExitCode
