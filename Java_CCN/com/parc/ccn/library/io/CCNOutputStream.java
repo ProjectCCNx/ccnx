@@ -74,15 +74,15 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	}
 
 	public CCNOutputStream(ContentName name,
-			KeyLocator locator, PublisherPublicKeyDigest publisher, ContentType type,
+			PublisherPublicKeyDigest publisher, ContentType type,
 			CCNLibrary library) throws XMLStreamException, IOException {
-		this(name, locator, publisher, type, new CCNSegmenter(new CCNFlowControl(name, library)));
+		this(name, null, publisher, type, new CCNSegmenter(new CCNFlowControl(name, library)));
 	}
 
 	public CCNOutputStream(ContentName name,
-			KeyLocator locator, PublisherPublicKeyDigest publisher,
+			PublisherPublicKeyDigest publisher,
 			CCNLibrary library) throws XMLStreamException, IOException {
-		this(name, locator, publisher, null, new CCNSegmenter(new CCNFlowControl(name, library)));
+		this(name, null, publisher, null, new CCNSegmenter(new CCNFlowControl(name, library)));
 	}
 
 	public CCNOutputStream(ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
@@ -90,7 +90,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	}
 
 	public CCNOutputStream(ContentName name, ContentType type, CCNLibrary library) throws XMLStreamException, IOException {
-		this(name, null, null, type, library);
+		this(name, null, type, library);
 	}
 
 	protected CCNOutputStream(ContentName name, 

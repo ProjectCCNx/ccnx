@@ -57,10 +57,10 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 	 * @throws IOException
 	 */
 	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type,
-								KeyLocator locator, PublisherPublicKeyDigest publisher,
+								PublisherPublicKeyDigest publisher,
 								CCNFlowControl flowControl)
 								throws XMLStreamException, IOException {
-		super(locator, publisher, new CCNSegmenter(flowControl, new CCNBlockSigner()));
+		super(null, publisher, new CCNSegmenter(flowControl, new CCNBlockSigner()));
 		init(baseName, type);
 	}
 
@@ -90,7 +90,7 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 	}
 	
 	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type) throws XMLStreamException, IOException {
-		this(baseName, type, null, null, null);
+		this(baseName, type, null, null);
 	}
 		
 	public void useByteCountSequenceNumbers() {
