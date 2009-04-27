@@ -6,6 +6,7 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 
+import javax.crypto.NoSuchPaddingException;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.data.ContentName;
@@ -18,6 +19,7 @@ import com.parc.ccn.library.CCNSegmenter;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.SegmentationProfile.SegmentNumberType;
 import com.parc.ccn.security.crypto.CCNBlockSigner;
+import com.parc.ccn.security.crypto.ContentKeys;
 
 /**
  * This class acts as a packet-oriented stream of data. It might be
@@ -56,10 +58,21 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 	 */
 	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type,
 								KeyLocator locator, PublisherPublicKeyDigest publisher,
-								CCNFlowControl flowControl) throws XMLStreamException, IOException {
-
+								CCNFlowControl flowControl)
+								throws XMLStreamException, IOException {
 		super(locator, publisher, new CCNSegmenter(flowControl, new CCNBlockSigner()));
-		
+		init(baseName, type);
+	}
+
+	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type,
+			KeyLocator locator, PublisherPublicKeyDigest publisher,
+			ContentKeys keys, CCNFlowControl flowControl)
+			throws XMLStreamException, IOException, NoSuchAlgorithmException, NoSuchPaddingException {
+		super(locator, publisher, new CCNSegmenter(flowControl, new CCNBlockSigner(), keys));
+		init(baseName, type);
+	}
+
+	private void init(ContentName baseName, SignedInfo.ContentType type) {
 		_type = type;
 
 		ContentName nameToOpen = baseName;

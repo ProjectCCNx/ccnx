@@ -20,8 +20,16 @@ import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNSegmenter;
 import com.parc.ccn.library.profiles.SegmentationProfile;
+import com.parc.ccn.security.crypto.ContentKeys;
 
 public class CCNFileOutputStream extends CCNVersionedOutputStream {
+
+	public CCNFileOutputStream(ContentName name, KeyLocator locator,
+			PublisherPublicKeyDigest publisher, ContentKeys keys,
+			CCNLibrary library)
+			throws XMLStreamException, IOException {
+		super(name, locator, publisher, library);
+	}
 
 	public CCNFileOutputStream(ContentName name, KeyLocator locator,
 			PublisherPublicKeyDigest publisher, CCNLibrary library)

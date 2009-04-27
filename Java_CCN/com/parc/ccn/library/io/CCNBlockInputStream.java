@@ -12,6 +12,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.security.crypto.ContentKeys;
 
 /**
  * This input stream expects to do packet-oriented reading of
@@ -24,6 +25,12 @@ import com.parc.ccn.library.CCNLibrary;
 public class CCNBlockInputStream extends CCNAbstractInputStream {
 
 	public CCNBlockInputStream(ContentName baseName, Long startingBlockIndex, 
+			   PublisherPublicKeyDigest publisher, ContentKeys keys, CCNLibrary library) throws XMLStreamException, IOException, NoSuchAlgorithmException, NoSuchPaddingException {
+		super(baseName, startingBlockIndex, keys, publisher, library);
+		setTimeout(CCNBase.NO_TIMEOUT);
+	}
+
+	public CCNBlockInputStream(ContentName baseName, Long startingBlockIndex,
 							   PublisherPublicKeyDigest publisher, CCNLibrary library) throws XMLStreamException, IOException, NoSuchAlgorithmException, NoSuchPaddingException {
 		super(baseName, startingBlockIndex, null, publisher, library);
 		setTimeout(CCNBase.NO_TIMEOUT);

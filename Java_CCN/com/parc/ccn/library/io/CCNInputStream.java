@@ -9,6 +9,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.security.crypto.ContentKeys;
 
 /**
  * Perform sequential reads on any block-oriented CCN content, namely that
@@ -48,6 +49,13 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	protected long _markBlock = 0;
 
 	public CCNInputStream(ContentName name, Long startingBlockIndex, PublisherPublicKeyDigest publisher, 
+			ContentKeys keys, CCNLibrary library) throws XMLStreamException,
+			IOException {
+
+		super(name, startingBlockIndex, publisher, library);
+	}
+
+	public CCNInputStream(ContentName name, Long startingBlockIndex, PublisherPublicKeyDigest publisher,
 			CCNLibrary library) throws XMLStreamException, IOException {
 
 		super(name, startingBlockIndex, publisher, library);
