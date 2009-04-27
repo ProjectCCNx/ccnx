@@ -129,23 +129,17 @@ public class VersioningProfile implements CCNProfile {
 	 */
 	public static long getVersionAsLong(ContentName name) throws VersionMissingException {
 		byte [] vm = null;
-		if (SegmentationProfile.isSegment(name)) {
-			vm = name.component(name.count()-2);
-		} else {
-			vm = name.lastComponent(); // no fragment number, unusual
-		}
-		if ((null == vm) || (0 == vm.length) || (VERSION_MARKER != vm[0])){
-			int i = name.count()-1;
-			for(; i > 0; i--){
-				vm = name.component(i);
-				if(VERSION_MARKER == vm[0]){
-					//here is the version!
-					i = -1;
-				}
+		
+		int i = name.count()-1;
+		for(; i > 0; i--){
+			vm = name.component(i);
+			if(VERSION_MARKER == vm[0]){
+				//here is the version!
+				i = -1;
 			}
-			if(i == 0)
-				throw new VersionMissingException();
 		}
+		if(i == 0)
+			throw new VersionMissingException();
 		
 		byte [] versionData = new byte[vm.length - 1];
 		System.arraycopy(vm, 1, versionData, 0, vm.length - 1);
