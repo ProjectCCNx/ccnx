@@ -733,7 +733,7 @@ public class CCNNetworkManager implements Runnable {
 
 				//--------------------------------- Process interests from net (if any)
 				for (Interest interest : packet.interests()) {
-					Library.logger().info("Interest from net: " + interest.name());
+					Library.logger().fine("Interest from net: " + interest.name());
 					InterestRegistration oInterest = new InterestRegistration(this, interest, null, null);
 					deliverInterest(oInterest);
 					// External interests never go back to network
