@@ -19,6 +19,10 @@ cd $(dirname "$0")
 # might be installed.
 export PATH=.:../agent:../ccndc:../lib:../udplink:$PATH:./stubs
 
+# If there are any ccnds running on non-standard ports, wait a minute and retry.
+ls /tmp/.ccnd.sock.* 2>/dev/null && { echo There is something else happening, waiting one minute ... ; sleep 60; }
+ls /tmp/.ccnd.sock.* 2>/dev/null && exit 1
+
 # Keep track of failed tests and skipped tests
 : > FAILING
 : > SKIPPED
