@@ -12,6 +12,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import java.sql.Timestamp;
 
+import junit.framework.Assert;
+
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;
@@ -156,6 +158,17 @@ public class VersioningProfileTest {
 	public void testGetVersionAsLong() throws VersionMissingException {
 		if (VersioningProfile.getVersionAsLong(abSegName) != 0x1040)
 			fail();
+
+		
+		ContentName name = VersioningProfile.versionName(abName, 1);
+		ContentName n2 = ContentName.fromNative(name, "addon");
+		
+		Assert.assertTrue(VersioningProfile.getVersionAsLong(name) == 1);
+		Assert.assertTrue(VersioningProfile.getVersionAsLong(n2) == 1);
+
+		n2 = ContentName.fromNative(n2, "addon2", "addon3");
+		Assert.assertTrue(VersioningProfile.getVersionAsLong(n2) == 1);
+		
 		try {
 			VersioningProfile.getVersionAsLong(abName);			
 			fail();
