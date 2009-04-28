@@ -87,19 +87,19 @@ public class InterestTest {
 		opPlain.orderPreference(Interest.ORDER_PREFERENCE_LEFT + Interest.ORDER_PREFERENCE_ORDER_ARRIVAL);
 		Interest opPlainDec = new Interest();
 		Interest opPlainBDec = new Interest();
-		XMLEncodableTester.encodeDecodeTest("OPInterest", opPlain, opPlainDec, opPlainBDec);
+		XMLEncodableTester.encodeDecodeTest("PreferenceInterest", opPlain, opPlainDec, opPlainBDec);
 		
 		Interest opPrefixed = new Interest(tcn);
 		opPrefixed.nameComponentCount(2);
 		Interest opPrefixedDec = new Interest();
 		Interest opPrefixedBDec = new Interest();
-		XMLEncodableTester.encodeDecodeTest("OPInterest", opPrefixed, opPrefixedDec, opPrefixedBDec);	
+		XMLEncodableTester.encodeDecodeTest("PrefixedInterest", opPrefixed, opPrefixedDec, opPrefixedBDec);	
 		
 		Interest opANC = new Interest(tcn);
 		opANC.additionalNameComponents(3);
 		Interest opANCDec = new Interest();
 		Interest opANCBDec = new Interest();
-		XMLEncodableTester.encodeDecodeTest("OPInterest", opANC, opANCDec, opANCBDec);
+		XMLEncodableTester.encodeDecodeTest("AdditionalNameComponentsInterest", opANC, opANCDec, opANCBDec);
 	}
 		
 	@Test
