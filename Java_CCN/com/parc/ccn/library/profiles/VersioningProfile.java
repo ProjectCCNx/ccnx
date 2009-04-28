@@ -123,8 +123,9 @@ public class VersioningProfile implements CCNProfile {
 	}
 	
 	/**
+	 * Function to get the version field as a long.  Starts from the end and checks each name component for the version marker.
 	 * @param name
-	 * @return the contents of the version field as a long
+	 * @return long
 	 * @throws VersionMissingException
 	 */
 	public static long getVersionAsLong(ContentName name) throws VersionMissingException {
