@@ -70,6 +70,9 @@ public class CCNFlowControlTest {
 	@Test
 	public void testBasicControlFlow() throws Throwable {	
 		
+		ContentName name1 = ContentName.fromNative("/foo/bar");
+		ContentObject obj1 = new ContentObject(name1, new SignedInfo(), "test".getBytes(), (Signature)null);
+		
 		System.out.println("Testing basic control flow functionality and errors");
 		_library.reset();
 		try {
@@ -130,26 +133,37 @@ public class CCNFlowControlTest {
 		Assert.assertTrue(queue.poll() == null);
 		fc.put(objv1s3);
 		testExpected(queue.poll(), objv1s3);
-		
 	}
 	
 	@Test
 	public void testPutsOrdered() throws Throwable {	
-
-		System.out.println("Testing puts output in correct order");
-		normalReset(name1);
-		interestList.add(new Interest("/foo"));
+		System.out.println("Testing \"next\" interest arrives before a put");
+		_library.reset();
+		interestList.clear();
+		fc = new CCNFlowControl(name1, _library);
+		interestList.add(Interest.next(v1s2));
 		fc.handleInterests(interestList);
-		fc.put(obj1);
-		testExpected(queue.poll(), obj1);
+		fc.put(objv1s1);
+		Assert.assertTrue(queue.poll() == null);
+		fc.put(objv1s3);
+		Assert.assertTrue(queue.poll() != null);
 		
+		System.out.println("Testing \"last\" interest arrives before a put");
+		_library.reset();
+		interestList.clear();
+		fc = new CCNFlowControl(name1, _library);
+		interestList.add(Interest.last(v1s2));
+		fc.handleInterests(interestList);
+		fc.put(objv1s1);
+		Assert.assertTrue(queue.poll() == null);
+		fc.put(objv1s3);
+		Assert.assertTrue(queue.poll() != null);
 	} 
 	
 	@Test
 	public void testRandomOrderPuts() throws Throwable {	
-
 		normalReset(name1);
-		
+
 		// Put these in slightly random order. It would be nice to truly randomize this but am
 		// not going to bother with that right now.
 		fc.put(objv2s1);
