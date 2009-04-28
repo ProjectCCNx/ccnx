@@ -36,12 +36,28 @@ public class CCNFlowControlTest {
 	@Test
 	public void testControlFlow() throws Throwable {
 		
+		ContentName name1 = ContentName.fromNative("/foo/bar");
+		ContentObject obj1 = new ContentObject(name1, new SignedInfo(), "test".getBytes(), (Signature)null);
+		ContentName v1 = VersioningProfile.versionName(name1);
+		Thread.sleep(20);
+		ContentName v2 = VersioningProfile.versionName(name1);	
+		ContentName v1s1 = SegmentationProfile.segmentName(v1, 1);
+		ContentObject objv1s1 = new ContentObject(v1s1, new SignedInfo(), "v1s1".getBytes(), (Signature)null);		
+		ContentName v1s2 = SegmentationProfile.segmentName(v1, 2);
+		ContentObject objv1s2 = new ContentObject(v1s2, new SignedInfo(), "v1s2".getBytes(), (Signature)null);	
+		ContentName v1s3 = SegmentationProfile.segmentName(v1, 3);
+		ContentObject objv1s3 = new ContentObject(v1s3, new SignedInfo(), "v1s3".getBytes(), (Signature)null);	
+		ContentName v1s4 = SegmentationProfile.segmentName(v1, 4);
+		ContentObject objv1s4 = new ContentObject(v1s4, new SignedInfo(), "v1s4".getBytes(), (Signature)null);	
+		ContentName v2s1 = SegmentationProfile.segmentName(v2, 1);
+		ContentObject objv2s1 = new ContentObject(v2s1, new SignedInfo(), "v2s1".getBytes(), (Signature)null);	
+		ContentName v2s2 = SegmentationProfile.segmentName(v2, 2);
+		ContentObject objv2s2 = new ContentObject(v2s2, new SignedInfo(), "v2s2".getBytes(), (Signature)null);
+		
 		System.out.println("Testing basic control flow functionality and errors");
 		_library.reset();
 		Queue<ContentObject> queue = _library.getOutputQueue();
 		CCNFlowControl fc = new CCNFlowControl(_library);
-		ContentName name1 = ContentName.fromNative("/foo/bar");
-		ContentObject obj1 = new ContentObject(name1, new SignedInfo(), "test".getBytes(), (Signature)null);
 		ArrayList<Interest> interestList = new ArrayList<Interest>();
 		try {
 			fc.put(obj1);
@@ -70,6 +86,28 @@ public class CCNFlowControlTest {
 		fc.put(obj1);
 		Assert.assertTrue(queue.poll() != null);
 		
+		System.out.println("Testing \"next\" interest arrives before a put");
+		_library.reset();
+		interestList.clear();
+		fc = new CCNFlowControl(name1, _library);
+		interestList.add(Interest.next(v1s2));
+		fc.handleInterests(interestList);
+		fc.put(objv1s1);
+		Assert.assertTrue(queue.poll() == null);
+		fc.put(objv1s3);
+		Assert.assertTrue(queue.poll() != null);
+		
+		System.out.println("Testing \"last\" interest arrives before a put");
+		_library.reset();
+		interestList.clear();
+		fc = new CCNFlowControl(name1, _library);
+		interestList.add(Interest.last(v1s2));
+		fc.handleInterests(interestList);
+		fc.put(objv1s1);
+		Assert.assertTrue(queue.poll() == null);
+		fc.put(objv1s3);
+		Assert.assertTrue(queue.poll() != null);
+		
 		System.out.println("Testing puts output in correct order");
 		_library.reset();
 		interestList.clear();
@@ -82,21 +120,6 @@ public class CCNFlowControlTest {
 		_library.reset();
 		interestList.clear();
 		fc = new CCNFlowControl(name1, _library);
-		ContentName v1 = VersioningProfile.versionName(name1);
-		Thread.sleep(20);
-		ContentName v2 = VersioningProfile.versionName(name1);	
-		ContentName v1s1 = SegmentationProfile.segmentName(v1, 1);
-		ContentObject objv1s1 = new ContentObject(v1s1, new SignedInfo(), "v1s1".getBytes(), (Signature)null);		
-		ContentName v1s2 = SegmentationProfile.segmentName(v1, 2);
-		ContentObject objv1s2 = new ContentObject(v1s2, new SignedInfo(), "v1s2".getBytes(), (Signature)null);	
-		ContentName v1s3 = SegmentationProfile.segmentName(v1, 3);
-		ContentObject objv1s3 = new ContentObject(v1s3, new SignedInfo(), "v1s3".getBytes(), (Signature)null);	
-		ContentName v1s4 = SegmentationProfile.segmentName(v1, 4);
-		ContentObject objv1s4 = new ContentObject(v1s4, new SignedInfo(), "v1s4".getBytes(), (Signature)null);	
-		ContentName v2s1 = SegmentationProfile.segmentName(v2, 1);
-		ContentObject objv2s1 = new ContentObject(v2s1, new SignedInfo(), "v2s1".getBytes(), (Signature)null);	
-		ContentName v2s2 = SegmentationProfile.segmentName(v2, 2);
-		ContentObject objv2s2 = new ContentObject(v2s2, new SignedInfo(), "v2s2".getBytes(), (Signature)null);
 		
 		// Put these in in slightly random order. It would be nice to truly randomize this but am
 		// not going to bother with that right now.
@@ -133,12 +156,12 @@ public class CCNFlowControlTest {
 		try {
 			fc.waitForPutDrain();
 		} catch (IOException ioe) {
-			Assert.fail("WaitforPutdream threw unexpecxted exception");
+			Assert.fail("WaitforPutDrain threw unexpecxted exception");
 		}
 		fc.put(obj1);
 		try {
 			fc.waitForPutDrain();
-			Assert.fail("WaitforPutdream succeeded when it should have failed");
+			Assert.fail("WaitforPutDrain succeeded when it should have failed");
 		} catch (IOException ioe) {}
 	}
 	

@@ -52,6 +52,6 @@ public class CCNLibraryTestHarness extends CCNLibrary {
 			al.add(interest);
 			listener.handleInterests(al);
 		}
-		return _outputQueue.poll();
+		return _outputQueue.remove();
 	}
 }

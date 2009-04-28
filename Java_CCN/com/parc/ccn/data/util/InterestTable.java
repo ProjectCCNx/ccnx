@@ -360,9 +360,7 @@ public class InterestTable<V> {
 		Library.logger().finest("target: " + target);
 
 		Entry<V> match = null;
-		ContentName headname = new ContentName(target, new byte[] {0} ); // need to include equal item in headMap
-	    for (Iterator<ContentName> nameIt = _contents.headMap(headname).keySet().iterator(); nameIt.hasNext();) {
-			ContentName name = nameIt.next();
+		for (ContentName name : _contents.keySet()) {
 			if (name.isPrefixOf(target)) {
 				match = _contents.get(name).get(0);
 			}
@@ -446,18 +444,13 @@ public class InterestTable<V> {
 		Entry<V> match = null;
 		if (null != target) {
 			ContentName matchName = null;
-			ContentName headname = new ContentName(target.name(), new byte[] {0} ); // need to include equal item in headMap
-			for (Iterator<ContentName> nameIt = _contents.headMap(headname).keySet().iterator(); nameIt.hasNext();) {
-				ContentName name = nameIt.next();
-				if (name.isPrefixOf(target.name())) {
-					// Name match - is there an interest match here?
-					Entry<V> found = getMatchByName(name, target);
-					if (null != found) {
-						match = found;
-						matchName = name;
-					}
-					// Do not remove here -- need to find best match and avoid disturbing iterator
+			for (ContentName name : _contents.keySet()) {
+				Entry<V> found = getMatchByName(name, target);
+				if (null != found) {
+					match = found;
+					matchName = name;
 				}
+				// Do not remove here -- need to find best match and avoid disturbing iterator
 			}
 			if (null != match) {
 				return removeMatchByName(matchName, target);
@@ -496,9 +489,7 @@ public class InterestTable<V> {
 	public List<Entry<V>> removeMatches(ContentObject target) {
 		List<Entry<V>> matches = new ArrayList<Entry<V>>();
 		List<ContentName> names = new ArrayList<ContentName>();
-		ContentName headname = new ContentName(target.name(), new byte[] {0} ); // need to include equal item in headMap
-	    for (Iterator<ContentName> nameIt = _contents.headMap(headname).keySet().iterator(); nameIt.hasNext();) {
-			ContentName name = nameIt.next();
+		for (ContentName name : _contents.keySet()) {
 			if (name.isPrefixOf(target.name())) {
 				// Name match - is there an interest match here?
 				matches.addAll(getAllMatchByName(name, target));
