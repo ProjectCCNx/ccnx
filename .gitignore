@@ -5,11 +5,6 @@
 *.o
 .classpath
 .project
-Java_CCN/bin/
-Java_CCN/build/
-Java_CCN/log/
-Java_CCN/medium_file.txt_testout.txt
-Java_CCN/testout/
 apps/email/bin/Makefile
 apps/email/bin/com/
 ccnd/agent/ccnd

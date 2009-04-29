@@ -1,0 +1,5 @@
+bin/
+build/
+log/
+medium_file.txt_testout.txt
+testout/
