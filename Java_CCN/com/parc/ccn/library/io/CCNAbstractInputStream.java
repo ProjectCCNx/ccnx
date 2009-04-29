@@ -11,8 +11,6 @@ import java.util.Arrays;
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
 import javax.crypto.NoSuchPaddingException;
-import javax.crypto.spec.IvParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
@@ -24,7 +22,6 @@ import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
-import com.parc.ccn.security.crypto.CCNCipherFactory;
 import com.parc.ccn.security.crypto.ContentKeys;
 
 public abstract class CCNAbstractInputStream extends InputStream {
@@ -50,8 +47,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	 *  Encryption/decryption handler
 	 */
 	protected Cipher _cipher;
-	protected SecretKeySpec _encryptionKey;
-	protected IvParameterSpec _masterIV;
+	protected ContentKeys _keys;
 	
 	/**
 	 * If this content uses Merkle Hash Trees or other structures to amortize
@@ -103,17 +99,16 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		this(baseName, startingBlockIndex, publisher, library);
 		
 		if (null != keys) {
-			if (!keys.encryptionAlgorithm.equals(CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM)) {
+			if (!keys.encryptionAlgorithm.equals(ContentKeys.DEFAULT_CIPHER_ALGORITHM)) {
 				Library.logger().warning("Right now the only encryption algorithm we support is: " + 
-						CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM + ", " + keys.encryptionAlgorithm + 
+						ContentKeys.DEFAULT_CIPHER_ALGORITHM + ", " + keys.encryptionAlgorithm + 
 						" will come later.");
 				throw new NoSuchAlgorithmException("Right now the only encryption algorithm we support is: " + 
-						CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM + ", " + keys.encryptionAlgorithm + 
+						ContentKeys.DEFAULT_CIPHER_ALGORITHM + ", " + keys.encryptionAlgorithm + 
 						" will come later.");
 			}
 			_cipher = Cipher.getInstance(keys.encryptionAlgorithm);
-			_encryptionKey = keys.encryptionKey;
-			_masterIV = keys.masterIV;
+			_keys = keys;
 		}
 	}
 	
@@ -138,29 +133,21 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	}
 
 	public CCNAbstractInputStream(ContentObject starterBlock, 			
-			String encryptionAlgorithm, 
-			SecretKeySpec encryptionKey, IvParameterSpec masterIV,
+			ContentKeys keys,
 			CCNLibrary library) throws NoSuchAlgorithmException, NoSuchPaddingException, IOException {
 
 		this(starterBlock, library);
 		
-		if (null != encryptionAlgorithm) {
-			if (!encryptionAlgorithm.equals(CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM)) {
-				Library.logger().warning("Right now the only encryption algorithm we support is: " + 
-						CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM + ", " + encryptionAlgorithm + 
-						" will come later.");
-				throw new NoSuchAlgorithmException("Right now the only encryption algorithm we support is: " + 
-						CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM + ", " + encryptionAlgorithm + 
-						" will come later.");
-			}
-			_cipher = Cipher.getInstance(encryptionAlgorithm);
-			_encryptionKey = encryptionKey;
-			_masterIV = masterIV;
-		} else {
-			if ((null != encryptionKey) || (null != masterIV)) {
-				Library.logger().warning("Encryption key or IV specified, but no algorithm provided. Ignoring.");
-			}
+		if (!keys.encryptionAlgorithm.equals(ContentKeys.DEFAULT_CIPHER_ALGORITHM)) {
+			Library.logger().warning("Right now the only encryption algorithm we support is: " + 
+					ContentKeys.DEFAULT_CIPHER_ALGORITHM + ", " + keys.encryptionAlgorithm + 
+					" will come later.");
+			throw new NoSuchAlgorithmException("Right now the only encryption algorithm we support is: " + 
+					ContentKeys.DEFAULT_CIPHER_ALGORITHM + ", " + keys.encryptionAlgorithm + 
+					" will come later.");
 		}
+		_cipher = Cipher.getInstance(keys.encryptionAlgorithm);
+		_keys = keys;
 	}
 
 	public void setTimeout(int timeout) {
@@ -227,9 +214,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 			try {
 				// Reuse of current block OK. Don't expect to have two separate readers
 				// independently use this stream without state confusion anyway.
-				_cipher = CCNCipherFactory.getSegmentDecryptionCipher(_cipher, _cipher.getAlgorithm(), 
-																	  _encryptionKey, _masterIV, 
-											SegmentationProfile.getSegmentNumber(_currentBlock.name()));
+				_cipher = _keys.getSegmentDecryptionCipher(_cipher, SegmentationProfile.getSegmentNumber(_currentBlock.name()));
 			} catch (InvalidKeyException e) {
 				Library.logger().warning("InvalidKeyException: " + e.getMessage());
 				throw new IOException("InvalidKeyException: " + e.getMessage());

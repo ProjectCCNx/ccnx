@@ -15,7 +15,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.profiles.VersioningProfile;
-import com.parc.ccn.security.crypto.CCNCipherFactory;
+import com.parc.ccn.security.crypto.ContentKeys;
 import com.parc.ccn.security.crypto.KeyDerivationFunction;
 
 public class KeyDerivationFunctionTest {
@@ -51,8 +51,8 @@ public class KeyDerivationFunctionTest {
 					functionalLabel, testName, publisher);
 			Assert.assertArrayEquals(keyandiv[0], keyandiv2[0]);
 			Assert.assertArrayEquals(keyandiv[1], keyandiv2[1]);
-			Assert.assertEquals(keyandiv[0].length, CCNCipherFactory.DEFAULT_AES_KEY_LENGTH);
-			Assert.assertEquals(keyandiv[1].length, CCNCipherFactory.IV_MASTER_LENGTH);
+			Assert.assertEquals(keyandiv[0].length, ContentKeys.DEFAULT_AES_KEY_LENGTH);
+			Assert.assertEquals(keyandiv[1].length, ContentKeys.IV_MASTER_LENGTH);
 			byte [][] keyandivnolabel = KeyDerivationFunction.DeriveKeyForObject(keySpec.getEncoded(), 
 					null, testName, publisher);
 			System.out.println("Key for content: " + testName + ": " + DataUtils.printBytes(keyandiv[0]) + 

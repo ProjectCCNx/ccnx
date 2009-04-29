@@ -54,7 +54,7 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 	}
 	
 	public CCNBlockInputStream(ContentObject starterBlock, CCNLibrary library) throws XMLStreamException, IOException, NoSuchAlgorithmException, NoSuchPaddingException {
-		super(starterBlock, null, null, null, library);
+		super(starterBlock, null, library);
 	}
 
 	protected int readInternal(byte [] buf, int offset, int len) throws IOException {
