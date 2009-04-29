@@ -49,6 +49,12 @@
 62,PublisherIssuerKeyDigest
 63,PublisherIssuerCertificateDigest
 64,ContentObject,20090415
+65,WrappedKey
+66,WrappingKeyIdentifier
+67,WrapAlgorithm
+68,KeyAlgorithm
+69,Label
+70,EncryptedKey
 2048,Address
 2049,SOType
 2050,Inject
