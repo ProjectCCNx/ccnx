@@ -84,7 +84,7 @@ public class CCNFlowControlTest {
 		interestList.add(new Interest("/foo"));
 		fc.handleInterests(interestList);
 		fc.put(obj1);
-		Assert.assertTrue(queue.poll() != null);
+		testExpected(queue.poll(), obj1);
 		
 		System.out.println("Testing \"next\" interest arrives before a put");
 		_library.reset();
@@ -95,7 +95,7 @@ public class CCNFlowControlTest {
 		fc.put(objv1s1);
 		Assert.assertTrue(queue.poll() == null);
 		fc.put(objv1s3);
-		Assert.assertTrue(queue.poll() != null);
+		testExpected(queue.poll(), objv1s3);
 		
 		System.out.println("Testing \"last\" interest arrives before a put");
 		_library.reset();
@@ -106,7 +106,7 @@ public class CCNFlowControlTest {
 		fc.put(objv1s1);
 		Assert.assertTrue(queue.poll() == null);
 		fc.put(objv1s3);
-		Assert.assertTrue(queue.poll() != null);
+		testExpected(queue.poll(), objv1s3);
 		
 		System.out.println("Testing puts output in correct order");
 		_library.reset();
@@ -115,7 +115,7 @@ public class CCNFlowControlTest {
 		interestList.add(new Interest("/foo"));
 		fc.handleInterests(interestList);
 		fc.put(obj1);
-		Assert.assertTrue(queue.poll() != null);
+		testExpected(queue.poll(), obj1);
 		
 		_library.reset();
 		interestList.clear();
@@ -129,9 +129,7 @@ public class CCNFlowControlTest {
 		fc.put(objv1s2);
 		fc.put(objv1s3);
 		fc.put(objv2s2);
-		ContentObject co = _library.get(v1, 0);
-		Assert.assertTrue(co != null);
-		Assert.assertEquals(co, objv1s1);
+		ContentObject co = testExpected(_library.get(v1, 0), objv1s1);
 		co = testNext(co, objv1s2);
 		co = testNext(co, objv1s3);
 		co = testNext(co, objv1s4);
