@@ -1,12 +1,11 @@
 package com.parc.ccn.apps.container;
 
+
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.logging.Level;
-
-import org.junit.BeforeClass;
-import org.junit.Test;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
@@ -33,17 +32,28 @@ public class GUINameEnumerator implements BasicNameEnumeratorListener{
 
 	String namespaceString = "/parc.com";
 	ContentName namespace;
-	String name1String = "/parc.com/registerTest/name1";
+	String name1String = "/parc.com/files/registerTest/name1";
 	ContentName name1;
-	String name2String = "/parc.com/registerTest/name2";
+	String name2String = "/parc.com/files/registerTest/name2";
 	ContentName name2;
-	String name2aString = "/parc.com/registerTest/name2/namea";
+	String name2aString = "/parc.com/files/registerTest/name2/test.txt";
 	ContentName name2a;
-	String name1StringDirty = "/parc.com/registerTest/name1TestDirty";
+	String name3String = "/parc.com/files/test.txt";
+	ContentName name3;
+	String name1StringDirty = "/parc.com/files/registerTest/name1TestDirty";
 	ContentName name1Dirty;
 	
-	String prefix1String = "/parc.com/registerTest";
+	String prefix1String = "/parc.com/files/registerTest2";
+	String prefix2String = "/parc.com/files";
 	String prefix1StringError = "/park.com/registerTest";
+	
+	String name11String = "/parc.com/files/registerTest2/name11";
+	ContentName name11;
+	String name22String = "/parc.com/files/registerTest2/name22";
+	ContentName name22;
+	String name22aString = "/parc.com/files/registerTest2/name22/nametest.txt";
+	ContentName name22a;
+	
 	//ArrayList<LinkReference> names;
 	ArrayList<ContentName> names;
 	ContentName prefix1;
@@ -68,6 +78,12 @@ public class GUINameEnumerator implements BasicNameEnumeratorListener{
 			net.name1 = ContentName.fromNative(name1String);
 			net.name2 = ContentName.fromNative(name2String);
 			net.name2a = ContentName.fromNative(name2aString);
+			net.name3 = ContentName.fromNative(name3String);
+			
+			net.name11 = ContentName.fromNative(name11String);
+			net.name22 = ContentName.fromNative(name22String);
+			net.name22a = ContentName.fromNative(name22aString);
+	
 		}
 		catch(Exception e){
 			Assert.fail("Could not create ContentName from "+name1String +" or "+name2String);
@@ -77,11 +93,17 @@ public class GUINameEnumerator implements BasicNameEnumeratorListener{
 		putne.registerNameForResponses(net.name1);
 		putne.registerNameForResponses(net.name2);
 		putne.registerNameForResponses(net.name2a);
+		putne.registerNameForResponses(net.name3);
+		
+		putne.registerNameForResponses(net.name11);
+		putne.registerNameForResponses(net.name22);
+		putne.registerNameForResponses(net.name22a);
+		
 		ContentName nullName = null;
 		putne.registerNameForResponses(nullName);
 		
 		try{
-			while(!putne.containsRegisteredName(net.name2a)){
+			while(!putne.containsRegisteredName(net.name22a)){
 				Thread.sleep(rand.nextInt(50));
 			}
 			
@@ -100,7 +122,8 @@ public class GUINameEnumerator implements BasicNameEnumeratorListener{
 		
 		
 		try{
-			net.prefix1 = ContentName.fromNative(prefix1String);
+			//net.prefix1 = ContentName.fromNative(prefix1String);
+			net.prefix1 = ContentName.fromNative(prefix2String);
 		}
 		catch(Exception e){
 			System.err.println("Could not create ContentName from "+prefix1String);
