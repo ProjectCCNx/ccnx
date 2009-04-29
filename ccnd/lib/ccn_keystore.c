@@ -3,6 +3,8 @@
 #include <openssl/pkcs12.h>
 #include <openssl/sha.h>
 
+#include <ccn/keystore.h>
+
 struct ccn_keystore {
     int initialized;
     EVP_PKEY *private_key;
@@ -66,22 +68,22 @@ ccn_keystore_init(struct ccn_keystore *p, char *name, char *password)
     return (0);
 }
 
-const void *
+const struct ccn_pkey *
 ccn_keystore_private_key(struct ccn_keystore *p)
 {
     if (0 == p->initialized)
         return (NULL);
 
-    return ((const void *)(p->private_key));
+    return ((const struct ccn_pkey *)(p->private_key));
 }
 
-const void *
+const struct ccn_pkey *
 ccn_keystore_public_key(struct ccn_keystore *p)
 {
     if (0 == p->initialized)
         return (NULL);
 
-    return ((const void *)(p->public_key));
+    return ((const struct ccn_pkey *)(p->public_key));
 }
 
 ssize_t
@@ -98,7 +100,7 @@ ccn_keystore_public_key_digest(struct ccn_keystore *p)
     return (p->pubkey_digest);
 }
 
-const void *
+const struct ccn_certificate *
 ccn_keystore_certificate(struct ccn_keystore *p)
 {
     if (0 == p->initialized)

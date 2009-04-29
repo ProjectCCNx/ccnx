@@ -1,6 +1,6 @@
 # $Id$
 W3REFS=XMLSchema.dtd XMLSchema.xsd datatypes.dtd xml.xsd
-FUZZED= ccn-bad11.xml ccn-bad06.xml ccn-bad09.xml ccn-schemabad10.xml ccn-schemabad01.xml ccn-schemabad02.xml ccn-schemabad12.xml ccn-schemabad04.xml
+FUZZED= ccn-bad11.xml ccn-bad06.xml ccn-bad09.xml ccn-schemabad10.xml ccn-schemabad01.xml ccn-schemabad02.xml ccn-schemabad12.xml ccn-schemabad04.xml security-schemabad01.xml
 
 default all test: check
 
@@ -10,32 +10,51 @@ $(W3REFS):
 w3downloads.tgz: always
 	tar cvfz w3downloads.tgz $(W3REFS)
 
+# todo -- generalize these rules for a list of schemata
 ccn.xsd:
 	ln -s ../ccn.xsd
 
 ccn.dtd:
 	ln -s ../ccn.dtd
 
+security.xsd:
+	ln -s ../security.xsd
+
+security.dtd:
+	ln -s ../security.dtd
+
 clean:
 	rm -f $(W3REFS) $(FUZZED) expectedfailures.out
 	test -L ccn.xsd && rm ccn.xsd || :
+	test -L security.xsd && rm security.xsd || :
 	test -L ccn.dtd && rm ccn.dtd || :
+	test -L security.dtd && rm security.dtd || :
 
 pretty:
 	echo ccn-test??.xml | xargs -n 1 sh prettify.sh
+	echo security-test??.xml | xargs -n 1 sh prettify.sh
 
-check: ccn.xsd ccn.dtd $(W3REFS) $(FUZZED) always
+check: ccn.xsd ccn.dtd security.xsd security.dtd $(W3REFS) $(FUZZED) always
 	@:> expectedfailures.out
 	xmllint --noout --schema XMLSchema.xsd XMLSchema.xsd || ./oops
 	xmllint --noout ccn.xsd
 	@echo === ccn.xsd is well-formed
+	xmllint --noout security.xsd
+	@echo === security.xsd is well-formed
 	xmllint --valid --nowarning --noout ccn.xsd
 	@echo === ccn.xsd is valid according to its dtd
+	xmllint --valid --nowarning --noout security.xsd
+	@echo === security.xsd is valid according to its dtd
 	xmllint --schema XMLSchema.xsd --noout ccn.xsd
 	xmllint --noout --schema ccn.xsd ccn-test??.xml
 	xmllint --noout --dtdvalid ccn.dtd ccn-test??.xml
+	xmllint --schema XMLSchema.xsd --noout security.xsd
+	xmllint --noout --schema security.xsd security-test??.xml
+	xmllint --noout --dtdvalid security.dtd security-test??.xml
 	ls ccn-schemabad??.xml ccn-bad??.xml | while read i && ./shouldfail xmllint --noout --schema ccn.xsd "$$i"; do :; done
+	ls security-schemabad??.xml security-bad??.xml | while read i && ./shouldfail xmllint --noout --schema security.xsd "$$i"; do :; done
 	ls ccn-dtdbad??.xml ccn-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid ccn.dtd "$$i"; do :; done
+	ls security-dtdbad??.xml security-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid security.dtd "$$i"; do :; done
 	@diff expectedfailures.ref expectedfailures.out || echo "***" $(LECTURE)
 	: --------------------------- :
 	: Schema validation complete  :
@@ -85,3 +104,8 @@ ccn-bad11.xml: ccn-test11.xml
 check: ccn-schemabad12.xml
 ccn-schemabad12.xml: ccn-test12.xml
 	sed -e 's/>DATA/>FUZZ/' $? > $@
+
+check: security-schemabad01.xml
+security-schemabad01.xml: security-test01.xml
+	sed -e '/EncryptedKey/s/dmdxO6LZm7UUoUdyt6EG3KrnkNJkjdaayBppbvfD/bad!/' $? > $@
+

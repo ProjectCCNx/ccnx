@@ -1,0 +1,20 @@
+<!-- DTD for ccn -->
+<!-- $Id$ -->
+<!ENTITY % URI "CDATA">	<!-- a Uniform Resource Identifier -->
+<!ENTITY % commonattrs
+	"xmlns %URI; #FIXED 'http://www.parc.com/ccn'">
+
+<!ELEMENT WrappedKey (WrappingKeyIdentifier?, WrapAlgorithm?, KeyAlgorithm?, Label?, EncryptedKey)>
+<!ATTLIST WrappedKey %commonattrs;>
+
+<!ELEMENT WrappingKeyIdentifier	(#PCDATA)>	<!-- base64Binary SHA-256 digest -->
+<!ATTLIST WrappingKeyIdentifier ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT WrapAlgorithm  (#PCDATA)>	<!-- decimal OID -->
+
+<!ELEMENT KeyAlgorithm  (#PCDATA)>	<!-- decimal OID -->
+
+<!ELEMENT Label	(#PCDATA)>	<!-- UTF-8 -->
+
+<!ELEMENT EncryptedKey	(#PCDATA)>	<!-- base64Binary -->
+<!ATTLIST EncryptedKey ccnbencoding CDATA #FIXED 'base64Binary'>

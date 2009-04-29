@@ -128,6 +128,8 @@ public class RepoIOTest extends RepoTestBase {
 		Assert.assertFalse(testContent == null);
 		Assert.assertTrue(Arrays.equals(data, testContent.content()));		
 	}
+
+	@SuppressWarnings("unused")	
 	private void checkDataAndPublisher(ContentName name, String data, PublisherPublicKeyDigest publisher) 
 				throws IOException, InterruptedException {
 		Interest interest = new Interest(name, new PublisherID(publisher));

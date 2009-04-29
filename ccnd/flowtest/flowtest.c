@@ -14,6 +14,10 @@
 #include <arpa/inet.h>
 #include <net/if.h>
 
+#ifndef AI_ADDRCONFIG
+#define AI_ADDRCONFIG 0 /*IEEE Std 1003.1-2001/Cor 1-2002, item XSH/TC1/D6/20*/
+#endif
+
 static const char *this_program = "flowtest";
 struct options {
     const char *sourceportstr;

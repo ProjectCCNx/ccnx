@@ -76,7 +76,7 @@ static void express_bulkdata_interest(struct ccn *h, struct pending *b);
 // XXX - missing code to create new pendings
 
 
-static enum ccn_upcall_res
+/*static*/ enum ccn_upcall_res
 imcoming_bulkdata(struct ccn_closure *selfp,
                   enum ccn_upcall_kind kind,
                   struct ccn_upcall_info *info)
