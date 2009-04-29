@@ -230,6 +230,8 @@ public class RFSTest extends RepoTestBase {
 		Assert.assertFalse(testContent == null);
 		Assert.assertEquals(data, new String(testContent.content()));		
 	}
+	
+	@SuppressWarnings("unused")
 	private void checkDataAndPublisher(Repository repo, ContentName name, String data, PublisherPublicKeyDigest publisher) 
 				throws RepositoryException {
 		Interest interest = new Interest(name, new PublisherID(publisher));

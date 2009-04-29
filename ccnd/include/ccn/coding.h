@@ -48,7 +48,7 @@ enum ccn_dtag {
     CCN_DTAG_SignedInfo = 20,
     CCN_DTAG_ContentDigest = 21,
     CCN_DTAG_ContentHash = 22,
-    CCN_DTAG_ContentObjectV20080711 = 23, /* Deprecated */
+    CCN_DTAG_ContentObjectV20080711 = 23,	/* Deprecated */
     CCN_DTAG_Count = 24,
     CCN_DTAG_Header = 25,
     CCN_DTAG_Interest = 26,
@@ -59,7 +59,7 @@ enum ccn_dtag {
     CCN_DTAG_Link = 31,
     CCN_DTAG_LinkAuthenticator = 32,
     CCN_DTAG_NameComponentCount = 33,
-    CCN_DTAG_PublisherID = 34,  	/* Deprecated */
+    CCN_DTAG_PublisherID = 34,	/* Deprecated */
     CCN_DTAG_PublisherKeyID = 35,	/* Deprecated */
     CCN_DTAG_RootDigest = 36,
     CCN_DTAG_Signature = 37,
@@ -73,11 +73,11 @@ enum ccn_dtag {
     CCN_DTAG_BloomSeed = 45,
     CCN_DTAG_OrderPreference = 46,
     CCN_DTAG_AnswerOriginKind = 47,
-    CCN_DTAG_MatchFirstAvailableDescendant = 48,/* Obsolete */
+    CCN_DTAG_MatchFirstAvailableDescendant = 48,	/* Obsolete */
     CCN_DTAG_MatchLastAvailableDescendant = 49,	/* Obsolete */
     CCN_DTAG_MatchNextAvailableSibling = 50,	/* Obsolete */
     CCN_DTAG_MatchLastAvailableSibling = 51,	/* Obsolete */
-    CCN_DTAG_MatchEntirePrefix = 52,        	/* Obsolete */
+    CCN_DTAG_MatchEntirePrefix = 52,	/* Obsolete */
     CCN_DTAG_Witness = 53,
     CCN_DTAG_SignatureBits = 54,
     CCN_DTAG_DigestAlgorithm = 55,
@@ -89,7 +89,13 @@ enum ccn_dtag {
     CCN_DTAG_PublisherCertificateDigest = 61,
     CCN_DTAG_PublisherIssuerKeyDigest = 62,
     CCN_DTAG_PublisherIssuerCertificateDigest = 63,
-    CCN_DTAG_ContentObject = 64,	/* V20080415 */
+    CCN_DTAG_ContentObject = 64,	/* 20090415 */
+    CCN_DTAG_WrappedKey = 65,
+    CCN_DTAG_WrappingKeyIdentifier = 66,
+    CCN_DTAG_WrapAlgorithm = 67,
+    CCN_DTAG_KeyAlgorithm = 68,
+    CCN_DTAG_Label = 69,
+    CCN_DTAG_EncryptedKey = 70,
     CCN_DTAG_Address = 2048,
     CCN_DTAG_SOType = 2049,
     CCN_DTAG_Inject = 2050,
