@@ -2102,7 +2102,7 @@ process_incoming_inject(struct ccnd *h, struct face *face,
         fd = h->udp6_fd;
     else
         fd = -1;
-    res = sendto(fd, imsg, isize, 0, &addr, size);
+    res = sendto(fd, imsg, isize, 0, addrp, size);
     if (res == -1)
         perror("sendto"); // XXX - improve error report
 }
