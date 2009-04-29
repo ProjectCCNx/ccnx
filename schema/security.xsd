@@ -2,12 +2,16 @@
 <!-- $Id$ -->
 <!DOCTYPE xs:schema PUBLIC "-//W3C//DTD XMLSCHEMA 200102//EN" "XMLSchema.dtd">
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
-<!-- XXX
-        xmlns:ccn="http://www.parc.com/ccn" 
+<!-- DKS: leave this out, following ccn.xsd; as things don't work right
+     if you put it in. We should fix this. -->
+<!--
         targetNamespace="http://www.parc.com/ccn"
+        xmlns="http://www.parc.com/ccn" 
         elementFormDefault="unqualified"
-        attributeFormDefault="unqualified"
+        attributeFormDefault="unqualified">
 -->
+
+<xs:include schemaLocation="ccn.xsd"/>
 
   <xs:annotation>
     <xs:documentation xml:lang="en">
@@ -17,8 +21,9 @@
 
 <!-- Top-level objects that can appear in 
      documents, messages, etc. -->
+<xs:element name="WrappedKey" type="WrappedKeyType"/>
 
-<xs:complexType name="WrappedKey">
+<xs:complexType name="WrappedKeyType">
 <!-- A wrapped (encrypted) key. The wrapped key may be secret (symmetric) or private,
     the wrapping key used to encrypt it might be secret or public. -->
 
@@ -36,7 +41,7 @@
 	<!-- The algorithm this key is to be used for, used both to decode the
          key material if necessary (e.g. if it's an encoded private key, rather
          than a raw symmetric key); and to know how this key is used to encrypt
-         data -- e.g. for AES, is it (or keys derived from it) used in CTR or CBC mode. 
+         data; e.g. for AES, is it (or keys derived from it) used in CTR or CBC mode. 
          For AES keys, in our default of CTR mode, we could use the NIST root OID for AES.
          (NIST defines no OID for CTR mode, as it requires additional authentication,
          and they don't want to encourage people to use it directly. We have 
