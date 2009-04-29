@@ -166,6 +166,35 @@ public class CCNFlowControlTest {
 		
 	}
 
+	/**
+	 * Test method for an order case that failed in practice for 
+	 * RepoIOTest when matching was broken.
+	 * @throws Throwable
+	 */
+	@Test
+	public void testMixedOrderInterestPut() throws Throwable {	
+
+		normalReset(name1);
+		
+		// First one normal order exchange: put first, interest next
+		fc.put(objv1s1);
+		ContentObject co = testExpected(_library.get(v1, 0), objv1s1);
+
+		// Next we get the interest for the next segment before the data
+		interestList.add(Interest.next(co,3));
+		fc.handleInterests(interestList);
+
+		// Data arrives for the waiting interest, should be sent out
+		fc.put(objv1s2);
+		testExpected(queue.poll(), objv1s2);
+
+		// Remainder in order, puts first
+		fc.put(objv1s3);
+		co = testNext(co, objv1s3);
+		fc.put(objv1s4);
+		co = testNext(co, objv1s4);
+	}
+
 	@Test
 	public void testWaitForPutDrain() throws Throwable {	
 
