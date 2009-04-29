@@ -24,6 +24,7 @@
 
 #if defined(NEED_GETADDRINFO_COMPAT)
     #include "getaddrinfo.h"
+    #include "dummyin6.h"
 #endif
 
 #include <ccn/ccn.h>
