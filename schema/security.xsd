@@ -27,15 +27,22 @@
 	<xs:element name="WrappingKeyIdentifier" type="DigestType"
                                      minOccurs="0" maxOccurs="1" /> 
 	<!-- The default wrap algorithm is determined by the type of the wrapping key.
-         For AES, it's RFC3394 key wrapping. For RSA, RSA-OAEP. -->
+         For AES, it's NIST/RFC3394 key wrapping. For RSA, RSA-OAEP. 
+         OIDs for AES: 128-bit: 2.16.840.1.101.3.4.1.5
+                       192-bit: 2.16.840.1.101.3.4.1.25
+                       256-bit: 2.16.840.1.101.3.4.1.45 -->
 	<xs:element name="WrapAlgorithm" type="xs:string"
                                      minOccurs="0" maxOccurs="1" /> 
 	<!-- The algorithm this key is to be used for, used both to decode the
          key material if necessary (e.g. if it's an encoded private key, rather
          than a raw symmetric key); and to know how this key is used to encrypt
-         data -- e.g. for AES, is it (or keys derived from it) used in CTR or CBC mode. -->
+         data -- e.g. for AES, is it (or keys derived from it) used in CTR or CBC mode. 
+         For AES keys, in our default of CTR mode, we could use the NIST root OID for AES.
+         (NIST defines no OID for CTR mode, as it requires additional authentication,
+         and they don't want to encourage people to use it directly. We have 
+         additional authentication, so can; avoiding unnecessary MACs.): 
+         2.16.840.1.101.3.4.1  As this is the default, it is usually elided. -->
 	<xs:element name="KeyAlgorithm" type="xs:string"
-					 default="2.16.840.1.101.3.4.2.1"
                                      minOccurs="0" maxOccurs="1" /> 
 	<xs:element name="Label" type="xs:string"
                                      minOccurs="0" maxOccurs="1" /> 
