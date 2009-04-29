@@ -4,6 +4,7 @@ import java.math.BigInteger;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 
 import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
@@ -24,6 +25,8 @@ public class ContentKeys {
 	public static final String AES_CTR_MODE = "AES/CTR/NoPadding";
 	public static final String AES_CBC_MODE = "AES/CBC/PKCS5Padding";
 	public static final String DEFAULT_CIPHER_ALGORITHM = AES_CTR_MODE;
+	public static final String DEFAULT_KEY_ALGORITHM = "AES";
+	public static final int DEFAULT_KEY_LENGTH = 16;
 	
 	public static final int DEFAULT_AES_KEY_LENGTH = 16; // bytes, 128 bits
 	public static final int IV_MASTER_LENGTH = 8; // bytes
@@ -45,6 +48,21 @@ public class ContentKeys {
 		this.encryptionKey = encryptionKey;
 		this.masterIV = masterIV;
 	}
+
+	@SuppressWarnings("unused")
+	private ContentKeys() {
+	}
+	
+	/**
+	 * Create a set of encryption/decryption keys using the default algorithm.
+	 */
+	public static ContentKeys generateRandomKeys() {
+		return new ContentKeys(
+				DEFAULT_CIPHER_ALGORITHM,
+				new SecretKeySpec(SecureRandom.getSeed(DEFAULT_KEY_LENGTH), DEFAULT_KEY_ALGORITHM),
+				new IvParameterSpec(SecureRandom.getSeed(IV_MASTER_LENGTH)));
+	}
+	
 	/**
 	 * Make an encrypting Cipher to be used in making a CipherOutputStream to
 	 * wrap outgoing CCN data.
