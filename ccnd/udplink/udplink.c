@@ -18,6 +18,9 @@
     #include "getaddrinfo.h"
     #include "dummyin6.h"
 #endif
+#ifndef AI_ADDRCONFIG
+#define AI_ADDRCONFIG 0 /*IEEE Std 1003.1-2001/Cor 1-2002, item XSH/TC1/D6/20*/
+#endif
 
 #include <ccn/ccn.h>
 #include <ccn/ccnd.h>
