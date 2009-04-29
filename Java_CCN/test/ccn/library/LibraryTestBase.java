@@ -14,6 +14,7 @@ import java.util.Random;
 import java.util.concurrent.Semaphore;
 import java.util.logging.Level;
 
+import javax.crypto.NoSuchPaddingException;
 import javax.xml.stream.XMLStreamException;
 
 import org.junit.Before;
@@ -139,8 +140,9 @@ public class LibraryTestBase {
 	 * @throws SignatureException 
 	 * @throws InvalidKeyException 
 	 * @throws XMLStreamException 
+	 * @throws NoSuchPaddingException 
 	 */
-	public void getResults(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException {
+	public void getResults(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException, NoSuchPaddingException {
 		Random rand = new Random();
 	//	boolean done = false;
 		System.out.println("getResults: getting children of " + baseName);
@@ -183,8 +185,9 @@ public class LibraryTestBase {
 	 * @throws XMLStreamException 
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
+	 * @throws NoSuchPaddingException 
 	 */
-	public void doPuts(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException, NoSuchAlgorithmException {
+	public void doPuts(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException {
 
 		CCNWriter writer = new CCNWriter(baseName, library);
 		Random rand = new Random();

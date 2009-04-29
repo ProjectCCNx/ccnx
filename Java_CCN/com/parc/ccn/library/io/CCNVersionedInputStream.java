@@ -1,8 +1,10 @@
 package com.parc.ccn.library.io;
 
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Timestamp;
 
+import javax.crypto.NoSuchPaddingException;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
@@ -45,7 +47,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 	public CCNVersionedInputStream(ContentName name,
 			long startingBlockIndex, PublisherPublicKeyDigest publisher,
 			ContentKeys keys, CCNLibrary library)
-			throws XMLStreamException, IOException {
+			throws XMLStreamException, IOException, NoSuchAlgorithmException, NoSuchPaddingException {
 		super(name, startingBlockIndex, publisher, keys, library);
 	}
 
