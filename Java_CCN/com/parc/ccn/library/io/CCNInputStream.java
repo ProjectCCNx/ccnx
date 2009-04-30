@@ -146,7 +146,9 @@ public class CCNInputStream extends CCNAbstractInputStream {
 		int lenRead = 0;
 		long readCount = 0;
 		while (lenToRead > 0) {
-			if (0 == _blockReadStream.available()) {
+			if (null == _blockReadStream) {
+				Library.logger().severe("Unexpected null block read stream!");
+			} else if (0 == _blockReadStream.available()) {
 				// DKS make sure we don't miss a byte...
 				setCurrentBlock(getNextBlock());
 				if (null == _currentBlock) {
