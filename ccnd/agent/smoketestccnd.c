@@ -52,11 +52,18 @@ int main(int argc, char **argv)
     int msec = 1000;
     int argp;
     int fd;
-    while ((c = getopt(argc, argv, "ht:")) != -1) {
+    FILE *msgs = stdout;
+    int binout = 0;
+    while ((c = getopt(argc, argv, "bht:")) != -1) {
         switch (c) {
             default:
+            case 'b':
+                binout = 1;
+                msgs = stderr;
+                break;
             case 'h':
                 fprintf(stderr, "Usage %s %s\n", argv[0],
+                            " [-b] "
                             " [-t millisconds] "
                             " ( send <filename>"
                             " | recv"
@@ -121,7 +128,7 @@ int main(int argc, char **argv)
                 close(fd);
             if (rawlen == 0)
                 continue;
-            printf("send %s (%lu bytes)\n", filename, (unsigned long)rawlen);
+            fprintf(msgs, "send %s (%lu bytes)\n", filename, (unsigned long)rawlen);
             sres = send(sock, rawbuf, rawlen, 0);
             if (sres == -1) {
                 perror("send");
@@ -135,7 +142,7 @@ int main(int argc, char **argv)
                 exit(1);
             }
             if (res == 0) {
-                printf("recv timed out after %d ms\n", msec);
+                fprintf(msgs, "recv timed out after %d ms\n", msec);
                 continue;
             }
             rawlen = recv(sock, rawbuf, sizeof(rawbuf), 0);
@@ -145,8 +152,11 @@ int main(int argc, char **argv)
             }
             if (rawlen == 0)
                 break;
-            printf("recv of %lu bytes\n", (unsigned long)rawlen);
-            printraw(rawbuf, rawlen);
+            fprintf(msgs, "recv of %lu bytes\n", (unsigned long)rawlen);
+            if (binout)
+                write(1, rawbuf, rawlen);
+            else
+                printraw(rawbuf, rawlen);
         }
         else if (0 == strcmp(argv[argp], "kill")) {
             unlink((char *)addr.sun_path);
