@@ -54,6 +54,14 @@ public class CCNMerkleTree extends MerkleTree {
 	byte [] _rootSignature = null;
 	ContentObject [] _blockObjects = null;
 	
+	/**
+	 * Build a CCNMerkleTree. 
+	 * @param contentObjects must be at least 2 blocks, or will throw IllegalArgumentException.
+	 * @param signingKey
+	 * @throws NoSuchAlgorithmException
+	 * @throws InvalidKeyException
+	 * @throws SignatureException
+	 */
 	public CCNMerkleTree(ContentObject [] contentObjects, 
 			PrivateKey signingKey) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
 
@@ -69,6 +77,7 @@ public class CCNMerkleTree extends MerkleTree {
 		initializeTree(contentObjects);
 		_rootSignature = computeRootSignature(root(), signingKey);
 		setSignatures();
+		Library.logger().info("CCNMerkleTree: built a tree of " + contentObjects.length + " objects.");
 	}
 
 	public byte [] rootSignature() { return _rootSignature; }
