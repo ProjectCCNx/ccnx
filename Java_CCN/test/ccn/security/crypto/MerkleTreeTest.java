@@ -30,6 +30,20 @@ public class MerkleTreeTest {
 	public void testMerkleTree() {
 		int [] sizes = new int[]{128,256,512,4096};
 		
+		try {
+			testTree(0, sizes[0], false);
+			Assert.fail("MerkleTree should throw an exception for tree sizes < 2.");
+		} catch (IllegalArgumentException e) {
+			// ok
+		}
+		
+		try {
+			testTree(1, sizes[0], false);
+			Assert.fail("MerkleTree should throw an exception for tree sizes < 2.");
+		} catch (IllegalArgumentException e) {
+			// ok
+		}
+		
 		System.out.println("Testing small trees.");
 		for (int i=2; i < 515; ++i) {
 			testTree(i,sizes[i%sizes.length],false);

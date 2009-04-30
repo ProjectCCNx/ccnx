@@ -57,8 +57,22 @@ public class CCNMerkleTreeTest {
 	public void testMerkleTree() {
 		int [] sizes = new int[]{128,256,512,4096};
 		
+		try {
+			testTree(0, sizes[0], false);
+			Assert.fail("CCNMerkleTree should throw an exception for tree sizes < 2.");
+		} catch (IllegalArgumentException e) {
+			// ok
+		}
+		
+		try {
+			testTree(1, sizes[0], false);
+			Assert.fail("CCNMerkleTree should throw an exception for tree sizes < 2.");
+		} catch (IllegalArgumentException e) {
+			// ok
+		}
+
 		System.out.println("Testing small trees, fixed block widths.");
-		for (int i=10; i < 515; ++i) {
+		for (int i=2; i < 515; ++i) {
 			testTree(i,sizes[i%sizes.length],false);
 		}
 		
