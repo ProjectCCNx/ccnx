@@ -1989,6 +1989,11 @@ process_incoming_content(struct ccnd *h, struct face *face,
             hashtb_delete(e); /* XXX - Mercilessly throw away both of them. */
             res = -__LINE__;
         }
+        else if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0) {
+            /* When old content arrives after it has gone stale, freshen it */
+            content->flags &= ~CCN_CONTENT_ENTRY_STALE;
+            set_content_timer(h, content, &obj);
+        }
         else {
             h->content_dups_recvd++;
             ccnd_msg(h, "received duplicate ContentObject from %u (accession %llu)",
