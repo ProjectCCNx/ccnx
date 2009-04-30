@@ -1,5 +1,6 @@
+# Tests ccnd w.r.t. staleness handling
 export CCN_LOCAL_PORT=$((CCN_LOCAL_PORT_BASE + 6))
-CCND_DEBUG=-1 ccnd &
+ccnd &
 trap "smoketestccnd -t 55 recv kill recv" 0
 smoketestccnd -t 55 recv || Fail
 date | ccnsendchunks -x 1 /test/ephemeral$$
