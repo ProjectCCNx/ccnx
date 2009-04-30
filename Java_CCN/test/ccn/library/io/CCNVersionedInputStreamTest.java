@@ -95,7 +95,7 @@ public class CCNVersionedInputStreamTest {
 		int nextBufSize = 0;
 		boolean firstBuf = true;
 		System.out.println("Writing file: " + completeName + " bytes: " + fileLength);
-		final double probFlush = .1;
+		final double probFlush = .3;
 		
 		while (elapsed < fileLength) {
 			nextBufSize = ((fileLength - elapsed) > BUF_SIZE) ? BUF_SIZE : (fileLength - elapsed);
@@ -150,9 +150,16 @@ public class CCNVersionedInputStreamTest {
 		byte [] bytes = new byte[BUF_SIZE];
 		while (elapsed < fileLength) {
 			read = dis.read(bytes);
-			if (read <= 0) {
-				System.out.println("Ran out of things to read at " + elapsed + " bytes out of " + fileLength);
+			if (read < 0) {
+				System.out.println("EOF read at " + elapsed + " bytes out of " + fileLength);
 				break;
+			} else if (read == 0) {
+				System.out.println("0 bytes read at " + elapsed + " bytes out of " + fileLength);
+				try {
+					Thread.sleep(10);
+				} catch (InterruptedException e) {
+					
+				}
 			}
 			elapsed += read;
 			System.out.println(" read " + elapsed + " bytes out of " + fileLength);
