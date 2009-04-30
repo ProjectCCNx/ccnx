@@ -17,7 +17,6 @@
 	<property name="build" location="build"/>
 	<property name="jarfile-base" value="ccn.jar"/>
 	<property name="jarfile" location="${jarfile-base}"/>
-	<property name="junit-jar" location="${lib}/junit-4.3.1.jar"/>
 	<property name="testout" location="testout"/>
 	<property name="ccnd" location="../ccnd/agent/ccnd"/>
 	<property name="showoutput" value="no"/>
@@ -48,6 +47,7 @@
 
 	<path id="classpath-run">
 		<path refid="ccn-classpath-run"/>
+		<pathelement location="${jarfile}"/>
 	</path>
 
 	<!-- repository directory is likely to be created by running things
