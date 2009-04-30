@@ -59,6 +59,9 @@ public class MerkleTree {
 	 * @param contentBlocks
 	 */
 	protected MerkleTree(String algorithm, int numLeaves) {
+		if (numLeaves < 2) {
+			throw new IllegalArgumentException("MerkleTrees must have 2 or more nodes!");
+		}
 		_algorithm = (null == algorithm) ? CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM : algorithm;
 		_numLeaves = numLeaves;
 		_tree = new DEROctetString[nodeCount()];
@@ -69,7 +72,8 @@ public class MerkleTree {
 	 * @param contentBlocks the leaf content to be hashed into this 
 	 * Merkle hash tree.
 	 * @param blockCount the number of those blocks to include (e.g. we may not
-	 * 	have filled our contentBlocks buffers prior to building the tree).
+	 * 	have filled our contentBlocks buffers prior to building the tree). Must be
+	 *  at least 2.
 	 * @param baseBlockIndex the offset into the contentBlocks array at which to start.
 	 * @param isDigest are the content blocks raw content (false), or are they already digested
 	 * 	  with our default algorithm (true)? (default algorithm: DigestHelper.DEFAULT_DIGEST_ALGORITHM)
