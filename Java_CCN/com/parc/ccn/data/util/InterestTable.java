@@ -45,8 +45,35 @@ public class InterestTable<V> {
 		 */
 		public T value();
 	}
+	
+	/**
+	 * To get things in the truly correct order for this we need to sort by length over canonical order
+	 * @author rasmusse
+	 *
+	 */
+	private class ITContentName implements Comparable<ITContentName> {
+		private ContentName _name;
+		
+		public ITContentName(ContentName name) {
+			_name = name;
+		}
+		
+		public ContentName name() {
+			return _name;
+		}
+		
+		public int compareTo(ITContentName o) {
+			if (this == o)
+				return 0;
+			if (_name.count() < o._name.count())
+				return -1;
+			else if (_name.count() > o._name.count())
+				return 1;
+			return _name.compareTo(o._name);
+		}	
+	}
 
-	protected SortedMap<ContentName,List<Holder<V>>> _contents = new TreeMap<ContentName,List<Holder<V>>>();
+	protected SortedMap<ITContentName,List<Holder<V>>> _contents = new TreeMap<ITContentName,List<Holder<V>>>();
 
 	
 	protected abstract class Holder<T> implements Entry<T> {
@@ -107,18 +134,18 @@ public class InterestTable<V> {
 	}
 	
 	protected void add(Holder<V> holder) {
-		if (_contents.containsKey(holder.name())) {
-			_contents.get(holder.name()).add(holder);
+		if (_contents.containsKey(new ITContentName(holder.name()))) {
+			_contents.get(new ITContentName(holder.name())).add(holder);
 		} else {
 			ArrayList<Holder<V>> list = new ArrayList<Holder<V>>(1);
 			list.add(holder);
-			_contents.put(holder.name(), list);
+			_contents.put(new ITContentName(holder.name()), list);
 		}	
 	}
 	
 	protected Holder<V> getMatchByName(ContentName name, ContentObject target) {
 		Library.logger().finest("name: " + name + " target: " + target.name());
-		List<Holder<V>> list = _contents.get(name);
+		List<Holder<V>> list = _contents.get(new ITContentName(name));
 		if (null != list) {
 			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
 				Holder<V> holder = holdIt.next();
@@ -137,7 +164,7 @@ public class InterestTable<V> {
 	protected List<Holder<V>> getAllMatchByName(ContentName name, ContentObject target) {
 		Library.logger().finest("name: " + name + " target: " + target.name());
 		List<Holder<V>> matches = new ArrayList<Holder<V>>();
-		List<Holder<V>> list = _contents.get(name);
+		List<Holder<V>> list = _contents.get(new ITContentName(name));
 		if (null != list) {
 			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
 				Holder<V> holder = holdIt.next();
@@ -153,7 +180,7 @@ public class InterestTable<V> {
 
 	protected Holder<V> removeMatchByName(ContentName name, ContentObject target) {
 		Library.logger().finest("name: " + name + " target: " + target.name());
-		List<Holder<V>> list = _contents.get(name);
+		List<Holder<V>> list = _contents.get(new ITContentName(name));
 		if (null != list) {
 			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
 				Holder<V> holder = holdIt.next();
@@ -161,7 +188,7 @@ public class InterestTable<V> {
 					if (holder.interest().matches(target)) {
 						holdIt.remove();
 						if (list.size() == 0) {
-							_contents.remove(name);
+							_contents.remove(new ITContentName(name));
 						}
 						return holder;
 					}
@@ -179,7 +206,7 @@ public class InterestTable<V> {
 	 */
 	public Entry<V> remove(ContentName name, V value) {
 		Holder<V> result = null;
-		List<Holder<V>> list = _contents.get(name);
+		List<Holder<V>> list = _contents.get(new ITContentName(name));
 		if (null != list) {
 			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
 				Holder<V> holder = holdIt.next();
@@ -207,7 +234,7 @@ public class InterestTable<V> {
 	 */
 	public Entry<V> remove(Interest interest, V value) {
 		Holder<V> result = null;
-		List<Holder<V>> list = _contents.get(interest.name());
+		List<Holder<V>> list = _contents.get(new ITContentName(interest.name()));
 		if (null != list) {
 			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
 				Holder<V> holder = holdIt.next();
@@ -231,7 +258,7 @@ public class InterestTable<V> {
 	
 	protected List<Holder<V>> removeAllMatchByName(ContentName name, ContentObject target) {
 		List<Holder<V>> matches = new ArrayList<Holder<V>>();
-		List<Holder<V>> list = _contents.get(name);
+		List<Holder<V>> list = _contents.get(new ITContentName(name));
 		if (null != list) {
 			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
 				Holder<V> holder = holdIt.next();
@@ -243,7 +270,7 @@ public class InterestTable<V> {
 				}	
 			}
 			if (list.size() == 0) {
-				_contents.remove(name);
+				_contents.remove(new ITContentName(name));
 			}
 		}
 		return matches;
@@ -281,8 +308,8 @@ public class InterestTable<V> {
 	public Entry<V> getMatch(ContentObject target) {
 		Library.logger().finest("target: " + target.name());
 		Entry<V> match = null;
-		for (ContentName name : _contents.keySet()) {
-			Entry<V> found = getMatchByName(name, target);
+		for (ITContentName name : _contents.keySet()) {
+			Entry<V> found = getMatchByName(name.name(), target);
 			if (null != found)
 				match = found;
 	    }
@@ -321,9 +348,9 @@ public class InterestTable<V> {
 
 		List<Entry<V>> matches = new ArrayList<Entry<V>>();
 		if (null != target) {
-			for (ContentName name : _contents.keySet()) {
+			for (ITContentName name : _contents.keySet()) {
 				// Name match - is there an interest match here?
-				matches.addAll(getAllMatchByName(name, target));
+				matches.addAll(getAllMatchByName(name.name(), target));
 			}
 			Collections.reverse(matches);
 		}
@@ -360,8 +387,8 @@ public class InterestTable<V> {
 		Library.logger().finest("target: " + target);
 
 		Entry<V> match = null;
-		for (ContentName name : _contents.keySet()) {
-			if (name.isPrefixOf(target)) {
+		for (ITContentName name : _contents.keySet()) {
+			if (name.name().isPrefixOf(target)) {
 				match = _contents.get(name).get(0);
 			}
 	    }
@@ -392,8 +419,8 @@ public class InterestTable<V> {
 		Library.logger().finest("target: " + target);
 
 		List<Entry<V>> matches = new ArrayList<Entry<V>>();
-		for (ContentName name : _contents.keySet()) {
-			if (name.isPrefixOf(target)) {
+		for (ITContentName name : _contents.keySet()) {
+			if (name.name().isPrefixOf(target)) {
 				matches.addAll(_contents.get(name));
 			}
 	    }
@@ -408,8 +435,8 @@ public class InterestTable<V> {
 	 */
 	public Collection<Entry<V>> values() {
 		List<Entry<V>> results =  new ArrayList<Entry<V>>();
-		for (Iterator<ContentName> keyIt = _contents.keySet().iterator(); keyIt.hasNext();) {
-			ContentName name = (ContentName) keyIt.next();
+		for (Iterator<ITContentName> keyIt = _contents.keySet().iterator(); keyIt.hasNext();) {
+			ITContentName name = (ITContentName) keyIt.next();
 			List<Holder<V>> list = _contents.get(name);
 			results.addAll(list);
 		}
@@ -444,11 +471,11 @@ public class InterestTable<V> {
 		Entry<V> match = null;
 		if (null != target) {
 			ContentName matchName = null;
-			for (ContentName name : _contents.keySet()) {
-				Entry<V> found = getMatchByName(name, target);
+			for (ITContentName name : _contents.keySet()) {
+				Entry<V> found = getMatchByName(name.name(), target);
 				if (null != found) {
 					match = found;
-					matchName = name;
+					matchName = name.name();
 				}
 				// Do not remove here -- need to find best match and avoid disturbing iterator
 			}
@@ -489,11 +516,11 @@ public class InterestTable<V> {
 	public List<Entry<V>> removeMatches(ContentObject target) {
 		List<Entry<V>> matches = new ArrayList<Entry<V>>();
 		List<ContentName> names = new ArrayList<ContentName>();
-		for (ContentName name : _contents.keySet()) {
-			if (name.isPrefixOf(target.name())) {
+		for (ITContentName name : _contents.keySet()) {
+			if (name.name().isPrefixOf(target.name())) {
 				// Name match - is there an interest match here?
-				matches.addAll(getAllMatchByName(name, target));
-				names.add(name);
+				matches.addAll(getAllMatchByName(name.name(), target));
+				names.add(name.name());
 			}
 	    }
 	    if (matches.size() != 0) {
@@ -513,8 +540,8 @@ public class InterestTable<V> {
 	 */
 	public int size() {
 		int result = 0;
-	    for (Iterator<ContentName> nameIt = _contents.keySet().iterator(); nameIt.hasNext();) {
-			ContentName name = nameIt.next();
+	    for (Iterator<ITContentName> nameIt = _contents.keySet().iterator(); nameIt.hasNext();) {
+			ITContentName name = nameIt.next();
 			List<Holder<V>> list = _contents.get(name);
 			result += list.size();
 	    }

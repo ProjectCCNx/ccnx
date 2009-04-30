@@ -47,6 +47,14 @@ public class InterestTableTest {
 	// of the InterestTable.  This global parameter permits the conditions
 	// to be varied for different runs of the same code.
 	static public boolean removeByMatch = true;
+	
+	// additionalComponents controls the number of additionalComponents
+	// to use during the additionalComponents testing
+	static public Integer additionalComponents = 1;
+	
+	// prefixCount controls the prefixCount
+	// to use during the prefixCount testing
+	static public Integer prefixCount = 1;
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -132,6 +140,10 @@ public class InterestTableTest {
 		return getContentObject(name, activeKeyID);
 	}
 	
+	/*
+	 * Note: This method appends an automatically generated random element onto the end of the
+	 * input content name
+	 */
 	private ContentObject getContentObject(ContentName name, PublisherPublicKeyDigest pub) throws ConfigurationException, InvalidKeyException, SignatureException, MalformedContentNameStringException {
 		// contents = current date value
 		Timestamp now = SignedInfo.now();
@@ -538,4 +550,169 @@ public class InterestTableTest {
 		noRemoveMatch(names, "/a/b/b/a");
 		sizes(names, 6, 5);
 	}
+	
+	private enum InterestType {Next, Last, Prefix, AdditionalNameComponents, Exclude};
+	
+	private InterestTable<Integer> initInterest(InterestType type) throws MalformedContentNameStringException {
+		InterestTable<Integer> table = new InterestTable<Integer>();
+		addEntry(table, a, type, new Integer(1));
+		addEntry(table, ab, type, new Integer(2));
+		addEntry(table, c, type, new Integer(3));
+		addEntry(table, b, type, new Integer(4));
+		addEntry(table, a_bb, type, new Integer(5));
+		addEntry(table, _aa, type, new Integer(6));
+		addEntry(table, abc, type, new Integer(7));
+
+		sizes(table, 7, 7);
+		return table;
+	}
+	
+	private void addEntry(InterestTable<Integer> table, String name, InterestType type, Integer value) throws MalformedContentNameStringException {
+		Interest i = new Interest(ContentName.fromNative(name));
+		switch (type) {
+		case Next:
+			i.orderPreference(Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME);
+			break;
+		case Last:
+			i.orderPreference(Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME);
+			break;
+		case Prefix:
+			i.nameComponentCount(prefixCount);
+			break;
+		case AdditionalNameComponents:
+			i.additionalNameComponents(additionalComponents);
+			break;
+		}
+		table.add(i, value);
+	}
+	
+	@Test
+	public void testMatchNext() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
+		matchNextOrLast(InterestType.Next);
+	}
+	
+	@Test
+	public void testMatchLast() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
+		matchNextOrLast(InterestType.Last);
+	}
+
+	public void matchNextOrLast(InterestType type) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
+		InterestTable<Integer> names = initInterest(type);
+		
+		setID(1);
+		noMatch(names, zero);
+		match(names, "/a/b/b/a", 2);
+		matches(names, "/a/b/b/a", new String[] {ab, a}, new int[] {2, 1});
+		noMatch(names, "/d");
+		match(names, "/c/c", 3);
+	}
+	
+	/*
+	 * Note by paul r. We can't easily test "additionalNameComponents = 1" because
+	 * "getContent" appends an arbitrary component to the names it creates and we won't have an
+	 * Interest that matches that.
+	 */
+	@Test
+	public void testAdditionalNameComponents() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
+		additionalComponents = 2;
+		InterestTable<Integer> names = initInterest(InterestType.AdditionalNameComponents);
+		
+		setID(1);
+		match(names, abc, 7);
+		match(names, ab, 2);
+		match(names, a, 1);
+		noMatch(names, "/a/b/c/d");
+		
+		additionalComponents = 3;
+		names = initInterest(InterestType.AdditionalNameComponents);
+		match(names, abc, 2);
+		match(names, ab, 1);
+		noMatch(names, a);
+	}
+	
+	@Test
+	public void testRemoveAdditionalNameComponents() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
+		additionalComponents = 2;
+		InterestTable<Integer> names = initInterest(InterestType.AdditionalNameComponents);
+		
+		setID(1);
+		noRemoveMatch(names, "/a/b/c/d");
+		removeMatch(names, abc, 7);
+		removeMatch(names, ab, 2);
+		removeMatch(names, a, 1);
+		sizes(names, 4, 4);
+		
+		additionalComponents = 3;
+		names = initInterest(InterestType.AdditionalNameComponents);
+		removeMatch(names, abc, 2);
+		removeMatch(names, ab, 1);
+		noRemoveMatch(names, a);
+		sizes(names, 5, 5);
+	}
+	
+	@Test
+	public void testPrefixes() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
+		prefixCount = 1;
+		InterestTable<Integer> names = initInterest(InterestType.Prefix);
+		
+		setID(1);
+		matches(names, abc, new String[] {abc, a_bb, ab, a}, new int[] {7, 5, 2, 1});
+		match(names, "/b/c/d", 4);
+		noMatch(names, "/d");
+		
+		prefixCount = 2;
+		names = initInterest(InterestType.Prefix);
+		matches(names, abc, new String[] {abc, ab}, new int[] {7, 2});
+		match(names, a_bb, 5);
+		noMatch(names, a);
+	}
+	
+	
+	@Test
+	public void testRemovePrefixes() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
+		prefixCount = 1;
+		InterestTable<Integer> names = initInterest(InterestType.Prefix);
+		
+		setID(1);
+		noRemoveMatch(names, "/d");
+		removeMatch(names, abc, 7);
+		removeMatch(names, "/b/c/d", 4);
+		sizes(names, 5, 5);
+		
+		prefixCount = 2;
+		names = initInterest(InterestType.Prefix);
+		removeMatch(names, abc, 7);
+		removeMatch(names, a_bb, 5);
+		noRemoveMatch(names, a);
+		sizes(names, 5, 5);
+	}
+	
+	private void runRemovesNextOrLast(InterestType type) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
+		InterestTable<Integer> names = initInterest(type);
+		
+		noRemoveMatch(names, zero);
+		removeMatch(names, "/a/b/b/a", 2);
+		sizes(names, 6, 6);
+		noRemoveMatch(names, "/d");
+		removeMatch(names, "/c/c", 3);
+	}
+	
+	@Test
+	public void testRemovesNext() throws InvalidKeyException, MalformedContentNameStringException, SignatureException, ConfigurationException {
+		removeByMatch = true;
+		runRemovesNextOrLast(InterestType.Next);
+		
+		removeByMatch = false;
+		runRemovesNextOrLast(InterestType.Next);
+	}
+	
+	@Test
+	public void testRemovesLast() throws InvalidKeyException, MalformedContentNameStringException, SignatureException, ConfigurationException {
+		removeByMatch = true;
+		runRemovesNextOrLast(InterestType.Last);
+		
+		removeByMatch = false;
+		runRemovesNextOrLast(InterestType.Last);
+	}
+
 }
