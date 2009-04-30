@@ -8,6 +8,7 @@ import java.security.PrivateKey;
 import java.security.Security;
 import java.security.SignatureException;
 import java.util.ArrayList;
+import java.util.Random;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -69,7 +70,11 @@ public class CCNLibrary extends CCNBase {
 	 * Do we want to do this this way, or everything static?
 	 */
 	protected KeyManager _userKeyManager = null;
-
+	
+	/**
+	 * For nonce generation
+	 */
+	protected static Random _random = new Random();
 	
 	public static CCNLibrary open() throws ConfigurationException, IOException { 
 		synchronized (CCNLibrary.class) {
@@ -706,5 +711,11 @@ public class CCNLibrary extends CCNBase {
 		ContentName cocn = content.name().clone();
 		cocn.components().add(content.contentDigest());
 		return new ContentName(prefixCount, cocn.components());
+	}
+	
+	public static byte[] nonce() {
+		byte [] nonce = new byte[32];
+		_random.nextBytes(nonce);
+		return nonce;
 	}
 }
