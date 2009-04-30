@@ -118,7 +118,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	}
 	
 	public CCNAbstractInputStream(ContentObject starterBlock, 			
-			CCNLibrary library)  {
+			CCNLibrary library) throws IOException  {
 		super();
 		if (null == starterBlock) {
 			throw new IllegalArgumentException("starterBlock cannot be null!");
@@ -127,7 +127,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		if (null == _library) {
 			_library = CCNLibrary.getLibrary();
 		}
-		_currentBlock = starterBlock;
+		setCurrentBlock(starterBlock);
 		_publisher = starterBlock.signedInfo().getPublisherKeyID();
 		_baseName = SegmentationProfile.segmentRoot(starterBlock.name());
 		try {
@@ -140,7 +140,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	public CCNAbstractInputStream(ContentObject starterBlock, 			
 			String encryptionAlgorithm, 
 			SecretKeySpec encryptionKey, IvParameterSpec masterIV,
-			CCNLibrary library) throws NoSuchAlgorithmException, NoSuchPaddingException {
+			CCNLibrary library) throws NoSuchAlgorithmException, NoSuchPaddingException, IOException {
 
 		this(starterBlock, library);
 		
