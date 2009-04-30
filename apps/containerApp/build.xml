@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This is an ant project file, see http://ant.apache.org/ -->
+
+<project default="jar" name="containerApp">
+
+	<!-- To avoid conflict with Eclipse, we build in 'build' not 'bin' -->
+	<property name="build" location="build"/>
+
+	<property name="jarfile-base" value="containerApp.jar"/>
+	<property name="jarfile" location="${jarfile-base}"/>
+        <property name="java-ccn" location="../../Java_CCN"/>
+        <property name="ccnjar" location="${java-ccn}/ccn.jar"/>
+
+	<property name="build-excludes" value="bin/**, log/**, lib/**, libsrc/**, build/**, testout/**, ktrace.out, CCN_DEBUG_DATA/**"/>
+
+        <import file="${java-ccn}/libs.xml"/>
+
+	<path id="classpath">
+                <path refid="ccn-classpath"/>
+                <pathelement location="${ccnjar}"/>
+        </path>
+
+	<target name="compile">
+		<mkdir dir="${build}"/>
+		<depend srcdir="." destdir="${build}" closure="yes"/>
+		<javac destdir="${build}"
+              srcdir="." excludes="${build-excludes}"
+              source="1.5" compiler="javac1.5" debug="on">
+			<classpath>
+				<path refid="classpath"/>
+			</classpath>
+		</javac>
+		<copy todir="${build}">
+			<fileset dir="." excludes="${build-excludes}, **/*.java"/>
+		</copy>
+	</target>
+
+	<target name="jar" depends="compile">
+		<jar compress="true" jarfile="${jarfile}" basedir="${build}">
+			<exclude name="**/.classpath"/>
+			<exclude name="**/.project"/>
+			<exclude name="repository/**"/>
+			<exclude name="${jarfile-base}"/>
+		</jar>
+	</target>
+
+	<target name="clean-test">
+		<delete dir="${testout}"/>
+	</target>
+
+	<target name="clean" depends="clean-test">
+		<delete dir="${build}"/>
+	</target>
+
+</project>
+
