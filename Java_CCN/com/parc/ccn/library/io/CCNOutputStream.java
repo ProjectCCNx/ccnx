@@ -271,43 +271,54 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		if (null == _timestamp)
 			_timestamp = SignedInfo.now();
 
-		// Two cases: if we're flushing only a single block, we can put it out with a 
-		// straight signature without a Merkle Tree. The reading/verification code will
-		// cope just fine with a single file written in a mix of MHT and straight signature
+		// First, are we flushing dangling blocks (e.g. on close())? If not, we always
+		// keep at least a partial block behind. There are two reasons for this; first to
+		// ensure we always write full blocks until the end, and second, to allow us to
+		// mark the last block as such. So adjust the number of blocks to write
+		// accordingly. 
 		boolean preservePartial = false;
 		int saveBytes = 0;
+		
+		// Now, we have a partially or completely full buffer. Do we have a partial last block we want to preserve?
+		// If we're not flushing, we want to save a final block (whole or partial) and move
+		// it down.
+		if (!flushLastBlock) {
+			saveBytes = _blockOffset % getBlockSize();
+			if (0 == saveBytes) {
+				saveBytes = getBlockSize(); // full last block, save it anyway so can mark as last.
+			}
+			preservePartial = true;
+		} // otherwise saveBytes = 0, so ok
+		
+		// Three cases -- 
+		// 1) we have nothing to flush (0 bytes or < a single block) (handled above)
+		// 2) we're flushing a single block and can put it out with a straight signature
+		// 3) we're flushing more than one block, and need to use a bulk signer.
+		// The reading/verification code will
+		// cope just fine with a single file written in a mix of bulk and straight signature
 		// verified blocks.
-		if (_blockOffset <= getBlockSize()) {
+		if ((_blockOffset - saveBytes) <= getBlockSize()) {
 			// Single block to write. If we get here, we are forcing a flush (see above
 			// discussion about holding back partial or even a single full block till
 			// forced flush/close in order to set finalBlockID).
 
-			Library.logger().info("flush: asked to put a single block to the network.");
+			Library.logger().info("flush: asked to put a single block to the network, are we finishing the file? " + flushLastBlock + ".");
 
 			// DKS TODO -- think about types, freshness, fix markers for impending last block/first block
-			if (_blockOffset < getBlockSize()) {
-				Library.logger().warning("flush(): writing hanging partial last block of file: " + _blockOffset + " bytes, block total is " + getBlockSize() + ", called by close().");
+			if ((_blockOffset - saveBytes) < getBlockSize()) {
+				Library.logger().warning("flush(): writing hanging partial last block of file: " + (_blockOffset-saveBytes) + " bytes, block total is " + getBlockSize() + ", holding back " + saveBytes + " bytes, called by close? " + flushLastBlock);
 			} else {
-				Library.logger().warning("flush(): writing single full block of file: " + _baseName);
+				Library.logger().warning("flush(): writing single full block of file: " + _baseName + ", holding back " + saveBytes + " bytes.");
 			}
 			_baseNameIndex = 
 				_segmenter.putFragment(_baseName, _baseNameIndex, 
-					_buffer, 0, _blockOffset, 
-					_type, _timestamp, null, _baseNameIndex, 
+					_buffer, 0, (_blockOffset-saveBytes), 
+					_type, _timestamp, null, (flushLastBlock ? _baseNameIndex : null), 
 					_locator, _publisher);
 		} else {
-			// Now, we have a partially or completely full buffer. Do we have a partial last block we want to preserve?
-			// If we're not flushing, we want to save a final block (whole or partial) and move
-			// it down.
-			if (!flushLastBlock) {
-				saveBytes = _blockOffset % getBlockSize();
-				if (0 == saveBytes) {
-					saveBytes = getBlockSize(); // full last block, save it anyway so can mark as last.
-				}
-				preservePartial = true;
-			} // otherwise saveBytes = 0, so ok
-
-			Library.logger().info("flush: putting merkle tree to the network, " + _blockOffset + 
+			Library.logger().info("flush: putting merkle tree to the network, baseName " + _baseName +
+					" basenameindex " + ContentName.componentPrintURI(SegmentationProfile.getSegmentID(_baseNameIndex)) + "; " 
+					+ _blockOffset + 
 					" bytes written, holding back " + saveBytes + " flushing final blocks? " + flushLastBlock + ".");
 			// Generate Merkle tree (or other auth structure) and signedInfos and put contents.
 			// We always flush all the blocks starting from 0, so the baseBlockIndex is always 0.
@@ -321,11 +332,12 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 
 		if (preservePartial) {
 			System.arraycopy(_buffer, _blockOffset-saveBytes, _buffer, 0, saveBytes);
-			Arrays.fill(_buffer, saveBytes, _buffer.length, (byte)0);
 			_blockOffset = saveBytes;
 		} else {
 			_blockOffset = 0;
 		}
+		// zeroise unused bytes
+		Arrays.fill(_buffer, _blockOffset, _buffer.length, (byte)0);
 	}
 	
 	protected long lengthWritten() { 
