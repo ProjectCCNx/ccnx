@@ -338,7 +338,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		}
 		// DKS TODO FIX - use get left child; the following is a first stab at that.
 		Library.logger().info("getFirstBlock: getting " + _baseName);
-		ContentObject result =  _library.getLower(_baseName, 2, _timeout);
+		ContentObject result =  _library.getLeftmostLower(_baseName, 2, _timeout);
 		if (null != result){
 			Library.logger().info("getFirstBlock: retrieved " + result.name() + " type: " + result.signedInfo().getTypeName());
 			// Now need to verify the block we got

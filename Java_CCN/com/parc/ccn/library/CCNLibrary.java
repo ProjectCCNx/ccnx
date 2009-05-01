@@ -548,6 +548,23 @@ public class CCNLibrary extends CCNBase {
 	}
 	
 	/**
+	 * Return data the specified number of levels below us in the
+	 * hierarchy, with order preference leftmost.
+	 * DKS -- this might need to move to Interest.
+	 * @param name
+	 * @param level
+	 * @param timeout
+	 * @return
+	 * @throws IOException
+	 */
+	public ContentObject getLeftmostLower(ContentName name, int level, long timeout) throws IOException {
+		Interest interest = new Interest(name);
+		interest.additionalNameComponents(level);
+		interest.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME | Interest.ORDER_PREFERENCE_LEFT);
+		return get(interest, timeout);
+	}
+
+	/**
 	 * Enumerate matches below query name in the hierarchy
 	 * TODO: maybe filter out fragments, possibly other metadata.
 	 * TODO: add in communication layer to talk just to
