@@ -148,8 +148,17 @@ public class CCNInputStream extends CCNAbstractInputStream {
 		while (lenToRead > 0) {
 			if (null == _blockReadStream) {
 				Library.logger().severe("Unexpected null block read stream!");
-			} else if (0 == _blockReadStream.available()) {
-				// DKS make sure we don't miss a byte...
+			}
+			if (null != buf) {  // use for skip
+				Library.logger().finest("before block read: content length "+_currentBlock.contentLength()+" position "+ tell() +" available: " + _blockReadStream.available() + " dst length "+buf.length+" dst index "+offset+" len to read "+lenToRead);
+				// Read as many bytes as we can
+				readCount = _blockReadStream.read(buf, offset, lenToRead);
+			} else {
+				readCount = _blockReadStream.skip(lenToRead);
+			}
+
+			if (readCount <= 0) {
+				Library.logger().info("Tried to read at end of block, go get next block.");
 				setCurrentBlock(getNextBlock());
 				if (null == _currentBlock) {
 					Library.logger().info("next block was null, setting _atEOF, returning " + ((lenRead > 0) ? lenRead : -1));
@@ -161,17 +170,6 @@ public class CCNInputStream extends CCNAbstractInputStream {
 				}
 				Library.logger().info("now reading from block: " + _currentBlock.name() + " length: " + 
 						_currentBlock.contentLength());
-			}
-			if (null != buf) {  // use for skip
-				Library.logger().finest("before block read: content length "+_currentBlock.contentLength()+" position "+ tell() +" available: " + _blockReadStream.available() + " dst length "+buf.length+" dst index "+offset+" len to read "+lenToRead);
-				// Read as many bytes as we can
-				readCount = _blockReadStream.read(buf, offset, lenToRead);
-			} else {
-				readCount = _blockReadStream.skip(lenToRead);
-			}
-			
-			if (readCount < 0) {
-				Library.logger().info("Tried to read at end of block, go get next block.");
 			} else {
 				offset += readCount;
 				lenToRead -= readCount;
