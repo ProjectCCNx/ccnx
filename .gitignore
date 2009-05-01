@@ -58,3 +58,7 @@ ccnd/tests/SKIPPED
 ccnd/tests/STATUS/
 ccnd/tests/deps.out
 ccnd/tests/sorted-deps.out
+apps/containerApp/bin/
+apps/containerApp/log/
+apps/Mediator/bin/
+Java_CCN/daemon_cmd.txt
