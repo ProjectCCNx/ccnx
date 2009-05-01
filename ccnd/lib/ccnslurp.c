@@ -1,5 +1,5 @@
 /*
- * Attempts pull everything in a branch of the ccn hierarchy.
+ * Attempts pull everything in a branch of the ccn name hierarchy.
  * (actually, will miss some stuff)
  */
 #include <errno.h>
@@ -34,6 +34,21 @@ static enum ccn_upcall_res incoming_content(struct ccn_closure *selfp,
                                             enum ccn_upcall_kind kind,
                                             struct ccn_upcall_info *);
 static struct ccn_charbuf *ccn_charbuf_duplicate(struct ccn_charbuf *);
+static void answer_passive(struct ccn_charbuf *templ);
+
+/* Global */
+static struct ccn_charbuf *passive_templ;
+static struct ccn_charbuf *
+create_passive_templ(void)
+{
+    struct ccn_charbuf *templ = ccn_charbuf_create();
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
+    ccn_charbuf_append_closer(templ); /* </Name> */
+    answer_passive(templ);
+    ccn_charbuf_append_closer(templ); /* </Interest> */
+    return(templ);
+}
 
 /*
  * Comparison operator for sorting the excl list with qsort.
@@ -181,7 +196,7 @@ incoming_content(
         ccn_name_append_components(c, ccnb,
                                    comps->buf[0],
                                    comps->buf[matched_comps + 1]);
-        ccn_express_interest(info->h, c, -1, cl, NULL);
+        ccn_express_interest(info->h, c, -1, cl, passive_templ);
     }
     else {
         res = ccn_uri_append(uri, info->content_ccnb, info->pco->offset[CCN_PCO_E], 1);
@@ -193,6 +208,19 @@ incoming_content(
     ccn_charbuf_destroy(&c);
     ccn_charbuf_destroy(&uri);
     return(0);
+}
+
+/*
+ * Append AnswerOriginKind=1 to partially constructed Interest, meaning
+ * do not generate new content.
+ */
+static void
+answer_passive(struct ccn_charbuf *templ)
+{
+    ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
+    ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
+    ccn_charbuf_append(templ, "1", 1);
+    ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
 }
 
 /*
@@ -224,10 +252,7 @@ express_my_interest(struct ccn *h,
     if ((data->flags & EXCLUDE_HIGH) != 0)
         append_bf_all(templ);
     ccn_charbuf_append_closer(templ); /* </Exclude> */
-    ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
-    ccn_charbuf_append(templ, "1", 1);
-    ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
+    answer_passive(templ);
     ccn_charbuf_append_closer(templ); /* </Interest> */
     if (templ->length + name->length > data->warn + 2) {
         fprintf(stderr, "*** Interest packet is %d bytes\n", (int)templ->length);
@@ -333,6 +358,7 @@ main(int argc, char **argv)
     if (argv[1] == NULL || argv[2] != NULL)
         usage(argv[0]);
 
+    passive_templ = create_passive_templ();
     c = ccn_charbuf_create();
     res = ccn_name_from_uri(c, argv[1]);
     if (res < 0) {
@@ -353,7 +379,7 @@ main(int argc, char **argv)
     cl = calloc(1, sizeof(*cl));
     cl->p = &incoming_content;
     cl->data = data;
-    ccn_express_interest(ccn, c, -1, cl, NULL);
+    ccn_express_interest(ccn, c, -1, cl, passive_templ);
     cl = NULL;
     data = NULL;
     ccn_charbuf_destroy(&c);
@@ -365,5 +391,6 @@ main(int argc, char **argv)
             break;
     }
     ccn_destroy(&ccn);
+    ccn_charbuf_destroy(&passive_templ);
     exit(0);
 }
