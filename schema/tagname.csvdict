@@ -55,6 +55,7 @@
 68,KeyAlgorithm
 69,Label
 70,EncryptedKey
+71,EncryptedNonceKey
 2048,Address
 2049,SOType
 2050,Inject
