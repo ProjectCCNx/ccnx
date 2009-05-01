@@ -185,7 +185,7 @@
 
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
-					<include name="test/ccn/library/*Test.class"/>
+					<include name="test/ccn/library/**/*Test.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
