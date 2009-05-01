@@ -55,7 +55,6 @@ public class RepositoryDaemon extends Daemon {
 	private ArrayList<NameAndListener> _repoFilters = new ArrayList<NameAndListener>();
 	private ArrayList<DataListener> _currentListeners = new ArrayList<DataListener>();
 	private ExcludeFilter _markerFilter;
-	private ArrayList<Interest> _ackRequests = new ArrayList<Interest>();
 	private CCNWriter _writer = null;
 	
 	public static final int PERIOD = 2000; // period for interest timeout check in ms.
@@ -88,6 +87,7 @@ public class RepositoryDaemon extends Daemon {
 		private boolean _sawBlock = false;
 		private ContentName _headerName = null;
 		private Interest _headerInterest = null;
+		private ArrayList<Interest> _ackRequests = new ArrayList<Interest>();
 		
 		private DataListener(Interest origInterest, Interest interest) {
 			_origInterest = interest;
@@ -199,7 +199,7 @@ public class RepositoryDaemon extends Daemon {
 									 * If an ack had already been requested answer it now.  Otherwise
 									 * add to the unacked queue to get ready for later ack.
 									 */
-									Iterator<Interest> iterator = _ackRequests.iterator();
+									Iterator<Interest> iterator = listener._ackRequests.iterator();
 									boolean found = false;
 									while (iterator.hasNext()) {
 										Interest interest = iterator.next();
@@ -245,7 +245,6 @@ public class RepositoryDaemon extends Daemon {
 					
 					ContentName ackResult = new ContentName(interest.name().count() - 1, interest.name().components());
 					Interest ackInterest = new Interest(ackResult);
-					boolean noMatch = true;
 					ArrayList<ContentName> names = new ArrayList<ContentName>();
 					synchronized(_currentListeners) {
 						for (DataListener listener : _currentListeners) {
@@ -260,9 +259,20 @@ public class RepositoryDaemon extends Daemon {
 									break;
 								}
 							}
-							if (!found)
+							if (!found) {
+								/*
+								 * If the ack request matches our original interest, assume it arrived
+								 * before any unacked data and we will use it to ack the data when it arrives
+								 * 
+								 * XXX should we care about publisherID here?  And if so, how can
+								 * we do this?
+								 */
+								if (ackInterest.matches(listener._interest.name(), null)) {
+									listener._ackRequests.add(ackInterest);
+									break;
+								}
 								continue;
-							noMatch = false;
+							}
 							
 							/*
 							 * For now just send back all the names we have in one package
@@ -272,13 +282,10 @@ public class RepositoryDaemon extends Daemon {
 								names.add(co.name());
 							}
 							listener._unacked.clear();
+							_writer.put(interest.name(), _repo.getRepoInfo(names));
 							break;
 						}
 					}
-					if (noMatch)
-						_ackRequests.add(ackInterest);
-					else
-						_writer.put(interest.name(), _repo.getRepoInfo(names));
 				}
 				else if(interest.name().contains(CCNNameEnumerator.NEMARKER)){
 					//the name enumerator marker won't be at the end if the interest is a followup (created with .last())
