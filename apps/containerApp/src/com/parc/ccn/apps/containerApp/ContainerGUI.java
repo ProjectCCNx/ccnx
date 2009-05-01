@@ -60,6 +60,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 	protected JPopupMenu m_popup;
 	protected Action m_action;
 	protected TreePath m_clickedPath;
+	private DefaultMutableTreeNode usableRoot = null;
 	
 	
 	public ContainerGUI() {
@@ -70,7 +71,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 		setSize(400, 300);
 
 		DefaultMutableTreeNode top = new DefaultMutableTreeNode(new IconData(
-				ICON_COMPUTER, null, "parc.com"));
+				ICON_COMPUTER, null, "/parc.com"));
 
 		DefaultMutableTreeNode node = null;
 		// get whatever things I need at this point
@@ -78,9 +79,10 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 
 		try {
 			node = new DefaultMutableTreeNode(new IconData(ICON_FOLDER, null,
-					new Name("/files", ContentName
+					new Name("files", ContentName
 							.fromNative("/parc.com"))));
 			node.add(new DefaultMutableTreeNode( new Boolean(true) ));
+			usableRoot = node;
 		} catch (MalformedContentNameStringException e1) {
 			// TODO Auto-generated catch block
 			System.out.println("Error in the content name");
@@ -158,9 +160,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 						ros.close();
 					} catch (IOException ex) {
 					}
-					retrieveFromRepo(selectedPrefix + "/"+ file.getName());
-					//readFile(ContentName.fromNative(selectedPrefix + "/"+ file.getName()));
-					
+					retrieveFromRepo(selectedPrefix + "/"+ file.getName());		
 				} catch (MalformedContentNameStringException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -294,13 +294,15 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 			System.out.println("as a contentname: "+fileName.toString());
 			System.out.println("file name is: "+localName);
 
-			ContentObject testContent = null;
-			while(testContent==null){
-				System.out.println("attempting _library.get...");
-				testContent = _library.get(new Interest(name), 10000);
+			System.out.println("attempting _library.get...");
+			ContentObject testContent = _library.get(new Interest(name), 10000);
+			if(testContent.content()!=null){
+				FileOutputStream fs = new FileOutputStream(localName);
+			
+				fs.write(testContent.content());
 			}
-			FileOutputStream fs = new FileOutputStream(localName);
-			fs.write(testContent.content());
+			else
+				System.out.println("testContent.content was null for: "+fileName.toString());
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -308,8 +310,9 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-	
 	}
+	
+	
 	
 	
 	public void sendFile(String filename) {
@@ -327,8 +330,6 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 			ros.write(buffer);
 			ros.close();
 
-			readFile(ContentName.fromNative(filename));
-
 		} catch (MalformedContentNameStringException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -342,32 +343,6 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 
 	}
 
-	public void readFile(ContentName name) {
-		// TODO Auto-generated method stub
-
-		// Now read the file and write it out
-
-		String[] items = (name.toString()).split("/");
-		String fileName = items[items.length - 1];
-		System.out.println("file name is " + fileName);
-
-		try {
-			ContentObject testContent = _library.get(new Interest(name),
-					10000);
-
-			FileOutputStream fs = new FileOutputStream(fileName);
-			fs.write(testContent.content());
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
-		// open up the file for testing
-
-		// Desktop desktop = Desktop.getDesktop();
-		// desktop.open(new File(fileName));
-
-	}
 
 	private void initHelp() {
 		String s = "TreeHelp.html";
@@ -409,7 +384,64 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 		}
 
 	}
+	
+	DefaultMutableTreeNode getTreeNode(ContentName ccnContentName){
+		DefaultMutableTreeNode node = null;
+		
+		System.out.println("handling returned names!!! prefix = "+ccnContentName.toString());
+		TreePath prefixPath = new TreePath(usableRoot);
+		
+		System.out.println("prefix path: "+prefixPath.toString());
+		ArrayList<byte[]> nbytes = ccnContentName.components();
+		String[] names = new String[nbytes.size()];
+		int ind = 0;
+		for(byte[] n: nbytes){
+			names[ind] = new String(n);
+			ind++;
+		}
+		DefaultMutableTreeNode p = find(prefixPath, 1, names);
+		
+		return p;
+	}
 
+	private DefaultMutableTreeNode find(TreePath parent, int depth, String[] names){
+		DefaultMutableTreeNode node = (DefaultMutableTreeNode)parent.getLastPathComponent();
+		String nodeName = node.toString();
+		System.out.println("check nodeName: "+nodeName);
+		System.out.println("names[depth] "+ names[depth]);
+		
+		if(names[depth].equals(nodeName)){
+			System.out.println("we have a match!");
+			if(depth == names.length - 1){
+				System.out.println("we are at the right depth! returning this node!");
+				return node;
+			}
+			else{
+				System.out.println("need to keep digging...");
+				if(node.getChildCount() >= 0){
+					for(Enumeration e = node.children(); e.hasMoreElements();){
+						DefaultMutableTreeNode n = (DefaultMutableTreeNode)e.nextElement();
+						TreePath path = parent.pathByAddingChild(n);
+						DefaultMutableTreeNode result = find(path, depth+1, names);
+						if(result!=null)
+							return result;
+						else
+							System.out.println("result was null...  :(");
+					}
+					
+				}
+			}
+		}
+		else{
+			System.out.println("not a match...");
+		}
+		
+		
+		return null;
+	}
+	
+	
+	
 	DefaultMutableTreeNode getTreeNode(TreePath path) {
 		return (DefaultMutableTreeNode) (path.getLastPathComponent());
 	}
@@ -511,13 +543,13 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 			if (((fnode.toString()).split("\\.")).length > 1) {
 				// populate the repo and get it back
 				//sendFile("/parc.com/files/test.txt");
-				retrieveFromRepo(fnode.path.toString()+fnode.name);
+				retrieveFromRepo(fnode.path.toString()+"/"+fnode.name);
 				//removes leading /
-				displayText(fnode.name.substring(1));
+				displayText(fnode.name);
 			} else {
 				//this is a directory that we want to enumerate...
 				System.out.println("this is the path: "+ fnode.path.toString()+" this is the name: "+fnode.name);
-				String p = fnode.path.toString() + fnode.name;
+				String p = fnode.path.toString() + "/"+fnode.name;
 				System.out.println("Registering Prefix: " + p);
 				registerPrefix(p);
 				selectedPrefix = p;
@@ -540,32 +572,57 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 		// DefaultMutableTreeNode top = new DefaultMutableTreeNode(
 		// new IconData(ICON_COMPUTER, null, "parc.com/files"));
 
-		DefaultMutableTreeNode selectednode = (DefaultMutableTreeNode) tree
-				.getLastSelectedPathComponent();
-
-		selectednode.removeAllChildren();
+		DefaultMutableTreeNode parentNode = getTreeNode(prefix);
+		if(parentNode == null){
+			System.out.println("PARENT NODE IS NULL!!!"+ prefix.toString());
+			System.out.println("can't add anything to a null parent...  cancel prefix and return");
+			_nameEnumerator.cancelPrefix(prefix);
+			return;
+		}
 
 		DefaultMutableTreeNode node;
 		// while we are getting things, wait for stuff to happen
 		System.out.println("Getting Content Names");
+		DefaultMutableTreeNode temp = null;
+		boolean addToParent = true;
+		DefaultMutableTreeNode toRemove = null;
 		for (ContentName cn : n) {
-			// FileNode nd = (FileNode)v.elementAt(i);
-			// IconData idata = new IconData(FileTree2.ICON_FOLDER,
-			// FileTree2.ICON_EXPANDEDFOLDER, nd);
-			// DefaultMutableTreeNode node = new
-			// DefaultMutableTreeNode(idata);
-			// parent.add(node);
-
-			if (((cn.toString()).split("\\.")).length > 1) {
-				node = new DefaultMutableTreeNode(new IconData(ICON_DOCUMENT,
-						null, new Name(cn.toString(), prefix)));
-			} else {
-				node = new DefaultMutableTreeNode(new IconData(ICON_FOLDER,
-						null, new Name(cn.toString(), prefix)));
-				node.add(new DefaultMutableTreeNode(new Boolean(true)));
+			addToParent = true;
+			System.out.println("parent starts with "+parentNode.getChildCount()+" children");
+			if(parentNode.getChildCount()>0){
+				for(Enumeration e = parentNode.children(); e.hasMoreElements();){
+					//check if this name is already in there!
+					temp = (DefaultMutableTreeNode)e.nextElement();
+					
+					if(temp.getUserObject() instanceof Boolean){
+						toRemove = temp;
+					}
+					else{	
+						System.out.println("temp: "+temp.toString());
+						if(temp.toString().equals(cn.toString().substring(1))){
+							addToParent = false;
+							System.out.println("name was already there...  don't add again!");
+						}
+					}
+				}
+				if(toRemove!=null)
+					parentNode.remove(toRemove);
 			}
-			//node.add(new DefaultMutableTreeNode(new Boolean(true)));
-			selectednode.add(node);
+			if(addToParent){
+				//name wasn't there, don't add again
+				if (((cn.toString()).split("\\.")).length > 1) {
+					node = new DefaultMutableTreeNode(new IconData(ICON_DOCUMENT,
+							null, new Name(cn.toString().substring(1), prefix)));
+				} else {
+					node = new DefaultMutableTreeNode(new IconData(ICON_FOLDER,
+							null, new Name(cn.toString().substring(1), prefix)));
+					node.add(new DefaultMutableTreeNode(new Boolean(true)));
+				}
+				parentNode.add(node);
+			}
+			System.out.println("the parent node now has "+parentNode.getChildCount()+" children");
+			
+				
 		}
 		System.out.println("Done Getting Content Names");
 	}
@@ -586,18 +643,10 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 
 	}
 
-	public void cancelPrefix(ContentName prefix) {
-		System.out.println("cancel prefix: " + prefix);
-		_nameEnumerator.cancelPrefix(prefix);
-	}
-
 	public void registerPrefix(String prefix) {
 
 		System.out.println("registering prefix: " + prefix);
 
-		if (currentPrefix != null) {
-			cancelPrefix(currentPrefix);
-		}
 		try {
 			currentPrefix = ContentName.fromNative(prefix);
 			_nameEnumerator.registerPrefix(currentPrefix);
