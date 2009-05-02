@@ -524,10 +524,28 @@ public class CCNLibrary extends CCNBase {
 	public ContentObject getLatestVersion(ContentName name, PublisherPublicKeyDigest publisher, long timeout) throws IOException {
 		
 		if (VersioningProfile.isVersioned(name)) {
-			return getLatest(name, timeout);
+			return getVersionInternal(name, timeout);
 		} else {
 			ContentName firstVersionName = VersioningProfile.versionName(name, VersioningProfile.baseVersion());
-			return getLatest(firstVersionName, timeout);
+			return getVersionInternal(firstVersionName, timeout);
+		}
+	}
+	
+	private ContentObject getVersionInternal(ContentName name, long timeout) throws InvalidParameterException, IOException {
+		ArrayList<byte[]> excludeList = new ArrayList<byte[]>();
+		while (true) {
+			byte[][] excludes = null;
+			if (excludeList.size() > 0) {
+				excludes = new byte[excludeList.size()][];
+				excludeList.toArray(excludes);
+			}
+			ContentObject co = getLatest(name, excludes, timeout);
+			if (co == null)
+				return co;
+			if (VersioningProfile.versionRoot(co.name()).equals(name)) {
+				return co;
+			}
+			excludeList.add(co.name().component(name.count() - 1));
 		}
 	}
 

@@ -55,8 +55,8 @@ public class CCNDescriptor {
 		if (!VersioningProfile.isVersioned(nameToOpen)) {
 			// if publisherID is null, will get any publisher
 			ContentObject latestVersion = library.getLatestVersion(nameToOpen, publisher, CCNAbstractInputStream.MAX_TIMEOUT);
-			nameToOpen = 
-				SegmentationProfile.segmentRoot(latestVersion.name());
+			if (null != latestVersion)
+				nameToOpen = SegmentationProfile.segmentRoot(latestVersion.name());
 		}
 
 		_input = new CCNInputStream(nameToOpen, publisher, library);
