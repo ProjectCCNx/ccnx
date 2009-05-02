@@ -24,6 +24,7 @@ import com.parc.ccn.data.query.BasicNameEnumeratorListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNNameEnumerator;
+import com.parc.ccn.library.io.CCNFileOutputStream;
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 
 public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
@@ -153,8 +154,11 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 				
 				System.out.println("Writing a file to the repo " + file.getAbsolutePath() + " " + file.getName());
 				System.out.println("Selected Node is " + selectedPrefix);
-
-				try {
+				
+				try{
+					ContentName contentName = ContentName.fromNative(selectedPrefix + "/" + file.getName());
+					sendFile(file, contentName);
+					/*
 					System.out.println("Sending file " + selectedPrefix + "/"
 							+ file.getName());
 					RepositoryOutputStream ros = _library.repoOpen(ContentName
@@ -164,17 +168,20 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 					byte[] buffer = new byte[fs.available()];
 					fs.read(buffer);
 					ros.write(buffer);
-					ros.close();	
+					ros.close();
+					*/	
 				} catch (MalformedContentNameStringException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
-				} catch (IOException e) {
+				}
+				/*catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				} catch (XMLStreamException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
+				*/
 
 			}
 		}
@@ -315,24 +322,22 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 	
 	
 	
-	public void sendFile(String filename) {
+	public void sendFile(File file, ContentName ccnName) {
 		// doing this to send it to repo and then get it back and read it
 
-		System.out.println("Writing a file to the repo " + filename);
-		System.out.println("Selected Node is " + selectedPrefix);
+		System.out.println("Writing a file to the repo " + file.getName()+" with contentName: "+ccnName.toString());
+		
 		
 		try {
-			System.out.println("Sending repo a file " + filename);
-			RepositoryOutputStream ros = _library.repoOpen(ContentName
-					.fromNative(filename), null, _library.getDefaultPublisher());
-			String content = "Test content for reading a file from the repo";
-			byte[] buffer = content.getBytes();
-			ros.write(buffer);
-			ros.close();
-
-		} catch (MalformedContentNameStringException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			FileInputStream fs = new FileInputStream(file);
+			byte[] buffer = new byte[fs.available()];
+			fs.read(buffer);
+			CCNFileOutputStream fos = new CCNFileOutputStream(ccnName, null,  _library.getDefaultPublisher(), _library);
+			fos.write(buffer);
+			fos.close();
+			//RepositoryOutputStream ros = _library.repoOpen(ccnName, null, _library.getDefaultPublisher());
+			//ros.write(buffer);
+			//ros.close();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
