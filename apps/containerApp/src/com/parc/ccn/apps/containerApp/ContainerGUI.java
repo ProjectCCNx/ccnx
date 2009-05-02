@@ -24,8 +24,8 @@ import com.parc.ccn.data.query.BasicNameEnumeratorListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNNameEnumerator;
-import com.parc.ccn.library.io.CCNFileOutputStream;
-import com.parc.ccn.library.io.repo.RepositoryOutputStream;
+import com.parc.ccn.library.io.CCNFileInputStream;
+import com.parc.ccn.library.io.repo.RepositoryFileOutputStream;
 
 public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 
@@ -301,15 +301,28 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 			System.out.println("as a contentname: "+fileName.toString());
 			System.out.println("file name is: "+localName);
 
-			System.out.println("attempting _library.get...");
+			//byte[] readBytes = null;
+			
+			System.out.println("attempting _library.get... for now...  until streams are working");
 			ContentObject testContent = _library.get(new Interest(name), 10000);
-			if(testContent.content()!=null){
+						
+			//CCNFileInputStream fis = new CCNFileInputStream(fileName, _library);
+			
+			//readBytes = new byte[testContent.contentLength()];
+			//int index = 0;
+			
+			if(testContent.content()!=null && testContent.isData()){
+				System.out.println("testContent length = "+testContent.contentLength());
 				FileOutputStream fs = new FileOutputStream(localName);
 			
+				//fs.write(testContent.content());
+				//fs.write(readBytes);
 				fs.write(testContent.content());
+				//System.out.println("as string... "+new String(readBytes));
+				
 			}
 			else
-				System.out.println("testContent.content was null for: "+fileName.toString());
+				System.out.println("testContent.content was null or returned object was not of type data for: "+fileName.toString());
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -332,14 +345,13 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 			FileInputStream fs = new FileInputStream(file);
 			byte[] buffer = new byte[fs.available()];
 			fs.read(buffer);
-			CCNFileOutputStream fos = new CCNFileOutputStream(ccnName, null,  _library.getDefaultPublisher(), _library);
+			RepositoryFileOutputStream fos = new RepositoryFileOutputStream(ccnName, null,  _library.getDefaultPublisher(), _library);
 			fos.write(buffer);
 			fos.close();
-			//RepositoryOutputStream ros = _library.repoOpen(ccnName, null, _library.getDefaultPublisher());
-			//ros.write(buffer);
-			//ros.close();
+
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
+			System.out.println("error writing file to repo");
 			e.printStackTrace();
 		} catch (XMLStreamException e) {
 			// TODO Auto-generated catch block
