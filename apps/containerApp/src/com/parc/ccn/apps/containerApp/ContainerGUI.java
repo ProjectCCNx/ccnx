@@ -135,11 +135,22 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 			public void actionPerformed(ActionEvent evt) {
 				// Show dialog; this method does not return until dialog is
 				// closed
-				chooser.showOpenDialog(frame);
+				int returnVal = chooser.showOpenDialog(frame);
 
 				// Get the selected file
 				File file = chooser.getSelectedFile();
-
+				if(file == null || file.getName().equals("")){
+					System.out.println("the user did not select a file");
+					return;
+				}
+				
+				//what if the user hits cancel...
+				if(returnVal != JFileChooser.APPROVE_OPTION){
+					System.out.println("user cancelled the send to repo option...  returning");
+					return;
+				}
+					
+				
 				System.out.println("Writing a file to the repo " + file.getAbsolutePath() + " " + file.getName());
 				System.out.println("Selected Node is " + selectedPrefix);
 
@@ -271,10 +282,6 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 		addWindowListener(wndCloser);
 
 		setVisible(true);
-
-		// fix this later so I don't stop the whole show...
-		System.out.println("Registering Prefix");
-		registerPrefix("/parc.com/files");
 
 	}
 	
