@@ -542,7 +542,7 @@ public class CCNLibrary extends CCNBase {
 			ContentObject co = getLatest(name, excludes, timeout);
 			if (co == null)
 				return co;
-			if (VersioningProfile.versionRoot(co.name()).equals(name)) {
+			if (VersioningProfile.versionRoot(co.name()).equals(VersioningProfile.versionRoot(name))) {
 				return co;
 			}
 			excludeList.add(co.name().component(name.count() - 1));
