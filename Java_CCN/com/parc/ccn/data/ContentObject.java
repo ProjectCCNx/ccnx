@@ -122,7 +122,12 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		_name = name;
 		_signedInfo = signedInfo;
 		_content = new byte[length];
-		int count = contentStream.read(_content);
+		int count = 0;
+		while (count < length) {
+			int result = contentStream.read(_content);
+			if (result <=0) break;
+			count += result;
+		}
 		if (count < _content.length) {
 			if (count < 0) {
 				throw new IOException("End of stream reached when building content object!");
