@@ -107,9 +107,6 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 		TreeCellRenderer renderer = new IconCellRenderer();
 		tree.setCellRenderer(renderer);
 
-		// tree.addTreeExpansionListener(new
-		// DirExpansionListener());
-
 		tree.addTreeSelectionListener(new DirSelectionListener());
 
 		tree.getSelectionModel().setSelectionMode(
@@ -156,11 +153,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 					byte[] buffer = new byte[fs.available()];
 					fs.read(buffer);
 					ros.write(buffer);
-					try {
-						ros.close();
-					} catch (IOException ex) {
-					}
-					retrieveFromRepo(selectedPrefix + "/"+ file.getName());		
+					ros.close();	
 				} catch (MalformedContentNameStringException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -588,7 +581,6 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 		DefaultMutableTreeNode toRemove = null;
 		for (ContentName cn : n) {
 			addToParent = true;
-			System.out.println("parent starts with "+parentNode.getChildCount()+" children");
 			if(parentNode.getChildCount()>0){
 				for(Enumeration e = parentNode.children(); e.hasMoreElements();){
 					//check if this name is already in there!
@@ -597,19 +589,25 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 					if(temp.getUserObject() instanceof Boolean){
 						toRemove = temp;
 					}
-					else{	
-						System.out.println("temp: "+temp.toString());
-						if(temp.toString().equals(cn.toString().substring(1))){
-							addToParent = false;
-							System.out.println("name was already there...  don't add again!");
+					else{
+						if(temp.getUserObject() instanceof IconData){
+							IconData id = (IconData)temp.getUserObject();
+							System.out.println("check names: "+((Name)(id.m_data)).toString()+" "+cn.toString().substring(1));
+							if(((Name)(id.m_data)).toString().equals(cn.toString().substring(1))){
+							//if(temp.toString().equals(cn.toString().substring(1))){
+								addToParent = false;
+							}
 						}
 					}
 				}
-				if(toRemove!=null)
-					parentNode.remove(toRemove);
+				if(toRemove!=null){
+					m_model.removeNodeFromParent(toRemove);
+					toRemove = null;
+				}
 			}
 			if(addToParent){
 				//name wasn't there, don't add again
+				System.out.println("added as child: "+cn.toString());
 				if (((cn.toString()).split("\\.")).length > 1) {
 					node = new DefaultMutableTreeNode(new IconData(ICON_DOCUMENT,
 							null, new Name(cn.toString().substring(1), prefix)));
@@ -618,12 +616,13 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 							null, new Name(cn.toString().substring(1), prefix)));
 					node.add(new DefaultMutableTreeNode(new Boolean(true)));
 				}
-				parentNode.add(node);
-			}
-			System.out.println("the parent node now has "+parentNode.getChildCount()+" children");
-			
+
+				m_model.insertNodeInto(node, parentNode, parentNode.getChildCount());
+
 				
+			}
 		}
+		System.out.println("the parent node now has "+parentNode.getChildCount()+" children");
 		System.out.println("Done Getting Content Names");
 	}
 
@@ -688,5 +687,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 		g2.dispose();
 		return resizedImg;
 	}
+
+
 	
 }
