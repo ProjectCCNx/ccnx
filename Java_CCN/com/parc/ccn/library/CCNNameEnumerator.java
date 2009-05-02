@@ -213,8 +213,10 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			newInterest.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME);// | Interest.ORDER_PREFERENCE_RIGHT);
 			newInterest.nameComponentCount(interest.nameComponentCount());
 			NERequest ner = getCurrentRequest(interest.name().cut(NEMARKER));
-			ner.removeInterest(interest);
-			ner.addInterest(newInterest);
+			if (ner != null) {
+				ner.removeInterest(interest);
+				ner.addInterest(newInterest);
+			}
 			/*
 			 System.out.println("new interest name: "+newInterest.name()+" total components: "+newInterest.name().count());
 			 
