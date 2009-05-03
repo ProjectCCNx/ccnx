@@ -39,7 +39,7 @@ _manifester:
 
 MANIFEST: _manifester
 	echo MANIFEST > MANIFEST.new
-	sh _manifester | grep -v -e '/$$' -e 'agent/5586.ccnb.gz' >> MANIFEST.new
+	sh _manifester | grep -v -e '/$$' >> MANIFEST.new
 	mv MANIFEST.new MANIFEST
 	rm _manifester
 
