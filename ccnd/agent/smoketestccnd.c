@@ -3,9 +3,9 @@
  * Simple program for smoke-test of ccnd
  * Author: Michael Plass
  */
-#include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <netdb.h>
 #include <poll.h>
 #include <signal.h>
 #include <stdint.h>
@@ -13,15 +13,23 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <sys/socket.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/un.h>
 #include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <sys/stat.h>
+#include <sys/un.h>
+
+#if defined(NEED_GETADDRINFO_COMPAT)
+    #include "getaddrinfo.h"
+    #include "dummyin6.h"
+#endif
 
 #include <ccn/ccnd.h>
 
-void printraw(char *p, int n)
+static void
+printraw(char *p, int n)
 {
     int i, l;
     while (n > 0) {
@@ -37,11 +45,108 @@ void printraw(char *p, int n)
     }
 }
 
+static void
+setup_sockaddr_un(const char *portstr, struct sockaddr_un *result)
+{
+    struct sockaddr_un *sa = result;
+    memset(sa, 0, sizeof(*sa));
+    sa->sun_family = AF_UNIX;
+    if (portstr != NULL && atoi(portstr) > 0 && atoi(portstr) != 4485)
+        snprintf(sa->sun_path, sizeof(sa->sun_path),
+            CCN_DEFAULT_LOCAL_SOCKNAME ".%s", portstr);
+    else
+        snprintf(sa->sun_path, sizeof(sa->sun_path),
+            CCN_DEFAULT_LOCAL_SOCKNAME);
+}
+
+static int
+open_local(struct sockaddr_un *sa)
+{
+    int sock;
+    int res;
+    
+    sock = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (sock == -1) {
+        perror("socket");
+        exit(1);
+    }
+    res = connect(sock, (struct sockaddr *)sa, sizeof(*sa));
+    if (res == -1 && errno == ENOENT) {
+        /* Retry after a delay in case ccnd was just starting up. */
+        sleep(1);
+        res = connect(sock, (struct sockaddr *)sa, sizeof(*sa));
+    }
+    if (res == -1) {
+        perror((char *)sa->sun_path);
+        exit(1);
+    }
+    return(sock);
+}
+
+static int
+open_socket(const char *host, const char *portstr, int sock_type)
+{
+    int res;
+    int sock = 0;
+    char canonical_remote[NI_MAXHOST] = "";
+    struct addrinfo *addrinfo = NULL;
+    struct addrinfo *myai = NULL;
+    struct addrinfo hints = {0};
+
+    if (portstr == NULL || portstr[0] == 0)
+        portstr = "4485";
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = sock_type;
+    hints.ai_flags = 0;
+#ifdef AI_ADDRCONFIG
+    hints.ai_flags |= AI_ADDRCONFIG;
+#endif
+#ifdef AI_NUMERICSERV
+    hints.ai_flags |= AI_NUMERICSERV;
+#endif
+    res = getaddrinfo(host, portstr, &hints, &addrinfo);
+    if (res != 0 || addrinfo == NULL) {
+        fprintf(stderr, "getaddrinfo(\"%s\", \"%s\", ...): %s\n",
+                host, portstr, gai_strerror(res));
+        exit(1);
+    }
+
+    res = getnameinfo(addrinfo->ai_addr, addrinfo->ai_addrlen,
+                      canonical_remote, sizeof(canonical_remote), NULL, 0, 0);
+    
+    sock = socket(addrinfo->ai_family, addrinfo->ai_socktype, 0);
+    if (sock == -1) {
+        perror("socket");
+        exit(1);
+    }
+    hints.ai_family = addrinfo->ai_family;
+    hints.ai_flags = AI_PASSIVE;
+#ifdef AI_NUMERICSERV
+    hints.ai_flags |= AI_NUMERICSERV;
+#endif
+    res = getaddrinfo(NULL, NULL, &hints, &myai);
+    if (myai != NULL) {
+        res = bind(sock, (struct sockaddr *)myai->ai_addr, myai->ai_addrlen);
+        if (res == -1) {
+            perror("bind");
+            exit(1);
+        }
+    }
+    res = connect(sock, (struct sockaddr *)addrinfo->ai_addr, addrinfo->ai_addrlen);
+    if (res == -1) {
+        perror(canonical_remote);
+        exit(1);
+    }
+    freeaddrinfo(addrinfo);
+    freeaddrinfo(myai);
+    return (sock);
+}
+
 char rawbuf[1024*1024];
 int main(int argc, char **argv)
 {
-    int c;
     struct sockaddr_un addr = {0};
+    int c;
     struct pollfd fds[1];
     int res;
     ssize_t sres;
@@ -54,16 +159,26 @@ int main(int argc, char **argv)
     int fd;
     FILE *msgs = stdout;
     int binout = 0;
-    while ((c = getopt(argc, argv, "bht:")) != -1) {
+    int udp = 0;
+    const char *host = NULL;
+    while ((c = getopt(argc, argv, "bht:u:")) != -1) {
         switch (c) {
-            default:
             case 'b':
                 binout = 1;
                 msgs = stderr;
                 break;
+	    case 't':
+		msec = atoi(optarg);
+		break;
+	    case 'u':
+		udp = 1;
+                host = optarg;
+		break;
             case 'h':
+            default:
                 fprintf(stderr, "Usage %s %s\n", argv[0],
-                            " [-b] "
+                            " [-b(inaryout)] "
+                            " [-u udphost] "
                             " [-t millisconds] "
                             " ( send <filename>"
                             " | recv"
@@ -71,35 +186,15 @@ int main(int argc, char **argv)
                             " | timeo <millisconds>"
                             " ) ...");
                 exit(1);
-	    case 't':
-		msec = atoi(optarg);
-		break;
         }
     }
     argp = optind;
-    sock = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (sock == -1) {
-        perror("socket");
-        exit(1);
-    }
     portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
-    if (portstr != NULL && atoi(portstr) > 0 && atoi(portstr) != 4485)
-        snprintf(addr.sun_path, sizeof(addr.sun_path),
-            CCN_DEFAULT_LOCAL_SOCKNAME ".%s", portstr);
+    setup_sockaddr_un(portstr, &addr);
+    if (udp)
+        sock = open_socket(host, portstr, SOCK_DGRAM);
     else
-        snprintf(addr.sun_path, sizeof(addr.sun_path),
-            CCN_DEFAULT_LOCAL_SOCKNAME);
-    addr.sun_family = AF_UNIX;
-    res = connect(sock, (struct sockaddr *)&addr, sizeof(addr));
-    if (res == -1 && errno == ENOENT) {
-        /* Retry after a delay in case ccnd was just starting up. */
-        sleep(1);
-        res = connect(sock, (struct sockaddr *)&addr, sizeof(addr));
-    }
-    if (res == -1) {
-        perror((char *)addr.sun_path);
-        exit(1);
-    }
+        sock = open_local(&addr);
     fds[0].fd = sock;
     fds[0].events = POLLIN;
     fds[0].revents = 0;
