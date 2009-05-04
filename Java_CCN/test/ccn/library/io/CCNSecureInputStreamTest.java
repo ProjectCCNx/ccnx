@@ -10,7 +10,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Random;
 import java.util.logging.Level;
 
-import javax.crypto.NoSuchPaddingException;
 import javax.xml.stream.XMLStreamException;
 
 import org.junit.Assert;
@@ -73,10 +72,9 @@ public class CCNSecureInputStreamTest {
 	 * @throws XMLStreamException
 	 * @throws IOException
 	 * @throws NoSuchAlgorithmException
-	 * @throws NoSuchPaddingException 
 	 * @throws InterruptedException 
 	 */
-	public static byte [] writeFileFloss(ContentName completeName, int fileLength, Random randBytes, ContentKeys keys) throws XMLStreamException, IOException, NoSuchAlgorithmException, NoSuchPaddingException, InterruptedException {
+	public static byte [] writeFileFloss(ContentName completeName, int fileLength, Random randBytes, ContentKeys keys) throws XMLStreamException, IOException, NoSuchAlgorithmException, InterruptedException {
 		CCNOutputStream stockOutputStream = new CCNOutputStream(completeName, null, null, keys, null, outputLibrary);
 		
 		DigestOutputStream digestStreamWrapper = new DigestOutputStream(stockOutputStream, MessageDigest.getInstance("SHA1"));
@@ -126,7 +124,7 @@ public class CCNSecureInputStreamTest {
 	    return t;
 	}
 	
-	public static byte [] readFile(ContentName completeName, int fileLength, ContentKeys keys) throws XMLStreamException, IOException, NoSuchAlgorithmException, NoSuchPaddingException {
+	public static byte [] readFile(ContentName completeName, int fileLength, ContentKeys keys) throws XMLStreamException, IOException {
 		CCNInputStream inputStream = new CCNInputStream(completeName, null, null, keys, null);
 		System.out.println("Reading file : " + completeName);
 		return readFile(inputStream, fileLength);
@@ -167,7 +165,7 @@ public class CCNSecureInputStreamTest {
 	}
 	
 	@Test
-	public void testInputStream() throws NoSuchAlgorithmException, NoSuchPaddingException {
+	public void testInputStream() {
 		// Test other forms of read in superclass test.
 		try {
 			// check we can get identical data back out

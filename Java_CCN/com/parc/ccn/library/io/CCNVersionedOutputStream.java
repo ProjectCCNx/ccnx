@@ -1,9 +1,7 @@
 package com.parc.ccn.library.io;
 
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
 
-import javax.crypto.NoSuchPaddingException;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.data.ContentName;
@@ -26,7 +24,7 @@ public class CCNVersionedOutputStream extends CCNOutputStream {
 
 	public CCNVersionedOutputStream(ContentName name, KeyLocator locator,
 			PublisherPublicKeyDigest publisher, ContentKeys keys, CCNLibrary library)
-			throws XMLStreamException, IOException, NoSuchAlgorithmException, NoSuchPaddingException {
+			throws XMLStreamException, IOException {
 		this(name, locator, publisher, null, new CCNSegmenter(new CCNFlowControl(name, library), null, keys));
 	}
 

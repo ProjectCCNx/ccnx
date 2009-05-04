@@ -5,12 +5,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
-import javax.crypto.NoSuchPaddingException;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
@@ -94,21 +92,14 @@ public abstract class CCNAbstractInputStream extends InputStream {
 			ContentName baseName, Long startingBlockIndex,
 			ContentKeys keys,
 			PublisherPublicKeyDigest publisher, CCNLibrary library) 
-					throws XMLStreamException, IOException, NoSuchAlgorithmException, NoSuchPaddingException {
+					throws XMLStreamException, IOException {
 		
 		this(baseName, startingBlockIndex, publisher, library);
 		
 		if (null != keys) {
-			if (!keys.encryptionAlgorithm.equals(ContentKeys.DEFAULT_CIPHER_ALGORITHM)) {
-				Library.logger().warning("Right now the only encryption algorithm we support is: " + 
-						ContentKeys.DEFAULT_CIPHER_ALGORITHM + ", " + keys.encryptionAlgorithm + 
-						" will come later.");
-				throw new NoSuchAlgorithmException("Right now the only encryption algorithm we support is: " + 
-						ContentKeys.DEFAULT_CIPHER_ALGORITHM + ", " + keys.encryptionAlgorithm + 
-						" will come later.");
-			}
-			_cipher = Cipher.getInstance(keys.encryptionAlgorithm);
+			keys.OnlySupportDefaultAlg();
 			_keys = keys;
+			_cipher = keys.getCipher();
 		}
 	}
 	
@@ -134,20 +125,13 @@ public abstract class CCNAbstractInputStream extends InputStream {
 
 	public CCNAbstractInputStream(ContentObject starterBlock, 			
 			ContentKeys keys,
-			CCNLibrary library) throws NoSuchAlgorithmException, NoSuchPaddingException, IOException {
+			CCNLibrary library) throws IOException {
 
 		this(starterBlock, library);
 		
-		if (!keys.encryptionAlgorithm.equals(ContentKeys.DEFAULT_CIPHER_ALGORITHM)) {
-			Library.logger().warning("Right now the only encryption algorithm we support is: " + 
-					ContentKeys.DEFAULT_CIPHER_ALGORITHM + ", " + keys.encryptionAlgorithm + 
-					" will come later.");
-			throw new NoSuchAlgorithmException("Right now the only encryption algorithm we support is: " + 
-					ContentKeys.DEFAULT_CIPHER_ALGORITHM + ", " + keys.encryptionAlgorithm + 
-					" will come later.");
-		}
-		_cipher = Cipher.getInstance(keys.encryptionAlgorithm);
+		keys.OnlySupportDefaultAlg();
 		_keys = keys;
+		_cipher = keys.getCipher();
 	}
 
 	public void setTimeout(int timeout) {
@@ -194,10 +178,6 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	 * Called after getBlock/getFirstBlock/getNextBlock, which take care of verifying
 	 * the block for us. So we assume newBlock is valid.
 	 * @throws IOException 
-	 * @throws NoSuchPaddingException 
-	 * @throws NoSuchAlgorithmException 
-	 * @throws InvalidAlgorithmParameterException 
-	 * @throws InvalidKeyException 
 	 */
 	protected void setCurrentBlock(ContentObject newBlock) throws IOException {
 		_currentBlock = null;
@@ -221,12 +201,6 @@ public abstract class CCNAbstractInputStream extends InputStream {
 			} catch (InvalidAlgorithmParameterException e) {
 				Library.logger().warning("InvalidAlgorithmParameterException: " + e.getMessage());
 				throw new IOException("InvalidAlgorithmParameterException: " + e.getMessage());
-			} catch (NoSuchAlgorithmException e) {
-				Library.logger().warning("Unexpected NoSuchAlgorithmException using an algorithm we have already verified! " +  _cipher.getAlgorithm());
-				throw new IOException("Unexpected NoSuchAlgorithmException using an algorithm we have already verified! " +  _cipher.getAlgorithm());
-			} catch (NoSuchPaddingException e) {
-				Library.logger().warning("Unexpected NoSuchPaddingException using an algorithm we have already verified! " +  _cipher.getAlgorithm());
-				throw new IOException("Unexpected NoSuchPaddingException using an algorithm we have already verified! " +  _cipher.getAlgorithm());
 			}
 			_blockReadStream = new CipherInputStream(_currentBlockStream, _cipher);
 		} else {

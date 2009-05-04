@@ -5,7 +5,6 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -14,7 +13,6 @@ import java.util.Random;
 import java.util.concurrent.Semaphore;
 import java.util.logging.Level;
 
-import javax.crypto.NoSuchPaddingException;
 import javax.xml.stream.XMLStreamException;
 
 import org.junit.Before;
@@ -136,13 +134,11 @@ public class LibraryTestBase {
 	 * @throws InterruptedException
 	 * @throws MalformedContentNameStringException
 	 * @throws IOException
-	 * @throws NoSuchAlgorithmException 
 	 * @throws SignatureException 
 	 * @throws InvalidKeyException 
 	 * @throws XMLStreamException 
-	 * @throws NoSuchPaddingException 
 	 */
-	public void getResults(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException, NoSuchPaddingException {
+	public void getResults(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, XMLStreamException {
 		Random rand = new Random();
 	//	boolean done = false;
 		System.out.println("getResults: getting children of " + baseName);
@@ -183,11 +179,9 @@ public class LibraryTestBase {
 	 * @throws MalformedContentNameStringException 
 	 * @throws SignatureException 
 	 * @throws XMLStreamException 
-	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
-	 * @throws NoSuchPaddingException 
 	 */
-	public void doPuts(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException {
+	public void doPuts(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException {
 
 		CCNWriter writer = new CCNWriter(baseName, library);
 		Random rand = new Random();

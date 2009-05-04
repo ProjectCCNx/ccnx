@@ -1,10 +1,8 @@
 package com.parc.ccn.library.io;
 
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 
-import javax.crypto.NoSuchPaddingException;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
@@ -58,7 +56,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 
 	public CCNFileInputStream(ContentName name, Long startingBlockIndex,
 			PublisherPublicKeyDigest publisher, ContentKeys keys, CCNLibrary library)
-			throws XMLStreamException, IOException, NoSuchAlgorithmException, NoSuchPaddingException {
+			throws XMLStreamException, IOException {
 		super(name, startingBlockIndex, publisher, keys, library);
 		// Asynchronously attempt to retrieve a header block, if one exists.
 		retrieveHeader(_baseName, (null != publisher) ? new PublisherID(publisher) : null);

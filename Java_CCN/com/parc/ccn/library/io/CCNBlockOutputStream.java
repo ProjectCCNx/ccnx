@@ -6,7 +6,6 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 
-import javax.crypto.NoSuchPaddingException;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.data.ContentName;
@@ -67,7 +66,7 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type,
 			KeyLocator locator, PublisherPublicKeyDigest publisher,
 			ContentKeys keys, CCNFlowControl flowControl)
-			throws XMLStreamException, IOException, NoSuchAlgorithmException, NoSuchPaddingException {
+			throws XMLStreamException, IOException {
 		super(locator, publisher, new CCNSegmenter(flowControl, new CCNBlockSigner(), keys));
 		init(baseName, type);
 	}

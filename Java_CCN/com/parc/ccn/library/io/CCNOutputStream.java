@@ -8,7 +8,6 @@ import java.security.SignatureException;
 import java.sql.Timestamp;
 import java.util.Arrays;
 
-import javax.crypto.NoSuchPaddingException;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
@@ -68,7 +67,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 
 	public CCNOutputStream(ContentName name, 
 			KeyLocator locator, PublisherPublicKeyDigest publisher, ContentKeys keys,
-			ContentType type, CCNLibrary library) throws XMLStreamException, IOException, NoSuchAlgorithmException, NoSuchPaddingException {
+			ContentType type, CCNLibrary library) throws XMLStreamException, IOException {
 		this(name, locator, publisher, type, new CCNSegmenter(new CCNFlowControl(name, library),
 				null, keys));
 	}

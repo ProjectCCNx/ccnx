@@ -1,9 +1,7 @@
 package com.parc.ccn.library.io;
 
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
 
-import javax.crypto.NoSuchPaddingException;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.data.ContentName;
@@ -79,13 +77,7 @@ public class CCNDescriptor {
 			nameToOpen = 
 				VersioningProfile.versionName(nameToOpen);
 		}
-		try {
-			_output = new CCNOutputStream(nameToOpen, locator, publisher, null, null, library);
-		} catch (NoSuchAlgorithmException e) {
-			throw new RuntimeException(e);
-		} catch (NoSuchPaddingException e) {
-			throw new RuntimeException(e);
-		}
+		_output = new CCNOutputStream(nameToOpen, locator, publisher, null, null, library);
 	}
 
 	public int available() throws IOException {

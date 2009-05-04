@@ -1,9 +1,7 @@
 package com.parc.ccn.library.io;
 
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
 
-import javax.crypto.NoSuchPaddingException;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
@@ -52,7 +50,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 
 	public CCNInputStream(ContentName name, Long startingBlockIndex, PublisherPublicKeyDigest publisher, 
 			ContentKeys keys, CCNLibrary library) throws XMLStreamException,
-			IOException, NoSuchAlgorithmException, NoSuchPaddingException {
+			IOException {
 
 		super(name, startingBlockIndex, keys, publisher, library);
 	}
