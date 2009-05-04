@@ -16,6 +16,7 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
+import com.parc.ccn.library.io.CCNDescriptor;
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.network.daemons.repo.RFSImpl;
@@ -33,10 +34,19 @@ import com.parc.ccn.network.daemons.repo.RepositoryException;
 public class RepoIOTest extends RepoTestBase {
 	
 	protected static String _repoTestDir = "repotest";
+	protected static byte [] data = new byte[4000];
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		RepoTestBase.setUpBeforeClass();
+		byte value = 1;
+		for (int i = 0; i < data.length; i++)
+			data[i] = value++;
+		RepositoryOutputStream ros = putLibrary.repoOpen(ContentName.fromNative("/testNameSpace/stream"), 
+														null, putLibrary.getDefaultPublisher());
+		ros.setBlockSize(100);
+		ros.write(data, 0, data.length);
+		ros.close();
 	}
 	
 	@AfterClass
@@ -100,15 +110,6 @@ public class RepoIOTest extends RepoTestBase {
 	@Test
 	public void testWriteToRepo() throws Exception {
 		System.out.println("Testing writing streams to repo");
-		byte [] data = new byte[4000];
-		byte value = 1;
-		for (int i = 0; i < data.length; i++)
-			data[i] = value++;
-		RepositoryOutputStream ros = putLibrary.repoOpen(ContentName.fromNative("/testNameSpace/stream"), 
-														null, putLibrary.getDefaultPublisher());
-		ros.setBlockSize(100);
-		ros.write(data, 0, data.length);
-		ros.close();
 		Thread.sleep(5000);
 		for (int i = 0; i < 40; i++) {
 			byte [] testData = new byte[100];
@@ -118,6 +119,16 @@ public class RepoIOTest extends RepoTestBase {
 						+ RFSImpl.ENCODED_FILES + "/0testNameSpace/0stream"), testData, i, true));
 			}
 		}
+	}
+	
+	@Test
+	public void testReadFromRepo() throws Exception {
+		System.out.println("Testing reading a stream from the repo");
+		Thread.sleep(5000);
+		CCNDescriptor input = new CCNDescriptor(ContentName.fromNative("/testNameSpace/stream"), null, getLibrary);
+		byte[] testBytes = new byte[data.length];
+		input.read(testBytes);
+		Assert.assertArrayEquals(data, testBytes);
 	}
 	
 	private void checkData(ContentName name, String data) throws IOException, InterruptedException{
