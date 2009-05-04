@@ -556,6 +556,13 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 			// prefix.toString()+cn.toString();
 
 			Name fnode = getNameNode(node);
+			if(fnode==null){
+				System.out.println("fnode path is null...");
+				//selected top component, switch to top usuable node.
+				node = usableRoot;
+				fnode = getNameNode(node);
+			}
+			
 			System.out.println("fnode: "+fnode.name+" full name "+fnode.path.toString());
 			if (((fnode.toString()).split("\\.")).length > 1) {
 				// populate the repo and get it back
