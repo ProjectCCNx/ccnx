@@ -32,6 +32,7 @@ public class CCNCipherFactory {
 	public static final String AES_CBC_MODE = "AES/CBC/PKCS5Padding";
 	public static final String DEFAULT_CIPHER_ALGORITHM = AES_CTR_MODE;
 	
+	public static final int DEFAULT_AES_KEY_LENGTH = 16; // bytes, 128 bits
 	public static final int IV_MASTER_LENGTH = 8; // bytes
 	public static final int SEGMENT_NUMBER_LENGTH = 6; // bytes
 	public static final int BLOCK_COUNTER_LENGTH = 2; // bytes
