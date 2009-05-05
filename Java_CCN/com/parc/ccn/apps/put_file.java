@@ -13,6 +13,7 @@ import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNOutputStream;
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
+import com.parc.ccn.library.profiles.VersioningProfile;
 
 public class put_file {
 	
@@ -52,11 +53,12 @@ public class put_file {
 				}
 				Library.logger().info("put_file: putting file " + args[startArg + 1] + " bytes: " + theFile.length());
 				
+				ContentName versionedName = VersioningProfile.versionName(argName);
 				CCNOutputStream ostream;
 				if (rawMode)
-					ostream = new CCNOutputStream(argName, library);
+					ostream = new CCNOutputStream(versionedName, library);
 				else
-					ostream = new RepositoryOutputStream(argName, library);
+					ostream = new RepositoryOutputStream(versionedName, library);
 				do_write(ostream, theFile);
 				
 				System.out.println("Inserted file " + args[startArg + 1] + ".");
@@ -82,10 +84,11 @@ public class put_file {
 					// int version = new Random().nextInt(1000);
 					// would be version = library.latestVersion(argName) + 1;
 					CCNOutputStream ostream;
+					ContentName versionedNodeName = VersioningProfile.versionName(nodeName);
 					if (rawMode)
-						ostream = new CCNOutputStream(nodeName, library);
+						ostream = new CCNOutputStream(versionedNodeName, library);
 					else
-						ostream = new RepositoryOutputStream(nodeName, library);
+						ostream = new RepositoryOutputStream(versionedNodeName, library);
 					do_write(ostream, theFile);
 					
 					System.out.println("Inserted file " + args[i] + ".");
