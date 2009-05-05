@@ -208,7 +208,7 @@ ccn_match.o: ccn_match.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/digest.h
 ccn_digest.o: ccn_digest.c ../include/ccn/digest.h
-ccn_keystore.o: ccn_keystore.c
+ccn_keystore.o: ccn_keystore.c ../include/ccn/keystore.h
 ccn_signing.o: ccn_signing.c ../include/ccn/merklepathasn1.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/signing.h
