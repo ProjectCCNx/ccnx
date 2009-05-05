@@ -2582,14 +2582,16 @@ ccnd_create(void)
     if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
         portstr = "4485";
     for (whichpf = 0; whichpf < 2; whichpf++) {
-        hints.ai_family = whichpf ? PF_INET : PF_INET6;
+        hints.ai_family = whichpf ? PF_INET6 : PF_INET;
         res = getaddrinfo(NULL, portstr, &hints, &addrinfo);
         if (res == 0) {
             for (a = addrinfo; a != NULL; a = a->ai_next) {
                 fd = socket(a->ai_family, SOCK_DGRAM, 0);
                 if (fd != -1) {
                     const char *af = "";
-                    res = bind(fd, a->ai_addr, a->ai_addrlen);
+                    int yes = 1;
+		    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+		    res = bind(fd, a->ai_addr, a->ai_addrlen);
                     if (res != 0) {
                         close(fd);
                         continue;
