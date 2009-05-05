@@ -241,7 +241,6 @@ main(int argc, char **argv)
     const char *progname = argv[0];
     const char *configfile = NULL;
     struct ccn *ccn = NULL;
-    int i;
     int res;
     struct routing rt = { 0 };
     struct ccn_closure in_interest = {.p=&incoming_interest, .data=&rt};
