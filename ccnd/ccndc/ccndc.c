@@ -31,7 +31,7 @@
 #include <ccn/uri.h>
 
 #define DEFAULTPORTSTRING "4485"
-
+#define MAXRIB	1024
 struct ribline {
     struct ccn_charbuf *name;
     struct addrinfo *addrinfo;
@@ -39,7 +39,7 @@ struct ribline {
 
 struct routing {
     int nEntries;
-    struct ribline rib[1024];
+    struct ribline rib[MAXRIB];
 };
 
 void
@@ -129,7 +129,6 @@ incoming_interest(
                 res = ccn_put(info->h, inject->buf, inject->length);
             if (res != 0) ccndc_warn(__LINE__, "ccn_put failed\n");
             ccn_charbuf_destroy(&inject);
-            break;
         }
     }
     return(CCN_UPCALL_RESULT_OK);
@@ -168,7 +167,7 @@ read_configfile(const char *filename, struct routing *rt)
     if (cfg == NULL)
         ccndc_fatal(__LINE__, "%s (%s)\n", strerror(errno), filename);
 
-    while (fgets((char *)buf, sizeof(buf), cfg)) {
+    while (fgets((char *)buf, sizeof(buf), cfg) && (rt->nEntries < MAXRIB)) {
         int len;
         len = strlen(buf);
         if (buf[0] == '#' || len == 0)
@@ -231,7 +230,7 @@ read_configfile(const char *filename, struct routing *rt)
         rt->rib[rt->nEntries].name = name;
         rt->rib[rt->nEntries].addrinfo = raddrinfo;
         rt->nEntries++;
-
+        
     }
     fclose(cfg);
     return (configerrors);
@@ -275,10 +274,6 @@ main(int argc, char **argv)
     /* Set up a handler for interests */
     ccn_set_default_interest_handler(ccn, &in_interest);
     
-    for (i = 0; i < 1000; i++) {
-        ccn_run(ccn, 10000);
-    }
-    
-    ccn_destroy(&ccn);
+    ccn_run(ccn, -1);
     exit(0);
 }
