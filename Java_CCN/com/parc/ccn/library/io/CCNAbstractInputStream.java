@@ -90,8 +90,8 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	
 	public CCNAbstractInputStream(
 			ContentName baseName, Long startingBlockIndex,
-			ContentKeys keys,
-			PublisherPublicKeyDigest publisher, CCNLibrary library) 
+			PublisherPublicKeyDigest publisher,
+			ContentKeys keys, CCNLibrary library) 
 					throws XMLStreamException, IOException {
 		
 		this(baseName, startingBlockIndex, publisher, library);

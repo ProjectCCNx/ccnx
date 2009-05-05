@@ -24,13 +24,13 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 
 	public CCNBlockInputStream(ContentName baseName, Long startingBlockIndex, 
 			   PublisherPublicKeyDigest publisher, ContentKeys keys, CCNLibrary library) throws XMLStreamException, IOException {
-		super(baseName, startingBlockIndex, keys, publisher, library);
+		super(baseName, startingBlockIndex, publisher, keys, library);
 		setTimeout(CCNBase.NO_TIMEOUT);
 	}
 
 	public CCNBlockInputStream(ContentName baseName, Long startingBlockIndex,
 							   PublisherPublicKeyDigest publisher, CCNLibrary library) throws XMLStreamException, IOException {
-		super(baseName, startingBlockIndex, null, publisher, library);
+		super(baseName, startingBlockIndex, publisher, null, library);
 		setTimeout(CCNBase.NO_TIMEOUT);
 	}
 

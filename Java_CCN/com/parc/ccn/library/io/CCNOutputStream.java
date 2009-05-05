@@ -66,8 +66,8 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	protected CCNDigestHelper _dh;
 
 	public CCNOutputStream(ContentName name, 
-			KeyLocator locator, PublisherPublicKeyDigest publisher, ContentKeys keys,
-			ContentType type, CCNLibrary library) throws XMLStreamException, IOException {
+			KeyLocator locator, PublisherPublicKeyDigest publisher, ContentType type,
+			ContentKeys keys, CCNLibrary library) throws XMLStreamException, IOException {
 		this(name, locator, publisher, type, new CCNSegmenter(new CCNFlowControl(name, library),
 				null, keys));
 	}

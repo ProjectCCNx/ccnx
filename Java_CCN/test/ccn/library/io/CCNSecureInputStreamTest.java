@@ -75,7 +75,7 @@ public class CCNSecureInputStreamTest {
 	 * @throws InterruptedException 
 	 */
 	public static byte [] writeFileFloss(ContentName completeName, int fileLength, Random randBytes, ContentKeys keys) throws XMLStreamException, IOException, NoSuchAlgorithmException, InterruptedException {
-		CCNOutputStream stockOutputStream = new CCNOutputStream(completeName, null, null, keys, null, outputLibrary);
+		CCNOutputStream stockOutputStream = new CCNOutputStream(completeName, null, null, null, keys, outputLibrary);
 		
 		DigestOutputStream digestStreamWrapper = new DigestOutputStream(stockOutputStream, MessageDigest.getInstance("SHA1"));
 		ByteArrayOutputStream data = new ByteArrayOutputStream();

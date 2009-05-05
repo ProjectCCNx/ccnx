@@ -52,7 +52,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 			ContentKeys keys, CCNLibrary library) throws XMLStreamException,
 			IOException {
 
-		super(name, startingBlockIndex, keys, publisher, library);
+		super(name, startingBlockIndex, publisher, keys, library);
 	}
 
 	public CCNInputStream(ContentName name, Long startingBlockIndex, PublisherPublicKeyDigest publisher,
