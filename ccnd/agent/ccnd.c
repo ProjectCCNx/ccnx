@@ -28,9 +28,6 @@
     #include "getaddrinfo.h"
     #include "dummyin6.h"
 #endif
-#ifndef AI_ADDRCONFIG
-#define AI_ADDRCONFIG 0 /*IEEE Std 1003.1-2001/Cor 1-2002, item XSH/TC1/D6/20*/
-#endif
 
 #include <ccn/ccn.h>
 #include <ccn/ccnd.h>
@@ -2520,11 +2517,12 @@ ccnd_create(void)
     const char *mtu;
     int fd;
     int res;
+    int whichpf;
     struct ccnd *h;
     struct addrinfo hints = {0};
     struct addrinfo *addrinfo = NULL;
     struct addrinfo *a;
-    struct hashtb_param param = { &finalize_face };
+    struct hashtb_param param = {0};
     sockname = ccnd_get_local_sockname();
     h = calloc(1, sizeof(*h));
     h->skiplinks = ccn_indexbuf_create();
@@ -2553,7 +2551,6 @@ ccnd_create(void)
     if (fd == -1) fatal_err(sockname);
     ccnd_msg(h, "listening on %s", sockname);
     h->local_listener_fd = fd;
-    hints.ai_family = PF_INET;
     hints.ai_socktype = SOCK_DGRAM;
     hints.ai_flags = AI_PASSIVE;
     debugstr = getenv("CCND_DEBUG");
@@ -2584,41 +2581,44 @@ ccnd_create(void)
     portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
     if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
         portstr = "4485";
-    res = getaddrinfo(NULL, portstr, &hints, &addrinfo);
-    if (res == 0) {
-        for (a = addrinfo; a != NULL; a = a->ai_next) {
-            fd = socket(a->ai_family, SOCK_DGRAM, 0);
-            if (fd != -1) {
-                const char *af = "";
-                res = bind(fd, a->ai_addr, a->ai_addrlen);
-                if (res != 0) {
-                    close(fd);
-                    continue;
+    for (whichpf = 0; whichpf < 2; whichpf++) {
+        hints.ai_family = whichpf ? PF_INET : PF_INET6;
+        res = getaddrinfo(NULL, portstr, &hints, &addrinfo);
+        if (res == 0) {
+            for (a = addrinfo; a != NULL; a = a->ai_next) {
+                fd = socket(a->ai_family, SOCK_DGRAM, 0);
+                if (fd != -1) {
+                    const char *af = "";
+                    res = bind(fd, a->ai_addr, a->ai_addrlen);
+                    if (res != 0) {
+                        close(fd);
+                        continue;
+                    }
+                    res = fcntl(fd, F_SETFL, O_NONBLOCK);
+                    if (res == -1)
+                        perror("fcntl");
+                    hashtb_start(h->faces_by_fd, e);
+                    if (hashtb_seek(e, &fd, sizeof(fd), 0) != HT_NEW_ENTRY)
+                        exit(1);
+                    face = e->data;
+                    face->fd = fd;
+                    face->flags |= CCN_FACE_DGRAM;
+                    if (a->ai_family == AF_INET) {
+                        face->flags |= CCN_FACE_INET;
+                        h->udp4_fd = fd;
+                        af = "ipv4";
+                    }
+                    else if (a->ai_family == AF_INET6) {
+                        face->flags |= CCN_FACE_INET6;
+                        h->udp6_fd = fd;
+                        af = "ipv6";
+                    }
+                    hashtb_end(e);
+                    ccnd_msg(h, "accepting %s datagrams on fd %d", af, fd);
                 }
-                res = fcntl(fd, F_SETFL, O_NONBLOCK);
-                if (res == -1)
-                    perror("fcntl");
-                hashtb_start(h->faces_by_fd, e);
-                if (hashtb_seek(e, &fd, sizeof(fd), 0) != HT_NEW_ENTRY)
-                    exit(1);
-                face = e->data;
-                face->fd = fd;
-                face->flags |= CCN_FACE_DGRAM;
-                if (a->ai_family == AF_INET) {
-                    face->flags |= CCN_FACE_INET;
-                    h->udp4_fd = fd;
-                    af = "ipv4";
-                }
-                else if (a->ai_family == AF_INET6) {
-                    face->flags |= CCN_FACE_INET6;
-                    h->udp6_fd = fd;
-                    af = "ipv6";
-                }
-                hashtb_end(e);
-                ccnd_msg(h, "accepting %s datagrams on fd %d", af, fd);
             }
+            freeaddrinfo(addrinfo);
         }
-        freeaddrinfo(addrinfo);
     }
     ccnd_reseed(h);
     clean_needed(h);
