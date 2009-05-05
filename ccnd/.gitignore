@@ -39,5 +39,5 @@ tests/SKIPPED
 tests/STATUS/
 tests/deps.out
 tests/sorted-deps.out
-ccn-start-udplink-*.parc.xerox.com.sh
+ccn-start-udplink-*.sh
 
