@@ -1,5 +1,6 @@
 package com.parc.ccn.apps.containerApp;
 
+
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
@@ -27,11 +28,12 @@ import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.io.CCNFileInputStream;
 import com.parc.ccn.library.io.repo.RepositoryFileOutputStream;
 
-public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
+public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,ActionListener{
 
 	private CCNNameEnumerator _nameEnumerator = null;
 	protected static CCNLibrary _library = null;
-
+    private static boolean useSystemLookAndFeel = false;
+    
 	private static final long serialVersionUID = 1L;
 	public static final ImageIcon ICON_COMPUTER = new ImageIcon(getScaledImage(
 			(new ImageIcon("Network.png")).getImage(), 32, 32));
@@ -52,10 +54,14 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 	private JEditorPane htmlPane;
 	private URL helpURL;
 	public String selectedPrefix;
+	public String selectedPath;
 	protected JTree tree;
 	protected DefaultTreeModel m_model;
 	protected JTextField m_display;
 
+	private JButton openACL = null;
+	private JButton openGroup = null;
+	
 	private ContentName currentPrefix = null;
 	// NEW
 	protected JPopupMenu m_popup;
@@ -65,7 +71,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 	
 	
 	public ContainerGUI() {
-		super("CCN Tree [Popup Menus]");
+		super("CCN Tree");
 		
 		setupNameEnumerator();
 
@@ -119,12 +125,34 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 		String filename = File.separator + "tmp";
 		JFileChooser fc = new JFileChooser(new File(filename));
 
+//		class OpenACLManagerAction extends AbstractAction
+//		{
+//
+//			private static final long serialVersionUID = 1L;
+//
+//			OpenACLManagerAction()
+//			{
+//				super("Open ACL Manager");
+//				
+//			}
+//			public void actionPerformed(ActionEvent e) {
+//				// TODO Auto-generated method stub
+//				
+//				String theMessage = "Open ACL Manager";
+//		        int result = JOptionPane.showConfirmDialog((Component)
+//		                null, theMessage, "alert", JOptionPane.YES_NO_OPTION);					
+//			}
+//			
+//		}
+		
+		
 		class OpenFileAction extends AbstractAction {
 			/**
 		 * 
 		 */
 			private static final long serialVersionUID = 1L;
 			JFrame frame;
+			
 			JFileChooser chooser;
 
 			OpenFileAction(JFrame frame, JFileChooser chooser) {
@@ -190,6 +218,21 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 		Action openAction = new OpenFileAction(this, fc);
 		JButton openButton = new JButton(openAction);
 
+//		Action aclManage = new OpenACLManagerAction(this,selectedPrefix);
+//		JButton openACL = new JButton(aclManage);
+//		
+//		Action groupManage = new OpenGroupManagerAction(this,selectedPrefix);
+//		JButton openGroup = new JButton("Open Group Manager");
+		
+		
+		//Action aclManage = new OpenACLManagerAction(this,selectedPrefix);
+		openACL = new JButton("Manage Permissions");
+		openACL.addActionListener(this);
+		
+		//Action groupManage = new OpenGroupManagerAction(this,selectedPrefix);
+		openGroup = new JButton("Open Group Manager");
+		openGroup.addActionListener(this);
+		
 		// New Stuff
 		// Create the scroll pane and add the tree to it.
 		JScrollPane treeView = new JScrollPane(tree);
@@ -202,24 +245,53 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 
 		// Add the scroll panes to a split pane.
 		JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+		splitPane.setContinuousLayout(true);
+		splitPane.setOneTouchExpandable(true);
 		splitPane.setTopComponent(treeView);
 		splitPane.setBottomComponent(htmlView);
-
-		Dimension minimumSize = new Dimension(100, 50);
+		Dimension minimumSize = new Dimension(100, 300);
 		htmlView.setMinimumSize(minimumSize);
 		treeView.setMinimumSize(minimumSize);
-		splitPane.setDividerLocation(100);
+		splitPane.setDividerLocation(200);
 		splitPane.setPreferredSize(new Dimension(500, 300));
 
-		// Add the split pane to this panel.
-		add(splitPane);
+		
+	
+		//JFrame frame = new JFrame("GridBagLayoutDemo");
+        //frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
 		// End new stuff
 
 		// treeView.getViewport().add(tree);
-		getContentPane().add(openButton, BorderLayout.NORTH);
-		getContentPane().add(treeView, BorderLayout.CENTER);
-		getContentPane().add(splitPane, BorderLayout.SOUTH);
+		
+        setLayout(new GridBagLayout());
+        GridBagConstraints c = new GridBagConstraints();
+    	
+		
+        //c.fill = GridBagConstraints.HORIZONTAL;
+ 
+		c.fill = GridBagConstraints.BOTH;
+		c.gridx = 0;
+        c.gridy = 1;
+		getContentPane().add(openACL,  c);
+
+		c.fill = GridBagConstraints.BOTH;
+		c.gridx = 1;
+        c.gridy = 1;
+		getContentPane().add(openGroup, c);
+
+		c.fill = GridBagConstraints.BOTH;
+    	c.gridwidth = 2;
+    	c.gridx = 0;
+        c.gridy = 0;
+		getContentPane().add(openButton, c);
+		 c.weightx = 1;
+		 c.weighty = 1;
+		c.fill = GridBagConstraints.BOTH;
+		c.gridwidth = 2;
+		c.gridx = 0;
+        c.gridy = 2;
+		getContentPane().add(splitPane, c);
 
 		pack();
 
@@ -568,6 +640,9 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 				// populate the repo and get it back
 				//sendFile("/parc.com/files/test.txt");
 				retrieveFromRepo(fnode.path.toString()+"/"+fnode.name);
+				String p = fnode.path.toString() + "/"+fnode.name;
+				selectedPath = p; //change this to prefix later after sure its ok
+				selectedPrefix = p;
 				//removes leading /
 				displayText(fnode.name);
 			} else {
@@ -577,6 +652,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 				System.out.println("Registering Prefix: " + p);
 				registerPrefix(p);
 				selectedPrefix = p;
+				selectedPath = p; //change this to prefix later after sure its ok
 				
 				//display the default for now
 				displayText("TreeHelp.html");
@@ -589,9 +665,39 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 	
 	public static void main(String argv[]) {
 		Library.logger().setLevel(Level.INFO);
+	       //Schedule a job for the event dispatch thread:
+        //creating and showing this application's GUI.
+//        javax.swing.SwingUtilities.invokeLater(new Runnable() {
+//            public void run() {
+//                createAndShowGUI();
+//            }
+//        });
 		new ContainerGUI();
 	}
 
+    private static void createAndShowGUI() {
+        if (useSystemLookAndFeel) {
+            try {
+                UIManager.setLookAndFeel(
+                    UIManager.getSystemLookAndFeelClassName());
+            } catch (Exception e) {
+                System.err.println("Couldn't use system look and feel.");
+            }
+        }
+
+        //Create and set up the window.
+        JFrame frame = new JFrame("CCN Demo");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        //Add content to the window.
+        frame.add(new ContainerGUI());
+      //Set up the content pane.
+        //addComponentsToPane(frame.getContentPane());
+
+        //Display the window.
+        frame.pack();
+        frame.setVisible(true);
+    }
 	private void addTreeNodes(ArrayList<ContentName> n, ContentName prefix) {
 		// DefaultMutableTreeNode top = new DefaultMutableTreeNode(
 		// new IconData(ICON_COMPUTER, null, "parc.com/files"));
@@ -717,6 +823,45 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener{
 		g2.drawImage(srcImg, 0, 0, w, h, null);
 		g2.dispose();
 		return resizedImg;
+	}
+
+	public void actionPerformed(ActionEvent e) {
+		// TODO Auto-generated method stub
+		if(openACL == e.getSource()) {
+			System.out.println("Path is "+ selectedPrefix);
+			EventQueue.invokeLater(new Runnable() {
+				public void run() {
+					try {
+						ACLManager dialog = new ACLManager(selectedPrefix);
+						dialog.addWindowListener(new WindowAdapter() {
+							public void windowClosing(WindowEvent e) {
+								System.exit(0);
+							}
+						});
+						dialog.setVisible(true);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+			});
+		}else if(openGroup == e.getSource()) {
+				System.out.println("Path is "+ selectedPrefix);
+				EventQueue.invokeLater(new Runnable() {
+					public void run() {
+						try {
+							GroupManager dialog = new GroupManager(selectedPrefix);
+							dialog.addWindowListener(new WindowAdapter() {
+								public void windowClosing(WindowEvent e) {
+									System.exit(0);
+								}
+							});
+							dialog.setVisible(true);
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+					}
+				});	
+			}	
 	}
 
 
