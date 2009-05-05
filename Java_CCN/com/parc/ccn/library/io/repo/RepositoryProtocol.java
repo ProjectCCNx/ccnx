@@ -16,7 +16,14 @@ import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.network.daemons.repo.RepositoryInfo;
 
-public class RepositorySegmenter extends CCNFlowControl {
+/**
+ * Implements the client side of the repository protocol
+ * 
+ * @author rasmusse
+ *
+ */
+
+public class RepositoryProtocol extends CCNFlowControl {
 	
 	protected static final int ACK_BLOCK_SIZE = 20;
 	
@@ -25,8 +32,8 @@ public class RepositorySegmenter extends CCNFlowControl {
 	protected int _blocksSinceAck = 0;
 	protected ContentName _lastAcked = null;
 	protected Interest _ackInterest = null;
-	protected String _repoName;
-	protected String _repoPrefix;
+	protected String _repoName = null;
+	protected String _repoPrefix = null;
 	protected RepoListener _listener = null;
 	protected Interest _writeInterest = null;
 
@@ -45,6 +52,9 @@ public class RepositorySegmenter extends CCNFlowControl {
 						_repoName = repoInfo.getLocalName();
 						_repoPrefix = repoInfo.getGlobalPrefix();
 						_writeInterest = null;
+						synchronized (this) {
+							notify();
+						}
 						break;
 					case DATA:
 						if (!repoInfo.getLocalName().equals(_repoName))
@@ -71,7 +81,7 @@ public class RepositorySegmenter extends CCNFlowControl {
 		}
 	}
 
-	public RepositorySegmenter(ContentName name, CCNLibrary library) {
+	public RepositoryProtocol(ContentName name, CCNLibrary library) {
 		super(name, library);
 		// TODO Auto-generated constructor stub
 	}
@@ -82,6 +92,23 @@ public class RepositorySegmenter extends CCNFlowControl {
 		_listener = new RepoListener();
 		_writeInterest = new Interest(repoWriteName);
 		_library.expressInterest(_writeInterest, _listener);
+		
+		/*
+		 * Wait for information to be returned from a repo
+		 */
+		synchronized (this) {
+			boolean interrupted;
+			do
+				try {
+					interrupted = false;
+					wait(getTimeout());
+				} catch (InterruptedException e) {
+					interrupted = true;
+				}
+			while (interrupted);
+		}
+		if (_repoName == null)
+			throw new IOException("No response from a repository");
 	}
 	
 	public ContentObject put(ContentObject co) throws IOException {

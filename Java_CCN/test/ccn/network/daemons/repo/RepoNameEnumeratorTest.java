@@ -71,6 +71,7 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 		try {
 			name = ContentName.fromNative(contentName);
 			RepositoryOutputStream ros = putLibrary.repoOpen(name, null, putLibrary.getDefaultPublisher());
+			ros.setTimeout(5000);
 			byte [] data = "Testing 1 2 3".getBytes();
 			ros.write(data, 0, data.length);
 			ros.close();
