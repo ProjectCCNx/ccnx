@@ -80,6 +80,7 @@ public class RepositoryDaemon extends Daemon {
 		private long _timer;
 		private Interest _origInterest;
 		private Interest _interest;
+		private Interest _versionedInterest = null;
 		private ConcurrentLinkedQueue<ContentObject> _dataQueue = new ConcurrentLinkedQueue<ContentObject>();
 		private ArrayList<ContentObject> _unacked = new ArrayList<ContentObject>();
 		private boolean _haveHeader = false;
@@ -115,6 +116,20 @@ public class RepositoryDaemon extends Daemon {
 							_haveHeader = true;
 							if (_sawBlock)
 								return null;
+							/*
+							 * The first thing we saw was a header. So we don't know yet whether the file is
+							 * versioned or not versioned. The returned interest that falls out of this will
+							 * ask for data assuming that we are unversioned. But we don't know yet whether
+							 * we are versioned or not so specifically try asking for versioned blocks here.
+							 */
+							_versionedInterest = new Interest(co.name());
+							_versionedInterest.additionalNameComponents(2);
+							try {
+								_library.expressInterest(_versionedInterest, this);
+							} catch (IOException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
 						} else {
 							if (!_sentHeaderInterest) {
 								try {
@@ -125,6 +140,19 @@ public class RepositoryDaemon extends Daemon {
 									e.printStackTrace();
 								}
 							}
+						}
+					} else {
+						/*
+						 * If we sent out a versioned interest we now know whether or not we are
+						 * versioned. We also know that one of the 2 interests we sent out was
+						 * answered and the other one wasn't. Rather than figure out which one
+						 * was answered we can just cancel them both now. This shouldn't hurt
+						 * anything.
+						 */
+						if (_versionedInterest != null) {
+							_library.cancelInterest(_versionedInterest, this);
+							_library.cancelInterest(_interest, this);
+							_versionedInterest = null;
 						}
 					}
 					
@@ -162,6 +190,8 @@ public class RepositoryDaemon extends Daemon {
 						if ((currentTime - listener._timer) > PERIOD) {
 							_library.cancelInterest(listener._interest, listener);
 							_library.cancelInterest(listener._headerInterest, listener);
+							if (listener._versionedInterest != null)
+								_library.cancelInterest(listener._versionedInterest, listener);
 							iterator.remove();
 						}
 					}
