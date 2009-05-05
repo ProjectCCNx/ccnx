@@ -13,9 +13,6 @@ ccnd - CCN Daemon
 		CCN_LOCAL_PORT=
 			UDP port for local clients (default 4485)
 			Also affects name of unix-domain socket
-		CCN_NONLOCAL_UDP=
-			Set to anything, listens for "local" port on all interfaces.
-			This is for debugging.
 		CCND_CAP=
 			Capacity limit in ContentObjects.
 			Not an absolute limit.
