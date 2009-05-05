@@ -1456,6 +1456,13 @@ do_propagate(struct ccn_schedule *sched,
         else if (special_delay == 0)
             next_delay = CCN_INTEREST_LIFETIME_MICROSEC / 4;
     }
+    else {
+        unsigned faceid = pe->outbound->buf[n - 1];
+        struct face *face = face_from_faceid(h, faceid);
+        /* Wait longer before sending interest to ccndc */
+        if (face != NULL && (face->flags & CCN_FACE_DC) != 0)
+            next_delay += 60000;
+    }
     next_delay = pe_next_usec(h, pe, next_delay, __LINE__);
     return(next_delay);
 }
@@ -2107,6 +2114,7 @@ process_incoming_inject(struct ccnd *h, struct face *face,
     res = ccn_parse_interest(imsg, isize, &pi_buf, NULL);
     if (res < 0) return;
     /* Caller has parsed skeleton, so we're done parsing now. */
+    face->flags |= CCN_FACE_DC;
     ccnd_debug_ccnb(h, __LINE__, "inject", face, imsg, isize);
     if (sotype != SOCK_DGRAM) return;
     if (addrp->sa_family == AF_INET)
