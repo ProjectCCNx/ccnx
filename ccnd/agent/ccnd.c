@@ -14,13 +14,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <sys/stat.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <sys/un.h>
 #include <time.h>
 #include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/time.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/un.h>
+#include <netinet/in.h>
 
 #if defined(NEED_GETADDRINFO_COMPAT)
     #include "getaddrinfo.h"
@@ -44,7 +46,7 @@
 static void cleanup_at_exit(void);
 static void unlink_at_exit(const char *path);
 static int create_local_listener(const char *sockname, int backlog);
-static void accept_new_client(struct ccnd *h);
+static void accept_new_local_client(struct ccnd *h);
 static void shutdown_client_fd(struct ccnd *h, int fd);
 static void process_input_message(struct ccnd *h, struct face *face,
                                   unsigned char *msg, size_t size, int pdu_ok);
@@ -637,7 +639,7 @@ create_local_listener(const char *sockname, int backlog)
 }
 
 static void
-accept_new_client(struct ccnd *h)
+accept_new_local_client(struct ccnd *h)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -656,9 +658,10 @@ accept_new_client(struct ccnd *h)
         perror("fcntl");
     hashtb_start(h->faces_by_fd, e);
     if (hashtb_seek(e, &fd, sizeof(fd), 0) != HT_NEW_ENTRY)
-        fatal_err("ccnd: accept_new_client");
+        fatal_err("ccnd: accept_new_local_client");
     face = e->data;
     face->fd = fd;
+    face->flags |= (CCN_FACE_GG | CCN_FACE_LOCAL);
     res = enroll_face(h, face);
     hashtb_end(e);
     ccnd_msg(h, "accepted client fd=%d id=%d", fd, res);
@@ -724,7 +727,7 @@ choose_face_delay(struct ccnd *h, struct face *face, enum cq_delay_class c)
     if (c == CCN_CQ_ASAP)
         return(1);
     if ((face->flags & CCN_FACE_DGRAM) != 0)
-        return(100 << shift); /* localhost udp, delay just a little */
+        return(100 << shift); /* udp, delay just a little */
     if ((face->flags & CCN_FACE_LINK) != 0) /* udplink or such, delay more */
         return(CCN_DATA_PAUSE << shift);
     return(10); /* local stream, answer quickly */
@@ -737,7 +740,7 @@ choose_content_delay_class(struct ccnd *h, unsigned faceid, int content_flags)
     if (face == NULL)
         return(CCN_CQ_ASAP); /* Going nowhere, get it over with */
     if ((face->flags & CCN_FACE_DGRAM) != 0)
-        return(CCN_CQ_NORMAL); /* localhost udp, delay just a little */
+        return(CCN_CQ_NORMAL); /* udp, delay just a little */
     if ((face->flags & CCN_FACE_LINK) != 0) /* udplink or such, delay more */
         return((content_flags & CCN_CONTENT_ENTRY_SLOWSEND) ? CCN_CQ_SLOW : CCN_CQ_NORMAL);
     return(CCN_CQ_ASAP); /* local stream, answer quickly */
@@ -1331,14 +1334,14 @@ get_outbound_faces(struct ccnd *h,
     struct ccn_indexbuf *x = ccn_indexbuf_create();
     unsigned i;
     struct face **a = h->faces_by_faceid;
-    int blockmask = 0;
+    int checkmask = 0;
     if (pi->scope == 0)
         return(x);
     if (pi->scope == 1)
-        blockmask = CCN_FACE_LINK;
+        checkmask = CCN_FACE_GG;
     // XXX looping to face_limit is ofen a (minor) waste of time
     for (i = 0; i < h->face_limit; i++)
-        if (a[i] != NULL && a[i] != from && ((a[i]->flags & blockmask) == 0)) {
+        if (a[i] != NULL && a[i] != from && ((a[i]->flags & checkmask) == checkmask)) {
             ccn_indexbuf_append_element(x, a[i]->faceid);
             // ccnd_msg(h, "at %d adding %u", __LINE__, a[i]->faceid);
         }
@@ -1674,7 +1677,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,
         ccnd_msg(h, "error parsing Interest - code %d", res);
     }
     else if (pi->scope >= 0 && pi->scope < 2 &&
-             (face->flags & CCN_FACE_LINK) != 0) {
+             (face->flags & CCN_FACE_GG) == 0) {
         ccnd_debug_ccnb(h, __LINE__, "interest_outofscope", face, msg, size);
     }
     else if (is_duplicate_flooded(h, msg, pi, face->faceid)) {
@@ -2036,7 +2039,7 @@ Bail:
         struct content_queue *q;
         n_matches = match_interests(h, content, &obj, NULL, face);
         if (res == HT_NEW_ENTRY && n_matches == 0 &&
-            (face->flags && CCN_FACE_LINK) != 0)
+            (face->flags && CCN_FACE_GG) == 0)
             content->flags |= CCN_CONTENT_ENTRY_SLOWSEND;
         for (c = 0; c < CCN_CQ_N; c++) {
             q = face->q[c];
@@ -2062,7 +2065,7 @@ process_incoming_inject(struct ccnd *h, struct face *face,
 {
     /*
      * This is a special message that should only come from a trusted party.
-     * For now, we're a lottle too trusting and take anything from
+     * For now, we're a little too trusting and take anything from
      * a unix-domain socket (which cannot be remote).
      * The purpose of this is for the helper program to inject
      * an Interest message to a specific destination in order to
@@ -2082,8 +2085,10 @@ process_incoming_inject(struct ccnd *h, struct face *face,
     int res;
     int fd;
     struct sockaddr *addrp = NULL;
+    int gg_mask = (CCN_FACE_GG | CCN_FACE_LOCAL);
     
-    /* XXX - check sender rights here */
+    if ((face->flags & gg_mask) != gg_mask)
+        return;
     d = ccn_buf_decoder_start(&decoder, inject_msg, wire_size);
     ccn_buf_advance(d); /* Caller has checked outer DTAG */
     sotype = ccn_parse_optional_tagged_nonNegativeInteger(d, CCN_DTAG_SOType);
@@ -2131,6 +2136,7 @@ process_input_message(struct ccnd *h, struct face *face,
                 size--;
             msg += d->index;
             face->flags |= CCN_FACE_LINK;
+            face->flags &= ~CCN_FACE_GG;
             memset(d, 0, sizeof(*d));
             while (d->index < size) {
                 dres = ccn_skeleton_decode(d, msg + d->index, size - d->index);
@@ -2166,6 +2172,10 @@ get_dgram_source(struct ccnd *h, struct face *face,
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     int res;
+    const unsigned char *rawaddr = NULL;
+    char printable[80];
+    const char *peer = NULL;
+    int port = 0;
     if ((face->flags & CCN_FACE_DGRAM) == 0)
         return(face);
     hashtb_start(h->dgram_faces, e);
@@ -2177,8 +2187,32 @@ get_dgram_source(struct ccnd *h, struct face *face,
             source->addrlen = e->keysize;
             source->fd = face->fd;
             source->flags |= CCN_FACE_DGRAM;
+            if (addr->sa_family == AF_INET6) {
+                const struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)addr;
+                rawaddr = (const unsigned char *)&addr6->sin6_addr;
+                source->flags |= CCN_FACE_INET6;
+                port = addr6->sin6_port;
+#ifdef IN6_IS_ADDR_LOOPBACK
+                if (IN6_IS_ADDR_LOOPBACK(&addr6->sin6_addr)) {
+                    source->flags |= CCN_FACE_GG;
+                }
+#endif
+            }
+            else if (addr->sa_family == AF_INET) {
+                const struct sockaddr_in *addr4 = (struct sockaddr_in *)addr;
+                rawaddr = (const unsigned char *)&addr4->sin_addr.s_addr;
+                source->flags |= CCN_FACE_INET;
+                port = addr4->sin_port;
+                if (rawaddr[0] == 127) {
+                    source->flags |= CCN_FACE_GG;
+                }
+            }
+            if (rawaddr != NULL)
+                peer = inet_ntop(addr->sa_family, rawaddr, printable, sizeof(printable));
+            if (peer == NULL)
+                peer = "(unknown)";
             res = enroll_face(h, source);
-            ccnd_msg(h, "accepted datagram client id=%d", res);
+            ccnd_msg(h, "accepted datagram client id=%d (flags=0x%x) %s port %d", res, source->flags, peer, port);
             reap_needed(h, CCN_INTEREST_LIFETIME_MICROSEC);
         }
         source->recvcount++;
@@ -2230,8 +2264,10 @@ process_input(struct ccnd *h, int fd)
         while (d->state == 0) {
             if (0) ccnd_msg(h, "%lu byte msg received on %d",
                 (unsigned long)(d->index - msgstart), fd);
-            process_input_message(h, source, face->inbuf->buf + msgstart, 
-                                           d->index - msgstart, 1);
+            process_input_message(h, source,
+                                  face->inbuf->buf + msgstart, 
+                                  d->index - msgstart,
+                                  (face->flags & CCN_FACE_LOCAL) != 0);
             msgstart = d->index;
             if (msgstart == face->inbuf->length) {
                 face->inbuf->length = 0;
@@ -2244,13 +2280,14 @@ process_input(struct ccnd *h, int fd)
                             (int)res, (int)dres);
         }
         if ((face->flags & CCN_FACE_DGRAM) != 0) {
-            ccnd_msg(h, "ccnd[%d]: protocol error, discarding %d bytes",
-                getpid(), (int)(face->inbuf->length - d->index));
+            ccnd_msg(h, "protocol error, discarding %d bytes",
+                (int)(face->inbuf->length - d->index));
             face->inbuf->length = 0;
+            /* XXX - should probably ignore this source for a while */
             return;
         }
         else if (d->state < 0) {
-            ccnd_msg(h, "ccnd[%d]: protocol error on fd %d", getpid(), fd);
+            ccnd_msg(h, "protocol error on fd %d", fd);
             shutdown_client_fd(h, fd);
             return;
         }
@@ -2389,7 +2426,7 @@ run(struct ccnd *h)
             if (h->fds[0].revents & (POLLERR | POLLNVAL | POLLHUP))
                 return;
             if (h->fds[0].revents & (POLLIN))
-                accept_new_client(h);
+                accept_new_local_client(h);
             res--;
         }
         /* Maybe it's time for a status display */
@@ -2472,7 +2509,6 @@ ccnd_create(void)
     const char *portstr;
     const char *debugstr;
     const char *entrylimit;
-    const char *nonlocalstr;
     const char *mtu;
     int fd;
     int res;
@@ -2511,12 +2547,7 @@ ccnd_create(void)
     h->local_listener_fd = fd;
     hints.ai_family = PF_UNSPEC;
     hints.ai_socktype = SOCK_DGRAM;
-    hints.ai_flags = AI_ADDRCONFIG;
-    nonlocalstr = getenv(CCN_NONLOCAL_UDP);
-    if (nonlocalstr != NULL && nonlocalstr[0] != 0) {
-	/* Add flag to retrieve interfaces other than loopback (localhost) */
-        hints.ai_flags |= AI_PASSIVE;
-    }
+    hints.ai_flags = AI_ADDRCONFIG | AI_PASSIVE;
     debugstr = getenv("CCND_DEBUG");
     if (debugstr != NULL && debugstr[0] != 0) {
         h->debug = atoi(debugstr);
@@ -2550,6 +2581,7 @@ ccnd_create(void)
         for (a = addrinfo; a != NULL; a = a->ai_next) {
             fd = socket(a->ai_family, SOCK_DGRAM, 0);
             if (fd != -1) {
+                const char *af = "";
                 res = bind(fd, a->ai_addr, a->ai_addrlen);
                 if (res != 0) {
                     close(fd);
@@ -2567,13 +2599,15 @@ ccnd_create(void)
                 if (a->ai_family == AF_INET) {
                     face->flags |= CCN_FACE_INET;
                     h->udp4_fd = fd;
+                    af = "ipv4";
                 }
                 else if (a->ai_family == AF_INET6) {
                     face->flags |= CCN_FACE_INET6;
                     h->udp6_fd = fd;
+                    af = "ipv6";
                 }
                 hashtb_end(e);
-                ccnd_msg(h, "accepting datagrams on fd %d", fd);
+                ccnd_msg(h, "accepting %s datagrams on fd %d", af, fd);
             }
         }
         freeaddrinfo(addrinfo);
