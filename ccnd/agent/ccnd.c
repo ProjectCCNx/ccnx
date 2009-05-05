@@ -2191,7 +2191,7 @@ get_dgram_source(struct ccnd *h, struct face *face,
                 const struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)addr;
                 rawaddr = (const unsigned char *)&addr6->sin6_addr;
                 source->flags |= CCN_FACE_INET6;
-                port = addr6->sin6_port;
+                port = htons(addr6->sin6_port);
 #ifdef IN6_IS_ADDR_LOOPBACK
                 if (IN6_IS_ADDR_LOOPBACK(&addr6->sin6_addr)) {
                     source->flags |= CCN_FACE_GG;
@@ -2202,7 +2202,7 @@ get_dgram_source(struct ccnd *h, struct face *face,
                 const struct sockaddr_in *addr4 = (struct sockaddr_in *)addr;
                 rawaddr = (const unsigned char *)&addr4->sin_addr.s_addr;
                 source->flags |= CCN_FACE_INET;
-                port = addr4->sin_port;
+                port = htons(addr4->sin_port);
                 if (rawaddr[0] == 127) {
                     source->flags |= CCN_FACE_GG;
                 }
