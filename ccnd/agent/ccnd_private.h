@@ -1,13 +1,12 @@
 /*
  * ccnd_private.h
  * 
- * Copyright 2008 Palo Alto Research Center, Inc. All rights reserved.
+ * Copyright 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
  * Private definitions for the CCN daemon
  *
  * Data structures are described here so that logging and status
  * routines can be compiled separately.
  *
- * $Id$
  */
 
 #ifndef CCND_PRIVATE_DEFINED
@@ -138,6 +137,8 @@ struct face {
 /* face flags */
 #define CCN_FACE_LINK   (1 << 0) /* Elements wrapped by CCNProtocolDataUnit */
 #define CCN_FACE_DGRAM  (1 << 1) /* Datagram interface, respect packets */
+#define CCN_FACE_GG     (1 << 2) /* Considered friendly */
+#define CCN_FACE_LOCAL  (1 << 3) /* PF_UNIX socket */
 #define CCN_FACE_INET   (1 << 4) /* IPv4 */
 #define CCN_FACE_INET6  (1 << 6) /* IPv6 */
 #define CCN_FACE_NOSEND (1 << 8) /* Don't send anymore */

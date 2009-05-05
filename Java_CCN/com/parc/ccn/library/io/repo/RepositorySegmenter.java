@@ -78,7 +78,7 @@ public class RepositorySegmenter extends CCNFlowControl {
 	
 	public void init(ContentName name) throws IOException {
 		clearUnmatchedInterests();	// Remove possible leftover interests from "getLatestVersion"
-		ContentName repoWriteName = new ContentName(name, CCNBase.REPO_START_WRITE);
+		ContentName repoWriteName = new ContentName(name, CCNBase.REPO_START_WRITE, CCNLibrary.nonce());
 		_listener = new RepoListener();
 		_writeInterest = new Interest(repoWriteName);
 		_library.expressInterest(_writeInterest, _listener);
@@ -136,6 +136,7 @@ public class RepositorySegmenter extends CCNFlowControl {
 				components = _lastAcked.components();
 			}
 			components.add(CCNBase.REPO_REQUEST_ACK);
+			components.add(CCNLibrary.nonce());
 			byte[][] bc = new byte[components.size()][];
 			components.toArray(bc);
 			ContentName repoAckName = new ContentName(bc);
