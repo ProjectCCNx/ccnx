@@ -129,7 +129,6 @@ incoming_interest(
                 res = ccn_put(info->h, inject->buf, inject->length);
             if (res != 0) ccndc_warn(__LINE__, "ccn_put failed\n");
             ccn_charbuf_destroy(&inject);
-            break;
         }
     }
     return(CCN_UPCALL_RESULT_OK);
@@ -275,10 +274,7 @@ main(int argc, char **argv)
     /* Set up a handler for interests */
     ccn_set_default_interest_handler(ccn, &in_interest);
     
-    for (i = 0; i < 1000; i++) {
+    while(1) {
         ccn_run(ccn, 10000);
     }
-    
-    ccn_destroy(&ccn);
-    exit(0);
 }
