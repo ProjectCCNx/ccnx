@@ -20,8 +20,9 @@ public class DaemonOutput extends Thread {
 		while (true) {
 			try {
 				while (_is.available() > 0) {
-					byte[] b = new byte[_is.available()];
-					_is.read(b, 0, _is.available());
+					int size = _is.available();
+					byte[] b = new byte[size];
+					_is.read(b, 0, size);
 					_os.write(b);
 					_os.flush();
 				}
