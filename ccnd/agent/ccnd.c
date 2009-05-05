@@ -2553,9 +2553,9 @@ ccnd_create(void)
     if (fd == -1) fatal_err(sockname);
     ccnd_msg(h, "listening on %s", sockname);
     h->local_listener_fd = fd;
-    hints.ai_family = PF_UNSPEC;
+    hints.ai_family = PF_INET;
     hints.ai_socktype = SOCK_DGRAM;
-    hints.ai_flags = AI_ADDRCONFIG | AI_PASSIVE;
+    hints.ai_flags = AI_PASSIVE;
     debugstr = getenv("CCND_DEBUG");
     if (debugstr != NULL && debugstr[0] != 0) {
         h->debug = atoi(debugstr);
