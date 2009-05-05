@@ -238,85 +238,14 @@ public class RepositoryDaemon extends Daemon {
 		private void processIncomingInterest(Interest interest) {
 			
 			try {
-				byte[] marker = interest.name().component(interest.name().count() - 1);
+				byte[] marker = interest.name().component(interest.name().count() - 2);
 				if (Arrays.equals(marker, CCNBase.REPO_START_WRITE)) {
 					startReadProcess(interest);
-				} else if (Arrays.equals(marker, CCNBase.REPO_REQUEST_ACK)) {
-					
-					ContentName ackResult = new ContentName(interest.name().count() - 1, interest.name().components());
-					Interest ackInterest = new Interest(ackResult);
-					ArrayList<ContentName> names = new ArrayList<ContentName>();
-					synchronized(_currentListeners) {
-						for (DataListener listener : _currentListeners) {
-							
-							/*
-							 * Find the DataListener with values to Ack
-							 */
-							boolean found = false;
-							for (ContentObject co : listener._unacked) {
-								if (ackInterest.matches(co)) {
-									found = true;
-									break;
-								}
-							}
-							if (!found) {
-								/*
-								 * If the ack request matches our original interest, assume it arrived
-								 * before any unacked data and we will use it to ack the data when it arrives
-								 * 
-								 * XXX should we care about publisherID here?  And if so, how can
-								 * we do this?
-								 */
-								if (ackInterest.matches(listener._interest.name(), null)) {
-									listener._ackRequests.add(ackInterest);
-									break;
-								}
-								continue;
-							}
-							
-							/*
-							 * For now just send back all the names we have in one package
-							 * Possibly later we may want to make sure they match
-							 */
-							for (ContentObject co : listener._unacked) {
-								names.add(co.name());
-							}
-							listener._unacked.clear();
-							_writer.put(interest.name(), _repo.getRepoInfo(names));
-							break;
-						}
-					}
+				} else if (Arrays.equals(marker, CCNBase.REPO_REQUEST_ACK)) {	
+					ackResponse(interest);
 				}
 				else if(interest.name().contains(CCNNameEnumerator.NEMARKER)){
-					//the name enumerator marker won't be at the end if the interest is a followup (created with .last())
-					//else if(Arrays.equals(marker, CCNNameEnumerator.NEMARKER)){
-					//System.out.println("handling interest: "+interest.name().toString());
-					ContentName prefixName = interest.name().cut(CCNNameEnumerator.NEMARKER);
-					ArrayList<ContentName> names = _repo.getNamesWithPrefix(interest);
-					if(names!=null){
-						try{
-							ContentName collectionName = new ContentName(prefixName, CCNNameEnumerator.NEMARKER);
-							//the following 6 lines are to be deleted after Collections are refactored
-							LinkReference[] temp = new LinkReference[names.size()];
-							for(int x = 0; x < names.size(); x++)
-								temp[x] = new LinkReference(names.get(x));
-							_library.put(collectionName, temp);
-							
-							//CCNEncodableCollectionData ecd = new CCNEncodableCollectionData(collectionName, cd);
-							//ecd.save();
-							//System.out.println("saved ecd.  name: "+ecd.getName());
-						}
-						catch(IOException e){
-							
-						}
-						catch(SignatureException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-					}
-					synchronized(_currentListeners){
-						_interestQueue.remove(interest);
-					}
+					nameEnumeratorResponse(interest);
 				}
 				else {
 					ContentObject content = _repo.getContent(interest);
@@ -456,7 +385,7 @@ public class RepositoryDaemon extends Daemon {
 			if (listener._origInterest.equals(interest))
 				return;
 		}
-		ContentName listeningName = new ContentName(interest.name().count() - 1, interest.name().components());
+		ContentName listeningName = new ContentName(interest.name().count() - 2, interest.name().components());
 		try {
 			Integer count = interest.nameComponentCount();
 			if (count != null && count > listeningName.count())
@@ -474,6 +403,84 @@ public class RepositoryDaemon extends Daemon {
 		} catch (SignatureException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		}
+	}
+	
+	private void ackResponse(Interest interest) throws SignatureException, IOException {
+		ContentName ackResult = new ContentName(interest.name().count() - 2, interest.name().components());
+		Interest ackInterest = new Interest(ackResult);
+		ArrayList<ContentName> names = new ArrayList<ContentName>();
+		synchronized(_currentListeners) {
+			for (DataListener listener : _currentListeners) {
+				
+				/*
+				 * Find the DataListener with values to Ack
+				 */
+				boolean found = false;
+				for (ContentObject co : listener._unacked) {
+					if (ackInterest.matches(co)) {
+						found = true;
+						break;
+					}
+				}
+				if (!found) {
+					/*
+					 * If the ack request matches our original interest, assume it arrived
+					 * before any unacked data and we will use it to ack the data when it arrives
+					 * 
+					 * XXX should we care about publisherID here?  And if so, how can
+					 * we do this?
+					 */
+					if (ackInterest.matches(listener._interest.name(), null)) {
+						listener._ackRequests.add(ackInterest);
+						break;
+					}
+					continue;
+				}
+				
+				/*
+				 * For now just send back all the names we have in one package
+				 * Possibly later we may want to make sure they match
+				 */
+				for (ContentObject co : listener._unacked) {
+					names.add(co.name());
+				}
+				listener._unacked.clear();
+				_writer.put(interest.name(), _repo.getRepoInfo(names));
+				break;
+			}
+		}
+	}
+	
+	public void nameEnumeratorResponse(Interest interest) {
+		//the name enumerator marker won't be at the end if the interest is a followup (created with .last())
+		//else if(Arrays.equals(marker, CCNNameEnumerator.NEMARKER)){
+		//System.out.println("handling interest: "+interest.name().toString());
+		ContentName prefixName = interest.name().cut(CCNNameEnumerator.NEMARKER);
+		ArrayList<ContentName> names = _repo.getNamesWithPrefix(interest);
+		if(names!=null){
+			try{
+				ContentName collectionName = new ContentName(prefixName, CCNNameEnumerator.NEMARKER);
+				//the following 6 lines are to be deleted after Collections are refactored
+				LinkReference[] temp = new LinkReference[names.size()];
+				for(int x = 0; x < names.size(); x++)
+					temp[x] = new LinkReference(names.get(x));
+				_library.put(collectionName, temp);
+				
+				//CCNEncodableCollectionData ecd = new CCNEncodableCollectionData(collectionName, cd);
+				//ecd.save();
+				//System.out.println("saved ecd.  name: "+ecd.getName());
+			}
+			catch(IOException e){
+				
+			}
+			catch(SignatureException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		synchronized(_currentListeners){
+			_interestQueue.remove(interest);
 		}
 	}
 	
