@@ -17,6 +17,7 @@ import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.rmi.server.RemoteObject;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.ArrayList;
 import java.util.Date;
 
 import com.parc.ccn.Library;
@@ -25,7 +26,7 @@ import com.parc.ccn.network.CCNNetworkManager;
 /**
  * Wrapper class for things that run as daemons. Based
  * on the CA issuer daemon.
- * @author smetters
+ * @author smetters, rasmussen
  *
  */
 public class Daemon {
@@ -209,8 +210,10 @@ public class Daemon {
 			System.out.println("Daemon already running. Use '" + daemonName + " -stop' to kill the daemon.");
 			return;
 		}
+		
+		ArrayList<String> cmds = new ArrayList<String>();
 
-		String cmd = "java ";
+		cmds.add("java");
 		// Need to put quotes around individual items, to cope with spaces in path names.
 		// paul r. - the above seems to break on my Mac anyway.  Commented awaiting further testing...
 		//
@@ -243,32 +246,36 @@ public class Daemon {
 	     * the critical ones
 	     */
 		String portval = System.getProperty(CCNNetworkManager.PROP_AGENT_PORT);
-		if (portval != null)
-			cmd += "-D" + CCNNetworkManager.PROP_AGENT_PORT + "=" + portval + " ";
+		if (portval != null) {
+			cmds.add("-D" + CCNNetworkManager.PROP_AGENT_PORT + "=" + portval);
+		}
 		String memval = System.getProperty(PROP_DAEMON_MEMORY);
 		if (memval != null)
-			cmd += "-Xmx" + memval;
+			cmds.add("-Xmx" + memval);
 		
 		String debugPort = System.getProperty(PROP_DAEMON_DEBUG_PORT);
-		if (debugPort != null)
-			cmd += " -Xrunjdwp:transport=dt_socket,address=" + debugPort + ",server=y,suspend=n";
-		
-		cmd += " -cp " + cp.toString() + " ";
-
-		cmd += daemonClass + " ";
-		cmd += "-daemon";
-		for (int i=1; i < args.length; ++i) {
-			cmd += " ";
-			cmd += args[i];
+		if (debugPort != null) {
+			cmds.add("-Xrunjdwp:transport=dt_socket,address=" + debugPort + ",server=y,suspend=n");
 		}
-		Library.logger().info("Starting daemon with command line: " + cmd);
-
-		FileOutputStream fos = new FileOutputStream("daemon_cmd.txt");
-		fos.write(cmd.getBytes());
-		fos.flush();
-		fos.close();
 		
-		Process child = Runtime.getRuntime().exec(cmd);
+		cmds.add("-cp");
+		cmds.add(cp.toString());
+
+		cmds.add(daemonClass);
+		cmds.add("-daemon");
+		for (int i=1; i < args.length; ++i) {
+			cmds.add(args[i]);
+		}
+		//Library.logger().info("Starting daemon with command line: " + cmd);
+
+		//FileOutputStream fos = new FileOutputStream("daemon_cmd.txt");
+		//fos.write(cmd.getBytes());
+		//fos.flush();
+		//fos.close();
+		
+		ProcessBuilder pb = new ProcessBuilder(cmds);
+		pb.redirectErrorStream(true);
+		Process child = pb.start();
 		
 		String outputFile = System.getProperty(PROP_DAEMON_OUTPUT);
 		if (outputFile != null) {
