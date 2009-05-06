@@ -4,7 +4,7 @@ BEFORE : test_single_ccnd_teardown
 # talk to each other.
 # Uses ipv4 localhost to connect to the preloaded ccnd
 WithCCND 5 ccnd &
-WithCCND 5 smoketestccnd
+WithCCND 5 ccndsmoketest
 
 cat >local9000.cf <<EOF
 ccn:/test/	udp	localhost	$CCN_LOCAL_PORT
@@ -19,4 +19,4 @@ WithCCND 5 ccnslurp /test > after_inject.out
 ExpectLines before_inject.out 0 0 : Not expecting content in isolated ccnd
 ExpectLines after_inject.out 400 600 : content in connected ccnd
 rm before_inject.out after_inject.out local9000.cf
-WithCCND 5 smoketestccnd -t 55 kill recv
+WithCCND 5 ccndsmoketest -t 55 kill recv

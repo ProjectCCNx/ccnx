@@ -31,4 +31,4 @@ ccn_xmltoccnb -w - > notice.ccnb <<EOF
 EOF
 trap "rm notice.ccnb inject.ccnb" 0
 echo '***' CHECK FOR CCND DEBUG MESSAGE:
-smoketestccnd -t 66 send notice.ccnb send inject.ccnb recv kill recv && wait
+ccndsmoketest -t 66 send notice.ccnb send inject.ccnb recv kill recv && wait

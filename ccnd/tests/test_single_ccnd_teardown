@@ -1,2 +1,2 @@
 AFTER : test_single_ccnd
-smoketestccnd kill
+ccndsmoketest kill
