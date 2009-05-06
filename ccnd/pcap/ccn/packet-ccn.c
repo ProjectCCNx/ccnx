@@ -37,13 +37,20 @@
 void proto_register_ccn();
 void proto_reg_handoff_ccn();
 static int dissect_ccn(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree);
+static int dissect_ccn_interest(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree);
+static int dissect_ccn_contentobject(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree);
 static gboolean dissect_ccn_heur(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree);
 
 static int proto_ccn = -1;
 static gint ett_ccn = -1;
-static gint ett_type = -1;
+static gint ett_signature = -1;
+static gint ett_name = -1;
+static gint ett_signedinfo = -1;
+static gint ett_content = -1;
+
 static int global_ccn_port = 4485;
 static dissector_handle_t ccn_handle = NULL;
+
 
 void
 proto_register_ccn(void)
@@ -51,8 +58,12 @@ proto_register_ccn(void)
     module_t *ccn_module;
     static gint *ett[] = {
         &ett_ccn,
-        &ett_type,
+        &ett_signature,
+        &ett_name,
+        &ett_signedinfo,
+        &ett_content,
     };
+    
     proto_ccn = proto_register_protocol("Content-centric Networking Protocol", /* name */
                                         "CCN",		/* short name */
                                         "ccn");		/* abbrev */
@@ -103,16 +114,15 @@ dissect_ccn(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
     guint tvb_size = 0;
     proto_tree *ccn_tree;
     proto_item *ti = NULL;
-    proto_tree *type_tree;
-    proto_item *type_item;
     const unsigned char *data;
     struct ccn_skeleton_decoder skel_decoder;
     struct ccn_skeleton_decoder *sd;
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d;
+    struct ccn_charbuf *c;
     int packet_type = 0;
     size_t s;
-    
+
     /* if it passes through a skeleton decoder it's one of ours for sure */
     memset(&skel_decoder, 0, sizeof(skel_decoder));
     sd = &skel_decoder;
@@ -133,36 +143,45 @@ dissect_ccn(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
     }
 
     /* decide whether it is an Interest or ContentObject */
-    memset(&decoder, 0, sizeof(decoder));
     d = ccn_buf_decoder_start(&decoder, data, tvb_size);
     if (d->decoder.state >= 0 && CCN_GET_TT_FROM_DSTATE(d->decoder.state) == CCN_DTAG) {
         packet_type = d->decoder.numval;
     }
 
-    
+    c = ccn_charbuf_create();
+    ccn_uri_append(c, data, tvb_size, 1);
+
     /* Add the packet type and CCN URI to the info column */
     if (check_col(pinfo->cinfo, COL_INFO)) {
-        struct ccn_charbuf *c;
         col_add_str(pinfo->cinfo, COL_INFO,
                     val_to_str(packet_type, packet_type_names, "Unknown (0x%02x"));
-        c = ccn_charbuf_create();
-        ccn_uri_append(c, data, tvb_size, 1);
-        col_append_str(pinfo->cinfo, COL_INFO, " ");
+        col_append_str(pinfo->cinfo, COL_INFO, ", ");
         col_append_str(pinfo->cinfo, COL_INFO, ccn_charbuf_as_string(c));
-        ccn_charbuf_destroy(&c);
     }
     
-    if (tree == NULL)
+    if (tree == NULL) {
+        ccn_charbuf_destroy(&c);
         return (s);
-
+    }
     
-    ti = proto_tree_add_item(tree, proto_ccn, tvb, 0, -1, FALSE);
+    ti = proto_tree_add_protocol_format(tree, proto_ccn, tvb, 0, -1,
+                                        "Content-centric Networking Protocol, %s, %s",
+                                        val_to_str(packet_type, packet_type_names, "Unknown (0x%02x"),
+                                        ccn_charbuf_as_string(c));
+    ccn_charbuf_destroy(&c);
+
     ccn_tree = proto_item_add_subtree(ti, ett_ccn);
     /* proto_tree_add_item(ccn_tree, hf_ccn_xxx, tvb, offset, len, FALSE); */
         
-    type_item = proto_tree_add_text(ccn_tree, tvb, 0, 3,
-                                    val_to_str(packet_type, packet_type_names, "Unknown (0x%02x"));
-    type_tree = proto_item_add_subtree(type_item, ett_type);
+    switch (packet_type) {
+    case CCN_DTAG_Interest:
+        dissect_ccn_interest(tvb, pinfo, ccn_tree);
+        break;
+
+    case CCN_DTAG_ContentObject:
+        dissect_ccn_contentobject(tvb, pinfo, ccn_tree);
+        break;
+    }
     return (s);
 }
 
@@ -180,3 +199,71 @@ dissect_ccn_heur(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
     else
         return (FALSE);
 }
+
+static int
+dissect_ccn_interest(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
+{
+    struct ccn_parsed_interest *pi;
+    struct ccn_indexbuf *comp;
+    int res;
+
+    return (0);
+    
+}
+
+static int
+dissect_ccn_contentobject(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
+{
+    proto_tree *signature_tree;
+    proto_item *signature_item;
+    proto_tree *name_tree;
+    proto_item *name_item;
+    proto_tree *signedinfo_tree;
+    proto_item *signedinfo_item;
+    proto_tree *content_tree;
+    proto_item *content_item;
+    struct ccn_parsed_ContentObject co;
+    struct ccn_parsed_ContentObject *pco = &co;
+    struct ccn_indexbuf *comps;
+    const unsigned char *ccnb;
+    size_t ccnb_size;
+    int l;
+    int res;
+    
+    ccnb_size = tvb_length(tvb);
+    ccnb = ep_tvb_memdup(tvb, 0, ccnb_size);
+    comps = ccn_indexbuf_create();
+    res = ccn_parse_ContentObject(ccnb, ccnb_size, pco, comps);
+    
+    l = pco->offset[CCN_PCO_E_Signature] - pco->offset[CCN_PCO_B_Signature];
+    signature_item = proto_tree_add_text(tree, tvb,
+                                         pco->offset[CCN_PCO_B_Signature], l,
+                                         "%s", "Signature");
+    signature_tree = proto_item_add_subtree(signature_item, ett_signature);
+
+    l = pco->offset[CCN_PCO_E_Name] - pco->offset[CCN_PCO_B_Name];
+    name_item = proto_tree_add_text(tree, tvb,
+                                         pco->offset[CCN_PCO_B_Name], l,
+                                         "%s", "Name");
+    name_tree = proto_item_add_subtree(name_item, ett_name);
+                                          
+    l = pco->offset[CCN_PCO_E_SignedInfo] - pco->offset[CCN_PCO_B_SignedInfo];
+    signedinfo_item = proto_tree_add_text(tree, tvb,
+                                         pco->offset[CCN_PCO_B_SignedInfo], l,
+                                         "SignedInfo");
+    signedinfo_tree = proto_item_add_subtree(signedinfo_item, ett_signedinfo);
+                                          
+    l = pco->offset[CCN_PCO_E_Content] - pco->offset[CCN_PCO_B_Content];
+    content_item = proto_tree_add_text(tree, tvb,
+                                         pco->offset[CCN_PCO_B_Content], l,
+                                         "Content");
+    content_tree = proto_item_add_subtree(content_item, ett_content);
+                                          
+    return (ccnb_size);
+}
+#if 0
+
+    type_item = proto_tree_add_text(ccn_tree, tvb, 0, 3,
+                                    val_to_str(packet_type, packet_type_names, "Unknown (0x%02x"));
+    type_tree = proto_item_add_subtree(type_item, ett_type);
+#endif
