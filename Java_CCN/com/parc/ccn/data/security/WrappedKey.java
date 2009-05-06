@@ -21,7 +21,6 @@ import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
-import com.parc.security.crypto.certificates.OIDLookup;
 
 public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 
@@ -65,14 +64,15 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	 * this is available in Java 1.6, or BouncyCastle.
 	 * 
 	 * @param keyLabel optional label for the wrapped key
-	 * @param optional algorithm for the wrapped key
+	 * @param optional algorithm to decode/se the wrapped key (e.g. AES-CBC)
 	 * @throws NoSuchPaddingException 
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
 	 * @throws IllegalBlockSizeException 
 	 */
 	public static WrappedKey wrapKey(Key keyToBeWrapped,
-									 String keyLabel, String keyAlgorithm,
+									 String keyAlgorithm,
+									 String keyLabel, 
 									 Key wrappingKey) 
 			throws NoSuchAlgorithmException, NoSuchPaddingException, 
 				   InvalidKeyException, IllegalBlockSizeException {
@@ -91,12 +91,19 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	    // If we're wrapping a private key in a public key, need to handle multi-block
 	    // keys. Probably don't want to do that with ECB mode. ECIES already acts
 	    // as a hybrid cipher, so we don't need to do this for that.
-	    if ((Cipher.PRIVATE_KEY == wrappedKeyType) && (wrappingKey instanceof PublicKey) && (!wrappingKey.getAlgorithm().equals("ECIES"))) {
-	    	Key nonceKey = generateNonceKey();
+	    if (((Cipher.PRIVATE_KEY == wrappedKeyType) || (Cipher.PUBLIC_KEY == wrappedKeyType)) && 
+	    	(wrappingKey instanceof PublicKey) && (!wrappingKey.getAlgorithm().equals("ECIES"))) {
 	    	
+	    	Key nonceKey = generateNonceKey();
 	    	try {
 	    		Cipher nonceCipher = Cipher.getInstance(wrapAlgorithmForKey(nonceKey.getAlgorithm()));
 	    		nonceCipher.init(Cipher.WRAP_MODE, nonceKey);
+	    		
+	    		// DKS RFC 3394 key wrapping does not handle padding, and requires input to be
+	    		// a multiple of 8 bytes. A workaround to this problem is currently in IETF
+	    		// process as draft-housley-aes-key-wrap-with-pad-02.txt; though it is not
+	    		// yet supported by libraries. But can't 0-pad without dropping key wrap API in
+	    		// general. So use it.
 	    		wrappedKey = nonceCipher.wrap(keyToBeWrapped);
 	    	} catch (NoSuchAlgorithmException nsex) {
 				Library.logger().warning("Configuration error: Unknown default nonce key algorithm: " + NONCE_KEY_ALGORITHM);
@@ -109,7 +116,8 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	    	wrappedKey = wrapCipher.wrap(keyToBeWrapped);
 	    }
 	    
-	    return new WrappedKey(null, null, keyAlgorithm, keyLabel, wrappedNonceKey, wrappedKey);
+	    return new WrappedKey(null, keyAlgorithm, keyToBeWrapped.getAlgorithm(), 
+	    						keyLabel, wrappedNonceKey, wrappedKey);
 	}
 	
 	/**
@@ -157,7 +165,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	public WrappedKey() {
 	}
 	
-	public Key unwrapKey(SecretKeySpec unwrapKey) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException {
+	public Key unwrapKey(Key unwrapKey) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException {
 
 		if (null == keyAlgorithm()) {
 			throw new NoSuchAlgorithmException("No algorithm specified for key to be unwrapped!");
@@ -166,7 +174,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		return unwrapKey(unwrapKey, keyAlgorithm());
 	}
 	
-	public Key unwrapKey(SecretKeySpec unwrapKey, String wrappedKeyAlgorithm) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException {
+	public Key unwrapKey(Key unwrapKey, String wrappedKeyAlgorithm) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException {
 
 		Cipher unwrapCipher = null;
 		if (null != wrapAlgorithm()) {
@@ -263,13 +271,14 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		}
 
 		if (null != wrapAlgorithm()) {
-			encoder.writeElement(WRAP_ALGORITHM_ELEMENT, OIDLookup.getCipherOID(wrapAlgorithm()));
+			//String wrapOID = OIDLookup.getCipherOID(wrapAlgorithm());
+			encoder.writeElement(WRAP_ALGORITHM_ELEMENT, wrapAlgorithm());
 		}
 		
 		if (null != keyAlgorithm()) {
-			encoder.writeElement(KEY_ALGORITHM_ELEMENT, OIDLookup.getCipherOID(keyAlgorithm()));
-		}
-		
+			//String keyOID = OIDLookup.getCipherOID(keyAlgorithm());
+			encoder.writeElement(KEY_ALGORITHM_ELEMENT, keyAlgorithm());
+		}		
 
 		if (null != label()) {
 			encoder.writeElement(LABEL_ELEMENT, label());
