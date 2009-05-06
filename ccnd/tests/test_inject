@@ -2,11 +2,16 @@ BEFORE : test_final_teardown
 ping -c 1 $((0x$TESTHOST_IPV4_HEX)) || SkipTest Cannot ping test host
 export CCN_LOCAL_PORT=$((CCN_LOCAL_PORT_BASE + 7))
 ccnd &
+# Currently the Inject packet uses struct_sockaddr, which is machine-dependent.
+# This covers BSD-derived OSs
+AF='10 02'
+#This does Linux (on little-endian machines)
+test `uname -s` = Linux && AF=0200
 ccn_xmltoccnb -w - > inject.ccnb <<EOF
 <?xml version="1.0"?>
 <Inject>
   <SOType>2</SOType>
-  <Address ccnbencoding="hexBinary">10 02 1185 $TESTHOST_IPV4_HEX 0000000000000000</Address>
+  <Address ccnbencoding="hexBinary">$AF 1185 $TESTHOST_IPV4_HEX 0000000000000000</Address>
   <Interest>
     <Name>
       <Component ccnbencoding="text">parc.com</Component>
