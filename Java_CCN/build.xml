@@ -135,6 +135,7 @@
 						<path refid="classpath-run" />
 					</classpath>
 					<sysproperty key="ccn.agent.port" value="${TEST_PORT}" />
+					<jvmarg value="-Xrunjdwp:transport=dt_socket,address=25000,server=y,suspend=n" />
 					<arg value="-interactive" />
 					<arg value="-root" />
 					<arg value="${REPO_ROOT}" />

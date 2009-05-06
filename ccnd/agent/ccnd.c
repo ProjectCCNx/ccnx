@@ -28,9 +28,6 @@
     #include "getaddrinfo.h"
     #include "dummyin6.h"
 #endif
-#ifndef AI_ADDRCONFIG
-#define AI_ADDRCONFIG 0 /*IEEE Std 1003.1-2001/Cor 1-2002, item XSH/TC1/D6/20*/
-#endif
 
 #include <ccn/ccn.h>
 #include <ccn/ccnd.h>
@@ -1456,6 +1453,13 @@ do_propagate(struct ccn_schedule *sched,
         else if (special_delay == 0)
             next_delay = CCN_INTEREST_LIFETIME_MICROSEC / 4;
     }
+    else {
+        unsigned faceid = pe->outbound->buf[n - 1];
+        struct face *face = face_from_faceid(h, faceid);
+        /* Wait longer before sending interest to ccndc */
+        if (face != NULL && (face->flags & CCN_FACE_DC) != 0)
+            next_delay += 60000;
+    }
     next_delay = pe_next_usec(h, pe, next_delay, __LINE__);
     return(next_delay);
 }
@@ -2107,6 +2111,7 @@ process_incoming_inject(struct ccnd *h, struct face *face,
     res = ccn_parse_interest(imsg, isize, &pi_buf, NULL);
     if (res < 0) return;
     /* Caller has parsed skeleton, so we're done parsing now. */
+    face->flags |= CCN_FACE_DC;
     ccnd_debug_ccnb(h, __LINE__, "inject", face, imsg, isize);
     if (sotype != SOCK_DGRAM) return;
     if (addrp->sa_family == AF_INET)
@@ -2512,11 +2517,12 @@ ccnd_create(void)
     const char *mtu;
     int fd;
     int res;
+    int whichpf;
     struct ccnd *h;
     struct addrinfo hints = {0};
     struct addrinfo *addrinfo = NULL;
     struct addrinfo *a;
-    struct hashtb_param param = { &finalize_face };
+    struct hashtb_param param = {0};
     sockname = ccnd_get_local_sockname();
     h = calloc(1, sizeof(*h));
     h->skiplinks = ccn_indexbuf_create();
@@ -2545,9 +2551,8 @@ ccnd_create(void)
     if (fd == -1) fatal_err(sockname);
     ccnd_msg(h, "listening on %s", sockname);
     h->local_listener_fd = fd;
-    hints.ai_family = PF_UNSPEC;
     hints.ai_socktype = SOCK_DGRAM;
-    hints.ai_flags = AI_ADDRCONFIG | AI_PASSIVE;
+    hints.ai_flags = AI_PASSIVE;
     debugstr = getenv("CCND_DEBUG");
     if (debugstr != NULL && debugstr[0] != 0) {
         h->debug = atoi(debugstr);
@@ -2576,41 +2581,46 @@ ccnd_create(void)
     portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
     if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
         portstr = "4485";
-    res = getaddrinfo(NULL, portstr, &hints, &addrinfo);
-    if (res == 0) {
-        for (a = addrinfo; a != NULL; a = a->ai_next) {
-            fd = socket(a->ai_family, SOCK_DGRAM, 0);
-            if (fd != -1) {
-                const char *af = "";
-                res = bind(fd, a->ai_addr, a->ai_addrlen);
-                if (res != 0) {
-                    close(fd);
-                    continue;
+    for (whichpf = 0; whichpf < 2; whichpf++) {
+        hints.ai_family = whichpf ? PF_INET6 : PF_INET;
+        res = getaddrinfo(NULL, portstr, &hints, &addrinfo);
+        if (res == 0) {
+            for (a = addrinfo; a != NULL; a = a->ai_next) {
+                fd = socket(a->ai_family, SOCK_DGRAM, 0);
+                if (fd != -1) {
+                    const char *af = "";
+                    int yes = 1;
+		    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+		    res = bind(fd, a->ai_addr, a->ai_addrlen);
+                    if (res != 0) {
+                        close(fd);
+                        continue;
+                    }
+                    res = fcntl(fd, F_SETFL, O_NONBLOCK);
+                    if (res == -1)
+                        perror("fcntl");
+                    hashtb_start(h->faces_by_fd, e);
+                    if (hashtb_seek(e, &fd, sizeof(fd), 0) != HT_NEW_ENTRY)
+                        exit(1);
+                    face = e->data;
+                    face->fd = fd;
+                    face->flags |= CCN_FACE_DGRAM;
+                    if (a->ai_family == AF_INET) {
+                        face->flags |= CCN_FACE_INET;
+                        h->udp4_fd = fd;
+                        af = "ipv4";
+                    }
+                    else if (a->ai_family == AF_INET6) {
+                        face->flags |= CCN_FACE_INET6;
+                        h->udp6_fd = fd;
+                        af = "ipv6";
+                    }
+                    hashtb_end(e);
+                    ccnd_msg(h, "accepting %s datagrams on fd %d", af, fd);
                 }
-                res = fcntl(fd, F_SETFL, O_NONBLOCK);
-                if (res == -1)
-                    perror("fcntl");
-                hashtb_start(h->faces_by_fd, e);
-                if (hashtb_seek(e, &fd, sizeof(fd), 0) != HT_NEW_ENTRY)
-                    exit(1);
-                face = e->data;
-                face->fd = fd;
-                face->flags |= CCN_FACE_DGRAM;
-                if (a->ai_family == AF_INET) {
-                    face->flags |= CCN_FACE_INET;
-                    h->udp4_fd = fd;
-                    af = "ipv4";
-                }
-                else if (a->ai_family == AF_INET6) {
-                    face->flags |= CCN_FACE_INET6;
-                    h->udp6_fd = fd;
-                    af = "ipv6";
-                }
-                hashtb_end(e);
-                ccnd_msg(h, "accepting %s datagrams on fd %d", af, fd);
             }
+            freeaddrinfo(addrinfo);
         }
-        freeaddrinfo(addrinfo);
     }
     ccnd_reseed(h);
     clean_needed(h);

@@ -141,6 +141,7 @@ struct face {
 #define CCN_FACE_LOCAL  (1 << 3) /* PF_UNIX socket */
 #define CCN_FACE_INET   (1 << 4) /* IPv4 */
 #define CCN_FACE_INET6  (1 << 6) /* IPv6 */
+#define CCN_FACE_DC     (1 << 7) /* Face sends Inject messages */
 #define CCN_FACE_NOSEND (1 << 8) /* Don't send anymore */
 
 /*
