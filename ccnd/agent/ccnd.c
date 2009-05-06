@@ -2467,7 +2467,7 @@ ccnd_reseed(struct ccnd *h)
     ssize_t res;
     
     res = -1;
-    fd = open("/dev/random", O_RDONLY);
+    fd = open("/dev/urandom", O_RDONLY);
     if (fd != -1) {
         res = read(fd, h->seed, sizeof(h->seed));
         close(fd);
