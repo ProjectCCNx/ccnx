@@ -1,5 +1,6 @@
 # Tests ccnd w.r.t. staleness handling
-SkipTest temporarily out of order
+BEFORE : test_final_teardown
+AFTER : test_single_ccnd_teardown test_twohop_ccnd_teardown
 export CCN_LOCAL_PORT=$((CCN_LOCAL_PORT_BASE + 6))
 ccnd &
 trap "smoketestccnd -t 55 recv kill recv" 0
