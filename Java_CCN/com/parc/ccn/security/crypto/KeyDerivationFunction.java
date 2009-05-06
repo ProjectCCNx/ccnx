@@ -136,6 +136,20 @@ public class KeyDerivationFunction {
 	public static final byte [] DeriveKey(byte [] masterKeyBytes, int outputLengthInBits, 
 			String label, XMLEncodable [] contextObjects) throws InvalidKeyException, XMLStreamException {
 
+		if ((null == masterKeyBytes) || (masterKeyBytes.length == 0)) {
+			throw new IllegalArgumentException("Master key bytes cannot be null or empty!");
+		}
+		// DKS deep debugging
+		boolean allzeros = true;
+		for (byte b : masterKeyBytes) {
+			if (b != 0) {
+				allzeros = false;
+				break;
+			}
+		}
+		if (allzeros) {
+			Library.logger().warning("Warning: DeriveKey called with all 0's key of length " + masterKeyBytes.length);
+		}
 		Mac hmac;
 		try {
 			hmac = Mac.getInstance("HmacSHA256");
@@ -143,8 +157,8 @@ public class KeyDerivationFunction {
 			Library.logger().severe("No HMAC-SHA256 available! Serious configuration issue!");
 			throw new RuntimeException("No HMAC-SHA256 available! Serious configuration issue!");
 		}
-		hmac.init(new SecretKeySpec(masterKeyBytes,hmac.getAlgorithm()));
-
+		hmac.init(new SecretKeySpec(masterKeyBytes, hmac.getAlgorithm()));
+		
 		// Precompute data used from block to block.
 		byte [] Lbytes = new byte[] { (byte)(outputLengthInBits>>24), (byte)(outputLengthInBits>>16), 
 				(byte)(outputLengthInBits>>8), (byte)outputLengthInBits };
@@ -156,7 +170,11 @@ public class KeyDerivationFunction {
 		byte [] outputBytes = new byte[outputLengthInBytes];
 
 		// Number of rounds
-		int n = (int)Math.ceil(outputLengthInBytes/hmac.getMacLength());
+		int n = (int)Math.ceil(outputLengthInBytes/(1.0 * hmac.getMacLength()));
+		if (n < 1) {
+			Library.logger().warning("Unexpected: 0 block key derivation: want " + outputLengthInBits + 
+					" bits (" + outputLengthInBytes + " bytes).");
+		}
 
 		// Run the HMAC for enough blocks to get the keying material we need.
 		for (int i=1; i <= n; ++i) {
