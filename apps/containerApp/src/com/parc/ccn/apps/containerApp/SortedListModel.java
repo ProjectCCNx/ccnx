@@ -26,6 +26,10 @@ class SortedListModel extends AbstractListModel {
 	  public Object getElementAt(int index) {
 	    return model.toArray()[index];
 	  }
+	  
+	  public Object[] getAllElements() {
+		    return model.toArray();
+		  }
 
 	  public void add(Object element) {
 	    if (model.add(element)) {

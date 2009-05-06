@@ -833,11 +833,11 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 				public void run() {
 					try {
 						ACLManager dialog = new ACLManager(selectedPrefix);
-						dialog.addWindowListener(new WindowAdapter() {
-							public void windowClosing(WindowEvent e) {
-								System.exit(0);
-							}
-						});
+//						dialog.addWindowListener(new WindowAdapter() {
+//							public void windowClosing(WindowEvent e) {
+//								System.exit(0);
+//							}
+//						});
 						dialog.setVisible(true);
 					} catch (Exception e) {
 						e.printStackTrace();
@@ -850,11 +850,11 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 					public void run() {
 						try {
 							GroupManager dialog = new GroupManager(selectedPrefix);
-							dialog.addWindowListener(new WindowAdapter() {
-								public void windowClosing(WindowEvent e) {
-									System.exit(0);
-								}
-							});
+//							dialog.addWindowListener(new WindowAdapter() {
+//								public void windowClosing(WindowEvent e) {
+//									System.exit(0);
+//								}
+//							});
 							dialog.setVisible(true);
 						} catch (Exception e) {
 							e.printStackTrace();
