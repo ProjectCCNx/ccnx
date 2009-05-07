@@ -181,6 +181,18 @@ public class RFSTest extends RepoTestBase {
 		repo.saveContent(ContentObject.buildContentObject(segmentedName223, "segment223".getBytes()));
 		checkData(repo, segmentedName223, "segment223");
 		
+		System.out.println("Repotest - storing sequence of objects for versioned stream read testing");
+		ContentName versionedNameNormal = ContentName.fromNative("/repoTest/testVersionNormal");
+		versionedNameNormal = VersioningProfile.versionName(versionedNameNormal);
+		repo.saveContent(ContentObject.buildContentObject(versionedNameNormal, "version-normal".getBytes()));
+		checkData(repo, versionedNameNormal, "version-normal");
+		for (int i=SegmentationProfile.BASE_SEGMENT; i<5; i++) {
+			ContentName segmented = SegmentationProfile.segmentName(versionedNameNormal, i);
+			String segmentContent = "segment"+ new Integer(i).toString();
+			repo.saveContent(ContentObject.buildContentObject(segmented, segmentContent.getBytes()));
+			checkData(repo, segmented, segmentContent);
+		}
+		
 		System.out.println("Repotest - Testing reinitialization of repo");
 		repo = new RFSImpl();
 		repo.initialize(new String[] {"-root", _fileTestDir, "-local", _repoName, "-global", _globalPrefix});
@@ -194,6 +206,12 @@ public class RFSTest extends RepoTestBase {
 		checkData(repo, versionedName, "version");
 		checkData(repo, segmentedName1, "segment1");
 		checkData(repo, segmentedName223, "segment223");
+		checkData(repo, versionedNameNormal, "version-normal");
+		for (int i=SegmentationProfile.BASE_SEGMENT; i<5; i++) {
+			ContentName segmented = SegmentationProfile.segmentName(versionedNameNormal, i);
+			String segmentContent = "segment"+ new Integer(i).toString();
+			checkData(repo, segmented, segmentContent);
+		}
 		//checkDataAndPublisher(repo, name, "Testing2", pubKey1);
 		//checkDataAndPublisher(repo, name, "Testing2", pubKey2);
 	}
