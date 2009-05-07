@@ -8,7 +8,10 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Hashtable;
+import java.util.Map;
 
 import javax.swing.JButton;
 
@@ -19,6 +22,8 @@ import javax.swing.JList;
 import javax.swing.JScrollPane;
 import javax.swing.ListSelectionModel;
 import javax.swing.border.BevelBorder;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 
 public class GroupManager extends JDialog implements ActionListener{
 
@@ -37,6 +42,8 @@ public class GroupManager extends JDialog implements ActionListener{
 	private JButton removeButton;
 	private JLabel groupMembersLabel;
 	
+	private Hashtable<String, String[]> groupMembers;
+	private Hashtable<String, String[]> groupMembersDefault;
 	private String path;
 	
 	private SortedListModel groupsModel = null;
@@ -51,6 +58,8 @@ public class GroupManager extends JDialog implements ActionListener{
 	//ArrayList of groups and Members
 	private ArrayList<SortedListModel> groups = null; 
 	private ArrayList<SortedListModel> groupsDefault = null;
+	
+	private ArrayList<JList> listsArray = null;
 	//Get the list of users
 	public String[] getUserList(String path2,String permissions)
 	{
@@ -77,6 +86,47 @@ public class GroupManager extends JDialog implements ActionListener{
 		String empty[] ={""};
 		return empty;
 	}
+	
+	public String[] testGroupDataGeneratorMethod(String path2, String id)
+	{
+		if(id ==null){
+			
+			//get all users/groups
+			String principals[] = {"Pauline","Noel","Eliza","Chico","Alex","Aaron","Kelly"};
+			return principals;			
+		}
+		else {
+			//Use the path to look up the permissions
+			if(id.equalsIgnoreCase("csl"))
+			{
+				String principals[] = {"Alice","Fred","Bob"};
+				return principals;
+			}
+			else if (id.equalsIgnoreCase("ccn"))
+			{
+				String principals[] = {"Frederick","Jane"};
+				return principals;
+			}
+			else if (id.equalsIgnoreCase("stir"))
+			{
+				String principals[] = {"Frank","Matsumoto","Jorge"};
+				return principals;
+			}
+			else if (id.equalsIgnoreCase("hsl"))
+			{
+				String principals[] = {"Enric","Thomas","Paul"};
+				return principals;
+			}
+			else if (id.equalsIgnoreCase("asc"))
+			{
+				String principals[] = {"Alice","Fred","Bob","Frank","Matsumoto","Jorge","Frederick","Jane"};
+				return principals;
+			}
+		
+		}
+		String empty[] ={""};
+		return empty;
+	}
 	/**
 	 * Create the dialog
 	 * @param frame 
@@ -86,25 +136,14 @@ public class GroupManager extends JDialog implements ActionListener{
 		super();
 		this.path = path;
 		
-		groupsModel = new SortedListModel();
-		groupsMembersModel = new SortedListModel();
-		userPool = new SortedListModel();
+		groupMembers = new Hashtable<String, String[]>();
+		groupMembersDefault = new Hashtable<String, String[]>();
 		
-		groupsModelDefault = new SortedListModel();
-		groupsMembersModelDefault = new SortedListModel();
-		userPoolDefault = new SortedListModel();
-		
-		//List Models for the List Objects
-		userPool.addAll(getUserList(path,null));
-		groupsModel.addAll(getUserList(path,"groups"));
-		groupsMembersModel.addAll(getUserList(path,"group_members"));
-		
-		//Default List Items
-		userPoolDefault.addAll(getUserList(path,null));
-		groupsMembersModelDefault.addAll(getUserList(path,"group_members"));
-		groupsModelDefault.addAll(getUserList(path,"groups"));
+		populateFakeData(path);
 		
 		
+		listsArray = new ArrayList<JList>();
+
 		setTitle("Manage Group Members");
 		getContentPane().setLayout(null);
 		setBounds(100, 100, 523, 439);
@@ -167,26 +206,43 @@ public class GroupManager extends JDialog implements ActionListener{
 		getContentPane().add(scrollPaneGroups);
 
 		usersList = new JList(userPool);
+		usersList.setName("users");
 		scrollPaneUsers.setViewportView(usersList);
 		usersList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 		usersList.setBorder(new BevelBorder(BevelBorder.LOWERED));
+
+		listsArray.add(usersList);		
 //		usersList.setBounds(45, 147, 120, 181);
 //		getContentPane().add(usersList);
 
 		groupMembersList = new JList(groupsMembersModel);
+		groupMembersList.setName("groupMembers");
 		scrollPaneGroupMembers.setViewportView(groupMembersList);
 		groupMembersList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 		groupMembersList.setBorder(new BevelBorder(BevelBorder.LOWERED));
+		
+		listsArray.add(groupMembersList);
 //		groupMembersList.setBounds(375, 147, 120, 181);
 //		getContentPane().add(groupMembersList);
 
 		//single group selection for now
 		groupsList = new JList(groupsModel);
+		groupsList.setName("groups");
 		scrollPaneGroups.setViewportView(groupsList);
 		groupsList.setBorder(new BevelBorder(BevelBorder.LOWERED));
+		
+//		listsArray.add(groupsList);
 //		groupsList.setBounds(76, 37, 388, 58);
 //		getContentPane().add(groupsList);
+//		GroupListSelectionListener gsl= new GroupListSelectionListener(listsArray);
+//		groupMembersList.addListSelectionListener(new GroupListSelectionListener(listsArray));
+//		groupsList.addListSelectionListener(new GroupListSelectionListener(listsArray));
+//		usersList.addListSelectionListener(new GroupListSelectionListener(listsArray));
 
+		groupMembersList.addMouseListener(new ListMouseListener(listsArray));
+		groupsList.addMouseListener(new ListMouseListener(listsArray));
+		usersList.addMouseListener(new ListMouseListener(listsArray));
+		
 		final JLabel groupsLabel = new JLabel();
 		groupsLabel.setText("Groups");
 		groupsLabel.setBounds(76, 10, 69, 15);
@@ -194,6 +250,40 @@ public class GroupManager extends JDialog implements ActionListener{
 
 			}
 	
+	private void populateFakeData(String path2) {
+
+		//testGroupDataGeneratorMethod
+		// TODO Auto-generated method stub
+		groupsModel = new SortedListModel();
+		groupsMembersModel = new SortedListModel();
+		userPool = new SortedListModel();
+		
+		groupsModelDefault = new SortedListModel();
+		groupsMembersModelDefault = new SortedListModel();
+		userPoolDefault = new SortedListModel();
+		
+		//List Models for the List Objects
+		userPool.addAll(getUserList(path2,null));
+		
+		groupsModel.addAll(getUserList(path2,"groups"));
+		groupsMembersModel.addAll(getUserList(path2,"group_members"));
+		
+		//Default List Items
+		userPoolDefault.addAll(getUserList(path2,null));
+		groupsMembersModelDefault.addAll(getUserList(path2,"group_members"));
+		groupsModelDefault.addAll(getUserList(path2,"groups"));
+		
+		//Map object that holds all the group information
+		//groupMembers
+		//groupMembersDefault
+		//testGroupDataGeneratorMethod
+		groupMembers.put("CCN", testGroupDataGeneratorMethod(path2,"ccn"));
+		groupMembers.put("CSL", testGroupDataGeneratorMethod(path2,"csl"));
+		groupMembers.put("STIR", testGroupDataGeneratorMethod(path2,"stir"));
+		groupMembers.put("HSL", testGroupDataGeneratorMethod(path2,"hsl"));
+		groupMembers.put("ASC", testGroupDataGeneratorMethod(path2,"asc"));
+	}
+
 	public void actionPerformed(ActionEvent e) {
 		// TODO Auto-generated method stub
 		if(applyChangesButton == e.getSource()) {
@@ -248,27 +338,23 @@ public class GroupManager extends JDialog implements ActionListener{
 		//ArrayList of selected items
 		ArrayList<Object> itemsSelected = new ArrayList<Object>();
 		
-		//Items selected that are to be removed from the toList
-		//ArrayList<Object> itemsToBeRemoved = new ArrayList<Object>();
 		
 		for(int i=0;i<selectedIndices.length;i++)
 		{
 			//remove item from fromList and move to toList
-			System.out.println("Index is "+ selectedIndices[i]);
+			System.out.println("Index is "+ "i"+ "selected Index is"+selectedIndices[i]);
 			Object selectedItem = fromList.getModel().getElementAt(selectedIndices[i]);
 			itemsSelected.add(selectedItem);			
 			
 		}
 		
 		//Bulk adding and removal of items
-		
-		for(Object item : itemsSelected)
-		{
-			((SortedListModel)toList.getModel()).add(item);
-			((SortedListModel)fromList.getModel()).removeElement(item);
-			
-		}
+		((SortedListModel)toList.getModel()).addAll(itemsSelected.toArray());		
+		((SortedListModel)fromList.getModel()).removeElementArray(itemsSelected);		
+
 		
 	}
+
+	
 
 }
