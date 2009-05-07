@@ -281,6 +281,8 @@ public class RepositoryDaemon extends Daemon {
 					ContentObject content = _repo.getContent(interest);
 					if (content != null) {
 						_library.put(content);
+					} else {
+						Library.logger().fine("Unsatisfied interest: " + interest.name());
 					}
 				}
 			} catch (Exception e) {
