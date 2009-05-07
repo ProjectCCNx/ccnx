@@ -8,6 +8,8 @@ import org.bouncycastle.crypto.params.KeyParameter;
 import org.bouncycastle.crypto.params.ParametersWithIV;
 import org.bouncycastle.crypto.params.ParametersWithRandom;
 
+import com.parc.ccn.Library;
+
 /**
  * RFC3394 requires that the key to be wrapped be a multiple of 8 bytes
  * in length. This poses challenges when wrapping private or public keys.
@@ -68,11 +70,14 @@ public class RFC3394WrapWithPadEngine implements Wrapper {
 		
 		int n = length / 8;
 
+		Library.logger().info("wrap: wrapping key of length " + length + ", "+ n + " blocks.");
+		
 		if ((n * 8) != length) {
 			// pad up to a multiple of 8 bytes
 			n++;
 			byte [] paddedinput = new byte[n*8];
 			System.arraycopy(input, offset, paddedinput, 0, length);
+			Library.logger().info("RFC3394WrapWithPadEngine: adding padding of " + (paddedinput.length - input.length) + " bytes.");
 			// this leaves the last bytes of padded input containing sufficient 0 bytes to pad to 
 			// a multiple of 64 bits
 			input = paddedinput;
@@ -162,16 +167,15 @@ public class RFC3394WrapWithPadEngine implements Wrapper {
 		int expectedLength = (a[FIXED_IV] << 24) + ((a[FIXED_IV+1] & 0xFF) << 16)
 							+ ((a[FIXED_IV+2] & 0xFF) << 8) + (a[FIXED_IV+3] & 0xFF);
 
-		// remember that n here is really n-1
-		int maxBlockLength = 8*(n+1);
-		if ((expectedLength <= (maxBlockLength-8)) || (expectedLength > maxBlockLength)) {
+		int maxBlockLength = 8*n;
+		if ((expectedLength < (maxBlockLength-8)) || (expectedLength > maxBlockLength)) {
 			throw new InvalidCipherTextException("Invalid checksum length: got: " + block.length + " expected: " + 
-					expectedLength + " max: " + maxBlockLength + " n: " + (n+1));
+					expectedLength + " max: " + maxBlockLength + " n: " + n);
 		}
-		int b = maxBlockLength - expectedLength;
+		int b = (maxBlockLength - expectedLength) % 8;
 		if (block.length != (expectedLength + b)) {
 			throw new InvalidCipherTextException("Invalid checksum length: got: " + block.length + " expected: " + 
-					expectedLength + " b: " + b + " max: " + maxBlockLength + " n: " + (n+1));
+					expectedLength + " b: " + b + " max: " + maxBlockLength + " n: " + n);
 		}		
 		for (int i=expectedLength; i < block.length; ++i) {
 			if (block[i] != 0) {

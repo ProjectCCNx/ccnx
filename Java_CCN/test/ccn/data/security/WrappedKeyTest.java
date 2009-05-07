@@ -12,7 +12,6 @@ import java.security.Security;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.bouncycastle.asn1.nist.NISTObjectIdentifiers;
-import org.bouncycastle.jce.interfaces.ElGamalKey;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.jce.spec.ElGamalParameterSpec;
 import org.junit.Assert;
@@ -108,21 +107,6 @@ public class WrappedKeyTest {
 		ekpg.initialize(egp); // go for fast
 		wrappingEGKeyPair = ekpg.generateKeyPair();
 		wrappedEGKeyPair = ekpg.generateKeyPair();
-		egp = ((ElGamalKey)wrappingEGKeyPair.getPublic()).getParameters();
-		byte [] gbytes = egp.getG().toByteArray();
-		StringBuffer gout = new StringBuffer("byte [] g = new byte[]{");
-		for (int i=0; i < gbytes.length-1; ++i) {
-			gout.append("(byte)0x" + Integer.toHexString(0x000000ff & gbytes[i]) + ", ");
-		}
-		gout.append("(byte)0x" + Integer.toHexString(0x000000ff & gbytes[gbytes.length-1]) + "};");
-		System.out.println(gout.toString());
-		byte [] pbytes = egp.getP().toByteArray();
-		StringBuffer pout = new StringBuffer("byte [] p = new byte[]{");
-		for (int i=0; i < pbytes.length-1; ++i) {
-			pout.append("(byte)0x" + Integer.toHexString(0x000000ff & pbytes[i]) + ", ");
-		}
-		pout.append("(byte)0x" + Integer.toHexString(0x000000ff & pbytes[pbytes.length-1]) + "};");
-		System.out.println(pout.toString());
 		
 		byte [] key = new byte[16];
 		sr.nextBytes(key);
@@ -186,15 +170,6 @@ public class WrappedKeyTest {
 			fail("Exception in wrapKey: " + e.getClass().getName() + ":  " + e.getMessage());
 		}
 		wka.setWrappingKeyIdentifier(wrappingKeyID);
-	}
-
-	@Test
-	public void testGetCipherType() {
-	}
-
-	@Test
-	public void testWrapAlgorithmForKey() {
-		fail("Not yet implemented");
 	}
 	
 	@Test
