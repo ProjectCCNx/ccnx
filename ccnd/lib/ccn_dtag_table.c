@@ -63,7 +63,8 @@ static const struct ccn_dict_entry ccn_tagdict[] = {
     {CCN_DTAG_SOType, "SOType"},
     {CCN_DTAG_Inject, "Inject"},
     {CCN_DTAG_CCNProtocolDataUnit, "CCNProtocolDataUnit"},
-    {CCN_DTAG_ExperimentalResponseFilter, "ExperimentalResponseFilter"}
+    {CCN_DTAG_ExperimentalResponseFilter, "ExperimentalResponseFilter"},
+    {0, 0}
 };
 
-const struct ccn_dict ccn_dtag_dict = {ARRAY_N(ccn_tagdict), ccn_tagdict};
+const struct ccn_dict ccn_dtag_dict = {ARRAY_N(ccn_tagdict) - 1, ccn_tagdict};
