@@ -25,7 +25,6 @@ import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.WrappedKey;
 import com.parc.ccn.security.crypto.CCNCipherFactory;
 import com.parc.ccn.security.crypto.jce.CCNCryptoProvider;
-import com.parc.security.crypto.certificates.OIDLookup;
 
 public class WrappedKeyTest {
 
@@ -213,7 +212,6 @@ public class WrappedKeyTest {
 		}
 		WrappedKey dwks = new WrappedKey();
 		WrappedKey bdwks = new WrappedKey();
-		OIDLookup.listLoadedAliases();
 		XMLEncodableTester.encodeDecodeTest("WrappedKey(symmetric, real)", wks, dwks, bdwks);
 
 		WrappedKey wka = null;
