@@ -261,7 +261,12 @@ public class RepositoryDaemon extends Daemon {
 						processIncomingInterest(interest);
 				} while (interest != null);
 				
-				Thread.yield();  // Should we sleep?
+				// Sleep so we don't burn up cpu
+				try {
+					Thread.sleep(200);
+				} catch (InterruptedException e) {
+					// don't care
+				}
 			}
 		}
 		
