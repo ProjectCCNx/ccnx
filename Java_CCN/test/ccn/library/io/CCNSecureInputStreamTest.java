@@ -53,7 +53,7 @@ public class CCNSecureInputStreamTest {
 		defaultStreamName = ContentName.fromNative("/test/stream/versioning/LongOutput.bin");
 		
 		firstVersionName = VersioningProfile.versionName(defaultStreamName);
-		firstVersionLength = randBytes.nextInt(MAX_FILE_SIZE);
+		firstVersionLength = 1234;//randBytes.nextInt(MAX_FILE_SIZE);
 		firstVersionMaxSegment = (int)Math.ceil(firstVersionLength/SegmentationProfile.DEFAULT_BLOCKSIZE);
 		firstVersionKeys = ContentKeys.generateRandomKeys();
 		firstVersionDigest = writeFileFloss(firstVersionName, firstVersionLength, randBytes, firstVersionKeys);
