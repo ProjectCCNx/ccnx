@@ -34,10 +34,10 @@ public class ListMouseListener implements MouseListener {
             {
             	if(!(item.getName().equalsIgnoreCase(selectedListName)))
             	{
-            		if(Array.getLength(item.getSelectedValues())>0){
+         
             		System.out.println("Item Name: "+item.getName()+" selected name: "+selectedListName);
             		item.clearSelection();
-            		}
+            		
             	}
             }
 

@@ -1,5 +1,6 @@
 package com.parc.ccn.apps.containerApp;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
@@ -63,6 +64,20 @@ class SortedListModel extends AbstractListModel {
 	    return model.last();
 	  }
 
+	  public boolean removeElementArray(ArrayList<Object> elements)
+	  {
+		  boolean removed = false;
+			for(Object item : elements)
+			{
+				removed = model.remove(item);
+				
+			}
+			if (removed) {
+			      fireContentsChanged(this, 0, getSize());
+			    }
+			return removed;
+	  }
+	  
 	  public boolean removeElement(Object element) {
 	    boolean removed = model.remove(element);
 	    if (removed) {
