@@ -8,6 +8,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Hashtable;
@@ -60,6 +61,8 @@ public class GroupManager extends JDialog implements ActionListener{
 	private ArrayList<SortedListModel> groupsDefault = null;
 	
 	private ArrayList<JList> listsArray = null;
+	
+	private ValuesChanged changedEntries;
 	//Get the list of users
 	public String[] getUserList(String path2,String permissions)
 	{
@@ -122,6 +125,11 @@ public class GroupManager extends JDialog implements ActionListener{
 				String principals[] = {"Alice","Fred","Bob","Frank","Matsumoto","Jorge","Frederick","Jane"};
 				return principals;
 			}
+			else if (id.equalsIgnoreCase("empty"))
+			{
+				String principals[] = {""};
+				return principals;
+			}
 		
 		}
 		String empty[] ={""};
@@ -136,8 +144,14 @@ public class GroupManager extends JDialog implements ActionListener{
 		super();
 		this.path = path;
 		
+		//window listener
+		changedEntries = new ValuesChanged(false);
+		this.addWindowListener(new ChangedEntriesConfirm(this,changedEntries));
+
+		
 		groupMembers = new Hashtable<String, String[]>();
 		groupMembersDefault = new Hashtable<String, String[]>();
+		
 		
 		populateFakeData(path);
 		
@@ -236,7 +250,7 @@ public class GroupManager extends JDialog implements ActionListener{
 //		getContentPane().add(groupsList);
 //		GroupListSelectionListener gsl= new GroupListSelectionListener(listsArray);
 //		groupMembersList.addListSelectionListener(new GroupListSelectionListener(listsArray));
-//		groupsList.addListSelectionListener(new GroupListSelectionListener(listsArray));
+		groupsList.addListSelectionListener(new GroupListSelectionListener(groupMembersList,groupMembers,groupsMembersModel));
 //		usersList.addListSelectionListener(new GroupListSelectionListener(listsArray));
 
 		groupMembersList.addMouseListener(new ListMouseListener(listsArray));
@@ -266,7 +280,7 @@ public class GroupManager extends JDialog implements ActionListener{
 		userPool.addAll(getUserList(path2,null));
 		
 		groupsModel.addAll(getUserList(path2,"groups"));
-		groupsMembersModel.addAll(getUserList(path2,"group_members"));
+	
 		
 		//Default List Items
 		userPoolDefault.addAll(getUserList(path2,null));
@@ -282,6 +296,16 @@ public class GroupManager extends JDialog implements ActionListener{
 		groupMembers.put("STIR", testGroupDataGeneratorMethod(path2,"stir"));
 		groupMembers.put("HSL", testGroupDataGeneratorMethod(path2,"hsl"));
 		groupMembers.put("ASC", testGroupDataGeneratorMethod(path2,"asc"));
+		groupMembers.put("EMPTY", testGroupDataGeneratorMethod(path2,"empty"));
+		
+		groupMembersDefault.putAll(groupMembers);
+//		groupMembersDefault.put("CCN", testGroupDataGeneratorMethod(path2,"ccn"));
+//		groupMembersDefault.put("CSL", testGroupDataGeneratorMethod(path2,"csl"));
+//		groupMembersDefault.put("STIR", testGroupDataGeneratorMethod(path2,"stir"));
+//		groupMembersDefault.put("HSL", testGroupDataGeneratorMethod(path2,"hsl"));
+//		groupMembersDefault.put("ASC", testGroupDataGeneratorMethod(path2,"asc"));
+		
+		groupsMembersModel.addAll(groupMembers.get("EMPTY"));
 	}
 
 	public void actionPerformed(ActionEvent e) {
@@ -289,24 +313,51 @@ public class GroupManager extends JDialog implements ActionListener{
 		if(applyChangesButton == e.getSource()) {
 			
 			applyChanges();
+			this.changedEntries = false;
 		}else if(revertChangesButton == e.getSource()){
 			
 			restoreDefaults();
+			this.changedEntries = false;
 			
 			
 		}else if(cancelChangesButton == e.getSource()){
 			
 			cancelChanges();
+			this.changedEntries = false;
 			
 		}else if(addButton == e.getSource()){
 			moveListItems(usersList.getSelectedIndices(),usersList,groupMembersList);
+			//update the group membership
+			updateGroupMembership();
+			this.changedEntries = true;
 			
 		}else if(removeButton == e.getSource()){			
 			moveListItems(groupMembersList.getSelectedIndices(),groupMembersList,usersList);			
-			
+			//update the group membership
+			updateGroupMembership();
+			this.changedEntries = true;
 		}
 		
 	}
+	private void updateGroupMembership() {
+		// TODO Auto-generated method stub
+		//get the current group selected
+		if(this.groupsList.getSelectedValue() != null)
+		{
+		String item = this.groupsList.getSelectedValue().toString();
+		
+		//copy the group Membership to the hash
+		//type erasure, can't case string to object so will need to copy
+		Object[] members = groupsMembersModel.getAllElements();
+		String[] memberString = new String[members.length];
+		for(int i=0;i<members.length;i++)
+		{
+			memberString[i]=members[i].toString();
+		}
+		this.groupMembers.put(item, memberString);
+		}
+	}
+
 	private void applyChanges() {
 		// TODO Take all the elements and assign them new acls somehow
 		
@@ -320,10 +371,20 @@ public class GroupManager extends JDialog implements ActionListener{
 		groupsModel.clear();
 		groupsMembersModel.clear();
 		
+		groupMembers.clear();
+		
 		//In with the new
 		userPool.addAll(userPoolDefault.getAllElements());
 		groupsModel.addAll(groupsModelDefault.getAllElements());
-		groupsMembersModel.addAll(groupsMembersModelDefault.getAllElements());
+		groupMembers.putAll(groupMembersDefault);
+		
+		//clear all selections
+		usersList.clearSelection();
+		groupMembersList.clearSelection();
+		groupsList.clearSelection();
+		
+		groupsMembersModel.addAll(groupMembers.get("EMPTY"));
+		
 		
 	}
 	
@@ -342,7 +403,7 @@ public class GroupManager extends JDialog implements ActionListener{
 		for(int i=0;i<selectedIndices.length;i++)
 		{
 			//remove item from fromList and move to toList
-			System.out.println("Index is "+ "i"+ "selected Index is"+selectedIndices[i]);
+			System.out.println("Index is "+ i+ "selected Index is"+selectedIndices[i]);
 			Object selectedItem = fromList.getModel().getElementAt(selectedIndices[i]);
 			itemsSelected.add(selectedItem);			
 			
@@ -352,9 +413,20 @@ public class GroupManager extends JDialog implements ActionListener{
 		((SortedListModel)toList.getModel()).addAll(itemsSelected.toArray());		
 		((SortedListModel)fromList.getModel()).removeElementArray(itemsSelected);		
 
-		
+		//clear selections from old items
+		fromList.clearSelection();
+		//select new items?
+		//toList.setSelectedIndices(indices);
 	}
 
 	
 
+}
+class ValuesChanged
+{
+	public boolean changed;
+	public ValuesChanged(boolean c)
+	{
+		this.changed = c;
+	}
 }
