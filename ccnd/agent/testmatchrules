@@ -138,7 +138,7 @@ sleep 1
 gzip -c -d 5586.ccnb.gz | nc -U /tmp/.ccnd.sock
 for i in firstin lastin nextsib lastsib exactmatch classic contenthash; do
     echo ===================================== $i.ccnb
-    ./smoketestccnd -f $i.ccnb  -n 3 > $i.smokeout
+    ./ccndsmoketest -f $i.ccnb  -n 3 > $i.smokeout
 done
 echo Expect to see different answers because of suppressed matches against unsent content
 cat lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb | nc -U /tmp/.ccnd.sock -w 1 | nc -U /tmp/.ccnd.sock | ../lib/ccn_ccnbtoxml -s lastsibX10 -

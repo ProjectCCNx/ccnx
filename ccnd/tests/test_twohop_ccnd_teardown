@@ -1,1 +1,1 @@
-for i in 1 2 3; do WithCCND $i smoketestccnd -t 50 recv kill; done
+for i in 1 2 3; do WithCCND $i ccndsmoketest -t 50 recv kill; done
