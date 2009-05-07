@@ -24,6 +24,7 @@ import test.ccn.data.util.XMLEncodableTester;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.WrappedKey;
 import com.parc.ccn.security.crypto.CCNCipherFactory;
+import com.parc.ccn.security.crypto.jce.CCNCryptoProvider;
 import com.parc.security.crypto.certificates.OIDLookup;
 
 public class WrappedKeyTest {
@@ -91,6 +92,8 @@ public class WrappedKeyTest {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		Security.addProvider(new BouncyCastleProvider());
+		Security.addProvider(new CCNCryptoProvider());
+		
 		SecureRandom sr = new SecureRandom();
 		sr.nextBytes(dummyWrappedKey);
 		
@@ -188,7 +191,6 @@ public class WrappedKeyTest {
 
 	@Test
 	public void testGetCipherType() {
-		OIDLookup.listLoadedAliases();
 	}
 
 	@Test

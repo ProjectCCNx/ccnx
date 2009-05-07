@@ -3,6 +3,7 @@ package com.parc.ccn.data.security;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.security.PublicKey;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -47,7 +48,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	
 	static {
 		// In Java 1.5, many of these require BouncyCastle. They are typically built in in 1.6.
-		_WrapAlgorithmMap.put("AES", "AESWrap");
+		_WrapAlgorithmMap.put("AES", "AESWRAPWITHPAD");
 		_WrapAlgorithmMap.put("RSA", "RSA/NONE/OAEPWithSHA256AndMGF1Padding");
 	}
 	
@@ -78,7 +79,13 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 				   InvalidKeyException, IllegalBlockSizeException {
 		
 		String wrappingAlgorithm = wrapAlgorithmForKey(wrappingKey.getAlgorithm());
-		Cipher wrapCipher = Cipher.getInstance(wrappingAlgorithm);
+		Cipher wrapCipher = null;
+		try {
+			wrapCipher = Cipher.getInstance(wrappingAlgorithm, "CCN");
+		} catch (NoSuchProviderException e) {
+			Library.logger().warning("No such provider exception: " + e.getMessage());
+			Library.warningStackTrace(e);
+		}
 
 	    wrapCipher.init(Cipher.WRAP_MODE, wrappingKey);
 	    
@@ -96,7 +103,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	    	
 	    	Key nonceKey = generateNonceKey();
 	    	try {
-	    		Cipher nonceCipher = Cipher.getInstance(wrapAlgorithmForKey(nonceKey.getAlgorithm()));
+	    		Cipher nonceCipher = Cipher.getInstance(wrapAlgorithmForKey(nonceKey.getAlgorithm()), "CCN");
 	    		nonceCipher.init(Cipher.WRAP_MODE, nonceKey);
 	    		
 	    		// DKS RFC 3394 key wrapping does not handle padding, and requires input to be
@@ -109,7 +116,10 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 				Library.logger().warning("Configuration error: Unknown default nonce key algorithm: " + NONCE_KEY_ALGORITHM);
 				Library.warningStackTrace(nsex);
 				throw new RuntimeException("Configuration error: Unknown default nonce key algorithm: " + NONCE_KEY_ALGORITHM);	    		
-	    	}
+	    	} catch (NoSuchProviderException e) {
+				Library.logger().warning("No such provider exception: " + e.getMessage());
+				Library.warningStackTrace(e);
+			}
 	    	wrappedNonceKey = wrapCipher.wrap(nonceKey);
 	    	
 	    } else {
