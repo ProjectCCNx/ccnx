@@ -51,7 +51,8 @@ public class LibraryTestBase {
 	
 	protected static CCNLibrary putLibrary = null;
 	protected static CCNLibrary getLibrary = null;
-
+	
+	protected static ArrayList<Integer> usedIds = new ArrayList<Integer>();
 
 	static {
 		try {
@@ -190,6 +191,15 @@ public class LibraryTestBase {
 			checkPutResults(putResult);
 		}
 		writer.close();
+	}
+	
+	public int getUniqueId() {
+		int id;
+		do {
+			id = rand.nextInt(1000);
+		} while (usedIds.indexOf(id) != -1);
+		usedIds.add(id);
+		return id;
 	}
 	
 	public class GetThread implements Runnable {
