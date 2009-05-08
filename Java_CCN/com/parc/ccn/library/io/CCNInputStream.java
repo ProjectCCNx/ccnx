@@ -136,8 +136,6 @@ public class CCNInputStream extends CCNAbstractInputStream {
 				((null != buf) ? buf.length : "null") + " at offset " + offset);
 		// is this the first block?
 		if (null == _currentBlock) {
-			if (_atEOF)
-				return -1;
 			ContentObject firstBlock = getFirstBlock();
 			if (null == firstBlock) {
 				_atEOF = true;
