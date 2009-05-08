@@ -24,6 +24,7 @@ EXPAT_PROGRAMS = ccn_xmltoccnb
 #PCAP_PROGRAMS = ccndumppcap
 BROKEN_PROGRAMS =
 DEBRIS = 
+SCRIPTSRC = ccn_initkeystore.sh
 CSRC = ccn_buf_decoder.c ccn_dtag_table.c ccn_buf_encoder.c ccn_charbuf.c \
     ccn_indexbuf.c ccn_coding.c ccn_client.c \
     ccn_ccnbtoxml.c ccn_xmltoccnb.c ccn_splitccnb.c \
