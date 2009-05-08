@@ -1,5 +1,6 @@
 package com.parc.ccn.apps.containerApp;
 
+import java.awt.Color;
 import java.awt.EventQueue;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -20,6 +21,7 @@ import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.ListSelectionModel;
 import javax.swing.border.BevelBorder;
@@ -41,7 +43,7 @@ public class GroupManager extends JDialog implements ActionListener{
 	private JButton cancelChangesButton;
 	private JButton addButton;
 	private JButton removeButton;
-	private JLabel groupMembersLabel;
+	private JLabel usersLabel;
 	
 	private Hashtable<String, String[]> groupMembers;
 	private Hashtable<String, String[]> groupMembersDefault;
@@ -63,6 +65,7 @@ public class GroupManager extends JDialog implements ActionListener{
 	private ArrayList<JList> listsArray = null;
 	
 	private ValuesChanged changedEntries;
+	private JScrollPane scrollPaneGroupMembers;
 	//Get the list of users
 	public String[] getUserList(String path2,String permissions)
 	{
@@ -145,17 +148,15 @@ public class GroupManager extends JDialog implements ActionListener{
 		this.path = path;
 		
 		//window listener
+		this.setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
 		changedEntries = new ValuesChanged(false);
 		this.addWindowListener(new ChangedEntriesConfirm(this,changedEntries));
-
 		
 		groupMembers = new Hashtable<String, String[]>();
 		groupMembersDefault = new Hashtable<String, String[]>();
-		
-		
+				
 		populateFakeData(path);
-		
-		
+				
 		listsArray = new ArrayList<JList>();
 
 		setTitle("Manage Group Members");
@@ -186,33 +187,33 @@ public class GroupManager extends JDialog implements ActionListener{
 		addButton = new JButton();
 		addButton.addActionListener(this);
 		addButton.setText("add ->");
-		addButton.setBounds(218, 145, 112, 25);
+		addButton.setBounds(205, 146, 112, 25);
 		getContentPane().add(addButton);
 
 		removeButton = new JButton();
 		removeButton.addActionListener(this);
 		removeButton.setText("<- remove");
-		removeButton.setBounds(218, 302, 112, 25);
+		removeButton.setBounds(205, 303, 112, 25);
 		getContentPane().add(removeButton);
 
 		final JLabel groupMembersLabel = new JLabel();
 		groupMembersLabel.setAutoscrolls(true);
 		groupMembersLabel.setText("List of Users");
-		groupMembersLabel.setBounds(47, 120, 98, 15);
+		groupMembersLabel.setBounds(47, 111, 98, 15);
 		getContentPane().add(groupMembersLabel);
 
-		final JLabel usersLabel = new JLabel();
+		usersLabel = new JLabel();
 		usersLabel.setAutoscrolls(true);
 		usersLabel.setText("Group Members");
-		usersLabel.setBounds(375, 120, 100, 15);
+		usersLabel.setBounds(342, 101, 153, 34);
 		getContentPane().add(usersLabel);
-
+		
 		final JScrollPane scrollPaneUsers = new JScrollPane();
 		scrollPaneUsers.setBounds(45, 147, 120, 181);
 		getContentPane().add(scrollPaneUsers);
 
-		final JScrollPane scrollPaneGroupMembers = new JScrollPane();
-		scrollPaneGroupMembers.setBounds(375, 147, 120, 181);
+		scrollPaneGroupMembers = new JScrollPane();
+		scrollPaneGroupMembers.setBounds(348, 147, 127, 181);
 		getContentPane().add(scrollPaneGroupMembers);
 
 		final JScrollPane scrollPaneGroups = new JScrollPane();
@@ -226,8 +227,6 @@ public class GroupManager extends JDialog implements ActionListener{
 		usersList.setBorder(new BevelBorder(BevelBorder.LOWERED));
 
 		listsArray.add(usersList);		
-//		usersList.setBounds(45, 147, 120, 181);
-//		getContentPane().add(usersList);
 
 		groupMembersList = new JList(groupsMembersModel);
 		groupMembersList.setName("groupMembers");
@@ -235,9 +234,11 @@ public class GroupManager extends JDialog implements ActionListener{
 		groupMembersList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 		groupMembersList.setBorder(new BevelBorder(BevelBorder.LOWERED));
 		
+		//initially we don't have any data in it, show the user it is empty
+		groupMembersList.setEnabled(false);
+		groupMembersList.setBackground(Color.gray);
 		listsArray.add(groupMembersList);
-//		groupMembersList.setBounds(375, 147, 120, 181);
-//		getContentPane().add(groupMembersList);
+
 
 		//single group selection for now
 		groupsList = new JList(groupsModel);
@@ -245,13 +246,9 @@ public class GroupManager extends JDialog implements ActionListener{
 		scrollPaneGroups.setViewportView(groupsList);
 		groupsList.setBorder(new BevelBorder(BevelBorder.LOWERED));
 		
-//		listsArray.add(groupsList);
-//		groupsList.setBounds(76, 37, 388, 58);
-//		getContentPane().add(groupsList);
-//		GroupListSelectionListener gsl= new GroupListSelectionListener(listsArray);
-//		groupMembersList.addListSelectionListener(new GroupListSelectionListener(listsArray));
-		groupsList.addListSelectionListener(new GroupListSelectionListener(groupMembersList,groupMembers,groupsMembersModel));
-//		usersList.addListSelectionListener(new GroupListSelectionListener(listsArray));
+
+		groupsList.addListSelectionListener(new GroupListSelectionListener(groupMembersList,groupMembers,groupsMembersModel,usersLabel));
+
 
 		groupMembersList.addMouseListener(new ListMouseListener(listsArray));
 		groupsList.addMouseListener(new ListMouseListener(listsArray));
@@ -299,43 +296,49 @@ public class GroupManager extends JDialog implements ActionListener{
 		groupMembers.put("EMPTY", testGroupDataGeneratorMethod(path2,"empty"));
 		
 		groupMembersDefault.putAll(groupMembers);
-//		groupMembersDefault.put("CCN", testGroupDataGeneratorMethod(path2,"ccn"));
-//		groupMembersDefault.put("CSL", testGroupDataGeneratorMethod(path2,"csl"));
-//		groupMembersDefault.put("STIR", testGroupDataGeneratorMethod(path2,"stir"));
-//		groupMembersDefault.put("HSL", testGroupDataGeneratorMethod(path2,"hsl"));
-//		groupMembersDefault.put("ASC", testGroupDataGeneratorMethod(path2,"asc"));
 		
 		groupsMembersModel.addAll(groupMembers.get("EMPTY"));
+		
 	}
 
 	public void actionPerformed(ActionEvent e) {
-		// TODO Auto-generated method stub
+
 		if(applyChangesButton == e.getSource()) {
 			
 			applyChanges();
-			this.changedEntries = false;
+			this.changedEntries.changed = false;
 		}else if(revertChangesButton == e.getSource()){
 			
 			restoreDefaults();
-			this.changedEntries = false;
+			this.changedEntries.changed = false;
 			
 			
 		}else if(cancelChangesButton == e.getSource()){
 			
 			cancelChanges();
-			this.changedEntries = false;
+			
 			
 		}else if(addButton == e.getSource()){
+			
+		if(groupsList.getSelectedValue() != null){
 			moveListItems(usersList.getSelectedIndices(),usersList,groupMembersList);
 			//update the group membership
 			updateGroupMembership();
-			this.changedEntries = true;
-			
-		}else if(removeButton == e.getSource()){			
+			this.changedEntries.changed = true;
+		}else
+		{
+			JOptionPane.showMessageDialog(this, "Please Select a Group to Add Members", "Select Group",JOptionPane.ERROR_MESSAGE);
+		}
+		}else if(removeButton == e.getSource()){
+			if(groupsList.getSelectedValue() != null){
 			moveListItems(groupMembersList.getSelectedIndices(),groupMembersList,usersList);			
 			//update the group membership
 			updateGroupMembership();
-			this.changedEntries = true;
+			this.changedEntries.changed = true;
+			}else
+			{
+				JOptionPane.showMessageDialog(this, "Please Select a Group to Add Members", "Select Group",JOptionPane.ERROR_MESSAGE);
+			}
 		}
 		
 	}
@@ -384,14 +387,35 @@ public class GroupManager extends JDialog implements ActionListener{
 		groupsList.clearSelection();
 		
 		groupsMembersModel.addAll(groupMembers.get("EMPTY"));
-		
+		usersLabel.setText("Group Members");
+		groupMembersList.setEnabled(false);
+		groupMembersList.setBackground(Color.gray);
 		
 	}
 	
 	private void cancelChanges()
 	{
-		this.setVisible(false);
-		this.dispose();
+		
+//		this.setVisible(false);
+//		this.dispose();
+				
+		if(changedEntries.changed)
+		{
+			int answer = JOptionPane.showConfirmDialog(this, "You have pending changes. Are you sure you would like to exit", "Pending Changes",JOptionPane.YES_NO_OPTION);
+			switch(answer){
+			case JOptionPane.YES_OPTION:
+				this.setVisible(false);
+				this.dispose();
+				break;
+			case JOptionPane.NO_OPTION:
+				break;
+			}
+			
+		}else
+		{
+			this.setVisible(false);
+			this.dispose();
+		}
 	}
 	
 	private void moveListItems(int selectedIndices[],JList fromList,JList toList)
@@ -399,7 +423,7 @@ public class GroupManager extends JDialog implements ActionListener{
 		//ArrayList of selected items
 		ArrayList<Object> itemsSelected = new ArrayList<Object>();
 		
-		
+		if(selectedIndices.length >= 1){
 		for(int i=0;i<selectedIndices.length;i++)
 		{
 			//remove item from fromList and move to toList
@@ -417,6 +441,7 @@ public class GroupManager extends JDialog implements ActionListener{
 		fromList.clearSelection();
 		//select new items?
 		//toList.setSelectedIndices(indices);
+		}
 	}
 
 	
