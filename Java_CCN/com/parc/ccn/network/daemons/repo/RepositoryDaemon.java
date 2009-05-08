@@ -232,14 +232,23 @@ public class RepositoryDaemon extends Daemon {
 									Iterator<Interest> iterator = listener._ackRequests.iterator();
 									boolean found = false;
 									while (iterator.hasNext()) {
+										// interest is the actual interest that came in to retrieve an ACK
 										Interest interest = iterator.next();
-										if (interest.matches(data)) {
+										// dataPrefix is the prefix of names of content objects for which ack response is required
+										// so the request marker and nonce must be stripped off 
+										ContentName dataPrefix = new ContentName(interest.name().count() - 2, interest.name().components());
+										// ackMatch is an internal interest used for matching against individual content objects that we have
+										// It is never supposed to be sent out
+										Interest ackMatch = new Interest(dataPrefix);
+
+										if (ackMatch.matches(data)) {
+											Library.logger().finer("Found waiting ACK request for " + data.name() + " interest " + interest.name());
 											iterator.remove();
 											if (!found) {
 												ArrayList<ContentName> names = new ArrayList<ContentName>();
 												names.add(data.name());
-												ContentName putName = new ContentName(data.name(), CCNBase.REPO_REQUEST_ACK);
-												_writer.put(putName, _repo.getRepoInfo(names));
+												//ContentName putName = new ContentName(data.name(), CCNBase.REPO_REQUEST_ACK);
+												_writer.put(interest.name(), _repo.getRepoInfo(names));
 											}
 											found = true;
 										}
@@ -274,6 +283,7 @@ public class RepositoryDaemon extends Daemon {
 			
 			try {
 				byte[] marker = interest.name().component(interest.name().count() - 2);
+				Library.logger().finer("marker is " + new String(marker) + " in " + interest.name());
 				if (Arrays.equals(marker, CCNBase.REPO_START_WRITE)) {
 					startReadProcess(interest);
 				} else if (Arrays.equals(marker, CCNBase.REPO_REQUEST_ACK)) {	
@@ -444,8 +454,12 @@ public class RepositoryDaemon extends Daemon {
 	}
 	
 	private void ackResponse(Interest interest) throws SignatureException, IOException {
-		ContentName ackResult = new ContentName(interest.name().count() - 2, interest.name().components());
-		Interest ackInterest = new Interest(ackResult);
+		// dataPrefix is the prefix of names of content objects for which ack response is required
+		// so the request marker and nonce must be stripped off 
+		ContentName dataPrefix = new ContentName(interest.name().count() - 2, interest.name().components());
+		// ackMatch is an internal interest used for matching against individual content objects that we have
+		// It is never supposed to be sent out
+		Interest ackMatch = new Interest(dataPrefix);
 		ArrayList<ContentName> names = new ArrayList<ContentName>();
 		synchronized(_currentListeners) {
 			for (DataListener listener : _currentListeners) {
@@ -455,7 +469,7 @@ public class RepositoryDaemon extends Daemon {
 				 */
 				boolean found = false;
 				for (ContentObject co : listener._unacked) {
-					if (ackInterest.matches(co)) {
+					if (ackMatch.matches(co)) {
 						found = true;
 						break;
 					}
@@ -468,8 +482,12 @@ public class RepositoryDaemon extends Daemon {
 					 * XXX should we care about publisherID here?  And if so, how can
 					 * we do this?
 					 */
-					if (ackInterest.matches(listener._interest.name(), null)) {
-						listener._ackRequests.add(ackInterest);
+					if (ackMatch.matches(listener._interest.name(), null)) {
+						Library.logger().finer("Adding ACK interest received before data: " + interest.name());
+						// We must record the actual requesting interest that came in, not the internal
+						// matching one, because what we store here is going to be used later to generate the name for
+						// an ACK response content object that must match the original received interest
+						listener._ackRequests.add(interest);
 						break;
 					}
 					continue;
