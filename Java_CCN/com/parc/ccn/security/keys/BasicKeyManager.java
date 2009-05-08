@@ -499,9 +499,14 @@ public class BasicKeyManager extends KeyManager {
 	@Override
 	public void publishKey(ContentName keyName,
 			PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, ConfigurationException {
-		PublicKey key = getPublicKey(keyToPublish);
-		if (null == key) {
-			throw new InvalidKeyException("Cannot retrieive key " + keyToPublish);
+		PublicKey key = null;
+		if (null == keyToPublish) {
+			key = getDefaultPublicKey();
+		} else {
+			key = getPublicKey(keyToPublish);
+			if (null == key) {
+				throw new InvalidKeyException("Cannot retrieive key " + keyToPublish);
+			}
 		}
 		keyRepository().publishKey(keyName, key, getDefaultKeyID(), getDefaultSigningKey());
 	}
