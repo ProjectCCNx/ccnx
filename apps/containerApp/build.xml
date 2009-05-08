@@ -19,6 +19,12 @@
                 <path refid="ccn-classpath"/>
                 <pathelement location="${ccnjar}"/>
         </path>
+    <path id="classpath-run">
+        <path refid="ccn-classpath-run"/>
+        <pathelement location="${ccnjar}"/>
+        <pathelement location="${jarfile}"/>
+	</path>
+
 
 	<target name="compile">
 		<mkdir dir="${build}"/>
@@ -44,6 +50,14 @@
 		</jar>
 	</target>
 
+    <target name="run" depends="jar">
+	    <java classname="com.parc.ccn.apps.containerApp.ContainerGUI" fork="true">
+		   <classpath>
+		     <path refid="classpath-run"/>
+		   </classpath>
+        </java>
+    </target>
+	
 	<target name="clean-test">
 		<delete dir="${testout}"/>
 	</target>

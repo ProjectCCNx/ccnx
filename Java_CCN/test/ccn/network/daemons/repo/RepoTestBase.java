@@ -26,8 +26,7 @@ public class RepoTestBase extends LibraryTestBase {
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
-		Library.logger().setLevel(Level.INFO);
+		// Let default logging level be set centrally so it can be overridden by property
 		_topdir = System.getProperty(TOP_DIR);
 		if (null == _topdir)
 			_topdir = ".";
