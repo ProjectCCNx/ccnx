@@ -150,6 +150,30 @@
 		</parallel>
 	</target>
 
+    <!-- target for running a test repo foreground so you can run a test
+	     against it in debugger -->
+	<target name="run-test-repo" depends="jar">
+		<delete dir="${REPO_ROOT}"/>
+		<mkdir dir="${REPO_ROOT}"/>
+		<unzip src="${repozip}" dest="${REPO_ROOT}" />
+				<java classname="com.parc.ccn.network.daemons.repo.RepositoryDaemon" fork="true" failonerror="true" output = "${testout}/TEST-repo-daemon.txt" dir="${testout}">
+					<classpath>
+						<path refid="classpath-run" />
+					</classpath>
+					<sysproperty key="ccn.agent.port" value="${TEST_PORT}" />
+					<jvmarg value="-Xrunjdwp:transport=dt_socket,address=25000,server=y,suspend=n" />
+					<arg value="-interactive" />
+					<arg value="-root" />
+					<arg value="${REPO_ROOT}" />
+					<arg value="-local" />
+					<arg value="${REPO_LOCAL}" />
+					<arg value="-global" />
+					<arg value="${REPO_GLOBAL}" />
+				</java>
+                        <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
+                        <sleep seconds="1"/>
+	</target>
+
 	<!-- test is for running all current automated tests to validate code -->
 	<target name="test" depends="test-data, test-puttap, test-library, test-network, test-endtoend, test-repo">
 	</target>
@@ -292,6 +316,7 @@
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
+			<sysproperty key="com.parc.ccn.LogLevel" value="FINER"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="test/ccn/network/daemons/repo/RepoIOTest.class"/>
