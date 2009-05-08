@@ -37,6 +37,17 @@ public class AccessControlProfile implements CCNProfile {
 		return name.cut(ACCESS_CONTROL_MARKER);
 	}
 	
+	public static boolean isNodeKeyName(ContentName name) {
+		if (!isAccessName(name) || VersioningProfile.isVersioned(name)) {
+			return false;
+		}
+		ContentName nkName = VersioningProfile.versionRoot(name);
+		if (nkName.stringComponent(nkName.count()-1).equals(NODE_KEY_NAME)) {
+			return true;
+		}
+		return false;
+	}
+	
 	/**
 	 * Assumes a top-level namespace, where the group information is stored in 
 	 * <namespace>/_access_/Groups and <namespace>/_access_/Users..
