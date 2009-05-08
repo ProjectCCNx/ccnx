@@ -97,12 +97,14 @@ public class KeyDerivationFunction {
 	 * one step, with no intervening keys? This way we can delegate/install backlinks to keys
 	 * in the middle of the hierarchy and things continue to work.
 	 * @param ancestorNodeName the node with whom ancestorNodeKeyBytes is associated.
+	 * @throws XMLStreamException 
+	 * @throws InvalidKeyException 
 	 */
 	public static final byte [] DeriveKeyForNode(
 			ContentName ancestorNodeName, 
 			byte [] ancestorNodeKey,
 			String label,
-			ContentName nodeName) {
+			ContentName nodeName) throws InvalidKeyException, XMLStreamException {
 		
 		if ((null == ancestorNodeName) || (null == ancestorNodeKey) || (null == nodeName)) {
 			throw new IllegalArgumentException("Names and keys cannot be null!");
@@ -111,16 +113,16 @@ public class KeyDerivationFunction {
 			throw new IllegalArgumentException("Ancestor node name must be prefix of node name!");
 		}
 		if (ancestorNodeName.equals(nodeName)) {
-			Library.logger().info("We're at the correct node already, return the original node key.");
-			return ancestorNodeKey;
+			Library.logger().info("We're at the correct node already, will return the original node key.");
 		}
 		
-		ContentName descendantNodeName = nodeName.copy(ancestorNodeName.count() + 1);
-		ContentName parentNodeName = ancestorNodeName;
-		byte [] parentNodeKey = ancestorNodeKey;
-		while (!parentNodeName.equals(nodeName)) {
-			
+		ContentName descendantNodeName = ancestorNodeName;
+		byte [] descendantNodeKey = ancestorNodeKey;
+		while (!descendantNodeName.equals(nodeName)) {
+			descendantNodeName = nodeName.copy(descendantNodeName.count() + 1);
+			descendantNodeKey = DeriveKeyForNode(descendantNodeKey, label, descendantNodeName);
 		}
+		return descendantNodeKey;
 	}
 
 	/**
