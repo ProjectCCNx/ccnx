@@ -296,6 +296,7 @@
 	
 	<!-- This is for generating the repotest.zip file -->
 	<target name="generate-repotest-zip" depends="jar, ccnd, run-repo-structure-test">
+	    <delete file="${repozip}"/>
 		<zip destfile="${repozip}"
 		    basedir="${REPO_FILETEST}"
 		    update="true">
