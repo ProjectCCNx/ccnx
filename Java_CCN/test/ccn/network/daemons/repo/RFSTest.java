@@ -182,7 +182,7 @@ public class RFSTest extends RepoTestBase {
 		checkData(repo, segmentedName223, "segment223");
 		
 		System.out.println("Repotest - storing sequence of objects for versioned stream read testing");
-		ContentName versionedNameNormal = ContentName.fromNative("/repoTest/testVersionNormal");
+		ContentName versionedNameNormal = ContentName.fromNative("/testNameSpace/testVersionNormal");
 		versionedNameNormal = VersioningProfile.versionName(versionedNameNormal);
 		repo.saveContent(ContentObject.buildContentObject(versionedNameNormal, "version-normal".getBytes()));
 		checkData(repo, versionedNameNormal, "version-normal");
