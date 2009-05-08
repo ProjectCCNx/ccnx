@@ -3,7 +3,11 @@ package test.ccn.network.daemons.repo;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.CharBuffer;
 import java.util.Arrays;
+
+import javax.xml.stream.XMLStreamException;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -13,10 +17,12 @@ import org.junit.Test;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.library.io.CCNDescriptor;
+import com.parc.ccn.library.io.CCNVersionedInputStream;
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.network.daemons.repo.RFSImpl;
@@ -129,6 +135,28 @@ public class RepoIOTest extends RepoTestBase {
 		byte[] testBytes = new byte[data.length];
 		input.read(testBytes);
 		Assert.assertArrayEquals(data, testBytes);
+	}
+	
+	@Test
+	// The purpose of this test is to do versioned reads from repo
+	// of data not already in the ccnd cache, thus testing 
+	// what happens if we pull latest version and try to read
+	// content in order
+	public void testVersionedRead() throws InterruptedException, MalformedContentNameStringException, XMLStreamException, IOException {
+		System.out.println("Testing reading a versioned stream");
+		// JDT - temporarily a no-op until I get a chance to move on to this issue
+//		Thread.sleep(5000);
+//		ContentName versionedNameNormal = ContentName.fromNative("/repoTest/testVersionNormal");
+//		CCNVersionedInputStream vstream = new CCNVersionedInputStream(versionedNameNormal);
+//		InputStreamReader reader = new InputStreamReader(vstream);
+//		for (int i=SegmentationProfile.BASE_SEGMENT; i<5; i++) {
+//			String segmentContent = "segment"+ new Integer(i).toString();
+//			char[] cbuf = new char[8];
+//			reader.read(cbuf, 0, 8);
+//			System.out.println("for " + i + " got: " + new String(cbuf));
+//			Assert.assertEquals(segmentContent, new String(cbuf));
+//		}
+//		Assert.assertEquals(-1, reader.read());
 	}
 	
 	private void checkData(ContentName name, String data) throws IOException, InterruptedException{
