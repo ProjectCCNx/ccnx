@@ -179,4 +179,20 @@ public class CCNSecureInputStreamTest {
 		Assert.assertFalse(encrDigest.equals(readDigest2));
 	}
 
+	/**
+	 * Test that seeking/skipping/mark/reset while reading an encrypted stream works
+	 */
+	@Test
+	public void seeking() throws XMLStreamException, IOException, NoSuchAlgorithmException {
+		// seek, read and test the result
+		System.out.println("Reading CCNInputStream from "+encrName);
+		CCNInputStream inStream = new CCNInputStream(encrName, null, null, encrKeys, inputLibrary);
+		int start = (int) (encrLength*0.3);
+		int length = (int) (encrLength*0.6);
+		byte [] data = new byte[length];
+		System.arraycopy(encrData, start, data, 0, length);
+		byte [] readDigest = readFile(inStream, length);
+		byte [] dataDigest = MessageDigest.getInstance("SHA1").digest(encrData);
+		Assert.assertArrayEquals(dataDigest, readDigest);
+	}
 }
