@@ -401,10 +401,12 @@ public class RepositoryDaemon extends Daemon {
 		getUnMatched(_repoFilters, newNameSpace, unMatchedOld, unMatchedNew);
 		for (NameAndListener oldName : unMatchedOld) {
 			_library.unregisterFilter(oldName.name, oldName.listener);
+			Library.logger().info("Dropping namespace " + oldName.name);
 		}
 		for (ContentName newName : unMatchedNew) {
 			FilterListener listener = new FilterListener();
 			_library.registerFilter(newName, listener);
+			Library.logger().info("Adding namespace " + newName);
 			newIL.add(new NameAndListener(newName, listener));
 		}
 		_repoFilters = newIL;
