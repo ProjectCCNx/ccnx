@@ -2,7 +2,6 @@ package com.parc.ccn.library.io.repo;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.TreeMap;
 
 import javax.xml.stream.XMLStreamException;
@@ -32,7 +31,7 @@ public class RepositoryProtocol extends CCNFlowControl {
 	protected boolean _useAck = true;
 	protected TreeMap<ContentName, ContentObject> _unacked = new TreeMap<ContentName, ContentObject>();
 	protected int _blocksSinceAck = 0;
-	protected Interest _ackInterest = null;
+	protected ArrayList<Interest> _ackInterests = new ArrayList<Interest>();
 	protected String _repoName = null;
 	protected String _repoPrefix = null;
 	protected ContentName _baseName; // the name prefix under which we are writing content
@@ -67,16 +66,11 @@ public class RepositoryProtocol extends CCNFlowControl {
 							ack(name);
 						Library.logger().finer("ACK message leaves " + _unacked.size() + " unacked");
 						Library.logger().finer("unacked " + _unacked);
-						if (flushComplete())
-							sendAckRequest();
 						break;
 					default:
 						break;
 					}
 				} catch (XMLStreamException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
@@ -155,33 +149,38 @@ public class RepositoryProtocol extends CCNFlowControl {
 	
 	public void sendAckRequest() throws IOException {
 		if (_unacked.size() > 0) {
-			if (null != _ackInterest) {
-				_library.cancelInterest(_ackInterest, _listener);
-			}
 			ContentName repoAckName = new ContentName(_baseName, CCNBase.REPO_REQUEST_ACK, CCNLibrary.nonce());
-			_ackInterest = new Interest(repoAckName);
+			Interest ackInterest = new Interest(repoAckName);
+			_ackInterests.add(ackInterest);
 			Library.logger().info("Sending ACK request with " + _unacked.size() + " unacknowledged content objects");
-			_library.expressInterest(_ackInterest, _listener);
+			_library.expressInterest(ackInterest, _listener);
 		}
 	}
 	
+	/**
+	 * Even though we should have output all the data by the time we got here
+	 * (due to call of waitForPutDrain) there are still timing pitfalls as the repo may still
+	 * be in the process of collecting the data. So we loop sending ackRequests until we are
+	 * making no more progress.
+	 * 
+	 * @throws IOException
+	 */
 	public void close() throws IOException {
-		sendAckRequest();
-		int remaining = getTimeout();
 		synchronized(this) {
-			while (remaining > 0 && !flushComplete()) {
+			while (!flushComplete()) {
+				sendAckRequest();
+				int unacked = _unacked.size();
 				boolean interrupted;
 				do {
 					interrupted = false;
 					try {
-						long start_wait = new Date().getTime();
-						wait(remaining);
-						long elapsed = new Date().getTime() - start_wait;
-						remaining -= elapsed;
+						wait(getTimeout());
 					} catch (InterruptedException e) {
 						interrupted = true;
 					}
 				} while (interrupted);
+				if (unacked == _unacked.size())
+					break;
 			}
 		}
 		
@@ -194,8 +193,9 @@ public class RepositoryProtocol extends CCNFlowControl {
 	private void cancelInterests() {
 		if (_writeInterest != null)
 			_library.cancelInterest(_writeInterest, _listener);
-		if (_ackInterest != null)
-			_library.cancelInterest(_ackInterest, _listener);
+		for (Interest interest : _ackInterests) {
+			_library.cancelInterest(interest, _listener);
+		}
 	}
 
 }

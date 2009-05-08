@@ -47,7 +47,9 @@ public class RepositoryDataListener implements CCNInterestListener {
 	
 	public Interest handleContent(ArrayList<ContentObject> results,
 			Interest interest) {
-		synchronized (this) {
+		synchronized (_daemon.getDataListeners()) {
+			
+			_timer = new Date().getTime();
 			
 			for (ContentObject co : results) {
 				try {
@@ -62,8 +64,6 @@ public class RepositoryDataListener implements CCNInterestListener {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
 				}
-		
-				_timer = new Date().getTime();
 				
 				if (!_haveHeader) {
 					/*
@@ -133,7 +133,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 	private void handleIncomingData(ContentObject co) throws RepositoryException, IOException, SignatureException {
 		Library.logger().info("Saw data: " + co.name());
 			if (_daemon.getRepository().checkPolicyUpdate(co)) {
-				_daemon.resetNameSpace();
+				_daemon.resetNameSpaceFromHandler();
 			} else {
 				Library.logger().finer("Saving content in: " + co.name().toString());
 				_daemon.getRepository().saveContent(co);		
@@ -167,8 +167,9 @@ public class RepositoryDataListener implements CCNInterestListener {
 					found = true;
 				}
 			}
-			if (!found)
+			if (!found) {
 				_unacked.add(co);
+			}
 	}
 	
 	public void cancelInterests() {

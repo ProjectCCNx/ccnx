@@ -50,6 +50,7 @@ public class RepoIOTest extends RepoTestBase {
 		RepositoryOutputStream ros = putLibrary.repoOpen(ContentName.fromNative("/testNameSpace/stream"), 
 														null, putLibrary.getDefaultPublisher());
 		ros.setBlockSize(100);
+		ros.setTimeout(4000);
 		ros.write(data, 0, data.length);
 		ros.close();
 	}
@@ -108,7 +109,7 @@ public class RepoIOTest extends RepoTestBase {
 				putLibrary.getDefaultPublisher());
 		ros.write(content, 0, content.length);
 		ros.close();
-		Thread.sleep(1000);
+		Thread.sleep(4000);
 		checkNameSpace("/repoTest/data3", false);
 		checkNameSpace("/testNameSpace/data1", true);
 	}

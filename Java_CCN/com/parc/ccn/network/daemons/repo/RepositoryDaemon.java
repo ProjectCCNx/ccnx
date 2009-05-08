@@ -4,24 +4,20 @@ import java.io.IOException;
 import java.security.InvalidParameterException;
 import java.security.SignatureException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Level;
 
 import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.io.CCNWriter;
 import com.parc.ccn.network.daemons.Daemon;
 
@@ -48,13 +44,12 @@ import com.parc.ccn.network.daemons.Daemon;
 public class RepositoryDaemon extends Daemon {
 	
 	private Repository _repo = null;
-	private ConcurrentLinkedQueue<Interest> _interestQueue = new ConcurrentLinkedQueue<Interest>();
 	private CCNLibrary _library = null;
-	private boolean _started = false;
 	private ArrayList<NameAndListener> _repoFilters = new ArrayList<NameAndListener>();
 	private ArrayList<RepositoryDataListener> _currentListeners = new ArrayList<RepositoryDataListener>();
 	private ExcludeFilter _markerFilter;
 	private CCNWriter _writer;
+	private boolean _pendingNameSpaceChange = false;
 	
 	public static final int PERIOD = 2000; // period for interest timeout check in ms.
 	
@@ -64,14 +59,6 @@ public class RepositoryDaemon extends Daemon {
 		private NameAndListener(ContentName name, CCNFilterListener listener) {
 			this.name = name;
 			this.listener = listener;
-		}
-	}
-	
-	private class FilterListener implements CCNFilterListener {
-
-		public int handleInterests(ArrayList<Interest> interests) {
-			_interestQueue.addAll(interests);
-			return interests.size();
 		}
 	}
 	
@@ -85,10 +72,21 @@ public class RepositoryDaemon extends Daemon {
 					while (iterator.hasNext()) {
 						RepositoryDataListener listener = iterator.next();
 						if ((currentTime - listener.getTimer()) > PERIOD) {
-							listener.cancelInterests();
-							iterator.remove();
+							synchronized(_repoFilters) {
+								listener.cancelInterests();
+								iterator.remove();
+							}
 						}
 					}
+				}
+				if (_currentListeners.size() == 0 && _pendingNameSpaceChange) {
+					try {
+						resetNameSpace();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					_pendingNameSpaceChange = false;
 				}
 			}	
 		}	
@@ -103,47 +101,15 @@ public class RepositoryDaemon extends Daemon {
 		}
 		
 		public void work() {
-			while (_started) {
-		
-				Interest interest = null;
+			synchronized(this) {
+				boolean interrupted = false;
 				do {
-					interest = _interestQueue.poll();
-					if(interest != null)
-						processIncomingInterest(interest);
-				} while (interest != null);
-				
-				// Sleep so we don't burn up cpu
-				try {
-					Thread.sleep(200);
-				} catch (InterruptedException e) {
-					// don't care
-				}
-			}
-		}
-		
-		private void processIncomingInterest(Interest interest) {
-			
-			try {
-				byte[] marker = interest.name().component(interest.name().count() - 2);
-				Library.logger().finer("marker is " + new String(marker) + " in " + interest.name());
-				if (Arrays.equals(marker, CCNBase.REPO_START_WRITE)) {
-					startReadProcess(interest);
-				} else if (Arrays.equals(marker, CCNBase.REPO_REQUEST_ACK)) {	
-					ackResponse(interest);
-				}
-				else if(interest.name().contains(CCNNameEnumerator.NEMARKER)){
-					nameEnumeratorResponse(interest);
-				}
-				else {
-					ContentObject content = _repo.getContent(interest);
-					if (content != null) {
-						_library.put(content);
-					} else {
-						Library.logger().fine("Unsatisfied interest: " + interest.name());
-					}
-				}
-			} catch (Exception e) {
-				e.printStackTrace();
+					try {
+						wait();
+					} catch (InterruptedException e) {
+						interrupted = true;
+					}		
+				} while (interrupted);
 			}
 		}
 		
@@ -164,7 +130,9 @@ public class RepositoryDaemon extends Daemon {
 		}
 		
 		public void finish() {
-			_started = false;
+			synchronized (this) {
+				notify();
+			}
 		}
 	}
 	
@@ -172,7 +140,6 @@ public class RepositoryDaemon extends Daemon {
 		super();
 		_daemonName = "repository";
 		Library.logger().info("Starting " + _daemonName + "...");				
-		_started = true;
 		
 		try {
 			_library = CCNLibrary.open();
@@ -233,25 +200,42 @@ public class RepositoryDaemon extends Daemon {
 		return new RepositoryWorkerThread(daemonName());
 	}
 	
-	public void resetNameSpace() throws IOException {
-		ArrayList<NameAndListener> newIL = new ArrayList<NameAndListener>();
-		ArrayList<ContentName> newNameSpace = _repo.getNamespace();
-		if (newNameSpace == null)
-			newNameSpace = new ArrayList<ContentName>();
-		ArrayList<NameAndListener> unMatchedOld = new ArrayList<NameAndListener>();
-		ArrayList<ContentName> unMatchedNew = new ArrayList<ContentName>();
-		getUnMatched(_repoFilters, newNameSpace, unMatchedOld, unMatchedNew);
-		for (NameAndListener oldName : unMatchedOld) {
-			_library.unregisterFilter(oldName.name, oldName.listener);
-			Library.logger().info("Dropping namespace " + oldName.name);
+	/**
+	 * In general we need to wait until all sessions are complete before
+	 * making a namespace change because it involves changing the filter which
+	 * could cut off current sessions in process
+	 * @throws IOException 
+	 */
+	public void resetNameSpaceFromHandler() throws IOException {
+		synchronized (_currentListeners) {
+			if (_currentListeners.size() == 0)
+				resetNameSpace();
+			else
+				_pendingNameSpaceChange = true;
+		}	
+	}
+	
+	private void resetNameSpace() throws IOException {
+		synchronized (_repoFilters) {
+			ArrayList<NameAndListener> newIL = new ArrayList<NameAndListener>();
+			ArrayList<ContentName> newNameSpace = _repo.getNamespace();
+			if (newNameSpace == null)
+				newNameSpace = new ArrayList<ContentName>();
+			ArrayList<NameAndListener> unMatchedOld = new ArrayList<NameAndListener>();
+			ArrayList<ContentName> unMatchedNew = new ArrayList<ContentName>();
+			getUnMatched(_repoFilters, newNameSpace, unMatchedOld, unMatchedNew);
+			for (NameAndListener oldName : unMatchedOld) {
+				_library.unregisterFilter(oldName.name, oldName.listener);
+				Library.logger().info("Dropping namespace " + oldName.name);
+			}
+			for (ContentName newName : unMatchedNew) {
+				RepositoryInterestHandler iHandler = new RepositoryInterestHandler(this);
+				_library.registerFilter(newName, iHandler);
+				Library.logger().info("Adding namespace " + newName);
+				newIL.add(new NameAndListener(newName, iHandler));
+			}
+			_repoFilters = newIL;
 		}
-		for (ContentName newName : unMatchedNew) {
-			FilterListener listener = new FilterListener();
-			_library.registerFilter(newName, listener);
-			Library.logger().info("Adding namespace " + newName);
-			newIL.add(new NameAndListener(newName, listener));
-		}
-		_repoFilters = newIL;
 	}
 	
 	private void getUnMatched(ArrayList<NameAndListener> oldIn, ArrayList<ContentName> newIn, 
@@ -271,43 +255,46 @@ public class RepositoryDaemon extends Daemon {
 		}
 	}
 	
-	private void startReadProcess(Interest interest) {
-		for (RepositoryDataListener listener : _currentListeners) {
-			if (listener.getOrigInterest().equals(interest))
-				return;
-		}
-		ContentName listeningName = new ContentName(interest.name().count() - 2, interest.name().components());
-		try {
-			Integer count = interest.nameComponentCount();
-			if (count != null && count > listeningName.count())
-				count = null;
-			Interest readInterest = Interest.constructInterest(listeningName, _markerFilter, null, count);
-			RepositoryDataListener listener = new RepositoryDataListener(interest, readInterest, this);
-			synchronized(_currentListeners) {
-				_currentListeners.add(listener);
-			}
-			_writer.put(interest.name(), _repo.getRepoInfo(null));
-			_library.expressInterest(readInterest, listener);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (SignatureException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+	public CCNLibrary getLibrary() {
+		return _library;
 	}
 	
-	private void ackResponse(Interest interest) throws SignatureException, IOException {
-		// dataPrefix is the prefix of names of content objects for which ack response is required
-		// so the request marker and nonce must be stripped off 
-		ContentName dataPrefix = new ContentName(interest.name().count() - 2, interest.name().components());
-		// ackMatch is an internal interest used for matching against individual content objects that we have
-		// It is never supposed to be sent out
-		Interest ackMatch = new Interest(dataPrefix);
+	public Repository getRepository() {
+		return _repo;
+	}
+	
+	public ExcludeFilter getExcludes() {
+		return _markerFilter;
+	}
+	
+	public CCNWriter getWriter() {
+		return _writer;
+	}
+	
+	public ArrayList<RepositoryDataListener> getDataListeners() {
+		return _currentListeners;
+	}
+	
+	public ArrayList<NameAndListener> getFilters() {
+		return _repoFilters;
+	}
+	
+	public RepositoryDataListener addListener(Interest interest, Interest readInterest) {
+		RepositoryDataListener listener = new RepositoryDataListener(interest, readInterest, this);
+		synchronized(_currentListeners) {
+			_currentListeners.add(listener);
+		}
+		return listener;
+	}
+	
+	public boolean getPendingNameSpaceState() {
+		return _pendingNameSpaceChange;
+	}
+	
+	public void ack(Interest interest, Interest ackMatch) throws SignatureException, IOException {
 		ArrayList<ContentName> names = new ArrayList<ContentName>();
 		synchronized(_currentListeners) {
 			for (RepositoryDataListener listener : _currentListeners) {
-				
 				/*
 				 * Find the DataListener with values to Ack
 				 */
@@ -349,54 +336,6 @@ public class RepositoryDaemon extends Daemon {
 				break;
 			}
 		}
-	}
-	
-	public void nameEnumeratorResponse(Interest interest) {
-		//the name enumerator marker won't be at the end if the interest is a followup (created with .last())
-		//else if(Arrays.equals(marker, CCNNameEnumerator.NEMARKER)){
-		//System.out.println("handling interest: "+interest.name().toString());
-		ContentName prefixName = interest.name().cut(CCNNameEnumerator.NEMARKER);
-		ArrayList<ContentName> names = _repo.getNamesWithPrefix(interest);
-		if(names!=null){
-			try{
-				ContentName collectionName = new ContentName(prefixName, CCNNameEnumerator.NEMARKER);
-				//the following 6 lines are to be deleted after Collections are refactored
-				LinkReference[] temp = new LinkReference[names.size()];
-				for(int x = 0; x < names.size(); x++)
-					temp[x] = new LinkReference(names.get(x));
-				_library.put(collectionName, temp);
-				
-				//CCNEncodableCollectionData ecd = new CCNEncodableCollectionData(collectionName, cd);
-				//ecd.save();
-				//System.out.println("saved ecd.  name: "+ecd.getName());
-			}
-			catch(IOException e){
-				
-			}
-			catch(SignatureException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-		synchronized(_currentListeners){
-			_interestQueue.remove(interest);
-		}
-	}
-	
-	public CCNLibrary getLibrary() {
-		return _library;
-	}
-	
-	public Repository getRepository() {
-		return _repo;
-	}
-	
-	public ExcludeFilter getExcludes() {
-		return _markerFilter;
-	}
-	
-	public CCNWriter getWriter() {
-		return _writer;
 	}
 	
 	public static void main(String[] args) {
