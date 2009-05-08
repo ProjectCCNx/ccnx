@@ -64,6 +64,8 @@ public class KeyDerivationFunction {
 	 * Default parameterization of KDF for standard algorithm type. This is the
 	 * routine that will be typically used by code that does not want to override
 	 * default algorithms.
+	 * @contentName Name of this specific object, including the version (but not including
+	 *     segment information).
 	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
 	 */
@@ -74,6 +76,51 @@ public class KeyDerivationFunction {
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, XMLStreamException {
 		return DeriveKeyForObject(masterKeyBytes, ContentKeys.DEFAULT_AES_KEY_LENGTH*8, ContentKeys.IV_MASTER_LENGTH*8,
 				label, contentName, publisher);
+	}
+	
+	/**
+	 * Used to derive keys for nodes in a name hierarchy. The key must be independent of
+	 * publisher, as it is used to derive keys for intermediate nodes. As this is used as
+	 * input to another key derivation call, no IV is derived.
+	 * @throws XMLStreamException 
+	 * @throws InvalidKeyException 
+	 */
+	public static final byte [] DeriveKeyForNode(
+			byte [] parentNodeKeyBytes,
+			String label,
+			ContentName nodeName) throws InvalidKeyException, XMLStreamException {
+		return DeriveKeyForNode(parentNodeKeyBytes, ContentKeys.DEFAULT_AES_KEY_LENGTH*8, label, nodeName);
+	}
+	
+	/**
+	 * Hierarchically derive keys for a child node, given an ancestor key. Why not do this in 
+	 * one step, with no intervening keys? This way we can delegate/install backlinks to keys
+	 * in the middle of the hierarchy and things continue to work.
+	 * @param ancestorNodeName the node with whom ancestorNodeKeyBytes is associated.
+	 */
+	public static final byte [] DeriveKeyForNode(
+			ContentName ancestorNodeName, 
+			byte [] ancestorNodeKey,
+			String label,
+			ContentName nodeName) {
+		
+		if ((null == ancestorNodeName) || (null == ancestorNodeKey) || (null == nodeName)) {
+			throw new IllegalArgumentException("Names and keys cannot be null!");
+		}
+		if (!ancestorNodeName.isPrefixOf(nodeName)) {
+			throw new IllegalArgumentException("Ancestor node name must be prefix of node name!");
+		}
+		if (ancestorNodeName.equals(nodeName)) {
+			Library.logger().info("We're at the correct node already, return the original node key.");
+			return ancestorNodeKey;
+		}
+		
+		ContentName descendantNodeName = nodeName.copy(ancestorNodeName.count() + 1);
+		ContentName parentNodeName = ancestorNodeName;
+		byte [] parentNodeKey = ancestorNodeKey;
+		while (!parentNodeName.equals(nodeName)) {
+			
+		}
 	}
 
 	/**
@@ -121,6 +168,15 @@ public class KeyDerivationFunction {
 		}
 		return DeriveKey(masterKeyBytes, outputLengthInBits, label, 
 				new XMLEncodable[]{contentName, publisher});
+	}
+	
+	public static final byte [] DeriveKeyForNode(
+			byte [] masterKeyBytes, int outputLengthInBits,
+			String label, ContentName nodeName) throws InvalidKeyException, XMLStreamException {
+		if (null == nodeName) {
+			throw new IllegalArgumentException("Content name cannot be null!");			
+		}
+		return DeriveKey(masterKeyBytes, outputLengthInBits, label, new XMLEncodable[]{nodeName});
 	}
 
 	/**
