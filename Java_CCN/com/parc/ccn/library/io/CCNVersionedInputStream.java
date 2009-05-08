@@ -13,6 +13,7 @@ import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;
+import com.parc.ccn.security.crypto.ContentKeys;
 
 /**
  * A CCNInputStream that embodies the Versioning profile. If you
@@ -40,6 +41,13 @@ import com.parc.ccn.library.profiles.VersioningProfile;
  *
  */
 public class CCNVersionedInputStream extends CCNInputStream {
+
+	public CCNVersionedInputStream(ContentName name,
+			long startingBlockIndex, PublisherPublicKeyDigest publisher,
+			ContentKeys keys, CCNLibrary library)
+			throws XMLStreamException, IOException {
+		super(name, startingBlockIndex, publisher, keys, library);
+	}
 
 	public CCNVersionedInputStream(ContentName name,
 			long startingBlockIndex, PublisherPublicKeyDigest publisher,

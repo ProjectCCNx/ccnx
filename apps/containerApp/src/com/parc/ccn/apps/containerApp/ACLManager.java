@@ -44,7 +44,7 @@ public class ACLManager extends JDialog implements ActionListener{
 	private JButton buttonView2Modify;	
 	private JFrame frame;
 	private String path;
-	
+private ArrayList<JList> listsArray=null;	
 	//private ArrayList<String> readOnlyPrincipals;
 	//private ArrayList<String> readWritePrincipals;
 
@@ -101,6 +101,7 @@ private SortedListModel userPoolDefault = null;
 	{
 		
 	}
+	
 	public void setReadOnlyUsersList()
 	{
 		// grab the content object
@@ -124,6 +125,9 @@ private SortedListModel userPoolDefault = null;
 
 		super();
 		this.path = path;
+		
+		listsArray = new ArrayList<JList>();
+		//listsArray.add(groupsList);
 		
 		readOnlyPrincipals = new SortedListModel();
 		readWritePrincipals = new SortedListModel();
@@ -170,9 +174,12 @@ private SortedListModel userPoolDefault = null;
 		getContentPane().add(scrollPane_1);
 		
 		readWriteList = new JList(readWritePrincipals);
+		readWriteList.setName("modifyList");
 		scrollPane_1.setViewportView(readWriteList);
 		readWriteList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 		readWriteList.setBorder(new BevelBorder(BevelBorder.LOWERED));
+		
+		listsArray.add(readWriteList);
 		//readWriteList.setBounds(462, 70, 120, 240);		
 		//getContentPane().add(readWriteList);
 
@@ -182,9 +189,12 @@ private SortedListModel userPoolDefault = null;
 		getContentPane().add(scrollPane_2);
 		
 		userList = new JList(userPool);
+		userList.setName("userList");
 		scrollPane_2.setViewportView(userList);
 		userList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 		userList.setBorder(new BevelBorder(BevelBorder.LOWERED));
+		
+		listsArray.add(userList);
 //		userList.setBounds(233, 70, 120, 240);
 //		getContentPane().add(userList);
 
@@ -246,10 +256,13 @@ private SortedListModel userPoolDefault = null;
 		getContentPane().add(scrollPane);
 
 		readOnlyList = new JList(readOnlyPrincipals);
+		readOnlyList.setName("viewList");
 		scrollPane.setViewportView(readOnlyList);
 		readOnlyList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 		readOnlyList.setBorder(new BevelBorder(BevelBorder.LOWERED));
 
+		listsArray.add(readOnlyList);
+		
 		buttonModify2View = new JButton();
 		buttonModify2View.addActionListener(this);
 		buttonModify2View.setText("^");
@@ -261,7 +274,10 @@ private SortedListModel userPoolDefault = null;
 		buttonView2Modify.setText("v");
 		buttonView2Modify.setBounds(479, 178, 49, 25);
 		getContentPane().add(buttonView2Modify);
-				
+		
+		readOnlyList.addMouseListener(new ListMouseListener(listsArray));
+		readWriteList.addMouseListener(new ListMouseListener(listsArray));
+		userList.addMouseListener(new ListMouseListener(listsArray));
 	}
 
 	public void actionPerformed(ActionEvent e) {
@@ -333,29 +349,18 @@ private SortedListModel userPoolDefault = null;
 		//ArrayList of selected items
 		ArrayList<Object> itemsSelected = new ArrayList<Object>();
 		
-		//Items selected that are to be removed from the toList
-		//ArrayList<Object> itemsToBeRemoved = new ArrayList<Object>();
-		
 		for(int i=0;i<selectedIndices.length;i++)
 		{
 			//remove item from fromList and move to toList
-			System.out.println("Index is "+ selectedIndices[i]);
+			System.out.println("Index is "+ "i"+ "selected Index is"+selectedIndices[i]);
 			Object selectedItem = fromList.getModel().getElementAt(selectedIndices[i]);
 			itemsSelected.add(selectedItem);			
 			
 		}
 		
 		//Bulk adding and removal of items
-		
-		for(Object item : itemsSelected)
-		{
-			((SortedListModel)toList.getModel()).add(item);
-			((SortedListModel)fromList.getModel()).removeElement(item);
-			
-		}
+		((SortedListModel)toList.getModel()).addAll(itemsSelected.toArray());		
+		((SortedListModel)fromList.getModel()).removeElementArray(itemsSelected);		
 		
 	}
-
-	
-
 }

@@ -21,6 +21,7 @@ import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNSegmenter;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
+import com.parc.ccn.security.crypto.ContentKeys;
 
 /**
  * This particular output stream class embodies the following assumptions:
@@ -66,14 +67,21 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 
 	public CCNOutputStream(ContentName name, 
 			KeyLocator locator, PublisherPublicKeyDigest publisher, ContentType type,
-			CCNLibrary library) throws XMLStreamException, IOException {
-		this(name, locator, publisher, type, new CCNSegmenter(new CCNFlowControl(name, library)));
+			ContentKeys keys, CCNLibrary library) throws XMLStreamException, IOException {
+		this(name, locator, publisher, type, new CCNSegmenter(new CCNFlowControl(name, library),
+				null, keys));
 	}
 
 	public CCNOutputStream(ContentName name,
-			KeyLocator locator, PublisherPublicKeyDigest publisher,
+			PublisherPublicKeyDigest publisher, ContentType type,
 			CCNLibrary library) throws XMLStreamException, IOException {
-		this(name, locator, publisher, null, new CCNSegmenter(new CCNFlowControl(name, library)));
+		this(name, null, publisher, type, new CCNSegmenter(new CCNFlowControl(name, library)));
+	}
+
+	public CCNOutputStream(ContentName name,
+			PublisherPublicKeyDigest publisher,
+			CCNLibrary library) throws XMLStreamException, IOException {
+		this(name, null, publisher, null, new CCNSegmenter(new CCNFlowControl(name, library)));
 	}
 
 	public CCNOutputStream(ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
@@ -81,7 +89,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	}
 
 	public CCNOutputStream(ContentName name, ContentType type, CCNLibrary library) throws XMLStreamException, IOException {
-		this(name, null, null, type, library);
+		this(name, null, type, library);
 	}
 
 	protected CCNOutputStream(ContentName name, 

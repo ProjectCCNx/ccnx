@@ -417,7 +417,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 			FileInputStream fs = new FileInputStream(file);
 			byte[] buffer = new byte[fs.available()];
 			fs.read(buffer);
-			RepositoryFileOutputStream fos = new RepositoryFileOutputStream(ccnName, null,  _library.getDefaultPublisher(), _library);
+			RepositoryFileOutputStream fos = new RepositoryFileOutputStream(ccnName, _library.getDefaultPublisher(), _library);
 			fos.write(buffer);
 			fos.close();
 

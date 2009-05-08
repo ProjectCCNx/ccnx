@@ -1,11 +1,10 @@
 /*
  * ccn/ccn.h
  * 
- * Copyright 2008 Palo Alto Research Center, Inc. All rights reserved.
+ * Copyright 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
  *
  * This is the low-level interface for CCN clients
  *
- * $Id$
  */
 
 #ifndef CCN_CCN_DEFINED
@@ -56,7 +55,7 @@ enum ccn_upcall_res {
     CCN_UPCALL_RESULT_OK = 0,
     CCN_UPCALL_RESULT_REEXPRESS = 1,
     CCN_UPCALL_RESULT_INTEREST_CONSUMED = 2,
-    CCN_UPCALL_RESULT_VERIFY = 3		/* force an unverified result to be verified */
+    CCN_UPCALL_RESULT_VERIFY = 3 /* force an unverified result to be verified */
 };
 
 /*
@@ -517,6 +516,7 @@ enum ccn_parsed_content_object_offsetid {
 
 struct ccn_parsed_ContentObject {
     int magic;
+    enum ccn_content_type type;
     int name_ncomps;
     unsigned short offset[CCN_PCO_E+1];
     unsigned char digest[32];	/* Computed only when needed */

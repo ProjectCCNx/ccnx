@@ -42,7 +42,7 @@ public class StreamTest extends BlockReadWriteTest {
 	}
 	
 	@Override
-	public void getResults(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException {
+	public void getResults(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, XMLStreamException {
 		ContentName thisName = VersioningProfile.versionName(ContentName.fromNative(baseName, fileName), count);
 		sema.acquire(); // Block until puts started
 		CCNInputStream istream = new CCNInputStream(thisName, library);
@@ -85,7 +85,7 @@ public class StreamTest extends BlockReadWriteTest {
 	 */
 	@Override
 	public void doPuts(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, 
-				SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException, NoSuchAlgorithmException {
+				SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException {
 		ContentName thisName = VersioningProfile.versionName(ContentName.fromNative(baseName, fileName), count);
 		CCNOutputStream ostream = new CCNOutputStream(thisName, null, null, library);
 		sema.release();	// put channel open

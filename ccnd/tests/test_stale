@@ -3,12 +3,12 @@ BEFORE : test_final_teardown
 AFTER : test_single_ccnd_teardown test_twohop_ccnd_teardown
 export CCN_LOCAL_PORT=$((CCN_LOCAL_PORT_BASE + 6))
 ccnd &
-trap "smoketestccnd -t 55 recv kill recv" 0
-smoketestccnd -t 55 recv || Fail
+trap "ccndsmoketest -t 55 recv kill recv" 0
+ccndsmoketest -t 55 recv || Fail
 date | ccnsendchunks -x 1 /test/ephemeral$$
 ccnget /test/ephemeral$$ > ephemeral$$.ccnb || Fail
 ccncatchunks /test/ephemeral$$ > ephemeral$$_0
-smoketestccnd -t 500 recv # delay for 1/2 sec
+ccndsmoketest -t 500 recv # delay for 1/2 sec
 ccncatchunks /test/ephemeral$$ > ephemeral$$_1
 diff ephemeral$$_0 ephemeral$$_1 || Fail
 sleep 1
@@ -17,7 +17,7 @@ ccncatchunks -a /test/ephemeral$$ > ephemeral$$_2
 ccncatchunks /test/ephemeral$$ > ephemeral$$_3
 diff ephemeral$$_0 ephemeral$$_2 || Fail
 : | diff - ephemeral$$_3 || Fail test data did not go stale as expected
-smoketestccnd -t 300 recv send ephemeral$$.ccnb &
+ccndsmoketest -t 300 recv send ephemeral$$.ccnb &
 ccncatchunks /test/ephemeral$$ > ephemeral$$_4
 diff ephemeral$$_0 ephemeral$$_4 || Fail
 ccncatchunks /test/ephemeral$$ > ephemeral$$_5

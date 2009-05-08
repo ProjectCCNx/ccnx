@@ -1,5 +1,6 @@
 agent/ccnd
 agent/smoketestccnd
+agent/ccndsmoketest
 conf.mk
 ccndc/ccndc
 flowtest/flowtest

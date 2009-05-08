@@ -16,8 +16,8 @@
 
 	<path id="ccn-classpath">
 		<pathelement location="${lib}/parccalib-1.1.jar"/>
-		<pathelement location="${lib}/bcprov-jdk15-140.jar"/>
-		<!--        <pathelement location="${lib}/bcprov-jdk16-140.jar"/> -->
+		<pathelement location="${lib}/bcprov-jdk15-143.jar"/>
+		<!--        <pathelement location="${lib}/bcprov-jdk16-143.jar"/> -->
 		<!--        <pathelement location="${lib}/commons-codec-1.2.jar"/> -->
 		<!--        <pathelement location="${lib}/commons-httpclient-3.0.jar"/> -->
 		<!--        <pathelement location="${lib}/derby-10.2.1.6.jar"/> -->

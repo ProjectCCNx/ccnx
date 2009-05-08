@@ -26,8 +26,8 @@
 	<classpathentry exported="true" kind="lib" path="lib/lucene-core-2.2.0.jar"/>
 	<classpathentry exported="true" kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry exported="true" kind="lib" path="lib/jsr173_1.0_ri.jar" sourcepath="lib/jsr173_1.0_src.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/bcprov-jdk15-140.jar" sourcepath="/Users/smetters/Documents/work/projects/KeyDistribution/bouncycastle/jdk15/bcprov-jdk15-140/src.zip"/>
 	<classpathentry exported="true" kind="lib" path="lib/commons-io-1.4.jar"/>
+	<classpathentry kind="lib" path="lib/bcprov-jdk15-143.jar"/>
 	<classpathentry kind="lib" path="lib/parccalib-1.1.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

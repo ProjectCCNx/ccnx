@@ -9,6 +9,7 @@ ccnd - CCN Daemon
 			2 - interest messages
 			4 - content messages
 			8 - matching details
+			16 - interest details
 			bitwise OR these together for combinations; -1 gets everything
 		CCN_LOCAL_PORT=
 			UDP port for local clients (default 4485)
@@ -21,8 +22,9 @@ ccnd - CCN Daemon
 			If set, interest stuffing is allowed within this budget.
 			Single items larger than this are not precluded.
 
-smoketestccnd - simple-minded program for excercising ccnd
+ccndsmoketest - simple-minded program for excercising ccnd
 	options: -t millisconds - sets the timeout for recv operations
+		 -u hostname - communicate with ccnd using udp
 	arguments: ( send <filename> | recv | kill | timeo <millisconds> ) ...
 		send <filename> sends the literal contents of the file to the ccnd.
 			The file should be in ccnd format.
