@@ -3,6 +3,7 @@ package com.parc.ccn.security.access;
 import java.util.ArrayList;
 
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.library.profiles.AccessControlProfile;
 
 public class AccessControlManager {
@@ -41,6 +42,14 @@ public class AccessControlManager {
 	public Group modifyGroup(String friendlyName, ArrayList<LinkReference> membersToAdd, ArrayList<LinkReference> membersToRemove) {
 	}
 	
+	public Group addUsers(String friendlyName, ArrayList<LinkReference> newUsers) {
+		return modifyGroup(friendlyName, newUsers, null);
+	}
+	
+	public Group removeUsers(String friendlyName, ArrayList<LinkReference> removedUsers) {
+		
+	}
+	
 	public void deleteGroup(String friendlyName) {
 		
 	}
@@ -55,6 +64,28 @@ public class AccessControlManager {
 	}
 	
 	/**
+	 * Adds an ACL to a node that doesn't have one, or replaces one that exists.
+	 * Does the diffs on any current ACL and makes any necessary changes.
+	 */
+	public ACL setACL(ContentName nodeName, ACL newACL) {
+		
+	}
+	
+	public ACL updateACL(ContentName nodeName, 
+						ArrayList<LinkReference> addReaders, ArrayList<LinkReference> removeReaders,
+						ArrayList<LinkReference> addWriters, ArrayList<LinkReference> removeWriters,
+						ArrayList<LinkReference> addManagers, ArrayList<LinkReference> removeManagers) {
+		
+	}
+		
+	public ACL addReaders(ContentName nodeName, ArrayList<LinkReference> newReaders) {
+		
+	}
+	
+	public ACL addWriters(ContentName nodeName, ArrayList<LinkReference> newWriters) {
+		
+	}
+	/**
 	 * Retrieve the effective ACL operating at this node, either stored here or
 	 * inherited from a parent.
 	 */
@@ -68,7 +99,7 @@ public class AccessControlManager {
 	 * @param nodeName
 	 * @return
 	 */
-	public byte [] getNodeKey(ContentName nodeName) {
+	public NodeKey getNodeKey(ContentName nodeName) {
 		
 	}
 	
@@ -76,7 +107,7 @@ public class AccessControlManager {
 	 * Get the effective node key in force at this node, used to derive keys to 
 	 * encrypt and decrypt content.
 	 */
-	public byte [] getEffectiveNodeKey(ContentName nodeName) {
+	public NodeKey getEffectiveNodeKey(ContentName nodeName) {
 		
 	}
 }
