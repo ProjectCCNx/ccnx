@@ -195,4 +195,35 @@ public class CCNSecureInputStreamTest {
 		byte [] dataDigest = MessageDigest.getInstance("SHA1").digest(encrData);
 		Assert.assertArrayEquals(dataDigest, readDigest);
 	}
+
+	/**
+	 * Test that seeking/skipping/mark/reset while reading an encrypted stream works
+	 */
+	@Test
+	public void skipping() throws XMLStreamException, IOException, NoSuchAlgorithmException {
+		// read some data, skip some data, read some more data
+		System.out.println("Reading CCNInputStream from "+encrName);
+		CCNInputStream inStream = new CCNInputStream(encrName, null, null, encrKeys, inputLibrary);
+
+		int start = (int) (encrLength*0.3); // first part of the file to skip
+		int end = (int) (encrLength*0.6); // where to start reading again
+
+		// check first part reads correctly
+		byte [] startData = new byte[start];
+		inStream.read(startData, 0, start);
+		byte [] encrStartData = new byte[start];
+		System.arraycopy(encrData, 0, encrStartData, 0, start);
+		Assert.assertArrayEquals(encrStartData, startData);
+
+		// skip middle of the file
+		inStream.skip(end-start);
+
+		// check second part reads correctly
+		int endLen = encrLength-end;
+		byte [] endData = new byte[endLen];
+		inStream.read(endData, 0, endLen);
+		byte [] encrEndData = new byte[endLen];
+		System.arraycopy(encrData, end, encrEndData, 0, endLen);
+		Assert.assertArrayEquals(encrEndData, endData);
+	}
 }
