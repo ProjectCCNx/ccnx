@@ -1,6 +1,7 @@
 package com.parc.ccn.security.keys;
 
 import java.io.IOException;
+import java.security.InvalidKeyException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 
@@ -116,6 +117,15 @@ public abstract class KeyManager {
 	public abstract PublicKey getKey(PublisherPublicKeyDigest desiredKeyID,
 									KeyLocator locator) throws IOException, InterruptedException;
 	
+	/**
+	 * Publish a key at a certain name, signed by our default identity. Usually used to
+	 * publish our own keys.
+	 * @param keyName
+	 * @param keyToPublish
+	 * @throws InvalidKeyException 
+	 * @throws ConfigurationException 
+	 */
+	public abstract void publishKey(ContentName keyName, PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, ConfigurationException;
 	
 	public abstract KeyRepository keyRepository();
 	

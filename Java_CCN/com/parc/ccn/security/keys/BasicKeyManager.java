@@ -5,6 +5,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
@@ -493,6 +494,16 @@ public class BasicKeyManager extends KeyManager {
 	@Override
 	public KeyRepository keyRepository() {
 		return _keyRepository;
+	}
+
+	@Override
+	public void publishKey(ContentName keyName,
+			PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, ConfigurationException {
+		PublicKey key = getPublicKey(keyToPublish);
+		if (null == key) {
+			throw new InvalidKeyException("Cannot retrieive key " + keyToPublish);
+		}
+		keyRepository().publishKey(keyName, key, getDefaultKeyID(), getDefaultSigningKey());
 	}
 
 }
