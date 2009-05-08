@@ -216,13 +216,18 @@ public class RepoIOTest extends RepoTestBase {
 	
 	protected void checkNameSpace(String contentName, boolean expected) throws Exception {
 		ContentName name = ContentName.fromNative(contentName);
-		RepositoryOutputStream ros = putLibrary.repoOpen(name, null, putLibrary.getDefaultPublisher());
+		RepositoryOutputStream ros = null;
+		try {
+			ros = putLibrary.repoOpen(name, null, putLibrary.getDefaultPublisher());
+		} catch (IOException ex) {
+			if (expected)
+				Assert.fail(ex.getMessage());
+			return;
+		}
 		byte [] data = "Testing 1 2 3".getBytes();
 		ros.write(data, 0, data.length);
 		ContentName baseName = ros.getBaseName();
-		try {
-			ros.close();
-		} catch (IOException ex) {}	// File not put causes an I/O exception
+		ros.close();
 		Thread.sleep(1000);
 		File testFile = new File("repotest" + baseName);
 		if (expected)

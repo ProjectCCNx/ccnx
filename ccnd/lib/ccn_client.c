@@ -612,41 +612,25 @@ static int
 ccn_get_content_type(const unsigned char *ccnb,
                      const struct ccn_parsed_ContentObject *pco)
 {
-    enum ccn_content_type type;
-    unsigned int typeu;
-    const unsigned char *typebytes;
-    size_t typesize;
-    int res;
-
-    if (pco->offset[CCN_PCO_B_Type] == pco->offset[CCN_PCO_E_Type]) {
-        type = CCN_CONTENT_DATA;
-        return(type);
-    }
-    res = ccn_ref_tagged_BLOB(CCN_DTAG_Type, ccnb,
-                              pco->offset[CCN_PCO_B_Type],
-                              pco->offset[CCN_PCO_E_Type],
-                              &typebytes, &typesize);
-    if (res < 0 || typesize != 3) {
-        return(-1);
-    }
-
-    typeu = (typebytes[0] << 16) | (typebytes[1] << 8) | typebytes[2];
-    switch (typeu) {
-    case CCN_CONTENT_DATA:
-    case CCN_CONTENT_ENCR:
-    case CCN_CONTENT_GONE:
-    case CCN_CONTENT_KEY:
-    case CCN_CONTENT_LINK:
-    case CCN_CONTENT_NACK:
-        type = typeu;
-        return (type);
-    default:
-        return (-1);
+    enum ccn_content_type type = pco->type;
+    (void)ccnb; // XXX - don't need now
+    switch (type) {
+        case CCN_CONTENT_DATA:
+        case CCN_CONTENT_ENCR:
+        case CCN_CONTENT_GONE:
+        case CCN_CONTENT_KEY:
+        case CCN_CONTENT_LINK:
+        case CCN_CONTENT_NACK:
+            return (type);
+        default:
+            return (-1);
     }
 }
 
 static int
-ccn_cache_key(struct ccn *h, const unsigned char *ccnb, size_t size, struct ccn_parsed_ContentObject *pco)
+ccn_cache_key(struct ccn *h,
+              const unsigned char *ccnb, size_t size,
+              struct ccn_parsed_ContentObject *pco)
 {
     int type;
     struct ccn_pkey **entry;
@@ -695,6 +679,9 @@ ccn_cache_key(struct ccn *h, const unsigned char *ccnb, size_t size, struct ccn_
 
 }
 
+/*
+ * Called when we get an answer to a KeyLocator fetch issued by ccn_locate_key.
+ */
 static enum ccn_upcall_res
 handle_key(
     struct ccn_closure *selfp,
@@ -711,7 +698,7 @@ handle_key(
         free(selfp);
         return(CCN_UPCALL_RESULT_OK);
     case CCN_UPCALL_INTEREST_TIMED_OUT:
-        return(CCN_UPCALL_RESULT_REEXPRESS);
+        return(CCN_UPCALL_RESULT_REEXPRESS); // XXX - should not wait forever if nobody cares.
     case CCN_UPCALL_CONTENT:
     case CCN_UPCALL_CONTENT_UNVERIFIED:
         break;
@@ -723,12 +710,20 @@ handle_key(
     ccnb_size = info->pco->offset[CCN_PCO_E];
 
     if (info->pco->offset[CCN_PCO_B_Type] == info->pco->offset[CCN_PCO_E_Type]) {
-        return(CCN_UPCALL_RESULT_OK);
+        return(CCN_UPCALL_RESULT_OK); // XXX - Nick, is this right?
     }
     res = ccn_cache_key(h, ccnb, ccnb_size, info->pco);
     return ((res < 0) ? CCN_UPCALL_RESULT_ERR : CCN_UPCALL_RESULT_OK);
 }
 
+/*
+ * Examine a ContentObject and try to find the public key needed to
+ * verify it.  It might be present in our cache of keys, or in the
+ * object itself; in either of these cases, we can satisfy the request
+ * right away. Or there may be an indirection, in which case we express
+ * an interest for it, but return without the key. The final possibility
+ * is that there is no key locator we can make sense of.
+ */
 static int
 ccn_locate_key(struct ccn *h,
                unsigned char *msg,
@@ -774,7 +769,7 @@ ccn_locate_key(struct ccn *h,
         if (key_closure == NULL)
             return (NOTE_ERRNO(h));
         key_closure->p = &handle_key;
-        key_closure->data = h->keys;
+        key_closure->data = h->keys; // XXX - not used?
         res = ccn_name_init(key_name);
         res = ccn_name_append_components(key_name, msg,
                                          pco->offset[CCN_PCO_B_Component0],
@@ -809,6 +804,7 @@ ccn_locate_key(struct ccn *h,
         hashtb_start(h->keys, e);
         res = hashtb_seek(e, (void *)key_digest, key_digest_size, 0);
         free(key_digest);
+        key_digest = NULL;
         if (res < 0) {
             hashtb_end(e);
             return(NOTE_ERRNO(h));
@@ -903,7 +899,8 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                                         res = ccn_cache_key(h, msg, size, info.pco);
                                     }
                                     res = ccn_locate_key(h, msg, size, info.pco, &pubkey);
-                                    if (res >= 0) {	/* we have the pubkey, use it to verify the msg */
+                                    if (res == 0) {
+                                        /* we have the pubkey, use it to verify the msg */
                                         res = ccn_verify_signature(msg, size, info.pco, pubkey);
                                         upcall_kind = (res == 1) ? CCN_UPCALL_CONTENT : CCN_UPCALL_CONTENT_BAD;
                                     } else {
@@ -920,8 +917,12 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                                     }
                                     if (ures == CCN_UPCALL_RESULT_REEXPRESS)
                                         ccn_refresh_interest(h, interest);
-                                    else if (ures == CCN_UPCALL_RESULT_VERIFY) { /* KEYS */
+                                    else if (ures == CCN_UPCALL_RESULT_VERIFY &&
+                                             upcall_kind == CCN_UPCALL_CONTENT_UNVERIFIED) { /* KEYS */
                                         /* XXX - what do we really need to do here... */
+                                        interest->outstanding += 1; /* Pretend it is still outstanding. */
+/* The key may be on its way because ccn_locate_key asked for it, or it may arrive by happenstance.  When it arrives we need to manage to re-fetch the unverified object so that the upcall can happen again. We could do this by remembering the content object itself, or by remembering a specific Interest that should get it back for us once more. This needs to be triggered on the arrival of the pubkey. The triggered event should also go away when nobody cares anymore. */
+                                        
                                     } else {
                                         interest->target = 0;
                                         replace_interest_msg(interest, NULL);

@@ -77,7 +77,7 @@ public class CCNDescriptor {
 			nameToOpen = 
 				VersioningProfile.versionName(nameToOpen);
 		}
-		_output = new CCNOutputStream(nameToOpen, locator, publisher, library);
+		_output = new CCNOutputStream(nameToOpen, locator, publisher, null, null, library);
 	}
 
 	public int available() throws IOException {

@@ -15,6 +15,7 @@ import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.ListSelectionModel;
@@ -44,9 +45,10 @@ public class ACLManager extends JDialog implements ActionListener{
 	private JButton buttonView2Modify;	
 	private JFrame frame;
 	private String path;
-	
+private ArrayList<JList> listsArray=null;	
 	//private ArrayList<String> readOnlyPrincipals;
 	//private ArrayList<String> readWritePrincipals;
+private ValuesChanged changedEntries;
 
 private SortedListModel readOnlyPrincipals = null;
 private SortedListModel readWritePrincipals = null;
@@ -101,6 +103,7 @@ private SortedListModel userPoolDefault = null;
 	{
 		
 	}
+	
 	public void setReadOnlyUsersList()
 	{
 		// grab the content object
@@ -124,6 +127,14 @@ private SortedListModel userPoolDefault = null;
 
 		super();
 		this.path = path;
+		
+		//window listener
+		this.setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
+		changedEntries = new ValuesChanged(false);
+		this.addWindowListener(new ChangedEntriesConfirm(this,changedEntries));
+		
+		listsArray = new ArrayList<JList>();
+		//listsArray.add(groupsList);
 		
 		readOnlyPrincipals = new SortedListModel();
 		readWritePrincipals = new SortedListModel();
@@ -170,9 +181,12 @@ private SortedListModel userPoolDefault = null;
 		getContentPane().add(scrollPane_1);
 		
 		readWriteList = new JList(readWritePrincipals);
+		readWriteList.setName("modifyList");
 		scrollPane_1.setViewportView(readWriteList);
 		readWriteList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 		readWriteList.setBorder(new BevelBorder(BevelBorder.LOWERED));
+		
+		listsArray.add(readWriteList);
 		//readWriteList.setBounds(462, 70, 120, 240);		
 		//getContentPane().add(readWriteList);
 
@@ -182,9 +196,12 @@ private SortedListModel userPoolDefault = null;
 		getContentPane().add(scrollPane_2);
 		
 		userList = new JList(userPool);
+		userList.setName("userList");
 		scrollPane_2.setViewportView(userList);
 		userList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 		userList.setBorder(new BevelBorder(BevelBorder.LOWERED));
+		
+		listsArray.add(userList);
 //		userList.setBounds(233, 70, 120, 240);
 //		getContentPane().add(userList);
 
@@ -246,10 +263,13 @@ private SortedListModel userPoolDefault = null;
 		getContentPane().add(scrollPane);
 
 		readOnlyList = new JList(readOnlyPrincipals);
+		readOnlyList.setName("viewList");
 		scrollPane.setViewportView(readOnlyList);
 		readOnlyList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 		readOnlyList.setBorder(new BevelBorder(BevelBorder.LOWERED));
 
+		listsArray.add(readOnlyList);
+		
 		buttonModify2View = new JButton();
 		buttonModify2View.addActionListener(this);
 		buttonModify2View.setText("^");
@@ -261,7 +281,10 @@ private SortedListModel userPoolDefault = null;
 		buttonView2Modify.setText("v");
 		buttonView2Modify.setBounds(479, 178, 49, 25);
 		getContentPane().add(buttonView2Modify);
-				
+		
+		readOnlyList.addMouseListener(new ListMouseListener(listsArray));
+		readWriteList.addMouseListener(new ListMouseListener(listsArray));
+		userList.addMouseListener(new ListMouseListener(listsArray));
 	}
 
 	public void actionPerformed(ActionEvent e) {
@@ -269,35 +292,40 @@ private SortedListModel userPoolDefault = null;
 		if(buttonApply == e.getSource()) {
 			
 			applyChanges();
+			changedEntries.changed = false;
+			
 		}else if(buttonDefault == e.getSource()){
 			
 			restoreDefaults();
-			
+			changedEntries.changed = false;
 			
 		}else if(buttonCancel == e.getSource()){
 			
 			cancelChanges();
 			
+			
 		}else if(buttonAssignReadOnly == e.getSource()){
 			moveListItems(userList.getSelectedIndices(),userList,readOnlyList);
+			changedEntries.changed = true;
 			
 		}else if(buttonRemoveReadOnly == e.getSource()){			
 			moveListItems(readOnlyList.getSelectedIndices(),readOnlyList,userList);			
-			
+			changedEntries.changed = true;
 		}else if(buttonAssingReadWrite == e.getSource()){
 			moveListItems(userList.getSelectedIndices(),userList,readWriteList);
-			
+			changedEntries.changed = true;
 		}else if(buttonRemoveReadWrite == e.getSource()){
 			moveListItems(readWriteList.getSelectedIndices(),readWriteList,userList);
-			
+			changedEntries.changed = true;
 		}else if(buttonModify2View == e.getSource()){
 			
 			moveListItems(readWriteList.getSelectedIndices(),readWriteList,readOnlyList);
-						
+			changedEntries.changed = true;
+			
 		}else if(buttonView2Modify == e.getSource()){
 			
 			moveListItems(readOnlyList.getSelectedIndices(),readOnlyList,readWriteList);
-			
+			changedEntries.changed = true;
 		}
 		
 	}
@@ -324,8 +352,23 @@ private SortedListModel userPoolDefault = null;
 	
 	private void cancelChanges()
 	{
-		this.setVisible(false);
-		this.dispose();
+		if(changedEntries.changed)
+		{
+			int answer = JOptionPane.showConfirmDialog(this, "You have pending changes. Are you sure you would like to exit", "Pending Changes",JOptionPane.YES_NO_OPTION);
+			switch(answer){
+			case JOptionPane.YES_OPTION:
+				this.setVisible(false);
+				this.dispose();
+				break;
+			case JOptionPane.NO_OPTION:
+				break;
+			}
+			
+		}else
+		{
+			this.setVisible(false);
+			this.dispose();
+		}
 	}
 
 	private void moveListItems(int selectedIndices[],JList fromList,JList toList)
@@ -333,29 +376,25 @@ private SortedListModel userPoolDefault = null;
 		//ArrayList of selected items
 		ArrayList<Object> itemsSelected = new ArrayList<Object>();
 		
-		//Items selected that are to be removed from the toList
-		//ArrayList<Object> itemsToBeRemoved = new ArrayList<Object>();
-		
+		if(selectedIndices.length >= 1){
 		for(int i=0;i<selectedIndices.length;i++)
 		{
 			//remove item from fromList and move to toList
-			System.out.println("Index is "+ selectedIndices[i]);
+			System.out.println("Index is "+ i+ "selected Index is"+selectedIndices[i]);
 			Object selectedItem = fromList.getModel().getElementAt(selectedIndices[i]);
 			itemsSelected.add(selectedItem);			
 			
 		}
 		
 		//Bulk adding and removal of items
-		
-		for(Object item : itemsSelected)
-		{
-			((SortedListModel)toList.getModel()).add(item);
-			((SortedListModel)fromList.getModel()).removeElement(item);
-			
-		}
+		((SortedListModel)toList.getModel()).addAll(itemsSelected.toArray());		
+		((SortedListModel)fromList.getModel()).removeElementArray(itemsSelected);		
+
+		//clear selections from old items
+		fromList.clearSelection();
+		//select new items?
+		//toList.setSelectedIndices(indices);
+		}		
 		
 	}
-
-	
-
 }

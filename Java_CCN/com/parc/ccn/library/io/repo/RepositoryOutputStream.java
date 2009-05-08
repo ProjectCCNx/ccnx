@@ -18,7 +18,7 @@ import com.parc.ccn.library.io.CCNOutputStream;
 
 public class RepositoryOutputStream extends CCNOutputStream {
 	
-	protected RepositorySegmenter _repoFlowControl;
+	protected RepositoryProtocol _repoFlowControl;
 
 	public RepositoryOutputStream(ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
 		this(name, null, null, library);
@@ -27,8 +27,8 @@ public class RepositoryOutputStream extends CCNOutputStream {
 	public RepositoryOutputStream(ContentName name, 
 			KeyLocator locator, PublisherPublicKeyDigest publisher, CCNLibrary library)
 			throws XMLStreamException, IOException {
-		super(name, locator, publisher, new RepositorySegmenter(name, library));
-		_repoFlowControl = (RepositorySegmenter)_segmenter.getFlowControl();
+		super(name, locator, publisher, new RepositoryProtocol(name, library));
+		_repoFlowControl = (RepositoryProtocol)_segmenter.getFlowControl();
 		_repoFlowControl.init(getBaseName());
 	}
 	

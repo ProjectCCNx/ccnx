@@ -20,13 +20,21 @@ import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNSegmenter;
 import com.parc.ccn.library.profiles.SegmentationProfile;
+import com.parc.ccn.security.crypto.ContentKeys;
 
 public class CCNFileOutputStream extends CCNVersionedOutputStream {
 
-	public CCNFileOutputStream(ContentName name, KeyLocator locator,
+	public CCNFileOutputStream(ContentName name,
+			PublisherPublicKeyDigest publisher, ContentKeys keys,
+			CCNLibrary library)
+			throws XMLStreamException, IOException {
+		super(name, null, publisher, library);
+	}
+
+	public CCNFileOutputStream(ContentName name,
 			PublisherPublicKeyDigest publisher, CCNLibrary library)
 			throws XMLStreamException, IOException {
-		super(name, locator, publisher, library);
+		super(name, null, publisher, library);
 	}
 
 	public CCNFileOutputStream(ContentName name, CCNLibrary library)
@@ -40,10 +48,10 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 		super(name, locator, publisher, type, segmenter);
 	}
 
-	public CCNFileOutputStream(ContentName name, KeyLocator locator,
+	public CCNFileOutputStream(ContentName name,
 			PublisherPublicKeyDigest publisher, CCNFlowControl flowControl)
 			throws XMLStreamException, IOException {
-		super(name, locator, publisher, flowControl);
+		super(name, null, publisher, flowControl);
 	}
 
 	protected void writeHeader() throws InvalidKeyException, SignatureException, IOException, InterruptedException {

@@ -14,9 +14,6 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
 import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.spec.IvParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
@@ -30,7 +27,6 @@ import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.SegmentationProfile.SegmentNumberType;
 import com.parc.ccn.security.crypto.CCNAggregatedSigner;
-import com.parc.ccn.security.crypto.CCNCipherFactory;
 import com.parc.ccn.security.crypto.CCNMerkleTree;
 import com.parc.ccn.security.crypto.CCNMerkleTreeSigner;
 import com.parc.ccn.security.crypto.ContentKeys;
@@ -101,9 +97,7 @@ public class CCNSegmenter {
 	protected CCNAggregatedSigner _bulkSigner;
 	
 	// Encryption/decryption handler
-	protected Cipher _cipher;
-	protected SecretKeySpec _encryptionKey;
-	protected IvParameterSpec _masterIV;
+	protected ContentKeys _keys;
 
 	/**
 	 * Eventually add encryption, allow control of authentication algorithm.
@@ -117,7 +111,7 @@ public class CCNSegmenter {
 		this(CCNLibrary.open());
 	}
 	
-	public CCNSegmenter(ContentKeys keys) throws ConfigurationException, IOException, NoSuchAlgorithmException, NoSuchPaddingException {
+	public CCNSegmenter(ContentKeys keys) throws ConfigurationException, IOException {
 		this(CCNLibrary.open(), keys);
 	}
 
@@ -125,7 +119,7 @@ public class CCNSegmenter {
 		this(new CCNFlowControl(library));
 	}
 
-	public CCNSegmenter(CCNLibrary library, ContentKeys keys) throws NoSuchAlgorithmException, NoSuchPaddingException {
+	public CCNSegmenter(CCNLibrary library, ContentKeys keys) {
 		this(new CCNFlowControl(library), null, null);
 	}
 	/**
@@ -153,27 +147,12 @@ public class CCNSegmenter {
 	}
 
 	public CCNSegmenter(CCNFlowControl flowControl, CCNAggregatedSigner signer,
-						ContentKeys keys) throws NoSuchAlgorithmException, NoSuchPaddingException {
+						ContentKeys keys) {
 		this(flowControl, signer);
 		
-		if (null != keys.encryptionAlgorithm) {
-			if (!keys.encryptionAlgorithm.equals(CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM)) {
-				Library.logger().warning("Right now the only encryption algorithm we support is: " + 
-						CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM + ", " + keys.encryptionAlgorithm + 
-						" will come later.");
-				throw new NoSuchAlgorithmException("Right now the only encryption algorithm we support is: " + 
-						CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM + ", " + keys.encryptionAlgorithm + 
-						" will come later.");
-			}
-			// Make this here so we throw NoSuchAlgorithmException now if it's going to happen.
-			// Use this as a container to mark the algorithm going forward.
-			_cipher = Cipher.getInstance(keys.encryptionAlgorithm);
-			_encryptionKey = keys.encryptionKey;
-			_masterIV = keys.masterIV;
-		} else {
-			if ((null != keys.encryptionKey) || (null != keys.masterIV)) {
-				Library.logger().warning("Encryption key or IV specified, but no algorithm provided. Ignoring.");
-			}
+		if (keys != null) {
+			keys.OnlySupportDefaultAlg();
+			_keys = keys;
 		}
 	}
 
@@ -340,7 +319,6 @@ public class CCNSegmenter {
 	 * @throws SignatureException
 	 * @throws NoSuchAlgorithmException
 	 * @throws IOException 
-	 * @throws NoSuchPaddingException 
 	 * @throws InvalidAlgorithmParameterException 
 	 */
 	protected long fragmentedPut(
@@ -360,7 +338,6 @@ public class CCNSegmenter {
 	}
 	
 	/** 
-	 * @throws NoSuchPaddingException 
 	 * @throws InvalidAlgorithmParameterException 
 	 * @throws NoSuchAlgorithmException 
 	 * @see CCNSegmenter#fragmentedPut(ContentName, byte[], int, int, Long, ContentType, Integer, KeyLocator, PublisherPublicKeyDigest)
@@ -514,7 +491,6 @@ public class CCNSegmenter {
 	 * @throws NoSuchAlgorithmException 
 	 * @throws SignatureException 
 	 * @throws InvalidKeyException 
-	 * @throws NoSuchPaddingException 
 	 * @throws InvalidAlgorithmParameterException 
 	 * @throws BadPaddingException 
 	 * @throws IllegalBlockSizeException 
@@ -549,11 +525,10 @@ public class CCNSegmenter {
 										SegmentationProfile.getSegmentID(segmentNumber) : 
 											SegmentationProfile.getSegmentID(finalSegmentIndex)));
 
-		if (null != _cipher) {
+		if (null != _keys) {
 			try {
 				// Make a separate cipher, so this segmenter can be used by multiple callers at once.
-				Cipher thisCipher = CCNCipherFactory.getSegmentEncryptionCipher(null, _cipher.getAlgorithm(), 
-															         			_encryptionKey, _masterIV, segmentNumber);
+				Cipher thisCipher = _keys.getSegmentEncryptionCipher(null, segmentNumber);
 				content = thisCipher.doFinal(content, offset, length);
 				offset = 0;
 				length = content.length;
@@ -564,12 +539,6 @@ public class CCNSegmenter {
 				// decryption key, we'll try to decrypt it.
 				type = ContentType.ENCR; 
 				
-			} catch (NoSuchAlgorithmException e) {
-				Library.logger().warning("Unexpected NoSuchAlgorithmException for an algorithm we have already used!");
-				throw new InvalidKeyException("Unexpected NoSuchAlgorithmException for an algorithm we have already used!", e);
-			} catch (NoSuchPaddingException e) {
-				Library.logger().warning("Unexpected NoSuchPaddingException for an algorithm we have already used!");
-				throw new InvalidAlgorithmParameterException("Unexpected NoSuchPaddingException for an algorithm we have already used!", e);
 			} catch (IllegalBlockSizeException e) {
 				Library.logger().warning("Unexpected IllegalBlockSizeException for an algorithm we have already used!");
 				throw new InvalidKeyException("Unexpected IllegalBlockSizeException for an algorithm we have already used!", e);
@@ -606,27 +575,19 @@ public class CCNSegmenter {
 		ByteArrayInputStream dataStream = new ByteArrayInputStream(content, offset, length);
 		InputStream inputStream = dataStream;
 		Cipher thisCipher = null;
-		if (null != _cipher) {
+		if (null != _keys) {
 			// DKS TODO -- move to streaming version to cut down copies. Here using input
 			// streams, eventually push down with this at the end of an output stream.
-			try {
-				// Make a separate cipher, so this segmenter can be used by multiple callers at once.
-				thisCipher = CCNCipherFactory.getSegmentEncryptionCipher(null, _cipher.getAlgorithm(), 
-															         _encryptionKey, _masterIV, nextSegmentIndex);
-				// Override content type to mark encryption.
-				// Note: we don't require that writers use our facilities for encryption, so
-				// content previously encrypted may not be marked as type ENCR. So on the decryption
-				// side we don't require that encrypted data be marked ENCR -- if you give us a
-				// decryption key, we'll try to decrypt it.
-				signedInfo.setType(ContentType.ENCR);
+
+			// Make a separate cipher, so this segmenter can be used by multiple callers at once.
+			thisCipher = _keys.getSegmentEncryptionCipher(null, nextSegmentIndex);
+			// Override content type to mark encryption.
+			// Note: we don't require that writers use our facilities for encryption, so
+			// content previously encrypted may not be marked as type ENCR. So on the decryption
+			// side we don't require that encrypted data be marked ENCR -- if you give us a
+			// decryption key, we'll try to decrypt it.
+			signedInfo.setType(ContentType.ENCR);
 				
-			} catch (NoSuchAlgorithmException e) {
-				Library.logger().warning("Unexpected NoSuchAlgorithmException for an algorithm we have already used!");
-				throw new InvalidKeyException("Unexpected NoSuchAlgorithmException for an algorithm we have already used!", e);
-			} catch (NoSuchPaddingException e) {
-				Library.logger().warning("Unexpected NoSuchPaddingException for an algorithm we have already used!");
-				throw new InvalidAlgorithmParameterException("Unexpected NoSuchPaddingException for an algorithm we have already used!", e);
-			}
 			inputStream = new CipherInputStream(dataStream, thisCipher);
 		} 
 		
@@ -657,7 +618,6 @@ public class CCNSegmenter {
 	 * @param firstBlockIndex
 	 * @param lastBlockLength
 	 * @return
-	 * @throws NoSuchPaddingException 
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidAlgorithmParameterException 
 	 * @throws InvalidKeyException 
@@ -684,11 +644,10 @@ public class CCNSegmenter {
 		int i;
 		for (i=firstBlockIndex; i < (firstBlockIndex + blockCount - 1); ++i) {
 			blockContent = contentBlocks[i];
-			if (null != _cipher) {
+			if (null != _keys) {
 				try {
 					// Make a separate cipher, so this segmenter can be used by multiple callers at once.
-					Cipher thisCipher = CCNCipherFactory.getSegmentEncryptionCipher(null, _cipher.getAlgorithm(), 
-																         _encryptionKey, _masterIV, nextSegmentIndex);
+					Cipher thisCipher = _keys.getSegmentEncryptionCipher(null, nextSegmentIndex);
 					blockContent = thisCipher.doFinal(contentBlocks[i]);
 
 					// Override content type to mark encryption.
@@ -698,12 +657,6 @@ public class CCNSegmenter {
 					// decryption key, we'll try to decrypt it.
 					signedInfo.setType(ContentType.ENCR);
 					
-				} catch (NoSuchAlgorithmException e) {
-					Library.logger().warning("Unexpected NoSuchAlgorithmException for an algorithm we have already used!");
-					throw new InvalidKeyException("Unexpected NoSuchAlgorithmException for an algorithm we have already used!", e);
-				} catch (NoSuchPaddingException e) {
-					Library.logger().warning("Unexpected NoSuchPaddingException for an algorithm we have already used!");
-					throw new InvalidAlgorithmParameterException("Unexpected NoSuchPaddingException for an algorithm we have already used!", e);
 				} catch (IllegalBlockSizeException e) {
 					Library.logger().warning("Unexpected IllegalBlockSizeException for an algorithm we have already used!");
 					throw new InvalidKeyException("Unexpected IllegalBlockSizeException for an algorithm we have already used!", e);
@@ -721,19 +674,12 @@ public class CCNSegmenter {
 			nextSegmentIndex = nextSegmentIndex(nextSegmentIndex, blocks[i].contentLength());
 		}
 		blockContent = contentBlocks[i];
-		if (null != _cipher) {
+		if (null != _keys) {
 			try {
-				Cipher thisCipher = CCNCipherFactory.getSegmentEncryptionCipher(null, _cipher.getAlgorithm(), 
-															         _encryptionKey, _masterIV, nextSegmentIndex);
+				Cipher thisCipher = _keys.getSegmentEncryptionCipher(null, nextSegmentIndex);
 				blockContent = thisCipher.doFinal(contentBlocks[i], 0, lastBlockLength);
 				lastBlockLength = blockContent.length;
 				
-			} catch (NoSuchAlgorithmException e) {
-				Library.logger().warning("Unexpected NoSuchAlgorithmException for an algorithm we have already used!");
-				throw new InvalidKeyException("Unexpected NoSuchAlgorithmException for an algorithm we have already used!", e);
-			} catch (NoSuchPaddingException e) {
-				Library.logger().warning("Unexpected NoSuchPaddingException for an algorithm we have already used!");
-				throw new InvalidAlgorithmParameterException("Unexpected NoSuchPaddingException for an algorithm we have already used!", e);
 			} catch (IllegalBlockSizeException e) {
 				Library.logger().warning("Unexpected IllegalBlockSizeException for an algorithm we have already used!");
 				throw new InvalidKeyException("Unexpected IllegalBlockSizeException for an algorithm we have already used!", e);
@@ -802,10 +748,10 @@ public class CCNSegmenter {
 	 * @return
 	 */
 	public long outputLength(int inputLength) {
-		if (null == _cipher) {
+		if (null == _keys) {
 			return inputLength;
 		} else {
-			return _cipher.getOutputSize(inputLength);
+			return _keys.getCipher().getOutputSize(inputLength);
 		}
 	}
 }

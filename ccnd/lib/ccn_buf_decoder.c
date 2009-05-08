@@ -160,6 +160,42 @@ int minlen, int maxlen)
     return(-1);
 }
 
+uintmax_t
+ccn_parse_required_tagged_binary_number(struct ccn_buf_decoder *d, enum ccn_dtag dtag,
+int minlen, int maxlen)
+{
+    uintmax_t value = 0;
+    const unsigned char *p = NULL;
+    size_t len = 0;
+    int i;
+    if (0 <= minlen && minlen <= maxlen && maxlen <= sizeof(value) &&
+          ccn_buf_match_dtag(d, dtag)) {
+        ccn_buf_advance(d);
+        if (ccn_buf_match_blob(d, &p, &len))
+            ccn_buf_advance(d);
+        ccn_buf_check_close(d);
+        if (d->decoder.state < 0)
+            return(value);
+        if (minlen <= len && len <= maxlen)
+            for (i = 0; i < len; i++)
+                value = (value << 8) + p[i];
+        else
+            d->decoder.state = -__LINE__;
+    }
+    else
+        d->decoder.state = -__LINE__;
+    return(value);
+}
+
+uintmax_t
+ccn_parse_optional_tagged_binary_number(struct ccn_buf_decoder *d, enum ccn_dtag dtag,
+int minlen, int maxlen, uintmax_t default_value)
+{
+    if (ccn_buf_match_dtag(d, dtag))
+        return(ccn_parse_required_tagged_binary_number(d, dtag, minlen, maxlen));
+    return(default_value);
+}
+
 int
 ccn_parse_required_tagged_UDATA(struct ccn_buf_decoder *d, enum ccn_dtag dtag)
 {
@@ -434,6 +470,7 @@ ccn_fetch_tagged_nonNegativeInteger(enum ccn_dtag tt,
     return(result);
 }
 
+
 int
 ccn_parse_interest(const unsigned char *msg, size_t size,
                    struct ccn_parsed_interest *interest,
@@ -617,10 +654,11 @@ ccn_parse_SignedInfo(struct ccn_buf_decoder *d, struct ccn_parsed_ContentObject 
         x->offset[CCN_PCO_E_Timestamp] = d->decoder.token_index;
         
         x->offset[CCN_PCO_B_Type] = d->decoder.token_index;
+        x->type = CCN_CONTENT_DATA;
         if (x->magic >= 20090415)
-            ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_Type, 3, 3);
+            x->type = ccn_parse_optional_tagged_binary_number(d, CCN_DTAG_Type, 3, 3, CCN_CONTENT_DATA);
         else
-            ccn_parse_required_tagged_UDATA(d, CCN_DTAG_Type);
+            ccn_parse_required_tagged_UDATA(d, CCN_DTAG_Type); // XXX - compatibility
         x->offset[CCN_PCO_E_Type] = d->decoder.token_index;
         
         x->offset[CCN_PCO_B_FreshnessSeconds] = d->decoder.token_index;

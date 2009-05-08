@@ -12,6 +12,7 @@ import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNSegmenter;
 import com.parc.ccn.library.profiles.VersioningProfile;
+import com.parc.ccn.security.crypto.ContentKeys;
 
 public class CCNVersionedOutputStream extends CCNOutputStream {
 
@@ -19,6 +20,12 @@ public class CCNVersionedOutputStream extends CCNOutputStream {
 			PublisherPublicKeyDigest publisher, CCNLibrary library)
 			throws XMLStreamException, IOException {
 		this(name, locator, publisher, null, new CCNSegmenter(new CCNFlowControl(name, library)));
+	}
+
+	public CCNVersionedOutputStream(ContentName name, KeyLocator locator,
+			PublisherPublicKeyDigest publisher, ContentKeys keys, CCNLibrary library)
+			throws XMLStreamException, IOException {
+		this(name, locator, publisher, null, new CCNSegmenter(new CCNFlowControl(name, library), null, keys));
 	}
 
 	public CCNVersionedOutputStream(ContentName name, CCNLibrary library)
