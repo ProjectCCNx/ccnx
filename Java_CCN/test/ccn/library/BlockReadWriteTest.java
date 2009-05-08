@@ -5,7 +5,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 import java.util.concurrent.Semaphore;
 
@@ -38,7 +37,7 @@ public class BlockReadWriteTest extends BasePutGetTest {
 	}
 
 	@Override
-	public void getResults(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException {
+	public void getResults(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, XMLStreamException {
 		ContentName thisName = VersioningProfile.versionName(ContentName.fromNative(baseName, fileName), count);
 		sema.acquire(); // Block until puts started
 		CCNDescriptor desc = new CCNDescriptor(thisName, null, library);
@@ -73,11 +72,10 @@ public class BlockReadWriteTest extends BasePutGetTest {
 	 * @throws MalformedContentNameStringException 
 	 * @throws SignatureException 
 	 * @throws XMLStreamException 
-	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
 	 */
 	@Override
-	public void doPuts(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException, NoSuchAlgorithmException {
+	public void doPuts(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException {
 		ContentName thisName = VersioningProfile.versionName(ContentName.fromNative(baseName, fileName), count);
 		CCNDescriptor desc = new CCNDescriptor(thisName, null, null, library);
 		desc.setTimeout(5000);

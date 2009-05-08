@@ -72,7 +72,7 @@ public class KeyDerivationFunction {
 			String label,
 			ContentName contentName, 
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, XMLStreamException {
-		return DeriveKeyForObject(masterKeyBytes, CCNCipherFactory.DEFAULT_AES_KEY_LENGTH*8, CCNCipherFactory.IV_MASTER_LENGTH*8,
+		return DeriveKeyForObject(masterKeyBytes, ContentKeys.DEFAULT_AES_KEY_LENGTH*8, ContentKeys.IV_MASTER_LENGTH*8,
 				label, contentName, publisher);
 	}
 

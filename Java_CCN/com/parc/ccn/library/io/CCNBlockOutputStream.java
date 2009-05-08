@@ -18,6 +18,7 @@ import com.parc.ccn.library.CCNSegmenter;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.SegmentationProfile.SegmentNumberType;
 import com.parc.ccn.security.crypto.CCNBlockSigner;
+import com.parc.ccn.security.crypto.ContentKeys;
 
 /**
  * This class acts as a packet-oriented stream of data. It might be
@@ -55,11 +56,22 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 	 * @throws IOException
 	 */
 	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type,
-								KeyLocator locator, PublisherPublicKeyDigest publisher,
-								CCNFlowControl flowControl) throws XMLStreamException, IOException {
+								PublisherPublicKeyDigest publisher,
+								CCNFlowControl flowControl)
+								throws XMLStreamException, IOException {
+		super(null, publisher, new CCNSegmenter(flowControl, new CCNBlockSigner()));
+		init(baseName, type);
+	}
 
-		super(locator, publisher, new CCNSegmenter(flowControl, new CCNBlockSigner()));
-		
+	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type,
+			KeyLocator locator, PublisherPublicKeyDigest publisher,
+			ContentKeys keys, CCNFlowControl flowControl)
+			throws XMLStreamException, IOException {
+		super(locator, publisher, new CCNSegmenter(flowControl, new CCNBlockSigner(), keys));
+		init(baseName, type);
+	}
+
+	private void init(ContentName baseName, SignedInfo.ContentType type) {
 		_type = type;
 
 		ContentName nameToOpen = baseName;
@@ -77,7 +89,7 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 	}
 	
 	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type) throws XMLStreamException, IOException {
-		this(baseName, type, null, null, null);
+		this(baseName, type, null, null);
 	}
 		
 	public void useByteCountSequenceNumbers() {

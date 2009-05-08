@@ -18,6 +18,7 @@ import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
+import com.parc.ccn.security.crypto.ContentKeys;
 
 /**
  * This class takes a versioned input stream and adds the expectation
@@ -49,6 +50,14 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 			PublisherPublicKeyDigest publisher, CCNLibrary library)
 			throws XMLStreamException, IOException {
 		super(name, startingBlockIndex, publisher, library);
+		// Asynchronously attempt to retrieve a header block, if one exists.
+		retrieveHeader(_baseName, (null != publisher) ? new PublisherID(publisher) : null);
+	}
+
+	public CCNFileInputStream(ContentName name, Long startingBlockIndex,
+			PublisherPublicKeyDigest publisher, ContentKeys keys, CCNLibrary library)
+			throws XMLStreamException, IOException {
+		super(name, startingBlockIndex, publisher, keys, library);
 		// Asynchronously attempt to retrieve a header block, if one exists.
 		retrieveHeader(_baseName, (null != publisher) ? new PublisherID(publisher) : null);
 	}

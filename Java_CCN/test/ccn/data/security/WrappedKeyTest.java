@@ -22,7 +22,7 @@ import test.ccn.data.util.XMLEncodableTester;
 
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.WrappedKey;
-import com.parc.ccn.security.crypto.CCNCipherFactory;
+import com.parc.ccn.security.crypto.ContentKeys;
 import com.parc.ccn.security.crypto.jce.CCNCryptoProvider;
 
 public class WrappedKeyTest {
@@ -181,7 +181,7 @@ public class WrappedKeyTest {
 
 		WrappedKey wks = null;
 		try {
-			wks = WrappedKey.wrapKey(wrappedAESKey, CCNCipherFactory.DEFAULT_CIPHER_ALGORITHM, aLabel, wrappingAESKey);
+			wks = WrappedKey.wrapKey(wrappedAESKey, ContentKeys.DEFAULT_CIPHER_ALGORITHM, aLabel, wrappingAESKey);
 		} catch (Exception e) {
 			fail("Exception in wrapKey: " + e.getClass().getName() + ":  " + e.getMessage());
 		}
