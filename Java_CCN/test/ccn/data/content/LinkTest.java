@@ -43,6 +43,7 @@ public class LinkTest {
 	static PublisherID pubID1 = null;	
 	static PublisherID pubID2 = null;	
 	static LinkAuthenticator [] las = new LinkAuthenticator[4];
+	static String labels[];
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -51,6 +52,7 @@ public class LinkTest {
 		name3 = ContentName.fromURI(new String[]{baseName, subName, document3});
 		name4 = ContentName.fromURI("/parc/home/briggs/collaborators.txt");
 		ns = new ContentName[]{name,name2,name3,name4};
+		labels = new String[]{"This is a label", "", null, "BigLabel"};
 		linkName = ContentName.fromURI(new String[]{linkBaseName, subName, document1});
 		linkName2 = ContentName.fromURI(new String[]{linkBaseName, subName, document2});
 		linkName3 = ContentName.fromURI(new String[]{linkBaseName, subName, document3});
@@ -83,7 +85,7 @@ public class LinkTest {
 		KeyLocator locator = new KeyLocator(ContentName.fromNative("/collectionTestKey"));
 		
 		for (int i=0; i < ns.length; ++i) {
-			Link l = new Link(ns[i],ls[i], las[i], pubkey, locator, signature);
+			Link l = new Link(ns[i],ls[i], labels[i], las[i], pubkey, locator, signature);
 			Link ldec = new Link();
 			Link lbdec = new Link();
 			XMLEncodableTester.encodeDecodeTest("Link_" + i, l, ldec, lbdec);

@@ -21,10 +21,21 @@ import com.parc.ccn.data.util.XMLEncoder;
 public class LinkReference extends GenericXMLEncodable implements XMLEncodable {
 	
 	protected static final String LINK_ELEMENT = "Link";
+	protected static final String LABEL_ELEMENT = "Label"; // overlaps with WrappedKey.LABEL_ELEMENT,
+															// shared dictionary entry
 	
 	protected ContentName _targetName;
+	protected String _targetLabel;
 	protected LinkAuthenticator _targetAuthenticator = null;
 	
+	public LinkReference(ContentName targetName, String targetLabel, LinkAuthenticator targetAuthenticator) {
+		_targetName = targetName;
+		if ((null != targetLabel) && (targetLabel.length() == 0))
+			targetLabel = null;
+		_targetLabel = targetLabel;
+		_targetAuthenticator = targetAuthenticator;
+	}
+
 	public LinkReference(ContentName targetName, LinkAuthenticator targetAuthenticator) {
 		_targetName = targetName;
 		_targetAuthenticator = targetAuthenticator;
@@ -40,6 +51,7 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable {
 	public LinkReference() {}
 	
 	public ContentName targetName() { return _targetName; }
+	public String targetLabel() { return _targetLabel; }
 	public LinkAuthenticator targetAuthenticator() { return _targetAuthenticator; }
 		
 	/**
@@ -54,6 +66,10 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable {
 		_targetName = new ContentName();
 		_targetName.decode(decoder);
 		
+		if (decoder.peekStartElement(LABEL_ELEMENT)) {
+			_targetLabel = decoder.readUTF8Element(LABEL_ELEMENT); 
+		}
+
 		if (decoder.peekStartElement(LinkAuthenticator.LINK_AUTHENTICATOR_ELEMENT)) {
 			_targetAuthenticator = new LinkAuthenticator();
 			_targetAuthenticator.decode(decoder);
@@ -66,6 +82,9 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable {
 
 		encoder.writeStartElement(LINK_ELEMENT);
 		_targetName.encode(encoder);
+		if (null != targetLabel()) {
+			encoder.writeElement(LABEL_ELEMENT, targetLabel());
+		}
 		if (null != _targetAuthenticator)
 			_targetAuthenticator.encode(encoder);
 		encoder.writeEndElement();   		
@@ -84,6 +103,8 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable {
 				+ ((_targetAuthenticator == null) ? 0 : _targetAuthenticator
 						.hashCode());
 		result = prime * result
+				+ ((_targetLabel == null) ? 0 : _targetLabel.hashCode());
+		result = prime * result
 				+ ((_targetName == null) ? 0 : _targetName.hashCode());
 		return result;
 	}
@@ -96,11 +117,16 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable {
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		final LinkReference other = (LinkReference) obj;
+		LinkReference other = (LinkReference) obj;
 		if (_targetAuthenticator == null) {
 			if (other._targetAuthenticator != null)
 				return false;
 		} else if (!_targetAuthenticator.equals(other._targetAuthenticator))
+			return false;
+		if (_targetLabel == null) {
+			if (other._targetLabel != null)
+				return false;
+		} else if (!_targetLabel.equals(other._targetLabel))
 			return false;
 		if (_targetName == null) {
 			if (other._targetName != null)
@@ -109,4 +135,5 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable {
 			return false;
 		return true;
 	}
+
 }
