@@ -22,19 +22,17 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNInputStream;
 import com.parc.ccn.library.io.CCNOutputStream;
-import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.crypto.ContentKeys;
 
 public class CCNSecureInputStreamTest {
 	
 	static ContentName defaultStreamName;
-	static ContentName firstVersionName;
-	static int firstVersionLength;
-	static int firstVersionMaxSegment;
-	static ContentKeys firstVersionKeys;
-	static byte [] firstVersionDigest;
-	static byte [] firstVersionData;
+	static ContentName encrName;
+	static int encrLength;
+	static ContentKeys encrKeys;
+	static byte [] encrDigest;
+	static byte [] encrData;
 	static CCNLibrary outputLibrary;
 	static CCNLibrary inputLibrary;
 	static final int MAX_FILE_SIZE = 65*1024+1;
@@ -52,11 +50,10 @@ public class CCNSecureInputStreamTest {
 		// Write a set of output
 		defaultStreamName = ContentName.fromNative("/test/stream/versioning/LongOutput.bin");
 		
-		firstVersionName = VersioningProfile.versionName(defaultStreamName);
-		firstVersionLength = 1234;//randBytes.nextInt(MAX_FILE_SIZE);
-		firstVersionMaxSegment = (int)Math.ceil(firstVersionLength/SegmentationProfile.DEFAULT_BLOCKSIZE);
-		firstVersionKeys = ContentKeys.generateRandomKeys();
-		firstVersionDigest = writeFileFloss(firstVersionName, firstVersionLength, randBytes, firstVersionKeys);
+		encrName = VersioningProfile.versionName(defaultStreamName);
+		encrLength = 1234;//randBytes.nextInt(MAX_FILE_SIZE);
+		encrKeys = ContentKeys.generateRandomKeys();
+		encrDigest = writeFileFloss(encrName, encrLength, randBytes, encrKeys);
 	}
 	
 	/**
@@ -105,7 +102,7 @@ public class CCNSecureInputStreamTest {
 		}
 		digestStreamWrapper.close();
 		System.out.println("Finished writing file " + completeName);
-		firstVersionData = data.toByteArray();
+		encrData = data.toByteArray();
 		return digestStreamWrapper.getMessageDigest().digest();
 	}
 	
@@ -164,28 +161,22 @@ public class CCNSecureInputStreamTest {
 		return dis.getMessageDigest().digest();
 	}
 	
+	/**
+	 * Test encryption & decryption work, and that using different keys for decryption fails
+	 */
 	@Test
-	public void testInputStream() {
-		// Test other forms of read in superclass test.
-		try {
-			// check we can get identical data back out
-			System.out.println("Reading CCNInputStream from "+firstVersionName);
-			CCNInputStream vfirst = new CCNInputStream(firstVersionName, null, null, firstVersionKeys, inputLibrary);
-			byte [] readDigest = readFile(vfirst, firstVersionLength);
-			Assert.assertArrayEquals(firstVersionDigest, readDigest);
+	public void encryptDecrypt() throws XMLStreamException, IOException {
+		// check we get identical data back out
+		System.out.println("Reading CCNInputStream from "+encrName);
+		CCNInputStream vfirst = new CCNInputStream(encrName, null, null, encrKeys, inputLibrary);
+		byte [] readDigest = readFile(vfirst, encrLength);
+		Assert.assertArrayEquals(encrDigest, readDigest);
 
-			// check things fail if we use different keys
-			ContentKeys keys2 = ContentKeys.generateRandomKeys();
-			CCNInputStream v2 = new CCNInputStream(firstVersionName, null, null, keys2, inputLibrary);
-			byte [] readDigest2 = readFile(v2, firstVersionLength);
-			Assert.assertFalse(firstVersionDigest.equals(readDigest2));
-		} catch (XMLStreamException e) {
-			e.printStackTrace();
-			Assert.fail("XMLStreamException: " + e.getMessage());
-		} catch (IOException e) {
-			e.printStackTrace();
-			Assert.fail("IOException: " + e.getMessage());
-		}
+		// check things fail if we use different keys
+		ContentKeys keys2 = ContentKeys.generateRandomKeys();
+		CCNInputStream v2 = new CCNInputStream(encrName, null, null, keys2, inputLibrary);
+		byte [] readDigest2 = readFile(v2, encrLength);
+		Assert.assertFalse(encrDigest.equals(readDigest2));
 	}
 
 }
