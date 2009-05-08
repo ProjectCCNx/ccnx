@@ -67,6 +67,20 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		}
 	}
 	
+	public ContentName(ContentName parent, byte [][] childComponents) {
+		this(parent.count() + 
+				((null != childComponents) ? childComponents.length : 0), parent.components());
+		if (null != childComponents) {
+			for (byte [] b : childComponents) {
+				if (null == b)
+					continue;
+				byte [] c = new byte[b.length];
+				System.arraycopy(b,0,c,0,b.length);
+				_components.add(c);
+			}
+		}
+	}
+
 	public ContentName(ContentName parent, byte[] name1, byte[] name2) {
 		this (parent.count() +
 				((null != name1) ? 1 : 0) +
