@@ -51,7 +51,7 @@ public class CCNSecureInputStreamTest {
 		defaultStreamName = ContentName.fromNative("/test/stream/versioning/LongOutput.bin");
 		
 		encrName = VersioningProfile.versionName(defaultStreamName);
-		encrLength = 1234;//randBytes.nextInt(MAX_FILE_SIZE);
+		encrLength = 2234;//randBytes.nextInt(MAX_FILE_SIZE);
 		encrKeys = ContentKeys.generateRandomKeys();
 		encrDigest = writeFileFloss(encrName, encrLength, randBytes, encrKeys);
 	}
@@ -180,24 +180,45 @@ public class CCNSecureInputStreamTest {
 	}
 
 	/**
-	 * Test that seeking/skipping/mark/reset while reading an encrypted stream works
+	 * seek forward, read, seek back, read and check the results
+	 * do it for different size parts of the data
 	 */
 	@Test
 	public void seeking() throws XMLStreamException, IOException, NoSuchAlgorithmException {
-		// seek, read and test the result
+		// check really small seeks/reads (smaller than 1 Cipher block)
+		doSeeking(10);
+
+		// check small seeks (but bigger than 1 Cipher block)
+		doSeeking(600);
+
+		// check large seeks (multiple ContentObjects)
+		// doSeeking(4096*3+350);
+	}
+
+	private void doSeeking(int length) throws XMLStreamException, IOException, NoSuchAlgorithmException {
 		System.out.println("Reading CCNInputStream from "+encrName);
-		CCNInputStream inStream = new CCNInputStream(encrName, null, null, encrKeys, inputLibrary);
-		int start = (int) (encrLength*0.3);
-		int length = (int) (encrLength*0.6);
-		byte [] data = new byte[length];
-		System.arraycopy(encrData, start, data, 0, length);
-		byte [] readDigest = readFile(inStream, length);
-		byte [] dataDigest = MessageDigest.getInstance("SHA1").digest(encrData);
-		Assert.assertArrayEquals(dataDigest, readDigest);
+		CCNInputStream i = new CCNInputStream(encrName, null, null, encrKeys, inputLibrary);
+		// make sure we start mid ContentObject and past the first Cipher block
+		int start = ((int) (encrLength*0.3) % 4096) +600;
+		i.seek(start);
+		readAndCheck(i, start, length);
+		start -= length;
+		i.seek(start);
+		readAndCheck(i, start, length);
+	}
+
+	private void readAndCheck(CCNInputStream i, int start, int length)
+			throws IOException, XMLStreamException, NoSuchAlgorithmException {
+		byte [] origData = new byte[length];
+		System.arraycopy(encrData, start, origData, 0, length);
+		byte [] readData = new byte[length];
+		i.read(readData);
+		Assert.assertArrayEquals(origData, readData);
 	}
 
 	/**
-	 * Test that seeking/skipping/mark/reset while reading an encrypted stream works
+	 * Test that skipping while reading an encrypted stream works
+	 * Tries small/medium/large skips
 	 */
 	@Test
 	public void skipping() throws XMLStreamException, IOException, NoSuchAlgorithmException {
@@ -205,25 +226,31 @@ public class CCNSecureInputStreamTest {
 		System.out.println("Reading CCNInputStream from "+encrName);
 		CCNInputStream inStream = new CCNInputStream(encrName, null, null, encrKeys, inputLibrary);
 
-		int start = (int) (encrLength*0.3); // first part of the file to skip
-		int end = (int) (encrLength*0.6); // where to start reading again
+		int start = (int) (encrLength*0.3);
 
 		// check first part reads correctly
-		byte [] startData = new byte[start];
-		inStream.read(startData, 0, start);
-		byte [] encrStartData = new byte[start];
-		System.arraycopy(encrData, 0, encrStartData, 0, start);
-		Assert.assertArrayEquals(encrStartData, startData);
+		readAndCheck(inStream, 0, start);
 
-		// skip middle of the file
-		inStream.skip(end-start);
+		// skip a short bit (less than 1 cipher block)
+		inStream.skip(10);
+		start += 10;
 
 		// check second part reads correctly
-		int endLen = encrLength-end;
-		byte [] endData = new byte[endLen];
-		inStream.read(endData, 0, endLen);
-		byte [] encrEndData = new byte[endLen];
-		System.arraycopy(encrData, end, encrEndData, 0, endLen);
-		Assert.assertArrayEquals(encrEndData, endData);
+		readAndCheck(inStream, start, 100);
+		start += 100;
+
+		// skip a medium bit (more than than 1 cipher block)
+		inStream.skip(600);
+		start += 600;
+
+		// check third part reads correctly
+		readAndCheck(inStream, start, 600);
+
+		// skip a bug bit (more than than 1 Content object)
+//		inStream.skip(600+4096*2);
+//		start += 600+4096*2;
+
+		// check fourth part reads correctly
+//		readAndCheck(inStream, start, 600);
 	}
 }
