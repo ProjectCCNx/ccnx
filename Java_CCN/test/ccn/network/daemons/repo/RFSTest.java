@@ -186,9 +186,9 @@ public class RFSTest extends RepoTestBase {
 		versionedNameNormal = VersioningProfile.versionName(versionedNameNormal);
 		repo.saveContent(ContentObject.buildContentObject(versionedNameNormal, "version-normal".getBytes()));
 		checkData(repo, versionedNameNormal, "version-normal");
-		for (int i=SegmentationProfile.BASE_SEGMENT; i<5; i++) {
+		for (Long i=SegmentationProfile.baseSegment(); i<5; i++) {
 			ContentName segmented = SegmentationProfile.segmentName(versionedNameNormal, i);
-			String segmentContent = "segment"+ new Integer(i).toString();
+			String segmentContent = "segment"+ new Long(i).toString();
 			repo.saveContent(ContentObject.buildContentObject(segmented, segmentContent.getBytes()));
 			checkData(repo, segmented, segmentContent);
 		}
@@ -207,9 +207,9 @@ public class RFSTest extends RepoTestBase {
 		checkData(repo, segmentedName1, "segment1");
 		checkData(repo, segmentedName223, "segment223");
 		checkData(repo, versionedNameNormal, "version-normal");
-		for (int i=SegmentationProfile.BASE_SEGMENT; i<5; i++) {
+		for (Long i=SegmentationProfile.baseSegment(); i<5; i++) {
 			ContentName segmented = SegmentationProfile.segmentName(versionedNameNormal, i);
-			String segmentContent = "segment"+ new Integer(i).toString();
+			String segmentContent = "segment"+ new Long(i).toString();
 			checkData(repo, segmented, segmentContent);
 		}
 		//checkDataAndPublisher(repo, name, "Testing2", pubKey1);

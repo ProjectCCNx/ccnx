@@ -65,6 +65,7 @@ public class RepoIOTest extends RepoTestBase {
 	
 	@Test
 	public void testReadViaRepo() throws Throwable {
+		System.out.println("Testing reading objects from repo");
 		ContentName name = ContentName.fromNative("/repoTest/data1");
 		
 		// Since we have 2 pieces of data with the name /repoTest/data1 we need to compute both
@@ -143,17 +144,17 @@ public class RepoIOTest extends RepoTestBase {
 	// what happens if we pull latest version and try to read
 	// content in order
 	public void testVersionedRead() throws InterruptedException, MalformedContentNameStringException, XMLStreamException, IOException {
-		System.out.println("Testing reading a versioned stream");
-		// JDT - temporarily a no-op until I get a chance to move on to this issue
+//		System.out.println("Testing reading a versioned stream");
+//		// JDT - temporarily a no-op until I get a chance to move on to this issue
 //		Thread.sleep(5000);
-//		ContentName versionedNameNormal = ContentName.fromNative("/repoTest/testVersionNormal");
+//		ContentName versionedNameNormal = ContentName.fromNative("/testNameSpace/testVersionNormal");
 //		CCNVersionedInputStream vstream = new CCNVersionedInputStream(versionedNameNormal);
 //		InputStreamReader reader = new InputStreamReader(vstream);
-//		for (int i=SegmentationProfile.BASE_SEGMENT; i<5; i++) {
-//			String segmentContent = "segment"+ new Integer(i).toString();
+//		for (long i=SegmentationProfile.baseSegment(); i<5; i++) {
+//			String segmentContent = "segment"+ new Long(i).toString();
 //			char[] cbuf = new char[8];
-//			reader.read(cbuf, 0, 8);
-//			System.out.println("for " + i + " got: " + new String(cbuf));
+//			int count = reader.read(cbuf, 0, 8);
+//			System.out.println("for " + i + " got " + count + " (eof " + vstream.eof() + "): " + new String(cbuf));
 //			Assert.assertEquals(segmentContent, new String(cbuf));
 //		}
 //		Assert.assertEquals(-1, reader.read());
