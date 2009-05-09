@@ -98,7 +98,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	protected byte [] _nonce;
 	protected byte [] _responseFilter;
 	
-	public static int OPTIMUM_FILTER_SIZE = 100;
 	
 	/**
 	 * TODO: DKS figure out how to handle encoding faster,
@@ -272,7 +271,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	private static Interest nextOrLast(ContentName name, byte[][] omissions, Integer order, Integer prefixCount)  {
 		if (null == prefixCount)
 			prefixCount = name.count() - 1;
-		return constructInterest(name, constructFilter(omissions), order, prefixCount);
+		return constructInterest(name, null == omissions ? null : new ExcludeFilter(omissions), order, prefixCount);
 	}
 	
 	/**
@@ -300,44 +299,13 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @return
 	 */
 	public static Interest exclude(ContentName name, byte[][] omissions) {
-		return constructInterest(name, constructFilter(omissions), null, null);
+		return constructInterest(name, null == omissions ? null : new ExcludeFilter(omissions), null, null);
 	}
 	
-	public static ExcludeFilter constructFilter(byte [][] omissions) {
-		if (omissions == null || omissions.length == 0)
-			return null;
-		Comparator<byte[]> comparator = new ByteArrayCompare();
-		Arrays.sort(omissions, comparator);
-		ArrayList<ExcludeElement> elements = new ArrayList<ExcludeElement>();
-		int filterCount = 0;
-		boolean needNewElement = omissions.length > OPTIMUM_FILTER_SIZE;
-		BloomFilter currentFilter = null;;
-		if (!needNewElement) {
-			currentFilter = createBloom();
-			elements.add(new ExcludeElement(null, currentFilter));
-		}
-		for (byte[] omission : omissions) {
-			if (filterCount > OPTIMUM_FILTER_SIZE) {
-				needNewElement = true;
-				filterCount = 0;
-			}
-			if (needNewElement) {
-				currentFilter = createBloom();
-				elements.add(new ExcludeElement(omission, currentFilter));
-				needNewElement = false;
-			} else {
-				currentFilter.insert(omission);
-				filterCount++;
-			}
-		}
-		return new ExcludeFilter(elements);
+	public static Interest exclude(ContentName name, byte[][] omissions, PublisherID publisherID, Integer additionalNameComponents) {
+		return constructInterest(name, null == omissions ? null : new ExcludeFilter(omissions), null, null, publisherID, additionalNameComponents);
 	}
 	
-	private static BloomFilter createBloom() {
-		byte[] seed = new byte[4];
-		BloomFilter.createSeed(seed);
-		return new BloomFilter(OPTIMUM_FILTER_SIZE, seed);
-	}
 	
 	/**
 	 * Construct an interest that will give you the next content after the
@@ -351,7 +319,12 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	}
 
 	public static Interest constructInterest(ContentName name,  ExcludeFilter filter,
-					Integer orderPreference, Integer prefixCount) {
+			Integer orderPreference, Integer prefixCount) {
+		return constructInterest(name, filter, orderPreference, prefixCount, null, null);
+	}
+	
+	public static Interest constructInterest(ContentName name,  ExcludeFilter filter,
+			Integer orderPreference, Integer prefixCount, PublisherID publisherID, Integer additionalNameComponents) {
 		Interest interest = new Interest(name);
 		if (null != orderPreference)
 			interest.orderPreference(orderPreference);
@@ -359,6 +332,10 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			interest.excludeFilter(filter);
 		if (null != prefixCount)
 			interest.nameComponentCount(prefixCount);
+		if (null != publisherID)
+			interest.publisherID(publisherID);
+		if (null != additionalNameComponents)
+			interest.additionalNameComponents(additionalNameComponents);
 		return interest;
 	}
 	

@@ -315,7 +315,7 @@ public class RepositoryDaemon extends Daemon {
 			byte[][]markerOmissions = new byte[2][];
 			markerOmissions[0] = CCNBase.REPO_START_WRITE;
 			markerOmissions[1] = CCNBase.REPO_REQUEST_ACK;
-			_markerFilter = Interest.constructFilter(markerOmissions);
+			_markerFilter = new ExcludeFilter(markerOmissions);
 			
 			Timer periodicTimer = new Timer(true);
 			periodicTimer.scheduleAtFixedRate(new InterestTimer(), PERIOD, PERIOD);
