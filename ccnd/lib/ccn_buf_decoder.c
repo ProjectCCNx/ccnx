@@ -583,7 +583,9 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
 
 struct parsed_KeyName {
     int Name;
+    int endName;
     int PublisherID;
+    int endPublisherID;
 };
 
 static int
@@ -595,7 +597,9 @@ ccn_parse_KeyName(struct ccn_buf_decoder *d, struct parsed_KeyName *x)
         res = d->decoder.element_index;
         ccn_buf_advance(d);
         x->Name = ccn_parse_Name(d, &name, NULL);
+        x->endName = d->decoder.token_index;
         x->PublisherID = ccn_parse_PublisherID(d, NULL);
+        x->endPublisherID = d->decoder.token_index;
         ccn_buf_check_close(d);
     }
     else
@@ -672,8 +676,11 @@ ccn_parse_SignedInfo(struct ccn_buf_decoder *d, struct ccn_parsed_ContentObject 
         x->offset[CCN_PCO_B_KeyLocator] = d->decoder.token_index;
         x->offset[CCN_PCO_B_Key_Certificate_KeyName] = d->decoder.token_index;
         x->offset[CCN_PCO_E_Key_Certificate_KeyName] = d->decoder.token_index;
+        x->offset[CCN_PCO_B_KeyName_Name] = d->decoder.token_index;
+        x->offset[CCN_PCO_E_KeyName_Name] = d->decoder.token_index;
+        x->offset[CCN_PCO_B_KeyName_Pub] = d->decoder.token_index;
+        x->offset[CCN_PCO_E_KeyName_Pub] = d->decoder.token_index;
         if (ccn_buf_match_dtag(d, CCN_DTAG_KeyLocator)) {
-            struct parsed_KeyName keyname = {-1, -1};
             ccn_buf_advance(d);
             x->offset[CCN_PCO_B_Key_Certificate_KeyName] = d->decoder.token_index;
             if (ccn_buf_match_dtag(d, CCN_DTAG_Key)) {
@@ -683,7 +690,17 @@ ccn_parse_SignedInfo(struct ccn_buf_decoder *d, struct ccn_parsed_ContentObject 
                 (void)ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Certificate, 0, -1);
             }
             else {
-                (void)ccn_parse_KeyName(d, &keyname);
+                struct parsed_KeyName keyname = {-1, -1, -1, -1};
+                if (ccn_parse_KeyName(d, &keyname) >= 0) {
+                    if (keyname.Name >= 0) {
+                        x->offset[CCN_PCO_B_KeyName_Name] = keyname.Name;
+                        x->offset[CCN_PCO_E_KeyName_Name] = keyname.endName;
+                    }
+                    if (keyname.PublisherID >= 0) {
+                        x->offset[CCN_PCO_B_KeyName_Pub] = keyname.PublisherID;
+                        x->offset[CCN_PCO_E_KeyName_Pub] = keyname.endPublisherID;
+                    }
+                }
             }
             x->offset[CCN_PCO_E_Key_Certificate_KeyName] = d->decoder.token_index;
             ccn_buf_check_close(d);

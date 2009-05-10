@@ -506,6 +506,10 @@ enum ccn_parsed_content_object_offsetid {
     CCN_PCO_B_KeyLocator,
     /* Exactly one of Key, Certificate, or KeyName will be present */
     CCN_PCO_B_Key_Certificate_KeyName,
+    CCN_PCO_B_KeyName_Name,
+    CCN_PCO_E_KeyName_Name,
+    CCN_PCO_B_KeyName_Pub,
+    CCN_PCO_E_KeyName_Pub,
     CCN_PCO_E_Key_Certificate_KeyName,
     CCN_PCO_E_KeyLocator,
     CCN_PCO_E_SignedInfo,

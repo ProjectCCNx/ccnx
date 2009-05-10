@@ -211,12 +211,9 @@ public class Daemon {
 			return;
 		}
 		
-		ArrayList<String> cmds = new ArrayList<String>();
+		ArrayList<String> argList = new ArrayList<String>();
 
-		cmds.add("java");
-		// Need to put quotes around individual items, to cope with spaces in path names.
-		// paul r. - the above seems to break on my Mac anyway.  Commented awaiting further testing...
-		//
+		argList.add("java");
 		String classPath = System.getProperty("java.class.path");
 		String [] directories = null;
 		String sep = null;
@@ -234,9 +231,7 @@ public class Daemon {
 		if (null != directories) {
 			for (int i=1; i < directories.length; ++i) {
 				cp.append(sep);
-				//cp.append("\"");
 				cp.append(directories[i]);
-				//cp.append("\"");
 			}
 		}
 		
@@ -247,33 +242,37 @@ public class Daemon {
 	     */
 		String portval = System.getProperty(CCNNetworkManager.PROP_AGENT_PORT);
 		if (portval != null) {
-			cmds.add("-D" + CCNNetworkManager.PROP_AGENT_PORT + "=" + portval);
+			argList.add("-D" + CCNNetworkManager.PROP_AGENT_PORT + "=" + portval);
 		}
 		String memval = System.getProperty(PROP_DAEMON_MEMORY);
 		if (memval != null)
-			cmds.add("-Xmx" + memval);
+			argList.add("-Xmx" + memval);
 		
 		String debugPort = System.getProperty(PROP_DAEMON_DEBUG_PORT);
 		if (debugPort != null) {
-			cmds.add("-Xrunjdwp:transport=dt_socket,address=" + debugPort + ",server=y,suspend=n");
+			argList.add("-Xrunjdwp:transport=dt_socket,address=" + debugPort + ",server=y,suspend=n");
 		}
 		
-		cmds.add("-cp");
-		cmds.add(cp.toString());
+		argList.add("-cp");
+		argList.add(cp.toString());
 
-		cmds.add(daemonClass);
-		cmds.add("-daemon");
+		argList.add(daemonClass);
+		argList.add("-daemon");
 		for (int i=1; i < args.length; ++i) {
-			cmds.add(args[i]);
+			argList.add(args[i]);
 		}
-		//Library.logger().info("Starting daemon with command line: " + cmd);
 
-		//FileOutputStream fos = new FileOutputStream("daemon_cmd.txt");
-		//fos.write(cmd.getBytes());
-		//fos.flush();
-		//fos.close();
+		String cmd = "";
+		for (String arg : argList) {
+			cmd += arg +  " ";
+		}
+		FileOutputStream fos = new FileOutputStream("daemon_cmd.txt");
+		fos.write(cmd.getBytes());
+		fos.flush();
+		fos.close();
+		Library.logger().info("Starting daemon with command line: " + cmd);
 		
-		ProcessBuilder pb = new ProcessBuilder(cmds);
+		ProcessBuilder pb = new ProcessBuilder(argList);
 		pb.redirectErrorStream(true);
 		Process child = pb.start();
 		
