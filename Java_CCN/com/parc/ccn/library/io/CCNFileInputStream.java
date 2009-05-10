@@ -104,27 +104,38 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 
 	public Interest handleContent(ArrayList<ContentObject> results,
 								  Interest interest) {
-		// This gives us back the header.
+		if (null != _header) {
+			// Already have header so should not have reached here
+			// and do not need to renew interest
+			return null;
+		}
+		ArrayList<byte[]> excludeList = new ArrayList<byte[]>();
 		for (ContentObject co : results) {
-			Library.logger().info("CCNInputStream: retrieved header: " + co.name() + " type: " + co.signedInfo().getTypeName());
-			if (null != _header) {
-				continue;
-			} else if (co.signedInfo().getType() == SignedInfo.ContentType.DATA) {
-				// First we verify. (Or should get have done this for us?)
-				// We don't bother complaining unless we have more than one
-				// header that matches. Given that we would complain for
-				// that, we need an enumerate that operates at this level.)
-					// TODO: DKS: should this be header.verify()?
-					// Need low-level verify as well as high-level verify...
-					// Low-level verify just checks that signer actually signed.
-					// High-level verify checks trust.
-				if (!addHeader(co)) {
-					return interest;
+			Library.logger().info("CCNInputStream: retrieved possible header: " + co.name() + " type: " + co.signedInfo().getTypeName());
+			if (co.signedInfo().getType() == SignedInfo.ContentType.DATA) {
+				// Low-level verify is done in addHeader
+				// TODO: DKS: should this be header.verify()?
+				// Need low-level verify as well as high-level verify...
+				// Low-level verify just checks that signer actually signed.
+				// High-level verify checks trust.
+				if (addHeader(co)) {
+					// Got a header successfully, so no need to renew interest
+					return null;
+				} else {
+					// This one isn't a valid header we can use so we don't
+					// want to see it again.  Need to exclude by digest
+					// which will not be represented in name()
+					excludeList.add(co.contentDigest());
 				}
-				return null; // done
 			}
 		}
 		if (null == _header) { 
+			byte[][] excludes = null;
+			if (excludeList.size() > 0) {
+				excludes = new byte[excludeList.size()][];
+				excludeList.toArray(excludes);
+			}
+			interest.excludeFilter(interest.excludeFilter().add(excludes));
 			return interest;
 		}
 		return null;
@@ -174,11 +185,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 			// Now we know the version
 			_baseName = SegmentationProfile.segmentRoot(result.name());
 			retrieveHeader(_baseName, new PublisherID(result.signedInfo().getPublisherKeyID()));
-			// This is unlikely -- we ask for a specific segment of the latest
-			// version... in that case, we pull the first segment, then seek.
-			if (null != _startingBlockIndex) {
-				return getBlock(_startingBlockIndex);
-			}
+			return getBlock(_startingBlockIndex);
 		}
 		return result;
 	}

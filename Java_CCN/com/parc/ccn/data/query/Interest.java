@@ -174,7 +174,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * Determine whether a piece of content matches this interest. We need
 	 * to beef this up to deal with the more complex interest specs.
 	 * 
-	 * @param resultName
+	 * @param name - Name as it comes from ContentObject, i.e. without a digest component
 	 * @param resultPublisherKeyID
 	 * @return
 	 */
@@ -341,6 +341,13 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	
 	public boolean isPrefixOf(ContentName name) {
 		int count = nameComponentCount() == null ? name().count() : nameComponentCount();
+		if (null != additionalNameComponents() && 0 == additionalNameComponents() 
+				&& (null == nameComponentCount() || name().count() == nameComponentCount()) ) {
+			// This Interest is trying to match a complete content name with digest explicitly included
+			// so we must drop the last component for the prefix test against a name that is 
+			// designed to be direct from ContentObject and so does not include digest explicitly
+			count--;
+		}
 		return name().isPrefixOf(name, count);
 	}
 	

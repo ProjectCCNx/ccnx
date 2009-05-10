@@ -86,10 +86,10 @@ public class RepoIOTest extends RepoTestBase {
 		//PublisherPublicKeyDigest pkid2 = new PublisherPublicKeyDigest("1paij2p7setof6ognk3b34q0hesnv1jpov07h9qvqnveqahv9ml2");
 		//PublisherPublicKeyDigest pkid2 = new PublisherPublicKeyDigest("-6ldct6o3h27gp7f8bsksr5veh380uc670voem50580h5le0m9au");
 		
-		checkData(name1, "Here's my data!");
+		checkDataWithDigest(name1, "Here's my data!");
 		checkData(clashName, "Clashing Name");
-		checkData(digestName, "Testing2");
-		checkData(longName, "Long name!");
+		checkDataWithDigest(digestName, "Testing2");
+		checkDataWithDigest(longName, "Long name!");
 		checkData(badCharName, "Funny characters!");
 		checkData(badCharLongName, "Long and funny");
 		//checkDataAndPublisher(name, "Testing2", pkid1);
@@ -144,25 +144,31 @@ public class RepoIOTest extends RepoTestBase {
 	// what happens if we pull latest version and try to read
 	// content in order
 	public void testVersionedRead() throws InterruptedException, MalformedContentNameStringException, XMLStreamException, IOException {
-//		System.out.println("Testing reading a versioned stream");
-//		// JDT - temporarily a no-op until I get a chance to move on to this issue
-//		Thread.sleep(5000);
-//		ContentName versionedNameNormal = ContentName.fromNative("/testNameSpace/testVersionNormal");
-//		CCNVersionedInputStream vstream = new CCNVersionedInputStream(versionedNameNormal);
-//		InputStreamReader reader = new InputStreamReader(vstream);
-//		for (long i=SegmentationProfile.baseSegment(); i<5; i++) {
-//			String segmentContent = "segment"+ new Long(i).toString();
-//			char[] cbuf = new char[8];
-//			int count = reader.read(cbuf, 0, 8);
-//			System.out.println("for " + i + " got " + count + " (eof " + vstream.eof() + "): " + new String(cbuf));
-//			Assert.assertEquals(segmentContent, new String(cbuf));
-//		}
-//		Assert.assertEquals(-1, reader.read());
+		System.out.println("Testing reading a versioned stream");
+		Thread.sleep(5000);
+		ContentName versionedNameNormal = ContentName.fromNative("/testNameSpace/testVersionNormal");
+		CCNVersionedInputStream vstream = new CCNVersionedInputStream(versionedNameNormal);
+		InputStreamReader reader = new InputStreamReader(vstream);
+		for (long i=SegmentationProfile.baseSegment(); i<5; i++) {
+			String segmentContent = "segment"+ new Long(i).toString();
+			char[] cbuf = new char[8];
+			int count = reader.read(cbuf, 0, 8);
+			System.out.println("for " + i + " got " + count + " (eof " + vstream.eof() + "): " + new String(cbuf));
+			Assert.assertEquals(segmentContent, new String(cbuf));
+		}
+		Assert.assertEquals(-1, reader.read());
 	}
 	
 	private void checkData(ContentName name, String data) throws IOException, InterruptedException{
 		checkData(new Interest(name), data.getBytes());
 	}
+	
+	private void checkDataWithDigest(ContentName name, String data) throws IOException, InterruptedException{
+		// When generating an Interest for the exact name with content digest, need to set additionalNameComponents
+		// to 0, signifying that name ends with explicit digest
+		checkData(new Interest(name, 0, (PublisherID)null), data.getBytes());
+	}
+
 	private void checkData(Interest interest, byte[] data) throws IOException, InterruptedException{
 		ContentObject testContent = getLibrary.get(interest, 10000);
 		Assert.assertFalse(testContent == null);

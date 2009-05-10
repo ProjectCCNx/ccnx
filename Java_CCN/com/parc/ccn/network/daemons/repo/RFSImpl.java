@@ -85,6 +85,13 @@ public class RFSImpl implements Repository {
 	protected RepositoryInfo _info = null;
 	protected ArrayList<ContentName> _nameSpace = new ArrayList<ContentName>();
 	
+	// _encodedFiles holds those files that are not in the simple filesystem tree
+	// according to the name hierarchy.  The ContentName in this map is NOT what you would get
+	// from ContentObject.name() but instead always includes the digest as the final component
+	// explicitly. Since the repo only holds ContentObjects, it can always produce a digest.
+	// The reason for making the digest explicit rather than following the ContentObject 
+	// convention is so that these internal name records can be used to answer name enumeration 
+	// requests accurately at levels of the name hierarchy where digests components exist.
 	protected TreeMap<ContentName, ArrayList<File>> _encodedFiles = new TreeMap<ContentName, ArrayList<File>>();
 	
 	public String[] initialize(String[] args) throws RepositoryException {
@@ -240,6 +247,8 @@ public class RFSImpl implements Repository {
 					reservedArea = true;
 			}
 		}
+		// Replace digest component (which is the filename in filesystem)
+		// with decoded version that is real CCN name component 
 		byte [] digestComponent = components.remove(components.size() - 1);
 		components.add(components.size(), decodeBase64(new String(digestComponent)));
 		ContentName cn = new ContentName(components.size(), components);
@@ -322,6 +331,7 @@ public class RFSImpl implements Repository {
 	public ContentObject getContent(Interest interest) throws RepositoryException {
 		
 		TreeMap<ContentName, ArrayList<File>>possibleMatches = getPossibleMatches(interest);
+		// Note: these possible match names INCLUDE include the digest
 		
 		ContentObject bestMatch = null;
 		for (ContentName name : possibleMatches.keySet()) {
@@ -366,13 +376,13 @@ public class RFSImpl implements Repository {
 	}
 	
 	/**
-	 * If the interest has no publisher ID we can optimize this by just checking the interest against the name
-	 * and only reading the content from the file if this check matches. This could potentially change if interest
-	 * has other features we might care about. Its probably OK that we try to match the interest twice in that
-	 * case though we could consider trying to optimize that also.
+	 * If the interest has no publisher ID we can optimize this by first checking the interest against the name
+	 * and only reading the content from the file if this check matches. 
+	 * JDT: Actually, a pre-check on the name should always be ok as long as final check is 
+	 * performed on the content object itself.
 	 * 
 	 * @param interest
-	 * @param name
+	 * @param name - ContentName WITH digest component
 	 * @param file
 	 * @return
 	 * @throws RepositoryException
@@ -380,7 +390,12 @@ public class RFSImpl implements Repository {
 	private ContentObject checkMatch(Interest interest, ContentName name, ArrayList<File>files) throws RepositoryException {
 		for (File file: files) {
 			if (null == interest.publisherID()) {
-				if (!interest.matches(name, null))
+				// Since the name INCLUDES digest component and the Interest.matches() convention for name
+				// matching is that the name DOES NOT include digest component (conforming to the convention 
+				// for ContentObject.name() that the digest is not present) we must REMOVE the content 
+				// digest first or this test will not always be correct
+				ContentName digestFreeName = new ContentName(name.count()-1, name.components());
+				if (!interest.matches(digestFreeName, null))
 					return null;
 			}
 			ContentObject testMatch = getContentFromFile(file);
@@ -396,6 +411,7 @@ public class RFSImpl implements Repository {
 	 * Pull out anything that might be a match to the interest. This includes
 	 * any file that matches the prefix and any member of the "encodedNames"
 	 * that matches the prefix.
+	 * Results returned map from ContentName without digest to list of Files
 	 */
 	private TreeMap<ContentName, ArrayList<File>> getPossibleMatches(Interest interest) {
 		TreeMap<ContentName, ArrayList<File>> results = new TreeMap<ContentName, ArrayList<File>>();
@@ -405,7 +421,10 @@ public class RFSImpl implements Repository {
 		getAllFileResults(file, results, lowerName);
 		for (ContentName encodedName : _encodedFiles.keySet()) {
 			/*
-			 * Either piece could have a digest. This will be cleaner when we know this for sure
+			 * interest could have a digest. encodedName will always have a digest
+			 * This will be cleaner when we know this for sure
+			 * JDT - I think that we don't need to check encodedName.isPrefixOf() 
+			 * but it won't hurt since this is only gathering candidates
 			 */
 			if (encodedName.isPrefixOf(interest.name()) || interest.isPrefixOf(encodedName))
 				results.put(encodedName, _encodedFiles.get(encodedName));
@@ -420,7 +439,7 @@ public class RFSImpl implements Repository {
 	 * or encode the ContentName to a filename to check to see if it exists.
 	 * 
 	 * @param file
-	 * @param results
+	 * @param results - map from ContentName WITH digest to File
 	 * @param name
 	 */
 	private void getAllFileResults(File file, TreeMap<ContentName, ArrayList<File>> results, ContentName name) {
@@ -430,6 +449,8 @@ public class RFSImpl implements Repository {
 			}
 		} else if (file.exists()) {
 			ContentName decodedName = decodeVersionAndSegment(name);
+			// Replace digest component that is the file name in the direct file storage
+			// with the decoded CCN digest component
 			decodedName.components().remove(decodedName.count() - 1);
 			decodedName.components().add(decodeBase64(file.getName()));
 			addOneFileToMap(decodedName, file, results);	
@@ -444,6 +465,9 @@ public class RFSImpl implements Repository {
 				encodedName = encodeDigest(encodedName);
 				encodedFile = new File(_repositoryFile + getStandardString(encodedName));
 				if (encodedFile.exists()) {
+					// The name here must contain a digest, for it maps to something 
+					// that is not a directory in the filesystem, and the only files
+					// are for the leaf content objects and have digest as last component
 					addOneFileToMap(name, encodedFile, results);
 				}
 			}
@@ -485,7 +509,7 @@ public class RFSImpl implements Repository {
 			dirFile.mkdirs();
 			file = new File(_repositoryRoot, getStandardString(newName));
 			if (isEncoded(newName))
-				addOneFileToMap(new ContentName(content.name(), content.contentDigest()), file, _encodedFiles);
+				addOneFileToMap(new ContentName(content.name(), content.contentDigest()), file, _encodedFiles); // Add digest
 			if (file.exists()) {
 				ContentObject prevContent = getContentFromFile(file);
 				if (prevContent != null) {
@@ -735,6 +759,7 @@ public class RFSImpl implements Repository {
 		}
 		
 		ContentName keyName = name.clone();
+		// Add digest according to convention for _encodedFiles
 		keyName.components().add(content.contentDigest());
 		files.add(file);
 		_encodedFiles.put(keyName, files);
@@ -792,8 +817,13 @@ public class RFSImpl implements Repository {
 		return new ContentName(newComponents);
 	}
 		
+	/**
+	 * Convert last component to "digest as file" form, regardless
+	 * of whether or not it actually is a digest which may not be known.
+	 * @param name
+	 * @return
+	 */
 	private ContentName encodeDigest(ContentName name) {
-		// Convert last component to "digest as file" form
 		ContentName newName = name.clone();
 		String cnDigestString = cnDigestString(newName);
 		newName.components().remove(newName.count() - 1);
