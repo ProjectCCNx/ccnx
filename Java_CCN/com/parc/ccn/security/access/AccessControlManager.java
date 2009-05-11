@@ -110,4 +110,32 @@ public class AccessControlManager {
 	public NodeKey getEffectiveNodeKey(ContentName nodeName) {
 		
 	}
-}
+	
+	public DataKey getDataKey(ContentName dataNodeName) {
+		
+	}
+	
+	/**
+	 * Take a randomly generated data key and store it.
+	 * @param dataNodeName
+	 * @param newRandomDataKey
+	 */
+	public void storeDataKey(ContentName dataNodeName, byte [] newRandomDataKey) {
+		
+	}
+	
+	/**
+	 * Generate a random data key, store it, and return it to use to derive keys to encrypt
+	 * content. All that's left is to call
+	 * byte [][] keyandiv = 
+	 * 		KeyDerivationFunction.DeriveKeyForObject(randomDataKey, keyLabel, 
+	 * 												 dataNodeName, dataPublisherPublicKeyDigest)
+	 * and then give keyandiv to the segmenter to encrypt the data.
+	 **/
+	public byte [] generateAndStoreDataKey(ContentName dataNodeName) {
+		// Generate new random data key of appropriate length
+		byte [] dataKey = new byte[DEFAULT_DATA_KEY_LENGTH];
+		storeDataKey(dataNodeName, dataKey);
+		return dataKey;
+	}
+}	
