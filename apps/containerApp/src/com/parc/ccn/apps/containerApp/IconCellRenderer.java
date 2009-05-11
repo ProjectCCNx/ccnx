@@ -43,8 +43,8 @@ public class IconCellRenderer extends JLabel implements TreeCellRenderer {
 
 		// Example of setting text to show that data is being retrieved.
 
-		if (obj instanceof Boolean)
-			setText("Retrieving data...");
+//		if (obj instanceof Boolean)
+//			setText("Retrieving data...");
 
 		if (obj instanceof IconData) {
 			IconData idata = (IconData) obj;
