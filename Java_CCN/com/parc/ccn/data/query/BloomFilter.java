@@ -156,5 +156,12 @@ public class BloomFilter implements Comparable<BloomFilter> {
 		long u = ((_seed[0]) << 24) |((_seed[1]) << 16) |((_seed[2]) << 8) | (_seed[3]);
 		return u & 0x7FFFFFFF;
 	}
+	
+	public BloomFilter clone() throws CloneNotSupportedException {
+		BloomFilter result = (BloomFilter)super.clone();
+		result._seed = _seed.clone();
+		result._bloom = _bloom.clone();
+		return result;
+	}
 
 }

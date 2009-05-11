@@ -22,7 +22,6 @@
 	<property name="showoutput" value="no"/>
 	<property name="repozip" value="repotest.zip"/>
 	<property name="REPO_ROOT" value="${testout}/repotest"/>
-	<property name="REPO_FILETEST" value="${testout}/fileTestDir"/>
 	<property name="REPO_LOCAL" value="TestRepository"/>
 	<property name="REPO_GLOBAL" value="parc.com/csl/ccn/repositories"/>
 	<!-- To enable remote debugging, the incantation is 
@@ -125,9 +124,6 @@
 	</target>
 
 	<target name="repo">
-		<delete dir="${REPO_ROOT}"/>
-		<mkdir dir="${REPO_ROOT}"/>
-		<unzip src="${repozip}" dest="${REPO_ROOT}" />
 		<parallel>
 			<daemons>
 				<java classname="com.parc.ccn.network.daemons.repo.RepositoryDaemon" fork="true" failonerror="true" output = "${testout}/TEST-repo-daemon.txt" dir="${testout}">
@@ -148,6 +144,27 @@
                         <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
                         <sleep seconds="1"/>
 		</parallel>
+	</target>
+
+    <!-- target for running a test repo foreground so you can run a test
+	     against it in debugger -->
+	<target name="run-test-repo" depends="jar">
+				<java classname="com.parc.ccn.network.daemons.repo.RepositoryDaemon" fork="true" failonerror="true" output = "${testout}/TEST-repo-daemon.txt" dir="${testout}">
+					<classpath>
+						<path refid="classpath-run" />
+					</classpath>
+					<sysproperty key="ccn.agent.port" value="${TEST_PORT}" />
+					<jvmarg value="-Xrunjdwp:transport=dt_socket,address=25000,server=y,suspend=n" />
+					<arg value="-interactive" />
+					<arg value="-root" />
+					<arg value="${REPO_ROOT}" />
+					<arg value="-local" />
+					<arg value="${REPO_LOCAL}" />
+					<arg value="-global" />
+					<arg value="${REPO_GLOBAL}" />
+				</java>
+                        <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
+                        <sleep seconds="1"/>
 	</target>
 
 	<!-- test is for running all current automated tests to validate code -->
@@ -250,10 +267,10 @@
 	<target name="test-repo" depends="test-repo-structure, test-repo-name-responder, test-repo-io">
 	</target>
 	
-	<target name="run-repo-structure-test" depends="jar, ccnd">
+	<target name="test-repo-structure" depends="jar, ccnd">
 		<mkdir dir="${testout}"/>
-		<delete dir="${REPO_FILETEST}"/>
-                <!-- Note that REPO_FILETEST will be produced by the RFSTest
+		<delete dir="${REPO_ROOT}"/>
+                <!-- Note that REPO_ROOT will be produced by the RFSTest
                      due to hard-coded file name in the test code -->
 		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
 			<classpath>
@@ -270,20 +287,19 @@
 		</junit>
 	</target>
 	
-	<!-- This is for generating the repotest.zip file -->
-	<target name="generate-repotest-zip" depends="jar, ccnd, run-repo-structure-test">
+	<!-- This is for generating the repotest.zip file: note that the file 
+             is not actually used any longer because we need to make data 
+             with keys of current user so using a common file doesn't work -->
+	<target name="generate-repotest-zip" depends="jar, ccnd, test-repo-structure">
+	    <delete file="${repozip}"/>
 		<zip destfile="${repozip}"
-		    basedir="${REPO_FILETEST}"
+		    basedir="${REPO_ROOT}"
 		    update="true">
 		 </zip>
-		<delete dir="${REPO_FILETEST}" />
-	</target>
-
-	<target name="test-repo-structure" depends="jar, ccnd, run-repo-structure-test">
-		<delete dir="${REPO_FILETEST}" />
+		<delete dir="${REPO_ROOT}" />
 	</target>
 	
-	<target name="test-repo-io" depends="jar, ccnd, repo">
+	<target name="test-repo-io" depends="jar, test-repo-structure, ccnd, repo">
 		<mkdir dir="${testout}"/>
 		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
 			<classpath>
@@ -292,6 +308,7 @@
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
+			<sysproperty key="com.parc.ccn.LogLevel" value="FINER"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="test/ccn/network/daemons/repo/RepoIOTest.class"/>

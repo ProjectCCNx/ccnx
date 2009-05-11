@@ -19,7 +19,7 @@
 <!ELEMENT Collection	(Link*)>
 <!ATTLIST Collection	%commonattrs;>
 
-<!ELEMENT Link    	(Name, LinkAuthenticator?)>
+<!ELEMENT Link    	(Name, Label?, LinkAuthenticator?)>
 <!ATTLIST Link		%commonattrs;>
 
 <!ELEMENT CompleteName	(Name, SignedInfo, Signature)>

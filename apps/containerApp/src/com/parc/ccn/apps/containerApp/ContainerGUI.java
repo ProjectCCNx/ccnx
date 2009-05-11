@@ -87,7 +87,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		try {
 			node = new DefaultMutableTreeNode(new IconData(ICON_FOLDER, null,
 					new Name("files", ContentName
-							.fromNative("/parc.com"))));
+							.fromNative("/parc.com"),true)));
 			node.add(new DefaultMutableTreeNode( new Boolean(true) ));
 			usableRoot = node;
 		} catch (MalformedContentNameStringException e1) {
@@ -162,8 +162,17 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 			}
 
 			public void actionPerformed(ActionEvent evt) {
+				
+				//if we don't have a file then we should show a file chooser
+				//otherwise give an error message "Please select a folder"
+				
+				if (((selectedPrefix.toString()).split("\\.")).length > 2)
+				{
+					JOptionPane.showMessageDialog(this.frame, "Please Select a Directory to add a file", "Select Directory",JOptionPane.ERROR_MESSAGE);
+				}else{
 				// Show dialog; this method does not return until dialog is
 				// closed
+				
 				int returnVal = chooser.showOpenDialog(frame);
 
 				// Get the selected file
@@ -183,6 +192,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 				System.out.println("Writing a file to the repo " + file.getAbsolutePath() + " " + file.getName());
 				System.out.println("Selected Node is " + selectedPrefix);
 				
+				//if(selectedPrefix)
 				try{
 					ContentName contentName = ContentName.fromNative(selectedPrefix + "/" + file.getName());
 					sendFile(file, contentName);
@@ -210,7 +220,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 					e.printStackTrace();
 				}
 				*/
-
+				}
 			}
 		}
 		;
@@ -417,7 +427,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 			FileInputStream fs = new FileInputStream(file);
 			byte[] buffer = new byte[fs.available()];
 			fs.read(buffer);
-			RepositoryFileOutputStream fos = new RepositoryFileOutputStream(ccnName, _library.getDefaultPublisher(), _library);
+			RepositoryFileOutputStream fos = new RepositoryFileOutputStream(ccnName, _library);
 			fos.write(buffer);
 			fos.close();
 
@@ -747,10 +757,10 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 				System.out.println("added as child: "+cn.toString());
 				if (((cn.toString()).split("\\.")).length > 1) {
 					node = new DefaultMutableTreeNode(new IconData(ICON_DOCUMENT,
-							null, new Name(cn.toString().substring(1), prefix)));
+							null, new Name(cn.toString().substring(1), prefix,false)));
 				} else {
 					node = new DefaultMutableTreeNode(new IconData(ICON_FOLDER,
-							null, new Name(cn.toString().substring(1), prefix)));
+							null, new Name(cn.toString().substring(1), prefix,true)));
 					node.add(new DefaultMutableTreeNode(new Boolean(true)));
 				}
 

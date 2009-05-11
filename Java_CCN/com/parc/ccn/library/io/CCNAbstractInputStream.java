@@ -85,6 +85,9 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		} else {
 			_startingBlockIndex = startingBlockIndex;
 		}
+		if (null == _startingBlockIndex) {
+			_startingBlockIndex = SegmentationProfile.baseSegment();
+		}
 		_baseName = baseName;
 	}
 	
@@ -119,7 +122,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		try {
 			_startingBlockIndex = SegmentationProfile.getSegmentNumber(starterBlock.name());
 		} catch (NumberFormatException nfe) {
-			_startingBlockIndex = null;
+			throw new IOException("Stream starter block name does not contain a valid segment number, so the stream does not know what content to start with.");
 		}
 	}
 
@@ -233,9 +236,6 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		}
 		
 		Library.logger().info("getBlock: getting block " + blockName);
-		/*
-		 * TODO: Paul R. Comment - as above what to do about timeouts?
-		 */
 		ContentObject block = _library.getLower(blockName, 1, _timeout);
 
 		if (null == block) {
@@ -257,7 +257,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		// Check to see if finalBlockID is the current block. If so, there should
 		// be no next block. (If the writer makes a mistake and guesses the wrong
 		// value for finalBlockID, they won't put that wrong value in the block they're
-		// guessing itself -- in less they want to try to extend a "closed" stream.
+		// guessing itself -- unless they want to try to extend a "closed" stream.
 		// Normally by the time they write that block, they either know they're done or not.
 		if (null != _currentBlock.signedInfo().getFinalBlockID()) {
 			if (Arrays.equals(_currentBlock.signedInfo().getFinalBlockID(), _currentBlock.name().lastComponent())) {
@@ -268,44 +268,15 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		}
 		
 		Library.logger().info("getNextBlock: getting block after " + _currentBlock.name());
-
-		// prefixCount note: next block name must exactly match current except
-		// for the index itself which is the final component of the name we 
-		// have, so we use count()-1.
-		ContentName nextName = new ContentName(_currentBlock.name(), _currentBlock.contentDigest());
-		Interest nextInterest = Interest.next(nextName);
-		nextInterest.nameComponentCount(_currentBlock.name().count() - 1);
-		nextInterest.additionalNameComponents(2);
-		ContentObject nextBlock = _library.get(nextInterest, _timeout);
-		if (null != nextBlock) {
-			Library.logger().info("getNextBlock: retrieved " + nextBlock.name());
-			
-			// Now need to verify the block we got
-			if (!verifyBlock(nextBlock)) {
-				return null;
-			}
-			
-			return nextBlock;
-		} 
-		Library.logger().info("Timed out looking for block of stream.");
-		return null;
+		return getBlock(nextBlockIndex());
 	}
 
 	protected ContentObject getFirstBlock() throws IOException {
 		if (null != _startingBlockIndex) {
 			return getBlock(_startingBlockIndex);
+		} else {
+			throw new IOException("Stream does not have a valid starting block number.");
 		}
-		// DKS TODO FIX - use get left child; the following is a first stab at that.
-		Library.logger().info("getFirstBlock: getting " + _baseName);
-		ContentObject result =  _library.getLeftmostLower(_baseName, 2, _timeout);
-		if (null != result){
-			Library.logger().info("getFirstBlock: retrieved " + result.name() + " type: " + result.signedInfo().getTypeName());
-			// Now need to verify the block we got
-			if (!verifyBlock(result)) {
-				return null;
-			}	
-		}
-		return result;
 	}
 
 	boolean verifyBlock(ContentObject block) {
@@ -367,6 +338,21 @@ public abstract class CCNAbstractInputStream extends InputStream {
 			// new segment representation means we will have to assume that representation
 			// even for stream content.
 			return SegmentationProfile.getSegmentNumber(_currentBlock.name());
+		}
+	}
+	
+	/**
+	 * Return the index of the next block of stream data.
+	 * Default segmentation generates sequentially-numbered stream
+	 * blocks but this method may be overridden in subclasses to 
+	 * perform re-assembly on streams that have been segemented differently.
+	 * @return
+	 */
+	public long nextBlockIndex() {
+		if (null == _currentBlock) {
+			return _startingBlockIndex.longValue();
+		} else {
+			return blockIndex() + 1;
 		}
 	}
 	

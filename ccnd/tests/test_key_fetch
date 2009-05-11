@@ -1,0 +1,115 @@
+# Test for fetch of key via KeyLocator
+
+export CCN_LOCAL_PORT=$((CCN_LOCAL_PORT_BASE + 8))
+ccnd &
+trap "ccndsmoketest kill" 0
+
+ccn_xmltoccnb -w - << 'EOF' > keyfetchdata.ccnb
+<?xml version="1.0" encoding="UTF-8"?>
+<ContentObject>
+  <Signature>
+    <SignatureBits ccnbencoding="base64Binary">H3PgCBsmwrNCP23kSgoQeeSdVivcaG0xly35ZEi7CDZRjAJguc2SA0XWTlgsPLBu
+UitKZ3+uyh9BmaUjB/EDM+bTzoz0Td+CnADKYAz/MORLYr9VTjyFqENaXFdnE5Vp
+TEzqUnoIrDIdh7rIXLXE2AkhucB3QEYAfY/TI1sU3zU=</SignatureBits>
+  </Signature>
+  <Name>
+    <Component ccnbencoding="text">ccnd</Component>
+    <Component ccnbencoding="text">test_keyfetch</Component>
+    <Component ccnbencoding="base64Binary">/QSghfBVTA==</Component>
+    <Component ccnbencoding="base64Binary">+A==</Component>
+  </Name>
+  <SignedInfo>
+    <PublisherPublicKeyDigest ccnbencoding="base64Binary">18raJi+VnDbQZjSE9Z1UJUjBTA1/BhTDaI1Nrx9yo28=</PublisherPublicKeyDigest>
+    <Timestamp ccnbencoding="base64Binary">BKCF8HuA</Timestamp>
+    <FinalBlockID ccnbencoding="base64Binary">+A==</FinalBlockID>
+    <KeyLocator>
+      <KeyName>
+        <Name>
+          <Component ccnbencoding="text">parc.com</Component>
+          <Component ccnbencoding="text">home</Component>
+          <Component ccnbencoding="text">plass</Component>
+          <Component ccnbencoding="text">Key</Component>
+          <Component ccnbencoding="base64Binary">18raJi+VnDbQZjSE9Z1UJUjBTA1/BhTDaI1Nrx9yo28=</Component>
+        </Name>
+        <PublisherPublicKeyDigest ccnbencoding="base64Binary">18raJi+VnDbQZjSE9Z1UJUjBTA1/BhTDaI1Nrx9yo28=</PublisherPublicKeyDigest>
+      </KeyName>
+    </KeyLocator>
+  </SignedInfo>
+  <Content ccnbencoding="base64Binary">V2hlcmUgYXJlIG15IGtleXM/Cg==</Content>
+</ContentObject>
+EOF
+
+ccn_xmltoccnb -w - << 'EOF' > keyfetchpdata.ccnb
+<?xml version="1.0" encoding="UTF-8"?>
+<ContentObject>
+  <Signature>
+    <SignatureBits ccnbencoding="base64Binary">AKE6k54oWcHgr+Yr0yHgrsR60TVzukzZ4YKyIJJ2w+i9fT+U66U/d0/pPvC0ChlP
+3CFHroPMhzUWwLIUC2eNBGgqVK3cXjSnTuWDnhcZ++huha08KxopBTXqVSYQEXFb
+bvcQwKj00Md01XQdJA+UsrZzH3GOM1aHn1SzoC4IQqQ=</SignatureBits>
+  </Signature>
+  <Name>
+    <Component ccnbencoding="text">parc.com</Component>
+    <Component ccnbencoding="text">home</Component>
+    <Component ccnbencoding="text">plass</Component>
+    <Component ccnbencoding="text">Key</Component>
+    <Component ccnbencoding="base64Binary">18raJi+VnDbQZjSE9Z1UJUjBTA1/BhTDaI1Nrx9yo28=</Component>
+  </Name>
+  <SignedInfo>
+    <PublisherPublicKeyDigest ccnbencoding="base64Binary">18raJi+VnDbQZjSE9Z1UJUjBTA1/BhTDaI1Nrx9yo28=</PublisherPublicKeyDigest>
+    <Timestamp ccnbencoding="base64Binary">BKCF8IvA</Timestamp>
+    <Type ccnbencoding="text">(F?</Type>
+    <KeyLocator>
+      <KeyName>
+        <Name>
+          <Component ccnbencoding="text">parc.com</Component>
+          <Component ccnbencoding="text">home</Component>
+          <Component ccnbencoding="text">plass</Component>
+          <Component ccnbencoding="text">Key</Component>
+          <Component ccnbencoding="base64Binary">18raJi+VnDbQZjSE9Z1UJUjBTA1/BhTDaI1Nrx9yo28=</Component>
+        </Name>
+        <PublisherPublicKeyDigest ccnbencoding="base64Binary">18raJi+VnDbQZjSE9Z1UJUjBTA1/BhTDaI1Nrx9yo28=</PublisherPublicKeyDigest>
+      </KeyName>
+    </KeyLocator>
+  </SignedInfo>
+  <Content ccnbencoding="base64Binary">MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCi5OJGBGO0O8t73keokEVl4RJC
+hjb1oITo2+AaS8w8jfapmlkeN7U22qgcWZGaKMEMKjjqoR2mDvKj3AbhEZmailXn
+Z3mfVZH6wODy6amzmd92jvZqmF9fvVwijHEO+avhUk9q0xiRGl+CXqyqPVXKa2G/
+dT9ZtpcTlnhdUwLzNwIDAQAB</Content>
+</ContentObject>
+EOF
+
+ccndsmoketest send keyfetchdata.ccnb recv recv recv send keyfetchpkey.ccnb recv &
+ccnls ccn:/ccnd/test_keyfetch | tee unverified.out
+CCN_VERIFY=1 CCN_LINGER=8 ccnls ccn:/ccnd/test_keyfetch | tee verified.out
+
+fgrep '[unverified]' unverified.out || Fail should have gotten unverified data without key
+fgrep '[verified]' verified.out || SkipTest should have gotten verified data with key
+
+rm keyfetchdata.ccnb keyfetchpkey.ccnb unverified.out verified.out
+
+: <<'EOF'
+# Instructions for creating pre-signed data
+# This will need re-doing if/when schema or encoding changes.
+# Need Java_CCN for this.  WARNING: mucks with ~/.ccn
+
+pushd ../../Java_CCN
+CCND_DEBUG=7 ccnd &
+tools/ccn_repo stop
+killall java
+rm -rf /tmp/test_key_fetch_repo
+mkdir /tmp/test_key_fetch_repo
+rm -rf ~/test_key_fetch.ccn
+test -d ~/x.ccn || mv ~/.ccn ~/x.ccn
+tools/ccn_repo /tmp/test_key_fetch_repo
+echo "Where are my keys?" > /tmp/test_key_fetch.data
+./jrun com.parc.ccn.apps.put_file ccn:/ccnd/test_keyfetch /tmp/test_key_fetch.data
+tools/ccn_repo stop
+killall java
+mv ~/.ccn ~/test_key_fetch.ccn && mv ~/x.ccn ~/.ccn
+popd
+ccnget ccn:/ccnd/test_keyfetch > keyfetchdata.ccnb
+cat ~/test_key_fetch.ccn/*/*.ccnb > keyfetchpkey.ccnb
+ccndumpnames
+ccndsmoketest kill
+
+END

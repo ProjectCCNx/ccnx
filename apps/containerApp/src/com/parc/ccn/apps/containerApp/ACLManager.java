@@ -15,6 +15,7 @@ import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.ListSelectionModel;
@@ -47,6 +48,7 @@ public class ACLManager extends JDialog implements ActionListener{
 private ArrayList<JList> listsArray=null;	
 	//private ArrayList<String> readOnlyPrincipals;
 	//private ArrayList<String> readWritePrincipals;
+private ValuesChanged changedEntries;
 
 private SortedListModel readOnlyPrincipals = null;
 private SortedListModel readWritePrincipals = null;
@@ -125,6 +127,11 @@ private SortedListModel userPoolDefault = null;
 
 		super();
 		this.path = path;
+		
+		//window listener
+		this.setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
+		changedEntries = new ValuesChanged(false);
+		this.addWindowListener(new ChangedEntriesConfirm(this,changedEntries));
 		
 		listsArray = new ArrayList<JList>();
 		//listsArray.add(groupsList);
@@ -285,35 +292,40 @@ private SortedListModel userPoolDefault = null;
 		if(buttonApply == e.getSource()) {
 			
 			applyChanges();
+			changedEntries.changed = false;
+			
 		}else if(buttonDefault == e.getSource()){
 			
 			restoreDefaults();
-			
+			changedEntries.changed = false;
 			
 		}else if(buttonCancel == e.getSource()){
 			
 			cancelChanges();
 			
+			
 		}else if(buttonAssignReadOnly == e.getSource()){
 			moveListItems(userList.getSelectedIndices(),userList,readOnlyList);
+			changedEntries.changed = true;
 			
 		}else if(buttonRemoveReadOnly == e.getSource()){			
 			moveListItems(readOnlyList.getSelectedIndices(),readOnlyList,userList);			
-			
+			changedEntries.changed = true;
 		}else if(buttonAssingReadWrite == e.getSource()){
 			moveListItems(userList.getSelectedIndices(),userList,readWriteList);
-			
+			changedEntries.changed = true;
 		}else if(buttonRemoveReadWrite == e.getSource()){
 			moveListItems(readWriteList.getSelectedIndices(),readWriteList,userList);
-			
+			changedEntries.changed = true;
 		}else if(buttonModify2View == e.getSource()){
 			
 			moveListItems(readWriteList.getSelectedIndices(),readWriteList,readOnlyList);
-						
+			changedEntries.changed = true;
+			
 		}else if(buttonView2Modify == e.getSource()){
 			
 			moveListItems(readOnlyList.getSelectedIndices(),readOnlyList,readWriteList);
-			
+			changedEntries.changed = true;
 		}
 		
 	}
@@ -340,8 +352,23 @@ private SortedListModel userPoolDefault = null;
 	
 	private void cancelChanges()
 	{
-		this.setVisible(false);
-		this.dispose();
+		if(changedEntries.changed)
+		{
+			int answer = JOptionPane.showConfirmDialog(this, "You have pending changes. Are you sure you would like to exit", "Pending Changes",JOptionPane.YES_NO_OPTION);
+			switch(answer){
+			case JOptionPane.YES_OPTION:
+				this.setVisible(false);
+				this.dispose();
+				break;
+			case JOptionPane.NO_OPTION:
+				break;
+			}
+			
+		}else
+		{
+			this.setVisible(false);
+			this.dispose();
+		}
 	}
 
 	private void moveListItems(int selectedIndices[],JList fromList,JList toList)
@@ -349,10 +376,11 @@ private SortedListModel userPoolDefault = null;
 		//ArrayList of selected items
 		ArrayList<Object> itemsSelected = new ArrayList<Object>();
 		
+		if(selectedIndices.length >= 1){
 		for(int i=0;i<selectedIndices.length;i++)
 		{
 			//remove item from fromList and move to toList
-			System.out.println("Index is "+ "i"+ "selected Index is"+selectedIndices[i]);
+			System.out.println("Index is "+ i+ "selected Index is"+selectedIndices[i]);
 			Object selectedItem = fromList.getModel().getElementAt(selectedIndices[i]);
 			itemsSelected.add(selectedItem);			
 			
@@ -361,6 +389,12 @@ private SortedListModel userPoolDefault = null;
 		//Bulk adding and removal of items
 		((SortedListModel)toList.getModel()).addAll(itemsSelected.toArray());		
 		((SortedListModel)fromList.getModel()).removeElementArray(itemsSelected);		
+
+		//clear selections from old items
+		fromList.clearSelection();
+		//select new items?
+		//toList.setSelectedIndices(indices);
+		}		
 		
 	}
 }

@@ -1,6 +1,7 @@
 package test.ccn.network.daemons.repo;
 
 import java.io.File;
+import java.io.IOException;
 import java.security.InvalidParameterException;
 
 import org.apache.commons.io.FileUtils;
@@ -95,7 +96,7 @@ public class RFSTest extends RepoTestBase {
 		ContentObject digest2 = ContentObject.buildContentObject(name, "Testing2".getBytes());
 		repo.saveContent(digest2);
 		ContentName digestName = new ContentName(name, digest2.contentDigest());
-		checkData(repo, digestName, "Testing2");
+		checkDataWithDigest(repo, digestName, "Testing2");
 		
 		/*
 		 * Broken - commented out until I can figure out how to fix it..
@@ -125,7 +126,7 @@ public class RFSTest extends RepoTestBase {
 		digest2 = ContentObject.buildContentObject(longName, "Testing2".getBytes());
 		repo.saveContent(digest2);
 		digestName = new ContentName(longName, digest2.contentDigest());
-		checkData(repo, digestName, "Testing2");
+		checkDataWithDigest(repo, digestName, "Testing2");
 		
 		System.out.println("Repotest - Testing invalid characters in name");
 		ContentName badCharName = ContentName.fromNative("/repoTest/" + "*x?y<z>u");
@@ -181,6 +182,19 @@ public class RFSTest extends RepoTestBase {
 		repo.saveContent(ContentObject.buildContentObject(segmentedName223, "segment223".getBytes()));
 		checkData(repo, segmentedName223, "segment223");
 		
+		System.out.println("Repotest - storing sequence of objects for versioned stream read testing");
+		ContentName versionedNameNormal = ContentName.fromNative("/testNameSpace/testVersionNormal");
+		versionedNameNormal = VersioningProfile.versionName(versionedNameNormal);
+		repo.saveContent(ContentObject.buildContentObject(versionedNameNormal, "version-normal".getBytes()));
+		checkData(repo, versionedNameNormal, "version-normal");
+		byte[] finalBlockID = SegmentationProfile.getSegmentID(4);
+		for (Long i=SegmentationProfile.baseSegment(); i<5; i++) {
+			ContentName segmented = SegmentationProfile.segmentName(versionedNameNormal, i);
+			String segmentContent = "segment"+ new Long(i).toString();
+			repo.saveContent(ContentObject.buildContentObject(segmented, segmentContent.getBytes(), null, null, finalBlockID));
+			checkData(repo, segmented, segmentContent);
+		}
+		
 		System.out.println("Repotest - Testing reinitialization of repo");
 		repo = new RFSImpl();
 		repo.initialize(new String[] {"-root", _fileTestDir, "-local", _repoName, "-global", _globalPrefix});
@@ -188,12 +202,18 @@ public class RFSTest extends RepoTestBase {
 		// Since we have 2 pieces of data with the name "longName" we need to compute the
 		// digest to make sure we get the right data.
 		longName = new ContentName(longName, ContentObject.contentDigest("Long name!"));
-		checkData(repo, longName, "Long name!");
+		checkDataWithDigest(repo, longName, "Long name!");
 		checkData(repo, badCharName, "Funny characters!");
 		checkData(repo, badCharLongName, "Long and funny");
 		checkData(repo, versionedName, "version");
 		checkData(repo, segmentedName1, "segment1");
 		checkData(repo, segmentedName223, "segment223");
+		checkData(repo, versionedNameNormal, "version-normal");
+		for (Long i=SegmentationProfile.baseSegment(); i<5; i++) {
+			ContentName segmented = SegmentationProfile.segmentName(versionedNameNormal, i);
+			String segmentContent = "segment"+ new Long(i).toString();
+			checkData(repo, segmented, segmentContent);
+		}
 		//checkDataAndPublisher(repo, name, "Testing2", pubKey1);
 		//checkDataAndPublisher(repo, name, "Testing2", pubKey2);
 	}
@@ -225,6 +245,13 @@ public class RFSTest extends RepoTestBase {
 	private void checkData(Repository repo, ContentName name, String data) throws RepositoryException {
 		checkData(repo, new Interest(name), data);
 	}
+	
+	private void checkDataWithDigest(Repository repo, ContentName name, String data) throws RepositoryException {
+		// When generating an Interest for the exact name with content digest, need to set additionalNameComponents
+		// to 0, signifying that name ends with explicit digest
+		checkData(repo, new Interest(name, 0, (PublisherID)null), data);
+	}
+
 	private void checkData(Repository repo, Interest interest, String data) throws RepositoryException {
 		ContentObject testContent = repo.getContent(interest);
 		Assert.assertFalse(testContent == null);

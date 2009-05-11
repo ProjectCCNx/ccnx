@@ -12,7 +12,7 @@ public class BasePutGetTest extends LibraryTestBase {
 		// Library.logger().setLevel(Level.FINEST);
 		SystemConfiguration.setDebugFlag(SystemConfiguration.DEBUGGING_FLAGS.DEBUG_SIGNATURES, true);
 		System.out.println("TEST: PutThread/GetThread");
-		int id = rand.nextInt(1000);
+		int id = getUniqueId();
 		Thread putter = new Thread(new PutThread(count, id));
 		Thread getter = new Thread(new GetThread(count, id));
 		genericGetPut(putter, getter);
@@ -21,7 +21,7 @@ public class BasePutGetTest extends LibraryTestBase {
 	@Test
 	public void testGetServPut() throws Throwable {
 		System.out.println("TEST: PutThread/GetServer");
-		int id = rand.nextInt(1000);
+		int id = getUniqueId();
 
 		//Library.logger().setLevel(Level.FINEST);
 		Thread putter = new Thread(new PutThread(count, id));
@@ -32,7 +32,7 @@ public class BasePutGetTest extends LibraryTestBase {
 	@Test
 	public void testGetPutServ() throws Throwable {
 		System.out.println("TEST: PutServer/GetThread");
-		int id = rand.nextInt(1000);
+		int id = getUniqueId();
 		Thread putter = new Thread(new PutServer(count, id));
 		Thread getter = new Thread(new GetThread(count, id));
 		genericGetPut(putter, getter);

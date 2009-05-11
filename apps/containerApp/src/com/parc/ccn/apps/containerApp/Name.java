@@ -8,10 +8,12 @@ public class Name {
 	public String name;
     public ContentName path;
     public URL fileURL;
+    public boolean isDirectory;
 
-    public Name(String nameString, ContentName prefix) {
+    public Name(String nameString, ContentName prefix, boolean type) {
         name = nameString;
         path = prefix;
+        isDirectory = type;
         //fileURL = getClass().getResource(filename);
 //        if (fileURL == null) {
 //            System.err.println("Couldn't find file: "

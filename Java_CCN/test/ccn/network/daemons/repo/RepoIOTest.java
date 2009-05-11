@@ -3,7 +3,11 @@ package test.ccn.network.daemons.repo;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.CharBuffer;
 import java.util.Arrays;
+
+import javax.xml.stream.XMLStreamException;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -13,10 +17,12 @@ import org.junit.Test;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.library.io.CCNDescriptor;
+import com.parc.ccn.library.io.CCNVersionedInputStream;
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.network.daemons.repo.RFSImpl;
@@ -59,6 +65,7 @@ public class RepoIOTest extends RepoTestBase {
 	
 	@Test
 	public void testReadViaRepo() throws Throwable {
+		System.out.println("Testing reading objects from repo");
 		ContentName name = ContentName.fromNative("/repoTest/data1");
 		
 		// Since we have 2 pieces of data with the name /repoTest/data1 we need to compute both
@@ -79,10 +86,10 @@ public class RepoIOTest extends RepoTestBase {
 		//PublisherPublicKeyDigest pkid2 = new PublisherPublicKeyDigest("1paij2p7setof6ognk3b34q0hesnv1jpov07h9qvqnveqahv9ml2");
 		//PublisherPublicKeyDigest pkid2 = new PublisherPublicKeyDigest("-6ldct6o3h27gp7f8bsksr5veh380uc670voem50580h5le0m9au");
 		
-		checkData(name1, "Here's my data!");
+		checkDataWithDigest(name1, "Here's my data!");
 		checkData(clashName, "Clashing Name");
-		checkData(digestName, "Testing2");
-		checkData(longName, "Long name!");
+		checkDataWithDigest(digestName, "Testing2");
+		checkDataWithDigest(longName, "Long name!");
 		checkData(badCharName, "Funny characters!");
 		checkData(badCharLongName, "Long and funny");
 		//checkDataAndPublisher(name, "Testing2", pkid1);
@@ -131,9 +138,37 @@ public class RepoIOTest extends RepoTestBase {
 		Assert.assertArrayEquals(data, testBytes);
 	}
 	
+	@Test
+	// The purpose of this test is to do versioned reads from repo
+	// of data not already in the ccnd cache, thus testing 
+	// what happens if we pull latest version and try to read
+	// content in order
+	public void testVersionedRead() throws InterruptedException, MalformedContentNameStringException, XMLStreamException, IOException {
+		System.out.println("Testing reading a versioned stream");
+		Thread.sleep(5000);
+		ContentName versionedNameNormal = ContentName.fromNative("/testNameSpace/testVersionNormal");
+		CCNVersionedInputStream vstream = new CCNVersionedInputStream(versionedNameNormal);
+		InputStreamReader reader = new InputStreamReader(vstream);
+		for (long i=SegmentationProfile.baseSegment(); i<5; i++) {
+			String segmentContent = "segment"+ new Long(i).toString();
+			char[] cbuf = new char[8];
+			int count = reader.read(cbuf, 0, 8);
+			System.out.println("for " + i + " got " + count + " (eof " + vstream.eof() + "): " + new String(cbuf));
+			Assert.assertEquals(segmentContent, new String(cbuf));
+		}
+		Assert.assertEquals(-1, reader.read());
+	}
+	
 	private void checkData(ContentName name, String data) throws IOException, InterruptedException{
 		checkData(new Interest(name), data.getBytes());
 	}
+	
+	private void checkDataWithDigest(ContentName name, String data) throws IOException, InterruptedException{
+		// When generating an Interest for the exact name with content digest, need to set additionalNameComponents
+		// to 0, signifying that name ends with explicit digest
+		checkData(new Interest(name, 0, (PublisherID)null), data.getBytes());
+	}
+
 	private void checkData(Interest interest, byte[] data) throws IOException, InterruptedException{
 		ContentObject testContent = getLibrary.get(interest, 10000);
 		Assert.assertFalse(testContent == null);

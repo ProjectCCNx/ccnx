@@ -51,7 +51,8 @@ public class LibraryTestBase {
 	
 	protected static CCNLibrary putLibrary = null;
 	protected static CCNLibrary getLibrary = null;
-
+	
+	protected static ArrayList<Integer> usedIds = new ArrayList<Integer>();
 
 	static {
 		try {
@@ -66,9 +67,7 @@ public class LibraryTestBase {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-	
-		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
-		Library.logger().setLevel(Level.INFO);
+		// Let default logging level be set centrally so it can be overridden by property
 	}
 
 	@Before
@@ -192,6 +191,15 @@ public class LibraryTestBase {
 			checkPutResults(putResult);
 		}
 		writer.close();
+	}
+	
+	public int getUniqueId() {
+		int id;
+		do {
+			id = rand.nextInt(1000);
+		} while (usedIds.indexOf(id) != -1);
+		usedIds.add(id);
+		return id;
 	}
 	
 	public class GetThread implements Runnable {
