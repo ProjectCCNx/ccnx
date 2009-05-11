@@ -25,7 +25,7 @@ clean:
 
 check test: $(SCRIPTSRC)  stubs
 	mkdir -p log
-	./testdriver
+	./testdriver $(TESTS)
 	: -------------- :
 	:  TESTS PASSED  :
 	: -------------- :
