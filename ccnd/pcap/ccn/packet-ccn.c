@@ -33,12 +33,14 @@
 #include <ccn/coding.h>
 #include <ccn/uri.h>
 
+#define CCN_MIN_PACKET_SIZE 5
+
 /* forward reference */
 void proto_register_ccn();
 void proto_reg_handoff_ccn();
 static int dissect_ccn(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree);
-static int dissect_ccn_interest(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree);
-static int dissect_ccn_contentobject(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree);
+static int dissect_ccn_interest(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree);
+static int dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree);
 static gboolean dissect_ccn_heur(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree);
 
 static int proto_ccn = -1;
@@ -48,7 +50,9 @@ static gint ett_name = -1;
 static gint ett_signedinfo = -1;
 static gint ett_content = -1;
 
-static int global_ccn_port = 4485;
+static gint hf_ccn_type = -1;
+
+static int global_ccn_port = 4573;
 static dissector_handle_t ccn_handle = NULL;
 
 
@@ -64,10 +68,18 @@ proto_register_ccn(void)
         &ett_content,
     };
     
+    static hf_register_info hf[] = {
+        {&hf_ccn_type,
+         {"Type", "ccn.type", FT_UINT32, BASE_DEC, NULL,
+          0x0, "Type represents the type of the CCN packet", HFILL}}
+    };
+
     proto_ccn = proto_register_protocol("Content-centric Networking Protocol", /* name */
                                         "CCN",		/* short name */
                                         "ccn");		/* abbrev */
     proto_register_subtree_array(ett, array_length(ett));
+    hf[0].hfinfo.strings = ccn_dtag_dict.dict;
+    proto_register_field_array(proto_ccn, hf, array_length(hf));
     ccn_module = prefs_register_protocol(proto_ccn, proto_reg_handoff_ccn);
 }
 
@@ -104,33 +116,40 @@ proto_reg_handoff_ccn(void)
 static int
 dissect_ccn(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 {
-    static const value_string packet_type_names[] = {
-        {CCN_DTAG_Interest, "Interest"},
-        {CCN_DTAG_ContentObject, "Content"},
-        {CCN_DTAG_ContentObjectV20080711, "ContentV20080711"},
-        {0, ""}
-    };
-
     guint tvb_size = 0;
     proto_tree *ccn_tree;
     proto_item *ti = NULL;
-    const unsigned char *data;
+    const unsigned char *ccnb;
     struct ccn_skeleton_decoder skel_decoder;
     struct ccn_skeleton_decoder *sd;
-    struct ccn_buf_decoder decoder;
-    struct ccn_buf_decoder *d;
     struct ccn_charbuf *c;
     int packet_type = 0;
-    size_t s;
-
-    /* if it passes through a skeleton decoder it's one of ours for sure */
-    memset(&skel_decoder, 0, sizeof(skel_decoder));
-    sd = &skel_decoder;
+    int packet_type_length = 0;
+    /* a couple of basic checks to rule out packets that are definitely not ours */
     tvb_size = tvb_length(tvb);
-    data = ep_tvb_memdup(tvb, 0, tvb_size);
-    s = ccn_skeleton_decode(sd, data, tvb_size);
+    if (tvb_size < CCN_MIN_PACKET_SIZE || tvb_get_guint8(tvb, 0) == 0)
+        return (0);
+
+    sd = &skel_decoder;
+    memset(sd, 0, sizeof(*sd));
+    sd->state |= CCN_DSTATE_PAUSE;
+    ccnb = ep_tvb_memdup(tvb, 0, tvb_size);
+    ccn_skeleton_decode(sd, ccnb, tvb_size);
     if (sd->state < 0)
         return (0);
+    if (CCN_GET_TT_FROM_DSTATE(sd->state) == CCN_DTAG) {
+        packet_type = sd->numval;
+        packet_type_length = sd->index;
+    } else {
+        return (0);
+    }
+    memset(sd, 0, sizeof(*sd));
+    ccn_skeleton_decode(sd, ccnb, tvb_size);
+    if (!CCN_FINAL_DSTATE(sd->state)) {
+        pinfo->desegment_offset = 0;
+        pinfo->desegment_len = DESEGMENT_ONE_MORE_SEGMENT;
+        return (-1); /* what should this be? */
+    }
 
     /* Make it visible that we're taking this packet */
     if (check_col(pinfo->cinfo, COL_PROTOCOL)) {
@@ -142,47 +161,41 @@ dissect_ccn(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         col_clear(pinfo->cinfo, COL_INFO);
     }
 
-    /* decide whether it is an Interest or ContentObject */
-    d = ccn_buf_decoder_start(&decoder, data, tvb_size);
-    if (d->decoder.state >= 0 && CCN_GET_TT_FROM_DSTATE(d->decoder.state) == CCN_DTAG) {
-        packet_type = d->decoder.numval;
-    }
-
     c = ccn_charbuf_create();
-    ccn_uri_append(c, data, tvb_size, 1);
+    ccn_uri_append(c, ccnb, tvb_size, 1);
 
     /* Add the packet type and CCN URI to the info column */
     if (check_col(pinfo->cinfo, COL_INFO)) {
         col_add_str(pinfo->cinfo, COL_INFO,
-                    val_to_str(packet_type, packet_type_names, "Unknown (0x%02x"));
+                    val_to_str(packet_type, VALS(ccn_dtag_dict.dict), "Unknown (0x%02x"));
         col_append_str(pinfo->cinfo, COL_INFO, ", ");
         col_append_str(pinfo->cinfo, COL_INFO, ccn_charbuf_as_string(c));
     }
     
     if (tree == NULL) {
         ccn_charbuf_destroy(&c);
-        return (s);
+        return (sd->index);
     }
     
     ti = proto_tree_add_protocol_format(tree, proto_ccn, tvb, 0, -1,
                                         "Content-centric Networking Protocol, %s, %s",
-                                        val_to_str(packet_type, packet_type_names, "Unknown (0x%02x"),
+                                        val_to_str(packet_type, VALS(ccn_dtag_dict.dict), "Unknown (0x%02x"),
                                         ccn_charbuf_as_string(c));
-    ccn_charbuf_destroy(&c);
-
     ccn_tree = proto_item_add_subtree(ti, ett_ccn);
-    /* proto_tree_add_item(ccn_tree, hf_ccn_xxx, tvb, offset, len, FALSE); */
-        
-    switch (packet_type) {
-    case CCN_DTAG_Interest:
-        dissect_ccn_interest(tvb, pinfo, ccn_tree);
-        break;
+    ccn_charbuf_destroy(&c);    
+    ti = proto_tree_add_uint(ccn_tree, hf_ccn_type, tvb, 0, packet_type_length, packet_type);
 
+    switch (packet_type) {
     case CCN_DTAG_ContentObject:
-        dissect_ccn_contentobject(tvb, pinfo, ccn_tree);
+    case CCN_DTAG_ContentObjectV20080711:
+        dissect_ccn_contentobject(ccnb, sd->index, tvb, pinfo, ccn_tree);
+        break;
+    case CCN_DTAG_Interest:
+        dissect_ccn_interest(ccnb, sd->index, tvb, pinfo, ccn_tree);
         break;
     }
-    return (s);
+
+    return (sd->index);
 }
 
 static gboolean
@@ -201,18 +214,21 @@ dissect_ccn_heur(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 }
 
 static int
-dissect_ccn_interest(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
+dissect_ccn_interest(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 {
-    struct ccn_parsed_interest *pi;
-    struct ccn_indexbuf *comp;
+    struct ccn_parsed_interest i;
+    struct ccn_parsed_interest *pi = &i;
+    struct ccn_indexbuf *comps;
     int res;
 
+    comps = ccn_indexbuf_create();
+    res = ccn_parse_interest(ccnb, ccnb_size, pi, comps);
     return (0);
     
 }
 
 static int
-dissect_ccn_contentobject(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
+dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 {
     proto_tree *signature_tree;
     proto_item *signature_item;
@@ -224,16 +240,13 @@ dissect_ccn_contentobject(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
     proto_item *content_item;
     struct ccn_parsed_ContentObject co;
     struct ccn_parsed_ContentObject *pco = &co;
-    struct ccn_indexbuf *comps;
-    const unsigned char *ccnb;
-    size_t ccnb_size;
+    /* struct ccn_indexbuf *comps; */
     int l;
     int res;
     
-    ccnb_size = tvb_length(tvb);
-    ccnb = ep_tvb_memdup(tvb, 0, ccnb_size);
-    comps = ccn_indexbuf_create();
-    res = ccn_parse_ContentObject(ccnb, ccnb_size, pco, comps);
+    /*    comps = ccn_indexbuf_create(); */
+    res = ccn_parse_ContentObject(ccnb, ccnb_size, pco, NULL);
+    if (res < 0) return (-1);
     
     l = pco->offset[CCN_PCO_E_Signature] - pco->offset[CCN_PCO_B_Signature];
     signature_item = proto_tree_add_text(tree, tvb,
@@ -261,9 +274,4 @@ dissect_ccn_contentobject(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                                           
     return (ccnb_size);
 }
-#if 0
 
-    type_item = proto_tree_add_text(ccn_tree, tvb, 0, 3,
-                                    val_to_str(packet_type, packet_type_names, "Unknown (0x%02x"));
-    type_tree = proto_item_add_subtree(type_item, ett_type);
-#endif

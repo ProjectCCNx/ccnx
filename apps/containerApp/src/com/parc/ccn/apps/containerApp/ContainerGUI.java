@@ -88,7 +88,8 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 			node = new DefaultMutableTreeNode(new IconData(ICON_FOLDER, null,
 					new Name("files", ContentName
 							.fromNative("/parc.com"),true)));
-			node.add(new DefaultMutableTreeNode( new Boolean(true) ));
+			//This is the "retrieving data" node
+			//node.add(new DefaultMutableTreeNode( new Boolean(true) ));
 			usableRoot = node;
 		} catch (MalformedContentNameStringException e1) {
 			// TODO Auto-generated catch block
@@ -761,7 +762,8 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 				} else {
 					node = new DefaultMutableTreeNode(new IconData(ICON_FOLDER,
 							null, new Name(cn.toString().substring(1), prefix,true)));
-					node.add(new DefaultMutableTreeNode(new Boolean(true)));
+					//This is the "Retrieving Data" node (gets rendered in IconCell Renderer
+					//node.add(new DefaultMutableTreeNode(new Boolean(true)));
 				}
 
 				m_model.insertNodeInto(node, parentNode, parentNode.getChildCount());
