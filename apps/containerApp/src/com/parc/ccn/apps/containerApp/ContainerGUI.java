@@ -1,6 +1,8 @@
 package com.parc.ccn.apps.containerApp;
 
 
+//import FileNode;
+
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
@@ -12,6 +14,8 @@ import javax.swing.*;
 import javax.swing.tree.*;
 import javax.swing.event.*;
 import javax.xml.stream.XMLStreamException;
+
+
 
 import com.parc.ccn.Library;
 import com.parc.ccn.apps.containerApp.IconCellRenderer;
@@ -115,6 +119,8 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		TreeCellRenderer renderer = new IconCellRenderer();
 		tree.setCellRenderer(renderer);
 
+		tree.addTreeExpansionListener(new 
+			      DirExpansionListener());
 		tree.addTreeSelectionListener(new DirSelectionListener());
 
 		tree.getSelectionModel().setSelectionMode(
@@ -593,38 +599,44 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		}
 	}
 
-	// // Make sure expansion is threaded and updating the tree model
-	// // only occurs within the event dispatching thread.
-	// class DirExpansionListener implements TreeExpansionListener
-	// {
-	// public void treeExpanded(TreeExpansionEvent event)
-	// {
-	// final DefaultMutableTreeNode node = getTreeNode(
-	// event.getPath());
-	// final FileNode fnode = getFileNode(node);
-	//
-	// Thread runner = new Thread()
-	// {
-	// public void run()
-	// {
-	// if (fnode != null && fnode.expand(node))
-	// {
-	// Runnable runnable = new Runnable()
-	// {
-	// public void run()
-	// {
-	// m_model.reload(node);
-	// }
-	// };
-	// SwingUtilities.invokeLater(runnable);
-	// }
-	// }
-	// };
-	// runner.start();
-	// }
-	//
-	// public void treeCollapsed(TreeExpansionEvent event) {}
-	// }
+	 // Make sure expansion is threaded and updating the tree model
+    // only occurs within the event dispatching thread.
+    class DirExpansionListener implements TreeExpansionListener
+    {
+        public void treeExpanded(TreeExpansionEvent event)
+        {
+//            final DefaultMutableTreeNode node = getTreeNode(
+//                event.getPath());
+//            final FileNode fnode = getFileNode(node);
+
+            final DefaultMutableTreeNode node = getTreeNode(event.getPath());
+
+			// prefix.toString()+cn.toString();
+
+			Name fnode = getNameNode(node);
+			getNodes(fnode);
+//		System.out.println("In the tree expansion listener with "+ fnode.name);	
+            Thread runner = new Thread() 
+            {
+              public void run() 
+              {
+                
+                  Runnable runnable = new Runnable() 
+                  {
+                    public void run() 
+                    {
+                       m_model.reload(node);
+                    }
+                  };
+                  SwingUtilities.invokeLater(runnable);
+                }
+              
+            };
+            runner.start();
+        }
+
+        public void treeCollapsed(TreeExpansionEvent event) {}
+    }
 
 	class DirSelectionListener implements TreeSelectionListener {
 		public void valueChanged(TreeSelectionEvent event) {
@@ -646,28 +658,8 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 				fnode = getNameNode(node);
 			}
 			
-			System.out.println("fnode: "+fnode.name+" full name "+fnode.path.toString());
-			if (((fnode.toString()).split("\\.")).length > 1) {
-				// populate the repo and get it back
-				//sendFile("/parc.com/files/test.txt");
-				retrieveFromRepo(fnode.path.toString()+"/"+fnode.name);
-				String p = fnode.path.toString() + "/"+fnode.name;
-				selectedPath = p; //change this to prefix later after sure its ok
-				selectedPrefix = p;
-				//removes leading /
-				displayText(fnode.name);
-			} else {
-				//this is a directory that we want to enumerate...
-				System.out.println("this is the path: "+ fnode.path.toString()+" this is the name: "+fnode.name);
-				String p = fnode.path.toString() + "/"+fnode.name;
-				System.out.println("Registering Prefix: " + p);
-				registerPrefix(p);
-				selectedPrefix = p;
-				selectedPath = p; //change this to prefix later after sure its ok
-				
-				//display the default for now
-				displayText("TreeHelp.html");
-			}
+			getNodes(fnode);
+			
 
 		}
 	}
@@ -686,7 +678,33 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		new ContainerGUI();
 	}
 
-    private static void createAndShowGUI() {
+    public void getNodes(Name fnode) {
+    	System.out.println("fnode: "+fnode.name+" full name "+fnode.path.toString());
+		if (((fnode.toString()).split("\\.")).length > 1) {
+			// populate the repo and get it back
+			//sendFile("/parc.com/files/test.txt");
+			retrieveFromRepo(fnode.path.toString()+"/"+fnode.name);
+			String p = fnode.path.toString() + "/"+fnode.name;
+			selectedPath = p; //change this to prefix later after sure its ok
+			selectedPrefix = p;
+			//removes leading /
+			displayText(fnode.name);
+		} else {
+			//this is a directory that we want to enumerate...
+			System.out.println("this is the path: "+ fnode.path.toString()+" this is the name: "+fnode.name);
+			String p = fnode.path.toString() + "/"+fnode.name;
+			System.out.println("Registering Prefix: " + p);
+			registerPrefix(p);
+			selectedPrefix = p;
+			selectedPath = p; //change this to prefix later after sure its ok
+			
+			//display the default for now
+			displayText("TreeHelp.html");
+		}
+		
+	}
+
+	private static void createAndShowGUI() {
         if (useSystemLookAndFeel) {
             try {
                 UIManager.setLookAndFeel(

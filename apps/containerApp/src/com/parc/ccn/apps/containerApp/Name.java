@@ -1,8 +1,12 @@
 package com.parc.ccn.apps.containerApp;
 
+import java.io.IOException;
 import java.net.URL;
 
+import javax.swing.tree.DefaultMutableTreeNode;
+
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.MalformedContentNameStringException;
 
 public class Name {
 	public String name;
@@ -21,6 +25,7 @@ public class Name {
 //        }
     }
 
+    
     public Object getObject() {
 		// TODO Auto-generated method stub
 		return this;
@@ -29,4 +34,5 @@ public class Name {
 	public String toString() {
         return name;
     }
+	
 }
