@@ -1,5 +1,6 @@
 package com.parc.ccn.data.security;
 
+import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.NoSuchAlgorithmException;
@@ -19,11 +20,14 @@ import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.bouncycastle.crypto.params.KeyParameter;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.util.CCNEncodableObject;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
+import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.crypto.jce.AESWrapWithPad;
 import com.parc.ccn.security.crypto.jce.AESWrapWithPadEngine;
@@ -56,6 +60,30 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		}
 	}
 
+	public class WrappedKeyObject extends CCNEncodableObject<WrappedKey> {
+
+		public WrappedKeyObject() throws ConfigurationException, IOException {
+			super(WrappedKey.class);
+		}
+		
+		public WrappedKeyObject(ContentName name, CCNLibrary library) throws XMLStreamException, IOException, ClassNotFoundException {
+			super(WrappedKey.class, name, library);
+		}
+
+		public WrappedKeyObject(ContentName name) throws XMLStreamException, IOException, ClassNotFoundException, ConfigurationException {
+			super(WrappedKey.class, name);
+		}
+		public WrappedKeyObject(ContentName name, WrappedKey wrappedKey, CCNLibrary library) {
+			super(WrappedKey.class, name, wrappedKey, library);
+		}
+
+		public WrappedKeyObject(ContentName name, WrappedKey wrappedKey) throws ConfigurationException, IOException {
+			super(WrappedKey.class, name, wrappedKey);
+		}
+		
+		public WrappedKey wrappedKey() { return data(); }
+	}
+
 	private static final Map<String,String> _WrapAlgorithmMap = new HashMap<String,String>();
 
 	byte [] _wrappingKeyIdentifier;
@@ -86,14 +114,15 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	 * this is available in Java 1.6, or BouncyCastle.
 	 * 
 	 * @param keyLabel optional label for the wrapped key
-	 * @param optional algorithm to decode/se the wrapped key (e.g. AES-CBC)
+	 * @param optional algorithm to decode the wrapped key (e.g. AES-CBC); otherwise
+	 *    we use  key.getAlgorithm()
 	 * @throws NoSuchPaddingException 
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
 	 * @throws IllegalBlockSizeException 
 	 */
 	public static WrappedKey wrapKey(Key keyToBeWrapped,
-									 String keyAlgorithm,
+									 String keyAlgorithm, 
 									 String keyLabel, 
 									 Key wrappingKey) 
 	throws NoSuchAlgorithmException, NoSuchPaddingException, 
@@ -140,8 +169,10 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 				wrappedKey = wrapCipher.wrap(keyToBeWrapped);
 			}
 		}
-	    return new WrappedKey(null, keyAlgorithm, keyToBeWrapped.getAlgorithm(), 
-	    						keyLabel, wrappedNonceKey, wrappedKey);
+		// Default wrapping algorithm is being used, don't need to include it.
+	    return new WrappedKey(null, null, 
+	    					 ((null == keyAlgorithm) ? keyToBeWrapped.getAlgorithm() : keyAlgorithm), 
+	    					 keyLabel, wrappedNonceKey, wrappedKey);
 	}
 	
 	/**
