@@ -80,6 +80,7 @@ EOF
 
 ccndsmoketest
 dataresponsetest keyfetchdata.ccnb keyfetchpkey.ccnb &
+ccndsmoketest -t 100 recv
 ccnls ccn:/ccnd/test_keyfetch > unverified.out
 CCN_VERIFY=1 ccnls ccn:/ccnd/test_keyfetch > verified.out
 
