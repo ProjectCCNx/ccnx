@@ -1,5 +1,6 @@
 package com.parc.ccn.security.access;
 
+import java.security.AccessControlException;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.NoSuchAlgorithmException;
@@ -136,6 +137,9 @@ public class AccessControlManager {
 	 * Get a raw node key in force at this node, if any exists and we have rights to decrypt it
 	 * with some key we know.
 	 * Used in updating node keys and by {@link #getEffectiveNodeKey(ContentName)}.
+	 * To achieve this, we walk up the tree for this node. At each point, we check to
+	 * see if a node key exists. If one exists, we decrypt it if we know an appropriate
+	 * key. Otherwise we return null.
 	 * @param nodeName
 	 * @return
 	 */
@@ -170,10 +174,25 @@ public class AccessControlManager {
 	 */
 	public byte [] getDataKey(ContentName dataNodeName) {
 		// DKS TODO -- library/flow control handling
-		WrappedKeyObject wko = new WrappedKeyObject(dataNodeName);
-		wko.update();
+		WrappedKeyObject wdko = new WrappedKeyObject(dataNodeName);
+		wdko.update();
+		
+		// DKS TODO -- attempt to pull the node key used to encrypt the data key
+		// out of the cache.
+		NodeKey nk = keyCache().getNodeKey(wdko.wrappedKey().wrappingKeyIdentifier());
+		if (null == nk) {
+			if (null == wdko.wrappedKey().wrappingKeyName()) {
+				throw new IllegalStateException("Data key for node " + dataNodeName + " does not specify its wrapping node key!");
+			}
+			// We should know what node key to use, but we have to find the specific
+			// node key we can decrypt.
+			nk = getNodeKey(wdko.wrappedKey().wrappingKeyName());
+			if (null == nk) {
+				throw new AccessControlException("No decryptable node key available for " + wdko.wrappedKey().wrappingKeyName() + ", access denied.");
+			}
+		}
 	
-		NodeKey enk = getEffectiveNodeKey(dataNodeName);
+		NodeKey enk = retrieveNodeKey(wdko.wrappedKey().wrappingKeyName());
 		Key dataKey = wko.wrappedKey().unwrapKey(enk.nodeKey());
 		return dataKey.getEncoded();
 	}
