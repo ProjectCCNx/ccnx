@@ -6,6 +6,7 @@ TESTS = \
  test_final_teardown \
  test_happy_face \
  test_inject \
+ test_key_fetch \
  test_long_consumer \
  test_long_consumer2 \
  test_long_producer \
@@ -20,7 +21,7 @@ default all:
 	@: nothing to do in tests
 
 clean:
-	rm -rf log logs depend STATUS SKIPPED FAILING *.out ephemeral*.ccnb
+	rm -rf log logs depend STATUS SKIPPED FAILING *.out ephemeral*.ccnb keyfetch*.ccnb
 
 check test: $(SCRIPTSRC)  stubs
 	mkdir -p log
