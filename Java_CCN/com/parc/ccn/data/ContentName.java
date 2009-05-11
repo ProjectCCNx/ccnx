@@ -140,6 +140,15 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 	
 	/**
+	 * Copy constructor, also used by subclasses merely wanting a different
+	 * name in encoding/decoding.
+	 * @param otherName
+	 */
+	public ContentName(ContentName otherName) {
+		this(((null == otherName) ? 0 : otherName.count()), ((null == otherName) ? null : otherName.components()));
+	}
+	
+	/**
 	 * Return the <code>ContentName</code> represented by the given URI.
 	 * A CCN <code>ContentName</code> consists of a sequence of binary components
 	 * of any length (including 0), which allows such things as encrypted
@@ -733,8 +742,16 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		return componentPrintURI(_components.get(i));
 	}
 	
+	/**
+	 * Allow override to give different element name.
+	 * @return
+	 */
+	public String contentNameElement() { 
+		return CONTENT_NAME_ELEMENT;
+	}
+	
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		decoder.readStartElement(CONTENT_NAME_ELEMENT);
+		decoder.readStartElement(contentNameElement());
 		
 		_components = new ArrayList<byte []>();
 		
@@ -907,7 +924,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 
-		encoder.writeStartElement(CONTENT_NAME_ELEMENT);
+		encoder.writeStartElement(contentNameElement());
 		
 		for (int i=0; i < count(); ++i) {
 			encoder.writeElement(COMPONENT_ELEMENT, _components.get(i));
