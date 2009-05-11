@@ -24,7 +24,6 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.WrappedKey;
 import com.parc.ccn.library.profiles.VersioningProfile;
-import com.parc.ccn.security.crypto.ContentKeys;
 import com.parc.ccn.security.crypto.jce.CCNCryptoProvider;
 
 public class WrappedKeyTest {
@@ -185,7 +184,7 @@ public class WrappedKeyTest {
 
 		WrappedKey wks = null;
 		try {
-			wks = WrappedKey.wrapKey(wrappedAESKey, ContentKeys.DEFAULT_CIPHER_ALGORITHM, aLabel, wrappingAESKey);
+			wks = WrappedKey.wrapKey(wrappedAESKey, null, aLabel, wrappingAESKey);
 		} catch (Exception e) {
 			fail("Exception in wrapKey: " + e.getClass().getName() + ":  " + e.getMessage());
 		}
