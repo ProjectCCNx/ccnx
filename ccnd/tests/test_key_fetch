@@ -39,7 +39,7 @@ TEzqUnoIrDIdh7rIXLXE2AkhucB3QEYAfY/TI1sU3zU=</SignatureBits>
 </ContentObject>
 EOF
 
-ccn_xmltoccnb -w - << 'EOF' > keyfetchpdata.ccnb
+ccn_xmltoccnb -w - << 'EOF' > keyfetchpkey.ccnb
 <?xml version="1.0" encoding="UTF-8"?>
 <ContentObject>
   <Signature>
@@ -78,15 +78,16 @@ dT9ZtpcTlnhdUwLzNwIDAQAB</Content>
 </ContentObject>
 EOF
 
-ccndsmoketest send keyfetchdata.ccnb recv recv recv send keyfetchpkey.ccnb recv &
-ccnls ccn:/ccnd/test_keyfetch | tee unverified.out
-CCN_VERIFY=1 CCN_LINGER=8 ccnls ccn:/ccnd/test_keyfetch | tee verified.out
+ccndsmoketest
+dataresponsetest keyfetchdata.ccnb keyfetchpkey.ccnb &
+ccnls ccn:/ccnd/test_keyfetch > unverified.out
+CCN_VERIFY=1 ccnls ccn:/ccnd/test_keyfetch > verified.out
 
 fgrep '[unverified]' unverified.out || Fail should have gotten unverified data without key
-fgrep '[verified]' verified.out || SkipTest should have gotten verified data with key
+fgrep '[verified]' verified.out || Fail should have gotten verified data with key
 
 rm keyfetchdata.ccnb keyfetchpkey.ccnb unverified.out verified.out
-
+####################################################################################
 : <<'EOF'
 # Instructions for creating pre-signed data
 # This will need re-doing if/when schema or encoding changes.

@@ -59,6 +59,7 @@ struct expressed_interest {
     size_t size;                 /* its size in bytes */
     int target;                  /* how many we want outstanding (0 or 1) */
     int outstanding;             /* number currently outstanding (0 or 1) */
+    struct ccn_charbuf *wanted_pub; /* waiting for this pub to arrive */
     struct expressed_interest *next; /* link to next in list */
 };
 
@@ -263,6 +264,7 @@ ccn_destroy_interest(struct ccn *h, struct expressed_interest *i)
     }
     ccn_replace_handler(h, &(i->action), NULL);
     replace_interest_msg(i, NULL);
+    ccn_charbuf_destroy(&i->wanted_pub);
     i->magic = -1;
     free(i);
     return(ans);
@@ -790,59 +792,41 @@ ccn_locate_key(struct ccn *h,
 }
 
 /*
- * Called when we get an answer to a KeyLocator fetch issued by ccn_initiate_key_fetch.
+ * Called when we get an answer to a KeyLocator fetch issued by
+ * ccn_initiate_key_fetch.  This does not really have to do much,
+ * since the main content handling logic picks up the keys as they
+ * go by.
  */
 static enum ccn_upcall_res
 handle_key(
-    struct ccn_closure *selfp,
-    enum ccn_upcall_kind kind,
-    struct ccn_upcall_info *info)
+           struct ccn_closure *selfp,
+           enum ccn_upcall_kind kind,
+           struct ccn_upcall_info *info)
 {
     struct ccn *h = info->h;
-    const unsigned char *ccnb = NULL;
-    size_t ccnb_size = 0;
-    int res;
-    struct expressed_interest *trigger_interest = selfp->data;
-    
+    (void)h;
     switch(kind) {
-    case CCN_UPCALL_FINAL:
-        free(selfp);
-        return(CCN_UPCALL_RESULT_OK);
-    case CCN_UPCALL_INTEREST_TIMED_OUT:
-        trigger_interest = selfp->data;
-        if (trigger_interest != NULL && trigger_interest->magic == 0x7059e5f4)
-            trigger_interest->outstanding = 0;
-        return(CCN_UPCALL_RESULT_OK);
-    case CCN_UPCALL_CONTENT:
-    case CCN_UPCALL_CONTENT_UNVERIFIED:
-        break;
-    default:
-        return (CCN_UPCALL_RESULT_ERR);
+        case CCN_UPCALL_FINAL:
+            free(selfp);
+            return(CCN_UPCALL_RESULT_OK);
+        case CCN_UPCALL_INTEREST_TIMED_OUT:
+            /* Don't keep trying */
+            return(CCN_UPCALL_RESULT_OK);
+        case CCN_UPCALL_CONTENT:
+        case CCN_UPCALL_CONTENT_UNVERIFIED:
+            return(CCN_UPCALL_RESULT_OK);
+        default:
+            return (CCN_UPCALL_RESULT_ERR);
     }
-
-    ccnb = info->content_ccnb;
-    ccnb_size = info->pco->offset[CCN_PCO_E];
-
-    if (info->pco->offset[CCN_PCO_B_Type] == info->pco->offset[CCN_PCO_E_Type]) {
-        return(CCN_UPCALL_RESULT_OK); // XXX - Nick, is this right?
-    }
-    res = ccn_cache_key(h, ccnb, ccnb_size, info->pco);
-    return ((res < 0) ? CCN_UPCALL_RESULT_ERR : CCN_UPCALL_RESULT_OK);
 }
 
-/* The key may be on its way because ccn_locate_key asked for it, or it may
- arrive by happenstance.  When it arrives we need to manage to re-processing
- the unverified object so that the upcall can happen again. We could do
- this by remembering the content object itself, or by remembering a
- specific Interest that should get it back for us once more.
- This needs to be triggered on the arrival of the pubkey.
- The triggered event should also go away when nobody cares anymore. */
 static int
 ccn_initiate_key_fetch(struct ccn *h,
                        unsigned char *msg, struct ccn_parsed_ContentObject *pco,
                        struct expressed_interest *trigger_interest)
 {
-    /* Create an new interest in the key name, set up a callback that will
+    /* 
+     * Create a new interest in the key name, set up a callback that will
      * insert the key into the h->keys hashtb for the calling handle and
      * cause the trigger_interest to be re-expressed.
      */
@@ -850,16 +834,33 @@ ccn_initiate_key_fetch(struct ccn *h,
     int namelen;
     struct ccn_charbuf *key_name = NULL;
     struct ccn_closure *key_closure = NULL;
+    const unsigned char *pkeyid = NULL;
+    size_t pkeyid_size = 0;
+    struct ccn_charbuf *templ = NULL;
     
+    if (trigger_interest != NULL) {
+        /* Arrange a wakeup when the key arrives */
+        if (trigger_interest->wanted_pub == NULL)
+            trigger_interest->wanted_pub = ccn_charbuf_create();
+        res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest, msg,
+                                  pco->offset[CCN_PCO_B_PublisherPublicKeyDigest],
+                                  pco->offset[CCN_PCO_E_PublisherPublicKeyDigest],
+                                  &pkeyid, &pkeyid_size);
+        if (trigger_interest->wanted_pub != NULL && res >= 0) {
+            trigger_interest->wanted_pub->length = 0;
+            ccn_charbuf_append(trigger_interest->wanted_pub, pkeyid, pkeyid_size);
+        }
+        trigger_interest->target = 0;
+    }
+
     namelen = (pco->offset[CCN_PCO_E_KeyName_Name] -
                pco->offset[CCN_PCO_B_KeyName_Name]);
+    /*
+     * If there is no KeyName provided, we can't ask, but we might win if the
+     * key arrives along with some other content.
+     */
     if (namelen == 0)
         return(-1);
-    // XXX - some of these paranoia checks can go away.
-    if (namelen < 2 || namelen > 10000)
-        THIS_CANNOT_HAPPEN(h);
-    if (pco->offset[CCN_PCO_B_KeyName_Name] < 10)
-        THIS_CANNOT_HAPPEN(h);
     key_closure = calloc(1, sizeof(*key_closure));
     if (key_closure == NULL)
         return (NOTE_ERRNO(h));
@@ -870,17 +871,37 @@ ccn_initiate_key_fetch(struct ccn *h,
                              msg + pco->offset[CCN_PCO_B_KeyName_Name],
                              namelen);
     if (pco->offset[CCN_PCO_B_KeyName_Pub] < pco->offset[CCN_PCO_E_KeyName_Pub]) {
-        XXX; // - we should put this in the interest, too.
+        templ = ccn_charbuf_create();
+        ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
+        ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
+        ccn_charbuf_append_closer(templ); /* </Name> */
+        ccn_charbuf_append(templ,
+                           msg + pco->offset[CCN_PCO_B_KeyName_Pub],
+                           (pco->offset[CCN_PCO_E_KeyName_Pub] - 
+                            pco->offset[CCN_PCO_B_KeyName_Pub]));
+        ccn_charbuf_append_closer(templ); /* </Interest> */
     }
-    if (trigger_interest != NULL) {
-        /* This gets exciting. Plant a hook in the caller's interest so we can do our thing. */
-        // struct ccn_closure *hook = calloc(1, sizeof(*hook));
-        // trigger_interest->action->refcount++;
-        // XXX;
-    }
-    res = ccn_express_interest(h, key_name, -1, key_closure, NULL);
+    res = ccn_express_interest(h, key_name, -1, key_closure, templ);
     ccn_charbuf_destroy(&key_name);
+    ccn_charbuf_destroy(&templ);
     return(res);
+}
+
+/*
+ * If we were waiting for a key and it has arrived,
+ * refresh the interest.
+ */
+static void
+ccn_check_pub_arrival(struct ccn *h, struct expressed_interest *interest)
+{
+    struct ccn_charbuf *want = interest->wanted_pub;
+    if (want == NULL)
+        return;
+    if (hashtb_lookup(h->keys, want->buf, want->length) != NULL) {
+        ccn_charbuf_destroy(&interest->wanted_pub);
+        interest->target = 1;
+        ccn_refresh_interest(h, interest);
+    }
 }
 
 static void
@@ -972,17 +993,13 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                                     ures = (interest->action->p)(interest->action,
                                                                  upcall_kind,
                                                                  &info);
-                                    if (interest->magic != 0x7059e5f4) {
+                                    if (interest->magic != 0x7059e5f4)
                                         ccn_gripe(interest);
-                                    }
                                     if (ures == CCN_UPCALL_RESULT_REEXPRESS)
                                         ccn_refresh_interest(h, interest);
                                     else if (ures == CCN_UPCALL_RESULT_VERIFY &&
                                              upcall_kind == CCN_UPCALL_CONTENT_UNVERIFIED) { /* KEYS */
-                                        // XXX - what do we really need to do here...
-                                        interest->outstanding += 1; /* Pretend it is still outstanding. */
                                         ccn_initiate_key_fetch(h, msg, info.pco, interest);
-                                        XXX;
                                     } else {
                                         interest->target = 0;
                                         replace_interest_msg(interest, NULL);
@@ -1172,9 +1189,10 @@ ccn_age_interests(struct ccn *h)
                 need_clean = 1;
             else {
                 for (ie = entry->list; ie != NULL; ie = ie->next) {
+                    ccn_check_pub_arrival(h, ie);
                     if (ie->target != 0)
                         ccn_age_interest(h, ie, e->key, e->keysize);
-                    if (ie->target == 0) {
+                    if (ie->target == 0 && ie->wanted_pub == NULL) {
                         ccn_replace_handler(h, &(ie->action), NULL);
                         replace_interest_msg(ie, NULL);
                         need_clean = 1;
@@ -1273,6 +1291,7 @@ handle_simple_incoming_content(
     struct ccn_upcall_info *info)
 {
     struct simple_get_data *md = selfp->data;
+    struct ccn *h = info->h;
     
     if (kind == CCN_UPCALL_FINAL) {
         if (selfp != &md->closure)
@@ -1282,7 +1301,8 @@ handle_simple_incoming_content(
     }
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
         return(selfp->intdata ? CCN_UPCALL_RESULT_REEXPRESS : CCN_UPCALL_RESULT_OK);
-    // XXX - Probably should always work hard to verify, or add a parameter to specify.
+    if (kind == CCN_UPCALL_CONTENT_UNVERIFIED)
+        XXX; // - Probably should always work hard to verify, or add a parameter to specify.
     if (kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_UNVERIFIED)
         return(CCN_UPCALL_RESULT_ERR);
     if (md->resultbuf != NULL) {
