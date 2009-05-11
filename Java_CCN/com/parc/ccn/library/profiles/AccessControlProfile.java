@@ -27,6 +27,7 @@ public class AccessControlProfile implements CCNProfile {
 	public static final String PREVIOUS_KEY_NAME = "PreviousKey";
 	public static final String ACL_NAME = "ACL";
 	public static final String NODE_KEY_NAME = "NK";
+	public static final String DATA_KEY_NAME = "DK";
 	
 	
 	public static boolean isAccessName(ContentName name) {
@@ -48,6 +49,25 @@ public class AccessControlProfile implements CCNProfile {
 		return false;
 	}
 	
+	public static ContentName nodeKeyName(ContentName nodeName) {
+		if (!isAccessName(name)) {
+		}
+	}
+	
+	public static ContentName dataKeyName(ContentName dataNodeName) {
+		
+	}
+	
+	public static boolean isDataKeyName(ContentName name) {
+		if (!isAccessName(name) || VersioningProfile.isVersioned(name)) {
+			return false;
+		}
+		ContentName dkName = VersioningProfile.versionRoot(name);
+		if (dkName.stringComponent(dkName.count()-1).equals(DATA_KEY_NAME)) {
+			return true;
+		}
+		return false;
+	}
 	/**
 	 * Assumes a top-level namespace, where the group information is stored in 
 	 * <namespace>/_access_/Groups and <namespace>/_access_/Users..

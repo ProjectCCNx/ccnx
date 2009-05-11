@@ -1,16 +1,43 @@
 package com.parc.ccn.security.access;
 
+import java.security.InvalidKeyException;
+import java.security.Key;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.SecretKeySpec;
+import javax.xml.stream.XMLStreamException;
+
+import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.security.WrappedKey;
+import com.parc.ccn.data.security.WrappedKey.WrappedKeyObject;
 import com.parc.ccn.library.profiles.AccessControlProfile;
 
 public class AccessControlManager {
+	
+	/**
+	 * Default data key length in bytes. No real reason this can't be bumped up to 32. It
+	 * acts as the seed for a KDF, not an encryption key.
+	 */
+	public static final int DEFAULT_DATA_KEY_LENGTH = 16; 
+	/**
+	 * The keys we're wrapping are really seeds for a KDF, not keys in their own right.
+	 * Eventually we'll use CMAC, so call them AES...
+	 */
+	public static final String DEFAULT_DATA_KEY_ALGORITHM = "AES";
+	
+	public static final String DATA_KEY_LABEL = "Data Key";
+	public static final String NODE_KEY_LABEL = "Node Key";
 
 	private ContentName _namespace;
 	private ContentName _groupStorage;
 	private ContentName _userStorage;
+	private SecureRandom _random = new SecureRandom();
 	
 	public AccessControlManager(ContentName namespace) {
 		this(namespace, AccessControlProfile.groupNamespaceName(namespace), AccessControlProfile.userNamespaceName(namespace));
@@ -21,6 +48,18 @@ public class AccessControlManager {
 		_groupStorage = groupStorage;
 		_userStorage = userStorage;
 		// DKS TODO here, check for a namespace marker, and if one not there, write it (async)
+	}
+	
+	/**
+	 * Labels for deriving various types of keys.
+	 * @return
+	 */
+	public String dataKeyLabel() {
+		return DATA_KEY_LABEL;
+	}
+	
+	public String nodeKeyLabel() {
+		return NODE_KEY_LABEL;
 	}
 	
 	public ArrayList<String> listGroups() {
@@ -94,7 +133,8 @@ public class AccessControlManager {
 	}
 	
 	/**
-	 * Get a raw node key stored at this node, if any exists and we have rights to decrypt it.
+	 * Get a raw node key in force at this node, if any exists and we have rights to decrypt it
+	 * with some key we know.
 	 * Used in updating node keys and by {@link #getEffectiveNodeKey(ContentName)}.
 	 * @param nodeName
 	 * @return
@@ -106,35 +146,83 @@ public class AccessControlManager {
 	/**
 	 * Get the effective node key in force at this node, used to derive keys to 
 	 * encrypt and decrypt content.
+	 * @throws XMLStreamException 
+	 * @throws InvalidKeyException 
 	 */
-	public NodeKey getEffectiveNodeKey(ContentName nodeName) {
-		
-	}
-	
-	public DataKey getDataKey(ContentName dataNodeName) {
-		
+	public NodeKey getEffectiveNodeKey(ContentName nodeName) throws InvalidKeyException, XMLStreamException {
+		// Get the ancestor node key in force at this node.
+		NodeKey nodeKey = getNodeKey(nodeName);
+		if (null == nodeKey) {
+			throw new IllegalStateException("Cannot retrieve node key for node: " + nodeName + ".");
+		}
+		NodeKey effectiveNodeKey = nodeKey.computeDescendantNodeKey(nodeName, nodeKeyLabel()); 
+		Library.logger().info("Computing effective node key for " + nodeName + " using stored node key " + effectiveNodeKey.storedNodeKeyName());
+		return effectiveNodeKey;
 	}
 	
 	/**
-	 * Take a randomly generated data key and store it.
+	 * Given a data location, pull the data key block and decrypt it using
+	 * whatever node keys are necessary.
+	 * To turn the result of this into a key for decrypting content,
+	 * follow the steps in the comments to {@link #generateAndStoreDataKey(ContentName)}.
+	 * @param dataNodeName
+	 * @return
+	 */
+	public byte [] getDataKey(ContentName dataNodeName) {
+		// DKS TODO -- library/flow control handling
+		WrappedKeyObject wko = new WrappedKeyObject(dataNodeName);
+		wko.update();
+	
+		NodeKey enk = getEffectiveNodeKey(dataNodeName);
+		Key dataKey = wko.wrappedKey().unwrapKey(enk.nodeKey());
+		return dataKey.getEncoded();
+	}
+	
+	/**
+	 * Take a randomly generated data key and store it. This requires finding
+	 * the current effective node key, and wrapping this data key in it.
 	 * @param dataNodeName
 	 * @param newRandomDataKey
+	 * @throws IllegalBlockSizeException 
+	 * @throws NoSuchPaddingException 
+	 * @throws NoSuchAlgorithmException 
+	 * @throws InvalidKeyException 
 	 */
-	public void storeDataKey(ContentName dataNodeName, byte [] newRandomDataKey) {
+	public void storeDataKey(ContentName dataNodeName, byte [] newRandomDataKey) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException {
+		NodeKey effectiveNodeKey = getEffectiveNodeKey(dataNodeName);
+		if (null == effectiveNodeKey) {
+			throw new IllegalStateException("Cannot retrieve effective node key for node: " + dataNodeName + ".");
+		}
+		Library.logger().info("Wrapping data key for node: " + dataNodeName + " with effective node key for node: " + 
+							  effectiveNodeKey.nodeName() + " derived from stored node key for node: " + 
+							  effectiveNodeKey.storedNodeKeyName());
+		WrappedKey wrappedDataKey = WrappedKey.wrapKey(new SecretKeySpec(newRandomDataKey, DEFAULT_DATA_KEY_ALGORITHM), 
+													   null, dataKeyLabel(), 
+													   effectiveNodeKey.nodeKey());
+		wrappedDataKey.setWrappingKeyIdentifier(effectiveNodeKey.storedNodeKeyID());
+		wrappedDataKey.setWrappingKeyName(effectiveNodeKey.storedNodeKeyName());
+		
+		storeKeyContent(AccessControlProfile.dataKeyName(dataNodeName), wrappedDataKey);
 		
 	}
 	
 	/**
 	 * Generate a random data key, store it, and return it to use to derive keys to encrypt
 	 * content. All that's left is to call
+	 * byte [] randomDataKey = generateAndStoreDataKey(dataNodeName);
 	 * byte [][] keyandiv = 
 	 * 		KeyDerivationFunction.DeriveKeyForObject(randomDataKey, keyLabel, 
 	 * 												 dataNodeName, dataPublisherPublicKeyDigest)
 	 * and then give keyandiv to the segmenter to encrypt the data.
+	 * @throws IllegalBlockSizeException 
+	 * @throws NoSuchPaddingException 
+	 * @throws NoSuchAlgorithmException 
+	 * @throws InvalidKeyException 
 	 **/
-	public byte [] generateAndStoreDataKey(ContentName dataNodeName) {
+	public byte [] generateAndStoreDataKey(ContentName dataNodeName) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException {
 		// Generate new random data key of appropriate length
 		byte [] dataKey = new byte[DEFAULT_DATA_KEY_LENGTH];
+		_random.nextBytes(dataKey);
 		storeDataKey(dataNodeName, dataKey);
 		return dataKey;
 	}
