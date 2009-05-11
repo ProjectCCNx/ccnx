@@ -31,7 +31,10 @@ rm -rf STATUS
 mkdir STATUS
 
 GetTestNames () {
-   echo test_*
+  case ${1:-x} in
+     test_*)	echo "$@";;
+     x)		echo test_*;;
+  esac
 }
 
 ExtractDeps () {
@@ -63,7 +66,7 @@ SetExitCode () {
 # ExtractDeps $(GetTestNames) > deps.out
 # tsort deps.out > sorted-deps.out
 
-ExtractDeps $(GetTestNames) | tsort | while read TEST; do RunTest $TEST; done
+ExtractDeps $(GetTestNames "$@") | tsort | while read TEST; do RunTest $TEST; done
 
 grep test_ SKIPPED FAILING
 SetExitCode
