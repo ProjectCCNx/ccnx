@@ -20,8 +20,10 @@ import org.junit.Test;
 
 import test.ccn.data.util.XMLEncodableTester;
 
+import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.WrappedKey;
+import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.crypto.ContentKeys;
 import com.parc.ccn.security.crypto.jce.CCNCryptoProvider;
 
@@ -35,6 +37,7 @@ public class WrappedKeyTest {
 	public static SecretKeySpec wrappedAESKey = null;
 	public static String aLabel = "FileEncryptionKeys";
 	public static byte [] wrappingKeyID = null;
+	public static ContentName wrappingKeyName = null;
 	public static byte [] dummyWrappedKey = new byte[64];
 	static byte [] gbytes = new byte[]{(byte)0x0, (byte)0xc6, (byte)0x89, (byte)0xde, 
 									   (byte)0x62, (byte)0x40, (byte)0x38, (byte)0x5f, 
@@ -101,6 +104,7 @@ public class WrappedKeyTest {
 		wrappingKeyPair = kpg.generateKeyPair();
 		wrappedKeyPair = kpg.generateKeyPair();
 		wrappingKeyID = PublisherID.generatePublicKeyDigest(wrappingKeyPair.getPublic());
+		wrappingKeyName = VersioningProfile.versionName(ContentName.fromNative("/parc/Users/briggs/KEY"));
 		
 		ElGamalParameterSpec egp = new ElGamalParameterSpec(new BigInteger(1, pbytes), new BigInteger(1, gbytes));
 		KeyPairGenerator ekpg = KeyPairGenerator.getInstance("ElGamal");
@@ -197,9 +201,10 @@ public class WrappedKeyTest {
 			fail("Exception in wrapKey: " + e.getClass().getName() + ":  " + e.getMessage());
 		}
 		wka.setWrappingKeyIdentifier(wrappingKeyID);
+		wka.setWrappingKeyName(wrappingKeyName);
 		WrappedKey dwka = new WrappedKey();
 		WrappedKey bdwka = new WrappedKey();
-		XMLEncodableTester.encodeDecodeTest("WrappedKey(assymmetric wrap symmetric, with id)", wka, dwka, bdwka);
+		XMLEncodableTester.encodeDecodeTest("WrappedKey(assymmetric wrap symmetric, with id and name)", wka, dwka, bdwka);
 		Assert.assertArrayEquals(dwka.wrappingKeyIdentifier(), wrappingKeyID);
 	}
 

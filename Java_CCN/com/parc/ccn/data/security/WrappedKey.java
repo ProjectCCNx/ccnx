@@ -19,6 +19,7 @@ import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.bouncycastle.crypto.params.KeyParameter;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
@@ -31,6 +32,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 
 	protected static final String WRAPPED_KEY_ELEMENT = "WrappedKey";
 	protected static final String WRAPPING_KEY_IDENTIFIER_ELEMENT = "WrappingKeyIdentifier";
+	protected static final String WRAPPING_KEY_NAME_ELEMENT = "WrappingKeyName";
 	protected static final String WRAP_ALGORITHM_ELEMENT = "WrapAlgorithm";
 	protected static final String KEY_ALGORITHM_ELEMENT = "KeyAlgorithm";
 	protected static final String LABEL_ELEMENT = "Label";
@@ -40,9 +42,24 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	protected static final String NONCE_KEY_ALGORITHM = "AES";
 	protected static final int NONCE_KEY_LENGTH = 128;
 	
+	public class WrappingKeyName extends ContentName {
+
+		public WrappingKeyName(ContentName name) {
+			super(name);
+		}
+		
+		public WrappingKeyName() {}
+		
+		@Override
+		public String contentNameElement() { 
+			return WRAPPING_KEY_NAME_ELEMENT;
+		}
+	}
+
 	private static final Map<String,String> _WrapAlgorithmMap = new HashMap<String,String>();
 
 	byte [] _wrappingKeyIdentifier;
+	WrappingKeyName _wrappingKeyName;
 	String _wrapAlgorithm;
 	String _keyAlgorithm;
 	String _label;
@@ -236,6 +253,9 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		setWrappingKeyIdentifier(CCNDigestHelper.digest(wrappingKey.getEncoded()));
 	}
 	
+	public ContentName wrappingKeyName() { return _wrappingKeyName; }
+	public void setWrappingKeyName(ContentName keyName) { _wrappingKeyName = new WrappingKeyName(keyName); }
+	
 	public String wrapAlgorithm() { return _wrapAlgorithm; }
 	public String keyAlgorithm() { return _keyAlgorithm; }
 	public String label() { return _label; }
@@ -248,6 +268,11 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 
 		if (decoder.peekStartElement(WRAPPING_KEY_IDENTIFIER_ELEMENT)) {
 			_wrappingKeyIdentifier = decoder.readBinaryElement(WRAPPING_KEY_IDENTIFIER_ELEMENT); 
+		}
+		
+		if (decoder.peekStartElement(WRAPPING_KEY_NAME_ELEMENT)) {
+			_wrappingKeyName = new WrappingKeyName();
+			_wrappingKeyName.decode(decoder);
 		}
 		
 		if (decoder.peekStartElement(WRAP_ALGORITHM_ELEMENT)) {
@@ -284,6 +309,10 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 			// needs to handle null WKI
 			encoder.writeElement(WRAPPING_KEY_IDENTIFIER_ELEMENT, wrappingKeyIdentifier());
 		}
+		
+		if (null != wrappingKeyName()) {
+			wrappingKeyName().encode(encoder);
+		}
 
 		if (null != wrapAlgorithm()) {
 			//String wrapOID = OIDLookup.getCipherOID(wrapAlgorithm());
@@ -319,12 +348,16 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + Arrays.hashCode(_encryptedKey);
+		result = prime * result + Arrays.hashCode(_encryptedNonceKey);
 		result = prime * result
 				+ ((_keyAlgorithm == null) ? 0 : _keyAlgorithm.hashCode());
 		result = prime * result + ((_label == null) ? 0 : _label.hashCode());
 		result = prime * result
 				+ ((_wrapAlgorithm == null) ? 0 : _wrapAlgorithm.hashCode());
 		result = prime * result + Arrays.hashCode(_wrappingKeyIdentifier);
+		result = prime
+				* result
+				+ ((_wrappingKeyName == null) ? 0 : _wrappingKeyName.hashCode());
 		return result;
 	}
 
@@ -338,6 +371,8 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 			return false;
 		WrappedKey other = (WrappedKey) obj;
 		if (!Arrays.equals(_encryptedKey, other._encryptedKey))
+			return false;
+		if (!Arrays.equals(_encryptedNonceKey, other._encryptedNonceKey))
 			return false;
 		if (_keyAlgorithm == null) {
 			if (other._keyAlgorithm != null)
@@ -357,9 +392,14 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		if (!Arrays
 				.equals(_wrappingKeyIdentifier, other._wrappingKeyIdentifier))
 			return false;
+		if (_wrappingKeyName == null) {
+			if (other._wrappingKeyName != null)
+				return false;
+		} else if (!_wrappingKeyName.equals(other._wrappingKeyName))
+			return false;
 		return true;
 	}
-	
+
 	public static int getCipherType(String cipherAlgorithm) {
 		if (cipherAlgorithm.equalsIgnoreCase("ECIES") || 
 					cipherAlgorithm.equalsIgnoreCase("RSA") || cipherAlgorithm.equalsIgnoreCase("ElGamal")) {
