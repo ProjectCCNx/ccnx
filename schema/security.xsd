@@ -31,6 +31,9 @@
 	<!-- Identify the key used to wrap this one, usually by its digest. -->
 	<xs:element name="WrappingKeyIdentifier" type="DigestType"
                                      minOccurs="0" maxOccurs="1" /> 
+    <!-- Identify the name under which to find the wrapping key. -->
+    <xs:element name="WrappingKeyName" type="NameType"
+                                     minOccurs="0" maxOccurs="1" /> 
 	<!-- The default wrap algorithm is determined by the type of the wrapping key.
          For AES, it's NIST/RFC3394 key wrapping. For RSA, RSA-OAEP. 
          OIDs for AES: 128-bit: 2.16.840.1.101.3.4.1.5
