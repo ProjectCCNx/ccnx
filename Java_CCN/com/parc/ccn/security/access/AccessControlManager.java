@@ -38,6 +38,7 @@ public class AccessControlManager {
 	private ContentName _namespace;
 	private ContentName _groupStorage;
 	private ContentName _userStorage;
+	private KeyCache _keyCache = new KeyCache();
 	private SecureRandom _random = new SecureRandom();
 	
 	public AccessControlManager(ContentName namespace) {
@@ -62,6 +63,8 @@ public class AccessControlManager {
 	public String nodeKeyLabel() {
 		return NODE_KEY_LABEL;
 	}
+	
+	private KeyCache keyCache() { return _keyCache; }
 	
 	public ArrayList<String> listGroups() {
 		
@@ -186,7 +189,7 @@ public class AccessControlManager {
 			}
 			// We should know what node key to use, but we have to find the specific
 			// node key we can decrypt.
-			nk = getNodeKey(wdko.wrappedKey().wrappingKeyName());
+			nk = getNodeKeyByName(wdko.wrappedKey().wrappingKeyName());
 			if (null == nk) {
 				throw new AccessControlException("No decryptable node key available for " + wdko.wrappedKey().wrappingKeyName() + ", access denied.");
 			}
