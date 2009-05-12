@@ -25,6 +25,12 @@ WithCCND () {
   CCN_LOCAL_PORT=$port "$@"
 }
 
+CheckForCCND () {
+  WithCCND $1 ccndsmoketest && return 0
+  echo "***" ccnd $1 is not ready yet ... >&2
+  return 1
+}
+
 ExpectLines () {
   local file lines minimum maximum
   lines=`wc -l < $1` || Fail
