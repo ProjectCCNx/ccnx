@@ -189,7 +189,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 				//responseName = c.name();
 				responseName = new ContentName(c.name(), c.contentDigest());
 				
-				try{
+				try {
 					collection = Collection.contentToCollection(c);
 					links = collection.contents();
 					for (LinkReference l: links) {
@@ -219,7 +219,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			/*
 			 System.out.println("new interest name: "+newInterest.name()+" total components: "+newInterest.name().count());
 			 
-			  try{
+			  try {
 			  	System.out.println("version: "+VersioningProfile.getVersionAsTimestamp(responseName));
 			  }
 			  catch(Exception e) {}
@@ -317,7 +317,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			if (cd.size()>0) {
 				//System.out.println("we have a response to send back for "+i.name().toString());
 				//System.out.println("Collection Name: "+collectionName.toString());
-				try{
+				try {
 					
 					//the following 6 lines are to be deleted after Collections are refactored
 					LinkReference[] temp = new LinkReference[cd.contents().size()];
