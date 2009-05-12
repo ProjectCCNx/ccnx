@@ -105,7 +105,12 @@ public abstract class KeyManager {
 	public abstract PrivateKey getSigningKey(PublisherID publisher);
 	public abstract PrivateKey getSigningKey(PublisherPublicKeyDigest publisherKeyID);
 	
-
+	/**
+	 * Get my identities, e.g. for loading a cache.
+	 * @return
+	 */
+	public abstract PrivateKey[] getSigningKeys();
+	
 	/**
 	 * Get someone else's public keys. Interesting to see
 	 * whether or not this should be handled by a TrustManager.
@@ -131,5 +136,5 @@ public abstract class KeyManager {
 	public abstract void publishKey(ContentName keyName, PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, ConfigurationException;
 	
 	public abstract KeyRepository keyRepository();
-	
+
 }
