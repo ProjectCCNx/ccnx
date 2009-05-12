@@ -17,6 +17,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.security.WrappedKey;
 import com.parc.ccn.data.security.WrappedKey.WrappedKeyObject;
+import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.profiles.AccessControlProfile;
 
 public class AccessControlManager {
@@ -151,6 +152,45 @@ public class AccessControlManager {
 	}
 	
 	/**
+	 * Retrieve a specific node key from a given location, as specified by a
+	 * key it was used to wrap, and, if possible, find a key we can use to
+	 * unwrap the node key.
+	 * 
+	 * Throw an exception if there is no node key block at the appropriate name.
+	 * @param nodeKeyName
+	 * @param nodeKeyIdentifier
+	 * @return
+	 */
+	public NodeKey getNodeKey(ContentName nodeKeyName, byte [] nodeKeyIdentifier) {
+		
+		if ((null == nodeKeyName) && (null == nodeKeyIdentifier)) {
+			throw new IllegalArgumentException("Node key name and identifier cannot both be null!");
+		}
+		// First, do we have it in the cache?
+		NodeKey nk = null;
+		if (null != nodeKeyIdentifier) {
+			nk = keyCache().getNodeKey(nodeKeyIdentifier);
+		}
+		
+		if (null == nk) {
+			if (null == nodeKeyName) {
+				Library.logger().warning("Cannot find node key " + DataUtils.printHexBytes(nodeKeyIdentifier) +
+						" in cache, and no name given.");
+				return null;
+			}
+			// We should know what node key to use, but we have to find the specific
+			// node key we can decrypt.
+			nk = getNodeKeyByName(nodeKeyName, nodeKeyIdentifier);
+			if (null == nk) {
+				Library.logger().warning("No decryptable node key available at " + nodeKeyName + ", access denied.");
+				return null;
+			}
+		}
+	
+		return nk;
+	}
+	
+	/**
 	 * Get the effective node key in force at this node, used to derive keys to 
 	 * encrypt and decrypt content.
 	 * @throws XMLStreamException 
@@ -168,6 +208,8 @@ public class AccessControlManager {
 	}
 	
 	/**
+	 * Used by content reader to retrieve the keys necessary to decrypt this content
+	 * under this access control model.
 	 * Given a data location, pull the data key block and decrypt it using
 	 * whatever node keys are necessary.
 	 * To turn the result of this into a key for decrypting content,
@@ -177,26 +219,33 @@ public class AccessControlManager {
 	 */
 	public byte [] getDataKey(ContentName dataNodeName) {
 		// DKS TODO -- library/flow control handling
-		WrappedKeyObject wdko = new WrappedKeyObject(dataNodeName);
+		WrappedKeyObject wdko = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataNodeName));
 		wdko.update();
+		if (null == wdko.wrappedKey()) {
+			Library.logger().warning("Could not retrieve data key for node: " + dataNodeName);
+			return null;
+		}
 		
-		// DKS TODO -- attempt to pull the node key used to encrypt the data key
-		// out of the cache.
-		NodeKey nk = keyCache().getNodeKey(wdko.wrappedKey().wrappingKeyIdentifier());
+		// First, we go and look for the node key where the data key suggests
+		// it should be, and attempt to decrypt it from there.
+		NodeKey nk = getNodeKey(wdko.wrappedKey().wrappingKeyName(), 
+								wdko.wrappedKey().wrappingKeyIdentifier());
 		if (null == nk) {
-			if (null == wdko.wrappedKey().wrappingKeyName()) {
-				throw new IllegalStateException("Data key for node " + dataNodeName + " does not specify its wrapping node key!");
-			}
-			// We should know what node key to use, but we have to find the specific
-			// node key we can decrypt.
-			nk = getNodeKeyByName(wdko.wrappedKey().wrappingKeyName());
+			// OK, we will have gotten an exception if the node key simply didn't exist
+			// there, so this means that we don't have rights to read it there.
+			// The only way we might have rights not visible from this link is if an
+			// ACL has been interposed between where we are and the node key, and that
+			// ACL does give us rights.
+			nk = getNodeKeyUsingInterposedACL(dataNodeName, wdko.wrappedKey().wrappingKeyName(), 
+											  wdko.wrappedKey().wrappingKeyIdentifier());
 			if (null == nk) {
-				throw new AccessControlException("No decryptable node key available for " + wdko.wrappedKey().wrappingKeyName() + ", access denied.");
+				// Still can't find it. Give up. Return null, and allow caller to throw the 
+				// access exception.
+				return null;
 			}
 		}
-	
-		NodeKey enk = retrieveNodeKey(wdko.wrappedKey().wrappingKeyName());
-		Key dataKey = wko.wrappedKey().unwrapKey(enk.nodeKey());
+		NodeKey enk = nk.computeDescendantNodeKey(dataNodeName, dataKeyLabel());
+		Key dataKey = wdko.wrappedKey().unwrapKey(enk.nodeKey());
 		return dataKey.getEncoded();
 	}
 	
