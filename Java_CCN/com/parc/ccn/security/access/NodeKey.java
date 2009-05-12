@@ -84,6 +84,10 @@ public class NodeKey {
 		return VersioningProfile.getVersionAsTimestamp(storedNodeKeyName());
 	}
 	
+	public byte [] generateKeyID() { 
+		return generateKeyID(nodeKey().getEncoded());
+	}
+	
 	public static byte [] generateKeyID(byte [] key) {
 		return CCNDigestHelper.digest(key);
 	}
