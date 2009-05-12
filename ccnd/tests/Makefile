@@ -30,4 +30,5 @@ check test: $(SCRIPTSRC)  stubs
 	:  TESTS PASSED  :
 	: -------------- :
 
-.PHONY: default all clean check test
+default all clean check test: _always
+_always:
