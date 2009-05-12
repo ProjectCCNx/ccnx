@@ -231,7 +231,7 @@ public class ContentKeys {
 	public static byte [] segmentNumberToByteArray(long segmentNumber) {
 		byte [] ba = new byte[SEGMENT_NUMBER_LENGTH];
 		// Is this the fastest way to do this?
-		byte [] bv = BigInteger.valueOf(SEGMENT_NUMBER_LENGTH).toByteArray();
+		byte [] bv = BigInteger.valueOf(segmentNumber).toByteArray();
 		System.arraycopy(bv, 0, ba, SEGMENT_NUMBER_LENGTH-bv.length, bv.length);
 		return ba;
 	}
