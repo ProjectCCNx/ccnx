@@ -124,7 +124,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		_content = new byte[length];
 		int count = 0;
 		while (count < length) {
-			int result = contentStream.read(_content);
+			int result = contentStream.read(_content, count, length-count);
 			if (result <=0) break;
 			count += result;
 		}
