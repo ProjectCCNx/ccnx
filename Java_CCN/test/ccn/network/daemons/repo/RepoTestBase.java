@@ -1,11 +1,8 @@
 package test.ccn.network.daemons.repo;
 
 import java.io.File;
-import java.util.logging.Level;
 
 import org.junit.BeforeClass;
-
-import com.parc.ccn.Library;
 
 import test.ccn.library.LibraryTestBase;
 

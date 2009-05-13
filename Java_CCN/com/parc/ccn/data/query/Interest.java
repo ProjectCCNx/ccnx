@@ -2,7 +2,6 @@ package com.parc.ccn.data.query;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 
 import javax.xml.stream.XMLStreamException;
 

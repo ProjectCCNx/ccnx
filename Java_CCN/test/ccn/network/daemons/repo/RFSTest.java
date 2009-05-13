@@ -1,7 +1,6 @@
 package test.ccn.network.daemons.repo;
 
 import java.io.File;
-import java.io.IOException;
 import java.security.InvalidParameterException;
 
 import org.apache.commons.io.FileUtils;

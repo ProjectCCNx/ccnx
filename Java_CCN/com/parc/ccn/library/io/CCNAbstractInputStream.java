@@ -14,7 +14,6 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.data.util.DataUtils;
