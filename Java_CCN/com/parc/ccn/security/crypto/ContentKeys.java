@@ -101,8 +101,8 @@ public class ContentKeys {
 	}
 	
 	/**
-	 * Make an encrypting Cipher to be used in making a CipherOutputStream to
-	 * wrap outgoing CCN data.
+	 * Make an encrypting or decrypting Cipher to be used in making a CipherStream to
+	 * wrap CCN data.
 	 * 
 	 * This will use the CCN defaults for IV handling, to ensure that segments
 	 * of a given larger piece of content do not have overlapping key streams.
@@ -134,11 +134,20 @@ public class ContentKeys {
 	 * 	    have more space, use it for the block counter.
 	 * IV value is the block width of the cipher.
 	 * 
-	 * 
 	 * @throws InvalidAlgorithmParameterException 
 	 * @throws InvalidKeyException 
 	 */
 	public Cipher getSegmentEncryptionCipher(long segmentNumber)
+		throws InvalidKeyException, InvalidAlgorithmParameterException {
+		return getSegmentCipher(segmentNumber, true);
+	}
+
+	public Cipher getSegmentDecryptionCipher(long segmentNumber)
+		throws InvalidKeyException, InvalidAlgorithmParameterException {
+		return getSegmentCipher(segmentNumber, true);
+	}
+
+	protected Cipher getSegmentCipher(long segmentNumber, boolean encryption)
 		throws InvalidKeyException, InvalidAlgorithmParameterException {
 
 		Cipher cipher = getCipher();
@@ -154,31 +163,8 @@ public class ContentKeys {
 		}
 
 		IvParameterSpec iv_ctrSpec = buildIVCtr(masterIV, segmentNumber, cipher.getBlockSize());
-		Library.logger().finest("Encryption Key: "+DataUtils.printHexBytes(encryptionKey.getEncoded())+" iv="+DataUtils.printHexBytes(iv_ctrSpec.getIV()));
-		cipher.init(Cipher.ENCRYPT_MODE, encryptionKey, iv_ctrSpec);
-
-		return cipher;
-	}
-
-	public Cipher getSegmentDecryptionCipher(long segmentNumber)
-		throws InvalidKeyException, InvalidAlgorithmParameterException {
-
-		Cipher cipher = getCipher();
-
-		// Construct the IV/initial counter.
-		if (0 == cipher.getBlockSize()) {
-			Library.logger().warning(encryptionAlgorithm + " is not a block cipher!");
-			throw new InvalidAlgorithmParameterException(encryptionAlgorithm + " is not a block cipher!");
-		}
-
-		if (masterIV.getIV().length < IV_MASTER_LENGTH) {
-			throw new InvalidAlgorithmParameterException("Master IV length must be at least " +
-					IV_MASTER_LENGTH + " bytes, it is: " + masterIV.getIV().length);
-		}
-
-		IvParameterSpec iv_ctrSpec = buildIVCtr(masterIV, segmentNumber, cipher.getBlockSize());
-		Library.logger().finest("Decryption Key: "+DataUtils.printHexBytes(encryptionKey.getEncoded())+" iv="+DataUtils.printHexBytes(iv_ctrSpec.getIV()));
-		cipher.init(Cipher.DECRYPT_MODE, encryptionKey, iv_ctrSpec);
+		Library.logger().finest(encryption?"En":"De"+"cryption Key: "+DataUtils.printHexBytes(encryptionKey.getEncoded())+" iv="+DataUtils.printHexBytes(iv_ctrSpec.getIV()));
+		cipher.init(encryption?Cipher.ENCRYPT_MODE:Cipher.DECRYPT_MODE, encryptionKey, iv_ctrSpec);
 
 		return cipher;
 	}
