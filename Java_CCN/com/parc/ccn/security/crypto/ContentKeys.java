@@ -12,6 +12,7 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.data.util.DataUtils;
 
 /**
  * Specifies encryption algorithm and keys to use for encrypting content.
@@ -169,6 +170,7 @@ public class ContentKeys {
 		}
 
 		IvParameterSpec iv_ctrSpec = buildIVCtr(masterIV, segmentNumber, cipher.getBlockSize());
+		Library.logger().finest("Encryption Key: "+DataUtils.printHexBytes(encryptionKey.getEncoded())+" iv="+DataUtils.printHexBytes(iv_ctrSpec.getIV()));
 		cipher.init(Cipher.ENCRYPT_MODE, encryptionKey, iv_ctrSpec);
 
 		return cipher;
@@ -209,12 +211,15 @@ public class ContentKeys {
 		}
 
 		IvParameterSpec iv_ctrSpec = buildIVCtr(masterIV, segmentNumber, cipher.getBlockSize());
+		Library.logger().finest("Decryption Key: "+DataUtils.printHexBytes(encryptionKey.getEncoded())+" iv="+DataUtils.printHexBytes(iv_ctrSpec.getIV()));
 		cipher.init(Cipher.DECRYPT_MODE, encryptionKey, iv_ctrSpec);
 
 		return cipher;
 	}
 
 	public static IvParameterSpec buildIVCtr(IvParameterSpec masterIV, long segmentNumber, int ivLen) {
+
+		Library.logger().finest("Thread="+Thread.currentThread()+" Building IV - master="+DataUtils.printHexBytes(masterIV.getIV())+" segment="+segmentNumber+" ivLen="+ivLen);
 		
 		byte [] iv_ctr = new byte[ivLen];
 		
@@ -225,6 +230,7 @@ public class ContentKeys {
 				iv_ctr.length - BLOCK_COUNTER_LENGTH, BLOCK_COUNTER_LENGTH);
 		
 		IvParameterSpec iv_ctrSpec = new IvParameterSpec(iv_ctr);
+		Library.logger().finest("ivParameterSpec source="+DataUtils.printHexBytes(iv_ctr)+"ivParameterSpec.getIV()="+DataUtils.printHexBytes(masterIV.getIV()));
 		return iv_ctrSpec;
 	}
 	
