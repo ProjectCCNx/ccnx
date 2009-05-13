@@ -528,7 +528,7 @@ public class CCNSegmenter {
 		if (null != _keys) {
 			try {
 				// Make a separate cipher, so this segmenter can be used by multiple callers at once.
-				Cipher thisCipher = _keys.getSegmentEncryptionCipher(null, segmentNumber);
+				Cipher thisCipher = _keys.getSegmentEncryptionCipher(segmentNumber);
 				content = thisCipher.doFinal(content, offset, length);
 				offset = 0;
 				length = content.length;
@@ -579,7 +579,7 @@ public class CCNSegmenter {
 				// streams, eventually push down with this at the end of an output stream.
 
 				// Make a separate cipher, so this segmenter can be used by multiple callers at once.
-				Cipher thisCipher = _keys.getSegmentEncryptionCipher(null, nextSegmentIndex);
+				Cipher thisCipher = _keys.getSegmentEncryptionCipher(nextSegmentIndex);
 				Library.logger().finest("Created new encryption cipher "+thisCipher);
 				// Override content type to mark encryption.
 				// Note: we don't require that writers use our facilities for encryption, so
@@ -645,7 +645,7 @@ public class CCNSegmenter {
 			if (null != _keys) {
 				try {
 					// Make a separate cipher, so this segmenter can be used by multiple callers at once.
-					Cipher thisCipher = _keys.getSegmentEncryptionCipher(null, nextSegmentIndex);
+					Cipher thisCipher = _keys.getSegmentEncryptionCipher(nextSegmentIndex);
 					blockContent = thisCipher.doFinal(contentBlocks[i]);
 
 					// Override content type to mark encryption.
@@ -674,7 +674,7 @@ public class CCNSegmenter {
 		blockContent = contentBlocks[i];
 		if (null != _keys) {
 			try {
-				Cipher thisCipher = _keys.getSegmentEncryptionCipher(null, nextSegmentIndex);
+				Cipher thisCipher = _keys.getSegmentEncryptionCipher(nextSegmentIndex);
 				blockContent = thisCipher.doFinal(contentBlocks[i], 0, lastBlockLength);
 				lastBlockLength = blockContent.length;
 				

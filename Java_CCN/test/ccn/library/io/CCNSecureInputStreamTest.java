@@ -178,9 +178,9 @@ public class CCNSecureInputStreamTest {
 	 */
 	@Test
 	public void cipherEncryptDecrypt() throws InvalidKeyException, InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException {
-		Cipher c = encrKeys.getSegmentEncryptionCipher(null, 0);
+		Cipher c = encrKeys.getSegmentEncryptionCipher(0);
 		byte [] d = c.doFinal(encrData);
-		c = encrKeys.getSegmentDecryptionCipher(null, 0);
+		c = encrKeys.getSegmentDecryptionCipher(0);
 		d = c.doFinal(d);
 		// check we get identical data back out
 		Assert.assertArrayEquals(encrData, d);
@@ -192,14 +192,14 @@ public class CCNSecureInputStreamTest {
 	 */
 	@Test
 	public void cipherStreamEncryptDecrypt() throws InvalidKeyException, InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException, IOException {
-		Cipher c = encrKeys.getSegmentEncryptionCipher(null, 0);
+		Cipher c = encrKeys.getSegmentEncryptionCipher(0);
 		InputStream is = new ByteArrayInputStream(encrData, 0, encrData.length);
 		is = new CipherInputStream(is, c);
 		byte [] cipherText = new byte[4096];
 		for(int total = 0, res = 0; res >= 0 && total < 4096; total+=res)
 			res = is.read(cipherText,total,4096-total);
 
-		c = encrKeys.getSegmentDecryptionCipher(null, 0);
+		c = encrKeys.getSegmentDecryptionCipher(0);
 		is = new ByteArrayInputStream(cipherText);
 		is = new CipherInputStream(is, c);
 		byte [] output = new byte[4096];
@@ -218,7 +218,7 @@ public class CCNSecureInputStreamTest {
 	@Test
 	public void contentEncryptDecrypt() throws InvalidKeyException, InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException, IOException {
 		// create an encrypted content block
-		Cipher c = encrKeys.getSegmentEncryptionCipher(null, 0);
+		Cipher c = encrKeys.getSegmentEncryptionCipher(0);
 		InputStream is = new ByteArrayInputStream(encrData, 0, encrData.length);
 		is = new CipherInputStream(is, c);
 		ContentName rootName = SegmentationProfile.segmentRoot(encrName);
@@ -230,7 +230,7 @@ public class CCNSecureInputStreamTest {
 				is, 4096);
 
 		// attempt to decrypt the data
-		c = encrKeys.getSegmentDecryptionCipher(null, 0);
+		c = encrKeys.getSegmentDecryptionCipher(0);
 		is = new CipherInputStream(new ByteArrayInputStream(co.content()), c);
 		byte [] output = new byte[co.contentLength()];
 		for(int total = 0, res = 0; res >= 0 && total < output.length; total+=res)

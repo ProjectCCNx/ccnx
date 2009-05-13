@@ -101,7 +101,6 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		if (null != keys) {
 			keys.OnlySupportDefaultAlg();
 			_keys = keys;
-			_cipher = keys.getCipher();
 		}
 	}
 	
@@ -133,7 +132,6 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		
 		keys.OnlySupportDefaultAlg();
 		_keys = keys;
-		_cipher = keys.getCipher();
 	}
 
 	public void setTimeout(int timeout) {
@@ -192,11 +190,12 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		
 		_currentBlock = newBlock;
 		_currentBlockStream = new ByteArrayInputStream(_currentBlock.content());
-		if (null != _cipher) {
+		if (_keys != null) {
 			try {
 				// Reuse of current block OK. Don't expect to have two separate readers
 				// independently use this stream without state confusion anyway.
-				_cipher = _keys.getSegmentDecryptionCipher(_cipher, SegmentationProfile.getSegmentNumber(_currentBlock.name()));
+				_cipher = _keys.getSegmentDecryptionCipher(
+						SegmentationProfile.getSegmentNumber(_currentBlock.name()));
 			} catch (InvalidKeyException e) {
 				Library.logger().warning("InvalidKeyException: " + e.getMessage());
 				throw new IOException("InvalidKeyException: " + e.getMessage());
