@@ -43,16 +43,20 @@ public class NodeKey {
 	private Key _nodeKey;
 	
 	public NodeKey(ContentName nodeKeyName, byte [] unwrappedNodeKey) {
+		this(nodeKeyName, new SecretKeySpec(unwrappedNodeKey, DEFAULT_NODE_KEY_ALGORITHM));
+	}
+	
+	public NodeKey(ContentName nodeKeyName, Key unwrappedNodeKey) {
 		if ((null == nodeKeyName) || (null == unwrappedNodeKey)) {
 			throw new IllegalArgumentException("NodeKey: key name and key cannot be null!");
 		}
 		_storedNodeKeyName = nodeKeyName;
-		_storedNodeKeyID = generateKeyID(unwrappedNodeKey);
-		_nodeKey = new SecretKeySpec(unwrappedNodeKey, DEFAULT_NODE_KEY_ALGORITHM);
+		_storedNodeKeyID = generateKeyID(unwrappedNodeKey.getEncoded());
+		_nodeKey = unwrappedNodeKey;
 		_nodeName = AccessControlProfile.accessRoot(nodeKeyName);
 		if ((null == _nodeName) || (!AccessControlProfile.isNodeKeyName(nodeKeyName))) {
 			throw new IllegalArgumentException("NodeKey: key name " + nodeKeyName + " is not a valid node key name.");			
-		}
+		}		
 	}
 	
 	protected NodeKey(ContentName nodeName, byte [] derivedNodeKey, 
