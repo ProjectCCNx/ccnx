@@ -1,4 +1,4 @@
-AFTER : test_long_producer
+AFTER : test_single_ccnd test_long_producer
 BEFORE : test_single_ccnd_teardown
 type jot || SkipTest no jot available
 NAME=ccn:/test/long/jot

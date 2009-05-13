@@ -1,14 +1,17 @@
-AFTER : test_single_ccnd test_twohop_ccnd_teardown
+AFTER : test_single_ccnd test_late
 BEFORE : test_single_ccnd_teardown
 # Uses the ability to inject an interest message to get two ccnds to
 # talk to each other.
 # Uses ipv4 localhost to connect to the preloaded ccnd
+CheckForCCND 0 || SkipTest
 WithCCND 5 ccnd &
-WithCCND 5 ccndsmoketest
 
 cat >local9000.cf <<EOF
 ccn:/test/	udp	localhost	$CCN_LOCAL_PORT
 EOF
+trap "WithCCND 5 ccndsmoketest kill" 0
+
+until CheckForCCND 5; do :; done
 
 WithCCND 5 ccnls /test > before_inject.out || SkipTest FIXME
 WithCCND 5 ccndc -f local9000.cf &
@@ -19,4 +22,3 @@ WithCCND 5 ccnslurp /test > after_inject.out
 ExpectLines before_inject.out 0 0 : Not expecting content in isolated ccnd
 ExpectLines after_inject.out 400 600 : content in connected ccnd
 rm before_inject.out after_inject.out local9000.cf
-WithCCND 5 ccndsmoketest -t 55 kill recv

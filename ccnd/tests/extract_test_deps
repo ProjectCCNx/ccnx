@@ -1,0 +1,4 @@
+#!/bin/sh
+# Script for extracting test deps for Makefile
+# For maintainer use.
+for i in test_*; do sed -n -e "s/^AFTER /$i/p" -e "s/^BEFORE /$i/p" $i; done
