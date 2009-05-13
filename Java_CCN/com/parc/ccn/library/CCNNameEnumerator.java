@@ -376,6 +376,8 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 		//Do not need to register each name as a filter...  the namespace should cover it
 		//_library.registerFilter(name, this);
 		if (!_registeredNames.contains(name)) {
+			// DKS - if we don't care about order, could use a Set instead of an ArrayList,
+			// then just call add as duplicates suppressed
 		  _registeredNames.add(name);
 		  //System.out.println("registered "+ name.toString()+") for responses");		  
 		}
