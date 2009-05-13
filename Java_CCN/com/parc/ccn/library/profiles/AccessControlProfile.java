@@ -54,6 +54,12 @@ public class AccessControlProfile implements CCNProfile {
 		}
 	}
 	
+	public static ContentName aclName(ContentName nodeName) {
+		ContentName baseName = accessRoot(nodeName);
+		ContentName aclName = ContentName.fromNative(baseName, ACCESS_CONTROL_MARKER, ACL_NAME);
+		return aclName;
+	}
+	
 	public static ContentName dataKeyName(ContentName dataNodeName) {
 		
 	}
