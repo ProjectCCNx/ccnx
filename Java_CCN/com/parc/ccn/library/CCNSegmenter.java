@@ -572,37 +572,35 @@ public class CCNSegmenter {
 
 		long nextSegmentIndex = baseSegmentNumber;
 		
-		ByteArrayInputStream dataStream = new ByteArrayInputStream(content, offset, length);
-		InputStream inputStream = dataStream;
-		Cipher thisCipher = null;
-		if (null != _keys) {
-			// DKS TODO -- move to streaming version to cut down copies. Here using input
-			// streams, eventually push down with this at the end of an output stream.
-
-			// Make a separate cipher, so this segmenter can be used by multiple callers at once.
-			thisCipher = _keys.getSegmentEncryptionCipher(null, nextSegmentIndex);
-			// Override content type to mark encryption.
-			// Note: we don't require that writers use our facilities for encryption, so
-			// content previously encrypted may not be marked as type ENCR. So on the decryption
-			// side we don't require that encrypted data be marked ENCR -- if you give us a
-			// decryption key, we'll try to decrypt it.
-			signedInfo.setType(ContentType.ENCR);
-				
-			inputStream = new CipherInputStream(dataStream, thisCipher);
-		} 
-		
 		for (int i=0; i < blockCount; ++i) {
+			InputStream dataStream = new ByteArrayInputStream(content, offset, length);
+			if (null != _keys) {
+				// DKS TODO -- move to streaming version to cut down copies. Here using input
+				// streams, eventually push down with this at the end of an output stream.
+
+				// Make a separate cipher, so this segmenter can be used by multiple callers at once.
+				Cipher thisCipher = _keys.getSegmentEncryptionCipher(null, nextSegmentIndex);
+				Library.logger().finest("Created new encryption cipher "+thisCipher);
+				// Override content type to mark encryption.
+				// Note: we don't require that writers use our facilities for encryption, so
+				// content previously encrypted may not be marked as type ENCR. So on the decryption
+				// side we don't require that encrypted data be marked ENCR -- if you give us a
+				// decryption key, we'll try to decrypt it.
+				signedInfo.setType(ContentType.ENCR);
+
+				dataStream = new CipherInputStream(dataStream, thisCipher);
+			}
 			blocks[i] =  
 				new ContentObject(
 						SegmentationProfile.segmentName(rootName, nextSegmentIndex),
 						signedInfo,
-						inputStream, blockWidth);
+						dataStream, blockWidth);
+			Library.logger().finest("Created content object - segment "+nextSegmentIndex+" before encr="+content[offset]+" after encr="+blocks[i].content()[0]);
+
 			nextSegmentIndex = nextSegmentIndex(nextSegmentIndex, 
 												blocks[i].contentLength());
-		}
-		if (dataStream.available() > 0) {
-			// ByteArrayInputStream supports available() correctly.
-			Library.logger().warning("Unexpected -- not writing out all data blocks!!!");
+			offset += blockWidth;
+			length -= blockWidth;
 		}
 		return blocks;
 	}
