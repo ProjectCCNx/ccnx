@@ -14,7 +14,7 @@ import com.parc.ccn.library.CCNLibrary;
 
 public class ACL extends CollectionData {
 
-	public class ACLObject extends CCNEncodableObject<ACL> {
+	public static class ACLObject extends CCNEncodableObject<ACL> {
 
 		public ACLObject() throws ConfigurationException, IOException {
 			super(ACL.class);
