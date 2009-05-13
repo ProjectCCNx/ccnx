@@ -60,7 +60,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		}
 	}
 
-	public class WrappedKeyObject extends CCNEncodableObject<WrappedKey> {
+	public static class WrappedKeyObject extends CCNEncodableObject<WrappedKey> {
 
 		public WrappedKeyObject() throws ConfigurationException, IOException {
 			super(WrappedKey.class);
