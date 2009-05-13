@@ -6,7 +6,8 @@ CCNLIBDIR = ../lib
 
 INSTALLED_PROGRAMS = ccnd ccndsmoketest
 PROGRAMS = $(INSTALLED_PROGRAMS) smoketestccnd
-DEBRIS = 
+DEBRIS = anything.ccnb contenthash.ccnb contentmishash.ccnb
+
 BROKEN_PROGRAMS = 
 CSRC = ccnd.c ccnd_stats.c ccndsmoketest.c
 HSRC = ccnd_private.h
