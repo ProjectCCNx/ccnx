@@ -13,6 +13,8 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
 import javax.xml.stream.XMLStreamException;
 
+import org.bouncycastle.util.Arrays;
+
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
@@ -20,6 +22,7 @@ import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.security.WrappedKey;
 import com.parc.ccn.data.security.WrappedKey.WrappedKeyObject;
 import com.parc.ccn.data.util.DataUtils;
+import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.AccessControlProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.access.ACL.ACLObject;
@@ -45,15 +48,17 @@ public class AccessControlManager {
 	private ContentName _userStorage;
 	private KeyCache _keyCache = new KeyCache();
 	private SecureRandom _random = new SecureRandom();
+	private CCNLibrary _library;
 	
-	public AccessControlManager(ContentName namespace) {
+	public AccessControlManager(ContentName namespace) throws ConfigurationException, IOException {
 		this(namespace, AccessControlProfile.groupNamespaceName(namespace), AccessControlProfile.userNamespaceName(namespace));
 	}
 	
-	public AccessControlManager(ContentName namespace, ContentName groupStorage, ContentName userStorage) {
+	public AccessControlManager(ContentName namespace, ContentName groupStorage, ContentName userStorage) throws ConfigurationException, IOException {
 		_namespace = namespace;
 		_groupStorage = groupStorage;
 		_userStorage = userStorage;
+		_library = CCNLibrary.open();
 		// DKS TODO here, check for a namespace marker, and if one not there, write it (async)
 	}
 	
@@ -103,52 +108,107 @@ public class AccessControlManager {
 	}
 	
 	/**
-	 * Retrieves the latest version of an ACL at this node, if any.
+	 * Retrieves the latest version of an ACL effective at this node, either stored
+	 * here or at one of its ancestors.
 	 * @param nodeName
 	 * @return
 	 * @throws ConfigurationException 
 	 * @throws IOException 
 	 * @throws XMLStreamException 
 	 */
-	public ACL getACL(ContentName nodeName) throws XMLStreamException, IOException, ConfigurationException {
+	public ACLObject getEffectiveACLObject(ContentName nodeName) throws XMLStreamException, IOException {
+		
+		// Find the node that has the ACL
+		ContentName aclNodeName = findAncestorWithACL(nodeName);
+		if (null == aclNodeName) {
+			Library.logger().warning("Unexpected: cannot find an ancestor of node " + nodeName + " that has an ACL.");
+			throw new IOException("Unexpected: cannot find an ancestor of node " + nodeName + " that has an ACL.");	
+		}
+		return getACLObjectForNode(aclNodeName);
+	}
+	
+	/**
+	 * Try to pull an acl for a particular node. If it doesn't exist, will time
+	 * out. Use enumeration to decide whether to call this to avoid the timeout.
+	 * @param aclNodeName
+	 * @return
+	 * @throws IOException 
+	 * @throws XMLStreamException 
+	 */
+	public ACLObject getACLObjectForNode(ContentName aclNodeName) throws XMLStreamException, IOException {
 		
 		// Get the latest version of the acl. We don't care so much about knowing what version it was.
-		ACLObject aclo = new ACLObject(AccessControlProfile.aclName(nodeName));
+		ACLObject aclo = new ACLObject(AccessControlProfile.aclName(aclNodeName), _library);
 		aclo.update();
 		// if there is no update, this will probably throw an exception -- IO or XMLStream
-		return aclo.acl();
+		return aclo;
+	}
+	
+	public ACLObject getACLObjectForNodeIfExists(ContentName aclNodeName) {
+		
+		EnumeratedNameList enl = new EnumeratedNameList(AccessControlProfile.aclName(aclNodeName));
+		enl.waitForData();
+		
+		if (enl.isEmpty()) {
+			// this node doesn't exist
+			return null;
+		}
+		ACLObject aclo = new ACLObject(enl.latestVersionName(), _library);
+		aclo.update();
+		return aclo;
+	}
+	
+	public ACL getEffectiveACL(ContentName nodeName) throws XMLStreamException, IOException {
+		ACLObject aclo = getEffectiveACLObject(nodeName);
+		if (null != aclo) {
+			return aclo.acl();
+		}
+		return null;
 	}
 	
 	/**
 	 * Adds an ACL to a node that doesn't have one, or replaces one that exists.
-	 * Does the diffs on any current ACL and makes any necessary changes.
+	 * Just writes, doesn't bother to look at any current ACL. Does need to pull
+	 * the effective node key at this node, though, to wrap the old ENK in a new
+	 * node key.
 	 */
 	public ACL setACL(ContentName nodeName, ACL newACL) {
 		
 	}
 	
+	/**
+	 * Pulls the ACL for this node, if one exists, and modifies it to include
+	 * the following changes, then stores the result using setACL.
+	 */
 	public ACL updateACL(ContentName nodeName, 
 						ArrayList<LinkReference> addReaders, ArrayList<LinkReference> removeReaders,
 						ArrayList<LinkReference> addWriters, ArrayList<LinkReference> removeWriters,
 						ArrayList<LinkReference> addManagers, ArrayList<LinkReference> removeManagers) {
 		
+		ACLObject currentACL = getACLObjectForNodeIfExists(nodeName);
+		ACL newACL = null;
+		if (null != currentACL) {
+			newACL = currentACL.acl();
+		}
+		// Now update ACL to add and remove values.
+		
+		
+		// Set the ACL and update the node key.
+		return setACL(nodeName, newACL);
 	}
 		
 	public ACL addReaders(ContentName nodeName, ArrayList<LinkReference> newReaders) {
-		
+		return updateACL(nodeName, newReaders, null, null, null, null, null);
 	}
 	
 	public ACL addWriters(ContentName nodeName, ArrayList<LinkReference> newWriters) {
-		
-	}
-	/**
-	 * Retrieve the effective ACL operating at this node, either stored here or
-	 * inherited from a parent.
-	 */
-	public ACL getEffectiveACL(ContentName nodeName) {
-		
+		return updateACL(nodeName, null, null, newWriters, null, null, null);
 	}
 	
+	public ACL addManagers(ContentName nodeName, ArrayList<LinkReference> newManagers) {
+		return updateACL(nodeName, null, null, null, null, newManagers, null);
+	}
+
 	/**
 	 * 
 	 * Get the ancestor node key in force at this node.
@@ -221,7 +281,21 @@ public class AccessControlManager {
 	 * @return
 	 */
 	public NodeKey getNodeKey(ContentName nodeName) {
+		// Find the node that has the NK
+		ContentName aclNodeName = findAncestorWithNodeKey(nodeName);
+		if (null == aclNodeName) {
+			Library.logger().warning("Unexpected: cannot find an ancestor of node " + nodeName + " that has a node key.");
+			throw new IOException("Unexpected: cannot find an ancestor of node " + nodeName + " that has a node key.");	
+		}
+		return getNodeKeyForNode(aclNodeName);		
+	}
+	
+	public NodeKey getNodeKeyForNode(ContentName nodeName) {
 		
+		// First we need to figure out what the latest version is of the node key.
+		ContentName nodeKeyVersionedName = getLatestVersionName(AccessControlProfile.nodeKeyName(nodeName));
+		// then, pull the node key we can decrypt
+		return getNodeKeyByVersionedName(nodeKeyVersionedName, null);
 	}
 	
 	/**
@@ -274,13 +348,63 @@ public class AccessControlManager {
 		if (!VersioningProfile.isVersioned(nodeKeyName)) {
 			throw new IllegalArgumentException("Unexpected: node key name unversioned: " + nodeKeyName);
 		}
-		// Quick path, if cache is full -- enumerate node keys, pull the one we can decrypt.
 		
-		// If cache is not full, get current ACL, and walk it to find relevant key. It's still
-		// useful to have the list above, though.
-		ACL acl = getACL(nodeKeyName);
-		// Two passes through the acl -- pass 1, what groups we know we're in.
-		// Pass through, walk groups we don't know about.
+		NodeKey nk = null;
+		EnumeratedNameList wrappedNodeKeys = null;
+		
+		try {
+			// Quick path, if cache is full -- enumerate node keys, pull the one we can decrypt.
+			// Name node keys by both wrapping key ID and group. To differentiate, prefix
+			// node key IDs 
+			wrappedNodeKeys = new EnumeratedNameList(nodeKeyName);
+			wrappedNodeKeys.waitForData();
+
+			// We have at least one answer. Pass through it, and for the keys,
+			// check to see if we know the key already.
+			ArrayList<String> groupNames = new ArrayList<String>();
+			for (ContentName wnk : wrappedNodeKeys.getNewData()) {
+				if (AccessControlProfile.isWrappedNodeKey(wnk)) {
+					byte [] keyid = AccessControlProfile.getTargetKeyID(wnk);
+					if (keyCache().containsKey(keyid)) {
+						// We have it, pull the block, unwrap the node key.
+						WrappedKeyObject wko = new WrappedKeyObject(wnk);
+						wko.update();
+						if (null != wko.wrappedKey()) {
+							nk = new NodeKey(nodeKeyName, 
+									wko.wrappedKey().unwrapKey(keyCache().getPrivateKey(keyid)));
+							if ((null != nodeKeyIdentifier) && (!Arrays.areEqual(keyid, nk.storedNodeKeyID()))) {
+								Library.logger().warning("Retrieved and decrypted node key, but it was the wrong node key. We wanted " + 
+										DataUtils.printBytes(keyid) + ", we got " + DataUtils.printBytes(nk.storedNodeKeyID()));
+							} else {
+								return nk;
+							}
+						}
+					}
+				} else if (AccessControlProfile.isGroupNodeKey(wnk)) {
+					groupNames.add(AccessControlProfile.groupNodeKeyToGroupName(wnk));
+				}
+			}
+
+			// We don't have a key cached. Either we don't have access, we aren't in one of the
+			// relevant groups, or we are, but we haven't pulled the appropriate version of the group
+			// key (because it's old, or because we don't know we're in that group).
+			// We can get this node key because either we're in one of the groups it was made
+			// available to, or because it's old, and we have access to one of the groups that
+			// has current access. So at this point we can walk the list of groups we've figured
+			// out already that has access without pulling any more specific data.
+
+			// OK, just walking the groups listed on that node key's list of available groups didn't
+			// help us. Is there a later version of the node key? We can either go look at the ACL
+			// itself, or the most recent version of the node key to get an idea of the groups
+			// with access. 
+			ACL acl = getACL(nodeKeyName);
+			// Two passes through the acl -- pass 1, what groups we know we're in.
+			// Pass through, walk groups we don't know about.
+		} finally {
+			if (null != wrappedNodeKeys) {
+				wrappedNodeKeys.stopEnumerating();
+			}
+		}
 	}
 	
 	/**
@@ -367,7 +491,6 @@ public class AccessControlManager {
 		wrappedDataKey.setWrappingKeyName(effectiveNodeKey.storedNodeKeyName());
 		
 		storeKeyContent(AccessControlProfile.dataKeyName(dataNodeName), wrappedDataKey);
-		
 	}
 	
 	/**
