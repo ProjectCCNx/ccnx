@@ -19,6 +19,8 @@ import com.parc.ccn.data.security.WrappedKey;
 import com.parc.ccn.data.security.WrappedKey.WrappedKeyObject;
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.profiles.AccessControlProfile;
+import com.parc.ccn.library.profiles.VersioningProfile;
+import com.parc.ccn.security.access.ACL.ACLObject;
 
 public class AccessControlManager {
 	
@@ -105,6 +107,10 @@ public class AccessControlManager {
 	 */
 	public ACL getACL(ContentName nodeName) {
 		
+		// Get the latest version of the acl. We don't care so much about knowing what version it was.
+		ACLObject aclo = new ACLObject(AccessControlProfile.aclName(nodeName));
+		aclo.update();
+		return aclo.acl();
 	}
 	
 	/**
@@ -138,12 +144,73 @@ public class AccessControlManager {
 	}
 	
 	/**
-	 * Get a raw node key in force at this node, if any exists and we have rights to decrypt it
-	 * with some key we know.
+	 * 
+	 * Get the ancestor node key in force at this node.
 	 * Used in updating node keys and by {@link #getEffectiveNodeKey(ContentName)}.
 	 * To achieve this, we walk up the tree for this node. At each point, we check to
 	 * see if a node key exists. If one exists, we decrypt it if we know an appropriate
 	 * key. Otherwise we return null.
+	 * 
+	 * We're going for a low-enumeration approach. We could enumerate node keys and
+	 * see if we have rights on the latest version; but then we need to enumerate keys
+	 * and figure out whether we have a copy of a key or one of its previous keys.
+	 * If we don't know our group memberships, even if we enumerate the node key
+	 * access, we don't know what groups we're a member of. 
+	 * 
+	 * Node keys and ACLs evolve in the following fashion:
+	 * - if ACL adds rights, by adding a group, we merely add encrypted node key blocks for
+	 *    the same node key version (ACL version increases, node key version does not)
+	 * - if an ACL removes rights, by removing a group, we version the ACL and the node key
+	 *    (both versions increase)
+	 * - if a group adds rights by adding a member, we merely add key blocks to the group key
+	 *   (no change to node key or ACL)
+	 * - if a group removes rights by removing a member, we need to evolve all the node keys
+	 *   that point to that node key, at the time of next write using that node key (so we don't 
+	 *   have to enumerate them). (node key version increases, but ACL version does not).
+	 *   
+	 * One could have the node key point to its acl version, or vice versa, but they really
+	 * do most efficiently evolve in parallel. One could have the ACL point to group versions,
+	 * and update the ACL and NK together in the last case as well. 
+	 * In this last case, we want to update the NK only on next write; if we never write again,
+	 * we never need to generate a new NK (unless we can delete). And we want to wait as long
+	 * as possible, to skip NK updates with no corresponding writes. 
+	 * But, a writer needs to determine first what the most recent node key is for a given
+	 * node, and then must determine whether or not that node key must be updated -- whether or
+	 * not the most recent versions of groups are what that node key is encrypted under.
+	 * Ideally we don't want to have it update the ACL, as that allows management access separation --
+	 * we can let writers write the node key without allowing them to write the ACL. 
+	 * 
+	 * So, we can't store the group version information in the ACL. We don't necessarily
+	 * want a writer to have to pull all the node key blocks to see what version of each
+	 * group the node key is encrypted under.
+	 * 
+	 * We could name the node key blocks <prefix>/_access_/NK/#version/<group name>:<group key id>,
+	 * if we could match on partial components, but we can't.
+	 * 
+	 * We can name the node key blocks <prefix>/_access_/NK/#version/<group key id> with
+	 * a link pointing to that from NK/#version/<group name>. 
+	 * 
+	 * For both read and write, we don't actually care what the ACL says. We only care what
+	 * the node key is. Most efficient option, if we have a full key cache, is to list the 
+	 * node key blocks by key id used to encrypt them, and then pull one for a key in our cache.
+	 * On the read side, we're looking at a specific version NK, and we might have rights by going
+	 * through its later siblings. On the write side, we're looking at the latest version NK, and
+	 * we should have rights to one of the key blocks, or we don't have rights.
+	 * If we don't have a full key cache, we have to walk the access hierarchy. In that case,
+	 * the most efficient thing to do is to pull the latest version of the ACL for that node
+	 * (if we have a NK, we have an ACL, and vice versa, so we can enumerate NK and then pull
+	 * ACLs). We then walk that ACL. If we know we are in one of the groups in that ACL, walk
+	 * back to find the group key encrypting that node key. If we don't, walk the groups in that
+	 * ACL to find out if we're in any of them. If we are, pull the current group key, see if
+	 * it works, and start working backwards through group keys, populating the cache in the process,
+	 * to find the relevant group key.
+	 * 
+	 * Right answer might be intentional containment. Besides the overall group key structures,
+	 * we make a master list that points to the current versions of all the groups. That would
+	 * have to be writable by anyone who is on the manage list for any group. That would let you
+	 * get, easily, a single list indicating what groups are available and what their versions are.
+	 * Unless NE lets you do that in a single pass, which would be better. (Enumerate name/latestversion,
+	 * not just given name, enumerate versions.)
 	 * @param nodeName
 	 * @return
 	 */
@@ -178,9 +245,9 @@ public class AccessControlManager {
 						" in cache, and no name given.");
 				return null;
 			}
-			// We should know what node key to use, but we have to find the specific
-			// node key we can decrypt.
-			nk = getNodeKeyByName(nodeKeyName, nodeKeyIdentifier);
+			// We should know what node key to use (down to the version), but we have to find the specific
+			// wrapped key copy we can decrypt. 
+			nk = getNodeKeyByVersionedName(nodeKeyName, nodeKeyIdentifier);
 			if (null == nk) {
 				Library.logger().warning("No decryptable node key available at " + nodeKeyName + ", access denied.");
 				return null;
@@ -188,6 +255,20 @@ public class AccessControlManager {
 		}
 	
 		return nk;
+	}
+	
+	/**
+	 * We have the name of a specific version of a node key. Now we just need to figure
+	 * out which of our keys can be used to decrypt it.
+	 * @param nodeKeyName
+	 * @param nodeKeyIdentifier
+	 * @return
+	 */
+	NodeKey getNodeKeyByVersionedName(ContentName nodeKeyName, byte [] nodeKeyIdentifier) {
+		if (!VersioningProfile.isVersioned(nodeKeyName)) {
+			throw new IllegalArgumentException("Unexpected: node key name unversioned: " + nodeKeyName);
+		}
+		
 	}
 	
 	/**
