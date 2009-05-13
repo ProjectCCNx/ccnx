@@ -1,15 +1,23 @@
 package test.ccn.library.io;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.DigestInputStream;
 import java.security.DigestOutputStream;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
 import java.util.Random;
 import java.util.logging.Level;
 
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.CipherInputStream;
+import javax.crypto.IllegalBlockSizeException;
 import javax.xml.stream.XMLStreamException;
 
 import org.junit.Assert;
@@ -19,9 +27,14 @@ import org.junit.Test;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
+import com.parc.ccn.data.security.SignedInfo;
+import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNInputStream;
 import com.parc.ccn.library.io.CCNOutputStream;
+import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.crypto.ContentKeys;
 
@@ -35,7 +48,6 @@ public class CCNSecureInputStreamTest {
 	static byte [] encrData;
 	static CCNLibrary outputLibrary;
 	static CCNLibrary inputLibrary;
-	static final int MAX_FILE_SIZE = 65*1024+1;
 	static final int BUF_SIZE = 4096;
 	
 
@@ -51,7 +63,7 @@ public class CCNSecureInputStreamTest {
 		defaultStreamName = ContentName.fromNative("/test/stream/versioning/LongOutput.bin");
 		
 		encrName = VersioningProfile.versionName(defaultStreamName);
-		encrLength = 2234;//randBytes.nextInt(MAX_FILE_SIZE);
+		encrLength = 25*1024+301;
 		encrKeys = ContentKeys.generateRandomKeys();
 		encrDigest = writeFileFloss(encrName, encrLength, randBytes, encrKeys);
 	}
@@ -162,10 +174,78 @@ public class CCNSecureInputStreamTest {
 	}
 	
 	/**
-	 * Test encryption & decryption work, and that using different keys for decryption fails
+	 * Test cipher encryption & decryption work
 	 */
 	@Test
-	public void encryptDecrypt() throws XMLStreamException, IOException {
+	public void cipherEncryptDecrypt() throws InvalidKeyException, InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException {
+		Cipher c = encrKeys.getSegmentEncryptionCipher(null, 0);
+		byte [] d = c.doFinal(encrData);
+		c = encrKeys.getSegmentDecryptionCipher(null, 0);
+		d = c.doFinal(d);
+		// check we get identical data back out
+		Assert.assertArrayEquals(encrData, d);
+	}
+
+	/**
+	 * Test cipher stream encryption & decryption work
+	 * @throws IOException
+	 */
+	@Test
+	public void cipherStreamEncryptDecrypt() throws InvalidKeyException, InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException, IOException {
+		Cipher c = encrKeys.getSegmentEncryptionCipher(null, 0);
+		InputStream is = new ByteArrayInputStream(encrData, 0, encrData.length);
+		is = new CipherInputStream(is, c);
+		byte [] cipherText = new byte[4096];
+		for(int total = 0, res = 0; res >= 0 && total < 4096; total+=res)
+			res = is.read(cipherText,total,4096-total);
+
+		c = encrKeys.getSegmentDecryptionCipher(null, 0);
+		is = new ByteArrayInputStream(cipherText);
+		is = new CipherInputStream(is, c);
+		byte [] output = new byte[4096];
+		for(int total = 0, res = 0; res >= 0 && total < 4096; total+=res)
+			res = is.read(output,total,4096-total);
+		// check we get identical data back out
+		byte [] input = new byte[Math.min(4096, encrLength)];
+		System.arraycopy(encrData, 0, input, 0, input.length);
+		Assert.assertArrayEquals(input, output);
+	}
+
+	/**
+	 * Test content encryption & decryption work
+	 * @throws IOException
+	 */
+	@Test
+	public void contentEncryptDecrypt() throws InvalidKeyException, InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException, IOException {
+		// create an encrypted content block
+		Cipher c = encrKeys.getSegmentEncryptionCipher(null, 0);
+		InputStream is = new ByteArrayInputStream(encrData, 0, encrData.length);
+		is = new CipherInputStream(is, c);
+		ContentName rootName = SegmentationProfile.segmentRoot(encrName);
+		PublisherPublicKeyDigest publisher = outputLibrary.getDefaultPublisher();
+		PrivateKey signingKey = outputLibrary.keyManager().getSigningKey(publisher);
+		byte [] finalBlockID = SegmentationProfile.getSegmentID(1);
+		ContentObject co = new ContentObject(SegmentationProfile.segmentName(rootName, 0),
+				new SignedInfo(publisher, null, ContentType.ENCR, outputLibrary.keyManager().getKeyLocator(signingKey), new Integer(300), finalBlockID),
+				is, 4096);
+
+		// attempt to decrypt the data
+		c = encrKeys.getSegmentDecryptionCipher(null, 0);
+		is = new CipherInputStream(new ByteArrayInputStream(co.content()), c);
+		byte [] output = new byte[co.contentLength()];
+		for(int total = 0, res = 0; res >= 0 && total < output.length; total+=res)
+			res = is.read(output, total, output.length-total);
+		// check we get identical data back out
+		byte [] input = new byte[Math.min(4096, co.contentLength())];
+		System.arraycopy(encrData, 0, input, 0, input.length);
+		Assert.assertArrayEquals(input, output);
+	}
+
+	/**
+	 * Test basic stream encryption & decryption work, and that using different keys for decryption fails
+	 */
+	@Test
+	public void streamEncryptDecrypt() throws XMLStreamException, IOException {
 		// check we get identical data back out
 		System.out.println("Reading CCNInputStream from "+encrName);
 		CCNInputStream vfirst = new CCNInputStream(encrName, null, null, encrKeys, inputLibrary);
@@ -192,7 +272,7 @@ public class CCNSecureInputStreamTest {
 		doSeeking(600);
 
 		// check large seeks (multiple ContentObjects)
-		// doSeeking(4096*3+350);
+		doSeeking(4096*5+350);
 	}
 
 	private void doSeeking(int length) throws XMLStreamException, IOException, NoSuchAlgorithmException {
@@ -202,7 +282,6 @@ public class CCNSecureInputStreamTest {
 		int start = ((int) (encrLength*0.3) % 4096) +600;
 		i.seek(start);
 		readAndCheck(i, start, length);
-		start -= length;
 		i.seek(start);
 		readAndCheck(i, start, length);
 	}
@@ -245,12 +324,13 @@ public class CCNSecureInputStreamTest {
 
 		// check third part reads correctly
 		readAndCheck(inStream, start, 600);
+		start += 600;
 
 		// skip a bug bit (more than than 1 Content object)
-//		inStream.skip(600+4096*2);
-//		start += 600+4096*2;
+		inStream.skip(600+4096*2);
+		start += 600+4096*2;
 
 		// check fourth part reads correctly
-//		readAndCheck(inStream, start, 600);
+		readAndCheck(inStream, start, 600);
 	}
 }
