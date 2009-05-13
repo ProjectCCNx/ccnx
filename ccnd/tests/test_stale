@@ -5,7 +5,7 @@ export CCND_DEBUG=7
 export CCN_LOCAL_PORT=$((CCN_LOCAL_PORT_BASE + 6))
 ccnd &
 trap "ccndsmoketest -t 55 recv kill recv" 0
-ccndsmoketest -t 55 recv || Fail
+CheckForCCND 6
 date | ccnsendchunks -x 1 /test/ephemeral$$
 ccnget /test/ephemeral$$ > ephemeral$$.ccnb || Fail init fetch of ephemeral
 ccncatchunks /test/ephemeral$$ > ephemeral$$_0
@@ -26,4 +26,4 @@ diff ephemeral$$_0 ephemeral$$_5 || Fail test data did not become fresh again
 sleep 2
 ccncatchunks /test/ephemeral$$ > ephemeral$$_6
 : | diff - ephemeral$$_6 || Fail test data did not go stale the second time
-rm ephemeral$$_*
+rm ephemeral$$_* ephemeral$$.ccnb
