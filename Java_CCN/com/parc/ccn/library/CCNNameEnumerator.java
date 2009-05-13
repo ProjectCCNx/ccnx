@@ -198,8 +198,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 					}
 					//strip off NEMarker before passing through callback
 					callback.handleNameEnumerator(interest.name().cut(NEMARKER), names);
-				}
-				catch(XMLStreamException e) {
+				} catch(XMLStreamException e) {
 					e.printStackTrace();
 					System.err.println("Error getting CollectionData from ContentObject in CCNNameEnumerator");
 				}		
