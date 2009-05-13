@@ -20,11 +20,11 @@ public class ACL extends CollectionData {
 			super(ACL.class);
 		}
 		
-		public ACLObject(ContentName name, CCNLibrary library) throws XMLStreamException, IOException, ClassNotFoundException {
+		public ACLObject(ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
 			super(ACL.class, name, library);
 		}
 
-		public ACLObject(ContentName name) throws XMLStreamException, IOException, ConfigurationException, ClassNotFoundException {
+		public ACLObject(ContentName name) throws XMLStreamException, IOException, ConfigurationException {
 			super(ACL.class, name);
 		}
 		public ACLObject(ContentName name, ACL acl, CCNLibrary library) {
