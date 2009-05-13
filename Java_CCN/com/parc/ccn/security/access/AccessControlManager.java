@@ -103,7 +103,7 @@ public class AccessControlManager {
 	}
 	
 	/**
-	 * Retrieve an ACL at this node, if any.
+	 * Retrieves the latest version of an ACL at this node, if any.
 	 * @param nodeName
 	 * @return
 	 * @throws ConfigurationException 
@@ -115,6 +115,7 @@ public class AccessControlManager {
 		// Get the latest version of the acl. We don't care so much about knowing what version it was.
 		ACLObject aclo = new ACLObject(AccessControlProfile.aclName(nodeName));
 		aclo.update();
+		// if there is no update, this will probably throw an exception -- IO or XMLStream
 		return aclo.acl();
 	}
 	
@@ -273,7 +274,13 @@ public class AccessControlManager {
 		if (!VersioningProfile.isVersioned(nodeKeyName)) {
 			throw new IllegalArgumentException("Unexpected: node key name unversioned: " + nodeKeyName);
 		}
+		// Quick path, if cache is full -- enumerate node keys, pull the one we can decrypt.
 		
+		// If cache is not full, get current ACL, and walk it to find relevant key. It's still
+		// useful to have the list above, though.
+		ACL acl = getACL(nodeKeyName);
+		// Two passes through the acl -- pass 1, what groups we know we're in.
+		// Pass through, walk groups we don't know about.
 	}
 	
 	/**
