@@ -93,8 +93,6 @@ public class SerializableObjectTest {
 			System.out.println("Saved two public keys, lengths " + baos.toByteArray().length + " and " + baos3.toByteArray().length);
 		} catch (IOException e) {
 			fail("IOException! " + e.getMessage());
-		} catch (ClassNotFoundException e) {
-			fail("ClassNotFoundException! " + e.getMessage());
 		} catch (XMLStreamException e) {
 			fail("XMLStreamException! " + e.getMessage());
 		}

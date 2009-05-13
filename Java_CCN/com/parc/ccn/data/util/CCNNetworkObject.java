@@ -30,7 +30,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> {
 		super(type, data);
 	}
 
-	public void update() throws XMLStreamException, IOException, ClassNotFoundException {
+	public void update() throws XMLStreamException, IOException {
 		if (null == _currentName) {
 			throw new IllegalStateException("Cannot retrieve an object without giving a name!");
 		}
@@ -47,18 +47,18 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> {
 	 * @throws XMLStreamException 
 	 * @throws ClassNotFoundException 
 	 */
-	public void update(ContentName name) throws XMLStreamException, IOException, ClassNotFoundException {
+	public void update(ContentName name) throws XMLStreamException, IOException {
 		Library.logger().info("Updating object to " + name);
 		CCNVersionedInputStream is = new CCNVersionedInputStream(name, _library);
 		update(is);
 	}
 
-	public void update(ContentObject object) throws XMLStreamException, IOException, ClassNotFoundException {
+	public void update(ContentObject object) throws XMLStreamException, IOException {
 		CCNInputStream is = new CCNInputStream(object, _library);
 		update(is);
 	}
 
-	public void update(CCNInputStream inputStream) throws IOException, XMLStreamException, ClassNotFoundException {
+	public void update(CCNInputStream inputStream) throws IOException, XMLStreamException {
 		super.update(inputStream);
 		_currentName = inputStream.baseName();
 		_flowControl.addNameSpace(_currentName);

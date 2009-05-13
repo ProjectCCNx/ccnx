@@ -9,6 +9,8 @@ import java.io.Serializable;
 
 import javax.xml.stream.XMLStreamException;
 
+import com.parc.ccn.Library;
+
 /**
  * Prototypical wrapper around a Serializable object. Expand to variants
  * for CCNObjects. 
@@ -29,9 +31,15 @@ public class SerializableObject<E extends Serializable> extends NetworkObject<E>
 	}
 		
 	@Override
-	protected Object readObjectImpl(InputStream input) throws IOException, XMLStreamException, ClassNotFoundException {
+	protected Object readObjectImpl(InputStream input) throws IOException, XMLStreamException {
 		ObjectInputStream ois = new ObjectInputStream(input);
-		Object newData = ois.readObject();
+		Object newData;
+		try {
+			newData = ois.readObject();
+		} catch (ClassNotFoundException e) {
+			Library.logger().warning("Unexpected ClassNotFoundException in SerializedObject<" + _type.getName() + ">: " + e.getMessage());
+			throw new IOException("Unexpected ClassNotFoundException in SerializedObject<" + _type.getName() + ">: " + e.getMessage());
+		}
 		return newData;
 	}
 

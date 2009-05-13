@@ -9,6 +9,7 @@ import java.io.Serializable;
 
 import javax.xml.stream.XMLStreamException;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
@@ -109,9 +110,15 @@ public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObj
 
 	@Override
 	protected Object readObjectImpl(InputStream input) throws IOException,
-			XMLStreamException, ClassNotFoundException {
+			XMLStreamException {
 		ObjectInputStream ois = new ObjectInputStream(input);
-		Object newData = ois.readObject();
+		Object newData;
+		try {
+			newData = ois.readObject();
+		} catch (ClassNotFoundException e) {
+			Library.logger().warning("Unexpected ClassNotFoundException in SerializedObject<" + _type.getName() + ">: " + e.getMessage());
+			throw new IOException("Unexpected ClassNotFoundException in SerializedObject<" + _type.getName() + ">: " + e.getMessage());
+		}
 		return newData;
 	}
 
