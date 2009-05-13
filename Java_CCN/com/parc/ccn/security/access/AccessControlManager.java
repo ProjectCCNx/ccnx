@@ -1,5 +1,6 @@
 package com.parc.ccn.security.access;
 
+import java.io.IOException;
 import java.security.AccessControlException;
 import java.security.InvalidKeyException;
 import java.security.Key;
@@ -13,6 +14,7 @@ import javax.crypto.spec.SecretKeySpec;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.security.WrappedKey;
@@ -104,8 +106,11 @@ public class AccessControlManager {
 	 * Retrieve an ACL at this node, if any.
 	 * @param nodeName
 	 * @return
+	 * @throws ConfigurationException 
+	 * @throws IOException 
+	 * @throws XMLStreamException 
 	 */
-	public ACL getACL(ContentName nodeName) {
+	public ACL getACL(ContentName nodeName) throws XMLStreamException, IOException, ConfigurationException {
 		
 		// Get the latest version of the acl. We don't care so much about knowing what version it was.
 		ACLObject aclo = new ACLObject(AccessControlProfile.aclName(nodeName));
