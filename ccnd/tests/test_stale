@@ -18,9 +18,10 @@ ccncatchunks -a /test/ephemeral$$ > ephemeral$$_2
 ccncatchunks /test/ephemeral$$ > ephemeral$$_3
 diff ephemeral$$_0 ephemeral$$_2 || Fail should have forced fetch of stale data
 : | diff - ephemeral$$_3 || Fail test data did not go stale as expected
-ccndsmoketest -t 300 recv send ephemeral$$.ccnb &
+ccndsmoketest -t 400 recv send ephemeral$$.ccnb &
+ccndsmoketest -t 100 recv # try to close race a bit.
 ccncatchunks /test/ephemeral$$ > ephemeral$$_4
-diff ephemeral$$_0 ephemeral$$_4 || Fail huh
+diff ephemeral$$_0 ephemeral$$_4 || Fail did not get re-injected stale content
 ccncatchunks /test/ephemeral$$ > ephemeral$$_5
 diff ephemeral$$_0 ephemeral$$_5 || Fail test data did not become fresh again
 sleep 2
