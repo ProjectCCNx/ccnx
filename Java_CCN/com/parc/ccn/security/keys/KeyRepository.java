@@ -132,16 +132,26 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		}
 		Library.logger().info("Logged key " + id.toString() + " to file: " + keyFile.getAbsolutePath());
 	}
-
-	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator) throws CertificateEncodingException, InvalidKeySpecException, NoSuchAlgorithmException {
+	
+	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID) throws CertificateEncodingException, InvalidKeySpecException, NoSuchAlgorithmException {
 		ContentObject keyObject = null;
 		ContentName name = _idMap.get(desiredKeyID);
 		if (null != name) {
 			keyObject = _keyMap.get(name);
 			if (null != keyObject)
 				return CryptoUtil.getPublicKey(keyObject.content());
-		}
+		}	
+		return null;
+	}
 
+	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator) throws CertificateEncodingException, InvalidKeySpecException, NoSuchAlgorithmException {
+	
+		// Look for it in our cache first.
+		PublicKey publicKey = getPublicKey(desiredKeyID);
+		if (null != publicKey) {
+			return publicKey;
+		}
+		
 		if (locator.type() != KeyLocator.KeyLocatorType.NAME) {
 			Library.logger().info("This is silly: asking the repository to retrieve for me a key I already have...");
 			if (locator.type() == KeyLocator.KeyLocatorType.KEY) {

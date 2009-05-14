@@ -270,6 +270,12 @@ public class BasicKeyManager extends KeyManager {
 		return key;
 	}
 	
+	@Override
+	public PrivateKey [] getSigningKeys() {
+		// For now just return our default key. Eventually return multiple identity keys.
+		return new PrivateKey[]{getDefaultSigningKey()};
+	}
+	
 	/**
 	 * Find the key for the given publisher, using the 
 	 * available location information. Or, more generally,
@@ -438,12 +444,13 @@ public class BasicKeyManager extends KeyManager {
 	}
 
 	@Override
-	public PublicKey getPublicKey(PublisherPublicKeyDigest publisher) {
+	public PublicKey getPublicKey(PublisherPublicKeyDigest publisher) throws CertificateEncodingException, InvalidKeySpecException, NoSuchAlgorithmException {
 		// TODO Auto-generated method stub
 		Library.logger().finer("getPublicKey: retrieving key: " + publisher);
+		
 		if (_defaultKeyID.equals(publisher))
 			return _certificate.getPublicKey();
-		return null;
+		return keyRepository().getPublicKey(publisher);
 	}
 
 	@Override

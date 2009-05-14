@@ -2,8 +2,11 @@ package com.parc.ccn.security.keys;
 
 import java.io.IOException;
 import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.cert.CertificateEncodingException;
+import java.security.spec.InvalidKeySpecException;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
@@ -92,7 +95,7 @@ public abstract class KeyManager {
 	 * @return
 	 */
 	public abstract PublicKey getPublicKey(String alias);
-	public abstract PublicKey getPublicKey(PublisherPublicKeyDigest publisher);
+	public abstract PublicKey getPublicKey(PublisherPublicKeyDigest publisher) throws CertificateEncodingException, InvalidKeySpecException, NoSuchAlgorithmException;
 
 	public abstract PublisherPublicKeyDigest getPublisherKeyID(PrivateKey signingKey);
 
