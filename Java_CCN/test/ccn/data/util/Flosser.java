@@ -51,14 +51,16 @@ public class Flosser implements CCNInterestListener {
 	}
 	
 	public void handleNamespace(ContentName namespace) throws IOException {
-		if (_interests.containsKey(namespace)) {
-			Library.logger().fine("Already handling namespace: " + namespace);
-			return;
+		synchronized(_interests) {
+			if (_interests.containsKey(namespace)) {
+				Library.logger().fine("Already handling namespace: " + namespace);
+				return;
+			}
+			Library.logger().info("Flosser: handling namespace: " + namespace);
+			Interest namespaceInterest = new Interest(namespace);
+			_interests.put(namespace, namespaceInterest);
+			_library.expressInterest(namespaceInterest, this);
 		}
-		Library.logger().info("Flosser: handling namespace: " + namespace);
-		Interest namespaceInterest = new Interest(namespace);
-		_interests.put(namespace, namespaceInterest);
-		_library.expressInterest(namespaceInterest, this);
 	}
 
 	public Interest handleContent(ArrayList<ContentObject> results,
@@ -74,7 +76,9 @@ public class Flosser implements CCNInterestListener {
 			// reexpress it in exactly the same way
 			for (Entry<ContentName, Interest> entry : _interests.entrySet()) {
 				if (entry.getValue().equals(interest)) {
-					_interests.remove(entry.getKey());
+					synchronized(_interests) {
+						_interests.remove(entry.getKey());
+					}
 					break;
 				}
 			}
@@ -136,9 +140,11 @@ public class Flosser implements CCNInterestListener {
 	
 	public void stop() {
 		Library.logger().info("Stop flossing.");
-		for (Interest interest : _interests.values()) {
-			Library.logger().info("Cancelling pending interest: " + interest);
-			_library.cancelInterest(interest, this);
+		synchronized (_interests) {
+			for (Interest interest : _interests.values()) {
+				Library.logger().info("Cancelling pending interest: " + interest);
+				_library.cancelInterest(interest, this);
+			}
 		}
 	}
 	
