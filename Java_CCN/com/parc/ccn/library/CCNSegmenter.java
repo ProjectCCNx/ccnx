@@ -12,7 +12,6 @@ import java.sql.Timestamp;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
-import javax.crypto.CipherInputStream;
 import javax.crypto.IllegalBlockSizeException;
 
 import com.parc.ccn.Library;
@@ -30,6 +29,7 @@ import com.parc.ccn.security.crypto.CCNAggregatedSigner;
 import com.parc.ccn.security.crypto.CCNMerkleTree;
 import com.parc.ccn.security.crypto.CCNMerkleTreeSigner;
 import com.parc.ccn.security.crypto.ContentKeys;
+import com.parc.ccn.security.crypto.UnbufferedCipherInputStream;
 
 /**
  * This class combines basic segmentation, signing and encryption; 
@@ -588,7 +588,7 @@ public class CCNSegmenter {
 				// decryption key, we'll try to decrypt it.
 				signedInfo.setType(ContentType.ENCR);
 
-				dataStream = new CipherInputStream(dataStream, thisCipher);
+				dataStream = new UnbufferedCipherInputStream(dataStream, thisCipher);
 			}
 			blocks[i] =  
 				new ContentObject(

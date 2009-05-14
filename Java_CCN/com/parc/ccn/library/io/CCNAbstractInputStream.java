@@ -8,7 +8,6 @@ import java.security.InvalidKeyException;
 import java.util.Arrays;
 
 import javax.crypto.Cipher;
-import javax.crypto.CipherInputStream;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
@@ -20,6 +19,7 @@ import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.security.crypto.ContentKeys;
+import com.parc.ccn.security.crypto.UnbufferedCipherInputStream;
 
 public abstract class CCNAbstractInputStream extends InputStream {
 
@@ -203,7 +203,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 				Library.logger().warning("InvalidAlgorithmParameterException: " + e.getMessage());
 				throw new IOException("InvalidAlgorithmParameterException: " + e.getMessage());
 			}
-			_blockReadStream = new CipherInputStream(_currentBlockStream, _cipher);
+			_blockReadStream = new UnbufferedCipherInputStream(_currentBlockStream, _cipher);
 		} else {
 			_blockReadStream = _currentBlockStream;
 			if (_currentBlock.signedInfo().getType().equals(ContentType.ENCR)) {

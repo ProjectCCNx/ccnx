@@ -16,7 +16,6 @@ import java.util.logging.Level;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
-import javax.crypto.CipherInputStream;
 import javax.crypto.IllegalBlockSizeException;
 import javax.xml.stream.XMLStreamException;
 
@@ -37,6 +36,7 @@ import com.parc.ccn.library.io.CCNOutputStream;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.crypto.ContentKeys;
+import com.parc.ccn.security.crypto.UnbufferedCipherInputStream;
 
 public class CCNSecureInputStreamTest {
 	
@@ -194,14 +194,14 @@ public class CCNSecureInputStreamTest {
 	public void cipherStreamEncryptDecrypt() throws InvalidKeyException, InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException, IOException {
 		Cipher c = encrKeys.getSegmentEncryptionCipher(0);
 		InputStream is = new ByteArrayInputStream(encrData, 0, encrData.length);
-		is = new CipherInputStream(is, c);
+		is = new UnbufferedCipherInputStream(is, c);
 		byte [] cipherText = new byte[4096];
 		for(int total = 0, res = 0; res >= 0 && total < 4096; total+=res)
 			res = is.read(cipherText,total,4096-total);
 
 		c = encrKeys.getSegmentDecryptionCipher(0);
 		is = new ByteArrayInputStream(cipherText);
-		is = new CipherInputStream(is, c);
+		is = new UnbufferedCipherInputStream(is, c);
 		byte [] output = new byte[4096];
 		for(int total = 0, res = 0; res >= 0 && total < 4096; total+=res)
 			res = is.read(output,total,4096-total);
@@ -220,7 +220,7 @@ public class CCNSecureInputStreamTest {
 		// create an encrypted content block
 		Cipher c = encrKeys.getSegmentEncryptionCipher(0);
 		InputStream is = new ByteArrayInputStream(encrData, 0, encrData.length);
-		is = new CipherInputStream(is, c);
+		is = new UnbufferedCipherInputStream(is, c);
 		ContentName rootName = SegmentationProfile.segmentRoot(encrName);
 		PublisherPublicKeyDigest publisher = outputLibrary.getDefaultPublisher();
 		PrivateKey signingKey = outputLibrary.keyManager().getSigningKey(publisher);
@@ -231,7 +231,7 @@ public class CCNSecureInputStreamTest {
 
 		// attempt to decrypt the data
 		c = encrKeys.getSegmentDecryptionCipher(0);
-		is = new CipherInputStream(new ByteArrayInputStream(co.content()), c);
+		is = new UnbufferedCipherInputStream(new ByteArrayInputStream(co.content()), c);
 		byte [] output = new byte[co.contentLength()];
 		for(int total = 0, res = 0; res >= 0 && total < output.length; total+=res)
 			res = is.read(output, total, output.length-total);
