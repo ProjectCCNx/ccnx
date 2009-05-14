@@ -227,7 +227,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	}
 	
 	public long length() {
-		return 0;
+		return -1;
 	}
 	
 	public ContentName baseName() { return _baseName; }
