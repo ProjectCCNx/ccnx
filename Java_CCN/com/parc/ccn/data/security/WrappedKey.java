@@ -66,11 +66,11 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 			super(WrappedKey.class);
 		}
 		
-		public WrappedKeyObject(ContentName name, CCNLibrary library) throws XMLStreamException, IOException, ClassNotFoundException {
+		public WrappedKeyObject(ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
 			super(WrappedKey.class, name, library);
 		}
 
-		public WrappedKeyObject(ContentName name) throws XMLStreamException, IOException, ClassNotFoundException, ConfigurationException {
+		public WrappedKeyObject(ContentName name) throws XMLStreamException, IOException, ConfigurationException {
 			super(WrappedKey.class, name);
 		}
 		public WrappedKeyObject(ContentName name, WrappedKey wrappedKey, CCNLibrary library) {
