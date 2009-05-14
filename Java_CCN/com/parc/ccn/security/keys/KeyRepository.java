@@ -3,6 +3,7 @@ package com.parc.ccn.security.keys;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.security.cert.Certificate;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -24,6 +25,7 @@ import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
+import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.network.CCNNetworkManager;
 import com.parc.security.crypto.certificates.CryptoUtil;
 
@@ -35,6 +37,8 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	protected  CCNNetworkManager _networkManager = null;
 	protected HashMap<ContentName,ContentObject> _keyMap = new HashMap<ContentName,ContentObject>();
 	protected HashMap<PublisherPublicKeyDigest, ContentName> _idMap = new HashMap<PublisherPublicKeyDigest,ContentName>();
+	protected HashMap<PublisherPublicKeyDigest, PublicKey> _rawKeyMap = new HashMap<PublisherPublicKeyDigest,PublicKey>();
+	protected HashMap<PublisherPublicKeyDigest, Certificate> _rawCertificateMap = new HashMap<PublisherPublicKeyDigest,Certificate>();
 	
 	public KeyRepository() throws IOException {
 		_networkManager = new CCNNetworkManager(); // maintain our own connection to the agent, so
@@ -95,13 +99,21 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		PublisherPublicKeyDigest id = new PublisherPublicKeyDigest(theKey);
 		_idMap.put(id, keyObject.name());
 		_keyMap.put(keyObject.name(), keyObject);
-		
+		_rawKeyMap.put(id, theKey);
 		if (_DEBUG) {
 			recordKeyToFile(id, keyObject);
 		}
 		
 		// DKS TODO -- do we want to put in a prefix filter...?
 		_networkManager.setInterestFilter(this, keyObject.name(), this);
+	}
+	
+	public void remember(PublicKey theKey) {
+		_rawKeyMap.put(new PublisherPublicKeyDigest(theKey), theKey);
+	}
+	
+	public void remember(Certificate theCertificate) {
+		_rawCertificateMap.put(new PublisherPublicKeyDigest(theCertificate.getPublicKey()), theCertificate);
 	}
 
 	protected void recordKeyToFile(PublisherPublicKeyDigest id, ContentObject keyObject) {
@@ -111,7 +123,6 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 				Library.logger().warning("recordKeyToFile: Cannot create user CCN key repository directory: " + keyDir.getAbsolutePath());
 				return;
 			}
-			
 		}
 		
 		// Alas, until 1.6, we can't set permissions on the file or directory...
@@ -133,18 +144,37 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		Library.logger().info("Logged key " + id.toString() + " to file: " + keyFile.getAbsolutePath());
 	}
 	
-	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID) throws CertificateEncodingException, InvalidKeySpecException, NoSuchAlgorithmException {
+	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID) throws IOException {
 		ContentObject keyObject = null;
+		PublicKey theKey = _rawKeyMap.get(desiredKeyID);
+		if (null == theKey) {
+			Certificate theCertificate = _rawCertificateMap.get(desiredKeyID);
+			if (null != theCertificate) {
+				theKey = theCertificate.getPublicKey();
+			}
+		}
 		ContentName name = _idMap.get(desiredKeyID);
 		if (null != name) {
 			keyObject = _keyMap.get(name);
-			if (null != keyObject)
-				return CryptoUtil.getPublicKey(keyObject.content());
+			if (null != keyObject) {
+				try {
+					theKey = CryptoUtil.getPublicKey(keyObject.content());
+				} catch (CertificateEncodingException e) {
+					Library.logger().warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
+					throw new IOException("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
+				} catch (InvalidKeySpecException e) {
+					Library.logger().warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
+					throw new IOException("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
+				} catch (NoSuchAlgorithmException e) {
+					Library.logger().warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
+					throw new IOException("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
+				}
+			}
 		}	
-		return null;
+		return theKey;
 	}
 
-	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator) throws CertificateEncodingException, InvalidKeySpecException, NoSuchAlgorithmException {
+	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator) throws IOException {
 	
 		// Look for it in our cache first.
 		PublicKey publicKey = getPublicKey(desiredKeyID);
@@ -152,15 +182,22 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 			return publicKey;
 		}
 		
+		ContentObject keyObject = null;
 		if (locator.type() != KeyLocator.KeyLocatorType.NAME) {
 			Library.logger().info("This is silly: asking the repository to retrieve for me a key I already have...");
 			if (locator.type() == KeyLocator.KeyLocatorType.KEY) {
-				return locator.key();
+				PublicKey key = locator.key();
+				remember(key);
+				return key;
 			} else if (locator.type() == KeyLocator.KeyLocatorType.CERTIFICATE) {
-				return locator.certificate().getPublicKey();
+				Certificate certificate = locator.certificate();
+				PublicKey key = certificate.getPublicKey();
+				remember(certificate);
+				return key;
 			}
 		} else {
 			// DKS TODO -- better key retrieval
+			// take code from #BasicKeyManager.getKey, to validate more complex publisher constraints
 			Interest keyInterest = new Interest(locator.name().name());
 			if (null != locator.name().publisher()) {
 				keyInterest.publisherID(locator.name().publisher());
@@ -170,14 +207,31 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 				Library.logger().info("Trying network retrieval of key: " + keyInterest.name());
 				keyObject = _networkManager.get(keyInterest, DEFAULT_KEY_TIMEOUT);
 			} catch (IOException e) {
-				Library.logger().warning("IOException attempting to retrieve key: " + name + ": " + e.getMessage());
+				Library.logger().warning("IOException attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
 				Library.warningStackTrace(e);
 			} catch (InterruptedException e) {
-				Library.logger().warning("Interrupted attempting to retrieve key: " + name + ": " + e.getMessage());
+				Library.logger().warning("Interrupted attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
 			}
 			if (null != keyObject) {
-				Library.logger().info("Retrieved public key using name: " + locator.name().name());
-				return CryptoUtil.getPublicKey(keyObject.content());
+				if (keyObject.signedInfo().getType().equals(ContentType.KEY)) {
+					try {
+						Library.logger().info("Retrieved public key using name: " + locator.name().name());
+						PublicKey theKey = CryptoUtil.getPublicKey(keyObject.content());
+						remember(theKey, keyObject);
+						return theKey;
+					} catch (CertificateEncodingException e) {
+						Library.logger().warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
+						throw new IOException("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
+					} catch (InvalidKeySpecException e) {
+						Library.logger().warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
+						throw new IOException("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
+					} catch (NoSuchAlgorithmException e) {
+						Library.logger().warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
+						throw new IOException("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
+					}
+				} else {
+					Library.logger().warning("Retrieved an object when looking for key " + locator.name().name() + " at " + keyObject.name() + ", but type is " + keyObject.signedInfo().getTypeName());
+				}
 			}
 		}
 		return null;
@@ -208,8 +262,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 			ContentObject co = it.next();
 			if (interest.matches(co)) {
 				// doesn't handle preventing returning same thing over and over
-				return co;
-				
+				return co;	
 			}
 		}
 		return null;

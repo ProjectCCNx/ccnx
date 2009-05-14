@@ -95,7 +95,7 @@ public abstract class KeyManager {
 	 * @return
 	 */
 	public abstract PublicKey getPublicKey(String alias);
-	public abstract PublicKey getPublicKey(PublisherPublicKeyDigest publisher) throws CertificateEncodingException, InvalidKeySpecException, NoSuchAlgorithmException;
+	public abstract PublicKey getPublicKey(PublisherPublicKeyDigest publisher) throws IOException;
 
 	public abstract PublisherPublicKeyDigest getPublisherKeyID(PrivateKey signingKey);
 
@@ -119,6 +119,9 @@ public abstract class KeyManager {
 	 * @return
 	 * @throws IOException 
 	 * @throws InterruptedException 
+	 * @throws NoSuchAlgorithmException 
+	 * @throws InvalidKeySpecException 
+	 * @throws CertificateEncodingException 
 	 */
 	public abstract PublicKey getPublicKey(PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator) throws IOException, InterruptedException;
 
@@ -132,8 +135,12 @@ public abstract class KeyManager {
 	 * @param keyToPublish can be null, in which case we publish our own default public key
 	 * @throws InvalidKeyException 
 	 * @throws ConfigurationException 
+	 * @throws ConfigurationException 
+	 * @throws NoSuchAlgorithmException 
+	 * @throws InvalidKeySpecException 
+	 * @throws CertificateEncodingException 
 	 */
-	public abstract void publishKey(ContentName keyName, PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, ConfigurationException;
+	public abstract void publishKey(ContentName keyName, PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, IOException, ConfigurationException;
 	
 	public abstract KeyRepository keyRepository();
 
