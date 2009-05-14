@@ -23,6 +23,7 @@ import com.parc.ccn.data.security.WrappedKey;
 import com.parc.ccn.data.security.WrappedKey.WrappedKeyObject;
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.EnumeratedNameList;
 import com.parc.ccn.library.profiles.AccessControlProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.access.ACL.ACLObject;
@@ -76,27 +77,30 @@ public class AccessControlManager {
 	
 	private KeyCache keyCache() { return _keyCache; }
 	
-	public ArrayList<String> listGroups() {
+	public EnumeratedNameList listGroups() {
 		// TODO
+		return null;
 	}
 	
-	public ArrayList<String> listUsers() {
+	public EnumeratedNameList listUsers() {
 		// TODO
-
+		return null;
 	}
 
 	public Group getGroup(String friendlyName) {
 		// TODO
-
+		return null;
 	}
 	
 	public Group createGroup(String friendlyName, MembershipList members) {
 		// TODO
+		return null;
 
 	}
 	
 	public Group modifyGroup(String friendlyName, ArrayList<LinkReference> membersToAdd, ArrayList<LinkReference> membersToRemove) {
 		// TODO
+		return null;
 	}
 	
 	public Group addUsers(String friendlyName, ArrayList<LinkReference> newUsers) {
@@ -175,13 +179,16 @@ public class AccessControlManager {
 	 * Just writes, doesn't bother to look at any current ACL. Does need to pull
 	 * the effective node key at this node, though, to wrap the old ENK in a new
 	 * node key.
+	 * @throws IOException 
+	 * @throws XMLStreamException 
+	 * @throws  
 	 */
-	public ACL setACL(ContentName nodeName, ACL newACL) {
+	public ACL setACL(ContentName nodeName, ACL newACL) throws XMLStreamException, IOException {
 		NodeKey effectiveNodeKey = getEffectiveNodeKey(nodeName);
 		// generates the new node key, wraps it under the new acl, and wraps the old node key
 		generateNewNodeKey(nodeName, effectiveNodeKey, newACL);
 		// write the acl
-		ACLObject aclo = new ACLObject(AccessControlProfile.aclName(nodeName), newACL);
+		ACLObject aclo = new ACLObject(AccessControlProfile.aclName(nodeName), newACL, _library);
 		aclo.save();
 		// DKS TODO aggregating signer and group flush
 	}
@@ -217,6 +224,11 @@ public class AccessControlManager {
 	
 	public ACL addManagers(ContentName nodeName, ArrayList<LinkReference> newManagers) {
 		return updateACL(nodeName, null, null, null, null, newManagers, null);
+	}
+
+	private ContentName findAncestorWithACL(ContentName dataNodeName) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 	/**
@@ -289,8 +301,9 @@ public class AccessControlManager {
 	 * not just given name, enumerate versions.)
 	 * @param nodeName
 	 * @return
+	 * @throws IOException 
 	 */
-	public NodeKey getNodeKey(ContentName nodeName) {
+	public NodeKey getNodeKey(ContentName nodeName) throws IOException {
 		// Find the node that has the NK
 		ContentName aclNodeName = findAncestorWithNodeKey(nodeName);
 		if (null == aclNodeName) {
@@ -376,18 +389,19 @@ public class AccessControlManager {
 			// Quick path, if cache is full -- enumerate node keys, pull the one we can decrypt.
 			// Name node keys by both wrapping key ID and group. To differentiate, prefix
 			// node key IDs 
-			wrappedNodeKeys = new EnumeratedNameList(nodeKeyName);
-			wrappedNodeKeys.waitForData();
+			wrappedNodeKeys = new EnumeratedNameList(nodeKeyName, _library);
+			// Will block until an answer comes back or timeout.
+			ArrayList <byte []> children = wrappedNodeKeys.getNewData();
 
 			// We have at least one answer. Pass through it, and for the keys,
 			// check to see if we know the key already.
 			ArrayList<String> groupNames = new ArrayList<String>();
-			for (ContentName wnk : wrappedNodeKeys.getNewData()) {
-				if (AccessControlProfile.isWrappedNodeKey(wnk)) {
-					byte [] keyid = AccessControlProfile.getTargetKeyID(wnk);
+			for (byte [] wnkChildName : wrappedNodeKeys.getNewData()) {
+				if (AccessControlProfile.isWrappedNodeKeyNameComponent(wnkChildName)) {
+					byte [] keyid = AccessControlProfile.getTargetKeyIDFromNameComponent(wnkChildName);
 					if (keyCache().containsKey(keyid)) {
 						// We have it, pull the block, unwrap the node key.
-						WrappedKeyObject wko = new WrappedKeyObject(wnk);
+						WrappedKeyObject wko = new WrappedKeyObject(new ContentName(nodeKeyName, wnkChildName));
 						wko.update();
 						if (null != wko.wrappedKey()) {
 							nk = new NodeKey(nodeKeyName, 
@@ -400,8 +414,8 @@ public class AccessControlManager {
 							}
 						}
 					}
-				} else if (AccessControlProfile.isGroupNodeKey(wnk)) {
-					groupNames.add(AccessControlProfile.groupNodeKeyToGroupName(wnk));
+				} else if (AccessControlProfile.isGroupNodeKeyNameComponent(wnkChildName)) {
+					groupNames.add(AccessControlProfile.groupNodeKeyNameComponentToGroupName(wnkChildName));
 				}
 			}
 
@@ -432,8 +446,9 @@ public class AccessControlManager {
 	 * encrypt and decrypt content.
 	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
+	 * @throws IOException 
 	 */
-	public NodeKey getEffectiveNodeKey(ContentName nodeName) throws InvalidKeyException, XMLStreamException {
+	public NodeKey getEffectiveNodeKey(ContentName nodeName) throws InvalidKeyException, XMLStreamException, IOException {
 		// Get the ancestor node key in force at this node.
 		NodeKey nodeKey = getNodeKey(nodeName);
 		if (null == nodeKey) {
@@ -494,8 +509,10 @@ public class AccessControlManager {
 	 * follow the steps in the comments to {@link #generateAndStoreDataKey(ContentName)}.
 	 * @param dataNodeName
 	 * @return
+	 * @throws IOException 
+	 * @throws XMLStreamException 
 	 */
-	public byte [] getDataKey(ContentName dataNodeName) {
+	public byte [] getDataKey(ContentName dataNodeName) throws XMLStreamException, IOException {
 		// DKS TODO -- library/flow control handling
 		WrappedKeyObject wdko = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataNodeName), _library);
 		wdko.update();
@@ -532,12 +549,14 @@ public class AccessControlManager {
 	 * the current effective node key, and wrapping this data key in it.
 	 * @param dataNodeName
 	 * @param newRandomDataKey
+	 * @throws XMLStreamException 
+	 * @throws InvalidKeyException 
 	 * @throws IllegalBlockSizeException 
 	 * @throws NoSuchPaddingException 
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
 	 */
-	public void storeDataKey(ContentName dataNodeName, byte [] newRandomDataKey) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException {
+	public void storeDataKey(ContentName dataNodeName, byte [] newRandomDataKey) throws InvalidKeyException, XMLStreamException {
 		NodeKey effectiveNodeKey = getEffectiveNodeKey(dataNodeName);
 		if (null == effectiveNodeKey) {
 			throw new IllegalStateException("Cannot retrieve effective node key for node: " + dataNodeName + ".");
@@ -574,4 +593,16 @@ public class AccessControlManager {
 		storeDataKey(dataNodeName, dataKey);
 		return dataKey;
 	}
+	
+	/**
+	 * Actual output functions.
+	 * @param dataNodeName -- the content node for whom this is the data key.
+	 * @param wrappedDataKey
+	 */
+	private void storeKeyContent(ContentName dataNodeName,
+								 WrappedKey wrappedDataKey) {
+		// TODO Auto-generated method stub
+		
+	}
+
 }	
