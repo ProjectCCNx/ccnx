@@ -112,4 +112,30 @@ public class AccessControlProfile implements CCNProfile {
 	public static ContentName groupPublicKeyName(ContentName namespace, String groupFriendlyName) {
 		return ContentName.fromNative(groupName(namespace,groupFriendlyName),  GROUP_PUBLIC_KEY_NAME);
 	}
+
+	public static String groupNodeKeyToGroupName(ContentName wnk) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public static boolean isGroupNodeKeyNameComponent(byte [] wnkNameComponent) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	public static boolean isWrappedNodeKeyNameComponent(byte [] wnkNameComponent) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	public static String groupNodeKeyNameComponentToGroupName(
+			byte[] wnkChildName) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public static byte[] getTargetKeyIDFromNameComponent(byte[] wnkChildName) {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }
