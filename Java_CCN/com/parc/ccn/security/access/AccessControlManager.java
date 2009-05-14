@@ -77,22 +77,26 @@ public class AccessControlManager {
 	private KeyCache keyCache() { return _keyCache; }
 	
 	public ArrayList<String> listGroups() {
-		
+		// TODO
 	}
 	
 	public ArrayList<String> listUsers() {
-		
+		// TODO
+
 	}
 
 	public Group getGroup(String friendlyName) {
-		
+		// TODO
+
 	}
 	
 	public Group createGroup(String friendlyName, MembershipList members) {
-		
+		// TODO
+
 	}
 	
 	public Group modifyGroup(String friendlyName, ArrayList<LinkReference> membersToAdd, ArrayList<LinkReference> membersToRemove) {
+		// TODO
 	}
 	
 	public Group addUsers(String friendlyName, ArrayList<LinkReference> newUsers) {
@@ -100,11 +104,11 @@ public class AccessControlManager {
 	}
 	
 	public Group removeUsers(String friendlyName, ArrayList<LinkReference> removedUsers) {
-		
+		return modifyGroup(friendlyName, null, removedUsers);
 	}
 	
 	public void deleteGroup(String friendlyName) {
-		
+		// TODO		
 	}
 	
 	/**
@@ -173,7 +177,13 @@ public class AccessControlManager {
 	 * node key.
 	 */
 	public ACL setACL(ContentName nodeName, ACL newACL) {
-		
+		NodeKey effectiveNodeKey = getEffectiveNodeKey(nodeName);
+		// generates the new node key, wraps it under the new acl, and wraps the old node key
+		generateNewNodeKey(nodeName, effectiveNodeKey, newACL);
+		// write the acl
+		ACLObject aclo = new ACLObject(AccessControlProfile.aclName(nodeName), newACL);
+		aclo.save();
+		// DKS TODO aggregating signer and group flush
 	}
 	
 	/**
@@ -190,7 +200,7 @@ public class AccessControlManager {
 		if (null != currentACL) {
 			newACL = currentACL.acl();
 		}
-		// Now update ACL to add and remove values.
+		// TODO Now update ACL to add and remove values.
 		
 		
 		// Set the ACL and update the node key.
@@ -290,6 +300,11 @@ public class AccessControlManager {
 		return getNodeKeyForNode(aclNodeName);		
 	}
 	
+	protected ContentName findAncestorWithNodeKey(ContentName nodeName) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 	public NodeKey getNodeKeyForNode(ContentName nodeName) {
 		
 		// First we need to figure out what the latest version is of the node key.
@@ -298,6 +313,11 @@ public class AccessControlManager {
 		return getNodeKeyByVersionedName(nodeKeyVersionedName, null);
 	}
 	
+	private ContentName getLatestVersionName(ContentName nodeKeyName) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 	/**
 	 * Retrieve a specific node key from a given location, as specified by a
 	 * key it was used to wrap, and, if possible, find a key we can use to
@@ -425,6 +445,47 @@ public class AccessControlManager {
 	}
 	
 	/**
+	 * We've looked for a node key we can decrypt at the expected node key location,
+	 * but no dice. See if a new ACL has been interposed granting us rights at a lower
+	 * portion of the tree.
+	 * @param dataNodeName
+	 * @param wrappingKeyName
+	 * @param wrappingKeyIdentifier
+	 * @return
+	 */
+	protected NodeKey getNodeKeyUsingInterposedACL(ContentName dataNodeName,
+			ContentName wrappingKeyName, byte[] wrappingKeyIdentifier) {
+		ContentName nearestACL = findAncestorWithACL(dataNodeName);
+		
+		if (null == nearestACL) {
+			Library.logger().warning("Unexpected -- node with no ancestor ACL: " + dataNodeName);
+			// no dice
+			return null;
+		}
+		
+		if (nearestACL.equals(AccessControlProfile.accessRoot(wrappingKeyName))) {
+			Library.logger().info("Node key: " + wrappingKeyName + " is the nearest ACL to " + dataNodeName);
+			return null;
+		}
+		
+		NodeKey nk = getNodeKeyForNode(nearestACL);
+		return nk;
+	}
+
+	/**
+	 * Make a new node key, encrypt it under the given ACL, and wrap its previous node key.
+	 * Put all the blocks into the aggregating writer, but don't flush.
+	 * @param nodeName
+	 * @param effectiveNodeKey
+	 * @param newACL
+	 */
+	protected void generateNewNodeKey(ContentName nodeName,
+			NodeKey effectiveNodeKey, ACL effectiveACL) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	/**
 	 * Used by content reader to retrieve the keys necessary to decrypt this content
 	 * under this access control model.
 	 * Given a data location, pull the data key block and decrypt it using
@@ -436,7 +497,7 @@ public class AccessControlManager {
 	 */
 	public byte [] getDataKey(ContentName dataNodeName) {
 		// DKS TODO -- library/flow control handling
-		WrappedKeyObject wdko = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataNodeName));
+		WrappedKeyObject wdko = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataNodeName), _library);
 		wdko.update();
 		if (null == wdko.wrappedKey()) {
 			Library.logger().warning("Could not retrieve data key for node: " + dataNodeName);
