@@ -51,6 +51,13 @@ static gint ett_signedinfo = -1;
 static gint ett_content = -1;
 
 static gint hf_ccn_type = -1;
+static gint hf_ccn_name = -1;
+static gint hf_ccn_name_components = -1;
+static gint hf_ccn_signature = -1;
+static gint hf_ccn_signaturedigestalg = -1;
+static gint hf_ccn_signaturebits = -1;
+static gint hf_ccn_contentdata = -1;
+static gint hf_ccn_contenttype = -1;
 
 static int global_ccn_port = 4573;
 static dissector_handle_t ccn_handle = NULL;
@@ -60,18 +67,55 @@ void
 proto_register_ccn(void)
 {
     module_t *ccn_module;
+
+    static const value_string contenttype_vals[] = {
+        {CCN_CONTENT_DATA, "Data"},
+        {CCN_CONTENT_ENCR, "Encrypted"},
+        {CCN_CONTENT_GONE, "Gone"},
+        {CCN_CONTENT_KEY, "Key"},
+        {CCN_CONTENT_LINK, "Link"},
+        {CCN_CONTENT_NACK, "Nack"},
+        {0, NULL}
+    };
     static gint *ett[] = {
         &ett_ccn,
         &ett_signature,
         &ett_name,
         &ett_signedinfo,
-        &ett_content,
+        &ett_content
     };
     
+    
     static hf_register_info hf[] = {
+        /* { &hf_PROTOABBREV_FIELDABBREV,
+		{ "FIELDNAME",           "PROTOABBREV.FIELDABBREV",
+		FIELDTYPE, FIELDBASE, FIELDCONVERT, BITMASK,
+		"FIELDDESCR", HFILL }
+        */
         {&hf_ccn_type,
          {"Type", "ccn.type", FT_UINT32, BASE_DEC, NULL,
-          0x0, "Type represents the type of the CCN packet", HFILL}}
+          0x0, "The type of the CCN packet", HFILL}},
+        {&hf_ccn_name,
+         {"Name", "ccn.name", FT_STRING, BASE_NONE, NULL,
+          0x0, "The name of the content/interest in the CCN packet", HFILL}},
+        {&hf_ccn_name_components,
+         {"Component", "ccn.name.component", FT_STRING, BASE_NONE, NULL,
+          0x0, "The individual components of the name", HFILL}},
+        {&hf_ccn_signature,
+         {"Signature", "ccn.signature", FT_NONE, BASE_HEX, NULL,
+          0x0, "The signature collection of the CCN packet", HFILL}},
+        {&hf_ccn_signaturedigestalg,
+         {"Digest algorithm", "ccn.signature.digestalgorithm", FT_OID, BASE_DEC, NULL,
+          0x0, "The OID of the signature digest algorithm", HFILL}},
+        {&hf_ccn_signaturebits,
+         {"Bits", "ccn.signature.bits", FT_BYTES, BASE_HEX, NULL,
+          0x0, "The signature over the name through end of the content of the CCN packet", HFILL}},
+        {&hf_ccn_contenttype,
+         {"Content type", "ccn.contenttype", FT_INT32, BASE_DEC, &contenttype_vals,
+          0x0, "Raw data", HFILL}},
+        {&hf_ccn_contentdata,
+         {"Data", "ccn.data", FT_BYTES, BASE_HEX, NULL,
+          0x0, "Raw data", HFILL}}
     };
 
     proto_ccn = proto_register_protocol("Content-centric Networking Protocol", /* name */
@@ -188,10 +232,12 @@ dissect_ccn(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
     switch (packet_type) {
     case CCN_DTAG_ContentObject:
     case CCN_DTAG_ContentObjectV20080711:
-        dissect_ccn_contentobject(ccnb, sd->index, tvb, pinfo, ccn_tree);
+        if (0 > dissect_ccn_contentobject(ccnb, sd->index, tvb, pinfo, ccn_tree))
+            return (0);
         break;
     case CCN_DTAG_Interest:
-        dissect_ccn_interest(ccnb, sd->index, tvb, pinfo, ccn_tree);
+        if (0 > dissect_ccn_interest(ccnb, sd->index, tvb, pinfo, ccn_tree))
+            return (0);
         break;
     }
 
@@ -223,7 +269,7 @@ dissect_ccn_interest(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t *tvb,
 
     comps = ccn_indexbuf_create();
     res = ccn_parse_interest(ccnb, ccnb_size, pi, comps);
-    return (0);
+    return (1);
     
 }
 
@@ -231,46 +277,86 @@ static int
 dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 {
     proto_tree *signature_tree;
-    proto_item *signature_item;
     proto_tree *name_tree;
-    proto_item *name_item;
     proto_tree *signedinfo_tree;
-    proto_item *signedinfo_item;
     proto_tree *content_tree;
-    proto_item *content_item;
+    proto_item *titem;
     struct ccn_parsed_ContentObject co;
     struct ccn_parsed_ContentObject *pco = &co;
-    /* struct ccn_indexbuf *comps; */
+    struct ccn_charbuf *c;
+    struct ccn_indexbuf *comps;
+    const unsigned char *comp;
+    size_t comp_size;
+    size_t blob_size;
+    const unsigned char *blob;
     int l;
+    unsigned int i;
     int res;
     
-    /*    comps = ccn_indexbuf_create(); */
-    res = ccn_parse_ContentObject(ccnb, ccnb_size, pco, NULL);
+    comps = ccn_indexbuf_create();
+    res = ccn_parse_ContentObject(ccnb, ccnb_size, pco, comps);
     if (res < 0) return (-1);
-    
+
     l = pco->offset[CCN_PCO_E_Signature] - pco->offset[CCN_PCO_B_Signature];
-    signature_item = proto_tree_add_text(tree, tvb,
-                                         pco->offset[CCN_PCO_B_Signature], l,
-                                         "%s", "Signature");
-    signature_tree = proto_item_add_subtree(signature_item, ett_signature);
+    titem = proto_tree_add_item(tree, hf_ccn_signature, tvb, pco->offset[CCN_PCO_B_Signature], l, FALSE);
+    signature_tree = proto_item_add_subtree(titem, ett_signature);
+
+    l = pco->offset[CCN_PCO_E_DigestAlgorithm] - pco->offset[CCN_PCO_B_DigestAlgorithm];
+    if (l > 0) {
+        res = ccn_ref_tagged_BLOB(CCN_DTAG_DigestAlgorithm, ccnb,
+                                  pco->offset[CCN_PCO_B_DigestAlgorithm],
+                                  pco->offset[CCN_PCO_E_DigestAlgorithm],
+                                  &blob, &blob_size);
+        titem = proto_tree_add_item(signature_tree, hf_ccn_signaturedigestalg, tvb,
+                                    blob - ccnb, blob_size, FALSE);
+    }
+    l = pco->offset[CCN_PCO_E_Witness] - pco->offset[CCN_PCO_B_Witness];
+    if (l > 0) {
+        /* add the witness item to the signature tree */
+    }
+
+    l = pco->offset[CCN_PCO_E_SignatureBits] - pco->offset[CCN_PCO_B_SignatureBits];
+    if (l > 0) {
+        res = ccn_ref_tagged_BLOB(CCN_DTAG_SignatureBits, ccnb,
+                                  pco->offset[CCN_PCO_B_SignatureBits],
+                                  pco->offset[CCN_PCO_E_SignatureBits],
+                                  &blob, &blob_size);
+        titem = proto_tree_add_bytes(signature_tree, hf_ccn_signaturebits, tvb,
+                                     blob - ccnb, blob_size, blob);
+    }
 
     l = pco->offset[CCN_PCO_E_Name] - pco->offset[CCN_PCO_B_Name];
-    name_item = proto_tree_add_text(tree, tvb,
-                                         pco->offset[CCN_PCO_B_Name], l,
-                                         "%s", "Name");
-    name_tree = proto_item_add_subtree(name_item, ett_name);
-                                          
+    c = ccn_charbuf_create();
+    ccn_uri_append(c, ccnb, ccnb_size, 1);
+    titem = proto_tree_add_string(tree, hf_ccn_name, tvb,
+                                      pco->offset[CCN_PCO_B_Name], l,
+                                      ccn_charbuf_as_string(c));
+    name_tree = proto_item_add_subtree(titem, ett_name);
+    ccn_charbuf_destroy(&c);
+
+    for (i = 0; i < comps->n - 1; i++) {
+        res = ccn_name_comp_get(ccnb, comps, i, &comp, &comp_size);
+        titem = proto_tree_add_item(name_tree, hf_ccn_name_components, tvb, comp - ccnb, comp_size, FALSE);
+    }
+
     l = pco->offset[CCN_PCO_E_SignedInfo] - pco->offset[CCN_PCO_B_SignedInfo];
-    signedinfo_item = proto_tree_add_text(tree, tvb,
+    titem = proto_tree_add_text(tree, tvb,
                                          pco->offset[CCN_PCO_B_SignedInfo], l,
                                          "SignedInfo");
-    signedinfo_tree = proto_item_add_subtree(signedinfo_item, ett_signedinfo);
+    signedinfo_tree = proto_item_add_subtree(titem, ett_signedinfo);
+    titem = proto_tree_add_int(signedinfo_tree, hf_ccn_contenttype, NULL, 0, 0, pco->type);
                                           
     l = pco->offset[CCN_PCO_E_Content] - pco->offset[CCN_PCO_B_Content];
-    content_item = proto_tree_add_text(tree, tvb,
+    titem = proto_tree_add_text(tree, tvb,
                                          pco->offset[CCN_PCO_B_Content], l,
                                          "Content");
-    content_tree = proto_item_add_subtree(content_item, ett_content);
+    content_tree = proto_item_add_subtree(titem, ett_content);
+
+    res = ccn_ref_tagged_BLOB(CCN_DTAG_Content, ccnb,
+                                  pco->offset[CCN_PCO_B_Content],
+                                  pco->offset[CCN_PCO_E_Content],
+                                  &blob, &blob_size);
+    titem = proto_tree_add_item(content_tree, hf_ccn_contentdata, tvb, blob - ccnb, blob_size, FALSE);
                                           
     return (ccnb_size);
 }
