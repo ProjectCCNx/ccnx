@@ -71,7 +71,7 @@ public class RepositoryDaemon extends Daemon {
 					Iterator<RepositoryDataListener> iterator = _currentListeners.iterator();
 					while (iterator.hasNext()) {
 						RepositoryDataListener listener = iterator.next();
-						if ((currentTime - listener.getTimer()) > PERIOD) {
+						if ((currentTime - listener.getTimer()) > (PERIOD * 2)) {
 							synchronized(_repoFilters) {
 								listener.cancelInterests();
 								iterator.remove();

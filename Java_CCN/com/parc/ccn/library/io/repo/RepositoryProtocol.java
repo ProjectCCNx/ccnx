@@ -186,7 +186,7 @@ public class RepositoryProtocol extends CCNFlowControl {
 		
 		cancelInterests();
 		if (!flushComplete()) {
-			throw new IOException("Unable to confirm writes are stable: timed out waiting ack for " + _unacked.size());
+			throw new IOException("Unable to confirm writes are stable: timed out waiting ack for " + _unacked.firstKey());
 		}
 	}
 	

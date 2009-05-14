@@ -43,6 +43,7 @@ public class RepoIOTest extends RepoTestBase {
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
+		//Library.logger().setLevel(Level.FINEST);
 		RepoTestBase.setUpBeforeClass();
 		byte value = 1;
 		for (int i = 0; i < data.length; i++)
