@@ -362,30 +362,26 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 
 	public void retrieveFromRepo(String name){
 		try{
-			System.out.println("rfr name = "+name);
 	
 			//get the file name as a ContentName
 			ContentName fileName = ContentName.fromNative(name);
-			String localName = new String(fileName.lastComponent());
-			System.out.println("as a contentname: "+fileName.toString());
-			System.out.println("file name is: "+localName);
+			//String localName = new String(fileName.lastComponent());
+			System.out.println("retrieving "+fileName.toString()+" from repo");
 
 			
+			//attempt a CCNFileInputStream...
 			
-			System.out.println("attempting _library.get... for now...  until streams are working");
-			ContentObject testContent = _library.get(new Interest(name), 10000);
-						
-			
-			if(testContent.content()!=null && testContent.isData()){
-				System.out.println("testContent length = "+testContent.contentLength());
-				FileOutputStream fs = new FileOutputStream(localName);
-			
-				fs.write(testContent.content());
-			
+			try {
+				CCNFileInputStream fis = new CCNFileInputStream(fileName, _library);
 				
+				htmlPane.read(fis, fileName);
+				
+			} catch (XMLStreamException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				//length = -1;
 			}
-			else
-				System.out.println("testContent.content was null or returned object was not of type data for: "+fileName.toString());
+			
 		} catch (IOException e) {
 			
 			e.printStackTrace();
