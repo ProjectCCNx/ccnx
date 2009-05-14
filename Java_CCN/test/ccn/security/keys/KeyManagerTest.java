@@ -3,6 +3,7 @@ package test.ccn.security.keys;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.PublicKey;
 import java.security.Security;
 import java.util.Random;
 
@@ -67,7 +68,11 @@ public class KeyManagerTest {
 			Flosser flosser = new Flosser(testprefix);
 			CCNFlowControl fc = new CCNFlowControl(testprefix, CCNLibrary.open());
 			
-			KeyRepository kr = KeyManager.getDefaultKeyManager().keyRepository();
+			KeyManager km = KeyManager.getDefaultKeyManager();
+			
+			// Important -- make a different key repository, with a separate cache, so when
+			// we retrieve we don't pull from our own cache.
+			KeyRepository kr = new KeyRepository();
 			for (int i=0; i < KEY_COUNT; ++i) {
 				kr.publishKey(keyLocs[i].name().name(), pairs[i].getPublic(), publishers[i], pairs[i].getPrivate());
 			}
@@ -87,6 +92,18 @@ public class KeyManagerTest {
 					fc.put(co);
 				}
 			}
+			
+			// now we try getting it back..
+			for (int i=0; i < KEY_COUNT; ++i) {
+				System.out.println("Attempting to retrieive key " + i + ":");
+				PublicKey pk = km.getPublicKey(publishers[i], keyLocs[i]);
+				if (null == pk) {
+					System.out.println("..... failed.");
+				} else {
+					System.out.println("..... got it! Correct key? " + (pk.equals(pairs[i].getPublic())));
+				}
+			}
+			
 			flosser.stop();
 		} catch (Exception e) {
 			System.out.println("Exception in testWriteContent: " + e.getClass().getName() + ": " + e.getMessage());

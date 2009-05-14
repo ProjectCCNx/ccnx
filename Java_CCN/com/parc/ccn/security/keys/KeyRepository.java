@@ -161,18 +161,24 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 			}
 		} else {
 			// DKS TODO -- better key retrieval
-			/*
+			Interest keyInterest = new Interest(locator.name().name());
+			if (null != locator.name().publisher()) {
+				keyInterest.publisherID(locator.name().publisher());
+			}			
+			//  it would be really good to know how many additional name components to expect...
 			try {
-				keyObject = _networkManager.get(new Interest(name), DEFAULT_KEY_TIMEOUT);
+				Library.logger().info("Trying network retrieval of key: " + keyInterest.name());
+				keyObject = _networkManager.get(keyInterest, DEFAULT_KEY_TIMEOUT);
 			} catch (IOException e) {
 				Library.logger().warning("IOException attempting to retrieve key: " + name + ": " + e.getMessage());
 				Library.warningStackTrace(e);
 			} catch (InterruptedException e) {
 				Library.logger().warning("Interrupted attempting to retrieve key: " + name + ": " + e.getMessage());
 			}
-			if (null != keyObject)
+			if (null != keyObject) {
+				Library.logger().info("Retrieved public key using name: " + locator.name().name());
 				return CryptoUtil.getPublicKey(keyObject.content());
-				*/
+			}
 		}
 		return null;
 	}
