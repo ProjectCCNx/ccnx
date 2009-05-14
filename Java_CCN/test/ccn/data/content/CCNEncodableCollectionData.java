@@ -57,7 +57,7 @@ public class CCNEncodableCollectionData extends CCNEncodableObject<CollectionDat
 		super(CollectionData.class, content, library);
 	}
 	
-	public CCNEncodableCollectionData(ContentObject content) throws XMLStreamException, IOException, ClassNotFoundException {
+	public CCNEncodableCollectionData(ContentObject content) throws XMLStreamException, IOException {
 		super(CollectionData.class, content, null);
 	}
 
@@ -73,15 +73,15 @@ public class CCNEncodableCollectionData extends CCNEncodableObject<CollectionDat
 	 * @throws IOException
 	 * @throws ClassNotFoundException 
 	 */
-	public CCNEncodableCollectionData(ContentName name, PublisherPublicKeyDigest publisher, CCNLibrary library) throws XMLStreamException, IOException, ClassNotFoundException {
+	public CCNEncodableCollectionData(ContentName name, PublisherPublicKeyDigest publisher, CCNLibrary library) throws XMLStreamException, IOException {
 		super(CollectionData.class, name, publisher, library);
 	}
 	
-	public CCNEncodableCollectionData(ContentName name, CCNLibrary library) throws XMLStreamException, IOException, ClassNotFoundException {
+	public CCNEncodableCollectionData(ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
 		super(CollectionData.class, name, library);
 	}
 
-	public CCNEncodableCollectionData(ContentName name) throws XMLStreamException, IOException, ConfigurationException, ClassNotFoundException {
+	public CCNEncodableCollectionData(ContentName name) throws XMLStreamException, IOException, ConfigurationException {
 		super(CollectionData.class, name);
 	}
 }

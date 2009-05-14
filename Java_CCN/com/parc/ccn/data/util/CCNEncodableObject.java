@@ -59,9 +59,8 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 	 * @param library
 	 * @throws XMLStreamException
 	 * @throws IOException
-	 * @throws ClassNotFoundException 
 	 */
-	public CCNEncodableObject(Class<E> type, ContentObject content, CCNLibrary library) throws XMLStreamException, IOException, ClassNotFoundException {
+	public CCNEncodableObject(Class<E> type, ContentObject content, CCNLibrary library) throws XMLStreamException, IOException {
 		this(type, library);
 		CCNVersionedInputStream is = new CCNVersionedInputStream(content, library);
 		is.seek(0); // In case we start with something other than the first fragment.
@@ -78,7 +77,6 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 	 * @param library
 	 * @throws XMLStreamException
 	 * @throws IOException
-	 * @throws ClassNotFoundException 
 	 */
 	public CCNEncodableObject(
 			Class<E> type, ContentName name, 
@@ -96,7 +94,6 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 	 * @param library
 	 * @throws XMLStreamException
 	 * @throws IOException
-	 * @throws ClassNotFoundException 
 	 */
 	public CCNEncodableObject(Class<E> type, ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
 		this(type, name, (PublisherPublicKeyDigest)null, library);
