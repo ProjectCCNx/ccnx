@@ -2,6 +2,8 @@ package test.ccn.network.daemons.repo;
 
 import java.io.File;
 import java.security.InvalidParameterException;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
@@ -12,8 +14,10 @@ import org.junit.Test;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
+import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
+import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.network.daemons.repo.RFSImpl;
@@ -99,21 +103,26 @@ public class RFSTest extends RepoTestBase {
 		
 		/*
 		 * Broken - commented out until I can figure out how to fix it..
-		 * 
-		 * 
+		 */
 		System.out.println("Repotest - Testing same digest for different data and/or publisher");
 		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
 		kpg.initialize(512); // go for fast
 		KeyPair pair1 = kpg.generateKeyPair();
 		PublisherPublicKeyDigest pubKey1 = new PublisherPublicKeyDigest(pair1.getPublic());
-		ContentObject digestSame1 = ContentObject.buildContentObject(name, "Testing2".getBytes(), pubKey1);
+		KeyLocator kl = new KeyLocator(new ContentName(keyprefix, pubKey1.digest()));
+		repo.saveContent(ContentObject.buildContentObject(kl.name().name(), pubKey1.digest()));
+		SignedInfo si = new SignedInfo(pubKey1, kl);
+		ContentObject digestSame1 = new ContentObject(name, si, "Testing2".getBytes(), pair1.getPrivate());
 		repo.saveContent(digestSame1);
 		KeyPair pair2 = kpg.generateKeyPair();
 		PublisherPublicKeyDigest pubKey2 = new PublisherPublicKeyDigest(pair2.getPublic());
-		ContentObject digestSame2 = ContentObject.buildContentObject(name, "Testing2".getBytes(), pubKey2);
+		kl = new KeyLocator(new ContentName(keyprefix, pubKey2.digest()));
+		repo.saveContent(ContentObject.buildContentObject(kl.name().name(), pubKey2.digest()));
+		si = new SignedInfo(pubKey2, kl);
+		ContentObject digestSame2 = new ContentObject(name, si, "Testing2".getBytes(), pair2.getPrivate());
 		repo.saveContent(digestSame2);
 		checkDataAndPublisher(repo, name, "Testing2", pubKey1);
-		checkDataAndPublisher(repo, name, "Testing2", pubKey2);  */
+		checkDataAndPublisher(repo, name, "Testing2", pubKey2);
 		
 		System.out.println("Repotest - Testing too long data");
 		String tooLongName = "0123456789";
@@ -213,8 +222,7 @@ public class RFSTest extends RepoTestBase {
 			String segmentContent = "segment"+ new Long(i).toString();
 			checkData(repo, segmented, segmentContent);
 		}
-		//checkDataAndPublisher(repo, name, "Testing2", pubKey1);
-		//checkDataAndPublisher(repo, name, "Testing2", pubKey2);
+		
 	}
 	
 	@Test
@@ -257,7 +265,6 @@ public class RFSTest extends RepoTestBase {
 		Assert.assertEquals(data, new String(testContent.content()));		
 	}
 	
-	@SuppressWarnings("unused")
 	private void checkDataAndPublisher(Repository repo, ContentName name, String data, PublisherPublicKeyDigest publisher) 
 				throws RepositoryException {
 		Interest interest = new Interest(name, new PublisherID(publisher));
