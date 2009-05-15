@@ -56,8 +56,12 @@ static gint hf_ccn_name_components = -1;
 static gint hf_ccn_signature = -1;
 static gint hf_ccn_signaturedigestalg = -1;
 static gint hf_ccn_signaturebits = -1;
+static gint hf_ccn_publisherpublickeydigest = -1;
+static gint hf_ccn_timestamp = -1;
 static gint hf_ccn_contentdata = -1;
 static gint hf_ccn_contenttype = -1;
+static gint hf_ccn_freshnessseconds = -1;
+static gint hf_ccn_finalblockid = -1;
 
 static int global_ccn_port = 4573;
 static dissector_handle_t ccn_handle = NULL;
@@ -107,12 +111,24 @@ proto_register_ccn(void)
         {&hf_ccn_signaturedigestalg,
          {"Digest algorithm", "ccn.signature.digestalgorithm", FT_OID, BASE_DEC, NULL,
           0x0, "The OID of the signature digest algorithm", HFILL}},
+        {&hf_ccn_timestamp,
+         {"Timestamp", "ccn.timestamp", FT_ABSOLUTE_TIME, BASE_NONE, NULL,
+          0x0, "The time at creation of signed info", HFILL}},
         {&hf_ccn_signaturebits,
          {"Bits", "ccn.signature.bits", FT_BYTES, BASE_HEX, NULL,
           0x0, "The signature over the name through end of the content of the CCN packet", HFILL}},
+        {&hf_ccn_publisherpublickeydigest,
+         {"PublisherPublicKeyDigest", "ccn.publisherpublickeydigest", FT_BYTES, BASE_HEX, NULL,
+          0x0, "The digest of the publisher's public key", HFILL}},
         {&hf_ccn_contenttype,
          {"Content type", "ccn.contenttype", FT_INT32, BASE_DEC, &contenttype_vals,
-          0x0, "Raw data", HFILL}},
+          0x0, "Type of content", HFILL}},
+        {&hf_ccn_freshnessseconds,
+         {"Freshness seconds", "ccn.freshnessseconds", FT_UINT32, BASE_DEC, NULL,
+          0x0, "Seconds before data becomes stale", HFILL}},
+        {&hf_ccn_finalblockid,
+         {"FinalBlockID", "ccn.finalblockid", FT_STRING, BASE_NONE, NULL,
+          0x0, "Indicates the identifier of the final block in a sequence of fragments", HFILL}},
         {&hf_ccn_contentdata,
          {"Data", "ccn.data", FT_BYTES, BASE_HEX, NULL,
           0x0, "Raw data", HFILL}}
@@ -262,13 +278,34 @@ dissect_ccn_heur(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 static int
 dissect_ccn_interest(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 {
-    struct ccn_parsed_interest i;
-    struct ccn_parsed_interest *pi = &i;
+    proto_tree *name_tree;
+    proto_item *titem;
+    struct ccn_parsed_interest interest;
+    struct ccn_parsed_interest *pi = &interest;
+    struct ccn_charbuf *c;
     struct ccn_indexbuf *comps;
+    const unsigned char *comp;
+    size_t comp_size;
+    ssize_t l;
+    unsigned int i;
     int res;
 
     comps = ccn_indexbuf_create();
     res = ccn_parse_interest(ccnb, ccnb_size, pi, comps);
+    l = pi->offset[CCN_PI_E_Name] - pi->offset[CCN_PI_B_Name];
+    c = ccn_charbuf_create();
+    ccn_uri_append(c, ccnb, ccnb_size, 1);
+    titem = proto_tree_add_string(tree, hf_ccn_name, tvb,
+                                      pi->offset[CCN_PI_B_Name], l,
+                                      ccn_charbuf_as_string(c));
+    name_tree = proto_item_add_subtree(titem, ett_name);
+    ccn_charbuf_destroy(&c);
+
+    for (i = 0; i < comps->n - 1; i++) {
+        res = ccn_name_comp_get(ccnb, comps, i, &comp, &comp_size);
+        titem = proto_tree_add_item(name_tree, hf_ccn_name_components, tvb, comp - ccnb, comp_size, FALSE);
+    }
+
     return (1);
     
 }
@@ -291,6 +328,8 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
     const unsigned char *blob;
     int l;
     unsigned int i;
+    double dt;
+    nstime_t timestamp;
     int res;
     
     comps = ccn_indexbuf_create();
@@ -344,20 +383,76 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
                                          pco->offset[CCN_PCO_B_SignedInfo], l,
                                          "SignedInfo");
     signedinfo_tree = proto_item_add_subtree(titem, ett_signedinfo);
-    titem = proto_tree_add_int(signedinfo_tree, hf_ccn_contenttype, NULL, 0, 0, pco->type);
-                                          
-    l = pco->offset[CCN_PCO_E_Content] - pco->offset[CCN_PCO_B_Content];
-    titem = proto_tree_add_text(tree, tvb,
-                                         pco->offset[CCN_PCO_B_Content], l,
-                                         "Content");
-    content_tree = proto_item_add_subtree(titem, ett_content);
+    l = pco->offset[CCN_PCO_E_PublisherPublicKeyDigest] - pco->offset[CCN_PCO_B_PublisherPublicKeyDigest];
+    if (l > 0) {
+        res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest, ccnb,
+                                  pco->offset[CCN_PCO_B_PublisherPublicKeyDigest],
+                                  pco->offset[CCN_PCO_E_PublisherPublicKeyDigest],
+                                  &blob, &blob_size);
+        titem = proto_tree_add_bytes(signedinfo_tree, hf_ccn_publisherpublickeydigest, tvb, blob - ccnb, blob_size, blob);
+    }
+    l = pco->offset[CCN_PCO_E_Timestamp] - pco->offset[CCN_PCO_B_Timestamp];
+    if (l > 0) {
+        res = ccn_ref_tagged_BLOB(CCN_DTAG_Timestamp, ccnb,
+                                  pco->offset[CCN_PCO_B_Timestamp],
+                                  pco->offset[CCN_PCO_E_Timestamp],
+                                  &blob, &blob_size);
+        dt = 0.0;
+        for (i = 0; i < blob_size; i++)
+            dt = dt * 256.0 + (double)blob[i];
+        dt /= 4096.0;
+        timestamp.secs = dt; /* truncates */
+        timestamp.nsecs = (dt - (double) timestamp.secs) *  1000000000.0;
+        titem = proto_tree_add_time(signedinfo_tree, hf_ccn_timestamp, tvb, blob - ccnb, blob_size, &timestamp);
+    }
 
+    l = pco->offset[CCN_PCO_E_Type] - pco->offset[CCN_PCO_B_Type];
+    if (l > 0) {
+        res = ccn_ref_tagged_BLOB(CCN_DTAG_Type, ccnb,
+                                  pco->offset[CCN_PCO_B_Type],
+                                  pco->offset[CCN_PCO_E_Type],
+                                  &blob, &blob_size);
+        titem = proto_tree_add_int(signedinfo_tree, hf_ccn_contenttype, tvb, blob - ccnb, blob_size, pco->type);
+    } else {
+        titem = proto_tree_add_int(signedinfo_tree, hf_ccn_contenttype, NULL, 0, 0, pco->type);
+    }
+
+    l = pco->offset[CCN_PCO_E_FreshnessSeconds] - pco->offset[CCN_PCO_B_FreshnessSeconds];
+    if (l > 0) {
+        res = ccn_ref_tagged_BLOB(CCN_DTAG_FreshnessSeconds, ccnb,
+                                  pco->offset[CCN_PCO_B_FreshnessSeconds],
+                                  pco->offset[CCN_PCO_E_FreshnessSeconds],
+                                  &blob, &blob_size);
+        i = ccn_fetch_tagged_nonNegativeInteger(CCN_DTAG_FreshnessSeconds, ccnb,
+                                                  pco->offset[CCN_PCO_B_FreshnessSeconds],
+                                                  pco->offset[CCN_PCO_E_FreshnessSeconds]);
+
+        titem = proto_tree_add_uint(signedinfo_tree, hf_ccn_freshnessseconds, tvb, blob - ccnb, blob_size, i);
+    }
+
+    l = pco->offset[CCN_PCO_E_FinalBlockID] - pco->offset[CCN_PCO_B_FinalBlockID];
+    if (l > 0) {
+        res = ccn_ref_tagged_BLOB(CCN_DTAG_FinalBlockID, ccnb,
+                                  pco->offset[CCN_PCO_B_FinalBlockID],
+                                  pco->offset[CCN_PCO_E_FinalBlockID],
+                                  &blob, &blob_size);
+
+        titem = proto_tree_add_item(signedinfo_tree, hf_ccn_finalblockid, tvb, blob - ccnb, blob_size, FALSE);
+    }
+
+    l = pco->offset[CCN_PCO_E_Content] - pco->offset[CCN_PCO_B_Content];
     res = ccn_ref_tagged_BLOB(CCN_DTAG_Content, ccnb,
                                   pco->offset[CCN_PCO_B_Content],
                                   pco->offset[CCN_PCO_E_Content],
                                   &blob, &blob_size);
-    titem = proto_tree_add_item(content_tree, hf_ccn_contentdata, tvb, blob - ccnb, blob_size, FALSE);
-                                          
+    titem = proto_tree_add_text(tree, tvb,
+                                         pco->offset[CCN_PCO_B_Content], l,
+                                         "Content: %d bytes", blob_size);
+    if (blob_size > 0) {
+        content_tree = proto_item_add_subtree(titem, ett_content);
+        titem = proto_tree_add_item(content_tree, hf_ccn_contentdata, tvb, blob - ccnb, blob_size, FALSE);
+    }
+          
     return (ccnb_size);
 }
 
