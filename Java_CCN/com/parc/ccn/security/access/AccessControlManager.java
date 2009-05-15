@@ -154,15 +154,16 @@ public class AccessControlManager {
 	
 	public ACLObject getACLObjectForNodeIfExists(ContentName aclNodeName) {
 		
-		EnumeratedNameList enl = new EnumeratedNameList(AccessControlProfile.aclName(aclNodeName));
-		enl.waitForData();
-		
-		if (enl.isEmpty()) {
-			// this node doesn't exist
+		if (!EnumeratedNameList.exists(AccessControlProfile.aclName(aclNodeName), aclNodeName, _library)) {
 			return null;
 		}
+		
+		EnumeratedNameList enl = new EnumeratedNameList(AccessControlProfile.aclName(aclNodeName), _library);
+		enl.waitForData();
 		ACLObject aclo = new ACLObject(enl.latestVersionName(), _library);
 		aclo.update();
+		if (aclo.isGone())
+			return null;
 		return aclo;
 	}
 	
