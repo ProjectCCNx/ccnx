@@ -368,20 +368,12 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 			//String localName = new String(fileName.lastComponent());
 			System.out.println("retrieving "+fileName.toString()+" from repo");
 
-			
-			//attempt a CCNFileInputStream...
-			
-			try {
-				CCNFileInputStream fis = new CCNFileInputStream(fileName, _library);
+			CCNFileInputStream fis = new CCNFileInputStream(fileName, _library);
 				
-				htmlPane.read(fis, fileName);
+			htmlPane.read(fis, fileName);
 				
-			} catch (XMLStreamException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-				//length = -1;
-			}
-			
+		} catch (XMLStreamException e) {
+			e.printStackTrace();
 		} catch (IOException e) {
 			
 			e.printStackTrace();
@@ -648,8 +640,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 			String p = fnode.path.toString() + "/"+fnode.name;
 			selectedPath = p; //change this to prefix later after sure its ok
 			selectedPrefix = p;
-			//removes leading /
-			displayText(fnode.name);
+			
 		} else {
 			//this is a directory that we want to enumerate...
 			System.out.println("this is the path: "+ fnode.path.toString()+" this is the name: "+fnode.name);
