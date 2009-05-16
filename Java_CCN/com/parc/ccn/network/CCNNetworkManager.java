@@ -117,7 +117,7 @@ public class CCNNetworkManager implements Runnable {
 		} catch (IOException io) {
 			// We do not see errors on send typically even if 
 			// agent is gone, so log each but do not track
-			Library.logger().warning("Error sending heartbeat packet");
+			Library.logger().warning("Error sending heartbeat packet: " + io.getMessage());
 		}
 	}
 			
