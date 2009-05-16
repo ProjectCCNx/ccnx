@@ -36,6 +36,8 @@ import com.parc.ccn.library.io.CCNFileInputStream;
 import com.parc.ccn.library.io.CCNFileOutputStream;
 import com.parc.ccn.library.io.CCNInputStream;
 import com.parc.ccn.library.io.CCNOutputStream;
+import com.parc.ccn.library.io.CCNVersionedInputStream;
+import com.parc.ccn.library.io.CCNVersionedOutputStream;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.crypto.ContentKeys;
@@ -54,7 +56,7 @@ public class CCNSecureInputStreamTest {
 			keys = ContentKeys.generateRandomKeys();
 			digest = writeFileFloss(encrLength);
 		}
-		public abstract InputStream makeInputStream() throws IOException, XMLStreamException;
+		public abstract CCNInputStream makeInputStream() throws IOException, XMLStreamException;
 		public abstract OutputStream makeOutputStream() throws IOException, XMLStreamException;
 
 		/**
@@ -140,7 +142,7 @@ public class CCNSecureInputStreamTest {
 
 		private void doSeeking(int length) throws XMLStreamException, IOException, NoSuchAlgorithmException {
 			System.out.println("Reading CCNInputStream from "+name);
-			CCNInputStream i = new CCNInputStream(name, null, null, keys, inputLibrary);
+			CCNInputStream i = makeInputStream();
 			// make sure we start mid ContentObject and past the first Cipher block
 			int start = ((int) (encrLength*0.3) % 4096) +600;
 			i.seek(start);
@@ -199,6 +201,7 @@ public class CCNSecureInputStreamTest {
 	static final int BUF_SIZE = 4096;
 
 	static StreamFactory basic;
+	static StreamFactory versioned;
 	static StreamFactory file;
 
 	@BeforeClass
@@ -212,7 +215,7 @@ public class CCNSecureInputStreamTest {
 		defaultStreamName = ContentName.fromNative("/test/stream/versioning/LongOutput.bin");
 		
 		basic = new StreamFactory(defaultStreamName){
-			public InputStream makeInputStream() throws IOException, XMLStreamException {
+			public CCNInputStream makeInputStream() throws IOException, XMLStreamException {
 				return new CCNInputStream(name, null, null, keys, inputLibrary);
 			}
 			public OutputStream makeOutputStream() throws IOException, XMLStreamException {
@@ -220,8 +223,17 @@ public class CCNSecureInputStreamTest {
 			}
 		};
 
+		versioned = new StreamFactory(defaultStreamName){
+			public CCNInputStream makeInputStream() throws IOException, XMLStreamException {
+				return new CCNVersionedInputStream(name, 0L, null, keys, inputLibrary);
+			}
+			public OutputStream makeOutputStream() throws IOException, XMLStreamException {
+				return new CCNVersionedOutputStream(name, null, null, keys, outputLibrary);
+			}
+		};
+
 		file = new StreamFactory(defaultStreamName){
-			public InputStream makeInputStream() throws IOException, XMLStreamException {
+			public CCNInputStream makeInputStream() throws IOException, XMLStreamException {
 				return new CCNFileInputStream(name, 0L, null, keys, inputLibrary);
 			}
 			public OutputStream makeOutputStream() throws IOException, XMLStreamException {
@@ -339,6 +351,10 @@ public class CCNSecureInputStreamTest {
 		basic.streamEncryptDecrypt();
 	}
 	@Test
+	public void versionedStreamEncryptDecrypt() throws XMLStreamException, IOException {
+		versioned.streamEncryptDecrypt();
+	}
+	@Test
 	public void fileStreamEncryptDecrypt() throws XMLStreamException, IOException {
 		file.streamEncryptDecrypt();
 	}
@@ -352,6 +368,10 @@ public class CCNSecureInputStreamTest {
 		basic.seeking();
 	}
 	@Test
+	public void versionedSeeking() throws XMLStreamException, IOException, NoSuchAlgorithmException {
+		versioned.seeking();
+	}
+	@Test
 	public void fileSeeking() throws XMLStreamException, IOException, NoSuchAlgorithmException {
 		file.seeking();
 	}
@@ -363,6 +383,10 @@ public class CCNSecureInputStreamTest {
 	@Test
 	public void basicSkipping() throws XMLStreamException, IOException, NoSuchAlgorithmException {
 		basic.skipping();
+	}
+	@Test
+	public void versionedSkipping() throws XMLStreamException, IOException, NoSuchAlgorithmException {
+		versioned.skipping();
 	}
 	@Test
 	public void fileSkipping() throws XMLStreamException, IOException, NoSuchAlgorithmException {
