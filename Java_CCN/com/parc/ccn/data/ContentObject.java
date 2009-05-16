@@ -87,13 +87,6 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 				byte [] tbsdigest = CCNDigestHelper.digest(prepareContent(name, signedInfo, content, offset, length));
 				Library.logger().info("Created content object: " + name + " timestamp: " + signedInfo.getTimestamp() + " encoded digest: " + DataUtils.printBytes(digest) + " tbs content: " + DataUtils.printBytes(tbsdigest));
 				Library.logger().info("Signature: " + this.signature());
-				if (!this.verify(null)) {
-					Library.logger().warning("ContentObject: " + name + " (length: " + length + ", data digest: " + DataUtils.printBytes(contentDigest()) + 
-					 ") " + " fails to verify!");
-				} else {
-					Library.logger().info("ContentObject: " + name + " (length: " + length + ", digest: " + DataUtils.printBytes(contentDigest()) + ") " +
-					" verified OK.");				
-				}
 			} catch (Exception e) {
 				Library.logger().warning("Exception attempting to verify signature: " + e.getClass().getName() + ": " + e.getMessage());
 				Library.warningStackTrace(e);
