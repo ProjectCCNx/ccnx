@@ -570,9 +570,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
             final DefaultMutableTreeNode node = getTreeNode(event.getPath());
 
 
-
-			Name fnode = getNameNode(node);
-			getNodes(fnode);
+			
 //		System.out.println("In the tree expansion listener with "+ fnode.name);	
             Thread runner = new Thread() 
             {
@@ -583,6 +581,9 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
                   {
                     public void run() 
                     {
+                    	Name fnode = getNameNode(node);
+                    	System.out.println("In the tree expansion listener with "+ fnode.name + " and "+ node.toString());		
+                    	getNodes(fnode);           			
                        m_model.reload(node);
                     }
                   };
@@ -612,7 +613,9 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 				fnode = getNameNode(node);
 			}
 			
-			getNodes(fnode);
+			String p = getNodes(fnode);
+			selectedPath = p;
+			selectedPrefix =p;
 			
 		}
 	}
@@ -622,36 +625,41 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 	public static void main(String argv[]) {
 		Library.logger().setLevel(Level.INFO);
 
-//        javax.swing.SwingUtilities.invokeLater(new Runnable() {
-//            public void run() {
-//                createAndShowGUI();
-// 	//	new ContainerGUI();
-//            }
-//        });
-		new ContainerGUI();
+        javax.swing.SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                createAndShowGUI();
+            }
+        });
+//		new ContainerGUI();
 	}
 
-    public void getNodes(Name fnode) {
+    public String getNodes(Name fnode) {
     	System.out.println("fnode: "+fnode.name+" full name "+fnode.path.toString());
-		if (((fnode.toString()).split("\\.")).length > 1) {
-			// populate the repo and get it back
-			//sendFile("/parc.com/files/test.txt");
-			retrieveFromRepo(fnode.path.toString()+"/"+fnode.name);
-			String p = fnode.path.toString() + "/"+fnode.name;
-			selectedPath = p; //change this to prefix later after sure its ok
-			selectedPrefix = p;
+    	String p = fnode.path.toString() + "/"+fnode.name;
+    	
+    	if (((fnode.toString()).split("\\.")).length > 1) {
+			// get the file from the repo
 			
+    		System.out.println("Retrieve from Repo: " + p);
+			retrieveFromRepo(fnode.path.toString()+"/"+fnode.name);
+			retrieveFromRepo(p);			
+//			selectedPath = p; //change this to prefix later after sure its ok
+//			selectedPrefix = p;
+			
+			return p;
 		} else {
 			//this is a directory that we want to enumerate...
 			System.out.println("this is the path: "+ fnode.path.toString()+" this is the name: "+fnode.name);
-			String p = fnode.path.toString() + "/"+fnode.name;
+			//String p = fnode.path.toString() + "/"+fnode.name;
 			System.out.println("Registering Prefix: " + p);
 			registerPrefix(p);
-			selectedPrefix = p;
-			selectedPath = p; //change this to prefix later after sure its ok
+			
+//			selectedPrefix = p;
+//			selectedPath = p; //change this to prefix later after sure its ok
 			
 			//display the default for now
 			displayText("TreeHelp.html");
+			return p;
 		}
 		
 	}
@@ -666,18 +674,19 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
             }
         }
 
+        new ContainerGUI();
         //Create and set up the window.
-        JFrame frame = new JFrame("CCN Demo");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+//        JFrame frame = new JFrame("CCN Demo");
+//        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         //Add content to the window.
-        frame.add(new ContainerGUI());
+//        frame.add(new ContainerGUI());
       //Set up the content pane.
         //addComponentsToPane(frame.getContentPane());
 
         //Display the window.
-        frame.pack();
-        frame.setVisible(true);
+//        frame.pack();
+//        frame.setVisible(true);
     }
 	private void addTreeNodes(ArrayList<ContentName> n, ContentName prefix) {
 		// DefaultMutableTreeNode top = new DefaultMutableTreeNode(
