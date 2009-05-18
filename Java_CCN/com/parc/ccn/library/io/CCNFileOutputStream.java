@@ -28,7 +28,7 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 			PublisherPublicKeyDigest publisher, ContentKeys keys,
 			CCNLibrary library)
 			throws XMLStreamException, IOException {
-		super(name, null, publisher, library);
+		super(name, null, publisher, keys, library);
 	}
 
 	public CCNFileOutputStream(ContentName name,
