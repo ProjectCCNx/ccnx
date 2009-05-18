@@ -234,7 +234,7 @@ public class CCNSecureInputStreamTest {
 
 		file = new StreamFactory(defaultStreamName){
 			public CCNInputStream makeInputStream() throws IOException, XMLStreamException {
-				return new CCNFileInputStream(name, 0L, null, keys, inputLibrary);
+				return new CCNFileInputStream(name, null, null, keys, inputLibrary);
 			}
 			public OutputStream makeOutputStream() throws IOException, XMLStreamException {
 				return new CCNFileOutputStream(name, null, keys, outputLibrary);

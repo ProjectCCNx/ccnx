@@ -43,14 +43,14 @@ import com.parc.ccn.security.crypto.ContentKeys;
 public class CCNVersionedInputStream extends CCNInputStream {
 
 	public CCNVersionedInputStream(ContentName name,
-			long startingBlockIndex, PublisherPublicKeyDigest publisher,
+			Long startingBlockIndex, PublisherPublicKeyDigest publisher,
 			ContentKeys keys, CCNLibrary library)
 			throws XMLStreamException, IOException {
 		super(name, startingBlockIndex, publisher, keys, library);
 	}
 
 	public CCNVersionedInputStream(ContentName name,
-			long startingBlockIndex, PublisherPublicKeyDigest publisher,
+			Long startingBlockIndex, PublisherPublicKeyDigest publisher,
 			CCNLibrary library) throws XMLStreamException, IOException {
 		super(name, startingBlockIndex, publisher, library);
 	}
@@ -70,7 +70,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 		super(name, library);
 	}
 
-	public CCNVersionedInputStream(ContentName name, long startingBlockIndex)
+	public CCNVersionedInputStream(ContentName name, Long startingBlockIndex)
 			throws XMLStreamException, IOException {
 		super(name, startingBlockIndex);
 	}
