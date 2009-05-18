@@ -28,6 +28,8 @@ public class AccessControlProfile implements CCNProfile {
 	public static final String ACL_NAME = "ACL";
 	public static final String NODE_KEY_NAME = "NK";
 	public static final String DATA_KEY_NAME = "DK";
+
+	public static final String SUPERSEDED_MARKER = "Superseded";
 	
 	
 	public static boolean isAccessName(ContentName name) {
@@ -118,23 +120,33 @@ public class AccessControlProfile implements CCNProfile {
 		return null;
 	}
 
-	public static boolean isGroupNodeKeyNameComponent(byte [] wnkNameComponent) {
+	public static boolean isPrincipalNameComponent(byte [] wnkNameComponent) {
 		// TODO Auto-generated method stub
 		return false;
 	}
 
-	public static boolean isWrappedNodeKeyNameComponent(byte [] wnkNameComponent) {
+	public static boolean isWrappedKeyNameComponent(byte [] wnkNameComponent) {
 		// TODO Auto-generated method stub
 		return false;
 	}
 
-	public static String groupNodeKeyNameComponentToGroupName(
+	public static String getPrincipalNameFromNameComponent(
 			byte[] wnkChildName) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	public static byte[] getTargetKeyIDFromNameComponent(byte[] wnkChildName) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public static byte[] targetKeyIDToNameComponent(byte[] keyID) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public static byte[] principalNameToNameComponent(String principalName) {
 		// TODO Auto-generated method stub
 		return null;
 	}
