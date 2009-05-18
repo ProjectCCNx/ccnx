@@ -21,6 +21,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> {
 	protected ContentName _currentName;
 	protected CCNLibrary _library;
 	protected CCNFlowControl _flowControl;
+	protected boolean _isGone = false;
 
 	public CCNNetworkObject(Class<E> type) {
 		super(type);
@@ -59,7 +60,25 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> {
 	}
 
 	public void update(CCNInputStream inputStream) throws IOException, XMLStreamException {
-		super.update(inputStream);
+		try {
+			super.update(inputStream);
+		} catch (IOException ioex) {
+			Library.logger().info("update: got IOException " + ioex.getMessage() + " is data actually just gone? " + inputStream.isGone());
+			if (inputStream.isGone()) {
+				_isGone = true;
+				_currentName = inputStream.deletionInformation().name();
+			} else {
+				throw ioex;
+			}
+		} catch (XMLStreamException xsex) {
+			Library.logger().info("update: got XMLStreamException " + xsex.getMessage() + " is data actually just gone? " + inputStream.isGone());
+			if (inputStream.isGone()) {
+				_isGone = true;
+				_currentName = inputStream.deletionInformation().name();
+			} else {
+				throw xsex;
+			}
+		}
 		_currentName = inputStream.baseName();
 		_flowControl.addNameSpace(_currentName);
 	}
@@ -119,8 +138,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> {
 		try {
 			return VersioningProfile.getVersionAsTimestamp(_currentName);
 		} catch (VersionMissingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 			return null;
 		}
 	}
@@ -155,4 +172,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> {
 		return true;
 	}
 
+	public boolean isGone() {
+		return _isGone;
+	}
 }

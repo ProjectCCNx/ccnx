@@ -28,6 +28,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	protected CCNLibrary _library;
 
 	protected ContentObject _currentBlock = null;
+	protected ContentObject _goneBlock = null;
 	protected ByteArrayInputStream _currentBlockStream = null;
 	protected InputStream _blockReadStream = null; // includes filters, etc.
 	
@@ -252,6 +253,11 @@ public abstract class CCNAbstractInputStream extends InputStream {
 
 	protected ContentObject getNextBlock() throws IOException {
 		
+		// We're looking at content marked GONE
+		if (null != _goneBlock) {
+			return null;
+		}
+		
 		// Check to see if finalBlockID is the current block. If so, there should
 		// be no next block. (If the writer makes a mistake and guesses the wrong
 		// value for finalBlockID, they won't put that wrong value in the block they're
@@ -271,7 +277,12 @@ public abstract class CCNAbstractInputStream extends InputStream {
 
 	protected ContentObject getFirstBlock() throws IOException {
 		if (null != _startingBlockIndex) {
-			return getBlock(_startingBlockIndex);
+			ContentObject firstBlock = getBlock(_startingBlockIndex);
+			if ((null != firstBlock) && (firstBlock.signedInfo().getType().equals(ContentType.GONE))) {
+				_goneBlock = firstBlock;
+				return null;
+			}
+			return firstBlock;
 		} else {
 			throw new IOException("Stream does not have a valid starting block number.");
 		}
@@ -359,6 +370,14 @@ public abstract class CCNAbstractInputStream extends InputStream {
 			return -1; // make sure we don't match inappropriately
 		}
 		return blockIndex();
+	}
+	
+	public boolean isGone() {
+		return (null != _goneBlock);
+	}
+	
+	public ContentObject deletionInformation() {
+		return _goneBlock;
 	}
 	
 }
