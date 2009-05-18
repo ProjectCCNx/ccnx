@@ -572,11 +572,6 @@ ccn_put(struct ccn *h, const void *p, size_t length)
     res = ccn_skeleton_decode(&dd, p, length);
     if (!(res == length && dd.state == 0))
         return(NOTE_ERR(h, EINVAL));
-    if (h->outbuf != NULL && h->outbufindex < h->outbuf->length) {
-        // XXX - should limit unbounded growth of h->outbuf
-        ccn_charbuf_append(h->outbuf, p, length); // XXX - check res
-        return (ccn_pushout(h));
-    }
     if (h->tap != -1) {
 	res = write(h->tap, p, length);
         if (res == -1) {
@@ -585,15 +580,21 @@ ccn_put(struct ccn *h, const void *p, size_t length)
             h->tap = -1;
         }
     }
-    if (h->sock >= 0) {
+    if (h->outbuf != NULL && h->outbufindex < h->outbuf->length) {
+        // XXX - should limit unbounded growth of h->outbuf
+        ccn_charbuf_append(h->outbuf, p, length); // XXX - check res
+        return (ccn_pushout(h));
+    }
+    if (h->sock == -1)
+        res = 0;
+    else
         res = write(h->sock, p, length);
-        if (res == length)
-            return(0);
-        if (res == -1) {
-            if (errno != EAGAIN)
-                return(NOTE_ERRNO(h));
-            res = 0;
-        }
+    if (res == length)
+        return(0);
+    if (res == -1) {
+        if (errno != EAGAIN)
+            return(NOTE_ERRNO(h));
+        res = 0;
     }
     if (h->outbuf == NULL) {
         h->outbuf = ccn_charbuf_create();

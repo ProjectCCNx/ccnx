@@ -18,6 +18,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+#include <ccn/ccn_private.h>
 #include <ccn/coding.h>
 #include <ccn/schedule.h>
 
@@ -90,6 +91,9 @@ struct ccnd {
     unsigned short seed[3];
     int debug;
     int mtu;                        /* Target size for stuffing interests */
+    struct ccn *internal_client;    /* internal client */
+    struct face *face0;             /* special face for internal client */
+    struct ccn_scheduled_event *internal_client_refresh;
 };
 
 /*
@@ -203,6 +207,14 @@ struct propagating_entry {
 #define CCN_PR_UNSENT 1  /* interest has not been sent anywhere yet */
 #define CCN_PR_WAIT1  2  /* interest has been sent to one place */
 #define CCN_PR_STUFFED1 4 /* was stuffed before sent anywhere else */
+
+/*
+ * Internal client
+ * The internal client is for communication between the ccnd and other
+ * components, using (of course) ccn protocols.
+ */
+int ccnd_internal_client_start(struct ccnd *);
+void ccnd_internal_client_stop(struct ccnd *);
 
 /* Consider a separate header for these */
 int ccnd_stats_httpd_start(struct ccnd *);

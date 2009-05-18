@@ -1068,7 +1068,7 @@ ccn_stuff_interest(struct ccnd *h, struct face *face, struct ccn_charbuf *c)
     struct hashtb_enumerator *e = &ee;
     int n_stuffed = 0;
     int remaining_space = h->mtu - c->length;
-    if (remaining_space < 20)
+    if (remaining_space < 20 || face == h->face0)
         return(0);
     for (hashtb_start(h->interestprefix_tab, e);
          remaining_space >= 20 && e->data != NULL; hashtb_next(e)) {
@@ -2316,11 +2316,14 @@ do_write(struct ccnd *h, struct face *face, unsigned char *data, size_t size)
         ccn_charbuf_append(face->outbuf, data, size);
         return;
     }
+    if (face == h->face0) {
+        ccn_dispatch_message(h->internal_client, data, size);
+        return;
+    }
     if (face->addr == NULL)
         res = send(face->fd, data, size, 0);
-    else {
+    else
         res = sendto(face->fd, data, size, 0, face->addr, face->addrlen);
-    }
     if (res == size)
         return;
     if (res == -1) {
@@ -2394,7 +2397,13 @@ run(struct ccnd *h)
     int prev_timeout_ms = -1;
     int usec;
     int specials = 2; /* local_listener_fd, httpd_listener_fd */
+    struct ccn_charbuf *buf = NULL;
     for (;;) {
+        buf = ccn_grab_buffered_output(h->internal_client);
+        if (buf != NULL) {
+            process_input_message(h, h->face0, buf->buf, buf->length, 0);
+            ccn_charbuf_destroy(&buf);
+        }
         usec = ccn_schedule_run(h->sched);
         timeout_ms = (usec < 0) ? -1 : (usec / 1000);
         if (timeout_ms == 0 && prev_timeout_ms == 0)
@@ -2634,6 +2643,8 @@ main(int argc, char **argv)
     signal(SIGPIPE, SIG_IGN);
     h = ccnd_create();
     ccnd_stats_httpd_start(h);
+    ccnd_internal_client_start(h);
+    enroll_face(h, h->face0);
     run(h);
     ccnd_msg(h, "exiting.", (int)getpid());
     exit(0);
