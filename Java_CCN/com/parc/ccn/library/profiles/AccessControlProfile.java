@@ -1,8 +1,10 @@
 package com.parc.ccn.library.profiles;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 
 import com.parc.ccn.data.ContentName;
+import com.sun.tools.javac.util.Pair;
 
 public class AccessControlProfile implements CCNProfile {
 	
@@ -52,7 +54,7 @@ public class AccessControlProfile implements CCNProfile {
 	}
 	
 	public static ContentName nodeKeyName(ContentName nodeName) {
-		if (!isAccessName(name)) {
+		if (!isAccessName(nodeName)) {
 		}
 	}
 	
@@ -146,7 +148,14 @@ public class AccessControlProfile implements CCNProfile {
 		return null;
 	}
 
-	public static byte[] principalNameToNameComponent(String principalName) {
+	public static Pair<String, Timestamp> parsePrincipalInfoFromNameComponent(
+			byte[] wkChildName) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public static byte[] principalInfoToNameComponent(String principalName,
+			Timestamp timestamp) {
 		// TODO Auto-generated method stub
 		return null;
 	}

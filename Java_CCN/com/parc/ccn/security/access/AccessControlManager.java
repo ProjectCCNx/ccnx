@@ -1,18 +1,20 @@
 package com.parc.ccn.security.access;
 
 import java.io.IOException;
-import java.security.AccessControlException;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
 import javax.xml.stream.XMLStreamException;
 
+import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.bouncycastle.util.Arrays;
 
 import com.parc.ccn.Library;
@@ -25,8 +27,8 @@ import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.EnumeratedNameList;
 import com.parc.ccn.library.profiles.AccessControlProfile;
-import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.access.ACL.ACLObject;
+import com.sun.tools.javac.util.Pair;
 
 /**
  * Misc notes for consolidation.
@@ -292,7 +294,7 @@ public class AccessControlManager {
 		return aclo;
 	}
 	
-	public ACLObject getACLObjectForNodeIfExists(ContentName aclNodeName) {
+	public ACLObject getACLObjectForNodeIfExists(ContentName aclNodeName) throws XMLStreamException, IOException {
 		
 		EnumeratedNameList enlNode = new EnumeratedNameList(aclNodeName, _library);
 		
@@ -318,6 +320,7 @@ public class AccessControlManager {
 	}
 	
 	/**
+	 * @throws InvalidKeyException 
 	 * Adds an ACL to a node that doesn't have one, or replaces one that exists.
 	 * Just writes, doesn't bother to look at any current ACL. Does need to pull
 	 * the effective node key at this node, though, to wrap the old ENK in a new
@@ -326,7 +329,7 @@ public class AccessControlManager {
 	 * @throws XMLStreamException 
 	 * @throws  
 	 */
-	public ACL setACL(ContentName nodeName, ACL newACL) throws XMLStreamException, IOException {
+	public ACL setACL(ContentName nodeName, ACL newACL) throws XMLStreamException, IOException, InvalidKeyException {
 		NodeKey effectiveNodeKey = getEffectiveNodeKey(nodeName);
 		// generates the new node key, wraps it under the new acl, and wraps the old node key
 		generateNewNodeKey(nodeName, effectiveNodeKey, newACL);
@@ -334,6 +337,7 @@ public class AccessControlManager {
 		ACLObject aclo = new ACLObject(AccessControlProfile.aclName(nodeName), newACL, _library);
 		aclo.save();
 		// DKS TODO aggregating signer and group flush
+		return aclo.acl();
 	}
 	
 	/**
@@ -390,7 +394,7 @@ public class AccessControlManager {
 		// First we need to figure out what the latest version is of the node key.
 		ContentName nodeKeyVersionedName = EnumeratedNameList.getLatestVersionName(AccessControlProfile.nodeKeyName(nodeName));
 		// then, pull the node key we can decrypt
-		return getNodeKeyByVersionedName(nodeKeyVersionedName, null, true);
+		return getNodeKeyByVersionedName(nodeKeyVersionedName, null);
 	}
 	
 	/**
@@ -403,8 +407,12 @@ public class AccessControlManager {
 	 * @param nodeKeyName
 	 * @param nodeKeyIdentifier
 	 * @return
+	 * @throws IOException 
+	 * @throws XMLStreamException 
+	 * @throws InvalidCipherTextException 
+	 * @throws InvalidKeyException 
 	 */
-	public NodeKey getSpecificNodeKey(ContentName nodeKeyName, byte [] nodeKeyIdentifier) {
+	public NodeKey getSpecificNodeKey(ContentName nodeKeyName, byte [] nodeKeyIdentifier) throws InvalidKeyException, InvalidCipherTextException, XMLStreamException, IOException {
 		
 		if ((null == nodeKeyName) && (null == nodeKeyIdentifier)) {
 			throw new IllegalArgumentException("Node key name and identifier cannot both be null!");
@@ -423,7 +431,7 @@ public class AccessControlManager {
 			}
 			// We should know what node key to use (down to the version), but we have to find the specific
 			// wrapped key copy we can decrypt. 
-			nk = getNodeKeyByVersionedName(nodeKeyName, nodeKeyIdentifier, false);
+			nk = getNodeKeyByVersionedName(nodeKeyName, nodeKeyIdentifier);
 			if (null == nk) {
 				Library.logger().warning("No decryptable node key available at " + nodeKeyName + ", access denied.");
 				return null;
@@ -438,72 +446,75 @@ public class AccessControlManager {
 	 * out which of our keys can be used to decrypt it.
 	 * @param nodeKeyName
 	 * @param nodeKeyIdentifier
-	 * @param isLatestVersion - do we believe this is already the latest version, or
-	 *    should we go looking for a later one to help?
 	 * @return
+	 * @throws IOException 
+	 * @throws XMLStreamException 
+	 * @throws InvalidKeyException 
+	 * @throws InvalidCipherTextException 
 	 */
-	NodeKey getNodeKeyByVersionedName(ContentName nodeKeyName, byte [] nodeKeyIdentifier, boolean isLatestVersion) {
+	NodeKey getNodeKeyByVersionedName(ContentName nodeKeyName, byte [] nodeKeyIdentifier) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException {
 
 		NodeKey nk = null;
+		KeyDirectory keyDirectory = null;
 		WrappedKeyObject wko = null;
 		
-		KeyDirectory keyDirectory = new KeyDirectory(this, nodeKeyName);
-		ArrayList<byte []> availableKeyBlocks = keyDirectory.getWrappingKeyIDs();
+		try {
 
-		if (isLatestVersion && keyDirectory.hasSupersededBlock() && 
-			(availableKeyBlocks.size() == 0) && (keyDirectory.getPrincipals().size() == 0)) {
-			
-			// Handle case where this node key is gone and superseded,
-			// vs case where it's just superseded by a newer key. Only matters
-			// if we're looking at the latest version of this node key. 
-			// A superseded node key just contains a superseded block pointing
-			// up to the superseding node. (You only get this if someone
-			// deletes an ACL causing it to inherit from its parent again.)
-			// If we think we have the latest version, but have a superseded
-			// block *and* principal/wrap blocks, something is wrong -- it's not
-			// the latest version. 
-			wko = new WrappedKeyObject(keyDirectory.getSupersededBlockName(), _library);
-			wko.update();
-			if (null == wko.wrappedKey()) {
-				Library.logger().warning("Could not retrieve superseded key for node: " + keyDirectory.getSupersededBlockName());
+			keyDirectory = new KeyDirectory(this, nodeKeyName);
+			ArrayList<byte []> availableKeyBlocks = keyDirectory.getWrappingKeyIDs();
+
+			if (keyDirectory.hasSupersededBlock() && 
+					(availableKeyBlocks.size() == 0) && (keyDirectory.getPrincipals().size() == 0)) {
+
+				// Handle case where this node key is gone and superseded,
+				// vs case where it's just superseded by a newer version of this key.
+				// A superseded node key just contains a superseded block pointing
+				// up to the superseding node. (You only get this if someone
+				// deletes an ACL causing it to inherit from its parent again.)
+				wko = new WrappedKeyObject(keyDirectory.getSupersededBlockName(), _library);
+				wko.update();
+				if (null == wko.wrappedKey()) {
+					Library.logger().warning("Could not retrieve superseded key for node: " + keyDirectory.getSupersededBlockName());
+					return null;
+				}
+				// DKS TODO be sure what node is used to name this, 
+				// might need to use data key wrapping derivation to wrap
+				NodeKey enk = getNodeKeyForObject(keyDirectory.getSupersededBlockName(), wko);
+				if (null != enk) {
+					nk = new NodeKey(keyDirectory.getSupersededBlockName(), 
+									wko.wrappedKey().unwrapKey(enk.nodeKey()));
+					return nk;
+				}
 				return null;
-			}
-			// DKS TODO be sure what node is used to name this, 
-			// might need to use data key wrapping derivation to wrap
-			NodeKey enk = getNodeKeyForObject(keyDirectory.getSupersededBlockName(), wko);
-			if (null != enk) {
-				nk = new NodeKey(keyDirectory.getSupersededBlockName(), 
-								 wko.wrappedKey().unwrapKey(enk.nodeKey()));
-				return nk;
-			}
-			return null;
-		}			
-		
-		for (byte [] keyid : availableKeyBlocks) {
-			if (keyCache().containsKey(keyid)) {
-				// We have it, pull the block, unwrap the node key.
-				wko = keyDirectory.getWrappedKeyForKeyID(keyid);
-				if (null != wko.wrappedKey()) {
-					nk = new NodeKey(nodeKeyName, 
-							wko.wrappedKey().unwrapKey(keyCache().getPrivateKey(keyid)));
-					if ((null != nodeKeyIdentifier) && (!Arrays.areEqual(keyid, nk.storedNodeKeyID()))) {
-						Library.logger().warning("Retrieved and decrypted node key, but it was the wrong node key. We wanted " + 
-								DataUtils.printBytes(keyid) + ", we got " + DataUtils.printBytes(nk.storedNodeKeyID()));
-					} else {
-						keyCache().addNodeKey(nk);
-						return nk;
+			}			
+
+			// Do we have one of the wrapping keys in our cache?
+			for (byte [] keyid : availableKeyBlocks) {
+				if (keyCache().containsKey(keyid)) {
+					// We have it, pull the block, unwrap the node key.
+					wko = keyDirectory.getWrappedKeyForKeyID(keyid);
+					if (null != wko.wrappedKey()) {
+						nk = new NodeKey(nodeKeyName, 
+								wko.wrappedKey().unwrapKey(keyCache().getPrivateKey(keyid)));
+						if ((null != nodeKeyIdentifier) && (!Arrays.areEqual(keyid, nk.storedNodeKeyID()))) {
+							Library.logger().warning("Retrieved and decrypted node key, but it was the wrong node key. We wanted " + 
+									DataUtils.printBytes(keyid) + ", we got " + DataUtils.printBytes(nk.storedNodeKeyID()));
+						} else {
+							keyCache().addNodeKey(nk);
+							return nk;
+						}
 					}
 				}
 			}
-			
+
 			// OK, not in cache. Our next step regardless is to check on the groups we think we're in.
-			ArrayList<String> groupNames = keyDirectory.getPrincipals();
+			HashMap<String, Timestamp> groupNames = keyDirectory.getPrincipals();
 			for (Group myGroup : _myGroups) {
-				if (groupNames.contains(myGroup.name())) {
+				if (groupNames.containsKey(myGroup.name())) {
 					// TODO handle this group, add keys to the cache as we go
 				}
 			}
-			
+
 			// Alright, we can't pull a group key for one of the groups we know we belong to
 			// to help us. So now, two choices. If we're on the latest version (no superseded block)
 			// start crawling the groups we don't know whether we're in. If we're not, chain back through
@@ -512,32 +523,24 @@ public class AccessControlManager {
 			// point and not at the latest node, but we're really supposed to pay attention to
 			// the latest node policy (though attackers will not); so err on the side of limiting
 			// access.
-			if (!isLatestVersion) {
+			if (keyDirectory.hasSupersededBlock()) {
+				// We handled pure superseded (removed ACL) above. So we're looking for the latest
+				// version of this node.
+				// TODO DKS -- right name to query for
 				// First we need to figure out what the latest version is of the node key.
+				Library.logger().info("OK, not in cache, finding latest version of key " + nodeKeyName);
 				ContentName latestNodeKeyName = EnumeratedNameList.getLatestVersionName(nodeKeyName);
-				
+
 				if (nodeKeyName.equals(latestNodeKeyName)) {
-					isLatestVersion = true;
+					Library.logger().info("Already looking at latest version of node key: " + nodeKeyName);
 				} else {
+					// We weren't on the latest version
 					Library.logger().info("Newer version " + latestNodeKeyName + " available for node key " + nodeKeyName);
-					NodeKey latestNodeKey = getNodeKeyByVersionedName(latestNodeKeyName, null, true);
+					NodeKey latestNodeKey = getNodeKeyByVersionedName(latestNodeKeyName, null);
 					if (null == latestNodeKey) {
 						// need to distinguish between don't have access and key gone.
 						// throw access denied exception if no key available we can read
 						// throw illegal state exception if no node key
-						// if superseded, and we think we're trying to get the latest key,
-						// should we follow superseded links?
-						// DKS TODO there a case here where we have a node key, we go to get its latest version
-						// and its gone, and we need to climb up the hierarchy to find the latest node key in force,
-						// and then potentially go sideways before going down or vice versa, though I suppose
-						// when we mark an ACL GONE and a node key GONE, we need to wrap that node key in the
-						// new node key that will be in force in that node or link it somehow. This suggests
-						// that our links should go forward in time, not backward... or we just wrap gone
-						// node keys in their superseding keys. Or we don't even have GONE node keys, just
-						// ACLs, and we write Superseded blocks into the place where GONE node keys
-						// would be, and they point to the wrapping key. This makes sense, ACLs can just
-						// be replaced, but keys need to chain.
-						
 						// superseded in old NKs works much better -- can easily tell if a NK is the
 						// one in force, can find where to go for the latest even if uphill
 						// need previous blocks if you interpose a lower acl, and need to chain backwards
@@ -550,6 +553,8 @@ public class AccessControlManager {
 						// Superseded blocks point sideways or up. Previous blocks handle relationships
 						// pointing down (by pointing up with opposite semantics).
 						// this would argue for a separation of getLatestNodeKey and get by specific version
+						Library.logger().info("Were not able to retrieve a version of node key " + latestNodeKeyName + " we can read. Should we throw access denied?");
+						return null;
 					} else {
 						// chain backwards from the key we have to the key we want
 						NodeKey ourNodeKey = retrievePreviousNodeKey(latestNodeKey, nodeKeyName);
@@ -557,24 +562,22 @@ public class AccessControlManager {
 							// we're done, no access, but weird...
 							Library.logger().warning("Unexpected: given current node key " + latestNodeKeyName + " we can't backwards-chain to node key for " + nodeKeyName);
 							return null;
-							// TODO should we throw access denied?
 						} else {
 							return ourNodeKey;
 						}
 					}
 				}
 			}
-			if (isLatestVersion) {
-				for (Group myGroup : _myGroups) {
-					if (!groupNames.contains(myGroup.name())) {
-						// TODO are we a member of this group, if so, pull the group key and unwrap this key
-						
-					}
-				}
+
+			// OK, we're on the latest version. Attempt to walk the group/individual hierarchy.
+			for (String principalName : keyDirectory.getPrincipals().keySet()) {
+				// TODO handle walking groups
 			}
+			
+			
 		} finally {
-			if (null != wrappedNodeKeys) {
-				wrappedNodeKeys.stopEnumerating();
+			if (null != keyDirectory) {
+				keyDirectory.stopEnumerating();
 			}
 		}
 	}
@@ -592,6 +595,7 @@ public class AccessControlManager {
 		}
 		// The node key we have might be a derived node key, so its stored key id might not
 		// directly relate to the node key we're looking for. 
+		// TODO 
 	}
 	
 	/**
@@ -691,8 +695,9 @@ public class AccessControlManager {
 	 * @throws IOException 
 	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
+	 * @throws InvalidCipherTextException 
 	 */
-	public byte [] getDataKey(ContentName dataNodeName) throws XMLStreamException, IOException, InvalidKeyException {
+	public byte [] getDataKey(ContentName dataNodeName) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException {
 		// DKS TODO -- library/flow control handling
 		WrappedKeyObject wdko = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataNodeName), _library);
 		wdko.update();
@@ -719,8 +724,9 @@ public class AccessControlManager {
 	 * @throws NoSuchPaddingException 
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
+	 * @throws IOException 
 	 */
-	public void storeDataKey(ContentName dataNodeName, byte [] newRandomDataKey) throws InvalidKeyException, XMLStreamException {
+	public void storeDataKey(ContentName dataNodeName, byte [] newRandomDataKey) throws InvalidKeyException, XMLStreamException, IOException {
 		NodeKey effectiveNodeKey = getEffectiveNodeKey(dataNodeName);
 		if (null == effectiveNodeKey) {
 			throw new IllegalStateException("Cannot retrieve effective node key for node: " + dataNodeName + ".");
@@ -745,12 +751,11 @@ public class AccessControlManager {
 	 * 		KeyDerivationFunction.DeriveKeyForObject(randomDataKey, keyLabel, 
 	 * 												 dataNodeName, dataPublisherPublicKeyDigest)
 	 * and then give keyandiv to the segmenter to encrypt the data.
-	 * @throws IllegalBlockSizeException 
-	 * @throws NoSuchPaddingException 
-	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
+	 * @throws XMLStreamException 
+	 * @throws IOException 
 	 **/
-	public byte [] generateAndStoreDataKey(ContentName dataNodeName) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException {
+	public byte [] generateAndStoreDataKey(ContentName dataNodeName) throws InvalidKeyException, XMLStreamException, IOException {
 		// Generate new random data key of appropriate length
 		byte [] dataKey = new byte[DEFAULT_DATA_KEY_LENGTH];
 		_random.nextBytes(dataKey);
