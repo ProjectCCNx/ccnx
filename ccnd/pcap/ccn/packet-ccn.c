@@ -50,6 +50,8 @@ static gint ett_name = -1;
 static gint ett_signedinfo = -1;
 static gint ett_content = -1;
 
+static gint ett_exclude = -1;
+
 static gint hf_ccn_type = -1;
 static gint hf_ccn_name = -1;
 static gint hf_ccn_name_components = -1;
@@ -62,6 +64,32 @@ static gint hf_ccn_contentdata = -1;
 static gint hf_ccn_contenttype = -1;
 static gint hf_ccn_freshnessseconds = -1;
 static gint hf_ccn_finalblockid = -1;
+
+static gint hf_ccn_namecomponentcount = -1;
+static gint hf_ccn_additionalnamecomponents = -1;
+static gint hf_ccn_orderpreference = -1;
+
+    /*
+     *  The low-order bit of this number indicates the direction:
+     *      0 = lesser, earlier, work from the left
+     *      1 = greater, later, work from the right 
+     * add to this one of
+     *      0 = whatever answering node chooses- client doesn't care (default if OrderPreference is omitted) Status: ccnd+, clib+
+     *      2 = temporal/accessional/arrival order Status: ccnd-
+     *      4 = name hierarchy order Status: ccnd+, clib+ 
+     */
+    static const value_string orderpreferencedirection_vals[] = {
+        {0, "lesser/earlier/from the left"},
+        {1, "greater/later/from the right"},
+        {0, NULL}
+    };
+
+    static const value_string orderpreferencefield_vals[] = {
+        {0, "unspecified order"},
+        {2, "temporal/accessional/arrival order"},
+        {4, "name hierarchy order"},
+        {0, NULL}
+    };
 
 static int global_ccn_port = 4573;
 static dissector_handle_t ccn_handle = NULL;
@@ -81,12 +109,14 @@ proto_register_ccn(void)
         {CCN_CONTENT_NACK, "Nack"},
         {0, NULL}
     };
+
     static gint *ett[] = {
         &ett_ccn,
         &ett_signature,
         &ett_name,
         &ett_signedinfo,
-        &ett_content
+        &ett_content,
+        &ett_exclude,
     };
     
     
@@ -131,7 +161,17 @@ proto_register_ccn(void)
           0x0, "Indicates the identifier of the final block in a sequence of fragments", HFILL}},
         {&hf_ccn_contentdata,
          {"Data", "ccn.data", FT_BYTES, BASE_HEX, NULL,
-          0x0, "Raw data", HFILL}}
+          0x0, "Raw data", HFILL}},
+
+        {&hf_ccn_namecomponentcount,
+         {"NameComponentCount", "ccn.namecomponentcount", FT_UINT32, BASE_DEC, NULL,
+          0x0, "Prefix components", HFILL}},
+        {&hf_ccn_additionalnamecomponents,
+         {"AdditionalNameComponents", "ccn.additionalnamecomponents", FT_UINT32, BASE_DEC, NULL,
+          0x0, "Additional name components", HFILL}},
+        {&hf_ccn_orderpreference,
+         {"OrderPreference", "ccn.orderpreference", FT_UINT8, BASE_HEX, NULL,
+          0x0, "Preferred ordering of resulting content", HFILL}},
     };
 
     proto_ccn = proto_register_protocol("Content-centric Networking Protocol", /* name */
@@ -279,6 +319,7 @@ static int
 dissect_ccn_interest(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 {
     proto_tree *name_tree;
+    proto_tree *exclude_tree;
     proto_item *titem;
     struct ccn_parsed_interest interest;
     struct ccn_parsed_interest *pi = &interest;
@@ -286,12 +327,16 @@ dissect_ccn_interest(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t *tvb,
     struct ccn_indexbuf *comps;
     const unsigned char *comp;
     size_t comp_size;
+    const unsigned char *blob;
+    size_t blob_size;
     ssize_t l;
     unsigned int i;
     int res;
 
     comps = ccn_indexbuf_create();
     res = ccn_parse_interest(ccnb, ccnb_size, pi, comps);
+
+    /* Name */
     l = pi->offset[CCN_PI_E_Name] - pi->offset[CCN_PI_B_Name];
     c = ccn_charbuf_create();
     ccn_uri_append(c, ccnb, ccnb_size, 1);
@@ -306,6 +351,55 @@ dissect_ccn_interest(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t *tvb,
         titem = proto_tree_add_item(name_tree, hf_ccn_name_components, tvb, comp - ccnb, comp_size, FALSE);
     }
 
+    /* NameComponentCount */
+    l = pi->offset[CCN_PI_E_NameComponentCount] - pi->offset[CCN_PI_B_NameComponentCount];
+    if (l > 0) {
+        i = ccn_fetch_tagged_nonNegativeInteger(CCN_DTAG_NameComponentCount, ccnb,
+                                                pi->offset[CCN_PI_B_NameComponentCount],
+                                                pi->offset[CCN_PI_E_NameComponentCount]);
+
+        titem = proto_tree_add_uint(tree, hf_ccn_namecomponentcount, tvb, pi->offset[CCN_PI_B_NameComponentCount], l, i);
+    }
+
+    /* AdditionalNameComponents */
+    l = pi->offset[CCN_PI_E_AdditionalNameComponents] - pi->offset[CCN_PI_B_AdditionalNameComponents];
+    if (l > 0) {
+        i = ccn_fetch_tagged_nonNegativeInteger(CCN_DTAG_AdditionalNameComponents, ccnb,
+                                                pi->offset[CCN_PI_B_AdditionalNameComponents],
+                                                pi->offset[CCN_PI_E_AdditionalNameComponents]);
+
+        titem = proto_tree_add_uint(tree, hf_ccn_additionalnamecomponents, tvb, pi->offset[CCN_PI_B_AdditionalNameComponents], l, i);
+    }
+
+    /* PublisherID */
+    /* Exclude */
+    l = pi->offset[CCN_PI_E_Exclude] - pi->offset[CCN_PI_B_Exclude];
+    if (l > 0) {
+            titem = proto_tree_add_text(tree, tvb, pi->offset[CCN_PI_B_Exclude], l,
+                                         "Exclude");
+            exclude_tree = proto_item_add_subtree(titem, ett_exclude);
+    }
+    /* OrderPreference */
+    l = pi->offset[CCN_PI_E_OrderPreference] - pi->offset[CCN_PI_B_OrderPreference];
+    if (l > 0) {
+        i = ccn_fetch_tagged_nonNegativeInteger(CCN_DTAG_OrderPreference, ccnb,
+                                                pi->offset[CCN_PI_B_OrderPreference],
+                                                pi->offset[CCN_PI_E_OrderPreference]);
+
+        titem = proto_tree_add_uint(tree, hf_ccn_orderpreference, tvb, pi->offset[CCN_PI_B_OrderPreference], l, i);
+        if (i >= 2) {
+            proto_item_append_text(titem, ", %s", val_to_str(i & 6, VALS(orderpreferencefield_vals), ""));
+            proto_item_append_text(titem, ", %s", val_to_str(i & 1, VALS(orderpreferencedirection_vals), ""));
+        } else {
+            proto_item_append_text(titem, ", unspecified order");
+        }
+    }
+
+    /* AnswerOriginKind */
+    /* Scope */
+    /* Count */
+    /* Nonce */
+    /* OTHER */
     return (1);
     
 }
