@@ -9,5 +9,12 @@ public class Group {
 	private ContentName _groupNamespace;
 	private ContentObject _groupPublicKey;
 	private Collection _groupMembers; 
+	private String _groupName;
+	
+	public Group() {
+		
+	}
+	
+	public String name() { return _groupName; }
 
 }
