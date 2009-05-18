@@ -8,6 +8,7 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNInputStream;
@@ -128,6 +129,27 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> {
 		// block and no header on small objects
 		cos.close();
 		_currentName = cos.getBaseName();
+		setPotentiallyDirty(false);
+	}
+	
+	/**
+	 * Save this object as GONE. Intended to mark the latest version, rather
+	 * than a specific version as GONE. So for now, require that name handed in
+	 * is *not* already versioned; throw an IOException if it is.
+	 * @param name
+	 * @throws IOException
+	 */
+	public void saveAsGone(ContentName name) throws IOException {
+		
+		if (VersioningProfile.isVersioned(name)) {
+			throw new IOException("Cannot save past versions as gone!");
+		}
+		
+		ContentName versionedName = VersioningProfile.versionName(name);
+		ContentObject goneObject = ContentObject.buildContentObject(name, ContentType.GONE, null);
+		_flowControl.addNameSpace(name);
+		_flowControl.put(goneObject);
+		_currentName = versionedName;
 		setPotentiallyDirty(false);
 	}
 
