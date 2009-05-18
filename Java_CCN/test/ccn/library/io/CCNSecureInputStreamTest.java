@@ -118,13 +118,19 @@ public class CCNSecureInputStreamTest {
 		public void streamEncryptDecrypt() throws XMLStreamException, IOException {
 			// check we get identical data back out
 			System.out.println("Reading CCNInputStream from "+name);
-			CCNInputStream vfirst = new CCNInputStream(name, null, null, keys, inputLibrary);
+			CCNInputStream vfirst = makeInputStream();
 			byte [] readDigest = readFile(vfirst, encrLength);
 			Assert.assertArrayEquals(digest, readDigest);
 
 			// check things fail if we use different keys
-			ContentKeys keys2 = ContentKeys.generateRandomKeys();
-			CCNInputStream v2 = new CCNInputStream(name, null, null, keys2, inputLibrary);
+			ContentKeys keys2 = keys;
+			CCNInputStream v2;
+			try {
+				keys = ContentKeys.generateRandomKeys();
+				v2 = makeInputStream();
+			} finally {
+				keys = keys2;
+			}
 			byte [] readDigest2 = readFile(v2, encrLength);
 			Assert.assertFalse(digest.equals(readDigest2));
 		}
