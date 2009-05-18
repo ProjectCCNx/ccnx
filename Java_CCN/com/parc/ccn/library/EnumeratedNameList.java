@@ -128,4 +128,19 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		return 0;
 	}
 
+	public ContentName getLatestVersionChildName(ContentName name) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public static ContentName getLatestVersionName(ContentName name) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public boolean exists(ContentName aclName) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
 }
