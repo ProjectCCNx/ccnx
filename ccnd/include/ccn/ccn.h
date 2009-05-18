@@ -122,7 +122,8 @@ int ccn_get_connection_fd(struct ccn *h);
 
 /*
  * ccn_disconnect: disconnect from local ccnd
- * Breaks the connection, but leaves other state intact.
+ * This breaks the connection and discards buffered I/O,
+ * but leaves other state intact.
  */ 
 int ccn_disconnect(struct ccn *h);
 

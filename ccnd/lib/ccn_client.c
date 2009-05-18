@@ -15,6 +15,7 @@
 #include <unistd.h>
 
 #include <ccn/ccn.h>
+#include <ccn/ccn_private.h>
 #include <ccn/ccnd.h>
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
@@ -545,6 +546,8 @@ ccn_pushout(struct ccn *h)
     ssize_t res;
     size_t size;
     if (h->outbuf != NULL && h->outbufindex < h->outbuf->length) {
+        if (h->sock < 0)
+            return(1);
         size = h->outbuf->length - h->outbufindex;
         res = write(h->sock, h->outbuf->buf + h->outbufindex, size);
         if (res == size) {
@@ -582,13 +585,15 @@ ccn_put(struct ccn *h, const void *p, size_t length)
             h->tap = -1;
         }
     }
-    res = write(h->sock, p, length);
-    if (res == length)
-        return(0);
-    if (res == -1) {
-        if (errno != EAGAIN)
-            return(NOTE_ERRNO(h));
-        res = 0;
+    if (h->sock >= 0) {
+        res = write(h->sock, p, length);
+        if (res == length)
+            return(0);
+        if (res == -1) {
+            if (errno != EAGAIN)
+                return(NOTE_ERRNO(h));
+            res = 0;
+        }
     }
     if (h->outbuf == NULL) {
         h->outbuf = ccn_charbuf_create();
@@ -602,6 +607,17 @@ int
 ccn_output_is_pending(struct ccn *h)
 {
     return(h != NULL && h->outbuf != NULL && h->outbufindex < h->outbuf->length);
+}
+
+struct ccn_charbuf *
+ccn_grab_buffered_output(struct ccn *h)
+{
+    if (ccn_output_is_pending(h) && h->outbufindex == 0) {
+        struct ccn_charbuf *ans = h->outbuf;
+        h->outbuf = NULL;
+        return(ans);
+    }
+    return(NULL);
 }
 
 static void
@@ -904,7 +920,7 @@ ccn_check_pub_arrival(struct ccn *h, struct expressed_interest *interest)
     }
 }
 
-static void
+void
 ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
 {
     struct ccn_parsed_interest pi = {0};
@@ -912,6 +928,8 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
     int i;
     int res;
     enum ccn_upcall_res ures;
+    
+    h->running++;
     info.h = h;
     info.pi = &pi;
     info.interest_comps = ccn_indexbuf_obtain(h);
@@ -1036,6 +1054,7 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
     }
     ccn_indexbuf_release(h, info.interest_comps);
     ccn_indexbuf_destroy(&info.content_comps);
+    h->running--;
 }
 
 static int
@@ -1173,14 +1192,17 @@ ccn_clean_all_interests(struct ccn *h)
     hashtb_end(e);
 }
 
-static void
-ccn_age_interests(struct ccn *h)
+int
+ccn_process_scheduled_operations(struct ccn *h)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     struct interests_by_prefix *entry;
     struct expressed_interest *ie;
     int need_clean = 0;
+    h->refresh_us = 5 * CCN_INTEREST_LIFETIME_MICROSEC;
+    gettimeofday(&h->now, NULL);
+    h->running++;
     if (h->interests_by_prefix != NULL && !ccn_output_is_pending(h)) {
         for (hashtb_start(h->interests_by_prefix, e); e->data != NULL; hashtb_next(e)) {
             entry = e->data;
@@ -1204,6 +1226,8 @@ ccn_age_interests(struct ccn *h)
         if (need_clean)
             ccn_clean_all_interests(h);
     }
+    h->running--;
+    return(h->refresh_us);
 }
 
 int
@@ -1219,11 +1243,11 @@ ccn_run(struct ccn *h, int timeout)
 {
     struct timeval start;
     struct pollfd fds[1];
+    int microsec;
     int millisec;
     int res = -1;
     if (h->running != 0)
         return(NOTE_ERR(h, EBUSY));
-    h->running = 1;
     memset(fds, 0, sizeof(fds));
     memset(&start, 0, sizeof(start));
     h->timeout = timeout;
@@ -1232,9 +1256,7 @@ ccn_run(struct ccn *h, int timeout)
             res = -1;
             break;
         }
-        h->refresh_us = 5 * CCN_INTEREST_LIFETIME_MICROSEC;
-        gettimeofday(&h->now, NULL);
-        ccn_age_interests(h);
+        microsec = ccn_process_scheduled_operations(h);
         timeout = h->timeout;
         if (start.tv_sec == 0)
             start = h->now;
@@ -1250,7 +1272,7 @@ ccn_run(struct ccn *h, int timeout)
         fds[0].events = POLLIN;
         if (ccn_output_is_pending(h))
             fds[0].events |= POLLOUT;
-        millisec = (h->refresh_us) / 1000;
+        millisec = microsec / 1000;
         if (timeout >= 0 && timeout < millisec)
             millisec = timeout;
         res = poll(fds, 1, millisec);
@@ -1269,9 +1291,8 @@ ccn_run(struct ccn *h, int timeout)
         if (h->timeout == 0)
             break;
     }
-    if (h->running != 1)
+    if (h->running != 0)
         abort();
-    h->running = 0;
     return(res);
 }
 
