@@ -72,11 +72,11 @@ static gint hf_ccn_orderpreference = -1;
     /*
      *  The low-order bit of this number indicates the direction:
      *      0 = lesser, earlier, work from the left
-     *      1 = greater, later, work from the right 
+     *      1 = greater, later, work from the right
      * add to this one of
      *      0 = whatever answering node chooses- client doesn't care (default if OrderPreference is omitted) Status: ccnd+, clib+
      *      2 = temporal/accessional/arrival order Status: ccnd-
-     *      4 = name hierarchy order Status: ccnd+, clib+ 
+     *      4 = name hierarchy order Status: ccnd+, clib+
      */
     static const value_string orderpreferencedirection_vals[] = {
         {0, "lesser/earlier/from the left"},
@@ -118,8 +118,8 @@ proto_register_ccn(void)
         &ett_content,
         &ett_exclude,
     };
-    
-    
+
+
     static hf_register_info hf[] = {
         /* { &hf_PROTOABBREV_FIELDABBREV,
 		{ "FIELDNAME",           "PROTOABBREV.FIELDABBREV",
@@ -212,7 +212,7 @@ proto_reg_handoff_ccn(void)
  *	The negative of the amount of additional data needed, if
  *	we need more data (e.g., from subsequent TCP segments) to
  *	dissect the entire PDU.
- */ 
+ */
 static int
 dissect_ccn(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 {
@@ -271,18 +271,18 @@ dissect_ccn(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         col_append_str(pinfo->cinfo, COL_INFO, ", ");
         col_append_str(pinfo->cinfo, COL_INFO, ccn_charbuf_as_string(c));
     }
-    
+
     if (tree == NULL) {
         ccn_charbuf_destroy(&c);
         return (sd->index);
     }
-    
+
     ti = proto_tree_add_protocol_format(tree, proto_ccn, tvb, 0, -1,
                                         "Content-centric Networking Protocol, %s, %s",
                                         val_to_str(packet_type, VALS(ccn_dtag_dict.dict), "Unknown (0x%02x"),
                                         ccn_charbuf_as_string(c));
     ccn_tree = proto_item_add_subtree(ti, ett_ccn);
-    ccn_charbuf_destroy(&c);    
+    ccn_charbuf_destroy(&c);
     ti = proto_tree_add_uint(ccn_tree, hf_ccn_type, tvb, 0, packet_type_length, packet_type);
 
     switch (packet_type) {
@@ -303,7 +303,7 @@ dissect_ccn(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 static gboolean
 dissect_ccn_heur(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 {
-    
+
     /* This is a heuristic dissector, which means we get all the UDP
      * traffic not sent to a known dissector and not claimed by
      * a heuristic dissector called before us!
@@ -401,7 +401,7 @@ dissect_ccn_interest(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t *tvb,
     /* Nonce */
     /* OTHER */
     return (1);
-    
+
 }
 
 static int
@@ -425,7 +425,7 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
     double dt;
     nstime_t timestamp;
     int res;
-    
+
     comps = ccn_indexbuf_create();
     res = ccn_parse_ContentObject(ccnb, ccnb_size, pco, comps);
     if (res < 0) return (-1);
@@ -546,7 +546,6 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
         content_tree = proto_item_add_subtree(titem, ett_content);
         titem = proto_tree_add_item(content_tree, hf_ccn_contentdata, tvb, blob - ccnb, blob_size, FALSE);
     }
-          
+
     return (ccnb_size);
 }
-
