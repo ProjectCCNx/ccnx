@@ -28,6 +28,132 @@ import com.parc.ccn.library.profiles.AccessControlProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.access.ACL.ACLObject;
 
+/**
+ * Misc notes for consolidation.
+ * Used in updating node keys and by {@link #getEffectiveNodeKey(ContentName)}.
+ * To achieve this, we walk up the tree for this node. At each point, we check to
+ * see if a node key exists. If one exists, we decrypt it if we know an appropriate
+ * key. Otherwise we return null.
+ * 
+ * We're going for a low-enumeration approach. We could enumerate node keys and
+ * see if we have rights on the latest version; but then we need to enumerate keys
+ * and figure out whether we have a copy of a key or one of its previous keys.
+ * If we don't know our group memberships, even if we enumerate the node key
+ * access, we don't know what groups we're a member of. 
+ * 
+ * Node keys and ACLs evolve in the following fashion:
+ * - if ACL adds rights, by adding a group, we merely add encrypted node key blocks for
+ *    the same node key version (ACL version increases, node key version does not)
+ * - if an ACL removes rights, by removing a group, we version the ACL and the node key
+ *    (both versions increase)
+ * - if a group adds rights by adding a member, we merely add key blocks to the group key
+ *   (no change to node key or ACL)
+ * - if a group removes rights by removing a member, we need to evolve all the node keys
+ *   that point to that node key, at the time of next write using that node key (so we don't 
+ *   have to enumerate them). (node key version increases, but ACL version does not).
+ *   
+ * One could have the node key point to its acl version, or vice versa, but they really
+ * do most efficiently evolve in parallel. One could have the ACL point to group versions,
+ * and update the ACL and NK together in the last case as well. 
+ * In this last case, we want to update the NK only on next write; if we never write again,
+ * we never need to generate a new NK (unless we can delete). And we want to wait as long
+ * as possible, to skip NK updates with no corresponding writes. 
+ * But, a writer needs to determine first what the most recent node key is for a given
+ * node, and then must determine whether or not that node key must be updated -- whether or
+ * not the most recent versions of groups are what that node key is encrypted under.
+ * Ideally we don't want to have it update the ACL, as that allows management access separation --
+ * we can let writers write the node key without allowing them to write the ACL. 
+ * 
+ * So, we can't store the group version information in the ACL. We don't necessarily
+ * want a writer to have to pull all the node key blocks to see what version of each
+ * group the node key is encrypted under.
+ * 
+ * We could name the node key blocks <prefix>/_access_/NK/#version/<group name>:<group key id>,
+ * if we could match on partial components, but we can't.
+ * 
+ * We can name the node key blocks <prefix>/_access_/NK/#version/<group key id> with
+ * a link pointing to that from NK/#version/<group name>. 
+ * 
+ * For both read and write, we don't actually care what the ACL says. We only care what
+ * the node key is. Most efficient option, if we have a full key cache, is to list the 
+ * node key blocks by key id used to encrypt them, and then pull one for a key in our cache.
+ * On the read side, we're looking at a specific version NK, and we might have rights by going
+ * through its later siblings. On the write side, we're looking at the latest version NK, and
+ * we should have rights to one of the key blocks, or we don't have rights.
+ * If we don't have a full key cache, we have to walk the access hierarchy. In that case,
+ * the most efficient thing to do is to pull the latest version of the ACL for that node
+ * (if we have a NK, we have an ACL, and vice versa, so we can enumerate NK and then pull
+ * ACLs). We then walk that ACL. If we know we are in one of the groups in that ACL, walk
+ * back to find the group key encrypting that node key. If we don't, walk the groups in that
+ * ACL to find out if we're in any of them. If we are, pull the current group key, see if
+ * it works, and start working backwards through group keys, populating the cache in the process,
+ * to find the relevant group key.
+ * 
+ * Right answer might be intentional containment. Besides the overall group key structures,
+ * we make a master list that points to the current versions of all the groups. That would
+ * have to be writable by anyone who is on the manage list for any group. That would let you
+ * get, easily, a single list indicating what groups are available and what their versions are.
+ * Unless NE lets you do that in a single pass, which would be better. (Enumerate name/latestversion,
+ * not just given name, enumerate versions.)
+ * 
+ * 
+ * Operational Process:
+ * read: 
+ * - look at content, find data key
+ * - data key refers to specific node key and version used to encrypt it
+ * - attempt to retrieve that node key from cache, if get it, done
+ * - go to specific node key key directory, attempt to find a block we can decrypt using keys in cache;
+ * 		if so, done
+ * - (maybe) for groups that node key is encrypted under which we believe we are a member of,
+ * 		attempt to retrieve the group key version we need to decrypt the node key
+ * - if that node key has been superseded, find the latest version of the node key (if we're not
+ *     allowed access to that, we're not allowed access to the data) and walk first the cache,
+ *     then the groups we believe we're a member of, then the groups we don't know about,
+ *     trying to find a key to read it (== retrieve latest version of node key process)
+ * - if still can't read node key, attempt to find a new ACL interposed between the data node
+ *    and the old node key node, and see if we have access to its latest node key (== retrieve
+ *    latest version of node key process), and then crawl through previous key blocks till we
+ *    get the one we want
+ * write:
+ * - find closest node key (non-gone)
+ * - decrypt its latest version, if can't, have no read access, which means have no write access
+ * - determine whether it's "dirty" -- needs to be superseded. ACL-changes update node key versions,
+ *   what we need to do is determine whether any groups have updated their keys
+ *   - if so, replace it
+ * - use it to protect data key
+			// We don't have a key cached. Either we don't have access, we aren't in one of the
+			// relevant groups, or we are, but we haven't pulled the appropriate version of the group
+			// key (because it's old, or because we don't know we're in that group).
+			// We can get this node key because either we're in one of the groups it was made
+			// available to, or because it's old, and we have access to one of the groups that
+			// has current access. 
+			// Want to get the latest version of this node key, then do the walk to figure
+			// out how to read it. Need to split this code up:
+			// Given specific version (potentially old):
+			// - enumerate key blocks and group names
+			// 	 - if we have one cached, use key
+			// - for groups we believe we're a member of, pull the link and see what key it points to
+			// 	 - if it's older than the group key we know, walk back from the group key we know, caching
+			//		all the way (this will err on the side of reading; starting from the current group will
+			//		err on the side of making access control coverage look more extensive)
+			// - if we know nothing else, pull the latest version and walk that if it's newer than this one
+			//   - if that results in a key, chain backwards to this key
+			// Given latest version:
+			// - enumerate key blocks, and group names
+			// 	  - if we have one cached, just use it
+			// - walk the groups, starting with the groups we believe we're a member of
+			// 	  - for groups we believe we're in, check if we're still in, then check for a given key
+			//    - walk the groups we don't know if we're in, see if we're in, and can pull the necessary key
+			// - given that, unwrap the key and return it
+			// basic flow -- flag that says whether we believe we have the latest or not, if set, walk
+			// groups we don't know about, if not set, pull latest and if we get something later, make
+			// recursive call saying we believe it's the latest (2-depth recursion max)
+			// As we look at more stuff, we cache more keys, and fall more and more into the cache-only
+			// path.
+
+ * @author smetters
+ *
+ */
 public class AccessControlManager {
 	
 	/**
@@ -43,12 +169,14 @@ public class AccessControlManager {
 	
 	public static final String DATA_KEY_LABEL = "Data Key";
 	public static final String NODE_KEY_LABEL = "Node Key";
+	public static final long DEFAULT_TIMEOUT = 1000;
 
 	private ContentName _namespace;
 	private ContentName _groupStorage;
 	private ContentName _userStorage;
 	private KeyCache _keyCache = new KeyCache();
 	private SecureRandom _random = new SecureRandom();
+	private ArrayList<Group> _myGroups = new ArrayList<Group>();
 	private CCNLibrary _library;
 	
 	public AccessControlManager(ContentName namespace) throws ConfigurationException, IOException {
@@ -74,6 +202,8 @@ public class AccessControlManager {
 	public String nodeKeyLabel() {
 		return NODE_KEY_LABEL;
 	}
+	
+	CCNLibrary library() { return _library; }
 	
 	private KeyCache keyCache() { return _keyCache; }
 	
@@ -126,15 +256,21 @@ public class AccessControlManager {
 	 */
 	public ACLObject getEffectiveACLObject(ContentName nodeName) throws XMLStreamException, IOException {
 		
-		// Find the node that has the ACL
-		ContentName aclNodeName = findAncestorWithACL(nodeName);
-		if (null == aclNodeName) {
+		// Find the closest node that has a non-gone ACL
+		ACLObject aclo = findAncestorWithACL(nodeName);
+		if (null == aclo) {
 			Library.logger().warning("Unexpected: cannot find an ancestor of node " + nodeName + " that has an ACL.");
 			throw new IOException("Unexpected: cannot find an ancestor of node " + nodeName + " that has an ACL.");	
 		}
-		return getACLObjectForNode(aclNodeName);
+		return aclo;
 	}
 	
+
+	private ACLObject findAncestorWithACL(ContentName dataNodeName) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 	/**
 	 * Try to pull an acl for a particular node. If it doesn't exist, will time
 	 * out. Use enumeration to decide whether to call this to avoid the timeout.
@@ -149,22 +285,28 @@ public class AccessControlManager {
 		ACLObject aclo = new ACLObject(AccessControlProfile.aclName(aclNodeName), _library);
 		aclo.update();
 		// if there is no update, this will probably throw an exception -- IO or XMLStream
+		if (aclo.isGone()) {
+			// treat as if no acl on node
+			return null;
+		}
 		return aclo;
 	}
 	
 	public ACLObject getACLObjectForNodeIfExists(ContentName aclNodeName) {
 		
-		if (!EnumeratedNameList.exists(AccessControlProfile.aclName(aclNodeName), aclNodeName, _library)) {
-			return null;
-		}
+		EnumeratedNameList enlNode = new EnumeratedNameList(aclNodeName, _library);
 		
-		EnumeratedNameList enl = new EnumeratedNameList(AccessControlProfile.aclName(aclNodeName), _library);
-		enl.waitForData();
-		ACLObject aclo = new ACLObject(enl.latestVersionName(), _library);
-		aclo.update();
-		if (aclo.isGone())
-			return null;
-		return aclo;
+		if (enlNode.exists(AccessControlProfile.aclName(aclNodeName))) {
+			ContentName aclName = enlNode.getLatestVersionChildName(AccessControlProfile.aclName(aclNodeName));
+			Library.logger().info("Found latest version of acl for " + aclNodeName + " at " + aclName);
+			ACLObject aclo = new ACLObject(aclName, _library);
+			aclo.update();
+			if (aclo.isGone())
+				return null;
+			return aclo;
+		}
+		Library.logger().info("No ACL found on node: " + aclNodeName);
+		return null;
 	}
 	
 	public ACL getEffectiveACL(ContentName nodeName) throws XMLStreamException, IOException {
@@ -226,113 +368,33 @@ public class AccessControlManager {
 	public ACL addManagers(ContentName nodeName, ArrayList<LinkReference> newManagers) {
 		return updateACL(nodeName, null, null, null, null, newManagers, null);
 	}
-
-	private ContentName findAncestorWithACL(ContentName dataNodeName) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
+	
+	
 	/**
 	 * 
-	 * Get the ancestor node key in force at this node.
-	 * Used in updating node keys and by {@link #getEffectiveNodeKey(ContentName)}.
-	 * To achieve this, we walk up the tree for this node. At each point, we check to
-	 * see if a node key exists. If one exists, we decrypt it if we know an appropriate
-	 * key. Otherwise we return null.
-	 * 
-	 * We're going for a low-enumeration approach. We could enumerate node keys and
-	 * see if we have rights on the latest version; but then we need to enumerate keys
-	 * and figure out whether we have a copy of a key or one of its previous keys.
-	 * If we don't know our group memberships, even if we enumerate the node key
-	 * access, we don't know what groups we're a member of. 
-	 * 
-	 * Node keys and ACLs evolve in the following fashion:
-	 * - if ACL adds rights, by adding a group, we merely add encrypted node key blocks for
-	 *    the same node key version (ACL version increases, node key version does not)
-	 * - if an ACL removes rights, by removing a group, we version the ACL and the node key
-	 *    (both versions increase)
-	 * - if a group adds rights by adding a member, we merely add key blocks to the group key
-	 *   (no change to node key or ACL)
-	 * - if a group removes rights by removing a member, we need to evolve all the node keys
-	 *   that point to that node key, at the time of next write using that node key (so we don't 
-	 *   have to enumerate them). (node key version increases, but ACL version does not).
-	 *   
-	 * One could have the node key point to its acl version, or vice versa, but they really
-	 * do most efficiently evolve in parallel. One could have the ACL point to group versions,
-	 * and update the ACL and NK together in the last case as well. 
-	 * In this last case, we want to update the NK only on next write; if we never write again,
-	 * we never need to generate a new NK (unless we can delete). And we want to wait as long
-	 * as possible, to skip NK updates with no corresponding writes. 
-	 * But, a writer needs to determine first what the most recent node key is for a given
-	 * node, and then must determine whether or not that node key must be updated -- whether or
-	 * not the most recent versions of groups are what that node key is encrypted under.
-	 * Ideally we don't want to have it update the ACL, as that allows management access separation --
-	 * we can let writers write the node key without allowing them to write the ACL. 
-	 * 
-	 * So, we can't store the group version information in the ACL. We don't necessarily
-	 * want a writer to have to pull all the node key blocks to see what version of each
-	 * group the node key is encrypted under.
-	 * 
-	 * We could name the node key blocks <prefix>/_access_/NK/#version/<group name>:<group key id>,
-	 * if we could match on partial components, but we can't.
-	 * 
-	 * We can name the node key blocks <prefix>/_access_/NK/#version/<group key id> with
-	 * a link pointing to that from NK/#version/<group name>. 
-	 * 
-	 * For both read and write, we don't actually care what the ACL says. We only care what
-	 * the node key is. Most efficient option, if we have a full key cache, is to list the 
-	 * node key blocks by key id used to encrypt them, and then pull one for a key in our cache.
-	 * On the read side, we're looking at a specific version NK, and we might have rights by going
-	 * through its later siblings. On the write side, we're looking at the latest version NK, and
-	 * we should have rights to one of the key blocks, or we don't have rights.
-	 * If we don't have a full key cache, we have to walk the access hierarchy. In that case,
-	 * the most efficient thing to do is to pull the latest version of the ACL for that node
-	 * (if we have a NK, we have an ACL, and vice versa, so we can enumerate NK and then pull
-	 * ACLs). We then walk that ACL. If we know we are in one of the groups in that ACL, walk
-	 * back to find the group key encrypting that node key. If we don't, walk the groups in that
-	 * ACL to find out if we're in any of them. If we are, pull the current group key, see if
-	 * it works, and start working backwards through group keys, populating the cache in the process,
-	 * to find the relevant group key.
-	 * 
-	 * Right answer might be intentional containment. Besides the overall group key structures,
-	 * we make a master list that points to the current versions of all the groups. That would
-	 * have to be writable by anyone who is on the manage list for any group. That would let you
-	 * get, easily, a single list indicating what groups are available and what their versions are.
-	 * Unless NE lets you do that in a single pass, which would be better. (Enumerate name/latestversion,
-	 * not just given name, enumerate versions.)
+	 * Get the ancestor node key in force at this node (if we can decrypt it).
 	 * @param nodeName
-	 * @return
-	 * @throws IOException 
+	 * @return null means while node keys exist, we can't decrypt any of them --
+	 *    we have no read access to this node (which implies no write access)
+	 * @throws IOException if something is wrong (e.g. no node keys at all)
 	 */
-	public NodeKey getNodeKey(ContentName nodeName) throws IOException {
-		// Find the node that has the NK
-		ContentName aclNodeName = findAncestorWithNodeKey(nodeName);
-		if (null == aclNodeName) {
-			Library.logger().warning("Unexpected: cannot find an ancestor of node " + nodeName + " that has a node key.");
-			throw new IOException("Unexpected: cannot find an ancestor of node " + nodeName + " that has a node key.");	
-		}
-		return getNodeKeyForNode(aclNodeName);		
-	}
-	
-	protected ContentName findAncestorWithNodeKey(ContentName nodeName) {
+	protected NodeKey findAncestorWithNodeKey(ContentName nodeName) throws IOException {
 		// TODO Auto-generated method stub
+		// climb up looking for node keys, then make sure that one isn't superseded
+		// if it isn't, call read-side routine to figure out how to decrypt it
 		return null;
 	}
-
-	public NodeKey getNodeKeyForNode(ContentName nodeName) {
+	
+	public NodeKey getLatestNodeKeyForNode(ContentName nodeName) {
 		
 		// First we need to figure out what the latest version is of the node key.
-		ContentName nodeKeyVersionedName = getLatestVersionName(AccessControlProfile.nodeKeyName(nodeName));
+		ContentName nodeKeyVersionedName = EnumeratedNameList.getLatestVersionName(AccessControlProfile.nodeKeyName(nodeName));
 		// then, pull the node key we can decrypt
-		return getNodeKeyByVersionedName(nodeKeyVersionedName, null);
+		return getNodeKeyByVersionedName(nodeKeyVersionedName, null, true);
 	}
 	
-	private ContentName getLatestVersionName(ContentName nodeKeyName) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
 	/**
+	 * Read path:
 	 * Retrieve a specific node key from a given location, as specified by a
 	 * key it was used to wrap, and, if possible, find a key we can use to
 	 * unwrap the node key.
@@ -342,7 +404,7 @@ public class AccessControlManager {
 	 * @param nodeKeyIdentifier
 	 * @return
 	 */
-	public NodeKey getNodeKey(ContentName nodeKeyName, byte [] nodeKeyIdentifier) {
+	public NodeKey getSpecificNodeKey(ContentName nodeKeyName, byte [] nodeKeyIdentifier) {
 		
 		if ((null == nodeKeyName) && (null == nodeKeyIdentifier)) {
 			throw new IllegalArgumentException("Node key name and identifier cannot both be null!");
@@ -361,7 +423,7 @@ public class AccessControlManager {
 			}
 			// We should know what node key to use (down to the version), but we have to find the specific
 			// wrapped key copy we can decrypt. 
-			nk = getNodeKeyByVersionedName(nodeKeyName, nodeKeyIdentifier);
+			nk = getNodeKeyByVersionedName(nodeKeyName, nodeKeyIdentifier, false);
 			if (null == nk) {
 				Library.logger().warning("No decryptable node key available at " + nodeKeyName + ", access denied.");
 				return null;
@@ -376,65 +438,140 @@ public class AccessControlManager {
 	 * out which of our keys can be used to decrypt it.
 	 * @param nodeKeyName
 	 * @param nodeKeyIdentifier
+	 * @param isLatestVersion - do we believe this is already the latest version, or
+	 *    should we go looking for a later one to help?
 	 * @return
 	 */
-	NodeKey getNodeKeyByVersionedName(ContentName nodeKeyName, byte [] nodeKeyIdentifier) {
-		if (!VersioningProfile.isVersioned(nodeKeyName)) {
-			throw new IllegalArgumentException("Unexpected: node key name unversioned: " + nodeKeyName);
-		}
-		
-		NodeKey nk = null;
-		EnumeratedNameList wrappedNodeKeys = null;
-		
-		try {
-			// Quick path, if cache is full -- enumerate node keys, pull the one we can decrypt.
-			// Name node keys by both wrapping key ID and group. To differentiate, prefix
-			// node key IDs 
-			wrappedNodeKeys = new EnumeratedNameList(nodeKeyName, _library);
-			// Will block until an answer comes back or timeout.
-			ArrayList <byte []> children = wrappedNodeKeys.getNewData();
+	NodeKey getNodeKeyByVersionedName(ContentName nodeKeyName, byte [] nodeKeyIdentifier, boolean isLatestVersion) {
 
-			// We have at least one answer. Pass through it, and for the keys,
-			// check to see if we know the key already.
-			ArrayList<String> groupNames = new ArrayList<String>();
-			for (byte [] wnkChildName : wrappedNodeKeys.getNewData()) {
-				if (AccessControlProfile.isWrappedNodeKeyNameComponent(wnkChildName)) {
-					byte [] keyid = AccessControlProfile.getTargetKeyIDFromNameComponent(wnkChildName);
-					if (keyCache().containsKey(keyid)) {
-						// We have it, pull the block, unwrap the node key.
-						WrappedKeyObject wko = new WrappedKeyObject(new ContentName(nodeKeyName, wnkChildName));
-						wko.update();
-						if (null != wko.wrappedKey()) {
-							nk = new NodeKey(nodeKeyName, 
-									wko.wrappedKey().unwrapKey(keyCache().getPrivateKey(keyid)));
-							if ((null != nodeKeyIdentifier) && (!Arrays.areEqual(keyid, nk.storedNodeKeyID()))) {
-								Library.logger().warning("Retrieved and decrypted node key, but it was the wrong node key. We wanted " + 
-										DataUtils.printBytes(keyid) + ", we got " + DataUtils.printBytes(nk.storedNodeKeyID()));
-							} else {
-								return nk;
-							}
-						}
+		NodeKey nk = null;
+		WrappedKeyObject wko = null;
+		
+		KeyDirectory keyDirectory = new KeyDirectory(this, nodeKeyName);
+		ArrayList<byte []> availableKeyBlocks = keyDirectory.getWrappingKeyIDs();
+
+		if (isLatestVersion && keyDirectory.hasSupersededBlock() && 
+			(availableKeyBlocks.size() == 0) && (keyDirectory.getPrincipals().size() == 0)) {
+			
+			// Handle case where this node key is gone and superseded,
+			// vs case where it's just superseded by a newer key. Only matters
+			// if we're looking at the latest version of this node key. 
+			// A superseded node key just contains a superseded block pointing
+			// up to the superseding node. (You only get this if someone
+			// deletes an ACL causing it to inherit from its parent again.)
+			// If we think we have the latest version, but have a superseded
+			// block *and* principal/wrap blocks, something is wrong -- it's not
+			// the latest version. 
+			wko = new WrappedKeyObject(keyDirectory.getSupersededBlockName(), _library);
+			wko.update();
+			if (null == wko.wrappedKey()) {
+				Library.logger().warning("Could not retrieve superseded key for node: " + keyDirectory.getSupersededBlockName());
+				return null;
+			}
+			// DKS TODO be sure what node is used to name this, 
+			// might need to use data key wrapping derivation to wrap
+			NodeKey enk = getNodeKeyForObject(keyDirectory.getSupersededBlockName(), wko);
+			if (null != enk) {
+				nk = new NodeKey(keyDirectory.getSupersededBlockName(), 
+								 wko.wrappedKey().unwrapKey(enk.nodeKey()));
+				return nk;
+			}
+			return null;
+		}			
+		
+		for (byte [] keyid : availableKeyBlocks) {
+			if (keyCache().containsKey(keyid)) {
+				// We have it, pull the block, unwrap the node key.
+				wko = keyDirectory.getWrappedKeyForKeyID(keyid);
+				if (null != wko.wrappedKey()) {
+					nk = new NodeKey(nodeKeyName, 
+							wko.wrappedKey().unwrapKey(keyCache().getPrivateKey(keyid)));
+					if ((null != nodeKeyIdentifier) && (!Arrays.areEqual(keyid, nk.storedNodeKeyID()))) {
+						Library.logger().warning("Retrieved and decrypted node key, but it was the wrong node key. We wanted " + 
+								DataUtils.printBytes(keyid) + ", we got " + DataUtils.printBytes(nk.storedNodeKeyID()));
+					} else {
+						keyCache().addNodeKey(nk);
+						return nk;
 					}
-				} else if (AccessControlProfile.isGroupNodeKeyNameComponent(wnkChildName)) {
-					groupNames.add(AccessControlProfile.groupNodeKeyNameComponentToGroupName(wnkChildName));
 				}
 			}
-
-			// We don't have a key cached. Either we don't have access, we aren't in one of the
-			// relevant groups, or we are, but we haven't pulled the appropriate version of the group
-			// key (because it's old, or because we don't know we're in that group).
-			// We can get this node key because either we're in one of the groups it was made
-			// available to, or because it's old, and we have access to one of the groups that
-			// has current access. So at this point we can walk the list of groups we've figured
-			// out already that has access without pulling any more specific data.
-
-			// OK, just walking the groups listed on that node key's list of available groups didn't
-			// help us. Is there a later version of the node key? We can either go look at the ACL
-			// itself, or the most recent version of the node key to get an idea of the groups
-			// with access. 
-			ACL acl = getACL(nodeKeyName);
-			// Two passes through the acl -- pass 1, what groups we know we're in.
-			// Pass through, walk groups we don't know about.
+			
+			// OK, not in cache. Our next step regardless is to check on the groups we think we're in.
+			ArrayList<String> groupNames = keyDirectory.getPrincipals();
+			for (Group myGroup : _myGroups) {
+				if (groupNames.contains(myGroup.name())) {
+					// TODO handle this group, add keys to the cache as we go
+				}
+			}
+			
+			// Alright, we can't pull a group key for one of the groups we know we belong to
+			// to help us. So now, two choices. If we're on the latest version (no superseded block)
+			// start crawling the groups we don't know whether we're in. If we're not, chain back through
+			// the superseded blocks, checking cache for each, till we get to the latest, then
+			// crawl groups. There is a small chance we might have had access at an intervening
+			// point and not at the latest node, but we're really supposed to pay attention to
+			// the latest node policy (though attackers will not); so err on the side of limiting
+			// access.
+			if (!isLatestVersion) {
+				// First we need to figure out what the latest version is of the node key.
+				ContentName latestNodeKeyName = EnumeratedNameList.getLatestVersionName(nodeKeyName);
+				
+				if (nodeKeyName.equals(latestNodeKeyName)) {
+					isLatestVersion = true;
+				} else {
+					Library.logger().info("Newer version " + latestNodeKeyName + " available for node key " + nodeKeyName);
+					NodeKey latestNodeKey = getNodeKeyByVersionedName(latestNodeKeyName, null, true);
+					if (null == latestNodeKey) {
+						// need to distinguish between don't have access and key gone.
+						// throw access denied exception if no key available we can read
+						// throw illegal state exception if no node key
+						// if superseded, and we think we're trying to get the latest key,
+						// should we follow superseded links?
+						// DKS TODO there a case here where we have a node key, we go to get its latest version
+						// and its gone, and we need to climb up the hierarchy to find the latest node key in force,
+						// and then potentially go sideways before going down or vice versa, though I suppose
+						// when we mark an ACL GONE and a node key GONE, we need to wrap that node key in the
+						// new node key that will be in force in that node or link it somehow. This suggests
+						// that our links should go forward in time, not backward... or we just wrap gone
+						// node keys in their superseding keys. Or we don't even have GONE node keys, just
+						// ACLs, and we write Superseded blocks into the place where GONE node keys
+						// would be, and they point to the wrapping key. This makes sense, ACLs can just
+						// be replaced, but keys need to chain.
+						
+						// superseded in old NKs works much better -- can easily tell if a NK is the
+						// one in force, can find where to go for the latest even if uphill
+						// need previous blocks if you interpose a lower acl, and need to chain backwards
+						// at that level. so might have either. though if you're reading, you'll go straight
+						// to the level of the old node key, and if you can't read that one, eventually
+						// you'll look for an interposed key you can read. but if the data is too old
+						// and you interpose an acl, you're in trouble.... you need to add in previous
+						// blocks for all the node keys you're replacing with the effective node keys
+						// for the interposed node.
+						// Superseded blocks point sideways or up. Previous blocks handle relationships
+						// pointing down (by pointing up with opposite semantics).
+						// this would argue for a separation of getLatestNodeKey and get by specific version
+					} else {
+						// chain backwards from the key we have to the key we want
+						NodeKey ourNodeKey = retrievePreviousNodeKey(latestNodeKey, nodeKeyName);
+						if (null == ourNodeKey) {
+							// we're done, no access, but weird...
+							Library.logger().warning("Unexpected: given current node key " + latestNodeKeyName + " we can't backwards-chain to node key for " + nodeKeyName);
+							return null;
+							// TODO should we throw access denied?
+						} else {
+							return ourNodeKey;
+						}
+					}
+				}
+			}
+			if (isLatestVersion) {
+				for (Group myGroup : _myGroups) {
+					if (!groupNames.contains(myGroup.name())) {
+						// TODO are we a member of this group, if so, pull the group key and unwrap this key
+						
+					}
+				}
+			}
 		} finally {
 			if (null != wrappedNodeKeys) {
 				wrappedNodeKeys.stopEnumerating();
@@ -443,16 +580,32 @@ public class AccessControlManager {
 	}
 	
 	/**
+	 * Horizontal chaining. Given a version of a node key, retrieve a previous version.
+	 */
+	private NodeKey retrievePreviousNodeKey(NodeKey nodeKeyWeHave, ContentName nameOfNodeKeyWeWant) {
+		// First, do we have the values we need?
+		if ((null == nodeKeyWeHave) || (null == nameOfNodeKeyWeWant)) {
+			throw new IllegalArgumentException("Neither node key nor desired name can be null!");
+		}
+		if (!nodeKeyWeHave.nodeName().isPrefixOf(nameOfNodeKeyWeWant)) {
+			throw new IllegalArgumentException("Node key " + nodeKeyWeHave.nodeName() + " is not a newer node key replacing " + nameOfNodeKeyWeWant);
+		}
+		// The node key we have might be a derived node key, so its stored key id might not
+		// directly relate to the node key we're looking for. 
+	}
+	
+	/**
 	 * Get the effective node key in force at this node, used to derive keys to 
-	 * encrypt and decrypt content.
+	 * encrypt  content. Vertical chaining.
 	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
 	 * @throws IOException 
 	 */
 	public NodeKey getEffectiveNodeKey(ContentName nodeName) throws InvalidKeyException, XMLStreamException, IOException {
 		// Get the ancestor node key in force at this node.
-		NodeKey nodeKey = getNodeKey(nodeName);
+		NodeKey nodeKey = findAncestorWithNodeKey(nodeName);
 		if (null == nodeKey) {
+			// TODO no access
 			throw new IllegalStateException("Cannot retrieve node key for node: " + nodeName + ".");
 		}
 		NodeKey effectiveNodeKey = nodeKey.computeDescendantNodeKey(nodeName, nodeKeyLabel()); 
@@ -471,7 +624,7 @@ public class AccessControlManager {
 	 */
 	protected NodeKey getNodeKeyUsingInterposedACL(ContentName dataNodeName,
 			ContentName wrappingKeyName, byte[] wrappingKeyIdentifier) {
-		ContentName nearestACL = findAncestorWithACL(dataNodeName);
+		ACLObject nearestACL = findAncestorWithACL(dataNodeName);
 		
 		if (null == nearestACL) {
 			Library.logger().warning("Unexpected -- node with no ancestor ACL: " + dataNodeName);
@@ -484,7 +637,7 @@ public class AccessControlManager {
 			return null;
 		}
 		
-		NodeKey nk = getNodeKeyForNode(nearestACL);
+		NodeKey nk = getLatestNodeKeyForNode(AccessControlProfile.accessRoot(nearestACL.getName()));
 		return nk;
 	}
 
@@ -501,6 +654,31 @@ public class AccessControlManager {
 		
 	}
 
+	
+	public NodeKey getNodeKeyForObject(ContentName nodeName, WrappedKeyObject wko) throws InvalidKeyException, XMLStreamException {
+		
+		// First, we go and look for the node key where the data key suggests
+		// it should be, and attempt to decrypt it from there.
+		NodeKey nk = getSpecificNodeKey(wko.wrappedKey().wrappingKeyName(), 
+				wko.wrappedKey().wrappingKeyIdentifier());
+		if (null == nk) {
+			// OK, we will have gotten an exception if the node key simply didn't exist
+			// there, so this means that we don't have rights to read it there.
+			// The only way we might have rights not visible from this link is if an
+			// ACL has been interposed between where we are and the node key, and that
+			// ACL does give us rights.
+			nk = getNodeKeyUsingInterposedACL(nodeName, wko.wrappedKey().wrappingKeyName(), 
+					wko.wrappedKey().wrappingKeyIdentifier());
+			if (null == nk) {
+				// Still can't find one we can read. Give up. Return null, and allow caller to throw the 
+				// access exception.
+				return null;
+			}
+		}
+		NodeKey enk = nk.computeDescendantNodeKey(nodeName, dataKeyLabel());
+		return enk;
+	}
+	
 	/**
 	 * Used by content reader to retrieve the keys necessary to decrypt this content
 	 * under this access control model.
@@ -512,8 +690,9 @@ public class AccessControlManager {
 	 * @return
 	 * @throws IOException 
 	 * @throws XMLStreamException 
+	 * @throws InvalidKeyException 
 	 */
-	public byte [] getDataKey(ContentName dataNodeName) throws XMLStreamException, IOException {
+	public byte [] getDataKey(ContentName dataNodeName) throws XMLStreamException, IOException, InvalidKeyException {
 		// DKS TODO -- library/flow control handling
 		WrappedKeyObject wdko = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataNodeName), _library);
 		wdko.update();
@@ -521,30 +700,14 @@ public class AccessControlManager {
 			Library.logger().warning("Could not retrieve data key for node: " + dataNodeName);
 			return null;
 		}
-		
-		// First, we go and look for the node key where the data key suggests
-		// it should be, and attempt to decrypt it from there.
-		NodeKey nk = getNodeKey(wdko.wrappedKey().wrappingKeyName(), 
-								wdko.wrappedKey().wrappingKeyIdentifier());
-		if (null == nk) {
-			// OK, we will have gotten an exception if the node key simply didn't exist
-			// there, so this means that we don't have rights to read it there.
-			// The only way we might have rights not visible from this link is if an
-			// ACL has been interposed between where we are and the node key, and that
-			// ACL does give us rights.
-			nk = getNodeKeyUsingInterposedACL(dataNodeName, wdko.wrappedKey().wrappingKeyName(), 
-											  wdko.wrappedKey().wrappingKeyIdentifier());
-			if (null == nk) {
-				// Still can't find it. Give up. Return null, and allow caller to throw the 
-				// access exception.
-				return null;
-			}
-		}
-		NodeKey enk = nk.computeDescendantNodeKey(dataNodeName, dataKeyLabel());
-		Key dataKey = wdko.wrappedKey().unwrapKey(enk.nodeKey());
-		return dataKey.getEncoded();
+		NodeKey enk = getNodeKeyForObject(dataNodeName, wdko);
+		if (null != enk) {
+			Key dataKey = wdko.wrappedKey().unwrapKey(enk.nodeKey());
+			return dataKey.getEncoded();
+		} 
+		return null;
 	}
-	
+
 	/**
 	 * Take a randomly generated data key and store it. This requires finding
 	 * the current effective node key, and wrapping this data key in it.
