@@ -290,6 +290,9 @@ public class CCNFlowControl implements CCNFilterListener {
 			
 			synchronized (_holdingArea) {
 				if (_holdingArea.size() == startSize) {
+					for(ContentName co : _holdingArea.keySet()) {
+						Library.logger().warning(co.toString());
+					}
 					throw new IOException("Put(s) with no matching interests");
 				}
 				startSize = _holdingArea.size();
