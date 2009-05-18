@@ -360,7 +360,7 @@ public class CCNSecureInputStreamTest {
 	public void versionedStreamEncryptDecrypt() throws XMLStreamException, IOException {
 		versioned.streamEncryptDecrypt();
 	}
-//	@Test
+	@Test
 	public void fileStreamEncryptDecrypt() throws XMLStreamException, IOException {
 		file.streamEncryptDecrypt();
 	}
@@ -394,7 +394,7 @@ public class CCNSecureInputStreamTest {
 	public void versionedSkipping() throws XMLStreamException, IOException, NoSuchAlgorithmException {
 		versioned.skipping();
 	}
-//	@Test
+	@Test
 	public void fileSkipping() throws XMLStreamException, IOException, NoSuchAlgorithmException {
 		file.skipping();
 	}
