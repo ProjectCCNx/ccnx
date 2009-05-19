@@ -142,7 +142,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 			Collections.sort(_children);
 			_newChildren = names;
 			Collections.sort(_newChildren);
-			processNewChildren();
+			processNewChildren(_newChildren);
 			_childLock.notifyAll();
 		}
 		return 0;
@@ -152,7 +152,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * Method to allow subclasses to do post-processing on incoming names
 	 * before handing them to customers.
 	 */
-	protected void processNewChildren() {
+	protected void processNewChildren(ArrayList<ContentName> newChildren) {
 		// default -- do nothing.
 	}
 
@@ -190,6 +190,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		EnumeratedNameList enl = new EnumeratedNameList(name, library);
 		enl.waitForData();
 		ContentName childLatestVersion = enl.getLatestVersionChildName();
+		enl.stopEnumerating();
 		if (null != childLatestVersion) {
 			return new ContentName(name, childLatestVersion.component(0));
 		}
@@ -197,14 +198,45 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	}
 
 	/**
-	 * Iterates down namespace
+	 * Iterates down namespace. If the name doesn't exist in a limited time iteration,
+	 * return null; otherwise return the last enumerator that enumerates the parent of
+	 * the desired.
+	 * DKS -- may time out before it discovers child...
+	 * We can modify the name enumeration protocol to return empty responses if query
+	 * for unknown name, but that adds semantic complications.
 	 * @param aclName
 	 * @param prefixKnownToExist
 	 * @return
+	 * @throws IOException 
 	 */
-	public boolean exists(ContentName aclName, ContentName prefixKnownToExist) {
-		// TODO Auto-generated method stub
-		return false;
+	public static EnumeratedNameList exists(ContentName childName, ContentName prefixKnownToExist, CCNLibrary library) throws IOException {
+		if ((null == prefixKnownToExist) || (null == childName) || (!prefixKnownToExist.isPrefixOf(childName))) {
+			Library.logger().info("Child " + childName + " must be prefixed by name " + prefixKnownToExist);
+			throw new IllegalArgumentException("Child " + childName + " must be prefixed by name " + prefixKnownToExist);
+		}
+		if (childName.count() == prefixKnownToExist.count()) {
+			// we're already there
+			return new EnumeratedNameList(childName, library);
+		}
+		ContentName parentName = prefixKnownToExist;
+		int childIndex = parentName.count();
+		EnumeratedNameList parentEnumerator = null;
+		while (childIndex < childName.count()) {
+			parentEnumerator = new EnumeratedNameList(parentName, library);
+			parentEnumerator.waitForData(); // we're only getting the first round here... 
+			// could wrap this bit in a loop if want to try harder
+			if (parentEnumerator.hasChild(childName.component(childIndex))) {
+				childIndex++;
+				if (childIndex == childName.count()) {
+					return parentEnumerator;
+				}
+				parentEnumerator.stopEnumerating();
+				parentName = new ContentName(parentName, childName.component(childIndex));
+				continue;
+			} else {
+				break;
+			}
+		}
+		return null;
 	}
-
 }
