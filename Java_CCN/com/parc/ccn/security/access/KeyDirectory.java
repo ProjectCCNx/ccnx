@@ -12,6 +12,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.security.WrappedKey.WrappedKeyObject;
+import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.EnumeratedNameList;
 import com.parc.ccn.library.profiles.AccessControlProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
@@ -32,52 +33,58 @@ import com.sun.tools.javac.util.Pair;
 public class KeyDirectory extends EnumeratedNameList {
 	
 	AccessControlManager _manager; // to get at key cache
-	ContentName _directoryName; // should be versioned, otherwise we pull the latest version
 	HashMap<String, Timestamp> _principals = new HashMap<String, Timestamp>();
 	ArrayList<byte []> _keyIDs = new ArrayList<byte []>();
 	ArrayList<byte []> _otherNames = new ArrayList<byte []>();
-	EnumeratedNameList _keyDirectory = null;
 	
-	public KeyDirectory(AccessControlManager manager, ContentName directoryName) throws IOException {
-		if ((null == manager) || (null == directoryName)) {
-			throw new IllegalArgumentException("Manager and directory cannot be null.");
-		}
-	
+	/**
+	 * Directory name should be versioned, else we pull the latest version
+	 * @param manager
+	 * @param directoryName
+	 * @param library
+	 * @throws IOException
+	 */
+	public KeyDirectory(AccessControlManager manager, ContentName directoryName, CCNLibrary library) throws IOException {
+		super(directoryName, library);
+		if (null == manager) {
+			stopEnumerating();
+			throw new IllegalArgumentException("Manager cannot be null.");
+		}	
 		_manager = manager;
-		_directoryName = directoryName;
 		initialize();
 	}
 
 	private void initialize() throws IOException {
-		if (!VersioningProfile.isVersioned(_directoryName)) {
-			ContentName newDirectoryName = EnumeratedNameList.getLatestVersionName(_directoryName);
-			if (null == newDirectoryName) {
-				Library.logger().info("Unexpected: can't get a latest version for key directory name : " + _directoryName);
-			} else {
-				_directoryName = newDirectoryName;
+		if (!VersioningProfile.isVersioned(_namePrefix)) {
+			getNewData();
+			ContentName latestVersionName = getLatestVersionChildName();
+			if (null == latestVersionName) {
+				Library.logger().info("Unexpected: can't get a latest version for key directory name : " + _namePrefix);
+				getNewData();
+				latestVersionName = getLatestVersionChildName();
+				if (null == latestVersionName) {
+					Library.logger().info("Unexpected: really can't get a latest version for key directory name : " + _namePrefix);
+					throw new IOException("Unexpected: really can't get a latest version for key directory name : " + _namePrefix);
+				}
+			}
+			synchronized (_childLock) {
+				stopEnumerating();
+				_children.clear();
+				_newChildren = null;
+				_namePrefix = latestVersionName;
+				_enumerator.registerPrefix(_namePrefix);
 			}
 		}
-		// Quick path, if cache is full -- enumerate node keys, pull the one we can decrypt.
-		// Name node keys by both wrapping key ID and group. To differentiate, prefix
-		// node key IDs 
-		_keyDirectory = new EnumeratedNameList(_directoryName, _manager.library());
-		loadMoreData();
 	}
 	
-	public synchronized boolean hasMoreData() {
-		return _keyDirectory.hasNewData();
-	}
-
 	/**
-	 * Will block until data is available. 
+	 * Called each time new data comes in, gets to parse it and load processed
+	 * arrays.
 	 */
-	public synchronized void loadMoreData() {
-		// Will block until an answer comes back or timeout.
-		ArrayList <byte []> children = _keyDirectory.getNewData();
-
-		// We have at least one answer. Pass through it, and for the keys,
-		// check to see if we know the key already.
-		for (byte [] wkChildName : children) {
+	protected void processNewChildren(ArrayList<ContentName> newChildren) {
+		for (ContentName childName : newChildren) {
+			// currently encapsulated in single-component ContentNames
+			byte [] wkChildName = childName.lastComponent();
 			if (AccessControlProfile.isWrappedKeyNameComponent(wkChildName)) {
 				byte [] keyid = AccessControlProfile.getTargetKeyIDFromNameComponent(wkChildName);
 				_keyIDs.add(keyid);
@@ -105,7 +112,7 @@ public class KeyDirectory extends EnumeratedNameList {
 			return null;
 		}
 		
-		ContentName wrappedKeyName = new ContentName(_directoryName, AccessControlProfile.targetKeyIDToNameComponent(keyID));
+		ContentName wrappedKeyName = new ContentName(_namePrefix, AccessControlProfile.targetKeyIDToNameComponent(keyID));
 		return getWrappedKey(wrappedKeyName);
 	}
 	
@@ -115,7 +122,7 @@ public class KeyDirectory extends EnumeratedNameList {
 			return null;
 		}
 		
-		ContentName principalLinkName = new ContentName(_directoryName, AccessControlProfile.principalInfoToNameComponent(principalName, _principals.get(principalName)));
+		ContentName principalLinkName = new ContentName(_namePrefix, AccessControlProfile.principalInfoToNameComponent(principalName, _principals.get(principalName)));
 		// This should be a link to the actual key block
 		// TODO DKS replace link handling
 		Link principalLink = _manager.library().getLink(principalLinkName, AccessControlManager.DEFAULT_TIMEOUT);
@@ -129,7 +136,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	public ContentName getSupersededBlockName() {
-		return ContentName.fromNative(_directoryName, AccessControlProfile.SUPERSEDED_MARKER);
+		return ContentName.fromNative(_namePrefix, AccessControlProfile.SUPERSEDED_MARKER);
 	}
 	
 	WrappedKeyObject getWrappedKeyForSupersedingKey() throws XMLStreamException, IOException {
@@ -149,7 +156,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 
 	public ContentName getPreviousKeyBlockName() {
-		return ContentName.fromNative(_directoryName, AccessControlProfile.PREVIOUS_KEY_NAME);
+		return ContentName.fromNative(_namePrefix, AccessControlProfile.PREVIOUS_KEY_NAME);
 	}
 	
 	WrappedKeyObject getWrappedKeyForPreviousKey() throws XMLStreamException, IOException {
@@ -163,7 +170,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 
 	public ContentName getPublicKeyBlockName() {
-		return ContentName.fromNative(_directoryName, AccessControlProfile.GROUP_PUBLIC_KEY_NAME);
+		return ContentName.fromNative(_namePrefix, AccessControlProfile.GROUP_PUBLIC_KEY_NAME);
 	}
 	
 	ContentObject getPublicKeyObject() throws IOException {
