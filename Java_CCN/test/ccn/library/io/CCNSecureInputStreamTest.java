@@ -157,6 +157,30 @@ public class CCNSecureInputStreamTest {
 			readAndCheck(i, start, length);
 		}
 
+		public void markReset() throws XMLStreamException, IOException, NoSuchAlgorithmException {
+			// check really small seeks/reads (smaller than 1 Cipher block)
+			doMarkReset(10);
+
+			// check small seeks (but bigger than 1 Cipher block)
+			doMarkReset(600);
+
+			// check large seeks (multiple ContentObjects)
+			doMarkReset(4096*2+350);
+		}
+
+		private void doMarkReset(int length) throws XMLStreamException, IOException, NoSuchAlgorithmException {
+			System.out.println("Reading CCNInputStream from "+name);
+			CCNInputStream i = makeInputStream();
+			i.skip(length);
+			i.reset();
+			readAndCheck(i, 0, length);
+			i.skip(1024);
+			i.mark(length);
+			readAndCheck(i, length+1024, length);
+			i.reset();
+			readAndCheck(i, length+1024, length);
+		}
+
 		private void readAndCheck(CCNInputStream i, int start, int length)
 				throws IOException, XMLStreamException, NoSuchAlgorithmException {
 			byte [] origData = new byte[length];
@@ -397,5 +421,22 @@ public class CCNSecureInputStreamTest {
 	@Test
 	public void fileSkipping() throws XMLStreamException, IOException, NoSuchAlgorithmException {
 		file.skipping();
+	}
+
+	/**
+	 * Test that mark and reset on an encrypted stream works
+	 * Tries small/medium/large jumps
+	 */
+	@Test
+	public void basicMarkReset() throws XMLStreamException, IOException, NoSuchAlgorithmException {
+		basic.markReset();
+	}
+	@Test
+	public void versionedMarkReset() throws XMLStreamException, IOException, NoSuchAlgorithmException {
+		versioned.markReset();
+	}
+	@Test
+	public void fileMarkReset() throws XMLStreamException, IOException, NoSuchAlgorithmException {
+		file.markReset();
 	}
 }
