@@ -189,7 +189,6 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	@Override
 	public synchronized void reset() throws IOException {
 		setCurrentBlock(getBlock(_markBlock));
-		// TODO -- test -- may have trouble with intervening cipher stream
 		_blockReadStream.skip(_markOffset);
 		_atEOF = false;
 		Library.logger().finer("reset: block: " + blockIndex() + " offset: " + _markOffset + " eof? " + _atEOF);
