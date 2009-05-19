@@ -369,10 +369,10 @@ enroll_content(struct ccnd *h, struct content_entry *content)
 }
 
 static void
-finalize_content(struct hashtb_enumerator *e)
+finalize_content(struct hashtb_enumerator *content_enumerator)
 {
-    struct ccnd *h = hashtb_get_param(e->ht, NULL);
-    struct content_entry *entry = e->data;
+    struct ccnd *h = hashtb_get_param(content_enumerator->ht, NULL);
+    struct content_entry *entry = content_enumerator->data;
     unsigned i = entry->accession - h->accession_base;
     if (i < h->content_by_accession_window && h->content_by_accession[i] == entry) {
         content_skiplist_remove(h, entry);

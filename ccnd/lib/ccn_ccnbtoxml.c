@@ -155,11 +155,11 @@ ccn_decoder_destroy(struct ccn_decoder **dp)
 }
 
 static const char *
-dict_name_from_number(int index, const struct ccn_dict_entry *dict, int n)
+dict_name_from_number(int ndx, const struct ccn_dict_entry *dict, int n)
 {
     int i;
     for (i = 0; i < n; i++)
-        if (index == dict[i].index)
+        if (ndx == dict[i].index)
             return (dict[i].name);
     return (NULL);
 }
