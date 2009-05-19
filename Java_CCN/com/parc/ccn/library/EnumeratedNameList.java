@@ -1,22 +1,29 @@
 package com.parc.ccn.library;
 
 import java.io.IOException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.ListIterator;
+
+import org.bouncycastle.util.Arrays;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.query.BasicNameEnumeratorListener;
+import com.parc.ccn.library.profiles.VersioningProfile;
 
 public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	
-	private static final long CHILD_WAIT_INTERVAL = 30000;
+	protected static final long CHILD_WAIT_INTERVAL = 30000;
 	
-	private ContentName _namePrefix;
-	private CCNNameEnumerator _enumerator;
-	private ArrayList<ContentName> _children = new ArrayList<ContentName>();
-	private ArrayList<ContentName> _newChildren = new ArrayList<ContentName>();
-	private Object _childLock = new Object();
+	protected ContentName _namePrefix;
+	protected CCNNameEnumerator _enumerator;
+	// make these contain something other than content names when the enumerator has better data types
+	protected ArrayList<ContentName> _children = new ArrayList<ContentName>();
+	protected ArrayList<ContentName> _newChildren = new ArrayList<ContentName>();
+	protected Object _childLock = new Object();
 	
 	public EnumeratedNameList(ContentName namePrefix, CCNLibrary library) throws IOException {
 		if (null == namePrefix) {
@@ -77,6 +84,16 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	public boolean hasChildren() {
 		return ((null != _children) && (_children.size() > 0));
 	}
+	
+	public boolean hasChild(byte [] childComponent) {
+		for (ContentName child : _children) {
+			if (Arrays.areEqual(childComponent, child.component(0))) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
 	/**
 	 * Waits until there is any data at all.
 	 * @return
@@ -122,23 +139,70 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		// the name enumerator hands off names to us, we own it now
 		synchronized (_childLock) {
 			_children.addAll(names);
+			Collections.sort(_children);
 			_newChildren = names;
+			Collections.sort(_newChildren);
+			processNewChildren();
 			_childLock.notifyAll();
 		}
 		return 0;
 	}
+	
+	/**
+	 * Method to allow subclasses to do post-processing on incoming names
+	 * before handing them to customers.
+	 */
+	protected void processNewChildren() {
+		// default -- do nothing.
+	}
 
-	public ContentName getLatestVersionChildName(ContentName name) {
-		// TODO Auto-generated method stub
+	public ContentName getLatestVersionChildName() {
+		// of the available names in _children that are version components,
+		// find the latest one (version-wise)
+		// names are sorted, so the last one that is a version should be the latest version
+		ListIterator<ContentName> it = _children.listIterator();
+		ContentName lastName = null;
+		while (it.hasPrevious()) {
+			lastName = it.previous();
+			if (VersioningProfile.isVersionComponent(lastName.component(0))) {
+				return lastName;
+			}
+		}
+		return null;
+	}
+	
+	public Timestamp getLatestVersionChildTime() {
+		ContentName latestVersion = getLatestVersionChildName();
+		if (null != latestVersion) {
+			return VersioningProfile.getVersionComponentAsTimestamp(latestVersion.component(0));
+		}
 		return null;
 	}
 
-	public static ContentName getLatestVersionName(ContentName name) {
-		// TODO Auto-generated method stub
+	/**
+	 * Returns the complete name of the latest version of content with the prefix name.
+	 * @param name
+	 * @param library
+	 * @return
+	 * @throws IOException
+	 */
+	public static ContentName getLatestVersionName(ContentName name, CCNLibrary library) throws IOException {
+		EnumeratedNameList enl = new EnumeratedNameList(name, library);
+		enl.waitForData();
+		ContentName childLatestVersion = enl.getLatestVersionChildName();
+		if (null != childLatestVersion) {
+			return new ContentName(name, childLatestVersion.component(0));
+		}
 		return null;
 	}
 
-	public boolean exists(ContentName aclName) {
+	/**
+	 * Iterates down namespace
+	 * @param aclName
+	 * @param prefixKnownToExist
+	 * @return
+	 */
+	public boolean exists(ContentName aclName, ContentName prefixKnownToExist) {
 		// TODO Auto-generated method stub
 		return false;
 	}
