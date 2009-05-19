@@ -116,7 +116,11 @@ public class CCNInputStream extends CCNAbstractInputStream {
 		if (null == _currentBlockStream) {
 			_markOffset = 0;
 		} else {
-			_markOffset = _currentBlock.contentLength() - _currentBlockStream.available();
+			try {
+				_markOffset = _currentBlock.contentLength() - _blockReadStream.available();
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
 		}
 		Library.logger().finer("mark: block: " + blockIndex() + " offset: " + _markOffset);
 	}
@@ -217,7 +221,11 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	}
 
 	public long tell() {
-		return _currentBlock.contentLength() - _currentBlockStream.available(); // could implement a running count...
+		try {
+			return _currentBlock.contentLength() - _blockReadStream.available();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		} // could implement a running count...
 	}
 	
 	public long length() {
