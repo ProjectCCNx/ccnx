@@ -28,7 +28,6 @@ import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.EnumeratedNameList;
 import com.parc.ccn.library.profiles.AccessControlProfile;
 import com.parc.ccn.security.access.ACL.ACLObject;
-import com.sun.tools.javac.util.Pair;
 
 /**
  * Misc notes for consolidation.
@@ -268,9 +267,23 @@ public class AccessControlManager {
 	}
 	
 
-	private ACLObject findAncestorWithACL(ContentName dataNodeName) {
-		// TODO Auto-generated method stub
-		return null;
+	private ACLObject findAncestorWithACL(ContentName dataNodeName) throws XMLStreamException, IOException {
+		ACLObject ancestorACLObject = null;
+		ContentName parentName = dataNodeName;
+		ContentName nextParentName = null;
+		while (null == ancestorACLObject) {
+			ancestorACLObject = getACLObjectForNodeIfExists(parentName);
+			nextParentName = parentName.parent();
+			if (nextParentName.equals(parentName)) {
+				break;
+			}
+			parentName = nextParentName;
+		}
+		if (null == ancestorACLObject) {
+			throw new IllegalStateException("No ACL available in ancestor tree for node : " + dataNodeName);
+		}
+		Library.logger().info("Found ACL for " + dataNodeName + " at ancestor :" + ancestorACLObject.getName());
+		return ancestorACLObject;
 	}
 
 	/**
@@ -296,10 +309,11 @@ public class AccessControlManager {
 	
 	public ACLObject getACLObjectForNodeIfExists(ContentName aclNodeName) throws XMLStreamException, IOException {
 		
-		EnumeratedNameList enlNode = new EnumeratedNameList(aclNodeName, _library);
+		EnumeratedNameList aclNameList = EnumeratedNameList.exists(AccessControlProfile.aclName(aclNodeName), aclNodeName, _library);
 		
-		if (enlNode.exists(AccessControlProfile.aclName(aclNodeName))) {
-			ContentName aclName = enlNode.getLatestVersionChildName(AccessControlProfile.aclName(aclNodeName));
+		if (null != aclNameList) {
+			ContentName aclName = new ContentName(AccessControlProfile.aclName(aclNodeName),
+												  aclNameList.getLatestVersionChildName().lastComponent());
 			Library.logger().info("Found latest version of acl for " + aclNodeName + " at " + aclName);
 			ACLObject aclo = new ACLObject(aclName, _library);
 			aclo.update();
@@ -343,11 +357,14 @@ public class AccessControlManager {
 	/**
 	 * Pulls the ACL for this node, if one exists, and modifies it to include
 	 * the following changes, then stores the result using setACL.
+	 * @throws IOException 
+	 * @throws XMLStreamException 
+	 * @throws InvalidKeyException 
 	 */
 	public ACL updateACL(ContentName nodeName, 
 						ArrayList<LinkReference> addReaders, ArrayList<LinkReference> removeReaders,
 						ArrayList<LinkReference> addWriters, ArrayList<LinkReference> removeWriters,
-						ArrayList<LinkReference> addManagers, ArrayList<LinkReference> removeManagers) {
+						ArrayList<LinkReference> addManagers, ArrayList<LinkReference> removeManagers) throws XMLStreamException, IOException, InvalidKeyException {
 		
 		ACLObject currentACL = getACLObjectForNodeIfExists(nodeName);
 		ACL newACL = null;
@@ -361,15 +378,15 @@ public class AccessControlManager {
 		return setACL(nodeName, newACL);
 	}
 		
-	public ACL addReaders(ContentName nodeName, ArrayList<LinkReference> newReaders) {
+	public ACL addReaders(ContentName nodeName, ArrayList<LinkReference> newReaders) throws InvalidKeyException, XMLStreamException, IOException {
 		return updateACL(nodeName, newReaders, null, null, null, null, null);
 	}
 	
-	public ACL addWriters(ContentName nodeName, ArrayList<LinkReference> newWriters) {
+	public ACL addWriters(ContentName nodeName, ArrayList<LinkReference> newWriters) throws InvalidKeyException, XMLStreamException, IOException {
 		return updateACL(nodeName, null, null, newWriters, null, null, null);
 	}
 	
-	public ACL addManagers(ContentName nodeName, ArrayList<LinkReference> newManagers) {
+	public ACL addManagers(ContentName nodeName, ArrayList<LinkReference> newManagers) throws InvalidKeyException, XMLStreamException, IOException {
 		return updateACL(nodeName, null, null, null, null, newManagers, null);
 	}
 	
@@ -389,10 +406,11 @@ public class AccessControlManager {
 		return null;
 	}
 	
-	public NodeKey getLatestNodeKeyForNode(ContentName nodeName) {
+	public NodeKey getLatestNodeKeyForNode(ContentName nodeName) throws IOException, InvalidKeyException, InvalidCipherTextException, XMLStreamException {
 		
 		// First we need to figure out what the latest version is of the node key.
-		ContentName nodeKeyVersionedName = EnumeratedNameList.getLatestVersionName(AccessControlProfile.nodeKeyName(nodeName));
+		ContentName nodeKeyVersionedName = 
+			EnumeratedNameList.getLatestVersionName(AccessControlProfile.nodeKeyName(nodeName), _library);
 		// then, pull the node key we can decrypt
 		return getNodeKeyByVersionedName(nodeKeyVersionedName, null);
 	}
@@ -460,7 +478,7 @@ public class AccessControlManager {
 		
 		try {
 
-			keyDirectory = new KeyDirectory(this, nodeKeyName);
+			keyDirectory = new KeyDirectory(this, nodeKeyName, _library);
 			ArrayList<byte []> availableKeyBlocks = keyDirectory.getWrappingKeyIDs();
 
 			if (keyDirectory.hasSupersededBlock() && 
@@ -529,7 +547,7 @@ public class AccessControlManager {
 				// TODO DKS -- right name to query for
 				// First we need to figure out what the latest version is of the node key.
 				Library.logger().info("OK, not in cache, finding latest version of key " + nodeKeyName);
-				ContentName latestNodeKeyName = EnumeratedNameList.getLatestVersionName(nodeKeyName);
+				ContentName latestNodeKeyName = EnumeratedNameList.getLatestVersionName(nodeKeyName, _library);
 
 				if (nodeKeyName.equals(latestNodeKeyName)) {
 					Library.logger().info("Already looking at latest version of node key: " + nodeKeyName);
@@ -659,12 +677,12 @@ public class AccessControlManager {
 	}
 
 	
-	public NodeKey getNodeKeyForObject(ContentName nodeName, WrappedKeyObject wko) throws InvalidKeyException, XMLStreamException {
+	public NodeKey getNodeKeyForObject(ContentName nodeName, WrappedKeyObject wko) throws InvalidKeyException, XMLStreamException, InvalidCipherTextException, IOException {
 		
 		// First, we go and look for the node key where the data key suggests
 		// it should be, and attempt to decrypt it from there.
 		NodeKey nk = getSpecificNodeKey(wko.wrappedKey().wrappingKeyName(), 
-				wko.wrappedKey().wrappingKeyIdentifier());
+										wko.wrappedKey().wrappingKeyIdentifier());
 		if (null == nk) {
 			// OK, we will have gotten an exception if the node key simply didn't exist
 			// there, so this means that we don't have rights to read it there.
