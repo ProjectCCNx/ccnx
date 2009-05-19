@@ -29,7 +29,7 @@ import com.sun.tools.javac.util.Pair;
  * @author smetters
  *
  */
-public class KeyDirectory {
+public class KeyDirectory extends EnumeratedNameList {
 	
 	AccessControlManager _manager; // to get at key cache
 	ContentName _directoryName; // should be versioned, otherwise we pull the latest version
@@ -172,11 +172,5 @@ public class KeyDirectory {
 		
 		ContentObject publicKeyObject = _manager.library().get(getPublicKeyBlockName(), AccessControlManager.DEFAULT_TIMEOUT);
 		return publicKeyObject;
-	}
-	
-	public void stopEnumerating() {
-		if (null != _keyDirectory) {
-			_keyDirectory.stopEnumerating();
-		}
 	}
 }
