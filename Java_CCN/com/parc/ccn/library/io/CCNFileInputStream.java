@@ -285,11 +285,14 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 					//already have the correct offset
 				} else {
 					// Reset and skip.
-					_blockReadStream.reset();
+					if (_blockReadStream.markSupported()) {
+						_blockReadStream.reset();
+					} else {
+						setCurrentBlock(_currentBlock);
+					}
 					_blockReadStream.skip(blockAndOffset[1]);
 				}
 				return position;
-			
 			}
 			
 			setCurrentBlock(getBlock(blockAndOffset[0]));

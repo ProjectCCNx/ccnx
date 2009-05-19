@@ -377,7 +377,7 @@ public class CCNSecureInputStreamTest {
 	public void versionedSeeking() throws XMLStreamException, IOException, NoSuchAlgorithmException {
 		versioned.seeking();
 	}
-//	@Test
+	@Test
 	public void fileSeeking() throws XMLStreamException, IOException, NoSuchAlgorithmException {
 		file.seeking();
 	}
