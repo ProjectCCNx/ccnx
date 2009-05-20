@@ -65,7 +65,6 @@ public class RepositoryProtocol extends CCNFlowControl {
 						for (ContentName name : repoInfo.getNames())
 							ack(name);
 						Library.logger().finer("ACK message leaves " + _unacked.size() + " unacked");
-						Library.logger().finer("unacked " + _unacked);
 						break;
 					default:
 						break;

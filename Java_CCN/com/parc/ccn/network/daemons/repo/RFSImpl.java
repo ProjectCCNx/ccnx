@@ -12,7 +12,6 @@ import java.security.InvalidParameterException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.StringTokenizer;
 import java.util.TreeMap;
 import java.util.logging.Level;
 
@@ -46,18 +45,17 @@ import com.parc.ccn.library.profiles.VersioningProfile;
 
 public class RFSImpl implements Repository {
 	
-	public final static String CURRENT_VERSION = "1.1";
+	public final static String CURRENT_VERSION = "1.2";
 	
 	public final static String META_DIR = ".meta";
-	public final static byte UTF8_COMPONENT = '0';
+	public final static byte NORMAL_COMPONENT = '0';
 	public final static byte BASE64_COMPONENT = '1';
 	public final static byte SPLIT_COMPONENT = '2';
-	
-	public static final String ENCODED_FILES = "encoded_files";
+	public final static byte BASE64_AND_SPLIT_COMPONENT = '3';
 	
 	private final static String encoding = "UTF-8";
 	
-	private static final String RESERVED_CLASH = "reserved";
+	private static final String META_CLASH = "%meta%";
 	private static final String REPO_PRIVATE = "private";
 	private static final String VERSION = "version";
 	private static final String REPO_LOCALNAME = "local";
@@ -71,11 +69,33 @@ public class RFSImpl implements Repository {
 	private static String DEFAULT_LOCAL_NAME = "Repository";
 	private static String DEFAULT_GLOBAL_NAME = "/parc.com/csl/ccn/Repos";
 	
-	private static final String REPLACE_SLASH = "%slash%";
-	private static final String REPLACE_RETURN = "%return%";
-	private static final String REPLACE_VERSION = "%version%";
-	public static final String REPLACE_SEGMENT = "%segment%";
+	private class CharToReplacement {
+		private String _character;
+		private String _replacement;
+		
+		private CharToReplacement(String character, String replacement) {
+			_character = character;
+			_replacement = replacement;
+		}
+	}
 	
+	private static CharToReplacement[] _startReplacements;
+	private static CharToReplacement[] _allReplacements;
+	
+	static {
+		RFSImpl beginElement = new RFSImpl();
+		_startReplacements = new CharToReplacement[4];
+		_startReplacements[0] = beginElement.new CharToReplacement(new String(new byte[] {VersioningProfile.VERSION_MARKER}), "%version%");
+		_startReplacements[1] = beginElement.new CharToReplacement(new String(new byte[] {SegmentationProfile.SEGMENT_MARKER}), "%segment%");
+		_startReplacements[2] = beginElement.new CharToReplacement(new String(new byte[] {BASE64_COMPONENT}), "%one%");
+		_startReplacements[3] = beginElement.new CharToReplacement(new String(new byte[] {SPLIT_COMPONENT}), "%two%");
+		_startReplacements[3] = beginElement.new CharToReplacement(new String(new byte[] {BASE64_AND_SPLIT_COMPONENT}), "%three%");
+		
+		_allReplacements = new CharToReplacement[2];
+		_allReplacements[0] = beginElement.new CharToReplacement("/", "%slash%");
+		_allReplacements[1] = beginElement.new CharToReplacement("/", "%slash%");
+	}
+		
 	private static final int TOO_LONG_SIZE = 200;
 	
 	protected String _repositoryRoot = null;
@@ -84,15 +104,6 @@ public class RFSImpl implements Repository {
 	protected Policy _policy = null;
 	protected RepositoryInfo _info = null;
 	protected ArrayList<ContentName> _nameSpace = new ArrayList<ContentName>();
-	
-	// _encodedFiles holds those files that are not in the simple filesystem tree
-	// according to the name hierarchy.  The ContentName in this map is NOT what you would get
-	// from ContentObject.name() but instead always includes the digest as the final component
-	// explicitly. Since the repo only holds ContentObjects, it can always produce a digest.
-	// The reason for making the digest explicit rather than following the ContentObject 
-	// convention is so that these internal name records can be used to answer name enumeration 
-	// requests accurately at levels of the name hierarchy where digests components exist.
-	protected TreeMap<ContentName, ArrayList<File>> _encodedFiles = new TreeMap<ContentName, ArrayList<File>>();
 	
 	public String[] initialize(String[] args) throws RepositoryException {
 		
@@ -143,8 +154,6 @@ public class RFSImpl implements Repository {
 		_repositoryFile = new File(_repositoryRoot);
 		_repositoryFile.mkdirs();
 		_locker = new RFSLocks(_repositoryRoot + File.separator + META_DIR);
-		constructEncodedMap(new File(_repositoryRoot + File.separator + META_DIR + File.separator + ENCODED_FILES));
-		constructEncodedMap(new File(_repositoryRoot + File.separator + META_DIR + File.separator + RESERVED_CLASH));
 		
 		String version = checkFile(VERSION, CURRENT_VERSION, false);
 		if (version != null && !version.trim().equals(CURRENT_VERSION))
@@ -189,74 +198,6 @@ public class RFSImpl implements Repository {
 		}
 	
 		return outArgs;
-	}
-	
-	/**
-	 * Build initial map of encoded files already in the repository
-	 * 
-	 * @param root
-	 */
-	private void constructEncodedMap(File root) {
-		if (root.isDirectory()) {
-			File[] files = root.listFiles();
-			for (File file : files) {
-				if (file.isDirectory())
-					constructEncodedMap(file);
-				else if (file.isFile()) 
-					mapFromPath(file);
-			}
-		}
-	}
-	
-	private void mapFromPath(File file) {
-		StringTokenizer st = new StringTokenizer(file.getPath(), new String(File.separator));
-		ArrayList<byte[]> components = new ArrayList<byte[]>();
-		boolean encodedArea = false;
-		boolean reservedArea = false;
-		String currentValue = "";
-		while (st.hasMoreTokens()) {
-			String token = st.nextToken();
-			if (reservedArea) {
-				components.add(token.getBytes());
-			} else if (encodedArea) {
-				byte type = (byte)token.charAt(0);
-				switch (type) {
-				  case UTF8_COMPONENT:
-					  currentValue += token.substring(1);
-					  components.add(decodeComponent(currentValue.getBytes()));
-					  currentValue = "";
-					  break;
-				  case BASE64_COMPONENT:
-					  currentValue += token.substring(1);
-					  components.add(decodeBase64(currentValue));
-					  currentValue = "";
-					  break;
-				  case SPLIT_COMPONENT:
-					  currentValue += token.substring(1);
-					  break;
-				  default:
-					  currentValue += token;
-				  	  components.add(currentValue.getBytes());
-				  	  currentValue = "";
-					  break;
-				}
-			} else {
-				if (token.equals(ENCODED_FILES))
-					encodedArea = true;
-				if (token.equals(RESERVED_CLASH))
-					reservedArea = true;
-			}
-		}
-		// Replace digest component (which is the filename in filesystem)
-		// with decoded version that is real CCN name component 
-		byte [] digestComponent = components.remove(components.size() - 1);
-		components.add(components.size(), decodeBase64(new String(digestComponent)));
-		ContentName cn = new ContentName(components.size(), components);
-		ArrayList<File> files = _encodedFiles.get(cn);
-		if (files == null)
-			files = new ArrayList<File>();
-		files.add(file);
-		_encodedFiles.put(cn, files);
 	}
 	
 	/**
@@ -419,15 +360,19 @@ public class RFSImpl implements Repository {
 		ContentName lowerName = new ContentName(null != interest.nameComponentCount() ? interest.nameComponentCount() : interest.name().count(),
 					interest.name().components());
 		getAllFileResults(file, results, lowerName);
-		for (ContentName encodedName : _encodedFiles.keySet()) {
-			/*
-			 * interest could have a digest. encodedName will always have a digest
-			 * This will be cleaner when we know this for sure
-			 * JDT - I think that we don't need to check encodedName.isPrefixOf() 
-			 * but it won't hurt since this is only gathering candidates
-			 */
-			if (encodedName.isPrefixOf(interest.name()) || interest.isPrefixOf(encodedName))
-				results.put(encodedName, _encodedFiles.get(encodedName));
+		
+		/*
+		 * Special test to match data that might clash with the .meta directory
+		 */
+		if (Arrays.equals(lowerName.components().get(0), META_DIR.getBytes())) {
+			ArrayList<byte[]> newComponents = new ArrayList<byte[]>();
+			newComponents.add(META_CLASH.getBytes());
+			for (int i = 0; i < lowerName.count(); i++)
+				newComponents.add(lowerName.component(i));
+			ContentName clashName = new ContentName(newComponents.size(), newComponents);
+			// getAllFileResults will strip off the last component of the name so add arbitrary "digest" name
+			lowerName = new ContentName(lowerName, "digest".getBytes());
+			getAllFileResults(new File(_repositoryFile + getStandardString(clashName)), results, lowerName);
 		}
 		return results;
 	}
@@ -448,21 +393,24 @@ public class RFSImpl implements Repository {
 				getAllFileResults(f, results, new ContentName(name, f.getName().getBytes()));
 			}
 		} else if (file.exists()) {
-			ContentName decodedName = decodeVersionAndSegment(name);
-			// Replace digest component that is the file name in the direct file storage
-			// with the decoded CCN digest component
-			decodedName.components().remove(decodedName.count() - 1);
-			decodedName.components().add(decodeBase64(file.getName()));
+			if (file.getName().endsWith(".rfs")) {
+				/*
+				 * We assume this is a file with identical data but different pub IDs
+				 * Remove the last part and put all files into the "potential" results.
+				 * We'll figure out which one(s) we want later
+				 */
+				name = new ContentName(name.count() - 1, name.components());
+			}
+			ContentName decodedName = decodeName(name);
 			addOneFileToMap(decodedName, file, results);	
 		} else {
 			// Convert to name we can use as a file
-			ContentName encodedName = encodeStandardElements(name);
+			ContentName encodedName = encodeName(name);
 			File encodedFile = new File(_repositoryFile + getStandardString(encodedName));
 			if (encodedFile.isDirectory()) {
 				getAllFileResults(encodedFile, results, encodedName);
 			}
 			else {
-				encodedName = encodeDigest(encodedName);
 				encodedFile = new File(_repositoryFile + getStandardString(encodedName));
 				if (encodedFile.exists()) {
 					// The name here must contain a digest, for it maps to something 
@@ -496,27 +444,55 @@ public class RFSImpl implements Repository {
 		return null;	
 	}
 
+	/**
+	 * Main routine to save a content object under a filename. Normally we just
+	 * create a new file and save the data in XMLEncoded form in the file.
+	 * 
+	 * If we already had content saved under the same name do the following:
+	 *   - Read the data and see if it matches - if so we're done.
+	 *   - Otherwise we put all files with the same digest in a directory using 
+	 *     the digest name as the directory name. So if we have a name clash
+	 *     with a non-directory, this is the first name clash with an old
+	 *     digest name and we need to remove the old data, change the file
+	 *     to a directory, then put back the old data in the directory and
+	 *     add the new data. If we already had a name clash, we can just
+	 *     add the data to the new directory. 
+	 */
 	public void saveContent(ContentObject content) throws RepositoryException {
 		File file = null;
-		if (needsEncoding(content.name()))
-			file = getSpecialPath(content);
-		else {
-			ContentName newName = checkReserved(content.name()).clone();
-			newName = encodeVersionAndSegment(newName);
-			newName.components().add(convertDigest(content).getBytes());
-			ContentName dirName = new ContentName(newName.count() - 1, newName.components());
-			File dirFile = new File(_repositoryRoot, getStandardString(dirName));
-			dirFile.mkdirs();
-			file = new File(_repositoryRoot, getStandardString(newName));
-			if (isEncoded(newName))
-				addOneFileToMap(new ContentName(content.name(), content.contentDigest()), file, _encodedFiles); // Add digest
-			if (file.exists()) {
-				ContentObject prevContent = getContentFromFile(file);
+		ContentName newName = checkReserved(content.name()).clone();
+		newName.components().add(content.contentDigest());
+		newName = encodeName(newName);
+		ContentName dirName = new ContentName(newName.count() - 1, newName.components());
+		File dirFile = new File(_repositoryRoot, getStandardString(dirName));
+		dirFile.mkdirs();
+		file = new File(_repositoryRoot, getStandardString(newName));
+		if (file.exists()) {
+			ContentObject prevContent = null;
+			if (file.isFile()) {
+				
+				// New name clash
+				prevContent = getContentFromFile(file);
 				if (prevContent != null) {
 					if (prevContent.equals(content))
 						return;
 				}
-				file = getSpecialPath(content);
+				file.delete();
+				file.mkdir();
+				try {
+					File prevFile = File.createTempFile("RFS", ".rfs", file);
+					saveContentToFile(prevFile, prevContent);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			} 
+			
+			try {
+				file = File.createTempFile("RFS", ".rfs", file);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
 		saveContentToFile(file, content);
@@ -552,35 +528,17 @@ public class RFSImpl implements Repository {
 	 */
 	private ContentName checkReserved(ContentName name) {
 		if (Arrays.equals(name.components().get(0), META_DIR.getBytes())) {
-			ContentName reservedName = name.clone();
-			reservedName.components().add(0, RESERVED_CLASH.getBytes());
-			reservedName.components().add(0, META_DIR.getBytes());
-			name = reservedName;
+			ArrayList<byte[]> oldComponents = name.components();
+			ArrayList<byte[]> newComponents = new ArrayList<byte[]>();
+			newComponents.add(META_CLASH.getBytes());
+			for (int i = 0; i < oldComponents.size(); i++)
+				newComponents.add(oldComponents.get(i));
+			name = new ContentName(newComponents.size(), newComponents);
 		}
 		return name;
 	}
 	
-	private boolean isEncoded(ContentName name) {
-		return Arrays.equals(name.component(0), META_DIR.getBytes());
-	}
-	
-	/**
-	 * Check to see if we will need to encode the filename corresponding
-	 * to a ContentName
-	 * @param name
-	 * @return
-	 */
-	private boolean needsEncoding(ContentName name) {
-		for (byte[] component : name.components()) {
-			if (component.length > TOO_LONG_SIZE)
-				return true;
-			if (needsEncoding(component))
-				return true;
-		}
-		return false;
-	}
-	
-	private boolean needsEncoding(byte[] component) {
+	private static boolean needsEncoding(byte[] component) {
 		for (int i = 0; i < component.length; i++) {
 			if (INVALID_WINDOWS_CHARS.indexOf(component[i]) >= 0)
 				return true;
@@ -602,67 +560,156 @@ public class RFSImpl implements Repository {
 	}
 	
 	/**
-	 * If we just put versioned and/or segmented files into the "encoded" space
-	 * practically everything would be encoded so we encode/decode these specially
+	 * Encode all components via name or directly.
+	 * This could result in more components than originally input due to splitting of
+	 * components.
 	 * 
 	 * @param name
 	 * @return
 	 */
-	public ContentName encodeVersionAndSegment(ContentName name) {
-		byte[][] newComponents = new byte[name.count()][];
-		encodeVersionAndSegment(name, newComponents, name.count());
+	public ContentName encodeName(ContentName name) {
+		byte[][] newComponents = encodeComponents(name, name.count());
 		return new ContentName(newComponents);
 	}
 	
-	public void encodeVersionAndSegment(ContentName name, byte[][] components, int count) {
+	public byte[][] encodeComponents(ContentName name, int count) {
+		byte[][] encodeData;
+		ArrayList<byte[]> encodedComponents = new ArrayList<byte[]>(0);
 		for (int i = 0; i < count; i++) {
-			components[i] = encodeComponent(name.component(i));
-		}
-	}
-	
-	public static byte[] encodeComponent(byte[] component) {
-		if (component[0] == VersioningProfile.VERSION_MARKER || 
-				component[0] == SegmentationProfile.SEGMENT_MARKER) {
-			String startString = component[0] == VersioningProfile.VERSION_MARKER ? REPLACE_VERSION : REPLACE_SEGMENT;
-			String conversionString = "";
-			if (component.length > 1) {
-				byte[] conversionBytes = new byte[component.length - 1];
-				System.arraycopy(component, 1, conversionBytes, 0, conversionBytes.length);
-				conversionString = convertToBase64(conversionBytes);
+			encodeData = encodeComponent(name.component(i));
+			encodedComponents.add(encodeData[0]);
+			while (encodeData.length > 1) {
+				encodeData = encodeComponent(encodeData[1]);
+				encodedComponents.add(encodeData[0]);
 			}
-			return (startString + conversionString).getBytes();
 		}
-		byte[] newComponent = new byte[component.length];
-		System.arraycopy(component, 0, newComponent, 0, component.length);
-		return newComponent;
+		byte[][] outData = new byte[encodedComponents.size()][];
+		encodedComponents.toArray(outData);
+		return outData;
 	}
 	
-	public ContentName decodeVersionAndSegment(ContentName name) {
-		byte[][] newComponents = new byte[name.count()][];
-		decodeVersionAndSegment(name, newComponents, name.count());
+	/**
+	 * Convert a component into it's disk encoded form. This can involve replacing the start of
+	 * the component with special strings, encoding into base64 and splitting the component into
+	 * multiple pieces. If the original component is split, the remainder is put into the second
+	 * element of the byte array.
+	 * 
+	 * @param component
+	 * @return
+	 */
+	public static byte[][] encodeComponent(byte[] component) {
+		byte[] additionalComponent = null;
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		byte[] newComponent = null;
+		
+		/*
+		 * First replace the starting pieces
+		 */
+		for (CharToReplacement ctr : _startReplacements) {
+			if (component[0] == ctr._character.getBytes()[0]) {
+				String conversionString = "";
+				if (component.length > 1) {
+					byte[] conversionBytes = new byte[component.length - 1];
+					System.arraycopy(component, 1, conversionBytes, 0, conversionBytes.length);
+					conversionString = convertToBase64(conversionBytes);
+				}
+				newComponent = (ctr._replacement + conversionString).getBytes();
+				break;
+			}
+		}
+		if (null == newComponent) {
+			newComponent = new byte[component.length];
+			System.arraycopy(component, 0, newComponent, 0, component.length);
+		}
+		
+		byte type = NORMAL_COMPONENT;
+		int outSize = 1;
+		if (needsEncoding(newComponent)) {
+			type = BASE64_COMPONENT;
+			newComponent = convertToBase64(newComponent).getBytes();
+		}
+		
+		if (newComponent.length > TOO_LONG_SIZE) {
+			outSize++;
+			type = (type == NORMAL_COMPONENT) ? SPLIT_COMPONENT : BASE64_AND_SPLIT_COMPONENT;
+			additionalComponent = new byte[newComponent.length - (TOO_LONG_SIZE - 1)];
+			System.arraycopy(newComponent, TOO_LONG_SIZE - 1, additionalComponent, 0, newComponent.length - (TOO_LONG_SIZE - 1));
+		}
+		
+		if (type != NORMAL_COMPONENT) {
+			baos.write(type);
+			baos.write(newComponent, 0, type == BASE64_COMPONENT ? newComponent.length : TOO_LONG_SIZE - 1);
+			newComponent = baos.toByteArray();
+		}
+		
+		byte[][] out = new byte[outSize][];
+		out[0] = newComponent;
+		if (outSize > 1)
+			out[1] = additionalComponent;
+		return out;
+	}
+	
+	/**
+	 * Decode a name built from filename components into a CCN name. The new
+	 * name could contain less components than the input name.
+	 * 
+	 * @param name
+	 * @return
+	 */
+	public ContentName decodeName(ContentName name) {
+		byte[][] newComponents = decodeComponents(name, name.count());
 		return new ContentName(newComponents);
 	}
 	
-	public void decodeVersionAndSegment(ContentName name, byte[][] components, int count) {
+	public byte[][] decodeComponents(ContentName name, int count) {
+		ArrayList<byte[]> decodedComponents = new ArrayList<byte[]>();
+		String lastSplit = "";
+		boolean decodeSplit = false;
 		for (int i = 0; i < count; i++) {
-			components[i] = decodeComponent(name.component(i));
+			byte[] component = decodeComponent(name.component(i));
+			byte type = component[0];
+			switch (type) {
+			  case BASE64_COMPONENT:
+				  decodedComponents.add(decodeBase64(new String(component).substring(1)));
+				  break;
+			  case BASE64_AND_SPLIT_COMPONENT:
+				  decodeSplit = true;	// Fall through
+			  case SPLIT_COMPONENT:
+				  lastSplit += new String(component).substring(1);
+				  break;
+			  default:
+				  if (lastSplit.length() > 0) {
+					  lastSplit += new String(component);
+					  if (decodeSplit)
+						  component = decodeBase64(lastSplit);
+					  else
+						  component = lastSplit.getBytes();
+					  decodeSplit = false;
+					  lastSplit = "";
+				  }
+			  	  decodedComponents.add(component);
+				  break;
+			}
 		}
+		byte[][] out = new byte[decodedComponents.size()][];
+		decodedComponents.toArray(out);
+		return out;
 	}
 	
 	public static byte[] decodeComponent(byte[] component) {
-		byte decodeByte = '0';
+		byte decodeByte = -1;
 		int size = 0;
 		String decodeString = new String(component);
-		if (DataUtils.arrayEquals(component, REPLACE_VERSION.getBytes(), REPLACE_VERSION.getBytes().length)) {
-			decodeByte = VersioningProfile.VERSION_MARKER;
-			size = REPLACE_VERSION.getBytes().length;
+		for (CharToReplacement ctr : _startReplacements) {
+			if (DataUtils.arrayEquals(component, ctr._replacement.getBytes(), ctr._replacement.getBytes().length)) {
+				size = ctr._replacement.getBytes().length;
+				decodeByte = ctr._character.getBytes()[0];
+				break;
+			}
 		}
-		if (DataUtils.arrayEquals(component, REPLACE_SEGMENT.getBytes(), REPLACE_SEGMENT.getBytes().length)) {
-			decodeByte = SegmentationProfile.SEGMENT_MARKER;
-			size = REPLACE_SEGMENT.getBytes().length;
-		}
+		
 		byte[] newComponent;
-		if (decodeByte != '0') {
+		if (decodeByte != -1) {
 			byte[] decodeBytes = decodeBase64(decodeString.substring(size));
 			newComponent = new byte[decodeBytes.length + 1];
 			newComponent[0] = decodeByte;
@@ -671,109 +718,16 @@ public class RFSImpl implements Repository {
 			newComponent = new byte[component.length];
 			System.arraycopy(component, 0, newComponent, 0, component.length);
 		}
+		
 		return newComponent;
 	}
 	
-	/**
-	 * Convert a non usable or already used pathname into something usable and unique
-	 * 
-	 * @param name
-	 * @return
-	 * @throws RepositoryException 
-	 */
-	private File getSpecialPath(ContentObject content) throws RepositoryException {
-		ContentName name = content.name();
-		ArrayList<byte[]> components = name.components();
-		ArrayList<byte[]> newComponents = new ArrayList<byte[]>();
-		newComponents.add(META_DIR.getBytes());
-		newComponents.add(ENCODED_FILES.getBytes());
-		for (byte[] component : components) {
-			byte type = UTF8_COMPONENT;
-			byte[] modifiedComponent = encodeComponent(component);
-			if (needsEncoding(modifiedComponent)) {
-				type = BASE64_COMPONENT;
-				modifiedComponent = convertToBase64(component).getBytes();
-			}
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			int length = modifiedComponent.length;
-			int offset = 0;
-			while (length > TOO_LONG_SIZE) {
-				baos.write(SPLIT_COMPONENT);
-				baos.write(modifiedComponent, offset, TOO_LONG_SIZE);
-				newComponents.add(baos.toByteArray());
-				length -= TOO_LONG_SIZE;
-				offset += TOO_LONG_SIZE;
-				baos.reset();
-			}
-			baos.write(type);
-			baos.write(modifiedComponent, offset, length);
-			newComponents.add(baos.toByteArray());
-		}
-		ContentName specialName = new ContentName(newComponents.size(), newComponents);
-		File dirFile = new File(_repositoryRoot + getStandardString(specialName));
-		dirFile.mkdirs();
-		String convertedDigest = convertDigest(content);
-		File file = new File(_repositoryRoot + getStandardString(specialName), 
-					new String(new byte[]{UTF8_COMPONENT}) + convertedDigest);
-		
-		/*
-		 * Handle content with the same digest as another digest
-		 * We put all files with the same digest in a directory using the
-		 * digest name as the directory name. So if we have a name clash
-		 * with a non-directory, this is the first name clash with an old
-		 * digest name and we need to remove the old data, change the file
-		 * to a directory, then put back the old data in the directory and
-		 * add the new data. If we already had a name clash, we can just
-		 * add the data to the new directory. Also we have to handle
-		 * fixing up the data in "_encodedFiles" here.
-		 */
-		ArrayList<File> files = _encodedFiles.get(content.name());
+	private void addOneFileToMap(ContentName name, File file, TreeMap<ContentName, ArrayList<File>>map) {
+		ArrayList<File> files = map.get(name);
 		if (files == null)
 			files = new ArrayList<File>();
-		if (file.exists() && file.isFile()) {
-			ContentObject prevContent = getContentFromFile(file);
-			for (File oldFile : files) {
-				if (oldFile.equals(file)) {
-					files.remove(oldFile);
-					break;
-				}
-			}
-			file.delete();
-			file.mkdir();
-			try {
-				File prevFile = File.createTempFile("RFS", "xxx", file);
-				saveContentToFile(prevFile, prevContent);
-				files.add(prevFile);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-		if (file.isDirectory()) {
-			try {
-				file = File.createTempFile("RFS", "xxx", file);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-		
-		ContentName keyName = name.clone();
-		// Add digest according to convention for _encodedFiles
-		keyName.components().add(content.contentDigest());
-		files.add(file);
-		_encodedFiles.put(keyName, files);
-		return file;
-	}
-	
-	private void addOneFileToMap(ContentName name, File file, TreeMap<ContentName, ArrayList<File>>map) {
-		ArrayList<File> files = new ArrayList<File>();
 		files.add(file);
 		map.put(name, files);	
-	}
-	
-	private String convertDigest(ContentObject content) {
-		return convertToBase64(content.contentDigest());
 	}
 	
 	/**
@@ -787,48 +741,19 @@ public class RFSImpl implements Repository {
 	 */
 	private static String convertToBase64(byte[] bytes) {
 		String b64String = new BASE64Encoder().encode(bytes);
-		b64String = b64String.replace("/", REPLACE_SLASH);
-		return b64String.replace("\n", REPLACE_RETURN);
+		for (CharToReplacement ctp : _allReplacements)
+			b64String = b64String.replace(ctp._character, ctp._replacement);
+		return b64String;
 	}
 	
 	private static byte [] decodeBase64(String data) {
 		try {
-			data = data.replace(REPLACE_SLASH, "/");
-			data = data.replace(REPLACE_RETURN, "\n");
+			for (CharToReplacement ctp : _allReplacements)
+				data = data.replace(ctp._replacement, ctp._character);
 			return new BASE64Decoder().decodeBuffer(data);
 		} catch (IOException e) {
 			return new byte[0]; // TODO error handling...
 		}
-	}
-	
-	/**
-	 * Convert last piece of CN to Base64 digest form.
-	 * We don't care if this is really a digest or not here.
-	 * @param name
-	 * @return
-	 */
-	private String cnDigestString(ContentName name) {
-		return convertToBase64(name.component(name.components().size() - 1));
-	}
-	
-	private ContentName encodeStandardElements(ContentName name) {
-		byte[][] newComponents = new byte[name.count()][];
-		encodeVersionAndSegment(name, newComponents, name.count());
-		return new ContentName(newComponents);
-	}
-		
-	/**
-	 * Convert last component to "digest as file" form, regardless
-	 * of whether or not it actually is a digest which may not be known.
-	 * @param name
-	 * @return
-	 */
-	private ContentName encodeDigest(ContentName name) {
-		ContentName newName = name.clone();
-		String cnDigestString = cnDigestString(newName);
-		newName.components().remove(newName.count() - 1);
-		newName.components().add(cnDigestString.getBytes());
-		return newName;
 	}
 	
 	/**
@@ -935,6 +860,5 @@ public class RFSImpl implements Repository {
 				Library.logger().finest("No new names for this prefix since the last request, dropping request and not responding.");
 			return null;
 		}
-
 	}
 }
