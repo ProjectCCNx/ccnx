@@ -268,11 +268,16 @@ public class AccessControlManager {
 	
 
 	private ACLObject findAncestorWithACL(ContentName dataNodeName) throws XMLStreamException, IOException {
+
 		ACLObject ancestorACLObject = null;
 		ContentName parentName = dataNodeName;
 		ContentName nextParentName = null;
 		while (null == ancestorACLObject) {
 			ancestorACLObject = getACLObjectForNodeIfExists(parentName);
+			if ((null != ancestorACLObject) && (ancestorACLObject.isGone())) {
+				Library.logger().info("Found an ACL object at " + ancestorACLObject.getName() + " but its GONE.");
+				ancestorACLObject = null;
+			}
 			nextParentName = parentName.parent();
 			if (nextParentName.equals(parentName)) {
 				break;
@@ -643,9 +648,13 @@ public class AccessControlManager {
 	 * @param wrappingKeyName
 	 * @param wrappingKeyIdentifier
 	 * @return
+	 * @throws IOException 
+	 * @throws XMLStreamException 
+	 * @throws InvalidCipherTextException 
+	 * @throws InvalidKeyException 
 	 */
 	protected NodeKey getNodeKeyUsingInterposedACL(ContentName dataNodeName,
-			ContentName wrappingKeyName, byte[] wrappingKeyIdentifier) {
+			ContentName wrappingKeyName, byte[] wrappingKeyIdentifier) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException {
 		ACLObject nearestACL = findAncestorWithACL(dataNodeName);
 		
 		if (null == nearestACL) {
@@ -777,17 +786,17 @@ public class AccessControlManager {
 		// Generate new random data key of appropriate length
 		byte [] dataKey = new byte[DEFAULT_DATA_KEY_LENGTH];
 		_random.nextBytes(dataKey);
-		storeDataKey(dataNodeName, dataKey);
+		storeDataKey(AccessControlProfile.dataKeyName(dataNodeName), dataKey);
 		return dataKey;
 	}
 	
 	/**
-	 * Actual output functions.
+	 * Actual output functions. Needs to get this into the repo.
 	 * @param dataNodeName -- the content node for whom this is the data key.
 	 * @param wrappedDataKey
 	 */
 	private void storeKeyContent(ContentName dataNodeName,
-								 WrappedKey wrappedDataKey) {
+								 WrappedKey wrappedKey) {
 		// TODO Auto-generated method stub
 		
 	}
