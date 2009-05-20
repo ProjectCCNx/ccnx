@@ -113,7 +113,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	public synchronized void mark(int readlimit) {
 		_readlimit = readlimit;
 		_markBlock = blockIndex();
-		if (null == _currentBlockStream) {
+		if (null == _blockReadStream) {
 			_markOffset = 0;
 		} else {
 			try {
