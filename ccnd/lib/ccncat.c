@@ -63,6 +63,7 @@ clear_excludes(struct mydata *md)
         free(e);
     }
 }
+
 void
 note_new_exclusion(struct mydata *md, const unsigned char *ccnb,
                    size_t start, size_t stop)
@@ -164,7 +165,7 @@ incoming_content(
     ic = info->interest_comps;
     res = ccn_content_get_value(ccnb, ccnb_size, info->pco, &data, &data_size);
     if (res < 0) abort();
-    if (data_size > 1024 || info->pco->type != CCN_CONTENT_TYPE_DATA) {
+    if (data_size > 1024 || info->pco->type != CCN_CONTENT_DATA) {
         /* For us this is spam. Need to try again, excluding this one. */
         fprintf(stderr, "*** skip spam at block %d\n", (int)selfp->intdata);
         name = ccn_charbuf_create();
@@ -217,6 +218,7 @@ main(int argc, char **argv)
     struct ccn_charbuf *templ = NULL;
     struct ccn_closure *incoming = NULL;
     const char *arg = NULL;
+    int i;
     int res;
     char ch;
     struct mydata *mydata;
