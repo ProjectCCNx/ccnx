@@ -1,10 +1,13 @@
 package com.parc.ccn.data.util;
 
+import java.io.IOException;
 import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 
 import com.parc.ccn.config.SystemConfiguration;
+import com.sun.org.apache.xml.internal.security.exceptions.Base64DecodingException;
+import com.sun.org.apache.xml.internal.security.utils.Base64;
 
 public class DataUtils {
 
@@ -101,7 +104,29 @@ public class DataUtils {
 		return bi.toString(16);
 	}
 	
+	/*
+	 * A place to centralize interfaces to base64 encoding/decoding, as the classes
+	 * we use change depending on what ships with Java.
+	 */
+	public static byte [] base64Decode(byte [] input) throws IOException {
+		try {
+			return Base64.decode(input);
+		} catch (Base64DecodingException e) {
+			throw new IOException("Exception in base64 decoding: " + e.getMessage());
+		}
+	}
+	
+	public static String base6Encode(byte [] input) {
+		return Base64.encode(input);
+	}
+
 	public static boolean arrayEquals(byte[] left, byte[] right, int length) {
+		if (left == null) {
+			return ((right == null) ? true : false);
+		}
+		if (right == null) {
+			return ((left == null) ? true : false);
+		}
 		if (left.length < length || right.length < length)
 			return false;
 		for (int i = 0; i < length; i++) {
@@ -162,4 +187,17 @@ public class DataUtils {
 	   	newTimestamp.setNanos((int)(((newTimestamp.getNanos() % 4096L) * 1000000000L) / 4096L));
 	   	return newTimestamp;
 	}
+
+	public static boolean isBinaryPrefix(byte [] prefix,
+										 byte [] data) {
+		if ((null == prefix) || (prefix.length == 0))
+			return true;
+		if ((null == data) || (data.length < prefix.length))
+			return false;
+		for (int i=0; i < prefix.length; ++i) {
+			if (prefix[i] != data[i])
+				return false;
+		}
+		return true;
+	}	
 }
