@@ -236,11 +236,9 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		openACL = new JButton("Manage Permissions");
 		openACL.addActionListener(this);
 		
-
 		openGroup = new JButton("Open Group Manager");
 		openGroup.addActionListener(this);
 		
-
 		// Create the scroll pane and add the tree to it.
 		JScrollPane treeView = new JScrollPane(tree);
 
@@ -276,12 +274,13 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		getContentPane().add(openGroup, c);
 
 		c.fill = GridBagConstraints.BOTH;
-    	c.gridwidth = 2;
+		c.gridwidth = 2;
     	c.gridx = 0;
         c.gridy = 0;
 		getContentPane().add(openButton, c);
-		 c.weightx = 1;
-		 c.weighty = 1;
+
+		c.weightx = 1;
+		c.weighty = 1;
 		c.fill = GridBagConstraints.BOTH;
 		c.gridwidth = 2;
 		c.gridx = 0;
@@ -582,9 +581,14 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
                     public void run() 
                     {
                     	Name fnode = getNameNode(node);
-                    	System.out.println("In the tree expansion listener with "+ fnode.name + " and "+ node.toString());		
+                    	if(fnode != null){
+                    		System.out.println("In the tree expansion listener with "+ fnode.name + " and "+ node.toString());		
                     	getNodes(fnode);           			
                        m_model.reload(node);
+                       }else
+                       {
+                    	   System.out.println("In the tree expansion listener with null node and "+ node.toString());
+                       }
                     }
                   };
                   SwingUtilities.invokeLater(runnable);
