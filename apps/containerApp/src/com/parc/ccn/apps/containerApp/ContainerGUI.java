@@ -516,6 +516,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		if (node == null)
 			return null;
 		Object obj = node.getUserObject();
+	
 		if (obj instanceof IconData)
 			obj = ((IconData) obj).getObject();
 		if (obj instanceof Name)
@@ -587,7 +588,13 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
                        m_model.reload(node);
                        }else
                        {
+                    	   //node = usableRoot;
+                    	 //selected top component, switch to top usuable node.
                     	   System.out.println("In the tree expansion listener with null node and "+ node.toString());
+//           				fnode = getNameNode(usableRoot);
+//           				getNodes(fnode);           			
+//                        m_model.reload(usableRoot);
+                    	   
                        }
                     }
                   };
@@ -605,22 +612,36 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		public void valueChanged(TreeSelectionEvent event) {
 
 
-			DefaultMutableTreeNode node = getTreeNode(event.getPath());
+			final DefaultMutableTreeNode node = getTreeNode(event.getPath());
+		    Thread runner = new Thread() 
+            {
+              public void run() 
+              {
+                
+                  Runnable runnable = new Runnable() 
+                  {
+                    public void run() 
+                    {
 
+                    	   Name fnode = getNameNode(node);
+               			
+                    	   if(fnode==null){
+               				System.out.println("fnode path is null...");
+               				//selected top component, switch to top usuable node.
+               				//node = usableRoot;
+               				fnode = getNameNode(usableRoot);
+               			}
+                    	   System.out.println("In the tree expansion listener with "+ fnode.name + " and "+ node.toString());
+               			String p = getNodes(fnode);
+               			selectedPath = p;
+               			selectedPrefix =p;                    	   
+                       }
+                    };
+                  SwingUtilities.invokeLater(runnable);
+                }             
+            };
+            runner.start();
 			// prefix.toString()+cn.toString();
-
-			Name fnode = getNameNode(node);
-			if(fnode==null){
-				System.out.println("fnode path is null...");
-				//selected top component, switch to top usuable node.
-				node = usableRoot;
-				fnode = getNameNode(node);
-			}
-			
-			String p = getNodes(fnode);
-			selectedPath = p;
-			selectedPrefix =p;
-			
 		}
 	}
 
