@@ -1,5 +1,6 @@
 /*
  * ccncat.c
+ * Copyright (C) 2009 Palo Alto Research Center, Inc. All rights reserved.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -125,8 +126,7 @@ make_template(struct mydata *md, struct ccn_upcall_info *info)
 }
 
 enum ccn_upcall_res
-incoming_content(
-                 struct ccn_closure *selfp,
+incoming_content(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,
                  struct ccn_upcall_info *info)
 {
@@ -209,7 +209,6 @@ incoming_content(
                             cc->buf[cc->n - 1],
                             &nameid,
                             &nameid_size);
-        // fprintf(stderr, "================= %d %d\n", (int)finalid_size, (int)nameid_size);
         if (finalid_size == nameid_size &&
               0 == memcmp(finalid, nameid, nameid_size))
             *(md->done) = 1;
@@ -253,6 +252,7 @@ main(int argc, char **argv)
     struct mydata *mydata;
     int allow_stale = 0;
     int *done;
+    int exit_status = 0;
     
     done = calloc(1, sizeof(*done));
     
@@ -291,7 +291,6 @@ main(int argc, char **argv)
         ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, 0);
         incoming = calloc(1, sizeof(*incoming));
         incoming->p = &incoming_content;
-        incoming->refcount = 1; /* prevent deallocation */ // XXX - leak?
         mydata = calloc(1, sizeof(*mydata));
         mydata->allow_stale = allow_stale;
         mydata->excl = NULL;
@@ -302,7 +301,7 @@ main(int argc, char **argv)
         ccn_charbuf_destroy(&templ);
         /* Run a little while to see if there is anything there */
         res = ccn_run(ccn, 200);
-        if (incoming->intdata == 0) {
+        if ((!*done) && incoming->intdata == 0) {
             fprintf(stderr, "%s: not found: %s\n", argv[0], arg);
             res = -1;
         }
@@ -311,10 +310,14 @@ main(int argc, char **argv)
             fflush(stdout);
             res = ccn_run(ccn, 333);
         }
+        if (res < 0)
+            exit_status = 1;
         ccn_destroy(&ccn);
         fflush(stdout);
+        free(incoming);
+        incoming = NULL;
     }
     ccn_charbuf_destroy(&name);
     free(done);
-    exit(res < 0);
+    exit(exit_status);
 }
