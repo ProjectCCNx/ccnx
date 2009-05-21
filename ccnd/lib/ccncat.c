@@ -25,6 +25,7 @@ usage(const char *progname)
 struct excludestuff;
 
 struct mydata {
+    int *done;
     int allow_stale;
     struct excludestuff *excl;
 };
@@ -131,7 +132,6 @@ incoming_content(
 {
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *templ = NULL;
-    struct ccn_charbuf *temp = NULL;
     const unsigned char *ccnb = NULL;
     size_t ccnb_size = 0;
     const unsigned char *data = NULL;
@@ -165,7 +165,7 @@ incoming_content(
     ic = info->interest_comps;
     res = ccn_content_get_value(ccnb, ccnb_size, info->pco, &data, &data_size);
     if (res < 0) abort();
-    if (data_size > 1024 || info->pco->type != CCN_CONTENT_DATA) {
+    if (info->pco->type != CCN_CONTENT_DATA) {
         /* For us this is spam. Need to try again, excluding this one. */
         fprintf(stderr, "*** skip spam at block %d\n", (int)selfp->intdata);
         name = ccn_charbuf_create();
@@ -182,22 +182,31 @@ incoming_content(
         return(CCN_UPCALL_RESULT_OK);
     }
     
+    if (data_size == 0) {
+        *(md->done) = 1;
+        ccn_set_run_timeout(info->h, 0);
+        return(CCN_UPCALL_RESULT_OK);
+    }
     /* OK, we will accept this block. */
     
     written = fwrite(data, data_size, 1, stdout);
     if (written != 1)
         exit(1);
     
+    if (info->pco->offset[CCN_PCO_B_FinalBlockID] !=
+        info->pco->offset[CCN_PCO_E_FinalBlockID]) {
+        // XXX - should actually check FinalBlockID value!
+        *(md->done) = 1;
+        ccn_set_run_timeout(info->h, 0);
+        return(CCN_UPCALL_RESULT_OK);
+    }
     /* Ask for the next fragment */
     name = ccn_charbuf_create();
     ccn_name_init(name);
     if (ic->n < 2) abort();
     res = ccn_name_append_components(name, ib, ic->buf[0], ic->buf[ic->n - 2]);
     if (res < 0) abort();
-    temp = ccn_charbuf_create();
-    ccn_charbuf_putf(temp, "%d", ++(selfp->intdata));
-    ccn_name_append(name, temp->buf, temp->length);
-    ccn_charbuf_destroy(&temp);
+    ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, ++(selfp->intdata));
     clear_excludes(md);
     templ = make_template(md, info);
     
@@ -223,6 +232,9 @@ main(int argc, char **argv)
     char ch;
     struct mydata *mydata;
     int allow_stale = 0;
+    int *done;
+    
+    done = calloc(1, sizeof(*done));
     
     while ((ch = getopt(argc, argv, "ha")) != -1) {
         switch (ch) {
@@ -248,35 +260,40 @@ main(int argc, char **argv)
         }
     }
     for (i = optind; (arg = argv[i]) != NULL; i++) {
+        *done = 0;
         name->length = 0;
-        res = ccn_name_from_uri(name, argv[i]);
+        res = ccn_name_from_uri(name, arg);
         ccn = ccn_create();
         if (ccn_connect(ccn, NULL) == -1) {
             perror("Could not connect to ccnd");
             exit(1);
         }
-        ccn_name_append(name, "0", 1);
+        ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, 0);
         incoming = calloc(1, sizeof(*incoming));
         incoming->p = &incoming_content;
+        incoming->refcount = 1; /* prevent deallocation */
         mydata = calloc(1, sizeof(*mydata));
         mydata->allow_stale = allow_stale;
         mydata->excl = NULL;
+        mydata->done = done;
         incoming->data = mydata;
         templ = make_template(mydata, NULL);
-        
         ccn_express_interest(ccn, name, -1, incoming, templ);
         ccn_charbuf_destroy(&templ);
         /* Run a little while to see if there is anything there */
         res = ccn_run(ccn, 200);
-        if (incoming->intdata == 0)
+        if (incoming->intdata == 0) {
             fprintf(stderr, "%s: not found: %s\n", argv[0], arg);
-        /* We got something, run until end of data or somebody kills us */
-        while (res >= 0) {
+            res = -1;
+        }
+        /* We got something; run until end of data or somebody kills us */
+        while (res >= 0 && !*done) {
             fflush(stdout);
-            res = ccn_run(ccn, 200);
+            res = ccn_run(ccn, 10000);
         }
         ccn_destroy(&ccn);
     }
     ccn_charbuf_destroy(&name);
+    free(done);
     exit(res < 0);
 }

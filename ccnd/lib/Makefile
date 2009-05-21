@@ -245,6 +245,9 @@ ccnls.o: ccnls.c ../include/ccn/ccn.h ../include/ccn/coding.h \
 ccnslurp.o: ccnslurp.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
+ccncat.o: ccncat.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccn_verifysig.o: ccn_verifysig.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/keystore.h \
