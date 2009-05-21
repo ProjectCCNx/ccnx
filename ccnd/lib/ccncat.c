@@ -182,24 +182,44 @@ incoming_content(
         return(CCN_UPCALL_RESULT_OK);
     }
     
-    if (data_size == 0) {
-        *(md->done) = 1;
-        ccn_set_run_timeout(info->h, 0);
-        return(CCN_UPCALL_RESULT_OK);
-    }
     /* OK, we will accept this block. */
-    
-    written = fwrite(data, data_size, 1, stdout);
-    if (written != 1)
-        exit(1);
-    
+    if (data_size == 0)
+        *(md->done) = 1;
+    else {
+        written = fwrite(data, data_size, 1, stdout);
+        if (written != 1)
+            exit(1);
+    }
+    // XXX The test below should get refactored into the library
     if (info->pco->offset[CCN_PCO_B_FinalBlockID] !=
         info->pco->offset[CCN_PCO_E_FinalBlockID]) {
-        // XXX - should actually check FinalBlockID value!
-        *(md->done) = 1;
+        const unsigned char *finalid = NULL;
+        size_t finalid_size = 0;
+        const unsigned char *nameid = NULL;
+        size_t nameid_size = 0;
+        struct ccn_indexbuf *cc = info->content_comps;
+        ccn_ref_tagged_BLOB(CCN_DTAG_FinalBlockID, ccnb,
+                            info->pco->offset[CCN_PCO_B_FinalBlockID],
+                            info->pco->offset[CCN_PCO_E_FinalBlockID],
+                            &finalid,
+                            &finalid_size);
+        if (cc->n < 2) abort();
+        ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb,
+                            cc->buf[cc->n - 2],
+                            cc->buf[cc->n - 1],
+                            &nameid,
+                            &nameid_size);
+        // fprintf(stderr, "================= %d %d\n", (int)finalid_size, (int)nameid_size);
+        if (finalid_size == nameid_size &&
+              0 == memcmp(finalid, nameid, nameid_size))
+            *(md->done) = 1;
+    }
+    
+    if (*(md->done)) {
         ccn_set_run_timeout(info->h, 0);
         return(CCN_UPCALL_RESULT_OK);
     }
+    
     /* Ask for the next fragment */
     name = ccn_charbuf_create();
     ccn_name_init(name);
@@ -271,7 +291,7 @@ main(int argc, char **argv)
         ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, 0);
         incoming = calloc(1, sizeof(*incoming));
         incoming->p = &incoming_content;
-        incoming->refcount = 1; /* prevent deallocation */
+        incoming->refcount = 1; /* prevent deallocation */ // XXX - leak?
         mydata = calloc(1, sizeof(*mydata));
         mydata->allow_stale = allow_stale;
         mydata->excl = NULL;
@@ -289,9 +309,10 @@ main(int argc, char **argv)
         /* We got something; run until end of data or somebody kills us */
         while (res >= 0 && !*done) {
             fflush(stdout);
-            res = ccn_run(ccn, 10000);
+            res = ccn_run(ccn, 333);
         }
         ccn_destroy(&ccn);
+        fflush(stdout);
     }
     ccn_charbuf_destroy(&name);
     free(done);
