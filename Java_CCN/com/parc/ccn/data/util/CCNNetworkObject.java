@@ -22,6 +22,8 @@ import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
 /**
+ * Extends a NetworkObject to add specifics for using a CCN based backing store.
+ *
  * Need to support four use models:
  * dimension 1: synchronous - ask for and block, the latest version or a specific version
  * dimension 2: asynchronous - ask for and get in the background, the latest version or a specific

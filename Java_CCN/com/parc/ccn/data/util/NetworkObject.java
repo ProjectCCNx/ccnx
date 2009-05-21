@@ -13,6 +13,11 @@ import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
 
+/**
+ * A NetworkObject provides support for storing an object in a network based backing store.
+ * It provides support for loading the object from the network, tracking if the object's data
+ * has been changed, to determine whether it needs to be saved or not and saving the object.
+ */
 public abstract class NetworkObject<E> {
 
 	public static final String DEFAULT_DIGEST = "SHA-1"; // OK for now.
