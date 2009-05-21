@@ -1,24 +1,18 @@
 package com.parc.ccn.network.daemons.repo;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.security.InvalidParameterException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.StringTokenizer;
 import java.util.TreeMap;
-import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
-
-import sun.misc.BASE64Decoder;
-import sun.misc.BASE64Encoder;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
@@ -26,9 +20,7 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.WirePacket;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNNameEnumerator;
-import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
 /**
@@ -45,56 +37,19 @@ import com.parc.ccn.library.profiles.VersioningProfile;
 
 public class RFSImpl implements Repository {
 	
-	public final static String CURRENT_VERSION = "1.2";
+	public final static String CURRENT_VERSION = "1.3";
 	
 	public final static String META_DIR = ".meta";
-	public final static byte NORMAL_COMPONENT = '0';
-	public final static byte BASE64_COMPONENT = '1';
-	public final static byte SPLIT_COMPONENT = '2';
-	public final static byte BASE64_AND_SPLIT_COMPONENT = '3';
+	public final static String NORMAL_COMPONENT = "0";
+	public final static String SPLIT_COMPONENT = "1";
 	
-	private final static String encoding = "UTF-8";
-	
-	private static final String META_CLASH = "%meta%";
 	private static final String REPO_PRIVATE = "private";
 	private static final String VERSION = "version";
 	private static final String REPO_LOCALNAME = "local";
 	private static final String REPO_GLOBALPREFIX = "global";
-	private static final String INVALID_WINDOWS_CHARS = "<>:\"|?/";
-	private static final byte[] INVALID_UTF8_BYTES = {(byte)0xf5, (byte)0xf6, (byte)0xf7, (byte)0xf8, 
-												(byte)0xf9, (byte)0xfa, (byte)0xfb, (byte)0xfc, 
-												(byte)0xfd, (byte)0xfe, (byte)0xff,
-												(byte)0xc0, (byte)0xc1};
 	
 	private static String DEFAULT_LOCAL_NAME = "Repository";
 	private static String DEFAULT_GLOBAL_NAME = "/parc.com/csl/ccn/Repos";
-	
-	private class CharToReplacement {
-		private String _character;
-		private String _replacement;
-		
-		private CharToReplacement(String character, String replacement) {
-			_character = character;
-			_replacement = replacement;
-		}
-	}
-	
-	private static CharToReplacement[] _startReplacements;
-	private static CharToReplacement[] _allReplacements;
-	
-	static {
-		RFSImpl beginElement = new RFSImpl();
-		_startReplacements = new CharToReplacement[4];
-		_startReplacements[0] = beginElement.new CharToReplacement(new String(new byte[] {VersioningProfile.VERSION_MARKER}), "%version%");
-		_startReplacements[1] = beginElement.new CharToReplacement(new String(new byte[] {SegmentationProfile.SEGMENT_MARKER}), "%segment%");
-		_startReplacements[2] = beginElement.new CharToReplacement(new String(new byte[] {BASE64_COMPONENT}), "%one%");
-		_startReplacements[3] = beginElement.new CharToReplacement(new String(new byte[] {SPLIT_COMPONENT}), "%two%");
-		_startReplacements[3] = beginElement.new CharToReplacement(new String(new byte[] {BASE64_AND_SPLIT_COMPONENT}), "%three%");
-		
-		_allReplacements = new CharToReplacement[2];
-		_allReplacements[0] = beginElement.new CharToReplacement("/", "%slash%");
-		_allReplacements[1] = beginElement.new CharToReplacement("/", "%slash%");
-	}
 		
 	private static final int TOO_LONG_SIZE = 200;
 	
@@ -106,9 +61,6 @@ public class RFSImpl implements Repository {
 	protected ArrayList<ContentName> _nameSpace = new ArrayList<ContentName>();
 	
 	public String[] initialize(String[] args) throws RepositoryException {
-		
-		Library.logger().setLevel(Level.FINEST);
-
 		
 		boolean policyFromFile = false;
 		boolean nameFromArgs = false;
@@ -356,24 +308,10 @@ public class RFSImpl implements Repository {
 	 */
 	private TreeMap<ContentName, ArrayList<File>> getPossibleMatches(Interest interest) {
 		TreeMap<ContentName, ArrayList<File>> results = new TreeMap<ContentName, ArrayList<File>>();
-		File file = new File(_repositoryFile + getStandardString(interest.name()));
+		File file = new File(_repositoryFile + interest.name().toString());
 		ContentName lowerName = new ContentName(null != interest.nameComponentCount() ? interest.nameComponentCount() : interest.name().count(),
 					interest.name().components());
 		getAllFileResults(file, results, lowerName);
-		
-		/*
-		 * Special test to match data that might clash with the .meta directory
-		 */
-		if (Arrays.equals(lowerName.components().get(0), META_DIR.getBytes())) {
-			ArrayList<byte[]> newComponents = new ArrayList<byte[]>();
-			newComponents.add(META_CLASH.getBytes());
-			for (int i = 0; i < lowerName.count(); i++)
-				newComponents.add(lowerName.component(i));
-			ContentName clashName = new ContentName(newComponents.size(), newComponents);
-			// getAllFileResults will strip off the last component of the name so add arbitrary "digest" name
-			lowerName = new ContentName(lowerName, "digest".getBytes());
-			getAllFileResults(new File(_repositoryFile + getStandardString(clashName)), results, lowerName);
-		}
 		return results;
 	}
 	
@@ -406,12 +344,12 @@ public class RFSImpl implements Repository {
 		} else {
 			// Convert to name we can use as a file
 			ContentName encodedName = encodeName(name);
-			File encodedFile = new File(_repositoryFile + getStandardString(encodedName));
+			File encodedFile = new File(_repositoryFile + encodedName.toString());
 			if (encodedFile.isDirectory()) {
 				getAllFileResults(encodedFile, results, encodedName);
 			}
 			else {
-				encodedFile = new File(_repositoryFile + getStandardString(encodedName));
+				encodedFile = new File(_repositoryFile + encodedName.toString());
 				if (encodedFile.exists()) {
 					// The name here must contain a digest, for it maps to something 
 					// that is not a directory in the filesystem, and the only files
@@ -460,13 +398,13 @@ public class RFSImpl implements Repository {
 	 */
 	public void saveContent(ContentObject content) throws RepositoryException {
 		File file = null;
-		ContentName newName = checkReserved(content.name()).clone();
+		ContentName newName = content.name().clone();
 		newName.components().add(content.contentDigest());
 		newName = encodeName(newName);
 		ContentName dirName = new ContentName(newName.count() - 1, newName.components());
-		File dirFile = new File(_repositoryRoot, getStandardString(dirName));
+		File dirFile = new File(_repositoryRoot, dirName.toString());
 		dirFile.mkdirs();
-		file = new File(_repositoryRoot, getStandardString(newName));
+		file = new File(_repositoryRoot, newName.toString());
 		if (file.exists()) {
 			ContentObject prevContent = null;
 			if (file.isFile()) {
@@ -521,132 +459,36 @@ public class RFSImpl implements Repository {
 	}
 	
 	/**
-	 * Make sure proposed name doesn't clash with a reserved name.
-	 * If so change the root
-	 * @param name
-	 * @return
-	 */
-	private ContentName checkReserved(ContentName name) {
-		if (Arrays.equals(name.components().get(0), META_DIR.getBytes())) {
-			ArrayList<byte[]> oldComponents = name.components();
-			ArrayList<byte[]> newComponents = new ArrayList<byte[]>();
-			newComponents.add(META_CLASH.getBytes());
-			for (int i = 0; i < oldComponents.size(); i++)
-				newComponents.add(oldComponents.get(i));
-			name = new ContentName(newComponents.size(), newComponents);
-		}
-		return name;
-	}
-	
-	private static boolean needsEncoding(byte[] component) {
-		for (int i = 0; i < component.length; i++) {
-			if (INVALID_WINDOWS_CHARS.indexOf(component[i]) >= 0)
-				return true;
-			/*
-			 * Don't auto encode versions or segments
-			 */
-			if (i == 0) {
-				if (component[i] == SegmentationProfile.SEGMENT_MARKER ||
-						component[i] == VersioningProfile.VERSION_MARKER)
-					continue;
-			}
-			for (byte ib : INVALID_UTF8_BYTES) {
-				if (component[i] == ib) {
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-	
-	/**
-	 * Encode all components via name or directly.
+	 * Encode all components of a ContentName
 	 * This could result in more components than originally input due to splitting of
 	 * components.
 	 * 
 	 * @param name
 	 * @return
 	 */
-	public ContentName encodeName(ContentName name) {
-		byte[][] newComponents = encodeComponents(name, name.count());
-		return new ContentName(newComponents);
-	}
-	
-	public byte[][] encodeComponents(ContentName name, int count) {
-		byte[][] encodeData;
-		ArrayList<byte[]> encodedComponents = new ArrayList<byte[]>(0);
-		for (int i = 0; i < count; i++) {
-			encodeData = encodeComponent(name.component(i));
-			encodedComponents.add(encodeData[0]);
-			while (encodeData.length > 1) {
-				encodeData = encodeComponent(encodeData[1]);
-				encodedComponents.add(encodeData[0]);
+	public static ContentName encodeName(ContentName name) {
+		StringTokenizer st = new StringTokenizer(name.toString(), "/");
+		String newUri = "/";
+		while (st.hasMoreTokens()) {
+			String token = st.nextToken();
+			while ((token.length() + 1) > TOO_LONG_SIZE) {
+				int length = TOO_LONG_SIZE - 1;
+				String nextPiece = token.substring(0, length);
+				
+				// Avoid fragmenting binary encoded URI
+				if (nextPiece.charAt(length - 1) == '%') length--;
+				if (nextPiece.charAt(length - 2) == '%') length -= 2;
+				
+				newUri += SPLIT_COMPONENT + token.substring(0, length) + "/";
+				token = token.substring(length);
 			}
+			newUri += NORMAL_COMPONENT + token + "/";
 		}
-		byte[][] outData = new byte[encodedComponents.size()][];
-		encodedComponents.toArray(outData);
-		return outData;
-	}
-	
-	/**
-	 * Convert a component into it's disk encoded form. This can involve replacing the start of
-	 * the component with special strings, encoding into base64 and splitting the component into
-	 * multiple pieces. If the original component is split, the remainder is put into the second
-	 * element of the byte array.
-	 * 
-	 * @param component
-	 * @return
-	 */
-	public static byte[][] encodeComponent(byte[] component) {
-		byte[] additionalComponent = null;
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		byte[] newComponent = null;
-		
-		/*
-		 * First replace the starting pieces
-		 */
-		for (CharToReplacement ctr : _startReplacements) {
-			if (component[0] == ctr._character.getBytes()[0]) {
-				String conversionString = "";
-				if (component.length > 1) {
-					byte[] conversionBytes = new byte[component.length - 1];
-					System.arraycopy(component, 1, conversionBytes, 0, conversionBytes.length);
-					conversionString = convertToBase64(conversionBytes);
-				}
-				newComponent = (ctr._replacement + conversionString).getBytes();
-				break;
-			}
+		try {
+			return ContentName.fromURI(newUri);
+		} catch (MalformedContentNameStringException e) {
+			return null; //shouldn't happen
 		}
-		if (null == newComponent) {
-			newComponent = new byte[component.length];
-			System.arraycopy(component, 0, newComponent, 0, component.length);
-		}
-		
-		byte type = NORMAL_COMPONENT;
-		int outSize = 1;
-		if (needsEncoding(newComponent)) {
-			type = BASE64_COMPONENT;
-			newComponent = convertToBase64(newComponent).getBytes();
-		}
-		
-		if (newComponent.length > TOO_LONG_SIZE) {
-			outSize++;
-			type = (type == NORMAL_COMPONENT) ? SPLIT_COMPONENT : BASE64_AND_SPLIT_COMPONENT;
-			additionalComponent = new byte[newComponent.length - (TOO_LONG_SIZE - 1)];
-			System.arraycopy(newComponent, TOO_LONG_SIZE - 1, additionalComponent, 0, newComponent.length - (TOO_LONG_SIZE - 1));
-		}
-		
-		if (type != NORMAL_COMPONENT) {
-			baos.write(type);
-			baos.write(newComponent, 0, type == BASE64_COMPONENT ? newComponent.length : TOO_LONG_SIZE - 1);
-			newComponent = baos.toByteArray();
-		}
-		
-		byte[][] out = new byte[outSize][];
-		out[0] = newComponent;
-		if (outSize > 1)
-			out[1] = additionalComponent;
-		return out;
 	}
 	
 	/**
@@ -656,70 +498,24 @@ public class RFSImpl implements Repository {
 	 * @param name
 	 * @return
 	 */
-	public ContentName decodeName(ContentName name) {
-		byte[][] newComponents = decodeComponents(name, name.count());
-		return new ContentName(newComponents);
-	}
-	
-	public byte[][] decodeComponents(ContentName name, int count) {
-		ArrayList<byte[]> decodedComponents = new ArrayList<byte[]>();
-		String lastSplit = "";
-		boolean decodeSplit = false;
-		for (int i = 0; i < count; i++) {
-			byte[] component = decodeComponent(name.component(i));
-			byte type = component[0];
-			switch (type) {
-			  case BASE64_COMPONENT:
-				  decodedComponents.add(decodeBase64(new String(component).substring(1)));
-				  break;
-			  case BASE64_AND_SPLIT_COMPONENT:
-				  decodeSplit = true;	// Fall through
-			  case SPLIT_COMPONENT:
-				  lastSplit += new String(component).substring(1);
-				  break;
-			  default:
-				  if (lastSplit.length() > 0) {
-					  lastSplit += new String(component);
-					  if (decodeSplit)
-						  component = decodeBase64(lastSplit);
-					  else
-						  component = lastSplit.getBytes();
-					  decodeSplit = false;
-					  lastSplit = "";
-				  }
-			  	  decodedComponents.add(component);
-				  break;
+	public static ContentName decodeName(ContentName name) {
+		String newUri = "/";
+		StringTokenizer st = new StringTokenizer(name.toString(), "/");
+		String nextComponent = "";
+		while (st.hasMoreTokens()) {
+			String token = st.nextToken();
+			if (token.startsWith(SPLIT_COMPONENT))
+				nextComponent += token.substring(1);
+			else {
+				newUri += nextComponent + token.substring(1) + "/";
+				nextComponent = "";
 			}
 		}
-		byte[][] out = new byte[decodedComponents.size()][];
-		decodedComponents.toArray(out);
-		return out;
-	}
-	
-	public static byte[] decodeComponent(byte[] component) {
-		byte decodeByte = -1;
-		int size = 0;
-		String decodeString = new String(component);
-		for (CharToReplacement ctr : _startReplacements) {
-			if (DataUtils.arrayEquals(component, ctr._replacement.getBytes(), ctr._replacement.getBytes().length)) {
-				size = ctr._replacement.getBytes().length;
-				decodeByte = ctr._character.getBytes()[0];
-				break;
-			}
+		try {
+			return ContentName.fromURI(newUri);
+		} catch (MalformedContentNameStringException e) {
+			return null; //shouldn't happen
 		}
-		
-		byte[] newComponent;
-		if (decodeByte != -1) {
-			byte[] decodeBytes = decodeBase64(decodeString.substring(size));
-			newComponent = new byte[decodeBytes.length + 1];
-			newComponent[0] = decodeByte;
-			System.arraycopy(decodeBytes, 0, newComponent, 1, decodeBytes.length);
-		} else {
-			newComponent = new byte[component.length];
-			System.arraycopy(component, 0, newComponent, 0, component.length);
-		}
-		
-		return newComponent;
 	}
 	
 	private void addOneFileToMap(ContentName name, File file, TreeMap<ContentName, ArrayList<File>>map) {
@@ -730,51 +526,6 @@ public class RFSImpl implements Repository {
 		map.put(name, files);	
 	}
 	
-	/**
-	 * Convert input bytes to Base64 encoding, then remove '/'
-	 * since this can be included
-	 * For now we replace / with "%slash%"
-	 * ... and \n with "%return%
-	 * TODO - need to check this out on PCs
-	 * @param bytes
-	 * @return
-	 */
-	private static String convertToBase64(byte[] bytes) {
-		String b64String = new BASE64Encoder().encode(bytes);
-		for (CharToReplacement ctp : _allReplacements)
-			b64String = b64String.replace(ctp._character, ctp._replacement);
-		return b64String;
-	}
-	
-	private static byte [] decodeBase64(String data) {
-		try {
-			for (CharToReplacement ctp : _allReplacements)
-				data = data.replace(ctp._replacement, ctp._character);
-			return new BASE64Decoder().decodeBuffer(data);
-		} catch (IOException e) {
-			return new byte[0]; // TODO error handling...
-		}
-	}
-	
-	/**
-	 * Get non URL encoded version of ContentName String
-	 * for use as filename
-	 * 
-	 * @param name
-	 * @return
-	 */
-	private String getStandardString(ContentName name) {
-		if (0 == name.count()) return File.separator;
-		StringBuffer nameBuf = new StringBuffer();
-		for (int i=0; i < name.count(); ++i) {
-			nameBuf.append(File.separator);
-			try {
-				nameBuf.append(new String(name.component(i), encoding));
-			} catch (UnsupportedEncodingException e) {}
-		}
-		return nameBuf.toString();
-	}
-
 	public String getUsage() {
 		return " -root repository_root [-policy policy_file] [-local local_name] [-global global_prefix]\n";
 	}

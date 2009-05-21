@@ -123,7 +123,9 @@ public class RepoIOTest extends RepoTestBase {
 		for (int i = 0; i < 40; i++) {
 			byte [] testData = new byte[100];
 			System.arraycopy(data, i * 100, testData, 0, 100);
-			Assert.assertTrue(checkDataFromFile(new File(_repoTestDir + File.separator + "/testNameSpace/stream"), testData, i));
+			ContentName name = SegmentationProfile.segmentName(ContentName.fromNative("/testNameSpace/stream"), i);
+			Assert.assertTrue(checkDataFromFile(new File(_repoTestDir + File.separator + RFSImpl.encodeName(name).toString()), 
+					testData));
 		}
 	}
 	
@@ -182,36 +184,11 @@ public class RepoIOTest extends RepoTestBase {
 		Assert.assertEquals(data, new String(testContent.content()));
 		Assert.assertTrue(testContent.signedInfo().getPublisherKeyID().equals(publisher));
 	}
-	protected boolean checkDataFromFile(File testFile, byte[] data, int block) throws RepositoryException {
-		if (!testFile.isDirectory()) {
-			return false;
-		}
+	protected boolean checkDataFromFile(File testFile, byte[] data) throws RepositoryException {
 		Assert.assertTrue(testFile.isDirectory());
-		File [] contents = testFile.listFiles();
-		Assert.assertFalse(contents == null);
-		//if (contents.length == 1) {
-			//contents = contents[0].listFiles();
-			//Assert.assertFalse(contents == null);
-		//}
-		byte[] segmentBytes = new byte[block == 0 ? 1 : 2];
-		segmentBytes[0] = SegmentationProfile.SEGMENT_MARKER;
-		if (block > 0)
-			segmentBytes[1] = (byte)block;
-		byte[][] encodedName = RFSImpl.encodeComponent(segmentBytes);
-		String segmentName = new String(encodedName[0]);
-		int slot = -1;
-		for (int i = 0; i < contents.length; i++) {
-			if (contents[i].getName().endsWith(segmentName)) {
-				slot = i;
-				break;
-			}
-		}
-		if (slot == -1)
-			return false;
-		Assert.assertTrue(contents[slot].isDirectory());
-		contents = contents[slot].listFiles();
-		Assert.assertFalse(contents == null);
-		ContentObject co = RFSImpl.getContentFromFile(contents[0]);
+		File[] files = testFile.listFiles();
+		Assert.assertFalse(files == null);
+		ContentObject co = RFSImpl.getContentFromFile(files[0]);
 		Assert.assertTrue(co != null);
 		Assert.assertTrue(Arrays.equals(data, co.content()));
 		return true;
@@ -232,7 +209,7 @@ public class RepoIOTest extends RepoTestBase {
 		ContentName baseName = ros.getBaseName();
 		ros.close();
 		Thread.sleep(1000);
-		File testFile = new File("repotest" + baseName);
+		File testFile = new File("repotest" + RFSImpl.encodeName(baseName).toString());
 		if (expected)
 			Assert.assertTrue(testFile.exists());
 		else
