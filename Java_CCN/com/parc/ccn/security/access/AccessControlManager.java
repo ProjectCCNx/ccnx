@@ -265,7 +265,6 @@ public class AccessControlManager {
 		}
 		return aclo;
 	}
-	
 
 	private ACLObject findAncestorWithACL(ContentName dataNodeName) throws XMLStreamException, IOException {
 
@@ -375,8 +374,13 @@ public class AccessControlManager {
 		ACL newACL = null;
 		if (null != currentACL) {
 			newACL = currentACL.acl();
+		} else {
+			newACL = new ACL();
 		}
 		// TODO Now update ACL to add and remove values.
+		// Managers are a subset of writers are a subset of readers. So if you remove someone
+		// as a reader, you remove them whether they are a reader, manager or writer.
+		// If you remove someone as a writer, you remove them whether they are a manager or a writer.
 		
 		
 		// Set the ACL and update the node key.
