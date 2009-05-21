@@ -97,7 +97,7 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 	}
 
 	@Override
-	protected Object readObjectImpl(InputStream input) throws IOException,
+	protected E readObjectImpl(InputStream input) throws IOException,
 			XMLStreamException {
 		E newData = factory();
 		newData.decode(input);	

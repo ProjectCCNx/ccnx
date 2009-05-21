@@ -2,7 +2,6 @@ package com.parc.ccn.data.util;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
@@ -102,12 +101,12 @@ public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObj
 	}
 
 	@Override
-	protected Object readObjectImpl(InputStream input) throws IOException,
+	protected E readObjectImpl(InputStream input) throws IOException,
 			XMLStreamException {
-		ObjectInputStream ois = new ObjectInputStream(input);
-		Object newData;
+		GenericObjectInputStream<E> ois = new GenericObjectInputStream<E>(input);
+		E newData;
 		try {
-			newData = ois.readObject();
+			newData = ois.genericReadObject();
 		} catch (ClassNotFoundException e) {
 			Library.logger().warning("Unexpected ClassNotFoundException in SerializedObject<" + _type.getName() + ">: " + e.getMessage());
 			throw new IOException("Unexpected ClassNotFoundException in SerializedObject<" + _type.getName() + ">: " + e.getMessage());

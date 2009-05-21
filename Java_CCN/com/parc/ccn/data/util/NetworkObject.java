@@ -51,7 +51,7 @@ public abstract class NetworkObject<E> {
 
 	public void update(InputStream input) throws IOException, XMLStreamException {
 		
-		Object newData = readObjectImpl(input);
+		E newData = readObjectImpl(input);
 		
 		if (null == _data) {
 			Library.logger().info("Update -- first initialization.");
@@ -191,10 +191,10 @@ public abstract class NetworkObject<E> {
 
 	/**
 	 * Subclasses override. This implements the actual object read from stream, returning
-	 * the new object. This should return something that can be cast to E.
+	 * the new object.
 	 * @throws ClassNotFoundException 
 	 */
-	protected abstract Object readObjectImpl(InputStream input) throws IOException, XMLStreamException;
+	protected abstract E readObjectImpl(InputStream input) throws IOException, XMLStreamException;
 	
 	@Override
 	public int hashCode() {
