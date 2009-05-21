@@ -1,5 +1,6 @@
 AFTER : test_finished
-type pkill && pkill ccnd 2>/dev/null
+ls /tmp/.ccnd.sock.* 2>/dev/null | cut -d . -f 4 | while read CCN_LOCAL_PORT; do export CCN_LOCAL_PORT; ccndsmoketest kill; done
+ls /tmp/.ccnd.sock.* 2>/dev/null && { echo Will try force kill of all ccnd instances ... ; sleep 2; } && type pkill && pkill ccnd 2>/dev/null
 sleep 1
 netstat -an | grep -e 900[0123] -e 91[0123][0123]
 :
