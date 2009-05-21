@@ -49,6 +49,23 @@ ccn_name_append_str(struct ccn_charbuf *c, const char *s)
 }
 
 int
+ccn_name_append_numeric(struct ccn_charbuf *c,
+                        enum ccn_marker marker, uintmax_t value)
+{
+    uintmax_t v;
+    int i;
+    char b[32];
+    
+    for (v = value, i = sizeof(b); v != 0 && i > 0; i--, v >>= 8)
+        b[i-1] = v & 0xff;
+    if (i < 1)
+        return(-1);
+    if (marker >= 0)
+        b[--i] = marker;
+    return (ccn_name_append(c, b + i, sizeof(b) - i));
+}
+
+int
 ccn_name_append_components(struct ccn_charbuf *c,
                            const unsigned char *ccnb,
                            size_t start, size_t stop)

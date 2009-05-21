@@ -348,6 +348,34 @@ main (int argc, char *argv[]) {
     }
     ccn_charbuf_destroy(&buffer);
     ccn_charbuf_destroy(&uri_out);
+    printf("Name marker tests\n");
+    do {
+        const char *expected_uri = "ccn:/example.com/.../%01/%FE/%01%02%03%04%05%06%07%08/%FD%10%10%10%10%1F%FF/%F8%81";
+        printf("Unit test case %d\n", i++);
+        buffer = ccn_charbuf_create();
+        uri_out = ccn_charbuf_create();
+        res = ccn_name_init(buffer);
+        res |= ccn_name_append_str(buffer, "example.com");
+        res |= ccn_name_append_numeric(buffer, CCN_MARKER_NONE, 0);
+        res |= ccn_name_append_numeric(buffer, CCN_MARKER_NONE, 1);
+        res |= ccn_name_append_numeric(buffer, CCN_MARKER_NAMES, 0);
+        res |= ccn_name_append_numeric(buffer, CCN_MARKER_NONE, 0x0102030405060708ULL);
+        res |= ccn_name_append_numeric(buffer, CCN_MARKER_VERSION, 0x101010101FFFULL);
+        res |= ccn_name_append_numeric(buffer, CCN_MARKER_SEQNUM, 129);
+        res |= ccn_uri_append(uri_out, buffer->buf, buffer->length, 1);
+        if (res < 0) {
+            printf("Failed: name marker tests had negative res\n");
+            result = 1;
+        }
+        if (0 != strcmp(ccn_charbuf_as_string(uri_out), expected_uri)) {
+            printf("Failed: name marker tests produced wrong output\n");
+            printf("Expected: %s\n", expected_uri);
+            printf("  Actual: %s\n", (const char *)uri_out->buf);
+            result = 1;
+        }
+        ccn_charbuf_destroy(&buffer);
+        ccn_charbuf_destroy(&uri_out);
+    } while (0);
     printf("Message digest tests\n");
     do {
         printf("Unit test case %d\n", i++);
