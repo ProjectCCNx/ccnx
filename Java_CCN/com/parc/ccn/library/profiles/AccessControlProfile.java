@@ -136,6 +136,17 @@ public class AccessControlProfile implements CCNProfile {
 	public static ContentName groupMembershipListName(ContentName namespace, String groupFriendlyName) {
 		return ContentName.fromNative(groupName(namespace, groupFriendlyName),  GROUP_MEMBERSHIP_LIST_NAME);
 	}
+
+	public static String groupNameToFriendlyName(ContentName groupName) {
+		return ContentName.componentPrintNative(groupName.lastComponent());
+	}
+
+	public static ContentName groupPrivateKeyDirectory(
+			ContentName groupPublicKeyNameAndVersion) {
+		// We hang the wrapped private key directly off the public key version.
+		return groupPublicKeyNameAndVersion;
+	}
+
 	public static boolean isPrincipalNameComponent(byte [] nameComponent) {
 		return DataUtils.isBinaryPrefix(PRINCIPAL_PREFIX, nameComponent);
 	}
