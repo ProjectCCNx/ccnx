@@ -128,23 +128,3 @@ ccn_name_comp_strcmp(const unsigned char *data,
     return(1);
 }
 
-char *
-ccn_name_comp_strdup(const unsigned char *data,
-                     const struct ccn_indexbuf *indexbuf,
-                     unsigned int i)
-{
-    char * result = NULL;
-    const unsigned char * comp_ptr;
-    size_t comp_size;
-
-    if (ccn_name_comp_get(data, indexbuf, i, &comp_ptr, &comp_size) == 0) {
-	result = calloc(1, comp_size + 1); // XXX - [mfp] - this is the only place (I think) that the client is responsible for directly calling free() on something that we allocated.  This should be fixed!
-	if (result != NULL) {
-	    memcpy(result, comp_ptr, comp_size);
-	    /* Ensure that result is null-terminated */
-	    result[comp_size] = '\0';
-	}
-    }
-    return(result);
-}
-

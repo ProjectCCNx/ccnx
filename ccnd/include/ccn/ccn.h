@@ -575,32 +575,24 @@ int ccn_compare_names(const unsigned char *a, size_t asize,
 
 /***********************************
  * Reading Names:
- * Names may be (minimally) read using the following routines, b
+ * Names may be (minimally) read using the following routines,
  * based on the component boundary markers generated from a parse.
  */
 
 /*
  * ccn_indexbuf_comp_strcmp: perform strcmp of given val against 
- * component.  Returns -1, 0, or 1 if val is less than, equal to,
- * or greater than the component at given index i (counting from 0).
+ * name component at given index i (counting from 0).
+ * Uses conventional string ordering, not the canonical CCN ordering.
+ * Returns negative, 0, or positive if val is less than, equal to,
+ * or greater than the component.
  * Safe even on binary components, though the result may not be useful.
- * NOTE - this ordering may be different from the canonical ordering
+ * NOTE - this ordering is different from the canonical ordering
  * used by ccn_compare_names();
  */
 int ccn_name_comp_strcmp(const unsigned char *data,
                          const struct ccn_indexbuf* indexbuf,
                          unsigned int i,
                          const char *val);
-
-/*
- * ccn_indexbuf_comp_strdup: return a copy of component at given index i
- * as a string, that is, it will be terminated by \0.
- * The first component is index 0.
- * Caller is responsible to free returned buffer containing copy.
- */
-char * ccn_name_comp_strdup(const unsigned char *data,
-                            const struct ccn_indexbuf *indexbuf,
-                            unsigned int i);
 
 /*
  * ccn_name_comp_get: return a pointer to and size of component at

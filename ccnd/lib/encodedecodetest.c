@@ -73,7 +73,6 @@ decode_message(struct ccn_charbuf *message, struct path * name_path, char *data,
     struct ccn_parsed_ContentObject content;
     struct ccn_indexbuf *comps = ccn_indexbuf_create();
     const unsigned char * content_value;
-    char * s = NULL;
     size_t content_length;
     
     int res = 0;
@@ -96,11 +95,6 @@ decode_message(struct ccn_charbuf *message, struct path * name_path, char *data,
 	    printf("Decode mismatch on path component %d\n", i);
 	    res = -1;
 	}
-	s = ccn_name_comp_strdup(message->buf, comps, i);
-	if (s == NULL || strcmp(s, name_path->comps[i]) != 0) {
-	    printf("Decode mismatch on retrieved path component %d\n", i);
-	}
-	if (s != NULL) { free(s); s = NULL; }
     }
     if (ccn_content_get_value(message->buf, message->length, &content,
 			      &content_value, &content_length) != 0) {
