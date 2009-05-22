@@ -7,6 +7,7 @@ import java.sql.Timestamp;
 import javax.crypto.spec.SecretKeySpec;
 import javax.xml.stream.XMLStreamException;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.library.profiles.AccessControlProfile;
 import com.parc.ccn.library.profiles.VersionMissingException;
@@ -50,6 +51,9 @@ public class NodeKey {
 		if ((null == nodeKeyName) || (null == unwrappedNodeKey)) {
 			throw new IllegalArgumentException("NodeKey: key name and key cannot be null!");
 		}
+		if (!VersioningProfile.isVersioned(nodeKeyName)) {
+			throw new IllegalArgumentException("Expect stored node key name to be versioned: " + nodeKeyName);
+		}
 		_storedNodeKeyName = nodeKeyName;
 		_storedNodeKeyID = generateKeyID(unwrappedNodeKey.getEncoded());
 		_nodeKey = unwrappedNodeKey;
@@ -61,6 +65,9 @@ public class NodeKey {
 	
 	protected NodeKey(ContentName nodeName, byte [] derivedNodeKey, 
 					  ContentName ancestorNodeKeyName, byte [] ancestorNodeKeyID) {
+		if (!VersioningProfile.isVersioned(ancestorNodeKeyName)) {
+			throw new IllegalArgumentException("Expect stored node key name to be versioned: " + ancestorNodeKeyName);
+		}
 		_storedNodeKeyName = ancestorNodeKeyName;
 		_storedNodeKeyID = ancestorNodeKeyID;
 		_nodeName = nodeName;
@@ -84,8 +91,13 @@ public class NodeKey {
 		return (!nodeName().isPrefixOf(storedNodeKeyName()));
 	}
 	
-	public Timestamp nodeKeyVersion() throws VersionMissingException { 
-		return VersioningProfile.getVersionAsTimestamp(storedNodeKeyName());
+	public Timestamp nodeKeyVersion() { 
+		try {
+			return VersioningProfile.getVersionAsTimestamp(storedNodeKeyName());
+		} catch (VersionMissingException e) {
+			Library.logger().warning("Unexpected: name that was confirmed to have a version on construction throws a VersionMissingException: " + storedNodeKeyName());
+			throw new IllegalStateException("Unexpected: name that was confirmed to have a version on construction throws a VersionMissingException: " + storedNodeKeyName());
+		}
 	}
 	
 	public byte [] generateKeyID() { 
