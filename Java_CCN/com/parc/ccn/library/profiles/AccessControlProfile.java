@@ -180,8 +180,7 @@ public class AccessControlProfile implements CCNProfile {
 	public static byte[] targetKeyIDToNameComponent(byte[] keyID) {
 		if (null == keyID)
 			return null;
-		String encodedKeyID = DataUtils.base6Encode(keyID);
-		byte [] encodedKeyIDBytes = ContentName.componentParseNative(encodedKeyID);
+		byte [] encodedKeyIDBytes = DataUtils.base6Encode(keyID);
 		byte [] output = new byte[WRAPPING_KEY_PREFIX.length + encodedKeyIDBytes.length];
 		System.arraycopy(WRAPPING_KEY_PREFIX, 0, output, 0, WRAPPING_KEY_PREFIX.length);
 		System.arraycopy(encodedKeyIDBytes, 0, output, WRAPPING_KEY_PREFIX.length, encodedKeyIDBytes.length);
