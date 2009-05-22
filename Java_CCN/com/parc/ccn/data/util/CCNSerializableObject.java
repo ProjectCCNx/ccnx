@@ -14,7 +14,6 @@ import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
 
@@ -27,29 +26,23 @@ import com.parc.ccn.library.io.CCNVersionedInputStream;
 public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObject<E> {
 	
 	public CCNSerializableObject(Class<E> type) throws ConfigurationException, IOException {
-		this(type, CCNLibrary.open());
+		super(type, CCNLibrary.open());
 	}
 	
 	public CCNSerializableObject(Class<E> type, CCNLibrary library) {
-		super(type);
-		_library = library;
-		_flowControl = new CCNFlowControl(_library);
+		super(type, library);
 	}
 	
 	public CCNSerializableObject(Class<E> type, ContentName name, E data, CCNLibrary library) {
-		super(type, data);
-		_currentName = name;
-		_library = library;
-		_flowControl = new CCNFlowControl(name, _library);
+		super(type, name, data, library);
 	}
 	
 	public CCNSerializableObject(Class<E> type, ContentName name, E data) throws ConfigurationException, IOException {
-		this(type,name, data, CCNLibrary.open());
+		this(type, name, data, CCNLibrary.open());
 	}
 	
 	public CCNSerializableObject(Class<E> type, E data, CCNLibrary library) {
-		this(type, null, data, library);
-		_flowControl = new CCNFlowControl(_library);
+		super(type, null, data, library);
 	}
 	
 	public CCNSerializableObject(Class<E> type, E data) throws ConfigurationException, IOException {

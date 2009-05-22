@@ -62,7 +62,7 @@ struct ccn_scheduled_event {
  * Create and destroy
  */
 struct ccn_schedule *ccn_schedule_create(void *clienth,
-                                         const struct ccn_gettime *clock);
+                                         const struct ccn_gettime *ccnclock);
 void ccn_schedule_destroy(struct ccn_schedule **schedp);
 
 /*

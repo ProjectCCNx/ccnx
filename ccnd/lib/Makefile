@@ -8,7 +8,7 @@ COPT = -g
 # FIXTHIS programs in the lib directory?
 
 INSTALLED_PROGRAMS = \
-    ccn_ccnbtoxml ccn_splitccnb ccntimestamps ccndumpnames ccnrm ccnls ccnslurp \
+    ccn_ccnbtoxml ccn_splitccnb ccntimestamps ccndumpnames ccnrm ccnls ccnslurp ccncat \
     ccnsendchunks ccncatchunks ccncatchunks2 \
     ccnget ccnhexdumpdata $(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)
 
@@ -35,7 +35,7 @@ CSRC = ccn_buf_decoder.c ccn_dtag_table.c ccn_buf_encoder.c ccn_charbuf.c \
     skel_decode_test.c \
     hashtb.c hashtbtest.c matrixtest.c \
     smoketestclientlib.c ccntimestamps.c ccndump.c ccnrm.c ccndumpnames.c \
-    ccnls.c ccnslurp.c \
+    ccnls.c ccnslurp.c ccncat.c \
     ccn_verifysig.c dataresponsetest.c ccn_uri.c  encodedecodetest.c \
     ccnsendchunks.c ccncatchunks.c ccncatchunks2.c ccnbuzz.c ccnget.c ccnhexdumpdata.c \
     signbenchtest.c ccndumppcap.c
@@ -125,6 +125,9 @@ ccnrm: ccnrm.o
 
 ccnslurp: ccnslurp.o
 	$(CC) $(CFLAGS) -o $@ ccnslurp.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+
+ccncat: ccncat.o
+	$(CC) $(CFLAGS) -o $@ ccncat.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccnsendchunks: ccnsendchunks.o
 	$(CC) $(CFLAGS) -o $@ ccnsendchunks.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
@@ -240,6 +243,9 @@ ccndumpnames.o: ccndumpnames.c ../include/ccn/ccn.h \
 ccnls.o: ccnls.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccnslurp.o: ccnslurp.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h ../include/ccn/uri.h
+ccncat.o: ccncat.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccn_verifysig.o: ccn_verifysig.c ../include/ccn/ccn.h \

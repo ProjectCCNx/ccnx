@@ -359,20 +359,23 @@ ccn_destroy(struct ccn **hp)
  * Returns the byte offset of the end of prefix portion,
  * as given by prefix_comps, or -1 for error.
  * prefix_comps = -1 means the whole name is the prefix.
+ * If omit_possible_digest, chops off a potential digest name at the end
  */
 static int
-ccn_check_namebuf(struct ccn *h, struct ccn_charbuf *namebuf, int prefix_comps)
+ccn_check_namebuf(struct ccn *h, struct ccn_charbuf *namebuf, int prefix_comps,
+                  int omit_possible_digest)
 {
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d;
     int i = 0;
     int ans = 0;
+    int prev_ans = 0;
     if (namebuf == NULL || namebuf->length < 2)
         return(-1);
     d = ccn_buf_decoder_start(&decoder, namebuf->buf, namebuf->length);
     if (ccn_buf_match_dtag(d, CCN_DTAG_Name)) {
         ccn_buf_advance(d);
-        ans = d->decoder.token_index;
+        prev_ans = ans = d->decoder.token_index;
         while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
             ccn_buf_advance(d);
             if (ccn_buf_match_blob(d, NULL, NULL)) {
@@ -380,13 +383,17 @@ ccn_check_namebuf(struct ccn *h, struct ccn_charbuf *namebuf, int prefix_comps)
             }
             ccn_buf_check_close(d);
             i += 1;
-            if (prefix_comps < 0 || i == prefix_comps)
+            if (prefix_comps < 0 || i <= prefix_comps) {
+                prev_ans = ans;
                 ans = d->decoder.token_index;
+            }
         }
         ccn_buf_check_close(d);
     }
     if (d->decoder.state < 0 || ans < prefix_comps)
         return(-1);
+    if (omit_possible_digest && ans == prev_ans + 36 && ans == namebuf->length - 1)
+        return(prev_ans);
     return(ans);
 }
 
@@ -452,7 +459,7 @@ ccn_express_interest(struct ccn *h,
         if (h->interests_by_prefix == NULL)
             return(NOTE_ERRNO(h));
     }
-    prefixend = ccn_check_namebuf(h, namebuf, prefix_comps);
+    prefixend = ccn_check_namebuf(h, namebuf, prefix_comps, 1);
     if (prefixend < 0)
         return(prefixend);
     /*
@@ -505,7 +512,7 @@ ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
         if (h->interest_filters == NULL)
             return(NOTE_ERRNO(h));
     }
-    res = ccn_check_namebuf(h, namebuf, -1);
+    res = ccn_check_namebuf(h, namebuf, -1, 0);
     if (res < 0)
         return(res);
     hashtb_start(h->interest_filters, e);
@@ -1355,6 +1362,7 @@ ccn_get(struct ccn *h,
         struct ccn_indexbuf *compsbuf)
 {
     struct ccn *orig_h = h;
+    struct hashtb *saved_keys = NULL;
     int res;
     struct simple_get_data *md;
     
@@ -1362,6 +1370,10 @@ ccn_get(struct ccn *h,
         h = ccn_create();
         if (h == NULL)
             return(-1);
+        if (orig_h != NULL) { /* Dad, can I borrow the keys? */
+            saved_keys = h->keys;
+            h->keys = orig_h->keys;
+        }
         res = ccn_connect(h, NULL);
         if (res < 0) {
             ccn_destroy(&h);
@@ -1389,8 +1401,10 @@ ccn_get(struct ccn *h,
     md->closure.refcount--;
     if (md->closure.refcount == 0)
         free(md);
-    if (h != orig_h)
+    if (h != orig_h) {
+        if (saved_keys != NULL)
+            h->keys = saved_keys;
         ccn_destroy(&h);
+    }
     return(res);
 }
-

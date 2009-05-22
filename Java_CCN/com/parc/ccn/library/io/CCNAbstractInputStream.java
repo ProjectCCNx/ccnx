@@ -29,7 +29,6 @@ public abstract class CCNAbstractInputStream extends InputStream {
 
 	protected ContentObject _currentBlock = null;
 	protected ContentObject _goneBlock = null;
-	protected ByteArrayInputStream _currentBlockStream = null;
 	protected InputStream _blockReadStream = null; // includes filters, etc.
 	
 	/**
@@ -182,7 +181,6 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	 */
 	protected void setCurrentBlock(ContentObject newBlock) throws IOException {
 		_currentBlock = null;
-		_currentBlockStream = null;
 		_blockReadStream = null;
 		if (null == newBlock) {
 			Library.logger().info("Setting current block to null! Did a block fail to verify?");
@@ -190,7 +188,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		}
 		
 		_currentBlock = newBlock;
-		_currentBlockStream = new ByteArrayInputStream(_currentBlock.content());
+		_blockReadStream = new ByteArrayInputStream(_currentBlock.content());
 		if (_keys != null) {
 			try {
 				// Reuse of current block OK. Don't expect to have two separate readers
@@ -204,9 +202,8 @@ public abstract class CCNAbstractInputStream extends InputStream {
 				Library.logger().warning("InvalidAlgorithmParameterException: " + e.getMessage());
 				throw new IOException("InvalidAlgorithmParameterException: " + e.getMessage());
 			}
-			_blockReadStream = new UnbufferedCipherInputStream(_currentBlockStream, _cipher);
+			_blockReadStream = new UnbufferedCipherInputStream(_blockReadStream, _cipher);
 		} else {
-			_blockReadStream = _currentBlockStream;
 			if (_currentBlock.signedInfo().getType().equals(ContentType.ENCR)) {
 				Library.logger().warning("Asked to read encrypted content, but not given a key to decrypt it. Decryption happening at higher level?");
 			}

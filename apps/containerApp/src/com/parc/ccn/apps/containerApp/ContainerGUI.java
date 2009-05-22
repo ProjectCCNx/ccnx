@@ -236,11 +236,9 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		openACL = new JButton("Manage Permissions");
 		openACL.addActionListener(this);
 		
-
 		openGroup = new JButton("Open Group Manager");
 		openGroup.addActionListener(this);
 		
-
 		// Create the scroll pane and add the tree to it.
 		JScrollPane treeView = new JScrollPane(tree);
 
@@ -276,12 +274,13 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		getContentPane().add(openGroup, c);
 
 		c.fill = GridBagConstraints.BOTH;
-    	c.gridwidth = 2;
+		c.gridwidth = 2;
     	c.gridx = 0;
         c.gridy = 0;
 		getContentPane().add(openButton, c);
-		 c.weightx = 1;
-		 c.weighty = 1;
+
+		c.weightx = 1;
+		c.weighty = 1;
 		c.fill = GridBagConstraints.BOTH;
 		c.gridwidth = 2;
 		c.gridx = 0;
@@ -517,6 +516,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		if (node == null)
 			return null;
 		Object obj = node.getUserObject();
+	
 		if (obj instanceof IconData)
 			obj = ((IconData) obj).getObject();
 		if (obj instanceof Name)
@@ -582,9 +582,20 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
                     public void run() 
                     {
                     	Name fnode = getNameNode(node);
-                    	System.out.println("In the tree expansion listener with "+ fnode.name + " and "+ node.toString());		
+                    	if(fnode != null){
+                    		System.out.println("In the tree expansion listener with "+ fnode.name + " and "+ node.toString());		
                     	getNodes(fnode);           			
                        m_model.reload(node);
+                       }else
+                       {
+                    	   //node = usableRoot;
+                    	 //selected top component, switch to top usuable node.
+                    	   System.out.println("In the tree expansion listener with null node and "+ node.toString());
+//           				fnode = getNameNode(usableRoot);
+//           				getNodes(fnode);           			
+//                        m_model.reload(usableRoot);
+                    	   
+                       }
                     }
                   };
                   SwingUtilities.invokeLater(runnable);
@@ -601,22 +612,36 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		public void valueChanged(TreeSelectionEvent event) {
 
 
-			DefaultMutableTreeNode node = getTreeNode(event.getPath());
+			final DefaultMutableTreeNode node = getTreeNode(event.getPath());
+		    Thread runner = new Thread() 
+            {
+              public void run() 
+              {
+                
+                  Runnable runnable = new Runnable() 
+                  {
+                    public void run() 
+                    {
 
+                    	   Name fnode = getNameNode(node);
+               			
+                    	   if(fnode==null){
+               				System.out.println("fnode path is null...");
+               				//selected top component, switch to top usuable node.
+               				//node = usableRoot;
+               				fnode = getNameNode(usableRoot);
+               			}
+                    	   System.out.println("In the tree expansion listener with "+ fnode.name + " and "+ node.toString());
+               			String p = getNodes(fnode);
+               			selectedPath = p;
+               			selectedPrefix =p;                    	   
+                       }
+                    };
+                  SwingUtilities.invokeLater(runnable);
+                }             
+            };
+            runner.start();
 			// prefix.toString()+cn.toString();
-
-			Name fnode = getNameNode(node);
-			if(fnode==null){
-				System.out.println("fnode path is null...");
-				//selected top component, switch to top usuable node.
-				node = usableRoot;
-				fnode = getNameNode(node);
-			}
-			
-			String p = getNodes(fnode);
-			selectedPath = p;
-			selectedPrefix =p;
-			
 		}
 	}
 

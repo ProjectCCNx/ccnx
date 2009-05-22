@@ -171,6 +171,22 @@ int ccn_name_append_components(struct ccn_charbuf *c,
                                const unsigned char *ccnb,
                                size_t start, size_t stop);
 
+enum ccn_marker {
+    CCN_MARKER_NONE = -1,
+    CCN_MARKER_SEQNUM  = 0xF8, /* consecutive block sequence numbers */
+    CCN_MARKER_BLKID   = 0xFB, /* nonconsecutive block ids */
+    CCN_MARKER_VERSION = 0xFD, /* timestamp-based versioning */
+    CCN_MARKER_NAMES   = 0xFE  /* name enumeration protocol */
+};
+
+/*
+ * ccn_name_append_numeric: add binary Component to ccnb-encoded Name
+ * These are special components used for marking versions, fragments, etc.
+ * Return value is 0, or -1 for error
+ * XXX http://twiki.parc.com/twiki/bin/view/CCN/NameConventions
+ */
+int ccn_name_append_numeric(struct ccn_charbuf *c,
+                            enum ccn_marker tag, uintmax_t value);
 
 /***********************************
  * Authenticators and signatures for content are constructed in charbufs
@@ -559,32 +575,24 @@ int ccn_compare_names(const unsigned char *a, size_t asize,
 
 /***********************************
  * Reading Names:
- * Names may be (minimally) read using the following routines, b
+ * Names may be (minimally) read using the following routines,
  * based on the component boundary markers generated from a parse.
  */
 
 /*
  * ccn_indexbuf_comp_strcmp: perform strcmp of given val against 
- * component.  Returns -1, 0, or 1 if val is less than, equal to,
- * or greater than the component at given index i (counting from 0).
+ * name component at given index i (counting from 0).
+ * Uses conventional string ordering, not the canonical CCN ordering.
+ * Returns negative, 0, or positive if val is less than, equal to,
+ * or greater than the component.
  * Safe even on binary components, though the result may not be useful.
- * NOTE - this ordering may be different from the canonical ordering
+ * NOTE - this ordering is different from the canonical ordering
  * used by ccn_compare_names();
  */
 int ccn_name_comp_strcmp(const unsigned char *data,
                          const struct ccn_indexbuf* indexbuf,
                          unsigned int i,
                          const char *val);
-
-/*
- * ccn_indexbuf_comp_strdup: return a copy of component at given index i
- * as a string, that is, it will be terminated by \0.
- * The first component is index 0.
- * Caller is responsible to free returned buffer containing copy.
- */
-char * ccn_name_comp_strdup(const unsigned char *data,
-                            const struct ccn_indexbuf *indexbuf,
-                            unsigned int i);
 
 /*
  * ccn_name_comp_get: return a pointer to and size of component at
@@ -699,14 +707,14 @@ int ccn_charbuf_append_non_negative_integer(struct ccn_charbuf *c, int nni);
  * If marker >= 0, the low-order byte is used as a marker byte, useful for
  * some content naming conventions (versioning, in particular).
  */
-#define CCN_MARKER_NONE -1
-#define CCN_MARKER_VERSION 0xFD
-int ccn_charbuf_append_timestamp_blob(struct ccn_charbuf *c, int marker, intmax_t secs, int nsecs);
+int ccn_charbuf_append_timestamp_blob(struct ccn_charbuf *c,
+                                      enum ccn_marker marker,
+                                      intmax_t secs, int nsecs);
 
 /*
  * ccn_charbuf_append_now_blob:
  * as above, using the current time
  */
-int ccn_charbuf_append_now_blob(struct ccn_charbuf *c, int marker);
+int ccn_charbuf_append_now_blob(struct ccn_charbuf *c, enum ccn_marker marker);
 
 #endif

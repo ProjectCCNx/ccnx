@@ -115,7 +115,7 @@ send_remote_unencapsulated(int s, struct addrinfo *r, unsigned char *buf, size_t
     return (result);
 }
 
-void process_options(int argc, char * const argv[], struct options *options) {
+void process_options(int argc, char * const argv[], struct options *opt) {
     int c;
     char *cp = NULL;
     char *rportstr = NULL;
@@ -129,13 +129,13 @@ void process_options(int argc, char * const argv[], struct options *options) {
     while ((c = getopt(argc, argv, "dc:h:r:l:m:t:")) != -1) {
         switch (c) {
         case 'd':
-            options->logging++;
+            opt->logging++;
             break;
         case 'c':
-            options->localsockname = optarg;
+            opt->localsockname = optarg;
             break;
         case 'h':
-            options->remotehostname = optarg;
+            opt->remotehostname = optarg;
             break;
         case 'r':
             rportstr = optarg;
@@ -153,7 +153,7 @@ void process_options(int argc, char * const argv[], struct options *options) {
     }
     
     /* the remote end of the connection must be specified */
-    if (options->remotehostname == NULL || rportstr == NULL) {
+    if (opt->remotehostname == NULL || rportstr == NULL) {
         usage(argv[0]);
         exit(1);
     }
@@ -168,7 +168,7 @@ void process_options(int argc, char * const argv[], struct options *options) {
         usage(argv[0]);
         exit(1);
     }
-    sprintf(options->remoteport, "%d", n);
+    sprintf(opt->remoteport, "%d", n);
 
     if (lportstr != NULL) {
         if (strspn(lportstr, "0123456789") != strlen(lportstr)) {
@@ -181,7 +181,7 @@ void process_options(int argc, char * const argv[], struct options *options) {
             exit(1);
         }
     }
-    sprintf(options->localport, "%d", n);
+    sprintf(opt->localport, "%d", n);
 
     if (mcastoutstr != NULL) {
 	hints.ai_family = PF_INET;
@@ -190,9 +190,9 @@ void process_options(int argc, char * const argv[], struct options *options) {
 #ifdef AI_NUMERICSERV
 	hints.ai_flags |= AI_NUMERICSERV;
 #endif
-	udplink_note("interface %s requested (port %s)\n", mcastoutstr, options->localport);
-	result = getaddrinfo(mcastoutstr, options->localport, &hints, &options->localif_for_mcast_addrinfo);
-	if (result != 0 || options->localif_for_mcast_addrinfo == NULL) {
+	udplink_note("interface %s requested (port %s)\n", mcastoutstr, opt->localport);
+	result = getaddrinfo(mcastoutstr, opt->localport, &hints, &opt->localif_for_mcast_addrinfo);
+	if (result != 0 || opt->localif_for_mcast_addrinfo == NULL) {
 	    udplink_fatal(__LINE__, "getaddrinfo(\"%s\", ...): %s\n", mcastoutstr, gai_strerror(result));
 	}
     }
@@ -202,21 +202,21 @@ void process_options(int argc, char * const argv[], struct options *options) {
             usage(argv[0]);
             exit(1);
         }
-        options->multicastttl = atoi(ttlstr);
-        if (options->multicastttl < 1 || options->multicastttl > 255) {
+        opt->multicastttl = atoi(ttlstr);
+        if (opt->multicastttl < 1 || opt->multicastttl > 255) {
             usage(argv[0]);
             exit(1);
         }
     }
 
-    cp = strchr(options->remotehostname, '%');
+    cp = strchr(opt->remotehostname, '%');
     if (cp != NULL) {
         cp++;
         errno = 0;
-        options->remoteifindex = atoi(cp);
-        if (options->remoteifindex == 0) {
-            options->remoteifindex = if_nametoindex(cp);
-            if (options->remoteifindex == 0 && errno != 0) {
+        opt->remoteifindex = atoi(cp);
+        if (opt->remoteifindex == 0) {
+            opt->remoteifindex = if_nametoindex(cp);
+            if (opt->remoteifindex == 0 && errno != 0) {
                 udplink_fatal(__LINE__, "Invalid interface name %s\n", cp);
             }
         }
@@ -224,7 +224,7 @@ void process_options(int argc, char * const argv[], struct options *options) {
 }
 
 void
-set_multicast_sockopt(int socket_r, int socket_w, struct addrinfo *ai, struct options *options)
+set_multicast_sockopt(int socket_r, int socket_w, struct addrinfo *ai, struct options *opt)
 {
     struct addrinfo hints;
     struct ip_mreq mreq;
@@ -242,11 +242,11 @@ set_multicast_sockopt(int socket_r, int socket_w, struct addrinfo *ai, struct op
 #endif
 
     if (ai->ai_family == PF_INET && IN_MULTICAST(ntohl(((struct sockaddr_in *)(ai->ai_addr))->sin_addr.s_addr))) {
-        if (options->logging > 0) udplink_note("IPv4 multicast\n");
+        if (opt->logging > 0) udplink_note("IPv4 multicast\n");
 #ifdef IP_ADD_MEMBERSHIP
         memcpy((void *)&mreq.imr_multiaddr, &((struct sockaddr_in *)ai->ai_addr)->sin_addr, sizeof(mreq.imr_multiaddr));
-        if (options->localif_for_mcast_addrinfo != NULL) {
-            memcpy((void *)&mreq.imr_interface.s_addr, &((struct sockaddr_in *)options->localif_for_mcast_addrinfo->ai_addr)->sin_addr, sizeof(mreq.imr_interface.s_addr));
+        if (opt->localif_for_mcast_addrinfo != NULL) {
+            memcpy((void *)&mreq.imr_interface.s_addr, &((struct sockaddr_in *)opt->localif_for_mcast_addrinfo->ai_addr)->sin_addr, sizeof(mreq.imr_interface.s_addr));
         }
         result = setsockopt(socket_r, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq));
         if (result == -1) udplink_fatal(__LINE__, "setsockopt(..., IP_ADD_MEMBERSHIP, ...): %s\n", strerror(errno));
@@ -257,8 +257,8 @@ set_multicast_sockopt(int socket_r, int socket_w, struct addrinfo *ai, struct op
         if (result == -1) udplink_fatal(__LINE__, "setsockopt(..., IP_MULTICAST_LOOP, ...): %s\n", strerror(errno));
 #endif
 #ifdef IP_MULTICAST_TTL
-        if (options->multicastttl > 0) {
-            csockopt = options->multicastttl;
+        if (opt->multicastttl > 0) {
+            csockopt = opt->multicastttl;
             result = setsockopt(socket_w, IPPROTO_IP, IP_MULTICAST_TTL, &csockopt, sizeof(csockopt));
             if (result == -1) {
                 udplink_fatal(__LINE__, "setsockopt(..., IP_MULTICAST_TTL, ...): %s\n", strerror(errno));
@@ -266,11 +266,11 @@ set_multicast_sockopt(int socket_r, int socket_w, struct addrinfo *ai, struct op
         }
 #endif
     } else if (ai->ai_family == PF_INET6 && IN6_IS_ADDR_MULTICAST((&((struct sockaddr_in6 *)ai->ai_addr)->sin6_addr))) {
-        if (options->logging > 0) udplink_note("IPv6 multicast\n");
+        if (opt->logging > 0) udplink_note("IPv6 multicast\n");
 #ifdef IPV6_JOIN_GROUP
         memcpy((void *)&mreq6.ipv6mr_multiaddr, &((struct sockaddr_in6 *)ai->ai_addr)->sin6_addr, sizeof(mreq6.ipv6mr_multiaddr));
-        if (options->remoteifindex > 0) {
-            mreq6.ipv6mr_interface = options->remoteifindex;
+        if (opt->remoteifindex > 0) {
+            mreq6.ipv6mr_interface = opt->remoteifindex;
         }
         result = setsockopt(socket_r, IPPROTO_IPV6, IPV6_JOIN_GROUP, &mreq6, sizeof(mreq6));
         if (result == -1) {
@@ -285,8 +285,8 @@ set_multicast_sockopt(int socket_r, int socket_w, struct addrinfo *ai, struct op
         }
 #endif
 #ifdef IPV6_MULTICAST_HOPS
-        if (options->multicastttl > 0) {
-            isockopt = options->multicastttl;
+        if (opt->multicastttl > 0) {
+            isockopt = opt->multicastttl;
             result = setsockopt(socket_w, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &isockopt, sizeof(isockopt));
             if (result == -1) {
                 udplink_fatal(__LINE__, "setsockopt(..., IPV6_MULTICAST_LOOP, ...): %s\n", strerror(errno));
@@ -330,7 +330,6 @@ main (int argc, char * const argv[]) {
     unsigned char rbuf[UDPMAXBUF];
     struct ccn_charbuf *charbuf;
     ssize_t msgstart = 0;
-    ssize_t recvlen = 0;
     ssize_t dres;
     struct sigaction sigact_changeloglevel;
     unsigned char *deferredbuf = NULL;
@@ -487,6 +486,7 @@ main (int argc, char * const argv[]) {
         /* process local data */
         if (fds[0].revents & (POLLIN)) {
             unsigned char *lbuf = ccn_charbuf_reserve(charbuf, 32);
+            ssize_t recvlen;
             int tries;
             if (charbuf->length == 0) {
                 memset(ld, 0, sizeof(*ld));
