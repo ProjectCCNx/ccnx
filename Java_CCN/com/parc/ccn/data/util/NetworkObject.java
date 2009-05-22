@@ -65,6 +65,15 @@ public abstract class NetworkObject<E> {
 			_data = merge(input, _type.cast(newData));
 		}
 	}
+	
+	/**
+	 * Have we read any data yet? Only valid at beginning; doesn't tell
+	 * you if update has gone through.
+	 * @return
+	 */
+	public boolean ready() {
+		return (null != _data);
+	}
 
 	/**
 	 * Why pass in input? Because some subclasses have input streams that
