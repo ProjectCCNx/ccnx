@@ -188,6 +188,25 @@ enum ccn_marker {
 int ccn_name_append_numeric(struct ccn_charbuf *c,
                             enum ccn_marker tag, uintmax_t value);
 
+/*
+ * ccn_name_split: find Component boundaries in a ccnb-encoded Name
+ * Thin veneer over ccn_parse_Name().
+ * returns -1 for error, otherwise the number of Components
+ * components arg may be NULL to just do a validity check
+ */
+int ccn_name_split(struct ccn_charbuf *c, struct ccn_indexbuf* components);
+
+/*
+ * ccn_name_chop: Chop the name down to n components.
+ * returns -1 for error, otherwise the new number of Components
+ * components arg may be NULL, if provided it must be consistent with the c
+ * and is updated accordingly.
+ * n may be negative to say how many components to remove instead of how
+ * many to leave.
+ */
+int ccn_name_chop(struct ccn_charbuf *c, struct ccn_indexbuf* components, int n);
+
+
 /***********************************
  * Authenticators and signatures for content are constructed in charbufs
  * using the following routines.

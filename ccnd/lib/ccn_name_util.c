@@ -110,7 +110,7 @@ ccn_name_comp_get(const unsigned char *data,
     }
     return(-1);
 }
-	      
+
 int
 ccn_name_comp_strcmp(const unsigned char *data,
                      const struct ccn_indexbuf *indexbuf,
@@ -126,5 +126,43 @@ ccn_name_comp_strcmp(const unsigned char *data,
 	return(strncmp(val, (const char *)comp_ptr, comp_size));
     /* Probably no such component, say query is greater-than */
     return(1);
+}
+
+int
+ccn_name_split(struct ccn_charbuf *c, struct ccn_indexbuf *components)
+{
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
+    d = ccn_buf_decoder_start(&decoder, c->buf, c->length);
+    return(ccn_parse_Name(d, components));
+}
+
+int
+ccn_name_chop(struct ccn_charbuf *c, struct ccn_indexbuf *components, int n)
+{
+    if (components == NULL) {
+        int res;
+        components = ccn_indexbuf_create();
+        if (components == NULL)
+            return(-1);
+        res = ccn_name_split(c, components);
+        if (res >= 0)
+            res = ccn_name_chop(c, components, n);
+        ccn_indexbuf_destroy(&components);
+        return(res);
+    }
+    if (components->n == 0 || components->buf[components->n-1] + 1 != c->length)
+        return(-1);
+    if (n < 0)
+        n += (components->n - 1); /* APL-style indexing */
+    if (n < 0)
+        return(-1);
+    if (n < components->n) {
+        c->length = components->buf[n];
+        ccn_charbuf_append_value(c, CCN_CLOSE, 1);
+        components->n = n + 1;
+        return(n);
+    }
+    return(-1);
 }
 

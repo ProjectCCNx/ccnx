@@ -345,6 +345,7 @@ main (int argc, char *argv[]) {
     printf("Name marker tests\n");
     do {
         const char *expected_uri = "ccn:/example.com/.../%01/%FE/%01%02%03%04%05%06%07%08/%FD%10%10%10%10%1F%FF/%F8%81";
+        const char *expected_chopped_uri = "ccn:/example.com/.../%01/%FE";
         printf("Unit test case %d\n", i++);
         buffer = ccn_charbuf_create();
         uri_out = ccn_charbuf_create();
@@ -364,6 +365,24 @@ main (int argc, char *argv[]) {
         if (0 != strcmp(ccn_charbuf_as_string(uri_out), expected_uri)) {
             printf("Failed: name marker tests produced wrong output\n");
             printf("Expected: %s\n", expected_uri);
+            printf("  Actual: %s\n", (const char *)uri_out->buf);
+            result = 1;
+        }
+        res = ccn_name_chop(buffer, NULL, 100);
+        if (res != -1) {
+            printf("Failed: ccn_name_chop did not produce error \n");
+            result = 1;
+        }
+        res = ccn_name_chop(buffer, NULL, 4);
+        if (res != 4) {
+            printf("Failed: ccn_name_chop got wrong length\n");
+            result = 1;
+        }
+        uri_out->length = 0;
+        ccn_uri_append(uri_out, buffer->buf, buffer->length, 1);
+        if (0 != strcmp(ccn_charbuf_as_string(uri_out), expected_chopped_uri)) {
+            printf("Failed: ccn_name_chop botch\n");
+            printf("Expected: %s\n", expected_chopped_uri);
             printf("  Actual: %s\n", (const char *)uri_out->buf);
             result = 1;
         }
