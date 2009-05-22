@@ -12,6 +12,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.security.WrappedKey.WrappedKeyObject;
+import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.EnumeratedNameList;
 import com.parc.ccn.library.profiles.AccessControlProfile;
@@ -86,8 +87,14 @@ public class KeyDirectory extends EnumeratedNameList {
 			// currently encapsulated in single-component ContentNames
 			byte [] wkChildName = childName.lastComponent();
 			if (AccessControlProfile.isWrappedKeyNameComponent(wkChildName)) {
-				byte [] keyid = AccessControlProfile.getTargetKeyIDFromNameComponent(wkChildName);
-				_keyIDs.add(keyid);
+				byte[] keyid;
+				try {
+					keyid = AccessControlProfile.getTargetKeyIDFromNameComponent(wkChildName);
+					_keyIDs.add(keyid);
+				} catch (IOException e) {
+					Library.logger().info("Unexpected " + e.getClass().getName() + " parsing key id " + DataUtils.printHexBytes(wkChildName) + ": " + e.getMessage());
+					// ignore and go on
+				}
 			} else if (AccessControlProfile.isPrincipalNameComponent(wkChildName)) {
 				addPrincipal(wkChildName);
 			} else {
