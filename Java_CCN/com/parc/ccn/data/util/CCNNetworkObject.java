@@ -96,26 +96,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 
 	public void update(CCNInputStream inputStream) throws IOException, XMLStreamException {
-		try {
+		if (inputStream.isGone()) {
+			_isGone = true;
+			_currentName = inputStream.deletionInformation().name();
+		} else {
 			super.update(inputStream);
-		} catch (IOException ioex) {
-			Library.logger().info("update: got IOException " + ioex.getMessage() + " is data actually just gone? " + inputStream.isGone());
-			if (inputStream.isGone()) {
-				_isGone = true;
-				_currentName = inputStream.deletionInformation().name();
-			} else {
-				throw ioex;
-			}
-		} catch (XMLStreamException xsex) {
-			Library.logger().info("update: got XMLStreamException " + xsex.getMessage() + " is data actually just gone? " + inputStream.isGone());
-			if (inputStream.isGone()) {
-				_isGone = true;
-				_currentName = inputStream.deletionInformation().name();
-			} else {
-				throw xsex;
-			}
+			_currentName = inputStream.baseName();
 		}
-		_currentName = inputStream.baseName();
 		_flowControl.addNameSpace(_currentName);
 	}
 	

@@ -369,7 +369,9 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		return blockIndex();
 	}
 	
-	public boolean isGone() {
+	public boolean isGone() throws IOException {
+		if (null == _currentBlock && null == _goneBlock)
+			getFirstBlock();
 		return (null != _goneBlock);
 	}
 	
