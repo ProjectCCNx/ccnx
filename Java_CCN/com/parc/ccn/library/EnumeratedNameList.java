@@ -94,6 +94,10 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		return false;
 	}
 	
+	public boolean hasChild(String groupFriendlyName) {
+		return hasChild(ContentName.componentParseNative(groupFriendlyName));
+	}
+
 	/**
 	 * Waits until there is any data at all.
 	 * @return
