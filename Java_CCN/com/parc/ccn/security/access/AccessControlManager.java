@@ -20,6 +20,7 @@ import org.bouncycastle.util.Arrays;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.content.CollectionData;
 import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.security.WrappedKey;
 import com.parc.ccn.data.security.WrappedKey.WrappedKeyObject;
@@ -27,6 +28,7 @@ import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.EnumeratedNameList;
 import com.parc.ccn.library.profiles.AccessControlProfile;
+import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.access.ACL.ACLObject;
 
 /**
@@ -174,11 +176,14 @@ public class AccessControlManager {
 
 	private ContentName _namespace;
 	private ContentName _groupStorage;
+	private EnumeratedNameList _groupList;
 	private ContentName _userStorage;
+	private EnumeratedNameList _userList;
+	// The groups whose membership information I've bothered to pull.
+	private HashMap<String, Group> _enumeratedGroups = new HashMap<String, Group>();
 	private KeyCache _keyCache = new KeyCache();
-	private SecureRandom _random = new SecureRandom();
-	private ArrayList<Group> _myGroups = new ArrayList<Group>();
 	private CCNLibrary _library;
+	private SecureRandom _random = new SecureRandom();
 	
 	public AccessControlManager(ContentName namespace) throws ConfigurationException, IOException {
 		this(namespace, AccessControlProfile.groupNamespaceName(namespace), AccessControlProfile.userNamespaceName(namespace));
@@ -189,6 +194,9 @@ public class AccessControlManager {
 		_groupStorage = groupStorage;
 		_userStorage = userStorage;
 		_library = CCNLibrary.open();
+		// start enumerating groups and users in the background
+		groupList();
+		userList();
 		// DKS TODO here, check for a namespace marker, and if one not there, write it (async)
 	}
 	
@@ -208,25 +216,56 @@ public class AccessControlManager {
 	
 	private KeyCache keyCache() { return _keyCache; }
 	
-	public EnumeratedNameList listGroups() {
-		// TODO
-		return null;
+	public EnumeratedNameList groupList() throws IOException {
+		if (null == _groupList) {
+			_groupList = new EnumeratedNameList(_groupStorage, _library);
+		}
+		return _groupList;
 	}
 	
-	public EnumeratedNameList listUsers() {
-		// TODO
-		return null;
-	}
-
-	public Group getGroup(String friendlyName) {
-		// TODO
-		return null;
+	public EnumeratedNameList userList() throws IOException {
+		if (null == _userList) {
+			_userList = new EnumeratedNameList(_userStorage, _library);
+		}
+		return _userList;
 	}
 	
-	public Group createGroup(String friendlyName, MembershipList members) {
-		// TODO
-		return null;
+	public boolean inProtectedNamespace(ContentName content) {
+		return _namespace.isPrefixOf(content);
+	}
 
+	public Group getGroup(String groupFriendlyName) throws IOException {
+		Group theGroup = _enumeratedGroups.get(groupFriendlyName);
+		if ((null == theGroup) && (groupList().hasChild(groupFriendlyName))) {
+			// Only go hunting for it if we think it exists, otherwise we'll block.
+			synchronized(_enumeratedGroups) {
+				theGroup = _enumeratedGroups.get(groupFriendlyName);
+				if (null == theGroup) {
+					theGroup = new Group(_groupStorage, groupFriendlyName, _library);
+					// wait for group to be ready?
+					_enumeratedGroups.put(groupFriendlyName, theGroup);
+				}
+			}
+		}
+		// either we've got it, or we don't believe it exists.
+		// DKS startup transients? do we need to block for group list?
+		return theGroup;
+	}
+	
+	public Group createGroup(String groupFriendlyName, ArrayList<LinkReference> newMembers) {
+		Group existingGroup = getGroup(groupFriendlyName);
+		if (null != existingGroup) {
+			existingGroup.setMembershipList(newMembers);
+		} else {
+			// Need to make key pair, directory, and store membership list.
+			MembershipList ml = 
+				new MembershipList(
+						AccessControlProfile.groupMembershipListName(_groupStorage, groupFriendlyName), 
+						new CollectionData(newMembers), _library);
+			newGroupPublicKey(groupFriendlyName, ml);
+			ml.save(); // setting up key could take some time, do this last in case people
+					   // are waiting on it.
+		}
 	}
 	
 	public Group modifyGroup(String friendlyName, ArrayList<LinkReference> membersToAdd, ArrayList<LinkReference> membersToRemove) {
@@ -244,6 +283,10 @@ public class AccessControlManager {
 	
 	public void deleteGroup(String friendlyName) {
 		// TODO		
+	}
+	
+	public boolean isGroupMember(LinkReference member) {
+		
 	}
 	
 	/**
@@ -536,7 +579,12 @@ public class AccessControlManager {
 
 			// OK, not in cache. Our next step regardless is to check on the groups we think we're in.
 			HashMap<String, Timestamp> groupNames = keyDirectory.getPrincipals();
-			for (Group myGroup : _myGroups) {
+			if (groupNames.containsKey(_myName)) {
+				// we're explicitly listed on this group, but not under any key in our cache.
+				// maybe we need to load an old one?
+				Library.logger().info("NK encrypted under my key " + _myName + " version: " + groupNames.get(_myName));
+			}
+			for (Group myGroup : _enumeratedGroups) {
 				if (groupNames.containsKey(myGroup.name())) {
 					// TODO handle this group, add keys to the cache as we go
 				}
@@ -620,9 +668,19 @@ public class AccessControlManager {
 		if (!nodeKeyWeHave.nodeName().isPrefixOf(nameOfNodeKeyWeWant)) {
 			throw new IllegalArgumentException("Node key " + nodeKeyWeHave.nodeName() + " is not a newer node key replacing " + nameOfNodeKeyWeWant);
 		}
+		if (VersioningProfile.compareVersions(nodeKeyWeHave.nodeKeyVersion(), nameOfNodeKeyWeWant) <= 0) {
+			throw new IllegalArgumentException("Node key " + nodeKeyWeHave.nodeName() + " is an older version of node key " + nameOfNodeKeyWeWant + ", can't go backwards");
+		}
 		// The node key we have might be a derived node key, so its stored key id might not
 		// directly relate to the node key we're looking for. 
-		// TODO 
+		// iterate backwards through previous links to get to the desired node key.
+		NodeKey previousKey = null;
+		while ((null == previousKey) || !previousKey.storedNodeKeyName().equals(nameOfNodeKeyWeWant)) {
+			previousKey = nodeKeyWeHave.getPreviousKey();
+			if (null == previousKey) {
+				break;
+			}
+		}
 	}
 	
 	/**
