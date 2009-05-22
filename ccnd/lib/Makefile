@@ -10,7 +10,7 @@ COPT = -g
 INSTALLED_PROGRAMS = \
     ccn_ccnbtoxml ccn_splitccnb ccntimestamps ccndumpnames ccnrm ccnls ccnslurp ccncat \
     ccnsendchunks ccncatchunks ccncatchunks2 \
-    ccnget ccnhexdumpdata $(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)
+    ccnput ccnget ccnhexdumpdata $(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)
 
 PROGRAMS = $(INSTALLED_PROGRAMS) \
     ccn_verifysig \
@@ -37,7 +37,7 @@ CSRC = ccn_buf_decoder.c ccn_dtag_table.c ccn_buf_encoder.c ccn_charbuf.c \
     smoketestclientlib.c ccntimestamps.c ccndump.c ccnrm.c ccndumpnames.c \
     ccnls.c ccnslurp.c ccncat.c \
     ccn_verifysig.c dataresponsetest.c ccn_uri.c  encodedecodetest.c \
-    ccnsendchunks.c ccncatchunks.c ccncatchunks2.c ccnbuzz.c ccnget.c ccnhexdumpdata.c \
+    ccnsendchunks.c ccncatchunks.c ccncatchunks2.c ccnbuzz.c ccnput.c ccnget.c ccnhexdumpdata.c \
     signbenchtest.c ccndumppcap.c
 
 LIBS = libccn.a
@@ -140,6 +140,9 @@ ccncatchunks2: ccncatchunks2.o
 
 ccnbuzz: ccnbuzz.o
 	$(CC) $(CFLAGS) -o $@ ccnbuzz.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+
+ccnput: ccnput.o
+	$(CC) $(CFLAGS) -o $@ ccnput.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccnget: ccnget.o
 	$(CC) $(CFLAGS) -o $@ ccnget.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
@@ -276,6 +279,9 @@ ccncatchunks2.o: ccncatchunks2.c ../include/ccn/bloom.h \
 ccnbuzz.o: ccnbuzz.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
+ccnput.o: ccnput.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h \
+  ../include/ccn/keystore.h ../include/ccn/signing.h
 ccnget.o: ccnget.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
