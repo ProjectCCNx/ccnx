@@ -198,4 +198,10 @@ public class SegmentationProfile implements CCNProfile {
 		// return new ContentName(name, HEADER_NAME);
 		return name;
 	}
+
+	public static boolean isFirstSegment(ContentName name) {
+		if (!isSegment(name))
+			return false;
+		return (getSegmentNumber(name) == BASE_SEGMENT);
+	}
 }
