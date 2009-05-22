@@ -5,7 +5,6 @@
  *
  * Support for transport of bulk data
  *
- * $Id$
  */
 
 #include <assert.h>
@@ -15,6 +14,30 @@
 
 #include <ccn/bloom.h>
 #include <ccn/ccn.h>
+
+/************ Candidate API stuff - was in ccn/ccn.h for a while ******/
+/***********************************
+ * Bulk data
+ */
+
+/*
+ * The client provides a ccn_seqfunc * (and perhaps a matching param)
+ * to specify the scheme for naming the content items in the sequence.
+ * Given the sequence number x, it should place in resultbuf the
+ * corresponding blob that that will be used in the final explicit
+ * Component of the Name of item x in the sequence.  This should
+ * act as a mathematical function, returning the same answer for a given x.
+ * (Ususally param will be NULL, but is provided in case it is needed.)
+ */
+typedef void ccn_seqfunc(uintmax_t x, void *param,
+                         struct ccn_charbuf *resultbuf);
+
+/*
+ * Ready-to-use sequencing functions
+ */
+extern ccn_seqfunc ccn_decimal_seqfunc;
+extern ccn_seqfunc ccn_binary_seqfunc;
+/**********************************************************************/
 
 /*
  * Encode the number in decimal ascii

@@ -1,8 +1,7 @@
 /*
  * ccn_buf_decoder.c
  *  
- * Copyright 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
- * $Id$
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
  */
 
 #include <string.h>
@@ -225,45 +224,38 @@ ccn_parse_optional_tagged_UDATA(struct ccn_buf_decoder *d, enum ccn_dtag dtag)
     return(-1);
 }
 
-struct parsed_Name {
-    int start;
-    int size;
-    int lastcomp;
-    int ncomp;
-};
-
+/*
+ * ccn_parse_Name
+ * Parses a ccnb-encoded name
+ * components may be NULL, otherwise is filled in with Component boundary offsets
+ * Returns the number of Components in the Name, or -1 if there is an error.
+ */
 int
-ccn_parse_Name(struct ccn_buf_decoder *d, struct parsed_Name *x, struct ccn_indexbuf *components)
+ccn_parse_Name(struct ccn_buf_decoder *d, struct ccn_indexbuf *components)
 {
     int ncomp = 0;
-    int res = -1;
     if (ccn_buf_match_dtag(d, CCN_DTAG_Name)) {
-        res = d->decoder.element_index;
-        if (components) components->n = 0;
+        if (components != NULL) components->n = 0;
         ccn_buf_advance(d);
-        x->lastcomp = d->decoder.token_index;
         while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
             if (components != NULL)
                 ccn_indexbuf_append_element(components, d->decoder.token_index);
-            x->lastcomp = d->decoder.token_index;
             ncomp += 1;
             ccn_buf_advance(d);
-            if (ccn_buf_match_blob(d, NULL, NULL)) {
+            if (ccn_buf_match_blob(d, NULL, NULL))
                 ccn_buf_advance(d);
-            }
             ccn_buf_check_close(d);
         }
         if (components != NULL)
             ccn_indexbuf_append_element(components, d->decoder.token_index);
         ccn_buf_check_close(d);
     }
-    if (res >= 0 && d->decoder.state >= 0) {
-        x->start = res;
-        x->size = d->decoder.token_index - res;
-        x->ncomp = ncomp;
-        return (res);
-    }
-    return(-1);
+    else
+        d->decoder.state = -__LINE__;
+    if (d->decoder.state < 0)
+        return(-1);
+    else
+        return(ncomp);
 }
 
 int
@@ -481,18 +473,22 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
     int ncomp = 0;
     int res;
     if (ccn_buf_match_dtag(d, CCN_DTAG_Interest)) {
-        struct parsed_Name name = {0};
+        if (components == NULL) {
+            /* We need to have the component offsets. */
+            components = ccn_indexbuf_create();
+            if (components == NULL) return(-1);
+            res = ccn_parse_interest(msg, size, interest, components);
+            ccn_indexbuf_destroy(&components);
+            return(res);
+        }
         ccn_buf_advance(d);
         interest->offset[CCN_PI_B_Name] = d->decoder.element_index;
         interest->offset[CCN_PI_B_Component0] = d->decoder.index;
-        res = ccn_parse_Name(d, &name, components);
-        if (res < 0)
-            return(res);
-        interest->offset[CCN_PI_B_LastPrefixComponent] = name.lastcomp;
-        interest->offset[CCN_PI_E_LastPrefixComponent] = d->decoder.token_index - 1;
-        interest->offset[CCN_PI_E_ComponentLast] = d->decoder.token_index - 1;
+        ncomp = ccn_parse_Name(d, components);
+        interest->offset[CCN_PI_B_LastPrefixComponent] =
+         interest->offset[CCN_PI_E_LastPrefixComponent] = 
+         interest->offset[CCN_PI_E_ComponentLast] = d->decoder.token_index - 1;
         interest->offset[CCN_PI_E_Name] = d->decoder.token_index;
-        ncomp = name.ncomp;
         /* optional NameComponentCount */
         interest->offset[CCN_PI_B_NameComponentCount] = d->decoder.token_index;
         interest->prefix_comps = ccn_parse_optional_tagged_nonNegativeInteger(d,
@@ -500,22 +496,13 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
         interest->offset[CCN_PI_E_NameComponentCount] = d->decoder.token_index;
         if (d->decoder.state < 0 || interest->prefix_comps > ncomp)
             return (d->decoder.state = -__LINE__);
-        if (interest->prefix_comps == -1 || interest->prefix_comps == ncomp)
+        if (interest->prefix_comps == -1)
             interest->prefix_comps = ncomp;
-        else if (components != NULL) {
+        else
             ncomp = interest->prefix_comps;
-            if (ncomp >= components->n) abort();
-            interest->offset[CCN_PI_B_LastPrefixComponent] = components->buf[(ncomp > 0) ? ncomp-1 : 0];
-            interest->offset[CCN_PI_E_LastPrefixComponent] = components->buf[ncomp];
-        }
-        else {
-            /* urp - restart the parse with a components buffer. Ugly. */
-            components = ccn_indexbuf_create();
-            if (components == NULL) return(-1);
-            res = ccn_parse_interest(msg, size, interest, components);
-            ccn_indexbuf_destroy(&components);
-            return(res);
-        }
+        if (ncomp >= components->n) abort(); // Check above should have caught this.
+        interest->offset[CCN_PI_B_LastPrefixComponent] = components->buf[(ncomp > 0) ? (ncomp - 1) : 0];
+        interest->offset[CCN_PI_E_LastPrefixComponent] = components->buf[ncomp];
         /* optional AdditionalNameComponents */
         interest->offset[CCN_PI_B_AdditionalNameComponents] = d->decoder.token_index;
         ccn_parse_optional_tagged_nonNegativeInteger(d,
@@ -592,11 +579,11 @@ static int
 ccn_parse_KeyName(struct ccn_buf_decoder *d, struct parsed_KeyName *x)
 {
     int res = -1;
-    struct parsed_Name name;
     if (ccn_buf_match_dtag(d, CCN_DTAG_KeyName)) {
         res = d->decoder.element_index;
         ccn_buf_advance(d);
-        x->Name = ccn_parse_Name(d, &name, NULL);
+        x->Name = d->decoder.token_index;
+        ccn_parse_Name(d, NULL);
         x->endName = d->decoder.token_index;
         x->PublisherID = ccn_parse_PublisherID(d, NULL);
         x->endPublisherID = d->decoder.token_index;
@@ -730,15 +717,14 @@ ccn_parse_ContentObject(const unsigned char *msg, size_t size,
     if (res)
         x->magic = 20080711;                                      // XXX - downrev
     if (res || ccn_buf_match_dtag(d, CCN_DTAG_ContentObject)) {
-        struct parsed_Name name;
         ccn_buf_advance(d);
         res = ccn_parse_Signature(d, x);
         x->offset[CCN_PCO_B_Name] = d->decoder.token_index;
         x->offset[CCN_PCO_B_Component0] = d->decoder.index;
-        res = ccn_parse_Name(d, &name, components);
+        res = ccn_parse_Name(d, components);
         if (res < 0)
             d->decoder.state = -__LINE__;
-        x->name_ncomps = name.ncomp;
+        x->name_ncomps = res;
         x->offset[CCN_PCO_E_ComponentLast] = d->decoder.token_index - 1;
         x->offset[CCN_PCO_E_Name] = d->decoder.token_index;
         ccn_parse_SignedInfo(d, x);
