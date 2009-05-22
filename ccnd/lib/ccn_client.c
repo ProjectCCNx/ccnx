@@ -1362,6 +1362,7 @@ ccn_get(struct ccn *h,
         struct ccn_indexbuf *compsbuf)
 {
     struct ccn *orig_h = h;
+    struct hashtb *saved_keys = NULL;
     int res;
     struct simple_get_data *md;
     
@@ -1369,6 +1370,10 @@ ccn_get(struct ccn *h,
         h = ccn_create();
         if (h == NULL)
             return(-1);
+        if (orig_h != NULL) { /* Dad, can I borrow the keys? */
+            saved_keys = h->keys;
+            h->keys = orig_h->keys;
+        }
         res = ccn_connect(h, NULL);
         if (res < 0) {
             ccn_destroy(&h);
@@ -1396,8 +1401,10 @@ ccn_get(struct ccn *h,
     md->closure.refcount--;
     if (md->closure.refcount == 0)
         free(md);
-    if (h != orig_h)
+    if (h != orig_h) {
+        if (saved_keys != NULL)
+            h->keys = saved_keys;
         ccn_destroy(&h);
+    }
     return(res);
 }
-
