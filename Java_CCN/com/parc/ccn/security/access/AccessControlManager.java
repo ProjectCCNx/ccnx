@@ -22,6 +22,7 @@ import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.CollectionData;
 import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.security.PublicKeyObject;
 import com.parc.ccn.data.security.WrappedKey;
 import com.parc.ccn.data.security.WrappedKey.WrappedKeyObject;
 import com.parc.ccn.data.util.DataUtils;
@@ -252,19 +253,27 @@ public class AccessControlManager {
 		return theGroup;
 	}
 	
-	public Group createGroup(String groupFriendlyName, ArrayList<LinkReference> newMembers) {
+	public void addGroup(Group newGroup) {
+		_enumeratedGroups.put(newGroup.friendlyName(), newGroup);
+	}
+	
+	public Group createGroup(String groupFriendlyName, ArrayList<LinkReference> newMembers) throws XMLStreamException, IOException {
 		Group existingGroup = getGroup(groupFriendlyName);
 		if (null != existingGroup) {
 			existingGroup.setMembershipList(newMembers);
+			return existingGroup;
 		} else {
 			// Need to make key pair, directory, and store membership list.
 			MembershipList ml = 
 				new MembershipList(
 						AccessControlProfile.groupMembershipListName(_groupStorage, groupFriendlyName), 
 						new CollectionData(newMembers), _library);
-			newGroupPublicKey(groupFriendlyName, ml);
+			PublicKeyObject pk = Group.newGroupPublicKey(groupFriendlyName, ml);
 			ml.save(); // setting up key could take some time, do this last in case people
 					   // are waiting on it.
+			Group newGroup =  new Group(_groupStorage, groupFriendlyName, ml, pk, _library);
+			addGroup(newGroup);
+			return newGroup;
 		}
 	}
 	
@@ -585,7 +594,7 @@ public class AccessControlManager {
 				Library.logger().info("NK encrypted under my key " + _myName + " version: " + groupNames.get(_myName));
 			}
 			for (Group myGroup : _enumeratedGroups) {
-				if (groupNames.containsKey(myGroup.name())) {
+				if (groupNames.containsKey(myGroup.friendlyName())) {
 					// TODO handle this group, add keys to the cache as we go
 				}
 			}
