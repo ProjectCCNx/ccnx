@@ -213,6 +213,11 @@ public class CCNEncodableObjectTest {
 			Assert.assertFalse(ecd0.equals(ecd3));
 			Assert.assertEquals(ecd3, ecd4);
 			System.out.println("Update really really works!");
+			
+			ecd0.saveAsGone(ns[2]);
+			ecd0.update();
+			
+			
 			done = true;
 
 		} catch (IOException e) {
