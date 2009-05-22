@@ -3,9 +3,11 @@ package com.parc.ccn.security.access;
 import java.io.IOException;
 import java.security.PublicKey;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.security.PublicKeyObject;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.AccessControlProfile;
@@ -36,18 +38,31 @@ public class Group {
 		this(groupName.parent(), AccessControlProfile.groupNameToFriendlyName(groupName), library);
 	}
 	
+	/**
+	 * Package constructor.
+	 * @return
+	 */
+	Group(ContentName namespace, String groupFriendlyName, MembershipList members, PublicKeyObject publicKey, CCNLibrary library) {
+		_library = library;
+		_groupNamespace = namespace;
+		_groupFriendlyName = groupFriendlyName;
+		_groupMembers = members;
+		_groupPublicKey = publicKey;
+	}
+	
 	public boolean ready() {
 		return _groupMembers.ready() && _groupPublicKey.ready();
 	}
 	
 	public KeyDirectory privateKeyDirectory(AccessControlManager manager) throws IOException {
 		if (_groupPublicKey.ready())
-			return new KeyDirectory(manager, AccessControlProfile.groupPrivateKeyDirectory(_groupPublicKey.getName()), _library);
-		Library.logger().info("Public key not ready for group: " + name());
+			return new KeyDirectory(manager, 
+					AccessControlProfile.groupPrivateKeyDirectory(_groupPublicKey.getName()), _library);
+		Library.logger().info("Public key not ready for group: " + friendlyName());
 		return null;
 	}
 	
-	public String name() { return _groupFriendlyName; }
+	public String friendlyName() { return _groupFriendlyName; }
 
 	public MembershipList membershipList() { return _groupMembers; }
 	public ContentName membershipListName() { return _groupMembers.getName(); }
@@ -74,6 +89,17 @@ public class Group {
 				Library.logger().warning("Should not happen: VersionMissingException on name where isVersioned is true: " + name + ": " + e.getMessage());
 			}
 		}
+		return null;
+	}
+
+	public void setMembershipList(ArrayList<LinkReference> newMembers) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	public static PublicKeyObject newGroupPublicKey(String groupFriendlyName,
+			MembershipList ml) {
+		// TODO Auto-generated method stub
 		return null;
 	}
 }
