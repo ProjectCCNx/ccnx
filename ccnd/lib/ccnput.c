@@ -71,7 +71,6 @@ main(int argc, char **argv)
     struct ccn_keystore *keystore = NULL;
     long expire = -1;
     size_t blocksize = 8*1024;
-    int i;
     int status = 0;
     int res;
     ssize_t read_res;
