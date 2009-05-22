@@ -179,4 +179,30 @@ public class VersioningProfile implements CCNProfile {
 	 * @return
 	 */
 	public static final int baseVersion() { return 0; }
+
+	public static int compareVersions(
+			Timestamp left,
+			ContentName right) {
+		if (!isVersioned(right)) {
+			throw new IllegalArgumentException("Both names to compare must be versioned!");
+		}
+		try {
+			return left.compareTo(getVersionAsTimestamp(right));
+		} catch (VersionMissingException e) {
+			throw new IllegalArgumentException("Name that isVersioned returns true for throws VersionMissingException!: " + right);
+		}
+	}
+	
+	public static int compareVersions(
+			ContentName left,
+			ContentName right) {
+		if (!isVersioned(left) || !isVersioned(right)) {
+			throw new IllegalArgumentException("Both names to compare must be versioned!");
+		}
+		try {
+			return getVersionAsTimestamp(left).compareTo(getVersionAsTimestamp(right));
+		} catch (VersionMissingException e) {
+			throw new IllegalArgumentException("Name that isVersioned returns true for throws VersionMissingException!: " + right);
+		}
+	}
 }
