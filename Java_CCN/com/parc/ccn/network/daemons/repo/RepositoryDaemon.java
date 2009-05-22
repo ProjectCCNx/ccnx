@@ -325,14 +325,22 @@ public class RepositoryDaemon extends Daemon {
 				}
 				
 				/*
-				 * For now just send back all the names we have in one package
-				 * Possibly later we may want to make sure they match
+				 * For now just send back all the names we have. 
+				 * Possibly later we may want to make sure they match.
+				 * Don't put too many or we'll overflow the ContentObject
 				 */
+				int count = 0;
 				for (ContentObject co : listener.getUnacked()) {
 					names.add(co.name());
+					if (++count > 20) {
+						Library.logger().finer("Acking " + co.name());
+						_writer.put(interest.name(), _repo.getRepoInfo(names));
+						names.clear();
+						count = 0;
+					}
 				}
-				listener.getUnacked().clear();
 				_writer.put(interest.name(), _repo.getRepoInfo(names));
+				listener.getUnacked().clear();
 				break;
 			}
 		}

@@ -34,7 +34,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		for (Interest interest : interests) {
 			try {
 				byte[] marker = interest.name().component(interest.name().count() - 2);
-				Library.logger().finer("marker is " + new String(marker) + " in " + interest.name());
+				Library.logger().fine("marker is " + new String(marker) + " in " + interest.name());
 				if (Arrays.equals(marker, CCNBase.REPO_START_WRITE)) {
 					startReadProcess(interest);
 				} else if (Arrays.equals(marker, CCNBase.REPO_REQUEST_ACK)) {	

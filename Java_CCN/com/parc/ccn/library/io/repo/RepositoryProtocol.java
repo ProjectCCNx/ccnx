@@ -42,6 +42,7 @@ public class RepositoryProtocol extends CCNFlowControl {
 
 		public Interest handleContent(ArrayList<ContentObject> results,
 				Interest interest) {
+			Interest interestToReturn = null;
 			for (ContentObject co : results) {
 				if (co.signedInfo().getType() != ContentType.DATA)
 					continue;
@@ -64,6 +65,17 @@ public class RepositoryProtocol extends CCNFlowControl {
 							break;		// not our repository
 						for (ContentName name : repoInfo.getNames())
 							ack(name);
+						// We have to keep the data handler associated with this nonce alive
+						// as long as data may be sent on it. Otherwise, with the current code
+						// we would lose ACKs and never be able to retrieve them. Right now
+						// I am just using the arbitrary value of 20 acks per packet and sending
+						// a packet with less to indicate the end of the acks associated with this
+						// nonce. Since the ack protocol will change soon - not bothering to
+						// make this cleaner
+						if (repoInfo.getNames().size() < 20) {
+							_ackInterests.remove(interest);
+						} else
+							interestToReturn = interest;
 						break;
 					default:
 						break;
@@ -73,7 +85,7 @@ public class RepositoryProtocol extends CCNFlowControl {
 					e.printStackTrace();
 				}
 			}
-			return null;
+			return interestToReturn;
 		}
 	}
 
@@ -111,6 +123,7 @@ public class RepositoryProtocol extends CCNFlowControl {
 	public ContentObject put(ContentObject co) throws IOException {
 		super.put(co);
 		if (_useAck) {
+			Library.logger().finer("Unacked: " + co.name());
 			_unacked.put(co.name(), co);
 			if (++_blocksSinceAck > ACK_BLOCK_SIZE) {
 				sendAckRequest();
@@ -125,7 +138,7 @@ public class RepositoryProtocol extends CCNFlowControl {
 	 * @param co
 	 */
 	public void ack(ContentName name) {
-		Library.logger().finer("Handling ACK " + name);
+		Library.logger().fine("Handling ACK " + name);
 		if (_unacked.get(name) != null) {
 			ContentObject co = _unacked.get(name);
 			Library.logger().finest("CO " + co.name() + " acked");
