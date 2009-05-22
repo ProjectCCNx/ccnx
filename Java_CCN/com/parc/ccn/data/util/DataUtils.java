@@ -5,9 +5,9 @@ import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 
+import org.bouncycastle.util.encoders.Base64;
+
 import com.parc.ccn.config.SystemConfiguration;
-import com.sun.org.apache.xml.internal.security.exceptions.Base64DecodingException;
-import com.sun.org.apache.xml.internal.security.utils.Base64;
 
 public class DataUtils {
 
@@ -109,14 +109,10 @@ public class DataUtils {
 	 * we use change depending on what ships with Java.
 	 */
 	public static byte [] base64Decode(byte [] input) throws IOException {
-		try {
-			return Base64.decode(input);
-		} catch (Base64DecodingException e) {
-			throw new IOException("Exception in base64 decoding: " + e.getMessage());
-		}
+		return Base64.decode(input);
 	}
 	
-	public static String base6Encode(byte [] input) {
+	public static byte [] base6Encode(byte [] input) {
 		return Base64.encode(input);
 	}
 
