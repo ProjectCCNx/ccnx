@@ -11,6 +11,8 @@
 #include <ccn/charbuf.h>
 #include <ccn/uri.h>
 
+#define FF 0xff
+
 /*
  * This appends a tagged, valid, fully-saturated Bloom filter, useful for
  * excluding everything between two 'fenceposts' in an Exclude construct.
@@ -57,7 +59,7 @@ static void
 append_future_vcomp(struct ccn_charbuf *templ)
 {
     /* A distant future version stamp */
-    const unsigned char b[8] = {CCN_MARKER_VERSION, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+    const unsigned char b[8] = {CCN_MARKER_VERSION, FF, FF, FF, FF, FF, FF};
     ccn_charbuf_append_tt(templ, CCN_DTAG_Component, CCN_DTAG);
     ccn_charbuf_append_tt(templ, sizeof(b), CCN_BLOB);
     ccn_charbuf_append(templ, b, sizeof(b));
@@ -79,7 +81,10 @@ resolve_templ(struct ccn_charbuf *templ, unsigned const char *vcomp, int size)
     ccn_charbuf_append_closer(templ); /* </Name> */
     ccn_charbuf_append_tt(templ, CCN_DTAG_Exclude, CCN_DTAG);
     append_bf_all(templ);
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Component, CCN_DTAG);
+    ccn_charbuf_append_tt(templ, size, CCN_BLOB);
     ccn_charbuf_append(templ, vcomp, size);
+    ccn_charbuf_append_closer(templ); /* </Component> */
     append_future_vcomp(templ);
     append_bf_all(templ);
     ccn_charbuf_append_closer(templ); /* </Exclude> */
@@ -111,17 +116,19 @@ ccn_resolve_highest_version(struct ccn *h, struct ccn_charbuf *name, int timeout
     int n = ccn_name_split(name, NULL);
     struct ccn_indexbuf *nix = ccn_indexbuf_create();
     int nco;
+    unsigned char lowtime[7] = {CCN_MARKER_VERSION, 0, FF, FF, FF, FF, FF};
     
     n = ccn_name_split(name, nix);
     if (n < 0)
         goto Finish;
+    templ = resolve_templ(templ, lowtime, sizeof(lowtime));
     result->length = 0;
     res = ccn_get(h, name, -1, templ, timeout_ms, result, pco, ndx);
     while (result->length != 0) {
-        nco = pco->offset[CCN_PCO_B_Name] + name->length - 1;
-        res = ccn_ref_tagged_BLOB(CCN_DTAG_Component, result->buf, nco, pco->offset[CCN_PCO_E_Name], &vers, &vers_size);
-        if (res < 0) break;
-        if (3 <= vers_size && vers_size <= 8 && vers[0] == CCN_MARKER_VERSION) {
+        res = ccn_name_comp_get(result->buf, ndx, n, &vers, &vers_size);
+        if (res < 0)
+            break;
+        if (vers_size == 7 && vers[0] == CCN_MARKER_VERSION) {
             /* Looks like we have versions. */
             res = ccn_name_chop(name, nix, n);
             if (res != n) abort();
