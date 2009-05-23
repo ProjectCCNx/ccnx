@@ -30,6 +30,7 @@ CSRC = ccn_buf_decoder.c ccn_dtag_table.c ccn_buf_encoder.c ccn_charbuf.c \
     ccn_ccnbtoxml.c ccn_xmltoccnb.c ccn_splitccnb.c \
     ccn_schedule.c ccn_matrix.c ccn_bloom.c ccn_name_util.c \
     ccn_match.c ccn_digest.c ccn_keystore.c ccn_signing.c \
+    ccn_versioning.c \
     ccn_bulkdata.c \
     ccn_merkle_path_asn1.c \
     skel_decode_test.c \
@@ -144,8 +145,8 @@ ccnbuzz: ccnbuzz.o
 ccnput: ccnput.o
 	$(CC) $(CFLAGS) -o $@ ccnput.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
-ccnget: ccnget.o
-	$(CC) $(CFLAGS) -o $@ ccnget.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+ccnget: ccnget.o ccn_versioning.o
+	$(CC) $(CFLAGS) -o $@ ccnget.o ccn_versioning.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccnhexdumpdata: ccnhexdumpdata.o
 	$(CC) $(CFLAGS) -o $@ ccnhexdumpdata.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
@@ -220,6 +221,9 @@ ccn_keystore.o: ccn_keystore.c ../include/ccn/keystore.h
 ccn_signing.o: ccn_signing.c ../include/ccn/merklepathasn1.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/signing.h
+ccn_versioning.o: ccn_versioning.c ../include/ccn/bloom.h \
+  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccn_bulkdata.o: ccn_bulkdata.c ../include/ccn/bloom.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h

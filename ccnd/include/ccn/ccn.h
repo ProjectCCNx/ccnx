@@ -199,10 +199,10 @@ int ccn_name_split(struct ccn_charbuf *c, struct ccn_indexbuf* components);
 /*
  * ccn_name_chop: Chop the name down to n components.
  * returns -1 for error, otherwise the new number of Components
- * components arg may be NULL, if provided it must be consistent with the c
- * and is updated accordingly.
+ * components arg may be NULL; if provided it must be consistent with
+ * some prefix of the name, and is updated accordingly.
  * n may be negative to say how many components to remove instead of how
- * many to leave.
+ * many to leave, e.g. -1 will remove just the last component.
  */
 int ccn_name_chop(struct ccn_charbuf *c, struct ccn_indexbuf* components, int n);
 

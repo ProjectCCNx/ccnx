@@ -151,8 +151,10 @@ ccn_name_chop(struct ccn_charbuf *c, struct ccn_indexbuf *components, int n)
         ccn_indexbuf_destroy(&components);
         return(res);
     }
+    /* Fix up components if needed. We could be a little smarter about this. */
     if (components->n == 0 || components->buf[components->n-1] + 1 != c->length)
-        return(-1);
+        if (ccn_name_split(c, components) < 0)
+            return(-1);
     if (n < 0)
         n += (components->n - 1); /* APL-style indexing */
     if (n < 0)
