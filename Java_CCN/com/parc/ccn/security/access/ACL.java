@@ -13,6 +13,11 @@ import com.parc.ccn.data.util.CCNEncodableObject;
 import com.parc.ccn.library.CCNLibrary;
 
 public class ACL extends CollectionData {
+	
+	public static final String LABEL_READER = "r";
+	public static final String LABEL_WRITER = "rw";
+	public static final String LABEL_MANAGER = "rw+";
+	public static final String [] ROLE_LABELS = {LABEL_READER, LABEL_WRITER, LABEL_MANAGER};
 
 	public static class ACLObject extends CCNEncodableObject<ACL> {
 
@@ -44,7 +49,31 @@ public class ACL extends CollectionData {
 
 	public ACL(ArrayList<LinkReference> contents) {
 		super(contents);
-		// TODO Auto-generated constructor stub
+		if (!validate()) {
+			throw new IllegalArgumentException("Invalid contents for ACL.");
+		}
+	}
+	
+	@Override
+	public void add(LinkReference link) {
+		if (validLabel(link))
+			super.add(link);
+		throw new IllegalArgumentException("Invalid label: " + link.targetLabel());
+	}
+	
+	public boolean validLabel(LinkReference lr) {
+		return LABEL_MANAGER.contains(lr.targetLabel());
 	}
 
+	@Override
+	public boolean validate() {
+		if (!super.validate())
+			return false;
+		for (LinkReference lr : contents()) {
+			if ((null == lr.targetLabel()) || (!validLabel(lr))) {
+				return false;
+			}
+		}
+		return true;
+	}
 }
