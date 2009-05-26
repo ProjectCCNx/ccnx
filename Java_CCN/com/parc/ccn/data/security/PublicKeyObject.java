@@ -26,6 +26,8 @@ import com.parc.security.crypto.certificates.CryptoUtil;
  * using their serialization interface, the output will contain metadata only
  * readable via the Java serialization interface. We want to write raw encoded
  * keys. So have to override the serialization behavior.
+ * 
+ * TODO what to do with LINKs that point to public keys.
  * @author smetters
  *
  */
