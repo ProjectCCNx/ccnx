@@ -107,4 +107,9 @@ public class NodeKey {
 	public static byte [] generateKeyID(byte [] key) {
 		return CCNDigestHelper.digest(key);
 	}
+
+	public NodeKey getPreviousKey() {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }
