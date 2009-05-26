@@ -48,6 +48,10 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 		_contents.add(content);
 	}
 	
+	public void add(ArrayList<LinkReference> contents) {
+		_contents.addAll(contents);
+	}
+	
 	public void remove(int i) {
 		_contents.remove(i);
 	}
@@ -58,6 +62,10 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 	
 	public void remove(Link content) {
 		_contents.remove(content.getReference());
+	}
+	
+	public void removeAll() {
+		_contents.clear();
 	}
 	
 	public int size() { return _contents.size(); }
