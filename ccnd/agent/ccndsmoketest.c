@@ -28,6 +28,8 @@
 
 #include <ccn/ccnd.h>
 
+char rawbuf[1024*1024];
+
 static void
 printraw(char *p, int n)
 {
@@ -142,21 +144,62 @@ open_socket(const char *host, const char *portstr, int sock_type)
     return (sock);
 }
 
-char rawbuf[1024*1024];
+static void
+send_ccnb_file(int sock, FILE *msgs, const char *filename)
+{
+    ssize_t rawlen;
+    ssize_t sres;
+    int fd = 0;
+    int truncated = 0;
+    char onemore[1] = {0};
+    
+    if (strcmp(filename, "-") != 0) {
+        fd = open(filename, O_RDONLY);
+        if (fd == -1) {
+            perror(filename);
+            exit(-1);
+        }
+    }
+    rawlen = read(fd, rawbuf, sizeof(rawbuf));
+    if (rawlen == -1) {
+        perror(filename);
+        exit(-1);
+    }
+    if (rawlen == sizeof(rawbuf))
+        truncated = read(fd, onemore, 1);
+    if (fd != 0)
+        close(fd);
+    if (rawlen == 0)
+        return;
+    if (truncated)
+        fprintf(msgs, "TRUNCATED ");
+    fprintf(msgs, "send %s (%lu bytes)\n", filename, (unsigned long)rawlen);
+    sres = send(sock, rawbuf, rawlen, 0);
+    if (sres == -1) {
+        perror("send");
+        exit(1);
+    }
+}
+
+static int
+is_ccnb_name(const char *s)
+{
+    size_t len = strlen(s);
+    return (len > 5 && 0 == strcasecmp(s + len - 5, ".ccnb"));
+}
+
 int main(int argc, char **argv)
 {
     struct sockaddr_un addr = {0};
     int c;
     struct pollfd fds[1];
     int res;
-    ssize_t sres;
     ssize_t rawlen;
     int sock;
     char *filename = NULL;
     const char *portstr;
     int msec = 1000;
     int argp;
-    int fd;
     FILE *msgs = stdout;
     int binout = 0;
     int udp = 0;
@@ -181,6 +224,7 @@ int main(int argc, char **argv)
                             " [-u udphost] "
                             " [-t millisconds] "
                             " ( send <filename>"
+                            " | <sendfilename>.ccnb"
                             " | recv"
                             " | kill"
                             " | timeo <millisconds>"
@@ -205,30 +249,11 @@ int main(int argc, char **argv)
                 filename = "-";
             else
                 argp++;
-            if (strcmp(filename, "-") == 0)
-                fd = 0;
-            else {
-                fd = open(filename, O_RDONLY);
-                if (fd == -1) {
-                    perror(filename);
-                    exit(-1);
-                }
-            }
-            rawlen = read(fd, rawbuf, sizeof(rawbuf));
-            if (rawlen == -1) {
-                perror(filename);
-                exit(-1);
-            }
-            if (fd != 0)
-                close(fd);
-            if (rawlen == 0)
-                continue;
-            fprintf(msgs, "send %s (%lu bytes)\n", filename, (unsigned long)rawlen);
-            sres = send(sock, rawbuf, rawlen, 0);
-            if (sres == -1) {
-                perror("send");
-                exit(1);
-            }
+        send_ccnb_file(sock, msgs, filename);
+        }
+        else if (is_ccnb_name(argv[argp])) {
+            filename = argv[argp];
+            send_ccnb_file(sock, msgs, filename);
         }
         else if (0 == strcmp(argv[argp], "recv")) {
             res = poll(fds, 1, msec);
