@@ -10,11 +10,13 @@ import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.query.BasicNameEnumeratorListener;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.network.daemons.repo.RepositoryInfo;
 
 /**
@@ -31,12 +33,13 @@ public class RepositoryProtocol extends CCNFlowControl {
 	protected boolean _useAck = true;
 	protected TreeMap<ContentName, ContentObject> _unacked = new TreeMap<ContentName, ContentObject>();
 	protected int _blocksSinceAck = 0;
-	protected ArrayList<Interest> _ackInterests = new ArrayList<Interest>();
 	protected String _repoName = null;
 	protected String _repoPrefix = null;
 	protected ContentName _baseName; // the name prefix under which we are writing content
 	protected RepoListener _listener = null;
 	protected Interest _writeInterest = null;
+	protected CCNNameEnumerator _ackne;
+	protected RepoAckHandler _ackHandler;
 
 	private class RepoListener implements CCNInterestListener {
 
@@ -72,10 +75,6 @@ public class RepositoryProtocol extends CCNFlowControl {
 						// a packet with less to indicate the end of the acks associated with this
 						// nonce. Since the ack protocol will change soon - not bothering to
 						// make this cleaner
-						if (repoInfo.getNames().size() < 20) {
-							_ackInterests.remove(interest);
-						} else
-							interestToReturn = interest;
 						break;
 					default:
 						break;
@@ -86,6 +85,16 @@ public class RepositoryProtocol extends CCNFlowControl {
 				}
 			}
 			return interestToReturn;
+		}
+	}
+	
+	private class RepoAckHandler implements BasicNameEnumeratorListener {
+
+		public int handleNameEnumerator(ContentName prefix,
+				ArrayList<ContentName> names) {
+			for (ContentName name : names)
+				ack(name);
+			return names.size();
 		}
 	}
 
@@ -101,6 +110,9 @@ public class RepositoryProtocol extends CCNFlowControl {
 		_listener = new RepoListener();
 		_writeInterest = new Interest(repoWriteName);
 		_library.expressInterest(_writeInterest, _listener);
+		_ackHandler = new RepoAckHandler();
+		_ackne = new CCNNameEnumerator(_library, _ackHandler);
+		_ackne.registerPrefix(name);
 		
 		/*
 		 * Wait for information to be returned from a repo
@@ -125,10 +137,6 @@ public class RepositoryProtocol extends CCNFlowControl {
 		if (_useAck) {
 			Library.logger().finer("Unacked: " + co.name());
 			_unacked.put(co.name(), co);
-			if (++_blocksSinceAck > ACK_BLOCK_SIZE) {
-				sendAckRequest();
-				_blocksSinceAck = 0;
-			}
 		}
 		return co;
 	}
@@ -158,16 +166,6 @@ public class RepositoryProtocol extends CCNFlowControl {
 		return _useAck ? _unacked.size() == 0 : true;
 	}
 	
-	public void sendAckRequest() throws IOException {
-		if (_unacked.size() > 0) {
-			ContentName repoAckName = new ContentName(_baseName, CCNBase.REPO_REQUEST_ACK, CCNLibrary.nonce());
-			Interest ackInterest = new Interest(repoAckName);
-			_ackInterests.add(ackInterest);
-			Library.logger().info("Sending ACK request with " + _unacked.size() + " unacknowledged content objects");
-			_library.expressInterest(ackInterest, _listener);
-		}
-	}
-	
 	/**
 	 * Even though we should have output all the data by the time we got here
 	 * (due to call of waitForPutDrain) there are still timing pitfalls as the repo may still
@@ -179,7 +177,6 @@ public class RepositoryProtocol extends CCNFlowControl {
 	public void close() throws IOException {
 		synchronized(this) {
 			while (!flushComplete()) {
-				sendAckRequest();
 				int unacked = _unacked.size();
 				boolean interrupted;
 				do {
@@ -204,9 +201,6 @@ public class RepositoryProtocol extends CCNFlowControl {
 	private void cancelInterests() {
 		if (_writeInterest != null)
 			_library.cancelInterest(_writeInterest, _listener);
-		for (Interest interest : _ackInterests) {
-			_library.cancelInterest(interest, _listener);
-		}
 	}
 
 }
