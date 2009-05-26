@@ -1,1 +1,7 @@
-echo ":-)"
+AFTER : test_single_ccnd
+BEFORE : test_single_ccnd_teardown
+
+echo ':-)' | ccnput /test/happy/face || Fail ':-('
+ccnget -c /test/happy/face | tee happyface.out || Fail ':-/'
+echo ':-)' | diff - happyface.out || Fail
+rm happyface.out

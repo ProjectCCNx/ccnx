@@ -188,6 +188,25 @@ enum ccn_marker {
 int ccn_name_append_numeric(struct ccn_charbuf *c,
                             enum ccn_marker tag, uintmax_t value);
 
+/*
+ * ccn_name_split: find Component boundaries in a ccnb-encoded Name
+ * Thin veneer over ccn_parse_Name().
+ * returns -1 for error, otherwise the number of Components
+ * components arg may be NULL to just do a validity check
+ */
+int ccn_name_split(struct ccn_charbuf *c, struct ccn_indexbuf* components);
+
+/*
+ * ccn_name_chop: Chop the name down to n components.
+ * returns -1 for error, otherwise the new number of Components
+ * components arg may be NULL; if provided it must be consistent with
+ * some prefix of the name, and is updated accordingly.
+ * n may be negative to say how many components to remove instead of how
+ * many to leave, e.g. -1 will remove just the last component.
+ */
+int ccn_name_chop(struct ccn_charbuf *c, struct ccn_indexbuf* components, int n);
+
+
 /***********************************
  * Authenticators and signatures for content are constructed in charbufs
  * using the following routines.
@@ -334,30 +353,6 @@ int ccn_get(struct ccn *h,
             struct ccn_parsed_ContentObject *pcobuf,
             struct ccn_indexbuf *compsbuf);
 
-/***********************************
- * Bulk data
- */
-
-/*
- * The client provides a ccn_seqfunc * (and perhaps a matching param)
- * to specify the scheme for naming the content items in the sequence.
- * Given the sequence number x, it should place in resultbuf the
- * corresponding blob that that will be used in the final explicit
- * Component of the Name of item x in the sequence.  This should
- * act as a mathematical function, returning the same answer for a given x.
- * (Ususally param will be NULL, but is provided in case it is needed.)
- */
-typedef void ccn_seqfunc(uintmax_t x, void *param,
-                         struct ccn_charbuf *resultbuf);
-
-/*
- * Ready-to-use sequencing functions
- */
-extern ccn_seqfunc ccn_decimal_seqfunc;
-extern ccn_seqfunc ccn_binary_seqfunc;
-
-
-
 
 /***********************************
  * Binary decoding
@@ -434,7 +429,6 @@ enum ccn_parsed_interest_offsetid {
     CCN_PI_B_Component0,
     CCN_PI_B_LastPrefixComponent,
     CCN_PI_E_LastPrefixComponent,
-    // CCN_PI_B_ComponentLast,
     CCN_PI_E_ComponentLast,
     CCN_PI_E_Name,
     CCN_PI_B_NameComponentCount /* = CCN_PI_E_Name */,
@@ -560,6 +554,12 @@ int ccn_parse_ContentObject(const unsigned char *msg, size_t size,
 
 void ccn_digest_ContentObject(const unsigned char *msg,
                               struct ccn_parsed_ContentObject *pc);
+/*
+ * ccn_parse_Name: Parses a ccnb-encoded name
+ * components may be NULL, otherwise is filled in with Component boundary offsets
+ * Returns the number of Components in the Name, or -1 if there is an error.
+ */
+int ccn_parse_Name(struct ccn_buf_decoder *d, struct ccn_indexbuf *components);
 
 /*
  * ccn_compare_names:
@@ -590,7 +590,7 @@ int ccn_compare_names(const unsigned char *a, size_t asize,
  * used by ccn_compare_names();
  */
 int ccn_name_comp_strcmp(const unsigned char *data,
-                         const struct ccn_indexbuf* indexbuf,
+                         const struct ccn_indexbuf *indexbuf,
                          unsigned int i,
                          const char *val);
 
@@ -642,10 +642,12 @@ int ccn_encode_ContentObject(struct ccn_charbuf *buf,
  */
 
 int ccn_encode_Content(struct ccn_charbuf *buf,
-			     const void *data,
-			     size_t size);
+                       const void *data,
+                       size_t size);
 
-const char *ccn_content_name(enum ccn_content_type type);
+/***********************************
+ * Matching
+ */
 
 /*
  * ccn_content_matches_interest: Test for a match
@@ -673,7 +675,7 @@ int ccn_content_matches_interest(const unsigned char *content_object,
  * ccn_perror: produce message on standard error output describing the last
  * error encountered during a call using the given handle.
  */
-void ccn_perror(struct ccn *h, const char * s);
+void ccn_perror(struct ccn *h, const char *s);
 
 
 /***********************************

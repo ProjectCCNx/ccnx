@@ -10,7 +10,7 @@ COPT = -g
 INSTALLED_PROGRAMS = \
     ccn_ccnbtoxml ccn_splitccnb ccntimestamps ccndumpnames ccnrm ccnls ccnslurp ccncat \
     ccnsendchunks ccncatchunks ccncatchunks2 \
-    ccnget ccnhexdumpdata $(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)
+    ccnput ccnget ccnhexdumpdata $(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)
 
 PROGRAMS = $(INSTALLED_PROGRAMS) \
     ccn_verifysig \
@@ -30,6 +30,7 @@ CSRC = ccn_buf_decoder.c ccn_dtag_table.c ccn_buf_encoder.c ccn_charbuf.c \
     ccn_ccnbtoxml.c ccn_xmltoccnb.c ccn_splitccnb.c \
     ccn_schedule.c ccn_matrix.c ccn_bloom.c ccn_name_util.c \
     ccn_match.c ccn_digest.c ccn_keystore.c ccn_signing.c \
+    ccn_versioning.c \
     ccn_bulkdata.c \
     ccn_merkle_path_asn1.c \
     skel_decode_test.c \
@@ -37,7 +38,7 @@ CSRC = ccn_buf_decoder.c ccn_dtag_table.c ccn_buf_encoder.c ccn_charbuf.c \
     smoketestclientlib.c ccntimestamps.c ccndump.c ccnrm.c ccndumpnames.c \
     ccnls.c ccnslurp.c ccncat.c \
     ccn_verifysig.c dataresponsetest.c ccn_uri.c  encodedecodetest.c \
-    ccnsendchunks.c ccncatchunks.c ccncatchunks2.c ccnbuzz.c ccnget.c ccnhexdumpdata.c \
+    ccnsendchunks.c ccncatchunks.c ccncatchunks2.c ccnbuzz.c ccnput.c ccnget.c ccnhexdumpdata.c \
     signbenchtest.c ccndumppcap.c
 
 LIBS = libccn.a
@@ -141,8 +142,11 @@ ccncatchunks2: ccncatchunks2.o
 ccnbuzz: ccnbuzz.o
 	$(CC) $(CFLAGS) -o $@ ccnbuzz.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
-ccnget: ccnget.o
-	$(CC) $(CFLAGS) -o $@ ccnget.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+ccnput: ccnput.o
+	$(CC) $(CFLAGS) -o $@ ccnput.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+
+ccnget: ccnget.o ccn_versioning.o
+	$(CC) $(CFLAGS) -o $@ ccnget.o ccn_versioning.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccnhexdumpdata: ccnhexdumpdata.o
 	$(CC) $(CFLAGS) -o $@ ccnhexdumpdata.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
@@ -217,6 +221,9 @@ ccn_keystore.o: ccn_keystore.c ../include/ccn/keystore.h
 ccn_signing.o: ccn_signing.c ../include/ccn/merklepathasn1.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/signing.h
+ccn_versioning.o: ccn_versioning.c ../include/ccn/bloom.h \
+  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccn_bulkdata.o: ccn_bulkdata.c ../include/ccn/bloom.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h
@@ -276,6 +283,9 @@ ccncatchunks2.o: ccncatchunks2.c ../include/ccn/bloom.h \
 ccnbuzz.o: ccnbuzz.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
+ccnput.o: ccnput.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h \
+  ../include/ccn/keystore.h ../include/ccn/signing.h
 ccnget.o: ccnget.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h

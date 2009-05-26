@@ -11,6 +11,9 @@
 #include <ccn/charbuf.h>
 #include <ccn/uri.h>
 
+int
+ccn_resolve_highest_version(struct ccn *h, struct ccn_charbuf *name, int timeout_ms);
+
 static void
 usage(const char *progname)
 {
@@ -38,14 +41,18 @@ main(int argc, char **argv)
     int content_only = 0;
     const unsigned char *ptr;
     size_t length;
+    int resolve_version = 0;
     
-    while ((ch = getopt(argc, argv, "hac")) != -1) {
+    while ((ch = getopt(argc, argv, "hacv")) != -1) {
         switch (ch) {
             case 'a':
                 allow_stale = 1;
                 break;
             case 'c':
                 content_only = 1;
+                break;
+            case 'v':
+                resolve_version = 1;
                 break;
             case 'h':
             default:
@@ -75,6 +82,15 @@ main(int argc, char **argv)
         ccn_charbuf_append_closer(templ); /* </Interest> */
     }
     resultbuf = ccn_charbuf_create();
+    if (resolve_version) {
+        res = ccn_resolve_highest_version(NULL, name, 500);
+        if (res >= 0) {
+            ccn_uri_append(resultbuf, name->buf, name->length, 1);
+            fprintf(stderr, "== %s\n",
+                            ccn_charbuf_as_string(resultbuf));
+            resultbuf->length = 0;
+        }
+    }
     res = ccn_get(NULL, name, -1, templ, 3000, resultbuf, &pcobuf, NULL);
     if (res >= 0) {
         ptr = resultbuf->buf;
