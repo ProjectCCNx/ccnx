@@ -174,7 +174,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 */
 	public void save(ContentName name) throws XMLStreamException, IOException {
 		// move object to this name
-		// TODO
 		// need to make sure we get back the actual name we're using,
 		// even if output stream does automatic versioning
 		// probably need to refactor save behavior -- right now, internalWriteObject
@@ -201,6 +200,16 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		setPotentiallyDirty(false);
 	}
 	
+	public void save(E data) throws XMLStreamException, IOException {
+		setData(data);
+		save();
+	}
+	
+	public void save(ContentName name, E data) throws XMLStreamException, IOException {
+		setData(data);
+		save(name);
+	}
+
 	/**
 	 * Save this object as GONE. Intended to mark the latest version, rather
 	 * than a specific version as GONE. So for now, require that name handed in

@@ -97,6 +97,8 @@ public abstract class NetworkObject<E> {
 	 * mark the object as _potentiallyDirty.
 	 */
 	protected E data() { return _data; }
+	
+	protected void setData(E data) { _data = data; }
 
 	/**
 	 * Base behavior -- always write when asked.
