@@ -5,8 +5,11 @@ import java.security.PublicKey;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 
+import javax.xml.stream.XMLStreamException;
+
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.content.CollectionData;
 import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.security.PublicKeyObject;
 import com.parc.ccn.library.CCNLibrary;
@@ -16,6 +19,9 @@ import com.parc.ccn.library.profiles.VersioningProfile;
 
 public class Group {
 	
+	// Right now dynamically load both public key and membership list.
+	// For efficiency might want to only load public key, and pull membership
+	// list only when we need to.
 	private ContentName _groupNamespace;
 	private PublicKeyObject _groupPublicKey;
 	private MembershipList _groupMembers; 
@@ -92,14 +98,68 @@ public class Group {
 		return null;
 	}
 
-	public void setMembershipList(ArrayList<LinkReference> newMembers) {
-		// TODO Auto-generated method stub
-		
+	public void setMembershipList(ArrayList<LinkReference> newMembers) throws XMLStreamException, IOException {
+		// need to figure out if we need to know private key; if we do and we don't, throw access denied.
+		// We're deleting anyone that exists
+		if (!_groupMembers.isGone() && _groupMembers.ready() && (_groupMembers.membershipList().contents().size() > 0)) {
+			// There were already members. Remove them and make a new key.
+			_groupMembers.membershipList().removeAll();
+			_groupMembers.membershipList().add(newMembers);
+			// Don't save till we know we can update private key.
+			// If we can't update the private key, this will throw AccessDeniedException.
+			newGroupPublicKey(friendlyName(), _groupMembers);
+			_groupMembers.save();
+		} else {
+			// No existing members. Just add. Don't have to make  a new key if one exists,
+			// just rewrap it for existing members.
+			if (null == _groupMembers.membershipList()) {
+				_groupMembers.save(new CollectionData(newMembers));
+			} else {
+				_groupMembers.membershipList().add(newMembers);
+				_groupMembers.save();
+			}
+			if (null != _groupPublicKey.publicKey()) {
+				_
+			}
+		}
 	}
 
 	public static PublicKeyObject newGroupPublicKey(String groupFriendlyName,
 			MembershipList ml) {
 		// TODO Auto-generated method stub
 		return null;
+	}
+	
+	@Override
+	public String toString() {
+		// Print useful name and version information.
+		StringBuffer sb = new StringBuffer("Group ");
+		sb.append(friendlyName());
+		sb.append(": public key: ");
+		if (!_groupPublicKey.ready()) {
+			sb.append("not ready, write to " + 
+					AccessControlProfile.groupPublicKeyName(_groupNamespace, friendlyName()));
+		} else {
+			sb.append(publicKeyName());
+		}
+		sb.append(" membership list: ");
+		if (!_groupMembers.ready()) {
+			sb.append("not ready, write to " + 
+					AccessControlProfile.groupMembershipListName(_groupNamespace, friendlyName()));
+		} else {
+			sb.append(membershipListName());
+		}
+		return sb.toString();
+	}
+
+	public void modify(ArrayList<LinkReference> membersToAdd,
+			ArrayList<LinkReference> membersToRemove) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	public void delete() {
+		// TODO Auto-generated method stub
+		
 	}
 }
