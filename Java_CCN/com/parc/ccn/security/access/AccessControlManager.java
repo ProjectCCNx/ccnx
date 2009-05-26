@@ -277,25 +277,48 @@ public class AccessControlManager {
 		}
 	}
 	
-	public Group modifyGroup(String friendlyName, ArrayList<LinkReference> membersToAdd, ArrayList<LinkReference> membersToRemove) {
-		// TODO
-		return null;
+	public Group modifyGroup(String friendlyName, ArrayList<LinkReference> membersToAdd, ArrayList<LinkReference> membersToRemove) throws XMLStreamException, IOException {
+		Group theGroup = getGroup(friendlyName);
+		
+		// DKS we really want to be sure we get the group if it's out there...
+		if (null != theGroup) {
+			Library.logger().info("Got existing group to modify: " + theGroup);
+			theGroup.modify(membersToAdd, membersToRemove);
+		} else {
+			Library.logger().info("No existing group to modify: " + friendlyName + " adding new one.");
+			theGroup = createGroup(friendlyName, membersToAdd);
+		}
+		return theGroup;
 	}
 	
-	public Group addUsers(String friendlyName, ArrayList<LinkReference> newUsers) {
+	public Group addUsers(String friendlyName, ArrayList<LinkReference> newUsers) throws XMLStreamException, IOException {
 		return modifyGroup(friendlyName, newUsers, null);
 	}
 	
-	public Group removeUsers(String friendlyName, ArrayList<LinkReference> removedUsers) {
+	public Group removeUsers(String friendlyName, ArrayList<LinkReference> removedUsers) throws XMLStreamException, IOException {
 		return modifyGroup(friendlyName, null, removedUsers);
 	}
 	
-	public void deleteGroup(String friendlyName) {
-		// TODO		
+	public void deleteGroup(String friendlyName) throws IOException {
+		Group existingGroup = getGroup(friendlyName);
+		
+		// DKS we really want to be sure we get the group if it's out there...
+		if (null != existingGroup) {
+			Library.logger().info("Got existing group to delete: " + existingGroup);
+			existingGroup.delete();
+		} else {
+			Library.logger().warning("No existing group: " + friendlyName + ", ignoring delete request.");
+		}
 	}
 	
-	public boolean isGroupMember(LinkReference member) {
-		
+	/**
+	 * Does this member refer to a user or a group. Groups have to be in the
+	 * group namespace, users can be anywhere.
+	 * @param member
+	 * @return
+	 */
+	public boolean isGroup(LinkReference member) {
+		return _groupStorage.isPrefixOf(member.targetName());
 	}
 	
 	/**
@@ -405,8 +428,8 @@ public class AccessControlManager {
 		generateNewNodeKey(nodeName, effectiveNodeKey, newACL);
 		// write the acl
 		ACLObject aclo = new ACLObject(AccessControlProfile.aclName(nodeName), newACL, _library);
+		// DKS FIX REPO WRITE
 		aclo.save();
-		// DKS TODO aggregating signer and group flush
 		return aclo.acl();
 	}
 	
@@ -610,7 +633,6 @@ public class AccessControlManager {
 			if (keyDirectory.hasSupersededBlock()) {
 				// We handled pure superseded (removed ACL) above. So we're looking for the latest
 				// version of this node.
-				// TODO DKS -- right name to query for
 				// First we need to figure out what the latest version is of the node key.
 				Library.logger().info("OK, not in cache, finding latest version of key " + nodeKeyName);
 				ContentName latestNodeKeyName = EnumeratedNameList.getLatestVersionName(nodeKeyName, _library);
@@ -690,6 +712,9 @@ public class AccessControlManager {
 				break;
 			}
 		}
+		Library.logger().info("Attempting to retrieve previous node key " + nameOfNodeKeyWeWant + " from node key " + nodeKeyWeHave.nodeName() + 
+				" got " + previousKey);
+		return previousKey;
 	}
 	
 	/**
@@ -796,7 +821,6 @@ public class AccessControlManager {
 	 * @throws InvalidCipherTextException 
 	 */
 	public byte [] getDataKey(ContentName dataNodeName) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException {
-		// DKS TODO -- library/flow control handling
 		WrappedKeyObject wdko = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataNodeName), _library);
 		wdko.update();
 		if (null == wdko.wrappedKey()) {
@@ -865,11 +889,14 @@ public class AccessControlManager {
 	 * Actual output functions. Needs to get this into the repo.
 	 * @param dataNodeName -- the content node for whom this is the data key.
 	 * @param wrappedDataKey
+	 * @throws IOException 
+	 * @throws XMLStreamException 
 	 */
 	private void storeKeyContent(ContentName dataNodeName,
-								 WrappedKey wrappedKey) {
-		// TODO Auto-generated method stub
-		
+								 WrappedKey wrappedKey) throws XMLStreamException, IOException {
+		// DKS FIX FOR REPO
+		WrappedKeyObject wko = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataNodeName), wrappedKey, _library);
+		wko.save();
 	}
 
 }	
