@@ -391,7 +391,6 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	 * a proxy for the content, so we sign the content itself
 	 * directly.  This is used with simple algorithms that don't
 	 * generate a witness.
-	 * DKS -- TODO - do we sign the content or a hash of the content?
 	 * @throws SignatureException 
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
