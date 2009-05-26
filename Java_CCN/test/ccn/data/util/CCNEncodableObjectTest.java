@@ -1,7 +1,5 @@
 package test.ccn.data.util;
 
-import static org.junit.Assert.fail;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InvalidObjectException;
@@ -21,6 +19,7 @@ import test.ccn.data.content.CCNEncodableCollectionData;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.content.CollectionData;
 import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.security.LinkAuthenticator;
@@ -67,16 +66,22 @@ public class CCNEncodableObjectTest {
 	
 	static Level oldLevel;
 	
+	static Flosser flosser = null;
+	
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
 		Library.logger().setLevel(oldLevel);
+		if (flosser != null) {
+			flosser.stop();
+			flosser = null;
+		}
 	}
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		System.out.println("Making stuff.");
 		oldLevel = Library.logger().getLevel();
-	//	Library.logger().setLevel(Level.FINEST);
+		Library.logger().setLevel(Level.FINEST);
 		
 		library = CCNLibrary.open();
 		namespace = ContentName.fromURI(new String[]{baseName, subName, document1});
@@ -117,134 +122,98 @@ public class CCNEncodableObjectTest {
 		for (int i=0; i < NUM_LINKS; ++i) {
 			big.add(lrs[i]);
 		}
+		
+		flosser = new Flosser(namespace);
 	}
 
 	@Test
-	public void testSaveUpdate() {
+	public void testSaveUpdate() throws ConfigurationException, IOException, XMLStreamException, MalformedContentNameStringException {
 		boolean caught = false;
+		CCNEncodableCollectionData emptycoll = new CCNEncodableCollectionData();
+		NullOutputStream nos = new NullOutputStream();
 		try {
-			CCNEncodableCollectionData emptycoll = new CCNEncodableCollectionData();
-			NullOutputStream nos = new NullOutputStream();
 			emptycoll.save(nos);
 		} catch (InvalidObjectException iox) {
 			// this is what we expect to happen
 			caught = true;
-		} catch (IOException ie) {
-			Assert.fail("Unexpected IOException!");
-		} catch (XMLStreamException e) {
-			Assert.fail("Unexpected XMLStreamException!");
-		} catch (ConfigurationException e) {
-			Assert.fail("Unexpected ConfigurationException!");
 		}
 		Assert.assertTrue("Failed to produce expected exception.", caught);
 		
-		Flosser flosser = null;
-		boolean done = false;
-		try {
-			CCNEncodableCollectionData ecd0 = new CCNEncodableCollectionData(namespace, empty, library);
-			CCNEncodableCollectionData ecd1 = new CCNEncodableCollectionData(namespace, small1);
-			CCNEncodableCollectionData ecd2 = new CCNEncodableCollectionData(namespace, small1);
-			CCNEncodableCollectionData ecd3 = new CCNEncodableCollectionData(namespace, big, library);
-			CCNEncodableCollectionData ecd4 = new CCNEncodableCollectionData(namespace, empty, library);
+		CCNEncodableCollectionData ecd0 = new CCNEncodableCollectionData(namespace, empty, library);
+		CCNEncodableCollectionData ecd1 = new CCNEncodableCollectionData(namespace, small1);
+		CCNEncodableCollectionData ecd2 = new CCNEncodableCollectionData(namespace, small1);
+		CCNEncodableCollectionData ecd3 = new CCNEncodableCollectionData(namespace, big, library);
+		CCNEncodableCollectionData ecd4 = new CCNEncodableCollectionData(namespace, empty, library);
 
-			flosser = new Flosser(namespace);
-			flosser.logNamespaces();
-			
-			ecd0.save(ns[2]);
-			System.out.println("Version for empty collection: " + ecd0.getVersion());
-			ecd1.save(ns[1]);
-			ecd2.save(ns[1]); 
-			System.out.println("ecd1 name: " + ecd1.getName());
-			System.out.println("ecd2 name: " + ecd2.getName());
-			System.out.println("Versions for matching collection content: " + ecd1.getVersion() + " " + ecd2.getVersion());
-			Assert.assertFalse(ecd1.equals(ecd2));
-			Assert.assertTrue(ecd1.contentEquals(ecd2));
-			CCNVersionedInputStream vis = new CCNVersionedInputStream(ecd1.getName());
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			byte [] buf = new byte[128];
-			// Will incur a timeout
-			while (!vis.eof()) {
-				int read = vis.read(buf);
-				if (read > 0)
-					baos.write(buf, 0, read);
-			}
-			System.out.println("Read " + baos.toByteArray().length + " bytes, digest: " + 
-					DigestHelper.printBytes(DigestHelper.digest(baos.toByteArray()), 16));
-
-			CollectionData newData = new CollectionData();
-			newData.decode(baos.toByteArray());
-			System.out.println("Decoded collection data: " + newData);
-			
-			CCNVersionedInputStream vis3 = new CCNVersionedInputStream(ecd1.getName());
-			ByteArrayOutputStream baos2 = new ByteArrayOutputStream();
-			// Will incur a timeout
-			while (!vis3.eof()) {
-				int val = vis3.read();
-				if (val < 0)
-					break;
-				baos2.write((byte)val);
-			}
-			System.out.println("Read " + baos2.toByteArray().length + " bytes, digest: " + 
-					DigestHelper.printBytes(DigestHelper.digest(baos2.toByteArray()), 16));
-
-			CollectionData newData3 = new CollectionData();
-			newData3.decode(baos2.toByteArray());
-			System.out.println("Decoded collection data: " + newData3);
-
-			CCNVersionedInputStream vis2 = new CCNVersionedInputStream(ecd1.getName());
-			CollectionData newData2 = new CollectionData();
-			newData2.decode(vis2);
-			System.out.println("Decoded collection data from stream: " + newData);
-
-			ecd0.update(ecd1.getName());
-			Assert.assertEquals(ecd0, ecd1);
-			System.out.println("Update works!");
-			// latest version
-			ecd0.update();
-			Assert.assertEquals(ecd0, ecd2);
-			System.out.println("Update really works!");
-
-			ecd3.save(ns[2]);
-			ecd0.update();
-			ecd4.update(ns[2]);
-			System.out.println("ns[2]: " + ns[2]);
-			System.out.println("ecd3 name: " + ecd3.getName());
-			System.out.println("ecd0 name: " + ecd0.getName());
-			Assert.assertFalse(ecd0.equals(ecd3));
-			Assert.assertEquals(ecd3, ecd4);
-			System.out.println("Update really really works!");
-			
-			ecd0.saveAsGone(ns[2]);
-			ecd0.update();
-			
-			
-			done = true;
-
-		} catch (IOException e) {
-			fail("IOException! " + e.getMessage());
-		} catch (XMLStreamException e) {
-			e.printStackTrace();
-
-			fail("XMLStreamException! " + e.getMessage());
-		} catch (ConfigurationException e) {
-			fail("ConfigurationException! " + e.getMessage());
-		} catch (Exception e) {
-			e.printStackTrace();
-			fail("Exception: " + e.getClass().getName() + ": " + e.getMessage());
-		} finally {
-			try {
-				if (!done) { // if we have an error, stick around long enough to debug
-					Thread.sleep(100000);
-					System.out.println("Done sleeping, finishing.");
-				}
-				flosser.stop();
-				
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-				Assert.fail("Exception " + e.getClass().getName() +": " + e.getMessage());
-			}
-
+		flosser.handleNamespace(ns[2]);
+		flosser.handleNamespace(ns[1]);
+		flosser.logNamespaces();
+		
+		ecd0.save(ns[2]);
+		System.out.println("Version for empty collection: " + ecd0.getVersion());
+		ecd1.save(ns[1]);
+		ecd2.save(ns[1]); 
+		System.out.println("ecd1 name: " + ecd1.getName());
+		System.out.println("ecd2 name: " + ecd2.getName());
+		System.out.println("Versions for matching collection content: " + ecd1.getVersion() + " " + ecd2.getVersion());
+		Assert.assertFalse(ecd1.equals(ecd2));
+		Assert.assertTrue(ecd1.contentEquals(ecd2));
+		CCNVersionedInputStream vis = new CCNVersionedInputStream(ecd1.getName());
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		byte [] buf = new byte[128];
+		// Will incur a timeout
+		while (!vis.eof()) {
+			int read = vis.read(buf);
+			if (read > 0)
+				baos.write(buf, 0, read);
 		}
+		System.out.println("Read " + baos.toByteArray().length + " bytes, digest: " + 
+				DigestHelper.printBytes(DigestHelper.digest(baos.toByteArray()), 16));
+
+		CollectionData newData = new CollectionData();
+		newData.decode(baos.toByteArray());
+		System.out.println("Decoded collection data: " + newData);
+		
+		CCNVersionedInputStream vis3 = new CCNVersionedInputStream(ecd1.getName());
+		ByteArrayOutputStream baos2 = new ByteArrayOutputStream();
+		// Will incur a timeout
+		while (!vis3.eof()) {
+			int val = vis3.read();
+			if (val < 0)
+				break;
+			baos2.write((byte)val);
+		}
+		System.out.println("Read " + baos2.toByteArray().length + " bytes, digest: " + 
+				DigestHelper.printBytes(DigestHelper.digest(baos2.toByteArray()), 16));
+
+		CollectionData newData3 = new CollectionData();
+		newData3.decode(baos2.toByteArray());
+		System.out.println("Decoded collection data: " + newData3);
+
+		CCNVersionedInputStream vis2 = new CCNVersionedInputStream(ecd1.getName());
+		CollectionData newData2 = new CollectionData();
+		newData2.decode(vis2);
+		System.out.println("Decoded collection data from stream: " + newData);
+
+		ecd0.update(ecd1.getName());
+		Assert.assertEquals(ecd0, ecd1);
+		System.out.println("Update works!");
+		// latest version
+		ecd0.update();
+		Assert.assertEquals(ecd0, ecd2);
+		System.out.println("Update really works!");
+
+		ecd3.save(ns[2]);
+		ecd0.update();
+		ecd4.update(ns[2]);
+		System.out.println("ns[2]: " + ns[2]);
+		System.out.println("ecd3 name: " + ecd3.getName());
+		System.out.println("ecd0 name: " + ecd0.getName());
+		Assert.assertFalse(ecd0.equals(ecd3));
+		Assert.assertEquals(ecd3, ecd4);
+		System.out.println("Update really really works!");
+		
+		ecd0.saveAsGone(ns[2]);
+		ecd0.update();
 	}
 }
