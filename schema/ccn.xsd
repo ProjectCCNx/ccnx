@@ -34,6 +34,7 @@
 <xs:complexType name="LinkType">
   <xs:sequence>
     <xs:element name="Name" type="NameType"/>
+	<xs:element name="Label" type="xs:string" minOccurs="0" maxOccurs="1" /> 
     <xs:element name="LinkAuthenticator" type="LinkAuthenticatorType" minOccurs="0" maxOccurs="1"/>
   </xs:sequence>
 </xs:complexType>

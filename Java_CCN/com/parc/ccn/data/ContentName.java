@@ -67,6 +67,20 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		}
 	}
 	
+	public ContentName(ContentName parent, byte [][] childComponents) {
+		this(parent.count() + 
+				((null != childComponents) ? childComponents.length : 0), parent.components());
+		if (null != childComponents) {
+			for (byte [] b : childComponents) {
+				if (null == b)
+					continue;
+				byte [] c = new byte[b.length];
+				System.arraycopy(b,0,c,0,b.length);
+				_components.add(c);
+			}
+		}
+	}
+
 	public ContentName(ContentName parent, byte[] name1, byte[] name2) {
 		this (parent.count() +
 				((null != name1) ? 1 : 0) +
@@ -123,6 +137,15 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 				_components.add(components.get(i));
 			}
 		}
+	}
+	
+	/**
+	 * Copy constructor, also used by subclasses merely wanting a different
+	 * name in encoding/decoding.
+	 * @param otherName
+	 */
+	public ContentName(ContentName otherName) {
+		this(((null == otherName) ? 0 : otherName.count()), ((null == otherName) ? null : otherName.components()));
 	}
 	
 	/**
@@ -719,8 +742,16 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		return componentPrintURI(_components.get(i));
 	}
 	
+	/**
+	 * Allow override to give different element name.
+	 * @return
+	 */
+	public String contentNameElement() { 
+		return CONTENT_NAME_ELEMENT;
+	}
+	
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		decoder.readStartElement(CONTENT_NAME_ELEMENT);
+		decoder.readStartElement(contentNameElement());
 		
 		_components = new ArrayList<byte []>();
 		
@@ -893,7 +924,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 
-		encoder.writeStartElement(CONTENT_NAME_ELEMENT);
+		encoder.writeStartElement(contentNameElement());
 		
 		for (int i=0; i < count(); ++i) {
 			encoder.writeElement(COMPONENT_ELEMENT, _components.get(i));

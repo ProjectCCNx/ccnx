@@ -56,12 +56,13 @@ public class Link extends ContentObject {
 	
 	public Link(ContentName name,
 			 ContentName targetName,
+			 String targetLabel,
 			 LinkAuthenticator targetAuthenticator,
 			 PublisherPublicKeyDigest publisher,
 			 KeyLocator locator,
 			 Signature signature
 			 ) throws XMLStreamException {
-		this(name, new LinkReference(targetName, targetAuthenticator), publisher, locator, signature);
+		this(name, new LinkReference(targetName, targetLabel, targetAuthenticator), publisher, locator, signature);
 	}
 
 	public Link(ContentName name,
@@ -76,12 +77,13 @@ public class Link extends ContentObject {
 
 	public Link(ContentName name,
 			 ContentName targetName,
+			 String targetLabel,
 			 LinkAuthenticator targetAuthenticator,
 			 PublisherPublicKeyDigest publisher, 
 			 KeyLocator locator,
 			 PrivateKey signingKey
 			 ) throws XMLStreamException, InvalidKeyException, SignatureException {
-		this(name, new LinkReference(targetName, targetAuthenticator), publisher, locator, signingKey);
+		this(name, new LinkReference(targetName, targetLabel, targetAuthenticator), publisher, locator, signingKey);
 	}
 	
 	public Link(ContentName name,
@@ -90,7 +92,7 @@ public class Link extends ContentObject {
 			 KeyLocator locator,
 			 PrivateKey signingKey
 			 ) throws XMLStreamException, InvalidKeyException, SignatureException {
-		this(name, targetName, null, publisher, locator, signingKey);
+		this(name, targetName, null, null, publisher, locator, signingKey);
 	}
 	
 	/**

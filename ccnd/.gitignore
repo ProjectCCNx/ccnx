@@ -42,3 +42,4 @@ tests/deps.out
 tests/sorted-deps.out
 ccn-start-udplink-*.sh
 
+tests/ephemeral*

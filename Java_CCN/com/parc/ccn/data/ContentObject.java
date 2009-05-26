@@ -87,13 +87,6 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 				byte [] tbsdigest = CCNDigestHelper.digest(prepareContent(name, signedInfo, content, offset, length));
 				Library.logger().info("Created content object: " + name + " timestamp: " + signedInfo.getTimestamp() + " encoded digest: " + DataUtils.printBytes(digest) + " tbs content: " + DataUtils.printBytes(tbsdigest));
 				Library.logger().info("Signature: " + this.signature());
-				if (!this.verify(null)) {
-					Library.logger().warning("ContentObject: " + name + " (length: " + length + ", data digest: " + DataUtils.printBytes(contentDigest()) + 
-					 ") " + " fails to verify!");
-				} else {
-					Library.logger().info("ContentObject: " + name + " (length: " + length + ", digest: " + DataUtils.printBytes(contentDigest()) + ") " +
-					" verified OK.");				
-				}
 			} catch (Exception e) {
 				Library.logger().warning("Exception attempting to verify signature: " + e.getClass().getName() + ": " + e.getMessage());
 				Library.warningStackTrace(e);
@@ -122,12 +115,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		_name = name;
 		_signedInfo = signedInfo;
 		_content = new byte[length];
-		int count = 0;
-		while (count < length) {
-			int result = contentStream.read(_content);
-			if (result <=0) break;
-			count += result;
-		}
+		int count = contentStream.read(_content);
 		if (count < _content.length) {
 			if (count < 0) {
 				throw new IOException("End of stream reached when building content object!");
@@ -201,11 +189,12 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	}
 
 	/**
-	 * Used for testing.
+	 * Used not only for testing, but for building small content objects deep in the
+	 * library code for specialized applications.
 	 */
-	public static ContentObject buildContentObject(ContentName name, byte[] contents, 
+	public static ContentObject buildContentObject(ContentName name, ContentType type, byte[] contents, 
 			PublisherPublicKeyDigest publisher,
-			KeyManager keyManager) {
+			KeyManager keyManager, byte[] finalBlockID) {
 		try {
 			if (null == keyManager) {
 				keyManager = KeyManager.getDefaultKeyManager();
@@ -217,7 +206,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			}
 			KeyLocator locator = keyManager.getKeyLocator(signingKey);
 			return new ContentObject(name, 
-							         new SignedInfo(publisher, SignedInfo.ContentType.DATA, locator), 
+							         new SignedInfo(publisher, null, type, locator, null, finalBlockID), 
 							         contents, signingKey);
 		} catch (Exception e) {
 			Library.logger().warning("Cannot build content object for publisher: " + publisher);
@@ -225,13 +214,23 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		}
 		return null;
 	}
+	
+	public static ContentObject buildContentObject(ContentName name, byte[] contents, 
+			PublisherPublicKeyDigest publisher,
+			KeyManager keyManager, byte[] finalBlockID) {
+		return buildContentObject(name, ContentType.DATA, contents, publisher, keyManager, finalBlockID);
+	}
 
 	public static ContentObject buildContentObject(ContentName name, byte [] contents) {
-		return buildContentObject(name, contents, null, null);
+		return buildContentObject(name, contents, null, null, null);
+	}
+
+	public static ContentObject buildContentObject(ContentName name, ContentType type, byte [] contents) {
+		return buildContentObject(name, type, contents, null, null, null);
 	}
 
 	public static ContentObject buildContentObject(ContentName name, byte [] contents, PublisherPublicKeyDigest publisher) {
-		return buildContentObject(name, contents, publisher, null);
+		return buildContentObject(name, contents, publisher, null, null);
 	}
 
 	public ContentObject() {} // for use by decoders

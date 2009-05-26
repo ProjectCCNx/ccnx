@@ -32,7 +32,7 @@ public class SegmentationProfile implements CCNProfile {
 	/**
 	 * Is it fragmented, and what is its fragment number?
 	 */
-	public static final int BASE_SEGMENT = 0;
+	public static final long BASE_SEGMENT = 0;
 	public static final byte SEGMENT_MARKER = (byte)0xF8;
 	public static final byte NO_SEGMENT_POSTFIX = 0x00;
 	public static final byte [] FIRST_SEGMENT_MARKER = new byte[]{SEGMENT_MARKER};
@@ -60,8 +60,8 @@ public class SegmentationProfile implements CCNProfile {
 	 * Control whether fragments start at 0 or 1.
 	 * @return
 	 */
-	public static final int baseSegment() { return BASE_SEGMENT; }
-	
+	public static final long baseSegment() { return BASE_SEGMENT; }
+		
 	public static boolean isUnsegmented(ContentName name) {
 		return isNotSegmentMarker(name.lastComponent());
 	}
@@ -197,5 +197,11 @@ public class SegmentationProfile implements CCNProfile {
 		}
 		// return new ContentName(name, HEADER_NAME);
 		return name;
+	}
+
+	public static boolean isFirstSegment(ContentName name) {
+		if (!isSegment(name))
+			return false;
+		return (getSegmentNumber(name) == BASE_SEGMENT);
 	}
 }

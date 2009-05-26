@@ -5,6 +5,7 @@ import java.sql.Timestamp;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.SignedInfo;
+import com.parc.ccn.data.util.DataUtils;
 
 /**
  * Versions, when present, occupy the penultimate component of the CCN name, 
@@ -55,7 +56,7 @@ public class VersioningProfile implements CCNProfile {
 	 * @see #versionName(ContentName, long)
 	 */
 	public static ContentName versionName(ContentName name, Timestamp version) {
-		return versionName(name, (version.getTime() / 1000 ) * 4096L + (version.getNanos() * 4096L + 500000000L) / 1000000000L);
+		return versionName(name, DataUtils.timestampToBinaryTime12AsLong(version));
 	}
 	
 	/**
@@ -74,9 +75,15 @@ public class VersioningProfile implements CCNProfile {
 		if (SegmentationProfile.isSegment(name)) {
 			vm = name.component(name.count()-2);
 		} else {
-			vm = name.lastComponent(); // no fragment number, unusual
+			vm = name.lastComponent(); // no segment number; unusual (though this comes up in name enumeration)
 		}
-		return (null != vm) && (0 != vm.length) && (VERSION_MARKER == vm[0]) && ((vm.length == 1) || (vm[1] != 0));
+		return isVersionComponent(vm);
+	}
+	
+	public static boolean isVersionComponent(byte [] nameComponent) {
+		return (null != nameComponent) && (0 != nameComponent.length) && 
+			   (VERSION_MARKER == nameComponent[0]) && 
+			   ((nameComponent.length == 1) || (nameComponent[1] != 0));
 	}
 
 	/**
@@ -132,19 +139,27 @@ public class VersioningProfile implements CCNProfile {
 		byte [] vm = null;
 		
 		int i = name.count()-1;
-		for(; i > 0; i--){
+		for (; i > 0; i--){
 			vm = name.component(i);
-			if(VERSION_MARKER == vm[0]){
+			if (VERSION_MARKER == vm[0]){
 				//here is the version!
 				i = -1;
 			}
 		}
-		if(i == 0)
+		if (i == 0)
 			throw new VersionMissingException();
 		
-		byte [] versionData = new byte[vm.length - 1];
-		System.arraycopy(vm, 1, versionData, 0, vm.length - 1);
+		return getVersionComponentAsLong(vm);
+	}
+	
+	public static long getVersionComponentAsLong(byte [] versionComponent) {
+		byte [] versionData = new byte[versionComponent.length - 1];
+		System.arraycopy(versionComponent, 1, versionData, 0, versionComponent.length - 1);
 		return new BigInteger(versionData).longValue();
+	}
+
+	public static Timestamp getVersionComponentAsTimestamp(byte [] versionComponent) {
+		return versionLongToTimestamp(getVersionComponentAsLong(versionComponent));
 	}
 
 	/**
@@ -153,14 +168,41 @@ public class VersioningProfile implements CCNProfile {
 	 */
 	public static Timestamp getVersionAsTimestamp(ContentName name) throws VersionMissingException {
 		long time = getVersionAsLong(name);
-		Timestamp ts = new Timestamp((time / 4096L) * 1000L);
-		ts.setNanos((int)(((time % 4096L) * 1000000000L) / 4096L));
-		return ts;
+		return DataUtils.binaryTime12ToTimestamp(time);
 	}
-
+	
+	public static Timestamp versionLongToTimestamp(long version) {
+		return DataUtils.binaryTime12ToTimestamp(version);
+	}
 	/**
 	 * Control whether versions start at 0 or 1.
 	 * @return
 	 */
 	public static final int baseVersion() { return 0; }
+
+	public static int compareVersions(
+			Timestamp left,
+			ContentName right) {
+		if (!isVersioned(right)) {
+			throw new IllegalArgumentException("Both names to compare must be versioned!");
+		}
+		try {
+			return left.compareTo(getVersionAsTimestamp(right));
+		} catch (VersionMissingException e) {
+			throw new IllegalArgumentException("Name that isVersioned returns true for throws VersionMissingException!: " + right);
+		}
+	}
+	
+	public static int compareVersions(
+			ContentName left,
+			ContentName right) {
+		if (!isVersioned(left) || !isVersioned(right)) {
+			throw new IllegalArgumentException("Both names to compare must be versioned!");
+		}
+		try {
+			return getVersionAsTimestamp(left).compareTo(getVersionAsTimestamp(right));
+		} catch (VersionMissingException e) {
+			throw new IllegalArgumentException("Name that isVersioned returns true for throws VersionMissingException!: " + right);
+		}
+	}
 }

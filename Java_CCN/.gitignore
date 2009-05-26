@@ -5,3 +5,4 @@ medium_file.txt_testout.txt
 testout/
 CCN_DEBUG_DATA/
 pmd-eclipse.log
+junit*.properties

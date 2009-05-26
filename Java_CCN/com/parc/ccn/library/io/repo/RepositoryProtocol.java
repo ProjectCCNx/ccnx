@@ -7,6 +7,7 @@ import java.util.TreeMap;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.CCNBase;
+import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNInterestListener;
@@ -30,10 +31,10 @@ public class RepositoryProtocol extends CCNFlowControl {
 	protected boolean _useAck = true;
 	protected TreeMap<ContentName, ContentObject> _unacked = new TreeMap<ContentName, ContentObject>();
 	protected int _blocksSinceAck = 0;
-	protected ContentName _lastAcked = null;
-	protected Interest _ackInterest = null;
+	protected ArrayList<Interest> _ackInterests = new ArrayList<Interest>();
 	protected String _repoName = null;
 	protected String _repoPrefix = null;
+	protected ContentName _baseName; // the name prefix under which we are writing content
 	protected RepoListener _listener = null;
 	protected Interest _writeInterest = null;
 
@@ -41,6 +42,7 @@ public class RepositoryProtocol extends CCNFlowControl {
 
 		public Interest handleContent(ArrayList<ContentObject> results,
 				Interest interest) {
+			Interest interestToReturn = null;
 			for (ContentObject co : results) {
 				if (co.signedInfo().getType() != ContentType.DATA)
 					continue;
@@ -63,8 +65,17 @@ public class RepositoryProtocol extends CCNFlowControl {
 							break;		// not our repository
 						for (ContentName name : repoInfo.getNames())
 							ack(name);
-						if (flushComplete())
-							sendAckRequest();
+						// We have to keep the data handler associated with this nonce alive
+						// as long as data may be sent on it. Otherwise, with the current code
+						// we would lose ACKs and never be able to retrieve them. Right now
+						// I am just using the arbitrary value of 20 acks per packet and sending
+						// a packet with less to indicate the end of the acks associated with this
+						// nonce. Since the ack protocol will change soon - not bothering to
+						// make this cleaner
+						if (repoInfo.getNames().size() < 20) {
+							_ackInterests.remove(interest);
+						} else
+							interestToReturn = interest;
 						break;
 					default:
 						break;
@@ -72,12 +83,9 @@ public class RepositoryProtocol extends CCNFlowControl {
 				} catch (XMLStreamException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
 				}
 			}
-			return null;
+			return interestToReturn;
 		}
 	}
 
@@ -87,6 +95,7 @@ public class RepositoryProtocol extends CCNFlowControl {
 	}
 	
 	public void init(ContentName name) throws IOException {
+		_baseName = name;
 		clearUnmatchedInterests();	// Remove possible leftover interests from "getLatestVersion"
 		ContentName repoWriteName = new ContentName(name, CCNBase.REPO_START_WRITE, CCNLibrary.nonce());
 		_listener = new RepoListener();
@@ -114,6 +123,7 @@ public class RepositoryProtocol extends CCNFlowControl {
 	public ContentObject put(ContentObject co) throws IOException {
 		super.put(co);
 		if (_useAck) {
+			Library.logger().finer("Unacked: " + co.name());
 			_unacked.put(co.name(), co);
 			if (++_blocksSinceAck > ACK_BLOCK_SIZE) {
 				sendAckRequest();
@@ -128,15 +138,10 @@ public class RepositoryProtocol extends CCNFlowControl {
 	 * @param co
 	 */
 	public void ack(ContentName name) {
+		Library.logger().fine("Handling ACK " + name);
 		if (_unacked.get(name) != null) {
 			ContentObject co = _unacked.get(name);
-			if (_lastAcked == null) {
-				_lastAcked = co.name();
-			} else {
-				if (co.name().compareTo(_lastAcked) > 0) {
-					_lastAcked = co.name();
-				}
-			}
+			Library.logger().finest("CO " + co.name() + " acked");
 			_unacked.remove(name);
 			synchronized (this) {
 				if (_unacked.size() == 0)
@@ -155,57 +160,53 @@ public class RepositoryProtocol extends CCNFlowControl {
 	
 	public void sendAckRequest() throws IOException {
 		if (_unacked.size() > 0) {
-			ArrayList<byte[]> components = new ArrayList<byte[]>();
-			if (_lastAcked == null) {
-				components.addAll(_unacked.firstKey().components());
-				components.remove(components.size() - 1);
-			} else {
-				components = _lastAcked.components();
-			}
-			components.add(CCNBase.REPO_REQUEST_ACK);
-			components.add(CCNLibrary.nonce());
-			byte[][] bc = new byte[components.size()][];
-			components.toArray(bc);
-			ContentName repoAckName = new ContentName(bc);
-			if (_lastAcked == null) {
-				_ackInterest = new Interest(repoAckName);
-			} else {
-				_ackInterest = Interest.next(repoAckName, repoAckName.count() - 3);
-			}
-			_library.expressInterest(_ackInterest, _listener);
+			ContentName repoAckName = new ContentName(_baseName, CCNBase.REPO_REQUEST_ACK, CCNLibrary.nonce());
+			Interest ackInterest = new Interest(repoAckName);
+			_ackInterests.add(ackInterest);
+			Library.logger().info("Sending ACK request with " + _unacked.size() + " unacknowledged content objects");
+			_library.expressInterest(ackInterest, _listener);
 		}
 	}
 	
+	/**
+	 * Even though we should have output all the data by the time we got here
+	 * (due to call of waitForPutDrain) there are still timing pitfalls as the repo may still
+	 * be in the process of collecting the data. So we loop sending ackRequests until we are
+	 * making no more progress.
+	 * 
+	 * @throws IOException
+	 */
 	public void close() throws IOException {
-		sendAckRequest();
 		synchronized(this) {
-			int nUnacked = _unacked.size();
 			while (!flushComplete()) {
-				boolean interrupted = true;
-				while (interrupted) {
-				interrupted = false;
+				sendAckRequest();
+				int unacked = _unacked.size();
+				boolean interrupted;
+				do {
+					interrupted = false;
 					try {
 						wait(getTimeout());
 					} catch (InterruptedException e) {
 						interrupted = true;
 					}
-				}
-				if (_unacked.size() == nUnacked)
-					return;
+				} while (interrupted);
+				if (unacked == _unacked.size())
+					break;
 			}
 		}
 		
 		cancelInterests();
 		if (!flushComplete()) {
-			throw new IOException("No ack from repository");
+			throw new IOException("Unable to confirm writes are stable: timed out waiting ack for " + _unacked.firstKey());
 		}
 	}
 	
 	private void cancelInterests() {
 		if (_writeInterest != null)
 			_library.cancelInterest(_writeInterest, _listener);
-		if (_ackInterest != null)
-			_library.cancelInterest(_ackInterest, _listener);
+		for (Interest interest : _ackInterests) {
+			_library.cancelInterest(interest, _listener);
+		}
 	}
 
 }

@@ -14,8 +14,11 @@ struct upcalldata {
     long *counter;
     int n_excl;
     unsigned warn;
+    unsigned option;
     struct ccn_charbuf **excl; /* Array of n_excl items */
 };
+
+#define MUST_VERIFY 0x01
 
 static int /* for qsort */
 namecompare(const void *a, const void *b)
@@ -51,8 +54,12 @@ incoming_content(
         return(CCN_UPCALL_RESULT_OK);
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
         return(CCN_UPCALL_RESULT_REEXPRESS);
-    if (kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_UNVERIFIED) abort();
-
+    if (kind == CCN_UPCALL_CONTENT_UNVERIFIED) {
+        if ((data->option & MUST_VERIFY) != 0)
+        return(CCN_UPCALL_RESULT_VERIFY);
+        }
+    else if (kind != CCN_UPCALL_CONTENT) abort();
+    
     ccnb = info->content_ccnb;
     ccnb_size = info->pco->offset[CCN_PCO_E];
     comps = info->content_comps;
@@ -141,6 +148,7 @@ main(int argc, char **argv)
     struct ccn_closure *cl = NULL;
     int timeout_ms = 500;
     const char *env_timeout = getenv("CCN_LINGER");
+    const char *env_verify = getenv("CCN_VERIFY");
 
     if (argv[1] == NULL || argv[2] != NULL)
         usage(argv[0]);
@@ -163,6 +171,9 @@ main(int argc, char **argv)
     data->magic = 856372;
     data->warn = 1492;
     data->counter = &counter;
+    data->option = 0;
+    if (env_verify && *env_verify)
+        data->option |= MUST_VERIFY;
     cl = calloc(1, sizeof(*cl));
     cl->p = &incoming_content;
     cl->data = data;

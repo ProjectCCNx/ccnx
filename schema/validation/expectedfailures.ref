@@ -34,7 +34,7 @@ ccn-schemabad12.xml:27: element Type: Schemas validity error : Element 'Type': [
 ccn-schemabad12.xml:27: element Type: Schemas validity error : Element 'Type': 'FUZZ' is not a valid value of the atomic type 'ContentTypeType'.
 ccn-schemabad12.xml fails to validate
 ./shouldfail xmllint --noout --schema security.xsd security-bad01.xml
-security-bad01.xml:2: element WrappedKey: Schemas validity error : Element 'WrappedKey': Missing child element(s). Expected is one of ( WrapAlgorithm, KeyAlgorithm, Label, EncryptedNonceKey, EncryptedKey ).
+security-bad01.xml:2: element WrappedKey: Schemas validity error : Element 'WrappedKey': Missing child element(s). Expected is one of ( WrappingKeyName, WrapAlgorithm, KeyAlgorithm, Label, EncryptedNonceKey, EncryptedKey ).
 security-bad01.xml fails to validate
 ./shouldfail xmllint --noout --schema security.xsd security-schemabad01.xml
 security-schemabad01.xml:8: element EncryptedKey: Schemas validity error : Element 'EncryptedKey': 'bad!' is not a valid value of the atomic type 'xs:base64Binary'.
@@ -65,7 +65,7 @@ ccn-dtdbad00.xml:1: parser error : Start tag expected, '<' not found
 
 ^
 ./shouldfail xmllint --noout --dtdvalid security.dtd security-bad01.xml
-security-bad01.xml:2: element WrappedKey: validity error : Element WrappedKey content does not follow the DTD, expecting (WrappingKeyIdentifier? , WrapAlgorithm? , KeyAlgorithm? , Label? , EncryptedNonceKey? , EncryptedKey), got (WrappingKeyIdentifier )
+security-bad01.xml:2: element WrappedKey: validity error : Element WrappedKey content does not follow the DTD, expecting (WrappingKeyIdentifier? , WrappingKeyName? , WrapAlgorithm? , KeyAlgorithm? , Label? , EncryptedNonceKey? , EncryptedKey), got (WrappingKeyIdentifier )
 Document security-bad01.xml does not validate against security.dtd
 ./shouldfail xmllint --noout --dtdvalid security.dtd security-dtdbad00.xml
 security-dtdbad00.xml:1: parser error : Document is empty

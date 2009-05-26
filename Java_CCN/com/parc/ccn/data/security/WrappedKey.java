@@ -1,5 +1,6 @@
 package com.parc.ccn.data.security;
 
+import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.NoSuchAlgorithmException;
@@ -19,10 +20,14 @@ import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.bouncycastle.crypto.params.KeyParameter;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.config.ConfigurationException;
+import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.util.CCNEncodableObject;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
+import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.crypto.jce.AESWrapWithPad;
 import com.parc.ccn.security.crypto.jce.AESWrapWithPadEngine;
@@ -31,6 +36,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 
 	protected static final String WRAPPED_KEY_ELEMENT = "WrappedKey";
 	protected static final String WRAPPING_KEY_IDENTIFIER_ELEMENT = "WrappingKeyIdentifier";
+	protected static final String WRAPPING_KEY_NAME_ELEMENT = "WrappingKeyName";
 	protected static final String WRAP_ALGORITHM_ELEMENT = "WrapAlgorithm";
 	protected static final String KEY_ALGORITHM_ELEMENT = "KeyAlgorithm";
 	protected static final String LABEL_ELEMENT = "Label";
@@ -40,9 +46,48 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	protected static final String NONCE_KEY_ALGORITHM = "AES";
 	protected static final int NONCE_KEY_LENGTH = 128;
 	
+	public class WrappingKeyName extends ContentName {
+
+		public WrappingKeyName(ContentName name) {
+			super(name);
+		}
+		
+		public WrappingKeyName() {}
+		
+		@Override
+		public String contentNameElement() { 
+			return WRAPPING_KEY_NAME_ELEMENT;
+		}
+	}
+
+	public static class WrappedKeyObject extends CCNEncodableObject<WrappedKey> {
+
+		public WrappedKeyObject() throws ConfigurationException, IOException {
+			super(WrappedKey.class);
+		}
+		
+		public WrappedKeyObject(ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
+			super(WrappedKey.class, name, library);
+		}
+
+		public WrappedKeyObject(ContentName name) throws XMLStreamException, IOException, ConfigurationException {
+			super(WrappedKey.class, name);
+		}
+		public WrappedKeyObject(ContentName name, WrappedKey wrappedKey, CCNLibrary library) {
+			super(WrappedKey.class, name, wrappedKey, library);
+		}
+
+		public WrappedKeyObject(ContentName name, WrappedKey wrappedKey) throws ConfigurationException, IOException {
+			super(WrappedKey.class, name, wrappedKey);
+		}
+		
+		public WrappedKey wrappedKey() { return data(); }
+	}
+
 	private static final Map<String,String> _WrapAlgorithmMap = new HashMap<String,String>();
 
 	byte [] _wrappingKeyIdentifier;
+	WrappingKeyName _wrappingKeyName;
 	String _wrapAlgorithm;
 	String _keyAlgorithm;
 	String _label;
@@ -69,18 +114,18 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	 * this is available in Java 1.6, or BouncyCastle.
 	 * 
 	 * @param keyLabel optional label for the wrapped key
-	 * @param optional algorithm to decode/se the wrapped key (e.g. AES-CBC)
+	 * @param optional algorithm to decode the wrapped key (e.g. AES-CBC); otherwise
+	 *    we use  key.getAlgorithm()
 	 * @throws NoSuchPaddingException 
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
 	 * @throws IllegalBlockSizeException 
 	 */
 	public static WrappedKey wrapKey(Key keyToBeWrapped,
-									 String keyAlgorithm,
+									 String keyAlgorithm, 
 									 String keyLabel, 
 									 Key wrappingKey) 
-	throws NoSuchAlgorithmException, NoSuchPaddingException, 
-	InvalidKeyException, IllegalBlockSizeException {
+		throws InvalidKeyException {
 
 		String wrappingAlgorithm = wrapAlgorithmForKey(wrappingKey.getAlgorithm());
 		byte [] wrappedNonceKey = null;
@@ -91,40 +136,58 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 			wrappedKey = AESWrapWithPad(wrappingKey, encodedKeyToBeWrapped, 0, encodedKeyToBeWrapped.length);
 		} else {
 
-			Cipher wrapCipher = Cipher.getInstance(wrappingAlgorithm);
+			Cipher wrapCipher = null;
+			try {
+				wrapCipher = Cipher.getInstance(wrappingAlgorithm);
+			} catch (NoSuchAlgorithmException e) {
+				Library.logger().warning("Unexpected NoSuchAlgorithmException attempting to instantiate wrapping algorithm.");
+				throw new InvalidKeyException("Unexpected NoSuchAlgorithmException attempting to instantiate wrapping algorithm.");
+			} catch (NoSuchPaddingException e) {
+				Library.logger().warning("Unexpected NoSuchPaddingException attempting to instantiate wrapping algorithm.");
+				throw new InvalidKeyException("Unexpected NoSuchPaddingException attempting to instantiate wrapping algorithm");
+			}
 			wrapCipher.init(Cipher.WRAP_MODE, wrappingKey);
+			
 			// If we are dealing with a short-block cipher, like RSA, we need to
 			// interpose a nonce key.
+			Key nonceKey = null;
+			try {
 
-			int wrappedKeyType = getCipherType(keyToBeWrapped.getAlgorithm());
-			// If we're wrapping a private key in a public key, need to handle multi-block
-			// keys. Probably don't want to do that with ECB mode. ECIES already acts
-			// as a hybrid cipher, so we don't need to do this for that.
-			if (((Cipher.PRIVATE_KEY == wrappedKeyType) || (Cipher.PUBLIC_KEY == wrappedKeyType)) && 
-					(wrappingKey instanceof PublicKey) && (!wrappingKey.getAlgorithm().equals("ECIES"))) {
+				int wrappedKeyType = getCipherType(keyToBeWrapped.getAlgorithm());
+				// If we're wrapping a private key in a public key, need to handle multi-block
+				// keys. Probably don't want to do that with ECB mode. ECIES already acts
+				// as a hybrid cipher, so we don't need to do this for that.
+				if (((Cipher.PRIVATE_KEY == wrappedKeyType) || (Cipher.PUBLIC_KEY == wrappedKeyType)) && 
+						(wrappingKey instanceof PublicKey) && (!wrappingKey.getAlgorithm().equals("ECIES"))) {
 
-				Key nonceKey = generateNonceKey();
-				//try {
-				// We know the nonce key is an AES key. Use standard wrap algorithm.
-				// DKS -- fix when have provider.
-				//Cipher nonceCipher = Cipher.getInstance(wrapAlgorithmForKey(nonceKey.getAlgorithm()));
-				//nonceCipher.init(Cipher.WRAP_MODE, nonceKey);
-				//wrappedKey = nonceCipher.wrap(keyToBeWrapped);
-				byte [] encodedKeyToBeWrapped = keyToBeWrapped.getEncoded();
-				wrappedKey = AESWrapWithPad(nonceKey, encodedKeyToBeWrapped, 0, encodedKeyToBeWrapped.length);
-				//} catch (NoSuchAlgorithmException nsex) {
-				//	Library.logger().warning("Configuration error: Unknown default nonce key algorithm: " + NONCE_KEY_ALGORITHM);
-				//	Library.warningStackTrace(nsex);
-				//	throw new RuntimeException("Configuration error: Unknown default nonce key algorithm: " + NONCE_KEY_ALGORITHM);	    		
-				//}
-				wrappedNonceKey = wrapCipher.wrap(nonceKey);
+					nonceKey = generateNonceKey();
+					//try {
+					// We know the nonce key is an AES key. Use standard wrap algorithm.
+					// DKS -- fix when have provider.
+					//Cipher nonceCipher = Cipher.getInstance(wrapAlgorithmForKey(nonceKey.getAlgorithm()));
+					//nonceCipher.init(Cipher.WRAP_MODE, nonceKey);
+					//wrappedKey = nonceCipher.wrap(keyToBeWrapped);
+					byte [] encodedKeyToBeWrapped = keyToBeWrapped.getEncoded();
+					wrappedKey = AESWrapWithPad(nonceKey, encodedKeyToBeWrapped, 0, encodedKeyToBeWrapped.length);
+					//} catch (NoSuchAlgorithmException nsex) {
+					//	Library.logger().warning("Configuration error: Unknown default nonce key algorithm: " + NONCE_KEY_ALGORITHM);
+					//	Library.warningStackTrace(nsex);
+					//	throw new RuntimeException("Configuration error: Unknown default nonce key algorithm: " + NONCE_KEY_ALGORITHM);	    		
+					//}
+					wrappedNonceKey = wrapCipher.wrap(nonceKey);
 
-			} else {
-				wrappedKey = wrapCipher.wrap(keyToBeWrapped);
+				} else {
+					wrappedKey = wrapCipher.wrap(keyToBeWrapped);
+				}
+			} catch (IllegalBlockSizeException ex) {
+				Library.logger().warning("IllegalBlockSizeException " + ex.getMessage() + " in wrap key -- unexpected, we should have compensated for this. Key to be wrapped algorithm? " + keyToBeWrapped.getAlgorithm() + ". Using nonce key? " + (null == nonceKey));
+				throw new InvalidKeyException("IllegalBlockSizeException " + ex.getMessage() + " in wrap key -- unexpected, we should have compensated for this. Key to be wrapped algorithm? " + keyToBeWrapped.getAlgorithm() + ". Using nonce key? " + (null == nonceKey));
 			}
 		}
-	    return new WrappedKey(null, keyAlgorithm, keyToBeWrapped.getAlgorithm(), 
-	    						keyLabel, wrappedNonceKey, wrappedKey);
+		// Default wrapping algorithm is being used, don't need to include it.
+	    return new WrappedKey(null, null, 
+	    					 ((null == keyAlgorithm) ? keyToBeWrapped.getAlgorithm() : keyAlgorithm), 
+	    					 keyLabel, wrappedNonceKey, wrappedKey);
 	}
 	
 	/**
@@ -173,16 +236,21 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	public WrappedKey() {
 	}
 	
-	public Key unwrapKey(Key unwrapKey) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidCipherTextException {
+	public Key unwrapKey(Key unwrapKey) throws InvalidKeyException, InvalidCipherTextException {
 
 		if (null == keyAlgorithm()) {
-			throw new NoSuchAlgorithmException("No algorithm specified for key to be unwrapped!");
+			throw new InvalidCipherTextException("No algorithm specified for key to be unwrapped!");
 		}
 		
-		return unwrapKey(unwrapKey, keyAlgorithm());
+		try {
+			return unwrapKey(unwrapKey, keyAlgorithm());
+		} catch (NoSuchAlgorithmException e) {
+			Library.logger().warning("Unexpected NoSuchAlgorithmException attempting to unwrap key with specified algorithm : " + keyAlgorithm());
+			throw new InvalidCipherTextException("Unexpected NoSuchAlgorithmException attempting to unwrap key with specified algorithm : " + keyAlgorithm());
+		} 
 	}
 	
-	public Key unwrapKey(Key unwrapKey, String wrappedKeyAlgorithm) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidCipherTextException {
+	public Key unwrapKey(Key unwrapKey, String wrappedKeyAlgorithm) throws InvalidKeyException, NoSuchAlgorithmException, InvalidCipherTextException {
 
 		Key unwrappedKey = null;
 		Library.logger().info("wrap algorithm: " + wrapAlgorithm() + " wa for key " +
@@ -192,10 +260,18 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 			unwrappedKey = AESUnwrapWithPad(unwrapKey, wrappedKeyAlgorithm, encryptedKey(), 0, encryptedKey().length);
 		} else {
 			Cipher unwrapCipher = null;
-			if (null != wrapAlgorithm()) {
-				unwrapCipher = Cipher.getInstance(wrapAlgorithm());
-			} else {
-				unwrapCipher = Cipher.getInstance(wrapAlgorithmForKey(unwrapKey.getAlgorithm()));
+			try {
+				if (null != wrapAlgorithm()) {
+					unwrapCipher = Cipher.getInstance(wrapAlgorithm());
+				} else {
+					unwrapCipher = Cipher.getInstance(wrapAlgorithmForKey(unwrapKey.getAlgorithm()));
+				}
+			} catch (NoSuchAlgorithmException e) {
+				Library.logger().warning("Unexpected NoSuchAlgorithmException attempting to instantiate wrapping algorithm.");
+				throw new InvalidKeyException("Unexpected NoSuchAlgorithmException attempting to instantiate wrapping algorithm.");
+			} catch (NoSuchPaddingException e) {
+				Library.logger().warning("Unexpected NoSuchPaddingException attempting to instantiate wrapping algorithm.");
+				throw new InvalidKeyException("Unexpected NoSuchPaddingException attempting to instantiate wrapping algorithm");
 			}
 
 			unwrapCipher.init(Cipher.UNWRAP_MODE, unwrapKey);
@@ -236,6 +312,9 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		setWrappingKeyIdentifier(CCNDigestHelper.digest(wrappingKey.getEncoded()));
 	}
 	
+	public ContentName wrappingKeyName() { return _wrappingKeyName; }
+	public void setWrappingKeyName(ContentName keyName) { _wrappingKeyName = new WrappingKeyName(keyName); }
+	
 	public String wrapAlgorithm() { return _wrapAlgorithm; }
 	public String keyAlgorithm() { return _keyAlgorithm; }
 	public String label() { return _label; }
@@ -248,6 +327,11 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 
 		if (decoder.peekStartElement(WRAPPING_KEY_IDENTIFIER_ELEMENT)) {
 			_wrappingKeyIdentifier = decoder.readBinaryElement(WRAPPING_KEY_IDENTIFIER_ELEMENT); 
+		}
+		
+		if (decoder.peekStartElement(WRAPPING_KEY_NAME_ELEMENT)) {
+			_wrappingKeyName = new WrappingKeyName();
+			_wrappingKeyName.decode(decoder);
 		}
 		
 		if (decoder.peekStartElement(WRAP_ALGORITHM_ELEMENT)) {
@@ -284,6 +368,10 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 			// needs to handle null WKI
 			encoder.writeElement(WRAPPING_KEY_IDENTIFIER_ELEMENT, wrappingKeyIdentifier());
 		}
+		
+		if (null != wrappingKeyName()) {
+			wrappingKeyName().encode(encoder);
+		}
 
 		if (null != wrapAlgorithm()) {
 			//String wrapOID = OIDLookup.getCipherOID(wrapAlgorithm());
@@ -319,12 +407,16 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + Arrays.hashCode(_encryptedKey);
+		result = prime * result + Arrays.hashCode(_encryptedNonceKey);
 		result = prime * result
 				+ ((_keyAlgorithm == null) ? 0 : _keyAlgorithm.hashCode());
 		result = prime * result + ((_label == null) ? 0 : _label.hashCode());
 		result = prime * result
 				+ ((_wrapAlgorithm == null) ? 0 : _wrapAlgorithm.hashCode());
 		result = prime * result + Arrays.hashCode(_wrappingKeyIdentifier);
+		result = prime
+				* result
+				+ ((_wrappingKeyName == null) ? 0 : _wrappingKeyName.hashCode());
 		return result;
 	}
 
@@ -338,6 +430,8 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 			return false;
 		WrappedKey other = (WrappedKey) obj;
 		if (!Arrays.equals(_encryptedKey, other._encryptedKey))
+			return false;
+		if (!Arrays.equals(_encryptedNonceKey, other._encryptedNonceKey))
 			return false;
 		if (_keyAlgorithm == null) {
 			if (other._keyAlgorithm != null)
@@ -357,9 +451,14 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		if (!Arrays
 				.equals(_wrappingKeyIdentifier, other._wrappingKeyIdentifier))
 			return false;
+		if (_wrappingKeyName == null) {
+			if (other._wrappingKeyName != null)
+				return false;
+		} else if (!_wrappingKeyName.equals(other._wrappingKeyName))
+			return false;
 		return true;
 	}
-	
+
 	public static int getCipherType(String cipherAlgorithm) {
 		if (cipherAlgorithm.equalsIgnoreCase("ECIES") || 
 					cipherAlgorithm.equalsIgnoreCase("RSA") || cipherAlgorithm.equalsIgnoreCase("ElGamal")) {

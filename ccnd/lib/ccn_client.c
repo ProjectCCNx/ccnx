@@ -15,6 +15,7 @@
 #include <unistd.h>
 
 #include <ccn/ccn.h>
+#include <ccn/ccn_private.h>
 #include <ccn/ccnd.h>
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
@@ -38,7 +39,7 @@ struct ccn {
     struct timeval now;
     int timeout;
     int refresh_us;
-    int err;
+    int err;                    /* pos => errno value, neg => other */
     int errline;
     int verbose_error;
     int tap;
@@ -59,6 +60,7 @@ struct expressed_interest {
     size_t size;                 /* its size in bytes */
     int target;                  /* how many we want outstanding (0 or 1) */
     int outstanding;             /* number currently outstanding (0 or 1) */
+    struct ccn_charbuf *wanted_pub; /* waiting for this pub to arrive */
     struct expressed_interest *next; /* link to next in list */
 };
 
@@ -69,21 +71,34 @@ struct interest_filter { /* keyed by components of name */
 #define NOTE_ERR(h, e) (h->err = (e), h->errline = __LINE__, ccn_note_err(h))
 #define NOTE_ERRNO(h) NOTE_ERR(h, errno)
 
+#define THIS_CANNOT_HAPPEN(h) \
+    do { NOTE_ERR(h, -73); ccn_perror(h, "Can't happen");} while (0)
+
+#define XXX \
+    do { NOTE_ERR(h, -76); ccn_perror(h, "Please write some more code here"); } while (0)
+
 static void ccn_refresh_interest(struct ccn *, struct expressed_interest *);
 
 void
-ccn_perror(struct ccn *h, const char * s)
+ccn_perror(struct ccn *h, const char *s)
 {
-    fprintf(stderr, "%s: error %d - ccn_client.c:%d[%d]\n",
-	    s, h->err, h->errline, (int)getpid());
+    const char *dlm = ": ";
+    if (s == NULL) {
+        if (h->err > 0)
+            s = strerror(h->err);
+        else
+            dlm = s = "";
+    }
+    // XXX - time stamp
+    fprintf(stderr, "ccn_client.c:%d[%d] - error %d%s%s\n",
+                        h->errline, (int)getpid(), h->err, dlm, s);
 }
 
 static int
 ccn_note_err(struct ccn *h)
 {
     if (h->verbose_error)
-        fprintf(stderr, "ccn_client.c:%d[%d] - error %d\n",
-                        h->errline, (int)getpid(), h->err);
+        ccn_perror(h, NULL);
     return(-1);
 }
 
@@ -250,6 +265,7 @@ ccn_destroy_interest(struct ccn *h, struct expressed_interest *i)
     }
     ccn_replace_handler(h, &(i->action), NULL);
     replace_interest_msg(i, NULL);
+    ccn_charbuf_destroy(&i->wanted_pub);
     i->magic = -1;
     free(i);
     return(ans);
@@ -343,20 +359,23 @@ ccn_destroy(struct ccn **hp)
  * Returns the byte offset of the end of prefix portion,
  * as given by prefix_comps, or -1 for error.
  * prefix_comps = -1 means the whole name is the prefix.
+ * If omit_possible_digest, chops off a potential digest name at the end
  */
 static int
-ccn_check_namebuf(struct ccn *h, struct ccn_charbuf *namebuf, int prefix_comps)
+ccn_check_namebuf(struct ccn *h, struct ccn_charbuf *namebuf, int prefix_comps,
+                  int omit_possible_digest)
 {
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d;
     int i = 0;
     int ans = 0;
+    int prev_ans = 0;
     if (namebuf == NULL || namebuf->length < 2)
         return(-1);
     d = ccn_buf_decoder_start(&decoder, namebuf->buf, namebuf->length);
     if (ccn_buf_match_dtag(d, CCN_DTAG_Name)) {
         ccn_buf_advance(d);
-        ans = d->decoder.token_index;
+        prev_ans = ans = d->decoder.token_index;
         while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
             ccn_buf_advance(d);
             if (ccn_buf_match_blob(d, NULL, NULL)) {
@@ -364,13 +383,17 @@ ccn_check_namebuf(struct ccn *h, struct ccn_charbuf *namebuf, int prefix_comps)
             }
             ccn_buf_check_close(d);
             i += 1;
-            if (prefix_comps < 0 || i == prefix_comps)
+            if (prefix_comps < 0 || i <= prefix_comps) {
+                prev_ans = ans;
                 ans = d->decoder.token_index;
+            }
         }
         ccn_buf_check_close(d);
     }
     if (d->decoder.state < 0 || ans < prefix_comps)
         return(-1);
+    if (omit_possible_digest && ans == prev_ans + 36 && ans == namebuf->length - 1)
+        return(prev_ans);
     return(ans);
 }
 
@@ -436,7 +459,7 @@ ccn_express_interest(struct ccn *h,
         if (h->interests_by_prefix == NULL)
             return(NOTE_ERRNO(h));
     }
-    prefixend = ccn_check_namebuf(h, namebuf, prefix_comps);
+    prefixend = ccn_check_namebuf(h, namebuf, prefix_comps, 1);
     if (prefixend < 0)
         return(prefixend);
     /*
@@ -489,7 +512,7 @@ ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
         if (h->interest_filters == NULL)
             return(NOTE_ERRNO(h));
     }
-    res = ccn_check_namebuf(h, namebuf, -1);
+    res = ccn_check_namebuf(h, namebuf, -1, 0);
     if (res < 0)
         return(res);
     hashtb_start(h->interest_filters, e);
@@ -530,6 +553,8 @@ ccn_pushout(struct ccn *h)
     ssize_t res;
     size_t size;
     if (h->outbuf != NULL && h->outbufindex < h->outbuf->length) {
+        if (h->sock < 0)
+            return(1);
         size = h->outbuf->length - h->outbufindex;
         res = write(h->sock, h->outbuf->buf + h->outbufindex, size);
         if (res == size) {
@@ -554,11 +579,6 @@ ccn_put(struct ccn *h, const void *p, size_t length)
     res = ccn_skeleton_decode(&dd, p, length);
     if (!(res == length && dd.state == 0))
         return(NOTE_ERR(h, EINVAL));
-    if (h->outbuf != NULL && h->outbufindex < h->outbuf->length) {
-        // XXX - should limit unbounded growth of h->outbuf
-        ccn_charbuf_append(h->outbuf, p, length); // XXX - check res
-        return (ccn_pushout(h));
-    }
     if (h->tap != -1) {
 	res = write(h->tap, p, length);
         if (res == -1) {
@@ -567,7 +587,15 @@ ccn_put(struct ccn *h, const void *p, size_t length)
             h->tap = -1;
         }
     }
-    res = write(h->sock, p, length);
+    if (h->outbuf != NULL && h->outbufindex < h->outbuf->length) {
+        // XXX - should limit unbounded growth of h->outbuf
+        ccn_charbuf_append(h->outbuf, p, length); // XXX - check res
+        return (ccn_pushout(h));
+    }
+    if (h->sock == -1)
+        res = 0;
+    else
+        res = write(h->sock, p, length);
     if (res == length)
         return(0);
     if (res == -1) {
@@ -587,6 +615,17 @@ int
 ccn_output_is_pending(struct ccn *h)
 {
     return(h != NULL && h->outbuf != NULL && h->outbufindex < h->outbuf->length);
+}
+
+struct ccn_charbuf *
+ccn_grab_buffered_output(struct ccn *h)
+{
+    if (ccn_output_is_pending(h) && h->outbufindex == 0) {
+        struct ccn_charbuf *ans = h->outbuf;
+        h->outbuf = NULL;
+        return(ans);
+    }
+    return(NULL);
 }
 
 static void
@@ -680,49 +719,14 @@ ccn_cache_key(struct ccn *h,
 }
 
 /*
- * Called when we get an answer to a KeyLocator fetch issued by ccn_locate_key.
- */
-static enum ccn_upcall_res
-handle_key(
-    struct ccn_closure *selfp,
-    enum ccn_upcall_kind kind,
-    struct ccn_upcall_info *info)
-{
-    struct ccn *h = info->h;
-    const unsigned char *ccnb = NULL;
-    size_t ccnb_size = 0;
-    int res;
-    
-    switch(kind) {
-    case CCN_UPCALL_FINAL:
-        free(selfp);
-        return(CCN_UPCALL_RESULT_OK);
-    case CCN_UPCALL_INTEREST_TIMED_OUT:
-        return(CCN_UPCALL_RESULT_REEXPRESS); // XXX - should not wait forever if nobody cares.
-    case CCN_UPCALL_CONTENT:
-    case CCN_UPCALL_CONTENT_UNVERIFIED:
-        break;
-    default:
-        return (CCN_UPCALL_RESULT_ERR);
-    }
-
-    ccnb = info->content_ccnb;
-    ccnb_size = info->pco->offset[CCN_PCO_E];
-
-    if (info->pco->offset[CCN_PCO_B_Type] == info->pco->offset[CCN_PCO_E_Type]) {
-        return(CCN_UPCALL_RESULT_OK); // XXX - Nick, is this right?
-    }
-    res = ccn_cache_key(h, ccnb, ccnb_size, info->pco);
-    return ((res < 0) ? CCN_UPCALL_RESULT_ERR : CCN_UPCALL_RESULT_OK);
-}
-
-/*
  * Examine a ContentObject and try to find the public key needed to
  * verify it.  It might be present in our cache of keys, or in the
  * object itself; in either of these cases, we can satisfy the request
- * right away. Or there may be an indirection, in which case we express
- * an interest for it, but return without the key. The final possibility
+ * right away. Or there may be an indirection (a KeyName), in which case
+ * return without the key. The final possibility
  * is that there is no key locator we can make sense of.
+ * Returns negative for error, 0 when pubkey is filled in,
+ *         or 1 if the key needs to be requested.
  */
 static int
 ccn_locate_key(struct ccn *h,
@@ -761,21 +765,7 @@ ccn_locate_key(struct ccn *h,
                               pco->offset[CCN_PCO_E_Key_Certificate_KeyName] -
                               pco->offset[CCN_PCO_B_Key_Certificate_KeyName]);
     if (ccn_buf_match_dtag(d, CCN_DTAG_KeyName)) {
-        /* KEYS create an interest in the key name, set up a callback that will
-         * insert the key into the h->keys hashtb for the calling handle
-         */
-        struct ccn_charbuf *key_name = ccn_charbuf_create();
-        struct ccn_closure *key_closure = calloc(1, sizeof(*key_closure));
-        if (key_closure == NULL)
-            return (NOTE_ERRNO(h));
-        key_closure->p = &handle_key;
-        key_closure->data = h->keys; // XXX - not used?
-        res = ccn_name_init(key_name);
-        res = ccn_name_append_components(key_name, msg,
-                                         pco->offset[CCN_PCO_B_Component0],
-                                         pco->offset[CCN_PCO_E_ComponentLast]);
-        res = ccn_express_interest(h, key_name, -1, key_closure, NULL);
-        ccn_charbuf_destroy(&key_name);
+        return(1);
     }
     else if (ccn_buf_match_dtag(d, CCN_DTAG_Key)) {
         const unsigned char *dkey;
@@ -813,17 +803,132 @@ ccn_locate_key(struct ccn *h,
         if (res == HT_NEW_ENTRY) {
             *entry = *pubkey;
         }
+        else
+            THIS_CANNOT_HAPPEN(h);
         hashtb_end(e);
         return (0);
     }
     else if (ccn_buf_match_dtag(d, CCN_DTAG_Certificate)) {
-        /* XXX: what should we really do in this case */
+        XXX; // what should we really do in this case?
     }
 
     return (-1);
 }
 
+/*
+ * Called when we get an answer to a KeyLocator fetch issued by
+ * ccn_initiate_key_fetch.  This does not really have to do much,
+ * since the main content handling logic picks up the keys as they
+ * go by.
+ */
+static enum ccn_upcall_res
+handle_key(
+           struct ccn_closure *selfp,
+           enum ccn_upcall_kind kind,
+           struct ccn_upcall_info *info)
+{
+    struct ccn *h = info->h;
+    (void)h;
+    switch(kind) {
+        case CCN_UPCALL_FINAL:
+            free(selfp);
+            return(CCN_UPCALL_RESULT_OK);
+        case CCN_UPCALL_INTEREST_TIMED_OUT:
+            /* Don't keep trying */
+            return(CCN_UPCALL_RESULT_OK);
+        case CCN_UPCALL_CONTENT:
+        case CCN_UPCALL_CONTENT_UNVERIFIED:
+            return(CCN_UPCALL_RESULT_OK);
+        default:
+            return (CCN_UPCALL_RESULT_ERR);
+    }
+}
+
+static int
+ccn_initiate_key_fetch(struct ccn *h,
+                       unsigned char *msg, struct ccn_parsed_ContentObject *pco,
+                       struct expressed_interest *trigger_interest)
+{
+    /* 
+     * Create a new interest in the key name, set up a callback that will
+     * insert the key into the h->keys hashtb for the calling handle and
+     * cause the trigger_interest to be re-expressed.
+     */
+    int res;
+    int namelen;
+    struct ccn_charbuf *key_name = NULL;
+    struct ccn_closure *key_closure = NULL;
+    const unsigned char *pkeyid = NULL;
+    size_t pkeyid_size = 0;
+    struct ccn_charbuf *templ = NULL;
+    
+    if (trigger_interest != NULL) {
+        /* Arrange a wakeup when the key arrives */
+        if (trigger_interest->wanted_pub == NULL)
+            trigger_interest->wanted_pub = ccn_charbuf_create();
+        res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest, msg,
+                                  pco->offset[CCN_PCO_B_PublisherPublicKeyDigest],
+                                  pco->offset[CCN_PCO_E_PublisherPublicKeyDigest],
+                                  &pkeyid, &pkeyid_size);
+        if (trigger_interest->wanted_pub != NULL && res >= 0) {
+            trigger_interest->wanted_pub->length = 0;
+            ccn_charbuf_append(trigger_interest->wanted_pub, pkeyid, pkeyid_size);
+        }
+        trigger_interest->target = 0;
+    }
+
+    namelen = (pco->offset[CCN_PCO_E_KeyName_Name] -
+               pco->offset[CCN_PCO_B_KeyName_Name]);
+    /*
+     * If there is no KeyName provided, we can't ask, but we might win if the
+     * key arrives along with some other content.
+     */
+    if (namelen == 0)
+        return(-1);
+    key_closure = calloc(1, sizeof(*key_closure));
+    if (key_closure == NULL)
+        return (NOTE_ERRNO(h));
+    key_closure->p = &handle_key;
+    
+    key_name = ccn_charbuf_create();
+    res = ccn_charbuf_append(key_name,
+                             msg + pco->offset[CCN_PCO_B_KeyName_Name],
+                             namelen);
+    if (pco->offset[CCN_PCO_B_KeyName_Pub] < pco->offset[CCN_PCO_E_KeyName_Pub]) {
+        templ = ccn_charbuf_create();
+        ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
+        ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
+        ccn_charbuf_append_closer(templ); /* </Name> */
+        ccn_charbuf_append(templ,
+                           msg + pco->offset[CCN_PCO_B_KeyName_Pub],
+                           (pco->offset[CCN_PCO_E_KeyName_Pub] - 
+                            pco->offset[CCN_PCO_B_KeyName_Pub]));
+        ccn_charbuf_append_closer(templ); /* </Interest> */
+    }
+    res = ccn_express_interest(h, key_name, -1, key_closure, templ);
+    ccn_charbuf_destroy(&key_name);
+    ccn_charbuf_destroy(&templ);
+    return(res);
+}
+
+/*
+ * If we were waiting for a key and it has arrived,
+ * refresh the interest.
+ */
 static void
+ccn_check_pub_arrival(struct ccn *h, struct expressed_interest *interest)
+{
+    struct ccn_charbuf *want = interest->wanted_pub;
+    if (want == NULL)
+        return;
+    if (hashtb_lookup(h->keys, want->buf, want->length) != NULL) {
+        ccn_charbuf_destroy(&interest->wanted_pub);
+        interest->target = 1;
+        ccn_refresh_interest(h, interest);
+    }
+}
+
+void
 ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
 {
     struct ccn_parsed_interest pi = {0};
@@ -831,6 +936,8 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
     int i;
     int res;
     enum ccn_upcall_res ures;
+    
+    h->running++;
     info.h = h;
     info.pi = &pi;
     info.interest_comps = ccn_indexbuf_obtain(h);
@@ -912,17 +1019,13 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                                     ures = (interest->action->p)(interest->action,
                                                                  upcall_kind,
                                                                  &info);
-                                    if (interest->magic != 0x7059e5f4) {
+                                    if (interest->magic != 0x7059e5f4)
                                         ccn_gripe(interest);
-                                    }
                                     if (ures == CCN_UPCALL_RESULT_REEXPRESS)
                                         ccn_refresh_interest(h, interest);
                                     else if (ures == CCN_UPCALL_RESULT_VERIFY &&
                                              upcall_kind == CCN_UPCALL_CONTENT_UNVERIFIED) { /* KEYS */
-                                        /* XXX - what do we really need to do here... */
-                                        interest->outstanding += 1; /* Pretend it is still outstanding. */
-/* The key may be on its way because ccn_locate_key asked for it, or it may arrive by happenstance.  When it arrives we need to manage to re-fetch the unverified object so that the upcall can happen again. We could do this by remembering the content object itself, or by remembering a specific Interest that should get it back for us once more. This needs to be triggered on the arrival of the pubkey. The triggered event should also go away when nobody cares anymore. */
-                                        
+                                        ccn_initiate_key_fetch(h, msg, info.pco, interest);
                                     } else {
                                         interest->target = 0;
                                         replace_interest_msg(interest, NULL);
@@ -933,7 +1036,7 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                         }
                     }
                 }
-            }
+            } // XXX whew, there are a lot of right braces there!
             if (h->default_content_action != NULL) {
                 enum ccn_upcall_kind upcall_kind; /* KEYS */
                 struct ccn_pkey *pubkey = NULL;
@@ -959,6 +1062,7 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
     }
     ccn_indexbuf_release(h, info.interest_comps);
     ccn_indexbuf_destroy(&info.content_comps);
+    h->running--;
 }
 
 static int
@@ -1096,14 +1200,17 @@ ccn_clean_all_interests(struct ccn *h)
     hashtb_end(e);
 }
 
-static void
-ccn_age_interests(struct ccn *h)
+int
+ccn_process_scheduled_operations(struct ccn *h)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     struct interests_by_prefix *entry;
     struct expressed_interest *ie;
     int need_clean = 0;
+    h->refresh_us = 5 * CCN_INTEREST_LIFETIME_MICROSEC;
+    gettimeofday(&h->now, NULL);
+    h->running++;
     if (h->interests_by_prefix != NULL && !ccn_output_is_pending(h)) {
         for (hashtb_start(h->interests_by_prefix, e); e->data != NULL; hashtb_next(e)) {
             entry = e->data;
@@ -1112,9 +1219,10 @@ ccn_age_interests(struct ccn *h)
                 need_clean = 1;
             else {
                 for (ie = entry->list; ie != NULL; ie = ie->next) {
+                    ccn_check_pub_arrival(h, ie);
                     if (ie->target != 0)
                         ccn_age_interest(h, ie, e->key, e->keysize);
-                    if (ie->target == 0) {
+                    if (ie->target == 0 && ie->wanted_pub == NULL) {
                         ccn_replace_handler(h, &(ie->action), NULL);
                         replace_interest_msg(ie, NULL);
                         need_clean = 1;
@@ -1126,6 +1234,8 @@ ccn_age_interests(struct ccn *h)
         if (need_clean)
             ccn_clean_all_interests(h);
     }
+    h->running--;
+    return(h->refresh_us);
 }
 
 int
@@ -1141,11 +1251,11 @@ ccn_run(struct ccn *h, int timeout)
 {
     struct timeval start;
     struct pollfd fds[1];
+    int microsec;
     int millisec;
     int res = -1;
     if (h->running != 0)
         return(NOTE_ERR(h, EBUSY));
-    h->running = 1;
     memset(fds, 0, sizeof(fds));
     memset(&start, 0, sizeof(start));
     h->timeout = timeout;
@@ -1154,9 +1264,7 @@ ccn_run(struct ccn *h, int timeout)
             res = -1;
             break;
         }
-        h->refresh_us = 5 * CCN_INTEREST_LIFETIME_MICROSEC;
-        gettimeofday(&h->now, NULL);
-        ccn_age_interests(h);
+        microsec = ccn_process_scheduled_operations(h);
         timeout = h->timeout;
         if (start.tv_sec == 0)
             start = h->now;
@@ -1172,7 +1280,7 @@ ccn_run(struct ccn *h, int timeout)
         fds[0].events = POLLIN;
         if (ccn_output_is_pending(h))
             fds[0].events |= POLLOUT;
-        millisec = (h->refresh_us) / 1000;
+        millisec = microsec / 1000;
         if (timeout >= 0 && timeout < millisec)
             millisec = timeout;
         res = poll(fds, 1, millisec);
@@ -1191,9 +1299,8 @@ ccn_run(struct ccn *h, int timeout)
         if (h->timeout == 0)
             break;
     }
-    if (h->running != 1)
+    if (h->running != 0)
         abort();
-    h->running = 0;
     return(res);
 }
 
@@ -1213,6 +1320,7 @@ handle_simple_incoming_content(
     struct ccn_upcall_info *info)
 {
     struct simple_get_data *md = selfp->data;
+    struct ccn *h = info->h;
     
     if (kind == CCN_UPCALL_FINAL) {
         if (selfp != &md->closure)
@@ -1222,6 +1330,8 @@ handle_simple_incoming_content(
     }
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
         return(selfp->intdata ? CCN_UPCALL_RESULT_REEXPRESS : CCN_UPCALL_RESULT_OK);
+    if (kind == CCN_UPCALL_CONTENT_UNVERIFIED)
+        XXX; // - Probably should always work hard to verify, or add a parameter to specify.
     if (kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_UNVERIFIED)
         return(CCN_UPCALL_RESULT_ERR);
     if (md->resultbuf != NULL) {
@@ -1252,6 +1362,7 @@ ccn_get(struct ccn *h,
         struct ccn_indexbuf *compsbuf)
 {
     struct ccn *orig_h = h;
+    struct hashtb *saved_keys = NULL;
     int res;
     struct simple_get_data *md;
     
@@ -1259,6 +1370,10 @@ ccn_get(struct ccn *h,
         h = ccn_create();
         if (h == NULL)
             return(-1);
+        if (orig_h != NULL) { /* Dad, can I borrow the keys? */
+            saved_keys = h->keys;
+            h->keys = orig_h->keys;
+        }
         res = ccn_connect(h, NULL);
         if (res < 0) {
             ccn_destroy(&h);
@@ -1286,8 +1401,10 @@ ccn_get(struct ccn *h,
     md->closure.refcount--;
     if (md->closure.refcount == 0)
         free(md);
-    if (h != orig_h)
+    if (h != orig_h) {
+        if (saved_keys != NULL)
+            h->keys = saved_keys;
         ccn_destroy(&h);
+    }
     return(res);
 }
-

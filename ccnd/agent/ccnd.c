@@ -369,10 +369,10 @@ enroll_content(struct ccnd *h, struct content_entry *content)
 }
 
 static void
-finalize_content(struct hashtb_enumerator *e)
+finalize_content(struct hashtb_enumerator *content_enumerator)
 {
-    struct ccnd *h = hashtb_get_param(e->ht, NULL);
-    struct content_entry *entry = e->data;
+    struct ccnd *h = hashtb_get_param(content_enumerator->ht, NULL);
+    struct content_entry *entry = content_enumerator->data;
     unsigned i = entry->accession - h->accession_base;
     if (i < h->content_by_accession_window && h->content_by_accession[i] == entry) {
         content_skiplist_remove(h, entry);
@@ -1068,7 +1068,7 @@ ccn_stuff_interest(struct ccnd *h, struct face *face, struct ccn_charbuf *c)
     struct hashtb_enumerator *e = &ee;
     int n_stuffed = 0;
     int remaining_space = h->mtu - c->length;
-    if (remaining_space < 20)
+    if (remaining_space < 20 || face == h->face0)
         return(0);
     for (hashtb_start(h->interestprefix_tab, e);
          remaining_space >= 20 && e->data != NULL; hashtb_next(e)) {
@@ -1337,10 +1337,13 @@ get_outbound_faces(struct ccnd *h,
     if (pi->scope == 1)
         checkmask = CCN_FACE_GG;
     // XXX looping to face_limit is ofen a (minor) waste of time
+    if (h->debug & 32)
+        ccnd_msg(h, "at %d face_limit %u", __LINE__, h->face_limit);
     for (i = 0; i < h->face_limit; i++)
         if (a[i] != NULL && a[i] != from && ((a[i]->flags & checkmask) == checkmask)) {
             ccn_indexbuf_append_element(x, a[i]->faceid);
-            // ccnd_msg(h, "at %d adding %u", __LINE__, a[i]->faceid);
+            if (h->debug & 32)
+                ccnd_msg(h, "at %d adding %u", __LINE__, a[i]->faceid);
         }
     return(x);
 }
@@ -1492,11 +1495,15 @@ adjust_outbound_for_existing_interests(struct ccnd *h, struct face *face,
                 // XXX - Count will come into play when implemented
                 // XXX - If we had actual forwarding tables, would need to take that into account since the outbound set could differ in non-trivial ways
                 // XXX - newly arrived faces might miss a few interests because of this tactic, but those will get repaired as interests time out.
+                if (h->debug & 32)
+                    ccnd_debug_ccnb(h, __LINE__, "similar_interest", face_from_faceid(h, p->faceid),
+                                    p->interest_msg, p->size);
                 if (face->faceid == p->faceid) {
                     /*
                      * This is one we've already seen before from the same face,
                      * but dropping it unconditionally would lose resiliency
                      * against dropped packets. Thus allow a few of them.
+                     * XXX c.f. bug #13
                      */
                     if ((++k) < max_redundant)
                         continue;
@@ -1556,11 +1563,14 @@ propagate_interest(struct ccnd *h, struct face *face,
     struct ccn_indexbuf *outbound = get_outbound_faces(h, face, msg, pi);
     int usec;
     int delaymask;
+    // if (outbound) ccnd_msg(h, "at %d outbound->n = %d", __LINE__, outbound->n);
     adjust_outbound_for_existing_interests(h, face, msg, pi, ipe, outbound);
+    // if (outbound) ccnd_msg(h, "at %d outbound->n = %d", __LINE__, outbound->n);
     if (outbound->n == 0)
         ccn_indexbuf_destroy(&outbound);
     else
         reorder_outbound_using_history(h, ipe, outbound);
+    // if (outbound) ccnd_msg(h, "at %d outbound->n = %d", __LINE__, outbound->n);
     if (pi->offset[CCN_PI_B_Nonce] == pi->offset[CCN_PI_E_Nonce]) {
         /* This interest has no nonce; add one before going on */
         int noncebytes = 6;
@@ -2316,11 +2326,14 @@ do_write(struct ccnd *h, struct face *face, unsigned char *data, size_t size)
         ccn_charbuf_append(face->outbuf, data, size);
         return;
     }
+    if (face == h->face0) {
+        ccn_dispatch_message(h->internal_client, data, size);
+        return;
+    }
     if (face->addr == NULL)
         res = send(face->fd, data, size, 0);
-    else {
+    else
         res = sendto(face->fd, data, size, 0, face->addr, face->addrlen);
-    }
     if (res == size)
         return;
     if (res == -1) {
@@ -2394,7 +2407,13 @@ run(struct ccnd *h)
     int prev_timeout_ms = -1;
     int usec;
     int specials = 2; /* local_listener_fd, httpd_listener_fd */
+    struct ccn_charbuf *buf = NULL;
     for (;;) {
+        buf = ccn_grab_buffered_output(h->internal_client);
+        if (buf != NULL) {
+            process_input_message(h, h->face0, buf->buf, buf->length, 0);
+            ccn_charbuf_destroy(&buf);
+        }
         usec = ccn_schedule_run(h->sched);
         timeout_ms = (usec < 0) ? -1 : (usec / 1000);
         if (timeout_ms == 0 && prev_timeout_ms == 0)
@@ -2634,6 +2653,8 @@ main(int argc, char **argv)
     signal(SIGPIPE, SIG_IGN);
     h = ccnd_create();
     ccnd_stats_httpd_start(h);
+    ccnd_internal_client_start(h);
+    enroll_face(h, h->face0);
     run(h);
     ccnd_msg(h, "exiting.", (int)getpid());
     exit(0);

@@ -2,6 +2,8 @@ package com.parc.ccn.data.query;
 
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -38,6 +40,7 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 	public static final String EXCLUDE_ELEMENT = "Exclude";
 	public static final String BLOOM = "Bloom";
 	public static final String BLOOM_SEED = "BloomSeed";
+	public static int OPTIMUM_FILTER_SIZE = 100;
 
 	protected ArrayList<ExcludeElement> _values;
 	
@@ -55,13 +58,50 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 		}
 		_values = new ArrayList<ExcludeElement>(values);
 	}
-	
+		
+	public ExcludeFilter(byte [][] omissions)
+		throws InvalidParameterException {
+		if (omissions == null || omissions.length == 0)
+			throw new InvalidParameterException("No omissions");
+		Comparator<byte[]> comparator = new ByteArrayCompare();
+		Arrays.sort(omissions, comparator);
+		ArrayList<ExcludeElement> elements = new ArrayList<ExcludeElement>();
+		int filterCount = 0;
+		boolean needNewElement = omissions.length > OPTIMUM_FILTER_SIZE;
+		BloomFilter currentFilter = null;;
+		if (!needNewElement) {
+			currentFilter = createBloom();
+			elements.add(new ExcludeElement(null, currentFilter));
+		}
+		for (byte[] omission : omissions) {
+			if (filterCount > OPTIMUM_FILTER_SIZE) {
+				needNewElement = true;
+				filterCount = 0;
+			}
+			if (needNewElement) {
+				currentFilter = createBloom();
+				elements.add(new ExcludeElement(omission, currentFilter));
+				needNewElement = false;
+			} else {
+				currentFilter.insert(omission);
+				filterCount++;
+			}
+		}
+		_values = elements;
+	}
+
 	public ExcludeFilter() {} // for use by decoders
 
 	public ArrayList<ExcludeElement> values() {
 		return _values;
 	}
 	
+	private static BloomFilter createBloom() {
+		byte[] seed = new byte[4];
+		BloomFilter.createSeed(seed);
+		return new BloomFilter(OPTIMUM_FILTER_SIZE, seed);
+	}
+
 	/**
 	 * Exclude this co if it matches the filter
 	 * @param content
@@ -89,6 +129,65 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 			}
 		}
 		return false;
+	}
+	
+	/**
+	 * Return a new ExcludeFilter that is a copy of this one with 
+	 * the supplied omissions added.
+	 * @param omissions
+	 * @return new ExcludeFilter object or null in case of error
+	 */
+	public ExcludeFilter add(byte[][] omissions) {
+		if (omissions == null || omissions.length == 0) {
+			return null;
+		}
+		Comparator<byte[]> comparator = new ByteArrayCompare();
+		Arrays.sort(omissions, comparator);
+		ExcludeFilter result = new ExcludeFilter();
+		result._values = new ArrayList<ExcludeElement>();
+		ExcludeElement prev = null;
+		int j = 0;
+		byte[] omission = omissions[j];
+		for (int i = 0; i < values().size(); i++) {
+			ExcludeElement ee = values().get(i);
+			for ( ; j<omissions.length; j++, omission=omissions[j]) { 
+				if (DataUtils.compare(ee._component, omission) > 0) {
+					// Current component is greater than current omission
+					// so we use prev filter
+					if (null != prev) {
+						prev._bloom.insert(omission);
+					} else {
+						prev = new ExcludeElement(null, createBloom());
+						result._values.add(prev);
+					}
+				} else {
+					// Gone past point where we can use previous filter
+					// so break out of inner loop to set up next filter
+					break;
+				}
+			}
+			try {
+				prev = ee.clone();
+			} catch (CloneNotSupportedException e) {
+				return null;
+			}
+			result._values.add(prev);
+		}
+		if (j < omissions.length) {
+			// Got all the way through and found no suitable filter so need
+			// to add for remainder
+			byte[][] remainder = new byte[omissions.length-j][];
+			for (int k=j; k < omissions.length; k++) {
+				remainder[k-j] = omissions[k];
+			}
+			ExcludeFilter remFilter = new ExcludeFilter(remainder); // builds remainder list
+			ExcludeElement first = remFilter._values.get(0);
+			if (null == first._component) {
+				first._component = omissions[j];
+			}
+			result._values.addAll(remFilter._values);
+		}
+		return result;
 	}
 
 	// TODO should we be able to add values arbitrarily?

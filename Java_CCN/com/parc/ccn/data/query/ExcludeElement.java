@@ -113,4 +113,12 @@ public class ExcludeElement extends GenericXMLEncodable implements XMLEncodable,
 			return false;
 		return bloomFilter().equals(other.bloomFilter());
 	}
+	
+	public ExcludeElement clone() throws CloneNotSupportedException {
+		ExcludeElement result = (ExcludeElement)super.clone();
+		result._component = _component.clone();
+		result._bloom = _bloom.clone();
+		return result;
+		//		return new ExcludeElement(_component.clone(), _bloom);
+	}
 }

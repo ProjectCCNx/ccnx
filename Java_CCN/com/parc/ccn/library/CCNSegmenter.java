@@ -12,7 +12,6 @@ import java.sql.Timestamp;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
-import javax.crypto.CipherInputStream;
 import javax.crypto.IllegalBlockSizeException;
 
 import com.parc.ccn.Library;
@@ -30,6 +29,7 @@ import com.parc.ccn.security.crypto.CCNAggregatedSigner;
 import com.parc.ccn.security.crypto.CCNMerkleTree;
 import com.parc.ccn.security.crypto.CCNMerkleTreeSigner;
 import com.parc.ccn.security.crypto.ContentKeys;
+import com.parc.ccn.security.crypto.UnbufferedCipherInputStream;
 
 /**
  * This class combines basic segmentation, signing and encryption; 
@@ -528,7 +528,7 @@ public class CCNSegmenter {
 		if (null != _keys) {
 			try {
 				// Make a separate cipher, so this segmenter can be used by multiple callers at once.
-				Cipher thisCipher = _keys.getSegmentEncryptionCipher(null, segmentNumber);
+				Cipher thisCipher = _keys.getSegmentEncryptionCipher(segmentNumber);
 				content = thisCipher.doFinal(content, offset, length);
 				offset = 0;
 				length = content.length;
@@ -572,37 +572,35 @@ public class CCNSegmenter {
 
 		long nextSegmentIndex = baseSegmentNumber;
 		
-		ByteArrayInputStream dataStream = new ByteArrayInputStream(content, offset, length);
-		InputStream inputStream = dataStream;
-		Cipher thisCipher = null;
-		if (null != _keys) {
-			// DKS TODO -- move to streaming version to cut down copies. Here using input
-			// streams, eventually push down with this at the end of an output stream.
-
-			// Make a separate cipher, so this segmenter can be used by multiple callers at once.
-			thisCipher = _keys.getSegmentEncryptionCipher(null, nextSegmentIndex);
-			// Override content type to mark encryption.
-			// Note: we don't require that writers use our facilities for encryption, so
-			// content previously encrypted may not be marked as type ENCR. So on the decryption
-			// side we don't require that encrypted data be marked ENCR -- if you give us a
-			// decryption key, we'll try to decrypt it.
-			signedInfo.setType(ContentType.ENCR);
-				
-			inputStream = new CipherInputStream(dataStream, thisCipher);
-		} 
-		
 		for (int i=0; i < blockCount; ++i) {
+			InputStream dataStream = new ByteArrayInputStream(content, offset, length);
+			if (null != _keys) {
+				// DKS TODO -- move to streaming version to cut down copies. Here using input
+				// streams, eventually push down with this at the end of an output stream.
+
+				// Make a separate cipher, so this segmenter can be used by multiple callers at once.
+				Cipher thisCipher = _keys.getSegmentEncryptionCipher(nextSegmentIndex);
+				Library.logger().finest("Created new encryption cipher "+thisCipher);
+				// Override content type to mark encryption.
+				// Note: we don't require that writers use our facilities for encryption, so
+				// content previously encrypted may not be marked as type ENCR. So on the decryption
+				// side we don't require that encrypted data be marked ENCR -- if you give us a
+				// decryption key, we'll try to decrypt it.
+				signedInfo.setType(ContentType.ENCR);
+
+				dataStream = new UnbufferedCipherInputStream(dataStream, thisCipher);
+			}
 			blocks[i] =  
 				new ContentObject(
 						SegmentationProfile.segmentName(rootName, nextSegmentIndex),
 						signedInfo,
-						inputStream, blockWidth);
+						dataStream, blockWidth);
+			Library.logger().finest("Created content object - segment "+nextSegmentIndex+" before encr="+content[offset]+" after encr="+blocks[i].content()[0]);
+
 			nextSegmentIndex = nextSegmentIndex(nextSegmentIndex, 
 												blocks[i].contentLength());
-		}
-		if (dataStream.available() > 0) {
-			// ByteArrayInputStream supports available() correctly.
-			Library.logger().warning("Unexpected -- not writing out all data blocks!!!");
+			offset += blockWidth;
+			length -= blockWidth;
 		}
 		return blocks;
 	}
@@ -647,7 +645,7 @@ public class CCNSegmenter {
 			if (null != _keys) {
 				try {
 					// Make a separate cipher, so this segmenter can be used by multiple callers at once.
-					Cipher thisCipher = _keys.getSegmentEncryptionCipher(null, nextSegmentIndex);
+					Cipher thisCipher = _keys.getSegmentEncryptionCipher(nextSegmentIndex);
 					blockContent = thisCipher.doFinal(contentBlocks[i]);
 
 					// Override content type to mark encryption.
@@ -676,7 +674,7 @@ public class CCNSegmenter {
 		blockContent = contentBlocks[i];
 		if (null != _keys) {
 			try {
-				Cipher thisCipher = _keys.getSegmentEncryptionCipher(null, nextSegmentIndex);
+				Cipher thisCipher = _keys.getSegmentEncryptionCipher(nextSegmentIndex);
 				blockContent = thisCipher.doFinal(contentBlocks[i], 0, lastBlockLength);
 				lastBlockLength = blockContent.length;
 				

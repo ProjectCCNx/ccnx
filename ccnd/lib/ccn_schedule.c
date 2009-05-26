@@ -66,15 +66,15 @@ update_time(struct ccn_schedule *sched)
 }
 
 struct ccn_schedule *
-ccn_schedule_create(void *clienth, const struct ccn_gettime *clock)
+ccn_schedule_create(void *clienth, const struct ccn_gettime *ccnclock)
 {
     struct ccn_schedule *sched;
-    if (clock == NULL)
+    if (ccnclock == NULL)
         return(NULL);
     sched = calloc(1, sizeof(*sched));
     if (sched != NULL) {
         sched->clienth = clienth;
-        sched->clock = clock;
+        sched->clock = ccnclock;
         update_time(sched);
     }
     return(sched);

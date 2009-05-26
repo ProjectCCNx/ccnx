@@ -10,6 +10,7 @@ ccnd - CCN Daemon
 			4 - content messages
 			8 - matching details
 			16 - interest details
+			32 - gory interest details
 			bitwise OR these together for combinations; -1 gets everything
 		CCN_LOCAL_PORT=
 			UDP port for local clients (default 4485)

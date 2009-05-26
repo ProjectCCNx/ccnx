@@ -122,7 +122,8 @@ int ccn_get_connection_fd(struct ccn *h);
 
 /*
  * ccn_disconnect: disconnect from local ccnd
- * Breaks the connection, but leaves other state intact.
+ * This breaks the connection and discards buffered I/O,
+ * but leaves other state intact.
  */ 
 int ccn_disconnect(struct ccn *h);
 
@@ -169,6 +170,41 @@ int ccn_name_append_str(struct ccn_charbuf *c, const char *s);
 int ccn_name_append_components(struct ccn_charbuf *c,
                                const unsigned char *ccnb,
                                size_t start, size_t stop);
+
+enum ccn_marker {
+    CCN_MARKER_NONE = -1,
+    CCN_MARKER_SEQNUM  = 0xF8, /* consecutive block sequence numbers */
+    CCN_MARKER_BLKID   = 0xFB, /* nonconsecutive block ids */
+    CCN_MARKER_VERSION = 0xFD, /* timestamp-based versioning */
+    CCN_MARKER_NAMES   = 0xFE  /* name enumeration protocol */
+};
+
+/*
+ * ccn_name_append_numeric: add binary Component to ccnb-encoded Name
+ * These are special components used for marking versions, fragments, etc.
+ * Return value is 0, or -1 for error
+ * XXX http://twiki.parc.com/twiki/bin/view/CCN/NameConventions
+ */
+int ccn_name_append_numeric(struct ccn_charbuf *c,
+                            enum ccn_marker tag, uintmax_t value);
+
+/*
+ * ccn_name_split: find Component boundaries in a ccnb-encoded Name
+ * Thin veneer over ccn_parse_Name().
+ * returns -1 for error, otherwise the number of Components
+ * components arg may be NULL to just do a validity check
+ */
+int ccn_name_split(struct ccn_charbuf *c, struct ccn_indexbuf* components);
+
+/*
+ * ccn_name_chop: Chop the name down to n components.
+ * returns -1 for error, otherwise the new number of Components
+ * components arg may be NULL; if provided it must be consistent with
+ * some prefix of the name, and is updated accordingly.
+ * n may be negative to say how many components to remove instead of how
+ * many to leave, e.g. -1 will remove just the last component.
+ */
+int ccn_name_chop(struct ccn_charbuf *c, struct ccn_indexbuf* components, int n);
 
 
 /***********************************
@@ -317,30 +353,6 @@ int ccn_get(struct ccn *h,
             struct ccn_parsed_ContentObject *pcobuf,
             struct ccn_indexbuf *compsbuf);
 
-/***********************************
- * Bulk data
- */
-
-/*
- * The client provides a ccn_seqfunc * (and perhaps a matching param)
- * to specify the scheme for naming the content items in the sequence.
- * Given the sequence number x, it should place in resultbuf the
- * corresponding blob that that will be used in the final explicit
- * Component of the Name of item x in the sequence.  This should
- * act as a mathematical function, returning the same answer for a given x.
- * (Ususally param will be NULL, but is provided in case it is needed.)
- */
-typedef void ccn_seqfunc(uintmax_t x, void *param,
-                         struct ccn_charbuf *resultbuf);
-
-/*
- * Ready-to-use sequencing functions
- */
-extern ccn_seqfunc ccn_decimal_seqfunc;
-extern ccn_seqfunc ccn_binary_seqfunc;
-
-
-
 
 /***********************************
  * Binary decoding
@@ -417,7 +429,6 @@ enum ccn_parsed_interest_offsetid {
     CCN_PI_B_Component0,
     CCN_PI_B_LastPrefixComponent,
     CCN_PI_E_LastPrefixComponent,
-    // CCN_PI_B_ComponentLast,
     CCN_PI_E_ComponentLast,
     CCN_PI_E_Name,
     CCN_PI_B_NameComponentCount /* = CCN_PI_E_Name */,
@@ -506,6 +517,10 @@ enum ccn_parsed_content_object_offsetid {
     CCN_PCO_B_KeyLocator,
     /* Exactly one of Key, Certificate, or KeyName will be present */
     CCN_PCO_B_Key_Certificate_KeyName,
+    CCN_PCO_B_KeyName_Name,
+    CCN_PCO_E_KeyName_Name,
+    CCN_PCO_B_KeyName_Pub,
+    CCN_PCO_E_KeyName_Pub,
     CCN_PCO_E_Key_Certificate_KeyName,
     CCN_PCO_E_KeyLocator,
     CCN_PCO_E_SignedInfo,
@@ -539,6 +554,12 @@ int ccn_parse_ContentObject(const unsigned char *msg, size_t size,
 
 void ccn_digest_ContentObject(const unsigned char *msg,
                               struct ccn_parsed_ContentObject *pc);
+/*
+ * ccn_parse_Name: Parses a ccnb-encoded name
+ * components may be NULL, otherwise is filled in with Component boundary offsets
+ * Returns the number of Components in the Name, or -1 if there is an error.
+ */
+int ccn_parse_Name(struct ccn_buf_decoder *d, struct ccn_indexbuf *components);
 
 /*
  * ccn_compare_names:
@@ -554,32 +575,24 @@ int ccn_compare_names(const unsigned char *a, size_t asize,
 
 /***********************************
  * Reading Names:
- * Names may be (minimally) read using the following routines, b
+ * Names may be (minimally) read using the following routines,
  * based on the component boundary markers generated from a parse.
  */
 
 /*
  * ccn_indexbuf_comp_strcmp: perform strcmp of given val against 
- * component.  Returns -1, 0, or 1 if val is less than, equal to,
- * or greater than the component at given index i (counting from 0).
+ * name component at given index i (counting from 0).
+ * Uses conventional string ordering, not the canonical CCN ordering.
+ * Returns negative, 0, or positive if val is less than, equal to,
+ * or greater than the component.
  * Safe even on binary components, though the result may not be useful.
- * NOTE - this ordering may be different from the canonical ordering
+ * NOTE - this ordering is different from the canonical ordering
  * used by ccn_compare_names();
  */
 int ccn_name_comp_strcmp(const unsigned char *data,
-                         const struct ccn_indexbuf* indexbuf,
+                         const struct ccn_indexbuf *indexbuf,
                          unsigned int i,
                          const char *val);
-
-/*
- * ccn_indexbuf_comp_strdup: return a copy of component at given index i
- * as a string, that is, it will be terminated by \0.
- * The first component is index 0.
- * Caller is responsible to free returned buffer containing copy.
- */
-char * ccn_name_comp_strdup(const unsigned char *data,
-                            const struct ccn_indexbuf *indexbuf,
-                            unsigned int i);
 
 /*
  * ccn_name_comp_get: return a pointer to and size of component at
@@ -629,10 +642,12 @@ int ccn_encode_ContentObject(struct ccn_charbuf *buf,
  */
 
 int ccn_encode_Content(struct ccn_charbuf *buf,
-			     const void *data,
-			     size_t size);
+                       const void *data,
+                       size_t size);
 
-const char *ccn_content_name(enum ccn_content_type type);
+/***********************************
+ * Matching
+ */
 
 /*
  * ccn_content_matches_interest: Test for a match
@@ -660,7 +675,7 @@ int ccn_content_matches_interest(const unsigned char *content_object,
  * ccn_perror: produce message on standard error output describing the last
  * error encountered during a call using the given handle.
  */
-void ccn_perror(struct ccn *h, const char * s);
+void ccn_perror(struct ccn *h, const char *s);
 
 
 /***********************************
@@ -694,14 +709,14 @@ int ccn_charbuf_append_non_negative_integer(struct ccn_charbuf *c, int nni);
  * If marker >= 0, the low-order byte is used as a marker byte, useful for
  * some content naming conventions (versioning, in particular).
  */
-#define CCN_MARKER_NONE -1
-#define CCN_MARKER_VERSION 0xFD
-int ccn_charbuf_append_timestamp_blob(struct ccn_charbuf *c, int marker, intmax_t secs, int nsecs);
+int ccn_charbuf_append_timestamp_blob(struct ccn_charbuf *c,
+                                      enum ccn_marker marker,
+                                      intmax_t secs, int nsecs);
 
 /*
  * ccn_charbuf_append_now_blob:
  * as above, using the current time
  */
-int ccn_charbuf_append_now_blob(struct ccn_charbuf *c, int marker);
+int ccn_charbuf_append_now_blob(struct ccn_charbuf *c, enum ccn_marker marker);
 
 #endif

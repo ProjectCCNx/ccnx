@@ -9,9 +9,10 @@ WithCCND 2 ccnd 2>ccnd2.out &
 WithCCND 3 ccnd 2>ccnd3.out &
 
 # Make sure they've all started
-WithCCND 1 ccndsmoketest || Fail
-WithCCND 2 ccndsmoketest || Fail
-WithCCND 3 ccndsmoketest || Fail
+until CheckForCCND 0 && CheckForCCND 1 && CheckForCCND 2 && CheckForCCND 3; do
+  echo Waiting ... >&2
+  sleep 1
+done
 
 Linkup () {
   local A B  P Q

@@ -140,9 +140,9 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	public void getExcludeTest() throws Throwable {
 		System.out.println("getExclude test started");
 		// Try with single bloom filter
-		excludeTest("/getExcludeTest1", Interest.OPTIMUM_FILTER_SIZE/2);
+		excludeTest("/getExcludeTest1", ExcludeFilter.OPTIMUM_FILTER_SIZE/2);
 		// Try with multi part filter
-		excludeTest("/getExcludeTest2", Interest.OPTIMUM_FILTER_SIZE + 5);
+		excludeTest("/getExcludeTest2", ExcludeFilter.OPTIMUM_FILTER_SIZE + 5);
 		System.out.println("getExclude test finished");
 	}
 	

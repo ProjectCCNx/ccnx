@@ -164,8 +164,6 @@ public class EncodableObjectTest {
 			fail("IOException! " + e.getMessage());
 		} catch (XMLStreamException e) {
 			fail("XMLStreamException! " + e.getMessage());
-		} catch (ClassNotFoundException e) {
-			fail("XMLStreamException! " + e.getMessage());
-		}
+		} 
 	}
 }

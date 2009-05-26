@@ -43,14 +43,14 @@ import com.parc.ccn.security.crypto.ContentKeys;
 public class CCNVersionedInputStream extends CCNInputStream {
 
 	public CCNVersionedInputStream(ContentName name,
-			long startingBlockIndex, PublisherPublicKeyDigest publisher,
+			Long startingBlockIndex, PublisherPublicKeyDigest publisher,
 			ContentKeys keys, CCNLibrary library)
 			throws XMLStreamException, IOException {
 		super(name, startingBlockIndex, publisher, keys, library);
 	}
 
 	public CCNVersionedInputStream(ContentName name,
-			long startingBlockIndex, PublisherPublicKeyDigest publisher,
+			Long startingBlockIndex, PublisherPublicKeyDigest publisher,
 			CCNLibrary library) throws XMLStreamException, IOException {
 		super(name, startingBlockIndex, publisher, library);
 	}
@@ -70,7 +70,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 		super(name, library);
 	}
 
-	public CCNVersionedInputStream(ContentName name, long startingBlockIndex)
+	public CCNVersionedInputStream(ContentName name, Long startingBlockIndex)
 			throws XMLStreamException, IOException {
 		super(name, startingBlockIndex);
 	}
@@ -85,25 +85,17 @@ public class CCNVersionedInputStream extends CCNInputStream {
 			return super.getFirstBlock();
 		}
 		Library.logger().info("getFirstBlock: getting latest version of " + _baseName);
-		// This might get us the header instead...(until we change the name), or most likely the rightmost child of
-		// the rightmost child -- the last segment instead of the first.
 		ContentObject result =  _library.getLatestVersion(_baseName, null, _timeout);
 		if (null != result){
-			Library.logger().info("getFirstBlock: retrieved " + result.name() + " type: " + result.signedInfo().getTypeName());
+			Library.logger().info("getFirstBlock: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
 			// Now need to verify the block we got
 			if (!verifyBlock(result)) {
 				return null;
 			}
 			// Now we know the version
 			_baseName = SegmentationProfile.segmentRoot(result.name());
-			// This is unlikely -- we ask for a specific segment of the latest
-			// version... in that case, we pull the first segment, then seek.
-			if (null != _startingBlockIndex) {
-				return getBlock(_startingBlockIndex);
-			} else {
-				Library.logger().info("Have version information going back for first segment.");
-				return super.getFirstBlock(); // now that we have the latest version, go back for the first block.
-			}
+			Library.logger().info("Have version information, now querying first segment.");
+			return super.getFirstBlock(); // now that we have the latest version, go back for the first block.
 		}
 		return result;
 	}

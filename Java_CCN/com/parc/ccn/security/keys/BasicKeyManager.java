@@ -5,6 +5,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
@@ -13,10 +14,8 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.cert.Certificate;
-import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
-import java.security.spec.InvalidKeySpecException;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
@@ -269,6 +268,12 @@ public class BasicKeyManager extends KeyManager {
 		return key;
 	}
 	
+	@Override
+	public PrivateKey [] getSigningKeys() {
+		// For now just return our default key. Eventually return multiple identity keys.
+		return new PrivateKey[]{getDefaultSigningKey()};
+	}
+	
 	/**
 	 * Find the key for the given publisher, using the 
 	 * available location information. Or, more generally,
@@ -289,27 +294,12 @@ public class BasicKeyManager extends KeyManager {
 	public PublicKey getKey(PublisherPublicKeyDigest desiredKeyID,
 							KeyLocator locator) throws IOException, InterruptedException {
 		
-		if (null != locator.certificate())
-			return locator.certificate().getPublicKey();
-		else if (null != locator.key())
-			return locator.key();
-		
+		// DKS -- currently unused; contains some complex key validation behavior that
+		// will move into the trust managers.
 		// Otherwise, this is a name. 
 		
 		// First, try our local key repository. 
-		PublicKey key = null;
-		try {
-			key = _keyRepository.getPublicKey(desiredKeyID, locator);
-		} catch (InvalidKeySpecException ikse) {
-			Library.logger().info("Name: " + locator.name() + " is not a key: " + ikse.getMessage());
-			// go around again
-		} catch (CertificateEncodingException e) {
-			Library.logger().info("Name: " + locator.name() + " cannot be decoded: " + e.getMessage());
-			// go around again
-		} catch (NoSuchAlgorithmException e) {
-			Library.logger().info("Name: " + locator.name() + " uses unknown algorithm: " + e.getMessage());
-		} 
-		
+		PublicKey key =  _keyRepository.getPublicKey(desiredKeyID, locator);		
 		if (null != key)
 			return key;
 		
@@ -437,12 +427,13 @@ public class BasicKeyManager extends KeyManager {
 	}
 
 	@Override
-	public PublicKey getPublicKey(PublisherPublicKeyDigest publisher) {
+	public PublicKey getPublicKey(PublisherPublicKeyDigest publisher) throws IOException {
 		// TODO Auto-generated method stub
 		Library.logger().finer("getPublicKey: retrieving key: " + publisher);
+		
 		if (_defaultKeyID.equals(publisher))
 			return _certificate.getPublicKey();
-		return null;
+		return keyRepository().getPublicKey(publisher);
 	}
 
 	@Override
@@ -464,14 +455,13 @@ public class BasicKeyManager extends KeyManager {
 	}
 
 	@Override
-	public PublicKey getPublicKey(PublisherPublicKeyDigest publisherID, KeyLocator keyLocator) throws IOException, InterruptedException {
-		// TODO Auto-generated method stub
+	public PublicKey getPublicKey(PublisherPublicKeyDigest publisherID, KeyLocator keyLocator) throws IOException, InterruptedException {		
 		Library.logger().finer("getPublicKey: retrieving key: " + publisherID + " located at: " + keyLocator);
-		// Do we have it locally.
-		PublicKey key = getPublicKey(publisherID);
-		if (null != key)
-			return key;
-		return getKey(publisherID, keyLocator);
+		// this will try local caches, the locator itself, and if it 
+		// has to, will go to the network. The result will be stored in the cache.
+		// All this tells us is that the key matches the publisher. For whether
+		// or not we should trust it for some reason, we have to get fancy.
+		return keyRepository().getPublicKey(publisherID, keyLocator);
 	}
 
 	@Override
@@ -493,6 +483,21 @@ public class BasicKeyManager extends KeyManager {
 	@Override
 	public KeyRepository keyRepository() {
 		return _keyRepository;
+	}
+
+	@Override
+	public void publishKey(ContentName keyName,
+			PublisherPublicKeyDigest keyToPublish) throws IOException, InvalidKeyException, ConfigurationException {
+		PublicKey key = null;
+		if (null == keyToPublish) {
+			key = getDefaultPublicKey();
+		} else {
+			key = getPublicKey(keyToPublish);
+			if (null == key) {
+				throw new InvalidKeyException("Cannot retrieive key " + keyToPublish);
+			}
+		}
+		keyRepository().publishKey(keyName, key, getDefaultKeyID(), getDefaultSigningKey());
 	}
 
 }

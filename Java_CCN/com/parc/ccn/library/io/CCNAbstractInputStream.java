@@ -8,19 +8,18 @@ import java.security.InvalidKeyException;
 import java.util.Arrays;
 
 import javax.crypto.Cipher;
-import javax.crypto.CipherInputStream;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.security.crypto.ContentKeys;
+import com.parc.ccn.security.crypto.UnbufferedCipherInputStream;
 
 public abstract class CCNAbstractInputStream extends InputStream {
 
@@ -29,7 +28,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	protected CCNLibrary _library;
 
 	protected ContentObject _currentBlock = null;
-	protected ByteArrayInputStream _currentBlockStream = null;
+	protected ContentObject _goneBlock = null;
 	protected InputStream _blockReadStream = null; // includes filters, etc.
 	
 	/**
@@ -85,6 +84,9 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		} else {
 			_startingBlockIndex = startingBlockIndex;
 		}
+		if (null == _startingBlockIndex) {
+			_startingBlockIndex = SegmentationProfile.baseSegment();
+		}
 		_baseName = baseName;
 	}
 	
@@ -99,7 +101,6 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		if (null != keys) {
 			keys.OnlySupportDefaultAlg();
 			_keys = keys;
-			_cipher = keys.getCipher();
 		}
 	}
 	
@@ -119,7 +120,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		try {
 			_startingBlockIndex = SegmentationProfile.getSegmentNumber(starterBlock.name());
 		} catch (NumberFormatException nfe) {
-			_startingBlockIndex = null;
+			throw new IOException("Stream starter block name does not contain a valid segment number, so the stream does not know what content to start with.");
 		}
 	}
 
@@ -131,7 +132,6 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		
 		keys.OnlySupportDefaultAlg();
 		_keys = keys;
-		_cipher = keys.getCipher();
 	}
 
 	public void setTimeout(int timeout) {
@@ -181,7 +181,6 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	 */
 	protected void setCurrentBlock(ContentObject newBlock) throws IOException {
 		_currentBlock = null;
-		_currentBlockStream = null;
 		_blockReadStream = null;
 		if (null == newBlock) {
 			Library.logger().info("Setting current block to null! Did a block fail to verify?");
@@ -189,12 +188,13 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		}
 		
 		_currentBlock = newBlock;
-		_currentBlockStream = new ByteArrayInputStream(_currentBlock.content());
-		if (null != _cipher) {
+		_blockReadStream = new ByteArrayInputStream(_currentBlock.content());
+		if (_keys != null) {
 			try {
 				// Reuse of current block OK. Don't expect to have two separate readers
 				// independently use this stream without state confusion anyway.
-				_cipher = _keys.getSegmentDecryptionCipher(_cipher, SegmentationProfile.getSegmentNumber(_currentBlock.name()));
+				_cipher = _keys.getSegmentDecryptionCipher(
+						SegmentationProfile.getSegmentNumber(_currentBlock.name()));
 			} catch (InvalidKeyException e) {
 				Library.logger().warning("InvalidKeyException: " + e.getMessage());
 				throw new IOException("InvalidKeyException: " + e.getMessage());
@@ -202,9 +202,8 @@ public abstract class CCNAbstractInputStream extends InputStream {
 				Library.logger().warning("InvalidAlgorithmParameterException: " + e.getMessage());
 				throw new IOException("InvalidAlgorithmParameterException: " + e.getMessage());
 			}
-			_blockReadStream = new CipherInputStream(_currentBlockStream, _cipher);
+			_blockReadStream = new UnbufferedCipherInputStream(_blockReadStream, _cipher);
 		} else {
-			_blockReadStream = _currentBlockStream;
 			if (_currentBlock.signedInfo().getType().equals(ContentType.ENCR)) {
 				Library.logger().warning("Asked to read encrypted content, but not given a key to decrypt it. Decryption happening at higher level?");
 			}
@@ -233,9 +232,6 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		}
 		
 		Library.logger().info("getBlock: getting block " + blockName);
-		/*
-		 * TODO: Paul R. Comment - as above what to do about timeouts?
-		 */
 		ContentObject block = _library.getLower(blockName, 1, _timeout);
 
 		if (null == block) {
@@ -254,10 +250,15 @@ public abstract class CCNAbstractInputStream extends InputStream {
 
 	protected ContentObject getNextBlock() throws IOException {
 		
+		// We're looking at content marked GONE
+		if (null != _goneBlock) {
+			return null;
+		}
+		
 		// Check to see if finalBlockID is the current block. If so, there should
 		// be no next block. (If the writer makes a mistake and guesses the wrong
 		// value for finalBlockID, they won't put that wrong value in the block they're
-		// guessing itself -- in less they want to try to extend a "closed" stream.
+		// guessing itself -- unless they want to try to extend a "closed" stream.
 		// Normally by the time they write that block, they either know they're done or not.
 		if (null != _currentBlock.signedInfo().getFinalBlockID()) {
 			if (Arrays.equals(_currentBlock.signedInfo().getFinalBlockID(), _currentBlock.name().lastComponent())) {
@@ -268,44 +269,20 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		}
 		
 		Library.logger().info("getNextBlock: getting block after " + _currentBlock.name());
-
-		// prefixCount note: next block name must exactly match current except
-		// for the index itself which is the final component of the name we 
-		// have, so we use count()-1.
-		ContentName nextName = new ContentName(_currentBlock.name(), _currentBlock.contentDigest());
-		Interest nextInterest = Interest.next(nextName);
-		nextInterest.nameComponentCount(_currentBlock.name().count() - 1);
-		nextInterest.additionalNameComponents(2);
-		ContentObject nextBlock = _library.get(nextInterest, _timeout);
-		if (null != nextBlock) {
-			Library.logger().info("getNextBlock: retrieved " + nextBlock.name());
-			
-			// Now need to verify the block we got
-			if (!verifyBlock(nextBlock)) {
-				return null;
-			}
-			
-			return nextBlock;
-		} 
-		Library.logger().info("Timed out looking for block of stream.");
-		return null;
+		return getBlock(nextBlockIndex());
 	}
 
 	protected ContentObject getFirstBlock() throws IOException {
 		if (null != _startingBlockIndex) {
-			return getBlock(_startingBlockIndex);
-		}
-		// DKS TODO FIX - use get left child; the following is a first stab at that.
-		Library.logger().info("getFirstBlock: getting " + _baseName);
-		ContentObject result =  _library.getLeftmostLower(_baseName, 2, _timeout);
-		if (null != result){
-			Library.logger().info("getFirstBlock: retrieved " + result.name() + " type: " + result.signedInfo().getTypeName());
-			// Now need to verify the block we got
-			if (!verifyBlock(result)) {
+			ContentObject firstBlock = getBlock(_startingBlockIndex);
+			if ((null != firstBlock) && (firstBlock.signedInfo().getType().equals(ContentType.GONE))) {
+				_goneBlock = firstBlock;
 				return null;
-			}	
+			}
+			return firstBlock;
+		} else {
+			throw new IOException("Stream does not have a valid starting block number.");
 		}
-		return result;
 	}
 
 	boolean verifyBlock(ContentObject block) {
@@ -370,11 +347,34 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		}
 	}
 	
+	/**
+	 * Return the index of the next block of stream data.
+	 * Default segmentation generates sequentially-numbered stream
+	 * blocks but this method may be overridden in subclasses to 
+	 * perform re-assembly on streams that have been segemented differently.
+	 * @return
+	 */
+	public long nextBlockIndex() {
+		if (null == _currentBlock) {
+			return _startingBlockIndex.longValue();
+		} else {
+			return blockIndex() + 1;
+		}
+	}
+	
 	protected long currentBlockNumber(){
 		if (null == _currentBlock) {
 			return -1; // make sure we don't match inappropriately
 		}
 		return blockIndex();
+	}
+	
+	public boolean isGone() {
+		return (null != _goneBlock);
+	}
+	
+	public ContentObject deletionInformation() {
+		return _goneBlock;
 	}
 	
 }

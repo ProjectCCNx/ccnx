@@ -1,8 +1,11 @@
 package com.parc.ccn.data.util;
 
+import java.io.IOException;
 import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+
+import org.bouncycastle.util.encoders.Base64;
 
 import com.parc.ccn.config.SystemConfiguration;
 
@@ -101,7 +104,25 @@ public class DataUtils {
 		return bi.toString(16);
 	}
 	
+	/*
+	 * A place to centralize interfaces to base64 encoding/decoding, as the classes
+	 * we use change depending on what ships with Java.
+	 */
+	public static byte [] base64Decode(byte [] input) throws IOException {
+		return Base64.decode(input);
+	}
+	
+	public static byte [] base6Encode(byte [] input) {
+		return Base64.encode(input);
+	}
+
 	public static boolean arrayEquals(byte[] left, byte[] right, int length) {
+		if (left == null) {
+			return ((right == null) ? true : false);
+		}
+		if (right == null) {
+			return ((left == null) ? true : false);
+		}
 		if (left.length < length || right.length < length)
 			return false;
 		for (int i = 0; i < length; i++) {
@@ -119,8 +140,13 @@ public class DataUtils {
 	 * This allows versions to be recorded as a timestamp with a 1/4096 second accuracy.
 	 */
 	public static byte [] timestampToBinaryTime12(Timestamp timestamp) {
-		long timeVal = (timestamp.getTime() / 1000) * 4096L + (timestamp.getNanos() * 4096L + 500000000L) / 1000000000L;
+		long timeVal = timestampToBinaryTime12AsLong(timestamp);
 		return BigInteger.valueOf(timeVal).toByteArray();
+	}
+	
+	public static long timestampToBinaryTime12AsLong(Timestamp timestamp) {
+		long timeVal = (timestamp.getTime() / 1000) * 4096L + (timestamp.getNanos() * 4096L + 500000000L) / 1000000000L;
+		return timeVal;
 	}
 	
 	public static Timestamp binaryTime12ToTimestamp(byte [] binaryTime12) {
@@ -130,10 +156,13 @@ public class DataUtils {
 			throw new IllegalArgumentException("Time unacceptably far in the future, can't decode: " + printHexBytes(binaryTime12));
 		}
 		long time = new BigInteger(binaryTime12).longValue();
-
-		Timestamp ts = new Timestamp((time / 4096L) * 1000L);
-		ts.setNanos((int)(((time % 4096L) * 1000000000L) / 4096L));
-
+		Timestamp ts = binaryTime12ToTimestamp(time);
+		return ts;
+	}
+	
+	public static Timestamp binaryTime12ToTimestamp(long binaryTime12AsLong) {
+		Timestamp ts = new Timestamp((binaryTime12AsLong / 4096L) * 1000L);
+		ts.setNanos((int)(((binaryTime12AsLong % 4096L) * 1000000000L) / 4096L));
 		return ts;
 	}
 	
@@ -154,4 +183,17 @@ public class DataUtils {
 	   	newTimestamp.setNanos((int)(((newTimestamp.getNanos() % 4096L) * 1000000000L) / 4096L));
 	   	return newTimestamp;
 	}
+
+	public static boolean isBinaryPrefix(byte [] prefix,
+										 byte [] data) {
+		if ((null == prefix) || (prefix.length == 0))
+			return true;
+		if ((null == data) || (data.length < prefix.length))
+			return false;
+		for (int i=0; i < prefix.length; ++i) {
+			if (prefix[i] != data[i])
+				return false;
+		}
+		return true;
+	}	
 }

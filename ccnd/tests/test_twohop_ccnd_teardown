@@ -1,1 +1,2 @@
+BEFORE : test_late test_alone test_final_teardown
 for i in 1 2 3; do WithCCND $i ccndsmoketest -t 50 recv kill; done

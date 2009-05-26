@@ -1,6 +1,8 @@
 package com.parc.ccn.apps.containerApp;
 
 
+//import FileNode;
+
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
@@ -12,6 +14,8 @@ import javax.swing.*;
 import javax.swing.tree.*;
 import javax.swing.event.*;
 import javax.xml.stream.XMLStreamException;
+
+
 
 import com.parc.ccn.Library;
 import com.parc.ccn.apps.containerApp.IconCellRenderer;
@@ -87,24 +91,16 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		try {
 			node = new DefaultMutableTreeNode(new IconData(ICON_FOLDER, null,
 					new Name("files", ContentName
-							.fromNative("/parc.com"))));
-			node.add(new DefaultMutableTreeNode( new Boolean(true) ));
+							.fromNative("/parc.com"),true)));
+			//This is the "retrieving data" node
+			//node.add(new DefaultMutableTreeNode( new Boolean(true) ));
 			usableRoot = node;
 		} catch (MalformedContentNameStringException e1) {
-			// TODO Auto-generated catch block
+			
 			System.out.println("Error in the content name");
 			e1.printStackTrace();
 		}
 		top.add(node);
-
-		// File[] roots = File.listRoots();
-		// for (int k=0; k<roots.length; k++)
-		// {
-		// node = new DefaultMutableTreeNode(new IconData(ICON_DISK,
-		// null, new FileNode(roots[k])));
-		// top.add(node);
-		// node.add(new DefaultMutableTreeNode( new Boolean(true) ));
-		// }
 
 		m_model = new DefaultTreeModel(top);
 		tree = new JTree(m_model);
@@ -114,36 +110,64 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		TreeCellRenderer renderer = new IconCellRenderer();
 		tree.setCellRenderer(renderer);
 
+		tree.addTreeExpansionListener(new 
+			      DirExpansionListener());
 		tree.addTreeSelectionListener(new DirSelectionListener());
+
+		MouseListener ml = new MouseAdapter() {
+		     public void mousePressed(MouseEvent e) {
+		         int selRow = tree.getRowForLocation(e.getX(), e.getY());
+		         TreePath selPath = tree.getPathForLocation(e.getX(), e.getY());
+	
+		         if(selRow != -1) {
+//		             if(e.getClickCount() == 1) {
+//		                 mySingleClick(selRow, selPath);
+//		             }
+//		             else 
+		            	 if(e.getClickCount() == 2) {
+		                 myDoubleClick(selRow, selPath);
+		             }
+		         }
+		     }
+
+			private void myDoubleClick(int selRow, TreePath selPath) {
+				final Name node = getNameNode((DefaultMutableTreeNode)selPath.getLastPathComponent());
+				String name = node.name;
+				String[] items = name.split("\\."); //make this a regex later
+				if(items.length > 1 && items[1].equalsIgnoreCase("txt")){ //have a file
+					retrieveFromRepo(node.path.toString()+"/"+node.name);
+					EventQueue.invokeLater(new Runnable() {
+						public void run() {
+							try {
+								ShowTextDialog dialog = new ShowTextDialog(node);
+								dialog.setVisible(true);
+							} catch (Exception e) {
+								e.printStackTrace();
+							}
+						}
+					});
+								
+				
+				}else
+				{
+					//Can't handle filetype
+					JOptionPane.showMessageDialog(ContainerGUI.this, "Cannot Open file "+ name+" Unable to open file types "+items[1], "Unable to Open File Type "+ items[1],JOptionPane.ERROR_MESSAGE);
+					
+				}
+			}
+
+			
+		 };
+		 tree.addMouseListener(ml);
 
 		tree.getSelectionModel().setSelectionMode(
 				TreeSelectionModel.SINGLE_TREE_SELECTION);
 		tree.setShowsRootHandles(true);
 		tree.setEditable(false);
 
-		// JScrollPane treeView = new JScrollPane();
+
 		String filename = File.separator + "tmp";
 		JFileChooser fc = new JFileChooser(new File(filename));
-
-//		class OpenACLManagerAction extends AbstractAction
-//		{
-//
-//			private static final long serialVersionUID = 1L;
-//
-//			OpenACLManagerAction()
-//			{
-//				super("Open ACL Manager");
-//				
-//			}
-//			public void actionPerformed(ActionEvent e) {
-//				// TODO Auto-generated method stub
-//				
-//				String theMessage = "Open ACL Manager";
-//		        int result = JOptionPane.showConfirmDialog((Component)
-//		                null, theMessage, "alert", JOptionPane.YES_NO_OPTION);					
-//			}
-//			
-//		}
 		
 		
 		class OpenFileAction extends AbstractAction {
@@ -162,8 +186,17 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 			}
 
 			public void actionPerformed(ActionEvent evt) {
+				
+				//if we don't have a file then we should show a file chooser
+				//otherwise give an error message "Please select a folder"
+				
+				if (((selectedPrefix.toString()).split("\\.")).length > 2)
+				{
+					JOptionPane.showMessageDialog(this.frame, "Please Select a Directory to add a file", "Select Directory",JOptionPane.ERROR_MESSAGE);
+				}else{
 				// Show dialog; this method does not return until dialog is
 				// closed
+				
 				int returnVal = chooser.showOpenDialog(frame);
 
 				// Get the selected file
@@ -183,34 +216,16 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 				System.out.println("Writing a file to the repo " + file.getAbsolutePath() + " " + file.getName());
 				System.out.println("Selected Node is " + selectedPrefix);
 				
+
 				try{
 					ContentName contentName = ContentName.fromNative(selectedPrefix + "/" + file.getName());
 					sendFile(file, contentName);
-					/*
-					System.out.println("Sending file " + selectedPrefix + "/"
-							+ file.getName());
-					RepositoryOutputStream ros = _library.repoOpen(ContentName
-							.fromNative(selectedPrefix + "/" + file.getName()),
-							null, _library.getDefaultPublisher());
-					FileInputStream fs = new FileInputStream(file);
-					byte[] buffer = new byte[fs.available()];
-					fs.read(buffer);
-					ros.write(buffer);
-					ros.close();
-					*/	
 				} catch (MalformedContentNameStringException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				/*catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (XMLStreamException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				*/
 
+					e.printStackTrace();
+				}
+
+				}
 			}
 		}
 		;
@@ -218,22 +233,12 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		Action openAction = new OpenFileAction(this, fc);
 		JButton openButton = new JButton(openAction);
 
-//		Action aclManage = new OpenACLManagerAction(this,selectedPrefix);
-//		JButton openACL = new JButton(aclManage);
-//		
-//		Action groupManage = new OpenGroupManagerAction(this,selectedPrefix);
-//		JButton openGroup = new JButton("Open Group Manager");
-		
-		
-		//Action aclManage = new OpenACLManagerAction(this,selectedPrefix);
 		openACL = new JButton("Manage Permissions");
 		openACL.addActionListener(this);
 		
-		//Action groupManage = new OpenGroupManagerAction(this,selectedPrefix);
 		openGroup = new JButton("Open Group Manager");
 		openGroup.addActionListener(this);
 		
-		// New Stuff
 		// Create the scroll pane and add the tree to it.
 		JScrollPane treeView = new JScrollPane(tree);
 
@@ -254,22 +259,10 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		treeView.setMinimumSize(minimumSize);
 		splitPane.setDividerLocation(200);
 		splitPane.setPreferredSize(new Dimension(500, 300));
-
-		
-	
-		//JFrame frame = new JFrame("GridBagLayoutDemo");
-        //frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-		// End new stuff
-
-		// treeView.getViewport().add(tree);
 		
         setLayout(new GridBagLayout());
         GridBagConstraints c = new GridBagConstraints();
-    	
-		
-        //c.fill = GridBagConstraints.HORIZONTAL;
- 
+    	 
 		c.fill = GridBagConstraints.BOTH;
 		c.gridx = 0;
         c.gridy = 1;
@@ -281,12 +274,13 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		getContentPane().add(openGroup, c);
 
 		c.fill = GridBagConstraints.BOTH;
-    	c.gridwidth = 2;
+		c.gridwidth = 2;
     	c.gridx = 0;
         c.gridy = 0;
 		getContentPane().add(openButton, c);
-		 c.weightx = 1;
-		 c.weighty = 1;
+
+		c.weightx = 1;
+		c.weighty = 1;
 		c.fill = GridBagConstraints.BOTH;
 		c.gridwidth = 2;
 		c.gridx = 0;
@@ -295,13 +289,10 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 
 		pack();
 
-		// m_display = new JTextField();
-		// m_display.setEditable(false);
-		// getContentPane().add(m_display, BorderLayout.NORTH);
 
 		tree.setSelectionPath(new TreePath(node.getPath()));
 
-		// NEW
+		// POPUP Related - not working currently
 		m_popup = new JPopupMenu();
 		m_action = new AbstractAction() {
 			/**
@@ -363,43 +354,30 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		setVisible(true);
 
 	}
+
+//END Popup related
 	
+	
+
 	public void retrieveFromRepo(String name){
 		try{
-			System.out.println("rfr name = "+name);
+	
 			//get the file name as a ContentName
 			ContentName fileName = ContentName.fromNative(name);
-			String localName = new String(fileName.lastComponent());
-			System.out.println("as a contentname: "+fileName.toString());
-			System.out.println("file name is: "+localName);
+			//String localName = new String(fileName.lastComponent());
+			System.out.println("retrieving "+fileName.toString()+" from repo");
 
-			//byte[] readBytes = null;
-			
-			System.out.println("attempting _library.get... for now...  until streams are working");
-			ContentObject testContent = _library.get(new Interest(name), 10000);
-						
-			//CCNFileInputStream fis = new CCNFileInputStream(fileName, _library);
-			
-			//readBytes = new byte[testContent.contentLength()];
-			//int index = 0;
-			
-			if(testContent.content()!=null && testContent.isData()){
-				System.out.println("testContent length = "+testContent.contentLength());
-				FileOutputStream fs = new FileOutputStream(localName);
-			
-				//fs.write(testContent.content());
-				//fs.write(readBytes);
-				fs.write(testContent.content());
-				//System.out.println("as string... "+new String(readBytes));
+			CCNFileInputStream fis = new CCNFileInputStream(fileName, _library);
 				
-			}
-			else
-				System.out.println("testContent.content was null or returned object was not of type data for: "+fileName.toString());
+			htmlPane.read(fis, fileName);
+				
+		} catch (XMLStreamException e) {
+			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
+			
 			e.printStackTrace();
 		} catch (MalformedContentNameStringException e) {
-			// TODO Auto-generated catch block
+			
 			e.printStackTrace();
 		}
 	}
@@ -417,16 +395,16 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 			FileInputStream fs = new FileInputStream(file);
 			byte[] buffer = new byte[fs.available()];
 			fs.read(buffer);
-			RepositoryFileOutputStream fos = new RepositoryFileOutputStream(ccnName, _library.getDefaultPublisher(), _library);
+			RepositoryFileOutputStream fos = new RepositoryFileOutputStream(ccnName, _library);
 			fos.write(buffer);
 			fos.close();
 
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
+
 			System.out.println("error writing file to repo");
 			e.printStackTrace();
 		} catch (XMLStreamException e) {
-			// TODO Auto-generated catch block
+			
 			e.printStackTrace();
 		}
 
@@ -443,7 +421,6 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 			System.out.println("Help URL is " + helpURL);
 		}
 
-		// displayURL(helpURL);
 		displayText(s);
 
 	}
@@ -456,18 +433,18 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 			try {
 				cbuf = new byte[fs.available()];
 			} catch (IOException e1) {
-				// TODO Auto-generated catch block
+
 				e1.printStackTrace();
 			}
 			try {
 				fs.read(cbuf);
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
+
 				e.printStackTrace();
 			}
 			htmlPane.setText(new String(cbuf));
 		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
+
 			System.out.println("the file was not found...  "+name);
 			e.printStackTrace();
 		}
@@ -539,6 +516,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		if (node == null)
 			return null;
 		Object obj = node.getUserObject();
+	
 		if (obj instanceof IconData)
 			obj = ((IconData) obj).getObject();
 		if (obj instanceof Name)
@@ -582,82 +560,88 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		}
 	}
 
-	// // Make sure expansion is threaded and updating the tree model
-	// // only occurs within the event dispatching thread.
-	// class DirExpansionListener implements TreeExpansionListener
-	// {
-	// public void treeExpanded(TreeExpansionEvent event)
-	// {
-	// final DefaultMutableTreeNode node = getTreeNode(
-	// event.getPath());
-	// final FileNode fnode = getFileNode(node);
-	//
-	// Thread runner = new Thread()
-	// {
-	// public void run()
-	// {
-	// if (fnode != null && fnode.expand(node))
-	// {
-	// Runnable runnable = new Runnable()
-	// {
-	// public void run()
-	// {
-	// m_model.reload(node);
-	// }
-	// };
-	// SwingUtilities.invokeLater(runnable);
-	// }
-	// }
-	// };
-	// runner.start();
-	// }
-	//
-	// public void treeCollapsed(TreeExpansionEvent event) {}
-	// }
+	 // Make sure expansion is threaded and updating the tree model
+    // only occurs within the event dispatching thread.
+    class DirExpansionListener implements TreeExpansionListener
+    {
+        public void treeExpanded(TreeExpansionEvent event)
+        {
+
+            final DefaultMutableTreeNode node = getTreeNode(event.getPath());
+
+
+			
+//		System.out.println("In the tree expansion listener with "+ fnode.name);	
+            Thread runner = new Thread() 
+            {
+              public void run() 
+              {
+                
+                  Runnable runnable = new Runnable() 
+                  {
+                    public void run() 
+                    {
+                    	Name fnode = getNameNode(node);
+                    	if(fnode != null){
+                    		System.out.println("In the tree expansion listener with "+ fnode.name + " and "+ node.toString());		
+                    	getNodes(fnode);           			
+                       m_model.reload(node);
+                       }else
+                       {
+                    	   //node = usableRoot;
+                    	 //selected top component, switch to top usuable node.
+                    	   System.out.println("In the tree expansion listener with null node and "+ node.toString());
+//           				fnode = getNameNode(usableRoot);
+//           				getNodes(fnode);           			
+//                        m_model.reload(usableRoot);
+                    	   
+                       }
+                    }
+                  };
+                  SwingUtilities.invokeLater(runnable);
+                }
+              
+            };
+            runner.start();
+        }
+
+        public void treeCollapsed(TreeExpansionEvent event) {}
+    }
 
 	class DirSelectionListener implements TreeSelectionListener {
 		public void valueChanged(TreeSelectionEvent event) {
 
-			// fix this later so I don't stop the whole show...
-			// System.out.println("Registering Prefix");
 
-			// register a prefix
-			// show a waiting thingy until it returns
-			DefaultMutableTreeNode node = getTreeNode(event.getPath());
+			final DefaultMutableTreeNode node = getTreeNode(event.getPath());
+		    Thread runner = new Thread() 
+            {
+              public void run() 
+              {
+                
+                  Runnable runnable = new Runnable() 
+                  {
+                    public void run() 
+                    {
 
+                    	   Name fnode = getNameNode(node);
+               			
+                    	   if(fnode==null){
+               				System.out.println("fnode path is null...");
+               				//selected top component, switch to top usuable node.
+               				//node = usableRoot;
+               				fnode = getNameNode(usableRoot);
+               			}
+                    	   System.out.println("In the tree expansion listener with "+ fnode.name + " and "+ node.toString());
+               			String p = getNodes(fnode);
+               			selectedPath = p;
+               			selectedPrefix =p;                    	   
+                       }
+                    };
+                  SwingUtilities.invokeLater(runnable);
+                }             
+            };
+            runner.start();
 			// prefix.toString()+cn.toString();
-
-			Name fnode = getNameNode(node);
-			if(fnode==null){
-				System.out.println("fnode path is null...");
-				//selected top component, switch to top usuable node.
-				node = usableRoot;
-				fnode = getNameNode(node);
-			}
-			
-			System.out.println("fnode: "+fnode.name+" full name "+fnode.path.toString());
-			if (((fnode.toString()).split("\\.")).length > 1) {
-				// populate the repo and get it back
-				//sendFile("/parc.com/files/test.txt");
-				retrieveFromRepo(fnode.path.toString()+"/"+fnode.name);
-				String p = fnode.path.toString() + "/"+fnode.name;
-				selectedPath = p; //change this to prefix later after sure its ok
-				selectedPrefix = p;
-				//removes leading /
-				displayText(fnode.name);
-			} else {
-				//this is a directory that we want to enumerate...
-				System.out.println("this is the path: "+ fnode.path.toString()+" this is the name: "+fnode.name);
-				String p = fnode.path.toString() + "/"+fnode.name;
-				System.out.println("Registering Prefix: " + p);
-				registerPrefix(p);
-				selectedPrefix = p;
-				selectedPath = p; //change this to prefix later after sure its ok
-				
-				//display the default for now
-				displayText("TreeHelp.html");
-			}
-
 		}
 	}
 
@@ -665,17 +649,47 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 	
 	public static void main(String argv[]) {
 		Library.logger().setLevel(Level.INFO);
-	       //Schedule a job for the event dispatch thread:
-        //creating and showing this application's GUI.
-//        javax.swing.SwingUtilities.invokeLater(new Runnable() {
-//            public void run() {
-//                createAndShowGUI();
-//            }
-//        });
-		new ContainerGUI();
+
+        javax.swing.SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                createAndShowGUI();
+            }
+        });
+//		new ContainerGUI();
 	}
 
-    private static void createAndShowGUI() {
+    public String getNodes(Name fnode) {
+    	System.out.println("fnode: "+fnode.name+" full name "+fnode.path.toString());
+    	String p = fnode.path.toString() + "/"+fnode.name;
+    	
+    	if (((fnode.toString()).split("\\.")).length > 1) {
+			// get the file from the repo
+			
+    		System.out.println("Retrieve from Repo: " + p);
+			retrieveFromRepo(fnode.path.toString()+"/"+fnode.name);
+			retrieveFromRepo(p);			
+//			selectedPath = p; //change this to prefix later after sure its ok
+//			selectedPrefix = p;
+			
+			return p;
+		} else {
+			//this is a directory that we want to enumerate...
+			System.out.println("this is the path: "+ fnode.path.toString()+" this is the name: "+fnode.name);
+			//String p = fnode.path.toString() + "/"+fnode.name;
+			System.out.println("Registering Prefix: " + p);
+			registerPrefix(p);
+			
+//			selectedPrefix = p;
+//			selectedPath = p; //change this to prefix later after sure its ok
+			
+			//display the default for now
+			displayText("TreeHelp.html");
+			return p;
+		}
+		
+	}
+
+	private static void createAndShowGUI() {
         if (useSystemLookAndFeel) {
             try {
                 UIManager.setLookAndFeel(
@@ -685,18 +699,19 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
             }
         }
 
+        new ContainerGUI();
         //Create and set up the window.
-        JFrame frame = new JFrame("CCN Demo");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+//        JFrame frame = new JFrame("CCN Demo");
+//        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         //Add content to the window.
-        frame.add(new ContainerGUI());
+//        frame.add(new ContainerGUI());
       //Set up the content pane.
         //addComponentsToPane(frame.getContentPane());
 
         //Display the window.
-        frame.pack();
-        frame.setVisible(true);
+//        frame.pack();
+//        frame.setVisible(true);
     }
 	private void addTreeNodes(ArrayList<ContentName> n, ContentName prefix) {
 		// DefaultMutableTreeNode top = new DefaultMutableTreeNode(
@@ -747,11 +762,12 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 				System.out.println("added as child: "+cn.toString());
 				if (((cn.toString()).split("\\.")).length > 1) {
 					node = new DefaultMutableTreeNode(new IconData(ICON_DOCUMENT,
-							null, new Name(cn.toString().substring(1), prefix)));
+							null, new Name(cn.toString().substring(1), prefix,false)));
 				} else {
 					node = new DefaultMutableTreeNode(new IconData(ICON_FOLDER,
-							null, new Name(cn.toString().substring(1), prefix)));
-					node.add(new DefaultMutableTreeNode(new Boolean(true)));
+							null, new Name(cn.toString().substring(1), prefix,true)));
+					//This is the "Retrieving Data" node (gets rendered in IconCell Renderer
+					//node.add(new DefaultMutableTreeNode(new Boolean(true)));
 				}
 
 				m_model.insertNodeInto(node, parentNode, parentNode.getChildCount());
@@ -775,8 +791,6 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 
 		return 0;
 
-		// File[] roots = File.listRoots();
-
 	}
 
 	public void registerPrefix(String prefix) {
@@ -791,7 +805,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 			e.printStackTrace();
 
 		} catch (MalformedContentNameStringException e) {
-			// TODO Auto-generated catch block
+	
 			System.err.println("error with prefix string :" + prefix);
 			e.printStackTrace();
 		}
@@ -805,10 +819,10 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 			_library = CCNLibrary.open();
 			_nameEnumerator = new CCNNameEnumerator(_library, this);
 		} catch (ConfigurationException e1) {
-			// TODO Auto-generated catch block
+	
 			e1.printStackTrace();
 		} catch (IOException e1) {
-			// TODO Auto-generated catch block
+	
 			e1.printStackTrace();
 		}
 	}
@@ -826,18 +840,13 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 	}
 
 	public void actionPerformed(ActionEvent e) {
-		// TODO Auto-generated method stub
+
 		if(openACL == e.getSource()) {
 			System.out.println("Path is "+ selectedPrefix);
 			EventQueue.invokeLater(new Runnable() {
 				public void run() {
 					try {
 						ACLManager dialog = new ACLManager(selectedPrefix);
-//						dialog.addWindowListener(new WindowAdapter() {
-//							public void windowClosing(WindowEvent e) {
-//								System.exit(0);
-//							}
-//						});
 						dialog.setVisible(true);
 					} catch (Exception e) {
 						e.printStackTrace();
@@ -850,11 +859,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 					public void run() {
 						try {
 							GroupManager dialog = new GroupManager(selectedPrefix);
-//							dialog.addWindowListener(new WindowAdapter() {
-//								public void windowClosing(WindowEvent e) {
-//									System.exit(0);
-//								}
-//							});
+
 							dialog.setVisible(true);
 						} catch (Exception e) {
 							e.printStackTrace();

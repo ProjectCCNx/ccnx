@@ -49,7 +49,7 @@ public abstract class NetworkObject<E> {
 		return newE;
 	}
 
-	public void update(InputStream input) throws IOException, XMLStreamException, ClassNotFoundException {
+	public void update(InputStream input) throws IOException, XMLStreamException {
 		
 		Object newData = readObjectImpl(input);
 		
@@ -64,6 +64,15 @@ public abstract class NetworkObject<E> {
 			Library.logger().info("Update -- got new " + newData.getClass().getName());
 			_data = merge(input, _type.cast(newData));
 		}
+	}
+	
+	/**
+	 * Have we read any data yet? Only valid at beginning; doesn't tell
+	 * you if update has gone through.
+	 * @return
+	 */
+	public boolean ready() {
+		return (null != _data);
 	}
 
 	/**
@@ -180,7 +189,7 @@ public abstract class NetworkObject<E> {
 	 * the new object. This should return something that can be cast to E.
 	 * @throws ClassNotFoundException 
 	 */
-	protected abstract Object readObjectImpl(InputStream input) throws IOException, XMLStreamException, ClassNotFoundException;
+	protected abstract Object readObjectImpl(InputStream input) throws IOException, XMLStreamException;
 	
 	@Override
 	public int hashCode() {

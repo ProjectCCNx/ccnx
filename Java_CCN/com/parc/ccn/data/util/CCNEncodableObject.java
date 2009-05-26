@@ -10,7 +10,6 @@ import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
 
@@ -23,29 +22,23 @@ import com.parc.ccn.library.io.CCNVersionedInputStream;
 public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject<E> {
 	
 	public CCNEncodableObject(Class<E> type) throws ConfigurationException, IOException {
-		this(type, CCNLibrary.open());
+		super(type, CCNLibrary.open());
 	}
 	
 	public CCNEncodableObject(Class<E> type, CCNLibrary library) {
-		super(type);
-		_library = library;
-		_flowControl = new CCNFlowControl(_library);
+		super(type, library);
 	}
 	
 	public CCNEncodableObject(Class<E> type, ContentName name, E data, CCNLibrary library) {
-		super(type, data);
-		_currentName = name;
-		_library = library;
-		_flowControl = new CCNFlowControl(name, _library);
+		super(type, name, data, library);
 	}
 	
 	public CCNEncodableObject(Class<E> type, ContentName name, E data) throws ConfigurationException, IOException {
-		this(type,name, data, CCNLibrary.open());
+		this(type, name, data, CCNLibrary.open());
 	}
 	
 	public CCNEncodableObject(Class<E> type, E data, CCNLibrary library) {
-		this(type, null, data, library);
-		_flowControl = new CCNFlowControl(_library);
+		super(type, null, data, library);
 	}
 	
 	public CCNEncodableObject(Class<E> type, E data) throws ConfigurationException, IOException {
@@ -59,9 +52,8 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 	 * @param library
 	 * @throws XMLStreamException
 	 * @throws IOException
-	 * @throws ClassNotFoundException 
 	 */
-	public CCNEncodableObject(Class<E> type, ContentObject content, CCNLibrary library) throws XMLStreamException, IOException, ClassNotFoundException {
+	public CCNEncodableObject(Class<E> type, ContentObject content, CCNLibrary library) throws XMLStreamException, IOException {
 		this(type, library);
 		CCNVersionedInputStream is = new CCNVersionedInputStream(content, library);
 		is.seek(0); // In case we start with something other than the first fragment.
@@ -78,9 +70,10 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 	 * @param library
 	 * @throws XMLStreamException
 	 * @throws IOException
-	 * @throws ClassNotFoundException 
 	 */
-	public CCNEncodableObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher, CCNLibrary library) throws XMLStreamException, IOException, ClassNotFoundException {
+	public CCNEncodableObject(
+			Class<E> type, ContentName name, 
+			PublisherPublicKeyDigest publisher, CCNLibrary library) throws XMLStreamException, IOException {
 		super(type);
 		_library = library;
 		CCNVersionedInputStream is = new CCNVersionedInputStream(name, publisher, library);
@@ -94,19 +87,18 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 	 * @param library
 	 * @throws XMLStreamException
 	 * @throws IOException
-	 * @throws ClassNotFoundException 
 	 */
-	public CCNEncodableObject(Class<E> type, ContentName name, CCNLibrary library) throws XMLStreamException, IOException, ClassNotFoundException {
+	public CCNEncodableObject(Class<E> type, ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
 		this(type, name, (PublisherPublicKeyDigest)null, library);
 	}
 	
-	public CCNEncodableObject(Class<E> type, ContentName name) throws XMLStreamException, IOException, ConfigurationException, ClassNotFoundException {
+	public CCNEncodableObject(Class<E> type, ContentName name) throws XMLStreamException, IOException, ConfigurationException {
 		this(type, name, CCNLibrary.open());
 	}
 
 	@Override
 	protected Object readObjectImpl(InputStream input) throws IOException,
-			XMLStreamException, ClassNotFoundException {
+			XMLStreamException {
 		E newData = factory();
 		newData.decode(input);	
 		return newData;

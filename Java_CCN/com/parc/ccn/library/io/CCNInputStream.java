@@ -113,10 +113,14 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	public synchronized void mark(int readlimit) {
 		_readlimit = readlimit;
 		_markBlock = blockIndex();
-		if (null == _currentBlockStream) {
+		if (null == _blockReadStream) {
 			_markOffset = 0;
 		} else {
-			_markOffset = _currentBlock.contentLength() - _currentBlockStream.available();
+			try {
+				_markOffset = _currentBlock.contentLength() - _blockReadStream.available();
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
 		}
 		Library.logger().finer("mark: block: " + blockIndex() + " offset: " + _markOffset);
 	}
@@ -136,8 +140,6 @@ public class CCNInputStream extends CCNAbstractInputStream {
 				((null != buf) ? buf.length : "null") + " at offset " + offset);
 		// is this the first block?
 		if (null == _currentBlock) {
-			if (_atEOF)
-				return -1;
 			ContentObject firstBlock = getFirstBlock();
 			if (null == firstBlock) {
 				_atEOF = true;
@@ -191,7 +193,6 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	@Override
 	public synchronized void reset() throws IOException {
 		setCurrentBlock(getBlock(_markBlock));
-		// TODO -- test -- may have trouble with intervening cipher stream
 		_blockReadStream.skip(_markOffset);
 		_atEOF = false;
 		Library.logger().finer("reset: block: " + blockIndex() + " offset: " + _markOffset + " eof? " + _atEOF);
@@ -220,11 +221,15 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	}
 
 	public long tell() {
-		return _currentBlock.contentLength() - _currentBlockStream.available(); // could implement a running count...
+		try {
+			return _currentBlock.contentLength() - _blockReadStream.available();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		} // could implement a running count...
 	}
 	
 	public long length() {
-		return 0;
+		return -1;
 	}
 	
 	public ContentName baseName() { return _baseName; }

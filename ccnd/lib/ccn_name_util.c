@@ -49,6 +49,23 @@ ccn_name_append_str(struct ccn_charbuf *c, const char *s)
 }
 
 int
+ccn_name_append_numeric(struct ccn_charbuf *c,
+                        enum ccn_marker marker, uintmax_t value)
+{
+    uintmax_t v;
+    int i;
+    char b[32];
+    
+    for (v = value, i = sizeof(b); v != 0 && i > 0; i--, v >>= 8)
+        b[i-1] = v & 0xff;
+    if (i < 1)
+        return(-1);
+    if (marker >= 0)
+        b[--i] = marker;
+    return (ccn_name_append(c, b + i, sizeof(b) - i));
+}
+
+int
 ccn_name_append_components(struct ccn_charbuf *c,
                            const unsigned char *ccnb,
                            size_t start, size_t stop)
@@ -93,7 +110,7 @@ ccn_name_comp_get(const unsigned char *data,
     }
     return(-1);
 }
-	      
+
 int
 ccn_name_comp_strcmp(const unsigned char *data,
                      const struct ccn_indexbuf *indexbuf,
@@ -111,23 +128,43 @@ ccn_name_comp_strcmp(const unsigned char *data,
     return(1);
 }
 
-char *
-ccn_name_comp_strdup(const unsigned char *data,
-                     const struct ccn_indexbuf *indexbuf,
-                     unsigned int i)
+int
+ccn_name_split(struct ccn_charbuf *c, struct ccn_indexbuf *components)
 {
-    char * result = NULL;
-    const unsigned char * comp_ptr;
-    size_t comp_size;
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
+    d = ccn_buf_decoder_start(&decoder, c->buf, c->length);
+    return(ccn_parse_Name(d, components));
+}
 
-    if (ccn_name_comp_get(data, indexbuf, i, &comp_ptr, &comp_size) == 0) {
-	result = calloc(1, comp_size + 1); // XXX - [mfp] - this is the only place (I think) that the client is responsible for directly calling free() on something that we allocated.  This should be fixed!
-	if (result != NULL) {
-	    memcpy(result, comp_ptr, comp_size);
-	    /* Ensure that result is null-terminated */
-	    result[comp_size] = '\0';
-	}
+int
+ccn_name_chop(struct ccn_charbuf *c, struct ccn_indexbuf *components, int n)
+{
+    if (components == NULL) {
+        int res;
+        components = ccn_indexbuf_create();
+        if (components == NULL)
+            return(-1);
+        res = ccn_name_split(c, components);
+        if (res >= 0)
+            res = ccn_name_chop(c, components, n);
+        ccn_indexbuf_destroy(&components);
+        return(res);
     }
-    return(result);
+    /* Fix up components if needed. We could be a little smarter about this. */
+    if (components->n == 0 || components->buf[components->n-1] + 1 != c->length)
+        if (ccn_name_split(c, components) < 0)
+            return(-1);
+    if (n < 0)
+        n += (components->n - 1); /* APL-style indexing */
+    if (n < 0)
+        return(-1);
+    if (n < components->n) {
+        c->length = components->buf[n];
+        ccn_charbuf_append_value(c, CCN_CLOSE, 1);
+        components->n = n + 1;
+        return(n);
+    }
+    return(-1);
 }
 

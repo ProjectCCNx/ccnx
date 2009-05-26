@@ -4,11 +4,17 @@
 <!ENTITY % commonattrs
 	"xmlns %URI; #FIXED 'http://www.parc.com/ccn'">
 
-<!ELEMENT WrappedKey (WrappingKeyIdentifier?, WrapAlgorithm?, KeyAlgorithm?, Label?, EncryptedNonceKey?, EncryptedKey)>
+<!ELEMENT WrappedKey (WrappingKeyIdentifier?, WrappingKeyName?, WrapAlgorithm?, KeyAlgorithm?, Label?, EncryptedNonceKey?, EncryptedKey)>
 <!ATTLIST WrappedKey %commonattrs;>
 
 <!ELEMENT WrappingKeyIdentifier	(#PCDATA)>	<!-- base64Binary SHA-256 digest -->
 <!ATTLIST WrappingKeyIdentifier ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT WrappingKeyName		(Component*)>
+<!ATTLIST WrappingKeyName		%commonattrs;>
+
+<!ELEMENT Component	(#PCDATA)>	<!-- base64Binary -->
+<!ATTLIST Component     ccnbencoding CDATA #FIXED 'base64Binary'>
 
 <!ELEMENT WrapAlgorithm  (#PCDATA)>	<!-- decimal OID -->
 

@@ -12,9 +12,9 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import javax.xml.stream.XMLStreamException;
@@ -51,14 +51,14 @@ public class CCNNetworkManager implements Runnable {
 	public static final int PERIOD = 2000; // period for occasional ops in ms.
 	public static final int MAX_PERIOD = PERIOD * 16;
 	public static final String KEEPALIVE_NAME = "/HereIAm";
-
+	public static final int THREAD_LIFE = 8;	// in seconds
 	
 	/**
 	 * Static singleton.
 	 */
 	
 	protected Thread _thread = null; // the main processing thread
-	protected ExecutorService _threadpool = null; // pool service for callback threads
+	protected ThreadPoolExecutor _threadpool = null; // pool service for callback threads
 	protected DatagramChannel _channel = null; // for use by run thread only!
 	protected Selector _selector = null;
 	protected Throwable _error = null; // Marks error state of socket
@@ -117,7 +117,7 @@ public class CCNNetworkManager implements Runnable {
 		} catch (IOException io) {
 			// We do not see errors on send typically even if 
 			// agent is gone, so log each but do not track
-			Library.logger().warning("Error sending heartbeat packet");
+			Library.logger().warning("Error sending heartbeat packet: " + io.getMessage());
 		}
 	}
 			
@@ -440,7 +440,8 @@ public class CCNNetworkManager implements Runnable {
 		heartbeat();
 		
 		// Create callback threadpool and main processing thread
-		_threadpool = Executors.newCachedThreadPool();
+		_threadpool = (ThreadPoolExecutor)Executors.newCachedThreadPool();
+		_threadpool.setKeepAliveTime(THREAD_LIFE, TimeUnit.SECONDS);
 		_thread = new Thread(this);
 		_thread.start();
 		

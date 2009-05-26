@@ -1,4 +1,4 @@
-$(CSRC) $(HSRC) $(SCRIPTSRC):
+$(CSRC) $(HSRC) $(SCRIPTSRC) $(SRCLINKS):
 	test -f $(SRCDIR)/$@ && ln -s $(SRCDIR)/$@
 
 $(DUPDIR):
@@ -35,3 +35,7 @@ shared:
 depend: Makefile $(CSRC)
 	for i in $(CSRC); do gcc -MM $(CPREFLAGS) $$i; done > depend
 	tail -n `wc -l < depend` Makefile | diff - depend
+
+install_libs install_programs install uninstall_libs uninstall_programs uninstall coverage shared depend: _always
+.PHONY: _always
+_always:

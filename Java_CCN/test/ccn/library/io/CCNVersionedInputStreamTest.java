@@ -173,9 +173,9 @@ public class CCNVersionedInputStreamTest {
 			// we can make a new library; as long as we don't use the outputLibrary it should work
 			CCNVersionedInputStream vfirst = 
 				new CCNVersionedInputStream(firstVersionName, 
-						((3 > firstVersionMaxSegment) ? firstVersionMaxSegment : 3), outputLibrary.getDefaultPublisher(), inputLibrary);
+						((3 > firstVersionMaxSegment) ? firstVersionMaxSegment : 3L), outputLibrary.getDefaultPublisher(), inputLibrary);
 			CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, 
-					((3 > latestVersionMaxSegment) ? latestVersionMaxSegment : 3), outputLibrary.getDefaultPublisher(), inputLibrary);
+					((3 > latestVersionMaxSegment) ? latestVersionMaxSegment : 3L), outputLibrary.getDefaultPublisher(), inputLibrary);
 			testArgumentRunner(vfirst, vlatest);
 		} catch (XMLStreamException e) {
 			e.printStackTrace();
@@ -276,8 +276,8 @@ public class CCNVersionedInputStreamTest {
 	public void testCCNVersionedInputStreamContentNameInt() {
 		try {
 			// we can make a new library; as long as we don't use the outputLibrary it should work
-			CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName, ((4 > firstVersionMaxSegment) ? firstVersionMaxSegment : 4));
-			CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, ((4 > latestVersionMaxSegment) ? latestVersionMaxSegment : 4));
+			CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName, ((4 > firstVersionMaxSegment) ? firstVersionMaxSegment : 4L));
+			CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, ((4 > latestVersionMaxSegment) ? latestVersionMaxSegment : 4L));
 			testArgumentRunner(vfirst, vlatest);
 		} catch (XMLStreamException e) {
 			e.printStackTrace();

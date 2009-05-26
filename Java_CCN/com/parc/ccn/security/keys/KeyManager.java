@@ -1,8 +1,12 @@
 package com.parc.ccn.security.keys;
 
 import java.io.IOException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.cert.CertificateEncodingException;
+import java.security.spec.InvalidKeySpecException;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
@@ -91,7 +95,7 @@ public abstract class KeyManager {
 	 * @return
 	 */
 	public abstract PublicKey getPublicKey(String alias);
-	public abstract PublicKey getPublicKey(PublisherPublicKeyDigest publisher);
+	public abstract PublicKey getPublicKey(PublisherPublicKeyDigest publisher) throws IOException;
 
 	public abstract PublisherPublicKeyDigest getPublisherKeyID(PrivateKey signingKey);
 
@@ -101,7 +105,12 @@ public abstract class KeyManager {
 	public abstract PrivateKey getSigningKey(PublisherID publisher);
 	public abstract PrivateKey getSigningKey(PublisherPublicKeyDigest publisherKeyID);
 	
-
+	/**
+	 * Get my identities, e.g. for loading a cache.
+	 * @return
+	 */
+	public abstract PrivateKey[] getSigningKeys();
+	
 	/**
 	 * Get someone else's public keys. Interesting to see
 	 * whether or not this should be handled by a TrustManager.
@@ -110,13 +119,29 @@ public abstract class KeyManager {
 	 * @return
 	 * @throws IOException 
 	 * @throws InterruptedException 
+	 * @throws NoSuchAlgorithmException 
+	 * @throws InvalidKeySpecException 
+	 * @throws CertificateEncodingException 
 	 */
 	public abstract PublicKey getPublicKey(PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator) throws IOException, InterruptedException;
 
 	public abstract PublicKey getKey(PublisherPublicKeyDigest desiredKeyID,
 									KeyLocator locator) throws IOException, InterruptedException;
 	
+	/**
+	 * Publish a key at a certain name, signed by our default identity. Usually used to
+	 * publish our own keys.
+	 * @param keyName
+	 * @param keyToPublish can be null, in which case we publish our own default public key
+	 * @throws InvalidKeyException 
+	 * @throws ConfigurationException 
+	 * @throws ConfigurationException 
+	 * @throws NoSuchAlgorithmException 
+	 * @throws InvalidKeySpecException 
+	 * @throws CertificateEncodingException 
+	 */
+	public abstract void publishKey(ContentName keyName, PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, IOException, ConfigurationException;
 	
 	public abstract KeyRepository keyRepository();
-	
+
 }
