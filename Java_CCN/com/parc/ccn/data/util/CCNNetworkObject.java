@@ -144,13 +144,19 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			latestVersionKnown = VersioningProfile.versionName(latestVersionKnown, VersioningProfile.baseVersion());
 		}
 		// DKS TODO locking?
+		cancelInterest();
+		// express this
+		_continuousUpdates = continuousUpdates;
+		_currentInterest = Interest.last(latestVersionKnown, null, null);
+		_library.expressInterest(_currentInterest, this);
+	}
+	
+	public void cancelInterest() {
+		_continuousUpdates = false;
 		if (null != _currentInterest) {
 			_library.cancelInterest(_currentInterest, this);
 		}
 		_excludeList.clear();
-		// express this
-		_currentInterest = Interest.last(latestVersionKnown, null, null);
-		_library.expressInterest(_currentInterest, this);
 	}
 
 	/**
@@ -228,7 +234,15 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_flowControl.addNameSpace(name);
 		_flowControl.put(goneObject);
 		_currentName = versionedName;
+		_data = null;
 		setPotentiallyDirty(false);
+	}
+	
+	public void saveAsGone() throws IOException {
+		if (null == _currentName) {
+			throw new IllegalStateException("Cannot save an object without giving it a name!");
+		}
+		saveAsGone(VersioningProfile.versionRoot(_currentName));
 	}
 
 	public Timestamp getVersion() {
@@ -247,8 +261,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 	
 	protected void newVersionAvailable() {
-		// by default do nothing
-		// replace by notify?
+		// by default signal all waiters
+		this.notifyAll();
 	}
 
 	@Override
@@ -281,7 +295,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		return _isGone;
 	}
 	
-    public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
+	public boolean ready() {
+		if (super.ready() || isGone())
+			return true;
+		return false;
+	}
+
+	public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
     	// Do we have a version?
     	// DKS note -- this code from getVersionInternal in CCNLibrary. It doesn't actually
     	// confirm that the result is versioned.
@@ -302,7 +322,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
     				_currentInterest = null;
     				newVersionAvailable(); // notify that a new version is available; perhaps move to real notify()
     				if (_continuousUpdates) {
-    					// DKS TODO -- order with respect to newVersionAvailalbe and locking...
+    					// DKS TODO -- order with respect to newVersionAvailable and locking...
     					updateInBackground(true);
     				} else {
     					_continuousUpdates = false;
