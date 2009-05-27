@@ -108,6 +108,12 @@ public class NodeKey {
 		return CCNDigestHelper.digest(key);
 	}
 
+	public static byte [] generateKeyID(Key key) {
+		if (null == key)
+			return null;
+		return CCNDigestHelper.digest(key.getEncoded());
+	}
+
 	public NodeKey getPreviousKey() {
 		// TODO Auto-generated method stub
 		return null;
