@@ -1,8 +1,8 @@
 package test.ccn.data.content;
 
 import java.sql.Timestamp;
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedList;
 
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -92,7 +92,7 @@ public class CollectionDataTest {
 		for (int i=0; i < lrs.length; ++i) {
 			cd.add(lrs[i]);
 		}
-		ArrayList<LinkReference> c = cd.contents();
+		LinkedList<LinkReference> c = cd.contents();
 		Assert.assertNotNull(c);
 		Assert.assertTrue(c.size() == lrs.length);
 		for (int i=0; i < lrs.length; ++i) {

@@ -3,7 +3,7 @@ package com.parc.ccn.data.content;
 import java.security.InvalidKeyException;
 import java.security.PrivateKey;
 import java.security.SignatureException;
-import java.util.ArrayList;
+import java.util.LinkedList;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -66,7 +66,7 @@ public class Collection extends ContentObject {
 		return newCollection;
 	}
 
-	public ArrayList<LinkReference> contents() { 
+	public LinkedList<LinkReference> contents() { 
 		return _data.contents(); 
 	}
 	

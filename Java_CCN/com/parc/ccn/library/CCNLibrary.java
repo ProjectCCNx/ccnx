@@ -8,6 +8,7 @@ import java.security.PrivateKey;
 import java.security.Security;
 import java.security.SignatureException;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.Random;
 
 import javax.xml.stream.XMLStreamException;
@@ -329,7 +330,7 @@ public class CCNLibrary extends CCNBase {
 			Collection collection,
 			ContentName [] references) throws IOException, SignatureException, 
 			XMLStreamException, InvalidKeyException {
-		ArrayList<LinkReference> contents = collection.contents();
+		LinkedList<LinkReference> contents = collection.contents();
 		for (ContentName reference : references)
 			contents.add(new LinkReference(reference));
 		return updateCollection(collection, contents, null, null, null);
@@ -339,7 +340,7 @@ public class CCNLibrary extends CCNBase {
 			Collection collection,
 			ContentName [] references) throws IOException, SignatureException, 
 			XMLStreamException, InvalidKeyException {
-		ArrayList<LinkReference> contents = collection.contents();
+		LinkedList<LinkReference> contents = collection.contents();
 		for (ContentName reference : references)
 			contents.remove(new LinkReference(reference));
 		return updateCollection(collection, contents, null, null, null);
@@ -350,7 +351,7 @@ public class CCNLibrary extends CCNBase {
 			ContentName [] referencesToAdd,
 			ContentName [] referencesToRemove) throws IOException, SignatureException, 
 			XMLStreamException, InvalidKeyException {
-		ArrayList<LinkReference> contents = collection.contents();
+		LinkedList<LinkReference> contents = collection.contents();
 		for (ContentName reference : referencesToAdd)
 			contents.add(new LinkReference(reference));
 		for (ContentName reference : referencesToRemove)
@@ -370,7 +371,7 @@ public class CCNLibrary extends CCNBase {
 	 * @throws SignatureException 
 	 * @throws InvalidKeyException 
 	 */
-	private Collection updateCollection(Collection oldCollection, ArrayList<LinkReference> references,
+	private Collection updateCollection(Collection oldCollection, LinkedList<LinkReference> references,
 			 PublisherPublicKeyDigest publisher, KeyLocator locator,
 			 PrivateKey signingKey) throws XMLStreamException, IOException,
 			 InvalidKeyException, SignatureException {
@@ -468,7 +469,7 @@ public class CCNLibrary extends CCNBase {
 				Collection collection = Collection.contentToCollection(content);
 			
 				if (null != collection) {
-					ArrayList<LinkReference> al = collection.contents();
+					LinkedList<LinkReference> al = collection.contents();
 					for (LinkReference lr : al) {
 						ContentObject linkCo = dereferenceLink(lr, content.signedInfo().getPublisherKeyID(), timeout);
 						if (linkCo != null)

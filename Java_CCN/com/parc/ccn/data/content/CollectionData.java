@@ -2,6 +2,7 @@ package com.parc.ccn.data.content;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedList;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -23,7 +24,7 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 	
 	protected static final String COLLECTION_ELEMENT = "Collection";
 
-	protected ArrayList<LinkReference> _contents = new ArrayList<LinkReference>();
+	protected LinkedList<LinkReference> _contents = new LinkedList<LinkReference>();
 	
 	public CollectionData() {
 	}
@@ -32,11 +33,11 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 		return new CollectionData(_contents);
 	}
 	
-	public CollectionData(ArrayList<LinkReference> contents) {
+	public CollectionData(java.util.Collection<LinkReference> contents) {
 		_contents.addAll(contents); // should we clone each?
 	}
 	
-	public ArrayList<LinkReference> contents() { 
+	public LinkedList<LinkReference> contents() { 
 		return _contents; 
 	}
 		

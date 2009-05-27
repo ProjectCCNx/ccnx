@@ -10,6 +10,7 @@ import java.security.SignatureException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedList;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -342,7 +343,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 		
 		// test getCollection
 		collection = getLibrary.getCollection(collectionName, 5000);
-		ArrayList<LinkReference> checkReferences = collection.contents();
+		LinkedList<LinkReference> checkReferences = collection.contents();
 		Assert.assertEquals(checkReferences.size(), 2);
 		Assert.assertEquals(references[0], checkReferences.get(0).targetName());
 		Assert.assertEquals(references[1], checkReferences.get(1).targetName());

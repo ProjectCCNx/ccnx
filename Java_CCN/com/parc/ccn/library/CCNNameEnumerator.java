@@ -3,6 +3,7 @@ package com.parc.ccn.library;
 import java.io.IOException;
 import java.security.SignatureException;
 import java.util.ArrayList;
+import java.util.LinkedList;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -179,7 +180,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 		}
 		Collection collection;
 		ArrayList<ContentName> names = new ArrayList<ContentName>();
-		ArrayList<LinkReference> links;
+		LinkedList<LinkReference> links;
 		ContentName responseName = null;
 		
 		//TODO  integrate handling for multiple responders, for now, just handles one result properly
