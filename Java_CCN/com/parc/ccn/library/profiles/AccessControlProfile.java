@@ -46,7 +46,7 @@ public class AccessControlProfile implements CCNProfile {
 	public static final byte [] WRAPPING_KEY_PREFIX = ContentName.componentParseNative("keyid" + COMPONENT_SEPARATOR_STRING);
 	public static final byte [] PRINCIPAL_PREFIX = ContentName.componentParseNative("p" + COMPONENT_SEPARATOR_STRING);
 
-	public static final String SUPERSEDED_MARKER = "Superseded";
+	public static final String SUPERSEDED_MARKER = "SupersededBy";
 	
 	
 	public static boolean isAccessName(ContentName name) {
