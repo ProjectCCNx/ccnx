@@ -1,8 +1,11 @@
 package com.parc.ccn.security.access;
 
+import java.security.Key;
 import java.security.PrivateKey;
 import java.util.HashMap;
 
+import com.parc.ccn.data.ContentName;
+import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.keys.KeyManager;
 
 /**
@@ -12,51 +15,78 @@ import com.parc.ccn.security.keys.KeyManager;
  */
 public class KeyCache {
 	
-	private HashMap<byte [], NodeKey> _nodeKeyMap = new HashMap<byte [], NodeKey>();
+	private HashMap<byte [], Key> _keyMap = new HashMap<byte [], Key>();
 	private HashMap<byte [], PrivateKey> _myKeyMap = new HashMap<byte [], PrivateKey>();
-	private HashMap<byte [], PrivateKey> _groupKeyMap = new HashMap<byte [], PrivateKey>();
+	private HashMap<byte [], PrivateKey> _privateKeyMap = new HashMap<byte [], PrivateKey>();
+	private HashMap<byte [], byte []> _privateKeyIdentifierMap = new HashMap<byte [], byte[]>();
+	private HashMap<byte [], ContentName> _keyNameMap = new HashMap<byte [], ContentName>();
 	
 	public KeyCache() {
+		this(KeyManager.getKeyManager());
 	}
 	
 	public KeyCache(KeyManager keyManagerToLoadFrom) {
 		PrivateKey [] pks = keyManagerToLoadFrom.getSigningKeys();
 		for (PrivateKey pk : pks) {
-			addMyPrivateKey(pk);
+			addMyPrivateKey(keyManagerToLoadFrom.getPublisherKeyID(pk).digest(), pk);
 		}
 	}
 	
-	NodeKey getNodeKey(byte [] desiredKeyIdentifier) {
-		return _nodeKeyMap.get(desiredKeyIdentifier);
+	Key getKey(byte [] desiredKeyIdentifier) {
+		Key theKey = _keyMap.get(desiredKeyIdentifier);
+		if (null == theKey) {
+			theKey = _privateKeyMap.get(desiredKeyIdentifier);
+		}
+		if (null == theKey) {
+			theKey = _myKeyMap.get(desiredKeyIdentifier);
+		}
+		return theKey;
 	}
 	
-	void addNodeKey(NodeKey nk) {
-		_nodeKeyMap.put(nk.generateKeyID(), nk);
+	public boolean containsKey(byte [] keyIdentifier) {
+		if ((_keyMap.containsKey(keyIdentifier)) || (_myKeyMap.containsKey(keyIdentifier)) ||
+					(_privateKeyMap.containsKey(keyIdentifier))) {
+			return true;
+		}
+		return false;
 	}
 	
-	PrivateKey getPrivateKey(byte [] desiredKeyIdentifier) {
-		PrivateKey key = _myKeyMap.get(desiredKeyIdentifier);
+	public ContentName getKeyName(byte [] keyIdentifier) {
+		return _keyNameMap.get(keyIdentifier);
+	}
+	
+	public ContentName getKeyName(Key key) {
+		return getKeyName(getKeyIdentifier(key));
+	}
+
+	PrivateKey getPrivateKey(byte [] desiredPublicKeyIdentifier) {
+		PrivateKey key = _myKeyMap.get(desiredPublicKeyIdentifier);
 		if (null == key) {
-			_groupKeyMap.get(desiredKeyIdentifier);
+			_privateKeyMap.get(desiredPublicKeyIdentifier);
 		}
 		return key;
 	}
 	
-	void addGroupPrivateKey(PrivateKey pk) {
-		_groupKeyMap.put(NodeKey.generateKeyID(pk.getEncoded()), pk);
+	void addPrivateKey(ContentName keyName, byte [] publicKeyIdentifier, PrivateKey pk) {
+		_privateKeyMap.put(publicKeyIdentifier, pk);
+		_privateKeyIdentifierMap.put(getKeyIdentifier(pk), publicKeyIdentifier);
+		if (null != keyName)
+			_keyNameMap.put(publicKeyIdentifier, keyName);
 	}
 
-	void addMyPrivateKey(PrivateKey pk) {
-		_myKeyMap.put(NodeKey.generateKeyID(pk.getEncoded()), pk);
+	void addMyPrivateKey(byte [] publicKeyIdentifier, PrivateKey pk) {
+		_privateKeyIdentifierMap.put(getKeyIdentifier(pk), publicKeyIdentifier);
+		_myKeyMap.put(publicKeyIdentifier, pk);
 	}
 	
-	public boolean containsKey(byte [] keyIdentifier) {
-		if (_nodeKeyMap.containsKey(keyIdentifier))
-			return true;
-		if (_myKeyMap.containsKey(keyIdentifier))
-			return true;
-		if (_groupKeyMap.containsKey(keyIdentifier))
-			return true;
-		return false;
+	public void addKey(ContentName name, Key key) {
+		byte [] id = getKeyIdentifier(key);
+		_keyMap.put(id, key);
+		_keyNameMap.put(id, name);
+	}
+	
+	public byte [] getKeyIdentifier(Key key) {
+		// Works on symmetric and public.
+		return CCNDigestHelper.digest(key.getEncoded());
 	}
 }
