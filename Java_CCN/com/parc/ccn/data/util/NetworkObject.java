@@ -98,7 +98,10 @@ public abstract class NetworkObject<E> {
 	 */
 	protected E data() { return _data; }
 	
-	protected void setData(E data) { _data = data; }
+	public void setData(E data) { 
+		_data = data; 
+		setPotentiallyDirty(true);
+	}
 
 	/**
 	 * Base behavior -- always write when asked.
