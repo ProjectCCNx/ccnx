@@ -31,9 +31,11 @@ import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.io.CCNFileInputStream;
 import com.parc.ccn.library.io.repo.RepositoryFileOutputStream;
+import com.parc.ccn.library.profiles.SegmentationProfile;
 
 public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,ActionListener{
 
+	
 	private CCNNameEnumerator _nameEnumerator = null;
 	protected static CCNLibrary _library = null;
     private static boolean useSystemLookAndFeel = false;
@@ -389,14 +391,18 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		// doing this to send it to repo and then get it back and read it
 
 		System.out.println("Writing a file to the repo " + file.getName()+" with contentName: "+ccnName.toString());
-		
+
 		
 		try {
-			FileInputStream fs = new FileInputStream(file);
-			byte[] buffer = new byte[fs.available()];
-			fs.read(buffer);
 			RepositoryFileOutputStream fos = new RepositoryFileOutputStream(ccnName, _library);
-			fos.write(buffer);
+			FileInputStream fs = new FileInputStream(file);
+			int bytesRead = 0;
+			byte[] buffer = new byte[SegmentationProfile.DEFAULT_BLOCKSIZE];
+			
+			while ((bytesRead = fs.read(buffer)) != -1){
+				fos.write(buffer, 0, bytesRead);
+			}
+
 			fos.close();
 
 		} catch (IOException e) {
