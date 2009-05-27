@@ -41,6 +41,8 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		_enumerator.registerPrefix(namePrefix);
 	}
 	
+	public ContentName getName() { return _namePrefix; }
+	
 	public void stopEnumerating() {
 		_enumerator.cancelPrefix(_namePrefix);
 	}
