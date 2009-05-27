@@ -8,6 +8,7 @@ import java.security.SecureRandom;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
@@ -15,21 +16,17 @@ import javax.crypto.spec.SecretKeySpec;
 import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.crypto.InvalidCipherTextException;
-import org.bouncycastle.util.Arrays;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.CollectionData;
 import com.parc.ccn.data.content.LinkReference;
-import com.parc.ccn.data.security.PublicKeyObject;
 import com.parc.ccn.data.security.WrappedKey;
 import com.parc.ccn.data.security.WrappedKey.WrappedKeyObject;
-import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.EnumeratedNameList;
 import com.parc.ccn.library.profiles.AccessControlProfile;
-import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.access.ACL.ACLObject;
 
 /**
@@ -181,7 +178,9 @@ public class AccessControlManager {
 	private ContentName _userStorage;
 	private EnumeratedNameList _userList;
 	// The groups whose membership information I've bothered to pull.
-	private HashMap<String, Group> _enumeratedGroups = new HashMap<String, Group>();
+	private HashMap<String, Group> _groupCache = new HashMap<String, Group>();
+	private HashSet<String> _myGroupMemberships = new HashSet<String>();
+	
 	private KeyCache _keyCache = new KeyCache();
 	private CCNLibrary _library;
 	private SecureRandom _random = new SecureRandom();
@@ -215,7 +214,7 @@ public class AccessControlManager {
 	
 	CCNLibrary library() { return _library; }
 	
-	private KeyCache keyCache() { return _keyCache; }
+	KeyCache keyCache() { return _keyCache; }
 	
 	public EnumeratedNameList groupList() throws IOException {
 		if (null == _groupList) {
@@ -236,15 +235,15 @@ public class AccessControlManager {
 	}
 
 	public Group getGroup(String groupFriendlyName) throws IOException {
-		Group theGroup = _enumeratedGroups.get(groupFriendlyName);
+		Group theGroup = _groupCache.get(groupFriendlyName);
 		if ((null == theGroup) && (groupList().hasChild(groupFriendlyName))) {
 			// Only go hunting for it if we think it exists, otherwise we'll block.
-			synchronized(_enumeratedGroups) {
-				theGroup = _enumeratedGroups.get(groupFriendlyName);
+			synchronized(_groupCache) {
+				theGroup = _groupCache.get(groupFriendlyName);
 				if (null == theGroup) {
 					theGroup = new Group(_groupStorage, groupFriendlyName, _library);
 					// wait for group to be ready?
-					_enumeratedGroups.put(groupFriendlyName, theGroup);
+					_groupCache.put(groupFriendlyName, theGroup);
 				}
 			}
 		}
@@ -253,8 +252,10 @@ public class AccessControlManager {
 		return theGroup;
 	}
 	
-	public void addGroup(Group newGroup) {
-		_enumeratedGroups.put(newGroup.friendlyName(), newGroup);
+	public void cacheGroup(Group newGroup) {
+		synchronized(_groupCache) {
+			_groupCache.put(newGroup.friendlyName(), newGroup);
+		}
 	}
 	
 	public Group createGroup(String groupFriendlyName, ArrayList<LinkReference> newMembers) throws XMLStreamException, IOException {
@@ -268,11 +269,8 @@ public class AccessControlManager {
 				new MembershipList(
 						AccessControlProfile.groupMembershipListName(_groupStorage, groupFriendlyName), 
 						new CollectionData(newMembers), _library);
-			PublicKeyObject pk = Group.newGroupPublicKey(groupFriendlyName, ml);
-			ml.save(); // setting up key could take some time, do this last in case people
-					   // are waiting on it.
-			Group newGroup =  new Group(_groupStorage, groupFriendlyName, ml, pk, _library);
-			addGroup(newGroup);
+			Group newGroup =  new Group(_groupStorage, groupFriendlyName, ml, _library);
+			cacheGroup(newGroup);
 			return newGroup;
 		}
 	}
@@ -321,6 +319,51 @@ public class AccessControlManager {
 		return _groupStorage.isPrefixOf(member.targetName());
 	}
 	
+	public boolean isGroup(String principal) {
+		return _groupList.hasChild(principal);
+	}
+
+	public boolean haveKnownGroupMemberships() {
+		return _myGroupMemberships.size() > 0;
+	}
+
+	public boolean amKnownGroupMember(String principal) {
+		return _myGroupMemberships.contains(principal);
+	}
+
+	public boolean amCurrentGroupMember(String principal) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	public Key getGroupPrivateKey(String principal, Timestamp timestamp) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	/**
+	 * We might or might not still be a member of this group, or be a member
+	 * again. This merely removes our cached notion that we are a member.
+	 * @param principal
+	 */
+	public void removeGroupMembership(String principal) {
+		_myGroupMemberships.remove(principal);
+	}
+
+	protected Key getVersionedPrivateKeyForGroup(KeyDirectory keyDirectory, String principal) {
+		Key privateKey = getGroupPrivateKey(principal, keyDirectory.getPrincipals().get(principal));
+		if (null == privateKey) {
+			Library.logger().info("Unexpected: we beleive we are a member of group " + principal + " but cannot retrieve private key version: " + keyDirectory.getPrincipals().get(principal) + " our membership revoked?");
+			// Check to see if we are a current member.
+			if (!amCurrentGroupMember(principal)) {
+				// Removes this group from my list of known groups, adds it to my
+				// list of groups I don't believe I'm a member of.
+				removeGroupMembership(principal);
+			}
+		}
+		return privateKey;
+	}
+
 	/**
 	 * Retrieves the latest version of an ACL effective at this node, either stored
 	 * here or at one of its ancestors.
@@ -485,7 +528,7 @@ public class AccessControlManager {
 	 */
 	protected NodeKey findAncestorWithNodeKey(ContentName nodeName) throws IOException {
 		// TODO Auto-generated method stub
-		// climb up looking for node keys, then make sure that one isn't superseded
+		// climb up looking for node keys, then make sure that one isn't GONE
 		// if it isn't, call read-side routine to figure out how to decrypt it
 		return null;
 	}
@@ -519,25 +562,12 @@ public class AccessControlManager {
 		if ((null == nodeKeyName) && (null == nodeKeyIdentifier)) {
 			throw new IllegalArgumentException("Node key name and identifier cannot both be null!");
 		}
-		// First, do we have it in the cache?
-		NodeKey nk = null;
-		if (null != nodeKeyIdentifier) {
-			nk = keyCache().getNodeKey(nodeKeyIdentifier);
-		}
-		
+		// We should know what node key to use (down to the version), but we have to find the specific
+		// wrapped key copy we can decrypt. 
+		NodeKey nk = getNodeKeyByVersionedName(nodeKeyName, nodeKeyIdentifier);
 		if (null == nk) {
-			if (null == nodeKeyName) {
-				Library.logger().warning("Cannot find node key " + DataUtils.printHexBytes(nodeKeyIdentifier) +
-						" in cache, and no name given.");
-				return null;
-			}
-			// We should know what node key to use (down to the version), but we have to find the specific
-			// wrapped key copy we can decrypt. 
-			nk = getNodeKeyByVersionedName(nodeKeyName, nodeKeyIdentifier);
-			if (null == nk) {
-				Library.logger().warning("No decryptable node key available at " + nodeKeyName + ", access denied.");
-				return null;
-			}
+			Library.logger().warning("No decryptable node key available at " + nodeKeyName + ", access denied.");
+			return null;
 		}
 	
 		return nk;
@@ -558,163 +588,20 @@ public class AccessControlManager {
 
 		NodeKey nk = null;
 		KeyDirectory keyDirectory = null;
-		WrappedKeyObject wko = null;
-		
 		try {
 
 			keyDirectory = new KeyDirectory(this, nodeKeyName, _library);
-			ArrayList<byte []> availableKeyBlocks = keyDirectory.getWrappingKeyIDs();
-
-			if (keyDirectory.hasSupersededBlock() && 
-					(availableKeyBlocks.size() == 0) && (keyDirectory.getPrincipals().size() == 0)) {
-
-				// Handle case where this node key is gone and superseded,
-				// vs case where it's just superseded by a newer version of this key.
-				// A superseded node key just contains a superseded block pointing
-				// up to the superseding node. (You only get this if someone
-				// deletes an ACL causing it to inherit from its parent again.)
-				wko = new WrappedKeyObject(keyDirectory.getSupersededBlockName(), _library);
-				wko.update();
-				if (null == wko.wrappedKey()) {
-					Library.logger().warning("Could not retrieve superseded key for node: " + keyDirectory.getSupersededBlockName());
-					return null;
-				}
-				// DKS TODO be sure what node is used to name this, 
-				// might need to use data key wrapping derivation to wrap
-				NodeKey enk = getNodeKeyForObject(keyDirectory.getSupersededBlockName(), wko);
-				if (null != enk) {
-					nk = new NodeKey(keyDirectory.getSupersededBlockName(), 
-									wko.wrappedKey().unwrapKey(enk.nodeKey()));
-					return nk;
-				}
-				return null;
-			}			
-
-			// Do we have one of the wrapping keys in our cache?
-			for (byte [] keyid : availableKeyBlocks) {
-				if (keyCache().containsKey(keyid)) {
-					// We have it, pull the block, unwrap the node key.
-					wko = keyDirectory.getWrappedKeyForKeyID(keyid);
-					if (null != wko.wrappedKey()) {
-						nk = new NodeKey(nodeKeyName, 
-								wko.wrappedKey().unwrapKey(keyCache().getPrivateKey(keyid)));
-						if ((null != nodeKeyIdentifier) && (!Arrays.areEqual(keyid, nk.storedNodeKeyID()))) {
-							Library.logger().warning("Retrieved and decrypted node key, but it was the wrong node key. We wanted " + 
-									DataUtils.printBytes(keyid) + ", we got " + DataUtils.printBytes(nk.storedNodeKeyID()));
-						} else {
-							keyCache().addNodeKey(nk);
-							return nk;
-						}
-					}
-				}
+			// this will handle the caching.
+			Key unwrappedKey = keyDirectory.getUnwrappedKey(nodeKeyIdentifier);
+			if (null != unwrappedKey) {
+				nk = new NodeKey(nodeKeyName, unwrappedKey);
 			}
-
-			// OK, not in cache. Our next step regardless is to check on the groups we think we're in.
-			HashMap<String, Timestamp> groupNames = keyDirectory.getPrincipals();
-			if (groupNames.containsKey(_myName)) {
-				// we're explicitly listed on this group, but not under any key in our cache.
-				// maybe we need to load an old one?
-				Library.logger().info("NK encrypted under my key " + _myName + " version: " + groupNames.get(_myName));
-			}
-			for (Group myGroup : _enumeratedGroups) {
-				if (groupNames.containsKey(myGroup.friendlyName())) {
-					// TODO handle this group, add keys to the cache as we go
-				}
-			}
-
-			// Alright, we can't pull a group key for one of the groups we know we belong to
-			// to help us. So now, two choices. If we're on the latest version (no superseded block)
-			// start crawling the groups we don't know whether we're in. If we're not, chain back through
-			// the superseded blocks, checking cache for each, till we get to the latest, then
-			// crawl groups. There is a small chance we might have had access at an intervening
-			// point and not at the latest node, but we're really supposed to pay attention to
-			// the latest node policy (though attackers will not); so err on the side of limiting
-			// access.
-			if (keyDirectory.hasSupersededBlock()) {
-				// We handled pure superseded (removed ACL) above. So we're looking for the latest
-				// version of this node.
-				// First we need to figure out what the latest version is of the node key.
-				Library.logger().info("OK, not in cache, finding latest version of key " + nodeKeyName);
-				ContentName latestNodeKeyName = EnumeratedNameList.getLatestVersionName(nodeKeyName, _library);
-
-				if (nodeKeyName.equals(latestNodeKeyName)) {
-					Library.logger().info("Already looking at latest version of node key: " + nodeKeyName);
-				} else {
-					// We weren't on the latest version
-					Library.logger().info("Newer version " + latestNodeKeyName + " available for node key " + nodeKeyName);
-					NodeKey latestNodeKey = getNodeKeyByVersionedName(latestNodeKeyName, null);
-					if (null == latestNodeKey) {
-						// need to distinguish between don't have access and key gone.
-						// throw access denied exception if no key available we can read
-						// throw illegal state exception if no node key
-						// superseded in old NKs works much better -- can easily tell if a NK is the
-						// one in force, can find where to go for the latest even if uphill
-						// need previous blocks if you interpose a lower acl, and need to chain backwards
-						// at that level. so might have either. though if you're reading, you'll go straight
-						// to the level of the old node key, and if you can't read that one, eventually
-						// you'll look for an interposed key you can read. but if the data is too old
-						// and you interpose an acl, you're in trouble.... you need to add in previous
-						// blocks for all the node keys you're replacing with the effective node keys
-						// for the interposed node.
-						// Superseded blocks point sideways or up. Previous blocks handle relationships
-						// pointing down (by pointing up with opposite semantics).
-						// this would argue for a separation of getLatestNodeKey and get by specific version
-						Library.logger().info("Were not able to retrieve a version of node key " + latestNodeKeyName + " we can read. Should we throw access denied?");
-						return null;
-					} else {
-						// chain backwards from the key we have to the key we want
-						NodeKey ourNodeKey = retrievePreviousNodeKey(latestNodeKey, nodeKeyName);
-						if (null == ourNodeKey) {
-							// we're done, no access, but weird...
-							Library.logger().warning("Unexpected: given current node key " + latestNodeKeyName + " we can't backwards-chain to node key for " + nodeKeyName);
-							return null;
-						} else {
-							return ourNodeKey;
-						}
-					}
-				}
-			}
-
-			// OK, we're on the latest version. Attempt to walk the group/individual hierarchy.
-			for (String principalName : keyDirectory.getPrincipals().keySet()) {
-				// TODO handle walking groups
-			}
-			
-			
 		} finally {
 			if (null != keyDirectory) {
 				keyDirectory.stopEnumerating();
 			}
 		}
-	}
-	
-	/**
-	 * Horizontal chaining. Given a version of a node key, retrieve a previous version.
-	 */
-	private NodeKey retrievePreviousNodeKey(NodeKey nodeKeyWeHave, ContentName nameOfNodeKeyWeWant) {
-		// First, do we have the values we need?
-		if ((null == nodeKeyWeHave) || (null == nameOfNodeKeyWeWant)) {
-			throw new IllegalArgumentException("Neither node key nor desired name can be null!");
-		}
-		if (!nodeKeyWeHave.nodeName().isPrefixOf(nameOfNodeKeyWeWant)) {
-			throw new IllegalArgumentException("Node key " + nodeKeyWeHave.nodeName() + " is not a newer node key replacing " + nameOfNodeKeyWeWant);
-		}
-		if (VersioningProfile.compareVersions(nodeKeyWeHave.nodeKeyVersion(), nameOfNodeKeyWeWant) <= 0) {
-			throw new IllegalArgumentException("Node key " + nodeKeyWeHave.nodeName() + " is an older version of node key " + nameOfNodeKeyWeWant + ", can't go backwards");
-		}
-		// The node key we have might be a derived node key, so its stored key id might not
-		// directly relate to the node key we're looking for. 
-		// iterate backwards through previous links to get to the desired node key.
-		NodeKey previousKey = null;
-		while ((null == previousKey) || !previousKey.storedNodeKeyName().equals(nameOfNodeKeyWeWant)) {
-			previousKey = nodeKeyWeHave.getPreviousKey();
-			if (null == previousKey) {
-				break;
-			}
-		}
-		Library.logger().info("Attempting to retrieve previous node key " + nameOfNodeKeyWeWant + " from node key " + nodeKeyWeHave.nodeName() + 
-				" got " + previousKey);
-		return previousKey;
+		return nk;
 	}
 	
 	/**
@@ -775,8 +662,7 @@ public class AccessControlManager {
 	 * @param effectiveNodeKey
 	 * @param newACL
 	 */
-	protected void generateNewNodeKey(ContentName nodeName,
-			NodeKey effectiveNodeKey, ACL effectiveACL) {
+	protected void generateNewNodeKey(ContentName nodeName, NodeKey effectiveNodeKey, ACL effectiveACL) {
 		// TODO Auto-generated method stub
 		
 	}
