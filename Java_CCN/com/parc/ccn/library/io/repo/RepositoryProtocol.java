@@ -29,12 +29,12 @@ import com.parc.ccn.network.daemons.repo.RepositoryInfo;
 public class RepositoryProtocol extends CCNFlowControl {
 	
 	protected static final int ACK_BLOCK_SIZE = 20;
+	protected static final int ACK_INTERVAL = 128;
 	
 	protected boolean _useAck = true;
 	protected TreeMap<ContentName, ContentObject> _unacked = new TreeMap<ContentName, ContentObject>();
 	protected int _blocksSinceAck = 0;
 	protected String _repoName = null;
-	protected String _repoPrefix = null;
 	protected ContentName _baseName; // the name prefix under which we are writing content
 	protected RepoListener _listener = null;
 	protected Interest _writeInterest = null;
@@ -55,26 +55,10 @@ public class RepositoryProtocol extends CCNFlowControl {
 					switch (repoInfo.getType()) {
 					case INFO:
 						_repoName = repoInfo.getLocalName();
-						_repoPrefix = repoInfo.getGlobalPrefix();
 						_writeInterest = null;
 						synchronized (this) {
 							notify();
 						}
-						break;
-					case DATA:
-						if (!repoInfo.getLocalName().equals(_repoName))
-							break;		// not our repository
-						if (!repoInfo.getGlobalPrefix().equals(_repoPrefix))
-							break;		// not our repository
-						for (ContentName name : repoInfo.getNames())
-							ack(name);
-						// We have to keep the data handler associated with this nonce alive
-						// as long as data may be sent on it. Otherwise, with the current code
-						// we would lose ACKs and never be able to retrieve them. Right now
-						// I am just using the arbitrary value of 20 acks per packet and sending
-						// a packet with less to indicate the end of the acks associated with this
-						// nonce. Since the ack protocol will change soon - not bothering to
-						// make this cleaner
 						break;
 					default:
 						break;
@@ -88,12 +72,20 @@ public class RepositoryProtocol extends CCNFlowControl {
 		}
 	}
 	
+	/**
+	 * The names returned by NameEnumerator are only the 1 level names
+	 * without prefix, but the names we are holding contain the basename
+	 * so we reconstruct a full name here.
+	 *
+	 * @author rasmusse
+	 *
+	 */
 	private class RepoAckHandler implements BasicNameEnumeratorListener {
 
 		public int handleNameEnumerator(ContentName prefix,
 				ArrayList<ContentName> names) {
 			for (ContentName name : names)
-				ack(name);
+				ack(new ContentName(_baseName, name.component(0)));
 			return names.size();
 		}
 	}
@@ -112,7 +104,6 @@ public class RepositoryProtocol extends CCNFlowControl {
 		_library.expressInterest(_writeInterest, _listener);
 		_ackHandler = new RepoAckHandler();
 		_ackne = new CCNNameEnumerator(_library, _ackHandler);
-		_ackne.registerPrefix(name);
 		
 		/*
 		 * Wait for information to be returned from a repo
@@ -137,6 +128,10 @@ public class RepositoryProtocol extends CCNFlowControl {
 		if (_useAck) {
 			Library.logger().finer("Unacked: " + co.name());
 			_unacked.put(co.name(), co);
+			if (_unacked.size() > ACK_INTERVAL) {
+				_ackne.cancelPrefix(_baseName);
+				_ackne.registerPrefix(_baseName);
+			}
 		}
 		return co;
 	}
@@ -177,6 +172,17 @@ public class RepositoryProtocol extends CCNFlowControl {
 	public void close() throws IOException {
 		synchronized(this) {
 			while (!flushComplete()) {
+				
+				// Following is a kludge until we get better control
+				// of when to send the last NE request
+				try {
+					Thread.sleep(500);
+				} catch (InterruptedException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+				_ackne.cancelPrefix(_baseName);
+				_ackne.registerPrefix(_baseName);
 				int unacked = _unacked.size();
 				boolean interrupted;
 				do {
@@ -199,6 +205,7 @@ public class RepositoryProtocol extends CCNFlowControl {
 	}
 	
 	private void cancelInterests() {
+		_ackne.cancelPrefix(_baseName);
 		if (_writeInterest != null)
 			_library.cancelInterest(_writeInterest, _listener);
 	}

@@ -515,6 +515,7 @@ public class RFSImpl implements Repository {
 		String nextComponent = "";
 		while (st.hasMoreTokens()) {
 			String token = st.nextToken();
+			token = token.replace("%25", "%");		// Need to fix URI replacement for %
 			if (token.startsWith(SPLIT_COMPONENT))
 				nextComponent += token.substring(1);
 			else {

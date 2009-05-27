@@ -2,7 +2,6 @@ package com.parc.ccn.network.daemons.repo;
 
 import java.io.IOException;
 import java.security.InvalidParameterException;
-import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
@@ -16,11 +15,11 @@ import java.util.logging.Level;
 import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.io.CCNWriter;
 import com.parc.ccn.network.daemons.Daemon;
 
@@ -130,7 +129,7 @@ public class RepositoryDaemon extends Daemon {
 			
 			byte[][]markerOmissions = new byte[2][];
 			markerOmissions[0] = CCNBase.REPO_START_WRITE;
-			markerOmissions[1] = CCNBase.REPO_REQUEST_ACK;
+			markerOmissions[1] = CCNNameEnumerator.NEMARKER;
 			_markerFilter = new ExcludeFilter(markerOmissions);
 			
 			Timer periodicTimer = new Timer(true);
@@ -305,48 +304,6 @@ public class RepositoryDaemon extends Daemon {
 	
 	public ThreadPoolExecutor getThreadPool() {
 		return _threadpool;
-	}
-	
-	public void ack(Interest interest, Interest ackMatch) throws SignatureException, IOException {
-		ArrayList<ContentName> names = new ArrayList<ContentName>();
-		for (RepositoryDataListener listener : _currentListeners) {
-			synchronized (listener) {
-				/*
-				 * Find the DataListener with values to Ack
-				 */
-				boolean found = false;
-				for (ContentObject co : listener.getUnacked()) {
-					if (ackMatch.matches(co)) {
-						found = true;
-						break;
-					}
-				}
-				if (!found) {
-					// We ignore any requests that don't yet have data
-					// Another request will be sent shortly
-					continue;
-				}
-				
-				/*
-				 * For now just send back all the names we have. 
-				 * Possibly later we may want to make sure they match.
-				 * Don't put too many or we'll overflow the ContentObject
-				 */
-				int count = 0;
-				for (ContentObject co : listener.getUnacked()) {
-					names.add(co.name());
-					if (++count > 20) {
-						Library.logger().finer("Acking " + co.name());
-						_writer.put(interest.name(), _repo.getRepoInfo(names));
-						names.clear();
-						count = 0;
-					}
-				}
-				_writer.put(interest.name(), _repo.getRepoInfo(names));
-				listener.getUnacked().clear();
-				break;
-			}
-		}
 	}
 	
 	public static void main(String[] args) {

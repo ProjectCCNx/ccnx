@@ -48,11 +48,10 @@ public class RepositoryDataListener implements CCNInterestListener {
 	
 		public void run() {
 			try {
+				Library.logger().finer("Saving content in: " + _content.name().toString());
+				_daemon.getRepository().saveContent(_content);		
 				if (_daemon.getRepository().checkPolicyUpdate(_content)) {
 					_daemon.resetNameSpaceFromHandler();
-				} else {
-					Library.logger().finer("Saving content in: " + _content.name().toString());
-					_daemon.getRepository().saveContent(_content);		
 				}
 			} catch (RepositoryException e) {
 				// TODO Auto-generated catch block
