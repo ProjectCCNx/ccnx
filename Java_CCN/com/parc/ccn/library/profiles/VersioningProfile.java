@@ -193,6 +193,13 @@ public class VersioningProfile implements CCNProfile {
 		}
 	}
 	
+	/**
+	 * This doesn't currently insist that left and right be versions of the same name,
+	 * just that they both be versioned.
+	 * @param left
+	 * @param right
+	 * @return
+	 */
 	public static int compareVersions(
 			ContentName left,
 			ContentName right) {
@@ -204,5 +211,12 @@ public class VersioningProfile implements CCNProfile {
 		} catch (VersionMissingException e) {
 			throw new IllegalArgumentException("Name that isVersioned returns true for throws VersionMissingException!: " + right);
 		}
+	}
+
+	public static boolean isLaterVersionOf(ContentName laterVersion, ContentName earlierVersion) {
+		if (!versionRoot(laterVersion).equals(versionRoot(earlierVersion))) {
+			return false; // not versions of the same thing
+		}
+		return (compareVersions(laterVersion, earlierVersion) > 0);
 	}
 }
