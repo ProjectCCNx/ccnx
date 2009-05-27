@@ -219,7 +219,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		}
 		
 		ContentName versionedName = VersioningProfile.versionName(name);
-		ContentObject goneObject = ContentObject.buildContentObject(name, ContentType.GONE, null);
+		byte [] empty = { };
+		ContentObject goneObject = ContentObject.buildContentObject(name, ContentType.GONE, empty);
 		_flowControl.addNameSpace(name);
 		_flowControl.put(goneObject);
 		_currentName = versionedName;
