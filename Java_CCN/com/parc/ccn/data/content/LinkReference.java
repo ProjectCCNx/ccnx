@@ -1,13 +1,18 @@
 package com.parc.ccn.data.content;
 
+import java.io.IOException;
+
 import javax.xml.stream.XMLStreamException;
 
+import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.LinkAuthenticator;
+import com.parc.ccn.data.util.CCNEncodableObject;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
+import com.parc.ccn.library.CCNLibrary;
 
 /**
  * Mapping from a link to the underlying XML representation.
@@ -23,6 +28,31 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable {
 	protected static final String LINK_ELEMENT = "Link";
 	protected static final String LABEL_ELEMENT = "Label"; // overlaps with WrappedKey.LABEL_ELEMENT,
 															// shared dictionary entry
+	
+	public static class LinkObject extends CCNEncodableObject<LinkReference> {
+
+		public LinkObject() throws ConfigurationException, IOException {
+			super(LinkReference.class);
+		}
+		
+		public LinkObject(ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
+			super(LinkReference.class, name, library);
+		}
+
+		public LinkObject(ContentName name) throws XMLStreamException, IOException, ConfigurationException {
+			super(LinkReference.class, name);
+		}
+		public LinkObject(ContentName name, LinkReference linkReference, CCNLibrary library) {
+			super(LinkReference.class, name, linkReference, library);
+		}
+
+		public LinkObject(ContentName name, LinkReference linkReference) throws ConfigurationException, IOException {
+			super(LinkReference.class, name, linkReference);
+		}
+		
+		public LinkReference link() { return data(); }
+	}
+
 	
 	protected ContentName _targetName;
 	protected String _targetLabel;
