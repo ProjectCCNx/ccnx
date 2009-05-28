@@ -244,6 +244,7 @@ main(int argc, char **argv)
     int res;
     struct routing rt = { 0 };
     struct ccn_closure in_interest = {.p=&incoming_interest, .data=&rt};
+    struct ccn_charbuf *namebuf = NULL;
 
     while ((res = getopt(argc, argv, "f:h")) != -1) {
         switch (res) {
@@ -271,7 +272,10 @@ main(int argc, char **argv)
         ccndc_fatal(__LINE__, "%s connecting to ccnd\n", strerror(errno));
     
     /* Set up a handler for interests */
-    ccn_set_default_interest_handler(ccn, &in_interest);
+    namebuf = ccn_charbuf_create();
+    ccn_name_init(namebuf);
+    ccn_set_interest_filter(ccn, namebuf, &in_interest);
+    ccn_charbuf_destroy(&namebuf);
     
     ccn_run(ccn, -1);
     exit(0);
