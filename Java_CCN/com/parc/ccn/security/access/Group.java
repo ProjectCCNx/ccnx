@@ -1,21 +1,33 @@
 package com.parc.ccn.security.access;
 
 import java.io.IOException;
+import java.security.InvalidKeyException;
+import java.security.Key;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.PublicKey;
 import java.sql.Timestamp;
 import java.util.Collection;
 
+import javax.jcr.AccessDeniedException;
 import javax.xml.stream.XMLStreamException;
+
+import org.bouncycastle.crypto.InvalidCipherTextException;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.CollectionData;
 import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.content.LinkReference.LinkObject;
+import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublicKeyObject;
+import com.parc.ccn.data.security.PublisherID;
+import com.parc.ccn.data.security.WrappedKey;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.AccessControlProfile;
 import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;
+import com.parc.ccn.security.keys.KeyManager;
 
 public class Group {
 	
@@ -103,7 +115,11 @@ public class Group {
 		return null;
 	}
 	
-	public void clearMembershipList() {
+	/**
+	 * This does not actually remove any members from the group, it just
+	 * clears out our in-memory copy of the membership list.
+	 */
+	public void clearCachedMembershipList() {
 		if (null != _groupMembers) {
 			_groupMembers.cancelInterest(); // stop updating
 			_groupMembers = null;
@@ -135,15 +151,105 @@ public class Group {
 		}
 	}
 	
-	public void newGroupPublicKey(MembershipList ml) {
+	public void newGroupPublicKey(AccessControlManager manager, MembershipList ml) {
+		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(manager);
+		Key oldPrivateKeyWrappingKey = oldPrivateKeyDirectory.getUnwrappedKey(null);
+		if (null == oldPrivateKeyWrappingKey) {
+			throw new AccessDeniedException("Cannot update group membership, do not have acces rights to private key for group " + friendlyName());
+		}
+		
+		// Generate key pair
+		// Write public key to new versioned name
+		// Open key directory under that name
+		// Wrap private key in wrapping key, write that block
+		// For each principal on membership list, write wrapped key block
+		Key privateKeyWrappingKey = createGroupPublicKey(manager, ml);
+		
+		// Write superseded block in old key directory
+		oldPrivateKeyDirectory.addSupersededByBlock(oldPrivateKeyWrappingKey, publicKeyName(), privateKeyWrappingKey);
+		// Write link back to previous key
+		LinkReference lr = new LinkReference(_groupPublicKey.getName(), new LinkAuthenticator(new PublisherID(KeyManager.getKeyManager().getDefaultKeyID())));
+		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, _library);
+		precededByBlock.save();
 	}
 	
-	public void createGroupPublicKey(MembershipList ml) {
+	/**
+	 * We don't expect there to be an existing key. So we just write it.
+	 * If we're not supposed to be a member, this is tricky... we just live
+	 * with the fact that we know it, and forget it.
+	 * @param ml
+	 */
+	public Key createGroupPublicKey(AccessControlManager manager, MembershipList ml) {
+		
+		KeyPairGenerator kpg = KeyPairGenerator.getInstance(AccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM);
+		kpg.initialize(AccessControlManager.DEFAULT_GROUP_KEY_LENGTH);
+		KeyPair pair = kpg.generateKeyPair();
+		
+		_groupPublicKey.save(pair.getPublic());
+		KeyDirectory newPrivateKeyDirectory = privateKeyDirectory(manager); // takes from new public key
+		
+		Key privateKeyWrappingKey = WrappedKey.generateNonceKey();
+		
+		// write the private key
+		newPrivateKeyDirectory.addPrivateKeyBlock(pair.getPrivate(), privateKeyWrappingKey);
+		
+		for (LinkReference lr : ml.membershipList().contents()) {
+			try {
+				// DKS TODO verify target public key against publisher, etc in link
+				PublicKeyObject latestPublicKey = new PublicKeyObject(lr.targetName(), _library);
+				if (!latestPublicKey.ready()) {
+					Library.logger().warning("Could not retrieve public key for " + lr.targetName() + ". Gone? " + latestPublicKey.isGone());
+					continue;
+				}
+				// Need to write wrapped key block and linking principal name.
+				newPrivateKeyDirectory.addWrappedKeyBlock(
+						privateKeyWrappingKey, 
+						latestPublicKey.getName(), 
+						latestPublicKey.publicKey());
+			} catch (XMLStreamException e) {
+				Library.logger().warning("Could not retrieve public key for principal " + lr.targetName() + ", skipping.");
+			}
+		}
+		return privateKeyWrappingKey;
 		
 	}
 	
-	public void updateGroupPublicKey(Collection<LinkReference> membersToAdd) {
+	/**
+	 * We need to wrap the group public key wrapping key in the latest public
+	 * keys of the members to add.
+	 * @param membersToAdd
+	 * @throws IOException 
+	 * @throws XMLStreamException 
+	 * @throws InvalidCipherTextException 
+	 * @throws InvalidKeyException 
+	 */
+	public void updateGroupPublicKey(AccessControlManager manager, Collection<LinkReference> membersToAdd) throws IOException, InvalidKeyException, InvalidCipherTextException, XMLStreamException {
 		
+		if ((null == membersToAdd) || (membersToAdd.size() == 0))
+			return;
+		
+		KeyDirectory privateKeyDirectory = privateKeyDirectory(manager);
+		Key privateKeyWrappingKey = privateKeyDirectory.getUnwrappedKey(null);
+		if (null == privateKeyWrappingKey) {
+			throw new AccessDeniedException("Cannot update group membership, do not have acces rights to private key for group " + friendlyName());
+		}
+		for (LinkReference lr : membersToAdd) {
+			try {
+				// DKS TODO verify target public key against publisher, etc in link
+				PublicKeyObject latestPublicKey = new PublicKeyObject(lr.targetName(), _library);
+				if (!latestPublicKey.ready()) {
+					Library.logger().warning("Could not retrieve public key for " + lr.targetName() + ". Gone? " + latestPublicKey.isGone());
+					continue;
+				}
+				// Need to write wrapped key block and linking principal name.
+				privateKeyDirectory.addWrappedKeyBlock(
+						privateKeyWrappingKey, 
+						latestPublicKey.getName(), 
+						latestPublicKey.publicKey());
+			} catch (XMLStreamException e) {
+				Library.logger().warning("Could not retrieve public key for principal " + lr.targetName() + ", skipping.");
+			}
+		}
 	}
 	
 	@Override
