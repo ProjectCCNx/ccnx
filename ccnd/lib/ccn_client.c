@@ -329,7 +329,6 @@ ccn_destroy(struct ccn **hp)
         hashtb_destroy(&(h->interest_filters));
     }
 
-
     /* XXX: remove this and rewrite as a finalizer on the hash table */
     if (h->keys != NULL) {	/* KEYS */
         for (hashtb_start(h->keys, e); e->data != NULL; hashtb_next(e)) {
@@ -822,7 +821,8 @@ handle_key(
 
 static int
 ccn_initiate_key_fetch(struct ccn *h,
-                       unsigned char *msg, struct ccn_parsed_ContentObject *pco,
+                       unsigned char *msg,
+                       struct ccn_parsed_ContentObject *pco,
                        struct expressed_interest *trigger_interest)
 {
     /* 
@@ -1160,8 +1160,18 @@ ccn_process_scheduled_operations(struct ccn *h)
     int need_clean = 0;
     h->refresh_us = 5 * CCN_INTEREST_LIFETIME_MICROSEC;
     gettimeofday(&h->now, NULL);
+    if (ccn_output_is_pending(h))
+        return(h->refresh_us);
     h->running++;
-    if (h->interests_by_prefix != NULL && !ccn_output_is_pending(h)) {
+    if (h->interest_filters != NULL) {
+        for (hashtb_start(h->interest_filters, e); e->data != NULL; hashtb_next(e)) {
+            struct interest_filter *i = e->data;
+            // XXX If the registration is expiring, refresh it
+            // Otherwise update h->refresh_us
+        }
+        hashtb_end(e);
+    }
+    if (h->interests_by_prefix != NULL) {
         for (hashtb_start(h->interests_by_prefix, e); e->data != NULL; hashtb_next(e)) {
             entry = e->data;
             ccn_check_interests(entry->list);
