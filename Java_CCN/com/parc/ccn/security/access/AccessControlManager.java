@@ -4,7 +4,10 @@ import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.SecureRandom;
+import java.security.spec.AlgorithmParameterSpec;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -13,6 +16,7 @@ import java.util.HashSet;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
+import javax.jcr.AccessDeniedException;
 import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.crypto.InvalidCipherTextException;
@@ -22,12 +26,18 @@ import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.CollectionData;
 import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.security.PublicKeyObject;
+import com.parc.ccn.data.security.PublisherID;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.WrappedKey;
 import com.parc.ccn.data.security.WrappedKey.WrappedKeyObject;
+import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.EnumeratedNameList;
 import com.parc.ccn.library.profiles.AccessControlProfile;
+import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.access.ACL.ACLObject;
+import com.parc.ccn.security.keys.KeyManager;
 
 /**
  * Misc notes for consolidation.
@@ -168,6 +178,12 @@ public class AccessControlManager {
 	 */
 	public static final String DEFAULT_DATA_KEY_ALGORITHM = "AES";
 	
+	/**
+	 * This algorithm must be capable of key wrap (RSA, ElGamal, etc).
+	 */
+	public static final String DEFAULT_GROUP_KEY_ALGORITHM = "RSA";
+	public static final int DEFAULT_GROUP_KEY_LENGTH = 1024;
+
 	public static final String DATA_KEY_LABEL = "Data Key";
 	public static final String NODE_KEY_LABEL = "Node Key";
 	public static final long DEFAULT_TIMEOUT = 1000;
@@ -180,6 +196,7 @@ public class AccessControlManager {
 	// The groups whose membership information I've bothered to pull.
 	private HashMap<String, Group> _groupCache = new HashMap<String, Group>();
 	private HashSet<String> _myGroupMemberships = new HashSet<String>();
+	private HashSet<ContentName> _myIdentities = new HashSet<ContentName>();
 	
 	private KeyCache _keyCache = new KeyCache();
 	private CCNLibrary _library;
@@ -198,6 +215,27 @@ public class AccessControlManager {
 		groupList();
 		userList();
 		// DKS TODO here, check for a namespace marker, and if one not there, write it (async)
+	}
+	
+	public void publishIdentity(ContentName identity, PublisherPublicKeyDigest myPublicKey) throws InvalidKeyException, IOException, ConfigurationException {
+		KeyManager km = KeyManager.getKeyManager();
+		if (null == myPublicKey) {
+			myPublicKey = km.getDefaultKeyID();
+		}
+		km.publishKey(identity, myPublicKey);
+		_myIdentities.add(identity);
+	}
+	
+	public void publishIdentity(String userName, PublisherPublicKeyDigest myPublicKey) throws InvalidKeyException, IOException, ConfigurationException {
+		publishIdentity(AccessControlProfile.userNamespaceName(_userStorage, userName), myPublicKey);
+	}
+	
+	public boolean haveIdentity(String userName) {
+		return _myIdentities.contains(AccessControlProfile.userNamespaceName(_userStorage, userName));
+	}
+	
+	public boolean haveIdentity(ContentName userName) {
+		return _myIdentities.contains(userName);
 	}
 	
 	/**
@@ -271,6 +309,11 @@ public class AccessControlManager {
 						new CollectionData(newMembers), _library);
 			Group newGroup =  new Group(_groupStorage, groupFriendlyName, ml, _library);
 			cacheGroup(newGroup);
+			// If I'm a group member (I end up knowing the private key of the group if I
+			// created it, but I could simply forget it...).
+			if (amCurrentGroupMember(newGroup)) {
+				_myGroupMemberships.add(groupFriendlyName);
+			}
 			return newGroup;
 		}
 	}
@@ -331,14 +374,86 @@ public class AccessControlManager {
 		return _myGroupMemberships.contains(principal);
 	}
 
-	public boolean amCurrentGroupMember(String principal) {
-		// TODO Auto-generated method stub
+	public boolean amCurrentGroupMember(String principal) throws IOException, XMLStreamException {
+		return amCurrentGroupMember(getGroup(principal));
+	}
+	
+	/**
+	 * Start out doing this the slow and simple way. Optimize later.
+	 * @param group
+	 * @return
+	 * @throws IOException 
+	 * @throws XMLStreamException 
+	 */
+	public boolean amCurrentGroupMember(Group group) throws IOException, XMLStreamException {
+		MembershipList ml = group.membershipList(); // will update
+		for (LinkReference lr : ml.membershipList().contents()) {
+			if (isGroup(lr)) {
+				String groupFriendlyName = AccessControlProfile.groupNameToFriendlyName(lr.targetName());
+				if (amCurrentGroupMember(groupFriendlyName)) {
+					_myGroupMemberships.add(groupFriendlyName);
+					return true;
+				} else {
+					// Don't need to test first. Won't remove if isn't there.
+					_myGroupMemberships.remove(groupFriendlyName);
+				}
+			} else {
+				// Not a group. Is it me?
+				if (haveIdentity(lr.targetName())) {
+					return true;
+				}
+			}
+		}
 		return false;
 	}
 
-	public Key getGroupPrivateKey(String principal, Timestamp timestamp) {
-		// TODO Auto-generated method stub
-		return null;
+	/**
+	 * I already believe I should have access to this private key.
+	 * @param group
+	 * @param privateKeyVersion
+	 * @return
+	 * @throws XMLStreamException 
+	 * @throws IOException 
+	 * @throws InvalidCipherTextException 
+	 * @throws AccessDeniedException 
+	 * @throws InvalidKeyException 
+	 */
+	public PrivateKey getGroupPrivateKey(String groupFriendlyName, Timestamp privateKeyVersion) throws InvalidKeyException, InvalidCipherTextException, IOException, XMLStreamException {
+		// Heuristic check
+		if (!amKnownGroupMember(groupFriendlyName)) {
+			Library.logger().info("Unexpected: we don't think we're a group member of group " + groupFriendlyName);
+		}
+		// Need to get the KeyDirectory for this version of the private key, or the 
+		// latest if no version given.
+		KeyDirectory privateKeyDirectory = null;
+		PublicKey theGroupPublicKey = null;
+		if (null == privateKeyVersion) {
+			Group theGroup = getGroup(groupFriendlyName); // will pull latest public key
+			privateKeyDirectory = theGroup.privateKeyDirectory(this);
+			theGroupPublicKey = theGroup.publicKey();
+		} else {
+			// Assume one is there...
+			ContentName versionedPublicKeyName = 
+				VersioningProfile.versionName(
+						AccessControlProfile.groupPublicKeyName(_groupStorage, groupFriendlyName),
+						privateKeyVersion);
+			privateKeyDirectory =
+				new KeyDirectory(this, 
+					AccessControlProfile.groupPrivateKeyDirectory(versionedPublicKeyName), _library);
+			PublicKeyObject thisPublicKey = new PublicKeyObject(versionedPublicKeyName, _library);
+			theGroupPublicKey = thisPublicKey.publicKey();
+		}
+		if (null == privateKeyDirectory) {
+			Library.logger().info("Unexpected: null private key directory for group " + groupFriendlyName + " version " + privateKeyVersion + " as stamp " + 
+					DataUtils.printHexBytes(DataUtils.timestampToBinaryTime12(privateKeyVersion)));
+			return null;
+		}
+		PrivateKey privateKey = privateKeyDirectory.getPrivateKey();
+		if (null != privateKey) {
+			keyCache().addPrivateKey(privateKeyDirectory.getName(), PublisherID.generatePublicKeyDigest(theGroupPublicKey), 
+					privateKey);
+		}
+		return privateKey;
 	}
 
 	/**
@@ -350,7 +465,7 @@ public class AccessControlManager {
 		_myGroupMemberships.remove(principal);
 	}
 
-	protected Key getVersionedPrivateKeyForGroup(KeyDirectory keyDirectory, String principal) {
+	protected Key getVersionedPrivateKeyForGroup(KeyDirectory keyDirectory, String principal) throws IOException, InvalidKeyException, AccessDeniedException, InvalidCipherTextException, XMLStreamException {
 		Key privateKey = getGroupPrivateKey(principal, keyDirectory.getPrincipals().get(principal));
 		if (null == privateKey) {
 			Library.logger().info("Unexpected: we beleive we are a member of group " + principal + " but cannot retrieve private key version: " + keyDirectory.getPrincipals().get(principal) + " our membership revoked?");
@@ -533,6 +648,15 @@ public class AccessControlManager {
 		return null;
 	}
 	
+	/**
+	 * Write path: get the latest node key.
+	 * @param nodeName
+	 * @return
+	 * @throws IOException
+	 * @throws InvalidKeyException
+	 * @throws InvalidCipherTextException
+	 * @throws XMLStreamException
+	 */
 	public NodeKey getLatestNodeKeyForNode(ContentName nodeName) throws IOException, InvalidKeyException, InvalidCipherTextException, XMLStreamException {
 		
 		// First we need to figure out what the latest version is of the node key.
@@ -605,6 +729,7 @@ public class AccessControlManager {
 	}
 	
 	/**
+	 * Write path:
 	 * Get the effective node key in force at this node, used to derive keys to 
 	 * encrypt  content. Vertical chaining.
 	 * @throws XMLStreamException 
@@ -621,6 +746,15 @@ public class AccessControlManager {
 		NodeKey effectiveNodeKey = nodeKey.computeDescendantNodeKey(nodeName, nodeKeyLabel()); 
 		Library.logger().info("Computing effective node key for " + nodeName + " using stored node key " + effectiveNodeKey.storedNodeKeyName());
 		return effectiveNodeKey;
+	}
+	
+	/**
+	 * Do we need to update this node key?
+	 * @param theNodeKey
+	 * @return
+	 */
+	public boolean nodeKeyIsDirty(NodeKey theNodeKey) {
+		
 	}
 	
 	/**
@@ -666,7 +800,6 @@ public class AccessControlManager {
 		// TODO Auto-generated method stub
 		
 	}
-
 	
 	public NodeKey getNodeKeyForObject(ContentName nodeName, WrappedKeyObject wko) throws InvalidKeyException, XMLStreamException, InvalidCipherTextException, IOException {
 		
