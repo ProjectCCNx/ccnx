@@ -571,53 +571,48 @@ public class RFSImpl implements Repository {
 	}
 
 	public ArrayList<ContentName> getNamesWithPrefix(Interest i) {
+		Library.logger().setLevel(java.util.logging.Level.FINE);
 		ArrayList<ContentName> names = new ArrayList<ContentName>();
-		ContentName n1 = null;
-		ArrayList<File> files = null;
 		long lastTS = 0;
 		Timestamp interestTS = null;
-		byte[][] na = new byte[1][1];
+		Timestamp fileTS = null;
 		try{
 			interestTS = VersioningProfile.getVersionAsTimestamp(i.name());
 		}
 		catch(Exception e){
 			interestTS = null;
-			
 		}
 		ContentName cropped = i.name().cut(CCNNameEnumerator.NEMARKER);
 		
-		Interest croppedInterest = new Interest(cropped);
-		croppedInterest.orderPreference(i.orderPreference());
-		croppedInterest.nameComponentCount(i.nameComponentCount()-1);
+		ContentName encoded = RFSImpl.encodeName(cropped);
+		File encodedFile = new File(_repositoryFile + encoded.toString());
+		long lastModified = encodedFile.lastModified();
+		fileTS = new Timestamp(lastModified);
+		if(interestTS!=null)
+			Library.logger().fine("localTime: "+System.currentTimeMillis()+" interest time: "+interestTS.getTime()+" fileTS: "+fileTS.getTime());
 		
-		Library.logger().finest("Getting names with prefix = "+croppedInterest.name().toString());
-		TreeMap<ContentName, ArrayList<File>>possibleMatches = getPossibleMatches(croppedInterest);
-		for (ContentName name : possibleMatches.keySet()) {
-			files = possibleMatches.get(name);
-			for(File f: files){
-				
-				if(f.lastModified() > lastTS){
-					lastTS = f.lastModified();
-				}
+		ContentName n = new ContentName();
+		if(interestTS == null || fileTS.after(interestTS)){
+			//we have something new to report
+		
+			Library.logger().fine("path to file: "+encodedFile.getName());
+			String[] matches = encodedFile.list();
+		
+			Library.logger().fine("names held under folder: ");
+			for(String s: matches){
+				Library.logger().fine(s);
+				names.add(RFSImpl.decodeName(new ContentName(n, s.getBytes())));
 			}
-			
-			na[0] = name.component(cropped.count());
-			n1 = new ContentName(na);
-			if(!names.contains(n1)){
-				names.add(n1);
-			}
+		}
+		
+		if(names.size()>0 && (interestTS == null || interestTS.getTime() < lastTS)){
+			Library.logger().fine("---names to return: ");
+			for(ContentName ntr: names)
+				Library.logger().fine(ntr.toString());
+			Library.logger().fine("---");
 
-		}
-		try{
-			interestTS = VersioningProfile.getVersionAsTimestamp(i.name());
-		}
-		catch(Exception e){
-			interestTS = null;
-		}
-		
-		
-		if(names.size()>0 && (interestTS == null || interestTS.getTime() < lastTS))
 			return names;
+		}
 		else{
 			if(names.size() > 0)
 				Library.logger().finest("No new names for this prefix since the last request, dropping request and not responding.");
