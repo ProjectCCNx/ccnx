@@ -598,24 +598,22 @@ public class RFSImpl implements Repository {
 			Library.logger().fine("path to file: "+encodedFile.getName());
 			String[] matches = encodedFile.list();
 		
-			Library.logger().fine("names held under folder: ");
 			for(String s: matches){
-				Library.logger().fine(s);
 				names.add(RFSImpl.decodeName(new ContentName(n, s.getBytes())));
 			}
 		}
 		
-		if(names.size()>0 && (interestTS == null || interestTS.getTime() < lastTS)){
-			Library.logger().fine("---names to return: ");
+		if(names.size() > 0){
+			String toprint = "---names to return: ";
+			
 			for(ContentName ntr: names)
-				Library.logger().fine(ntr.toString());
-			Library.logger().fine("---");
+				toprint.concat(" "+ntr.toString());
+			Library.logger().fine(toprint+" ---");
 
 			return names;
 		}
 		else{
-			if(names.size() > 0)
-				Library.logger().finest("No new names for this prefix since the last request, dropping request and not responding.");
+			Library.logger().finest("No new names for this prefix since the last request, dropping request and not responding.");
 			return null;
 		}
 	}
