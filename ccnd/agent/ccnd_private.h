@@ -36,7 +36,7 @@ struct hashtb;
 struct ccnd;
 struct face;
 struct content_entry;
-struct interestprefix_entry;
+struct nameprefix_entry;
 struct propagating_entry;
 struct content_tree_node;
 
@@ -50,7 +50,7 @@ struct ccnd {
     struct hashtb *faces_by_fd;     /* keyed by fd */
     struct hashtb *dgram_faces;     /* keyed by sockaddr */
     struct hashtb *content_tab; /* keyed by initial fragment of ContentObject */
-    struct hashtb *interestprefix_tab; /* keyed by name prefix components */
+    struct hashtb *nameprefix_tab; /* keyed by name prefix components */
     struct hashtb *propagating_tab; /* keyed by nonce */
     struct ccn_indexbuf *skiplinks; /* skiplist for content-ordered ops */
     unsigned face_gen;
@@ -166,7 +166,7 @@ struct content_entry {
     const unsigned char *key;	/* ccnb-encoded ContentObject */
     int key_size;               /* Size of fragment prior to Content */
     int size;                   /* Size of ContentObject */
-    struct ccn_indexbuf *skiplinks; /* skiplist for content-ordered ops */
+    struct ccn_indexbuf *skiplinks; /* skiplist for name-ordered ops */
 };
 /* content_entry flags */
 #define CCN_CONTENT_ENTRY_SLOWSEND  1
@@ -181,10 +181,10 @@ struct sparse_straggler_entry {
 };
 
 /*
- * The interestprefix hash table is keyed by the Component elements of
+ * The nameprefix hash table is keyed by the Component elements of
  * the Name prefix.
  */
-struct interestprefix_entry {
+struct nameprefix_entry {
     struct propagating_entry *propagating_head;
     unsigned src;                /* faceid of recent matching content */
     unsigned osrc;               /* and of older matching content */
