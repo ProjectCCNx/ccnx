@@ -217,13 +217,14 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		if (VersioningProfile.isVersioned(name)) {
 			throw new IOException("Cannot save past versions as gone!");
 		}
-		
-		ContentName versionedName = VersioningProfile.versionName(name);
+		name = VersioningProfile.versionName(name);
+		name = SegmentationProfile.segmentName(name, SegmentationProfile.BASE_SEGMENT );
+
 		byte [] empty = { };
 		ContentObject goneObject = ContentObject.buildContentObject(name, ContentType.GONE, empty);
 		_flowControl.addNameSpace(name);
 		_flowControl.put(goneObject);
-		_currentName = versionedName;
+		_currentName = name;
 		_data = null;
 		setPotentiallyDirty(false);
 	}
