@@ -28,6 +28,7 @@ import com.parc.ccn.data.query.BasicInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo;
+import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNWriter;
 import com.parc.ccn.library.profiles.SegmentationProfile;
@@ -183,6 +184,25 @@ public class CCNLibraryTest extends LibraryTestBase {
 		versionTest(cn, data.getBytes(), newdata.getBytes());
 		versionTest(cn2, data.getBytes(), newdata.getBytes());
 
+	}
+
+	@Test
+	public void testGetLatestVersion() throws Exception {
+
+		String name = "/test/smetters/stuff/versioned_name";
+		ContentName [] cn = {	ContentName.fromNative(name),
+											ContentName.fromNative(name + "/more") };
+		String [] data = { "The associated data.", "The new associated data." };
+		CCNLibrary put = CCNLibrary.open();
+		CCNLibrary get = CCNLibrary.open();
+		CCNFlowControl f = new CCNFlowControl(cn[0], put);
+		ContentObject [] cos = { ContentObject.buildContentObject(VersioningProfile.versionName(cn[0]),
+																								data[0].getBytes()),
+											ContentObject.buildContentObject(cn[1], data[1].getBytes()) };
+		f.put(cos);
+		get.get(cn[0], 2000);
+		get.get(cn[1], 2000);
+		Assert.assertNotNull(get.getLatestVersion(cn[1], put.getDefaultPublisher(), 2000));
 	}
 
 	@Test
