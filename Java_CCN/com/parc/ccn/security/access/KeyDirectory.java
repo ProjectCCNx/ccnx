@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -182,7 +183,11 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 
 	public ContentName getPreviousKeyBlockName() {
-		return ContentName.fromNative(_namePrefix, AccessControlProfile.PREVIOUS_KEY_NAME);
+		return getPreviousKeyBlockName(_namePrefix);
+	}
+	
+	public static ContentName getPreviousKeyBlockName(ContentName keyDirectoryName) {
+		return ContentName.fromNative(keyDirectoryName, AccessControlProfile.PREVIOUS_KEY_NAME);		
 	}
 	
 	public LinkReference getPreviousKey() throws XMLStreamException, IOException {
@@ -351,7 +356,17 @@ public class KeyDirectory extends EnumeratedNameList {
 		return unwrappedKey;
 	}
 		
-	public PrivateKey getPrivateKey() throws AccessDeniedException, IOException, XMLStreamException, InvalidKeyException, InvalidCipherTextException {
+	/**
+	 * Relies on caller, who presumably knows the public key, to add the result to the
+	 * cache.
+	 * @return
+	 * @throws AccessDeniedException
+	 * @throws IOException
+	 * @throws XMLStreamException
+	 * @throws InvalidKeyException
+	 * @throws InvalidCipherTextException
+	 */
+	public PrivateKey getPrivateKey() throws IOException, XMLStreamException, InvalidKeyException, InvalidCipherTextException {
 		if (!hasPrivateKeyBlock()) {
 			Library.logger().info("No private key block exists with name " + getPrivateKeyBlockName());
 			return null;
@@ -374,9 +389,12 @@ public class KeyDirectory extends EnumeratedNameList {
 		} else {
 			Library.logger().info("Unwrapped private key is a private key, in fact it's a " + unwrappedPrivateKey.getClass().getName());
 		}
-		if (null != unwrappedPrivateKey) {
-			_manager.keyCache().addKey(getName(), unwrappedPrivateKey);
-		}
 		return (PrivateKey)unwrappedPrivateKey;
+	}
+
+	public void addWrappedKeyBlock(Key privateKeyWrappingKey, ContentName name,
+			PublicKey publicKey) {
+		// TODO Auto-generated method stub
+		
 	}
 }
