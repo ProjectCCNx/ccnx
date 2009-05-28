@@ -24,7 +24,7 @@ else
   if [ ! "$CCN_LOCAL_PORT" = "" ]; then
   	  LOCAL_PORT="-Dccn.agent.port=$CCN_LOCAL_PORT"
   fi
-  while [ $# > 3 ]; do
+  while [ $# -gt 3 ]; do
   	  if [ "$1" = "-memory" ]; then
   	      MEMORY="-Dccn.daemon.memory=$2"
   	      shift 2
