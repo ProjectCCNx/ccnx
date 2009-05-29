@@ -6,6 +6,7 @@ import java.util.ArrayList;
 
 import javax.xml.stream.XMLStreamException;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.Collection;
@@ -115,12 +116,16 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 	
 	public void registerPrefix(ContentName prefix) throws IOException{
 		NERequest r = getCurrentRequest(prefix);
-		if (r == null) {
+		if(r!=null){
+			//this prefix is already registered...
+			Library.logger().info("prefix "+prefix.toString()+" is already registered...  returning");
+		}
+		else{
 			r = new NERequest(prefix);
 			_currentRequests.add(r);
 		}
 			
-		//Library.logger().info("Registered Prefix");
+		Library.logger().info("Registered Prefix: "+prefix.toString());
 		//Library.logger().info("creating Interest");
 			
 		ContentName prefixMarked = new ContentName(prefix, NEMARKER);
@@ -139,6 +144,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 	
 	
 	public boolean cancelPrefix(ContentName prefix) {
+		Library.logger().info("cancel prefix: "+prefix.toString());
 		//cancel the behind the scenes interests and remove from the local ArrayList
 		NERequest r = getCurrentRequest(prefix);
 		if (r != null) {

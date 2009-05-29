@@ -1,0 +1,36 @@
+AFTER : test_single_ccnd
+BEFORE : test_single_ccnd_teardown
+
+ccndsmoketest || SkipTest no ccnd
+
+# Create the body of a simple registration request (with zero-length content)
+
+: | ccnput /test/registered/prefix
+
+# Pull it out to use in the registration request.  Base-64 encode it for the benefit of the shell.
+
+NBLOB="`ccnget /test/registered/prefix | openssl enc -base64`"
+
+echo NBLOB is $NBLOB >&2
+
+# Now construct the interest.
+ccn_xmltoccnb -w - <<EOF >registration-request.ccnb
+<Interest>
+  <Name>
+    <Component ccnbencoding="text">ccn</Component>
+    <Component ccnbencoding="text">reg</Component>
+    <Component ccnbencoding="text">self</Component>
+    <Component ccnbencoding="base64Binary">$NBLOB</Component>
+  </Name>
+</Interest>
+EOF
+
+test $? -eq 0 || Fail botch constructing registration-request.ccnb
+
+# Try out the registration request
+ccndsmoketest -b send registration-request.ccnb recv > registration-response.ccnb
+
+ccn_ccnbtoxml registration-response.ccnb | xmllint --format - || Fail did not get registration response
+
+# Testing for the reg request to time out would be more complicated.
+rm registration-*.ccnb

@@ -1,7 +1,7 @@
 /*
  * ccnd.c
  *  
- * Copyright 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
  */
 
 #include <errno.h>
@@ -565,10 +565,10 @@ consume(struct ccnd *h, struct propagating_entry *pe)
 }
 
 static void
-finalize_interestprefix(struct hashtb_enumerator *e)
+finalize_nameprefix(struct hashtb_enumerator *e)
 {
     struct ccnd *h = hashtb_get_param(e->ht, NULL);
-    struct interestprefix_entry *entry = e->data;
+    struct nameprefix_entry *entry = e->data;
     if (entry->propagating_head != NULL) {
         consume(h, entry->propagating_head);
         free(entry->propagating_head);
@@ -578,7 +578,7 @@ finalize_interestprefix(struct hashtb_enumerator *e)
 
 static void
 link_propagating_interest_to_interest_entry(struct ccnd *h,
-    struct propagating_entry *pe, struct interestprefix_entry *ipe)
+    struct propagating_entry *pe, struct nameprefix_entry *ipe)
 {
     struct propagating_entry *head = ipe->propagating_head;
     if (head == NULL) {
@@ -892,7 +892,7 @@ face_send_queue_insert(struct ccnd *h, struct face *face, struct content_entry *
 
 /*
  * consume_matching_interests: Consume matching interests
- * given an interestprefix_entry and a piece of content.
+ * given a nameprefix_entry and a piece of content.
  * If face is not NULL, pay attention only to interests from that face.
  * It is allowed to pass NULL for pc, but if you have a (valid) one it
  * will avoid a re-parse.
@@ -900,7 +900,7 @@ face_send_queue_insert(struct ccnd *h, struct face *face, struct content_entry *
  */
 static int
 consume_matching_interests(struct ccnd *h,
-                           struct interestprefix_entry *ipe,
+                           struct nameprefix_entry *ipe,
                            struct content_entry *content,
                            struct ccn_parsed_ContentObject *pc,
                            struct face *face)
@@ -940,7 +940,7 @@ consume_matching_interests(struct ccnd *h,
 
 static void
 adjust_ipe_predicted_response(struct ccnd *h,
-                              struct interestprefix_entry *ipe, int up)
+                              struct nameprefix_entry *ipe, int up)
 {
     unsigned t = ipe->usec;
     if (up)
@@ -960,7 +960,7 @@ adjust_predicted_response(struct ccnd *h, struct propagating_entry *pe, int up)
     struct ccn_indexbuf *comps = indexbuf_obtain(h);
     struct ccn_parsed_interest parsed_interest = {0};
     struct ccn_parsed_interest *pi = &parsed_interest;
-    struct interestprefix_entry *ipe;
+    struct nameprefix_entry *ipe;
     int res;
     size_t start;
     size_t stop;
@@ -968,13 +968,13 @@ adjust_predicted_response(struct ccnd *h, struct propagating_entry *pe, int up)
     if (res < 0 || pi->prefix_comps >= comps->n) abort();
     start = comps->buf[0];
     stop = comps->buf[pi->prefix_comps];
-    ipe = hashtb_lookup(h->interestprefix_tab,
+    ipe = hashtb_lookup(h->nameprefix_tab,
                         pe->interest_msg + start, stop - start);
     if (ipe != NULL)
         adjust_ipe_predicted_response(h, ipe, up);
     if (pi->prefix_comps > 0) {
         stop = comps->buf[pi->prefix_comps - 1];
-        ipe = hashtb_lookup(h->interestprefix_tab,
+        ipe = hashtb_lookup(h->nameprefix_tab,
                             pe->interest_msg + start, stop - start);
         if (ipe != NULL)
             adjust_ipe_predicted_response(h, ipe, up);
@@ -987,7 +987,7 @@ adjust_predicted_response(struct ccnd *h, struct propagating_entry *pe, int up)
  */
 static void
 note_content_from(struct ccnd *h,
-                  struct interestprefix_entry *ipe,
+                  struct nameprefix_entry *ipe,
                   unsigned from_faceid)
 {
     if (ipe->src == from_faceid)
@@ -1023,7 +1023,7 @@ match_interests(struct ccnd *h, struct content_entry *content,
     const unsigned char *key = content->key + c0;
     for (ci = content->ncomps - 1; ci >= 0; ci--) {
         int size = content->comps[ci] - c0;
-        struct interestprefix_entry *ipe = hashtb_lookup(h->interestprefix_tab, key, size);
+        struct nameprefix_entry *ipe = hashtb_lookup(h->nameprefix_tab, key, size);
         if (ipe != NULL) {
             new_matches = consume_matching_interests(h, ipe, content, pc, face);
             if (from_face != NULL && (new_matches != 0 || ci + 1 == cm))
@@ -1070,9 +1070,9 @@ ccn_stuff_interest(struct ccnd *h, struct face *face, struct ccn_charbuf *c)
     int remaining_space = h->mtu - c->length;
     if (remaining_space < 20 || face == h->face0)
         return(0);
-    for (hashtb_start(h->interestprefix_tab, e);
+    for (hashtb_start(h->nameprefix_tab, e);
          remaining_space >= 20 && e->data != NULL; hashtb_next(e)) {
-        struct interestprefix_entry *ipe = e->data;
+        struct nameprefix_entry *ipe = e->data;
         struct propagating_entry *head = ipe->propagating_head;
         struct propagating_entry *p;
         if (head != NULL) {
@@ -1138,7 +1138,7 @@ check_dgram_faces(struct ccnd *h)
 /*
  * This checks for expired propagating interests.
  * Returns number that have gone away.
- * Also ages src info and retires unused interestprefix entries.
+ * Also ages src info and retires unused nameprefix entries.
  */
 static int
 check_propagating(struct ccnd *h)
@@ -1146,7 +1146,7 @@ check_propagating(struct ccnd *h)
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     int count = 0;
-    struct interestprefix_entry *ipe;
+    struct nameprefix_entry *ipe;
     struct propagating_entry *head;
     hashtb_start(h->propagating_tab, e);
     while (e->data != NULL) {
@@ -1162,7 +1162,7 @@ check_propagating(struct ccnd *h)
         hashtb_next(e);
     }
     hashtb_end(e);
-    hashtb_start(h->interestprefix_tab, e);
+    hashtb_start(h->nameprefix_tab, e);
     for (ipe = e->data; ipe != NULL; ipe = e->data) {
         if (ipe->src == ~0) {
             head = ipe->propagating_head;
@@ -1471,7 +1471,7 @@ static int
 adjust_outbound_for_existing_interests(struct ccnd *h, struct face *face,
                                        unsigned char *msg,
                                        struct ccn_parsed_interest *pi,
-                                       struct interestprefix_entry *ipe,
+                                       struct nameprefix_entry *ipe,
                                        struct ccn_indexbuf *outbound)
 {
     struct propagating_entry *head = ipe->propagating_head;
@@ -1536,7 +1536,7 @@ adjust_outbound_for_existing_interests(struct ccnd *h, struct face *face,
 
 static void
 reorder_outbound_using_history(struct ccnd *h,
-                               struct interestprefix_entry *ipe,
+                               struct nameprefix_entry *ipe,
                                struct ccn_indexbuf *outbound)
 {
     if (ipe->osrc != ~0)
@@ -1549,7 +1549,7 @@ static int
 propagate_interest(struct ccnd *h, struct face *face,
                       unsigned char *msg, size_t msg_size,
                       struct ccn_parsed_interest *pi,
-                      struct interestprefix_entry *ipe)
+                      struct nameprefix_entry *ipe)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -1678,8 +1678,8 @@ process_incoming_interest(struct ccnd *h, struct face *face,
     int try;
     int matched;
     int s_ok;
-    struct interestprefix_entry *ipe = NULL;
-    struct interestprefix_entry *ppe = NULL;
+    struct nameprefix_entry *ipe = NULL;
+    struct nameprefix_entry *ppe = NULL;
     struct content_entry *content = NULL;
     struct content_entry *last_match = NULL;
     struct ccn_indexbuf *comps = indexbuf_obtain(h);
@@ -1726,7 +1726,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,
         h->interests_accepted += 1;
         s_ok = (pi->answerfrom & CCN_AOK_STALE) != 0;
         matched = 0;
-        hashtb_start(h->interestprefix_tab, e);
+        hashtb_start(h->nameprefix_tab, e);
         res = hashtb_seek(e, msg + comps->buf[0], namesize, 0);
         ipe = e->data;
         if (res == HT_NEW_ENTRY) {
@@ -2542,6 +2542,7 @@ ccnd_create(void)
     struct addrinfo *addrinfo = NULL;
     struct addrinfo *a;
     struct hashtb_param param = {0};
+    
     sockname = ccnd_get_local_sockname();
     h = calloc(1, sizeof(*h));
     h->skiplinks = ccn_indexbuf_create();
@@ -2553,10 +2554,11 @@ ccnd_create(void)
     h->dgram_faces = hashtb_create(sizeof(struct face), &param);
     param.finalize = &finalize_content;
     h->content_tab = hashtb_create(sizeof(struct content_entry), &param);
-    param.finalize = &finalize_interestprefix;
-    h->interestprefix_tab = hashtb_create(sizeof(struct interestprefix_entry), &param);
+    param.finalize = &finalize_nameprefix;
+    h->nameprefix_tab = hashtb_create(sizeof(struct nameprefix_entry), &param);
     param.finalize = &finalize_propagating;
     h->propagating_tab = hashtb_create(sizeof(struct propagating_entry), &param);
+    param.finalize = 0;
     h->sparse_straggler_tab = hashtb_create(sizeof(struct sparse_straggler_entry), NULL);
     h->min_stale = ~0;
     h->max_stale = 0;

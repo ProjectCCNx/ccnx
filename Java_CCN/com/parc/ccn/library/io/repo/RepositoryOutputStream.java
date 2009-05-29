@@ -33,7 +33,8 @@ public class RepositoryOutputStream extends CCNOutputStream {
 	}
 	
 	public void close() throws IOException {
+		_repoFlowControl.beforeClose();
 		super.close();
-		_repoFlowControl.close();
+		_repoFlowControl.afterClose();
 	}
 }

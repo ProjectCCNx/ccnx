@@ -270,14 +270,6 @@ int ccn_express_interest(struct ccn *h,
                          int prefix_comps,
                          struct ccn_closure *action,
                          struct ccn_charbuf *interest_template);
-/*
- * ccn_set_default_content_handler:
- * Sets default content handler, replacing any in effect.
- * This is used when content comes in that does not match any
- * expressed interest that has a handler.
- */
-int ccn_set_default_content_handler(struct ccn *h,
-                                    struct ccn_closure *action);
 
 /***********************************
  * ccn_set_interest_filter: 
@@ -285,20 +277,13 @@ int ccn_set_default_content_handler(struct ccn *h,
  * has the given name as a prefix.
  * If action is NULL, any existing filter is removed.
  * The namebuf may be reused or destroyed after the call.
- * Handler should return -1 if it cannot produce new content in response.
+ * Handler should return CCN_UPCALL_RESULT_ERR if it cannot matching content.
  * The upcall kind passed to the handler will be CCN_UPCALL_INTEREST
  * if no other handler has claimed to produce content, or else
  * CCN_UPCALL_CONSUMED_INTEREST.
  */
 int ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
                             struct ccn_closure *action);
-
-/*
- * ccn_set_default_interest_handler:
- * Sets default interest handler, replacing any in effect.
- */
-int ccn_set_default_interest_handler(struct ccn *h,
-                                     struct ccn_closure *action);
 
 /*
  * ccn_put: send ccn binary

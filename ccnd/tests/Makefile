@@ -14,6 +14,7 @@ ALLTESTS = \
   test_long_consumer \
   test_long_consumer2 \
   test_long_producer \
+  test_prefix_registration \
   test_sans_udplink \
   test_short_stuff \
   test_single_ccnd \

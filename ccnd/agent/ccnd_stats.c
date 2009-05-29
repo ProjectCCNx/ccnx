@@ -1,8 +1,7 @@
 /*
  * ccnd_stats.c
  *  
- * Copyright 2008 Palo Alto Research Center, Inc. All rights reserved.
- * $Id$
+ * Copyright (C) 2008 Palo Alto Research Center, Inc. All rights reserved.
  */
 
 #include <sys/types.h>
@@ -47,9 +46,9 @@ ccnd_collect_stats(struct ccnd *h, struct ccnd_stats *ans)
     struct hashtb_enumerator *e = &ee;
     long sum;
     unsigned i;
-    for (sum = 0, hashtb_start(h->interestprefix_tab, e);
+    for (sum = 0, hashtb_start(h->nameprefix_tab, e);
                                          e->data != NULL; hashtb_next(e)) {
-        struct interestprefix_entry *ipe = e->data;
+        struct nameprefix_entry *ipe = e->data;
         struct propagating_entry *head = ipe->propagating_head;
         struct propagating_entry *p;
         if (head != NULL) {
@@ -123,7 +122,7 @@ collect_stats_html(struct ccnd *h)
         hashtb_n(h->sparse_straggler_tab),
         h->content_dups_recvd,
         h->content_items_sent,
-        hashtb_n(h->interestprefix_tab), stats.total_interest_counts,
+        hashtb_n(h->nameprefix_tab), stats.total_interest_counts,
         hashtb_n(h->propagating_tab) - stats.total_flood_control,
         stats.total_flood_control,
         h->interests_accepted, h->interests_dropped,

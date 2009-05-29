@@ -40,26 +40,34 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 		setLibraries();
 		
 		startRepo();
-		
+		Library.logger().info("adding name1 to repo");
 		addContentToRepo(prefix1String+"/name1");
 		
+		Library.logger().info("test register prefix");
 		testRegisterPrefix();
 		
+		Library.logger().info("checking for first response");
 		testGetResponse(1);
 		
+		Library.logger().info("adding second name to repo");
 		addContentToRepo(prefix1String+"/name2");
 		
 		//make sure we get the new thing
+		Library.logger().info("checking for second name added");
 		testGetResponse(2);
 		
 		//make sure nothing new came in
+		Library.logger().info("check to make sure nothing new came in");
 		testGetResponse(3);
 		
+		Library.logger().info("test a cancelPrefix");
 		testCancelPrefix();
 		
+		Library.logger().info("now add third thing");
 		addContentToRepo(prefix1String+"/name3");
 		
 		//make sure we don't hear about this one
+		Library.logger().info("verify that we hear the third thing was added");
 		testGetResponse(3);
 		
 	}
@@ -164,7 +172,7 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 			}
 			
 			//the names are registered...
-			System.out.println("done waiting for response");
+			System.out.println("done waiting for response: count is "+count);
 		}
 		catch(InterruptedException e){
 			System.err.println("error waiting for names to be registered by name enumeration responder");
@@ -172,15 +180,26 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 		}
 		
 		if(count == 1){
+			Assert.assertNotNull(names1);
+			Library.logger().info("names1 size = "+names1.size());
+			for(ContentName s: names1)
+				Library.logger().info(s.toString());
+				
 			Assert.assertTrue(names1.size()==1);
 			Assert.assertTrue(names1.get(0).toString().equals("/name1"));
 			Assert.assertNull(names2);
 			Assert.assertNull(names3);
 		}
 		else if(count == 2){
+			Assert.assertNotNull(names2);
+			Library.logger().info("names2 size = "+names2.size());
+			for(ContentName s: names2)
+				Library.logger().info(s.toString());
 			Assert.assertTrue(names2.size()==2);
-			Assert.assertTrue(names2.get(0).toString().equals("/name1"));
-			Assert.assertTrue(names2.get(1).toString().equals("/name2"));
+			Assert.assertTrue((names2.get(0).toString().equals("/name1") && names2.get(1).toString().equals("/name2")) || (names2.get(0).toString().equals("/name2") && names2.get(1).toString().equals("/name1")));
+			//not guaranteed to be in this order!
+			//Assert.assertTrue(names2.get(0).toString().equals("/name1"));
+			//Assert.assertTrue(names2.get(1).toString().equals("/name2"));
 			Assert.assertNull(names3);
 		}
 		else if(count == 3){

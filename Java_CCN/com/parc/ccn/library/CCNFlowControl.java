@@ -24,6 +24,17 @@ import com.parc.ccn.data.util.InterestTable.Entry;
  * interests and matches immediately if a content object matching a
  * held interest is put.
  * 
+ * Implements a highwater mark in the holding buffer. If the buffer size
+ * reaches the highwater mark, a put will block until there is more
+ * room in the buffer. Currently this is only per "flow controller". There
+ * is nothing to stop multiple streams writing to the repo for instance to
+ * independently all fill their buffers and cause a lot of memory to be used.
+ * 
+ * The buffer emptying policy in "afterPutAction can be overridden by 
+ * subclasses to implement a different way of draining the buffer. This is used 
+ * by the repo client to allow objects to remain in the buffer until they are 
+ * acked.
+ * 
  * @author rasmusse
  *
  */
@@ -32,8 +43,10 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	protected CCNLibrary _library = null;
 	
-	protected static final int MAX_TIMEOUT = 2000;
+	protected static final int MAX_TIMEOUT = 4000;
+	protected static final int HIGHWATER_DEFAULT = 1024;
 	protected int _timeout = MAX_TIMEOUT;
+	protected int _highwater = HIGHWATER_DEFAULT;
 	
 	protected TreeMap<ContentName, ContentObject> _holdingArea = new TreeMap<ContentName, ContentObject>();
 	protected InterestTable<UnmatchedInterest> _unmatchedInterests = new InterestTable<UnmatchedInterest>();
@@ -43,7 +56,6 @@ public class CCNFlowControl implements CCNFilterListener {
 		long timestamp = new Date().getTime();
 	}
 	
-	private boolean _shutdownWait = false;
 	private boolean _flowControlEnabled = true;
 	
 	/**
@@ -176,14 +188,28 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	private ContentObject waitForMatch(ContentObject co) throws IOException {
 		if (_flowControlEnabled) {
-			Entry<UnmatchedInterest> match = null;
-			synchronized (this) {
+			synchronized (_holdingArea) {
+				Entry<UnmatchedInterest> match = null;
+				Library.logger().finest("Holding " + co.name());
+				_holdingArea.put(co.name(), co);
 				match = _unmatchedInterests.removeMatch(co);
-				if (match == null) {
-					Library.logger().finest("Holding " + co.name());
-					_holdingArea.put(co.name(), co);
-				} else {
+				if (match != null) {
 					_library.put(co);
+					afterPutAction(co);
+				}
+				if (_holdingArea.size() >= _highwater) {
+					boolean interrupted;
+					do {
+						interrupted = false;
+						try {
+							Library.logger().finest("Waiting for drain");
+							_holdingArea.wait(_timeout);
+						if (_holdingArea.size() >= _highwater)
+							throw new IOException("Flow control buffer full and not draining");
+						} catch (InterruptedException e) {
+							interrupted = true;
+						}
+					} while (interrupted);
 				}
 			}
 		} else
@@ -192,22 +218,17 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	public int handleInterests(ArrayList<Interest> interests) {
-		for (Interest interest : interests) {
-			synchronized (this) {
+		synchronized (_holdingArea) {
+			for (Interest interest : interests) {
 				ContentObject co = getBestMatch(interest);
 				if (co != null) {
 					Library.logger().finest("Found content " + co.name() + " matching interest: " + interest.name());
-					synchronized (_holdingArea) {
-						_holdingArea.remove(co.name());
-						try {
-							_library.put(co);
-							if (_shutdownWait && _holdingArea.size() == 0) {
-								_holdingArea.notify();
-							}
-						} catch (IOException e) {
-							Library.logger().warning("IOException in handleInterests: " + e.getClass().getName() + ": " + e.getMessage());
-							Library.warningStackTrace(e);
-						}
+					try {
+						_library.put(co);
+						afterPutAction(co);
+					} catch (IOException e) {
+						Library.logger().warning("IOException in handleInterests: " + e.getClass().getName() + ": " + e.getMessage());
+						Library.warningStackTrace(e);
 					}
 					
 				} else {
@@ -217,6 +238,17 @@ public class CCNFlowControl implements CCNFilterListener {
 			}
 		}
 		return interests.size();
+	}
+	
+	/**
+	 * Allow override of action after co is put to ccnd
+	 * Don't need to sync on holding area because this is only called within
+	 * holding area sync
+	 * @param co
+	 */
+	public void afterPutAction(ContentObject co) throws IOException {
+			_holdingArea.remove(co.name());	
+			_holdingArea.notify();
 	}
 	
 	/**
@@ -273,27 +305,24 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	public void waitForPutDrain() throws IOException {
-		int startSize = _holdingArea.size();
-		while (_holdingArea.size() > 0) {
-			_shutdownWait = true;
-			boolean _interrupted;
-			do {
-				_interrupted = false;
-				try {
-					synchronized (_holdingArea) {
+		synchronized (_holdingArea) {
+			int startSize = _holdingArea.size();
+			while (_holdingArea.size() > 0) {
+				boolean _interrupted;
+				do {
+					_interrupted = false;
+					try {
 						_holdingArea.wait(_timeout);
+					} catch (InterruptedException ie) {
+						_interrupted = true;
 					}
-				} catch (InterruptedException ie) {
-					_interrupted = true;
-				}
-			} while (_interrupted);
-			
-			synchronized (_holdingArea) {
+				} while (_interrupted);
+				
 				if (_holdingArea.size() == startSize) {
 					for(ContentName co : _holdingArea.keySet()) {
 						Library.logger().warning(co.toString());
 					}
-					throw new IOException("Put(s) with no matching interests");
+					throw new IOException("Put(s) with no matching interests - size is " + _holdingArea.size());
 				}
 				startSize = _holdingArea.size();
 			}
@@ -327,6 +356,10 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	public void enable() {
 		_flowControlEnabled = true;
+	}
+	
+	public void setHighwater(int value) {
+		_highwater = value;
 	}
 	
 	/**

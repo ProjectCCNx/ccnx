@@ -2,7 +2,6 @@ package com.parc.ccn.library.io.repo;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.TreeMap;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -21,6 +20,12 @@ import com.parc.ccn.network.daemons.repo.RepositoryInfo;
 
 /**
  * Implements the client side of the repository protocol
+ * Mostly this has to do with the "repository ack protocol"
+ * which trys to verify that data has been written to the
+ * repository.
+ * 
+ * Currently due to problems with the implementation this
+ * has been turned off by default.
  * 
  * @author rasmusse
  *
@@ -31,9 +36,9 @@ public class RepositoryProtocol extends CCNFlowControl {
 	protected static final int ACK_BLOCK_SIZE = 20;
 	protected static final int ACK_INTERVAL = 128;
 	
-	protected boolean _useAck = true;
-	protected TreeMap<ContentName, ContentObject> _unacked = new TreeMap<ContentName, ContentObject>();
+	protected boolean _bestEffort = true;
 	protected int _blocksSinceAck = 0;
+	protected int _ackInterval = ACK_INTERVAL;
 	protected String _repoName = null;
 	protected ContentName _baseName; // the name prefix under which we are writing content
 	protected RepoListener _listener = null;
@@ -102,8 +107,10 @@ public class RepositoryProtocol extends CCNFlowControl {
 		_listener = new RepoListener();
 		_writeInterest = new Interest(repoWriteName);
 		_library.expressInterest(_writeInterest, _listener);
-		_ackHandler = new RepoAckHandler();
-		_ackne = new CCNNameEnumerator(_library, _ackHandler);
+		if (! _bestEffort) {
+			_ackHandler = new RepoAckHandler();
+			_ackne = new CCNNameEnumerator(_library, _ackHandler);
+		}
 		
 		/*
 		 * Wait for information to be returned from a repo
@@ -123,84 +130,51 @@ public class RepositoryProtocol extends CCNFlowControl {
 			throw new IOException("No response from a repository");
 	}
 	
-	public ContentObject put(ContentObject co) throws IOException {
-		super.put(co);
-		if (_useAck) {
-			Library.logger().finer("Unacked: " + co.name());
-			_unacked.put(co.name(), co);
-			if (_unacked.size() > ACK_INTERVAL) {
-				_ackne.cancelPrefix(_baseName);
-				_ackne.registerPrefix(_baseName);
-			}
-		}
-		return co;
-	}
-
 	/**
 	 * Handle acknowledgement packet from the repo
 	 * @param co
 	 */
 	public void ack(ContentName name) {
-		Library.logger().fine("Handling ACK " + name);
-		if (_unacked.get(name) != null) {
-			ContentObject co = _unacked.get(name);
-			Library.logger().finest("CO " + co.name() + " acked");
-			_unacked.remove(name);
-			synchronized (this) {
-				if (_unacked.size() == 0)
-					this.notify();
+		synchronized (_holdingArea) {
+			Library.logger().fine("Handling ACK " + name);
+			if (_holdingArea.get(name) != null) {
+				ContentObject co = _holdingArea.get(name);
+				Library.logger().fine("CO " + co.name() + " acked");
+				_holdingArea.remove(co.name());
+				if (_holdingArea.size() < _highwater)
+					_holdingArea.notify();
 			}
 		}
 	}
 	
-	public void setAck(boolean flag) {
-		_useAck = flag;
+	public void setBestEffort(boolean flag) {
+		_bestEffort = flag;
 	}
 	
 	public boolean flushComplete() {
-		return _useAck ? _unacked.size() == 0 : true;
+		return _bestEffort ? true : _holdingArea.size() == 0;
 	}
 	
-	/**
-	 * Even though we should have output all the data by the time we got here
-	 * (due to call of waitForPutDrain) there are still timing pitfalls as the repo may still
-	 * be in the process of collecting the data. So we loop sending ackRequests until we are
-	 * making no more progress.
-	 * 
-	 * @throws IOException
-	 */
-	public void close() throws IOException {
-		synchronized(this) {
-			while (!flushComplete()) {
-				
-				// Following is a kludge until we get better control
-				// of when to send the last NE request
-				try {
-					Thread.sleep(500);
-				} catch (InterruptedException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
+	public void afterPutAction(ContentObject co) throws IOException {
+		if (! _bestEffort) {
+			if (_holdingArea.size() > _ackInterval) {
 				_ackne.cancelPrefix(_baseName);
 				_ackne.registerPrefix(_baseName);
-				int unacked = _unacked.size();
-				boolean interrupted;
-				do {
-					interrupted = false;
-					try {
-						wait(getTimeout());
-					} catch (InterruptedException e) {
-						interrupted = true;
-					}
-				} while (interrupted);
-				if (unacked == _unacked.size())
-					break;
 			}
+		} else {
+			super.afterPutAction(co);
 		}
+	}
+	
+	public void beforeClose() throws IOException {
+		_ackInterval = 0;
+	}
 		
-		cancelInterests();
+	public void afterClose() throws IOException {
+		if (! _bestEffort)
+			cancelInterests();
 		if (!flushComplete()) {
-			throw new IOException("Unable to confirm writes are stable: timed out waiting ack for " + _unacked.firstKey());
+			throw new IOException("Unable to confirm writes are stable: timed out waiting ack for " + _holdingArea.firstKey());
 		}
 	}
 	
@@ -209,5 +183,4 @@ public class RepositoryProtocol extends CCNFlowControl {
 		if (_writeInterest != null)
 			_library.cancelInterest(_writeInterest, _listener);
 	}
-
 }
