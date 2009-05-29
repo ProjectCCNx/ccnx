@@ -27,7 +27,8 @@ public class RepositoryVersionedOutputStream extends CCNVersionedOutputStream {
 	}
 	
 	public void close() throws IOException {
+		_repoFlowControl.beforeClose();
 		super.close();
-		_repoFlowControl.close();
+		_repoFlowControl.afterClose();
 	}
 }
