@@ -160,6 +160,12 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		save(VersioningProfile.versionName(_currentName));
 	}
 
+	@Override
+	public void setData(E data) {
+		super.setData(data);
+		_isGone = false;
+	}
+
 	/**
 	 * Save content to specific name. If versioned, assume that is the desired
 	 * version. If not, add a version to it.
@@ -226,6 +232,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_flowControl.put(goneObject);
 		_currentName = name;
 		_data = null;
+		_isGone = true;
 		setPotentiallyDirty(false);
 	}
 	
