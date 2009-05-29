@@ -54,7 +54,7 @@ public class CCNEncodableObjectTest {
 	static public byte [] publisherid2 = new byte[32];
 	static PublisherID pubID1 = null;	
 	static PublisherID pubID2 = null;
-	static int NUM_LINKS = 100;
+	static int NUM_LINKS = 15;
 	static LinkAuthenticator [] las = new LinkAuthenticator[NUM_LINKS];
 	static LinkReference [] lrs = null;
 	
@@ -213,7 +213,15 @@ public class CCNEncodableObjectTest {
 		Assert.assertEquals(ecd3, ecd4);
 		System.out.println("Update really really works!");
 		
-		ecd0.saveAsGone(ns[2]);
+		ecd0.saveAsGone();
+		Assert.assertTrue(ecd0.isGone());
 		ecd0.update();
+		Assert.assertTrue(ecd0.isGone());
+		ecd0.setData(small1);
+		Assert.assertFalse(ecd0.isGone());
+		ecd0.save();
+		Assert.assertFalse(ecd0.isGone());
+		ecd0.update();
+		
 	}
 }
