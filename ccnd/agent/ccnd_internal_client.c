@@ -31,6 +31,7 @@ ccnd_answer_ping(struct ccn_closure *selfp,
     int res = 0;
     int start = 0;
     int end = 0;
+    int morecomps = 0;
     switch (kind) {
         case CCN_UPCALL_FINAL:
             free(selfp);
@@ -42,12 +43,13 @@ ccnd_answer_ping(struct ccn_closure *selfp,
         default:
             return(CCN_UPCALL_RESULT_ERR);
     }
+    morecomps = selfp->intdata;
     ccnd = (struct ccnd *)selfp->data;
     if ((info->pi->answerfrom & CCN_AOK_NEW) == 0)
         return(CCN_UPCALL_RESULT_OK);
     if (info->matched_comps >= info->interest_comps->n)
         goto Bail;
-    if (info->pi->prefix_comps != info->matched_comps)
+    if (info->pi->prefix_comps != info->matched_comps + morecomps)
         goto Bail;
     
     keystore = ccn_keystore_create();
@@ -61,7 +63,7 @@ ccnd_answer_ping(struct ccn_closure *selfp,
     msg = ccn_charbuf_create();
     name = ccn_charbuf_create();
     start = info->pi->offset[CCN_PI_B_Name];
-    end = info->interest_comps->buf[info->matched_comps];
+    end = info->interest_comps->buf[info->pi->prefix_comps];
     ccn_charbuf_append(name, info->interest_ccnb + start, end - start);
     ccn_charbuf_append_closer(name);
     
@@ -155,6 +157,7 @@ ccnd_internal_client_start(struct ccnd *ccnd)
     }
     ccnd->internal_client = h = ccn_create();
     ccnd_uri_listen(ccnd, "ccn:/ccn/ping", &ccnd_answer_ping, 0);
+    ccnd_uri_listen(ccnd, "ccn:/ccn/reg/self", &ccnd_answer_ping, 1); // XXX - stubbed
     ccnd->internal_client_refresh =
      ccn_schedule_event(ccnd->sched, 1000000,
                         ccnd_internal_client_refresh,

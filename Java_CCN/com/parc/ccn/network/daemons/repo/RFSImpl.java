@@ -395,6 +395,7 @@ public class RFSImpl implements Repository {
 	 *     to a directory, then put back the old data in the directory and
 	 *     add the new data. If we already had a name clash, we can just
 	 *     add the data to the new directory. 
+	 * @throws RepositoryException 
 	 */
 	public void saveContent(ContentObject content) throws RepositoryException {
 		File file = null;
@@ -406,31 +407,41 @@ public class RFSImpl implements Repository {
 		dirFile.mkdirs();
 		file = new File(_repositoryRoot, newName.toString());
 		if (file.exists()) {
+			boolean isDuplicate = true;
 			ContentObject prevContent = null;
-			if (file.isFile()) {
-				
+			if (file.isFile()) {			
 				// New name clash
-				prevContent = getContentFromFile(file);
-				if (prevContent != null) {
-					if (prevContent.equals(content))
-						return;
-				}
-				file.delete();
-				file.mkdir();
 				try {
-					File prevFile = File.createTempFile("RFS", ".rfs", file);
-					saveContentToFile(prevFile, prevContent);
+					prevContent = getContentFromFile(file);
+					if (prevContent != null) {
+						if (prevContent.equals(content))
+							return;
+					}
+					file.delete();
+					file.mkdir();
+					try {
+						File prevFile = File.createTempFile("RFS", ".rfs", file);
+						saveContentToFile(prevFile, prevContent);
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				} catch (RepositoryException e1) {
+					// This could happen if there are 2 simultaneous requests
+					// to create the data and the first isn't yet complete (I guess)
+					// For now just remove the old data and try to recreate it.
+					file.delete();
+					isDuplicate = false;
+				}
+			} 
+			
+			if (isDuplicate) {
+				try {
+					file = File.createTempFile("RFS", ".rfs", file);
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
-			} 
-			
-			try {
-				file = File.createTempFile("RFS", ".rfs", file);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
 			}
 		}
 		saveContentToFile(file, content);
@@ -504,6 +515,7 @@ public class RFSImpl implements Repository {
 		String nextComponent = "";
 		while (st.hasMoreTokens()) {
 			String token = st.nextToken();
+			token = token.replace("%25", "%");		// Need to fix URI replacement for %
 			if (token.startsWith(SPLIT_COMPONENT))
 				nextComponent += token.substring(1);
 			else {
@@ -559,56 +571,49 @@ public class RFSImpl implements Repository {
 	}
 
 	public ArrayList<ContentName> getNamesWithPrefix(Interest i) {
+		Library.logger().setLevel(java.util.logging.Level.FINE);
 		ArrayList<ContentName> names = new ArrayList<ContentName>();
-		ContentName n1 = null;
-		ArrayList<File> files = null;
 		long lastTS = 0;
 		Timestamp interestTS = null;
-		byte[][] na = new byte[1][1];
+		Timestamp fileTS = null;
 		try{
 			interestTS = VersioningProfile.getVersionAsTimestamp(i.name());
 		}
 		catch(Exception e){
 			interestTS = null;
-			
 		}
 		ContentName cropped = i.name().cut(CCNNameEnumerator.NEMARKER);
 		
-		Interest croppedInterest = new Interest(cropped);
-		croppedInterest.orderPreference(i.orderPreference());
-		croppedInterest.nameComponentCount(i.nameComponentCount()-1);
+		ContentName encoded = RFSImpl.encodeName(cropped);
+		File encodedFile = new File(_repositoryFile + encoded.toString());
+		long lastModified = encodedFile.lastModified();
+		fileTS = new Timestamp(lastModified);
+		if(interestTS!=null)
+			Library.logger().fine("localTime: "+System.currentTimeMillis()+" interest time: "+interestTS.getTime()+" fileTS: "+fileTS.getTime());
 		
-		Library.logger().finest("Getting names with prefix = "+croppedInterest.name().toString());
-		TreeMap<ContentName, ArrayList<File>>possibleMatches = getPossibleMatches(croppedInterest);
-		for (ContentName name : possibleMatches.keySet()) {
-			files = possibleMatches.get(name);
-			for(File f: files){
-				
-				if(f.lastModified() > lastTS){
-					lastTS = f.lastModified();
-				}
+		ContentName n = new ContentName();
+		if(interestTS == null || fileTS.after(interestTS)){
+			//we have something new to report
+		
+			Library.logger().fine("path to file: "+encodedFile.getName());
+			String[] matches = encodedFile.list();
+		
+			for(String s: matches){
+				names.add(RFSImpl.decodeName(new ContentName(n, s.getBytes())));
 			}
+		}
+		
+		if(names.size() > 0){
+			String toprint = "---names to return: ";
 			
-			na[0] = name.component(cropped.count());
-			n1 = new ContentName(na);
-			if(!names.contains(n1)){
-				names.add(n1);
-			}
+			for(ContentName ntr: names)
+				toprint.concat(" "+ntr.toString());
+			Library.logger().fine(toprint+" ---");
 
-		}
-		try{
-			interestTS = VersioningProfile.getVersionAsTimestamp(i.name());
-		}
-		catch(Exception e){
-			interestTS = null;
-		}
-		
-		
-		if(names.size()>0 && (interestTS == null || interestTS.getTime() < lastTS))
 			return names;
+		}
 		else{
-			if(names.size() > 0)
-				Library.logger().finest("No new names for this prefix since the last request, dropping request and not responding.");
+			Library.logger().finest("No new names for this prefix since the last request, dropping request and not responding.");
 			return null;
 		}
 	}

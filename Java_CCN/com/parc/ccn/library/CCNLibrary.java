@@ -534,6 +534,7 @@ public class CCNLibrary extends CCNBase {
 	
 	private ContentObject getVersionInternal(ContentName name, long timeout) throws InvalidParameterException, IOException {
 		ArrayList<byte[]> excludeList = new ArrayList<byte[]>();
+		ContentName parent = VersioningProfile.versionRoot(name);
 		while (true) {
 			byte[][] excludes = null;
 			if (excludeList.size() > 0) {
@@ -543,7 +544,7 @@ public class CCNLibrary extends CCNBase {
 			ContentObject co = getLatest(name, excludes, timeout);
 			if (co == null)
 				return co;
-			if (VersioningProfile.versionRoot(co.name()).equals(VersioningProfile.versionRoot(name))) {
+			if (VersioningProfile.isVersionOf(co.name(), parent)) {
 				return co;
 			}
 			excludeList.add(co.name().component(name.count() - 1));

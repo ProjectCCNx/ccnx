@@ -7,6 +7,7 @@ import java.util.LinkedList;
 
 import javax.xml.stream.XMLStreamException;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.Collection;
@@ -115,43 +116,55 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 	}
 	
 	public void registerPrefix(ContentName prefix) throws IOException{
-		NERequest r = getCurrentRequest(prefix);
-		if (r == null) {
-			r = new NERequest(prefix);
-			_currentRequests.add(r);
-		}
+		synchronized(_currentRequests) {
+			NERequest r = getCurrentRequest(prefix);
+			if (r!=null) {
+				//this prefix is already registered...
+				Library.logger().info("prefix "+prefix.toString()+" is already registered...  returning");
+			}
+			else{
+				r = new NERequest(prefix);
+				_currentRequests.add(r);
+			}
 			
-		//Library.logger().info("Registered Prefix");
-		//Library.logger().info("creating Interest");
+			Library.logger().info("Registered Prefix: "+prefix.toString());
+			//Library.logger().info("creating Interest");
 			
-		ContentName prefixMarked = new ContentName(prefix, NEMARKER);
+			ContentName prefixMarked = new ContentName(prefix, NEMARKER);
 			
-		Interest pi = new Interest(prefixMarked);
-		pi.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME);
-		pi.nameComponentCount(prefix.count() + 1);
+			Interest pi = new Interest(prefixMarked);
+			pi.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME);
+			pi.nameComponentCount(prefix.count() + 1);
 			
-		//Library.logger().info("interest name: "+pi.name().toString()+" prefix: "+pi.name().prefixCount()+" order preference "+pi.orderPreference());
-		r.addInterest(pi);
+			//Library.logger().info("interest name: "+pi.name().toString()+" prefix: "+pi.name().prefixCount()+" order preference "+pi.orderPreference());
+			r.addInterest(pi);
 		
-		_library.expressInterest(pi, this);
+			_library.expressInterest(pi, this);
 			
-		//Library.logger().info("expressed Interest: "+prefixMarked.toString());
+			//Library.logger().info("expressed Interest: "+prefixMarked.toString());
+		}
 	}
 	
 	
 	public boolean cancelPrefix(ContentName prefix) {
-		//cancel the behind the scenes interests and remove from the local ArrayList
-		NERequest r = getCurrentRequest(prefix);
-		if (r != null) {
-			ArrayList<Interest> is = r.getInterests();
-			for (Interest i: is)
-				_library.cancelInterest(i, this);
+		Library.logger().info("cancel prefix: "+prefix.toString());
+		synchronized(_currentRequests) {
+			//cancel the behind the scenes interests and remove from the local ArrayList
+			NERequest r = getCurrentRequest(prefix);
+			if (r != null) {
+				ArrayList<Interest> is = r.getInterests();
+				Library.logger().fine("we have "+is.size()+" interests to cancel");
+				Interest i;
+				while(!r.getInterests().isEmpty()) {
+					i=r.getInterests().remove(0);
+					_library.cancelInterest(i, this);
+				}
 			
-			_currentRequests.remove(r);
-			return (getCurrentRequest(prefix) == null);
+				_currentRequests.remove(r);
+				return (getCurrentRequest(prefix) == null);
+			}
+			return false;
 		}
-
-		return false;
 	}
 	
 	
@@ -168,7 +181,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 	
 	public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
 		
-		//Library.logger().info("we recieved a Collection matching our prefix...");
+		//Library.logger().info("we received a Collection matching our prefix...");
 		
 		if (interest.name().contains(NEMARKER)) {
 			//the NEMarker is in the name...  good!
@@ -178,58 +191,69 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			_library.cancelInterest(interest, this);
 			return null;
 		}
-		Collection collection;
-		ArrayList<ContentName> names = new ArrayList<ContentName>();
-		LinkedList<LinkReference> links;
-		ContentName responseName = null;
 		
-		//TODO  integrate handling for multiple responders, for now, just handles one result properly
-		if (results != null) {
-			for (ContentObject c: results) {
-				//Library.logger().info("we have a match on "+interest.name());
-				//responseName = c.name();
-				responseName = new ContentName(c.name(), c.contentDigest());
-				
-				try {
-					collection = Collection.contentToCollection(c);
-					links = collection.contents();
-					for (LinkReference l: links) {
-						names.add(l.targetName());
-						//Library.logger().info("names: "+l.targetName());
-					}
-					//strip off NEMarker before passing through callback
-					callback.handleNameEnumerator(interest.name().cut(NEMARKER), names);
-				} catch(XMLStreamException e) {
-					e.printStackTrace();
-					System.err.println("Error getting CollectionData from ContentObject in CCNNameEnumerator");
-				}		
-			}
-		}
-		Interest newInterest = interest;
-		if (responseName != null) {
-			newInterest = Interest.last(responseName);
-			//newInterest.orderPreference(newInterest.name().count()-2);
-			newInterest.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME);// | Interest.ORDER_PREFERENCE_RIGHT);
-			newInterest.nameComponentCount(interest.nameComponentCount());
-			NERequest ner = getCurrentRequest(interest.name().cut(NEMARKER));
-			if (ner != null) {
+		synchronized(_currentRequests) {
+			ContentName prefix = interest.name().cut(NEMARKER);
+			NERequest ner = getCurrentRequest(prefix);
+		
+			//need to make sure the prefix is still registered
+			if(ner==null) {
+				//this is no longer registered...  no need to keep refreshing the interest use the callback
+				_library.cancelInterest(interest, this);
+				return null;
+			} else {
 				ner.removeInterest(interest);
-				ner.addInterest(newInterest);
+            }
+
+			Collection collection;
+			ArrayList<ContentName> names = new ArrayList<ContentName>();
+			LinkedList<LinkReference> links;
+			ContentName responseName = null;
+			Interest newInterest = interest;
+		
+			//TODO  integrate handling for multiple responders, for now, just handles one result properly
+			if (results != null) {
+				for (ContentObject c: results) {
+					//Library.logger().info("we have a match on "+interest.name());
+
+					responseName = new ContentName(c.name(), c.contentDigest());
+					newInterest = Interest.last(responseName);
+					newInterest.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME);// | Interest.ORDER_PREFERENCE_RIGHT);
+					newInterest.nameComponentCount(interest.nameComponentCount());
+					
+					try {
+						_library.expressInterest(newInterest, this);
+						ner.addInterest(newInterest);
+					} catch (IOException e1) {
+						// error registering new interest
+						System.err.println("error registering new interest in handleContent");
+						e1.printStackTrace();
+					}
+				
+					try {
+						collection = Collection.contentToCollection(c);
+						links = collection.contents();
+						for (LinkReference l: links) {
+							names.add(l.targetName());
+							//Library.logger().info("names: "+l.targetName());
+						}
+						//strip off NEMarker before passing through callback
+						callback.handleNameEnumerator(interest.name().cut(NEMARKER), names);
+					} catch(XMLStreamException e) {
+						e.printStackTrace();
+						System.err.println("Error getting CollectionData from ContentObject in CCNNameEnumerator");
+					}	
+				}
 			}
-			/*
-			 Library.logger().info("new interest name: "+newInterest.name()+" total components: "+newInterest.name().count());
-			 
-			  try {
-			  	Library.logger().info("version: "+VersioningProfile.getVersionAsTimestamp(responseName));
-			  }
-			  catch(Exception e) {}
-			*/
 		}
-		return newInterest;
+		//we now express the new interests as we process the responses...
+		//return newInterest;
+		return null; 
 	}
 	
+
+	/*
 	// temporary workaround to test the callback without actually processing ContentObjects
-	
 	public int handleContent(ArrayList<ContentName> results, ContentName p) {
 		
 		//Library.logger().info("we recieved content matching our prefix...");
@@ -246,6 +270,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 		}
 		return results.size();
 	}
+	*/
 	
 	
 	public int handleInterests(ArrayList<Interest> interests) {
@@ -267,81 +292,82 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			//Verify NameEnumeration Marker is in the name
 			if (!name.contains(NEMARKER)) {
 				//Skip...  we don't handle these
-			} else {
+			}
+			else{
 				//Library.logger().info("this interest contains the NE marker!");
 				name = name.cut(NEMARKER);
 				collectionName = new ContentName(name, NEMARKER);
 				
-				
 				boolean skip = false;
-				//have we handled this response already?
-				r = getHandledResponse(name);
-				if (r != null) {
-					//we have handled this before!
-					if (r.isDirty()) {
-						//this has updates to send back!!
-						//Library.logger().info("the marker is dirty!  we have new names to send back!");
+				synchronized (_handledResponses) {
+					//have we handled this response already?
+					r = getHandledResponse(name);
+					if (r != null) {
+						//we have handled this before!
+						if (r.isDirty()) {
+							//this has updates to send back!!
+							//Library.logger().info("the marker is dirty!  we have new names to send back!");
+						} else {
+							//nothing new to send back...  go ahead and skip to next interest
+							skip = true;
+							//Library.logger().info("no new names to report...  skipping");
+						}
 					} else {
-						//nothing new to send back...  go ahead and skip to next interest
-						skip = true;
-						//Library.logger().info("no new names to report...  skipping");
+						//this is a new one...
+						//Library.logger().info("adding new handled response: "+name.toString());
+						r = new NEResponse(name);
+						_handledResponses.add(r);
 					}
-				} else {
-					//this is a new one...
-					//Library.logger().info("adding new handled response: "+name.toString());
-					r = new NEResponse(name);
-					_handledResponses.add(r);
-				}
-				if (!skip) {
-					for (ContentName n: _registeredNames) {
-						//Library.logger().info("checking registered name: "+n.toString());
-						if (name.isPrefixOf(n)) {
-							ContentName tempName = n.clone();
-							//Library.logger().info("we have a match! ("+tempName.toString()+")");
-							//Library.logger().info("prefix size "+name.count()+" registered name size "+n.count());
-							byte[] tn = n.component(name.count());
-							byte[][] na = new byte[1][tn.length];
-							na[0] = tn;
-							tempName = new ContentName(na);
-							match = new LinkReference(tempName);
-							//names.add(match);
-							if (!cd.contents().contains(match)) {
-								cd.add(match);
-								//Library.logger().info("added name to response: "+tempName);
+					if (!skip) {
+						for (ContentName n: _registeredNames) {
+							//Library.logger().info("checking registered name: "+n.toString());
+							if(name.isPrefixOf(n)) {
+								ContentName tempName = n.clone();
+								//Library.logger().info("we have a match! ("+tempName.toString()+")");
+								//Library.logger().info("prefix size "+name.count()+" registered name size "+n.count());
+								byte[] tn = n.component(name.count());
+								byte[][] na = new byte[1][tn.length];
+								na[0] = tn;
+								tempName = new ContentName(na);
+								match = new LinkReference(tempName);
+								//names.add(match);
+								if (!cd.contents().contains(match)) {
+									cd.add(match);
+									//Library.logger().info("added name to response: "+tempName);
+								}
 							}
 						}
 					}
-				}
-			}
 			
-			if (cd.size()>0) {
-				//Library.logger().info("we have a response to send back for "+i.name().toString());
-				//Library.logger().info("Collection Name: "+collectionName.toString());
-				try {
+					if (cd.size()>0) {
+						//Library.logger().info("we have a response to send back for "+i.name().toString());
+						//Library.logger().info("Collection Name: "+collectionName.toString());
+						try {
 					
-					//the following 6 lines are to be deleted after Collections are refactored
-					LinkReference[] temp = new LinkReference[cd.contents().size()];
-					for (int x = 0; x < cd.contents().size(); x++)
-						temp[x] = cd.contents().get(x);
-					_library.put(collectionName, temp);
+							//the following 6 lines are to be deleted after Collections are refactored
+							LinkReference[] temp = new LinkReference[cd.contents().size()];
+							for (int x = 0; x < cd.contents().size(); x++)
+								temp[x] = cd.contents().get(x);
+							_library.put(collectionName, temp);
 					
-					//CCNEncodableCollectionData ecd = new CCNEncodableCollectionData(collectionName, cd);
-					//ecd.save();
-					//Library.logger().info("saved ecd.  name: "+ecd.getName());
-					r.clean();
+							//CCNEncodableCollectionData ecd = new CCNEncodableCollectionData(collectionName, cd);
+							//ecd.save();
+							//Library.logger().info("saved ecd.  name: "+ecd.getName());
+							r.clean();
 
-				} catch(IOException e) {
-					
-				} catch(SignatureException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			} else {
-				//Library.logger().info("this interest did not have any matching names...  not returning anything.");
-				if (r != null)
-					r.clean();
-			}
-		}
+						} catch(IOException e) {
+						
+						} catch(SignatureException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+					}
+					//Library.logger().info("this interest did not have any matching names...  not returning anything.");
+					if (r != null)
+						r.clean();
+				} //end of synchronized
+			}  //end of name enumeration marker check
+		}//end of interest processing loop
 			
 		return 0;
 	}
@@ -351,18 +377,21 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			System.err.println("trying to check for null registered name");
 			return false;
 		}
-		if (_registeredNames.contains(name))
-			return true;
-		else
-			return false;
+		synchronized(_handledResponses) {
+			if (_registeredNames.contains(name))
+				return true;
+			else
+				return false;
+		}
 	}
 	
 	public void registerNameSpace(ContentName name) {
-		
-		if (!_registeredNames.contains(name)) {
-			_registeredNames.add(name);
-			//Library.logger().info("registered "+ name.toString()+" as namespace");
-			_library.registerFilter(name, this);
+		synchronized(_handledResponses) {
+			if (!_registeredNames.contains(name)) {
+				_registeredNames.add(name);
+				//Library.logger().info("registered "+ name.toString()+" as namespace");
+				_library.registerFilter(name, this);
+			}
 		}
 		
 	}
@@ -374,43 +403,50 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			return;
 		}
 		//Do not need to register each name as a filter...  the namespace should cover it
-		//_library.registerFilter(name, this);
-		if (!_registeredNames.contains(name)) {
-			// DKS - if we don't care about order, could use a Set instead of an ArrayList,
-			// then just call add as duplicates suppressed
-		  _registeredNames.add(name);
-		  //Library.logger().info("registered "+ name.toString()+") for responses");		  
+		synchronized(_handledResponses) {
+			//_library.registerFilter(name, this);
+			if (!_registeredNames.contains(name)) {
+				// DKS - if we don't care about order, could use a Set instead of an ArrayList,
+				// then just call add as duplicates suppressed
+				_registeredNames.add(name);
+				//Library.logger().info("registered "+ name.toString()+") for responses");		  
+			}
+			//check prefixes that were handled...  if so, mark them dirty
+			updateHandledResponses(name);
 		}
-		
-		//check prefixes that were handled...  if so, mark them dirty
-		updateHandledResponses(name);
 	}
 	
 	protected NEResponse getHandledResponse(ContentName n) {
 		//Library.logger().info("checking handled responses...");
-		for (NEResponse t: _handledResponses) {
-			//Library.logger().info("getHandledResponse: "+t.prefix.toString());
-			if (t.prefix.equals(n))
-				return t;
+		synchronized (_handledResponses) {
+			for (NEResponse t: _handledResponses) {
+				//Library.logger().info("getHandledResponse: "+t.prefix.toString());
+				if (t.prefix.equals(n))
+					return t;
+			}
+			return null;
 		}
-		return null;
 	}
 	
 	protected void updateHandledResponses(ContentName n) {
-		for (NEResponse t: _handledResponses) {
-			if (t.prefix.isPrefixOf(n)) {
-				t.dirty();
+		synchronized (_handledResponses) {
+			for (NEResponse t: _handledResponses) {
+				if (t.prefix.isPrefixOf(n)) {
+					t.dirty();
+				}
 			}
 		}
 	}
 	
 	protected NERequest getCurrentRequest(ContentName n) {
 		//Library.logger().info("checking current requests...");
-		for (NERequest r: _currentRequests) {
-			if (r.prefix.equals(n))
-				return r;
+		synchronized (_handledResponses) {
+			for (NERequest r: _currentRequests) {
+				if (r.prefix.equals(n))
+					return r;
+			}
+			return null;
 		}
-		return null;
 	}
 	
 }

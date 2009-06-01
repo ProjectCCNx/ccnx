@@ -2,22 +2,24 @@ package com.parc.ccn.network.daemons.repo;
 
 import java.io.IOException;
 import java.security.InvalidParameterException;
-import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.io.CCNWriter;
 import com.parc.ccn.network.daemons.Daemon;
 
@@ -50,8 +52,10 @@ public class RepositoryDaemon extends Daemon {
 	private ExcludeFilter _markerFilter;
 	private CCNWriter _writer;
 	private boolean _pendingNameSpaceChange = false;
+	protected ThreadPoolExecutor _threadpool = null; // pool service
 	
 	public static final int PERIOD = 2000; // period for interest timeout check in ms.
+	public static final int THREAD_LIFE = 8;	// in seconds
 	
 	private class NameAndListener {
 		private ContentName name;
@@ -66,11 +70,11 @@ public class RepositoryDaemon extends Daemon {
 
 		public void run() {
 			long currentTime = new Date().getTime();
-			synchronized(_currentListeners) {
-				if (_currentListeners.size() > 0) {
-					Iterator<RepositoryDataListener> iterator = _currentListeners.iterator();
-					while (iterator.hasNext()) {
-						RepositoryDataListener listener = iterator.next();
+			if (_currentListeners.size() > 0) {
+				Iterator<RepositoryDataListener> iterator = _currentListeners.iterator();
+				while (iterator.hasNext()) {
+					RepositoryDataListener listener = iterator.next();
+					synchronized (listener) {
 						if ((currentTime - listener.getTimer()) > (PERIOD * 2)) {
 							synchronized(_repoFilters) {
 								listener.cancelInterests();
@@ -79,6 +83,9 @@ public class RepositoryDaemon extends Daemon {
 						}
 					}
 				}
+			}
+			
+			synchronized (_currentListeners) {
 				if (_currentListeners.size() == 0 && _pendingNameSpaceChange) {
 					try {
 						resetNameSpace();
@@ -88,7 +95,7 @@ public class RepositoryDaemon extends Daemon {
 					}
 					_pendingNameSpaceChange = false;
 				}
-			}	
+			}
 		}	
 	}
 	
@@ -122,7 +129,7 @@ public class RepositoryDaemon extends Daemon {
 			
 			byte[][]markerOmissions = new byte[2][];
 			markerOmissions[0] = CCNBase.REPO_START_WRITE;
-			markerOmissions[1] = CCNBase.REPO_REQUEST_ACK;
+			markerOmissions[1] = CCNNameEnumerator.NEMARKER;
 			_markerFilter = new ExcludeFilter(markerOmissions);
 			
 			Timer periodicTimer = new Timer(true);
@@ -184,6 +191,10 @@ public class RepositoryDaemon extends Daemon {
 		} catch (RepositoryException e) {
 			e.printStackTrace();
 		}
+		
+		// Create callback threadpool
+		_threadpool = (ThreadPoolExecutor)Executors.newCachedThreadPool();
+		_threadpool.setKeepAliveTime(THREAD_LIFE, TimeUnit.SECONDS);
 	}
 	
 	protected void usage() {
@@ -291,59 +302,8 @@ public class RepositoryDaemon extends Daemon {
 		return _pendingNameSpaceChange;
 	}
 	
-	public void ack(Interest interest, Interest ackMatch) throws SignatureException, IOException {
-		ArrayList<ContentName> names = new ArrayList<ContentName>();
-		synchronized(_currentListeners) {
-			for (RepositoryDataListener listener : _currentListeners) {
-				/*
-				 * Find the DataListener with values to Ack
-				 */
-				boolean found = false;
-				for (ContentObject co : listener.getUnacked()) {
-					if (ackMatch.matches(co)) {
-						found = true;
-						break;
-					}
-				}
-				if (!found) {
-					/*
-					 * If the ack request matches our original interest, assume it arrived
-					 * before any unacked data and we will use it to ack the data when it arrives
-					 * 
-					 * XXX should we care about publisherID here?  And if so, how can
-					 * we do this?
-					 */
-					if (ackMatch.matches(listener.getInterest().name(), null)) {
-						Library.logger().finer("Adding ACK interest received before data: " + interest.name());
-						// We must record the actual requesting interest that came in, not the internal
-						// matching one, because what we store here is going to be used later to generate the name for
-						// an ACK response content object that must match the original received interest
-						listener.getAckRequests().add(interest);
-						break;
-					}
-					continue;
-				}
-				
-				/*
-				 * For now just send back all the names we have. 
-				 * Possibly later we may want to make sure they match.
-				 * Don't put too many or we'll overflow the ContentObject
-				 */
-				int count = 0;
-				for (ContentObject co : listener.getUnacked()) {
-					names.add(co.name());
-					if (++count > 20) {
-						Library.logger().finer("Acking " + co.name());
-						_writer.put(interest.name(), _repo.getRepoInfo(names));
-						names.clear();
-						count = 0;
-					}
-				}
-				_writer.put(interest.name(), _repo.getRepoInfo(names));
-				listener.getUnacked().clear();
-				break;
-			}
-		}
+	public ThreadPoolExecutor getThreadPool() {
+		return _threadpool;
 	}
 	
 	public static void main(String[] args) {

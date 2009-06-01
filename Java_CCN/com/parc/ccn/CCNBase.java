@@ -23,7 +23,6 @@ public class CCNBase {
 	 * Repository "markers"
 	 */
 	public static final byte[] REPO_START_WRITE = "repo_start_write".getBytes();
-	public static final byte[] REPO_REQUEST_ACK = "repo_request_ack".getBytes();
 	
 	/**
 	 * Allow separate per-instance to control reading/writing within

@@ -1,10 +1,8 @@
 package com.parc.ccn.network.daemons.repo;
 
 import java.io.IOException;
-import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.Iterator;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
@@ -30,9 +28,40 @@ public class RepositoryDataListener implements CCNInterestListener {
 	private boolean _sawBlock = false;
 	private ContentName _headerName = null;
 	private Interest _headerInterest = null;
-	private ArrayList<Interest> _ackRequests = new ArrayList<Interest>();
 	private RepositoryDaemon _daemon;
 	private CCNLibrary _library;
+	
+	/**
+	 * So the main listener can output interests sooner, we do the data creation work
+	 * in a separate thread.
+	 * 
+	 * @author rasmusse
+	 *
+	 */
+	private class DataHandler implements Runnable {
+		private ContentObject _content;
+		
+		private DataHandler(ContentObject co) {
+			Library.logger().info("Saw data: " + co.name());
+			_content = co;
+		}
+	
+		public void run() {
+			try {
+				Library.logger().finer("Saving content in: " + _content.name().toString());
+				_daemon.getRepository().saveContent(_content);		
+				if (_daemon.getRepository().checkPolicyUpdate(_content)) {
+					_daemon.resetNameSpaceFromHandler();
+				}
+			} catch (RepositoryException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
 	
 	public RepositoryDataListener(Interest origInterest, Interest interest, RepositoryDaemon daemon) {
 		_origInterest = interest;
@@ -47,24 +76,14 @@ public class RepositoryDataListener implements CCNInterestListener {
 	
 	public Interest handleContent(ArrayList<ContentObject> results,
 			Interest interest) {
-		synchronized (_daemon.getDataListeners()) {
+		
+		_timer = new Date().getTime();
+		
+		for (ContentObject co : results) {
+			_daemon.getThreadPool().execute(new DataHandler(co));
 			
-			_timer = new Date().getTime();
-			
-			for (ContentObject co : results) {
-				try {
-					handleIncomingData(co);
-				} catch (SignatureException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				} catch (RepositoryException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				} catch (IOException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-				
+			synchronized (this) {
+				_unacked.add(co);
 				if (!_haveHeader) {
 					/*
 					 * Handle headers specifically. If we haven't seen one yet ask for it specifically
@@ -126,50 +145,8 @@ public class RepositoryDataListener implements CCNInterestListener {
 				_interest.additionalNameComponents(2);
 				return _interest;
 			}
-			return null;
 		}
-	}
-	
-	private void handleIncomingData(ContentObject co) throws RepositoryException, IOException, SignatureException {
-		Library.logger().info("Saw data: " + co.name());
-			if (_daemon.getRepository().checkPolicyUpdate(co)) {
-				_daemon.resetNameSpaceFromHandler();
-			} else {
-				Library.logger().finer("Saving content in: " + co.name().toString());
-				_daemon.getRepository().saveContent(co);		
-			}
-			
-			/*
-			 * If an ack had already been requested answer it now.  Otherwise
-			 * add to the unacked queue to get ready for later ack.
-			 */
-			Iterator<Interest> iterator = _ackRequests.iterator();
-			boolean found = false;
-			while (iterator.hasNext()) {
-				// interest is the actual interest that came in to retrieve an ACK
-				Interest ackRequest = iterator.next();
-				// dataPrefix is the prefix of names of content objects for which ack response is required
-				// so the request marker and nonce must be stripped off 
-				ContentName dataPrefix = new ContentName(ackRequest.name().count() - 2, ackRequest.name().components());
-				// ackMatch is an internal interest used for matching against individual content objects that we have
-				// It is never supposed to be sent out
-				Interest ackMatch = new Interest(dataPrefix);
-
-				if (ackMatch.matches(co)) {
-					Library.logger().finer("Found waiting ACK request for " + co.name() + " interest " + ackRequest.name());
-					iterator.remove();
-					if (!found) {
-						ArrayList<ContentName> names = new ArrayList<ContentName>();
-						names.add(co.name());
-						//ContentName putName = new ContentName(data.name(), CCNBase.REPO_REQUEST_ACK);
-						_daemon.getWriter().put(ackRequest.name(), _daemon.getRepository().getRepoInfo(names));
-					}
-					found = true;
-				}
-			}
-			if (!found) {
-				_unacked.add(co);
-			}
+		return null;
 	}
 	
 	public void cancelInterests() {
@@ -197,9 +174,5 @@ public class RepositoryDataListener implements CCNInterestListener {
 	
 	public ArrayList<ContentObject> getUnacked() {
 		return _unacked;
-	}
-	
-	public ArrayList<Interest> getAckRequests() {
-		return _ackRequests;
 	}
 }

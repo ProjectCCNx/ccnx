@@ -37,10 +37,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 				Library.logger().fine("marker is " + new String(marker) + " in " + interest.name());
 				if (Arrays.equals(marker, CCNBase.REPO_START_WRITE)) {
 					startReadProcess(interest);
-				} else if (Arrays.equals(marker, CCNBase.REPO_REQUEST_ACK)) {	
-					ackResponse(interest);
-				}
-				else if(interest.name().contains(CCNNameEnumerator.NEMARKER)){
+				} else if(interest.name().contains(CCNNameEnumerator.NEMARKER)){
 					nameEnumeratorResponse(interest);
 				}
 				else {
@@ -91,16 +88,6 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-	}
-	
-	private void ackResponse(Interest interest) throws SignatureException, IOException {
-		// dataPrefix is the prefix of names of content objects for which ack response is required
-		// so the request marker and nonce must be stripped off 
-		ContentName dataPrefix = new ContentName(interest.name().count() - 2, interest.name().components());
-		// ackMatch is an internal interest used for matching against individual content objects that we have
-		// It is never supposed to be sent out
-		Interest ackMatch = new Interest(dataPrefix);
-		_daemon.ack(interest, ackMatch);
 	}
 	
 	public void nameEnumeratorResponse(Interest interest) {

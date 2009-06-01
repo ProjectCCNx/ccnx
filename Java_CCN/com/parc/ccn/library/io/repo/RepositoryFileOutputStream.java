@@ -27,8 +27,9 @@ public class RepositoryFileOutputStream extends CCNFileOutputStream {
 	}
 	
 	public void close() throws IOException {
+		_repoFlowControl.beforeClose();
 		super.close();
-		_repoFlowControl.close();
+		_repoFlowControl.afterClose();
 	}
 	
 }

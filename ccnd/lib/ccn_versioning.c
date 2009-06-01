@@ -59,7 +59,7 @@ static void
 append_future_vcomp(struct ccn_charbuf *templ)
 {
     /* A distant future version stamp */
-    const unsigned char b[8] = {CCN_MARKER_VERSION, FF, FF, FF, FF, FF, FF};
+    unsigned char b[7] = {CCN_MARKER_VERSION, FF, FF, FF, FF, FF, FF};
     ccn_charbuf_append_tt(templ, CCN_DTAG_Component, CCN_DTAG);
     ccn_charbuf_append_tt(templ, sizeof(b), CCN_BLOB);
     ccn_charbuf_append(templ, b, sizeof(b));
@@ -115,7 +115,6 @@ ccn_resolve_highest_version(struct ccn *h, struct ccn_charbuf *name, int timeout
     size_t vers_size = 0;
     int n = ccn_name_split(name, NULL);
     struct ccn_indexbuf *nix = ccn_indexbuf_create();
-    int nco;
     unsigned char lowtime[7] = {CCN_MARKER_VERSION, 0, FF, FF, FF, FF, FF};
     
     n = ccn_name_split(name, nix);
@@ -125,6 +124,8 @@ ccn_resolve_highest_version(struct ccn *h, struct ccn_charbuf *name, int timeout
     result->length = 0;
     res = ccn_get(h, name, -1, templ, timeout_ms, result, pco, ndx);
     while (result->length != 0) {
+        if (pco->type == CCN_CONTENT_NACK) // XXX - also check for number of components
+            break;
         res = ccn_name_comp_get(result->buf, ndx, n, &vers, &vers_size);
         if (res < 0)
             break;

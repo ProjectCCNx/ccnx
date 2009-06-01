@@ -30,9 +30,7 @@ struct ccn {
     struct ccn_charbuf *inbuf;
     struct ccn_charbuf *outbuf;
     struct hashtb *interests_by_prefix;
-    struct ccn_closure *default_content_action;
     struct hashtb *interest_filters;
-    struct ccn_closure *default_interest_action;
     struct ccn_skeleton_decoder decoder;
     struct ccn_indexbuf *scratch_indexbuf;
     struct hashtb *keys;	/* KEYS */
@@ -313,8 +311,6 @@ ccn_destroy(struct ccn **hp)
     if (h == NULL)
         return;
     ccn_disconnect(h);
-    ccn_replace_handler(h, &(h->default_interest_action), NULL);
-    ccn_replace_handler(h, &(h->default_content_action), NULL);
     if (h->interests_by_prefix != NULL) {
         for (hashtb_start(h->interests_by_prefix, e); e->data != NULL; hashtb_next(e)) {
             struct interests_by_prefix *entry = e->data;
@@ -332,7 +328,6 @@ ccn_destroy(struct ccn **hp)
         hashtb_end(e);
         hashtb_destroy(&(h->interest_filters));
     }
-
 
     /* XXX: remove this and rewrite as a finalizer on the hash table */
     if (h->keys != NULL) {	/* KEYS */
@@ -525,26 +520,6 @@ ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
     }
     hashtb_end(e);
     return(res);
-}
-
-int
-ccn_set_default_interest_handler(struct ccn *h,
-                                struct ccn_closure *action)
-{
-    if (h == NULL)
-        return(-1);
-    ccn_replace_handler(h, &(h->default_interest_action), action);
-    return(0);
-}
-
-int
-ccn_set_default_content_handler(struct ccn *h,
-                                struct ccn_closure *action)
-{
-    if (h == NULL)
-        return(-1);
-    ccn_replace_handler(h, &(h->default_content_action), action);
-    return(0);
 }
 
 static int
@@ -846,7 +821,8 @@ handle_key(
 
 static int
 ccn_initiate_key_fetch(struct ccn *h,
-                       unsigned char *msg, struct ccn_parsed_ContentObject *pco,
+                       unsigned char *msg,
+                       struct ccn_parsed_ContentObject *pco,
                        struct expressed_interest *trigger_interest)
 {
     /* 
@@ -961,11 +937,6 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                 }
             }
         }
-        if (h->default_interest_action != NULL) {
-            info.matched_comps = 0;
-            (h->default_interest_action->p)(
-                h->default_interest_action, upcall_kind, &info);
-        }
     }
     else {
         /* This message should be a ContentObject. */
@@ -1036,30 +1007,9 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                         }
                     }
                 }
-            } // XXX whew, there are a lot of right braces there!
-            if (h->default_content_action != NULL) {
-                enum ccn_upcall_kind upcall_kind; /* KEYS */
-                struct ccn_pkey *pubkey = NULL;
-                int type = ccn_get_content_type(msg, info.pco);
-                if (type == CCN_CONTENT_KEY) {
-                    res = ccn_cache_key(h, msg, size, info.pco);
-                }
-                res = ccn_locate_key(h, msg, size, info.pco, &pubkey);
-                if (res >= 0) {	/* we have the pubkey, use it to verify the msg */
-                    res = ccn_verify_signature(msg, size, info.pco, pubkey);
-                    upcall_kind = (res == 1) ? CCN_UPCALL_CONTENT : CCN_UPCALL_CONTENT_BAD;
-                } else {
-                    upcall_kind = CCN_UPCALL_CONTENT_UNVERIFIED;
-                }
-                info.matched_comps = 0;
-                /* XXX: shouldn't ignore the result of the default content handler */
-                (h->default_content_action->p)(
-                    h->default_content_action,
-                    upcall_kind,
-                    &info);
             }
         }
-    }
+    } // XXX whew, what a lot of right braces!
     ccn_indexbuf_release(h, info.interest_comps);
     ccn_indexbuf_destroy(&info.content_comps);
     h->running--;
@@ -1210,8 +1160,18 @@ ccn_process_scheduled_operations(struct ccn *h)
     int need_clean = 0;
     h->refresh_us = 5 * CCN_INTEREST_LIFETIME_MICROSEC;
     gettimeofday(&h->now, NULL);
+    if (ccn_output_is_pending(h))
+        return(h->refresh_us);
     h->running++;
-    if (h->interests_by_prefix != NULL && !ccn_output_is_pending(h)) {
+    if (h->interest_filters != NULL) {
+        for (hashtb_start(h->interest_filters, e); e->data != NULL; hashtb_next(e)) {
+            struct interest_filter *i = e->data;
+            // XXX If the registration is expiring, refresh it
+            // Otherwise update h->refresh_us
+        }
+        hashtb_end(e);
+    }
+    if (h->interests_by_prefix != NULL) {
         for (hashtb_start(h->interests_by_prefix, e); e->data != NULL; hashtb_next(e)) {
             entry = e->data;
             ccn_check_interests(entry->list);

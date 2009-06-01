@@ -101,9 +101,6 @@ public class RFSTest extends RepoTestBase {
 		ContentName digestName = new ContentName(name, digest2.contentDigest());
 		checkDataWithDigest(repo, digestName, "Testing2");
 		
-		/*
-		 * Broken - commented out until I can figure out how to fix it..
-		 */
 		System.out.println("Repotest - Testing same digest for different data and/or publisher");
 		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
 		kpg.initialize(512); // go for fast
@@ -135,6 +132,20 @@ public class RFSTest extends RepoTestBase {
 		repo.saveContent(digest2);
 		digestName = new ContentName(longName, digest2.contentDigest());
 		checkDataWithDigest(repo, digestName, "Testing2");
+		String wayTooLongName = tooLongName;
+		for (int i = 0; i < 30; i++)
+			wayTooLongName += "0123456789";
+		ContentName reallyLongName = ContentName.fromNative("/repoTest/" + wayTooLongName);
+		repo.saveContent(ContentObject.buildContentObject(reallyLongName, "Really Long name!".getBytes()));
+		checkData(repo, reallyLongName, "Really Long name!");
+		byte[][] longNonASCIIBytes = new byte[2][];
+		longNonASCIIBytes[0] = "repoTest".getBytes();
+		longNonASCIIBytes[1] = new byte[300];
+		rand.nextBytes(longNonASCIIBytes[1]);
+		//TODO: Following test breaks randomly currently (but problem needs to be fixed).
+		//ContentName lnab = new ContentName(longNonASCIIBytes);
+		//repo.saveContent(ContentObject.buildContentObject(lnab, "Long and Non ASCII".getBytes()));
+		//checkData(repo, lnab, "Long and Non ASCII");
 		
 		System.out.println("Repotest - Testing invalid characters in name");
 		ContentName badCharName = ContentName.fromNative("/repoTest/" + "*x?y<z>u");
