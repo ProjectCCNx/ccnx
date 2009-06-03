@@ -187,6 +187,14 @@ public class AccessControlManager {
 	public static final String DATA_KEY_LABEL = "Data Key";
 	public static final String NODE_KEY_LABEL = "Node Key";
 	public static final long DEFAULT_TIMEOUT = 1000;
+	
+	public static final long DEFAULT_FRESHNESS_INTERVAL = 100;
+	public static final long DEFAULT_NODE_KEY_FRESHNESS_INTERVAL = DEFAULT_FRESHNESS_INTERVAL;
+	public static final long DEFAULT_DATA_KEY_FRESHNESS_INTERVAL = DEFAULT_FRESHNESS_INTERVAL;
+	public static final long DEFAULT_ACL_FRESHNESS_INTERVAL = DEFAULT_FRESHNESS_INTERVAL;
+	public static final long DEFAULT_GROUP_PUBLIC_KEY_FRESHNESS_INTERVAL = 3600;
+	public static final long DEFAULT_GROUP_PRIVATE_KEY_FRESHNESS_INTERVAL = 3600;
+	public static final long DEFAULT_GROUP_ENCRYPTED_KEY_BLOCK_FRESHNESS_INTERVAL = DEFAULT_FRESHNESS_INTERVAL;
 
 	private ContentName _namespace;
 	private ContentName _groupStorage;
