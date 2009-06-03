@@ -93,7 +93,7 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 	public PublicKey publicKey() { return data(); }
 
 	@Override
-	protected Object readObjectImpl(InputStream input) throws IOException, XMLStreamException {
+	protected PublicKey readObjectImpl(InputStream input) throws IOException, XMLStreamException {
 		// assume we read until we have all the bytes, then decode.
 		// Doesn't give us a good opportunity to check whether it's of type KEY. TODO
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
