@@ -43,7 +43,9 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	protected CCNLibrary _library = null;
 	
-	protected static final int MAX_TIMEOUT = 4000;
+	// Temporarily default to very high timeout so that puts have a good
+	// chance of going through.  We actually may want to keep this.
+	protected static final int MAX_TIMEOUT = 10000;
 	protected static final int HIGHWATER_DEFAULT = 1024;
 	protected int _timeout = MAX_TIMEOUT;
 	protected int _highwater = HIGHWATER_DEFAULT;
