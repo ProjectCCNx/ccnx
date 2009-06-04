@@ -22,6 +22,7 @@ import org.bouncycastle.crypto.params.KeyParameter;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.util.CCNEncodableObject;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
@@ -79,6 +80,10 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 
 		public WrappedKeyObject(ContentName name, WrappedKey wrappedKey) throws ConfigurationException, IOException {
 			super(WrappedKey.class, name, wrappedKey);
+		}
+		
+		public WrappedKeyObject(ContentObject block, CCNLibrary library) throws XMLStreamException, IOException {
+			super(WrappedKey.class, block, library);
 		}
 		
 		public WrappedKey wrappedKey() { return data(); }
