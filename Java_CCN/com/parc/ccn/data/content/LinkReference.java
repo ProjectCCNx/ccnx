@@ -6,6 +6,7 @@ import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.util.CCNEncodableObject;
 import com.parc.ccn.data.util.GenericXMLEncodable;
@@ -48,6 +49,10 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable {
 
 		public LinkObject(ContentName name, LinkReference linkReference) throws ConfigurationException, IOException {
 			super(LinkReference.class, name, linkReference);
+		}
+		
+		public LinkObject(ContentObject block, CCNLibrary library) throws XMLStreamException, IOException {
+			super(LinkReference.class, block, library);
 		}
 		
 		public LinkReference link() { return data(); }
