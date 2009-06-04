@@ -293,11 +293,15 @@ ccnd_debug_ccnb(struct ccnd *h,
                 const unsigned char *ccnb,
                 size_t ccnb_size)
 {
-    struct ccn_charbuf *c = ccn_charbuf_create();
+    struct ccn_charbuf *c;
     struct ccn_parsed_interest pi;
     const unsigned char *nonce = NULL;
     size_t nonce_size = 0;
     size_t i;
+    
+    if (h != NULL && h->debug == 0)
+        return;
+    c = ccn_charbuf_create();
     ccn_charbuf_putf(c, "debug.%d %s ", lineno, msg);
     if (face != NULL)
         ccn_charbuf_putf(c, "%u ", face->faceid);
