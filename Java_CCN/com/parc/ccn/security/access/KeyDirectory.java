@@ -37,6 +37,15 @@ import com.sun.tools.javac.util.Pair;
  * encapsulate functionality to walk such a directory and find our
  * target key here.
  * 
+ * Our model is that higher-level function may use this interface
+ * to try many ways to get a given key. Some will work (access is
+ * allowed), some may not -- the latter does not mean that the
+ * principal doesn't have access, just that the principal doesn't
+ * have access by this route. So for the moment, we return null
+ * when we don't conclusively know that this principal doesn't
+ * have access to this data somehow, rather than throwing
+ * AccessDeniedException.
+ * 
  * @author smetters
  *
  */
@@ -54,7 +63,8 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @param library
 	 * @throws IOException
 	 */
-	public KeyDirectory(AccessControlManager manager, ContentName directoryName, CCNLibrary library) throws IOException {
+	public KeyDirectory(AccessControlManager manager, ContentName directoryName, CCNLibrary library) 
+					throws IOException {
 		super(directoryName, library);
 		if (null == manager) {
 			stopEnumerating();
@@ -190,6 +200,14 @@ public class KeyDirectory extends EnumeratedNameList {
 		return ContentName.fromNative(keyDirectoryName, AccessControlProfile.PREVIOUS_KEY_NAME);		
 	}
 	
+	/**
+	 * Previous key might be a link, if we're a simple newer version, or it might
+	 * be a wrapped key, if we're an interposed node key. 
+	 * DKS TODO
+	 * @return
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 */
 	public LinkReference getPreviousKey() throws XMLStreamException, IOException {
 		if (!hasPreviousKeyBlock())
 			return null;
@@ -301,10 +319,15 @@ public class KeyDirectory extends EnumeratedNameList {
 						}
 						// I know I am a member of this group, or at least I was last time I checked.
 						// Attempt to get this version of the group private key as I don't have it in my cache.
-						Key principalKey = _manager.getVersionedPrivateKeyForGroup(this, principal);
-						unwrappedKey = unwrapKeyForPrincipal(principal, principalKey);
-						if (null == unwrappedKey)
-							break;
+						try {
+							Key principalKey = _manager.getVersionedPrivateKeyForGroup(this, principal);
+							unwrappedKey = unwrapKeyForPrincipal(principal, principalKey);
+							if (null == unwrappedKey)
+								continue;
+						} catch (AccessDeniedException aex) {
+							// we're not a member
+							continue;
+						}
 					}
 				}
 				if (null == unwrappedKey) {
@@ -316,10 +339,17 @@ public class KeyDirectory extends EnumeratedNameList {
 							continue;
 						}
 						if (_manager.amCurrentGroupMember(principal)) {
-							Key principalKey = _manager.getVersionedPrivateKeyForGroup(this, principal);
-							unwrappedKey = unwrapKeyForPrincipal(principal, principalKey);
-							if (null == unwrappedKey)
-								break;
+							try {
+								Key principalKey = _manager.getVersionedPrivateKeyForGroup(this, principal);
+								unwrappedKey = unwrapKeyForPrincipal(principal, principalKey);
+								if (null == unwrappedKey) {
+									Library.logger().warning("Unexpected: we are a member of group " + principal + " but get a null key.");
+									continue;
+								}
+							} catch (AccessDeniedException aex) {
+								Library.logger().warning("Unexpected: we are a member of group " + principal + " but get an access denied exception when we try to get its key: " + aex.getMessage());
+								continue;
+							}
 						}
 					}
 				}
@@ -340,7 +370,8 @@ public class KeyDirectory extends EnumeratedNameList {
 		return unwrappedKey;
 	}
 		
-	protected Key unwrapKeyForPrincipal(String principal, Key unwrappingKey) throws IOException, XMLStreamException, InvalidKeyException, InvalidCipherTextException {
+	protected Key unwrapKeyForPrincipal(String principal, Key unwrappingKey) 
+			throws IOException, XMLStreamException, InvalidKeyException, InvalidCipherTextException {
 		
 		Key unwrappedKey = null;
 		if (null == unwrappingKey) {
@@ -365,8 +396,10 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws XMLStreamException
 	 * @throws InvalidKeyException
 	 * @throws InvalidCipherTextException
+	 * @throws AccessDeniedException 
 	 */
-	public PrivateKey getPrivateKey() throws IOException, XMLStreamException, InvalidKeyException, InvalidCipherTextException {
+	public PrivateKey getPrivateKey() throws IOException, XMLStreamException, 
+				InvalidKeyException, InvalidCipherTextException, AccessDeniedException {
 		if (!hasPrivateKeyBlock()) {
 			Library.logger().info("No private key block exists with name " + getPrivateKeyBlockName());
 			return null;
@@ -395,6 +428,26 @@ public class KeyDirectory extends EnumeratedNameList {
 	public void addWrappedKeyBlock(Key privateKeyWrappingKey, ContentName name,
 			PublicKey publicKey) {
 		// TODO Auto-generated method stub
+		
+	}
+
+	public void addPrivateKeyBlock(PrivateKey private1,
+			Key privateKeyWrappingKey) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	public void addSupersededByBlock(Key oldPrivateKeyWrappingKey,
+			ContentName publicKeyName, Key privateKeyWrappingKey) {
+		// TODO Auto-generated method stub
+		
+	}
+	
+	public void addPreviousKeyLink() {
+		
+	}
+	
+	public void addPreviousKeyBlock() {
 		
 	}
 }

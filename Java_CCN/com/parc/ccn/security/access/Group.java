@@ -5,16 +5,19 @@ import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.sql.Timestamp;
 import java.util.Collection;
 
+//Right now use javax.jcr version; in java 1.7, will be java.nio.file.AccessDeniedException.
 import javax.jcr.AccessDeniedException;
 import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.crypto.InvalidCipherTextException;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.CollectionData;
 import com.parc.ccn.data.content.LinkReference;
@@ -29,6 +32,13 @@ import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.keys.KeyManager;
 
+/**
+ * Wrapper for Group public key, and a way to access its private keys.
+ * Model for private key access: if you're not allowed to get a key,
+ * we throw AccessDeniedException.
+ * @author smetters
+ *
+ */
 public class Group {
 	
 	// Right now dynamically load both public key and membership list.
@@ -69,10 +79,14 @@ public class Group {
 	/**
 	 * Constructor that creates a new group and generates a first key pair for it.
 	 * @return
+	 * @throws ConfigurationException 
+	 * @throws IOException 
+	 * @throws XMLStreamException 
 	 */
-	Group(ContentName namespace, String groupFriendlyName, MembershipList members, CCNLibrary library) {
+	Group(ContentName namespace, String groupFriendlyName, MembershipList members, 
+					CCNLibrary library, AccessControlManager manager) throws XMLStreamException, IOException, ConfigurationException {
 		this(namespace, groupFriendlyName, members, null, library);
-		createGroupPublicKey(members);
+		createGroupPublicKey(manager, members);
 	}
 	
 	public boolean ready() {
@@ -140,18 +154,21 @@ public class Group {
 		return null;
 	}
 
-	public void setMembershipList(Collection<LinkReference> newMembers) throws XMLStreamException, IOException {
+	public void setMembershipList(AccessControlManager manager,
+								  Collection<LinkReference> newMembers) 
+					throws XMLStreamException, IOException, 
+						InvalidKeyException, InvalidCipherTextException, AccessDeniedException, ConfigurationException {
 		// need to figure out if we need to know private key; if we do and we don't, throw access denied.
 		// We're deleting anyone that exists
 		MembershipList ml = membershipList(); // force retrieval if haven't already.
 		if (!ml.isGone() && ml.ready() && (ml.membershipList().contents().size() > 0)) {
-			modify(newMembers, ml.membershipList().contents());
+			modify(manager, newMembers, ml.membershipList().contents());
 		} else {
-			modify(newMembers, null);
+			modify(manager, newMembers, null);
 		}
 	}
 	
-	public void newGroupPublicKey(AccessControlManager manager, MembershipList ml) {
+	public void newGroupPublicKey(AccessControlManager manager, MembershipList ml) throws AccessDeniedException, IOException, XMLStreamException, InvalidKeyException, InvalidCipherTextException, ConfigurationException {
 		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(manager);
 		Key oldPrivateKeyWrappingKey = oldPrivateKeyDirectory.getUnwrappedKey(null);
 		if (null == oldPrivateKeyWrappingKey) {
@@ -178,10 +195,22 @@ public class Group {
 	 * If we're not supposed to be a member, this is tricky... we just live
 	 * with the fact that we know it, and forget it.
 	 * @param ml
+	 * @throws IOException 
+	 * @throws XMLStreamException 
+	 * @throws ConfigurationException 
 	 */
-	public Key createGroupPublicKey(AccessControlManager manager, MembershipList ml) {
+	public Key createGroupPublicKey(AccessControlManager manager, MembershipList ml) throws XMLStreamException, IOException, ConfigurationException {
 		
-		KeyPairGenerator kpg = KeyPairGenerator.getInstance(AccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM);
+		KeyPairGenerator kpg = null;
+		try {
+			kpg = KeyPairGenerator.getInstance(manager.getGroupKeyAlgorithm());
+		} catch (NoSuchAlgorithmException e) {
+			if (manager.getGroupKeyAlgorithm().equals(AccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM)) {
+				Library.logger().severe("Cannot find default group public key algorithm: " + AccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM + ": " + e.getMessage());
+				throw new RuntimeException("Cannot find default group public key algorithm: " + AccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM + ": " + e.getMessage());
+			}
+			throw new ConfigurationException("Specified group public key algorithm " + manager.getGroupKeyAlgorithm() + " not found. " + e.getMessage());
+		}
 		kpg.initialize(AccessControlManager.DEFAULT_GROUP_KEY_LENGTH);
 		KeyPair pair = kpg.generateKeyPair();
 		
@@ -222,8 +251,12 @@ public class Group {
 	 * @throws XMLStreamException 
 	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
+	 * @throws AccessDeniedException if we can't get the private key to rewrap. 
+	 * 		TODO also check write access list.
 	 */
-	public void updateGroupPublicKey(AccessControlManager manager, Collection<LinkReference> membersToAdd) throws IOException, InvalidKeyException, InvalidCipherTextException, XMLStreamException {
+	public void updateGroupPublicKey(AccessControlManager manager, 
+									 Collection<LinkReference> membersToAdd) 
+				throws IOException, InvalidKeyException, InvalidCipherTextException, XMLStreamException, AccessDeniedException {
 		
 		if ((null == membersToAdd) || (membersToAdd.size() == 0))
 			return;
@@ -279,8 +312,11 @@ public class Group {
 		return sb.toString();
 	}
 
-	public void modify(Collection<LinkReference> membersToAdd,
-					   Collection<LinkReference> membersToRemove) throws XMLStreamException, IOException {
+	public void modify(AccessControlManager manager,
+					   Collection<LinkReference> membersToAdd,
+					   Collection<LinkReference> membersToRemove) 
+				throws XMLStreamException, IOException, InvalidKeyException, 
+						InvalidCipherTextException, AccessDeniedException, ConfigurationException {
 		
 		boolean addedMembers = false;
 		boolean removedMembers = false;
@@ -314,14 +350,14 @@ public class Group {
 		if (removedMembers) {
 			// Don't save membership list till we know we can update private key.
 			// If we can't update the private key, this will throw AccessDeniedException.
-			newGroupPublicKey(_groupMembers); 
+			newGroupPublicKey(manager, _groupMembers); 
 		} else if (addedMembers) {
 			// additions only. Don't have to make  a new key if one exists,
 			// just rewrap it for added members.
 			if (null != _groupPublicKey.publicKey()) {
-				updateGroupPublicKey(membersToAdd);
+				updateGroupPublicKey(manager, membersToAdd);
 			} else {
-				createGroupPublicKey( _groupMembers);
+				createGroupPublicKey(manager, _groupMembers);
 			}
 		}
 		// Don't actually save the new membership list till we're sure we can update the

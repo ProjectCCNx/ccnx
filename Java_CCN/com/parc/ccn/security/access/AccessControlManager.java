@@ -16,6 +16,7 @@ import java.util.HashSet;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
+// Right now use javax.jcr version; in java 1.7, will be java.nio.file.AccessDeniedException.
 import javax.jcr.AccessDeniedException;
 import javax.xml.stream.XMLStreamException;
 
@@ -304,10 +305,12 @@ public class AccessControlManager {
 		}
 	}
 	
-	public Group createGroup(String groupFriendlyName, ArrayList<LinkReference> newMembers) throws XMLStreamException, IOException {
+	public Group createGroup(String groupFriendlyName, ArrayList<LinkReference> newMembers) 
+				throws XMLStreamException, IOException, ConfigurationException, InvalidKeyException, 
+						InvalidCipherTextException, AccessDeniedException {
 		Group existingGroup = getGroup(groupFriendlyName);
 		if (null != existingGroup) {
-			existingGroup.setMembershipList(newMembers);
+			existingGroup.setMembershipList(this, newMembers);
 			return existingGroup;
 		} else {
 			// Need to make key pair, directory, and store membership list.
@@ -315,7 +318,7 @@ public class AccessControlManager {
 				new MembershipList(
 						AccessControlProfile.groupMembershipListName(_groupStorage, groupFriendlyName), 
 						new CollectionData(newMembers), _library);
-			Group newGroup =  new Group(_groupStorage, groupFriendlyName, ml, _library);
+			Group newGroup =  new Group(_groupStorage, groupFriendlyName, ml, _library, this);
 			cacheGroup(newGroup);
 			// If I'm a group member (I end up knowing the private key of the group if I
 			// created it, but I could simply forget it...).
@@ -326,13 +329,16 @@ public class AccessControlManager {
 		}
 	}
 	
-	public Group modifyGroup(String friendlyName, ArrayList<LinkReference> membersToAdd, ArrayList<LinkReference> membersToRemove) throws XMLStreamException, IOException {
+	public Group modifyGroup(String friendlyName, 
+							ArrayList<LinkReference> membersToAdd, 
+							ArrayList<LinkReference> membersToRemove) 
+				throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException, AccessDeniedException, ConfigurationException {
 		Group theGroup = getGroup(friendlyName);
 		
 		// DKS we really want to be sure we get the group if it's out there...
 		if (null != theGroup) {
 			Library.logger().info("Got existing group to modify: " + theGroup);
-			theGroup.modify(membersToAdd, membersToRemove);
+			theGroup.modify(this, membersToAdd, membersToRemove);
 		} else {
 			Library.logger().info("No existing group to modify: " + friendlyName + " adding new one.");
 			theGroup = createGroup(friendlyName, membersToAdd);
@@ -340,11 +346,11 @@ public class AccessControlManager {
 		return theGroup;
 	}
 	
-	public Group addUsers(String friendlyName, ArrayList<LinkReference> newUsers) throws XMLStreamException, IOException {
+	public Group addUsers(String friendlyName, ArrayList<LinkReference> newUsers) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException, AccessDeniedException, ConfigurationException {
 		return modifyGroup(friendlyName, newUsers, null);
 	}
 	
-	public Group removeUsers(String friendlyName, ArrayList<LinkReference> removedUsers) throws XMLStreamException, IOException {
+	public Group removeUsers(String friendlyName, ArrayList<LinkReference> removedUsers) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException, AccessDeniedException, ConfigurationException {
 		return modifyGroup(friendlyName, null, removedUsers);
 	}
 	
@@ -425,8 +431,9 @@ public class AccessControlManager {
 	 * @throws InvalidCipherTextException 
 	 * @throws AccessDeniedException 
 	 * @throws InvalidKeyException 
+	 * @throws AccessDeniedException 
 	 */
-	public PrivateKey getGroupPrivateKey(String groupFriendlyName, Timestamp privateKeyVersion) throws InvalidKeyException, InvalidCipherTextException, IOException, XMLStreamException {
+	public PrivateKey getGroupPrivateKey(String groupFriendlyName, Timestamp privateKeyVersion) throws InvalidKeyException, InvalidCipherTextException, IOException, XMLStreamException, AccessDeniedException {
 		// Heuristic check
 		if (!amKnownGroupMember(groupFriendlyName)) {
 			Library.logger().info("Unexpected: we don't think we're a group member of group " + groupFriendlyName);
@@ -472,8 +479,19 @@ public class AccessControlManager {
 	public void removeGroupMembership(String principal) {
 		_myGroupMemberships.remove(principal);
 	}
+	
+	/**
+	 * Eventually let namespace control this.
+	 * @return
+	 */
+	public String getGroupKeyAlgorithm() {
+		return DEFAULT_GROUP_KEY_ALGORITHM;
+	}
 
-	protected Key getVersionedPrivateKeyForGroup(KeyDirectory keyDirectory, String principal) throws IOException, InvalidKeyException, AccessDeniedException, InvalidCipherTextException, XMLStreamException {
+	// TODO should throw access denied?
+	protected Key getVersionedPrivateKeyForGroup(KeyDirectory keyDirectory, String principal) 
+			throws IOException, InvalidKeyException, AccessDeniedException, InvalidCipherTextException, 
+					XMLStreamException {
 		Key privateKey = getGroupPrivateKey(principal, keyDirectory.getPrincipals().get(principal));
 		if (null == privateKey) {
 			Library.logger().info("Unexpected: we beleive we are a member of group " + principal + " but cannot retrieve private key version: " + keyDirectory.getPrincipals().get(principal) + " our membership revoked?");
@@ -766,6 +784,13 @@ public class AccessControlManager {
 	}
 	
 	/**
+	 * Would we update this data key if we were doing reencryption?
+	 */
+	public boolean dataKeyIsDirty(ContentName dataName) {
+		
+	}
+	
+	/**
 	 * We've looked for a node key we can decrypt at the expected node key location,
 	 * but no dice. See if a new ACL has been interposed granting us rights at a lower
 	 * portion of the tree.
@@ -861,7 +886,7 @@ public class AccessControlManager {
 		} 
 		return null;
 	}
-
+	
 	/**
 	 * Take a randomly generated data key and store it. This requires finding
 	 * the current effective node key, and wrapping this data key in it.
