@@ -75,3 +75,27 @@ ccn_indexbuf_append_element(struct ccn_indexbuf *c, ELEMENT v)
     return(0);
 }
 
+int
+ccn_indexbuf_member(struct ccn_indexbuf *x, ELEMENT val)
+{
+    int i;
+    if (x == NULL)
+        return (-1);
+    for (i = x->n - 1; i >= 0; i--)
+        if (x->buf[i] == val)
+            return(i);
+    return(-1);
+}
+
+void
+ccn_indexbuf_remove_element(struct ccn_indexbuf *x, ELEMENT val)
+{
+    int i;
+    if (x == NULL) return;
+    for (i = x->n - 1; i >= 0; i--)
+        if (x->buf[i] == val) {
+            x->buf[i] = x->buf[--x->n]; /* move last element into vacant spot */
+            return;
+        }
+}
+
