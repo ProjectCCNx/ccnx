@@ -7,7 +7,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
-import java.security.spec.AlgorithmParameterSpec;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -780,14 +779,16 @@ public class AccessControlManager {
 	 * @return
 	 */
 	public boolean nodeKeyIsDirty(NodeKey theNodeKey) {
-		
+		// TODO
+		return true;
 	}
 	
 	/**
 	 * Would we update this data key if we were doing reencryption?
 	 */
 	public boolean dataKeyIsDirty(ContentName dataName) {
-		
+		// TODO
+		return true;
 	}
 	
 	/**
