@@ -23,6 +23,8 @@ import test.ccn.data.util.XMLEncodableTester;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.WrappedKey;
+import com.parc.ccn.data.security.WrappedKey.WrappedKeyObject;
+import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.crypto.jce.CCNCryptoProvider;
 
@@ -37,8 +39,9 @@ public class WrappedKeyTest {
 	public static String aLabel = "FileEncryptionKeys";
 	public static byte [] wrappingKeyID = null;
 	public static ContentName wrappingKeyName = null;
+	public static ContentName storedKeyName = null;
 	public static byte [] dummyWrappedKey = new byte[64];
-	static byte [] gbytes = new byte[]{(byte)0x0, (byte)0xc6, (byte)0x89, (byte)0xde, 
+	public static byte [] gbytes = new byte[]{(byte)0x0, (byte)0xc6, (byte)0x89, (byte)0xde, 
 									   (byte)0x62, (byte)0x40, (byte)0x38, (byte)0x5f, 
 									   (byte)0xc9, (byte)0x8c, (byte)0xf4, (byte)0x97, 
 									   (byte)0xd8, (byte)0x4b, (byte)0x8e, (byte)0xe1, 
@@ -69,7 +72,7 @@ public class WrappedKeyTest {
 									   (byte)0x63, (byte)0xb6, (byte)0x7d, (byte)0x3e, (byte)0xea, 
 									   (byte)0xd3, (byte)0x1b, (byte)0x62, (byte)0xf2, (byte)0x53, 
 									   (byte)0xf2};
-	static byte [] pbytes = new byte[]{(byte)0x0, (byte)0xd8, (byte)0x2d, (byte)0xee, 
+	public static byte [] pbytes = new byte[]{(byte)0x0, (byte)0xd8, (byte)0x2d, (byte)0xee, 
 		(byte)0x67, (byte)0xd8, (byte)0x76, (byte)0x4a, (byte)0xd1, (byte)0x5a, (byte)0x3b, 
 		(byte)0xbf, (byte)0xae, (byte)0x3f, (byte)0x39, (byte)0x16, (byte)0xbc, (byte)0x3b, 
 		(byte)0xfe, (byte)0x23, (byte)0xf0, (byte)0x3, (byte)0x3, (byte)0x41, (byte)0xda, 
@@ -116,6 +119,8 @@ public class WrappedKeyTest {
 		wrappingAESKey = new SecretKeySpec(key, "AES");
 		sr.nextBytes(key);
 		wrappedAESKey = new SecretKeySpec(key, "AES");
+		
+		storedKeyName = ContentName.fromNative("/test/content/File1.txt/_access_/NK");
 	}
 
 	@Test
@@ -205,6 +210,47 @@ public class WrappedKeyTest {
 		WrappedKey bdwka = new WrappedKey();
 		XMLEncodableTester.encodeDecodeTest("WrappedKey(assymmetric wrap symmetric, with id and name)", wka, dwka, bdwka);
 		Assert.assertArrayEquals(dwka.wrappingKeyIdentifier(), wrappingKeyID);
+	}
+	
+	@Test
+	public void testWrappedKeyObject() {
+		
+		WrappedKey wks = null;
+		try {
+			wks = WrappedKey.wrapKey(wrappedAESKey, null, aLabel, wrappingAESKey);
+		} catch (Exception e) {
+			fail("Exception in wrapKey: " + e.getClass().getName() + ":  " + e.getMessage());
+		}
+		WrappedKey wka = null;
+		try {
+			wka = WrappedKey.wrapKey(wrappedAESKey, NISTObjectIdentifiers.id_aes128_CBC.toString(), 
+										aLabel, wrappingKeyPair.getPublic());
+		} catch (Exception e) {
+			fail("Exception in wrapKey: " + e.getClass().getName() + ":  " + e.getMessage());
+		}
+		wka.setWrappingKeyIdentifier(wrappingKeyID);
+		wka.setWrappingKeyName(wrappingKeyName);
+		
+		try {
+			CCNLibrary library = CCNLibrary.open();
+			WrappedKeyObject wko = new WrappedKeyObject(storedKeyName, wks, library);
+			wko.save();
+			Assert.assertTrue(VersioningProfile.isVersioned(wko.getName()));
+			// should update in another thread
+			WrappedKeyObject wkoread = new WrappedKeyObject(storedKeyName); // new library
+			Assert.assertTrue(wkoread.ready());
+			Assert.assertEquals(wkoread.getName(), wko.getName());
+			Assert.assertEquals(wkoread.wrappedKey(), wko.wrappedKey());
+			wkoread.save(wka);
+			Assert.assertTrue(VersioningProfile.isLaterVersionOf(wkoread.getName(), wko.getName()));
+			wko.update();
+			Assert.assertEquals(wkoread.getName(), wko.getName());
+			Assert.assertEquals(wkoread.wrappedKey(), wko.wrappedKey());
+			Assert.assertEquals(wko.wrappedKey(), wka);
+		} catch (Exception e) {
+			fail("Exception in wrapKeyObject testing: " + e.getClass().getName() + ":  " + e.getMessage());
+			
+		}
 	}
 
 }
