@@ -31,7 +31,7 @@ import com.parc.ccn.network.daemons.repo.RepositoryInfo;
  *
  */
 
-public class RepositoryProtocol extends CCNFlowControl {
+public class RepositoryProtocol extends CCNFlowControl implements CCNInterestListener{
 	
 	protected static final int ACK_BLOCK_SIZE = 20;
 	protected static final int ACK_INTERVAL = 128;
@@ -41,12 +41,12 @@ public class RepositoryProtocol extends CCNFlowControl {
 	protected int _ackInterval = ACK_INTERVAL;
 	protected String _repoName = null;
 	protected ContentName _baseName; // the name prefix under which we are writing content
-	protected RepoListener _listener = null;
+	//protected RepoListener _listener = null;
 	protected Interest _writeInterest = null;
 	protected CCNNameEnumerator _ackne;
 	protected RepoAckHandler _ackHandler;
 
-	private class RepoListener implements CCNInterestListener {
+	//private class RepoListener implements CCNInterestListener {
 
 		public Interest handleContent(ArrayList<ContentObject> results,
 				Interest interest) {
@@ -75,7 +75,7 @@ public class RepositoryProtocol extends CCNFlowControl {
 			}
 			return interestToReturn;
 		}
-	}
+	//}
 	
 	/**
 	 * The names returned by NameEnumerator are only the 1 level names
@@ -104,9 +104,10 @@ public class RepositoryProtocol extends CCNFlowControl {
 		_baseName = name;
 		clearUnmatchedInterests();	// Remove possible leftover interests from "getLatestVersion"
 		ContentName repoWriteName = new ContentName(name, CCNBase.REPO_START_WRITE, CCNLibrary.nonce());
-		_listener = new RepoListener();
+		//_listener = new RepoListener();
 		_writeInterest = new Interest(repoWriteName);
-		_library.expressInterest(_writeInterest, _listener);
+		//_library.expressInterest(_writeInterest, _listener);
+		_library.expressInterest(_writeInterest, this);
 		if (! _bestEffort) {
 			_ackHandler = new RepoAckHandler();
 			_ackne = new CCNNameEnumerator(_library, _ackHandler);
@@ -180,7 +181,9 @@ public class RepositoryProtocol extends CCNFlowControl {
 	
 	private void cancelInterests() {
 		_ackne.cancelPrefix(_baseName);
-		if (_writeInterest != null)
-			_library.cancelInterest(_writeInterest, _listener);
+		if (_writeInterest != null){
+			//_library.cancelInterest(_writeInterest, _listener);
+			_library.cancelInterest(_writeInterest, this);
+		}
 	}
 }
