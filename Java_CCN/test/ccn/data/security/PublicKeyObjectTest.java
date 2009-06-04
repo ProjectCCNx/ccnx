@@ -1,0 +1,98 @@
+package test.ccn.data.security;
+
+
+import static org.junit.Assert.fail;
+
+import java.io.IOException;
+import java.math.BigInteger;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.PublicKey;
+import java.security.Security;
+
+import javax.xml.stream.XMLStreamException;
+
+import org.bouncycastle.jce.ECNamedCurveTable;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.jce.spec.ECParameterSpec;
+import org.bouncycastle.jce.spec.ElGamalParameterSpec;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
+import com.parc.ccn.config.ConfigurationException;
+import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.security.PublicKeyObject;
+import com.parc.ccn.library.profiles.VersioningProfile;
+
+public class PublicKeyObjectTest {
+
+	public static KeyPair pair1 = null;
+	public static KeyPair pair2 = null;
+	public static KeyPair egPair = null;
+	public static KeyPair eccPair = null;
+	public static KeyPair eciesPair = null;
+	public static ContentName storedKeyName = null;
+	public static ContentName storedKeyName2 = null;
+	public static ContentName storedKeyName3 = null;
+	
+	@BeforeClass
+	public static void setUpBeforeClass() throws Exception {
+		Security.addProvider(new BouncyCastleProvider());
+		// generate key pair
+		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+		kpg.initialize(1024); // go for fast
+		pair1 = kpg.generateKeyPair();
+		pair2 = kpg.generateKeyPair();
+		ElGamalParameterSpec egp = new ElGamalParameterSpec(
+				new BigInteger(1, WrappedKeyTest.pbytes), new BigInteger(1, WrappedKeyTest.gbytes));
+		KeyPairGenerator ekpg = KeyPairGenerator.getInstance("ElGamal");
+		ekpg.initialize(egp); // go for fast
+		egPair = ekpg.generateKeyPair();
+		KeyPairGenerator eckpg = KeyPairGenerator.getInstance("EC", "BC");
+		ECParameterSpec ecSpec = ECNamedCurveTable.getParameterSpec("P-384");
+		eckpg.initialize(ecSpec);
+		eccPair = eckpg.generateKeyPair();
+		
+		KeyPairGenerator g = KeyPairGenerator.getInstance("ECIES", "BC");
+	    g.initialize(192);
+	    eciesPair = g.generateKeyPair();
+	     
+		storedKeyName = ContentName.fromNative("/parc/Users/testRSAUser/KEY");
+		storedKeyName2 = ContentName.fromNative("/parc/Users/testEGUser/KEY");
+		storedKeyName3 = ContentName.fromNative("/parc/Users/testECCUser/KEY");
+	}
+
+	@Test
+	public void testPublicKeyObject() {
+		
+		try {
+			testKeyReadWrite(storedKeyName, pair1.getPublic(), pair2.getPublic());
+			testKeyReadWrite(storedKeyName2, egPair.getPublic(), null);
+			testKeyReadWrite(storedKeyName3, eccPair.getPublic(), eciesPair.getPublic());
+		} catch (Exception e) {
+			fail("Exception in publicKeyObject testing: " + e.getClass().getName() + ":  " + e.getMessage());
+		}
+	}
+
+	public void testKeyReadWrite(ContentName keyName, PublicKey key, PublicKey optional2ndKey) throws ConfigurationException, IOException, XMLStreamException {
+		
+		System.out.println("Reading and writing key " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
+		PublicKeyObject pko = new PublicKeyObject(keyName, key);
+		pko.save();
+		Assert.assertTrue(VersioningProfile.isVersioned(pko.getName()));
+		// should update in another thread
+		PublicKeyObject pkoread = new PublicKeyObject(keyName); // new library
+		Assert.assertTrue(pkoread.ready());
+		Assert.assertEquals(pkoread.getName(), pko.getName());
+		Assert.assertEquals(pkoread.publicKey(), pko.publicKey());
+		if (null != optional2ndKey) {
+			pkoread.save(optional2ndKey);
+			Assert.assertTrue(VersioningProfile.isLaterVersionOf(pkoread.getName(), pko.getName()));
+			pko.update();
+			Assert.assertEquals(pkoread.getName(), pko.getName());
+			Assert.assertEquals(pkoread.publicKey(), pko.publicKey());
+			Assert.assertEquals(pko.publicKey(), optional2ndKey);
+		}
+	}
+}
