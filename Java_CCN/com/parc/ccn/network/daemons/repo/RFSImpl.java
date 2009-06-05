@@ -571,7 +571,6 @@ public class RFSImpl implements Repository {
 	public ArrayList<ContentName> getNamesWithPrefix(Interest i) {
 		Library.logger().setLevel(java.util.logging.Level.FINE);
 		ArrayList<ContentName> names = new ArrayList<ContentName>();
-		long lastTS = 0;
 		Timestamp interestTS = null;
 		Timestamp fileTS = null;
 		try{
@@ -596,8 +595,10 @@ public class RFSImpl implements Repository {
 			Library.logger().fine("path to file: "+encodedFile.getName());
 			String[] matches = encodedFile.list();
 		
-			for(String s: matches){
-				names.add(RFSImpl.decodeName(new ContentName(n, s.getBytes())));
+			if (matches != null) {
+				for(String s: matches){
+					names.add(RFSImpl.decodeName(new ContentName(n, s.getBytes())));
+				}
 			}
 		}
 		
