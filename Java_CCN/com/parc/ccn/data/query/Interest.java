@@ -84,7 +84,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public static final int MARK_STALE = 16;		// Must have Scope 0.  Michael calls this a "hack"
 
 	protected ContentName _name;
-	protected ContentName _prefixName;
 	protected Integer _nameComponentCount;
 	protected Integer _additionalNameComponents;
 	// DKS TODO can we really support a PublisherID here, or just a PublisherPublicKeyDigest?
@@ -595,5 +594,40 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		} else if (!_scope.equals(other._scope))
 			return false;
 		return true;
+	}
+	
+	/**
+	 * toString prints the full XML encoding of this interest. This is a print
+	 * function that is more informative than just the name, but shorter than that,
+	 * with human-readable names.
+	 */
+	public String print() {
+		
+		StringBuffer sb = new StringBuffer(_name.toString());
+		sb.append(": ");
+		if (null != _nameComponentCount) {
+			sb.append(" ct:" + _nameComponentCount);
+		}
+		if  (null != _additionalNameComponents) {
+			sb.append(" anc:" + _additionalNameComponents);
+		}
+		if (null != _publisher) {
+			sb.append(" p:" + DataUtils.printHexBytes(_publisher.id()) + "");
+		}
+		if (null != _excludeFilter) {
+			sb.append(" ex(" + _excludeFilter._values.size() + "):[");
+			String sep = "";
+			for (ExcludeElement ee : _excludeFilter._values) {
+				sb.append(sep);
+				sep = ",";
+				if (null != ee.component()) {
+					sb.append(ContentName.componentPrintURI(ee.component()));
+				} else {
+					sb.append("B");
+				}
+			}
+			sb.append("]");
+		}
+		return sb.toString();
 	}
 }
