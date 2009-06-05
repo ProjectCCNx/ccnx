@@ -13,7 +13,6 @@ import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
-import javax.crypto.spec.SecretKeySpec;
 import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.crypto.InvalidCipherTextException;
@@ -114,7 +113,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	/**
 	 * Wraps a {symmetric, private} key in another {symmetric, public} key, using standard wrap
 	 * algorithm. Does not include an identifier of the wrapping key; that
-	 * can be added if necessary using {@link #setWrappingKeyIdentifier(SecretKeySpec)}.
+	 * can be added if necessary using {@link #setWrappingKeyIdentifier(Key)}.
 	 * Default wrap algorithm if wrapping key is AES is AESWrap (RFC3394, NIST std);
 	 * this is available in Java 1.6, or BouncyCastle.
 	 * 
@@ -309,12 +308,12 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		_wrappingKeyIdentifier = wrappingKeyIdentifier;
 	}
 	
-	public void setWrappingKeyIdentifier(PublicKey wrappingKey) {
-		setWrappingKeyIdentifier(PublisherID.generatePublicKeyDigest(wrappingKey));
+	public void setWrappingKeyIdentifier(Key wrappingKey) {
+		setWrappingKeyIdentifier(wrappingKeyIdentifier(wrappingKey));
 	}
 	
-	public void setWrappingKeyIdentifier(SecretKeySpec wrappingKey) {
-		setWrappingKeyIdentifier(CCNDigestHelper.digest(wrappingKey.getEncoded()));
+	public static byte [] wrappingKeyIdentifier(Key wrappingKey) {
+		return CCNDigestHelper.digest(wrappingKey.getEncoded());
 	}
 	
 	public ContentName wrappingKeyName() { return _wrappingKeyName; }
