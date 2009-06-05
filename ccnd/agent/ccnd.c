@@ -1477,15 +1477,14 @@ propagate_interest(struct ccnd *h, struct face *face,
     size_t msg_out_size = pi->offset[CCN_PI_E];
     int usec;
     int delaymask;
-    // if (outbound) ccnd_msg(h, "at %d outbound->n = %d", __LINE__, outbound->n);
-    adjust_outbound_for_existing_interests(h, face, msg, pi, ipe, outbound);
-    // if (outbound) ccnd_msg(h, "at %d outbound->n = %d", __LINE__, outbound->n);
-    if (outbound->n == 0)
-        ccn_indexbuf_destroy(&outbound);
-    else
-        reorder_outbound_using_history(h, ipe, outbound);
-    // if (outbound) ccnd_msg(h, "at %d outbound->n = %d", __LINE__, outbound->n);
-    if (pi->offset[CCN_PI_B_Nonce] == pi->offset[CCN_PI_E_Nonce] && outbound != NULL) {
+    if (outbound != NULL) {
+        adjust_outbound_for_existing_interests(h, face, msg, pi, ipe, outbound);
+        if (outbound->n == 0)
+            ccn_indexbuf_destroy(&outbound);
+        else
+            reorder_outbound_using_history(h, ipe, outbound);
+    }
+    if (pi->offset[CCN_PI_B_Nonce] == pi->offset[CCN_PI_E_Nonce]) {
         /* This interest has no nonce; add one before going on */
         int noncebytes = 6;
         size_t nonce_start = 0;
