@@ -237,7 +237,7 @@ public class WrappedKeyTest {
 			wko.save();
 			Assert.assertTrue(VersioningProfile.isVersioned(wko.getName()));
 			// should update in another thread
-			WrappedKeyObject wkoread = new WrappedKeyObject(storedKeyName); // new library
+			WrappedKeyObject wkoread = new WrappedKeyObject(storedKeyName, null); // new library
 			Assert.assertTrue(wkoread.ready());
 			Assert.assertEquals(wkoread.getName(), wko.getName());
 			Assert.assertEquals(wkoread.wrappedKey(), wko.wrappedKey());

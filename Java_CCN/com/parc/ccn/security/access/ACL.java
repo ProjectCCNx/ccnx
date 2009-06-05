@@ -7,8 +7,10 @@ import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.CollectionData;
 import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.util.CCNEncodableObject;
 import com.parc.ccn.library.CCNLibrary;
 
@@ -21,23 +23,32 @@ public class ACL extends CollectionData {
 
 	public static class ACLObject extends CCNEncodableObject<ACL> {
 
-		public ACLObject() throws ConfigurationException, IOException {
-			super(ACL.class);
+		public ACLObject(ContentName name, ACL data, CCNLibrary library) throws ConfigurationException, IOException {
+			super(ACL.class, name, data, library);
 		}
 		
-		public ACLObject(ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
-			super(ACL.class, name, library);
+		public ACLObject(ContentName name, PublisherPublicKeyDigest publisher,
+				CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+			super(ACL.class, name, publisher, library);
 		}
-
-		public ACLObject(ContentName name) throws XMLStreamException, IOException, ConfigurationException {
-			super(ACL.class, name);
+		
+		/**
+		 * Read constructor -- opens existing object.
+		 * @param type
+		 * @param name
+		 * @param library
+		 * @throws XMLStreamException
+		 * @throws IOException
+		 * @throws ClassNotFoundException 
+		 */
+		public ACLObject(ContentName name, 
+				CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+			super(ACL.class, name, (PublisherPublicKeyDigest)null, library);
 		}
-		public ACLObject(ContentName name, ACL acl, CCNLibrary library) {
-			super(ACL.class, name, acl, library);
-		}
-
-		public ACLObject(ContentName name, ACL acl) throws ConfigurationException, IOException {
-			super(ACL.class, name, acl);
+		
+		public ACLObject(ContentObject firstBlock,
+				CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+			super(ACL.class, firstBlock, library);
 		}
 		
 		public ACL acl() { return data(); }

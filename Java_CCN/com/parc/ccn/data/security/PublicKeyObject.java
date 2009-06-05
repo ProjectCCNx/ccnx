@@ -17,7 +17,6 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.util.CCNNetworkObject;
 import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.io.CCNVersionedInputStream;
 import com.parc.security.crypto.certificates.CryptoUtil;
 
 /**
@@ -33,49 +32,22 @@ import com.parc.security.crypto.certificates.CryptoUtil;
  */
 public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 
-	public PublicKeyObject() throws ConfigurationException, IOException {
-		super(PublicKey.class);
-	}
-	
-	public PublicKeyObject(CCNLibrary library) {
-		super(PublicKey.class, library);
-	}
-	
-	public PublicKeyObject(ContentName name) throws XMLStreamException, IOException, ConfigurationException {
-		this(name, CCNLibrary.open());
-	}
-	
-	public PublicKeyObject(ContentName name, PublicKey publicKey, CCNLibrary library) {
-		super(PublicKey.class, name, publicKey, library);
-	}
-
-	public PublicKeyObject(ContentName name, PublicKey publicKey) throws ConfigurationException, IOException {
-		this(name, publicKey, CCNLibrary.open());
-	}
-	
-	public PublicKeyObject(ContentObject content, CCNLibrary library) throws XMLStreamException, IOException {
-		super(PublicKey.class, library);
-		CCNVersionedInputStream is = new CCNVersionedInputStream(content, library);
-		is.seek(0); // In case we start with something other than the first fragment.
-		update(is);
-	}
-	
 	/**
-	 * Ambiguous. Are we supposed to pull this object based on its name,
-	 *   or merely attach the name to the object which we will then construct
-	 *   and save. Let's assume the former, and allow the name to be specified
-	 *   for save() for the latter.
+	 * Doesn't save until you call save, in case you want to tweak things first.
 	 * @param type
 	 * @param name
+	 * @param data
 	 * @param library
-	 * @throws XMLStreamException
+	 * @throws ConfigurationException
 	 * @throws IOException
 	 */
-	public PublicKeyObject(ContentName name, 
-			PublisherPublicKeyDigest publisher, CCNLibrary library) throws XMLStreamException, IOException {
-		super(PublicKey.class, library);
-		CCNVersionedInputStream is = new CCNVersionedInputStream(name, publisher, library);
-		update(is);
+	public PublicKeyObject(ContentName name, PublicKey data, CCNLibrary library) throws ConfigurationException, IOException {
+		super(PublicKey.class, name, data, library);
+	}
+	
+	public PublicKeyObject(ContentName name, PublisherPublicKeyDigest publisher,
+			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+		super(PublicKey.class, name, publisher, library);
 	}
 	
 	/**
@@ -85,9 +57,16 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 	 * @param library
 	 * @throws XMLStreamException
 	 * @throws IOException
+	 * @throws ClassNotFoundException 
 	 */
-	public PublicKeyObject(ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
-		this(name, (PublisherPublicKeyDigest)null, library);
+	public PublicKeyObject(ContentName name, 
+			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+		super(PublicKey.class, name, (PublisherPublicKeyDigest)null, library);
+	}
+	
+	public PublicKeyObject(ContentObject firstBlock,
+			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+		super(PublicKey.class, firstBlock, library);
 	}
 	
 	public PublicKey publicKey() { return data(); }

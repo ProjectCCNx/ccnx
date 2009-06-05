@@ -50,16 +50,15 @@ public class Group {
 	private String _groupFriendlyName;
 	private CCNLibrary _library;
 	
-	public Group(ContentName namespace, String groupFriendlyName, CCNLibrary library) throws IOException {
+	public Group(ContentName namespace, String groupFriendlyName, CCNLibrary library) throws IOException, ConfigurationException, XMLStreamException {
 		_library = library;
 		_groupNamespace = namespace;
 		_groupFriendlyName = groupFriendlyName;
-		_groupPublicKey = new PublicKeyObject(_library);
-		_groupPublicKey.updateInBackground(
-				AccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), true);
+		_groupPublicKey = new PublicKeyObject(AccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), _library);
+		_groupPublicKey.updateInBackground(true);
 	}
 	
-	public Group(ContentName groupName, CCNLibrary library) throws IOException {
+	public Group(ContentName groupName, CCNLibrary library) throws IOException, ConfigurationException, XMLStreamException {
 		this(groupName.parent(), AccessControlProfile.groupNameToFriendlyName(groupName), library);
 	}
 	
@@ -104,7 +103,7 @@ public class Group {
 	
 	public String friendlyName() { return _groupFriendlyName; }
 
-	public MembershipList membershipList() throws XMLStreamException, IOException { 
+	public MembershipList membershipList() throws XMLStreamException, IOException, ConfigurationException { 
 		if (null == _groupMembers) {
 			// Read constructor. Synchronously updates.
 			_groupMembers = new MembershipList(AccessControlProfile.groupMembershipListName(_groupNamespace, _groupFriendlyName), _library);
@@ -114,11 +113,11 @@ public class Group {
 		return _groupMembers; 
 	}
 	
-	public ContentName membershipListName() throws XMLStreamException, IOException { 
+	public ContentName membershipListName() throws XMLStreamException, IOException, ConfigurationException { 
 		return membershipList().getName(); 
 	}
 	
-	public Timestamp membershipListVersion() throws XMLStreamException, IOException {
+	public Timestamp membershipListVersion() throws XMLStreamException, IOException, ConfigurationException {
 		ContentName name = membershipListName();
 		if (VersioningProfile.isVersioned(name)) {
 			try {
@@ -265,10 +264,11 @@ public class Group {
 	 * @throws InvalidKeyException 
 	 * @throws AccessDeniedException if we can't get the private key to rewrap. 
 	 * 		TODO also check write access list.
+	 * @throws ConfigurationException 
 	 */
 	public void updateGroupPublicKey(GroupManager manager, 
 									 Collection<LinkReference> membersToAdd) 
-				throws IOException, InvalidKeyException, InvalidCipherTextException, XMLStreamException, AccessDeniedException {
+				throws IOException, InvalidKeyException, InvalidCipherTextException, XMLStreamException, AccessDeniedException, ConfigurationException {
 		
 		if ((null == membersToAdd) || (membersToAdd.size() == 0))
 			return;

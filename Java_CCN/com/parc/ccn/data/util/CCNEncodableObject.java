@@ -11,7 +11,6 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.io.CCNVersionedInputStream;
 
 /**
  * Takes a class E, and backs it securely to CCN.
@@ -21,63 +20,22 @@ import com.parc.ccn.library.io.CCNVersionedInputStream;
  */
 public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject<E> {
 	
-	public CCNEncodableObject(Class<E> type) throws ConfigurationException, IOException {
-		super(type, CCNLibrary.open());
-	}
-	
-	public CCNEncodableObject(Class<E> type, CCNLibrary library) {
-		super(type, library);
-	}
-	
-	public CCNEncodableObject(Class<E> type, ContentName name, E data, CCNLibrary library) {
+	/**
+	 * Doesn't save until you call save, in case you want to tweak things first.
+	 * @param type
+	 * @param name
+	 * @param data
+	 * @param library
+	 * @throws ConfigurationException
+	 * @throws IOException
+	 */
+	public CCNEncodableObject(Class<E> type, ContentName name, E data, CCNLibrary library) throws ConfigurationException, IOException {
 		super(type, name, data, library);
 	}
 	
-	public CCNEncodableObject(Class<E> type, ContentName name, E data) throws ConfigurationException, IOException {
-		this(type, name, data, CCNLibrary.open());
-	}
-	
-	public CCNEncodableObject(Class<E> type, E data, CCNLibrary library) {
-		super(type, null, data, library);
-	}
-	
-	public CCNEncodableObject(Class<E> type, E data) throws ConfigurationException, IOException {
-		this(type, data, CCNLibrary.open());
-	}
-
-	/**
-	 * Construct an object from stored CCN data.
-	 * @param type
-	 * @param content The object to recover, or one of its fragments.
-	 * @param library
-	 * @throws XMLStreamException
-	 * @throws IOException
-	 */
-	public CCNEncodableObject(Class<E> type, ContentObject content, CCNLibrary library) throws XMLStreamException, IOException {
-		this(type, library);
-		CCNVersionedInputStream is = new CCNVersionedInputStream(content, library);
-		is.seek(0); // In case we start with something other than the first fragment.
-		update(is);
-	}
-	
-	/**
-	 * Ambiguous. Are we supposed to pull this object based on its name,
-	 *   or merely attach the name to the object which we will then construct
-	 *   and save. Let's assume the former, and allow the name to be specified
-	 *   for save() for the latter.
-	 * @param type
-	 * @param name
-	 * @param library
-	 * @throws XMLStreamException
-	 * @throws IOException
-	 */
-	public CCNEncodableObject(
-			Class<E> type, ContentName name, 
-			PublisherPublicKeyDigest publisher, CCNLibrary library) throws XMLStreamException, IOException {
-		super(type);
-		_library = library;
-		CCNVersionedInputStream is = new CCNVersionedInputStream(name, publisher, library);
-		update(is);
+	public CCNEncodableObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
+			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+		super(type, name, publisher, library);
 	}
 	
 	/**
@@ -87,13 +45,16 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 	 * @param library
 	 * @throws XMLStreamException
 	 * @throws IOException
+	 * @throws ClassNotFoundException 
 	 */
-	public CCNEncodableObject(Class<E> type, ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
-		this(type, name, (PublisherPublicKeyDigest)null, library);
+	public CCNEncodableObject(Class<E> type, ContentName name, 
+			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+		super(type, name, (PublisherPublicKeyDigest)null, library);
 	}
 	
-	public CCNEncodableObject(Class<E> type, ContentName name) throws XMLStreamException, IOException, ConfigurationException {
-		this(type, name, CCNLibrary.open());
+	public CCNEncodableObject(Class<E> type, ContentObject firstBlock,
+			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+		super(type, firstBlock, library);
 	}
 
 	@Override

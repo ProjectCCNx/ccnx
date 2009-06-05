@@ -268,8 +268,9 @@ public class AccessControlManager {
 	 * @throws ConfigurationException 
 	 * @throws IOException 
 	 * @throws XMLStreamException 
+	 * @throws ConfigurationException 
 	 */
-	public ACLObject getEffectiveACLObject(ContentName nodeName) throws XMLStreamException, IOException {
+	public ACLObject getEffectiveACLObject(ContentName nodeName) throws XMLStreamException, IOException, ConfigurationException {
 		
 		// Find the closest node that has a non-gone ACL
 		ACLObject aclo = findAncestorWithACL(nodeName);
@@ -280,7 +281,7 @@ public class AccessControlManager {
 		return aclo;
 	}
 
-	private ACLObject findAncestorWithACL(ContentName dataNodeName) throws XMLStreamException, IOException {
+	private ACLObject findAncestorWithACL(ContentName dataNodeName) throws XMLStreamException, IOException, ConfigurationException {
 
 		ACLObject ancestorACLObject = null;
 		ContentName parentName = dataNodeName;
@@ -311,8 +312,9 @@ public class AccessControlManager {
 	 * @return
 	 * @throws IOException 
 	 * @throws XMLStreamException 
+	 * @throws ConfigurationException 
 	 */
-	public ACLObject getACLObjectForNode(ContentName aclNodeName) throws XMLStreamException, IOException {
+	public ACLObject getACLObjectForNode(ContentName aclNodeName) throws XMLStreamException, IOException, ConfigurationException {
 		
 		// Get the latest version of the acl. We don't care so much about knowing what version it was.
 		ACLObject aclo = new ACLObject(AccessControlProfile.aclName(aclNodeName), _library);
@@ -325,7 +327,7 @@ public class AccessControlManager {
 		return aclo;
 	}
 	
-	public ACLObject getACLObjectForNodeIfExists(ContentName aclNodeName) throws XMLStreamException, IOException {
+	public ACLObject getACLObjectForNodeIfExists(ContentName aclNodeName) throws XMLStreamException, IOException, ConfigurationException {
 		
 		EnumeratedNameList aclNameList = EnumeratedNameList.exists(AccessControlProfile.aclName(aclNodeName), aclNodeName, _library);
 		
@@ -343,7 +345,7 @@ public class AccessControlManager {
 		return null;
 	}
 	
-	public ACL getEffectiveACL(ContentName nodeName) throws XMLStreamException, IOException {
+	public ACL getEffectiveACL(ContentName nodeName) throws XMLStreamException, IOException, ConfigurationException {
 		ACLObject aclo = getEffectiveACLObject(nodeName);
 		if (null != aclo) {
 			return aclo.acl();
@@ -352,6 +354,7 @@ public class AccessControlManager {
 	}
 	
 	/**
+	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException 
 	 * Adds an ACL to a node that doesn't have one, or replaces one that exists.
 	 * Just writes, doesn't bother to look at any current ACL. Does need to pull
@@ -361,7 +364,7 @@ public class AccessControlManager {
 	 * @throws XMLStreamException 
 	 * @throws  
 	 */
-	public ACL setACL(ContentName nodeName, ACL newACL) throws XMLStreamException, IOException, InvalidKeyException {
+	public ACL setACL(ContentName nodeName, ACL newACL) throws XMLStreamException, IOException, InvalidKeyException, ConfigurationException {
 		NodeKey effectiveNodeKey = getEffectiveNodeKey(nodeName);
 		// generates the new node key, wraps it under the new acl, and wraps the old node key
 		generateNewNodeKey(nodeName, effectiveNodeKey, newACL);
@@ -378,11 +381,12 @@ public class AccessControlManager {
 	 * @throws IOException 
 	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
+	 * @throws ConfigurationException 
 	 */
 	public ACL updateACL(ContentName nodeName, 
 						ArrayList<LinkReference> addReaders, ArrayList<LinkReference> removeReaders,
 						ArrayList<LinkReference> addWriters, ArrayList<LinkReference> removeWriters,
-						ArrayList<LinkReference> addManagers, ArrayList<LinkReference> removeManagers) throws XMLStreamException, IOException, InvalidKeyException {
+						ArrayList<LinkReference> addManagers, ArrayList<LinkReference> removeManagers) throws XMLStreamException, IOException, InvalidKeyException, ConfigurationException {
 		
 		ACLObject currentACL = getACLObjectForNodeIfExists(nodeName);
 		ACL newACL = null;
@@ -401,15 +405,15 @@ public class AccessControlManager {
 		return setACL(nodeName, newACL);
 	}
 		
-	public ACL addReaders(ContentName nodeName, ArrayList<LinkReference> newReaders) throws InvalidKeyException, XMLStreamException, IOException {
+	public ACL addReaders(ContentName nodeName, ArrayList<LinkReference> newReaders) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException {
 		return updateACL(nodeName, newReaders, null, null, null, null, null);
 	}
 	
-	public ACL addWriters(ContentName nodeName, ArrayList<LinkReference> newWriters) throws InvalidKeyException, XMLStreamException, IOException {
+	public ACL addWriters(ContentName nodeName, ArrayList<LinkReference> newWriters) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException {
 		return updateACL(nodeName, null, null, newWriters, null, null, null);
 	}
 	
-	public ACL addManagers(ContentName nodeName, ArrayList<LinkReference> newManagers) throws InvalidKeyException, XMLStreamException, IOException {
+	public ACL addManagers(ContentName nodeName, ArrayList<LinkReference> newManagers) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException {
 		return updateACL(nodeName, null, null, null, null, newManagers, null);
 	}
 	
@@ -437,8 +441,9 @@ public class AccessControlManager {
 	 * @throws InvalidKeyException
 	 * @throws InvalidCipherTextException
 	 * @throws XMLStreamException
+	 * @throws ConfigurationException 
 	 */
-	public NodeKey getLatestNodeKeyForNode(ContentName nodeName) throws IOException, InvalidKeyException, InvalidCipherTextException, XMLStreamException {
+	public NodeKey getLatestNodeKeyForNode(ContentName nodeName) throws IOException, InvalidKeyException, InvalidCipherTextException, XMLStreamException, ConfigurationException {
 		
 		// First we need to figure out what the latest version is of the node key.
 		ContentName nodeKeyVersionedName = 
@@ -461,8 +466,9 @@ public class AccessControlManager {
 	 * @throws XMLStreamException 
 	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
+	 * @throws ConfigurationException 
 	 */
-	public NodeKey getSpecificNodeKey(ContentName nodeKeyName, byte [] nodeKeyIdentifier) throws InvalidKeyException, InvalidCipherTextException, XMLStreamException, IOException {
+	public NodeKey getSpecificNodeKey(ContentName nodeKeyName, byte [] nodeKeyIdentifier) throws InvalidKeyException, InvalidCipherTextException, XMLStreamException, IOException, ConfigurationException {
 		
 		if ((null == nodeKeyName) && (null == nodeKeyIdentifier)) {
 			throw new IllegalArgumentException("Node key name and identifier cannot both be null!");
@@ -488,8 +494,9 @@ public class AccessControlManager {
 	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
 	 * @throws InvalidCipherTextException 
+	 * @throws ConfigurationException 
 	 */
-	NodeKey getNodeKeyByVersionedName(ContentName nodeKeyName, byte [] nodeKeyIdentifier) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException {
+	NodeKey getNodeKeyByVersionedName(ContentName nodeKeyName, byte [] nodeKeyIdentifier) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException, ConfigurationException {
 
 		NodeKey nk = null;
 		KeyDirectory keyDirectory = null;
@@ -559,9 +566,10 @@ public class AccessControlManager {
 	 * @throws XMLStreamException 
 	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
+	 * @throws ConfigurationException 
 	 */
 	protected NodeKey getNodeKeyUsingInterposedACL(ContentName dataNodeName,
-			ContentName wrappingKeyName, byte[] wrappingKeyIdentifier) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException {
+			ContentName wrappingKeyName, byte[] wrappingKeyIdentifier) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException, ConfigurationException {
 		ACLObject nearestACL = findAncestorWithACL(dataNodeName);
 		
 		if (null == nearestACL) {
@@ -591,7 +599,7 @@ public class AccessControlManager {
 		
 	}
 	
-	public NodeKey getNodeKeyForObject(ContentName nodeName, WrappedKeyObject wko) throws InvalidKeyException, XMLStreamException, InvalidCipherTextException, IOException {
+	public NodeKey getNodeKeyForObject(ContentName nodeName, WrappedKeyObject wko) throws InvalidKeyException, XMLStreamException, InvalidCipherTextException, IOException, ConfigurationException {
 		
 		// First, we go and look for the node key where the data key suggests
 		// it should be, and attempt to decrypt it from there.
@@ -628,8 +636,9 @@ public class AccessControlManager {
 	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
 	 * @throws InvalidCipherTextException 
+	 * @throws ConfigurationException 
 	 */
-	public byte [] getDataKey(ContentName dataNodeName) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException {
+	public byte [] getDataKey(ContentName dataNodeName) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException, ConfigurationException {
 		WrappedKeyObject wdko = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataNodeName), _library);
 		wdko.update();
 		if (null == wdko.wrappedKey()) {
@@ -656,8 +665,9 @@ public class AccessControlManager {
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
 	 * @throws IOException 
+	 * @throws ConfigurationException 
 	 */
-	public void storeDataKey(ContentName dataNodeName, byte [] newRandomDataKey) throws InvalidKeyException, XMLStreamException, IOException {
+	public void storeDataKey(ContentName dataNodeName, byte [] newRandomDataKey) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException {
 		NodeKey effectiveNodeKey = getEffectiveNodeKey(dataNodeName);
 		if (null == effectiveNodeKey) {
 			throw new IllegalStateException("Cannot retrieve effective node key for node: " + dataNodeName + ".");
@@ -685,8 +695,9 @@ public class AccessControlManager {
 	 * @throws InvalidKeyException 
 	 * @throws XMLStreamException 
 	 * @throws IOException 
+	 * @throws ConfigurationException 
 	 **/
-	public byte [] generateAndStoreDataKey(ContentName dataNodeName) throws InvalidKeyException, XMLStreamException, IOException {
+	public byte [] generateAndStoreDataKey(ContentName dataNodeName) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException {
 		// Generate new random data key of appropriate length
 		byte [] dataKey = new byte[DEFAULT_DATA_KEY_LENGTH];
 		_random.nextBytes(dataKey);
@@ -700,9 +711,10 @@ public class AccessControlManager {
 	 * @param wrappedDataKey
 	 * @throws IOException 
 	 * @throws XMLStreamException 
+	 * @throws ConfigurationException 
 	 */
 	private void storeKeyContent(ContentName dataNodeName,
-								 WrappedKey wrappedKey) throws XMLStreamException, IOException {
+								 WrappedKey wrappedKey) throws XMLStreamException, IOException, ConfigurationException {
 		// DKS FIX FOR REPO
 		WrappedKeyObject wko = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataNodeName), wrappedKey, _library);
 		wko.save();

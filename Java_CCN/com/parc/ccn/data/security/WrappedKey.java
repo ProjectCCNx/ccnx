@@ -62,27 +62,32 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 
 	public static class WrappedKeyObject extends CCNEncodableObject<WrappedKey> {
 
-		public WrappedKeyObject() throws ConfigurationException, IOException {
-			super(WrappedKey.class);
+		public WrappedKeyObject(ContentName name, WrappedKey data, CCNLibrary library) throws ConfigurationException, IOException {
+			super(WrappedKey.class, name, data, library);
 		}
 		
-		public WrappedKeyObject(ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
-			super(WrappedKey.class, name, library);
-		}
-
-		public WrappedKeyObject(ContentName name) throws XMLStreamException, IOException, ConfigurationException {
-			super(WrappedKey.class, name);
-		}
-		public WrappedKeyObject(ContentName name, WrappedKey wrappedKey, CCNLibrary library) {
-			super(WrappedKey.class, name, wrappedKey, library);
-		}
-
-		public WrappedKeyObject(ContentName name, WrappedKey wrappedKey) throws ConfigurationException, IOException {
-			super(WrappedKey.class, name, wrappedKey);
+		public WrappedKeyObject(ContentName name, PublisherPublicKeyDigest publisher,
+				CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+			super(WrappedKey.class, name, publisher, library);
 		}
 		
-		public WrappedKeyObject(ContentObject block, CCNLibrary library) throws XMLStreamException, IOException {
-			super(WrappedKey.class, block, library);
+		/**
+		 * Read constructor -- opens existing object.
+		 * @param type
+		 * @param name
+		 * @param library
+		 * @throws XMLStreamException
+		 * @throws IOException
+		 * @throws ClassNotFoundException 
+		 */
+		public WrappedKeyObject(ContentName name, 
+				CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+			super(WrappedKey.class, name, (PublisherPublicKeyDigest)null, library);
+		}
+		
+		public WrappedKeyObject(ContentObject firstBlock,
+				CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+			super(WrappedKey.class, firstBlock, library);
 		}
 		
 		public WrappedKey wrappedKey() { return data(); }

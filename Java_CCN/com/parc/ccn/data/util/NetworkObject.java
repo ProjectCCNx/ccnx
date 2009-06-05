@@ -36,10 +36,6 @@ public abstract class NetworkObject<E> {
 		_data = data;
 	}
 
-	public NetworkObject() {
-		super();
-	}
-
 	protected E factory() throws IOException {
 		E newE;
 		try {

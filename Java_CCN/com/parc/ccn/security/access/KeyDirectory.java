@@ -16,6 +16,7 @@ import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.bouncycastle.util.Arrays;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.content.LinkReference;
@@ -137,7 +138,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		_principals.put(pair.fst, pair.snd);
 	}
 	
-	public WrappedKeyObject getWrappedKeyForKeyID(byte [] keyID) throws XMLStreamException, IOException {
+	public WrappedKeyObject getWrappedKeyForKeyID(byte [] keyID) throws XMLStreamException, IOException, ConfigurationException {
 		if (!_keyIDs.contains(keyID)) {
 			return null;
 		}
@@ -149,7 +150,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		return new ContentName(_namePrefix, AccessControlProfile.targetKeyIDToNameComponent(keyID));
 	}
 	
-	public WrappedKeyObject getWrappedKeyForPrincipal(String principalName) throws IOException, XMLStreamException {
+	public WrappedKeyObject getWrappedKeyForPrincipal(String principalName) throws IOException, XMLStreamException, ConfigurationException {
 		
 		if (!_principals.containsKey(principalName)) {
 			return null;
@@ -194,14 +195,15 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @return
 	 * @throws XMLStreamException
 	 * @throws IOException
+	 * @throws ConfigurationException 
 	 */
-	public WrappedKeyObject getSupersededWrappedKey() throws XMLStreamException, IOException {
+	public WrappedKeyObject getSupersededWrappedKey() throws XMLStreamException, IOException, ConfigurationException {
 		if (!hasSupersededBlock())
 			return null;
 		return getWrappedKey(getSupersededBlockName());
 	}
 	
-	WrappedKeyObject getWrappedKey(ContentName wrappedKeyName) throws XMLStreamException, IOException {
+	WrappedKeyObject getWrappedKey(ContentName wrappedKeyName) throws XMLStreamException, IOException, ConfigurationException {
 		WrappedKeyObject wrappedKey = new WrappedKeyObject(wrappedKeyName, _manager.library());
 		wrappedKey.update();
 		return wrappedKey;		
@@ -253,7 +255,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		return ContentName.fromNative(_namePrefix, AccessControlProfile.GROUP_PRIVATE_KEY_NAME);
 	}
 	
-	public WrappedKeyObject getPrivateKeyObject() throws IOException, XMLStreamException {
+	public WrappedKeyObject getPrivateKeyObject() throws IOException, XMLStreamException, ConfigurationException {
 		if (!hasPrivateKeyBlock())
 			return null;
 		
@@ -270,8 +272,9 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws XMLStreamException 
 	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
+	 * @throws ConfigurationException 
 	 */
-	public Key getUnwrappedKey(byte [] expectedKeyID) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException {
+	public Key getUnwrappedKey(byte [] expectedKeyID) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException, ConfigurationException {
 		
 		WrappedKeyObject wko = null;
 		Key unwrappedKey = null;
@@ -390,7 +393,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 		
 	protected Key unwrapKeyForPrincipal(String principal, Key unwrappingKey) 
-			throws IOException, XMLStreamException, InvalidKeyException, InvalidCipherTextException {
+			throws IOException, XMLStreamException, InvalidKeyException, InvalidCipherTextException, ConfigurationException {
 		
 		Key unwrappedKey = null;
 		if (null == unwrappingKey) {
@@ -416,9 +419,10 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws InvalidKeyException
 	 * @throws InvalidCipherTextException
 	 * @throws AccessDeniedException 
+	 * @throws ConfigurationException 
 	 */
 	public PrivateKey getPrivateKey() throws IOException, XMLStreamException, 
-				InvalidKeyException, InvalidCipherTextException, AccessDeniedException {
+				InvalidKeyException, InvalidCipherTextException, AccessDeniedException, ConfigurationException {
 		if (!hasPrivateKeyBlock()) {
 			Library.logger().info("No private key block exists with name " + getPrivateKeyBlockName());
 			return null;
@@ -455,9 +459,10 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws XMLStreamException
 	 * @throws IOException
 	 * @throws InvalidKeyException
+	 * @throws ConfigurationException 
 	 */
 	public void addWrappedKeyBlock(Key privateKeyWrappingKey, 
-								   ContentName publicKeyName, PublicKey publicKey) throws VersionMissingException, XMLStreamException, IOException, InvalidKeyException {
+								   ContentName publicKeyName, PublicKey publicKey) throws VersionMissingException, XMLStreamException, IOException, InvalidKeyException, ConfigurationException {
 		WrappedKey wrappedKey = WrappedKey.wrapKey(privateKeyWrappingKey, null, null, publicKey);
 		wrappedKey.setWrappingKeyIdentifier(publicKey);
 		wrappedKey.setWrappingKeyName(publicKeyName);
@@ -469,7 +474,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		lo.save();
 	}
 
-	public void addPrivateKeyBlock(PrivateKey privateKey, Key privateKeyWrappingKey) throws InvalidKeyException, XMLStreamException, IOException {
+	public void addPrivateKeyBlock(PrivateKey privateKey, Key privateKeyWrappingKey) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException {
 		
 		WrappedKey wrappedKey = WrappedKey.wrapKey(privateKey, null, null, privateKeyWrappingKey);	
 		wrappedKey.setWrappingKeyIdentifier(privateKeyWrappingKey);
@@ -478,7 +483,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 
 	public void addSupersededByBlock(Key oldPrivateKeyWrappingKey,
-			ContentName supersedingKeyName, Key newPrivateKeyWrappingKey) throws XMLStreamException, IOException, InvalidKeyException {
+			ContentName supersedingKeyName, Key newPrivateKeyWrappingKey) throws XMLStreamException, IOException, InvalidKeyException, ConfigurationException {
 		
 		WrappedKey wrappedKey = WrappedKey.wrapKey(oldPrivateKeyWrappingKey, null, null, newPrivateKeyWrappingKey);
 		wrappedKey.setWrappingKeyIdentifier(newPrivateKeyWrappingKey);
@@ -487,7 +492,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		wko.save();
 	}
 	
-	public void addPreviousKeyLink(ContentName previousKey, PublisherID previousKeyPublisher) throws XMLStreamException, IOException {
+	public void addPreviousKeyLink(ContentName previousKey, PublisherID previousKeyPublisher) throws XMLStreamException, IOException, ConfigurationException {
 		
 		if (hasPreviousKeyBlock()) {
 			Library.logger().warning("Unexpected, already have previous key block : " + getPreviousKeyBlockName());
@@ -498,7 +503,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	public void addPreviousKeyBlock(Key oldPrivateKeyWrappingKey,
-									ContentName supersedingKeyName, Key newPrivateKeyWrappingKey) throws InvalidKeyException, XMLStreamException, IOException {
+									ContentName supersedingKeyName, Key newPrivateKeyWrappingKey) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException {
 		
 		WrappedKey wrappedKey = WrappedKey.wrapKey(oldPrivateKeyWrappingKey, null, null, newPrivateKeyWrappingKey);
 		wrappedKey.setWrappingKeyIdentifier(newPrivateKeyWrappingKey);

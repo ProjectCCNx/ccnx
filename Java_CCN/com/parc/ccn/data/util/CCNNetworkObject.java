@@ -7,10 +7,12 @@ import java.util.ArrayList;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
@@ -46,33 +48,40 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	Interest _currentInterest = null;
 	boolean _continuousUpdates = false;
 
-	public CCNNetworkObject(Class<E> type) {
-		super(type);
-	}
-
-	public CCNNetworkObject(Class<E> type, E data) {
+	public CCNNetworkObject(Class<E> type, ContentName name, E data, CCNLibrary library) throws ConfigurationException, IOException {
 		super(type, data);
-	}
-
-	public CCNNetworkObject(Class<E> type, CCNLibrary library) {
-		this(type);
-		_library = library;
+		_library = (null == library) ? CCNLibrary.open() : library;
 		_flowControl = new CCNFlowControl(_library);
-	}
-
-	public CCNNetworkObject(Class<E> type, ContentName name, E data, CCNLibrary library) {
-		this(type, data);
 		_currentName = name;
-		_library = library;
-		_flowControl = new CCNFlowControl(name, _library);
+	}
+	
+	public CCNNetworkObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
+							CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+		super(type);
+		_library = (null == library) ? CCNLibrary.open() : library;
+		_flowControl = new CCNFlowControl(_library);
+		update(name, publisher);
 	}
 
+	public CCNNetworkObject(Class<E> type, ContentName name, 
+			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+		this(type, name, (PublisherPublicKeyDigest)null, library);
+	}
+	
+	public CCNNetworkObject(Class<E> type, ContentObject firstBlock,
+			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+		super(type);
+		_library = (null == library) ? CCNLibrary.open() : library;
+		_flowControl = new CCNFlowControl(_library);
+		update(firstBlock);
+	}
+	
 	public void update() throws XMLStreamException, IOException {
 		if (null == _currentName) {
 			throw new IllegalStateException("Cannot retrieve an object without giving a name!");
 		}
 		// Look for latest version.
-		update(VersioningProfile.versionRoot(_currentName));
+		update(VersioningProfile.versionRoot(_currentName), null);
 	}
 
 	/**
@@ -84,9 +93,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws XMLStreamException 
 	 * @throws ClassNotFoundException 
 	 */
-	public void update(ContentName name) throws XMLStreamException, IOException {
+	public void update(ContentName name, PublisherPublicKeyDigest publisher) throws XMLStreamException, IOException {
 		Library.logger().info("Updating object to " + name);
-		CCNVersionedInputStream is = new CCNVersionedInputStream(name, _library);
+		CCNVersionedInputStream is = new CCNVersionedInputStream(name, publisher, _library);
 		update(is);
 	}
 
@@ -314,7 +323,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
     					update(co);
     				} else {
     					// Have a later segment. Caching problem. Go back for first segment.
-    					update(SegmentationProfile.segmentRoot(co.name()));
+    					update(SegmentationProfile.segmentRoot(co.name()), co.signedInfo().getPublisherKeyID());
     				}
     				_excludeList.clear();
     				_currentInterest = null;

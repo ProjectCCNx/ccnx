@@ -8,6 +8,7 @@ import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.LinkAuthenticator;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.util.CCNEncodableObject;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
@@ -32,27 +33,32 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable {
 	
 	public static class LinkObject extends CCNEncodableObject<LinkReference> {
 
-		public LinkObject() throws ConfigurationException, IOException {
-			super(LinkReference.class);
+		public LinkObject(ContentName name, LinkReference data, CCNLibrary library) throws ConfigurationException, IOException {
+			super(LinkReference.class, name, data, library);
 		}
 		
-		public LinkObject(ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
-			super(LinkReference.class, name, library);
-		}
-
-		public LinkObject(ContentName name) throws XMLStreamException, IOException, ConfigurationException {
-			super(LinkReference.class, name);
-		}
-		public LinkObject(ContentName name, LinkReference linkReference, CCNLibrary library) {
-			super(LinkReference.class, name, linkReference, library);
-		}
-
-		public LinkObject(ContentName name, LinkReference linkReference) throws ConfigurationException, IOException {
-			super(LinkReference.class, name, linkReference);
+		public LinkObject(ContentName name, PublisherPublicKeyDigest publisher,
+				CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+			super(LinkReference.class, name, publisher, library);
 		}
 		
-		public LinkObject(ContentObject block, CCNLibrary library) throws XMLStreamException, IOException {
-			super(LinkReference.class, block, library);
+		/**
+		 * Read constructor -- opens existing object.
+		 * @param type
+		 * @param name
+		 * @param library
+		 * @throws XMLStreamException
+		 * @throws IOException
+		 * @throws ClassNotFoundException 
+		 */
+		public LinkObject(ContentName name, 
+				CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+			super(LinkReference.class, name, (PublisherPublicKeyDigest)null, library);
+		}
+		
+		public LinkObject(ContentObject firstBlock,
+				CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+			super(LinkReference.class, firstBlock, library);
 		}
 		
 		public LinkReference link() { return data(); }

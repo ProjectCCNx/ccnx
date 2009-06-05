@@ -21,51 +21,17 @@ import com.parc.ccn.library.CCNLibrary;
  */
 public class CCNEncodableCollectionData extends CCNEncodableObject<CollectionData> {
 
-	public CCNEncodableCollectionData(CCNLibrary library) {
-		super(CollectionData.class, library);
-	}
-	
-	public CCNEncodableCollectionData() throws ConfigurationException, IOException {
-		super(CollectionData.class);
-	}
-
-	public CCNEncodableCollectionData(ContentName name, CollectionData data, CCNLibrary library) {
+	public CCNEncodableCollectionData(ContentName name, CollectionData data, CCNLibrary library) throws ConfigurationException, IOException {
 		super(CollectionData.class, name, data, library);
 	}
-
-	public CCNEncodableCollectionData(CollectionData data, CCNLibrary library) {
-		super(CollectionData.class, data, library);
+	
+	public CCNEncodableCollectionData(ContentName name, PublisherPublicKeyDigest publisher,
+			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+		super(CollectionData.class, name, publisher, library);
 	}
 	
-	public CCNEncodableCollectionData(CollectionData data) throws ConfigurationException, IOException {
-		super(CollectionData.class, data);
-	}
-
-	public CCNEncodableCollectionData(ContentName name, CollectionData data) throws ConfigurationException, IOException {
-		super(CollectionData.class, name, data);
-	}
 	/**
-	 * Construct an object from stored CCN data.
-	 * @param type
-	 * @param content The object to recover, or one of its fragments.
-	 * @param library
-	 * @throws XMLStreamException
-	 * @throws IOException
-	 * @throws ClassNotFoundException 
-	 */
-	public CCNEncodableCollectionData(ContentObject content, CCNLibrary library) throws XMLStreamException, IOException, ClassNotFoundException {
-		super(CollectionData.class, content, library);
-	}
-	
-	public CCNEncodableCollectionData(ContentObject content) throws XMLStreamException, IOException {
-		super(CollectionData.class, content, null);
-	}
-
-	/**
-	 * Ambiguous. Are we supposed to pull this object based on its name,
-	 *   or merely attach the name to the object which we will then construct
-	 *   and save. Let's assume the former, and allow the name to be specified
-	 *   for save() for the latter.
+	 * Read constructor -- opens existing object.
 	 * @param type
 	 * @param name
 	 * @param library
@@ -73,15 +39,13 @@ public class CCNEncodableCollectionData extends CCNEncodableObject<CollectionDat
 	 * @throws IOException
 	 * @throws ClassNotFoundException 
 	 */
-	public CCNEncodableCollectionData(ContentName name, PublisherPublicKeyDigest publisher, CCNLibrary library) throws XMLStreamException, IOException {
-		super(CollectionData.class, name, publisher, library);
+	public CCNEncodableCollectionData(ContentName name, 
+			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+		super(CollectionData.class, name, (PublisherPublicKeyDigest)null, library);
 	}
 	
-	public CCNEncodableCollectionData(ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
-		super(CollectionData.class, name, library);
-	}
-
-	public CCNEncodableCollectionData(ContentName name) throws XMLStreamException, IOException, ConfigurationException {
-		super(CollectionData.class, name);
+	public CCNEncodableCollectionData(ContentObject firstBlock,
+			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+		super(CollectionData.class, firstBlock, library);
 	}
 }

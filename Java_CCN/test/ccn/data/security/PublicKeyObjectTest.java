@@ -116,7 +116,7 @@ public class PublicKeyObjectTest {
 		pko.save();
 		Assert.assertTrue(VersioningProfile.isVersioned(pko.getName()));
 		// should update in another thread
-		PublicKeyObject pkoread = new PublicKeyObject(keyName); // new library
+		PublicKeyObject pkoread = new PublicKeyObject(keyName, null); // new library
 		Assert.assertTrue(pkoread.ready());
 		Assert.assertEquals(pkoread.getName(), pko.getName());
 		if (!pkoread.publicKey().equals(pko.publicKey())) {

@@ -129,7 +129,7 @@ public class CCNEncodableObjectTest {
 	@Test
 	public void testSaveUpdate() throws ConfigurationException, IOException, XMLStreamException, MalformedContentNameStringException {
 		boolean caught = false;
-		CCNEncodableCollectionData emptycoll = new CCNEncodableCollectionData();
+		CCNEncodableCollectionData emptycoll = new CCNEncodableCollectionData(namespace, empty, null);
 		NullOutputStream nos = new NullOutputStream();
 		try {
 			emptycoll.save(nos);
@@ -140,8 +140,8 @@ public class CCNEncodableObjectTest {
 		Assert.assertTrue("Failed to produce expected exception.", caught);
 		
 		CCNEncodableCollectionData ecd0 = new CCNEncodableCollectionData(namespace, empty, library);
-		CCNEncodableCollectionData ecd1 = new CCNEncodableCollectionData(namespace, small1);
-		CCNEncodableCollectionData ecd2 = new CCNEncodableCollectionData(namespace, small1);
+		CCNEncodableCollectionData ecd1 = new CCNEncodableCollectionData(namespace, small1, null);
+		CCNEncodableCollectionData ecd2 = new CCNEncodableCollectionData(namespace, small1, null);
 		CCNEncodableCollectionData ecd3 = new CCNEncodableCollectionData(namespace, big, library);
 		CCNEncodableCollectionData ecd4 = new CCNEncodableCollectionData(namespace, empty, library);
 
@@ -195,7 +195,7 @@ public class CCNEncodableObjectTest {
 		newData2.decode(vis2);
 		System.out.println("Decoded collection data from stream: " + newData);
 
-		ecd0.update(ecd1.getName());
+		ecd0.update(ecd1.getName(), null);
 		Assert.assertEquals(ecd0, ecd1);
 		System.out.println("Update works!");
 		// latest version
@@ -205,7 +205,7 @@ public class CCNEncodableObjectTest {
 
 		ecd3.save(ns[2]);
 		ecd0.update();
-		ecd4.update(ns[2]);
+		ecd4.update(ns[2], null);
 		System.out.println("ns[2]: " + ns[2]);
 		System.out.println("ecd3 name: " + ecd3.getName());
 		System.out.println("ecd0 name: " + ecd0.getName());

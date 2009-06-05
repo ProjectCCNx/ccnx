@@ -54,7 +54,7 @@ public class GroupManager {
 		return _groupList;
 	}
 	
-	public Group getGroup(String groupFriendlyName) throws IOException {
+	public Group getGroup(String groupFriendlyName) throws IOException, ConfigurationException, XMLStreamException {
 		Group theGroup = _groupCache.get(groupFriendlyName);
 		if ((null == theGroup) && (groupList().hasChild(groupFriendlyName))) {
 			// Only go hunting for it if we think it exists, otherwise we'll block.
@@ -127,7 +127,7 @@ public class GroupManager {
 		return modifyGroup(friendlyName, null, removedUsers);
 	}
 	
-	public void deleteGroup(String friendlyName) throws IOException {
+	public void deleteGroup(String friendlyName) throws IOException, ConfigurationException, XMLStreamException {
 		Group existingGroup = getGroup(friendlyName);
 		
 		// DKS we really want to be sure we get the group if it's out there...
@@ -161,7 +161,7 @@ public class GroupManager {
 		return _myGroupMemberships.contains(principal);
 	}
 
-	public boolean amCurrentGroupMember(String principal) throws IOException, XMLStreamException {
+	public boolean amCurrentGroupMember(String principal) throws IOException, XMLStreamException, ConfigurationException {
 		return amCurrentGroupMember(getGroup(principal));
 	}
 	
@@ -171,8 +171,9 @@ public class GroupManager {
 	 * @return
 	 * @throws IOException 
 	 * @throws XMLStreamException 
+	 * @throws ConfigurationException 
 	 */
-	public boolean amCurrentGroupMember(Group group) throws IOException, XMLStreamException {
+	public boolean amCurrentGroupMember(Group group) throws IOException, XMLStreamException, ConfigurationException {
 		MembershipList ml = group.membershipList(); // will update
 		for (LinkReference lr : ml.membershipList().contents()) {
 			if (isGroup(lr)) {
@@ -205,8 +206,9 @@ public class GroupManager {
 	 * @throws AccessDeniedException 
 	 * @throws InvalidKeyException 
 	 * @throws AccessDeniedException 
+	 * @throws ConfigurationException 
 	 */
-	public PrivateKey getGroupPrivateKey(String groupFriendlyName, Timestamp privateKeyVersion) throws InvalidKeyException, InvalidCipherTextException, IOException, XMLStreamException, AccessDeniedException {
+	public PrivateKey getGroupPrivateKey(String groupFriendlyName, Timestamp privateKeyVersion) throws InvalidKeyException, InvalidCipherTextException, IOException, XMLStreamException, AccessDeniedException, ConfigurationException {
 		// Heuristic check
 		if (!amKnownGroupMember(groupFriendlyName)) {
 			Library.logger().info("Unexpected: we don't think we're a group member of group " + groupFriendlyName);
@@ -264,7 +266,7 @@ public class GroupManager {
 	// TODO should throw access denied?
 	protected Key getVersionedPrivateKeyForGroup(KeyDirectory keyDirectory, String principal) 
 			throws IOException, InvalidKeyException, AccessDeniedException, InvalidCipherTextException, 
-					XMLStreamException {
+					XMLStreamException, ConfigurationException {
 		Key privateKey = getGroupPrivateKey(principal, keyDirectory.getPrincipals().get(principal));
 		if (null == privateKey) {
 			Library.logger().info("Unexpected: we beleive we are a member of group " + principal + " but cannot retrieve private key version: " + keyDirectory.getPrincipals().get(principal) + " our membership revoked?");
