@@ -11,6 +11,7 @@ import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.io.CCNFileOutputStream;
 import com.parc.ccn.library.io.CCNOutputStream;
 import com.parc.ccn.library.io.repo.RepositoryFileOutputStream;
 import com.parc.ccn.library.profiles.VersioningProfile;
@@ -84,11 +85,13 @@ public class put_file {
 					// int version = new Random().nextInt(1000);
 					// would be version = library.latestVersion(argName) + 1;
 					CCNOutputStream ostream;
-					ContentName versionedNodeName = VersioningProfile.versionName(nodeName);
+					// Both forms of file output stream handle automatic versioning of unversioned names.
+					// Use file stream in both cases to match behavior. CCNOutputStream doesn't do
+					// versioning and neither it nor CCNVersionedOutputStream add headers.
 					if (rawMode)
-						ostream = new CCNOutputStream(versionedNodeName, library);
+						ostream = new CCNFileOutputStream(nodeName, library);
 					else
-						ostream = new RepositoryFileOutputStream(versionedNodeName, library);
+						ostream = new RepositoryFileOutputStream(nodeName, library);
 					do_write(ostream, theFile);
 					
 					System.out.println("Inserted file " + args[i] + ".");
