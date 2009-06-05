@@ -684,6 +684,7 @@ shutdown_client_fd(struct ccnd *h, int fd)
     hashtb_delete(e);
     hashtb_end(e);
     check_comm_file(h);
+    reap_needed(h, 250000);
 }
 
 static void
@@ -1074,6 +1075,29 @@ check_dgram_faces(struct ccnd *h)
 }
 
 /*
+ * Remove expired faces from npe->forward_to
+ */
+static void
+check_forward_to(struct ccnd *h, struct nameprefix_entry *npe)
+{
+    struct ccn_indexbuf *ft = npe->forward_to;
+    int i;
+    int j;
+    if (ft == NULL)
+        return;
+    for (i = 0; i < ft->n; i++)
+        if (face_from_faceid(h, ft->buf[i]) == NULL)
+            break;
+    for (j = i + 1; j < ft->n; j++)
+        if (face_from_faceid(h, ft->buf[j]) != NULL)
+            ft->buf[i++] = ft->buf[j];
+    if (i == 0)
+        ccn_indexbuf_destroy(&npe->forward_to);
+    else if (i < ft->n)
+        ft->n = i;
+}
+
+/*
  * This checks for expired propagating interests.
  * Returns number that have gone away.
  * Also ages src info and retires unused nameprefix entries.
@@ -1102,7 +1126,9 @@ check_propagating(struct ccnd *h)
     hashtb_end(e);
     hashtb_start(h->nameprefix_tab, e);
     for (npe = e->data; npe != NULL; npe = e->data) {
-        if (npe->src == ~0) {
+        if (npe->forward_to != NULL)
+            check_forward_to(h, npe);
+        if (npe->src == ~0 && npe->forward_to == NULL) {
             head = npe->propagating_head;
             if ((head == NULL || head == head->next)) {
                 hashtb_delete(e);
