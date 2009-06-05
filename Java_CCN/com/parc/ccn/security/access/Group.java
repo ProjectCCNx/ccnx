@@ -82,9 +82,10 @@ public class Group {
 	 * @throws ConfigurationException 
 	 * @throws IOException 
 	 * @throws XMLStreamException 
+	 * @throws InvalidKeyException 
 	 */
 	Group(ContentName namespace, String groupFriendlyName, MembershipList members, 
-					CCNLibrary library, AccessControlManager manager) throws XMLStreamException, IOException, ConfigurationException {
+					CCNLibrary library, GroupManager manager) throws XMLStreamException, IOException, ConfigurationException, InvalidKeyException {
 		this(namespace, groupFriendlyName, members, null, library);
 		createGroupPublicKey(manager, members);
 	}
@@ -154,7 +155,7 @@ public class Group {
 		return null;
 	}
 
-	public void setMembershipList(AccessControlManager manager,
+	public void setMembershipList(GroupManager manager,
 								  Collection<LinkReference> newMembers) 
 					throws XMLStreamException, IOException, 
 						InvalidKeyException, InvalidCipherTextException, AccessDeniedException, ConfigurationException {
@@ -168,8 +169,8 @@ public class Group {
 		}
 	}
 	
-	public void newGroupPublicKey(AccessControlManager manager, MembershipList ml) throws AccessDeniedException, IOException, XMLStreamException, InvalidKeyException, InvalidCipherTextException, ConfigurationException {
-		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(manager);
+	public void newGroupPublicKey(GroupManager manager, MembershipList ml) throws AccessDeniedException, IOException, XMLStreamException, InvalidKeyException, InvalidCipherTextException, ConfigurationException {
+		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(manager.getAccessManager());
 		Key oldPrivateKeyWrappingKey = oldPrivateKeyDirectory.getUnwrappedKey(null);
 		if (null == oldPrivateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have acces rights to private key for group " + friendlyName());
@@ -198,8 +199,11 @@ public class Group {
 	 * @throws IOException 
 	 * @throws XMLStreamException 
 	 * @throws ConfigurationException 
+	 * @throws InvalidKeyException 
+	 * @throws InvalidKeyException 
 	 */
-	public Key createGroupPublicKey(AccessControlManager manager, MembershipList ml) throws XMLStreamException, IOException, ConfigurationException {
+	public Key createGroupPublicKey(GroupManager manager, MembershipList ml) 
+			throws XMLStreamException, IOException, ConfigurationException, InvalidKeyException {
 		
 		KeyPairGenerator kpg = null;
 		try {
@@ -215,17 +219,23 @@ public class Group {
 		KeyPair pair = kpg.generateKeyPair();
 		
 		_groupPublicKey.save(pair.getPublic());
-		KeyDirectory newPrivateKeyDirectory = privateKeyDirectory(manager); // takes from new public key
+		KeyDirectory newPrivateKeyDirectory = privateKeyDirectory(manager.getAccessManager()); // takes from new public key
 		
 		Key privateKeyWrappingKey = WrappedKey.generateNonceKey();
 		
-		// write the private key
-		newPrivateKeyDirectory.addPrivateKeyBlock(pair.getPrivate(), privateKeyWrappingKey);
+		try {
+			// write the private key
+			newPrivateKeyDirectory.addPrivateKeyBlock(pair.getPrivate(), privateKeyWrappingKey);
+		} catch (InvalidKeyException e) {
+			Library.logger().warning("Unexpected -- InvalidKeyException wrapping key with keys we just generated! " + e.getMessage());
+			throw e;
+		}
 		
+		PublicKeyObject latestPublicKey = null;
 		for (LinkReference lr : ml.membershipList().contents()) {
 			try {
 				// DKS TODO verify target public key against publisher, etc in link
-				PublicKeyObject latestPublicKey = new PublicKeyObject(lr.targetName(), _library);
+				latestPublicKey = new PublicKeyObject(lr.targetName(), _library);
 				if (!latestPublicKey.ready()) {
 					Library.logger().warning("Could not retrieve public key for " + lr.targetName() + ". Gone? " + latestPublicKey.isGone());
 					continue;
@@ -237,6 +247,8 @@ public class Group {
 						latestPublicKey.publicKey());
 			} catch (XMLStreamException e) {
 				Library.logger().warning("Could not retrieve public key for principal " + lr.targetName() + ", skipping.");
+			} catch (VersionMissingException e) {
+				Library.logger().warning("Unexpected: public key name not versioned! " + latestPublicKey.getName() + ", unable to retrieve principal's public key. Skipping.");
 			}
 		}
 		return privateKeyWrappingKey;
@@ -254,22 +266,24 @@ public class Group {
 	 * @throws AccessDeniedException if we can't get the private key to rewrap. 
 	 * 		TODO also check write access list.
 	 */
-	public void updateGroupPublicKey(AccessControlManager manager, 
+	public void updateGroupPublicKey(GroupManager manager, 
 									 Collection<LinkReference> membersToAdd) 
 				throws IOException, InvalidKeyException, InvalidCipherTextException, XMLStreamException, AccessDeniedException {
 		
 		if ((null == membersToAdd) || (membersToAdd.size() == 0))
 			return;
 		
-		KeyDirectory privateKeyDirectory = privateKeyDirectory(manager);
+		KeyDirectory privateKeyDirectory = privateKeyDirectory(manager.getAccessManager());
 		Key privateKeyWrappingKey = privateKeyDirectory.getUnwrappedKey(null);
 		if (null == privateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have acces rights to private key for group " + friendlyName());
 		}
+		
+		PublicKeyObject latestPublicKey = null;
 		for (LinkReference lr : membersToAdd) {
 			try {
 				// DKS TODO verify target public key against publisher, etc in link
-				PublicKeyObject latestPublicKey = new PublicKeyObject(lr.targetName(), _library);
+				latestPublicKey = new PublicKeyObject(lr.targetName(), _library);
 				if (!latestPublicKey.ready()) {
 					Library.logger().warning("Could not retrieve public key for " + lr.targetName() + ". Gone? " + latestPublicKey.isGone());
 					continue;
@@ -281,6 +295,8 @@ public class Group {
 						latestPublicKey.publicKey());
 			} catch (XMLStreamException e) {
 				Library.logger().warning("Could not retrieve public key for principal " + lr.targetName() + ", skipping.");
+			} catch (VersionMissingException e) {
+				Library.logger().warning("Unexpected: public key name not versioned! " + latestPublicKey.getName() + ", unable to retrieve principal's public key. Skipping.");
 			}
 		}
 	}
@@ -312,7 +328,7 @@ public class Group {
 		return sb.toString();
 	}
 
-	public void modify(AccessControlManager manager,
+	public void modify(GroupManager manager,
 					   Collection<LinkReference> membersToAdd,
 					   Collection<LinkReference> membersToRemove) 
 				throws XMLStreamException, IOException, InvalidKeyException, 

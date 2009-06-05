@@ -329,9 +329,9 @@ public class KeyDirectory extends EnumeratedNameList {
 				// Groups may come in three types: ones I know I am a member of, but don't have this
 				// particular key version for, ones I don't know anything about, and ones I believe
 				// I'm not a member of but someone might have added me.
-				if (_manager.haveKnownGroupMemberships()) {
+				if (_manager.groupManager().haveKnownGroupMemberships()) {
 					for (String principal : getPrincipals().keySet()) {
-						if ((!_manager.isGroup(principal)) || (!_manager.amKnownGroupMember(principal))) {
+						if ((!_manager.groupManager().isGroup(principal)) || (!_manager.groupManager().amKnownGroupMember(principal))) {
 							// On this pass, only do groups that I think I'm a member of. Do them
 							// first as it is likely faster.
 							continue;
@@ -339,7 +339,7 @@ public class KeyDirectory extends EnumeratedNameList {
 						// I know I am a member of this group, or at least I was last time I checked.
 						// Attempt to get this version of the group private key as I don't have it in my cache.
 						try {
-							Key principalKey = _manager.getVersionedPrivateKeyForGroup(this, principal);
+							Key principalKey = _manager.groupManager().getVersionedPrivateKeyForGroup(this, principal);
 							unwrappedKey = unwrapKeyForPrincipal(principal, principalKey);
 							if (null == unwrappedKey)
 								continue;
@@ -353,13 +353,13 @@ public class KeyDirectory extends EnumeratedNameList {
 					// OK, we don't have any groups we know we are a member of. Do the other ones.
 					// Slower, as we crawl the groups tree.
 					for (String principal : getPrincipals().keySet()) {
-						if ((!_manager.isGroup(principal)) || (_manager.amKnownGroupMember(principal))) {
+						if ((!_manager.groupManager().isGroup(principal)) || (_manager.groupManager().amKnownGroupMember(principal))) {
 							// On this pass, only do groups that I don't think I'm a member of
 							continue;
 						}
-						if (_manager.amCurrentGroupMember(principal)) {
+						if (_manager.groupManager().amCurrentGroupMember(principal)) {
 							try {
-								Key principalKey = _manager.getVersionedPrivateKeyForGroup(this, principal);
+								Key principalKey = _manager.groupManager().getVersionedPrivateKeyForGroup(this, principal);
 								unwrappedKey = unwrapKeyForPrincipal(principal, principalKey);
 								if (null == unwrappedKey) {
 									Library.logger().warning("Unexpected: we are a member of group " + principal + " but get a null key.");
@@ -497,7 +497,13 @@ public class KeyDirectory extends EnumeratedNameList {
 		pklo.save();
 	}
 	
-	public void addPreviousKeyBlock() {
+	public void addPreviousKeyBlock(Key oldPrivateKeyWrappingKey,
+									ContentName supersedingKeyName, Key newPrivateKeyWrappingKey) throws InvalidKeyException, XMLStreamException, IOException {
 		
+		WrappedKey wrappedKey = WrappedKey.wrapKey(oldPrivateKeyWrappingKey, null, null, newPrivateKeyWrappingKey);
+		wrappedKey.setWrappingKeyIdentifier(newPrivateKeyWrappingKey);
+		wrappedKey.setWrappingKeyName(supersedingKeyName);
+		WrappedKeyObject wko = new WrappedKeyObject(getPreviousKeyBlockName(), wrappedKey, _manager.library());
+		wko.save();
 	}
 }
