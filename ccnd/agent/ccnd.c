@@ -574,6 +574,7 @@ finalize_nameprefix(struct hashtb_enumerator *e)
         free(entry->propagating_head);
         entry->propagating_head = NULL;
     }
+    ccn_indexbuf_destroy(&entry->forward_to);
 }
 
 static void
@@ -802,69 +803,6 @@ Bail:
     return(0);
 }
 
-/*
- * Returns index at which the element was found or added,
- * or -1 in case of error.
- */
-static int
-indexbuf_unordered_set_insert(struct ccn_indexbuf *x, size_t val)
-{
-    int i;
-    if (x == NULL)
-        return (-1);
-    for (i = 0; i < x->n; i++)
-        if (x->buf[i] == val)
-            return(i);
-    if (ccn_indexbuf_append_element(x, val) < 0)
-        return(-1);
-    return(i);
-}
-
-/*
- * Returns index at which the element was found,
- * or -1 if the element was not found.
- */
-static int
-indexbuf_unordered_set_remove(struct ccn_indexbuf *x, size_t val)
-{
-    int i;
-    int n;
-    if (x == NULL)
-        return (-1);
-    for (i = 0, n = x->n; i < n; i++) {
-        if (x->buf[i] == val) {
-            if (i + 1 < n)
-                memmove(&(x->buf[i]),
-                        &(x->buf[i + 1]),
-                        sizeof(x->buf[i]) * (n - i - 1));
-            x->n--;
-            return(i);
-        }
-    }
-    return(-1);
-}
-
-/*
- * If val is present in the indexbuf, move it to the final place.
- */
-static void
-indexbuf_move_to_end(struct ccn_indexbuf *x, size_t val)
-{
-    int i;
-    int n;
-    if (x == NULL)
-        return;
-    for (i = 0, n = x->n; i + 1 < n; i++) {
-        if (x->buf[i] == val) {
-            memmove(&(x->buf[i]),
-                    &(x->buf[i + 1]),
-                    sizeof(x->buf[i]) * (n - i - 1));
-            x->buf[n - 1] = val;
-            return;
-        }
-    }
-}
-
 static int
 face_send_queue_insert(struct ccnd *h, struct face *face, struct content_entry *content)
 {
@@ -880,7 +818,7 @@ face_send_queue_insert(struct ccnd *h, struct face *face, struct content_entry *
     q = face->q[c];
     if (q == NULL)
         return(-1);
-    ans = indexbuf_unordered_set_insert(q->send_queue, content->accession);
+    ans = ccn_indexbuf_set_insert(q->send_queue, content->accession);
     if (q->sender == NULL) {
         delay = randomize_content_delay(h, q->usec);
         q->ready = q->send_queue->n;
@@ -1083,7 +1021,7 @@ ccn_stuff_interest(struct ccnd *h, struct face *face, struct ccn_charbuf *c)
                       ((p->flags & (CCN_PR_STUFFED1 | CCN_PR_WAIT1)) == 0) &&
                       ((p->flags & CCN_PR_UNSENT) == 0 ||
                         p->outbound->buf[p->outbound->n - 1] == face->faceid) &&
-                      indexbuf_unordered_set_remove(p->outbound, face->faceid) != -1) {
+                      ccn_indexbuf_remove_first_match(p->outbound, face->faceid) != -1) {
                     remaining_space -= p->size;
                     if ((p->flags & CCN_PR_UNSENT) != 0) {
                         p->flags &= ~CCN_PR_UNSENT;
@@ -1349,30 +1287,6 @@ get_outbound_faces(struct ccnd *h,
 }
 
 static int
-indexbuf_member(struct ccn_indexbuf *x, size_t val)
-{
-    int i;
-    if (x == NULL)
-        return (-1);
-    for (i = x->n - 1; i >= 0; i--)
-        if (x->buf[i] == val)
-            return(i);
-    return(-1);
-}
-
-static void
-indexbuf_remove_element(struct ccn_indexbuf *x, size_t val)
-{
-    int i;
-    if (x == NULL) return;
-    for (i = x->n - 1; i >= 0; i--)
-        if (x->buf[i] == val) {
-            x->buf[i] = x->buf[--x->n]; /* move last element into vacant spot */
-            return;
-        }
-}
-
-static int
 pe_next_usec(struct ccnd *h,
              struct propagating_entry *pe, int next_delay, int lineno)
 {
@@ -1540,16 +1454,17 @@ reorder_outbound_using_history(struct ccnd *h,
                                struct ccn_indexbuf *outbound)
 {
     if (ipe->osrc != ~0)
-        indexbuf_move_to_end(outbound, ipe->osrc);
+        ccn_indexbuf_move_to_end(outbound, ipe->osrc);
     if (ipe->src != ~0)
-        indexbuf_move_to_end(outbound, ipe->src);
+        ccn_indexbuf_move_to_end(outbound, ipe->src);
 }
 
 static int
 propagate_interest(struct ccnd *h, struct face *face,
-                      unsigned char *msg, size_t msg_size,
+                      unsigned char *msg,
                       struct ccn_parsed_interest *pi,
-                      struct nameprefix_entry *ipe)
+                      struct nameprefix_entry *ipe,
+                      struct ccn_indexbuf *outbound)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -1559,18 +1474,16 @@ propagate_interest(struct ccnd *h, struct face *face,
     int res;
     struct propagating_entry *pe = NULL;
     unsigned char *msg_out = msg;
-    size_t msg_out_size = msg_size;
-    struct ccn_indexbuf *outbound = get_outbound_faces(h, face, msg, pi);
+    size_t msg_out_size = pi->offset[CCN_PI_E];
     int usec;
     int delaymask;
-    // if (outbound) ccnd_msg(h, "at %d outbound->n = %d", __LINE__, outbound->n);
-    adjust_outbound_for_existing_interests(h, face, msg, pi, ipe, outbound);
-    // if (outbound) ccnd_msg(h, "at %d outbound->n = %d", __LINE__, outbound->n);
-    if (outbound->n == 0)
-        ccn_indexbuf_destroy(&outbound);
-    else
-        reorder_outbound_using_history(h, ipe, outbound);
-    // if (outbound) ccnd_msg(h, "at %d outbound->n = %d", __LINE__, outbound->n);
+    if (outbound != NULL) {
+        adjust_outbound_for_existing_interests(h, face, msg, pi, ipe, outbound);
+        if (outbound->n == 0)
+            ccn_indexbuf_destroy(&outbound);
+        else
+            reorder_outbound_using_history(h, ipe, outbound);
+    }
     if (pi->offset[CCN_PI_B_Nonce] == pi->offset[CCN_PI_E_Nonce]) {
         /* This interest has no nonce; add one before going on */
         int noncebytes = 6;
@@ -1589,7 +1502,7 @@ propagate_interest(struct ccnd *h, struct face *face,
         ccn_charbuf_append_closer(cb);
         pkeysize = cb->length - nonce_start;
         ccn_charbuf_append(cb, msg + pi->offset[CCN_PI_B_OTHER],
-                               msg_size - pi->offset[CCN_PI_B_OTHER]);
+                               pi->offset[CCN_PI_E] - pi->offset[CCN_PI_B_OTHER]);
         pkey = cb->buf + nonce_start;
         msg_out = cb->buf;
         msg_out_size = cb->length;
@@ -1637,7 +1550,7 @@ propagate_interest(struct ccnd *h, struct face *face,
     else if (res == HT_OLD_ENTRY) {
         ccnd_msg(h, "Interesting - this shouldn't happen much - ccnd.c:%d", __LINE__);
         if (pe->outbound != NULL)
-            indexbuf_remove_element(pe->outbound, face->faceid);
+            ccn_indexbuf_remove_element(pe->outbound, face->faceid);
         res = -1; /* We've seen this already, do not propagate */
     }
     hashtb_end(e);
@@ -1658,7 +1571,7 @@ is_duplicate_flooded(struct ccnd *h, unsigned char *msg, struct ccn_parsed_inter
     pe = hashtb_lookup(h->propagating_tab, msg + nonce_start, nonce_size);
     if (pe != NULL) {
         if (pe->outbound != NULL)
-            indexbuf_remove_element(pe->outbound, faceid);
+            ccn_indexbuf_remove_element(pe->outbound, faceid);
         return(1);
     }
     return(0);
@@ -1837,10 +1750,10 @@ process_incoming_interest(struct ccnd *h, struct face *face,
                 enum cq_delay_class c;
                 for (c = 0, k = -1; c < CCN_CQ_N && k == -1; c++)
                     if (face->q[c] != NULL)
-                        k = indexbuf_member(face->q[c]->send_queue, content->accession);
+                        k = ccn_indexbuf_member(face->q[c]->send_queue, content->accession);
                 if (k == -1) {
                     // XXX - this makes a little more work for ourselves, because we are about to consume this interest anyway.
-                    propagate_interest(h, face, msg, size, pi, ipe);
+                    propagate_interest(h, face, msg, pi, ipe, NULL);
                     matched = match_interests(h, content, NULL, face, NULL);
                     if (matched < 1 && h->debug)
                         ccnd_debug_ccnb(h, __LINE__, "expected_match_did_not_happen",
@@ -1854,7 +1767,8 @@ process_incoming_interest(struct ccnd *h, struct face *face,
             }
         }
         if (!matched && pi->scope != 0)
-            propagate_interest(h, face, msg, size, pi, ipe);
+            propagate_interest(h, face, msg, pi, ipe,
+                               get_outbound_faces(h, face, msg, pi));
         hashtb_end(e);
     }
     indexbuf_release(h, comps);
@@ -2058,7 +1972,7 @@ Bail:
         for (c = 0; c < CCN_CQ_N; c++) {
             q = face->q[c];
             if (q != NULL) {
-                i = indexbuf_member(q->send_queue, content->accession);
+                i = ccn_indexbuf_member(q->send_queue, content->accession);
                 if (i >= 0) {
                     /*
                      * In the case this consumed any interests from this source,

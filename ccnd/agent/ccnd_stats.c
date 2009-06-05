@@ -247,6 +247,16 @@ ccnd_stats_httpd_start(struct ccnd *h)
 }
 
 /* ccnd_msg may migrate into a different place ... */
+
+/*!
+    @function
+    @abstract   Produce ccnd debug output
+    @discussion Output is produced on stderr under the control of h->debug;
+                prepends decimal timestamp and process identification.
+                Caller should not supply newlines.
+    @param      h  the ccnd handle
+    @param      fmt  printf-like format string
+*/
 void
 ccnd_msg(struct ccnd *h, const char *fmt, ...)
 {
@@ -264,6 +274,17 @@ ccnd_msg(struct ccnd *h, const char *fmt, ...)
     ccn_charbuf_destroy(&b);
 }
 
+/*!
+    @function
+    @abstract   Produce a ccnd debug trace entry
+    @discussion Output is produced by calling ccnd_msg
+    @param      h  the ccnd handle
+    @param      lineno  caller's source line number (usually __LINE__)
+    @param      msg  a short text tag to identify the entry
+    @param      face    handle of associated face; may be NULL
+    @param      ccnb    points to ccnb-encoded Interest or ContentObject
+    @param      ccnb_size   is in bytes
+*/
 void
 ccnd_debug_ccnb(struct ccnd *h,
                 int lineno,
@@ -272,11 +293,15 @@ ccnd_debug_ccnb(struct ccnd *h,
                 const unsigned char *ccnb,
                 size_t ccnb_size)
 {
-    struct ccn_charbuf *c = ccn_charbuf_create();
+    struct ccn_charbuf *c;
     struct ccn_parsed_interest pi;
     const unsigned char *nonce = NULL;
     size_t nonce_size = 0;
     size_t i;
+    
+    if (h != NULL && h->debug == 0)
+        return;
+    c = ccn_charbuf_create();
     ccn_charbuf_putf(c, "debug.%d %s ", lineno, msg);
     if (face != NULL)
         ccn_charbuf_putf(c, "%u ", face->faceid);
