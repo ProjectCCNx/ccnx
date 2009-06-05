@@ -138,6 +138,7 @@ public class AccessControlProfile implements CCNProfile {
 	public static ContentName groupPublicKeyName(ContentName namespace, String groupFriendlyName) {
 		return ContentName.fromNative(groupName(namespace, groupFriendlyName),  GROUP_PUBLIC_KEY_NAME);
 	}
+	
 	public static ContentName groupMembershipListName(ContentName namespace, String groupFriendlyName) {
 		return ContentName.fromNative(groupName(namespace, groupFriendlyName),  GROUP_MEMBERSHIP_LIST_NAME);
 	}
@@ -247,4 +248,10 @@ public class AccessControlProfile implements CCNProfile {
 		return component;
 	}
 
+	public static Pair<String, Timestamp> parsePrincipalInfoFromPublicKeyName(ContentName publicKeyName) throws VersionMissingException {
+		
+		Timestamp version = VersioningProfile.getVersionAsTimestamp(publicKeyName);
+		String principal = ContentName.componentPrintNative(VersioningProfile.versionRoot(publicKeyName).lastComponent());
+		return new Pair<String, Timestamp>(principal, version);
+	}
 }
