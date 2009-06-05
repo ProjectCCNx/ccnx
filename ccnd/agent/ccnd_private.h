@@ -189,6 +189,7 @@ struct nameprefix_entry {
     unsigned src;                /* faceid of recent matching content */
     unsigned osrc;               /* and of older matching content */
     unsigned usec;               /* response-time prediction */
+    struct ccn_indexbuf *forward_to; /* faceids to forward to */ 
 };
 
 /*
