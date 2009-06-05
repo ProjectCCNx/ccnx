@@ -583,6 +583,15 @@ public class RFSImpl implements Repository {
 		
 		ContentName encoded = RFSImpl.encodeName(cropped);
 		File encodedFile = new File(_repositoryFile + encoded.toString());
+		if(encodedFile.exists()){
+			//we have something to work with!
+			Library.logger().finest("this prefix was found in our content: "+encoded.toString());
+		}
+		else{
+			//nothing here...  return null
+			Library.logger().finest("this prefix is not found in our content: "+encoded.toString());
+			return null;
+		}
 		long lastModified = encodedFile.lastModified();
 		fileTS = new Timestamp(lastModified);
 		if(interestTS!=null)
