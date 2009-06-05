@@ -44,7 +44,7 @@ struct content_tree_node;
 typedef unsigned ccn_accession_t;
 
 /*
- * We pass this handle almost everywhere.
+ * We pass this handle almost everywhere within ccnd
  */
 struct ccnd {
     struct hashtb *faces_by_fd;     /* keyed by fd */
@@ -91,6 +91,7 @@ struct ccnd {
     unsigned short seed[3];
     int debug;
     int mtu;                        /* Target size for stuffing interests */
+    int flood;                      // XXX - Temporary, for transition period
     struct ccn *internal_client;    /* internal client */
     struct face *face0;             /* special face for internal client */
     struct ccn_scheduled_event *internal_client_refresh;
