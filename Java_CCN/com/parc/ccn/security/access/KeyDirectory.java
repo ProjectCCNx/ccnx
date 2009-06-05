@@ -19,12 +19,16 @@ import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.content.LinkReference.LinkObject;
+import com.parc.ccn.data.security.LinkAuthenticator;
+import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.WrappedKey;
 import com.parc.ccn.data.security.WrappedKey.WrappedKeyObject;
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.EnumeratedNameList;
 import com.parc.ccn.library.profiles.AccessControlProfile;
+import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.sun.tools.javac.util.Pair;
 
@@ -137,9 +141,12 @@ public class KeyDirectory extends EnumeratedNameList {
 		if (!_keyIDs.contains(keyID)) {
 			return null;
 		}
-		
-		ContentName wrappedKeyName = new ContentName(_namePrefix, AccessControlProfile.targetKeyIDToNameComponent(keyID));
+		ContentName wrappedKeyName = getWrappedKeyNameForKeyID(keyID);
 		return getWrappedKey(wrappedKeyName);
+	}
+	
+	public ContentName getWrappedKeyNameForKeyID(byte [] keyID) {
+		return new ContentName(_namePrefix, AccessControlProfile.targetKeyIDToNameComponent(keyID));
 	}
 	
 	public WrappedKeyObject getWrappedKeyForPrincipal(String principalName) throws IOException, XMLStreamException {
@@ -148,13 +155,25 @@ public class KeyDirectory extends EnumeratedNameList {
 			return null;
 		}
 		
-		ContentName principalLinkName = new ContentName(_namePrefix, AccessControlProfile.principalInfoToNameComponent(principalName, _principals.get(principalName)));
+		ContentName principalLinkName = getWrappedKeyNameForPrincipal(principalName, _principals.get(principalName));
 		// This should be a link to the actual key block
 		// TODO DKS replace link handling
 		Link principalLink = _manager.library().getLink(principalLinkName, AccessControlManager.DEFAULT_TIMEOUT);
 		Library.logger().info("Retrieving wrapped key for principal " + principalName + " at " + principalLink.getTargetName());
 		ContentName wrappedKeyName = principalLink.getTargetName();
 		return getWrappedKey(wrappedKeyName);
+	}
+	
+	public ContentName getWrappedKeyNameForPrincipal(String principalName, Timestamp principalVersion) {
+		ContentName principalLinkName = new ContentName(_namePrefix, 
+				AccessControlProfile.principalInfoToNameComponent(principalName,
+																  principalVersion));
+		return principalLinkName;
+	}
+	
+	public ContentName getWrappedKeyNameForPrincipal(ContentName principalPublicKeyName) throws VersionMissingException {
+		Pair<String, Timestamp> info = AccessControlProfile.parsePrincipalInfoFromPublicKeyName(principalPublicKeyName);
+		return getWrappedKeyNameForPrincipal(info.fst, info.snd);
 	}
 	
 	public boolean hasSupersededBlock() {
@@ -425,26 +444,57 @@ public class KeyDirectory extends EnumeratedNameList {
 		return (PrivateKey)unwrappedPrivateKey;
 	}
 
-	public void addWrappedKeyBlock(Key privateKeyWrappingKey, ContentName name,
-			PublicKey publicKey) {
-		// TODO Auto-generated method stub
-		
+	/**
+	 * Eventually aggregate signing and repo stream operations at the very
+	 * least across writing paired objects and links, preferably across larger
+	 * swaths of data.
+	 * @param privateKeyWrappingKey
+	 * @param publicKeyName
+	 * @param publicKey
+	 * @throws VersionMissingException
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 * @throws InvalidKeyException
+	 */
+	public void addWrappedKeyBlock(Key privateKeyWrappingKey, 
+								   ContentName publicKeyName, PublicKey publicKey) throws VersionMissingException, XMLStreamException, IOException, InvalidKeyException {
+		WrappedKey wrappedKey = WrappedKey.wrapKey(privateKeyWrappingKey, null, null, publicKey);
+		wrappedKey.setWrappingKeyIdentifier(publicKey);
+		wrappedKey.setWrappingKeyName(publicKeyName);
+		WrappedKeyObject wko = 
+			new WrappedKeyObject(getWrappedKeyNameForKeyID(WrappedKey.wrappingKeyIdentifier(publicKey)),
+								 wrappedKey, _manager.library());
+		wko.save();
+		LinkObject lo = new LinkObject(getWrappedKeyNameForPrincipal(publicKeyName), new LinkReference(wko.getName()), _manager.library());
+		lo.save();
 	}
 
-	public void addPrivateKeyBlock(PrivateKey private1,
-			Key privateKeyWrappingKey) {
-		// TODO Auto-generated method stub
+	public void addPrivateKeyBlock(PrivateKey privateKey, Key privateKeyWrappingKey) throws InvalidKeyException, XMLStreamException, IOException {
 		
+		WrappedKey wrappedKey = WrappedKey.wrapKey(privateKey, null, null, privateKeyWrappingKey);	
+		wrappedKey.setWrappingKeyIdentifier(privateKeyWrappingKey);
+		WrappedKeyObject wko = new WrappedKeyObject(getPrivateKeyBlockName(), wrappedKey, _manager.library());
+		wko.save();
 	}
 
 	public void addSupersededByBlock(Key oldPrivateKeyWrappingKey,
-			ContentName publicKeyName, Key privateKeyWrappingKey) {
-		// TODO Auto-generated method stub
+			ContentName supersedingKeyName, Key newPrivateKeyWrappingKey) throws XMLStreamException, IOException, InvalidKeyException {
 		
+		WrappedKey wrappedKey = WrappedKey.wrapKey(oldPrivateKeyWrappingKey, null, null, newPrivateKeyWrappingKey);
+		wrappedKey.setWrappingKeyIdentifier(newPrivateKeyWrappingKey);
+		wrappedKey.setWrappingKeyName(supersedingKeyName);
+		WrappedKeyObject wko = new WrappedKeyObject(getSupersededBlockName(), wrappedKey, _manager.library());
+		wko.save();
 	}
 	
-	public void addPreviousKeyLink() {
+	public void addPreviousKeyLink(ContentName previousKey, PublisherID previousKeyPublisher) throws XMLStreamException, IOException {
 		
+		if (hasPreviousKeyBlock()) {
+			Library.logger().warning("Unexpected, already have previous key block : " + getPreviousKeyBlockName());
+		}
+		LinkAuthenticator la = (null != previousKeyPublisher) ? new LinkAuthenticator(previousKeyPublisher) : null;
+		LinkObject pklo = new LinkObject(getPreviousKeyBlockName(), new LinkReference(previousKey,la), _manager.library());
+		pklo.save();
 	}
 	
 	public void addPreviousKeyBlock() {
