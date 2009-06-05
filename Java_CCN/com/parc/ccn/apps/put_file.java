@@ -12,7 +12,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNOutputStream;
-import com.parc.ccn.library.io.repo.RepositoryOutputStream;
+import com.parc.ccn.library.io.repo.RepositoryFileOutputStream;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
 public class put_file {
@@ -58,7 +58,7 @@ public class put_file {
 				if (rawMode)
 					ostream = new CCNOutputStream(versionedName, library);
 				else
-					ostream = new RepositoryOutputStream(versionedName, library);
+					ostream = new RepositoryFileOutputStream(versionedName, library);
 				do_write(ostream, theFile);
 				
 				System.out.println("Inserted file " + args[startArg + 1] + ".");
@@ -88,7 +88,7 @@ public class put_file {
 					if (rawMode)
 						ostream = new CCNOutputStream(versionedNodeName, library);
 					else
-						ostream = new RepositoryOutputStream(versionedNodeName, library);
+						ostream = new RepositoryFileOutputStream(versionedNodeName, library);
 					do_write(ostream, theFile);
 					
 					System.out.println("Inserted file " + args[i] + ".");
@@ -112,20 +112,26 @@ public class put_file {
 	}
 	
 	private static void do_write(CCNOutputStream ostream, File file) throws IOException {
+		long time = System.currentTimeMillis();
 		FileInputStream fis = new FileInputStream(file);
 		int size = BLOCK_SIZE;
+		int readLen = 0;
 		byte [] buffer = new byte[BLOCK_SIZE];
-		do {
+		//do {
+		Library.logger().info("do_write: " + fis.available() + " bytes left.");
+		while((readLen = fis.read(buffer, 0, size)) != -1){	
+			//if (size > fis.available())
+			//	size = fis.available();
+			//if (size > 0) {
+			//	fis.read(buffer, 0, size);
+			//	ostream.write(buffer, 0, size);
+			ostream.write(buffer, 0, readLen);
+			Library.logger().info("do_write: wrote " + size + " bytes.");
 			Library.logger().info("do_write: " + fis.available() + " bytes left.");
-			if (size > fis.available())
-				size = fis.available();
-			if (size > 0) {
-				fis.read(buffer, 0, size);
-				ostream.write(buffer, 0, size);
-				Library.logger().info("do_write: wrote " + size + " bytes.");
-			}
-		} while (fis.available() > 0);
+		}
+		//} while (fis.available() > 0);
 		ostream.close();
+		Library.logger().info("finished write: "+(System.currentTimeMillis() - time));
 	}
 	
 	public static void usage() {

@@ -457,7 +457,6 @@ public class RFSImpl implements Repository {
 	 */
 	private void saveContentToFile(File file, ContentObject content) throws RepositoryException {
 		try {
-			_locker.lock(file.getName());
 			file.createNewFile();
 			FileOutputStream fos = new FileOutputStream(file);
 			WirePacket packet = new WirePacket(content);
@@ -466,7 +465,6 @@ public class RFSImpl implements Repository {
 		} catch (Exception e) {
 			throw new RepositoryException(e.getMessage());
 		}
-		_locker.unLock(file.getName());
 	}
 	
 	/**
@@ -573,7 +571,6 @@ public class RFSImpl implements Repository {
 	public ArrayList<ContentName> getNamesWithPrefix(Interest i) {
 		Library.logger().setLevel(java.util.logging.Level.FINE);
 		ArrayList<ContentName> names = new ArrayList<ContentName>();
-		long lastTS = 0;
 		Timestamp interestTS = null;
 		Timestamp fileTS = null;
 		try{
@@ -586,6 +583,15 @@ public class RFSImpl implements Repository {
 		
 		ContentName encoded = RFSImpl.encodeName(cropped);
 		File encodedFile = new File(_repositoryFile + encoded.toString());
+		if(encodedFile.exists()){
+			//we have something to work with!
+			Library.logger().finest("this prefix was found in our content: "+encoded.toString());
+		}
+		else{
+			//nothing here...  return null
+			Library.logger().finest("this prefix is not found in our content: "+encoded.toString());
+			return null;
+		}
 		long lastModified = encodedFile.lastModified();
 		fileTS = new Timestamp(lastModified);
 		if(interestTS!=null)
@@ -598,8 +604,10 @@ public class RFSImpl implements Repository {
 			Library.logger().fine("path to file: "+encodedFile.getName());
 			String[] matches = encodedFile.list();
 		
-			for(String s: matches){
-				names.add(RFSImpl.decodeName(new ContentName(n, s.getBytes())));
+			if (matches != null) {
+				for(String s: matches){
+					names.add(RFSImpl.decodeName(new ContentName(n, s.getBytes())));
+				}
 			}
 		}
 		
