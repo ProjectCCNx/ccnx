@@ -25,5 +25,8 @@ int ccn_indexbuf_append(struct ccn_indexbuf *c, const size_t *p, size_t n);
 int ccn_indexbuf_append_element(struct ccn_indexbuf *c, size_t v);
 int ccn_indexbuf_member(struct ccn_indexbuf *x, size_t val);
 void ccn_indexbuf_remove_element(struct ccn_indexbuf *x, size_t val);
+int ccn_indexbuf_set_insert(struct ccn_indexbuf *x, size_t val);
+int ccn_indexbuf_remove_first_match(struct ccn_indexbuf *x, size_t val);
+void ccn_indexbuf_move_to_end(struct ccn_indexbuf *x, size_t val);
 
 #endif

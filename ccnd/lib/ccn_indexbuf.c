@@ -99,3 +99,66 @@ ccn_indexbuf_remove_element(struct ccn_indexbuf *x, ELEMENT val)
         }
 }
 
+/*
+ * Returns index at which the element was found or appended,
+ * or -1 in case of error.
+ */
+int
+ccn_indexbuf_set_insert(struct ccn_indexbuf *x, ELEMENT val)
+{
+    int i;
+    if (x == NULL)
+        return (-1);
+    for (i = 0; i < x->n; i++)
+        if (x->buf[i] == val)
+            return(i);
+    if (ccn_indexbuf_append_element(x, val) < 0)
+        return(-1);
+    return(i);
+}
+
+/*
+ * Removes first occurence of val, preserving order
+ * Returns index at which the element was found,
+ * or -1 if the element was not found.
+ */
+int
+ccn_indexbuf_remove_first_match(struct ccn_indexbuf *x, ELEMENT val)
+{
+    int i;
+    int n;
+    if (x == NULL)
+        return (-1);
+    for (i = 0, n = x->n; i < n; i++) {
+        if (x->buf[i] == val) {
+            if (i + 1 < n)
+                memmove(&(x->buf[i]),
+                        &(x->buf[i + 1]),
+                        sizeof(x->buf[i]) * (n - i - 1));
+            x->n--;
+            return(i);
+        }
+    }
+    return(-1);
+}
+
+/*
+ * If val is present in the indexbuf, move it to the final place.
+ */
+void
+ccn_indexbuf_move_to_end(struct ccn_indexbuf *x, ELEMENT val)
+{
+    int i;
+    int n;
+    if (x == NULL)
+        return;
+    for (i = 0, n = x->n; i + 1 < n; i++) {
+        if (x->buf[i] == val) {
+            memmove(&(x->buf[i]),
+                    &(x->buf[i + 1]),
+                    sizeof(x->buf[i]) * (n - i - 1));
+            x->buf[n - 1] = val;
+            return;
+        }
+    }
+}
