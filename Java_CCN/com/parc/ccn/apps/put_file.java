@@ -112,6 +112,7 @@ public class put_file {
 	}
 	
 	private static void do_write(CCNOutputStream ostream, File file) throws IOException {
+		long time = System.currentTimeMillis();
 		FileInputStream fis = new FileInputStream(file);
 		int size = BLOCK_SIZE;
 		byte [] buffer = new byte[BLOCK_SIZE];
@@ -126,6 +127,7 @@ public class put_file {
 			}
 		} while (fis.available() > 0);
 		ostream.close();
+		Library.logger().info("finished write: "+(System.currentTimeMillis() - time));
 	}
 	
 	public static void usage() {

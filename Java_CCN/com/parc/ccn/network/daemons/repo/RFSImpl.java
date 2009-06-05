@@ -457,7 +457,6 @@ public class RFSImpl implements Repository {
 	 */
 	private void saveContentToFile(File file, ContentObject content) throws RepositoryException {
 		try {
-			_locker.lock(file.getName());
 			file.createNewFile();
 			FileOutputStream fos = new FileOutputStream(file);
 			WirePacket packet = new WirePacket(content);
@@ -466,7 +465,6 @@ public class RFSImpl implements Repository {
 		} catch (Exception e) {
 			throw new RepositoryException(e.getMessage());
 		}
-		_locker.unLock(file.getName());
 	}
 	
 	/**
@@ -573,7 +571,6 @@ public class RFSImpl implements Repository {
 	public ArrayList<ContentName> getNamesWithPrefix(Interest i) {
 		Library.logger().setLevel(java.util.logging.Level.FINE);
 		ArrayList<ContentName> names = new ArrayList<ContentName>();
-		long lastTS = 0;
 		Timestamp interestTS = null;
 		Timestamp fileTS = null;
 		try{
@@ -598,8 +595,10 @@ public class RFSImpl implements Repository {
 			Library.logger().fine("path to file: "+encodedFile.getName());
 			String[] matches = encodedFile.list();
 		
-			for(String s: matches){
-				names.add(RFSImpl.decodeName(new ContentName(n, s.getBytes())));
+			if (matches != null) {
+				for(String s: matches){
+					names.add(RFSImpl.decodeName(new ContentName(n, s.getBytes())));
+				}
 			}
 		}
 		
