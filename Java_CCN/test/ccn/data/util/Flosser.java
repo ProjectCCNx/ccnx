@@ -66,6 +66,7 @@ public class Flosser implements CCNInterestListener {
 	public Interest handleContent(ArrayList<ContentObject> results,
 								  Interest interest) {
 		// Parameterized behavior that subclasses can override.
+		ContentName interestName = null;
 		for (ContentObject result : results) {
 			Library.logger().fine("Got content for interest " + interest);
 			processContent(result);
@@ -77,7 +78,8 @@ public class Flosser implements CCNInterestListener {
 			for (Entry<ContentName, Interest> entry : _interests.entrySet()) {
 				if (entry.getValue().equals(interest)) {
 					synchronized(_interests) {
-						_interests.remove(entry.getKey());
+						interestName = entry.getKey();
+						_interests.remove(interestName);
 					}
 					break;
 				}
@@ -135,6 +137,9 @@ public class Flosser implements CCNInterestListener {
                 }
             }
 		}
+		if (null != interest) {
+			_interests.put(interestName, interest);
+		}
 		return interest;
 	}
 	
@@ -142,7 +147,7 @@ public class Flosser implements CCNInterestListener {
 		Library.logger().info("Stop flossing.");
 		synchronized (_interests) {
 			for (Interest interest : _interests.values()) {
-				Library.logger().info("Cancelling pending interest: " + interest);
+				Library.logger().info("Cancelling pending interest: " + interest.print());
 				_library.cancelInterest(interest, this);
 			}
 		}
