@@ -21,7 +21,6 @@ import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.network.daemons.repo.RFSImpl;
-import com.parc.ccn.network.daemons.repo.RFSLocks;
 import com.parc.ccn.network.daemons.repo.Repository;
 import com.parc.ccn.network.daemons.repo.RepositoryException;
 
@@ -56,6 +55,9 @@ public class RFSTest extends RepoTestBase {
 		super.setUp();
 	}
 	
+	/*
+	 * We aren't currently using these locks (and they will probably be
+	 * eliminated
 	@Test
 	public void testLocks() throws Exception {
 		String testLockDir = _fileTestDir + File.separator + RFSImpl.META_DIR;
@@ -72,7 +74,7 @@ public class RFSTest extends RepoTestBase {
 		locker.unLock(testFileName);
 		locker = new RFSLocks(testLockDir);
 		Assert.assertTrue(testFile.exists());
-	}
+	} */
 	
 	@Test
 	public void testRepo() throws Exception {

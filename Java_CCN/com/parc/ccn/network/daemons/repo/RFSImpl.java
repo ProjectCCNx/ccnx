@@ -457,7 +457,6 @@ public class RFSImpl implements Repository {
 	 */
 	private void saveContentToFile(File file, ContentObject content) throws RepositoryException {
 		try {
-			_locker.lock(file.getName());
 			file.createNewFile();
 			FileOutputStream fos = new FileOutputStream(file);
 			WirePacket packet = new WirePacket(content);
@@ -466,7 +465,6 @@ public class RFSImpl implements Repository {
 		} catch (Exception e) {
 			throw new RepositoryException(e.getMessage());
 		}
-		_locker.unLock(file.getName());
 	}
 	
 	/**
