@@ -1468,8 +1468,8 @@ propagate_interest(struct ccnd *h, struct face *face,
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
-    unsigned char *pkey;
-    size_t pkeysize;
+    unsigned char *nonce;
+    size_t noncesize;
     struct ccn_charbuf *cb = NULL;
     int res;
     struct propagating_entry *pe = NULL;
@@ -1500,19 +1500,19 @@ propagate_interest(struct ccnd *h, struct face *face,
             s[i] = nrand48(h->seed) >> i;
         cb->length += noncebytes;
         ccn_charbuf_append_closer(cb);
-        pkeysize = cb->length - nonce_start;
+        noncesize = cb->length - nonce_start;
         ccn_charbuf_append(cb, msg + pi->offset[CCN_PI_B_OTHER],
                                pi->offset[CCN_PI_E] - pi->offset[CCN_PI_B_OTHER]);
-        pkey = cb->buf + nonce_start;
+        nonce = cb->buf + nonce_start;
         msg_out = cb->buf;
         msg_out_size = cb->length;
     }
     else {
-        pkey = msg + pi->offset[CCN_PI_B_Nonce];
-        pkeysize = pi->offset[CCN_PI_E_Nonce] - pi->offset[CCN_PI_B_Nonce];
+        nonce = msg + pi->offset[CCN_PI_B_Nonce];
+        noncesize = pi->offset[CCN_PI_E_Nonce] - pi->offset[CCN_PI_B_Nonce];
     }
     hashtb_start(h->propagating_tab, e);
-    res = hashtb_seek(e, pkey, pkeysize, 0);
+    res = hashtb_seek(e, nonce, noncesize, 0);
     pe = e->data;
     if (res == HT_NEW_ENTRY) {
         unsigned char *m;
