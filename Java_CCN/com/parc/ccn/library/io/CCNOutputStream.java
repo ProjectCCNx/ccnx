@@ -145,8 +145,9 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	@Override
 	public void close() throws IOException {
 		try {
+			_segmenter.getFlowControl().beforeClose();
 			closeNetworkData();
-			_segmenter.getFlowControl().waitForPutDrain();
+			_segmenter.getFlowControl().afterClose();
 		} catch (InvalidKeyException e) {
 			throw new IOException("Cannot sign content -- invalid key!: " + e.getMessage());
 		} catch (SignatureException e) {

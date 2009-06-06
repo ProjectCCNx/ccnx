@@ -324,6 +324,14 @@ public class CCNFlowControl implements CCNFilterListener {
 		return bestMatch;
 	}
 	
+	public void beforeClose() throws IOException {
+		// default -- do nothing.
+	}
+
+	public void afterClose() throws IOException {
+		waitForPutDrain();
+	}
+	
 	public void waitForPutDrain() throws IOException {
 		synchronized (_holdingArea) {
 			int startSize = _holdingArea.size();

@@ -158,11 +158,15 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		}
 	}
 
+	@Override
 	public void beforeClose() throws IOException {
 		_ackInterval = 0;
 	}
 
+	@Override
 	public void afterClose() throws IOException {
+		// super.afterClose() calls waitForPutDrain.
+		super.afterClose();
 		// DKS don't actually want to cancel all the interests, only the
 		// ones relevant to the data we've finished writing.
 		//if (! _bestEffort)
