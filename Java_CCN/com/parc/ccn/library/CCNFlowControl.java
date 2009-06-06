@@ -3,6 +3,7 @@ package com.parc.ccn.library;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeMap;
@@ -52,7 +53,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	protected TreeMap<ContentName, ContentObject> _holdingArea = new TreeMap<ContentName, ContentObject>();
 	protected InterestTable<UnmatchedInterest> _unmatchedInterests = new InterestTable<UnmatchedInterest>();
-	protected ArrayList<ContentName> _filteredNames = new ArrayList<ContentName>();
+	protected HashSet<ContentName> _filteredNames = new HashSet<ContentName>();
 
 	private class UnmatchedInterest {
 		long timestamp = new Date().getTime();

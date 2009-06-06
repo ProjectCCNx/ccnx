@@ -43,6 +43,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		
 		Interest interestToReturn = null;
 		for (ContentObject co : results) {
+			Library.logger().info("handleContent: got potential repo message: " + co.name());
 			if (co.signedInfo().getType() != ContentType.DATA)
 				continue;
 			RepositoryInfo repoInfo = new RepositoryInfo();
@@ -85,8 +86,9 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		}
 	}
 
-	public RepositoryFlowControl(ContentName name, CCNLibrary library) {
-		super(name, library); // this does the first half of handleNameSpace
+	public RepositoryFlowControl(ContentName name, CCNLibrary library) throws IOException {
+		super(library); 
+		addNameSpace(name);
 	}
 
 	@Override
@@ -117,8 +119,10 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 				}
 			} while (interrupted);
 		}
-		if (_repoName == null)
+		if (_repoName == null) {
+			Library.logger().finest("No response from a repository, cannot add name space : " + name);
 			throw new IOException("No response from a repository");
+		}
 	}
 
 	/**
