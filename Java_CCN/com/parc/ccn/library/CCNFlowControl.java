@@ -250,8 +250,8 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * @param co
 	 */
 	public void afterPutAction(ContentObject co) throws IOException {
-			_holdingArea.remove(co.name());	
-			_holdingArea.notify();
+		_holdingArea.remove(co.name());	
+		_holdingArea.notify();
 	}
 	
 	/**
