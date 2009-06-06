@@ -51,7 +51,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public CCNNetworkObject(Class<E> type, ContentName name, E data, CCNLibrary library) throws ConfigurationException, IOException {
 		super(type, data);
 		_library = (null == library) ? CCNLibrary.open() : library;
-		_flowControl = new CCNFlowControl(_library);
+		_flowControl = new CCNFlowControl(name, _library);
 		_currentName = name;
 	}
 	
@@ -59,7 +59,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 							CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
 		super(type);
 		_library = (null == library) ? CCNLibrary.open() : library;
-		_flowControl = new CCNFlowControl(_library);
+		_flowControl = new CCNFlowControl(name, _library);
 		update(name, publisher);
 	}
 
@@ -72,7 +72,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
 		super(type);
 		_library = (null == library) ? CCNLibrary.open() : library;
-		_flowControl = new CCNFlowControl(_library);
+		_flowControl = new CCNFlowControl(VersioningProfile.versionRoot(firstBlock.name()), _library);
 		update(firstBlock);
 	}
 	
@@ -101,6 +101,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 
 	public void update(ContentObject object) throws XMLStreamException, IOException {
 		CCNInputStream is = new CCNInputStream(object, _library);
+		is.seek(0); // in case it wasn't the first block
 		update(is);
 	}
 
