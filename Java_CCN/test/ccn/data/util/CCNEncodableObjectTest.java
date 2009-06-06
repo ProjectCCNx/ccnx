@@ -129,7 +129,7 @@ public class CCNEncodableObjectTest {
 	@Test
 	public void testSaveUpdate() throws ConfigurationException, IOException, XMLStreamException, MalformedContentNameStringException {
 		boolean caught = false;
-		CCNEncodableCollectionData emptycoll = new CCNEncodableCollectionData(namespace, empty, null);
+		CCNEncodableCollectionData emptycoll = new CCNEncodableCollectionData(namespace, (CollectionData)null, null);
 		NullOutputStream nos = new NullOutputStream();
 		try {
 			emptycoll.save(nos);
