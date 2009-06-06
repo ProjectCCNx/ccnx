@@ -187,10 +187,12 @@ struct sparse_straggler_entry {
  */
 struct nameprefix_entry {
     struct propagating_entry *propagating_head;
+    struct ccn_indexbuf *forward_to; /* faceids to forward to */
+    struct nameprefix_entry *parent; /* link to next-shorter prefix */
+    int children;                /* number of children */
     unsigned src;                /* faceid of recent matching content */
     unsigned osrc;               /* and of older matching content */
     unsigned usec;               /* response-time prediction */
-    struct ccn_indexbuf *forward_to; /* faceids to forward to */ 
 };
 
 /*

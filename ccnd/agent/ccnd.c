@@ -575,6 +575,10 @@ finalize_nameprefix(struct hashtb_enumerator *e)
         entry->propagating_head = NULL;
     }
     ccn_indexbuf_destroy(&entry->forward_to);
+    if (entry->parent != NULL) {
+        entry->parent->children--;
+        entry->parent = NULL;
+    }
 }
 
 static void
@@ -1128,7 +1132,7 @@ check_propagating(struct ccnd *h)
     for (npe = e->data; npe != NULL; npe = e->data) {
         if (npe->forward_to != NULL)
             check_forward_to(h, npe);
-        if (npe->src == ~0 && npe->forward_to == NULL) {
+        if (npe->src == ~0 && npe->forward_to == NULL && npe->children == 0) {
             head = npe->propagating_head;
             if ((head == NULL || head == head->next)) {
                 hashtb_delete(e);
@@ -1632,6 +1636,45 @@ is_duplicate_flooded(struct ccnd *h, unsigned char *msg, struct ccn_parsed_inter
     return(0);
 }
 
+/*
+ * Creates a nameprefix entry if it does not already exist, together
+ * with all of its parents.
+ */
+static int
+nameprefix_seek(struct ccnd *h, struct hashtb_enumerator *e,
+                unsigned char *msg, struct ccn_indexbuf *comps, int ncomps)
+{
+    int i;
+    int base;
+    int res = -1;
+    struct nameprefix_entry *parent = NULL;
+    struct nameprefix_entry *npe = NULL;
+    if (ncomps + 1 > comps->n)
+        return(-1);
+    base = comps->buf[0];
+    for (i = 0; i <= ncomps; i++) {
+        res = hashtb_seek(e, msg + base, comps->buf[i] - base, 0);
+        if (res < 0)
+            break;
+        npe = e->data;
+        if (res == HT_NEW_ENTRY) {
+            npe->parent = parent;
+            if (parent != NULL) {
+                parent->children++;
+                npe->src = parent->src;
+                npe->osrc = parent->osrc;
+                npe->usec = parent->usec;
+            }
+            else {
+                npe->src = npe->osrc = ~0;
+                npe->usec = (nrand48(h->seed) % 4096U) + 8192;
+            }
+        }
+        parent = npe;
+    }
+    return(res);
+}
+
 static void
 process_incoming_interest(struct ccnd *h, struct face *face,
                           unsigned char *msg, size_t size)
@@ -1695,11 +1738,10 @@ process_incoming_interest(struct ccnd *h, struct face *face,
         s_ok = (pi->answerfrom & CCN_AOK_STALE) != 0;
         matched = 0;
         hashtb_start(h->nameprefix_tab, e);
-        res = hashtb_seek(e, msg + comps->buf[0], namesize, 0);
+        // XXX - here we want to do a longest match instead of creating an entry for the whole prefix.
+        res = nameprefix_seek(h, e, msg, comps, pi->prefix_comps);
         npe = e->data;
         if (res == HT_NEW_ENTRY) {
-            npe->src = npe->osrc = ~0;
-            npe->usec = (nrand48(h->seed) % 4096U) + 8192;
             if (pi->prefix_comps > 0) {
                 /*
                  * Init src history from parent, if available.
@@ -2052,7 +2094,7 @@ process_incoming_inject(struct ccnd *h, struct face *face,
      * a unix-domain socket (which cannot be remote).
      * The purpose of this is for the helper program to inject
      * an Interest message to a specific destination in order to
-     * establish the a conversation.
+     * establish a conversation.
      */
     struct sockaddr_storage addr = {0};
     struct ccn_parsed_interest pi_buf = {0};
