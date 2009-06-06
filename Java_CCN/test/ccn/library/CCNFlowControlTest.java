@@ -254,12 +254,12 @@ public class CCNFlowControlTest {
 		fc.put(objv1s1);
 		fc.put(objv1s2);
 		fc.put(objv1s3);
-		HighWaterTest hwt = new HighWaterTest();
+		HighWaterTestThread hwt = new HighWaterTestThread();
 		hwt.start();
 		fc.put(objv1s4);
 	}
 	
-	private class HighWaterTest extends Thread {
+	private class HighWaterTestThread extends Thread {
 
 		public void run() {
 			synchronized (this) {
