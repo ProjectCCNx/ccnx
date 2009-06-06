@@ -22,12 +22,15 @@ public class AccessTestData {
 	public static final String KEY_ALGORITHM = "RSA";
 	public static final int KEY_LENGTH = 512;
 	
-	public static initializeData() {
+	public static void initializeData() {
 		try {
 			KeyPairGenerator kpg = KeyPairGenerator.getInstance(KEY_ALGORITHM);
 			kpg.initialize(KEY_LENGTH);
 			for (int i=0; i < NUM_USERS; ++i) {
 				userKeyPairs[i] = kpg.generateKeyPair();
 			}
+		} catch (Exception e) {
+			
+		}
 	}
 }
