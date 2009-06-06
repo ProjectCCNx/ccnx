@@ -69,6 +69,8 @@ public class CCNFlowControl implements CCNFilterListener {
 		_library = library;
 		if (name != null) {
 			Library.logger().finest("adding namespace: " + name);
+			// don't call full addNameSpace, in order to allow subclasses to 
+			// override. just do minimal part
 			_filteredNames.add(name);
 			_library.registerFilter(name, this);
 		}
@@ -86,8 +88,9 @@ public class CCNFlowControl implements CCNFilterListener {
 	/**
 	 * Add a new namespace to the controller
 	 * @param name
+	 * @throws IOException 
 	 */
-	public void addNameSpace(ContentName name) {
+	public void addNameSpace(ContentName name) throws IOException {
 		if (!_flowControlEnabled)
 			return;
 		Iterator<ContentName> it = _filteredNames.iterator();
@@ -105,7 +108,7 @@ public class CCNFlowControl implements CCNFilterListener {
 		_library.registerFilter(name, this);
 	}
 	
-	public void addNameSpace(String name) throws MalformedContentNameStringException {
+	public void addNameSpace(String name) throws MalformedContentNameStringException, IOException {
 		addNameSpace(ContentName.fromNative(name));
 	}
 	
@@ -132,6 +135,21 @@ public class CCNFlowControl implements CCNFilterListener {
 				break;
 			}
 		}
+	}
+	
+	public ContentName getNameSpace(ContentName childName) {
+		ContentName prefix = null;
+		for (ContentName nameSpace : _filteredNames) {
+			if (nameSpace.isPrefixOf(childName)) {
+				// is this the only one?
+				if (null == prefix) {
+					prefix = nameSpace;
+				} else if (nameSpace.count() > prefix.count()) {
+					prefix = nameSpace;
+				}
+			}
+		}
+		return prefix;
 	}
 	
 	/**
