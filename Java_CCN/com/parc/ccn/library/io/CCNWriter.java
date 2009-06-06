@@ -28,15 +28,15 @@ public class CCNWriter {
 	
 	protected CCNSegmenter _segmenter;
 	
-	public CCNWriter(ContentName namespace, CCNLibrary library) {
+	public CCNWriter(ContentName namespace, CCNLibrary library) throws IOException {
 		this(new CCNFlowControl(namespace, library));
 	}
 	
-	public CCNWriter(String namespace, CCNLibrary library) throws MalformedContentNameStringException {
+	public CCNWriter(String namespace, CCNLibrary library) throws MalformedContentNameStringException, IOException {
 		this(new CCNFlowControl(ContentName.fromNative(namespace), library));
 	}
 
-	public CCNWriter(CCNLibrary library) {
+	public CCNWriter(CCNLibrary library) throws IOException {
 		this(new CCNFlowControl(library));
 	}
 

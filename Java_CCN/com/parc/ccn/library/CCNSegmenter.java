@@ -115,11 +115,11 @@ public class CCNSegmenter {
 		this(CCNLibrary.open(), keys);
 	}
 
-	public CCNSegmenter(CCNLibrary library) {
+	public CCNSegmenter(CCNLibrary library) throws IOException {
 		this(new CCNFlowControl(library));
 	}
 
-	public CCNSegmenter(CCNLibrary library, ContentKeys keys) {
+	public CCNSegmenter(CCNLibrary library, ContentKeys keys) throws IOException {
 		this(new CCNFlowControl(library), null, null);
 	}
 	/**

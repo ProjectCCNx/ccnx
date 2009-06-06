@@ -19,7 +19,6 @@ import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.bouncycastle.crypto.params.KeyParameter;
 
 import com.parc.ccn.Library;
-import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.util.CCNEncodableObject;
@@ -62,12 +61,12 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 
 	public static class WrappedKeyObject extends CCNEncodableObject<WrappedKey> {
 
-		public WrappedKeyObject(ContentName name, WrappedKey data, CCNLibrary library) throws ConfigurationException, IOException {
+		public WrappedKeyObject(ContentName name, WrappedKey data, CCNLibrary library) throws IOException {
 			super(WrappedKey.class, name, data, library);
 		}
 		
 		public WrappedKeyObject(ContentName name, PublisherPublicKeyDigest publisher,
-				CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+				CCNLibrary library) throws IOException, XMLStreamException {
 			super(WrappedKey.class, name, publisher, library);
 		}
 		
@@ -81,12 +80,12 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		 * @throws ClassNotFoundException 
 		 */
 		public WrappedKeyObject(ContentName name, 
-				CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+				CCNLibrary library) throws IOException, XMLStreamException {
 			super(WrappedKey.class, name, (PublisherPublicKeyDigest)null, library);
 		}
 		
 		public WrappedKeyObject(ContentObject firstBlock,
-				CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+				CCNLibrary library) throws IOException, XMLStreamException {
 			super(WrappedKey.class, firstBlock, library);
 		}
 		

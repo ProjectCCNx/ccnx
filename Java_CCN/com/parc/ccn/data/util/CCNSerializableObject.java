@@ -9,7 +9,6 @@ import java.io.Serializable;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
-import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
@@ -29,15 +28,14 @@ public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObj
 	 * @param name
 	 * @param data
 	 * @param library
-	 * @throws ConfigurationException
 	 * @throws IOException
 	 */
-	public CCNSerializableObject(Class<E> type, ContentName name, E data, CCNLibrary library) throws ConfigurationException, IOException {
+	public CCNSerializableObject(Class<E> type, ContentName name, E data, CCNLibrary library) throws IOException {
 		super(type, name, data, library);
 	}
 	
 	public CCNSerializableObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
-			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+			CCNLibrary library) throws IOException, XMLStreamException {
 		super(type, name, publisher, library);
 	}
 	
@@ -51,12 +49,12 @@ public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObj
 	 * @throws ClassNotFoundException 
 	 */
 	public CCNSerializableObject(Class<E> type, ContentName name, 
-			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+			CCNLibrary library) throws IOException, XMLStreamException {
 		super(type, name, (PublisherPublicKeyDigest)null, library);
 	}
 	
 	public CCNSerializableObject(Class<E> type, ContentObject firstBlock,
-			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+			CCNLibrary library) throws IOException, XMLStreamException {
 		super(type, firstBlock, library);
 	}
 

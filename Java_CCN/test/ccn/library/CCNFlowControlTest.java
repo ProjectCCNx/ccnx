@@ -7,6 +7,7 @@ import java.util.Queue;
 
 import junit.framework.Assert;
 
+import org.junit.Before;
 import org.junit.Test;
 
 import com.parc.ccn.config.ConfigurationException;
@@ -56,6 +57,12 @@ public class CCNFlowControlTest {
 		}
 	}
 	
+	@Before
+	public void setUp() throws Exception {
+		fc = new CCNFlowControl(_library);
+	}
+	
+	
 	ContentObject obj1 = new ContentObject(name1, new SignedInfo(), "test".getBytes(), (Signature)null);
 	ContentName v1s1 = SegmentationProfile.segmentName(v1, 1);
 	ContentObject objv1s1 = new ContentObject(v1s1, new SignedInfo(), "v1s1".getBytes(), (Signature)null);		
@@ -71,7 +78,7 @@ public class CCNFlowControlTest {
 	ContentObject objv2s2 = new ContentObject(v2s2, new SignedInfo(), "v2s2".getBytes(), (Signature)null);
 	Queue<ContentObject> queue = _library.getOutputQueue();
 	ArrayList<Interest> interestList = new ArrayList<Interest>();
-	CCNFlowControl fc = new CCNFlowControl(_library);
+	CCNFlowControl fc = null;
 
 	@Test
 	public void testBasicControlFlow() throws Throwable {	
@@ -275,7 +282,7 @@ public class CCNFlowControlTest {
 		
 	}
 	
-	private void normalReset(ContentName n) {
+	private void normalReset(ContentName n) throws IOException {
 		_library.reset();
 		interestList.clear();
 		fc = new CCNFlowControl(n, _library);

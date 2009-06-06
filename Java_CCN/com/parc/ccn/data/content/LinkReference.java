@@ -4,7 +4,6 @@ import java.io.IOException;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.LinkAuthenticator;
@@ -33,12 +32,12 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable {
 	
 	public static class LinkObject extends CCNEncodableObject<LinkReference> {
 
-		public LinkObject(ContentName name, LinkReference data, CCNLibrary library) throws ConfigurationException, IOException {
+		public LinkObject(ContentName name, LinkReference data, CCNLibrary library) throws IOException {
 			super(LinkReference.class, name, data, library);
 		}
 		
 		public LinkObject(ContentName name, PublisherPublicKeyDigest publisher,
-				CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+				CCNLibrary library) throws IOException, XMLStreamException {
 			super(LinkReference.class, name, publisher, library);
 		}
 		
@@ -52,12 +51,12 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable {
 		 * @throws ClassNotFoundException 
 		 */
 		public LinkObject(ContentName name, 
-				CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+				CCNLibrary library) throws IOException, XMLStreamException {
 			super(LinkReference.class, name, (PublisherPublicKeyDigest)null, library);
 		}
 		
 		public LinkObject(ContentObject firstBlock,
-				CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+				CCNLibrary library) throws IOException, XMLStreamException {
 			super(LinkReference.class, firstBlock, library);
 		}
 		

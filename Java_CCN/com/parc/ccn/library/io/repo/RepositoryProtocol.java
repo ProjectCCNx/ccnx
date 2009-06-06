@@ -95,7 +95,7 @@ public class RepositoryProtocol extends CCNFlowControl implements CCNInterestLis
 		}
 	}
 
-	public RepositoryProtocol(ContentName name, CCNLibrary library) {
+	public RepositoryProtocol(ContentName name, CCNLibrary library) throws IOException {
 		super(name, library);
 		// TODO Auto-generated constructor stub
 	}

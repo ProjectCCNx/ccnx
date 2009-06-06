@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
@@ -66,8 +67,8 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * @param name
 	 * @param library
 	 */
-	public CCNFlowControl(ContentName name, CCNLibrary library) {
-		_library = library;
+	public CCNFlowControl(ContentName name, CCNLibrary library) throws IOException {
+		this(library);
 		if (name != null) {
 			Library.logger().finest("adding namespace: " + name);
 			// don't call full addNameSpace, in order to allow subclasses to 
@@ -78,11 +79,20 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	public CCNFlowControl(String name, CCNLibrary library) 
-				throws MalformedContentNameStringException {
+				throws MalformedContentNameStringException, IOException {
 		this(ContentName.fromNative(name), library);
 	}
 	
-	public CCNFlowControl(CCNLibrary library) {
+	public CCNFlowControl(CCNLibrary library) throws IOException {
+		if (null == library) {
+			// Could make this create a library.
+			try {
+				library = CCNLibrary.open();
+			} catch (ConfigurationException e) {
+				Library.logger().info("Got ConfigurationException attempting to create a library. Rethrowing it as an IOException. Message: " + e.getMessage());
+				throw new IOException("ConfigurationException creating a library: " + e.getMessage());
+			}
+		}
 		_library = library;
 	}
 	

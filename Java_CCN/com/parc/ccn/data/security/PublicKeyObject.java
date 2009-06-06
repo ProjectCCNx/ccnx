@@ -12,7 +12,6 @@ import java.security.spec.InvalidKeySpecException;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
-import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.util.CCNNetworkObject;
@@ -41,12 +40,11 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 	 * @throws ConfigurationException
 	 * @throws IOException
 	 */
-	public PublicKeyObject(ContentName name, PublicKey data, CCNLibrary library) throws ConfigurationException, IOException {
+	public PublicKeyObject(ContentName name, PublicKey data, CCNLibrary library) throws IOException {
 		super(PublicKey.class, name, data, library);
 	}
 	
-	public PublicKeyObject(ContentName name, PublisherPublicKeyDigest publisher,
-			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+	public PublicKeyObject(ContentName name, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException, XMLStreamException {
 		super(PublicKey.class, name, publisher, library);
 	}
 	
@@ -59,13 +57,11 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 	 * @throws IOException
 	 * @throws ClassNotFoundException 
 	 */
-	public PublicKeyObject(ContentName name, 
-			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+	public PublicKeyObject(ContentName name, CCNLibrary library) throws IOException, XMLStreamException {
 		super(PublicKey.class, name, (PublisherPublicKeyDigest)null, library);
 	}
 	
-	public PublicKeyObject(ContentObject firstBlock,
-			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+	public PublicKeyObject(ContentObject firstBlock, CCNLibrary library) throws IOException, XMLStreamException {
 		super(PublicKey.class, firstBlock, library);
 	}
 	

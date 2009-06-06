@@ -29,12 +29,12 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 	 * @throws ConfigurationException
 	 * @throws IOException
 	 */
-	public CCNEncodableObject(Class<E> type, ContentName name, E data, CCNLibrary library) throws ConfigurationException, IOException {
+	public CCNEncodableObject(Class<E> type, ContentName name, E data, CCNLibrary library) throws IOException {
 		super(type, name, data, library);
 	}
 	
 	public CCNEncodableObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
-			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+			CCNLibrary library) throws IOException, XMLStreamException {
 		super(type, name, publisher, library);
 	}
 	
@@ -48,12 +48,12 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 	 * @throws ClassNotFoundException 
 	 */
 	public CCNEncodableObject(Class<E> type, ContentName name, 
-			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+			CCNLibrary library) throws IOException, XMLStreamException {
 		super(type, name, (PublisherPublicKeyDigest)null, library);
 	}
 	
 	public CCNEncodableObject(Class<E> type, ContentObject firstBlock,
-			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+			CCNLibrary library) throws IOException, XMLStreamException {
 		super(type, firstBlock, library);
 	}
 

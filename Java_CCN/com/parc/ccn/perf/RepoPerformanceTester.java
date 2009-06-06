@@ -34,7 +34,7 @@ public class RepoPerformanceTester extends CCNOutputStream {
 		private Repository _repo = null;
 		
 		public TestFlowControl(String repoName, ContentName name, CCNLibrary library)
-				throws MalformedContentNameStringException, RepositoryException {
+				throws MalformedContentNameStringException, RepositoryException, IOException {
 			super(name, library);
 			if (repoName != null) {
 				_repo = new RFSImpl();
