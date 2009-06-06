@@ -144,8 +144,8 @@ public class InterestTable<V> {
 	}
 	
 	protected Holder<V> getMatchByName(ContentName name, ContentObject target) {
-		Library.logger().finest("name: " + name + " target: " + target.name());
 		List<Holder<V>> list = _contents.get(new ITContentName(name));
+		Library.logger().finest("name: " + name + " target: " + target.name() + " possible matches: " + ((null == list) ? 0 : list.size()));
 		if (null != list) {
 			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
 				Holder<V> holder = holdIt.next();
@@ -471,6 +471,8 @@ public class InterestTable<V> {
 		Entry<V> match = null;
 		if (null != target) {
 			ContentName matchName = null;
+			Library.logger().finest("removeMatch: looking for match to target " + target.name() +
+					" among " + _contents.keySet().size() + " possibilities.");				
 			for (ITContentName name : _contents.keySet()) {
 				Entry<V> found = getMatchByName(name.name(), target);
 				if (null != found) {
