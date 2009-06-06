@@ -6,6 +6,11 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class GroupTest {
+	
+	/**
+	 * Have to make a bunch of users.
+	 * @throws Exception
+	 */
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
