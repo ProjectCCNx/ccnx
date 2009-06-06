@@ -137,9 +137,15 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 	}
 	
 	public void testRegisterPrefix(){
+		
+		//adding a second prefix...  should never get a response,
+		//	but it should not crash the repo...
 
+		ContentName prefixbad = null;
+		
 		try{
 			prefix1 = ContentName.fromNative(prefix1String);
+			 prefixbad = ContentName.fromNative(prefix1String+"/doesnotexist");
 		}
 		catch(Exception e){
 			Assert.fail("Could not create ContentName from "+prefix1String);
@@ -149,6 +155,7 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 		
 		try{
 			getne.registerPrefix(prefix1);
+			getne.registerPrefix(prefixbad);
 		}
 		catch(IOException e){
 			System.err.println("error registering prefix");
