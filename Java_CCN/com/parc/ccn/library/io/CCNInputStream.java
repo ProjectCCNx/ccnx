@@ -136,7 +136,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 			return -1;
 		}
 		
-		Library.logger().info(baseName() + ": reading " + len + " bytes into buffer of length " + 
+		Library.logger().finer(baseName() + ": reading " + len + " bytes into buffer of length " + 
 				((null != buf) ? buf.length : "null") + " at offset " + offset);
 		// is this the first block?
 		if (null == _currentBlock) {
