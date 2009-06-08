@@ -24,7 +24,7 @@ public class RepoSingleFileTester extends RepoPerformanceTester {
 		private FileOutputStream _fos = null;
 		
 		public TestFlowControl(String repoName, ContentName name, CCNLibrary library)
-				throws MalformedContentNameStringException, RepositoryException {
+				throws MalformedContentNameStringException, RepositoryException, IOException {
 			super(name, library);
 			_tfc = this;
 			if (repoName != null) {
