@@ -16,6 +16,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.util.CCNNetworkObject;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.io.CCNInputStream;
 import com.parc.security.crypto.certificates.CryptoUtil;
 
 /**
@@ -31,6 +32,7 @@ import com.parc.security.crypto.certificates.CryptoUtil;
  */
 public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 
+	protected static final boolean DEFAULT_RAW = true;
 	/**
 	 * Doesn't save until you call save, in case you want to tweak things first.
 	 * @param type
@@ -41,11 +43,11 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 	 * @throws IOException
 	 */
 	public PublicKeyObject(ContentName name, PublicKey data, CCNLibrary library) throws IOException {
-		super(PublicKey.class, name, data, library);
+		super(PublicKey.class, name, data, DEFAULT_RAW, library);
 	}
 	
 	public PublicKeyObject(ContentName name, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException, XMLStreamException {
-		super(PublicKey.class, name, publisher, library);
+		super(PublicKey.class, name, publisher, DEFAULT_RAW, library);
 	}
 	
 	/**
@@ -58,11 +60,11 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 	 * @throws ClassNotFoundException 
 	 */
 	public PublicKeyObject(ContentName name, CCNLibrary library) throws IOException, XMLStreamException {
-		super(PublicKey.class, name, (PublisherPublicKeyDigest)null, library);
+		super(PublicKey.class, name, (PublisherPublicKeyDigest)null, DEFAULT_RAW, library);
 	}
 	
 	public PublicKeyObject(ContentObject firstBlock, CCNLibrary library) throws IOException, XMLStreamException {
-		super(PublicKey.class, firstBlock, library);
+		super(PublicKey.class, firstBlock, DEFAULT_RAW, library);
 	}
 	
 	public PublicKey publicKey() { return data(); }
@@ -85,7 +87,7 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 			Library.logger().warning("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
 			throw new IOException("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
 		} catch (InvalidKeySpecException e) {
-			Library.logger().warning("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
+			Library.logger().warning("Cannot decode public key from block: " + ((CCNInputStream)input).currentBlockName() + "  " + e.getClass().getName() + ": " + e.getMessage());
 			throw new IOException("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
 		} catch (NoSuchAlgorithmException e) {
 			Library.logger().warning("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
