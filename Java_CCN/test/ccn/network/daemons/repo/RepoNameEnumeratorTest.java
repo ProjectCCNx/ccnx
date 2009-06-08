@@ -84,10 +84,9 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 			ros.write(data, 0, data.length);
 			ros.close();
 		}
-		catch(IOException ex){
-			Assert.fail("could not put the content into the repo ("+contentName+")");
-		}
-		catch (MalformedContentNameStringException e) {
+		catch (IOException ex) {
+			Assert.fail("could not put the content into the repo ("+contentName+"); " + ex.getMessage());
+		} catch (MalformedContentNameStringException e) {
 			e.printStackTrace();
 			Assert.fail("Could not create content name from String.");
 		} catch (XMLStreamException e) {
@@ -98,7 +97,7 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 	
 	
 	public int handleNameEnumerator(ContentName prefix, ArrayList<ContentName> names) {
-		Library.logger().info("I got a response from the name enumerator!");
+		Library.logger().info("I got a response from the name enumerator, with " + names.size() + " entries.");
 		if(names1 == null)
 			names1 = names;
 		else if(names2 == null)
