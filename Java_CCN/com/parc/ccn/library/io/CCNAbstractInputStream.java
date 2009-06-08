@@ -277,10 +277,12 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		if (null != _startingBlockIndex) {
 			ContentObject firstBlock = getBlock(_startingBlockIndex);
 			if ((null != firstBlock) && (firstBlock.signedInfo().getType().equals(ContentType.GONE))) {
-				Library.logger().info("getFirstBlock: got gone block: " + _goneBlock.name());
 				_goneBlock = firstBlock;
+				Library.logger().info("getFirstBlock: got gone block: " + _goneBlock.name());
 				return null;
 			}
+			Library.logger().info("getFirstBlock: block number: " + _startingBlockIndex + " got block? " + 
+					((null == firstBlock) ? "no " : firstBlock.name()));
 			return firstBlock;
 		} else {
 			throw new IOException("Stream does not have a valid starting block number.");
