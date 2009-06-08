@@ -154,7 +154,8 @@ public class Flosser implements CCNInterestListener {
 	}
 	
 	public void logNamespaces() {
-		Set<ContentName> namespaces = getNamespaces();
+		
+		ContentName [] namespaces = getNamespaces().toArray(new ContentName[getNamespaces().size()]);
 		for (ContentName name : namespaces) {
 			Library.logger().info("Flosser: monitoring namespace: " + name);
 		}
