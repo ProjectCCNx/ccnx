@@ -94,6 +94,13 @@ public class BloomFilter implements Comparable<BloomFilter> {
 		_size++;
 	}
 	
+	/**
+	 * Test if the bloom filter matches a particular key.
+	 * Note - a negative result means the key was definitely not set, but a positive result only means the
+	 * key was likely set.
+	 * @param key
+	 * @return
+	 */
 	public boolean match(byte [] key) {
 		int m = ((8*_bloom.length) - 1) & ((1 << _lgBits) - 1);
 		long s = computeSeed();
