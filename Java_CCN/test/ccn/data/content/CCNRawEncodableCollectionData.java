@@ -13,21 +13,23 @@ import com.parc.ccn.data.util.CCNEncodableObject;
 import com.parc.ccn.library.CCNLibrary;
 
 /**
- * This will become the new Collection class once its functionality is merged
+ * This will become the basis of the new Collection class once its functionality is merged
  * with existing Collections. Put it here temporarily so as to be able to test
  * CCNEncodableObject itself.
+ * 
+ * Force raw in order to be able to test raw object writes to ccnd.
  * @author smetters
  *
  */
-public class CCNEncodableCollectionData extends CCNEncodableObject<CollectionData> {
+public class CCNRawEncodableCollectionData extends CCNEncodableObject<CollectionData> {
 
-	public CCNEncodableCollectionData(ContentName name, CollectionData data, CCNLibrary library) throws ConfigurationException, IOException {
-		super(CollectionData.class, name, data, library);
+	public CCNRawEncodableCollectionData(ContentName name, CollectionData data, CCNLibrary library) throws ConfigurationException, IOException {
+		super(CollectionData.class, name, data, true, library);
 	}
 	
-	public CCNEncodableCollectionData(ContentName name, PublisherPublicKeyDigest publisher,
+	public CCNRawEncodableCollectionData(ContentName name, PublisherPublicKeyDigest publisher,
 			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
-		super(CollectionData.class, name, publisher, library);
+		super(CollectionData.class, name, publisher, true, library);
 	}
 	
 	/**
@@ -39,13 +41,13 @@ public class CCNEncodableCollectionData extends CCNEncodableObject<CollectionDat
 	 * @throws IOException
 	 * @throws ClassNotFoundException 
 	 */
-	public CCNEncodableCollectionData(ContentName name, 
+	public CCNRawEncodableCollectionData(ContentName name, 
 			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
-		super(CollectionData.class, name, (PublisherPublicKeyDigest)null, library);
+		super(CollectionData.class, name, (PublisherPublicKeyDigest)null, true, library);
 	}
 	
-	public CCNEncodableCollectionData(ContentObject firstBlock,
+	public CCNRawEncodableCollectionData(ContentObject firstBlock,
 			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
-		super(CollectionData.class, firstBlock, library);
+		super(CollectionData.class, firstBlock, true, library);
 	}
 }
