@@ -21,7 +21,7 @@ public class ContentTree {
 	 */
 	public class ContentFileRef {
 		int id;
-		int offset;
+		long offset;
 	}
 	
 	public interface ContentGetter {
@@ -164,7 +164,7 @@ public class ContentTree {
 	 * @param count
 	 * @return
 	 */
-	public final List<ContentFileRef> lookup(ContentName name) {
+	protected final List<ContentFileRef> lookup(ContentName name) {
 		TreeNode node = lookupNode(name, name.count());
 		if (null != node) {
 			if (null != node.oneContent) {
@@ -297,7 +297,7 @@ public class ContentTree {
 		return null;
 	}
 	
-	public final ContentObject lookup(Interest interest, ContentGetter getter) {
+	public final ContentObject get(Interest interest, ContentGetter getter) {
 		Integer addl = interest.additionalNameComponents();
 		if (null != addl && addl.intValue() == 0) {
 			// Query is for exact match to full name with digest, no additional components
