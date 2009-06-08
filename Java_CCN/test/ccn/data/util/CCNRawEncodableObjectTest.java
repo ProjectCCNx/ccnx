@@ -326,6 +326,7 @@ public class CCNRawEncodableObjectTest {
 		Library.logger().info("Got gone object ecd0: " + ecd0.getName() + "(" + ecd0.getVersion() +") updating ecd1, which is currently: " + ecd1.getName());
 		ecd1.update();
 		Library.logger().info("Retrieved ecd1, name: " + ecd1.getName() + "(" + ecd1.getVersion() +")" +  " gone? " + ecd1.isGone());
+		// DKS TODO: fix: this one always comes back unable to get latest version of content
 		Assert.assertTrue(ecd1.isGone());
 		ecd0.setData(small1);
 		Assert.assertFalse(ecd0.isGone());
