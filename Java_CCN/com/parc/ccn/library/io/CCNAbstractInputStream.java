@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.sql.Timestamp;
 import java.util.Arrays;
 
 import javax.crypto.Cipher;
@@ -18,6 +19,7 @@ import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
+import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.crypto.ContentKeys;
 import com.parc.ccn.security.crypto.UnbufferedCipherInputStream;
 
@@ -136,6 +138,16 @@ public abstract class CCNAbstractInputStream extends InputStream {
 
 	public void setTimeout(int timeout) {
 		_timeout = timeout;
+	}
+	
+	public ContentName getBaseName() {
+		return _baseName;
+	}
+	
+	public Timestamp getVersion() {
+		if (null == _baseName) 
+			return null;
+		return VersioningProfile.getVersionAsTimestampIfVersioned(_baseName);
 	}
 
 	@Override
