@@ -318,6 +318,26 @@
 		<!-- <delete dir="${REPO_ROOT}"/> -->
 	</target>
 	
+	<target name="test-repo-objects" depends="jar, test-repo-structure, ccnd, repo">
+		<mkdir dir="${testout}"/>
+		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="xml" usefile="true"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
+			<sysproperty key="com.parc.ccn.LogLevel" value="FINER"/>
+			<batchtest todir="${testout}" >
+				<fileset dir="${build}">
+					<include name="test/ccn/network/daemons/repo/RepoEncodableObjectTest.class"/>
+				</fileset>
+			</batchtest>
+		</junit>
+		<!-- <delete dir="${REPO_ROOT}"/> -->
+	</target>
+
+	
 	<!-- Requires remote repo running -->
 	<target name="test-remote-repo1" depends="jar">
 		<mkdir dir="${testout}"/>
