@@ -91,6 +91,8 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	public CCNOutputStream(ContentName name, ContentType type, CCNLibrary library) throws XMLStreamException, IOException {
 		this(name, null, type, library);
 	}
+	
+	public CCNOutputStream() {}	// special purpose constructor
 
 	protected CCNOutputStream(ContentName name, 
 			KeyLocator locator, PublisherPublicKeyDigest publisher, ContentType type,

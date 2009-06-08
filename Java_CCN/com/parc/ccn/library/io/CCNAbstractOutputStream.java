@@ -43,6 +43,8 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 		_locator = locator;
 		_publisher = publisher;		
 	}
+	
+	public CCNAbstractOutputStream() {}	// special purpose constructor
 
 	@Override
 	public void write(byte[] b) throws IOException {

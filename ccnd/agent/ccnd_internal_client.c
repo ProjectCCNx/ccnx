@@ -67,7 +67,7 @@ ccnd_answer_ping(struct ccn_closure *selfp,
     ccn_charbuf_append(name, info->interest_ccnb + start, end - start);
     ccn_charbuf_append_closer(name);
     
-    /* Construct a key locator contining the key itself */
+    /* Construct a key locator containing the key itself */
     keylocator = ccn_charbuf_create();
     ccn_charbuf_append_tt(keylocator, CCN_DTAG_KeyLocator, CCN_DTAG);
     ccn_charbuf_append_tt(keylocator, CCN_DTAG_Key, CCN_DTAG);

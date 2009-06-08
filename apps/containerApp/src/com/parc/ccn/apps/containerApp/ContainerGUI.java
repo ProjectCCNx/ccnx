@@ -723,7 +723,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		// DefaultMutableTreeNode top = new DefaultMutableTreeNode(
 		// new IconData(ICON_COMPUTER, null, "parc.com/files"));
 
-		DefaultMutableTreeNode parentNode = getTreeNode(prefix);
+		final DefaultMutableTreeNode parentNode = getTreeNode(prefix);
 		if(parentNode == null){
 			System.out.println("PARENT NODE IS NULL!!!"+ prefix.toString());
 			System.out.println("can't add anything to a null parent...  cancel prefix and return");
@@ -731,7 +731,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 			return;
 		}
 
-		DefaultMutableTreeNode node;
+		
 		// while we are getting things, wait for stuff to happen
 		System.out.println("Getting Content Names");
 		DefaultMutableTreeNode temp = null;
@@ -763,20 +763,28 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 					toRemove = null;
 				}
 			}
+			final DefaultMutableTreeNode node;
 			if(addToParent){
 				//name wasn't there, don't add again
 				System.out.println("added as child: "+cn.toString());
 				if (((cn.toString()).split("\\.")).length > 1) {
+			
 					node = new DefaultMutableTreeNode(new IconData(ICON_DOCUMENT,
 							null, new Name(cn.toString().substring(1), prefix,false)));
 				} else {
+					
 					node = new DefaultMutableTreeNode(new IconData(ICON_FOLDER,
 							null, new Name(cn.toString().substring(1), prefix,true)));
 					//This is the "Retrieving Data" node (gets rendered in IconCell Renderer
 					//node.add(new DefaultMutableTreeNode(new Boolean(true)));
 				}
+				
+		        javax.swing.SwingUtilities.invokeLater(new Runnable() {
+		            public void run() {
+						m_model.insertNodeInto(node, parentNode, parentNode.getChildCount());		           
+		            }
+		        });
 
-				m_model.insertNodeInto(node, parentNode, parentNode.getChildCount());
 
 				
 			}

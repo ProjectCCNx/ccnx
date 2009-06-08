@@ -44,7 +44,7 @@ struct content_tree_node;
 typedef unsigned ccn_accession_t;
 
 /*
- * We pass this handle almost everywhere.
+ * We pass this handle almost everywhere within ccnd
  */
 struct ccnd {
     struct hashtb *faces_by_fd;     /* keyed by fd */
@@ -91,6 +91,7 @@ struct ccnd {
     unsigned short seed[3];
     int debug;
     int mtu;                        /* Target size for stuffing interests */
+    int flood;                      // XXX - Temporary, for transition period
     struct ccn *internal_client;    /* internal client */
     struct face *face0;             /* special face for internal client */
     struct ccn_scheduled_event *internal_client_refresh;
@@ -186,6 +187,9 @@ struct sparse_straggler_entry {
  */
 struct nameprefix_entry {
     struct propagating_entry *propagating_head;
+    struct ccn_indexbuf *forward_to; /* faceids to forward to */
+    struct nameprefix_entry *parent; /* link to next-shorter prefix */
+    int children;                /* number of children */
     unsigned src;                /* faceid of recent matching content */
     unsigned osrc;               /* and of older matching content */
     unsigned usec;               /* response-time prediction */
