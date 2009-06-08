@@ -594,7 +594,7 @@ public class AccessControlManager {
 	 * @param effectiveNodeKey
 	 * @param newACL
 	 */
-	protected void generateNewNodeKey(ContentName nodeName, NodeKey effectiveNodeKey, ACL effectiveACL) {
+	protected void generateNewNodeKey(ContentName nodeName, NodeKey oldEffectiveNodeKey, ACL effectiveACL) {
 		// TODO Auto-generated method stub
 		
 	}
