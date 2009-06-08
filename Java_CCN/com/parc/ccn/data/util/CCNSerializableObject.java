@@ -12,6 +12,7 @@ import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
+import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 
 /**
@@ -33,12 +34,18 @@ public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObj
 	public CCNSerializableObject(Class<E> type, ContentName name, E data, CCNLibrary library) throws IOException {
 		super(type, name, data, library);
 	}
-	
-	public CCNSerializableObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
-			CCNLibrary library) throws IOException, XMLStreamException {
-		super(type, name, publisher, library);
+
+	public CCNSerializableObject(Class<E> type, ContentName name, E data,
+			boolean raw, CCNLibrary library) throws IOException {
+		super(type, name, data, raw, library);
 	}
-	
+
+	protected CCNSerializableObject(Class<E> type, ContentName name, E data,
+			CCNFlowControl flowControl) throws IOException {
+		super(type, name, data, flowControl);
+	}
+
+
 	/**
 	 * Read constructor -- opens existing object.
 	 * @param type
@@ -53,9 +60,37 @@ public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObj
 		super(type, name, (PublisherPublicKeyDigest)null, library);
 	}
 	
+	public CCNSerializableObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
+			CCNLibrary library) throws IOException, XMLStreamException {
+		super(type, name, publisher, library);
+	}
+	
+	public CCNSerializableObject(Class<E> type, ContentName name,
+			PublisherPublicKeyDigest publisher, boolean raw, CCNLibrary library)
+			throws IOException, XMLStreamException {
+		super(type, name, publisher, raw, library);
+	}
+
+	protected CCNSerializableObject(Class<E> type, ContentName name,
+			PublisherPublicKeyDigest publisher, CCNFlowControl flowControl)
+			throws IOException, XMLStreamException {
+		super(type, name, publisher, flowControl);
+	}
+
 	public CCNSerializableObject(Class<E> type, ContentObject firstBlock,
 			CCNLibrary library) throws IOException, XMLStreamException {
 		super(type, firstBlock, library);
+	}
+
+	public CCNSerializableObject(Class<E> type, ContentObject firstBlock,
+			boolean raw, CCNLibrary library) throws IOException,
+			XMLStreamException {
+		super(type, firstBlock, raw, library);
+	}
+
+	protected CCNSerializableObject(Class<E> type, ContentObject firstBlock,
+			CCNFlowControl flowControl) throws IOException, XMLStreamException {
+		super(type, firstBlock, flowControl);
 	}
 
 	@Override

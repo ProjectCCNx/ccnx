@@ -33,6 +33,11 @@ import com.parc.ccn.library.profiles.VersioningProfile;
  * When possible, keep track of the latest version known so that the latest version queries
  * can attempt to do better than that. Start by using only in the background load case, as until
  * something comes back we can keep using the old one and the propensity for blocking is high.
+ * 
+ * Support for superclasses or users specifying different flow controllers with
+ * different behavior. Build in support for either the simplest standard flow
+ * controller, or a standard repo-backed flow controller.
+ * 
  * @author smetters
  *
  * @param <E>
@@ -51,6 +56,34 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	protected static boolean DEFAULT_RAW = true;
 	
 	/**
+	 * Basic write constructor.
+	 * Setting true or false in this constructor determines default -- repo or raw objects.
+	 * @param type
+	 * @param name
+	 * @param data
+	 * @throws ConfigurationException
+	 * @throws IOException
+	 */
+	public CCNNetworkObject(Class<E> type, ContentName name, E data, CCNLibrary library) throws IOException {
+		this(type, name, data, DEFAULT_RAW, library);
+	}
+		
+	/**
+	 * A raw object uses a raw flow controller. A non-raw object uses a repository backend.
+	 * repo flow controler.
+	 * @param type
+	 * @param name
+	 * @param data
+	 * @param raw
+	 * @param library
+	 * @throws IOException
+	 */
+	public CCNNetworkObject(Class<E> type, ContentName name, E data, boolean raw, CCNLibrary library) throws IOException {
+		this(type, name, data, 
+			(raw ? new CCNFlowControl(name, library) : new RepositoryFlowControl(name, library)));
+	}
+
+	/**
 	 * Write constructors. This allows subclasses or users to pass in new forms of flow controller.
 	 * You should only use this one if you really know what you are doing.
 	 * 
@@ -67,47 +100,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_library = flowControl.getLibrary();
 		_currentName = name;
 	}
-	
-	/**
-	 * A raw object uses a raw flow controller. A non-raw object uses a
-	 * repo flow controler.
-	 * @param type
-	 * @param name
-	 * @param data
-	 * @param raw
-	 * @param library
-	 * @throws IOException
-	 */
-	public CCNNetworkObject(Class<E> type, ContentName name, E data, boolean raw, CCNLibrary library) throws IOException {
-		this(type, name, data, 
-			(raw ? new CCNFlowControl(name, library) : new RepositoryFlowControl(name, library)));
-	}
 
-	/**
-	 * Setting true or false in this constructor determines default -- repo or raw objects.
-	 * @param type
-	 * @param name
-	 * @param data
-	 * @param library
-	 * @throws IOException
-	 */
-	public CCNNetworkObject(Class<E> type, ContentName name, E data, CCNLibrary library) throws IOException {
-		this(type, name, data, DEFAULT_RAW, library);
-	}
-	
-	/**
-	 * Limit where ConfigurationException is thrown.
-	 * @param type
-	 * @param name
-	 * @param data
-	 * @throws ConfigurationException
-	 * @throws IOException
-	 */
-	public CCNNetworkObject(Class<E> type, ContentName name, E data) throws IOException {
-		this(type, name, data, (CCNLibrary)null);
-	}
-	
-	
 	/**
 	 * Read constructors. Will try to pull latest version of this object, or a specific
 	 * named version. Flow controller assumed to already be set to handle this namespace.
@@ -119,8 +112,18 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException
 	 * @throws XMLStreamException
 	 */
+	public CCNNetworkObject(Class<E> type, ContentName name, 
+			CCNLibrary library) throws IOException, XMLStreamException {
+		this(type, name, (PublisherPublicKeyDigest)null, library);
+	}
+
+	public CCNNetworkObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
+			CCNLibrary library) throws IOException, XMLStreamException {
+		this(type, name, publisher, DEFAULT_RAW, library);
+	}
+
 	protected CCNNetworkObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
-							CCNFlowControl flowControl) throws IOException, XMLStreamException {
+			CCNFlowControl flowControl) throws IOException, XMLStreamException {
 		super(type);
 		_flowControl = flowControl;
 		_library = flowControl.getLibrary();
@@ -132,20 +135,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		this(type, name, publisher, 
 				(raw ? new CCNFlowControl(name, library) : new RepositoryFlowControl(name, library)));
 	}
-	
-	public CCNNetworkObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
-			CCNLibrary library) throws IOException, XMLStreamException {
-		this(type, name, publisher, DEFAULT_RAW, library);
-	}
-	
-	public CCNNetworkObject(Class<E> type, ContentName name, 
-			CCNLibrary library) throws IOException, XMLStreamException {
-		this(type, name, (PublisherPublicKeyDigest)null, library);
-	}
-
-	public CCNNetworkObject(Class<E> type, ContentName name) throws IOException, XMLStreamException {
-		this(type, name, (CCNLibrary)null);
-	}
 
 	/**
 	 * Read constructors if you already have a block of the object. Used by streams.
@@ -156,13 +145,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException
 	 * @throws XMLStreamException
 	 */
-	protected CCNNetworkObject(Class<E> type, ContentObject firstBlock,
-			CCNFlowControl flowControl) throws IOException, XMLStreamException {
-		super(type);
-		_flowControl = flowControl;
-		_library = flowControl.getLibrary();
-		_flowControl = new CCNFlowControl(VersioningProfile.versionRoot(firstBlock.name()), _library);
-		update(firstBlock);
+	public CCNNetworkObject(Class<E> type, ContentObject firstBlock, CCNLibrary library) throws IOException, XMLStreamException {
+		this(type, firstBlock, DEFAULT_RAW, library);
 	}
 	
 	public CCNNetworkObject(Class<E> type, ContentObject firstBlock,
@@ -172,8 +156,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 					   new RepositoryFlowControl(VersioningProfile.versionRoot(firstBlock.name()), library)));
 	}
 
-	public CCNNetworkObject(Class<E> type, ContentObject firstBlock, CCNLibrary library) throws IOException, XMLStreamException {
-		this(type, firstBlock, DEFAULT_RAW, library);
+	protected CCNNetworkObject(Class<E> type, ContentObject firstBlock,
+			CCNFlowControl flowControl) throws IOException, XMLStreamException {
+		super(type);
+		_flowControl = flowControl;
+		_library = flowControl.getLibrary();
+		_flowControl = new CCNFlowControl(VersioningProfile.versionRoot(firstBlock.name()), _library);
+		update(firstBlock);
 	}
 	
 	public void update() throws XMLStreamException, IOException {
@@ -210,6 +199,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			_isGone = true;
 			_currentName = inputStream.deletionInformation().name();
 		} else {
+			_isGone = false;
 			super.update(inputStream);
 			_currentName = inputStream.baseName();
 		}
