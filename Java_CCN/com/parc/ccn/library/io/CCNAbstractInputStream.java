@@ -252,6 +252,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		
 		// We're looking at content marked GONE
 		if (null != _goneBlock) {
+			Library.logger().info("getNextBlock: We have a gone block, no next block. Gone block: " + _goneBlock.name());
 			return null;
 		}
 		
@@ -276,6 +277,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		if (null != _startingBlockIndex) {
 			ContentObject firstBlock = getBlock(_startingBlockIndex);
 			if ((null != firstBlock) && (firstBlock.signedInfo().getType().equals(ContentType.GONE))) {
+				Library.logger().info("getFirstBlock: got gone block: " + _goneBlock.name());
 				_goneBlock = firstBlock;
 				return null;
 			}
@@ -377,6 +379,13 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	
 	public ContentObject deletionInformation() {
 		return _goneBlock;
+	}
+	
+	/**
+	 * For debugging
+	 */
+	public String currentBlockName() {
+		return ((null == _currentBlock) ? "null" : _currentBlock.name().toString());
 	}
 	
 }
