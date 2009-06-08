@@ -25,6 +25,22 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	protected ArrayList<ContentName> _newChildren = new ArrayList<ContentName>();
 	protected Object _childLock = new Object();
 	
+	/**
+	 * Creates an EnumerateNameList object
+	 * <p>
+	 * The namePrefix argument is a content name object that refers to ??
+	 * The library CCNLibrary argument is the current CCN environment where
+	 * the names are being iterated. 
+	 *<p>
+	 * this constructor creates a new CCN Library if the one passed in is null
+	 * Registers the namePrefix on the CCN network 
+	 *  
+	 * @param  CCNLibrary  an absolute URL giving the base location of the image
+	 * @param  namePrefix the location of the image, relative to the url argument
+	 * @return      
+	 * @see
+	 */
+
 	public EnumeratedNameList(ContentName namePrefix, CCNLibrary library) throws IOException {
 		if (null == namePrefix) {
 			throw new IllegalArgumentException("namePrefix cannot be null!");
@@ -43,6 +59,13 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	
 	public ContentName getName() { return _namePrefix; }
 	
+	/* StopEnumerating
+	 * <p>
+	 * Sends a cancel interest on the namePrefix assigned in the 
+	 * constructor. Cancels the enumeration on that prefix
+	 * 
+	 * @return
+	 * */
 	public void stopEnumerating() {
 		_enumerator.cancelPrefix(_namePrefix);
 	}
@@ -96,6 +119,14 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		return false;
 	}
 	
+	/**
+	 * Returns whether a group has a child
+	 * using the easy to read group name
+	 * <p>
+	 * 
+	 * @param groupFriendlyName ??
+	 * @return child
+	 * */
 	public boolean hasChild(String groupFriendlyName) {
 		return hasChild(ContentName.componentParseNative(groupFriendlyName));
 	}
@@ -118,7 +149,11 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 			}
 		}
 	}
-	
+	/**
+	 * 
+	 * 
+	 * 
+	 * */
 	private ArrayList<byte []> buildComponentArray(ArrayList<ContentName> results) {
 		if ((null == results) || (0 == results.size()))
 			return null;
@@ -135,7 +170,13 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 
 	/**
 	 * The name enumerator should hand back a list of single-component names.
+	 * 
+	 * @param prefix Prefix where you are starting
+	 * @param names
+	 * 
+	 * @return
 	 */
+	
 	public int handleNameEnumerator(ContentName prefix,
 								    ArrayList<ContentName> names) {
 		Library.logger().info(names.size() + " new name enumeration results: our prefix: " + _namePrefix + " returned prefix: " + prefix);
@@ -157,11 +198,19 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	/**
 	 * Method to allow subclasses to do post-processing on incoming names
 	 * before handing them to customers.
+	 * 
+	 * @param newChildren 
 	 */
 	protected void processNewChildren(ArrayList<ContentName> newChildren) {
 		// default -- do nothing.
 	}
 
+	/**
+	 * 
+	 * 
+	 * 
+	 * 
+	 * */
 	public ContentName getLatestVersionChildName() {
 		// of the available names in _children that are version components,
 		// find the latest one (version-wise)
@@ -186,7 +235,9 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	}
 
 	/**
-	 * Returns the complete name of the latest version of content with the prefix name.
+	 * Returns the complete name of the 
+	 * latest version of content with the prefix name.
+	 * 
 	 * @param name
 	 * @param library
 	 * @return
