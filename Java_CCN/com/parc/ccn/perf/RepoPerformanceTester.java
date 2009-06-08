@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Date;
+import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -25,8 +26,8 @@ import com.parc.ccn.network.daemons.repo.RepositoryException;
  *
  */
 
-public class RepoPerformanceTester extends CCNOutputStream {
-	
+public class RepoPerformanceTester extends CCNOutputStream {	
+
 	private static RepoPerformanceTester _rpt = new RepoPerformanceTester();
 
 	private class TestFlowControl extends CCNFlowControl {
@@ -55,21 +56,25 @@ public class RepoPerformanceTester extends CCNOutputStream {
 	}
 	
 	public RepoPerformanceTester() {}
-
+	
 	public RepoPerformanceTester(String repoName, ContentName name, CCNLibrary library)
 			throws XMLStreamException, IOException, MalformedContentNameStringException, RepositoryException {
 		super(name, null, null, _rpt.new TestFlowControl(repoName, name, library));
 	}
 	
-	private static int BLOCK_SIZE = 8096;
-
-	/**
-	 * @param args
-	 */
-	public static void main(String[] args) {
+	public RepoPerformanceTester(ContentName name, CCNFlowControl cf)
+			throws XMLStreamException, IOException, MalformedContentNameStringException, RepositoryException {
+		super(name, null, null, cf);
+	}
 	
+	public RepoPerformanceTester getTester(String repoName, ContentName name, CCNLibrary library) throws MalformedContentNameStringException, XMLStreamException, IOException, RepositoryException {
+		return new RepoPerformanceTester(repoName, name, library);
+	}
+	
+	public void doTest(String[] args) {
 		ContentName argName;
 		long startTime = new Date().getTime();
+		Library.logger().setLevel(Level.SEVERE);	// turn off logging
 		try {
 			argName = ContentName.fromURI(args[0]);
 			CCNLibrary library = CCNLibrary.open();
@@ -80,7 +85,7 @@ public class RepoPerformanceTester extends CCNOutputStream {
 				return;
 			}
 			Library.logger().info("repo_test: putting file " + args[1] + " bytes: " + theFile.length());
-			RepoPerformanceTester ostream = new RepoPerformanceTester(args.length > 2 ? args[2] : null, argName, library);
+			RepoPerformanceTester ostream = getTester(args.length > 2 ? args[2] : null, argName, library);
 			do_write(ostream, theFile);
 			
 		} catch (MalformedContentNameStringException e) {
@@ -103,6 +108,16 @@ public class RepoPerformanceTester extends CCNOutputStream {
 		long endTime = new Date().getTime();
 		System.out.println("Inserted file " + args[1] + " in " + (endTime - startTime) + " ms");
 		System.exit(0);
+		
+	}
+	
+	private static int BLOCK_SIZE = 8096;
+
+	/**
+	 * @param args
+	 */
+	public static void main(String[] args) {
+		_rpt.doTest(args);
 	}
 	
 	private static void do_write(CCNOutputStream ostream, File file) throws IOException {
