@@ -1303,31 +1303,6 @@ clean_needed(struct ccnd *h)
         h->clean = ccn_schedule_event(h->sched, 1000000, clean_deamon, NULL, 0);
 }
 
-static struct ccn_indexbuf *
-get_flooding_outbound_faces(struct ccnd *h,
-    struct face *from,
-    unsigned char *msg,
-    struct ccn_parsed_interest *pi)
-{
-    struct ccn_indexbuf *x = ccn_indexbuf_create();
-    unsigned i;
-    struct face **a = h->faces_by_faceid;
-    int checkmask = 0;
-    if (pi->scope == 0)
-        return(x);
-    if (pi->scope == 1)
-        checkmask = CCN_FACE_GG;
-    if (h->debug & 32)
-        ccnd_msg(h, "at %d face_limit %u", __LINE__, h->face_limit);
-    for (i = 0; i < h->face_limit; i++)
-        if (a[i] != NULL && a[i] != from && ((a[i]->flags & checkmask) == checkmask)) {
-            ccn_indexbuf_append_element(x, a[i]->faceid);
-            if (h->debug & 32)
-                ccnd_msg(h, "at %d adding %u", __LINE__, a[i]->faceid);
-        }
-    return(x);
-}
-
 /*
  * age_forwarding: age out the old forwarding table entries
  */
@@ -1473,8 +1448,8 @@ static void
 register_new_face(struct ccnd *h, struct face *face)
 {
     int res;
-    if (h->flood) {
-        res = ccnd_reg_uri(h, "ccn:/", face->faceid, CCN_FORW_CHILD_INHERIT, 0x7FFFFFF);
+    if (h->flood && face->faceid != 0) {
+        res = ccnd_reg_uri(h, "ccn:/", face->faceid, CCN_FORW_CHILD_INHERIT, 0x7FFFFFFF);
         //ccnd_msg(h, "Flooding to face %u", face->faceid);
     }
 }
@@ -1568,8 +1543,6 @@ get_outbound_faces(struct ccnd *h,
     struct face *face;
     unsigned faceid;
     
-    if (h->flood)
-        return(get_flooding_outbound_faces(h, from, msg, pi));
     if (npe->fgen != h->forward_to_gen)
         update_forward_to(h, npe);
     x = ccn_indexbuf_create();
@@ -2814,7 +2787,7 @@ ccnd_create(void)
     h = calloc(1, sizeof(*h));
     h->skiplinks = ccn_indexbuf_create();
     param.finalize_data = h;
-    h->face_limit = 32; /* soft limit */
+    h->face_limit = 1024; /* soft limit */
     h->faces_by_faceid = calloc(h->face_limit, sizeof(h->faces_by_faceid[0]));
     param.finalize = &finalize_face;
     h->faces_by_fd = hashtb_create(sizeof(struct face), &param);
