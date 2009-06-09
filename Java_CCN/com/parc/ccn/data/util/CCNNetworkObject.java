@@ -70,7 +70,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		
 	/**
 	 * A raw object uses a raw flow controller. A non-raw object uses a repository backend.
-	 * repo flow controler.
+	 * repo flow controller.
 	 * @param type
 	 * @param name
 	 * @param data
@@ -79,8 +79,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException
 	 */
 	public CCNNetworkObject(Class<E> type, ContentName name, E data, boolean raw, CCNLibrary library) throws IOException {
+		// Don't start pulling a namespace till we actually write something. We may never write
+		// anything on this object.
 		this(type, name, data, 
-			(raw ? new CCNFlowControl(name, library) : new RepositoryFlowControl(name, library)));
+			(raw ? new CCNFlowControl(library) : new RepositoryFlowControl(library)));
 	}
 
 	/**
@@ -133,7 +135,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public CCNNetworkObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
 			boolean raw, CCNLibrary library) throws IOException, XMLStreamException {
 		this(type, name, publisher, 
-				(raw ? new CCNFlowControl(name, library) : new RepositoryFlowControl(name, library)));
+				(raw ? new CCNFlowControl(library) : new RepositoryFlowControl(library)));
 	}
 
 	/**
@@ -152,8 +154,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public CCNNetworkObject(Class<E> type, ContentObject firstBlock,
 			boolean raw, CCNLibrary library) throws IOException, XMLStreamException {
 		this(type, firstBlock, 
-				(raw ? new CCNFlowControl(VersioningProfile.versionRoot(firstBlock.name()), library) : 
-					   new RepositoryFlowControl(VersioningProfile.versionRoot(firstBlock.name()), library)));
+				(raw ? new CCNFlowControl(library) : 
+					   new RepositoryFlowControl(library)));
 	}
 
 	protected CCNNetworkObject(Class<E> type, ContentObject firstBlock,
@@ -161,7 +163,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		super(type);
 		_flowControl = flowControl;
 		_library = flowControl.getLibrary();
-		_flowControl = new CCNFlowControl(VersioningProfile.versionRoot(firstBlock.name()), _library);
+		_flowControl = new CCNFlowControl(_library);
 		update(firstBlock);
 	}
 	
@@ -203,7 +205,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			super.update(inputStream);
 			_currentName = inputStream.baseName();
 		}
-		_flowControl.addNameSpace(_currentName);
 	}
 	
 	public void updateInBackground() throws IOException {
@@ -289,7 +290,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		if (null == name) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
-		_flowControl.addNameSpace(name);
+		// Have to register the version root. If we just register this specific version, we won't
+		// see any shorter interests -- i.e. for get latest version.
+		_flowControl.addNameSpace(VersioningProfile.versionRoot(name));
 		// CCNVersionedOutputStream will version an unversioned name. 
 		// If it gets a versioned name, will respect it.
 		CCNVersionedOutputStream cos = new CCNVersionedOutputStream(name, null, null, _flowControl);
@@ -328,7 +331,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 
 		byte [] empty = { };
 		ContentObject goneObject = ContentObject.buildContentObject(name, ContentType.GONE, empty);
-		_flowControl.addNameSpace(name);
+		// Have to register the version root. If we just register this specific version, we won't
+		// see any shorter interests -- i.e. for get latest version.
+		_flowControl.addNameSpace(VersioningProfile.versionRoot(name));
 		_flowControl.put(goneObject);
 		_currentName = name;
 		_data = null;
