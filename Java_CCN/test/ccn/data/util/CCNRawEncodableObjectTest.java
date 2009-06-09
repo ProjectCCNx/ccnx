@@ -251,15 +251,12 @@ public class CCNRawEncodableObjectTest {
 		}
 		Assert.assertTrue("Failed to produce expected exception.", caught);
 		
-		CCNRawEncodableCollectionData ecd0 = new CCNRawEncodableCollectionData(ns[2], empty, library);
-		CCNRawEncodableCollectionData ecd1 = new CCNRawEncodableCollectionData(ns[1], small1, null);
-		CCNRawEncodableCollectionData ecd2 = new CCNRawEncodableCollectionData(ns[1], small1, null);
-		CCNRawEncodableCollectionData ecd3 = new CCNRawEncodableCollectionData(ns[2], big, library);
-		CCNRawEncodableCollectionData ecd4 = new CCNRawEncodableCollectionData(ns[1], empty, library);
-		
+		CCNRawEncodableCollectionData ecd0 = new CCNRawEncodableCollectionData(ns[2], empty, library);		
 		ecd0.save();
 		System.out.println("Version for empty collection: " + ecd0.getVersion());
+		CCNRawEncodableCollectionData ecd1 = new CCNRawEncodableCollectionData(ns[1], small1, null);
 		ecd1.save();
+		CCNRawEncodableCollectionData ecd2 = new CCNRawEncodableCollectionData(ns[1], small1, null);
 		ecd2.save(); 
 		System.out.println("ecd1 name: " + ecd1.getName());
 		System.out.println("ecd2 name: " + ecd2.getName());
@@ -311,8 +308,10 @@ public class CCNRawEncodableObjectTest {
 		Assert.assertEquals(ecd0, ecd2);
 		System.out.println("Update really works!");
 
+		CCNRawEncodableCollectionData ecd3 = new CCNRawEncodableCollectionData(ns[2], big, library);
 		ecd3.save();
 		ecd0.update();
+		CCNRawEncodableCollectionData ecd4 = new CCNRawEncodableCollectionData(ns[1], empty, library);
 		ecd4.update(ns[2], null);
 		System.out.println("ns[2]: " + ns[2]);
 		System.out.println("ecd3 name: " + ecd3.getName());
