@@ -288,7 +288,7 @@ main (int argc, char *argv[]) {
         ".+4", "../test2?x=2",              "?x=2", "ccn:/this/is/a/test2",
         "_-X", "../should/error",           "",     "",
         "_+2", "/missing/scheme",           "",     "ccn:/missing/scheme",
-        ".+0", "../../../../../././#/",     "#/",   "ccn:",
+        ".+0", "../../../../../././#/",     "#/",   "ccn:/",
         ".+1", all_chars_percent_encoded,   "",     all_chars_percent_encoded_canon,
         "_+1", all_chars_percent_encoded_canon, "", all_chars_percent_encoded_canon,
         ".+4", "ccn:/.../.%2e./...././.....///?...", "?...", "ccn:/.../.../..../.....",

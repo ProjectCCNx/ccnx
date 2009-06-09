@@ -164,13 +164,10 @@ ccnd_uri_listen(struct ccnd *ccnd, const char *uri, ccn_handler p, intptr_t intd
     closure->data = ccnd;
     closure->intdata = intdata;
     /* To bootstrap, we need to register explicitly */
-    ccnd_reg_prefix(ccnd,
-                    name->buf,
-                    comps,
-                    comps->n - 1,
-                    0, /* special faceid for internal client */
-                    CCN_FORW_CHILD_INHERIT,
-                    0x7FFFFFFF);
+    ccnd_reg_uri(ccnd, uri,
+                 0, /* special faceid for internal client */
+                 CCN_FORW_CHILD_INHERIT,
+                 0x7FFFFFFF);
     ccn_set_interest_filter(ccnd->internal_client, name, closure);
     ccn_charbuf_destroy(&name);
     ccn_indexbuf_destroy(&comps);
