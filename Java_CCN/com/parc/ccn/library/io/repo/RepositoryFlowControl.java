@@ -87,8 +87,12 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	}
 
 	public RepositoryFlowControl(ContentName name, CCNLibrary library) throws IOException {
-		super(library); 
+		this(library); 
 		addNameSpace(name);
+	}
+	
+	public RepositoryFlowControl(CCNLibrary library) throws IOException {
+		super(library);
 	}
 
 	@Override
