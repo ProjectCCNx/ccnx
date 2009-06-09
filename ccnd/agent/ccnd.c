@@ -64,7 +64,11 @@ static ccn_accession_t
 static void reap_needed(struct ccnd *h, int init_delay_usec);
 static void check_comm_file(struct ccnd *h);
 static const char *unlink_this_at_exit = NULL;
-
+static int nameprefix_seek(struct ccnd *h,
+                           struct hashtb_enumerator *e,
+                           const unsigned char *msg,
+                           struct ccn_indexbuf *comps,
+                           int ncomps);
 static void
 cleanup_at_exit(void)
 {
@@ -1290,8 +1294,7 @@ static struct ccn_indexbuf *
 get_flooding_outbound_faces(struct ccnd *h,
     struct face *from,
     unsigned char *msg,
-    struct ccn_parsed_interest *pi,
-    struct nameprefix_entry *npe)
+    struct ccn_parsed_interest *pi)
 {
     struct ccn_indexbuf *x = ccn_indexbuf_create();
     unsigned i;
@@ -1312,6 +1315,177 @@ get_flooding_outbound_faces(struct ccnd *h,
     return(x);
 }
 
+/*
+ * age_forwarding: age out the old forwarding table entries
+ */
+static int
+age_forwarding(struct ccn_schedule *sched,
+             void *clienth,
+             struct ccn_scheduled_event *ev,
+             int flags)
+{
+    struct ccnd *h = clienth;
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct ccn_forwarding *f;
+    struct ccn_forwarding **p;
+    struct nameprefix_entry *npe;
+    int changed = 0;
+    
+    if ((flags & CCN_SCHEDULE_CANCEL) != 0) {
+        h->age_forwarding = NULL;
+        return(0);
+    }
+    hashtb_start(h->nameprefix_tab, e);
+    for (npe = e->data; npe != NULL; npe = e->data) {
+        for (p = &npe->forwarding; (*p) != NULL; p = &((*p)->next)) {
+            f = *p;
+            if ((f->flags & CCN_FORW_REFRESHED) == 0 ||
+                  face_from_faceid(h, f->faceid) != NULL) {
+                *p = f->next;
+                free(f);
+                f = NULL;
+                changed = 1;
+                continue;
+            }
+            f->expires -= CCN_FWU_SECS;
+            if (f->expires <= 0)
+                f->flags &= ~CCN_FORW_REFRESHED;
+        }
+        hashtb_next(e);
+    }
+    hashtb_end(e);
+    h->forward_to_gen += 1;
+    return(CCN_FWU_SECS*1000000);
+}
+
+static void
+age_forwarding_needed(struct ccnd *h)
+{
+    if (h->age_forwarding == NULL)
+        h->age_forwarding = ccn_schedule_event(h->sched,
+                                               CCN_FWU_SECS*1000000,
+                                               age_forwarding,
+                                               NULL, 0);
+}
+
+static struct ccn_forwarding *
+seek_forwarding(struct ccnd *h, struct nameprefix_entry *npe, unsigned faceid)
+{
+    struct ccn_forwarding *f;
+    
+    for (f = npe->forwarding; f != NULL; f = f->next)
+        if (f->faceid == faceid)
+            return(f);
+    f = calloc(1, sizeof(*f));
+    if (f != NULL) {
+        f->faceid = faceid;
+        f->flags = 0;
+        f->expires = 0x7FFFFFFF;
+        f->next = npe->forwarding;
+        npe->forwarding = f;
+    }
+    return(f);
+}
+
+int
+ccnd_reg_prefix(struct ccnd *h,
+                const unsigned char *msg,
+                struct ccn_indexbuf *comps,
+                int ncomps,
+                unsigned faceid,
+                int flags,
+                int expires)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct ccn_forwarding *f = NULL;
+    struct nameprefix_entry *npe = NULL;
+    int res;
+    
+    if ((flags & (CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE | CCN_FORW_ADVERTISE)) != flags)
+        return(-1);
+    if (face_from_faceid(h, faceid) == NULL)
+        return(-1);
+    hashtb_start(h->nameprefix_tab, e);
+    res = nameprefix_seek(h, e, msg, comps, ncomps);
+    if (res >= 0) {
+        npe = e->data;
+        f = seek_forwarding(h, npe, faceid);
+        if (f != NULL) {
+            h->forward_to_gen += 1;
+            f->expires = expires;
+            f->flags |= (CCN_FORW_REFRESHED | CCN_FORW_ACTIVE | flags);
+        }
+        else
+            res = -1;
+    }
+    hashtb_end(e);
+    return(res);
+}
+
+struct ccn_charbuf *
+ccnd_reg_self(struct ccnd *h, const unsigned char *msg, size_t size)
+{
+    struct ccn_parsed_ContentObject pco = {0};
+    struct ccn_indexbuf *comps = ccn_indexbuf_create();
+    int res;
+    struct ccn_charbuf *result = NULL;
+    
+    res = ccn_parse_ContentObject(msg, size, &pco, comps);
+    if (res >= 0) {
+        // XXX - for now, ignore the body
+        res = ccnd_reg_prefix(h, msg, comps, comps->n - 1, h->interest_faceid,
+                              (CCN_FORW_CHILD_INHERIT | CCN_FORW_ADVERTISE),
+                              60);
+        if (res >= 0) {
+            result = ccn_charbuf_create();
+            // XXX - for now, zero-length result
+        }
+    }
+    ccn_indexbuf_destroy(&comps);
+    return(result);
+}
+
+/*!
+ * Add all the active, inheritable faceids of npe and its ancestors to x
+ */
+static void
+update_inherited(struct ccnd *h,
+                 struct nameprefix_entry *npe, struct ccn_indexbuf *x)
+{
+    struct ccn_forwarding *f;
+    const unsigned wantflags = (CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE);
+    for (; npe != NULL; npe = npe->parent)
+        for (f = npe->forwarding; f != NULL; f = f->next)
+            if ((f->flags & wantflags) == wantflags &&
+                  face_from_faceid(h, f->faceid) != NULL)
+                ccn_indexbuf_set_insert(x, f->faceid);
+}
+
+/*!
+ * Recompute the contents of npe->forward_to from forwarding lists of
+ * npe and all of its ancestors
+ */
+static void
+update_forward_to(struct ccnd *h, struct nameprefix_entry *npe)
+{
+    struct ccn_forwarding *f;
+    struct ccn_indexbuf *x = npe->forward_to;
+    if (x == NULL)
+        npe->forward_to = x = ccn_indexbuf_create();
+    else
+        x->n = 0;
+    for (f = npe->forwarding; f != NULL; f = f->next)
+        if ((f->flags & CCN_FORW_ACTIVE) != 0 &&
+              face_from_faceid(h, f->faceid) != NULL)
+            ccn_indexbuf_set_insert(x, f->faceid);
+    update_inherited(h, npe->parent, x);
+    npe->fgen = h->forward_to_gen;
+    if (x->n == 0)
+        ccn_indexbuf_destroy(&npe->forward_to);
+}
+
 /*!
  * This is where we consult the interest forwarding table.
  * @param npe should be the result of the longest-match lookup
@@ -1326,19 +1500,21 @@ get_outbound_faces(struct ccnd *h,
 {
     int checkmask = 0;
     struct ccn_indexbuf *x;
-    unsigned i;
-    unsigned n;
+    int i;
     size_t *b;
     struct face *face;
     
     if (h->flood)
-        return(get_flooding_outbound_faces(h, from, msg, pi, npe));
+        return(get_flooding_outbound_faces(h, from, msg, pi));
+    if (npe->fgen != h->forward_to_gen)
+        update_forward_to(h, npe);
     x = ccn_indexbuf_create();
-    if (pi->scope == 0 || npe->forward_to == NULL)
+    if (pi->scope == 0 || npe->forward_to == NULL || npe->forward_to->n == 0)
         return(x);
     if (pi->scope == 1)
         checkmask = CCN_FACE_GG;
-    for (i = 0, n = npe->forward_to->n, b = npe->forward_to->buf; i < n; i++)
+    /* We intentionally reverse the order here */
+    for (i = npe->forward_to->n - 1, b = npe->forward_to->buf; i >= 0; i--)
         face = face_from_faceid(h, b[i]);
         if (face != NULL && face != from && ((face->flags & checkmask) == checkmask))
             ccn_indexbuf_append_element(x, face->faceid);
@@ -1412,6 +1588,7 @@ do_propagate(struct ccn_schedule *sched,
                 ccnd_debug_ccnb(h, __LINE__, "interest_to", face,
                                 pe->interest_msg, pe->size);
             h->interests_sent += 1;
+            h->interest_faceid = pe->faceid;
             next_delay = nrand48(h->seed) % 8192 + 500;
             if ((pe->flags & CCN_PR_UNSENT) != 0) {
                 pe->flags &= ~CCN_PR_UNSENT;
@@ -1642,7 +1819,7 @@ is_duplicate_flooded(struct ccnd *h, unsigned char *msg, struct ccn_parsed_inter
  */
 static int
 nameprefix_seek(struct ccnd *h, struct hashtb_enumerator *e,
-                unsigned char *msg, struct ccn_indexbuf *comps, int ncomps)
+                const unsigned char *msg, struct ccn_indexbuf *comps, int ncomps)
 {
     int i;
     int base;
@@ -2660,8 +2837,16 @@ ccnd_create(void)
             freeaddrinfo(addrinfo);
         }
     }
+    if (h->face0 == NULL) {
+        struct face *face;
+        face = calloc(1, sizeof(*face));
+        face->fd = -1;
+        face->flags = (CCN_FACE_GG | CCN_FACE_LOCAL);
+        h->face0 = face;
+    }
     ccnd_reseed(h);
     clean_needed(h);
+    age_forwarding_needed(h);
     return(h);
 }
 
@@ -2672,8 +2857,8 @@ main(int argc, char **argv)
     signal(SIGPIPE, SIG_IGN);
     h = ccnd_create();
     ccnd_stats_httpd_start(h);
-    ccnd_internal_client_start(h);
     enroll_face(h, h->face0);
+    ccnd_internal_client_start(h);
     run(h);
     ccnd_msg(h, "exiting.");
     exit(0);

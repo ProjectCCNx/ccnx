@@ -3,6 +3,7 @@ package com.parc.ccn.library.profiles;
 import java.math.BigInteger;
 import java.sql.Timestamp;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.util.DataUtils;
@@ -218,5 +219,16 @@ public class VersioningProfile implements CCNProfile {
 			return false; // not versions of the same thing
 		}
 		return (compareVersions(laterVersion, earlierVersion) > 0);
+    }
+
+	public static Timestamp getVersionAsTimestampIfVersioned(ContentName name) {
+		try {
+			if (!isVersioned(name))
+				return null;
+			return getVersionAsTimestamp(name);
+		} catch (VersionMissingException e) {
+			Library.logger().info("Unexpected: version missing exception when we tried to pull version from name with isVersioned=true, name: " + name + " message: " + e.getMessage());
+			return null;
+		}
 	}
 }

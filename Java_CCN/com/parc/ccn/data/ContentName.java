@@ -31,7 +31,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	private static final String COMPONENT_ELEMENT = "Component";
 	
 	protected ArrayList<byte []>  _components;
-	protected static class DotDotComponent extends Exception { // Need to strip off a component
+	public static class DotDotComponent extends Exception { // Need to strip off a component
 		private static final long serialVersionUID = 4667513234636853164L;
 	}; 
 
