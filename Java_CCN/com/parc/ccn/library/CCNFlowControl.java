@@ -70,7 +70,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	public CCNFlowControl(ContentName name, CCNLibrary library) throws IOException {
 		this(library);
 		if (name != null) {
-			Library.logger().finest("adding namespace: " + name);
+			Library.logger().finest("CCNFlowControl: adding namespace: " + name);
 			// don't call full addNameSpace, in order to allow subclasses to 
 			// override. just do minimal part
 			_filteredNames.add(name);
@@ -107,14 +107,16 @@ public class CCNFlowControl implements CCNFilterListener {
 		Iterator<ContentName> it = _filteredNames.iterator();
 		while (it.hasNext()) {
 			ContentName filteredName = it.next();
-			if (filteredName.isPrefixOf(name))
+			if (filteredName.isPrefixOf(name)) {
+				Library.logger().info("addNameSpace: not adding name: " + name + " already monitoring prefix: " + filteredName);
 				return;		// Already part of filter
+			}
 			if (name.isPrefixOf(filteredName)) {
 				_library.unregisterFilter(filteredName, this);
 				it.remove();
 			}
 		}
-		Library.logger().finest("adding namespace: " + name);
+		Library.logger().info("addNameSpace: adding namespace: " + name);
 		_filteredNames.add(name);
 		_library.registerFilter(name, this);
 	}
@@ -252,6 +254,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	public int handleInterests(ArrayList<Interest> interests) {
 		synchronized (_holdingArea) {
 			for (Interest interest : interests) {
+				Library.logger().info("Flow controller: got interest: " + interest.print());
 				ContentObject co = getBestMatch(interest);
 				if (co != null) {
 					Library.logger().finest("Found content " + co.name() + " matching interest: " + interest.print());
