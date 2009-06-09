@@ -32,7 +32,6 @@ import com.parc.security.crypto.certificates.CryptoUtil;
  */
 public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 
-	protected static final boolean DEFAULT_RAW = true;
 	/**
 	 * Doesn't save until you call save, in case you want to tweak things first.
 	 * @param type
@@ -43,11 +42,11 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 	 * @throws IOException
 	 */
 	public PublicKeyObject(ContentName name, PublicKey data, CCNLibrary library) throws IOException {
-		super(PublicKey.class, name, data, DEFAULT_RAW, library);
+		super(PublicKey.class, name, data, library);
 	}
 	
 	public PublicKeyObject(ContentName name, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException, XMLStreamException {
-		super(PublicKey.class, name, publisher, DEFAULT_RAW, library);
+		super(PublicKey.class, name, publisher, library);
 	}
 	
 	/**
@@ -60,11 +59,11 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 	 * @throws ClassNotFoundException 
 	 */
 	public PublicKeyObject(ContentName name, CCNLibrary library) throws IOException, XMLStreamException {
-		super(PublicKey.class, name, (PublisherPublicKeyDigest)null, DEFAULT_RAW, library);
+		super(PublicKey.class, name, (PublisherPublicKeyDigest)null, library);
 	}
 	
 	public PublicKeyObject(ContentObject firstBlock, CCNLibrary library) throws IOException, XMLStreamException {
-		super(PublicKey.class, firstBlock, DEFAULT_RAW, library);
+		super(PublicKey.class, firstBlock, library);
 	}
 	
 	public PublicKey publicKey() { return data(); }

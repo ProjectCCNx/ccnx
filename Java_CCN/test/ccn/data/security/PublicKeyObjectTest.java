@@ -91,19 +91,36 @@ public class PublicKeyObjectTest {
 	}
 
 	@Test
-	public void testPublicKeyObject() {
+	public void testRawPublicKeyObject() {
 		
 		try {
-			testKeyReadWrite(storedKeyName, pair1.getPublic(), pair2.getPublic());
-			testKeyReadWrite(storedKeyName2, egPair.getPublic(), null);
-			testKeyReadWrite(storedKeyName3, eccPair.getPublic(), eciesPair.getPublic());
+			testRawKeyReadWrite(storedKeyName, pair1.getPublic(), pair2.getPublic());
+			testRawKeyReadWrite(storedKeyName2, egPair.getPublic(), null);
+			testRawKeyReadWrite(storedKeyName3, eccPair.getPublic(), eciesPair.getPublic());
 		} catch (Exception e) {
 			e.printStackTrace();
 			fail("Exception in publicKeyObject testing: " + e.getClass().getName() + ":  " + e.getMessage());
+		} finally {
+			flosser.stop();
+			flosser = null;
 		}
 	}
 
-	public void testKeyReadWrite(ContentName keyName, PublicKey key, PublicKey optional2ndKey) throws ConfigurationException, IOException, XMLStreamException {
+	@Test
+	public void testRepoPublicKeyObject() {
+		
+		try {
+			testRepoKeyReadWrite(storedKeyName, pair1.getPublic(), pair2.getPublic());
+			testRepoKeyReadWrite(storedKeyName2, egPair.getPublic(), null);
+			testRepoKeyReadWrite(storedKeyName3, eccPair.getPublic(), eciesPair.getPublic());
+		} catch (Exception e) {
+			e.printStackTrace();
+			fail("Exception in publicKeyObject testing: " + e.getClass().getName() + ":  " + e.getMessage());
+		} finally {
+		}
+	}
+
+	public void testRawKeyReadWrite(ContentName keyName, PublicKey key, PublicKey optional2ndKey) throws ConfigurationException, IOException, XMLStreamException {
 		
 
 		System.out.println("Reading and writing key " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
@@ -135,6 +152,41 @@ public class PublicKeyObjectTest {
 			//Assert.assertTrue(VersioningProfile.isLaterVersionOf(pkoread.getName(), pko.getName()));
 			//pko.update();
 			pko.save(optional2ndKey);
+			Assert.assertTrue(VersioningProfile.isLaterVersionOf(pko.getName(), pkoread.getName()));
+			pkoread.update();
+			Assert.assertEquals(pkoread.getName(), pko.getName());
+			Assert.assertEquals(pkoread.publicKey(), pko.publicKey());
+			Assert.assertEquals(pko.publicKey(), optional2ndKey);
+		}
+	}
+
+	public void testRepoKeyReadWrite(ContentName keyName, PublicKey key, PublicKey optional2ndKey) throws ConfigurationException, IOException, XMLStreamException {
+		
+
+		System.out.println("Reading and writing key " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
+		PublicKeyObject pko = new PublicKeyObject(keyName, key, library);
+		pko.saveToRepository();
+		Assert.assertTrue(VersioningProfile.isVersioned(pko.getName()));
+		// should update in another thread
+		PublicKeyObject pkoread = new PublicKeyObject(keyName, null); // new library
+		Assert.assertTrue(pkoread.ready());
+		Assert.assertEquals(pkoread.getName(), pko.getName());
+		if (!pkoread.publicKey().equals(pko.publicKey())) {
+			Library.logger().info("Mismatched public keys, chance provider doesn't implement equals()." );
+			Assert.assertArrayEquals(pkoread.publicKey().getEncoded(), pko.publicKey().getEncoded());
+		} else {
+			Assert.assertEquals(pkoread.publicKey(), pko.publicKey());
+		}
+		if (null != optional2ndKey) {
+			// if we save on pkoread and attempt to update on pko, the interests don't
+			// get delivered and we end up on a wait for put drain, even though there
+			// is a perfectly good matching interest coming from the flosser -- it somehow
+			// only makes it to the object that doesn't have data.
+			// TODO DKS FIX
+			//pkoread.saveToRepository(optional2ndKey);
+			//Assert.assertTrue(VersioningProfile.isLaterVersionOf(pkoread.getName(), pko.getName()));
+			//pko.update();
+			pko.saveToRepository(optional2ndKey);
 			Assert.assertTrue(VersioningProfile.isLaterVersionOf(pko.getName(), pkoread.getName()));
 			pkoread.update();
 			Assert.assertEquals(pkoread.getName(), pko.getName());
