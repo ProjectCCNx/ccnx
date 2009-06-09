@@ -44,16 +44,18 @@ import com.parc.ccn.library.profiles.VersioningProfile;
  */
 public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CCNInterestListener {
 
+	protected static boolean DEFAULT_RAW = true;
+	
 	protected ContentName _currentName;
 	protected CCNLibrary _library;
 	protected CCNFlowControl _flowControl;
+	protected boolean _raw = DEFAULT_RAW; // what kind of flow controller to make if we don't have one
+	
 	protected boolean _isGone = false;
 	// control ongoing update.
 	ArrayList<byte[]> _excludeList = new ArrayList<byte[]>();
 	Interest _currentInterest = null;
 	boolean _continuousUpdates = false;
-	
-	protected static boolean DEFAULT_RAW = true;
 	
 	/**
 	 * Basic write constructor.
@@ -80,16 +82,17 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 */
 	public CCNNetworkObject(Class<E> type, ContentName name, E data, boolean raw, CCNLibrary library) throws IOException {
 		// Don't start pulling a namespace till we actually write something. We may never write
-		// anything on this object.
-		this(type, name, data, 
-			(raw ? new CCNFlowControl(library) : new RepositoryFlowControl(library)));
+		// anything on this object. In fact, don't make a flow controller at all till we need one.
+		super(type, data);
+		_library = library;
+		_currentName = name;
+		_raw = raw;
 	}
 
 	/**
 	 * Write constructors. This allows subclasses or users to pass in new forms of flow controller.
 	 * You should only use this one if you really know what you are doing.
 	 * 
-	 * For now, flowControl assumed to already be handling namespace name.
 	 * @param type
 	 * @param name
 	 * @param data
@@ -134,8 +137,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 
 	public CCNNetworkObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
 			boolean raw, CCNLibrary library) throws IOException, XMLStreamException {
-		this(type, name, publisher, 
-				(raw ? new CCNFlowControl(library) : new RepositoryFlowControl(library)));
+		super(type);
+		_library = library;
+		_currentName = name;
+		update(name, publisher);
 	}
 
 	/**
@@ -151,15 +156,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		this(type, firstBlock, DEFAULT_RAW, library);
 	}
 	
-	public CCNNetworkObject(Class<E> type, ContentObject firstBlock,
-			boolean raw, CCNLibrary library) throws IOException, XMLStreamException {
-		this(type, firstBlock, 
-				(raw ? new CCNFlowControl(library) : 
-					   new RepositoryFlowControl(library)));
+	public CCNNetworkObject(Class<E> type, ContentObject firstBlock, boolean raw, CCNLibrary library) throws IOException, XMLStreamException {
+		super(type);
+		_library = library;
+		update(firstBlock);
 	}
 
-	protected CCNNetworkObject(Class<E> type, ContentObject firstBlock,
-			CCNFlowControl flowControl) throws IOException, XMLStreamException {
+	protected CCNNetworkObject(Class<E> type, ContentObject firstBlock, CCNFlowControl flowControl) throws IOException, XMLStreamException {
 		super(type);
 		_flowControl = flowControl;
 		_library = flowControl.getLibrary();
@@ -172,6 +175,19 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		}
 		// Look for latest version.
 		update(VersioningProfile.versionRoot(_currentName), null);
+	}
+	
+	/**
+	 * Maximize laziness of flow controller creation, to make it easiest for client code to
+	 * decide how to store this object.
+	 * @return
+	 * @throws IOException 
+	 */
+	protected void createFlowController() throws IOException {
+		if (null == _flowControl) {
+			_flowControl = (_raw ? new CCNFlowControl(_library) : 
+								   new RepositoryFlowControl(_library));
+		}
 	}
 
 	/**
@@ -250,6 +266,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 
 	/**
 	 * Save to existing name, if content is dirty. Update version.
+	 * Saves according to flow controller in force, or creates one according to
+	 * the value of raw specified.
 	 * @throws IOException 
 	 * @throws XMLStreamException 
 	 */
@@ -289,6 +307,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		if (null == name) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
+		createFlowController();
 		// Have to register the version root. If we just register this specific version, we won't
 		// see any shorter interests -- i.e. for get latest version.
 		_flowControl.addNameSpace(VersioningProfile.versionRoot(name));
@@ -313,6 +332,35 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		save(name);
 	}
 
+	/*
+	 * If raw=true or DEFAULT_RAW=true specified, this must be the first call to save made
+	 * for this object.
+	 */
+	public void saveToRepository(ContentName name) throws XMLStreamException, IOException {
+		if ((null != _flowControl) && !(_flowControl instanceof RepositoryFlowControl)) {
+			throw new IOException("Cannot call saveToRepository on raw object!");
+		}
+		_raw = false; // control what flow controller will be made
+		save(name);
+	}
+	
+	public void saveToRepository() throws XMLStreamException, IOException {		
+		if (null == _currentName) {
+			throw new IllegalStateException("Cannot save an object without giving it a name!");
+		}
+		saveToRepository(VersioningProfile.versionName(_currentName));
+	}
+	
+	public void saveToRepository(E data) throws XMLStreamException, IOException {
+		setData(data);
+		saveToRepository();
+	}
+	
+	public void saveToRepository(ContentName name, E data) throws XMLStreamException, IOException {
+		setData(data);
+		saveToRepository(name);
+	}
+
 	/**
 	 * Save this object as GONE. Intended to mark the latest version, rather
 	 * than a specific version as GONE. So for now, require that name handed in
@@ -332,6 +380,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		ContentObject goneObject = ContentObject.buildContentObject(name, ContentType.GONE, empty);
 		// Have to register the version root. If we just register this specific version, we won't
 		// see any shorter interests -- i.e. for get latest version.
+		createFlowController();
 		_flowControl.addNameSpace(VersioningProfile.versionRoot(name));
 		_flowControl.put(goneObject);
 		_currentName = name;
@@ -347,6 +396,25 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		saveAsGone(VersioningProfile.versionRoot(_currentName));
 	}
 
+	/*
+	 * If raw=true or DEFAULT_RAW=true specified, this must be the first call to save made
+	 * for this object.
+	 */
+	public void saveToRepositoryAsGone(ContentName name) throws XMLStreamException, IOException {
+		if ((null != _flowControl) && !(_flowControl instanceof RepositoryFlowControl)) {
+			throw new IOException("Cannot call saveToRepository on raw object!");
+		}
+		_raw = false; // control what flow controller will be made
+		saveAsGone(name);
+	}
+	
+	public void saveToRepositoryAsGone() throws XMLStreamException, IOException {		
+		if (null == _currentName) {
+			throw new IllegalStateException("Cannot save an object without giving it a name!");
+		}
+		saveToRepositoryAsGone(VersioningProfile.versionName(_currentName));
+	}
+	
 	public Timestamp getVersion() {
 		if ((null == _currentName) || (null == _lastSaved)) {
 			return null;
