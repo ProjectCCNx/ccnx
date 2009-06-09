@@ -21,6 +21,7 @@ import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
+import com.sun.org.apache.xerces.internal.util.URI.MalformedURIException;
 
 public class ContentName extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentName> {
 
@@ -165,17 +166,21 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * and special treatment for certain name components allows the 
 	 * canonical CCN string representation to encode all possible CCN names.
 	 * <p>
-	 * The characters in the URI are limited to the <i>unreserved</i> characters 
+	 * The legal characters in the URI are limited to the <i>unreserved</i> characters 
 	 * "a" through "z", "A" through "Z", "0" through "9", and "-", "_", ".", and "~"
-	 * plus the <i>reserved</i> delimiters "/" (interpreted as component separator) 
-	 * and ":" (legal only in the optional scheme specification "ccn:" at the start 
-	 * of the URI). 
+	 * plus the <i>reserved</i> delimiters  "!", "$" "&", "'", "(", ")",
+     * "*", "+", ",", ";", "=".
+     * The delimiter "/" is a special case interpreted as component separator and so
+     * may not be used within a component unescaped.
 	 * <p>
-	 * The decoding from a URI String to a ContentName translates each unreserved 
+	 * The URI must begin with either the "/" delimiter or the scheme specification "ccn:".
+	 * <p>
+	 * The decoding from a URI String to a ContentName translates each legal 
 	 * character to its US-ASCII byte encoding, except for the "." which is subject 
 	 * to special handling described below.  Any other byte value in a component 
 	 * (including those corresponding to "/" and ":") must be percent-encoded in 
-	 * the URI.
+	 * the URI.  Any character sequence starting with "?" or "#" is discarded (to the
+	 * end of the component).
 	 * <p>
 	 * The resolution rules for relative references are always applied in this 
 	 * decoding (regardless of whether the URI has a scheme specification or not):
@@ -205,68 +210,76 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @throws MalformedContentNameStringException
 	 */
 	public static ContentName fromURI(String name) throws MalformedContentNameStringException {
-		ContentName result = new ContentName();
-		if((name == null) || (name.length() == 0)) {
-			result._components = null;
-		} else {
-			String[] parts;
-			String justname = name;
-			if (!name.startsWith(SEPARATOR)){
-				if (!name.startsWith(SCHEME + SEPARATOR)) {
-					throw new MalformedContentNameStringException("ContentName strings must begin with " + SEPARATOR + " or " + SCHEME + SEPARATOR);
-				}
-				justname = name.substring(SCHEME.length());
-			}
-			parts = justname.split(SEPARATOR);
-			if (parts.length == 0) {
-				// We've been asked to parse the root name.
-				result._components = new ArrayList<byte []>(0);
+		try {
+			ContentName result = new ContentName();
+			if((name == null) || (name.length() == 0)) {
+				result._components = null;
 			} else {
-				result._components = new ArrayList<byte []>(parts.length - 1);
-			}
-			// Leave off initial empty component
-			for (int i=1; i < parts.length; ++i) {
-				try {
-					byte[] component = componentParseURI(parts[i]);
-					if (null != component) {
-						result._components.add(component);
+				String[] parts;
+				String justname = name;
+				if (!name.startsWith(SEPARATOR)){
+					if (!name.startsWith(SCHEME + SEPARATOR)) {
+						throw new MalformedContentNameStringException("ContentName strings must begin with " + SEPARATOR + " or " + SCHEME + SEPARATOR);
 					}
-				} catch (DotDotComponent c) {
-					// Need to strip "parent"
-					if (result._components.size() < 1) {
-						throw new MalformedContentNameStringException("ContentName string contains too many .. components: " + name);
-					} else {
-						result._components.remove(result._components.size()-1);
+					justname = name.substring(SCHEME.length());
+				}
+				parts = justname.split(SEPARATOR);
+				if (parts.length == 0) {
+					// We've been asked to parse the root name.
+					result._components = new ArrayList<byte []>(0);
+				} else {
+					result._components = new ArrayList<byte []>(parts.length - 1);
+				}
+				// Leave off initial empty component
+				for (int i=1; i < parts.length; ++i) {
+					try {
+						byte[] component = componentParseURI(parts[i]);
+						if (null != component) {
+							result._components.add(component);
+						}
+					} catch (DotDotComponent c) {
+						// Need to strip "parent"
+						if (result._components.size() < 1) {
+							throw new MalformedContentNameStringException("ContentName string contains too many .. components: " + name);
+						} else {
+							result._components.remove(result._components.size()-1);
+						}
 					}
 				}
 			}
+			return result;
+		} catch (MalformedURIException e) {
+			throw new MalformedContentNameStringException(e.getMessage());
 		}
-		return result;
 	}
 	
 	public static ContentName fromURI(String parts[]) throws MalformedContentNameStringException {
-		ContentName result = new ContentName();
-		if ((parts == null) || (parts.length == 0)) {
-			result._components = null;
-		} else {
-			result._components = new ArrayList<byte []>(parts.length);
-			for (int i=0; i < parts.length; ++i) {
-				try {
-					byte[] component = componentParseURI(parts[i]);
-					if (null != component) {
-						result._components.add(component);
+		try {
+			ContentName result = new ContentName();
+			if ((parts == null) || (parts.length == 0)) {
+				result._components = null;
+			} else {
+				result._components = new ArrayList<byte []>(parts.length);
+				for (int i=0; i < parts.length; ++i) {
+					try {
+						byte[] component = componentParseURI(parts[i]);
+						if (null != component) {
+							result._components.add(component);
+						}
+					} catch (DotDotComponent c) {
+						// Need to strip "parent"
+						if (result._components.size() < 1) {
+							throw new MalformedContentNameStringException("ContentName parts contains too many .. components");
+						} else {
+							result._components.remove(result._components.size()-1);
+						}					
 					}
-				} catch (DotDotComponent c) {
-					// Need to strip "parent"
-					if (result._components.size() < 1) {
-						throw new MalformedContentNameStringException("ContentName parts contains too many .. components");
-					} else {
-						result._components.remove(result._components.size()-1);
-					}					
 				}
 			}
+			return result;
+		} catch (MalformedURIException e) {
+			throw new MalformedContentNameStringException(e.getMessage());
 		}
-		return result;
 	}
 
 	/**
@@ -279,23 +292,27 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @throws MalformedContentNameStringException
 	 */
 	public static ContentName fromURI(ContentName parent, String name) throws MalformedContentNameStringException {
-		ContentName result = new ContentName(parent.count(), parent.components());
-		if (null != name) {
-			try {
-				byte[] decodedName = componentParseURI(name);
-				if (null != decodedName) {
-					result._components.add(decodedName);
+		try {
+			ContentName result = new ContentName(parent.count(), parent.components());
+			if (null != name) {
+				try {
+					byte[] decodedName = componentParseURI(name);
+					if (null != decodedName) {
+						result._components.add(decodedName);
+					}
+				} catch (DotDotComponent c) {
+					// Need to strip "parent"
+					if (result._components.size() < 1) {
+						throw new MalformedContentNameStringException("ContentName parts contains too many .. components");
+					} else {
+						result._components.remove(result._components.size()-1);
+					}									
 				}
-			} catch (DotDotComponent c) {
-				// Need to strip "parent"
-				if (result._components.size() < 1) {
-					throw new MalformedContentNameStringException("ContentName parts contains too many .. components");
-				} else {
-					result._components.remove(result._components.size()-1);
-				}									
 			}
+			return result;
+		} catch (MalformedURIException e) {
+			throw new MalformedContentNameStringException(e.getMessage());
 		}
-		return result;
 	}
 	
 	/**
@@ -412,7 +429,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	} 
 	
 	/**
-	 * Print bytes in the URI Generic Syntax of RFC 3986 URI 
+	 * Print bytes in the URI Generic Syntax of RFC 3986 
 	 * including byte sequences that are not legal character
 	 * encodings in any character set and byte sequences that have special 
 	 * meaning for URI resolution per RFC 3986.  This is designed to match
@@ -549,13 +566,15 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 
 	/*
-	 * TODO This needs to convert to parsing RFC 3986 URI format
-	 * Parse component in the syntax of the application/x-www-form-urlencoded
-	 * MIME format, including representations of bytes that are not legal character
+	 * Parse the URI Generic Syntax of RFC 3986  
+	 * including handling percent encoding of sequences that are not legal character
 	 * encodings in any character set.  This method is the inverse of 
 	 * printComponent() and for any input sequence of bytes it must be the case
-	 * that parseComponent(printComponent(input)) == input.
+	 * that parseComponent(printComponent(input)) == input.  Note that the inverse
+	 * is NOT true printComponent(parseComponent(input)) != input in general.
 	 *  
+	 * Please see fromURI() documentation for more detail.
+	 * 
 	 * Note in particular that this method interprets sequences of more than
 	 * two dots ('.') as representing an empty component or dot component value
 	 * as encoded by componentPrint.  That is, the component value will be 
@@ -563,37 +582,60 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @param name a single component of a name
 	 * @return
      */
-	public static byte[] componentParseURI(String name) throws DotDotComponent {
+	public static byte[] componentParseURI(String name) throws DotDotComponent, MalformedURIException {
 		byte[] decodedName = null;
 		boolean alldots = true; // does this component contain only dots after unescaping?
+		boolean quitEarly = false;
 		try {
 			ByteBuffer result = ByteBuffer.allocate(name.length());
-			for (int i = 0; i < name.length(); i++) {
-				if (name.charAt(i) == '%') {
+			for (int i = 0; i < name.length() && !quitEarly; i++) {
+				char ch = name.charAt(i);
+				switch (ch) {
+				case '%': 
 					// This is a byte string %xy where xy are hex digits
 					// Since the input string must be compatible with the output
 					// of componentPrint(), we may convert the byte values directly.
 					// There is no need to go through a character representation.
 					if (name.length()-1 < i+2) {
-						throw new IllegalArgumentException("malformed %xy byte representation: too short");
+						throw new MalformedURIException("malformed %xy byte representation: too short");
 					}
 					if (name.charAt(i+1) == '-') {
-						throw new IllegalArgumentException("malformed %xy byte representation: negative value not permitted");
+						throw new MalformedURIException("malformed %xy byte representation: negative value not permitted");
 					}
 					try {
 						result.put(new Integer(Integer.parseInt(name.substring(i+1, i+3),16)).byteValue());
 					} catch (NumberFormatException e) {
-						throw new IllegalArgumentException("malformed %xy byte representation: not legal hex number",e);
+						throw new MalformedURIException("malformed %xy byte representation: not legal hex number: " + name.substring(i+1, i+3));
 					}
 					i+=2; // for loop will increment by one more to get net +3 so past byte string
-				} else if (name.charAt(i) == '+') {
-					// This is the one character translated to a different one
-					result.put(" ".getBytes("UTF-8"));
-				} else {
-					// This character remains the same
-					result.put(name.substring(i, i+1).getBytes("UTF-8"));
+					break;
+				// Note in C lib case 0 is handled like the two general delimiters below that terminate processing 
+				// but that case should never arise in Java which uses real unicode characters.
+				case '/':
+				case '?':
+				case '#':
+					quitEarly = true; // early exit from containing loop
+					break;
+	            case ':': case '[': case ']': case '@':
+	            case '!': case '$': case '&': case '\'': case '(': case ')':
+	            case '*': case '+': case ',': case ';': case '=':
+	            	// Permit unescaped reserved characters
+	            	result.put(name.substring(i, i+1).getBytes("UTF-8"));
+	            	break;
+				default: 
+					if (('a' <= ch && ch <= 'z') ||
+							('A' <= ch && ch <= 'Z') ||
+							('0' <= ch && ch <= '9') ||
+							ch == '-' || ch == '.' || ch == '_' || ch == '~') {
+
+						// This character remains the same
+						result.put(name.substring(i, i+1).getBytes("UTF-8"));
+					} else {
+						throw new MalformedURIException("Illegal characters in URI: " + name);
+					}
+				break;
 				}
-				if (result.get(result.position()-1) != '.') {
+				if (!quitEarly && result.get(result.position()-1) != '.') {
 					alldots = false;
 				}
 			}
@@ -816,7 +858,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @param str
 	 * @return
 	 */
-	public boolean contains(String str) {
+	public boolean contains(String str) throws MalformedURIException {
 		try {
 			byte[] parsed = componentParseURI(str);
 			if (null == parsed) {
@@ -837,8 +879,9 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * Uses the canonical URI representation
 	 * @param str
 	 * @return
+	 * @throws MalformedURIException 
 	 */
-	public int containsWhere(String str) {
+	public int containsWhere(String str) throws MalformedURIException {
 		try {
 			byte[] parsed = componentParseURI(str);
 			if (null == parsed) {
@@ -883,7 +926,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		return new ContentName(offset, this.components());
 	}
 	
-	public ContentName cut(String component) {
+	public ContentName cut(String component) throws MalformedURIException {
 		try {
 			byte[] parsed = componentParseURI(component);
 			if (null == parsed) {

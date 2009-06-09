@@ -331,7 +331,7 @@ public class RFSImpl implements Repository {
 			for (File f : file.listFiles()) {
 				try {
 					getAllFileResults(f, results, new ContentName(name, ContentName.componentParseURI(f.getName())));
-				} catch (DotDotComponent e) {
+				} catch (Exception e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}

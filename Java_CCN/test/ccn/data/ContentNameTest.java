@@ -50,8 +50,7 @@ public class ContentNameTest {
 	public String escapedSubName1 = "%62%72%69%67%67%73";
 	public String withScheme = "ccn:/test/briggs/test.txt";
 	public String dotSlash = "ccn:/.../.%2e./...././.....///?...";
-//	public String dotSlashResolved = "ccn:/.../.../..../.....";
-	public String dotSlashResolved = "ccn:/.../.../..../...../%3F...";
+	public String dotSlashResolved = "ccn:/.../.../..../.....";
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
