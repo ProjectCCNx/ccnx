@@ -163,7 +163,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		super(type);
 		_flowControl = flowControl;
 		_library = flowControl.getLibrary();
-		_flowControl = new CCNFlowControl(_library);
 		update(firstBlock);
 	}
 	
