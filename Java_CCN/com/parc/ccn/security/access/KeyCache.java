@@ -85,7 +85,7 @@ public class KeyCache {
 		_keyNameMap.put(id, name);
 	}
 	
-	public byte [] getKeyIdentifier(Key key) {
+	public static byte [] getKeyIdentifier(Key key) {
 		// Works on symmetric and public.
 		return CCNDigestHelper.digest(key.getEncoded());
 	}
