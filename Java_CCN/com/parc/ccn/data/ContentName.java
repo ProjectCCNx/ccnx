@@ -412,23 +412,18 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	} 
 	
 	/**
-	 * TODO This needs to convert to printing RFC 3986 URI format
-	 * Print bytes in the syntax of the application/x-www-form-urlencoded
-	 * MIME format, including byte sequences that are not legal character
+	 * Print bytes in the URI Generic Syntax of RFC 3986 URI 
+	 * including byte sequences that are not legal character
 	 * encodings in any character set and byte sequences that have special 
-	 * meaning for URI resolution per RFC 3986.
+	 * meaning for URI resolution per RFC 3986.  This is designed to match
+	 * the C library URI encoding.
 	 * 
-	 * All sub-sequences of the input 
-	 * bytes that are legal UTF-8 will be translated into the 
-	 * application/x-www-form-urlencoded format using the UTF-8 encoding 
-	 * scheme, just as java.net.URLEncoder would do if invoked with the
-	 * encoding name "UTF-8".  Those sub-sequences of input bytes that 
-	 * are not legal UTF-8 will be translated into application/x-www-form-urlencoded
-	 * byte representations.  Each byte is represented by the 3-character string 
-	 * "%xy", where xy is the two-digit hexadecimal representation of the byte.
-	 * The net result is that UTF-8 is preserved but that any arbitrary 
-	 * byte sequence is translated to a string representation that
-	 * can be parsed by parseComponent() to recover exactly the input sequence. 
+	 * This method must be invertible by parseComponent() so 
+	 * for any input sequence of bytes it must be the case
+	 * that parseComponent(printComponent(input)) == input.
+	 * 
+	 * All bytes that are unreserved characters per RFC 3986 are left unescaped.
+	 * Other bytes are percent encoded.
 	 * 
 	 * Empty path components and path components "." and ".." have special 
 	 * meaning for relative URI resolution per RFC 3986.  To guarantee 
@@ -437,61 +432,43 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * components that are empty or consist entirely of '.' characters will 
 	 * have "..." appended.  This is intended to be consistent with the CCN C 
 	 * library handling of URI representation of names.
-	 * @param bs input byte array
+	 * @param bs input byte array.
 	 * @return
 	 */
 	public static String componentPrintURI(byte[] bs, int offset, int length) {
-		// NHB: Van is expecting the URI encoding rules
 		if (null == bs || bs.length == 0) {
 			// Empty component represented by three '.'
 			return "...";
 		}
-		try {
-			// Note that this would probably be more efficient as simple loop:
-			// In order to use the URLEncoder class to handle the 
-			// parts that are UTF-8 already, we decode the bytes into Java String
-			// as though they were UTF-8.  Wherever that fails
-			// (i.e. where byte sub-sequences are NOT legal UTF-8)
-			// we directly convert those bytes to the %xy output format.
-			// To get enough control over the decoding, we must use 
-			// the charset decoder and NOT simply new String(bs) because
-			// the String constructor will decode illegal UTF-8 sub-sequences
-			// with Unicode "Replacement Character" U+FFFD.
-			StringBuffer result = new StringBuffer();
-			Charset charset = Charset.forName("UTF-8");
-			CharsetDecoder decoder = charset.newDecoder();
-			// Leave nothing to defaults: we want to be notified on anything illegal
-			decoder.onMalformedInput(CodingErrorAction.REPORT);
-			decoder.onUnmappableCharacter(CodingErrorAction.REPORT);
-			ByteBuffer input = ByteBuffer.wrap(bs, offset, length);
-			CharBuffer output = CharBuffer.allocate(((int)decoder.maxCharsPerByte()*length)+1);
-			while (input.remaining() > 0) {
-				CoderResult cr = decoder.decode(input, output, true);
-				assert(!cr.isOverflow());
-				// URLEncode whatever was successfully decoded from UTF-8
-				output.flip();
-				result.append(URLEncoder.encode(output.toString(), "UTF-8"));
-				output.clear();
-				if (cr.isError()) {
-					for (int i=0; i<cr.length(); i++) {
-						result.append(String.format("%%%02X", input.get()));
-					}
-				}
-			}
-			int i = 0;
-			for (i = 0; i < result.length() && result.charAt(i) == '.'; i++) {
-				continue;
-			}
-			if (i == result.length()) {
-				// all dots
-				result.append("...");
-			}
-			return result.toString();
-		} catch (UnsupportedCharsetException e) {
-			throw new RuntimeException("UTF-8 not supported charset", e);
-		} catch (UnsupportedEncodingException e) {
-			throw new RuntimeException("UTF-8 not supported", e);
+		// To get enough control over the encoding, we use 
+		// our own loop and NOT simply new String(bs) (or java.net.URLEncoder) because
+		// the String constructor will decode illegal UTF-8 sub-sequences
+		// with Unicode "Replacement Character" U+FFFD.  We could use a CharsetDecoder
+		// to detect the illegal UTF-8 sub-sequences and handle them separately,
+		// except that this is almost certainly less efficient and some versions of Java 
+		// have bugs that prevent flagging illegal overlong UTF-8 encodings (CVE-2008-2938).
+		// Also, it is much easier to verify what this is doing and compare to the C library implementation.
+		StringBuffer result = new StringBuffer();
+		for (int i = 0; i < bs.length; i++) {
+			byte ch = bs[i];
+			if (('a' <= ch && ch <= 'z') ||
+					('A' <= ch && ch <= 'Z') ||
+					('0' <= ch && ch <= '9') ||
+					ch == '-' || ch == '.' || ch == '_' || ch == '~')
+				// Since these are all BMP characters, the can be represented in one Java Character
+				result.append(Character.toChars(ch)[0]);
+			else
+				result.append(String.format("%%%02X", ch));
 		}
+		int i = 0;
+		for (i = 0; i < result.length() && result.charAt(i) == '.'; i++) {
+			continue;
+		}
+		if (i == result.length()) {
+			// all dots
+			result.append("...");
+		}
+		return result.toString();
 	}
 	
 	public static String componentPrintURI(byte [] bs) {

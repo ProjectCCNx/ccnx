@@ -37,9 +37,16 @@ public class ContentNameTest {
 	// trip through String() to URL encoding and back will not be lossless!
 	public byte [] invalid = new byte[]{0x01, 0x00, 0x00, // valid  but with 0's
 				(byte) 0x80, (byte) 0xbc, // can't be first byte
-				(byte) 0xc0, (byte) 0xc1, // overlong encoding
+				(byte) 0xc0, (byte) 0x8a, // overlong encoding
 				(byte) 0xf5, (byte) 0xf9, (byte) 0xfc, // RFC3629 restricted
 			    (byte) 0xfe, (byte) 0xff}; // invalid: not defined
+	public byte [][] invalids = new byte[][]{ {0x01, 0x00, 0x00}, // valid  but with 0's
+			{(byte) 0x80, (byte) 0xbc}, // can't be first byte
+			{(byte) 0xc0, (byte) 0x8a}, // overlong encoding
+			{(byte) 0xf5, (byte) 0xf9, (byte) 0xfc}, // RFC3629 restricted
+		    {(byte) 0xfe, (byte) 0xff}, // invalid: not defined
+			{(byte) 0xe0, (byte) 0x8e, (byte) 0xb7},
+			}; 
 	public String escapedSubName1 = "%62%72%69%67%67%73";
 	public String withScheme = "ccn:/test/briggs/test.txt";
 	public String dotSlash = "ccn:/.../.%2e./...././.....///?...";
@@ -189,6 +196,7 @@ public class ContentNameTest {
 	@Test
 	public void testInvalidContentNameByteArrayArray() throws MalformedContentNameStringException {
 		byte [][] arr = new byte[4][];
+		// First valid prefix
 		arr[0] = baseName.getBytes();
 		arr[1] = subName1.getBytes();
 		arr[2] = document1.getBytes();
@@ -196,12 +204,23 @@ public class ContentNameTest {
 		ContentName name = new ContentName(3, arr);
 		assertNotNull(name);
 		System.out.println("Name: " + name);
+		// Now add invalid component and test round-trip
 		arr[3] = invalid;
 		ContentName name2 = new ContentName(arr);
 		assertNotNull(name2);
 		System.out.println("Name 2: " + name2);
 		ContentName input = ContentName.fromURI(name2.toString());
 		assertEquals(input,name2);
+		
+		// Now test individual invalid cases
+		for (int i = 0; i < invalids.length; i++) {
+			arr[3] = invalids[i];
+			ContentName name3 = new ContentName(arr);
+			assertNotNull(name3);
+			System.out.println("Name with invalid component " + i + ": " + name3);
+			input = ContentName.fromURI(name3.toString());
+			assertEquals(input,name3);			
+		}
 	}
 
 	@Test
