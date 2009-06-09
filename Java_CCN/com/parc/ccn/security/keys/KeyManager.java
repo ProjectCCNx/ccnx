@@ -69,9 +69,12 @@ public abstract class KeyManager {
 	protected static synchronized KeyManager createKeyManager() throws ConfigurationException, IOException {
 		if (null == _defaultKeyManager) {
 			_defaultKeyManager = new BasicKeyManager();
+			_defaultKeyManager.initialize();
 		}
 		return _defaultKeyManager;
 	}
+	
+	public abstract void initialize() throws ConfigurationException;
 	
 	public static KeyRepository getKeyRepository() {
 		return getKeyManager().keyRepository();

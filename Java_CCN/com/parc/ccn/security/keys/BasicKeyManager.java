@@ -5,6 +5,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -36,6 +38,7 @@ public class BasicKeyManager extends KeyManager {
 	protected X509Certificate _certificate = null;
 	protected PrivateKey _privateKey = null;
 	protected KeyLocator _keyLocator = null;
+	protected boolean _initialized = false;
 	
 	protected KeyRepository _keyRepository = null;
 	
@@ -43,7 +46,26 @@ public class BasicKeyManager extends KeyManager {
 	
 	public BasicKeyManager() throws ConfigurationException, IOException {
 		_keyRepository = new KeyRepository();
+		// must call initialize
+	}
+	
+	/**
+	 * Separate this for the usual reasons; so subclasses can get set up before it's called.
+	 * Could make fake base class constructor, and call loadKeyStore in subclass constructors,
+	 * but this wouldn't work past one level, and this allows subclasses to override initialize behavior.
+	 * @throws ConfigurationException 
+	 */
+	public synchronized void initialize() throws ConfigurationException {
+		if (_initialized)
+			return;
 		loadKeyStore();
+		_initialized = true;
+	}
+	
+	protected boolean initialized() { return _initialized; }
+	
+	protected void setPassword(char [] password) {
+		_password = password;
 	}
 	
 	protected void loadKeyStore() throws ConfigurationException {
@@ -53,10 +75,28 @@ public class BasicKeyManager extends KeyManager {
 			_keystore = createKeyStore();	
 		}
 		if (null == _keystore) {
-		    FileInputStream in = null;
+			FileInputStream in = null;
+			Library.logger().info("Loading CCN key store from " + UserConfiguration.keystoreFileName() + "...");
+			try {
+				_password = UserConfiguration.keystorePassword().toCharArray();
+				in = new FileInputStream(UserConfiguration.keystoreFileName());
+				loadKeyStore(in);
+			} catch (FileNotFoundException e) {
+				Library.logger().warning("Cannot open existing key store file: " + UserConfiguration.keystoreFileName());
+				throw new ConfigurationException("Cannot open existing key store file: " + UserConfiguration.keystoreFileName());
+			} 
+		}
+	}
+	
+	/**
+	 * Must have set _password.
+	 * @param in
+	 * @throws ConfigurationException
+	 */
+	protected void loadKeyStore(InputStream in) throws ConfigurationException {
+		if (null == _keystore) {
 			try {
 				Library.logger().info("Loading CCN key store from " + UserConfiguration.keystoreFileName() + "...");
-				_password = UserConfiguration.keystorePassword().toCharArray();
 				_keystore = KeyStore.getInstance(UserConfiguration.defaultKeystoreType());
 				in = new FileInputStream(UserConfiguration.keystoreFileName());
 				_keystore.load(in, _password);
@@ -66,9 +106,6 @@ public class BasicKeyManager extends KeyManager {
 			} catch (CertificateException e) {
 				Library.logger().warning("Cannot load default keystore with no certificates.");
 				throw new ConfigurationException("Cannot load default keystore with no certificates.");
-			} catch (FileNotFoundException e) {
-				Library.logger().warning("Cannot open existing key store file: " + UserConfiguration.keystoreFileName());
-				throw new ConfigurationException("Cannot open existing key store file: " + UserConfiguration.keystoreFileName());
 			} catch (IOException e) {
 				Library.logger().warning("Cannot open existing key store file: " + UserConfiguration.keystoreFileName() + ": " + e.getMessage());
 				throw new ConfigurationException(e);
@@ -106,8 +143,7 @@ public class BasicKeyManager extends KeyManager {
 		    ContentName keyName = getDefaultKeyName(_defaultKeyID.digest());
 		    _keyLocator = new KeyLocator(keyName, new PublisherID(_defaultKeyID));
 			Library.logger().info("Default key locator: " + _keyLocator);
-			// JDT TODO Restore publishing info about this key. Commented-out for 
-			// now to enable unit test with no repo.
+
 		    if (null == getKey(_defaultKeyID, _keyLocator)) {
 		    	boolean resetFlag = false;
 		    	if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
@@ -127,13 +163,12 @@ public class BasicKeyManager extends KeyManager {
 	}
 	
 	synchronized protected KeyStore createKeyStore() throws ConfigurationException {
-
+		
 		File ccnDir = new File(UserConfiguration.ccnDirectory());
 		if (!ccnDir.exists()) {
 			if (!ccnDir.mkdirs()) {
 				generateConfigurationException("Cannot create user CCN directory: " + ccnDir.getAbsolutePath(), null);
 			}
-			
 		}
 		
 		// Alas, until 1.6, we can't set permissions on the file or directory...
@@ -141,10 +176,20 @@ public class BasicKeyManager extends KeyManager {
 		File keyStoreFile  = new File(UserConfiguration.keystoreFileName());
 		if (keyStoreFile.exists())
 			return null;
-		
+    	_password = UserConfiguration.keystorePassword().toCharArray();
+	    FileOutputStream out = null;
+		try {
+			out = new FileOutputStream(UserConfiguration.keystoreFileName());
+		} catch (FileNotFoundException e) {
+			generateConfigurationException("Cannot create keystore file: " + UserConfiguration.keystoreFileName(), e);
+		} 
+	    return createKeyStore(out);	    
+	}
+	
+	synchronized protected KeyStore createKeyStore(OutputStream out) throws ConfigurationException {
+
 		KeyStore ks = null;
 	    try {
-	    	_password = UserConfiguration.keystorePassword().toCharArray();
 			ks = KeyStore.getInstance(UserConfiguration.defaultKeystoreType());
 			ks.load(null, _password);
 		} catch (NoSuchAlgorithmException e) {
@@ -179,11 +224,9 @@ public class BasicKeyManager extends KeyManager {
 		KeyStore.PrivateKeyEntry entry =
 	        new KeyStore.PrivateKeyEntry(userKeyPair.getPrivate(), new X509Certificate[]{ssCert});
 
-	    FileOutputStream out = null;
 	    try {
 		    ks.setEntry(UserConfiguration.defaultKeyAlias(), entry, 
 			        new KeyStore.PasswordProtection(_password));
-	        out = new FileOutputStream(UserConfiguration.keystoreFileName());
 	        ks.store(out, _password);
 		} catch (NoSuchAlgorithmException e) {
 			generateConfigurationException("Cannot save default keystore.", e);
@@ -191,8 +234,6 @@ public class BasicKeyManager extends KeyManager {
 			generateConfigurationException("Cannot save default keystore with no certificates.", e);
 	    } catch (KeyStoreException e) {
 	    	generateConfigurationException("Cannot set private key entry for user default key", e);
-		} catch (FileNotFoundException e) {
-			generateConfigurationException("Cannot create keystore file: " + UserConfiguration.keystoreFileName(), e);
 		} catch (IOException e) {
 			generateConfigurationException("Cannot write keystore file: " + UserConfiguration.keystoreFileName(), e);
 		} finally {
@@ -209,7 +250,6 @@ public class BasicKeyManager extends KeyManager {
 		return ks;
 	}
 
-	
 	static void generateConfigurationException(String message, Exception e) throws ConfigurationException {
 		Library.logger().warning(message + " " + e.getClass().getName() + ": " + e.getMessage());
 		Library.warningStackTrace(e);

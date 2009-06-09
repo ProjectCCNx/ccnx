@@ -91,6 +91,12 @@ public class CCNLibrary extends CCNBase {
 		}
 	}
 	
+	public static CCNLibrary open(KeyManager keyManager) { 
+		synchronized (CCNLibrary.class) {
+			return new CCNLibrary(keyManager);
+		}
+	}
+	
 	public static CCNLibrary getLibrary() { 
 		if (null != _library) 
 			return _library;
