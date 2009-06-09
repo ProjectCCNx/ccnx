@@ -19,6 +19,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.WirePacket;
+import com.parc.ccn.data.ContentName.DotDotComponent;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.profiles.VersioningProfile;
@@ -328,7 +329,12 @@ public class RFSImpl implements Repository {
 	private void getAllFileResults(File file, TreeMap<ContentName, ArrayList<File>> results, ContentName name) {
 		if (file.isDirectory()) {
 			for (File f : file.listFiles()) {
-				getAllFileResults(f, results, new ContentName(name, f.getName().getBytes()));
+				try {
+					getAllFileResults(f, results, new ContentName(name, ContentName.componentParseURI(f.getName())));
+				} catch (DotDotComponent e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			}
 		} else if (file.exists()) {
 			if (file.getName().endsWith(".rfs")) {
@@ -513,7 +519,6 @@ public class RFSImpl implements Repository {
 		String nextComponent = "";
 		while (st.hasMoreTokens()) {
 			String token = st.nextToken();
-			token = token.replace("%25", "%");		// Need to fix URI replacement for %
 			if (token.startsWith(SPLIT_COMPONENT))
 				nextComponent += token.substring(1);
 			else {
