@@ -170,10 +170,13 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * "a" through "z", "A" through "Z", "0" through "9", and "-", "_", ".", and "~"
 	 * plus the <i>reserved</i> delimiters  "!", "$" "&", "'", "(", ")",
      * "*", "+", ",", ";", "=".
-     * The delimiter "/" is a special case interpreted as component separator and so
+     * The reserved delimiter "/" is a special case interpreted as component separator and so
      * may not be used within a component unescaped.
+     * Any query (starting '?') or fragment (starting '#') is ignored which means that these
+     * reserved delimiters must be percent-encoded if they are to be part of the name. 
 	 * <p>
-	 * The URI must begin with either the "/" delimiter or the scheme specification "ccn:".
+	 * The URI must begin with either the "/" delimiter or the scheme specification "ccn:"
+	 * plus delimiter to make URI absolute.
 	 * <p>
 	 * The decoding from a URI String to a ContentName translates each legal 
 	 * character to its US-ASCII byte encoding, except for the "." which is subject 
@@ -182,8 +185,8 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * the URI.  Any character sequence starting with "?" or "#" is discarded (to the
 	 * end of the component).
 	 * <p>
-	 * The resolution rules for relative references are always applied in this 
-	 * decoding (regardless of whether the URI has a scheme specification or not):
+	 * The resolution rules for relative references are applied in this 
+	 * decoding:
 	 * <ul>
 	 * <li> "//" in the URI is interpreted as "/"
 	 * <li> "/./" and "/." in the URI are interpreted as "/" and ""
@@ -199,12 +202,15 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * <li> "/.../" in the URI is converted to a 0-length name component
 	 * <li> "/..../" in the URI is converted to the name component {0x2E}
 	 * <li> "/...../" in the URI is converted to the name component {0x2E, 0x2E}
-	 * <li> "/....../" in the URI is conveted to the name component {0x2E, 0x2E, 0x2E}
+	 * <li> "/....../" in the URI is converted to the name component {0x2E, 0x2E, 0x2E}
 	 * </ul>
 	 * <p>
 	 * Note that this URI encoding is very similar to but not the same as the 
 	 * application/x-www-form-urlencoded MIME format that is used by the Java 
 	 * {@link java.net.URLDecoder}.
+	 * 
+	 * TODO: Inconsistent with C lib in that it does not strip authority part
+	 * TODO: Inconsistent with C lib in that it does not fully strip query and fragment parts (within component only)
 	 * @param name
 	 * @return
 	 * @throws MalformedContentNameStringException

@@ -34,7 +34,10 @@ public class ContentNameTest {
 	// default charset.  These values are chosen as invalid for UTF-8.
 	// Java String encoding from UTF-8 replaces these invalid characters
 	// with the Unicode "Replacement Character" U+FFFD so a simple
-	// trip through String() to URL encoding and back will not be lossless!
+	// trip through String() to URI encoding and back will not be lossless!
+	// Note that there is nothing invalid about these sequences in CCN names
+	// since CCN names can include any values whatsoever, which is why we need
+	// to test round-trip through URI encoding.
 	public byte [] invalid = new byte[]{0x01, 0x00, 0x00, // valid  but with 0's
 				(byte) 0x80, (byte) 0xbc, // can't be first byte
 				(byte) 0xc0, (byte) 0x8a, // overlong encoding
@@ -51,6 +54,9 @@ public class ContentNameTest {
 	public String withScheme = "ccn:/test/briggs/test.txt";
 	public String dotSlash = "ccn:/.../.%2e./...././.....///?...";
 	public String dotSlashResolved = "ccn:/.../.../..../.....";
+	public String withQuery = "/abc/def/q?foo=bar";
+	public String withFragment = "/abc/def/ghi#rst";
+	public String withQueryAndFragment = "/abc/def/qr?st=bat#notch";
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -141,14 +147,73 @@ public class ContentNameTest {
 		assertNotNull(name4);
 		System.out.println("Name: " + name4);
 		assertEquals(name4.toString(), dotSlashResolved.substring(4));
+		
+		// empty name
+		System.out.println("ContentName: testing empty name round trip: /");
+		ContentName name5 = null;
+		try {
+			name5 = ContentName.fromURI("/");
+		} catch (MalformedContentNameStringException e) {
+			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
+			e.printStackTrace();
+			name5 = null;
+		}
+		assertNotNull(name5);
+		assertEquals(name5.count(), 0);
+		assertEquals(name5.components().size(), 0);
+		assertEquals(name5.toString(), "/");
+		
+		// empty name with scheme
+		System.out.println("ContentName: testing empty name round trip: /");
+		ContentName name6= null;
+		try {
+			name6 = ContentName.fromURI("ccn:/");
+		} catch (MalformedContentNameStringException e) {
+			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
+			e.printStackTrace();
+			name6 = null;
+		}
+		assertNotNull(name6);
+		assertEquals(name6.count(), 0);
+		assertEquals(name6.components().size(), 0);
+		assertEquals(name6.toString(), "/");
+		
+		// query and fragment parts
+		try {
+			assertEquals(ContentName.fromURI(withQuery).toString(), withQuery.split("\\?")[0]);
+			assertEquals(ContentName.fromURI(withFragment).toString(), withFragment.split("\\#")[0]);
+			assertEquals(ContentName.fromURI(withQueryAndFragment).toString(), withQueryAndFragment.split("\\?")[0]);
+		} catch (MalformedContentNameStringException e) {
+			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
 
 	}
 	
-	@Test(expected=MalformedContentNameStringException.class)
+	public void parseWithException(String input) {
+		System.out.println("ContentName: parsing illegal name string \"" + input+"\"");
+		try {
+			ContentName.fromURI(input);
+			fail("Illegal string parsed without error");
+		} catch (MalformedContentNameStringException ex) {
+			// expected
+			System.out.println("Exception expected msg: " + ex.getMessage());
+		}
+	}
+	
+	@Test
 	public void testContentNameStringException() throws MalformedContentNameStringException {
-		String testString = "expectingAnException";
-		System.out.println("ContentName: parsing name string \"" + testString+"\"");
-		ContentName.fromURI(testString);
+		// Require an absolute URI
+		parseWithException("expectingAnException");
+		parseWithException("ccn:a/relative/name");
+		parseWithException("relative/no/scheme");
+		// Not too many .. components
+		parseWithException("ccn:/a/b/c/../../../..");
+		// Broken percent encodings
+		parseWithException("/a/short/percent/%e");
+		parseWithException("/a/bogus/%AQE/hex/value");
+		parseWithException("/try/negative/%-A3/value");
 	}
 	
 	@Test
