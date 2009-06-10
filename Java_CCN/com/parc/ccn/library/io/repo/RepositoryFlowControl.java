@@ -31,6 +31,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	protected static final int ACK_INTERVAL = 128;
 
 	protected boolean _bestEffort = true;
+	protected boolean _initialized = false;
 	protected int _blocksSinceAck = 0;
 	protected int _ackInterval = ACK_INTERVAL;
 	protected String _repoName = null;
@@ -91,9 +92,16 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		addNameSpace(name);
 	}
 
+	/**
+	 * Note we only want to do this once
+	 */
 	@Override
 	public void addNameSpace(ContentName name) throws IOException {
 		super.addNameSpace(name);
+		if (_initialized)
+			return;
+		
+		_initialized = true;
 		clearUnmatchedInterests();	// Remove possible leftover interests from "getLatestVersion"
 		ContentName repoWriteName = new ContentName(name, CCNBase.REPO_START_WRITE, CCNLibrary.nonce());
 
