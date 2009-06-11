@@ -358,6 +358,12 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		return result;
 	}
 	
+	public static ContentName fromNative(ContentName parent, byte [] name) {
+		ContentName result = new ContentName(parent.count(), parent.components());
+		result._components.add(name);
+		return result;
+	}
+	
 	public static ContentName fromNative(ContentName parent, String name1, String name2) {
 		ContentName result = new ContentName(parent.count(), parent.components());
 		if (null != name1) {
