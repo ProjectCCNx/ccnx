@@ -23,6 +23,10 @@ import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.query.BloomFilter;
+import com.parc.ccn.data.query.ExcludeComponent;
+import com.parc.ccn.data.query.ExcludeElement;
+import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
@@ -691,9 +695,9 @@ public class CCNLibrary extends CCNBase {
 	 * @throws IOException
 	 * @throws InvalidParameterException
 	 */
-	public ContentObject getLatest(ContentName name, byte[][] omissions, long timeout) 
+	public ContentObject getLatest(ContentName name, ExcludeFilter exclude, long timeout) 
 			throws IOException, InvalidParameterException {
-		return get(Interest.last(name, omissions, null), timeout);
+		return get(Interest.last(name, exclude), timeout);
 	}
 	
 	public ContentObject getLatest(ContentName name, long timeout) throws InvalidParameterException, 

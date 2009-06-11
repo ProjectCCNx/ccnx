@@ -264,13 +264,13 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	}
 	
 	public static Interest next(ContentName name, byte[][] omissions, Integer prefixCount) {
-		return nextOrLast(name, omissions, new Integer(ORDER_PREFERENCE_LEFT | ORDER_PREFERENCE_ORDER_NAME), prefixCount);
+		return nextOrLast(name, ExcludeFilter.factory(omissions), new Integer(ORDER_PREFERENCE_LEFT | ORDER_PREFERENCE_ORDER_NAME), prefixCount);
 	}
 	
-	private static Interest nextOrLast(ContentName name, byte[][] omissions, Integer order, Integer prefixCount)  {
+	private static Interest nextOrLast(ContentName name, ExcludeFilter exclude, Integer order, Integer prefixCount)  {
 		if (null == prefixCount)
 			prefixCount = name.count() - 1;
-		return constructInterest(name, null == omissions ? null : new ExcludeFilter(omissions), order, prefixCount);
+		return constructInterest(name, exclude, order, prefixCount);
 	}
 	
 	/**
@@ -288,7 +288,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	}
 	
 	public static Interest last(ContentName name, byte[] [] omissions, Integer prefixCount) {
-		return nextOrLast(name, omissions, new Integer(ORDER_PREFERENCE_RIGHT | ORDER_PREFERENCE_ORDER_NAME), prefixCount);
+		return nextOrLast(name, ExcludeFilter.factory(omissions), new Integer(ORDER_PREFERENCE_RIGHT | ORDER_PREFERENCE_ORDER_NAME), prefixCount);
+	}
+	
+	public static Interest last(ContentName name, ExcludeFilter exclude) {
+		return nextOrLast(name, exclude, new Integer(ORDER_PREFERENCE_RIGHT | ORDER_PREFERENCE_ORDER_NAME), null);
 	}
 	
 	/**

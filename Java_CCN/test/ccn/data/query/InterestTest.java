@@ -14,6 +14,7 @@ import test.ccn.data.util.XMLEncodableTester;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.BloomFilter;
+import com.parc.ccn.data.query.ExcludeComponent;
 import com.parc.ccn.data.query.ExcludeElement;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
@@ -51,8 +52,8 @@ public class InterestTest {
 	
 	private void excludeSetup() {
 		BloomFilter bf1 = new BloomFilter(13, bloomSeed);
-		ExcludeElement e1 = new ExcludeElement("aaa".getBytes(), bf1);
-		ExcludeElement e2 = new ExcludeElement("zzzzzzzz".getBytes());
+		ExcludeComponent e1 = new ExcludeComponent("aaa".getBytes());
+		ExcludeComponent e2 = new ExcludeComponent("zzzzzzzz".getBytes());
 		
 		try {
 			ArrayList<ExcludeElement>te = new ArrayList<ExcludeElement>(2);
@@ -67,6 +68,7 @@ public class InterestTest {
 		}
 		ArrayList<ExcludeElement>excludes = new ArrayList<ExcludeElement>(2);
 		excludes.add(e1);
+		excludes.add(bf1);
 		excludes.add(e2);
 		ef = new ExcludeFilter(excludes);
 	}

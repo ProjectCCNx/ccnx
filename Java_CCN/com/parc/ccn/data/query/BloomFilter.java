@@ -12,11 +12,11 @@ import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncoder;
 
 /**
- * 
- * @author rasmusse
- * Implement bloom filter operations based on Michael Plass' C side implementation
+ * Implement bloom filter operations
  */
-public class BloomFilter implements Comparable<BloomFilter> {
+public class BloomFilter extends ExcludeElement implements Comparable<BloomFilter> {
+	public static final String BLOOM = "Bloom";
+
 	private int _lgBits;
 	private int _nHash;
 	
@@ -119,10 +119,6 @@ public class BloomFilter implements Comparable<BloomFilter> {
 		return _size;
 	}
 	
-	public byte[] bloom() {
-		return _bloom;
-	}
-	
 	public byte[] seed() {
 		byte [] outSeed = new byte[_seed.length];
 		for (int i = 0; i < _seed.length; i++)
@@ -139,7 +135,7 @@ public class BloomFilter implements Comparable<BloomFilter> {
 	}
 	
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		ByteArrayInputStream bais = new ByteArrayInputStream(decoder.readBinaryElement(ExcludeElement.BLOOM));
+		ByteArrayInputStream bais = new ByteArrayInputStream(decoder.readBinaryElement(BLOOM));
 		_lgBits = bais.read();
 		_nHash = bais.read();
 		bais.skip(2); // method & reserved - ignored for now
@@ -164,15 +160,11 @@ public class BloomFilter implements Comparable<BloomFilter> {
 		int size = 1 << (_lgBits - 3);
 		for (int i = 0; i < size; i++)
 			baos.write(_bloom[i]);
-		encoder.writeElement(ExcludeElement.BLOOM, baos.toByteArray());
+		encoder.writeElement(BLOOM, baos.toByteArray());
 	}
 
 	public int compareTo(BloomFilter o) {
-		return DataUtils.compare(bloom(), o.bloom());
-	}
-	
-	public boolean equals(BloomFilter o) {
-		return Arrays.equals(bloom(), o.bloom());
+		return DataUtils.compare(_bloom, o._bloom);
 	}
 	
 	private long computeSeed() {
@@ -187,4 +179,18 @@ public class BloomFilter implements Comparable<BloomFilter> {
 		return result;
 	}
 
+	@Override
+	public boolean validate() {
+		return true;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (obj == null)
+			return false;
+		if (!(obj instanceof BloomFilter))
+			return false;
+		BloomFilter bl = (BloomFilter) obj;
+		return Arrays.equals(_bloom, bl._bloom);
+	}
 }
