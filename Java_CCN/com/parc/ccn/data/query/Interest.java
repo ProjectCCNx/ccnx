@@ -170,10 +170,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	}
 
 	/**
-	 * Determine whether a piece of content matches this interest. We need
-	 * to beef this up to deal with the more complex interest specs.
+	 * Determine whether a piece of content's name (without digest component) matches this interest.
 	 * 
-	 * @param name - Name as it comes from ContentObject, i.e. without a digest component
+	 * This doesn't match if we specify the digest in the interest.
+	 *
+	 * @param name - Name of a content object without a digest component
 	 * @param resultPublisherKeyID
 	 * @return
 	 */
@@ -183,35 +184,41 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		// to get interest that matches everything, should
 		// use / (ROOT)
 		if (isPrefixOf(name)) {
-			return internalMatch(name, resultPublisherKeyID);
+			return internalMatch(name, false, resultPublisherKeyID);
 		}
 		return false;
 	}
 	
-	public boolean matches(ContentObject compareData, PublisherPublicKeyDigest resultPublisherKeyID) {
-		if (null == name() || null == compareData)
+	/**
+	 * Determine whether a piece of content matches this interest.
+	 * 
+	 * @param co - ContentObject
+	 * @param resultPublisherKeyID
+	 * @return
+	 */
+	public boolean matches(ContentObject co, PublisherPublicKeyDigest resultPublisherKeyID) {
+		if (null == name() || null == co)
 			return false; // null name() should not happen, null arg can
 		// to get interest that matches everything, should
 		// use / (ROOT)
-		if (isPrefixOf(compareData)) {
-			return internalMatch(compareData.name(), resultPublisherKeyID);
+		int ourCount = null != nameComponentCount() ? nameComponentCount() : name().count();
+		boolean digest = co.name().count()+1 == ourCount;
+		ContentName name = digest ? co.fullName() : co.name();
+		if (isPrefixOf(name)) {
+			return internalMatch(name, digest, resultPublisherKeyID);
 		}
 		return false;
 	}
 	
-	private boolean internalMatch(ContentName name, PublisherPublicKeyDigest resultPublisherKeyID) {
+	// TODO We need to beef this up to deal with the more complex interest specs.
+	private boolean internalMatch(ContentName name, boolean digestIncluded,
+			PublisherPublicKeyDigest resultPublisherKeyID) {
 		if (null != additionalNameComponents()) {
 			// we know our specified name is a prefix of the result. 
 			// the number of additional components must be this value
-			// we add 1 here for the missing "virtual digest" component
-			// effectively on the end of resultName
-			// TODO DKS this doesn't match if we specify the digest in the interest
-			// though lengths will be handled properly (lengthDiff will come out 0,
-			// which will match additionalNameComponents(); except we won't
-			// compare to the content digest...)
 			int nameCount = name.count();
 			int ourCount = null != nameComponentCount() ? nameComponentCount() : name().count();
-			int lengthDiff = nameCount - ourCount + 1;
+			int lengthDiff = nameCount + (digestIncluded?0:1) - ourCount ;
 			if (!additionalNameComponents().equals(lengthDiff)) {
 				Library.logger().fine("Interest match failed: " + lengthDiff + " more than the " + additionalNameComponents() + " components between expected " +
 						name() + " and tested " + name);
