@@ -112,21 +112,20 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 		ArrayList<byte[]> excludeList = new ArrayList<byte[]>();
 		for (ContentObject co : results) {
 			Library.logger().info("CCNInputStream: retrieved possible header: " + co.name() + " type: " + co.signedInfo().getTypeName());
-			if (co.signedInfo().getType() == SignedInfo.ContentType.DATA) {
+			if (co.signedInfo().getType() == SignedInfo.ContentType.DATA &&
+					addHeader(co)) {
 				// Low-level verify is done in addHeader
 				// TODO: DKS: should this be header.verify()?
 				// Need low-level verify as well as high-level verify...
 				// Low-level verify just checks that signer actually signed.
 				// High-level verify checks trust.
-				if (addHeader(co)) {
-					// Got a header successfully, so no need to renew interest
-					return null;
-				} else {
-					// This one isn't a valid header we can use so we don't
-					// want to see it again.  Need to exclude by digest
-					// which will not be represented in name()
-					excludeList.add(co.contentDigest());
-				}
+				// Got a header successfully, so no need to renew interest
+				return null;
+			} else {
+				// This one isn't a valid header we can use so we don't
+				// want to see it again.  Need to exclude by digest
+				// which will not be represented in name()
+				excludeList.add(co.contentDigest());
 			}
 		}
 		if (null == _header) { 
@@ -135,7 +134,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 				excludes = new byte[excludeList.size()][];
 				excludeList.toArray(excludes);
 			}
-			interest.excludeFilter(interest.excludeFilter().add(excludes));
+			interest.excludeFilter().add(excludes);
 			return interest;
 		}
 		return null;

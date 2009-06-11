@@ -70,7 +70,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	public CCNFlowControl(ContentName name, CCNLibrary library) throws IOException {
 		this(library);
 		if (name != null) {
-			Library.logger().finest("CCNFlowControl: adding namespace: " + name);
+			Library.logger().finest("adding namespace: " + name);
 			// don't call full addNameSpace, in order to allow subclasses to 
 			// override. just do minimal part
 			_filteredNames.add(name);
