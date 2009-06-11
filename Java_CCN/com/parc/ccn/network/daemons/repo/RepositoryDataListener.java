@@ -7,7 +7,6 @@ import java.util.Date;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
@@ -30,6 +29,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 	private Interest _headerInterest = null;	
 	private RepositoryDaemon _daemon;
 	private CCNLibrary _library;
+	private long _currentBlock = 0;
 	
 	/**
 	 * So the main listener can output interests sooner, we do the data creation work
@@ -100,20 +100,18 @@ public class RepositoryDataListener implements CCNInterestListener {
 								e.printStackTrace();
 							}
 						}
+						if (!_sawBlock) {
+							if (SegmentationProfile.getSegmentNumber(co.name()) == 0)
+								_currentBlock = 1;
+						}
 					}
 				}
 				
 				/*
-				 * Compute new interest. Its similar to a "getNextBlock", but since we want to register it, we
-				 * don't do a getNext here. Also we need to set the prefix 1 before the last component
-				 * so we get all the blocks
+				 * Compute next interest to ask for. 
 				 */
 				_sawBlock = true;
-				ContentName nextName = new ContentName(co.name(), co.contentDigest());
-				_interest = Interest.constructInterest(nextName,  _daemon.getExcludes(), 
-							new Integer(Interest.ORDER_PREFERENCE_LEFT  | Interest.ORDER_PREFERENCE_ORDER_NAME), 
-							co.name().count() - 1);
-				_interest.additionalNameComponents(2);
+				_interest = new Interest(SegmentationProfile.segmentName(co.name(), _currentBlock++));
 				return _interest;
 			}
 		}
