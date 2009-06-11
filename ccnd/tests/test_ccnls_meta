@@ -1,0 +1,8 @@
+AFTER : test_single_ccnd
+BEFORE : test_single_ccnd_teardown
+echo TEST | ccnput /test/ccnls/TEST
+ccnls /test/ccnls/TEST > digest.out || Failed
+grep '%13%B8%96%D5Q%A1%00%40%1B%0D9%82%E0r%9E%FC.%8Dz%EB%09%A3l%0AQ%E4%8E%C2%BD%15%EA%8B' digest.out || Failed
+ccnls /test/ccnls/TEST/%13%B8%96%D5Q%A1%00%40%1B%0D9%82%E0r%9E%FC.%8Dz%EB%09%A3l%0AQ%E4%8E%C2%BD%15%EA%8B || Failed
+echo META | ccnput /test/ccnls/TEST/%13%B8%96%D5Q%A1%00%40%1B%0D9%82%E0r%9E%FC.%8Dz%EB%09%A3l%0AQ%E4%8E%C2%BD%15%EA%8B
+ccnls /test/ccnls/TEST/%13%B8%96%D5Q%A1%00%40%1B%0D9%82%E0r%9E%FC.%8Dz%EB%09%A3l%0AQ%E4%8E%C2%BD%15%EA%8B || Failed

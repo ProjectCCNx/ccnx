@@ -12,9 +12,9 @@
 struct upcalldata {
     int magic; /* 856372 */
     long *counter;
-    int n_excl;
     unsigned warn;
     unsigned option;
+    int n_excl;
     struct ccn_charbuf **excl; /* Array of n_excl items */
 };
 
@@ -67,8 +67,8 @@ incoming_content(
     c = ccn_charbuf_create();
     uri = ccn_charbuf_create();
     templ = ccn_charbuf_create();
-        
-    if (matched_comps + 1 > comps->n) {
+    /* note that comps->n is 1 greater than the number of explicit components */
+    if (matched_comps > comps->n) {
         ccn_uri_append(c, ccnb, ccnb_size, 1);
         fprintf(stderr, "How did this happen?  %s\n", ccn_charbuf_as_string(uri));
         exit(1);
@@ -76,7 +76,10 @@ incoming_content(
     data->counter[0]++;
     /* Recover the same prefix as before */
     ccn_name_init(c);
-    ccn_name_append_components(c, ccnb, comps->buf[0], comps->buf[matched_comps]);
+    res = ccn_name_append_components(c, info->interest_ccnb,
+                                     info->interest_comps->buf[0],
+                                     info->interest_comps->buf[matched_comps]);
+    if (res < 0) abort();
     
     comp = ccn_charbuf_create();
     ccn_name_init(comp);
@@ -85,7 +88,7 @@ incoming_content(
         ccn_digest_ContentObject(ccnb, info->pco);
         ccn_name_append(comp, info->pco->digest, info->pco->digest_bytes);
     }
-    else {
+    else if (matched_comps < comps->n) {
         ccn_name_append_components(comp, ccnb,
                                    comps->buf[matched_comps],
                                    comps->buf[matched_comps + 1]);
@@ -93,16 +96,35 @@ incoming_content(
     res = ccn_uri_append(uri, comp->buf, comp->length, 0);
     if (res < 0 || uri->length < 1)
         fprintf(stderr, "*** Error: ccnls line %d res=%d\n", __LINE__, res);
-    else
+    else {
+        if (uri->length == 1)
+            ccn_charbuf_append(uri, ".", 1);
         printf("%s%s\n", ccn_charbuf_as_string(uri) + 1,
                kind == CCN_UPCALL_CONTENT ? " [verified]" : " [unverified]");
-    data->excl = realloc(data->excl, (data->n_excl + 1) * sizeof(data->excl[0]));
-    data->excl[data->n_excl++] = comp;
-    comp = NULL;
-    qsort(data->excl, data->n_excl, sizeof(data->excl[0]), &namecompare);
-            
+    }
     ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
     ccn_charbuf_append(templ, c->buf, c->length); /* Name */
+    if (matched_comps == comps->n) {
+        /* The interest supplied the digest component */
+        ccn_charbuf_destroy(&comp);
+        /*
+         * We can't rely on the Exclude filter to keep from seeing this, so 
+         * say that we need one more name component.
+         * We would REALLY like to say AT LEAST one more name component, but
+         * right now we don't have the expressiveness to say that in one
+         * Interest.  So we can miss things because of that.                    // XXX
+         */
+        ccn_charbuf_append_tt(templ, CCN_DTAG_AdditionalNameComponents, CCN_DTAG);
+        ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
+        ccn_charbuf_append(templ, "1", 1);
+        ccn_charbuf_append_closer(templ); /* </AdditionalNameComponents> */
+    }
+    else {
+        data->excl = realloc(data->excl, (data->n_excl + 1) * sizeof(data->excl[0]));
+        data->excl[data->n_excl++] = comp;
+        comp = NULL;
+    }
+    qsort(data->excl, data->n_excl, sizeof(data->excl[0]), &namecompare);
     ccn_charbuf_append_tt(templ, CCN_DTAG_Exclude, CCN_DTAG);
     for (i = 0; i < data->n_excl; i++) {
         comp = data->excl[i];
@@ -111,6 +133,8 @@ incoming_content(
     }
     comp = NULL;
     ccn_charbuf_append_closer(templ); /* </Exclude> */
+    
+    
     ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
     ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
     ccn_charbuf_append(templ, "1", 1);
