@@ -12,8 +12,6 @@ import com.parc.ccn.library.io.CCNVersionedOutputStream;
 
 public class RepositoryVersionedOutputStream extends CCNVersionedOutputStream {
 
-	protected RepositoryProtocol _repoFlowControl;
-
 	public RepositoryVersionedOutputStream(ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
 		this(name, null, null, library);
 	}
@@ -21,14 +19,6 @@ public class RepositoryVersionedOutputStream extends CCNVersionedOutputStream {
 	public RepositoryVersionedOutputStream(ContentName name, 
 			KeyLocator locator, PublisherPublicKeyDigest publisher, CCNLibrary library)
 			throws XMLStreamException, IOException {
-		super(name, locator, publisher, new RepositoryProtocol(name, library));
-		_repoFlowControl = (RepositoryProtocol)_segmenter.getFlowControl();
-		_repoFlowControl.init(getBaseName());
-	}
-	
-	public void close() throws IOException {
-		_repoFlowControl.beforeClose();
-		super.close();
-		_repoFlowControl.afterClose();
+		super(name, locator, publisher, new RepositoryFlowControl(name, library));
 	}
 }

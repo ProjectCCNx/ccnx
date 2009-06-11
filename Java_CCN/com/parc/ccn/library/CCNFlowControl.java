@@ -3,6 +3,7 @@ package com.parc.ccn.library;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeMap;
@@ -52,7 +53,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	protected TreeMap<ContentName, ContentObject> _holdingArea = new TreeMap<ContentName, ContentObject>();
 	protected InterestTable<UnmatchedInterest> _unmatchedInterests = new InterestTable<UnmatchedInterest>();
-	protected ArrayList<ContentName> _filteredNames = new ArrayList<ContentName>();
+	protected HashSet<ContentName> _filteredNames = new HashSet<ContentName>();
 
 	private class UnmatchedInterest {
 		long timestamp = new Date().getTime();
@@ -69,6 +70,8 @@ public class CCNFlowControl implements CCNFilterListener {
 		_library = library;
 		if (name != null) {
 			Library.logger().finest("adding namespace: " + name);
+			// don't call full addNameSpace, in order to allow subclasses to 
+			// override. just do minimal part
 			_filteredNames.add(name);
 			_library.registerFilter(name, this);
 		}
@@ -86,8 +89,9 @@ public class CCNFlowControl implements CCNFilterListener {
 	/**
 	 * Add a new namespace to the controller
 	 * @param name
+	 * @throws IOException 
 	 */
-	public void addNameSpace(ContentName name) {
+	public void addNameSpace(ContentName name) throws IOException {
 		if (!_flowControlEnabled)
 			return;
 		Iterator<ContentName> it = _filteredNames.iterator();
@@ -105,7 +109,7 @@ public class CCNFlowControl implements CCNFilterListener {
 		_library.registerFilter(name, this);
 	}
 	
-	public void addNameSpace(String name) throws MalformedContentNameStringException {
+	public void addNameSpace(String name) throws MalformedContentNameStringException, IOException {
 		addNameSpace(ContentName.fromNative(name));
 	}
 	
@@ -132,6 +136,21 @@ public class CCNFlowControl implements CCNFilterListener {
 				break;
 			}
 		}
+	}
+	
+	public ContentName getNameSpace(ContentName childName) {
+		ContentName prefix = null;
+		for (ContentName nameSpace : _filteredNames) {
+			if (nameSpace.isPrefixOf(childName)) {
+				// is this the only one?
+				if (null == prefix) {
+					prefix = nameSpace;
+				} else if (nameSpace.count() > prefix.count()) {
+					prefix = nameSpace;
+				}
+			}
+		}
+		return prefix;
 	}
 	
 	/**
@@ -196,6 +215,7 @@ public class CCNFlowControl implements CCNFilterListener {
 				_holdingArea.put(co.name(), co);
 				match = _unmatchedInterests.removeMatch(co);
 				if (match != null) {
+					Library.logger().finest("Found pending matching interest for " + co.name() + ", putting to network.");
 					_library.put(co);
 					afterPutAction(co);
 				}
@@ -224,7 +244,7 @@ public class CCNFlowControl implements CCNFilterListener {
 			for (Interest interest : interests) {
 				ContentObject co = getBestMatch(interest);
 				if (co != null) {
-					Library.logger().finest("Found content " + co.name() + " matching interest: " + interest.name());
+					Library.logger().finest("Found content " + co.name() + " matching interest: " + interest.print());
 					try {
 						_library.put(co);
 						afterPutAction(co);
@@ -234,7 +254,7 @@ public class CCNFlowControl implements CCNFilterListener {
 					}
 					
 				} else {
-					Library.logger().finest("No content matching pending interest: " + interest.name() + ", holding.");
+					Library.logger().finest("No content matching pending interest: " + interest.print() + ", holding.");
 					_unmatchedInterests.add(interest, new UnmatchedInterest());
 				}
 			}
@@ -277,6 +297,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	private ContentObject getBestMatch(Interest interest, Set<ContentName> set) {
 		ContentObject bestMatch = null;
+		Library.logger().finest("Looking for best match to " + interest.print() + " among " + set.size() + " options.");
 		for (ContentName name : set) {
 			ContentObject result = _holdingArea.get(name);
 			/*
@@ -304,6 +325,14 @@ public class CCNFlowControl implements CCNFilterListener {
 					return result;
 		}
 		return bestMatch;
+	}
+	
+	public void beforeClose() throws IOException {
+		// default -- do nothing.
+	}
+
+	public void afterClose() throws IOException {
+		waitForPutDrain();
 	}
 	
 	public void waitForPutDrain() throws IOException {
