@@ -27,6 +27,12 @@ public class DataUtils {
 		return result;
 	}
 	
+	/**
+	 * Perform a lexigraphical comparison
+	 * @param left
+	 * @param right
+	 * @return < 0 if left comes before right, 0 if they are equal, > 0 if left comes after right
+	 */
 	public static int compare(byte [] left, byte [] right) {
 		int result = 0;
 		if (null != left) {
@@ -61,6 +67,9 @@ public class DataUtils {
 		return result;
 	}
 	
+	/**
+	 * @see #compare(byte[], byte[])
+	 */
 	public static int compare(ArrayList<byte []> left, ArrayList<byte []> right) {
 
 		int result = 0;
