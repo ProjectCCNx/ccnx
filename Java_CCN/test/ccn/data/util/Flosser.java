@@ -66,6 +66,7 @@ public class Flosser implements CCNInterestListener {
 
 	public Interest handleContent(ArrayList<ContentObject> results,
 								  Interest interest) {
+		Library.logger().finest("Interests registered: " + _interests.size() + " content objects returned: "+results.size());
 		// Parameterized behavior that subclasses can override.
 		for (ContentObject result : results) {
 			Library.logger().fine("Got content for interest " + interest);
@@ -136,6 +137,7 @@ public class Flosser implements CCNInterestListener {
                 }
             }
 		}
+		_interests.put(interest.name(), interest);
 		return interest;
 	}
 	
