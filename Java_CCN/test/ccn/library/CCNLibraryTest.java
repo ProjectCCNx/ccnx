@@ -189,21 +189,33 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 	@Test
 	public void testGetLatestVersion() throws Exception {
-
-		String name = "/test/smetters/stuff/versioned_name";
-		ContentName [] cn = {	ContentName.fromNative(name),
-											ContentName.fromNative(name + "/more") };
-		String [] data = { "The associated data.", "The new associated data." };
+		String name = "/test/simon/versioned_name";
+		// include a base object, who's digest can potentially confuse getLatestVersion
+		ContentName base = ContentName.fromNative(name);
+		ContentName versionBase = VersioningProfile.versionName(base);
+		
+		final byte [][] data = { "data0".getBytes(), "data1".getBytes() };
 		CCNLibrary put = CCNLibrary.open();
-		CCNLibrary get = CCNLibrary.open();
-		CCNFlowControl f = new CCNFlowControl(cn[0], put);
-		ContentObject [] cos = { ContentObject.buildContentObject(VersioningProfile.versionName(cn[0]),
-																								data[0].getBytes()),
-											ContentObject.buildContentObject(cn[1], data[1].getBytes()) };
+		final CCNLibrary get = CCNLibrary.open();
+		CCNFlowControl f = new CCNFlowControl(base, put);
+		ContentObject [] cos = { ContentObject.buildContentObject(base, data[0]),
+											ContentObject.buildContentObject(versionBase, data[1]) };
 		f.put(cos);
-		get.get(cn[0], 2000);
-		get.get(cn[1], 2000);
-		Assert.assertNotNull(get.getLatestVersion(cn[1], put.getDefaultPublisher(), 2000));
+		// java lacks nested functions, so use a class here...
+		class t {
+			void check(ContentObject o, int i) {
+				Assert.assertTrue(DataUtils.arrayEquals(o.content(), data[i]));
+			}
+			/**
+			 * Make sure the data is written to ccnd by reading it
+			 */
+			void readAndCheck(ContentName name, int index) throws IOException {
+				check(get.get(name, 2000), index);
+			}
+		} t test = new t();
+		test.readAndCheck(base, 0);
+		test.readAndCheck(versionBase, 1);
+		test.check(get.getLatestVersion(base, put.getDefaultPublisher(), 2000), 1);
 	}
 
 	@Test

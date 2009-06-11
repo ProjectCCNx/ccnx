@@ -535,23 +535,49 @@ public class CCNLibrary extends CCNBase {
 		}
 	}
 	
+	final byte OO = (byte) 0x00;
+	final byte FF = (byte) 0xFF;
 	private ContentObject getVersionInternal(ContentName name, long timeout) throws InvalidParameterException, IOException {
-		ArrayList<byte[]> excludeList = new ArrayList<byte[]>();
 		ContentName parent = VersioningProfile.versionRoot(name);
+		byte [] version;
+		if (name.count() > parent.count())
+			version = name.component(parent.count());
+		else
+			// For getLatest to work we need a final component to get the latest of...
+			version = VersioningProfile.FIRST_VERSION_MARKER;
+		name = ContentName.fromNative(parent, version);
+		int versionComponent = name.count() - 1;
+		
+		// initially exclude name components just before the first version
+		byte [] start = new byte [] { VersioningProfile.VERSION_MARKER, OO, FF, FF, FF, FF, FF };
 		while (true) {
-			byte[][] excludes = null;
-			if (excludeList.size() > 0) {
-				excludes = new byte[excludeList.size()][];
-				excludeList.toArray(excludes);
-			}
-			ContentObject co = getLatest(name, excludes, timeout);
+			ContentObject co = getLatest(name, acceptVersions(start), timeout);
 			if (co == null)
+				return null;
+			if (VersioningProfile.isVersionOf(co.name(), parent))
+				// we got a valid version!
 				return co;
-			if (VersioningProfile.isVersionOf(co.name(), parent)) {
-				return co;
-			}
-			excludeList.add(co.name().component(name.count() - 1));
+			start = co.fullName().component(versionComponent);
 		}
+	}
+
+	/**
+	 * Builds an Exclude filter that excludes components before or @ start, and components after
+	 * the last valid version.
+	 * @param start
+	 * @return An exclude filter.
+	 * @throws InvalidParameterException
+	 */
+	protected ExcludeFilter acceptVersions(byte [] start) {
+		ArrayList<ExcludeElement> ees;
+		ees = new ArrayList<ExcludeElement>();
+		ees.add(BloomFilter.matchEverything());
+		ees.add(new ExcludeComponent(start));
+		ees.add(new ExcludeComponent(new byte [] {
+				VersioningProfile.VERSION_MARKER+1, OO, OO, OO, OO, OO, OO } ));
+		ees.add(BloomFilter.matchEverything());
+		ExcludeFilter ef = new ExcludeFilter(ees);
+		return ef;
 	}
 
 	public ContentObject get(ContentName name, long timeout) throws IOException {
