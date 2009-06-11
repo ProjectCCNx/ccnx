@@ -2,6 +2,7 @@ package com.parc.ccn.library.io.repo;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -19,64 +20,55 @@ import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.network.daemons.repo.RepositoryInfo;
 
 /**
- * Implements the client side of the repository protocol
- * Mostly this has to do with the "repository ack protocol"
- * which trys to verify that data has been written to the
- * repository.
- * 
- * Currently due to problems with the implementation this
- * has been turned off by default.
- * 
- * @author rasmusse
+ * Potential replacement for existing repo flow control (RepositoryProtocol)
+ * that handles concurrent users better.
+ * @author smetters
  *
  */
+public class RepositoryFlowControl extends CCNFlowControl implements CCNInterestListener {
 
-public class RepositoryProtocol extends CCNFlowControl {
-	
 	protected static final int ACK_BLOCK_SIZE = 20;
 	protected static final int ACK_INTERVAL = 128;
-	
+
 	protected boolean _bestEffort = true;
+	protected boolean _initialized = false;
 	protected int _blocksSinceAck = 0;
 	protected int _ackInterval = ACK_INTERVAL;
 	protected String _repoName = null;
-	protected ContentName _baseName; // the name prefix under which we are writing content
-	protected RepoListener _listener = null;
-	protected Interest _writeInterest = null;
+	protected HashSet<Interest> _writeInterests = new HashSet<Interest>();
 	protected CCNNameEnumerator _ackne;
 	protected RepoAckHandler _ackHandler;
 
-	private class RepoListener implements CCNInterestListener {
-
-		public Interest handleContent(ArrayList<ContentObject> results,
-				Interest interest) {
-			Interest interestToReturn = null;
-			for (ContentObject co : results) {
-				if (co.signedInfo().getType() != ContentType.DATA)
-					continue;
-				RepositoryInfo repoInfo = new RepositoryInfo();
-				try {
-					repoInfo.decode(co.content());
-					switch (repoInfo.getType()) {
-					case INFO:
-						_repoName = repoInfo.getLocalName();
-						_writeInterest = null;
-						synchronized (this) {
-							notify();
-						}
-						break;
-					default:
-						break;
+	public Interest handleContent(ArrayList<ContentObject> results,
+			Interest interest) {
+		
+		Interest interestToReturn = null;
+		for (ContentObject co : results) {
+			Library.logger().info("handleContent: got potential repo message: " + co.name());
+			if (co.signedInfo().getType() != ContentType.DATA)
+				continue;
+			RepositoryInfo repoInfo = new RepositoryInfo();
+			try {
+				repoInfo.decode(co.content());
+				switch (repoInfo.getType()) {
+				case INFO:
+					_repoName = repoInfo.getLocalName();
+					//_writeInterest = null;
+					synchronized (this) {
+						notify();
 					}
-				} catch (XMLStreamException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+					break;
+				default:
+					break;
 				}
+			} catch (XMLStreamException e) {
+				Library.logger().info("XMLStreamException parsing RepositoryInfo: " + e.getMessage() + " from content object " + co.name() + ", skipping.");
 			}
-			return interestToReturn;
 		}
+		// So far, we seem never to have anything to return.
+		return interestToReturn;
 	}
-	
+
 	/**
 	 * The names returned by NameEnumerator are only the 1 level names
 	 * without prefix, but the names we are holding contain the basename
@@ -87,49 +79,60 @@ public class RepositoryProtocol extends CCNFlowControl {
 	 */
 	private class RepoAckHandler implements BasicNameEnumeratorListener {
 
-		public int handleNameEnumerator(ContentName prefix,
-				ArrayList<ContentName> names) {
+		public int handleNameEnumerator(ContentName prefix, ArrayList<ContentName> names) {
+			Library.logger().info("Enumeration response for " + names.size() + " children of " + prefix + ".");
 			for (ContentName name : names)
-				ack(new ContentName(_baseName, name.component(0)));
+				ack(new ContentName(prefix, name.component(0)));
 			return names.size();
 		}
 	}
 
-	public RepositoryProtocol(ContentName name, CCNLibrary library) {
-		super(name, library);
-		// TODO Auto-generated constructor stub
+	public RepositoryFlowControl(ContentName name, CCNLibrary library) throws IOException {
+		super(library); 
+		addNameSpace(name);
 	}
-	
-	public void init(ContentName name) throws IOException {
-		_baseName = name;
+
+	/**
+	 * Note we only want to do this once
+	 */
+	@Override
+	public void addNameSpace(ContentName name) throws IOException {
+		super.addNameSpace(name);
+		if (_initialized)
+			return;
+		
+		_initialized = true;
 		clearUnmatchedInterests();	// Remove possible leftover interests from "getLatestVersion"
 		ContentName repoWriteName = new ContentName(name, CCNBase.REPO_START_WRITE, CCNLibrary.nonce());
-		_listener = new RepoListener();
-		_writeInterest = new Interest(repoWriteName);
-		_library.expressInterest(_writeInterest, _listener);
+
+		Interest writeInterest = new Interest(repoWriteName);
+		_library.expressInterest(writeInterest, this);
+		_writeInterests.add(writeInterest);
 		if (! _bestEffort) {
 			_ackHandler = new RepoAckHandler();
 			_ackne = new CCNNameEnumerator(_library, _ackHandler);
 		}
-		
+
 		/*
 		 * Wait for information to be returned from a repo
 		 */
 		synchronized (this) {
 			boolean interrupted;
-			do
+			do {
 				try {
 					interrupted = false;
 					wait(getTimeout());
 				} catch (InterruptedException e) {
 					interrupted = true;
 				}
-			while (interrupted);
+			} while (interrupted);
 		}
-		if (_repoName == null)
+		if (_repoName == null) {
+			Library.logger().finest("No response from a repository, cannot add name space : " + name);
 			throw new IOException("No response from a repository");
+		}
 	}
-	
+
 	/**
 	 * Handle acknowledgement packet from the repo
 	 * @param co
@@ -146,41 +149,51 @@ public class RepositoryProtocol extends CCNFlowControl {
 			}
 		}
 	}
-	
+
 	public void setBestEffort(boolean flag) {
 		_bestEffort = flag;
 	}
-	
+
 	public boolean flushComplete() {
 		return _bestEffort ? true : _holdingArea.size() == 0;
 	}
-	
+
 	public void afterPutAction(ContentObject co) throws IOException {
 		if (! _bestEffort) {
 			if (_holdingArea.size() > _ackInterval) {
-				_ackne.cancelPrefix(_baseName);
-				_ackne.registerPrefix(_baseName);
+				ContentName prefix = getNameSpace(co.name());
+				_ackne.cancelPrefix(prefix);
+				_ackne.registerPrefix(prefix);
 			}
 		} else {
 			super.afterPutAction(co);
 		}
 	}
-	
+
+	@Override
 	public void beforeClose() throws IOException {
 		_ackInterval = 0;
 	}
-		
+
+	@Override
 	public void afterClose() throws IOException {
-		if (! _bestEffort)
-			cancelInterests();
+		// super.afterClose() calls waitForPutDrain.
+		super.afterClose();
+		// DKS don't actually want to cancel all the interests, only the
+		// ones relevant to the data we've finished writing.
+		//if (! _bestEffort)
+		//	cancelInterests();
 		if (!flushComplete()) {
 			throw new IOException("Unable to confirm writes are stable: timed out waiting ack for " + _holdingArea.firstKey());
 		}
 	}
-	
-	private void cancelInterests() {
-		_ackne.cancelPrefix(_baseName);
-		if (_writeInterest != null)
-			_library.cancelInterest(_writeInterest, _listener);
+
+	public void cancelInterests() {
+		for (ContentName prefix : _filteredNames) {
+			_ackne.cancelPrefix(prefix);
+		}
+		for (Interest writeInterest : _writeInterests){
+			_library.cancelInterest(writeInterest, this);
+		}
 	}
 }

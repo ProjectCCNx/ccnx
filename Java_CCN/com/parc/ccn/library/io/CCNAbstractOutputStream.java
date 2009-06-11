@@ -2,12 +2,14 @@ package com.parc.ccn.library.io;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.sql.Timestamp;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNSegmenter;
+import com.parc.ccn.library.profiles.VersioningProfile;
 
 public abstract class CCNAbstractOutputStream extends OutputStream {
 
@@ -43,6 +45,8 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 		_locator = locator;
 		_publisher = publisher;		
 	}
+	
+	public CCNAbstractOutputStream() {}	// special purpose constructor
 
 	@Override
 	public void write(byte[] b) throws IOException {
@@ -57,6 +61,12 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 
 	public ContentName getBaseName() {
 		return _baseName;
+	}
+
+	public Timestamp getVersion() {
+		if (null == _baseName) 
+			return null;
+		return VersioningProfile.getVersionAsTimestampIfVersioned(_baseName);
 	}
 
 	public CCNSegmenter getSegmenter() {

@@ -19,6 +19,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.WirePacket;
+import com.parc.ccn.data.ContentName.DotDotComponent;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.profiles.VersioningProfile;
@@ -328,7 +329,12 @@ public class RFSImpl implements Repository {
 	private void getAllFileResults(File file, TreeMap<ContentName, ArrayList<File>> results, ContentName name) {
 		if (file.isDirectory()) {
 			for (File f : file.listFiles()) {
-				getAllFileResults(f, results, new ContentName(name, f.getName().getBytes()));
+				try {
+					getAllFileResults(f, results, new ContentName(name, ContentName.componentParseURI(f.getName())));
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			}
 		} else if (file.exists()) {
 			if (file.getName().endsWith(".rfs")) {
@@ -457,7 +463,6 @@ public class RFSImpl implements Repository {
 	 */
 	private void saveContentToFile(File file, ContentObject content) throws RepositoryException {
 		try {
-			_locker.lock(file.getName());
 			file.createNewFile();
 			FileOutputStream fos = new FileOutputStream(file);
 			WirePacket packet = new WirePacket(content);
@@ -466,7 +471,6 @@ public class RFSImpl implements Repository {
 		} catch (Exception e) {
 			throw new RepositoryException(e.getMessage());
 		}
-		_locker.unLock(file.getName());
 	}
 	
 	/**
@@ -515,7 +519,6 @@ public class RFSImpl implements Repository {
 		String nextComponent = "";
 		while (st.hasMoreTokens()) {
 			String token = st.nextToken();
-			token = token.replace("%25", "%");		// Need to fix URI replacement for %
 			if (token.startsWith(SPLIT_COMPONENT))
 				nextComponent += token.substring(1);
 			else {
@@ -585,6 +588,15 @@ public class RFSImpl implements Repository {
 		
 		ContentName encoded = RFSImpl.encodeName(cropped);
 		File encodedFile = new File(_repositoryFile + encoded.toString());
+		if(encodedFile.exists()){
+			//we have something to work with!
+			Library.logger().finest("this prefix was found in our content: "+encoded.toString());
+		}
+		else{
+			//nothing here...  return null
+			Library.logger().finest("this prefix is not found in our content: "+encoded.toString());
+			return null;
+		}
 		long lastModified = encodedFile.lastModified();
 		fileTS = new Timestamp(lastModified);
 		if(interestTS!=null)
@@ -597,8 +609,10 @@ public class RFSImpl implements Repository {
 			Library.logger().fine("path to file: "+encodedFile.getName());
 			String[] matches = encodedFile.list();
 		
-			for(String s: matches){
-				names.add(RFSImpl.decodeName(new ContentName(n, s.getBytes())));
+			if (matches != null) {
+				for(String s: matches){
+					names.add(RFSImpl.decodeName(new ContentName(n, s.getBytes())));
+				}
 			}
 		}
 		

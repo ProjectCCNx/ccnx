@@ -5,6 +5,7 @@ DUPDIR = stubs
 TESTS = $(ALLTESTS)
 ALLTESTS = \
   test_alone \
+  test_ccnls_meta \
   test_final_teardown \
   test_finished \
   test_happy_face \

@@ -79,6 +79,43 @@ ccnd_collect_stats(struct ccnd *h, struct ccnd_stats *ans)
     return(0);
 }
 
+static void
+collect_forwarding_html(struct ccnd *h, struct ccn_charbuf *b)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct ccn_forwarding *f;
+    int res;
+    struct ccn_charbuf *name = ccn_charbuf_create();
+    
+    ccn_charbuf_putf(b, "<ul>");
+    hashtb_start(h->nameprefix_tab, e);
+    for (; e->data != NULL; hashtb_next(e)) {
+        struct nameprefix_entry *ipe = e->data;
+                ccn_name_init(name);
+                res = ccn_name_append_components(name, e->key, 0, e->keysize);
+                if (res < 0)
+                    abort();
+                ccn_charbuf_putf(b, "<li>");
+                ccn_uri_append(b, name->buf, name->length, 1);
+                ccn_charbuf_putf(b, "</li>");
+        for (f = ipe->forwarding; f != NULL; f = f->next) {
+            if ((f->flags & CCN_FORW_ACTIVE) != 0) {
+                ccn_name_init(name);
+                res = ccn_name_append_components(name, e->key, 0, e->keysize);
+                ccn_charbuf_putf(b, "<li>");
+                ccn_uri_append(b, name->buf, name->length, 1);
+                ccn_charbuf_putf(b, " <b>face:</b> %u <b>flags:</b> 0x%x <b>expires:</b> %d",
+                                 f->faceid, f->flags, f->expires);
+                ccn_charbuf_putf(b, "</li>");
+            }
+        }
+    }
+    hashtb_end(e);
+    ccn_charbuf_destroy(&name);
+    ccn_charbuf_putf(b, "</ul>");
+}
+
 static char *
 collect_stats_html(struct ccnd *h)
 {
@@ -110,9 +147,7 @@ collect_stats_html(struct ccnd *h)
         "<div><b>Content items:</b> %llu accessioned, %d stored, %d sparse, %lu duplicate, %lu sent</div>"
         "<div><b>Interests:</b> %d names, %ld pending, %ld propagating, %ld noted</div>"
         "<div><b>Interest totals:</b> %lu accepted, %lu dropped, %lu sent, %lu stuffed</div>"
-        "<div><b>Active faces and listeners:</b> %d</div>"
-        "</body>"
-        "</html>",
+        "<div><b>Active faces and listeners:</b> %d</div>",
         pid,
         un.nodename,
         pid,
@@ -128,6 +163,10 @@ collect_stats_html(struct ccnd *h)
         h->interests_accepted, h->interests_dropped,
         h->interests_sent, h->interests_stuffed,
         hashtb_n(h->faces_by_fd) + hashtb_n(h->dgram_faces));
+    collect_forwarding_html(h, b);
+    ccn_charbuf_putf(b,
+        "</body>"
+        "</html>");
     ans = strdup((char *)b->buf);
     ccn_charbuf_destroy(&b);
     return(ans);
@@ -247,6 +286,16 @@ ccnd_stats_httpd_start(struct ccnd *h)
 }
 
 /* ccnd_msg may migrate into a different place ... */
+
+/*!
+    @function
+    @abstract   Produce ccnd debug output
+    @discussion Output is produced on stderr under the control of h->debug;
+                prepends decimal timestamp and process identification.
+                Caller should not supply newlines.
+    @param      h  the ccnd handle
+    @param      fmt  printf-like format string
+*/
 void
 ccnd_msg(struct ccnd *h, const char *fmt, ...)
 {
@@ -264,6 +313,17 @@ ccnd_msg(struct ccnd *h, const char *fmt, ...)
     ccn_charbuf_destroy(&b);
 }
 
+/*!
+    @function
+    @abstract   Produce a ccnd debug trace entry
+    @discussion Output is produced by calling ccnd_msg
+    @param      h  the ccnd handle
+    @param      lineno  caller's source line number (usually __LINE__)
+    @param      msg  a short text tag to identify the entry
+    @param      face    handle of associated face; may be NULL
+    @param      ccnb    points to ccnb-encoded Interest or ContentObject
+    @param      ccnb_size   is in bytes
+*/
 void
 ccnd_debug_ccnb(struct ccnd *h,
                 int lineno,
@@ -272,11 +332,15 @@ ccnd_debug_ccnb(struct ccnd *h,
                 const unsigned char *ccnb,
                 size_t ccnb_size)
 {
-    struct ccn_charbuf *c = ccn_charbuf_create();
+    struct ccn_charbuf *c;
     struct ccn_parsed_interest pi;
     const unsigned char *nonce = NULL;
     size_t nonce_size = 0;
     size_t i;
+    
+    if (h != NULL && h->debug == 0)
+        return;
+    c = ccn_charbuf_create();
     ccn_charbuf_putf(c, "debug.%d %s ", lineno, msg);
     if (face != NULL)
         ccn_charbuf_putf(c, "%u ", face->faceid);

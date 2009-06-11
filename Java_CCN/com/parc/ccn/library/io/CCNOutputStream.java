@@ -91,6 +91,8 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	public CCNOutputStream(ContentName name, ContentType type, CCNLibrary library) throws XMLStreamException, IOException {
 		this(name, null, type, library);
 	}
+	
+	public CCNOutputStream() {}	// special purpose constructor
 
 	protected CCNOutputStream(ContentName name, 
 			KeyLocator locator, PublisherPublicKeyDigest publisher, ContentType type,
@@ -143,8 +145,9 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	@Override
 	public void close() throws IOException {
 		try {
+			_segmenter.getFlowControl().beforeClose();
 			closeNetworkData();
-			_segmenter.getFlowControl().waitForPutDrain();
+			_segmenter.getFlowControl().afterClose();
 		} catch (InvalidKeyException e) {
 			throw new IOException("Cannot sign content -- invalid key!: " + e.getMessage());
 		} catch (SignatureException e) {

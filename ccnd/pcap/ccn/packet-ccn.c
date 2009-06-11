@@ -268,8 +268,7 @@ dissect_ccn(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
     if (check_col(pinfo->cinfo, COL_INFO)) {
         col_add_str(pinfo->cinfo, COL_INFO,
                     val_to_str(packet_type, VALS(ccn_dtag_dict.dict), "Unknown (0x%02x"));
-        col_append_str(pinfo->cinfo, COL_INFO, ", ");
-        col_append_str(pinfo->cinfo, COL_INFO, ccn_charbuf_as_string(c));
+        col_append_sep_str(pinfo->cinfo, COL_INFO, NULL, ccn_charbuf_as_string(c));
     }
 
     if (tree == NULL) {
@@ -351,6 +350,21 @@ dissect_ccn_interest(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t *tvb,
         titem = proto_tree_add_item(name_tree, hf_ccn_name_components, tvb, comp - ccnb, comp_size, FALSE);
     }
 
+    /* Nonce */
+    l = pi->offset[CCN_PI_E_Nonce] - pi->offset[CCN_PI_B_Nonce];
+    if (l > 0) {
+        i = ccn_ref_tagged_BLOB(CCN_DTAG_Nonce, ccnb,
+                                pi->offset[CCN_PI_B_Nonce],
+                                pi->offset[CCN_PI_E_Nonce],
+                                &blob, &blob_size);
+        if (check_col(pinfo->cinfo, COL_INFO)) {
+            col_append_str(pinfo->cinfo, COL_INFO, ", <");
+            for (i = 0; i < blob_size; i++)
+                col_append_fstr(pinfo->cinfo, COL_INFO, "%02x", blob[i]);
+            col_append_str(pinfo->cinfo, COL_INFO, ">");
+        }
+    }
+
     /* NameComponentCount */
     l = pi->offset[CCN_PI_E_NameComponentCount] - pi->offset[CCN_PI_B_NameComponentCount];
     if (l > 0) {
@@ -398,7 +412,6 @@ dissect_ccn_interest(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t *tvb,
     /* AnswerOriginKind */
     /* Scope */
     /* Count */
-    /* Nonce */
     /* OTHER */
     return (1);
 

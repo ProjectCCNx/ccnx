@@ -39,12 +39,13 @@ struct content_entry;
 struct nameprefix_entry;
 struct propagating_entry;
 struct content_tree_node;
+struct ccn_forwarding;
 
 //typedef uint_least64_t ccn_accession_t;
 typedef unsigned ccn_accession_t;
 
 /*
- * We pass this handle almost everywhere.
+ * We pass this handle almost everywhere within ccnd
  */
 struct ccnd {
     struct hashtb *faces_by_fd;     /* keyed by fd */
@@ -56,10 +57,12 @@ struct ccnd {
     unsigned face_gen;
     unsigned face_rover;            /* for faceid allocation */
     unsigned face_limit;
+    unsigned forward_to_gen;        /* for forward_to updates */
     struct face **faces_by_faceid;  /* array with face_limit elements */
     struct ccn_scheduled_event *reaper;
     struct ccn_scheduled_event *age;
     struct ccn_scheduled_event *clean;
+    struct ccn_scheduled_event *age_forwarding;
     int local_listener_fd;
     int httpd_listener_fd;
     int udp4_fd;
@@ -91,6 +94,8 @@ struct ccnd {
     unsigned short seed[3];
     int debug;
     int mtu;                        /* Target size for stuffing interests */
+    int flood;                      // XXX - Temporary, for transition period
+    unsigned interest_faceid;       /* for self_ref internal client */
     struct ccn *internal_client;    /* internal client */
     struct face *face0;             /* special face for internal client */
     struct ccn_scheduled_event *internal_client_refresh;
@@ -186,10 +191,31 @@ struct sparse_straggler_entry {
  */
 struct nameprefix_entry {
     struct propagating_entry *propagating_head;
+    struct ccn_indexbuf *forward_to; /* faceids to forward to */
+    struct ccn_forwarding *forwarding; /* detailed forwarding info*/
+    struct nameprefix_entry *parent; /* link to next-shorter prefix */
+    int children;                /* number of children */
+    int fgen;                    /* used to decide when forward_to is stale */
     unsigned src;                /* faceid of recent matching content */
     unsigned osrc;               /* and of older matching content */
     unsigned usec;               /* response-time prediction */
 };
+
+struct ccn_forwarding {
+    unsigned faceid;
+    unsigned flags;
+    int expires;
+    struct ccn_forwarding *next;
+};
+#define CCN_FORW_REFRESHED      1
+#define CCN_FORW_ACTIVE         2
+#define CCN_FORW_CHILD_INHERIT  4
+#define CCN_FORW_ADVERTISE      8
+
+/*
+ * CCN_FWU_SECS determines how frequently we age our fowarding entries
+ */
+#define CCN_FWU_SECS 5
 
 /*
  * The propagating interest hash table is keyed by Nonce.
@@ -215,6 +241,28 @@ struct propagating_entry {
  */
 int ccnd_internal_client_start(struct ccnd *);
 void ccnd_internal_client_stop(struct ccnd *);
+
+/*
+ * The internal client calls this with the argument portion ARG of
+ * a self-registration request (/ccn/self/reg/ARG)
+ * The result, if not NULL, will be used as the Content of the reply.
+ */
+struct ccn_charbuf *ccnd_reg_self(struct ccnd *h,
+                                  const unsigned char *msg, size_t size);
+
+int ccnd_reg_prefix(struct ccnd *h,
+                    const unsigned char *msg,
+                    struct ccn_indexbuf *comps,
+                    int ncomps,
+                    unsigned faceid,
+                    int flags,
+                    int expires);
+
+int ccnd_reg_uri(struct ccnd *h,
+                 const char *uri,
+                 unsigned faceid,
+                 int flags,
+                 int expires);
 
 /* Consider a separate header for these */
 int ccnd_stats_httpd_start(struct ccnd *);

@@ -20,7 +20,7 @@ RFC 3986                   URI Generic Syntax               January 2005
 *********/
 
 void
-ccn_uri_append_precentescaped(struct ccn_charbuf *c, const unsigned char *data, size_t size)
+ccn_uri_append_percentescaped(struct ccn_charbuf *c, const unsigned char *data, size_t size)
 {
     size_t i;
     unsigned char ch;
@@ -90,11 +90,13 @@ ccn_uri_append(struct ccn_charbuf *c,
             return(d->decoder.state);
         ncomp += 1;
         ccn_charbuf_append(c, "/", 1);
-        ccn_uri_append_precentescaped(c, comp, compsize);
+        ccn_uri_append_percentescaped(c, comp, compsize);
     }
     ccn_buf_check_close(d);
     if (d->decoder.state < 0)
         return (d->decoder.state);
+    if (ncomp == 0)
+        ccn_charbuf_append(c, "/", 1);
     return(ncomp);
 }
 
@@ -116,7 +118,7 @@ hexit(int c)
  * to c.  This does not do any ccnb-related stuff.
  * Processing stops at an error or if an unescaped nul, '/', '?', or '#' is found.
  * A component that consists solely of dots gets special treatment to reverse
- * the addition of ... by ccn_uri_append_precentescaped.  Since '.' is an unreserved
+ * the addition of ... by ccn_uri_append_percentescaped.  Since '.' is an unreserved
  * character, percent-encoding is not supposed to change meaning and hence
  * the dot processing happens after percent-encoding is removed.
  * A positive return value indicates there were unescaped reserved or
@@ -245,9 +247,8 @@ ccn_name_from_uri(struct ccn_charbuf *c, const char *uri)
             /* Skip over hostname part - not used in ccn scheme */
             s += 2;
             compbuf->length = 0;
-            s++;
             res = ccn_append_uri_component(compbuf, s, stop - s, &cont);
-            if (res < 0)
+            if (res < 0 && res != -2)
                 goto Done;
             s += cont; cont = 0;
         }
@@ -280,6 +281,8 @@ ccn_name_from_uri(struct ccn_charbuf *c, const char *uri)
 Done:
     ccn_charbuf_destroy(&compbuf);
     if (res < 0)
+        return(-1);
+    if (c->length < 2 || c->buf[c->length-1] != CCN_CLOSE)
         return(-1);
     return(s - uri);
 }

@@ -21,6 +21,12 @@ import com.parc.ccn.library.CCNLibraryTestHarness;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
+/**
+ * 
+ * @author rasmusse
+ *
+ */
+
 public class CCNFlowControlTest {
 	static private CCNLibraryTestHarness _library ;
 	
@@ -223,6 +229,49 @@ public class CCNFlowControlTest {
 			fc.waitForPutDrain();
 			Assert.fail("WaitforPutDrain succeeded when it should have failed");
 		} catch (IOException ioe) {}
+	}
+	
+	@Test
+	public void testHighwaterWait() throws Throwable {
+		
+		// Test that put over highwater fails with nothing draining
+		// the buffer
+		normalReset(name1);
+		fc.setHighwater(4);
+		fc.put(objv1s1);
+		fc.put(objv1s2);
+		fc.put(objv1s3);
+		try {
+			fc.put(objv1s4);
+			Assert.fail("Put over highwater mark succeeded");
+		} catch (IOException ioe) {}
+		
+		// Test that put over highwater succeeds when buffer is
+		// drained
+		normalReset(name1);
+		fc.setHighwater(4);
+		fc.setHighwater(4);
+		fc.put(objv1s1);
+		fc.put(objv1s2);
+		fc.put(objv1s3);
+		HighWaterHelper hwh = new HighWaterHelper();
+		hwh.start();
+		fc.put(objv1s4);
+	}
+	
+	public class HighWaterHelper extends Thread {
+
+		public void run() {
+			synchronized (this) {
+				try {
+					Thread.sleep(500);
+					_library.get(objv1s1.name(), 0);
+				} catch (Exception e) {
+					Assert.fail("Caught exception: " + e.getMessage());
+				}
+			}
+		}
+		
 	}
 	
 	private void normalReset(ContentName n) {

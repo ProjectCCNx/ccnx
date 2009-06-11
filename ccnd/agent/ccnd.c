@@ -64,6 +64,16 @@ static ccn_accession_t
 static void reap_needed(struct ccnd *h, int init_delay_usec);
 static void check_comm_file(struct ccnd *h);
 static const char *unlink_this_at_exit = NULL;
+static int nameprefix_longest_match(struct ccnd *h,
+                                    const unsigned char *msg,
+                                    struct ccn_indexbuf *comps,
+                                    int ncomps);
+static int nameprefix_seek(struct ccnd *h,
+                           struct hashtb_enumerator *e,
+                           const unsigned char *msg,
+                           struct ccn_indexbuf *comps,
+                           int ncomps);
+static void register_new_face(struct ccnd *h, struct face *face);
 
 static void
 cleanup_at_exit(void)
@@ -197,6 +207,7 @@ use_i:
     a[i] = face;
     h->face_rover = i + 1;
     face->faceid = i | h->face_gen;
+    register_new_face(h, face);
     return (face->faceid);
 }
 
@@ -568,25 +579,35 @@ static void
 finalize_nameprefix(struct hashtb_enumerator *e)
 {
     struct ccnd *h = hashtb_get_param(e->ht, NULL);
-    struct nameprefix_entry *entry = e->data;
-    if (entry->propagating_head != NULL) {
-        consume(h, entry->propagating_head);
-        free(entry->propagating_head);
-        entry->propagating_head = NULL;
+    struct nameprefix_entry *npe = e->data;
+    if (npe->propagating_head != NULL) {
+        consume(h, npe->propagating_head);
+        free(npe->propagating_head);
+        npe->propagating_head = NULL;
+    }
+    ccn_indexbuf_destroy(&npe->forward_to);
+    while (npe->forwarding != NULL) {
+        struct ccn_forwarding *f = npe->forwarding;
+        npe->forwarding = f->next;
+        free(f);
+    }
+    if (npe->parent != NULL) {
+        npe->parent->children--;
+        npe->parent = NULL;
     }
 }
 
 static void
 link_propagating_interest_to_interest_entry(struct ccnd *h,
-    struct propagating_entry *pe, struct nameprefix_entry *ipe)
+    struct propagating_entry *pe, struct nameprefix_entry *npe)
 {
-    struct propagating_entry *head = ipe->propagating_head;
+    struct propagating_entry *head = npe->propagating_head;
     if (head == NULL) {
         head = calloc(1, sizeof(*head));
         head->next = head;
         head->prev = head;
         head->faceid = ~0;
-        ipe->propagating_head = head;
+        npe->propagating_head = head;
     }
     pe->next = head;
     pe->prev = head->prev;
@@ -683,6 +704,7 @@ shutdown_client_fd(struct ccnd *h, int fd)
     hashtb_delete(e);
     hashtb_end(e);
     check_comm_file(h);
+    reap_needed(h, 250000);
 }
 
 static void
@@ -802,69 +824,6 @@ Bail:
     return(0);
 }
 
-/*
- * Returns index at which the element was found or added,
- * or -1 in case of error.
- */
-static int
-indexbuf_unordered_set_insert(struct ccn_indexbuf *x, size_t val)
-{
-    int i;
-    if (x == NULL)
-        return (-1);
-    for (i = 0; i < x->n; i++)
-        if (x->buf[i] == val)
-            return(i);
-    if (ccn_indexbuf_append_element(x, val) < 0)
-        return(-1);
-    return(i);
-}
-
-/*
- * Returns index at which the element was found,
- * or -1 if the element was not found.
- */
-static int
-indexbuf_unordered_set_remove(struct ccn_indexbuf *x, size_t val)
-{
-    int i;
-    int n;
-    if (x == NULL)
-        return (-1);
-    for (i = 0, n = x->n; i < n; i++) {
-        if (x->buf[i] == val) {
-            if (i + 1 < n)
-                memmove(&(x->buf[i]),
-                        &(x->buf[i + 1]),
-                        sizeof(x->buf[i]) * (n - i - 1));
-            x->n--;
-            return(i);
-        }
-    }
-    return(-1);
-}
-
-/*
- * If val is present in the indexbuf, move it to the final place.
- */
-static void
-indexbuf_move_to_end(struct ccn_indexbuf *x, size_t val)
-{
-    int i;
-    int n;
-    if (x == NULL)
-        return;
-    for (i = 0, n = x->n; i + 1 < n; i++) {
-        if (x->buf[i] == val) {
-            memmove(&(x->buf[i]),
-                    &(x->buf[i + 1]),
-                    sizeof(x->buf[i]) * (n - i - 1));
-            x->buf[n - 1] = val;
-            return;
-        }
-    }
-}
-
 static int
 face_send_queue_insert(struct ccnd *h, struct face *face, struct content_entry *content)
 {
@@ -880,7 +839,7 @@ face_send_queue_insert(struct ccnd *h, struct face *face, struct content_entry *
     q = face->q[c];
     if (q == NULL)
         return(-1);
-    ans = indexbuf_unordered_set_insert(q->send_queue, content->accession);
+    ans = ccn_indexbuf_set_insert(q->send_queue, content->accession);
     if (q->sender == NULL) {
         delay = randomize_content_delay(h, q->usec);
         q->ready = q->send_queue->n;
@@ -900,7 +859,7 @@ face_send_queue_insert(struct ccnd *h, struct face *face, struct content_entry *
  */
 static int
 consume_matching_interests(struct ccnd *h,
-                           struct nameprefix_entry *ipe,
+                           struct nameprefix_entry *npe,
                            struct content_entry *content,
                            struct ccn_parsed_ContentObject *pc,
                            struct face *face)
@@ -913,7 +872,7 @@ consume_matching_interests(struct ccnd *h,
     size_t content_size;
     struct face *f;
     
-    head = ipe->propagating_head;
+    head = npe->propagating_head;
     if (head == NULL)
         return(0);
     content_msg = content->key;
@@ -940,9 +899,9 @@ consume_matching_interests(struct ccnd *h,
 
 static void
 adjust_ipe_predicted_response(struct ccnd *h,
-                              struct nameprefix_entry *ipe, int up)
+                              struct nameprefix_entry *npe, int up)
 {
-    unsigned t = ipe->usec;
+    unsigned t = npe->usec;
     if (up)
         t = t + (t >> 3);
     else
@@ -951,7 +910,7 @@ adjust_ipe_predicted_response(struct ccnd *h,
         t = 127;
     else if (t > 1000000)
         t = 1000000;
-    ipe->usec = t;
+    npe->usec = t;
 }
 
 static void
@@ -960,24 +919,27 @@ adjust_predicted_response(struct ccnd *h, struct propagating_entry *pe, int up)
     struct ccn_indexbuf *comps = indexbuf_obtain(h);
     struct ccn_parsed_interest parsed_interest = {0};
     struct ccn_parsed_interest *pi = &parsed_interest;
-    struct nameprefix_entry *ipe;
+    struct nameprefix_entry *npe;
     int res;
     size_t start;
     size_t stop;
     res = ccn_parse_interest(pe->interest_msg, pe->size, pi, comps);
     if (res < 0 || pi->prefix_comps >= comps->n) abort();
+    res = nameprefix_longest_match(h, pe->interest_msg, comps, pi->prefix_comps);
+    if (res < 0) abort();
     start = comps->buf[0];
-    stop = comps->buf[pi->prefix_comps];
-    ipe = hashtb_lookup(h->nameprefix_tab,
+    stop = comps->buf[res];
+    
+    npe = hashtb_lookup(h->nameprefix_tab,
                         pe->interest_msg + start, stop - start);
-    if (ipe != NULL)
-        adjust_ipe_predicted_response(h, ipe, up);
+    if (npe != NULL)
+        adjust_ipe_predicted_response(h, npe, up);
     if (pi->prefix_comps > 0) {
         stop = comps->buf[pi->prefix_comps - 1];
-        ipe = hashtb_lookup(h->nameprefix_tab,
+        npe = hashtb_lookup(h->nameprefix_tab,
                             pe->interest_msg + start, stop - start);
-        if (ipe != NULL)
-            adjust_ipe_predicted_response(h, ipe, up);
+        if (npe != NULL)
+            adjust_ipe_predicted_response(h, npe, up);
     }
     indexbuf_release(h, comps);
 }
@@ -987,16 +949,16 @@ adjust_predicted_response(struct ccnd *h, struct propagating_entry *pe, int up)
  */
 static void
 note_content_from(struct ccnd *h,
-                  struct nameprefix_entry *ipe,
+                  struct nameprefix_entry *npe,
                   unsigned from_faceid)
 {
-    if (ipe->src == from_faceid)
-        adjust_ipe_predicted_response(h, ipe, 0);
-    else if (ipe->src == ~0)
-        ipe->src = from_faceid;
+    if (npe->src == from_faceid)
+        adjust_ipe_predicted_response(h, npe, 0);
+    else if (npe->src == ~0)
+        npe->src = from_faceid;
     else {
-        ipe->osrc = ipe->src;
-        ipe->src = from_faceid;
+        npe->osrc = npe->src;
+        npe->src = from_faceid;
     }
 }
 
@@ -1023,11 +985,11 @@ match_interests(struct ccnd *h, struct content_entry *content,
     const unsigned char *key = content->key + c0;
     for (ci = content->ncomps - 1; ci >= 0; ci--) {
         int size = content->comps[ci] - c0;
-        struct nameprefix_entry *ipe = hashtb_lookup(h->nameprefix_tab, key, size);
-        if (ipe != NULL) {
-            new_matches = consume_matching_interests(h, ipe, content, pc, face);
+        struct nameprefix_entry *npe = hashtb_lookup(h->nameprefix_tab, key, size);
+        if (npe != NULL) {
+            new_matches = consume_matching_interests(h, npe, content, pc, face);
             if (from_face != NULL && (new_matches != 0 || ci + 1 == cm))
-                note_content_from(h, ipe, from_face->faceid);
+                note_content_from(h, npe, from_face->faceid);
             if (new_matches != 0) {
                 cm = ci; /* update stats for this prefix and one shorter */
                 n_matched += new_matches;
@@ -1072,8 +1034,8 @@ ccn_stuff_interest(struct ccnd *h, struct face *face, struct ccn_charbuf *c)
         return(0);
     for (hashtb_start(h->nameprefix_tab, e);
          remaining_space >= 20 && e->data != NULL; hashtb_next(e)) {
-        struct nameprefix_entry *ipe = e->data;
-        struct propagating_entry *head = ipe->propagating_head;
+        struct nameprefix_entry *npe = e->data;
+        struct propagating_entry *head = npe->propagating_head;
         struct propagating_entry *p;
         if (head != NULL) {
             for (p = head->prev; p != head; p = p->prev) {
@@ -1083,7 +1045,7 @@ ccn_stuff_interest(struct ccnd *h, struct face *face, struct ccn_charbuf *c)
                       ((p->flags & (CCN_PR_STUFFED1 | CCN_PR_WAIT1)) == 0) &&
                       ((p->flags & CCN_PR_UNSENT) == 0 ||
                         p->outbound->buf[p->outbound->n - 1] == face->faceid) &&
-                      indexbuf_unordered_set_remove(p->outbound, face->faceid) != -1) {
+                      ccn_indexbuf_remove_first_match(p->outbound, face->faceid) != -1) {
                     remaining_space -= p->size;
                     if ((p->flags & CCN_PR_UNSENT) != 0) {
                         p->flags &= ~CCN_PR_UNSENT;
@@ -1136,6 +1098,29 @@ check_dgram_faces(struct ccnd *h)
 }
 
 /*
+ * Remove expired faces from npe->forward_to
+ */
+static void
+check_forward_to(struct ccnd *h, struct nameprefix_entry *npe)
+{
+    struct ccn_indexbuf *ft = npe->forward_to;
+    int i;
+    int j;
+    if (ft == NULL)
+        return;
+    for (i = 0; i < ft->n; i++)
+        if (face_from_faceid(h, ft->buf[i]) == NULL)
+            break;
+    for (j = i + 1; j < ft->n; j++)
+        if (face_from_faceid(h, ft->buf[j]) != NULL)
+            ft->buf[i++] = ft->buf[j];
+    if (i == 0)
+        ccn_indexbuf_destroy(&npe->forward_to);
+    else if (i < ft->n)
+        ft->n = i;
+}
+
+/*
  * This checks for expired propagating interests.
  * Returns number that have gone away.
  * Also ages src info and retires unused nameprefix entries.
@@ -1146,7 +1131,7 @@ check_propagating(struct ccnd *h)
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     int count = 0;
-    struct nameprefix_entry *ipe;
+    struct nameprefix_entry *npe;
     struct propagating_entry *head;
     hashtb_start(h->propagating_tab, e);
     while (e->data != NULL) {
@@ -1163,16 +1148,18 @@ check_propagating(struct ccnd *h)
     }
     hashtb_end(e);
     hashtb_start(h->nameprefix_tab, e);
-    for (ipe = e->data; ipe != NULL; ipe = e->data) {
-        if (ipe->src == ~0) {
-            head = ipe->propagating_head;
+    for (npe = e->data; npe != NULL; npe = e->data) {
+        if (npe->forward_to != NULL)
+            check_forward_to(h, npe);
+        if (npe->src == ~0 && npe->forward_to == NULL && npe->children == 0 && npe->forwarding == NULL) {
+            head = npe->propagating_head;
             if ((head == NULL || head == head->next)) {
                 hashtb_delete(e);
                 continue;
             }
         }
-        ipe->osrc = ipe->src;
-        ipe->src = ~0;
+        npe->osrc = npe->src;
+        npe->src = ~0;
         hashtb_next(e);
     }
     hashtb_end(e);
@@ -1202,10 +1189,8 @@ reap(
         check_dgram_faces(h);
         check_propagating(h);
         check_comm_file(h);
-        if (hashtb_n(h->dgram_faces) > 0 || hashtb_n(h->propagating_tab) > 0)
-            return(2 * CCN_INTEREST_LIFETIME_MICROSEC);
+        return(2 * CCN_INTEREST_LIFETIME_MICROSEC);
     }
-    /* nothing on the horizon, so go away */
     h->reaper = NULL;
     return(0);
 }
@@ -1319,57 +1304,263 @@ clean_needed(struct ccnd *h)
 }
 
 /*
- * This is where a forwarding table would be plugged in.
- * For now we forward everywhere but the source, subject to scope.
+ * age_forwarding: age out the old forwarding table entries
+ */
+static int
+age_forwarding(struct ccn_schedule *sched,
+             void *clienth,
+             struct ccn_scheduled_event *ev,
+             int flags)
+{
+    struct ccnd *h = clienth;
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct ccn_forwarding *f;
+    struct ccn_forwarding *next;
+    struct ccn_forwarding **p;
+    struct nameprefix_entry *npe;
+    int changed = 0;
+    
+    if ((flags & CCN_SCHEDULE_CANCEL) != 0) {
+        h->age_forwarding = NULL;
+        return(0);
+    }
+    hashtb_start(h->nameprefix_tab, e);
+    for (npe = e->data; npe != NULL; npe = e->data) {
+        p = &npe->forwarding;
+        for (f = npe->forwarding; f != NULL; f = next) {
+            next = f->next;
+            if ((f->flags & CCN_FORW_REFRESHED) == 0 ||
+                  face_from_faceid(h, f->faceid) == NULL) {
+                *p = next;
+                free(f);
+                f = NULL;
+                changed = 1;
+                continue;
+            }
+            f->expires -= CCN_FWU_SECS;
+            if (f->expires <= 0)
+                f->flags &= ~CCN_FORW_REFRESHED;
+            p = &(f->next);
+        }
+        hashtb_next(e);
+    }
+    hashtb_end(e);
+    h->forward_to_gen += 1;
+    return(CCN_FWU_SECS*1000000);
+}
+
+static void
+age_forwarding_needed(struct ccnd *h)
+{
+    if (h->age_forwarding == NULL)
+        h->age_forwarding = ccn_schedule_event(h->sched,
+                                               CCN_FWU_SECS*1000000,
+                                               age_forwarding,
+                                               NULL, 0);
+}
+
+static struct ccn_forwarding *
+seek_forwarding(struct ccnd *h, struct nameprefix_entry *npe, unsigned faceid)
+{
+    struct ccn_forwarding *f;
+    
+    for (f = npe->forwarding; f != NULL; f = f->next)
+        if (f->faceid == faceid)
+            return(f);
+    f = calloc(1, sizeof(*f));
+    if (f != NULL) {
+        f->faceid = faceid;
+        f->flags = 0;
+        f->expires = 0x7FFFFFFF;
+        f->next = npe->forwarding;
+        npe->forwarding = f;
+    }
+    return(f);
+}
+
+int
+ccnd_reg_prefix(struct ccnd *h,
+                const unsigned char *msg,
+                struct ccn_indexbuf *comps,
+                int ncomps,
+                unsigned faceid,
+                int flags,
+                int expires)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct ccn_forwarding *f = NULL;
+    struct nameprefix_entry *npe = NULL;
+    int res;
+    
+    if ((flags & (CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE | CCN_FORW_ADVERTISE)) != flags)
+        return(-1);
+    if (face_from_faceid(h, faceid) == NULL)
+        return(-1);
+    hashtb_start(h->nameprefix_tab, e);
+    res = nameprefix_seek(h, e, msg, comps, ncomps);
+    if (res >= 0) {
+        npe = e->data;
+        f = seek_forwarding(h, npe, faceid);
+        if (f != NULL) {
+            h->forward_to_gen += 1;
+            f->expires = expires;
+            f->flags |= (CCN_FORW_REFRESHED | CCN_FORW_ACTIVE | flags);
+        }
+        else
+            res = -1;
+    }
+    hashtb_end(e);
+    return(res);
+}
+
+int
+ccnd_reg_uri(struct ccnd *h,
+                const char *uri,
+                unsigned faceid,
+                int flags,
+                int expires)
+{
+    struct ccn_charbuf *name;
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
+    struct ccn_indexbuf *comps;
+    int res;
+    
+    name = ccn_charbuf_create();
+    ccn_name_init(name);
+    res = ccn_name_from_uri(name, uri);
+    if (res < 0)
+        abort();
+    comps = ccn_indexbuf_create();
+    d = ccn_buf_decoder_start(&decoder, name->buf, name->length);
+    if (ccn_parse_Name(d, comps) < 0)
+        abort();
+    res = ccnd_reg_prefix(h, name->buf, comps, comps->n - 1,
+                          faceid, flags, expires);
+    ccn_charbuf_destroy(&name);
+    ccn_indexbuf_destroy(&comps);
+    return(res);
+}
+
+static void
+register_new_face(struct ccnd *h, struct face *face)
+{
+    int res;
+    if (h->flood && face->faceid != 0) {
+        res = ccnd_reg_uri(h, "ccn:/", face->faceid, CCN_FORW_CHILD_INHERIT, 0x7FFFFFFF);
+        //ccnd_msg(h, "Flooding to face %u", face->faceid);
+    }
+}
+
+struct ccn_charbuf *
+ccnd_reg_self(struct ccnd *h, const unsigned char *msg, size_t size)
+{
+    struct ccn_parsed_ContentObject pco = {0};
+    struct ccn_indexbuf *comps = ccn_indexbuf_create();
+    int res;
+    struct ccn_charbuf *result = NULL;
+    
+    res = ccn_parse_ContentObject(msg, size, &pco, comps);
+    if (res >= 0) {
+        // XXX - for now, ignore the body
+        res = ccnd_reg_prefix(h, msg, comps, comps->n - 1, h->interest_faceid,
+                              (CCN_FORW_CHILD_INHERIT | CCN_FORW_ADVERTISE),
+                              60);
+        if (res >= 0) {
+            result = ccn_charbuf_create();
+            // XXX - for now, zero-length result
+        }
+    }
+    ccn_indexbuf_destroy(&comps);
+    return(result);
+}
+
+/*!
+ * Add all the active, inheritable faceids of npe and its ancestors to x
+ */
+static void
+update_inherited(struct ccnd *h,
+                 struct nameprefix_entry *npe, struct ccn_indexbuf *x)
+{
+    struct ccn_forwarding *f;
+    const unsigned wantflags = (CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE);
+    for (; npe != NULL; npe = npe->parent) {
+        for (f = npe->forwarding; f != NULL; f = f->next) {
+            if ((f->flags & wantflags) == wantflags &&
+                  face_from_faceid(h, f->faceid) != NULL) {
+                if (h->debug & 32)
+                    ccnd_msg(h, "at %d adding %u", __LINE__, f->faceid);
+                ccn_indexbuf_set_insert(x, f->faceid);
+            }
+        }
+    }
+}
+
+/*!
+ * Recompute the contents of npe->forward_to from forwarding lists of
+ * npe and all of its ancestors
+ */
+static void
+update_forward_to(struct ccnd *h, struct nameprefix_entry *npe)
+{
+    struct ccn_forwarding *f;
+    struct ccn_indexbuf *x = npe->forward_to;
+    if (x == NULL)
+        npe->forward_to = x = ccn_indexbuf_create();
+    else
+        x->n = 0;
+    for (f = npe->forwarding; f != NULL; f = f->next) {
+        if ((f->flags & CCN_FORW_ACTIVE) != 0 &&
+              face_from_faceid(h, f->faceid) != NULL) {
+            if (h->debug & 32)
+                ccnd_msg(h, "at %d adding %u", __LINE__, f->faceid);
+            ccn_indexbuf_set_insert(x, f->faceid);
+        }
+    }
+    update_inherited(h, npe->parent, x);
+    npe->fgen = h->forward_to_gen;
+    if (x->n == 0)
+        ccn_indexbuf_destroy(&npe->forward_to);
+}
+
+/*!
+ * This is where we consult the interest forwarding table.
+ * @param npe should be the result of the longest-match lookup
+ * @result Newly allocated set of outgoing faceids
  */
 static struct ccn_indexbuf *
 get_outbound_faces(struct ccnd *h,
     struct face *from,
     unsigned char *msg,
-    struct ccn_parsed_interest *pi)
+    struct ccn_parsed_interest *pi,
+    struct nameprefix_entry *npe)
 {
-    struct ccn_indexbuf *x = ccn_indexbuf_create();
-    unsigned i;
-    struct face **a = h->faces_by_faceid;
     int checkmask = 0;
-    if (pi->scope == 0)
+    struct ccn_indexbuf *x;
+    int i;
+    struct face *face;
+    unsigned faceid;
+    
+    if (npe->fgen != h->forward_to_gen)
+        update_forward_to(h, npe);
+    x = ccn_indexbuf_create();
+    if (pi->scope == 0 || npe->forward_to == NULL || npe->forward_to->n == 0)
         return(x);
     if (pi->scope == 1)
         checkmask = CCN_FACE_GG;
-    // XXX looping to face_limit is ofen a (minor) waste of time
-    if (h->debug & 32)
-        ccnd_msg(h, "at %d face_limit %u", __LINE__, h->face_limit);
-    for (i = 0; i < h->face_limit; i++)
-        if (a[i] != NULL && a[i] != from && ((a[i]->flags & checkmask) == checkmask)) {
-            ccn_indexbuf_append_element(x, a[i]->faceid);
+    /* We intentionally reverse the order here */
+    for (i = npe->forward_to->n - 1; i >= 0; i--) {
+        faceid = npe->forward_to->buf[i];
+        face = face_from_faceid(h, faceid);
+        if (face != NULL && face != from && ((face->flags & checkmask) == checkmask)) {
             if (h->debug & 32)
-                ccnd_msg(h, "at %d adding %u", __LINE__, a[i]->faceid);
+                ccnd_msg(h, "at %d adding %u", __LINE__, face->faceid);
+            ccn_indexbuf_append_element(x, face->faceid);
         }
+    }
     return(x);
-}
-
-static int
-indexbuf_member(struct ccn_indexbuf *x, size_t val)
-{
-    int i;
-    if (x == NULL)
-        return (-1);
-    for (i = x->n - 1; i >= 0; i--)
-        if (x->buf[i] == val)
-            return(i);
-    return(-1);
-}
-
-static void
-indexbuf_remove_element(struct ccn_indexbuf *x, size_t val)
-{
-    int i;
-    if (x == NULL) return;
-    for (i = x->n - 1; i >= 0; i--)
-        if (x->buf[i] == val) {
-            x->buf[i] = x->buf[--x->n]; /* move last element into vacant spot */
-            return;
-        }
 }
 
 static int
@@ -1439,6 +1630,7 @@ do_propagate(struct ccn_schedule *sched,
                 ccnd_debug_ccnb(h, __LINE__, "interest_to", face,
                                 pe->interest_msg, pe->size);
             h->interests_sent += 1;
+            h->interest_faceid = pe->faceid;
             next_delay = nrand48(h->seed) % 8192 + 500;
             if ((pe->flags & CCN_PR_UNSENT) != 0) {
                 pe->flags &= ~CCN_PR_UNSENT;
@@ -1471,10 +1663,10 @@ static int
 adjust_outbound_for_existing_interests(struct ccnd *h, struct face *face,
                                        unsigned char *msg,
                                        struct ccn_parsed_interest *pi,
-                                       struct nameprefix_entry *ipe,
+                                       struct nameprefix_entry *npe,
                                        struct ccn_indexbuf *outbound)
 {
-    struct propagating_entry *head = ipe->propagating_head;
+    struct propagating_entry *head = npe->propagating_head;
     struct propagating_entry *p;
     size_t presize = pi->offset[CCN_PI_B_Nonce];
     size_t postsize = pi->offset[CCN_PI_E] - pi->offset[CCN_PI_E_Nonce];
@@ -1536,41 +1728,40 @@ adjust_outbound_for_existing_interests(struct ccnd *h, struct face *face,
 
 static void
 reorder_outbound_using_history(struct ccnd *h,
-                               struct nameprefix_entry *ipe,
+                               struct nameprefix_entry *npe,
                                struct ccn_indexbuf *outbound)
 {
-    if (ipe->osrc != ~0)
-        indexbuf_move_to_end(outbound, ipe->osrc);
-    if (ipe->src != ~0)
-        indexbuf_move_to_end(outbound, ipe->src);
+    if (npe->osrc != ~0)
+        ccn_indexbuf_move_to_end(outbound, npe->osrc);
+    if (npe->src != ~0)
+        ccn_indexbuf_move_to_end(outbound, npe->src);
 }
 
 static int
 propagate_interest(struct ccnd *h, struct face *face,
-                      unsigned char *msg, size_t msg_size,
+                      unsigned char *msg,
                       struct ccn_parsed_interest *pi,
-                      struct nameprefix_entry *ipe)
+                      struct nameprefix_entry *npe,
+                      struct ccn_indexbuf *outbound)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
-    unsigned char *pkey;
-    size_t pkeysize;
+    unsigned char *nonce;
+    size_t noncesize;
     struct ccn_charbuf *cb = NULL;
     int res;
     struct propagating_entry *pe = NULL;
     unsigned char *msg_out = msg;
-    size_t msg_out_size = msg_size;
-    struct ccn_indexbuf *outbound = get_outbound_faces(h, face, msg, pi);
+    size_t msg_out_size = pi->offset[CCN_PI_E];
     int usec;
     int delaymask;
-    // if (outbound) ccnd_msg(h, "at %d outbound->n = %d", __LINE__, outbound->n);
-    adjust_outbound_for_existing_interests(h, face, msg, pi, ipe, outbound);
-    // if (outbound) ccnd_msg(h, "at %d outbound->n = %d", __LINE__, outbound->n);
-    if (outbound->n == 0)
-        ccn_indexbuf_destroy(&outbound);
-    else
-        reorder_outbound_using_history(h, ipe, outbound);
-    // if (outbound) ccnd_msg(h, "at %d outbound->n = %d", __LINE__, outbound->n);
+    if (outbound != NULL) {
+        adjust_outbound_for_existing_interests(h, face, msg, pi, npe, outbound);
+        if (outbound->n == 0)
+            ccn_indexbuf_destroy(&outbound);
+        else
+            reorder_outbound_using_history(h, npe, outbound);
+    }
     if (pi->offset[CCN_PI_B_Nonce] == pi->offset[CCN_PI_E_Nonce]) {
         /* This interest has no nonce; add one before going on */
         int noncebytes = 6;
@@ -1587,19 +1778,19 @@ propagate_interest(struct ccnd *h, struct face *face,
             s[i] = nrand48(h->seed) >> i;
         cb->length += noncebytes;
         ccn_charbuf_append_closer(cb);
-        pkeysize = cb->length - nonce_start;
+        noncesize = cb->length - nonce_start;
         ccn_charbuf_append(cb, msg + pi->offset[CCN_PI_B_OTHER],
-                               msg_size - pi->offset[CCN_PI_B_OTHER]);
-        pkey = cb->buf + nonce_start;
+                               pi->offset[CCN_PI_E] - pi->offset[CCN_PI_B_OTHER]);
+        nonce = cb->buf + nonce_start;
         msg_out = cb->buf;
         msg_out_size = cb->length;
     }
     else {
-        pkey = msg + pi->offset[CCN_PI_B_Nonce];
-        pkeysize = pi->offset[CCN_PI_E_Nonce] - pi->offset[CCN_PI_B_Nonce];
+        nonce = msg + pi->offset[CCN_PI_B_Nonce];
+        noncesize = pi->offset[CCN_PI_E_Nonce] - pi->offset[CCN_PI_B_Nonce];
     }
     hashtb_start(h->propagating_tab, e);
-    res = hashtb_seek(e, pkey, pkeysize, 0);
+    res = hashtb_seek(e, nonce, noncesize, 0);
     pe = e->data;
     if (res == HT_NEW_ENTRY) {
         unsigned char *m;
@@ -1618,26 +1809,26 @@ propagate_interest(struct ccnd *h, struct face *face,
             pe->usec = CCN_INTEREST_LIFETIME_MICROSEC;
             delaymask = 0xFFF;
             if (outbound != NULL && outbound->n > 0 &&
-                  outbound->buf[outbound->n - 1] == ipe->src) {
+                  outbound->buf[outbound->n - 1] == npe->src) {
                 pe->flags = CCN_PR_UNSENT;
                 delaymask = 0xFF;
             }
             pe->outbound = outbound;
             outbound = NULL;
-            link_propagating_interest_to_interest_entry(h, pe, ipe);
+            link_propagating_interest_to_interest_entry(h, pe, npe);
             res = 0;
             if (pe->outbound == NULL)
                 usec = pe->usec;
             else
                 usec = (nrand48(h->seed) & delaymask) + 1;
             usec = pe_next_usec(h, pe, usec, __LINE__);
-            ccn_schedule_event(h->sched, usec, do_propagate, pe, ipe->usec);
+            ccn_schedule_event(h->sched, usec, do_propagate, pe, npe->usec);
         }
     }
     else if (res == HT_OLD_ENTRY) {
         ccnd_msg(h, "Interesting - this shouldn't happen much - ccnd.c:%d", __LINE__);
         if (pe->outbound != NULL)
-            indexbuf_remove_element(pe->outbound, face->faceid);
+            ccn_indexbuf_remove_element(pe->outbound, face->faceid);
         res = -1; /* We've seen this already, do not propagate */
     }
     hashtb_end(e);
@@ -1658,10 +1849,79 @@ is_duplicate_flooded(struct ccnd *h, unsigned char *msg, struct ccn_parsed_inter
     pe = hashtb_lookup(h->propagating_tab, msg + nonce_start, nonce_size);
     if (pe != NULL) {
         if (pe->outbound != NULL)
-            indexbuf_remove_element(pe->outbound, faceid);
+            ccn_indexbuf_remove_element(pe->outbound, faceid);
         return(1);
     }
     return(0);
+}
+
+/*
+ * Finds the longest matching nameprefix, returns the component count or -1 for error.
+ */
+static int
+nameprefix_longest_match(struct ccnd *h,
+                const unsigned char *msg, struct ccn_indexbuf *comps, int ncomps)
+{
+    int i;
+    int base;
+    int answer = 0;
+    struct nameprefix_entry *npe = NULL;
+
+    if (ncomps + 1 > comps->n)
+        return(-1);
+    base = comps->buf[0];
+    for (i = 0; i <= ncomps; i++) {
+        npe = hashtb_lookup(h->nameprefix_tab, msg + base, comps->buf[i] - base);
+        if (npe == NULL)
+            break;
+        answer = i;
+        if (npe->children == 0)
+            break;
+    }
+    return(answer);
+}
+
+/*
+ * Creates a nameprefix entry if it does not already exist, together
+ * with all of its parents.
+ */
+static int
+nameprefix_seek(struct ccnd *h, struct hashtb_enumerator *e,
+                const unsigned char *msg, struct ccn_indexbuf *comps, int ncomps)
+{
+    int i;
+    int base;
+    int res = -1;
+    struct nameprefix_entry *parent = NULL;
+    struct nameprefix_entry *npe = NULL;
+
+    if (ncomps + 1 > comps->n)
+        return(-1);
+    base = comps->buf[0];
+    for (i = 0; i <= ncomps; i++) {
+        res = hashtb_seek(e, msg + base, comps->buf[i] - base, 0);
+        if (res < 0)
+            break;
+        npe = e->data;
+        if (res == HT_NEW_ENTRY) {
+            npe->parent = parent;
+            npe->forwarding = NULL;
+            npe->fgen = h->forward_to_gen - 1;
+            npe->forward_to = NULL;
+            if (parent != NULL) {
+                parent->children++;
+                npe->src = parent->src;
+                npe->osrc = parent->osrc;
+                npe->usec = parent->usec;
+            }
+            else {
+                npe->src = npe->osrc = ~0;
+                npe->usec = (nrand48(h->seed) % 4096U) + 8192;
+            }
+        }
+        parent = npe;
+    }
+    return(res);
 }
 
 static void
@@ -1678,8 +1938,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,
     int try;
     int matched;
     int s_ok;
-    struct nameprefix_entry *ipe = NULL;
-    struct nameprefix_entry *ppe = NULL;
+    struct nameprefix_entry *npe = NULL;
     struct content_entry *content = NULL;
     struct content_entry *last_match = NULL;
     struct ccn_indexbuf *comps = indexbuf_obtain(h);
@@ -1727,34 +1986,13 @@ process_incoming_interest(struct ccnd *h, struct face *face,
         s_ok = (pi->answerfrom & CCN_AOK_STALE) != 0;
         matched = 0;
         hashtb_start(h->nameprefix_tab, e);
-        res = hashtb_seek(e, msg + comps->buf[0], namesize, 0);
-        ipe = e->data;
-        if (res == HT_NEW_ENTRY) {
-            ipe->src = ipe->osrc = ~0;
-            ipe->usec = (nrand48(h->seed) % 4096U) + 8192;
-            if (pi->prefix_comps > 0) {
-                /*
-                 * Init src history from parent, if available.
-                 * Also create prefix entry one level up to capture some
-                 * less-specific history.
-                 */
-                res = hashtb_seek(e,
-                                  msg + comps->buf[0],
-                                  comps->buf[pi->prefix_comps-1] - comps->buf[0],
-                                  0);
-                ppe = e->data;
-                if (res == HT_NEW_ENTRY) {
-                    ppe->src = ppe->osrc = ~0;
-                    ppe->usec = ipe->usec;
-                }
-                else if (ppe != NULL) {
-                    ipe->src = ppe->src;
-                    ipe->osrc = ppe->osrc;
-                    ipe->usec = ppe->usec;
-                }
-            }
+        npe = NULL;
+        res = nameprefix_longest_match(h, msg, comps, pi->prefix_comps);
+        if (res >= 0) {
+            res = nameprefix_seek(h, e, msg, comps, res);
+            npe = e->data;
         }
-        if (ipe != NULL && (pi->answerfrom & CCN_AOK_CS) != 0) {
+        if (npe != NULL && (pi->answerfrom & CCN_AOK_CS) != 0) {
             last_match = NULL;
             content = NULL;
             if (face->cached_accession != 0) {
@@ -1837,10 +2075,10 @@ process_incoming_interest(struct ccnd *h, struct face *face,
                 enum cq_delay_class c;
                 for (c = 0, k = -1; c < CCN_CQ_N && k == -1; c++)
                     if (face->q[c] != NULL)
-                        k = indexbuf_member(face->q[c]->send_queue, content->accession);
+                        k = ccn_indexbuf_member(face->q[c]->send_queue, content->accession);
                 if (k == -1) {
                     // XXX - this makes a little more work for ourselves, because we are about to consume this interest anyway.
-                    propagate_interest(h, face, msg, size, pi, ipe);
+                    propagate_interest(h, face, msg, pi, npe, NULL);
                     matched = match_interests(h, content, NULL, face, NULL);
                     if (matched < 1 && h->debug)
                         ccnd_debug_ccnb(h, __LINE__, "expected_match_did_not_happen",
@@ -1854,7 +2092,8 @@ process_incoming_interest(struct ccnd *h, struct face *face,
             }
         }
         if (!matched && pi->scope != 0)
-            propagate_interest(h, face, msg, size, pi, ipe);
+            propagate_interest(h, face, msg, pi, npe,
+                               get_outbound_faces(h, face, msg, pi, npe));
         hashtb_end(e);
     }
     indexbuf_release(h, comps);
@@ -2058,7 +2297,7 @@ Bail:
         for (c = 0; c < CCN_CQ_N; c++) {
             q = face->q[c];
             if (q != NULL) {
-                i = indexbuf_member(q->send_queue, content->accession);
+                i = ccn_indexbuf_member(q->send_queue, content->accession);
                 if (i >= 0) {
                     /*
                      * In the case this consumed any interests from this source,
@@ -2083,7 +2322,7 @@ process_incoming_inject(struct ccnd *h, struct face *face,
      * a unix-domain socket (which cannot be remote).
      * The purpose of this is for the helper program to inject
      * an Interest message to a specific destination in order to
-     * establish the a conversation.
+     * establish a conversation.
      */
     struct sockaddr_storage addr = {0};
     struct ccn_parsed_interest pi_buf = {0};
@@ -2534,6 +2773,7 @@ ccnd_create(void)
     const char *debugstr;
     const char *entrylimit;
     const char *mtu;
+    const char *fib;
     int fd;
     int res;
     int whichpf;
@@ -2547,7 +2787,7 @@ ccnd_create(void)
     h = calloc(1, sizeof(*h));
     h->skiplinks = ccn_indexbuf_create();
     param.finalize_data = h;
-    h->face_limit = 32; /* soft limit */
+    h->face_limit = 1024; /* soft limit */
     h->faces_by_faceid = calloc(h->face_limit, sizeof(h->faces_by_faceid[0]));
     param.finalize = &finalize_face;
     h->faces_by_fd = hashtb_create(sizeof(struct face), &param);
@@ -2598,6 +2838,11 @@ ccnd_create(void)
         if (h->mtu > 8800)
             h->mtu = 8800;
     }
+    fib = getenv("CCND_TRYFIB"); // XXX - Temporary, for transition period
+    if (fib != NULL && fib[0] != 0)
+        h->flood = 0;
+    else
+        h->flood = 1;
     h->udp4_fd = h->udp6_fd = -1;
     portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
     if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
@@ -2643,8 +2888,16 @@ ccnd_create(void)
             freeaddrinfo(addrinfo);
         }
     }
+    if (h->face0 == NULL) {
+        struct face *face;
+        face = calloc(1, sizeof(*face));
+        face->fd = -1;
+        face->flags = (CCN_FACE_GG | CCN_FACE_LOCAL);
+        h->face0 = face;
+    }
     ccnd_reseed(h);
     clean_needed(h);
+    age_forwarding_needed(h);
     return(h);
 }
 
@@ -2655,9 +2908,9 @@ main(int argc, char **argv)
     signal(SIGPIPE, SIG_IGN);
     h = ccnd_create();
     ccnd_stats_httpd_start(h);
-    ccnd_internal_client_start(h);
     enroll_face(h, h->face0);
+    ccnd_internal_client_start(h);
     run(h);
-    ccnd_msg(h, "exiting.", (int)getpid());
+    ccnd_msg(h, "exiting.");
     exit(0);
 }

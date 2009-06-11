@@ -39,6 +39,7 @@ public class get_file {
 			}
 			FileOutputStream output = new FileOutputStream(theFile);
 			
+			long starttime = System.currentTimeMillis();
 			CCNDescriptor input = new CCNDescriptor(argName, null, library);
 			if (args.length > 2) {
 				input.setTimeout(new Integer(args[2]).intValue()); 
@@ -47,13 +48,14 @@ public class get_file {
 			
 			int readcount = 0;
 			int readtotal = 0;
-			while (!input.eof()) {
-				readcount = input.read(buffer);
+			//while (!input.eof()) {
+			while ((readcount = input.read(buffer)) != -1){
+				//readcount = input.read(buffer);
 				readtotal += readcount;
 				output.write(buffer, 0, readcount);
 				output.flush();
 			}
-
+			System.out.println("get_file took: "+(System.currentTimeMillis() - starttime)+"ms");
 			System.out.println("Retrieved content " + args[1] + " got " + readtotal + " bytes.");
 			System.exit(0);
 

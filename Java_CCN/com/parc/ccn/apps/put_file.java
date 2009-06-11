@@ -11,8 +11,9 @@ import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.io.CCNFileOutputStream;
 import com.parc.ccn.library.io.CCNOutputStream;
-import com.parc.ccn.library.io.repo.RepositoryOutputStream;
+import com.parc.ccn.library.io.repo.RepositoryFileOutputStream;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
 public class put_file {
@@ -58,7 +59,7 @@ public class put_file {
 				if (rawMode)
 					ostream = new CCNOutputStream(versionedName, library);
 				else
-					ostream = new RepositoryOutputStream(versionedName, library);
+					ostream = new RepositoryFileOutputStream(versionedName, library);
 				do_write(ostream, theFile);
 				
 				System.out.println("Inserted file " + args[startArg + 1] + ".");
@@ -84,11 +85,13 @@ public class put_file {
 					// int version = new Random().nextInt(1000);
 					// would be version = library.latestVersion(argName) + 1;
 					CCNOutputStream ostream;
-					ContentName versionedNodeName = VersioningProfile.versionName(nodeName);
+					// Both forms of file output stream handle automatic versioning of unversioned names.
+					// Use file stream in both cases to match behavior. CCNOutputStream doesn't do
+					// versioning and neither it nor CCNVersionedOutputStream add headers.
 					if (rawMode)
-						ostream = new CCNOutputStream(versionedNodeName, library);
+						ostream = new CCNFileOutputStream(nodeName, library);
 					else
-						ostream = new RepositoryOutputStream(versionedNodeName, library);
+						ostream = new RepositoryFileOutputStream(nodeName, library);
 					do_write(ostream, theFile);
 					
 					System.out.println("Inserted file " + args[i] + ".");
@@ -112,20 +115,26 @@ public class put_file {
 	}
 	
 	private static void do_write(CCNOutputStream ostream, File file) throws IOException {
+		long time = System.currentTimeMillis();
 		FileInputStream fis = new FileInputStream(file);
 		int size = BLOCK_SIZE;
+		int readLen = 0;
 		byte [] buffer = new byte[BLOCK_SIZE];
-		do {
+		//do {
+		Library.logger().info("do_write: " + fis.available() + " bytes left.");
+		while((readLen = fis.read(buffer, 0, size)) != -1){	
+			//if (size > fis.available())
+			//	size = fis.available();
+			//if (size > 0) {
+			//	fis.read(buffer, 0, size);
+			//	ostream.write(buffer, 0, size);
+			ostream.write(buffer, 0, readLen);
+			Library.logger().info("do_write: wrote " + size + " bytes.");
 			Library.logger().info("do_write: " + fis.available() + " bytes left.");
-			if (size > fis.available())
-				size = fis.available();
-			if (size > 0) {
-				fis.read(buffer, 0, size);
-				ostream.write(buffer, 0, size);
-				Library.logger().info("do_write: wrote " + size + " bytes.");
-			}
-		} while (fis.available() > 0);
+		}
+		//} while (fis.available() > 0);
 		ostream.close();
+		Library.logger().info("finished write: "+(System.currentTimeMillis() - time));
 	}
 	
 	public static void usage() {
