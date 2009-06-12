@@ -2,8 +2,6 @@ package com.parc.ccn.library.io.repo;
 
 import java.io.IOException;
 
-import javax.xml.stream.XMLStreamException;
-
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
@@ -18,13 +16,13 @@ import com.parc.ccn.library.io.CCNOutputStream;
 
 public class RepositoryOutputStream extends CCNOutputStream {
 	
-	public RepositoryOutputStream(ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
+	public RepositoryOutputStream(ContentName name, CCNLibrary library) throws IOException {
 		this(name, null, null, library);
 	}
 	
 	public RepositoryOutputStream(ContentName name, 
 			KeyLocator locator, PublisherPublicKeyDigest publisher, CCNLibrary library)
-			throws XMLStreamException, IOException {
+			throws IOException {
 		super(name, locator, publisher, new RepositoryFlowControl(name, library));
 	}
 }

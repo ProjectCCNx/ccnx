@@ -4,8 +4,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 
-import javax.xml.stream.XMLStreamException;
-
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
@@ -106,9 +104,6 @@ public class put_file {
 			e.printStackTrace();
 		} catch (IOException e) {
 			System.out.println("Cannot read file. " + e.getMessage());
-			e.printStackTrace();
-		} catch (XMLStreamException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 

@@ -64,7 +64,7 @@ public class CCNDescriptor {
 
 	protected void openForWriting(ContentName name, 
 			KeyLocator locator, PublisherPublicKeyDigest publisher,
-			CCNLibrary library) throws XMLStreamException, IOException {
+			CCNLibrary library) throws IOException {
 		ContentName nameToOpen = name;
 		if (SegmentationProfile.isSegment(name)) {
 			nameToOpen = SegmentationProfile.segmentRoot(nameToOpen);

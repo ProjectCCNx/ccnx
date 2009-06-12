@@ -8,8 +8,6 @@ import java.security.SignatureException;
 import java.sql.Timestamp;
 import java.util.Arrays;
 
-import javax.xml.stream.XMLStreamException;
-
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.KeyLocator;
@@ -67,28 +65,28 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 
 	public CCNOutputStream(ContentName name, 
 			KeyLocator locator, PublisherPublicKeyDigest publisher, ContentType type,
-			ContentKeys keys, CCNLibrary library) throws XMLStreamException, IOException {
+			ContentKeys keys, CCNLibrary library) throws IOException {
 		this(name, locator, publisher, type, new CCNSegmenter(new CCNFlowControl(name, library),
 				null, keys));
 	}
 
 	public CCNOutputStream(ContentName name,
 			PublisherPublicKeyDigest publisher, ContentType type,
-			CCNLibrary library) throws XMLStreamException, IOException {
+			CCNLibrary library) throws IOException {
 		this(name, null, publisher, type, new CCNSegmenter(new CCNFlowControl(name, library)));
 	}
 
 	public CCNOutputStream(ContentName name,
 			PublisherPublicKeyDigest publisher,
-			CCNLibrary library) throws XMLStreamException, IOException {
+			CCNLibrary library) throws IOException {
 		this(name, null, publisher, null, new CCNSegmenter(new CCNFlowControl(name, library)));
 	}
 
-	public CCNOutputStream(ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
+	public CCNOutputStream(ContentName name, CCNLibrary library) throws IOException {
 		this(name, null, null, library);
 	}
 
-	public CCNOutputStream(ContentName name, ContentType type, CCNLibrary library) throws XMLStreamException, IOException {
+	public CCNOutputStream(ContentName name, ContentType type, CCNLibrary library) throws IOException {
 		this(name, null, type, library);
 	}
 	
@@ -96,7 +94,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 
 	protected CCNOutputStream(ContentName name, 
 			KeyLocator locator, PublisherPublicKeyDigest publisher, ContentType type,
-			CCNSegmenter segmenter) throws XMLStreamException, IOException {
+			CCNSegmenter segmenter) {
 
 		super(locator, publisher, segmenter);
 
@@ -118,7 +116,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 
 	protected CCNOutputStream(ContentName name, 
 			KeyLocator locator, PublisherPublicKeyDigest publisher,
-			CCNFlowControl flowControl) throws XMLStreamException, IOException {
+			CCNFlowControl flowControl) throws IOException {
 		this(name, locator, publisher, null, new CCNSegmenter(flowControl));
 	}
 

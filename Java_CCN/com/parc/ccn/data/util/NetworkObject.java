@@ -108,9 +108,8 @@ public abstract class NetworkObject<E> {
 	 * Base behavior -- always write when asked.
 	 * @param output
 	 * @throws IOException
-	 * @throws XMLStreamException
 	 */
-	public void save(OutputStream output) throws IOException, XMLStreamException {
+	public void save(OutputStream output) throws IOException {
 		if (null == _data) {
 			throw new InvalidObjectException("No data to save!");
 		}
@@ -121,7 +120,6 @@ public abstract class NetworkObject<E> {
 	 * Write only if necessary.
 	 * @param output
 	 * @throws IOException
-	 * @throws XMLStreamException
 	 */
 	public void saveIfDirty(OutputStream output) throws IOException,
 	XMLStreamException {
@@ -139,7 +137,7 @@ public abstract class NetworkObject<E> {
 		}
 	}
 
-	protected boolean isDirty() throws XMLStreamException, IOException {
+	protected boolean isDirty() throws IOException {
 		try {
 			// Problem -- can't wrap the OOS in a DOS, need to do it the other way round.
 			DigestOutputStream dos = new DigestOutputStream(new NullOutputStream(), 
@@ -160,14 +158,17 @@ public abstract class NetworkObject<E> {
 		} catch (NoSuchAlgorithmException e) {
 			Library.logger().warning("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
 			throw new RuntimeException("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
-		}	
+		} catch (XMLStreamException e) {
+			// XMLStreamException should never happen, since our code should always write good XML
+			throw new RuntimeException(e);
+		}
 	}
 
 	protected boolean isPotentiallyDirty() { return _potentiallyDirty; }
 
 	protected void setPotentiallyDirty(boolean dirty) { _potentiallyDirty = dirty; }
 
-	protected void internalWriteObject(OutputStream output) throws IOException, XMLStreamException {
+	protected void internalWriteObject(OutputStream output) throws IOException {
 		try {
 			// Problem -- can't wrap the OOS in a DOS, need to do it the other way round.
 			DigestOutputStream dos = new DigestOutputStream(output, 
@@ -179,6 +180,9 @@ public abstract class NetworkObject<E> {
 		} catch (NoSuchAlgorithmException e) {
 			Library.logger().warning("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
 			throw new RuntimeException("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
+		} catch (XMLStreamException e) {
+			// XMLStreamException should never happen, since our code should always write good XML
+			throw new RuntimeException(e);
 		}
 	}
 	

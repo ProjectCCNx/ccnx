@@ -267,9 +267,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * Saves according to flow controller in force, or creates one according to
 	 * the value of raw specified.
 	 * @throws IOException 
-	 * @throws XMLStreamException 
 	 */
-	public void save() throws XMLStreamException, IOException {
+	public void save() throws IOException {
 		if (null == _currentName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
@@ -281,9 +280,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * version. If not, add a version to it.
 	 * @param name
 	 * @throws IOException 
-	 * @throws XMLStreamException 
 	 */
-	public void save(ContentName name) throws XMLStreamException, IOException {
+	public void save(ContentName name) throws IOException {
 		// move object to this name
 		// need to make sure we get back the actual name we're using,
 		// even if output stream does automatic versioning
@@ -331,7 +329,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		save();
 	}
 	
-	public void save(ContentName name, E data) throws XMLStreamException, IOException {
+	public void save(ContentName name, E data) throws IOException {
 		setData(data);
 		save(name);
 	}
@@ -340,7 +338,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * If raw=true or DEFAULT_RAW=true specified, this must be the first call to save made
 	 * for this object.
 	 */
-	public void saveToRepository(ContentName name) throws XMLStreamException, IOException {
+	public void saveToRepository(ContentName name) throws IOException {
 		if ((null != _flowControl) && !(_flowControl instanceof RepositoryFlowControl)) {
 			throw new IOException("Cannot call saveToRepository on raw object!");
 		}
@@ -348,19 +346,19 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		save(name);
 	}
 	
-	public void saveToRepository() throws XMLStreamException, IOException {		
+	public void saveToRepository() throws IOException {		
 		if (null == _currentName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
 		saveToRepository(VersioningProfile.versionName(_currentName));
 	}
 	
-	public void saveToRepository(E data) throws XMLStreamException, IOException {
+	public void saveToRepository(E data) throws IOException {
 		setData(data);
 		saveToRepository();
 	}
 	
-	public void saveToRepository(ContentName name, E data) throws XMLStreamException, IOException {
+	public void saveToRepository(ContentName name, E data) throws IOException {
 		setData(data);
 		saveToRepository(name);
 	}
@@ -378,12 +376,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			throw new IOException("Cannot save past versions as gone!");
 		}
 		_data = null;
-		try {
-			save(name);
-		} catch (XMLStreamException e) {
-			// should never happen, since _data=null
-			throw new RuntimeException(e);
-		}
+		save(name);
 	}
 	
 	public void saveAsGone() throws IOException {
@@ -391,12 +384,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
 		_data = null;
-		try {
-			save();
-		} catch (XMLStreamException e) {
-			// should never happen, since _data=null
-			throw new RuntimeException(e);
-		}
+		save();
 	}
 
 	/*

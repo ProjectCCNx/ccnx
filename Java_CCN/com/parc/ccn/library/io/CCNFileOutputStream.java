@@ -27,30 +27,30 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 	public CCNFileOutputStream(ContentName name,
 			PublisherPublicKeyDigest publisher, ContentKeys keys,
 			CCNLibrary library)
-			throws XMLStreamException, IOException {
+			throws IOException {
 		super(name, null, publisher, keys, library);
 	}
 
 	public CCNFileOutputStream(ContentName name,
 			PublisherPublicKeyDigest publisher, CCNLibrary library)
-			throws XMLStreamException, IOException {
+			throws IOException {
 		super(name, null, publisher, library);
 	}
 
 	public CCNFileOutputStream(ContentName name, CCNLibrary library)
-			throws XMLStreamException, IOException {
+			throws IOException {
 		super(name, library);
 	}
 
 	public CCNFileOutputStream(ContentName name, KeyLocator locator,
 			PublisherPublicKeyDigest publisher, ContentType type, CCNSegmenter segmenter)
-			throws XMLStreamException, IOException {
+			throws IOException {
 		super(name, locator, publisher, type, segmenter);
 	}
 
 	public CCNFileOutputStream(ContentName name,
 			PublisherPublicKeyDigest publisher, CCNFlowControl flowControl)
-			throws XMLStreamException, IOException {
+			throws IOException {
 		super(name, null, publisher, flowControl);
 	}
 

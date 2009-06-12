@@ -106,8 +106,6 @@ public class EncodableObjectTest {
 			caught = true;
 		} catch (IOException ie) {
 			Assert.fail("Unexpectd IOException!");
-		} catch (XMLStreamException e) {
-			Assert.fail("Unexpectd IOException!");
 		}
 		Assert.assertTrue("Failed to produce expected exception.", caught);
 		
@@ -136,8 +134,6 @@ public class EncodableObjectTest {
 			System.out.println("Saved two collection datas, lengths " + baos.toByteArray().length + " and " + baos3.toByteArray().length);
 		} catch (IOException e) {
 			fail("IOException! " + e.getMessage());
-		} catch (XMLStreamException e) {
-			fail("XMLStreamException! " + e.getMessage());
 		}
 	}
 	
