@@ -222,6 +222,8 @@ public class InterestTable<V> {
 					}
 				}
 			}
+			if (list.size() == 0)
+				_contents.remove(new ITContentName(name));
 		}
 		return result;
 	}
@@ -243,6 +245,7 @@ public class InterestTable<V> {
 						if (null == value) {
 							holdIt.remove();
 							result = holder;
+			
 						}
 					} else {
 						if (holder.value().equals(value)) {
@@ -252,6 +255,8 @@ public class InterestTable<V> {
 					}
 				}
 			}
+			if (list.size() == 0)
+				_contents.remove(new ITContentName(interest.name()));
 		}
 		return result;
 	}
