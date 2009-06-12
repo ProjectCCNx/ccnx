@@ -51,7 +51,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	protected CCNFlowControl _flowControl;
 	protected boolean _raw = DEFAULT_RAW; // what kind of flow controller to make if we don't have one
 	
-	protected boolean _isGone = false;
 	// control ongoing update.
 	ArrayList<byte[]> _excludeList = new ArrayList<byte[]>();
 	Interest _currentInterest = null;
@@ -213,10 +212,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 
 	public void update(CCNInputStream inputStream) throws IOException, XMLStreamException {
 		if (inputStream.isGone()) {
-			_isGone = true;
+			_data = null;
 			_currentName = inputStream.deletionInformation().name();
 		} else {
-			_isGone = false;
 			super.update(inputStream);
 			_currentName = inputStream.baseName();
 		}
@@ -281,7 +279,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	@Override
 	public void setData(E data) {
 		super.setData(data);
-		_isGone = false;
 	}
 
 	/**
@@ -385,7 +382,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_flowControl.put(goneObject);
 		_currentName = name;
 		_data = null;
-		_isGone = true;
 		setPotentiallyDirty(false);
 	}
 	
@@ -462,7 +458,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 
 	public boolean isGone() {
-		return _isGone;
+		return _data == null;
 	}
 	
 	public boolean ready() {
