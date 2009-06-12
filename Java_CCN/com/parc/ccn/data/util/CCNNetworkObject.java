@@ -276,11 +276,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		save(VersioningProfile.versionName(_currentName));
 	}
 
-	@Override
-	public void setData(E data) {
-		super.setData(data);
-	}
-
 	/**
 	 * Save content to specific name. If versioned, assume that is the desired
 	 * version. If not, add a version to it.
