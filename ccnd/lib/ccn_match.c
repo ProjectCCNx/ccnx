@@ -70,6 +70,25 @@ ccn_pubid_matches(const unsigned char *content_object,
     return(1);
 }
 
+/*!
+ * Test for a match between a ContentObject and an Interest
+ *
+ * @param content_object        ccnb-encoded ContentObject
+ * @param content_object_size   its size in bytes
+ * @param implicit_content_digest boolean indicating whether the
+ *                              final name component is implicit (as in
+ *                              the on-wire format) or explicit (as within
+ *                              ccnd's content store).
+ * @param pc                    Valid parse information may be provided to
+ *                              speed things up. If NULL it will be
+ *                              reconstructed internally.
+ * @param interest_msg          ccnb-encoded Interest
+ * @param interest_msg_size     its size in bytes
+ * @param pi                    see _pc_
+ *
+ * @result 1 if the ccnb-encoded content_object matches the 
+ *           ccnb-encoded interest_msg, otherwise 0.
+ */
 int
 ccn_content_matches_interest(const unsigned char *content_object,
                              size_t content_object_size,
