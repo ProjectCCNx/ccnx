@@ -54,10 +54,12 @@ public class RepositoryDaemon extends Daemon {
 	private ExcludeFilter _markerFilter;
 	private CCNWriter _writer;
 	private boolean _pendingNameSpaceChange = false;
+	private int _windowSize = WINDOW_SIZE;
 	protected ThreadPoolExecutor _threadpool = null; // pool service
 	
 	public static final int PERIOD = 2000; // period for interest timeout check in ms.
 	public static final int THREAD_LIFE = 8;	// in seconds
+	public static final int WINDOW_SIZE = 10;
 	
 	private class NameAndListener {
 		private ContentName name;
@@ -306,6 +308,10 @@ public class RepositoryDaemon extends Daemon {
 	
 	public ThreadPoolExecutor getThreadPool() {
 		return _threadpool;
+	}
+	
+	public int getWindowSize() {
+		return _windowSize;
 	}
 	
 	public static void main(String[] args) {

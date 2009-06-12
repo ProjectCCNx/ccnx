@@ -3,7 +3,6 @@ package com.parc.ccn.data.query;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import javax.swing.text.html.HTMLDocument.HTMLReader.IsindexAction;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
