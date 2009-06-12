@@ -308,15 +308,27 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		// Have to register the version root. If we just register this specific version, we won't
 		// see any shorter interests -- i.e. for get latest version.
 		_flowControl.addNameSpace(VersioningProfile.versionRoot(name));
-		// CCNVersionedOutputStream will version an unversioned name. 
-		// If it gets a versioned name, will respect it.
-		CCNVersionedOutputStream cos = new CCNVersionedOutputStream(name, null, null, _flowControl);
-		save(cos); // superclass stream save. calls flush but not close on a wrapping
-		// digest stream; want to make sure we end up with a single non-MHT signed
-		// block and no header on small objects
-		cos.close();
-		_currentName = cos.getBaseName();
-		setPotentiallyDirty(false);
+		
+		if (_data != null) {
+			// CCNVersionedOutputStream will version an unversioned name. 
+			// If it gets a versioned name, will respect it.
+			CCNVersionedOutputStream cos = new CCNVersionedOutputStream(name, null, null, _flowControl);
+			save(cos); // superclass stream save. calls flush but not close on a wrapping
+			// digest stream; want to make sure we end up with a single non-MHT signed
+			// block and no header on small objects
+			cos.close();
+			_currentName = cos.getBaseName();
+		} else {
+			// saving object as gone, currently this is always one empty block so we don't use an OutputStream
+			name = VersioningProfile.versionName(name);
+			name = SegmentationProfile.segmentName(name, SegmentationProfile.BASE_SEGMENT );
+			byte [] empty = { };
+			ContentObject goneObject = ContentObject.buildContentObject(name, ContentType.GONE, empty);
+			_flowControl.addNameSpace(VersioningProfile.versionRoot(name));
+			_flowControl.put(goneObject);
+			_currentName = name;
+			setPotentiallyDirty(false);
+		}
 	}
 	
 	public void save(E data) throws XMLStreamException, IOException {
@@ -370,26 +382,26 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		if (VersioningProfile.isVersioned(name)) {
 			throw new IOException("Cannot save past versions as gone!");
 		}
-		name = VersioningProfile.versionName(name);
-		name = SegmentationProfile.segmentName(name, SegmentationProfile.BASE_SEGMENT );
-
-		byte [] empty = { };
-		ContentObject goneObject = ContentObject.buildContentObject(name, ContentType.GONE, empty);
-		// Have to register the version root. If we just register this specific version, we won't
-		// see any shorter interests -- i.e. for get latest version.
-		createFlowController();
-		_flowControl.addNameSpace(VersioningProfile.versionRoot(name));
-		_flowControl.put(goneObject);
-		_currentName = name;
 		_data = null;
-		setPotentiallyDirty(false);
+		try {
+			save(name);
+		} catch (XMLStreamException e) {
+			// should never happen, since _data=null
+			throw new RuntimeException(e);
+		}
 	}
 	
 	public void saveAsGone() throws IOException {
 		if (null == _currentName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
-		saveAsGone(VersioningProfile.versionRoot(_currentName));
+		_data = null;
+		try {
+			save();
+		} catch (XMLStreamException e) {
+			// should never happen, since _data=null
+			throw new RuntimeException(e);
+		}
 	}
 
 	/*
