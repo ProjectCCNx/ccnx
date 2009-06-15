@@ -1,8 +1,7 @@
 /*
  * ccn_buf_encoder.c
  *  
- * Copyright 2008 Palo Alto Research Center, Inc. All rights reserved.
- * $Id$
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
  */
 
 #include <string.h>
@@ -14,6 +13,19 @@
 #include <ccn/coding.h>
 #include <ccn/indexbuf.h>
 #include <ccn/signing.h>
+
+/*
+ * ccn_encode_Content:
+ *    buf: output buffer where encoded object is written
+ *    data: raw data
+ *    size: size of raw data
+ */
+
+static
+int ccn_encode_Content(struct ccn_charbuf *buf,
+                       const void *data,
+                       size_t size);
+
 
 int
 ccn_signed_info_create_default(struct ccn_charbuf *c,
@@ -177,7 +189,7 @@ ccn_encode_ContentObject(struct ccn_charbuf *buf,
     return (res == 0 ? 0 : -1);
 }
 
-int
+static int
 ccn_encode_Content(struct ccn_charbuf *buf,
 			     const void *data,
 			     size_t size)

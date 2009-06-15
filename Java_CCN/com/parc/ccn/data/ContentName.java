@@ -2,14 +2,7 @@ package com.parc.ccn.data;
 
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
-import java.net.URLEncoder;
 import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.charset.Charset;
-import java.nio.charset.CharsetDecoder;
-import java.nio.charset.CoderResult;
-import java.nio.charset.CodingErrorAction;
-import java.nio.charset.UnsupportedCharsetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -378,6 +371,12 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 				result._components.add(decodedName);
 			}
 		} 
+		return result;
+	}
+	
+	public static ContentName fromNative(ContentName parent, byte [] name) {
+		ContentName result = new ContentName(parent.count(), parent.components());
+		result._components.add(name);
 		return result;
 	}
 	

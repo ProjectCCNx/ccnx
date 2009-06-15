@@ -5,6 +5,8 @@ import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import javax.xml.stream.XMLStreamException;
+
 import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
@@ -55,7 +57,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		return interests.size();
 	}
 	
-	private void startReadProcess(Interest interest) {
+	private void startReadProcess(Interest interest) throws XMLStreamException {
 		for (RepositoryDataListener listener : _daemon.getDataListeners()) {
 			if (listener.getOrigInterest().equals(interest))
 				return;

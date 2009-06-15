@@ -28,6 +28,8 @@ import com.parc.ccn.data.query.BasicInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo;
+import com.parc.ccn.data.util.DataUtils;
+import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNWriter;
 import com.parc.ccn.library.profiles.SegmentationProfile;
@@ -183,6 +185,37 @@ public class CCNLibraryTest extends LibraryTestBase {
 		versionTest(cn, data.getBytes(), newdata.getBytes());
 		versionTest(cn2, data.getBytes(), newdata.getBytes());
 
+	}
+
+	@Test
+	public void testGetLatestVersion() throws Exception {
+		String name = "/test/simon/versioned_name";
+		// include a base object, who's digest can potentially confuse getLatestVersion
+		ContentName base = ContentName.fromNative(name);
+		ContentName versionBase = VersioningProfile.versionName(base);
+		
+		final byte [][] data = { "data0".getBytes(), "data1".getBytes() };
+		CCNLibrary put = CCNLibrary.open();
+		final CCNLibrary get = CCNLibrary.open();
+		CCNFlowControl f = new CCNFlowControl(base, put);
+		ContentObject [] cos = { ContentObject.buildContentObject(base, data[0]),
+											ContentObject.buildContentObject(versionBase, data[1]) };
+		f.put(cos);
+		// java lacks nested functions, so use a class here...
+		class t {
+			void check(ContentObject o, int i) {
+				Assert.assertTrue(DataUtils.arrayEquals(o.content(), data[i]));
+			}
+			/**
+			 * Make sure the data is written to ccnd by reading it
+			 */
+			void readAndCheck(ContentName name, int index) throws IOException {
+				check(get.get(name, 2000), index);
+			}
+		} t test = new t();
+		test.readAndCheck(base, 0);
+		test.readAndCheck(versionBase, 1);
+		test.check(get.getLatestVersion(base, put.getDefaultPublisher(), 2000), 1);
 	}
 
 	@Test

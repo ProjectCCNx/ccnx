@@ -1,7 +1,7 @@
 /*
  * ccn/ccn.h
  * 
- * Copyright 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
  *
  * This is the low-level interface for CCN clients
  *
@@ -618,17 +618,6 @@ int ccn_encode_ContentObject(struct ccn_charbuf *buf,
                              size_t size,
                              const char *digest_algorithm,
                              const struct ccn_pkey *private_key);
-
-/*
- * ccn_encode_Content:
- *    buf: output buffer where encoded object is written
- *    data: raw data
- *    size: size of raw data
- */
-
-int ccn_encode_Content(struct ccn_charbuf *buf,
-                       const void *data,
-                       size_t size);
 
 /***********************************
  * Matching

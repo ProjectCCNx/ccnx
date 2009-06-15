@@ -12,6 +12,8 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
+import javax.xml.stream.XMLStreamException;
+
 import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
@@ -290,7 +292,7 @@ public class RepositoryDaemon extends Daemon {
 		return _repoFilters;
 	}
 	
-	public RepositoryDataListener addListener(Interest interest, Interest readInterest) {
+	public RepositoryDataListener addListener(Interest interest, Interest readInterest) throws XMLStreamException, IOException {
 		RepositoryDataListener listener = new RepositoryDataListener(interest, readInterest, this);
 		synchronized(_currentListeners) {
 			_currentListeners.add(listener);
