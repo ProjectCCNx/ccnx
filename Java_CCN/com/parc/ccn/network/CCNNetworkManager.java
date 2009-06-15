@@ -440,7 +440,6 @@ public class CCNNetworkManager implements Runnable {
 		_channel.configureBlocking(false);
 		_selector = Selector.open();
 		_channel.register(_selector, SelectionKey.OP_READ);
-		heartbeat();
 		
 		// Create callback threadpool and main processing thread
 		_threadpool = (ThreadPoolExecutor)Executors.newCachedThreadPool();
@@ -574,7 +573,10 @@ public class CCNNetworkManager implements Runnable {
 	 */
 	public void setInterestFilter(Object caller, ContentName filter, CCNFilterListener callbackListener) {
 		//Library.logger().fine("setInterestFilter: " + filter);
-		_sendHeartbeat = true;
+		if (!_sendHeartbeat) {
+			_sendHeartbeat = true;
+			heartbeat();
+		}
 		synchronized (_myFilters) {
 			_myFilters.add(filter, new Filter(this, filter, callbackListener, caller));
 		}
@@ -632,7 +634,10 @@ public class CCNNetworkManager implements Runnable {
 	 */
 	InterestRegistration registerInterest(InterestRegistration reg) {
 		// Add to standing interests table
-		_sendHeartbeat = true;
+		if (!_sendHeartbeat) {
+			_sendHeartbeat = true;
+			heartbeat();
+		}
 		Library.logger().finest("registerInterest for " + reg.interest.name() + " and obj is " + _myInterests.hashCode());
 		synchronized (_myInterests) {
 			_myInterests.add(reg.interest, reg);
