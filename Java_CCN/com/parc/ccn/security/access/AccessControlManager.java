@@ -7,6 +7,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedList;
 
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
@@ -377,7 +378,9 @@ public class AccessControlManager {
 	
 	/**
 	 * Pulls the ACL for this node, if one exists, and modifies it to include
-	 * the following changes, then stores the result using setACL.
+	 * the following changes, then stores the result using setACL, updating
+	 * the node key if necessary in the process.
+	 * 
 	 * @throws IOException 
 	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
@@ -393,16 +396,43 @@ public class AccessControlManager {
 		if (null != currentACL) {
 			newACL = currentACL.acl();
 		} else {
+			Library.logger().info("Adding brand new ACL to node: " + nodeName);
+			if ((null == addReaders) && (null == addWriters) && (null == addManagers)) {
+				Library.logger().info("Very strange, adding no new members to our brand-new ACL!");
+				// DKS TODO -- default permissions? does ACL creator automatically end up as
+				// a manager? as themself? as one of their groups?
+				// for the moment, punt and assume it's not the job of the access control
+				// low-level to prevent stupidity; it's the job of the setup tools
+				return null;
+			}
 			newACL = new ACL();
 		}
 		// TODO Now update ACL to add and remove values.
 		// Managers are a subset of writers are a subset of readers. So if you remove someone
 		// as a reader, you remove them whether they are a reader, manager or writer.
 		// If you remove someone as a writer, you remove them whether they are a manager or a writer.
+		LinkedList<LinkReference> newReaders = 
+			newACL.update(addReaders, removeReaders, addWriters, removeWriters,
+								   addManagers, removeManagers);
 		
+		if (null == newReaders) {
+			// null newReaders means we revoked someone.
+			// Set the ACL and update the node key.
+			return setACL(nodeName, newACL);
+		} else if (currentACL != null) {
+			currentACL.save(newACL)
+		}
 		
-		// Set the ACL and update the node key.
-		return setACL(nodeName, newACL);
+		// If we get back a list of new readers, it means all we have to do
+		// is add key blocks for them, not update the node key.
+		KeyDirectory keyDirectory = null;
+		try {
+
+			keyDirectory = new KeyDirectory(this, nodeKeyName, _library);
+
+		for (LinkReference principal : newReaders) {
+			// TODO
+		}
 	}
 		
 	public ACL addReaders(ContentName nodeName, ArrayList<LinkReference> newReaders) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException {
