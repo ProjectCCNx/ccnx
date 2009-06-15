@@ -48,8 +48,8 @@ public class CCNNetworkManager implements Runnable {
 	public static final String ENV_TAP = "CCN_TAP"; // match C library
 	public static final int MAX_PAYLOAD = 8800; // number of bytes in UDP payload
 	public static final int SOCKET_TIMEOUT = 1000; // period to wait in ms.
-	public static final int PERIOD = 2000; // period for occasional ops in ms.
-	public static final int MAX_PERIOD = PERIOD * 16;
+	public static final int PERIOD = 4000; // period for occasional ops in ms.
+	public static final int MAX_PERIOD = PERIOD * 8;
 	public static final String KEEPALIVE_NAME = "/HereIAm";
 	public static final int THREAD_LIFE = 8;	// in seconds
 	
@@ -73,6 +73,7 @@ public class CCNNetworkManager implements Runnable {
 	protected InterestTable<Filter> _myFilters = new InterestTable<Filter>();
 	
 	private Timer _periodicTimer = null;
+	private boolean _sendHeartbeat = false;
 	
 	/**
 	 * @author rasmusse
@@ -111,6 +112,8 @@ public class CCNNetworkManager implements Runnable {
 	
 	// Send heartbeat
 	private void heartbeat() {
+		if (!_sendHeartbeat)
+			return;
 		try {
 			ByteBuffer heartbeat = ByteBuffer.allocate(1);
 			_channel.write(heartbeat);
@@ -571,6 +574,7 @@ public class CCNNetworkManager implements Runnable {
 	 */
 	public void setInterestFilter(Object caller, ContentName filter, CCNFilterListener callbackListener) {
 		//Library.logger().fine("setInterestFilter: " + filter);
+		_sendHeartbeat = true;
 		synchronized (_myFilters) {
 			_myFilters.add(filter, new Filter(this, filter, callbackListener, caller));
 		}
@@ -628,6 +632,7 @@ public class CCNNetworkManager implements Runnable {
 	 */
 	InterestRegistration registerInterest(InterestRegistration reg) {
 		// Add to standing interests table
+		_sendHeartbeat = true;
 		Library.logger().finest("registerInterest for " + reg.interest.name() + " and obj is " + _myInterests.hashCode());
 		synchronized (_myInterests) {
 			_myInterests.add(reg.interest, reg);

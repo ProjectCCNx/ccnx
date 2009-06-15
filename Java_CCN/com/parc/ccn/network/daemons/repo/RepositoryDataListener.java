@@ -102,23 +102,26 @@ public class RepositoryDataListener implements CCNInterestListener {
 						}
 					}
 				}
+			}
 				
-				if (SegmentationProfile.isSegment(co.name())) {
-					long thisBlock = SegmentationProfile.getSegmentNumber(co.name());
-					if (thisBlock >= _currentBlock)
-						_currentBlock = thisBlock + 1;
+			if (SegmentationProfile.isSegment(co.name())) {
+				long thisBlock = SegmentationProfile.getSegmentNumber(co.name());
+				if (thisBlock >= _currentBlock)
+					_currentBlock = thisBlock + 1;
+				synchronized (_interests) {
 					_interests.remove(co.name());
 				}
-				
-				/*
-				 * Compute next interests to ask for and ask for them
-				 */
+			}
+			
+			/*
+			 * Compute next interests to ask for and ask for them
+			 */
+			synchronized (_interests) {
 				long firstInterestToRequest = _interests.size() > 0 
 						? SegmentationProfile.getSegmentNumber(_interests.lastKey()) + 1
 						: _currentBlock;
 				int nOutput = _interests.size() >= _daemon.getWindowSize() ? 0 : _daemon.getWindowSize() - _interests.size();
-Library.logger().info("Outputting " + nOutput + " interests");
-
+	
 				for (int i = 0; i < nOutput; i++) {
 					ContentName name = SegmentationProfile.segmentName(co.name(), firstInterestToRequest + i);
 					Interest newInterest = new Interest(name);
@@ -130,7 +133,6 @@ Library.logger().info("Outputting " + nOutput + " interests");
 						e.printStackTrace();
 					}
 				}
-				return null;
 			}
 		}
 		return null;
