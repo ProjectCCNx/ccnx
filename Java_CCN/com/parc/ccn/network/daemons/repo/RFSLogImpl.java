@@ -1,5 +1,6 @@
 package com.parc.ccn.network.daemons.repo;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -12,6 +13,7 @@ import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -21,7 +23,7 @@ import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.network.daemons.repo.ContentTree.ContentFileRef;
 import com.parc.security.Library;
-import com.sun.media.jai.codec.FileSeekableStream;
+//import com.sun.media.jai.codec.FileSeekableStream;
 
 public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 
@@ -54,6 +56,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 
 	public ContentObject getContent(Interest interest)
 			throws RepositoryException {
+		System.out.println("got an interest! "+interest.name().toString());
 		return _index.get(interest, this);
 	}
 
@@ -63,8 +66,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 	}
 
 	public ArrayList<ContentName> getNamespace() {
-		// TODO Auto-generated method stub
-		return null;
+		return _nameSpace;
 	}
 
 	public byte[] getRepoInfo(ArrayList<ContentName> names) {
@@ -105,7 +107,8 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 						RepoFile rfile = new RepoFile();
 						rfile.file = new File(_repositoryFile,filenames[i]);
 						rfile.openFile = new RandomAccessFile(rfile.file, "r");
-						InputStream is = new RandomAccessInputStream(rfile.openFile);
+						//InputStream is = new RandomAccessInputStream(rfile.openFile);
+						InputStream is = new BufferedInputStream(new RandomAccessInputStream(rfile.openFile));
 						while (true) {
 							ContentFileRef ref = _index.new ContentFileRef();
 							ref.id = index.intValue();
@@ -114,6 +117,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 							try {
 								tmp.decode(is);
 							} catch (XMLStreamException e) {
+								e.printStackTrace();
 								// Failed to decode, must be end of this one
 								rfile.openFile.close();
 								rfile.openFile = null;
@@ -137,6 +141,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 	}
 	
 	public String[] initialize(String[] args) throws RepositoryException {
+		Library.logger().setLevel(Level.FINEST);
 		boolean policyFromFile = false;
 		boolean nameFromArgs = false;
 		boolean globalFromArgs = false;
@@ -198,12 +203,17 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 			throw new RepositoryException(e1.getMessage());
 		}
 		
+		// Internal initialization
+		_files = new HashMap<Integer, RepoFile>();
+		int maxFileIndex = createIndex();
+		
 		/*
 		 * Read policy file from disk if it exists and we didn't read it in as an argument.
 		 * Otherwise save the new policy to disk.
 		 */
 		if (!policyFromFile) {
 			try {
+				Library.logger().info(REPO_NAMESPACE+"/" + _info.getLocalName() + "/" + REPO_POLICY);
 				ContentObject policyObject = getContent(
 						new Interest(ContentName.fromNative(REPO_NAMESPACE + "/" + _info.getLocalName() + "/" + REPO_POLICY)));
 				if (policyObject != null) {
@@ -225,8 +235,9 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		}
 	
 		// Internal initialization
-		_files = new HashMap<Integer, RepoFile>();
-		int maxFileIndex = createIndex();
+		//moved the following...  getContent depends on having an index
+		//_files = new HashMap<Integer, RepoFile>();
+		//int maxFileIndex = createIndex();
 		try {
 			if (maxFileIndex == 0) {
 				maxFileIndex = 1; // the index of a file we will actually write
@@ -241,7 +252,9 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 				long cursize = rfile.file.length();
 				rfile.openFile = new RandomAccessFile(rfile.file, "rw");
 				rfile.nextWritePos = cursize;
+				_activeWriteFile = rfile;
 			}
+			
 		} catch (FileNotFoundException e) {
 			Library.logger().warning("Error opening content output file index " + maxFileIndex);
 		}
@@ -251,12 +264,19 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 
 	public void saveContent(ContentObject content) throws RepositoryException {
 		try {
+			
 			synchronized(_activeWriteFile) {
 				assert(null != _activeWriteFile.openFile);
+				ContentFileRef ref = _index.new ContentFileRef();
+				ref.id = Integer.parseInt(_activeWriteFile.file.getName().substring(CONTENT_FILE_PREFIX.length()));
+				ref.offset = _activeWriteFile.nextWritePos;
 				_activeWriteFile.openFile.seek(_activeWriteFile.nextWritePos);
 				OutputStream os = new RandomAccessOutputStream(_activeWriteFile.openFile);
 				content.encode(os);
 				_activeWriteFile.nextWritePos = _activeWriteFile.openFile.getFilePointer();
+				System.out.println("wrote content: "+content.name().toString());
+				System.out.println("now adding to tree...");
+				_index.insert(content, ref);
 			}
 		} catch (IOException e) {
 			throw new RepositoryException("Failed to write content: " + e.getMessage());
@@ -279,7 +299,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 				}
 				file.openFile.seek(ref.offset);
 				ContentObject content = new ContentObject();
-				InputStream is = new RandomAccessInputStream(file.openFile);
+				InputStream is = new BufferedInputStream(new RandomAccessInputStream(file.openFile));
 				content.decode(is);
 				return content;
 			}

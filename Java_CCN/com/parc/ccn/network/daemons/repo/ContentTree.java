@@ -7,6 +7,7 @@ import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
@@ -90,13 +91,16 @@ public class ContentTree {
 	 */
 	public void insert(ContentObject content, ContentFileRef ref) {
 		final ContentName name = new ContentName(content.name(), content.contentDigest());
+		System.out.println("inserting content: "+name.toString());
 		TreeNode node = root; // starting point
 		assert(null != root);
 		
 		for (byte[] component : name.components()) {
 			synchronized(node) {
+				System.out.println("getting node for component: "+new String(component));
 				TreeNode child = node.getChild(component);
 				if (null == child) {
+					System.out.println("child was null: adding here");
 					// add it
 					child = new TreeNode();
 					child.component = component;
@@ -113,29 +117,38 @@ public class ContentTree {
 						node.children.add(child);
 						node.oneChild = null;
 					}
+					System.out.println("child should not be null now... "+child.toString());
 				}
+				System.out.println("child was not null: moving down the tree");
 				node = child;
 			}
 		}
+		
+		System.out.println("done with loop...");
 		// At conclusion of this loop, node must be holding the last node for this name
 		// so we insert the ref there
 		if (null == node.oneContent && null == node.content) {
+			System.out.println("node.oneContent and node.content null");
 			// This is first and only content at this leaf
 			node.oneContent = ref;
 		} else if (null == node.oneContent) {
+			System.out.println("node.oneContent is null, adding to list");
 			// Multiple content already at this node, add this one
 			node.content.add(ref);
 		} else {
+			System.out.println("there is content at this name, creating and adding to list");
 			// Second content at current node, need to switch to list
 			node.content = new ArrayList<ContentFileRef>();
 			node.content.add(node.oneContent);
 			node.content.add(ref);
 			node.oneContent = null;
 		}
+		System.out.println("added content to node: "+node.toString());
 	}
 
 	protected TreeNode lookupNode(ContentName name, int count) {
 		TreeNode node = root; // starting point
+		
 		assert(null != root);
 		if (count < 1) {
 			return node;
@@ -143,6 +156,7 @@ public class ContentTree {
 		
 		for (byte[] component : name.components()) {
 			synchronized(node) {
+				System.out.println("checking component: "+new String(component)+" count = "+count);
 				TreeNode child = node.getChild(component);
 				if (null == child) {
 					// Mismatch, no child for the given component so nothing under this name
@@ -150,6 +164,7 @@ public class ContentTree {
 				}
 				node = child;
 				count--;
+				System.out.println("count is: "+count);
 				if (count < 1) {
 					break;
 				}
@@ -211,6 +226,8 @@ public class ContentTree {
 					}
 					for (ContentFileRef ref : content) {
 						ContentObject cand = getter.get(ref);
+						if(cand == null)
+							System.out.println("cand is null  :(");
 						if (interest.matches(cand)) {
 							return cand;
 						}
@@ -299,6 +316,7 @@ public class ContentTree {
 	
 	public final ContentObject get(Interest interest, ContentGetter getter) {
 		Integer addl = interest.additionalNameComponents();
+		int ncc = (null != interest.nameComponentCount()) ? interest.nameComponentCount() : interest.name().count();
 		if (null != addl && addl.intValue() == 0) {
 			// Query is for exact match to full name with digest, no additional components
 			List<ContentFileRef> found = lookup(interest.name());
@@ -311,19 +329,33 @@ public class ContentTree {
 				}
 			}
 		} else {
-			TreeNode prefixRoot = lookupNode(interest.name(), interest.nameComponentCount());
+			//TreeNode prefixRoot = lookupNode(interest.name(), interest.nameComponentCount());
+			TreeNode prefixRoot = lookupNode(interest.name(), ncc);
+			if(prefixRoot == null){
+				Library.logger().info("the prefix root is null...  returning null");
+				return null;
+			}
+			
 			// Now we need to iterate over content at or below this node to find best match
-			if ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME))
-					== (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME)) {
+			//if ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME))
+				//	== (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME)) {
+			if ((null!=interest.orderPreference()) && ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME))
+					== (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME))) {
 				// Traverse to find earliest match
-				leftSearch(interest, (null == addl) ? -1 : addl + interest.nameComponentCount(), 
-						prefixRoot, new ContentName(interest.nameComponentCount(), interest.name().components()), 
-						interest.nameComponentCount(), getter);
+				//leftSearch(interest, (null == addl) ? -1 : addl + interest.nameComponentCount(),
+					//prefixRoot, new ContentName(interest.nameComponentCount(), interest.name().components()), 
+					//interest.nameComponentCount(), getter);
+				return leftSearch(interest, (null == addl) ? -1 : addl + ncc,
+						prefixRoot, new ContentName(ncc, interest.name().components()), 
+						ncc, getter);
 			} else {
 				// Traverse to find latest match
-				rightSearch(interest, (null == addl) ? -1 : addl + interest.nameComponentCount(), 
-						prefixRoot, new ContentName(interest.nameComponentCount(), interest.name().components()), 
-						interest.nameComponentCount(), getter);
+				//rightSearch(interest, (null == addl) ? -1 : addl + interest.nameComponentCount(), 
+				//		prefixRoot, new ContentName(interest.nameComponentCount(), interest.name().components()), 
+				//		interest.nameComponentCount(), getter);
+				return rightSearch(interest, (null == addl) ? -1 : addl + ncc, 
+						prefixRoot, new ContentName(ncc, interest.name().components()), 
+						ncc, getter);
 			}
 		}
 		return null;
