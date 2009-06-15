@@ -290,7 +290,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		// write the object, and figure out if that's happened. Also need to make
 		// parent behavior just write, put the dirty check higher in the state.
 
-		if (!isDirty()) { // Should we check potentially dirty?
+		if (_data != null && !isDirty()) { // Should we check potentially dirty?
 			Library.logger().info("Object not dirty. Not saving.");
 			return;
 		}
@@ -317,7 +317,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			name = SegmentationProfile.segmentName(name, SegmentationProfile.BASE_SEGMENT );
 			byte [] empty = { };
 			ContentObject goneObject = ContentObject.buildContentObject(name, ContentType.GONE, empty);
-			_flowControl.addNameSpace(VersioningProfile.versionRoot(name));
 			_flowControl.put(goneObject);
 			_currentName = name;
 			setPotentiallyDirty(false);
