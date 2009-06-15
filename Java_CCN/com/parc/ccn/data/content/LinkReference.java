@@ -24,7 +24,7 @@ import com.parc.ccn.library.CCNLibrary;
  * @author smetters
  *
  */
-public class LinkReference extends GenericXMLEncodable implements XMLEncodable {
+public class LinkReference extends GenericXMLEncodable implements XMLEncodable, Cloneable {
 	
 	protected static final String LINK_ELEMENT = "Link";
 	protected static final String LABEL_ELEMENT = "Label"; // overlaps with WrappedKey.LABEL_ELEMENT,
@@ -89,6 +89,16 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable {
 	 * Decoding constructor.
 	 */
 	public LinkReference() {}
+	
+	/**
+	 * Copy constructor. If we want to change name or authenticator,
+	 * should clone those as well.
+	 */
+	public LinkReference(LinkReference other) {
+		_targetName = other.targetName();
+		_targetLabel = other.targetLabel();
+		_targetAuthenticator = other.targetAuthenticator();
+	}
 	
 	public ContentName targetName() { return _targetName; }
 	public String targetLabel() { return _targetLabel; }
@@ -174,6 +184,11 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable {
 		} else if (!_targetName.equals(other._targetName))
 			return false;
 		return true;
+	}
+
+	@Override
+	public Object clone() throws CloneNotSupportedException {
+		return new LinkReference(this);
 	}
 
 }
