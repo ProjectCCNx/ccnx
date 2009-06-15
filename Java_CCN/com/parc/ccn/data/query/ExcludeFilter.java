@@ -6,6 +6,7 @@ import java.util.Arrays;
 
 import javax.xml.stream.XMLStreamException;
 
+import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
@@ -248,5 +249,23 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 
 	public int size() {
 		return _values.size();
+	}
+
+	public String toString() {
+		StringBuffer sb = new StringBuffer();
+		boolean first = true;
+		for (ExcludeElement ee : _values) {
+			if (first)
+				first = false;
+			else
+				sb.append(",");
+			if (ee instanceof ExcludeComponent) {
+				ExcludeComponent ec = (ExcludeComponent) ee;
+				sb.append(ContentName.componentPrintURI(ec.body));
+			} else {
+				sb.append("B");
+			}
+		}
+		return sb.toString();
 	}
 }

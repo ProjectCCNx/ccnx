@@ -155,7 +155,7 @@ public class Flosser implements CCNInterestListener {
 		Library.logger().info("Stop flossing.");
 		synchronized (_interests) {
 			for (Interest interest : _interests.values()) {
-				Library.logger().info("Cancelling pending interest: " + interest.print());
+				Library.logger().info("Cancelling pending interest: " + interest);
 				_library.cancelInterest(interest, this);
 			}
 		}

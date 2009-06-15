@@ -613,39 +613,20 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		return true;
 	}
 	
-	/**
-	 * toString prints the full XML encoding of this interest. This is a print
-	 * function that is more informative than just the name, but shorter than that,
-	 * with human-readable names.
-	 */
-	public String print() {
-		
+	public String toString() {
 		StringBuffer sb = new StringBuffer(_name.toString());
 		sb.append(": ");
-		if (null != _nameComponentCount) {
+		if (null != _nameComponentCount)
 			sb.append(" ct:" + _nameComponentCount);
-		}
-		if  (null != _additionalNameComponents) {
+
+		if  (null != _additionalNameComponents)
 			sb.append(" anc:" + _additionalNameComponents);
-		}
-		if (null != _publisher) {
+
+		if (null != _publisher)
 			sb.append(" p:" + DataUtils.printHexBytes(_publisher.id()) + "");
-		}
-		if (null != _excludeFilter) {
-			sb.append(" ex(" + _excludeFilter._values.size() + "):[");
-			String sep = "";
-			for (ExcludeElement ee : _excludeFilter._values) {
-				sb.append(sep);
-				sep = ",";
-				if (ee instanceof ExcludeComponent) {
-					ExcludeComponent ec = (ExcludeComponent) ee;
-					sb.append(ContentName.componentPrintURI(ec.body));
-				} else {
-					sb.append("B");
-				}
-			}
-			sb.append("]");
-		}
+
+		if (null != _excludeFilter)
+			sb.append("ex("+_excludeFilter+")");
 		return sb.toString();
 	}
 }
