@@ -7,7 +7,7 @@ libccn_plugin.so: libccn_plugin.o
 	gcc -shared -std=gnu99 $< `pkg-config  --libs vlc-plugin`  -Wl,-soname -Wl,$@ -o $@
 
 libccn_plugin.o: ccn.c
-	gcc -c -std=gnu99  $< `pkg-config  --cflags vlc-plugin` -D__PLUGIN__  -DMODULE_STRING=\"ccn\" -o $@  
+	gcc -c -std=gnu99  $< -I../include/ `pkg-config  --cflags vlc-plugin` -D__PLUGIN__  -DMODULE_STRING=\"ccn\" -o $@  
 
 clean:
 	rm -f libccn_plugin.o libccn_plugin.so ccn.o

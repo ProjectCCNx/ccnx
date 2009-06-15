@@ -32,6 +32,10 @@
 #include <vlc_access.h>
 #include <vlc_url.h>
 
+#include <ccn/ccn.h>
+#include <ccn/charbuf.h>
+#include <ccn/uri.h>
+
 /*****************************************************************************
  * Disable internationalization
  *****************************************************************************/
@@ -76,6 +80,10 @@ struct access_sys_t
     int done;
 };
 
+enum ccn_upcall_res
+incoming_content(struct ccn_closure *selfp,
+                 enum ccn_upcall_kind kind,
+                 struct ccn_upcall_info *info);
 /*****************************************************************************
  * Open: 
  *****************************************************************************/
@@ -84,6 +92,7 @@ static int Open(vlc_object_t *p_this)
     access_t     *p_access = (access_t *)p_this;
     access_sys_t *p_sys;
     struct ccn_charbuf *name;
+    int res;
 
     /* Init p_access */
     access_InitFields(p_access);
@@ -109,10 +118,10 @@ static int Open(vlc_object_t *p_this)
         goto exit_error;
     }
     /* TODO: this will probably need a template... */
-    ccn_express_interest(p_sys->ccn, name, -1, p_sys->incoming, NULL);
+    ccn_express_interest(p_sys->ccn, name, -1, &p_sys->incoming, NULL);
     vlc_mutex_init(&(p_sys->lock));
     vlc_thread_create(p_access, "CCN run thread", ccn_event_thread,
-                      VLC_THREAD_PRIORITY_OUTPUT, false)
+                      VLC_THREAD_PRIORITY_OUTPUT, false);
     fprintf(stderr, "CCN: success\n");
     return VLC_SUCCESS;
 
@@ -122,7 +131,7 @@ static int Open(vlc_object_t *p_this)
     if (p_sys->ccn != NULL)
         ccn_destroy(&(p_sys->ccn));
     if (name != NULL)
-        ccn_charbuf_destory(&name);
+        ccn_charbuf_destroy(&name);
     free(p_sys);
     return VLC_EGENERIC;
 }
@@ -139,8 +148,6 @@ static void Close(vlc_object_t *p_this)
     vlc_mutex_destroy(&(p_sys->lock));
     if (p_sys->ccn != NULL)
         ccn_destroy(&(p_sys->ccn));
-    if (name != NULL)
-        ccn_charbuf_destory(&name);
     free(p_sys);
 }
 
@@ -207,6 +214,7 @@ static void *ccn_event_thread(vlc_object_t *p_this)
 {
     access_t *p_access = (access_t *)p_this;
     access_sys_t *p_sys = p_access->p_sys;
+    struct ccn *ccn = p_sys->ccn;
     int res;
 
     while (res >= 0) {
