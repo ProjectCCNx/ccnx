@@ -48,7 +48,8 @@ public class CCNNetworkManager implements Runnable {
 	public static final String ENV_TAP = "CCN_TAP"; // match C library
 	public static final int MAX_PAYLOAD = 8800; // number of bytes in UDP payload
 	public static final int SOCKET_TIMEOUT = 1000; // period to wait in ms.
-	public static final int PERIOD = 4000; // period for occasional ops in ms.
+	public static final int PERIOD = 2000; // period for occasional ops in ms.
+	public static final int HEARTBEAT_PERIOD = 3500;
 	public static final int MAX_PERIOD = PERIOD * 8;
 	public static final String KEEPALIVE_NAME = "/HereIAm";
 	public static final int THREAD_LIFE = 8;	// in seconds
@@ -67,13 +68,14 @@ public class CCNNetworkManager implements Runnable {
 	protected ContentObject _keepalive; 
 	protected FileOutputStream _tapStreamOut = null;
 	protected FileOutputStream _tapStreamIn = null;
+	protected long _lastHeartbeat = 0;
 
 	// Tables of interests/filters: users must synchronize on collection
 	protected InterestTable<InterestRegistration> _myInterests = new InterestTable<InterestRegistration>();
 	protected InterestTable<Filter> _myFilters = new InterestTable<Filter>();
 	
 	private Timer _periodicTimer = null;
-	private boolean _sendHeartbeat = false;
+	private boolean timersSetup = false;
 	
 	/**
 	 * @author rasmusse
@@ -82,12 +84,15 @@ public class CCNNetworkManager implements Runnable {
 	private class PeriodicWriter extends TimerTask {
 		public void run() {
 			
-			heartbeat();
+			long ourTime = new Date().getTime();
+			if ((ourTime - _lastHeartbeat) < HEARTBEAT_PERIOD) {
+				_lastHeartbeat = ourTime;
+				heartbeat();
+			}
 
 			// Library.logger().finest("Refreshing interests (size " + _myInterests.size() + ")");
 
 			// Re-express interests that need to be re-expressed
-			long ourTime = new Date().getTime();
 			try {
 				synchronized (_myInterests) {
 					for (Entry<InterestRegistration> entry : _myInterests.values()) {
@@ -107,12 +112,14 @@ public class CCNNetworkManager implements Runnable {
 				Library.logger().severe("Processing thread failure (Malformed datagram): " + xmlex.getMessage()); 
 				Library.warningStackTrace(xmlex);
 			}
+			
+			_periodicTimer.schedule(new PeriodicWriter(), PERIOD);
 		}
 	}
 	
 	// Send heartbeat
 	private void heartbeat() {
-		if (!_sendHeartbeat)
+		if (!timersSetup)
 			return;
 		try {
 			ByteBuffer heartbeat = ByteBuffer.allocate(1);
@@ -121,6 +128,21 @@ public class CCNNetworkManager implements Runnable {
 			// We do not see errors on send typically even if 
 			// agent is gone, so log each but do not track
 			Library.logger().warning("Error sending heartbeat packet: " + io.getMessage());
+		}
+	}
+	
+	/**
+	 * First time startup of timing stuff after first registration
+	 * We don't bother to "unstartup" if everything is deregistered
+	 */
+	private void setupTimers() {
+		if (!timersSetup) {
+			timersSetup = true;
+			heartbeat();
+			
+			// Create timer for heartbeats and other periodic behavior
+			_periodicTimer = new Timer(true);
+			_periodicTimer.schedule(new PeriodicWriter(), PERIOD);
 		}
 	}
 			
@@ -446,10 +468,6 @@ public class CCNNetworkManager implements Runnable {
 		_threadpool.setKeepAliveTime(THREAD_LIFE, TimeUnit.SECONDS);
 		_thread = new Thread(this);
 		_thread.start();
-		
-		// Create timer for heartbeats and other periodic behavior
-		_periodicTimer = new Timer(true);
-		_periodicTimer.scheduleAtFixedRate(new PeriodicWriter(), PERIOD, PERIOD);
 	}
 	
 	/**
@@ -573,10 +591,7 @@ public class CCNNetworkManager implements Runnable {
 	 */
 	public void setInterestFilter(Object caller, ContentName filter, CCNFilterListener callbackListener) {
 		//Library.logger().fine("setInterestFilter: " + filter);
-		if (!_sendHeartbeat) {
-			_sendHeartbeat = true;
-			heartbeat();
-		}
+		setupTimers();
 		synchronized (_myFilters) {
 			_myFilters.add(filter, new Filter(this, filter, callbackListener, caller));
 		}
@@ -634,10 +649,7 @@ public class CCNNetworkManager implements Runnable {
 	 */
 	InterestRegistration registerInterest(InterestRegistration reg) {
 		// Add to standing interests table
-		if (!_sendHeartbeat) {
-			_sendHeartbeat = true;
-			heartbeat();
-		}
+		setupTimers();
 		Library.logger().finest("registerInterest for " + reg.interest.name() + " and obj is " + _myInterests.hashCode());
 		synchronized (_myInterests) {
 			_myInterests.add(reg.interest, reg);
