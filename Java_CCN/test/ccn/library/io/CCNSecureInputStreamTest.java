@@ -24,6 +24,8 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import test.ccn.data.util.Flosser;
+
 import com.parc.ccn.Library;
 import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.data.ContentName;
@@ -53,20 +55,14 @@ public class CCNSecureInputStreamTest {
 		ContentKeys keys;
 		public StreamFactory(ContentName n) throws NoSuchAlgorithmException, XMLStreamException, IOException, InterruptedException {
 			name = VersioningProfile.versionName(n);
+			flosser.handleNamespace(name);
 			keys = ContentKeys.generateRandomKeys();
-			digest = writeFileFloss(encrLength);
+			digest = writeFile(encrLength);
 		}
 		public abstract CCNInputStream makeInputStream() throws IOException, XMLStreamException;
 		public abstract OutputStream makeOutputStream() throws IOException, XMLStreamException;
 
-		/**
-		 * Trick to get around lack of repo. We want the test below to read data out of
-		 * ccnd. Problem is to do that, we have to get it into ccnd. This pre-loads
-		 * ccnd with data by "flossing" it -- starting up a reader thread that will
-		 * pull our generated data into ccnd for us, where it will wait till we read
-		 * it back out.
-		 */
-		public byte [] writeFileFloss(int fileLength) throws XMLStreamException, IOException, NoSuchAlgorithmException, InterruptedException {
+		public byte [] writeFile(int fileLength) throws XMLStreamException, IOException, NoSuchAlgorithmException, InterruptedException {
 			Random randBytes = new Random(); // doesn't need to be secure
 			OutputStream stockOutputStream = makeOutputStream();
 
@@ -76,7 +72,6 @@ public class CCNSecureInputStreamTest {
 			byte [] bytes = new byte[BUF_SIZE];
 			int elapsed = 0;
 			int nextBufSize = 0;
-			boolean firstBuf = true;
 			final double probFlush = .1;
 
 			while (elapsed < fileLength) {
@@ -85,10 +80,6 @@ public class CCNSecureInputStreamTest {
 				digestStreamWrapper.write(bytes, 0, nextBufSize);
 				data.write(bytes, 0, nextBufSize);
 				elapsed += nextBufSize;
-				if (firstBuf) {
-					startReader(fileLength);
-					firstBuf = false;
-				}
 				if (randBytes.nextDouble() < probFlush) {
 					System.out.println("Flushing buffers.");
 					digestStreamWrapper.flush();
@@ -97,22 +88,6 @@ public class CCNSecureInputStreamTest {
 			digestStreamWrapper.close();
 			encrData = data.toByteArray();
 			return digestStreamWrapper.getMessageDigest().digest();
-		}
-
-		public Thread startReader(final int fileLength) {
-			Thread t = new Thread(){
-				public void run() {
-					try {
-						InputStream inputStream = makeInputStream();
-						readFile(inputStream, fileLength);
-					} catch (Exception e) {
-						e.printStackTrace();
-						Assert.fail("Class setup failed! " + e.getClass().getName() + ": " + e.getMessage());
-		           }
-		        }
-		    };
-		    t.start();
-		    return t;
 		}
 
 		public void streamEncryptDecrypt() throws XMLStreamException, IOException {
@@ -228,6 +203,7 @@ public class CCNSecureInputStreamTest {
 	static ContentName defaultStreamName;
 	static CCNLibrary outputLibrary;
 	static CCNLibrary inputLibrary;
+	static Flosser flosser;
 	static final int BUF_SIZE = 4096;
 
 	static StreamFactory basic;
@@ -243,6 +219,8 @@ public class CCNSecureInputStreamTest {
 		
 		// Write a set of output
 		defaultStreamName = ContentName.fromNative("/test/stream/versioning/LongOutput.bin");
+		
+		flosser = new Flosser();
 		
 		basic = new StreamFactory(defaultStreamName){
 			public CCNInputStream makeInputStream() throws IOException, XMLStreamException {
@@ -270,6 +248,7 @@ public class CCNSecureInputStreamTest {
 				return new CCNFileOutputStream(name, null, keys, outputLibrary);
 			}
 		};
+		flosser.stop();
 	}
 	
 	public static byte [] readFile(InputStream inputStream, int fileLength) throws IOException, XMLStreamException {
