@@ -3,10 +3,12 @@ package com.parc.ccn.network.daemons.repo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.TreeMap;
 
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
@@ -14,7 +16,9 @@ import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 
 /**
- * Handle incoming data in the repository
+ * Handle incoming data in the repository. Currently only handles
+ * the stream "shape"
+ * 
  * @author rasmusse
  *
  */
@@ -22,10 +26,9 @@ import com.parc.ccn.library.profiles.SegmentationProfile;
 public class RepositoryDataListener implements CCNInterestListener {
 	private long _timer;
 	private Interest _origInterest;
-	private Interest _interest;
+	private TreeMap<ContentName, Interest> _interests = new TreeMap<ContentName, Interest>();
 	private boolean _haveHeader = false;
 	private boolean _sentHeaderInterest = false;
-	private boolean _sawBlock = false;
 	private Interest _headerInterest = null;	
 	private RepositoryDaemon _daemon;
 	private CCNLibrary _library;
@@ -65,7 +68,6 @@ public class RepositoryDataListener implements CCNInterestListener {
 	
 	public RepositoryDataListener(Interest origInterest, Interest interest, RepositoryDaemon daemon) throws XMLStreamException, IOException {
 		_origInterest = interest;
-		_interest = interest;
 		_daemon = daemon;
 		_library = daemon.getLibrary();
 		_timer = new Date().getTime();
@@ -86,8 +88,6 @@ public class RepositoryDataListener implements CCNInterestListener {
 					 */
 					if (SegmentationProfile.isUnsegmented(co.name())) {
 						_haveHeader = true;
-						if (_sawBlock)
-							return null;
 					} else {
 						if (!_sentHeaderInterest) {
 							_headerInterest = new Interest(SegmentationProfile.segmentRoot(co.name()));
@@ -100,26 +100,47 @@ public class RepositoryDataListener implements CCNInterestListener {
 								e.printStackTrace();
 							}
 						}
-						if (!_sawBlock) {
-							if (SegmentationProfile.getSegmentNumber(co.name()) == 0)
-								_currentBlock = 1;
-						}
 					}
 				}
+			}
 				
-				/*
-				 * Compute next interest to ask for. 
-				 */
-				_sawBlock = true;
-				_interest = new Interest(SegmentationProfile.segmentName(co.name(), _currentBlock++));
-				return _interest;
+			if (SegmentationProfile.isSegment(co.name())) {
+				long thisBlock = SegmentationProfile.getSegmentNumber(co.name());
+				if (thisBlock >= _currentBlock)
+					_currentBlock = thisBlock + 1;
+				synchronized (_interests) {
+					_interests.remove(co.name());
+				}
+			}
+			
+			/*
+			 * Compute next interests to ask for and ask for them
+			 */
+			synchronized (_interests) {
+				long firstInterestToRequest = _interests.size() > 0 
+						? SegmentationProfile.getSegmentNumber(_interests.lastKey()) + 1
+						: _currentBlock;
+				int nOutput = _interests.size() >= _daemon.getWindowSize() ? 0 : _daemon.getWindowSize() - _interests.size();
+	
+				for (int i = 0; i < nOutput; i++) {
+					ContentName name = SegmentationProfile.segmentName(co.name(), firstInterestToRequest + i);
+					Interest newInterest = new Interest(name);
+					try {
+						_library.expressInterest(newInterest, this);
+						_interests.put(name, newInterest);
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
 			}
 		}
 		return null;
 	}
 	
 	public void cancelInterests() {
-		_library.cancelInterest(_interest, this);
+		for (ContentName name : _interests.keySet())
+			_library.cancelInterest(_interests.get(name), this);
 		_library.cancelInterest(_headerInterest, this);
 	}
 	
@@ -131,13 +152,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 		_timer = time;
 	}
 	
-	public Interest getInterest() {
-		return _interest;
-	}
-	
 	public Interest getOrigInterest() {
 		return _origInterest;
 	}
-	
-	
 }
