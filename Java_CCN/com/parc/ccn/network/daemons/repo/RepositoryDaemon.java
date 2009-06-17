@@ -12,6 +12,8 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
+import javax.xml.stream.XMLStreamException;
+
 import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
@@ -52,10 +54,12 @@ public class RepositoryDaemon extends Daemon {
 	private ExcludeFilter _markerFilter;
 	private CCNWriter _writer;
 	private boolean _pendingNameSpaceChange = false;
+	private int _windowSize = WINDOW_SIZE;
 	protected ThreadPoolExecutor _threadpool = null; // pool service
 	
 	public static final int PERIOD = 2000; // period for interest timeout check in ms.
 	public static final int THREAD_LIFE = 8;	// in seconds
+	public static final int WINDOW_SIZE = 10;
 	
 	private class NameAndListener {
 		private ContentName name;
@@ -290,7 +294,7 @@ public class RepositoryDaemon extends Daemon {
 		return _repoFilters;
 	}
 	
-	public RepositoryDataListener addListener(Interest interest, Interest readInterest) {
+	public RepositoryDataListener addListener(Interest interest, Interest readInterest) throws XMLStreamException, IOException {
 		RepositoryDataListener listener = new RepositoryDataListener(interest, readInterest, this);
 		synchronized(_currentListeners) {
 			_currentListeners.add(listener);
@@ -304,6 +308,10 @@ public class RepositoryDaemon extends Daemon {
 	
 	public ThreadPoolExecutor getThreadPool() {
 		return _threadpool;
+	}
+	
+	public int getWindowSize() {
+		return _windowSize;
 	}
 	
 	public static void main(String[] args) {

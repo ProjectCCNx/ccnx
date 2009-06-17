@@ -16,6 +16,7 @@ DEBUG_PORT=
 OUTPUT_FILE=
 LOCAL_PORT=
 DEBUG_DAEMON=
+PROFILE_INFO=
 
 if [ $# = 0 ]
 then
@@ -24,7 +25,7 @@ else
   if [ ! "$CCN_LOCAL_PORT" = "" ]; then
   	  LOCAL_PORT="-Dccn.agent.port=$CCN_LOCAL_PORT"
   fi
-  while [ $# -gt 3 ]; do
+  while [ $# -gt 2 ]; do
   	  if [ "$1" = "-memory" ]; then
   	      MEMORY="-Dccn.daemon.memory=$2"
   	      shift 2
@@ -37,6 +38,9 @@ else
   	  elif [ "$1" = "-debug-daemon" ]; then
   	      DEBUG_DAEMON=" -Xrunjdwp:transport=dt_socket,address=$2,server=y,suspend=y";
   	      shift 2
+  	  elif [ "$1" = "-profile" ]; then
+  	      PROFILE_INFO="-Dccn.daemon.profile=$2";
+  	      shift 2
   	  else
   	  	  break
   	  fi
@@ -44,6 +48,6 @@ else
   if [ "$1" = "stop" ]; then
 	  $JAVA -cp $CLASSPATH $LOCAL_PORT com.parc.ccn.network.daemons.repo.RepositoryDaemon -stop
   else
-	  $JAVA -cp $CLASSPATH $DEBUG_DAEMON $MEMORY $DEBUG_PORT $OUTPUT_FILE $LOCAL_PORT com.parc.ccn.network.daemons.repo.RepositoryDaemon -start -root $*
+	  $JAVA -cp $CLASSPATH $DEBUG_DAEMON $MEMORY $DEBUG_PORT $PROFILE_INFO $OUTPUT_FILE $LOCAL_PORT com.parc.ccn.network.daemons.repo.RepositoryDaemon -start -root $*
   fi
 fi

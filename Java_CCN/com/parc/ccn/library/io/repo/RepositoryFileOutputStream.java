@@ -12,24 +12,13 @@ import com.parc.ccn.library.CCNLibrary;
 
 public class RepositoryFileOutputStream extends CCNFileOutputStream {
 
-	protected RepositoryProtocol _repoFlowControl;
-
 	public RepositoryFileOutputStream(ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
-		this(name, null , library);
+		this(name, null, library);
 	}
 	
 	public RepositoryFileOutputStream(ContentName name, 
 			PublisherPublicKeyDigest publisher, CCNLibrary library)
 			throws XMLStreamException, IOException {
-		super(name, publisher, new RepositoryProtocol(name, library));
-		_repoFlowControl = (RepositoryProtocol)_segmenter.getFlowControl();
-		_repoFlowControl.init(getBaseName());
+		super(name, publisher, new RepositoryFlowControl(name, library));
 	}
-	
-	public void close() throws IOException {
-		_repoFlowControl.beforeClose();
-		super.close();
-		_repoFlowControl.afterClose();
-	}
-	
 }

@@ -258,6 +258,12 @@ int ccnd_reg_prefix(struct ccnd *h,
                     int flags,
                     int expires);
 
+int ccnd_reg_uri(struct ccnd *h,
+                 const char *uri,
+                 unsigned faceid,
+                 int flags,
+                 int expires);
+
 /* Consider a separate header for these */
 int ccnd_stats_httpd_start(struct ccnd *);
 int ccnd_stats_check_for_http_connection(struct ccnd *);

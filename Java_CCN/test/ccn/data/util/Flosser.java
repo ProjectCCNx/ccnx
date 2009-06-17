@@ -13,6 +13,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.CCNInterestListener;
+import com.parc.ccn.data.query.ExcludeComponent;
 import com.parc.ccn.data.query.ExcludeElement;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
@@ -65,7 +66,9 @@ public class Flosser implements CCNInterestListener {
 
 	public Interest handleContent(ArrayList<ContentObject> results,
 								  Interest interest) {
+		Library.logger().finest("Interests registered: " + _interests.size() + " content objects returned: "+results.size());
 		// Parameterized behavior that subclasses can override.
+		ContentName interestName = null;
 		for (ContentObject result : results) {
 			Library.logger().fine("Got content for interest " + interest);
 			processContent(result);
@@ -77,7 +80,8 @@ public class Flosser implements CCNInterestListener {
 			for (Entry<ContentName, Interest> entry : _interests.entrySet()) {
 				if (entry.getValue().equals(interest)) {
 					synchronized(_interests) {
-						_interests.remove(entry.getKey());
+						interestName = entry.getKey();
+						_interests.remove(interestName);
 					}
 					break;
 				}
@@ -89,7 +93,7 @@ public class Flosser implements CCNInterestListener {
             if (prefixCount == result.name().count()) {
             	if (null == interest.excludeFilter()) {
               		ArrayList<ExcludeElement> excludes = new ArrayList<ExcludeElement>();
-               		excludes.add(new ExcludeElement(result.contentDigest()));
+               		excludes.add(new ExcludeComponent(result.contentDigest()));
             		interest.excludeFilter(new ExcludeFilter(excludes));
             		Library.logger().finest("Creating new exclude filter for interest " + interest.name());
             	} else {
@@ -98,27 +102,27 @@ public class Flosser implements CCNInterestListener {
             		} else {
             			// Has to be in order...
             			Library.logger().finest("Adding child component to exclude.");
-            			interest.excludeFilter().values().add(new ExcludeElement(result.contentDigest()));
+            			interest.excludeFilter().add(new byte [][] { result.contentDigest() });
             		}
             	}
-            	Library.logger().finer("Excluding content digest: " + DataUtils.printBytes(result.contentDigest()) + " onto interest " + interest.name() + " total excluded: " + interest.excludeFilter().values().size());
+            	Library.logger().finer("Excluding content digest: " + DataUtils.printBytes(result.contentDigest()) + " onto interest " + interest.name() + " total excluded: " + interest.excludeFilter().size());
             } else {
                	if (null == interest.excludeFilter()) {
                		ArrayList<ExcludeElement> excludes = new ArrayList<ExcludeElement>();
-               		excludes.add(new ExcludeElement(result.name().component(prefixCount)));
+               		excludes.add(new ExcludeComponent(result.name().component(prefixCount)));
             		interest.excludeFilter(new ExcludeFilter(excludes));
             		Library.logger().finest("Creating new exclude filter for interest " + interest.name());
-           	} else {
+               	} else {
                     if (interest.excludeFilter().exclude(result.name().component(prefixCount))) {
             			Library.logger().fine("We should have already excluded child component: " + ContentName.componentPrintURI(result.name().component(prefixCount)) + " prefix count: " + interest.nameComponentCount());                   	
                     } else {
                     	// Has to be in order...
                     	Library.logger().finest("Adding child component to exclude.");
-            			interest.excludeFilter().values().add(
-            					new ExcludeElement(result.name().component(prefixCount)));                    	
+            			interest.excludeFilter().add(
+            					new byte [][] { result.name().component(prefixCount) });
                     }
             	}
-               	Library.logger().finer("Excluding child " + ContentName.componentPrintURI(result.name().component(prefixCount)) + " total excluded: " + interest.excludeFilter().values().size());
+               	Library.logger().finer("Excluding child " + ContentName.componentPrintURI(result.name().component(prefixCount)) + " total excluded: " + interest.excludeFilter().size());
                 // DKS TODO might need to split to matchedComponents like ccnslurp
                 ContentName newNamespace = null;
                 try {
@@ -135,6 +139,8 @@ public class Flosser implements CCNInterestListener {
                 }
             }
 		}
+		if (null != interest)
+			_interests.put(interest.name(), interest);
 		return interest;
 	}
 	
@@ -142,7 +148,7 @@ public class Flosser implements CCNInterestListener {
 		Library.logger().info("Stop flossing.");
 		synchronized (_interests) {
 			for (Interest interest : _interests.values()) {
-				Library.logger().info("Cancelling pending interest: " + interest);
+				Library.logger().info("Cancelling pending interest: " + interest.print());
 				_library.cancelInterest(interest, this);
 			}
 		}

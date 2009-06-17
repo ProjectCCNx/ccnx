@@ -119,7 +119,7 @@ public class InterestTable<V> {
 		if (null == interest.name()) {
 			throw new NullPointerException("InterestTable may not contain Interest with null name");
 		}
-		Library.logger().finest("adding interest " + interest.name());
+		Library.logger().finest("adding interest " + interest.print());
 		Holder<V> holder = new InterestHolder<V>(interest, value);
 		add(holder);
 	}
@@ -222,6 +222,8 @@ public class InterestTable<V> {
 					}
 				}
 			}
+			if (list.size() == 0)
+				_contents.remove(new ITContentName(name));
 		}
 		return result;
 	}
@@ -243,6 +245,7 @@ public class InterestTable<V> {
 						if (null == value) {
 							holdIt.remove();
 							result = holder;
+			
 						}
 					} else {
 						if (holder.value().equals(value)) {
@@ -252,6 +255,8 @@ public class InterestTable<V> {
 					}
 				}
 			}
+			if (list.size() == 0)
+				_contents.remove(new ITContentName(interest.name()));
 		}
 		return result;
 	}

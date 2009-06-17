@@ -15,6 +15,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
@@ -202,6 +203,7 @@ public class RepoIOTest extends RepoTestBase {
 		} catch (IOException ex) {
 			if (expected)
 				Assert.fail(ex.getMessage());
+			Library.logger().info("Returning early from test on IOException : " + ex.getMessage());
 			return;
 		}
 		byte [] data = "Testing 1 2 3".getBytes();

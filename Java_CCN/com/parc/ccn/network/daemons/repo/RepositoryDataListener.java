@@ -3,6 +3,9 @@ package com.parc.ccn.network.daemons.repo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.TreeMap;
+
+import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
@@ -10,9 +13,12 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.profiles.SegmentationProfile;
 
 /**
- * Handle incoming data in the repository
+ * Handle incoming data in the repository. Currently only handles
+ * the stream "shape"
+ * 
  * @author rasmusse
  *
  */
@@ -20,16 +26,13 @@ import com.parc.ccn.library.CCNLibrary;
 public class RepositoryDataListener implements CCNInterestListener {
 	private long _timer;
 	private Interest _origInterest;
-	private Interest _interest;
-	private Interest _versionedInterest = null;
-	private ArrayList<ContentObject> _unacked = new ArrayList<ContentObject>();
+	private TreeMap<ContentName, Interest> _interests = new TreeMap<ContentName, Interest>();
 	private boolean _haveHeader = false;
 	private boolean _sentHeaderInterest = false;
-	private boolean _sawBlock = false;
-	private ContentName _headerName = null;
-	private Interest _headerInterest = null;
+	private Interest _headerInterest = null;	
 	private RepositoryDaemon _daemon;
 	private CCNLibrary _library;
+	private long _currentBlock = 0;
 	
 	/**
 	 * So the main listener can output interests sooner, we do the data creation work
@@ -63,15 +66,11 @@ public class RepositoryDataListener implements CCNInterestListener {
 		}
 	}
 	
-	public RepositoryDataListener(Interest origInterest, Interest interest, RepositoryDaemon daemon) {
+	public RepositoryDataListener(Interest origInterest, Interest interest, RepositoryDaemon daemon) throws XMLStreamException, IOException {
 		_origInterest = interest;
-		_interest = interest;
 		_daemon = daemon;
 		_library = daemon.getLibrary();
-		_headerName = _interest.name().clone();
 		_timer = new Date().getTime();
-		_headerInterest = new Interest(_headerName);
-		_headerInterest.additionalNameComponents(1);
 	}
 	
 	public Interest handleContent(ArrayList<ContentObject> results,
@@ -83,31 +82,16 @@ public class RepositoryDataListener implements CCNInterestListener {
 			_daemon.getThreadPool().execute(new DataHandler(co));
 			
 			synchronized (this) {
-				_unacked.add(co);
 				if (!_haveHeader) {
 					/*
 					 * Handle headers specifically. If we haven't seen one yet ask for it specifically
 					 */
-					if (co.name().equals(_headerName)) {
+					if (SegmentationProfile.isUnsegmented(co.name())) {
 						_haveHeader = true;
-						if (_sawBlock)
-							return null;
-						/*
-						 * The first thing we saw was a header. So we don't know yet whether the file is
-						 * versioned or not versioned. The returned interest that falls out of this will
-						 * ask for data assuming that we are unversioned. But we don't know yet whether
-						 * we are versioned or not so specifically try asking for versioned blocks here.
-						 */
-						_versionedInterest = new Interest(co.name());
-						_versionedInterest.additionalNameComponents(2);
-						try {
-							_library.expressInterest(_versionedInterest, this);
-						} catch (IOException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
 					} else {
 						if (!_sentHeaderInterest) {
+							_headerInterest = new Interest(SegmentationProfile.segmentRoot(co.name()));
+							_headerInterest.additionalNameComponents(1);
 							try {
 								_library.expressInterest(_headerInterest, this);
 								_sentHeaderInterest = true;
@@ -117,43 +101,47 @@ public class RepositoryDataListener implements CCNInterestListener {
 							}
 						}
 					}
-				} else {
-					/*
-					 * If we sent out a versioned interest we now know whether or not we are
-					 * versioned. We also know that one of the 2 interests we sent out was
-					 * answered and the other one wasn't. Rather than figure out which one
-					 * was answered we can just cancel them both now. This shouldn't hurt
-					 * anything.
-					 */
-					if (_versionedInterest != null) {
-						_library.cancelInterest(_versionedInterest, this);
-						_library.cancelInterest(_interest, this);
-						_versionedInterest = null;
+				}
+			}
+				
+			if (SegmentationProfile.isSegment(co.name())) {
+				long thisBlock = SegmentationProfile.getSegmentNumber(co.name());
+				if (thisBlock >= _currentBlock)
+					_currentBlock = thisBlock + 1;
+				synchronized (_interests) {
+					_interests.remove(co.name());
+				}
+			}
+			
+			/*
+			 * Compute next interests to ask for and ask for them
+			 */
+			synchronized (_interests) {
+				long firstInterestToRequest = _interests.size() > 0 
+						? SegmentationProfile.getSegmentNumber(_interests.lastKey()) + 1
+						: _currentBlock;
+				int nOutput = _interests.size() >= _daemon.getWindowSize() ? 0 : _daemon.getWindowSize() - _interests.size();
+	
+				for (int i = 0; i < nOutput; i++) {
+					ContentName name = SegmentationProfile.segmentName(co.name(), firstInterestToRequest + i);
+					Interest newInterest = new Interest(name);
+					try {
+						_library.expressInterest(newInterest, this);
+						_interests.put(name, newInterest);
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
 					}
 				}
-				
-				/*
-				 * Compute new interest. Its basically a next, but since we want to register it, we
-				 * don't do a getNext here. Also we need to set the prefix 1 before the last component
-				 * so we get all the blocks
-				 */
-				_sawBlock = true;
-				ContentName nextName = new ContentName(co.name(), co.contentDigest());
-				_interest = Interest.constructInterest(nextName,  _daemon.getExcludes(), 
-							new Integer(Interest.ORDER_PREFERENCE_LEFT  | Interest.ORDER_PREFERENCE_ORDER_NAME), 
-							co.name().count() - 1);
-				_interest.additionalNameComponents(2);
-				return _interest;
 			}
 		}
 		return null;
 	}
 	
 	public void cancelInterests() {
-		_library.cancelInterest(_interest, this);
+		for (ContentName name : _interests.keySet())
+			_library.cancelInterest(_interests.get(name), this);
 		_library.cancelInterest(_headerInterest, this);
-		if (_versionedInterest != null)
-			_library.cancelInterest(_versionedInterest, this);
 	}
 	
 	public long getTimer() {
@@ -164,15 +152,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 		_timer = time;
 	}
 	
-	public Interest getInterest() {
-		return _interest;
-	}
-	
 	public Interest getOrigInterest() {
 		return _origInterest;
-	}
-	
-	public ArrayList<ContentObject> getUnacked() {
-		return _unacked;
 	}
 }

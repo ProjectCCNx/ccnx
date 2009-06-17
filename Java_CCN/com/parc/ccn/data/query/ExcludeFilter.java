@@ -3,11 +3,9 @@ package com.parc.ccn.data.query;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
@@ -29,106 +27,92 @@ import com.parc.ccn.data.util.XMLEncoder;
  *       2 bloom filters in a row are not allowed. The component to be tested is excluded if it
  *       exactly matches one of the components or if it is canonically located between 2 components 
  *       in the series of elements and it matches a bloom filter located between those 2 components.
- *
- * @author rasmusse
- *
  */
 
 public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 		Comparable<ExcludeFilter> {
 	
 	public static final String EXCLUDE_ELEMENT = "Exclude";
-	public static final String BLOOM = "Bloom";
 	public static final String BLOOM_SEED = "BloomSeed";
 	public static int OPTIMUM_FILTER_SIZE = 100;
 
 	protected ArrayList<ExcludeElement> _values;
 	
-	public ExcludeFilter(ArrayList<ExcludeElement> values) 
+	/**
+	 * @param values Must be a list of ExcludeElements - Components must be in increasing order
+	 * and there must not be more than one BloomFilter in a row.
+	 * @throws InvalidParameterException
+	 */
+	public ExcludeFilter(ArrayList<ExcludeElement> values)
 				throws InvalidParameterException {
 		// Make sure the values are valid
-		byte [] lastName = null;
+		ExcludeComponent c = null;
+		ExcludeElement last = null;
 		for (ExcludeElement ee : values) {
-			if (lastName != null) {
-				if (DataUtils.compare(lastName, ee._component) >= 0) {
-					throw new InvalidParameterException("Components out of order in Exclude Filter");
-				}
-			}
-			lastName = ee._component;
+			if (ee instanceof ExcludeComponent) {
+				ExcludeComponent ec = (ExcludeComponent) ee;
+				// Components must be in increasing order
+				if (c != null && ec.compareTo(c) <=0)
+					throw new InvalidParameterException();
+				c = ec;
+			} else if (last instanceof BloomFilter)
+				// do not allow 2 bloom filters in a row
+				throw new InvalidParameterException();
+			last = ee;
 		}
 		_values = new ArrayList<ExcludeElement>(values);
 	}
 		
+	/**
+	 * Create an Exclude filter that excludes exactly the listed name components.
+	 * @param omissions The name components to be excluded.
+	 * @throws InvalidParameterException
+	 */
 	public ExcludeFilter(byte [][] omissions)
 		throws InvalidParameterException {
 		if (omissions == null || omissions.length == 0)
 			throw new InvalidParameterException("No omissions");
-		Comparator<byte[]> comparator = new ByteArrayCompare();
-		Arrays.sort(omissions, comparator);
-		ArrayList<ExcludeElement> elements = new ArrayList<ExcludeElement>();
-		int filterCount = 0;
-		boolean needNewElement = omissions.length > OPTIMUM_FILTER_SIZE;
-		BloomFilter currentFilter = null;;
-		if (!needNewElement) {
-			currentFilter = createBloom();
-			elements.add(new ExcludeElement(null, currentFilter));
-		}
+		Arrays.sort(omissions, new ByteArrayCompare());
+		_values = new ArrayList<ExcludeElement>();
 		for (byte[] omission : omissions) {
-			if (filterCount > OPTIMUM_FILTER_SIZE) {
-				needNewElement = true;
-				filterCount = 0;
-			}
-			if (needNewElement) {
-				currentFilter = createBloom();
-				elements.add(new ExcludeElement(omission, currentFilter));
-				needNewElement = false;
-			} else {
-				currentFilter.insert(omission);
-				filterCount++;
-			}
+			_values.add(new ExcludeComponent(omission));
 		}
-		_values = elements;
 	}
 
 	public ExcludeFilter() {} // for use by decoders
-
-	public ArrayList<ExcludeElement> values() {
-		return _values;
-	}
 	
-	private static BloomFilter createBloom() {
-		byte[] seed = new byte[4];
-		BloomFilter.createSeed(seed);
-		return new BloomFilter(OPTIMUM_FILTER_SIZE, seed);
+	/**
+	 * @param omissions List of names to exclude, or null
+	 * @return returns null if list is null, or a new Exclude filter that excludes the listed names. @see #ExcludeFilter(byte [][])
+	 */
+	public static ExcludeFilter factory(byte [][] omissions) {
+		if (omissions == null || omissions.length == 0)
+			return null;
+		return new ExcludeFilter(omissions);
 	}
 
 	/**
-	 * Exclude this co if it matches the filter
-	 * @param content
-	 * @return
+	 * @param component - A name component
+	 * @return true if this component matches the exclude filter
 	 */
 	public boolean exclude(byte [] component) {
-		for (int i = 0; i < values().size(); i++) {
-			ExcludeElement ee = values().get(i);
-			if (ee.exclude(component))
-				return true;
-				
-			// Bloom filter case. If the next component is less than us,
-			// we don't want to use this filter. If its the same, we go on
-			// and catch it at the next value
-			if (ee.bloomFilter() != null) {
-				if (values().size() > (i + 1)) {
-					byte [] nextComponent = values().get(i + 1).component();
-					if (DataUtils.compare(nextComponent, component) <= 0)
-						continue;
-				}
-				
-				// Finally test via the filter. Since our value is in between the components
-				// before and after we don't need to continue testing
-				return ee.bloomFilter().match(component);
-			}
+		BloomFilter bloom = null;
+		for (ExcludeElement ee : _values) {
+			if (ee instanceof ExcludeComponent) {
+				ExcludeComponent ec = (ExcludeComponent) ee;
+				int res = ec.compareTo(component);
+				if (res > 0) {
+					// we reached a component in the filter that is lexigraphically after than the one
+					// we're looking for so check the bloom and exit.
+					return bloom != null && bloom.match(component);
+				} else if (res == 0)
+					// we matched a component in the filter
+					return true;
+				bloom = null;
+			} else
+				bloom = (BloomFilter) ee;
 		}
-		return false;
+		return bloom != null && bloom.match(component);
 	}
 	
 	/**
@@ -137,64 +121,67 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 	 * @param omissions
 	 * @return new ExcludeFilter object or null in case of error
 	 */
-	public ExcludeFilter add(byte[][] omissions) {
-		if (omissions == null || omissions.length == 0) {
-			return null;
-		}
-		Comparator<byte[]> comparator = new ByteArrayCompare();
-		Arrays.sort(omissions, comparator);
-		ExcludeFilter result = new ExcludeFilter();
-		result._values = new ArrayList<ExcludeElement>();
-		ExcludeElement prev = null;
-		int j = 0;
-		byte[] omission = omissions[j];
-		for (int i = 0; i < values().size(); i++) {
-			ExcludeElement ee = values().get(i);
-			for ( ; j<omissions.length; j++, omission=omissions[j]) { 
-				if (DataUtils.compare(ee._component, omission) > 0) {
-					// Current component is greater than current omission
-					// so we use prev filter
-					if (null != prev) {
-						prev._bloom.insert(omission);
-					} else {
-						prev = new ExcludeElement(null, createBloom());
-						result._values.add(prev);
+	public void add(byte[][] omissions) {
+		if (omissions == null || omissions.length == 0)
+			return;
+
+		Arrays.sort(omissions, new ByteArrayCompare());
+
+		/*
+		 * i is an outer loop on the omissions list
+		 * j is an inner loop on the ExcludeEntries
+		 */
+		int i = 0, j = 0;
+		byte [] omission;
+		ExcludeElement ee;
+		BloomFilter bloom = null;
+		for(;i<omissions.length && j<_values.size();) {
+			omission = omissions[i];
+			ee = _values.get(j);
+			if (ee instanceof ExcludeComponent) {
+				ExcludeComponent ec = (ExcludeComponent) ee;
+				int res = ec.compareTo(omission);
+				if (res > 0) {
+					// we reached a component in the filter that is lexigraphically after than the one
+					// we're looking for so check the bloom and exit.
+					if (bloom != null && bloom.match(omission)) {
+						// the bloom already matches the component, no need to add it!
+						i++;
+						continue;
 					}
-				} else {
-					// Gone past point where we can use previous filter
-					// so break out of inner loop to set up next filter
-					break;
+					// no bloom or the bloom does not match - add the component explicitly
+					_values.add(j, new ExcludeComponent(omission));
+					j++; // skip the component we just added
+					if (bloom != null) {
+						// there was a bloom, so copy it to ensure same values get excluded
+						try {
+							_values.add(j, bloom.clone());
+							j++; // skip the bloom we just added
+						} catch (CloneNotSupportedException e) {
+							throw new RuntimeException(e);
+						}
+					}
+					i++;
+					continue;
+				} else if (res == 0) {
+					// we matched a component in the filter
+					i++;
+					continue;
 				}
-			}
-			try {
-				prev = ee.clone();
-			} catch (CloneNotSupportedException e) {
-				return null;
-			}
-			result._values.add(prev);
+				bloom = null;
+			} else
+				bloom = (BloomFilter) ee;
+			j++;
 		}
-		if (j < omissions.length) {
-			// Got all the way through and found no suitable filter so need
-			// to add for remainder
-			byte[][] remainder = new byte[omissions.length-j][];
-			for (int k=j; k < omissions.length; k++) {
-				remainder[k-j] = omissions[k];
-			}
-			ExcludeFilter remFilter = new ExcludeFilter(remainder); // builds remainder list
-			ExcludeElement first = remFilter._values.get(0);
-			if (null == first._component) {
-				first._component = omissions[j];
-			}
-			result._values.addAll(remFilter._values);
+		// if we have values still to add, then add them to the end of the list
+		for(;i<omissions.length;i++) {
+			omission = omissions[i];
+			_values.add(new ExcludeComponent(omission));
 		}
-		return result;
 	}
 
-	// TODO should we be able to add values arbitrarily?
-	// If so, must be done in order
-	
 	public boolean empty() {
-		return ((null == values()) || (values().isEmpty()));
+		return ((null == _values) || (_values.isEmpty()));
 	}
 
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
@@ -202,8 +189,9 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 		
 		_values = new ArrayList<ExcludeElement>();
 		
-		while (decoder.peekStartElement(ExcludeElement.COMPONENT) || decoder.peekStartElement(BLOOM)) {
-			ExcludeElement ee = new ExcludeElement();
+		boolean component;
+		while ((component = decoder.peekStartElement(ExcludeComponent.COMPONENT)) || decoder.peekStartElement(BloomFilter.BLOOM)) {
+			ExcludeElement ee = component?new ExcludeComponent():new BloomFilter();
 			ee.decode(decoder);
 			_values.add(ee);
 		}
@@ -217,13 +205,11 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 		// if everything is null, output nothing
 		if (empty())
 			return;
+		
 		encoder.writeStartElement(EXCLUDE_ELEMENT);
 
-		if (null != values()) {
-			for (ExcludeElement element : values()) {
-				element.encode(encoder);
-			}
-		}
+		for (ExcludeElement element : _values)
+			element.encode(encoder);
 
 		encoder.writeEndElement();
 	}
@@ -235,19 +221,15 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 
 	public int compareTo(ExcludeFilter o) {
 		int result = 0;
-		if (values() == null && o.values() != null)
+		if (empty() && !o.empty())
 			return -1;
-		if (_values != null) {
-			if (o.values() == null)
+		if (!empty()) {
+			if (o.empty())
 				return 1;
-			result = values().size() - o.values().size();
-			if (0 != result) return result;
-			for (int i = 0; i < values().size(); i++) {
-				ExcludeElement ee = values().get(i);
-				result = ee.compareTo(o.values().get(i));
-				if (0 != result)
-					return result;
-			}
+			result = _values.size() - o._values.size();
+			// TODO: need a better definition of ordering between exclude filters
+			// it's definitely an error to report they are the same just based on length
+			// but first - is this ever used?
 		}
 		
 		return result;
@@ -261,12 +243,10 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 		if (getClass() != obj.getClass())
 			return false;
 		ExcludeFilter other = (ExcludeFilter) obj;
-		if ((values().size() > other.values().size()))
-			return false;
-		for (int i=0; i < values().size(); ++i) {
-			if (!values().get(i).equals(other.values().get(i)))
-				return false;
-		}
-		return true;
+		return _values.equals(other._values);
+	}
+
+	public int size() {
+		return _values.size();
 	}
 }

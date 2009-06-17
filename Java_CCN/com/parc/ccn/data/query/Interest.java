@@ -84,7 +84,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public static final int MARK_STALE = 16;		// Must have Scope 0.  Michael calls this a "hack"
 
 	protected ContentName _name;
-	protected ContentName _prefixName;
 	protected Integer _nameComponentCount;
 	protected Integer _additionalNameComponents;
 	// DKS TODO can we really support a PublisherID here, or just a PublisherPublicKeyDigest?
@@ -170,10 +169,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	}
 
 	/**
-	 * Determine whether a piece of content matches this interest. We need
-	 * to beef this up to deal with the more complex interest specs.
+	 * Determine whether a piece of content's name (without digest component) matches this interest.
 	 * 
-	 * @param name - Name as it comes from ContentObject, i.e. without a digest component
+	 * This doesn't match if we specify the digest in the interest.
+	 *
+	 * @param name - Name of a content object without a digest component
 	 * @param resultPublisherKeyID
 	 * @return
 	 */
@@ -183,35 +183,41 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		// to get interest that matches everything, should
 		// use / (ROOT)
 		if (isPrefixOf(name)) {
-			return internalMatch(name, resultPublisherKeyID);
+			return internalMatch(name, false, resultPublisherKeyID);
 		}
 		return false;
 	}
 	
-	public boolean matches(ContentObject compareData, PublisherPublicKeyDigest resultPublisherKeyID) {
-		if (null == name() || null == compareData)
+	/**
+	 * Determine whether a piece of content matches this interest.
+	 * 
+	 * @param co - ContentObject
+	 * @param resultPublisherKeyID
+	 * @return
+	 */
+	public boolean matches(ContentObject co, PublisherPublicKeyDigest resultPublisherKeyID) {
+		if (null == name() || null == co)
 			return false; // null name() should not happen, null arg can
 		// to get interest that matches everything, should
 		// use / (ROOT)
-		if (isPrefixOf(compareData)) {
-			return internalMatch(compareData.name(), resultPublisherKeyID);
+		int ourCount = null != nameComponentCount() ? nameComponentCount() : name().count();
+		boolean digest = co.name().count()+1 == ourCount;
+		ContentName name = digest ? co.fullName() : co.name();
+		if (isPrefixOf(name)) {
+			return internalMatch(name, digest, resultPublisherKeyID);
 		}
 		return false;
 	}
 	
-	private boolean internalMatch(ContentName name, PublisherPublicKeyDigest resultPublisherKeyID) {
+	// TODO We need to beef this up to deal with the more complex interest specs.
+	private boolean internalMatch(ContentName name, boolean digestIncluded,
+			PublisherPublicKeyDigest resultPublisherKeyID) {
 		if (null != additionalNameComponents()) {
 			// we know our specified name is a prefix of the result. 
 			// the number of additional components must be this value
-			// we add 1 here for the missing "virtual digest" component
-			// effectively on the end of resultName
-			// TODO DKS this doesn't match if we specify the digest in the interest
-			// though lengths will be handled properly (lengthDiff will come out 0,
-			// which will match additionalNameComponents(); except we won't
-			// compare to the content digest...)
 			int nameCount = name.count();
 			int ourCount = null != nameComponentCount() ? nameComponentCount() : name().count();
-			int lengthDiff = nameCount - ourCount + 1;
+			int lengthDiff = nameCount + (digestIncluded?0:1) - ourCount ;
 			if (!additionalNameComponents().equals(lengthDiff)) {
 				Library.logger().fine("Interest match failed: " + lengthDiff + " more than the " + additionalNameComponents() + " components between expected " +
 						name() + " and tested " + name);
@@ -264,13 +270,13 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	}
 	
 	public static Interest next(ContentName name, byte[][] omissions, Integer prefixCount) {
-		return nextOrLast(name, omissions, new Integer(ORDER_PREFERENCE_LEFT | ORDER_PREFERENCE_ORDER_NAME), prefixCount);
+		return nextOrLast(name, ExcludeFilter.factory(omissions), new Integer(ORDER_PREFERENCE_LEFT | ORDER_PREFERENCE_ORDER_NAME), prefixCount);
 	}
 	
-	private static Interest nextOrLast(ContentName name, byte[][] omissions, Integer order, Integer prefixCount)  {
+	private static Interest nextOrLast(ContentName name, ExcludeFilter exclude, Integer order, Integer prefixCount)  {
 		if (null == prefixCount)
 			prefixCount = name.count() - 1;
-		return constructInterest(name, null == omissions ? null : new ExcludeFilter(omissions), order, prefixCount);
+		return constructInterest(name, exclude, order, prefixCount);
 	}
 	
 	/**
@@ -288,7 +294,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	}
 	
 	public static Interest last(ContentName name, byte[] [] omissions, Integer prefixCount) {
-		return nextOrLast(name, omissions, new Integer(ORDER_PREFERENCE_RIGHT | ORDER_PREFERENCE_ORDER_NAME), prefixCount);
+		return nextOrLast(name, ExcludeFilter.factory(omissions), new Integer(ORDER_PREFERENCE_RIGHT | ORDER_PREFERENCE_ORDER_NAME), prefixCount);
+	}
+	
+	public static Interest last(ContentName name, ExcludeFilter exclude) {
+		return nextOrLast(name, exclude, new Integer(ORDER_PREFERENCE_RIGHT | ORDER_PREFERENCE_ORDER_NAME), null);
 	}
 	
 	/**
@@ -595,5 +605,41 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		} else if (!_scope.equals(other._scope))
 			return false;
 		return true;
+	}
+	
+	/**
+	 * toString prints the full XML encoding of this interest. This is a print
+	 * function that is more informative than just the name, but shorter than that,
+	 * with human-readable names.
+	 */
+	public String print() {
+		
+		StringBuffer sb = new StringBuffer(_name.toString());
+		sb.append(": ");
+		if (null != _nameComponentCount) {
+			sb.append(" ct:" + _nameComponentCount);
+		}
+		if  (null != _additionalNameComponents) {
+			sb.append(" anc:" + _additionalNameComponents);
+		}
+		if (null != _publisher) {
+			sb.append(" p:" + DataUtils.printHexBytes(_publisher.id()) + "");
+		}
+		if (null != _excludeFilter) {
+			sb.append(" ex(" + _excludeFilter._values.size() + "):[");
+			String sep = "";
+			for (ExcludeElement ee : _excludeFilter._values) {
+				sb.append(sep);
+				sep = ",";
+				if (ee instanceof ExcludeComponent) {
+					ExcludeComponent ec = (ExcludeComponent) ee;
+					sb.append(ContentName.componentPrintURI(ec.body));
+				} else {
+					sb.append("B");
+				}
+			}
+			sb.append("]");
+		}
+		return sb.toString();
 	}
 }

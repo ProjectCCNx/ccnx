@@ -12,11 +12,11 @@ import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncoder;
 
 /**
- * 
- * @author rasmusse
- * Implement bloom filter operations based on Michael Plass' C side implementation
+ * Implement bloom filter operations
  */
-public class BloomFilter implements Comparable<BloomFilter> {
+public class BloomFilter extends ExcludeElement implements Comparable<BloomFilter> {
+	public static final String BLOOM = "Bloom";
+
 	private int _lgBits;
 	private int _nHash;
 	
@@ -63,6 +63,22 @@ public class BloomFilter implements Comparable<BloomFilter> {
 	 */
 	public BloomFilter() {}
 	
+	/**
+	 * Create a new BloomFilter that always matches. This is useful for creating ranges in ExcludeFilters.
+	 * @return a new BloomFilter that matches everything.
+	 */
+	public static BloomFilter matchEverything() {
+		BloomFilter b = new BloomFilter();
+		final short [] zeroSeed = { 0, 0, 0, 0 };
+		final byte [] full = { (byte)0xFF };
+		b._lgBits = 3;
+		b._nHash = 1;
+		b._seed = zeroSeed;
+		b._bloom = full;
+		b._size = 1;
+		return b;
+	}
+	
 	public void insert(byte [] key) {
 		long s = computeSeed();
 		for (int i = 0; i < key.length; i++) 
@@ -78,6 +94,13 @@ public class BloomFilter implements Comparable<BloomFilter> {
 		_size++;
 	}
 	
+	/**
+	 * Test if the bloom filter matches a particular key.
+	 * Note - a negative result means the key was definitely not set, but a positive result only means the
+	 * key was likely set.
+	 * @param key
+	 * @return
+	 */
 	public boolean match(byte [] key) {
 		int m = ((8*_bloom.length) - 1) & ((1 << _lgBits) - 1);
 		long s = computeSeed();
@@ -96,10 +119,6 @@ public class BloomFilter implements Comparable<BloomFilter> {
 		return _size;
 	}
 	
-	public byte[] bloom() {
-		return _bloom;
-	}
-	
 	public byte[] seed() {
 		byte [] outSeed = new byte[_seed.length];
 		for (int i = 0; i < _seed.length; i++)
@@ -116,7 +135,7 @@ public class BloomFilter implements Comparable<BloomFilter> {
 	}
 	
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		ByteArrayInputStream bais = new ByteArrayInputStream(decoder.readBinaryElement(ExcludeElement.BLOOM));
+		ByteArrayInputStream bais = new ByteArrayInputStream(decoder.readBinaryElement(BLOOM));
 		_lgBits = bais.read();
 		_nHash = bais.read();
 		bais.skip(2); // method & reserved - ignored for now
@@ -141,15 +160,11 @@ public class BloomFilter implements Comparable<BloomFilter> {
 		int size = 1 << (_lgBits - 3);
 		for (int i = 0; i < size; i++)
 			baos.write(_bloom[i]);
-		encoder.writeElement(ExcludeElement.BLOOM, baos.toByteArray());
+		encoder.writeElement(BLOOM, baos.toByteArray());
 	}
 
 	public int compareTo(BloomFilter o) {
-		return DataUtils.compare(bloom(), o.bloom());
-	}
-	
-	public boolean equals(BloomFilter o) {
-		return Arrays.equals(bloom(), o.bloom());
+		return DataUtils.compare(_bloom, o._bloom);
 	}
 	
 	private long computeSeed() {
@@ -164,4 +179,18 @@ public class BloomFilter implements Comparable<BloomFilter> {
 		return result;
 	}
 
+	@Override
+	public boolean validate() {
+		return true;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (obj == null)
+			return false;
+		if (!(obj instanceof BloomFilter))
+			return false;
+		BloomFilter bl = (BloomFilter) obj;
+		return Arrays.equals(_bloom, bl._bloom);
+	}
 }

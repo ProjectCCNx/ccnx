@@ -143,11 +143,13 @@ public class RFSTest extends RepoTestBase {
 		byte[][] longNonASCIIBytes = new byte[2][];
 		longNonASCIIBytes[0] = "repoTest".getBytes();
 		longNonASCIIBytes[1] = new byte[300];
-		rand.nextBytes(longNonASCIIBytes[1]);
-		//TODO: Following test breaks randomly currently (but problem needs to be fixed).
-		//ContentName lnab = new ContentName(longNonASCIIBytes);
-		//repo.saveContent(ContentObject.buildContentObject(lnab, "Long and Non ASCII".getBytes()));
-		//checkData(repo, lnab, "Long and Non ASCII");
+		
+		for (int i = 0; i < 30; i++) {
+			rand.nextBytes(longNonASCIIBytes[1]);
+			ContentName lnab = new ContentName(longNonASCIIBytes);
+			repo.saveContent(ContentObject.buildContentObject(lnab, ("Long and Non ASCII " + i).getBytes()));
+			checkData(repo, lnab, "Long and Non ASCII " + i);
+		}
 		
 		System.out.println("Repotest - Testing invalid characters in name");
 		ContentName badCharName = ContentName.fromNative("/repoTest/" + "*x?y<z>u");

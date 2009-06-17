@@ -243,9 +243,16 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	/**
 	 * DKS -- return these as final for now; stopgap till refactor that makes
 	 * internal version final.
-	 * @return
+	 * @return Name of the content object - without the digest component.
 	 */
 	public final ContentName name() { return _name; }
+
+	/**
+	 * @return Name of the content object, complete with digest.
+	 */
+	public ContentName fullName() {
+		return new ContentName(_name, contentDigest());
+	}
 
 	public final SignedInfo signedInfo() { return _signedInfo;}
 
