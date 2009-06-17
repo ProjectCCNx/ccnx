@@ -75,6 +75,10 @@ public class NodeKey {
 	}
 	
 	public NodeKey computeDescendantNodeKey(ContentName descendantNodeName, String keyLabel) throws InvalidKeyException, XMLStreamException {
+		if (nodeName().equals(descendantNodeName)) {
+			Library.logger().info("Asked to compute ourselves as our own descendant (node key " + nodeName() +"), returning this.");
+			return this;
+		}
 		if (!nodeName().isPrefixOf(descendantNodeName)) {
 			throw new IllegalArgumentException("Node " + descendantNodeName + " is not a child of this node " + nodeName());
 		}
