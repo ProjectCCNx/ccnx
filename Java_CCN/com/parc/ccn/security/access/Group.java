@@ -140,8 +140,12 @@ public class Group {
 		}
 	}
 
+	PublicKeyObject publicKeyObject() { return _groupPublicKey; }
+	
 	public PublicKey publicKey() { return _groupPublicKey.publicKey(); }
+	
 	public ContentName publicKeyName() { return _groupPublicKey.getName(); }
+	
 	public Timestamp publicKeyVersion() {
 		ContentName name = publicKeyName();
 		if (VersioningProfile.isVersioned(name)) {
