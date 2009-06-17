@@ -22,6 +22,9 @@ ccnd - CCN Daemon
 			Packet size in bytes.
 			If set, interest stuffing is allowed within this budget.
 			Single items larger than this are not precluded.
+		CCND_DATA_PAUSE_MICROSEC=
+			Average content-send delay time for udplink faces
+			Default is 2000
 
 ccndsmoketest - simple-minded program for excercising ccnd
 	options: -t millisconds - sets the timeout for recv operations

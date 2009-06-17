@@ -737,8 +737,6 @@ send_content(struct ccnd *h, struct face *face, struct content_entry *content)
     charbuf_release(h, c);
 }
 
-#define CCN_DATA_PAUSE (2000U)
-
 static int
 choose_face_delay(struct ccnd *h, struct face *face, enum cq_delay_class c)
 {
@@ -748,7 +746,7 @@ choose_face_delay(struct ccnd *h, struct face *face, enum cq_delay_class c)
     if ((face->flags & CCN_FACE_DGRAM) != 0)
         return(100 << shift); /* udp, delay just a little */
     if ((face->flags & CCN_FACE_LINK) != 0) /* udplink or such, delay more */
-        return(CCN_DATA_PAUSE << shift);
+        return((h->data_pause_microsec) << shift);
     return(10); /* local stream, answer quickly */
 }
 
@@ -2774,6 +2772,7 @@ ccnd_create(void)
     const char *entrylimit;
     const char *mtu;
     const char *fib;
+    const char *data_pause;
     int fd;
     int res;
     int whichpf;
@@ -2808,6 +2807,7 @@ ccnd_create(void)
     h->ticktock.data = h;
     h->sched = ccn_schedule_create(h, &h->ticktock);
     h->oldformatcontentgrumble = 1;
+    h->data_pause_microsec = 2000;
     fd = create_local_listener(sockname, 42);
     if (fd == -1) fatal_err(sockname);
     ccnd_msg(h, "listening on %s", sockname);
@@ -2837,6 +2837,14 @@ ccnd_create(void)
             h->mtu = 0;
         if (h->mtu > 8800)
             h->mtu = 8800;
+    }
+    data_pause = getenv("CCND_DATA_PAUSE_MICROSEC");
+    if (data_pause != NULL && data_pause[0] != 0) {
+        h->data_pause_microsec = atol(data_pause);
+        if (h->data_pause_microsec == 0)
+            h->data_pause_microsec = 1;
+        if (h->data_pause_microsec > 1000000)
+            h->data_pause_microsec = 1000000;
     }
     fib = getenv("CCND_TRYFIB"); // XXX - Temporary, for transition period
     if (fib != NULL && fib[0] != 0)
