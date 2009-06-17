@@ -85,7 +85,7 @@ public class CCNNetworkManager implements Runnable {
 		public void run() {
 			
 			long ourTime = new Date().getTime();
-			if ((ourTime - _lastHeartbeat) < HEARTBEAT_PERIOD) {
+			if ((ourTime - _lastHeartbeat) > HEARTBEAT_PERIOD) {
 				_lastHeartbeat = ourTime;
 				heartbeat();
 			}
@@ -119,8 +119,6 @@ public class CCNNetworkManager implements Runnable {
 	
 	// Send heartbeat
 	private void heartbeat() {
-		if (!timersSetup)
-			return;
 		try {
 			ByteBuffer heartbeat = ByteBuffer.allocate(1);
 			_channel.write(heartbeat);
