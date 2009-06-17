@@ -11,7 +11,7 @@ import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
 
-public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodable {
+public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodable, Comparable<LinkAuthenticator> {
 
     public static final String LINK_AUTHENTICATOR_ELEMENT = "LinkAuthenticator";
     public static final String NAME_COMPONENT_COUNT_ELEMENT = "NameComponentCount";
@@ -245,5 +245,49 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 		} else if (!_type.equals(other._type))
 			return false;
 		return true;
+	}
+
+	public int compareTo(LinkAuthenticator other) {
+		int result = 0;
+		if (this == other)
+			return 0;
+		if (other == null)
+			return -1;
+		result = DataUtils.compare(_contentDigest, other._contentDigest);
+		if (0 != result)
+			return result;
+		if (_nameComponentCount == null) {
+			if (other._nameComponentCount != null)
+				return -1;
+		} else {
+			result = _nameComponentCount.compareTo(other._nameComponentCount);
+			if (0 != result)
+				return result;
+		}
+		if (_publisher == null) {
+			if (other._publisher != null)
+				return -1;
+		} else {
+			result = _publisher.compareTo(other._publisher);
+			if (0 != result)
+				return result;
+		}
+		if (_timestamp == null) {
+			if (other._timestamp != null)
+				return -1;
+		} else {
+			result = _timestamp.compareTo(other._timestamp);
+			if (0 != result)
+				return result;
+		}
+		if (_type == null) {
+			if (other._type != null)
+				return -1;
+		} else {
+			result = _type.compareTo(other._type);
+			if (0 != result)
+				return result;
+		}
+		return 0;
 	}
 }
