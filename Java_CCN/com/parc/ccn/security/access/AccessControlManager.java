@@ -12,6 +12,8 @@ import java.util.LinkedList;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
+//Right now use javax.jcr version; in java 1.7, will be java.nio.file.AccessDeniedException.
+import javax.jcr.AccessDeniedException;
 import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.crypto.InvalidCipherTextException;
@@ -20,12 +22,14 @@ import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.security.PublicKeyObject;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.WrappedKey;
 import com.parc.ccn.data.security.WrappedKey.WrappedKeyObject;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.EnumeratedNameList;
 import com.parc.ccn.library.profiles.AccessControlProfile;
+import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.security.access.ACL.ACLObject;
 import com.parc.ccn.security.keys.KeyManager;
 
@@ -260,6 +264,30 @@ public class AccessControlManager {
 		return _namespace.isPrefixOf(content);
 	}
 
+	/**
+	 * TODO DKS shortcut slightly -- the principal we have cached might not meet the
+	 * constraints of the link.
+	 * @param principal
+	 * @return
+	 * @throws XMLStreamException 
+	 * @throws IOException 
+	 * @throws ConfigurationException 
+	 */
+	public PublicKeyObject getLatestKeyForPrincipal(LinkReference principal) throws IOException, XMLStreamException, ConfigurationException {
+		if (null == principal) {
+			Library.logger().info("Cannot retrieve key for empty principal.");
+			return null;
+		}
+		PublicKeyObject pko = null;
+		if (_groupManager.isGroup(principal)) {
+			pko = _groupManager.getLatestPublicKeyForGroup(principal);
+		} else {
+			Library.logger().info("Retrieving latest key for user: " + principal.targetName());
+			pko = new PublicKeyObject(principal.targetName(), 
+					new PublisherPublicKeyDigest(principal.targetAuthenticator().publisher()), _library);
+		}
+		return pko;
+	}
 
 	/**
 	 * Retrieves the latest version of an ACL effective at this node, either stored
@@ -355,17 +383,19 @@ public class AccessControlManager {
 	}
 	
 	/**
-	 * @throws ConfigurationException 
-	 * @throws InvalidKeyException 
 	 * Adds an ACL to a node that doesn't have one, or replaces one that exists.
 	 * Just writes, doesn't bother to look at any current ACL. Does need to pull
 	 * the effective node key at this node, though, to wrap the old ENK in a new
 	 * node key.
+	 * @throws AccessDeniedException 
+	 * @throws ConfigurationException 
+	 * @throws InvalidKeyException 
 	 * @throws IOException 
 	 * @throws XMLStreamException 
 	 * @throws  
 	 */
-	public ACL setACL(ContentName nodeName, ACL newACL) throws XMLStreamException, IOException, InvalidKeyException, ConfigurationException {
+	public ACL setACL(ContentName nodeName, ACL newACL) throws XMLStreamException, IOException, InvalidKeyException, ConfigurationException, AccessDeniedException {
+		// Throws access denied exception if we can't read the old node key.
 		NodeKey effectiveNodeKey = getEffectiveNodeKey(nodeName);
 		// generates the new node key, wraps it under the new acl, and wraps the old node key
 		generateNewNodeKey(nodeName, effectiveNodeKey, newACL);
@@ -385,11 +415,13 @@ public class AccessControlManager {
 	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
 	 * @throws ConfigurationException 
+	 * @throws AccessDeniedException 
+	 * @throws InvalidCipherTextException 
 	 */
 	public ACL updateACL(ContentName nodeName, 
 						ArrayList<LinkReference> addReaders, ArrayList<LinkReference> removeReaders,
 						ArrayList<LinkReference> addWriters, ArrayList<LinkReference> removeWriters,
-						ArrayList<LinkReference> addManagers, ArrayList<LinkReference> removeManagers) throws XMLStreamException, IOException, InvalidKeyException, ConfigurationException {
+						ArrayList<LinkReference> addManagers, ArrayList<LinkReference> removeManagers) throws XMLStreamException, IOException, InvalidKeyException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
 		
 		ACLObject currentACL = getACLObjectForNodeIfExists(nodeName);
 		ACL newACL = null;
@@ -407,7 +439,7 @@ public class AccessControlManager {
 			}
 			newACL = new ACL();
 		}
-		// TODO Now update ACL to add and remove values.
+		// Now update ACL to add and remove values.
 		// Managers are a subset of writers are a subset of readers. So if you remove someone
 		// as a reader, you remove them whether they are a reader, manager or writer.
 		// If you remove someone as a writer, you remove them whether they are a manager or a writer.
@@ -415,42 +447,78 @@ public class AccessControlManager {
 			newACL.update(addReaders, removeReaders, addWriters, removeWriters,
 								   addManagers, removeManagers);
 		
-		if (null == newReaders) {
+		if ((null == newReaders) || (null == currentACL)) {
 			// null newReaders means we revoked someone.
+			// null currentACL means we're starting from scratch
 			// Set the ACL and update the node key.
 			return setACL(nodeName, newACL);
-		} else if (currentACL != null) {
-			currentACL.save(newACL)
-		}
+		} 
 		
 		// If we get back a list of new readers, it means all we have to do
-		// is add key blocks for them, not update the node key.
+		// is add key blocks for them, not update the node key. (And it means
+		// we have a node key for this node.)
+		// Wait to save the new ACL till we are sure we're allowed to do this.
 		KeyDirectory keyDirectory = null;
 		try {
+			// If we can't read the node key, we can't update. Get the effective node key.
+			// Better be a node key here... and we'd better be allowed to read it.
+			NodeKey latestNodeKey = getLatestNodeKeyForNode(nodeName);
+			if (null == latestNodeKey) {
+				Library.logger().info("Cannot read the latest node key for " + nodeName);
+				throw new AccessDeniedException("Cannot read the latest node key for " + nodeName);
+			}
+			
+			keyDirectory = new KeyDirectory(this, latestNodeKey.storedNodeKeyName(), _library);
 
-			keyDirectory = new KeyDirectory(this, nodeKeyName, _library);
-
-		for (LinkReference principal : newReaders) {
-			// TODO
+			for (LinkReference principal : newReaders) {
+				PublicKeyObject latestKey = getLatestKeyForPrincipal(principal);
+				try {
+					if (!latestKey.ready()) {
+						latestKey.wait(DEFAULT_TIMEOUT);
+					}
+				} catch (InterruptedException ex) {
+					// do nothing
+				}
+				if (latestKey.ready()) {
+					Library.logger().info("Adding wrapped key block for reader: " + latestKey.getName());
+					try {
+						keyDirectory.addWrappedKeyBlock(latestNodeKey.nodeKey(), latestKey.getName(), latestKey.publicKey());
+					} catch (VersionMissingException e) {
+						Library.logger().warning("UNEXPECTED: latest key for prinicpal: " + latestKey.getName() + " has no version? Skipping.");
+					}
+				} else {
+					// Do we use an old key or give up?
+					Library.logger().info("No key for " + principal + " found. Skipping.");
+				}
+			}
+		} finally {
+			if (null != keyDirectory) {
+				keyDirectory.stopEnumerating();
+			}
 		}
+		// If we got here, we got the node key we were updating, so we are allowed
+		// to at least read this stuff (though maybe not write it). Save the acl.
+		currentACL.save(newACL);
+		return newACL;
 	}
 		
-	public ACL addReaders(ContentName nodeName, ArrayList<LinkReference> newReaders) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException {
+	public ACL addReaders(ContentName nodeName, ArrayList<LinkReference> newReaders) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
 		return updateACL(nodeName, newReaders, null, null, null, null, null);
 	}
 	
-	public ACL addWriters(ContentName nodeName, ArrayList<LinkReference> newWriters) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException {
+	public ACL addWriters(ContentName nodeName, ArrayList<LinkReference> newWriters) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
 		return updateACL(nodeName, null, null, newWriters, null, null, null);
 	}
 	
-	public ACL addManagers(ContentName nodeName, ArrayList<LinkReference> newManagers) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException {
+	public ACL addManagers(ContentName nodeName, ArrayList<LinkReference> newManagers) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
 		return updateACL(nodeName, null, null, null, null, newManagers, null);
 	}
 	
 	
 	/**
 	 * 
-	 * Get the ancestor node key in force at this node (if we can decrypt it).
+	 * Get the ancestor node key in force at this node (if we can decrypt it),
+	 * including a key at this node itself.
 	 * @param nodeName
 	 * @return null means while node keys exist, we can't decrypt any of them --
 	 *    we have no read access to this node (which implies no write access)
@@ -475,6 +543,7 @@ public class AccessControlManager {
 	 */
 	public NodeKey getLatestNodeKeyForNode(ContentName nodeName) throws IOException, InvalidKeyException, InvalidCipherTextException, XMLStreamException, ConfigurationException {
 		
+		// Could do this using getLatestVersion...
 		// First we need to figure out what the latest version is of the node key.
 		ContentName nodeKeyVersionedName = 
 			EnumeratedNameList.getLatestVersionName(AccessControlProfile.nodeKeyName(nodeName), _library);
@@ -549,17 +618,18 @@ public class AccessControlManager {
 	/**
 	 * Write path:
 	 * Get the effective node key in force at this node, used to derive keys to 
-	 * encrypt  content. Vertical chaining.
+	 * encrypt  content. Vertical chaining. Works if you ask for node which has
+	 * a node key.
 	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
 	 * @throws IOException 
+	 * @throws AccessDeniedException 
 	 */
-	public NodeKey getEffectiveNodeKey(ContentName nodeName) throws InvalidKeyException, XMLStreamException, IOException {
+	public NodeKey getEffectiveNodeKey(ContentName nodeName) throws InvalidKeyException, XMLStreamException, IOException, AccessDeniedException {
 		// Get the ancestor node key in force at this node.
 		NodeKey nodeKey = findAncestorWithNodeKey(nodeName);
 		if (null == nodeKey) {
-			// TODO no access
-			throw new IllegalStateException("Cannot retrieve node key for node: " + nodeName + ".");
+			throw new AccessDeniedException("Cannot retrieve node key for node: " + nodeName + ".");
 		}
 		NodeKey effectiveNodeKey = nodeKey.computeDescendantNodeKey(nodeName, nodeKeyLabel()); 
 		Library.logger().info("Computing effective node key for " + nodeName + " using stored node key " + effectiveNodeKey.storedNodeKeyName());
@@ -626,6 +696,7 @@ public class AccessControlManager {
 	 */
 	protected void generateNewNodeKey(ContentName nodeName, NodeKey oldEffectiveNodeKey, ACL effectiveACL) {
 		// TODO Auto-generated method stub
+		// DKS TODO should throw accessDeniedException
 		
 	}
 	
@@ -696,8 +767,9 @@ public class AccessControlManager {
 	 * @throws InvalidKeyException 
 	 * @throws IOException 
 	 * @throws ConfigurationException 
+	 * @throws AccessDeniedException 
 	 */
-	public void storeDataKey(ContentName dataNodeName, byte [] newRandomDataKey) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException {
+	public void storeDataKey(ContentName dataNodeName, byte [] newRandomDataKey) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException {
 		NodeKey effectiveNodeKey = getEffectiveNodeKey(dataNodeName);
 		if (null == effectiveNodeKey) {
 			throw new IllegalStateException("Cannot retrieve effective node key for node: " + dataNodeName + ".");
@@ -726,8 +798,9 @@ public class AccessControlManager {
 	 * @throws XMLStreamException 
 	 * @throws IOException 
 	 * @throws ConfigurationException 
+	 * @throws AccessDeniedException 
 	 **/
-	public byte [] generateAndStoreDataKey(ContentName dataNodeName) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException {
+	public byte [] generateAndStoreDataKey(ContentName dataNodeName) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException {
 		// Generate new random data key of appropriate length
 		byte [] dataKey = new byte[DEFAULT_DATA_KEY_LENGTH];
 		_random.nextBytes(dataKey);
