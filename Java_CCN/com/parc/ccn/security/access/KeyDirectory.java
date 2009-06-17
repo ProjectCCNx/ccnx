@@ -452,7 +452,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * Eventually aggregate signing and repo stream operations at the very
 	 * least across writing paired objects and links, preferably across larger
 	 * swaths of data.
-	 * @param privateKeyWrappingKey
+	 * @param secretKeyToWrap either a node key, a data key, or a private key wrapping key
 	 * @param publicKeyName
 	 * @param publicKey
 	 * @throws VersionMissingException
@@ -460,10 +460,11 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws IOException
 	 * @throws InvalidKeyException
 	 * @throws ConfigurationException 
+	 * @throws VersionMissingException 
 	 */
-	public void addWrappedKeyBlock(Key privateKeyWrappingKey, 
-								   ContentName publicKeyName, PublicKey publicKey) throws VersionMissingException, XMLStreamException, IOException, InvalidKeyException, ConfigurationException {
-		WrappedKey wrappedKey = WrappedKey.wrapKey(privateKeyWrappingKey, null, null, publicKey);
+	public void addWrappedKeyBlock(Key secretKeyToWrap, 
+								   ContentName publicKeyName, PublicKey publicKey) throws XMLStreamException, IOException, InvalidKeyException, ConfigurationException, VersionMissingException {
+		WrappedKey wrappedKey = WrappedKey.wrapKey(secretKeyToWrap, null, null, publicKey);
 		wrappedKey.setWrappingKeyIdentifier(publicKey);
 		wrappedKey.setWrappingKeyName(publicKeyName);
 		WrappedKeyObject wko = 
