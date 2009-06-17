@@ -412,6 +412,10 @@ public class CCNNetworkManager implements Runnable {
 				Library.logger().warning("failed to deliver interest: " + ex.toString());
 			}
 		}
+		@Override
+		public String toString() {
+			return name.toString();
+		}
 	}
 	
 	
