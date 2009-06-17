@@ -2,7 +2,9 @@ package com.parc.ccn.security.access;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedList;
+import java.util.TreeSet;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -16,6 +18,7 @@ import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.util.CCNEncodableObject;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.profiles.VersioningProfile;
 
 public class ACL extends CollectionData {
 	
@@ -24,10 +27,44 @@ public class ACL extends CollectionData {
 	public static final String LABEL_MANAGER = "rw+";
 	public static final String [] ROLE_LABELS = {LABEL_READER, LABEL_WRITER, LABEL_MANAGER};
 	
-	// maintain a set of index structures
-	protected LinkedList<LinkReference> _readers = new LinkedList<LinkReference>();
-	protected LinkedList<LinkReference> _writers = new LinkedList<LinkReference>();
-	protected LinkedList<LinkReference> _managers = new LinkedList<LinkReference>();
+	// maintain a set of index structures. want to match on unversioned link target name only,
+	// not label and potentially not signer if specified. Use a set class that can
+	// allow us to specify a comparator; use one that ignores labels and versions on names.
+	public static class SuperficialLinkComparator implements Comparator<LinkReference> {
+
+		public int compare(LinkReference o1, LinkReference o2) {
+			int result = 0;
+			if (null != o1) {
+				if (null == o2) {
+					return 1;
+				}
+			} else if (null != o2) {
+				return -1;
+			} else {
+				return 0;
+			}
+			result = VersioningProfile.versionRoot(o1.targetName()).compareTo(VersioningProfile.versionRoot(o2.targetName()));
+			if (result != 0)
+				return result;
+			if (null != o1.targetAuthenticator()) {
+				if (null != o2.targetAuthenticator()) {
+					return o1.targetAuthenticator().compareTo(o2.targetAuthenticator());
+				} else {
+					return 1;
+				}
+			} else if (null != o2.targetAuthenticator()) {
+				return -1;
+			} else {
+				return 0;
+			}
+		}
+	}
+	
+	static SuperficialLinkComparator _comparator = new SuperficialLinkComparator();
+	
+	protected TreeSet<LinkReference> _readers = new TreeSet<LinkReference>(_comparator);
+	protected TreeSet<LinkReference> _writers = new TreeSet<LinkReference>(_comparator);
+	protected TreeSet<LinkReference> _managers = new TreeSet<LinkReference>(_comparator);
 
 	public static class ACLObject extends CCNEncodableObject<ACL> {
 
@@ -125,49 +162,76 @@ public class ACL extends CollectionData {
 					   ArrayList<LinkReference> addManagersIn, ArrayList<LinkReference> removeManagersIn) {
 		
 		// Need copies we can modifiy, caller might want these back.
-		LinkedList<LinkReference> addReaders = new LinkedList<LinkReference>(addReadersIn);
-		LinkedList<LinkReference> removeReaders = new LinkedList<LinkReference>(removeReadersIn);
-		LinkedList<LinkReference> addWriters = new LinkedList<LinkReference>(addWritersIn);
-		LinkedList<LinkReference> removeWriters = new LinkedList<LinkReference>(removeWritersIn);
-		LinkedList<LinkReference> addManagers = new LinkedList<LinkReference>(addManagersIn);
-		LinkedList<LinkReference> removeManagers = new LinkedList<LinkReference>(removeManagersIn);
+		TreeSet<LinkReference> addReaders = new TreeSet<LinkReference>(_comparator);
+		addReaders.addAll(addReadersIn);
+		TreeSet<LinkReference> removeReaders = new TreeSet<LinkReference>(_comparator);
+		removeReaders.addAll(removeReadersIn);
+		TreeSet<LinkReference> addWriters = new TreeSet<LinkReference>(_comparator);
+		addWriters.addAll(addWritersIn);
+		TreeSet<LinkReference> removeWriters = new TreeSet<LinkReference>(_comparator);
+		removeWriters.addAll(removeWritersIn);
+		TreeSet<LinkReference> addManagers = new TreeSet<LinkReference>(_comparator);
+		addManagers.addAll(addManagersIn);
+		TreeSet<LinkReference> removeManagers = new TreeSet<LinkReference>(_comparator);
+		removeManagers.addAll(removeManagersIn);
 		
 		// Add then remove, so that removes override adds. Want to come up in the end with:
 		// a) do we need a new node key
 		// b) if not, who are the net new readers (requiring new node key blocks)?
 		
-		LinkedList<LinkReference> newReaders = new LinkedList<LinkReference>();
+		LinkedList<LinkReference> newReaders = new LinkedList<LinkReference>();		
 		boolean newNodeKeyRequired = false;
-		boolean potentialNewReader = false;
+
 		if (null != addManagers) {
 			for (LinkReference manager : addManagers) {
-				potentialNewReader = !_managers.contains(manager);
-				// if it's already a manager, do nothing
-				// Tricky -- if it's in the writers or readers list it will have a different label.
+				if (_managers.contains(manager)) {
+					// if it's already a manager, do nothing
+					continue;
+				}
 				// test if it's already a writer or a reader
 				// if so, it's not a new reader
 				// and remove it from those other roles
 				// and add it to manager
-				// otherwise, add to new readers list
+				if (_writers.contains(manager)) {
+					removeLabeledLink(manager, LABEL_WRITER);
+				} else if (_readers.contains(manager)) {
+					removeLabeledLink(manager, LABEL_READER);
+				} else {
+					// otherwise, add to new readers list
+					newReaders.add(manager);
+				}
+				addManager(manager);
 			}
 		}
 		if (null != addWriters) {
 			for (LinkReference writer : addWriters) {
-				potentialNewReader = !_writers.contains(writer);
 				// if it's already a writer, do nothing
-				// Tricky -- if it's in the writers or readers list it will have a different label.
+				if (_writers.contains(writer)) {
+					// if it's already a manager, do nothing
+					continue;
+				}
 				// test if it's already a manager or a reader
 				// if so, it's not a new reader
-				// if it's already a manager, check if it's on the manager to be removed list
-				// if it is, remove it as a manager and add it as a writer
-				// if not, just skip
-				// if it's already a reader, remove it as a reader
-				// otherwise, add to new readers list
+				if (_managers.contains(writer)) {
+					// if it's already a manager, check if it's on the manager to be removed list
+					// if it isn't, it's probably an error. just leave it as a manager.
+					if (!removeManagers.contains(writer)) {
+						continue;
+					}
+					// if it is, it's being downgraded to a writer. 
+					removeLabeledLink(writer, LABEL_MANAGER);
+				} else if (_readers.contains(writer)) {
+					// upgrading to a writer, remove reader entry
+					removeLabeledLink(writer, LABEL_READER);
+				} else {
+					// otherwise, add to new readers list
+					newReaders.add(writer);
+				}
+				addWriter(writer);
 			}
 		}
 		if (null != addReaders) {
 			for (LinkReference reader : addReaders) {
-				potentialNewReader = !_readers.contains(reader);
 				// if it is already a reader, do nothing
 				// Tricky -- if it's in the writers or manager list it will have a different label.
 				// test if it's already a writer or a manager
@@ -176,16 +240,44 @@ public class ACL extends CollectionData {
 				// if it is, remove it as a manager or writer and add it as a reader
 				// if not, just skip -- already better than a reader
 				// otherwise, add to new readers list
+				// if it's already a writer, do nothing
+				if (_readers.contains(reader)) {
+					// if it's already a reader, do nothing
+					continue;
+				}
+				// test if it's already a manager or a writer
+				// if so, it's not a new reader
+				if (_managers.contains(reader)) {
+					// if it's already a manager, check if it's on the manager to be removed list
+					// if it isn't, it's probably an error. just leave it as a manager.
+					if (!removeManagers.contains(reader)) {
+						continue;
+					}
+					// if it is, it's being downgraded to a reader. 
+					removeLabeledLink(reader, LABEL_MANAGER);
+				} else if (_writers.contains(reader)) {
+					// if it's already a manager, check if it's on the manager to be removed list
+					// if it isn't, it's probably an error. just leave it as a manager.
+					if (!removeWriters.contains(reader)) {
+						continue;
+					}
+					// if it is, it's being downgraded to a writer. 
+					removeLabeledLink(reader, LABEL_WRITER);
+				} else {
+					// otherwise, add to new readers list
+					newReaders.add(reader);
+				}
+				addReader(reader);
 			}
 		}
 		// We've already handled the cases of changed access, rather than revoking
-		// all read rights. Changed access (retained read access) will show up as
+		// all read rights; we've already removed those objects. 
+		// Changed access (retained read access) will show up as
 		// requests to remove with no matching data.
-		// DKS TODO deal with different labels than incoming
 		if (null != removeReaders) {
 			for (LinkReference reader : removeReaders) {
 				if (_readers.contains(reader)) {
-					remove(reader);
+					removeLabeledLink(reader, LABEL_READER);
 					newNodeKeyRequired = true;
 				}
 			}
@@ -193,7 +285,7 @@ public class ACL extends CollectionData {
 		if (null != removeWriters) {
 			for (LinkReference writer : removeWriters) {
 				if (_writers.contains(writer)) {
-					remove(writer);
+					removeLabeledLink(writer, LABEL_WRITER);
 					newNodeKeyRequired = true;
 				}
 			}
@@ -201,7 +293,7 @@ public class ACL extends CollectionData {
 		if (null != removeManagers) {
 			for (LinkReference manager : removeManagers) {
 				if (_managers.contains(manager)) {
-					remove(manager);
+					removeLabeledLink(manager, LABEL_MANAGER);
 					newNodeKeyRequired = true;
 				}
 			}
@@ -218,12 +310,6 @@ public class ACL extends CollectionData {
 		return newReaders;
 	}
 	
-	public boolean canRead(ContentName principal) {
-		// deal with potentially different labels
-		// TODO instead of has reader, want to check whether a principal can read (or w or manage which imply read)
-		return _readers.contains(link);
-	}
-	
 	protected void addLabeledLink(LinkReference link, String desiredLabel) {
 		// assume that the reference has link's name and authentication information,
 		// but possibly not the right label. Also assume that the link object might
@@ -233,6 +319,17 @@ public class ACL extends CollectionData {
 			link = new LinkReference(link.targetName(), desiredLabel, link.targetAuthenticator());
 		}
 		add(link);
+	}
+
+	protected void removeLabeledLink(LinkReference link, String desiredLabel) {
+		// assume that the reference has link's name and authentication information,
+		// but possibly not the right label. Also assume that the link object might
+		// be used in multiple places, and we can't modify it.
+		if (((null == desiredLabel) && (null != link.targetLabel()))
+			|| (!desiredLabel.equals(link.targetLabel()))) {
+			link = new LinkReference(link.targetName(), desiredLabel, link.targetAuthenticator());
+		}
+		remove(link);
 	}
 
 	@Override
@@ -296,15 +393,19 @@ public class ACL extends CollectionData {
 		}
 	}
 	
-	protected void deindex(LinkReference link) {
-		if (LABEL_READER.equals(link.targetLabel())) {
+	protected void deindex(String label, LinkReference link) {
+		if (LABEL_READER.equals(label)) {
 			_readers.remove(link);
-		} else if (LABEL_WRITER.equals(link.targetLabel())) {
+		} else if (LABEL_WRITER.equals(label)) {
 			_writers.remove(link);
-		} else if (LABEL_MANAGER.equals(link.targetLabel())) {
+		} else if (LABEL_MANAGER.equals(label)) {
 			_managers.remove(link);
 		} else {
-			Library.logger().info("Unexpected: attempt to index ACL entry with unknown label: " + link.targetLabel());
-		}		
+			Library.logger().info("Unexpected: attempt to index ACL entry with unknown label: " + label);
+		}				
+	}
+	
+	protected void deindex(LinkReference link) {
+		deindex(link.targetLabel(), link);
 	}
 }
