@@ -66,9 +66,18 @@ public class InterestTable<V> {
 		}	
 	}
 
-	protected SortedMap<LongestFirstContentName,List<Holder<V>>> _contents = new TreeMap<LongestFirstContentName,List<Holder<V>>>();
+	protected SortedMap<LongestFirstContentName,List<Holder<V>>> _contents = new TreeMap<LongestFirstContentName,List<Holder<V>>>() {
+		private static final long serialVersionUID = -2774858588706066528L;
+
+		public String toString() {
+			StringBuffer s = new StringBuffer();
+			for(LongestFirstContentName n : keySet() )
+				s.append(n.toString() + " ");
+			return s.toString();
+		}
+	};
 	protected Integer _highWater = null;	// For LRU size control - default is none
-	
+
 	protected abstract class Holder<T> implements Entry<T> {
 		protected T value;
 		public Holder(T v) {
