@@ -389,6 +389,7 @@ public class KeyDirectory extends EnumeratedNameList {
 				}
 			}
 		}
+		// DKS TODO -- throw AccessDeniedException?
 		return unwrappedKey;
 	}
 		
