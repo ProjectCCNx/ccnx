@@ -26,6 +26,7 @@ import com.parc.ccn.data.security.PublicKeyObject;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.WrappedKey;
 import com.parc.ccn.data.security.WrappedKey.WrappedKeyObject;
+import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.EnumeratedNameList;
 import com.parc.ccn.library.profiles.AccessControlProfile;
@@ -383,6 +384,7 @@ public class AccessControlManager {
 	}
 	
 	/**
+	 * @throws InvalidCipherTextException 
 	 * Adds an ACL to a node that doesn't have one, or replaces one that exists.
 	 * Just writes, doesn't bother to look at any current ACL. Does need to pull
 	 * the effective node key at this node, though, to wrap the old ENK in a new
@@ -394,7 +396,7 @@ public class AccessControlManager {
 	 * @throws XMLStreamException 
 	 * @throws  
 	 */
-	public ACL setACL(ContentName nodeName, ACL newACL) throws XMLStreamException, IOException, InvalidKeyException, ConfigurationException, AccessDeniedException {
+	public ACL setACL(ContentName nodeName, ACL newACL) throws XMLStreamException, IOException, InvalidKeyException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
 		// Throws access denied exception if we can't read the old node key.
 		NodeKey effectiveNodeKey = getEffectiveNodeKey(nodeName);
 		// generates the new node key, wraps it under the new acl, and wraps the old node key
@@ -404,6 +406,11 @@ public class AccessControlManager {
 		// DKS FIX REPO WRITE
 		aclo.save();
 		return aclo.acl();
+	}
+	
+	public void deleteACL(ContentName nodeName) {
+		// TODO DKS -- delete the ACL at this node if one exists, returning control to the
+		// next ACL upstream.
 	}
 	
 	/**
@@ -518,17 +525,28 @@ public class AccessControlManager {
 	/**
 	 * 
 	 * Get the ancestor node key in force at this node (if we can decrypt it),
-	 * including a key at this node itself.
+	 * including a key at this node itself. We use the fact that ACLs and
+	 * node keys are co-located; if you have one, you have the other.
 	 * @param nodeName
 	 * @return null means while node keys exist, we can't decrypt any of them --
 	 *    we have no read access to this node (which implies no write access)
 	 * @throws IOException if something is wrong (e.g. no node keys at all)
+	 * @throws ConfigurationException 
+	 * @throws XMLStreamException 
+	 * @throws InvalidCipherTextException 
+	 * @throws InvalidKeyException 
+	 * @throws AccessDeniedException 
 	 */
-	protected NodeKey findAncestorWithNodeKey(ContentName nodeName) throws IOException {
-		// TODO Auto-generated method stub
+	protected NodeKey findAncestorWithNodeKey(ContentName nodeName) throws IOException, XMLStreamException, ConfigurationException, InvalidKeyException, InvalidCipherTextException, AccessDeniedException {
 		// climb up looking for node keys, then make sure that one isn't GONE
 		// if it isn't, call read-side routine to figure out how to decrypt it
-		return null;
+		ACLObject effectiveACL = findAncestorWithACL(nodeName);
+		if (null == effectiveACL) {
+			Library.logger().warning("Unexpected: could not find effective ACL for node: " + nodeName);
+			throw new IOException("Unexpected: could not find effective ACL for node: " + nodeName);
+		}
+		Library.logger().info("Got ACL named: " + effectiveACL.getName() + " attempting to retrieve node key from " + AccessControlProfile.accessRoot(effectiveACL.getName()));
+		return getLatestNodeKeyForNode(AccessControlProfile.accessRoot(effectiveACL.getName()));
 	}
 	
 	/**
@@ -540,8 +558,9 @@ public class AccessControlManager {
 	 * @throws InvalidCipherTextException
 	 * @throws XMLStreamException
 	 * @throws ConfigurationException 
+	 * @throws AccessDeniedException 
 	 */
-	public NodeKey getLatestNodeKeyForNode(ContentName nodeName) throws IOException, InvalidKeyException, InvalidCipherTextException, XMLStreamException, ConfigurationException {
+	public NodeKey getLatestNodeKeyForNode(ContentName nodeName) throws IOException, InvalidKeyException, InvalidCipherTextException, XMLStreamException, ConfigurationException, AccessDeniedException {
 		
 		// Could do this using getLatestVersion...
 		// First we need to figure out what the latest version is of the node key.
@@ -566,8 +585,9 @@ public class AccessControlManager {
 	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
 	 * @throws ConfigurationException 
+	 * @throws AccessDeniedException 
 	 */
-	public NodeKey getSpecificNodeKey(ContentName nodeKeyName, byte [] nodeKeyIdentifier) throws InvalidKeyException, InvalidCipherTextException, XMLStreamException, IOException, ConfigurationException {
+	public NodeKey getSpecificNodeKey(ContentName nodeKeyName, byte [] nodeKeyIdentifier) throws InvalidKeyException, InvalidCipherTextException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException {
 		
 		if ((null == nodeKeyName) && (null == nodeKeyIdentifier)) {
 			throw new IllegalArgumentException("Node key name and identifier cannot both be null!");
@@ -594,8 +614,9 @@ public class AccessControlManager {
 	 * @throws InvalidKeyException 
 	 * @throws InvalidCipherTextException 
 	 * @throws ConfigurationException 
+	 * @throws AccessDeniedException 
 	 */
-	NodeKey getNodeKeyByVersionedName(ContentName nodeKeyName, byte [] nodeKeyIdentifier) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException, ConfigurationException {
+	NodeKey getNodeKeyByVersionedName(ContentName nodeKeyName, byte [] nodeKeyIdentifier) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException, ConfigurationException, AccessDeniedException {
 
 		NodeKey nk = null;
 		KeyDirectory keyDirectory = null;
@@ -606,6 +627,8 @@ public class AccessControlManager {
 			Key unwrappedKey = keyDirectory.getUnwrappedKey(nodeKeyIdentifier);
 			if (null != unwrappedKey) {
 				nk = new NodeKey(nodeKeyName, unwrappedKey);
+			} else {
+				throw new AccessDeniedException("Access denied: cannot retrieve key " + DataUtils.printBytes(nodeKeyIdentifier) + " at name " + nodeKeyName);
 			}
 		} finally {
 			if (null != keyDirectory) {
@@ -624,8 +647,10 @@ public class AccessControlManager {
 	 * @throws InvalidKeyException 
 	 * @throws IOException 
 	 * @throws AccessDeniedException 
+	 * @throws ConfigurationException 
+	 * @throws InvalidCipherTextException 
 	 */
-	public NodeKey getEffectiveNodeKey(ContentName nodeName) throws InvalidKeyException, XMLStreamException, IOException, AccessDeniedException {
+	public NodeKey getEffectiveNodeKey(ContentName nodeName) throws InvalidKeyException, XMLStreamException, IOException, AccessDeniedException, InvalidCipherTextException, ConfigurationException {
 		// Get the ancestor node key in force at this node.
 		NodeKey nodeKey = findAncestorWithNodeKey(nodeName);
 		if (null == nodeKey) {
@@ -667,9 +692,10 @@ public class AccessControlManager {
 	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
 	 * @throws ConfigurationException 
+	 * @throws AccessDeniedException 
 	 */
 	protected NodeKey getNodeKeyUsingInterposedACL(ContentName dataNodeName,
-			ContentName wrappingKeyName, byte[] wrappingKeyIdentifier) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException, ConfigurationException {
+			ContentName wrappingKeyName, byte[] wrappingKeyIdentifier) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException, ConfigurationException, AccessDeniedException {
 		ACLObject nearestACL = findAncestorWithACL(dataNodeName);
 		
 		if (null == nearestACL) {
@@ -700,12 +726,17 @@ public class AccessControlManager {
 		
 	}
 	
-	public NodeKey getNodeKeyForObject(ContentName nodeName, WrappedKeyObject wko) throws InvalidKeyException, XMLStreamException, InvalidCipherTextException, IOException, ConfigurationException {
+	public NodeKey getNodeKeyForObject(ContentName nodeName, WrappedKeyObject wko) throws InvalidKeyException, XMLStreamException, InvalidCipherTextException, IOException, ConfigurationException, AccessDeniedException {
 		
 		// First, we go and look for the node key where the data key suggests
 		// it should be, and attempt to decrypt it from there.
-		NodeKey nk = getSpecificNodeKey(wko.wrappedKey().wrappingKeyName(), 
+		NodeKey nk = null;
+		try {
+			nk = getSpecificNodeKey(wko.wrappedKey().wrappingKeyName(), 
 										wko.wrappedKey().wrappingKeyIdentifier());
+		} catch (AccessDeniedException ex) {
+			// ignore
+		}
 		if (null == nk) {
 			// OK, we will have gotten an exception if the node key simply didn't exist
 			// there, so this means that we don't have rights to read it there.
@@ -738,8 +769,9 @@ public class AccessControlManager {
 	 * @throws InvalidKeyException 
 	 * @throws InvalidCipherTextException 
 	 * @throws ConfigurationException 
+	 * @throws AccessDeniedException 
 	 */
-	public byte [] getDataKey(ContentName dataNodeName) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException, ConfigurationException {
+	public byte [] getDataKey(ContentName dataNodeName) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException, ConfigurationException, AccessDeniedException {
 		WrappedKeyObject wdko = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataNodeName), _library);
 		wdko.update();
 		if (null == wdko.wrappedKey()) {
@@ -768,8 +800,9 @@ public class AccessControlManager {
 	 * @throws IOException 
 	 * @throws ConfigurationException 
 	 * @throws AccessDeniedException 
+	 * @throws InvalidCipherTextException 
 	 */
-	public void storeDataKey(ContentName dataNodeName, byte [] newRandomDataKey) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException {
+	public void storeDataKey(ContentName dataNodeName, byte [] newRandomDataKey) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
 		NodeKey effectiveNodeKey = getEffectiveNodeKey(dataNodeName);
 		if (null == effectiveNodeKey) {
 			throw new IllegalStateException("Cannot retrieve effective node key for node: " + dataNodeName + ".");
@@ -799,8 +832,9 @@ public class AccessControlManager {
 	 * @throws IOException 
 	 * @throws ConfigurationException 
 	 * @throws AccessDeniedException 
+	 * @throws InvalidCipherTextException 
 	 **/
-	public byte [] generateAndStoreDataKey(ContentName dataNodeName) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException {
+	public byte [] generateAndStoreDataKey(ContentName dataNodeName) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
 		// Generate new random data key of appropriate length
 		byte [] dataKey = new byte[DEFAULT_DATA_KEY_LENGTH];
 		_random.nextBytes(dataKey);
