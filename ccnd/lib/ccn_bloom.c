@@ -8,6 +8,13 @@ struct ccn_bloom {
     struct ccn_bloom_wire *wire;
 };
 
+/**
+ * Create an empty Bloom filter constructor
+ * @param estimated_members is an estimate of the number of elements that
+ *        will be inserted into the filter
+ * @param seed is used to seed the hash functions
+ * @returns a new, empty Bloom filter constructor
+ */
 struct ccn_bloom *
 ccn_bloom_create(int estimated_members, const unsigned char seed[4])
 {
