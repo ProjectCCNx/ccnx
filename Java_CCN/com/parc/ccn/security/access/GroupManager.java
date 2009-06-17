@@ -55,6 +55,10 @@ public class GroupManager {
 	}
 	
 	public Group getGroup(String groupFriendlyName) throws IOException, ConfigurationException, XMLStreamException {
+		if ((null == groupFriendlyName) || (groupFriendlyName.length() == 0)) {
+			Library.logger().info("Asked to retrieve group with empty name.");
+			return null;
+		}
 		Group theGroup = _groupCache.get(groupFriendlyName);
 		if ((null == theGroup) && (groupList().hasChild(groupFriendlyName))) {
 			// Only go hunting for it if we think it exists, otherwise we'll block.
@@ -70,6 +74,17 @@ public class GroupManager {
 		// either we've got it, or we don't believe it exists.
 		// DKS startup transients? do we need to block for group list?
 		return theGroup;
+	}
+	
+	public Group getGroup(LinkReference theGroup) throws IOException, ConfigurationException, XMLStreamException {
+		if (null == theGroup) {
+			Library.logger().info("Asked to retrieve group with empty link.");
+			return null;
+		}
+		if (!isGroup(theGroup))
+			return null;
+		String friendlyName = AccessControlProfile.groupNameToFriendlyName(theGroup.targetName());
+		return getGroup(friendlyName);
 	}
 	
 	public void cacheGroup(Group newGroup) {
@@ -278,6 +293,13 @@ public class GroupManager {
 			}
 		}
 		return privateKey;
+	}
+
+	public PublicKeyObject getLatestPublicKeyForGroup(LinkReference principal) throws IOException, ConfigurationException, XMLStreamException {
+		Group theGroup = getGroup(principal);
+		if (null == theGroup) 
+			return null;
+		return theGroup.publicKeyObject();
 	}
 
 }
