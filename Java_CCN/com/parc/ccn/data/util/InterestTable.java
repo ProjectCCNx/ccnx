@@ -149,29 +149,29 @@ public class InterestTable<V> {
 	
 	/**
 	 * Since interests can be reexpressed we could end up with duplicate
-	 * interests in the table. We try to avoid that. An LRU algorithm is
-	 * also optionally implemented to keep the table from growing without
+	 * interests in the table. To avoid that an LRU algorithm is
+	 * optionally implemented to keep the table from growing without
 	 * bounds.
 	 * 
 	 * @param holder
 	 */
 	protected void add(Holder<V> holder) {
 		if (_contents.containsKey(new ITContentName(holder.name()))) {
-			_contents.get(new ITContentName(holder.name())).add(holder);
-			List<Holder<V>> list = _contents.get(new ITContentName(holder.name()));
-			if (null != holder.interest()) {
-				for (Holder<V> holdit : list) {
-					if (null != holdit.interest() && holdit.interest().equals(holder.interest()))
-						return;
-				}
-			}
+			ITContentName name = new ITContentName(holder.name());
+			List<Holder<V>> list = _contents.get(name);
 			list.add(holder);
+			if (null != _highWater) {
+				_contents.remove(name);
+				_contents.put(name, list);		// Put us last to avoid LRU removal
+			}
 		} else {
 			ArrayList<Holder<V>> list = new ArrayList<Holder<V>>(1);
 			list.add(holder);
 			
 			// We assume that the "oldest" entry is the first one.
 			// In cases we know about currently this should be true
+			// XXX - should we care about whether the key has multiple
+			// interests attached?
 			if (null != _highWater && _contents.size() >= _highWater)
 				_contents.remove(_contents.firstKey());
 			_contents.put(new ITContentName(holder.name()), list);
@@ -576,6 +576,7 @@ public class InterestTable<V> {
 	 * Get the number of distinct entries in the table.  Note that duplicate entries
 	 * are fully supported, so the number of entries may be much larger than the 
 	 * number of ContentNames (sizeNames()).
+	 * 
 	 * @return
 	 */
 	public int size() {

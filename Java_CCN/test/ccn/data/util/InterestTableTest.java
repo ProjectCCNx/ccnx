@@ -714,5 +714,26 @@ public class InterestTableTest {
 		removeByMatch = false;
 		runRemovesNextOrLast(InterestType.Last);
 	}
+	
+	@Test
+	public void testLRU() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
+		InterestTable<Integer> table = new InterestTable<Integer>();
+		table.setHighWater(6);
+		addEntry(table, a, new Integer(1));
+		addEntry(table, ab, new Integer(2));
+		addEntry(table, c, new Integer(3));
+		addEntry(table, b, new Integer(4));
+		addEntry(table, a_bb, new Integer(5));
+		addEntry(table, _aa, new Integer(6));
+		addEntry(table, ab, new Integer(45));
+		addEntry(table, abc, new Integer(7));
+		addEntry(table, zero, new Integer(8));
+		addEntry(table, onethree, new Integer(9));
+		addEntry(table, one, new Integer(10));
+		
+		match(table, abc, 7);
+		matches(table, ab, new String[] {ab, ab}, new int[] {45, 2});
+		noMatch(table, a);
+	}
 
 }
