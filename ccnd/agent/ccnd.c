@@ -1674,6 +1674,7 @@ adjust_outbound_for_existing_interests(struct ccnd *h, struct face *face,
     int max_redundant = 3; /* Allow this many dups from same face */
     int i;
     int n;
+    struct face *otherface;
     if (head != NULL && outbound != NULL) {
         for (p = head->next; p != head; p = p->next) {
             if (p->size > minsize &&
@@ -1706,9 +1707,18 @@ adjust_outbound_for_existing_interests(struct ccnd *h, struct face *face,
                  * could miss an answer from that direction. Note that
                  * interests from two other faces could conspire to cover
                  * this one completely.
+                 * This assumes a unicast link.  If there are multiple
+                 * parties on this face (broadcast or multicast), we
+                 * do not want to send, because it is highly likely that
+                 * we've seen an interest that one of the other parties
+                 * is going to answer, and we'll see the answer, too.
                  */
                 n = outbound->n;
                 outbound->n = 0;
+                otherface = face_from_faceid(h, p->faceid);
+                // XXX - should have a specific flag for this, for now CCN_FACE_LINK will have to do.
+                if (otherface == NULL || (otherface->flags & CCN_FACE_LINK) != 0)
+                    return(1);
                 for (i = 0; i < n; i++) {
                     if (p->faceid == outbound->buf[i]) {
                         outbound->buf[0] = p->faceid;
