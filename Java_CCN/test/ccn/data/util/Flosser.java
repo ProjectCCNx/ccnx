@@ -39,11 +39,10 @@ public class Flosser implements CCNInterestListener {
 	Map<ContentName, Interest> _interests = new HashMap<ContentName, Interest>();
 	
 	public Flosser() throws ConfigurationException, IOException {
-		this(ContentName.ROOT);
+		_library = CCNLibrary.open();
 	}
 	
 	public Flosser(ContentName namespace) throws ConfigurationException, IOException {
-		_library = CCNLibrary.open();
 		handleNamespace(namespace);
 	}
 	
