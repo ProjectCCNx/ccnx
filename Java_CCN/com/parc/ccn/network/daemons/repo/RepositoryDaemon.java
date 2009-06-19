@@ -74,11 +74,11 @@ public class RepositoryDaemon extends Daemon {
 
 		public void run() {
 			long currentTime = new Date().getTime();
-			if (_currentListeners.size() > 0) {
-				Iterator<RepositoryDataListener> iterator = _currentListeners.iterator();
-				while (iterator.hasNext()) {
-					RepositoryDataListener listener = iterator.next();
-					synchronized (listener) {
+			synchronized (_currentListeners) {
+				if (_currentListeners.size() > 0) {
+					Iterator<RepositoryDataListener> iterator = _currentListeners.iterator();
+					while (iterator.hasNext()) {
+						RepositoryDataListener listener = iterator.next();
 						if ((currentTime - listener.getTimer()) > (PERIOD * 2)) {
 							synchronized(_repoFilters) {
 								listener.cancelInterests();
@@ -87,9 +87,7 @@ public class RepositoryDaemon extends Daemon {
 						}
 					}
 				}
-			}
 			
-			synchronized (_currentListeners) {
 				if (_currentListeners.size() == 0 && _pendingNameSpaceChange) {
 					try {
 						resetNameSpace();
