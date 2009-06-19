@@ -96,7 +96,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 
 	protected CCNOutputStream(ContentName name, 
 			KeyLocator locator, PublisherPublicKeyDigest publisher, ContentType type,
-			CCNSegmenter segmenter) throws XMLStreamException, IOException {
+			CCNSegmenter segmenter) throws IOException {
 
 		super(locator, publisher, segmenter);
 
