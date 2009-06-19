@@ -55,29 +55,36 @@ public class CCNWriter {
 	 */
 	public ContentName put(ContentName name, byte[] contents, 
 							PublisherPublicKeyDigest publisher) throws SignatureException, IOException {
-		return put(name, contents, null, publisher);
+		return put(name, contents, null, publisher, null);
 	}
 	
 	public ContentName put(String name, String contents) throws SignatureException, MalformedContentNameStringException, IOException {
-		return put(ContentName.fromURI(name), contents.getBytes());
+		return put(ContentName.fromURI(name), contents.getBytes(), null, null, null);
 	}
 	
 	public ContentName put(ContentName name, byte[] contents) 
 				throws SignatureException, IOException {
-		return put(name, contents, null);
+		return put(name, contents, null, null, null);
 	}
 
 	public ContentName put(CCNFlowControl cf, ContentName name, byte[] contents, 
 							PublisherPublicKeyDigest publisher) throws SignatureException, IOException {
-		return put(name, contents, null, publisher);
+		return put(name, contents, null, publisher, null);
 	}
 
 	public ContentName put(ContentName name, byte[] contents, 
 							SignedInfo.ContentType type,
 							PublisherPublicKeyDigest publisher) throws SignatureException, IOException {
+		return put(name, contents, null, publisher, null);
+	}
+	
+	public ContentName put(ContentName name, byte[] contents, 
+			SignedInfo.ContentType type,
+			PublisherPublicKeyDigest publisher,
+			Integer freshnessSeconds) throws SignatureException, IOException {
 		try {
 			_segmenter.put(name, contents, 0, ((null == contents) ? 0 : contents.length),
-								  true, type, null, null, publisher);
+								  true, type, freshnessSeconds, null, publisher);
 			return name;
 		} catch (InvalidKeyException e) {
 			Library.logger().info("InvalidKeyException using key for publisher " + publisher + ".");

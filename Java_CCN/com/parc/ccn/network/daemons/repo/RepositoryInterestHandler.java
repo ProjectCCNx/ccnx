@@ -81,7 +81,8 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 				count = null;
 			Interest readInterest = Interest.constructInterest(listeningName, _daemon.getExcludes(), null, count);
 			RepositoryDataListener listener = _daemon.addListener(interest, readInterest);
-			_daemon.getWriter().put(interest.name(), _daemon.getRepository().getRepoInfo(null));
+			_daemon.getWriter().put(interest.name(), _daemon.getRepository().getRepoInfo(null), null, null,
+					_daemon.getFreshness());
 			_library.expressInterest(readInterest, listener);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
