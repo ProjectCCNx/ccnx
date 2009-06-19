@@ -30,6 +30,7 @@ import com.parc.ccn.data.security.PublisherID.PublisherType;
 import com.parc.ccn.data.util.NullOutputStream;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
+import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.security.crypto.DigestHelper;
 
 /**
@@ -67,6 +68,8 @@ public class CCNEncodableObjectTest {
 	
 	static Level oldLevel;
 	
+	static Flosser flosser;
+
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
 		Library.logger().setLevel(oldLevel);
@@ -77,7 +80,8 @@ public class CCNEncodableObjectTest {
 		System.out.println("Making stuff.");
 		oldLevel = Library.logger().getLevel();
 	//	Library.logger().setLevel(Level.FINEST);
-		
+		flosser = new Flosser();
+
 		library = CCNLibrary.open();
 		namespace = ContentName.fromURI(new String[]{baseName, subName, document1});
 		ns = new ContentName[NUM_LINKS];
@@ -119,6 +123,12 @@ public class CCNEncodableObjectTest {
 		}
 	}
 
+	protected void flossAndSave(CCNEncodableCollectionData e, ContentName name) throws IOException, XMLStreamException {
+		ContentName vn = VersioningProfile.versionName(name);
+		flosser.handleNamespace(vn);
+		e.save(vn);
+	}
+
 	@Test
 	public void testSaveUpdate() {
 		boolean caught = false;
@@ -138,7 +148,6 @@ public class CCNEncodableObjectTest {
 		}
 		Assert.assertTrue("Failed to produce expected exception.", caught);
 		
-		Flosser flosser = null;
 		boolean done = false;
 		try {
 			CCNEncodableCollectionData ecd0 = new CCNEncodableCollectionData(namespace, empty, library);
@@ -147,13 +156,10 @@ public class CCNEncodableObjectTest {
 			CCNEncodableCollectionData ecd3 = new CCNEncodableCollectionData(namespace, big, library);
 			CCNEncodableCollectionData ecd4 = new CCNEncodableCollectionData(namespace, empty, library);
 
-			flosser = new Flosser(namespace);
-			flosser.logNamespaces();
-			
-			ecd0.save(ns[2]);
+			flossAndSave(ecd0, ns[2]);
 			System.out.println("Version for empty collection: " + ecd0.getVersion());
-			ecd1.save(ns[1]);
-			ecd2.save(ns[1]); 
+			flossAndSave(ecd1, ns[1]);
+			flossAndSave(ecd2, ns[1]);
 			System.out.println("ecd1 name: " + ecd1.getName());
 			System.out.println("ecd2 name: " + ecd2.getName());
 			System.out.println("Versions for matching collection content: " + ecd1.getVersion() + " " + ecd2.getVersion());
@@ -204,7 +210,7 @@ public class CCNEncodableObjectTest {
 			Assert.assertEquals(ecd0, ecd2);
 			System.out.println("Update really works!");
 
-			ecd3.save(ns[2]);
+			flossAndSave(ecd3, ns[2]);
 			ecd0.update();
 			ecd4.update(ns[2]);
 			System.out.println("ns[2]: " + ns[2]);
@@ -229,7 +235,7 @@ public class CCNEncodableObjectTest {
 		} finally {
 			try {
 				if (!done) { // if we have an error, stick around long enough to debug
-					Thread.sleep(100000);
+					Thread.sleep(5000);
 					System.out.println("Done sleeping, finishing.");
 				}
 				flosser.stop();
