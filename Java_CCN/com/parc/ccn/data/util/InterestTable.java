@@ -74,7 +74,7 @@ public class InterestTable<V> {
 	}
 
 	protected SortedMap<ITContentName,List<Holder<V>>> _contents = new TreeMap<ITContentName,List<Holder<V>>>();
-
+	protected Integer _highWater = null;	// For LRU size control - default is none
 	
 	protected abstract class Holder<T> implements Entry<T> {
 		protected T value;
@@ -112,6 +112,20 @@ public class InterestTable<V> {
 		}
 	}
 	
+	/**
+	 * Set high water mark for LRU size control. Defaults to
+	 * no size control
+	 * 
+	 * @param highWater
+	 */
+	public void setHighWater(int highWater) {
+		_highWater = highWater;
+	}
+	
+	public Integer getHighWater() {
+		return _highWater;
+	}
+	
 	public void add(Interest interest, V value) {
 		if (null == interest) {
 			throw new NullPointerException("InterestTable may not contain null Interest");
@@ -133,14 +147,35 @@ public class InterestTable<V> {
 		add(holder);
 	}
 	
+	/**
+	 * Since interests can be reexpressed we could end up with duplicate
+	 * interests in the table. To avoid that an LRU algorithm is
+	 * optionally implemented to keep the table from growing without
+	 * bounds.
+	 * 
+	 * @param holder
+	 */
 	protected void add(Holder<V> holder) {
 		if (_contents.containsKey(new ITContentName(holder.name()))) {
-			_contents.get(new ITContentName(holder.name())).add(holder);
+			ITContentName name = new ITContentName(holder.name());
+			List<Holder<V>> list = _contents.get(name);
+			list.add(holder);
+			if (null != _highWater) {
+				_contents.remove(name);
+				_contents.put(name, list);		// Put us last to avoid LRU removal
+			}
 		} else {
 			ArrayList<Holder<V>> list = new ArrayList<Holder<V>>(1);
 			list.add(holder);
+			
+			// We assume that the "oldest" entry is the first one.
+			// In cases we know about currently this should be true
+			// XXX - should we care about whether the key has multiple
+			// interests attached?
+			if (null != _highWater && _contents.size() >= _highWater)
+				_contents.remove(_contents.firstKey());
 			_contents.put(new ITContentName(holder.name()), list);
-		}	
+		}
 	}
 	
 	protected Holder<V> getMatchByName(ContentName name, ContentObject target) {
@@ -541,6 +576,7 @@ public class InterestTable<V> {
 	 * Get the number of distinct entries in the table.  Note that duplicate entries
 	 * are fully supported, so the number of entries may be much larger than the 
 	 * number of ContentNames (sizeNames()).
+	 * 
 	 * @return
 	 */
 	public int size() {
