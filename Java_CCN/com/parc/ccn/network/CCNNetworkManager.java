@@ -485,6 +485,7 @@ public class CCNNetworkManager implements Runnable {
 		_selector.wakeup();
 		try {
 			setTap(null);
+			_channel.close();
 		} catch (IOException io) {
 			// Ignore since we're shutting down
 		}
