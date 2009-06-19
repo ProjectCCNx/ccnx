@@ -102,7 +102,18 @@ public class NetworkTest {
 		sema.tryAcquire(4000, TimeUnit.MILLISECONDS);
 		Assert.assertTrue(gotData);
 	}
-
+	
+	@Test
+	public void testFreshnessSeconds() throws Exception {
+		CCNWriter writer = new CCNWriter("/networkTest", putLibrary);
+		writer.put("/networkTest/freshnessTest", "freshnessTest", 3);
+		Thread.sleep(80);
+		ContentObject co = getLibrary.get(ContentName.fromNative("/networkTest/freshnessTest"), 1000);
+		Assert.assertFalse(co == null);
+		Thread.sleep(4000);
+		co = getLibrary.get(ContentName.fromNative("/networkTest/freshnessTest"), 1000);
+		Assert.assertTrue(co == null);
+	}
 
 	@Test
 	public void testInterestReexpression() throws Exception {

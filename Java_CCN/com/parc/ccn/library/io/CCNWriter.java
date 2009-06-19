@@ -62,6 +62,10 @@ public class CCNWriter {
 		return put(ContentName.fromURI(name), contents.getBytes(), null, null, null);
 	}
 	
+	public ContentName put(String name, String contents, Integer freshnessSeconds) throws SignatureException, MalformedContentNameStringException, IOException {
+		return put(ContentName.fromURI(name), contents.getBytes(), null, null, freshnessSeconds);
+	}
+	
 	public ContentName put(ContentName name, byte[] contents) 
 				throws SignatureException, IOException {
 		return put(name, contents, null, null, null);
