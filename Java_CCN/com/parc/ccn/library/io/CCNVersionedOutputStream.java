@@ -18,18 +18,18 @@ public class CCNVersionedOutputStream extends CCNOutputStream {
 
 	public CCNVersionedOutputStream(ContentName name, KeyLocator locator,
 			PublisherPublicKeyDigest publisher, CCNLibrary library)
-			throws XMLStreamException, IOException {
+			throws IOException {
 		this(name, locator, publisher, null, new CCNSegmenter(new CCNFlowControl(name, library)));
 	}
 
 	public CCNVersionedOutputStream(ContentName name, KeyLocator locator,
 			PublisherPublicKeyDigest publisher, ContentKeys keys, CCNLibrary library)
-			throws XMLStreamException, IOException {
+			throws IOException {
 		this(name, locator, publisher, null, new CCNSegmenter(new CCNFlowControl(name, library), null, keys));
 	}
 
 	public CCNVersionedOutputStream(ContentName name, CCNLibrary library)
-			throws XMLStreamException, IOException {
+			throws IOException {
 		this(name, null, null, library);
 	}
 
@@ -45,14 +45,14 @@ public class CCNVersionedOutputStream extends CCNOutputStream {
 	 */
 	public CCNVersionedOutputStream(ContentName name, KeyLocator locator,
 			PublisherPublicKeyDigest publisher, ContentType type, CCNSegmenter segmenter)
-			throws XMLStreamException, IOException {
+			throws IOException {
 		super((VersioningProfile.isVersioned(name) ? name : VersioningProfile.versionName(name)), 
 				locator, publisher, type, segmenter);
 	}
 
 	public CCNVersionedOutputStream(ContentName name, KeyLocator locator,
 			PublisherPublicKeyDigest publisher, CCNFlowControl flowControl)
-			throws XMLStreamException, IOException {
+			throws IOException {
 		this(name, locator, publisher, null, new CCNSegmenter(flowControl));
 	}
 }

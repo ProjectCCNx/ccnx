@@ -39,11 +39,10 @@ public class Flosser implements CCNInterestListener {
 	Map<ContentName, Interest> _interests = new HashMap<ContentName, Interest>();
 	
 	public Flosser() throws ConfigurationException, IOException {
-		this(ContentName.ROOT);
+		_library = CCNLibrary.open();
 	}
 	
 	public Flosser(ContentName namespace) throws ConfigurationException, IOException {
-		_library = CCNLibrary.open();
 		handleNamespace(namespace);
 	}
 	
@@ -77,16 +76,16 @@ public class Flosser implements CCNInterestListener {
             // separate interest to explore its children.
 			// first, remove the interest from our list as we aren't going to
 			// reexpress it in exactly the same way
-			for (Entry<ContentName, Interest> entry : _interests.entrySet()) {
-				if (entry.getValue().equals(interest)) {
-					synchronized(_interests) {
+			synchronized(_interests) {
+				for (Entry<ContentName, Interest> entry : _interests.entrySet()) {
+					if (entry.getValue().equals(interest)) {
 						interestName = entry.getKey();
 						_interests.remove(interestName);
+						break;
 					}
-					break;
 				}
 			}
-			
+
             int prefixCount = (null != interest.nameComponentCount()) ? interest.nameComponentCount() :
                 interest.name().count();
             // DKS TODO should the count above be count()-1 and this just prefixCount?
@@ -140,7 +139,9 @@ public class Flosser implements CCNInterestListener {
             }
 		}
 		if (null != interest)
-			_interests.put(interest.name(), interest);
+			synchronized(_interests) {
+				_interests.put(interest.name(), interest);
+			}
 		return interest;
 	}
 	
@@ -160,7 +161,11 @@ public class Flosser implements CCNInterestListener {
 			Library.logger().info("Flosser: monitoring namespace: " + name);
 		}
 	}
-	public Set<ContentName> getNamespaces() { return _interests.keySet(); }
+	public Set<ContentName> getNamespaces() {
+		synchronized (_interests) {
+			return _interests.keySet();
+		}
+	}
 
 	/**
 	 * Override in subclasses that want to do something more interesting than log.
