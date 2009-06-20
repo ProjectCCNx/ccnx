@@ -142,7 +142,7 @@ public class WrappedKeyTest {
 			// ditto for el gamal
 			wksp = WrappedKey.wrapKey(wrappedAESKey, null, aLabel, wrappingEGKeyPair.getPublic());
 			unwrappedKey = wksp.unwrapKey(wrappingEGKeyPair.getPrivate());
-			Assert.assertArrayEquals(wrappedAESKey.getEncoded(), unwrappedKey.getEncoded());
+			Assert.assertEquals(new BigInteger(1, wrappedAESKey.getEncoded()), new BigInteger(1, unwrappedKey.getEncoded()));
 			wkpp = WrappedKey.wrapKey(wrappingEGKeyPair.getPrivate(), null, aLabel, wrappingKeyPair.getPublic());
 			unwrappedKey = wkpp.unwrapKey(wrappingKeyPair.getPrivate());
 			Assert.assertArrayEquals(wrappingEGKeyPair.getPrivate().getEncoded(), unwrappedKey.getEncoded());
