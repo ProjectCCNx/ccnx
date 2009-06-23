@@ -10,6 +10,7 @@
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/uri.h>
+#include <ccn/ccn_private.h>
 
 #define FF 0xff
 
@@ -94,12 +95,17 @@ resolve_templ(struct ccn_charbuf *templ, unsigned const char *vcomp, int size)
     return(templ);
 }
 
-/*
- * name is a ccnb-encoded Name prefix. It gets extended with the highest extant
- * version that can be found without exceeding the specified timeout between
- * fetches.
- * The ccn handle h may be NULL if desired.
- * Returns -1 for error, 0 if name could not be extended, 1 if it could be.
+/**
+ * Resolve the highest version
+ * @param h is the the ccn handle; it may be NULL, but it is preferable to
+ *        use the handle that the client probably already has.
+ * @param name is a ccnb-encoded Name prefix. It gets extended in-place with
+ *        one additional Component such that it names highest extant
+ *        version that can be found, subject to the supplied timeout.
+ * @param timeout_ms is a time value in milliseconds. This is applied per
+ *        fetch attempt, so the total time may be longer by a factor that
+ *        depends on the number of (ccn) hops to the source(s).
+ * @returns -1 for error, 0 if name could not be extended, 1 if was.
  */
 int
 ccn_resolve_highest_version(struct ccn *h, struct ccn_charbuf *name, int timeout_ms)
@@ -148,5 +154,36 @@ Finish:
     ccn_indexbuf_destroy(&ndx);
     ccn_indexbuf_destroy(&nix);
     ccn_charbuf_destroy(&templ);
+    return(myres);
+}
+
+/**
+ * Extend a Name with a new version stamp
+ * @param h is the the ccn handle.
+ * @param name is a ccnb-encoded Name prefix. It gets extended in-place with
+ *        one additional Component that conforms the the versioning profile
+ *        and is based on the current time.
+ * @returns -1 for error, 0 for success.
+ */
+int
+ccn_append_new_version(struct ccn *h, struct ccn_charbuf *name)
+{
+    struct ccn_indexbuf *nix = ccn_indexbuf_create();
+    int n = ccn_name_split(name, nix);
+    int myres = -1;
+    // XXX - right now we ignore h, but in the future we may use it to try to avoid non-monotonicies in the versions.
+    
+    if (n < 0)
+        goto Finish;
+    name->length -= 1; /* Strip name closer */
+    myres = 0;
+    myres |= ccn_charbuf_append_tt(name, CCN_DTAG_Component, CCN_DTAG);
+    myres |= ccn_charbuf_append_now_blob(name, CCN_MARKER_VERSION);
+    myres |= ccn_charbuf_append_closer(name); /* </Component> */
+    myres |= ccn_charbuf_append_closer(name); /* </Name> */
+    if (myres < 0)
+        myres = -1;
+Finish:
+    ccn_indexbuf_destroy(&nix);
     return(myres);
 }

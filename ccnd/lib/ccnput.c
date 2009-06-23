@@ -70,6 +70,7 @@ main(int argc, char **argv)
     struct ccn_charbuf *keylocator = NULL;
     struct ccn_keystore *keystore = NULL;
     long expire = -1;
+    int versioned = 0;
     size_t blocksize = 8*1024;
     int status = 0;
     int res;
@@ -78,7 +79,7 @@ main(int argc, char **argv)
     enum ccn_content_type content_type = CCN_CONTENT_DATA;
     struct ccn_closure in_interest = {.p=&incoming_interest};
     
-    while ((res = getopt(argc, argv, "hlt:x:")) != -1) {
+    while ((res = getopt(argc, argv, "hlvt:x:")) != -1) {
         switch (res) {
             case 'l':
                 // NYI - set FinalBlockID to last comp of name
@@ -88,7 +89,10 @@ main(int argc, char **argv)
                 if (expire <= 0)
                     usage(progname);
                 break;
-	    case 't':
+	    case 'v':
+                versioned = 1;
+                break;
+            case 't':
                 if (0 == strcasecmp(optarg, "DATA")) {
                     content_type = CCN_CONTENT_DATA;
                     break;
@@ -143,6 +147,10 @@ main(int argc, char **argv)
         exit(1);
     }
     
+    /* Tack on the vesion component if requested */
+    if (versioned)
+        ccn_append_new_version(ccn, name);
+    
     buf = calloc(1, blocksize);
     root = name;
     name = ccn_charbuf_create();
@@ -162,10 +170,10 @@ main(int argc, char **argv)
     
     name->length = 0;
     ccn_charbuf_append(name, root->buf, root->length);
-    
+
     /* Set up a handler for interests */
     ccn_set_interest_filter(ccn, name, &in_interest);
-        
+
     /* Construct a key locator containing the key itself */
     keylocator = ccn_charbuf_create();
     ccn_charbuf_append_tt(keylocator, CCN_DTAG_KeyLocator, CCN_DTAG);

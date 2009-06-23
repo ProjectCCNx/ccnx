@@ -13,6 +13,7 @@
 #include <ccn/coding.h>
 #include <ccn/indexbuf.h>
 #include <ccn/signing.h>
+#include <ccn/ccn_private.h>
 
 /*
  * ccn_encode_Content:

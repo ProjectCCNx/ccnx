@@ -11,6 +11,7 @@
 #define CCN_PRIVATE_DEFINED
 
 #include <sys/types.h>
+#include <stdint.h>
 
 struct ccn;
 struct ccn_charbuf;
@@ -31,5 +32,9 @@ int ccn_process_scheduled_operations(struct ccn *h);
  * Caller should destroy returned buffer.
  */
 struct ccn_charbuf *ccn_grab_buffered_output(struct ccn *h);
+
+int ccn_charbuf_append_timestamp_blob(struct ccn_charbuf *c, int marker, intmax_t secs, int nsecs);
+
+int ccn_charbuf_append_now_blob(struct ccn_charbuf *c, int marker);
 
 #endif

@@ -11,9 +11,6 @@
 #include <ccn/charbuf.h>
 #include <ccn/uri.h>
 
-int
-ccn_resolve_highest_version(struct ccn *h, struct ccn_charbuf *name, int timeout_ms);
-
 static void
 usage(const char *progname)
 {
@@ -22,7 +19,8 @@ usage(const char *progname)
             "   Get one content item matching the name prefix and write it to stdout"
             "\n"
             "   -a - allow stale data\n"
-            "   -c - content only, not full ccnb\n",
+            "   -c - content only, not full ccnb\n"
+            "   -v - resolve version number\n",
             progname);
     exit(1);
 }

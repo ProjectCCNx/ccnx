@@ -693,4 +693,15 @@ int ccn_charbuf_append_timestamp_blob(struct ccn_charbuf *c,
  */
 int ccn_charbuf_append_now_blob(struct ccn_charbuf *c, enum ccn_marker marker);
 
+
+/*
+ * Versioning
+ */
+
+int ccn_resolve_highest_version(struct ccn *h,
+                                struct ccn_charbuf *name,
+                                int timeout_ms);
+
+int ccn_append_new_version(struct ccn *h, struct ccn_charbuf *name);
+
 #endif
