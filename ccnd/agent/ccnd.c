@@ -1240,6 +1240,7 @@ clean_deamon(struct ccn_schedule *sched,
     int check_limit = 500;  /* Do not run for too long at once */
     struct content_entry *content = NULL;
     int res = 0;
+    int ignore;
     
     if ((flags & CCN_SCHEDULE_CANCEL) != 0) {
         h->clean = NULL;
@@ -1286,10 +1287,24 @@ clean_deamon(struct ccn_schedule *sched,
         }
         else
             h->min_stale = a;
+        if (check_limit <= 0)
+            return(5000);
+    }
+    else {
+        /* Make oldish content stale, for cleanup on next round */
+        limit = h->accession;
+        ignore = CCN_CONTENT_ENTRY_STALE | CCN_CONTENT_ENTRY_PRECIOUS;
+        for (a = h->accession_base; a <= limit && n > h->capacity; a++) {
+            content = content_from_accession(h, a);
+            if (content != NULL && (content->flags & ignore) == 0) {
+                mark_stale(h, content);
+                n--;
+            }
+        }
+        ev->evint = 0;
+        return(1000000);
     }
     // XXX - should remove non-stale content, too, if desperate
-    if (check_limit <= 0)
-        return(5000);
     ev->evint = 0;
     return(15000000);
 }
@@ -2288,6 +2303,9 @@ process_incoming_content(struct ccnd *h, struct face *face,
             res = -__LINE__;
             content = NULL;
         }
+        /* Mark public keys supplied at startup as precious. */
+        if (obj.type == CCN_CONTENT_KEY && content->accession <= (h->capacity + 7)/8)
+            content->flags |= CCN_CONTENT_ENTRY_PRECIOUS;
     }
     hashtb_end(e);
 Bail:
