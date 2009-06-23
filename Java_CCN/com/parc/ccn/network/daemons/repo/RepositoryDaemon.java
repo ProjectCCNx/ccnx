@@ -154,7 +154,6 @@ public class RepositoryDaemon extends Daemon {
 		
 		try {
 			_library = CCNLibrary.open();
-			_repo = new RFSImpl();
 			_writer = new CCNWriter(_library);
 			
 			/*
@@ -187,7 +186,16 @@ public class RepositoryDaemon extends Daemon {
 					return;
 				}
 			}
+			
+			/*
+			 * This is for upper half performance testing for writes
+			 */
+			if (args[i].equals("-bb"))
+				_repo = new BitBucketRepository();
 		}
+		
+		if (_repo == null)
+			_repo = new RFSImpl();
 		try {
 			_repo.initialize(args);
 		} catch (InvalidParameterException ipe) {
