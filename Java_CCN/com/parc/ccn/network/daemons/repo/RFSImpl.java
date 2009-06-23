@@ -19,7 +19,6 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.WirePacket;
-import com.parc.ccn.data.ContentName.DotDotComponent;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.profiles.VersioningProfile;
