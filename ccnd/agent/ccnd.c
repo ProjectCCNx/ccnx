@@ -737,8 +737,6 @@ send_content(struct ccnd *h, struct face *face, struct content_entry *content)
     charbuf_release(h, c);
 }
 
-#define CCN_DATA_PAUSE (2000U)
-
 static int
 choose_face_delay(struct ccnd *h, struct face *face, enum cq_delay_class c)
 {
@@ -748,7 +746,7 @@ choose_face_delay(struct ccnd *h, struct face *face, enum cq_delay_class c)
     if ((face->flags & CCN_FACE_DGRAM) != 0)
         return(100 << shift); /* udp, delay just a little */
     if ((face->flags & CCN_FACE_LINK) != 0) /* udplink or such, delay more */
-        return(CCN_DATA_PAUSE << shift);
+        return((h->data_pause_microsec) << shift);
     return(10); /* local stream, answer quickly */
 }
 
@@ -1676,6 +1674,7 @@ adjust_outbound_for_existing_interests(struct ccnd *h, struct face *face,
     int max_redundant = 3; /* Allow this many dups from same face */
     int i;
     int n;
+    struct face *otherface;
     if (head != NULL && outbound != NULL) {
         for (p = head->next; p != head; p = p->next) {
             if (p->size > minsize &&
@@ -1708,9 +1707,18 @@ adjust_outbound_for_existing_interests(struct ccnd *h, struct face *face,
                  * could miss an answer from that direction. Note that
                  * interests from two other faces could conspire to cover
                  * this one completely.
+                 * This assumes a unicast link.  If there are multiple
+                 * parties on this face (broadcast or multicast), we
+                 * do not want to send, because it is highly likely that
+                 * we've seen an interest that one of the other parties
+                 * is going to answer, and we'll see the answer, too.
                  */
                 n = outbound->n;
                 outbound->n = 0;
+                otherface = face_from_faceid(h, p->faceid);
+                // XXX - should have a specific flag for this, for now CCN_FACE_LINK will have to do.
+                if (otherface == NULL || (otherface->flags & CCN_FACE_LINK) != 0)
+                    return(1);
                 for (i = 0; i < n; i++) {
                     if (p->faceid == outbound->buf[i]) {
                         outbound->buf[0] = p->faceid;
@@ -2774,6 +2782,7 @@ ccnd_create(void)
     const char *entrylimit;
     const char *mtu;
     const char *fib;
+    const char *data_pause;
     int fd;
     int res;
     int whichpf;
@@ -2808,6 +2817,7 @@ ccnd_create(void)
     h->ticktock.data = h;
     h->sched = ccn_schedule_create(h, &h->ticktock);
     h->oldformatcontentgrumble = 1;
+    h->data_pause_microsec = 2000;
     fd = create_local_listener(sockname, 42);
     if (fd == -1) fatal_err(sockname);
     ccnd_msg(h, "listening on %s", sockname);
@@ -2837,6 +2847,14 @@ ccnd_create(void)
             h->mtu = 0;
         if (h->mtu > 8800)
             h->mtu = 8800;
+    }
+    data_pause = getenv("CCND_DATA_PAUSE_MICROSEC");
+    if (data_pause != NULL && data_pause[0] != 0) {
+        h->data_pause_microsec = atol(data_pause);
+        if (h->data_pause_microsec == 0)
+            h->data_pause_microsec = 1;
+        if (h->data_pause_microsec > 1000000)
+            h->data_pause_microsec = 1000000;
     }
     fib = getenv("CCND_TRYFIB"); // XXX - Temporary, for transition period
     if (fib != NULL && fib[0] != 0)

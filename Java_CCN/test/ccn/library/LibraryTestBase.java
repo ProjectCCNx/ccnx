@@ -221,6 +221,7 @@ public class LibraryTestBase {
 			try {
 				System.out.println("Get thread started");
 				getResults(ContentName.fromNative(PARENT_NAME, Integer.toString(id)), count, library);
+				library.close();
 				System.out.println("Get thread finished");
 			} catch (Throwable ex) {
 				error = ex;
@@ -247,6 +248,7 @@ public class LibraryTestBase {
 			try {
 				System.out.println("Put thread started");
 				doPuts(ContentName.fromNative(PARENT_NAME, Integer.toString(id)), count, library);
+				library.close();
 				System.out.println("Put thread finished");
 				//cf.shutdown();
 			} catch (Throwable ex) {
@@ -285,7 +287,7 @@ public class LibraryTestBase {
 				// Block on semaphore until enough data has been received
 				sema.acquire();
 				library.cancelInterest(interest, this);
-				((CCNLibrary)library).getNetworkManager().shutdown();
+				library.close();
 
 			} catch (Throwable ex) {
 				error = ex;
@@ -351,7 +353,7 @@ public class LibraryTestBase {
 				sema.acquire();
 				library.unregisterFilter(name, this);
 				System.out.println("PutServer finished.");
-				((CCNLibrary)library).getNetworkManager().shutdown();
+				library.close();
 
 			} catch (Throwable ex) {
 				error = ex;

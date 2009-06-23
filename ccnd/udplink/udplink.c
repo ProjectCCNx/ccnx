@@ -514,7 +514,13 @@ main (int argc, char * const argv[]) {
                             udplink_note("sendto(remotesock_w, rbuf, %ld): %s (will retry)\n", (long) ld->index - msgstart, strerror(errno));
                         continue;
                     }
-                    udplink_fatal(__LINE__, "sendto(remotesock_w, rbuf, %ld): %s\n", (long)ld->index - msgstart, strerror(errno));
+                    if (errno == ENOBUFS) {
+                        /* If the O.S. is kind enough to tell us the output buffers are full, we'll just drop this packet ourselves. */
+                        if (options.logging > 0)
+                            udplink_note("sendto(remotesock_w, rbuf, %ld): %s (message dropped)\n", (long) ld->index - msgstart, strerror(errno));
+                    }
+                    else
+                        udplink_fatal(__LINE__, "sendto(remotesock_w, rbuf, %ld): %s\n", (long)ld->index - msgstart, strerror(errno));
                 }
                 else if (result == -2) {
                     udplink_note("protocol error, missing CCN PDU encapsulation. Message dropped\n");

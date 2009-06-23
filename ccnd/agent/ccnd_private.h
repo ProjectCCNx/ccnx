@@ -99,6 +99,7 @@ struct ccnd {
     struct ccn *internal_client;    /* internal client */
     struct face *face0;             /* special face for internal client */
     struct ccn_scheduled_event *internal_client_refresh;
+    unsigned data_pause_microsec;   /* tunable, see choose_face_delay() */
 };
 
 /*

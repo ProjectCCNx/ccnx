@@ -55,11 +55,13 @@ public class RepositoryDaemon extends Daemon {
 	private CCNWriter _writer;
 	private boolean _pendingNameSpaceChange = false;
 	private int _windowSize = WINDOW_SIZE;
+	private int _ephemeralFreshness = FRESHNESS;
 	protected ThreadPoolExecutor _threadpool = null; // pool service
 	
 	public static final int PERIOD = 2000; // period for interest timeout check in ms.
 	public static final int THREAD_LIFE = 8;	// in seconds
 	public static final int WINDOW_SIZE = 10;
+	public static final int FRESHNESS = 4;	// in seconds
 	
 	private class NameAndListener {
 		private ContentName name;
@@ -74,11 +76,11 @@ public class RepositoryDaemon extends Daemon {
 
 		public void run() {
 			long currentTime = new Date().getTime();
-			if (_currentListeners.size() > 0) {
-				Iterator<RepositoryDataListener> iterator = _currentListeners.iterator();
-				while (iterator.hasNext()) {
-					RepositoryDataListener listener = iterator.next();
-					synchronized (listener) {
+			synchronized (_currentListeners) {
+				if (_currentListeners.size() > 0) {
+					Iterator<RepositoryDataListener> iterator = _currentListeners.iterator();
+					while (iterator.hasNext()) {
+						RepositoryDataListener listener = iterator.next();
 						if ((currentTime - listener.getTimer()) > (PERIOD * 2)) {
 							synchronized(_repoFilters) {
 								listener.cancelInterests();
@@ -87,9 +89,7 @@ public class RepositoryDaemon extends Daemon {
 						}
 					}
 				}
-			}
 			
-			synchronized (_currentListeners) {
 				if (_currentListeners.size() == 0 && _pendingNameSpaceChange) {
 					try {
 						resetNameSpace();
@@ -312,6 +312,10 @@ public class RepositoryDaemon extends Daemon {
 	
 	public int getWindowSize() {
 		return _windowSize;
+	}
+	
+	public int getFreshness() {
+		return _ephemeralFreshness;
 	}
 	
 	public static void main(String[] args) {

@@ -769,6 +769,15 @@ public class CCNLibrary extends CCNBase {
 		return new ContentName(prefixCount, cocn.components());
 	}
 	
+	/**
+	 * Shutdown the library and it's associated resources
+	 */
+	public void close() {
+		if (null != _networkManager)
+			_networkManager.shutdown();
+		_networkManager = null;
+	}
+	
 	public static byte[] nonce() {
 		byte [] nonce = new byte[32];
 		_random.nextBytes(nonce);

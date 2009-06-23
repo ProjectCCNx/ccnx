@@ -196,9 +196,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 		ContentName versionBase = VersioningProfile.versionName(base);
 		
 		final byte [][] data = { "data0".getBytes(), "data1".getBytes() };
-		CCNLibrary put = CCNLibrary.open();
-		final CCNLibrary get = CCNLibrary.open();
-		CCNFlowControl f = new CCNFlowControl(base, put);
+		CCNFlowControl f = new CCNFlowControl(base, putLibrary);
 		ContentObject [] cos = { ContentObject.buildContentObject(base, data[0]),
 											ContentObject.buildContentObject(versionBase, data[1]) };
 		f.put(cos);
@@ -211,12 +209,12 @@ public class CCNLibraryTest extends LibraryTestBase {
 			 * Make sure the data is written to ccnd by reading it
 			 */
 			void readAndCheck(ContentName name, int index) throws IOException {
-				check(get.get(name, 2000), index);
+				check(getLibrary.get(name, 2000), index);
 			}
 		} t test = new t();
 		test.readAndCheck(base, 0);
 		test.readAndCheck(versionBase, 1);
-		test.check(get.getLatestVersion(base, put.getDefaultPublisher(), 2000), 1);
+		test.check(getLibrary.getLatestVersion(base, putLibrary.getDefaultPublisher(), 2000), 1);
 	}
 
 	@Test

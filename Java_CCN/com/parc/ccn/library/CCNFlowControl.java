@@ -49,6 +49,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	// chance of going through.  We actually may want to keep this.
 	protected static final int MAX_TIMEOUT = 10000;
 	protected static final int HIGHWATER_DEFAULT = 128 + 1;
+	protected static final int INTEREST_HIGHWATER_DEFAULT = 40;
 	protected int _timeout = MAX_TIMEOUT;
 	protected int _highwater = HIGHWATER_DEFAULT;
 	
@@ -76,6 +77,7 @@ public class CCNFlowControl implements CCNFilterListener {
 			_filteredNames.add(name);
 			_library.registerFilter(name, this);
 		}
+		_unmatchedInterests.setHighWater(INTEREST_HIGHWATER_DEFAULT);
 	}
 	
 	public CCNFlowControl(String name, CCNLibrary library) 
@@ -94,6 +96,7 @@ public class CCNFlowControl implements CCNFilterListener {
 			}
 		}
 		_library = library;
+		_unmatchedInterests.setHighWater(INTEREST_HIGHWATER_DEFAULT);
 	}
 	
 	/**
@@ -404,6 +407,10 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	public void setHighwater(int value) {
 		_highwater = value;
+	}
+	
+	public void setInterestHighwater(int value) {
+		_unmatchedInterests.setHighWater(value);
 	}
 	
 	/**

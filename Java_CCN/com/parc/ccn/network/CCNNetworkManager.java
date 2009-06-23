@@ -85,7 +85,7 @@ public class CCNNetworkManager implements Runnable {
 		public void run() {
 			
 			long ourTime = new Date().getTime();
-			if ((ourTime - _lastHeartbeat) < HEARTBEAT_PERIOD) {
+			if ((ourTime - _lastHeartbeat) > HEARTBEAT_PERIOD) {
 				_lastHeartbeat = ourTime;
 				heartbeat();
 			}
@@ -119,8 +119,6 @@ public class CCNNetworkManager implements Runnable {
 	
 	// Send heartbeat
 	private void heartbeat() {
-		if (!timersSetup)
-			return;
 		try {
 			ByteBuffer heartbeat = ByteBuffer.allocate(1);
 			_channel.write(heartbeat);
@@ -414,6 +412,10 @@ public class CCNNetworkManager implements Runnable {
 				Library.logger().warning("failed to deliver interest: " + ex.toString());
 			}
 		}
+		@Override
+		public String toString() {
+			return name.toString();
+		}
 	}
 	
 	
@@ -483,6 +485,7 @@ public class CCNNetworkManager implements Runnable {
 		_selector.wakeup();
 		try {
 			setTap(null);
+			_channel.close();
 		} catch (IOException io) {
 			// Ignore since we're shutting down
 		}
