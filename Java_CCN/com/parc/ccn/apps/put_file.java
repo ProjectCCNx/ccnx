@@ -14,27 +14,56 @@ import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNFileOutputStream;
 import com.parc.ccn.library.io.CCNOutputStream;
 import com.parc.ccn.library.io.repo.RepositoryFileOutputStream;
-import com.parc.ccn.library.profiles.VersioningProfile;
+import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 
 public class put_file {
 	
 	private static int BLOCK_SIZE = 8096;
 	private static boolean rawMode = false;
+	private static Integer timeout = null;
+	private static boolean unversioned = false;
 
 	/**
 	 * @param args
 	 */
 	public static void main(String[] args) {
 		int startArg = 0;
-		if (args.length > 0 && args[0].equals("-raw")) {
-			startArg++;
-			rawMode = true;
-		}
-		if (args.length < startArg + 2) {
-			usage();
-			return;
+		
+		for (int i = 0; i < args.length - 2; i++) {
+			if (args[i].equals(("-raw"))) {
+				if (startArg <= i)
+					startArg = i + 1;
+				rawMode = true;
+			} else if (args[i].equals("-unversioned")) {
+				if (startArg <= i)
+					startArg = i + 1;
+				unversioned = true;
+			} else if (args[i].equals("-timeout")) {
+				if (args.length < (i + 2)) {
+					usage();
+					return;
+				}
+				try {
+					timeout = Integer.parseInt(args[++i]);
+				} catch (NumberFormatException nfe) {
+					usage();
+					return;
+				}
+				if (startArg <= i)
+					startArg = i + 1;
+			} else {
+				usage();
+				System.exit(1);
+			}
+				
 		}
 		
+		if (args.length < startArg + 2) {
+			usage();
+			System.exit(1);
+		}
+		
+		long starttime = System.currentTimeMillis();
 		try {
 			// If we get one file name, put as the specific name given.
 			// If we get more than one, put underneath the first as parent.
@@ -54,15 +83,24 @@ public class put_file {
 				}
 				Library.logger().info("put_file: putting file " + args[startArg + 1] + " bytes: " + theFile.length());
 				
-				ContentName versionedName = VersioningProfile.versionName(argName);
 				CCNOutputStream ostream;
-				if (rawMode)
-					ostream = new CCNOutputStream(versionedName, library);
-				else
-					ostream = new RepositoryFileOutputStream(versionedName, library);
+				if (rawMode) {
+					if (unversioned)
+						ostream = new CCNOutputStream(argName, library);
+					else
+						ostream = new CCNFileOutputStream(argName, library);
+				} else {
+					if (unversioned)
+						ostream = new RepositoryOutputStream(argName, library);
+					else
+						ostream = new RepositoryFileOutputStream(argName, library);
+				}
+				if (timeout != null)
+					ostream.setTimeout(timeout);
 				do_write(ostream, theFile);
 				
 				System.out.println("Inserted file " + args[startArg + 1] + ".");
+				System.out.println("put_file took: "+(System.currentTimeMillis() - starttime)+"ms");
 				System.exit(0);
 			} else {
 				for (int i=startArg + 1; i < args.length; ++i) {
@@ -85,18 +123,28 @@ public class put_file {
 					// int version = new Random().nextInt(1000);
 					// would be version = library.latestVersion(argName) + 1;
 					CCNOutputStream ostream;
-					// Both forms of file output stream handle automatic versioning of unversioned names.
+					
 					// Use file stream in both cases to match behavior. CCNOutputStream doesn't do
 					// versioning and neither it nor CCNVersionedOutputStream add headers.
-					if (rawMode)
-						ostream = new CCNFileOutputStream(nodeName, library);
-					else
-						ostream = new RepositoryFileOutputStream(nodeName, library);
+					if (rawMode) {
+						if (unversioned)
+							ostream = new CCNOutputStream(nodeName, library);
+						else
+							ostream = new CCNFileOutputStream(nodeName, library);
+					} else {
+						if (unversioned)
+							ostream = new RepositoryOutputStream(nodeName, library);
+						else
+							ostream = new RepositoryFileOutputStream(nodeName, library);
+					}
+					if (timeout != null)
+						ostream.setTimeout(timeout);
 					do_write(ostream, theFile);
 					
 					System.out.println("Inserted file " + args[i] + ".");
-					
 				}
+				System.out.println("put_file took: "+(System.currentTimeMillis() - starttime)+"ms");
+				System.exit(0);
 			}
 		} catch (ConfigurationException e) {
 			System.out.println("Configuration exception in put: " + e.getMessage());
@@ -111,6 +159,7 @@ public class put_file {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		System.exit(1);
 
 	}
 	
@@ -138,7 +187,7 @@ public class put_file {
 	}
 	
 	public static void usage() {
-		System.out.println("usage: put_file [-raw] <ccnname> <filename> [<filename> ...]");
+		System.out.println("usage: put_file [-raw] [-unversioned] [-timeout millis] <ccnname> <filename> [<filename> ...]");
 	}
 
 }
