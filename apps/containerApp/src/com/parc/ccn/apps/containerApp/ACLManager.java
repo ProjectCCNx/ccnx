@@ -1,18 +1,11 @@
 package com.parc.ccn.apps.containerApp;
 
-import java.awt.EventQueue;
-import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 import java.util.ArrayList;
-import java.util.Arrays;
-
 import javax.swing.JButton;
 import javax.swing.JDialog;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
@@ -20,8 +13,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.ListSelectionModel;
 import javax.swing.border.BevelBorder;
-
-import com.parc.ccn.data.ContentName;
 
 public class ACLManager extends JDialog implements ActionListener{
 
@@ -43,9 +34,7 @@ public class ACLManager extends JDialog implements ActionListener{
 	
 	private JButton buttonModify2View;
 	private JButton buttonView2Modify;	
-	private JFrame frame;
-	private String path;
-private ArrayList<JList> listsArray=null;	
+	private ArrayList<JList> listsArray=null;	
 	//private ArrayList<String> readOnlyPrincipals;
 	//private ArrayList<String> readWritePrincipals;
 private ValuesChanged changedEntries;
@@ -126,8 +115,6 @@ private SortedListModel userPoolDefault = null;
 	public ACLManager(String path) {
 
 		super();
-		this.path = path;
-		
 		//window listener
 		this.setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
 		changedEntries = new ValuesChanged(false);

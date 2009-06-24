@@ -5,7 +5,6 @@ import java.awt.event.WindowListener;
 
 import javax.swing.JDialog;
 import javax.swing.JOptionPane;
-import javax.swing.JPanel;
 
 public class ChangedEntriesConfirm implements WindowListener {
 

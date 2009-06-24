@@ -56,7 +56,7 @@ class SortedListModel extends AbstractListModel {
 	    return model.first();
 	  }
 
-	  public Iterator iterator() {
+	  public Iterator<Object> iterator() {
 	    return model.iterator();
 	  }
 

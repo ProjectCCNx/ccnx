@@ -23,10 +23,8 @@ import com.parc.ccn.apps.containerApp.IconData;
 import com.parc.ccn.apps.containerApp.Name;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.BasicNameEnumeratorListener;
-import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.io.CCNFileInputStream;
@@ -458,8 +456,6 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 	}
 	
 	DefaultMutableTreeNode getTreeNode(ContentName ccnContentName){
-		DefaultMutableTreeNode node = null;
-		
 		System.out.println("handling returned names!!! prefix = "+ccnContentName.toString());
 		TreePath prefixPath = new TreePath(usableRoot);
 		
@@ -476,6 +472,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		return p;
 	}
 
+	@SuppressWarnings("unchecked")
 	private DefaultMutableTreeNode find(TreePath parent, int depth, String[] names){
 		DefaultMutableTreeNode node = (DefaultMutableTreeNode)parent.getLastPathComponent();
 		String nodeName = node.toString();
@@ -491,8 +488,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 			else{
 				System.out.println("need to keep digging...");
 				if(node.getChildCount() >= 0){
-					for(Enumeration e = node.children(); e.hasMoreElements();){
-						DefaultMutableTreeNode n = (DefaultMutableTreeNode)e.nextElement();
+					for(DefaultMutableTreeNode n : java.util.Collections.list((Enumeration<DefaultMutableTreeNode>)node.children()) ){
 						TreePath path = parent.pathByAddingChild(n);
 						DefaultMutableTreeNode result = find(path, depth+1, names);
 						if(result!=null)
@@ -719,6 +715,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 //        frame.pack();
 //        frame.setVisible(true);
     }
+	@SuppressWarnings("unchecked")
 	private void addTreeNodes(ArrayList<ContentName> n, ContentName prefix) {
 		// DefaultMutableTreeNode top = new DefaultMutableTreeNode(
 		// new IconData(ICON_COMPUTER, null, "parc.com/files"));
@@ -734,16 +731,13 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		
 		// while we are getting things, wait for stuff to happen
 		System.out.println("Getting Content Names");
-		DefaultMutableTreeNode temp = null;
 		boolean addToParent = true;
 		DefaultMutableTreeNode toRemove = null;
 		for (ContentName cn : n) {
 			addToParent = true;
 			if(parentNode.getChildCount()>0){
-				for(Enumeration e = parentNode.children(); e.hasMoreElements();){
+				for(DefaultMutableTreeNode temp : java.util.Collections.list((Enumeration<DefaultMutableTreeNode>)parentNode.children())){
 					//check if this name is already in there!
-					temp = (DefaultMutableTreeNode)e.nextElement();
-					
 					if(temp.getUserObject() instanceof Boolean){
 						toRemove = temp;
 					}

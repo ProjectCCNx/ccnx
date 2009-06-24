@@ -2,7 +2,6 @@ package com.parc.ccn.apps.containerApp;
 
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 
 import javax.swing.JList;
