@@ -43,6 +43,7 @@ public class Flosser implements CCNInterestListener {
 	}
 	
 	public Flosser(ContentName namespace) throws ConfigurationException, IOException {
+		this();
 		handleNamespace(namespace);
 	}
 	
