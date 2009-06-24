@@ -16,23 +16,20 @@ import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.EnumeratedNameList;
 
 import junit.framework.Assert;
+
 /**
  * Put a bunch of data in repo (in one directory)
-	Make a enumerate name list of directory (check that it works)
-	call update in background on enumerated name list (asynchronously)
-	add data using a different interface and see if it shows up on the lists
- * 
- * 
- * */
+ * Make a enumerate name list of directory (check that it works)
+ * call update in background on enumerated name list (asynchronously)
+ * add data using a different interface and see if it shows up on the lists
+ */
 public class EnumeratedNameTest implements BasicNameEnumeratorListener{
-
 	CCNLibrary putLibrary;
 	CCNLibrary getLibrary;
 	CCNNameEnumerator putne;
 	CCNNameEnumerator getne;
 
 	EnumeratedNameList testList;
-	
 	
 	Random rand = new Random();
 
@@ -56,9 +53,17 @@ public class EnumeratedNameTest implements BasicNameEnumeratorListener{
 	ContentName brokenPrefix;
 	ContentName c1;
 	ContentName c2;
+
+/*
+	//setup method
+	@BeforeClass
+	
+	//cleanup
+	@AfterClass
+*/
 	
 	@Test
-	public void testEnumeratedName()
+	public void testEnumeratedName() throws Exception
 	{
 		System.out.println("Starting CCNNameEnumerator Test");
 		
@@ -83,10 +88,9 @@ public class EnumeratedNameTest implements BasicNameEnumeratorListener{
 
 		//Make a enumerate name list of directory (check that it works)
 		testDataExists(name1);		
-
 	
 		//Add an additional Name
-	registerAdditionalName();
+	    registerAdditionalName();
 		
 		//see if it exists
 		testDataExists(name1Dirty);
@@ -94,83 +98,47 @@ public class EnumeratedNameTest implements BasicNameEnumeratorListener{
 		//get children from prefix
 		//test has children
 //		testHasChildren();
-		
 	}
 
-	public void testRegisterPrefix(){
+	public void testRegisterPrefix() throws Exception{
+		prefix1 = ContentName.fromNative(prefix1String);
 
-		try{
-			prefix1 = ContentName.fromNative(prefix1String);
-		}
-		catch(Exception e){
-			Assert.fail("Could not create ContentName from "+prefix1String);
-		}
-		
 		System.out.println("registering prefix: "+prefix1.toString());
-		
-		try{
-			getne.registerPrefix(prefix1);
-		}
-		catch(IOException e){
-			System.err.println("error registering prefix");
-			e.printStackTrace();
-			Assert.fail();
-		}
-		
+
+		getne.registerPrefix(prefix1);
 	}
 	
+/*
 	private void testHasChildren() {
-		
 		Assert.assertTrue(testList.hasChildren());
 	}
+*/
 
-	private void testAssignContentNames() {
-		try{
-			namespace = ContentName.fromNative(namespaceString);
-			name1 = ContentName.fromNative(name1String);
-			name2 = ContentName.fromNative(name2String);
-			name2a = ContentName.fromNative(name2aString);
-			name3 = ContentName.fromNative(name3String);
-			prefix1 = ContentName.fromNative(prefix1String);
-			brokenPrefix = ContentName.fromNative(prefix1StringError);
-		}
-		catch(Exception e){
-			Assert.fail("Could not create ContentName from "+name1String +" or "+name2String);
-		}
-		
+	private void testAssignContentNames() throws MalformedContentNameStringException {
+		namespace = ContentName.fromNative(namespaceString);
+		name1 = ContentName.fromNative(name1String);
+		name2 = ContentName.fromNative(name2String);
+		name2a = ContentName.fromNative(name2aString);
+		name3 = ContentName.fromNative(name3String);
+		prefix1 = ContentName.fromNative(prefix1String);
+		brokenPrefix = ContentName.fromNative(prefix1StringError);		
 	}
 
-	private void testDataExists(ContentName name) {
-	//Seems to be returning true for most stuff
+	private void testDataExists(ContentName name) throws IOException {
+		//Seems to be returning true for most stuff
 		//need to look into this more
-		try {
-			EnumeratedNameList testEnumerator;
-			testEnumerator = EnumeratedNameList.exists(name, prefix1, putLibrary);
-			Assert.assertNotNull(testEnumerator);
-			
-		} catch (IOException e) {
-			Assert.fail("Cannot find Content Name"+name+" NameSpace"+prefix1);
-			//e.printStackTrace();
-		}
 		
+		EnumeratedNameList testEnumerator;
+		testEnumerator = EnumeratedNameList.exists(name, prefix1, getLibrary);
+		Assert.assertNotNull(testEnumerator);
 	}
 
-	private void createEnumeratedNameList() {
-		
-		if (null == testList) {
-			try {
-				testList = new EnumeratedNameList(prefix1, putLibrary);
-			} catch (IOException e) {
-				
-				Assert.fail("Could not create EnumeratedNameList object"+name1.toString());
-				//e.printStackTrace();
-			}
-		}
+	private void createEnumeratedNameList() throws IOException {
+		if (null == testList)
+			testList = new EnumeratedNameList(prefix1, putLibrary);
 	}
 
-public void testRegisterName(){
-				
-		
+	public void testRegisterName() throws InterruptedException {
 		putne.registerNameSpace(namespace);
 		putne.registerNameForResponses(name1);
 		putne.registerNameForResponses(name2);
@@ -178,70 +146,38 @@ public void testRegisterName(){
 		ContentName nullName = null;
 		putne.registerNameForResponses(nullName);
 		
-		try{
-			while(!putne.containsRegisteredName(name2a)){
-				Thread.sleep(rand.nextInt(50));
-			}
-			
-			//the names are registered...
-			System.out.println("the names are now registered");
-		}
-		catch(InterruptedException e){
-			System.err.println("error waiting for names to be registered by name enumeration responder");
-			Assert.fail();
+		while(!putne.containsRegisteredName(name2a)){
+			Thread.sleep(rand.nextInt(50));
 		}
 		
+		//the names are registered...
+		System.out.println("the names are now registered");
 	}
 	
-public void registerAdditionalName(){
 	//now add new name
-	try{
+	public void registerAdditionalName() throws Exception {
 		name1Dirty = ContentName.fromNative(name1StringDirty);
 		putne.registerNameForResponses(name1Dirty);
-		
-			
-		//the names are registered...
-		System.out.println("the new name is now registered to trigger the dirty flag");
 	}
-	
-	catch (MalformedContentNameStringException e) {
-		// TODO Auto-generated catch block
-		e.printStackTrace();
-	}
-					
-}
+
 	/* 
 	 * function to open and set the put and get libraries
 	 * also creates and sets the Name Enumerator Objects
 	 * 
 	 */
-	public void setLibraries(){
-		try{
-			putLibrary = CCNLibrary.open();
-			getLibrary = CCNLibrary.open();
-			createEnumeratedNameList();
-			putne = new CCNNameEnumerator(putLibrary, this);
-			getne = new CCNNameEnumerator(getLibrary, testList);
-		}
-		catch(ConfigurationException e){
-			e.printStackTrace();
-			Assert.fail("Failed to open libraries for tests");
-		}
-		catch(IOException e){
-			e.printStackTrace();
-			Assert.fail("Failed to open libraries for tests");
-		}
-		
-		
+	public void setLibraries() throws ConfigurationException, IOException{
+		putLibrary = CCNLibrary.open();
+		getLibrary = CCNLibrary.open();
+		createEnumeratedNameList();
+		putne = new CCNNameEnumerator(putLibrary, this);
+		getne = new CCNNameEnumerator(getLibrary, testList);
 	}
 
 	public int handleNameEnumerator(ContentName prefix,
 			ArrayList<ContentName> names) {
 		// TODO Auto-generated method stub
 		
-System.out.println("Call back in the enumerated name test");
+		System.out.println("Call back in the enumerated name test");
 		return 0;
 	}
 }
-
-

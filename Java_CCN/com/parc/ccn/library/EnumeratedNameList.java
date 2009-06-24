@@ -20,6 +20,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	
 	protected ContentName _namePrefix;
 	protected CCNNameEnumerator _enumerator;
+	protected BasicNameEnumeratorListener callback;
 	// make these contain something other than content names when the enumerator has better data types
 	protected ArrayList<ContentName> _children = new ArrayList<ContentName>();
 	protected ArrayList<ContentName> _newChildren = new ArrayList<ContentName>();
@@ -169,7 +170,8 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	}
 
 	/**
-	 * The name enumerator should hand back a list of single-component names.
+	 * The name enumerator should hand back a list of 
+	 * single-component names.
 	 * 
 	 * @param prefix Prefix where you are starting
 	 * @param names
@@ -179,10 +181,13 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	
 	public int handleNameEnumerator(ContentName prefix,
 								    ArrayList<ContentName> names) {
+		
+		System.out.println("got a callback!");
 		Library.logger().info(names.size() + " new name enumeration results: our prefix: " + _namePrefix + " returned prefix: " + prefix);
 		if (!prefix.equals(_namePrefix)) {
 			Library.logger().warning("Returned data doesn't match requested prefix!");
 		}
+		System.out.println("Handleing Name Iteration "+prefix +" ");
 		// the name enumerator hands off names to us, we own it now
 		synchronized (_childLock) {
 			_children.addAll(names);
