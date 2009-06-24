@@ -109,16 +109,26 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 						rfile.openFile = new RandomAccessFile(rfile.file, "r");
 						//InputStream is = new RandomAccessInputStream(rfile.openFile);
 						InputStream is = new BufferedInputStream(new RandomAccessInputStream(rfile.openFile));
+
 						while (true) {
 							ContentFileRef ref = _index.new ContentFileRef();
 							ref.id = index.intValue();
 							ref.offset = rfile.openFile.getFilePointer();
 							ContentObject tmp = new ContentObject();
 							try {
-								tmp.decode(is);
+								if(rfile.openFile.getFilePointer()<rfile.openFile.length())
+									tmp.decode(is);
+								else{
+									Library.logger().info("at the end of the file");
+									rfile.openFile.close();
+									rfile.openFile = null;
+									break;
+								}
+
 							} catch (XMLStreamException e) {
 								e.printStackTrace();
 								// Failed to decode, must be end of this one
+								//added check for end of file above
 								rfile.openFile.close();
 								rfile.openFile = null;
 								break;

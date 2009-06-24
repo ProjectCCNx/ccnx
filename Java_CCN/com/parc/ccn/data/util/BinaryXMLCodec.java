@@ -217,12 +217,32 @@ public class BinaryXMLCodec  {
 	 */
 	public static byte [] decodeBlob(InputStream istream, int blobLength) throws IOException {
 		byte [] bytes = new byte[blobLength];
-		
-		int count = istream.read(bytes);
-		
-		if (count != bytes.length) {
-			throw new IOException("Expected to read " + bytes.length + 
-					" bytes of data, only read: " + count);
+		int count = 0;
+		int toRead = blobLength;
+		try{
+			while(true){
+				count += istream.read(bytes, count, (blobLength - count));
+				//Library.logger().info("read "+count+" bytes out of "+blobLength+" in decodeBlob");
+				if (count != bytes.length) {
+					//we couldn't read enough..  need to try to read all of the bytes
+					//loop again...
+					//should we add a max number of tries?
+				}
+				else if(count == bytes.length){
+					//we are done reading!  return now.
+					return bytes;
+				}
+				else{
+					//we somehow read more than we should have...
+					
+					throw new IOException("Expected to read " + bytes.length + 
+							" bytes of data, read: " + count);
+				}
+			}
+		}
+		catch(Exception e){
+			
+			
 		}
 		
 		return bytes;
