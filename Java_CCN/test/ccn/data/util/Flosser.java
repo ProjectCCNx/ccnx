@@ -38,6 +38,11 @@ public class Flosser implements CCNInterestListener {
 	CCNLibrary _library;
 	Map<ContentName, Interest> _interests = new HashMap<ContentName, Interest>();
 	
+	/**
+	 * Constructors that called handleNamespace() now throwing NullPointerException as this doesn't exist yet.
+	 * @throws ConfigurationException
+	 * @throws IOException
+	 */
 	public Flosser() throws ConfigurationException, IOException {
 		_library = CCNLibrary.open();
 	}
@@ -46,8 +51,8 @@ public class Flosser implements CCNInterestListener {
 		handleNamespace(namespace);
 	}
 	
-	public Flosser(String namespace) throws MalformedContentNameStringException, ConfigurationException, IOException {
-		this(ContentName.fromNative(namespace));
+	public void handleNamespace(String namespace) throws MalformedContentNameStringException, IOException {
+		handleNamespace(ContentName.fromNative(namespace));
 	}
 	
 	public void handleNamespace(ContentName namespace) throws IOException {

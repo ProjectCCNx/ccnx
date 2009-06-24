@@ -125,10 +125,9 @@ public class PublicKeyObjectTest {
 
 		System.out.println("Reading and writing key " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
 		if (null == flosser) {
-			flosser = new Flosser(keyName);
-		} else {
-			flosser.handleNamespace(keyName);
-		}
+			flosser = new Flosser();
+		} 
+		flosser.handleNamespace(keyName);
 		PublicKeyObject pko = new PublicKeyObject(keyName, key, library);
 		pko.save();
 		Assert.assertTrue(VersioningProfile.isVersioned(pko.getName()));
