@@ -96,19 +96,21 @@ resolve_templ(struct ccn_charbuf *templ, unsigned const char *vcomp, int size)
 }
 
 /**
- * Resolve the highest version
+ * Resolve the version, based on existing ccn content.
  * @param h is the the ccn handle; it may be NULL, but it is preferable to
  *        use the handle that the client probably already has.
  * @param name is a ccnb-encoded Name prefix. It gets extended in-place with
  *        one additional Component such that it names highest extant
  *        version that can be found, subject to the supplied timeout.
+ * @param versioning_flags presently must be CCN_V_HIGHEST
  * @param timeout_ms is a time value in milliseconds. This is applied per
  *        fetch attempt, so the total time may be longer by a factor that
  *        depends on the number of (ccn) hops to the source(s).
  * @returns -1 for error, 0 if name could not be extended, 1 if was.
  */
 int
-ccn_resolve_highest_version(struct ccn *h, struct ccn_charbuf *name, int timeout_ms)
+ccn_resolve_version(struct ccn *h, struct ccn_charbuf *name,
+                    int versioning_flags, int timeout_ms)
 {
     int res;
     int myres = -1;
@@ -123,6 +125,8 @@ ccn_resolve_highest_version(struct ccn *h, struct ccn_charbuf *name, int timeout
     struct ccn_indexbuf *nix = ccn_indexbuf_create();
     unsigned char lowtime[7] = {CCN_MARKER_VERSION, 0, FF, FF, FF, FF, FF};
     
+    if (versioning_flags != CCN_V_HIGHEST)
+        goto Finish;
     n = ccn_name_split(name, nix);
     if (n < 0)
         goto Finish;
@@ -160,30 +164,72 @@ Finish:
 /**
  * Extend a Name with a new version stamp
  * @param h is the the ccn handle.
- * @param name is a ccnb-encoded Name prefix. It gets extended in-place with
+ *        May be NULL.  This procedure does not use the connection.
+ * @param name is a ccnb-encoded Name prefix. By default it gets extended in-place with
  *        one additional Component that conforms the the versioning profile
- *        and is based on the current time.
+ *        and is based on the supplied time.
+ * @param versioning_flags modifies the default behavior:
+ *        CCN_V_REPLACE causes the last component to be replaced if it
+ *        appears to be a version stamp.  If CCN_V_HIGH is set as well, an
+ *        attempt will be made to generate a new version stamp that is
+ *        later than the existing one, or to return an error.
+ *        CCN_V_NOW bases the version on the current time rather than the
+ *        supplied time.
+ * @param secs is the desired time, in seconds since epoch (ignored if CCN_V_NOW is set).
+ * @param nsecs is the number of nanoseconds
  * @returns -1 for error, 0 for success.
  */
 int
-ccn_append_new_version(struct ccn *h, struct ccn_charbuf *name)
+ccn_create_version(struct ccn *h, struct ccn_charbuf *name,
+                   int versioning_flags, intmax_t secs, int nsecs)
 {
     struct ccn_indexbuf *nix = ccn_indexbuf_create();
     int n = ccn_name_split(name, nix);
     int myres = -1;
+    size_t i;
+    size_t j;
+    size_t lc;
+    size_t oc;
     // XXX - right now we ignore h, but in the future we may use it to try to avoid non-monotonicies in the versions.
     
     if (n < 0)
         goto Finish;
+    if ((versioning_flags & ~(CCN_V_REPLACE | CCN_V_HIGH | CCN_V_NOW)) != 0)
+        goto Finish;        
     name->length -= 1; /* Strip name closer */
+    i = name->length;
     myres = 0;
     myres |= ccn_charbuf_append_tt(name, CCN_DTAG_Component, CCN_DTAG);
-    myres |= ccn_charbuf_append_now_blob(name, CCN_MARKER_VERSION);
+    if ((versioning_flags & CCN_V_NOW) != 0)
+        myres |= ccn_charbuf_append_now_blob(name, CCN_MARKER_VERSION);
+    else {
+        myres |= ccn_charbuf_append_timestamp_blob(name, CCN_MARKER_VERSION, secs, nsecs);
+    }
     myres |= ccn_charbuf_append_closer(name); /* </Component> */
+    if (myres < 0) {
+        name->length = i;
+        goto CloseName;
+    }
+    j = name->length;
+    if (n >= 1 && (versioning_flags & CCN_V_REPLACE) != 0) {
+        oc = nix->buf[n-1];
+        lc = nix->buf[n] - oc;
+        if (lc <= 11 && lc >= 6 && name->buf[oc + 2] == CCN_MARKER_VERSION) {
+            if ((versioning_flags & CCN_V_HIGH) != 0 && memcmp(name->buf + oc, name->buf + i, j - i) > 0) {
+                /* Supplied version is in the future. */
+                name->length = i;
+                // XXX - we could try harder to make this work, for now just error out
+                myres = -1;
+                goto CloseName;
+            }
+            memmove(name->buf + oc, name->buf + i, j - i);
+            name->length -= lc;
+        }
+    }
+CloseName:
     myres |= ccn_charbuf_append_closer(name); /* </Name> */
-    if (myres < 0)
-        myres = -1;
 Finish:
+    myres = (myres < 0) ? -1 : 0;
     ccn_indexbuf_destroy(&nix);
     return(myres);
 }

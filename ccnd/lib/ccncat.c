@@ -288,6 +288,7 @@ main(int argc, char **argv)
             perror("Could not connect to ccnd");
             exit(1);
         }
+        ccn_resolve_version(ccn, name, CCN_V_HIGHEST, 50);
         ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, 0);
         incoming = calloc(1, sizeof(*incoming));
         incoming->p = &incoming_content;

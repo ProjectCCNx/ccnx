@@ -693,15 +693,29 @@ int ccn_charbuf_append_timestamp_blob(struct ccn_charbuf *c,
  */
 int ccn_charbuf_append_now_blob(struct ccn_charbuf *c, enum ccn_marker marker);
 
-
 /*
  * Versioning
  */
 
-int ccn_resolve_highest_version(struct ccn *h,
-                                struct ccn_charbuf *name,
-                                int timeout_ms);
+/* Not all of these flags make sense with all of the operations */
+#define CCN_V_REPLACE  1 /* if last component is version, replace it */
+#define CCN_V_LOW      2 /* look for early version */
+#define CCN_V_HIGH     4 /* look for newer version */
+#define CCN_V_EST      8 /* look for extreme */
+#define CCN_V_LOWEST   (2|8)
+#define CCN_V_HIGHEST  (4|8)
+#define CCN_V_NEXT     (4|1)
+#define CCN_V_PREV     (2|1)
+#define CCN_V_NOW      16 /* use current time */
 
-int ccn_append_new_version(struct ccn *h, struct ccn_charbuf *name);
+int ccn_resolve_version(struct ccn *h,
+                        struct ccn_charbuf *name, /* ccnb encoded */
+                        int versioning_flags,
+                        int timeout_ms);
+
+int ccn_create_version(struct ccn *h,
+                       struct ccn_charbuf *name,
+                       int versioning_flags,
+                       intmax_t secs, int nsecs);
 
 #endif

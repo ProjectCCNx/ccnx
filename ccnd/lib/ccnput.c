@@ -34,7 +34,7 @@ static void
 usage(const char *progname)
 {
         fprintf(stderr,
-                "%s [-h] [-x freshness_seconds] [-t type] ccn:/some/place\n"
+                "%s [-h] [-v] [-x freshness_seconds] [-t type] ccn:/some/place\n"
                 " Reads data from stdin and sends it to the local ccnd "
                 "as a single ContentObject "
                 "under the given URI\n", progname);
@@ -147,10 +147,15 @@ main(int argc, char **argv)
         exit(1);
     }
     
-    /* Tack on the vesion component if requested */
-    if (versioned)
-        ccn_append_new_version(ccn, name);
-    
+    /* Tack on the version component if requested */
+    if (versioned) {
+        res = ccn_create_version(ccn, name, CCN_V_REPLACE | CCN_V_NOW | CCN_V_HIGH, 0, 0);
+        if (res < 0) {
+            fprintf(stderr, "%s: ccn_create_version() failed\n", progname);
+            exit(1);
+        }
+        // XXX - might want to print the new URI here.
+    }
     buf = calloc(1, blocksize);
     root = name;
     name = ccn_charbuf_create();
