@@ -2,8 +2,6 @@ package com.parc.ccn.network.daemons.repo;
 
 import java.util.ArrayList;
 
-import javax.xml.stream.XMLStreamException;
-
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
