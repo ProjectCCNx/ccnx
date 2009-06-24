@@ -31,7 +31,7 @@ import com.parc.ccn.library.EnumeratedNameList;
 import com.parc.ccn.library.profiles.AccessControlProfile;
 import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;
-import com.sun.tools.javac.util.Pair;
+import com.parc.ccn.library.profiles.AccessControlProfile.PrincipalInfo;
 
 /**
  * A key directory is a versioned key object which contains, under
@@ -134,8 +134,8 @@ public class KeyDirectory extends EnumeratedNameList {
 	public ArrayList<byte []> otherNames() { return _otherNames; }
 	
 	protected void addPrincipal(byte [] wkChildName) {
-		Pair<String, Timestamp> pair = AccessControlProfile.parsePrincipalInfoFromNameComponent(wkChildName);
-		_principals.put(pair.fst, pair.snd);
+		PrincipalInfo pi = AccessControlProfile.parsePrincipalInfoFromNameComponent(wkChildName);
+		_principals.put(pi.friendlyName(), pi.versionTimestamp());
 	}
 	
 	public WrappedKeyObject getWrappedKeyForKeyID(byte [] keyID) throws XMLStreamException, IOException, ConfigurationException {
@@ -173,8 +173,8 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	public ContentName getWrappedKeyNameForPrincipal(ContentName principalPublicKeyName) throws VersionMissingException {
-		Pair<String, Timestamp> info = AccessControlProfile.parsePrincipalInfoFromPublicKeyName(principalPublicKeyName);
-		return getWrappedKeyNameForPrincipal(info.fst, info.snd);
+		PrincipalInfo info = AccessControlProfile.parsePrincipalInfoFromPublicKeyName(principalPublicKeyName);
+		return getWrappedKeyNameForPrincipal(info.friendlyName(), info.versionTimestamp());
 	}
 	
 	public boolean hasSupersededBlock() {

@@ -6,7 +6,6 @@ import java.sql.Timestamp;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.util.DataUtils;
-import com.sun.tools.javac.util.Pair;
 
 public class AccessControlProfile implements CCNProfile {
 	
@@ -47,6 +46,19 @@ public class AccessControlProfile implements CCNProfile {
 	public static final byte [] PRINCIPAL_PREFIX = ContentName.componentParseNative("p" + COMPONENT_SEPARATOR_STRING);
 
 	public static final String SUPERSEDED_MARKER = "SupersededBy";
+	
+	public static class PrincipalInfo {
+		private String _friendlyName;
+		private Timestamp _versionTimestamp;
+		
+		public PrincipalInfo(String friendlyName, Timestamp versionTimestamp) {
+			_friendlyName = friendlyName;
+			_versionTimestamp = versionTimestamp;
+		}
+		
+		public String friendlyName() { return _friendlyName; }
+		public Timestamp versionTimestamp() { return _versionTimestamp; }
+	}
 	
 	
 	public static boolean isAccessName(ContentName name) {
@@ -193,7 +205,7 @@ public class AccessControlProfile implements CCNProfile {
 		return output;
 	}
 
-	public static Pair<String, Timestamp> parsePrincipalInfoFromNameComponent(
+	public static PrincipalInfo parsePrincipalInfoFromNameComponent(
 			byte[] childName) {
 		if (!isPrincipalNameComponent(childName) || (childName.length <= PRINCIPAL_PREFIX.length))
 			return null;
@@ -218,7 +230,7 @@ public class AccessControlProfile implements CCNProfile {
 		String strPrincipal = ContentName.componentPrintNative(principal);
 		// Represent as version or just the timestamp part?
 		Timestamp version = DataUtils.binaryTime12ToTimestamp(timestamp);
-		return new Pair<String, Timestamp>(strPrincipal, version);	
+		return new PrincipalInfo(strPrincipal, version);	
 	}
 
 	/**
@@ -248,10 +260,10 @@ public class AccessControlProfile implements CCNProfile {
 		return component;
 	}
 
-	public static Pair<String, Timestamp> parsePrincipalInfoFromPublicKeyName(ContentName publicKeyName) throws VersionMissingException {
+	public static PrincipalInfo parsePrincipalInfoFromPublicKeyName(ContentName publicKeyName) throws VersionMissingException {
 		
 		Timestamp version = VersioningProfile.getVersionAsTimestamp(publicKeyName);
 		String principal = ContentName.componentPrintNative(VersioningProfile.versionRoot(publicKeyName).lastComponent());
-		return new Pair<String, Timestamp>(principal, version);
+		return new PrincipalInfo(principal, version);
 	}
 }
