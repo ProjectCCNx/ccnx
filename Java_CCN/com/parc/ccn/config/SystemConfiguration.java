@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.math.BigInteger;
 import java.util.HashMap;
+import java.util.TreeMap;
 import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
@@ -56,6 +57,11 @@ public class SystemConfiguration {
 		"com.parc.ccn.data.DefaultEncoding";
 	
 	public static final int DEBUG_RADIX = 34;
+	
+	/**
+	 * Property to allow/disallow logging for individual modules
+	 */
+	protected static TreeMap<String, Boolean> loggingInfo = new TreeMap<String, Boolean>();
 
 	static {
 		// Allow override of default debug information.
@@ -193,6 +199,28 @@ public class SystemConfiguration {
 			Library.logger().log(level, "Cannot encode object for logging: " + co.name());
 		}
 		
+	}
+	
+	/**
+	 * Set logging for a particular module. This could (should?) be
+	 * modified to allow use of a properties file.
+	 * 
+	 * @param name
+	 * @param value
+	 */
+	public static void setLogging(String name, Boolean value) {
+		loggingInfo.put(name, value);
+	}
+	
+	/**
+	 * Get logging for a particular module. To maintain the "status quo"
+	 * we say to go ahead with the logging if logging was never setup.
+	 * @param name
+	 * @return
+	 */
+	public static boolean getLogging(String name) {
+		Boolean value = loggingInfo.get(name);
+		return value == null ? true : value;
 	}
 
 }
