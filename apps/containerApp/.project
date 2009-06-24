@@ -3,7 +3,7 @@
 	<name>containerApp</name>
 	<comment></comment>
 	<projects>
-		<project>CCN</project>
+		<project>Java_CCN</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
