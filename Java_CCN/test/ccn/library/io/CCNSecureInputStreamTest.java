@@ -5,11 +5,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.security.DigestInputStream;
-import java.security.DigestOutputStream;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.util.Random;
@@ -50,22 +47,20 @@ public class CCNSecureInputStreamTest {
 		ContentName name;
 		ContentKeys keys;
 		int encrLength = 25*1024+301;
-		byte [] digest;
 		byte [] encrData;
 		public StreamFactory(String file_name) throws NoSuchAlgorithmException, XMLStreamException, IOException, InterruptedException {
 			name = ContentName.fromNative(defaultStreamName, file_name);
 			flosser.handleNamespace(name);
 			keys = ContentKeys.generateRandomKeys();
-			digest = writeFile(encrLength);
+			writeFile(encrLength);
 		}
 		public abstract CCNInputStream makeInputStream() throws IOException, XMLStreamException;
 		public abstract OutputStream makeOutputStream() throws IOException, XMLStreamException;
 
-		public byte [] writeFile(int fileLength) throws XMLStreamException, IOException, NoSuchAlgorithmException, InterruptedException {
+		public void writeFile(int fileLength) throws XMLStreamException, IOException, NoSuchAlgorithmException, InterruptedException {
 			Random randBytes = new Random(0); // always same sequence, to aid debugging
-			OutputStream stockOutputStream = makeOutputStream();
+			OutputStream os = makeOutputStream();
 
-			DigestOutputStream digestStreamWrapper = new DigestOutputStream(stockOutputStream, MessageDigest.getInstance("SHA1"));
 			ByteArrayOutputStream data = new ByteArrayOutputStream();
 
 			byte [] bytes = new byte[BUF_SIZE];
@@ -76,24 +71,23 @@ public class CCNSecureInputStreamTest {
 			while (elapsed < fileLength) {
 				nextBufSize = ((fileLength - elapsed) > BUF_SIZE) ? BUF_SIZE : (fileLength - elapsed);
 				randBytes.nextBytes(bytes);
-				digestStreamWrapper.write(bytes, 0, nextBufSize);
+				os.write(bytes, 0, nextBufSize);
 				data.write(bytes, 0, nextBufSize);
 				elapsed += nextBufSize;
 				if (randBytes.nextDouble() < probFlush) {
 					System.out.println("Flushing buffers.");
-					digestStreamWrapper.flush();
+					os.flush();
 				}
 			}
-			digestStreamWrapper.close();
+			os.close();
 			encrData = data.toByteArray();
-			return digestStreamWrapper.getMessageDigest().digest();
 		}
 
 		public void streamEncryptDecrypt() throws XMLStreamException, IOException {
 			// check we get identical data back out
 			CCNInputStream vfirst = makeInputStream();
-			byte [] readDigest = readFile(vfirst, encrLength);
-			Assert.assertArrayEquals(digest, readDigest);
+			byte [] read_data = readFile(vfirst, encrLength);
+			Assert.assertArrayEquals(encrData, read_data);
 
 			// check things fail if we use different keys
 			ContentKeys keys2 = keys;
@@ -104,8 +98,8 @@ public class CCNSecureInputStreamTest {
 			} finally {
 				keys = keys2;
 			}
-			byte [] readDigest2 = readFile(v2, encrLength);
-			Assert.assertFalse(digest.equals(readDigest2));
+			read_data = readFile(v2, encrLength);
+			Assert.assertFalse(encrData.equals(read_data));
 		}
 
 		public void seeking() throws XMLStreamException, IOException, NoSuchAlgorithmException {
@@ -247,18 +241,14 @@ public class CCNSecureInputStreamTest {
 	}
 	
 	public static byte [] readFile(InputStream inputStream, int fileLength) throws IOException {
-		DigestInputStream dis = null;
-		try {
-			dis = new DigestInputStream(inputStream, MessageDigest.getInstance("SHA1"));
-		} catch (NoSuchAlgorithmException e) {
-			Library.logger().severe("No SHA1 available!");
-			Assert.fail("No SHA1 available!");
-		}
+		ByteArrayOutputStream bos = null;
+		bos = new ByteArrayOutputStream();
 		int elapsed = 0;
 		int read = 0;
 		byte [] bytes = new byte[BUF_SIZE];
 		while (elapsed < fileLength) {
-			read = dis.read(bytes);
+			read = inputStream.read(bytes);
+			bos.write(bytes, 0, read);
 			if (read < 0) {
 				break;
 			} else if (read == 0) {
@@ -270,7 +260,7 @@ public class CCNSecureInputStreamTest {
 			}
 			elapsed += read;
 		}
-		return dis.getMessageDigest().digest();
+		return bos.toByteArray();
 	}
 	
 	/**
