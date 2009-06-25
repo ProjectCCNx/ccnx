@@ -16,6 +16,7 @@ import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
+import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.ExcludeFilter;
@@ -154,7 +155,6 @@ public class RepositoryDaemon extends Daemon {
 		
 		try {
 			_library = CCNLibrary.open();
-			_repo = new RFSImpl();
 			_writer = new CCNWriter(_library);
 			
 			/*
@@ -173,6 +173,7 @@ public class RepositoryDaemon extends Daemon {
 	}
 	
 	public void initialize(String[] args, Daemon daemon) {
+		SystemConfiguration.setLogging("repo", false);
 		for (int i = 0; i < args.length; i++) {
 			if (args[i].equals("-log")) {
 				if (args.length < i + 2) {
@@ -180,6 +181,7 @@ public class RepositoryDaemon extends Daemon {
 					return;
 				}
 				try {
+					SystemConfiguration.setLogging("repo", true);
 					Level level = Level.parse(args[i + 1]);
 					Library.logger().setLevel(level);
 				} catch (IllegalArgumentException iae) {
@@ -187,7 +189,16 @@ public class RepositoryDaemon extends Daemon {
 					return;
 				}
 			}
+			
+			/*
+			 * This is for upper half performance testing for writes
+			 */
+			if (args[i].equals("-bb"))
+				_repo = new BitBucketRepository();
 		}
+		
+		if (_repo == null)
+			_repo = new RFSImpl();
 		try {
 			_repo.initialize(args);
 		} catch (InvalidParameterException ipe) {

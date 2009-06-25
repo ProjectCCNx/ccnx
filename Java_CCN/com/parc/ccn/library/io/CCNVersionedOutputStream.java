@@ -25,7 +25,12 @@ public class CCNVersionedOutputStream extends CCNOutputStream {
 	public CCNVersionedOutputStream(ContentName name, KeyLocator locator,
 			PublisherPublicKeyDigest publisher, ContentKeys keys, CCNLibrary library)
 			throws IOException {
-		this(name, locator, publisher, null, new CCNSegmenter(new CCNFlowControl(name, library), null, keys));
+		/*
+		 * The Flow Controller must register a Filter above the version no. for someone else's
+		 * getLatestVersion interests to see this stream.
+		 */
+		this(name, locator, publisher, null, new CCNSegmenter(
+				new CCNFlowControl(VersioningProfile.versionRoot(name), library), null, keys));
 	}
 
 	public CCNVersionedOutputStream(ContentName name, CCNLibrary library)

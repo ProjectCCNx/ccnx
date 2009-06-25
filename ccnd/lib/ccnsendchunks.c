@@ -257,7 +257,11 @@ main(int argc, char **argv)
             mydata.outstanding--;
         else
             res = 10;
-        ccn_run(ccn, res * 100);
+        res = ccn_run(ccn, res * 100);
+        if (res < 0) {
+            status = 1;
+            break;
+        }
     }
     
     free(buf);

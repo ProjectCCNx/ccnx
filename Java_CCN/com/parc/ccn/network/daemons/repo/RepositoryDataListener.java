@@ -8,6 +8,7 @@ import java.util.TreeMap;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNInterestListener;
@@ -45,13 +46,15 @@ public class RepositoryDataListener implements CCNInterestListener {
 		private ContentObject _content;
 		
 		private DataHandler(ContentObject co) {
-			Library.logger().info("Saw data: " + co.name());
+			if (SystemConfiguration.getLogging("repo"))
+				Library.logger().info("Saw data: " + co.name());
 			_content = co;
 		}
 	
 		public void run() {
 			try {
-				Library.logger().finer("Saving content in: " + _content.name().toString());
+				if (SystemConfiguration.getLogging("repo"))
+					Library.logger().finer("Saving content in: " + _content.name().toString());
 				_daemon.getRepository().saveContent(_content);		
 				if (_daemon.getRepository().checkPolicyUpdate(_content)) {
 					_daemon.resetNameSpaceFromHandler();

@@ -230,7 +230,13 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			if (name.compareTo(name()) <= 0) {
 				Library.logger().finest("Interest match failed. orderPreference is " + orderPreference() +
 						" and name " + name + " comes before our name " + name());
-				return false;
+				// If the name (missing the digest) has one less component than our name, we assume
+				// we matched by way of the digest
+				if (!digestIncluded || name.count() != name().count() - 1) {
+					Library.logger().finest("Interest match failed. orderPreference is " + orderPreference() +
+							" and name " + name + " comes before our name " + name());
+					return false;
+				}
 			}
 		}
 		if (null != excludeFilter()) {

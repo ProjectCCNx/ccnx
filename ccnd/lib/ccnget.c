@@ -11,9 +11,6 @@
 #include <ccn/charbuf.h>
 #include <ccn/uri.h>
 
-int
-ccn_resolve_highest_version(struct ccn *h, struct ccn_charbuf *name, int timeout_ms);
-
 static void
 usage(const char *progname)
 {
@@ -22,7 +19,8 @@ usage(const char *progname)
             "   Get one content item matching the name prefix and write it to stdout"
             "\n"
             "   -a - allow stale data\n"
-            "   -c - content only, not full ccnb\n",
+            "   -c - content only, not full ccnb\n"
+            "   -v - resolve version number\n",
             progname);
     exit(1);
 }
@@ -30,6 +28,7 @@ usage(const char *progname)
 int
 main(int argc, char **argv)
 {
+    struct ccn *h = NULL;
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *templ = NULL;
     struct ccn_charbuf *resultbuf = NULL;
@@ -70,6 +69,16 @@ main(int argc, char **argv)
     }
     if (argv[optind + 1] != NULL)
         fprintf(stderr, "%s warning: extra arguments ignored\n", argv[0]);
+    h = ccn_create();
+    res = ccn_connect(h, NULL);
+    if (res < 0) {
+        ccn_perror(h, "ccn_connect");
+        exit(1);
+    }
+    if (res < 0) {
+        fprintf(stderr, "%s: bad ccn URI: %s\n", argv[0], arg);
+        exit(1);
+    }
     if (allow_stale) {
         templ = ccn_charbuf_create();
         ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
@@ -83,7 +92,7 @@ main(int argc, char **argv)
     }
     resultbuf = ccn_charbuf_create();
     if (resolve_version) {
-        res = ccn_resolve_highest_version(NULL, name, 500);
+        res = ccn_resolve_version(h, name, (CCN_V_REPLACE | CCN_V_HIGHEST), 500);
         if (res >= 0) {
             ccn_uri_append(resultbuf, name->buf, name->length, 1);
             fprintf(stderr, "== %s\n",
@@ -91,7 +100,7 @@ main(int argc, char **argv)
             resultbuf->length = 0;
         }
     }
-    res = ccn_get(NULL, name, -1, templ, 3000, resultbuf, &pcobuf, NULL);
+    res = ccn_get(h, name, -1, templ, 3000, resultbuf, &pcobuf, NULL);
     if (res >= 0) {
         ptr = resultbuf->buf;
         length = resultbuf->length;
@@ -102,5 +111,6 @@ main(int argc, char **argv)
     ccn_charbuf_destroy(&resultbuf);
     ccn_charbuf_destroy(&templ);
     ccn_charbuf_destroy(&name);
+    ccn_destroy(&h);
     exit(res < 0);
 }

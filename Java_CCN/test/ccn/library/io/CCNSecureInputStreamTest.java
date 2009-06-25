@@ -5,11 +5,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.security.DigestInputStream;
-import java.security.DigestOutputStream;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.util.Random;
@@ -41,61 +38,56 @@ import com.parc.ccn.library.io.CCNOutputStream;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
 import com.parc.ccn.library.io.CCNVersionedOutputStream;
 import com.parc.ccn.library.profiles.SegmentationProfile;
-import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.crypto.ContentKeys;
 import com.parc.ccn.security.crypto.UnbufferedCipherInputStream;
 
 public class CCNSecureInputStreamTest {
 	
 	static protected abstract class StreamFactory {
-		int encrLength = 25*1024+301;
-		byte [] digest;
-		byte [] encrData;
 		ContentName name;
 		ContentKeys keys;
-		public StreamFactory(ContentName n) throws NoSuchAlgorithmException, XMLStreamException, IOException, InterruptedException {
-			name = VersioningProfile.versionName(n);
+		int encrLength = 25*1024+301;
+		byte [] encrData;
+		public StreamFactory(String file_name) throws NoSuchAlgorithmException, XMLStreamException, IOException, InterruptedException {
+			name = ContentName.fromNative(defaultStreamName, file_name);
 			flosser.handleNamespace(name);
 			keys = ContentKeys.generateRandomKeys();
-			digest = writeFile(encrLength);
+			writeFile(encrLength);
 		}
 		public abstract CCNInputStream makeInputStream() throws IOException, XMLStreamException;
 		public abstract OutputStream makeOutputStream() throws IOException, XMLStreamException;
 
-		public byte [] writeFile(int fileLength) throws XMLStreamException, IOException, NoSuchAlgorithmException, InterruptedException {
-			Random randBytes = new Random(); // doesn't need to be secure
-			OutputStream stockOutputStream = makeOutputStream();
+		public void writeFile(int fileLength) throws XMLStreamException, IOException, NoSuchAlgorithmException, InterruptedException {
+			Random randBytes = new Random(0); // always same sequence, to aid debugging
+			OutputStream os = makeOutputStream();
 
-			DigestOutputStream digestStreamWrapper = new DigestOutputStream(stockOutputStream, MessageDigest.getInstance("SHA1"));
 			ByteArrayOutputStream data = new ByteArrayOutputStream();
 
 			byte [] bytes = new byte[BUF_SIZE];
 			int elapsed = 0;
 			int nextBufSize = 0;
-			final double probFlush = .1;
+			final double probFlush = .3;
 
 			while (elapsed < fileLength) {
 				nextBufSize = ((fileLength - elapsed) > BUF_SIZE) ? BUF_SIZE : (fileLength - elapsed);
 				randBytes.nextBytes(bytes);
-				digestStreamWrapper.write(bytes, 0, nextBufSize);
+				os.write(bytes, 0, nextBufSize);
 				data.write(bytes, 0, nextBufSize);
 				elapsed += nextBufSize;
 				if (randBytes.nextDouble() < probFlush) {
 					System.out.println("Flushing buffers.");
-					digestStreamWrapper.flush();
+					os.flush();
 				}
 			}
-			digestStreamWrapper.close();
+			os.close();
 			encrData = data.toByteArray();
-			return digestStreamWrapper.getMessageDigest().digest();
 		}
 
 		public void streamEncryptDecrypt() throws XMLStreamException, IOException {
 			// check we get identical data back out
-			System.out.println("Reading CCNInputStream from "+name);
 			CCNInputStream vfirst = makeInputStream();
-			byte [] readDigest = readFile(vfirst, encrLength);
-			Assert.assertArrayEquals(digest, readDigest);
+			byte [] read_data = readFile(vfirst, encrLength);
+			Assert.assertArrayEquals(encrData, read_data);
 
 			// check things fail if we use different keys
 			ContentKeys keys2 = keys;
@@ -106,8 +98,8 @@ public class CCNSecureInputStreamTest {
 			} finally {
 				keys = keys2;
 			}
-			byte [] readDigest2 = readFile(v2, encrLength);
-			Assert.assertFalse(digest.equals(readDigest2));
+			read_data = readFile(v2, encrLength);
+			Assert.assertFalse(encrData.equals(read_data));
 		}
 
 		public void seeking() throws XMLStreamException, IOException, NoSuchAlgorithmException {
@@ -122,7 +114,6 @@ public class CCNSecureInputStreamTest {
 		}
 
 		private void doSeeking(int length) throws XMLStreamException, IOException, NoSuchAlgorithmException {
-			System.out.println("Reading CCNInputStream from "+name);
 			CCNInputStream i = makeInputStream();
 			// make sure we start mid ContentObject and past the first Cipher block
 			int start = ((int) (encrLength*0.3) % 4096) +600;
@@ -144,7 +135,6 @@ public class CCNSecureInputStreamTest {
 		}
 
 		private void doMarkReset(int length) throws XMLStreamException, IOException, NoSuchAlgorithmException {
-			System.out.println("Reading CCNInputStream from "+name);
 			CCNInputStream i = makeInputStream();
 			i.skip(length);
 			i.reset();
@@ -167,8 +157,7 @@ public class CCNSecureInputStreamTest {
 
 		public void skipping() throws XMLStreamException, IOException, NoSuchAlgorithmException {
 			// read some data, skip some data, read some more data
-			System.out.println("Reading CCNInputStream from "+name);
-			CCNInputStream inStream = new CCNInputStream(name, null, null, keys, inputLibrary);
+			CCNInputStream inStream = makeInputStream();
 
 			int start = (int) (encrLength*0.3);
 
@@ -218,11 +207,11 @@ public class CCNSecureInputStreamTest {
 		inputLibrary = CCNLibrary.open();
 		
 		// Write a set of output
-		defaultStreamName = ContentName.fromNative("/test/stream/versioning/LongOutput.bin");
+		defaultStreamName = ContentName.fromNative("/test/stream");
 		
 		flosser = new Flosser();
 		
-		basic = new StreamFactory(defaultStreamName){
+		basic = new StreamFactory("basic.txt"){
 			public CCNInputStream makeInputStream() throws IOException, XMLStreamException {
 				return new CCNInputStream(name, null, null, keys, inputLibrary);
 			}
@@ -231,7 +220,7 @@ public class CCNSecureInputStreamTest {
 			}
 		};
 
-		versioned = new StreamFactory(defaultStreamName){
+		versioned = new StreamFactory("versioned.txt"){
 			public CCNInputStream makeInputStream() throws IOException, XMLStreamException {
 				return new CCNVersionedInputStream(name, 0L, null, keys, inputLibrary);
 			}
@@ -240,7 +229,7 @@ public class CCNSecureInputStreamTest {
 			}
 		};
 
-		file = new StreamFactory(defaultStreamName){
+		file = new StreamFactory("file.txt"){
 			public CCNInputStream makeInputStream() throws IOException, XMLStreamException {
 				return new CCNFileInputStream(name, null, null, keys, inputLibrary);
 			}
@@ -251,27 +240,18 @@ public class CCNSecureInputStreamTest {
 		flosser.stop();
 	}
 	
-	public static byte [] readFile(InputStream inputStream, int fileLength) throws IOException, XMLStreamException {
-		System.out.println("Entering READFILE");
-		DigestInputStream dis = null;
-		try {
-			dis = new DigestInputStream(inputStream, MessageDigest.getInstance("SHA1"));
-		} catch (NoSuchAlgorithmException e) {
-			Library.logger().severe("No SHA1 available!");
-			Assert.fail("No SHA1 available!");
-		}
+	public static byte [] readFile(InputStream inputStream, int fileLength) throws IOException {
+		ByteArrayOutputStream bos = null;
+		bos = new ByteArrayOutputStream();
 		int elapsed = 0;
 		int read = 0;
 		byte [] bytes = new byte[BUF_SIZE];
 		while (elapsed < fileLength) {
-			System.out.println("elapsed = " + elapsed + " fileLength=" + fileLength);
-			read = dis.read(bytes);
-			System.out.println("read returned " + read + ". elapsed = " + elapsed);
+			read = inputStream.read(bytes);
+			bos.write(bytes, 0, read);
 			if (read < 0) {
-				System.out.println("EOF read at " + elapsed + " bytes out of " + fileLength);
 				break;
 			} else if (read == 0) {
-				System.out.println("0 bytes read at " + elapsed + " bytes out of " + fileLength);
 				try {
 					Thread.sleep(10);
 				} catch (InterruptedException e) {
@@ -279,9 +259,8 @@ public class CCNSecureInputStreamTest {
 				}
 			}
 			elapsed += read;
-			System.out.println(" read " + elapsed + " bytes out of " + fileLength);
 		}
-		return dis.getMessageDigest().digest();
+		return bos.toByteArray();
 	}
 	
 	/**

@@ -10,17 +10,47 @@ import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.io.CCNDescriptor;
+import com.parc.ccn.library.io.CCNFileInputStream;
+import com.parc.ccn.library.io.CCNInputStream;
 
 public class get_file {
+	
+	public static Integer timeout = null;
+	public static boolean unversioned = false;
 
 	/**
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		if (args.length < 2) {
+		int startArg = 0;
+		
+		for (int i = 0; i < args.length - 2; i++) {
+			if (args[i].equals("-unversioned")) {
+				if (startArg <= i)
+					startArg = i + 1;
+				unversioned = true;
+			} else if (args[i].equals("-timeout")) {
+				if (args.length < (i + 2)) {
+					usage();
+					return;
+				}
+				try {
+					timeout = Integer.parseInt(args[++i]);
+				} catch (NumberFormatException nfe) {
+					usage();
+					return;
+				}
+				if (startArg <= i)
+					startArg = i + 1;
+			} else {
+				usage();
+				System.exit(1);
+			}
+		}
+		
+		if (args.length < startArg + 2) {
 			usage();
-			return;
+			System.exit(1);
 		}
 		
 		try {
@@ -29,20 +59,24 @@ public class get_file {
 			// If we get more than one, put underneath the first as parent.
 			// Ideally want to use newVersion to get latest version. Start
 			// with random version.
-			ContentName argName = ContentName.fromURI(args[0]);
+			ContentName argName = ContentName.fromURI(args[startArg]);
 			
 			CCNLibrary library = CCNLibrary.open();
 
-			File theFile = new File(args[1]);
+			File theFile = new File(args[startArg + 1]);
 			if (theFile.exists()) {
-				System.out.println("Overwriting file: " + args[1]);
+				System.out.println("Overwriting file: " + args[startArg + 1]);
 			}
 			FileOutputStream output = new FileOutputStream(theFile);
 			
 			long starttime = System.currentTimeMillis();
-			CCNDescriptor input = new CCNDescriptor(argName, null, library);
-			if (args.length > 2) {
-				input.setTimeout(new Integer(args[2]).intValue()); 
+			CCNInputStream input;
+			if (unversioned)
+				input = new CCNInputStream(argName, null, library);
+			else
+				input = new CCNFileInputStream(argName, library);
+			if (timeout != null) {
+				input.setTimeout(timeout); 
 			}
 			byte [] buffer = new byte[readsize];
 			
@@ -72,11 +106,10 @@ public class get_file {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-
+		System.exit(1);
 	}
 	
 	public static void usage() {
-		System.out.println("usage: get_file <ccnname> <filename> [<timeoutms>]");
+		System.out.println("usage: get_file [-unversioned] [-timeout millis] <ccnname> <filename>");
 	}
-
 }

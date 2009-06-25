@@ -41,7 +41,7 @@ public class FileNode {
 		if (files == null)
 			return true;
 
-		Vector v = new Vector();
+		Vector<FileNode> v = new Vector<FileNode>();
 
 		for (int k = 0; k < files.length; k++) {
 			File f = files[k];

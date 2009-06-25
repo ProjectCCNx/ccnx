@@ -43,7 +43,7 @@ CSRC = ccn_buf_decoder.c ccn_dtag_table.c ccn_buf_encoder.c ccn_charbuf.c \
 
 LIBS = libccn.a
 LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_dtag_table.o ccn_schedule.o ccn_matrix.o \
-    ccn_buf_decoder.o ccn_uri.o ccn_buf_encoder.o ccn_bloom.o ccn_name_util.o ccn_digest.o ccn_keystore.o ccn_signing.o ccn_match.o hashtb.o ccn_merkle_path_asn1.o ccn_bulkdata.o
+    ccn_buf_decoder.o ccn_uri.o ccn_buf_encoder.o ccn_bloom.o ccn_name_util.o ccn_digest.o ccn_keystore.o ccn_signing.o ccn_match.o hashtb.o ccn_merkle_path_asn1.o ccn_bulkdata.o ccn_versioning.o
 
 default all: lib $(PROGRAMS)
 # Don't try to build shared libs right now.
@@ -145,8 +145,8 @@ ccnbuzz: ccnbuzz.o
 ccnput: ccnput.o
 	$(CC) $(CFLAGS) -o $@ ccnput.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
-ccnget: ccnget.o ccn_versioning.o
-	$(CC) $(CFLAGS) -o $@ ccnget.o ccn_versioning.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+ccnget: ccnget.o
+	$(CC) $(CFLAGS) -o $@ ccnget.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccnhexdumpdata: ccnhexdumpdata.o
 	$(CC) $(CFLAGS) -o $@ ccnhexdumpdata.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
@@ -192,7 +192,8 @@ ccn_buf_decoder.o: ccn_buf_decoder.c ../include/ccn/ccn.h \
 ccn_dtag_table.o: ccn_dtag_table.c ../include/ccn/coding.h
 ccn_buf_encoder.o: ccn_buf_encoder.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/signing.h
+  ../include/ccn/indexbuf.h ../include/ccn/signing.h \
+  ../include/ccn/ccn_private.h
 ccn_charbuf.o: ccn_charbuf.c ../include/ccn/charbuf.h
 ccn_indexbuf.o: ccn_indexbuf.c ../include/ccn/indexbuf.h
 ccn_coding.o: ccn_coding.c ../include/ccn/coding.h
@@ -223,7 +224,8 @@ ccn_signing.o: ccn_signing.c ../include/ccn/merklepathasn1.h \
   ../include/ccn/indexbuf.h ../include/ccn/signing.h
 ccn_versioning.o: ccn_versioning.c ../include/ccn/bloom.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/uri.h
+  ../include/ccn/indexbuf.h ../include/ccn/uri.h \
+  ../include/ccn/ccn_private.h
 ccn_bulkdata.o: ccn_bulkdata.c ../include/ccn/bloom.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h

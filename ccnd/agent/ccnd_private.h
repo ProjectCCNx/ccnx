@@ -177,7 +177,7 @@ struct content_entry {
 /* content_entry flags */
 #define CCN_CONTENT_ENTRY_SLOWSEND  1
 #define CCN_CONTENT_ENTRY_STALE     2
-
+#define CCN_CONTENT_ENTRY_PRECIOUS  4
 /*
  * The sparse_straggler hash table, keyed by accession, holds scattered
  * entries that would bloat the direct content_by_accession table.
