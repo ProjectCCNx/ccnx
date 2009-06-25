@@ -23,10 +23,8 @@ import com.parc.ccn.apps.containerApp.IconData;
 import com.parc.ccn.apps.containerApp.Name;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.BasicNameEnumeratorListener;
-import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.io.CCNFileInputStream;
@@ -408,9 +406,6 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		} catch (IOException e) {
 
 			System.out.println("error writing file to repo");
-			e.printStackTrace();
-		} catch (XMLStreamException e) {
-			
 			e.printStackTrace();
 		}
 
