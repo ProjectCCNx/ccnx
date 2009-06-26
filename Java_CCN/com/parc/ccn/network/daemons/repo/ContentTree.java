@@ -70,6 +70,32 @@ public class ContentTree {
 			}
 			return null;
 		}
+		
+		public String toString(){
+			String s = "";
+
+			if(component==null)
+				s = "root";
+			else{
+				s = ContentName.componentPrintURI(component);				
+			}
+			if(oneChild!=null){
+				//there is only one child
+				s+= " oneChild: "+ContentName.componentPrintURI(component);
+			}
+			else if(children!=null){
+				s+= " children: ";
+				for(TreeNode t: children){
+					//append each child to string
+					s+=" "+ContentName.componentPrintURI(t.component);
+					//s+=new String(t.component)+" ";
+				}
+			}
+			else
+				s+=" oneChild and children were null";
+
+			return s;
+		}
 	}
 	public class TreeNodeComparator implements Comparator<TreeNode> {
 		public int compare(TreeNode o1, TreeNode o2) {
@@ -91,19 +117,21 @@ public class ContentTree {
 	 */
 	public void insert(ContentObject content, ContentFileRef ref) {
 		final ContentName name = new ContentName(content.name(), content.contentDigest());
+		Library.logger().fine("inserting content: "+name.toString());
 		System.out.println("inserting content: "+name.toString());
 		TreeNode node = root; // starting point
 		assert(null != root);
 		
 		for (byte[] component : name.components()) {
 			synchronized(node) {
-				System.out.println("getting node for component: "+new String(component));
+				//Library.logger().finest("getting node for component: "+new String(component));
 				TreeNode child = node.getChild(component);
 				if (null == child) {
-					System.out.println("child was null: adding here");
+					Library.logger().finest("child was null: adding here");
 					// add it
 					child = new TreeNode();
 					child.component = component;
+					System.out.println("adding component: "+ContentName.componentPrintNative(child.component));
 					if (null == node.oneChild && null == node.children) {
 						// This is first and only child of current node
 						node.oneChild = child;
@@ -117,33 +145,28 @@ public class ContentTree {
 						node.children.add(child);
 						node.oneChild = null;
 					}
-					System.out.println("child should not be null now... "+child.toString());
 				}
-				System.out.println("child was not null: moving down the tree");
+				//Library.logger().finest("child was not null: moving down the tree");
 				node = child;
 			}
 		}
-		
-		System.out.println("done with loop...");
+
 		// At conclusion of this loop, node must be holding the last node for this name
 		// so we insert the ref there
 		if (null == node.oneContent && null == node.content) {
-			System.out.println("node.oneContent and node.content null");
 			// This is first and only content at this leaf
 			node.oneContent = ref;
 		} else if (null == node.oneContent) {
-			System.out.println("node.oneContent is null, adding to list");
 			// Multiple content already at this node, add this one
 			node.content.add(ref);
 		} else {
-			System.out.println("there is content at this name, creating and adding to list");
 			// Second content at current node, need to switch to list
 			node.content = new ArrayList<ContentFileRef>();
 			node.content.add(node.oneContent);
 			node.content.add(ref);
 			node.oneContent = null;
 		}
-		System.out.println("added content to node: "+node.toString());
+		System.out.println("added "+ name.toString()+" at file ref: "+ref.id+" "+ref.offset);
 	}
 
 	protected TreeNode lookupNode(ContentName name, int count) {
@@ -156,7 +179,7 @@ public class ContentTree {
 		
 		for (byte[] component : name.components()) {
 			synchronized(node) {
-				System.out.println("checking component: "+new String(component)+" count = "+count);
+				//System.out.println("checking component: "+new String(component)+" count = "+count);
 				TreeNode child = node.getChild(component);
 				if (null == child) {
 					// Mismatch, no child for the given component so nothing under this name
@@ -164,7 +187,7 @@ public class ContentTree {
 				}
 				node = child;
 				count--;
-				System.out.println("count is: "+count);
+				//System.out.println("count is: "+count);
 				if (count < 1) {
 					break;
 				}
@@ -292,6 +315,7 @@ public class ContentTree {
 		getSubtreeNodes(node, options);
 		for (int i = options.size()-1; i >= 0 ; i--) {
 			TreeNode candidate = options.get(i);
+			System.out.println("treenode candidate: "+candidate.toString());
 			if (null != candidate.oneContent || null != candidate.content) {
 				List<ContentFileRef> content = null;
 				synchronized(candidate) {
@@ -304,8 +328,9 @@ public class ContentTree {
 					}
 				}
 				for (ContentFileRef ref : content) {
+					System.out.println("ref: "+ref.id+" "+ref.offset);
 					ContentObject cand = getter.get(ref);
-					if (interest.matches(cand)) {
+					if (cand!=null && interest.matches(cand)) {
 						return cand;
 					}
 				}
@@ -323,10 +348,13 @@ public class ContentTree {
 			for (ContentFileRef ref : found) {
 				ContentObject cand = getter.get(ref);
 				if (null != cand) {
+					System.out.println("candidate: "+cand.name().toString()+" interest: "+interest.name().toString());
 					if (interest.matches(cand)) {
 						return cand;
 					}
 				}
+				else
+					System.out.println("candidate was null");
 			}
 		} else {
 			//TreeNode prefixRoot = lookupNode(interest.name(), interest.nameComponentCount());
@@ -345,6 +373,7 @@ public class ContentTree {
 				//leftSearch(interest, (null == addl) ? -1 : addl + interest.nameComponentCount(),
 					//prefixRoot, new ContentName(interest.nameComponentCount(), interest.name().components()), 
 					//interest.nameComponentCount(), getter);
+				System.out.println("going to do leftSearch for earliest.  Interest: "+interest.toString());
 				return leftSearch(interest, (null == addl) ? -1 : addl + ncc,
 						prefixRoot, new ContentName(ncc, interest.name().components()), 
 						ncc, getter);
@@ -353,6 +382,8 @@ public class ContentTree {
 				//rightSearch(interest, (null == addl) ? -1 : addl + interest.nameComponentCount(), 
 				//		prefixRoot, new ContentName(interest.nameComponentCount(), interest.name().components()), 
 				//		interest.nameComponentCount(), getter);
+				System.out.println("going to do rightSearch for latest.  Interest: "+interest.name().toString());
+				
 				return rightSearch(interest, (null == addl) ? -1 : addl + ncc, 
 						prefixRoot, new ContentName(ncc, interest.name().components()), 
 						ncc, getter);

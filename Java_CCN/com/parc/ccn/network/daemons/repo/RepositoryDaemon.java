@@ -160,7 +160,7 @@ public class RepositoryDaemon extends Daemon {
 	
 	public void initialize(String[] args, Daemon daemon) {
 		Library.logger().info("Starting " + _daemonName + "...");				
-		
+		Library.logger().setLevel(Level.INFO);		
 		try {
 			_library = CCNLibrary.open();
 			_writer = new CCNWriter(_library);

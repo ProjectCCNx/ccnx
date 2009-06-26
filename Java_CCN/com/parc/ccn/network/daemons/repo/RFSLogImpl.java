@@ -114,10 +114,13 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 							ContentFileRef ref = _index.new ContentFileRef();
 							ref.id = index.intValue();
 							ref.offset = rfile.openFile.getFilePointer();
+							System.out.println("the next ref is: "+ref.id+" "+ref.offset);
 							ContentObject tmp = new ContentObject();
 							try {
-								if(rfile.openFile.getFilePointer()<rfile.openFile.length())
+								if(rfile.openFile.getFilePointer()<rfile.openFile.length()){
 									tmp.decode(is);
+									System.out.println("done decoding...  file pointer is now: "+rfile.openFile.getFilePointer());
+								}
 								else{
 									Library.logger().info("at the end of the file");
 									rfile.openFile.close();
