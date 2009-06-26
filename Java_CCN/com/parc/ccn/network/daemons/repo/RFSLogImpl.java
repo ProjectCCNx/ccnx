@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
+import java.nio.channels.FileChannel;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -109,17 +110,25 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 						rfile.openFile = new RandomAccessFile(rfile.file, "r");
 						//InputStream is = new RandomAccessInputStream(rfile.openFile);
 						InputStream is = new BufferedInputStream(new RandomAccessInputStream(rfile.openFile));
-
+						//FileInputStream fis = new FileInputStream(rfile.file);
+						//is = new BufferedInputStream(fis);
+						//FileChannel fc = fis.getChannel();
+					
 						while (true) {
 							ContentFileRef ref = _index.new ContentFileRef();
 							ref.id = index.intValue();
 							ref.offset = rfile.openFile.getFilePointer();
+							if(ref.offset > 0)
+								ref.offset = ref.offset - is.available();
 							System.out.println("the next ref is: "+ref.id+" "+ref.offset);
+							//System.out.println("FC.pos: "+fc.position());
 							ContentObject tmp = new ContentObject();
 							try {
 								if(rfile.openFile.getFilePointer()<rfile.openFile.length()){
+									//tmp.decode(is);
 									tmp.decode(is);
-									System.out.println("done decoding...  file pointer is now: "+rfile.openFile.getFilePointer());
+									System.out.println("done decoding...  file pointer is now: "+(rfile.openFile.getFilePointer() - is.available()));
+									//System.out.println("FC after decode: "+fc.position());
 								}
 								else{
 									Library.logger().info("at the end of the file");
