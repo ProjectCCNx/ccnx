@@ -124,7 +124,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 							//System.out.println("FC.pos: "+fc.position());
 							ContentObject tmp = new ContentObject();
 							try {
-								if(rfile.openFile.getFilePointer()<rfile.openFile.length()){
+								if(rfile.openFile.getFilePointer()<rfile.openFile.length() || is.available()!=0){
 									//tmp.decode(is);
 									tmp.decode(is);
 									System.out.println("done decoding...  file pointer is now: "+(rfile.openFile.getFilePointer() - is.available()));
