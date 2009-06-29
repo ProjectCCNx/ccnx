@@ -58,6 +58,7 @@ public class RepositoryDaemon extends Daemon {
 	private int _windowSize = WINDOW_SIZE;
 	private int _ephemeralFreshness = FRESHNESS;
 	protected ThreadPoolExecutor _threadpool = null; // pool service
+	private boolean singlefile = false;
 	
 	public static final int PERIOD = 2000; // period for interest timeout check in ms.
 	public static final int THREAD_LIFE = 8;	// in seconds
@@ -217,10 +218,15 @@ public class RepositoryDaemon extends Daemon {
 	
 	protected void usage() {
 		try {
+<<<<<<< HEAD:Java_CCN/com/parc/ccn/network/daemons/repo/RepositoryDaemon.java
 			String msg = "usage: " + this.getClass().getName() + 
 			_repo.getUsage() + "[-start | -stop | -interactive] [-log <level>]";
 			System.out.println(msg);
 			Library.logger().severe(msg);
+=======
+			System.out.println("usage: " + this.getClass().getName() + 
+						_repo.getUsage() + "[-start | -stop | -interactive] [-log <level>] [-multifile | -singlefile]");
+>>>>>>> add switch for single vs multi file repo:Java_CCN/com/parc/ccn/network/daemons/repo/RepositoryDaemon.java
 		} catch (Exception e) {
 			e.printStackTrace();
 			Library.logStackTrace(Level.SEVERE, e);
