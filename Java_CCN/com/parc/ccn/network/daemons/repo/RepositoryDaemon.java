@@ -198,10 +198,17 @@ public class RepositoryDaemon extends Daemon {
 				if (args[i].equals("-bb"))
 					_repo = new BitBucketRepository();
 			}
+<<<<<<< HEAD:Java_CCN/com/parc/ccn/network/daemons/repo/RepositoryDaemon.java
 
 			if (_repo == null)
 				_repo = new RFSImpl();
 
+=======
+			if(args[i].equals("-singlefile"))
+				singlefile = true;
+		}
+		try {
+>>>>>>> add switch for single vs multi file repo - check for flad in init:Java_CCN/com/parc/ccn/network/daemons/repo/RepositoryDaemon.java
 			_repo.initialize(args);
 			
 			// Create callback threadpool
@@ -218,15 +225,10 @@ public class RepositoryDaemon extends Daemon {
 	
 	protected void usage() {
 		try {
-<<<<<<< HEAD:Java_CCN/com/parc/ccn/network/daemons/repo/RepositoryDaemon.java
 			String msg = "usage: " + this.getClass().getName() + 
-			_repo.getUsage() + "[-start | -stop | -interactive] [-log <level>]";
+			_repo.getUsage() + "[-start | -stop | -interactive] [-log <level>] [-multifile | -singlefile]";
 			System.out.println(msg);
 			Library.logger().severe(msg);
-=======
-			System.out.println("usage: " + this.getClass().getName() + 
-						_repo.getUsage() + "[-start | -stop | -interactive] [-log <level>] [-multifile | -singlefile]");
->>>>>>> add switch for single vs multi file repo:Java_CCN/com/parc/ccn/network/daemons/repo/RepositoryDaemon.java
 		} catch (Exception e) {
 			e.printStackTrace();
 			Library.logStackTrace(Level.SEVERE, e);
