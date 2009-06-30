@@ -319,6 +319,9 @@ ccnd_msg(struct ccnd *h, const char *fmt, ...)
     va_start(ap, fmt);
     vfprintf(stderr, (const char *)b->buf, ap);
     ccn_charbuf_destroy(&b);
+    /* if there's no one to hear, don't make a sound */
+    if (ferror(stderr))
+	h->debug = 0;
 }
 
 /**
