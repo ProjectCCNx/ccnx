@@ -15,6 +15,7 @@
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <sys/utsname.h>
+#include <time.h>
 #include <unistd.h>
 
 #if defined(NEED_GETADDRINFO_COMPAT)
@@ -305,8 +306,16 @@ ccnd_msg(struct ccnd *h, const char *fmt, ...)
         return;
     b = ccn_charbuf_create();
     gettimeofday(&t, NULL);
-    ccn_charbuf_putf(b, "%d.%06u ccnd[%d]: %s\n",
-        (int)t.tv_sec, (unsigned)t.tv_usec, (int)getpid(), fmt);
+    if (((h->debug & 64) != 0) &&
+        ((h->logbreak-- < 0 && t.tv_sec != h->logtime) ||
+          t.tv_sec >= h->logtime + 30)) {
+        fprintf(stderr, "%ld.000000 ccnd[%d]: _______________________ %s",
+                (long)t.tv_sec, (int)getpid(), ctime(&t.tv_sec));
+        h->logtime = t.tv_sec;
+        h->logbreak = 30;
+    }
+    ccn_charbuf_putf(b, "%ld.%06u ccnd[%d]: %s\n",
+        (long)t.tv_sec, (unsigned)t.tv_usec, (int)getpid(), fmt);
     va_start(ap, fmt);
     vfprintf(stderr, (const char *)b->buf, ap);
     ccn_charbuf_destroy(&b);

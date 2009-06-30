@@ -92,7 +92,9 @@ struct ccnd {
     unsigned long interests_sent;
     unsigned long interests_stuffed;
     unsigned short seed[3];
-    int debug;
+    int debug;                      /* For controlling debug output */
+    int logbreak;                   /* see ccn_msg() */
+    unsigned long logtime;          /* see ccn_msg() */
     int mtu;                        /* Target size for stuffing interests */
     int flood;                      // XXX - Temporary, for transition period
     unsigned interest_faceid;       /* for self_ref internal client */

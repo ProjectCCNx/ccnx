@@ -11,6 +11,7 @@ ccnd - CCN Daemon
 			8 - matching details
 			16 - interest details
 			32 - gory interest details
+			64 - log occasional human-readable timestamps
 			bitwise OR these together for combinations; -1 gets everything
 		CCN_LOCAL_PORT=
 			UDP port for local clients (default 4485)
