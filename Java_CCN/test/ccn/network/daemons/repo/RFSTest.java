@@ -21,6 +21,7 @@ import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.network.daemons.repo.RFSImpl;
+import com.parc.ccn.network.daemons.repo.RFSLogImpl;
 import com.parc.ccn.network.daemons.repo.Repository;
 import com.parc.ccn.network.daemons.repo.RepositoryException;
 
@@ -34,6 +35,10 @@ import com.parc.ccn.network.daemons.repo.RepositoryException;
  */
 
 public class RFSTest extends RepoTestBase {
+	
+	Repository repomulti;
+	Repository repolog;
+	
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -53,6 +58,7 @@ public class RFSTest extends RepoTestBase {
 	@Before
 	public void setUp() throws Exception {
 		super.setUp();
+		initRepos();
 	}
 	
 	/*
@@ -76,10 +82,34 @@ public class RFSTest extends RepoTestBase {
 		Assert.assertTrue(testFile.exists());
 	} */
 	
+	
+	public void initRepos() throws Exception{
+		repomulti = new RFSImpl();
+		repomulti.initialize(new String[] {"-root", _fileTestDir, "-local", _repoName, "-global", _globalPrefix});
+		
+		
+		repolog = new RFSLogImpl();
+		repolog.initialize(new String[] {"-root", _fileTestDir, "-local", _repoName, "-global", _globalPrefix, "-singlefile"});
+		
+	}
+	
+	
 	@Test
 	public void testRepo() throws Exception {
-		Repository repo = new RFSImpl();
-		repo.initialize(new String[] {"-root", _fileTestDir, "-local", _repoName, "-global", _globalPrefix});
+		//first test the multifile repo
+		System.out.println("testing multifile repo");
+		test(repomulti);
+		
+		//now test the single file version
+		System.out.println("testing single file repo");
+		test(repolog);
+		
+	}
+	
+	
+	public void test(Repository repo) throws Exception{
+		//Repository repo = new RFSImpl();
+		//repo.initialize(new String[] {"-root", _fileTestDir, "-local", _repoName, "-global", _globalPrefix});
 		
 		System.out.println("Repotest - Testing basic data");
 		ContentName name = ContentName.fromNative("/repoTest/data1");
