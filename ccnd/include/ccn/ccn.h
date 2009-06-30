@@ -33,41 +33,42 @@ struct ccn_parsed_ContentObject;
  * client creates closures (using client-managed memory).
  */
 
-/*
+/**
  * This tells what kind of event the upcall is handling.
  */
 enum ccn_upcall_kind {
-    CCN_UPCALL_FINAL,             /* handler is about to be deregistered */
-    CCN_UPCALL_INTEREST,          /* incoming interest */
-    CCN_UPCALL_CONSUMED_INTEREST, /* incoming interest, someone has answered */
-    CCN_UPCALL_CONTENT,           /* incoming verified content */
-    CCN_UPCALL_INTEREST_TIMED_OUT,/* interest timed out */
-    CCN_UPCALL_CONTENT_UNVERIFIED,/* content that has not been verified */
-    CCN_UPCALL_CONTENT_BAD        /* verification failed */
+    CCN_UPCALL_FINAL,             /**< handler is about to be deregistered */
+    CCN_UPCALL_INTEREST,          /**< incoming interest */
+    CCN_UPCALL_CONSUMED_INTEREST, /**< incoming interest, someone has answered */
+    CCN_UPCALL_CONTENT,           /**< incoming verified content */
+    CCN_UPCALL_INTEREST_TIMED_OUT,/**< interest timed out */
+    CCN_UPCALL_CONTENT_UNVERIFIED,/**< content that has not been verified */
+    CCN_UPCALL_CONTENT_BAD        /**< verification failed */
 };
 
-/*
- * Upcalls return one of these values
- * XXX - need more documentation
+/**
+ * Upcalls return one of these values.
  */
 enum ccn_upcall_res {
-    CCN_UPCALL_RESULT_ERR = -1,
-    CCN_UPCALL_RESULT_OK = 0,
-    CCN_UPCALL_RESULT_REEXPRESS = 1,
-    CCN_UPCALL_RESULT_INTEREST_CONSUMED = 2,
-    CCN_UPCALL_RESULT_VERIFY = 3 /* force an unverified result to be verified */
+    CCN_UPCALL_RESULT_ERR = -1, /**< upcall detected an error */
+    CCN_UPCALL_RESULT_OK = 0,   /**< normal upcall return */
+    CCN_UPCALL_RESULT_REEXPRESS = 1, /**< reexpress the same interest again */
+    CCN_UPCALL_RESULT_INTEREST_CONSUMED = 2,/**< upcall claims to consume interest */
+    CCN_UPCALL_RESULT_VERIFY = 3 /**< force an unverified result to be verified */
 };
 
-/*
+/**
  * This is the procedure type for the closure's implementation.
  */
 typedef enum ccn_upcall_res (*ccn_handler)(
     struct ccn_closure *selfp,
     enum ccn_upcall_kind kind,
-    struct ccn_upcall_info *info  /* details about the event */
+    struct ccn_upcall_info *info  /**< details about the event */
 );
 
-/*
+/**
+ * Handle for upcalls that allow clients receive notifications of
+ * incoming interests and content.
  * The client is responsible for managing this piece of memory and the
  * data therein. The refcount should be initially zero, and is used by the
  * library to keep to track of multiple registrations of the same closure.
@@ -75,14 +76,22 @@ typedef enum ccn_upcall_res (*ccn_handler)(
  * kind = CCN_UPCALL_FINAL so that it has an opportunity to clean up.
  */
 struct ccn_closure {
-    ccn_handler p; 
-    void *data;         /* for client use */
-    intptr_t intdata;   /* for client use */
-    int refcount;       /* client should not update this directly */
+    ccn_handler p;      /**< client-supplied handler */
+    void *data;         /**< for client use */
+    intptr_t intdata;   /**< for client use */
+    int refcount;       /**< client should not update this directly */
 };
 
+/**
+ * Additional information provided in the upcall.
+ * The client is responsible for managing this piece of memory and the
+ * data therein. The refcount should be initially zero, and is used by the
+ * library to keep to track of multiple registrations of the same closure.
+ * When the count drops back to 0, the closure will be called with
+ * kind = CCN_UPCALL_FINAL so that it has an opportunity to clean up.
+ */
 struct ccn_upcall_info {
-    struct ccn *h;              /* The ccn library handle */
+    struct ccn *h;              /**< The ccn library handle */
     /* Interest (incoming or matched) */
     const unsigned char *interest_ccnb;
     struct ccn_parsed_interest *pi;
