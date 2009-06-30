@@ -98,7 +98,7 @@ public class CCNNetworkManager implements Runnable {
 					for (Entry<InterestRegistration> entry : _myInterests.values()) {
 						InterestRegistration reg = entry.value();
 						if (ourTime > reg.nextRefresh) {
-							Library.logger().finer("Refresh interest: " + reg.interest.name());
+							Library.logger().finer("Refresh interest: " + reg.interest);
 							// Temporarily back out refresh period decay to allow the repository
 							// to work with an "eavesdropping interest"
 							//reg.nextRefreshPeriod = (reg.nextRefreshPeriod * 2) > MAX_PERIOD ? MAX_PERIOD
@@ -759,7 +759,7 @@ public class CCNNetworkManager implements Runnable {
 
 				//--------------------------------- Process interests from net (if any)
 				for (Interest interest : packet.interests()) {
-					Library.logger().fine("Interest from net: " + interest.print());
+					Library.logger().fine("Interest from net: " + interest);
 					InterestRegistration oInterest = new InterestRegistration(this, interest, null, null);
 					deliverInterest(oInterest);
 					// External interests never go back to network
@@ -781,7 +781,7 @@ public class CCNNetworkManager implements Runnable {
 		synchronized (_myFilters) {
 			for (Filter filter : _myFilters.getValues(ireg.interest.name())) {
 				if (filter.owner != ireg.owner) {
-					Library.logger().finer("Schedule delivery for interest: " + ireg.interest.print());
+					Library.logger().finer("Schedule delivery for interest: " + ireg.interest);
 					filter.add(ireg.interest);
 					_threadpool.execute(filter);
 				}

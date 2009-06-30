@@ -257,10 +257,10 @@ public class CCNFlowControl implements CCNFilterListener {
 	public int handleInterests(ArrayList<Interest> interests) {
 		synchronized (_holdingArea) {
 			for (Interest interest : interests) {
-				Library.logger().info("Flow controller: got interest: " + interest.print());
+				Library.logger().info("Flow controller: got interest: " + interest);
 				ContentObject co = getBestMatch(interest);
 				if (co != null) {
-					Library.logger().finest("Found content " + co.name() + " matching interest: " + interest.print());
+					Library.logger().finest("Found content " + co.name() + " matching interest: " + interest);
 					try {
 						_library.put(co);
 						afterPutAction(co);
@@ -270,7 +270,7 @@ public class CCNFlowControl implements CCNFilterListener {
 					}
 					
 				} else {
-					Library.logger().finest("No content matching pending interest: " + interest.print() + ", holding.");
+					Library.logger().finest("No content matching pending interest: " + interest + ", holding.");
 					_unmatchedInterests.add(interest, new UnmatchedInterest());
 				}
 			}
@@ -313,7 +313,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	private ContentObject getBestMatch(Interest interest, Set<ContentName> set) {
 		ContentObject bestMatch = null;
-		Library.logger().finest("Looking for best match to " + interest.print() + " among " + set.size() + " options.");
+		Library.logger().finest("Looking for best match to " + interest + " among " + set.size() + " options.");
 		for (ContentName name : set) {
 			ContentObject result = _holdingArea.get(name);
 			/*
