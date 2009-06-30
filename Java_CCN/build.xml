@@ -168,7 +168,7 @@
 	</target>
 
 	<!-- test is for running all current automated tests to validate code -->
-	<target name="test" depends="test-data, test-puttap, test-library, test-network, test-endtoend, test-repo">
+	<target name="test" depends="test-data, test-puttap, test-library, test-network, test-endtoend, test-repo, test-access-control">
 	</target>
 
 	<target name="test-data" depends="jar, ccnd">
@@ -448,6 +448,49 @@
 				<test todir="${testout}"  name="test.ccn.endtoend.EndToEndTestSink"/>
 			</junit>
 		</parallel>
+	</target>
+
+	<target name="test-access-control" depends="test-access-control-without-repo, test-access-control-with-repo">
+	</target>
+	
+	<target name="test-access-control-without-repo" depends="jar, ccnd">
+		<!-- Access Control tests that don't need a repo running -->
+		<mkdir dir="${testout}"/>
+		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="xml" usefile="true"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
+			<sysproperty key="com.parc.ccn.LogLevel" value="FINER"/>
+			<batchtest todir="${testout}" >
+				<fileset dir="${build}">
+					<include name="test/ccn/security/access/*Test.class"/>
+				</fileset>
+			</batchtest>
+		</junit>
+		<!-- <delete dir="${REPO_ROOT}"/> -->
+	</target>
+
+	<target name="test-access-control-with-repo" depends="jar, ccnd, repo">
+		<!-- Access Control tests that need a repo running -->
+		<mkdir dir="${testout}"/>
+		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="xml" usefile="true"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
+			<sysproperty key="com.parc.ccn.LogLevel" value="FINER"/>
+			<batchtest todir="${testout}" >
+				<fileset dir="${build}">
+					<include name="test/ccn/security/access/*TestRepo.class"/>
+				</fileset>
+			</batchtest>
+		</junit>
+		<!-- <delete dir="${REPO_ROOT}"/> -->
 	</target>
 
 </project>
