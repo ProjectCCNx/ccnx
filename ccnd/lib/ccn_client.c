@@ -77,6 +77,13 @@ struct interest_filter { /* keyed by components of name */
 
 static void ccn_refresh_interest(struct ccn *, struct expressed_interest *);
 
+/**
+ * Produce message on standard error output describing the last
+ * error encountered during a call using the given handle.
+ * @param h is the ccn handle - may not be NULL.
+ * @param s is a client-supplied message; if NULL a message will be supplied
+ *        where available.
+ */
 void
 ccn_perror(struct ccn *h, const char *s)
 {
@@ -139,6 +146,12 @@ ccn_replace_handler(struct ccn *h,
     }
 }
 
+/**
+ * Create a client handle.
+ * The new handle is not yet connected.
+ * On error, returns NULL and sets errno.
+ * Errors: ENOMEM
+ */ 
 struct ccn *
 ccn_create(void)
 {
@@ -162,9 +175,11 @@ ccn_create(void)
 	    fprintf(stderr, "CCN_TAP path is too long: %s\n", s);
 	} else {
 	    h->tap = open(tap_name, O_WRONLY|O_APPEND|O_CREAT, S_IRWXU);
-	    if (h->tap == -1)
-		perror("Unable to open CCN_TAP file");
-	    else
+	    if (h->tap == -1) {
+		NOTE_ERRNO(h);
+                ccn_perror(h, "Unable to open CCN_TAP file");
+	    }
+            else
 		fprintf(stderr, "CCN_TAP writing to %s\n", tap_name);
 	}
     } else {
@@ -173,6 +188,12 @@ ccn_create(void)
     return(h);
 }
 
+/**
+ * Connect to local ccnd.
+ * @param name is the name of the unix-domain socket to connect to;
+ *             use NULL to get the default.
+ * @returns the fd for the connection, or -1 for error.
+ */ 
 int
 ccn_connect(struct ccn *h, const char *name)
 {
@@ -904,6 +925,14 @@ ccn_check_pub_arrival(struct ccn *h, struct expressed_interest *interest)
     }
 }
 
+/**
+ * Dispatch a message through the registered upcalls.
+ * This is not used by normal ccn clients, but is made available for use when
+ * ccnd needs to communicate with its internal client.
+ * @param h is the ccn handle.
+ * @param msg is the ccnb-encoded Interest or ContentObject.
+ * @param size is its size in bytes.
+ */
 void
 ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
 {
@@ -1150,6 +1179,14 @@ ccn_clean_all_interests(struct ccn *h)
     hashtb_end(e);
 }
 
+/**
+ * Dispatch a message through the registered upcalls.
+ * This is not used by normal ccn clients, but is made available for use
+ * by ccnd to run its internal client.
+ * @param h is the ccn handle.
+ * @param msg is the ccnb-encoded Interest or ContentObject.
+ * @returns the number of microseconds until the next thing needs to happen.
+ */
 int
 ccn_process_scheduled_operations(struct ccn *h)
 {
@@ -1198,6 +1235,15 @@ ccn_process_scheduled_operations(struct ccn *h)
     return(h->refresh_us);
 }
 
+/*
+ * Modify ccn_run timeout.
+ * This may be called from an upcall to change the timeout value.
+ * Most often this will be used to set the timeout to zero so that
+ * ccn_run will return control to the client.
+ * @param h is the ccn handle.
+ * @param timeout is in milliseconds.
+ * @returns old timeout value.
+ */
 int
 ccn_set_run_timeout(struct ccn *h, int timeout)
 {
@@ -1206,6 +1252,14 @@ ccn_set_run_timeout(struct ccn *h, int timeout)
     return(ans);
 }
 
+/*
+ * Run the ccn client event loop.
+ * This may serve as the main event loop for simple apps by passing 
+ * a timeout value of -1.
+ * @param h is the ccn handle.
+ * @param timeout is in milliseconds.
+ * @returns a negative value for error, zero for success.
+ */
 int
 ccn_run(struct ccn *h, int timeout)
 {
@@ -1261,7 +1315,7 @@ ccn_run(struct ccn *h, int timeout)
     }
     if (h->running != 0)
         abort();
-    return(res);
+    return((res < 0) ? res : 0);
 }
 
 /* This is the upcall for implementing ccn_get() */
@@ -1311,6 +1365,18 @@ handle_simple_incoming_content(
     return(CCN_UPCALL_RESULT_OK);
 }
 
+/**
+ * Get a single matching ContentObject
+ * This is a convenience for getting a single matching ContentObject.
+ * Blocks until a matching ContentObject arrives or there is a timeout.
+ * @param h is the ccn handle. If NULL or ccn_get is called from inside
+ *        an upcall, a new connection will be used and upcalls from other
+ *        requests will not be processed while ccn_get is active.
+ * @param pcobuf may be supplied to save the client the work of re-parsing the
+ *        ContentObject; may be NULL if this information is not actually needed.
+ * @param compsbuf works similarly.
+ * @returns 0 for success, -1 for an error.
+ */
 int
 ccn_get(struct ccn *h,
         struct ccn_charbuf *name,

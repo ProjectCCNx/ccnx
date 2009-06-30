@@ -58,6 +58,7 @@ enum ccn_upcall_res {
 };
 
 /**
+ * @type ccn_handler
  * This is the procedure type for the closure's implementation.
  */
 typedef enum ccn_upcall_res (*ccn_handler)(
