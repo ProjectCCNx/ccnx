@@ -1,5 +1,6 @@
 package com.parc.ccn.network.daemons.repo;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -12,6 +13,8 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.util.DataUtils;
+import com.parc.ccn.library.CCNNameEnumerator;
+import com.parc.ccn.library.profiles.VersioningProfile;
 
 public class ContentTree {
 
@@ -52,7 +55,8 @@ public class ContentTree {
 		// either oneContent or content should be null
 		ContentFileRef oneContent;
 		List<ContentFileRef> content;
-
+		long timestamp;
+		
 		public boolean compEquals(byte[] other) {
 			return DataUtils.compare(other, this.component) == 0;
 		}
@@ -115,7 +119,7 @@ public class ContentTree {
 	 * Insert entry for the given ContentObject .
 	 * @param content
 	 */
-	public void insert(ContentObject content, ContentFileRef ref) {
+	public void insert(ContentObject content, ContentFileRef ref, long ts) {
 		final ContentName name = new ContentName(content.name(), content.contentDigest());
 		Library.logger().fine("inserting content: "+name.toString());
 		System.out.println("inserting content: "+name.toString());
@@ -145,6 +149,7 @@ public class ContentTree {
 						node.children.add(child);
 						node.oneChild = null;
 					}
+					node.timestamp = ts;
 				}
 				//Library.logger().finest("child was not null: moving down the tree");
 				node = child;
@@ -339,23 +344,79 @@ public class ContentTree {
 		return null;
 	}
 	
+	public final ArrayList<ContentName> getNamesWithPrefix(Interest interest, ContentGetter getter) {
+		ArrayList<ContentName> names = new ArrayList<ContentName>();
+		//first chop off NE marker
+		ContentName prefix = interest.name().cut(CCNNameEnumerator.NEMARKER);
+		System.out.println("looking up matches for interest prefix: "+interest.name().toString());
+		
+		//does the interest have a timestamp?
+		Timestamp interestTS = null;
+		Timestamp nodeTS = null;
+		
+		try{
+			interestTS = VersioningProfile.getVersionAsTimestamp(interest.name());
+		}
+		catch(Exception e){
+			interestTS = null;
+		}
+		
+		
+		TreeNode parent = lookupNode(prefix, prefix.count());
+		if(parent!=null){
+			System.out.println("here is the parent match: "+parent.toString());
+			
+			//we should check the timestamp
+			nodeTS = new Timestamp(parent.timestamp);
+			if(interestTS==null || nodeTS.after(interestTS)){
+				//we have something new to report
+			}
+			else
+				return null;
+			
+			//the parent has children we need to return
+			ContentName c = new ContentName();
+			if(parent.oneChild!=null){
+				names.add(new ContentName(c, parent.oneChild.component));
+				System.out.println("added name: "+ContentName.componentPrintURI(parent.oneChild.component));
+			}
+			else{
+				if(parent.children!=null){
+					for(TreeNode ch:parent.children)
+						names.add(new ContentName(c, ch.component));
+				}
+			}
+			return names;
+			
+		}
+		
+		return null;
+	}
+	
+	
 	public final ContentObject get(Interest interest, ContentGetter getter) {
 		Integer addl = interest.additionalNameComponents();
 		int ncc = (null != interest.nameComponentCount()) ? interest.nameComponentCount() : interest.name().count();
 		if (null != addl && addl.intValue() == 0) {
 			// Query is for exact match to full name with digest, no additional components
+			System.out.println("ContentTree.get: "+interest.name());
 			List<ContentFileRef> found = lookup(interest.name());
-			for (ContentFileRef ref : found) {
-				ContentObject cand = getter.get(ref);
-				if (null != cand) {
-					System.out.println("candidate: "+cand.name().toString()+" interest: "+interest.name().toString());
-					if (interest.matches(cand)) {
-						return cand;
+			if(found!=null){
+				System.out.println("found is not null");
+				for (ContentFileRef ref : found) {
+					ContentObject cand = getter.get(ref);
+					if (null != cand) {
+						System.out.println("candidate: "+cand.name().toString()+" interest: "+interest.name().toString());
+						if (interest.matches(cand)) {
+							return cand;
+						}
 					}
+					else
+						System.out.println("candidate was null");
 				}
-				else
-					System.out.println("candidate was null");
 			}
+			else
+				System.out.println("found was null");
 		} else {
 			//TreeNode prefixRoot = lookupNode(interest.name(), interest.nameComponentCount());
 			TreeNode prefixRoot = lookupNode(interest.name(), ncc);
@@ -363,6 +424,31 @@ public class ContentTree {
 				Library.logger().info("the prefix root is null...  returning null");
 				return null;
 			}
+			
+			if ((null==interest.orderPreference()) || ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME))
+					== (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME))) {
+				// Traverse to find latest match
+				if(interest.orderPreference()!=null)
+					System.out.println("going to do rightSearch for latest.  Interest: "+interest.name().toString());
+				else
+					System.out.println("going to do rightSearch.  Interest: "+interest.name().toString());
+				
+				return rightSearch(interest, (null == addl) ? -1 : addl + ncc, 
+						prefixRoot, new ContentName(ncc, interest.name().components()), 
+						ncc, getter);
+			}
+			else{
+				System.out.println("going to do leftSearch for earliest.  Interest: "+interest.toString());
+				return leftSearch(interest, (null == addl) ? -1 : addl + ncc,
+						prefixRoot, new ContentName(ncc, interest.name().components()), 
+						ncc, getter);
+			}
+					
+			
+			
+			
+			/** original version	
+			
 			
 			// Now we need to iterate over content at or below this node to find best match
 			//if ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME))
@@ -388,6 +474,9 @@ public class ContentTree {
 						prefixRoot, new ContentName(ncc, interest.name().components()), 
 						ncc, getter);
 			}
+			
+			**/
+			
 		}
 		return null;
 	}

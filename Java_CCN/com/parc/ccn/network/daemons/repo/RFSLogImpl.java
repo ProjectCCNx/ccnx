@@ -62,8 +62,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 	}
 
 	public ArrayList<ContentName> getNamesWithPrefix(Interest i) {
-		// TODO Auto-generated method stub
-		return null;
+		return _index.getNamesWithPrefix(i, this);
 	}
 
 	public ArrayList<ContentName> getNamespace() {
@@ -145,7 +144,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 								rfile.openFile = null;
 								break;
 							}
-							_index.insert(tmp, ref);
+							_index.insert(tmp, ref, rfile.file.lastModified());
 						}
 						_files.put(index, rfile);
 					} catch (NumberFormatException e) {
@@ -298,7 +297,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 				_activeWriteFile.nextWritePos = _activeWriteFile.openFile.getFilePointer();
 				System.out.println("wrote content: "+content.name().toString());
 				System.out.println("now adding to tree...");
-				_index.insert(content, ref);
+				_index.insert(content, ref, System.currentTimeMillis());
 			}
 		} catch (IOException e) {
 			throw new RepositoryException("Failed to write content: " + e.getMessage());
