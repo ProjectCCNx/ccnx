@@ -140,7 +140,8 @@ open_socket(const char *host, const char *portstr, int sock_type)
         exit(1);
     }
     freeaddrinfo(addrinfo);
-    freeaddrinfo(myai);
+    if (myai != NULL)
+        freeaddrinfo(myai);
     return (sock);
 }
 
