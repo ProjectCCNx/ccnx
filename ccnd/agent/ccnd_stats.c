@@ -1,7 +1,7 @@
 /*
  * ccnd_stats.c
  *  
- * Copyright (C) 2008 Palo Alto Research Center, Inc. All rights reserved.
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
  */
 
 #include <sys/types.h>
@@ -287,15 +287,14 @@ ccnd_stats_httpd_start(struct ccnd *h)
 
 /* ccnd_msg may migrate into a different place ... */
 
-/*!
-    @function
-    @abstract   Produce ccnd debug output
-    @discussion Output is produced on stderr under the control of h->debug;
-                prepends decimal timestamp and process identification.
-                Caller should not supply newlines.
-    @param      h  the ccnd handle
-    @param      fmt  printf-like format string
-*/
+/**
+ *  Produce ccnd debug output.
+ *  Output is produced on stderr under the control of h->debug;
+ *  prepends decimal timestamp and process identification.
+ *  Caller should not supply newlines.
+ *  @param      h  the ccnd handle
+ *  @param      fmt  printf-like format string
+ */
 void
 ccnd_msg(struct ccnd *h, const char *fmt, ...)
 {
@@ -313,17 +312,16 @@ ccnd_msg(struct ccnd *h, const char *fmt, ...)
     ccn_charbuf_destroy(&b);
 }
 
-/*!
-    @function
-    @abstract   Produce a ccnd debug trace entry
-    @discussion Output is produced by calling ccnd_msg
-    @param      h  the ccnd handle
-    @param      lineno  caller's source line number (usually __LINE__)
-    @param      msg  a short text tag to identify the entry
-    @param      face    handle of associated face; may be NULL
-    @param      ccnb    points to ccnb-encoded Interest or ContentObject
-    @param      ccnb_size   is in bytes
-*/
+/**
+ *  Produce a ccnd debug trace entry.
+ *  Output is produced by calling ccnd_msg.
+ *  @param      h  the ccnd handle
+ *  @param      lineno  caller's source line number (usually __LINE__)
+ *  @param      msg  a short text tag to identify the entry
+ *  @param      face    handle of associated face; may be NULL
+ *  @param      ccnb    points to ccnb-encoded Interest or ContentObject
+ *  @param      ccnb_size   is in bytes
+ */
 void
 ccnd_debug_ccnb(struct ccnd *h,
                 int lineno,
