@@ -165,10 +165,10 @@ public class InterestTableTest {
 	
 	private void match(InterestTable<Integer> table, ContentName name, int v) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
 		// Test both methods
-		assertEquals(v, (null == activeKeyID) ? table.getMatch(name).value() :
-												 table.getMatch(getContentObject(name, v)).value());
-		assertEquals(v, (null == activeKeyID) ? table.getValue(name) :
-			 									table.getValue(getContentObject(name,v)));
+		assertEquals(v, (null == activeKeyID) ? table.getMatch(name).value().intValue() :
+												 table.getMatch(getContentObject(name, v)).value().intValue());
+		assertEquals(v, (null == activeKeyID) ? table.getValue(name).intValue() :
+			 									table.getValue(getContentObject(name,v)).intValue());
 	}
 
 	private void match(InterestTable<Integer> table, String name, int v) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
@@ -177,9 +177,9 @@ public class InterestTableTest {
 	
 	private void removeMatch(InterestTable<Integer> table, ContentName name, int v) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
 		if (removeByMatch) {
-			assertEquals(v, table.removeMatch(getContentObject(name)).value());
+			assertEquals(v, table.removeMatch(getContentObject(name)).value().intValue());
 		} else {
-			assertEquals(v, table.removeValue(getContentObject(name)));
+			assertEquals(v, table.removeValue(getContentObject(name)).intValue());
 		}
 	}
 	
@@ -189,9 +189,9 @@ public class InterestTableTest {
 	
 	private void remove(InterestTable<Integer> table, ContentName name, int v) {
 		if (null == activeKeyID) {
-			assertEquals(v, table.remove(name, new Integer(v)).value());
+			assertEquals(v, table.remove(name, new Integer(v)).value().intValue());
 		} else {
-			assertEquals(v, table.remove(new Interest(name, activeID), v).value());
+			assertEquals(v, table.remove(new Interest(name, activeID), v).value().intValue());
 		}
 	}
 
@@ -236,7 +236,7 @@ public class InterestTableTest {
 																			 table.getMatches(getContentObject(name, 0));
 		assertEquals(v.length, result.size());
 		for (int i = 0; i < v.length; i++) {
-			assertEquals(v[i], result.get(i).value());
+			assertEquals(v[i], result.get(i).value().intValue());
 			assertEquals(n[i], result.get(i).name());
 		}
 		
@@ -244,7 +244,7 @@ public class InterestTableTest {
 			 								table.getValues(getContentObject(name, 0));
 		assertEquals(v.length, values.size());
 		for (int i=0; i < v.length; i++) {
-			assertEquals(v[i], values.get(i));
+			assertEquals(v[i], values.get(i).intValue());
 		}
 	}
 	
@@ -261,14 +261,14 @@ public class InterestTableTest {
 			List<InterestTable.Entry<Integer>> result = table.removeMatches(getContentObject(name, 0));
 			assertEquals(v.length, result.size());
 			for (int i = 0; i < v.length; i++) {
-				assertEquals(v[i], result.get(i).value());
+				assertEquals(v[i], result.get(i).value().intValue());
 				assertEquals(n[i], result.get(i).name());
 			}
 		} else {
 			List<Integer> result = table.removeValues(getContentObject(name, 0));
 			assertEquals(v.length, result.size());
 			for (int i = 0; i < v.length; i++) {
-				assertEquals(v[i], result.get(i));
+				assertEquals(v[i], result.get(i).intValue());
 			}
 		}
 	}
