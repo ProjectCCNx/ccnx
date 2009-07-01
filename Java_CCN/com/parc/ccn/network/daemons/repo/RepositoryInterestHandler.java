@@ -16,7 +16,6 @@ import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNNameEnumerator;
-import com.parc.ccn.library.profiles.SegmentationProfile;
 
 /**
  * 
