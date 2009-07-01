@@ -1,9 +1,9 @@
 #!/usr/bin/env sh
 D=`dirname "$0"`
-D="${D:-.}"
+D="${D:-.}/../src"
 : ${CCND_CAP:=50000}
 export CCND_CAP
-export PATH="$D"/agent:"$D"/lib:"$D"/udplink:"$D"/ccndc:$PATH
+export PATH="$D"/ccnd:"$D"/libexec:$PATH
 ccndsmoketest -t 55 kill recv 2>/dev/null
 time ccnd "$@" &
 ccndsmoketest `find "$HOME/.ccn/keyCache" -type f -name \*.ccnb`
