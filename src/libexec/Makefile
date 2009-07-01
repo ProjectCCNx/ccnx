@@ -29,3 +29,8 @@ test:
 # Dependencies below here are checked by depend target
 # but must be updated manually.
 ###############################
+ccndc.o: ccndc.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
+udplink.o: udplink.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
+  ../include/ccn/ccnd.h
