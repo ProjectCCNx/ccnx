@@ -1,4 +1,4 @@
-SUBDIRS = lib agent udplink tests
+SUBDIRS = lib ccnd udplink tests
 OBJTREE = obj.`uname`
 MAKEF =  -f ../conf.mk -f Makefile -f ../conf.mk -f ../subr.mk
 
