@@ -38,6 +38,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	protected HashSet<Interest> _writeInterests = new HashSet<Interest>();
 	protected CCNNameEnumerator _ackne;
 	protected RepoAckHandler _ackHandler;
+	protected ContentName _header = null;
 
 	public Interest handleContent(ArrayList<ContentObject> results,
 			Interest interest) {
@@ -89,7 +90,6 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 
 	public RepositoryFlowControl(ContentName name, CCNLibrary library) throws IOException {
 		super(library); 
-		addNameSpace(name);
 	}
 
 	/**
@@ -102,6 +102,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 			return;
 		
 		_initialized = true;
+		_header = name;
 		clearUnmatchedInterests();	// Remove possible leftover interests from "getLatestVersion"
 		ContentName repoWriteName = new ContentName(name, CCNBase.REPO_START_WRITE, CCNLibrary.nonce());
 
@@ -173,6 +174,11 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	@Override
 	public void beforeClose() throws IOException {
 		_ackInterval = 0;
+		ContentName repoWriteName = new ContentName(_header, CCNBase.REPO_GET_HEADER, CCNLibrary.nonce());
+
+		Interest writeInterest = new Interest(repoWriteName);
+		_library.expressInterest(writeInterest, this);
+		_writeInterests.add(writeInterest);
 	}
 
 	@Override
