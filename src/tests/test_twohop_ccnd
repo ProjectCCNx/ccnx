@@ -41,3 +41,4 @@ WithCCND 3 ccnls ccn:/test
 
 export CCN_LOCAL_PORT=$((CCN_LOCAL_PORT_BASE+2))
 . ./test_long_consumer
+
