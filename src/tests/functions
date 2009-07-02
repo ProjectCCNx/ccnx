@@ -46,3 +46,4 @@ ExpectLines () {
 RunTest () {
   ( . settings; . functions; . $1 )
 }
+
