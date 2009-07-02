@@ -1,6 +1,6 @@
 SUBDIRS = lib ccnd libexec cmd tests
-OBJTREE = obj.`uname`
-MAKEF =  -f ../conf.mk -f Makefile -f ../conf.mk -f ../subr.mk
+OBJTREE = build
+MAKEF =  -f ../conf.mk -f dir.mk -f ../conf.mk -f ../subr.mk
 
 default all clean depend coverage test check shared install uninstall: conf.mk _always
 	test -d include/ccn || (test -d ../include/ccn && mkdir -p include && ln -s ../../include/ccn include/ccn)
@@ -16,7 +16,7 @@ conf.mk:
 
 test check: default
 
-objtree: _always
+objtree: conf.mk _always
 	mkdir -p $(OBJTREE)
 	echo SRCDIR = ..  > $(OBJTREE)/Makefile
 	cat Makefile     >> $(OBJTREE)/Makefile
@@ -24,7 +24,7 @@ objtree: _always
 	  mkdir -p $(OBJTREE) &&					\
 	    (cd $$i && pwd &&						\
 		$(MAKE) $(MAKEF) OBJDIR=../$(OBJTREE)/$$i SRCDIR=. 	\
-			../$(OBJTREE)/$$i/Makefile	 		\
+			../$(OBJTREE)/$$i/dir.mk	 		\
 	     || exit 1);						\
 	done
 	cd $(OBJTREE) && ../configure

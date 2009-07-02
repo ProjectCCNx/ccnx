@@ -4,10 +4,10 @@ $(CSRC) $(HSRC) $(SCRIPTSRC) $(SRCLINKS):
 $(DUPDIR):
 	test -d $(SRCDIR)/$(DUPDIR) && mkdir $(DUPDIR) && cp -p $(SRCDIR)/$(DUPDIR)/* $(DUPDIR)
 
-$(OBJDIR)/Makefile: Makefile
+$(OBJDIR)/dir.mk: dir.mk
 	test -d $(OBJDIR) || mkdir $(OBJDIR)
-	test -f $(OBJDIR)/Makefile && mv $(OBJDIR)/Makefile $(OBJDIR)/Makefile~ ||:
-	cp -p Makefile $(OBJDIR)/Makefile
+	test -f $(OBJDIR)/dir.mk && mv $(OBJDIR)/dir.mk $(OBJDIR)/dir.mk~ ||:
+	cp -p dir.mk $(OBJDIR)/dir.mk
 
 install_libs: $(LIBS)
 	test -d $(INSTALL_LIB)
