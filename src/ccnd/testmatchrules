@@ -1,6 +1,6 @@
 #!/bin/sh
 echo nextsib.ccnb
-../lib/ccn_xmltoccnb -w - <<'END' > nextsib.ccnb
+../cmd/ccn_xmltoccnb -w - <<'END' > nextsib.ccnb
 <Interest>
   <Name>
     <Component ccnbencoding="base64Binary">d3d3Lm55dGltZXMuY29t</Component>
@@ -17,7 +17,7 @@ echo nextsib.ccnb
 </Interest>
 END
 echo lastsib.ccnb
-../lib/ccn_xmltoccnb -w - <<'END' > lastsib.ccnb
+../cmd/ccn_xmltoccnb -w - <<'END' > lastsib.ccnb
 <Interest>
   <Name>
     <Component ccnbencoding="base64Binary">d3d3Lm55dGltZXMuY29t</Component>
@@ -33,7 +33,7 @@ echo lastsib.ccnb
 </Interest>
 END
 echo firstin.ccnb
-../lib/ccn_xmltoccnb -w - <<'END' > firstin.ccnb
+../cmd/ccn_xmltoccnb -w - <<'END' > firstin.ccnb
 <Interest>
   <Name>
     <Component ccnbencoding="base64Binary">d3d3Lm55dGltZXMuY29t</Component>
@@ -47,7 +47,7 @@ echo firstin.ccnb
 </Interest>
 END
 echo lastin.ccnb
-../lib/ccn_xmltoccnb -w - <<'END' > lastin.ccnb
+../cmd/ccn_xmltoccnb -w - <<'END' > lastin.ccnb
 <Interest>
   <Name>
     <Component ccnbencoding="base64Binary">d3d3Lm55dGltZXMuY29t</Component>
@@ -61,7 +61,7 @@ echo lastin.ccnb
 </Interest>
 END
 echo oexactmatch.ccnb
-../lib/ccn_xmltoccnb -w - <<'END' > oexactmatch.ccnb
+../cmd/ccn_xmltoccnb -w - <<'END' > oexactmatch.ccnb
 <Interest>
   <Name>
     <Component ccnbencoding="base64Binary">d3d3Lm55dGltZXMuY29t</Component>
@@ -81,7 +81,7 @@ echo oexactmatch.ccnb
 </Interest>
 END
 echo exactmatch.ccnb
-../lib/ccn_xmltoccnb -w - <<'END' > exactmatch.ccnb
+../cmd/ccn_xmltoccnb -w - <<'END' > exactmatch.ccnb
 <Interest>
   <Name>
     <Component ccnbencoding="base64Binary">d3d3Lm55dGltZXMuY29t</Component>
@@ -96,7 +96,7 @@ echo exactmatch.ccnb
 </Interest>
 END
 echo classic.ccnb
-../lib/ccn_xmltoccnb -w - <<'END' > classic.ccnb
+../cmd/ccn_xmltoccnb -w - <<'END' > classic.ccnb
 <Interest>
   <Name>
     <Component ccnbencoding="base64Binary">d3d3Lm55dGltZXMuY29t</Component>
@@ -110,7 +110,7 @@ echo classic.ccnb
 </Interest>
 END
 echo contenthash.ccnb
-../lib/ccn_xmltoccnb -w - <<'END' > contenthash.ccnb
+../cmd/ccn_xmltoccnb -w - <<'END' > contenthash.ccnb
 <Interest>
   <Name>
     <Component ccnbencoding="base64Binary">d3d3LmNubi5jb20=</Component>
@@ -141,10 +141,10 @@ for i in firstin lastin nextsib lastsib exactmatch classic contenthash; do
     ./ccndsmoketest -f $i.ccnb  -n 3 > $i.smokeout
 done
 echo Expect to see different answers because of suppressed matches against unsent content
-cat lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb | nc -U /tmp/.ccnd.sock -w 1 | nc -U /tmp/.ccnd.sock | ../lib/ccn_ccnbtoxml -s lastsibX10 -
+cat lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb lastsib.ccnb | nc -U /tmp/.ccnd.sock -w 1 | nc -U /tmp/.ccnd.sock | ../cmd/ccn_ccnbtoxml -s lastsibX10 -
 echo ==============================================================
 echo Timing gaps here probably will cause repeating of the same item
-for i in 0 1 2 3 4 5 6 7 8 9; do cat lastsib.ccnb; done | nc -U /tmp/.ccnd.sock -w 1 | nc -U /tmp/.ccnd.sock | ../lib/ccn_ccnbtoxml -s lastsibY10 -
+for i in 0 1 2 3 4 5 6 7 8 9; do cat lastsib.ccnb; done | nc -U /tmp/.ccnd.sock -w 1 | nc -U /tmp/.ccnd.sock | ../cmd/ccn_ccnbtoxml -s lastsibY10 -
 echo ==============================================================
 rm /tmp/.ccnd.sock
 echo GET / | nc localhost 4485

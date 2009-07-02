@@ -27,7 +27,7 @@ echo Populating ccnd with pre-signed data
 ./ccndsmoketest  -t 10 send fortunes.ccnb recv || Fail
 
 echo Making anything.ccnb
-../lib/ccn_xmltoccnb -w - <<'END' > anything.ccnb
+../cmd/ccn_xmltoccnb -w - <<'END' > anything.ccnb
 <Interest>
   <Name>
   </Name>
@@ -41,7 +41,7 @@ MATCHES=`grep -c '^recv of' anything.out`
 test $MATCHES = 3 || Fail Wrong number of matches, got $MATCHES expected 3
 
 echo Testing contenthash
-../lib/ccn_xmltoccnb -w - <<'END' > contenthash.ccnb
+../cmd/ccn_xmltoccnb -w - <<'END' > contenthash.ccnb
 <Interest>
   <Name>
     <Component ccnbencoding="text">local</Component>
@@ -58,7 +58,7 @@ END
 diff contenthash.ref contenthash.out || Fail contenthash.out does not match expected
 
 echo Testing that fetch with bad hash does not succeed
-../lib/ccn_xmltoccnb -w - <<'END' > contentmishash.ccnb
+../cmd/ccn_xmltoccnb -w - <<'END' > contentmishash.ccnb
 <Interest>
   <Name>
     <Component ccnbencoding="text">local</Component>

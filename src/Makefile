@@ -1,4 +1,4 @@
-SUBDIRS = lib ccnd libexec tests
+SUBDIRS = lib ccnd libexec cmd tests
 OBJTREE = obj.`uname`
 MAKEF =  -f ../conf.mk -f Makefile -f ../conf.mk -f ../subr.mk
 

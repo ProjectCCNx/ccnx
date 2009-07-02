@@ -2,10 +2,8 @@ CFLAGS = $(COPT) $(CWARNFLAGS) $(CPREFLAGS) $(PLATCFLAGS)
 LDLIBS = -L../lib $(MORE_LDLIBS) -lccn
 EXPATLIBS = -lexpat
 CPREFLAGS = -I../include
-CCNLIBDIR = .
+CCNLIBDIR = ../lib
 COPT = -g
-
-# FIXTHIS programs in the lib directory?
 
 INSTALLED_PROGRAMS = \
     ccn_ccnbtoxml ccn_splitccnb ccntimestamps ccndumpnames ccnrm ccnls ccnslurp ccncat \
@@ -13,74 +11,29 @@ INSTALLED_PROGRAMS = \
     ccnput ccnget ccnhexdumpdata $(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)
 
 PROGRAMS = $(INSTALLED_PROGRAMS) \
-    ccn_verifysig \
-    hashtbtest matrixtest skel_decode_test \
-    smoketestclientlib dataresponsetest  \
-    encodedecodetest  ccndump  \
+    ccndump  \
     ccnbuzz  \
-    signbenchtest $(PCAP_PROGRAMS)
+    dataresponsetest  \
+    $(PCAP_PROGRAMS)
 
 EXPAT_PROGRAMS = ccn_xmltoccnb
 #PCAP_PROGRAMS = ccndumppcap
 BROKEN_PROGRAMS =
 DEBRIS = 
 SCRIPTSRC = ccn_initkeystore.sh
-CSRC = ccn_buf_decoder.c ccn_dtag_table.c ccn_buf_encoder.c ccn_charbuf.c \
-    ccn_indexbuf.c ccn_coding.c ccn_client.c \
-    ccn_ccnbtoxml.c ccn_xmltoccnb.c ccn_splitccnb.c \
-    ccn_schedule.c ccn_matrix.c ccn_bloom.c ccn_name_util.c \
-    ccn_match.c ccn_digest.c ccn_keystore.c ccn_signing.c \
-    ccn_versioning.c \
-    ccn_bulkdata.c \
-    ccn_merkle_path_asn1.c \
-    skel_decode_test.c \
-    hashtb.c hashtbtest.c matrixtest.c \
-    smoketestclientlib.c ccntimestamps.c ccndump.c ccnrm.c ccndumpnames.c \
-    ccnls.c ccnslurp.c ccncat.c \
-    ccn_verifysig.c dataresponsetest.c ccn_uri.c  encodedecodetest.c \
-    ccnsendchunks.c ccncatchunks.c ccncatchunks2.c ccnbuzz.c ccnput.c ccnget.c ccnhexdumpdata.c \
-    signbenchtest.c ccndumppcap.c
+CSRC =  ccn_ccnbtoxml.c ccn_splitccnb.c ccn_xmltoccnb.c ccnbuzz.c \
+       ccncat.c ccncatchunks.c ccncatchunks2.c ccndump.c \
+       ccndumpnames.c ccndumppcap.c ccnget.c ccnhexdumpdata.c \
+       ccnls.c ccnput.c ccnrm.c ccnsendchunks.c \
+       ccnslurp.c ccntimestamps.c dataresponsetest.c 
 
-LIBS = libccn.a
-LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_dtag_table.o ccn_schedule.o ccn_matrix.o \
-    ccn_buf_decoder.o ccn_uri.o ccn_buf_encoder.o ccn_bloom.o ccn_name_util.o ccn_digest.o ccn_keystore.o ccn_signing.o ccn_match.o hashtb.o ccn_merkle_path_asn1.o ccn_bulkdata.o ccn_versioning.o
+default all: $(PROGRAMS)
+# Don't try to build broken programs right now.
+# all: $(BROKEN_PROGRAMS)
 
-default all: lib $(PROGRAMS)
-# Don't try to build shared libs right now.
-# all: shlib $(BROKEN_PROGRAMS)
+test: default
 
-install: install_headers
-install_headers:
-	test -d $(INSTALL_INCLUDE) && mkdir -p $(INSTALL_INCLUDE)/ccn && cp ../include/ccn/*.h $(INSTALL_INCLUDE)/ccn	
-
-uninstall: uninstall_headers
-uninstall_headers:
-	$(RM) -r $(INSTALL_INCLUDE)/ccn
-
-shlib: $(SHLIBNAME)
-
-lib: libccn.a
-
-test: default keystore_check encodedecodetest
-	./encodedecodetest -o /dev/null
-
-keystore_check: ccn_initkeystore.sh
-	test -f $$HOME/.ccn/.ccn_keystore || $(MAKE) new_keystore
-
-new_keystore:
-	@echo === CCN Keystore not found in your home directory
-	@echo === I will create one for you now '(^C to abort)'
-	sleep 1 && sh ccn_initkeystore.sh && sleep 3 && mv .ccn $(HOME)
-
-libccn.a: $(LIB_OBJS)
-	ar cru $@ $(LIB_OBJS)
-
-shared: $(SHLIBNAME)
-
-$(SHLIBNAME): libccn.a $(SHLIBDEPS)
-	$(LD) $(SHARED_LD_FLAGS) $(OPENSSL_LIBS) -lcrypto -o $@ libccn.a
-
-$(PROGRAMS): libccn.a
+$(PROGRAMS): $(CCNLIBDIR)/libccn.a
 
 ccn_ccnbtoxml: ccn_ccnbtoxml.o
 	$(CC) $(CFLAGS) -o $@ ccn_ccnbtoxml.o $(LDLIBS)
@@ -186,95 +139,17 @@ clean:
 # Dependencies below here are checked by depend target
 # but must be updated manually.
 ###############################
-ccn_buf_decoder.o: ccn_buf_decoder.c ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h
-ccn_dtag_table.o: ccn_dtag_table.c ../include/ccn/coding.h
-ccn_buf_encoder.o: ccn_buf_encoder.c ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/signing.h \
-  ../include/ccn/ccn_private.h
-ccn_charbuf.o: ccn_charbuf.c ../include/ccn/charbuf.h
-ccn_indexbuf.o: ccn_indexbuf.c ../include/ccn/indexbuf.h
-ccn_coding.o: ccn_coding.c ../include/ccn/coding.h
-ccn_client.o: ccn_client.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
-  ../include/ccn/ccn_private.h ../include/ccn/ccnd.h \
-  ../include/ccn/digest.h ../include/ccn/hashtb.h \
-  ../include/ccn/signing.h
 ccn_ccnbtoxml.o: ccn_ccnbtoxml.c ../include/ccn/charbuf.h \
   ../include/ccn/coding.h
+ccn_splitccnb.o: ccn_splitccnb.c ../include/ccn/coding.h
 ccn_xmltoccnb.o: ccn_xmltoccnb.c ../include/ccn/coding.h \
   ../include/ccn/charbuf.h
-ccn_splitccnb.o: ccn_splitccnb.c ../include/ccn/coding.h
-ccn_schedule.o: ccn_schedule.c ../include/ccn/schedule.h
-ccn_matrix.o: ccn_matrix.c ../include/ccn/matrix.h \
-  ../include/ccn/hashtb.h
-ccn_bloom.o: ccn_bloom.c ../include/ccn/bloom.h
-ccn_name_util.o: ccn_name_util.c ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h
-ccn_match.o: ccn_match.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/digest.h
-ccn_digest.o: ccn_digest.c ../include/ccn/digest.h
-ccn_keystore.o: ccn_keystore.c ../include/ccn/keystore.h
-ccn_signing.o: ccn_signing.c ../include/ccn/merklepathasn1.h \
-  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/signing.h
-ccn_versioning.o: ccn_versioning.c ../include/ccn/bloom.h \
-  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/uri.h \
-  ../include/ccn/ccn_private.h
-ccn_bulkdata.o: ccn_bulkdata.c ../include/ccn/bloom.h \
-  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h
-ccn_merkle_path_asn1.o: ccn_merkle_path_asn1.c \
-  ../include/ccn/merklepathasn1.h
-skel_decode_test.o: skel_decode_test.c ../include/ccn/charbuf.h \
-  ../include/ccn/coding.h
-hashtb.o: hashtb.c ../include/ccn/hashtb.h
-hashtbtest.o: hashtbtest.c ../include/ccn/hashtb.h
-matrixtest.o: matrixtest.c ../include/ccn/matrix.h
-smoketestclientlib.o: smoketestclientlib.c ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h
-ccntimestamps.o: ccntimestamps.c ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h
-ccndump.o: ccndump.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
-ccnrm.o: ccnrm.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
-ccndumpnames.o: ccndumpnames.c ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/uri.h
-ccnls.o: ccnls.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
-ccnslurp.o: ccnslurp.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
+ccnbuzz.o: ccnbuzz.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccncat.o: ccncat.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
-ccn_verifysig.o: ccn_verifysig.c ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/keystore.h \
-  ../include/ccn/signing.h
-dataresponsetest.o: dataresponsetest.c ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h
-ccn_uri.o: ccn_uri.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
-encodedecodetest.o: encodedecodetest.c ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/bloom.h ../include/ccn/uri.h \
-  ../include/ccn/digest.h ../include/ccn/keystore.h \
-  ../include/ccn/signing.h
-ccnsendchunks.o: ccnsendchunks.c ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/uri.h \
-  ../include/ccn/keystore.h ../include/ccn/signing.h
 ccncatchunks.o: ccncatchunks.c ../include/ccn/bloom.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
@@ -282,19 +157,35 @@ ccncatchunks2.o: ccncatchunks2.c ../include/ccn/bloom.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/schedule.h \
   ../include/ccn/uri.h
-ccnbuzz.o: ccnbuzz.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
+ccndump.o: ccndump.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
+ccndumpnames.o: ccndumpnames.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
-ccnput.o: ccnput.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h \
-  ../include/ccn/keystore.h ../include/ccn/signing.h
+ccndumppcap.o: ccndumppcap.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h
 ccnget.o: ccnget.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccnhexdumpdata.o: ccnhexdumpdata.c ../include/ccn/coding.h \
   ../include/ccn/ccn.h ../include/ccn/charbuf.h ../include/ccn/indexbuf.h
-signbenchtest.o: signbenchtest.c ../include/ccn/ccn.h \
+ccnls.o: ccnls.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
+ccnput.o: ccnput.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h \
+  ../include/ccn/keystore.h ../include/ccn/signing.h
+ccnrm.o: ccnrm.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
+ccnsendchunks.o: ccnsendchunks.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/keystore.h
-ccndumppcap.o: ccndumppcap.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h
+  ../include/ccn/indexbuf.h ../include/ccn/uri.h \
+  ../include/ccn/keystore.h ../include/ccn/signing.h
+ccnslurp.o: ccnslurp.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h ../include/ccn/uri.h
+ccntimestamps.o: ccntimestamps.c ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h
+dataresponsetest.o: dataresponsetest.c ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h

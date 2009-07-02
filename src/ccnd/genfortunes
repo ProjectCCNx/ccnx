@@ -25,6 +25,6 @@ ccnsendchunks /local/test/fortunes/not/included <<EOF
 This fortune intentionally not included.
 EOF
 
-../lib/ccndump > fortunes.ccnb
+../cmd/ccndump > fortunes.ccnb
 ./ccndsmoketest kill
 wait
