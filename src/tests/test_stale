@@ -29,3 +29,4 @@ sleep 2
 ccncatchunks /test/ephemeral$$ > ephemeral$$_6
 : | diff - ephemeral$$_6 || Fail test data did not go stale the second time
 rm ephemeral$$_* ephemeral$$.ccnb dummy.ccnb
+
