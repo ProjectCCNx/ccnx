@@ -4,3 +4,4 @@ type jot || SkipTest no jot available
 NAME=ccn:/test/long/jot
 jot $LONG_LINES | ccnsendchunks -x 300 $NAME &
 echo Long producer started
+
