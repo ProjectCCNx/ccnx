@@ -208,3 +208,4 @@ ccn_skeleton_decode(struct ccn_skeleton_decoder *d,
     d->index += i;
     return(i);
 }
+
