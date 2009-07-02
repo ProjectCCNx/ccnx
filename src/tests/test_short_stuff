@@ -6,3 +6,4 @@ jot 100 | ccnsendchunks $NAME
 trap "rm tmp$$" 0
 ccncatchunks $NAME > tmp$$
 jot 100 | diff - tmp$$
+
