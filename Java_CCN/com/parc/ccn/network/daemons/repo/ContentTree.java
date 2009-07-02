@@ -241,6 +241,7 @@ public class ContentTree {
 				// for ContentObject.name() that the digest is not present) we must REMOVE the content 
 				// digest first or this test will not always be correct
 				ContentName digestFreeName = new ContentName(nodeName.count()-1, nodeName.components());
+				
 				if (interest.matches(digestFreeName, null)) {
 					List<ContentFileRef> content = null;
 					synchronized(node) {
@@ -265,7 +266,7 @@ public class ContentTree {
 		}
 		// Content at exactly this node is not a match (if any)
 		// Now search children if applicable and if any
-		if (matchlen != -1 && matchlen <= depth) {
+		if (matchlen != -1 && matchlen <= depth || (node.children==null && node.oneChild==null)) {
 			// Any child would make the total name longer than requested so no point in 
 			// checking children
 			return null;
@@ -281,9 +282,13 @@ public class ContentTree {
 			}
 		}
 		if (null != children) {
-			byte[] interestComp = interest.name().component(depth+1);
+			byte[] interestComp = interest.name().component(depth);
+			System.out.println("interestComp: "+interest.name()+" depth="+depth+" "+interest.name().stringComponent(depth));
 			for (TreeNode child : children) {
-				if (null == interestComp || DataUtils.compare(child.component, interestComp) >= 0) {
+				System.out.println("child: "+new String(child.component));
+				int comp = DataUtils.compare(child.component, interestComp);
+				//if (null == interestComp || DataUtils.compare(child.component, interestComp) >= 0) {
+				if (null == interestComp || DataUtils.compare(child.component, interestComp) >= 0){
 					// This child subtree is possible match
 					ContentObject result = leftSearch(interest, matchlen, child, 
 							new ContentName(nodeName, child.component), depth+1, getter);
