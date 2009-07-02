@@ -6,4 +6,3 @@ find include lib -type l -name \*expat\* -exec rm '{}' ';'
 # Make some symlinks so that we can use the native expat.
 ln -s /usr/include/bsdxml.h include/expat.h
 ln -s /usr/lib/libbsdxml.a lib/libexpat.a
-

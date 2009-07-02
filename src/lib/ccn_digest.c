@@ -80,4 +80,3 @@ ccn_digest_final(struct ccn_digest *d, unsigned char *result, size_t digest_size
     d->ready = 0;
     return((res == 1) ? 0 : -1);
 }
-

@@ -1436,4 +1436,3 @@ ccn_get(struct ccn *h,
     }
     return(res);
 }
-

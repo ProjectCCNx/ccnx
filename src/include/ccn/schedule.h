@@ -96,4 +96,3 @@ int ccn_schedule_cancel(struct ccn_schedule *, struct ccn_scheduled_event *);
 int ccn_schedule_run(struct ccn_schedule *);
 
 #endif
-

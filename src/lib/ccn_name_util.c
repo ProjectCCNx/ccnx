@@ -168,4 +168,3 @@ ccn_name_chop(struct ccn_charbuf *c, struct ccn_indexbuf *components, int n)
     return(-1);
 }
 
-

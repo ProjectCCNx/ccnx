@@ -233,4 +233,3 @@ Finish:
     ccn_indexbuf_destroy(&nix);
     return(myres);
 }
-

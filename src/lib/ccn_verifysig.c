@@ -131,4 +131,3 @@ main(int argc, char **argv)
     printf("\n%d files, %d skipped, %d good, %d bad.\n", argi, argi - good - bad, good, bad);
     exit(status);
 }
-

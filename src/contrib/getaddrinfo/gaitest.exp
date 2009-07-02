@@ -344,4 +344,3 @@ flags=NUMERICHOST CANONNAME PASSIVE
 	canonname = (null)
 	host = 0.0.0.0
 	port = 65534
-

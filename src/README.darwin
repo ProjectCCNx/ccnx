@@ -8,4 +8,3 @@ Then download openssl-0.9.8 from www.openssl.org, then configure it with
   ./Configure shared --prefix=/opt/local darwin-i386-cc
 
 [1/13/09 -- Bill Janssen]
-

@@ -2,4 +2,3 @@ BEFORE : test_single_ccnd_teardown
 ccnd &
 sleep .1 2>/dev/null
 ccndsmoketest || { echo retrying; sleep 1; ccndsmoketest; }
-

@@ -255,4 +255,3 @@ deliver_content(struct ccn *h, struct bulkdata *b)
     }
     return(ans);
 }
-

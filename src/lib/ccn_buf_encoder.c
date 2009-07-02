@@ -288,4 +288,3 @@ ccn_charbuf_append_now_blob(struct ccn_charbuf *c, int marker)
     return (res);
 }
 
-

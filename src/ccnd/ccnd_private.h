@@ -279,4 +279,3 @@ void ccnd_debug_ccnb(struct ccnd *h,
                      size_t ccnb_size);
 
 #endif
-

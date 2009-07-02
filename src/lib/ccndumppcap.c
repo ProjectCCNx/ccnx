@@ -270,4 +270,3 @@ main(int argc, char **argv)
     pcap_close(pcap);
     return res;
 }
-

@@ -5,4 +5,3 @@ D=`dirname "$0"`/
 test -x "$D"ccn_ccnbtoxml || D=''
 for i in *.ccnb; do "$D"ccn_ccnbtoxml "$i" | "$D"ccn_xmltoccnb - | cmp - "$i" || exit 1; done
 for i in *.ccnb; do "$D"ccn_ccnbtoxml "$i" | xmlwf || exit 1; done
-

@@ -72,4 +72,3 @@ echo Testing that fetch with bad hash does not succeed
 END
 ./ccndsmoketest -t 66 send contentmishash.ccnb recv | grep 'recv timed out' || Fail contentmishash
 echo $0 TESTS PASSED
-

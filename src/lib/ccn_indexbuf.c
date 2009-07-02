@@ -162,4 +162,3 @@ ccn_indexbuf_move_to_end(struct ccn_indexbuf *x, ELEMENT val)
         }
     }
 }
-

@@ -39,4 +39,3 @@ depend: Makefile $(CSRC)
 install_libs install_programs install uninstall_libs uninstall_programs uninstall coverage shared depend: _always
 .PHONY: _always
 _always:
-

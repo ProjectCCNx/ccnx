@@ -68,4 +68,3 @@ static const struct ccn_dict_entry ccn_tagdict[] = {
 };
 
 const struct ccn_dict ccn_dtag_dict = {ARRAY_N(ccn_tagdict) - 1, ccn_tagdict};
-

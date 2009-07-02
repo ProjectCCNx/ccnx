@@ -54,4 +54,3 @@ int ccn_matrix_trim(struct ccn_matrix *m, const struct ccn_matrix_bounds *bounds
 int ccn_matrix_clear(struct ccn_matrix *m, const struct ccn_matrix_bounds *bounds);
 
 #endif
-

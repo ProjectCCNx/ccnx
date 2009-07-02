@@ -215,4 +215,3 @@ main(int argc, char **argv)
     ccn_charbuf_destroy(&c);
     exit(0);
 }
-

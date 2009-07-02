@@ -38,4 +38,3 @@ int ccn_charbuf_append_timestamp_blob(struct ccn_charbuf *c, int marker, intmax_
 int ccn_charbuf_append_now_blob(struct ccn_charbuf *c, int marker);
 
 #endif
-

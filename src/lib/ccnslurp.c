@@ -394,4 +394,3 @@ main(int argc, char **argv)
     ccn_charbuf_destroy(&passive_templ);
     exit(0);
 }
-

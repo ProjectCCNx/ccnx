@@ -5,4 +5,3 @@ NAME=ccn:/test/long/jot
 jot $LONG_LINES > tmp$$
 trap "rm tmp$$" 0
 ccncatchunks2 $NAME | dd bs=1k | cmp - tmp$$
-

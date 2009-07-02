@@ -29,4 +29,3 @@ ccn_uri_append(struct ccn_charbuf *c,
 int ccn_name_from_uri(struct ccn_charbuf *c, const char *uri);
 
 #endif
-

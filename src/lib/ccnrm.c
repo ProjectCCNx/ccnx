@@ -103,4 +103,3 @@ main(int argc, char **argv)
     fprintf(stderr, "marked stale: %d\n", mydata.nseen);
     exit(0);
 }
-

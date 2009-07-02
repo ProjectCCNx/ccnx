@@ -29,4 +29,3 @@ AC_CHECK_LIB(socket, socket)
 
 AC_CONFIG_FILES(Makefile)
 AC_OUTPUT
-

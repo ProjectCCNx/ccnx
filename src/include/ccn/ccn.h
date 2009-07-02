@@ -729,4 +729,3 @@ int ccn_create_version(struct ccn *h,
                        intmax_t secs, int nsecs);
 
 #endif
-

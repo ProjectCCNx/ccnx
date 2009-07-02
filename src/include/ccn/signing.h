@@ -52,4 +52,3 @@ size_t ccn_pubkey_size(const struct ccn_pkey *i_pubkey);
 int ccn_append_pubkey_blob(struct ccn_charbuf *c, const struct ccn_pkey *i_pubkey);
 
 #endif
-

@@ -88,4 +88,3 @@ int ccn_bloom_match_wire(const struct ccn_bloom_wire *f,
                          const void *key, size_t size);
 
 #endif
-

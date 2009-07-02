@@ -36,4 +36,3 @@ const unsigned char *ccn_keystore_public_key_digest(struct ccn_keystore *p);
 const struct ccn_certificate *ccn_keystore_certificate(struct ccn_keystore *p);
 
 #endif
-

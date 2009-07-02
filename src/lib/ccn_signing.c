@@ -312,4 +312,3 @@ ccn_append_pubkey_blob(struct ccn_charbuf *c, const struct ccn_pkey *i_pubkey)
     c->length += bytes;
     return(bytes);
 }
-

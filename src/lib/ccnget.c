@@ -114,4 +114,3 @@ main(int argc, char **argv)
     ccn_destroy(&h);
     exit(res < 0);
 }
-

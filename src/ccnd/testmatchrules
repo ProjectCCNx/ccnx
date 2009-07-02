@@ -150,4 +150,3 @@ rm /tmp/.ccnd.sock
 echo GET / | nc localhost 4485
 grep 757300FA019D3232636E642D706F6C7967616D792E68746D6C00 *.smokeout | sort | uniq -c
 wait
-

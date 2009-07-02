@@ -182,4 +182,3 @@ sa->sin_addr=127.0.0.1, sa->sin_port=65534
 host=(null), hostlen=0, serv=(non-null), servlen=1
 flags=NUMERICHOST NUMERICSERV NAMEREQD 
 	error: An argument buffer overflowed
-

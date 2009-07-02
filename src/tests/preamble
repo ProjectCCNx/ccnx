@@ -2,4 +2,3 @@
 # Provide defaults and do exports
 : ${CCN_LOCAL_PORT:=$((CCN_LOCAL_PORT_BASE + 0))}
 export CCN_LOCAL_PORT
-

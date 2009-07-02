@@ -33,4 +33,3 @@ int ccn_digest_update(struct ccn_digest *, const void *, size_t);
 int ccn_digest_final(struct ccn_digest *, unsigned char *, size_t);
 
 #endif
-

@@ -371,4 +371,3 @@ ccnd_debug_ccnb(struct ccnd *h,
     ccnd_msg(h, "%s", ccn_charbuf_as_string(c));
     ccn_charbuf_destroy(&c);
 }
-

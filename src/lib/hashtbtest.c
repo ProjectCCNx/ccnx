@@ -59,4 +59,3 @@ main(int argc, char **argv)
     hashtb_destroy(&h);
     return(0);
 }
-

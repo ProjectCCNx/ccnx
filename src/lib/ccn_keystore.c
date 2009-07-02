@@ -108,4 +108,3 @@ ccn_keystore_certificate(struct ccn_keystore *p)
 
     return ((const void *)(p->certificate));
 }
-

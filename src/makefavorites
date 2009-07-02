@@ -12,4 +12,3 @@ while read i; do
     *.c) ln -s ../../"$i" FAVORITES/1/"$b";;
   esac
 done < MANIFEST
-

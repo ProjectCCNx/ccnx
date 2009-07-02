@@ -4,4 +4,3 @@ make
 rm ccnd/ccnd.o ccnd/ccnd ccnd/ccn_match.o
 make COPT='-g -fprofile-arcs -ftest-coverage'
 echo "### Say 'make coverage' after test run to generate gcov results"
-

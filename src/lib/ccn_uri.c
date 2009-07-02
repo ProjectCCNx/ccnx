@@ -286,4 +286,3 @@ Done:
         return(-1);
     return(s - uri);
 }
-

@@ -53,4 +53,3 @@ memset(s, c, len)
 
     return s;
 }
-

@@ -832,4 +832,3 @@ ccn_compare_names(const unsigned char *a, size_t asize,
     return (cmp);
 }
 
-

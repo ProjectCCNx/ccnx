@@ -32,4 +32,3 @@ EOF
 trap "rm notice.ccnb inject.ccnb" 0
 echo '***' CHECK FOR CCND DEBUG MESSAGE:
 ccndsmoketest -t 66 send notice.ccnb send inject.ccnb recv kill recv && wait
-

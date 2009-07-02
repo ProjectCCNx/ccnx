@@ -5,4 +5,3 @@ Commentize () {
 }
 file ../../schema/tagname.csvdict >&2 || exit 1
 tr ',' ' ' <../../schema/tagname.csvdict | while read i j k; do printf '    %s' "CCN_DTAG_$j = $i,"; Commentize "$k"; done
-
