@@ -16,3 +16,4 @@
 #define CCN_EMPTY_PDU "CCN\202\000"
 #define CCN_EMPTY_PDU_LENGTH 5
 #endif
+
