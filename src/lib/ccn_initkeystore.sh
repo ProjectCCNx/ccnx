@@ -26,3 +26,4 @@ EOF
 openssl req -config openssl.cnf -newkey rsa:$RSA_KEYSIZE -x509 -keyout private_key.pem -out certout.pem -subj /CN="$CCN_USER" -nodes || Fail openssl req
 openssl pkcs12 -export -name "CCNUser" -out .ccn_keystore -in certout.pem -inkey private_key.pem \
   -password pass:'Th1s1sn0t8g00dp8ssw0rd.' || Fail openssl pkcs12
+
