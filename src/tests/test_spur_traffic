@@ -6,3 +6,4 @@ COUNT=`wc -l < $L`
 test $COUNT -gt 30 || Fail less spur traffic than expected - $COUNT
 test $COUNT -lt 120 || Fail more spur traffic than expected - $COUNT
 echo Spur traffic $COUNT is within expected bounds
+
