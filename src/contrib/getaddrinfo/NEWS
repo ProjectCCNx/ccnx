@@ -60,3 +60,4 @@ Major changes in release 1.1
   if they are defined in `netdb.h'.
 * The package now works on systems that they has either either getaddrinfo()
   or getnameinfo().
+
