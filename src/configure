@@ -37,3 +37,4 @@ cat conf.mk				>&2
 echo ===================================>&2
 test -f conf.mk~ || exit 0
 cmp conf.mk~ conf.mk || make clean
+
