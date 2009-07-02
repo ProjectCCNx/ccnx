@@ -6,7 +6,8 @@ mkdir -p FAVORITES/1
 find FAVORITES -type l \( -name \*.c -o -name \*.h \) -exec rm '{}' ';'
 while read i; do
   b=`basename "$i"`
-  case "${b:--}" in
+  case "${i:--}" in
+    *contrib/*) ;;
     *.h) ln -s ../../"$i" FAVORITES/0/"$b";;
     *.c) ln -s ../../"$i" FAVORITES/1/"$b";;
   esac

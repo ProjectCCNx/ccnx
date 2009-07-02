@@ -200,8 +200,10 @@ ccn_connect(struct ccn *h, const char *name)
     struct sockaddr_un addr = {0};
     int res;
     char name_buf[60];
+    if (h == NULL)
+        return(-1);
     h->err = 0;
-    if (h == NULL || h->sock != -1)
+    if (h->sock != -1)
         return(NOTE_ERR(h, EINVAL));
     if (name == NULL || name[0] == 0) {
         name = getenv(CCN_LOCAL_PORT_ENVNAME);

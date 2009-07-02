@@ -306,7 +306,7 @@ ccnd_msg(struct ccnd *h, const char *fmt, ...)
         return;
     b = ccn_charbuf_create();
     gettimeofday(&t, NULL);
-    if (((h->debug & 64) != 0) &&
+    if ((h != NULL) && ((h->debug & 64) != 0) &&
         ((h->logbreak-- < 0 && t.tv_sec != h->logtime) ||
           t.tv_sec >= h->logtime + 30)) {
         fprintf(stderr, "%ld.000000 ccnd[%d]: _______________________ %s",
