@@ -199,3 +199,4 @@ ccn_bloom_store_wire(struct ccn_bloom *b, unsigned char *dest, size_t destsize)
     return(0);
 }
 
+
