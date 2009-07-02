@@ -1,4 +1,5 @@
-# Makefile for tests directory
+# makefile for src/tests directory
+
 SCRIPTSRC = testdriver functions preamble settings $(ALLTESTS)
 DUPDIR = stubs
 

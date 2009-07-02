@@ -1,9 +1,9 @@
+# makefile for src/cmd directory
+
 CFLAGS = $(COPT) $(CWARNFLAGS) $(CPREFLAGS) $(PLATCFLAGS)
 LDLIBS = -L../lib $(MORE_LDLIBS) -lccn
 EXPATLIBS = -lexpat
-CPREFLAGS = -I../include
 CCNLIBDIR = ../lib
-COPT = -g
 
 INSTALLED_PROGRAMS = \
     ccn_ccnbtoxml ccn_splitccnb ccntimestamps ccndumpnames ccnrm ccnls ccnslurp ccncat \

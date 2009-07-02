@@ -1,9 +1,9 @@
+# makefile for src/lib directory
+
 CFLAGS = $(COPT) $(CWARNFLAGS) $(CPREFLAGS) $(PLATCFLAGS)
-LDLIBS = -L../lib $(MORE_LDLIBS) -lccn
+LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn
 EXPATLIBS = -lexpat
-CPREFLAGS = -I../include
-CCNLIBDIR = .
-COPT = -g
+CCNLIBDIR = ../lib
 
 PROGRAMS = hashtbtest matrixtest skel_decode_test \
     smoketestclientlib  \

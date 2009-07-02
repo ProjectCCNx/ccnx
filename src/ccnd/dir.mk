@@ -1,7 +1,7 @@
+# makefile for src/ccnd directory
+
 CFLAGS = $(COPT) $(CWARNFLAGS) $(CPREFLAGS) $(PLATCFLAGS)
 LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn
-CPREFLAGS = -I../include
-COPT = -g
 CCNLIBDIR = ../lib
 
 INSTALLED_PROGRAMS = ccnd ccndsmoketest
