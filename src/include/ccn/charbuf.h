@@ -104,3 +104,4 @@ int ccn_charbuf_append_datetime_now(struct ccn_charbuf *c, int precision);
 char *ccn_charbuf_as_string(struct ccn_charbuf *c);
 
 #endif
+
