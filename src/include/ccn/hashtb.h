@@ -123,3 +123,4 @@ void hashtb_delete(struct hashtb_enumerator *);
 void hashtb_rehash(struct hashtb *ht, unsigned n_buckets);
 
 #endif
+
