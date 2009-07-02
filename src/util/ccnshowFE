@@ -3,3 +3,4 @@ exec 2>/dev/null
 for CCNDIR in "$@"; do 
   ccnls $CCNDIR/%FE | while read i j; do echo; echo $CCNDIR/%FE/$i; ccnget -c $CCNDIR/%FE/$i | ccn_ccnbtoxml -x - | xmllint --format -; done
 done
+
