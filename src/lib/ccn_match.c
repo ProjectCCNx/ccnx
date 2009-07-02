@@ -280,3 +280,4 @@ ccn_content_matches_interest(const unsigned char *content_object,
     // test any other qualifiers here
     return(1);
 }
+
