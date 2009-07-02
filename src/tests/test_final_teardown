@@ -4,3 +4,4 @@ ls /tmp/.ccnd.sock.* 2>/dev/null && { echo Will try force kill of all ccnd insta
 sleep 1
 netstat -an | grep -e 900[0123] -e 91[0123][0123]
 :
+
