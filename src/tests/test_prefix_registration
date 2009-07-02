@@ -34,3 +34,4 @@ ccn_ccnbtoxml registration-response.ccnb | xmllint --format - || Fail did not ge
 
 # Testing for the reg request to time out would be more complicated.
 rm registration-*.ccnb
+
