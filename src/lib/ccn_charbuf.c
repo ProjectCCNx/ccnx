@@ -161,3 +161,4 @@ ccn_charbuf_as_string(struct ccn_charbuf *c)
     r[0] = 0;
     return((char *)c->buf);
 }
+
