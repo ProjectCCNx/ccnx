@@ -22,3 +22,4 @@ WithCCND 5 ccnslurp /test > after_inject.out
 ExpectLines before_inject.out 0 0 : Not expecting content in isolated ccnd
 ExpectLines after_inject.out 400 600 : content in connected ccnd
 rm before_inject.out after_inject.out local9000.cf
+
