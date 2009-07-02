@@ -28,3 +28,4 @@ EOF
 ../lib/ccndump > fortunes.ccnb
 ./ccndsmoketest kill
 wait
+
