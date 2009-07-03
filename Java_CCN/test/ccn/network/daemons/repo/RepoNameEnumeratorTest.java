@@ -39,7 +39,6 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 	public void repoNameEnumerationTest(){
 		setLibraries();
 		
-		startRepo();
 		Library.logger().info("adding name1 to repo");
 		addContentToRepo(prefix1String+"/name1");
 		
@@ -130,10 +129,6 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 		}
 	}
 	
-	public void startRepo(){
-		
-		
-	}
 	
 	public void testRegisterPrefix(){
 		
