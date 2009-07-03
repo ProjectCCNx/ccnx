@@ -1,7 +1,6 @@
 package test.ccn.security.access;
 
 
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 
 import junit.framework.Assert;
@@ -18,7 +17,7 @@ public class SampleTestRepo {
 	static final String base = "/parc.com/csl/ccn/repositories";
 	static final String file_name = "simon.txt";
 	static final String txt =  "Sample text file from Simon.";
-	static final Charset UTF8 = Charset.forName("UTF-8");
+	static final String UTF8 = "UTF-8";
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
