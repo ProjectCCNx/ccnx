@@ -1,15 +1,18 @@
 SUBDIRS = lib ccnd libexec cmd tests
 OBJTREE = build
-MAKEF =  -f ../conf.mk -f dir.mk -f ../conf.mk -f ../subr.mk
+MAKEF =  -f ../conf.mk -f dir.mk -f ../subr.mk
+CFLAGS = -g
 
-default all clean depend coverage test check shared install uninstall: conf.mk _always
+default all clean depend coverage test check shared install uninstall config_subdir: conf.mk subr.mk generic.mk _always
 	test -d include/ccn || (test -d ../include/ccn && mkdir -p include && ln -s ../../include/ccn include/ccn)
-	test -f subr.mk || (test -f ../subr.mk && ln -s ../subr.mk)
 	for i in $(SUBDIRS); do         \
-	  (cd "$$i" && pwd && $(MAKE) $(MAKEF) SRCDIR=../$(SRCDIR)/$$i $@) || exit 1;	\
+	  (cd "$$i" && pwd && $(MAKE) $(MAKEF) "COPT=$(CFLAGS)" CFLAGS='$$(REAL_CFLAGS)' SRCDIR=../$(SRCDIR)/$$i $@) || exit 1;	\
 	done
 	@test -d $(OBJTREE) && echo "+++ NOTE - $(OBJTREE) exists" ||:
 	@rm -f _always
+
+subr.mk generic.mk:
+	test -f ./$(SRCDIR)/$@ && ln -s ./$(SRCDIR)/$@
 
 conf.mk:
 	./configure

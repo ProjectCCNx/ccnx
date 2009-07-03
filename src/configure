@@ -25,7 +25,6 @@ TryAppend "`uname -sr | sed -e 's/ /-/g'`"
 TryScript "`uname`" "$@"
 TryScript "python" "$@"
 ProvideDefault CPREFLAGS = -I../include
-ProvideDefault COPT = -g
 ProvideDefault PCAP_PROGRAMS = ccndumppcap
 ProvideDefault INSTALL_BASE = ${INSTALL_BASE:-/usr/local}
 ProvideDefault INSTALL_INCLUDE = '$(INSTALL_BASE)/include'
@@ -37,5 +36,6 @@ ProvideDefault RM = rm -f
 echo ============= conf.mk =============>&2
 cat conf.mk				>&2
 echo ===================================>&2
+make config_subdir
 test -f conf.mk~ || exit 0
 cmp conf.mk~ conf.mk || make clean

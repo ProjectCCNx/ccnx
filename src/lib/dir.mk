@@ -1,6 +1,5 @@
 # makefile for src/lib directory
 
-CFLAGS = $(COPT) $(CWARNFLAGS) $(CPREFLAGS) $(PLATCFLAGS)
 LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn
 EXPATLIBS = -lexpat
 CCNLIBDIR = ../lib

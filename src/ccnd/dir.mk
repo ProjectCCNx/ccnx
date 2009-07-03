@@ -1,6 +1,5 @@
 # makefile for src/ccnd directory
 
-CFLAGS = $(COPT) $(CWARNFLAGS) $(CPREFLAGS) $(PLATCFLAGS)
 LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn
 CCNLIBDIR = ../lib
 

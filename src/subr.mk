@@ -1,6 +1,13 @@
+REAL_CFLAGS = $(COPT) $(CWARNFLAGS) $(CPREFLAGS) $(PLATCFLAGS)
+
 $(CSRC) $(HSRC) $(SCRIPTSRC) $(SRCLINKS):
 	test -f $(SRCDIR)/$@ && ln -s $(SRCDIR)/$@
 
+config_subdir: Makefile
+
+Makefile:
+	test -f $(SRCDIR)/../generic.mk && ln -s $(SRCDIR)/../generic.mk Makefile
+	
 $(DUPDIR):
 	test -d $(SRCDIR)/$(DUPDIR) && mkdir $(DUPDIR) && cp -p $(SRCDIR)/$(DUPDIR)/* $(DUPDIR)
 
@@ -32,10 +39,10 @@ coverage:
 
 shared:
 
-depend: Makefile $(CSRC)
+depend: dir.mk $(CSRC)
 	for i in $(CSRC); do gcc -MM $(CPREFLAGS) $$i; done > depend
-	tail -n `wc -l < depend` Makefile | diff - depend
+	tail -n `wc -l < depend` dir.mk | diff - depend
 
-install_libs install_programs install uninstall_libs uninstall_programs uninstall coverage shared depend: _always
+install_libs install_programs install uninstall_libs uninstall_programs uninstall coverage shared depend config_subdir: _always
 .PHONY: _always
 _always:

@@ -1,6 +1,6 @@
 #!/bin/sh
 # Assuming we're using gcc, set up to run gcov on ccnd.
-make
-rm ccnd/ccnd.o ccnd/ccnd ccnd/ccn_match.o
-make COPT='-g -fprofile-arcs -ftest-coverage'
+./configure && make clean && make
+rm ccnd/ccnd.o ccnd/ccnd lib/ccn_match.o
+make CFLAGS='-g -fprofile-arcs -ftest-coverage' SUBDIRS='lib ccnd'
 echo "### Say 'make coverage' after test run to generate gcov results"

@@ -1,6 +1,5 @@
 # makefile for src/libexec directory
 
-CFLAGS = $(COPT) $(CWARNFLAGS) $(CPREFLAGS) $(PLATCFLAGS)
 LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn
 CCNLIBDIR = ../lib
 
