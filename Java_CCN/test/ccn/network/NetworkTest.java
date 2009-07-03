@@ -30,6 +30,9 @@ import com.parc.ccn.library.profiles.SegmentationProfile;
  */
 
 public class NetworkTest {
+	
+	protected static final int WAIT_MILLIS = 8000;
+	
 	protected static CCNLibrary putLibrary = null;
 	protected static CCNLibrary getLibrary = null;
 	private Semaphore sema = new Semaphore(0);
@@ -67,7 +70,7 @@ public class NetworkTest {
 		getLibrary.expressInterest(testInterest, tl);
 		Thread.sleep(80);  
 		writer.put("/networkTest/aaa", "aaa");
-		sema.tryAcquire(4000, TimeUnit.MILLISECONDS);
+		sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
 		Assert.assertTrue(gotData);
 	}
 	
@@ -83,7 +86,7 @@ public class NetworkTest {
 		getLibrary.expressInterest(testInterest, tl);
 		Thread.sleep(80);  
 		writer.put("/networkTest/ddd", "ddd");
-		sema.tryAcquire(4000, TimeUnit.MILLISECONDS);
+		sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
 		Assert.assertTrue(gotData);
 	}
 	
@@ -99,7 +102,7 @@ public class NetworkTest {
 		writer.put("/networkTest/bbb", "bbb");
 		Thread.sleep(80);  
 		getLibrary.expressInterest(testInterest, tl);
-		sema.tryAcquire(4000, TimeUnit.MILLISECONDS);
+		sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
 		Assert.assertTrue(gotData);
 	}
 	
@@ -110,7 +113,7 @@ public class NetworkTest {
 		Thread.sleep(80);
 		ContentObject co = getLibrary.get(ContentName.fromNative("/networkTest/freshnessTest"), 1000);
 		Assert.assertFalse(co == null);
-		Thread.sleep(4000);
+		Thread.sleep(WAIT_MILLIS);
 		co = getLibrary.get(ContentName.fromNative("/networkTest/freshnessTest"), 1000);
 		Assert.assertTrue(co == null);
 	}
@@ -126,9 +129,9 @@ public class NetworkTest {
 		TestListener tl = new TestListener();
 		getLibrary.expressInterest(testInterest, tl);
 		// Sleep long enough that the interest must be re-expressed
-		Thread.sleep(8000);  
+		Thread.sleep(WAIT_MILLIS);  
 		writer.put("/networkTest/ccc", "ccc");
-		sema.tryAcquire(4000, TimeUnit.MILLISECONDS);
+		sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
 		Assert.assertTrue(gotData);
 	}
 	

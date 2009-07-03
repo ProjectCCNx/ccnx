@@ -207,14 +207,21 @@ public class RepoIOTest extends RepoTestBase {
 			return;
 		}
 		byte [] data = "Testing 1 2 3".getBytes();
-		ros.write(data, 0, data.length);
-		ContentName baseName = ros.getBaseName();
-		ros.close();
+		ContentName baseName = null;
+		try {
+			ros.write(data, 0, data.length);
+			baseName = ros.getBaseName();
+			ros.close();
+		} catch (IOException ioe) {
+			if (expected)
+				Assert.fail(ioe.getMessage());
+			return;
+		}
+		if (!expected)
+			Assert.fail("Got a repo response on a bad namespace");
 		Thread.sleep(1000);
 		File testFile = new File("repotest" + RFSImpl.encodeName(baseName).toString());
 		if (expected)
 			Assert.assertTrue(testFile.exists());
-		else
-			Assert.assertFalse(testFile.exists());
 	}
 }

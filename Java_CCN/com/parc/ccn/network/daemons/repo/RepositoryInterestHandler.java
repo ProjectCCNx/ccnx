@@ -40,9 +40,10 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 				if (Arrays.equals(marker, CCNBase.REPO_START_WRITE)) {
 					startReadProcess(interest);
 				} else if(interest.name().contains(CCNNameEnumerator.NEMARKER)){
-					nameEnumeratorResponse(interest);
-				}
-				else {
+					nameEnumeratorResponse(interest);	
+				} else if(Arrays.equals(marker, CCNBase.REPO_GET_HEADER)){
+					getHeader(interest);
+				} else {
 					ContentObject content = _daemon.getRepository().getContent(interest);
 					if (content != null) {
 						_library.put(content);
@@ -90,6 +91,34 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		} catch (SignatureException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		}
+	}
+	
+	/**
+	 * Since the headers are currently sent out last, and we don't want to send out
+	 * unnecessary interests early in a stream because this kills performance, the client
+	 * side repo code will specifically ask for a header. This returns it.
+	 * 
+	 * @param interest
+	 * @throws XMLStreamException
+	 */
+	private void getHeader(Interest interest) throws XMLStreamException {
+		ContentName listeningName = new ContentName(interest.name().count() - 2, interest.name().components());
+		for (RepositoryDataListener listener : _daemon.getDataListeners()) {
+			if (listener.getOrigInterest().name().equals(listeningName)) {		
+				try {
+					Integer count = interest.nameComponentCount();
+					if (count != null && count > listeningName.count())
+						count = null;
+					Interest readInterest = Interest.constructInterest(listeningName, _daemon.getExcludes(), null, count);
+					readInterest.additionalNameComponents(1);
+					_library.expressInterest(readInterest, listener);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				break;
+			}
 		}
 	}
 	

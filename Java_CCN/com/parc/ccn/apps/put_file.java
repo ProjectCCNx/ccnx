@@ -3,6 +3,7 @@ package com.parc.ccn.apps;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -41,26 +42,35 @@ public class put_file {
 			} else if (args[i].equals("-timeout")) {
 				if (args.length < (i + 2)) {
 					usage();
-					return;
 				}
 				try {
 					timeout = Integer.parseInt(args[++i]);
 				} catch (NumberFormatException nfe) {
 					usage();
-					return;
 				}
+				if (startArg <= i)
+					startArg = i + 1;
+			} else if (args[i].equals("-log")) {
+				Level level = null;
+				if (args.length < (i + 2)) {
+					usage();
+				}
+				try {
+					level = Level.parse(args[++i]);
+				} catch (NumberFormatException nfe) {
+					usage();
+				}
+				Library.logger().setLevel(level);
 				if (startArg <= i)
 					startArg = i + 1;
 			} else {
 				usage();
-				System.exit(1);
 			}
 				
 		}
 		
 		if (args.length < startArg + 2) {
 			usage();
-			System.exit(1);
 		}
 		
 		long starttime = System.currentTimeMillis();
@@ -79,7 +89,6 @@ public class put_file {
 				if (!theFile.exists()) {
 					System.out.println("No such file: " + args[startArg + 1]);
 					usage();
-					return;
 				}
 				Library.logger().info("put_file: putting file " + args[startArg + 1] + " bytes: " + theFile.length());
 				
@@ -109,7 +118,6 @@ public class put_file {
 					if (!theFile.exists()) {
 						System.out.println("No such file: " + args[i]);
 						usage();
-						return;
 					}
 					
 					//FileOutputStream testOut = new FileOutputStream("put_file" + i + ".dat");
@@ -187,7 +195,8 @@ public class put_file {
 	}
 	
 	public static void usage() {
-		System.out.println("usage: put_file [-raw] [-unversioned] [-timeout millis] <ccnname> <filename> [<filename> ...]");
+		System.out.println("usage: put_file [-raw] [-unversioned] [-timeout millis] [-log level] <ccnname> <filename> [<filename> ...]");
+		System.exit(1);
 	}
 
 }
