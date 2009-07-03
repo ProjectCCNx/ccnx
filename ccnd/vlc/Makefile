@@ -4,10 +4,10 @@ vlclibdir = $(libdir)/vlc
 all: libaccess_ccn_plugin.so
 
 libaccess_ccn_plugin.so: libaccess_ccn_plugin.o
-	gcc -shared -std=gnu99 $< `pkg-config  --libs vlc-plugin`  -Wl,-soname -Wl,$@ -o $@ -L/usr/local/lib -lccn -lcrypto
+	gcc -g -shared -std=gnu99 $< `pkg-config  --libs vlc-plugin`  -Wl,-soname -Wl,$@ -o $@ -L/usr/local/lib -lccn -lcrypto
 
 libaccess_ccn_plugin.o: ccn.c
-	gcc -c -std=gnu99  $< -I../include/ `pkg-config  --cflags vlc-plugin` -D__PLUGIN__  -DMODULE_STRING=\"ccn\" -o $@  
+	gcc -c -g -std=gnu99  $< -I../include/ `pkg-config  --cflags vlc-plugin` -D__PLUGIN__  -DMODULE_STRING=\"ccn\" -o $@  
 
 clean:
 	rm -f libaccess_ccn_plugin.o libaccess_ccn_plugin.so ccn.o

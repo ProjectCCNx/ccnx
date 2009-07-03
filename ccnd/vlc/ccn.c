@@ -50,11 +50,11 @@
     "Caching value for CCN streams. This " \
     "value should be set in milliseconds.")
 
-static int  Open(vlc_object_t *);
-static void Close(vlc_object_t *);
-static block_t *Block(access_t *);
-static int Seek(access_t *, int64_t);
-static int Control(access_t *, int, va_list);
+static int  CCNOpen(vlc_object_t *);
+static void CCNClose(vlc_object_t *);
+static block_t *CCNBlock(access_t *);
+static int CCNSeek(access_t *, int64_t);
+static int CCNControl(access_t *, int, va_list);
 
 static void *ccn_event_thread(vlc_object_t *p_this);
 
@@ -68,19 +68,19 @@ vlc_module_begin();
     change_safe();
     set_capability("access", 0);
     add_shortcut("ccn");
-    set_callbacks(Open, Close);
+    set_callbacks(CCNOpen, CCNClose);
 vlc_module_end();
 
 /*****************************************************************************
  * Local prototypes
  *****************************************************************************/
+#define CCN_FIFO_MAX (2 * 1024 * 1024)
 struct access_sys_t
 {
     vlc_url_t  url;
-    block_fifo_t *blocks;
+    block_fifo_t *p_fifo;
     struct ccn *ccn;
     struct ccn_closure *incoming;
-    int done;
 };
 
 enum ccn_upcall_res
@@ -90,7 +90,7 @@ incoming_content(struct ccn_closure *selfp,
 /*****************************************************************************
  * Open: 
  *****************************************************************************/
-static int Open(vlc_object_t *p_this)
+static int CCNOpen(vlc_object_t *p_this)
 {
     access_t     *p_access = (access_t *)p_this;
     access_sys_t *p_sys = NULL;
@@ -100,12 +100,13 @@ static int Open(vlc_object_t *p_this)
 
     /* Init p_access */
     access_InitFields(p_access);
-    ACCESS_SET_CALLBACKS(NULL, Block, Control, Seek); /* let's not implement Seek yet */
+    ACCESS_SET_CALLBACKS(NULL, CCNBlock, CCNControl, CCNSeek);
     p_access->p_sys = calloc(1, sizeof(access_sys_t));
     p_sys = p_access->p_sys;
     if (p_sys == NULL)
         return VLC_ENOMEM;
-    p_access->info.b_prebuffered = false;
+    p_access->info.b_prebuffered = true;
+    p_access->info.i_size = -1;
     /* Update default_pts */
     var_Create(p_access, "ccn-caching", VLC_VAR_INTEGER | VLC_VAR_DOINHERIT);
     p_sys->incoming = calloc(1, sizeof(struct ccn_closure));
@@ -141,8 +142,8 @@ static int Open(vlc_object_t *p_this)
     }
     ccn_charbuf_destroy(&p_name);
 
-    p_sys->blocks = block_FifoNew();
-    if (p_sys->blocks == NULL) {
+    p_sys->p_fifo = block_FifoNew();
+    if (p_sys->p_fifo == NULL) {
         i_err = VLC_ENOMEM;
         goto exit_error;
     }
@@ -153,9 +154,9 @@ static int Open(vlc_object_t *p_this)
 
  exit_error:
     msg_Err(p_access, "CCN.Open failed");
-    if (p_sys->blocks) {
-        block_FifoRelease(p_sys->blocks);
-        p_sys->blocks = NULL;
+    if (p_sys->p_fifo) {
+        block_FifoRelease(p_sys->p_fifo);
+        p_sys->p_fifo = NULL;
     }
     ccn_charbuf_destroy(&p_name);
     if (p_sys->incoming) {
@@ -168,34 +169,30 @@ static int Open(vlc_object_t *p_this)
 }
 
 /*****************************************************************************
- * Close: free unused data structures
+ * CCNClose: free unused data structures
  *****************************************************************************/
-static void Close(vlc_object_t *p_this)
+static void CCNClose(vlc_object_t *p_this)
 {
     access_t     *p_access = (access_t *)p_this;
     access_sys_t *p_sys = p_access->p_sys;
 
     msg_Dbg(p_access, "CCN.Close called");
-    p_sys->done = 1;	/* signal to the CCN process to give up */
-    if (p_sys->blocks)
-        block_FifoWake(p_sys->blocks);
+    vlc_object_kill(p_access); 
+    if (p_sys->p_fifo)
+        block_FifoWake(p_sys->p_fifo);
     vlc_thread_join(p_access);
-    if (p_sys->blocks) {
-        block_FifoRelease(p_sys->blocks);
-        p_sys->blocks = NULL;
-    }
-    if (p_sys->incoming) {
-        free(p_sys->incoming);
-        p_sys->incoming = NULL;
+    if (p_sys->p_fifo) {
+        block_FifoRelease(p_sys->p_fifo);
+        p_sys->p_fifo = NULL;
     }
     ccn_destroy(&(p_sys->ccn));
     free(p_sys);
 }
 
 /*****************************************************************************
- * Block:
+ * CCNBlock:
  *****************************************************************************/
-static block_t *Block(access_t *p_access)
+static block_t *CCNBlock(access_t *p_access)
 {
     access_sys_t *p_sys = p_access->p_sys;
     block_t *p_block = NULL;
@@ -204,30 +201,79 @@ static block_t *Block(access_t *p_access)
         msg_Dbg(p_access, "CCN.Block eof");
         return NULL;
     }
-    p_block = block_FifoGet(p_sys->blocks);
-    if (p_block != NULL) {
-        p_access->info.i_pos += p_block->i_buffer;
-    }
+    p_block = block_FifoGet(p_sys->p_fifo);
+    if (p_block == NULL)
+        return NULL;
+
+    p_access->info.i_pos += p_block->i_buffer;
+    if (p_block->i_buffer == 0)
+        p_access->info.b_eof = true;
+
     return (p_block);
 }
+#if 0
+/* this is not needed, blocks work better... but just in case... */
+
 /*****************************************************************************
- * Seek:
+ * CCNRead:
+ *****************************************************************************/
+static ssize_t CCNRead(access_t *p_access, uint8_t *buf, size_t size)
+{
+    access_sys_t *p_sys = p_access->p_sys;
+    block_t *p_block;
+    size_t block_size = 0;
+    size_t result_size = 0;
+
+
+
+    msg_Dbg(p_access, "CCN Read size %d @ %lld", size, p_access->info.i_pos);
+    while(result_size < size) {
+        p_block = block_FifoShow(p_sys->p_fifo);
+        if (p_block == NULL) 
+            return (result_size);
+        block_size = p_block->i_buffer;
+        if (block_size == 0) {
+            p_access->info.b_eof = true;
+            return (result_size);
+        }
+        if (block_size <= (size - result_size)) {
+            p_block = block_FifoGet(p_sys->p_fifo);
+            memcpy(buf + result_size, p_block->p_buffer, block_size);
+            block_Release(p_block);
+            p_access->info.i_pos += block_size;
+            result_size += block_size;
+            msg_Dbg(p_access, "CCN Read: used all of block of %d bytes", block_size);
+        } else {
+            int used = size - result_size;
+            memcpy(buf + result_size, p_block->p_buffer, used);
+            p_block->p_buffer += used;
+            p_block->i_buffer -= used;
+            p_access->info.i_pos += used;
+            result_size += used;
+            msg_Dbg(p_access, "CCN Read: used %d of block of %d bytes", used, block_size);
+        }
+    }
+    return (result_size);
+}
+#endif
+/*****************************************************************************
+ * CCNSeek:
  *****************************************************************************/
 #define CCN_CHUNK_SIZE 4096
 
-static int Seek(access_t *p_access, int64_t i_pos)
+static int CCNSeek(access_t *p_access, int64_t i_pos)
 {
     access_sys_t *p_sys = p_access->p_sys;
     struct ccn_charbuf *p_name;
     int i_ret;
 
     /* flush the FIFO, restart from the specified point */
-    block_FifoEmpty(p_sys->blocks);
+    block_FifoEmpty(p_sys->p_fifo);
     p_sys->incoming = calloc(1, sizeof(struct ccn_closure));
     if (p_sys->incoming == NULL) {
         return (VLC_EGENERIC);
     }
-    msg_Dbg(p_access, "CCN.Seek to %lld, closure 0x%08x", i_pos, (int) p_sys->incoming);
+    msg_Dbg(p_access, "CCN.Seek to %"PRId64", closure 0x%08x", i_pos, (int) p_sys->incoming);
     p_sys->incoming->data = p_access; /* so CCN callbacks can find p_sys */
     p_sys->incoming->p = &incoming_content; /* the CCN callback */
     p_sys->incoming->intdata = i_pos;
@@ -248,8 +294,9 @@ static int Seek(access_t *p_access, int64_t i_pos)
 /*****************************************************************************
  * Control:
  *****************************************************************************/
-static int Control(access_t *p_access, int i_query, va_list args)
+static int CCNControl(access_t *p_access, int i_query, va_list args)
 {
+    access_sys_t *p_sys = p_access->p_sys;
     bool   *pb_bool;
     int          *pi_int;
     int64_t      *pi_64;
@@ -257,15 +304,11 @@ static int Control(access_t *p_access, int i_query, va_list args)
     switch(i_query)
     {
         case ACCESS_CAN_SEEK:
+        case ACCESS_CAN_FASTSEEK:
         case ACCESS_CAN_CONTROL_PACE:
+        case ACCESS_CAN_PAUSE:
             pb_bool = (bool*)va_arg(args, bool *);
             *pb_bool = true;
-            break;
-
-        case ACCESS_CAN_PAUSE:
-        case ACCESS_CAN_FASTSEEK:
-            pb_bool = (bool*)va_arg(args, bool *);
-            *pb_bool = false;
             break;
 
         case ACCESS_GET_MTU:
@@ -278,9 +321,12 @@ static int Control(access_t *p_access, int i_query, va_list args)
             *pi_64 = (int64_t)var_GetInteger(p_access, "ccn-caching") * INT64_C(1000);
             break;
 
+        case ACCESS_SET_PAUSE_STATE:
+            pb_bool = (bool*)va_arg(args, bool *);
+            break;
+
         case ACCESS_GET_TITLE_INFO:
 	case ACCESS_GET_META:
-        case ACCESS_SET_PAUSE_STATE:
         case ACCESS_SET_TITLE:
         case ACCESS_SET_SEEKPOINT:
         case ACCESS_SET_PRIVATE_ID_STATE:
@@ -304,7 +350,7 @@ static void *ccn_event_thread(vlc_object_t *p_this)
     struct ccn *ccn = p_sys->ccn;
     int res = 0;
 
-    while (res >= 0 && ! p_sys->done) {
+    while (res >= 0 && vlc_object_alive(p_access)) {
         res = ccn_run(ccn, 500);
     }
 }
@@ -316,6 +362,9 @@ incoming_content(struct ccn_closure *selfp,
 {
     access_t *p_access = (access_t *)(selfp->data);
     access_sys_t *p_sys = p_access->p_sys;
+    int start_offset = 0;
+    block_t *p_block = NULL;
+    bool b_last = false;
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *templ = NULL;
     const unsigned char *ccnb = NULL;
@@ -379,22 +428,7 @@ incoming_content(struct ccn_closure *selfp,
     }
 #endif
 
-    /* OK, we will accept this block. */
-    if (data_size == 0) {
-        /* XXX: we're done, what else needs to be dealt with here */
-        msg_Warn(p_access, "CCN Read 0 bytes data; offset %ld", (long) selfp->intdata);
-        p_access->info.b_eof = true;
-        p_sys->done = 1;
-    } else {
-        int start_offset = selfp->intdata % CCN_CHUNK_SIZE;
-        block_t *p_block = block_New(p_access, data_size - start_offset);
-        msg_Dbg(p_access, "CCN start_offset %d; data_size %d", start_offset, data_size);
-        memcpy(p_block->p_buffer, data + start_offset, data_size - start_offset);
-        block_FifoPut(p_sys->blocks, p_block);
-    }
-    /* If the block we got was the final block, return without expressing
-     * another interest
-     */
+    /* was this the last block? */
     /* TODO:  the test below should get refactored into the library */
     if (info->pco->offset[CCN_PCO_B_FinalBlockID] !=
         info->pco->offset[CCN_PCO_E_FinalBlockID]) {
@@ -415,18 +449,35 @@ incoming_content(struct ccn_closure *selfp,
                             &nameid,
                             &nameid_size);
         if (finalid_size == nameid_size && 0 == memcmp(finalid, nameid, nameid_size)) {
-            return(CCN_UPCALL_RESULT_OK);
+            b_last = true;
         }
     }
     
-    if (p_sys->done) {
-        ccn_set_run_timeout(info->h, 0);
-        return(CCN_UPCALL_RESULT_OK);
+    /* a short block can also indicate the end, if the client isn't using FinalBlockID */
+    if (data_size < CCN_CHUNK_SIZE)
+        b_last = true;
+    /* something to process */
+    if (data_size > 0) {
+        start_offset = selfp->intdata % CCN_CHUNK_SIZE;
+        if (start_offset > data_size) {
+            msg_Err(p_access, "start_offset %d > data_size %d", start_offset, data_size);
+        } else {
+            p_block = block_New(p_access, data_size - start_offset);
+            memcpy(p_block->p_buffer, data + start_offset, data_size - start_offset);
+            block_FifoPut(p_sys->p_fifo, p_block);
+        }
     }
-    
+
+    /* if we're done, indicate so with a 0-byte block, and don't express an interest */
+    if (b_last) {
+        block_FifoPut(p_sys->p_fifo, block_New(p_access, 0));
+        return (CCN_UPCALL_RESULT_OK);
+    }
+
     /* need to do this with a condition variable, since we don't want to sleep the thread */
-    while (block_FifoCount(p_sys->blocks) > 20) {
-        usleep(1000);
+    while (block_FifoSize(p_sys->p_fifo) > CCN_FIFO_MAX) {
+        msleep(1000);
+        if (!vlc_object_alive(p_access)) return(CCN_UPCALL_RESULT_OK);
     }
     /* Ask for the next fragment */
     name = ccn_charbuf_create();
