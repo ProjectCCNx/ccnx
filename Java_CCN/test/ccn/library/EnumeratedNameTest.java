@@ -3,13 +3,15 @@ package test.ccn.library;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
 import org.junit.Test;
 
+import test.ccn.network.daemons.repo.RepoTestBase;
+
 import com.parc.ccn.Library;
-import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.library.CCNLibrary;
@@ -26,45 +28,34 @@ import junit.framework.Assert;
  * call update in background on enumerated name list (asynchronously)
  * add data using a different interface and see if it shows up on the lists
  */
-public class EnumeratedNameTest{ 
-//implements BasicNameEnumeratorListener{
-	CCNLibrary putLibrary; //the ccn library object
+public class EnumeratedNameTest extends RepoTestBase { 
 	
 	EnumeratedNameList testList; //the enumeratednamelist object used to test the class
 	
 	Random rand = new Random();
 
-	String namespaceString = "/parc.com";
-	ContentName namespace;
-	String directoryString = "/parc.com/enumeratorTest/directory1";
+	String directoryString = _globalPrefix + "/directory1";
 	ContentName directory;
-	String name1String = "/parc.com/enumeratorTest/directory1/name1";
+	String name1String = "name1";
 	ContentName name1;
-	String name2String = "/parc.com/enumeratorTest/directory1/name2";
+	String name2String = "name2";
 	ContentName name2;
-	String name3String = "/parc.com/enumeratorTest/directory1/name3";
+	String name3String = "name3";
 	ContentName name3;
 	
-	String prefix1String = "/parc.com/enumeratorTest";
-	String prefix1StringError = "/park.com/enumeratorTest";
+	
+	String prefix1StringError = "/park.com/csl/ccn/repositories";
 	ArrayList<ContentName> names;
 	ContentName prefix1;
 	ContentName brokenPrefix;
 	ContentName c1;
 	ContentName c2;
 
-/*
-	//setup method
-	@BeforeClass
-	
-	//cleanup
-	@AfterClass
-*/
 	
 	@Test
 	public void testEnumeratedName() throws Exception
 	{
-		
+		Library.logger().setLevel(Level.FINEST);
 		System.out.println("Starting Enumerated Name Test");
 		
 		//assign content names from strings to content objects
@@ -78,7 +69,11 @@ public class EnumeratedNameTest{
 		//set up CCN libraries for testing
 		// creates the name enumerator object
 		// and the enumerated name object
-		setLibraries();
+		
+		//sets up the CCN library 
+		putLibrary = CCNLibrary.open();
+		//creates Enumerated Name List
+		testList = new EnumeratedNameList(prefix1, putLibrary);
 		
 		//verify that everything is set up
 		Assert.assertNotNull(putLibrary);
@@ -99,9 +94,11 @@ public class EnumeratedNameTest{
 
 		//Make a enumerate name list of directory (check that it works)
 		testDataExists(directory);		
-		testDataExists(name1);
-		testDataExists(name2);
+		Assert.assertNotNull(testDataExists(name1));
+		Assert.assertNotNull(testDataExists(name2));
 		
+		Assert.assertNull(testDataExists(name3));
+			
 		//Add an additional item to the repo
 		addContentToRepo(name3);
 		
@@ -110,64 +107,26 @@ public class EnumeratedNameTest{
 		
 		//get children from prefix
 		//test has children
-		testHasChildren();
-	}
-	
-	private void testHasChildren() {
 		Assert.assertTrue(testList.hasChildren());
 	}
+	
 
 
 	private void testAssignContentNames() throws MalformedContentNameStringException {
-		namespace = ContentName.fromNative(namespaceString);
+
 		directory = ContentName.fromNative(directoryString);
-		name1 = ContentName.fromNative(name1String);
-		name3 = ContentName.fromNative(name3String);
-		name2 = ContentName.fromNative(name2String);
-		prefix1 = ContentName.fromNative(prefix1String);
+		name1 = ContentName.fromNative(directory, name1String);
+		name3 = ContentName.fromNative(directory, name3String);
+		name2 = ContentName.fromNative(directory, name2String);
+		prefix1 = ContentName.fromNative(_globalPrefix);
 		brokenPrefix = ContentName.fromNative(prefix1StringError);		
 	}
 
-	private void testDataExists(ContentName name) throws IOException {
-		//Seems to be returning true for most stuff
-		//need to look into this more
-		
-		EnumeratedNameList testEnumerator;
-		testEnumerator = EnumeratedNameList.exists(name, prefix1, putLibrary);
-		Assert.assertNotNull(testEnumerator);
+	private EnumeratedNameList testDataExists(ContentName name) throws IOException {
+
+		return EnumeratedNameList.exists(name, prefix1, putLibrary);
 	}
 
-	private void createEnumeratedNameList() throws IOException {
-		if (null == testList)
-			testList = new EnumeratedNameList(prefix1, putLibrary);
-	}
-
-		
-	//now add new name
-//	public void registerAdditionalName() throws Exception {
-//		name1Dirty = ContentName.fromNative(name1StringDirty);
-//		putne.registerNameForResponses(name1Dirty);
-//	}
-
-	/* 
-	 * method that creates a new CCNnameEnumerator object
-	 * with a reference to put library
-	 * and creates a new enumerated name list 
-	 * (which also creates a CCNNameEnumerator)
-	 * which points to the same ccn library
-	 * 
-	 */
-	public void setLibraries() throws ConfigurationException, IOException{
-		putLibrary = CCNLibrary.open();
-		createEnumeratedNameList();
-		
-	}
-
-//	public int handleNameEnumerator(ContentName prefix,
-//			ArrayList<ContentName> names) {
-//		System.out.println("Call back in the enumerated name test");
-//		return 0;
-//	}
 	
 	/*
 	 * Adds data to the repo for testing
