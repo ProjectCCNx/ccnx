@@ -7,10 +7,10 @@ libaccess_ccn_plugin.so: libaccess_ccn_plugin.o
 	gcc -g -shared -std=gnu99 $< `pkg-config  --libs vlc-plugin`  -Wl,-soname -Wl,$@ -o $@ -L/usr/local/lib -lccn -lcrypto
 
 libaccess_ccn_plugin.o: ccn.c
-	gcc -c -g -std=gnu99  $< -I../include/ `pkg-config  --cflags vlc-plugin` -D__PLUGIN__  -DMODULE_STRING=\"ccn\" -o $@  
+	gcc -c -g -O3 -std=gnu99  $< -I../../src/include/ `pkg-config  --cflags vlc-plugin` -D__PLUGIN__  -DMODULE_STRING=\"ccn\" -o $@  
 
 clean:
-	rm -f libaccess_ccn_plugin.o libaccess_ccn_plugin.so ccn.o
+	rm -f libaccess_ccn_plugin.o libaccess_ccn_plugin.so
 
 install: all
 	mkdir -p $(DESTDIR)$(vlclibdir)/access/
