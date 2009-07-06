@@ -60,8 +60,10 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	
 	private void startReadProcess(Interest interest) throws XMLStreamException {
 		for (RepositoryDataListener listener : _daemon.getDataListeners()) {
-			if (listener.getOrigInterest().equals(interest))
+			if (listener.getOrigInterest().equals(interest)) {
+				Library.logger().info("Write request " + interest.name() + " is a duplicate, ignoring");
 				return;
+			}
 		}
 		
 		/*
@@ -72,11 +74,14 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		 * to allow new sessions that are within the new namespace to start but figuring out all
 		 * the locking/startup issues surrounding this is complex so for now we just don't allow it.
 		 */
-		if (_daemon.getPendingNameSpaceState())
+		if (_daemon.getPendingNameSpaceState()) {
+			Library.logger().info("Discarding write request " + interest.name() + " due to pending namespace change");
 			return;
+		}
 		
 		ContentName listeningName = new ContentName(interest.name().count() - 2, interest.name().components());
 		try {
+			Library.logger().info("Processing write request for " + listeningName);
 			Integer count = interest.nameComponentCount();
 			if (count != null && count > listeningName.count())
 				count = null;
