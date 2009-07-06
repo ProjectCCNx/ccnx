@@ -4,7 +4,6 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
@@ -233,37 +232,7 @@ public class ContentTree {
 	 * @return
 	 */
 	protected final ContentObject leftSearch(Interest interest, int matchlen, TreeNode node, ContentName nodeName, int depth, ContentGetter getter) {
-		// Check content if this node could be content match and there is any content at this node
-		if ( (nodeName.count() >= 0) && (matchlen == -1 || matchlen == depth)) {
-			if (null != node.oneContent || null != node.content) {
-				// Since the name INCLUDES digest component and the Interest.matches() convention for name
-				// matching is that the name DOES NOT include digest component (conforming to the convention 
-				// for ContentObject.name() that the digest is not present) we must REMOVE the content 
-				// digest first or this test will not always be correct
-				ContentName digestFreeName = new ContentName(nodeName.count()-1, nodeName.components());
-				
-				if (interest.matches(digestFreeName, null)) {
-					List<ContentFileRef> content = null;
-					synchronized(node) {
-						if (null != node.oneContent) {
-							content = new ArrayList<ContentFileRef>();
-							content.add(node.oneContent);
-						} else {
-							assert(null != node.content);
-							content = new ArrayList<ContentFileRef>(node.content);
-						}
-					}
-					for (ContentFileRef ref : content) {
-						ContentObject cand = getter.get(ref);
-						if(cand == null)
-							System.out.println("cand is null  :(");
-						if (interest.matches(cand)) {
-							return cand;
-						}
-					}
-				}
-			}
-		}
+		
 		// Content at exactly this node is not a match (if any)
 		// Now search children if applicable and if any
 		if (matchlen != -1 && matchlen <= depth || (node.children==null && node.oneChild==null)) {
@@ -282,20 +251,25 @@ public class ContentTree {
 			}
 		}
 		if (null != children) {
-			byte[] interestComp = interest.name().component(depth);
+			byte[] interestComp = interest.name().component(depth);  // ??
 			System.out.println("interestComp: "+interest.name()+" depth="+depth+" "+interest.name().stringComponent(depth));
 			for (TreeNode child : children) {
 				System.out.println("child: "+new String(child.component));
 				int comp = DataUtils.compare(child.component, interestComp);
 				//if (null == interestComp || DataUtils.compare(child.component, interestComp) >= 0) {
-				if (null == interestComp || DataUtils.compare(child.component, interestComp) >= 0){
+				ContentObject result = null;
+				if (comp == 0){
 					// This child subtree is possible match
-					ContentObject result = leftSearch(interest, matchlen, child, 
+					result = leftSearch(interest, matchlen, child, 
 							new ContentName(nodeName, child.component), depth+1, getter);
-					if (null != result) {
-						return result;
-					}
 
+				} else  if (comp > 0)  { 
+					result = rightSearch(interest, matchlen, 
+							child, new ContentName(matchlen, interest.name().components()), 
+							depth, getter);
+				}
+				if (null != result) {
+					return result;
 				}
 			}
 		}

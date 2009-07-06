@@ -58,7 +58,6 @@ public class RepositoryDaemon extends Daemon {
 	private int _windowSize = WINDOW_SIZE;
 	private int _ephemeralFreshness = FRESHNESS;
 	protected ThreadPoolExecutor _threadpool = null; // pool service
-	private boolean singlefile = false;
 	
 	public static final int PERIOD = 2000; // period for interest timeout check in ms.
 	public static final int THREAD_LIFE = 8;	// in seconds
@@ -197,19 +196,19 @@ public class RepositoryDaemon extends Daemon {
 				 */
 				if (args[i].equals("-bb"))
 					_repo = new BitBucketRepository();
+				
+				if(args[i].equals("-singlefile"))
+					_repo = new RFSLogImpl();
+				
+				if(args[i].equals("-multifile"))
+					_repo = new RFSImpl();
 			}
-<<<<<<< HEAD:Java_CCN/com/parc/ccn/network/daemons/repo/RepositoryDaemon.java
+			
+		if (_repo == null)	// default lower half
+			_repo = new RFSLogImpl();
 
-			if (_repo == null)
-				_repo = new RFSImpl();
-
-=======
-			if(args[i].equals("-singlefile"))
-				singlefile = true;
-		}
 		try {
->>>>>>> add switch for single vs multi file repo - check for flad in init:Java_CCN/com/parc/ccn/network/daemons/repo/RepositoryDaemon.java
-			_repo.initialize(args);
+			_repo.initialize(args, _library);
 			
 			// Create callback threadpool
 			_threadpool = (ThreadPoolExecutor)Executors.newCachedThreadPool();
