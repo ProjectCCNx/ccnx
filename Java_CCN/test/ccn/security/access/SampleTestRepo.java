@@ -9,7 +9,6 @@ import junit.framework.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.EnumeratedNameList;
@@ -19,7 +18,7 @@ public class SampleTestRepo {
 	static final String base = "/parc.com/csl/ccn/repositories";
 	static final String file_name = "simon.txt";
 	static final String txt =  "Sample text file from Simon.";
-	static final Charset UTF8 = Charset.forName("UTF-8");
+	static final String UTF8 = "UTF-8";
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
