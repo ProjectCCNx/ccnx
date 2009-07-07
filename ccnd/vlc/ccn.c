@@ -410,6 +410,12 @@ incoming_content(struct ccn_closure *selfp,
         p_sys->timeouts++;
         return(CCN_UPCALL_RESULT_REEXPRESS); // XXX - may need to reseed bloom filter
     case CCN_UPCALL_CONTENT_UNVERIFIED:
+        if (selfp != p_sys->incoming) {
+            msg_Dbg(p_access, "CCN unverified content on dead closure 0x%08x", (int)selfp);
+            return(CCN_UPCALL_RESULT_OK);
+        }
+        return (CCN_UPCALL_RESULT_VERIFY);
+
     case CCN_UPCALL_CONTENT:
         if (selfp != p_sys->incoming) {
             msg_Dbg(p_access, "CCN content on dead closure 0x%08x", (int)selfp);
