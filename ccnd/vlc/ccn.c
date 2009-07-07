@@ -63,7 +63,7 @@ vlc_module_begin();
     set_description(N_("CCN input"));
     set_category(CAT_INPUT);
     set_subcategory(SUBCAT_INPUT_ACCESS);
-    add_integer("ccn-caching", DEFAULT_PTS_DELAY / 1000, NULL,
+    add_integer("ccn-caching", 4 * DEFAULT_PTS_DELAY / 1000, NULL,
                 CACHING_TEXT, CACHING_LONGTEXT, true);
     change_safe();
     set_capability("access", 0);

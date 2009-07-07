@@ -23,4 +23,10 @@ install-strip: all
 uninstall:
 	rm -f -- $(DESTDIR)$(vlclibdir)/access/libaccess_ccn_plugin.dylib
 
-.PHONY: all clean install uninstall
+# srcref unpacks the vlc sources, for browsing purposes, from the distfiles kept by macports.
+# This copy is not actually used for building the ccn plugin
+# Use 'sudo port install vlc' before building the plugin
+srcref:
+	tar xjf /opt/local/var/macports/distfiles/VLC/vlc-0.9.9a.tar.bz2
+
+.PHONY: all clean install uninstall srcref
