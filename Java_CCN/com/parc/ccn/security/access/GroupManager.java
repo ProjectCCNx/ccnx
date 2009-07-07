@@ -278,7 +278,6 @@ public class GroupManager {
 		return AccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM;
 	}
 
-	// TODO should throw access denied?
 	protected Key getVersionedPrivateKeyForGroup(KeyDirectory keyDirectory, String principal) 
 			throws IOException, InvalidKeyException, AccessDeniedException, InvalidCipherTextException, 
 					XMLStreamException, ConfigurationException {
