@@ -186,12 +186,20 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	/**
-	 * Superseded block contains a wrapped key object, whose wrapping key
-	 * name points to the key directory with the superseding key (either
-	 * node key or wrapping private). That directory contains a PreviousKey
-	 * block which contains a link to the previous key. This way lets you go
-	 * forwards and backwards; if the wrapped block was under the previous
-	 * key you could only go forwards in time.
+	 * We have several choices for how to represent superseded and previous keys.
+	 * Ignoring for now the case where we might have to have more than one per key directory
+	 * (e.g. if we represent removal of several interposed ACLs), we could have the
+	 * wrapped key block stored in the superseded block location, and the previous
+	 * key block be a link, or the previous key block be a wrapped key and the superseded
+	 * location be a link. Or we could store wrapped key blocks in both places. Because
+	 * the wrapped key blocks can contain the name of the key that wrapped them (but
+	 * not the key being wrapped), they in essence are a pointer forward to the replacing
+	 * key. So, the superseded block, if it contains a wrapped key, is both a key and a link.
+	 * If the block was stored at the previous key, it would not be both a key and a link,
+	 * as its wrapping key is indicated by where it is. So it should indeed be a link -- 
+	 * except in the case of an interposed ACL, where there is nothing to link to; 
+	 * and it instead stores a wrapped key block containing the effective node key that
+	 * was the previous key.
 	 * @return
 	 * @throws XMLStreamException
 	 * @throws IOException
@@ -516,7 +524,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		WrappedKeyObject wko = new WrappedKeyObject(oldKeySupersededBlockName, wrappedKey, library);
 		wko.save();
 	}
-	
+
 	/**
 	 * 
 	 * @param previousKey
