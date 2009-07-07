@@ -70,7 +70,7 @@ public class AccessControlProfile implements CCNProfile {
 	}
 	
 	public static boolean isNodeKeyName(ContentName name) {
-		if (!isAccessName(name) || VersioningProfile.isVersioned(name)) {
+		if (!isAccessName(name) || !VersioningProfile.isVersioned(name)) {
 			return false;
 		}
 		ContentName nkName = VersioningProfile.versionRoot(name);
