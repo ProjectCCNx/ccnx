@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.NoSuchAlgorithmException;
-import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -729,10 +728,10 @@ public class AccessControlManager {
 	 */
 	protected NodeKey generateNewNodeKey(ContentName nodeName, NodeKey oldEffectiveNodeKey, ACL effectiveACL) 
 					throws IOException, ConfigurationException, XMLStreamException, InvalidKeyException {
-		// DKS TODO should throw accessDeniedException
-		// Get the name of the key directory; this is versioned.
-		ContentName nodeKeyDirectoryName = AccessControlProfile.nodeKeyName(nodeName);
-
+		// Get the name of the key directory; this is unversioned. Make a new version of it.
+		ContentName nodeKeyDirectoryName = VersioningProfile.versionName(AccessControlProfile.nodeKeyName(nodeName));
+		Library.logger().info("Generating new node key " + nodeKeyDirectoryName);
+		
 		// Now, generate the node key.
 		if (effectiveACL.publiclyReadable()) {
 			// TODO Put something here that will represent public; need to then make it so that key-reading code will do
@@ -747,46 +746,57 @@ public class AccessControlManager {
 		// Now, wrap it under the keys listed in its ACL.
 		
 		// Make a key directory. If we give it a versioned name, it will start enumerating it, but won't block.
-		KeyDirectory nodeKeyDirectory = new KeyDirectory(this, nodeKeyDirectoryName, library());
-		NodeKey theNodeKey = new NodeKey(nodeKeyDirectoryName, nodeKey);
-		// Add a key block for every reader on the ACL. As managers and writers can read, they are all readers.
-		// DKS TODO -- pulling public keys here; could be slow; might want to manage concurrency over acl.
-		for (LinkReference aclEntry : effectiveACL.contents()) {
-			PublicKeyObject entryPublicKey = null;
-			if (groupManager().isGroup(aclEntry)) {
-				entryPublicKey = groupManager().getLatestPublicKeyForGroup(aclEntry);
+		KeyDirectory nodeKeyDirectory = null;
+		NodeKey theNodeKey = null;
+		try {
+			nodeKeyDirectory = new KeyDirectory(this, nodeKeyDirectoryName, library());
+			theNodeKey = new NodeKey(nodeKeyDirectoryName, nodeKey);
+			// Add a key block for every reader on the ACL. As managers and writers can read, they are all readers.
+			// DKS TODO -- pulling public keys here; could be slow; might want to manage concurrency over acl.
+			for (LinkReference aclEntry : effectiveACL.contents()) {
+				PublicKeyObject entryPublicKey = null;
+				if (groupManager().isGroup(aclEntry)) {
+					entryPublicKey = groupManager().getLatestPublicKeyForGroup(aclEntry);
+				} else {
+					// Calls update. Will get latest version if name unversioned.
+					entryPublicKey = new PublicKeyObject(aclEntry.targetName(), aclEntry.targetAuthenticator().publisher(), library());
+				}
+				try {
+					nodeKeyDirectory.addWrappedKeyBlock(nodeKey, entryPublicKey.getName(), entryPublicKey.publicKey());
+				} catch (VersionMissingException ve) {
+					Library.handleException("Unexpected version missing exception for public key " + entryPublicKey.getName(), ve);
+					throw new IOException("Unexpected version missing exception for public key " + entryPublicKey.getName() + ": " + ve);
+				}
+			}
+
+			// Add a superseded by block to the previous key. Two cases: old effective node key is at the same level
+			// as us (we are superseding it entirely), or we are interposing a key (old key is above or below us).
+			// OK, here are the options:
+			// Replaced node key is a derived node key -- we are interposing an ACL
+			// Replaced node key is a stored node key 
+			//	 -- we are updating that node key to a new version
+			// 			NK/vn replaced by NK/vn+k -- new node key will be later version of previous node key
+			//   -- we don't get called if we are deleting an ACL here -- no new node key is added.
+			if (oldEffectiveNodeKey.isDerivedNodeKey()) {
+				// Interposing an ACL. 
+				// Add a previous key block wrapping the previous key. There is nothing to link to.
+				nodeKeyDirectory.addPreviousKeyBlock(oldEffectiveNodeKey.nodeKey(), nodeKeyDirectoryName, nodeKey);
 			} else {
-				// Calls update. Will get latest version if name unversioned.
-				entryPublicKey = new PublicKeyObject(aclEntry.targetName(), aclEntry.targetAuthenticator().publisher(), library());
+				if (!VersioningProfile.isLaterVersionOf(nodeKeyDirectoryName, oldEffectiveNodeKey.storedNodeKeyName())) {
+					Library.logger().warning("Unexpected: replacing node key stored at " + oldEffectiveNodeKey.storedNodeKeyName() + " with new node key " + 
+							nodeKeyDirectoryName + " but latter is not later version of the former.");
+				}
+				// Add a previous key link to the old version of the key.
+				// TODO do we need to add publisher?
+				nodeKeyDirectory.addPreviousKeyLink(oldEffectiveNodeKey.storedNodeKeyName(), null);
+				// OK, just add superseded-by block to the old directory.
+				KeyDirectory.addSupersededByBlock(oldEffectiveNodeKey.storedNodeKeyName(), oldEffectiveNodeKey.nodeKey(), 
+						nodeKeyDirectoryName, nodeKey, library());
 			}
-			try {
-				nodeKeyDirectory.addWrappedKeyBlock(nodeKey, entryPublicKey.getName(), entryPublicKey.publicKey());
-			} catch (VersionMissingException ve) {
-				Library.handleException("Unexpected version missing exception for public key " + entryPublicKey.getName(), ve);
-				throw new IOException("Unexpected version missing exception for public key " + entryPublicKey.getName() + ": " + ve);
+		} finally {
+			if (null != nodeKeyDirectory) {
+				nodeKeyDirectory.stopEnumerating();
 			}
-		}
-		// Add a previous key block wrapping the previous key
-		nodeKeyDirectory.addPreviousKeyBlock(oldEffectiveNodeKey.nodeKey(), nodeKeyDirectoryName, nodeKey);
-		
-		// Add a superseded by link to the previous key. Two cases: old effective node key is at the same level
-		// as us (we are superseding it entirely), or we are interposing a key (old key is above or below us).
-		// OK, here are the options:
-		// Replaced node key is a derived node key -- we are interposing an ACL
-		// Replaced node key is a stored node key 
-		//	 -- we are updating that node key to a new version
-		// 			NK/vn replaced by NK/vn+k -- new node key will be later version of previous node key
-		//   -- we don't get called if we are deleting an ACL here -- no new node key is added.
-		if (oldEffectiveNodeKey.isDerivedNodeKey()) {
-			// Interposing an ACL
-			// TODO
-		} else {
-			if (!VersioningProfile.isLaterVersionOf(nodeKeyDirectoryName, oldEffectiveNodeKey.storedNodeKeyName())) {
-				Library.logger().warning("Unexpected: replacing node key stored at " + oldEffectiveNodeKey.storedNodeKeyName() + " with new node key " + 
-						nodeKeyDirectoryName + " but latter is not later version of the former.");
-			}
-			// OK, just add superseded-by block to the target directory.
-			// TODO
 		}
 		// Return the key for use, along with its name.
 		return theNodeKey;
