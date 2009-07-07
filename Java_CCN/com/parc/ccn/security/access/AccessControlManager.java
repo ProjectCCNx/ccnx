@@ -12,7 +12,6 @@ import java.util.LinkedList;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
-//Right now use javax.jcr version; in java 1.7, will be java.nio.file.AccessDeniedException.
 import javax.jcr.AccessDeniedException;
 import javax.xml.stream.XMLStreamException;
 
@@ -408,11 +407,40 @@ public class AccessControlManager {
 		return aclo.acl();
 	}
 	
-	public void deleteACL(ContentName nodeName) {
+	public void deleteACL(ContentName nodeName) throws XMLStreamException, IOException, ConfigurationException, InvalidKeyException, InvalidCipherTextException, AccessDeniedException {
 		// TODO DKS -- delete the ACL at this node if one exists, returning control to the
 		// next ACL upstream.
 		// We simply add a supserseded by block at this node, wrapping this key in the key of the upstream
 		// node. If we don't have read access at that node, throw AccessDeniedException.
+		// Then we write a GONE block here for the ACL, and a new node key version with a superseded by block.
+		// The superseded by block should probably be encrypted not with the ACL in force, but with the effective
+		// node key of the parent -- that will be derivable from the appropriate ACL, and will have the right semantics
+		// if a new ACL is interposed later. In the meantime, all the people with the newly in-force ancestor
+		// ACL should be able to read this content.
+		
+		// First, find ACL at this node if one exists.
+		ACLObject thisNodeACL = getACLObjectForNodeIfExists(nodeName);
+		if (null == thisNodeACL) {
+			Library.logger().info("Asked to delete ACL for node " + nodeName + " that doesn't have one. Doing nothing.");
+			return;
+		}
+		Library.logger().info("Deleting ACL for node " + nodeName + " latest version: " + thisNodeACL.getName());
+		
+		// Then, find the latest node key. This should not be a derived node key.
+		NodeKey nk = getEffectiveNodeKey(nodeName);
+		
+		// Next, find the ACL that is in force after the deletion.
+		ContentName parentName = nodeName.parent();
+		NodeKey effectiveParentNodeKey = getLatestNodeKeyForNode(parentName);
+		
+		// Generate a superseded block for this node, wrapping its key in the parent.
+		// DKS TODO want to wrap key in parent's effective key, but can't point to that -- no way to name an
+		// effective node key... need one.
+		KeyDirectory.addSupersededByBlock(nk.storedNodeKeyName(), nk.nodeKey(), 
+										  effectiveParentNodeKey.nodeName(), effectiveParentNodeKey.nodeKey(), library());
+		
+		// Then mark the ACL as gone.
+		thisNodeACL.saveAsGone();
 	}
 	
 	/**
@@ -568,6 +596,9 @@ public class AccessControlManager {
 		// First we need to figure out what the latest version is of the node key.
 		ContentName nodeKeyVersionedName = 
 			EnumeratedNameList.getLatestVersionName(AccessControlProfile.nodeKeyName(nodeName), library());
+		// DKS TODO this may not handle ACL deletion correctly -- we need to make sure that this
+		// key wasn't superseded by something that isn't a later version of itself.
+		
 		// then, pull the node key we can decrypt
 		return getNodeKeyByVersionedName(nodeKeyVersionedName, null);
 	}
@@ -886,6 +917,9 @@ public class AccessControlManager {
 		Library.logger().info("Wrapping data key for node: " + dataNodeName + " with effective node key for node: " + 
 							  effectiveNodeKey.nodeName() + " derived from stored node key for node: " + 
 							  effectiveNodeKey.storedNodeKeyName());
+		// DKS TODO another case where we're wrapping in an effective node key but labeling it with
+		// the stored node key information. This will work except if we interpose an ACL in the meantime -- 
+		// we may not have the information necessary to figure out how to decrypt.
 		WrappedKey wrappedDataKey = WrappedKey.wrapKey(newRandomDataKey, 
 													   null, dataKeyLabel(), 
 													   effectiveNodeKey.nodeKey());
