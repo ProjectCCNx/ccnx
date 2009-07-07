@@ -164,7 +164,7 @@ public class RepositoryDaemon extends Daemon {
 		try {
 			_library = CCNLibrary.open();
 			_writer = new CCNWriter(_library);
-			
+
 			/*
 			 * At some point we may want to refactor the code to
 			 * write repository info back in a stream.  But for now
@@ -173,59 +173,59 @@ public class RepositoryDaemon extends Daemon {
 			 * disable flow control
 			 */
 			_writer.disableFlowControl();
-			
-		} catch (Exception e1) {
-			e1.printStackTrace();
-			System.exit(0);
-		} 
 
-		SystemConfiguration.setLogging("repo", false);
-		for (int i = 0; i < args.length; i++) {
-			if (args[i].equals("-log")) {
-				if (args.length < i + 2) {
-					usage();
-					return;
+			SystemConfiguration.setLogging("repo", false);
+			for (int i = 0; i < args.length; i++) {
+				if (args[i].equals("-log")) {
+					if (args.length < i + 2) {
+						usage();
+						return;
+					}
+					try {
+						SystemConfiguration.setLogging("repo", true);
+						Level level = Level.parse(args[i + 1]);
+						Library.logger().setLevel(level);
+					} catch (IllegalArgumentException iae) {
+						usage();
+						return;
+					}
 				}
-				try {
-					SystemConfiguration.setLogging("repo", true);
-					Level level = Level.parse(args[i + 1]);
-					Library.logger().setLevel(level);
-				} catch (IllegalArgumentException iae) {
-					usage();
-					return;
-				}
+
+				/*
+				 * This is for upper half performance testing for writes
+				 */
+				if (args[i].equals("-bb"))
+					_repo = new BitBucketRepository();
 			}
-			
-			/*
-			 * This is for upper half performance testing for writes
-			 */
-			if (args[i].equals("-bb"))
-				_repo = new BitBucketRepository();
-		}
-		
-		if (_repo == null)
-			_repo = new RFSImpl();
-		try {
+
+			if (_repo == null)
+				_repo = new RFSImpl();
+
 			_repo.initialize(args);
+			
+			// Create callback threadpool
+			_threadpool = (ThreadPoolExecutor)Executors.newCachedThreadPool();
+			_threadpool.setKeepAliveTime(THREAD_LIFE, TimeUnit.SECONDS);
 		} catch (InvalidParameterException ipe) {
 			usage();
-		} catch (RepositoryException e) {
+		} catch (Exception e) {
 			e.printStackTrace();
+			Library.logStackTrace(Level.SEVERE, e);
+			System.exit(1);
 		}
-		
-		// Create callback threadpool
-		_threadpool = (ThreadPoolExecutor)Executors.newCachedThreadPool();
-		_threadpool.setKeepAliveTime(THREAD_LIFE, TimeUnit.SECONDS);
 	}
 	
 	protected void usage() {
 		try {
-			System.out.println("usage: " + this.getClass().getName() + 
-						_repo.getUsage() + "[-start | -stop | -interactive] [-log <level>]");
+			String msg = "usage: " + this.getClass().getName() + 
+			_repo.getUsage() + "[-start | -stop | -interactive] [-log <level>]";
+			System.out.println(msg);
+			Library.logger().severe(msg);
 		} catch (Exception e) {
 			e.printStackTrace();
+			Library.logStackTrace(Level.SEVERE, e);
 		}
-		System.exit(0);
+		System.exit(1);
 	}
 
 	protected WorkerThread createWorkerThread() {
