@@ -150,7 +150,15 @@ public class RepositoryDaemon extends Daemon {
 	
 	public RepositoryDaemon() {
 		super();
+		// This is a daemon: it should not do anything in the
+		// constructor but everything in the initialize() method
+		// which will be run in the process that will finally 
+		// execute as the daemon, rather than in the launching
+		// and stopping processes also.
 		_daemonName = "repository";
+	}
+	
+	public void initialize(String[] args, Daemon daemon) {
 		Library.logger().info("Starting " + _daemonName + "...");				
 		
 		try {
@@ -170,9 +178,7 @@ public class RepositoryDaemon extends Daemon {
 			e1.printStackTrace();
 			System.exit(0);
 		} 
-	}
-	
-	public void initialize(String[] args, Daemon daemon) {
+
 		SystemConfiguration.setLogging("repo", false);
 		for (int i = 0; i < args.length; i++) {
 			if (args[i].equals("-log")) {
