@@ -99,7 +99,7 @@ public class KeyDirectory extends EnumeratedNameList {
 				_namePrefix = latestVersionName;
 				_enumerator.registerPrefix(_namePrefix);
 			}
-		}
+		} 
 	}
 	
 	/**
@@ -484,16 +484,47 @@ public class KeyDirectory extends EnumeratedNameList {
 		wko.save();
 	}
 
+	/**
+	 * Add a superseded-by block to our key directory.
+	 * @param oldPrivateKeyWrappingKey
+	 * @param supersedingKeyName
+	 * @param newPrivateKeyWrappingKey
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 * @throws InvalidKeyException
+	 * @throws ConfigurationException
+	 */
 	public void addSupersededByBlock(Key oldPrivateKeyWrappingKey,
 			ContentName supersedingKeyName, Key newPrivateKeyWrappingKey) throws XMLStreamException, IOException, InvalidKeyException, ConfigurationException {
 		
-		WrappedKey wrappedKey = WrappedKey.wrapKey(oldPrivateKeyWrappingKey, null, null, newPrivateKeyWrappingKey);
-		wrappedKey.setWrappingKeyIdentifier(newPrivateKeyWrappingKey);
+		addSupersededByBlock(getSupersededBlockName(), oldPrivateKeyWrappingKey,
+						     supersedingKeyName, newPrivateKeyWrappingKey, _manager.library());
+	}
+	
+	/**
+	 * Add a superseded-by block to another node key, where we may have only its name, not its enumeration.
+	 * Use as a static method to add our own superseded-by blocks as well.
+	 * @throws IOException 
+	 * @throws InvalidKeyException 
+	 */
+	public static void addSupersededByBlock(ContentName oldKeySupersededBlockName, Key oldKeyToBeSuperseded, 
+											ContentName supersedingKeyName, Key supersedingKey, CCNLibrary library) throws IOException, InvalidKeyException {
+		
+		WrappedKey wrappedKey = WrappedKey.wrapKey(oldKeyToBeSuperseded, null, null, supersedingKey);
+		wrappedKey.setWrappingKeyIdentifier(supersedingKey);
 		wrappedKey.setWrappingKeyName(supersedingKeyName);
-		WrappedKeyObject wko = new WrappedKeyObject(getSupersededBlockName(), wrappedKey, _manager.library());
+		WrappedKeyObject wko = new WrappedKeyObject(oldKeySupersededBlockName, wrappedKey, library);
 		wko.save();
 	}
 	
+	/**
+	 * 
+	 * @param previousKey
+	 * @param previousKeyPublisher
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 * @throws ConfigurationException
+	 */ 
 	public void addPreviousKeyLink(ContentName previousKey, PublisherID previousKeyPublisher) throws XMLStreamException, IOException, ConfigurationException {
 		
 		if (hasPreviousKeyBlock()) {
@@ -506,7 +537,8 @@ public class KeyDirectory extends EnumeratedNameList {
 	
 	public void addPreviousKeyBlock(Key oldPrivateKeyWrappingKey,
 									ContentName supersedingKeyName, Key newPrivateKeyWrappingKey) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException {
-		
+		// DKS TODO -- do we need in the case of deletion of ACLs to allow for multiple previous key blocks simultaneously?
+		// Then need to add previous key id to previous key block name.
 		WrappedKey wrappedKey = WrappedKey.wrapKey(oldPrivateKeyWrappingKey, null, null, newPrivateKeyWrappingKey);
 		wrappedKey.setWrappingKeyIdentifier(newPrivateKeyWrappingKey);
 		wrappedKey.setWrappingKeyName(supersedingKeyName);

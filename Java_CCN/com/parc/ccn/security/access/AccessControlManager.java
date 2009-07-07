@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -31,6 +32,7 @@ import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.EnumeratedNameList;
 import com.parc.ccn.library.profiles.AccessControlProfile;
 import com.parc.ccn.library.profiles.VersionMissingException;
+import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.access.ACL.ACLObject;
 import com.parc.ccn.security.keys.KeyManager;
 
@@ -256,7 +258,7 @@ public class AccessControlManager {
 	
 	public EnumeratedNameList userList() throws IOException {
 		if (null == _userList) {
-			_userList = new EnumeratedNameList(_userStorage, _library);
+			_userList = new EnumeratedNameList(_userStorage, library());
 		}
 		return _userList;
 	}
@@ -284,8 +286,7 @@ public class AccessControlManager {
 			pko = _groupManager.getLatestPublicKeyForGroup(principal);
 		} else {
 			Library.logger().info("Retrieving latest key for user: " + principal.targetName());
-			pko = new PublicKeyObject(principal.targetName(), 
-					new PublisherPublicKeyDigest(principal.targetAuthenticator().publisher()), _library);
+			pko = new PublicKeyObject(principal.targetName(), principal.targetAuthenticator().publisher(), library());
 		}
 		return pko;
 	}
@@ -347,7 +348,7 @@ public class AccessControlManager {
 	public ACLObject getACLObjectForNode(ContentName aclNodeName) throws XMLStreamException, IOException, ConfigurationException {
 		
 		// Get the latest version of the acl. We don't care so much about knowing what version it was.
-		ACLObject aclo = new ACLObject(AccessControlProfile.aclName(aclNodeName), _library);
+		ACLObject aclo = new ACLObject(AccessControlProfile.aclName(aclNodeName), library());
 		aclo.update();
 		// if there is no update, this will probably throw an exception -- IO or XMLStream
 		if (aclo.isGone()) {
@@ -359,13 +360,13 @@ public class AccessControlManager {
 	
 	public ACLObject getACLObjectForNodeIfExists(ContentName aclNodeName) throws XMLStreamException, IOException, ConfigurationException {
 		
-		EnumeratedNameList aclNameList = EnumeratedNameList.exists(AccessControlProfile.aclName(aclNodeName), aclNodeName, _library);
+		EnumeratedNameList aclNameList = EnumeratedNameList.exists(AccessControlProfile.aclName(aclNodeName), aclNodeName, library());
 		
 		if (null != aclNameList) {
 			ContentName aclName = new ContentName(AccessControlProfile.aclName(aclNodeName),
 												  aclNameList.getLatestVersionChildName().lastComponent());
 			Library.logger().info("Found latest version of acl for " + aclNodeName + " at " + aclName);
-			ACLObject aclo = new ACLObject(aclName, _library);
+			ACLObject aclo = new ACLObject(aclName, library());
 			aclo.update();
 			if (aclo.isGone())
 				return null;
@@ -402,7 +403,7 @@ public class AccessControlManager {
 		// generates the new node key, wraps it under the new acl, and wraps the old node key
 		generateNewNodeKey(nodeName, effectiveNodeKey, newACL);
 		// write the acl
-		ACLObject aclo = new ACLObject(AccessControlProfile.aclName(nodeName), newACL, _library);
+		ACLObject aclo = new ACLObject(AccessControlProfile.aclName(nodeName), newACL, library());
 		// DKS FIX REPO WRITE
 		aclo.save();
 		return aclo.acl();
@@ -411,6 +412,8 @@ public class AccessControlManager {
 	public void deleteACL(ContentName nodeName) {
 		// TODO DKS -- delete the ACL at this node if one exists, returning control to the
 		// next ACL upstream.
+		// We simply add a supserseded by block at this node, wrapping this key in the key of the upstream
+		// node. If we don't have read access at that node, throw AccessDeniedException.
 	}
 	
 	/**
@@ -475,7 +478,7 @@ public class AccessControlManager {
 				throw new AccessDeniedException("Cannot read the latest node key for " + nodeName);
 			}
 			
-			keyDirectory = new KeyDirectory(this, latestNodeKey.storedNodeKeyName(), _library);
+			keyDirectory = new KeyDirectory(this, latestNodeKey.storedNodeKeyName(), library());
 
 			for (LinkReference principal : newReaders) {
 				PublicKeyObject latestKey = getLatestKeyForPrincipal(principal);
@@ -565,7 +568,7 @@ public class AccessControlManager {
 		// Could do this using getLatestVersion...
 		// First we need to figure out what the latest version is of the node key.
 		ContentName nodeKeyVersionedName = 
-			EnumeratedNameList.getLatestVersionName(AccessControlProfile.nodeKeyName(nodeName), _library);
+			EnumeratedNameList.getLatestVersionName(AccessControlProfile.nodeKeyName(nodeName), library());
 		// then, pull the node key we can decrypt
 		return getNodeKeyByVersionedName(nodeKeyVersionedName, null);
 	}
@@ -622,7 +625,7 @@ public class AccessControlManager {
 		KeyDirectory keyDirectory = null;
 		try {
 
-			keyDirectory = new KeyDirectory(this, nodeKeyName, _library);
+			keyDirectory = new KeyDirectory(this, nodeKeyName, library());
 			// this will handle the caching.
 			Key unwrappedKey = keyDirectory.getUnwrappedKey(nodeKeyIdentifier);
 			if (null != unwrappedKey) {
@@ -719,11 +722,74 @@ public class AccessControlManager {
 	 * @param nodeName
 	 * @param effectiveNodeKey
 	 * @param newACL
+	 * @throws IOException 
+	 * @throws XMLStreamException 
+	 * @throws ConfigurationException 
+	 * @throws InvalidKeyException if one of the public keys for someone specified on the ACL is invalid.
 	 */
-	protected void generateNewNodeKey(ContentName nodeName, NodeKey oldEffectiveNodeKey, ACL effectiveACL) {
-		// TODO Auto-generated method stub
+	protected NodeKey generateNewNodeKey(ContentName nodeName, NodeKey oldEffectiveNodeKey, ACL effectiveACL) 
+					throws IOException, ConfigurationException, XMLStreamException, InvalidKeyException {
 		// DKS TODO should throw accessDeniedException
+		// Get the name of the key directory; this is versioned.
+		ContentName nodeKeyDirectoryName = AccessControlProfile.nodeKeyName(nodeName);
+
+		// Now, generate the node key.
+		if (effectiveACL.publiclyReadable()) {
+			// TODO Put something here that will represent public; need to then make it so that key-reading code will do
+			// the right thing when it encounters it.
+			throw new UnsupportedOperationException("Need to implement public node key representation!");
+		}
 		
+		byte [] nodeKeyBytes = new byte[NodeKey.DEFAULT_NODE_KEY_LENGTH];
+		_random.nextBytes(nodeKeyBytes);
+		Key nodeKey = new SecretKeySpec(nodeKeyBytes, NodeKey.DEFAULT_NODE_KEY_ALGORITHM);
+		
+		// Now, wrap it under the keys listed in its ACL.
+		
+		// Make a key directory. If we give it a versioned name, it will start enumerating it, but won't block.
+		KeyDirectory nodeKeyDirectory = new KeyDirectory(this, nodeKeyDirectoryName, library());
+		NodeKey theNodeKey = new NodeKey(nodeKeyDirectoryName, nodeKey);
+		// Add a key block for every reader on the ACL. As managers and writers can read, they are all readers.
+		// DKS TODO -- pulling public keys here; could be slow; might want to manage concurrency over acl.
+		for (LinkReference aclEntry : effectiveACL.contents()) {
+			PublicKeyObject entryPublicKey = null;
+			if (groupManager().isGroup(aclEntry)) {
+				entryPublicKey = groupManager().getLatestPublicKeyForGroup(aclEntry);
+			} else {
+				// Calls update. Will get latest version if name unversioned.
+				entryPublicKey = new PublicKeyObject(aclEntry.targetName(), aclEntry.targetAuthenticator().publisher(), library());
+			}
+			try {
+				nodeKeyDirectory.addWrappedKeyBlock(nodeKey, entryPublicKey.getName(), entryPublicKey.publicKey());
+			} catch (VersionMissingException ve) {
+				Library.handleException("Unexpected version missing exception for public key " + entryPublicKey.getName(), ve);
+				throw new IOException("Unexpected version missing exception for public key " + entryPublicKey.getName() + ": " + ve);
+			}
+		}
+		// Add a previous key block wrapping the previous key
+		nodeKeyDirectory.addPreviousKeyBlock(oldEffectiveNodeKey.nodeKey(), nodeKeyDirectoryName, nodeKey);
+		
+		// Add a superseded by link to the previous key. Two cases: old effective node key is at the same level
+		// as us (we are superseding it entirely), or we are interposing a key (old key is above or below us).
+		// OK, here are the options:
+		// Replaced node key is a derived node key -- we are interposing an ACL
+		// Replaced node key is a stored node key 
+		//	 -- we are updating that node key to a new version
+		// 			NK/vn replaced by NK/vn+k -- new node key will be later version of previous node key
+		//   -- we don't get called if we are deleting an ACL here -- no new node key is added.
+		if (oldEffectiveNodeKey.isDerivedNodeKey()) {
+			// Interposing an ACL
+			// TODO
+		} else {
+			if (!VersioningProfile.isLaterVersionOf(nodeKeyDirectoryName, oldEffectiveNodeKey.storedNodeKeyName())) {
+				Library.logger().warning("Unexpected: replacing node key stored at " + oldEffectiveNodeKey.storedNodeKeyName() + " with new node key " + 
+						nodeKeyDirectoryName + " but latter is not later version of the former.");
+			}
+			// OK, just add superseded-by block to the target directory.
+			// TODO
+		}
+		// Return the key for use, along with its name.
+		return theNodeKey;
 	}
 	
 	public NodeKey getNodeKeyForObject(ContentName nodeName, WrappedKeyObject wko) throws InvalidKeyException, XMLStreamException, InvalidCipherTextException, IOException, ConfigurationException, AccessDeniedException {
@@ -772,7 +838,7 @@ public class AccessControlManager {
 	 * @throws AccessDeniedException 
 	 */
 	public byte [] getDataKey(ContentName dataNodeName) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException, ConfigurationException, AccessDeniedException {
-		WrappedKeyObject wdko = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataNodeName), _library);
+		WrappedKeyObject wdko = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataNodeName), library());
 		wdko.update();
 		if (null == wdko.wrappedKey()) {
 			Library.logger().warning("Could not retrieve data key for node: " + dataNodeName);
@@ -802,7 +868,7 @@ public class AccessControlManager {
 	 * @throws AccessDeniedException 
 	 * @throws InvalidCipherTextException 
 	 */
-	public void storeDataKey(ContentName dataNodeName, byte [] newRandomDataKey) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
+	public void storeDataKey(ContentName dataNodeName, Key newRandomDataKey) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
 		NodeKey effectiveNodeKey = getEffectiveNodeKey(dataNodeName);
 		if (null == effectiveNodeKey) {
 			throw new IllegalStateException("Cannot retrieve effective node key for node: " + dataNodeName + ".");
@@ -810,7 +876,7 @@ public class AccessControlManager {
 		Library.logger().info("Wrapping data key for node: " + dataNodeName + " with effective node key for node: " + 
 							  effectiveNodeKey.nodeName() + " derived from stored node key for node: " + 
 							  effectiveNodeKey.storedNodeKeyName());
-		WrappedKey wrappedDataKey = WrappedKey.wrapKey(new SecretKeySpec(newRandomDataKey, DEFAULT_DATA_KEY_ALGORITHM), 
+		WrappedKey wrappedDataKey = WrappedKey.wrapKey(newRandomDataKey, 
 													   null, dataKeyLabel(), 
 													   effectiveNodeKey.nodeKey());
 		wrappedDataKey.setWrappingKeyIdentifier(effectiveNodeKey.storedNodeKeyID());
@@ -834,10 +900,11 @@ public class AccessControlManager {
 	 * @throws AccessDeniedException 
 	 * @throws InvalidCipherTextException 
 	 **/
-	public byte [] generateAndStoreDataKey(ContentName dataNodeName) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
+	public Key generateAndStoreDataKey(ContentName dataNodeName) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
 		// Generate new random data key of appropriate length
-		byte [] dataKey = new byte[DEFAULT_DATA_KEY_LENGTH];
-		_random.nextBytes(dataKey);
+		byte [] dataKeyBytes = new byte[DEFAULT_DATA_KEY_LENGTH];
+		_random.nextBytes(dataKeyBytes);
+		Key dataKey = new SecretKeySpec(dataKeyBytes, DEFAULT_DATA_KEY_ALGORITHM);
 		storeDataKey(AccessControlProfile.dataKeyName(dataNodeName), dataKey);
 		return dataKey;
 	}
@@ -852,8 +919,8 @@ public class AccessControlManager {
 	 */
 	private void storeKeyContent(ContentName dataNodeName,
 								 WrappedKey wrappedKey) throws XMLStreamException, IOException, ConfigurationException {
-		// DKS FIX FOR REPO
-		WrappedKeyObject wko = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataNodeName), wrappedKey, _library);
+		// TODO DKS FIX FOR REPO
+		WrappedKeyObject wko = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataNodeName), wrappedKey, library());
 		wko.save();
 	}
 
