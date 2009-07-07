@@ -98,12 +98,12 @@ public class RFSTest extends RepoTestBase {
 		
 	public void initRepoMulti() throws Exception {
 		repomulti = new RFSImpl();
-		repomulti.initialize(new String[] {"-root", _fileTestDir, "-local", _repoName, "-global", _globalPrefix});
+		repomulti.initialize(new String[] {"-root", _fileTestDir, "-local", _repoName, "-global", _globalPrefix, "-multifile"}, putLibrary);
 	}
 		
 	public void initRepoLog() throws Exception {
 		repolog = new RFSLogImpl();
-		repolog.initialize(new String[] {"-root", _fileTestDir, "-local", _repoName, "-global", _globalPrefix, "-singlefile"});
+		repolog.initialize(new String[] {"-root", _fileTestDir, "-local", _repoName, "-global", _globalPrefix, "-singlefile"}, putLibrary);
 	}
 	
 	@Test
@@ -283,22 +283,21 @@ public class RFSTest extends RepoTestBase {
 			String segmentContent = "segment"+ new Long(i).toString();
 			checkData(repo, segmented, segmentContent);
 		}
-		
 	}
 	
 	@Test
 	public void testPolicy() throws Exception {
 		Repository repo = new RFSImpl();
 		try {	// Test no version
-			repo.initialize(new String[] {"-root", _fileTestDir, "-policy", _topdir + "/test/ccn/network/daemons/repo/badPolicyTest1.xml"});
+			repo.initialize(new String[] {"-root", _fileTestDir, "-policy", _topdir + "/test/ccn/network/daemons/repo/badPolicyTest1.xml"}, putLibrary);
 			Assert.fail("Bad policy file succeeded");
 		} catch (InvalidParameterException ipe) {}
 		try {	// Test bad version
-			repo.initialize(new String[] {"-root", _fileTestDir, "-policy", _topdir + "/test/ccn/network/daemons/repo/badPolicyTest2.xml"});
+			repo.initialize(new String[] {"-root", _fileTestDir, "-policy", _topdir + "/test/ccn/network/daemons/repo/badPolicyTest2.xml"}, putLibrary);
 			Assert.fail("Bad policy file succeeded");
 		} catch (InvalidParameterException ipe) {}
 		repo.initialize(new String[] {"-root", _fileTestDir, "-policy", 
-					_topdir + "/test/ccn/network/daemons/repo/policyTest.xml", "-local", _repoName, "-global", _globalPrefix});
+					_topdir + "/test/ccn/network/daemons/repo/policyTest.xml", "-local", _repoName, "-global", _globalPrefix}, putLibrary);
 		ContentName name = ContentName.fromNative("/testNameSpace/data1");
 		ContentObject content = ContentObject.buildContentObject(name, "Here's my data!".getBytes());
 		repo.saveContent(content);

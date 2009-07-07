@@ -19,7 +19,7 @@ public class ContentTree {
 
 	/**
 	 * ContentFileRef
-	 * @author jthornto
+	 * @author jthornto, rbraynar, rasmusse
 	 *
 	 */
 	public class ContentFileRef {
@@ -121,7 +121,6 @@ public class ContentTree {
 	public void insert(ContentObject content, ContentFileRef ref, long ts) {
 		final ContentName name = new ContentName(content.name(), content.contentDigest());
 		Library.logger().fine("inserting content: "+name.toString());
-		System.out.println("inserting content: "+name.toString());
 		TreeNode node = root; // starting point
 		assert(null != root);
 		
@@ -134,7 +133,6 @@ public class ContentTree {
 					// add it
 					child = new TreeNode();
 					child.component = component;
-					System.out.println("adding component: "+ContentName.componentPrintNative(child.component));
 					if (null == node.oneChild && null == node.children) {
 						// This is first and only child of current node
 						node.oneChild = child;
@@ -170,7 +168,6 @@ public class ContentTree {
 			node.content.add(ref);
 			node.oneContent = null;
 		}
-		System.out.println("added "+ name.toString()+" at file ref: "+ref.id+" "+ref.offset);
 	}
 
 	protected TreeNode lookupNode(ContentName name, int count) {
@@ -183,7 +180,6 @@ public class ContentTree {
 		
 		for (byte[] component : name.components()) {
 			synchronized(node) {
-				//System.out.println("checking component: "+new String(component)+" count = "+count);
 				TreeNode child = node.getChild(component);
 				if (null == child) {
 					// Mismatch, no child for the given component so nothing under this name
@@ -191,7 +187,6 @@ public class ContentTree {
 				}
 				node = child;
 				count--;
-				//System.out.println("count is: "+count);
 				if (count < 1) {
 					break;
 				}
@@ -232,9 +227,8 @@ public class ContentTree {
 	 * @return
 	 */
 	protected final ContentObject leftSearch(Interest interest, int matchlen, TreeNode node, ContentName nodeName, int depth, ContentGetter getter) {
-		
-		// Content at exactly this node is not a match (if any)
 		// Now search children if applicable and if any
+		// XXX (paul r.) the following test may not be necessary
 		if (matchlen != -1 && matchlen <= depth || (node.children==null && node.oneChild==null)) {
 			// Any child would make the total name longer than requested so no point in 
 			// checking children
@@ -251,10 +245,8 @@ public class ContentTree {
 			}
 		}
 		if (null != children) {
-			byte[] interestComp = interest.name().component(depth);  // ??
-			System.out.println("interestComp: "+interest.name()+" depth="+depth+" "+interest.name().stringComponent(depth));
+			byte[] interestComp = interest.name().component(depth);  // paul r. - not sure what this is for??
 			for (TreeNode child : children) {
-				System.out.println("child: "+new String(child.component));
 				int comp = DataUtils.compare(child.component, interestComp);
 				//if (null == interestComp || DataUtils.compare(child.component, interestComp) >= 0) {
 				ContentObject result = null;
@@ -263,7 +255,9 @@ public class ContentTree {
 					result = leftSearch(interest, matchlen, child, 
 							new ContentName(nodeName, child.component), depth+1, getter);
 
-				} else  if (comp > 0)  { 
+				} else  if (comp > 0)  {
+					// We already found something "left" so we don't want to go any further left
+					// (The first object to the left that we find is always what we want).
 					result = rightSearch(interest, matchlen, 
 							child, new ContentName(matchlen, interest.name().components()), 
 							depth, getter);
@@ -299,7 +293,6 @@ public class ContentTree {
 		getSubtreeNodes(node, options);
 		for (int i = options.size()-1; i >= 0 ; i--) {
 			TreeNode candidate = options.get(i);
-			System.out.println("treenode candidate: "+candidate.toString());
 			if (null != candidate.oneContent || null != candidate.content) {
 				List<ContentFileRef> content = null;
 				synchronized(candidate) {
@@ -312,7 +305,6 @@ public class ContentTree {
 					}
 				}
 				for (ContentFileRef ref : content) {
-					System.out.println("ref: "+ref.id+" "+ref.offset);
 					ContentObject cand = getter.get(ref);
 					if (cand!=null && interest.matches(cand)) {
 						return cand;
@@ -327,7 +319,6 @@ public class ContentTree {
 		ArrayList<ContentName> names = new ArrayList<ContentName>();
 		//first chop off NE marker
 		ContentName prefix = interest.name().cut(CCNNameEnumerator.NEMARKER);
-		System.out.println("looking up matches for interest prefix: "+interest.name().toString());
 		
 		//does the interest have a timestamp?
 		Timestamp interestTS = null;
@@ -343,7 +334,6 @@ public class ContentTree {
 		
 		TreeNode parent = lookupNode(prefix, prefix.count());
 		if(parent!=null){
-			System.out.println("here is the parent match: "+parent.toString());
 			
 			//we should check the timestamp
 			nodeTS = new Timestamp(parent.timestamp);
@@ -357,7 +347,6 @@ public class ContentTree {
 			ContentName c = new ContentName();
 			if(parent.oneChild!=null){
 				names.add(new ContentName(c, parent.oneChild.component));
-				System.out.println("added name: "+ContentName.componentPrintURI(parent.oneChild.component));
 			}
 			else{
 				if(parent.children!=null){
@@ -378,24 +367,17 @@ public class ContentTree {
 		int ncc = (null != interest.nameComponentCount()) ? interest.nameComponentCount() : interest.name().count();
 		if (null != addl && addl.intValue() == 0) {
 			// Query is for exact match to full name with digest, no additional components
-			System.out.println("ContentTree.get: "+interest.name());
 			List<ContentFileRef> found = lookup(interest.name());
 			if(found!=null){
-				System.out.println("found is not null");
 				for (ContentFileRef ref : found) {
 					ContentObject cand = getter.get(ref);
 					if (null != cand) {
-						System.out.println("candidate: "+cand.name().toString()+" interest: "+interest.name().toString());
 						if (interest.matches(cand)) {
 							return cand;
 						}
 					}
-					else
-						System.out.println("candidate was null");
 				}
 			}
-			else
-				System.out.println("found was null");
 		} else {
 			//TreeNode prefixRoot = lookupNode(interest.name(), interest.nameComponentCount());
 			TreeNode prefixRoot = lookupNode(interest.name(), ncc);
@@ -407,17 +389,11 @@ public class ContentTree {
 			if ((null==interest.orderPreference()) || ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME))
 					== (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME))) {
 				// Traverse to find latest match
-				if(interest.orderPreference()!=null)
-					System.out.println("going to do rightSearch for latest.  Interest: "+interest.name().toString());
-				else
-					System.out.println("going to do rightSearch.  Interest: "+interest.name().toString());
-				
 				return rightSearch(interest, (null == addl) ? -1 : addl + ncc, 
 						prefixRoot, new ContentName(ncc, interest.name().components()), 
 						ncc, getter);
 			}
 			else{
-				System.out.println("going to do leftSearch for earliest.  Interest: "+interest.toString());
 				return leftSearch(interest, (null == addl) ? -1 : addl + ncc,
 						prefixRoot, new ContentName(ncc, interest.name().components()), 
 						ncc, getter);

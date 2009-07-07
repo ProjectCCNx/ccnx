@@ -203,11 +203,11 @@ public class RepositoryDaemon extends Daemon {
 				if(args[i].equals("-multifile"))
 					_repo = new RFSImpl();
 			}
-			
-		if (_repo == null)	// default lower half
-			_repo = new RFSLogImpl();
 
-		try {
+			
+			if (_repo == null)	// default lower half
+				_repo = new RFSLogImpl();
+			
 			_repo.initialize(args, _library);
 			
 			// Create callback threadpool

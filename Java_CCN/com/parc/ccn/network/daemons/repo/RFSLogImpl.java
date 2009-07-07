@@ -9,12 +9,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
-import java.nio.channels.FileChannel;
 import java.security.InvalidParameterException;
+import java.security.PrivateKey;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -22,13 +21,33 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.Interest;
+import com.parc.ccn.data.security.KeyLocator;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
+import com.parc.ccn.data.security.SignedInfo;
+import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.network.daemons.repo.ContentTree.ContentFileRef;
 import com.parc.security.Library;
-//import com.sun.media.jai.codec.FileSeekableStream;
+
+/**
+ * 
+ * @author jthornto, rbraynar, rasmusse
+ *
+ * Implements a repository as a single data file with an index to find the
+ * correct piece for any individual content object
+ */
 
 public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 
 	public final static String CURRENT_VERSION = "1.4";
+		
+	public final static String META_DIR = ".meta";
+	public final static String NORMAL_COMPONENT = "0";
+	public final static String SPLIT_COMPONENT = "1";
+	
+	private static final String REPO_PRIVATE = "private";
+	private static final String VERSION = "version";
+	private static final String REPO_LOCALNAME = "local";
+	private static final String REPO_GLOBALPREFIX = "global";
 
 	private static String DEFAULT_LOCAL_NAME = "Repository";
 	private static String DEFAULT_GLOBAL_NAME = "/parc.com/csl/ccn/Repos";
@@ -38,6 +57,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 	protected File _repositoryFile;
 	protected RepositoryInfo _info = null;
 	protected ArrayList<ContentName> _nameSpace = new ArrayList<ContentName>();
+	protected Policy _policy = null;
 
 	Map<Integer,RepoFile> _files;
 	RepoFile _activeWriteFile;
@@ -51,13 +71,31 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 	
 	public boolean checkPolicyUpdate(ContentObject co)
 			throws RepositoryException {
-		// TODO Auto-generated method stub
+		if (_info.getPolicyName().isPrefixOf(co.name())) {
+			ByteArrayInputStream bais = new ByteArrayInputStream(co.content());
+			try {
+				_policy.update(bais, true);
+				_nameSpace = _policy.getNameSpace();
+				ContentName policyName = ContentName.fromNative(REPO_NAMESPACE + "/" + _info.getLocalName() + "/" + REPO_POLICY);
+				ContentObject policyCo = new ContentObject(policyName, co.signedInfo(), co.content(), co.signature());
+   				saveContent(policyCo);
+			} catch (XMLStreamException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (MalformedContentNameStringException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			return true;
+		}
 		return false;
 	}
 
 	public ContentObject getContent(Interest interest)
 			throws RepositoryException {
-		System.out.println("got an interest! "+interest.name().toString());
 		return _index.get(interest, this);
 	}
 
@@ -119,15 +157,11 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 							ref.offset = rfile.openFile.getFilePointer();
 							if(ref.offset > 0)
 								ref.offset = ref.offset - is.available();
-							System.out.println("the next ref is: "+ref.id+" "+ref.offset);
-							//System.out.println("FC.pos: "+fc.position());
 							ContentObject tmp = new ContentObject();
 							try {
 								if(rfile.openFile.getFilePointer()<rfile.openFile.length() || is.available()!=0){
 									//tmp.decode(is);
 									tmp.decode(is);
-									System.out.println("done decoding...  file pointer is now: "+(rfile.openFile.getFilePointer() - is.available()));
-									//System.out.println("FC after decode: "+fc.position());
 								}
 								else{
 									Library.logger().info("at the end of the file");
@@ -161,8 +195,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		return new Integer(max);
 	}
 	
-	public String[] initialize(String[] args) throws RepositoryException {
-		Library.logger().setLevel(Level.FINEST);
+	public String[] initialize(String[] args, CCNLibrary library) throws RepositoryException {
 		boolean policyFromFile = false;
 		boolean nameFromArgs = false;
 		boolean globalFromArgs = false;
@@ -207,26 +240,51 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		_repositoryFile = new File(_repositoryRoot);
 		_repositoryFile.mkdirs();
 //		_locker = new RFSLocks(_repositoryRoot + File.separator + META_DIR);
-//		
-//		String version = checkFile(VERSION, CURRENT_VERSION, false);
-//		if (version != null && !version.trim().equals(CURRENT_VERSION))
-//			throw new RepositoryException("Bad repository version: " + version);
 		
-//		String checkName = checkFile(REPO_LOCALNAME, localName, nameFromArgs);
-//		localName = checkName != null ? checkName : localName;
-//		
-//		checkName = checkFile(REPO_GLOBALPREFIX, globalPrefix, globalFromArgs);
-//		globalPrefix = checkName != null ? checkName : globalPrefix;
+		// Internal initialization
+		_files = new HashMap<Integer, RepoFile>();
+		int maxFileIndex = createIndex();
+		
+		// Internal initialization
+		//moved the following...  getContent depends on having an index
+		//_files = new HashMap<Integer, RepoFile>();
+		//int maxFileIndex = createIndex();
+		try {
+			if (maxFileIndex == 0) {
+				maxFileIndex = 1; // the index of a file we will actually write
+				RepoFile rfile = new RepoFile();
+				rfile.file = new File(_repositoryFile, CONTENT_FILE_PREFIX+"1");
+				rfile.openFile = new RandomAccessFile(rfile.file, "rw");
+				rfile.nextWritePos = 0;
+				_files.put(new Integer(maxFileIndex), rfile);
+				_activeWriteFile = rfile;
+			} else {
+				RepoFile rfile = _files.get(new Integer(maxFileIndex));
+				long cursize = rfile.file.length();
+				rfile.openFile = new RandomAccessFile(rfile.file, "rw");
+				rfile.nextWritePos = cursize;
+				_activeWriteFile = rfile;
+			}
+			
+		} catch (FileNotFoundException e) {
+			Library.logger().warning("Error opening content output file index " + maxFileIndex);
+		}
+		
+		String version = checkFile(VERSION, CURRENT_VERSION, library, false);
+		if (version != null && !version.trim().equals(CURRENT_VERSION))
+			throw new RepositoryException("Bad repository version: " + version);
+		
+		String checkName = checkFile(REPO_LOCALNAME, localName, library, nameFromArgs);
+		localName = checkName != null ? checkName : localName;
+		
+		checkName = checkFile(REPO_GLOBALPREFIX, globalPrefix, library, globalFromArgs);
+		globalPrefix = checkName != null ? checkName : globalPrefix;
 		
 		try {
 			_info = new RepositoryInfo(localName, globalPrefix, CURRENT_VERSION);
 		} catch (MalformedContentNameStringException e1) {
 			throw new RepositoryException(e1.getMessage());
 		}
-		
-		// Internal initialization
-		_files = new HashMap<Integer, RepoFile>();
-		int maxFileIndex = createIndex();
 		
 		/*
 		 * Read policy file from disk if it exists and we didn't read it in as an argument.
@@ -254,31 +312,6 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 				_nameSpace.add(ContentName.fromNative("/"));
 			} catch (MalformedContentNameStringException e) {}
 		}
-	
-		// Internal initialization
-		//moved the following...  getContent depends on having an index
-		//_files = new HashMap<Integer, RepoFile>();
-		//int maxFileIndex = createIndex();
-		try {
-			if (maxFileIndex == 0) {
-				maxFileIndex = 1; // the index of a file we will actually write
-				RepoFile rfile = new RepoFile();
-				rfile.file = new File(_repositoryFile, CONTENT_FILE_PREFIX+"1");
-				rfile.openFile = new RandomAccessFile(rfile.file, "rw");
-				rfile.nextWritePos = 0;
-				_files.put(new Integer(maxFileIndex), rfile);
-				_activeWriteFile = rfile;
-			} else {
-				RepoFile rfile = _files.get(new Integer(maxFileIndex));
-				long cursize = rfile.file.length();
-				rfile.openFile = new RandomAccessFile(rfile.file, "rw");
-				rfile.nextWritePos = cursize;
-				_activeWriteFile = rfile;
-			}
-			
-		} catch (FileNotFoundException e) {
-			Library.logger().warning("Error opening content output file index " + maxFileIndex);
-		}
 		
 		return outArgs;
 	}
@@ -295,8 +328,6 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 				OutputStream os = new RandomAccessOutputStream(_activeWriteFile.openFile);
 				content.encode(os);
 				_activeWriteFile.nextWritePos = _activeWriteFile.openFile.getFilePointer();
-				System.out.println("wrote content: "+content.name().toString());
-				System.out.println("now adding to tree...");
 				_index.insert(content, ref, System.currentTimeMillis());
 			}
 		} catch (IOException e) {
@@ -307,8 +338,11 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 	}
 
 	public void setPolicy(Policy policy) {
-		// TODO Auto-generated method stub
-
+		_policy = policy;
+		ArrayList<ContentName> newNameSpace = _policy.getNameSpace();
+		_nameSpace.clear();
+		for (ContentName name : newNameSpace)
+			_nameSpace.add(name);
 	}
 
 	public ContentObject get(ContentFileRef ref) {
@@ -334,5 +368,36 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 			return null;
 		}
 	}
-
+	
+	/**
+	 * Check data "file" - create new one if none exists
+	 * TODO - Need to handle data that can take up more than 1 co.
+	 * TODO - Co Should be signed with the "repository's" signature.
+	 * @throws RepositoryException
+	 */
+	private String checkFile(String fileName, String contents, CCNLibrary library, boolean forceWrite) throws RepositoryException {
+		byte[][] components = new byte[3][];
+		components[0] = META_DIR.getBytes();
+		components[1] = REPO_PRIVATE.getBytes();
+		components[2] = fileName.getBytes();
+		ContentName name = new ContentName(components);
+		ContentObject co = getContent(new Interest(name));
+		
+		if (!forceWrite && co != null) {
+			return new String(co.content());
+		}
+		
+		PublisherPublicKeyDigest publisher = library.keyManager().getDefaultKeyID();
+		PrivateKey signingKey = library.keyManager().getSigningKey(publisher);
+		KeyLocator locator = library.keyManager().getKeyLocator(signingKey);
+		try {
+			co = new ContentObject(name, new SignedInfo(publisher, locator), contents.getBytes(), signingKey);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		}
+		saveContent(co);
+		return null;
+	}
 }
