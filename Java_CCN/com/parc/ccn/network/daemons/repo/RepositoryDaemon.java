@@ -160,7 +160,7 @@ public class RepositoryDaemon extends Daemon {
 	
 	public void initialize(String[] args, Daemon daemon) {
 		Library.logger().info("Starting " + _daemonName + "...");				
-		
+		Library.logger().setLevel(Level.INFO);		
 		try {
 			_library = CCNLibrary.open();
 			_writer = new CCNWriter(_library);
@@ -196,12 +196,19 @@ public class RepositoryDaemon extends Daemon {
 				 */
 				if (args[i].equals("-bb"))
 					_repo = new BitBucketRepository();
+				
+				if(args[i].equals("-singlefile"))
+					_repo = new RFSLogImpl();
+				
+				if(args[i].equals("-multifile"))
+					_repo = new RFSImpl();
 			}
 
-			if (_repo == null)
-				_repo = new RFSImpl();
-
-			_repo.initialize(args);
+			
+			if (_repo == null)	// default lower half
+				_repo = new RFSLogImpl();
+			
+			_repo.initialize(args, _library);
 			
 			// Create callback threadpool
 			_threadpool = (ThreadPoolExecutor)Executors.newCachedThreadPool();
@@ -218,7 +225,7 @@ public class RepositoryDaemon extends Daemon {
 	protected void usage() {
 		try {
 			String msg = "usage: " + this.getClass().getName() + 
-			_repo.getUsage() + "[-start | -stop | -interactive] [-log <level>]";
+			_repo.getUsage() + "[-start | -stop | -interactive] [-log <level>] [-multifile | -singlefile]";
 			System.out.println(msg);
 			Library.logger().severe(msg);
 		} catch (Exception e) {

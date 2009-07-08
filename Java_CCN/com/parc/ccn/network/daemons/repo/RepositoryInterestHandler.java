@@ -3,7 +3,6 @@ package com.parc.ccn.network.daemons.repo;
 import java.io.IOException;
 import java.security.SignatureException;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -35,21 +34,19 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	public int handleInterests(ArrayList<Interest> interests) {
 		for (Interest interest : interests) {
 			try {
-				byte[] marker = interest.name().component(interest.name().count() - 2);
-				Library.logger().fine("marker is " + new String(marker) + " in " + interest.name());
-				if (Arrays.equals(marker, CCNBase.REPO_START_WRITE)) {
+				if (interest.name().contains(CCNBase.REPO_START_WRITE)) {
 					startReadProcess(interest);
 				} else if(interest.name().contains(CCNNameEnumerator.NEMARKER)){
-					nameEnumeratorResponse(interest);	
-				} else if(Arrays.equals(marker, CCNBase.REPO_GET_HEADER)){
+					nameEnumeratorResponse(interest);
+				} else if(interest.name().contains(CCNBase.REPO_GET_HEADER)){
 					getHeader(interest);
+				}
+				
+				ContentObject content = _daemon.getRepository().getContent(interest);
+				if (content != null) {
+					_library.put(content);
 				} else {
-					ContentObject content = _daemon.getRepository().getContent(interest);
-					if (content != null) {
-						_library.put(content);
-					} else {
-						Library.logger().fine("Unsatisfied interest: " + interest.name());
-					}
+					Library.logger().fine("Unsatisfied interest: " + interest.name());
 				}
 			} catch (Exception e) {
 				e.printStackTrace();

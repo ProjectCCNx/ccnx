@@ -75,10 +75,12 @@ vlc_module_end();
  * Local prototypes
  *****************************************************************************/
 #define CCN_FIFO_MAX (2 * 1024 * 1024)
+#define CCN_VERSION_TIMEOUT 5000
 struct access_sys_t
 {
     vlc_url_t  url;
     block_fifo_t *p_fifo;
+    int timeouts;
     struct ccn *ccn;
     struct ccn_closure *incoming;
 };
@@ -88,7 +90,7 @@ incoming_content(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,
                  struct ccn_upcall_info *info);
 /*****************************************************************************
- * Open: 
+ * CCNOpen: 
  *****************************************************************************/
 static int CCNOpen(vlc_object_t *p_this)
 {
@@ -132,6 +134,11 @@ static int CCNOpen(vlc_object_t *p_this)
     if (i_ret < 0) {
         goto exit_error;
     }
+    i_ret = ccn_resolve_version(p_sys->ccn, p_name, CCN_V_HIGHEST, CCN_VERSION_TIMEOUT);
+    /* XXX: should check for error here, but ccn_resolve_version reports an error
+     * if there is no versioned instance of the name, when it should report
+     * that a version couldn't be found
+     */
     i_ret = ccn_name_append_numeric(p_name, CCN_MARKER_SEQNUM, 0);
     if (i_ret < 0) {
         goto exit_error;
@@ -201,6 +208,10 @@ static block_t *CCNBlock(access_t *p_access)
         msg_Dbg(p_access, "CCN.Block eof");
         return NULL;
     }
+
+    if (!vlc_object_alive(p_access))
+        return NULL;
+
     p_block = block_FifoGet(p_sys->p_fifo);
     if (p_block == NULL)
         return NULL;
@@ -389,8 +400,22 @@ incoming_content(struct ccn_closure *selfp,
             return(CCN_UPCALL_RESULT_OK);
         }
         msg_Dbg(p_access, "CCN upcall reexpress -- timed out");
+        if (p_sys->timeouts > 5) {
+            msg_Dbg(p_access, "CCN upcall reexpress -- too many reexpressions");
+            vlc_object_kill(p_access);
+            if (p_sys->p_fifo)
+                block_FifoWake(p_sys->p_fifo);
+            return(CCN_UPCALL_RESULT_OK);
+        }
+        p_sys->timeouts++;
         return(CCN_UPCALL_RESULT_REEXPRESS); // XXX - may need to reseed bloom filter
     case CCN_UPCALL_CONTENT_UNVERIFIED:
+        if (selfp != p_sys->incoming) {
+            msg_Dbg(p_access, "CCN unverified content on dead closure 0x%08x", (int)selfp);
+            return(CCN_UPCALL_RESULT_OK);
+        }
+        return (CCN_UPCALL_RESULT_VERIFY);
+
     case CCN_UPCALL_CONTENT:
         if (selfp != p_sys->incoming) {
             msg_Dbg(p_access, "CCN content on dead closure 0x%08x", (int)selfp);
@@ -427,6 +452,8 @@ incoming_content(struct ccn_closure *selfp,
         return(CCN_UPCALL_RESULT_OK);
     }
 #endif
+
+    p_sys->timeouts = 0;
 
     /* was this the last block? */
     /* TODO:  the test below should get refactored into the library */
