@@ -166,6 +166,7 @@ public class PublicKeyObjectTestRepo {
 		PublicKeyObject pko = new PublicKeyObject(keyName, key, library);
 		pko.saveToRepository();
 		Assert.assertTrue(VersioningProfile.isVersioned(pko.getName()));
+		Library.logger().info("Saved " + pko.getName() + " to repo, now trying to read.");
 		// should update in another thread
 		PublicKeyObject pkoread = new PublicKeyObject(keyName, null); // new library
 		Assert.assertTrue(pkoread.ready());
