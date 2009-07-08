@@ -6,3 +6,4 @@ testout/
 CCN_DEBUG_DATA/
 pmd-eclipse.log
 junit*.properties
+repotest/
