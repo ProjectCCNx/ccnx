@@ -96,6 +96,8 @@ public class CCNVersionedInputStream extends CCNInputStream {
 			_baseName = SegmentationProfile.segmentRoot(result.name());
 			Library.logger().info("getFirstBlock: Have version information, now querying first segment.");
 			return super.getFirstBlock(); // now that we have the latest version, go back for the first block.
+		} else {
+			Library.logger().info("getFirstBlock: no block available for latest version of " + _baseName);
 		}
 		return result;
 	}

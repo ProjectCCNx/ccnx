@@ -71,6 +71,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 		_daemon = daemon;
 		_library = daemon.getLibrary();
 		_timer = new Date().getTime();
+		Library.logger().info("Starting up repository listener on original interest: " + origInterest + " interest " + interest);
 	}
 	
 	public Interest handleContent(ArrayList<ContentObject> results,

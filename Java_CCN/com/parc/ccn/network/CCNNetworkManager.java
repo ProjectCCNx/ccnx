@@ -529,7 +529,7 @@ public class CCNNetworkManager implements Runnable {
 	}
 	
 	public ContentObject get(Interest interest, long timeout) throws IOException, InterruptedException {
-		Library.logger().fine("get: " + interest.name());
+		Library.logger().fine("get: " + interest);
 		InterestRegistration reg = new InterestRegistration(this, interest, null, null);
 		expressInterest(reg);
 		Library.logger().finest("blocking for " + interest.name() + " on " + reg.sema);

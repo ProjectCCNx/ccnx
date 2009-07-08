@@ -44,9 +44,10 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 				
 				ContentObject content = _daemon.getRepository().getContent(interest);
 				if (content != null) {
+					Library.logger().finest("Satisfying interest: " + interest + " with content " + content.name());
 					_library.put(content);
 				} else {
-					Library.logger().fine("Unsatisfied interest: " + interest.name());
+					Library.logger().fine("Unsatisfied interest: " + interest);
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
