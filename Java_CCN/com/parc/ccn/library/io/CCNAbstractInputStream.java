@@ -25,7 +25,7 @@ import com.parc.ccn.security.crypto.UnbufferedCipherInputStream;
 
 public abstract class CCNAbstractInputStream extends InputStream {
 
-	protected static final int MAX_TIMEOUT = 2000;
+	protected static final int MAX_TIMEOUT = 3000;
 
 	protected CCNLibrary _library;
 
