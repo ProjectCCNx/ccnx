@@ -1,7 +1,6 @@
 package test.ccn.security.access;
 
 
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 
 import junit.framework.Assert;
