@@ -364,6 +364,10 @@ static void *ccn_event_thread(vlc_object_t *p_this)
     while (res >= 0 && vlc_object_alive(p_access)) {
         res = ccn_run(ccn, 500);
     }
+    if (res < 0) {
+        vlc_object_kill(p_access);
+        block_FifoWake(p_sys->p_fifo);
+    }
 }
 
 enum ccn_upcall_res
