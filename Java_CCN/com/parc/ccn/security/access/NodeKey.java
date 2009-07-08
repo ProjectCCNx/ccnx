@@ -29,6 +29,11 @@ public class NodeKey {
 	public static final String DEFAULT_NODE_KEY_ALGORITHM = "AES";
 	
 	/**
+	 * Default key label for key derivation function. 
+	 */
+	public static final String DEFAULT_KEY_LABEL = "NodeKey";
+	
+	/**
 	 * The node this key is associated with, with _access_ information stripped.
 	 */
 	private ContentName _nodeName;
@@ -74,7 +79,7 @@ public class NodeKey {
 		_nodeKey = new SecretKeySpec(derivedNodeKey, DEFAULT_NODE_KEY_ALGORITHM);
 	}
 	
-	public NodeKey computeDescendantNodeKey(ContentName descendantNodeName, String keyLabel) throws InvalidKeyException, XMLStreamException {
+	public NodeKey computeDescendantNodeKey(ContentName descendantNodeName) throws InvalidKeyException, XMLStreamException {
 		if (nodeName().equals(descendantNodeName)) {
 			Library.logger().info("Asked to compute ourselves as our own descendant (node key " + nodeName() +"), returning this.");
 			return this;
@@ -82,7 +87,7 @@ public class NodeKey {
 		if (!nodeName().isPrefixOf(descendantNodeName)) {
 			throw new IllegalArgumentException("Node " + descendantNodeName + " is not a child of this node " + nodeName());
 		}
-		byte [] derivedKey = KeyDerivationFunction.DeriveKeyForNode(nodeName(), nodeKey().getEncoded(), keyLabel, descendantNodeName);
+		byte [] derivedKey = KeyDerivationFunction.DeriveKeyForNode(nodeName(), nodeKey().getEncoded(), DEFAULT_KEY_LABEL, descendantNodeName);
 		return new NodeKey(descendantNodeName, derivedKey, storedNodeKeyName(), storedNodeKeyID());
 	}
 	
