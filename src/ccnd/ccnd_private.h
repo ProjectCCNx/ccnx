@@ -28,6 +28,7 @@
  */
 struct ccn_charbuf;
 struct ccn_indexbuf;
+struct ccn_keystore;
 struct hashtb;
 
 /*
@@ -63,6 +64,7 @@ struct ccnd {
     struct ccn_scheduled_event *age;
     struct ccn_scheduled_event *clean;
     struct ccn_scheduled_event *age_forwarding;
+    const char *portstr;            /* "main" port number */
     int local_listener_fd;
     int httpd_listener_fd;
     int udp4_fd;
@@ -98,7 +100,9 @@ struct ccnd {
     int mtu;                        /* Target size for stuffing interests */
     int flood;                      // XXX - Temporary, for transition period
     unsigned interest_faceid;       /* for self_ref internal client */
+    const char *progname;           /* our name, for locating helpers */
     struct ccn *internal_client;    /* internal client */
+    struct ccn_keystore *internal_keys; /* the internal client's keys */
     struct face *face0;             /* special face for internal client */
     struct ccn_scheduled_event *internal_client_refresh;
     unsigned data_pause_microsec;   /* tunable, see choose_face_delay() */
@@ -242,6 +246,7 @@ struct propagating_entry {
  * The internal client is for communication between the ccnd and other
  * components, using (of course) ccn protocols.
  */
+int ccnd_init_internal_keystore(struct ccnd *);
 int ccnd_internal_client_start(struct ccnd *);
 void ccnd_internal_client_stop(struct ccnd *);
 

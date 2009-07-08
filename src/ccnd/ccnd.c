@@ -2789,7 +2789,7 @@ ccnd_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
 }
 
 static struct ccnd *
-ccnd_create(void)
+ccnd_create(const char *progname)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -2812,6 +2812,9 @@ ccnd_create(void)
     
     sockname = ccnd_get_local_sockname();
     h = calloc(1, sizeof(*h));
+    if (h == NULL)
+        exit(1);
+    h->progname = progname;
     h->skiplinks = ccn_indexbuf_create();
     param.finalize_data = h;
     h->face_limit = 1024; /* soft limit */
@@ -2836,6 +2839,12 @@ ccnd_create(void)
     h->sched = ccn_schedule_create(h, &h->ticktock);
     h->oldformatcontentgrumble = 1;
     h->data_pause_microsec = 2000;
+    portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
+    if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
+        portstr = "4485";
+    h->portstr = portstr;
+    /* Do keystore setup early, it takes a while the first time */
+    ccnd_init_internal_keystore(h);
     fd = create_local_listener(sockname, 42);
     if (fd == -1) fatal_err(sockname);
     ccnd_msg(h, "listening on %s", sockname);
@@ -2880,9 +2889,6 @@ ccnd_create(void)
     else
         h->flood = 1;
     h->udp4_fd = h->udp6_fd = -1;
-    portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
-    if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
-        portstr = "4485";
     for (whichpf = 0; whichpf < 2; whichpf++) {
         hints.ai_family = whichpf ? PF_INET6 : PF_INET;
         res = getaddrinfo(NULL, portstr, &hints, &addrinfo);
@@ -2942,7 +2948,7 @@ main(int argc, char **argv)
 {
     struct ccnd *h;
     signal(SIGPIPE, SIG_IGN);
-    h = ccnd_create();
+    h = ccnd_create(argv[0]);
     ccnd_stats_httpd_start(h);
     enroll_face(h, h->face0);
     ccnd_internal_client_start(h);

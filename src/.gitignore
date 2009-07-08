@@ -1,6 +1,7 @@
 *.out
 ccnd/anything.ccnb
 ccnd/ccnd
+ccnd/ccnd-init-keystore-helper
 ccnd/ccndsmoketest
 ccnd/contenthash.ccnb
 ccnd/contenthash.out

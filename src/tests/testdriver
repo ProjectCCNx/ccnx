@@ -23,6 +23,9 @@ export PATH=.:../ccnd:../libexec:../cmd:../lib:$PATH:./stubs
 ls /tmp/.ccnd.sock.* 2>/dev/null && { echo There is something else happening, waiting one minute ... ; sleep 60; }
 ls /tmp/.ccnd.sock.* 2>/dev/null && exit 1
 
+# If we need to generate key pairs for the tests, make them smallish
+export RSA_KEYSIZE=512
+
 # Keep track of failed tests and skipped tests
 : > FAILING
 : > SKIPPED

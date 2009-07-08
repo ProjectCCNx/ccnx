@@ -6,6 +6,12 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/errno.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/ccn_private.h>
@@ -23,19 +29,19 @@ ccnd_answer_req(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,
                  struct ccn_upcall_info *info)
 {
-    struct ccn_charbuf *temp = NULL;
     struct ccn_charbuf *msg = NULL;
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *keylocator = NULL;
     struct ccn_charbuf *signed_info = NULL;
-    struct ccn_keystore *keystore = NULL;
     struct ccn_charbuf *reply_body = NULL;
     struct ccnd *ccnd = NULL;
+    struct ccn_keystore *keystore = NULL;
     unsigned char dummy = 0;
     int res = 0;
     int start = 0;
     int end = 0;
     int morecomps = 0;
+    
     switch (kind) {
         case CCN_UPCALL_FINAL:
             free(selfp);
@@ -67,13 +73,8 @@ ccnd_answer_req(struct ccn_closure *selfp,
             goto Bail;
     }
     
-    keystore = ccn_keystore_create();
-    temp = ccn_charbuf_create();
-    ccn_charbuf_putf(temp, "%s/.ccn/.ccn_keystore", getenv("HOME"));
-    res = ccn_keystore_init(keystore,
-                            ccn_charbuf_as_string(temp),
-                            "Th1s1sn0t8g00dp8ssw0rd.");
-    if (res != 0)
+    keystore = ccnd->internal_keys;
+    if (keystore == NULL)
         goto Bail;
     msg = ccn_charbuf_create();
     name = ccn_charbuf_create();
@@ -116,13 +117,11 @@ ccnd_answer_req(struct ccn_closure *selfp,
 Bail:
     res = CCN_UPCALL_RESULT_ERR;
 Finish:
-    ccn_charbuf_destroy(&temp);
     ccn_charbuf_destroy(&msg);
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&keylocator);
     ccn_charbuf_destroy(&reply_body);
     ccn_charbuf_destroy(&signed_info);
-    ccn_keystore_destroy(&keystore);
     return(res);
 }
 
@@ -173,6 +172,88 @@ ccnd_uri_listen(struct ccnd *ccnd, const char *uri, ccn_handler p, intptr_t intd
     ccn_indexbuf_destroy(&comps);
 }
 
+#ifndef CCN_PATH_VAR_TMP
+#define CCN_PATH_VAR_TMP "/var/tmp"
+#endif
+
+/*
+ * This is used to shroud the contents of the keystore, which mainly serves
+ * to add integrity checking and defense against accidental misuse.
+ * The file permissions serve for restricting access to the private keys.
+ */
+#ifndef CCND_KEYSTORE_PASS
+#define CCND_KEYSTORE_PASS "\010\043\103\375\327\237\152\351\155"
+#endif
+
+int
+ccnd_init_internal_keystore(struct ccnd *ccnd)
+{
+    struct ccn_charbuf *temp = NULL;
+    struct ccn_charbuf *cmd = NULL;
+    struct ccn_keystore *keystore = NULL;
+    struct stat statbuf;
+    int res = -1;
+    size_t save;
+    char *keystore_path = NULL;
+    FILE *passfile;
+    
+    if (ccnd->internal_keys != NULL)
+        return(0);
+    keystore = ccn_keystore_create();
+    temp = ccn_charbuf_create();
+    cmd = ccn_charbuf_create();
+    ccn_charbuf_putf(temp, CCN_PATH_VAR_TMP "/.ccn-user%d/", (int)geteuid());
+    res = stat(ccn_charbuf_as_string(temp), &statbuf);
+    if (res == -1) {
+        if (errno == ENOENT) {
+            res = mkdir(ccn_charbuf_as_string(temp), 0700);
+            if (res != 0) {
+                perror(ccn_charbuf_as_string(temp));
+                goto Finish;
+            }
+        }
+        else {
+            perror(ccn_charbuf_as_string(temp));
+            goto Finish;
+        }
+    }
+    save = temp->length;
+    ccn_charbuf_putf(temp, ".ccnd_keystore_%s", ccnd->portstr);
+    keystore_path = strdup(ccn_charbuf_as_string(temp));
+    res = ccn_keystore_init(keystore, keystore_path, CCND_KEYSTORE_PASS);
+    if (res == 0) {
+        ccnd->internal_keys = keystore;
+        keystore = NULL;
+        goto Finish;
+    }
+    /* No stored keystore that we can access; create one. */
+    temp->length = save;
+    ccn_charbuf_putf(temp, "p");
+    passfile = fopen(ccn_charbuf_as_string(temp), "wb");
+    fprintf(passfile, "%s", CCND_KEYSTORE_PASS);
+    fclose(passfile);
+    ccn_charbuf_putf(cmd, "%s-init-keystore-helper %s",
+                     ccnd->progname, keystore_path);
+    res = system(ccn_charbuf_as_string(cmd));
+    if (res != 0) {
+        perror(ccn_charbuf_as_string(cmd));
+        goto Finish;
+    }
+    res = ccn_keystore_init(keystore, keystore_path, CCND_KEYSTORE_PASS);
+    if (res == 0) {
+        ccnd->internal_keys = keystore;
+        keystore = NULL;
+    }
+Finish:
+    ccn_charbuf_destroy(&temp);
+    ccn_charbuf_destroy(&cmd);
+    if (keystore_path != NULL)
+        free(keystore_path);
+    if (keystore != NULL)
+        ccn_keystore_destroy(&keystore);
+    return(res);
+}
+
 int
 ccnd_internal_client_start(struct ccnd *ccnd)
 {
@@ -181,6 +262,8 @@ ccnd_internal_client_start(struct ccnd *ccnd)
         return(-1);
     if (ccnd->face0 == NULL)
         abort();
+    if (ccnd_init_internal_keystore(ccnd) < 0)
+        return(-1);
     ccnd->internal_client = h = ccn_create();
     ccnd_uri_listen(ccnd, "ccn:/ccn/ping", &ccnd_answer_req, 0);
     ccnd_uri_listen(ccnd, "ccn:/ccn/reg/self", &ccnd_answer_req, REG_SELF + 1);
@@ -199,5 +282,4 @@ ccnd_internal_client_stop(struct ccnd *ccnd)
         ccnd->internal_client_refresh->evint = 0;
         ccnd->internal_client_refresh = NULL;
     }
-        
 }

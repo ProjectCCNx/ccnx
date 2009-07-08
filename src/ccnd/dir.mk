@@ -3,14 +3,15 @@
 LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn
 CCNLIBDIR = ../lib
 
-INSTALLED_PROGRAMS = ccnd ccndsmoketest
+INSTALLED_PROGRAMS = ccnd ccndsmoketest ccnd-init-keystore-helper
 PROGRAMS = $(INSTALLED_PROGRAMS) smoketestccnd
 DEBRIS = anything.ccnb contenthash.ccnb contentmishash.ccnb
 
 BROKEN_PROGRAMS = 
 CSRC = ccnd.c ccnd_stats.c ccnd_internal_client.c ccndsmoketest.c
 HSRC = ccnd_private.h
-SCRIPTSRC = testbasics fortunes.ccnb contenthash.ref anything.ref
+SCRIPTSRC = testbasics fortunes.ccnb contenthash.ref anything.ref \
+            ccnd-init-keystore-helper.sh
  
 default: $(PROGRAMS)
 
@@ -21,6 +22,10 @@ $(PROGRAMS): $(CCNLIBDIR)/libccn.a
 CCND_OBJ = ccnd.o ccnd_stats.o ccnd_internal_client.o
 ccnd: $(CCND_OBJ) 
 	$(CC) $(CFLAGS) -o $@ $(CCND_OBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+
+ccnd-init-keystore-helper: ccnd-init-keystore-helper.sh
+	sed -e 's@/bin/sh@'`which sh`'@g' ccnd-init-keystore-helper.sh > $@
+	chmod +x $@
 
 # XXX - smoketestccnd is built for compatibility.
 smoketestccnd: ccndsmoketest
