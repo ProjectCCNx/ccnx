@@ -413,6 +413,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	public void clearUnmatchedInterests() {
+		Library.logger().info("Clearing " + _unmatchedInterests.size() + " unmatched interests.");
 		_unmatchedInterests.clear();
 	}
 	

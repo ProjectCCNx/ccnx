@@ -106,8 +106,8 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	@Override
 	public void addNameSpace(ContentName name) throws IOException {
 		super.addNameSpace(name);
-		if (_initialized)
-			return;
+//		if (_initialized)
+//			return;
 		
 		_initialized = true;
 		_header = name;
