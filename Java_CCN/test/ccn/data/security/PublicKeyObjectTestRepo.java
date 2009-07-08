@@ -32,7 +32,7 @@ import com.parc.ccn.data.security.PublicKeyObject;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
-public class PublicKeyObjectTest {
+public class PublicKeyObjectTestRepo {
 
 	public static KeyPair pair1 = null;
 	public static KeyPair pair2 = null;
