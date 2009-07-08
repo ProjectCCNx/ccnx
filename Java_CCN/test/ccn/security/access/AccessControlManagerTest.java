@@ -12,7 +12,7 @@ import com.parc.ccn.library.profiles.VersioningProfile;
 
 import test.ccn.data.util.Flosser;
 
-public class AccesControlManagerTest {
+public class AccessControlManagerTest {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
