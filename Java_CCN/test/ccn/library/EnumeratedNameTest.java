@@ -18,7 +18,7 @@ import com.parc.ccn.data.MalformedContentNameStringException;
 
 
 
-import com.parc.ccn.library.CCNLibrary;
+//import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.EnumeratedNameList;
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 
@@ -37,26 +37,32 @@ public class EnumeratedNameTest extends RepoTestBase {
 	Random rand = new Random();
 	static final String UTF8 = "UTF-8";
 	
-	String directoryString = _globalPrefix + "/directory1";
-	ContentName directory;
-	String name1String = "name1";
-	ContentName name1;
-	String name2String = "name2";
-	ContentName name2;
-	String name3String = "name3";
-	ContentName name3;
-	
-	
-	String prefix1StringError = "/park.com/csl/ccn/repositories";
+	static final String directoryString = _globalPrefix + "/directory1";
+	static ContentName directory;
+	static final String name1String = "name1";
+	static ContentName name1;
+	static final String name2String = "name2";
+	static ContentName name2;
+	static final String name3String = "name3";
+	static ContentName name3;
+		
+	static String prefix1StringError = "/park.com/csl/ccn/repositories";
 	ArrayList<ContentName> names;
-	ContentName prefix1;
-	ContentName brokenPrefix;
+	static ContentName prefix1;
+	static ContentName brokenPrefix;
 	ContentName c1;
 	ContentName c2;
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-	
+		//assign content names from strings to content objects
+		
+		directory = ContentName.fromNative(directoryString);
+		name1 = ContentName.fromNative(directory, name1String);
+		name3 = ContentName.fromNative(directory, name3String);
+		name2 = ContentName.fromNative(directory, name2String);
+		prefix1 = ContentName.fromNative(_globalPrefix);
+		brokenPrefix = ContentName.fromNative(prefix1StringError);
 	}
 	
 	@Test
@@ -66,10 +72,7 @@ public class EnumeratedNameTest extends RepoTestBase {
 		System.out.println("Starting Enumerated Name Test");
 		
 		Library.logger().info("*****************Starting Enumerated Name Test");
-		
-		//assign content names from strings to content objects
-		testAssignContentNames();
-	
+			
 		Assert.assertNotNull(directory);
 		Assert.assertNotNull(name1);
 		Assert.assertNotNull(name2);
@@ -81,42 +84,45 @@ public class EnumeratedNameTest extends RepoTestBase {
 		testList = new EnumeratedNameList(prefix1, putLibrary);
 		
 		Library.logger().info("*****************assert creation of library and enumeratednamelist object");
-		//verify that everything is set up
+		//verify that the class and library is setup
 		Assert.assertNotNull(putLibrary);
 		Assert.assertNotNull(testList);
 
 		Library.logger().info("*****************assert creation of prefix");
-		//Verify object created properly
+		//Verify that the object has been created with the right prefix
 		ContentName prefixTest = testList.getName();
 		Assert.assertNotNull(prefixTest);
 		Library.logger().info("***************** Prefix is "+ prefixTest.toString());
 		Assert.assertEquals(prefixTest, prefix1);
 		Assert.assertNotSame(brokenPrefix, prefixTest);
-
 		
 		//run it on a name that isn't there and make sure it is empty
 		
 //		//failing
-//		testList.waitForData();
+		//waits for new data 
+		testList.waitForData();
 				
 		Library.logger().info("****************** adding name1 to repo");
+		
 		// adding content to repo
 		addContentToRepo(name1);
 		
-//		//failing
-//		ArrayList<byte []> returnedBytes = testList.getNewData();
-		
 		//testing that new data exists
 		Assert.assertNotNull(testList.hasNewData());
-				
+
 //		//failing
-//		Assert.assertNotNull(returnedBytes);
-//		Assert.assertEquals(testList.getNewData(), returnedBytes.size());
-//		Assert.assertEquals(name1String.getBytes(UTF8), returnedBytes.get(0));
-//		
-//		//failing
-//		Assert.assertTrue(testList.hasNewData());
+		//Testing that hasNewData returns true
+		Assert.assertTrue(testList.hasNewData());
 		
+		//failing
+		//gets new data
+		ArrayList<byte []> returnedBytes = testList.getNewData();
+						
+//		//failing
+		Assert.assertNotNull(returnedBytes);
+		Assert.assertEquals(testList.getNewData(), returnedBytes.size());
+		Assert.assertEquals(name1String.getBytes(UTF8), returnedBytes.get(0));
+				
 		//testing that children exist
 		Assert.assertNotNull(testList.hasChildren());
 		
@@ -124,25 +130,12 @@ public class EnumeratedNameTest extends RepoTestBase {
 		Assert.assertNotNull(testList.hasChild(name1String));
 	
 //		//failing
-//		Assert.assertTrue(testList.hasChild(name1String));
+		//Tests to see if that string name exists
+		Assert.assertTrue(testList.hasChild(name1String));
+		
 				
-		//Library.logger().info("adding name2 to repo");
-		//addContentToRepo(name2);
-
 	}
 	
-
-
-	private void testAssignContentNames() throws MalformedContentNameStringException {
-
-		directory = ContentName.fromNative(directoryString);
-		name1 = ContentName.fromNative(directory, name1String);
-		name3 = ContentName.fromNative(directory, name3String);
-		name2 = ContentName.fromNative(directory, name2String);
-		prefix1 = ContentName.fromNative(_globalPrefix);
-		brokenPrefix = ContentName.fromNative(prefix1StringError);		
-	}
-
 	
 	/*
 	 * Adds data to the repo for testing
