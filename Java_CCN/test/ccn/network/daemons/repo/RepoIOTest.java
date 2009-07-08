@@ -1,6 +1,5 @@
 package test.ccn.network.daemons.repo;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -23,12 +22,12 @@ import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.library.io.CCNDescriptor;
+import com.parc.ccn.library.io.CCNInputStream;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.network.daemons.repo.RFSImpl;
 import com.parc.ccn.network.daemons.repo.Repository;
-import com.parc.ccn.network.daemons.repo.RepositoryException;
 
 /**
  * 
@@ -118,19 +117,6 @@ public class RepoIOTest extends RepoTestBase {
 	}
 	
 	@Test
-	public void testWriteToRepo() throws Exception {
-		System.out.println("Testing writing streams to repo");
-		Thread.sleep(5000);
-		for (int i = 0; i < 40; i++) {
-			byte [] testData = new byte[100];
-			System.arraycopy(data, i * 100, testData, 0, 100);
-			ContentName name = SegmentationProfile.segmentName(ContentName.fromNative("/testNameSpace/stream"), i);
-			Assert.assertTrue(checkDataFromFile(new File(_repoTestDir + File.separator + RFSImpl.encodeName(name).toString()), 
-					testData));
-		}
-	}
-	
-	@Test
 	public void testReadFromRepo() throws Exception {
 		System.out.println("Testing reading a stream from the repo");
 		Thread.sleep(5000);
@@ -185,15 +171,6 @@ public class RepoIOTest extends RepoTestBase {
 		Assert.assertEquals(data, new String(testContent.content()));
 		Assert.assertTrue(testContent.signedInfo().getPublisherKeyID().equals(publisher));
 	}
-	protected boolean checkDataFromFile(File testFile, byte[] data) throws RepositoryException {
-		Assert.assertTrue(testFile.isDirectory());
-		File[] files = testFile.listFiles();
-		Assert.assertFalse(files == null);
-		ContentObject co = RFSImpl.getContentFromFile(files[0]);
-		Assert.assertTrue(co != null);
-		Assert.assertTrue(Arrays.equals(data, co.content()));
-		return true;
-	}
 	
 	protected void checkNameSpace(String contentName, boolean expected) throws Exception {
 		ContentName name = ContentName.fromNative(contentName);
@@ -207,14 +184,28 @@ public class RepoIOTest extends RepoTestBase {
 			return;
 		}
 		byte [] data = "Testing 1 2 3".getBytes();
-		ros.write(data, 0, data.length);
-		ContentName baseName = ros.getBaseName();
-		ros.close();
+		ContentName baseName = null;
+		try {
+			ros.write(data, 0, data.length);
+			baseName = ros.getBaseName();
+			ros.close();
+		} catch (IOException ioe) {
+			if (expected)
+				Assert.fail(ioe.getMessage());
+			return;
+		}
+		if (!expected)
+			Assert.fail("Got a repo response on a bad namespace");
 		Thread.sleep(1000);
-		File testFile = new File("repotest" + RFSImpl.encodeName(baseName).toString());
-		if (expected)
-			Assert.assertTrue(testFile.exists());
-		else
-			Assert.assertFalse(testFile.exists());
+
+		CCNInputStream input = new CCNInputStream(baseName, getLibrary);
+		byte[] buffer = new byte["Testing 1 2 3".length()];
+		if (expected) {
+			Assert.assertTrue(-1 != input.read(buffer));
+			Assert.assertArrayEquals(buffer, "Testing 1 2 3".getBytes());
+		} else {
+			Assert.assertEquals(-1, input.read(buffer));
+		}
+		input.close();
 	}
 }

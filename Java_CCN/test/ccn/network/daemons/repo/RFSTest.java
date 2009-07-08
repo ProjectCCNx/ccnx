@@ -21,6 +21,7 @@ import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.network.daemons.repo.RFSImpl;
+import com.parc.ccn.network.daemons.repo.RFSLogImpl;
 import com.parc.ccn.network.daemons.repo.Repository;
 import com.parc.ccn.network.daemons.repo.RepositoryException;
 
@@ -34,6 +35,18 @@ import com.parc.ccn.network.daemons.repo.RepositoryException;
  */
 
 public class RFSTest extends RepoTestBase {
+	
+	Repository repomulti;
+	Repository repolog;
+	
+	private ContentName clashName;
+	private ContentName longName;
+	private ContentName badCharName;
+	private ContentName badCharLongName;
+	private ContentName versionedName;
+	private ContentName segmentedName1;
+	private ContentName segmentedName223;
+	private ContentName versionedNameNormal;
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -53,6 +66,7 @@ public class RFSTest extends RepoTestBase {
 	@Before
 	public void setUp() throws Exception {
 		super.setUp();
+		initRepos();
 	}
 	
 	/*
@@ -76,10 +90,41 @@ public class RFSTest extends RepoTestBase {
 		Assert.assertTrue(testFile.exists());
 	} */
 	
+	
+	public void initRepos() throws Exception{
+		initRepoMulti();
+		initRepoLog();
+	}
+		
+	public void initRepoMulti() throws Exception {
+		repomulti = new RFSImpl();
+		repomulti.initialize(new String[] {"-root", _fileTestDir, "-local", _repoName, "-global", _globalPrefix, "-multifile"}, putLibrary);
+	}
+		
+	public void initRepoLog() throws Exception {
+		repolog = new RFSLogImpl();
+		repolog.initialize(new String[] {"-root", _fileTestDir, "-local", _repoName, "-global", _globalPrefix, "-singlefile"}, putLibrary);
+	}
+	
 	@Test
 	public void testRepo() throws Exception {
-		Repository repo = new RFSImpl();
-		repo.initialize(new String[] {"-root", _fileTestDir, "-local", _repoName, "-global", _globalPrefix});
+		//first test the multifile repo
+		System.out.println("testing multifile repo");
+		test(repomulti);
+		initRepoMulti();
+		testReinitialization(repomulti);
+		
+		//now test the single file version
+		System.out.println("testing single file repo");
+		test(repolog);
+		initRepoLog();
+		testReinitialization(repolog);
+	}
+	
+	
+	public void test(Repository repo) throws Exception{
+		//Repository repo = new RFSImpl();
+		//repo.initialize(new String[] {"-root", _fileTestDir, "-local", _repoName, "-global", _globalPrefix});
 		
 		System.out.println("Repotest - Testing basic data");
 		ContentName name = ContentName.fromNative("/repoTest/data1");
@@ -93,7 +138,7 @@ public class RFSTest extends RepoTestBase {
 		 */
 		
 		System.out.println("Repotest - Testing clashing data");
-		ContentName clashName = ContentName.fromNative("/" + RFSImpl.META_DIR + "/repoTest/data1");
+		clashName = ContentName.fromNative("/" + RFSImpl.META_DIR + "/repoTest/data1");
 		repo.saveContent(ContentObject.buildContentObject(clashName, "Clashing Name".getBytes()));
 		checkData(repo, clashName, "Clashing Name");
 		
@@ -127,7 +172,7 @@ public class RFSTest extends RepoTestBase {
 		String tooLongName = "0123456789";
 		for (int i = 0; i < 30; i++)
 			tooLongName += "0123456789";
-		ContentName longName = ContentName.fromNative("/repoTest/" + tooLongName);
+		longName = ContentName.fromNative("/repoTest/" + tooLongName);
 		repo.saveContent(ContentObject.buildContentObject(longName, "Long name!".getBytes()));
 		checkData(repo, longName, "Long name!");
 		digest2 = ContentObject.buildContentObject(longName, "Testing2".getBytes());
@@ -152,10 +197,10 @@ public class RFSTest extends RepoTestBase {
 		}
 		
 		System.out.println("Repotest - Testing invalid characters in name");
-		ContentName badCharName = ContentName.fromNative("/repoTest/" + "*x?y<z>u");
+		badCharName = ContentName.fromNative("/repoTest/" + "*x?y<z>u");
 		repo.saveContent(ContentObject.buildContentObject(badCharName, "Funny characters!".getBytes()));
 		checkData(repo, badCharName, "Funny characters!");
-		ContentName badCharLongName = ContentName.fromNative("/repoTest/" + tooLongName + "*x?y<z>u");
+		badCharLongName = ContentName.fromNative("/repoTest/" + tooLongName + "*x?y<z>u");
 		repo.saveContent(ContentObject.buildContentObject(badCharLongName, "Long and funny".getBytes()));
 		checkData(repo, badCharLongName, "Long and funny");
 		
@@ -194,19 +239,19 @@ public class RFSTest extends RepoTestBase {
 				new byte [][] {"bbb".getBytes(), "ccc".getBytes()}, 2), "ddd");
 		
 		System.out.println("Repotest - testing version and segment files");
-		ContentName versionedName = ContentName.fromNative("/repoTest/testVersion");
+		versionedName = ContentName.fromNative("/repoTest/testVersion");
 		versionedName = VersioningProfile.versionName(versionedName);
 		repo.saveContent(ContentObject.buildContentObject(versionedName, "version".getBytes()));
 		checkData(repo, versionedName, "version");
-		ContentName segmentedName1 = SegmentationProfile.segmentName(versionedName, 1);
+		segmentedName1 = SegmentationProfile.segmentName(versionedName, 1);
 		repo.saveContent(ContentObject.buildContentObject(segmentedName1, "segment1".getBytes()));
 		checkData(repo, segmentedName1, "segment1");
-		ContentName segmentedName223 = SegmentationProfile.segmentName(versionedName, 223);
+		segmentedName223 = SegmentationProfile.segmentName(versionedName, 223);
 		repo.saveContent(ContentObject.buildContentObject(segmentedName223, "segment223".getBytes()));
 		checkData(repo, segmentedName223, "segment223");
 		
 		System.out.println("Repotest - storing sequence of objects for versioned stream read testing");
-		ContentName versionedNameNormal = ContentName.fromNative("/testNameSpace/testVersionNormal");
+		versionedNameNormal = ContentName.fromNative("/testNameSpace/testVersionNormal");
 		versionedNameNormal = VersioningProfile.versionName(versionedNameNormal);
 		repo.saveContent(ContentObject.buildContentObject(versionedNameNormal, "version-normal".getBytes()));
 		checkData(repo, versionedNameNormal, "version-normal");
@@ -217,10 +262,11 @@ public class RFSTest extends RepoTestBase {
 			repo.saveContent(ContentObject.buildContentObject(segmented, segmentContent.getBytes(), null, null, finalBlockID));
 			checkData(repo, segmented, segmentContent);
 		}
+	}
+	
+	public void testReinitialization(Repository repo) throws Exception {
 		
 		System.out.println("Repotest - Testing reinitialization of repo");
-		repo = new RFSImpl();
-		repo.initialize(new String[] {"-root", _fileTestDir, "-local", _repoName, "-global", _globalPrefix});
 		checkData(repo, clashName, "Clashing Name");
 		// Since we have 2 pieces of data with the name "longName" we need to compute the
 		// digest to make sure we get the right data.
@@ -237,22 +283,21 @@ public class RFSTest extends RepoTestBase {
 			String segmentContent = "segment"+ new Long(i).toString();
 			checkData(repo, segmented, segmentContent);
 		}
-		
 	}
 	
 	@Test
 	public void testPolicy() throws Exception {
 		Repository repo = new RFSImpl();
 		try {	// Test no version
-			repo.initialize(new String[] {"-root", _fileTestDir, "-policy", _topdir + "/test/ccn/network/daemons/repo/badPolicyTest1.xml"});
+			repo.initialize(new String[] {"-root", _fileTestDir, "-policy", _topdir + "/test/ccn/network/daemons/repo/badPolicyTest1.xml"}, putLibrary);
 			Assert.fail("Bad policy file succeeded");
 		} catch (InvalidParameterException ipe) {}
 		try {	// Test bad version
-			repo.initialize(new String[] {"-root", _fileTestDir, "-policy", _topdir + "/test/ccn/network/daemons/repo/badPolicyTest2.xml"});
+			repo.initialize(new String[] {"-root", _fileTestDir, "-policy", _topdir + "/test/ccn/network/daemons/repo/badPolicyTest2.xml"}, putLibrary);
 			Assert.fail("Bad policy file succeeded");
 		} catch (InvalidParameterException ipe) {}
 		repo.initialize(new String[] {"-root", _fileTestDir, "-policy", 
-					_topdir + "/test/ccn/network/daemons/repo/policyTest.xml", "-local", _repoName, "-global", _globalPrefix});
+					_topdir + "/test/ccn/network/daemons/repo/policyTest.xml", "-local", _repoName, "-global", _globalPrefix}, putLibrary);
 		ContentName name = ContentName.fromNative("/testNameSpace/data1");
 		ContentObject content = ContentObject.buildContentObject(name, "Here's my data!".getBytes());
 		repo.saveContent(content);

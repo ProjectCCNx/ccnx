@@ -423,7 +423,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			}
 	
 		} catch (XMLStreamException e) {
-			Library.handleException("Exception encoding internally-generated XML name!", e);
+			Library.logException("Exception encoding internally-generated XML name!", e);
 			throw new SignatureException(e);
 		}
 		return new Signature(digestAlgorithm, null, signature);

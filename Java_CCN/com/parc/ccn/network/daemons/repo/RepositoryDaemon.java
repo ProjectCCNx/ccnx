@@ -61,9 +61,9 @@ public class RepositoryDaemon extends Daemon {
 	
 	public static final int PERIOD = 2000; // period for interest timeout check in ms.
 	public static final int THREAD_LIFE = 8;	// in seconds
-	public static final int WINDOW_SIZE = 10;
+	public static final int WINDOW_SIZE = 4;
 	public static final int FRESHNESS = 4;	// in seconds
-	
+		
 	private class NameAndListener {
 		private ContentName name;
 		private CCNFilterListener listener;
@@ -150,13 +150,21 @@ public class RepositoryDaemon extends Daemon {
 	
 	public RepositoryDaemon() {
 		super();
+		// This is a daemon: it should not do anything in the
+		// constructor but everything in the initialize() method
+		// which will be run in the process that will finally 
+		// execute as the daemon, rather than in the launching
+		// and stopping processes also.
 		_daemonName = "repository";
+	}
+	
+	public void initialize(String[] args, Daemon daemon) {
 		Library.logger().info("Starting " + _daemonName + "...");				
-		
+		Library.logger().setLevel(Level.INFO);		
 		try {
 			_library = CCNLibrary.open();
 			_writer = new CCNWriter(_library);
-			
+
 			/*
 			 * At some point we may want to refactor the code to
 			 * write repository info back in a stream.  But for now
@@ -165,61 +173,66 @@ public class RepositoryDaemon extends Daemon {
 			 * disable flow control
 			 */
 			_writer.disableFlowControl();
-			
-		} catch (Exception e1) {
-			e1.printStackTrace();
-			System.exit(0);
-		} 
-	}
-	
-	public void initialize(String[] args, Daemon daemon) {
-		SystemConfiguration.setLogging("repo", false);
-		for (int i = 0; i < args.length; i++) {
-			if (args[i].equals("-log")) {
-				if (args.length < i + 2) {
-					usage();
-					return;
+
+			SystemConfiguration.setLogging("repo", false);
+			for (int i = 0; i < args.length; i++) {
+				if (args[i].equals("-log")) {
+					if (args.length < i + 2) {
+						usage();
+						return;
+					}
+					try {
+						SystemConfiguration.setLogging("repo", true);
+						Level level = Level.parse(args[i + 1]);
+						Library.logger().setLevel(level);
+					} catch (IllegalArgumentException iae) {
+						usage();
+						return;
+					}
 				}
-				try {
-					SystemConfiguration.setLogging("repo", true);
-					Level level = Level.parse(args[i + 1]);
-					Library.logger().setLevel(level);
-				} catch (IllegalArgumentException iae) {
-					usage();
-					return;
-				}
+
+				/*
+				 * This is for upper half performance testing for writes
+				 */
+				if (args[i].equals("-bb"))
+					_repo = new BitBucketRepository();
+				
+				if(args[i].equals("-singlefile"))
+					_repo = new RFSLogImpl();
+				
+				if(args[i].equals("-multifile"))
+					_repo = new RFSImpl();
 			}
+
 			
-			/*
-			 * This is for upper half performance testing for writes
-			 */
-			if (args[i].equals("-bb"))
-				_repo = new BitBucketRepository();
-		}
-		
-		if (_repo == null)
-			_repo = new RFSImpl();
-		try {
-			_repo.initialize(args);
+			if (_repo == null)	// default lower half
+				_repo = new RFSLogImpl();
+			
+			_repo.initialize(args, _library);
+			
+			// Create callback threadpool
+			_threadpool = (ThreadPoolExecutor)Executors.newCachedThreadPool();
+			_threadpool.setKeepAliveTime(THREAD_LIFE, TimeUnit.SECONDS);
 		} catch (InvalidParameterException ipe) {
 			usage();
-		} catch (RepositoryException e) {
+		} catch (Exception e) {
 			e.printStackTrace();
+			Library.logStackTrace(Level.SEVERE, e);
+			System.exit(1);
 		}
-		
-		// Create callback threadpool
-		_threadpool = (ThreadPoolExecutor)Executors.newCachedThreadPool();
-		_threadpool.setKeepAliveTime(THREAD_LIFE, TimeUnit.SECONDS);
 	}
 	
 	protected void usage() {
 		try {
-			System.out.println("usage: " + this.getClass().getName() + 
-						_repo.getUsage() + "[-start | -stop | -interactive] [-log <level>]");
+			String msg = "usage: " + this.getClass().getName() + 
+			_repo.getUsage() + "[-start | -stop | -interactive] [-log <level>] [-multifile | -singlefile]";
+			System.out.println(msg);
+			Library.logger().severe(msg);
 		} catch (Exception e) {
 			e.printStackTrace();
+			Library.logStackTrace(Level.SEVERE, e);
 		}
-		System.exit(0);
+		System.exit(1);
 	}
 
 	protected WorkerThread createWorkerThread() {

@@ -53,6 +53,8 @@ public class CCNFlowControl implements CCNFilterListener {
 	protected int _timeout = MAX_TIMEOUT;
 	protected int _highwater = HIGHWATER_DEFAULT;
 	
+	protected static final int PURGE = 2000;
+	
 	protected TreeMap<ContentName, ContentObject> _holdingArea = new TreeMap<ContentName, ContentObject>();
 	protected InterestTable<UnmatchedInterest> _unmatchedInterests = new InterestTable<UnmatchedInterest>();
 	protected HashSet<ContentName> _filteredNames = new HashSet<ContentName>();
@@ -236,6 +238,19 @@ public class CCNFlowControl implements CCNFilterListener {
 				}
 				if (_holdingArea.size() >= _highwater) {
 					boolean interrupted;
+					long ourTime = new Date().getTime();
+					Entry<UnmatchedInterest> removeIt;
+					do {
+						removeIt = null;
+						for (Entry<UnmatchedInterest> uie : _unmatchedInterests.values()) {
+							if ((ourTime - uie.value().timestamp) > PURGE) {
+								removeIt = uie;
+								break;
+							}
+						}
+						if (removeIt != null)
+							_unmatchedInterests.remove(removeIt.interest(), removeIt.value());
+					} while (removeIt != null);
 					do {
 						interrupted = false;
 						try {
