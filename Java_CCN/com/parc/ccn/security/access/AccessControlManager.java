@@ -795,7 +795,7 @@ public class AccessControlManager {
 				try {
 					nodeKeyDirectory.addWrappedKeyBlock(nodeKey, entryPublicKey.getName(), entryPublicKey.publicKey());
 				} catch (VersionMissingException ve) {
-					Library.handleException("Unexpected version missing exception for public key " + entryPublicKey.getName(), ve);
+					Library.logException("Unexpected version missing exception for public key " + entryPublicKey.getName(), ve);
 					throw new IOException("Unexpected version missing exception for public key " + entryPublicKey.getName() + ": " + ve);
 				}
 			}
