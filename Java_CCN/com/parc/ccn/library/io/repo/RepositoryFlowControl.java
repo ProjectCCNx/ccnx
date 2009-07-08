@@ -20,9 +20,12 @@ import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.network.daemons.repo.RepositoryInfo;
 
 /**
- * Potential replacement for existing repo flow control (RepositoryProtocol)
- * that handles concurrent users better.
- * @author smetters
+ * Handle repo specialty start/end protocol. Currently this handles only the
+ * stream "shape".
+ * Intended to handle the repo ack protocol. This is currently unused until we find
+ * a workable way to do it.
+ * 
+ * @author smetters, rasmusse
  *
  */
 public class RepositoryFlowControl extends CCNFlowControl implements CCNInterestListener {
@@ -38,6 +41,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	protected HashSet<Interest> _writeInterests = new HashSet<Interest>();
 	protected CCNNameEnumerator _ackne;
 	protected RepoAckHandler _ackHandler;
+	protected ContentName _header = null;
 
 	public Interest handleContent(ArrayList<ContentObject> results,
 			Interest interest) {
@@ -102,10 +106,12 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	@Override
 	public void addNameSpace(ContentName name) throws IOException {
 		super.addNameSpace(name);
-		if (_initialized)
-			return;
+		// DKS -- we want to be able to reuse this flow controller for multiple streams
+//		if (_initialized)
+//			return;
 		
 		_initialized = true;
+		_header = name;
 		clearUnmatchedInterests();	// Remove possible leftover interests from "getLatestVersion"
 		ContentName repoWriteName = new ContentName(name, CCNBase.REPO_START_WRITE, CCNLibrary.nonce());
 
@@ -133,7 +139,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		}
 		if (_repoName == null) {
 			Library.logger().finest("No response from a repository, cannot add name space : " + name);
-			throw new IOException("No response from a repository");
+			throw new IOException("No response from a repository for " + name);
 		}
 	}
 
@@ -181,20 +187,29 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 
 	@Override
 	public void afterClose() throws IOException {
+		if (_header != null) {
+			ContentName repoWriteName = new ContentName(_header, CCNBase.REPO_GET_HEADER, CCNLibrary.nonce());
+	
+			Interest writeInterest = new Interest(repoWriteName);
+			_library.expressInterest(writeInterest, this);
+			_writeInterests.add(writeInterest);
+		}
 		// super.afterClose() calls waitForPutDrain.
 		super.afterClose();
 		// DKS don't actually want to cancel all the interests, only the
 		// ones relevant to the data we've finished writing.
-		//if (! _bestEffort)
-		//	cancelInterests();
+		// paul r. ??
+		cancelInterests();
 		if (!flushComplete()) {
 			throw new IOException("Unable to confirm writes are stable: timed out waiting ack for " + _holdingArea.firstKey());
 		}
 	}
 
 	public void cancelInterests() {
-		for (ContentName prefix : _filteredNames) {
-			_ackne.cancelPrefix(prefix);
+		if (! _bestEffort) {
+			for (ContentName prefix : _filteredNames) {
+				_ackne.cancelPrefix(prefix);
+			}
 		}
 		for (Interest writeInterest : _writeInterests){
 			_library.cancelInterest(writeInterest, this);

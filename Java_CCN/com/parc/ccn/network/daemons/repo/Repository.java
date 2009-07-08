@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
+import com.parc.ccn.library.CCNLibrary;
 
 /**
  * Designed to contain all methods that talk to the repository
@@ -26,7 +27,7 @@ public interface Repository {
 	 * @param args - user arguments to the repository
 	 * @return
 	 */
-	public String[] initialize(String[] args) throws RepositoryException;
+	public String[] initialize(String[] args, CCNLibrary library) throws RepositoryException;
 	
 	/**
 	 * Save the specified content in the repository

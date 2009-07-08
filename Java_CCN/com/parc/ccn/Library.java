@@ -130,7 +130,7 @@ public class Library {
 	     logger().log(level, sw.toString());
 	}
 	
-	public static void handleException(String message, 
+	public static void logException(String message, 
 			Exception e) {
 		Library.logger().warning(message);
 		Library.warningStackTrace(e);

@@ -171,7 +171,10 @@
 	<target name="test" depends="test-data, test-puttap, test-library, test-network, test-endtoend, test-repo, test-access-control">
 	</target>
 
-	<target name="test-data" depends="jar, ccnd">
+	<target name="test-data" depends="test-data-without-repo, test-data-with-repo">
+	</target>
+	
+	<target name="test-data-without-repo" depends="jar, ccnd">
 		<mkdir dir="${testout}"/>
 		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}">
 			<classpath>
@@ -192,7 +195,31 @@
 		</junit>
 	</target>
 
-	<target name="test-library" depends="jar, ccnd">
+	<target name="test-data-with-repo" depends="jar, ccnd, repo">
+		<mkdir dir="${testout}"/>
+		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="xml" usefile="true"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+
+			<batchtest todir="${testout}">
+				<fileset dir="${build}">
+					<include name="test/ccn/data/*TestRepo.class"/>
+					<include name="test/ccn/data/content/*TestRepo.class"/>
+					<include name="test/ccn/data/query/*TestRepo.class"/>
+					<include name="test/ccn/data/security/*TestRepo.class"/>
+					<include name="test/ccn/data/util/*TestRepo.class"/>
+				</fileset>
+			</batchtest>
+		</junit>
+	</target>
+
+	<target name="test-library" depends="test-library-without-repo, test-library-with-repo">
+	</target>
+	
+	<target name="test-library-without-repo" depends="jar, ccnd">
 		<mkdir dir="${testout}"/>
 		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
 			<classpath>
@@ -209,6 +236,23 @@
 		</junit>
 	</target>
 	
+	<target name="test-library-with-repo" depends="jar, ccnd, repo">
+		<mkdir dir="${testout}"/>
+		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="xml" usefile="true"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+
+			<batchtest todir="${testout}">
+				<fileset dir="${build}">
+					<include name="test/ccn/library/**/*Test.class"/>
+				</fileset>
+			</batchtest>
+		</junit>
+	</target>
+
 	<target name="test-network" depends="jar, ccnd">
 		<mkdir dir="${testout}"/>
 		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
@@ -467,6 +511,51 @@
 				<test todir="${testout}"  name="test.ccn.endtoend.EndToEndTestSink"/>
 			</junit>
 		</parallel>
+	</target>
+
+	<target name="test-security" depends="test-security-without-repo, test-security-with-repo">
+	</target>
+	
+	<target name="test-security-without-repo" depends="jar, ccnd">
+		<!-- Access Control tests that don't need a repo running -->
+		<mkdir dir="${testout}"/>
+		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="xml" usefile="true"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
+			<sysproperty key="com.parc.ccn.LogLevel" value="FINER"/>
+			<batchtest todir="${testout}" >
+				<fileset dir="${build}">
+					<include name="test/ccn/security/crypto/*Test.class"/>
+					<include name="test/ccn/security/keys/*Test.class"/>
+				</fileset>
+			</batchtest>
+		</junit>
+		<!-- <delete dir="${REPO_ROOT}"/> -->
+	</target>
+
+	<target name="test-security-with-repo" depends="jar, ccnd, repo">
+		<!-- Access Control tests that need a repo running -->
+		<mkdir dir="${testout}"/>
+		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="xml" usefile="true"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
+			<sysproperty key="com.parc.ccn.LogLevel" value="FINER"/>
+			<batchtest todir="${testout}" >
+				<fileset dir="${build}">
+					<include name="test/ccn/security/crypto/*TestRepo.class"/>
+					<include name="test/ccn/security/keys/*TestRepo.class"/>
+				</fileset>
+			</batchtest>
+		</junit>
+		<!-- <delete dir="${REPO_ROOT}"/> -->
 	</target>
 
 	<target name="test-access-control" depends="test-access-control-without-repo, test-access-control-with-repo">

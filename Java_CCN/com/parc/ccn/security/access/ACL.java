@@ -113,6 +113,13 @@ public class ACL extends CollectionData {
 	public boolean validLabel(LinkReference lr) {
 		return LABEL_MANAGER.contains(lr.targetLabel());
 	}
+	
+	/**
+	 * DKS -- add placeholder for public content. These will be represented by some
+	 * form of marker entry, and need to be handled specially.
+	 */
+	public boolean publiclyReadable() { return false; }
+	public boolean publiclyWritable() { return false; }
 
 	@Override
 	public boolean validate() {

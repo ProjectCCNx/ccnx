@@ -20,6 +20,7 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.WirePacket;
 import com.parc.ccn.data.query.Interest;
+import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
@@ -60,7 +61,7 @@ public class RFSImpl implements Repository {
 	protected RepositoryInfo _info = null;
 	protected ArrayList<ContentName> _nameSpace = new ArrayList<ContentName>();
 	
-	public String[] initialize(String[] args) throws RepositoryException {
+	public String[] initialize(String[] args, CCNLibrary library) throws RepositoryException {
 		
 		boolean policyFromFile = false;
 		boolean nameFromArgs = false;

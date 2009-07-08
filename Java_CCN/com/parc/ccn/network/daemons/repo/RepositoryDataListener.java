@@ -28,9 +28,6 @@ public class RepositoryDataListener implements CCNInterestListener {
 	private long _timer;
 	private Interest _origInterest;
 	private TreeMap<ContentName, Interest> _interests = new TreeMap<ContentName, Interest>();
-	private boolean _haveHeader = false;
-	private boolean _sentHeaderInterest = false;
-	private Interest _headerInterest = null;	
 	private RepositoryDaemon _daemon;
 	private CCNLibrary _library;
 	private long _currentBlock = 0;
@@ -74,6 +71,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 		_daemon = daemon;
 		_library = daemon.getLibrary();
 		_timer = new Date().getTime();
+		Library.logger().info("Starting up repository listener on original interest: " + origInterest + " interest " + interest);
 	}
 	
 	public Interest handleContent(ArrayList<ContentObject> results,
@@ -83,29 +81,6 @@ public class RepositoryDataListener implements CCNInterestListener {
 		
 		for (ContentObject co : results) {
 			_daemon.getThreadPool().execute(new DataHandler(co));
-			
-			synchronized (this) {
-				if (!_haveHeader) {
-					/*
-					 * Handle headers specifically. If we haven't seen one yet ask for it specifically
-					 */
-					if (SegmentationProfile.isUnsegmented(co.name())) {
-						_haveHeader = true;
-					} else {
-						if (!_sentHeaderInterest) {
-							_headerInterest = new Interest(SegmentationProfile.segmentRoot(co.name()));
-							_headerInterest.additionalNameComponents(1);
-							try {
-								_library.expressInterest(_headerInterest, this);
-								_sentHeaderInterest = true;
-							} catch (IOException e) {
-								// TODO Auto-generated catch block
-								e.printStackTrace();
-							}
-						}
-					}
-				}
-			}
 				
 			if (SegmentationProfile.isSegment(co.name())) {
 				long thisBlock = SegmentationProfile.getSegmentNumber(co.name());
@@ -144,7 +119,6 @@ public class RepositoryDataListener implements CCNInterestListener {
 	public void cancelInterests() {
 		for (ContentName name : _interests.keySet())
 			_library.cancelInterest(_interests.get(name), this);
-		_library.cancelInterest(_headerInterest, this);
 	}
 	
 	public long getTimer() {

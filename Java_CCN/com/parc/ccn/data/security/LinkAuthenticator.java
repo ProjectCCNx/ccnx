@@ -59,7 +59,7 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
     }
     
     public boolean emptyPublisher() {
-    	if ((null != publisherID()) && (0 != publisher().length))
+    	if ((null != publisherID()) && (null != publisherID().id()) && (0 != publisherID().id().length))
     		return false;
     	return true;
     }
@@ -90,8 +90,10 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 		_contentDigest = hash;
 	}
 	
-	public byte[] publisher() {
-		return _publisher.id();
+	public PublisherPublicKeyDigest publisher() {
+		// If PublisherID contained one of these internally, rather than a byte [], it would
+		// encode with an unnecessary layer of wrapping and tags.
+		return new PublisherPublicKeyDigest(_publisher.id());
 	}
 	
 	public PublisherID.PublisherType publisherType() {
