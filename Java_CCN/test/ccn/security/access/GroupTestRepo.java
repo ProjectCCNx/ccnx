@@ -9,7 +9,7 @@ import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.library.CCNLibrary;
 
-public class GroupTest {
+public class GroupTestRepo {
 	
 	static boolean USE_REPO = true;
 	static int NUM_USERS = 20;
