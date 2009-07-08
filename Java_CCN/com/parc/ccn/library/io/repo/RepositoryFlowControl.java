@@ -106,6 +106,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	@Override
 	public void addNameSpace(ContentName name) throws IOException {
 		super.addNameSpace(name);
+		// DKS -- we want to be able to reuse this flow controller for multiple streams
 //		if (_initialized)
 //			return;
 		
