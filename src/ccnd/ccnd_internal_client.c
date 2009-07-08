@@ -4,6 +4,7 @@
  * Copyright (C) 2009 Palo Alto Research Center, Inc. All rights reserved.
  */
 
+#include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
