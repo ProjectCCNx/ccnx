@@ -81,6 +81,9 @@ public class VersioningProfile implements CCNProfile {
 		return isVersionComponent(vm);
 	}
 	
+	/**
+	 * Check a name component to see if it is a valid version field
+	 */
 	public static boolean isVersionComponent(byte [] nameComponent) {
 		return (null != nameComponent) && (0 != nameComponent.length) && 
 			   (VERSION_MARKER == nameComponent[0]) && 
