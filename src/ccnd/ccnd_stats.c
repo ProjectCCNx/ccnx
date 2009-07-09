@@ -81,6 +81,29 @@ ccnd_collect_stats(struct ccnd *h, struct ccnd_stats *ans)
 }
 
 static void
+collect_faces_html(struct ccnd *h, struct ccn_charbuf *b)
+{
+    int i;
+    ccn_charbuf_putf(b, "<div>Faces</div>");
+    ccn_charbuf_putf(b, "<ul>");
+    for (i = 0; i < h->face_limit; i++) {
+        struct face *face = h->faces_by_faceid[i];
+        if (face != NULL) {
+            ccn_charbuf_putf(b, "<li>");
+            ccn_charbuf_putf(b, " <b>face:</b> %u <b>flags:</b> 0x%x",
+                             face->faceid, face->flags);
+            ccn_charbuf_putf(b, " <b>pending:</b> %d",
+                             face->pending_interests);
+            if (face->recvcount != 0)
+                ccn_charbuf_putf(b, " <b>activity:</b> %d",
+                                 face->recvcount);
+            ccn_charbuf_putf(b, "</li>");
+        }
+    }
+    ccn_charbuf_putf(b, "</ul>");
+}
+
+static void
 collect_forwarding_html(struct ccnd *h, struct ccn_charbuf *b)
 {
     struct hashtb_enumerator ee;
@@ -89,17 +112,20 @@ collect_forwarding_html(struct ccnd *h, struct ccn_charbuf *b)
     int res;
     struct ccn_charbuf *name = ccn_charbuf_create();
     
+    ccn_charbuf_putf(b, "<div>Forwarding</div>");
     ccn_charbuf_putf(b, "<ul>");
     hashtb_start(h->nameprefix_tab, e);
     for (; e->data != NULL; hashtb_next(e)) {
         struct nameprefix_entry *ipe = e->data;
-                ccn_name_init(name);
-                res = ccn_name_append_components(name, e->key, 0, e->keysize);
-                if (res < 0)
-                    abort();
-                ccn_charbuf_putf(b, "<li>");
-                ccn_uri_append(b, name->buf, name->length, 1);
-                ccn_charbuf_putf(b, "</li>");
+        ccn_name_init(name);
+        res = ccn_name_append_components(name, e->key, 0, e->keysize);
+        if (res < 0)
+            abort();
+        if (0) {
+            ccn_charbuf_putf(b, "<li>");
+            ccn_uri_append(b, name->buf, name->length, 1);
+            ccn_charbuf_putf(b, "</li>");
+        }
         for (f = ipe->forwarding; f != NULL; f = f->next) {
             if ((f->flags & CCN_FORW_ACTIVE) != 0) {
                 ccn_name_init(name);
@@ -164,6 +190,7 @@ collect_stats_html(struct ccnd *h)
         h->interests_accepted, h->interests_dropped,
         h->interests_sent, h->interests_stuffed,
         hashtb_n(h->faces_by_fd) + hashtb_n(h->dgram_faces));
+    collect_faces_html(h, b);
     collect_forwarding_html(h, b);
     ccn_charbuf_putf(b,
         "</body>"
