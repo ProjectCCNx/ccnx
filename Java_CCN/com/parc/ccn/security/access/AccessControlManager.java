@@ -407,16 +407,25 @@ public class AccessControlManager {
 		return aclo.acl();
 	}
 	
+	/**
+	 * Delete the ACL at this node if one exists, returning control to the
+	 * next ACL upstream.
+	 * We simply add a supserseded by block at this node, wrapping this key in the key of the upstream
+	 * node. If we don't have read access at that node, throw AccessDeniedException.
+	 * Then we write a GONE block here for the ACL, and a new node key version with a superseded by block.
+	 * The superseded by block should probably be encrypted not with the ACL in force, but with the effective
+	 * node key of the parent -- that will be derivable from the appropriate ACL, and will have the right semantics
+	 * if a new ACL is interposed later. In the meantime, all the people with the newly in-force ancestor
+	 * ACL should be able to read this content.
+	 * @param nodeName
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 * @throws ConfigurationException
+	 * @throws InvalidKeyException
+	 * @throws InvalidCipherTextException
+	 * @throws AccessDeniedException
+	 */
 	public void deleteACL(ContentName nodeName) throws XMLStreamException, IOException, ConfigurationException, InvalidKeyException, InvalidCipherTextException, AccessDeniedException {
-		// TODO DKS -- delete the ACL at this node if one exists, returning control to the
-		// next ACL upstream.
-		// We simply add a supserseded by block at this node, wrapping this key in the key of the upstream
-		// node. If we don't have read access at that node, throw AccessDeniedException.
-		// Then we write a GONE block here for the ACL, and a new node key version with a superseded by block.
-		// The superseded by block should probably be encrypted not with the ACL in force, but with the effective
-		// node key of the parent -- that will be derivable from the appropriate ACL, and will have the right semantics
-		// if a new ACL is interposed later. In the meantime, all the people with the newly in-force ancestor
-		// ACL should be able to read this content.
 		
 		// First, find ACL at this node if one exists.
 		ACLObject thisNodeACL = getACLObjectForNodeIfExists(nodeName);
