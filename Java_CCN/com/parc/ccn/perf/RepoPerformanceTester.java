@@ -39,7 +39,7 @@ public class RepoPerformanceTester extends CCNOutputStream {
 			super(name, library);
 			if (repoName != null) {
 				_repo = new RFSImpl();
-				_repo.initialize(new String[] {"-root", repoName});
+				_repo.initialize(new String[] {"-root", repoName}, library);
 			}
 		}
 		

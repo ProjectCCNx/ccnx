@@ -561,9 +561,11 @@ public class CCNLibrary extends CCNBase {
 			ContentObject co = getLatest(name, acceptVersions(start), timeout);
 			if (co == null)
 				return null;
-			if (VersioningProfile.isVersionOf(co.name(), parent))
+			if (VersioningProfile.isVersionOf(co.name(), parent)) {
 				// we got a valid version!
+				Library.logger().info("got latest version: " + co.name());
 				return co;
+			}
 			start = co.fullName().component(versionComponent);
 		}
 	}

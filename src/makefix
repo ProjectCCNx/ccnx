@@ -1,0 +1,8 @@
+Foo () {
+grep '^[^/]*/[^/]*/[^/]*/[^/]*/[^/]*came from' MOVED | while read i j k l; do echo Fixup `dirname $i` `basename $i` ../../$l; done
+echo
+grep '^[^/]*/[^/]*/[^/]*/[^/]*came from' MOVED | while read i j k l; do echo Fixup `dirname $i` `basename $i` ../$l; done
+echo
+grep '^[^/]*/[^/]*/[^/]*came from' MOVED | while read i j k l; do echo Fixup `dirname $i` `basename $i` $l; done
+}
+Foo | grep -v -e Makefile -e README\ 

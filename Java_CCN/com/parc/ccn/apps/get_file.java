@@ -3,9 +3,11 @@ package com.parc.ccn.apps;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
@@ -40,6 +42,19 @@ public class get_file {
 					usage();
 					return;
 				}
+				if (startArg <= i)
+					startArg = i + 1;
+			} else if (args[i].equals("-log")) {
+				Level level = null;
+				if (args.length < (i + 2)) {
+					usage();
+				}
+				try {
+					level = Level.parse(args[++i]);
+				} catch (NumberFormatException nfe) {
+					usage();
+				}
+				Library.logger().setLevel(level);
 				if (startArg <= i)
 					startArg = i + 1;
 			} else {

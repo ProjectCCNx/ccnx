@@ -1,56 +1,5 @@
-SUBDIRS = lib agent ccndc udplink python tests
-OBJTREE = obj.`uname`
-MAKEF =  -f ../conf.mk -f Makefile -f ../conf.mk -f ../subr.mk
-
-default all clean depend coverage test check shared install uninstall: conf.mk _always
-	test -d include/ccn || (test -d ../include/ccn && mkdir -p include && ln -s ../../include/ccn include/ccn)
-	test -f subr.mk || (test -f ../subr.mk && ln -s ../subr.mk)
-	for i in $(SUBDIRS); do         \
-	  (cd "$$i" && pwd && $(MAKE) $(MAKEF) SRCDIR=../$(SRCDIR)/$$i $@) || exit 1;	\
-	done
-	@test -d $(OBJTREE) && echo "+++ NOTE - $(OBJTREE) exists" ||:
-	@rm -f _always
-
-conf.mk:
-	./configure
-
-test check: default
-
-objtree: _always
-	mkdir -p $(OBJTREE)
-	echo SRCDIR = ..  > $(OBJTREE)/Makefile
-	cat Makefile     >> $(OBJTREE)/Makefile
-	for i in $(SUBDIRS); do						\
-	  mkdir -p $(OBJTREE) &&					\
-	    (cd $$i && pwd &&						\
-		$(MAKE) $(MAKEF) OBJDIR=../$(OBJTREE)/$$i SRCDIR=. 	\
-			../$(OBJTREE)/$$i/Makefile	 		\
-	     || exit 1);						\
-	done
-	cd $(OBJTREE) && ../configure
-
-cleanall: _always
-	find . -type l -print -exec rm '{}' ';'
-
-_manifester:
-	rm -f _manifester
-	test -d .svn && { type svn >/dev/null 2>/dev/null; } && ( echo svn list -R > _manifester; ) || :
-	test -f _manifester || ( git branch >/dev/null 2>/dev/null && echo git ls-files > _manifester; ) || :
-	test -f _manifester || ( echo false > _manifester )
-
-MANIFEST: _manifester
-	echo MANIFEST > MANIFEST.new
-	sh _manifester | grep -v -e '/$$' >> MANIFEST.new
-	mv MANIFEST.new MANIFEST
-	rm _manifester
-
-FAVORITES: MANIFEST
-	./makefavorites
-	mv MANIFEST 00MANIFEST
-
-tar:	ccnd.tar
-ccnd.tar: MANIFEST
-	tar cf ccnd.tar -T MANIFEST
-	mv MANIFEST 00MANIFEST
+default all clean depend test check shared install uninstall: _always
+	(cd ../src && pwd && $(MAKE) $@)
+	test -f ../src/ccnd/ccnd && mkdir -p agent && ln -s ../../src/ccnd/ccnd agent/ccnd ||:
 
 _always:

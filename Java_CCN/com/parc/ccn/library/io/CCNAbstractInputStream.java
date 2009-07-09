@@ -25,7 +25,7 @@ import com.parc.ccn.security.crypto.UnbufferedCipherInputStream;
 
 public abstract class CCNAbstractInputStream extends InputStream {
 
-	protected static final int MAX_TIMEOUT = 2000;
+	protected static final int MAX_TIMEOUT = 3000;
 
 	protected CCNLibrary _library;
 
@@ -300,6 +300,17 @@ public abstract class CCNAbstractInputStream extends InputStream {
 			throw new IOException("Stream does not have a valid starting block number.");
 		}
 	}
+	
+	protected boolean isFirstBlock(ContentObject block) {
+		if ((null != block) && (SegmentationProfile.isSegment(block.name()))) {
+			if (null != _startingBlockIndex) {
+				return (_startingBlockIndex.equals(SegmentationProfile.getSegmentNumber(block.name())));
+			} else {
+				return SegmentationProfile.isFirstSegment(block.name());
+			}
+		}
+		return false;
+	}
 
 	boolean verifyBlock(ContentObject block) {
 
@@ -386,9 +397,18 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	}
 	
 	public boolean isGone() throws IOException {
-		if (null == _currentBlock && null == _goneBlock)
-			getFirstBlock();
-		return (null != _goneBlock);
+		ContentObject newBlock = null;
+
+		if (null == _currentBlock && null == _goneBlock) {
+			newBlock = getFirstBlock(); // sets _goneBlock, but not _currentBlock
+		}
+		if (null == _goneBlock) {
+			if (null != newBlock) {
+				setCurrentBlock(newBlock); // save it for reuse
+			}
+			return false;
+		}
+		return true;
 	}
 	
 	public ContentObject deletionInformation() {

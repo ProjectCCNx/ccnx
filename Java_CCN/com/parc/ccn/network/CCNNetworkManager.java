@@ -247,7 +247,7 @@ public class CCNNetworkManager implements Runnable {
 		public final Interest interest;
 		protected ArrayList<ContentObject> data = new ArrayList<ContentObject>(1);
 		protected long nextRefresh;
-		protected long nextRefreshPeriod = PERIOD;
+		protected long nextRefreshPeriod = PERIOD * 2;
 		
 		// All internal client interests must have an owner
 		public InterestRegistration(CCNNetworkManager mgr, Interest i, CCNInterestListener l, Object owner) {
@@ -529,7 +529,7 @@ public class CCNNetworkManager implements Runnable {
 	}
 	
 	public ContentObject get(Interest interest, long timeout) throws IOException, InterruptedException {
-		Library.logger().fine("get: " + interest.name());
+		Library.logger().fine("get: " + interest);
 		InterestRegistration reg = new InterestRegistration(this, interest, null, null);
 		expressInterest(reg);
 		Library.logger().finest("blocking for " + interest.name() + " on " + reg.sema);

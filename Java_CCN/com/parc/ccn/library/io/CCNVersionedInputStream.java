@@ -92,10 +92,16 @@ public class CCNVersionedInputStream extends CCNInputStream {
 			if (!verifyBlock(result)) {
 				return null;
 			}
-			// Now we know the version
 			_baseName = SegmentationProfile.segmentRoot(result.name());
+			// Now we know the version. Did we luck out and get first block?
+			if (isFirstBlock(result)) {
+				Library.logger().info("getFirstBlock: got first block on first try: " + result.name());
+				return result;
+			}
 			Library.logger().info("getFirstBlock: Have version information, now querying first segment.");
 			return super.getFirstBlock(); // now that we have the latest version, go back for the first block.
+		} else {
+			Library.logger().info("getFirstBlock: no block available for latest version of " + _baseName);
 		}
 		return result;
 	}
