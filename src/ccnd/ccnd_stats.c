@@ -84,7 +84,7 @@ static void
 collect_faces_html(struct ccnd *h, struct ccn_charbuf *b)
 {
     int i;
-    ccn_charbuf_putf(b, "<div>Faces</div>");
+    ccn_charbuf_putf(b, "<h4>Faces</h4>");
     ccn_charbuf_putf(b, "<ul>");
     for (i = 0; i < h->face_limit; i++) {
         struct face *face = h->faces_by_faceid[i];
@@ -112,7 +112,7 @@ collect_forwarding_html(struct ccnd *h, struct ccn_charbuf *b)
     int res;
     struct ccn_charbuf *name = ccn_charbuf_create();
     
-    ccn_charbuf_putf(b, "<div>Forwarding</div>");
+    ccn_charbuf_putf(b, "<h4>Forwarding</h4>");
     ccn_charbuf_putf(b, "<ul>");
     hashtb_start(h->nameprefix_tab, e);
     for (; e->data != NULL; hashtb_next(e)) {
@@ -173,8 +173,7 @@ collect_stats_html(struct ccnd *h)
         "<p class='header' width='100%%'>%s ccnd[%d] local port %s</p>"
         "<div><b>Content items:</b> %llu accessioned, %d stored, %d sparse, %lu duplicate, %lu sent</div>"
         "<div><b>Interests:</b> %d names, %ld pending, %ld propagating, %ld noted</div>"
-        "<div><b>Interest totals:</b> %lu accepted, %lu dropped, %lu sent, %lu stuffed</div>"
-        "<div><b>Active faces and listeners:</b> %d</div>",
+        "<div><b>Interest totals:</b> %lu accepted, %lu dropped, %lu sent, %lu stuffed</div>",
         pid,
         un.nodename,
         pid,
@@ -188,8 +187,11 @@ collect_stats_html(struct ccnd *h)
         hashtb_n(h->propagating_tab) - stats.total_flood_control,
         stats.total_flood_control,
         h->interests_accepted, h->interests_dropped,
-        h->interests_sent, h->interests_stuffed,
-        hashtb_n(h->faces_by_fd) + hashtb_n(h->dgram_faces));
+        h->interests_sent, h->interests_stuffed);
+    if (0)
+        ccn_charbuf_putf(b,
+                         "<div><b>Active faces and listeners:</b> %d</div>",
+                         hashtb_n(h->faces_by_fd) + hashtb_n(h->dgram_faces));
     collect_faces_html(h, b);
     collect_forwarding_html(h, b);
     ccn_charbuf_putf(b,
