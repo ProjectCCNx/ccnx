@@ -26,7 +26,7 @@ import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.network.daemons.repo.ContentTree.ContentFileRef;
-import com.parc.security.Library;
+import com.parc.ccn.Library;
 
 /**
  * 
