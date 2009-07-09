@@ -271,14 +271,19 @@ public class ContentTree {
 		return null;
 	}
 	
-	protected void getSubtreeNodes(TreeNode node, List<TreeNode> result) {
+	protected void getSubtreeNodes(TreeNode node, List<TreeNode> result, Integer components) {
 		result.add(node);
+		if (components != null) {
+			components--;
+			if (components == 0)
+				return;
+		}
 		synchronized(node) {
 			if (null != node.oneChild) {
-				getSubtreeNodes(node.oneChild, result);
+				getSubtreeNodes(node.oneChild, result, components);
 			} else if (null != node.children) {
 				for (TreeNode child : node.children) {
-					getSubtreeNodes(child, result);
+					getSubtreeNodes(child, result, components);
 				}
 			}
 		}
@@ -290,7 +295,10 @@ public class ContentTree {
 		// ToDo This is very inefficient for all but the most optimal case where the last thing in the
 		// subtree happens to be a perfect match
 		ArrayList<TreeNode> options = new ArrayList<TreeNode>();
-		getSubtreeNodes(node, options);
+		Integer totalComponents = null;
+		if (interest.additionalNameComponents() != null)
+			totalComponents = interest.name().count() + interest.additionalNameComponents();
+		getSubtreeNodes(node, options, totalComponents);
 		for (int i = options.size()-1; i >= 0 ; i--) {
 			TreeNode candidate = options.get(i);
 			if (null != candidate.oneContent || null != candidate.content) {
