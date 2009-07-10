@@ -145,6 +145,15 @@ usage(const char *progname)
         exit(1);
 }
 
+/*
+ * configuration file format
+ *
+ * <CCN URI> <udp|tcp> <hostname|ipv4 address|ipv6 address> [<port>]
+ *
+ * anything following "#" is discarded as a comment
+ * any host name or address that is resolvable by getaddrinfo is acceptable
+ */
+
 static int
 read_configfile(const char *filename, struct routing *rt)
 {
