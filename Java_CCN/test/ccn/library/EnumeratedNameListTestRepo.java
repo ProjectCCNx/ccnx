@@ -106,8 +106,9 @@ public class EnumeratedNameListTestRepo extends RepoTestBase {
 			Library.logger().info("****************** adding name1 to repo");
 
 			// adding content to repo
-			addContentToRepo(name1, library);
+			ContentName latestName = addContentToRepo(name1, library);
 			testList.waitForData();
+			Library.logger().info("Added data to repo: " + latestName);
 
 			//testing that the enumerator has new data
 			Assert.assertTrue(testList.hasNewData());
@@ -155,10 +156,10 @@ public class EnumeratedNameListTestRepo extends RepoTestBase {
 			Assert.assertTrue(returnedBytes2.size() > returnedBytes.size());
 			
 			// This will add new versions
-			addContentToRepo(name1, library);
-			addContentToRepo(name1, library);
-			addContentToRepo(name1, library);
-			ContentName latestName = addContentToRepo(name1, library); // 5 versions total
+			for (int i=0; i < 5; ++i) {
+				latestName = addContentToRepo(name1, library);
+				Library.logger().info("Added data to repo: " + latestName);
+			}
 			
 			EnumeratedNameList versionList = new EnumeratedNameList(name1, library);
 			versionList.waitForData();
