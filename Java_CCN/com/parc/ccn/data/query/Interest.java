@@ -53,7 +53,7 @@ import com.parc.ccn.security.keys.TrustManager;
  * @author smetters, rasmusse
  *
  */
-public class Interest extends GenericXMLEncodable implements XMLEncodable, Comparable<Interest> {
+public class Interest extends GenericXMLEncodable implements XMLEncodable, Comparable<Interest>, Cloneable {
 	
 	// Used to remove spurious *'s
 	public static final String RECURSIVE_POSTFIX = "*";
@@ -647,5 +647,30 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			sb.append("]");
 		}
 		return sb.toString();
+	}
+	
+	public Interest clone() {
+		Interest clone = new Interest(name());
+		if (null != _additionalNameComponents)
+			clone.additionalNameComponents(additionalNameComponents());
+		if (null != _publisher)
+			clone.publisherID(publisherID());
+		if (null != _nameComponentCount)
+			clone.nameComponentCount(nameComponentCount());
+		if (null != _excludeFilter)
+			clone.excludeFilter(excludeFilter());
+		if (null != _orderPreference)
+			clone.orderPreference(orderPreference());
+		if (null != _answerOriginKind)
+			clone.answerOriginKind(answerOriginKind());
+		if (null != _scope)
+			clone.scope(scope());
+		if (null != _count)
+			clone.count(count());
+		if (null != _nonce)
+			clone.nonce(nonce());
+		if (null != _responseFilter)
+			clone.responseFilter(responseFilter());
+		return clone;
 	}
 }

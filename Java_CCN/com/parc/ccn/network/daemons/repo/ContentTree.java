@@ -226,9 +226,37 @@ public class ContentTree {
 	 * @param getter a handler to pull actual ContentObjects for final match testing.
 	 * @return
 	 */
-	protected final ContentObject leftSearch(Interest interest, int matchlen, TreeNode node, ContentName nodeName, int depth, ContentGetter getter) {
+	protected final ContentObject leftSearch(Interest interest, int matchlen, TreeNode node, ContentName nodeName, int depth, boolean anyOK, ContentGetter getter) {
+		if ( (nodeName.count() >= 0) && (matchlen == -1 || matchlen == depth)) {
+			if (null != node.oneContent || null != node.content) {
+				// Since the name INCLUDES digest component and the Interest.matches() convention for name
+				// matching is that the name DOES NOT include digest component (conforming to the convention 
+				// for ContentObject.name() that the digest is not present) we must REMOVE the content 
+				// digest first or this test will not always be correct
+				ContentName digestFreeName = new ContentName(nodeName.count()-1, nodeName.components());
+				Interest publisherFreeInterest = interest.clone();
+				publisherFreeInterest.publisherID(null);
+				if (publisherFreeInterest.matches(digestFreeName, null)) {
+					List<ContentFileRef> content = null;
+					synchronized(node) {
+						if (null != node.oneContent) {
+							content = new ArrayList<ContentFileRef>();
+							content.add(node.oneContent);
+						} else {
+							assert(null != node.content);
+							content = new ArrayList<ContentFileRef>(node.content);
+						}
+					}
+					for (ContentFileRef ref : content) {
+						ContentObject cand = getter.get(ref);
+						if (interest.matches(cand)) {
+							return cand;
+						}
+					}
+				}
+			}
+		}
 		// Now search children if applicable and if any
-		// XXX (paul r.) the following test may not be necessary
 		if (matchlen != -1 && matchlen <= depth || (node.children==null && node.oneChild==null)) {
 			// Any child would make the total name longer than requested so no point in 
 			// checking children
@@ -245,25 +273,18 @@ public class ContentTree {
 			}
 		}
 		if (null != children) {
-			byte[] interestComp = interest.name().component(depth);  // paul r. - not sure what this is for??
+			byte[] interestComp = interest.name().component(depth);
 			for (TreeNode child : children) {
 				int comp = DataUtils.compare(child.component, interestComp);
 				//if (null == interestComp || DataUtils.compare(child.component, interestComp) >= 0) {
-				ContentObject result = null;
-				if (comp == 0){
-					// This child subtree is possible match
+				if (anyOK || comp >= 0) {
+					ContentObject result = null;
 					result = leftSearch(interest, matchlen, child, 
-							new ContentName(nodeName, child.component), depth+1, getter);
-
-				} else  if (comp > 0)  {
-					// We already found something "left" so we don't want to go any further left
-					// (The first object to the left that we find is always what we want).
-					result = rightSearch(interest, matchlen, 
-							child, new ContentName(matchlen, interest.name().components()), 
-							depth, getter);
-				}
-				if (null != result) {
-					return result;
+							new ContentName(nodeName, child.component), depth+1, comp > 0, getter);
+	
+					if (null != result) {
+						return result;
+					}
 				}
 			}
 		}
@@ -394,8 +415,8 @@ public class ContentTree {
 				return null;
 			}
 			
-			if ((null==interest.orderPreference()) || ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME))
-					== (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME))) {
+			if (null != interest.orderPreference() && (interest.orderPreference() & (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME))
+					== (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME)) {
 				// Traverse to find latest match
 				return rightSearch(interest, (null == addl) ? -1 : addl + ncc, 
 						prefixRoot, new ContentName(ncc, interest.name().components()), 
@@ -404,10 +425,9 @@ public class ContentTree {
 			else{
 				return leftSearch(interest, (null == addl) ? -1 : addl + ncc,
 						prefixRoot, new ContentName(ncc, interest.name().components()), 
-						ncc, getter);
+						ncc, null == interest.orderPreference() || (interest.orderPreference() & (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME))
+						!= (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME), getter);
 			}
-					
-			
 			
 			
 			/** original version	
