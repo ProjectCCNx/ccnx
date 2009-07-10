@@ -110,9 +110,9 @@ public class RFSTest extends RepoTestBase {
 	public void testRepo() throws Exception {
 		//first test the multifile repo
 		System.out.println("testing multifile repo");
-		test(repomulti);
-		initRepoMulti();
-		testReinitialization(repomulti);
+		//test(repomulti);
+		//initRepoMulti();
+		//testReinitialization(repomulti);
 		
 		//now test the single file version
 		System.out.println("testing single file repo");
@@ -274,10 +274,14 @@ public class RFSTest extends RepoTestBase {
 		checkDataWithDigest(repo, longName, "Long name!");
 		checkData(repo, badCharName, "Funny characters!");
 		checkData(repo, badCharLongName, "Long and funny");
-		checkData(repo, versionedName, "version");
+		Interest vnInterest = new Interest(versionedName);
+		vnInterest.additionalNameComponents(1);
+		checkData(repo, vnInterest, "version");
 		checkData(repo, segmentedName1, "segment1");
 		checkData(repo, segmentedName223, "segment223");
-		checkData(repo, versionedNameNormal, "version-normal");
+		vnInterest = new Interest(versionedNameNormal);
+		vnInterest.additionalNameComponents(1);
+		checkData(repo, vnInterest, "version-normal");
 		for (Long i=SegmentationProfile.baseSegment(); i<5; i++) {
 			ContentName segmented = SegmentationProfile.segmentName(versionedNameNormal, i);
 			String segmentContent = "segment"+ new Long(i).toString();
