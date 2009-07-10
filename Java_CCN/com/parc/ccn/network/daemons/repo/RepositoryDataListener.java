@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.TreeMap;
+import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -56,12 +57,9 @@ public class RepositoryDataListener implements CCNInterestListener {
 				if (_daemon.getRepository().checkPolicyUpdate(_content)) {
 					_daemon.resetNameSpaceFromHandler();
 				}
-			} catch (RepositoryException e) {
-				// TODO Auto-generated catch block
+			} catch (Exception e) {
 				e.printStackTrace();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				Library.logStackTrace(Level.WARNING, e);
 			}
 		}
 	}
@@ -106,7 +104,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 						_library.expressInterest(newInterest, this);
 						_interests.put(name, newInterest);
 					} catch (IOException e) {
-						// TODO Auto-generated catch block
+						Library.logStackTrace(Level.WARNING, e);
 						e.printStackTrace();
 					}
 				}

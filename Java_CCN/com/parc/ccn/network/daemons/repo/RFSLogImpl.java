@@ -14,6 +14,7 @@ import java.security.PrivateKey;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -79,16 +80,10 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 				ContentName policyName = ContentName.fromNative(REPO_NAMESPACE + "/" + _info.getLocalName() + "/" + REPO_POLICY);
 				ContentObject policyCo = new ContentObject(policyName, co.signedInfo(), co.content(), co.signature());
    				saveContent(policyCo);
-			} catch (XMLStreamException e) {
-				// TODO Auto-generated catch block
+			} catch (Exception e) {
+				Library.logStackTrace(Level.WARNING, e);
 				e.printStackTrace();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (MalformedContentNameStringException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			} 
 			return true;
 		}
 		return false;
@@ -113,11 +108,8 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 			if (names != null)
 				rri = new RepositoryInfo(_info.getLocalName(), _info.getGlobalPrefix(), CURRENT_VERSION, names);	
 			return rri.encode();
-		} catch (XMLStreamException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (MalformedContentNameStringException e) {
-			// TODO Auto-generated catch block
+		} catch (Exception e) {
+			Library.logStackTrace(Level.WARNING, e);
 			e.printStackTrace();
 		}
 		return null;
@@ -171,6 +163,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 								}
 
 							} catch (XMLStreamException e) {
+								Library.logStackTrace(Level.WARNING, e);
 								e.printStackTrace();
 								// Failed to decode, must be end of this one
 								//added check for end of file above
@@ -393,7 +386,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		try {
 			co = new ContentObject(name, new SignedInfo(publisher, locator), contents.getBytes(), signingKey);
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
+			Library.logStackTrace(Level.WARNING, e);
 			e.printStackTrace();
 			return null;
 		}

@@ -95,7 +95,7 @@ public class RepositoryDaemon extends Daemon {
 					try {
 						resetNameSpace();
 					} catch (IOException e) {
-						// TODO Auto-generated catch block
+						Library.logStackTrace(Level.WARNING, e);
 						e.printStackTrace();
 					}
 					_pendingNameSpaceChange = false;
@@ -129,6 +129,7 @@ public class RepositoryDaemon extends Daemon {
 			try {
 				resetNameSpace();
 			} catch (Exception e) {
+				Library.logStackTrace(Level.WARNING, e);
 				e.printStackTrace();
 			}
 			

@@ -3,9 +3,11 @@ package com.parc.ccn.network.daemons.repo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.util.BinaryXMLDictionary;
@@ -70,7 +72,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		try {
 			_dictionary = new BinaryXMLDictionary(DEFAULT_DICTIONARY_RESNAME);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
+			Library.logStackTrace(Level.WARNING, e);
 			e.printStackTrace();
 		}
 	}
