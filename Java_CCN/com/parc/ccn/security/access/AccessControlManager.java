@@ -31,6 +31,7 @@ import com.parc.ccn.library.EnumeratedNameList;
 import com.parc.ccn.library.profiles.AccessControlProfile;
 import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;
+import com.parc.ccn.library.profiles.AccessControlProfile.PrincipalInfo;
 import com.parc.ccn.security.access.ACL.ACLObject;
 import com.parc.ccn.security.keys.KeyManager;
 
@@ -407,16 +408,25 @@ public class AccessControlManager {
 		return aclo.acl();
 	}
 	
+	/**
+	 * Delete the ACL at this node if one exists, returning control to the
+	 * next ACL upstream.
+	 * We simply add a supserseded by block at this node, wrapping this key in the key of the upstream
+	 * node. If we don't have read access at that node, throw AccessDeniedException.
+	 * Then we write a GONE block here for the ACL, and a new node key version with a superseded by block.
+	 * The superseded by block should probably be encrypted not with the ACL in force, but with the effective
+	 * node key of the parent -- that will be derivable from the appropriate ACL, and will have the right semantics
+	 * if a new ACL is interposed later. In the meantime, all the people with the newly in-force ancestor
+	 * ACL should be able to read this content.
+	 * @param nodeName
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 * @throws ConfigurationException
+	 * @throws InvalidKeyException
+	 * @throws InvalidCipherTextException
+	 * @throws AccessDeniedException
+	 */
 	public void deleteACL(ContentName nodeName) throws XMLStreamException, IOException, ConfigurationException, InvalidKeyException, InvalidCipherTextException, AccessDeniedException {
-		// TODO DKS -- delete the ACL at this node if one exists, returning control to the
-		// next ACL upstream.
-		// We simply add a supserseded by block at this node, wrapping this key in the key of the upstream
-		// node. If we don't have read access at that node, throw AccessDeniedException.
-		// Then we write a GONE block here for the ACL, and a new node key version with a superseded by block.
-		// The superseded by block should probably be encrypted not with the ACL in force, but with the effective
-		// node key of the parent -- that will be derivable from the appropriate ACL, and will have the right semantics
-		// if a new ACL is interposed later. In the meantime, all the people with the newly in-force ancestor
-		// ACL should be able to read this content.
 		
 		// First, find ACL at this node if one exists.
 		ACLObject thisNodeACL = getACLObjectForNodeIfExists(nodeName);
@@ -676,6 +686,7 @@ public class AccessControlManager {
 	 * Get the effective node key in force at this node, used to derive keys to 
 	 * encrypt  content. Vertical chaining. Works if you ask for node which has
 	 * a node key.
+	 * DKS TODO -- when called by writers, check to see if node key is dirty & update.
 	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
 	 * @throws IOException 
@@ -689,6 +700,36 @@ public class AccessControlManager {
 		if (null == nodeKey) {
 			throw new AccessDeniedException("Cannot retrieve node key for node: " + nodeName + ".");
 		}
+		Library.logger().info("Found node key at " + nodeKey.storedNodeKeyName());
+		NodeKey effectiveNodeKey = nodeKey.computeDescendantNodeKey(nodeName, nodeKeyLabel()); 
+		Library.logger().info("Computing effective node key for " + nodeName + " using stored node key " + effectiveNodeKey.storedNodeKeyName());
+		return effectiveNodeKey;
+	}
+	
+	/**
+	 * Like {@link #getEffectiveNodeKey(ContentName)}, except checks to see if node
+	 * key is dirty and updates it if necessary.
+	 * @throws ConfigurationException 
+	 * @throws XMLStreamException 
+	 * @throws IOException 
+	 * @throws AccessDeniedException 
+	 * @throws InvalidCipherTextException 
+	 * @throws InvalidKeyException 
+	 */
+	public NodeKey getFreshEffectiveNodeKey(ContentName nodeName) throws InvalidKeyException, InvalidCipherTextException, AccessDeniedException, IOException, XMLStreamException, ConfigurationException {
+		NodeKey nodeKey = findAncestorWithNodeKey(nodeName);
+		if (null == nodeKey) {
+			throw new AccessDeniedException("Cannot retrieve node key for node: " + nodeName + ".");
+		}
+		// This should be the latest node key; i.e. not superseded.
+		if (nodeKeyIsDirty(nodeKey.storedNodeKeyName())) {
+			Library.logger().info("Found node key at " + nodeKey.storedNodeKeyName() + ", updating.");
+			ContentName nodeKeyNodeName = AccessControlProfile.accessRoot(nodeKey.storedNodeKeyName());
+			ACLObject acl = getACLObjectForNode(nodeKeyNodeName);
+			nodeKey = generateNewNodeKey(nodeKeyNodeName, nodeKey, acl.acl());
+		} else {
+			Library.logger().info("Found node key at " + nodeKey.storedNodeKeyName());
+		}
 		NodeKey effectiveNodeKey = nodeKey.computeDescendantNodeKey(nodeName, nodeKeyLabel()); 
 		Library.logger().info("Computing effective node key for " + nodeName + " using stored node key " + effectiveNodeKey.storedNodeKeyName());
 		return effectiveNodeKey;
@@ -696,20 +737,90 @@ public class AccessControlManager {
 	
 	/**
 	 * Do we need to update this node key?
-	 * @param theNodeKey
+	 * First, we look to see whether or not we know the key is dirty -- i.e.
+	 * does it have a superseded block (if it's gone, it will also have a 
+	 * superseded block). If not, we have to really check...
+	 * Basically, we look at all the entities this node key is encrypted for,
+	 * and determine whether any of them have a new version of their public
+	 * key. If so, the node key is dirty.
+	 * 
+	 * The initial implementation of this will be simple and slow -- iterating through
+	 * groups and assuming the active object system will keep updating itself whenever
+	 * a new key appears. Eventually, we might want an index directory of all the
+	 * versions of keys, so that one name enumeration request might give us information
+	 * about whether keys have been updated. (Or some kind of aggregate versioning,
+	 * that tell us a) whether any groups have changed their versions, or b) just the
+	 * ones we care about have.) 
+	 * 
+	 * This can be called by anyone -- the data about whether a node key is dirty
+	 * is visible to anyone. Fixing a dirty node key requires access, though.
+	 * @param theNodeKeyName this might be the name of the node where the NK is stored,
+	 *    or the NK name itself.
+	 *    We assume this exists -- that there at some point has been a node key here.
+	 *    TODO ephemeral node key naming
 	 * @return
+	 * @throws IOException 
+	 * @throws XMLStreamException 
+	 * @throws ConfigurationException 
 	 */
-	public boolean nodeKeyIsDirty(NodeKey theNodeKey) {
-		// TODO
-		return true;
+	public boolean nodeKeyIsDirty(ContentName theNodeKeyName) throws IOException, ConfigurationException, XMLStreamException {
+
+		// first, is this a node key name?
+		if (!AccessControlProfile.isNodeKeyName(theNodeKeyName)) {
+			// assume it's a data node name.
+			theNodeKeyName = AccessControlProfile.nodeKeyName(theNodeKeyName);
+		}
+		// get the requested version of this node key; or if unversioned, get the latest.
+		KeyDirectory nodeKeyDirectory = null;
+		try {
+			nodeKeyDirectory = new KeyDirectory(this, theNodeKeyName, library());
+
+			if (null == nodeKeyDirectory) {
+				throw new IOException("Cannot get node key directory for : " + theNodeKeyName);
+			}
+			if (nodeKeyDirectory.hasSupersededBlock()) {
+				return true;
+			}
+			for (PrincipalInfo principal : nodeKeyDirectory.getPrincipals().values()) {
+				if (principal.isGroup()) {
+					Group theGroup = groupManager().getGroup(principal.friendlyName());
+					if (theGroup.publicKeyVersion().after(principal.versionTimestamp())) {
+						return true;
+					}
+				} else {
+					// DKS TODO -- for now, don't handle versioning of non-group keys
+					Library.logger().info("User key for " + principal.friendlyName() + ", not checking version.");
+					// Technically, we're not handling versioning for user keys, but be nice. Start
+					// by seeing if we have a link to the key in our user space.
+					// If the principal isn't available in our enumerated list, have to go get its key
+					// from the wrapped key object.
+				}
+			}
+			return false;
+			
+		} finally {
+			if (null != nodeKeyDirectory)
+				nodeKeyDirectory.stopEnumerating();
+		}
 	}
 	
 	/**
 	 * Would we update this data key if we were doing reencryption?
+	 * This one is simpler -- what node key is the data key encrypted under, and is
+	 * that node key dirty?
+	 * 
+	 * This can be called by anyone -- the data about whether a data key is dirty
+	 * is visible to anyone. Fixing a dirty key requires access, though.
+	 * @throws XMLStreamException 
+	 * @throws IOException 
+	 * @throws ConfigurationException 
 	 */
-	public boolean dataKeyIsDirty(ContentName dataName) {
-		// TODO
-		return true;
+	public boolean dataKeyIsDirty(ContentName dataName) throws IOException, XMLStreamException, ConfigurationException {
+		// DKS TODO -- do we need to check whether there *is* a key?
+		// The trick: we need the header information in the wrapped key; we don't need to unwrap it.
+		// DKS ephemeral key naming
+		WrappedKeyObject wrappedDataKey = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataName), library());
+		return nodeKeyIsDirty(wrappedDataKey.wrappedKey().wrappingKeyName());
 	}
 	
 	/**
@@ -895,7 +1006,8 @@ public class AccessControlManager {
 	
 	/**
 	 * Take a randomly generated data key and store it. This requires finding
-	 * the current effective node key, and wrapping this data key in it.
+	 * the current effective node key, and wrapping this data key in it. If the
+	 * current node key is dirty, this causes a new one to be generated.
 	 * @param dataNodeName
 	 * @param newRandomDataKey
 	 * @throws XMLStreamException 
@@ -910,9 +1022,9 @@ public class AccessControlManager {
 	 * @throws InvalidCipherTextException 
 	 */
 	public void storeDataKey(ContentName dataNodeName, Key newRandomDataKey) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
-		NodeKey effectiveNodeKey = getEffectiveNodeKey(dataNodeName);
+		NodeKey effectiveNodeKey = getFreshEffectiveNodeKey(dataNodeName);
 		if (null == effectiveNodeKey) {
-			throw new IllegalStateException("Cannot retrieve effective node key for node: " + dataNodeName + ".");
+			throw new AccessDeniedException("Cannot retrieve effective node key for node: " + dataNodeName + ".");
 		}
 		Library.logger().info("Wrapping data key for node: " + dataNodeName + " with effective node key for node: " + 
 							  effectiveNodeKey.nodeName() + " derived from stored node key for node: " + 

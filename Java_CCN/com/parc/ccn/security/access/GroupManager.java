@@ -27,6 +27,7 @@ import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.EnumeratedNameList;
 import com.parc.ccn.library.profiles.AccessControlProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
+import com.parc.ccn.library.profiles.AccessControlProfile.PrincipalInfo;
 
 public class GroupManager {
 	
@@ -167,6 +168,10 @@ public class GroupManager {
 	public boolean isGroup(String principal) {
 		return _groupList.hasChild(principal);
 	}
+	
+	public boolean isGroup(ContentName publicKeyName) {
+		return _groupStorage.isPrefixOf(publicKeyName);
+	}
 
 	public boolean haveKnownGroupMemberships() {
 		return _myGroupMemberships.size() > 0;
@@ -281,7 +286,12 @@ public class GroupManager {
 	protected Key getVersionedPrivateKeyForGroup(KeyDirectory keyDirectory, String principal) 
 			throws IOException, InvalidKeyException, AccessDeniedException, InvalidCipherTextException, 
 					XMLStreamException, ConfigurationException {
-		Key privateKey = getGroupPrivateKey(principal, keyDirectory.getPrincipals().get(principal));
+		PrincipalInfo pi = keyDirectory.getPrincipals().get(principal);
+		if (null == pi) {
+			Library.logger().info("No key available for principal : " + principal + " on node " + keyDirectory.getName());
+			return null;
+		}
+		Key privateKey = getGroupPrivateKey(principal, pi.versionTimestamp());
 		if (null == privateKey) {
 			Library.logger().info("Unexpected: we beleive we are a member of group " + principal + " but cannot retrieve private key version: " + keyDirectory.getPrincipals().get(principal) + " our membership revoked?");
 			// Check to see if we are a current member.

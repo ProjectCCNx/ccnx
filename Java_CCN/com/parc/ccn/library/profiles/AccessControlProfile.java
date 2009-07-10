@@ -3,6 +3,8 @@ package com.parc.ccn.library.profiles;
 import java.io.IOException;
 import java.sql.Timestamp;
 
+import org.bouncycastle.util.Arrays;
+
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.util.DataUtils;
@@ -43,19 +45,24 @@ public class AccessControlProfile implements CCNProfile {
 	public static final String COMPONENT_SEPARATOR_STRING = ":";
 	public static final byte [] COMPONENT_SEPARATOR = ContentName.componentParseNative(COMPONENT_SEPARATOR_STRING);
 	public static final byte [] WRAPPING_KEY_PREFIX = ContentName.componentParseNative("keyid" + COMPONENT_SEPARATOR_STRING);
+	// These two must be the same length
 	public static final byte [] PRINCIPAL_PREFIX = ContentName.componentParseNative("p" + COMPONENT_SEPARATOR_STRING);
+	public static final byte [] GROUP_PRINCIPAL_PREFIX = ContentName.componentParseNative("g" + COMPONENT_SEPARATOR_STRING);
 
 	public static final String SUPERSEDED_MARKER = "SupersededBy";
 	
 	public static class PrincipalInfo {
+		private byte [] _typeMarker;
 		private String _friendlyName;
 		private Timestamp _versionTimestamp;
 		
-		public PrincipalInfo(String friendlyName, Timestamp versionTimestamp) {
+		public PrincipalInfo(byte [] type, String friendlyName, Timestamp versionTimestamp) {
+			_typeMarker = type;
 			_friendlyName = friendlyName;
 			_versionTimestamp = versionTimestamp;
 		}
 		
+		public boolean isGroup() { return Arrays.areEqual(GROUP_PRINCIPAL_PREFIX, _typeMarker); }
 		public String friendlyName() { return _friendlyName; }
 		public Timestamp versionTimestamp() { return _versionTimestamp; }
 	}
@@ -166,7 +173,8 @@ public class AccessControlProfile implements CCNProfile {
 	}
 
 	public static boolean isPrincipalNameComponent(byte [] nameComponent) {
-		return DataUtils.isBinaryPrefix(PRINCIPAL_PREFIX, nameComponent);
+		return (DataUtils.isBinaryPrefix(PRINCIPAL_PREFIX, nameComponent) ||
+				DataUtils.isBinaryPrefix(GROUP_PRINCIPAL_PREFIX, nameComponent));
 	}
 
 	public static boolean isWrappedKeyNameComponent(byte [] wnkNameComponent) {
@@ -222,20 +230,22 @@ public class AccessControlProfile implements CCNProfile {
 					ContentName.componentPrintURI(childName, PRINCIPAL_PREFIX.length, childName.length-PRINCIPAL_PREFIX.length));
 			return null;
 		}
+		byte [] type = new byte[PRINCIPAL_PREFIX.length];
 		byte [] principal = new byte[sepIndex - PRINCIPAL_PREFIX.length];
 		byte [] timestamp = new byte[childName.length - sepIndex];
+		System.arraycopy(childName, 0, type, 0, PRINCIPAL_PREFIX.length);
 		System.arraycopy(childName, PRINCIPAL_PREFIX.length, principal, 0, principal.length);
 		System.arraycopy(childName, sepIndex+1, timestamp, 0, timestamp.length);
 		
 		String strPrincipal = ContentName.componentPrintNative(principal);
 		// Represent as version or just the timestamp part?
 		Timestamp version = DataUtils.binaryTime12ToTimestamp(timestamp);
-		return new PrincipalInfo(strPrincipal, version);	
+		return new PrincipalInfo(type, strPrincipal, version);	
 	}
 
 	/**
 	 * Principal names for links to wrapped key blocks take the form:
-	 * PRINCIPAL_PREFIX COMPONENT_SEPARATOR principalName COMPONENT_SEPARATOR timestamp as 12-bit binary
+	 * {GROUP_PRINCIPAL_PREFIX | PRINCIPAL_PREFIX} COMPONENT_SEPARATOR principalName COMPONENT_SEPARATOR timestamp as 12-bit binary
 	 * This allows a single enumeration of a wrapped key directory to determine
 	 * not only which principals the keys are wrapped for, but also what versions of their
 	 * private keys the keys are wrapped under (also determinable from the contents of the
@@ -245,25 +255,27 @@ public class AccessControlProfile implements CCNProfile {
 	 * @param timestamp
 	 * @return
 	 */
-	public static byte[] principalInfoToNameComponent(String principalName,
+	public static byte[] principalInfoToNameComponent(boolean isGroup,
+													  String principalName,
 													  Timestamp timestamp) {
 		byte [] bytePrincipal = ContentName.componentParseNative(principalName);
 		byte [] byteTime = DataUtils.timestampToBinaryTime12(timestamp);
-		byte [] component = new byte[PRINCIPAL_PREFIX.length + bytePrincipal.length + COMPONENT_SEPARATOR.length + byteTime.length];
+		byte [] prefix = (isGroup ? GROUP_PRINCIPAL_PREFIX : PRINCIPAL_PREFIX);
+		byte [] component = new byte[prefix.length + bytePrincipal.length + COMPONENT_SEPARATOR.length + byteTime.length];
 		// java 1.6 has much better functions for array copying
-		System.arraycopy(PRINCIPAL_PREFIX, 0, component, 0, PRINCIPAL_PREFIX.length);
-		System.arraycopy(bytePrincipal, 0, component, PRINCIPAL_PREFIX.length, bytePrincipal.length);
-		System.arraycopy(COMPONENT_SEPARATOR, 0, component, PRINCIPAL_PREFIX.length+bytePrincipal.length, COMPONENT_SEPARATOR.length);
-		System.arraycopy(byteTime, 0, component, PRINCIPAL_PREFIX.length+bytePrincipal.length+COMPONENT_SEPARATOR.length, 
+		System.arraycopy(prefix, 0, component, 0, prefix.length);
+		System.arraycopy(bytePrincipal, 0, component, prefix.length, bytePrincipal.length);
+		System.arraycopy(COMPONENT_SEPARATOR, 0, component, prefix.length+bytePrincipal.length, COMPONENT_SEPARATOR.length);
+		System.arraycopy(byteTime, 0, component, prefix.length+bytePrincipal.length+COMPONENT_SEPARATOR.length, 
 							byteTime.length);
 		
 		return component;
 	}
 
-	public static PrincipalInfo parsePrincipalInfoFromPublicKeyName(ContentName publicKeyName) throws VersionMissingException {
-		
+	public static PrincipalInfo parsePrincipalInfoFromPublicKeyName(boolean isGroup, ContentName publicKeyName) throws VersionMissingException {
+		byte [] type = (isGroup ? GROUP_PRINCIPAL_PREFIX : PRINCIPAL_PREFIX);
 		Timestamp version = VersioningProfile.getVersionAsTimestamp(publicKeyName);
 		String principal = ContentName.componentPrintNative(VersioningProfile.versionRoot(publicKeyName).lastComponent());
-		return new PrincipalInfo(principal, version);
+		return new PrincipalInfo(type, principal, version);
 	}
 }

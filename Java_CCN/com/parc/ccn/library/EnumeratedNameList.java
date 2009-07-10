@@ -3,8 +3,9 @@ package com.parc.ccn.library;
 import java.io.IOException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.ListIterator;
+import java.util.Iterator;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import org.bouncycastle.util.Arrays;
 
@@ -22,8 +23,8 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	protected CCNNameEnumerator _enumerator;
 	protected BasicNameEnumeratorListener callback;
 	// make these contain something other than content names when the enumerator has better data types
-	protected ArrayList<ContentName> _children = new ArrayList<ContentName>();
-	protected ArrayList<ContentName> _newChildren = new ArrayList<ContentName>();
+	protected SortedSet<ContentName> _children = new TreeSet<ContentName>();
+	protected SortedSet<ContentName> _newChildren = new TreeSet<ContentName>();
 	protected Object _childLock = new Object();
 	
 	/**
@@ -76,10 +77,10 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * (thus removing it from every other listener), in effect handing the
 	 * new children to the first consumer to wake up and makes the other
 	 * ones go around again.
-	 * @return
+	 * @return returns the array of single-component content name childrent that are new to us
 	 */
-	public ArrayList<byte []> getNewData() {
-		ArrayList<byte []> childArray = null;
+	public SortedSet<ContentName> getNewData() {
+		SortedSet<ContentName> childArray = null;
 		synchronized(_childLock) {
 			while (null == _newChildren) {
 				try {
@@ -90,17 +91,21 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 						+ ".");
 			}
 			if (null != _newChildren) {
-				childArray = buildComponentArray(_newChildren);
+				childArray = _newChildren;
 				_newChildren = null;
 			}
 		}
 		return childArray;
 	}
 	
-	public ArrayList<byte []> getChildren() {
+	/**
+	 * Returns single-component ContentName objects containing the name components of the children.
+	 * @return
+	 */
+	public SortedSet<ContentName> getChildren() {
 		if (!hasChildren())
 			return null;
-		return buildComponentArray(_children);
+		return _children;
 	}
 	
 	public boolean hasNewData() {
@@ -128,8 +133,8 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * @param groupFriendlyName ??
 	 * @return child
 	 * */
-	public boolean hasChild(String groupFriendlyName) {
-		return hasChild(ContentName.componentParseNative(groupFriendlyName));
+	public boolean hasChild(String childName) {
+		return hasChild(ContentName.componentParseNative(childName));
 	}
 
 	/**
@@ -150,24 +155,6 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 			}
 		}
 	}
-	/**
-	 * 
-	 * 
-	 * 
-	 * */
-	private ArrayList<byte []> buildComponentArray(ArrayList<ContentName> results) {
-		if ((null == results) || (0 == results.size()))
-			return null;
-		
-		ArrayList<byte []> components = new ArrayList<byte []>();
-		for (ContentName cn : results) {
-			if (cn.count() > 1) {
-				Library.logger().info("Unexpected: name enumerator returned us a name with more than one component! : " + cn);
-			}
-			components.add(cn.component(0));
-		}
-		return components;
-	}
 
 	/**
 	 * The name enumerator should hand back a list of 
@@ -182,20 +169,30 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	public int handleNameEnumerator(ContentName prefix,
 								    ArrayList<ContentName> names) {
 		
-		System.out.println("got a callback!");
 		Library.logger().info(names.size() + " new name enumeration results: our prefix: " + _namePrefix + " returned prefix: " + prefix);
 		if (!prefix.equals(_namePrefix)) {
 			Library.logger().warning("Returned data doesn't match requested prefix!");
 		}
-		System.out.println("Handleing Name Iteration "+prefix +" ");
+		Library.logger().info("Handling Name Iteration " + prefix +" ");
 		// the name enumerator hands off names to us, we own it now
+		// DKS -- want to keep listed as new children we previously had
 		synchronized (_childLock) {
-			_children.addAll(names);
-			Collections.sort(_children);
-			_newChildren = names;
-			Collections.sort(_newChildren);
-			processNewChildren(_newChildren);
-			_childLock.notifyAll();
+			TreeSet<ContentName> thisRoundNew = new TreeSet<ContentName>();
+			thisRoundNew.addAll(names);
+			Iterator<ContentName> it = thisRoundNew.iterator();
+			while (it.hasNext()) {
+				ContentName name = it.next();
+				if (_children.contains(name)) {
+					it.remove();
+				}
+			}
+			if (!thisRoundNew.isEmpty()) {
+				_newChildren.addAll(thisRoundNew);
+				_children.addAll(thisRoundNew);
+				Library.logger().info("New children found: " + thisRoundNew.size() + " total children " + _children.size());
+				processNewChildren(thisRoundNew);
+				_childLock.notifyAll();
+			}
 		}
 		return 0;
 	}
@@ -203,10 +200,13 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	/**
 	 * Method to allow subclasses to do post-processing on incoming names
 	 * before handing them to customers.
+	 * DKS TODO -- make sure we only signal on new new children
+	 * Note that the set handed in here is not the set that will be handed
+	 * out; only the name objects are the same.
 	 * 
 	 * @param newChildren 
 	 */
-	protected void processNewChildren(ArrayList<ContentName> newChildren) {
+	protected void processNewChildren(SortedSet<ContentName> newChildren) {
 		// default -- do nothing.
 	}
 
@@ -220,15 +220,27 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		// of the available names in _children that are version components,
 		// find the latest one (version-wise)
 		// names are sorted, so the last one that is a version should be the latest version
-		ListIterator<ContentName> it = _children.listIterator();
-		ContentName lastName = null;
-		while (it.hasPrevious()) {
-			lastName = it.previous();
-			if (VersioningProfile.isVersionComponent(lastName.component(0))) {
-				return lastName;
+		// ListIterator previous doesn't work unless you've somehow gotten it to point at the end...
+		ContentName theName = null;
+		ContentName latestName = null;
+		Timestamp latestTimestamp = null;
+		Iterator<ContentName> it = _children.iterator();
+		while (it.hasNext()) {
+			theName = it.next();
+			if (VersioningProfile.isVersionComponent(theName.component(0))) {
+				if (null == latestName) {
+					latestName = theName;
+					latestTimestamp = VersioningProfile.getVersionComponentAsTimestamp(theName.component(0));
+				} else {
+					Timestamp thisTimestamp = VersioningProfile.getVersionComponentAsTimestamp(theName.component(0));
+					if (thisTimestamp.after(latestTimestamp)) {
+						latestName = theName;
+						latestTimestamp = thisTimestamp;
+					}
+				}
 			}
 		}
-		return null;
+		return latestName;
 	}
 	
 	public Timestamp getLatestVersionChildTime() {

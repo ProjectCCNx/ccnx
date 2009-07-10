@@ -24,12 +24,15 @@ import com.parc.ccn.library.profiles.VersioningProfile;
 public class VersioningProfileTest {
 	private static byte[][] abParts = { { 97 }, { 98 } };
 	private static ContentName abName = new ContentName(abParts);
-	private static byte[][] abSegParts = { { 97 }, { 98 }, { -3, 16, 64 }, { -8, 16 } };
-	private static ContentName abSegName = new ContentName(abSegParts);
-	private static byte[][] ab0Parts = { { 97 }, { 98 }, { -3 } };
-	private static ContentName ab0Name = new ContentName(ab0Parts);
-	private static byte[][] abvParts = { { 97 }, { 98 }, { -3, 16, 64 } };
-	private static ContentName abvName = new ContentName(abvParts);
+	private static byte[] ver = { -3, 16, 64 };
+	private static byte[] seg = { -8, 16 };
+	private static ContentName abSegName = new ContentName(abName, ver, seg);
+	private static byte[] v0 = { -3 };
+	private static byte[] notv = { -3, 0 };
+	private static ContentName ab0Name = new ContentName(abName, v0);
+	private static ContentName abnotvName = new ContentName(abName, notv);
+	private static ContentName abvName = new ContentName(abName, ver);
+	private static ContentName abvvName = new ContentName(abvName, ver);
 
 	/**
 	 * @throws java.lang.Exception
@@ -103,6 +106,20 @@ public class VersioningProfileTest {
 			fail("should be different versions");
 	}
 
+	@Test
+	public void testFindVersionComponent() {
+		if (VersioningProfile.findVersionComponent(abnotvName) != -1)
+			fail();
+		if (VersioningProfile.findVersionComponent(abName) != -1)
+			fail();
+		if (VersioningProfile.findVersionComponent(abSegName) != 2)
+			fail();
+		if (VersioningProfile.findVersionComponent(abvName) != 2)
+			fail();
+		if (VersioningProfile.findVersionComponent(abvvName) != 3)
+			fail();
+	}
+
 	/**
 	 * Test method for {@link com.parc.ccn.library.profiles.VersioningProfile#isVersioned(com.parc.ccn.data.ContentName)}.
 	 */
@@ -122,7 +139,7 @@ public class VersioningProfileTest {
 		if (VersioningProfile.isVersioned(new ContentName(parts)))
 			fail("not version component");
 		
-		if (!VersioningProfile.isVersioned(ab0Name))
+		if (VersioningProfile.isVersioned(abnotvName))
 			fail();
 	}
 
@@ -137,6 +154,9 @@ public class VersioningProfileTest {
 			fail();
 		if (!VersioningProfile.versionRoot(new ContentName()).equals(new ContentName()))
 			fail();
+		// check correct version field stripped if 2 present
+		if (!VersioningProfile.versionRoot(abvvName).equals(abvName))
+			fail();
 	}
 
 	/**
@@ -147,6 +167,8 @@ public class VersioningProfileTest {
 		if (!VersioningProfile.isVersionOf(abSegName, abName))
 			fail();
 		if (VersioningProfile.isVersionOf(abName, abSegName))
+			fail();
+		if (VersioningProfile.isVersionOf(abvName, abvvName))
 			fail();
 	}
 

@@ -69,18 +69,29 @@ public class VersioningProfile implements CCNProfile {
 	}
 	
 	/**
+	 * Finds the last component that looks like a version in name.
+	 * @param name
+	 * @return the index of the last version component in the name, or -1 if there is no version
+	 *					component in the name
+	 */
+	public static int findVersionComponent(ContentName name) {
+		int i = name.count();
+		for (;i >= 0; i--)
+			if (isVersionComponent(name.component(i)))
+				return i;
+		return -1;
+	}
+
+	/**
 	 * Checks to see if this name has a validly formatted version field.
 	 */
 	public static boolean isVersioned(ContentName name) {
-		byte [] vm = null;
-		if (SegmentationProfile.isSegment(name)) {
-			vm = name.component(name.count()-2);
-		} else {
-			vm = name.lastComponent(); // no segment number; unusual (though this comes up in name enumeration)
-		}
-		return isVersionComponent(vm);
+		return findVersionComponent(name) != -1;
 	}
 	
+	/**
+	 * Check a name component to see if it is a valid version field
+	 */
 	public static boolean isVersionComponent(byte [] nameComponent) {
 		return (null != nameComponent) && (0 != nameComponent.length) && 
 			   (VERSION_MARKER == nameComponent[0]) && 
@@ -88,46 +99,33 @@ public class VersioningProfile implements CCNProfile {
 	}
 
 	/**
-	 * Take a name which may have a segment component and a version component
-	 * and strip them if present.
+	 * Take a name which may have a version component
+	 * and strips it and all following components if present.
 	 */
 	public static ContentName versionRoot(ContentName name) {
-		int offset = 0;
-		if (SegmentationProfile.isSegment(name)) {
-			if (isVersioned(name)) {
-				offset = name.count()-2;
-			} else {
-				// is a fragment, but not versioned, remove fragment marker
-				offset = name.count()-1;
-			}
-		} else {
-			// no fragment number, unusual
-			if (isVersioned(name)) {
-				offset = name.count()-1;
-			} else {
-				// already there
-				return name;
-			}
-		}
-		return new ContentName(offset, name.components());
+		int offset = findVersionComponent(name);
+		return (offset == -1) ? name : new ContentName(offset, name.components());
 	}
 
 	/**
 	 * Does this name represent a version of the given parent?
 	 * DKS TODO -- do we need a tighter definition? e.g. is this a data block of
 	 * this version, versus metadata, etc...
-	 * @param version
-	 * @param parent
+	 * @param versionedName name with version to be checked.
+	 * @param parent name without version field that will be checked against.
+	 * Note - the parent name must contain all the name components up to but not including the version
+	 * component in the versionedName.
 	 * @return
 	 */
-	public static boolean isVersionOf(ContentName version, ContentName parent) {
-		if (!isVersioned(version))
+	public static boolean isVersionOf(ContentName versionedName, ContentName parent) {
+		int i = findVersionComponent(versionedName);
+		
+		// check version field is in right place (just after parent)
+		// this also catches cases where there is no version field.
+		if (i != parent.count())
 			return false;
-		
-		if (isVersioned(parent))
-			parent = versionRoot(parent);
-		
-		return parent.isPrefixOf(version);
+				
+		return parent.isPrefixOf(versionedName);
 	}
 	
 	/**
@@ -137,20 +135,11 @@ public class VersioningProfile implements CCNProfile {
 	 * @throws VersionMissingException
 	 */
 	public static long getVersionAsLong(ContentName name) throws VersionMissingException {
-		byte [] vm = null;
-		
-		int i = name.count()-1;
-		for (; i > 0; i--){
-			vm = name.component(i);
-			if (VERSION_MARKER == vm[0]){
-				//here is the version!
-				i = -1;
-			}
-		}
-		if (i == 0)
+		int i = findVersionComponent(name);
+		if (i == -1)
 			throw new VersionMissingException();
 		
-		return getVersionComponentAsLong(vm);
+		return getVersionComponentAsLong(name.component(i));
 	}
 	
 	public static long getVersionComponentAsLong(byte [] versionComponent) {
@@ -204,13 +193,10 @@ public class VersioningProfile implements CCNProfile {
 	public static int compareVersions(
 			ContentName left,
 			ContentName right) {
-		if (!isVersioned(left) || !isVersioned(right)) {
-			throw new IllegalArgumentException("Both names to compare must be versioned!");
-		}
 		try {
 			return getVersionAsTimestamp(left).compareTo(getVersionAsTimestamp(right));
 		} catch (VersionMissingException e) {
-			throw new IllegalArgumentException("Name that isVersioned returns true for throws VersionMissingException!: " + right);
+			throw new IllegalArgumentException("Both names to compare must be versioned!");
 		}
 	}
 

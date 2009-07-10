@@ -116,8 +116,8 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * Basic constructor for extending or contracting names.
 	 * Shallow copy, as we don't tend to alter name components
 	 * once created.
-	 * @param count
-	 * @param components
+	 * @param count Only this number of name components are copied into the new name.
+	 * @param components These are the name components to be copied. Can be null, empty, or longer or shorter than count.
 	 */
 	public ContentName(int count, ArrayList<byte []>components) {
 		if (0 >= count) {
@@ -740,6 +740,9 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 
 	public ArrayList<byte[]> components() { return _components; }
 	
+	/**
+	 * @return The number of components in the name.
+	 */
 	public int count() { 
 		if (null == _components) return 0;
 		return _components.size(); 
@@ -786,6 +789,13 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		decoder.readEndElement();
 	}
 	
+	/**
+	 * Test if this name is a prefix of another name - i.e. do all components in this name exist in the
+	 * name being compared with. Note there do not need to be any more components in the name
+	 * being compared with. 
+	 * @param name name being compared with.
+	 * @return
+	 */
 	public boolean isPrefixOf(ContentName name) {
 		return isPrefixOf(name, count());
 	}
