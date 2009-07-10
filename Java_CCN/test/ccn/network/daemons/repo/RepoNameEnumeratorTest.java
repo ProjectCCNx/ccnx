@@ -85,6 +85,7 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 			ros.close();
 		}
 		catch(IOException ex){
+			ex.printStackTrace();
 			Assert.fail("could not put the content into the repo ("+contentName+")");
 		}
 		catch (MalformedContentNameStringException e) {
