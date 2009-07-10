@@ -1,0 +1,45 @@
+/*
+ * sockcreate.h
+ * Copyright (C) 2009 Palo Alto Research Center, Inc. All rights reserved.
+ */
+
+struct sockaddr_storage;
+struct sockaddr;
+
+/**
+ * Holds a pair of socket file descriptors.
+ *
+ * Some platfoms/modes of operations require separate sockets for sending
+ * and receiving, so we accomodate that with this pairing.  It is fine for
+ * the two file descriptors to be the same.
+ */
+struct ccn_sockets {
+    int recving;
+    int sending;
+    // flags?
+};
+
+
+struct ccn_sockdescr {
+    int ipproto; /**< as per http://www.iana.org/assignments/protocol-numbers -
+                    should match IPPROTO_* in system headers */
+    const char *address; /**< acceptable to getaddrinfo */
+    const char *port; /**< service name or number */
+    const char *source_address; /**< may be needed for multicast */
+    int ttl; /**< may be needed for multicast */
+};
+
+/**
+ * Utility for setting up a socket (or pair of sockets) from a text-based
+ * description.
+ * 
+ * @param 
+ * @param logger should be used for reporting errors, printf-style
+ * @param logdat must be passed as first argument to logger()
+ * @param socks should be filled in with the pair of socket file descriptors
+ * @returns 0 for success, -1 for error
+ */
+int ccn_setup_socket(const struct ccn_sockdescr *descr,
+                     (logger*)(void *, const char *, ...),
+                     void *logdat,
+                     struct ccn_sockets *socks);
