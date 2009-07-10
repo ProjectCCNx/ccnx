@@ -96,23 +96,22 @@ public class BasicKeyManager extends KeyManager {
 	protected void loadKeyStore(InputStream in) throws ConfigurationException {
 		if (null == _keystore) {
 			try {
-				Library.logger().info("Loading CCN key store from " + UserConfiguration.keystoreFileName() + "...");
+				Library.logger().info("Loading CCN key store...");
 				_keystore = KeyStore.getInstance(UserConfiguration.defaultKeystoreType());
-				in = new FileInputStream(UserConfiguration.keystoreFileName());
 				_keystore.load(in, _password);
 			} catch (NoSuchAlgorithmException e) {
-				Library.logger().warning("Cannot load default keystore.");
-				throw new ConfigurationException("Cannot load default keystore: " + UserConfiguration.keystoreFileName()+ ".");
+				Library.logger().warning("Cannot load keystore: " + e);
+				throw new ConfigurationException("Cannot load default keystore: " + e);
 			} catch (CertificateException e) {
-				Library.logger().warning("Cannot load default keystore with no certificates.");
-				throw new ConfigurationException("Cannot load default keystore with no certificates.");
+				Library.logger().warning("Cannot load keystore with no certificates.");
+				throw new ConfigurationException("Cannot load keystore with no certificates.");
 			} catch (IOException e) {
-				Library.logger().warning("Cannot open existing key store file: " + UserConfiguration.keystoreFileName() + ": " + e.getMessage());
+				Library.logger().warning("Cannot open existing key store: " + e);
 				throw new ConfigurationException(e);
 			} catch (KeyStoreException e) {
-				Library.logger().warning("Cannot create instance of preferred key store type: " + e.getMessage());
+				Library.logger().warning("Cannot create instance of preferred key store type: " + UserConfiguration.defaultKeystoreType() + " " + e.getMessage());
 				Library.warningStackTrace(e);
-				throw new ConfigurationException("Cannot create instance of default key store type: " + e.getMessage());
+				throw new ConfigurationException("Cannot create instance of default key store type: " + UserConfiguration.defaultKeystoreType() + " " + e.getMessage());
 			} finally {
 				if (null != in)
 					try {
