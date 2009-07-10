@@ -187,7 +187,11 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 				}
 			}
 			if (!thisRoundNew.isEmpty()) {
-				_newChildren.addAll(thisRoundNew);
+				if (null != _newChildren) {
+					_newChildren.addAll(thisRoundNew);
+				} else {
+					_newChildren = thisRoundNew;
+				}
 				_children.addAll(thisRoundNew);
 				Library.logger().info("New children found: " + thisRoundNew.size() + " total children " + _children.size());
 				processNewChildren(thisRoundNew);
@@ -225,6 +229,9 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		ContentName latestName = null;
 		Timestamp latestTimestamp = null;
 		Iterator<ContentName> it = _children.iterator();
+		// DKS TODO these are sorted -- we just need to iterate through them in reverse order. Having
+		// trouble finding something like C++'s reverse iterators to do that (linked list iterators
+		// can go backwards -- but you have to run them to the end first).
 		while (it.hasNext()) {
 			theName = it.next();
 			if (VersioningProfile.isVersionComponent(theName.component(0))) {
