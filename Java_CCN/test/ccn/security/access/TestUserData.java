@@ -1,9 +1,9 @@
 package test.ccn.security.access;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Set;
+import java.util.SortedSet;
 
 import test.ccn.data.util.Flosser;
 
@@ -88,7 +88,7 @@ public class TestUserData {
 		EnumeratedNameList userDirectory = new EnumeratedNameList(userKeystoreDataPrefix, library);
 		userDirectory.waitForData(); // will block
 		
-		ArrayList<byte []> availableChildren = userDirectory.getNewData();
+		SortedSet<ContentName> availableChildren = userDirectory.getChildren();
 		if ((null == availableChildren) || (availableChildren.size() == 0)) {
 			Library.logger().warning("No available user keystore data in directory " + userKeystoreDataPrefix + ", giving up.");
 			throw new IOException("No available user keystore data in directory " + userKeystoreDataPrefix + ", giving up.");
@@ -97,13 +97,13 @@ public class TestUserData {
 		ContentName childName;
 		KeyManager userKeyManager;
 		while (null != availableChildren) {
-			for (byte [] child : availableChildren) {
-				friendlyName = ContentName.componentPrintNative(child);
+			for (ContentName child : availableChildren) {
+				friendlyName = ContentName.componentPrintNative(child.lastComponent());
 				if (null != getUser(friendlyName)) {
 					Library.logger().info("Already loaded data for user: " + friendlyName + " from name: " + _userFriendlyNames.get(friendlyName));
 					continue;
 				}
-				childName = new ContentName(userKeystoreDataPrefix, child);
+				childName = new ContentName(userKeystoreDataPrefix, child.lastComponent());
 				Library.logger().info("Loading user: " + friendlyName + " from " + childName);
 				userKeyManager = new NetworkKeyManager(childName, null, password, library);
 				userKeyManager.initialize();

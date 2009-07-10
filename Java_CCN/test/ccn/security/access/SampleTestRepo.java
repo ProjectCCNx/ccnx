@@ -1,7 +1,7 @@
 package test.ccn.security.access;
 
 
-import java.util.ArrayList;
+import java.util.SortedSet;
 
 import junit.framework.Assert;
 
@@ -31,9 +31,9 @@ public class SampleTestRepo {
 	@Test
 	public void readWrite() throws Exception {
 		EnumeratedNameList l = new EnumeratedNameList(ContentName.fromNative(base), null);
-		ArrayList<byte []> r = l.getNewData();
+		SortedSet<ContentName> r = l.getNewData();
 		Assert.assertNotNull(r);
 		Assert.assertEquals(1, r.size());
-		Assert.assertEquals(file_name.getBytes(UTF8), r.get(0));
+		Assert.assertEquals(file_name.getBytes(UTF8), r.first().lastComponent());
 	}
 }
