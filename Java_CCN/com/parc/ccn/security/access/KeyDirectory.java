@@ -57,7 +57,7 @@ import com.parc.ccn.library.profiles.AccessControlProfile.PrincipalInfo;
 public class KeyDirectory extends EnumeratedNameList {
 	
 	AccessControlManager _manager; // to get at key cache
-	HashMap<String, Timestamp> _principals = new HashMap<String, Timestamp>();
+	HashMap<String, PrincipalInfo> _principals = new HashMap<String, PrincipalInfo>();
 	ArrayList<byte []> _keyIDs = new ArrayList<byte []>();
 	ArrayList<byte []> _otherNames = new ArrayList<byte []>();
 	
@@ -129,13 +129,13 @@ public class KeyDirectory extends EnumeratedNameList {
 	
 	public ArrayList<byte []> getWrappingKeyIDs() { return _keyIDs; }
 	
-	public HashMap<String, Timestamp> getPrincipals() { return _principals; }
+	public HashMap<String, PrincipalInfo> getPrincipals() { return _principals; }
 	
 	public ArrayList<byte []> otherNames() { return _otherNames; }
 	
 	protected void addPrincipal(byte [] wkChildName) {
 		PrincipalInfo pi = AccessControlProfile.parsePrincipalInfoFromNameComponent(wkChildName);
-		_principals.put(pi.friendlyName(), pi.versionTimestamp());
+		_principals.put(pi.friendlyName(), pi);
 	}
 	
 	public WrappedKeyObject getWrappedKeyForKeyID(byte [] keyID) throws XMLStreamException, IOException, ConfigurationException {
@@ -156,7 +156,12 @@ public class KeyDirectory extends EnumeratedNameList {
 			return null;
 		}
 		
-		ContentName principalLinkName = getWrappedKeyNameForPrincipal(principalName, _principals.get(principalName));
+		PrincipalInfo pi = _principals.get(principalName);
+		if (null == pi) {
+			Library.logger().info("No block available for principal: " + principalName);
+			return null;
+		}
+		ContentName principalLinkName = getWrappedKeyNameForPrincipal(pi.isGroup(), pi.friendlyName(), pi.versionTimestamp());
 		// This should be a link to the actual key block
 		// TODO DKS replace link handling
 		Link principalLink = _manager.library().getLink(principalLinkName, AccessControlManager.DEFAULT_TIMEOUT);
@@ -165,16 +170,18 @@ public class KeyDirectory extends EnumeratedNameList {
 		return getWrappedKey(wrappedKeyName);
 	}
 	
-	public ContentName getWrappedKeyNameForPrincipal(String principalName, Timestamp principalVersion) {
+	public ContentName getWrappedKeyNameForPrincipal(boolean isGroup, String principalName, Timestamp principalVersion) {
 		ContentName principalLinkName = new ContentName(_namePrefix, 
-				AccessControlProfile.principalInfoToNameComponent(principalName,
+				AccessControlProfile.principalInfoToNameComponent(isGroup,
+																  principalName,
 																  principalVersion));
 		return principalLinkName;
 	}
 	
 	public ContentName getWrappedKeyNameForPrincipal(ContentName principalPublicKeyName) throws VersionMissingException {
-		PrincipalInfo info = AccessControlProfile.parsePrincipalInfoFromPublicKeyName(principalPublicKeyName);
-		return getWrappedKeyNameForPrincipal(info.friendlyName(), info.versionTimestamp());
+		PrincipalInfo info = AccessControlProfile.parsePrincipalInfoFromPublicKeyName(_manager.groupManager().isGroup(principalPublicKeyName),
+																					  principalPublicKeyName);
+		return getWrappedKeyNameForPrincipal(info.isGroup(), info.friendlyName(), info.versionTimestamp());
 	}
 	
 	public boolean hasSupersededBlock() {
