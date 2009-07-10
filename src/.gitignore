@@ -40,3 +40,8 @@ tests/FAILING
 tests/SKIPPED
 tests/STATUS/
 tests/ephemeral*
+ccnd/Makefile
+cmd/Makefile
+lib/Makefile
+libexec/Makefile
+tests/Makefile
