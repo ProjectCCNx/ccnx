@@ -159,6 +159,7 @@ struct face {
 #define CCN_FACE_INET6  (1 << 6) /* IPv6 */
 #define CCN_FACE_DC     (1 << 7) /* Face sends Inject messages */
 #define CCN_FACE_NOSEND (1 << 8) /* Don't send anymore */
+#define CCN_FACE_UNDECIDED (1 << 9) /* Might not be talking ccn */
 
 /*
  *  The content hash table is keyed by the initial portion of the ContentObject

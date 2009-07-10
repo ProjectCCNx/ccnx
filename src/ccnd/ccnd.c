@@ -2538,6 +2538,11 @@ process_input(struct ccnd *h, int fd)
         }
         face->inbuf->length += res;
         msgstart = 0;
+        if ((face->flags & CCN_FACE_UNDECIDED) != 0 &&
+            face->inbuf->length >= 4 &&
+            0 == memcmp(buf, "GET ", 4)) {
+            // yada, yada
+        }
         dres = ccn_skeleton_decode(d, buf, res);
         if (0) ccnd_msg(h, "ccn_skeleton_decode of %d bytes accepted %d",
                         (int)res, (int)dres);
