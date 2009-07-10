@@ -87,7 +87,7 @@ collect_faces_html(struct ccnd *h, struct ccn_charbuf *b)
     ccn_charbuf_putf(b, "<ul>");
     for (i = 0; i < h->face_limit; i++) {
         struct face *face = h->faces_by_faceid[i];
-        if (face != NULL) {
+        if (face != NULL && (face->flags & CCN_FACE_UNDECIDED) == 0) {
             ccn_charbuf_putf(b, "<li>");
             ccn_charbuf_putf(b, " <b>face:</b> %u <b>flags:</b> 0x%x",
                              face->faceid, face->flags);
@@ -210,106 +210,36 @@ static const char *resp405 =
     "Connection: close" CRLF CRLF;
 
 int
-ccnd_stats_check_for_http_connection(struct ccnd *h)
+ccnd_stats_handle_http_connection(struct ccnd *h, struct face *face)
 {
     int res;
     int hdrlen;
-    int fd;
     char *response = NULL;
-    char buf[512] = "GET / ";
     struct linger linger = { .l_onoff = 1, .l_linger = 1 };
-    struct timeval timeout = { .tv_sec = 0, .tv_usec = 100000 };
+    int fd = face->fd;
+    char buf[128];
     
-    if (h->httpd_listener_fd == -1)
+    if (face->inbuf->length < 6)
         return(-1);
-    fd = accept(h->httpd_listener_fd, NULL, 0);
-    if (fd == -1) {
-        perror("check_for_http_connection - accept");
-        close(h->httpd_listener_fd);
-        h->httpd_listener_fd = -1;
-        return(-1);
-    }
     response = collect_stats_html(h);
     /* Set linger to prevent quickly resetting the connection on close.*/
-    res = setsockopt(fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
-    /* Set a receive timeout so we don't end up waiting for very long. */
-    /* (This may fail on some platforms, if so we could block.) */
-    res = setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-    res = read(fd, buf, sizeof(buf));
-    if ((res == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) || res >= 6) {
-        if (0 == memcmp(buf, "GET / ", 6)) {
-            res = strlen(response);
-            hdrlen = snprintf(buf, sizeof(buf),
-                              "HTTP/1.1 200 OK" CRLF
-                              "Content-Type: text/html; charset=utf-8" CRLF
-                              "Connection: close" CRLF
-                              "Content-Length: %d" CRLF CRLF,
-                              res);
-            (void)write(fd, buf, hdrlen);
-            (void)write(fd, response, res);
-        }
-        else if (0 == memcmp(buf, "GET ", 4))
-            (void)write(fd, resp404, strlen(resp404));
-        else
-            (void)write(fd, resp405, strlen(resp405));
+    res = setsockopt(face->fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
+    if (0 == memcmp(face->inbuf->buf, "GET / ", 6)) {
+        res = strlen(response);
+        hdrlen = snprintf(buf, sizeof(buf),
+                          "HTTP/1.1 200 OK" CRLF
+                          "Content-Type: text/html; charset=utf-8" CRLF
+                          "Connection: close" CRLF
+                          "Content-Length: %d" CRLF CRLF,
+                          res);
+        (void)write(fd, buf, hdrlen);
+        (void)write(fd, response, res);
     }
-    close(fd);
+    else if (0 == memcmp(buf, "GET ", 4))
+        (void)write(fd, resp404, strlen(resp404));
+    else
+        (void)write(fd, resp405, strlen(resp405));
+    shutdown_client_fd(h, face->fd);
     free(response);
-    return(0);
-}
-
-int
-ccnd_stats_httpd_start(struct ccnd *h)
-{
-    int res;
-    int sock;
-    int yes = 1;
-    struct addrinfo hints = {0};
-    struct addrinfo *ai = NULL;
-    const char *portstr;
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_PASSIVE;
-    /*
-     * XXX - use the tcp port corresponding to the configured udp port
-     * for our httpd service.
-     * This is probably wrong long-term, but handy for debugging multiple
-     * ccnd instances on one machine.
-     */
-    portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
-    if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
-        portstr = "4485";
-    res = getaddrinfo(NULL, portstr, &hints, &ai);
-    if (res == -1) {
-        perror("ccnd_stats_httpd_listen: getaddrinfo");
-        return(-1);
-    }
-    sock = socket(ai->ai_family, SOCK_STREAM, 0);
-    if (sock == -1) {
-        perror("ccnd_stats_httpd_listen: getaddrinfo");
-        return(-1);
-    }
-    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
-    res = bind(sock, ai->ai_addr, ai->ai_addrlen);
-    if (res == -1) {
-        perror("ccnd_stats_httpd_listen: bind");
-        close(sock);
-        return(-1);
-    }
-    //res = fcntl(sock, F_SETFL, O_NONBLOCK);
-    if (res == -1) {
-        perror("ccnd_stats_httpd_listen: fcntl");
-        close(sock);
-        return(-1);
-    }
-    res = listen(sock, 30);
-    if (res == -1) {
-        perror("ccnd_stats_httpd_listen: listen");
-        close(sock);
-        return(-1);
-    }
-    freeaddrinfo(ai);
-    ai = NULL;
-    h->httpd_listener_fd = sock;
     return(0);
 }

@@ -66,7 +66,8 @@ struct ccnd {
     struct ccn_scheduled_event *age_forwarding;
     const char *portstr;            /* "main" port number */
     int local_listener_fd;
-    int httpd_listener_fd;
+    int tcp4_fd;                    /* listener */
+    int tcp6_fd;                    /* listener */
     int udp4_fd;
     int udp6_fd;
     nfds_t nfds;
@@ -274,8 +275,7 @@ int ccnd_reg_uri(struct ccnd *h,
                  int expires);
 
 /* Consider a separate header for these */
-int ccnd_stats_httpd_start(struct ccnd *);
-int ccnd_stats_check_for_http_connection(struct ccnd *);
+int ccnd_stats_handle_http_connection(struct ccnd *, struct face *);
 void ccnd_msg(struct ccnd *, const char *, ...);
 void ccnd_debug_ccnb(struct ccnd *h,
                      int lineno,
@@ -283,5 +283,6 @@ void ccnd_debug_ccnb(struct ccnd *h,
                      struct face *face,
                      const unsigned char *ccnb,
                      size_t ccnb_size);
+void shutdown_client_fd(struct ccnd *h, int fd);
 
 #endif
