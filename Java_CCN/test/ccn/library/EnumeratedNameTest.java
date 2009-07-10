@@ -3,7 +3,7 @@ package test.ccn.library;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Random;
-import java.util.logging.Level;
+import java.util.SortedSet;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -58,15 +58,14 @@ public class EnumeratedNameTest extends RepoTestBase {
 		
 		directory = ContentName.fromNative(directoryString);
 		name1 = ContentName.fromNative(directory, name1String);
-		name3 = ContentName.fromNative(directory, name3String);
 		name2 = ContentName.fromNative(directory, name2String);
+		name3 = ContentName.fromNative(directory, name3String);
 		brokenPrefix = ContentName.fromNative(prefix1StringError);
 	}
 	
 	@Test
-	public void testEnumeratedName() throws Exception
-	{
-		Library.logger().setLevel(Level.FINEST);
+	public void testEnumeratedName() throws Exception {
+		//Library.logger().setLevel(Level.FINEST);
 		System.out.println("Starting Enumerated Name Test");
 		
 		try {
@@ -117,7 +116,7 @@ public class EnumeratedNameTest extends RepoTestBase {
 			Assert.assertTrue(testList.hasNewData());
 
 			//gets new data
-			ArrayList<byte []> returnedBytes = testList.getNewData();
+			SortedSet<ContentName> returnedBytes = testList.getNewData();
 
 			Assert.assertNotNull(returnedBytes);
 			
@@ -125,12 +124,13 @@ public class EnumeratedNameTest extends RepoTestBase {
 			// until you add something else to the repo. i.e. this next call would block
 			// until there was new data for getNewData to return, and it *wouldn't* match the previous set.
 			// Assert.assertEquals(testList.getNewData(), returnedBytes.size());
-			System.out.println("Got " + returnedBytes.size() + " children, first one is " + ContentName.componentPrintNative(returnedBytes.get(0)));
+			System.out.println("Got " + returnedBytes.size() + " children, first one is " + 
+					ContentName.componentPrintNative(returnedBytes.first().component(0)));
 			// DKS -- previous version of this was failing:
 			// Assert.assertEquals(ame1String.getBytes(UTF8), returnedBytes.get(0)));
 			// this will fail, because byte [] does not define equals (it's a native type, not an object), so
 			// you get Object.equals -- which tests if the two pointers are the same.
-			Assert.assertTrue(Arrays.areEqual(name1String.getBytes(UTF8), returnedBytes.get(0)));
+			Assert.assertTrue(Arrays.areEqual(name1String.getBytes(UTF8), returnedBytes.first().component(0)));
 
 			//testing that children exist
 			// DKS -- if you're testing a boolean, use assertTrue, not assertNotNull
@@ -147,8 +147,9 @@ public class EnumeratedNameTest extends RepoTestBase {
 			addContentToRepo(name2, library);
 			addContentToRepo(name3, library);
 			
-			// DKS -- TODO fail: this next is not returning; repo isn't responding...
-			ArrayList<byte []> returnedBytes2 = testList.getNewData(); // will block for new data
+			// DKS -- TODO fail: this next is not returning; repo isn't responding when data is updated, or
+			// we're getting stuff out of ccnd's cache
+			SortedSet<ContentName> returnedBytes2 = testList.getNewData(); // will block for new data
 			
 			System.out.println("Got new data, second round size: " + returnedBytes2 + " first round " + returnedBytes);
 			Assert.assertTrue(returnedBytes2.size() > returnedBytes.size());
@@ -162,12 +163,9 @@ public class EnumeratedNameTest extends RepoTestBase {
 			EnumeratedNameList versionList = new EnumeratedNameList(name1, library);
 			versionList.waitForData();
 			Assert.assertTrue(versionList.hasNewData());
-			ArrayList<byte []> versions = versionList.getNewData(); // can only call this once per new data arrival
-			ArrayList<byte []> versions2 = versionList.getChildren();
-			Assert.assertEquals(versions, versions2);
 			ContentName latestReturnName = versionList.getLatestVersionChildName();
-			System.out.println("Got latest name " + latestReturnName + " expected " + latestName);
-			Assert.assertEquals(latestName, latestReturnName);
+			System.out.println("Got latest name " + latestReturnName + " expected " + new ContentName(new byte [][]{latestName.lastComponent()}));
+			Assert.assertTrue(Arrays.areEqual(latestName.lastComponent(), latestReturnName.lastComponent()));
 			
 		} catch (Exception e) {
 			Library.logException("Failed test with exception " + e.getMessage(), e);
