@@ -30,7 +30,7 @@ import com.parc.ccn.library.EnumeratedNameList;
  * call update in background on enumerated name list (asynchronously)
  * add data using a different interface and see if it shows up on the lists
  */
-public class EnumeratedNameTest extends RepoTestBase { 
+public class EnumeratedNameListTestRepo extends RepoTestBase { 
 	
 	EnumeratedNameList testList; //the enumeratednamelist object used to test the class
 	
