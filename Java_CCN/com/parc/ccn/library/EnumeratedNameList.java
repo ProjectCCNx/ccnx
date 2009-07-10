@@ -128,8 +128,8 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * @param groupFriendlyName ??
 	 * @return child
 	 * */
-	public boolean hasChild(String groupFriendlyName) {
-		return hasChild(ContentName.componentParseNative(groupFriendlyName));
+	public boolean hasChild(String childName) {
+		return hasChild(ContentName.componentParseNative(childName));
 	}
 
 	/**
