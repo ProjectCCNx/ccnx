@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<ForwardingEntry>
+  <Action>destroy</Action>
+  <Name/>
+  <PublisherPublicKeyDigest ccnbencoding="base64Binary">
+  AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=
+  </PublisherPublicKeyDigest>
+  <FaceID>123456</FaceID>
+  <ForwardingFlags>1</ForwardingFlags>
+</ForwardingEntry>
