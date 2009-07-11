@@ -11,6 +11,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
+import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNFlowControl;
@@ -47,6 +48,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	protected static boolean DEFAULT_RAW = true;
 	
 	protected ContentName _currentName;
+	protected PublisherPublicKeyDigest _currentPublisher;
+	protected KeyLocator _currentPublisherKeyLocator;
 	protected CCNLibrary _library;
 	protected CCNFlowControl _flowControl;
 	protected boolean _raw = DEFAULT_RAW; // what kind of flow controller to make if we don't have one
@@ -214,9 +217,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		if (inputStream.isGone()) {
 			_data = null;
 			_currentName = inputStream.deletionInformation().name();
+			_currentPublisher = inputStream.deletionInformation().signedInfo().getPublisherKeyID();
+			_currentPublisherKeyLocator = inputStream.deletionInformation().signedInfo().getKeyLocator();
 		} else {
 			super.update(inputStream);
 			_currentName = inputStream.baseName();
+			_currentPublisher = inputStream.contentPublisher();
+			_currentPublisherKeyLocator = inputStream.publisherKeyLocator();
 		}
 	}
 	
@@ -311,6 +318,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			// block and no header on small objects
 			cos.close();
 			_currentName = cos.getBaseName();
+			_currentPublisher = _flowControl.getLibrary().getDefaultPublisher(); // DKS -- is this always correct?
+			_currentPublisherKeyLocator = _flowControl.getLibrary().keyManager().getDefaultKeyLocator();
 		} else {
 			// saving object as gone, currently this is always one empty block so we don't use an OutputStream
 			name = VersioningProfile.versionName(name);
@@ -319,6 +328,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			ContentObject goneObject = ContentObject.buildContentObject(name, ContentType.GONE, empty);
 			_flowControl.put(goneObject);
 			_currentName = name;
+			_currentPublisher = goneObject.signedInfo().getPublisherKeyID();
+			_currentPublisherKeyLocator = goneObject.signedInfo().getKeyLocator();
 			setPotentiallyDirty(false);
 		}
 	}
@@ -459,6 +470,14 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		if (super.ready() || isGone())
 			return true;
 		return false;
+	}
+
+	public PublisherPublicKeyDigest contentPublisher() {
+		return _currentPublisher;
+	}
+	
+	public KeyLocator publisherKeyLocator() {
+		return _currentPublisherKeyLocator;		
 	}
 
 	public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {

@@ -14,6 +14,7 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.data.util.DataUtils;
@@ -38,7 +39,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	 * fragment/segment number.
 	 */
 	protected ContentName _baseName = null;
-	protected PublisherPublicKeyDigest _publisher = null;
+	protected PublisherPublicKeyDigest _publisher = null; // the publisher we are looking for
 	protected Long _startingBlockIndex = null;
 	protected int _timeout = MAX_TIMEOUT;
 	
@@ -58,6 +59,9 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	 */
 	protected byte [] _verifiedRootSignature = null;
 	protected byte [] _verifiedProxy = null;
+	
+	protected PublisherPublicKeyDigest _contentPublisher; // the publisher of the content we are reading
+	protected KeyLocator _publisherKeyLocator; // the key locator of the content publisher.
 
 	public CCNAbstractInputStream(
 			ContentName baseName, Long startingBlockIndex,
@@ -200,6 +204,9 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		}
 		
 		_currentBlock = newBlock;
+		_contentPublisher = newBlock.signedInfo().getPublisherKeyID();
+		_publisherKeyLocator = newBlock.signedInfo().getKeyLocator();
+		
 		_blockReadStream = new ByteArrayInputStream(_currentBlock.content());
 		if (_keys != null) {
 			try {
@@ -413,6 +420,23 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	
 	public ContentObject deletionInformation() {
 		return _goneBlock;
+	}
+	
+	/**
+	 * Callers may need to access information about this stream's publisher.
+	 * We eventually should (TODO) ensure that all the blocks we're reading
+	 * match in publisher information, and cache the verified publisher info.
+	 * (In particular once we're doing trust calculations, to ensure we do them
+	 * only once per stream.)
+	 * But we do verify each block, so start by pulling what's in the current block.
+	 * @return
+	 */
+	public PublisherPublicKeyDigest contentPublisher() {
+		return _contentPublisher;
+	}
+	
+	public KeyLocator publisherKeyLocator() {
+		return _publisherKeyLocator;		
 	}
 	
 	/**
