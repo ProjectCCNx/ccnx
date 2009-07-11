@@ -1,8 +1,10 @@
 package com.parc.ccn.network.daemons.repo;
 
+import java.io.PrintStream;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -216,6 +218,54 @@ public class ContentTree {
 		}
 	}
 	
+	public void dumpNamesTree(PrintStream output, int maxNodeLen) {		
+		assert(null != root);
+		assert(null != output);
+		
+		output.println("Dumping tree of names of indexed content at " + new Date().toString());
+		dumpRecurse(output, root, "", maxNodeLen);
+	}
+	
+	// Note: this is not thread-safe against everything else going on.
+	protected void dumpRecurse(PrintStream output, TreeNode node, String indent, int maxNodeLen) {
+		String myname = null;
+		if (null == node.component) {
+			// Special case of root
+			myname = "/";
+		} else {
+			myname = ContentName.componentPrintURI(node.component);
+			if (maxNodeLen > 0 && myname.length() > (maxNodeLen - 3)) {
+				myname = "<" + myname.substring(0,maxNodeLen-4) + "...>";
+			}
+		}
+		int mylen = myname.length();
+		output.print(myname);
+		if (null != node.oneChild) {
+			output.print("---");
+			dumpRecurse(output, node.oneChild, String.format("%s%" + mylen + "s   ", indent, ""), maxNodeLen);
+		} else if (null != node.children) {
+			int count = 1; int last = node.children.size();
+			for (TreeNode child : node.children) {
+				if (1 == count) {
+					// First child
+					output.print("-+-");
+					dumpRecurse(output, child, String.format("%s%" + mylen + "s | ", indent, ""), maxNodeLen);
+				} else if (last == count) {
+					// Last child
+					output.println();
+					output.printf("%s%" + mylen + "s +-", indent, "");
+					dumpRecurse(output, child, String.format("%s%" + mylen + "s   ", indent, ""), maxNodeLen);
+				} else {
+					// Interior child delimiter
+					output.println();
+					output.printf("%s%" + mylen + "s |-", indent, "");
+					dumpRecurse(output, child, String.format("%s%" + mylen + "s | ", indent, ""), maxNodeLen);
+				}
+				count++;
+			}
+		}
+	}
+
 	/**
 	 * 
 	 * @param interest the interest to match

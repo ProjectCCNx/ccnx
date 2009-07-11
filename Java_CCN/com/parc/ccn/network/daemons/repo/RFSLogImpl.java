@@ -8,6 +8,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PrintStream;
 import java.io.RandomAccessFile;
 import java.security.InvalidParameterException;
 import java.security.PrivateKey;
@@ -52,6 +53,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 	private static String DEFAULT_LOCAL_NAME = "Repository";
 	private static String DEFAULT_GLOBAL_NAME = "/parc.com/csl/ccn/Repos";
 	private static String CONTENT_FILE_PREFIX = "repoFile";
+	private static String DEBUG_TREEDUMP_FILE = "debugNamesTree";
 
 	protected String _repositoryRoot = null;
 	protected File _repositoryFile;
@@ -244,6 +246,16 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		// Internal initialization
 		_files = new HashMap<Integer, RepoFile>();
 		int maxFileIndex = createIndex();
+		
+		// Debug: dump names tree to file
+		File namesFile = new File(_repositoryFile, DEBUG_TREEDUMP_FILE);
+		try {
+			Library.logger().info("Dumping names to " + namesFile.getAbsolutePath());
+			PrintStream namesOut = new PrintStream(namesFile);
+			_index.dumpNamesTree(namesOut, 35);
+		} catch (FileNotFoundException e2) {
+			Library.logger().warning("Unable to dump names to " + namesFile.getAbsolutePath());
+		}
 		
 		// Internal initialization
 		//moved the following...  getContent depends on having an index
