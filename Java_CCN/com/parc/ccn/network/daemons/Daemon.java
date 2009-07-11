@@ -424,6 +424,14 @@ public class Daemon {
 		} catch (Exception e) {
 			Library.logger().warning(e.getClass().getName() + " in daemon startup: " + e.getMessage());
 			Library.warningStackTrace(e);
+			if (mode == Mode.MODE_DAEMON) {
+				// Make sure to terminate if there is an uncaught
+				// exception trying to run as daemon so that 
+				// it is obvious that something failed because
+				// process will have gone away despite whatever
+				// threads may have got started.
+				System.exit(1);
+			}
 		}							
 		Library.logger().info("Daemon runner finished.");
 	}
