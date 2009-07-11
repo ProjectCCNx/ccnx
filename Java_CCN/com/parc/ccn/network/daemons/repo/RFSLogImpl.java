@@ -26,6 +26,7 @@ import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.network.daemons.repo.ContentTree.ContentFileRef;
 import com.parc.ccn.Library;
 
@@ -363,7 +364,8 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 	}
 	
 	/**
-	 * Check data "file" - create new one if none exists
+	 * Check data "file" - create new one if none exists or "forceWrite" is set.
+	 * Files are always versioned so we can find the latest one.
 	 * TODO - Need to handle data that can take up more than 1 co.
 	 * TODO - Co Should be signed with the "repository's" signature.
 	 * @throws RepositoryException
@@ -374,17 +376,18 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		components[1] = REPO_PRIVATE.getBytes();
 		components[2] = fileName.getBytes();
 		ContentName name = new ContentName(components);
-		ContentObject co = getContent(new Interest(name));
+		ContentObject co = getContent(Interest.last(name));
 		
 		if (!forceWrite && co != null) {
 			return new String(co.content());
 		}
 		
+		ContentName versionedName = VersioningProfile.versionName(name);
 		PublisherPublicKeyDigest publisher = library.keyManager().getDefaultKeyID();
 		PrivateKey signingKey = library.keyManager().getSigningKey(publisher);
 		KeyLocator locator = library.keyManager().getKeyLocator(signingKey);
 		try {
-			co = new ContentObject(name, new SignedInfo(publisher, locator), contents.getBytes(), signingKey);
+			co = new ContentObject(versionedName, new SignedInfo(publisher, locator), contents.getBytes(), signingKey);
 		} catch (Exception e) {
 			Library.logStackTrace(Level.WARNING, e);
 			e.printStackTrace();
