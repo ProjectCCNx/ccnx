@@ -172,7 +172,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 								rfile.openFile = null;
 								break;
 							}
-							_index.insert(tmp, ref, rfile.file.lastModified());
+							_index.insert(tmp, ref, rfile.file.lastModified(), this);
 						}
 						_files.put(index, rfile);
 					} catch (NumberFormatException e) {
@@ -322,7 +322,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 				OutputStream os = new RandomAccessOutputStream(_activeWriteFile.openFile);
 				content.encode(os);
 				_activeWriteFile.nextWritePos = _activeWriteFile.openFile.getFilePointer();
-				_index.insert(content, ref, System.currentTimeMillis());
+				_index.insert(content, ref, System.currentTimeMillis(), this);
 			}
 		} catch (IOException e) {
 			throw new RepositoryException("Failed to write content: " + e.getMessage());
@@ -342,6 +342,8 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 	public ContentObject get(ContentFileRef ref) {
 		try {
 			RepoFile file = _files.get(ref.id);
+			if (null == file)
+				return null;
 			synchronized (file) {
 				if (null == file.openFile) {
 					file.openFile = new RandomAccessFile(file.file, "r");
