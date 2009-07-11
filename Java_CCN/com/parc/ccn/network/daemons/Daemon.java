@@ -379,6 +379,7 @@ public class Daemon {
 		
 		Mode mode = Mode.MODE_UNKNOWN;
 
+		// Argument parsing ONLY here: don't do any execution yet
 		if (0 == args.length) {
 			mode = Mode.MODE_INTERACTIVE;
 		} else if (args[0].equals("-start")) {
@@ -386,28 +387,33 @@ public class Daemon {
 		} else if (args[0].equals("-stop")) {
 			mode = Mode.MODE_STOP;
 		} else if (args[0].equals("-daemon")) {
-			daemon.initialize(args, daemon);
 			mode = Mode.MODE_DAEMON;
-		} else {
-			daemon.initialize(args, daemon);
+		} else if (args[0].equals("-interactive")) {
 			mode = Mode.MODE_INTERACTIVE;
 		} 
 
+		// Now proceed based on mode, catching all exceptions
 		try {
 			switch (mode) {
 			  case MODE_INTERACTIVE:
+				daemon.initialize(args, daemon);
 				Library.logger().info("Running " + daemon.daemonName() + " in the foreground.");
 				WorkerThread wt = daemon.createWorkerThread();
 				wt.start();
 				wt.join();
 				System.exit(0);
 			  case MODE_START:
+				// Don't initialize since this process will not become
+				// the daemon: this will start a new process
 				startDaemon(daemon.daemonName(), daemon.getClass().getName(), args);
 				System.exit(0);
 			  case MODE_STOP:
+				// Don't initialize since this process will never be the daemon
+				// This will signal daemon to terminate
 				stopDaemon(daemon.daemonName());
 				System.exit(0);
 			  case MODE_DAEMON:
+				daemon.initialize(args, daemon);
 				// this will sit in a loop
 				runAsDaemon(daemon);
 				break;
