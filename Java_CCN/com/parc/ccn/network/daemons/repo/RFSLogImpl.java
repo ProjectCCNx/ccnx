@@ -15,6 +15,7 @@ import java.security.PrivateKey;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -26,6 +27,7 @@ import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.network.daemons.repo.ContentTree.ContentFileRef;
 import com.parc.ccn.Library;
 
@@ -83,16 +85,10 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 				ContentName policyName = ContentName.fromNative(REPO_NAMESPACE + "/" + _info.getLocalName() + "/" + REPO_POLICY);
 				ContentObject policyCo = new ContentObject(policyName, co.signedInfo(), co.content(), co.signature());
    				saveContent(policyCo);
-			} catch (XMLStreamException e) {
-				// TODO Auto-generated catch block
+			} catch (Exception e) {
+				Library.logStackTrace(Level.WARNING, e);
 				e.printStackTrace();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (MalformedContentNameStringException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			} 
 			return true;
 		}
 		return false;
@@ -117,11 +113,8 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 			if (names != null)
 				rri = new RepositoryInfo(_info.getLocalName(), _info.getGlobalPrefix(), CURRENT_VERSION, names);	
 			return rri.encode();
-		} catch (XMLStreamException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (MalformedContentNameStringException e) {
-			// TODO Auto-generated catch block
+		} catch (Exception e) {
+			Library.logStackTrace(Level.WARNING, e);
 			e.printStackTrace();
 		}
 		return null;
@@ -175,6 +168,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 								}
 
 							} catch (XMLStreamException e) {
+								Library.logStackTrace(Level.WARNING, e);
 								e.printStackTrace();
 								// Failed to decode, must be end of this one
 								//added check for end of file above
@@ -182,7 +176,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 								rfile.openFile = null;
 								break;
 							}
-							_index.insert(tmp, ref, rfile.file.lastModified());
+							_index.insert(tmp, ref, rfile.file.lastModified(), this);
 						}
 						_files.put(index, rfile);
 					} catch (NumberFormatException e) {
@@ -333,7 +327,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 				OutputStream os = new RandomAccessOutputStream(_activeWriteFile.openFile);
 				content.encode(os);
 				_activeWriteFile.nextWritePos = _activeWriteFile.openFile.getFilePointer();
-				_index.insert(content, ref, System.currentTimeMillis());
+				_index.insert(content, ref, System.currentTimeMillis(), this);
 			}
 		} catch (IOException e) {
 			throw new RepositoryException("Failed to write content: " + e.getMessage());
@@ -353,6 +347,8 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 	public ContentObject get(ContentFileRef ref) {
 		try {
 			RepoFile file = _files.get(ref.id);
+			if (null == file)
+				return null;
 			synchronized (file) {
 				if (null == file.openFile) {
 					file.openFile = new RandomAccessFile(file.file, "r");
@@ -375,7 +371,8 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 	}
 	
 	/**
-	 * Check data "file" - create new one if none exists
+	 * Check data "file" - create new one if none exists or "forceWrite" is set.
+	 * Files are always versioned so we can find the latest one.
 	 * TODO - Need to handle data that can take up more than 1 co.
 	 * TODO - Co Should be signed with the "repository's" signature.
 	 * @throws RepositoryException
@@ -386,19 +383,20 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		components[1] = REPO_PRIVATE.getBytes();
 		components[2] = fileName.getBytes();
 		ContentName name = new ContentName(components);
-		ContentObject co = getContent(new Interest(name));
+		ContentObject co = getContent(Interest.last(name));
 		
 		if (!forceWrite && co != null) {
 			return new String(co.content());
 		}
 		
+		ContentName versionedName = VersioningProfile.versionName(name);
 		PublisherPublicKeyDigest publisher = library.keyManager().getDefaultKeyID();
 		PrivateKey signingKey = library.keyManager().getSigningKey(publisher);
 		KeyLocator locator = library.keyManager().getKeyLocator(signingKey);
 		try {
-			co = new ContentObject(name, new SignedInfo(publisher, locator), contents.getBytes(), signingKey);
+			co = new ContentObject(versionedName, new SignedInfo(publisher, locator), contents.getBytes(), signingKey);
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
+			Library.logStackTrace(Level.WARNING, e);
 			e.printStackTrace();
 			return null;
 		}
