@@ -34,7 +34,7 @@ public class BitBucketRepository implements Repository {
 		return null;
 	}
 
-	public String getUsage() {
+	public static String getUsage() {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -58,5 +58,10 @@ public class BitBucketRepository implements Repository {
 			al.add(ContentName.fromNative("/"));
 		} catch (MalformedContentNameStringException e) {}
 		return al;
+	}
+
+	public boolean diagnostic(String name) {
+		// No supported diagnostics
+		return false;
 	}
 }

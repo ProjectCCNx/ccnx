@@ -223,6 +223,9 @@ public class ContentTree {
 		assert(null != output);
 		
 		output.println("Dumping tree of names of indexed content at " + new Date().toString());
+		if (maxNodeLen > 0) {
+			output.println("Node names truncated to max " + maxNodeLen + " characters");
+		}
 		dumpRecurse(output, root, "", maxNodeLen);
 	}
 	

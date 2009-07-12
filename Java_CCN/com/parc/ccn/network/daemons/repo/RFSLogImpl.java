@@ -33,8 +33,7 @@ import com.parc.ccn.Library;
  * 
  * @author jthornto, rbraynar, rasmusse
  *
- * Implements a repository as a single data file with an index to find the
- * correct piece for any individual content object
+ * Implements a repository using sequential data files (log-structured) with an index for queries
  */
 
 public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
@@ -54,6 +53,9 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 	private static String DEFAULT_GLOBAL_NAME = "/parc.com/csl/ccn/Repos";
 	private static String CONTENT_FILE_PREFIX = "repoFile";
 	private static String DEBUG_TREEDUMP_FILE = "debugNamesTree";
+	
+	private static String DIAG_NAMETREE = "nametree"; // Diagnostic/signal to dump name tree to debug file
+	private static String DIAG_NAMETREEWIDE = "nametreewide"; // Same as DIAG_NAMETREE but with wide names per node
 
 	protected String _repositoryRoot = null;
 	protected File _repositoryFile;
@@ -125,7 +127,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		return null;
 	}
 
-	public String getUsage() {
+	public static String getUsage() {
 		return " -root repository_root [-policy policy_file] [-local local_name] [-global global_prefix]\n";
 	}
 
@@ -247,16 +249,6 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		_files = new HashMap<Integer, RepoFile>();
 		int maxFileIndex = createIndex();
 		
-		// Debug: dump names tree to file
-		File namesFile = new File(_repositoryFile, DEBUG_TREEDUMP_FILE);
-		try {
-			Library.logger().info("Dumping names to " + namesFile.getAbsolutePath());
-			PrintStream namesOut = new PrintStream(namesFile);
-			_index.dumpNamesTree(namesOut, 35);
-		} catch (FileNotFoundException e2) {
-			Library.logger().warning("Unable to dump names to " + namesFile.getAbsolutePath());
-		}
-		
 		// Internal initialization
 		//moved the following...  getContent depends on having an index
 		//_files = new HashMap<Integer, RepoFile>();
@@ -327,6 +319,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		
 		return outArgs;
 	}
+
 
 	public void saveContent(ContentObject content) throws RepositoryException {
 		try {
@@ -411,5 +404,31 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		}
 		saveContent(co);
 		return null;
+	}
+
+	
+	protected void dumpNames(int nodelen) {
+		// Debug: dump names tree to file
+		File namesFile = new File(_repositoryFile, DEBUG_TREEDUMP_FILE);
+		try {
+			Library.logger().info("Dumping names to " + namesFile.getAbsolutePath() + " (len " + nodelen + ")");
+			PrintStream namesOut = new PrintStream(namesFile);
+			if (null != _index) {
+				_index.dumpNamesTree(namesOut, nodelen);
+			}
+		} catch (FileNotFoundException ex) {
+			Library.logger().warning("Unable to dump names to " + namesFile.getAbsolutePath());
+		}
+	}
+
+	public boolean diagnostic(String name) {
+		if (0 == name.compareToIgnoreCase(DIAG_NAMETREE)) {
+			dumpNames(35);
+			return true;
+		} else if (0 == name.compareToIgnoreCase(DIAG_NAMETREEWIDE)) {
+			dumpNames(-1);
+			return true;
+		}
+		return false;
 	}
 }

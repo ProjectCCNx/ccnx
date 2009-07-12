@@ -70,18 +70,20 @@ public interface Repository {
 	 * @throws RepositoryException 
 	 */
 	public boolean checkPolicyUpdate(ContentObject co) throws RepositoryException;
-	
-	
-	/**
-	 * Get required arguments for this implementation
-	 * @return
-	 */
-	public String getUsage();
-	
+		
 	/**
 	 * Get names to respond to name enumeration requests
 	 * @param Interest
 	 * @return ArrayList<ContentName>
 	 */
     public ArrayList<ContentName> getNamesWithPrefix(Interest i);
+    
+    /**
+     * Execute diagnostic operation.  The diagnostic operations are 
+     * particular to the implementation and are intended for testing
+     * and debugging only.
+     * @param name the name of the implementation-specific diagnostic operation to perform
+     * @return true if diagnostic operation is supported and was performed, false otherwise
+     */
+    public boolean diagnostic(String name);
 }

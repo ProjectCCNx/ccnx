@@ -31,7 +31,7 @@ import com.parc.ccn.network.CCNNetworkManager;
  */
 public class Daemon {
 
-	protected enum Mode {MODE_UNKNOWN, MODE_START, MODE_STOP, MODE_INTERACTIVE, MODE_DAEMON};
+	protected enum Mode {MODE_UNKNOWN, MODE_START, MODE_STOP, MODE_INTERACTIVE, MODE_DAEMON, MODE_SIGNAL};
 
 	protected String _daemonName = null;
 	protected static DaemonListenerClass _daemonListener = null;
@@ -48,6 +48,7 @@ public class Daemon {
 	public interface DaemonListener extends Remote {
 		public boolean startLoop() throws RemoteException;
 		public void shutDown() throws RemoteException;
+		public boolean signal(String name) throws RemoteException;
 	}
 
 	/**
@@ -121,6 +122,10 @@ public class Daemon {
 		public void finish() {
 			Library.logger().info("Should not be here, in WorkerThread.finish().");
 		}
+		public boolean signal(String name) {
+			Library.logger().info("Should not be here, in WorkerThread.signal().");
+			return false;			
+		}
 
 	}
 
@@ -151,6 +156,15 @@ public class Daemon {
 				throw new RemoteException(e.getMessage(), e);
 			}
 		}
+
+		public boolean signal(String name) throws RemoteException {
+			Library.logger().info("Signal " + name);
+			try {
+			return _daemonThread.signal(name);
+			} catch (Exception e) {
+				throw new RemoteException(e.getMessage(), e);
+			}
+		}
 	}
 	
 	public Daemon() {_daemonName = "namelessDaemon";}
@@ -163,7 +177,7 @@ public class Daemon {
 	 */
 	protected void usage() {
 		try {
-			System.out.println("usage: " + this.getClass().getName() + " [-start | -stop | -interactive]");
+			System.out.println("usage: " + this.getClass().getName() + " [-start | -stop | -interactive | -signal <name>]");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -364,6 +378,34 @@ public class Daemon {
 
 	}
 
+	protected static void signalDaemon(String daemonName, String sigName) throws FileNotFoundException, IOException, ClassNotFoundException {
+		if (!getRMIFile(daemonName).exists()) {
+			System.out.println("Daemon " + daemonName + " does not appear to be running.");
+			Library.logger().info("Daemon " + daemonName + " does not appear to be running.");
+			return;
+		}
+
+		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName)));
+
+		DaemonListener l = (DaemonListener)in.readObject();		
+
+		in.close();
+
+		try {
+			if (l.signal(sigName)) {
+				System.out.println("Signal " + sigName + " delivered.");
+				Library.logger().info("Signal " + sigName + " delivered.");
+			} else {
+				System.out.println("Signal " + sigName + " not delivered: unrecognized or signal failed");
+				Library.logger().info("Daemon " + daemonName + " not delivered: unrecognized or signal failed.");
+			}
+		} catch(RemoteException e) {
+			// looks like the RMI file is still here, but the daemon is gone.  We won't clean up on signal.
+			System.out.println("Daemon " + daemonName + " seems to have died somehow.");
+			Library.logger().info("Daemon " + daemonName + " seems to have died somehow.");
+		}
+	}
+
 	protected static File getRMIFile(String daemonName) {
 		String name = ".rmi-server-" + daemonName + ".obj";
 		return new File(System.getProperty("user.home"), name);
@@ -378,6 +420,7 @@ public class Daemon {
 	protected static void runDaemon(Daemon daemon, String args[]) throws IOException {
 		
 		Mode mode = Mode.MODE_UNKNOWN;
+		String sigName = null;
 
 		// Argument parsing ONLY here: don't do any execution yet
 		if (0 == args.length) {
@@ -390,6 +433,12 @@ public class Daemon {
 			mode = Mode.MODE_DAEMON;
 		} else if (args[0].equals("-interactive")) {
 			mode = Mode.MODE_INTERACTIVE;
+		} else if (args[0].equals("-signal")) {
+			mode = Mode.MODE_SIGNAL;
+			if (args.length < 2) {
+				daemon.usage();
+			}
+			sigName = args[1];
 		} 
 
 		// Now proceed based on mode, catching all exceptions
@@ -417,6 +466,10 @@ public class Daemon {
 				// this will sit in a loop
 				runAsDaemon(daemon);
 				break;
+			  case MODE_SIGNAL:
+				  assert(null != sigName);
+				  signalDaemon(daemon.daemonName(), sigName);
+				  break;
 			  default:
 				daemon.usage();
 			}
@@ -435,6 +488,7 @@ public class Daemon {
 		}							
 		Library.logger().info("Daemon runner finished.");
 	}
+
 
 	public static void main(String[] args) {
 		
