@@ -8,7 +8,7 @@ PROGRAMS = $(INSTALLED_PROGRAMS) smoketestccnd
 DEBRIS = anything.ccnb contenthash.ccnb contentmishash.ccnb
 
 BROKEN_PROGRAMS = 
-CSRC = ccnd.c ccnd_stats.c ccnd_internal_client.c ccndsmoketest.c
+CSRC = ccnd.c ccnd_msg.c ccnd_stats.c ccnd_internal_client.c ccndsmoketest.c
 HSRC = ccnd_private.h
 SCRIPTSRC = testbasics fortunes.ccnb contenthash.ref anything.ref \
             ccnd-init-keystore-helper.sh
@@ -19,7 +19,7 @@ all: default $(BROKEN_PROGRAMS)
 
 $(PROGRAMS): $(CCNLIBDIR)/libccn.a
 
-CCND_OBJ = ccnd.o ccnd_stats.o ccnd_internal_client.o
+CCND_OBJ = ccnd.o ccnd_msg.o ccnd_stats.o ccnd_internal_client.o
 ccnd: $(CCND_OBJ) 
 	$(CC) $(CFLAGS) -o $@ $(CCND_OBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
@@ -53,6 +53,9 @@ ccnd.o: ccnd.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/ccnd.h ../include/ccn/bloom.h ../include/ccn/hashtb.h \
   ../include/ccn/schedule.h ../include/ccn/uri.h ccnd_private.h \
   ../include/ccn/ccn_private.h
+ccnd_msg.o: ccnd_msg.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h \
+  ccnd_private.h ../include/ccn/ccn_private.h ../include/ccn/schedule.h
 ccnd_stats.o: ccnd_stats.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
   ../include/ccn/ccnd.h ../include/ccn/schedule.h ../include/ccn/hashtb.h \

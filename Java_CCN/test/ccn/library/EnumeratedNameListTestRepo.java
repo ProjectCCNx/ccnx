@@ -30,20 +30,20 @@ import com.parc.ccn.library.EnumeratedNameList;
  * call update in background on enumerated name list (asynchronously)
  * add data using a different interface and see if it shows up on the lists
  */
-public class EnumeratedNameTest extends RepoTestBase { 
+public class EnumeratedNameListTestRepo extends RepoTestBase { 
 	
 	EnumeratedNameList testList; //the enumeratednamelist object used to test the class
 	
-	Random rand = new Random();
-	static final String UTF8 = "UTF-8";
+	static Random rand = new Random();
 	
-	static final String directoryString = _globalPrefix + "/directory1";
+	static final String directoryString = _globalPrefix + "/directory-";
 	static ContentName directory;
-	static final String name1String = "name1";
+	static String nameString = "name-";
+	static String name1String;
+	static String name2String;
+	static String name3String;
 	static ContentName name1;
-	static final String name2String = "name2";
 	static ContentName name2;
-	static final String name3String = "name3";
 	static ContentName name3;
 		
 	static String prefix1StringError = "/park.com/csl/ccn/repositories";
@@ -56,7 +56,12 @@ public class EnumeratedNameTest extends RepoTestBase {
 	public static void setUpBeforeClass() throws Exception {
 		//assign content names from strings to content objects
 		
-		directory = ContentName.fromNative(directoryString);
+		// randomize names to minimize stateful effects of ccnd/repo caches.
+		directory = ContentName.fromNative(directoryString + Integer.toString(rand.nextInt(10000)));
+		name1String = nameString + Integer.toString(rand.nextInt(10000));
+		name2String = nameString + Integer.toString(rand.nextInt(10000));
+		name3String = nameString + Integer.toString(rand.nextInt(10000));
+
 		name1 = ContentName.fromNative(directory, name1String);
 		name2 = ContentName.fromNative(directory, name2String);
 		name3 = ContentName.fromNative(directory, name3String);
@@ -106,8 +111,9 @@ public class EnumeratedNameTest extends RepoTestBase {
 			Library.logger().info("****************** adding name1 to repo");
 
 			// adding content to repo
-			addContentToRepo(name1, library);
+			ContentName latestName = addContentToRepo(name1, library);
 			testList.waitForData();
+			Library.logger().info("Added data to repo: " + latestName);
 
 			//testing that the enumerator has new data
 			Assert.assertTrue(testList.hasNewData());
@@ -124,24 +130,28 @@ public class EnumeratedNameTest extends RepoTestBase {
 			// until you add something else to the repo. i.e. this next call would block
 			// until there was new data for getNewData to return, and it *wouldn't* match the previous set.
 			// Assert.assertEquals(testList.getNewData(), returnedBytes.size());
-			System.out.println("Got " + returnedBytes.size() + " children, first one is " + 
-					ContentName.componentPrintNative(returnedBytes.first().component(0)));
+			System.out.println("Got " + returnedBytes.size() + " children: " + returnedBytes);
+			System.out.println("Predicted strings " + name1String + ", " + name2String + ", " + name3String);
 			// DKS -- previous version of this was failing:
-			// Assert.assertEquals(ame1String.getBytes(UTF8), returnedBytes.get(0)));
+			// Assert.assertEquals(name1String.getBytes(UTF8), returnedBytes.get(0)));
 			// this will fail, because byte [] does not define equals (it's a native type, not an object), so
 			// you get Object.equals -- which tests if the two pointers are the same.
-			Assert.assertTrue(Arrays.areEqual(name1String.getBytes(UTF8), returnedBytes.first().component(0)));
+			// If we run this more than once on the same repo, will get all the data back -- so won't know which child
+			// is first. Don't try to test on the content.
+			//Assert.assertTrue(Arrays.areEqual(name1String.getBytes(UTF8), returnedBytes.first().component(0)));
 
 			//testing that children exist
 			// DKS -- if you're testing a boolean, use assertTrue, not assertNotNull
 			Assert.assertTrue(testList.hasChildren());
 
 			//Testing that Name1 Exists
+			// only true if run on clean repo -- if not clean repo and clean ccnd cache, might be in second response
 			Assert.assertTrue(testList.hasChild(name1String));
 
 			//Tests to see if that string name exists
 			Assert.assertTrue(testList.hasChild(name1String));
 			
+			// Only definite if run on fresh repo
 			Assert.assertFalse(testList.hasNewData());
 			// Now add some more data
 			addContentToRepo(name2, library);
@@ -151,19 +161,23 @@ public class EnumeratedNameTest extends RepoTestBase {
 			// we're getting stuff out of ccnd's cache
 			SortedSet<ContentName> returnedBytes2 = testList.getNewData(); // will block for new data
 			
+			// Might have older stuff from previous runs, so don't insist we get back only what we put in.
 			System.out.println("Got new data, second round size: " + returnedBytes2 + " first round " + returnedBytes);
 			Assert.assertTrue(returnedBytes2.size() > returnedBytes.size());
-			
+			Assert.assertTrue(testList.hasChild(name2String));
+			Assert.assertTrue(testList.hasChild(name3String));
+
 			// This will add new versions
-			addContentToRepo(name1, library);
-			addContentToRepo(name1, library);
-			addContentToRepo(name1, library);
-			ContentName latestName = addContentToRepo(name1, library); // 5 versions total
+			for (int i=0; i < 5; ++i) {
+				latestName = addContentToRepo(name1, library);
+				Library.logger().info("Added data to repo: " + latestName);
+			}
 			
 			EnumeratedNameList versionList = new EnumeratedNameList(name1, library);
 			versionList.waitForData();
 			Assert.assertTrue(versionList.hasNewData());
 			ContentName latestReturnName = versionList.getLatestVersionChildName();
+			System.out.println("Got children: " + versionList.getChildren());
 			System.out.println("Got latest name " + latestReturnName + " expected " + new ContentName(new byte [][]{latestName.lastComponent()}));
 			Assert.assertTrue(Arrays.areEqual(latestName.lastComponent(), latestReturnName.lastComponent()));
 			

@@ -149,3 +149,18 @@
 <!ELEMENT Address  (#PCDATA)> <!-- base64Binary -->
 <!ATTLIST Address ccnbencoding CDATA #FIXED 'base64Binary'>
 
+<!ELEMENT FaceInstance  (Action?, PublisherPublicKeyDigest?, FaceID?, IPProto?, Host?, Port?, MulticastInterface?, Scope?, FreshnessSeconds?)>
+<!ATTLIST FaceInstance %commonattrs;>
+
+<!ELEMENT Action        (#PCDATA)>
+
+<!ELEMENT FaceID        (#PCDATA)>	<!-- nonNegativeInteger -->
+
+<!ELEMENT IPProto       (#PCDATA)>	<!-- nonNegativeInteger -->
+
+<!ELEMENT Host          (#PCDATA)>	<!-- textual representation of address -->
+
+<!ELEMENT Port          (#PCDATA)>	<!-- nonNegativeInteger -->
+
+<!ELEMENT MulticastInterface  (#PCDATA)> <!-- for multicast when there are muitiple interfaces -->
+
