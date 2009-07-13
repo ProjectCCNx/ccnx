@@ -18,7 +18,7 @@
 	<property name="jarfile-base" value="ccn.jar"/>
 	<property name="jarfile" location="${jarfile-base}"/>
 	<property name="testout" location="testout"/>
-	<property name="ccnd" location="../ccnd/agent/ccnd"/>
+	<property name="ccnd" location="../src/ccnd/ccnd"/>
 	<property name="showoutput" value="no"/>
 	<property name="repozip" value="repotest.zip"/>
 	<property name="REPO_ROOT" value="${testout}/repotest"/>
