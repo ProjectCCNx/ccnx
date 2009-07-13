@@ -1,8 +1,11 @@
-# $Id$
+# Makefile for ccn/schema/validation
+
 W3REFS=XMLSchema.dtd XMLSchema.xsd datatypes.dtd xml.xsd
 FUZZED= ccn-bad11.xml ccn-bad06.xml ccn-bad09.xml ccn-schemabad10.xml ccn-schemabad01.xml ccn-schemabad02.xml ccn-schemabad12.xml ccn-schemabad04.xml security-schemabad01.xml
 
-default all test: check
+default:
+
+all test: check
 
 $(W3REFS):
 	type gzcat>>/dev/null && { gzcat w3downloads.tgz | tar xf -; } || tar xfz w3downloads.tgz
@@ -108,4 +111,10 @@ ccn-schemabad12.xml: ccn-test12.xml
 check: security-schemabad01.xml
 security-schemabad01.xml: security-test01.xml
 	sed -e '/EncryptedKey/s/dmdxO6LZm7UUoUdyt6EG3KrnkNJkjdaayBppbvfD/bad!/' $? > $@
+
+default all clean depend test check shared install uninstall: _always
+
+_always:
+
+.PHONY: _always
 
