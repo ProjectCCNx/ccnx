@@ -6,10 +6,10 @@ WHINE = sh -c "type $(ANT) 2>/dev/null ||                  \
                echo Skipping java build in $$(pwd -L) -    \
                     $(ANT) is not installed; "
 
-default: jar
+default all: jar
 check: test
 
-all jar clean test: _always
+jar clean test: _always
 	@type $(ANT) > /dev/null && $(ANT) $@ || $(WHINE)
 	@rm -f _always
 
