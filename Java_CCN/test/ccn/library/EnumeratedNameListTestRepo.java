@@ -13,8 +13,6 @@ import org.bouncycastle.util.Arrays;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import test.ccn.network.daemons.repo.RepoTestBase;
-
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
@@ -30,13 +28,13 @@ import com.parc.ccn.library.EnumeratedNameList;
  * call update in background on enumerated name list (asynchronously)
  * add data using a different interface and see if it shows up on the lists
  */
-public class EnumeratedNameListTestRepo extends RepoTestBase { 
+public class EnumeratedNameListTestRepo { 
 	
 	EnumeratedNameList testList; //the enumeratednamelist object used to test the class
 	
 	static Random rand = new Random();
 	
-	static final String directoryString = _globalPrefix + "/directory-";
+	static final String directoryString = "/test/parc" + "/directory-";
 	static ContentName directory;
 	static String nameString = "name-";
 	static String name1String;
@@ -45,6 +43,7 @@ public class EnumeratedNameListTestRepo extends RepoTestBase {
 	static ContentName name1;
 	static ContentName name2;
 	static ContentName name3;
+	static CCNLibrary putLibrary;
 		
 	static String prefix1StringError = "/park.com/csl/ccn/repositories";
 	ArrayList<ContentName> names;
@@ -66,6 +65,7 @@ public class EnumeratedNameListTestRepo extends RepoTestBase {
 		name2 = ContentName.fromNative(directory, name2String);
 		name3 = ContentName.fromNative(directory, name3String);
 		brokenPrefix = ContentName.fromNative(prefix1StringError);
+		putLibrary = CCNLibrary.open();
 	}
 	
 	@Test
@@ -99,7 +99,7 @@ public class EnumeratedNameListTestRepo extends RepoTestBase {
 			Assert.assertNotNull(prefixTest);
 			Library.logger().info("***************** Prefix is "+ prefixTest.toString());
 			Assert.assertEquals(prefixTest, directory);
-			Assert.assertNotSame(brokenPrefix, prefixTest);
+			Assert.assertFalse(brokenPrefix.equals(prefixTest));
 
 			//run it on a name that isn't there and make sure it is empty
 			// DKS -- this won't work -- it will wait forever. The point is not to enumerate,
@@ -125,6 +125,7 @@ public class EnumeratedNameListTestRepo extends RepoTestBase {
 			SortedSet<ContentName> returnedBytes = testList.getNewData();
 
 			Assert.assertNotNull(returnedBytes);
+			Assert.assertFalse(returnedBytes.isEmpty());
 			
 			// getNewData gets *new* data -- you got the last new data, there won't be any more
 			// until you add something else to the repo. i.e. this next call would block
@@ -147,9 +148,6 @@ public class EnumeratedNameListTestRepo extends RepoTestBase {
 			//Testing that Name1 Exists
 			// only true if run on clean repo -- if not clean repo and clean ccnd cache, might be in second response
 			Assert.assertTrue(testList.hasChild(name1String));
-
-			//Tests to see if that string name exists
-			Assert.assertTrue(testList.hasChild(name1String));
 			
 			// Only definite if run on fresh repo
 			Assert.assertFalse(testList.hasNewData());
@@ -157,9 +155,8 @@ public class EnumeratedNameListTestRepo extends RepoTestBase {
 			addContentToRepo(name2, library);
 			addContentToRepo(name3, library);
 			
-			// DKS -- TODO fail: this next is not returning; repo isn't responding when data is updated, or
-			// we're getting stuff out of ccnd's cache
 			SortedSet<ContentName> returnedBytes2 = testList.getNewData(); // will block for new data
+			Assert.assertNotNull(returnedBytes2);
 			
 			// Might have older stuff from previous runs, so don't insist we get back only what we put in.
 			System.out.println("Got new data, second round size: " + returnedBytes2 + " first round " + returnedBytes);
