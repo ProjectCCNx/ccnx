@@ -99,12 +99,15 @@ public class VersioningProfile implements CCNProfile {
 	}
 
 	/**
-	 * Take a name which may have a version component
-	 * and strips it and all following components if present.
+	 * Take a name which has a version component
+	 * and strips it and any following components if present.
+	 * @throws VersionMissingException
 	 */
-	public static ContentName versionRoot(ContentName name) {
+	public static ContentName versionRoot(ContentName name) throws VersionMissingException {
 		int offset = findVersionComponent(name);
-		return (offset == -1) ? name : new ContentName(offset, name.components());
+		if (offset == -1)
+			throw new VersionMissingException();
+		return new ContentName(offset, name.components());
 	}
 
 	/**
