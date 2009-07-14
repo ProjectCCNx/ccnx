@@ -132,10 +132,9 @@ public class RFSTest extends RepoTestBase {
 		repo.saveContent(content);
 		checkData(repo, name, "Here's my data!");
 		
-		/**
-		 * TODO - need to figure out some way to test that saving identical content more
-		 * than once doesn't result in multiple copies of the data
-		 */
+		// TODO - Don't know how to check that multiple data doesn't result in multiple copies
+		// Do it just to make sure the mechanism doesn't break (but result is not tested).
+		repo.saveContent(content);
 		
 		System.out.println("Repotest - Testing clashing data");
 		clashName = ContentName.fromNative("/" + RFSImpl.META_DIR + "/repoTest/data1");

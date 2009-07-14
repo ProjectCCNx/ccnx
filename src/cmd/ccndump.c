@@ -9,40 +9,36 @@
 #include <ccn/ccn.h>
 #include <ccn/uri.h>
 
-/***********
-<Interest>
-  <Name/>
-  <Scope>0</Scope>
-</Interest>
-**********/
 struct ccn_charbuf *
 local_scope_template(int allow_stale)
 {
     struct ccn_charbuf *templ = ccn_charbuf_create();
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
-    /* <Name> */
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
-    ccn_charbuf_append_closer(templ); /* </Name> */
+    int res = 0;
+    res |= ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
+    /* <Name/> */
+    res |= ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
+    res |= ccn_charbuf_append_closer(templ); /* </Name> */
+    /* <OrderPreference>4</OrderPreference> */
+    res |= ccn_charbuf_append_tt(templ, CCN_DTAG_OrderPreference, CCN_DTAG);
+    res |= ccn_charbuf_append_non_negative_integer(templ, 4);
+    res |= ccn_charbuf_append_closer(templ); /* </OrderPreference> */
     if (allow_stale) {
         /* <AnswerOriginKind>5</AnswerOriginKind> */
-        ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
-        ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
-        ccn_charbuf_putf(templ, "%d", (int)(CCN_AOK_CS + CCN_AOK_STALE));
-        ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
+        res |= ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
+        res |= ccn_charbuf_append_non_negative_integer(templ, (CCN_AOK_CS + CCN_AOK_STALE));
+        res |= ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
     }
     /* <Scope>0</Scope> */
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Scope, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
-    ccn_charbuf_append(templ, "0", 1);
-    ccn_charbuf_append_closer(templ); /* </Scope> */
-    ccn_charbuf_append_closer(templ); /* </Interest> */
+    res |= ccn_charbuf_append_tt(templ, CCN_DTAG_Scope, CCN_DTAG);
+    res |= ccn_charbuf_append_non_negative_integer(templ, 0);
+    res |= ccn_charbuf_append_closer(templ); /* </Scope> */
+    res |= ccn_charbuf_append_closer(templ); /* </Interest> */
+    if (res < 0) abort();
     return(templ);
 }
 
 static
 struct mydata {
-    unsigned char *firstseen;
-    size_t firstseensize;
     int nseen;
 } mydata = {0};
 
@@ -52,31 +48,42 @@ incoming_content(
     enum ccn_upcall_kind kind,
     struct ccn_upcall_info *info)
 {
+    struct ccn_charbuf *c = NULL;
+    struct ccn_charbuf *templ = NULL;
     const unsigned char *ccnb = NULL;
     size_t ccnb_size = 0;
+    struct ccn_indexbuf *comps = NULL;
     struct mydata *md = selfp->data;
+    int res;
 
     if (kind == CCN_UPCALL_FINAL)
         return(CCN_UPCALL_RESULT_OK);
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
         return(CCN_UPCALL_RESULT_REEXPRESS);
-    if ((kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_UNVERIFIED) || md == NULL)
+    if (md == NULL)
+        return(CCN_UPCALL_RESULT_ERR);
+    if (kind != CCN_UPCALL_CONTENT &&
+        kind != CCN_UPCALL_CONTENT_UNVERIFIED &&
+        kind != CCN_UPCALL_CONTENT_BAD)
         return(CCN_UPCALL_RESULT_ERR);
     ccnb = info->content_ccnb;
     ccnb_size = info->pco->offset[CCN_PCO_E];
-    if (md->firstseen == NULL) {
-        md->firstseen = calloc(1, ccnb_size);
-        memcpy(md->firstseen, info->content_ccnb, ccnb_size);
-        md->firstseensize = ccnb_size;
-    }
-    else if (md->firstseensize == ccnb_size &&
-             0 == memcmp(md->firstseen, ccnb, ccnb_size)) {
-        selfp->data = NULL;
-        return(CCN_UPCALL_RESULT_ERR);
-    }
     md->nseen++;
     (void)fwrite(ccnb, ccnb_size, 1, stdout);
-    return(CCN_UPCALL_RESULT_REEXPRESS);
+    /* Use the name of the content just received as the resumption point */
+    c = ccn_charbuf_create();
+    ccn_name_init(c);
+    comps = info->content_comps;
+    ccn_name_append_components(c, ccnb, comps->buf[0], comps->buf[comps->n-1]);
+    /* Use the full name, including digest, to ensure we move along */
+    ccn_digest_ContentObject(ccnb, info->pco);
+    ccn_name_append(c, info->pco->digest, info->pco->digest_bytes);
+    templ = local_scope_template(selfp->intdata);
+    res = ccn_express_interest(info->h, c, info->pi->prefix_comps, selfp, templ);
+    if (res < 0) abort();
+    ccn_charbuf_destroy(&c);
+    ccn_charbuf_destroy(&templ);
+    return(CCN_UPCALL_RESULT_OK);
 }
 
 /* Use some static data for this simple program */
@@ -107,6 +114,7 @@ main(int argc, char **argv)
     int ch;
     int res;
     extern int optind;
+    int oldseen = -1;
 
     while ((ch = getopt(argc, argv, "ha")) != -1) {
         switch (ch) {
@@ -138,17 +146,20 @@ main(int argc, char **argv)
         if (argv[optind+1] != NULL)
             fprintf(stderr, "%s warning: extra arguments ignored\n", argv[0]);
     }
-    ccn_express_interest(ccn, c, -1, &incoming_content_action, templ);
+    res = ccn_express_interest(ccn, c, -1, &incoming_content_action, templ);
+    if (res < 0)
+        abort();
     ccn_charbuf_destroy(&templ);
     ccn_charbuf_destroy(&c);
     for (i = 0;; i++) {
         ccn_run(ccn, 100); /* stop if we run dry for 1/10 sec */
         fflush(stdout);
-        if (incoming_content_action.data == NULL)
+        if (mydata.nseen == oldseen)
             break;
+        oldseen = mydata.nseen;
     }
     ccn_destroy(&ccn);
-    if (incoming_content_action.data != NULL || ferror(stdout)) {
+    if (ferror(stdout)) {
         fprintf(stderr, "\nWarning: output from %s may be incomplete.\n", argv[0]);
         exit(1);
     }

@@ -541,7 +541,7 @@ public class RFSImpl implements Repository {
 		map.put(name, files);	
 	}
 	
-	public String getUsage() {
+	public static String getUsage() {
 		return " -root repository_root [-policy policy_file] [-local local_name] [-global global_prefix]\n";
 	}
 
@@ -629,5 +629,10 @@ public class RFSImpl implements Repository {
 			Library.logger().finest("No new names for this prefix since the last request, dropping request and not responding.");
 			return null;
 		}
+	}
+
+	public boolean diagnostic(String name) {
+		// No diagnostics supported
+		return false;
 	}
 }
