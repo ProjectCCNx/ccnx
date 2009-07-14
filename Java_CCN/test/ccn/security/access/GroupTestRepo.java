@@ -33,7 +33,7 @@ public class GroupTestRepo {
 			userStore = ContentName.fromNative(testStorePrefix, "Users");
 			groupStore = ContentName.fromNative(testStorePrefix, "Groups");
 
-			users = new TestUserData(userStore, NUM_USERS, USE_REPO, USER_PASSWORD, userLibrary);
+	//		users = new TestUserData(userStore, NUM_USERS, USE_REPO, USER_PASSWORD, userLibrary);
 		} catch (Exception e) {
 			Library.logger().warning("Exception in setupBeforeClass: " + e);
 			Library.warningStackTrace(e);
