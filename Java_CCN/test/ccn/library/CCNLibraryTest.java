@@ -203,6 +203,8 @@ public class CCNLibraryTest extends LibraryTestBase {
 		// java lacks nested functions, so use a class here...
 		class t {
 			void check(ContentObject o, int i) {
+				System.out.println("Got content: " + o.name());
+				System.out.println("Original value: " + new String(data[i]) + " returned value: " + new String(o.content()));
 				Assert.assertTrue(DataUtils.arrayEquals(o.content(), data[i]));
 			}
 			/**
@@ -245,6 +247,8 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 			} else {
 				byte [] content = result.content();
+				System.out.println("Got content: " + result.name());
+				System.out.println("Original time: " + time + " returned time: " + new Timestamp(new BigInteger(1, content).longValue()));
 				Assert.assertNotNull("No content associated with name we just put!", content);
 				Assert.assertTrue("didn't get back same data", 
 						time.equals(new Timestamp(new BigInteger(1, content).longValue())));

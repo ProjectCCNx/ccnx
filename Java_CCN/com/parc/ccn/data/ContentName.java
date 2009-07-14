@@ -922,6 +922,20 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			return i;
 		return -1;		
 	}
+	
+	/**
+	 * Return the first componentNumber components of this name as a new name.
+	 * @param componentNumber
+	 * @return
+	 */
+	public ContentName cut(int componentCount) {
+		if ((componentCount < 0) || (componentCount > count())) {
+			throw new IllegalArgumentException("Illegal component count: " + componentCount);
+		}
+		if (componentCount == count())
+			return this;
+		return new ContentName(componentCount, this.components());
+	}
 
 	/**
 	 * Slice the name off right before the given component

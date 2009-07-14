@@ -54,7 +54,7 @@ public class CCNMerkleTreeTest {
 
 	
 	@Test
-	public void testMerkleTree() {
+	public void testMerkleTree() throws Exception {
 		int [] sizes = new int[]{128,256,512,4096};
 		
 		try {
@@ -131,7 +131,7 @@ public class CCNMerkleTreeTest {
 	}
 	
 	
-	public static void testTree(int nodeCount, int blockWidth, boolean randomWidths) {
+	public static void testTree(int nodeCount, int blockWidth, boolean randomWidths) throws Exception {
 		int version = _rand.nextInt(1000);
 		ContentName theName = ContentName.fromNative(baseName, "testDocBuffer.txt");
 		theName = VersioningProfile.versionName(theName, version);
@@ -152,14 +152,16 @@ public class CCNMerkleTreeTest {
 			for (int i=0; i < tree.numLeaves()-1; ++i) {
 				block = cos[i];
 				boolean result = block.verify(pair.getPublic());
-				System.out.println("Block name: " + tree.blockName(i) + " num "  + i + " verified? " + result + ", content: " + DataUtils.printBytes(block.contentDigest()));
 				if (!result) {
+					System.out.println("Block name: " + tree.blockName(i) + " num "  + i + " verified? " + result + ", content: " + DataUtils.printBytes(block.contentDigest()));
 					byte [] digest = CCNDigestHelper.digest(block.encode());
 					byte [] tbsdigest = 
 						CCNDigestHelper.digest(ContentObject.prepareContent(block.name(), block.signedInfo(), block.content()));
 					System.out.println("Raw content digest: " + DataUtils.printBytes(CCNDigestHelper.digest(block.content())) +
 							" object content digest:  " + DataUtils.printBytes(CCNDigestHelper.digest(block.content())));
 					System.out.println("Block: " + block.name() + " timestamp: " + block.signedInfo().getTimestamp() + " encoded digest: " + DataUtils.printBytes(digest) + " tbs content: " + DataUtils.printBytes(tbsdigest));
+				} else if (i % 100 == 0) {
+					System.out.println("Block name: " + tree.blockName(i) + " num "  + i + " verified? " + result + ", content: " + DataUtils.printBytes(block.contentDigest()));					
 				}
 				Assert.assertTrue("Path " + i + " failed to verify.", result);
 			}
@@ -167,7 +169,7 @@ public class CCNMerkleTreeTest {
 		} catch (Exception e) {
 			System.out.println("Exception in testTree: " + e.getClass().getName() + ": " + e.getMessage());
 			e.printStackTrace();
-			Assert.fail(e.getMessage());
+			throw(e); // must re-throw rather than assert fail; one test actually expects an exception
 		}
 	}
 }

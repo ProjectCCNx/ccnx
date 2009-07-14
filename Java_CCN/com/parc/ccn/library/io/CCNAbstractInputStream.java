@@ -308,8 +308,23 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		}
 	}
 	
-	protected boolean isFirstBlock(ContentObject block) {
+	/**
+	 * For CCNAbstractInputStream, assume that desiredName contains the name up to segmentation information.
+	 * @param desiredName
+	 * @param block
+	 * @return
+	 */
+	protected boolean isFirstBlock(ContentName desiredName, ContentObject block) {
 		if ((null != block) && (SegmentationProfile.isSegment(block.name()))) {
+			Library.logger().info("is " + block.name() + " a first block of " + desiredName);
+			// In theory, the block should be at most a versioning component different from desiredName.
+			// In the case of complex segmented objects (e.g. a KeyDirectory), where there is a version,
+			// then some name components, then a segment, desiredName should contain all of those other
+			// name components -- you can't use the usual versioning mechanisms to pull first block anyway.
+			if (!desiredName.equals(SegmentationProfile.segmentRoot(block.name()))) {
+				Library.logger().info("Desired name :" + desiredName + " is not a prefix of block: " + block.name());
+				return false;
+			}
 			if (null != _startingBlockIndex) {
 				return (_startingBlockIndex.equals(SegmentationProfile.getSegmentNumber(block.name())));
 			} else {
