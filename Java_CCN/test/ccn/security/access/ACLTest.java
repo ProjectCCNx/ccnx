@@ -11,6 +11,7 @@ import org.junit.Test;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.security.access.ACL;
+import com.parc.ccn.security.access.ACL.ACLOperation;
 
 /**
  * Tests functionality of ACL class.
@@ -59,32 +60,29 @@ public class ACLTest {
 	@Test
 	public void testUpdate() throws Exception {
 		ACL testACL = new ACL();
-		ArrayList<LinkReference> userList = new ArrayList<LinkReference>();
-		ArrayList<LinkReference> emptyList = new ArrayList<LinkReference>();
+		ArrayList<ACL.ACLOperation> userList = new ArrayList<ACL.ACLOperation>();
 		
 		// add lr1 and lr2 as readers (2 new readers)
-		userList.add(lr1);
-		userList.add(lr2);
+		userList.add(ACLOperation.addReaderOperation(lr1));
+		userList.add(ACLOperation.addReaderOperation(lr2));
 		LinkedList<LinkReference> result = 
-			testACL.update(userList, emptyList, emptyList, emptyList, emptyList, emptyList);
+			testACL.update(userList);
 		Assert.assertEquals(2, result.size());
 
 		// add the same 2 readers again (0 new reader)
-		result = testACL.update(userList, emptyList, emptyList, emptyList, emptyList, emptyList);
+		result = testACL.update(userList);
 		Assert.assertEquals(0, result.size());
 		
 		// delete reader lr1 and add reader lr3
 		// (null result indicates some read privileges lost)
-		userList.remove(0);
-		ArrayList<LinkReference> otherUserList = new ArrayList<LinkReference>();
-		otherUserList.add(lr3);		
-		result = testACL.update(otherUserList, userList, emptyList, emptyList, emptyList, emptyList);
+		ArrayList<ACL.ACLOperation> ops = new ArrayList<ACL.ACLOperation>();
+		ops.add(ACLOperation.removeReaderOperation(lr1));
+		ops.add(ACLOperation.addReaderOperation(lr3));		
+		result = testACL.update(ops);
 		Assert.assertEquals(null, result);
 		
 		// add readers lr1 and lr2 (only lr1 is new)
-		userList.add(lr1);		
-		result = testACL.update(userList, emptyList, emptyList, emptyList, emptyList, emptyList);
-		Assert.assertEquals(1, result.size());
-		
+		result = testACL.update(userList);
+		Assert.assertEquals(1, result.size());	
 	}
 }

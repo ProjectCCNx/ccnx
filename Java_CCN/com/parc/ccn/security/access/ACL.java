@@ -214,58 +214,64 @@ public class ACL extends CollectionData {
 			}else if(_managers.contains(op)){
 				levelOld = LEVEL_MANAGE;
 			}
+			boolean opSucceeded = false;
 			
 			if(ACLOperation.LABEL_ADD_READER.equals(op.targetLabel())){
 				if(levelOld > LEVEL_NONE){
 					continue;
 				}
-				if(!tm.containsKey(op)){
-					tm.put(op, levelOld);
-				}
+				opSucceeded = true;
+				
 				addReader(op);
 				
 			}else if(ACLOperation.LABEL_ADD_WRITER.equals(op.targetLabel())) {				
 				if(levelOld > LEVEL_WRITE){
 					continue;
 				}
+				
+				opSucceeded = true;
 				if(levelOld == LEVEL_READ){
 					removeLabeledLink(op, LABEL_READER);
 				}
-				if(!tm.containsKey(op)){
-					tm.put(op, levelOld);
-				}
+				
 				addWriter(op);
 			}else if (ACLOperation.LABEL_ADD_MANAGER.equals(op.targetLabel())) {
 				if(levelOld == LEVEL_MANAGE){
 					continue;
 				}
+				opSucceeded = true;
 				if(levelOld == LEVEL_READ){
 					removeLabeledLink(op, LABEL_READER);
 				}else if(levelOld == LEVEL_WRITE){					
 					removeLabeledLink(op, LABEL_WRITER);
 				}
-				if(!tm.containsKey(op)){
-					tm.put(op, levelOld);
-				}
+				
 				addManager(op);
 			}else if (ACLOperation.LABEL_DEL_READER.equals(op.targetLabel())){
 				if(levelOld != LEVEL_READ){
 					Library.logger().info("trying to remove a non-existent reader, ignoring this operation..."); 
 					continue;
 				}
+				opSucceeded = true;
 				removeLabeledLink(op, LABEL_READER);	
 			}else if (ACLOperation.LABEL_DEL_WRITER.equals(op.targetLabel())){
 				if(levelOld != LEVEL_WRITE){ 
 					Library.logger().info("trying to remove a non-existent writer, ignoring this operation...");
 					continue;
 				}
+				opSucceeded = true;
 				removeLabeledLink(op, LABEL_WRITER);
 			}else if (ACLOperation.LABEL_DEL_MANAGER.equals(op.targetLabel())){
 				if(levelOld != LEVEL_MANAGE){
 					Library.logger().info("trying to remove a non-existent manager, ignoring this operation...");
 					continue;
 				}
+				opSucceeded = true;
 				removeLabeledLink(op, LABEL_MANAGER);
+			}
+			
+			if(opSucceeded & !tm.containsKey(op)){
+				tm.put(op, levelOld);
 			}
 		}
 		
