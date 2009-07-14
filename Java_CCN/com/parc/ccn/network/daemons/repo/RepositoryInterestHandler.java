@@ -16,6 +16,7 @@ import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNNameEnumerator;
+import com.parc.ccn.library.profiles.VersioningProfile;
 
 /**
  * 
@@ -127,15 +128,20 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		//the name enumerator marker won't be at the end if the interest is a followup (created with .last())
 		//else if(Arrays.equals(marker, CCNNameEnumerator.NEMARKER)){
 		//System.out.println("handling interest: "+interest.name().toString());
-		ContentName prefixName = interest.name().cut(CCNNameEnumerator.NEMARKER);
+		//ContentName prefixName = interest.name().cut(CCNNameEnumerator.NEMARKER);
 		ArrayList<ContentName> names = _daemon.getRepository().getNamesWithPrefix(interest);
 		if(names!=null){
 			try{
-				ContentName collectionName = new ContentName(prefixName, CCNNameEnumerator.NEMARKER);
+				//the new return name (with the proper version time) is returned as the last name in the list
+				ContentName collectionName = names.remove(names.size()-1);
+				//ContentName collectionName = new ContentName(prefixName, CCNNameEnumerator.NEMARKER);
+				
 				//the following 6 lines are to be deleted after Collections are refactored
 				LinkReference[] temp = new LinkReference[names.size()];
 				for(int x = 0; x < names.size(); x++)
 					temp[x] = new LinkReference(names.get(x));
+				
+				
 				_library.put(collectionName, temp);
 				
 				//CCNEncodableCollectionData ecd = new CCNEncodableCollectionData(collectionName, cd);

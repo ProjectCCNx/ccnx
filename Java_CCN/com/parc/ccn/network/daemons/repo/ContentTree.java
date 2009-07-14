@@ -442,6 +442,7 @@ public class ContentTree {
 			nodeTS = new Timestamp(parent.timestamp);
 			if(interestTS==null || nodeTS.after(interestTS)){
 				//we have something new to report
+				//put this time in the last name spot if there are children
 			}
 			else
 				return null;
@@ -457,6 +458,8 @@ public class ContentTree {
 						names.add(new ContentName(c, ch.component));
 				}
 			}
+			//add timestamp in last name spot to send back (will be removed)
+			names.add(VersioningProfile.versionName(interest.name(), nodeTS));
 			return names;
 			
 		}
