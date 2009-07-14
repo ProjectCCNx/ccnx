@@ -32,7 +32,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	protected ContentName _policyName;
 	protected RepoInfoType _type = RepoInfoType.INFO;
 	
-	protected static String DEFAULT_DICTIONARY_RESNAME = "repotags.cvsdict";
+	protected static String DEFAULT_DICTIONARY_RESNAME = "repotags.csvdict";
 	
 	private static BinaryXMLDictionary _dictionary;
 	
