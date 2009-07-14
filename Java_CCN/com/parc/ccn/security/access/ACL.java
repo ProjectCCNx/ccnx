@@ -3,8 +3,10 @@ package com.parc.ccn.security.access;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.TreeSet;
+import java.util.TreeMap;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -20,12 +22,47 @@ import com.parc.ccn.data.util.CCNEncodableObject;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
+
+
 public class ACL extends CollectionData {
 	
 	public static final String LABEL_READER = "r";
 	public static final String LABEL_WRITER = "rw";
 	public static final String LABEL_MANAGER = "rw+";
 	public static final String [] ROLE_LABELS = {LABEL_READER, LABEL_WRITER, LABEL_MANAGER};
+	
+	public static class ACLOperation extends LinkReference{
+		public static final String LABEL_ADD_READER = "+r";
+		public static final String LABEL_ADD_WRITER = "+rw";
+		public static final String LABEL_ADD_MANAGER = "+rw+";
+		public static final String LABEL_DEL_READER = "-r";
+		public static final String LABEL_DEL_WRITER = "-rw";
+		public static final String LABEL_DEL_MANAGER = "-rw+";
+		
+		public ACLOperation(String label, LinkReference linkRef){
+			super(linkRef.targetName(), label, linkRef.targetAuthenticator());
+		}
+		
+		public static ACLOperation addReaderOperation(LinkReference linkRef){
+			return new ACLOperation(LABEL_ADD_READER, linkRef);
+		}
+		public static ACLOperation removeReaderOperation(LinkReference linkRef){
+			return new ACLOperation(LABEL_DEL_READER, linkRef);
+		}
+		public static ACLOperation addWriterOperation(LinkReference linkRef){
+			return new ACLOperation(LABEL_ADD_WRITER, linkRef);
+		}
+		public static ACLOperation removeWriterOperation(LinkReference linkRef){
+			return new ACLOperation(LABEL_DEL_WRITER, linkRef);
+		}
+		public static ACLOperation addManagerOperation(LinkReference linkRef){
+			return new ACLOperation(LABEL_ADD_MANAGER, linkRef);
+		}
+		public static ACLOperation removeManagerOperation(LinkReference linkRef){
+			return new ACLOperation(LABEL_DEL_MANAGER, linkRef);
+		}
+	}
+
 	
 	// maintain a set of index structures. want to match on unversioned link target name only,
 	// not label and potentially not signer if specified. Use a set class that can
@@ -146,15 +183,9 @@ public class ACL extends CollectionData {
 	}
 	
 	/**
-	 * If we are performing a set of simultaneous modifications to an ACL, we need to
-	 * handle them in parallel, in order to resolve interdependencies and derive the
-	 * minimal necessary changes to the underlying cryptographic data.
-	 * @param addReaders
-	 * @param removeReaders
-	 * @param addWriters
-	 * @param removeWriters
-	 * @param addManagers
-	 * @param removeManagers
+	 * Batch perform a set of ACL update Operations
+	 * @param ACLUpdates: ordered set of ACL update operations
+	 * 
 	 * @return We return a LinkedList<LinkReference> of the principals newly granted read
 	 *   access on this ACL. If no individuals are granted read access, we return a 0-length
 	 *   LinkedList. If any individuals are completely removed, requiring the caller to generate
@@ -163,160 +194,107 @@ public class ACL extends CollectionData {
 	 *   removed from a role and added to others. For now, we just return the thing we need
 	 *   for our current implementation, which is whether anyone lost read access entirely.)
 	 */
-	public LinkedList<LinkReference> 
-		update(ArrayList<LinkReference> addReadersIn, ArrayList<LinkReference> removeReadersIn,
-					   ArrayList<LinkReference> addWritersIn, ArrayList<LinkReference> removeWritersIn,
-					   ArrayList<LinkReference> addManagersIn, ArrayList<LinkReference> removeManagersIn) {
+	public LinkedList<LinkReference> update(ArrayList<ACLOperation> ACLUpdates){
 		
-		// Need copies we can modifiy, caller might want these back.
-		TreeSet<LinkReference> addReaders = new TreeSet<LinkReference>(_comparator);
-		addReaders.addAll(addReadersIn);
-		TreeSet<LinkReference> removeReaders = new TreeSet<LinkReference>(_comparator);
-		removeReaders.addAll(removeReadersIn);
-		TreeSet<LinkReference> addWriters = new TreeSet<LinkReference>(_comparator);
-		addWriters.addAll(addWritersIn);
-		TreeSet<LinkReference> removeWriters = new TreeSet<LinkReference>(_comparator);
-		removeWriters.addAll(removeWritersIn);
-		TreeSet<LinkReference> addManagers = new TreeSet<LinkReference>(_comparator);
-		addManagers.addAll(addManagersIn);
-		TreeSet<LinkReference> removeManagers = new TreeSet<LinkReference>(_comparator);
-		removeManagers.addAll(removeManagersIn);
+		final int LEVEL_NONE = 0;
+		final int LEVEL_READ = 1;
+		final int LEVEL_WRITE = 2;
+		final int LEVEL_MANAGE = 3;
 		
-		// Add then remove, so that removes override adds. Want to come up in the end with:
-		// a) do we need a new node key
-		// b) if not, who are the net new readers (requiring new node key blocks)?
+		//for principals that are affected, 
+		//tm records the previous privileges of those principals
+		TreeMap<LinkReference, Integer> tm = new TreeMap<LinkReference, Integer>(_comparator);
 		
-		LinkedList<LinkReference> newReaders = new LinkedList<LinkReference>();		
-		boolean newNodeKeyRequired = false;
-
-		if (null != addManagers) {
-			for (LinkReference manager : addManagers) {
-				if (_managers.contains(manager)) {
-					// if it's already a manager, do nothing
+		for (ACLOperation op: ACLUpdates){
+			int levelOld = LEVEL_NONE;
+			if(_readers.contains(op)){
+				levelOld = LEVEL_READ;
+			}else if(_writers.contains(op)){
+				levelOld = LEVEL_WRITE;
+			}else if(_managers.contains(op)){
+				levelOld = LEVEL_MANAGE;
+			}
+			
+			if(ACLOperation.LABEL_ADD_READER.equals(op.targetLabel())){
+				if(levelOld > LEVEL_NONE){
 					continue;
 				}
-				// test if it's already a writer or a reader
-				// if so, it's not a new reader
-				// and remove it from those other roles
-				// and add it to manager
-				if (_writers.contains(manager)) {
-					removeLabeledLink(manager, LABEL_WRITER);
-				} else if (_readers.contains(manager)) {
-					removeLabeledLink(manager, LABEL_READER);
-				} else {
-					// otherwise, add to new readers list
-					newReaders.add(manager);
+				if(!tm.containsKey(op)){
+					tm.put(op, levelOld);
 				}
-				addManager(manager);
-			}
-		}
-		if (null != addWriters) {
-			for (LinkReference writer : addWriters) {
-				// if it's already a writer, do nothing
-				if (_writers.contains(writer)) {
-					// if it's already a manager, do nothing
+				addReader(op);
+				
+			}else if(ACLOperation.LABEL_ADD_WRITER.equals(op.targetLabel())) {				
+				if(levelOld > LEVEL_WRITE){
 					continue;
 				}
-				// test if it's already a manager or a reader
-				// if so, it's not a new reader
-				if (_managers.contains(writer)) {
-					// if it's already a manager, check if it's on the manager to be removed list
-					// if it isn't, it's probably an error. just leave it as a manager.
-					if (!removeManagers.contains(writer)) {
-						continue;
-					}
-					// if it is, it's being downgraded to a writer. 
-					removeLabeledLink(writer, LABEL_MANAGER);
-				} else if (_readers.contains(writer)) {
-					// upgrading to a writer, remove reader entry
-					removeLabeledLink(writer, LABEL_READER);
-				} else {
-					// otherwise, add to new readers list
-					newReaders.add(writer);
+				if(levelOld == LEVEL_READ){
+					removeLabeledLink(op, LABEL_READER);
 				}
-				addWriter(writer);
-			}
-		}
-		if (null != addReaders) {
-			for (LinkReference reader : addReaders) {
-				// if it is already a reader, do nothing
-				// Tricky -- if it's in the writers or manager list it will have a different label.
-				// test if it's already a writer or a manager
-				// if so, it's not a new reader
-				// if it's already a manager or writer, check if it's on the manager or writer to be removed list
-				// if it is, remove it as a manager or writer and add it as a reader
-				// if not, just skip -- already better than a reader
-				// otherwise, add to new readers list
-				// if it's already a writer, do nothing
-				if (_readers.contains(reader)) {
-					// if it's already a reader, do nothing
+				if(!tm.containsKey(op)){
+					tm.put(op, levelOld);
+				}
+				addWriter(op);
+			}else if (ACLOperation.LABEL_ADD_MANAGER.equals(op.targetLabel())) {
+				if(levelOld == LEVEL_MANAGE){
 					continue;
 				}
-				// test if it's already a manager or a writer
-				// if so, it's not a new reader
-				if (_managers.contains(reader)) {
-					// if it's already a manager, check if it's on the manager to be removed list
-					// if it isn't, it's probably an error. just leave it as a manager.
-					if (!removeManagers.contains(reader)) {
-						continue;
-					}
-					// if it is, it's being downgraded to a reader. 
-					removeLabeledLink(reader, LABEL_MANAGER);
-				} else if (_writers.contains(reader)) {
-					// if it's already a manager, check if it's on the manager to be removed list
-					// if it isn't, it's probably an error. just leave it as a manager.
-					if (!removeWriters.contains(reader)) {
-						continue;
-					}
-					// if it is, it's being downgraded to a writer. 
-					removeLabeledLink(reader, LABEL_WRITER);
-				} else {
-					// otherwise, add to new readers list
-					newReaders.add(reader);
+				if(levelOld == LEVEL_READ){
+					removeLabeledLink(op, LABEL_READER);
+				}else if(levelOld == LEVEL_WRITE){					
+					removeLabeledLink(op, LABEL_WRITER);
 				}
-				addReader(reader);
+				if(!tm.containsKey(op)){
+					tm.put(op, levelOld);
+				}
+				addManager(op);
+			}else if (ACLOperation.LABEL_DEL_READER.equals(op.targetLabel())){
+				if(levelOld != LEVEL_READ){
+					Library.logger().info("trying to remove a non-existent reader, ignoring this operation..."); 
+					continue;
+				}
+				removeLabeledLink(op, LABEL_READER);	
+			}else if (ACLOperation.LABEL_DEL_WRITER.equals(op.targetLabel())){
+				if(levelOld != LEVEL_WRITE){ 
+					Library.logger().info("trying to remove a non-existent writer, ignoring this operation...");
+					continue;
+				}
+				removeLabeledLink(op, LABEL_WRITER);
+			}else if (ACLOperation.LABEL_DEL_MANAGER.equals(op.targetLabel())){
+				if(levelOld != LEVEL_MANAGE){
+					Library.logger().info("trying to remove a non-existent manager, ignoring this operation...");
+					continue;
+				}
+				removeLabeledLink(op, LABEL_MANAGER);
 			}
 		}
-		// We've already handled the cases of changed access, rather than revoking
-		// all read rights; we've already removed those objects. 
-		// Changed access (retained read access) will show up as
-		// requests to remove with no matching data.
-		if (null != removeReaders) {
-			for (LinkReference reader : removeReaders) {
-				if (_readers.contains(reader)) {
-					removeLabeledLink(reader, LABEL_READER);
-					newNodeKeyRequired = true;
-				}
+		
+		// a new node key is required if someone with LEVEL_READ or above
+		// is down-graded to LEVEL_NONE
+		boolean newKeyRequired = false;
+		LinkedList<LinkReference> newReaders = new LinkedList<LinkReference>();
+		
+		Iterator<LinkReference> it = tm.keySet().iterator();
+		while(it.hasNext()){
+			LinkReference p = it.next();
+			int lvOld = tm.get(p);
+			
+			if (_readers.contains(p) || _writers.contains(p) || _managers.contains(p)){
+				if(lvOld == LEVEL_NONE){
+					newReaders.add(p);
+				}				
+			}else if (lvOld > LEVEL_NONE){
+				newKeyRequired = true;				
 			}
 		}
-		if (null != removeWriters) {
-			for (LinkReference writer : removeWriters) {
-				if (_writers.contains(writer)) {
-					removeLabeledLink(writer, LABEL_WRITER);
-					newNodeKeyRequired = true;
-				}
-			}
-		}
-		if (null != removeManagers) {
-			for (LinkReference manager : removeManagers) {
-				if (_managers.contains(manager)) {
-					removeLabeledLink(manager, LABEL_MANAGER);
-					newNodeKeyRequired = true;
-				}
-			}
-		}
-
-		// If we need a new node key, we don't care who the new readers are.
-		// If we don't need a new node key, we do. 
-		// Want a dual return -- new node key required, 
-		// no new node key required but new readers and here they are,
-		// and the really unusual case -- no new node key required and no new readers (no change).
-		if (newNodeKeyRequired) {
+		
+		if (newKeyRequired) {
 			return null;
 		}
 		return newReaders;
+		
 	}
-	
+		
 	protected void addLabeledLink(LinkReference link, String desiredLabel) {
 		// assume that the reference has link's name and authentication information,
 		// but possibly not the right label. Also assume that the link object might

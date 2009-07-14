@@ -33,6 +33,7 @@ import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.library.profiles.AccessControlProfile.PrincipalInfo;
 import com.parc.ccn.security.access.ACL.ACLObject;
+import com.parc.ccn.security.access.ACL.ACLOperation;
 import com.parc.ccn.security.keys.KeyManager;
 
 /**
@@ -465,41 +466,28 @@ public class AccessControlManager {
 	 * @throws AccessDeniedException 
 	 * @throws InvalidCipherTextException 
 	 */
-	public ACL updateACL(ContentName nodeName, 
-						ArrayList<LinkReference> addReaders, ArrayList<LinkReference> removeReaders,
-						ArrayList<LinkReference> addWriters, ArrayList<LinkReference> removeWriters,
-						ArrayList<LinkReference> addManagers, ArrayList<LinkReference> removeManagers) throws XMLStreamException, IOException, InvalidKeyException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
-		
+
+	
+	public ACL updateACL(ContentName nodeName, ArrayList<ACL.ACLOperation> ACLUpdates) throws XMLStreamException, IOException, InvalidKeyException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
 		ACLObject currentACL = getACLObjectForNodeIfExists(nodeName);
 		ACL newACL = null;
+		
 		if (null != currentACL) {
 			newACL = currentACL.acl();
-		} else {
+		}else{
 			Library.logger().info("Adding brand new ACL to node: " + nodeName);
-			if ((null == addReaders) && (null == addWriters) && (null == addManagers)) {
-				Library.logger().info("Very strange, adding no new members to our brand-new ACL!");
-				// DKS TODO -- default permissions? does ACL creator automatically end up as
-				// a manager? as themself? as one of their groups?
-				// for the moment, punt and assume it's not the job of the access control
-				// low-level to prevent stupidity; it's the job of the setup tools
-				return null;
-			}
+			//TODO: if no operations is specified, then a new empty ACL is created...
 			newACL = new ACL();
 		}
-		// Now update ACL to add and remove values.
-		// Managers are a subset of writers are a subset of readers. So if you remove someone
-		// as a reader, you remove them whether they are a reader, manager or writer.
-		// If you remove someone as a writer, you remove them whether they are a manager or a writer.
-		LinkedList<LinkReference> newReaders = 
-			newACL.update(addReaders, removeReaders, addWriters, removeWriters,
-								   addManagers, removeManagers);
+		
+		LinkedList<LinkReference> newReaders = newACL.update(ACLUpdates);
 		
 		if ((null == newReaders) || (null == currentACL)) {
 			// null newReaders means we revoked someone.
 			// null currentACL means we're starting from scratch
 			// Set the ACL and update the node key.
 			return setACL(nodeName, newACL);
-		} 
+		}
 		
 		// If we get back a list of new readers, it means all we have to do
 		// is add key blocks for them, not update the node key. (And it means
@@ -547,18 +535,32 @@ public class AccessControlManager {
 		// to at least read this stuff (though maybe not write it). Save the acl.
 		currentACL.save(newACL);
 		return newACL;
+		
 	}
+	
 		
 	public ACL addReaders(ContentName nodeName, ArrayList<LinkReference> newReaders) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
-		return updateACL(nodeName, newReaders, null, null, null, null, null);
+		ArrayList<ACLOperation> ops = new ArrayList<ACLOperation>();
+		for(LinkReference reader : newReaders){
+			ops.add(ACLOperation.addReaderOperation(reader));
+		}
+		return updateACL(nodeName, ops);
 	}
 	
 	public ACL addWriters(ContentName nodeName, ArrayList<LinkReference> newWriters) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
-		return updateACL(nodeName, null, null, newWriters, null, null, null);
+		ArrayList<ACLOperation> ops = new ArrayList<ACLOperation>();
+		for(LinkReference writer : newWriters){
+			ops.add(ACLOperation.addWriterOperation(writer));
+		}
+		return updateACL(nodeName, ops);
 	}
 	
 	public ACL addManagers(ContentName nodeName, ArrayList<LinkReference> newManagers) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
-		return updateACL(nodeName, null, null, null, null, newManagers, null);
+		ArrayList<ACLOperation> ops = new ArrayList<ACLOperation>();
+		for(LinkReference manager: newManagers){
+			ops.add(ACLOperation.addManagerOperation(manager));
+		}
+		return updateACL(nodeName, ops);
 	}
 	
 	
