@@ -165,18 +165,17 @@ public class RepositoryDaemon extends Daemon {
 	
 	public void initialize(String[] args, Daemon daemon) {
 		Library.logger().info("Starting " + _daemonName + "...");				
-		Library.logger().setLevel(Level.INFO);		
+		Library.logger().setLevel(Level.INFO);
+		boolean useLogging = false;
 		try {
 			_library = CCNLibrary.open();
 			_writer = new CCNWriter(_library);
 
-			/*
-			 * At some point we may want to refactor the code to
-			 * write repository info back in a stream.  But for now
-			 * we're just doing a simple put and the writer could be
-			 * writing anywhere so the simplest thing to do is to just
-			 * disable flow control
-			 */
+			 // At some point we may want to refactor the code to
+			 // write repository info back in a stream.  But for now
+			 // we're just doing a simple put and the writer could be
+			 // writing anywhere so the simplest thing to do is to just
+			 // disable flow control
 			_writer.disableFlowControl();
 
 			SystemConfiguration.setLogging("repo", false);
@@ -190,16 +189,14 @@ public class RepositoryDaemon extends Daemon {
 						SystemConfiguration.setLogging("repo", true);
 						Level level = Level.parse(args[i + 1]);
 						Library.logger().setLevel(level);
+						useLogging = level.intValue() < Level.INFO.intValue();
 					} catch (IllegalArgumentException iae) {
 						usage();
 						return;
 					}
 				}
 
-				/*
-				 * This is for upper half performance testing for writes
-				 */
-				if (args[i].equals("-bb"))
+				if (args[i].equals("-bb"))  // Following is for upper half performance testing for writes
 					_repo = new BitBucketRepository();
 				
 				if(args[i].equals("-singlefile"))
@@ -209,6 +206,8 @@ public class RepositoryDaemon extends Daemon {
 					_repo = new RFSImpl();
 			}
 
+			if (!useLogging)
+				SystemConfiguration.setLogging("repo", false);
 			
 			if (_repo == null)	// default lower half
 				_repo = new RFSLogImpl();
