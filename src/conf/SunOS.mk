@@ -5,3 +5,4 @@ SHEXT = so
 SHLIBNAME=libccn.$(SHEXT).1
 SHLIBDEPS=
 SHARED_LD_FLAGS = -G -z allextract
+INSTALL = ginstall
