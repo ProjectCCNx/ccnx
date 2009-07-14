@@ -345,7 +345,7 @@ public class ACL extends CollectionData {
 			super.add(link);
 			index(link);
 		}
-		throw new IllegalArgumentException("Invalid label: " + link.targetLabel());
+		else throw new IllegalArgumentException("Invalid label: " + link.targetLabel());
 	}
 	
 	@Override
