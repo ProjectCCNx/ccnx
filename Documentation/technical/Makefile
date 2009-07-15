@@ -1,6 +1,6 @@
 # Makefile for ccn/Documentation/technical
 
-DERIVED_HTML = NameConventions.html InterestMessage.html
+DERIVED_HTML = NameConventions.html InterestMessage.html Staleness.html
 
 default all: $(DERIVED_HTML)
 
@@ -12,6 +12,9 @@ InterestMessage.html: InterestMessage.txt
 
 NameConventions.html: NameConventions.txt
 	asciidoc NameConventions.txt
+
+Staleness.html: Staleness.txt
+	asciidoc Staleness.txt
 
 default all clean depend test check shared install uninstall: _always
 
