@@ -1,0 +1,7 @@
+Makefile
+FAILING
+SKIPPED
+STATUS/
+testdriver
+ephemeral*
+*.out
