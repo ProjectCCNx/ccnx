@@ -17,6 +17,7 @@ import javax.xml.stream.XMLStreamException;
 
 
 
+
 import com.parc.ccn.Library;
 import com.parc.ccn.apps.containerApp.IconCellRenderer;
 import com.parc.ccn.apps.containerApp.IconData;
@@ -139,7 +140,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 					EventQueue.invokeLater(new Runnable() {
 						public void run() {
 							try {
-								ShowTextDialog dialog = new ShowTextDialog(node);
+								ShowTextDialog dialog = new ShowTextDialog(node,_library);
 								dialog.setVisible(true);
 							} catch (Exception e) {
 								e.printStackTrace();
@@ -392,6 +393,9 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 
 		
 		try {
+			
+			//ccnName
+			//_library
 			RepositoryFileOutputStream fos = new RepositoryFileOutputStream(ccnName, _library);
 			FileInputStream fs = new FileInputStream(file);
 			int bytesRead = 0;
@@ -403,6 +407,20 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 
 			fos.close();
 
+			
+			/*
+			RepositoryOutputStream ros = putLibrary.repoOpen(name, null, putLibrary.getDefaultPublisher());
+			ros.setTimeout(5000);
+			byte [] data = "Testing 1 2 3".getBytes();
+			ros.write(data, 0, data.length);
+			ros.close();
+			*/
+			/*CCNStringObject cso = new CCNStringObject(name, ContentName.componentPrintNative(name.lastComponent()), library);
+			cso.saveToRepository();
+			System.out.println("Saved new object: " + cso.getName());
+			return cso.getName();
+			*/
+			
 		} catch (IOException e) {
 
 			System.out.println("error writing file to repo");

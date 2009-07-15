@@ -214,13 +214,12 @@ public class ACL extends CollectionData {
 			}else if(_managers.contains(op)){
 				levelOld = LEVEL_MANAGE;
 			}
-			boolean opSucceeded = false;
+			
 			
 			if(ACLOperation.LABEL_ADD_READER.equals(op.targetLabel())){
 				if(levelOld > LEVEL_NONE){
 					continue;
 				}
-				opSucceeded = true;
 				
 				addReader(op);
 				
@@ -229,7 +228,6 @@ public class ACL extends CollectionData {
 					continue;
 				}
 				
-				opSucceeded = true;
 				if(levelOld == LEVEL_READ){
 					removeLabeledLink(op, LABEL_READER);
 				}
@@ -239,7 +237,7 @@ public class ACL extends CollectionData {
 				if(levelOld == LEVEL_MANAGE){
 					continue;
 				}
-				opSucceeded = true;
+
 				if(levelOld == LEVEL_READ){
 					removeLabeledLink(op, LABEL_READER);
 				}else if(levelOld == LEVEL_WRITE){					
@@ -252,25 +250,25 @@ public class ACL extends CollectionData {
 					Library.logger().info("trying to remove a non-existent reader, ignoring this operation..."); 
 					continue;
 				}
-				opSucceeded = true;
+
 				removeLabeledLink(op, LABEL_READER);	
 			}else if (ACLOperation.LABEL_DEL_WRITER.equals(op.targetLabel())){
 				if(levelOld != LEVEL_WRITE){ 
 					Library.logger().info("trying to remove a non-existent writer, ignoring this operation...");
 					continue;
 				}
-				opSucceeded = true;
+
 				removeLabeledLink(op, LABEL_WRITER);
 			}else if (ACLOperation.LABEL_DEL_MANAGER.equals(op.targetLabel())){
 				if(levelOld != LEVEL_MANAGE){
 					Library.logger().info("trying to remove a non-existent manager, ignoring this operation...");
 					continue;
 				}
-				opSucceeded = true;
+
 				removeLabeledLink(op, LABEL_MANAGER);
 			}
 			
-			if(opSucceeded & !tm.containsKey(op)){
+			if(!tm.containsKey(op)){
 				tm.put(op, levelOld);
 			}
 		}
