@@ -1,2 +1,4 @@
-echo "#!" $1
-cat "$2"
+#
+test -x "$1" && test -f "$2" && echo "#!" "$1" && cat "$2" && exit 0
+echo "***" You may need to rerun ./configure in the src directory. >&2
+exit 1
