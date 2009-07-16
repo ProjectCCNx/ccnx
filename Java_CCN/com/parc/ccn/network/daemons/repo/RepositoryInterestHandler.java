@@ -9,6 +9,7 @@ import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
+import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.LinkReference;
@@ -36,6 +37,8 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	public int handleInterests(ArrayList<Interest> interests) {
 		for (Interest interest : interests) {
 			try {
+				if (SystemConfiguration.getLogging("repo"))
+					Library.logger().finer("Saw interest: " + interest.name());
 				if (interest.name().contains(CCNBase.REPO_START_WRITE)) {
 					startReadProcess(interest);
 				} else if(interest.name().contains(CCNNameEnumerator.NEMARKER)){

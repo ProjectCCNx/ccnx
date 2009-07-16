@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
+import java.nio.channels.NotYetConnectedException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.util.ArrayList;
@@ -69,6 +70,8 @@ public class CCNNetworkManager implements Runnable {
 	protected FileOutputStream _tapStreamOut = null;
 	protected FileOutputStream _tapStreamIn = null;
 	protected long _lastHeartbeat = 0;
+	protected int _port = DEFAULT_AGENT_PORT;
+	protected String _host = DEFAULT_AGENT_HOST;
 
 	// Tables of interests/filters: users must synchronize on collection
 	protected InterestTable<InterestRegistration> _myInterests = new InterestTable<InterestRegistration>();
@@ -91,7 +94,7 @@ public class CCNNetworkManager implements Runnable {
 			}
 
 			// Library.logger().finest("Refreshing interests (size " + _myInterests.size() + ")");
-
+			
 			// Re-express interests that need to be re-expressed
 			try {
 				synchronized (_myInterests) {
@@ -104,7 +107,9 @@ public class CCNNetworkManager implements Runnable {
 							//reg.nextRefreshPeriod = (reg.nextRefreshPeriod * 2) > MAX_PERIOD ? MAX_PERIOD
 									//: reg.nextRefreshPeriod * 2;
 							reg.nextRefresh += reg.nextRefreshPeriod;
-							write(reg.interest);
+							try {
+								write(reg.interest);
+							} catch (NotYetConnectedException nyce) {}
 						}
 					}
 				}
@@ -121,11 +126,16 @@ public class CCNNetworkManager implements Runnable {
 	private void heartbeat() {
 		try {
 			ByteBuffer heartbeat = ByteBuffer.allocate(1);
-			_channel.write(heartbeat);
+			if (_channel.isConnected())
+				_channel.write(heartbeat);
 		} catch (IOException io) {
 			// We do not see errors on send typically even if 
 			// agent is gone, so log each but do not track
 			Library.logger().warning("Error sending heartbeat packet: " + io.getMessage());
+			try {
+				if (_channel.isConnected())
+					_channel.disconnect();
+			} catch (IOException e) {}
 		}
 	}
 	
@@ -427,23 +437,21 @@ public class CCNNetworkManager implements Runnable {
 	
 	public CCNNetworkManager() throws IOException {
 		// Determine port at which to contact agent
-		int port = DEFAULT_AGENT_PORT;
-		String host = DEFAULT_AGENT_HOST;
 		String portval = System.getProperty(PROP_AGENT_PORT);
 		if (null != portval) {
 			try {
-				port = new Integer(portval);
+				_port = new Integer(portval);
 			} catch (Exception ex) {
 				throw new IOException("Invalid port '" + portval + "' specified in " + PROP_AGENT_PORT);
 			}
-			Library.logger().warning("Non-standard CCN agent port " + port + " per property " + PROP_AGENT_PORT);
+			Library.logger().warning("Non-standard CCN agent port " + _port + " per property " + PROP_AGENT_PORT);
 		}
 		String hostval = System.getProperty(PROP_AGENT_HOST);
 		if (null != hostval && hostval.length() > 0) {
-			host = hostval;
-			Library.logger().warning("Non-standard CCN agent host " + host + " per property " + PROP_AGENT_HOST);
+			_host = hostval;
+			Library.logger().warning("Non-standard CCN agent host " + _host + " per property " + PROP_AGENT_HOST);
 		}
-		Library.logger().info("Contacting CCN agent at " + host + ":" + port);
+		Library.logger().info("Contacting CCN agent at " + _host + ":" + _port);
 		
 		String tapname = System.getProperty(PROP_TAP);
 		if (null == tapname) {
@@ -460,7 +468,7 @@ public class CCNNetworkManager implements Runnable {
 		
 		// Socket is to belong exclusively to run thread started here
 		_channel = DatagramChannel.open();
-		_channel.connect(new InetSocketAddress(host, port));
+		_channel.connect(new InetSocketAddress(_host, _port));
 		_channel.configureBlocking(false);
 		_selector = Selector.open();
 		_channel.register(_selector, SelectionKey.OP_READ);
@@ -729,6 +737,13 @@ public class CCNNetworkManager implements Runnable {
 						if (!_run) {
 							// exit immediately if wakeup for shutdown
 							break;
+						}
+						if (!_channel.isConnected()) {
+							_channel.connect(new InetSocketAddress(_host, _port));
+							if (_channel.isConnected()) {
+								_selector = Selector.open();
+								_channel.register(_selector, SelectionKey.OP_READ);
+							}
 						}
 					}
 				} catch (IOException io) {
