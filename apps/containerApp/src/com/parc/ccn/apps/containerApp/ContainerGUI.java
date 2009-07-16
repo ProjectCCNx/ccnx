@@ -394,8 +394,6 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		
 		try {
 			
-			//ccnName
-			//_library
 			RepositoryFileOutputStream fos = new RepositoryFileOutputStream(ccnName, _library);
 			FileInputStream fs = new FileInputStream(file);
 			int bytesRead = 0;
@@ -406,20 +404,6 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 			}
 
 			fos.close();
-
-			
-			/*
-			RepositoryOutputStream ros = putLibrary.repoOpen(name, null, putLibrary.getDefaultPublisher());
-			ros.setTimeout(5000);
-			byte [] data = "Testing 1 2 3".getBytes();
-			ros.write(data, 0, data.length);
-			ros.close();
-			*/
-			/*CCNStringObject cso = new CCNStringObject(name, ContentName.componentPrintNative(name.lastComponent()), library);
-			cso.saveToRepository();
-			System.out.println("Saved new object: " + cso.getName());
-			return cso.getName();
-			*/
 			
 		} catch (IOException e) {
 

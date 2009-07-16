@@ -23,6 +23,13 @@ import com.parc.ccn.library.CCNLibrary;
  *@param library
  *
  * */
+
+//USAGE
+/*CCNStringObject cso = new CCNStringObject(name, ContentName.componentPrintNative(name.lastComponent()), library);
+cso.saveToRepository();
+System.out.println("Saved new object: " + cso.getName());
+return cso.getName();
+*/
 class CCNStringObject extends CCNSerializableObject<String> {
 
 	public CCNStringObject(ContentName name, String data, CCNLibrary library) throws ConfigurationException, IOException {
