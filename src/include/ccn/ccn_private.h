@@ -33,8 +33,4 @@ int ccn_process_scheduled_operations(struct ccn *h);
  */
 struct ccn_charbuf *ccn_grab_buffered_output(struct ccn *h);
 
-int ccn_charbuf_append_timestamp_blob(struct ccn_charbuf *c, int marker, intmax_t secs, int nsecs);
-
-int ccn_charbuf_append_now_blob(struct ccn_charbuf *c, int marker);
-
 #endif
