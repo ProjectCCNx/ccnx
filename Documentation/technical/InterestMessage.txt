@@ -12,16 +12,23 @@ Below we will use a less formal abstract syntax to indicate how the pieces fit t
 
 == Interest
 .......................................................
-Interest ::= Name  NameComponentCount?
-                   AdditionalNameComponents?
-                   PublisherID?
-                   Exclude?  OrderPreference?  AnswerOriginKind?  Scope?  Count?  Nonce?
+Interest ::= Name
+             NameComponentCount?
+             AdditionalNameComponents?
+             PublisherPublicKeyDigest?
+             Exclude?
+             OrderPreference?
+             AnswerOriginKind?
+             Scope?
+             Count?
+             Nonce?
 .......................................................
 
 The hierarchical *Name* is the only required element in an Interest message.
 *NameComponentCount* is a special modifier to the interpretation of the Name. 
 The remaining elements fall into several categories:
-1. those that further qualify the ContentObjects that may match the Interest *AdditionalNameComponents*, *PublisherID*, *Exclude*, *ExperimentalResponseFilter*)
+
+1. those that further qualify the ContentObjects that may match the Interest *AdditionalNameComponents*, *PublisherPublicKeyDigest*, *Exclude*, *ExperimentalResponseFilter*)
 2. those that limit where the answer might come from (*AnswerOriginKind*, *Scope*)
 3. those that advise the selection of what to send when there are multiple ContentObjects that match (*OrderPreference*)
 4. special (*Count*, *Nonce*)
@@ -33,7 +40,7 @@ Component ::= BLOB
 .......................................................
 A Name element simply contains a sequence of Component elements. Each Component element contains a sequence of zero or more bytes.  There are no restrictions on what byte sequences may be used, so when displayed as xml, a base64Binary encoding may be needed.  When the bytes happen to be printable UTF-8, a more human-friendly "text" alternative is available (although this is not shown in the official schema).
 
-Here is an example of an Interest containing a name with 2 components (<code>ccn:/PARC/%00%01%02</code>):
+Here is an example of an Interest containing a name with 2 components (`ccn:/PARC/%00%01%02`):
 ...........................................................
 <Interest>
   <Name>
@@ -62,24 +69,28 @@ We won't dwell on the details of the binary encoding here, but keep in mind that
 The Name of every piece of content includes as its final component the SHA-256 hash of the Content (just the content bytes themselves, no metadata).  This may occur in an Interest Name as an ordinary Component (the last).  However, this final component is never included explicitly in the ContentObject as it appears on the wire.
 
 == NameComponentCount
-
-<verbatim>NameComponentCount ::= nonNegativeInteger</verbatim>
+...........................................................
+NameComponentCount ::= nonNegativeInteger
+...........................................................
 
 For the (implicit) temporal/accessional/arrival ordering requests to make any sense, there must be a way for the consuming endpoint to indicate where it was in its enumeration.  To do this, we can use the notion of a "marked" name, with the components before the mark indicating the prefix, and the remainder identifying the content that the consumer would like to use as a reference point in the ordering.  (This may also be useful for the name hierarchy order case in some circumstances.)  The wire encoding of this is to have a count of how many leading components constitute the prefix.
 
+WARNING: *NameComponentCount* will be removed soon.
 
 == AdditionalNameComponents
 ...........................................................
 AdditionalNameComponents ::= nonNegativeInteger
 ...........................................................
 
-A client may need to say that the Name in the interest is either the full name including the digest, or the full name except for the digest.  The encoding is a parameter named !AdditionalNameComponents, which gives the exact number of additional name components (counting the explicit digest) that the response should have in addition to the Interest's prefix. !AdditionalNameComponents is an optional element.
+A client may need to say that the Name in the interest is either the full name including the digest, or the full name except for the digest.  The encoding is a parameter named AdditionalNameComponents, which gives the exact number of additional name components (counting the implicit digest) that the response should have in addition to the Interest's prefix. AdditionalNameComponents is an optional element.
+WARNING: *AdditionalNameComponents* will be removed soon.  In its place will be *MinSuffixComponents* and *MaxSuffixComponents*. To get the precise effect of AdditionalNameComponents=n, specify MinSuffixComponents=n and MaxSuffixComponents=n.  Often only one of these will be needed.
 
-== PublisherID
+== PublisherPublicKeyDigest
 ...........................................................
-PublisherID ::= BLOB
+PublisherPublicKeyDigest ::= BLOB
 ...........................................................
-If the PublisherID element is present in the Interest, the associated value (a SHA-256 digest) must be equal to the value of the PublisherKeyID of the ContentObject for there to be a match.
+If the PublisherPublicKeyDigest element is present in the Interest, the associated value (a SHA-256 digest) must be equal to the value of the PublisherPublicKeyDigest of the ContentObject for there to be a match.
+(The Interest schema admits some other possibilities, but only this form of publisher selection is currently implemented.)
 
 == Exclude
 ...........................................................
@@ -87,7 +98,7 @@ Exclude ::= Bloom? ( Component Bloom? )*
 Bloom ::= BLOB
 ...........................................................
 The Exclude element embodies a description of name components that should not appear as a continuation of the Name prefix in the response to the interest.
-The Components in the exclusion list must occur in strictly increasing order according to the link:CanonicalOrder.html[canonical CCN ordering].  Call the pieces in the exclude list B[0], C[1], B[1], C[2], B[2], ... C[m], B[m].  (Here the B[i] are the Bloom elements and the C[i] are the Component elements.  The omission of a Bloom element is equivalent to a bloom filter that describes the empty set.) Furthermore, take C[0] as negative infinity and C[m+1] as infinity. Then a component C is a member of the exclusion set iff C = C[k] for some k in [1..m] or if C[k] < C < C[k+1] for some k in [0..m].
+The Components in the exclusion list must occur in strictly increasing order according to the link:CanonicalOrder.html[canonical CCN ordering].  Call the pieces in the exclude list B[0], C[1], B[1], C[2], B[2], ... C[m], B[m].  (Here the B[i] are the Bloom elements and the C[i] are the Component elements.  The omission of a Bloom element is equivalent to a bloom filter that describes the empty set.) Furthermore, take C[0] as negative infinity and C[m+1] as infinity. Then a component C is a member of the exclusion set iff C = C[k] for some k in [1..m] or if C[k] < C < C[k+1] for some k in [0..m] and C matches B[k].
 
 A client could choose to simply enumerate the elements of the exclusion set if that is sufficiently compact (using no Bloom filters at all).  At the other extreme, it could simply supply a single Bloom filter to describe the exclusion set.
 
@@ -105,20 +116,36 @@ The Bloom's BLOB is of length 8 + ceiling(n/8) bytes, where n is the number of b
 ...........................................................
 and the remaining bytes hold the bits of the bloom filter.  The bits in the filter itself are packed little-endian by byte.  Note that a Bloom filter with 0 hash functions is a fine way to match everything, as is a filter with all ones.  **TODO - The the calculation of the hash functions must also be specified.  At present, referring to the c code is the best option; it should be quite easy to port to other languages.**
 
+NOTE: Soon a concise replacement for a fully-saturated Bloom filter will be added, since this has turned out to be very common in practice.
+
 == OrderPreference
 ...........................................................
 OrderPreference ::= nonNegativeInteger
 ...........................................................
+WARNING: *OrderPreference* will soon be replaced by *ChildSelector*.
 
 == AnswerOriginKind
 ...........................................................
 AnswerOriginKind ::= nonNegativeInteger
 ...........................................................
+*AnswerOriginKind* encodes several bitfields that alter the usual response to interest. There is a do-not-answer-from-content-store bit, which also implies a passive bit.  There will eventually need to be some security aspects to this, limiting it by scope and/or by interest signing, but we are choosing to ignore these for now. There is also utility in the passive bit alone - it means do not generate any newly-signed content in response to this interest.
+Wire representation: the AnswerOriginKind element holds a nonNegativeInteger with bitmasks having the following interpretation:
+
+* 1 = Answer from existing content store
+* 2 = Answers may be generated
+* 4 = Answer may be "stale"
+* 16 = Mark as stale in content store (must have Scope 0) __Status:__ _hack_
+* The default is 3, giving normal behavior.  The two low-order bits in combination mean:
+** 0 = do-not-answer-from-content-store
+** 1 = passive
+** 2 is disallowed
+** 3 = normal
 
 == Scope
 ...........................................................
 Scope ::= nonNegativeInteger
 ...........................................................
+This limits where the Interest may propagate. Scope 0 prevents propagation beyond the local ccnd (even to other applications on the same host).  Scope 1 limits propagation to the originating host. Other values are not currently defined, and will cause the Interest message to be dropped.
 
 == Count
 ...........................................................
@@ -126,45 +153,17 @@ Count ::= nonNegativeInteger
 ...........................................................
 This is intended to represent multiple copies of the interest, but for now it is accepted as syntactically valid and ignored.
 
+WARNING: *Count* will soon be removed.
+
 == Nonce
 ...........................................................
 Nonce ::= BLOB
 ...........................................................
+The Nonce carries a randomly-genenerated bytestring that is used to detect and discard duplicate Interest messages.  Applications generally do not need to generate or check the Nonce.
 
 == ExperimentalResponseFilter
 ...........................................................
 ExperimentalResponseFilter ::= BLOB
 ...........................................................
+WARNING: *ExperimentalResponseFilter* will soon be removed.
 
-== Summary of (not-so)recent protocol changes
-...........................................................
-   1.Digest component __Status:__ _ccnd+, clib+_
-   1.The elements that were recently added to the Interest schema (!MatchFirstAvailableDescendant, !MatchLastAvailableDescendant, !MatchNextAvailableSibling, !MatchLastAvailableSibling, !MatchEntirePrefix) are removed, their function being replaced by more general mechanics described below.  __Status:__ _done_
-   1.New element type Exclude, which may appear in an Interest.  __Status:__ _ccnd+, clib+_
-   1. The client may ask that, in case there are multiple matches at a particular content store, that it wants one of the following:
-      a. First or last match in the preorder traversal of the name hierarchy.
-      a. First or last match in temporal  order, where this really means arrival order at the node in question.
-      a. Unspecified order - whatever the answering node chooses. These are encoded by a nonNegativeInteger in an element named !OrderPreference.
-         * The low-order bit of this number indicates the direction:
-            * 0 = lesser, earlier, work from the left
-            * 1 = greater, later, work from the right
-         * add to this one of
-            * 0 = whatever answering node chooses- client doesn't care (default if !OrderPreference is omitted)  __Status:__ _ccnd+, clib+_
-            * 2 = temporal/accessional/arrival order  __Status:__ _ccnd-_
-            * 4 = name hierarchy order  __Status:__ _ccnd+, clib+_
-   1. There will be a do-not-answer-from-content-store bit, which also implies a passive bit.  There will eventually need to be some security aspects to this, limiting it by scope and/or by interest signing, but we are choosing to ignore these for now. [There may also be utility in the passive bit alone - it means do not generate any newly-signed content in response to this interest.]  __Status:__ _ccnd+, clib+_<br/>Wire representation: the !AnswerOriginKind element holds a nonNegativeInteger with bitmasks having the following interpretation:
-      * 1 = Answer from existing content store
-      * 2 = Answers may be generated
-      * 4 = Answer may be "stale"
-      * 16 = Mark as stale in content store (must have Scope 0) __Status:__ _hack_
-      * The default is 3, giving normal behavior.  The two low-order bits in combination mean:
-         * 0 = do-not-answer-from-content-store
-         * 1 = passive
-         * 2 is scary and so won't be allowed
-         * 3 = normal
-   1. We will want to be able to explore a particular content store using its accession numbers explicitly, but this seems doable without introducing new protocol features by using appropriate naming conventions.  [This will probably not be implemented right away.]
-   1. Add an explicit Count field to interests, representing multiple copies of the interest - in particular to (mostly) close the race condition in connection with the do-not-answer-from-content-store bit.  We will need discuss how this should be processed in the general case.  __Status:__ _accepted but ignored_
-   1. !NameComponentCount.  __Status:__ _ccnd+, clib+_
-   1. !AdditionalNameComponents.  __Status:__ _ccnd+, clib+_
-   1. TODO - document the !ExperimentalResponseFilter details.  This is just a Bloom filter that hashes the entire ccnb-encoded Signature of the answer.  It also should be renamed.  It is, however, implemented.
-...........................................................
