@@ -63,6 +63,10 @@ import com.parc.ccn.security.keys.KeyManager;
  *
  */
 public class CCNLibrary extends CCNBase {
+	
+	public static byte[] CCN_reserved_markers = { (byte)0xC0, (byte)0xC1, (byte)0xF5, 
+		(byte)0xF6, (byte)0xF7, (byte)0xF8, (byte)0xF9, (byte)0xFA, (byte)0xFB, (byte)0xFC, 
+		(byte)0xFD, (byte)0xFE};
 
 	static {
 		Security.addProvider(new BouncyCastleProvider());
@@ -773,7 +777,19 @@ public class CCNLibrary extends CCNBase {
 	
 	public static byte[] nonce() {
 		byte [] nonce = new byte[32];
-		_random.nextBytes(nonce);
+		boolean startsWithReserved;
+		while (true) {
+			startsWithReserved = false;
+			_random.nextBytes(nonce);
+			for (byte b: CCN_reserved_markers) {
+				if (b == nonce[0]) {
+					startsWithReserved = true;
+					break;
+				}
+			}
+			if (!startsWithReserved)
+				break;
+		}
 		return nonce;
 	}
 }
