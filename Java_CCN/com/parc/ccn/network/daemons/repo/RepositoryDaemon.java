@@ -14,7 +14,6 @@ import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.data.ContentName;
@@ -24,6 +23,7 @@ import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.io.CCNWriter;
+import com.parc.ccn.library.profiles.CommandMarkers;
 import com.parc.ccn.network.daemons.Daemon;
 
 /**
@@ -134,7 +134,7 @@ public class RepositoryDaemon extends Daemon {
 			}
 			
 			byte[][]markerOmissions = new byte[2][];
-			markerOmissions[0] = CCNBase.REPO_START_WRITE;
+			markerOmissions[0] = CommandMarkers.REPO_START_WRITE;
 			markerOmissions[1] = CCNNameEnumerator.NEMARKER;
 			_markerFilter = new ExcludeFilter(markerOmissions);
 			

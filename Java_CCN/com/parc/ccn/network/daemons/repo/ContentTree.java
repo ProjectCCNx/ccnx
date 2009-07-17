@@ -67,10 +67,12 @@ public class ContentTree {
 					return oneChild;
 				}
 			} else if (null != children) {
-				for (TreeNode child : children) {
-					if (child.compEquals(component)) {
-						return child;
-					}
+				TreeNode testNode = new TreeNode();
+				testNode.component = component;
+				SortedSet<TreeNode> tailSet = children.tailSet(testNode);
+				if (tailSet.size() > 0) {
+					if (tailSet.first().compEquals(component))
+						return tailSet.first();
 				}
 			}
 			return null;
