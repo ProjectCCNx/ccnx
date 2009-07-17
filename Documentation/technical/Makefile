@@ -1,11 +1,14 @@
 # Makefile for ccn/Documentation/technical
 
-DERIVED_HTML = NameConventions.html InterestMessage.html Staleness.html URI.html
+DERIVED_HTML = DigestComponent.html InterestMessage.html NameConventions.html Staleness.html URI.html
 
 default all: $(DERIVED_HTML)
 
 clean:
 	rm -f $(DERIVED_HTML)
+
+DigestComponent.html: DigestComponent.txt
+	asciidoc DigestComponent.txt
 
 InterestMessage.html: InterestMessage.txt
 	asciidoc InterestMessage.txt

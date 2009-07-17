@@ -13,34 +13,34 @@ Below we will use a less formal abstract syntax to indicate how the pieces fit t
 == Interest
 .......................................................
 Interest ::= Name
-             NameComponentCount?
-             AdditionalNameComponents?
+             MinSuffixComponents?
+             MaxSuffixComponents?
              PublisherPublicKeyDigest?
              Exclude?
-             OrderPreference?
+             ChildSelector?
              AnswerOriginKind?
              Scope?
-             Count?
              Nonce?
 .......................................................
 
 The hierarchical *Name* is the only required element in an Interest message.
-*NameComponentCount* is a special modifier to the interpretation of the Name. 
 The remaining elements fall into several categories:
 
-1. those that further qualify the ContentObjects that may match the Interest *AdditionalNameComponents*, *PublisherPublicKeyDigest*, *Exclude*, *ExperimentalResponseFilter*)
+1. those that further qualify the ContentObjects that may match the Interest *MinSuffixComponents*, *MaxSuffixComponents*, *PublisherPublicKeyDigest*, *Exclude*)
 2. those that limit where the answer might come from (*AnswerOriginKind*, *Scope*)
-3. those that advise the selection of what to send when there are multiple ContentObjects that match (*OrderPreference*)
-4. special (*Count*, *Nonce*)
+3. those that advise the selection of what to send when there are multiple ContentObjects that match (*ChildSelector*)
+4. special (*Nonce*)
 
 == Name
 .......................................................
 Name ::= Component*
 Component ::= BLOB
 .......................................................
-A Name element simply contains a sequence of Component elements. Each Component element contains a sequence of zero or more bytes.  There are no restrictions on what byte sequences may be used, so when displayed as xml, a base64Binary encoding may be needed.  When the bytes happen to be printable UTF-8, a more human-friendly "text" alternative is available (although this is not shown in the official schema).
+A Name element simply contains a sequence of *Component* elements. Each Component element contains a sequence of zero or more bytes.  There are no restrictions on what byte sequences may be used, so when displayed as xml, a base64Binary encoding may be needed.  When the bytes happen to be printable UTF-8, a more human-friendly "text" alternative is available (although this is not shown in the official schema).  There is also a "hexBinary" available.
 
-Here is an example of an Interest containing a name with 2 components (`ccn:/PARC/%00%01%02`):
+The Name element in an interest is synonymous with the term 'prefix'.
+
+Here is an example of an Interest containing a name prefix with 2 components (`ccn:/PARC/%00%01%02`):
 ...........................................................
 <Interest>
   <Name>
@@ -66,24 +66,15 @@ The binary encoding for this would appear in hexdump form as
 ..............................................................................
 We won't dwell on the details of the binary encoding here, but keep in mind that this is the form that actually appears on the wire.
 
-The Name of every piece of content includes as its final component the SHA-256 hash of the Content (just the content bytes themselves, no metadata).  This may occur in an Interest Name as an ordinary Component (the last).  However, this final component is never included explicitly in the ContentObject as it appears on the wire.
+The Name of every piece of content includes as its final component a link:DigestComponent.html[computed digest] that serves to make the entire name unique. This may occur in an Interest Name as an ordinary Component (the last).  However, this final component is never included explicitly in the ContentObject as it appears on the wire.
 
-== NameComponentCount
+== MinSuffixComponents, MaxSuffixComponents
 ...........................................................
-NameComponentCount ::= nonNegativeInteger
-...........................................................
-
-For the (implicit) temporal/accessional/arrival ordering requests to make any sense, there must be a way for the consuming endpoint to indicate where it was in its enumeration.  To do this, we can use the notion of a "marked" name, with the components before the mark indicating the prefix, and the remainder identifying the content that the consumer would like to use as a reference point in the ordering.  (This may also be useful for the name hierarchy order case in some circumstances.)  The wire encoding of this is to have a count of how many leading components constitute the prefix.
-
-WARNING: *NameComponentCount* will be removed soon.
-
-== AdditionalNameComponents
-...........................................................
-AdditionalNameComponents ::= nonNegativeInteger
+MinSuffixComponents ::= nonNegativeInteger
+MaxSuffixComponents ::= nonNegativeInteger
 ...........................................................
 
-A client may need to say that the Name in the interest is either the full name including the digest, or the full name except for the digest.  The encoding is a parameter named AdditionalNameComponents, which gives the exact number of additional name components (counting the implicit digest) that the response should have in addition to the Interest's prefix. AdditionalNameComponents is an optional element.
-WARNING: *AdditionalNameComponents* will be removed soon.  In its place will be *MinSuffixComponents* and *MaxSuffixComponents*. To get the precise effect of AdditionalNameComponents=n, specify MinSuffixComponents=n and MaxSuffixComponents=n.  Often only one of these will be needed.
+A client may need to say that the Name in the interest is either the full name including the digest, or the full name except for the digest, or that the content it is seeking has a known range of legitimate component counts.  To encode this there are two parameters, named *MinSuffixComponents* and *MaxSuffixComponents*, that specify these limits.  These refer to the number of name components beyond those in the prefix, and counting the implicit digest, that may occur in the matching ContentObject.  The default for *MinSuffixComponents* is 0 and for *MaxSuffixComponents* is effectively infinite.  Often only one of these will be needed to get the desired effect.
 
 == PublisherPublicKeyDigest
 ...........................................................
@@ -94,7 +85,8 @@ If the PublisherPublicKeyDigest element is present in the Interest, the associat
 
 == Exclude
 ...........................................................
-Exclude ::= Bloom? ( Component Bloom? )*
+Exclude ::= (Any | Bloom)? ( Component (Any | Bloom)? )*
+Any ::= (empty)
 Bloom ::= BLOB
 ...........................................................
 The Exclude element embodies a description of name components that should not appear as a continuation of the Name prefix in the response to the interest.
@@ -114,15 +106,15 @@ The Bloom's BLOB is of length 8 + ceiling(n/8) bytes, where n is the number of b
     unsigned char reserved; /* must be 0 for now */
     unsigned char seed[4];  /* can seed hashes differently */
 ...........................................................
-and the remaining bytes hold the bits of the bloom filter.  The bits in the filter itself are packed little-endian by byte.  Note that a Bloom filter with 0 hash functions is a fine way to match everything, as is a filter with all ones.  **TODO - The the calculation of the hash functions must also be specified.  At present, referring to the c code is the best option; it should be quite easy to port to other languages.**
+and the remaining bytes hold the bits of the bloom filter.  The bits in the filter itself are packed little-endian by byte.  Note that a Bloom filter with 0 hash functions is one way to match everything, and a filter with all ones is another.  But these are not very compact, so the *All* element is provided as a better way to encode this common case.
 
-NOTE: Soon a concise replacement for a fully-saturated Bloom filter will be added, since this has turned out to be very common in practice.
+**TODO - The the calculation of the hash functions must also be specified.  At present, referring to the c code is the best option; it should be quite easy to port to other languages.**
 
-== OrderPreference
+== ChildSelector
 ...........................................................
-OrderPreference ::= nonNegativeInteger
+ChildSelector ::= nonNegativeInteger
 ...........................................................
-WARNING: *OrderPreference* will soon be replaced by *ChildSelector*.
+Often a given interest will match more than one ContentObject within a given content store. The *ChildSelector* provides a way of expressing a preference for which of these should be returned.  If the (low order bit of) the value is 0, the leftmost child is preferred. If 1, the rightmost child is preferred. Here leftmost and rightmost refer to the least and greatest components according to the link:CanonicalOrder.html[canonical CCN ordering].  This ordering is only done at the level of the name hierarchy one past the name prefix.
 
 == AnswerOriginKind
 ...........................................................
@@ -147,23 +139,8 @@ Scope ::= nonNegativeInteger
 ...........................................................
 This limits where the Interest may propagate. Scope 0 prevents propagation beyond the local ccnd (even to other applications on the same host).  Scope 1 limits propagation to the originating host. Other values are not currently defined, and will cause the Interest message to be dropped.
 
-== Count
-...........................................................
-Count ::= nonNegativeInteger
-...........................................................
-This is intended to represent multiple copies of the interest, but for now it is accepted as syntactically valid and ignored.
-
-WARNING: *Count* will soon be removed.
-
 == Nonce
 ...........................................................
 Nonce ::= BLOB
 ...........................................................
 The Nonce carries a randomly-genenerated bytestring that is used to detect and discard duplicate Interest messages.  Applications generally do not need to generate or check the Nonce.
-
-== ExperimentalResponseFilter
-...........................................................
-ExperimentalResponseFilter ::= BLOB
-...........................................................
-WARNING: *ExperimentalResponseFilter* will soon be removed.
-
