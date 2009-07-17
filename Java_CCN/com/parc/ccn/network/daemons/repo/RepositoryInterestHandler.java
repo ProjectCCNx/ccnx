@@ -7,8 +7,8 @@ import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
+import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.LinkReference;
@@ -16,7 +16,7 @@ import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNNameEnumerator;
-import com.parc.ccn.library.profiles.VersioningProfile;
+import com.parc.ccn.library.profiles.CommandMarkers;
 
 /**
  * 
@@ -36,11 +36,13 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	public int handleInterests(ArrayList<Interest> interests) {
 		for (Interest interest : interests) {
 			try {
-				if (interest.name().contains(CCNBase.REPO_START_WRITE)) {
+				if (SystemConfiguration.getLogging("repo"))
+					Library.logger().finer("Saw interest: " + interest.name());
+				if (interest.name().contains(CommandMarkers.REPO_START_WRITE)) {
 					startReadProcess(interest);
 				} else if(interest.name().contains(CCNNameEnumerator.NEMARKER)){
 					nameEnumeratorResponse(interest);
-				} else if(interest.name().contains(CCNBase.REPO_GET_HEADER)){
+				} else if(interest.name().contains(CommandMarkers.REPO_GET_HEADER)){
 					getHeader(interest);
 				}
 				

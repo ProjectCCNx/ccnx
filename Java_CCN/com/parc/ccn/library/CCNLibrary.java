@@ -32,6 +32,7 @@ import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
+import com.parc.ccn.library.profiles.CommandMarkers;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.network.CCNNetworkManager;
 import com.parc.ccn.security.keys.KeyManager;
@@ -64,10 +65,6 @@ import com.parc.ccn.security.keys.KeyManager;
  */
 public class CCNLibrary extends CCNBase {
 	
-	public static byte[] CCN_reserved_markers = { (byte)0xC0, (byte)0xC1, (byte)0xF5, 
-		(byte)0xF6, (byte)0xF7, (byte)0xF8, (byte)0xF9, (byte)0xFA, (byte)0xFB, (byte)0xFC, 
-		(byte)0xFD, (byte)0xFE};
-
 	static {
 		Security.addProvider(new BouncyCastleProvider());
 	}
@@ -775,21 +772,18 @@ public class CCNLibrary extends CCNBase {
 		_networkManager = null;
 	}
 	
+	/**
+	 * Currently used as an interest name component to disambiguate multiple requests for the
+	 * same content.
+	 * 
+	 * @return
+	 */
 	public static byte[] nonce() {
-		byte [] nonce = new byte[32];
-		boolean startsWithReserved;
-		while (true) {
-			startsWithReserved = false;
-			_random.nextBytes(nonce);
-			for (byte b: CCN_reserved_markers) {
-				if (b == nonce[0]) {
-					startsWithReserved = true;
-					break;
-				}
-			}
-			if (!startsWithReserved)
-				break;
-		}
-		return nonce;
+		byte [] nonce = new byte[8];
+		_random.nextBytes(nonce);
+		byte [] wholeNonce = new byte[CommandMarkers.NONCE_MARKER.length + nonce.length];
+		System.arraycopy(CommandMarkers.NONCE_MARKER, 0, wholeNonce, 0, CommandMarkers.NONCE_MARKER.length);
+		System.arraycopy(nonce, 0, wholeNonce, CommandMarkers.NONCE_MARKER.length, nonce.length);	
+		return wholeNonce;
 	}
 }
