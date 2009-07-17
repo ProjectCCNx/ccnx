@@ -19,4 +19,7 @@ public class CommandMarkers {
 	 * Nonce marker
 	 */
 	public static final byte[] NONCE_MARKER = {(byte)0xc0, 'N'};
+	public static byte[] CCN_reserved_markers = { (byte)0xC0, (byte)0xC1, (byte)0xF5, 
+	(byte)0xF6, (byte)0xF7, (byte)0xF8, (byte)0xF9, (byte)0xFA, (byte)0xFB, (byte)0xFC, 
+	(byte)0xFD, (byte)0xFE};
 }
