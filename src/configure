@@ -22,8 +22,10 @@ test -f conf.mk && mv conf.mk conf.mk~
 echo '#' generated `uname -nsrv` > conf.mk
 TryAppend "`uname`"
 TryAppend "`uname -sr | sed -e 's/ /-/g'`"
+TryAppend "local"
 TryScript "`uname`" "$@"
 TryScript "python" "$@"
+TryScript "local" "$@"
 ProvideDefault CPREFLAGS = -I../include
 ProvideDefault PCAP_PROGRAMS = ccndumppcap
 ProvideDefault INSTALL_BASE = ${INSTALL_BASE:-/usr/local}
@@ -32,6 +34,7 @@ ProvideDefault INSTALL_LIB = '$(INSTALL_BASE)/lib'
 ProvideDefault INSTALL_BIN = '$(INSTALL_BASE)/bin'
 ProvideDefault INSTALL = install
 ProvideDefault RM = rm -f
+ProvideDefault SH = /bin/sh
 
 echo ============= conf.mk =============>&2
 cat conf.mk				>&2

@@ -20,13 +20,6 @@ public class CCNBase {
 	public final static int NO_TIMEOUT = -1;
 	
 	/**
-	 * Repository "markers"
-	 */
-	public static final byte[] REPO_START_WRITE = "repo_start_write".getBytes();
-	public static final byte[] REPO_GET_HEADER = "repo_get_header".getBytes();
-
-	
-	/**
 	 * Allow separate per-instance to control reading/writing within
 	 * same app. Get default one if use static VM instance of StandardCCNLibrary,
 	 * but if you make a new instance, get a new connection to ccnd.

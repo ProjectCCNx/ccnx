@@ -8,12 +8,14 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PrintStream;
 import java.io.RandomAccessFile;
 import java.security.InvalidParameterException;
 import java.security.PrivateKey;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -25,6 +27,7 @@ import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.network.daemons.repo.ContentTree.ContentFileRef;
 import com.parc.ccn.Library;
 
@@ -32,8 +35,7 @@ import com.parc.ccn.Library;
  * 
  * @author jthornto, rbraynar, rasmusse
  *
- * Implements a repository as a single data file with an index to find the
- * correct piece for any individual content object
+ * Implements a repository using sequential data files (log-structured) with an index for queries
  */
 
 public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
@@ -52,6 +54,10 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 	private static String DEFAULT_LOCAL_NAME = "Repository";
 	private static String DEFAULT_GLOBAL_NAME = "/parc.com/csl/ccn/Repos";
 	private static String CONTENT_FILE_PREFIX = "repoFile";
+	private static String DEBUG_TREEDUMP_FILE = "debugNamesTree";
+	
+	private static String DIAG_NAMETREE = "nametree"; // Diagnostic/signal to dump name tree to debug file
+	private static String DIAG_NAMETREEWIDE = "nametreewide"; // Same as DIAG_NAMETREE but with wide names per node
 
 	protected String _repositoryRoot = null;
 	protected File _repositoryFile;
@@ -79,16 +85,10 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 				ContentName policyName = ContentName.fromNative(REPO_NAMESPACE + "/" + _info.getLocalName() + "/" + REPO_POLICY);
 				ContentObject policyCo = new ContentObject(policyName, co.signedInfo(), co.content(), co.signature());
    				saveContent(policyCo);
-			} catch (XMLStreamException e) {
-				// TODO Auto-generated catch block
+			} catch (Exception e) {
+				Library.logStackTrace(Level.WARNING, e);
 				e.printStackTrace();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (MalformedContentNameStringException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			} 
 			return true;
 		}
 		return false;
@@ -113,17 +113,14 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 			if (names != null)
 				rri = new RepositoryInfo(_info.getLocalName(), _info.getGlobalPrefix(), CURRENT_VERSION, names);	
 			return rri.encode();
-		} catch (XMLStreamException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (MalformedContentNameStringException e) {
-			// TODO Auto-generated catch block
+		} catch (Exception e) {
+			Library.logStackTrace(Level.WARNING, e);
 			e.printStackTrace();
 		}
 		return null;
 	}
 
-	public String getUsage() {
+	public static String getUsage() {
 		return " -root repository_root [-policy policy_file] [-local local_name] [-global global_prefix]\n";
 	}
 
@@ -171,6 +168,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 								}
 
 							} catch (XMLStreamException e) {
+								Library.logStackTrace(Level.WARNING, e);
 								e.printStackTrace();
 								// Failed to decode, must be end of this one
 								//added check for end of file above
@@ -178,7 +176,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 								rfile.openFile = null;
 								break;
 							}
-							_index.insert(tmp, ref, rfile.file.lastModified());
+							_index.insert(tmp, ref, rfile.file.lastModified(), this);
 						}
 						_files.put(index, rfile);
 					} catch (NumberFormatException e) {
@@ -316,6 +314,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		return outArgs;
 	}
 
+
 	public void saveContent(ContentObject content) throws RepositoryException {
 		try {
 			
@@ -328,7 +327,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 				OutputStream os = new RandomAccessOutputStream(_activeWriteFile.openFile);
 				content.encode(os);
 				_activeWriteFile.nextWritePos = _activeWriteFile.openFile.getFilePointer();
-				_index.insert(content, ref, System.currentTimeMillis());
+				_index.insert(content, ref, System.currentTimeMillis(), this);
 			}
 		} catch (IOException e) {
 			throw new RepositoryException("Failed to write content: " + e.getMessage());
@@ -348,6 +347,8 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 	public ContentObject get(ContentFileRef ref) {
 		try {
 			RepoFile file = _files.get(ref.id);
+			if (null == file)
+				return null;
 			synchronized (file) {
 				if (null == file.openFile) {
 					file.openFile = new RandomAccessFile(file.file, "r");
@@ -370,7 +371,8 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 	}
 	
 	/**
-	 * Check data "file" - create new one if none exists
+	 * Check data "file" - create new one if none exists or "forceWrite" is set.
+	 * Files are always versioned so we can find the latest one.
 	 * TODO - Need to handle data that can take up more than 1 co.
 	 * TODO - Co Should be signed with the "repository's" signature.
 	 * @throws RepositoryException
@@ -381,23 +383,50 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		components[1] = REPO_PRIVATE.getBytes();
 		components[2] = fileName.getBytes();
 		ContentName name = new ContentName(components);
-		ContentObject co = getContent(new Interest(name));
+		ContentObject co = getContent(Interest.last(name));
 		
 		if (!forceWrite && co != null) {
 			return new String(co.content());
 		}
 		
+		ContentName versionedName = VersioningProfile.versionName(name);
 		PublisherPublicKeyDigest publisher = library.keyManager().getDefaultKeyID();
 		PrivateKey signingKey = library.keyManager().getSigningKey(publisher);
 		KeyLocator locator = library.keyManager().getKeyLocator(signingKey);
 		try {
-			co = new ContentObject(name, new SignedInfo(publisher, locator), contents.getBytes(), signingKey);
+			co = new ContentObject(versionedName, new SignedInfo(publisher, locator), contents.getBytes(), signingKey);
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
+			Library.logStackTrace(Level.WARNING, e);
 			e.printStackTrace();
 			return null;
 		}
 		saveContent(co);
 		return null;
+	}
+
+	
+	protected void dumpNames(int nodelen) {
+		// Debug: dump names tree to file
+		File namesFile = new File(_repositoryFile, DEBUG_TREEDUMP_FILE);
+		try {
+			Library.logger().info("Dumping names to " + namesFile.getAbsolutePath() + " (len " + nodelen + ")");
+			PrintStream namesOut = new PrintStream(namesFile);
+			if (null != _index) {
+				_index.dumpNamesTree(namesOut, nodelen);
+			}
+		} catch (FileNotFoundException ex) {
+			Library.logger().warning("Unable to dump names to " + namesFile.getAbsolutePath());
+		}
+	}
+
+	public boolean diagnostic(String name) {
+		if (0 == name.compareToIgnoreCase(DIAG_NAMETREE)) {
+			dumpNames(35);
+			return true;
+		} else if (0 == name.compareToIgnoreCase(DIAG_NAMETREEWIDE)) {
+			dumpNames(-1);
+			return true;
+		}
+		return false;
 	}
 }

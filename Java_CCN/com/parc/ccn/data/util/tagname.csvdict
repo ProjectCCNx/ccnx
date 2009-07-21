@@ -57,6 +57,15 @@
 70,EncryptedKey
 71,EncryptedNonceKey
 72,WrappingKeyName
+73,Action
+74,FaceID
+75,IPProto
+76,Host
+77,Port
+78,MulticastInterface
+79,ForwardingFlags
+80,FaceInstance
+81,ForwardingEntry
 2048,Address
 2049,SOType
 2050,Inject

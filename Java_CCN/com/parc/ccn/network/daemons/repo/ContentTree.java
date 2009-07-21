@@ -1,8 +1,10 @@
 package com.parc.ccn.network.daemons.repo;
 
+import java.io.PrintStream;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -65,10 +67,12 @@ public class ContentTree {
 					return oneChild;
 				}
 			} else if (null != children) {
-				for (TreeNode child : children) {
-					if (child.compEquals(component)) {
-						return child;
-					}
+				TreeNode testNode = new TreeNode();
+				testNode.component = component;
+				SortedSet<TreeNode> tailSet = children.tailSet(testNode);
+				if (tailSet.size() > 0) {
+					if (tailSet.first().compEquals(component))
+						return tailSet.first();
 				}
 			}
 			return null;
@@ -113,16 +117,20 @@ public class ContentTree {
 		root.component = null; // Only the root has a null value
 	}
 	
-	
 	/**
-	 * Insert entry for the given ContentObject .
+	 * Insert entry for the given ContentObject.
 	 * @param content
+	 * @param ref
+	 * @param ts
+	 * @param getter
+	 * @return - true if content is not exact duplicate of existing content.
 	 */
-	public void insert(ContentObject content, ContentFileRef ref, long ts) {
+	public boolean insert(ContentObject content, ContentFileRef ref, long ts, ContentGetter getter) {
 		final ContentName name = new ContentName(content.name(), content.contentDigest());
 		Library.logger().fine("inserting content: "+name.toString());
 		TreeNode node = root; // starting point
 		assert(null != root);
+		boolean added = false;
 		
 		for (byte[] component : name.components()) {
 			synchronized(node) {
@@ -131,6 +139,7 @@ public class ContentTree {
 				if (null == child) {
 					Library.logger().finest("child was null: adding here");
 					// add it
+					added = true;
 					child = new TreeNode();
 					child.component = component;
 					if (null == node.oneChild && null == node.children) {
@@ -152,6 +161,21 @@ public class ContentTree {
 				node = child;
 			}
 		}
+		
+		// Check for duplicate content
+		if (!added) {
+			if (null != node.oneContent) {
+				ContentObject prev = getter.get(node.oneContent);
+				if (null != prev && content.equals(prev))
+					return false;
+			} else if (null != node.content) {
+				for (ContentFileRef oldRef : node.content) {
+					ContentObject prev = getter.get(oldRef);
+					if (null != prev && content.equals(prev))
+						return false;
+				}
+			}
+		}
 
 		// At conclusion of this loop, node must be holding the last node for this name
 		// so we insert the ref there
@@ -168,6 +192,7 @@ public class ContentTree {
 			node.content.add(ref);
 			node.oneContent = null;
 		}
+		return true;
 	}
 
 	protected TreeNode lookupNode(ContentName name, int count) {
@@ -216,6 +241,57 @@ public class ContentTree {
 		}
 	}
 	
+	public void dumpNamesTree(PrintStream output, int maxNodeLen) {		
+		assert(null != root);
+		assert(null != output);
+		
+		output.println("Dumping tree of names of indexed content at " + new Date().toString());
+		if (maxNodeLen > 0) {
+			output.println("Node names truncated to max " + maxNodeLen + " characters");
+		}
+		dumpRecurse(output, root, "", maxNodeLen);
+	}
+	
+	// Note: this is not thread-safe against everything else going on.
+	protected void dumpRecurse(PrintStream output, TreeNode node, String indent, int maxNodeLen) {
+		String myname = null;
+		if (null == node.component) {
+			// Special case of root
+			myname = "/";
+		} else {
+			myname = ContentName.componentPrintURI(node.component);
+			if (maxNodeLen > 0 && myname.length() > (maxNodeLen - 3)) {
+				myname = "<" + myname.substring(0,maxNodeLen-4) + "...>";
+			}
+		}
+		int mylen = myname.length();
+		output.print(myname);
+		if (null != node.oneChild) {
+			output.print("---");
+			dumpRecurse(output, node.oneChild, String.format("%s%" + mylen + "s   ", indent, ""), maxNodeLen);
+		} else if (null != node.children) {
+			int count = 1; int last = node.children.size();
+			for (TreeNode child : node.children) {
+				if (1 == count) {
+					// First child
+					output.print("-+-");
+					dumpRecurse(output, child, String.format("%s%" + mylen + "s | ", indent, ""), maxNodeLen);
+				} else if (last == count) {
+					// Last child
+					output.println();
+					output.printf("%s%" + mylen + "s +-", indent, "");
+					dumpRecurse(output, child, String.format("%s%" + mylen + "s   ", indent, ""), maxNodeLen);
+				} else {
+					// Interior child delimiter
+					output.println();
+					output.printf("%s%" + mylen + "s |-", indent, "");
+					dumpRecurse(output, child, String.format("%s%" + mylen + "s | ", indent, ""), maxNodeLen);
+				}
+				count++;
+			}
+		}
+	}
+
 	/**
 	 * 
 	 * @param interest the interest to match
@@ -368,6 +444,7 @@ public class ContentTree {
 			nodeTS = new Timestamp(parent.timestamp);
 			if(interestTS==null || nodeTS.after(interestTS)){
 				//we have something new to report
+				//put this time in the last name spot if there are children
 			}
 			else
 				return null;
@@ -383,6 +460,8 @@ public class ContentTree {
 						names.add(new ContentName(c, ch.component));
 				}
 			}
+			//add timestamp in last name spot to send back (will be removed)
+			names.add(VersioningProfile.versionName(interest.name(), nodeTS));
 			return names;
 			
 		}

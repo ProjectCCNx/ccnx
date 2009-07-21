@@ -18,7 +18,7 @@
 	<property name="jarfile-base" value="ccn.jar"/>
 	<property name="jarfile" location="${jarfile-base}"/>
 	<property name="testout" location="testout"/>
-	<property name="ccnd" location="../ccnd/agent/ccnd"/>
+	<property name="ccnd" location="../src/ccnd/ccnd"/>
 	<property name="showoutput" value="no"/>
 	<property name="repozip" value="repotest.zip"/>
 	<property name="REPO_ROOT" value="${testout}/repotest"/>
@@ -141,9 +141,10 @@
 					<arg value="${REPO_GLOBAL}" />
 				</java>
 			</daemons>
-                        <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
-                        <sleep seconds="1"/>
+            <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
+            <sleep seconds="1"/>
 		</parallel>
+		<sleep seconds="5"/>  <!-- Make sure really started -->
 	</target>
 
     <!-- target for running a test repo foreground so you can run a test

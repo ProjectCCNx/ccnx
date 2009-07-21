@@ -3,11 +3,12 @@ package com.parc.ccn.network.daemons.repo;
 import java.io.IOException;
 import java.security.SignatureException;
 import java.util.ArrayList;
+import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
+import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.LinkReference;
@@ -15,6 +16,7 @@ import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNNameEnumerator;
+import com.parc.ccn.library.profiles.CommandMarkers;
 
 /**
  * 
@@ -34,11 +36,13 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	public int handleInterests(ArrayList<Interest> interests) {
 		for (Interest interest : interests) {
 			try {
-				if (interest.name().contains(CCNBase.REPO_START_WRITE)) {
+				if (SystemConfiguration.getLogging("repo"))
+					Library.logger().finer("Saw interest: " + interest.name());
+				if (interest.name().contains(CommandMarkers.REPO_START_WRITE)) {
 					startReadProcess(interest);
 				} else if(interest.name().contains(CCNNameEnumerator.NEMARKER)){
 					nameEnumeratorResponse(interest);
-				} else if(interest.name().contains(CCNBase.REPO_GET_HEADER)){
+				} else if(interest.name().contains(CommandMarkers.REPO_GET_HEADER)){
 					getHeader(interest);
 				}
 				
@@ -50,6 +54,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 					Library.logger().fine("Unsatisfied interest: " + interest);
 				}
 			} catch (Exception e) {
+				Library.logStackTrace(Level.WARNING, e);
 				e.printStackTrace();
 			}
 		}
@@ -88,11 +93,8 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			_daemon.getWriter().put(interest.name(), _daemon.getRepository().getRepoInfo(null), null, null,
 					_daemon.getFreshness());
 			_library.expressInterest(readInterest, listener);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (SignatureException e) {
-			// TODO Auto-generated catch block
+		} catch (Exception e) {
+			Library.logStackTrace(Level.WARNING, e);
 			e.printStackTrace();
 		}
 	}
@@ -117,7 +119,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 					readInterest.additionalNameComponents(1);
 					_library.expressInterest(readInterest, listener);
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
+					Library.logStackTrace(Level.WARNING, e);
 					e.printStackTrace();
 				}
 				break;
@@ -129,15 +131,20 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		//the name enumerator marker won't be at the end if the interest is a followup (created with .last())
 		//else if(Arrays.equals(marker, CCNNameEnumerator.NEMARKER)){
 		//System.out.println("handling interest: "+interest.name().toString());
-		ContentName prefixName = interest.name().cut(CCNNameEnumerator.NEMARKER);
+		//ContentName prefixName = interest.name().cut(CCNNameEnumerator.NEMARKER);
 		ArrayList<ContentName> names = _daemon.getRepository().getNamesWithPrefix(interest);
 		if(names!=null){
 			try{
-				ContentName collectionName = new ContentName(prefixName, CCNNameEnumerator.NEMARKER);
+				//the new return name (with the proper version time) is returned as the last name in the list
+				ContentName collectionName = names.remove(names.size()-1);
+				//ContentName collectionName = new ContentName(prefixName, CCNNameEnumerator.NEMARKER);
+				
 				//the following 6 lines are to be deleted after Collections are refactored
 				LinkReference[] temp = new LinkReference[names.size()];
 				for(int x = 0; x < names.size(); x++)
 					temp[x] = new LinkReference(names.get(x));
+				
+				
 				_library.put(collectionName, temp);
 				
 				//CCNEncodableCollectionData ecd = new CCNEncodableCollectionData(collectionName, cd);
@@ -148,7 +155,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 				
 			}
 			catch(SignatureException e) {
-				// TODO Auto-generated catch block
+				Library.logStackTrace(Level.WARNING, e);
 				e.printStackTrace();
 			}
 		}

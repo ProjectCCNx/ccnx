@@ -1,6 +1,6 @@
 # makefile for src/tests directory
 
-SCRIPTSRC = testdriver functions preamble settings $(ALLTESTS)
+SCRIPTSRC = testdriver.sh shebang functions preamble settings $(ALLTESTS)
 DUPDIR = stubs
 
 TESTS = $(ALLTESTS)
@@ -26,18 +26,21 @@ ALLTESTS = \
   test_twohop_ccnd \
   test_twohop_ccnd_teardown
 
-default all: $(SCRIPTSRC)
-	@: nothing to do in tests
+default all: $(SCRIPTSRC) testdriver
 
 clean:
-	rm -rf log logs depend STATUS SKIPPED FAILING *.out ephemeral*.ccnb keyfetch*.ccnb
+	rm -rf log logs depend testdriver STATUS SKIPPED FAILING *.out ephemeral*.ccnb keyfetch*.ccnb
 
-check test: $(SCRIPTSRC)  stubs
+check test: $(SCRIPTSRC) testdriver stubs
 	mkdir -p log
 	./testdriver $(TESTS)
 	: -------------- :
 	:  TESTS PASSED  :
 	: -------------- :
+
+testdriver: testdriver.sh
+	./shebang $(SH) testdriver.sh > testdriver
+	chmod +x testdriver
 
 default all clean check test: _always
 _always:

@@ -14,7 +14,6 @@
 /***********
 <Interest>
   <Name/>
-  <NameComponentCount>0</NameComponentCount>
   <OrderPreference>4</OrderPreference>
   <Scope>0</Scope>
 </Interest>
@@ -27,11 +26,6 @@ local_scope_template(int allow_stale)
     /* <Name/> */
     ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
     ccn_charbuf_append_closer(templ); /* </Name> */
-    /* <NameComponentCount>0</NameComponentCount> */
-    ccn_charbuf_append_tt(templ, CCN_DTAG_NameComponentCount, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
-    ccn_charbuf_append(templ, "0", 1);
-    ccn_charbuf_append_closer(templ); /* </NameComponentCount> */
     /* <OrderPreference>4</OrderPreference> */
     ccn_charbuf_append_tt(templ, CCN_DTAG_OrderPreference, CCN_DTAG);
     ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
@@ -53,10 +47,6 @@ local_scope_template(int allow_stale)
     return(templ);
 }
 
-static const unsigned char templ_ccnb[20] =
-        "\001\322\362\000\002\212\216\060"
-        "\000\002\362\216\064\000\002\322"
-        "\216\060\000\000";
 enum ccn_upcall_res
 incoming_content(
     struct ccn_closure *selfp,
@@ -73,7 +63,9 @@ incoming_content(
         return(0);
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
         return(CCN_UPCALL_RESULT_REEXPRESS);
-    if (kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_UNVERIFIED)
+    if (kind == CCN_UPCALL_CONTENT_UNVERIFIED)
+        return(CCN_UPCALL_RESULT_VERIFY);
+    if (kind != CCN_UPCALL_CONTENT)
         return(-1);
     ccnb = info->content_ccnb;
     ccnb_size = info->pco->offset[CCN_PCO_E];
@@ -81,8 +73,7 @@ incoming_content(
     c = ccn_charbuf_create();
     res = ccn_uri_append(c, ccnb, ccnb_size, 1);
     if (res >= 0)
-        printf("%s%s\n", ccn_charbuf_as_string(c),
-               kind == CCN_UPCALL_CONTENT ? " [verified]" : " [unverified]");
+        printf("%s\n", ccn_charbuf_as_string(c));
     else
         fprintf(stderr, "*** Error: ccndumpnames line %d kind=%d res=%d\n",
             __LINE__, kind, res);
@@ -93,7 +84,7 @@ incoming_content(
     ccn_digest_ContentObject(ccnb, info->pco);
     ccn_name_append(c, info->pco->digest, info->pco->digest_bytes);
     templ = local_scope_template(selfp->intdata);
-    ccn_express_interest(info->h, c, 0, selfp, templ);
+    ccn_express_interest(info->h, c, info->pi->prefix_comps, selfp, templ);
     
     ccn_charbuf_destroy(&c);
     selfp->data = selfp; /* make not NULL to indicate we got something */
@@ -109,7 +100,7 @@ static void
 usage(const char *progname)
 {
     fprintf(stderr,
-            "%s [-a]\n"
+            "%s [-a] [uri]\n"
             "   Dumps names of everything quickly retrievable\n"
             "   -a - allow stale data\n",
             progname);
@@ -125,6 +116,7 @@ main(int argc, char **argv)
     int allow_stale = 0;
     int i;
     int ch;
+    int res;
     
     while ((ch = getopt(argc, argv, "ha")) != -1) {
         switch (ch) {
@@ -146,9 +138,19 @@ main(int argc, char **argv)
     /* set scope to only address ccnd */
     templ = local_scope_template(allow_stale);
     incoming_content_action.intdata = allow_stale;
-    
-    ccn_name_init(c);
-    ccn_express_interest(ccn, c, 0, &incoming_content_action, templ);
+    /* */
+    if (argv[optind] == NULL)
+        ccn_name_init(c);
+    else {
+        res = ccn_name_from_uri(c, argv[optind]);
+        if (res < 0) {
+            fprintf(stderr, "%s: bad ccn URI: %s\n", argv[0], argv[optind]);
+            exit(1);
+        }
+        if (argv[optind+1] != NULL)
+            fprintf(stderr, "%s warning: extra arguments ignored\n", argv[0]);
+    }
+    ccn_express_interest(ccn, c, -1, &incoming_content_action, templ);
     for (i = 0;; i++) {
         incoming_content_action.data = NULL;
         ccn_run(ccn, 100); /* stop if we run dry for 1/10 sec */

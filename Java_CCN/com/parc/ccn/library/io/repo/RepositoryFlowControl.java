@@ -6,7 +6,6 @@ import java.util.HashSet;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.CCNBase;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
@@ -17,6 +16,7 @@ import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNNameEnumerator;
+import com.parc.ccn.library.profiles.CommandMarkers;
 import com.parc.ccn.network.daemons.repo.RepositoryInfo;
 
 /**
@@ -113,7 +113,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		_initialized = true;
 		_header = name;
 		clearUnmatchedInterests();	// Remove possible leftover interests from "getLatestVersion"
-		ContentName repoWriteName = new ContentName(name, CCNBase.REPO_START_WRITE, CCNLibrary.nonce());
+		ContentName repoWriteName = new ContentName(name, CommandMarkers.REPO_START_WRITE, CCNLibrary.nonce());
 
 		Interest writeInterest = new Interest(repoWriteName);
 		_library.expressInterest(writeInterest, this);
@@ -188,7 +188,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	@Override
 	public void afterClose() throws IOException {
 		if (_header != null) {
-			ContentName repoWriteName = new ContentName(_header, CCNBase.REPO_GET_HEADER, CCNLibrary.nonce());
+			ContentName repoWriteName = new ContentName(_header, CommandMarkers.REPO_GET_HEADER, CCNLibrary.nonce());
 	
 			Interest writeInterest = new Interest(repoWriteName);
 			_library.expressInterest(writeInterest, this);

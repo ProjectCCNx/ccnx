@@ -248,7 +248,7 @@ ccn_charbuf_append_non_negative_integer(struct ccn_charbuf *c, int nni)
 }
 
 int
-ccn_charbuf_append_timestamp_blob(struct ccn_charbuf *c, int marker, intmax_t secs, int nsecs)
+ccn_charbuf_append_timestamp_blob(struct ccn_charbuf *c, enum ccn_marker marker, intmax_t secs, int nsecs)
 {
     int i;
     int n;
@@ -277,7 +277,7 @@ ccn_charbuf_append_timestamp_blob(struct ccn_charbuf *c, int marker, intmax_t se
 }
 
 int
-ccn_charbuf_append_now_blob(struct ccn_charbuf *c, int marker)
+ccn_charbuf_append_now_blob(struct ccn_charbuf *c, enum ccn_marker marker)
 {
     struct timeval now;
     int res;

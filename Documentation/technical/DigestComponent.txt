@@ -1,0 +1,4 @@
+Implicit Digest Component
+=========================
+
+As of mid-July 2009, this is still computed as the SHA-256 hash of the content itself (not including any of the other parts of the ContentObject).  This is expected to change soon, but the details are still to be worked out.

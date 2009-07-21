@@ -146,7 +146,7 @@ open_socket(const char *host, const char *portstr, int sock_type)
 }
 
 static void
-send_ccnb_file(int sock, FILE *msgs, const char *filename)
+send_ccnb_file(int sock, FILE *msgs, const char *filename, int is_dgram)
 {
     ssize_t rawlen;
     ssize_t sres;
@@ -161,25 +161,29 @@ send_ccnb_file(int sock, FILE *msgs, const char *filename)
             exit(-1);
         }
     }
-    rawlen = read(fd, rawbuf, sizeof(rawbuf));
-    if (rawlen == -1) {
-        perror(filename);
-        exit(-1);
+    for (;;) {
+        rawlen = read(fd, rawbuf, sizeof(rawbuf));
+        if (rawlen == -1) {
+            perror(filename);
+            exit(-1);
+        }
+        if (rawlen == 0)
+            break;
+        if (is_dgram && rawlen == sizeof(rawbuf))
+            truncated = read(fd, onemore, 1);
+        if (truncated)
+            fprintf(msgs, "TRUNCATED ");
+        fprintf(msgs, "send %s (%lu bytes)\n", filename, (unsigned long)rawlen);
+        sres = send(sock, rawbuf, rawlen, 0);
+        if (sres == -1) {
+            perror("send");
+            exit(1);
+        }
+        if (is_dgram)
+            break;
     }
-    if (rawlen == sizeof(rawbuf))
-        truncated = read(fd, onemore, 1);
     if (fd != 0)
-        close(fd);
-    if (rawlen == 0)
-        return;
-    if (truncated)
-        fprintf(msgs, "TRUNCATED ");
-    fprintf(msgs, "send %s (%lu bytes)\n", filename, (unsigned long)rawlen);
-    sres = send(sock, rawbuf, rawlen, 0);
-    if (sres == -1) {
-        perror("send");
-        exit(1);
-    }
+            close(fd);
 }
 
 static int
@@ -250,11 +254,11 @@ int main(int argc, char **argv)
                 filename = "-";
             else
                 argp++;
-        send_ccnb_file(sock, msgs, filename);
+        send_ccnb_file(sock, msgs, filename, udp);
         }
         else if (is_ccnb_name(argv[argp])) {
             filename = argv[argp];
-            send_ccnb_file(sock, msgs, filename);
+            send_ccnb_file(sock, msgs, filename, udp);
         }
         else if (0 == strcmp(argv[argp], "recv")) {
             res = poll(fds, 1, msec);
