@@ -15,13 +15,13 @@ import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 
 public class SampleTestRepo {
 	static final String base = "/parc.com/csl/ccn/repositories/SampleTestRepo";
-	static final String file_name = "simon.txt";
+	static final String file_name = "/simon.txt";
 	static final String txt =  "Sample text file from Simon.";
 	static final String UTF8 = "UTF-8";
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		ContentName name = ContentName.fromNative(base + "/" + file_name);
+		ContentName name = ContentName.fromNative(base + file_name);
 		RepositoryOutputStream os = new RepositoryOutputStream(name, CCNLibrary.getLibrary());
 		
 		os.write(txt.getBytes(UTF8));
@@ -34,6 +34,7 @@ public class SampleTestRepo {
 		SortedSet<ContentName> r = l.getNewData();
 		Assert.assertNotNull(r);
 		Assert.assertEquals(1, r.size());
-		Assert.assertEquals(file_name.getBytes(UTF8), r.first().lastComponent());
+		ContentName expected = ContentName.fromNative(file_name);
+		Assert.assertEquals(expected, r.first());
 	}
 }
