@@ -24,7 +24,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	protected BasicNameEnumeratorListener callback;
 	// make these contain something other than content names when the enumerator has better data types
 	protected SortedSet<ContentName> _children = new TreeSet<ContentName>();
-	protected SortedSet<ContentName> _newChildren = new TreeSet<ContentName>();
+	protected SortedSet<ContentName> _newChildren = null;
 	protected Object _childLock = new Object();
 	
 	/**
