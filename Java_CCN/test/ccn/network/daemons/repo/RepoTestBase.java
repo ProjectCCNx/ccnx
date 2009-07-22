@@ -1,10 +1,15 @@
 package test.ccn.network.daemons.repo;
 
 import java.io.File;
+import java.io.IOException;
 
+import org.junit.Assert;
 import org.junit.BeforeClass;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.library.io.CCNInputStream;
+import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 
 import test.ccn.library.LibraryTestBase;
 
@@ -32,6 +37,43 @@ public class RepoTestBase extends LibraryTestBase {
 		_topdir = System.getProperty(TOP_DIR);
 		if (null == _topdir)
 			_topdir = ".";
+	}
+	
+	protected void checkNameSpace(String contentName, boolean expected) throws Exception {
+		ContentName name = ContentName.fromNative(contentName);
+		RepositoryOutputStream ros = null;
+		try {
+			ros = putLibrary.repoOpen(name, null, putLibrary.getDefaultPublisher());
+		} catch (IOException ex) {
+			if (expected)
+				Assert.fail(ex.getMessage());
+			Library.logger().info("Returning early from test on IOException : " + ex.getMessage());
+			return;
+		}
+		byte [] data = "Testing 1 2 3".getBytes();
+		ContentName baseName = null;
+		try {
+			ros.write(data, 0, data.length);
+			baseName = ros.getBaseName();
+			ros.close();
+		} catch (IOException ioe) {
+			if (expected)
+				Assert.fail(ioe.getMessage());
+			return;
+		}
+		if (!expected)
+			Assert.fail("Got a repo response on a bad namespace");
+		Thread.sleep(1000);
+
+		CCNInputStream input = new CCNInputStream(baseName, getLibrary);
+		byte[] buffer = new byte["Testing 1 2 3".length()];
+		if (expected) {
+			Assert.assertTrue(-1 != input.read(buffer));
+			Assert.assertArrayEquals(buffer, "Testing 1 2 3".getBytes());
+		} else {
+			Assert.assertEquals(-1, input.read(buffer));
+		}
+		input.close();
 	}
 
 }

@@ -169,7 +169,7 @@
 	</target>
 
 	<!-- test is for running all current automated tests to validate code -->
-	<target name="test" depends="test-data, test-puttap, test-library, test-network, test-endtoend, test-repo">
+	<target name="test" depends="test-data, test-library, test-network, test-endtoend, test-repo">
 	</target>
 
 	<target name="test-data" depends="test-data-without-repo, test-data-with-repo">
@@ -309,7 +309,7 @@
 			</junit>
 		</target>
 	
-	<target name="test-repo" depends="test-enumerated-name-list, test-repo-structure, test-repo-name-responder, test-repo-io ">
+	<target name="test-repo" depends="test-enumerated-name-list, test-repo-structure, test-repo-name-responder, test-repo-initial-read, test-repo-io">
 	</target>
 	
 	<target name="test-enumerated-name-list" depends="jar, ccnd, repo">
@@ -360,6 +360,25 @@
 		    update="true">
 		 </zip>
 		<delete dir="${REPO_ROOT}" />
+	</target>
+	
+	<target name="test-repo-initial-read" depends="jar, test-repo-structure, ccnd, repo">
+		<mkdir dir="${testout}"/>
+		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="xml" usefile="true"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
+			<sysproperty key="com.parc.ccn.LogLevel" value="FINER"/>
+			<batchtest todir="${testout}" >
+				<fileset dir="${build}">
+					<include name="test/ccn/network/daemons/repo/RepoInitialReadTest.class"/>
+				</fileset>
+			</batchtest>
+		</junit>
+		<!-- <delete dir="${REPO_ROOT}"/> -->
 	</target>
 	
 	<target name="test-repo-io" depends="jar, test-repo-structure, ccnd, repo">
