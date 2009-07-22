@@ -144,7 +144,7 @@
             <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
             <sleep seconds="1"/>
 		</parallel>
-		<sleep seconds="5"/>  <!-- Make sure really started -->
+		<sleep seconds="10"/>  <!-- Make sure really started -->
 	</target>
 
     <!-- target for running a test repo foreground so you can run a test
