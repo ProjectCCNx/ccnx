@@ -56,7 +56,6 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		}
 		_namePrefix = namePrefix;
 		_enumerator = new CCNNameEnumerator(namePrefix, library, this);
-		_enumerator.registerPrefix(namePrefix);
 	}
 	
 	public ContentName getName() { return _namePrefix; }
