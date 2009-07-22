@@ -14,7 +14,7 @@ import com.parc.ccn.library.EnumeratedNameList;
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 
 public class SampleTestRepo {
-	static final String base = "/parc.com/csl/ccn/repositories";
+	static final String base = "/parc.com/csl/ccn/repositories/SampleTestRepo";
 	static final String file_name = "simon.txt";
 	static final String txt =  "Sample text file from Simon.";
 	static final String UTF8 = "UTF-8";
