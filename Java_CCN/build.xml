@@ -169,7 +169,7 @@
 	</target>
 
 	<!-- test is for running all current automated tests to validate code -->
-	<target name="test" depends="test-data, test-puttap, test-library, test-network, test-endtoend, test-repo, test-access-control">
+	<target name="test" depends="test-data, test-puttap, test-library, test-network, test-endtoend, test-repo">
 	</target>
 
 	<target name="test-data" depends="test-data-without-repo, test-data-with-repo">
