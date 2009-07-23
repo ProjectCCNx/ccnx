@@ -1,7 +1,6 @@
 package com.parc.ccn.network.daemons.repo;
 
 import java.io.IOException;
-import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.logging.Level;
 
@@ -11,7 +10,6 @@ import com.parc.ccn.Library;
 import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
@@ -134,28 +132,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		
 		NameEnumerationResponse ner = _daemon.getRepository().getNamesWithPrefix(interest);
 
-		if(ner!=null && ner.prefix!=null){
-			try{
-				
-				//the following 6 lines are to be deleted after Collections are refactored
-				LinkReference[] temp = new LinkReference[ner.names.size()];
-				for(int x = 0; x < ner.names.size(); x++)
-					temp[x] = new LinkReference(ner.names.get(x));
-				
-				
-				_library.put(ner.prefix, temp);
-				
-				//CCNEncodableCollectionData ecd = new CCNEncodableCollectionData(collectionName, cd);
-				//ecd.save();
-				//System.out.println("saved ecd.  name: "+ecd.getName());
-			}
-			catch(IOException e){
-				
-			}
-			catch(SignatureException e) {
-				Library.logStackTrace(Level.WARNING, e);
-				e.printStackTrace();
-			}
-		}
+		if(ner!=null && ner.names!=null)
+			_daemon.sendEnumerationResponse(ner);
 	}	
 }
