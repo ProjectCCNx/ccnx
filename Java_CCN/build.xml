@@ -22,6 +22,7 @@
 	<property name="showoutput" value="no"/>
 	<property name="repozip" value="repotest.zip"/>
 	<property name="REPO_ROOT" value="${testout}/repotest"/>
+	<property name="REPO_LOCAL_ROOT" value="repotest"/>
 	<property name="REPO_LOCAL" value="TestRepository"/>
 	<property name="REPO_GLOBAL" value="parc.com/csl/ccn/repositories"/>
 	<!-- To enable remote debugging, the incantation is 
@@ -134,7 +135,9 @@
 					<jvmarg value="-Xrunjdwp:transport=dt_socket,address=25000,server=y,suspend=n" />
 					<arg value="-interactive" />
 					<arg value="-root" />
-					<arg value="${REPO_ROOT}" />
+					<arg value="${REPO_LOCAL_ROOT}" />
+					<arg value="-log" />
+					<arg value="400" />
 					<arg value="-local" />
 					<arg value="${REPO_LOCAL}" />
 					<arg value="-global" />
@@ -169,7 +172,7 @@
 	</target>
 
 	<!-- test is for running all current automated tests to validate code -->
-	<target name="test" depends="test-data, test-library, test-network, test-endtoend, test-repo">
+	<target name="test" depends="test-repo, test-data, test-library, test-network, test-endtoend">
 	</target>
 
 	<target name="test-data" depends="test-data-without-repo, test-data-with-repo">
@@ -309,7 +312,7 @@
 			</junit>
 		</target>
 	
-	<target name="test-repo" depends="test-enumerated-name-list, test-repo-structure, test-repo-name-responder, test-repo-initial-read, test-repo-io">
+	<target name="test-repo" depends="test-repo-structure, test-enumerated-name-list, test-repo-name-responder, test-repo-initial-read, test-repo-io">
 	</target>
 	
 	<target name="test-enumerated-name-list" depends="jar, ccnd, repo">

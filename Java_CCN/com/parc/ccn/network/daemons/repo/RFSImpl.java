@@ -635,4 +635,9 @@ public class RFSImpl implements Repository {
 		// No diagnostics supported
 		return false;
 	}
+
+	public void shutDown() {
+		// TODO Auto-generated method stub
+		
+	}
 }

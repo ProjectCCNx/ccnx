@@ -1,6 +1,5 @@
 package test.ccn.network.daemons.repo;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
@@ -18,7 +17,6 @@ import com.parc.ccn.library.io.CCNDescriptor;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 import com.parc.ccn.library.profiles.SegmentationProfile;
-import com.parc.ccn.network.daemons.repo.Repository;
 
 /**
  * 
@@ -56,6 +54,8 @@ public class RepoIOTest extends RepoTestBase {
 	public void setUp() throws Exception {
 	}
 	
+	/*
+	 * Commented out until fixed to restore original namespace after test
 	@Test
 	public void testPolicyViaCCN() throws Exception {
 		System.out.println("Testing namespace policy setting");
@@ -72,7 +72,7 @@ public class RepoIOTest extends RepoTestBase {
 		Thread.sleep(4000);
 		checkNameSpace("/repoTest/data3", false);
 		checkNameSpace("/testNameSpace/data1", true);
-	}
+	}  */
 	
 	@Test
 	public void testReadFromRepo() throws Exception {

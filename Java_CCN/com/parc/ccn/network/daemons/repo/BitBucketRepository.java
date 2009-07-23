@@ -64,4 +64,9 @@ public class BitBucketRepository implements Repository {
 		// No supported diagnostics
 		return false;
 	}
+
+	public void shutDown() {
+		// TODO Auto-generated method stub
+		
+	}
 }
