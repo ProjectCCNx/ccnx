@@ -15,7 +15,9 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNNameEnumerator;
+import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;
+import com.parc.ccn.network.daemons.repo.Repository.NameEnumerationResponse;
 
 public class ContentTree {
 
@@ -57,6 +59,7 @@ public class ContentTree {
 		ContentFileRef oneContent;
 		List<ContentFileRef> content;
 		long timestamp;
+		boolean interestFlag = false;
 		
 		public boolean compEquals(byte[] other) {
 			return DataUtils.compare(other, this.component) == 0;
@@ -125,7 +128,7 @@ public class ContentTree {
 	 * @param getter
 	 * @return - true if content is not exact duplicate of existing content.
 	 */
-	public boolean insert(ContentObject content, ContentFileRef ref, long ts, ContentGetter getter) {
+	public boolean insert(ContentObject content, ContentFileRef ref, long ts, ContentGetter getter, NameEnumerationResponse ner) {
 		final ContentName name = new ContentName(content.name(), content.contentDigest());
 		Library.logger().fine("inserting content: "+name.toString());
 		TreeNode node = root; // starting point
@@ -157,6 +160,48 @@ public class ContentTree {
 					}
 					node.timestamp = ts;
 				}
+				
+				if(node.interestFlag && (ner==null || ner.prefix==null)){
+					//we have added something to this node and someone was interested
+					//we need to get the child names and the prefix to send back
+					Library.logger().info("we added at least one child, need to send a name enumeration response");
+					ContentName prefix = name.cut(component);
+					prefix = VersioningProfile.versionName(prefix, node.timestamp);
+					Library.logger().info("prefix for NEResponse: "+prefix);
+					/*
+					try {
+						System.out.println("prefix for NEResponse: "+prefix);
+						System.out.println("NEResponse version as TS: "+ VersioningProfile.getVersionAsTimestamp(prefix));
+						System.out.println("now as a long: "+VersioningProfile.getVersionAsTimestamp(prefix).getTime());
+						System.out.println("getVersionAsLong: "+VersioningProfile.getVersionAsLong(prefix));
+						System.out.println("getVAL->TS: "+(new Timestamp(VersioningProfile.getVersionAsLong(prefix))).toString());
+						System.out.println(VersioningProfile.versionLongToTimestamp(VersioningProfile.getVersionAsTimestamp(prefix).getTime()));
+						System.out.println("node.timestamp as TS: "+(new Timestamp(node.timestamp).toString()+" as .getTime(): "+(new Timestamp(node.timestamp)).getTime()));
+					} catch (VersionMissingException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					*/
+					ArrayList<ContentName> names = new ArrayList<ContentName>();
+					//the parent has children we need to return
+					ContentName c = new ContentName();
+					if(node.oneChild!=null){
+						names.add(new ContentName(c, node.oneChild.component));
+					}
+					else{
+						if(node.children!=null){
+							for(TreeNode ch:node.children)
+								names.add(new ContentName(c, ch.component));
+						}
+					}
+					ner.setPrefix(prefix);
+					ner.setNameList(names);
+					Library.logger().info("resetting interestFlag to false");
+					node.interestFlag = false;
+					
+				}
+				
+				
 				//Library.logger().finest("child was not null: moving down the tree");
 				node = child;
 			}
@@ -421,17 +466,19 @@ public class ContentTree {
 		return null;
 	}
 	
-	public final ArrayList<ContentName> getNamesWithPrefix(Interest interest, ContentGetter getter) {
+	public final NameEnumerationResponse getNamesWithPrefix(Interest interest, ContentGetter getter) {
 		ArrayList<ContentName> names = new ArrayList<ContentName>();
 		//first chop off NE marker
 		ContentName prefix = interest.name().cut(CCNNameEnumerator.NEMARKER);
+		prefix = VersioningProfile.versionRoot(prefix);
 		
 		//does the interest have a timestamp?
 		Timestamp interestTS = null;
 		Timestamp nodeTS = null;
 		
 		try{
-			interestTS = VersioningProfile.getVersionAsTimestamp(interest.name());
+			//interestTS = VersioningProfile.getVersionAsTimestamp(interest.name());
+			interestTS = new Timestamp(VersioningProfile.getVersionAsLong(interest.name()));
 		}
 		catch(Exception e){
 			interestTS = null;
@@ -440,15 +487,20 @@ public class ContentTree {
 		
 		TreeNode parent = lookupNode(prefix, prefix.count());
 		if(parent!=null){
-			
+			parent.interestFlag = true;
 			//we should check the timestamp
 			nodeTS = new Timestamp(parent.timestamp);
-			if(interestTS==null || nodeTS.after(interestTS)){
+			if(interestTS==null){
+				//no version marker...  should respond if we have info
+			}
+			else if(nodeTS.after(interestTS) && !nodeTS.equals(interestTS)){
 				//we have something new to report
 				//put this time in the last name spot if there are children
 			}
-			else
+			else{
+				Library.logger().info("Nothing new, but the interest flag is set in case new content is added");
 				return null;
+			}
 			
 			//the parent has children we need to return
 			ContentName c = new ContentName();
@@ -462,8 +514,9 @@ public class ContentTree {
 				}
 			}
 			//add timestamp in last name spot to send back (will be removed)
-			names.add(VersioningProfile.versionName(interest.name(), nodeTS));
-			return names;
+			
+			parent.interestFlag = false;
+			return new NameEnumerationResponse(VersioningProfile.versionName(interest.name(), nodeTS), names);
 			
 		}
 		
@@ -491,7 +544,7 @@ public class ContentTree {
 			//TreeNode prefixRoot = lookupNode(interest.name(), interest.nameComponentCount());
 			TreeNode prefixRoot = lookupNode(interest.name(), ncc);
 			if(prefixRoot == null){
-				Library.logger().info("For: " + interest.name() + " the prefix root is null...  returning null");
+				//Library.logger().info("For: " + interest.name() + " the prefix root is null...  returning null");
 				return null;
 			}
 			
