@@ -54,6 +54,13 @@
 
 	<property name="build-excludes" value="bin/**, log/**, lib/**, libsrc/**, repository/**, build/**, testout/**, ktrace.out, CCN_DEBUG_DATA/**"/>
 
+	<target name="documentation">
+	  <!-- requires ant-doxygen task, see http://sourceforge.net/projects/ant-doxygen/ -->
+	  <taskdef name="doxygen" classname="org.doxygen.tools.DoxygenTask"
+		   classpath="lib/doxygen_ant.jar" />
+		<doxygen configFilename="Doxyfile"/>
+	</target>
+
 	<target name="compile">
 		<mkdir dir="${build}"/>
 		<depend srcdir="." destdir="${build}" closure="yes"/>
