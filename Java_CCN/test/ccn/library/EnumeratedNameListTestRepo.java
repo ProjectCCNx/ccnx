@@ -173,6 +173,17 @@ public class EnumeratedNameListTestRepo {
 			EnumeratedNameList versionList = new EnumeratedNameList(name1, library);
 			versionList.waitForData();
 			Assert.assertTrue(versionList.hasNewData());
+			// Even though the addition of versions above is blocking and the new EnumeratedNameList
+			// is not created to start enumerating names until after the versions have been written,
+			// we don't have a guarantee that the repository will have fully processed the writes 
+			// before it answers the name enumeration request.  (At some point when full repository 
+			// commitment is obtained before returning from write this may change).  There is a timing 
+			// race with the last content written and the first name enumeration result.  For this reason
+			// we must be prepared to wait a second time.
+			if (versionList.getChildren().size() < 6) { // 5 versions written just above plus 1 earlier addition under name1
+				versionList.getNewData(); // ignore result, we want to look at entire set once available
+			}
+			// Now we should have everything
 			ContentName latestReturnName = versionList.getLatestVersionChildName();
 			System.out.println("Got children: " + versionList.getChildren());
 			System.out.println("Got latest name " + latestReturnName + " expected " + new ContentName(new byte [][]{latestName.lastComponent()}));

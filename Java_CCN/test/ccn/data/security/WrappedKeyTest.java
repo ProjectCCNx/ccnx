@@ -247,7 +247,7 @@ public class WrappedKeyTest {
 			Assert.assertTrue(VersioningProfile.isVersioned(wko.getName()));
 			// should update in another thread
 			WrappedKeyObject wkoread = new WrappedKeyObject(storedKeyName, null); // new library
-			Assert.assertTrue(wkoread.ready());
+			Assert.assertTrue(wkoread.available());
 			Assert.assertEquals(wkoread.getName(), wko.getName());
 			Assert.assertEquals(wkoread.wrappedKey(), wko.wrappedKey());
 			// DKS -- bug in interest handling, can't save wkoread and update wko

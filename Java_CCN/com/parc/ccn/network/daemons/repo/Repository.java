@@ -79,6 +79,11 @@ public interface Repository {
     public ArrayList<ContentName> getNamesWithPrefix(Interest i);
     
     /**
+     * 
+     */
+    public void shutDown();
+    
+    /**
      * Execute diagnostic operation.  The diagnostic operations are 
      * particular to the implementation and are intended for testing
      * and debugging only.

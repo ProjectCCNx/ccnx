@@ -90,11 +90,11 @@ public class Group {
 	}
 	
 	public boolean ready() {
-		return _groupPublicKey.ready();
+		return _groupPublicKey.available();
 	}
 	
 	public KeyDirectory privateKeyDirectory(AccessControlManager manager) throws IOException {
-		if (_groupPublicKey.ready())
+		if (_groupPublicKey.available())
 			return new KeyDirectory(manager, 
 					AccessControlProfile.groupPrivateKeyDirectory(_groupPublicKey.getName()), _library);
 		Library.logger().info("Public key not ready for group: " + friendlyName());
@@ -165,7 +165,7 @@ public class Group {
 		// need to figure out if we need to know private key; if we do and we don't, throw access denied.
 		// We're deleting anyone that exists
 		MembershipList ml = membershipList(); // force retrieval if haven't already.
-		if (!ml.isGone() && ml.ready() && (ml.membershipList().contents().size() > 0)) {
+		if (!ml.isGone() && ml.available() && (ml.membershipList().contents().size() > 0)) {
 			modify(manager, newMembers, ml.membershipList().contents());
 		} else {
 			modify(manager, newMembers, null);
@@ -239,7 +239,7 @@ public class Group {
 			try {
 				// DKS TODO verify target public key against publisher, etc in link
 				latestPublicKey = new PublicKeyObject(lr.targetName(), _library);
-				if (!latestPublicKey.ready()) {
+				if (!latestPublicKey.available()) {
 					Library.logger().warning("Could not retrieve public key for " + lr.targetName() + ". Gone? " + latestPublicKey.isGone());
 					continue;
 				}
@@ -288,7 +288,7 @@ public class Group {
 			try {
 				// DKS TODO verify target public key against publisher, etc in link
 				latestPublicKey = new PublicKeyObject(lr.targetName(), _library);
-				if (!latestPublicKey.ready()) {
+				if (!latestPublicKey.available()) {
 					Library.logger().warning("Could not retrieve public key for " + lr.targetName() + ". Gone? " + latestPublicKey.isGone());
 					continue;
 				}
@@ -311,14 +311,14 @@ public class Group {
 		StringBuffer sb = new StringBuffer("Group ");
 		sb.append(friendlyName());
 		sb.append(": public key: ");
-		if (!_groupPublicKey.ready()) {
+		if (!_groupPublicKey.available()) {
 			sb.append("not ready, write to " + 
 					AccessControlProfile.groupPublicKeyName(_groupNamespace, friendlyName()));
 		} else {
 			sb.append(publicKeyName());
 		}
 		sb.append(" membership list: ");
-		if ((null == _groupMembers) || (!_groupMembers.ready())) {
+		if ((null == _groupMembers) || (!_groupMembers.available())) {
 			sb.append("not ready, will write to " + 
 					AccessControlProfile.groupMembershipListName(_groupNamespace, friendlyName()));
 		} else {
@@ -360,7 +360,7 @@ public class Group {
 		}
 		if ((null != membersToRemove) && (!membersToRemove.isEmpty()) &&
 			(!_groupMembers.isGone()) && 
-			_groupMembers.ready() && // do we wait if it's not ready? we know one exists.
+			_groupMembers.available() && // do we wait if it's not ready? we know one exists.
 			(_groupMembers.membershipList().contents().size() > 0)) {
 	
 			// There were already members. Remove them and make a new key.

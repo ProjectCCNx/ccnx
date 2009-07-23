@@ -1,10 +1,7 @@
 package test.ccn.network.daemons.repo;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.Arrays;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -14,20 +11,12 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.library.io.CCNDescriptor;
-import com.parc.ccn.library.io.CCNInputStream;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 import com.parc.ccn.library.profiles.SegmentationProfile;
-import com.parc.ccn.network.daemons.repo.RFSImpl;
-import com.parc.ccn.network.daemons.repo.Repository;
 
 /**
  * 
@@ -65,39 +54,8 @@ public class RepoIOTest extends RepoTestBase {
 	public void setUp() throws Exception {
 	}
 	
-	@Test
-	public void testReadViaRepo() throws Throwable {
-		System.out.println("Testing reading objects from repo");
-		ContentName name = ContentName.fromNative("/repoTest/data1");
-		
-		// Since we have 2 pieces of data with the name /repoTest/data1 we need to compute both
-		// digests to make sure we get the right data.
-		ContentName name1 = new ContentName(name, ContentObject.contentDigest("Here's my data!"));
-		ContentName clashName = ContentName.fromNative("/" + RFSImpl.META_DIR + "/repoTest/data1");
-		ContentName digestName = new ContentName(name, ContentObject.contentDigest("Testing2"));
-		String tooLongName = "0123456789";
-		for (int i = 0; i < 30; i++)
-			tooLongName += "0123456789";
-		
-		// Have 2 pieces of data with the same name here too.
-		ContentName longName = ContentName.fromNative("/repoTest/" + tooLongName);
-		longName = new ContentName(longName, ContentObject.contentDigest("Long name!"));
-		ContentName badCharName = ContentName.fromNative("/repoTest/" + "*x?y<z>u");
-		ContentName badCharLongName = ContentName.fromNative("/repoTest/" + tooLongName + "*x?y<z>u");
-			
-		checkDataWithDigest(name1, "Here's my data!");
-		checkData(clashName, "Clashing Name");
-		checkDataWithDigest(digestName, "Testing2");
-		checkDataWithDigest(longName, "Long name!");
-		checkData(badCharName, "Funny characters!");
-		checkData(badCharLongName, "Long and funny");
-		
-		ArrayList<ContentObject>keys = getLibrary.enumerate(new Interest(keyprefix), 4000);
-		for (ContentObject keyObject : keys) {
-			checkDataAndPublisher(name, "Testing2", new PublisherPublicKeyDigest(keyObject.content()));
-		}
-	}
-	
+	/*
+	 * Commented out until fixed to restore original namespace after test
 	@Test
 	public void testPolicyViaCCN() throws Exception {
 		System.out.println("Testing namespace policy setting");
@@ -114,7 +72,7 @@ public class RepoIOTest extends RepoTestBase {
 		Thread.sleep(4000);
 		checkNameSpace("/repoTest/data3", false);
 		checkNameSpace("/testNameSpace/data1", true);
-	}
+	}  */
 	
 	@Test
 	public void testReadFromRepo() throws Exception {
@@ -145,67 +103,5 @@ public class RepoIOTest extends RepoTestBase {
 			Assert.assertEquals(segmentContent, new String(cbuf));
 		}
 		Assert.assertEquals(-1, reader.read());
-	}
-	
-	private void checkData(ContentName name, String data) throws IOException, InterruptedException{
-		checkData(new Interest(name), data.getBytes());
-	}
-	
-	private void checkDataWithDigest(ContentName name, String data) throws IOException, InterruptedException{
-		// When generating an Interest for the exact name with content digest, need to set additionalNameComponents
-		// to 0, signifying that name ends with explicit digest
-		checkData(new Interest(name, 0, (PublisherID)null), data.getBytes());
-	}
-
-	private void checkData(Interest interest, byte[] data) throws IOException, InterruptedException{
-		ContentObject testContent = getLibrary.get(interest, 10000);
-		Assert.assertFalse(testContent == null);
-		Assert.assertTrue(Arrays.equals(data, testContent.content()));		
-	}
-
-	private void checkDataAndPublisher(ContentName name, String data, PublisherPublicKeyDigest publisher) 
-				throws IOException, InterruptedException {
-		Interest interest = new Interest(name, new PublisherID(publisher));
-		ContentObject testContent = getLibrary.get(interest, 10000);
-		Assert.assertFalse(testContent == null);
-		Assert.assertEquals(data, new String(testContent.content()));
-		Assert.assertTrue(testContent.signedInfo().getPublisherKeyID().equals(publisher));
-	}
-	
-	protected void checkNameSpace(String contentName, boolean expected) throws Exception {
-		ContentName name = ContentName.fromNative(contentName);
-		RepositoryOutputStream ros = null;
-		try {
-			ros = putLibrary.repoOpen(name, null, putLibrary.getDefaultPublisher());
-		} catch (IOException ex) {
-			if (expected)
-				Assert.fail(ex.getMessage());
-			Library.logger().info("Returning early from test on IOException : " + ex.getMessage());
-			return;
-		}
-		byte [] data = "Testing 1 2 3".getBytes();
-		ContentName baseName = null;
-		try {
-			ros.write(data, 0, data.length);
-			baseName = ros.getBaseName();
-			ros.close();
-		} catch (IOException ioe) {
-			if (expected)
-				Assert.fail(ioe.getMessage());
-			return;
-		}
-		if (!expected)
-			Assert.fail("Got a repo response on a bad namespace");
-		Thread.sleep(1000);
-
-		CCNInputStream input = new CCNInputStream(baseName, getLibrary);
-		byte[] buffer = new byte["Testing 1 2 3".length()];
-		if (expected) {
-			Assert.assertTrue(-1 != input.read(buffer));
-			Assert.assertArrayEquals(buffer, "Testing 1 2 3".getBytes());
-		} else {
-			Assert.assertEquals(-1, input.read(buffer));
-		}
-		input.close();
 	}
 }

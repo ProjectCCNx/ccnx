@@ -261,6 +261,7 @@ public class RFSTest extends RepoTestBase {
 			repo.saveContent(ContentObject.buildContentObject(segmented, segmentContent.getBytes(), null, null, finalBlockID));
 			checkData(repo, segmented, segmentContent);
 		}
+		repo.shutDown();
 	}
 	
 	public void testReinitialization(Repository repo) throws Exception {

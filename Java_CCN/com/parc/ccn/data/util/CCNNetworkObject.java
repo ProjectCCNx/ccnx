@@ -219,6 +219,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			_currentName = inputStream.deletionInformation().name();
 			_currentPublisher = inputStream.deletionInformation().signedInfo().getPublisherKeyID();
 			_currentPublisherKeyLocator = inputStream.deletionInformation().signedInfo().getKeyLocator();
+			_available = true;
 		} else {
 			super.update(inputStream);
 			_currentName = inputStream.baseName();
@@ -386,6 +387,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			throw new IOException("Cannot save past versions as gone!");
 		}
 		_data = null;
+		_available = true;
 		save(name);
 	}
 	
@@ -394,6 +396,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
 		_data = null;
+		_available = true;
 		save();
 	}
 
@@ -463,15 +466,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 
 	public boolean isGone() {
-		return _data == null;
+		return _available && _data == null;
 	}
 	
-	public boolean ready() {
-		if (super.ready() || isGone())
-			return true;
-		return false;
-	}
-
 	public PublisherPublicKeyDigest contentPublisher() {
 		return _currentPublisher;
 	}

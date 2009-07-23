@@ -148,6 +148,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 						//is = new BufferedInputStream(fis);
 						//FileChannel fc = fis.getChannel();
 					
+						Library.logger().fine("Creating index for " + filenames[i]);
 						while (true) {
 							ContentFileRef ref = _index.new ContentFileRef();
 							ref.id = index.intValue();
@@ -428,5 +429,13 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 			return true;
 		}
 		return false;
+	}
+
+	public void shutDown() {
+		if (null != _activeWriteFile.openFile) {
+			try {
+				_activeWriteFile.openFile.close();
+			} catch (IOException e) {}
+		}
 	}
 }

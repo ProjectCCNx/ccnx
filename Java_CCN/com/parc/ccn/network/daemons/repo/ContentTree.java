@@ -192,6 +192,7 @@ public class ContentTree {
 			node.content.add(ref);
 			node.oneContent = null;
 		}
+		Library.logger().fine("Inserted: " + content.name());
 		return true;
 	}
 
@@ -490,7 +491,7 @@ public class ContentTree {
 			//TreeNode prefixRoot = lookupNode(interest.name(), interest.nameComponentCount());
 			TreeNode prefixRoot = lookupNode(interest.name(), ncc);
 			if(prefixRoot == null){
-				Library.logger().info("the prefix root is null...  returning null");
+				Library.logger().info("For: " + interest.name() + " the prefix root is null...  returning null");
 				return null;
 			}
 			
