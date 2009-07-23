@@ -133,9 +133,29 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		//ContentName prefixName = interest.name().cut(CCNNameEnumerator.NEMARKER);
 		
 		NameEnumerationResponse ner = _daemon.getRepository().getNamesWithPrefix(interest);
-		if(ner!=null && ner.names!=null)
-			_daemon.sendEnumerationResponse(ner);
-	}
-	
-	
+
+		if(ner!=null && ner.prefix!=null){
+			try{
+				
+				//the following 6 lines are to be deleted after Collections are refactored
+				LinkReference[] temp = new LinkReference[ner.names.size()];
+				for(int x = 0; x < ner.names.size(); x++)
+					temp[x] = new LinkReference(ner.names.get(x));
+				
+				
+				_library.put(ner.prefix, temp);
+				
+				//CCNEncodableCollectionData ecd = new CCNEncodableCollectionData(collectionName, cd);
+				//ecd.save();
+				//System.out.println("saved ecd.  name: "+ecd.getName());
+			}
+			catch(IOException e){
+				
+			}
+			catch(SignatureException e) {
+				Library.logStackTrace(Level.WARNING, e);
+				e.printStackTrace();
+			}
+		}
+	}	
 }

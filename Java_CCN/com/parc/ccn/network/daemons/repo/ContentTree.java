@@ -15,7 +15,6 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNNameEnumerator;
-import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.network.daemons.repo.Repository.NameEnumerationResponse;
 
@@ -161,16 +160,15 @@ public class ContentTree {
 					node.timestamp = ts;
 				}
 				
-				
+
 				if(node.interestFlag && (ner==null || ner.prefix==null)){
 					//we have added something to this node and someone was interested
 					//we need to get the child names and the prefix to send back
 					Library.logger().info("we added at least one child, need to send a name enumeration response");
 					ContentName prefix = name.cut(component);
-					prefix = new ContentName(prefix, CCNNameEnumerator.NEMARKER);
-					prefix = VersioningProfile.versionName(prefix, new Timestamp(node.timestamp));
+
+					prefix = VersioningProfile.versionName(prefix, node.timestamp);
 					Library.logger().info("prefix for NEResponse: "+prefix);
-					
 					ArrayList<ContentName> names = new ArrayList<ContentName>();
 					//the parent has children we need to return
 					ContentName c = new ContentName();
@@ -467,9 +465,7 @@ public class ContentTree {
 		
 		try{
 			//interestTS = VersioningProfile.getVersionAsTimestamp(interest.name());
-			interestTS = VersioningProfile.getVersionAsTimestamp(interest.name());
-			
-			System.out.println("interestTS: "+interestTS+" "+interestTS.getTime());
+			interestTS = new Timestamp(VersioningProfile.getVersionAsLong(interest.name()));
 		}
 		catch(Exception e){
 			interestTS = null;
@@ -479,15 +475,9 @@ public class ContentTree {
 		TreeNode parent = lookupNode(prefix, prefix.count());
 		if(parent!=null){
 			parent.interestFlag = true;
+			
 			//we should check the timestamp
-			try {
-				nodeTS = VersioningProfile.getVersionAsTimestamp(VersioningProfile.versionName(new ContentName(), new Timestamp(parent.timestamp)));
-			} catch (VersionMissingException e) {
-				//should never happen since we are putting the version in in the same line...
-				Library.logger().info("missing version in conversion of index node timestamp to version timestamp for comparison to interest timestamp");
-				interestTS=null;
-			}
-			//nodeTS = new Timestamp(parent.timestamp);
+			nodeTS = new Timestamp(parent.timestamp);
 			if(interestTS==null){
 				//no version marker...  should respond if we have info
 			}
