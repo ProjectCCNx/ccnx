@@ -66,7 +66,7 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 		addContentToRepo(prefix1String+"/name3");
 		
 		//make sure we don't hear about this one
-		Library.logger().info("verify that we hear the third thing was added");
+		Library.logger().info("called cancel, shouldn't hear about the third item");
 		testGetResponse(3);
 		
 	}
