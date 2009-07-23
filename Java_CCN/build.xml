@@ -86,11 +86,15 @@
 		</jar>
 	</target>
 
+	<target name="clean-documentation">
+		<delete dir="doc"/>
+	</target>
+
 	<target name="clean-test">
 		<delete dir="${testout}"/>
 	</target>
 
-	<target name="clean" depends="clean-test">
+	<target name="clean" depends="clean-test, clean-documentation">
 		<delete dir="${build}"/>
 	</target>
 
