@@ -167,6 +167,7 @@ public class ContentTree {
 					Library.logger().info("we added at least one child, need to send a name enumeration response");
 					ContentName prefix = name.cut(component);
 
+					prefix = new ContentName(prefix, CCNNameEnumerator.NEMARKER);
 					prefix = VersioningProfile.versionName(prefix, node.timestamp);
 					Library.logger().info("prefix for NEResponse: "+prefix);
 					ArrayList<ContentName> names = new ArrayList<ContentName>();

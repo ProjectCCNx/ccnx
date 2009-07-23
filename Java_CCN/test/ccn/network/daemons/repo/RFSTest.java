@@ -280,8 +280,8 @@ public class RFSTest extends RepoTestBase {
 		NameEnumerationResponse neresponse = null;
 		//send initial interest to make sure namespace is empty
 		//interest flag will not be set for a fast response since there isn't anything in the index yet
-
-		Interest interest = Interest.constructInterest(nerpre, null, Interest.ORDER_PREFERENCE_ORDER_NAME, nerpre.count()+1);
+		
+		Interest interest = Interest.constructInterest(new ContentName(nerpre, CCNNameEnumerator.NEMARKER), null, Interest.ORDER_PREFERENCE_ORDER_NAME, nerpre.count()+1);
 		neresponse = repo.getNamesWithPrefix(interest);
 		Assert.assertTrue(neresponse == null || neresponse.getNames()==null);
 		//now saving the first piece of content in the repo.  interest flag not set, so it should not get an object back
@@ -291,6 +291,7 @@ public class RFSTest extends RepoTestBase {
 		neresponse = repo.getNamesWithPrefix(interest);
 		Assert.assertTrue(neresponse.getNames().contains(nername1));
 
+		Assert.assertTrue(neresponse.getPrefix().contains(CCNNameEnumerator.NEMARKER));
 		//now call get names with prefix again to set interest flag
 		//have to use the version from the last response (or at least a version after the last write
 		interest = Interest.last(neresponse.getPrefix());
@@ -303,7 +304,8 @@ public class RFSTest extends RepoTestBase {
 		neresponse = repo.saveContent(ContentObject.buildContentObject(ner2, "FastNameRespTest".getBytes()));
 		Assert.assertTrue(neresponse.getNames().contains(nername1));
 		Assert.assertTrue(neresponse.getNames().contains(nername2));
-
+		Assert.assertTrue(neresponse.getPrefix().contains(CCNNameEnumerator.NEMARKER));
+		
 		//need to reconstruct the interest again
 		interest = Interest.last(neresponse.getPrefix());
 		interest.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME);
@@ -316,7 +318,8 @@ public class RFSTest extends RepoTestBase {
 		Assert.assertTrue(neresponse.getNames().contains(nername1));
 		Assert.assertTrue(neresponse.getNames().contains(nername2));
 		Assert.assertTrue(neresponse.getNames().contains(nername3));
-		
+		Assert.assertTrue(neresponse.getPrefix().contains(CCNNameEnumerator.NEMARKER));
+
 		repo.shutDown();
 	}
 	
