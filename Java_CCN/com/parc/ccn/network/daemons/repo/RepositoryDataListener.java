@@ -17,6 +17,7 @@ import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
+import com.parc.ccn.network.daemons.repo.Repository.NameEnumerationResponse;
 
 /**
  * Handle incoming data in the repository. Currently only handles
@@ -55,9 +56,12 @@ public class RepositoryDataListener implements CCNInterestListener {
 			try {
 				if (SystemConfiguration.getLogging("repo"))
 					Library.logger().finer("Saving content in: " + _content.name().toString());
-				_daemon.getRepository().saveContent(_content);		
+				NameEnumerationResponse ner = _daemon.getRepository().saveContent(_content);		
 				if (_daemon.getRepository().checkPolicyUpdate(_content)) {
 					_daemon.resetNameSpaceFromHandler();
+				}
+				if(ner!=null && ner.names!=null){
+					_daemon.sendEnumerationResponse(ner);
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
