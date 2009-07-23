@@ -508,13 +508,13 @@ public class AccessControlManager {
 			for (LinkReference principal : newReaders) {
 				PublicKeyObject latestKey = getLatestKeyForPrincipal(principal);
 				try {
-					if (!latestKey.ready()) {
+					if (!latestKey.available()) {
 						latestKey.wait(DEFAULT_TIMEOUT);
 					}
 				} catch (InterruptedException ex) {
 					// do nothing
 				}
-				if (latestKey.ready()) {
+				if (latestKey.available()) {
 					Library.logger().info("Adding wrapped key block for reader: " + latestKey.getName());
 					try {
 						keyDirectory.addWrappedKeyBlock(latestNodeKey.nodeKey(), latestKey.getName(), latestKey.publicKey());

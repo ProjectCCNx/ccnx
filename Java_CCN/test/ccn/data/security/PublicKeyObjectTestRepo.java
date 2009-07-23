@@ -133,7 +133,7 @@ public class PublicKeyObjectTestRepo {
 		Assert.assertTrue(VersioningProfile.isVersioned(pko.getName()));
 		// should update in another thread
 		PublicKeyObject pkoread = new PublicKeyObject(keyName, null); // new library
-		Assert.assertTrue(pkoread.ready());
+		Assert.assertTrue(pkoread.available());
 		Assert.assertEquals(pkoread.getName(), pko.getName());
 		if (!pkoread.publicKey().equals(pko.publicKey())) {
 			Library.logger().info("Mismatched public keys, chance provider doesn't implement equals()." );
@@ -169,7 +169,7 @@ public class PublicKeyObjectTestRepo {
 		Library.logger().info("Saved " + pko.getName() + " to repo, now trying to read.");
 		// should update in another thread
 		PublicKeyObject pkoread = new PublicKeyObject(keyName, null); // new library
-		Assert.assertTrue(pkoread.ready());
+		Assert.assertTrue(pkoread.available());
 		Assert.assertEquals(pkoread.getName(), pko.getName());
 		if (!pkoread.publicKey().equals(pko.publicKey())) {
 			Library.logger().info("Mismatched public keys, chance provider doesn't implement equals()." );

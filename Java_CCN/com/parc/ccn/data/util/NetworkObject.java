@@ -26,6 +26,7 @@ public abstract class NetworkObject<E> {
 	protected E _data;
 	protected byte [] _lastSaved = null;
 	protected boolean _potentiallyDirty = true;
+	protected boolean _available = false; // false until first time data is set or updated
 
 	public NetworkObject(Class<E> type) {
 		_type = type;
@@ -34,6 +35,7 @@ public abstract class NetworkObject<E> {
 	public NetworkObject(Class<E> type, E data) {
 		this(type);
 		_data = data;
+		_available = true;
 	}
 
 	protected E factory() throws IOException {
@@ -54,9 +56,10 @@ public abstract class NetworkObject<E> {
 		
 		E newData = readObjectImpl(input);
 		
-		if (null == _data) {
+		if (!_available) {
 			Library.logger().info("Update -- first initialization.");
 			_data = _type.cast(newData);
+			_available = true;
 			_potentiallyDirty = false;
 		}
 		if (_data.equals(newData)) {
@@ -70,10 +73,10 @@ public abstract class NetworkObject<E> {
 	/**
 	 * Have we read any data yet? Only valid at beginning; doesn't tell
 	 * you if update has gone through.
-	 * @return
+	 * @return false if data has not been set or updated from the network yet
 	 */
-	public boolean ready() {
-		return (null != _data);
+	public boolean available() {
+		return _available;
 	}
 
 	/**
@@ -96,11 +99,15 @@ public abstract class NetworkObject<E> {
 	 * but possibly not _data itself. Ideally any dangerous operation
 	 * (like giving access to some variable that could be changed) will
 	 * mark the object as _potentiallyDirty.
+	 * @return Returns null if the data is not yet available
+	 * or the data is gone or the data is null.
+	 * TBD: is null data supported?
 	 */
 	protected E data() { return _data; }
 	
 	public void setData(E data) { 
 		_data = data; 
+		_available = true;
 		setPotentiallyDirty(true);
 	}
 
