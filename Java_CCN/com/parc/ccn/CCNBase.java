@@ -140,7 +140,7 @@ public class CCNBase {
 	/**
 	 * Cancel this interest. 
 	 * @param interest
-	 * @param callbackListener Used to distinguish the same interest
+	 * @param listener Used to distinguish the same interest
 	 * 	requested by more than one listener.
 	 * @throws IOException
 	 */
