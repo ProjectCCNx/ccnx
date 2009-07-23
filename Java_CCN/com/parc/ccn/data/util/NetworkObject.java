@@ -146,6 +146,9 @@ public abstract class NetworkObject<E> {
 
 	protected boolean isDirty() throws IOException {
 		try {
+			if (_data == null)
+				return _lastSaved != null;
+
 			// Problem -- can't wrap the OOS in a DOS, need to do it the other way round.
 			DigestOutputStream dos = new DigestOutputStream(new NullOutputStream(), 
 					MessageDigest.getInstance(DEFAULT_DIGEST));
