@@ -58,7 +58,7 @@ public abstract class NetworkObject<E> {
 		
 		if (!_available) {
 			Library.logger().info("Update -- first initialization.");
-			_data = _type.cast(newData);
+			_data = newData;
 			_available = true;
 			_potentiallyDirty = false;
 		}
@@ -66,7 +66,7 @@ public abstract class NetworkObject<E> {
 			Library.logger().info("Update -- value hasn't changed.");
 		} else {
 			Library.logger().info("Update -- got new " + newData.getClass().getName());
-			_data = merge(input, _type.cast(newData));
+			_data = merge(input, newData);
 		}
 	}
 	
