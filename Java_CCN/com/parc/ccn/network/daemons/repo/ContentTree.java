@@ -161,28 +161,16 @@ public class ContentTree {
 					node.timestamp = ts;
 				}
 				
+				
 				if(node.interestFlag && (ner==null || ner.prefix==null)){
 					//we have added something to this node and someone was interested
 					//we need to get the child names and the prefix to send back
 					Library.logger().info("we added at least one child, need to send a name enumeration response");
 					ContentName prefix = name.cut(component);
 					prefix = new ContentName(prefix, CCNNameEnumerator.NEMARKER);
-					prefix = VersioningProfile.versionName(prefix, node.timestamp);
+					prefix = VersioningProfile.versionName(prefix, new Timestamp(node.timestamp));
 					Library.logger().info("prefix for NEResponse: "+prefix);
-					/*
-					try {
-						System.out.println("prefix for NEResponse: "+prefix);
-						System.out.println("NEResponse version as TS: "+ VersioningProfile.getVersionAsTimestamp(prefix));
-						System.out.println("now as a long: "+VersioningProfile.getVersionAsTimestamp(prefix).getTime());
-						System.out.println("getVersionAsLong: "+VersioningProfile.getVersionAsLong(prefix));
-						System.out.println("getVAL->TS: "+(new Timestamp(VersioningProfile.getVersionAsLong(prefix))).toString());
-						System.out.println(VersioningProfile.versionLongToTimestamp(VersioningProfile.getVersionAsTimestamp(prefix).getTime()));
-						System.out.println("node.timestamp as TS: "+(new Timestamp(node.timestamp).toString()+" as .getTime(): "+(new Timestamp(node.timestamp)).getTime()));
-					} catch (VersionMissingException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-					*/
+					
 					ArrayList<ContentName> names = new ArrayList<ContentName>();
 					//the parent has children we need to return
 					ContentName c = new ContentName();
@@ -479,7 +467,9 @@ public class ContentTree {
 		
 		try{
 			//interestTS = VersioningProfile.getVersionAsTimestamp(interest.name());
-			interestTS = new Timestamp(VersioningProfile.getVersionAsLong(interest.name()));
+			interestTS = VersioningProfile.getVersionAsTimestamp(interest.name());
+			
+			System.out.println("interestTS: "+interestTS+" "+interestTS.getTime());
 		}
 		catch(Exception e){
 			interestTS = null;
@@ -490,7 +480,14 @@ public class ContentTree {
 		if(parent!=null){
 			parent.interestFlag = true;
 			//we should check the timestamp
-			nodeTS = new Timestamp(parent.timestamp);
+			try {
+				nodeTS = VersioningProfile.getVersionAsTimestamp(VersioningProfile.versionName(new ContentName(), new Timestamp(parent.timestamp)));
+			} catch (VersionMissingException e) {
+				//should never happen since we are putting the version in in the same line...
+				Library.logger().info("missing version in conversion of index node timestamp to version timestamp for comparison to interest timestamp");
+				interestTS=null;
+			}
+			//nodeTS = new Timestamp(parent.timestamp);
 			if(interestTS==null){
 				//no version marker...  should respond if we have info
 			}
