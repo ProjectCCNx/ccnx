@@ -1,5 +1,6 @@
 package test.ccn.network.daemons.repo;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
@@ -17,6 +18,7 @@ import com.parc.ccn.library.io.CCNDescriptor;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 import com.parc.ccn.library.profiles.SegmentationProfile;
+import com.parc.ccn.network.daemons.repo.Repository;
 
 /**
  * 
@@ -54,25 +56,16 @@ public class RepoIOTest extends RepoTestBase {
 	public void setUp() throws Exception {
 	}
 	
-	/*
-	 * Commented out until fixed to restore original namespace after test
 	@Test
 	public void testPolicyViaCCN() throws Exception {
 		System.out.println("Testing namespace policy setting");
 		checkNameSpace("/repoTest/data2", true);
-		FileInputStream fis = new FileInputStream(_topdir + "/test/ccn/network/daemons/repo/policyTest.xml");
-		byte [] content = new byte[fis.available()];
-		fis.read(content);
-		fis.close();
-		RepositoryOutputStream ros = putLibrary.repoOpen(ContentName.fromNative(_globalPrefix + '/' + 
-				_repoName + '/' + Repository.REPO_DATA + '/' + Repository.REPO_POLICY), null,
-				putLibrary.getDefaultPublisher());
-		ros.write(content, 0, content.length);
-		ros.close();
-		Thread.sleep(4000);
+		changePolicy("/test/ccn/network/daemons/repo/policyTest.xml");
 		checkNameSpace("/repoTest/data3", false);
 		checkNameSpace("/testNameSpace/data1", true);
-	}  */
+		changePolicy("/test/ccn/network/daemons/repo/origPolicy.xml");
+		checkNameSpace("/repoTest/data4", true);
+	}
 	
 	@Test
 	public void testReadFromRepo() throws Exception {
@@ -103,5 +96,18 @@ public class RepoIOTest extends RepoTestBase {
 			Assert.assertEquals(segmentContent, new String(cbuf));
 		}
 		Assert.assertEquals(-1, reader.read());
+	}
+	
+	private void changePolicy(String policyFile) throws Exception {
+		FileInputStream fis = new FileInputStream(_topdir + policyFile);
+		byte [] content = new byte[fis.available()];
+		fis.read(content);
+		fis.close();
+		RepositoryOutputStream ros = putLibrary.repoOpen(ContentName.fromNative(_globalPrefix + '/' + 
+				_repoName + '/' + Repository.REPO_DATA + '/' + Repository.REPO_POLICY), null,
+				putLibrary.getDefaultPublisher());
+		ros.write(content, 0, content.length);
+		ros.close();
+		Thread.sleep(4000);
 	}
 }

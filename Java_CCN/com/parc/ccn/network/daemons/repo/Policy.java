@@ -8,6 +8,7 @@ import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.MalformedContentNameStringException;
 
 /**
  * 
@@ -30,4 +31,10 @@ public interface Policy {
 	public ArrayList<ContentName> getNameSpace();
 	
 	public ContentObject getPolicyContent();
+	
+	public void setVersion(String version);
+	
+	public void setLocalName(String localName) throws MalformedContentNameStringException;
+	
+	public void setGlobalPrefix(String globalName) throws MalformedContentNameStringException;
 }

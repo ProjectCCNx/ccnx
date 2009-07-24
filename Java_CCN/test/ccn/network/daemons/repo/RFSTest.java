@@ -291,7 +291,7 @@ public class RFSTest extends RepoTestBase {
 	
 	@Test
 	public void testPolicy() throws Exception {
-		Repository repo = new RFSImpl();
+		Repository repo = new RFSLogImpl();
 		try {	// Test no version
 			repo.initialize(new String[] {"-root", _fileTestDir, "-policy", _topdir + "/test/ccn/network/daemons/repo/badPolicyTest1.xml"}, putLibrary);
 			Assert.fail("Bad policy file succeeded");
@@ -307,10 +307,14 @@ public class RFSTest extends RepoTestBase {
 		repo.saveContent(content);
 		checkData(repo, name, "Here's my data!");
 		ContentName outOfNameSpaceName = ContentName.fromNative("/anotherNameSpace/data1");
-		ContentObject oonsContent = ContentObject.buildContentObject(name, "Shouldn't see this".getBytes());
+		ContentObject oonsContent = ContentObject.buildContentObject(outOfNameSpaceName, "Shouldn't see this".getBytes());
 		repo.saveContent(oonsContent);
 		ContentObject testContent = repo.getContent(new Interest(outOfNameSpaceName));
 		Assert.assertTrue(testContent == null);
+		repo.initialize(new String[] {"-root", _fileTestDir, "-policy", 
+				_topdir + "/test/ccn/network/daemons/repo/origPolicy.xml", "-local", _repoName, "-global", _globalPrefix}, putLibrary);
+		repo.saveContent(oonsContent);
+		checkData(repo, outOfNameSpaceName, "Shouldn't see this");	
 	}
 	
 	private void checkData(Repository repo, ContentName name, String data) throws RepositoryException {

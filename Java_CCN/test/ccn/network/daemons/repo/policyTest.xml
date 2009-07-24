@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <policy>
-	<version id="1.3"/>
+	<version id="1.4"/>
 	<localname> TestRepository </localname>
 	<globalname> parc.com/csl/ccn/repositories </globalname>
 	<namespace> /testNameSpace </namespace>

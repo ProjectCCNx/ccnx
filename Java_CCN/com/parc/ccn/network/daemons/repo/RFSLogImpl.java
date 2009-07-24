@@ -62,7 +62,6 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 	protected String _repositoryRoot = null;
 	protected File _repositoryFile;
 	protected RepositoryInfo _info = null;
-	protected ArrayList<ContentName> _nameSpace = new ArrayList<ContentName>();
 	protected Policy _policy = null;
 
 	Map<Integer,RepoFile> _files;
@@ -81,7 +80,6 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 			ByteArrayInputStream bais = new ByteArrayInputStream(co.content());
 			try {
 				_policy.update(bais, true);
-				_nameSpace = _policy.getNameSpace();
 				ContentName policyName = ContentName.fromNative(REPO_NAMESPACE + "/" + _info.getLocalName() + "/" + REPO_POLICY);
 				ContentObject policyCo = new ContentObject(policyName, co.signedInfo(), co.content(), co.signature());
    				saveContent(policyCo);
@@ -104,7 +102,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 	}
 
 	public ArrayList<ContentName> getNamespace() {
-		return _nameSpace;
+		return _policy.getNameSpace();
 	}
 
 	public byte[] getRepoInfo(ArrayList<ContentName> names) {
@@ -201,7 +199,8 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		String localName = DEFAULT_LOCAL_NAME;
 		String globalPrefix = DEFAULT_GLOBAL_NAME;
 		String[] outArgs = args;
-		Policy policy = new BasicPolicy(null);
+		_policy = new BasicPolicy(null);
+		_policy.setVersion(CURRENT_VERSION);
 		for (int i = 0; i < args.length; i++) {
 			if (args[i].equals("-root")) {
 				if (args.length < i + 2)
@@ -214,7 +213,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 					throw new InvalidParameterException();
 				File policyFile = new File(args[i + 1]);
 				try {
-					policy.update(new FileInputStream(policyFile), false);
+					_policy.update(new FileInputStream(policyFile), false);
 				} catch (Exception e) {
 					throw new InvalidParameterException(e.getMessage());
 				}
@@ -275,6 +274,11 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		
 		String checkName = checkFile(REPO_LOCALNAME, localName, library, nameFromArgs);
 		localName = checkName != null ? checkName : localName;
+		try {
+			_policy.setLocalName(localName);
+		} catch (MalformedContentNameStringException e3) {
+			throw new RepositoryException(e3.getMessage());
+		}
 		
 		checkName = checkFile(REPO_GLOBALPREFIX, globalPrefix, library, globalFromArgs);
 		globalPrefix = checkName != null ? checkName : globalPrefix;
@@ -296,20 +300,19 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 						new Interest(ContentName.fromNative(REPO_NAMESPACE + "/" + _info.getLocalName() + "/" + REPO_POLICY)));
 				if (policyObject != null) {
 					ByteArrayInputStream bais = new ByteArrayInputStream(policyObject.content());
-					policy.update(bais, false);
+					_policy.update(bais, false);
 				}
 			} catch (MalformedContentNameStringException e) {} // None of this should happen
 			  catch (XMLStreamException e) {} 
 			  catch (IOException e) {}
 		} else {
-			saveContent(policy.getPolicyContent());
+			saveContent(_policy.getPolicyContent());
 		}
-		setPolicy(policy);
 		
-		if (_nameSpace.size() == 0) {
-			try {
-				_nameSpace.add(ContentName.fromNative("/"));
-			} catch (MalformedContentNameStringException e) {}
+		try {
+			_policy.setGlobalPrefix(globalPrefix);
+		} catch (MalformedContentNameStringException e2) {
+			throw new RepositoryException(e2.getMessage());
 		}
 		
 		return outArgs;
@@ -317,8 +320,17 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 
 
 	public void saveContent(ContentObject content) throws RepositoryException {
-		try {
-			
+		// Make sure content is within allowable nameSpace
+		boolean nameSpaceOK = false;
+		for (ContentName name : _policy.getNameSpace()) {
+			if (name.isPrefixOf(content.name())) {
+				nameSpaceOK = true;
+				break;
+			}
+		}
+		if (!nameSpaceOK)
+			return;
+		try {	
 			synchronized(_activeWriteFile) {
 				assert(null != _activeWriteFile.openFile);
 				ContentFileRef ref = _index.new ContentFileRef();
@@ -339,10 +351,6 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 
 	public void setPolicy(Policy policy) {
 		_policy = policy;
-		ArrayList<ContentName> newNameSpace = _policy.getNameSpace();
-		_nameSpace.clear();
-		for (ContentName name : newNameSpace)
-			_nameSpace.add(name);
 	}
 
 	public ContentObject get(ContentFileRef ref) {

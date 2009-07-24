@@ -28,13 +28,23 @@ public class BasicPolicy implements Policy {
 	
 	private String _version = null;
 	private byte [] _content = null;
-	private String _globalName = null;
-	private String _localName = null;
+	private ContentName _globalPrefix = null;
+	private ContentName _localName = null;
 	private boolean _localNameMatched = false;
 	private boolean _globalNameMatched = false;
+	private boolean _nameSpaceChangeRequest = false;
+	
+	protected String _repoVersion = null;	// set from repo
+	
+	private ArrayList<ContentName> _nameSpace = new ArrayList<ContentName>(0);
+	private ArrayList<ContentName> _prevNameSpace = new ArrayList<ContentName>(0);
 	
 	public BasicPolicy(String name) {
-		this._localName = name;
+		try {
+			if (null != name)
+				this._localName = ContentName.fromNative(name);
+			_nameSpace.add(ContentName.fromNative("/"));
+		} catch (MalformedContentNameStringException e) {}
 	}
 	
 	private enum PolicyValue {
@@ -63,8 +73,6 @@ public class BasicPolicy implements Policy {
 		}
 	}
 	
-	private ArrayList<ContentName> nameSpace = new ArrayList<ContentName>(0);
-
 	public boolean update(InputStream stream, boolean fromNet) throws XMLStreamException, IOException {
 		_content = new byte[stream.available()];
 		stream.read(_content);
@@ -76,6 +84,7 @@ public class BasicPolicy implements Policy {
 		_version = null;
 		_localNameMatched = false;
 		_globalNameMatched = false;
+		_nameSpaceChangeRequest = false;
 		if (!event.isStartDocument()) {
 			throw new XMLStreamException("Expected start document, got: " + event.toString());
 		}
@@ -95,7 +104,7 @@ public class BasicPolicy implements Policy {
 	}
 
 	public ArrayList<ContentName> getNameSpace() {
-		return nameSpace;
+		return _nameSpace;
 	}
 	
 	/**
@@ -106,6 +115,7 @@ public class BasicPolicy implements Policy {
 	 * @throws XMLStreamException
 	 * @throws RepositoryException 
 	 */
+	@SuppressWarnings("unchecked")
 	private XMLEvent parseXML(XMLEventReader reader, XMLEvent event, String value, String expectedValue, boolean started,
 				boolean fromNet) 
 				throws XMLStreamException, RepositoryException {
@@ -115,7 +125,7 @@ public class BasicPolicy implements Policy {
 				QName id = new QName("id");
 				Attribute idAttr = event.asStartElement().getAttributeByName(id);
 				if (idAttr != null) {
-					if (!idAttr.getValue().trim().equals(RFSImpl.CURRENT_VERSION))
+					if (!idAttr.getValue().trim().equals(_repoVersion))
 						throw new XMLStreamException("Bad version in policy file");
 					_version = value;
 				}
@@ -150,32 +160,50 @@ public class BasicPolicy implements Policy {
 					switch (PolicyValue.valueFromString(value)) {
 					case NAMESPACE:
 						String charValue = event.asCharacters().getData();
+						_prevNameSpace = (ArrayList<ContentName>) _nameSpace.clone();
+						if (!_nameSpaceChangeRequest) {
+							_nameSpace.clear();
+							if (null != _globalPrefix)
+								_nameSpace.add(_globalPrefix);
+							_nameSpaceChangeRequest = true;
+						}
 						try {
-							nameSpace.add(ContentName.fromNative(charValue.trim()));
+							_nameSpace.add(ContentName.fromNative(charValue.trim()));
 						} catch (MalformedContentNameStringException e) {
+							_nameSpace = _prevNameSpace;
 							throw new XMLStreamException("Malformed value in namespace: " + charValue);
 						}
 						break;
 					case LOCALNAME:
-						charValue = event.asCharacters().getData();
-						String localName = charValue.trim();
-						if (fromNet) {
-							if (!checkMatch(localName, _localName))
-								throw new RepositoryException("Repository local name doesn't match");
-						} else
-							_localName = localName;
+						try {
+							charValue = event.asCharacters().getData();
+							String localName = charValue.trim();
+							if (fromNet) {
+									if (!ContentName.fromNative(fixSlash(localName)).equals(_localName))
+										throw new RepositoryException("Repository local name doesn't match");
+								
+							} else
+								_localName = ContentName.fromNative(fixSlash(localName));
+						} catch (MalformedContentNameStringException e) {
+							throw new RepositoryException(e.getMessage());
+						}
 						_localNameMatched = true;
 						break;
 					case GLOBALNAME:
 						charValue = event.asCharacters().getData();
 						String globalName = charValue.trim();
+						try {
 						if (fromNet) {
-							if (!checkMatch(globalName, _globalName))
+							if (!ContentName.fromNative(fixSlash(globalName)).equals(_globalPrefix))
 								throw new RepositoryException("Repository global name doesn't match");
 						} else {
-							if (!globalName.startsWith("/"))
-								globalName = "/" + globalName;
-							_globalName = globalName;
+							if (null != _globalPrefix)
+								_nameSpace.remove(_globalPrefix);
+							_globalPrefix = ContentName.fromNative(fixSlash(globalName));
+							_nameSpace.add(_globalPrefix);
+						}
+						} catch (MalformedContentNameStringException e) {
+							throw new RepositoryException(e.getMessage());
 						}
 						_globalNameMatched = true;
 						break;
@@ -200,7 +228,7 @@ public class BasicPolicy implements Policy {
 			// a keystore for its own use, and when it starts up instantiate a key manager
 			// that uses that keystore. That key manager should be used for all of its
 			// operations.
-			return ContentObject.buildContentObject(ContentName.fromNative(_globalName + "/" + _localName +
+			return ContentObject.buildContentObject(ContentName.fromNative(_globalPrefix + "/" + _localName +
 					"/" + Repository.REPO_DATA + "/" + Repository.REPO_POLICY), 
 					_content);
 		} catch (MalformedContentNameStringException e) {
@@ -211,12 +239,26 @@ public class BasicPolicy implements Policy {
 			return null;
 		}	
 	}
+
+	public void setVersion(String version) {
+		_repoVersion = version;
+	}
+
+	public void setGlobalPrefix(String globalPrefix) throws MalformedContentNameStringException {
+		if (null == _globalPrefix) {
+			_globalPrefix = ContentName.fromNative(fixSlash(globalPrefix));
+		}
+	}
+
+	public void setLocalName(String localName) throws MalformedContentNameStringException {
+		if (null == _localName) {
+			_localName = ContentName.fromNative(fixSlash(localName));
+		}
+	}
 	
-	private boolean checkMatch(String name, String matchName) {
-		if (matchName == null)
-			return true;
-		if (name.equals(matchName))
-			return true;
-		return false;
+	private String fixSlash(String name) {
+		if (!name.startsWith("/"))
+			name = "/" + name;
+		return name;
 	}
 }
