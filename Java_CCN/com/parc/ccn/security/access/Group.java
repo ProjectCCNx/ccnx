@@ -240,7 +240,7 @@ public class Group {
 				// DKS TODO verify target public key against publisher, etc in link
 				latestPublicKey = new PublicKeyObject(lr.targetName(), _library);
 				if (!latestPublicKey.available()) {
-					Library.logger().warning("Could not retrieve public key for " + lr.targetName() + ". Gone? " + latestPublicKey.isGone());
+					Library.logger().warning("Could not retrieve public key for " + lr.targetName());
 					continue;
 				}
 				// Need to write wrapped key block and linking principal name.
@@ -289,7 +289,7 @@ public class Group {
 				// DKS TODO verify target public key against publisher, etc in link
 				latestPublicKey = new PublicKeyObject(lr.targetName(), _library);
 				if (!latestPublicKey.available()) {
-					Library.logger().warning("Could not retrieve public key for " + lr.targetName() + ". Gone? " + latestPublicKey.isGone());
+					Library.logger().warning("Could not retrieve public key for " + lr.targetName());
 					continue;
 				}
 				// Need to write wrapped key block and linking principal name.
