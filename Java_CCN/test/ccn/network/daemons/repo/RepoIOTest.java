@@ -16,6 +16,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.library.io.CCNDescriptor;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
+import com.parc.ccn.library.io.repo.RepositoryFileOutputStream;
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.network.daemons.repo.Repository;
@@ -103,11 +104,11 @@ public class RepoIOTest extends RepoTestBase {
 		byte [] content = new byte[fis.available()];
 		fis.read(content);
 		fis.close();
-		RepositoryOutputStream ros = putLibrary.repoOpen(ContentName.fromNative(_globalPrefix + '/' + 
-				_repoName + '/' + Repository.REPO_DATA + '/' + Repository.REPO_POLICY), null,
-				putLibrary.getDefaultPublisher());
-		ros.write(content, 0, content.length);
-		ros.close();
+		RepositoryFileOutputStream rfos = new RepositoryFileOutputStream(ContentName.fromNative(_globalPrefix + '/' + 
+				_repoName + '/' + Repository.REPO_DATA + '/' + Repository.REPO_POLICY),
+				putLibrary.getDefaultPublisher(), putLibrary);
+		rfos.write(content, 0, content.length);
+		rfos.close();
 		Thread.sleep(4000);
 	}
 }
