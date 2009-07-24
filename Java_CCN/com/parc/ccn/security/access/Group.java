@@ -165,7 +165,7 @@ public class Group {
 		// need to figure out if we need to know private key; if we do and we don't, throw access denied.
 		// We're deleting anyone that exists
 		MembershipList ml = membershipList(); // force retrieval if haven't already.
-		if (!ml.isGone() && ml.available() && (ml.membershipList().contents().size() > 0)) {
+		if (ml.available() && !ml.isGone() && (ml.membershipList().contents().size() > 0)) {
 			modify(manager, newMembers, ml.membershipList().contents());
 		} else {
 			modify(manager, newMembers, null);
@@ -359,8 +359,8 @@ public class Group {
 			}
 		}
 		if ((null != membersToRemove) && (!membersToRemove.isEmpty()) &&
-			(!_groupMembers.isGone()) && 
 			_groupMembers.available() && // do we wait if it's not ready? we know one exists.
+			(!_groupMembers.isGone()) && 
 			(_groupMembers.membershipList().contents().size() > 0)) {
 	
 			// There were already members. Remove them and make a new key.
