@@ -10,7 +10,7 @@ default all: jar
 check: test
 
 jar clean test: _always
-	@type $(ANT) > /dev/null && $(ANT) $@ || $(WHINE)
+	@type $(ANT) > /dev/null && $(ANT) -k $@ || $(WHINE)
 	@rm -f _always
 
 depend shared: _always
