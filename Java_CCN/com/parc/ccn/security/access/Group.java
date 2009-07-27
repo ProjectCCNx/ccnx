@@ -359,7 +359,22 @@ public class Group {
 		}
 		return sb.toString();
 	}
-
+/**
+ * Modify will add and remove members from a Group
+ * It can be used to only add members, in which case the membersToRemove list is null
+ * or it can be used to only remove members, in which case the membersToAdd list is null
+ * If both lists are passed in, then the items in the membersToAdd list are added and the
+ * items in the membersToRemove are then removed from the Group members list.
+ *  
+ * @param membersToAdd - list of group members to be added
+ * @param membersToRemove - list of group members to be removed
+ * @throws XMLStreamException
+ * @throws IOException
+ * @throws InvalidKeyException
+ * @throws InvalidCipherTextException
+ * @throws AccessDeniedException
+ * @throws ConfigurationException
+ */
 	public void modify(Collection<LinkReference> membersToAdd,
 					   Collection<LinkReference> membersToRemove) 
 				throws XMLStreamException, IOException, InvalidKeyException, 
