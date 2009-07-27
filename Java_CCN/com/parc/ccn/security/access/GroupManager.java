@@ -118,31 +118,7 @@ public class GroupManager {
 		}
 	}
 	
-	public Group modifyGroup(String friendlyName, 
-							ArrayList<LinkReference> membersToAdd, 
-							ArrayList<LinkReference> membersToRemove) 
-				throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException, AccessDeniedException, ConfigurationException {
-		Group theGroup = getGroup(friendlyName);
 		
-		// DKS we really want to be sure we get the group if it's out there...
-		if (null != theGroup) {
-			Library.logger().info("Got existing group to modify: " + theGroup);
-			theGroup.modify(this, membersToAdd, membersToRemove);
-		} else {
-			Library.logger().info("No existing group to modify: " + friendlyName + " adding new one.");
-			theGroup = createGroup(friendlyName, membersToAdd);
-		}
-		return theGroup;
-	}
-	
-	public Group addUsers(String friendlyName, ArrayList<LinkReference> newUsers) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException, AccessDeniedException, ConfigurationException {
-		return modifyGroup(friendlyName, newUsers, null);
-	}
-	
-	public Group removeUsers(String friendlyName, ArrayList<LinkReference> removedUsers) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException, AccessDeniedException, ConfigurationException {
-		return modifyGroup(friendlyName, null, removedUsers);
-	}
-	
 	public void deleteGroup(String friendlyName) throws IOException, ConfigurationException, XMLStreamException {
 		Group existingGroup = getGroup(friendlyName);
 		
