@@ -19,6 +19,8 @@ import java.rmi.server.RemoteObject;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.network.CCNNetworkManager;
@@ -40,6 +42,8 @@ public class Daemon {
 	public static final String PROP_DAEMON_DEBUG_PORT = "ccn.daemon.debug";
 	public static final String PROP_DAEMON_OUTPUT = "ccn.daemon.output";
 	public static final String PROP_DAEMON_PROFILE = "ccn.daemon.profile";
+	
+	public static final int STOP_TIMEOUT = 30000;  // 30 seconds
 
 	/**
 	 * Interface describing the RMI server object sitting inside
@@ -50,6 +54,24 @@ public class Daemon {
 		public void shutDown() throws RemoteException;
 		public boolean signal(String name) throws RemoteException;
 	}
+	
+	public class StopTimer extends TimerTask {
+		private String _daemonName;
+		
+		private StopTimer(String daemonName) {
+			_daemonName = daemonName;
+		}
+
+		@Override
+		public void run() {
+			System.out.println("Attempt to contact daemon " + _daemonName + " timed out");
+			Library.logger().info("Attempt to contact daemon " + _daemonName + " timed out");
+			cleanupDaemon(_daemonName);
+			System.exit(1);
+		}
+		
+	}
+
 
 	/**
 	 * The thread that runs inside the daemon, doing work
@@ -351,13 +373,17 @@ public class Daemon {
 		}
 	}
 
-	protected static void stopDaemon(String daemonName) throws FileNotFoundException, IOException, ClassNotFoundException {
+	protected static void stopDaemon(Daemon daemon) throws FileNotFoundException, IOException, ClassNotFoundException {
 
+		String daemonName = daemon.daemonName();
 		if (!getRMIFile(daemonName).exists()) {
 			System.out.println("Daemon " + daemonName + " does not appear to be running.");
 			Library.logger().info("Daemon " + daemonName + " does not appear to be running.");
 			return;
 		}
+		
+		Timer stopTimer = new Timer(false);
+		stopTimer.schedule(daemon.new StopTimer(daemonName), STOP_TIMEOUT);
 
 		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName)));
 
@@ -370,12 +396,15 @@ public class Daemon {
 			System.out.println("Daemon " + daemonName + " is shut down.");
 			Library.logger().info("Daemon " + daemonName + " is shut down.");
 		} catch(RemoteException e) {
-			// looks like the RMI file is still here, but the daemon is gone. let's delete the file, then,
-			System.out.println("Daemon " + daemonName + " seems to have died some other way, cleaning up state...");
-			Library.logger().info("Daemon " + daemonName + " seems to have died some other way, cleaning up state...");
-			getRMIFile(daemonName).delete();
+			cleanupDaemon(daemonName);
 		}
-
+	}
+	
+	protected static void cleanupDaemon(String daemonName) {
+		// looks like the RMI file is still here, but the daemon is gone. let's delete the file, then,
+		System.out.println("Daemon " + daemonName + " seems to have died some other way, cleaning up state...");
+		Library.logger().info("Daemon " + daemonName + " seems to have died some other way, cleaning up state...");
+		getRMIFile(daemonName).delete();
 	}
 
 	protected static void signalDaemon(String daemonName, String sigName) throws FileNotFoundException, IOException, ClassNotFoundException {
@@ -459,7 +488,7 @@ public class Daemon {
 			  case MODE_STOP:
 				// Don't initialize since this process will never be the daemon
 				// This will signal daemon to terminate
-				stopDaemon(daemon.daemonName());
+				stopDaemon(daemon);
 				System.exit(0);
 			  case MODE_DAEMON:
 				daemon.initialize(args, daemon);
