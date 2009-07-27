@@ -1579,8 +1579,12 @@ update_forward_to(struct ccnd *h, struct nameprefix_entry *npe)
         ccn_indexbuf_destroy(&npe->forward_to);
 }
 
-/*!
+/**
  * This is where we consult the interest forwarding table.
+ * @param h is the ccnd handle
+ * @param from is the handle for the originating face (may be NULL).
+ * @param msg points to the ccnb-encoded interest message
+ * @param pi must be the parse information for msg
  * @param npe should be the result of the longest-match lookup
  * @result Newly allocated set of outgoing faceids
  */

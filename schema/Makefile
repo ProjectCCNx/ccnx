@@ -7,6 +7,8 @@ default all clean depend coverage check test shared install uninstall: _always
 	  (cd "$$i" && pwd && $(MAKE) $@) || break;			\
 	done
 
+documentation: _always
+
 _always:
 
 .PHONY: _always

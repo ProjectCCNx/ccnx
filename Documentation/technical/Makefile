@@ -2,7 +2,9 @@
 
 DERIVED_HTML = DigestComponent.html InterestMessage.html NameConventions.html Staleness.html URI.html
 
-default all: $(DERIVED_HTML)
+default:
+
+all documentation: $(DERIVED_HTML)
 
 clean:
 	rm -f $(DERIVED_HTML)
@@ -22,7 +24,7 @@ Staleness.html: Staleness.txt
 URI.html: URI.txt
 	asciidoc URI.txt
 
-default all clean depend test check shared install uninstall: _always
+default all clean depend test check shared documentation install uninstall: _always
 
 _always:
 

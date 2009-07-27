@@ -9,6 +9,8 @@ WHINE = sh -c "type $(ANT) 2>/dev/null ||                  \
 default all: jar
 check: test
 
+# Note - change this if documentation target is added to build.xml
+documentation: _always
 jar clean: _always
 	@type $(ANT) > /dev/null && $(ANT) $@ || $(WHINE)
 	@rm -f _always
@@ -18,7 +20,7 @@ depend shared: _always
 install uninstall test:
 	@echo No $@ target for $$(pwd -L)
  
-default all clean depend test check shared install uninstall: _always
+default all clean depend test check shared documentation install uninstall: _always
 
 _always:
 

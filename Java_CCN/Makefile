@@ -9,7 +9,7 @@ WHINE = sh -c "type $(ANT) 2>/dev/null ||                  \
 default all: jar
 check: test
 
-jar clean test: _always
+jar clean test documentation: _always
 	@type $(ANT) > /dev/null && $(ANT) -k $@ || $(WHINE)
 	@rm -f _always
 

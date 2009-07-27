@@ -56,4 +56,9 @@ ccnd.tar: MANIFEST
 	tar cf ccnd.tar -T MANIFEST
 	mv MANIFEST 00MANIFEST
 
+documentation: _always
+	doxygen
+
 _always:
+
+.PHONY: _always
