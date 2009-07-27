@@ -52,16 +52,17 @@ public class Group {
 	private CCNLibrary _library;
 	private GroupManager _groupManager;
 	
-	public Group(ContentName namespace, String groupFriendlyName, CCNLibrary library) throws IOException, ConfigurationException, XMLStreamException {
+	public Group(ContentName namespace, String groupFriendlyName, CCNLibrary library,GroupManager manager) throws IOException, ConfigurationException, XMLStreamException {
 		_library = library;
 		_groupNamespace = namespace;
 		_groupFriendlyName = groupFriendlyName;
 		_groupPublicKey = new PublicKeyObject(AccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), _library);
 		_groupPublicKey.updateInBackground(true);
+		_groupManager = manager;
 	}
 	
-	public Group(ContentName groupName, CCNLibrary library) throws IOException, ConfigurationException, XMLStreamException {
-		this(groupName.parent(), AccessControlProfile.groupNameToFriendlyName(groupName), library);
+	public Group(ContentName groupName, CCNLibrary library,GroupManager manager) throws IOException, ConfigurationException, XMLStreamException {
+		this(groupName.parent(), AccessControlProfile.groupNameToFriendlyName(groupName), library,manager);
 	}
 	
 	/**
@@ -69,12 +70,13 @@ public class Group {
 	 * @return
 	 */
 	Group(ContentName namespace, String groupFriendlyName, MembershipList members, 
-		  PublicKeyObject publicKey, CCNLibrary library) {
+		  PublicKeyObject publicKey, CCNLibrary library,GroupManager manager) {
 		_library = library;
 		_groupNamespace = namespace;
 		_groupFriendlyName = groupFriendlyName;
 		_groupMembers = members;
 		_groupPublicKey = publicKey;
+		_groupManager = manager;
 	}
 	
 	/**
@@ -87,9 +89,8 @@ public class Group {
 	 */
 	Group(ContentName namespace, String groupFriendlyName, MembershipList members, 
 					CCNLibrary library, GroupManager manager) throws XMLStreamException, IOException, ConfigurationException, InvalidKeyException {
-		this(namespace, groupFriendlyName, members, null, library);
-		createGroupPublicKey(manager, members);
-		_groupManager = manager;
+		this(namespace, groupFriendlyName, members, null, library,manager);
+		createGroupPublicKey(manager, members);		
 	}
 	
 	
@@ -97,9 +98,7 @@ public class Group {
 			throws XMLStreamException, IOException, InvalidKeyException,
 			InvalidCipherTextException, AccessDeniedException,
 			ConfigurationException {
-		
-		modify(newUsers, null);
-						
+		modify(newUsers, null);						
 	}
 
 	public void removeUsers( ArrayList<LinkReference> removedUsers) throws XMLStreamException,
@@ -359,6 +358,7 @@ public class Group {
 		}
 		return sb.toString();
 	}
+
 /**
  * Modify will add and remove members from a Group
  * It can be used to only add members, in which case the membersToRemove list is null
