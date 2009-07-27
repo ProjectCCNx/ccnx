@@ -91,33 +91,21 @@ public class Group {
 		createGroupPublicKey(manager, members);
 		_groupManager = manager;
 	}
-
-	//NSG added
-	//Puts the group related modification methods into the Group object
-	//
 	
-	public Group modifyGroup(String friendlyName,
-			ArrayList<LinkReference> membersToAdd,
-			ArrayList<LinkReference> membersToRemove)
-	throws XMLStreamException, IOException, InvalidKeyException,
-			InvalidCipherTextException, AccessDeniedException,
-			ConfigurationException {
-		modify(membersToAdd, membersToRemove);
-		return this;
-	}
-
-	public Group addUsers(ArrayList<LinkReference> newUsers)
+	
+	public void addUsers(ArrayList<LinkReference> newUsers)
 			throws XMLStreamException, IOException, InvalidKeyException,
 			InvalidCipherTextException, AccessDeniedException,
 			ConfigurationException {
-		return modifyGroup(this._groupFriendlyName, newUsers, null);
+		
+		modify(newUsers, null);
+						
 	}
 
-	public Group removeUsers(String friendlyName,
-			ArrayList<LinkReference> removedUsers) throws XMLStreamException,
+	public void removeUsers( ArrayList<LinkReference> removedUsers) throws XMLStreamException,
 			IOException, InvalidKeyException, InvalidCipherTextException,
 			AccessDeniedException, ConfigurationException {
-		return modifyGroup(friendlyName, null, removedUsers);
+		modify(null, removedUsers);
 	}
 
 	public boolean ready() {
@@ -134,6 +122,15 @@ public class Group {
 	
 	public String friendlyName() { return _groupFriendlyName; }
 
+	/**
+	 * Returns a list containing all the members of a Group object
+	 * Sets up the list to automatically update in the background
+	 * 
+	 * @return MembershipList- a list containing all the members of a Group object
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 * @throws ConfigurationException
+	 */
 	public MembershipList membershipList() throws XMLStreamException, IOException, ConfigurationException { 
 		if (null == _groupMembers) {
 			// Read constructor. Synchronously updates.
