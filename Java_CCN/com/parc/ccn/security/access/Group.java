@@ -96,22 +96,29 @@ public class Group {
 	//Puts the group related modification methods into the Group object
 	//
 	
-	public Group modifyGroup(String friendlyName, 
-			ArrayList<LinkReference> membersToAdd, 
-			ArrayList<LinkReference> membersToRemove) 
-throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException, AccessDeniedException, ConfigurationException {
-
+	public Group modifyGroup(String friendlyName,
+			ArrayList<LinkReference> membersToAdd,
+			ArrayList<LinkReference> membersToRemove)
+	throws XMLStreamException, IOException, InvalidKeyException,
+			InvalidCipherTextException, AccessDeniedException,
+			ConfigurationException {
 		modify(membersToAdd, membersToRemove);
-return this;
-}
+		return this;
+	}
 
-public Group addUsers(ArrayList<LinkReference> newUsers) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException, AccessDeniedException, ConfigurationException {
-return modifyGroup(this._groupFriendlyName, newUsers, null);
-}
+	public Group addUsers(ArrayList<LinkReference> newUsers)
+			throws XMLStreamException, IOException, InvalidKeyException,
+			InvalidCipherTextException, AccessDeniedException,
+			ConfigurationException {
+		return modifyGroup(this._groupFriendlyName, newUsers, null);
+	}
 
-public Group removeUsers(String friendlyName, ArrayList<LinkReference> removedUsers) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException, AccessDeniedException, ConfigurationException {
-return modifyGroup(friendlyName, null, removedUsers);
-}
+	public Group removeUsers(String friendlyName,
+			ArrayList<LinkReference> removedUsers) throws XMLStreamException,
+			IOException, InvalidKeyException, InvalidCipherTextException,
+			AccessDeniedException, ConfigurationException {
+		return modifyGroup(friendlyName, null, removedUsers);
+	}
 
 	public boolean ready() {
 		return _groupPublicKey.available();
