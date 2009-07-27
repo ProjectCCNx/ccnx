@@ -1,3 +1,9 @@
+/*
+ * ccn_buf_decoder.c
+ *  
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
+ */
+
 #include <stdlib.h>
 #include <string.h>
 #include <ccn/bloom.h>
