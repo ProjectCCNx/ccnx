@@ -337,7 +337,7 @@
       <xs:element name="Host" type="xs:string" minOccurs="0" maxOccurs="1"/>
       <xs:element name="Port" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
       <xs:element name="MulticastInterface" type="xs:string" minOccurs="0" maxOccurs="1"/>
-      <xs:element name="Scope" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="MulticastTTL" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
       <xs:element name="FreshnessSeconds" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
   </xs:sequence>
 </xs:complexType>
