@@ -43,7 +43,7 @@ test: default keystore_check encodedecodetest
 	./encodedecodetest -o /dev/null
 
 keystore_check: ccn_initkeystore.sh
-	test -f $$HOME/.ccn/.ccn_keystore || $(MAKE) new_keystore
+	test -f $$HOME/.ccn/.ccn_keystore || $(MAKE) -f dir.mk new_keystore
 
 new_keystore:
 	@echo === CCN Keystore not found in your home directory
