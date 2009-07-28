@@ -22,7 +22,7 @@ public class BitBucketRepository implements Repository {
 		return null;
 	}
 
-	public ArrayList<ContentName> getNamesWithPrefix(Interest i) {
+	public NameEnumerationResponse getNamesWithPrefix(Interest i) {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -44,9 +44,9 @@ public class BitBucketRepository implements Repository {
 		return null;
 	}
 
-	public void saveContent(ContentObject content) throws RepositoryException {
+	public NameEnumerationResponse saveContent(ContentObject content) throws RepositoryException {
 		// TODO Auto-generated method stub
-		
+		return null;
 	}
 
 	public void setPolicy(Policy policy) {

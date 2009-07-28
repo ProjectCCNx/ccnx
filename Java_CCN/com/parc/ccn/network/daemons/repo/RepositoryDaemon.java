@@ -2,6 +2,7 @@ package com.parc.ccn.network.daemons.repo;
 
 import java.io.IOException;
 import java.security.InvalidParameterException;
+import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
@@ -17,6 +18,7 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
@@ -25,6 +27,7 @@ import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.io.CCNWriter;
 import com.parc.ccn.library.profiles.CommandMarkers;
 import com.parc.ccn.network.daemons.Daemon;
+import com.parc.ccn.network.daemons.repo.Repository.NameEnumerationResponse;
 
 /**
  * High level repository implementation. Handles communication with
@@ -347,6 +350,33 @@ public class RepositoryDaemon extends Daemon {
 	public int getFreshness() {
 		return _ephemeralFreshness;
 	}
+	
+	public void sendEnumerationResponse(NameEnumerationResponse ner){
+		if(ner!=null && ner.prefix!=null && ner.names!=null && ner.names.size()>0){
+			try{
+				
+				//the following 6 lines are to be deleted after Collections are refactored
+				LinkReference[] temp = new LinkReference[ner.names.size()];
+				for(int x = 0; x < ner.names.size(); x++)
+					temp[x] = new LinkReference(ner.names.get(x));
+				
+				
+				_library.put(ner.prefix, temp);
+				
+				//CCNEncodableCollectionData ecd = new CCNEncodableCollectionData(collectionName, cd);
+				//ecd.save();
+				//System.out.println("saved ecd.  name: "+ecd.getName());
+			}
+			catch(IOException e){
+				
+			}
+			catch(SignatureException e) {
+				Library.logStackTrace(Level.WARNING, e);
+				e.printStackTrace();
+			}
+		}
+	}
+	
 	
 	public static void main(String[] args) {
 		Daemon daemon = null;
