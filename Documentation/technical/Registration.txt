@@ -22,12 +22,15 @@ is the FaceInstance.
 
 To create a new face ccndc signs a content object NFBLOB containing null name
 and a FaceInstance containing
-      * Action "newface"
-      * other fields necessary to set up a socket
+
+  - Action "newface"
+  - other fields necessary to set up a socket
 
 ccndc then expresses an interest in /ccn/CCNDID/newface/NFBLOB
-      * CCNDID is the pubid of the local ccnd
-      * NFBLOB is the signed content object
+
+  - CCNDID is the pubid of the local ccnd
+  - NFBLOB is the signed content object
+
 The verb, "newface" occus in both the interest prefix, for dispatch,
 and in the NFBLOB, so that it is signed.
 
