@@ -486,17 +486,17 @@ public class KeyDirectory extends EnumeratedNameList {
 		WrappedKeyObject wko = 
 			new WrappedKeyObject(getWrappedKeyNameForKeyID(WrappedKey.wrappingKeyIdentifier(publicKey)),
 								 wrappedKey, _manager.library());
-		wko.save();
+		wko.saveToRepository();
 		LinkObject lo = new LinkObject(getWrappedKeyNameForPrincipal(publicKeyName), new LinkReference(wko.getName()), _manager.library());
-		lo.save();
+		lo.saveToRepository();
 	}
-
+	
 	public void addPrivateKeyBlock(PrivateKey privateKey, Key privateKeyWrappingKey) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException {
 		
 		WrappedKey wrappedKey = WrappedKey.wrapKey(privateKey, null, null, privateKeyWrappingKey);	
 		wrappedKey.setWrappingKeyIdentifier(privateKeyWrappingKey);
 		WrappedKeyObject wko = new WrappedKeyObject(getPrivateKeyBlockName(), wrappedKey, _manager.library());
-		wko.save();
+		wko.saveToRepository();
 	}
 
 	/**
@@ -529,7 +529,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		wrappedKey.setWrappingKeyIdentifier(supersedingKey);
 		wrappedKey.setWrappingKeyName(supersedingKeyName);
 		WrappedKeyObject wko = new WrappedKeyObject(oldKeySupersededBlockName, wrappedKey, library);
-		wko.save();
+		wko.saveToRepository();
 	}
 
 	/**
@@ -547,7 +547,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 		LinkAuthenticator la = (null != previousKeyPublisher) ? new LinkAuthenticator(previousKeyPublisher) : null;
 		LinkObject pklo = new LinkObject(getPreviousKeyBlockName(), new LinkReference(previousKey,la), _manager.library());
-		pklo.save();
+		pklo.saveToRepository();
 	}
 	
 	public void addPreviousKeyBlock(Key oldPrivateKeyWrappingKey,
@@ -558,6 +558,6 @@ public class KeyDirectory extends EnumeratedNameList {
 		wrappedKey.setWrappingKeyIdentifier(newPrivateKeyWrappingKey);
 		wrappedKey.setWrappingKeyName(supersedingKeyName);
 		WrappedKeyObject wko = new WrappedKeyObject(getPreviousKeyBlockName(), wrappedKey, _manager.library());
-		wko.save();
+		wko.saveToRepository();
 	}
 }

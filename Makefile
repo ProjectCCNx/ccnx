@@ -3,7 +3,7 @@
 SUBDIRS = src schema Java_CCN apps/containerApp Documentation/technical
 PACKLIST = Makefile build.xml $(SUBDIRS)
 
-default all clean depend test check shared install uninstall: _always
+default all clean depend test check shared documentation install uninstall: _always
 	for i in $(SUBDIRS); do         \
 	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
 	done

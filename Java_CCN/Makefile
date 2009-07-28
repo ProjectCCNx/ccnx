@@ -1,5 +1,4 @@
 # Makefile for ccn/Java_CCN
-# Use ant to actually do the work here
 
 ANT = ant
 WHINE = sh -c "type $(ANT) 2>/dev/null ||                  \
@@ -9,11 +8,13 @@ WHINE = sh -c "type $(ANT) 2>/dev/null ||                  \
 default all: jar
 check: test
 
+# Use ant to actually do the work for these targets
 jar clean test: _always
-	@type $(ANT) > /dev/null && $(ANT) $@ || $(WHINE)
+	@type $(ANT) > /dev/null && $(ANT) -k $@ || $(WHINE)
 	@rm -f _always
 
-depend shared: _always
+documentation: _always
+	doxygen
 
 install uninstall:
 	@echo No $@ target for $$(pwd -L)

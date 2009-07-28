@@ -8,6 +8,7 @@ import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.Collection;
 
 //Right now use javax.jcr version; in java 1.7, will be java.nio.file.AccessDeniedException.
@@ -49,17 +50,19 @@ public class Group {
 	private MembershipList _groupMembers; 
 	private String _groupFriendlyName;
 	private CCNLibrary _library;
+	private GroupManager _groupManager;
 	
-	public Group(ContentName namespace, String groupFriendlyName, CCNLibrary library) throws IOException, ConfigurationException, XMLStreamException {
+	public Group(ContentName namespace, String groupFriendlyName, CCNLibrary library,GroupManager manager) throws IOException, ConfigurationException, XMLStreamException {
 		_library = library;
 		_groupNamespace = namespace;
 		_groupFriendlyName = groupFriendlyName;
 		_groupPublicKey = new PublicKeyObject(AccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), _library);
 		_groupPublicKey.updateInBackground(true);
+		_groupManager = manager;
 	}
 	
-	public Group(ContentName groupName, CCNLibrary library) throws IOException, ConfigurationException, XMLStreamException {
-		this(groupName.parent(), AccessControlProfile.groupNameToFriendlyName(groupName), library);
+	public Group(ContentName groupName, CCNLibrary library,GroupManager manager) throws IOException, ConfigurationException, XMLStreamException {
+		this(groupName.parent(), AccessControlProfile.groupNameToFriendlyName(groupName), library,manager);
 	}
 	
 	/**
@@ -67,12 +70,13 @@ public class Group {
 	 * @return
 	 */
 	Group(ContentName namespace, String groupFriendlyName, MembershipList members, 
-		  PublicKeyObject publicKey, CCNLibrary library) {
+		  PublicKeyObject publicKey, CCNLibrary library,GroupManager manager) {
 		_library = library;
 		_groupNamespace = namespace;
 		_groupFriendlyName = groupFriendlyName;
 		_groupMembers = members;
 		_groupPublicKey = publicKey;
+		_groupManager = manager;
 	}
 	
 	/**
@@ -85,10 +89,24 @@ public class Group {
 	 */
 	Group(ContentName namespace, String groupFriendlyName, MembershipList members, 
 					CCNLibrary library, GroupManager manager) throws XMLStreamException, IOException, ConfigurationException, InvalidKeyException {
-		this(namespace, groupFriendlyName, members, null, library);
-		createGroupPublicKey(manager, members);
+		this(namespace, groupFriendlyName, members, null, library,manager);
+		createGroupPublicKey(manager, members);		
 	}
 	
+	
+	public void addUsers(ArrayList<LinkReference> newUsers)
+			throws XMLStreamException, IOException, InvalidKeyException,
+			InvalidCipherTextException, AccessDeniedException,
+			ConfigurationException {
+		modify(newUsers, null);						
+	}
+
+	public void removeUsers( ArrayList<LinkReference> removedUsers) throws XMLStreamException,
+			IOException, InvalidKeyException, InvalidCipherTextException,
+			AccessDeniedException, ConfigurationException {
+		modify(null, removedUsers);
+	}
+
 	public boolean ready() {
 		return _groupPublicKey.available();
 	}
@@ -103,6 +121,15 @@ public class Group {
 	
 	public String friendlyName() { return _groupFriendlyName; }
 
+	/**
+	 * Returns a list containing all the members of a Group object
+	 * Sets up the list to automatically update in the background
+	 * 
+	 * @return MembershipList- a list containing all the members of a Group object
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 * @throws ConfigurationException
+	 */
 	public MembershipList membershipList() throws XMLStreamException, IOException, ConfigurationException { 
 		if (null == _groupMembers) {
 			// Read constructor. Synchronously updates.
@@ -158,17 +185,17 @@ public class Group {
 		return null;
 	}
 
-	public void setMembershipList(GroupManager manager,
-								  Collection<LinkReference> newMembers) 
+	public void setMembershipList(GroupManager groupManager, Collection<LinkReference> newMembers) 
 					throws XMLStreamException, IOException, 
 						InvalidKeyException, InvalidCipherTextException, AccessDeniedException, ConfigurationException {
 		// need to figure out if we need to know private key; if we do and we don't, throw access denied.
 		// We're deleting anyone that exists
+		this._groupManager = groupManager;
 		MembershipList ml = membershipList(); // force retrieval if haven't already.
-		if (!ml.isGone() && ml.available() && (ml.membershipList().contents().size() > 0)) {
-			modify(manager, newMembers, ml.membershipList().contents());
+		if (ml.available() && !ml.isGone() && (ml.membershipList().contents().size() > 0)) {
+			modify(newMembers, ml.membershipList().contents());
 		} else {
-			modify(manager, newMembers, null);
+			modify(newMembers, null);
 		}
 	}
 	
@@ -240,7 +267,7 @@ public class Group {
 				// DKS TODO verify target public key against publisher, etc in link
 				latestPublicKey = new PublicKeyObject(lr.targetName(), _library);
 				if (!latestPublicKey.available()) {
-					Library.logger().warning("Could not retrieve public key for " + lr.targetName() + ". Gone? " + latestPublicKey.isGone());
+					Library.logger().warning("Could not retrieve public key for " + lr.targetName());
 					continue;
 				}
 				// Need to write wrapped key block and linking principal name.
@@ -289,7 +316,7 @@ public class Group {
 				// DKS TODO verify target public key against publisher, etc in link
 				latestPublicKey = new PublicKeyObject(lr.targetName(), _library);
 				if (!latestPublicKey.available()) {
-					Library.logger().warning("Could not retrieve public key for " + lr.targetName() + ". Gone? " + latestPublicKey.isGone());
+					Library.logger().warning("Could not retrieve public key for " + lr.targetName());
 					continue;
 				}
 				// Need to write wrapped key block and linking principal name.
@@ -332,8 +359,23 @@ public class Group {
 		return sb.toString();
 	}
 
-	public void modify(GroupManager manager,
-					   Collection<LinkReference> membersToAdd,
+/**
+ * Modify will add and remove members from a Group
+ * It can be used to only add members, in which case the membersToRemove list is null
+ * or it can be used to only remove members, in which case the membersToAdd list is null
+ * If both lists are passed in, then the items in the membersToAdd list are added and the
+ * items in the membersToRemove are then removed from the Group members list.
+ *  
+ * @param membersToAdd - list of group members to be added
+ * @param membersToRemove - list of group members to be removed
+ * @throws XMLStreamException
+ * @throws IOException
+ * @throws InvalidKeyException
+ * @throws InvalidCipherTextException
+ * @throws AccessDeniedException
+ * @throws ConfigurationException
+ */
+	public void modify(Collection<LinkReference> membersToAdd,
 					   Collection<LinkReference> membersToRemove) 
 				throws XMLStreamException, IOException, InvalidKeyException, 
 						InvalidCipherTextException, AccessDeniedException, ConfigurationException {
@@ -359,8 +401,8 @@ public class Group {
 			}
 		}
 		if ((null != membersToRemove) && (!membersToRemove.isEmpty()) &&
-			(!_groupMembers.isGone()) && 
 			_groupMembers.available() && // do we wait if it's not ready? we know one exists.
+			(!_groupMembers.isGone()) && 
 			(_groupMembers.membershipList().contents().size() > 0)) {
 	
 			// There were already members. Remove them and make a new key.
@@ -370,14 +412,14 @@ public class Group {
 		if (removedMembers) {
 			// Don't save membership list till we know we can update private key.
 			// If we can't update the private key, this will throw AccessDeniedException.
-			newGroupPublicKey(manager, _groupMembers); 
+			newGroupPublicKey(_groupManager, _groupMembers); 
 		} else if (addedMembers) {
 			// additions only. Don't have to make  a new key if one exists,
 			// just rewrap it for added members.
 			if (null != _groupPublicKey.publicKey()) {
-				updateGroupPublicKey(manager, membersToAdd);
+				updateGroupPublicKey(_groupManager, membersToAdd);
 			} else {
-				createGroupPublicKey(manager, _groupMembers);
+				createGroupPublicKey(_groupManager, _groupMembers);
 			}
 		}
 		// Don't actually save the new membership list till we're sure we can update the

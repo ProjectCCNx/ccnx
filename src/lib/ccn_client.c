@@ -190,6 +190,7 @@ ccn_create(void)
 
 /**
  * Connect to local ccnd.
+ * @param h is a ccn library handle
  * @param name is the name of the unix-domain socket to connect to;
  *             use NULL to get the default.
  * @returns the fd for the connection, or -1 for error.
@@ -1182,11 +1183,10 @@ ccn_clean_all_interests(struct ccn *h)
 }
 
 /**
- * Dispatch a message through the registered upcalls.
+ * Process any scheduled operations that are due.
  * This is not used by normal ccn clients, but is made available for use
  * by ccnd to run its internal client.
  * @param h is the ccn handle.
- * @param msg is the ccnb-encoded Interest or ContentObject.
  * @returns the number of microseconds until the next thing needs to happen.
  */
 int
@@ -1374,9 +1374,14 @@ handle_simple_incoming_content(
  * @param h is the ccn handle. If NULL or ccn_get is called from inside
  *        an upcall, a new connection will be used and upcalls from other
  *        requests will not be processed while ccn_get is active.
+ * @param name holds a ccnb-encoded Name
+ * @param interest_template conveys other fields to be used in the interest
+ *        (may be NULL).
+ * @param timeout_ms limits the time spent waiting for an answer (milliseconds).
  * @param pcobuf may be supplied to save the client the work of re-parsing the
  *        ContentObject; may be NULL if this information is not actually needed.
  * @param compsbuf works similarly.
+ * @param resultbuf is updated to contain the ccnb-encoded ContentObject.
  * @returns 0 for success, -1 for an error.
  */
 int
