@@ -17,6 +17,7 @@ import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.profiles.CommandMarkers;
+import com.parc.ccn.network.daemons.repo.Repository.NameEnumerationResponse;
 
 /**
  * 
@@ -130,32 +131,11 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		//else if(Arrays.equals(marker, CCNNameEnumerator.NEMARKER)){
 		//System.out.println("handling interest: "+interest.name().toString());
 		//ContentName prefixName = interest.name().cut(CCNNameEnumerator.NEMARKER);
-		ArrayList<ContentName> names = _daemon.getRepository().getNamesWithPrefix(interest);
-		if(names!=null){
-			try{
-				//the new return name (with the proper version time) is returned as the last name in the list
-				ContentName collectionName = names.remove(names.size()-1);
-				//ContentName collectionName = new ContentName(prefixName, CCNNameEnumerator.NEMARKER);
-				
-				//the following 6 lines are to be deleted after Collections are refactored
-				LinkReference[] temp = new LinkReference[names.size()];
-				for(int x = 0; x < names.size(); x++)
-					temp[x] = new LinkReference(names.get(x));
-				
-				
-				_library.put(collectionName, temp);
-				
-				//CCNEncodableCollectionData ecd = new CCNEncodableCollectionData(collectionName, cd);
-				//ecd.save();
-				//System.out.println("saved ecd.  name: "+ecd.getName());
-			}
-			catch(IOException e){
-				
-			}
-			catch(SignatureException e) {
-				Library.logStackTrace(Level.WARNING, e);
-				e.printStackTrace();
-			}
-		}
+		
+		NameEnumerationResponse ner = _daemon.getRepository().getNamesWithPrefix(interest);
+		if(ner!=null && ner.names!=null)
+			_daemon.sendEnumerationResponse(ner);
 	}
+	
+	
 }

@@ -97,7 +97,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		return _index.get(interest, this);
 	}
 
-	public ArrayList<ContentName> getNamesWithPrefix(Interest i) {
+	public NameEnumerationResponse getNamesWithPrefix(Interest i) {
 		return _index.getNamesWithPrefix(i, this);
 	}
 
@@ -175,7 +175,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 								rfile.openFile = null;
 								break;
 							}
-							_index.insert(tmp, ref, rfile.file.lastModified(), this);
+							_index.insert(tmp, ref, rfile.file.lastModified(), this, null);
 						}
 						_files.put(index, rfile);
 					} catch (NumberFormatException e) {
@@ -319,7 +319,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 	}
 
 
-	public void saveContent(ContentObject content) throws RepositoryException {
+	public NameEnumerationResponse saveContent(ContentObject content) throws RepositoryException {
 		// Make sure content is within allowable nameSpace
 		boolean nameSpaceOK = false;
 		for (ContentName name : _policy.getNameSpace()) {
@@ -329,8 +329,9 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 			}
 		}
 		if (!nameSpaceOK)
-			return;
+			return null;
 		try {	
+			NameEnumerationResponse ner = new NameEnumerationResponse();
 			synchronized(_activeWriteFile) {
 				assert(null != _activeWriteFile.openFile);
 				ContentFileRef ref = _index.new ContentFileRef();
@@ -340,7 +341,14 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 				OutputStream os = new RandomAccessOutputStream(_activeWriteFile.openFile);
 				content.encode(os);
 				_activeWriteFile.nextWritePos = _activeWriteFile.openFile.getFilePointer();
-				_index.insert(content, ref, System.currentTimeMillis(), this);
+				_index.insert(content, ref, System.currentTimeMillis(), this, ner);
+				if(ner==null || ner.prefix==null){
+					Library.logger().finest("new content did not trigger an interest flag");
+				}
+				else{
+					Library.logger().info("new content was added where there was a name enumeration response interest flag");
+				}
+				return ner;
 			}
 		} catch (IOException e) {
 			throw new RepositoryException("Failed to write content: " + e.getMessage());

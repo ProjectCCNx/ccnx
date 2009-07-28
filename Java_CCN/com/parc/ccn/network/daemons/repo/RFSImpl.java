@@ -403,7 +403,7 @@ public class RFSImpl implements Repository {
 	 *     add the data to the new directory. 
 	 * @throws RepositoryException 
 	 */
-	public void saveContent(ContentObject content) throws RepositoryException {
+	public NameEnumerationResponse saveContent(ContentObject content) throws RepositoryException {
 		File file = null;
 		ContentName newName = content.name().clone();
 		newName.components().add(content.contentDigest());
@@ -421,7 +421,7 @@ public class RFSImpl implements Repository {
 					prevContent = getContentFromFile(file);
 					if (prevContent != null) {
 						if (prevContent.equals(content))
-							return;
+							return null;
 					}
 					file.delete();
 					file.mkdir();
@@ -451,6 +451,7 @@ public class RFSImpl implements Repository {
 			}
 		}
 		saveContentToFile(file, content);
+		return null;
 	}
 	
 	/**
@@ -573,7 +574,7 @@ public class RFSImpl implements Repository {
 		return null;
 	}
 
-	public ArrayList<ContentName> getNamesWithPrefix(Interest i) {
+	public NameEnumerationResponse getNamesWithPrefix(Interest i) {
 		Library.logger().setLevel(java.util.logging.Level.FINE);
 		ArrayList<ContentName> names = new ArrayList<ContentName>();
 		Timestamp interestTS = null;
@@ -623,7 +624,7 @@ public class RFSImpl implements Repository {
 				toprint.concat(" "+ntr.toString());
 			Library.logger().fine(toprint+" ---");
 
-			return names;
+			return new NameEnumerationResponse(cropped, names);
 		}
 		else{
 			Library.logger().finest("No new names for this prefix since the last request, dropping request and not responding.");

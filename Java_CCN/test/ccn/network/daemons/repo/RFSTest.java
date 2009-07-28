@@ -4,6 +4,7 @@ import java.io.File;
 import java.security.InvalidParameterException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.util.ArrayList;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
@@ -18,12 +19,14 @@ import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo;
+import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.network.daemons.repo.RFSImpl;
 import com.parc.ccn.network.daemons.repo.RFSLogImpl;
 import com.parc.ccn.network.daemons.repo.Repository;
 import com.parc.ccn.network.daemons.repo.RepositoryException;
+import com.parc.ccn.network.daemons.repo.Repository.NameEnumerationResponse;
 
 /**
  * 
@@ -261,6 +264,60 @@ public class RFSTest extends RepoTestBase {
 			repo.saveContent(ContentObject.buildContentObject(segmented, segmentContent.getBytes(), null, null, finalBlockID));
 			checkData(repo, segmented, segmentContent);
 		}
+
+		//adding in fast name enumeration response tests
+		System.out.println("Repotest - testing fast name enumeration response");
+
+		//building names for tests
+		ContentName nerpre = ContentName.fromNative("/testFastNameEnumeration");
+		ContentName ner = new ContentName(nerpre, "name1".getBytes());
+		ContentName nername1 = ContentName.fromNative("/name1");
+		ContentName ner2 = new ContentName(nerpre, "name2".getBytes());
+		ContentName nername2 = ContentName.fromNative("/name2");
+		ContentName ner3 = new ContentName(nerpre, "longer".getBytes());
+		ner3 = new ContentName(ner3, "name3".getBytes());
+		ContentName nername3 = ContentName.fromNative("/longer");
+		NameEnumerationResponse neresponse = null;
+		//send initial interest to make sure namespace is empty
+		//interest flag will not be set for a fast response since there isn't anything in the index yet
+		
+		Interest interest = Interest.constructInterest(new ContentName(nerpre, CCNNameEnumerator.NEMARKER), null, Interest.ORDER_PREFERENCE_ORDER_NAME, nerpre.count()+1);
+		neresponse = repo.getNamesWithPrefix(interest);
+		Assert.assertTrue(neresponse == null || neresponse.getNames()==null);
+		//now saving the first piece of content in the repo.  interest flag not set, so it should not get an object back
+		neresponse = repo.saveContent(ContentObject.buildContentObject(ner, "FastNameRespTest".getBytes()));
+		Assert.assertTrue(neresponse==null || neresponse.getNames()==null);
+		//now checking with the prefix that the first name is in
+		neresponse = repo.getNamesWithPrefix(interest);
+		Assert.assertTrue(neresponse.getNames().contains(nername1));
+		Assert.assertTrue(neresponse.getPrefix().contains(CCNNameEnumerator.NEMARKER));
+		//now call get names with prefix again to set interest flag
+		//have to use the version from the last response (or at least a version after the last write
+		interest = Interest.last(neresponse.getPrefix());
+		interest.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME);
+		interest.nameComponentCount(interest.nameComponentCount());
+		//the response should be null and the flag set
+		neresponse = repo.getNamesWithPrefix(interest);
+		Assert.assertTrue(neresponse==null || neresponse.getNames()==null);
+		//save content.  if the flag was set, we should get an enumeration response
+		neresponse = repo.saveContent(ContentObject.buildContentObject(ner2, "FastNameRespTest".getBytes()));
+		Assert.assertTrue(neresponse.getNames().contains(nername1));
+		Assert.assertTrue(neresponse.getNames().contains(nername2));
+		Assert.assertTrue(neresponse.getPrefix().contains(CCNNameEnumerator.NEMARKER));
+		//need to reconstruct the interest again
+		interest = Interest.last(neresponse.getPrefix());
+		interest.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME);
+		interest.nameComponentCount(interest.nameComponentCount());
+		//another interest to set interest flag, response should be null
+		neresponse = repo.getNamesWithPrefix(interest);
+		Assert.assertTrue(neresponse == null || neresponse.getNames()==null);
+		//interest flag should now be set, so when i add something - this is a longer name, i should be handed back an object
+		neresponse = repo.saveContent(ContentObject.buildContentObject(ner3, "FastNameRespTest".getBytes()));
+		Assert.assertTrue(neresponse.getNames().contains(nername1));
+		Assert.assertTrue(neresponse.getNames().contains(nername2));
+		Assert.assertTrue(neresponse.getNames().contains(nername3));
+		Assert.assertTrue(neresponse.getPrefix().contains(CCNNameEnumerator.NEMARKER));
+
 		repo.shutDown();
 	}
 	

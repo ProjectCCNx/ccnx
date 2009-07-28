@@ -21,6 +21,7 @@ import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.util.CCNSerializableObject;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.EnumeratedNameList;
+import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 
 /**
  * Put a bunch of data in repo (in one directory)
@@ -132,7 +133,9 @@ public class EnumeratedNameListTestRepo {
 			// until there was new data for getNewData to return, and it *wouldn't* match the previous set.
 			// Assert.assertEquals(testList.getNewData(), returnedBytes.size());
 			System.out.println("Got " + returnedBytes.size() + " children: " + returnedBytes);
-			System.out.println("Predicted strings " + name1String + ", " + name2String + ", " + name3String);
+			//only one thing has been added, so we can only expect one name
+			//System.out.println("Predicted strings " + name1String + ", " + name2String + ", " + name3String);
+			System.out.println("Predicted strings " + name1String);
 			// DKS -- previous version of this was failing:
 			// Assert.assertEquals(name1String.getBytes(UTF8), returnedBytes.get(0)));
 			// this will fail, because byte [] does not define equals (it's a native type, not an object), so
@@ -141,6 +144,12 @@ public class EnumeratedNameListTestRepo {
 			// is first. Don't try to test on the content.
 			//Assert.assertTrue(Arrays.areEqual(name1String.getBytes(UTF8), returnedBytes.first().component(0)));
 
+			
+			System.out.print("names in list:");
+			for(ContentName n: returnedBytes)
+				System.out.print(" "+n);
+			System.out.println();
+			
 			//testing that children exist
 			// DKS -- if you're testing a boolean, use assertTrue, not assertNotNull
 			Assert.assertTrue(testList.hasChildren());
@@ -150,20 +159,64 @@ public class EnumeratedNameListTestRepo {
 			Assert.assertTrue(testList.hasChild(name1String));
 			
 			// Only definite if run on fresh repo
+			//as long as the EnumeratedNameList object isn't starting a new interest, this is correct.  a repo
+			//  wouldn't return old names after the last response
 			Assert.assertFalse(testList.hasNewData());
 			// Now add some more data
+			
+			System.out.println("adding name2: "+name2);
 			addContentToRepo(name2, library);
+			System.out.println("adding name3: "+name3);
 			addContentToRepo(name3, library);
+			
+			//both of these actions could generate a new response since there is an outstanding interest on the data.
+			//this means the response can come a few different ways
+			//1 - an interest.last request gets there and sets the interest flag.  then a save will generate a response
+			//2 - an interest.last request gets there after the save, generating a new response
+			//3 - same thing happens for the second object as 1
+			//4 - same thing happens for the second object as 2
+			//5 - after both things are added an interest.last arrives from the CCNNameEnumerator.
+			
 			
 			SortedSet<ContentName> returnedBytes2 = testList.getNewData(); // will block for new data
 			Assert.assertNotNull(returnedBytes2);
 			
+			System.out.print("names in list after adding name2 and name3:");
+			for(ContentName n: returnedBytes2)
+				System.out.print(" "+n);
+			System.out.println();
+			
+			System.out.print("names in testlist after adding name2 and name3:");
+			for(ContentName n: testList.getChildren())
+				System.out.print(" "+n);
+			System.out.println();
+			
+			
 			// Might have older stuff from previous runs, so don't insist we get back only what we put in.
-			System.out.println("Got new data, second round size: " + returnedBytes2 + " first round " + returnedBytes);
-			Assert.assertTrue(returnedBytes2.size() > returnedBytes.size());
+			System.out.println("Got new data, second round size: " + returnedBytes2.size() + " first round " + returnedBytes.size());
+			//this is new data...  so comparing new data from one save to another doesn't really make sense
+			Assert.assertTrue(returnedBytes2.size() >= 1);
+			//since we have a new response, the first name has to be in there...
 			Assert.assertTrue(testList.hasChild(name2String));
+			//we might not have a response since the second name...  need to check again if it isn't in there yet 
+			if(!testList.hasChild(name3String)){
+				returnedBytes2 = testList.getNewData(); // will block for new data
+			//now we have the third response...
+
+				System.out.print("names in list after asking for new data again:");
+				for(ContentName n: returnedBytes2)
+					System.out.print(" "+n);
+				System.out.println();
+			}
+			
+			System.out.print("names in testlist after adding name2 and name3:");
+			for(ContentName n: testList.getChildren())
+				System.out.print(" "+n);
+			System.out.println();
+			
 			Assert.assertTrue(testList.hasChild(name3String));
 
+			
 			// This will add new versions
 			for (int i=0; i < 5; ++i) {
 				latestName = addContentToRepo(name1, library);
@@ -180,8 +233,14 @@ public class EnumeratedNameListTestRepo {
 			// commitment is obtained before returning from write this may change).  There is a timing 
 			// race with the last content written and the first name enumeration result.  For this reason
 			// we must be prepared to wait a second time.
-			if (versionList.getChildren().size() < 6) { // 5 versions written just above plus 1 earlier addition under name1
+			// It could be possible that only waiting one more time is not sufficient...  if the writes are very slow,
+			// the timing could work out that there is a response per object.  adding loop to account for that
+			
+			for(int attempts = 1; attempts < 5; attempts++){
+				// 5 versions written just above plus 1 earlier addition under name1
 				versionList.getNewData(); // ignore result, we want to look at entire set once available
+				if(versionList.getChildren().size() >= 6)
+					attempts = 5;
 			}
 			// Now we should have everything
 			ContentName latestReturnName = versionList.getLatestVersionChildName();
@@ -233,7 +292,7 @@ public class EnumeratedNameListTestRepo {
 	 * Adds data to the repo for testing
 	 * DKS -- previous version that used repo streams somehow wasn't getting data in.
 	 * */
-	private ContentName addContentToRepo(ContentName name, CCNLibrary library) throws ConfigurationException, IOException {
+	private ContentName addContentToRepo(ContentName name, CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
 		//method to load something to repo for testing
 		// DKS -- don't know why this wasn't working
 		/*
@@ -242,11 +301,14 @@ public class EnumeratedNameListTestRepo {
 		byte [] data = "Testing 1 2 3".getBytes();
 		ros.write(data, 0, data.length);
 		ros.close();
+		return name;
 		*/
+		
 		CCNStringObject cso = new CCNStringObject(name, ContentName.componentPrintNative(name.lastComponent()), library);
 		cso.saveToRepository();
 		System.out.println("Saved new object: " + cso.getName());
 		return cso.getName();
+		
 	}
 	
 }
