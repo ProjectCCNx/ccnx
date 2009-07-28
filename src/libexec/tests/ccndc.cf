@@ -4,8 +4,10 @@
 ccn:/parc.com/	udp	kea.parc.xerox.com	4857
 ccn:/parc.com/	udp	kea.parc.xerox.com	4856 # comment after port
 ccn:/parc.com/foo tcp	etude.parc.xerox.com # comment with no port
-ccn:/	udp	2620:0:290:a002:203:baff:fe02:af99
+ccn:/	udp	2620:0:290:a002:203:baff:fe02:af99 
 ccn:/	udp	2620:0:290:a002:203:baff:fe02:af98#comment no spaces
+ccn:/	udp	224.18.13.21 4856 13.1.102.121
+ccn:/	udp	224.18.13.21 4856 13.1.102.121#comment
 ccn:/	tcp	::1 32764
  # Empty line except for comment
 

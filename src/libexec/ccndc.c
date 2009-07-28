@@ -35,6 +35,7 @@
 struct ribline {
     struct ccn_charbuf *name;
     struct addrinfo *addrinfo;
+    struct addrinfo *mcastifaddrinfo;
 };
 
 struct routing {
@@ -152,6 +153,14 @@ usage(const char *progname)
  *
  * anything following "#" is discarded as a comment
  * any host name or address that is resolvable by getaddrinfo is acceptable
+ *
+ * configuration file format version 2
+ *
+ * <CCN URI> <udp|tcp> <hostname|ipv4 address|ipv6 address> [<port>] <unicast addr of multiif>
+ *
+ * In the case where the hostname... parameters resolves to a multicast address it
+ * may be necessary to pass the local unicast address of the  interface on which you
+ * wish to do the multicast operation.
  */
 
 static int
@@ -160,14 +169,18 @@ read_configfile(const char *filename, struct routing *rt)
     int res;
     char buf[256], strtokbuf[256];
     int configerrors = 0;
+    int configlinenumber = 0;
     FILE *cfg;
     struct ccn_charbuf *name = NULL;
     int socktype = 0;
     char *rhostname;
     char *rhostportstring;
     int rhostport;
+    char *mcastifaddr;
     struct addrinfo hints = {.ai_family = AF_UNSPEC, .ai_flags = AI_ADDRCONFIG};
+    struct addrinfo mcasthints = {.ai_family = AF_UNSPEC, .ai_flags = (AI_ADDRCONFIG|AI_NUMERICHOST)};
     struct addrinfo *raddrinfo = NULL;
+    struct addrinfo *mcastifaddrinfo = NULL;
     const char *seps = " \t\n";
     char *cp = NULL;
     char *last = NULL;
@@ -179,6 +192,7 @@ read_configfile(const char *filename, struct routing *rt)
     while (fgets((char *)buf, sizeof(buf), cfg) && (rt->nEntries < MAXRIB)) {
         int len;
         len = strlen(buf);
+        configlinenumber++;
         if (buf[0] == '#' || len == 0)
             continue;
         if (buf[len - 1] == '\n')
@@ -194,13 +208,13 @@ read_configfile(const char *filename, struct routing *rt)
         name = ccn_charbuf_create();
         res = ccn_name_from_uri(name, cp);
         if (res < 0) {
-            ccndc_warn(__LINE__, "Parse error, bad CCN URI '%s'\n", cp);
+            ccndc_warn(__LINE__, "config file error (line %d), bad CCN URI '%s'\n", configlinenumber, cp);
             configerrors--;
             continue;
         }
         cp = strtok_r(NULL, seps, &last);
         if (cp == NULL) {
-            ccndc_warn(__LINE__, "Parse error, missing address type in %s\n", buf);
+            ccndc_warn(__LINE__, "config file error (line %d), missing address type in %s\n", configlinenumber,  buf);
             configerrors--;
             continue;
         }
@@ -209,13 +223,13 @@ read_configfile(const char *filename, struct routing *rt)
         else if (strcmp(cp, "tcp") == 0)
             socktype = SOCK_STREAM;
         else {
-            ccndc_warn(__LINE__, "Parse error, unrecognized address type '%s'\n", cp);
+            ccndc_warn(__LINE__, "config file error (line %d), unrecognized address type '%s'\n", configlinenumber, cp);
             configerrors--;
             continue;
         }
         rhostname = strtok_r(NULL, seps, &last);
         if (rhostname == NULL) {
-            ccndc_warn(__LINE__, "Parse error, missing hostname in %s\n", buf);
+            ccndc_warn(__LINE__, "config file error (line %d), missing hostname in %s\n", configlinenumber, buf);
             configerrors--;
             continue;
         }
@@ -223,21 +237,32 @@ read_configfile(const char *filename, struct routing *rt)
         if (rhostportstring == NULL) rhostportstring = DEFAULTPORTSTRING;
         rhostport = atoi(rhostportstring);
         if (rhostport <= 0 || rhostport > 65535) {
-            ccndc_warn(__LINE__, "Parse error, invalid port %s\n", rhostportstring);
+            ccndc_warn(__LINE__, "config file error (line %d), invalid port %s\n", configlinenumber, rhostportstring);
             configerrors--;
             continue;
         }
         hints.ai_socktype = socktype;
         res = getaddrinfo(rhostname, rhostportstring, &hints, &raddrinfo);
         if (res != 0 || raddrinfo == NULL) {
-            ccndc_warn(__LINE__, "getaddrinfo: %s\n", gai_strerror(res));
+            ccndc_warn(__LINE__, "config file error (line %d), getaddrinfo: %s\n", configlinenumber, gai_strerror(res));
             configerrors--;
             continue;
         }
 
+        mcastifaddr = strtok_r(NULL, seps, &last);
+        if (mcastifaddr != NULL) {
+            res = getaddrinfo(mcastifaddr, NULL, &mcasthints, &mcastifaddrinfo);
+            if (res != 0) {
+                ccndc_warn(__LINE__, "config file error (line %d), getaddrinfo: %s\n", configlinenumber, gai_strerror(res));
+                configerrors--;
+                continue;
+            }
+        }
+        
         /* we have successfully read a config file line */
         rt->rib[rt->nEntries].name = name;
         rt->rib[rt->nEntries].addrinfo = raddrinfo;
+        rt->rib[rt->nEntries].mcastifaddrinfo = mcastifaddrinfo;
         rt->nEntries++;
         
     }
@@ -249,16 +274,20 @@ main(int argc, char **argv)
 {
     const char *progname = argv[0];
     const char *configfile = NULL;
+    int test = 0;
     struct ccn *ccn = NULL;
     int res;
     struct routing rt = { 0 };
     struct ccn_closure in_interest = {.p=&incoming_interest, .data=&rt};
     struct ccn_charbuf *namebuf = NULL;
 
-    while ((res = getopt(argc, argv, "f:h")) != -1) {
+    while ((res = getopt(argc, argv, "f:ht")) != -1) {
         switch (res) {
             case 'f':
                 configfile = optarg;
+                break;
+            case 't':
+                test = 1;
                 break;
             default:
             case 'h':
@@ -275,6 +304,9 @@ main(int argc, char **argv)
     if (res < 0)
         ccndc_fatal(__LINE__, "Error(s) in configuration file\n");
 
+    if (test) {
+        exit(0);
+    }
 
     ccn = ccn_create();
     if (ccn_connect(ccn, NULL) == -1)

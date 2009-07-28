@@ -162,7 +162,7 @@
 
 <!ELEMENT Port          (#PCDATA)>	<!-- nonNegativeInteger -->
 
-<!ELEMENT MulticastInterface  (#PCDATA)> <!-- for multicast when there are muitiple interfaces -->
+<!ELEMENT MulticastInterface  (#PCDATA)> <!-- for multicast when there are multiple interfaces -->
 
 <!ELEMENT ForwardingEntry  (Action?, Name?, PublisherPublicKeyDigest?, FaceID?, ForwardingFlags?, FreshnessSeconds?)>
 <!ATTLIST ForwardingEntry %commonattrs;>
