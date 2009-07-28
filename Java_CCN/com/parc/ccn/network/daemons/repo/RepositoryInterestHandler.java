@@ -112,10 +112,8 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		for (RepositoryDataListener listener : _daemon.getDataListeners()) {
 			if (listener.getOrigInterest().name().equals(listeningName)) {		
 				try {
-					Integer count = interest.nameComponentCount();
-					if (count != null && count > listeningName.count())
-						count = null;
-					Interest readInterest = Interest.constructInterest(listeningName, _daemon.getExcludes(), null, count);
+					Interest readInterest = Interest.constructInterest(listener.getVersionedName(), _daemon.getExcludes(), null, 
+							listener.getVersionedName().count());
 					readInterest.additionalNameComponents(1);
 					_library.expressInterest(readInterest, listener);
 				} catch (IOException e) {

@@ -16,6 +16,7 @@ import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
+import com.parc.ccn.library.profiles.VersioningProfile;
 
 /**
  * Handle incoming data in the repository. Currently only handles
@@ -28,6 +29,7 @@ import com.parc.ccn.library.profiles.SegmentationProfile;
 public class RepositoryDataListener implements CCNInterestListener {
 	private long _timer;
 	private Interest _origInterest;
+	private ContentName _versionedName;
 	private TreeMap<ContentName, Interest> _interests = new TreeMap<ContentName, Interest>();
 	private RepositoryDaemon _daemon;
 	private CCNLibrary _library;
@@ -66,6 +68,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 	
 	public RepositoryDataListener(Interest origInterest, Interest interest, RepositoryDaemon daemon) throws XMLStreamException, IOException {
 		_origInterest = interest;
+		_versionedName = interest.name();
 		_daemon = daemon;
 		_library = daemon.getLibrary();
 		_timer = new Date().getTime();
@@ -79,6 +82,10 @@ public class RepositoryDataListener implements CCNInterestListener {
 		
 		for (ContentObject co : results) {
 			_daemon.getThreadPool().execute(new DataHandler(co));
+			
+			if (VersioningProfile.isVersioned(co.name()) && !VersioningProfile.isVersioned(_versionedName)) {
+				_versionedName = co.name().cut(VersioningProfile.findVersionComponent(co.name()) + 1);
+			}
 				
 			if (SegmentationProfile.isSegment(co.name())) {
 				long thisBlock = SegmentationProfile.getSegmentNumber(co.name());
@@ -129,5 +136,9 @@ public class RepositoryDataListener implements CCNInterestListener {
 	
 	public Interest getOrigInterest() {
 		return _origInterest;
+	}
+	
+	public ContentName getVersionedName() {
+		return _versionedName;
 	}
 }
