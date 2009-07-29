@@ -55,11 +55,13 @@ process_test(unsigned char *data, size_t n, struct fstate *perfilestate)
         fprintf(stderr, "nothing to do\n");
     } else {
         if (s < n) {
+            content_value = NULL;
+            content_length = 0;
             if (ccn_parse_ContentObject(data, s, &content, comps) != 0) {
                 fprintf(stderr, "unable to parse content object\n");
                 res = 1;
             }
-            if (ccn_content_get_value(data, s, &content, &content_value, &content_length) != 0) {
+            else if (ccn_content_get_value(data, s, &content, &content_value, &content_length) != 0) {
                 fprintf(stderr, "unable to retrieve content value\n");
                 res = 1;
             }
@@ -79,11 +81,13 @@ process_test(unsigned char *data, size_t n, struct fstate *perfilestate)
         fprintf(stderr, "incomplete state %d after %d of %d chars\n",
                 (int)d->state, (int)s, (int)n);
     } else {
+        content_value = NULL;
+        content_length = 0;
         if (ccn_parse_ContentObject(data, s, &content, comps) != 0) {
             fprintf(stderr, "unable to parse content object\n");
             res = 1;
         }
-        if (ccn_content_get_value(data, s, &content, &content_value, &content_length) != 0) {
+        else if (ccn_content_get_value(data, s, &content, &content_value, &content_length) != 0) {
             fprintf(stderr, "unable to retrieve content value\n");
             res = 1;
         }
