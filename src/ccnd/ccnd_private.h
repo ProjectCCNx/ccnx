@@ -88,6 +88,8 @@ struct ccnd {
     unsigned long capacity;         /* Can toss content if #items > capacity */
     unsigned long oldformatcontent;
     unsigned long oldformatcontentgrumble;
+    unsigned long oldformatinterests;
+    unsigned long oldformatinterestgrumble;
     unsigned long content_dups_recvd;
     unsigned long content_items_sent;
     unsigned long interests_accepted;

@@ -2047,6 +2047,14 @@ process_incoming_interest(struct ccnd *h, struct face *face,
                      pi->orderpref, pi->answerfrom, pi->scope,
                      pi->offset[CCN_PI_E_Exclude] - pi->offset[CCN_PI_B_Exclude],
                      pi->offset[CCN_PI_E_OTHER] - pi->offset[CCN_PI_B_OTHER]);
+        if (pi->magic != 20090701) {
+            if (++(h->oldformatinterests) == h->oldformatinterestgrumble) {
+                h->oldformatinterestgrumble *= 2;
+                ccnd_msg(h, "downrev interests received: %d (%d)",
+                         h->oldformatinterests,
+                         pi->magic);
+            }
+        }
         if (pi->orderpref > 1 || pi->prefix_comps != comps->n - 1)
             face->cached_accession = 0;
         namesize = comps->buf[pi->prefix_comps] - comps->buf[0];
@@ -2896,6 +2904,7 @@ ccnd_create(const char *progname)
     h->ticktock.data = h;
     h->sched = ccn_schedule_create(h, &h->ticktock);
     h->oldformatcontentgrumble = 1;
+    h->oldformatinterestgrumble = 1;
     h->data_pause_microsec = 2000;
     portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
     if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)

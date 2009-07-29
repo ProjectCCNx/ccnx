@@ -497,12 +497,12 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
         interest->offset[CCN_PI_E_NameComponentCount] = d->decoder.token_index;
         if (d->decoder.state < 0 || interest->prefix_comps > ncomp)
             return (d->decoder.state = -__LINE__);
-        if (interest->prefix_comps == -1) {
+        if (interest->prefix_comps == -1)
             interest->prefix_comps = ncomp;
+        else {
+            ncomp = interest->prefix_comps;
             magic = 20090415;
         }
-        else
-            ncomp = interest->prefix_comps;
         if (ncomp >= components->n) abort(); // Check above should have caught this.
         interest->offset[CCN_PI_B_LastPrefixComponent] = components->buf[(ncomp > 0) ? (ncomp - 1) : 0];
         interest->offset[CCN_PI_E_LastPrefixComponent] = components->buf[ncomp];
@@ -513,44 +513,29 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
         res = ccn_parse_optional_tagged_nonNegativeInteger(d,
                          CCN_DTAG_AdditionalNameComponents);
         interest->offset[CCN_PI_E_AdditionalNameComponents] = d->decoder.token_index;
-        interest->offset[CCN_PI_B_MinSuffixComponents] = d->decoder.token_index;
-        interest->offset[CCN_PI_E_MinSuffixComponents] = d->decoder.token_index;
-        interest->offset[CCN_PI_B_MaxSuffixComponents] = d->decoder.token_index;
-        interest->offset[CCN_PI_E_MaxSuffixComponents] = d->decoder.token_index;
         if (res >= 0) {
-            if (magic == 0)
-                magic = 20090415;
-            else if (magic != 20090415)
-                return (d->decoder.state = -__LINE__);
+            magic |= 20090415;
             interest->min_suffix_comps = res;
             interest->max_suffix_comps = res;
         }
-        else {
-            interest->offset[CCN_PI_B_MinSuffixComponents] = d->decoder.token_index;
-            res = ccn_parse_optional_tagged_nonNegativeInteger(d,
-                                                               CCN_DTAG_MinSuffixComponents);
-            interest->offset[CCN_PI_E_MinSuffixComponents] = d->decoder.token_index;
-            if (res >= 0) {
-                if (magic == 0)
-                    magic = 20090701;
-                else if (magic != 20090701)
-                    return (d->decoder.state = -__LINE__);
-                interest->min_suffix_comps = res;
-            }
-            interest->offset[CCN_PI_B_MaxSuffixComponents] = d->decoder.token_index;
-            res = ccn_parse_optional_tagged_nonNegativeInteger(d,
-                                                               CCN_DTAG_MaxSuffixComponents);
-            interest->offset[CCN_PI_E_MaxSuffixComponents] = d->decoder.token_index;
-            if (res >= 0) {
-                if (magic == 0)
-                    magic = 20090701;
-                else if (magic != 20090701)
-                    return (d->decoder.state = -__LINE__);
-                if (res <= interest->min_suffix_comps)
-                    return (d->decoder.state = -__LINE__);
-                interest->max_suffix_comps = res;
-            }
+        interest->offset[CCN_PI_B_MinSuffixComponents] = d->decoder.token_index;
+        res = ccn_parse_optional_tagged_nonNegativeInteger(d,
+                                                           CCN_DTAG_MinSuffixComponents);
+        interest->offset[CCN_PI_E_MinSuffixComponents] = d->decoder.token_index;
+        if (res >= 0) {
+            magic |= 20090701;
+            interest->min_suffix_comps = res;
         }
+        interest->offset[CCN_PI_B_MaxSuffixComponents] = d->decoder.token_index;
+        res = ccn_parse_optional_tagged_nonNegativeInteger(d,
+                                                           CCN_DTAG_MaxSuffixComponents);
+        interest->offset[CCN_PI_E_MaxSuffixComponents] = d->decoder.token_index;
+        if (res >= 0) {
+            magic |= 20090701;
+            interest->max_suffix_comps = res;
+        }
+        if (interest->max_suffix_comps < interest->min_suffix_comps)
+            return (d->decoder.state = -__LINE__);
         /* optional PublisherID */
         res = ccn_parse_PublisherID(d, interest);
         /* optional Exclude element */
@@ -561,9 +546,16 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
         interest->offset[CCN_PI_B_OrderPreference] = d->decoder.token_index;
         res = ccn_parse_optional_tagged_nonNegativeInteger(d,
                          CCN_DTAG_OrderPreference);
-        if (res == -1 && magic != 20090415)
+        if (res != -1)
+            magic |= 20090415;
+        else {
             res = ccn_parse_optional_tagged_nonNegativeInteger(d,
                          CCN_DTAG_ChildSelector);
+            if (res != -1)
+               magic |= 20090701; 
+        }
+        if (res < 0)
+            res = 0;
         interest->orderpref = res;
         interest->offset[CCN_PI_E_OrderPreference] = d->decoder.token_index;
         if (interest->orderpref > 5)
@@ -601,8 +593,9 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
         interest->offset[CCN_PI_E_Nonce] = d->decoder.token_index;
         /* Allow for some experimental stuff */
         interest->offset[CCN_PI_B_OTHER] = d->decoder.token_index;
-        // XXX - not real fussy with magic here...
-        ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_ExperimentalResponseFilter, 9, 1024+8);
+        res = ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_ExperimentalResponseFilter, 9, 1024+8);
+        if (res != -1)
+            magic |= 20090415;
         interest->offset[CCN_PI_E_OTHER] = d->decoder.token_index;
         ccn_buf_check_close(d);
         interest->offset[CCN_PI_E] = d->decoder.index;
@@ -615,6 +608,8 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
         return (CCN_DSTATE_ERR_CODING);
     if (magic == 0)
         magic = 20090701;
+    if (!(magic == 20090701 || magic == 20090415))
+        return (d->decoder.state = -__LINE__);
     interest->magic = magic;
     return (ncomp);
 }
