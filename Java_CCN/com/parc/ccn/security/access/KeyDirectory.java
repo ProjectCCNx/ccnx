@@ -8,6 +8,7 @@ import java.security.PublicKey;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.SortedSet;
 
 import javax.jcr.AccessDeniedException;
 import javax.xml.stream.XMLStreamException;
@@ -106,7 +107,8 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * Called each time new data comes in, gets to parse it and load processed
 	 * arrays.
 	 */
-	protected void processNewChildren(ArrayList<ContentName> newChildren) {
+	@Override
+	protected void processNewChildren(SortedSet<ContentName> newChildren) {
 		for (ContentName childName : newChildren) {
 			// currently encapsulated in single-component ContentNames
 			byte [] wkChildName = childName.lastComponent();
