@@ -149,7 +149,7 @@
 <!ELEMENT Address  (#PCDATA)> <!-- base64Binary -->
 <!ATTLIST Address ccnbencoding CDATA #FIXED 'base64Binary'>
 
-<!ELEMENT FaceInstance  (Action?, PublisherPublicKeyDigest?, FaceID?, IPProto?, Host?, Port?, MulticastInterface?, Scope?, FreshnessSeconds?)>
+<!ELEMENT FaceInstance  (Action?, PublisherPublicKeyDigest?, FaceID?, IPProto?, Host?, Port?, MulticastInterface?, MulticastTTL?, FreshnessSeconds?)>
 <!ATTLIST FaceInstance %commonattrs;>
 
 <!ELEMENT Action        (#PCDATA)>
@@ -163,6 +163,7 @@
 <!ELEMENT Port          (#PCDATA)>	<!-- nonNegativeInteger -->
 
 <!ELEMENT MulticastInterface  (#PCDATA)> <!-- for multicast when there are multiple interfaces -->
+<!ELEMENT MulticastTTL        (#PCDATA)>	<!-- nonNegativeInteger -->
 
 <!ELEMENT ForwardingEntry  (Action?, Name?, PublisherPublicKeyDigest?, FaceID?, ForwardingFlags?, FreshnessSeconds?)>
 <!ATTLIST ForwardingEntry %commonattrs;>

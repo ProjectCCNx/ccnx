@@ -1,6 +1,6 @@
 # Makefile for ccn/Documentation/technical
 
-DERIVED_HTML = DigestComponent.html InterestMessage.html NameConventions.html Staleness.html URI.html
+DERIVED_HTML = DigestComponent.html InterestMessage.html NameConventions.html Staleness.html Registration.html URI.html
 
 default:
 
@@ -17,6 +17,9 @@ InterestMessage.html: InterestMessage.txt
 
 NameConventions.html: NameConventions.txt
 	asciidoc NameConventions.txt
+
+Registration.html: Registration.txt
+	asciidoc Registration.txt
 
 Staleness.html: Staleness.txt
 	asciidoc Staleness.txt
