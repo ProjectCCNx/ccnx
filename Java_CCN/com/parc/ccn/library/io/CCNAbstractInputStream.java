@@ -94,15 +94,17 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		// whatever you want to open -- this doesn't crawl versions.  If you don't
 		// offer a starting block index, but instead offer the name of a specific
 		// segment, this will use that segment as the starting block. 
-		if ((null == startingBlockIndex)  && (SegmentationProfile.isSegment(baseName))) {
-			_startingBlockIndex = SegmentationProfile.getSegmentNumber(baseName);
-		} else {
-			_startingBlockIndex = startingBlockIndex;
-		}
-		if (null == _startingBlockIndex) {
-			_startingBlockIndex = SegmentationProfile.baseSegment();
-		}
 		_baseName = baseName;
+		if (startingBlockIndex != null) {
+			_startingBlockIndex = startingBlockIndex;
+		} else {
+			if (SegmentationProfile.isSegment(baseName)) {
+				_startingBlockIndex = SegmentationProfile.getSegmentNumber(baseName);
+				baseName = _baseName.parent();
+			} else {
+				_startingBlockIndex = SegmentationProfile.baseSegment();
+			}
+		}
 	}
 	
 	public CCNAbstractInputStream(
