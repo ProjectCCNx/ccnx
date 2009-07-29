@@ -127,7 +127,7 @@ ccn_buf_advance_past_element(struct ccn_buf_decoder *d)
 
 int
 ccn_parse_required_tagged_BLOB(struct ccn_buf_decoder *d, enum ccn_dtag dtag,
-int minlen, int maxlen)
+                               int minlen, int maxlen)
 {
     int res = -1;
     size_t len = 0;
@@ -152,7 +152,7 @@ int minlen, int maxlen)
 
 int
 ccn_parse_optional_tagged_BLOB(struct ccn_buf_decoder *d, enum ccn_dtag dtag,
-int minlen, int maxlen)
+                               int minlen, int maxlen)
 {
     if (ccn_buf_match_dtag(d, dtag))
         return(ccn_parse_required_tagged_BLOB(d, dtag, minlen, maxlen));
@@ -160,8 +160,9 @@ int minlen, int maxlen)
 }
 
 uintmax_t
-ccn_parse_required_tagged_binary_number(struct ccn_buf_decoder *d, enum ccn_dtag dtag,
-int minlen, int maxlen)
+ccn_parse_required_tagged_binary_number(struct ccn_buf_decoder *d,
+                                        enum ccn_dtag dtag,
+                                        int minlen, int maxlen)
 {
     uintmax_t value = 0;
     const unsigned char *p = NULL;
@@ -314,6 +315,23 @@ ccn_parse_PublisherID(struct ccn_buf_decoder *d, struct ccn_parsed_interest *pi)
     return(res);
 }
 
+static int
+ccn_parse_optional_Any_or_Bloom(struct ccn_buf_decoder *d)
+{
+    int res;
+    res = ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_Bloom, 1, 1024+8);
+    if (res >= 0)
+        return(res);
+    if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
+        ccn_buf_advance(d);
+        ccn_buf_check_close(d);
+        res = 0;
+    }
+    if (d->decoder.state < 0)
+        return (d->decoder.state);
+    return(res);
+}
+
 int
 ccn_parse_Exclude(struct ccn_buf_decoder *d)
 {
@@ -321,10 +339,10 @@ ccn_parse_Exclude(struct ccn_buf_decoder *d)
     if (ccn_buf_match_dtag(d, CCN_DTAG_Exclude)) {
         res = d->decoder.element_index;
         ccn_buf_advance(d);
-        ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_Bloom, 1, 1024+8);
+        ccn_parse_optional_Any_or_Bloom(d);
         while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
             ccn_parse_required_tagged_BLOB(d, CCN_DTAG_Component, 0, -1);
-            ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_Bloom, 1, 1024+8);
+            ccn_parse_optional_Any_or_Bloom(d);
         }
         ccn_buf_check_close(d);
     }

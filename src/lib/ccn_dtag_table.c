@@ -2,6 +2,7 @@
 
 #define ARRAY_N(arr) (sizeof(arr)/sizeof(arr[0]))
 static const struct ccn_dict_entry ccn_tagdict[] = {
+    {CCN_DTAG_Any, "Any"},
     {CCN_DTAG_Name, "Name"},
     {CCN_DTAG_Component, "Component"},
     {CCN_DTAG_Certificate, "Certificate"},

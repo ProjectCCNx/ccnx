@@ -39,6 +39,7 @@ enum ccn_ext_subtype {
 };
 
 enum ccn_dtag {
+    CCN_DTAG_Any = 13,
     CCN_DTAG_Name = 14,
     CCN_DTAG_Component = 15,
     CCN_DTAG_Certificate = 16,
@@ -49,7 +50,7 @@ enum ccn_dtag {
     CCN_DTAG_ContentDigest = 21,
     CCN_DTAG_ContentHash = 22,
     CCN_DTAG_ContentObjectV20080711 = 23,	/* Deprecated */
-    CCN_DTAG_Count = 24,	/* Deprecated */
+    CCN_DTAG_Count = 24,	/* DeprecatedInInterest */
     CCN_DTAG_Header = 25,
     CCN_DTAG_Interest = 26,
     CCN_DTAG_Key = 27,
@@ -82,7 +83,7 @@ enum ccn_dtag {
     CCN_DTAG_SignatureBits = 54,
     CCN_DTAG_DigestAlgorithm = 55,
     CCN_DTAG_BlockSize = 56,
-    CCN_DTAG_AdditionalNameComponents = 57,
+    CCN_DTAG_AdditionalNameComponents = 57,	/* Deprecated */
     CCN_DTAG_FreshnessSeconds = 58,
     CCN_DTAG_FinalBlockID = 59,
     CCN_DTAG_PublisherPublicKeyDigest = 60,
@@ -115,7 +116,7 @@ enum ccn_dtag {
     CCN_DTAG_SOType = 2049,	/* Deprecated */
     CCN_DTAG_Inject = 2050,	/* Deprecated */
     CCN_DTAG_CCNProtocolDataUnit = 17702112,
-    CCN_DTAG_ExperimentalResponseFilter = 23204960
+    CCN_DTAG_ExperimentalResponseFilter = 23204960	/* Deprecated */
 };
 
 struct ccn_dict_entry {
