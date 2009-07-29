@@ -6,5 +6,5 @@
     <Component ccnbencoding="base64Binary">dGVzdC50eHQ=</Component>
     <Component ccnbencoding="base64Binary">AQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Component>
   </Name>
-  <OrderPreference>4</OrderPreference>
+  <MinSuffixComponents>1</MinSuffixComponents>
 </Interest>

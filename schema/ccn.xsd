@@ -176,8 +176,8 @@
 
 <xs:complexType name="ContentObjectType">
   <xs:sequence>
-	<!-- Signature over name, content authenticator, and the digest
-		 of the content. Place first to allow grouping of Signature+Name
+	<!-- Signature over name, content authenticator, and the content.
+                 Place first to allow grouping of Signature+Name
 		 and Name+Authenticator for various applications. -->
 	<xs:element name="Signature" type="SignatureType"/>
 	<xs:element name="Name" type="NameType"/>
@@ -222,9 +222,9 @@
 <xs:complexType name="InterestType">
   <xs:sequence>
     <xs:element name="Name" type="NameType"/>
-    <xs:element name="NameComponentCount" type="xs:nonNegativeInteger"
+    <xs:element name="MinSuffixComponents" type="xs:nonNegativeInteger"
                         minOccurs="0" maxOccurs="1"/>
-    <xs:element name="AdditionalNameComponents" type="xs:nonNegativeInteger"
+    <xs:element name="MaxSuffixComponents" type="xs:nonNegativeInteger"
                         minOccurs="0" maxOccurs="1"/>
     <xs:choice minOccurs="0" maxOccurs="1">
         <xs:element name="PublisherPublicKeyDigest" type="DigestType"/>
@@ -234,31 +234,35 @@
     </xs:choice>
     <xs:element name="Exclude" type="ExcludeType"
                         minOccurs="0" maxOccurs="1"/>
-    <xs:element name="OrderPreference" type="xs:nonNegativeInteger"
+    <xs:element name="ChildSelector" type="xs:nonNegativeInteger"
                         minOccurs="0" maxOccurs="1"/>
     <xs:element name="AnswerOriginKind" type="xs:nonNegativeInteger"
                         minOccurs="0" maxOccurs="1"/>
     <xs:element name="Scope" type="xs:nonNegativeInteger"
 			minOccurs="0" maxOccurs="1"/>
-    <xs:element name="Count" type="xs:nonNegativeInteger"
-                        minOccurs="0" maxOccurs="1"/>
     <xs:element name="Nonce" type="Base64BinaryType"
-			minOccurs="0" maxOccurs="1"/>
-    <xs:element name="ExperimentalResponseFilter" type="Base64BinaryType"
 			minOccurs="0" maxOccurs="1"/>
   </xs:sequence>
 </xs:complexType>
 
 <xs:complexType name="ExcludeType">
   <xs:sequence>
-     <xs:element name="Bloom" type="Base64BinaryType"
-                        minOccurs="0" maxOccurs="1"/>
+    <xs:choice minOccurs="0" maxOccurs="1">
+        <xs:element name="Any" type="EmptyType"/>
+        <xs:element name="Bloom" type="Base64BinaryType"/>
+    </xs:choice>
      <xs:sequence minOccurs="0" maxOccurs="unbounded">
         <xs:element name="Component" type="Base64BinaryType"/>
-        <xs:element name="Bloom" type="Base64BinaryType"
-                        minOccurs="0" maxOccurs="1"/>
+        <xs:choice minOccurs="0" maxOccurs="1">
+            <xs:element name="Any" type="EmptyType"/>
+            <xs:element name="Bloom" type="Base64BinaryType"/>
+        </xs:choice>
      </xs:sequence>
   </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="EmptyType">
+  <xs:sequence/>
 </xs:complexType>
 
 <xs:complexType name="DigestType">

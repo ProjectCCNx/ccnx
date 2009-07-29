@@ -1,3 +1,4 @@
+13,Any
 14,Name
 15,Component
 16,Certificate
@@ -8,7 +9,7 @@
 21,ContentDigest
 22,ContentHash
 23,ContentObjectV20080711,Deprecated
-24,Count,Deprecated
+24,Count,DeprecatedInInterest
 25,Header
 26,Interest
 27,Key
@@ -41,7 +42,7 @@
 54,SignatureBits
 55,DigestAlgorithm
 56,BlockSize
-57,AdditionalNameComponents
+57,AdditionalNameComponents,Deprecated
 58,FreshnessSeconds
 59,FinalBlockID
 60,PublisherPublicKeyDigest

@@ -90,7 +90,7 @@ ccn-bad09.xml: ccn-test09.xml
 
 check: ccn-schemabad04.xml
 ccn-schemabad04.xml: ccn-test04.xml
-	sed -e '/NameComponentCount/s/[1-9]/E/' $? > $@
+	sed -e '/Scope/s/[1-9]/E/' $? > $@
 
 check: ccn-bad06.xml
 ccn-bad06.xml: ccn-test06.xml

@@ -6,7 +6,7 @@ This is not XML.
 ccn-bad03.xml:1: element a: Schemas validity error : Element 'a': No matching global declaration available for the validation root.
 ccn-bad03.xml fails to validate
 ./shouldfail xmllint --noout --schema ccn.xsd ccn-bad06.xml
-ccn-bad06.xml:4: element SpublisherIssuerKeyDigest: Schemas validity error : Element 'SpublisherIssuerKeyDigest': This element is not expected. Expected is one of ( NameComponentCount, AdditionalNameComponents, PublisherPublicKeyDigest, PublisherCertificateDigest, PublisherIssuerKeyDigest, PublisherIssuerCertificateDigest, Exclude, OrderPreference, AnswerOriginKind, Scope ).
+ccn-bad06.xml:6: element SpublisherIssuerKeyDigest: Schemas validity error : Element 'SpublisherIssuerKeyDigest': This element is not expected. Expected is one of ( PublisherPublicKeyDigest, PublisherCertificateDigest, PublisherIssuerKeyDigest, PublisherIssuerCertificateDigest, Exclude, ChildSelector, AnswerOriginKind, Scope, Nonce ).
 ccn-bad06.xml fails to validate
 ./shouldfail xmllint --noout --schema ccn.xsd ccn-bad09.xml
 ccn-bad09.xml:15: element FinalBlockID: Schemas validity error : Element 'FinalBlockID': This element is not expected. Expected is ( Timestamp ).
@@ -21,7 +21,7 @@ ccn-schemabad01.xml fails to validate
 ccn-schemabad02.xml:5: element Witness: Schemas validity error : Element 'Witness': 'bad!' is not a valid value of the atomic type 'xs:base64Binary'.
 ccn-schemabad02.xml fails to validate
 ./shouldfail xmllint --noout --schema ccn.xsd ccn-schemabad04.xml
-ccn-schemabad04.xml:8: element NameComponentCount: Schemas validity error : Element 'NameComponentCount': 'E' is not a valid value of the atomic type 'xs:nonNegativeInteger'.
+ccn-schemabad04.xml:12: element Scope: Schemas validity error : Element 'Scope': 'E' is not a valid value of the atomic type 'xs:nonNegativeInteger'.
 ccn-schemabad04.xml fails to validate
 ./shouldfail xmllint --noout --schema ccn.xsd ccn-schemabad10.xml
 ccn-schemabad10.xml:12: element Timestamp: Schemas validity error : Element 'Timestamp': [facet 'length'] The value has a length of '9'; this differs from the allowed length of '6'.
@@ -47,15 +47,15 @@ This is not XML.
 ccn-bad03.xml:1: element a: validity error : No declaration for element a
 Document ccn-bad03.xml does not validate against ccn.dtd
 ./shouldfail xmllint --noout --dtdvalid ccn.dtd ccn-bad06.xml
-ccn-bad06.xml:2: element Interest: validity error : Element Interest content does not follow the DTD, expecting (Name , NameComponentCount? , AdditionalNameComponents? , (PublisherPublicKeyDigest | PublisherCertificateDigest | PublisherIssuerKeyDigest | PublisherIssuerCertificateDigest)? , Exclude? , OrderPreference? , AnswerOriginKind? , Scope? , Count? , Nonce? , ExperimentalResponseFilter?), got (Name SpublisherIssuerKeyDigest OrderPreference )
-ccn-bad06.xml:4: element SpublisherIssuerKeyDigest: validity error : No declaration for element SpublisherIssuerKeyDigest
-ccn-bad06.xml:4: element SpublisherIssuerKeyDigest: validity error : No declaration for attribute ccnbencoding of element SpublisherIssuerKeyDigest
+ccn-bad06.xml:2: element Interest: validity error : Element Interest content does not follow the DTD, expecting (Name , MinSuffixComponents? , MaxSuffixComponents? , (PublisherPublicKeyDigest | PublisherCertificateDigest | PublisherIssuerKeyDigest | PublisherIssuerCertificateDigest)? , Exclude? , ChildSelector? , AnswerOriginKind? , Scope? , Nonce?), got (Name MinSuffixComponents MaxSuffixComponents SpublisherIssuerKeyDigest ChildSelector AnswerOriginKind Scope )
+ccn-bad06.xml:6: element SpublisherIssuerKeyDigest: validity error : No declaration for element SpublisherIssuerKeyDigest
+ccn-bad06.xml:6: element SpublisherIssuerKeyDigest: validity error : No declaration for attribute ccnbencoding of element SpublisherIssuerKeyDigest
 Document ccn-bad06.xml does not validate against ccn.dtd
 ./shouldfail xmllint --noout --dtdvalid ccn.dtd ccn-bad09.xml
 ccn-bad09.xml:12: element SignedInfo: validity error : Element SignedInfo content does not follow the DTD, expecting (PublisherPublicKeyDigest , Timestamp , Type? , FreshnessSeconds? , FinalBlockID? , KeyLocator?), got (PublisherPublicKeyDigest FinalBlockID KeyLocator )
 Document ccn-bad09.xml does not validate against ccn.dtd
 ./shouldfail xmllint --noout --dtdvalid ccn.dtd ccn-bad11.xml
-ccn-bad11.xml:4: element Exclude: validity error : Element Exclude content does not follow the DTD, expecting (Bloom? , (Component , Bloom?)*), got (Bloom Bloom )
+ccn-bad11.xml:4: element Exclude: validity error : Element Exclude content does not follow the DTD, expecting ((Any | Bloom)? , (Component , (Any | Bloom)?)*), got (Bloom Bloom Component Any Component )
 Document ccn-bad11.xml does not validate against ccn.dtd
 ./shouldfail xmllint --noout --dtdvalid ccn.dtd ccn-dtdbad00.xml
 ccn-dtdbad00.xml:1: parser error : Document is empty

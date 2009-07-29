@@ -2,5 +2,8 @@
 <Interest>
   <Name/>
   <PublisherCertificateDigest ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherCertificateDigest>
-  <OrderPreference>4</OrderPreference>
+  <Exclude>
+    <Any/>
+    <Component ccnbencoding="base64Binary">ooiW7GC4</Component>
+  </Exclude>
 </Interest>

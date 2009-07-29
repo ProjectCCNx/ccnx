@@ -2,5 +2,5 @@
 <Interest>
   <Name/>
   <PublisherIssuerCertificateDigest ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherIssuerCertificateDigest>
-  <OrderPreference>4</OrderPreference>
+  <ChildSelector>1</ChildSelector>
 </Interest>

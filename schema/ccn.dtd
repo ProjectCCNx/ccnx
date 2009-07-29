@@ -56,17 +56,17 @@
                          KeyLocator?)>
 <!ATTLIST SignedInfo %commonattrs;>
 
+<!ELEMENT NameComponentCount (#PCDATA)> <!-- nonNegativeInteger -->
+
 <!ELEMENT Interest	(Name,
-                         NameComponentCount?,
-                         AdditionalNameComponents?,
+                         MinSuffixComponents?,
+                         MaxSuffixComponents?,
                          (%publisherid;)?,
                          Exclude?,
-                         OrderPreference?,
+                         ChildSelector?,
                          AnswerOriginKind?,
                          Scope?,
-                         Count?,
-                         Nonce?,
-                         ExperimentalResponseFilter?)>
+                         Nonce?)>
 <!ATTLIST Interest	%commonattrs;>
 
 <!ELEMENT PublisherPublicKeyDigest	(#PCDATA)>	<!-- base64Binary SHA-256 digest -->
@@ -85,12 +85,14 @@
 <!ATTLIST PublisherIssuerCertificateDigest   ccnbencoding CDATA #FIXED 'base64Binary'>
 <!ATTLIST PublisherIssuerCertificateDigest	%commonattrs;>
 
-<!ELEMENT Exclude       (Bloom?, (Component, Bloom?)*)>
+<!ELEMENT Exclude       ((Any | Bloom)?, (Component, (Any | Bloom)?)*)>
+
+<!ELEMENT Any           EMPTY>
 
 <!ELEMENT Bloom (#PCDATA)>      <!-- base64Binary -->
 <!ATTLIST Bloom ccnbencoding CDATA #FIXED 'base64Binary'>
 
-<!ELEMENT OrderPreference (#PCDATA)>    <!-- nonNegativeInteger -->
+<!ELEMENT ChildSelector (#PCDATA)>    <!-- nonNegativeInteger -->
 
 <!ELEMENT AnswerOriginKind (#PCDATA)>   <!-- nonNegativeInteger -->
 
@@ -102,9 +104,9 @@
 <!ELEMENT ExperimentalResponseFilter (#PCDATA)>      <!-- base64Binary -->
 <!ATTLIST ExperimentalResponseFilter ccnbencoding CDATA #FIXED 'base64Binary'>
 
-<!ELEMENT NameComponentCount (#PCDATA)> <!-- nonNegativeInteger -->
+<!ELEMENT MinSuffixComponents (#PCDATA)> <!-- nonNegativeInteger -->
 
-<!ELEMENT AdditionalNameComponents (#PCDATA)> <!-- nonNegativeInteger -->
+<!ELEMENT MaxSuffixComponents (#PCDATA)> <!-- nonNegativeInteger -->
 
 <!ELEMENT Timestamp	(#PCDATA)>	<!-- binary, 12 bit fraction -->
 <!ATTLIST Timestamp	ccnbencoding CDATA #FIXED 'base64Binary'>
