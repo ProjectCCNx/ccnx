@@ -2031,20 +2031,20 @@ process_incoming_interest(struct ccnd *h, struct face *face,
             ccnd_debug_ccnb(h, __LINE__, "interest_from", face, msg, size);
         if (h->debug & 16)
             ccnd_msg(h,
+                     "version: %d, "
                      "prefix_comps: %d, "
-                     "addl_comps: %d, "
+                     "min_suffix_comps: %d, "
+                     "max_suffix_comps: %d, "
                      "orderpref: %d, "
                      "answerfrom: %d, "
                      "scope: %d, "
-                     "count: %d, "
                      "excl: %d bytes, "
                      "etc: %d bytes",
+                     pi->magic,
                      pi->prefix_comps,
-                     ccn_fetch_tagged_nonNegativeInteger
-                        (CCN_DTAG_AdditionalNameComponents, msg,
-                         pi->offset[CCN_PI_B_AdditionalNameComponents],
-                         pi->offset[CCN_PI_E_AdditionalNameComponents]),
-                     pi->orderpref, pi->answerfrom, pi->scope, pi->count,
+                     pi->min_suffix_comps,
+                     pi->max_suffix_comps,
+                     pi->orderpref, pi->answerfrom, pi->scope,
                      pi->offset[CCN_PI_E_Exclude] - pi->offset[CCN_PI_B_Exclude],
                      pi->offset[CCN_PI_E_OTHER] - pi->offset[CCN_PI_B_OTHER]);
         if (pi->orderpref > 1 || pi->prefix_comps != comps->n - 1)

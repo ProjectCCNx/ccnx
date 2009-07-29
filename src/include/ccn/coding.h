@@ -49,7 +49,7 @@ enum ccn_dtag {
     CCN_DTAG_ContentDigest = 21,
     CCN_DTAG_ContentHash = 22,
     CCN_DTAG_ContentObjectV20080711 = 23,	/* Deprecated */
-    CCN_DTAG_Count = 24,
+    CCN_DTAG_Count = 24,	/* Deprecated */
     CCN_DTAG_Header = 25,
     CCN_DTAG_Interest = 26,
     CCN_DTAG_Key = 27,
@@ -58,9 +58,9 @@ enum ccn_dtag {
     CCN_DTAG_Length = 30,
     CCN_DTAG_Link = 31,
     CCN_DTAG_LinkAuthenticator = 32,
-    CCN_DTAG_NameComponentCount = 33,
-    CCN_DTAG_PublisherID = 34,	/* Deprecated */
-    CCN_DTAG_PublisherKeyID = 35,	/* Deprecated */
+    CCN_DTAG_NameComponentCount = 33,	/* DeprecatedInInterest */
+    CCN_DTAG_PublisherID = 34,	/* Obsolete */
+    CCN_DTAG_PublisherKeyID = 35,	/* Obsolete */
     CCN_DTAG_RootDigest = 36,
     CCN_DTAG_Signature = 37,
     CCN_DTAG_Start = 38,
@@ -71,8 +71,8 @@ enum ccn_dtag {
     CCN_DTAG_Exclude = 43,
     CCN_DTAG_Bloom = 44,
     CCN_DTAG_BloomSeed = 45,
-    CCN_DTAG_OrderPreference = 46,
-    CCN_DTAG_AnswerOriginKind = 47,
+    CCN_DTAG_OrderPreference = 46,	/* Deprecated */
+    CCN_DTAG_AnswerOriginKind = 47,	/* Deprecated */
     CCN_DTAG_MatchFirstAvailableDescendant = 48,	/* Obsolete */
     CCN_DTAG_MatchLastAvailableDescendant = 49,	/* Obsolete */
     CCN_DTAG_MatchNextAvailableSibling = 50,	/* Obsolete */
@@ -107,9 +107,13 @@ enum ccn_dtag {
     CCN_DTAG_ForwardingFlags = 79,
     CCN_DTAG_FaceInstance = 80,
     CCN_DTAG_ForwardingEntry = 81,
-    CCN_DTAG_Address = 2048,
-    CCN_DTAG_SOType = 2049,
-    CCN_DTAG_Inject = 2050,
+    CCN_DTAG_MulticastTTL = 82,
+    CCN_DTAG_MinSuffixComponents = 83,
+    CCN_DTAG_MaxSuffixComponents = 84,
+    CCN_DTAG_ChildSelector = 85,
+    CCN_DTAG_Address = 2048,	/* Deprecated */
+    CCN_DTAG_SOType = 2049,	/* Deprecated */
+    CCN_DTAG_Inject = 2050,	/* Deprecated */
     CCN_DTAG_CCNProtocolDataUnit = 17702112,
     CCN_DTAG_ExperimentalResponseFilter = 23204960
 };

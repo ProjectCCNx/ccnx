@@ -49,8 +49,8 @@ incoming_interest(
     if (kind != CCN_UPCALL_INTEREST || md == NULL)
         return(CCN_UPCALL_RESULT_ERR);
     if ((info->pi->answerfrom & CCN_AOK_NEW) != 0) {
-        if (md->outstanding < info->pi->count + 9)
-            md->outstanding = info->pi->count + 9;
+        if (md->outstanding < 10)
+            md->outstanding = 10;
         ccn_set_run_timeout(info->h, 0);
     }
     return(CCN_UPCALL_RESULT_OK);

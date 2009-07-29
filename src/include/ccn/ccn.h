@@ -430,20 +430,22 @@ enum ccn_parsed_interest_offsetid {
     CCN_PI_E_NameComponentCount,
     CCN_PI_B_AdditionalNameComponents,
     CCN_PI_E_AdditionalNameComponents,
+    CCN_PI_B_MinSuffixComponents,
+    CCN_PI_E_MinSuffixComponents,
+    CCN_PI_B_MaxSuffixComponents,
+    CCN_PI_E_MaxSuffixComponents,
     CCN_PI_B_PublisherID, // XXX - rename
     CCN_PI_B_PublisherIDKeyDigest,
     CCN_PI_E_PublisherIDKeyDigest,
     CCN_PI_E_PublisherID,
     CCN_PI_B_Exclude,
     CCN_PI_E_Exclude,
-    CCN_PI_B_OrderPreference,
+    CCN_PI_B_OrderPreference, /* or ChildSelector */
     CCN_PI_E_OrderPreference,
     CCN_PI_B_AnswerOriginKind,
     CCN_PI_E_AnswerOriginKind,
     CCN_PI_B_Scope,
     CCN_PI_E_Scope,
-    CCN_PI_B_Count,
-    CCN_PI_E_Count,
     CCN_PI_B_Nonce,
     CCN_PI_E_Nonce,
     CCN_PI_B_OTHER,
@@ -452,11 +454,13 @@ enum ccn_parsed_interest_offsetid {
 };
 
 struct ccn_parsed_interest {
+    int magic;
     int prefix_comps;
+    int min_suffix_comps;
+    int max_suffix_comps;
     int orderpref;
     int answerfrom;
     int scope;
-    int count;
     unsigned short offset[CCN_PI_E+1];
 };
 

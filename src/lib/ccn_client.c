@@ -446,7 +446,7 @@ ccn_construct_interest(struct ccn *h,
                                  interest_template->length, &pi, NULL);
         if (res >= 0) {
             start = pi.offset[CCN_PI_E_NameComponentCount];
-            size = pi.offset[CCN_PI_E_Count] - start;
+            size = pi.offset[CCN_PI_B_Nonce] - start;
             ccn_charbuf_append(c, interest_template->buf + start, size);
             start = pi.offset[CCN_PI_B_OTHER];
             size = pi.offset[CCN_PI_E_OTHER] - start;
