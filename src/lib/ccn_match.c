@@ -107,6 +107,7 @@ ccn_content_matches_interest(const unsigned char *content_object,
     struct ccn_parsed_ContentObject pc_store;
     struct ccn_parsed_interest pi_store;
     int res;
+    int ncomps;
     int prefixstart;
     int prefixbytes;
     int namecompstart;
@@ -120,6 +121,7 @@ ccn_content_matches_interest(const unsigned char *content_object,
     size_t comp_size = 0;
     const unsigned char *bloom;
     size_t bloom_size = 0;
+    unsigned char match_any[2] = "-";
     if (pc == NULL) {
         res = ccn_parse_ContentObject(content_object, content_object_size,
                                       &pc_store, NULL);
@@ -134,14 +136,11 @@ ccn_content_matches_interest(const unsigned char *content_object,
     }
     if (!ccn_pubid_matches(content_object, pc, interest_msg, pi))
         return(0);
-    if (pi->offset[CCN_PI_B_AdditionalNameComponents] < pi->offset[CCN_PI_E_AdditionalNameComponents]) {
-        res = ccn_fetch_tagged_nonNegativeInteger(CCN_DTAG_AdditionalNameComponents,
-            interest_msg,
-            pi->offset[CCN_PI_B_AdditionalNameComponents],
-            pi->offset[CCN_PI_E_AdditionalNameComponents]);
-        if (res + pi->prefix_comps != pc->name_ncomps + (implicit_content_digest ? 1 : 0))
-            return(0);
-    }
+    ncomps = pc->name_ncomps + (implicit_content_digest ? 1 : 0);
+    if (ncomps < pi->prefix_comps + pi->min_suffix_comps)
+        return(0);
+    if (ncomps > pi->prefix_comps + pi->max_suffix_comps)
+        return(0);
     prefixstart = pi->offset[CCN_PI_B_Component0];
     prefixbytes = pi->offset[CCN_PI_E_LastPrefixComponent] - prefixstart;
     namecompstart = pc->offset[CCN_PCO_B_Component0];
@@ -215,8 +214,14 @@ ccn_content_matches_interest(const unsigned char *content_object,
         if (!ccn_buf_match_dtag(d, CCN_DTAG_Exclude))
             abort();
         ccn_buf_advance(d);
+        bloom = NULL;
         bloom_size = 0;
-        if (ccn_buf_match_dtag(d, CCN_DTAG_Bloom)) {
+        if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
+                ccn_buf_advance(d);
+                bloom = match_any;
+                ccn_buf_check_close(d);
+        }
+        else if (ccn_buf_match_dtag(d, CCN_DTAG_Bloom)) {
                 ccn_buf_advance(d);
                 if (ccn_buf_match_blob(d, &bloom, &bloom_size))
                     ccn_buf_advance(d);
@@ -237,8 +242,14 @@ ccn_content_matches_interest(const unsigned char *content_object,
                 if (res > 0)
                     break;
             }
+            bloom = NULL;
             bloom_size = 0;
-            if (ccn_buf_match_dtag(d, CCN_DTAG_Bloom)) {
+            if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
+                ccn_buf_advance(d);
+                bloom = match_any;
+                ccn_buf_check_close(d);
+            }
+            else if (ccn_buf_match_dtag(d, CCN_DTAG_Bloom)) {
                 ccn_buf_advance(d);
                 if (ccn_buf_match_blob(d, &bloom, &bloom_size))
                     ccn_buf_advance(d);
@@ -246,9 +257,11 @@ ccn_content_matches_interest(const unsigned char *content_object,
             }
         }
         /*
-         * Now we have isolated the applicable Bloom filter.
+         * Now we have isolated the applicable filter (Any or Bloom or none).
          */
-        if (bloom_size != 0) {
+        if (bloom == match_any)
+            return(0);
+        else if (bloom_size != 0) {
             const struct ccn_bloom_wire *f = ccn_bloom_validate_wire(bloom, bloom_size);
             /* If not a valid filter, treat like a false positive */
             if (f == NULL)
