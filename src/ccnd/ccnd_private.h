@@ -1,7 +1,7 @@
 /*
  * ccnd_private.h
  * 
- * Copyright 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
  * Private definitions for the CCN daemon
  *
  * Data structures are described here so that logging and status
@@ -143,7 +143,6 @@ struct face {
     int flags;                  /* CCN_FACE_* below */
     unsigned faceid;            /* internal face id */
     unsigned recvcount;         /* for activity level monitoring */
-    ccn_accession_t cached_accession; /* last matched */
     struct content_queue *q[CCN_CQ_N]; /* outgoing content, per delay class */
     struct ccn_charbuf *inbuf;
     struct ccn_skeleton_decoder decoder;
