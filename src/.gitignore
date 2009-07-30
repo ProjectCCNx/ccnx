@@ -7,6 +7,7 @@ ccnd/ccndsmoketest
 ccnd/contenthash.ccnb
 ccnd/contenthash.out
 ccnd/contentmishash.ccnb
+ccnd/minsuffix.ccnb
 ccnd/smoketestccnd
 conf.mk
 cmd/Makefile

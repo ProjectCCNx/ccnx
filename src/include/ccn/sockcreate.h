@@ -16,14 +16,17 @@ struct ccn_sockets {
     // flags?
 };
 
+/**
+ * Text-friendly description of a socket (IPv4 or IPv6).
+ */
 
 struct ccn_sockdescr {
     int ipproto; /**< as per http://www.iana.org/assignments/protocol-numbers -
                     should match IPPROTO_* in system headers */
-    const char *address; /**< acceptable to getaddrinfo */
-    const char *port; /**< service name or number */
+    const char *address;        /**< acceptable to getaddrinfo */
+    const char *port;           /**< service name or number */
     const char *source_address; /**< may be needed for multicast */
-    int ttl; /**< may be needed for multicast */
+    int mcast_ttl;              /**< may be needed for multicast */
 };
 
 /**
