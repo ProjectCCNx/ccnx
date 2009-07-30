@@ -1265,8 +1265,8 @@ remove_content(struct ccnd *h, struct content_entry *content)
     return(0);
 }
 
-/*
- * clean_deamon: periodic content cleaning
+/**
+ * Periodic content cleaning
  */
 static int
 clean_deamon(struct ccn_schedule *sched,
@@ -1285,6 +1285,11 @@ clean_deamon(struct ccn_schedule *sched,
     struct content_entry *content = NULL;
     int res = 0;
     int ignore;
+    
+    /*
+     * If we ran into our processing limit (check_limit) last time,
+     * ev->evint tells us where to restart.
+     */
     
     if ((flags & CCN_SCHEDULE_CANCEL) != 0) {
         h->clean = NULL;
@@ -1348,7 +1353,6 @@ clean_deamon(struct ccn_schedule *sched,
         ev->evint = 0;
         return(1000000);
     }
-    // XXX - should remove non-stale content, too, if desperate
     ev->evint = 0;
     return(15000000);
 }
@@ -1360,8 +1364,8 @@ clean_needed(struct ccnd *h)
         h->clean = ccn_schedule_event(h->sched, 1000000, clean_deamon, NULL, 0);
 }
 
-/*
- * age_forwarding: age out the old forwarding table entries
+/**
+ * Age out the old forwarding table entries
  */
 static int
 age_forwarding(struct ccn_schedule *sched,
@@ -1536,7 +1540,7 @@ ccnd_reg_self(struct ccnd *h, const unsigned char *msg, size_t size)
     return(result);
 }
 
-/*!
+/**
  * Add all the active, inheritable faceids of npe and its ancestors to x
  */
 static void
@@ -1557,7 +1561,7 @@ update_inherited(struct ccnd *h,
     }
 }
 
-/*!
+/**
  * Recompute the contents of npe->forward_to from forwarding lists of
  * npe and all of its ancestors
  */
@@ -1811,6 +1815,9 @@ reorder_outbound_using_history(struct ccnd *h,
         ccn_indexbuf_move_to_end(outbound, npe->src);
 }
 
+/**
+ * Schedules the propagation of an Interest message.
+ */
 static int
 propagate_interest(struct ccnd *h, struct face *face,
                       unsigned char *msg,
@@ -1912,6 +1919,11 @@ propagate_interest(struct ccnd *h, struct face *face,
     return(res);
 }
 
+/**
+ * Checks whether this Interest message has been seen before.  Also, if it
+ * has been seen and the original is still propagating, remove the face that
+ * the duplicate arrived on from the outbound set of the original.
+ */
 static int
 is_duplicate_flooded(struct ccnd *h, unsigned char *msg,
                      struct ccn_parsed_interest *pi, unsigned faceid)
@@ -1930,7 +1942,7 @@ is_duplicate_flooded(struct ccnd *h, unsigned char *msg,
     return(0);
 }
 
-/*
+/**
  * Finds the longest matching nameprefix, returns the component count or -1 for error.
  */
 static int
@@ -1956,7 +1968,7 @@ nameprefix_longest_match(struct ccnd *h, const unsigned char *msg,
     return(answer);
 }
 
-/*
+/**
  * Creates a nameprefix entry if it does not already exist, together
  * with all of its parents.
  */
