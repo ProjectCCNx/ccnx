@@ -79,10 +79,11 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		if (_info.getPolicyName().isPrefixOf(co.name())) {
 			ByteArrayInputStream bais = new ByteArrayInputStream(co.content());
 			try {
-				_policy.update(bais, true);
-				ContentName policyName = ContentName.fromNative(REPO_NAMESPACE + "/" + _info.getLocalName() + "/" + REPO_POLICY);
-				ContentObject policyCo = new ContentObject(policyName, co.signedInfo(), co.content(), co.signature());
-   				saveContent(policyCo);
+				if (_policy.update(bais, true)) {
+					ContentName policyName = ContentName.fromNative(REPO_NAMESPACE + "/" + _info.getLocalName() + "/" + REPO_POLICY);
+					ContentObject policyCo = new ContentObject(policyName, co.signedInfo(), co.content(), co.signature());
+	   				saveContent(policyCo);
+				}
 			} catch (Exception e) {
 				Library.logStackTrace(Level.WARNING, e);
 				e.printStackTrace();
@@ -400,7 +401,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		components[1] = REPO_PRIVATE.getBytes();
 		components[2] = fileName.getBytes();
 		ContentName name = new ContentName(components);
-		ContentObject co = getContent(Interest.last(name));
+		ContentObject co = getContent(Interest.last(name, 3));
 		
 		if (!forceWrite && co != null) {
 			return new String(co.content());
