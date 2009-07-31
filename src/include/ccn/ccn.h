@@ -426,9 +426,9 @@ enum ccn_parsed_interest_offsetid {
     CCN_PI_E_LastPrefixComponent,
     CCN_PI_E_ComponentLast,
     CCN_PI_E_Name,
-    CCN_PI_B_NameComponentCount /* = CCN_PI_E_Name */,
+    CCN_PI_B_NameComponentCount /* deprecated */,
     CCN_PI_E_NameComponentCount,
-    CCN_PI_B_AdditionalNameComponents,
+    CCN_PI_B_AdditionalNameComponents, /* deprecated */
     CCN_PI_E_AdditionalNameComponents,
     CCN_PI_B_MinSuffixComponents,
     CCN_PI_E_MinSuffixComponents,
@@ -440,8 +440,10 @@ enum ccn_parsed_interest_offsetid {
     CCN_PI_E_PublisherID,
     CCN_PI_B_Exclude,
     CCN_PI_E_Exclude,
-    CCN_PI_B_OrderPreference, /* or ChildSelector */
-    CCN_PI_E_OrderPreference,
+    CCN_PI_B_ChildSelector,
+    CCN_PI_B_OrderPreference = CCN_PI_B_ChildSelector,
+    CCN_PI_E_ChildSelector,
+    CCN_PI_E_OrderPreference = CCN_PI_E_ChildSelector,
     CCN_PI_B_AnswerOriginKind,
     CCN_PI_E_AnswerOriginKind,
     CCN_PI_B_Scope,
@@ -670,44 +672,61 @@ void ccn_perror(struct ccn *h, const char *s);
  * Low-level binary formatting
  */
 
-/*
- * ccn_charbuf_append_tt: append a token start
+/**
+ * Append a token start
+ *
+ * This forms the basic building block of ccnb-encoded data.
+ * @param c is the buffer to append to.
  * Return value is 0, or -1 for error.
  */
 int ccn_charbuf_append_tt(struct ccn_charbuf *c, size_t val, enum ccn_tt tt);
 
-/*
- * ccn_charbuf_append_closer: append a CCN_CLOSE
- * Return value is 0, or -1 for error.
+/**
+ * Append a CCN_CLOSE
+ *
+ * Use this to close off an element in ccnb-encoded data.
+ * @param c is the buffer to append to.
+ * @returns 0 for success or -1 for error.
  */
 int ccn_charbuf_append_closer(struct ccn_charbuf *c);
 
-/*
- * ccn_charbuf_append_non_negative_integer: append a non-negative integer
- * as a UDATA for its string representation length, and the string for the
- * integer value itself.
- * Return value is 0, or -1 for error.
+/***********************************
+ * Slightly higher level binary formatting
+ */
+
+/**
+ * Append a non-negative integer as a UDATA.
+ * @param c is the buffer to append to.
+ * @param nni is a non-negative value.
  */
 int ccn_charbuf_append_non_negative_integer(struct ccn_charbuf *c, int nni);
 
-/*
- * ccn_charbuf_append_timestamp_blob: append a binary timestamp
+/**
+ * Append a binary timestamp
  * as a BLOB using the ccn binary Timestamp representation (12-bit fraction).
- * Return value is 0, or -1 for error.
- * If marker >= 0, the low-order byte is used as a marker byte, useful for
- * some content naming conventions (versioning, in particular).
+ * @param c is the buffer to append to.
+ * @param marker
+ *   If marker >= 0, the low-order byte is used as a marker byte, useful for
+ *   some content naming conventions (versioning, in particular).
+ * @param secs - seconds since epoch
+ * @param nsecs - nanoseconds
+ * @returns 0 for success or -1 for error.
  */
 int ccn_charbuf_append_timestamp_blob(struct ccn_charbuf *c,
                                       enum ccn_marker marker,
                                       intmax_t secs, int nsecs);
 
-/*
- * ccn_charbuf_append_now_blob:
- * as above, using the current time
+/**
+ * Append a binary timestamp, using the current time
+ * 
+ * Like ccn_charbuf_append_timestamp_blob() but uses current time
+ * @param c is the buffer to append to.
+ * @param marker - see ccn_charbuf_append_timestamp_blob()
+ * @returns 0 for success or -1 for error.
  */
 int ccn_charbuf_append_now_blob(struct ccn_charbuf *c, enum ccn_marker marker);
 
-/*
+/**
  * Versioning
  */
 

@@ -134,8 +134,12 @@
 			</exec>
 		</parallel>
 	</target>
+	
+	<target name="repo" depends="repo-start, test-repo-is-up">
+	</target>
 
-	<target name="repo">
+	<!-- Don't run this by itself - use target repo -->
+	<target name="repo-start" depends="jar, ccnd">
 		<parallel>
 			<daemons>
 				<java classname="com.parc.ccn.network.daemons.repo.RepositoryDaemon" fork="true" failonerror="true" output = "${testout}/TEST-repo-daemon.txt" dir="${testout}">
@@ -158,7 +162,25 @@
             <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
             <sleep seconds="1"/>
 		</parallel>
-		<sleep seconds="10"/>  <!-- Make sure really started -->
+	</target>
+	
+	<!-- Run this after starting repo to insure it's up before running further tests"/> -->
+	<target name="test-repo-is-up" depends="jar,ccnd">
+		<mkdir dir="${testout}"/>
+		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="xml" usefile="true"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
+			<batchtest todir="${testout}" >
+				<fileset dir="${build}">
+					<include name="test/ccn/network/daemons/repo/RepoInitializationTest.class"/>
+				</fileset>
+			</batchtest>
+		</junit>
+		<!-- <delete dir="${REPO_ROOT}"/> -->
 	</target>
 
     <!-- target for running a test repo foreground so you can run a test

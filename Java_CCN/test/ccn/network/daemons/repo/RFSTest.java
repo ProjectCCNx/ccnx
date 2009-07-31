@@ -290,6 +290,7 @@ public class RFSTest extends RepoTestBase {
 		//now checking with the prefix that the first name is in
 		neresponse = repo.getNamesWithPrefix(interest);
 		Assert.assertTrue(neresponse.getNames().contains(nername1));
+
 		Assert.assertTrue(neresponse.getPrefix().contains(CCNNameEnumerator.NEMARKER));
 		//now call get names with prefix again to set interest flag
 		//have to use the version from the last response (or at least a version after the last write
@@ -304,6 +305,7 @@ public class RFSTest extends RepoTestBase {
 		Assert.assertTrue(neresponse.getNames().contains(nername1));
 		Assert.assertTrue(neresponse.getNames().contains(nername2));
 		Assert.assertTrue(neresponse.getPrefix().contains(CCNNameEnumerator.NEMARKER));
+		
 		//need to reconstruct the interest again
 		interest = Interest.last(neresponse.getPrefix());
 		interest.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME);

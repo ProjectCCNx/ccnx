@@ -561,7 +561,7 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
         res = ccn_parse_Exclude(d);
         interest->offset[CCN_PI_E_Exclude] = d->decoder.token_index;
         /* optional ChildSelector or OrderPreference */
-        interest->offset[CCN_PI_B_OrderPreference] = d->decoder.token_index;
+        interest->offset[CCN_PI_B_ChildSelector] = d->decoder.token_index;
         res = ccn_parse_optional_tagged_nonNegativeInteger(d,
                          CCN_DTAG_OrderPreference);
         if (res != -1)
@@ -575,7 +575,7 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
         if (res < 0)
             res = 0;
         interest->orderpref = res;
-        interest->offset[CCN_PI_E_OrderPreference] = d->decoder.token_index;
+        interest->offset[CCN_PI_E_ChildSelector] = d->decoder.token_index;
         if (interest->orderpref > 5)
             return (d->decoder.state = -__LINE__);        
         /* optional AnswerOriginKind */

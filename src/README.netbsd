@@ -1,14 +1,15 @@
-Passed "make test" using NetBSD 5.0_RC4 i386.
+Passed "make test" in src/ using NetBSD 5.0 i386.
 setenv PKG_PATH ftp://ftp.NetBSD.org/pub/pkgsrc/packages/NetBSD/i386/5.0_2009Q1/All
 pkg_add -v expat
 pkg_add -v libxml2
 
-For sources, also need:
+For access to sources via git, also need:
 pkg_add -v gitweb
 (it may be enough to just use scmgit)
 
-Issue - the script to construct the keystore using openssl did not work.
-Workaround is to copy ~/.ccn from elsewhere.
+To build all documentation as well ("make documentation" in src/../), install these:
+pkg_add -v asciidoc
+pkg_add -v doxygen
 
 These were the installed packages.
 # pkg_info

@@ -1,7 +1,7 @@
 /*
  * ccnd_private.h
  * 
- * Copyright 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
  * Private definitions for the CCN daemon
  *
  * Data structures are described here so that logging and status
@@ -102,7 +102,7 @@ struct ccnd {
     unsigned long logtime;          /* see ccn_msg() */
     int mtu;                        /* Target size for stuffing interests */
     int flood;                      // XXX - Temporary, for transition period
-    unsigned interest_faceid;       /* for self_ref internal client */
+    unsigned interest_faceid;       /* for self_reg internal client */
     const char *progname;           /* our name, for locating helpers */
     struct ccn *internal_client;    /* internal client */
     struct ccn_keystore *internal_keys; /* the internal client's keys */
@@ -143,7 +143,6 @@ struct face {
     int flags;                  /* CCN_FACE_* below */
     unsigned faceid;            /* internal face id */
     unsigned recvcount;         /* for activity level monitoring */
-    ccn_accession_t cached_accession; /* last matched */
     struct content_queue *q[CCN_CQ_N]; /* outgoing content, per delay class */
     struct ccn_charbuf *inbuf;
     struct ccn_skeleton_decoder decoder;
@@ -164,7 +163,7 @@ struct face {
 #define CCN_FACE_NOSEND (1 << 8) /* Don't send anymore */
 #define CCN_FACE_UNDECIDED (1 << 9) /* Might not be talking ccn */
 
-/*
+/**
  *  The content hash table is keyed by the initial portion of the ContentObject
  *  that contains all the parts of the complete name.  The extdata of the hash
  *  table holds the rest of the object, so that the whole ContentObject is
@@ -175,28 +174,30 @@ struct face {
  *  last name component, which is easily located via the comps array.
  */
 struct content_entry {
-    ccn_accession_t accession;  /* assigned in arrival order */
-    unsigned short *comps;      /* Name Component byte boundary offsets */
-    int ncomps;                 /* Number of name components plus one */
-    int flags;                  /* see below */
-    const unsigned char *key;	/* ccnb-encoded ContentObject */
-    int key_size;               /* Size of fragment prior to Content */
-    int size;                   /* Size of ContentObject */
-    struct ccn_indexbuf *skiplinks; /* skiplist for name-ordered ops */
+    ccn_accession_t accession;  /**< assigned in arrival order */
+    unsigned short *comps;      /**< Name Component byte boundary offsets */
+    int ncomps;                 /**< Number of name components plus one */
+    int flags;                  /**< see below */
+    const unsigned char *key;	/**< ccnb-encoded ContentObject */
+    int key_size;               /**< Size of fragment prior to Content */
+    int size;                   /**< Size of ContentObject */
+    struct ccn_indexbuf *skiplinks; /**< skiplist for name-ordered ops */
 };
-/* content_entry flags */
+/**
+ * content_entry flags
+ */
 #define CCN_CONTENT_ENTRY_SLOWSEND  1
 #define CCN_CONTENT_ENTRY_STALE     2
 #define CCN_CONTENT_ENTRY_PRECIOUS  4
-/*
+/**
  * The sparse_straggler hash table, keyed by accession, holds scattered
- * entries that would bloat the direct content_by_accession table.
+ * entries that would otherwise bloat the direct content_by_accession table.
  */
 struct sparse_straggler_entry {
     struct content_entry *content;
 };
 
-/*
+/**
  * The nameprefix hash table is keyed by the Component elements of
  * the Name prefix.
  */

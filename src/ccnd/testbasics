@@ -71,4 +71,19 @@ echo Testing that fetch with bad hash does not succeed
 </Interest>
 END
 ./ccndsmoketest -t 66 send contentmishash.ccnb recv | grep 'recv timed out' || Fail contentmishash
+
+echo Testing MinSuffixComponents
+../cmd/ccn_xmltoccnb -w - <<'END' > minsuffix.ccnb
+<Interest>
+  <Name>
+    <Component ccnbencoding="text">local</Component>
+    <Component ccnbencoding="text">test</Component>
+  </Name>
+  <MinSuffixComponents>5</MinSuffixComponents>
+</Interest>
+END
+
+./ccndsmoketest -t 100 send minsuffix.ccnb recv > minsuffix.out || Fail
+diff minsuffix.ref minsuffix.out || Fail minsuffix.out does not match expected
+
 echo $0 TESTS PASSED

@@ -161,16 +161,16 @@ public class ContentTree {
 					node.timestamp = ts;
 				}
 				
-				
 				if(node.interestFlag && (ner==null || ner.prefix==null)){
 					//we have added something to this node and someone was interested
 					//we need to get the child names and the prefix to send back
 					Library.logger().info("we added at least one child, need to send a name enumeration response");
 					ContentName prefix = name.cut(component);
+
 					prefix = new ContentName(prefix, CCNNameEnumerator.NEMARKER);
 					prefix = VersioningProfile.versionName(prefix, new Timestamp(node.timestamp));
 					Library.logger().info("prefix for NEResponse: "+prefix);
-					
+
 					ArrayList<ContentName> names = new ArrayList<ContentName>();
 					//the parent has children we need to return
 					ContentName c = new ContentName();
@@ -479,6 +479,7 @@ public class ContentTree {
 		TreeNode parent = lookupNode(prefix, prefix.count());
 		if(parent!=null){
 			parent.interestFlag = true;
+			
 			//we should check the timestamp
 			try {
 				nodeTS = VersioningProfile.getVersionAsTimestamp(VersioningProfile.versionName(new ContentName(), new Timestamp(parent.timestamp)));

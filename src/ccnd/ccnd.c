@@ -1190,7 +1190,10 @@ check_propagating(struct ccnd *h)
     for (npe = e->data; npe != NULL; npe = e->data) {
         if (npe->forward_to != NULL)
             check_forward_to(h, npe);
-        if (npe->src == ~0 && npe->forward_to == NULL && npe->children == 0 && npe->forwarding == NULL) {
+        if (  npe->src == ~0 &&
+              npe->forward_to == NULL &&
+              npe->children == 0 &&
+              npe->forwarding == NULL) {
             head = npe->propagating_head;
             if ((head == NULL || head == head->next)) {
                 hashtb_delete(e);
@@ -1262,8 +1265,8 @@ remove_content(struct ccnd *h, struct content_entry *content)
     return(0);
 }
 
-/*
- * clean_deamon: periodic content cleaning
+/**
+ * Periodic content cleaning
  */
 static int
 clean_deamon(struct ccn_schedule *sched,
@@ -1282,6 +1285,11 @@ clean_deamon(struct ccn_schedule *sched,
     struct content_entry *content = NULL;
     int res = 0;
     int ignore;
+    
+    /*
+     * If we ran into our processing limit (check_limit) last time,
+     * ev->evint tells us where to restart.
+     */
     
     if ((flags & CCN_SCHEDULE_CANCEL) != 0) {
         h->clean = NULL;
@@ -1345,7 +1353,6 @@ clean_deamon(struct ccn_schedule *sched,
         ev->evint = 0;
         return(1000000);
     }
-    // XXX - should remove non-stale content, too, if desperate
     ev->evint = 0;
     return(15000000);
 }
@@ -1357,8 +1364,8 @@ clean_needed(struct ccnd *h)
         h->clean = ccn_schedule_event(h->sched, 1000000, clean_deamon, NULL, 0);
 }
 
-/*
- * age_forwarding: age out the old forwarding table entries
+/**
+ * Age out the old forwarding table entries
  */
 static int
 age_forwarding(struct ccn_schedule *sched,
@@ -1448,7 +1455,9 @@ ccnd_reg_prefix(struct ccnd *h,
     struct nameprefix_entry *npe = NULL;
     int res;
     
-    if ((flags & (CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE | CCN_FORW_ADVERTISE)) != flags)
+    if ((flags & (CCN_FORW_CHILD_INHERIT |
+                  CCN_FORW_ACTIVE        |
+                  CCN_FORW_ADVERTISE      )) != flags)
         return(-1);
     if (face_from_faceid(h, faceid) == NULL)
         return(-1);
@@ -1503,8 +1512,8 @@ register_new_face(struct ccnd *h, struct face *face)
 {
     int res;
     if (h->flood && face->faceid != 0 && (face->flags & CCN_FACE_UNDECIDED) == 0) {
-        res = ccnd_reg_uri(h, "ccn:/", face->faceid, CCN_FORW_CHILD_INHERIT, 0x7FFFFFFF);
-        //ccnd_msg(h, "Flooding to face %u", face->faceid);
+        res = ccnd_reg_uri(h, "ccn:/", face->faceid,
+                           CCN_FORW_CHILD_INHERIT, 0x7FFFFFFF);
     }
 }
 
@@ -1531,7 +1540,7 @@ ccnd_reg_self(struct ccnd *h, const unsigned char *msg, size_t size)
     return(result);
 }
 
-/*!
+/**
  * Add all the active, inheritable faceids of npe and its ancestors to x
  */
 static void
@@ -1552,7 +1561,7 @@ update_inherited(struct ccnd *h,
     }
 }
 
-/*!
+/**
  * Recompute the contents of npe->forward_to from forwarding lists of
  * npe and all of its ancestors
  */
@@ -1612,7 +1621,8 @@ get_outbound_faces(struct ccnd *h,
     for (i = npe->forward_to->n - 1; i >= 0; i--) {
         faceid = npe->forward_to->buf[i];
         face = face_from_faceid(h, faceid);
-        if (face != NULL && face != from && ((face->flags & checkmask) == checkmask)) {
+        if (face != NULL && face != from &&
+            ((face->flags & checkmask) == checkmask)) {
             if (h->debug & 32)
                 ccnd_msg(h, "at %d adding %u", __LINE__, face->faceid);
             ccn_indexbuf_append_element(x, face->faceid);
@@ -1805,6 +1815,9 @@ reorder_outbound_using_history(struct ccnd *h,
         ccn_indexbuf_move_to_end(outbound, npe->src);
 }
 
+/**
+ * Schedules the propagation of an Interest message.
+ */
 static int
 propagate_interest(struct ccnd *h, struct face *face,
                       unsigned char *msg,
@@ -1906,8 +1919,14 @@ propagate_interest(struct ccnd *h, struct face *face,
     return(res);
 }
 
+/**
+ * Checks whether this Interest message has been seen before.  Also, if it
+ * has been seen and the original is still propagating, remove the face that
+ * the duplicate arrived on from the outbound set of the original.
+ */
 static int
-is_duplicate_flooded(struct ccnd *h, unsigned char *msg, struct ccn_parsed_interest *pi, unsigned faceid)
+is_duplicate_flooded(struct ccnd *h, unsigned char *msg,
+                     struct ccn_parsed_interest *pi, unsigned faceid)
 {
     struct propagating_entry *pe = NULL;
     size_t nonce_start = pi->offset[CCN_PI_B_Nonce];
@@ -1923,12 +1942,12 @@ is_duplicate_flooded(struct ccnd *h, unsigned char *msg, struct ccn_parsed_inter
     return(0);
 }
 
-/*
+/**
  * Finds the longest matching nameprefix, returns the component count or -1 for error.
  */
 static int
-nameprefix_longest_match(struct ccnd *h,
-                const unsigned char *msg, struct ccn_indexbuf *comps, int ncomps)
+nameprefix_longest_match(struct ccnd *h, const unsigned char *msg,
+                         struct ccn_indexbuf *comps, int ncomps)
 {
     int i;
     int base;
@@ -1949,7 +1968,7 @@ nameprefix_longest_match(struct ccnd *h,
     return(answer);
 }
 
-/*
+/**
  * Creates a nameprefix entry if it does not already exist, together
  * with all of its parents.
  */
@@ -2055,8 +2074,6 @@ process_incoming_interest(struct ccnd *h, struct face *face,
                          pi->magic);
             }
         }
-        if (pi->orderpref > 1 || pi->prefix_comps != comps->n - 1)
-            face->cached_accession = 0;
         namesize = comps->buf[pi->prefix_comps] - comps->buf[0];
         h->interests_accepted += 1;
         s_ok = (pi->answerfrom & CCN_AOK_STALE) != 0;
@@ -2070,48 +2087,25 @@ process_incoming_interest(struct ccnd *h, struct face *face,
         }
         if (npe != NULL && (pi->answerfrom & CCN_AOK_CS) != 0) {
             last_match = NULL;
-            content = NULL;
-            if (face->cached_accession != 0) {
-                /* some help for old clients that are expecting suppression state */
-                content = content_from_accession(h, face->cached_accession);
-                face->cached_accession = 0;
-                if (content != NULL &&
-                    content_matches_interest_prefix(h, content, msg, 
-                                                    comps, pi->prefix_comps))
-                    content = content_from_accession(h, content_skiplist_next(h, content));
-                if (content != NULL && (h->debug & 8))
-                    ccnd_debug_ccnb(h, __LINE__, "resume", NULL,
-                                    content->key, content->size);
-                if (content != NULL &&
-                    !content_matches_interest_prefix(h, content, msg,
-                                                     comps, pi->prefix_comps)) {
-                    if (h->debug & 8)
-                        ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL,
-                                        msg, size);
-                    content = NULL;
-                }
-            }
-            if (content == NULL) {
-                content = find_first_match_candidate(h, msg, pi);
-                if (content != NULL && (h->debug & 8))
-                    ccnd_debug_ccnb(h, __LINE__, "first_candidate", NULL,
-                                    content->key,
-                                    content->size);
-                if (content != NULL &&
-                    !content_matches_interest_prefix(h, content, msg, comps, 
-                                                     pi->prefix_comps)) {
-                    if (h->debug & 8)
-                        ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL,
-                                        msg, size);
-                    content = NULL;
-                }
+            content = find_first_match_candidate(h, msg, pi);
+            if (content != NULL && (h->debug & 8))
+                ccnd_debug_ccnb(h, __LINE__, "first_candidate", NULL,
+                                content->key,
+                                content->size);
+            if (content != NULL &&
+                !content_matches_interest_prefix(h, content, msg, comps, 
+                                                 pi->prefix_comps)) {
+                if (h->debug & 8)
+                    ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL,
+                                    msg, size);
+                content = NULL;
             }
             for (try = 0; content != NULL; try++) {
                 if ((s_ok || (content->flags & CCN_CONTENT_ENTRY_STALE) == 0) &&
                     ccn_content_matches_interest(content->key,
                                        content->size,
                                        0, NULL, msg, size, pi)) {
-                    if (pi->orderpref == 4 &&
+                    if ((pi->orderpref & 1) == 0 && // XXX - should be symbolic
                         pi->prefix_comps != comps->n - 1 &&
                         comps->n == content->ncomps &&
                         content_matches_interest_prefix(h, content, msg,
@@ -2126,12 +2120,10 @@ process_incoming_interest(struct ccnd *h, struct face *face,
                         ccnd_debug_ccnb(h, __LINE__, "matches", NULL, 
                                         content->key,
                                         content->size);
-                    if (pi->orderpref != 5) // XXX - should be symbolic
+                    if ((pi->orderpref & 1) == 0) // XXX - should be symbolic
                         break;
                     last_match = content;
                 }
-                // XXX - accessional ordering is NYI
-                
             move_along:
                 content = content_from_accession(h, content_skiplist_next(h, content));
                 if (content != NULL &&
@@ -2163,7 +2155,6 @@ process_incoming_interest(struct ccnd *h, struct face *face,
                 }
                 if ((pi->answerfrom & CCN_AOK_EXPIRE) != 0)
                     mark_stale(h, content);
-                face->cached_accession = content->accession;
                 matched = 1;
             }
         }
