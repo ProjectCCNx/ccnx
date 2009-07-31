@@ -386,7 +386,7 @@ dissect_ccn_interest(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t *tvb,
         titem = proto_tree_add_uint(tree, hf_ccn_maxsuffixcomponents, tvb, pi->offset[CCN_PI_B_MaxSuffixComponents], l, i);
     }
 
-    /* PublisherIDKeyDigest */
+    /* PublisherIDKeyDigest? */
     /* Exclude */
     l = pi->offset[CCN_PI_E_Exclude] - pi->offset[CCN_PI_B_Exclude];
     if (l > 0) {
@@ -465,10 +465,12 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
     res = ccn_parse_ContentObject(ccnb, ccnb_size, pco, comps);
     if (res < 0) return (-1);
 
+    /* Signature */
     l = pco->offset[CCN_PCO_E_Signature] - pco->offset[CCN_PCO_B_Signature];
     titem = proto_tree_add_item(tree, hf_ccn_signature, tvb, pco->offset[CCN_PCO_B_Signature], l, FALSE);
     signature_tree = proto_item_add_subtree(titem, ett_signature);
 
+    /* DigestAlgorithm */
     l = pco->offset[CCN_PCO_E_DigestAlgorithm] - pco->offset[CCN_PCO_B_DigestAlgorithm];
     if (l > 0) {
         res = ccn_ref_tagged_BLOB(CCN_DTAG_DigestAlgorithm, ccnb,
@@ -478,11 +480,13 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
         titem = proto_tree_add_item(signature_tree, hf_ccn_signaturedigestalg, tvb,
                                     blob - ccnb, blob_size, FALSE);
     }
+    /* Witness */
     l = pco->offset[CCN_PCO_E_Witness] - pco->offset[CCN_PCO_B_Witness];
     if (l > 0) {
         /* add the witness item to the signature tree */
     }
 
+    /* Signature bits */
     l = pco->offset[CCN_PCO_E_SignatureBits] - pco->offset[CCN_PCO_B_SignatureBits];
     if (l > 0) {
         res = ccn_ref_tagged_BLOB(CCN_DTAG_SignatureBits, ccnb,
@@ -493,6 +497,9 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
                                      blob - ccnb, blob_size, blob);
     }
 
+    /* /Signature */
+
+    /* Name */
     l = pco->offset[CCN_PCO_E_Name] - pco->offset[CCN_PCO_B_Name];
     c = ccn_charbuf_create();
     ccn_uri_append(c, ccnb, ccnb_size, 1);
@@ -502,16 +509,22 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
     name_tree = proto_item_add_subtree(titem, ett_name);
     ccn_charbuf_destroy(&c);
 
+    /* Name Components */
     for (i = 0; i < comps->n - 1; i++) {
         res = ccn_name_comp_get(ccnb, comps, i, &comp, &comp_size);
         titem = proto_tree_add_item(name_tree, hf_ccn_name_components, tvb, comp - ccnb, comp_size, FALSE);
     }
 
+    /* /Name */
+
+    /* SignedInfo */
     l = pco->offset[CCN_PCO_E_SignedInfo] - pco->offset[CCN_PCO_B_SignedInfo];
     titem = proto_tree_add_text(tree, tvb,
                                          pco->offset[CCN_PCO_B_SignedInfo], l,
                                          "SignedInfo");
     signedinfo_tree = proto_item_add_subtree(titem, ett_signedinfo);
+
+    /* PublisherPublicKeyDigest */
     l = pco->offset[CCN_PCO_E_PublisherPublicKeyDigest] - pco->offset[CCN_PCO_B_PublisherPublicKeyDigest];
     if (l > 0) {
         res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest, ccnb,
@@ -520,6 +533,8 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
                                   &blob, &blob_size);
         titem = proto_tree_add_bytes(signedinfo_tree, hf_ccn_publisherpublickeydigest, tvb, blob - ccnb, blob_size, blob);
     }
+
+    /* Timestamp */
     l = pco->offset[CCN_PCO_E_Timestamp] - pco->offset[CCN_PCO_B_Timestamp];
     if (l > 0) {
         res = ccn_ref_tagged_BLOB(CCN_DTAG_Timestamp, ccnb,
@@ -535,6 +550,7 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
         titem = proto_tree_add_time(signedinfo_tree, hf_ccn_timestamp, tvb, blob - ccnb, blob_size, &timestamp);
     }
 
+    /* Type */
     l = pco->offset[CCN_PCO_E_Type] - pco->offset[CCN_PCO_B_Type];
     if (l > 0) {
         res = ccn_ref_tagged_BLOB(CCN_DTAG_Type, ccnb,
@@ -546,6 +562,7 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
         titem = proto_tree_add_int(signedinfo_tree, hf_ccn_contenttype, NULL, 0, 0, pco->type);
     }
 
+    /* FreshnessSeconds */
     l = pco->offset[CCN_PCO_E_FreshnessSeconds] - pco->offset[CCN_PCO_B_FreshnessSeconds];
     if (l > 0) {
         res = ccn_ref_tagged_BLOB(CCN_DTAG_FreshnessSeconds, ccnb,
@@ -559,6 +576,7 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
         titem = proto_tree_add_uint(signedinfo_tree, hf_ccn_freshnessseconds, tvb, blob - ccnb, blob_size, i);
     }
 
+    /* FinalBlockID */
     l = pco->offset[CCN_PCO_E_FinalBlockID] - pco->offset[CCN_PCO_B_FinalBlockID];
     if (l > 0) {
         res = ccn_ref_tagged_BLOB(CCN_DTAG_FinalBlockID, ccnb,
@@ -568,7 +586,10 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
 
         titem = proto_tree_add_item(signedinfo_tree, hf_ccn_finalblockid, tvb, blob - ccnb, blob_size, FALSE);
     }
+    /* TODO: KeyLocator */
+    /* /SignedInfo */
 
+    /* Content */
     l = pco->offset[CCN_PCO_E_Content] - pco->offset[CCN_PCO_B_Content];
     res = ccn_ref_tagged_BLOB(CCN_DTAG_Content, ccnb,
                                   pco->offset[CCN_PCO_B_Content],
