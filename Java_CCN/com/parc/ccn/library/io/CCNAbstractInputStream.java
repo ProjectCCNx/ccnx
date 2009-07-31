@@ -151,7 +151,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	public Timestamp getVersion() {
 		if (null == _baseName) 
 			return null;
-		return VersioningProfile.getVersionAsTimestampIfVersioned(_baseName);
+		return VersioningProfile.getTerminalVersionAsTimestampIfVersioned(_baseName);
 	}
 
 	@Override

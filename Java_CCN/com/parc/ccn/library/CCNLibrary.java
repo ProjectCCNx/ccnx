@@ -34,6 +34,7 @@ import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 import com.parc.ccn.library.profiles.CommandMarkers;
+import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.network.CCNNetworkManager;
 import com.parc.ccn.security.keys.KeyManager;
@@ -190,7 +191,7 @@ public class CCNLibrary extends CCNBase {
 		}
 		
 		try {
-			Link link = new Link(VersioningProfile.versionName(name), target, 
+			Link link = new Link(VersioningProfile.addVersion(name), target, 
 					publisher, locator, signingKey);
 			put(link);
 			return link;
@@ -247,7 +248,7 @@ public class CCNLibrary extends CCNBase {
 		}
 		
 		try {
-			Collection collection = new Collection(VersioningProfile.versionName(name), references, 
+			Collection collection = new Collection(VersioningProfile.addVersion(name), references, 
 					publisher, locator, signingKey);
 			put(collection);
 			return collection;
@@ -388,7 +389,7 @@ public class CCNLibrary extends CCNBase {
 			 InvalidKeyException, SignatureException {
 		LinkReference[] newReferences = new LinkReference[references.size()];
 		references.toArray(newReferences);
-		Collection updatedCollection = createCollection(VersioningProfile.versionName(oldCollection.name()),
+		Collection updatedCollection = createCollection(VersioningProfile.addVersion(oldCollection.name()),
 				newReferences, publisher, locator, signingKey);
 		put(updatedCollection);
 		return updatedCollection;
@@ -531,31 +532,30 @@ public class CCNLibrary extends CCNBase {
 	 * are fragmented. Maybe make this a simple interface
 	 * that puts them back together and returns a byte []?
 	 * DKS TODO -- doesn't use publisher
+	 * DKS TODO -- specify separately latest version known?
 	 * @throws IOException 
 	 */
 	public ContentObject getLatestVersion(ContentName name, PublisherPublicKeyDigest publisher, long timeout) throws IOException {
 		
-		if (VersioningProfile.isVersioned(name)) {
-			return getVersionInternal(name, timeout);
+		if (VersioningProfile.hasTerminalVersion(name)) {
+			return getVersionInternal(SegmentationProfile.segmentRoot(name), timeout);
 		} else {
-			ContentName firstVersionName = VersioningProfile.versionName(name, VersioningProfile.baseVersion());
+			ContentName firstVersionName = VersioningProfile.addVersion(name, VersioningProfile.baseVersion());
 			return getVersionInternal(firstVersionName, timeout);
 		}
 	}
 	
+	/**
+	 * We are only called by getLatestVersion, which has already ensured that we
+	 * either have a user-supplied version or a terminal version marker; we have
+	 * also previously stripped any segment marker. So we know we have a name terminated
+	 * by the last version we know about (which could be 0).
+	 */
 	final byte OO = (byte) 0x00;
 	final byte FF = (byte) 0xFF;
 	private ContentObject getVersionInternal(ContentName name, long timeout) throws InvalidParameterException, IOException {
-		ContentName parent = VersioningProfile.versionRoot(name);
-		byte [] version;
-		if (name.count() > parent.count())
-			version = name.component(parent.count());
-		else
-			// For getLatest to work we need a final component to get the latest of...
-			version = VersioningProfile.FIRST_VERSION_MARKER;
-		name = ContentName.fromNative(parent, version);
-		int versionComponent = name.count() - 1;
 		
+		ContentName parent = name.parent(); // strip version
 		// initially exclude name components just before the first version
 		byte [] start = new byte [] { VersioningProfile.VERSION_MARKER, OO, FF, FF, FF, FF, FF };
 		while (true) {
@@ -563,11 +563,12 @@ public class CCNLibrary extends CCNBase {
 			if (co == null)
 				return null;
 			if (VersioningProfile.isVersionOf(co.name(), parent)) {
-				// we got a valid version!
-				Library.logger().info("got latest version: " + co.name());
+				// we got a valid version! 
+				// DKS TODO should we see if it's actually later than name?
+				Library.logger().info("Got latest version: " + co.name());
 				return co;
 			}
-			start = co.fullName().component(versionComponent);
+			start = co.fullName().component(name.count()-1);
 		}
 	}
 

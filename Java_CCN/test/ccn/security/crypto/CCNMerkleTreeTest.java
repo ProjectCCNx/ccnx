@@ -134,7 +134,7 @@ public class CCNMerkleTreeTest {
 	public static void testTree(int nodeCount, int blockWidth, boolean randomWidths) throws Exception {
 		int version = _rand.nextInt(1000);
 		ContentName theName = ContentName.fromNative(baseName, "testDocBuffer.txt");
-		theName = VersioningProfile.versionName(theName, version);
+		theName = VersioningProfile.addVersion(theName, version);
 		
 		try {
 			ContentObject [] cos = makeContent(theName, nodeCount, blockWidth, randomWidths);

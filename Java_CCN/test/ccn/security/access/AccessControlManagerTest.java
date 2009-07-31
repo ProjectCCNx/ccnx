@@ -24,7 +24,7 @@ public class AccessControlManagerTest {
 		ContentName testPrefix = ContentName.fromNative("/parc/test/content/");
 		Flosser flosser = new Flosser(testPrefix);
 		
-		ContentName versionPrefix = VersioningProfile.versionName(testPrefix);
+		ContentName versionPrefix = VersioningProfile.addVersion(testPrefix);
 		ContentName aname = ContentName.fromNative(versionPrefix, "aaaaa");
 		ContentName bname = ContentName.fromNative(versionPrefix, "bbbbb");
 		ContentName abname = ContentName.fromNative(versionPrefix, "aaaaa:bbbbb");

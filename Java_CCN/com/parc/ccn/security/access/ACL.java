@@ -80,7 +80,8 @@ public class ACL extends CollectionData {
 			} else {
 				return 0;
 			}
-			result = VersioningProfile.versionRoot(o1.targetName()).compareTo(VersioningProfile.versionRoot(o2.targetName()));
+			// Want an ordering on un-versioned names, not a comparison of versions.
+			result = VersioningProfile.cutTerminalVersion(o1.targetName()).first().compareTo(VersioningProfile.cutTerminalVersion(o2.targetName()).first());
 			if (result != 0)
 				return result;
 			if (null != o1.targetAuthenticator()) {

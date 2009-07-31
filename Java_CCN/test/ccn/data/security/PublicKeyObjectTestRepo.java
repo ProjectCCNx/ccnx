@@ -30,6 +30,7 @@ import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.PublicKeyObject;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
 public class PublicKeyObjectTestRepo {
@@ -120,7 +121,7 @@ public class PublicKeyObjectTestRepo {
 		}
 	}
 
-	public void testRawKeyReadWrite(ContentName keyName, PublicKey key, PublicKey optional2ndKey) throws ConfigurationException, IOException, XMLStreamException {
+	public void testRawKeyReadWrite(ContentName keyName, PublicKey key, PublicKey optional2ndKey) throws ConfigurationException, IOException, XMLStreamException, VersionMissingException {
 		
 
 		System.out.println("Reading and writing key " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
@@ -130,11 +131,11 @@ public class PublicKeyObjectTestRepo {
 		flosser.handleNamespace(keyName);
 		PublicKeyObject pko = new PublicKeyObject(keyName, key, library);
 		pko.save();
-		Assert.assertTrue(VersioningProfile.isVersioned(pko.getName()));
+		Assert.assertTrue(VersioningProfile.hasTerminalVersion(pko.getCurrentVersionName()));
 		// should update in another thread
 		PublicKeyObject pkoread = new PublicKeyObject(keyName, null); // new library
 		Assert.assertTrue(pkoread.available());
-		Assert.assertEquals(pkoread.getName(), pko.getName());
+		Assert.assertEquals(pkoread.getCurrentVersionName(), pko.getCurrentVersionName());
 		if (!pkoread.publicKey().equals(pko.publicKey())) {
 			Library.logger().info("Mismatched public keys, chance provider doesn't implement equals()." );
 			Assert.assertArrayEquals(pkoread.publicKey().getEncoded(), pko.publicKey().getEncoded());
@@ -151,26 +152,26 @@ public class PublicKeyObjectTestRepo {
 			//Assert.assertTrue(VersioningProfile.isLaterVersionOf(pkoread.getName(), pko.getName()));
 			//pko.update();
 			pko.save(optional2ndKey);
-			Assert.assertTrue(VersioningProfile.isLaterVersionOf(pko.getName(), pkoread.getName()));
+			Assert.assertTrue(VersioningProfile.isLaterVersionOf(pko.getCurrentVersionName(), pkoread.getCurrentVersionName()));
 			pkoread.update();
-			Assert.assertEquals(pkoread.getName(), pko.getName());
+			Assert.assertEquals(pkoread.getCurrentVersionName(), pko.getCurrentVersionName());
 			Assert.assertEquals(pkoread.publicKey(), pko.publicKey());
 			Assert.assertEquals(pko.publicKey(), optional2ndKey);
 		}
 	}
 
-	public void testRepoKeyReadWrite(ContentName keyName, PublicKey key, PublicKey optional2ndKey) throws ConfigurationException, IOException, XMLStreamException {
+	public void testRepoKeyReadWrite(ContentName keyName, PublicKey key, PublicKey optional2ndKey) throws ConfigurationException, IOException, XMLStreamException, VersionMissingException {
 		
 
 		System.out.println("Reading and writing key " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
 		PublicKeyObject pko = new PublicKeyObject(keyName, key, library);
 		pko.saveToRepository();
-		Assert.assertTrue(VersioningProfile.isVersioned(pko.getName()));
-		Library.logger().info("Saved " + pko.getName() + " to repo, now trying to read.");
+		Assert.assertTrue(VersioningProfile.hasTerminalVersion(pko.getCurrentVersionName()));
+		Library.logger().info("Saved " + pko.getCurrentVersionName() + " to repo, now trying to read.");
 		// should update in another thread
 		PublicKeyObject pkoread = new PublicKeyObject(keyName, null); // new library
 		Assert.assertTrue(pkoread.available());
-		Assert.assertEquals(pkoread.getName(), pko.getName());
+		Assert.assertEquals(pkoread.getCurrentVersionName(), pko.getCurrentVersionName());
 		if (!pkoread.publicKey().equals(pko.publicKey())) {
 			Library.logger().info("Mismatched public keys, chance provider doesn't implement equals()." );
 			Assert.assertArrayEquals(pkoread.publicKey().getEncoded(), pko.publicKey().getEncoded());
@@ -187,9 +188,9 @@ public class PublicKeyObjectTestRepo {
 			//Assert.assertTrue(VersioningProfile.isLaterVersionOf(pkoread.getName(), pko.getName()));
 			//pko.update();
 			pko.saveToRepository(optional2ndKey);
-			Assert.assertTrue(VersioningProfile.isLaterVersionOf(pko.getName(), pkoread.getName()));
+			Assert.assertTrue(VersioningProfile.isLaterVersionOf(pko.getCurrentVersionName(), pkoread.getCurrentVersionName()));
 			pkoread.update();
-			Assert.assertEquals(pkoread.getName(), pko.getName());
+			Assert.assertEquals(pkoread.getCurrentVersionName(), pko.getCurrentVersionName());
 			Assert.assertEquals(pkoread.publicKey(), pko.publicKey());
 			Assert.assertEquals(pko.publicKey(), optional2ndKey);
 		}

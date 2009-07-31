@@ -414,7 +414,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 			return new String(co.content());
 		}
 		
-		ContentName versionedName = VersioningProfile.versionName(name);
+		ContentName versionedName = VersioningProfile.addVersion(name);
 		PublisherPublicKeyDigest publisher = library.keyManager().getDefaultKeyID();
 		PrivateKey signingKey = library.keyManager().getSigningKey(publisher);
 		KeyLocator locator = library.keyManager().getKeyLocator(signingKey);

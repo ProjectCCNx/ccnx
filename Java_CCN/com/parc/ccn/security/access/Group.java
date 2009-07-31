@@ -114,7 +114,7 @@ public class Group {
 	public KeyDirectory privateKeyDirectory(AccessControlManager manager) throws IOException {
 		if (_groupPublicKey.available())
 			return new KeyDirectory(manager, 
-					AccessControlProfile.groupPrivateKeyDirectory(_groupPublicKey.getName()), _library);
+					AccessControlProfile.groupPrivateKeyDirectory(_groupPublicKey.getCurrentVersionName()), _library);
 		Library.logger().info("Public key not ready for group: " + friendlyName());
 		return null;
 	}
@@ -141,14 +141,14 @@ public class Group {
 	}
 	
 	public ContentName membershipListName() throws XMLStreamException, IOException, ConfigurationException { 
-		return membershipList().getName(); 
+		return membershipList().getCurrentVersionName(); 
 	}
 	
 	public Timestamp membershipListVersion() throws XMLStreamException, IOException, ConfigurationException {
 		ContentName name = membershipListName();
-		if (VersioningProfile.isVersioned(name)) {
+		if (VersioningProfile.hasTerminalVersion(name)) {
 			try {
-				return VersioningProfile.getVersionAsTimestamp(name);
+				return VersioningProfile.getLastVersionAsTimestamp(name);
 			} catch (VersionMissingException e) {
 				Library.logger().warning("Should not happen: VersionMissingException on name where isVersioned is true: " + name + ": " + e.getMessage());
 			}
@@ -171,13 +171,13 @@ public class Group {
 	
 	public PublicKey publicKey() { return _groupPublicKey.publicKey(); }
 	
-	public ContentName publicKeyName() { return _groupPublicKey.getName(); }
+	public ContentName publicKeyName() { return _groupPublicKey.getCurrentVersionName(); }
 	
 	public Timestamp publicKeyVersion() {
 		ContentName name = publicKeyName();
-		if (VersioningProfile.isVersioned(name)) {
+		if (VersioningProfile.hasTerminalVersion(name)) {
 			try {
-				return VersioningProfile.getVersionAsTimestamp(name);
+				return VersioningProfile.getLastVersionAsTimestamp(name);
 			} catch (VersionMissingException e) {
 				Library.logger().warning("Should not happen: VersionMissingException on name where isVersioned is true: " + name + ": " + e.getMessage());
 			}
@@ -216,7 +216,7 @@ public class Group {
 		// Write superseded block in old key directory
 		oldPrivateKeyDirectory.addSupersededByBlock(oldPrivateKeyWrappingKey, publicKeyName(), privateKeyWrappingKey);
 		// Write link back to previous key
-		LinkReference lr = new LinkReference(_groupPublicKey.getName(), new LinkAuthenticator(new PublisherID(KeyManager.getKeyManager().getDefaultKeyID())));
+		LinkReference lr = new LinkReference(_groupPublicKey.getCurrentVersionName(), new LinkAuthenticator(new PublisherID(KeyManager.getKeyManager().getDefaultKeyID())));
 		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, _library);
 		precededByBlock.save();
 	}
@@ -273,12 +273,12 @@ public class Group {
 				// Need to write wrapped key block and linking principal name.
 				newPrivateKeyDirectory.addWrappedKeyBlock(
 						privateKeyWrappingKey, 
-						latestPublicKey.getName(), 
+						latestPublicKey.getCurrentVersionName(), 
 						latestPublicKey.publicKey());
 			} catch (XMLStreamException e) {
 				Library.logger().warning("Could not retrieve public key for principal " + lr.targetName() + ", skipping.");
 			} catch (VersionMissingException e) {
-				Library.logger().warning("Unexpected: public key name not versioned! " + latestPublicKey.getName() + ", unable to retrieve principal's public key. Skipping.");
+				Library.logger().warning("Unexpected: public key name not versioned! " + latestPublicKey.getCurrentVersionName() + ", unable to retrieve principal's public key. Skipping.");
 			}
 		}
 		return privateKeyWrappingKey;
@@ -322,12 +322,12 @@ public class Group {
 				// Need to write wrapped key block and linking principal name.
 				privateKeyDirectory.addWrappedKeyBlock(
 						privateKeyWrappingKey, 
-						latestPublicKey.getName(), 
+						latestPublicKey.getCurrentVersionName(), 
 						latestPublicKey.publicKey());
 			} catch (XMLStreamException e) {
 				Library.logger().warning("Could not retrieve public key for principal " + lr.targetName() + ", skipping.");
 			} catch (VersionMissingException e) {
-				Library.logger().warning("Unexpected: public key name not versioned! " + latestPublicKey.getName() + ", unable to retrieve principal's public key. Skipping.");
+				Library.logger().warning("Unexpected: public key name not versioned! " + latestPublicKey.getCurrentVersionName() + ", unable to retrieve principal's public key. Skipping.");
 			}
 		}
 	}

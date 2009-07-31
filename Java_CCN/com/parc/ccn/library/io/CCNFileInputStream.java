@@ -160,7 +160,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	}
 
 	protected ContentObject getFirstBlock() throws IOException {
-		if (VersioningProfile.isVersioned(_baseName)) {
+		if (VersioningProfile.hasTerminalVersion(_baseName)) {
 			return super.getFirstBlock();
 		}
 		Library.logger().info("getFirstBlock: getting latest version of " + _baseName);

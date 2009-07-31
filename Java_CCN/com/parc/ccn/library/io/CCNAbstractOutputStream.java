@@ -66,7 +66,7 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 	public Timestamp getVersion() {
 		if (null == _baseName) 
 			return null;
-		return VersioningProfile.getVersionAsTimestampIfVersioned(_baseName);
+		return VersioningProfile.getTerminalVersionAsTimestampIfVersioned(_baseName);
 	}
 
 	public CCNSegmenter getSegmenter() {

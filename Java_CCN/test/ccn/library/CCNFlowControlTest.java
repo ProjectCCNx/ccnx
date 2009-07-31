@@ -40,11 +40,11 @@ public class CCNFlowControlTest {
 			_library = new CCNLibraryTestHarness();
 			
 			name1 = ContentName.fromNative("/foo/bar");
-			v1 = VersioningProfile.versionName(name1);
+			v1 = VersioningProfile.addVersion(name1);
 			// JDT TODO -- sleep is needed because no easy way yet to generate 
 			// separate version numbers if generating names fast.
 			Thread.sleep(2);
-			v2 = VersioningProfile.versionName(name1);	
+			v2 = VersioningProfile.addVersion(name1);	
 
 		} catch (ConfigurationException e) {
 			e.printStackTrace();

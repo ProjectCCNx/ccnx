@@ -117,7 +117,7 @@ public class CCNWriter {
 		
 		// Construct new name
 		// <name>/<VERSION_MARKER>/<version_number>
-		ContentName versionedName = VersioningProfile.versionName(name);
+		ContentName versionedName = VersioningProfile.addVersion(name);
 
 		// put result; segmenter will fill in defaults
 		_segmenter.put(versionedName, contents, 0, ((null == contents) ? 0 : contents.length),

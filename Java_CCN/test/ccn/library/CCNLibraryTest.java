@@ -162,8 +162,8 @@ public class CCNLibraryTest extends LibraryTestBase {
 			CCNWriter segmenter = new CCNWriter(keyName, putLibrary);
 			revision1 = segmenter.newVersion(keyName, data1);
 			revision2 = segmenter.newVersion(keyName, data2);
-			long version1 = VersioningProfile.getVersionAsLong(revision1);
-			long version2 = VersioningProfile.getVersionAsLong(revision2);
+			long version1 = VersioningProfile.getLastVersionAsLong(revision1);
+			long version2 = VersioningProfile.getLastVersionAsLong(revision2);
 			System.out.println("Version1: " + version1 + " version2: " + version2);
 			Assert.assertTrue("Revisions are strange", 
 					version2 > version1);
@@ -193,7 +193,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 		String name = "/test/simon/versioned_name";
 		// include a base object, who's digest can potentially confuse getLatestVersion
 		ContentName base = ContentName.fromNative(name);
-		ContentName versionBase = VersioningProfile.versionName(base);
+		ContentName versionBase = VersioningProfile.addVersion(base);
 		
 		final byte [][] data = { "data0".getBytes(), "data1".getBytes() };
 		CCNFlowControl f = new CCNFlowControl(base, putLibrary);
@@ -311,7 +311,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 		Assert.assertTrue("Version is not a version of the parent name!", VersioningProfile.isVersionOf(version1, docName));
 		Assert.assertTrue("Version is not a version of the parent name!", VersioningProfile.isVersionOf(version2, docName));
-		Assert.assertTrue("Version numbers don't increase!", VersioningProfile.getVersionAsLong(version2) > VersioningProfile.getVersionAsLong(version1));
+		Assert.assertTrue("Version numbers don't increase!", VersioningProfile.getLastVersionAsLong(version2) > VersioningProfile.getLastVersionAsLong(version1));
 	}
 
 	@Test
@@ -432,13 +432,13 @@ public class CCNLibraryTest extends LibraryTestBase {
 						content = co.content();
 						String strContent = new String(content);
 						
-						if (VersioningProfile.isVersioned(co.name())) {
+						if (VersioningProfile.hasTerminalVersion(co.name())) {
 							// We're writing this content using CCNWriter.put. That interface
 							// does *not* version content for you, at least at the moment. 
 							// TODO We need to decide whether we expect it to. So don't require
 							// versioning here yet. 
 							System.out.println("Got update for " + co.name() + ": " + strContent + 
-								" (revision " + VersioningProfile.getVersionAsLong(co.name()) + ")");
+								" (revision " + VersioningProfile.getLastVersionAsLong(co.name()) + ")");
 						} else {
 							System.out.println("Got update for " + co.name() + ": " + strContent);
 						}

@@ -580,7 +580,7 @@ public class RFSImpl implements Repository {
 		Timestamp interestTS = null;
 		Timestamp fileTS = null;
 		try{
-			interestTS = VersioningProfile.getVersionAsTimestamp(i.name());
+			interestTS = VersioningProfile.getLastVersionAsTimestamp(i.name());
 		}
 		catch(Exception e){
 			interestTS = null;

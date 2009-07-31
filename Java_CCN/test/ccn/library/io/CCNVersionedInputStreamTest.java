@@ -55,17 +55,17 @@ public class CCNVersionedInputStreamTest {
 		// Write a set of output
 		defaultStreamName = ContentName.fromNative("/test/stream/versioning/LongOutput.bin");
 		
-		firstVersionName = VersioningProfile.versionName(defaultStreamName);
+		firstVersionName = VersioningProfile.addVersion(defaultStreamName);
 		firstVersionLength = randBytes.nextInt(MAX_FILE_SIZE);
 		firstVersionMaxSegment = (int)Math.ceil(firstVersionLength/SegmentationProfile.DEFAULT_BLOCKSIZE);
 		firstVersionDigest = writeFileFloss(firstVersionName, firstVersionLength, randBytes);
 		
-		middleVersionName = VersioningProfile.versionName(defaultStreamName);
+		middleVersionName = VersioningProfile.addVersion(defaultStreamName);
 		middleVersionLength = randBytes.nextInt(MAX_FILE_SIZE);
 		middleVersionMaxSegment = (int)Math.ceil(middleVersionLength/SegmentationProfile.DEFAULT_BLOCKSIZE);
 		middleVersionDigest = writeFileFloss(middleVersionName, middleVersionLength, randBytes);
 
-		latestVersionName = VersioningProfile.versionName(defaultStreamName);
+		latestVersionName = VersioningProfile.addVersion(defaultStreamName);
 		latestVersionLength = randBytes.nextInt(MAX_FILE_SIZE);
 		latestVersionMaxSegment = (int)Math.ceil(latestVersionLength/SegmentationProfile.DEFAULT_BLOCKSIZE);
 		latestVersionDigest = writeFileFloss(latestVersionName, latestVersionLength, randBytes);
@@ -238,14 +238,14 @@ public class CCNVersionedInputStreamTest {
 									  CCNVersionedInputStream vlatest) {
 		try {
 			Assert.assertEquals(vfirst.baseName(), firstVersionName);
-			Assert.assertEquals(VersioningProfile.versionRoot(vfirst.baseName()), defaultStreamName);
+			Assert.assertEquals(VersioningProfile.cutTerminalVersion(vfirst.baseName()).first(), defaultStreamName);
 			byte b = (byte)vfirst.read();
 			if (b != b) {
 				// suppress warning...
 			}
-			Assert.assertEquals(VersioningProfile.getVersionAsTimestamp(firstVersionName), 
-								VersioningProfile.getVersionAsTimestamp(vfirst.baseName()));
-			Assert.assertEquals(VersioningProfile.getVersionAsTimestamp(firstVersionName),
+			Assert.assertEquals(VersioningProfile.getLastVersionAsTimestamp(firstVersionName), 
+								VersioningProfile.getLastVersionAsTimestamp(vfirst.baseName()));
+			Assert.assertEquals(VersioningProfile.getLastVersionAsTimestamp(firstVersionName),
 							    vfirst.getVersionAsTimestamp());
 
 			System.out.println("Opened stream on latest version, expected: " + latestVersionName + " got: " + 
@@ -254,12 +254,12 @@ public class CCNVersionedInputStreamTest {
 			System.out.println("Post-read: Opened stream on latest version, expected: " + latestVersionName + " got: " + 
 					vlatest.baseName());
 			Assert.assertEquals(vlatest.baseName(), latestVersionName);
-			Assert.assertEquals(VersioningProfile.versionRoot(vlatest.baseName()), defaultStreamName);
-			Assert.assertEquals(VersioningProfile.getVersionAsLong(latestVersionName), 
-					VersioningProfile.getVersionAsLong(vlatest.baseName()));
-			Assert.assertEquals(VersioningProfile.getVersionAsTimestamp(latestVersionName), 
-								VersioningProfile.getVersionAsTimestamp(vlatest.baseName()));
-			Assert.assertEquals(VersioningProfile.getVersionAsTimestamp(latestVersionName),
+			Assert.assertEquals(VersioningProfile.cutTerminalVersion(vlatest.baseName()).first(), defaultStreamName);
+			Assert.assertEquals(VersioningProfile.getLastVersionAsLong(latestVersionName), 
+					VersioningProfile.getLastVersionAsLong(vlatest.baseName()));
+			Assert.assertEquals(VersioningProfile.getLastVersionAsTimestamp(latestVersionName), 
+								VersioningProfile.getLastVersionAsTimestamp(vlatest.baseName()));
+			Assert.assertEquals(VersioningProfile.getLastVersionAsTimestamp(latestVersionName),
 					vlatest.getVersionAsTimestamp());
 		
 		} catch (IOException e) {

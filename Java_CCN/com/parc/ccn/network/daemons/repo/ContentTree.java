@@ -168,7 +168,7 @@ public class ContentTree {
 					ContentName prefix = name.cut(component);
 
 					prefix = new ContentName(prefix, CCNNameEnumerator.NEMARKER);
-					prefix = VersioningProfile.versionName(prefix, new Timestamp(node.timestamp));
+					prefix = VersioningProfile.addVersion(prefix, new Timestamp(node.timestamp));
 					Library.logger().info("prefix for NEResponse: "+prefix);
 
 					ArrayList<ContentName> names = new ArrayList<ContentName>();
@@ -459,15 +459,16 @@ public class ContentTree {
 		ArrayList<ContentName> names = new ArrayList<ContentName>();
 		//first chop off NE marker
 		ContentName prefix = interest.name().cut(CCNNameEnumerator.NEMARKER);
-		prefix = VersioningProfile.versionRoot(prefix);
+		prefix = VersioningProfile.cutTerminalVersion(prefix).first();
 		
 		//does the interest have a timestamp?
 		Timestamp interestTS = null;
 		Timestamp nodeTS = null;
 		
 		try{
-			//interestTS = VersioningProfile.getVersionAsTimestamp(interest.name());
-			interestTS = VersioningProfile.getVersionAsTimestamp(interest.name());
+			// NOTE: should be sure that interest.name() has a version that we're interested in, otherwise
+			// this might return an arbitrary version farther up the name...
+			interestTS = VersioningProfile.getLastVersionAsTimestamp(interest.name());
 			
 			System.out.println("interestTS: "+interestTS+" "+interestTS.getTime());
 		}
@@ -482,7 +483,7 @@ public class ContentTree {
 			
 			//we should check the timestamp
 			try {
-				nodeTS = VersioningProfile.getVersionAsTimestamp(VersioningProfile.versionName(new ContentName(), new Timestamp(parent.timestamp)));
+				nodeTS = VersioningProfile.getLastVersionAsTimestamp(VersioningProfile.addVersion(new ContentName(), new Timestamp(parent.timestamp)));
 			} catch (VersionMissingException e) {
 				//should never happen since we are putting the version in in the same line...
 				Library.logger().info("missing version in conversion of index node timestamp to version timestamp for comparison to interest timestamp");
@@ -515,7 +516,7 @@ public class ContentTree {
 			//add timestamp in last name spot to send back (will be removed)
 			
 			parent.interestFlag = false;
-			return new NameEnumerationResponse(VersioningProfile.versionName(interest.name(), nodeTS), names);
+			return new NameEnumerationResponse(VersioningProfile.addVersion(interest.name(), nodeTS), names);
 			
 		}
 		
