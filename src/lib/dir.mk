@@ -146,6 +146,9 @@ ccn_schedule.o: ccn_schedule.c ../include/ccn/schedule.h
 ccn_signing.o: ccn_signing.c ../include/ccn/merklepathasn1.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/signing.h
+ccn_traverse.o: ccn_traverse.c ../include/ccn/bloom.h \
+  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccn_uri.o: ccn_uri.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccn_verifysig.o: ccn_verifysig.c ../include/ccn/ccn.h \
