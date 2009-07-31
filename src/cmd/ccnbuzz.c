@@ -181,9 +181,6 @@ make_template(struct mydata *md, struct ccn_upcall_info *info, struct ccn_bloom 
         append_bloom_element(templ, CCN_DTAG_Bloom, b);
         ccn_charbuf_append_closer(templ); /* </Exclude> */
     }
-    ccn_charbuf_append_tt(templ, CCN_DTAG_OrderPreference, CCN_DTAG);
-    ccn_charbuf_append_non_negative_integer(templ, 4);
-    ccn_charbuf_append_closer(templ); /* </OrderPreference> */
     if (md->allow_stale) {
         ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
         ccn_charbuf_append_non_negative_integer(templ,
