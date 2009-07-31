@@ -1,6 +1,20 @@
 /*
  * Watch interests and inject interests wrapped with routing
  * back into the ccnd
+ *
+ * The new ccndc protocol will need to take the configuration entries
+ * and for each unique destination create a FaceInstance.
+ * For each prefix, it will issue a ForwardingEntry Action (values?)
+ * with the Name (the routed prefix), the FaceID, the ForwardingFlags (what are they?)
+ * and a FreshnessSeconds (what are appropriate values?)
+ * What is the response to the ForwardingEntry message?
+ * 
+ * Do we still get the unroutable Interests sent up?
+ * What about doing DNS lookups for the dynamic routing?
+ * SRV records could be
+ * 	_ccnd._udp.parc.com 86400 IN SRV 0 5 4810 ccngateway.parc.com
+ * or 	_ccnd._tcp.parc.com 86400 IN SRV 0 5 4810 ccngateway.parc.com
+ * (would we prefer TCP over UDP?)
  */
 
 /*
