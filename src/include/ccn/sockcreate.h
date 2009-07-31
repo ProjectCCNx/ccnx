@@ -3,6 +3,9 @@
  * Copyright (C) 2009 Palo Alto Research Center, Inc. All rights reserved.
  */
 
+#ifndef CCN_SOCKCREATE_DEFINED
+#define CCN_SOCKCREATE_DEFINED
+
 /**
  * Holds a pair of socket file descriptors.
  *
@@ -40,6 +43,8 @@ struct ccn_sockdescr {
  * @returns 0 for success, -1 for error.
  */
 int ccn_setup_socket(const struct ccn_sockdescr *descr,
-                     (logger*)(void *, const char *, ...),
+                     void (*logger)(void *, const char *, ...),
                      void *logdat,
                      struct ccn_sockets *socks);
+
+#endif

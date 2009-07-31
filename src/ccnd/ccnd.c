@@ -29,13 +29,15 @@
     #include "dummyin6.h"
 #endif
 
+#include <ccn/bloom.h>
 #include <ccn/ccn.h>
 #include <ccn/ccnd.h>
 #include <ccn/charbuf.h>
-#include <ccn/indexbuf.h>
-#include <ccn/bloom.h>
+#include <ccn/face_mgmt.h>
 #include <ccn/hashtb.h>
+#include <ccn/indexbuf.h>
 #include <ccn/schedule.h>
+#include <ccn/reg_mgmt.h>
 #include <ccn/uri.h>
 
 #include "ccnd_private.h"
