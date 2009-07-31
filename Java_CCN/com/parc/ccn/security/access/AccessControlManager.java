@@ -324,7 +324,8 @@ public class AccessControlManager {
 				ancestorACLObject = null;
 			}
 			nextParentName = parentName.parent();
-			if (nextParentName.equals(parentName)) {
+			// stop looking once we're above our namespace, or if we've already checked the top level
+			if (nextParentName.count() < _namespace.count() || parentName.count() == 0) {
 				break;
 			}
 			parentName = nextParentName;
