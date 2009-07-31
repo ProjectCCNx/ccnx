@@ -21,7 +21,6 @@ import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.util.CCNSerializableObject;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.EnumeratedNameList;
-import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 
 /**
  * Put a bunch of data in repo (in one directory)

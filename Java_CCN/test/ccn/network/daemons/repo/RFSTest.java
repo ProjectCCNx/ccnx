@@ -4,7 +4,6 @@ import java.io.File;
 import java.security.InvalidParameterException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
-import java.util.ArrayList;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
