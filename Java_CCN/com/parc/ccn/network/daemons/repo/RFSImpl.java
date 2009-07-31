@@ -641,4 +641,8 @@ public class RFSImpl implements Repository {
 		// TODO Auto-generated method stub
 		
 	}
+
+	public Policy getPolicy() {
+		return _policy;
+	}
 }

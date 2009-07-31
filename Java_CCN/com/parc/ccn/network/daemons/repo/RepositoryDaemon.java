@@ -266,23 +266,25 @@ public class RepositoryDaemon extends Daemon {
 	private void resetNameSpace() throws IOException {
 		synchronized (_repoFilters) {
 			ArrayList<NameAndListener> newIL = new ArrayList<NameAndListener>();
-			ArrayList<ContentName> newNameSpace = _repo.getNamespace();
-			if (newNameSpace == null)
-				newNameSpace = new ArrayList<ContentName>();
-			ArrayList<NameAndListener> unMatchedOld = new ArrayList<NameAndListener>();
-			ArrayList<ContentName> unMatchedNew = new ArrayList<ContentName>();
-			getUnMatched(_repoFilters, newNameSpace, unMatchedOld, unMatchedNew);
-			for (NameAndListener oldName : unMatchedOld) {
-				_library.unregisterFilter(oldName.name, oldName.listener);
-				Library.logger().info("Dropping namespace " + oldName.name);
+			synchronized (_repo.getPolicy()) {
+				ArrayList<ContentName> newNameSpace = _repo.getNamespace();
+				if (newNameSpace == null)
+					newNameSpace = new ArrayList<ContentName>();
+				ArrayList<NameAndListener> unMatchedOld = new ArrayList<NameAndListener>();
+				ArrayList<ContentName> unMatchedNew = new ArrayList<ContentName>();
+				getUnMatched(_repoFilters, newNameSpace, unMatchedOld, unMatchedNew);
+				for (NameAndListener oldName : unMatchedOld) {
+					_library.unregisterFilter(oldName.name, oldName.listener);
+					Library.logger().info("Dropping namespace " + oldName.name);
+				}
+				for (ContentName newName : unMatchedNew) {
+					RepositoryInterestHandler iHandler = new RepositoryInterestHandler(this);
+					_library.registerFilter(newName, iHandler);
+					Library.logger().info("Adding namespace " + newName);
+					newIL.add(new NameAndListener(newName, iHandler));
+				}
+				_repoFilters = newIL;
 			}
-			for (ContentName newName : unMatchedNew) {
-				RepositoryInterestHandler iHandler = new RepositoryInterestHandler(this);
-				_library.registerFilter(newName, iHandler);
-				Library.logger().info("Adding namespace " + newName);
-				newIL.add(new NameAndListener(newName, iHandler));
-			}
-			_repoFilters = newIL;
 		}
 	}
 	

@@ -170,18 +170,22 @@ public class BasicPolicy implements Policy {
 					case NAMESPACE:
 						String charValue = event.asCharacters().getData();
 						Library.logger().fine("New namespace requested: " + charValue);
-						_prevNameSpace = (ArrayList<ContentName>) _nameSpace.clone();
-						if (!_nameSpaceChangeRequest) {
-							_nameSpace.clear();
-							if (null != _globalPrefix)
-								_nameSpace.add(_globalPrefix);
-							_nameSpaceChangeRequest = true;
-						}
-						try {
-							_nameSpace.add(ContentName.fromNative(charValue.trim()));
-						} catch (MalformedContentNameStringException e) {
-							_nameSpace = _prevNameSpace;
-							throw new XMLStreamException("Malformed value in namespace: " + charValue);
+						// Note - need to synchronize on "this" to synchronize with events reading
+						// the name space in the policy clients which have access only to this object
+						synchronized (this) {
+							_prevNameSpace = (ArrayList<ContentName>) _nameSpace.clone();
+							if (!_nameSpaceChangeRequest) {
+								_nameSpace.clear();
+								if (null != _globalPrefix)
+									_nameSpace.add(_globalPrefix);
+								_nameSpaceChangeRequest = true;
+							}
+							try {
+								_nameSpace.add(ContentName.fromNative(charValue.trim()));
+							} catch (MalformedContentNameStringException e) {
+								_nameSpace = _prevNameSpace;
+								throw new XMLStreamException("Malformed value in namespace: " + charValue);
+							}
 						}
 						break;
 					case LOCALNAME:
@@ -211,10 +215,7 @@ public class BasicPolicy implements Policy {
 								throw new RepositoryException("Repository global name doesn't match");
 							}
 						} else {
-							if (null != _globalPrefix)
-								_nameSpace.remove(_globalPrefix);
-							_globalPrefix = ContentName.fromNative(fixSlash(globalName));
-							_nameSpace.add(_globalPrefix);
+							changeGlobalPrefix(globalName);
 						}
 						} catch (MalformedContentNameStringException e) {
 							throw new RepositoryException(e.getMessage());
@@ -260,7 +261,7 @@ public class BasicPolicy implements Policy {
 
 	public void setGlobalPrefix(String globalPrefix) throws MalformedContentNameStringException {
 		if (null == _globalPrefix) {
-			_globalPrefix = ContentName.fromNative(fixSlash(globalPrefix));
+			changeGlobalPrefix(globalPrefix);
 		}
 	}
 
@@ -274,5 +275,16 @@ public class BasicPolicy implements Policy {
 		if (!name.startsWith("/"))
 			name = "/" + name;
 		return name;
+	}
+	
+	private void changeGlobalPrefix(String globalPrefix) throws MalformedContentNameStringException {
+		// Note - need to synchronize on "this" to synchronize with events reading
+		// the name space in the policy clients which have access only to this object
+		synchronized (this) {
+			if (null != _globalPrefix)
+				_nameSpace.remove(_globalPrefix);
+			_globalPrefix = ContentName.fromNative(fixSlash(globalPrefix));
+			_nameSpace.add(_globalPrefix);
+		}
 	}
 }

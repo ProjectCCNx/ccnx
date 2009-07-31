@@ -69,4 +69,9 @@ public class BitBucketRepository implements Repository {
 		// TODO Auto-generated method stub
 		
 	}
+
+	public Policy getPolicy() {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

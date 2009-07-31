@@ -106,6 +106,10 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 	public ArrayList<ContentName> getNamespace() {
 		return _policy.getNameSpace();
 	}
+	
+	public Policy getPolicy() {
+		return _policy;
+	}
 
 	public byte[] getRepoInfo(ArrayList<ContentName> names) {
 		try {
@@ -324,10 +328,12 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 	public NameEnumerationResponse saveContent(ContentObject content) throws RepositoryException {
 		// Make sure content is within allowable nameSpace
 		boolean nameSpaceOK = false;
-		for (ContentName name : _policy.getNameSpace()) {
-			if (name.isPrefixOf(content.name())) {
-				nameSpaceOK = true;
-				break;
+		synchronized (_policy) {
+			for (ContentName name : _policy.getNameSpace()) {
+				if (name.isPrefixOf(content.name())) {
+					nameSpaceOK = true;
+					break;
+				}
 			}
 		}
 		if (!nameSpaceOK)

@@ -91,6 +91,12 @@ public interface Repository {
 	public void setPolicy(Policy policy);
 	
 	/**
+	 * Get the current policy
+	 * @return
+	 */
+	public Policy getPolicy();
+	
+	/**
 	 * Get information about repository to return to write
 	 * requestor, possibly with confirmation filename for sync
 	 * 
