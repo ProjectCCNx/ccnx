@@ -97,7 +97,10 @@ public class KeyDirectory extends EnumeratedNameList {
 				stopEnumerating();
 				_children.clear();
 				_newChildren = null;
-				_namePrefix = latestVersionName;
+				if (latestVersionName.count() > 1) {
+					Library.logger().warning("Unexpected: NE protocol gave back more than one component!");
+				}
+				_namePrefix = new ContentName(_namePrefix, latestVersionName.component(0));
 				_enumerator.registerPrefix(_namePrefix);
 			}
 		} 
