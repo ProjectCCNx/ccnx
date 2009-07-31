@@ -67,29 +67,19 @@ static gint hf_ccn_finalblockid = -1;
 
 static gint hf_ccn_namecomponentcount = -1;
 static gint hf_ccn_additionalnamecomponents = -1;
-static gint hf_ccn_orderpreference = -1;
+static gint hf_ccn_minsuffixcomponents = -1;
+static gint hf_ccn_maxsuffixcomponents = -1;
+static gint hf_ccn_childselector = -1;
 
-    /*
-     *  The low-order bit of this number indicates the direction:
-     *      0 = lesser, earlier, work from the left
-     *      1 = greater, later, work from the right
-     * add to this one of
-     *      0 = whatever answering node chooses- client doesn't care (default if OrderPreference is omitted) Status: ccnd+, clib+
-     *      2 = temporal/accessional/arrival order Status: ccnd-
-     *      4 = name hierarchy order Status: ccnd+, clib+
-     */
-    static const value_string orderpreferencedirection_vals[] = {
-        {0, "lesser/earlier/from the left"},
-        {1, "greater/later/from the right"},
-        {0, NULL}
-    };
+static const value_string childselectordirection_vals[] = {
+    {0, "leftmost/least"},
+    {1, "rightmost/greatest"},
+    {0, NULL}
+};
 
-    static const value_string orderpreferencefield_vals[] = {
-        {0, "unspecified order"},
-        {2, "temporal/accessional/arrival order"},
-        {4, "name hierarchy order"},
-        {0, NULL}
-    };
+static gint hf_ccn_answeroriginkind = -1;
+static gint hf_ccn_scope = -1;
+static gint hf_ccn_nonce = -1;
 
 static int global_ccn_port = 4573;
 static dissector_handle_t ccn_handle = NULL;
@@ -169,9 +159,24 @@ proto_register_ccn(void)
         {&hf_ccn_additionalnamecomponents,
          {"AdditionalNameComponents", "ccn.additionalnamecomponents", FT_UINT32, BASE_DEC, NULL,
           0x0, "Additional name components", HFILL}},
-        {&hf_ccn_orderpreference,
-         {"OrderPreference", "ccn.orderpreference", FT_UINT8, BASE_HEX, NULL,
+        {&hf_ccn_minsuffixcomponents,
+         {"MinSuffixComponents", "ccn.minsuffixcomponents", FT_UINT32, BASE_DEC, NULL,
+          0x0, "Minimum suffix components", HFILL}},
+        {&hf_ccn_maxsuffixcomponents,
+         {"MaxSuffixComponents", "ccn.maxsuffixcomponents", FT_UINT32, BASE_DEC, NULL,
+          0x0, "Maximum suffix components", HFILL}},
+        {&hf_ccn_childselector,
+         {"ChildSelector", "ccn.childselector", FT_UINT8, BASE_DEC, NULL,
           0x0, "Preferred ordering of resulting content", HFILL}},
+        {&hf_ccn_answeroriginkind,
+         {"AnswerOriginKind", "ccn.answeroriginkind", FT_UINT8, BASE_HEX, NULL,
+          0x0, "Acceptable sources of content (generated, stale)", HFILL}},
+        {&hf_ccn_scope,
+         {"Scope", "ccn.scope", FT_UINT8, BASE_DEC, NULL,
+          0x0, "Limit of interest propagation", HFILL}},
+        {&hf_ccn_nonce,
+         {"Nonce", "ccn.nonce", FT_BYTES, BASE_HEX, NULL,
+          0x0, "The nonce to distinguish interests", HFILL}},
     };
 
     proto_ccn = proto_register_protocol("Content-centric Networking Protocol", /* name */
@@ -350,6 +355,69 @@ dissect_ccn_interest(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t *tvb,
         titem = proto_tree_add_item(name_tree, hf_ccn_name_components, tvb, comp - ccnb, comp_size, FALSE);
     }
 
+    /* NameComponentCount */
+    l = pi->offset[CCN_PI_E_NameComponentCount] - pi->offset[CCN_PI_B_NameComponentCount];
+    if (l > 0) {
+        i = pi->prefix_comps;
+        titem = proto_tree_add_uint(tree, hf_ccn_namecomponentcount, tvb, pi->offset[CCN_PI_B_NameComponentCount], l, i);
+    }
+
+    /* AdditionalNameComponents - deprecated, will be removed */
+    l = pi->offset[CCN_PI_E_AdditionalNameComponents] - pi->offset[CCN_PI_B_AdditionalNameComponents];
+    if (l > 0) {
+        i = ccn_fetch_tagged_nonNegativeInteger(CCN_DTAG_AdditionalNameComponents, ccnb,
+                                                pi->offset[CCN_PI_B_AdditionalNameComponents],
+                                                pi->offset[CCN_PI_E_AdditionalNameComponents]);
+
+        titem = proto_tree_add_uint(tree, hf_ccn_additionalnamecomponents, tvb, pi->offset[CCN_PI_B_AdditionalNameComponents], l, i);
+    }
+
+    /* MinSuffixComponents */
+    l = pi->offset[CCN_PI_E_MinSuffixComponents] - pi->offset[CCN_PI_B_MinSuffixComponents];
+    if (l > 0) {
+        i = pi->min_suffix_comps;
+        titem = proto_tree_add_uint(tree, hf_ccn_minsuffixcomponents, tvb, pi->offset[CCN_PI_B_MinSuffixComponents], l, i);
+    }
+
+    /* MaxSuffixComponents */
+    l = pi->offset[CCN_PI_E_MaxSuffixComponents] - pi->offset[CCN_PI_B_MaxSuffixComponents];
+    if (l > 0) {
+        i = pi->max_suffix_comps;
+        titem = proto_tree_add_uint(tree, hf_ccn_maxsuffixcomponents, tvb, pi->offset[CCN_PI_B_MaxSuffixComponents], l, i);
+    }
+
+    /* PublisherIDKeyDigest */
+    /* Exclude */
+    l = pi->offset[CCN_PI_E_Exclude] - pi->offset[CCN_PI_B_Exclude];
+    if (l > 0) {
+            titem = proto_tree_add_text(tree, tvb, pi->offset[CCN_PI_B_Exclude], l,
+                                         "Exclude");
+            exclude_tree = proto_item_add_subtree(titem, ett_exclude);
+    }
+    /* ChildSelector */
+    l = pi->offset[CCN_PI_E_ChildSelector] - pi->offset[CCN_PI_B_ChildSelector];
+    if (l > 0) {
+        i = pi->orderpref;
+        titem = proto_tree_add_uint(tree, hf_ccn_childselector, tvb, pi->offset[CCN_PI_B_ChildSelector], l, i);
+        proto_item_append_text(titem, ", %s", val_to_str(i & 1, VALS(childselectordirection_vals), ""));
+
+    }
+
+    /* AnswerOriginKind */
+    l = pi->offset[CCN_PI_E_AnswerOriginKind] - pi->offset[CCN_PI_B_AnswerOriginKind];
+    if (l > 0) {
+        i = pi->answerfrom;
+        titem = proto_tree_add_uint(tree, hf_ccn_answeroriginkind, tvb, pi->offset[CCN_PI_B_AnswerOriginKind], l, i);
+    }
+
+    /* Scope */
+    l = pi->offset[CCN_PI_E_Scope] - pi->offset[CCN_PI_B_Scope];
+    if (l > 0) {
+        i = pi->scope;
+        titem = proto_tree_add_uint(tree, hf_ccn_scope, tvb, pi->offset[CCN_PI_B_Scope], l, i);
+    }
+
+    /* Nonce */
     /* Nonce */
     l = pi->offset[CCN_PI_E_Nonce] - pi->offset[CCN_PI_B_Nonce];
     if (l > 0) {
@@ -363,56 +431,10 @@ dissect_ccn_interest(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t *tvb,
                 col_append_fstr(pinfo->cinfo, COL_INFO, "%02x", blob[i]);
             col_append_str(pinfo->cinfo, COL_INFO, ">");
         }
+        titem = proto_tree_add_item(tree, hf_ccn_nonce, tvb,
+                                    blob - ccnb, blob_size, FALSE);
     }
-
-    /* NameComponentCount */
-    l = pi->offset[CCN_PI_E_NameComponentCount] - pi->offset[CCN_PI_B_NameComponentCount];
-    if (l > 0) {
-        i = ccn_fetch_tagged_nonNegativeInteger(CCN_DTAG_NameComponentCount, ccnb,
-                                                pi->offset[CCN_PI_B_NameComponentCount],
-                                                pi->offset[CCN_PI_E_NameComponentCount]);
-
-        titem = proto_tree_add_uint(tree, hf_ccn_namecomponentcount, tvb, pi->offset[CCN_PI_B_NameComponentCount], l, i);
-    }
-
-    /* AdditionalNameComponents */
-    l = pi->offset[CCN_PI_E_AdditionalNameComponents] - pi->offset[CCN_PI_B_AdditionalNameComponents];
-    if (l > 0) {
-        i = ccn_fetch_tagged_nonNegativeInteger(CCN_DTAG_AdditionalNameComponents, ccnb,
-                                                pi->offset[CCN_PI_B_AdditionalNameComponents],
-                                                pi->offset[CCN_PI_E_AdditionalNameComponents]);
-
-        titem = proto_tree_add_uint(tree, hf_ccn_additionalnamecomponents, tvb, pi->offset[CCN_PI_B_AdditionalNameComponents], l, i);
-    }
-
-    /* PublisherID */
-    /* Exclude */
-    l = pi->offset[CCN_PI_E_Exclude] - pi->offset[CCN_PI_B_Exclude];
-    if (l > 0) {
-            titem = proto_tree_add_text(tree, tvb, pi->offset[CCN_PI_B_Exclude], l,
-                                         "Exclude");
-            exclude_tree = proto_item_add_subtree(titem, ett_exclude);
-    }
-    /* OrderPreference */
-    l = pi->offset[CCN_PI_E_OrderPreference] - pi->offset[CCN_PI_B_OrderPreference];
-    if (l > 0) {
-        i = ccn_fetch_tagged_nonNegativeInteger(CCN_DTAG_OrderPreference, ccnb,
-                                                pi->offset[CCN_PI_B_OrderPreference],
-                                                pi->offset[CCN_PI_E_OrderPreference]);
-
-        titem = proto_tree_add_uint(tree, hf_ccn_orderpreference, tvb, pi->offset[CCN_PI_B_OrderPreference], l, i);
-        if (i >= 2) {
-            proto_item_append_text(titem, ", %s", val_to_str(i & 6, VALS(orderpreferencefield_vals), ""));
-            proto_item_append_text(titem, ", %s", val_to_str(i & 1, VALS(orderpreferencedirection_vals), ""));
-        } else {
-            proto_item_append_text(titem, ", unspecified order");
-        }
-    }
-
-    /* AnswerOriginKind */
-    /* Scope */
-    /* Count */
-    /* OTHER */
+    
     return (1);
 
 }
