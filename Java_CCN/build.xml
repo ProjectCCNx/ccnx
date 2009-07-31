@@ -349,7 +349,7 @@
 	
 	<!-- IMPORTANT: test-repo-structure must be the *first* test in this list because subsequent test require
 	     that the repo must not have been running when test-repo-structure is run -->
-	<target name="test-repo" depends="test-repo-structure, test-enumerated-name-list, test-repo-name-responder, test-repo-initial-read, test-repo-io">
+	<target name="test-repo" depends="test-repo-structure, test-repo-name-responder, test-repo-initial-read, test-repo-io">
 	</target>
 	
 	<target name="test-enumerated-name-list" depends="jar, ccnd, repo">
@@ -363,7 +363,7 @@
 					<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 					<batchtest todir="${testout}" >
 						<fileset dir="${build}">
-							<include name="test/ccn/library/EnumeratedNameTest.class"/>
+							<include name="test/ccn/library/EnumeratedNameListTestRepo.class"/>
 						</fileset>
 					</batchtest>
 				</junit>
