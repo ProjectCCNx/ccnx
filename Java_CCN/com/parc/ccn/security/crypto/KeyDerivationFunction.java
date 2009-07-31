@@ -64,18 +64,19 @@ public class KeyDerivationFunction {
 	 * Default parameterization of KDF for standard algorithm type. This is the
 	 * routine that will be typically used by code that does not want to override
 	 * default algorithms.
-	 * @contentName Name of this specific object, including the version (but not including
+	 * @param contentName Name of this specific object, including the version (but not including
 	 *     segment information).
 	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
 	 */
-	public static final byte [][] DeriveKeyForObject(
+	public static final ContentKeys DeriveKeysForObject(
 			byte [] masterKeyBytes, 
 			String label,
 			ContentName contentName, 
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, XMLStreamException {
-		return DeriveKeyForObject(masterKeyBytes, ContentKeys.DEFAULT_AES_KEY_LENGTH*8, ContentKeys.IV_MASTER_LENGTH*8,
+		byte [][] keyiv = DeriveKeysForObject(masterKeyBytes, ContentKeys.DEFAULT_AES_KEY_LENGTH*8, ContentKeys.IV_MASTER_LENGTH*8,
 				label, contentName, publisher);
+		return new ContentKeys(keyiv[0], keyiv[1]);
 	}
 	
 	/**
@@ -136,7 +137,7 @@ public class KeyDerivationFunction {
 	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
 	 */
-	public static final byte [][] DeriveKeyForObject(
+	public static final byte [][] DeriveKeysForObject(
 			byte [] masterKeyBytes, 
 			int keyBitLength, int ivBitLength,
 			String label,
