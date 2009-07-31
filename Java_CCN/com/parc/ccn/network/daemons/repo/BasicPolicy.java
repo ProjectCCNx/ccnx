@@ -79,7 +79,14 @@ public class BasicPolicy implements Policy {
 		stream.close();
 		ByteArrayInputStream bais = new ByteArrayInputStream(_content);
 		XMLInputFactory factory = XMLInputFactory.newInstance();
-		XMLEventReader reader = factory.createXMLEventReader(bais);
+		XMLEventReader reader;
+		try {
+			reader = factory.createXMLEventReader(bais);
+		} catch (XMLStreamException xse) {
+			return false;	// Wasn't really an update stream (probably a header)
+		}
+		
+		Library.logger().info("Policy file update requested");
 		XMLEvent event = reader.nextEvent();
 		_version = null;
 		_localNameMatched = false;
@@ -125,8 +132,10 @@ public class BasicPolicy implements Policy {
 				QName id = new QName("id");
 				Attribute idAttr = event.asStartElement().getAttributeByName(id);
 				if (idAttr != null) {
-					if (!idAttr.getValue().trim().equals(_repoVersion))
+					if (!idAttr.getValue().trim().equals(_repoVersion)) {
+						Library.logger().warning("Bad version in policy file: " + idAttr.getValue().trim());
 						throw new XMLStreamException("Bad version in policy file");
+					}
 					_version = value;
 				}
 				break;
@@ -160,6 +169,7 @@ public class BasicPolicy implements Policy {
 					switch (PolicyValue.valueFromString(value)) {
 					case NAMESPACE:
 						String charValue = event.asCharacters().getData();
+						Library.logger().fine("New namespace requested: " + charValue);
 						_prevNameSpace = (ArrayList<ContentName>) _nameSpace.clone();
 						if (!_nameSpaceChangeRequest) {
 							_nameSpace.clear();
@@ -179,8 +189,10 @@ public class BasicPolicy implements Policy {
 							charValue = event.asCharacters().getData();
 							String localName = charValue.trim();
 							if (fromNet) {
-									if (!ContentName.fromNative(fixSlash(localName)).equals(_localName))
+									if (!ContentName.fromNative(fixSlash(localName)).equals(_localName)) {
+										Library.logger().warning("Repository local name doesn't match: request = " + localName);
 										throw new RepositoryException("Repository local name doesn't match");
+									}
 								
 							} else
 								_localName = ContentName.fromNative(fixSlash(localName));
@@ -194,8 +206,10 @@ public class BasicPolicy implements Policy {
 						String globalName = charValue.trim();
 						try {
 						if (fromNet) {
-							if (!ContentName.fromNative(fixSlash(globalName)).equals(_globalPrefix))
+							if (!ContentName.fromNative(fixSlash(globalName)).equals(_globalPrefix)) {
+								Library.logger().warning("Repository local name doesn't match: request = " + globalName);
 								throw new RepositoryException("Repository global name doesn't match");
+							}
 						} else {
 							if (null != _globalPrefix)
 								_nameSpace.remove(_globalPrefix);

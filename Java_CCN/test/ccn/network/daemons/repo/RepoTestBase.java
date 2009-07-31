@@ -6,12 +6,11 @@ import java.io.IOException;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 
-import com.parc.ccn.Library;
+import test.ccn.library.LibraryTestBase;
+
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.library.io.CCNInputStream;
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
-
-import test.ccn.library.LibraryTestBase;
 
 /**
  * 
@@ -41,24 +40,12 @@ public class RepoTestBase extends LibraryTestBase {
 	
 	protected void checkNameSpace(String contentName, boolean expected) throws Exception {
 		ContentName name = ContentName.fromNative(contentName);
-		RepositoryOutputStream ros = null;
+		ContentName baseName = null;
 		try {
-			ros = putLibrary.repoOpen(name, null, putLibrary.getDefaultPublisher());
+			baseName = testWriteToRepo(name);
 		} catch (IOException ex) {
 			if (expected)
 				Assert.fail(ex.getMessage());
-			Library.logger().info("Returning early from test on IOException : " + ex.getMessage());
-			return;
-		}
-		byte [] data = "Testing 1 2 3".getBytes();
-		ContentName baseName = null;
-		try {
-			ros.write(data, 0, data.length);
-			baseName = ros.getBaseName();
-			ros.close();
-		} catch (IOException ioe) {
-			if (expected)
-				Assert.fail(ioe.getMessage());
 			return;
 		}
 		if (!expected)
@@ -75,5 +62,13 @@ public class RepoTestBase extends LibraryTestBase {
 		}
 		input.close();
 	}
-
+	
+	protected ContentName testWriteToRepo(ContentName name) throws Exception {
+		RepositoryOutputStream ros = putLibrary.repoOpen(name, null, putLibrary.getDefaultPublisher());	
+		byte [] data = "Testing 1 2 3".getBytes();
+		ros.write(data, 0, data.length);
+		ContentName baseName = ros.getBaseName();
+		ros.close();
+		return baseName;
+	}
 }

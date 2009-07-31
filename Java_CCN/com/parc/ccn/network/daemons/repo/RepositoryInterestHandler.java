@@ -1,7 +1,6 @@
 package com.parc.ccn.network.daemons.repo;
 
 import java.io.IOException;
-import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.logging.Level;
 
@@ -11,7 +10,6 @@ import com.parc.ccn.Library;
 import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
@@ -133,9 +131,8 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		//ContentName prefixName = interest.name().cut(CCNNameEnumerator.NEMARKER);
 		
 		NameEnumerationResponse ner = _daemon.getRepository().getNamesWithPrefix(interest);
+
 		if(ner!=null && ner.names!=null)
 			_daemon.sendEnumerationResponse(ner);
-	}
-	
-	
+	}	
 }
