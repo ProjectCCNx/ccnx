@@ -5,12 +5,10 @@ import java.io.IOException;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
-import com.parc.ccn.library.profiles.VersioningProfile;
 
 /**
  * Right now, this has turned into a wrapper to input and output
@@ -51,15 +49,7 @@ public class CCNDescriptor {
 			nameToOpen = SegmentationProfile.segmentRoot(nameToOpen);
 		} 
 
-		// DKS TODO -- test versioning
-		if (!VersioningProfile.isVersioned(nameToOpen)) {
-			// if publisherID is null, will get any publisher
-			ContentObject latestVersion = library.getLatestVersion(nameToOpen, publisher, CCNAbstractInputStream.MAX_TIMEOUT);
-			if (null != latestVersion)
-				nameToOpen = SegmentationProfile.segmentRoot(latestVersion.name());
-		}
-
-		_input = new CCNInputStream(nameToOpen, publisher, library);
+		_input = new CCNVersionedInputStream(nameToOpen, publisher, library);
 	}
 
 	protected void openForWriting(ContentName name, 
@@ -69,15 +59,7 @@ public class CCNDescriptor {
 		if (SegmentationProfile.isSegment(name)) {
 			nameToOpen = SegmentationProfile.segmentRoot(nameToOpen);
 		}
-		// Assume if name is already versioned, caller knows what name
-		// to write. If caller specifies authentication information,
-		// ignore it for now.
-		if (!VersioningProfile.isVersioned(nameToOpen)) {
-			// if publisherID is null, will get any publisher
-			nameToOpen = 
-				VersioningProfile.versionName(nameToOpen);
-		}
-		_output = new CCNOutputStream(nameToOpen, locator, publisher, null, null, library);
+		_output = new CCNVersionedOutputStream(nameToOpen, locator, publisher, library);
 	}
 
 	public int available() throws IOException {
