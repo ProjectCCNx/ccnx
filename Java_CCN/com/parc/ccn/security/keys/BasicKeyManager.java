@@ -76,7 +76,8 @@ public class BasicKeyManager extends KeyManager {
 		File keyStoreFile = new File(UserConfiguration.keystoreFileName());
 		if (!keyStoreFile.exists()) {
 			Library.logger().info("Creating new CCN key store..." + UserConfiguration.keystoreFileName());
-			_keystore = createKeyStore();	
+			_keystore = createKeyStore();
+			System.out.println("created key store.");
 		}
 		if (null == _keystore) {
 			FileInputStream in = null;
