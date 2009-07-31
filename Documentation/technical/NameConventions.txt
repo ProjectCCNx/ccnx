@@ -51,7 +51,7 @@ Generally the single-leaf data should live at the same place in the name hierarc
 In the case that versioning is used, it is desirable to preserve the position of the version component in the name even for these items.  Thus a zero-length component is used to hold this place.  The link:URI.html[CCN URI scheme] spells this as "...", so we might have
 
 ....
- ccn://parc.com/diana/favorite_color/%FD%04%99%60%2d%2000/.../<digest>
+ ccn:/parc.com/diana/favorite_color/%FD%04%99%60%2d%2000/.../<digest>
 ....
 as the name for either the header or the single leaf.
 
