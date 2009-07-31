@@ -225,11 +225,55 @@ ccn_parse_optional_tagged_UDATA(struct ccn_buf_decoder *d, enum ccn_dtag dtag)
     return(-1);
 }
 
-/*
- * ccn_parse_Name
+/**
+ * Parses a ccnb-encoded element expected to contain a UDATA string.
+ * @param d is the decoder
+ * @param dtag is the expected dtag value
+ * @param store - on success, the string value is appended to store,
+ *        with null termination.
+ * @returns the offset into the store buffer of the copied value, or -1 for error.
+ *        If a parse error occurs, d->decoder.state is set to a negative value.
+ *        If the element is not present, -1 is returned but no parse error
+ *        is indicated.
+ */
+int
+ccn_parse_tagged_string(struct ccn_buf_decoder *d, enum ccn_dtag dtag, struct ccn_charbuf *store)
+{
+    const unsigned char *p = NULL;
+    size_t size = 0;
+    int res;
+    
+    if (ccn_buf_match_dtag(d, dtag)) {
+        ccn_buf_advance(d);
+        if (d->decoder.state >= 0 &&
+            CCN_GET_TT_FROM_DSTATE(d->decoder.state) == CCN_UDATA) {
+            res = store->length;
+            p = d->buf + d->decoder.index;
+            size = d->decoder.numval;
+            ccn_buf_advance(d);
+        }
+        else {
+            p = "";
+            size = 0;
+        }
+        ccn_buf_check_close(d);
+        if (d->decoder.state >= 0) {
+            // XXX - should check for valid utf-8 data.
+            res = store->length;
+            ccn_charbuf_append(store, p, size);
+            ccn_charbuf_append_value(store, 0, 1);
+            return(res);
+        }
+    }
+    return(-1);
+}
+
+/**
  * Parses a ccnb-encoded name
- * components may be NULL, otherwise is filled in with Component boundary offsets
- * Returns the number of Components in the Name, or -1 if there is an error.
+ * @param d is the decoder
+ * @param components may be NULL, otherwise is filled in with the 
+ *        Component boundary offsets
+ * @returns the number of Components in the Name, or -1 if there is an error.
  */
 int
 ccn_parse_Name(struct ccn_buf_decoder *d, struct ccn_indexbuf *components)

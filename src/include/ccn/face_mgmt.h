@@ -22,11 +22,12 @@ struct ccn_face_instance {
     struct ccn_charbuf *store;
 };
 
-struct ccn_face_instance *
-ccn_face_instance_parse(const unsigned char *p, size_t size);
+struct ccn_face_instance *ccn_face_instance_parse(const unsigned char *p,
+                                                  size_t size);
 
 void ccn_face_instance_destroy(struct ccn_face_instance**);
 
-int ccnb_append_face_instance(struct ccn_charbuf *, const struct ccn_face_instance*);
+int ccnb_append_face_instance(struct ccn_charbuf *,
+                              const struct ccn_face_instance *);
 
 #endif

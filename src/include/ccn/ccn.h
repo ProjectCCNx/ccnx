@@ -386,9 +386,14 @@ int ccn_parse_optional_tagged_BLOB(struct ccn_buf_decoder *d,
                                    enum ccn_dtag dtag,
                                    int minlen, int maxlen);
 int ccn_parse_optional_tagged_nonNegativeInteger(struct ccn_buf_decoder *d,
-                                   enum ccn_dtag dtag);
+                                                 enum ccn_dtag dtag);
 
-/* ccn_buf_check_close enters an error state if element closer not found */
+int ccn_parse_tagged_string(struct ccn_buf_decoder *d,
+                            enum ccn_dtag dtag, struct ccn_charbuf *store);
+
+/**
+ * Enter an error state if element closer not found.
+ */
 void ccn_buf_check_close(struct ccn_buf_decoder *d);
 
 /*
