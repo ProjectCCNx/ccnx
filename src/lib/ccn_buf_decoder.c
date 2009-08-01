@@ -252,15 +252,12 @@ ccn_parse_tagged_string(struct ccn_buf_decoder *d, enum ccn_dtag dtag, struct cc
             size = d->decoder.numval;
             ccn_buf_advance(d);
         }
-        else {
-            p = "";
-            size = 0;
-        }
         ccn_buf_check_close(d);
         if (d->decoder.state >= 0) {
             // XXX - should check for valid utf-8 data.
             res = store->length;
-            ccn_charbuf_append(store, p, size);
+            if (size > 0)
+                ccn_charbuf_append(store, p, size);
             ccn_charbuf_append_value(store, 0, 1);
             return(res);
         }

@@ -33,7 +33,7 @@ main (int argc, char **argv)
 	ccn_face_instance_destroy(& face_instance);
         
         forwarding_entry = ccn_forwarding_entry_parse(buf, size);
-        if (face_instance != NULL) {
+        if (forwarding_entry != NULL) {
 		printf("forwarding_entry OK\n");
                 res = 0;
 	}

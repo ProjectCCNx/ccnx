@@ -17,7 +17,7 @@ struct ccn_forwarding_entry {
     unsigned faceid;
     unsigned flags;
     int lifetime;
-    unsigned char store[40];
+    unsigned char store[48];
 };
 
 struct ccn_forwarding_entry *
