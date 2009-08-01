@@ -257,18 +257,16 @@ public class VersioningProfile implements CCNProfile {
 	}
 	
 	/**
-	 * See if two names are the same modulo potentially different terminal versions.
-	 * (If no terminal versions, will just compare the names.)
-	 * @param version1
-	 * @param version2
+	 * See if version is a version of parent (not commutative).
 	 * @return
 	 */
-	public static boolean isVersionOf(ContentName version1, ContentName version2) {
-		Tuple<ContentName, byte []>earlierVersionParts = cutTerminalVersion(version2);
-		Tuple<ContentName, byte []>laterVersionParts = cutTerminalVersion(version1);
-		if (!laterVersionParts.first().equals(earlierVersionParts.first())) {
+	public static boolean isVersionOf(ContentName version, ContentName parent) {
+		Tuple<ContentName, byte []>versionParts = cutTerminalVersion(version);
+		if (!parent.equals(versionParts.first())) {
 			return false; // not versions of the same thing
 		}
+		if (null == versionParts.second())
+			return false; // version isn't a version
 		return true;
     }
 	
