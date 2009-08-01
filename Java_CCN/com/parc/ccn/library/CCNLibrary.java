@@ -35,6 +35,7 @@ import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 import com.parc.ccn.library.profiles.CommandMarkers;
 import com.parc.ccn.library.profiles.SegmentationProfile;
+import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.network.CCNNetworkManager;
 import com.parc.ccn.security.keys.KeyManager;
@@ -562,11 +563,15 @@ public class CCNLibrary extends CCNBase {
 			ContentObject co = getLatest(name, acceptVersions(start), timeout);
 			if (co == null)
 				return null;
-			if (VersioningProfile.isVersionOf(co.name(), parent)) {
-				// we got a valid version! 
-				// DKS TODO should we see if it's actually later than name?
-				Library.logger().info("Got latest version: " + co.name());
-				return co;
+			try {
+				if (VersioningProfile.isLaterVersionOf(co.name(), name)) {
+					// we got a valid version! 
+					// DKS TODO should we see if it's actually later than name?
+					Library.logger().info("Got latest version: " + co.name());
+					return co;
+				}
+			} catch (VersionMissingException e) {
+				Library.logger().info("Cannot determine if " + co.name() + " is a later version of " + name + ", no versions.");
 			}
 			start = co.fullName().component(name.count()-1);
 		}
