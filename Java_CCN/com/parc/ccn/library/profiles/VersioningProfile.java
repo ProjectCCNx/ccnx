@@ -96,7 +96,7 @@ public class VersioningProfile implements CCNProfile {
 	 * @return the index of the last version component in the name, or -1 if there is no version
 	 *					component in the name
 	 */
-	public static int findVersionComponent(ContentName name) {
+	public static int findLastVersionComponent(ContentName name) {
 		int i = name.count();
 		for (;i >= 0; i--)
 			if (isVersionComponent(name.component(i)))
@@ -108,7 +108,7 @@ public class VersioningProfile implements CCNProfile {
 	 * Checks to see if this name has a validly formatted version field anywhere in it.
 	 */
 	public static boolean containsVersion(ContentName name) {
-		return findVersionComponent(name) != -1;
+		return findLastVersionComponent(name) != -1;
 	}
 	
 	/**
@@ -158,7 +158,7 @@ public class VersioningProfile implements CCNProfile {
 	 * present, returns the name as handed in.
 	 */
 	public static ContentName cutLastVersion(ContentName name) {
-		int offset = findVersionComponent(name);
+		int offset = findLastVersionComponent(name);
 		return (offset == -1) ? name : new ContentName(offset, name.components());
 	}
 
@@ -169,7 +169,7 @@ public class VersioningProfile implements CCNProfile {
 	 * @throws VersionMissingException
 	 */
 	public static long getLastVersionAsLong(ContentName name) throws VersionMissingException {
-		int i = findVersionComponent(name);
+		int i = findLastVersionComponent(name);
 		if (i == -1)
 			throw new VersionMissingException();
 		
@@ -179,6 +179,8 @@ public class VersioningProfile implements CCNProfile {
 	public static long getVersionComponentAsLong(byte [] versionComponent) {
 		byte [] versionData = new byte[versionComponent.length - 1];
 		System.arraycopy(versionComponent, 1, versionData, 0, versionComponent.length - 1);
+		if (versionData.length == 0)
+			return 0;
 		return new BigInteger(versionData).longValue();
 	}
 
@@ -201,7 +203,7 @@ public class VersioningProfile implements CCNProfile {
 	 * @return
 	 */
 	public static Timestamp getLastVersionAsTimestampIfVersioned(ContentName name) {
-		int versionComponent = findVersionComponent(name);
+		int versionComponent = findLastVersionComponent(name);
 		if (versionComponent < 0)
 			return null;
 		return getVersionComponentAsTimestamp(name.component(versionComponent));
@@ -210,7 +212,7 @@ public class VersioningProfile implements CCNProfile {
 	public static Timestamp getTerminalVersionAsTimestampIfVersioned(ContentName name) {
 		if (!hasTerminalVersion(name))
 			return null;
-		int versionComponent = findVersionComponent(name);
+		int versionComponent = findLastVersionComponent(name);
 		if (versionComponent < 0)
 			return null;
 		return getVersionComponentAsTimestamp(name.component(versionComponent));
