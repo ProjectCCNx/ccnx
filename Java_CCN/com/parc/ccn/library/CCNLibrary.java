@@ -390,7 +390,7 @@ public class CCNLibrary extends CCNBase {
 			 InvalidKeyException, SignatureException {
 		LinkReference[] newReferences = new LinkReference[references.size()];
 		references.toArray(newReferences);
-		Collection updatedCollection = createCollection(VersioningProfile.addVersion(oldCollection.name()),
+		Collection updatedCollection = createCollection(VersioningProfile.updateVersion(oldCollection.name()),
 				newReferences, publisher, locator, signingKey);
 		put(updatedCollection);
 		return updatedCollection;
@@ -556,7 +556,6 @@ public class CCNLibrary extends CCNBase {
 	final byte FF = (byte) 0xFF;
 	private ContentObject getVersionInternal(ContentName name, long timeout) throws InvalidParameterException, IOException {
 		
-		ContentName parent = name.parent(); // strip version
 		// initially exclude name components just before the first version
 		byte [] start = new byte [] { VersioningProfile.VERSION_MARKER, OO, FF, FF, FF, FF, FF };
 		while (true) {
