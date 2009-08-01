@@ -416,7 +416,10 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public ContentName clone() {
 		return new ContentName(count(), components());
 	}
-		
+
+	/**
+	 * Returns a new name with the last component removed.
+	 */
 	public ContentName parent() {
 		return new ContentName(count()-1, components());
 	}

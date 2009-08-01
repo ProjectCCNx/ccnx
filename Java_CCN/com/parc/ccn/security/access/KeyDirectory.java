@@ -35,13 +35,21 @@ import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.library.profiles.AccessControlProfile.PrincipalInfo;
 
 /**
- * A key directory is a versioned key object which contains, under
- * the version, a set of key blocks wrapped under different target keys,
- * plus some potential supporting information pointing to previous
- * or subsequent versions of this key. This structure is used for
- * representing both node keys and group (private) keys. We
- * encapsulate functionality to walk such a directory and find our
- * target key here.
+ * A key directory holds a set of keys, wrapped under different
+ * target keys. It is implemented as a set of wrapped key objects
+ * all stored in one directory. Wrapped key objects are typically short
+ * and only need one segment. The directory the keys are stored in
+ * is prefixed by a version, to allow the contents to evolve. In addition
+ * some potential supporting information pointing to previous
+ * or subsequent versions of this key is kept. A particular wrapped key
+ * entry's name would look like:
+ *
+ * <pre>.../v123/xxx/s0</pre>
+ * <br>Where xxx is the identifier of the wrapped key.
+ *
+ * This structure is used for representing both node keys and group
+ * (private) keys. We encapsulate functionality to walk such a directory
+ * and find our target key here.
  * 
  * Our model is that higher-level function may use this interface
  * to try many ways to get a given key. Some will work (access is
@@ -51,9 +59,6 @@ import com.parc.ccn.library.profiles.AccessControlProfile.PrincipalInfo;
  * when we don't conclusively know that this principal doesn't
  * have access to this data somehow, rather than throwing
  * AccessDeniedException.
- * 
- * @author smetters
- *
  */
 public class KeyDirectory extends EnumeratedNameList {
 	
