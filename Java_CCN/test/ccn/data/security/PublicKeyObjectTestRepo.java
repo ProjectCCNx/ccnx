@@ -40,9 +40,7 @@ public class PublicKeyObjectTestRepo {
 	public static KeyPair egPair = null;
 	public static KeyPair eccPair = null;
 	public static KeyPair eciesPair = null;
-	public static ContentName storedKeyName = null;
-	public static ContentName storedKeyName2 = null;
-	public static ContentName storedKeyName3 = null;
+	public static ContentName [][] storedKeyNames = new ContentName[2][3];
 	public static ContentName namespace = null;
 	
 	static Level oldLevel;
@@ -85,19 +83,21 @@ public class PublicKeyObjectTestRepo {
 	    eciesPair = g.generateKeyPair();
 	     
 	    namespace = ContentName.fromNative("/parc/Users");
-	    int randomTrial = new Random().nextInt(10000);
-		storedKeyName = ContentName.fromNative(namespace, "testRSAUser-" + Integer.toString(randomTrial), "KEY");
-		storedKeyName2 = ContentName.fromNative(namespace, "testEGUser-" + Integer.toString(randomTrial), "KEY");
-		storedKeyName3 = ContentName.fromNative(namespace, "testECCUser-" + Integer.toString(randomTrial), "KEY");
+	    for (int i=0; i < storedKeyNames.length; ++i) {
+		    int randomTrial = new Random().nextInt(10000);
+			storedKeyNames[i][0] = ContentName.fromNative(namespace, "testRSAUser-" + Integer.toString(randomTrial), "KEY");
+			storedKeyNames[i][1] = ContentName.fromNative(namespace, "testEGUser-" + Integer.toString(randomTrial), "KEY");
+			storedKeyNames[i][2] = ContentName.fromNative(namespace, "testECCUser-" + Integer.toString(randomTrial), "KEY");		    
+	    }
 	}
 
 	@Test
 	public void testRawPublicKeyObject() {
 		
 		try {
-			testRawKeyReadWrite(storedKeyName, pair1.getPublic(), pair2.getPublic());
-			testRawKeyReadWrite(storedKeyName2, egPair.getPublic(), null);
-			testRawKeyReadWrite(storedKeyName3, eccPair.getPublic(), eciesPair.getPublic());
+			testRawKeyReadWrite(storedKeyNames[0][0], pair1.getPublic(), pair2.getPublic());
+			testRawKeyReadWrite(storedKeyNames[0][1], egPair.getPublic(), null);
+			testRawKeyReadWrite(storedKeyNames[0][2], eccPair.getPublic(), eciesPair.getPublic());
 		} catch (Exception e) {
 			e.printStackTrace();
 			fail("Exception in publicKeyObject testing: " + e.getClass().getName() + ":  " + e.getMessage());
@@ -111,9 +111,9 @@ public class PublicKeyObjectTestRepo {
 	public void testRepoPublicKeyObject() {
 		
 		try {
-			testRepoKeyReadWrite(storedKeyName, pair1.getPublic(), pair2.getPublic());
-			testRepoKeyReadWrite(storedKeyName2, egPair.getPublic(), null);
-			testRepoKeyReadWrite(storedKeyName3, eccPair.getPublic(), eciesPair.getPublic());
+			testRepoKeyReadWrite(storedKeyNames[1][0], pair1.getPublic(), pair2.getPublic());
+			testRepoKeyReadWrite(storedKeyNames[1][1], egPair.getPublic(), null);
+			testRepoKeyReadWrite(storedKeyNames[1][2], eccPair.getPublic(), eciesPair.getPublic());
 		} catch (Exception e) {
 			e.printStackTrace();
 			fail("Exception in publicKeyObject testing: " + e.getClass().getName() + ":  " + e.getMessage());
