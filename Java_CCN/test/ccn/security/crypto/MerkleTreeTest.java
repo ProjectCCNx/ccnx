@@ -27,7 +27,7 @@ public class MerkleTreeTest {
 	}
 	
 	@Test
-	public void testMerkleTree() {
+	public void testMerkleTree() throws Exception {
 		int [] sizes = new int[]{128,256,512,4096};
 		
 		try {
@@ -56,13 +56,13 @@ public class MerkleTreeTest {
 		}
 	}
 	
-	public static void testTree(int numLeaves, int nodeLength, boolean digest) {
+	public static void testTree(int numLeaves, int nodeLength, boolean digest) throws Exception {
 		try {
 			byte [][] data = makeContent(numLeaves, nodeLength, digest);
 			testTree(data, numLeaves, digest);
 		} catch (Exception e) {
 			System.out.println("Building tree of " + numLeaves + " Nodes. Caught a " + e.getClass().getName() + " exception: " + e.getMessage());
-			e.printStackTrace();
+			throw e;
 		}
 	}
 	
@@ -91,7 +91,8 @@ public class MerkleTreeTest {
 	
 	public static void testTree(byte [][] content, int count, boolean digest) {
 		// Generate a merkle tree. Verify each path for the content.
-		MerkleTree tree = new MerkleTree(content, digest, count, 0, content[count-1].length);
+		MerkleTree tree = new MerkleTree(content, digest, count, 0, 
+										((count-1) >= 0) && ((count-1) < content.length) ? content[count-1].length : 0);
 				
 		MerklePath [] paths = new MerklePath[count];
 		for (int i=0; i < count; ++i) {
