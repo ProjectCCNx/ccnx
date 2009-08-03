@@ -33,17 +33,21 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 	 * @throws IOException
 	 */
 	public CCNEncodableObject(Class<E> type, ContentName name, E data, CCNLibrary library) throws IOException {
-		super(type, name, data, library);
+		super(type, name, data, null, library);
 	}
 	
-	public CCNEncodableObject(Class<E> type, ContentName name, E data,
-			boolean raw, CCNLibrary library) throws IOException {
-		super(type, name, data, raw, library);
+	public CCNEncodableObject(Class<E> type, ContentName name, E data, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException {
+		super(type, name, data, publisher, library);
 	}
 
-	protected CCNEncodableObject(Class<E> type, ContentName name, E data,
+	public CCNEncodableObject(Class<E> type, ContentName name, E data,
+			boolean raw, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException {
+		super(type, name, data, raw, publisher, library);
+	}
+
+	protected CCNEncodableObject(Class<E> type, ContentName name, E data, PublisherPublicKeyDigest publisher,
 			CCNFlowControl flowControl) throws IOException {
-		super(type, name, data, flowControl);
+		super(type, name, data, publisher, flowControl);
 	}
 	
 	/**

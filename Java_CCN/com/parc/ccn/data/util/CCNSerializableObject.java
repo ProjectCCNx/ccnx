@@ -35,16 +35,19 @@ public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObj
 		super(type, name, data, library);
 	}
 
+	public CCNSerializableObject(Class<E> type, ContentName name, E data, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException {
+		super(type, name, data, publisher, library);
+	}
+
 	public CCNSerializableObject(Class<E> type, ContentName name, E data,
-			boolean raw, CCNLibrary library) throws IOException {
-		super(type, name, data, raw, library);
+			boolean raw, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException {
+		super(type, name, data, raw, publisher, library);
 	}
 
-	protected CCNSerializableObject(Class<E> type, ContentName name, E data,
+	protected CCNSerializableObject(Class<E> type, ContentName name, E data, PublisherPublicKeyDigest publisher,
 			CCNFlowControl flowControl) throws IOException {
-		super(type, name, data, flowControl);
+		super(type, name, data, publisher, flowControl);
 	}
-
 
 	/**
 	 * Read constructor -- opens existing object.

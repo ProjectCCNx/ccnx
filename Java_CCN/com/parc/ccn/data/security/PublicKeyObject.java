@@ -34,7 +34,6 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 
 	/**
 	 * Write constructor. Doesn't save until you call save, in case you want to tweak things first.
-	 * @param type
 	 * @param name
 	 * @param data
 	 * @param library
@@ -45,6 +44,10 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 		super(PublicKey.class, name, data, library);
 	}
 	
+	public PublicKeyObject(ContentName name, PublicKey data, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException {
+		super(PublicKey.class, name, data, publisher, library);
+	}
+
 	/**
 	 * Read constructor -- opens existing object.
 	 * @param name

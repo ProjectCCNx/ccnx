@@ -46,6 +46,10 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 			super(HeaderData.class, name, data, library);
 		}
 		
+		public HeaderObject(ContentName name, HeaderData data, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException {
+			super(HeaderData.class, name, data, publisher, library);
+		}
+
 		/**
 		 * Read constructor -- opens existing object.
 		 * @param name
@@ -166,6 +170,8 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
     	FragmentationNameTypes.put("SIMPLE_BLOCK", FragmentationType.SIMPLE_BLOCK);
     }
 	
+	public static final String START_ELEMENT = "Start";
+	public static final String HEADER_ELEMENT = "Header";
 	/**
 	 * These are specific to simple block fragmentation.
 	 */
@@ -259,8 +265,8 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 	 */
 	@Override
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		decoder.readStartElement(Header.HEADER_ELEMENT);
-		_start = Integer.valueOf(decoder.readUTF8Element(Header.START_ELEMENT));
+		decoder.readStartElement(HeaderData.HEADER_ELEMENT);
+		_start = Integer.valueOf(decoder.readUTF8Element(HeaderData.START_ELEMENT));
 		_count = Integer.valueOf(decoder.readUTF8Element(COUNT_ELEMENT));
 		_blockSize = Integer.valueOf(decoder.readUTF8Element(BLOCKSIZE_ELEMENT));
 		_length = Integer.valueOf(decoder.readUTF8Element(LENGTH_ELEMENT));
@@ -287,8 +293,8 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		encoder.writeStartElement(Header.HEADER_ELEMENT);
-		encoder.writeElement(Header.START_ELEMENT,	 Long.toString(_start));
+		encoder.writeStartElement(HEADER_ELEMENT);
+		encoder.writeElement(START_ELEMENT,	 Long.toString(_start));
 		encoder.writeElement(COUNT_ELEMENT,	 Long.toString(_count));
 		encoder.writeElement(BLOCKSIZE_ELEMENT,	 Long.toString(_blockSize));
 		encoder.writeElement(LENGTH_ELEMENT,	Long.toString(_length));

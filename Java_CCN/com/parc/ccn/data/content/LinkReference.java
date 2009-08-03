@@ -43,6 +43,10 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable, 
 			super(LinkReference.class, name, data, library);
 		}
 		
+		public LinkObject(ContentName name, LinkReference data, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException {
+			super(LinkReference.class, name, data, publisher, library);
+		}
+
 		/**
 		 * Read constructor -- opens existing object.
 		 * @param name

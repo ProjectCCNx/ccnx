@@ -46,6 +46,10 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 			super(CollectionData.class, name, data, library);
 		}
 		
+		public CollectionObject(ContentName name, CollectionData data, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException {
+			super(CollectionData.class, name, data, publisher, library);
+		}
+
 		/**
 		 * Read constructor -- opens existing object.
 		 * @param name
@@ -110,10 +114,6 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 	
 	public boolean remove(LinkReference content) {
 		return _contents.remove(content);
-	}
-	
-	public boolean remove(Link content) {
-		return _contents.remove(content.getReference());
 	}
 	
 	public boolean remove(LinkObject content) {

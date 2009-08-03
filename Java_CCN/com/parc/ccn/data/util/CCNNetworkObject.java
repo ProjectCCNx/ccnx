@@ -92,6 +92,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param type
 	 * @param name
 	 * @param data
+	 * @param publisher which publisher key to sign this content with, or library defaults if null
 	 * @param library
 	 * @throws IOException
 	 */
@@ -106,6 +107,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param name
 	 * @param data
 	 * @param raw
+	 * @param publisher which publisher key to sign this content with, or library defaults if null
 	 * @param library
 	 * @throws IOException
 	 */
@@ -126,6 +128,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param type
 	 * @param name
 	 * @param data
+	 * @param publisher which publisher key to sign this content with, or library defaults if null
 	 * @param flowControl
 	 * @throws IOException
 	 */
@@ -139,7 +142,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * named version. Flow controller assumed to already be set to handle this namespace.
 	 * @param type
 	 * @param name
-	 * @param publisher
+	 * @param publisher Who must have signed the data we want. TODO should be PublisherID.
 	 * @param library
 	 * @throws ConfigurationException
 	 * @throws IOException
