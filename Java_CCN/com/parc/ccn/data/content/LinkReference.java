@@ -26,44 +26,67 @@ import com.parc.ccn.library.CCNLibrary;
  */
 public class LinkReference extends GenericXMLEncodable implements XMLEncodable, Cloneable {
 	
-	protected static final String LINK_ELEMENT = "Link";
-	protected static final String LABEL_ELEMENT = "Label"; // overlaps with WrappedKey.LABEL_ELEMENT,
-															// shared dictionary entry
-	
+	/**
+	 * This should eventually be called Link, and the Link class deleted.
+	 */
 	public static class LinkObject extends CCNEncodableObject<LinkReference> {
-
+		
+		/**
+		 * Write constructor. Doesn't save until you call save, in case you want to tweak things first.
+		 * @param name
+		 * @param data
+		 * @param library
+		 * @throws ConfigurationException
+		 * @throws IOException
+		 */
 		public LinkObject(ContentName name, LinkReference data, CCNLibrary library) throws IOException {
 			super(LinkReference.class, name, data, library);
 		}
 		
-		public LinkObject(ContentName name, PublisherPublicKeyDigest publisher,
-				CCNLibrary library) throws IOException, XMLStreamException {
-			super(LinkReference.class, name, publisher, library);
-		}
-		
 		/**
 		 * Read constructor -- opens existing object.
-		 * @param type
 		 * @param name
 		 * @param library
 		 * @throws XMLStreamException
 		 * @throws IOException
 		 * @throws ClassNotFoundException 
 		 */
-		public LinkObject(ContentName name, 
-				CCNLibrary library) throws IOException, XMLStreamException {
+		public LinkObject(ContentName name, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException, XMLStreamException {
+			super(LinkReference.class, name, publisher, library);
+		}
+		
+		public LinkObject(ContentName name, CCNLibrary library) throws IOException, XMLStreamException {
 			super(LinkReference.class, name, (PublisherPublicKeyDigest)null, library);
 		}
 		
-		public LinkObject(ContentObject firstBlock,
-				CCNLibrary library) throws IOException, XMLStreamException {
+		public LinkObject(ContentObject firstBlock, CCNLibrary library) throws IOException, XMLStreamException {
 			super(LinkReference.class, firstBlock, library);
 		}
 		
-		public LinkReference link() { return data(); }
+		public ContentName getTargetName() { 
+			LinkReference lr = getReference();
+			if (null == lr)
+				return null;
+			return lr.targetName(); 
+		}
+
+		public LinkAuthenticator getTargetAuthenticator() { 
+			LinkReference lr = getReference();
+			if (null == lr)
+				return null;
+			return lr.targetAuthenticator(); 
+		}
+
+		public LinkReference getReference() { 
+			if (null == data())
+				return null;
+			return data(); 
+		}
 	}
 
-	
+	protected static final String LINK_ELEMENT = "Link";
+	protected static final String LABEL_ELEMENT = "Label"; // overlaps with WrappedKey.LABEL_ELEMENT,
+															// shared dictionary entry	
 	protected ContentName _targetName;
 	protected String _targetLabel;
 	protected LinkAuthenticator _targetAuthenticator = null;
