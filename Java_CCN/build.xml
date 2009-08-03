@@ -243,7 +243,7 @@
 			</classpath>
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-
+			<sysproperty key="com.parc.ccn.LogLevel" value="FINEST"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="test/ccn/data/*TestRepo.class"/>
