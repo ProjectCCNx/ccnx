@@ -229,14 +229,14 @@ public class CCNRawEncodableObjectTest {
 		//Assert.assertTrue("Assert, line 227", ecd1.isGone());
 		ecd0.setData(small1);
 		Assert.assertFalse("Assert, line 229", ecd0.isGone());
-		/*
+		
 		ecd0.save();
 		Assert.assertFalse("Assert, line 231", ecd0.isGone());
 		Library.logger().info("Saved object ecd0: " + ecd0.getCurrentVersionName() + "(" + ecd0.getVersion() +") updating ecd1, which is currently: " + ecd1.getCurrentVersionName());
 		ecd1.update();
 		Library.logger().info("Retrieved ecd1, name: " + ecd1.getCurrentVersionName() + "(" + ecd1.getVersion() +")" +  " gone? " + ecd1.isGone());
 		Assert.assertFalse("Assert, line 235", ecd1.isGone());
-		*/
+		
 	}
 	
 
@@ -333,14 +333,14 @@ public class CCNRawEncodableObjectTest {
 		// Assert.assertTrue("Gone object ecd1 is not gone!", ecd1.isGone());
 		ecd0.setData(small1);
 		Assert.assertFalse("Non-gone object ecd0 is gone!", ecd0.isGone());
-		/*
+		
 		ecd0.save();
 		Assert.assertFalse("Non-gone object ecd0 is gone 2nd time around!", ecd0.isGone());
 		Library.logger().info("Saved object ecd0: " + ecd0.getCurrentVersionName() + "(" + ecd0.getVersion() +") updating ecd1, which is currently: " + ecd1.getCurrentVersionName());
 		ecd1.update();
 		Library.logger().info("Retrieved ecd1, name: " + ecd1.getCurrentVersionName() + "(" + ecd1.getVersion() +")" +  " gone? " + ecd1.isGone());
 		Assert.assertFalse("Non-gone object ecd0 is gone at end!", ecd1.isGone());
-		*/
+		
 	}
 
 }
