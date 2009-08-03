@@ -305,8 +305,8 @@ public class EnumeratedNameListTestRepo {
 		
 		CCNStringObject cso = new CCNStringObject(name, ContentName.componentPrintNative(name.lastComponent()), library);
 		cso.saveToRepository();
-		System.out.println("Saved new object: " + cso.getName());
-		return cso.getName();
+		System.out.println("Saved new object: " + cso.getCurrentVersionName());
+		return cso.getCurrentVersionName();
 		
 	}
 	

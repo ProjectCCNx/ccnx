@@ -10,6 +10,22 @@ import org.bouncycastle.util.encoders.Base64;
 import com.parc.ccn.config.SystemConfiguration;
 
 public class DataUtils {
+	
+	public static class Tuple<A, B> {
+		
+		A _first;
+		B _second;
+		
+		public Tuple(A first, B second) {
+			_first = first;
+			_second = second;
+		}
+		
+		public A first() { return _first; }
+		public B second() { return _second; }
+		public void setFirst(A first) { _first = first; }
+		public void setSecond(B second) { _second = second; }
+	}
 
 	public static <T extends Comparable<T>> int compare(T left, T right) {
 		int result = 0;

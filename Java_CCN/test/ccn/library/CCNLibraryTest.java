@@ -11,6 +11,7 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Random;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -162,8 +163,8 @@ public class CCNLibraryTest extends LibraryTestBase {
 			CCNWriter segmenter = new CCNWriter(keyName, putLibrary);
 			revision1 = segmenter.newVersion(keyName, data1);
 			revision2 = segmenter.newVersion(keyName, data2);
-			long version1 = VersioningProfile.getVersionAsLong(revision1);
-			long version2 = VersioningProfile.getVersionAsLong(revision2);
+			long version1 = VersioningProfile.getLastVersionAsLong(revision1);
+			long version2 = VersioningProfile.getLastVersionAsLong(revision2);
 			System.out.println("Version1: " + version1 + " version2: " + version2);
 			Assert.assertTrue("Revisions are strange", 
 					version2 > version1);
@@ -190,33 +191,50 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 	@Test
 	public void testGetLatestVersion() throws Exception {
-		String name = "/test/simon/versioned_name";
+		String name = "/test/simon/versioned_name-" + new Random().nextInt(10000);
 		// include a base object, who's digest can potentially confuse getLatestVersion
 		ContentName base = ContentName.fromNative(name);
-		ContentName versionBase = VersioningProfile.versionName(base);
 		
-		final byte [][] data = { "data0".getBytes(), "data1".getBytes() };
+		// Don't do repeated get latest versions for now, not working.
+		final int testCount = 2;
+		final byte [][] data = new byte[testCount][1];
+		for (int i=0; i < testCount; ++i) {
+			data[i][0] = (byte)i;
+		}
 		CCNFlowControl f = new CCNFlowControl(base, putLibrary);
-		ContentObject [] cos = { ContentObject.buildContentObject(base, data[0]),
-											ContentObject.buildContentObject(versionBase, data[1]) };
-		f.put(cos);
+		ContentObject [] cos = new ContentObject[testCount];
+		cos[0] = ContentObject.buildContentObject(base, data[0]);
+		for (int i=1; i < testCount; ++i) {
+			ContentName versionedName = VersioningProfile.addVersion(base);
+			Thread.sleep(3);
+			cos[i] = ContentObject.buildContentObject(versionedName, data[i]);
+		}
+		f.put(cos[0]);
+		f.put(cos[1]);
 		// java lacks nested functions, so use a class here...
 		class t {
 			void check(ContentObject o, int i) {
 				System.out.println("Got content: " + o.name());
-				System.out.println("Original value: " + new String(data[i]) + " returned value: " + new String(o.content()));
+				System.out.println("Original value: " + i + " returned value: " + Byte.toString(o.content()[0]));
 				Assert.assertTrue(DataUtils.arrayEquals(o.content(), data[i]));
 			}
 			/**
 			 * Make sure the data is written to ccnd by reading it
 			 */
 			void readAndCheck(ContentName name, int index) throws IOException {
+				System.out.println("Getting content: " + name);
 				check(getLibrary.get(name, 2000), index);
 			}
 		} t test = new t();
 		test.readAndCheck(base, 0);
-		test.readAndCheck(versionBase, 1);
+		test.readAndCheck(cos[1].name(), 1);
 		test.check(getLibrary.getLatestVersion(base, putLibrary.getDefaultPublisher(), 2000), 1);
+		// Beef this up a bit...
+		for (int i=2; i < testCount; ++i) {
+			f.put(cos[i]);
+			System.out.println("Wrote content: " + cos[i].name());
+			test.check(getLibrary.getLatestVersion(cos[i-1].name(), putLibrary.getDefaultPublisher(), 2000), i);
+		}
 	}
 
 	@Test
@@ -311,7 +329,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 		Assert.assertTrue("Version is not a version of the parent name!", VersioningProfile.isVersionOf(version1, docName));
 		Assert.assertTrue("Version is not a version of the parent name!", VersioningProfile.isVersionOf(version2, docName));
-		Assert.assertTrue("Version numbers don't increase!", VersioningProfile.getVersionAsLong(version2) > VersioningProfile.getVersionAsLong(version1));
+		Assert.assertTrue("Version numbers don't increase!", VersioningProfile.getLastVersionAsLong(version2) > VersioningProfile.getLastVersionAsLong(version1));
 	}
 
 	@Test
@@ -432,13 +450,13 @@ public class CCNLibraryTest extends LibraryTestBase {
 						content = co.content();
 						String strContent = new String(content);
 						
-						if (VersioningProfile.isVersioned(co.name())) {
+						if (VersioningProfile.hasTerminalVersion(co.name())) {
 							// We're writing this content using CCNWriter.put. That interface
 							// does *not* version content for you, at least at the moment. 
 							// TODO We need to decide whether we expect it to. So don't require
 							// versioning here yet. 
 							System.out.println("Got update for " + co.name() + ": " + strContent + 
-								" (revision " + VersioningProfile.getVersionAsLong(co.name()) + ")");
+								" (revision " + VersioningProfile.getLastVersionAsLong(co.name()) + ")");
 						} else {
 							System.out.println("Got update for " + co.name() + ": " + strContent);
 						}

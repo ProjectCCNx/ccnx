@@ -107,7 +107,7 @@ public class WrappedKeyTest {
 		wrappingKeyPair = kpg.generateKeyPair();
 		wrappedKeyPair = kpg.generateKeyPair();
 		wrappingKeyID = PublisherID.generatePublicKeyDigest(wrappingKeyPair.getPublic());
-		wrappingKeyName = VersioningProfile.versionName(ContentName.fromNative("/parc/Users/briggs/KEY"));
+		wrappingKeyName = VersioningProfile.addVersion(ContentName.fromNative("/parc/Users/briggs/KEY"));
 		
 		ElGamalParameterSpec egp = new ElGamalParameterSpec(new BigInteger(1, pbytes), new BigInteger(1, gbytes));
 		KeyPairGenerator ekpg = KeyPairGenerator.getInstance("ElGamal");
@@ -244,17 +244,17 @@ public class WrappedKeyTest {
 			flosser.handleNamespace(storedKeyName);
 			WrappedKeyObject wko = new WrappedKeyObject(storedKeyName, wks, library);
 			wko.save();
-			Assert.assertTrue(VersioningProfile.isVersioned(wko.getName()));
+			Assert.assertTrue(VersioningProfile.hasTerminalVersion(wko.getCurrentVersionName()));
 			// should update in another thread
 			WrappedKeyObject wkoread = new WrappedKeyObject(storedKeyName, null); // new library
 			Assert.assertTrue(wkoread.available());
-			Assert.assertEquals(wkoread.getName(), wko.getName());
+			Assert.assertEquals(wkoread.getCurrentVersionName(), wko.getCurrentVersionName());
 			Assert.assertEquals(wkoread.wrappedKey(), wko.wrappedKey());
 			// DKS -- bug in interest handling, can't save wkoread and update wko
 			wko.save(wka);
-			Assert.assertTrue(VersioningProfile.isLaterVersionOf(wko.getName(), wkoread.getName()));
+			Assert.assertTrue(VersioningProfile.isLaterVersionOf(wko.getCurrentVersionName(), wkoread.getCurrentVersionName()));
 			wkoread.update();
-			Assert.assertEquals(wkoread.getName(), wko.getName());
+			Assert.assertEquals(wkoread.getCurrentVersionName(), wko.getCurrentVersionName());
 			Assert.assertEquals(wkoread.wrappedKey(), wko.wrappedKey());
 			Assert.assertEquals(wko.wrappedKey(), wka);
 		} catch (Exception e) {

@@ -382,7 +382,7 @@ public class CCNFlowControl implements CCNFilterListener {
 				
 				if (_holdingArea.size() == startSize) {
 					for(ContentName co : _holdingArea.keySet()) {
-						Library.logger().warning(co.toString());
+						Library.logger().warning("FlowController: still holding: " + co.toString());
 					}
 					throw new IOException("Put(s) with no matching interests - size is " + _holdingArea.size());
 				}

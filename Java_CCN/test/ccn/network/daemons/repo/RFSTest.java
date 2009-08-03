@@ -241,7 +241,7 @@ public class RFSTest extends RepoTestBase {
 		
 		System.out.println("Repotest - testing version and segment files");
 		versionedName = ContentName.fromNative("/repoTest/testVersion");
-		versionedName = VersioningProfile.versionName(versionedName);
+		versionedName = VersioningProfile.addVersion(versionedName);
 		repo.saveContent(ContentObject.buildContentObject(versionedName, "version".getBytes()));
 		checkData(repo, versionedName, "version");
 		segmentedName1 = SegmentationProfile.segmentName(versionedName, 1);
@@ -253,7 +253,7 @@ public class RFSTest extends RepoTestBase {
 		
 		System.out.println("Repotest - storing sequence of objects for versioned stream read testing");
 		versionedNameNormal = ContentName.fromNative("/testNameSpace/testVersionNormal");
-		versionedNameNormal = VersioningProfile.versionName(versionedNameNormal);
+		versionedNameNormal = VersioningProfile.addVersion(versionedNameNormal);
 		repo.saveContent(ContentObject.buildContentObject(versionedNameNormal, "version-normal".getBytes()));
 		checkData(repo, versionedNameNormal, "version-normal");
 		byte[] finalBlockID = SegmentationProfile.getSegmentID(4);

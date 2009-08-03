@@ -30,7 +30,7 @@ public class CCNVersionedOutputStream extends CCNOutputStream {
 		 * getLatestVersion interests to see this stream.
 		 */
 		this(name, locator, publisher, null, new CCNSegmenter(
-				new CCNFlowControl(VersioningProfile.versionRoot(name), library), null, keys));
+				new CCNFlowControl(VersioningProfile.cutTerminalVersion(name).first(), library), null, keys));
 	}
 
 	public CCNVersionedOutputStream(ContentName name, CCNLibrary library)
@@ -51,7 +51,7 @@ public class CCNVersionedOutputStream extends CCNOutputStream {
 	public CCNVersionedOutputStream(ContentName name, KeyLocator locator,
 			PublisherPublicKeyDigest publisher, ContentType type, CCNSegmenter segmenter)
 			throws IOException {
-		super((VersioningProfile.isVersioned(name) ? name : VersioningProfile.versionName(name)), 
+		super((VersioningProfile.hasTerminalVersion(name) ? name : VersioningProfile.addVersion(name)), 
 				locator, publisher, type, segmenter);
 	}
 

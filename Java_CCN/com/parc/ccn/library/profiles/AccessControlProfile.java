@@ -77,11 +77,11 @@ public class AccessControlProfile implements CCNProfile {
 	}
 	
 	public static boolean isNodeKeyName(ContentName name) {
-		if (!isAccessName(name) || !VersioningProfile.isVersioned(name)) {
+		if (!isAccessName(name) || !VersioningProfile.hasTerminalVersion(name)) {
 			return false;
 		}
-		ContentName nkName = VersioningProfile.versionRoot(name);
-		if (nkName.stringComponent(nkName.count()-1).equals(NODE_KEY_NAME)) {
+		int versionComponent = VersioningProfile.findLastVersionComponent(name);
+		if (name.stringComponent(versionComponent - 1).equals(NODE_KEY_NAME)) {
 			return true;
 		}
 		return false;
@@ -112,11 +112,11 @@ public class AccessControlProfile implements CCNProfile {
 	}
 	
 	public static boolean isDataKeyName(ContentName name) {
-		if (!isAccessName(name) || VersioningProfile.isVersioned(name)) {
+		if (!isAccessName(name) || VersioningProfile.hasTerminalVersion(name)) {
 			return false;
 		}
-		ContentName dkName = VersioningProfile.versionRoot(name);
-		if (dkName.stringComponent(dkName.count()-1).equals(DATA_KEY_NAME)) {
+		int versionComponent = VersioningProfile.findLastVersionComponent(name);
+		if (name.stringComponent(versionComponent - 1).equals(DATA_KEY_NAME)) {
 			return true;
 		}
 		return false;
@@ -274,8 +274,8 @@ public class AccessControlProfile implements CCNProfile {
 
 	public static PrincipalInfo parsePrincipalInfoFromPublicKeyName(boolean isGroup, ContentName publicKeyName) throws VersionMissingException {
 		byte [] type = (isGroup ? GROUP_PRINCIPAL_PREFIX : PRINCIPAL_PREFIX);
-		Timestamp version = VersioningProfile.getVersionAsTimestamp(publicKeyName);
-		String principal = ContentName.componentPrintNative(VersioningProfile.versionRoot(publicKeyName).lastComponent());
+		Timestamp version = VersioningProfile.getLastVersionAsTimestamp(publicKeyName);
+		String principal = ContentName.componentPrintNative(VersioningProfile.cutTerminalVersion(publicKeyName).first().lastComponent());
 		return new PrincipalInfo(type, principal, version);
 	}
 }

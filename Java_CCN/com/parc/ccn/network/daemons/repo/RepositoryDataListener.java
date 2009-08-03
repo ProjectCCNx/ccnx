@@ -87,8 +87,8 @@ public class RepositoryDataListener implements CCNInterestListener {
 		for (ContentObject co : results) {
 			_daemon.getThreadPool().execute(new DataHandler(co));
 			
-			if (VersioningProfile.isVersioned(co.name()) && !VersioningProfile.isVersioned(_versionedName)) {
-				_versionedName = co.name().cut(VersioningProfile.findVersionComponent(co.name()) + 1);
+			if (VersioningProfile.hasTerminalVersion(co.name()) && !VersioningProfile.hasTerminalVersion(_versionedName)) {
+				_versionedName = co.name().cut(VersioningProfile.findLastVersionComponent(co.name()) + 1);
 			}
 				
 			if (SegmentationProfile.isSegment(co.name())) {
