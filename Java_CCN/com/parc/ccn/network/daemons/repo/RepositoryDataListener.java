@@ -107,6 +107,9 @@ public class RepositoryDataListener implements CCNInterestListener {
 				long firstInterestToRequest = _interests.size() > 0 
 						? SegmentationProfile.getSegmentNumber(_interests.lastKey()) + 1
 						: _currentBlock;
+				if (_currentBlock > firstInterestToRequest) // Can happen if last requested interest precedes all others
+															// out of order
+					firstInterestToRequest = _currentBlock;
 				int nOutput = _interests.size() >= _daemon.getWindowSize() ? 0 : _daemon.getWindowSize() - _interests.size();
 	
 				for (int i = 0; i < nOutput; i++) {
