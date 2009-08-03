@@ -170,10 +170,12 @@ public class CCNLibrary extends CCNBase {
 	 * @throws SignatureException 
 	 * @throws InvalidKeyException 
 	 */
+	@Deprecated
 	public Link put(ContentName name, LinkReference target) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 		return put(name, target, null, null, null);
 	}
 	
+	@Deprecated
 	public Link put(
 			ContentName name, 
 			LinkReference target,
@@ -212,10 +214,12 @@ public class CCNLibrary extends CCNBase {
 	 * @throws SignatureException
 	 * @throws IOException
 	 */
+	@Deprecated
 	public Collection put(ContentName name, LinkReference [] references) throws SignatureException, IOException {
 		return put(name, references, getDefaultPublisher());
 	}
 
+	@Deprecated
 	public Collection put(ContentName name, LinkReference [] references, PublisherPublicKeyDigest publisher) 
 				throws SignatureException, IOException {
 		try {
@@ -231,6 +235,7 @@ public class CCNLibrary extends CCNBase {
 		}
 	}
 
+	@Deprecated
 	public Collection put(
 			ContentName name, 
 			LinkReference[] references,
@@ -259,12 +264,14 @@ public class CCNLibrary extends CCNBase {
 		}
 	}
 	
+	@Deprecated
 	public Collection put(
 			ContentName name, 
 			ContentName[] references) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 		return put(name, references, null, null, null);
 	}
 	
+	@Deprecated
 	public Collection put(
 			ContentName name, 
 			ContentName[] references,
@@ -272,6 +279,7 @@ public class CCNLibrary extends CCNBase {
 		return put(name, references, publisher, null, null);
 	}
 	
+	@Deprecated
 	public Collection put(
 			ContentName name, 
 			ContentName[] references,
@@ -292,6 +300,7 @@ public class CCNLibrary extends CCNBase {
 	 * @throws IOException
 	 * @throws XMLStreamException 
 	 */
+	@Deprecated
 	public Collection getCollection(ContentName name, long timeout) throws IOException, XMLStreamException {
 		ContentObject co = getLatestVersion(name, null, timeout);
 		if (null == co)
@@ -309,6 +318,7 @@ public class CCNLibrary extends CCNBase {
 	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
 	 */
+	@Deprecated
 	public Collection createCollection(
 			ContentName name,
 			ContentName [] references, PublisherPublicKeyDigest publisher, KeyLocator locator,
@@ -321,6 +331,7 @@ public class CCNLibrary extends CCNBase {
 		return createCollection(name, lrs, publisher, locator, signingKey);
 	}
 	
+	@Deprecated
 	public Collection createCollection(
 			ContentName name,
 			LinkReference [] references, PublisherPublicKeyDigest publisher, KeyLocator locator,
@@ -338,6 +349,7 @@ public class CCNLibrary extends CCNBase {
 		return new Collection(name, references, publisher, locator, signingKey);
 	}
 	
+	@Deprecated
 	public Collection addToCollection(
 			Collection collection,
 			ContentName [] references) throws IOException, SignatureException, 
@@ -348,6 +360,7 @@ public class CCNLibrary extends CCNBase {
 		return updateCollection(collection, contents, null, null, null);
 	}
 
+	@Deprecated
 	public ContentObject removeFromCollection(
 			Collection collection,
 			ContentName [] references) throws IOException, SignatureException, 
@@ -358,6 +371,7 @@ public class CCNLibrary extends CCNBase {
 		return updateCollection(collection, contents, null, null, null);
 	}
 	
+	@Deprecated
 	public ContentObject updateCollection(
 			Collection collection,
 			ContentName [] referencesToAdd,
@@ -383,6 +397,7 @@ public class CCNLibrary extends CCNBase {
 	 * @throws SignatureException 
 	 * @throws InvalidKeyException 
 	 */
+	@Deprecated
 	private Collection updateCollection(Collection oldCollection, LinkedList<LinkReference> references,
 			 PublisherPublicKeyDigest publisher, KeyLocator locator,
 			 PrivateKey signingKey) throws XMLStreamException, IOException,
@@ -395,6 +410,7 @@ public class CCNLibrary extends CCNBase {
 		return updatedCollection;
 	}
 	
+	@Deprecated
 	public Link createLink(
 			ContentName name,
 			ContentName linkName, PublisherPublicKeyDigest publisher, KeyLocator locator,
@@ -422,6 +438,7 @@ public class CCNLibrary extends CCNBase {
 	 * @throws SignatureException
 	 * @throws IOException
 	 */
+	@Deprecated
 	public Link getLink(ContentName name, long timeout) throws IOException {
 		ContentObject co = getLatestVersion(name, null, timeout);
 		if (co.signedInfo().getType() != ContentType.LINK)
@@ -442,6 +459,7 @@ public class CCNLibrary extends CCNBase {
 	 * @return
 	 * @throws IOException
 	 */
+	@Deprecated
 	public Link decodeLinkReference(ContentObject co) throws IOException {
 		if (co.signedInfo().getType() != ContentType.LINK)
 			throw new IOException("Content is not a collection");
@@ -464,7 +482,7 @@ public class CCNLibrary extends CCNBase {
 	 * @throws IOException 
 	 * @throws XMLStreamException 
 	 */
-
+	@Deprecated
 	public ArrayList<ContentObject> dereference(ContentObject content, long timeout) throws IOException, XMLStreamException {
 		ArrayList<ContentObject> result = new ArrayList<ContentObject>();
 		if (null == content)
@@ -512,6 +530,7 @@ public class CCNLibrary extends CCNBase {
 	 * @return
 	 * @throws IOException
 	 */
+	@Deprecated
 	private ContentObject dereferenceLink(LinkReference reference, PublisherPublicKeyDigest publisher, long timeout) throws IOException {
 		ContentObject linkCo = get(reference.targetName(), timeout);
 		if (linkCo == null)
@@ -519,6 +538,7 @@ public class CCNLibrary extends CCNBase {
 		return linkCo;
 	}
 	
+	@Deprecated
 	private ContentObject dereferenceLink(Link reference, PublisherPublicKeyDigest publisher, long timeout) throws IOException {
 		ContentObject linkCo = get(reference.getTargetName(), timeout);
 		if (linkCo == null)
