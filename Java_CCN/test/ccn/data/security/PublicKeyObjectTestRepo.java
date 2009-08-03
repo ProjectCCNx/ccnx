@@ -166,12 +166,7 @@ public class PublicKeyObjectTestRepo {
 		Assert.assertTrue(VersioningProfile.hasTerminalVersion(pko.getCurrentVersionName()));
 		Library.logger().info("Saved " + pko.getCurrentVersionName() + " to repo, now trying to read.");
 		// should update in another thread
-		try {
-			Thread.sleep(100);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+
 		PublicKeyObject pkoread = new PublicKeyObject(keyName, null); // new library
 		Assert.assertTrue(pkoread.available());
 		Assert.assertEquals(pkoread.getCurrentVersionName(), pko.getCurrentVersionName());
