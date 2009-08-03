@@ -677,11 +677,11 @@ void ccn_perror(struct ccn *h, const char *s);
  * Low-level binary formatting
  */
 
-/**
- * Append a token start
+/*
+ * Append a ccnb start marker
  *
  * This forms the basic building block of ccnb-encoded data.
- * @param c is the buffer to append to.
+ * c is the buffer to append to.
  * Return value is 0, or -1 for error.
  */
 int ccn_charbuf_append_tt(struct ccn_charbuf *c, size_t val, enum ccn_tt tt);
@@ -699,37 +699,23 @@ int ccn_charbuf_append_closer(struct ccn_charbuf *c);
  * Slightly higher level binary formatting
  */
 
-/**
+/*
  * Append a non-negative integer as a UDATA.
- * @param c is the buffer to append to.
- * @param nni is a non-negative value.
  */
-int ccn_charbuf_append_non_negative_integer(struct ccn_charbuf *c, int nni);
+int ccnb_append_number(struct ccn_charbuf *c, intmax_t nni);
 
-/**
+/*
  * Append a binary timestamp
  * as a BLOB using the ccn binary Timestamp representation (12-bit fraction).
- * @param c is the buffer to append to.
- * @param marker
- *   If marker >= 0, the low-order byte is used as a marker byte, useful for
- *   some content naming conventions (versioning, in particular).
- * @param secs - seconds since epoch
- * @param nsecs - nanoseconds
- * @returns 0 for success or -1 for error.
  */
-int ccn_charbuf_append_timestamp_blob(struct ccn_charbuf *c,
-                                      enum ccn_marker marker,
-                                      intmax_t secs, int nsecs);
+int ccnb_append_timestamp_blob(struct ccn_charbuf *c,
+                               enum ccn_marker marker,
+                               intmax_t secs, int nsecs);
 
-/**
+/*
  * Append a binary timestamp, using the current time
- * 
- * Like ccn_charbuf_append_timestamp_blob() but uses current time
- * @param c is the buffer to append to.
- * @param marker - see ccn_charbuf_append_timestamp_blob()
- * @returns 0 for success or -1 for error.
  */
-int ccn_charbuf_append_now_blob(struct ccn_charbuf *c, enum ccn_marker marker);
+int ccnb_append_now_blob(struct ccn_charbuf *c, enum ccn_marker marker);
 
 /**
  * Versioning

@@ -201,9 +201,9 @@ ccn_create_version(struct ccn *h, struct ccn_charbuf *name,
     myres = 0;
     myres |= ccn_charbuf_append_tt(name, CCN_DTAG_Component, CCN_DTAG);
     if ((versioning_flags & CCN_V_NOW) != 0)
-        myres |= ccn_charbuf_append_now_blob(name, CCN_MARKER_VERSION);
+        myres |= ccnb_append_now_blob(name, CCN_MARKER_VERSION);
     else {
-        myres |= ccn_charbuf_append_timestamp_blob(name, CCN_MARKER_VERSION, secs, nsecs);
+        myres |= ccnb_append_timestamp_blob(name, CCN_MARKER_VERSION, secs, nsecs);
     }
     myres |= ccn_charbuf_append_closer(name); /* </Component> */
     if (myres < 0) {

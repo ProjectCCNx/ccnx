@@ -106,7 +106,8 @@ ccn_face_instance_destroy(struct ccn_face_instance **pfi)
  * Marshal an internal face instance representation into ccnb form
  */
 int
-ccnb_append_face_instance(struct ccn_charbuf *c, const struct ccn_face_instance *fi)
+ccnb_append_face_instance(struct ccn_charbuf *c,
+                          const struct ccn_face_instance *fi)
 {
     return -1;
 }

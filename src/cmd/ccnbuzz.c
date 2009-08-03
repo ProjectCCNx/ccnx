@@ -120,7 +120,7 @@ make_template(struct mydata *md, struct ccn_upcall_info *info, struct ccn_bloom 
     ccn_charbuf_append_closer(templ); /* </Name> */
     // XXX - use pubid if possible
     ccn_charbuf_append_tt(templ, CCN_DTAG_AdditionalNameComponents, CCN_DTAG);
-    ccn_charbuf_append_non_negative_integer(templ, 2);
+    ccnb_append_number(templ, 2);
     ccn_charbuf_append_closer(templ); /* </AdditionalNameComponents> */
     if (info != NULL) {
         ccn_charbuf_append_tt(templ, CCN_DTAG_Exclude, CCN_DTAG);
@@ -183,7 +183,7 @@ make_template(struct mydata *md, struct ccn_upcall_info *info, struct ccn_bloom 
     }
     if (md->allow_stale) {
         ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
-        ccn_charbuf_append_non_negative_integer(templ,
+        ccnb_append_number(templ,
                                                 CCN_AOK_DEFAULT | CCN_AOK_STALE);
         ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
     }

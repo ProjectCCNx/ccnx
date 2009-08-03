@@ -68,7 +68,7 @@ ccn_signed_info_create(struct ccn_charbuf *c,
     if (timestamp != NULL)
         res |= ccn_charbuf_append_charbuf(c, timestamp);
     else
-        res |= ccn_charbuf_append_now_blob(c, CCN_MARKER_NONE);
+        res |= ccnb_append_now_blob(c, CCN_MARKER_NONE);
     res |= ccn_charbuf_append_closer(c);
 
     if (type != CCN_CONTENT_DATA) {
@@ -80,7 +80,7 @@ ccn_signed_info_create(struct ccn_charbuf *c,
 
     if (freshness >= 0) {
         res |= ccn_charbuf_append_tt(c, CCN_DTAG_FreshnessSeconds, CCN_DTAG);
-        res |= ccn_charbuf_append_non_negative_integer(c, freshness);
+        res |= ccnb_append_number(c, freshness);
         res |= ccn_charbuf_append_closer(c);
     }
 
@@ -205,7 +205,16 @@ ccn_encode_Content(struct ccn_charbuf *buf,
     return (res == 0 ? 0 : -1);
 }
 
-
+/**
+ * Append a ccnb start marker
+ *
+ * This forms the basic building block of ccnb-encoded data.
+ * @param c is the buffer to append to.
+ * @param val is the numval, intepreted according to tt.
+ *      
+ * @param tt is the type field.
+ * @returns 0 for success or -1 for error.
+ */
 int
 ccn_charbuf_append_tt(struct ccn_charbuf *c, size_t val, enum ccn_tt tt)
 {
@@ -233,22 +242,42 @@ ccn_charbuf_append_closer(struct ccn_charbuf *c)
     return(res);
 }
 
+/**
+ * Append a non-negative integer as a UDATA.
+ * @param c is the buffer to append to.
+ * @param nni is a non-negative value.
+ * @returns 0 for success or -1 for error.
+ */
 int
-ccn_charbuf_append_non_negative_integer(struct ccn_charbuf *c, int nni)
+ccnb_append_number(struct ccn_charbuf *c, intmax_t nni)
 {
-    char nnistring[24];
+    char nnistring[40];
     int nnistringlen;
     int res;
 
-    if (nni < 0) return (-1);
-    nnistringlen = snprintf(nnistring, sizeof(nnistring), "%d", nni);
+    if (nni < 0)
+        return (-1);
+    nnistringlen = snprintf(nnistring, sizeof(nnistring), "%j", nni);
+    if (nnistringlen >= sizeof(nnistring))
+        return(-1);
     res = ccn_charbuf_append_tt(c, nnistringlen, CCN_UDATA);
     res |= ccn_charbuf_append_string(c, nnistring);
     return (res);
 }
 
+/**
+ * Append a binary timestamp
+ * as a BLOB using the ccn binary Timestamp representation (12-bit fraction).
+ * @param c is the buffer to append to.
+ * @param marker
+ *   If marker >= 0, the low-order byte is used as a marker byte, useful for
+ *   some content naming conventions (versioning, in particular).
+ * @param secs - seconds since epoch
+ * @param nsecs - nanoseconds
+ * @returns 0 for success or -1 for error.
+ */
 int
-ccn_charbuf_append_timestamp_blob(struct ccn_charbuf *c, enum ccn_marker marker, intmax_t secs, int nsecs)
+ccnb_append_timestamp_blob(struct ccn_charbuf *c, enum ccn_marker marker, intmax_t secs, int nsecs)
 {
     int i;
     int n;
@@ -276,15 +305,23 @@ ccn_charbuf_append_timestamp_blob(struct ccn_charbuf *c, enum ccn_marker marker,
     return(0);
 }
 
+/**
+ * Append a binary timestamp, using the current time
+ * 
+ * Like ccnb_append_timestamp_blob() but uses current time
+ * @param c is the buffer to append to.
+ * @param marker - see ccnb_append_timestamp_blob()
+ * @returns 0 for success or -1 for error.
+ */
 int
-ccn_charbuf_append_now_blob(struct ccn_charbuf *c, enum ccn_marker marker)
+ccnb_append_now_blob(struct ccn_charbuf *c, enum ccn_marker marker)
 {
     struct timeval now;
     int res;
 
     gettimeofday(&now, NULL);
 
-    res = ccn_charbuf_append_timestamp_blob(c, marker, now.tv_sec, now.tv_usec * 1000);
+    res = ccnb_append_timestamp_blob(c, marker, now.tv_sec, now.tv_usec * 1000);
     return (res);
 }
 

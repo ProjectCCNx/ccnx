@@ -81,7 +81,7 @@ ccn_inject_create(struct ccn_charbuf *c,
 
     res = ccn_charbuf_append_tt(c, CCN_DTAG_Inject, CCN_DTAG);
     res |= ccn_charbuf_append_tt(c, CCN_DTAG_SOType, CCN_DTAG);
-    res |= ccn_charbuf_append_non_negative_integer(c, sotype);
+    res |= ccnb_append_number(c, sotype);
     res |= ccn_charbuf_append_closer(c); /* </SOtype> */
     res |= ccn_charbuf_append_tt(c, CCN_DTAG_Address, CCN_DTAG);
     res |= ccn_charbuf_append_tt(c, addr_size, CCN_BLOB);

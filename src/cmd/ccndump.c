@@ -20,17 +20,17 @@ local_scope_template(int allow_stale)
     res |= ccn_charbuf_append_closer(templ); /* </Name> */
     /* <OrderPreference>4</OrderPreference> */
     res |= ccn_charbuf_append_tt(templ, CCN_DTAG_OrderPreference, CCN_DTAG);
-    res |= ccn_charbuf_append_non_negative_integer(templ, 4);
+    res |= ccnb_append_number(templ, 4);
     res |= ccn_charbuf_append_closer(templ); /* </OrderPreference> */
     if (allow_stale) {
         /* <AnswerOriginKind>5</AnswerOriginKind> */
         res |= ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
-        res |= ccn_charbuf_append_non_negative_integer(templ, (CCN_AOK_CS + CCN_AOK_STALE));
+        res |= ccnb_append_number(templ, (CCN_AOK_CS + CCN_AOK_STALE));
         res |= ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
     }
     /* <Scope>0</Scope> */
     res |= ccn_charbuf_append_tt(templ, CCN_DTAG_Scope, CCN_DTAG);
-    res |= ccn_charbuf_append_non_negative_integer(templ, 0);
+    res |= ccnb_append_number(templ, 0);
     res |= ccn_charbuf_append_closer(templ); /* </Scope> */
     res |= ccn_charbuf_append_closer(templ); /* </Interest> */
     if (res < 0) abort();

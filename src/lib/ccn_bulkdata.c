@@ -207,7 +207,7 @@ express_bulkdata_interest(struct ccn *h, struct pending *p)
     ccn_charbuf_append_closer(templ); /* </Name> */
 
     ccn_charbuf_append_tt(templ, CCN_DTAG_AdditionalNameComponents, CCN_DTAG);
-    ccn_charbuf_append_non_negative_integer(templ, addl_comps);
+    ccnb_append_number(templ, addl_comps);
     ccn_charbuf_append_closer(templ); /* </AdditionalNameComponents> */
 
     ccn_charbuf_append_closer(templ); /* </Interest> */
