@@ -148,6 +148,7 @@
 					</classpath>
 					<sysproperty key="ccn.agent.port" value="${TEST_PORT}" />
 					<jvmarg value="-Xrunjdwp:transport=dt_socket,address=25000,server=y,suspend=n" />
+					<jvmarg value="-Xmx1024m" />
 					<arg value="-interactive" />
 					<arg value="-root" />
 					<arg value="${REPO_LOCAL_ROOT}" />
