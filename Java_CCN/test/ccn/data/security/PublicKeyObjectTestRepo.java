@@ -51,10 +51,6 @@ public class PublicKeyObjectTestRepo {
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
 		Library.logger().setLevel(oldLevel);
-		if (flosser != null) {
-			flosser.stop();
-			flosser = null;
-		}
 	}
 
 	@BeforeClass
@@ -102,6 +98,7 @@ public class PublicKeyObjectTestRepo {
 			e.printStackTrace();
 			fail("Exception in publicKeyObject testing: " + e.getClass().getName() + ":  " + e.getMessage());
 		} finally {
+			System.out.println("Stopping flosser.");
 			flosser.stop();
 			flosser = null;
 		}
@@ -169,6 +166,12 @@ public class PublicKeyObjectTestRepo {
 		Assert.assertTrue(VersioningProfile.hasTerminalVersion(pko.getCurrentVersionName()));
 		Library.logger().info("Saved " + pko.getCurrentVersionName() + " to repo, now trying to read.");
 		// should update in another thread
+		try {
+			Thread.sleep(100);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		PublicKeyObject pkoread = new PublicKeyObject(keyName, null); // new library
 		Assert.assertTrue(pkoread.available());
 		Assert.assertEquals(pkoread.getCurrentVersionName(), pko.getCurrentVersionName());

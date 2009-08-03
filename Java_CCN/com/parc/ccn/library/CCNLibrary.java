@@ -560,8 +560,10 @@ public class CCNLibrary extends CCNBase {
 		byte [] start = new byte [] { VersioningProfile.VERSION_MARKER, OO, FF, FF, FF, FF, FF };
 		while (true) {
 			ContentObject co = getLatest(name, acceptVersions(start), timeout);
-			if (co == null)
+			if (co == null) {
+				Library.logger().info("Null returned from getLatest for name: " + name);
 				return null;
+			}
 			try {
 				if (VersioningProfile.isLaterVersionOf(co.name(), name)) {
 					// we got a valid version! 
