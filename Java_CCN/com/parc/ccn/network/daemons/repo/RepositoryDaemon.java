@@ -288,6 +288,18 @@ public class RepositoryDaemon extends Daemon {
 		}
 	}
 	
+	/**
+	 * Determine changes in the namespace so we can decide what needs to be newly registered
+	 * and what should be unregistered. This also checks to see that no names duplicate each other
+	 * i.e. if we have /foo and /foo/bar only /foo should be registered for the repo to listen
+	 * to.
+	 * 
+	 * @param oldIn - previously registered names
+	 * @param newIn - new names to consider
+	 * @param oldOut - previously registered names to deregister
+	 * @param newOut - new names which need to be registered
+	 */
+	@SuppressWarnings("unchecked")
 	private void getUnMatched(ArrayList<NameAndListener> oldIn, ArrayList<ContentName> newIn, 
 			ArrayList<NameAndListener> oldOut, ArrayList<ContentName>newOut) {
 		newOut.addAll(newIn);
@@ -302,6 +314,19 @@ public class RepositoryDaemon extends Daemon {
 			}
 			if (!matched)
 				oldOut.add(ial);
+		}
+		
+		// Make sure no name can be expressed a prefix of another name in the list
+		ArrayList<ContentName> tmpOut = (ArrayList<ContentName>)newOut.clone();
+		for (ContentName cn : tmpOut) {
+			for (ContentName tcn : tmpOut) {
+				if (tcn.equals(cn))
+					continue;
+				if (tcn.isPrefixOf(cn))
+					newOut.remove(cn);
+				if (cn.isPrefixOf(tcn))
+					newOut.remove(tcn);
+			}
 		}
 	}
 	

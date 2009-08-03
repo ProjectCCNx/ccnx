@@ -43,14 +43,14 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 					nameEnumeratorResponse(interest);
 				} else if(interest.name().contains(CommandMarkers.REPO_GET_HEADER)){
 					getHeader(interest);
-				}
-				
-				ContentObject content = _daemon.getRepository().getContent(interest);
-				if (content != null) {
-					Library.logger().finest("Satisfying interest: " + interest + " with content " + content.name());
-					_library.put(content);
 				} else {
-					Library.logger().fine("Unsatisfied interest: " + interest);
+					ContentObject content = _daemon.getRepository().getContent(interest);
+					if (content != null) {
+						Library.logger().finest("Satisfying interest: " + interest + " with content " + content.name());
+						_library.put(content);
+					} else {
+						Library.logger().fine("Unsatisfied interest: " + interest);
+					}
 				}
 			} catch (Exception e) {
 				Library.logStackTrace(Level.WARNING, e);
