@@ -41,7 +41,6 @@ import com.parc.ccn.data.util.XMLDecoder;
 public class Link extends ContentObject {
 	protected LinkReference _data;
 	
-	protected static final String LINK_ELEMENT = "Link";
 	public Link(ContentName name,
 			 LinkReference target,
 			 PublisherPublicKeyDigest publisher,
