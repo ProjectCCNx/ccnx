@@ -15,8 +15,8 @@ import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.CollectionData;
-import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.content.LinkReference.LinkObject;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.util.CCNEncodableObject;
 import com.parc.ccn.library.CCNLibrary;
@@ -355,7 +355,7 @@ public class ACL extends CollectionData {
 	}
 	
 	@Override
-	public boolean remove(Link content) {
+	public boolean remove(LinkObject content) {
 		return remove(content.getReference());
 	}
 	
