@@ -57,7 +57,7 @@ public class PublicKeyObjectTestRepo {
 	public static void setUpBeforeClass() throws Exception {
 		library = CCNLibrary.open();
 		oldLevel = Library.logger().getLevel();
-		Library.logger().setLevel(Level.INFO);
+		Library.logger().setLevel(Level.FINEST);
 		Security.addProvider(new BouncyCastleProvider());
 		// generate key pair
 		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
