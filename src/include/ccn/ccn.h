@@ -702,7 +702,7 @@ int ccn_charbuf_append_closer(struct ccn_charbuf *c);
 /*
  * Append a non-negative integer as a UDATA.
  */
-int ccnb_append_number(struct ccn_charbuf *c, intmax_t nni);
+int ccnb_append_number(struct ccn_charbuf *c, int nni);
 
 /*
  * Append a binary timestamp

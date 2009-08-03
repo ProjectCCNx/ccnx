@@ -249,7 +249,7 @@ ccn_charbuf_append_closer(struct ccn_charbuf *c)
  * @returns 0 for success or -1 for error.
  */
 int
-ccnb_append_number(struct ccn_charbuf *c, intmax_t nni)
+ccnb_append_number(struct ccn_charbuf *c, int nni)
 {
     char nnistring[40];
     int nnistringlen;
@@ -257,7 +257,7 @@ ccnb_append_number(struct ccn_charbuf *c, intmax_t nni)
 
     if (nni < 0)
         return (-1);
-    nnistringlen = snprintf(nnistring, sizeof(nnistring), "%j", nni);
+    nnistringlen = snprintf(nnistring, sizeof(nnistring), "%d", nni);
     if (nnistringlen >= sizeof(nnistring))
         return(-1);
     res = ccn_charbuf_append_tt(c, nnistringlen, CCN_UDATA);
