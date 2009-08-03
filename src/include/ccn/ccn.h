@@ -717,6 +717,19 @@ int ccnb_append_timestamp_blob(struct ccn_charbuf *c,
  */
 int ccnb_append_now_blob(struct ccn_charbuf *c, enum ccn_marker marker);
 
+/*
+ * Append a tagged BLOB
+ */
+int ccnb_append_tagged_blob(struct ccn_charbuf *c, enum ccn_dtag dtag,
+                            const void *data, size_t size);
+
+/*
+ * Append a tagged UDATA string, with printf-style formatting
+ */
+int ccnb_tagged_putf(struct ccn_charbuf *c, enum ccn_dtag dtag,
+                     const char *fmt, ...);
+
+
 /**
  * Versioning
  */

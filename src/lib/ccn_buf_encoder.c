@@ -5,6 +5,7 @@
  */
 
 #include <string.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
@@ -14,19 +15,6 @@
 #include <ccn/indexbuf.h>
 #include <ccn/signing.h>
 #include <ccn/ccn_private.h>
-
-/*
- * ccn_encode_Content:
- *    buf: output buffer where encoded object is written
- *    data: raw data
- *    size: size of raw data
- */
-
-static
-int ccn_encode_Content(struct ccn_charbuf *buf,
-                       const void *data,
-                       size_t size);
-
 
 int
 ccn_signed_info_create_default(struct ccn_charbuf *c,
@@ -78,11 +66,8 @@ ccn_signed_info_create(struct ccn_charbuf *c,
         res |= ccn_charbuf_append_closer(c);
     }
 
-    if (freshness >= 0) {
-        res |= ccn_charbuf_append_tt(c, CCN_DTAG_FreshnessSeconds, CCN_DTAG);
-        res |= ccnb_append_number(c, freshness);
-        res |= ccn_charbuf_append_closer(c);
-    }
+    if (freshness >= 0)
+        res |= ccnb_tagged_putf(c, CCN_DTAG_FreshnessSeconds, "%d", freshness);
 
     if (finalblockid != NULL) {
         res |= ccn_charbuf_append_tt(c, CCN_DTAG_FinalBlockID, CCN_DTAG);
@@ -154,10 +139,13 @@ ccn_encode_ContentObject(struct ccn_charbuf *buf,
     struct ccn_signature *signature;
     size_t signature_size;
     struct ccn_charbuf *content_header;
+    size_t closer_start;
 
     content_header = ccn_charbuf_create();
     res |= ccn_charbuf_append_tt(content_header, CCN_DTAG_Content, CCN_DTAG);
-    res |= ccn_charbuf_append_tt(content_header, size, CCN_BLOB);
+    if (size != 0)
+        res |= ccn_charbuf_append_tt(content_header, size, CCN_BLOB);
+    closer_start = content_header->length;
     res |= ccn_charbuf_append_closer(content_header);
 
     sig_ctx = ccn_sigc_create();
@@ -166,9 +154,9 @@ ccn_encode_ContentObject(struct ccn_charbuf *buf,
     if (0 != ccn_sigc_init(sig_ctx, digest_algorithm)) return (-1);
     if (0 != ccn_sigc_update(sig_ctx, Name->buf, Name->length)) return (-1);
     if (0 != ccn_sigc_update(sig_ctx, SignedInfo->buf, SignedInfo->length)) return (-1);
-    if (0 != ccn_sigc_update(sig_ctx, content_header->buf, content_header->length - 1)) return (-1);
+    if (0 != ccn_sigc_update(sig_ctx, content_header->buf, closer_start)) return (-1);
     if (0 != ccn_sigc_update(sig_ctx, data, size)) return (-1);
-    if (0 != ccn_sigc_update(sig_ctx, content_header->buf + content_header->length - 1, 1)) return (-1);
+    if (0 != ccn_sigc_update(sig_ctx, content_header->buf + closer_start, content_header->length - closer_start)) return (-1);
 
     signature = (struct ccn_signature *)calloc(1, ccn_sigc_signature_max_size(sig_ctx, private_key));
     if (signature == NULL) return (-1);
@@ -182,26 +170,11 @@ ccn_encode_ContentObject(struct ccn_charbuf *buf,
     res |= ccn_encode_Signature(buf, digest_algorithm, NULL, 0, signature, signature_size);
     res |= ccn_charbuf_append_charbuf(buf, Name);
     res |= ccn_charbuf_append_charbuf(buf, SignedInfo);
-    res |= ccn_encode_Content(buf, data, size);
+    res |= ccnb_append_tagged_blob(buf, CCN_DTAG_Content, data, size);
     res |= ccn_charbuf_append_closer(buf);
     
     free(signature);
     ccn_charbuf_destroy(&content_header);
-    return (res == 0 ? 0 : -1);
-}
-
-static int
-ccn_encode_Content(struct ccn_charbuf *buf,
-			     const void *data,
-			     size_t size)
-{
-    int res = 0;
-
-    res |= ccn_charbuf_append_tt(buf, CCN_DTAG_Content, CCN_DTAG);
-    res |= ccn_charbuf_append_tt(buf, size, CCN_BLOB);
-    res |= ccn_charbuf_append(buf, data, size);
-    res |= ccn_charbuf_append_closer(buf);
-    
     return (res == 0 ? 0 : -1);
 }
 
@@ -210,8 +183,7 @@ ccn_encode_Content(struct ccn_charbuf *buf,
  *
  * This forms the basic building block of ccnb-encoded data.
  * @param c is the buffer to append to.
- * @param val is the numval, intepreted according to tt.
- *      
+ * @param val is the numval, intepreted according to tt (see enum ccn_tt).
  * @param tt is the type field.
  * @returns 0 for success or -1 for error.
  */
@@ -323,5 +295,81 @@ ccnb_append_now_blob(struct ccn_charbuf *c, enum ccn_marker marker)
 
     res = ccnb_append_timestamp_blob(c, marker, now.tv_sec, now.tv_usec * 1000);
     return (res);
+}
+
+/**
+ * Append a tagged BLOB
+ *
+ * This is a ccnb-encoded element with containing the BLOB as content
+ * @param c is the buffer to append to.
+ * @param dtag is the element's dtab
+ * @param data points to the binary data
+ * @param size is the size of the data, in bytes
+ * @returns 0 for success or -1 for error.
+ */
+int
+ccnb_append_tagged_blob(struct ccn_charbuf *c,
+                        enum ccn_dtag dtag,
+                        const void *data,
+                        size_t size)
+{
+    int res;
+
+    res = ccn_charbuf_append_tt(c, dtag, CCN_DTAG);
+    if (size != 0) {
+        res |= ccn_charbuf_append_tt(c, size, CCN_BLOB);
+        res |= ccn_charbuf_append(c, data, size);
+    }
+    res |= ccn_charbuf_append_closer(c);
+    return (res == 0 ? 0 : -1);
+}
+
+/**
+ * Append a tagged UDATA string, with printf-style formatting
+ *
+ * This is a ccnb-encoded element with containing UDATA as content.
+ * @param c is the buffer to append to.
+ * @param dtag is the element's dtab.
+ * @param fmt is a printf-style format string, followed by its values
+ * @returns 0 for success or -1 for error.
+ */
+int
+ccnb_tagged_putf(struct ccn_charbuf *c, enum ccn_dtag dtag, const char *fmt, ...)
+{
+    int res;
+    int size;
+    va_list ap;
+    char *ptr;
+    
+    va_start(ap, fmt);
+    res = ccn_charbuf_append_tt(c, dtag, CCN_DTAG);
+    if (res < 0)
+        return(-1);
+    ptr = (char *)ccn_charbuf_reserve(c, strlen(fmt) + 20);
+    if (ptr == NULL)
+        return(-1);
+    size = vsnprintf(ptr + 2, (c->limit - c->length - 2), fmt, ap);
+    if (size < 0)
+        return(-1);
+    if (size > 0) {
+        if (size >= (c->limit - c->length - 2))
+            ptr = NULL;
+        res |= ccn_charbuf_append_tt(c, size, CCN_UDATA);
+        if (ptr == (char *)c->buf + c->length + 2)
+            c->length += size;
+        else if (ptr == (char *)c->buf + c->length + 1) {
+            memmove(ptr - 1, ptr, size);
+            c->length += size;
+        }
+        else {
+            ptr = ccn_charbuf_reserve(c, size + 1);
+            size = vsnprintf(ptr, size + 1, fmt, ap);
+            if (size < 0)
+                return(-1);
+            c->length += size;
+        }
+    }
+    res |= ccn_charbuf_append_closer(c);
+    return (res == 0 ? 0 : -1);    
 }
 

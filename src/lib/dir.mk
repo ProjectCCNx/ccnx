@@ -28,7 +28,7 @@ default all: lib $(PROGRAMS)
 # Don't try to build shared libs right now.
 # all: shlib
 
-all: basicparsetest
+all: basicparsetest ccn_verifysig
 
 install: install_headers
 install_headers:
