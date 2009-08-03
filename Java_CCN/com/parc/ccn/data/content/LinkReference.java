@@ -69,6 +69,7 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable, 
 			super(LinkReference.class, firstBlock, library);
 		}
 		
+<<<<<<< HEAD:Java_CCN/com/parc/ccn/data/content/LinkReference.java
 		/**
 		 * Subclasses that need to write an object of a particular type can override.
 		 * @return
@@ -76,6 +77,8 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable, 
 		@Override
 		public ContentType contentType() { return ContentType.LINK; }
 
+=======
+>>>>>>> Added network object version of link.:Java_CCN/com/parc/ccn/data/content/LinkReference.java
 		public ContentName getTargetName() { 
 			LinkReference lr = getReference();
 			if (null == lr)
