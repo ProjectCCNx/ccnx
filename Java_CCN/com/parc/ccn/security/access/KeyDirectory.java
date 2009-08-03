@@ -19,7 +19,6 @@ import org.bouncycastle.util.Arrays;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.content.LinkReference.LinkObject;
 import com.parc.ccn.data.security.LinkAuthenticator;
@@ -173,8 +172,8 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 		ContentName principalLinkName = getWrappedKeyNameForPrincipal(pi.isGroup(), pi.friendlyName(), pi.versionTimestamp());
 		// This should be a link to the actual key block
-		// TODO DKS replace link handling
-		Link principalLink = _manager.library().getLink(principalLinkName, AccessControlManager.DEFAULT_TIMEOUT);
+		// TODO DKS should wait on link data...
+		LinkObject principalLink = new LinkObject(principalLinkName, _manager.library());
 		Library.logger().info("Retrieving wrapped key for principal " + principalName + " at " + principalLink.getTargetName());
 		ContentName wrappedKeyName = principalLink.getTargetName();
 		return getWrappedKey(wrappedKeyName);
@@ -257,8 +256,8 @@ public class KeyDirectory extends EnumeratedNameList {
 	public LinkReference getPreviousKey() throws XMLStreamException, IOException {
 		if (!hasPreviousKeyBlock())
 			return null;
-		Link previousKey = _manager.library().getLink(getPreviousKeyBlockName(), AccessControlManager.DEFAULT_TIMEOUT);
-		if (null == previousKey) {
+		LinkObject previousKey = new LinkObject(getPreviousKeyBlockName(), _manager.library());
+		if (!previousKey.available()) {
 			Library.logger().info("Unexpected: no previous key link at " + getPreviousKeyBlockName());
 			return null;
 		}
