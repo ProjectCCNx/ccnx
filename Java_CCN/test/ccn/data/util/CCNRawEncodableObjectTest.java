@@ -230,6 +230,11 @@ public class CCNRawEncodableObjectTest {
 		ecd0.setData(small1);
 		Assert.assertFalse("Assert, line 229", ecd0.isGone());
 		
+		System.out.println("Saving data 5");
+		CCNRawEncodableCollectionData ecd5 = new CCNRawEncodableCollectionData(ecd0.getBaseName(), small1, library);
+		ecd5.save();
+		
+		System.out.println("Saving data 1 again.");
 		ecd0.save();
 		Assert.assertFalse("Assert, line 231", ecd0.isGone());
 		Library.logger().info("Saved object ecd0: " + ecd0.getCurrentVersionName() + "(" + ecd0.getVersion() +") updating ecd1, which is currently: " + ecd1.getCurrentVersionName());
