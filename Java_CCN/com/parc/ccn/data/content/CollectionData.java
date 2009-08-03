@@ -7,6 +7,7 @@ import java.util.LinkedList;
 
 import javax.xml.stream.XMLStreamException;
 
+import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.LinkReference.LinkObject;
