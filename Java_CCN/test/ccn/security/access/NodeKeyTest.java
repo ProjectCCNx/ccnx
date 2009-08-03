@@ -28,7 +28,7 @@ public class NodeKeyTest {
 	public static void setUpBeforeClass() throws Exception {
 		testPrefix = ContentName.fromNative("/parc/test/content/");
 		nodeKeyPrefix = AccessControlProfile.nodeKeyName(testPrefix);
-		nodeKeyPrefix = VersioningProfile.versionName(nodeKeyPrefix);
+		nodeKeyPrefix = VersioningProfile.addVersion(nodeKeyPrefix);
 
 		SecureRandom sr = new SecureRandom();
 		byte [] key = new byte[NodeKey.DEFAULT_NODE_KEY_LENGTH];

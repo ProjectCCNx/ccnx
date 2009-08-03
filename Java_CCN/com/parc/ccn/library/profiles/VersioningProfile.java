@@ -7,6 +7,7 @@ import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.util.DataUtils;
+import com.parc.ccn.data.util.DataUtils.Tuple;
 
 /**
  * Versions, when present, occupy the penultimate component of the CCN name, 
@@ -28,14 +29,10 @@ public class VersioningProfile implements CCNProfile {
 
 	/**
 	 * Add a version field to a ContentName.
-	 * @return ContentName with any previous version field and sequence number removed and new version field added.
+	 * @return ContentName with a version appended. Does not affect previous versions.
 	 */
-	public static ContentName versionName(ContentName name, long version) {
+	public static ContentName addVersion(ContentName name, long version) {
 		// Need a minimum-bytes big-endian representation of version.
-		ContentName baseName = name;
-		if (isVersioned(name)) {
-			baseName = versionRoot(name);
-		}
 		byte [] vcomp = null;
 		if (0 == version) {
 			vcomp = FIRST_VERSION_MARKER;
@@ -45,7 +42,7 @@ public class VersioningProfile implements CCNProfile {
 			vcomp[0] = VERSION_MARKER;
 			System.arraycopy(varr, 0, vcomp, 1, varr.length);
 		}
-		return new ContentName(baseName, vcomp);
+		return new ContentName(name, vcomp);
 	}
 	
 	/**
@@ -54,27 +51,53 @@ public class VersioningProfile implements CCNProfile {
 	 * to the nearest value in the fixed point representation.
 	 * <p>
 	 * This allows versions to be recorded as a timestamp with a 1/4096 second accuracy.
-	 * @see #versionName(ContentName, long)
+	 * @see #addVersion(ContentName, long)
 	 */
-	public static ContentName versionName(ContentName name, Timestamp version) {
-		return versionName(name, DataUtils.timestampToBinaryTime12AsLong(version));
+	public static ContentName addVersion(ContentName name, Timestamp version) {
+		if (null == version)
+			throw new IllegalArgumentException("Version cannot be null!"); 
+		return addVersion(name, DataUtils.timestampToBinaryTime12AsLong(version));
 	}
 	
 	/**
 	 * Add a version field based on the current time, accurate to 1/4096 second.
-	 * @see #versionName(ContentName, Timestamp)
+	 * @see #addVersion(ContentName, Timestamp)
 	 */
-	public static ContentName versionName(ContentName name) {
-		return versionName(name, SignedInfo.now());
+	public static ContentName addVersion(ContentName name) {
+		return addVersion(name, SignedInfo.now());
 	}
 	
+	/**
+	 * Adds a version to a ContentName; if there is a terminal version there already,
+	 * first removes it.
+	 */
+	public static ContentName updateVersion(ContentName name, long version) {
+		return addVersion(cutTerminalVersion(name).first(), version);
+	}
+	
+	/**
+	 * Adds a version to a ContentName; if there is a terminal version there already,
+	 * first removes it.
+	 */
+	public static ContentName updateVersion(ContentName name, Timestamp version) {
+		return addVersion(cutTerminalVersion(name).first(), version);
+	}
+
+	/**
+	 * Add updates the version field based on the current time, accurate to 1/4096 second.
+	 * @see #updateVersion(ContentName, Timestamp)
+	 */
+	public static ContentName updateVersion(ContentName name) {
+		return updateVersion(name, SignedInfo.now());
+	}
+
 	/**
 	 * Finds the last component that looks like a version in name.
 	 * @param name
 	 * @return the index of the last version component in the name, or -1 if there is no version
 	 *					component in the name
 	 */
-	public static int findVersionComponent(ContentName name) {
+	public static int findLastVersionComponent(ContentName name) {
 		int i = name.count();
 		for (;i >= 0; i--)
 			if (isVersionComponent(name.component(i)))
@@ -83,10 +106,23 @@ public class VersioningProfile implements CCNProfile {
 	}
 
 	/**
-	 * Checks to see if this name has a validly formatted version field.
+	 * Checks to see if this name has a validly formatted version field anywhere in it.
 	 */
-	public static boolean isVersioned(ContentName name) {
-		return findVersionComponent(name) != -1;
+	public static boolean containsVersion(ContentName name) {
+		return findLastVersionComponent(name) != -1;
+	}
+	
+	/**
+	 * Checks to see if this name has a validly formatted version field either in final
+	 * component or in next to last component with final component being a segment marker.
+	 */
+	public static boolean hasTerminalVersion(ContentName name) {
+		if ((name.count() > 0) && 
+			((isVersionComponent(name.lastComponent()) || 
+			 ((name.count() > 1) && SegmentationProfile.isSegment(name) && isVersionComponent(name.component(name.count()-2)))))) {
+			return true;
+		}
+		return false;
 	}
 	
 	/**
@@ -97,45 +133,47 @@ public class VersioningProfile implements CCNProfile {
 			   (VERSION_MARKER == nameComponent[0]) && 
 			   ((nameComponent.length == 1) || (nameComponent[1] != 0));
 	}
-
+	
+	public static boolean isBaseVersionCompoent(byte [] nameComponent) {
+		return (isVersionComponent(nameComponent) && (1 == nameComponent.length));
+	}
+	
 	/**
-	 * Take a name which may have a version component
-	 * and strips it and all following components if present.
+	 * Remove a terminal version marker (one that is either the last component of name, or
+	 * the next to last component of name followed by a segment marker) if one exists, otherwise
+	 * return name as it was passed in.
+	 * @param name
+	 * @return
 	 */
-	public static ContentName versionRoot(ContentName name) {
-		int offset = findVersionComponent(name);
+	public static Tuple<ContentName, byte[]> cutTerminalVersion(ContentName name) {
+		if (name.count() > 0) {
+			if (isVersionComponent(name.lastComponent())) {
+				return new Tuple<ContentName, byte []>(name.parent(), name.lastComponent());
+			} else if ((name.count() > 2) && SegmentationProfile.isSegment(name) && isVersionComponent(name.component(name.count()-2))) {
+				return new Tuple<ContentName, byte []>(name.cut(name.count()-2), name.component(name.count()-2));
+			}
+		}
+		return new Tuple<ContentName, byte []>(name, null);
+	}
+	
+	/**
+	 * Take a name which may have one or more version components in it,
+	 * and strips the last one and all following components. If no version components
+	 * present, returns the name as handed in.
+	 */
+	public static ContentName cutLastVersion(ContentName name) {
+		int offset = findLastVersionComponent(name);
 		return (offset == -1) ? name : new ContentName(offset, name.components());
 	}
 
-	/**
-	 * Does this name represent a version of the given parent?
-	 * DKS TODO -- do we need a tighter definition? e.g. is this a data block of
-	 * this version, versus metadata, etc...
-	 * @param versionedName name with version to be checked.
-	 * @param parent name without version field that will be checked against.
-	 * Note - the parent name must contain all the name components up to but not including the version
-	 * component in the versionedName.
-	 * @return
-	 */
-	public static boolean isVersionOf(ContentName versionedName, ContentName parent) {
-		int i = findVersionComponent(versionedName);
-		
-		// check version field is in right place (just after parent)
-		// this also catches cases where there is no version field.
-		if (i != parent.count())
-			return false;
-				
-		return parent.isPrefixOf(versionedName);
-	}
-	
 	/**
 	 * Function to get the version field as a long.  Starts from the end and checks each name component for the version marker.
 	 * @param name
 	 * @return long
 	 * @throws VersionMissingException
 	 */
-	public static long getVersionAsLong(ContentName name) throws VersionMissingException {
-		int i = findVersionComponent(name);
+	public static long getLastVersionAsLong(ContentName name) throws VersionMissingException {
+		int i = findLastVersionComponent(name);
 		if (i == -1)
 			throw new VersionMissingException();
 		
@@ -145,6 +183,8 @@ public class VersioningProfile implements CCNProfile {
 	public static long getVersionComponentAsLong(byte [] versionComponent) {
 		byte [] versionData = new byte[versionComponent.length - 1];
 		System.arraycopy(versionComponent, 1, versionData, 0, versionComponent.length - 1);
+		if (versionData.length == 0)
+			return 0;
 		return new BigInteger(versionData).longValue();
 	}
 
@@ -156,9 +196,30 @@ public class VersioningProfile implements CCNProfile {
 	 * Extract the version from this name as a Timestamp.
 	 * @throws VersionMissingException 
 	 */
-	public static Timestamp getVersionAsTimestamp(ContentName name) throws VersionMissingException {
-		long time = getVersionAsLong(name);
+	public static Timestamp getLastVersionAsTimestamp(ContentName name) throws VersionMissingException {
+		long time = getLastVersionAsLong(name);
 		return DataUtils.binaryTime12ToTimestamp(time);
+	}
+	
+	/**
+	 * Returns null if no version, otherwise returns the last version in the name. 
+	 * @param name
+	 * @return
+	 */
+	public static Timestamp getLastVersionAsTimestampIfVersioned(ContentName name) {
+		int versionComponent = findLastVersionComponent(name);
+		if (versionComponent < 0)
+			return null;
+		return getVersionComponentAsTimestamp(name.component(versionComponent));
+	}
+	
+	public static Timestamp getTerminalVersionAsTimestampIfVersioned(ContentName name) {
+		if (!hasTerminalVersion(name))
+			return null;
+		int versionComponent = findLastVersionComponent(name);
+		if (versionComponent < 0)
+			return null;
+		return getVersionComponentAsTimestamp(name.component(versionComponent));
 	}
 	
 	public static Timestamp versionLongToTimestamp(long version) {
@@ -170,51 +231,100 @@ public class VersioningProfile implements CCNProfile {
 	 */
 	public static final int baseVersion() { return 0; }
 
-	public static int compareVersions(
-			Timestamp left,
-			ContentName right) {
-		if (!isVersioned(right)) {
-			throw new IllegalArgumentException("Both names to compare must be versioned!");
-		}
-		try {
-			return left.compareTo(getVersionAsTimestamp(right));
-		} catch (VersionMissingException e) {
-			throw new IllegalArgumentException("Name that isVersioned returns true for throws VersionMissingException!: " + right);
-		}
-	}
-	
 	/**
-	 * This doesn't currently insist that left and right be versions of the same name,
-	 * just that they both be versioned.
+	 * Compares terminal version (versions at the end of, or followed by only a segment
+	 * marker) of a name to a given timestamp.
 	 * @param left
 	 * @param right
 	 * @return
 	 */
 	public static int compareVersions(
-			ContentName left,
+			Timestamp left,
 			ContentName right) {
-		try {
-			return getVersionAsTimestamp(left).compareTo(getVersionAsTimestamp(right));
-		} catch (VersionMissingException e) {
+		if (!hasTerminalVersion(right)) {
 			throw new IllegalArgumentException("Both names to compare must be versioned!");
 		}
+		try {
+			return left.compareTo(getLastVersionAsTimestamp(right));
+		} catch (VersionMissingException e) {
+			throw new IllegalArgumentException("Name that isVersioned returns true for throws VersionMissingException!: " + right);
+		}
 	}
-
-	public static boolean isLaterVersionOf(ContentName laterVersion, ContentName earlierVersion) {
-		if (!versionRoot(laterVersion).equals(versionRoot(earlierVersion))) {
+	
+	public static int compareVersionComponents(
+			byte [] left,
+			byte [] right) throws VersionMissingException {
+		// Propagate correct exception to callers.
+		if ((null == left) || (null == right))
+			throw new VersionMissingException("Must compare two versions!");
+		// DKS TODO -- should be able to just compare byte arrays, but would have to check version
+		return getVersionComponentAsTimestamp(left).compareTo(getVersionComponentAsTimestamp(right));
+	}
+	
+	/**
+	 * See if version is a version of parent (not commutative).
+	 * @return
+	 */
+	public static boolean isVersionOf(ContentName version, ContentName parent) {
+		Tuple<ContentName, byte []>versionParts = cutTerminalVersion(version);
+		if (!parent.equals(versionParts.first())) {
 			return false; // not versions of the same thing
 		}
-		return (compareVersions(laterVersion, earlierVersion) > 0);
+		if (null == versionParts.second())
+			return false; // version isn't a version
+		return true;
     }
-
-	public static Timestamp getVersionAsTimestampIfVersioned(ContentName name) {
+	
+	/**
+	 * This compares two names, with terminal versions, and determines whether one is later than the other.
+	 * @param laterVersion
+	 * @param earlierVersion
+	 * @return
+	 * @throws VersionMissingException
+	 */
+	public static boolean isLaterVersionOf(ContentName laterVersion, ContentName earlierVersion) throws VersionMissingException {
+		// TODO -- remove temporary warning
+		Library.logger().warning("SEMANTICS CHANGED: if experiencing unexpected behavior, check to see if you want to call isLaterVerisionOf or startsWithLaterVersionOf");
+		Tuple<ContentName, byte []>earlierVersionParts = cutTerminalVersion(earlierVersion);
+		Tuple<ContentName, byte []>laterVersionParts = cutTerminalVersion(laterVersion);
+		if (!laterVersionParts.first().equals(earlierVersionParts.first())) {
+			return false; // not versions of the same thing
+		}
+		return (compareVersionComponents(laterVersionParts.second(), earlierVersionParts.second()) > 0);
+    }
+	
+	/**
+	 * Finds out if you have a versioned name, and a ContentObject that might have a versioned name which is 
+	 * a later version of the given name, even if that CO name might not refer to a segment of the original name.
+	 * For example, given a name /parc/foo.txt/<version1> or /parc/foo.txt/<version1>/<segment>
+	 * and /parc/foo.txt/<version2>/<stuff>, return true, whether <stuff> is a segment marker, a whole
+	 * bunch of repo write information, or whatever. 
+	 * @param newName Will check to see if this name begins with something which is a later version of previousVersion.
+	 * @param previousVersion The name to compare to, must have a terminal version or be unversioned.
+	 * @return
+	 */
+	public static boolean startsWithLaterVersionOf(ContentName newName, ContentName previousVersion) {
+		// If no version, treat whole name as prefix and any version as a later version.
+		Tuple<ContentName, byte []>previousVersionParts = cutTerminalVersion(previousVersion);
+		if (!previousVersionParts.first().isPrefixOf(newName))
+			return false;
+		if (null == previousVersionParts.second()) {
+			return ((newName.count() > previousVersionParts.first().count()) && 
+					VersioningProfile.isVersionComponent(newName.component(previousVersionParts.first().count())));
+		}
 		try {
-			if (!isVersioned(name))
-				return null;
-			return getVersionAsTimestamp(name);
+			return (compareVersionComponents(newName.component(previousVersionParts.first().count()), previousVersionParts.second()) > 0);
 		} catch (VersionMissingException e) {
-			Library.logger().info("Unexpected: version missing exception when we tried to pull version from name with isVersioned=true, name: " + name + " message: " + e.getMessage());
-			return null;
+			return false; // newName doesn't have to have a version there...
 		}
 	}
+
+	public static int compareTerminalVersions(ContentName laterVersion, ContentName earlierVersion) throws VersionMissingException {
+		Tuple<ContentName, byte []>earlierVersionParts = cutTerminalVersion(earlierVersion);
+		Tuple<ContentName, byte []>laterVersionParts = cutTerminalVersion(laterVersion);
+		if (!laterVersionParts.first().equals(earlierVersionParts.first())) {
+			throw new IllegalArgumentException("Names not versions of the same name!");
+		}
+		return (compareVersionComponents(laterVersionParts.second(), earlierVersionParts.second()));
+    }
 }

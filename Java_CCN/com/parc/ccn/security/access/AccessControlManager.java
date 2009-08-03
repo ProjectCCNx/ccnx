@@ -320,7 +320,7 @@ public class AccessControlManager {
 		while (null == ancestorACLObject) {
 			ancestorACLObject = getACLObjectForNodeIfExists(parentName);
 			if ((null != ancestorACLObject) && (ancestorACLObject.isGone())) {
-				Library.logger().info("Found an ACL object at " + ancestorACLObject.getName() + " but its GONE.");
+				Library.logger().info("Found an ACL object at " + ancestorACLObject.getCurrentVersionName() + " but its GONE.");
 				ancestorACLObject = null;
 			}
 			nextParentName = parentName.parent();
@@ -333,7 +333,7 @@ public class AccessControlManager {
 		if (null == ancestorACLObject) {
 			throw new IllegalStateException("No ACL available in ancestor tree for node : " + dataNodeName);
 		}
-		Library.logger().info("Found ACL for " + dataNodeName + " at ancestor :" + ancestorACLObject.getName());
+		Library.logger().info("Found ACL for " + dataNodeName + " at ancestor :" + ancestorACLObject.getCurrentVersionName());
 		return ancestorACLObject;
 	}
 
@@ -436,7 +436,7 @@ public class AccessControlManager {
 			Library.logger().info("Asked to delete ACL for node " + nodeName + " that doesn't have one. Doing nothing.");
 			return;
 		}
-		Library.logger().info("Deleting ACL for node " + nodeName + " latest version: " + thisNodeACL.getName());
+		Library.logger().info("Deleting ACL for node " + nodeName + " latest version: " + thisNodeACL.getCurrentVersionName());
 		
 		// Then, find the latest node key. This should not be a derived node key.
 		NodeKey nk = getEffectiveNodeKey(nodeName);
@@ -516,11 +516,11 @@ public class AccessControlManager {
 					// do nothing
 				}
 				if (latestKey.available()) {
-					Library.logger().info("Adding wrapped key block for reader: " + latestKey.getName());
+					Library.logger().info("Adding wrapped key block for reader: " + latestKey.getCurrentVersionName());
 					try {
-						keyDirectory.addWrappedKeyBlock(latestNodeKey.nodeKey(), latestKey.getName(), latestKey.publicKey());
+						keyDirectory.addWrappedKeyBlock(latestNodeKey.nodeKey(), latestKey.getCurrentVersionName(), latestKey.publicKey());
 					} catch (VersionMissingException e) {
-						Library.logger().warning("UNEXPECTED: latest key for prinicpal: " + latestKey.getName() + " has no version? Skipping.");
+						Library.logger().warning("UNEXPECTED: latest key for prinicpal: " + latestKey.getCurrentVersionName() + " has no version? Skipping.");
 					}
 				} else {
 					// Do we use an old key or give up?
@@ -588,8 +588,8 @@ public class AccessControlManager {
 			Library.logger().warning("Unexpected: could not find effective ACL for node: " + nodeName);
 			throw new IOException("Unexpected: could not find effective ACL for node: " + nodeName);
 		}
-		Library.logger().info("Got ACL named: " + effectiveACL.getName() + " attempting to retrieve node key from " + AccessControlProfile.accessRoot(effectiveACL.getName()));
-		return getLatestNodeKeyForNode(AccessControlProfile.accessRoot(effectiveACL.getName()));
+		Library.logger().info("Got ACL named: " + effectiveACL.getCurrentVersionName() + " attempting to retrieve node key from " + AccessControlProfile.accessRoot(effectiveACL.getCurrentVersionName()));
+		return getLatestNodeKeyForNode(AccessControlProfile.accessRoot(effectiveACL.getCurrentVersionName()));
 	}
 	
 	/**
@@ -856,7 +856,7 @@ public class AccessControlManager {
 			return null;
 		}
 		
-		NodeKey nk = getLatestNodeKeyForNode(AccessControlProfile.accessRoot(nearestACL.getName()));
+		NodeKey nk = getLatestNodeKeyForNode(AccessControlProfile.accessRoot(nearestACL.getCurrentVersionName()));
 		return nk;
 	}
 
@@ -874,7 +874,7 @@ public class AccessControlManager {
 	protected NodeKey generateNewNodeKey(ContentName nodeName, NodeKey oldEffectiveNodeKey, ACL effectiveACL) 
 					throws IOException, ConfigurationException, XMLStreamException, InvalidKeyException {
 		// Get the name of the key directory; this is unversioned. Make a new version of it.
-		ContentName nodeKeyDirectoryName = VersioningProfile.versionName(AccessControlProfile.nodeKeyName(nodeName));
+		ContentName nodeKeyDirectoryName = VersioningProfile.addVersion(AccessControlProfile.nodeKeyName(nodeName));
 		Library.logger().info("Generating new node key " + nodeKeyDirectoryName);
 		
 		// Now, generate the node key.
@@ -907,10 +907,10 @@ public class AccessControlManager {
 					entryPublicKey = new PublicKeyObject(aclEntry.targetName(), aclEntry.targetAuthenticator().publisher(), library());
 				}
 				try {
-					nodeKeyDirectory.addWrappedKeyBlock(nodeKey, entryPublicKey.getName(), entryPublicKey.publicKey());
+					nodeKeyDirectory.addWrappedKeyBlock(nodeKey, entryPublicKey.getCurrentVersionName(), entryPublicKey.publicKey());
 				} catch (VersionMissingException ve) {
-					Library.logException("Unexpected version missing exception for public key " + entryPublicKey.getName(), ve);
-					throw new IOException("Unexpected version missing exception for public key " + entryPublicKey.getName() + ": " + ve);
+					Library.logException("Unexpected version missing exception for public key " + entryPublicKey.getCurrentVersionName(), ve);
+					throw new IOException("Unexpected version missing exception for public key " + entryPublicKey.getCurrentVersionName() + ": " + ve);
 				}
 			}
 
@@ -927,9 +927,13 @@ public class AccessControlManager {
 				// Add a previous key block wrapping the previous key. There is nothing to link to.
 				nodeKeyDirectory.addPreviousKeyBlock(oldEffectiveNodeKey.nodeKey(), nodeKeyDirectoryName, nodeKey);
 			} else {
-				if (!VersioningProfile.isLaterVersionOf(nodeKeyDirectoryName, oldEffectiveNodeKey.storedNodeKeyName())) {
-					Library.logger().warning("Unexpected: replacing node key stored at " + oldEffectiveNodeKey.storedNodeKeyName() + " with new node key " + 
-							nodeKeyDirectoryName + " but latter is not later version of the former.");
+				try {
+					if (!VersioningProfile.isLaterVersionOf(nodeKeyDirectoryName, oldEffectiveNodeKey.storedNodeKeyName())) {
+						Library.logger().warning("Unexpected: replacing node key stored at " + oldEffectiveNodeKey.storedNodeKeyName() + " with new node key " + 
+								nodeKeyDirectoryName + " but latter is not later version of the former.");
+					}
+				} catch (VersionMissingException vex) {
+					Library.logger().warning("Very unexpected version missing exception when replacing node key : " + vex);
 				}
 				// Add a previous key link to the old version of the key.
 				// TODO do we need to add publisher?

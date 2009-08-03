@@ -81,7 +81,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 	}
 	
 	protected ContentObject getFirstBlock() throws IOException {
-		if (VersioningProfile.isVersioned(_baseName)) {
+		if (VersioningProfile.hasTerminalVersion(_baseName)) {
 			return super.getFirstBlock();
 		}
 		Library.logger().info("getFirstBlock: getting latest version of " + _baseName);
@@ -152,6 +152,6 @@ public class CCNVersionedInputStream extends CCNInputStream {
 	public Timestamp getVersionAsTimestamp() throws VersionMissingException {
 		if (null == _baseName)
 			throw new VersionMissingException("Have not yet retrieved content name!");
-		return VersioningProfile.getVersionAsTimestamp(_baseName);
+		return VersioningProfile.getLastVersionAsTimestamp(_baseName);
 	}
 }

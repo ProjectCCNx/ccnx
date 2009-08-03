@@ -80,7 +80,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 			ByteArrayInputStream bais = new ByteArrayInputStream(co.content());
 			try {
 				if (_policy.update(bais, true)) {
-					ContentName policyName = VersioningProfile.versionName(
+					ContentName policyName = VersioningProfile.addVersion(
 							ContentName.fromNative(REPO_NAMESPACE + "/" + _info.getLocalName() + "/" + REPO_POLICY));
 					ContentObject policyCo = new ContentObject(policyName, co.signedInfo(), co.content(), co.signature());
 	   				saveContent(policyCo);
@@ -414,7 +414,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 			return new String(co.content());
 		}
 		
-		ContentName versionedName = VersioningProfile.versionName(name);
+		ContentName versionedName = VersioningProfile.addVersion(name);
 		PublisherPublicKeyDigest publisher = library.keyManager().getDefaultKeyID();
 		PrivateKey signingKey = library.keyManager().getSigningKey(publisher);
 		KeyLocator locator = library.keyManager().getKeyLocator(signingKey);

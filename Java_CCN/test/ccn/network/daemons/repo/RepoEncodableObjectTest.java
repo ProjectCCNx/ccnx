@@ -124,9 +124,9 @@ public class RepoEncodableObjectTest {
 		try {
 			CCNRepoEncodableCollectionData ecd1 = new CCNRepoEncodableCollectionData(ContentName.fromNative("/test-repo/smetters/reports/Why_I_Wish_I_Was_in_Maui.txt"), small1, library);
 			ecd1.save();
-			CCNRepoEncodableCollectionData ecd2 = new CCNRepoEncodableCollectionData(ecd1.getName(), null);
-			System.out.println("ecd1 name: " + ecd1.getName());
-			System.out.println("ecd2 name: " + ecd2.getName());
+			CCNRepoEncodableCollectionData ecd2 = new CCNRepoEncodableCollectionData(ecd1.getCurrentVersionName(), null);
+			System.out.println("ecd1 name: " + ecd1.getCurrentVersionName());
+			System.out.println("ecd2 name: " + ecd2.getCurrentVersionName());
 			Assert.assertTrue(ecd1.equals(ecd2));
 			ecd2.save(small1);
 			/*
@@ -158,22 +158,22 @@ public class RepoEncodableObjectTest {
 		}
 		Assert.assertTrue("Failed to produce expected exception.", caught);
 		
-		CCNRepoEncodableCollectionData ecd0 = new CCNRepoEncodableCollectionData(namespace, empty, library);
-		CCNRepoEncodableCollectionData ecd1 = new CCNRepoEncodableCollectionData(namespace, small1, null);
-		CCNRepoEncodableCollectionData ecd2 = new CCNRepoEncodableCollectionData(namespace, small1, null);
-		CCNRepoEncodableCollectionData ecd3 = new CCNRepoEncodableCollectionData(namespace, big, library);
+		CCNRepoEncodableCollectionData ecd0 = new CCNRepoEncodableCollectionData(ns[2], empty, library);
+		CCNRepoEncodableCollectionData ecd1 = new CCNRepoEncodableCollectionData(ns[1], small1, null);
+		CCNRepoEncodableCollectionData ecd2 = new CCNRepoEncodableCollectionData(ns[1], small1, null);
+		CCNRepoEncodableCollectionData ecd3 = new CCNRepoEncodableCollectionData(ns[2], big, library);
 		CCNRepoEncodableCollectionData ecd4 = new CCNRepoEncodableCollectionData(namespace, empty, library);
 
-		ecd0.save(ns[2]);
+		ecd0.save();
 		System.out.println("Version for empty collection: " + ecd0.getVersion());
-		ecd1.save(ns[1]);
-		ecd2.save(ns[1]); 
-		System.out.println("ecd1 name: " + ecd1.getName());
-		System.out.println("ecd2 name: " + ecd2.getName());
+		ecd1.save();
+		ecd2.save(); 
+		System.out.println("ecd1 name: " + ecd1.getCurrentVersionName());
+		System.out.println("ecd2 name: " + ecd2.getCurrentVersionName());
 		System.out.println("Versions for matching collection content: " + ecd1.getVersion() + " " + ecd2.getVersion());
 		Assert.assertFalse(ecd1.equals(ecd2));
 		Assert.assertTrue(ecd1.contentEquals(ecd2));
-		CCNVersionedInputStream vis = new CCNVersionedInputStream(ecd1.getName());
+		CCNVersionedInputStream vis = new CCNVersionedInputStream(ecd1.getCurrentVersionName());
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		byte [] buf = new byte[128];
 		// Will incur a timeout
@@ -189,7 +189,7 @@ public class RepoEncodableObjectTest {
 		newData.decode(baos.toByteArray());
 		System.out.println("Decoded collection data: " + newData);
 		
-		CCNVersionedInputStream vis3 = new CCNVersionedInputStream(ecd1.getName());
+		CCNVersionedInputStream vis3 = new CCNVersionedInputStream(ecd1.getCurrentVersionName());
 		ByteArrayOutputStream baos2 = new ByteArrayOutputStream();
 		// Will incur a timeout
 		while (!vis3.eof()) {
@@ -205,26 +205,26 @@ public class RepoEncodableObjectTest {
 		newData3.decode(baos2.toByteArray());
 		System.out.println("Decoded collection data: " + newData3);
 
-		CCNVersionedInputStream vis2 = new CCNVersionedInputStream(ecd1.getName());
+		CCNVersionedInputStream vis2 = new CCNVersionedInputStream(ecd1.getCurrentVersionName());
 		CollectionData newData2 = new CollectionData();
 		newData2.decode(vis2);
 		System.out.println("Decoded collection data from stream: " + newData);
 
-		ecd0.update(ecd1.getName(), null);
+		ecd0.update(ecd1.getCurrentVersionName(), null);
 		Assert.assertEquals(ecd0, ecd1);
-		Library.logger().info("Update works!, got version " + ecd0.getName());
-		System.out.println("Update works!, got version " + ecd0.getName());
+		Library.logger().info("Update works!, got version " + ecd0.getCurrentVersionName());
+		System.out.println("Update works!, got version " + ecd0.getCurrentVersionName());
 		// latest version
 		ecd0.update();
 		Assert.assertEquals(ecd0, ecd2);
 		System.out.println("Update really works!");
 
-		ecd3.save(ns[2]);
+		ecd3.save();
 		ecd0.update();
 		ecd4.update(ns[2], null);
 		System.out.println("ns[2]: " + ns[2]);
-		System.out.println("ecd3 name: " + ecd3.getName());
-		System.out.println("ecd0 name: " + ecd0.getName());
+		System.out.println("ecd3 name: " + ecd3.getCurrentVersionName());
+		System.out.println("ecd0 name: " + ecd0.getCurrentVersionName());
 		Assert.assertFalse(ecd0.equals(ecd3));
 		Assert.assertEquals(ecd3, ecd4);
 		System.out.println("Update really really works!");
@@ -264,12 +264,12 @@ public class RepoEncodableObjectTest {
 
 		ecd1.save();
 		ecd2.save(); 
-		System.out.println("ecd1 name: " + ecd1.getName());
-		System.out.println("ecd2 name: " + ecd2.getName());
+		System.out.println("ecd1 name: " + ecd1.getCurrentVersionName());
+		System.out.println("ecd2 name: " + ecd2.getCurrentVersionName());
 		System.out.println("Versions for matching collection content: " + ecd1.getVersion() + " " + ecd2.getVersion());
 		Assert.assertFalse(ecd1.equals(ecd2));
 		Assert.assertTrue(ecd1.contentEquals(ecd2));
-		CCNVersionedInputStream vis = new CCNVersionedInputStream(ecd1.getName());
+		CCNVersionedInputStream vis = new CCNVersionedInputStream(ecd1.getCurrentVersionName());
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		byte [] buf = new byte[128];
 		// Will incur a timeout
@@ -285,7 +285,7 @@ public class RepoEncodableObjectTest {
 		newData.decode(baos.toByteArray());
 		System.out.println("Decoded collection data: " + newData);
 		
-		CCNVersionedInputStream vis3 = new CCNVersionedInputStream(ecd1.getName());
+		CCNVersionedInputStream vis3 = new CCNVersionedInputStream(ecd1.getCurrentVersionName());
 		ByteArrayOutputStream baos2 = new ByteArrayOutputStream();
 		// Will incur a timeout
 		while (!vis3.eof()) {
@@ -301,12 +301,12 @@ public class RepoEncodableObjectTest {
 		newData3.decode(baos2.toByteArray());
 		System.out.println("Decoded collection data: " + newData3);
 
-		CCNVersionedInputStream vis2 = new CCNVersionedInputStream(ecd1.getName());
+		CCNVersionedInputStream vis2 = new CCNVersionedInputStream(ecd1.getCurrentVersionName());
 		CollectionData newData2 = new CollectionData();
 		newData2.decode(vis2);
 		System.out.println("Decoded collection data from stream: " + newData);
 
-		ecd0.update(ecd1.getName(), null);
+		ecd0.update(ecd1.getCurrentVersionName(), null);
 		Assert.assertEquals(ecd0, ecd1);
 		System.out.println("Update works!");
 		// latest version
@@ -320,8 +320,8 @@ public class RepoEncodableObjectTest {
 		CCNRepoEncodableCollectionData ecd4 = new CCNRepoEncodableCollectionData(ns[1], empty, library);
 		ecd4.update(ns[2], null);
 		System.out.println("ns[2]: " + ns[2]);
-		System.out.println("ecd3 name: " + ecd3.getName());
-		System.out.println("ecd0 name: " + ecd0.getName());
+		System.out.println("ecd3 name: " + ecd3.getCurrentVersionName());
+		System.out.println("ecd0 name: " + ecd0.getCurrentVersionName());
 		Assert.assertFalse(ecd0.equals(ecd3));
 		Assert.assertEquals(ecd3, ecd4);
 		System.out.println("Update really really works!");

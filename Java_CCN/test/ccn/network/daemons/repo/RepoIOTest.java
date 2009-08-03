@@ -15,7 +15,7 @@ import org.junit.Test;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.io.CCNDescriptor;
+import com.parc.ccn.library.io.CCNInputStream;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
 import com.parc.ccn.library.io.repo.RepositoryFileOutputStream;
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
@@ -73,7 +73,7 @@ public class RepoIOTest extends RepoTestBase {
 	public void testReadFromRepo() throws Exception {
 		System.out.println("Testing reading a stream from the repo");
 		Thread.sleep(5000);
-		CCNDescriptor input = new CCNDescriptor(ContentName.fromNative("/testNameSpace/stream"), null, getLibrary);
+		CCNInputStream input = new CCNInputStream(ContentName.fromNative("/testNameSpace/stream"), null, getLibrary);
 		byte[] testBytes = new byte[data.length];
 		input.read(testBytes);
 		Assert.assertArrayEquals(data, testBytes);

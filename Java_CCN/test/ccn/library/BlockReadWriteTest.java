@@ -38,7 +38,7 @@ public class BlockReadWriteTest extends BasePutGetTest {
 
 	@Override
 	public void getResults(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, XMLStreamException {
-		ContentName thisName = VersioningProfile.versionName(ContentName.fromNative(baseName, fileName), count);
+		ContentName thisName = VersioningProfile.addVersion(ContentName.fromNative(baseName, fileName), count);
 		sema.acquire(); // Block until puts started
 		CCNDescriptor desc = new CCNDescriptor(thisName, null, library);
 		desc.setTimeout(5000);
@@ -76,7 +76,7 @@ public class BlockReadWriteTest extends BasePutGetTest {
 	 */
 	@Override
 	public void doPuts(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException {
-		ContentName thisName = VersioningProfile.versionName(ContentName.fromNative(baseName, fileName), count);
+		ContentName thisName = VersioningProfile.addVersion(ContentName.fromNative(baseName, fileName), count);
 		CCNDescriptor desc = new CCNDescriptor(thisName, null, null, library);
 		desc.setTimeout(5000);
 		sema.release();	// put channel open

@@ -86,7 +86,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 
 	private void initialize() throws IOException {
-		if (!VersioningProfile.isVersioned(_namePrefix)) {
+		if (!VersioningProfile.hasTerminalVersion(_namePrefix)) {
 			getNewData();
 			ContentName latestVersionName = getLatestVersionChildName();
 			if (null == latestVersionName) {
@@ -497,7 +497,7 @@ public class KeyDirectory extends EnumeratedNameList {
 			new WrappedKeyObject(getWrappedKeyNameForKeyID(WrappedKey.wrappingKeyIdentifier(publicKey)),
 								 wrappedKey, _manager.library());
 		wko.saveToRepository();
-		LinkObject lo = new LinkObject(getWrappedKeyNameForPrincipal(publicKeyName), new LinkReference(wko.getName()), _manager.library());
+		LinkObject lo = new LinkObject(getWrappedKeyNameForPrincipal(publicKeyName), new LinkReference(wko.getCurrentVersionName()), _manager.library());
 		lo.saveToRepository();
 	}
 	
