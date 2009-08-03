@@ -1,15 +1,22 @@
 package com.parc.ccn.data.content;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 
 import javax.xml.stream.XMLStreamException;
 
+import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.content.LinkReference.LinkObject;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
+import com.parc.ccn.data.util.CCNEncodableObject;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
+import com.parc.ccn.library.CCNLibrary;
 
 /**
  * Mapping from a collection to the underlying XML representation.
@@ -21,6 +28,50 @@ import com.parc.ccn.data.util.XMLEncoder;
  *
  */
 public class CollectionData extends GenericXMLEncodable implements XMLEncodable {
+	
+	/**
+	 * This should eventually be called Collection, and the Collection class deleted.
+	 */
+	public static class CollectionObject extends CCNEncodableObject<CollectionData> {
+		
+		/**
+		 * Write constructor. Doesn't save until you call save, in case you want to tweak things first.
+		 * @param name
+		 * @param data
+		 * @param library
+		 * @throws ConfigurationException
+		 * @throws IOException
+		 */
+		public CollectionObject(ContentName name, CollectionData data, CCNLibrary library) throws IOException {
+			super(CollectionData.class, name, data, library);
+		}
+		
+		/**
+		 * Read constructor -- opens existing object.
+		 * @param name
+		 * @param library
+		 * @throws XMLStreamException
+		 * @throws IOException
+		 * @throws ClassNotFoundException 
+		 */
+		public CollectionObject(ContentName name, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException, XMLStreamException {
+			super(CollectionData.class, name, publisher, library);
+		}
+		
+		public CollectionObject(ContentName name, CCNLibrary library) throws IOException, XMLStreamException {
+			super(CollectionData.class, name, (PublisherPublicKeyDigest)null, library);
+		}
+		
+		public CollectionObject(ContentObject firstBlock, CCNLibrary library) throws IOException, XMLStreamException {
+			super(CollectionData.class, firstBlock, library);
+		}
+		
+		public LinkedList<LinkReference> contents() { 
+			if (null == data())
+				return null;
+			return data().contents(); 
+		}
+	}
 	
 	protected static final String COLLECTION_ELEMENT = "Collection";
 
@@ -65,6 +116,10 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 		return _contents.remove(content.getReference());
 	}
 	
+	public boolean remove(LinkObject content) {
+		return _contents.remove(content.getReference());
+	}
+
 	public void removeAll() {
 		_contents.clear();
 	}
@@ -82,7 +137,7 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 		decoder.readStartElement(COLLECTION_ELEMENT);
 
 		LinkReference link = null;
-		while (decoder.peekStartElement(Link.LINK_ELEMENT)) {
+		while (decoder.peekStartElement(LinkReference.LINK_ELEMENT)) {
 			link = new LinkReference();
 			link.decode(decoder);
 			add(link);
