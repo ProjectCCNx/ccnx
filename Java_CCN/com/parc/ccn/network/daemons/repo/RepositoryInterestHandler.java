@@ -125,14 +125,11 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	}
 	
 	public void nameEnumeratorResponse(Interest interest) {
-		//the name enumerator marker won't be at the end if the interest is a followup (created with .last())
-		//else if(Arrays.equals(marker, CCNNameEnumerator.NEMARKER)){
-		//System.out.println("handling interest: "+interest.name().toString());
-		//ContentName prefixName = interest.name().cut(CCNNameEnumerator.NEMARKER);
-		
 		NameEnumerationResponse ner = _daemon.getRepository().getNamesWithPrefix(interest);
 
-		if(ner!=null && ner.names!=null)
+		if (ner!=null && ner.names!=null) {
 			_daemon.sendEnumerationResponse(ner);
-	}	
+			Library.logger().finer("sending back name enumeration response "+ner.prefix);
+		}
+	}
 }
