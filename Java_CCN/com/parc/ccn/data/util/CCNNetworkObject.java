@@ -497,8 +497,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 
 	public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
 		// Do we have a version?
-		// DKS note -- this code from getVersionInternal in CCNLibrary. It doesn't actually
-		// confirm that the result is versioned.
 		// DKS TODO timeout?
 		for (ContentObject co : results) {
 			try {
