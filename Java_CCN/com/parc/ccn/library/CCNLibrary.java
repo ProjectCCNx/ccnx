@@ -35,7 +35,6 @@ import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 import com.parc.ccn.library.profiles.CommandMarkers;
 import com.parc.ccn.library.profiles.SegmentationProfile;
-import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.network.CCNNetworkManager;
 import com.parc.ccn.security.keys.KeyManager;
@@ -548,7 +547,7 @@ public class CCNLibrary extends CCNBase {
 	
 	/**
 	 * We are only called by getLatestVersion, which has already ensured that we
-	 * either have a user-supplied version or a terminal version marker; we have
+	 * either have a user-supplied version or a terminal version marker at the end of name; we have
 	 * also previously stripped any segment marker. So we know we have a name terminated
 	 * by the last version we know about (which could be 0).
 	 */
@@ -556,25 +555,33 @@ public class CCNLibrary extends CCNBase {
 	final byte FF = (byte) 0xFF;
 	private ContentObject getVersionInternal(ContentName name, long timeout) throws InvalidParameterException, IOException {
 		
-		// initially exclude name components just before the first version
-		byte [] start = new byte [] { VersioningProfile.VERSION_MARKER, OO, FF, FF, FF, FF, FF };
+		byte [] versionComponent = name.lastComponent();
+		// initially exclude name components just before the first version, whether that is the
+		// 0th version or the version passed in
+		byte [] start = null;
+		if (VersioningProfile.isBaseVersionCompoent(versionComponent)) {
+			start = new byte [] { VersioningProfile.VERSION_MARKER, OO, FF, FF, FF, FF, FF };
+		} else {
+			start = versionComponent;
+		}
 		while (true) {
 			ContentObject co = getLatest(name, acceptVersions(start), timeout);
 			if (co == null) {
 				Library.logger().info("Null returned from getLatest for name: " + name);
 				return null;
 			}
-			try {
-				if (VersioningProfile.isLaterVersionOf(co.name(), name)) {
-					// we got a valid version! 
-					// DKS TODO should we see if it's actually later than name?
-					Library.logger().info("Got latest version: " + co.name());
-					return co;
-				}
-			} catch (VersionMissingException e) {
-				Library.logger().info("Cannot determine if " + co.name() + " is a later version of " + name + ", no versions.");
+			// What we get should be a block representing a later version of name. It might
+			// be an actual segment of a versioned object, but it might also be an ancillary
+			// object - e.g. a repo message -- which starts with a particular version of name.
+			if (VersioningProfile.startsWithLaterVersionOf(co.name(), name)) {
+				// we got a valid version! 
+				// DKS TODO should we see if it's actually later than name?
+				Library.logger().info("Got latest version: " + co.name());
+				return co;
+			} else {
+				Library.logger().info("Rejected potential candidate version: " + co.name() + " not a later version of " + name);
 			}
-			start = co.fullName().component(name.count()-1);
+			start = co.name().component(name.count()-1);
 		}
 	}
 
