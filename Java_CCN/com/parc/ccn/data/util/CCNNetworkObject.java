@@ -353,7 +353,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		} else {
 			name = VersioningProfile.addVersion(_baseName);
 		}
-		_flowControl.addNameSpace(name);
+		// DKS if we add the versioned name, we don't handle get latest version.
+		// We re-add the baseName here in case an update has changed it.
+		// TODO -- perhaps disallow updates for unrelated names.
+		_flowControl.addNameSpace(_baseName);
 		
 		if (_data != null) {
 			// CCNVersionedOutputStream will version an unversioned name. 
