@@ -36,9 +36,13 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 	/**
 	 * Write constructor. Doesn't save until you call save, in case you want to tweak things first.
 <<<<<<< HEAD:Java_CCN/com/parc/ccn/data/security/PublicKeyObject.java
+<<<<<<< HEAD:Java_CCN/com/parc/ccn/data/security/PublicKeyObject.java
 =======
 	 * @param type
 >>>>>>> Reordered constructors and comments to make things clearer:Java_CCN/com/parc/ccn/data/security/PublicKeyObject.java
+=======
+>>>>>>> Allow specification of write publisher. Needs some normalizing with read
+publisher.:Java_CCN/com/parc/ccn/data/security/PublicKeyObject.java
 	 * @param name
 	 * @param data
 	 * @param library
@@ -49,13 +53,10 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 		super(PublicKey.class, name, data, library);
 	}
 	
-<<<<<<< HEAD:Java_CCN/com/parc/ccn/data/security/PublicKeyObject.java
 	public PublicKeyObject(ContentName name, PublicKey data, PublisherPublicKeyDigest publisher, KeyLocator locator, CCNLibrary library) throws IOException {
 		super(PublicKey.class, name, data, publisher, locator, library);
 	}
 
-=======
->>>>>>> Reordered constructors and comments to make things clearer:Java_CCN/com/parc/ccn/data/security/PublicKeyObject.java
 	/**
 	 * Read constructor -- opens existing object.
 	 * @param name
