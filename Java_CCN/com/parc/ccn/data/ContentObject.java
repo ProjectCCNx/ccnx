@@ -284,7 +284,12 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		_signedInfo = new SignedInfo();
 		_signedInfo.decode(decoder);
 
-		_content = decoder.readBinaryElement(CONTENT_ELEMENT);
+		// 0-length content is supposed to be ommitted, but might not be...
+		if (decoder.peekStartElement(CONTENT_ELEMENT)) {
+			_content = decoder.readBinaryElement(CONTENT_ELEMENT);
+		} else {
+			_content = new byte[0];
+		}
 
 		decoder.readEndElement();
 	}
@@ -300,7 +305,9 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		signedInfo().encode(encoder);
 
 		// needs to handle null content
-		encoder.writeElement(CONTENT_ELEMENT, _content);
+		// a 0-length content element is omitted
+		if ((null != _content) || (0 != _content.length))
+			encoder.writeElement(CONTENT_ELEMENT, _content);
 
 		encoder.writeEndElement();   		
 	}
