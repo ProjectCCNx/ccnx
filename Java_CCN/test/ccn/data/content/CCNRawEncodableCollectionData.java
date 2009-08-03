@@ -24,9 +24,13 @@ import com.parc.ccn.library.CCNLibrary;
 public class CCNRawEncodableCollectionData extends CCNEncodableObject<CollectionData> {
 
 	public CCNRawEncodableCollectionData(ContentName name, CollectionData data, CCNLibrary library) throws ConfigurationException, IOException {
-		super(CollectionData.class, name, data, true, library);
+		this(name, data, null, library);
 	}
 	
+	public CCNRawEncodableCollectionData(ContentName name, CollectionData data, PublisherPublicKeyDigest publisher, CCNLibrary library) throws ConfigurationException, IOException {
+		super(CollectionData.class, name, data, true, publisher, library);
+	}
+
 	public CCNRawEncodableCollectionData(ContentName name, PublisherPublicKeyDigest publisher,
 			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
 		super(CollectionData.class, name, publisher, true, library);
