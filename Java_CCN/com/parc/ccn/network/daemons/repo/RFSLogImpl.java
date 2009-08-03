@@ -80,7 +80,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 			ByteArrayInputStream bais = new ByteArrayInputStream(co.content());
 			try {
 				if (_policy.update(bais, true)) {
-					ContentName policyName = VersioningProfile.versionName(
+					ContentName policyName = VersioningProfile.addVersion(
 							ContentName.fromNative(REPO_NAMESPACE + "/" + _info.getLocalName() + "/" + REPO_POLICY));
 					ContentObject policyCo = new ContentObject(policyName, co.signedInfo(), co.content(), co.signature());
 	   				saveContent(policyCo);
