@@ -1,16 +1,22 @@
 
 package com.parc.ccn.data.content;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
+import com.parc.ccn.data.util.CCNEncodableObject;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
+import com.parc.ccn.library.CCNLibrary;
 
 /**
  * Mapping from a sequence to the underlying XML representation.
@@ -24,7 +30,134 @@ import com.parc.ccn.data.util.XMLEncoder;
  */
 public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 	
-    public enum FragmentationType {SIMPLE_BLOCK};
+	/**
+	 * This should eventually be called Header, and the Header class deleted.
+	 */
+	public static class HeaderObject extends CCNEncodableObject<HeaderData> {
+		
+		/**
+		 * Write constructor. Doesn't save until you call save, in case you want to tweak things first.
+		 * @param name
+		 * @param data
+		 * @param library
+		 * @throws IOException
+		 */
+		public HeaderObject(ContentName name, HeaderData data, CCNLibrary library) throws IOException {
+			super(HeaderData.class, name, data, library);
+		}
+		
+		/**
+		 * Read constructor -- opens existing object.
+		 * @param name
+		 * @param library
+		 * @throws XMLStreamException
+		 * @throws IOException
+		 * @throws ClassNotFoundException 
+		 */
+		public HeaderObject(ContentName name, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException, XMLStreamException {
+			super(HeaderData.class, name, publisher, library);
+		}
+		
+		public HeaderObject(ContentName name, CCNLibrary library) throws IOException, XMLStreamException {
+			super(HeaderData.class, name, (PublisherPublicKeyDigest)null, library);
+		}
+		
+		public HeaderObject(ContentObject firstBlock, CCNLibrary library) throws IOException, XMLStreamException {
+			super(HeaderData.class, firstBlock, library);
+		}
+		
+		public long start() { 
+			HeaderData h = getHeader();
+			if (null == h)
+				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
+			return h.start(); 
+		}
+
+		public long count() { 
+			HeaderData h = getHeader();
+			if (null == h)
+				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
+			return h.count(); 
+		}
+		
+		public int blockSize() { 
+			HeaderData h = getHeader();
+			if (null == h)
+				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
+			return h.blockSize(); 
+		}
+		
+		public long length() { 
+			HeaderData h = getHeader();
+			if (null == h)
+				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
+			return h.length(); 
+		}
+		
+		public byte [] rootDigest() { 
+			HeaderData h = getHeader();
+			if (null == h)
+				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
+			return h.rootDigest(); 
+		}
+		
+		public byte [] contentDigest() {
+			HeaderData h = getHeader();
+			if (null == h)
+				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
+			return h.contentDigest(); 
+		}
+		
+		public FragmentationType type() {
+			HeaderData h = getHeader();
+			if (null == h)
+				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
+			return h.type(); 
+		}
+
+		public String typeName() {
+			HeaderData h = getHeader();
+			if (null == h)
+				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
+			return h.typeName(); 
+		}
+		
+		public int[] positionToBlockLocation(long position) {
+			HeaderData h = getHeader();
+			if (null == h)
+				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
+			return h.positionToBlockLocation(position);
+		}
+
+		public long blockLocationToPosition(long block, int offset) {
+			HeaderData h = getHeader();
+			if (null == h)
+				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
+			return h.blockLocationToPosition(block, offset);
+		}
+
+		public int blockCount() {
+			HeaderData h = getHeader();
+			if (null == h)
+				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
+			return h.blockCount();
+		}
+		
+		public int blockRemainder() {
+			HeaderData h = getHeader();
+			if (null == h)
+				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
+			return h.blockRemainder();
+		}
+
+		public HeaderData getHeader() { 
+			if (null == data())
+				return null;
+			return data(); 
+		}
+	}
+	
+	public enum FragmentationType {SIMPLE_BLOCK};
     protected static final HashMap<FragmentationType, String> FragmentationTypeNames = new HashMap<FragmentationType, String>();
     protected static final HashMap<String, FragmentationType> FragmentationNameTypes = new HashMap<String, FragmentationType>();
 
