@@ -24,7 +24,9 @@ import com.parc.ccn.library.profiles.SegmentationProfile;
  * 
  * @author rasmusse
  *
+ * Replaced by HeaderObject
  */
+@Deprecated
 public class Header extends ContentObject  {
 	
 	protected HeaderData _data;

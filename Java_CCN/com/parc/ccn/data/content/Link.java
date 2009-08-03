@@ -33,11 +33,11 @@ import com.parc.ccn.data.util.XMLDecoder;
  * information to specify whose value for the name
  * to take.
  * 
- * DKS TODO -- needs massive refactoring, to a CCN-backed,
- * fragmented object. 
+ * Being replaced by LinkObject.
  * @author smetters
  *
  */
+@Deprecated
 public class Link extends ContentObject {
 	protected LinkReference _data;
 	
