@@ -3,6 +3,7 @@ package com.parc.ccn.library.profiles;
 import java.math.BigInteger;
 import java.sql.Timestamp;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.util.DataUtils;
@@ -133,7 +134,10 @@ public class VersioningProfile implements CCNProfile {
 			   ((nameComponent.length == 1) || (nameComponent[1] != 0));
 	}
 	
-
+	public static boolean isBaseVersionCompoent(byte [] nameComponent) {
+		return (isVersionComponent(nameComponent) && (1 == nameComponent.length));
+	}
+	
 	/**
 	 * Remove a terminal version marker (one that is either the last component of name, or
 	 * the next to last component of name followed by a segment marker) if one exists, otherwise
@@ -253,6 +257,7 @@ public class VersioningProfile implements CCNProfile {
 		// Propagate correct exception to callers.
 		if ((null == left) || (null == right))
 			throw new VersionMissingException("Must compare two versions!");
+		// DKS TODO -- should be able to just compare byte arrays, but would have to check version
 		return getVersionComponentAsTimestamp(left).compareTo(getVersionComponentAsTimestamp(right));
 	}
 	
@@ -270,7 +275,16 @@ public class VersioningProfile implements CCNProfile {
 		return true;
     }
 	
+	/**
+	 * This compares two names, with terminal versions, and determines whether one is later than the other.
+	 * @param laterVersion
+	 * @param earlierVersion
+	 * @return
+	 * @throws VersionMissingException
+	 */
 	public static boolean isLaterVersionOf(ContentName laterVersion, ContentName earlierVersion) throws VersionMissingException {
+		// TODO -- remove temporary warning
+		Library.logger().warning("SEMANTICS CHANGED: if experiencing unexpected behavior, check to see if you want to call isLaterVerisionOf or startsWithLaterVersionOf");
 		Tuple<ContentName, byte []>earlierVersionParts = cutTerminalVersion(earlierVersion);
 		Tuple<ContentName, byte []>laterVersionParts = cutTerminalVersion(laterVersion);
 		if (!laterVersionParts.first().equals(earlierVersionParts.first())) {
@@ -278,8 +292,34 @@ public class VersioningProfile implements CCNProfile {
 		}
 		return (compareVersionComponents(laterVersionParts.second(), earlierVersionParts.second()) > 0);
     }
+	
+	/**
+	 * Finds out if you have a versioned name, and a ContentObject that might have a versioned name which is 
+	 * a later version of the given name, even if that CO name might not refer to a segment of the original name.
+	 * For example, given a name /parc/foo.txt/<version1> or /parc/foo.txt/<version1>/<segment>
+	 * and /parc/foo.txt/<version2>/<stuff>, return true, whether <stuff> is a segment marker, a whole
+	 * bunch of repo write information, or whatever. 
+	 * @param newName Will check to see if this name begins with something which is a later version of previousVersion.
+	 * @param previousVersion The name to compare to, must have a terminal version or be unversioned.
+	 * @return
+	 */
+	public static boolean startsWithLaterVersionOf(ContentName newName, ContentName previousVersion) {
+		// If no version, treat whole name as prefix and any version as a later version.
+		Tuple<ContentName, byte []>previousVersionParts = cutTerminalVersion(previousVersion);
+		if (!previousVersionParts.first().isPrefixOf(newName))
+			return false;
+		if (null == previousVersionParts.second()) {
+			return ((newName.count() > previousVersionParts.first().count()) && 
+					VersioningProfile.isVersionComponent(newName.component(previousVersionParts.first().count())));
+		}
+		try {
+			return (compareVersionComponents(newName.component(previousVersionParts.first().count()), previousVersionParts.second()) > 0);
+		} catch (VersionMissingException e) {
+			return false; // newName doesn't have to have a version there...
+		}
+	}
 
-	public static int compareVersions(ContentName laterVersion, ContentName earlierVersion) throws VersionMissingException {
+	public static int compareTerminalVersions(ContentName laterVersion, ContentName earlierVersion) throws VersionMissingException {
 		Tuple<ContentName, byte []>earlierVersionParts = cutTerminalVersion(earlierVersion);
 		Tuple<ContentName, byte []>laterVersionParts = cutTerminalVersion(laterVersion);
 		if (!laterVersionParts.first().equals(earlierVersionParts.first())) {
