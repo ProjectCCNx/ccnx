@@ -89,6 +89,7 @@ public abstract class KeyManager {
 	public abstract PrivateKey getDefaultSigningKey();
 	public abstract PublicKey getDefaultPublicKey();
 	public abstract KeyLocator getDefaultKeyLocator();
+	public abstract KeyLocator getKeyLocator(PublisherPublicKeyDigest publisherKeyID);
 
 	public abstract ContentName getDefaultKeyName(byte [] keyID);
 	

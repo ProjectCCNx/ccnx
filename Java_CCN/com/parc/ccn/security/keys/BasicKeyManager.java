@@ -25,7 +25,9 @@ import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.config.UserConfiguration;
 import com.parc.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.KeyLocator;
+import com.parc.ccn.data.security.KeyName;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.security.crypto.certificates.BCX509CertificateGenerator;
@@ -265,6 +267,17 @@ public class BasicKeyManager extends KeyManager {
 	
 	public KeyLocator getDefaultKeyLocator() {
 		return _keyLocator;
+	}
+	
+	public KeyLocator getKeyLocator(PublisherPublicKeyDigest key) {
+		if ((null == key) || (key.equals(_defaultKeyID)))
+			return _keyLocator;
+		ContentObject keyObject = _keyRepository.retrieve(key);
+		if (null != keyObject) {
+			return new KeyLocator(new KeyName(keyObject.fullName(), new PublisherID(keyObject.signedInfo().getPublisherKeyID())));
+		}
+		Library.logger().info("Cannot find key locator for key: " + key);
+		return null;
 	}
 	
 	public PrivateKey getDefaultSigningKey() {
