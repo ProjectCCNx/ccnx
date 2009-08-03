@@ -1,11 +1,10 @@
 /*
  * ccn/coding.h
  * 
- * Copyright 2008 Palo Alto Research Center, Inc. All rights reserved.
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
  *
  * Details of the ccn binary wire encoding
  *
- * $Id$
  */
 
 #ifndef CCN_CODING_DEFINED
@@ -19,18 +18,21 @@
 #define CCN_MAX_TINY ((1 << (7-CCN_TT_BITS)) - 1)
 #define CCN_TT_HBIT ((unsigned char)(1 << 7))
 
+/**
+ * Type tag for a ccnb start marker.
+ */
 enum ccn_tt {
-    CCN_EXT,        /* starts composite extension - numval is subtype */
-    CCN_TAG,        /* starts composite - numval is tagnamelen-1 */ 
-    CCN_DTAG,       /* starts composite - numval is tagdict index */
-    CCN_ATTR,       /* attribute - numval is attrnamelen-1, value follows */
-    CCN_DATTR,      /* attribute numval is attrdict index */
-    CCN_BLOB,       /* opaque binary data - numval is byte count */
-    CCN_UDATA,      /* UTF-8 encoded character data - numval is byte count */
-    CCN_NO_TOKEN    /* should not occur in encoding */
+    CCN_EXT,        /**< starts composite extension - numval is subtype */
+    CCN_TAG,        /**< starts composite - numval is tagnamelen-1 */ 
+    CCN_DTAG,       /**< starts composite - numval is tagdict index (enum ccn_dtag) */
+    CCN_ATTR,       /**< attribute - numval is attrnamelen-1, value follows */
+    CCN_DATTR,      /**< attribute numval is attrdict index */
+    CCN_BLOB,       /**< opaque binary data - numval is byte count */
+    CCN_UDATA,      /**< UTF-8 encoded character data - numval is byte count */
+    CCN_NO_TOKEN    /**< should not occur in encoding */
 };
 
-/* CCN_CLOSE terminates composites */
+/** CCN_CLOSE terminates composites */
 #define CCN_CLOSE ((unsigned char)(0))
 
 enum ccn_ext_subtype {
@@ -38,6 +40,9 @@ enum ccn_ext_subtype {
     CCN_PROCESSING_INSTRUCTIONS = 16 /* <?name:U value:U?> */
 };
 
+/**
+ * DTAG identifies ccnb-encoed elements. c.f. tagname.csvdict
+ */
 enum ccn_dtag {
     CCN_DTAG_Any = 13,
     CCN_DTAG_Name = 14,
@@ -139,10 +144,11 @@ struct ccn_skeleton_decoder { /* initialize to all 0 */
     size_t element_index;   /* Starting index of most-recent element */
 };
 
-/*
+/**
  * The decoder state is one of these, possibly with some
  * additional bits set for internal use.  A complete parse
- * ends up in state 0 or an error state.
+ * ends up in state 0 or an error state.  Not all possible
+ * error states are listed here.
  */
 enum ccn_decoder_state {
     CCN_DSTATE_INITIAL = 0,
@@ -160,7 +166,7 @@ enum ccn_decoder_state {
     CCN_DSTATE_ERR_BUG      = -5
 };
 
-/*
+/**
  * If the CCN_DSTATE_PAUSE bit is set in the decoder state,
  * the decoder will return just after recognizing each token.
  * In this instance, use CCN_GET_TT_FROM_DSTATE to extract
