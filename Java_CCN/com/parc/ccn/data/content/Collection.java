@@ -18,8 +18,11 @@ import com.parc.ccn.data.util.XMLDecoder;
 /**
  * 
  * @author rasmusse
+ * 
+ * Being replaced by CollectionObject.
  *
  */
+@Deprecated
 public class Collection extends ContentObject {
 	protected CollectionData _data = new CollectionData();
 	
