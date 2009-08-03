@@ -237,6 +237,14 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		return null;
 	}
 	
+	public ContentObject retrieve(PublisherPublicKeyDigest keyName) {
+		ContentName name = _idMap.get(keyName);
+		if (null != name) {
+			return _keyMap.get(name);
+		}		
+		return null;
+	}
+	
 	public ContentObject retrieve(ContentName name, PublisherID publisherID) {
 		ContentObject result = _keyMap.get(name);
 		if (null != result) {
