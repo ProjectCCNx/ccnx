@@ -31,8 +31,9 @@ ccndc then expresses an interest in /ccn/CCNDID/newface/NFBLOB
   - CCNDID is the pubid of the local ccnd
   - NFBLOB is the signed content object
 
-The verb, "newface" occus in both the interest prefix, for dispatch,
-and in the NFBLOB, so that it is signed.
+The verb, "newface" occurs redundantly in both the interest prefix and in the NFBLOB.
+Its presence in the prefix is for dispatching the request.
+It is also in the NFBLOB, so that it is signed.
 
 ccnd creates the new face and answers with a FaceInstance containing
 at least the PublisherPublicKeyDigest and FaceID.
