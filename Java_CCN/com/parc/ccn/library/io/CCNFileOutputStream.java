@@ -47,10 +47,10 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 		super(name, locator, publisher, type, segmenter);
 	}
 
-	public CCNFileOutputStream(ContentName name,
-			PublisherPublicKeyDigest publisher, CCNFlowControl flowControl)
+	public CCNFileOutputStream(ContentName name, KeyLocator locator,
+			PublisherPublicKeyDigest publisher, ContentType type, CCNFlowControl flowControl)
 			throws IOException {
-		super(name, null, publisher, flowControl);
+		super(name, locator, publisher, type, flowControl);
 	}
 
 	protected void writeHeader() throws InvalidKeyException, SignatureException, IOException, InterruptedException {

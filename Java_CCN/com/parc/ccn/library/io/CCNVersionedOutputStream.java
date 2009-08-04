@@ -56,8 +56,8 @@ public class CCNVersionedOutputStream extends CCNOutputStream {
 	}
 
 	public CCNVersionedOutputStream(ContentName name, KeyLocator locator,
-			PublisherPublicKeyDigest publisher, CCNFlowControl flowControl)
+			PublisherPublicKeyDigest publisher, ContentType type, CCNFlowControl flowControl)
 			throws IOException {
-		this(name, locator, publisher, null, new CCNSegmenter(flowControl));
+		this(name, locator, publisher, type, new CCNSegmenter(flowControl));
 	}
 }
