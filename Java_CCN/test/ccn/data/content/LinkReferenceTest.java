@@ -9,16 +9,13 @@ import org.junit.Test;
 import test.ccn.data.util.XMLEncodableTester;
 
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.content.Link;
-import com.parc.ccn.data.security.SignedInfo;
-import com.parc.ccn.data.security.KeyLocator;
+import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.data.security.Signature;
+import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.PublisherID.PublisherType;
 
-public class LinkTest {
+public class LinkReferenceTest {
 
 	static final  String baseName = "test";
 	static final  String linkBaseName = "link";
@@ -77,18 +74,12 @@ public class LinkTest {
 
 	@Test
 	public void testEncodeOutputStream() throws Exception {
-		byte [] signaturebuf = new byte[64];
-		Arrays.fill(signaturebuf, (byte)1);
-		Signature signature = new Signature(signaturebuf);
-		
-		PublisherPublicKeyDigest pubkey = new PublisherPublicKeyDigest(publisherid1);
-		KeyLocator locator = new KeyLocator(ContentName.fromNative("/collectionTestKey"));
 		
 		for (int i=0; i < ns.length; ++i) {
-			Link l = new Link(ns[i],ls[i], labels[i], las[i], pubkey, locator, signature);
-			Link ldec = new Link();
-			Link lbdec = new Link();
-			XMLEncodableTester.encodeDecodeTest("Link_" + i, l, ldec, lbdec);
+			LinkReference l = new LinkReference(ls[i], labels[i], las[i]);
+			LinkReference ldec = new LinkReference();
+			LinkReference lbdec = new LinkReference();
+			XMLEncodableTester.encodeDecodeTest("LinkReference_" + i, l, ldec, lbdec);
 		}
 	}
 
