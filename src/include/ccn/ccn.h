@@ -713,9 +713,20 @@ int ccnb_append_timestamp_blob(struct ccn_charbuf *c,
                                intmax_t secs, int nsecs);
 
 /*
- * Append a binary timestamp, using the current time
+ * Append a binary timestamp, using the current time.
  */
 int ccnb_append_now_blob(struct ccn_charbuf *c, enum ccn_marker marker);
+
+/*
+ * Append a start-of-element marker.
+ */
+int ccnb_element_begin(struct ccn_charbuf *c, enum ccn_dtag dtag);
+
+/*
+ * Append an end-of-element marker.
+ * This is the same as ccn_charbuf_append_closer()
+ */
+int ccnb_element_end(struct ccn_charbuf *c);
 
 /*
  * Append a tagged BLOB
@@ -728,6 +739,7 @@ int ccnb_append_tagged_blob(struct ccn_charbuf *c, enum ccn_dtag dtag,
  */
 int ccnb_tagged_putf(struct ccn_charbuf *c, enum ccn_dtag dtag,
                      const char *fmt, ...);
+
 
 
 /**

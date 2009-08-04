@@ -6,10 +6,10 @@ CCNLIBDIR = ../lib
 
 PROGRAMS = hashtbtest matrixtest skel_decode_test \
     smoketestclientlib  \
-    encodedecodetest signbenchtest
+    encodedecodetest signbenchtest basicparsetest
 
 BROKEN_PROGRAMS =
-DEBRIS = basicparsetest
+DEBRIS = 
 SCRIPTSRC = ccn_initkeystore.sh
 CSRC = ccn_bloom.c ccn_buf_decoder.c ccn_buf_encoder.c ccn_bulkdata.c \
        ccn_charbuf.c ccn_client.c ccn_coding.c ccn_digest.c \
@@ -19,7 +19,7 @@ CSRC = ccn_bloom.c ccn_buf_decoder.c ccn_buf_encoder.c ccn_bulkdata.c \
        ccn_signing.c ccn_traverse.c ccn_uri.c ccn_verifysig.c ccn_versioning.c \
        encodedecodetest.c hashtb.c hashtbtest.c \
        matrixtest.c signbenchtest.c skel_decode_test.c \
-       smoketestclientlib.c
+       smoketestclientlib.c basicparsetest.c
 LIBS = libccn.a
 LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_dtag_table.o ccn_schedule.o ccn_matrix.o \
     ccn_buf_decoder.o ccn_uri.o ccn_buf_encoder.o ccn_bloom.o ccn_name_util.o ccn_face_mgmt.o ccn_reg_mgmt.o ccn_digest.o ccn_keystore.o ccn_signing.o ccn_traverse.o ccn_match.o hashtb.o ccn_merkle_path_asn1.o ccn_bulkdata.o ccn_versioning.o
@@ -76,7 +76,7 @@ smoketestclientlib: smoketestclientlib.o
 	$(CC) $(CFLAGS) -o $@ smoketestclientlib.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 basicparsetest: basicparsetest.o libccn.a
-	$(CC) $(CFLAGS) -o $@ basicparsetest.o $(LDLIBS)
+	$(CC) $(CFLAGS) -o $@ basicparsetest.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 encodedecodetest: encodedecodetest.o
 	$(CC) $(CFLAGS) -o $@ encodedecodetest.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto

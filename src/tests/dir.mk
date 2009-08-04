@@ -7,6 +7,7 @@ TESTS = $(ALLTESTS)
 ALLTESTS = \
   test_alone \
   test_ccnls_meta \
+  test_coders \
   test_final_teardown \
   test_finished \
   test_happy_face \
@@ -29,7 +30,7 @@ ALLTESTS = \
 default all: $(SCRIPTSRC) testdriver
 
 clean:
-	rm -rf log logs depend testdriver STATUS SKIPPED FAILING *.out ephemeral*.ccnb keyfetch*.ccnb
+	rm -rf log logs depend testdriver STATUS SKIPPED FAILING *.out ephemeral*.ccnb keyfetch*.ccnb test_coders_*.ccnb
 
 check test: $(SCRIPTSRC) testdriver stubs
 	mkdir -p log

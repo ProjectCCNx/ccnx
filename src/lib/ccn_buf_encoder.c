@@ -297,6 +297,25 @@ ccnb_append_now_blob(struct ccn_charbuf *c, enum ccn_marker marker)
     return (res);
 }
 
+/*
+ * Append a start-of-element marker.
+ */
+int
+ccnb_element_begin(struct ccn_charbuf *c, enum ccn_dtag dtag)
+{
+    return(ccn_charbuf_append_tt(c, dtag, CCN_DTAG));
+}
+
+/**
+ * Append an end-of-element marker.
+ *
+ * This is the same as ccn_charbuf_append_closer()
+ */
+int ccnb_element_end(struct ccn_charbuf *c)
+{
+    return(ccn_charbuf_append_closer(c));
+}
+
 /**
  * Append a tagged BLOB
  *
@@ -362,7 +381,7 @@ ccnb_tagged_putf(struct ccn_charbuf *c, enum ccn_dtag dtag, const char *fmt, ...
             c->length += size;
         }
         else {
-            ptr = ccn_charbuf_reserve(c, size + 1);
+            ptr = (char *)ccn_charbuf_reserve(c, size + 1);
             size = vsnprintf(ptr, size + 1, fmt, ap);
             if (size < 0)
                 return(-1);

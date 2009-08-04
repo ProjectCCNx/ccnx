@@ -102,6 +102,7 @@ ccn_face_instance_destroy(struct ccn_face_instance **pfi)
     *pfi = NULL;
 }
 
+//<!ELEMENT FaceInstance  (Action?, PublisherPublicKeyDigest?, FaceID?, IPProto?, Host?, Port?, MulticastInterface?, MulticastTTL?, FreshnessSeconds?)>
 /**
  * Marshal an internal face instance representation into ccnb form
  */
@@ -109,5 +110,35 @@ int
 ccnb_append_face_instance(struct ccn_charbuf *c,
                           const struct ccn_face_instance *fi)
 {
-    return -1;
+    int res;
+    res = ccnb_element_begin(c, CCN_DTAG_FaceInstance);
+    if (fi->action != NULL)
+        res |= ccnb_tagged_putf(c, CCN_DTAG_Action, "%s",
+                                fi->action);
+    if (fi->ccnd_id_size != 0)
+        res |= ccnb_append_tagged_blob(c, CCN_DTAG_PublisherPublicKeyDigest,
+                                          fi->ccnd_id, fi->ccnd_id_size);
+    if (fi->faceid != ~0)
+        res |= ccnb_tagged_putf(c, CCN_DTAG_FaceID, "%u",
+                                   fi->faceid);
+    if (fi->descr.ipproto >= 0)
+        res |= ccnb_tagged_putf(c, CCN_DTAG_IPProto, "%d",
+                                   fi->descr.ipproto);
+    if (fi->descr.address != NULL)
+        res |= ccnb_tagged_putf(c, CCN_DTAG_Host, "%s",
+                                   fi->descr.address);
+    if (fi->descr.port != NULL)
+        res |= ccnb_tagged_putf(c, CCN_DTAG_Port, "%s",
+                                   fi->descr.port);    
+    if (fi->descr.source_address != NULL)
+        res |= ccnb_tagged_putf(c, CCN_DTAG_MulticastInterface, "%s",
+                                   fi->descr.source_address);
+    if (fi->descr.mcast_ttl >= 0 && fi->descr.mcast_ttl != 1)
+        res |= ccnb_tagged_putf(c, CCN_DTAG_MulticastTTL, "%d",
+                                   fi->descr.mcast_ttl);
+    if (fi->lifetime >= 0)
+        res |= ccnb_tagged_putf(c, CCN_DTAG_FreshnessSeconds, "%d",
+                                   fi->lifetime);    
+    res |= ccnb_element_end(c);
+    return(res);
 }

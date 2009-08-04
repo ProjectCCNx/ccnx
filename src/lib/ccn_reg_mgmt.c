@@ -12,7 +12,6 @@
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/reg_mgmt.h>
-// <!ELEMENT ForwardingEntry  (Action?, Name?, PublisherPublicKeyDigest?, FaceID?, ForwardingFlags?, FreshnessSeconds?)>
 
 struct ccn_forwarding_entry *
 ccn_forwarding_entry_parse(const unsigned char *p, size_t size)
@@ -99,5 +98,26 @@ int
 ccnb_append_forwarding_entry(struct ccn_charbuf *c,
                              const struct ccn_forwarding_entry *fe)
 {
-    return -1;
+    int res;
+    res = ccnb_element_begin(c, CCN_DTAG_ForwardingEntry);
+    if (fe->action != NULL)
+        res |= ccnb_tagged_putf(c, CCN_DTAG_Action, "%s",
+                                   fe->action);
+    if (fe->name_prefix != NULL && fe->name_prefix->length > 0)
+        res |= ccn_charbuf_append(c, fe->name_prefix->buf,
+                                     fe->name_prefix->length);
+    if (fe->ccnd_id_size != 0)
+        res |= ccnb_append_tagged_blob(c, CCN_DTAG_PublisherPublicKeyDigest,
+                                          fe->ccnd_id, fe->ccnd_id_size);
+    if (fe->faceid != ~0)
+        res |= ccnb_tagged_putf(c, CCN_DTAG_FaceID, "%u",
+                                   fe->faceid);
+    if (fe->flags > 0)
+        res |= ccnb_tagged_putf(c, CCN_DTAG_ForwardingFlags, "%d",
+                                   fe->flags);
+    if (fe->lifetime >= 0)
+        res |= ccnb_tagged_putf(c, CCN_DTAG_FreshnessSeconds, "%d",
+                                   fe->lifetime);
+    res |= ccnb_element_end(c);
+    return(res);
 }
