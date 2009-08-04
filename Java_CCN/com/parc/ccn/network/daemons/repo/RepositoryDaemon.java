@@ -95,6 +95,7 @@ public class RepositoryDaemon extends Daemon {
 				}
 			
 				if (_currentListeners.size() == 0 && _pendingNameSpaceChange) {
+					Library.logger().finer("InterestTimer - resetting nameSpace");
 					try {
 						resetNameSpace();
 					} catch (IOException e) {
@@ -260,6 +261,7 @@ public class RepositoryDaemon extends Daemon {
 				resetNameSpace();
 			else
 				_pendingNameSpaceChange = true;
+			Library.logger().finer("ResetNameSpaceFromHandler: pendingNameSpaceChange is " + _pendingNameSpaceChange);
 		}	
 	}
 	
