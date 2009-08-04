@@ -14,14 +14,13 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import test.ccn.data.content.CCNRawEncodableCollectionData;
-
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.content.CollectionData;
 import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.content.CollectionData.CollectionObject;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.SignedInfo;
@@ -38,7 +37,7 @@ import com.parc.security.crypto.DigestHelper;
  * @author smetters
  *
  */
-public class CCNRawEncodableObjectTest {
+public class CollectionObjectTest {
 	
 	static final  String baseName = "test-raw";
 	static final  String subName = "smetters";
@@ -134,8 +133,8 @@ public class CCNRawEncodableObjectTest {
 	@Test
 	public void testSaveUpdate() throws ConfigurationException, IOException, XMLStreamException, MalformedContentNameStringException {
 		boolean caught = false;
-		CCNRawEncodableCollectionData emptycoll = 
-			new CCNRawEncodableCollectionData(namespace, (CollectionData)null, null);
+		CollectionObject emptycoll = 
+			new CollectionObject(namespace, (CollectionData)null, null);
 		NullOutputStream nos = new NullOutputStream();
 		try {
 			emptycoll.save(nos);
@@ -145,11 +144,11 @@ public class CCNRawEncodableObjectTest {
 		}
 		Assert.assertTrue("Failed to produce expected exception.", caught);
 		
-		CCNRawEncodableCollectionData ecd0 = new CCNRawEncodableCollectionData(ns[2], empty, library);
-		CCNRawEncodableCollectionData ecd1 = new CCNRawEncodableCollectionData(ns[1], small1, null);
-		CCNRawEncodableCollectionData ecd2 = new CCNRawEncodableCollectionData(ns[1], small1, null);
-		CCNRawEncodableCollectionData ecd3 = new CCNRawEncodableCollectionData(ns[2], big, library);
-		CCNRawEncodableCollectionData ecd4 = new CCNRawEncodableCollectionData(namespace, empty, library);
+		CollectionObject ecd0 = new CollectionObject(ns[2], empty, library);
+		CollectionObject ecd1 = new CollectionObject(ns[1], small1, null);
+		CollectionObject ecd2 = new CollectionObject(ns[1], small1, null);
+		CollectionObject ecd3 = new CollectionObject(ns[2], big, library);
+		CollectionObject ecd4 = new CollectionObject(namespace, empty, library);
 
 		flosser.handleNamespace(namespace);
 		flosser.handleNamespace(ns[2]);
@@ -231,7 +230,7 @@ public class CCNRawEncodableObjectTest {
 		Assert.assertFalse("Assert, line 229", ecd0.isGone());
 		
 		System.out.println("Saving data 5");
-		CCNRawEncodableCollectionData ecd5 = new CCNRawEncodableCollectionData(ecd0.getBaseName(), small1, library);
+		CollectionObject ecd5 = new CollectionObject(ecd0.getBaseName(), small1, library);
 		ecd5.save();
 		
 		System.out.println("Saving data 1 again.");
@@ -248,8 +247,8 @@ public class CCNRawEncodableObjectTest {
 	@Test
 	public void testSaveUpdate2() throws ConfigurationException, IOException, XMLStreamException, MalformedContentNameStringException {
 		boolean caught = false;
-		CCNRawEncodableCollectionData emptycoll = 
-			new CCNRawEncodableCollectionData(namespace, (CollectionData)null, null);
+		CollectionObject emptycoll = 
+			new CollectionObject(namespace, (CollectionData)null, null);
 		NullOutputStream nos = new NullOutputStream();
 		try {
 			emptycoll.save(nos);
@@ -259,12 +258,12 @@ public class CCNRawEncodableObjectTest {
 		}
 		Assert.assertTrue("Failed to produce expected exception.", caught);
 		
-		CCNRawEncodableCollectionData ecd0 = new CCNRawEncodableCollectionData(ns[2], empty, library);		
+		CollectionObject ecd0 = new CollectionObject(ns[2], empty, library);		
 		ecd0.save();
 		System.out.println("Version for empty collection: " + ecd0.getVersion());
-		CCNRawEncodableCollectionData ecd1 = new CCNRawEncodableCollectionData(ns[1], small1, null);
+		CollectionObject ecd1 = new CollectionObject(ns[1], small1, null);
 		ecd1.save();
-		CCNRawEncodableCollectionData ecd2 = new CCNRawEncodableCollectionData(ns[1], small1, null);
+		CollectionObject ecd2 = new CollectionObject(ns[1], small1, null);
 		ecd2.save(); 
 		System.out.println("ecd1 name: " + ecd1.getCurrentVersionName());
 		System.out.println("ecd2 name: " + ecd2.getCurrentVersionName());
@@ -316,10 +315,10 @@ public class CCNRawEncodableObjectTest {
 		Assert.assertEquals(ecd0, ecd2);
 		System.out.println("Update really works!");
 
-		CCNRawEncodableCollectionData ecd3 = new CCNRawEncodableCollectionData(ns[2], big, library);
+		CollectionObject ecd3 = new CollectionObject(ns[2], big, library);
 		ecd3.save();
 		ecd0.update();
-		CCNRawEncodableCollectionData ecd4 = new CCNRawEncodableCollectionData(ns[1], empty, library);
+		CollectionObject ecd4 = new CollectionObject(ns[1], empty, library);
 		ecd4.update(ns[2], null);
 		System.out.println("ns[2]: " + ns[2]);
 		System.out.println("ecd3 name: " + ecd3.getCurrentVersionName());
