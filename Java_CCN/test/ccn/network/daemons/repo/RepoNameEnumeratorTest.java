@@ -38,6 +38,8 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 	public void repoNameEnumerationTest(){
 		setLibraries();
 		
+		prefix1String += "-" + rand.nextInt(10000);
+		
 		Library.logger().info("adding name1 to repo");
 		addContentToRepo(prefix1String+"/name1");
 		
