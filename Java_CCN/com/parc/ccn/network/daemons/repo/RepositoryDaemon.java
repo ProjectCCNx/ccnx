@@ -381,11 +381,13 @@ public class RepositoryDaemon extends Daemon {
 	public void sendEnumerationResponse(NameEnumerationResponse ner){
 		if(ner!=null && ner.prefix!=null && ner.names!=null && ner.names.size()>0){
 			try{
-				
+				Library.logger().finer("returning names for prefix: "+ner.prefix);
 				//the following 6 lines are to be deleted after Collections are refactored
 				LinkReference[] temp = new LinkReference[ner.names.size()];
-				for(int x = 0; x < ner.names.size(); x++)
+				for (int x = 0; x < ner.names.size(); x++) {
 					temp[x] = new LinkReference(ner.names.get(x));
+					Library.logger().finer("name: "+ner.names.get(x));
+				}
 				
 				
 				_library.put(ner.prefix, temp);
