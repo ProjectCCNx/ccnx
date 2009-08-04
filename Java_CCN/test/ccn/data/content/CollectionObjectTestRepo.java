@@ -163,6 +163,7 @@ public class CollectionObjectTestRepo {
 		CollectionObject ecd0 = new CollectionObject(ns[2], empty, library);
 		CollectionObject ecd1 = new CollectionObject(ns[1], small1, CCNLibrary.open());
 		CollectionObject ecd2 = new CollectionObject(ns[1], small1, CCNLibrary.open());
+
 		CollectionObject ecd3 = new CollectionObject(ns[2], big, library);
 		CollectionObject ecd4 = new CollectionObject(namespace, empty, library);
 
@@ -223,6 +224,7 @@ public class CollectionObjectTestRepo {
 
 		ecd3.saveToRepository();
 		updateAndLog("ecd0", ecd0);
+
 		ecd4.update(ns[2], null);
 		System.out.println("ns[2]: " + ns[2]);
 		System.out.println("ecd3 name: " + ecd3.getCurrentVersionName());
