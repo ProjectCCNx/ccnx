@@ -1,4 +1,4 @@
-package test.ccn.network.daemons.repo;
+package test.ccn.data.content;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -14,7 +14,6 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import test.ccn.data.content.CCNRepoEncodableCollectionData;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
