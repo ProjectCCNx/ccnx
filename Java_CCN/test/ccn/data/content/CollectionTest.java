@@ -19,6 +19,10 @@ import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.PublisherID.PublisherType;
 
+/*
+ * Delete when Collection is deleted. Collections are adequately covered by 3 other tests.
+ */
+@Deprecated
 public class CollectionTest {
 
 	static final  String baseName = "test";
