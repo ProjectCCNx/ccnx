@@ -93,6 +93,14 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 		_contents.addAll(contents); // should we clone each?
 	}
 	
+	public CollectionData(LinkReference [] contents) {
+		if (contents != null) {
+			for (int i=0; i < contents.length; ++i) {
+				_contents.add(contents[i]);
+			}
+		}
+	}
+	
 	public LinkedList<LinkReference> contents() { 
 		return _contents; 
 	}
