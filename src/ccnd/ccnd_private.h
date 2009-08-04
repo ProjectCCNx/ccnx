@@ -49,6 +49,7 @@ typedef unsigned ccn_accession_t;
  * We pass this handle almost everywhere within ccnd
  */
 struct ccnd {
+    unsigned char ccnd_id[32];      /* sha256 digest of our public key */
     struct hashtb *faces_by_fd;     /* keyed by fd */
     struct hashtb *dgram_faces;     /* keyed by sockaddr */
     struct hashtb *content_tab; /* keyed by initial fragment of ContentObject */
