@@ -62,7 +62,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	
 	public static final String INTEREST_ELEMENT = "Interest";
 	public static final String ADDITIONAL_NAME_COMPONENTS = "AdditionalNameComponents";
-	public static final String NAME_COMPONENT_COUNT = "NameComponentCount";
 	public static final String ORDER_PREFERENCE = "OrderPreference";
 	public static final String ANSWER_ORIGIN_KIND = "AnswerOriginKind";
 	public static final String SCOPE_ELEMENT = "Scope";
@@ -89,7 +88,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	protected static Random _random = new Random();
 	
 	protected ContentName _name;
-	protected Integer _nameComponentCount;
 	protected Integer _additionalNameComponents;
 	// DKS TODO can we really support a PublisherID here, or just a PublisherPublicKeyDigest?
 	protected PublisherID _publisher;
@@ -97,10 +95,15 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	protected Integer _orderPreference;
 	protected Integer _answerOriginKind;
 	protected Integer _scope;
-	protected Integer _count;
 	protected byte [] _nonce;
-	protected byte [] _responseFilter;
 
+	/**
+	 * TODO: DKS figure out how to handle encoding faster,
+	 * and how to handle shorter version of names without
+	 * copying, particularly without 1.6 array ops.
+	 * @param name
+	 * @param publisher
+	 */
 	public Interest(ContentName name, 
 			   PublisherID publisher) {
 		_name = name;
@@ -131,9 +134,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public ContentName name() { return _name; }
 	public void name(ContentName name) { _name = name; }
 	
-	public Integer nameComponentCount() { return _nameComponentCount;}
-	public void nameComponentCount(int nameComponentCount) { _nameComponentCount = nameComponentCount; }
-	
 	public Integer additionalNameComponents() { return _additionalNameComponents;}
 	public void additionalNameComponents(int additionalNameComponents) { _additionalNameComponents = additionalNameComponents; }
 
@@ -152,14 +152,8 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public Integer scope() { return _scope; }
 	public void scope(int scope) { _scope = scope; }
 
-	public Integer count() { return _count; }
-	public void count(int count) { _count = count; }
-
 	public byte [] nonce() { return _nonce; }
 	public void nonce(byte [] nonce) { _nonce = nonce; }
-	
-	public byte [] responseFilter() { return _responseFilter; }
-	public void responseFilter(byte [] responseFilter) { _responseFilter = responseFilter; }
 	
 	public boolean matches(ContentObject result) {
 		return matches(result, (null != result.signedInfo()) ? result.signedInfo().getPublisherKeyID() : null);
@@ -175,14 +169,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @return
 	 */
 	public boolean matches(ContentName name, PublisherPublicKeyDigest resultPublisherKeyID) {
-		if (null == name() || null == name)
-			return false; // null name() should not happen, null arg can
-		// to get interest that matches everything, should
-		// use / (ROOT)
-		if (isPrefixOf(name)) {
-			return internalMatch(name, false, resultPublisherKeyID);
-		}
-		return false;
+		return matches(name, false, resultPublisherKeyID);
 	}
 	
 	/**
@@ -197,11 +184,20 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			return false; // null name() should not happen, null arg can
 		// to get interest that matches everything, should
 		// use / (ROOT)
-		int ourCount = null != nameComponentCount() ? nameComponentCount() : name().count();
-		boolean digest = co.name().count()+1 == ourCount;
+		boolean digest = co.name().count()+1 == name().count();
 		ContentName name = digest ? co.fullName() : co.name();
-		if (isPrefixOf(name)) {
-			return internalMatch(name, digest, resultPublisherKeyID);
+		return matches(name, digest, resultPublisherKeyID);
+	}
+	
+	private boolean matches(ContentName name, boolean digestIncluded, PublisherPublicKeyDigest resultPublisherKeyID) {
+		if (null == name() || null == name)
+			return false;	// null name() should not happen, null arg can
+							// to get interest that matches everything, should
+							// use / (ROOT)
+		// If excluding, back up one on the prefix to catch the exclusions
+		int count = (null != excludeFilter()) ? name().count() - 1 : name().count();
+		if (isPrefixOf(name, count)) {
+			return internalMatch(name, digestIncluded, resultPublisherKeyID);
 		}
 		return false;
 	}
@@ -213,8 +209,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			// we know our specified name is a prefix of the result. 
 			// the number of additional components must be this value
 			int nameCount = name.count();
-			int ourCount = null != nameComponentCount() ? nameComponentCount() : name().count();
-			int lengthDiff = nameCount + (digestIncluded?0:1) - ourCount ;
+			int lengthDiff = nameCount + (digestIncluded?0:1) - name().count();
 			if (!additionalNameComponents().equals(lengthDiff)) {
 				Library.logger().fine("Interest match failed: " + lengthDiff + " more than the " + additionalNameComponents() + " components between expected " +
 						name() + " and tested " + name);
@@ -237,13 +232,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			}
 		}
 		if (null != excludeFilter()) {
-			int componentIndex = nameComponentCount() != null ? nameComponentCount() : name().count();
-			if (name.count() > componentIndex) {
-				if (excludeFilter().exclude(name.component(componentIndex))) {
-					Library.logger().finest("Interest match failed. " + name + " has more components than our name " +
-							name() + " and the component after our prefix count " + nameComponentCount() + " is excluded.");
-					return false;
-				}
+			if (excludeFilter().exclude(name.component(name().count() - 1))) {
+				Library.logger().finest("Interest match failed. " + name + " has been excluded");
+				return false;
 			}
 		}
 		if (null != publisherID()) {
@@ -277,9 +268,22 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	}
 	
 	private static Interest nextOrLast(ContentName name, ExcludeFilter exclude, Integer order, Integer prefixCount)  {
-		if (null == prefixCount)
-			prefixCount = name.count() - 1;
-		return constructInterest(name, exclude, order, prefixCount);
+		if (null != prefixCount && prefixCount < (name.count() - 1)) {
+			// When a prefixCount is requested we still want the next element after
+			// the prefixCount to do the "next" on so that's why we use "prefixCount + 1" below
+			ContentName nextName = name.clone();
+			name = new ContentName(prefixCount + 1, nextName.components());
+		}
+		byte[][] nextExclude = new byte[2][];
+		byte[] zeroByte = new byte[1];
+		zeroByte[0] = 0;
+		nextExclude[0] = zeroByte;
+		nextExclude[1] = name.component(name.count()-1);
+		if (null != exclude) {
+			exclude.add(nextExclude);
+		} else
+			exclude = ExcludeFilter.factory(nextExclude);
+		return constructInterest(name, exclude, order);
 	}
 	
 	/**
@@ -292,8 +296,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	}
 	
 	public static Interest last(ContentName name, int prefixCount) {
-		ContentName newName = new ContentName(prefixCount, name.components());
-		return last(newName, (byte[][])null, prefixCount);
+		return last(name, (byte[][])null, prefixCount);
 	}
 	
 	public static Interest last(ContentName name, byte[] [] omissions, Integer prefixCount) {
@@ -311,11 +314,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @return
 	 */
 	public static Interest exclude(ContentName name, byte[][] omissions) {
-		return constructInterest(name, null == omissions ? null : new ExcludeFilter(omissions), null, null);
+		return constructInterest(name, null == omissions ? null : new ExcludeFilter(omissions), null);
 	}
 	
 	public static Interest exclude(ContentName name, byte[][] omissions, PublisherID publisherID, Integer additionalNameComponents) {
-		return constructInterest(name, null == omissions ? null : new ExcludeFilter(omissions), null, null, publisherID, additionalNameComponents);
+		return constructInterest(name, null == omissions ? null : new ExcludeFilter(omissions), null, publisherID, additionalNameComponents);
 	}
 	
 	
@@ -329,21 +332,23 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		ContentName nextName = new ContentName(components.size(), components);
 		return next(nextName, prefixCount == null ? components.size() - 2 : prefixCount);
 	}
+	
+	public static Interest next(ContentObject co) {
+		return next(co, null);
+	}
 
 	public static Interest constructInterest(ContentName name,  ExcludeFilter filter,
-			Integer orderPreference, Integer prefixCount) {
-		return constructInterest(name, filter, orderPreference, prefixCount, null, null);
+			Integer orderPreference) {
+		return constructInterest(name, filter, orderPreference, null, null);
 	}
 	
 	public static Interest constructInterest(ContentName name,  ExcludeFilter filter,
-			Integer orderPreference, Integer prefixCount, PublisherID publisherID, Integer additionalNameComponents) {
+			Integer orderPreference, PublisherID publisherID, Integer additionalNameComponents) {
 		Interest interest = new Interest(name);
 		if (null != orderPreference)
 			interest.orderPreference(orderPreference);
 		if (null != filter)
 			interest.excludeFilter(filter);
-		if (null != prefixCount)
-			interest.nameComponentCount(prefixCount);
 		if (null != publisherID)
 			interest.publisherID(publisherID);
 		if (null != additionalNameComponents)
@@ -367,9 +372,8 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	}
 
 	public boolean isPrefixOf(ContentName name) {
-		int count = nameComponentCount() == null ? name().count() : nameComponentCount();
-		if (null != additionalNameComponents() && 0 == additionalNameComponents() 
-				&& (null == nameComponentCount() || name().count() == nameComponentCount()) ) {
+		int count = name().count();
+		if (null != additionalNameComponents() && 0 == additionalNameComponents()) {
 			// This Interest is trying to match a complete content name with digest explicitly included
 			// so we must drop the last component for the prefix test against a name that is 
 			// designed to be direct from ContentObject and so does not include digest explicitly
@@ -378,9 +382,12 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		return name().isPrefixOf(name, count);
 	}
 	
+	public boolean isPrefixOf(ContentName name, int count) {
+		return name().isPrefixOf(name, count);
+	}
+	
 	public boolean isPrefixOf(ContentObject other) {
-		int count = nameComponentCount() == null ? name().count() : nameComponentCount();
-		return name().isPrefixOf(other, count);
+		return name().isPrefixOf(other, name().count());
 	}
 	
 	public boolean recursive() { return true; }
@@ -404,10 +411,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 
 		_name = new ContentName();
 		_name.decode(decoder);
-		
-		if (decoder.peekStartElement(NAME_COMPONENT_COUNT)) {
-			_nameComponentCount = decoder.readIntegerElement(NAME_COMPONENT_COUNT);
-		}
 		
 		if (decoder.peekStartElement(ADDITIONAL_NAME_COMPONENTS)) {
 			_additionalNameComponents = decoder.readIntegerElement(ADDITIONAL_NAME_COMPONENTS);
@@ -455,9 +458,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		
 		name().encode(encoder);
 		
-		if (null != nameComponentCount()) 
-			encoder.writeIntegerElement(NAME_COMPONENT_COUNT, nameComponentCount());
-
 		if (null != additionalNameComponents()) 
 			encoder.writeIntegerElement(ADDITIONAL_NAME_COMPONENTS, additionalNameComponents());
 
@@ -492,9 +492,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		int result = DataUtils.compare(name(), o.name());
 		if (result != 0) return result;
 		
-		result = DataUtils.compare(nameComponentCount(), o.nameComponentCount());
-		if (result != 0) return result;
-		
 		result = DataUtils.compare(additionalNameComponents(), o.additionalNameComponents());
 		if (result != 0) return result;
 		
@@ -513,13 +510,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		result = DataUtils.compare(scope(), o.scope());
 		if (result != 0) return result;
 
-		result = DataUtils.compare(count(), o.count());
-		if (result != 0) return result;
-		
 		result = DataUtils.compare(nonce(), o.nonce());
-		if (result != 0) return result;
-		
-		result = DataUtils.compare(responseFilter(), o.responseFilter());
 		if (result != 0) return result;
 		
 		return result;
@@ -531,17 +522,12 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		int result = 1;
 		result = prime
 			* result
-			+ ((_nameComponentCount == null) ? 0 : _nameComponentCount
-				.hashCode());
-		result = prime
-			* result
 			+ ((_additionalNameComponents == null) ? 0 : _additionalNameComponents
 				.hashCode());
 		result = prime
 				* result
 				+ ((_answerOriginKind == null) ? 0 : _answerOriginKind
 						.hashCode());
-		result = prime * result + ((_count == null) ? 0 : _count.hashCode());
 		result = prime * result
 				+ ((_excludeFilter == null) ? 0 : _excludeFilter.hashCode());
 		result = prime * result + ((_name == null) ? 0 : _name.hashCode());
@@ -551,7 +537,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 				+ ((_orderPreference == null) ? 0 : _orderPreference.hashCode());
 		result = prime * result
 				+ ((_publisher == null) ? 0 : _publisher.hashCode());
-		result = prime * result + Arrays.hashCode(_responseFilter);
 		result = prime * result + ((_scope == null) ? 0 : _scope.hashCode());
 		return result;
 	}
@@ -565,11 +550,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		if (getClass() != obj.getClass())
 			return false;
 		Interest other = (Interest) obj;
-		if (_nameComponentCount == null) {
-			if (other._nameComponentCount != null)
-				return false;
-		} else if (!_nameComponentCount.equals(other._nameComponentCount))
-			return false;
 		if (_additionalNameComponents == null) {
 			if (other._additionalNameComponents != null)
 				return false;
@@ -579,11 +559,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			if (other._answerOriginKind != null)
 				return false;
 		} else if (!_answerOriginKind.equals(other._answerOriginKind))
-			return false;
-		if (_count == null) {
-			if (other._count != null)
-				return false;
-		} else if (!_count.equals(other._count))
 			return false;
 		if (_excludeFilter == null) {
 			if (other._excludeFilter != null)
@@ -607,8 +582,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 				return false;
 		} else if (!_publisher.equals(other._publisher))
 			return false;
-		if (!Arrays.equals(_responseFilter, other._responseFilter))
-			return false;
 		if (_scope == null) {
 			if (other._scope != null)
 				return false;
@@ -620,9 +593,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public String toString() {
 		StringBuffer sb = new StringBuffer(_name.toString());
 		sb.append(": ");
-		if (null != _nameComponentCount)
-			sb.append(" ct:" + _nameComponentCount);
-
+	
 		if  (null != _additionalNameComponents)
 			sb.append(" anc:" + _additionalNameComponents);
 
@@ -640,8 +611,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			clone.additionalNameComponents(additionalNameComponents());
 		if (null != _publisher)
 			clone.publisherID(publisherID());
-		if (null != _nameComponentCount)
-			clone.nameComponentCount(nameComponentCount());
 		if (null != _excludeFilter)
 			clone.excludeFilter(excludeFilter());
 		if (null != _orderPreference)
@@ -650,12 +619,8 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			clone.answerOriginKind(answerOriginKind());
 		if (null != _scope)
 			clone.scope(scope());
-		if (null != _count)
-			clone.count(count());
 		if (null != _nonce)
 			clone.nonce(nonce());
-		if (null != _responseFilter)
-			clone.responseFilter(responseFilter());
 		return clone;
 	}
 

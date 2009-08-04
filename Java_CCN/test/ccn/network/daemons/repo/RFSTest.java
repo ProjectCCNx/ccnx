@@ -229,7 +229,7 @@ public class RFSTest extends RepoTestBase {
 		//send initial interest to make sure namespace is empty
 		//interest flag will not be set for a fast response since there isn't anything in the index yet
 		
-		Interest interest = Interest.constructInterest(new ContentName(nerpre, CCNNameEnumerator.NEMARKER), null, Interest.ORDER_PREFERENCE_ORDER_NAME, nerpre.count()+1);
+		Interest interest = Interest.constructInterest(new ContentName(nerpre, CCNNameEnumerator.NEMARKER), null, Interest.ORDER_PREFERENCE_ORDER_NAME);
 		neresponse = repo.getNamesWithPrefix(interest);
 		Assert.assertTrue(neresponse == null || neresponse.getNames()==null);
 		//now saving the first piece of content in the repo.  interest flag not set, so it should not get an object back
@@ -245,7 +245,6 @@ public class RFSTest extends RepoTestBase {
 		//have to use the version from the last response (or at least a version after the last write
 		interest = Interest.last(VersioningProfile.addVersion(neresponse.getPrefix(), neresponse.getTimestamp()));
 		interest.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME);
-		interest.nameComponentCount(interest.nameComponentCount());
 		//the response should be null and the flag set
 		neresponse = repo.getNamesWithPrefix(interest);
 		Assert.assertTrue(neresponse==null || neresponse.getNames()==null);
@@ -259,7 +258,6 @@ public class RFSTest extends RepoTestBase {
 		//need to reconstruct the interest again
 		interest = Interest.last(VersioningProfile.addVersion(neresponse.getPrefix(), neresponse.getTimestamp()));
 		interest.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME);
-		interest.nameComponentCount(interest.nameComponentCount());
 		//another interest to set interest flag, response should be null
 		neresponse = repo.getNamesWithPrefix(interest);
 		Assert.assertTrue(neresponse == null || neresponse.getNames()==null);

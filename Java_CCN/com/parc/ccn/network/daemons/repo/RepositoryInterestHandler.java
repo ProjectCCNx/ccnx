@@ -84,10 +84,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		ContentName listeningName = new ContentName(interest.name().count() - 2, interest.name().components());
 		try {
 			Library.logger().info("Processing write request for " + listeningName);
-			Integer count = interest.nameComponentCount();
-			if (count != null && count > listeningName.count())
-				count = null;
-			Interest readInterest = Interest.constructInterest(listeningName, _daemon.getExcludes(), null, count);
+			Interest readInterest = Interest.constructInterest(listeningName, _daemon.getExcludes(), null);
 			RepositoryDataListener listener = _daemon.addListener(interest, readInterest);
 			_daemon.getWriter().put(interest.name(), _daemon.getRepository().getRepoInfo(null), null, null,
 					_daemon.getFreshness());
@@ -111,10 +108,10 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		for (RepositoryDataListener listener : _daemon.getDataListeners()) {
 			if (listener.getOrigInterest().name().equals(listeningName)) {		
 				try {
-					// DKS -- this should use SegmentationProfile.headerName to figure out the header name,
+					// DKS- this should use SegmentationProfile.headerName to figure out the header name,
 					// not hardcode its structure here.
 					// Needs to match move to HeaderObject (versioned) writes in output streams.
-					listener._headerInterest = Interest.constructInterest(listener.getVersionedName(), _daemon.getExcludes(), null, 
+					listener._headerInterest = Interest.constructInterest(listener.getVersionedName(), _daemon.getExcludes(), 
 							listener.getVersionedName().count());
 					listener._headerInterest.additionalNameComponents(1);
 					Library.logger().fine("Sending header request: " + listener._headerInterest);

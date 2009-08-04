@@ -93,12 +93,6 @@ public class InterestTest {
 		Interest opPlainBDec = new Interest();
 		XMLEncodableTester.encodeDecodeTest("PreferenceInterest", opPlain, opPlainDec, opPlainBDec);
 		
-		Interest opPrefixed = new Interest(tcn);
-		opPrefixed.nameComponentCount(2);
-		Interest opPrefixedDec = new Interest();
-		Interest opPrefixedBDec = new Interest();
-		XMLEncodableTester.encodeDecodeTest("PrefixedInterest", opPrefixed, opPrefixedDec, opPrefixedBDec);	
-		
 		Interest opANC = new Interest(tcn);
 		opANC.additionalNameComponents(3);
 		Interest opANCDec = new Interest();

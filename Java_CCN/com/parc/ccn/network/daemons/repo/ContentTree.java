@@ -498,7 +498,7 @@ public class ContentTree {
 	
 	public final ContentObject get(Interest interest, ContentGetter getter) {
 		Integer addl = interest.additionalNameComponents();
-		int ncc = (null != interest.nameComponentCount()) ? interest.nameComponentCount() : interest.name().count();
+		int ncc = null != interest.excludeFilter() ? (interest.name().count() - 1) : interest.name().count();
 		if (null != addl && addl.intValue() == 0) {
 			// Query is for exact match to full name with digest, no additional components
 			List<ContentFileRef> found = lookup(interest.name());

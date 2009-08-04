@@ -133,7 +133,6 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			
 			Interest pi = new Interest(prefixMarked);
 			pi.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME);
-			pi.nameComponentCount(prefix.count() + 1);
 			
 			//Library.logger().info("interest name: "+pi.name().toString()+" prefix: "+pi.name().prefixCount()+" order preference "+pi.orderPreference());
 			r.addInterest(pi);
@@ -205,9 +204,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 
 					responseName = new ContentName(c.name(), c.contentDigest());
 					newInterest = Interest.last(responseName);
-					newInterest.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME);// | Interest.ORDER_PREFERENCE_RIGHT);
-					newInterest.nameComponentCount(interest.nameComponentCount());
-					
+					newInterest.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME);// | Interest.ORDER_PREFERENCE_RIGHT);					
 					try {
 						_library.expressInterest(newInterest, this);
 						ner.addInterest(newInterest);

@@ -304,7 +304,6 @@ public class LibraryTestBase {
 					}
 					ContentName newName = new ContentName(contentObject.name(), contentObject.contentDigest());
 					newInterest = Interest.next(newName);
-					newInterest.nameComponentCount(contentObject.name().count() - 2);
 				} catch (NumberFormatException nfe) {
 					Library.logger().info("Unexpected content, " + contentObject.name() + " is not an integer!");
 				}

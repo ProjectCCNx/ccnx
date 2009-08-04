@@ -551,7 +551,7 @@ public class InterestTableTest {
 		sizes(names, 6, 5);
 	}
 	
-	private enum InterestType {Next, Last, Prefix, AdditionalNameComponents, Exclude};
+	private enum InterestType {Next, Last, AdditionalNameComponents, Exclude};
 	
 	private InterestTable<Integer> initInterest(InterestType type) throws MalformedContentNameStringException {
 		InterestTable<Integer> table = new InterestTable<Integer>();
@@ -575,9 +575,6 @@ public class InterestTableTest {
 			break;
 		case Last:
 			i.orderPreference(Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME);
-			break;
-		case Prefix:
-			i.nameComponentCount(prefixCount);
 			break;
 		case AdditionalNameComponents:
 			i.additionalNameComponents(additionalComponents);
@@ -646,43 +643,6 @@ public class InterestTableTest {
 		names = initInterest(InterestType.AdditionalNameComponents);
 		removeMatch(names, abc, 2);
 		removeMatch(names, ab, 1);
-		noRemoveMatch(names, a);
-		sizes(names, 5, 5);
-	}
-	
-	@Test
-	public void testPrefixes() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
-		prefixCount = 1;
-		InterestTable<Integer> names = initInterest(InterestType.Prefix);
-		
-		setID(1);
-		matches(names, abc, new String[] {abc, a_bb, ab, a}, new int[] {7, 5, 2, 1});
-		match(names, "/b/c/d", 4);
-		noMatch(names, "/d");
-		
-		prefixCount = 2;
-		names = initInterest(InterestType.Prefix);
-		matches(names, abc, new String[] {abc, ab}, new int[] {7, 2});
-		match(names, a_bb, 5);
-		noMatch(names, a);
-	}
-	
-	
-	@Test
-	public void testRemovePrefixes() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
-		prefixCount = 1;
-		InterestTable<Integer> names = initInterest(InterestType.Prefix);
-		
-		setID(1);
-		noRemoveMatch(names, "/d");
-		removeMatch(names, abc, 7);
-		removeMatch(names, "/b/c/d", 4);
-		sizes(names, 5, 5);
-		
-		prefixCount = 2;
-		names = initInterest(InterestType.Prefix);
-		removeMatch(names, abc, 7);
-		removeMatch(names, a_bb, 5);
 		noRemoveMatch(names, a);
 		sizes(names, 5, 5);
 	}

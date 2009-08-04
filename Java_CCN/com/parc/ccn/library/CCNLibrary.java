@@ -260,8 +260,6 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 	 */
 	public ArrayList<ContentObject> enumerate(Interest query, long timeout) throws IOException {
 		ArrayList<ContentObject> result = new ArrayList<ContentObject>();
-		Integer prefixCount = query.nameComponentCount() == null ? query.name().components().size() 
-				: query.nameComponentCount();
 		// This won't work without a correct order preference
 		query.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME | Interest.ORDER_PREFERENCE_LEFT);
 		while (true) {
@@ -270,9 +268,9 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 			if (co == null)
 				break;
 			Library.logger().info("enumerate: retrieved " + co.name() + 
-					" digest: " + ContentName.componentPrintURI(co.contentDigest()) + " on query: " + query.name() + " prefix count: " + prefixCount);
+					" digest: " + ContentName.componentPrintURI(co.contentDigest()) + " on query: " + query.name());
 			result.add(co);
-			query = Interest.next(co, prefixCount);
+			query = Interest.next(co);
 		}
 		Library.logger().info("enumerate: retrieved " + result.size() + " objects.");
 		return result;
