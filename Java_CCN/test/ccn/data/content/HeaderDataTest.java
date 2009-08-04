@@ -8,49 +8,27 @@ import static org.junit.Assert.assertNotNull;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.PrivateKey;
 
 import javax.xml.stream.XMLStreamException;
 
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import test.ccn.data.util.XMLEncodableTester;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.content.Header;
-import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
+import com.parc.ccn.data.content.HeaderData;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 
 /**
- * @author briggs, rasmusse
+ * @author briggs, rasmusse, smetters
  *
+ * DKS - Make this back into the HeaderData test it ought to be.
  */
-public class HeaderTest {
+public class HeaderDataTest {
 	
-	static PublisherPublicKeyDigest pubKey = null;
-	static public byte [] publisherid1 = new byte[32];
-	static public PrivateKey signingKey;
-	static public KeyLocator locator;
-	
-	@BeforeClass
-	public static void setUpBeforeClass() throws Exception {
-		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-		kpg.initialize(512); // go for fast
-		KeyPair pair = kpg.generateKeyPair();
-		signingKey = pair.getPrivate();
-		pubKey = new PublisherPublicKeyDigest(publisherid1);
-		locator = new KeyLocator(ContentName.fromNative("/headerTest1"));
-	}
-
 	@Test
 	public void testHeaderConstructor() throws Exception {
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
-		Header seq = new Header(ContentName.fromNative("/headerTest1"), 1, 1, 8192, 2, digest, digest,
-				pubKey, locator, signingKey);
+		HeaderData seq = new HeaderData(1, 1, 8192, 2, digest, digest);
 		assertNotNull(seq);
 		assertEquals(1, seq.start());
 		assertEquals(1, seq.count());
@@ -62,8 +40,7 @@ public class HeaderTest {
 	public void testHeaderConstructor2() throws Exception {
 		int length = 77295;
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
-		Header seq = new Header(ContentName.fromNative("/headerTest1"), length, digest, digest, SegmentationProfile.DEFAULT_BLOCKSIZE,
-				pubKey, locator, signingKey);
+		HeaderData seq = new HeaderData(length, digest, digest, SegmentationProfile.DEFAULT_BLOCKSIZE);
 		assertNotNull(seq);
 		assertEquals(SegmentationProfile.baseSegment(), seq.start());
 		assertEquals(length, seq.length());
@@ -74,8 +51,7 @@ public class HeaderTest {
 	public void testHeaderConstructor3() throws Exception {
 		int length = SegmentationProfile.DEFAULT_BLOCKSIZE;
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
-		Header seq = new Header(ContentName.fromNative("/headerTest1"), length, digest, digest, SegmentationProfile.DEFAULT_BLOCKSIZE,
-				pubKey, locator, signingKey);
+		HeaderData seq = new HeaderData(length, digest, digest, SegmentationProfile.DEFAULT_BLOCKSIZE);
 		assertNotNull(seq);
 		assertEquals(SegmentationProfile.baseSegment(), seq.start());
 		assertEquals(length, seq.length());
@@ -85,33 +61,30 @@ public class HeaderTest {
 	@Test
 	public void testEncodeOutputStream() throws Exception {
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
-		Header seq = new Header(ContentName.fromNative("/headerTest1"), 1, 1, 8192, 2, digest, digest,
-				pubKey, locator, signingKey);
+		HeaderData seq = new HeaderData(1, 37, 8192, 2, digest, digest);
 
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		System.out.println("Encoding header...");
+		System.out.println("Encoding HeaderData...");
 		try {
 			seq.encode(baos);
 		} catch (XMLStreamException e) {
 			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
 			e.printStackTrace();
 		}
-		System.out.println("Encoded header: " );
+		System.out.println("Encoded HeaderData: " );
 		System.out.println(baos.toString());
 		
-		Header dt = new Header();
-		Header db = new Header();
+		HeaderData dt = new HeaderData();
+		HeaderData db = new HeaderData();
 		
-		XMLEncodableTester.encodeDecodeTest("Header", seq, dt, db);
+		XMLEncodableTester.encodeDecodeTest("HeaderData", seq, dt, db);
 	}
 
 	@Test
 	public void testDecodeInputStream() throws Exception {
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
-		Header seqIn = new Header(ContentName.fromNative("/headerTest1"), 83545, digest, digest, SegmentationProfile.DEFAULT_BLOCKSIZE,
-				pubKey, locator, signingKey);
-		Header seqOut = new Header();
-
+		HeaderData seqIn = new HeaderData(83545, digest, digest, SegmentationProfile.DEFAULT_BLOCKSIZE);
+		HeaderData seqOut = new HeaderData();
 
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		try {
