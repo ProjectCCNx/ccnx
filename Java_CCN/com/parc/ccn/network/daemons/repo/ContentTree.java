@@ -479,7 +479,9 @@ public class ContentTree {
 			// this might return an arbitrary version farther up the name...
 		
 			try {
-				interestTS = VersioningProfile.getLastVersionAsTimestamp(interest.name());
+				byte[] versionComponent = interest.name().component(markerIndex+1);
+				interestTS = VersioningProfile.getVersionComponentAsTimestamp(versionComponent);
+				//interestTS = VersioningProfile.getLastVersionAsTimestamp(interest.name());
 				Library.logger().fine("interestTS: "+interestTS+" "+interestTS.getTime());
 			} catch(Exception e) {
 				interestTS = null;

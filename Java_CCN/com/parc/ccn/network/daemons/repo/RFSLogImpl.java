@@ -84,12 +84,12 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 							ContentName.fromNative(REPO_NAMESPACE + "/" + _info.getLocalName() + "/" + REPO_POLICY));
 					ContentObject policyCo = new ContentObject(policyName, co.signedInfo(), co.content(), co.signature());
 	   				saveContent(policyCo);
+	   				return true;
 				}
 			} catch (Exception e) {
 				Library.logStackTrace(Level.WARNING, e);
 				e.printStackTrace();
 			} 
-			return true;
 		}
 		return false;
 	}
