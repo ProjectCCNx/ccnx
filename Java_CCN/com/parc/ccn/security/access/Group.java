@@ -88,8 +88,9 @@ public class Group {
 	 * @throws InvalidKeyException 
 	 */
 	Group(ContentName namespace, String groupFriendlyName, MembershipList members, 
-					CCNLibrary library, GroupManager manager) throws XMLStreamException, IOException, ConfigurationException, InvalidKeyException {
+					CCNLibrary library, GroupManager manager) throws XMLStreamException, IOException, ConfigurationException, InvalidKeyException {		
 		this(namespace, groupFriendlyName, members, null, library,manager);
+		_groupPublicKey = new PublicKeyObject(AccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), _library);
 		createGroupPublicKey(manager, members);		
 	}
 	
