@@ -38,7 +38,7 @@ import com.parc.security.crypto.DigestHelper;
  * @author smetters
  *
  */
-public class RepoEncodableObjectTest {
+public class CollectionObjectTestRepo {
 	
 	static final  String baseName = "test-repo";
 	static final  String subName = "smetters";
