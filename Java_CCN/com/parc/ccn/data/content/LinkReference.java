@@ -9,6 +9,7 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
+import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.data.util.CCNEncodableObject;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
@@ -68,6 +69,13 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable, 
 			super(LinkReference.class, firstBlock, library);
 		}
 		
+		/**
+		 * Subclasses that need to write an object of a particular type can override.
+		 * @return
+		 */
+		@Override
+		public ContentType contentType() { return ContentType.LINK; }
+
 		public ContentName getTargetName() { 
 			LinkReference lr = getReference();
 			if (null == lr)

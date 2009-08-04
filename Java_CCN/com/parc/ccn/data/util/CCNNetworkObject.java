@@ -392,7 +392,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		if (_data != null) {
 			// CCNVersionedOutputStream will version an unversioned name. 
 			// If it gets a versioned name, will respect it. 
-			CCNVersionedOutputStream cos = new CCNVersionedOutputStream(name, null, _publisher, _flowControl);
+			CCNVersionedOutputStream cos = new CCNVersionedOutputStream(name, _keyLocator, _publisher, contentType(), _flowControl);
 			save(cos); // superclass stream save. calls flush but not close on a wrapping
 			// digest stream; want to make sure we end up with a single non-MHT signed
 			// block and no header on small objects
@@ -573,6 +573,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_currentInterest = Interest.last(_currentInterest.name(), excludes, null);
 		return _currentInterest;
 	}
+	
+	/**
+	 * Subclasses that need to write an object of a particular type can override.
+	 * DKS TODO -- verify type on read, modulo that ENCR overrides everything.
+	 * @return
+	 */
+	public ContentType contentType() { return ContentType.DATA; }
 
 	@Override
 	public int hashCode() {

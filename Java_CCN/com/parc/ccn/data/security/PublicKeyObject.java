@@ -14,6 +14,7 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.data.util.CCNNetworkObject;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNInputStream;
@@ -68,6 +69,13 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 		super(PublicKey.class, firstBlock, library);
 	}
 	
+	/**
+	 * Subclasses that need to write an object of a particular type can override.
+	 * DKS TODO -- verify type on read, modulo that ENCR overrides everything.
+	 * @return
+	 */
+	public ContentType contentType() { return ContentType.KEY; }
+
 	public PublicKey publicKey() { return data(); }
 
 	@Override
