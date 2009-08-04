@@ -14,18 +14,17 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.content.CollectionData;
 import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.content.CollectionData.CollectionObject;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.PublisherID.PublisherType;
-import com.parc.ccn.data.util.NullOutputStream;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
 import com.parc.security.crypto.DigestHelper;
@@ -121,13 +120,13 @@ public class CollectionObjectTestRepo {
 	public void testTiny() {
 		
 		try {
-			CCNRepoEncodableCollectionData ecd1 = new CCNRepoEncodableCollectionData(ContentName.fromNative("/test-repo/smetters/reports/Why_I_Wish_I_Was_in_Maui.txt"), small1, library);
-			ecd1.save();
-			CCNRepoEncodableCollectionData ecd2 = new CCNRepoEncodableCollectionData(ecd1.getCurrentVersionName(), null);
+			CollectionObject ecd1 = new CollectionObject(ContentName.fromNative("/test-repo/smetters/reports/Why_I_Wish_I_Was_in_Maui.txt"), small1, library);
+			ecd1.saveToRepository();
+			CollectionObject ecd2 = new CollectionObject(ecd1.getCurrentVersionName(), null);
 			System.out.println("ecd1 name: " + ecd1.getCurrentVersionName());
 			System.out.println("ecd2 name: " + ecd2.getCurrentVersionName());
 			Assert.assertTrue(ecd1.equals(ecd2));
-			ecd2.save(small1);
+			ecd2.saveToRepository(small1);
 			/*
 			 // DKS TODO this really should work too, we just want some test that will pass...
 			ecd1.update();
@@ -146,27 +145,26 @@ public class CollectionObjectTestRepo {
 	@Test
 	public void testSaveUpdate() throws ConfigurationException, IOException, XMLStreamException, MalformedContentNameStringException {
 		boolean caught = false;
-		CCNRepoEncodableCollectionData emptycoll = 
-			new CCNRepoEncodableCollectionData(namespace, (CollectionData)null, null);
-		NullOutputStream nos = new NullOutputStream();
+		CollectionObject emptycoll = 
+			new CollectionObject(namespace, (CollectionData)null, null);
 		try {
-			emptycoll.save(nos);
+			emptycoll.saveToRepository();
 		} catch (InvalidObjectException iox) {
 			// this is what we expect to happen
 			caught = true;
 		}
 		Assert.assertTrue("Failed to produce expected exception.", caught);
 		
-		CCNRepoEncodableCollectionData ecd0 = new CCNRepoEncodableCollectionData(ns[2], empty, library);
-		CCNRepoEncodableCollectionData ecd1 = new CCNRepoEncodableCollectionData(ns[1], small1, null);
-		CCNRepoEncodableCollectionData ecd2 = new CCNRepoEncodableCollectionData(ns[1], small1, null);
-		CCNRepoEncodableCollectionData ecd3 = new CCNRepoEncodableCollectionData(ns[2], big, library);
-		CCNRepoEncodableCollectionData ecd4 = new CCNRepoEncodableCollectionData(namespace, empty, library);
+		CollectionObject ecd0 = new CollectionObject(ns[2], empty, library);
+		CollectionObject ecd1 = new CollectionObject(ns[1], small1, null);
+		CollectionObject ecd2 = new CollectionObject(ns[1], small1, null);
+		CollectionObject ecd3 = new CollectionObject(ns[2], big, library);
+		CollectionObject ecd4 = new CollectionObject(namespace, empty, library);
 
-		ecd0.save();
+		ecd0.saveToRepository();
 		System.out.println("Version for empty collection: " + ecd0.getVersion());
-		ecd1.save();
-		ecd2.save(); 
+		ecd1.saveToRepository();
+		ecd2.saveToRepository(); 
 		System.out.println("ecd1 name: " + ecd1.getCurrentVersionName());
 		System.out.println("ecd2 name: " + ecd2.getCurrentVersionName());
 		System.out.println("Versions for matching collection content: " + ecd1.getVersion() + " " + ecd2.getVersion());
@@ -218,7 +216,7 @@ public class CollectionObjectTestRepo {
 		Assert.assertEquals(ecd0, ecd2);
 		System.out.println("Update really works!");
 
-		ecd3.save();
+		ecd3.saveToRepository();
 		ecd0.update();
 		ecd4.update(ns[2], null);
 		System.out.println("ns[2]: " + ns[2]);
@@ -228,13 +226,13 @@ public class CollectionObjectTestRepo {
 		Assert.assertEquals(ecd3, ecd4);
 		System.out.println("Update really really works!");
 		
-		ecd0.saveAsGone();
+		ecd0.saveToRepositoryAsGone();
 		Assert.assertTrue(ecd0.isGone());
 		ecd0.update();
 		Assert.assertTrue(ecd0.isGone());
 		ecd0.setData(small1);
 		Assert.assertFalse(ecd0.isGone());
-		ecd0.save();
+		ecd0.saveToRepository();
 		Assert.assertFalse(ecd0.isGone());
 		ecd0.update();
 		
@@ -244,25 +242,24 @@ public class CollectionObjectTestRepo {
 	@Test
 	public void testSaveUpdate2() throws ConfigurationException, IOException, XMLStreamException, MalformedContentNameStringException {
 		boolean caught = false;
-		CCNRepoEncodableCollectionData emptycoll = 
-			new CCNRepoEncodableCollectionData(namespace, (CollectionData)null, null);
-		NullOutputStream nos = new NullOutputStream();
+		CollectionObject emptycoll = 
+			new CollectionObject(namespace, (CollectionData)null, null);
 		try {
-			emptycoll.save(nos);
+			emptycoll.saveToRepository();
 		} catch (InvalidObjectException iox) {
 			// this is what we expect to happen
 			caught = true;
 		}
 		Assert.assertTrue("Failed to produce expected exception.", caught);
 		
-		CCNRepoEncodableCollectionData ecd0 = new CCNRepoEncodableCollectionData(ns[2], empty, library);
-		ecd0.save();
+		CollectionObject ecd0 = new CollectionObject(ns[2], empty, library);
+		ecd0.saveToRepository();
 		System.out.println("Version for empty collection: " + ecd0.getVersion());
-		CCNRepoEncodableCollectionData ecd1 = new CCNRepoEncodableCollectionData(ns[1], small1, null);
-		CCNRepoEncodableCollectionData ecd2 = new CCNRepoEncodableCollectionData(ns[1], small1, null);
+		CollectionObject ecd1 = new CollectionObject(ns[1], small1, null);
+		CollectionObject ecd2 = new CollectionObject(ns[1], small1, null);
 
-		ecd1.save();
-		ecd2.save(); 
+		ecd1.saveToRepository();
+		ecd2.saveToRepository(); 
 		System.out.println("ecd1 name: " + ecd1.getCurrentVersionName());
 		System.out.println("ecd2 name: " + ecd2.getCurrentVersionName());
 		System.out.println("Versions for matching collection content: " + ecd1.getVersion() + " " + ecd2.getVersion());
@@ -313,10 +310,10 @@ public class CollectionObjectTestRepo {
 		Assert.assertEquals(ecd0, ecd2);
 		System.out.println("Update really works!");
 
-		CCNRepoEncodableCollectionData ecd3 = new CCNRepoEncodableCollectionData(ns[2], big, library);
-		ecd3.save();
+		CollectionObject ecd3 = new CollectionObject(ns[2], big, library);
+		ecd3.saveToRepository();
 		ecd0.update();
-		CCNRepoEncodableCollectionData ecd4 = new CCNRepoEncodableCollectionData(ns[1], empty, library);
+		CollectionObject ecd4 = new CollectionObject(ns[1], empty, library);
 		ecd4.update(ns[2], null);
 		System.out.println("ns[2]: " + ns[2]);
 		System.out.println("ecd3 name: " + ecd3.getCurrentVersionName());
@@ -325,13 +322,13 @@ public class CollectionObjectTestRepo {
 		Assert.assertEquals(ecd3, ecd4);
 		System.out.println("Update really really works!");
 		
-		ecd0.saveAsGone();
+		ecd0.saveToRepositoryAsGone();
 		Assert.assertTrue(ecd0.isGone());
 		ecd0.update();
 		Assert.assertTrue(ecd0.isGone());
 		ecd0.setData(small1);
 		Assert.assertFalse(ecd0.isGone());
-		ecd0.save();
+		ecd0.saveToRepository();
 		Assert.assertFalse(ecd0.isGone());
 		ecd0.update();
 	}
