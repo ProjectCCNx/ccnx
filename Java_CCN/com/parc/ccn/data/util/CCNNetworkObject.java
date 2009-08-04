@@ -1,6 +1,7 @@
 package com.parc.ccn.data.util;
 
 import java.io.IOException;
+import java.io.InvalidObjectException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -328,7 +329,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		if (null == _baseName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
-		saveInternal(null);
+		saveInternal(null, false);
 	}
 
 	/**
@@ -341,7 +342,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		if (null == _baseName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
-		saveInternal(version);
+		saveInternal(version, false);
 	}
 
 	/**
@@ -350,7 +351,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param name
 	 * @throws IOException 
 	 */
-	public void saveInternal(Timestamp version) throws IOException {
+	public void saveInternal(Timestamp version, boolean gone) throws IOException {
 		// move object to this name
 		// need to make sure we get back the actual name we're using,
 		// even if output stream does automatic versioning
@@ -363,6 +364,12 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			Library.logger().info("Object not dirty. Not saving.");
 			return;
 		}
+		
+		if (!gone && (null == _data)) {
+			// skip some of the prep steps that have side effects rather than getting this exception later from superclass
+			throw new InvalidObjectException("No data to save!");
+		}
+		
 		if (null == _baseName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
@@ -455,11 +462,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param name
 	 * @throws IOException
 	 */
-	public void saveAsGone() throws IOException {
-		
+	public void saveAsGone() throws IOException {		
+		if (null == _baseName) {
+			throw new IllegalStateException("Cannot save an object without giving it a name!");
+		}
 		_data = null;
 		_available = true;
-		save();
+		saveInternal(null, true);
 	}
 
 	/**
