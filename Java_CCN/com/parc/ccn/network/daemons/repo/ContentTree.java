@@ -459,26 +459,39 @@ public class ContentTree {
 		ArrayList<ContentName> names = new ArrayList<ContentName>();
 		//first chop off NE marker
 		ContentName prefix = interest.name().cut(CCNNameEnumerator.NEMARKER);
-		prefix = VersioningProfile.cutTerminalVersion(prefix).first();
+
+		//prefix = VersioningProfile.versionRoot(prefix);
+		boolean versionedInterest = false;
+		//get the index of the name enumeration marker
+		int markerIndex = prefix.count();
+		if (interest.name().count() > markerIndex) {
+			//we have something longer than just the name enumeration marker
+			if (VersioningProfile.findLastVersionComponent(interest.name()) > markerIndex)
+				versionedInterest = true;
+		}
 		
 		//does the interest have a timestamp?
 		Timestamp interestTS = null;
 		Timestamp nodeTS = null;
-		
-		try{
+
+		if (versionedInterest) {
 			// NOTE: should be sure that interest.name() has a version that we're interested in, otherwise
 			// this might return an arbitrary version farther up the name...
-			interestTS = VersioningProfile.getLastVersionAsTimestamp(interest.name());
-			
-			System.out.println("interestTS: "+interestTS+" "+interestTS.getTime());
-		}
-		catch(Exception e){
-			interestTS = null;
+		
+			try {
+				interestTS = VersioningProfile.getLastVersionAsTimestamp(interest.name());
+				Library.logger().fine("interestTS: "+interestTS+" "+interestTS.getTime());
+			} catch(Exception e) {
+				interestTS = null;
+			}
+		} else {
+			Library.logger().finest("no interest in timestamp after the name enumeration marker");
 		}
 		
+		Library.logger().fine("checking for content names under: "+prefix);
 		
 		TreeNode parent = lookupNode(prefix, prefix.count());
-		if(parent!=null){
+		if (parent!=null) {
 			parent.interestFlag = true;
 			
 			//we should check the timestamp
@@ -490,36 +503,34 @@ public class ContentTree {
 				interestTS=null;
 			}
 			//nodeTS = new Timestamp(parent.timestamp);
-			if(interestTS==null){
+			if (interestTS==null) {
 				//no version marker...  should respond if we have info
-			}
-			else if(nodeTS.after(interestTS) && !nodeTS.equals(interestTS)){
+			} else if (nodeTS.after(interestTS) && !nodeTS.equals(interestTS)) {
 				//we have something new to report
 				//put this time in the last name spot if there are children
-			}
-			else{
+			} else {
 				Library.logger().info("Nothing new, but the interest flag is set in case new content is added");
 				return null;
 			}
 			
 			//the parent has children we need to return
 			ContentName c = new ContentName();
-			if(parent.oneChild!=null){
+			if (parent.oneChild!=null) {
 				names.add(new ContentName(c, parent.oneChild.component));
-			}
-			else{
-				if(parent.children!=null){
-					for(TreeNode ch:parent.children)
+			} else {
+				if (parent.children!=null) {
+					for (TreeNode ch:parent.children)
 						names.add(new ContentName(c, ch.component));
 				}
 			}
 			//add timestamp in last name spot to send back (will be removed)
-			
+			if (names!=null && names.size()>0)
+				Library.logger().finer("sending back "+names.size()+" names in the enumeration response");
 			parent.interestFlag = false;
+
 			return new NameEnumerationResponse(VersioningProfile.addVersion(interest.name(), nodeTS), names);
 			
 		}
-		
 		return null;
 	}
 	
@@ -530,7 +541,7 @@ public class ContentTree {
 		if (null != addl && addl.intValue() == 0) {
 			// Query is for exact match to full name with digest, no additional components
 			List<ContentFileRef> found = lookup(interest.name());
-			if(found!=null){
+			if (found!=null) {
 				for (ContentFileRef ref : found) {
 					ContentObject cand = getter.get(ref);
 					if (null != cand) {
@@ -543,7 +554,7 @@ public class ContentTree {
 		} else {
 			//TreeNode prefixRoot = lookupNode(interest.name(), interest.nameComponentCount());
 			TreeNode prefixRoot = lookupNode(interest.name(), ncc);
-			if(prefixRoot == null){
+			if (prefixRoot == null) {
 				//Library.logger().info("For: " + interest.name() + " the prefix root is null...  returning null");
 				return null;
 			}

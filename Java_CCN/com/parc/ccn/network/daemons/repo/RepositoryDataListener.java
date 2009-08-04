@@ -36,6 +36,8 @@ public class RepositoryDataListener implements CCNInterestListener {
 	private CCNLibrary _library;
 	private long _currentBlock = 0;
 	
+	public Interest _headerInterest = null;
+	
 	/**
 	 * So the main listener can output interests sooner, we do the data creation work
 	 * in a separate thread.
@@ -131,6 +133,8 @@ public class RepositoryDataListener implements CCNInterestListener {
 	public void cancelInterests() {
 		for (ContentName name : _interests.keySet())
 			_library.cancelInterest(_interests.get(name), this);
+		if (null != _headerInterest)
+			_library.cancelInterest(_headerInterest, this);
 	}
 	
 	public long getTimer() {
