@@ -27,7 +27,6 @@ import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.PublisherID.PublisherType;
-import com.parc.ccn.data.util.NullOutputStream;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
 import com.parc.security.crypto.DigestHelper;
@@ -137,9 +136,8 @@ public class CollectionObjectTest {
 		boolean caught = false;
 		CollectionObject emptycoll = 
 			new CollectionObject(namespace, (CollectionData)null, null);
-		NullOutputStream nos = new NullOutputStream();
 		try {
-			emptycoll.save(nos);
+			emptycoll.save();
 		} catch (InvalidObjectException iox) {
 			// this is what we expect to happen
 			caught = true;
@@ -251,9 +249,8 @@ public class CollectionObjectTest {
 		boolean caught = false;
 		CollectionObject emptycoll = 
 			new CollectionObject(namespace, (CollectionData)null, null);
-		NullOutputStream nos = new NullOutputStream();
 		try {
-			emptycoll.save(nos);
+			emptycoll.save();
 		} catch (InvalidObjectException iox) {
 			// this is what we expect to happen
 			caught = true;
