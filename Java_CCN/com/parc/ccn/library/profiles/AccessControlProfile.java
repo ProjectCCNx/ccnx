@@ -232,7 +232,7 @@ public class AccessControlProfile implements CCNProfile {
 		}
 		byte [] type = new byte[PRINCIPAL_PREFIX.length];
 		byte [] principal = new byte[sepIndex - PRINCIPAL_PREFIX.length];
-		byte [] timestamp = new byte[childName.length - sepIndex];
+		byte [] timestamp = new byte[childName.length - sepIndex -1];
 		System.arraycopy(childName, 0, type, 0, PRINCIPAL_PREFIX.length);
 		System.arraycopy(childName, PRINCIPAL_PREFIX.length, principal, 0, principal.length);
 		System.arraycopy(childName, sepIndex+1, timestamp, 0, timestamp.length);
