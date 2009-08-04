@@ -66,9 +66,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public static final String ORDER_PREFERENCE = "OrderPreference";
 	public static final String ANSWER_ORIGIN_KIND = "AnswerOriginKind";
 	public static final String SCOPE_ELEMENT = "Scope";
-	public static final String COUNT_ELEMENT = "Count";
 	public static final String NONCE_ELEMENT = "Nonce";
-	public static final String RESPONSE_FILTER_ELEMENT = "ExperimentalResponseFilter";
 	
 	// OrderPreference values.  These are bitmapped
 	public static final int ORDER_PREFERENCE_LEFT = 0;		// bit 0
@@ -441,11 +439,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			_nonce = decoder.readBinaryElement(NONCE_ELEMENT);
 		}
 		
-		if (decoder.peekStartElement(RESPONSE_FILTER_ELEMENT)) {
-			Library.logger().info("Got response filter element.");
-			_responseFilter = decoder.readBinaryElement(RESPONSE_FILTER_ELEMENT);
-		}
-		
 		try {
 			decoder.readEndElement();
 		} catch (XMLStreamException e) {
@@ -485,9 +478,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 
 		if (null != nonce())
 			encoder.writeElement(NONCE_ELEMENT, nonce());
-
-		if (null != responseFilter())
-			encoder.writeElement(RESPONSE_FILTER_ELEMENT, responseFilter());
 
 		encoder.writeEndElement();   		
 	}
