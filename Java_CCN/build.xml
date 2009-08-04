@@ -215,7 +215,7 @@
 	
 	<target name="test-data-without-repo" depends="jar, ccnd">
 		<mkdir dir="${testout}"/>
-		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}">
+		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" showoutput="${showoutput}" dir="${testout}">
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
@@ -236,7 +236,7 @@
 
 	<target name="test-data-with-repo" depends="jar, ccnd, repo">
 		<mkdir dir="${testout}"/>
-		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}">
+		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" showoutput="${showoutput}" dir="${testout}">
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
@@ -329,23 +329,23 @@
 	</target>
 	
 	<!-- This target is for debugging only -->
-		<target name="test-blockreadwrite" depends="jar, ccnd">
+	<target name="test-blockreadwrite" depends="jar, ccnd">
 
-			<mkdir dir="${testout}"/>
-			<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
-				<classpath>
-					<path refid="classpath-run"/>
-				</classpath>
-				<formatter type="xml" usefile="true"/>
-				<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+		<mkdir dir="${testout}"/>
+		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="xml" usefile="true"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 
-				<batchtest todir="${testout}">
-					<fileset dir="${build}">
-						<include name="test/ccn/library/BlockReadWriteTest.class"/>
-					</fileset>
-				</batchtest>
-			</junit>
-		</target>
+			<batchtest todir="${testout}">
+				<fileset dir="${build}">
+					<include name="test/ccn/library/BlockReadWriteTest.class"/>
+				</fileset>
+			</batchtest>
+		</junit>
+	</target>
 	
 	<!-- IMPORTANT: test-repo-structure must be the *first* test in this list because subsequent test require
 	     that the repo must not have been running when test-repo-structure is run -->
