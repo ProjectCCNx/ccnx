@@ -10,6 +10,7 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.util.CCNEncodableObject;
 import com.parc.ccn.data.util.GenericXMLEncodable;
@@ -17,6 +18,7 @@ import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.profiles.SegmentationProfile;
 
 /**
  * Mapping from a sequence to the underlying XML representation.
@@ -46,8 +48,8 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 			super(HeaderData.class, name, data, library);
 		}
 		
-		public HeaderObject(ContentName name, HeaderData data, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException {
-			super(HeaderData.class, name, data, publisher, library);
+		public HeaderObject(ContentName name, HeaderData data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNLibrary library) throws IOException {
+			super(HeaderData.class, name, data, publisher, keyLocator, library);
 		}
 
 		/**
@@ -220,6 +222,15 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 		_contentDigest = contentDigest;
 		_rootDigest = rootDigest;
 		_type = FragmentationType.SIMPLE_BLOCK;
+	}
+	
+	public HeaderData(long length,
+			byte [] contentDigest,
+			byte [] rootDigest, int blockSize
+	) throws XMLStreamException {
+		this(SegmentationProfile.baseSegment(), 
+				(length + blockSize - 1) / blockSize, blockSize, length,
+				contentDigest, rootDigest);
 	}
 	
 	/**

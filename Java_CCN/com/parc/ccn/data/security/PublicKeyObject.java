@@ -44,8 +44,8 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 		super(PublicKey.class, name, data, library);
 	}
 	
-	public PublicKeyObject(ContentName name, PublicKey data, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException {
-		super(PublicKey.class, name, data, publisher, library);
+	public PublicKeyObject(ContentName name, PublicKey data, PublisherPublicKeyDigest publisher, KeyLocator locator, CCNLibrary library) throws IOException {
+		super(PublicKey.class, name, data, publisher, locator, library);
 	}
 
 	/**

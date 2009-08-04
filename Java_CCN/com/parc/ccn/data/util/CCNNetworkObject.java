@@ -67,6 +67,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	protected CCNLibrary _library;
 	protected CCNFlowControl _flowControl;
 	protected PublisherPublicKeyDigest _publisher; // publisher we write under, if null, use library defaults
+	protected KeyLocator _keyLocator; // locator to find publisher key
 	protected boolean _raw = DEFAULT_RAW; // what kind of flow controller to make if we don't have one
 	
 	// control ongoing update.
@@ -84,7 +85,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException
 	 */
 	public CCNNetworkObject(Class<E> type, ContentName name, E data, CCNLibrary library) throws IOException {
-		this(type, name, data, DEFAULT_RAW, null, library);
+		this(type, name, data, DEFAULT_RAW, null, null, library);
 	}
 		
 	/**
@@ -96,8 +97,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param library
 	 * @throws IOException
 	 */
-	public CCNNetworkObject(Class<E> type, ContentName name, E data, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException {
-		this(type, name, data, DEFAULT_RAW, publisher, library);
+	public CCNNetworkObject(Class<E> type, ContentName name, E data, PublisherPublicKeyDigest publisher, KeyLocator locator, CCNLibrary library) throws IOException {
+		this(type, name, data, DEFAULT_RAW, publisher, locator, library);
 	}
 		
 	/**
@@ -111,13 +112,16 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param library
 	 * @throws IOException
 	 */
-	public CCNNetworkObject(Class<E> type, ContentName name, E data, boolean raw, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException {
+	public CCNNetworkObject(Class<E> type, ContentName name, E data, boolean raw, 
+							PublisherPublicKeyDigest publisher, KeyLocator locator,
+							CCNLibrary library) throws IOException {
 		// Don't start pulling a namespace till we actually write something. We may never write
 		// anything on this object. In fact, don't make a flow controller at all till we need one.
 		super(type, data);
 		_library = library;
 		_baseName = name;
 		_publisher = publisher;
+		_keyLocator = locator;
 		_raw = raw;
 	}
 
@@ -132,8 +136,11 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param flowControl
 	 * @throws IOException
 	 */
-	protected CCNNetworkObject(Class<E> type, ContentName name, E data, PublisherPublicKeyDigest publisher, CCNFlowControl flowControl) throws IOException {
-		this(type, name, data, publisher, flowControl.getLibrary());
+	protected CCNNetworkObject(Class<E> type, ContentName name, E data, 
+								PublisherPublicKeyDigest publisher, 
+								KeyLocator locator,
+								CCNFlowControl flowControl) throws IOException {
+		this(type, name, data, publisher, locator, flowControl.getLibrary());
 		_flowControl = flowControl;
 	}
 
@@ -384,12 +391,14 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			// block and no header on small objects
 			cos.close();
 			_currentPublisher = (_publisher == null) ? _flowControl.getLibrary().getDefaultPublisher() : _publisher; // TODO DKS -- is this always correct?
-			_currentPublisherKeyLocator = _flowControl.getLibrary().keyManager().getKeyLocator(_publisher);
+			_currentPublisherKeyLocator = (_keyLocator == null) ? 
+							_flowControl.getLibrary().keyManager().getKeyLocator(_publisher) : _keyLocator;
 		} else {
 			// saving object as gone, currently this is always one empty block so we don't use an OutputStream
 			ContentName segmentedName = SegmentationProfile.segmentName(name, SegmentationProfile.BASE_SEGMENT );
 			byte [] empty = { };
-			ContentObject goneObject = ContentObject.buildContentObject(segmentedName, ContentType.GONE, empty, _publisher, null, null);
+			ContentObject goneObject = 
+				ContentObject.buildContentObject(segmentedName, ContentType.GONE, empty, _publisher, _keyLocator, null, null);
 			_flowControl.put(goneObject);
 			_currentPublisher = goneObject.signedInfo().getPublisherKeyID();
 			_currentPublisherKeyLocator = goneObject.signedInfo().getKeyLocator();

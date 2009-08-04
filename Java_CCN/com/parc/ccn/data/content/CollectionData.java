@@ -10,6 +10,7 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.LinkReference.LinkObject;
+import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.util.CCNEncodableObject;
 import com.parc.ccn.data.util.GenericXMLEncodable;
@@ -46,8 +47,8 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 			super(CollectionData.class, name, data, library);
 		}
 		
-		public CollectionObject(ContentName name, CollectionData data, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException {
-			super(CollectionData.class, name, data, publisher, library);
+		public CollectionObject(ContentName name, CollectionData data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNLibrary library) throws IOException {
+			super(CollectionData.class, name, data, publisher, keyLocator, library);
 		}
 
 		/**

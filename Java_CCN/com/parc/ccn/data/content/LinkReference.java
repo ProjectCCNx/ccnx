@@ -6,6 +6,7 @@ import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.util.CCNEncodableObject;
@@ -43,8 +44,8 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable, 
 			super(LinkReference.class, name, data, library);
 		}
 		
-		public LinkObject(ContentName name, LinkReference data, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException {
-			super(LinkReference.class, name, data, publisher, library);
+		public LinkObject(ContentName name, LinkReference data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNLibrary library) throws IOException {
+			super(LinkReference.class, name, data, publisher, keyLocator, library);
 		}
 
 		/**

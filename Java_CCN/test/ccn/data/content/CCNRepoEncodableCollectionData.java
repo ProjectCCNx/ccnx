@@ -8,6 +8,7 @@ import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.CollectionData;
+import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.util.CCNEncodableObject;
 import com.parc.ccn.library.CCNLibrary;
@@ -28,7 +29,11 @@ import com.parc.ccn.library.CCNLibrary;
 public class CCNRepoEncodableCollectionData extends CCNEncodableObject<CollectionData> {
 
 	public CCNRepoEncodableCollectionData(ContentName name, CollectionData data, CCNLibrary library) throws ConfigurationException, IOException {
-		super(CollectionData.class, name, data, false, library);
+		this(name, data, null, null, library);
+	}
+	
+	public CCNRepoEncodableCollectionData(ContentName name, CollectionData data, PublisherPublicKeyDigest publisher, KeyLocator locator, CCNLibrary library) throws ConfigurationException, IOException {
+		super(CollectionData.class, name, data, false, publisher, locator, library);
 	}
 	
 	public CCNRepoEncodableCollectionData(ContentName name, PublisherPublicKeyDigest publisher,
