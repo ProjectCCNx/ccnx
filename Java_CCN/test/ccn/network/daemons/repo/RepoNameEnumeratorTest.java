@@ -74,7 +74,6 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 		ContentName versionedName = getVersionedName(prefix1String);
 		addContentToRepo(new ContentName(versionedName, "versionNameTest".getBytes()));
 		registerPrefix(versionedName);
-		//uncomment this line when the VersioningProfile code is updated
 		//testGetResponse(4);
 		
 	}
