@@ -1,4 +1,4 @@
-package test.ccn.data.util;
+package test.ccn.data.content;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -13,6 +13,8 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import test.ccn.data.util.Flosser;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
