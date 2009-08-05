@@ -62,7 +62,14 @@ public abstract class NetworkObject<E> {
 			_available = true;
 			_potentiallyDirty = false;
 		}
-		if (_data.equals(newData)) {
+		if (null == _data) {
+			if (null != newData) {
+				Library.logger().info("Update -- got new non-null " + newData.getClass().getName());
+				_data = merge(input, newData);
+			} else {
+				Library.logger().info("Update -- value still null.");
+			}
+		} else if (_data.equals(newData)) {
 			Library.logger().info("Update -- value hasn't changed.");
 		} else {
 			Library.logger().info("Update -- got new " + newData.getClass().getName());
