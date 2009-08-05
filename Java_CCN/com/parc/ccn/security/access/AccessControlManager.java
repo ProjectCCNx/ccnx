@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -1085,6 +1086,34 @@ public class AccessControlManager {
 		// TODO DKS FIX FOR REPO
 		WrappedKeyObject wko = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataNodeName), wrappedKey, library());
 		wko.save();
+	}
+	
+	/**
+	 * add a private key to _keyCache
+	 * @param keyName
+	 * @param publicKeyIdentifier
+	 * @param pk
+	 */
+	void addPrivateKey(ContentName keyName, byte [] publicKeyIdentifier, PrivateKey pk) {
+		_keyCache.addPrivateKey(keyName, publicKeyIdentifier, pk);
+	}
+
+	/**
+	 * add my private key to _keyCache
+	 * @param publicKeyIdentifier
+	 * @param pk
+	 */
+	void addMyPrivateKey(byte [] publicKeyIdentifier, PrivateKey pk) {
+		_keyCache.addMyPrivateKey(publicKeyIdentifier, pk);
+	}
+	
+	/**
+	 * add a key to _keyCache
+	 * @param name
+	 * @param key
+	 */
+	public void addKey(ContentName name, Key key) {
+		_keyCache.addKey(name, key);
 	}
 
 }	
