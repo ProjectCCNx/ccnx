@@ -80,6 +80,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 		super(starterBlock, library);
 	}
 	
+	@Override
 	protected ContentObject getFirstBlock() throws IOException {
 		if (VersioningProfile.hasTerminalVersion(_baseName)) {
 			return super.getFirstBlock();
