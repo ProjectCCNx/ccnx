@@ -293,6 +293,9 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 			}
 		}
 		decoder.readEndElement();
+		
+		// Right now, we're just setting this field to default, and it's not encoded
+		_type = FragmentationType.SIMPLE_BLOCK;
 	}
 
 	/* (non-Javadoc)
@@ -313,6 +316,8 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 		if (null != rootDigest())
 			encoder.writeElement(MERKLE_ROOT_ELEMENT, rootDigest());
 		encoder.writeEndElement();
+		
+		// DKS -- currently not putting _type on the wire, not sure why it's here...
 	}
 
 	@Override
