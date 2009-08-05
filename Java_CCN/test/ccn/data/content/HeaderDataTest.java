@@ -11,6 +11,8 @@ import java.io.ByteArrayOutputStream;
 
 import javax.xml.stream.XMLStreamException;
 
+import junit.framework.Assert;
+
 import org.junit.Test;
 
 import test.ccn.data.util.XMLEncodableTester;
@@ -73,6 +75,10 @@ public class HeaderDataTest {
 		}
 		System.out.println("Encoded HeaderData: " );
 		System.out.println(baos.toString());
+		HeaderData dec = new HeaderData();
+		dec.decode(baos.toByteArray());
+		seq.equals(dec);
+		Assert.assertEquals(seq, dec);
 		
 		HeaderData dt = new HeaderData();
 		HeaderData db = new HeaderData();
