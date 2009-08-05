@@ -169,7 +169,14 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @return
 	 */
 	public boolean matches(ContentName name, PublisherPublicKeyDigest resultPublisherKeyID) {
-		return matches(name, false, resultPublisherKeyID);
+		if (null == name() || null == name)
+			return false; // null name() should not happen, null arg can
+		// to get interest that matches everything, should
+		// use / (ROOT)
+		if (isPrefixOf(name)) {
+			return internalMatch(name, false, resultPublisherKeyID);
+		}
+		return false;
 	}
 	
 	/**
@@ -186,18 +193,8 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		// use / (ROOT)
 		boolean digest = co.name().count()+1 == name().count();
 		ContentName name = digest ? co.fullName() : co.name();
-		return matches(name, digest, resultPublisherKeyID);
-	}
-	
-	private boolean matches(ContentName name, boolean digestIncluded, PublisherPublicKeyDigest resultPublisherKeyID) {
-		if (null == name() || null == name)
-			return false;	// null name() should not happen, null arg can
-							// to get interest that matches everything, should
-							// use / (ROOT)
-		// If excluding, back up one on the prefix to catch the exclusions
-		int count = (null != excludeFilter()) ? name().count() - 1 : name().count();
-		if (isPrefixOf(name, count)) {
-			return internalMatch(name, digestIncluded, resultPublisherKeyID);
+		if (isPrefixOf(name)) {
+			return internalMatch(name, digest, resultPublisherKeyID);
 		}
 		return false;
 	}
@@ -232,7 +229,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			}
 		}
 		if (null != excludeFilter()) {
-			if (excludeFilter().exclude(name.component(name().count() - 1))) {
+			if (excludeFilter().exclude(name.component(name().count()))) {
 				Library.logger().finest("Interest match failed. " + name + " has been excluded");
 				return false;
 			}
@@ -267,23 +264,37 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		return nextOrLast(name, ExcludeFilter.factory(omissions), new Integer(ORDER_PREFERENCE_LEFT | ORDER_PREFERENCE_ORDER_NAME), prefixCount);
 	}
 	
+	/**
+	 * Regardless of whether we are looking for the next or the last Content
+	 * we always want to exclude everything before the first component at the 
+	 * prefix level.
+	 * 
+	 * @param name
+	 * @param exclude
+	 * @param order
+	 * @param prefixCount
+	 * @return
+	 */
 	private static Interest nextOrLast(ContentName name, ExcludeFilter exclude, Integer order, Integer prefixCount)  {
+		ContentName newName;
+		int componentIndex = name.count() - 1;
 		if (null != prefixCount && prefixCount < (name.count() - 1)) {
-			// When a prefixCount is requested we still want the next element after
-			// the prefixCount to do the "next" on so that's why we use "prefixCount + 1" below
-			ContentName nextName = name.clone();
-			name = new ContentName(prefixCount + 1, nextName.components());
-		}
+			newName = name.clone();
+			newName = new ContentName(prefixCount, newName.components());
+			componentIndex = prefixCount;
+		} else 
+			newName = name;
+		
 		byte[][] nextExclude = new byte[2][];
 		byte[] zeroByte = new byte[1];
 		zeroByte[0] = 0;
 		nextExclude[0] = zeroByte;
-		nextExclude[1] = name.component(name.count()-1);
+		nextExclude[1] = name.component(componentIndex);
 		if (null != exclude) {
 			exclude.add(nextExclude);
 		} else
 			exclude = ExcludeFilter.factory(nextExclude);
-		return constructInterest(name, exclude, order);
+		return constructInterest(newName, exclude, order);
 	}
 	
 	/**
