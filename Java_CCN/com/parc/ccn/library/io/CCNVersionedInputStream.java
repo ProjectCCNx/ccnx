@@ -91,6 +91,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 		ContentObject result = getFirstBlockOfLatestVersion(_baseName, null, _timeout, this, _library);
 		if (null != result){
 			Library.logger().info("getFirstBlock: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
+			_baseName = result.name().cut(_baseName.count() + 1);
 		} else {
 			Library.logger().info("getFirstBlock: no block available for latest version of " + _baseName);
 		}
