@@ -2,6 +2,7 @@ package com.parc.ccn.data.query;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Random;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -16,6 +17,7 @@ import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
+import com.parc.ccn.library.profiles.CommandMarkers;
 import com.parc.ccn.security.keys.TrustManager;
 
 /**
@@ -83,6 +85,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public static final int ANSWER_STALE = 4;		// Stale answer OK
 	public static final int MARK_STALE = 16;		// Must have Scope 0.  Michael calls this a "hack"
 
+	/**
+	 * For nonce generation
+	 */
+	protected static Random _random = new Random();
+	
 	protected ContentName _name;
 	protected Integer _nameComponentCount;
 	protected Integer _additionalNameComponents;
@@ -653,5 +660,20 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		if (null != _responseFilter)
 			clone.responseFilter(responseFilter());
 		return clone;
+	}
+
+	/**
+	 * Currently used as an interest name component to disambiguate multiple requests for the
+	 * same content.
+	 * 
+	 * @return
+	 */
+	public static byte[] generateNonce() {
+		byte [] nonce = new byte[8];
+		_random.nextBytes(nonce);
+		byte [] wholeNonce = new byte[CommandMarkers.NONCE_MARKER.length + nonce.length];
+		System.arraycopy(CommandMarkers.NONCE_MARKER, 0, wholeNonce, 0, CommandMarkers.NONCE_MARKER.length);
+		System.arraycopy(nonce, 0, wholeNonce, CommandMarkers.NONCE_MARKER.length, nonce.length);	
+		return wholeNonce;
 	}
 }

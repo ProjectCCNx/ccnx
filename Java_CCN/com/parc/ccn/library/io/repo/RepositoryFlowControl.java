@@ -113,7 +113,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		_initialized = true;
 		_header = name;
 		clearUnmatchedInterests();	// Remove possible leftover interests from "getLatestVersion"
-		ContentName repoWriteName = new ContentName(name, CommandMarkers.REPO_START_WRITE, CCNLibrary.generateNonce());
+		ContentName repoWriteName = new ContentName(name, CommandMarkers.REPO_START_WRITE, Interest.generateNonce());
 
 		Interest writeInterest = new Interest(repoWriteName);
 		_library.expressInterest(writeInterest, this);
@@ -188,7 +188,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	@Override
 	public void afterClose() throws IOException {
 		if (_header != null) {
-			ContentName repoWriteName = new ContentName(_header, CommandMarkers.REPO_GET_HEADER, CCNLibrary.generateNonce());
+			ContentName repoWriteName = new ContentName(_header, CommandMarkers.REPO_GET_HEADER, Interest.generateNonce());
 	
 			Interest writeInterest = new Interest(repoWriteName);
 			_library.expressInterest(writeInterest, this);

@@ -33,7 +33,6 @@ import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
-import com.parc.ccn.library.profiles.CommandMarkers;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.network.CCNNetworkManager;
@@ -77,11 +76,6 @@ public class CCNLibrary extends CCNBase {
 	 * Do we want to do this this way, or everything static?
 	 */
 	protected KeyManager _userKeyManager = null;
-	
-	/**
-	 * For nonce generation
-	 */
-	protected static Random _random = new Random();
 	
 	public static CCNLibrary open() throws ConfigurationException, IOException { 
 		synchronized (CCNLibrary.class) {
@@ -815,20 +809,5 @@ public class CCNLibrary extends CCNBase {
 		if (null != _networkManager)
 			_networkManager.shutdown();
 		_networkManager = null;
-	}
-	
-	/**
-	 * Currently used as an interest name component to disambiguate multiple requests for the
-	 * same content.
-	 * 
-	 * @return
-	 */
-	public static byte[] generateNonce() {
-		byte [] nonce = new byte[8];
-		_random.nextBytes(nonce);
-		byte [] wholeNonce = new byte[CommandMarkers.NONCE_MARKER.length + nonce.length];
-		System.arraycopy(CommandMarkers.NONCE_MARKER, 0, wholeNonce, 0, CommandMarkers.NONCE_MARKER.length);
-		System.arraycopy(nonce, 0, wholeNonce, CommandMarkers.NONCE_MARKER.length, nonce.length);	
-		return wholeNonce;
 	}
 }
