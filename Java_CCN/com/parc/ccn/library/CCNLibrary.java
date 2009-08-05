@@ -565,8 +565,8 @@ public class CCNLibrary extends CCNBase {
 	 * also previously stripped any segment marker. So we know we have a name terminated
 	 * by the last version we know about (which could be 0).
 	 */
-	final byte OO = (byte) 0x00;
-	final byte FF = (byte) 0xFF;
+	static final byte OO = (byte) 0x00;
+	static final byte FF = (byte) 0xFF;
 	private ContentObject getVersionInternal(ContentName name, long timeout) throws InvalidParameterException, IOException {
 		
 		byte [] versionComponent = name.lastComponent();
@@ -606,7 +606,7 @@ public class CCNLibrary extends CCNBase {
 	 * @return An exclude filter.
 	 * @throws InvalidParameterException
 	 */
-	protected ExcludeFilter acceptVersions(byte [] start) {
+	protected static ExcludeFilter acceptVersions(byte [] start) {
 		ArrayList<ExcludeElement> ees;
 		ees = new ArrayList<ExcludeElement>();
 		ees.add(BloomFilter.matchEverything());
