@@ -709,8 +709,10 @@ public class CCNLibrary extends CCNBase {
 	 * DKS: TODO -- state-based put() analogous to write()s in
 	 * blocks; also state-based read() that verifies. Start
 	 * with state-based read.
+	 * 
+	 * Nothing uses this method for anything that couldn't easily be replaced.
 	 */
-	
+	@Deprecated
 	public RepositoryOutputStream repoOpen(ContentName name, 
 			KeyLocator locator, PublisherPublicKeyDigest publisher) 
 				throws IOException, XMLStreamException {
