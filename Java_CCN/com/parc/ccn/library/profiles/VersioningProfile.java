@@ -339,13 +339,25 @@ public class VersioningProfile implements CCNProfile {
 	/**
 	 * Builds an Exclude filter that excludes components before or @ start, and components after
 	 * the last valid version.
-	 * @param start
+	 * @param startingVersionComponent The latest version component we know about. Can be null or
+	 * 			VersioningProfile.isBaseVersionComponent() == true to indicate that we want to start
+	 * 			from 0 (we don't have a known version we're trying to update). This exclude filter will
+	 * 			find versions *after* the version represented in startingVersionComponent.
 	 * @return An exclude filter.
 	 * @throws InvalidParameterException
 	 */
-	public static ExcludeFilter acceptVersions(byte [] start) {
-		ArrayList<ExcludeElement> ees;
-		ees = new ArrayList<ExcludeElement>();
+	public static ExcludeFilter acceptVersions(byte [] startingVersionComponent) {
+		byte [] start = null;
+		// initially exclude name components just before the first version, whether that is the
+		// 0th version or the version passed in
+		if ((null == startingVersionComponent) || VersioningProfile.isBaseVersionComponent(startingVersionComponent)) {
+			start = new byte [] { VersioningProfile.VERSION_MARKER, VersioningProfile.OO, VersioningProfile.FF, VersioningProfile.FF, VersioningProfile.FF, VersioningProfile.FF, VersioningProfile.FF };
+		} else {
+			start = startingVersionComponent;
+		}
+		
+		ArrayList<ExcludeElement> ees = new ArrayList<ExcludeElement>();
+		
 		ees.add(BloomFilter.matchEverything());
 		ees.add(new ExcludeComponent(start));
 		ees.add(new ExcludeComponent(new byte [] {

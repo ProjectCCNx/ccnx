@@ -9,7 +9,6 @@ import java.security.Security;
 import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.LinkedList;
-import java.util.Random;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -567,14 +566,8 @@ public class CCNLibrary extends CCNBase {
 		byte [] versionComponent = name.lastComponent();
 		// initially exclude name components just before the first version, whether that is the
 		// 0th version or the version passed in
-		byte [] start = null;
-		if (VersioningProfile.isBaseVersionComponent(versionComponent)) {
-			start = new byte [] { VersioningProfile.VERSION_MARKER, VersioningProfile.OO, VersioningProfile.FF, VersioningProfile.FF, VersioningProfile.FF, VersioningProfile.FF, VersioningProfile.FF };
-		} else {
-			start = versionComponent;
-		}
 		while (true) {
-			ContentObject co = getLatest(name, VersioningProfile.acceptVersions(start), timeout);
+			ContentObject co = getLatest(name, VersioningProfile.acceptVersions(versionComponent), timeout);
 			if (co == null) {
 				Library.logger().info("Null returned from getLatest for name: " + name);
 				return null;
@@ -590,7 +583,7 @@ public class CCNLibrary extends CCNBase {
 			} else {
 				Library.logger().info("Rejected potential candidate version: " + co.name() + " not a later version of " + name);
 			}
-			start = co.name().component(name.count()-1);
+			versionComponent = co.name().component(name.count()-1);
 		}
 	}
 
