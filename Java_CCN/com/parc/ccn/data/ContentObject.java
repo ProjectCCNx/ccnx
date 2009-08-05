@@ -215,31 +215,6 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		return null;
 	}
 	
-	public static ContentObject buildContentObject(ContentName name, ContentType type, byte[] contents, 
-			PublisherPublicKeyDigest publisher,
-			KeyLocator keyLocator,
-			KeyManager keyManager, byte[] finalBlockID) {
-		try {
-			if (null == keyManager) {
-				keyManager = KeyManager.getDefaultKeyManager();
-			}
-			PrivateKey signingKey = keyManager.getSigningKey(publisher);
-			if ((null == publisher) || (null == signingKey)) {
-				signingKey = keyManager.getDefaultSigningKey();
-				publisher = keyManager.getPublisherKeyID(signingKey);
-			}
-			if (null == keyLocator)
-				keyLocator = keyManager.getKeyLocator(signingKey);
-			return new ContentObject(name, 
-							         new SignedInfo(publisher, null, type, keyLocator, null, finalBlockID), 
-							         contents, signingKey);
-		} catch (Exception e) {
-			Library.logger().warning("Cannot build content object for publisher: " + publisher);
-			Library.infoStackTrace(e);
-		}
-		return null;
-	}
-	
 	public static ContentObject buildContentObject(ContentName name, byte[] contents, 
 			PublisherPublicKeyDigest publisher,
 			KeyManager keyManager, byte[] finalBlockID) {

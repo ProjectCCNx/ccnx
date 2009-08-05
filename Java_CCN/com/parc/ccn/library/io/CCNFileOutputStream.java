@@ -3,6 +3,7 @@ package com.parc.ccn.library.io;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
 import java.security.SignatureException;
 import java.sql.Timestamp;
 
@@ -10,8 +11,8 @@ import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.content.HeaderData;
-import com.parc.ccn.data.content.HeaderData.HeaderObject;
+import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
@@ -74,7 +75,7 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 		writeHeader();
 	}
 	
-	protected void putHeader(
+	protected ContentObject putHeader(
 			ContentName name, long contentLength, int blockSize, byte [] contentDigest, 
 			byte [] contentTreeAuthenticator,
 			Timestamp timestamp, 
@@ -84,18 +85,31 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 		if (null == publisher) {
 			publisher = _library.keyManager().getDefaultKeyID();
 		}
+		PrivateKey signingKey = _library.keyManager().getSigningKey(publisher);
+
+		if (null == locator)
+			locator = _library.keyManager().getKeyLocator(signingKey);
 
 		// Add another differentiator to avoid making header
 		// name prefix of other valid names?
+		ContentName headerName = SegmentationProfile.headerName(name);
+		Header header;
 		try {
-			ContentName headerName = SegmentationProfile.headerName(name);
-			HeaderData headerData = new HeaderData(contentLength, contentDigest, contentTreeAuthenticator, blockSize);
-			HeaderObject header = new HeaderObject(headerName, headerData, publisher, locator, _library);
-			header.save();
+			header = new Header(headerName, contentLength, contentDigest, contentTreeAuthenticator, blockSize,
+								publisher, locator, signingKey);
 		} catch (XMLStreamException e) {
 			Library.logger().warning("This should not happen: we cannot encode our own header!");
 			Library.warningStackTrace(e);
 			throw new IOException("This should not happen: we cannot encode our own header!" + e.getMessage());
 		}
+		ContentObject headerResult = null;
+		try {
+			headerResult = getSegmenter().getFlowControl().put(header);
+		} catch (IOException e) {
+			Library.logger().warning("This should not happen: we cannot put our own header!");
+			Library.warningStackTrace(e);
+			throw e;
+		}
+		return headerResult;		
 	}
 }
