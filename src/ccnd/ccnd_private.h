@@ -256,13 +256,21 @@ int ccnd_init_internal_keystore(struct ccnd *);
 int ccnd_internal_client_start(struct ccnd *);
 void ccnd_internal_client_stop(struct ccnd *);
 
-/*
+/**
  * The internal client calls this with the argument portion ARG of
- * a self-registration request (/ccn/self/reg/ARG)
+ * a self-registration request (/ccn/reg/self/ARG)
  * The result, if not NULL, will be used as the Content of the reply.
  */
 struct ccn_charbuf *ccnd_reg_self(struct ccnd *h,
                                   const unsigned char *msg, size_t size);
+
+/**
+ * The internal client calls this with the argument portion ARG of
+ * a face-creation request (/ccn/newfaace/ARG)
+ * The result, if not NULL, will be used as the Content of the reply.
+ */
+struct ccn_charbuf *ccnd_req_newface(struct ccnd *h,
+                                     const unsigned char *msg, size_t size);
 
 int ccnd_reg_prefix(struct ccnd *h,
                     const unsigned char *msg,

@@ -1542,6 +1542,93 @@ ccnd_reg_self(struct ccnd *h, const unsigned char *msg, size_t size)
     return(result);
 }
 
+struct ccn_charbuf *
+ccnd_req_newface(struct ccnd *h, const unsigned char *msg, size_t size)
+{
+    struct ccn_parsed_ContentObject pco = {0};
+    int res;
+    const unsigned char *req;
+    size_t req_size;
+    struct ccn_charbuf *result = NULL;
+    struct ccn_face_instance *face_instance = NULL;
+    struct addrinfo hints = {0};
+    struct addrinfo *addrinfo = NULL;
+    int fd = -1;
+    struct face *face = NULL;
+    struct face *newface = NULL;
+    
+    res = ccn_parse_ContentObject(msg, size, &pco, NULL);
+    if (res < 0)
+        goto Finish;        
+    res = ccn_content_get_value(msg, size, &pco, &req, &req_size);
+    if (res < 0)
+        goto Finish;
+    face_instance = ccn_face_instance_parse(req, req_size);
+    if (face_instance == NULL || face_instance->action == NULL)
+        goto Finish;
+    if (strcmp(face_instance->action, "newface") != 0)
+        goto Finish;
+    if (face_instance->ccnd_id_size == sizeof(h->ccnd_id)) {
+        if (memcmp(face_instance->ccnd_id, h->ccnd_id, sizeof(h->ccnd_id)) != 0)
+            goto Finish;
+    }
+    else if (face_instance->ccnd_id_size |= 0)
+        goto Finish;
+    if (face_instance->descr.ipproto != IPPROTO_UDP &&
+        face_instance->descr.ipproto != IPPROTO_TCP)
+        goto Finish;
+    if (face_instance->descr.address == NULL)
+        goto Finish;
+    if (face_instance->descr.port == NULL)
+        goto Finish;
+    if (face_instance->descr.ipproto == IPPROTO_UDP &&
+        face_instance->descr.source_address == NULL &&
+        face_instance->descr.mcast_ttl == -1) {
+        hints.ai_flags |= AI_NUMERICHOST;
+        hints.ai_socktype = SOCK_DGRAM;
+        res = getaddrinfo(face_instance->descr.source_address,
+                          face_instance->descr.port,
+                          &hints,
+                          &addrinfo);
+        if (res != 0 || (h->debug & 128) != 0)
+            ccnd_msg(h, "ccnd_req_newface from %u: getaddrinfo(%s, %s, ...) returned %d",
+                        h->interest_faceid,
+                        face_instance->descr.source_address,
+                        face_instance->descr.port,
+                        res);
+        if (res != 0 || addrinfo == NULL)
+            goto Finish;
+        if (addrinfo->ai_next != NULL)
+            ccnd_msg(h, "ccnd_req_newface: (addrinfo->ai_next != NULL) ? ?");
+        fd = (addrinfo->ai_family == AF_INET)  ? h->udp4_fd :
+             (addrinfo->ai_family == AF_INET6) ? h->udp6_fd : -1;
+        if (fd == -1)
+            goto Finish;
+        face = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
+        if (face == NULL)
+            goto Finish;
+        newface = get_dgram_source(h, face,
+                                   addrinfo->ai_addr,
+                                   addrinfo->ai_addrlen);
+        if (newface != NULL) {
+            result = ccn_charbuf_create();
+            face_instance->action = NULL;
+            face_instance->ccnd_id = h->ccnd_id;
+            face_instance->ccnd_id_size = sizeof(h->ccnd_id);
+            face_instance->faceid = newface->faceid;
+            face_instance->lifetime = 42;
+            res = ccnb_append_face_instance(result, face_instance);
+            if (res < 0)
+                ccn_charbuf_destroy(&result);
+        }
+    }
+Finish:
+    ccn_face_instance_destroy(&face_instance);
+    if (addrinfo != NULL)
+        freeaddrinfo(addrinfo);
+    return(result);
+}
+
 /**
  * Add all the active, inheritable faceids of npe and its ancestors to x
  */

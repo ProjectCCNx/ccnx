@@ -22,11 +22,18 @@
 #include <ccn/uri.h>
 #include "ccnd_private.h"
 
+/**
+ * Local interpretation of selfp->intdata
+ */
 #define MORECOMPS_MASK 0x00FF
 #define OPER_MASK      0xFF00
 #define OP_PING        0x0000
 #define OP_REG_SELF    0x0100
+#define OP_NEWFACE     0x0200
 
+/**
+ * Common interest handler for ccnd_internal_client
+ */
 static enum ccn_upcall_res
 ccnd_answer_req(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,
@@ -66,6 +73,13 @@ ccnd_answer_req(struct ccn_closure *selfp,
         goto Bail;
     if (info->pi->prefix_comps != info->matched_comps + morecomps)
         goto Bail;
+    if (morecomps == 1) {
+        res = ccn_name_comp_get(info->interest_ccnb, info->interest_comps,
+                                    info->matched_comps,
+                                    &final_comp, &final_size);
+        if (res < 0)
+            goto Bail;
+    }
     
     switch (selfp->intdata & OPER_MASK) {
         case OP_PING:
@@ -73,14 +87,12 @@ ccnd_answer_req(struct ccn_closure *selfp,
             freshness = (morecomps == 0) ? 60 : 5;
             break;
         case OP_REG_SELF: 
-            res = ccn_name_comp_get(info->interest_ccnb, info->interest_comps,
-                                    info->matched_comps,
-                                    &final_comp, &final_size);
-            if (res >= 0)
-                reply_body = ccnd_reg_self(ccnd, final_comp, final_size);
+            reply_body = ccnd_reg_self(ccnd, final_comp, final_size);
             if (reply_body == NULL)
                 goto Bail;
             break;
+        case OP_NEWFACE:
+            reply_body = ccnd_req_newface(ccnd, final_comp, final_size);
         default:
             goto Bail;
     }
@@ -161,7 +173,7 @@ static void
 ccnd_uri_listen(struct ccnd *ccnd, const char *uri, ccn_handler p, intptr_t intdata)
 {
     struct ccn_charbuf *name;
-    struct ccn_charbuf *uri_modified;
+    struct ccn_charbuf *uri_modified = NULL;
     struct ccn_closure *closure;
     struct ccn_keystore *keystore;
     struct ccn_indexbuf *comps;
@@ -301,6 +313,7 @@ ccnd_internal_client_start(struct ccnd *ccnd)
     ccnd_uri_listen(ccnd, "ccn:/ccn/" CCND_ID_TEMPL "/ping", &ccnd_answer_req, OP_PING);
     ccnd_uri_listen(ccnd, "ccn:/ccn/" CCND_ID_TEMPL "/ping", &ccnd_answer_req, OP_PING + 1);
     ccnd_uri_listen(ccnd, "ccn:/ccn/reg/self", &ccnd_answer_req, OP_REG_SELF + 1);
+    ccnd_uri_listen(ccnd, "ccn:/ccn/" CCND_ID_TEMPL "/newface", &ccnd_answer_req, OP_NEWFACE + 1);
     ccnd->internal_client_refresh =
      ccn_schedule_event(ccnd->sched, 1000000,
                         ccnd_internal_client_refresh,
