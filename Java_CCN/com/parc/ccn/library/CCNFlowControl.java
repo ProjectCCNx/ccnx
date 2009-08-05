@@ -272,7 +272,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	public int handleInterests(ArrayList<Interest> interests) {
 		synchronized (_holdingArea) {
 			for (Interest interest : interests) {
-				Library.logger().info("Flow controller: got interest: " + interest);
+				Library.logger().fine("Flow controller: got interest: " + interest);
 				ContentObject co = getBestMatch(interest);
 				if (co != null) {
 					Library.logger().finest("Found content " + co.name() + " matching interest: " + interest);
