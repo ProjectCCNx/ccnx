@@ -24,9 +24,6 @@ import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.content.LinkReference;
-import com.parc.ccn.data.query.BloomFilter;
-import com.parc.ccn.data.query.ExcludeComponent;
-import com.parc.ccn.data.query.ExcludeElement;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.KeyLocator;
@@ -565,8 +562,6 @@ public class CCNLibrary extends CCNBase {
 	 * also previously stripped any segment marker. So we know we have a name terminated
 	 * by the last version we know about (which could be 0).
 	 */
-	static final byte OO = (byte) 0x00;
-	static final byte FF = (byte) 0xFF;
 	private ContentObject getVersionInternal(ContentName name, long timeout) throws InvalidParameterException, IOException {
 		
 		byte [] versionComponent = name.lastComponent();
@@ -574,12 +569,12 @@ public class CCNLibrary extends CCNBase {
 		// 0th version or the version passed in
 		byte [] start = null;
 		if (VersioningProfile.isBaseVersionComponent(versionComponent)) {
-			start = new byte [] { VersioningProfile.VERSION_MARKER, OO, FF, FF, FF, FF, FF };
+			start = new byte [] { VersioningProfile.VERSION_MARKER, VersioningProfile.OO, VersioningProfile.FF, VersioningProfile.FF, VersioningProfile.FF, VersioningProfile.FF, VersioningProfile.FF };
 		} else {
 			start = versionComponent;
 		}
 		while (true) {
-			ContentObject co = getLatest(name, acceptVersions(start), timeout);
+			ContentObject co = getLatest(name, VersioningProfile.acceptVersions(start), timeout);
 			if (co == null) {
 				Library.logger().info("Null returned from getLatest for name: " + name);
 				return null;
@@ -597,25 +592,6 @@ public class CCNLibrary extends CCNBase {
 			}
 			start = co.name().component(name.count()-1);
 		}
-	}
-
-	/**
-	 * Builds an Exclude filter that excludes components before or @ start, and components after
-	 * the last valid version.
-	 * @param start
-	 * @return An exclude filter.
-	 * @throws InvalidParameterException
-	 */
-	protected static ExcludeFilter acceptVersions(byte [] start) {
-		ArrayList<ExcludeElement> ees;
-		ees = new ArrayList<ExcludeElement>();
-		ees.add(BloomFilter.matchEverything());
-		ees.add(new ExcludeComponent(start));
-		ees.add(new ExcludeComponent(new byte [] {
-				VersioningProfile.VERSION_MARKER+1, OO, OO, OO, OO, OO, OO } ));
-		ees.add(BloomFilter.matchEverything());
-		ExcludeFilter ef = new ExcludeFilter(ees);
-		return ef;
 	}
 
 	public ContentObject get(ContentName name, long timeout) throws IOException {

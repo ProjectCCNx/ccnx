@@ -1,10 +1,16 @@
 package com.parc.ccn.library.profiles;
 
 import java.math.BigInteger;
+import java.security.InvalidParameterException;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.query.BloomFilter;
+import com.parc.ccn.data.query.ExcludeComponent;
+import com.parc.ccn.data.query.ExcludeElement;
+import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.data.util.DataUtils.Tuple;
@@ -26,6 +32,8 @@ public class VersioningProfile implements CCNProfile {
 
 	public static final byte VERSION_MARKER = (byte)0xFD;
 	public static final byte [] FIRST_VERSION_MARKER = new byte []{VERSION_MARKER};
+	public static final byte FF = (byte) 0xFF;
+	public static final byte OO = (byte) 0x00;
 
 	/**
 	 * Add a version field to a ContentName.
@@ -327,4 +335,23 @@ public class VersioningProfile implements CCNProfile {
 		}
 		return (compareVersionComponents(laterVersionParts.second(), earlierVersionParts.second()));
     }
+
+	/**
+	 * Builds an Exclude filter that excludes components before or @ start, and components after
+	 * the last valid version.
+	 * @param start
+	 * @return An exclude filter.
+	 * @throws InvalidParameterException
+	 */
+	public static ExcludeFilter acceptVersions(byte [] start) {
+		ArrayList<ExcludeElement> ees;
+		ees = new ArrayList<ExcludeElement>();
+		ees.add(BloomFilter.matchEverything());
+		ees.add(new ExcludeComponent(start));
+		ees.add(new ExcludeComponent(new byte [] {
+				VERSION_MARKER+1, OO, OO, OO, OO, OO, OO } ));
+		ees.add(BloomFilter.matchEverything());
+		ExcludeFilter ef = new ExcludeFilter(ees);
+		return ef;
+	}
 }
