@@ -8,6 +8,7 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.security.ContentVerifier;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
@@ -83,20 +84,46 @@ public class CCNVersionedInputStream extends CCNInputStream {
 	@Override
 	protected ContentObject getFirstBlock() throws IOException {
 		if (VersioningProfile.hasTerminalVersion(_baseName)) {
+			// Get exactly this version
 			return super.getFirstBlock();
 		}
 		Library.logger().info("getFirstBlock: getting latest version of " + _baseName);
-		ContentObject result =  _library.getLatestVersion(_baseName, null, _timeout);
+		ContentObject result = getFirstBlockOfLatestVersion(_baseName, null, _timeout, this, _library);
 		if (null != result){
 			Library.logger().info("getFirstBlock: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
+		} else {
+			Library.logger().info("getFirstBlock: no block available for latest version of " + _baseName);
+		}
+		return result;
+	}
+	
+	/**
+	 * This method returns 
+	 * @param desiredName The name of the object we are looking for the first segment of.
+	 * 					  If (VersioningProfile.hasTerminalVersion(desiredName) == false), will get latest version it can
+	 * 							find of desiredName.
+	 * 					  If desiredName has a terminal version, will try to find the first block of content whose
+	 * 						    version is *after* desiredName (i.e. getLatestVersion starting from desiredName).
+	 * @param startingBlockIndex The desired block number, or SegmentationProfile.baseSegment if null.
+	 * @param timeout
+	 * @param verifier Cannot be null.
+	 * @return 			  The first block of a stream with a version later than desiredName, or null if timeout is reached.
+	 * @throws IOException
+	 */
+	public static ContentObject getFirstBlockOfLatestVersion(ContentName startingVersion, Long startingBlockIndex, long timeout, ContentVerifier verifier, CCNLibrary library) throws IOException {
+		
+		Library.logger().info("getFirstBlockOfLatestVersion: getting version later than " + startingVersion);
+		ContentObject result =  library.getLatestVersion(startingVersion, null, timeout);
+		if (null != result){
+			Library.logger().info("getFirstBlockOfLatestVersion: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
 			// Now need to verify the block we got
-			if (!verifyBlock(result)) {
+			if (!verifier.verifyBlock(result)) {
 				return null;
 			}
+			
 			// Now we know the version. Did we luck out and get first block?
-			if (isFirstBlock(_baseName, result)) {
-				Library.logger().info("getFirstBlock: got first block on first try: " + result.name());
-				_baseName = SegmentationProfile.segmentRoot(result.name());
+			if (isFirstBlock(startingVersion, result, startingBlockIndex)) {
+				Library.logger().info("getFirstBlockOfLatestVersion: got first block on first try: " + result.name());
 				return result;
 			}
 			// This isn't the first block. Might be simply a later (cached) segment, or might be something
@@ -106,15 +133,15 @@ public class CCNVersionedInputStream extends CCNInputStream {
 			// which works fine only if we have the wrong segment rather than some other beast entirely (like metadata).
 			// So chop off the new name just after the (first) version, and use that. If getLatestVersion is working
 			// right, that should be the right thing.
-			_baseName = result.name().cut(_baseName.count() + 1);
-			Library.logger().info("getFirstBlock: Have version information, now querying first segment.");
-			return super.getFirstBlock(); // now that we have the latest version, go back for the first block.
+			startingVersion = result.name().cut(startingVersion.count() + 1);
+			Library.logger().info("getFirstBlockOfLatestVersion: Have version information, now querying first segment.");
+			return CCNAbstractInputStream.getBlock(startingVersion, startingBlockIndex, timeout, verifier, library); // now that we have the latest version, go back for the first block.
 		} else {
-			Library.logger().info("getFirstBlock: no block available for latest version of " + _baseName);
+			Library.logger().info("getFirstBlockOfLatestVersion: no block available for later version of " + startingVersion);
 		}
 		return result;
 	}
-	
+
 	/**
 	 * Version of isFirstBlock that expects names to be versioned, and allows that desiredName
 	 * won't know what version it wants but will want some version.
