@@ -118,7 +118,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 	 * Version of isFirstBlock that expects names to be versioned, and allows that desiredName
 	 * won't know what version it wants but will want some version.
 	 */
-	protected boolean isFirstBlock(ContentName desiredName, ContentObject block) {
+	public static boolean isFirstBlock(ContentName desiredName, ContentObject block, Long startingBlockIndex) {
 		if ((null != block) && (SegmentationProfile.isSegment(block.name()))) {
 			Library.logger().info("is " + block.name() + " a first block of " + desiredName);
 			// In theory, the block should be at most a versioning component different from desiredName.
@@ -140,13 +140,17 @@ public class CCNVersionedInputStream extends CCNInputStream {
 				Library.logger().info("The " + difflen + " extra component between " + block.name() + " and desired " + desiredName + " is not a version.");
 				
 			}
-			if (null != _startingBlockIndex) {
-				return (_startingBlockIndex.equals(SegmentationProfile.getSegmentNumber(block.name())));
+			if (null != startingBlockIndex) {
+				return (startingBlockIndex.equals(SegmentationProfile.getSegmentNumber(block.name())));
 			} else {
 				return SegmentationProfile.isFirstSegment(block.name());
 			}
 		}
 		return false;
+	}
+	
+	protected boolean isFirstBlock(ContentName desiredName, ContentObject block) {
+		return isFirstBlock(desiredName, block, _startingBlockIndex);
 	}
 	
 	public Timestamp getVersionAsTimestamp() throws VersionMissingException {
