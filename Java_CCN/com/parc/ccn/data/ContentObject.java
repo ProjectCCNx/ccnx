@@ -216,8 +216,9 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		}
 		return null;
 	}
-		
+
 	public static ContentObject buildContentObject(ContentName name, ContentType type, byte[] contents, 
+
 			PublisherPublicKeyDigest publisher,
 			KeyManager keyManager, byte[] finalBlockID) {
 		return buildContentObject(name, type, contents, publisher, null, keyManager, finalBlockID);
