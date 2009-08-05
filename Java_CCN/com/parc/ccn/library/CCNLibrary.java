@@ -573,7 +573,7 @@ public class CCNLibrary extends CCNBase {
 		// initially exclude name components just before the first version, whether that is the
 		// 0th version or the version passed in
 		byte [] start = null;
-		if (VersioningProfile.isBaseVersionCompoent(versionComponent)) {
+		if (VersioningProfile.isBaseVersionComponent(versionComponent)) {
 			start = new byte [] { VersioningProfile.VERSION_MARKER, OO, FF, FF, FF, FF, FF };
 		} else {
 			start = versionComponent;

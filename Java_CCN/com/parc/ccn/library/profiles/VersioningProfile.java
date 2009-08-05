@@ -134,7 +134,7 @@ public class VersioningProfile implements CCNProfile {
 			   ((nameComponent.length == 1) || (nameComponent[1] != 0));
 	}
 	
-	public static boolean isBaseVersionCompoent(byte [] nameComponent) {
+	public static boolean isBaseVersionComponent(byte [] nameComponent) {
 		return (isVersionComponent(nameComponent) && (1 == nameComponent.length));
 	}
 	
