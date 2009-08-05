@@ -102,15 +102,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	protected Integer _count;
 	protected byte [] _nonce;
 	protected byte [] _responseFilter;
-	
-	
-	/**
-	 * TODO: DKS figure out how to handle encoding faster,
-	 * and how to handle shorter version of names without
-	 * copying, particularly without 1.6 array ops.
-	 * @param name
-	 * @param publisher
-	 */
+
 	public Interest(ContentName name, 
 			   PublisherID publisher) {
 		_name = name;
@@ -361,6 +353,21 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		return interest;
 	}
 	
+	/**
+	 * Currently used as an interest name component to disambiguate multiple requests for the
+	 * same content.
+	 * 
+	 * @return
+	 */
+	public static byte[] generateNonce() {
+		byte [] nonce = new byte[8];
+		_random.nextBytes(nonce);
+		byte [] wholeNonce = new byte[CommandMarkers.NONCE_MARKER.length + nonce.length];
+		System.arraycopy(CommandMarkers.NONCE_MARKER, 0, wholeNonce, 0, CommandMarkers.NONCE_MARKER.length);
+		System.arraycopy(nonce, 0, wholeNonce, CommandMarkers.NONCE_MARKER.length, nonce.length);	
+		return wholeNonce;
+	}
+
 	public boolean isPrefixOf(ContentName name) {
 		int count = nameComponentCount() == null ? name().count() : nameComponentCount();
 		if (null != additionalNameComponents() && 0 == additionalNameComponents() 
@@ -662,18 +669,4 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		return clone;
 	}
 
-	/**
-	 * Currently used as an interest name component to disambiguate multiple requests for the
-	 * same content.
-	 * 
-	 * @return
-	 */
-	public static byte[] generateNonce() {
-		byte [] nonce = new byte[8];
-		_random.nextBytes(nonce);
-		byte [] wholeNonce = new byte[CommandMarkers.NONCE_MARKER.length + nonce.length];
-		System.arraycopy(CommandMarkers.NONCE_MARKER, 0, wholeNonce, 0, CommandMarkers.NONCE_MARKER.length);
-		System.arraycopy(nonce, 0, wholeNonce, CommandMarkers.NONCE_MARKER.length, nonce.length);	
-		return wholeNonce;
-	}
 }
