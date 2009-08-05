@@ -107,7 +107,7 @@ public class RepoIOTest extends RepoTestBase {
 		fis.close();
 		ContentName basePolicy = ContentName.fromNative(_globalPrefix + '/' + 
 				_repoName + '/' + Repository.REPO_DATA + '/' + Repository.REPO_POLICY);
-		ContentName policyName = new ContentName(basePolicy, CCNLibrary.nonce());
+		ContentName policyName = new ContentName(basePolicy, CCNLibrary.generateNonce());
 		RepositoryFileOutputStream rfos = new RepositoryFileOutputStream(policyName,
 				putLibrary.getDefaultPublisher(), putLibrary);
 		rfos.write(content, 0, content.length);

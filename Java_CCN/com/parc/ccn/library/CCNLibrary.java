@@ -823,7 +823,7 @@ public class CCNLibrary extends CCNBase {
 	 * 
 	 * @return
 	 */
-	public static byte[] nonce() {
+	public static byte[] generateNonce() {
 		byte [] nonce = new byte[8];
 		_random.nextBytes(nonce);
 		byte [] wholeNonce = new byte[CommandMarkers.NONCE_MARKER.length + nonce.length];
