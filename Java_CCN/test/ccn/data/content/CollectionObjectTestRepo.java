@@ -257,5 +257,6 @@ public class CollectionObjectTestRepo {
 			Library.logger().info("Retrieved " + name + ", name: " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone());
 		else 
 			Library.logger().info("No update found for " + name + ", still: " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone());
+
 	}
 }
