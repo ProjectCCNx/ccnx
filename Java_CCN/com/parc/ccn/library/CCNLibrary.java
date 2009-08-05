@@ -25,6 +25,7 @@ import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
+import com.parc.ccn.data.security.ContentVerifier;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
@@ -60,7 +61,7 @@ import com.parc.ccn.security.keys.KeyManager;
  * can getLink to get link info
  *
  */
-public class CCNLibrary extends CCNBase {
+public class CCNLibrary extends CCNBase implements ContentVerifier {
 	
 	static {
 		Security.addProvider(new BouncyCastleProvider());
@@ -778,5 +779,30 @@ public class CCNLibrary extends CCNBase {
 		if (null != _networkManager)
 			_networkManager.shutdown();
 		_networkManager = null;
+	}
+
+	/* (non-Javadoc)
+	 * @see com.parc.ccn.data.security.ContentVerifier#verifyBlock(com.parc.ccn.data.ContentObject)
+	 */
+	public boolean verifyBlock(ContentObject block) {
+		boolean result = false;
+		try {
+			if (null == block)
+				return false;
+			result = block.verify(null);
+		} catch (Exception ex) {
+			// DKS TODO -- maybe do something more significant, but will minimize use of the default verifier.
+			Library.logger().warning("Caught exception of type: " + ex.getClass().getName() + " in verify: " + ex.getMessage());
+			result = false;
+		}
+		return result;
+	}
+	
+	/**
+	 * Allow default verification behavior to be replaced.
+	 * @return
+	 */
+	public ContentVerifier defaultVerifier() {
+		return this;
 	}
 }
