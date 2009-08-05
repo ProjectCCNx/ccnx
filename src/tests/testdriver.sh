@@ -1,3 +1,4 @@
+#! /bin/sh
 #
 # This orchestrates the execution of various test scripts
 #
@@ -47,7 +48,7 @@ ExtractDeps () {
   done
 }
 
-RunTest () {
+RunATest () {
   export TESTNAME=$1
   ( . settings; . functions; . preamble; echo === $1 >&2; . $1 )
   STATUS=$?
@@ -68,7 +69,7 @@ SetExitCode () {
 ExtractDeps $(GetTestNames "$@") > deps.out
 tsort deps.out > sorted-deps.out
 
-ExtractDeps $(GetTestNames "$@") | tsort | while read TEST; do RunTest $TEST; done
+ExtractDeps $(GetTestNames "$@") | tsort | while read TEST; do RunATest $TEST; done
 
 grep test_ SKIPPED FAILING
 SetExitCode
