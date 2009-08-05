@@ -61,9 +61,11 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 				((null != buf) ? buf.length : "null") + " at offset " + offset);
 		// is this the first block?
 		if (null == _currentBlock) {
-			setCurrentBlock(getFirstBlock());
-			if (null == _currentBlock)
-				return 0; // nothing to read
+			ContentObject firstBlock = getFirstBlock();
+			if (null == firstBlock) {
+				return -1; // nothing to read
+			}
+			setCurrentBlock(firstBlock);
 		} 
 		
 		// Now we have a block in place. Read from it. If we run out of block before
