@@ -55,6 +55,7 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 		super(starterBlock, null, library);
 	}
 
+	@Override
 	protected int readInternal(byte [] buf, int offset, int len) throws IOException {
 		
 		Library.logger().info("CCNBlockInputStream: reading " + len + " bytes into buffer of length " + 
@@ -63,7 +64,7 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 		if (null == _currentBlock) {
 			ContentObject firstBlock = getFirstBlock();
 			if (null == firstBlock) {
-				return -1; // nothing to read
+				return 0; // nothing to read
 			}
 			setCurrentBlock(firstBlock);
 		} 
