@@ -161,7 +161,7 @@ static void
 ccnd_uri_listen(struct ccnd *ccnd, const char *uri, ccn_handler p, intptr_t intdata)
 {
     struct ccn_charbuf *name;
-    struct ccn_charbuf *uri_modified;
+    struct ccn_charbuf *uri_modified = NULL;
     struct ccn_closure *closure;
     struct ccn_keystore *keystore;
     struct ccn_indexbuf *comps;
