@@ -95,6 +95,13 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 		ContentName headerName = SegmentationProfile.headerName(name);
 		Header header;
 		try {
+			// TODO -- move to HeaderObject, and preferably to new name for header; requires
+			// corresponding change to reading code in repository and CCNFileInputStream
+			//ContentName headerName = SegmentationProfile.headerName(name);
+			//HeaderData headerData = new HeaderData(contentLength, contentDigest, contentTreeAuthenticator, blockSize);
+			//HeaderObject header = new HeaderObject(headerName, headerData, publisher, locator, _library);
+			//header.save();
+
 			header = new Header(headerName, contentLength, contentDigest, contentTreeAuthenticator, blockSize,
 								publisher, locator, signingKey);
 		} catch (XMLStreamException e) {

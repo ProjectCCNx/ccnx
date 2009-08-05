@@ -111,6 +111,9 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		for (RepositoryDataListener listener : _daemon.getDataListeners()) {
 			if (listener.getOrigInterest().name().equals(listeningName)) {		
 				try {
+					// DKS -- this should use SegmentationProfile.headerName to figure out the header name,
+					// not hardcode its structure here.
+					// Needs to match move to HeaderObject (versioned) writes in output streams.
 					listener._headerInterest = Interest.constructInterest(listener.getVersionedName(), _daemon.getExcludes(), null, 
 							listener.getVersionedName().count());
 					listener._headerInterest.additionalNameComponents(1);

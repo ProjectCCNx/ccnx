@@ -95,6 +95,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 
 	
 	protected void retrieveHeader(ContentName baseName, PublisherID publisher) throws IOException {
+		// DKS TODO match header interest to new header name
 		Interest headerInterest = new Interest(SegmentationProfile.headerName(baseName), publisher);
 		headerInterest.additionalNameComponents(1);
 		Library.logger().info("retrieveHeader: base name " + baseName);
@@ -146,6 +147,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 				Library.logger().warning("Found header: " + headerObject.name().toString() + " that fails to verify.");
 				return false;
 			} else {
+				// DKS TODO -- use HeaderObject to read
 				_headerName = headerObject.name();
 				_headerSignedInfo = headerObject.signedInfo();
 				_header = Header.contentToHeader(headerObject);

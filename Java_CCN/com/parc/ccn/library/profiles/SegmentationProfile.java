@@ -184,6 +184,13 @@ public class SegmentationProfile implements CCNProfile {
 	 * fragmented content (and we don't want to turn the former
 	 * into always two-block content).
 	 * So having tried the second route, we're moving back to the former.
+	 * 
+	 * DKS TODO move header from <content>/<version> as its name to
+	 * <content>/<version>/_metadata_marker_/HEADER/<version>
+	 * where the second version is imposed by the use of versioning
+	 * network objects (i.e. this function should return up through HEADER above)
+	 * Header name generation may want to move to a MetadataProfile.
+	 * 
 	 * @param name
 	 * @return
 	 */
