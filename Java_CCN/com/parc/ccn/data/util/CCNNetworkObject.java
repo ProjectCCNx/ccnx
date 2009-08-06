@@ -390,11 +390,11 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * the value of raw specified.
 	 * @throws IOException 
 	 */
-	public void save() throws IOException {
+	public boolean save() throws IOException {
 		if (null == _baseName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
-		saveInternal(null, false);
+		return saveInternal(null, false);
 	}
 
 	/**
@@ -403,20 +403,22 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * the value of raw specified.
 	 * @throws IOException 
 	 */
-	public void save(Timestamp version) throws IOException {
+	public boolean save(Timestamp version) throws IOException {
 		if (null == _baseName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
-		saveInternal(version, false);
+		return saveInternal(version, false);
 	}
 
 	/**
 	 * Save content to specific version. If version is non-null, assume that is the desired
 	 * version. If not, set version based on current time.
 	 * @param name
+	 * @param return Returns true if it saved data, false if it thought data was stale and didn't
+	 * 		save. (DKS TODO: add force write flag if you need to update version. Also allow specification of freshness.)
 	 * @throws IOException 
 	 */
-	public void saveInternal(Timestamp version, boolean gone) throws IOException {
+	public boolean saveInternal(Timestamp version, boolean gone) throws IOException {
 		// move object to this name
 		// need to make sure we get back the actual name we're using,
 		// even if output stream does automatic versioning
@@ -427,7 +429,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 
 		if (_data != null && !isDirty()) { // Should we check potentially dirty?
 			Library.logger().info("Object not dirty. Not saving.");
-			return;
+			return false;
 		}
 		
 		if (!gone && (null == _data)) {
@@ -478,16 +480,17 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_currentVersionComponent = name.lastComponent();
 		_currentVersionName = null;
 		setPotentiallyDirty(false);
+		return true;
 	}
 	
-	public void save(E data) throws XMLStreamException, IOException {
+	public boolean save(E data) throws XMLStreamException, IOException {
 		setData(data);
-		save();
+		return save();
 	}
 	
-	public void save(Timestamp version, E data) throws IOException {
+	public boolean save(Timestamp version, E data) throws IOException {
 		setData(data);
-		save(version);
+		return save(version);
 	}
 
 	/**
@@ -495,7 +498,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * If raw=true or DEFAULT_RAW=true specified, this must be the first call to save made
 	 * for this object.
 	 */
-	public void saveToRepository(Timestamp version) throws IOException {
+	public boolean saveToRepository(Timestamp version) throws IOException {
 		if (null == _baseName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
@@ -503,21 +506,21 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			throw new IOException("Cannot call saveToRepository on raw object!");
 		}
 		_raw = false; // control what flow controller will be made
-		save(version);
+		return save(version);
 	}
 	
-	public void saveToRepository() throws IOException {		
-		saveToRepository((Timestamp)null);
+	public boolean saveToRepository() throws IOException {		
+		return saveToRepository((Timestamp)null);
 	}
 	
-	public void saveToRepository(E data) throws IOException {
+	public boolean saveToRepository(E data) throws IOException {
 		setData(data);
-		saveToRepository();
+		return saveToRepository();
 	}
 	
-	public void saveToRepository(Timestamp version, E data) throws IOException {
+	public boolean saveToRepository(Timestamp version, E data) throws IOException {
 		setData(data);
-		saveToRepository(version);
+		return saveToRepository(version);
 	}
 
 	/**
@@ -527,25 +530,25 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param name
 	 * @throws IOException
 	 */
-	public void saveAsGone() throws IOException {		
+	public boolean saveAsGone() throws IOException {		
 		if (null == _baseName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
 		_data = null;
 		_available = true;
-		saveInternal(null, true);
+		return saveInternal(null, true);
 	}
 
 	/**
 	 * If raw=true or DEFAULT_RAW=true specified, this must be the first call to save made
 	 * for this object.
 	 */
-	public void saveToRepositoryAsGone() throws XMLStreamException, IOException {
+	public boolean saveToRepositoryAsGone() throws XMLStreamException, IOException {
 		if ((null != _flowControl) && !(_flowControl instanceof RepositoryFlowControl)) {
 			throw new IOException("Cannot call saveToRepository on raw object!");
 		}
 		_raw = false; // control what flow controller will be made
-		saveAsGone();
+		return saveAsGone();
 	}
 	
 	public Timestamp getVersion() {
