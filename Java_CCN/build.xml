@@ -106,8 +106,23 @@
         <pathconvert pathsep=":" property="classpatharg" refid="classpath-run"/>
         <echo message="${classpatharg}" file=".antclasspath"/>
     </target>
+	
+	<target name="ccnd">
+			<mkdir dir="${testout}"/>
+			<parallel failonany="true">
+				<daemons>
+					<echo message="Running test ccnd on port ${TEST_PORT}"/>
+					<exec executable="${ccnd}" dir="${testout}" output="${testout}/TEST-ccnd-baselib.txt">
+						<env key="CCN_LOCAL_PORT" value="${TEST_PORT}"/>
+						<env key="CCND_DEBUG" value="-1"/>
+					</exec>
+				</daemons>
+	                        <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
+	                        <sleep seconds="1"/>
+			</parallel>
+		</target>
 
-	<target name="ccnd" depends="jar">
+	<target name="stoppable-ccnd" depends="jar">
 		<mkdir dir="${testout}"/>
 		<parallel>
 			<daemons>
