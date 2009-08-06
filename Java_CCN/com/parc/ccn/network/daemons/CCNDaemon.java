@@ -21,6 +21,7 @@ public class CCNDaemon extends Daemon {
 	private static final String DEFAULT_CCND_COMMAND_STRING = "../ccnd/agent/ccnd";
 	protected String _command = DEFAULT_CCND_COMMAND_STRING;
 	protected Process _ccndProcess = null;
+	protected CCNDaemon _daemon = null;
 	
 	protected class CCNDShutdownHook extends Thread {
 		public void run() {
@@ -109,6 +110,7 @@ public class CCNDaemon extends Daemon {
 		// execute as the daemon, rather than in the launching
 		// and stopping processes also.
 		_daemonName = "ccnd";
+		_daemon = this;
 	}
 	
 	protected void initialize(String[] args, Daemon daemon) {
@@ -141,8 +143,9 @@ public class CCNDaemon extends Daemon {
 		CCNDaemon daemon = null;
 		try {
 			daemon = new CCNDaemon();
+			//if (args[0].equals("-interactive"))
+				//daemon.setInteractive();
 			runDaemon(daemon, args);
-			
 		} catch (Exception e) {
 			System.err.println("Error attempting to start daemon.");
 			Library.logger().warning("Error attempting to start daemon.");
