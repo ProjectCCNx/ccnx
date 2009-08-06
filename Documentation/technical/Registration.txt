@@ -1,6 +1,6 @@
 CCN Face Management and Registration Protocol
 =============================================
-Revision 7/28/2009
+Revision 8/06/2009
 
 == Source references
 later.
@@ -20,11 +20,11 @@ and the content encodes any necessary response data.
 For the Face Management Protocol, the CCN ContentObject encoding the request and reply
 is the FaceInstance.
 
-To create a new face ccndc signs a content object NFBLOB containing null name
-and a FaceInstance containing
+To create a new face ccndc signs a content object NFBLOB whose Content is a
+ccnb-encoded FaceInstance containing
 
   - Action "newface"
-  - other fields necessary to set up a socket
+  - other fields necessary to set up a socket (at least IPProto, Host, and Port).
 
 ccndc then expresses an interest in /ccn/CCNDID/newface/NFBLOB
 
@@ -65,8 +65,11 @@ FreshnessSeconds ::= nonNegativeInteger
 
 === Action
 When FaceInstance is used as a request, the Action must be specified.
-It will not be present in a response. !!TODO: describe: may return existing
-FaceID when "create" with same parameters as existing face!!
+It will not be present in a response.
+
+. `newface` - If a face matching the parameters does not already exist, an attempt is made to create it. Then if the face exists (whether new or old) the full description is returned as a FaceInstance.
+. `destroyface` - at least the FaceID must be present. If permitted, the face is destroyed.  (NYI)
+. `queryface` - specification TBD
 
 === PublisherPublicKeyDigest
 Identifies the ccnd that the information is relevant for.
@@ -75,8 +78,8 @@ indicates the ccnd to which the request is directed, if present.
 PublisherPublicKeyDigest is always present in a response.
 
 === FaceID
-FaceID is not present in a "create" request, but must be specified in
-a "destroy" or "query" request.
+FaceID is not present in a `newface` request, but must be specified in
+a `destroyface` or `queryface` request.
 FaceID is always present in a response.
 
 === Host
