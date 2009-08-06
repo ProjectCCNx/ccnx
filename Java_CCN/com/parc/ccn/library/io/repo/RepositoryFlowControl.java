@@ -111,9 +111,9 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	 */
 	@Override
 	public void startWrite(ContentName name, Shape shape) throws IOException {
-
-		//Client client = new Client(name);
-		//_clients.add(client);
+		
+		Client client = new Client(name);
+		_clients.add(client);
 		clearUnmatchedInterests();	// Remove possible leftover interests from "getLatestVersion"
 		ContentName repoWriteName = new ContentName(name, CommandMarkers.REPO_START_WRITE, Interest.generateNonce());
 

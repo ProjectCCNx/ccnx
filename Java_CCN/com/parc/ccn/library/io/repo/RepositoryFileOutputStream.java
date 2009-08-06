@@ -1,6 +1,5 @@
 package com.parc.ccn.library.io.repo;
 
-
 import com.parc.ccn.library.CCNFlowControl.Shape;
 import com.parc.ccn.library.io.CCNFileOutputStream;
 import java.io.IOException;
@@ -10,8 +9,6 @@ import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.io.CCNFileOutputStream;
-
 
 public class RepositoryFileOutputStream extends CCNFileOutputStream {
 
