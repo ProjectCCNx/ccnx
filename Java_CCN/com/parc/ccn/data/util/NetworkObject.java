@@ -263,6 +263,7 @@ public abstract class NetworkObject<E> {
 		return _data.equals(other._data);
 	}
 	
+	@Override
 	public String toString() { return (null == _data) ? null : _data.toString(); }
 
 }
