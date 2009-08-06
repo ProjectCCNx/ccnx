@@ -122,7 +122,7 @@ public class CollectionObjectTestRepo {
 		try {
 			CollectionObject ecd1 = new CollectionObject(ContentName.fromNative("/test-repo/smetters/reports/Why_I_Wish_I_Was_in_Maui.txt"), small1, library);
 			ecd1.saveToRepository();
-			CollectionObject ecd2 = new CollectionObject(ecd1.getCurrentVersionName(), null);
+			CollectionObject ecd2 = new CollectionObject(ecd1.getCurrentVersionName(), CCNLibrary.open());
 			System.out.println("ecd1 name: " + ecd1.getCurrentVersionName());
 			System.out.println("ecd2 name: " + ecd2.getCurrentVersionName());
 			Assert.assertTrue(ecd1.equals(ecd2));
@@ -151,7 +151,7 @@ public class CollectionObjectTestRepo {
 	public void testSaveUpdate() throws ConfigurationException, IOException, XMLStreamException, MalformedContentNameStringException {
 		boolean caught = false;
 		CollectionObject emptycoll = 
-			new CollectionObject(namespace, (CollectionData)null, null);
+			new CollectionObject(namespace, (CollectionData)null, library);
 		try {
 			emptycoll.saveToRepository();
 		} catch (InvalidObjectException iox) {
@@ -161,8 +161,8 @@ public class CollectionObjectTestRepo {
 		Assert.assertTrue("Failed to produce expected exception.", caught);
 		
 		CollectionObject ecd0 = new CollectionObject(ns[2], empty, library);
-		CollectionObject ecd1 = new CollectionObject(ns[1], small1, null);
-		CollectionObject ecd2 = new CollectionObject(ns[1], small1, null);
+		CollectionObject ecd1 = new CollectionObject(ns[1], small1, CCNLibrary.open());
+		CollectionObject ecd2 = new CollectionObject(ns[1], small1, CCNLibrary.open());
 		CollectionObject ecd3 = new CollectionObject(ns[2], big, library);
 		CollectionObject ecd4 = new CollectionObject(namespace, empty, library);
 
@@ -222,7 +222,7 @@ public class CollectionObjectTestRepo {
 		System.out.println("Update really works!");
 
 		ecd3.saveToRepository();
-		ecd0.update();
+		updateAndLog("ecd0", ecd0);
 		ecd4.update(ns[2], null);
 		System.out.println("ns[2]: " + ns[2]);
 		System.out.println("ecd3 name: " + ecd3.getCurrentVersionName());
@@ -234,19 +234,26 @@ public class CollectionObjectTestRepo {
 		ecd0.saveToRepositoryAsGone();
 		Assert.assertTrue(ecd0.isGone());
 		Library.logger().info("Saved gone object ecd0: " + ecd0.getCurrentVersionName() + " (" + ecd0.getVersion() +") updating ecd1, which is currently: " + ecd1.getCurrentVersionName());
-		ecd1.update();
-		Library.logger().info("Retrieved ecd1, name: " + ecd1.getCurrentVersionName() + " (" + ecd1.getVersion() +")" +  " gone? " + ecd1.isGone());
-		ecd0.update();
-		Library.logger().info("Retrieved ecd0, name: " + ecd0.getCurrentVersionName() + " (" + ecd0.getVersion() +")" +  " gone? " + ecd0.isGone());
+		updateAndLog("ecd1", ecd1);
+		updateAndLog("ecd0", ecd0);
 		// DKS -- versions going backwards
-		//Assert.assertTrue(ecd0.isGone());
+		Assert.assertTrue(ecd0.isGone());
 		// DKS TODO -- put in more significant version handling.
 		ecd0.setData(small1);
 		Assert.assertFalse(ecd0.isGone());
-		// DKS -- won't work till new repo write stuff in place
-		//ecd0.saveToRepository();
-		//Assert.assertFalse(ecd0.isGone());
-		ecd1.update();
-		Assert.assertFalse(ecd1.isGone());
+		if (false) {
+			// DKS -- won't work till new repo write stuff in place
+			ecd0.saveToRepository();
+			Assert.assertFalse(ecd0.isGone());
+			updateAndLog("ecd1", ecd1);
+			Assert.assertFalse(ecd1.isGone());
+		}
+	}
+	
+	public void updateAndLog(String name, CollectionObject ecd) throws XMLStreamException, IOException {
+		if (ecd.update())
+			Library.logger().info("Retrieved " + name + ", name: " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone());
+		else 
+			Library.logger().info("No update found for " + name + ", still: " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone());
 	}
 }
