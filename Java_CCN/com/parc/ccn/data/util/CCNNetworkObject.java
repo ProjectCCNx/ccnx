@@ -120,6 +120,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		// Don't start pulling a namespace till we actually write something. We may never write
 		// anything on this object. In fact, don't make a flow controller at all till we need one.
 		super(type, data);
+		if (null == library)
+			throw new IllegalArgumentException("Library cannot be null!");
 		_library = library;
 		_baseName = name;
 		_publisher = publisher;
@@ -192,6 +194,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public CCNNetworkObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
 			boolean raw, CCNLibrary library) throws IOException, XMLStreamException {
 		super(type);
+		if (null == library)
+			throw new IllegalArgumentException("Library cannot be null!");
 		_library = library;
 		_baseName = name;
 		update(name, publisher);
@@ -212,12 +216,16 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	
 	public CCNNetworkObject(Class<E> type, ContentObject firstBlock, boolean raw, CCNLibrary library) throws IOException, XMLStreamException {
 		super(type);
+		if (null == library)
+			throw new IllegalArgumentException("Library cannot be null!");
 		_library = library;
 		update(firstBlock);
 	}
 
 	protected CCNNetworkObject(Class<E> type, ContentObject firstBlock, CCNFlowControl flowControl) throws IOException, XMLStreamException {
 		super(type);
+		if (null == flowControl)
+			throw new IllegalArgumentException("flowControl cannot be null!");
 		_flowControl = flowControl;
 		_library = flowControl.getLibrary();
 		update(firstBlock);
@@ -554,7 +562,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		return _baseName;
 	}
 	
-	protected void newVersionAvailable() {
+	protected synchronized void newVersionAvailable() {
 		// by default signal all waiters
 		this.notifyAll();
 	}
