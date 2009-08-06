@@ -53,6 +53,7 @@ ccnd_answer_req(struct ccn_closure *selfp,
     const unsigned char *final_comp = NULL;
     size_t final_size = 0;
     int freshness = 10;
+    
     switch (kind) {
         case CCN_UPCALL_FINAL:
             free(selfp);

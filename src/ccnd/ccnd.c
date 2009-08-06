@@ -1542,6 +1542,18 @@ ccnd_reg_self(struct ccnd *h, const unsigned char *msg, size_t size)
     return(result);
 }
 
+/**
+ * Process a newface request for the ccnd internal client.
+ * @param msg points to a ccnd-encoded FaceInstance
+ * @param size is its size in bytes
+ * @result on success holds a new ccnd-encoded FaceInstance including faceid,
+ *         NULL for error.
+ *
+ * Is is permitted for the face to already exist.
+ * A newly created face will have no registered prefixes, and so will not
+ * receive any traffic.
+ */
+
 struct ccn_charbuf *
 ccnd_req_newface(struct ccnd *h, const unsigned char *msg, size_t size)
 {
@@ -1556,7 +1568,8 @@ ccnd_req_newface(struct ccnd *h, const unsigned char *msg, size_t size)
     int fd = -1;
     struct face *face = NULL;
     struct face *newface = NULL;
-    
+    int save;
+
     res = ccn_parse_ContentObject(msg, size, &pco, NULL);
     if (res < 0)
         goto Finish;        
@@ -1592,24 +1605,27 @@ ccnd_req_newface(struct ccnd *h, const unsigned char *msg, size_t size)
                           &addrinfo);
         if (res != 0 || (h->debug & 128) != 0)
             ccnd_msg(h, "ccnd_req_newface from %u: getaddrinfo(%s, %s, ...) returned %d",
-                        h->interest_faceid,
-                        face_instance->descr.address,
-                        face_instance->descr.port,
-                        res);
+                     h->interest_faceid,
+                     face_instance->descr.address,
+                     face_instance->descr.port,
+                     res);
         if (res != 0 || addrinfo == NULL)
             goto Finish;
         if (addrinfo->ai_next != NULL)
             ccnd_msg(h, "ccnd_req_newface: (addrinfo->ai_next != NULL) ? ?");
         fd = (addrinfo->ai_family == AF_INET)  ? h->udp4_fd :
-             (addrinfo->ai_family == AF_INET6) ? h->udp6_fd : -1;
+        (addrinfo->ai_family == AF_INET6) ? h->udp6_fd : -1;
         if (fd == -1)
             goto Finish;
         face = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
         if (face == NULL)
             goto Finish;
+        save = h->flood;
+        h->flood = 0; /* no auto-reg of / for these */
         newface = get_dgram_source(h, face,
                                    addrinfo->ai_addr,
                                    addrinfo->ai_addrlen);
+        h->flood = save;
         if (newface != NULL) {
             result = ccn_charbuf_create();
             face_instance->action = NULL;
