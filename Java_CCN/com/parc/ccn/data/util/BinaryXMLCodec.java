@@ -212,12 +212,8 @@ public class BinaryXMLCodec  {
 		istream.mark(LONG_BYTES*2);
 		
 		TypeAndVal tv = decodeTypeAndVal(istream);
-		if (null == tv) {
-			throw new IOException("Unexpected type, expected XML_BLOB " + XML_BLOB + "," +
-			" got: not a tag.");
-		}
-		if (XML_BLOB != tv.type()) {
-			Library.logger().finest("Expected BLOB, got " + tv.type() + ", assuming elided 0-length blob.");
+		if ((null == tv) || (XML_BLOB != tv.type())) { // if we just have closers left, will get back null
+			Library.logger().finest("Expected BLOB, got " + ((null == tv) ? " not a tag " : tv.type()) + ", assuming elided 0-length blob.");
 			istream.reset();
 			return new byte[0];
 		}
@@ -262,12 +258,8 @@ public class BinaryXMLCodec  {
 		istream.mark(LONG_BYTES*2);
 		
 		TypeAndVal tv = decodeTypeAndVal(istream);
-		if (null == tv) {
-			throw new IOException("Unexpected type, expected XML_UDATA " + XML_UDATA + "," +
-			" got: not a tag.");
-		}
-		if (XML_UDATA != tv.type()) {
-			Library.logger().finest("Expected UDATA, got " + tv.type() + ", assuming elided 0-length blob.");
+		if ((null == tv) || (XML_UDATA != tv.type())) { // if we just have closers left, will get back null
+			Library.logger().finest("Expected UDATA, got " + ((null == tv) ? " not a tag " : tv.type()) + ", assuming elided 0-length blob.");
 			istream.reset();
 			return new String("");
 		}
