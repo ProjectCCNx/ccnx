@@ -114,6 +114,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 	public static ContentObject getFirstBlockOfLatestVersion(ContentName startingVersion, Long startingBlockIndex, long timeout, ContentVerifier verifier, CCNLibrary library) throws IOException {
 		
 		Library.logger().info("getFirstBlockOfLatestVersion: getting version later than " + startingVersion);
+		int prefixLength = VersioningProfile.hasTerminalVersion(startingVersion) ? startingVersion.count() : startingVersion.count() + 1;
 		ContentObject result =  library.getLatestVersion(startingVersion, null, timeout);
 		if (null != result){
 			Library.logger().info("getFirstBlockOfLatestVersion: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
@@ -134,8 +135,8 @@ public class CCNVersionedInputStream extends CCNInputStream {
 			// which works fine only if we have the wrong segment rather than some other beast entirely (like metadata).
 			// So chop off the new name just after the (first) version, and use that. If getLatestVersion is working
 			// right, that should be the right thing.
-			startingVersion = result.name().cut(startingVersion.count() + 1);
-			Library.logger().info("getFirstBlockOfLatestVersion: Have version information, now querying first segment.");
+			startingVersion = result.name().cut(prefixLength);
+			Library.logger().info("getFirstBlockOfLatestVersion: Have version information, now querying first segment of " + startingVersion);
 			return CCNAbstractInputStream.getBlock(startingVersion, startingBlockIndex, timeout, verifier, library); // now that we have the latest version, go back for the first block.
 		} else {
 			Library.logger().info("getFirstBlockOfLatestVersion: no block available for later version of " + startingVersion);
