@@ -49,6 +49,7 @@ import com.parc.ccn.library.profiles.VersioningProfile;
 public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CCNInterestListener {
 
 	protected static boolean DEFAULT_RAW = true;
+	protected static long DEFAULT_TIMEOUT = 3000; // msec
 	
 	/**
 	 * Unversioned "base" name.
@@ -166,6 +167,20 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		this(type, name, publisher, DEFAULT_RAW, library);
 	}
 
+	/**
+	 * Updates to either a particular named version, or if no version given on name,
+	 * the latest version. 
+	 * Currently will time out and be unhappy if no such version exists.
+	 * 
+	 * Need a way to differentiate whether to read a specific
+	 * version or to read the latest version after a given one.
+	 * @param type
+	 * @param name
+	 * @param publisher
+	 * @param flowControl
+	 * @throws IOException
+	 * @throws XMLStreamException
+	 */
 	protected CCNNetworkObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
 			CCNFlowControl flowControl) throws IOException, XMLStreamException {
 		super(type);
@@ -208,14 +223,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		update(firstBlock);
 	}
 	
-	public void update() throws XMLStreamException, IOException {
-		if (null == _baseName) {
-			throw new IllegalStateException("Cannot retrieve an object without giving a name!");
-		}
-		// Look for latest version. _baseName is unversioned
-		update(_baseName, null);
-	}
-	
 	/**
 	 * Maximize laziness of flow controller creation, to make it easiest for client code to
 	 * decide how to store this object.
@@ -235,27 +242,56 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 
 	/**
+	 * Attempts to find a version after the latest one we have, or times out. If
+	 * it times out, it simply leaves the object unchanged.
+	 * @return returns true if it found an update, false if not
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 */
+	public boolean update(long timeout) throws XMLStreamException, IOException {
+		if (null == _baseName) {
+			throw new IllegalStateException("Cannot retrieve an object without giving a name!");
+		}
+		// Look for first block of version after ours, or first version if we have none.
+		ContentObject firstBlock = 
+			CCNVersionedInputStream.getFirstBlockOfLatestVersion(getCurrentVersionName(), null, timeout, _library.defaultVerifier(), _library);
+		if (null != firstBlock) {
+			return update(firstBlock);
+		}
+		return false;
+	}
+	
+	public boolean update() throws XMLStreamException, IOException {
+		return update(DEFAULT_TIMEOUT);
+	}
+	
+	/**
 	 * Load data into object. If name is versioned, load that version. If
-	 * name is not versioned, look for latest version. CCNInputStream doesn't
-	 * have that property at the moment.
+	 * name is not versioned, look for latest version. 
 	 * @param name
 	 * @throws IOException 
 	 * @throws XMLStreamException 
 	 * @throws ClassNotFoundException 
 	 */
-	public void update(ContentName name, PublisherPublicKeyDigest publisher) throws XMLStreamException, IOException {
+	public boolean update(ContentName name, PublisherPublicKeyDigest publisher) throws XMLStreamException, IOException {
 		Library.logger().info("Updating object to " + name);
 		CCNVersionedInputStream is = new CCNVersionedInputStream(name, publisher, _library);
-		update(is);
+		return update(is);
 	}
 
-	public void update(ContentObject object) throws XMLStreamException, IOException {
+	/**
+	 * Load a stream starting with a specific object.
+	 * @param object
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 */
+	public boolean update(ContentObject object) throws XMLStreamException, IOException {
 		CCNInputStream is = new CCNInputStream(object, _library);
 		is.seek(0); // in case it wasn't the first block
-		update(is);
+		return update(is);
 	}
 
-	public void update(CCNInputStream inputStream) throws IOException, XMLStreamException {
+	public boolean update(CCNInputStream inputStream) throws IOException, XMLStreamException {
 		Tuple<ContentName, byte []> nameAndVersion = null;
 		if (inputStream.isGone()) {
 			_data = null;
@@ -275,6 +311,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_baseName = nameAndVersion.first();
 		_currentVersionComponent = nameAndVersion.second();
 		_currentVersionName = null; // cached if used
+		
+		// Signal readers.
+		newVersionAvailable();
+		return true;
 	}
 	
 	public void updateInBackground() throws IOException {
@@ -286,7 +326,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			throw new IllegalStateException("Cannot retrieve an object without giving a name!");
 		}
 		// Look for latest version.
-		updateInBackground((null == _currentVersionComponent) ? _baseName : new ContentName(_baseName, _currentVersionComponent), continuousUpdates);
+		updateInBackground(getCurrentVersionName(), continuousUpdates);
 	}
 
 	/**
@@ -306,6 +346,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		// DKS TODO locking?
 		cancelInterest();
 		// express this
+		// DKS TODO better versioned interests, a la library.getlatestVersion
 		_continuousUpdates = continuousUpdates;
 		_currentInterest = Interest.last(latestVersionKnown, null, null);
 		_library.expressInterest(_currentInterest, this);
@@ -538,7 +579,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				if (VersioningProfile.isLaterVersionOf(co.name(), _currentInterest.name())) {
 					// OK, we have something that is a later version of our desired object.
 					// We're not sure it's actually the first content block.
-					if (SegmentationProfile.isFirstSegment(co.name())) {
+					if (CCNVersionedInputStream.isFirstBlock(_currentInterest.name(), co, null)) {
 						update(co);
 					} else {
 						// Have a later segment. Caching problem. Go back for first segment.
