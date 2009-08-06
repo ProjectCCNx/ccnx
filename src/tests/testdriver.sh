@@ -1,4 +1,3 @@
-#! /bin/sh
 #
 # This orchestrates the execution of various test scripts
 #
@@ -66,8 +65,9 @@ SetExitCode () {
   : | cmp -s - FAILING
 }
 
-ExtractDeps $(GetTestNames "$@") > deps.out
-tsort deps.out > sorted-deps.out
+# The next two lines, when uncommented, are handy for seeing what tsort is up to
+#ExtractDeps $(GetTestNames "$@") > deps.out
+#tsort deps.out > sorted-deps.out
 
 ExtractDeps $(GetTestNames "$@") | tsort | while read TEST; do RunATest $TEST; done
 

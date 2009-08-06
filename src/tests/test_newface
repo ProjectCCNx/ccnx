@@ -1,0 +1,58 @@
+AFTER : test_single_ccnd test_coders
+BEFORE : test_single_ccnd_teardown
+
+ccndsmoketest || SkipTest no ccnd
+
+# Create the body of a face creation request.
+ccn_xmltoccnb -w - <<EOF >newface.ccnb
+<FaceInstance>
+  <Action>newface</Action>
+  <IPProto>17</IPProto>
+  <Host>10.211.55.8</Host>
+  <Port>4485</Port>
+  <FreshnessSeconds>3600</FreshnessSeconds>
+</FaceInstance>
+EOF
+
+cat newface.ccnb | ccnput -x 30 /_this_name_ignored_$$
+
+# Pull it out to use in the face creation request.  Base-64 encode it for the benefit of the shell.
+
+NFBLOB="`ccnget /_this_name_ignored_$$ | openssl enc -base64`"
+
+echo NFBLOB is $NFBLOB >&2
+
+# We need to learn the CCNDID of our ccnd.
+IsolatePubID () {
+	sed -n -e 's@^.*PublisherPublicKeyDigest ccnbencoding="hexBinary">@@' \
+               -e 's@</PublisherPublicKeyDigest.*$@@p'
+}
+
+ccnget ccn:/ccn/ping/$$ | ccn_ccnbtoxml -bx - | IsolatePubID > ccndid.out
+grep '^[0-9A-F][0-9A-F]*$' ccndid.out || SkipTest could not determine CCNDID
+CCNDID=`cat ccndid.out`
+
+# Now construct the interest.
+
+cat <<EOF >newface-request.xml
+<Interest>
+  <Name>
+    <Component ccnbencoding="text">ccn</Component>
+    <Component ccnbencoding="hexBinary">$CCNDID</Component>
+    <Component ccnbencoding="text">newface</Component>
+    <Component ccnbencoding="base64Binary">$NFBLOB</Component>
+  </Name>
+  <Scope>1</Scope>
+</Interest>
+EOF
+ccn_xmltoccnb -w newface-request.xml || Fail botch constructing newface-request.ccnb
+
+# Try out the face creation request
+ccndsmoketest -b send newface-request.ccnb recv > newface-response.ccnb
+
+: | cmp -s - newface-response.ccnb && SkipTest no newface response, might be a sporadic failure
+
+ccn_ccnbtoxml newface-response.ccnb || Fail did not get newface response
+
+# Testing for the request to time out would be more complicated.
+#rm newface-*.ccnb

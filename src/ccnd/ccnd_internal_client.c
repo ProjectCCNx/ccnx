@@ -53,7 +53,6 @@ ccnd_answer_req(struct ccn_closure *selfp,
     const unsigned char *final_comp = NULL;
     size_t final_size = 0;
     int freshness = 10;
-
     switch (kind) {
         case CCN_UPCALL_FINAL:
             free(selfp);
@@ -65,13 +64,16 @@ ccnd_answer_req(struct ccn_closure *selfp,
         default:
             return(CCN_UPCALL_RESULT_ERR);
     }
-    morecomps = selfp->intdata & MORECOMPS_MASK;
     ccnd = (struct ccnd *)selfp->data;
+    if ((ccnd->debug & 128) != 0)
+        ccnd_debug_ccnb(ccnd, __LINE__, "ccnd_answer_req", NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
+    morecomps = selfp->intdata & MORECOMPS_MASK;
     if ((info->pi->answerfrom & CCN_AOK_NEW) == 0)
         return(CCN_UPCALL_RESULT_OK);
     if (info->matched_comps >= info->interest_comps->n)
         goto Bail;
-    if (info->pi->prefix_comps != info->matched_comps + morecomps)
+    if (selfp->intdata != OP_PING &&
+        info->pi->prefix_comps != info->matched_comps + morecomps)
         goto Bail;
     if (morecomps == 1) {
         res = ccn_name_comp_get(info->interest_ccnb, info->interest_comps,
@@ -84,7 +86,7 @@ ccnd_answer_req(struct ccn_closure *selfp,
     switch (selfp->intdata & OPER_MASK) {
         case OP_PING:
             reply_body = ccn_charbuf_create();
-            freshness = (morecomps == 0) ? 60 : 5;
+            freshness = (info->pi->prefix_comps == info->matched_comps) ? 60 : 5;
             break;
         case OP_REG_SELF: 
             reply_body = ccnd_reg_self(ccnd, final_comp, final_size);
@@ -93,6 +95,7 @@ ccnd_answer_req(struct ccn_closure *selfp,
             break;
         case OP_NEWFACE:
             reply_body = ccnd_req_newface(ccnd, final_comp, final_size);
+            break;
         default:
             goto Bail;
     }
@@ -133,6 +136,8 @@ ccnd_answer_req(struct ccn_closure *selfp,
                                    ccn_keystore_private_key(keystore));
     if (res < 0)
         goto Bail;
+    if ((ccnd->debug & 128) != 0)
+        ccnd_debug_ccnb(ccnd, __LINE__, "ccnd_answer_req_response", NULL, msg->buf, msg->length);
     res = ccn_put(info->h, msg->buf, msg->length);
     if (res < 0)
         goto Bail;
@@ -161,6 +166,8 @@ ccnd_internal_client_refresh(struct ccn_schedule *sched,
         return(0);
     if (ccnd->internal_client == NULL)
         return(0);
+    if ((ccnd->debug & 128) != 0)
+        ccnd_msg(ccnd, "ccnd_internal_client_refresh");
     microsec = ccn_process_scheduled_operations(ccnd->internal_client);
     if (microsec > ev->evint)
         microsec = ev->evint;
@@ -309,13 +316,11 @@ ccnd_internal_client_start(struct ccnd *ccnd)
         return(-1);
     ccnd->internal_client = h = ccn_create();
     ccnd_uri_listen(ccnd, "ccn:/ccn/ping", &ccnd_answer_req, OP_PING);
-    ccnd_uri_listen(ccnd, "ccn:/ccn/ping", &ccnd_answer_req, OP_PING + 1);
     ccnd_uri_listen(ccnd, "ccn:/ccn/" CCND_ID_TEMPL "/ping", &ccnd_answer_req, OP_PING);
-    ccnd_uri_listen(ccnd, "ccn:/ccn/" CCND_ID_TEMPL "/ping", &ccnd_answer_req, OP_PING + 1);
     ccnd_uri_listen(ccnd, "ccn:/ccn/reg/self", &ccnd_answer_req, OP_REG_SELF + 1);
     ccnd_uri_listen(ccnd, "ccn:/ccn/" CCND_ID_TEMPL "/newface", &ccnd_answer_req, OP_NEWFACE + 1);
     ccnd->internal_client_refresh =
-     ccn_schedule_event(ccnd->sched, 1000000,
+     ccn_schedule_event(ccnd->sched, 200000,
                         ccnd_internal_client_refresh,
                         NULL, CCN_INTEREST_LIFETIME_MICROSEC);
     return(0);

@@ -1586,14 +1586,14 @@ ccnd_req_newface(struct ccnd *h, const unsigned char *msg, size_t size)
         face_instance->descr.mcast_ttl == -1) {
         hints.ai_flags |= AI_NUMERICHOST;
         hints.ai_socktype = SOCK_DGRAM;
-        res = getaddrinfo(face_instance->descr.source_address,
+        res = getaddrinfo(face_instance->descr.address,
                           face_instance->descr.port,
                           &hints,
                           &addrinfo);
         if (res != 0 || (h->debug & 128) != 0)
             ccnd_msg(h, "ccnd_req_newface from %u: getaddrinfo(%s, %s, ...) returned %d",
                         h->interest_faceid,
-                        face_instance->descr.source_address,
+                        face_instance->descr.address,
                         face_instance->descr.port,
                         res);
         if (res != 0 || addrinfo == NULL)
@@ -1733,9 +1733,11 @@ pe_next_usec(struct ccnd *h,
                          (void *)pe,
                          pe->outbound ? pe->outbound->n : -1,
                          next_delay, pe->usec);
-        ccnd_debug_ccnb(h, lineno, ccn_charbuf_as_string(c),
-                        face_from_faceid(h, pe->faceid),
-                        pe->interest_msg, pe->size);
+        if (pe->interest_msg != NULL) {
+            ccnd_debug_ccnb(h, lineno, ccn_charbuf_as_string(c),
+                            face_from_faceid(h, pe->faceid),
+                            pe->interest_msg, pe->size);
+        }
         ccn_charbuf_destroy(&c);
     }
     return(next_delay);
@@ -1797,7 +1799,8 @@ do_propagate(struct ccn_schedule *sched,
             stuff_and_write(h, face, pe->interest_msg, pe->size);
         }
     }
-    if (n == 0) {
+    /* The internal client may have already consumed the interest */
+    if (pe->outbound == NULL || (n = pe->outbound->n) == 0) {
         if (pe->usec <= CCN_INTEREST_LIFETIME_MICROSEC * 3 / 4) {
             finished_propagating(pe);
             next_delay = CCN_INTEREST_LIFETIME_MICROSEC;
@@ -2722,8 +2725,15 @@ process_input(struct ccnd *h, int fd)
     }
 }
 
-struct nonsense;
-
+static void
+process_internal_client_buffer(struct ccnd *h)
+{
+    struct ccn_charbuf *buf = ccn_grab_buffered_output(h->internal_client);
+    if (buf != NULL) {
+        process_input_message(h, h->face0, buf->buf, buf->length, 0);
+        ccn_charbuf_destroy(&buf);
+    }
+}
 
 static void
 do_write(struct ccnd *h, struct face *face, unsigned char *data, size_t size)
@@ -2737,6 +2747,7 @@ do_write(struct ccnd *h, struct face *face, unsigned char *data, size_t size)
     }
     if (face == h->face0) {
         ccn_dispatch_message(h->internal_client, data, size);
+        process_internal_client_buffer(h);
         return;
     }
     if (face->addr == NULL)
@@ -2816,17 +2827,13 @@ run(struct ccnd *h)
     int prev_timeout_ms = -1;
     int usec;
     int specials = 3; /* local_listener_fd, tcp4_fd, tcp6_fd */
-    struct ccn_charbuf *buf = NULL;
     for (;;) {
-        buf = ccn_grab_buffered_output(h->internal_client);
-        if (buf != NULL) {
-            process_input_message(h, h->face0, buf->buf, buf->length, 0);
-            ccn_charbuf_destroy(&buf);
-        }
+        process_internal_client_buffer(h);
         usec = ccn_schedule_run(h->sched);
         timeout_ms = (usec < 0) ? -1 : (usec / 1000);
         if (timeout_ms == 0 && prev_timeout_ms == 0)
             timeout_ms = 1;
+        process_internal_client_buffer(h);
         if (hashtb_n(h->faces_by_fd) + specials != h->nfds) {
             h->nfds = hashtb_n(h->faces_by_fd) + specials;
             h->fds = realloc(h->fds, h->nfds * sizeof(h->fds[0]));
