@@ -14,7 +14,7 @@ import org.junit.Test;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.io.CCNInputStream;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
 import com.parc.ccn.library.io.repo.RepositoryFileOutputStream;
@@ -107,7 +107,7 @@ public class RepoIOTest extends RepoTestBase {
 		fis.close();
 		ContentName basePolicy = ContentName.fromNative(_globalPrefix + '/' + 
 				_repoName + '/' + Repository.REPO_DATA + '/' + Repository.REPO_POLICY);
-		ContentName policyName = new ContentName(basePolicy, CCNLibrary.nonce());
+		ContentName policyName = new ContentName(basePolicy, Interest.generateNonce());
 		RepositoryFileOutputStream rfos = new RepositoryFileOutputStream(policyName,
 				putLibrary.getDefaultPublisher(), putLibrary);
 		rfos.write(content, 0, content.length);

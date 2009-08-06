@@ -1,10 +1,16 @@
 package com.parc.ccn.library.profiles;
 
 import java.math.BigInteger;
+import java.security.InvalidParameterException;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.query.BloomFilter;
+import com.parc.ccn.data.query.ExcludeComponent;
+import com.parc.ccn.data.query.ExcludeElement;
+import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.data.util.DataUtils.Tuple;
@@ -26,6 +32,8 @@ public class VersioningProfile implements CCNProfile {
 
 	public static final byte VERSION_MARKER = (byte)0xFD;
 	public static final byte [] FIRST_VERSION_MARKER = new byte []{VERSION_MARKER};
+	public static final byte FF = (byte) 0xFF;
+	public static final byte OO = (byte) 0x00;
 
 	/**
 	 * Add a version field to a ContentName.
@@ -134,7 +142,7 @@ public class VersioningProfile implements CCNProfile {
 			   ((nameComponent.length == 1) || (nameComponent[1] != 0));
 	}
 	
-	public static boolean isBaseVersionCompoent(byte [] nameComponent) {
+	public static boolean isBaseVersionComponent(byte [] nameComponent) {
 		return (isVersionComponent(nameComponent) && (1 == nameComponent.length));
 	}
 	
@@ -327,4 +335,35 @@ public class VersioningProfile implements CCNProfile {
 		}
 		return (compareVersionComponents(laterVersionParts.second(), earlierVersionParts.second()));
     }
+
+	/**
+	 * Builds an Exclude filter that excludes components before or @ start, and components after
+	 * the last valid version.
+	 * @param startingVersionComponent The latest version component we know about. Can be null or
+	 * 			VersioningProfile.isBaseVersionComponent() == true to indicate that we want to start
+	 * 			from 0 (we don't have a known version we're trying to update). This exclude filter will
+	 * 			find versions *after* the version represented in startingVersionComponent.
+	 * @return An exclude filter.
+	 * @throws InvalidParameterException
+	 */
+	public static ExcludeFilter acceptVersions(byte [] startingVersionComponent) {
+		byte [] start = null;
+		// initially exclude name components just before the first version, whether that is the
+		// 0th version or the version passed in
+		if ((null == startingVersionComponent) || VersioningProfile.isBaseVersionComponent(startingVersionComponent)) {
+			start = new byte [] { VersioningProfile.VERSION_MARKER, VersioningProfile.OO, VersioningProfile.FF, VersioningProfile.FF, VersioningProfile.FF, VersioningProfile.FF, VersioningProfile.FF };
+		} else {
+			start = startingVersionComponent;
+		}
+		
+		ArrayList<ExcludeElement> ees = new ArrayList<ExcludeElement>();
+		
+		ees.add(BloomFilter.matchEverything());
+		ees.add(new ExcludeComponent(start));
+		ees.add(new ExcludeComponent(new byte [] {
+				VERSION_MARKER+1, OO, OO, OO, OO, OO, OO } ));
+		ees.add(BloomFilter.matchEverything());
+		ExcludeFilter ef = new ExcludeFilter(ees);
+		return ef;
+	}
 }

@@ -74,7 +74,7 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 		ContentName versionedName = getVersionedName(prefix1String);
 		addContentToRepo(new ContentName(versionedName, "versionNameTest".getBytes()));
 		registerPrefix(versionedName);
-		//testGetResponse(4);
+		testGetResponse(4);
 		
 	}
 	
@@ -185,13 +185,16 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 	public void testGetResponse(int count){
 		try {
 			int i = 0;
-			while (i < 200) {
+			while (i < 350) {
 				Thread.sleep(rand.nextInt(50));
 				i++;
+				//break out early if possible
+				if ( (count == 1 && names1!=null) || (count == 2 && names2!=null) || (count == 4 && names3!=null) )
+					break;
 			}
 			
 			//the names are registered...
-			System.out.println("done waiting for response: count is "+count);
+			System.out.println("done waiting for response: count is "+count+" i="+i);
 		} catch (InterruptedException e) {
 			System.err.println("error waiting for names to be registered by name enumeration responder");
 			Assert.fail();
@@ -207,7 +210,7 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 			Assert.assertTrue(names1.get(0).toString().equals("/name1"));
 			Assert.assertNull(names2);
 			Assert.assertNull(names3);
-		} else if(count == 2) {
+		} else if (count == 2) {
 			Assert.assertNotNull(names2);
 			Library.logger().info("names2 size = "+names2.size());
 			for (ContentName s: names2)

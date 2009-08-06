@@ -487,7 +487,7 @@ public class ContentTree {
 				interestTS = null;
 			}
 		} else {
-			Library.logger().finest("no interest in timestamp after the name enumeration marker");
+			Library.logger().finest("no timestamp in interest after the name enumeration marker");
 		}
 		
 		Library.logger().fine("checking for content names under: "+prefix);

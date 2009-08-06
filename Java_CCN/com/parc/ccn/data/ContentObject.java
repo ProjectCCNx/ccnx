@@ -79,7 +79,8 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		_name = name;
 		_signedInfo = signedInfo;
 		_content = new byte[length];
-		System.arraycopy(content, offset, _content, 0, length);
+		if (null != content)
+			System.arraycopy(content, offset, _content, 0, length);
 		_signature = signature;
 		if ((null != signature) && SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
 			try {
@@ -155,7 +156,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			byte [] content, int offset, int length,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException {
 		this(name, signedInfo, content, offset, length, (Signature)null);
-		_signature = sign(name, signedInfo, content, offset, length, signingKey);
+		_signature = sign(_name, _signedInfo, _content, 0, _content.length, signingKey);
 		if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
 			Library.logger().info("Created content object: " + name + " timestamp: " + signedInfo.getTimestamp());
 			try {
@@ -313,7 +314,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 
 		// needs to handle null content
 		// a 0-length content element is omitted
-		if ((null != _content) || (0 != _content.length))
+		if ((null != _content) && (_content.length > 0))
 			encoder.writeElement(CONTENT_ELEMENT, _content);
 
 		encoder.writeEndElement();   		
@@ -643,9 +644,9 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	public static byte [] prepareContent(ContentName name, 
 			SignedInfo signedInfo, 
 			byte [] content, int offset, int length) throws XMLStreamException {
-		if ((null == name) || (null == signedInfo) || (null == content)) {
-			Library.logger().info("Name, signedInfo and content must not be null.");
-			throw new XMLStreamException("prepareContent: name, signedInfo and content must not be null.");
+		if ((null == name) || (null == signedInfo)) {
+			Library.logger().info("Name and signedInfo must not be null.");
+			throw new XMLStreamException("prepareContent: name, signedInfo must not be null.");
 		}
 
 		// Do setup. Binary codec doesn't write a preamble or anything.
@@ -662,7 +663,10 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		// sign the same thing, plus it's really hard to do the automated codec
 		// stuff without doing a whole document, unless we do some serious
 		// rearranging.
-		encoder.writeElement(CONTENT_ELEMENT, content, offset, length);
+		// needs to handle null content
+		// a 0-length content element is omitted
+		if ((null != content) && (length > 0))
+			encoder.writeElement(CONTENT_ELEMENT, content, offset, length);
 
 		encoder.endEncoding();	
 

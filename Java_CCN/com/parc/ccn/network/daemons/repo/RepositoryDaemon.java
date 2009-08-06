@@ -2,7 +2,7 @@ package com.parc.ccn.network.daemons.repo;
 
 import java.io.IOException;
 import java.security.InvalidParameterException;
-import java.security.SignatureException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
@@ -18,7 +18,9 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.content.CollectionData;
 import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.content.CollectionData.CollectionObject;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
@@ -26,6 +28,7 @@ import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.io.CCNWriter;
 import com.parc.ccn.library.profiles.CommandMarkers;
+import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.network.daemons.Daemon;
 import com.parc.ccn.network.daemons.repo.Repository.NameEnumerationResponse;
 
@@ -391,20 +394,18 @@ public class RepositoryDaemon extends Daemon {
 					Library.logger().finer("name: "+ner.names.get(x));
 				}
 				
-				
-				_library.put(ner.prefix, temp);
-				
-				//CCNEncodableCollectionData ecd = new CCNEncodableCollectionData(collectionName, cd);
-				//ecd.save();
-				//System.out.println("saved ecd.  name: "+ecd.getName());
-			}
-			catch(IOException e){
-				
-			}
-			catch(SignatureException e) {
-				Library.logStackTrace(Level.WARNING, e);
+				Timestamp ts = VersioningProfile.getTerminalVersionAsTimestampIfVersioned(ner.prefix);
+				ner.prefix = VersioningProfile.cutLastVersion(ner.prefix);
+				CollectionData cd = new CollectionData(temp);
+				CollectionObject co = new CollectionObject(ner.prefix, cd, _library);
+				co.save(ts);
+				System.out.println("saved collection object");
+
+			} catch(IOException e){
 				e.printStackTrace();
+				System.err.println("error saving name enumeration response for write out (prefix = "+ner.prefix+")");
 			}
+
 		}
 	}
 	

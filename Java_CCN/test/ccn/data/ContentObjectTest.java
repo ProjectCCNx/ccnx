@@ -23,6 +23,7 @@ import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.SignedInfo;
+import com.parc.ccn.data.util.DataUtils;
 import com.parc.security.crypto.certificates.BCX509CertificateGenerator;
 
 public class ContentObjectTest {
@@ -117,7 +118,20 @@ public class ContentObjectTest {
 			ContentObject bdco = new ContentObject();
 			XMLEncodableTester.encodeDecodeTest("ContentObject", co, tdco, bdco);
 			Assert.assertTrue(co.verify(pair.getPublic()));
-			// Dump one to file for testing on the C side.
+
+			ContentObject coempty = 
+				new ContentObject(name, auth, new byte[0], pair.getPrivate());
+			ContentObject tdcoempty = new ContentObject();
+			ContentObject bdcoempty = new ContentObject();
+			XMLEncodableTester.encodeDecodeTest("ContentObject - empty content", coempty, tdcoempty, bdcoempty);
+			Assert.assertTrue(coempty.verify(pair.getPublic()));
+			ContentObject coempty2 = 
+				new ContentObject(name, auth, null, pair.getPrivate());
+			ContentObject tdcoempty2 = new ContentObject();
+			ContentObject bdcoempty2 = new ContentObject();
+			XMLEncodableTester.encodeDecodeTest("ContentObject - empty content2", coempty2, tdcoempty2, bdcoempty2);
+			Assert.assertTrue(coempty2.verify(pair.getPublic()));
+// Dump one to file for testing on the C side.
 		/*	java.io.FileOutputStream fdump = new java.io.FileOutputStream("ContentObject.ccnb");
 			co.encode(fdump);
 			fdump.flush();
@@ -142,6 +156,22 @@ public class ContentObjectTest {
 			Assert.fail("Invalid key exception: " + e.getMessage());
 		} catch (SignatureException e) {
 			Assert.fail("Signature exception: " + e.getMessage());
+		}
+	}
+	
+	@Test
+	public void testDigest() {
+		try {
+			ContentObject coempty = 
+				new ContentObject(name, auth, new byte[0], pair.getPrivate());
+			System.out.println("Created object with content of length " + coempty.contentLength() + " digest: " + DataUtils.printHexBytes(coempty.contentDigest()));
+			ContentObject coempty2 = 
+				new ContentObject(name, auth, null, pair.getPrivate());
+			System.out.println("Created another object with content of length " + coempty2.contentLength() + " digest: " + DataUtils.printHexBytes(coempty2.contentDigest()));
+			Assert.assertNotNull(coempty.contentDigest());
+			Assert.assertArrayEquals(coempty.contentDigest(), coempty2.contentDigest());
+		} catch (Exception e) {
+			Assert.fail("Exception in testEncDec: " + e.getClass().getName() + ": " + e.getMessage());
 		}
 	}
 

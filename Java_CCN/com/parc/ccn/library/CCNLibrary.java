@@ -9,7 +9,6 @@ import java.security.Security;
 import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.LinkedList;
-import java.util.Random;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -24,16 +23,13 @@ import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.content.LinkReference;
-import com.parc.ccn.data.query.BloomFilter;
-import com.parc.ccn.data.query.ExcludeComponent;
-import com.parc.ccn.data.query.ExcludeElement;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
+import com.parc.ccn.data.security.ContentVerifier;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
-import com.parc.ccn.library.profiles.CommandMarkers;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.network.CCNNetworkManager;
@@ -65,7 +61,7 @@ import com.parc.ccn.security.keys.KeyManager;
  * can getLink to get link info
  *
  */
-public class CCNLibrary extends CCNBase {
+public class CCNLibrary extends CCNBase implements ContentVerifier {
 	
 	static {
 		Security.addProvider(new BouncyCastleProvider());
@@ -77,11 +73,6 @@ public class CCNLibrary extends CCNBase {
 	 * Do we want to do this this way, or everything static?
 	 */
 	protected KeyManager _userKeyManager = null;
-	
-	/**
-	 * For nonce generation
-	 */
-	protected static Random _random = new Random();
 	
 	public static CCNLibrary open() throws ConfigurationException, IOException { 
 		synchronized (CCNLibrary.class) {
@@ -571,21 +562,13 @@ public class CCNLibrary extends CCNBase {
 	 * also previously stripped any segment marker. So we know we have a name terminated
 	 * by the last version we know about (which could be 0).
 	 */
-	final byte OO = (byte) 0x00;
-	final byte FF = (byte) 0xFF;
 	private ContentObject getVersionInternal(ContentName name, long timeout) throws InvalidParameterException, IOException {
 		
 		byte [] versionComponent = name.lastComponent();
 		// initially exclude name components just before the first version, whether that is the
 		// 0th version or the version passed in
-		byte [] start = null;
-		if (VersioningProfile.isBaseVersionCompoent(versionComponent)) {
-			start = new byte [] { VersioningProfile.VERSION_MARKER, OO, FF, FF, FF, FF, FF };
-		} else {
-			start = versionComponent;
-		}
 		while (true) {
-			ContentObject co = getLatest(name, acceptVersions(start), timeout);
+			ContentObject co = getLatest(name, VersioningProfile.acceptVersions(versionComponent), timeout);
 			if (co == null) {
 				Library.logger().info("Null returned from getLatest for name: " + name);
 				return null;
@@ -601,27 +584,8 @@ public class CCNLibrary extends CCNBase {
 			} else {
 				Library.logger().info("Rejected potential candidate version: " + co.name() + " not a later version of " + name);
 			}
-			start = co.name().component(name.count()-1);
+			versionComponent = co.name().component(name.count()-1);
 		}
-	}
-
-	/**
-	 * Builds an Exclude filter that excludes components before or @ start, and components after
-	 * the last valid version.
-	 * @param start
-	 * @return An exclude filter.
-	 * @throws InvalidParameterException
-	 */
-	protected ExcludeFilter acceptVersions(byte [] start) {
-		ArrayList<ExcludeElement> ees;
-		ees = new ArrayList<ExcludeElement>();
-		ees.add(BloomFilter.matchEverything());
-		ees.add(new ExcludeComponent(start));
-		ees.add(new ExcludeComponent(new byte [] {
-				VersioningProfile.VERSION_MARKER+1, OO, OO, OO, OO, OO, OO } ));
-		ees.add(BloomFilter.matchEverything());
-		ExcludeFilter ef = new ExcludeFilter(ees);
-		return ef;
 	}
 
 	public ContentObject get(ContentName name, long timeout) throws IOException {
@@ -709,8 +673,10 @@ public class CCNLibrary extends CCNBase {
 	 * DKS: TODO -- state-based put() analogous to write()s in
 	 * blocks; also state-based read() that verifies. Start
 	 * with state-based read.
+	 * 
+	 * Nothing uses this method for anything that couldn't easily be replaced.
 	 */
-	
+	@Deprecated
 	public RepositoryOutputStream repoOpen(ContentName name, 
 			KeyLocator locator, PublisherPublicKeyDigest publisher) 
 				throws IOException, XMLStreamException {
@@ -814,19 +780,29 @@ public class CCNLibrary extends CCNBase {
 			_networkManager.shutdown();
 		_networkManager = null;
 	}
+
+	/* (non-Javadoc)
+	 * @see com.parc.ccn.data.security.ContentVerifier#verifyBlock(com.parc.ccn.data.ContentObject)
+	 */
+	public boolean verifyBlock(ContentObject block) {
+		boolean result = false;
+		try {
+			if (null == block)
+				return false;
+			result = block.verify(null);
+		} catch (Exception ex) {
+			// DKS TODO -- maybe do something more significant, but will minimize use of the default verifier.
+			Library.logger().warning("Caught exception of type: " + ex.getClass().getName() + " in verify: " + ex.getMessage());
+			result = false;
+		}
+		return result;
+	}
 	
 	/**
-	 * Currently used as an interest name component to disambiguate multiple requests for the
-	 * same content.
-	 * 
+	 * Allow default verification behavior to be replaced.
 	 * @return
 	 */
-	public static byte[] nonce() {
-		byte [] nonce = new byte[8];
-		_random.nextBytes(nonce);
-		byte [] wholeNonce = new byte[CommandMarkers.NONCE_MARKER.length + nonce.length];
-		System.arraycopy(CommandMarkers.NONCE_MARKER, 0, wholeNonce, 0, CommandMarkers.NONCE_MARKER.length);
-		System.arraycopy(nonce, 0, wholeNonce, CommandMarkers.NONCE_MARKER.length, nonce.length);	
-		return wholeNonce;
+	public ContentVerifier defaultVerifier() {
+		return this;
 	}
 }
