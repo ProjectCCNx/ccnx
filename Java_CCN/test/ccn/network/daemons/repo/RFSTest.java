@@ -4,6 +4,7 @@ import java.io.File;
 import java.security.InvalidParameterException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.sql.Timestamp;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
@@ -277,6 +278,7 @@ public class RFSTest extends RepoTestBase {
 		ner3 = new ContentName(ner3, "name3".getBytes());
 		ContentName nername3 = ContentName.fromNative("/longer");
 		NameEnumerationResponse neresponse = null;
+		Timestamp ts = null;
 		//send initial interest to make sure namespace is empty
 		//interest flag will not be set for a fast response since there isn't anything in the index yet
 		
@@ -291,9 +293,10 @@ public class RFSTest extends RepoTestBase {
 		Assert.assertTrue(neresponse.getNames().contains(nername1));
 
 		Assert.assertTrue(neresponse.getPrefix().contains(CCNNameEnumerator.NEMARKER));
+		Assert.assertTrue(neresponse.getTimestamp()!=null);
 		//now call get names with prefix again to set interest flag
 		//have to use the version from the last response (or at least a version after the last write
-		interest = Interest.last(neresponse.getPrefix());
+		interest = Interest.last(VersioningProfile.addVersion(neresponse.getPrefix(), neresponse.getTimestamp()));
 		interest.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME);
 		interest.nameComponentCount(interest.nameComponentCount());
 		//the response should be null and the flag set
@@ -304,9 +307,10 @@ public class RFSTest extends RepoTestBase {
 		Assert.assertTrue(neresponse.getNames().contains(nername1));
 		Assert.assertTrue(neresponse.getNames().contains(nername2));
 		Assert.assertTrue(neresponse.getPrefix().contains(CCNNameEnumerator.NEMARKER));
+		Assert.assertTrue(neresponse.getTimestamp()!=null);
 		
 		//need to reconstruct the interest again
-		interest = Interest.last(neresponse.getPrefix());
+		interest = Interest.last(VersioningProfile.addVersion(neresponse.getPrefix(), neresponse.getTimestamp()));
 		interest.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME);
 		interest.nameComponentCount(interest.nameComponentCount());
 		//another interest to set interest flag, response should be null
@@ -318,7 +322,8 @@ public class RFSTest extends RepoTestBase {
 		Assert.assertTrue(neresponse.getNames().contains(nername2));
 		Assert.assertTrue(neresponse.getNames().contains(nername3));
 		Assert.assertTrue(neresponse.getPrefix().contains(CCNNameEnumerator.NEMARKER));
-
+		Assert.assertTrue(neresponse.getTimestamp()!=null);
+		
 		repo.shutDown();
 	}
 	

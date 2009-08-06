@@ -387,18 +387,14 @@ public class RepositoryDaemon extends Daemon {
 		if(ner!=null && ner.prefix!=null && ner.names!=null && ner.names.size()>0){
 			try{
 				Library.logger().finer("returning names for prefix: "+ner.prefix);
-				//the following 6 lines are to be deleted after Collections are refactored
-				LinkReference[] temp = new LinkReference[ner.names.size()];
+
 				for (int x = 0; x < ner.names.size(); x++) {
-					temp[x] = new LinkReference(ner.names.get(x));
 					Library.logger().finer("name: "+ner.names.get(x));
 				}
 				
-				Timestamp ts = VersioningProfile.getTerminalVersionAsTimestampIfVersioned(ner.prefix);
-				ner.prefix = VersioningProfile.cutLastVersion(ner.prefix);
-				CollectionData cd = new CollectionData(temp);
+				CollectionData cd = ner.getNamesInCollectionData();
 				CollectionObject co = new CollectionObject(ner.prefix, cd, _library);
-				co.save(ts);
+				co.save(ner.getTimestamp());
 				System.out.println("saved collection object");
 
 			} catch(IOException e){

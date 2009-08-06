@@ -1,9 +1,12 @@
 package com.parc.ccn.network.daemons.repo;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.content.CollectionData;
+import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
 
@@ -25,15 +28,18 @@ public interface Repository {
 	public class NameEnumerationResponse{
 		ContentName prefix;
 		ArrayList<ContentName> names;
+		Timestamp version;
 		
 		public NameEnumerationResponse(){
 			prefix = null;
 			names = null;
+			version = null;
 		}
 		
-		public NameEnumerationResponse(ContentName p, ArrayList<ContentName> n){
+		public NameEnumerationResponse(ContentName p, ArrayList<ContentName> n, Timestamp ts){
 			prefix = p;
 			names = n;
+			version = ts;
 		}
 		
 		public void setPrefix(ContentName p){
@@ -50,6 +56,22 @@ public interface Repository {
 		
 		public ArrayList<ContentName> getNames(){
 			return names;
+		}
+		
+		public void setTimestamp(Timestamp ts){
+			version = ts;
+		}
+		
+		public Timestamp getTimestamp(){
+			return version;
+		}
+		
+		public CollectionData getNamesInCollectionData(){
+			LinkReference[] temp = new LinkReference[names.size()];
+			for (int x = 0; x < names.size(); x++) {
+				temp[x] = new LinkReference(names.get(x));
+			}
+			return new CollectionData(temp);
 		}
 		
 	}

@@ -168,7 +168,7 @@ public class ContentTree {
 					ContentName prefix = name.cut(component);
 
 					prefix = new ContentName(prefix, CCNNameEnumerator.NEMARKER);
-					prefix = VersioningProfile.addVersion(prefix, new Timestamp(node.timestamp));
+					//prefix = VersioningProfile.addVersion(prefix, new Timestamp(node.timestamp));
 					Library.logger().info("prefix for NEResponse: "+prefix);
 
 					ArrayList<ContentName> names = new ArrayList<ContentName>();
@@ -185,6 +185,7 @@ public class ContentTree {
 					}
 					ner.setPrefix(prefix);
 					ner.setNameList(names);
+					ner.setTimestamp(new Timestamp(node.timestamp));
 					Library.logger().info("resetting interestFlag to false");
 					node.interestFlag = false;
 					
@@ -475,8 +476,6 @@ public class ContentTree {
 		Timestamp nodeTS = null;
 
 		if (versionedInterest) {
-			// NOTE: should be sure that interest.name() has a version that we're interested in, otherwise
-			// this might return an arbitrary version farther up the name...
 		
 			try {
 				byte[] versionComponent = interest.name().component(markerIndex+1);
@@ -530,7 +529,7 @@ public class ContentTree {
 				Library.logger().finer("sending back "+names.size()+" names in the enumeration response");
 			parent.interestFlag = false;
 
-			return new NameEnumerationResponse(VersioningProfile.addVersion(interest.name(), nodeTS), names);
+			return new NameEnumerationResponse(interest.name(), names, nodeTS);
 			
 		}
 		return null;
