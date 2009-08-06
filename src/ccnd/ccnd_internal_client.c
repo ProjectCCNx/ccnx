@@ -66,7 +66,8 @@ ccnd_answer_req(struct ccn_closure *selfp,
     }
     ccnd = (struct ccnd *)selfp->data;
     if ((ccnd->debug & 128) != 0)
-        ccnd_debug_ccnb(ccnd, __LINE__, "ccnd_answer_req", NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
+        ccnd_debug_ccnb(ccnd, __LINE__, "ccnd_answer_req", NULL,
+                        info->interest_ccnb, info->pi->offset[CCN_PI_E]);
     morecomps = selfp->intdata & MORECOMPS_MASK;
     if ((info->pi->answerfrom & CCN_AOK_NEW) == 0)
         return(CCN_UPCALL_RESULT_OK);
@@ -121,8 +122,8 @@ ccnd_answer_req(struct ccn_closure *selfp,
         goto Bail;
     signed_info = ccn_charbuf_create();
     res = ccn_signed_info_create(signed_info,
-                                 /*pubkeyid*/ccn_keystore_public_key_digest(keystore),
-                                 /*publisher_key_id_size*/ccn_keystore_public_key_digest_length(keystore),
+                                 ccn_keystore_public_key_digest(keystore),
+                                 ccn_keystore_public_key_digest_length(keystore),
                                  /*datetime*/NULL,
                                  /*type*/CCN_CONTENT_DATA,
                                  /*freshness*/ freshness,
@@ -137,7 +138,8 @@ ccnd_answer_req(struct ccn_closure *selfp,
     if (res < 0)
         goto Bail;
     if ((ccnd->debug & 128) != 0)
-        ccnd_debug_ccnb(ccnd, __LINE__, "ccnd_answer_req_response", NULL, msg->buf, msg->length);
+        ccnd_debug_ccnb(ccnd, __LINE__, "ccnd_answer_req_response", NULL,
+                        msg->buf, msg->length);
     res = ccn_put(info->h, msg->buf, msg->length);
     if (res < 0)
         goto Bail;
@@ -177,7 +179,8 @@ ccnd_internal_client_refresh(struct ccn_schedule *sched,
 #define CCND_ID_TEMPL "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
 static void
-ccnd_uri_listen(struct ccnd *ccnd, const char *uri, ccn_handler p, intptr_t intdata)
+ccnd_uri_listen(struct ccnd *ccnd, const char *uri,
+                ccn_handler p, intptr_t intdata)
 {
     struct ccn_charbuf *name;
     struct ccn_charbuf *uri_modified = NULL;
@@ -292,9 +295,14 @@ ccnd_init_internal_keystore(struct ccnd *ccnd)
         keystore = NULL;
     }
 Finish:
-    if (ccnd->internal_keys != NULL)
-        memcpy(ccnd->ccnd_id, ccn_keystore_public_key_digest(ccnd->internal_keys),
+    if (ccnd->internal_keys != NULL) {
+        if (ccn_keystore_public_key_digest_length(ccnd->internal_keys) !=
+            sizeof(ccnd->ccnd_id))
+            abort();
+        memcpy(ccnd->ccnd_id,
+               ccn_keystore_public_key_digest(ccnd->internal_keys),
                sizeof(ccnd->ccnd_id));
+    }
     ccn_charbuf_destroy(&temp);
     ccn_charbuf_destroy(&cmd);
     if (keystore_path != NULL)
@@ -315,14 +323,18 @@ ccnd_internal_client_start(struct ccnd *ccnd)
     if (ccnd_init_internal_keystore(ccnd) < 0)
         return(-1);
     ccnd->internal_client = h = ccn_create();
-    ccnd_uri_listen(ccnd, "ccn:/ccn/ping", &ccnd_answer_req, OP_PING);
-    ccnd_uri_listen(ccnd, "ccn:/ccn/" CCND_ID_TEMPL "/ping", &ccnd_answer_req, OP_PING);
-    ccnd_uri_listen(ccnd, "ccn:/ccn/reg/self", &ccnd_answer_req, OP_REG_SELF + 1);
-    ccnd_uri_listen(ccnd, "ccn:/ccn/" CCND_ID_TEMPL "/newface", &ccnd_answer_req, OP_NEWFACE + 1);
+    ccnd_uri_listen(ccnd, "ccn:/ccn/ping",
+                    &ccnd_answer_req, OP_PING);
+    ccnd_uri_listen(ccnd, "ccn:/ccn/" CCND_ID_TEMPL "/ping",
+                    &ccnd_answer_req, OP_PING);
+    ccnd_uri_listen(ccnd, "ccn:/ccn/reg/self",
+                    &ccnd_answer_req, OP_REG_SELF + 1);
+    ccnd_uri_listen(ccnd, "ccn:/ccn/" CCND_ID_TEMPL "/newface",
+                    &ccnd_answer_req, OP_NEWFACE + 1);
     ccnd->internal_client_refresh =
-     ccn_schedule_event(ccnd->sched, 200000,
-                        ccnd_internal_client_refresh,
-                        NULL, CCN_INTEREST_LIFETIME_MICROSEC);
+    ccn_schedule_event(ccnd->sched, 200000,
+                       ccnd_internal_client_refresh,
+                       NULL, CCN_INTEREST_LIFETIME_MICROSEC);
     return(0);
 }
 
