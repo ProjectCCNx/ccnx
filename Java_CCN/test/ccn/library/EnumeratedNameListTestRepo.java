@@ -13,6 +13,8 @@ import org.bouncycastle.util.Arrays;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import test.ccn.data.util.CCNStringObject;
+
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;

@@ -1,7 +1,7 @@
 /**
  * 
  */
-package test.ccn.library;
+package test.ccn.data.util;
 
 import java.io.IOException;
 
