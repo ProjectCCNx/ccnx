@@ -1,7 +1,6 @@
 package com.parc.ccn.library;
 
 import java.io.IOException;
-import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 
@@ -10,9 +9,9 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.CollectionData;
 import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.content.CollectionData.CollectionObject;
 import com.parc.ccn.data.query.BasicNameEnumeratorListener;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.CCNInterestListener;
@@ -167,18 +166,6 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 		}
 	}
 	
-	
-	/*public ArrayList<ContentName> parseCollection(Collection c) {
-		ArrayList<ContentName> names = new ArrayList<ContentName>();
-		
-		// TODO fill in Collection to Names translation....
-		// can we just get the body of the collection object to avoid a copy?
-		
-		return names;
-	}
-	*/
-	
-	
 	public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
 		
 		//Library.logger().info("we received a Collection matching our prefix...");
@@ -205,7 +192,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 				ner.removeInterest(interest);
             }
 
-			Collection collection;
+			CollectionObject collection;
 			ArrayList<ContentName> names = new ArrayList<ContentName>();
 			LinkedList<LinkReference> links;
 			ContentName responseName = null;
@@ -231,7 +218,8 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 					}
 				
 					try {
-						collection = Collection.contentToCollection(c);
+						//collection = Collection.contentToCollection(c);
+						collection = new CollectionObject(c, _library);
 						links = collection.contents();
 						for (LinkReference l: links) {
 							names.add(l.targetName());
@@ -242,7 +230,10 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 					} catch(XMLStreamException e) {
 						e.printStackTrace();
 						System.err.println("Error getting CollectionData from ContentObject in CCNNameEnumerator");
-					}	
+					} catch(IOException e) {
+						e.printStackTrace();
+						System.err.println("error getting CollectionObject from ContentObject in CCNNameEnumerator.handleContent");
+					}
 				}
 			}
 		}
@@ -348,18 +339,20 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 							LinkReference[] temp = new LinkReference[cd.contents().size()];
 							for (int x = 0; x < cd.contents().size(); x++)
 								temp[x] = cd.contents().get(x);
-							_library.put(collectionName, temp);
+							
+							//_library.put(collectionName, temp);
 					
-							//CCNEncodableCollectionData ecd = new CCNEncodableCollectionData(collectionName, cd);
-							//ecd.save();
-							//Library.logger().info("saved ecd.  name: "+ecd.getName());
+							CollectionData colldata = new CollectionData(temp);
+							CollectionObject collobj = new CollectionObject(collectionName, colldata, _library);
+							collobj.save();
+							System.out.println("saved collection object");
+							
 							r.clean();
 
 						} catch(IOException e) {
-						
-						} catch(SignatureException e) {
-							// TODO Auto-generated catch block
 							e.printStackTrace();
+							System.err.println("error processing an incoming interest..  dropping and returning");
+							return 0;
 						}
 					}
 					//Library.logger().info("this interest did not have any matching names...  not returning anything.");
