@@ -276,25 +276,22 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @return
 	 */
 	private static Interest nextOrLast(ContentName name, ExcludeFilter exclude, Integer order, Integer prefixCount)  {
-		ContentName newName;
-		int componentIndex = name.count() - 1;
-		if (null != prefixCount && prefixCount < (name.count() - 1)) {
-			newName = name.clone();
+		if (null != prefixCount && prefixCount <= (name.count() - 1)) {
+			ContentName newName = name.clone();
 			newName = new ContentName(prefixCount, newName.components());
-			componentIndex = prefixCount;
-		} else 
-			newName = name;
 		
-		byte[][] nextExclude = new byte[2][];
-		byte[] zeroByte = new byte[1];
-		zeroByte[0] = 0;
-		nextExclude[0] = zeroByte;
-		nextExclude[1] = name.component(componentIndex);
-		if (null != exclude) {
-			exclude.add(nextExclude);
-		} else
-			exclude = ExcludeFilter.factory(nextExclude);
-		return constructInterest(newName, exclude, order);
+			byte[][] nextExclude = new byte[2][];
+			byte[] zeroByte = new byte[1];
+			zeroByte[0] = 0;
+			nextExclude[0] = zeroByte;
+			nextExclude[1] = name.component(prefixCount);
+			if (null != exclude) {
+				exclude.add(nextExclude);
+			} else
+				exclude = ExcludeFilter.factory(nextExclude);
+			name = newName;
+		}
+		return constructInterest(name, exclude, order);
 	}
 	
 	/**
@@ -303,10 +300,10 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @return
 	 */
 	public static Interest last(ContentName name) {
-		return last(name, null, null);
+		return last(name, (byte[][])null, null);
 	}
 	
-	public static Interest last(ContentName name, int prefixCount) {
+	public static Interest last(ContentName name, Integer prefixCount) {
 		return last(name, (byte[][])null, prefixCount);
 	}
 	
@@ -316,6 +313,10 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	
 	public static Interest last(ContentName name, ExcludeFilter exclude) {
 		return nextOrLast(name, exclude, new Integer(ORDER_PREFERENCE_RIGHT | ORDER_PREFERENCE_ORDER_NAME), null);
+	}
+	
+	public static Interest last(ContentName name, ExcludeFilter exclude, Integer prefixCount) {
+		return nextOrLast(name, exclude, new Integer(ORDER_PREFERENCE_RIGHT | ORDER_PREFERENCE_ORDER_NAME), prefixCount);
 	}
 	
 	/**

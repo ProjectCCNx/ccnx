@@ -193,8 +193,8 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 
 			CollectionObject collection;
 			ArrayList<ContentName> names = new ArrayList<ContentName>();
-			LinkedList<Link> links;
-			ContentName responseName = null;
+
+			LinkedList<LinkReference> links;
 			Interest newInterest = interest;
 		
 			//TODO  integrate handling for multiple responders, for now, just handles one result properly
@@ -202,8 +202,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 				for (ContentObject c: results) {
 					//Library.logger().info("we have a match on "+interest.name());
 
-					responseName = new ContentName(c.name(), c.contentDigest());
-					newInterest = Interest.last(responseName);
+					newInterest = Interest.last(c.name(), c.name().containsWhere(NEMARKER) + 1);
 					newInterest.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME);// | Interest.ORDER_PREFERENCE_RIGHT);					
 					try {
 						_library.expressInterest(newInterest, this);

@@ -325,7 +325,7 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 	 */
 	public ContentObject getLatest(ContentName name, ExcludeFilter exclude, long timeout) 
 			throws IOException, InvalidParameterException {
-		return get(Interest.last(name, exclude), timeout);
+		return get(Interest.last(name, exclude, name.count() - 1), timeout);
 	}
 	
 	public ContentObject getLatest(ContentName name, long timeout) throws InvalidParameterException, 

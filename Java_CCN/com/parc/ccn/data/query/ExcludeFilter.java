@@ -250,6 +250,10 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 	public int size() {
 		return _values.size();
 	}
+	
+	public ArrayList<ExcludeElement> getValues() {
+		return _values;
+	}
 
 	public String toString() {
 		StringBuffer sb = new StringBuffer();
