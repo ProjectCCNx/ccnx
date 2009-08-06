@@ -200,14 +200,26 @@ public class BinaryXMLCodec  {
 	}
 	
 	/**
-	 * Expects to read a XML_BLOB type marker, and then the data.
+	 * Expects to read a XML_BLOB type marker, and then the data. Has to peek
+	 * to cope with 0-length blob. Inline the peek to avoid unneeded resets.
 	 */
 	public static byte [] decodeBlob(InputStream istream) throws IOException {
-		TypeAndVal tv = decodeTypeAndVal(istream);
+		if (!istream.markSupported()) {
+			Library.logger().info("Cannot peek -- stream without marking ability!");
+			throw new IOException("No lookahead in stream!");
+		}
+
+		istream.mark(LONG_BYTES*2);
 		
-		if ((null == tv) || (XML_BLOB != tv.type())) {
+		TypeAndVal tv = decodeTypeAndVal(istream);
+		if (null == tv) {
 			throw new IOException("Unexpected type, expected XML_BLOB " + XML_BLOB + "," +
-					" got " + ((null != tv) ? tv.type() : "not a tag."));
+			" got: not a tag.");
+		}
+		if (XML_BLOB != tv.type()) {
+			Library.logger().finest("Expected BLOB, got " + tv.type() + ", assuming elided 0-length blob.");
+			istream.reset();
+			return new byte[0];
 		}
 		return decodeBlob(istream, (int)tv.val());
 	}
@@ -239,14 +251,25 @@ public class BinaryXMLCodec  {
 	
 	/**
 	 * Expects to read a XML_UDATA type marker, and then the data.
-	 * This will not decode a TAG or ATTR ustring.
+	 * This will not decode a TAG or ATTR ustring. Cope with elided 0-length ustring.
 	 */
 	public static String decodeUString(InputStream istream) throws IOException {
-		TypeAndVal tv = decodeTypeAndVal(istream);
+		if (!istream.markSupported()) {
+			Library.logger().info("Cannot peek -- stream without marking ability!");
+			throw new IOException("No lookahead in stream!");
+		}
+
+		istream.mark(LONG_BYTES*2);
 		
-		if ((null == tv) || (XML_UDATA != tv.type())) {
-			throw new IOException("Unexpected type, expected XML_USTRING " + XML_UDATA + "," +
-					" got " + ((null != tv) ? tv.type() : "not a tag."));
+		TypeAndVal tv = decodeTypeAndVal(istream);
+		if (null == tv) {
+			throw new IOException("Unexpected type, expected XML_UDATA " + XML_UDATA + "," +
+			" got: not a tag.");
+		}
+		if (XML_UDATA != tv.type()) {
+			Library.logger().finest("Expected UDATA, got " + tv.type() + ", assuming elided 0-length blob.");
+			istream.reset();
+			return new String("");
 		}
 		return decodeUString(istream, (int)tv.val());
 	}
@@ -289,6 +312,13 @@ public class BinaryXMLCodec  {
 	 * caller to give us a length.
 	 **/
 	public static void encodeUString(OutputStream ostream, String ustring, byte type) throws IOException {
+		
+		// We elide the encoding of a 0-length UString
+		if ((null == ustring) || (ustring.length() == 0)) {
+			Library.logger().finer("Eliding 0-length UString.");
+			return;
+		}
+		
 		byte [] strBytes = ustring.getBytes("UTF-8");
 		
 		encodeTypeAndVal(type, 
@@ -303,6 +333,12 @@ public class BinaryXMLCodec  {
 	}
 	
 	public static void encodeBlob(OutputStream ostream, byte [] blob, int offset, int length) throws IOException {
+		// We elide the encoding of a 0-length blob
+		if ((null == blob) || (length == 0)) {
+			Library.logger().finer("Eliding 0-length blob.");
+			return;
+		}
+		
 		encodeTypeAndVal(XML_BLOB, length, ostream);
 		if (null != blob) {
 			ostream.write(blob, offset, length);
