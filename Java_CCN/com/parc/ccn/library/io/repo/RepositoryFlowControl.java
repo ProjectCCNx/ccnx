@@ -99,19 +99,21 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		this(library);
 		addNameSpace(name);
 	}
+	
+	public RepositoryFlowControl(ContentName name, CCNLibrary library, Shape shape) throws IOException {
+		this(library);
+		addNameSpace(name);
+		startWrite(name, shape);
+	}
 
 	/**
 	 * Note we only want to do this once
 	 */
 	@Override
-	public void addNameSpace(ContentName name) throws IOException {
-		super.addNameSpace(name);
-		// DKS -- we want to be able to reuse this flow controller for multiple streams
-//		if (_initialized)
-//			return;
-		
-		_initialized = true;
-		_header = name;
+	public void startWrite(ContentName name, Shape shape) throws IOException {
+
+		//Client client = new Client(name);
+		//_clients.add(client);
 		clearUnmatchedInterests();	// Remove possible leftover interests from "getLatestVersion"
 		ContentName repoWriteName = new ContentName(name, CommandMarkers.REPO_START_WRITE, Interest.generateNonce());
 

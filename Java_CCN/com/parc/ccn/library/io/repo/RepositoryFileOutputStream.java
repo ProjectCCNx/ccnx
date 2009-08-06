@@ -1,5 +1,8 @@
 package com.parc.ccn.library.io.repo;
 
+
+import com.parc.ccn.library.CCNFlowControl.Shape;
+import com.parc.ccn.library.io.CCNFileOutputStream;
 import java.io.IOException;
 
 import com.parc.ccn.data.ContentName;
@@ -19,12 +22,6 @@ public class RepositoryFileOutputStream extends CCNFileOutputStream {
 	public RepositoryFileOutputStream(ContentName name,
 			PublisherPublicKeyDigest publisher, CCNLibrary library)
 			throws IOException {
-		this(name, null, publisher, null, library);
-	}
-
-	public RepositoryFileOutputStream(ContentName name, KeyLocator locator,
-			PublisherPublicKeyDigest publisher, ContentType type, CCNLibrary library)
-			throws IOException {
-		super(name, locator, publisher, type, new RepositoryFlowControl(name, library));
+		super(name, publisher, new RepositoryFlowControl(name, library, Shape.STREAM_WITH_HEADER));
 	}
 }

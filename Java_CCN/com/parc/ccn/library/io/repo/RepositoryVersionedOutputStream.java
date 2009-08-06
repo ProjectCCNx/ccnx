@@ -9,6 +9,7 @@ import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.CCNFlowControl.Shape;
 import com.parc.ccn.library.io.CCNVersionedOutputStream;
 
 public class RepositoryVersionedOutputStream extends CCNVersionedOutputStream {
@@ -20,12 +21,6 @@ public class RepositoryVersionedOutputStream extends CCNVersionedOutputStream {
 	public RepositoryVersionedOutputStream(ContentName name, 
 			KeyLocator locator, PublisherPublicKeyDigest publisher, CCNLibrary library)
 			throws XMLStreamException, IOException {
-		this(name, locator, publisher, null, library);
-	}
-
-	public RepositoryVersionedOutputStream(ContentName name, 
-			KeyLocator locator, PublisherPublicKeyDigest publisher, ContentType type, CCNLibrary library)
-			throws XMLStreamException, IOException {
-		super(name, locator, publisher, type, new RepositoryFlowControl(name, library));
+		super(name, locator, publisher, new RepositoryFlowControl(name, library, Shape.STREAM_WITH_HEADER));
 	}
 }
