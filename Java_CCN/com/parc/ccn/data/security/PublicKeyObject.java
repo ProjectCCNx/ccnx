@@ -35,6 +35,14 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 
 	/**
 	 * Write constructor. Doesn't save until you call save, in case you want to tweak things first.
+<<<<<<< HEAD:Java_CCN/com/parc/ccn/data/security/PublicKeyObject.java
+<<<<<<< HEAD:Java_CCN/com/parc/ccn/data/security/PublicKeyObject.java
+=======
+	 * @param type
+>>>>>>> Reordered constructors and comments to make things clearer:Java_CCN/com/parc/ccn/data/security/PublicKeyObject.java
+=======
+>>>>>>> Allow specification of write publisher. Needs some normalizing with read
+publisher.:Java_CCN/com/parc/ccn/data/security/PublicKeyObject.java
 	 * @param name
 	 * @param data
 	 * @param library

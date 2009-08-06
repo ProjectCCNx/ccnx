@@ -16,8 +16,12 @@ public class DaemonOutput extends Thread {
 	private OutputStream _os;
 	
 	public DaemonOutput(InputStream is, String outputFile) throws FileNotFoundException {
+		this(is, outputFile, false);
+	}
+	
+	public DaemonOutput(InputStream is, String outputFile, boolean append) throws FileNotFoundException {
 		_is = is;
-		_os = new FileOutputStream(outputFile);
+		_os = new FileOutputStream(outputFile, append);
 		this.start();
 	}
 	
@@ -33,12 +37,8 @@ public class DaemonOutput extends Thread {
 				}
 				Thread.sleep(1000);
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+				return;
+			} catch (InterruptedException e) {}
 		}
 	}
 }

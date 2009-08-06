@@ -1,3 +1,4 @@
+#! /bin/sh
 #
 # This orchestrates the execution of various test scripts
 #

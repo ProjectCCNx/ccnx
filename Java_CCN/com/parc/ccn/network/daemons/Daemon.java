@@ -37,6 +37,7 @@ public class Daemon {
 
 	protected String _daemonName = null;
 	protected static DaemonListenerClass _daemonListener = null;
+	protected boolean _interactive = false;
 	
 	public static final String PROP_DAEMON_MEMORY = "ccn.daemon.memory";
 	public static final String PROP_DAEMON_DEBUG_PORT = "ccn.daemon.debug";
@@ -106,9 +107,10 @@ public class Daemon {
 					Library.warningStackTrace(e);
 				}
 
-				try {
-					Thread.sleep(10000);
-				} catch (InterruptedException e) {
+				if (_keepGoing) {
+					try {
+						Thread.sleep(10000);
+					} catch (InterruptedException e) {}
 				}
 			} while (_keepGoing);
 
@@ -224,8 +226,13 @@ public class Daemon {
 
 	protected static void runAsDaemon(Daemon daemon) throws RemoteException, FileNotFoundException, IOException {
 		Library.logger().info(daemon.daemonName() + " started in background " + new Date());
-
-		_daemonListener = new DaemonListenerClass(daemon.createWorkerThread());
+		setupRemoteAccess(daemon, null);
+	}
+		
+	protected static void setupRemoteAccess(Daemon daemon, WorkerThread wt) throws IOException {
+		if (wt == null)
+			wt = daemon.createWorkerThread();
+		_daemonListener = new DaemonListenerClass(wt);
 
 		Remote stub = RemoteObject.toStub(_daemonListener);		
 
@@ -517,7 +524,10 @@ public class Daemon {
 		}							
 		Library.logger().info("Daemon runner finished.");
 	}
-
+	
+	public void setInteractive() {
+		_interactive = true;
+	}
 
 	public static void main(String[] args) {
 		

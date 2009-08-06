@@ -85,6 +85,7 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 		if (null == publisher) {
 			publisher = _library.keyManager().getDefaultKeyID();
 		}
+
 		PrivateKey signingKey = _library.keyManager().getSigningKey(publisher);
 
 		if (null == locator)
@@ -101,7 +102,6 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 			//HeaderData headerData = new HeaderData(contentLength, contentDigest, contentTreeAuthenticator, blockSize);
 			//HeaderObject header = new HeaderObject(headerName, headerData, publisher, locator, _library);
 			//header.save();
-
 			header = new Header(headerName, contentLength, contentDigest, contentTreeAuthenticator, blockSize,
 								publisher, locator, signingKey);
 		} catch (XMLStreamException e) {
