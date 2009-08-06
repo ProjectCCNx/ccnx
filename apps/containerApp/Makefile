@@ -17,7 +17,7 @@ jar clean: _always
 
 depend shared: _always
 
-install uninstall test:
+testinstall install uninstall test:
 	@echo No $@ target for $$(pwd -L)
  
 default all clean depend test check shared documentation install uninstall: _always

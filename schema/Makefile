@@ -2,7 +2,7 @@
 
 SUBDIRS = validation
 
-default all clean depend coverage check test shared install uninstall: _always
+default all clean depend coverage check test shared testinstall install uninstall: _always
 	for i in $(SUBDIRS); do         \
 	  (cd "$$i" && pwd && $(MAKE) $@) || break;			\
 	done

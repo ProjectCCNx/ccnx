@@ -112,7 +112,7 @@ check: security-schemabad01.xml
 security-schemabad01.xml: security-test01.xml
 	sed -e '/EncryptedKey/s/dmdxO6LZm7UUoUdyt6EG3KrnkNJkjdaayBppbvfD/bad!/' $? > $@
 
-default all clean depend test check shared install uninstall: _always
+default all clean depend test check shared testinstall install uninstall: _always
 
 _always:
 

@@ -1,12 +1,15 @@
-/** @mainpage CCN C-language Main Page
- *
- * @section intro_sec Introduction
- *
- * There shoul be an introduction here.
- *
- * @section install_sec Installation
- *
- * @subsection step1 Step 1: 
- *  
- * blah blah...
- */
+/**
+
+@mainpage CCN Main Page (for C language)
+
+@section c_intro_sec Introduction
+
+(this space should not be blank)
+
+@section c_install_sec Installation
+
+@subsection step1 Step 1: 
+ 
+blah blah...
+
+*/

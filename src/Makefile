@@ -19,6 +19,10 @@ conf.mk:
 
 test check: default
 
+testinstall: default _always
+	mkdir -p ../testinstall/lib ../testinstall/bin ../testinstall/include
+	$(MAKE) install INSTALL_BASE=`cd ../testinstall/. && pwd -L`
+
 objtree: conf.mk _always
 	mkdir -p $(OBJTREE)
 	echo SRCDIR = ..  > $(OBJTREE)/Makefile
@@ -51,8 +55,8 @@ FAVORITES: MANIFEST
 	./makefavorites
 	mv MANIFEST 00MANIFEST
 
-tar:	ccnd.tar
-ccnd.tar: MANIFEST
+tar:	ccn-c.tar
+ccn-c.tar: MANIFEST
 	tar cf ccnd.tar -T MANIFEST
 	mv MANIFEST 00MANIFEST
 

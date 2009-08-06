@@ -27,7 +27,7 @@ Staleness.html: Staleness.txt
 URI.html: URI.txt
 	asciidoc URI.txt
 
-default all clean depend test check shared documentation install uninstall: _always
+default all clean depend test check shared documentation testinstall install uninstall: _always
 
 _always:
 
