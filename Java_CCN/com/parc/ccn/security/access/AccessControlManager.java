@@ -221,7 +221,7 @@ public class AccessControlManager {
 	public GroupManager groupManager() { return _groupManager; }
 	
 	public void publishIdentity(ContentName identity, PublisherPublicKeyDigest myPublicKey) throws InvalidKeyException, IOException, ConfigurationException {
-		KeyManager km = KeyManager.getKeyManager();
+		KeyManager km = _library.keyManager();
 		if (null == myPublicKey) {
 			myPublicKey = km.getDefaultKeyID();
 		}
