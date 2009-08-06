@@ -9,6 +9,7 @@ import java.util.Arrays;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNInterestListener;
@@ -120,8 +121,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		// Don't start pulling a namespace till we actually write something. We may never write
 		// anything on this object. In fact, don't make a flow controller at all till we need one.
 		super(type, data);
-		if (null == library)
-			throw new IllegalArgumentException("Library cannot be null!");
+		if (null == library) {
+			try {
+				library = CCNLibrary.open();
+			} catch (ConfigurationException e) {
+				throw new IllegalArgumentException("Library null, and cannot create one: " + e.getMessage(), e);
+			}
+		}
 		_library = library;
 		_baseName = name;
 		_publisher = publisher;
@@ -194,8 +200,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public CCNNetworkObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
 			boolean raw, CCNLibrary library) throws IOException, XMLStreamException {
 		super(type);
-		if (null == library)
-			throw new IllegalArgumentException("Library cannot be null!");
+		if (null == library) {
+			try {
+				library = CCNLibrary.open();
+			} catch (ConfigurationException e) {
+				throw new IllegalArgumentException("Library null, and cannot create one: " + e.getMessage(), e);
+			}
+		}
 		_library = library;
 		_baseName = name;
 		update(name, publisher);
@@ -216,8 +227,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	
 	public CCNNetworkObject(Class<E> type, ContentObject firstBlock, boolean raw, CCNLibrary library) throws IOException, XMLStreamException {
 		super(type);
-		if (null == library)
-			throw new IllegalArgumentException("Library cannot be null!");
+		if (null == library) {
+			try {
+				library = CCNLibrary.open();
+			} catch (ConfigurationException e) {
+				throw new IllegalArgumentException("Library null, and cannot create one: " + e.getMessage(), e);
+			}
+		}
 		_library = library;
 		update(firstBlock);
 	}
