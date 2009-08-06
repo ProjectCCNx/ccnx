@@ -459,8 +459,7 @@ public class ContentTree {
 		ArrayList<ContentName> names = new ArrayList<ContentName>();
 		//first chop off NE marker
 		ContentName prefix = interest.name().cut(CCNNameEnumerator.NEMARKER);
-		
-		
+
 		Library.logger().fine("checking for content names under: "+prefix);
 		
 		TreeNode parent = lookupNode(prefix, prefix.count());
