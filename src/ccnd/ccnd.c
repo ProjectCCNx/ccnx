@@ -1567,6 +1567,7 @@ ccnd_req_newface(struct ccnd *h, const unsigned char *msg, size_t size)
     struct addrinfo *addrinfo = NULL;
     int fd = -1;
     struct face *face = NULL;
+    struct face *reqface = NULL;
     struct face *newface = NULL;
     int save;
 
@@ -1593,6 +1594,10 @@ ccnd_req_newface(struct ccnd *h, const unsigned char *msg, size_t size)
     if (face_instance->descr.address == NULL)
         goto Finish;
     if (face_instance->descr.port == NULL)
+        goto Finish;
+    /* consider the source ... */
+    reqface = face_from_faceid(h, h->interest_faceid);
+    if (reqface == NULL || (reqface->flags & CCN_FACE_GG) == 0)
         goto Finish;
     if (face_instance->descr.ipproto == IPPROTO_UDP &&
         face_instance->descr.source_address == NULL &&
@@ -1621,7 +1626,7 @@ ccnd_req_newface(struct ccnd *h, const unsigned char *msg, size_t size)
         if (face == NULL)
             goto Finish;
         save = h->flood;
-        h->flood = 0; /* no auto-reg of / for these */
+        h->flood = 0; /* never auto-register / for these */
         newface = get_dgram_source(h, face,
                                    addrinfo->ai_addr,
                                    addrinfo->ai_addrlen);
