@@ -266,7 +266,7 @@ struct ccn_charbuf *ccnd_reg_self(struct ccnd *h,
 
 /**
  * The internal client calls this with the argument portion ARG of
- * a face-creation request (/ccn/newfaace/ARG)
+ * a face-creation request (/ccn/newface/ARG)
  * The result, if not NULL, will be used as the Content of the reply.
  */
 struct ccn_charbuf *ccnd_req_newface(struct ccnd *h,

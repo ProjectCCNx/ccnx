@@ -1,0 +1,25 @@
+/**
+ * @file ccnd.c
+ * @brief Main program of the ccnd.
+ */
+
+/**
+ * @file ccnd_internal_client.c
+ * @brief Internal client of ccnd, handles requests for inspecting and controlling oeration of the ccnd.
+ */
+
+/**
+ * @file ccnd_msg.c
+ * @brief Logging support for ccnd
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
+ */
+
+/**
+ * @file ccnd_stats.c
+ * @brief Statistics presentation for ccnd.
+ */
+
+/**
+ * @file ccndsmoketest
+ * @brief Simple program for smoke-test of ccnd.
+ */

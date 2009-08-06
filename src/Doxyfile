@@ -85,10 +85,11 @@ WARN_LOGFILE           =
 #---------------------------------------------------------------------------
 # configuration options related to the input files
 #---------------------------------------------------------------------------
-INPUT                  = include/ccn lib ccnd libexec cmd
+INPUT                  = NOTES include/ccn lib ccnd libexec cmd
 INPUT_ENCODING         = UTF-8
-FILE_PATTERNS          = *.c *.h
-RECURSIVE              = NO
+FILE_PATTERNS          = *.c *.h NOTES
+RECURSIVE              = ON
+
 EXCLUDE                = 
 EXCLUDE_SYMLINKS       = YES
 EXCLUDE_PATTERNS       = 

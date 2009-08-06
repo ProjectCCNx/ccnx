@@ -1543,17 +1543,19 @@ ccnd_reg_self(struct ccnd *h, const unsigned char *msg, size_t size)
 }
 
 /**
- * Process a newface request for the ccnd internal client.
- * @param msg points to a ccnd-encoded FaceInstance
+ * @brief Process a newface request for the ccnd internal client.
+ * @param h is the ccnd handle
+ * @param msg points to a ccnd-encoded ContentObject containing a FaceInstance
+            in its Content.
  * @param size is its size in bytes
- * @result on success holds a new ccnd-encoded FaceInstance including faceid,
- *         NULL for error.
+ * @result on success the returned charbuf holds a new ccnd-encoded
+ *         FaceInstance including faceid;
+ *         returns NULL for any error.
  *
  * Is is permitted for the face to already exist.
  * A newly created face will have no registered prefixes, and so will not
  * receive any traffic.
  */
-
 struct ccn_charbuf *
 ccnd_req_newface(struct ccnd *h, const unsigned char *msg, size_t size)
 {
@@ -1574,6 +1576,7 @@ ccnd_req_newface(struct ccnd *h, const unsigned char *msg, size_t size)
     res = ccn_parse_ContentObject(msg, size, &pco, NULL);
     if (res < 0)
         goto Finish;        
+    // XXX - should verify signature.
     res = ccn_content_get_value(msg, size, &pco, &req, &req_size);
     if (res < 0)
         goto Finish;

@@ -4,6 +4,10 @@
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
  */
 
+/**
+ * @file Statistics presentation for ccnd
+ */
+
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
