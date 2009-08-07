@@ -585,6 +585,23 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		// by default signal all waiters
 		this.notifyAll();
 	}
+	
+	/**
+	 * Will return immediately if this object already has data, otherwise
+	 * will wait for new data to appear.
+	 */
+	public void waitForData() {
+		if (available())
+			return;
+		synchronized (this) {
+			while (!available()) {
+				try {
+					wait();
+				} catch (InterruptedException e) {
+				}
+			}
+		}
+	}
 
 	public boolean isGone() {
 		return _available && _data == null;
@@ -692,3 +709,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	@Override
 	public String toString() { return getCurrentVersionName() + ": " + ((null == _data) ? null : _data.toString()); }
 }
+
+
+
