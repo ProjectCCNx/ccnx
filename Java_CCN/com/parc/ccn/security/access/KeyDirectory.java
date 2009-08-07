@@ -227,7 +227,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		return getWrappedKey(getSupersededBlockName());
 	}
 	
-	WrappedKeyObject getWrappedKey(ContentName wrappedKeyName) throws XMLStreamException, IOException, ConfigurationException {
+	public WrappedKeyObject getWrappedKey(ContentName wrappedKeyName) throws XMLStreamException, IOException, ConfigurationException {
 		WrappedKeyObject wrappedKey = new WrappedKeyObject(wrappedKeyName, _manager.library());
 		wrappedKey.update();
 		return wrappedKey;		
