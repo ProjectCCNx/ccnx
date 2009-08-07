@@ -217,7 +217,7 @@ public class CollectionObjectTest {
 		CollectionObject emptycoll = 
 			new CollectionObject(testName, (CollectionData)null, library);
 		try {
-			emptycoll.save();
+			saveAndLog("Empty", emptycoll, null, null);
 		} catch (InvalidObjectException iox) {
 			// this is what we expect to happen
 			caught = true;
@@ -232,7 +232,7 @@ public class CollectionObjectTest {
 		setupNamespace(testName);
 		CollectionObject testCollectionObject = new CollectionObject(testName, small1, CCNLibrary.open());
 		
-		testCollectionObject.save();
+		saveAndLog("testStreamUpdate", testCollectionObject, null, small1);
 		System.out.println("testCollectionObject name: " + testCollectionObject.getCurrentVersionName());
 				
 		CCNVersionedInputStream vis = new CCNVersionedInputStream(testCollectionObject.getCurrentVersionName());
