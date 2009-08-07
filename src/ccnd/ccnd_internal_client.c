@@ -30,7 +30,7 @@
 #define OP_PING        0x0000
 #define OP_REG_SELF    0x0100
 #define OP_NEWFACE     0x0200
-
+#define OP_PREFIXREG   0x0300
 /**
  * Common interest handler for ccnd_internal_client
  */
@@ -92,15 +92,18 @@ ccnd_answer_req(struct ccn_closure *selfp,
             break;
         case OP_REG_SELF: 
             reply_body = ccnd_reg_self(ccnd, final_comp, final_size);
-            if (reply_body == NULL)
-                goto Bail;
             break;
         case OP_NEWFACE:
             reply_body = ccnd_req_newface(ccnd, final_comp, final_size);
             break;
+        case OP_PREFIXREG:
+            reply_body = ccnd_req_prefixreg(ccnd, final_comp, final_size);
+            break;
         default:
             goto Bail;
     }
+    if (reply_body == NULL)
+        goto Bail;
     
     keystore = ccnd->internal_keys;
     if (keystore == NULL)
@@ -332,6 +335,8 @@ ccnd_internal_client_start(struct ccnd *ccnd)
                     &ccnd_answer_req, OP_REG_SELF + 1);
     ccnd_uri_listen(ccnd, "ccn:/ccn/" CCND_ID_TEMPL "/newface",
                     &ccnd_answer_req, OP_NEWFACE + 1);
+    ccnd_uri_listen(ccnd, "ccn:/ccn/" CCND_ID_TEMPL "/prefixreg",
+                    &ccnd_answer_req, OP_PREFIXREG + 1);
     ccnd->internal_client_refresh =
     ccn_schedule_event(ccnd->sched, 200000,
                        ccnd_internal_client_refresh,

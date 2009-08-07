@@ -1,6 +1,7 @@
 AFTER : test_single_ccnd test_coders
 BEFORE : test_single_ccnd_teardown
 
+rm newface*.ccnb
 ccndsmoketest || SkipTest no ccnd
 
 # Create the body of a face creation request.

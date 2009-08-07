@@ -193,7 +193,7 @@ enum ccn_marker {
  * ccn_name_append_numeric: add binary Component to ccnb-encoded Name
  * These are special components used for marking versions, fragments, etc.
  * Return value is 0, or -1 for error
- * XXX http://twiki.parc.com/twiki/bin/view/CCN/NameConventions
+ * see Documentation/technical/NameConventions.html
  */
 int ccn_name_append_numeric(struct ccn_charbuf *c,
                             enum ccn_marker tag, uintmax_t value);

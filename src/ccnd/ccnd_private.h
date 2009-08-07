@@ -20,6 +20,7 @@
 
 #include <ccn/ccn_private.h>
 #include <ccn/coding.h>
+#include <ccn/reg_mgmt.h>
 #include <ccn/schedule.h>
 
 /*
@@ -205,7 +206,7 @@ struct sparse_straggler_entry {
 struct nameprefix_entry {
     struct propagating_entry *propagating_head;
     struct ccn_indexbuf *forward_to; /* faceids to forward to */
-    struct ccn_forwarding *forwarding; /* detailed forwarding info*/
+    struct ccn_forwarding *forwarding; /* detailed forwarding info */
     struct nameprefix_entry *parent; /* link to next-shorter prefix */
     int children;                /* number of children */
     int fgen;                    /* used to decide when forward_to is stale */
@@ -216,17 +217,23 @@ struct nameprefix_entry {
 
 struct ccn_forwarding {
     unsigned faceid;
-    unsigned flags;
-    int expires;
+    unsigned flags;              /**< CCN_FORW_* - c.f. <ccn/reg_mgnt.h> */
+    int expires;                 /**< time remaining, in seconds */
     struct ccn_forwarding *next;
 };
-#define CCN_FORW_REFRESHED      1
-#define CCN_FORW_ACTIVE         2
-#define CCN_FORW_CHILD_INHERIT  4
-#define CCN_FORW_ADVERTISE      8
 
-/*
- * CCN_FWU_SECS determines how frequently we age our fowarding entries
+/**
+ * @def CCN_FORW_ACTIVE         1
+ * @def CCN_FORW_CHILD_INHERIT  2
+ * @def CCN_FORW_ADVERTISE      4
+ */
+#define CCN_FORW_PUBMASK (CCN_FORW_ACTIVE        | \
+                          CCN_FORW_CHILD_INHERIT | \
+                          CCN_FORW_ADVERTISE       )
+#define CCN_FORW_REFRESHED      (1 << 16) /**< private to ccnd */
+ 
+/**
+ * Determines how frequently we age our fowarding entries
  */
 #define CCN_FWU_SECS 5
 
@@ -266,11 +273,20 @@ struct ccn_charbuf *ccnd_reg_self(struct ccnd *h,
 
 /**
  * The internal client calls this with the argument portion ARG of
- * a face-creation request (/ccn/newface/ARG)
+ * a face-creation request (/ccn/CCNDID/newface/ARG)
  * The result, if not NULL, will be used as the Content of the reply.
  */
 struct ccn_charbuf *ccnd_req_newface(struct ccnd *h,
                                      const unsigned char *msg, size_t size);
+
+/**
+ * The internal client calls this with the argument portion ARG of
+ * a prefix-registration request (/ccn/CCNDID/prefixreg/ARG)
+ * The result, if not NULL, will be used as the Content of the reply.
+ */
+struct ccn_charbuf *ccnd_req_prefixreg(struct ccnd *h,
+                                       const unsigned char *msg, size_t size);
+
 
 int ccnd_reg_prefix(struct ccnd *h,
                     const unsigned char *msg,

@@ -103,3 +103,54 @@ FreshnessSeconds is optional in a request, but is treated as a hint by ccnd.
 In a response, FreshnessSeconds specifies the remaining lifetime of the
 face.
 
+== Prefix Registration Protocol
+The prefix registration protocol uses the ForwardingEntry element type
+to represent both requests and responses.
+.......................................................
+ForwardingEntry ::= Action?
+	            Name?
+	            PublisherPublicKeyDigest?
+		    FaceID?
+		   ForwardingFlags?
+		   FreshnessSeconds?
+
+Action		 ::= ("prefixreg")
+Name		 ::= the name prefix to be registered
+PublisherPublicKeyDigest ::= SHA-256 digest of the ccnd's public key (CCNDID)
+FaceID 		 ::= nonNegativeInteger
+ForwardingFlags  ::= nonNegativeInteger
+FreshnessSeconds ::= nonNegativeInteger
+.......................................................
+
+=== Action
+When ForwardingEntry is used as a request, the Action must be specified.
+It will not be present in a response.
+
+- `prefixreg` - Register (or re-register) the prefix on the specified face.
+
+=== PublisherPublicKeyDigest
+Identifies the ccnd that the information is relevant for.
+It is optional in a request (the name in the requesting interest has
+already addressed the appropriate node).
+PublisherPublicKeyDigest is always present in a response.
+
+=== FaceID
+FaceID required in a `prefixreg` request.
+FaceID is always present in a response.
+
+=== Name
+This is the name prefix that is to acted on.
+
+=== ForwardingFlags
+This integer holds the inclusive OR of the following bit fields:
+.........................
+CCN_FORW_ACTIVE         1
+CCN_FORW_CHILD_INHERIT  2
+CCN_FORW_ADVERTISE      4
+.........................
+
+=== FreshnessSeconds
+FreshnessSeconds is optional in a request, but is treated as a hint by ccnd.
+In a response, FreshnessSeconds specifies the remaining lifetime of the
+registration.
+

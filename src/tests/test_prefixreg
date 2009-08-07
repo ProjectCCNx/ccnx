@@ -1,0 +1,63 @@
+AFTER : test_single_ccnd test_newface
+BEFORE : test_single_ccnd_teardown
+
+ccndsmoketest || SkipTest no ccnd
+test -f newface-response.ccnb || SkipTest missing newface-response.ccnb
+
+IsolateFaceID () {
+	sed -n -e 's@^.*FaceID">@@' \
+               -e 's@</FaceID.*$@@p'
+}
+
+
+#FACEID=`ccn_ccnbtoxml - <newface-response.ccnb | IsolateFaceID`
+# hm, no handy util for pulling out the FaceID ... cheat for now
+FACEID=13
+echo FACEID=$FACEID
+
+# Create the body of a prefixreg request.
+ccn_xmltoccnb -w - <<EOF >prefixreg.ccnb
+<ForwardingEntry>
+  <Action>prefixreg</Action>
+  <Name>
+     <Component ccnbencoding="text">Junk</Component>
+  </Name>
+  <FaceID>$FACEID</FaceID>  
+  <FreshnessSeconds>19</FreshnessSeconds>
+</ForwardingEntry>
+EOF
+
+cat prefixreg.ccnb | ccnput -x 30 /_ignored_$$
+
+# Pull it out to use in the prefixreg request.  Base-64 encode it for the benefit of the shell.
+
+PRBLOB="`ccnget /_ignored_$$ | openssl enc -base64`"
+
+echo PRBLOB is $PRBLOB >&2
+
+# We have the CCNDID of our ccnd in a file, left from test_newface
+CCNDID=`cat ccndid.out`
+
+# Now construct the interest.
+
+cat <<EOF >prefixreg-request.xml
+<Interest>
+  <Name>
+    <Component ccnbencoding="text">ccn</Component>
+    <Component ccnbencoding="hexBinary">$CCNDID</Component>
+    <Component ccnbencoding="text">prefixreg</Component>
+    <Component ccnbencoding="base64Binary">$PRBLOB</Component>
+  </Name>
+  <Scope>1</Scope>
+</Interest>
+EOF
+ccn_xmltoccnb -w prefixreg-request.xml || Fail botch constructing prefixreg-request.ccnb
+
+# Try out the request
+ccndsmoketest -b send prefixreg-request.ccnb recv > prefixreg-response.ccnb
+
+ccn_ccnbtoxml prefixreg-response.ccnb || Fail did not get prefixreg response
+
+sleep 1
+open http://localhost:$CCN_LOCAL_PORT
+sleep 20

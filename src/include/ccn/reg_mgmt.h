@@ -15,10 +15,14 @@ struct ccn_forwarding_entry {
     const unsigned char *ccnd_id;
     size_t ccnd_id_size;
     unsigned faceid;
-    unsigned flags;
+    int flags;
     int lifetime;
     unsigned char store[48];
 };
+
+#define CCN_FORW_ACTIVE         1
+#define CCN_FORW_CHILD_INHERIT  2
+#define CCN_FORW_ADVERTISE      4
 
 struct ccn_forwarding_entry *
 ccn_forwarding_entry_parse(const unsigned char *p, size_t size);
