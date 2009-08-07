@@ -39,7 +39,7 @@ import com.parc.security.crypto.DigestHelper;
  * @author smetters
  *
  */
-public class CollectionObjectTest {
+public class CCNNetworkObjectTest {
 	
 	static ContentName namespace;
 	static ContentName stringObjName;
@@ -88,7 +88,7 @@ public class CollectionObjectTest {
 		Library.logger().setLevel(Level.INFO);
 		
 		library = CCNLibrary.open();
-		namespace = ContentName.fromNative("/parc/test/data/CollectionObjectTest-" + + new Random().nextInt(10000));
+		namespace = ContentName.fromNative("/parc/test/data/CCNNetworkObjectTest-" + + new Random().nextInt(10000));
 		stringObjName = ContentName.fromNative(namespace, "StringObject");
 		collectionObjName = ContentName.fromNative(namespace, "CollectionObject");
 		
