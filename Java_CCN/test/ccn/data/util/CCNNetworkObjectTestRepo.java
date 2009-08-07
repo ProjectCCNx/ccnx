@@ -342,13 +342,8 @@ public class CCNNetworkObjectTestRepo {
 		Assert.assertEquals(t3, t0);
 		Assert.assertTrue("Read back should be gone.", c1.isGone());
 
-		// TODO DKS -- can't write same object twice to repository right now,
-		// doesn't work. Requires updated repo flow controller 
-		//t0 = saveAsGoneAndLog("GoneAgain", c0);
-		//Assert.assertTrue("Should be gone", c0.isGone());
-		CollectionObject cTemp = new CollectionObject(testName, empty, library);
-		t0 = saveAsGoneAndLog("GoneAgain", cTemp);
-		Assert.assertTrue("Should be gone", cTemp.isGone());
+		t0 = saveAsGoneAndLog("GoneAgain", c0);
+		Assert.assertTrue("Should be gone", c0.isGone());
 		
 		CollectionObject c2 = new CollectionObject(testName, CCNLibrary.open());
 		Timestamp t4 = waitForDataAndLog(testName.toString(), c2);
