@@ -41,7 +41,6 @@
 #include <ccn/uri.h>
 
 #include "ccnd_private.h"
-#define GOT_HERE ccnd_msg(h, "at %d", __LINE__);
 
 static void cleanup_at_exit(void);
 static void unlink_at_exit(const char *path);
@@ -1455,20 +1454,16 @@ ccnd_reg_prefix(struct ccnd *h,
     struct ccn_forwarding *f = NULL;
     struct nameprefix_entry *npe = NULL;
     int res;
-GOT_HERE;
-    ccnd_msg(h, "flags: %d", flags); 
+
     if ((flags & (CCN_FORW_CHILD_INHERIT |
                   CCN_FORW_ACTIVE        |
                   CCN_FORW_ADVERTISE      )) != flags)
         return(-1);
-GOT_HERE;
     if (face_from_faceid(h, faceid) == NULL)
         return(-1);
-GOT_HERE;
     hashtb_start(h->nameprefix_tab, e);
     res = nameprefix_seek(h, e, msg, comps, ncomps);
     if (res >= 0) {
-GOT_HERE;
         npe = e->data;
         f = seek_forwarding(h, npe, faceid);
         if (f != NULL) {
@@ -1679,7 +1674,7 @@ ccnd_req_prefixreg(struct ccnd *h, const unsigned char *msg, size_t size)
     struct face *face = NULL;
     struct face *reqface = NULL;
     struct ccn_indexbuf *comps = NULL;
-GOT_HERE;    
+
     res = ccn_parse_ContentObject(msg, size, &pco, NULL);
     if (res < 0)
         goto Finish;        
@@ -1688,34 +1683,26 @@ GOT_HERE;
     if (res < 0)
         goto Finish;
     forwarding_entry = ccn_forwarding_entry_parse(req, req_size);
-GOT_HERE;  
     if (forwarding_entry == NULL || forwarding_entry->action == NULL)
         goto Finish;
-GOT_HERE;  
     if (strcmp(forwarding_entry->action, "prefixreg") != 0)
         goto Finish;
-GOT_HERE;  
     if (forwarding_entry->name_prefix == NULL)
         goto Finish;
-GOT_HERE;  
     if (forwarding_entry->ccnd_id_size == sizeof(h->ccnd_id)) {
-GOT_HERE;  
         if (memcmp(forwarding_entry->ccnd_id,
                    h->ccnd_id, sizeof(h->ccnd_id)) != 0)
             goto Finish;
     }
     else if (forwarding_entry->ccnd_id_size |= 0)
         goto Finish;
-GOT_HERE;  
     face = face_from_faceid(h, forwarding_entry->faceid);
     if (face == NULL)
         goto Finish;
-GOT_HERE;  
     /* consider the source ... */
     reqface = face_from_faceid(h, h->interest_faceid);
     if (reqface == NULL || (reqface->flags & CCN_FACE_GG) == 0)
         goto Finish;
-GOT_HERE;  
     if (forwarding_entry->lifetime < 0)
         forwarding_entry->lifetime = 60;
     else if (forwarding_entry->lifetime > 3600 &&
@@ -1727,17 +1714,13 @@ GOT_HERE;
         goto Finish;
     if (forwarding_entry->flags < 0)
         forwarding_entry->flags = 0;
-    ccnd_msg(h, "forwarding_entry->flags: %d", forwarding_entry->flags);
-GOT_HERE;  
     res = ccnd_reg_prefix(h,
                           forwarding_entry->name_prefix->buf, comps, res,
                           face->faceid,
                           forwarding_entry->flags,
                           forwarding_entry->lifetime);
-GOT_HERE;
     if (res < 0)
         goto Finish;
-GOT_HERE;  
     result = ccn_charbuf_create();
     forwarding_entry->action = NULL;
     forwarding_entry->ccnd_id = h->ccnd_id;
