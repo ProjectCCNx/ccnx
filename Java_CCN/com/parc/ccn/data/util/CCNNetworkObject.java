@@ -713,3 +713,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	@Override
 	public String toString() { return getCurrentVersionName() + ": " + ((null == _data) ? null : _data.toString()); }
 }
+
+
+
