@@ -69,6 +69,9 @@ public class CCNNetworkObjectTestRepo {
 	static void setupNamespace(ContentName name) throws IOException {
 	}
 	
+	static void removeNamepspace(ContentName name) throws IOException {
+	}
+	
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
 		Library.logger().setLevel(oldLevel);

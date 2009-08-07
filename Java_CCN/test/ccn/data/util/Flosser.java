@@ -56,6 +56,23 @@ public class Flosser implements CCNInterestListener {
 		handleNamespace(ContentName.fromNative(namespace));
 	}
 	
+	public void stopMonitoringNamespace(String namespace) throws MalformedContentNameStringException {
+		stopMonitoringNamespace(ContentName.fromNative(namespace));
+	}
+	
+	public void stopMonitoringNamespace(ContentName namespace) {
+		synchronized(_interests) {
+			if (!_interests.containsKey(namespace)) {
+				Library.logger().fine("Not currently handling namespace: " + namespace);
+				return;
+			}
+			Interest interest = _interests.get(namespace);
+			Library.logger().info("Flosser: no longer monitoring namespace: " + namespace);
+			_library.cancelInterest(interest, this);
+			_interests.remove(namespace);
+		}
+	}
+	
 	public void handleNamespace(ContentName namespace) throws IOException {
 		synchronized(_interests) {
 			if (_interests.containsKey(namespace)) {
