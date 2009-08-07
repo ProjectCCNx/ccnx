@@ -10,6 +10,7 @@ import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.ContentVerifier;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
+import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersionMissingException;
@@ -92,6 +93,11 @@ public class CCNVersionedInputStream extends CCNInputStream {
 		if (null != result){
 			Library.logger().info("getFirstBlock: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
 			_baseName = result.name().cut(_baseName.count() + 1);
+			if (result.signedInfo().getType().equals(ContentType.GONE)) {
+				_goneBlock = result;
+				Library.logger().info("getFirstBlock: got gone block: " + _goneBlock.name());
+				return null;
+			}
 		} else {
 			Library.logger().info("getFirstBlock: no block available for latest version of " + _baseName);
 		}

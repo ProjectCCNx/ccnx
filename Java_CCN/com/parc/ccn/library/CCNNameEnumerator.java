@@ -331,19 +331,9 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 					}
 			
 					if (cd.size()>0) {
-						//Library.logger().info("we have a response to send back for "+i.name().toString());
-						//Library.logger().info("Collection Name: "+collectionName.toString());
 						try {
-					
-							//the following 6 lines are to be deleted after Collections are refactored
-							LinkReference[] temp = new LinkReference[cd.contents().size()];
-							for (int x = 0; x < cd.contents().size(); x++)
-								temp[x] = cd.contents().get(x);
-							
-							//_library.put(collectionName, temp);
-					
-							CollectionData colldata = new CollectionData(temp);
-							CollectionObject collobj = new CollectionObject(collectionName, colldata, _library);
+
+							CollectionObject collobj = new CollectionObject(collectionName, cd, _library);
 							collobj.save();
 							System.out.println("saved collection object");
 							

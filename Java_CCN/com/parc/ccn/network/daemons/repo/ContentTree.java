@@ -168,7 +168,7 @@ public class ContentTree {
 					ContentName prefix = name.cut(component);
 
 					prefix = new ContentName(prefix, CCNNameEnumerator.NEMARKER);
-					prefix = VersioningProfile.addVersion(prefix, new Timestamp(node.timestamp));
+					//prefix = VersioningProfile.addVersion(prefix, new Timestamp(node.timestamp));
 					Library.logger().info("prefix for NEResponse: "+prefix);
 
 					ArrayList<ContentName> names = new ArrayList<ContentName>();
@@ -185,6 +185,7 @@ public class ContentTree {
 					}
 					ner.setPrefix(prefix);
 					ner.setNameList(names);
+					ner.setTimestamp(new Timestamp(node.timestamp));
 					Library.logger().info("resetting interestFlag to false");
 					node.interestFlag = false;
 					
@@ -460,61 +461,21 @@ public class ContentTree {
 		//first chop off NE marker
 		ContentName prefix = interest.name().cut(CCNNameEnumerator.NEMARKER);
 
-		//prefix = VersioningProfile.versionRoot(prefix);
-		boolean versionedInterest = false;
-		//get the index of the name enumeration marker
-		int markerIndex = prefix.count();
-		if (interest.name().count() > markerIndex) {
-			//we have something longer than just the name enumeration marker
-			if (VersioningProfile.findLastVersionComponent(interest.name()) > markerIndex)
-				versionedInterest = true;
-		}
-		
-		//does the interest have a timestamp?
-		Timestamp interestTS = null;
-		Timestamp nodeTS = null;
-
-		if (versionedInterest) {
-			// NOTE: should be sure that interest.name() has a version that we're interested in, otherwise
-			// this might return an arbitrary version farther up the name...
-		
-			try {
-				byte[] versionComponent = interest.name().component(markerIndex+1);
-				interestTS = VersioningProfile.getVersionComponentAsTimestamp(versionComponent);
-				//interestTS = VersioningProfile.getLastVersionAsTimestamp(interest.name());
-				Library.logger().fine("interestTS: "+interestTS+" "+interestTS.getTime());
-			} catch(Exception e) {
-				interestTS = null;
-			}
-		} else {
-			Library.logger().finest("no timestamp in interest after the name enumeration marker");
-		}
-		
 		Library.logger().fine("checking for content names under: "+prefix);
 		
 		TreeNode parent = lookupNode(prefix, prefix.count());
 		if (parent!=null) {
-			parent.interestFlag = true;
-			
-			//we should check the timestamp
-			try {
-				nodeTS = VersioningProfile.getLastVersionAsTimestamp(VersioningProfile.addVersion(new ContentName(), new Timestamp(parent.timestamp)));
-			} catch (VersionMissingException e) {
-				//should never happen since we are putting the version in in the same line...
-				Library.logger().info("missing version in conversion of index node timestamp to version timestamp for comparison to interest timestamp");
-				interestTS=null;
+		
+			//check if we should respond...
+			if (interest.matches(VersioningProfile.addVersion(new ContentName(prefix, CCNNameEnumerator.NEMARKER), new Timestamp(parent.timestamp)), null)) {
+				Library.logger().info("the new version is a match with the interest!  we should respond");
 			}
-			//nodeTS = new Timestamp(parent.timestamp);
-			if (interestTS==null) {
-				//no version marker...  should respond if we have info
-			} else if (nodeTS.after(interestTS) && !nodeTS.equals(interestTS)) {
-				//we have something new to report
-				//put this time in the last name spot if there are children
-			} else {
-				Library.logger().info("Nothing new, but the interest flag is set in case new content is added");
+			else {
+				Library.logger().info("the new version doesn't match, no response needed");
+				parent.interestFlag = true;
 				return null;
 			}
-			
+
 			//the parent has children we need to return
 			ContentName c = new ContentName();
 			if (parent.oneChild!=null) {
@@ -525,13 +486,12 @@ public class ContentTree {
 						names.add(new ContentName(c, ch.component));
 				}
 			}
-			//add timestamp in last name spot to send back (will be removed)
-			if (names!=null && names.size()>0)
+			
+			if (names.size()>0)
 				Library.logger().finer("sending back "+names.size()+" names in the enumeration response");
 			parent.interestFlag = false;
-
-			return new NameEnumerationResponse(VersioningProfile.addVersion(interest.name(), nodeTS), names);
 			
+			return new NameEnumerationResponse(interest.name(), names, new Timestamp(parent.timestamp));
 		}
 		return null;
 	}

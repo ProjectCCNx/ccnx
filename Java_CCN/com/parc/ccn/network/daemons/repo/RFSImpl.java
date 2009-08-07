@@ -624,7 +624,7 @@ public class RFSImpl implements Repository {
 				toprint.concat(" "+ntr.toString());
 			Library.logger().fine(toprint+" ---");
 
-			return new NameEnumerationResponse(cropped, names);
+			return new NameEnumerationResponse(cropped, names, fileTS);
 		}
 		else{
 			Library.logger().finest("No new names for this prefix since the last request, dropping request and not responding.");
