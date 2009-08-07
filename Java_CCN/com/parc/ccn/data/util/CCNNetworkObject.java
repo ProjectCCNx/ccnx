@@ -470,9 +470,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		} else {
 			// saving object as gone, currently this is always one empty block so we don't use an OutputStream
 			ContentName segmentedName = SegmentationProfile.segmentName(name, SegmentationProfile.BASE_SEGMENT );
-			byte [] empty = { };
+			byte [] empty = new byte[0];
 			ContentObject goneObject = 
 				ContentObject.buildContentObject(segmentedName, ContentType.GONE, empty, _publisher, _keyLocator, null, null);
+			// DKS TODO -- start write
+			// The segmenter in the stream does an addNameSpace of the versioned name. Right now
+			// this not only adds the prefix (ignored) but triggers the repo start write.
+			_flowControl.addNameSpace(name);
 			_flowControl.put(goneObject);
 			_currentPublisher = goneObject.signedInfo().getPublisherKeyID();
 			_currentPublisherKeyLocator = goneObject.signedInfo().getKeyLocator();

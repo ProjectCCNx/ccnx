@@ -373,6 +373,7 @@ public class CCNSegmenter {
 			locator = getFlowControl().getLibrary().keyManager().getKeyLocator(signingKey);
 
 		ContentName rootName = SegmentationProfile.segmentRoot(name);
+		// DKS -- replace with stream-level call to start writing
 		getFlowControl().addNameSpace(rootName);
 
 		if (null == type) {
