@@ -842,6 +842,10 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		return false;
 	}
 
+	/**
+	 * hashCode and equals not auto-generated, ArrayList does not do the right thing.
+	 */
+	@Override
 	public boolean equals(Object obj) {
 		if (this == obj)
 			return true;
@@ -859,6 +863,16 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		return true;
 	}
 	
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		for (int i=0; i < count(); ++i) {
+			result = prime * result + Arrays.hashCode(component(i));			
+		}
+		return result;
+	}
+
 	/**
 	 * Parses the canonical URI representation.
 	 * @param str
