@@ -41,7 +41,7 @@ enum ccn_ext_subtype {
 };
 
 /**
- * DTAG identifies ccnb-encoed elements. c.f. tagname.csvdict
+ * DTAG identifies ccnb-encoded elements. c.f. tagname.csvdict
  */
 enum ccn_dtag {
     CCN_DTAG_Any = 13,
@@ -125,23 +125,27 @@ enum ccn_dtag {
 };
 
 struct ccn_dict_entry {
-    int index;
-    const char *name;
+    int index;              /**< matches enum ccn_dtag above */
+    const char *name;       /**< textual name of dtag */
 };
 
 struct ccn_dict {
-    int count;
-    const struct ccn_dict_entry *dict;
+    int count;              /**< Count of elements in the table */
+    const struct ccn_dict_entry *dict; /**< the table entries */
 };
+
+/**
+ * Table for translating from DTAGs to names and vice versa.
+ */
 extern const struct ccn_dict ccn_dtag_dict; /* matches enum ccn_dtag above */
 
 struct ccn_skeleton_decoder { /* initialize to all 0 */
-    ssize_t index;          /* Number of bytes processed */
-    int state;              /* Decoder state */
-    int nest;               /* Element nesting */
-    size_t numval;          /* Current numval, meaning depends on state */
-    size_t token_index;     /* Starting index of most-recent token */
-    size_t element_index;   /* Starting index of most-recent element */
+    ssize_t index;          /**< Number of bytes processed */
+    int state;              /**< Decoder state */
+    int nest;               /**< Element nesting */
+    size_t numval;          /**< Current numval, meaning depends on state */
+    size_t token_index;     /**< Starting index of most-recent token */
+    size_t element_index;   /**< Starting index of most-recent element */
 };
 
 /**
@@ -169,7 +173,7 @@ enum ccn_decoder_state {
 /**
  * If the CCN_DSTATE_PAUSE bit is set in the decoder state,
  * the decoder will return just after recognizing each token.
- * In this instance, use CCN_GET_TT_FROM_DSTATE to extract
+ * In this instance, use CCN_GET_TT_FROM_DSTATE() to extract
  * the token type from the decoder state;
  * CCN_CLOSE will be reported as CCN_NO_TOKEN.
  * The pause bit persists, so the end test should take that into account

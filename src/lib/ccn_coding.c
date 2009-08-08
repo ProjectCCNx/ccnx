@@ -1,12 +1,39 @@
 #include <ccn/coding.h>
 
-/*
+/**
  * This macro documents what's happening in the state machine by
  * hinting at the XML syntax would be emitted in a re-encoder.
  * But it actually does nothing.
  */
 #define XML(goop) ((void)0)
 
+/**
+ * Decodes ccnb decoded data
+ *
+ * @param d holds the current state of the decoder.
+ * @param p points to a new block of ccnb data to feed to the decoder.
+ * @param n is the size of the input, in bytes.
+ * @returns the number of bytes consumed.
+ *
+ * The client should ensure that the decoder is initialized to all zero
+ * before the first call.  In the default mode, the decoder will return
+ * only when it runs out of data, encounters an error, or reaches the end
+ * of the element that it started at.  This is a good way to pull
+ * ccnb-encoded objects from a byte stream.
+ *
+ * By setting the CCN_DSTATE_PAUSE bit is set in the decoder state, the
+ * decoder will additionally return just after recognizing each token.
+ * In this instance, use CCN_GET_TT_FROM_DSTATE() to extract
+ * the token type from the decoder state;
+ * CCN_CLOSE will be reported as CCN_NO_TOKEN.
+ *
+ * The pause bit persists, so the end test should take that into account
+ * by using the CCN_FINAL_DSTATE() macro instead of testing for state 0.
+ *
+ * Once an error state is entered, no addition input is processed.
+ *
+ * @see ccn_buf_decoder_start(), ccn_buf_advance(), ccn_buf_check_close()
+ */
 ssize_t
 ccn_skeleton_decode(struct ccn_skeleton_decoder *d,
                     const unsigned char *p, size_t n)

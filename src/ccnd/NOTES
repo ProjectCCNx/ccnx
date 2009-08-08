@@ -5,13 +5,13 @@
 
 /**
  * @file ccnd_internal_client.c
- * @brief Internal client of ccnd, handles requests for inspecting and controlling oeration of the ccnd.
+ * @brief Internal client of ccnd, handles requests for
+ *        inspecting and controlling operation of the ccnd.
  */
 
 /**
  * @file ccnd_msg.c
- * @brief Logging support for ccnd
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
+ * @brief Logging support for ccnd.
  */
 
 /**
@@ -20,6 +20,6 @@
  */
 
 /**
- * @file ccndsmoketest
+ * @file ccndsmoketest.c
  * @brief Simple program for smoke-test of ccnd.
  */
