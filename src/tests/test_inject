@@ -1,4 +1,5 @@
 BEFORE : test_final_teardown
+SkipTest We are phasing out the Inject message anyway
 ping -c 1 $((0x$TESTHOST_IPV4_HEX)) || SkipTest Cannot ping test host
 export CCN_LOCAL_PORT=$((CCN_LOCAL_PORT_BASE + 7))
 ccnd &
