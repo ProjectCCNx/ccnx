@@ -10,9 +10,7 @@ IsolateFaceID () {
 }
 
 
-#FACEID=`ccn_ccnbtoxml - <newface-response.ccnb | IsolateFaceID`
-# hm, no handy util for pulling out the FaceID ... cheat for now
-FACEID=13
+FACEID=`ccnbx -d newface-response.ccnb Content | ccnbx -d - FaceID` || Fail
 echo FACEID=$FACEID
 
 # Create the body of a prefixreg request.
