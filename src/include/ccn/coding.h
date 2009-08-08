@@ -183,9 +183,8 @@ enum ccn_decoder_state {
 #define CCN_GET_TT_FROM_DSTATE(state) (CCN_TT_MASK & ((state) >> 16))
 #define CCN_FINAL_DSTATE(state) (((state) & (CCN_DSTATE_PAUSE-1)) == 0)
 
-ssize_t ccn_skeleton_decode(
-    struct ccn_skeleton_decoder *d,
-    const unsigned char *p,
-    size_t n);
+ssize_t ccn_skeleton_decode(struct ccn_skeleton_decoder *d,
+                            const unsigned char *p,
+                            size_t n);
 
 #endif

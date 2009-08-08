@@ -5,7 +5,8 @@ EXPATLIBS = -lexpat
 CCNLIBDIR = ../lib
 
 INSTALLED_PROGRAMS = \
-    ccn_ccnbtoxml ccn_splitccnb ccntimestamps ccndumpnames ccnrm ccnls ccnslurp ccncat \
+    ccn_ccnbtoxml ccn_splitccnb ccntimestamps ccndumpnames ccnrm \
+    ccnls ccnslurp ccnbx ccncat \
     ccnsendchunks ccncatchunks ccncatchunks2 \
     ccnput ccnget ccnhexdumpdata $(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)
 
@@ -21,7 +22,7 @@ BROKEN_PROGRAMS =
 DEBRIS = 
 SCRIPTSRC = ccn_initkeystore.sh
 CSRC =  ccn_ccnbtoxml.c ccn_splitccnb.c ccn_xmltoccnb.c ccnbuzz.c \
-       ccncat.c ccncatchunks.c ccncatchunks2.c ccndump.c \
+       ccnbx.c ccncat.c ccncatchunks.c ccncatchunks2.c ccndump.c \
        ccndumpnames.c ccndumppcap.c ccnget.c ccnhexdumpdata.c \
        ccnls.c ccnput.c ccnrm.c ccnsendchunks.c \
        ccnslurp.c ccntimestamps.c dataresponsetest.c 
@@ -146,6 +147,8 @@ ccn_xmltoccnb.o: ccn_xmltoccnb.c ../include/ccn/coding.h \
 ccnbuzz.o: ccnbuzz.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
+ccnbx.o: ccnbx.c ../include/ccn/charbuf.h ../include/ccn/coding.h \
+  ../include/ccn/ccn.h ../include/ccn/indexbuf.h
 ccncat.o: ccncat.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
