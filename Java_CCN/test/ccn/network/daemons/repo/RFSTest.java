@@ -4,7 +4,6 @@ import java.io.File;
 import java.security.InvalidParameterException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
-import java.sql.Timestamp;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
@@ -22,7 +21,6 @@ import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
-import com.parc.ccn.network.daemons.repo.RFSImpl;
 import com.parc.ccn.network.daemons.repo.RFSLogImpl;
 import com.parc.ccn.network.daemons.repo.Repository;
 import com.parc.ccn.network.daemons.repo.RepositoryException;
@@ -32,6 +30,9 @@ import com.parc.ccn.network.daemons.repo.Repository.NameEnumerationResponse;
  * 
  * @author rasmusse
  * 
+ * Test repository backend implementation(s) using filesystem (FS) as stable storage.  In principle,
+ * there could be multiple FS-backed implementations exercised by these tests.
+ * 
  * Because it uses the default KeyManager, this test must be run
  * with ccnd running.
  *
@@ -39,10 +40,8 @@ import com.parc.ccn.network.daemons.repo.Repository.NameEnumerationResponse;
 
 public class RFSTest extends RepoTestBase {
 	
-	Repository repomulti;
-	Repository repolog;
+	Repository repolog; // Instance of simple log-based repo implementation under test
 	
-	private ContentName clashName;
 	private ContentName longName;
 	private ContentName badCharName;
 	private ContentName badCharLongName;
@@ -58,52 +57,13 @@ public class RFSTest extends RepoTestBase {
 		FileUtils.deleteDirectory(_fileTest);
 		_fileTest.mkdirs();
 	}
-	
-	// Purposely don't delete the directory so we can build the zip file
-	// for the IO test in ant and also can examine it in case of failure
-	//@AfterClass
-	//public static void cleanup() throws Exception {
-	//	FileUtils.deleteDirectory(_fileTest);
-	//}
-	
+		
 	@Before
 	public void setUp() throws Exception {
 		super.setUp();
-		initRepos();
-	}
-	
-	/*
-	 * We aren't currently using these locks (and they will probably be
-	 * eliminated
-	@Test
-	public void testLocks() throws Exception {
-		String testLockDir = _fileTestDir + File.separator + RFSImpl.META_DIR;
-		RFSLocks locker = new RFSLocks(testLockDir);
-		String testFileName = _fileTestDir + File.separator + "testFile";
-		File testFile = new File(testFileName);
-		locker.lock(testFileName);
-		testFile.createNewFile();
-		locker = new RFSLocks(testLockDir);
-		Assert.assertFalse(testFile.exists());
-		
-		locker.lock(testFileName);
-		testFile.createNewFile();
-		locker.unLock(testFileName);
-		locker = new RFSLocks(testLockDir);
-		Assert.assertTrue(testFile.exists());
-	} */
-	
-	
-	public void initRepos() throws Exception{
-		initRepoMulti();
 		initRepoLog();
 	}
-		
-	public void initRepoMulti() throws Exception {
-		repomulti = new RFSImpl();
-		repomulti.initialize(new String[] {"-root", _fileTestDir, "-local", _repoName, "-global", _globalPrefix, "-multifile"}, putLibrary);
-	}
-		
+						
 	public void initRepoLog() throws Exception {
 		repolog = new RFSLogImpl();
 		repolog.initialize(new String[] {"-root", _fileTestDir, "-local", _repoName, "-global", _globalPrefix, "-singlefile"}, putLibrary);
@@ -111,24 +71,16 @@ public class RFSTest extends RepoTestBase {
 	
 	@Test
 	public void testRepo() throws Exception {
-		//first test the multifile repo
-		System.out.println("testing multifile repo");
-		//test(repomulti);
-		//initRepoMulti();
-		//testReinitialization(repomulti);
-		
-		//now test the single file version
-		System.out.println("testing single file repo");
+		System.out.println("testing repo (log-structured implementation)");
 		test(repolog);
 		initRepoLog();
+		// Having initialized a new instance on the same stable storage stage produced by the
+		// test() method, now run testReinitialization to check consistency.
 		testReinitialization(repolog);
 	}
 	
 	
-	public void test(Repository repo) throws Exception{
-		//Repository repo = new RFSImpl();
-		//repo.initialize(new String[] {"-root", _fileTestDir, "-local", _repoName, "-global", _globalPrefix});
-		
+	public void test(Repository repo) throws Exception{		
 		System.out.println("Repotest - Testing basic data");
 		ContentName name = ContentName.fromNative("/repoTest/data1");
 		ContentObject content = ContentObject.buildContentObject(name, "Here's my data!".getBytes());
@@ -138,12 +90,7 @@ public class RFSTest extends RepoTestBase {
 		// TODO - Don't know how to check that multiple data doesn't result in multiple copies
 		// Do it just to make sure the mechanism doesn't break (but result is not tested).
 		repo.saveContent(content);
-		
-		System.out.println("Repotest - Testing clashing data");
-		clashName = ContentName.fromNative("/" + RFSImpl.META_DIR + "/repoTest/data1");
-		repo.saveContent(ContentObject.buildContentObject(clashName, "Clashing Name".getBytes()));
-		checkData(repo, clashName, "Clashing Name");
-		
+				
 		System.out.println("Repotest - Testing multiple digests for same data");
 		ContentObject digest2 = ContentObject.buildContentObject(name, "Testing2".getBytes());
 		repo.saveContent(digest2);
@@ -278,7 +225,6 @@ public class RFSTest extends RepoTestBase {
 		ner3 = new ContentName(ner3, "name3".getBytes());
 		ContentName nername3 = ContentName.fromNative("/longer");
 		NameEnumerationResponse neresponse = null;
-		Timestamp ts = null;
 		//send initial interest to make sure namespace is empty
 		//interest flag will not be set for a fast response since there isn't anything in the index yet
 		
@@ -330,7 +276,6 @@ public class RFSTest extends RepoTestBase {
 	public void testReinitialization(Repository repo) throws Exception {
 		
 		System.out.println("Repotest - Testing reinitialization of repo");
-		checkData(repo, clashName, "Clashing Name");
 		// Since we have 2 pieces of data with the name "longName" we need to compute the
 		// digest to make sure we get the right data.
 		longName = new ContentName(longName, ContentObject.contentDigest("Long name!"));

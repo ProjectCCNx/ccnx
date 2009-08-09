@@ -12,7 +12,6 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.network.daemons.repo.RFSImpl;
 
 public class RepoInitialReadTest extends RepoTestBase {
 	
@@ -24,7 +23,6 @@ public class RepoInitialReadTest extends RepoTestBase {
 		// Since we have 2 pieces of data with the name /repoTest/data1 we need to compute both
 		// digests to make sure we get the right data.
 		ContentName name1 = new ContentName(name, ContentObject.contentDigest("Here's my data!"));
-		ContentName clashName = ContentName.fromNative("/" + RFSImpl.META_DIR + "/repoTest/data1");
 		ContentName digestName = new ContentName(name, ContentObject.contentDigest("Testing2"));
 		String tooLongName = "0123456789";
 		for (int i = 0; i < 30; i++)
@@ -37,7 +35,6 @@ public class RepoInitialReadTest extends RepoTestBase {
 		ContentName badCharLongName = ContentName.fromNative("/repoTest/" + tooLongName + "*x?y<z>u");
 			
 		checkDataWithDigest(name1, "Here's my data!");
-		checkData(clashName, "Clashing Name");
 		checkDataWithDigest(digestName, "Testing2");
 		checkDataWithDigest(longName, "Long name!");
 		checkData(badCharName, "Funny characters!");

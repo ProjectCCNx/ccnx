@@ -243,7 +243,6 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		
 		_repositoryFile = new File(_repositoryRoot);
 		_repositoryFile.mkdirs();
-//		_locker = new RFSLocks(_repositoryRoot + File.separator + META_DIR);
 		
 		// Internal initialization
 		_files = new HashMap<Integer, RepoFile>();
