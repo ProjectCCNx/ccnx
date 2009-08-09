@@ -42,4 +42,30 @@ public class Utils {
         is.close();
         return bytes;
     }
+	
+	/**
+	 * Recursively delete a directory and all its contents.
+	 * If given File does not exist, this method returns with no error 
+	 * but if it exists as a file not a directory, an exception will be thrown.
+	 * Similar to org.apache.commons.io.FileUtils.deleteDirectory
+	 * but avoids dependency on that library for minimal use.
+	 * @param directory
+	 * @throws IOException
+	 */
+	public static void deleteDirectory(File directory) throws IOException {
+		if (!directory.exists()) {
+			return;
+		}
+		if (!directory.isDirectory()) {
+			throw new IOException(directory.getPath() + " is not a directory");
+		}
+		for (File child : directory.listFiles()) {
+			if (child.isDirectory()) {
+				deleteDirectory(child);
+			} else {
+				child.delete();
+			}
+		}
+		directory.delete();
+	}
 }

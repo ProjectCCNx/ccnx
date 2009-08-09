@@ -5,12 +5,12 @@ import java.security.InvalidParameterException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 
-import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.parc.ccn.apps.Utils;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
@@ -54,7 +54,7 @@ public class RFSTest extends RepoTestBase {
 	public static void setUpBeforeClass() throws Exception {
 		RepoTestBase.setUpBeforeClass();
 		_fileTest = new File(_fileTestDir);
-		FileUtils.deleteDirectory(_fileTest);
+		Utils.deleteDirectory(_fileTest);
 		_fileTest.mkdirs();
 	}
 		
