@@ -2,7 +2,6 @@ package com.parc.ccn.network.daemons.repo;
 
 import java.io.IOException;
 import java.security.InvalidParameterException;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
@@ -19,7 +18,6 @@ import com.parc.ccn.Library;
 import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.CollectionData;
-import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.content.CollectionData.CollectionObject;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.ExcludeFilter;
@@ -28,7 +26,6 @@ import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.io.CCNWriter;
 import com.parc.ccn.library.profiles.CommandMarkers;
-import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.network.daemons.Daemon;
 import com.parc.ccn.network.daemons.repo.Repository.NameEnumerationResponse;
 
@@ -208,9 +205,7 @@ public class RepositoryDaemon extends Daemon {
 				
 				if(args[i].equals("-singlefile"))
 					_repo = new RFSLogImpl();
-				
-				if(args[i].equals("-multifile"))
-					_repo = new RFSImpl();
+
 			}
 
 			if (!useLogging)
@@ -237,8 +232,8 @@ public class RepositoryDaemon extends Daemon {
 		try {
 			// Without parsing args, we don't know which repo impl we will get, so show the default 
 			// impl usage and allow for differences 
-			String msg = "usage: " + this.getClass().getName() + 
-			RFSLogImpl.getUsage() + " | <repoimpl-args> [-start | -stop | -interactive | -signal <signal>] [-log <level>] [-multifile | -singlefile | -bb]";
+			String msg = "usage: " + this.getClass().getName() + " -start | -stop | -interactive | -signal <signal> " +
+			" [-log <level>] [-singlefile | -bb] " + RFSLogImpl.getUsage() + " | <repoimpl-args>";
 			System.out.println(msg);
 			Library.logger().severe(msg);
 		} catch (Exception e) {
