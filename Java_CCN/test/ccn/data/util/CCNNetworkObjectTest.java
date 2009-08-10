@@ -15,7 +15,6 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.CollectionData;
@@ -30,7 +29,7 @@ import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
 import com.parc.ccn.library.profiles.VersioningProfile;
-import com.parc.security.crypto.DigestHelper;
+import com.parc.ccn.security.crypto.util.DigestHelper;
 
 /**
  * Works. Currently very slow, as it's timing

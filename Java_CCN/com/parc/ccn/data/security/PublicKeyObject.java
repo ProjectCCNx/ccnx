@@ -12,13 +12,14 @@ import java.security.spec.InvalidKeySpecException;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.data.util.CCNNetworkObject;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNInputStream;
-import com.parc.security.crypto.certificates.CryptoUtil;
+import com.parc.ccn.security.crypto.util.CryptoUtil;
 
 /**
  * PublicKeys are Serializable. So we could use a subclass of CCNSerializableObject
@@ -35,14 +36,6 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 
 	/**
 	 * Write constructor. Doesn't save until you call save, in case you want to tweak things first.
-<<<<<<< HEAD:Java_CCN/com/parc/ccn/data/security/PublicKeyObject.java
-<<<<<<< HEAD:Java_CCN/com/parc/ccn/data/security/PublicKeyObject.java
-=======
-	 * @param type
->>>>>>> Reordered constructors and comments to make things clearer:Java_CCN/com/parc/ccn/data/security/PublicKeyObject.java
-=======
->>>>>>> Allow specification of write publisher. Needs some normalizing with read
-publisher.:Java_CCN/com/parc/ccn/data/security/PublicKeyObject.java
 	 * @param name
 	 * @param data
 	 * @param library
