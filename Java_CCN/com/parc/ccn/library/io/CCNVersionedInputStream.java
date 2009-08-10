@@ -39,8 +39,6 @@ import com.parc.ccn.security.crypto.ContentKeys;
  * issue, but it brings up the point that we have to write unit tests
  * that seed ccnd or the repo with potentially complicating data and
  * make sure we can still retrieve it.
- * @author smetters
- *
  */
 public class CCNVersionedInputStream extends CCNInputStream {
 
