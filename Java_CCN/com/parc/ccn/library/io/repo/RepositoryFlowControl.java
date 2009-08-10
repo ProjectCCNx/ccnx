@@ -3,7 +3,10 @@ package com.parc.ccn.library.io.repo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
+<<<<<<< HEAD
 import java.util.NoSuchElementException;
+=======
+>>>>>>> Track changes in IO constructors.
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -25,6 +28,11 @@ import com.parc.ccn.network.daemons.repo.RepositoryInfo;
 /**
  * Handle repo specialty start/end protocol. Currently this handles only the
  * stream "shape".
+ * 
+ * Needs to be able to handle multiple clients. Currently due to limitations in close,
+ * to do this requires that clients above close their streams in order when multiple
+ * streams are using the same FC.
+ * 
  * Intended to handle the repo ack protocol. This is currently unused until we find
  * a workable way to do it.
  * 
@@ -42,6 +50,10 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	protected CCNNameEnumerator _ackne;
 	protected RepoAckHandler _ackHandler;
 	
+<<<<<<< HEAD
+=======
+	// To do this
+>>>>>>> Track changes in IO constructors.
 	protected Queue<Client> _clients = new ConcurrentLinkedQueue<Client>();
 
 	public Interest handleContent(ArrayList<ContentObject> results,

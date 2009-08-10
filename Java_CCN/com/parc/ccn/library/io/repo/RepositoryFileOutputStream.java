@@ -12,7 +12,7 @@ import com.parc.ccn.library.io.CCNFileOutputStream;
 public class RepositoryFileOutputStream extends CCNFileOutputStream {
 
 	public RepositoryFileOutputStream(ContentName name, CCNLibrary library) throws IOException {
-		this(name, null, null, null, library);
+		this(name, null, library);
 	}
 	
 	public RepositoryFileOutputStream(ContentName name,
