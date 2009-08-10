@@ -1,6 +1,0 @@
-#!/bin/csh
-/usr/sfw/bin/wget -O /tmp/$$.nytrss http://www.nytimes.com/services/xml/rss/nyt/HomePage.xml
-cat /tmp/$$.nytrss | egrep '(<link>http://www.nytimes.com/2008/)|(<guid isPermaLink="false">http://www.nytimes.com/2008)' |sed 's/.*<link>//;s/<\/link>//;s/.*<guid.*http...//;s/<\/guid>//' >>/tmp/$$.links
-awk '/http:/ {link=$1;} /^www.nytimes/ {print "mkdir -p `dirname",$1,"`"; print "/usr/sfw/bin/wget -O "$1,"\""link"\""}' /tmp/$$.links >/tmp/$$.cmd
-source /tmp/$$.cmd
-rm /tmp/$$.*
