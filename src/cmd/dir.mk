@@ -80,6 +80,9 @@ ccnrm: ccnrm.o
 ccnslurp: ccnslurp.o
 	$(CC) $(CFLAGS) -o $@ ccnslurp.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
+ccnbx: ccnbx.o
+	$(CC) $(CFLAGS) -o $@ ccnbx.o $(LDLIBS)   $(OPENSSL_LIBS) -lcrypto
+
 ccncat: ccncat.o
 	$(CC) $(CFLAGS) -o $@ ccncat.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
