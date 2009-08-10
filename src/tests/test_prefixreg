@@ -2,13 +2,7 @@ AFTER : test_single_ccnd test_newface
 BEFORE : test_single_ccnd_teardown
 
 ccndsmoketest || SkipTest no ccnd
-test -f newface-response.ccnb || SkipTest missing newface-response.ccnb
-
-IsolateFaceID () {
-	sed -n -e 's@^.*FaceID">@@' \
-               -e 's@</FaceID.*$@@p'
-}
-
+test -f newface-response.ccnb || SkipTest missing newface-response.ccnb, need to run test_newface first
 
 FACEID=`ccnbx -d newface-response.ccnb Content | ccnbx -d - FaceID` || Fail
 echo FACEID=$FACEID
@@ -57,5 +51,4 @@ ccndsmoketest -b send prefixreg-request.ccnb recv > prefixreg-response.ccnb
 ccn_ccnbtoxml prefixreg-response.ccnb || Fail did not get prefixreg response
 
 sleep 1
-open http://localhost:$CCN_LOCAL_PORT
-sleep 20
+rm prefixreg-request.xml
