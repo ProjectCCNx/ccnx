@@ -64,6 +64,14 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	protected PublisherPublicKeyDigest _contentPublisher; // the publisher of the content we are reading
 	protected KeyLocator _publisherKeyLocator; // the key locator of the content publisher.
 
+	/**
+	 * @param baseName should not include a segment component.
+	 * @param startingBlockIndex
+	 * @param publisher
+	 * @param library
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 */
 	public CCNAbstractInputStream(
 			ContentName baseName, Long startingBlockIndex,
 			PublisherPublicKeyDigest publisher, CCNLibrary library) 
@@ -215,6 +223,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		_publisherKeyLocator = newBlock.signedInfo().getKeyLocator();
 		
 		_blockReadStream = new ByteArrayInputStream(_currentBlock.content());
+
+		// if we're decrypting, then set it up now
 		if (_keys != null) {
 			try {
 				// Reuse of current block OK. Don't expect to have two separate readers
