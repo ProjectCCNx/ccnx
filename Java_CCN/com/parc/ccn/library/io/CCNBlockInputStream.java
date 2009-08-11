@@ -66,7 +66,7 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 			if (null == firstBlock) {
 				return 0; // nothing to read
 			}
-			setCurrentBlock(firstBlock);
+			setFirstBlock(firstBlock);
 		} 
 		
 		// Now we have a block in place. Read from it. If we run out of block before

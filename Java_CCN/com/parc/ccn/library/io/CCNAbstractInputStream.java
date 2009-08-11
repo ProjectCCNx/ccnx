@@ -137,8 +137,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		if (null == _library) {
 			_library = CCNLibrary.getLibrary();
 		}
-		setCurrentBlock(starterBlock);
-		_publisher = starterBlock.signedInfo().getPublisherKeyID();
+		setFirstBlock(starterBlock);
 		_baseName = SegmentationProfile.segmentRoot(starterBlock.name());
 		try {
 			_startingBlockIndex = SegmentationProfile.getSegmentNumber(starterBlock.name());
@@ -205,7 +204,16 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	}
 	
 	protected abstract int readInternal(byte [] buf, int offset, int len) throws IOException;
-	
+
+	/**
+	 * Called to set the first block when opening a stream.
+	 * @param block Must not be null
+	 * @throws IOException
+	 */
+	protected void setFirstBlock(ContentObject block) throws IOException {
+		setCurrentBlock(block);
+	}
+
 	/**
 	 * Set up current block for reading, including prep for decryption if necessary.
 	 * Called after getBlock/getFirstBlock/getNextBlock, which take care of verifying
@@ -457,15 +465,23 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		return blockIndex();
 	}
 	
+	/**
+	 * Is the stream GONE? I.E. Is there a single empty data block, of type GONE where
+	 * the first block should be? This convention is used to represent a stream that has been
+	 * deleted.
+	 * @return
+	 * @throws IOException
+	 */
 	public boolean isGone() throws IOException {
 		ContentObject newBlock = null;
 
+		// TODO: once first block is always read in constructor this code will change
 		if (null == _currentBlock && null == _goneBlock) {
 			newBlock = getFirstBlock(); // sets _goneBlock, but not _currentBlock
 		}
 		if (null == _goneBlock) {
 			if (null != newBlock) {
-				setCurrentBlock(newBlock); // save it for reuse
+				setFirstBlock(newBlock); // save it for reuse
 			}
 			return false;
 		}
