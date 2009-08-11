@@ -539,12 +539,19 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 
 	
 	/**
-	 * Things are not as simple as this. Most things
-	 * are fragmented. Maybe make this a simple interface
-	 * that puts them back together and returns a byte []?
+	 * Gets the latest version using a single interest/response. There may be newer versions available
+	 * if you ask again passing in the version found.
+	 *  
+	 * @param name If the name ends in a version then this method explicitly looks for a newer version
+	 * than that. If the name does not end in a version then this call just looks for the latest version.
+	 * @param publisher Currently unused
+	 * @param timeout
+	 * @return A ContentObject with the latest version, or null if the query timed out. Note - the content
+	 * returned could be any name under this new version - the last (rightmost) name is asked for, but
+	 * depending on where the answer came from it may not necessarily be the last (rightmost) available.
+	 * @throws IOException
 	 * DKS TODO -- doesn't use publisher
 	 * DKS TODO -- specify separately latest version known?
-	 * @throws IOException 
 	 */
 	public ContentObject getLatestVersion(ContentName name, PublisherPublicKeyDigest publisher, long timeout) throws IOException {
 		
