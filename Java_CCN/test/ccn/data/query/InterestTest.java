@@ -94,7 +94,7 @@ public class InterestTest {
 		XMLEncodableTester.encodeDecodeTest("PreferenceInterest", opPlain, opPlainDec, opPlainBDec);
 		
 		Interest opANC = new Interest(tcn);
-		opANC.additionalNameComponents(3);
+		opANC.maxSuffixComponents(3);
 		Interest opANCDec = new Interest();
 		Interest opANCBDec = new Interest();
 		XMLEncodableTester.encodeDecodeTest("AdditionalNameComponentsInterest", opANC, opANCDec, opANCBDec);

@@ -227,7 +227,8 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 	 */
 	public ContentObject getLower(ContentName name, int level, long timeout) throws IOException {
 		Interest interest = new Interest(name);
-		interest.additionalNameComponents(level);
+		interest.maxSuffixComponents(level);
+		interest.minSuffixComponents(level);
 		return get(interest, timeout);
 	}
 	
@@ -243,7 +244,8 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 	 */
 	public ContentObject getLeftmostLower(ContentName name, int level, long timeout) throws IOException {
 		Interest interest = new Interest(name);
-		interest.additionalNameComponents(level);
+		interest.maxSuffixComponents(level);
+		interest.minSuffixComponents(level);
 		interest.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME | Interest.ORDER_PREFERENCE_LEFT);
 		return get(interest, timeout);
 	}

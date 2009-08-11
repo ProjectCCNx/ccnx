@@ -61,7 +61,8 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public static final String RECURSIVE_POSTFIX = "*";
 	
 	public static final String INTEREST_ELEMENT = "Interest";
-	public static final String ADDITIONAL_NAME_COMPONENTS = "AdditionalNameComponents";
+	public static final String MAX_SUFFIX_COMPONENTS = "MaxSuffixComponents";
+	public static final String MIN_SUFFIX_COMPONENTS = "MinSuffixComponents";
 	public static final String ORDER_PREFERENCE = "OrderPreference";
 	public static final String ANSWER_ORIGIN_KIND = "AnswerOriginKind";
 	public static final String SCOPE_ELEMENT = "Scope";
@@ -88,7 +89,8 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	protected static Random _random = new Random();
 	
 	protected ContentName _name;
-	protected Integer _additionalNameComponents;
+	protected Integer _maxSuffixComponents;
+	protected Integer _minSuffixComponents;
 	// DKS TODO can we really support a PublisherID here, or just a PublisherPublicKeyDigest?
 	protected PublisherID _publisher;
 	protected ExcludeFilter _excludeFilter;
@@ -110,17 +112,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		_publisher = publisher;
 	}
 	
-	public Interest(ContentName name, int additionalNameComponents,
-			   PublisherID publisher) {
-		this(name, publisher);
-		_additionalNameComponents = additionalNameComponents;
-	}
-	
-	public Interest(ContentName name, int additionalNameComponents,
-				PublisherPublicKeyDigest exactPublisher) {
-		this(name, additionalNameComponents, new PublisherID(exactPublisher));
-	}
-	
 	public Interest(ContentName name) {
 		this(name, null);
 	}
@@ -134,9 +125,12 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public ContentName name() { return _name; }
 	public void name(ContentName name) { _name = name; }
 	
-	public Integer additionalNameComponents() { return _additionalNameComponents;}
-	public void additionalNameComponents(int additionalNameComponents) { _additionalNameComponents = additionalNameComponents; }
-
+	public Integer maxSuffixComponents() { return _maxSuffixComponents; }
+	public void maxSuffixComponents(Integer maxSuffixComponents) { _maxSuffixComponents = maxSuffixComponents; }
+	
+	public Integer minSuffixComponents() { return _minSuffixComponents; }
+	public void minSuffixComponents(Integer minSuffixComponents) { _minSuffixComponents = minSuffixComponents; }
+	
 	public PublisherID publisherID() { return _publisher; }
 	public void publisherID(PublisherID publisherID) { _publisher = publisherID; }
 	
@@ -202,13 +196,18 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	// TODO We need to beef this up to deal with the more complex interest specs.
 	private boolean internalMatch(ContentName name, boolean digestIncluded,
 			PublisherPublicKeyDigest resultPublisherKeyID) {
-		if (null != additionalNameComponents()) {
+		if (null != maxSuffixComponents() || null != minSuffixComponents()) {
 			// we know our specified name is a prefix of the result. 
 			// the number of additional components must be this value
 			int nameCount = name.count();
 			int lengthDiff = nameCount + (digestIncluded?0:1) - name().count();
-			if (!additionalNameComponents().equals(lengthDiff)) {
-				Library.logger().fine("Interest match failed: " + lengthDiff + " more than the " + additionalNameComponents() + " components between expected " +
+			if (null != maxSuffixComponents() && lengthDiff > maxSuffixComponents()) {
+				Library.logger().fine("Interest match failed: " + lengthDiff + " more than the " + maxSuffixComponents() + " components between expected " +
+						name() + " and tested " + name);
+				return false;
+			}
+			if (null != minSuffixComponents() && lengthDiff < minSuffixComponents()) {
+				Library.logger().fine("Interest match failed: " + lengthDiff + " less than the " + minSuffixComponents() + " components between expected " +
 						name() + " and tested " + name);
 				return false;
 			}
@@ -329,8 +328,8 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		return constructInterest(name, null == omissions ? null : new ExcludeFilter(omissions), null);
 	}
 	
-	public static Interest exclude(ContentName name, byte[][] omissions, PublisherID publisherID, Integer additionalNameComponents) {
-		return constructInterest(name, null == omissions ? null : new ExcludeFilter(omissions), null, publisherID, additionalNameComponents);
+	public static Interest exclude(ContentName name, byte[][] omissions, PublisherID publisherID, Integer maxSuffixComponents, Integer minSuffixComponents) {
+		return constructInterest(name, null == omissions ? null : new ExcludeFilter(omissions), null, publisherID, maxSuffixComponents, minSuffixComponents);
 	}
 	
 	
@@ -351,11 +350,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 
 	public static Interest constructInterest(ContentName name,  ExcludeFilter filter,
 			Integer orderPreference) {
-		return constructInterest(name, filter, orderPreference, null, null);
+		return constructInterest(name, filter, orderPreference, null, null, null);
 	}
 	
 	public static Interest constructInterest(ContentName name,  ExcludeFilter filter,
-			Integer orderPreference, PublisherID publisherID, Integer additionalNameComponents) {
+			Integer orderPreference, PublisherID publisherID, Integer maxSuffixComponents, Integer minSuffixComponents) {
 		Interest interest = new Interest(name);
 		if (null != orderPreference)
 			interest.orderPreference(orderPreference);
@@ -363,8 +362,10 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			interest.excludeFilter(filter);
 		if (null != publisherID)
 			interest.publisherID(publisherID);
-		if (null != additionalNameComponents)
-			interest.additionalNameComponents(additionalNameComponents);
+		if (null != maxSuffixComponents)
+			interest.maxSuffixComponents(maxSuffixComponents);
+		if (null != minSuffixComponents)
+			interest.minSuffixComponents(minSuffixComponents);
 		return interest;
 	}
 	
@@ -385,11 +386,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 
 	public boolean isPrefixOf(ContentName name) {
 		int count = name().count();
-		if (null != additionalNameComponents() && 0 == additionalNameComponents()) {
+		if (null != maxSuffixComponents() && 0 == maxSuffixComponents()) {
 			// This Interest is trying to match a complete content name with digest explicitly included
 			// so we must drop the last component for the prefix test against a name that is 
 			// designed to be direct from ContentObject and so does not include digest explicitly
-			count--;
+			//count--;
 		}
 		return name().isPrefixOf(name, count);
 	}
@@ -424,8 +425,12 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		_name = new ContentName();
 		_name.decode(decoder);
 		
-		if (decoder.peekStartElement(ADDITIONAL_NAME_COMPONENTS)) {
-			_additionalNameComponents = decoder.readIntegerElement(ADDITIONAL_NAME_COMPONENTS);
+		if (decoder.peekStartElement(MAX_SUFFIX_COMPONENTS)) {
+			_maxSuffixComponents = decoder.readIntegerElement(MAX_SUFFIX_COMPONENTS);
+		}
+		
+		if (decoder.peekStartElement(MIN_SUFFIX_COMPONENTS)) {
+			_minSuffixComponents = decoder.readIntegerElement(MIN_SUFFIX_COMPONENTS);
 		}
 				
 		if (PublisherID.peek(decoder)) {
@@ -470,8 +475,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		
 		name().encode(encoder);
 		
-		if (null != additionalNameComponents()) 
-			encoder.writeIntegerElement(ADDITIONAL_NAME_COMPONENTS, additionalNameComponents());
+		if (null != maxSuffixComponents()) 
+			encoder.writeIntegerElement(MAX_SUFFIX_COMPONENTS, maxSuffixComponents());
+		
+		if (null != minSuffixComponents()) 
+			encoder.writeIntegerElement(MIN_SUFFIX_COMPONENTS, minSuffixComponents());
 
 		if (null != publisherID())
 			publisherID().encode(encoder);
@@ -504,7 +512,10 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		int result = DataUtils.compare(name(), o.name());
 		if (result != 0) return result;
 		
-		result = DataUtils.compare(additionalNameComponents(), o.additionalNameComponents());
+		result = DataUtils.compare(maxSuffixComponents(), o.maxSuffixComponents());
+		if (result != 0) return result;
+		
+		result = DataUtils.compare(minSuffixComponents(), o.minSuffixComponents());
 		if (result != 0) return result;
 		
 		result = DataUtils.compare(publisherID(), o.publisherID());
@@ -534,8 +545,12 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		int result = 1;
 		result = prime
 			* result
-			+ ((_additionalNameComponents == null) ? 0 : _additionalNameComponents
+			+ ((_maxSuffixComponents == null) ? 0 : _maxSuffixComponents
 				.hashCode());
+		result = prime
+		* result
+		+ ((_minSuffixComponents == null) ? 0 : _minSuffixComponents
+			.hashCode());
 		result = prime
 				* result
 				+ ((_answerOriginKind == null) ? 0 : _answerOriginKind
@@ -562,10 +577,15 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		if (getClass() != obj.getClass())
 			return false;
 		Interest other = (Interest) obj;
-		if (_additionalNameComponents == null) {
-			if (other._additionalNameComponents != null)
+		if (_maxSuffixComponents == null) {
+			if (other._maxSuffixComponents != null)
 				return false;
-		} else if (!_additionalNameComponents.equals(other._additionalNameComponents))
+		} else if (!_maxSuffixComponents.equals(other._maxSuffixComponents))
+			return false;
+		if (_minSuffixComponents == null) {
+			if (other._maxSuffixComponents != null)
+				return false;
+		} else if (!_minSuffixComponents.equals(other._maxSuffixComponents))
 			return false;
 		if (_answerOriginKind == null) {
 			if (other._answerOriginKind != null)
@@ -606,8 +626,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		StringBuffer sb = new StringBuffer(_name.toString());
 		sb.append(": ");
 	
-		if  (null != _additionalNameComponents)
-			sb.append(" anc:" + _additionalNameComponents);
+		if  (null != _maxSuffixComponents)
+			sb.append(" maxsc:" + _maxSuffixComponents);
+		
+		if  (null != _minSuffixComponents)
+			sb.append(" minsc:" + _minSuffixComponents);
 
 		if (null != _publisher)
 			sb.append(" p:" + DataUtils.printHexBytes(_publisher.id()) + "");
@@ -619,8 +642,10 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	
 	public Interest clone() {
 		Interest clone = new Interest(name());
-		if (null != _additionalNameComponents)
-			clone.additionalNameComponents(additionalNameComponents());
+		if (null != _maxSuffixComponents)
+			clone.maxSuffixComponents(maxSuffixComponents());
+		if (null != _minSuffixComponents)
+			clone.minSuffixComponents(minSuffixComponents());
 		if (null != _publisher)
 			clone.publisherID(publisherID());
 		if (null != _excludeFilter)

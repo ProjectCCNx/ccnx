@@ -102,7 +102,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 			return; // done already
 		// DKS TODO match header interest to new header name
 		Interest headerInterest = new Interest(SegmentationProfile.headerName(baseName), publisher);
-		headerInterest.additionalNameComponents(1);
+		headerInterest.maxSuffixComponents(1);
 		Library.logger().info("retrieveHeader: base name " + baseName);
 		Library.logger().info("retrieveHeader: header name " + SegmentationProfile.headerName(baseName));
 		_library.expressInterest(headerInterest, this);

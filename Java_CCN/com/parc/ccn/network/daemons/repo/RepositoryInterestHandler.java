@@ -113,7 +113,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 					// Needs to match move to HeaderObject (versioned) writes in output streams.
 					listener._headerInterest = Interest.constructInterest(listener.getVersionedName(), _daemon.getExcludes(), 
 							listener.getVersionedName().count());
-					listener._headerInterest.additionalNameComponents(1);
+					listener._headerInterest.maxSuffixComponents(1);
 					Library.logger().fine("Sending header request: " + listener._headerInterest);
 					_library.expressInterest(listener._headerInterest, listener);
 				} catch (IOException e) {

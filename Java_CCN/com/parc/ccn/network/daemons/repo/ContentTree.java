@@ -428,8 +428,8 @@ public class ContentTree {
 		// subtree happens to be a perfect match
 		ArrayList<TreeNode> options = new ArrayList<TreeNode>();
 		Integer totalComponents = null;
-		if (interest.additionalNameComponents() != null)
-			totalComponents = interest.name().count() + interest.additionalNameComponents();
+		if (interest.minSuffixComponents() != null)
+			totalComponents = interest.name().count() + interest.minSuffixComponents();
 		getSubtreeNodes(node, options, totalComponents);
 		for (int i = options.size()-1; i >= 0 ; i--) {
 			TreeNode candidate = options.get(i);
@@ -497,7 +497,7 @@ public class ContentTree {
 	
 	
 	public final ContentObject get(Interest interest, ContentGetter getter) {
-		Integer addl = interest.additionalNameComponents();
+		Integer addl = interest.maxSuffixComponents();
 		int ncc = interest.name().count();
 		if (null != addl && addl.intValue() == 0) {
 			// Query is for exact match to full name with digest, no additional components

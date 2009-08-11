@@ -282,12 +282,12 @@ public class RFSTest extends RepoTestBase {
 		checkData(repo, badCharName, "Funny characters!");
 		checkData(repo, badCharLongName, "Long and funny");
 		Interest vnInterest = new Interest(versionedName);
-		vnInterest.additionalNameComponents(1);
+		vnInterest.maxSuffixComponents(1);
 		checkData(repo, vnInterest, "version");
 		checkData(repo, segmentedName1, "segment1");
 		checkData(repo, segmentedName223, "segment223");
 		vnInterest = new Interest(versionedNameNormal);
-		vnInterest.additionalNameComponents(1);
+		vnInterest.maxSuffixComponents(1);
 		checkData(repo, vnInterest, "version-normal");
 		for (Long i=SegmentationProfile.baseSegment(); i<5; i++) {
 			ContentName segmented = SegmentationProfile.segmentName(versionedNameNormal, i);
@@ -329,9 +329,11 @@ public class RFSTest extends RepoTestBase {
 	}
 	
 	private void checkDataWithDigest(Repository repo, ContentName name, String data) throws RepositoryException {
-		// When generating an Interest for the exact name with content digest, need to set additionalNameComponents
+		// When generating an Interest for the exact name with content digest, need to set maxSuffixComponents
 		// to 0, signifying that name ends with explicit digest
-		checkData(repo, new Interest(name, 0, (PublisherID)null), data);
+		Interest interest = new Interest(name);
+		interest.maxSuffixComponents(0);
+		checkData(repo, interest, data);
 	}
 
 	private void checkData(Repository repo, Interest interest, String data) throws RepositoryException {

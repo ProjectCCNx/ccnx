@@ -551,7 +551,7 @@ public class InterestTableTest {
 		sizes(names, 6, 5);
 	}
 	
-	private enum InterestType {Next, Last, AdditionalNameComponents, Exclude};
+	private enum InterestType {Next, Last, MaxSuffixComponents, Exclude};
 	
 	private InterestTable<Integer> initInterest(InterestType type) throws MalformedContentNameStringException {
 		InterestTable<Integer> table = new InterestTable<Integer>();
@@ -576,8 +576,8 @@ public class InterestTableTest {
 		case Last:
 			i.orderPreference(Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME);
 			break;
-		case AdditionalNameComponents:
-			i.additionalNameComponents(additionalComponents);
+		case MaxSuffixComponents:
+			i.maxSuffixComponents(additionalComponents);
 			break;
 		}
 		table.add(i, value);
@@ -612,7 +612,7 @@ public class InterestTableTest {
 	@Test
 	public void testAdditionalNameComponents() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
 		additionalComponents = 2;
-		InterestTable<Integer> names = initInterest(InterestType.AdditionalNameComponents);
+		InterestTable<Integer> names = initInterest(InterestType.MaxSuffixComponents);
 		
 		setID(1);
 		match(names, abc, 7);
@@ -621,7 +621,7 @@ public class InterestTableTest {
 		noMatch(names, "/a/b/c/d");
 		
 		additionalComponents = 3;
-		names = initInterest(InterestType.AdditionalNameComponents);
+		names = initInterest(InterestType.MaxSuffixComponents);
 		match(names, abc, 2);
 		match(names, ab, 1);
 		noMatch(names, a);
@@ -630,7 +630,7 @@ public class InterestTableTest {
 	@Test
 	public void testRemoveAdditionalNameComponents() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
 		additionalComponents = 2;
-		InterestTable<Integer> names = initInterest(InterestType.AdditionalNameComponents);
+		InterestTable<Integer> names = initInterest(InterestType.MaxSuffixComponents);
 		
 		setID(1);
 		noRemoveMatch(names, "/a/b/c/d");
@@ -640,7 +640,7 @@ public class InterestTableTest {
 		sizes(names, 4, 4);
 		
 		additionalComponents = 3;
-		names = initInterest(InterestType.AdditionalNameComponents);
+		names = initInterest(InterestType.MaxSuffixComponents);
 		removeMatch(names, abc, 2);
 		removeMatch(names, ab, 1);
 		noRemoveMatch(names, a);
