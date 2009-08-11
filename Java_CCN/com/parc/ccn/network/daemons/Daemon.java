@@ -184,7 +184,7 @@ public class Daemon {
 		public boolean signal(String name) throws RemoteException {
 			Library.logger().info("Signal " + name);
 			try {
-			return _daemonThread.signal(name);
+				return _daemonThread.signal(name);
 			} catch (Exception e) {
 				throw new RemoteException(e.getMessage(), e);
 			}
@@ -222,11 +222,6 @@ public class Daemon {
 	 */
 	protected WorkerThread createWorkerThread() {
 		return new WorkerThread(daemonName());
-	}
-
-	protected static void runAsDaemon(Daemon daemon) throws RemoteException, FileNotFoundException, IOException {
-		Library.logger().info(daemon.daemonName() + " started in background " + new Date());
-		setupRemoteAccess(daemon, null);
 	}
 		
 	protected static void setupRemoteAccess(Daemon daemon, WorkerThread wt) throws IOException {
@@ -484,6 +479,8 @@ public class Daemon {
 				daemon.initialize(args, daemon);
 				Library.logger().info("Running " + daemon.daemonName() + " in the foreground.");
 				WorkerThread wt = daemon.createWorkerThread();
+				// Set up remote access when interactive also to enable signals
+				setupRemoteAccess(daemon, wt);
 				wt.start();
 				wt.join();
 				System.exit(0);
@@ -499,10 +496,13 @@ public class Daemon {
 				System.exit(0);
 			  case MODE_DAEMON:
 				daemon.initialize(args, daemon);
-				// this will sit in a loop
-				runAsDaemon(daemon);
+				Library.logger().info(daemon.daemonName() + " started in background " + new Date());
+				// This will create daemon thread and RMI server to receive startLoop command 
+				// from controller process that launched this process
+				setupRemoteAccess(daemon, null);
 				break;
 			  case MODE_SIGNAL:
+				  // This will signal daemon to do something specifically named
 				  assert(null != sigName);
 				  signalDaemon(daemon.daemonName(), sigName);
 				  break;

@@ -121,6 +121,7 @@ public class RepositoryDaemon extends Daemon {
 				boolean interrupted = false;
 				do {
 					try {
+						interrupted = false;
 						wait();
 					} catch (InterruptedException e) {
 						interrupted = true;
@@ -148,7 +149,7 @@ public class RepositoryDaemon extends Daemon {
 		
 		public void finish() {
 			synchronized (this) {
-				notify();
+				notifyAll(); // notifyAll ensures shutdown in interactive case when main thread is join()'ing
 			}
 		}
 		

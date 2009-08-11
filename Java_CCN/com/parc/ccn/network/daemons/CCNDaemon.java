@@ -44,6 +44,7 @@ public class CCNDaemon extends Daemon {
 				boolean interrupted = false;
 				do {
 					try {
+						interrupted = false;
 						wait();
 					} catch (InterruptedException e) {
 						interrupted = true;
@@ -53,14 +54,6 @@ public class CCNDaemon extends Daemon {
 		}
 		
 		public void initialize() {
-			if (_interactive) {
-				try {
-					setupRemoteAccess(_daemon, this);
-				} catch (IOException e) {
-					Library.logStackTrace(Level.WARNING, e);
-					e.printStackTrace();
-				}
-			}
 			Runtime.getRuntime().addShutdownHook(new CCNDShutdownHook());
 			ProcessBuilder pb = new ProcessBuilder(_command);		
 			Map<String, String> env = pb.environment();
