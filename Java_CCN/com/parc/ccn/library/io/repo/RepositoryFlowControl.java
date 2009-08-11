@@ -3,10 +3,7 @@ package com.parc.ccn.library.io.repo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
-<<<<<<< HEAD
 import java.util.NoSuchElementException;
-=======
->>>>>>> Track changes in IO constructors.
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -50,10 +47,6 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	protected CCNNameEnumerator _ackne;
 	protected RepoAckHandler _ackHandler;
 	
-<<<<<<< HEAD
-=======
-	// To do this
->>>>>>> Track changes in IO constructors.
 	protected Queue<Client> _clients = new ConcurrentLinkedQueue<Client>();
 
 	public Interest handleContent(ArrayList<ContentObject> results,
