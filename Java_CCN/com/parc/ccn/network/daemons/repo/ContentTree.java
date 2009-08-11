@@ -500,11 +500,11 @@ public class ContentTree {
 			}
 			else {
 
-		        Library.logger().info("the new version doesn't match, no response needed");
-		        parent.interestFlag = true;
-		        return null;
+				Library.logger().info("the new version doesn't match, no response needed");
+				parent.interestFlag = true;
+				return null;
 			}
-				
+
 			//the parent has children we need to return
 			ContentName c = new ContentName();
 			if (parent.oneChild!=null) {
@@ -518,10 +518,8 @@ public class ContentTree {
 			
 			if (names.size()>0)
 				Library.logger().finer("sending back "+names.size()+" names in the enumeration response");
-				parent.interestFlag = false;
-
-			return new NameEnumerationResponse(interest.name(), names, nodeTS);
 			
+			return new NameEnumerationResponse(interest.name(), names, new Timestamp(parent.timestamp));
 		}
 		return null;
 	}
