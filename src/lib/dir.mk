@@ -16,13 +16,13 @@ CSRC = ccn_bloom.c ccn_buf_decoder.c ccn_buf_encoder.c ccn_bulkdata.c \
        ccn_dtag_table.c ccn_indexbuf.c ccn_keystore.c ccn_match.c \
        ccn_reg_mgmt.c ccn_face_mgmt.c \
        ccn_matrix.c ccn_merkle_path_asn1.c ccn_name_util.c ccn_schedule.c \
-       ccn_signing.c ccn_traverse.c ccn_uri.c ccn_verifysig.c ccn_versioning.c \
+       ccn_signing.c ccn_sockcreate.c ccn_traverse.c ccn_uri.c ccn_verifysig.c ccn_versioning.c \
        encodedecodetest.c hashtb.c hashtbtest.c \
        matrixtest.c signbenchtest.c skel_decode_test.c \
        smoketestclientlib.c basicparsetest.c
 LIBS = libccn.a
 LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_dtag_table.o ccn_schedule.o ccn_matrix.o \
-    ccn_buf_decoder.o ccn_uri.o ccn_buf_encoder.o ccn_bloom.o ccn_name_util.o ccn_face_mgmt.o ccn_reg_mgmt.o ccn_digest.o ccn_keystore.o ccn_signing.o ccn_traverse.o ccn_match.o hashtb.o ccn_merkle_path_asn1.o ccn_bulkdata.o ccn_versioning.o
+    ccn_buf_decoder.o ccn_uri.o ccn_buf_encoder.o ccn_bloom.o ccn_name_util.o ccn_face_mgmt.o ccn_reg_mgmt.o ccn_digest.o ccn_keystore.o ccn_signing.o ccn_sockcreate.o ccn_traverse.o ccn_match.o hashtb.o ccn_merkle_path_asn1.o ccn_bulkdata.o ccn_versioning.o
 
 default all: lib $(PROGRAMS)
 # Don't try to build shared libs right now.
@@ -89,6 +89,12 @@ ccn_keystore.o:
 
 ccn_signing.o:
 	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_signing.c
+
+ccn_sockcreate.o:
+	$(CC) $(CFLAGS) -c ccn_sockcreate.c
+
+ccn_traverse.o:
+	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_traverse.c
 
 ccn_merkle_path_asn1.o:
 	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_merkle_path_asn1.c
@@ -159,6 +165,7 @@ ccn_schedule.o: ccn_schedule.c ../include/ccn/schedule.h
 ccn_signing.o: ccn_signing.c ../include/ccn/merklepathasn1.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/signing.h
+ccn_sockcreate.o: ccn_sockcreate.c ../include/ccn/sockcreate.h
 ccn_traverse.o: ccn_traverse.c ../include/ccn/bloom.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h

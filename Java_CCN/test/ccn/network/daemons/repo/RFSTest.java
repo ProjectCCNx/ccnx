@@ -4,6 +4,7 @@ import java.io.File;
 import java.security.InvalidParameterException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.sql.Timestamp;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -225,6 +226,7 @@ public class RFSTest extends RepoTestBase {
 		ner3 = new ContentName(ner3, "name3".getBytes());
 		ContentName nername3 = ContentName.fromNative("/longer");
 		NameEnumerationResponse neresponse = null;
+		Timestamp ts = null;
 		//send initial interest to make sure namespace is empty
 		//interest flag will not be set for a fast response since there isn't anything in the index yet
 		

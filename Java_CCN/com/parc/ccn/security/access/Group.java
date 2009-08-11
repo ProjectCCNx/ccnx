@@ -11,8 +11,6 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collection;
 
-//Right now use javax.jcr version; in java 1.7, will be java.nio.file.AccessDeniedException.
-import javax.jcr.AccessDeniedException;
 import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.crypto.InvalidCipherTextException;

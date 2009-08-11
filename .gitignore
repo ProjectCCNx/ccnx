@@ -11,9 +11,11 @@ apps/email/bin/com/
 *.jar
 *.c.flc
 *.out
+00MANIFEST
 apps/containerApp/bin/
 apps/containerApp/log/
 apps/containerApp/build/
 apps/Mediator/bin/
 Java_CCN/daemon_cmd.txt
 log
+testinstall/

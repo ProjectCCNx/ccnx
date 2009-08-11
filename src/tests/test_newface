@@ -51,9 +51,7 @@ ccn_xmltoccnb -w newface-request.xml || Fail botch constructing newface-request.
 # Try out the face creation request
 ccndsmoketest -b send newface-request.ccnb recv > newface-response.ccnb
 
-: | cmp -s - newface-response.ccnb && SkipTest no newface response, might be a sporadic failure
-
 ccn_ccnbtoxml newface-response.ccnb || Fail did not get newface response
 
 # Testing for the request to time out would be more complicated.
-#rm newface-*.ccnb
+rm newface-request.xml

@@ -26,10 +26,10 @@ install_programs: $(INSTALLED_PROGRAMS)
 
 install: install_libs install_programs
 
-uninstall_libs: $(LIBS)
+uninstall_libs:
 	for i in $(LIBS); do $(RM) $(INSTALL_LIB)/$$i; done
 
-uninstall_programs: $(PROGRAMS)
+uninstall_programs:
 	for i in $(PROGRAMS); do $(RM) $(INSTALL_BIN)/$$i; done
 
 uninstall: uninstall_libs uninstall_programs
