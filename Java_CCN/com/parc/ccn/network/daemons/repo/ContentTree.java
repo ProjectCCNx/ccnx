@@ -520,7 +520,8 @@ public class ContentTree {
 				Library.logger().finer("sending back "+names.size()+" names in the enumeration response");
 				parent.interestFlag = false;
 
-			return new NameEnumerationResponse(interest.name(), names, new Timestamp(parent.timestamp));
+			return new NameEnumerationResponse(interest.name(), names, nodeTS);
+			
 		}
 		return null;
 	}
