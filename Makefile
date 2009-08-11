@@ -1,7 +1,7 @@
 # Top level Makefile for ccn
 
 SUBDIRS = src schema Java_CCN apps/containerApp Documentation/technical
-PACKLIST = Makefile build.xml $(SUBDIRS)
+PACKLIST = Makefile build.xml README $(SUBDIRS)
 
 default all clean depend test check shared documentation testinstall install uninstall: _always
 	for i in $(SUBDIRS); do         \
