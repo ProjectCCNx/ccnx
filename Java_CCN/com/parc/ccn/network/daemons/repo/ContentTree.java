@@ -459,9 +459,7 @@ public class ContentTree {
 		ArrayList<ContentName> names = new ArrayList<ContentName>();
 		//first chop off NE marker
 		ContentName prefix = interest.name().cut(CCNNameEnumerator.NEMARKER);
-
-<<<<<<< HEAD:Java_CCN/com/parc/ccn/network/daemons/repo/ContentTree.java
-=======
+		
 		//prefix = VersioningProfile.versionRoot(prefix);
 		boolean versionedInterest = false;
 		//get the index of the name enumeration marker
@@ -489,23 +487,24 @@ public class ContentTree {
 		} else {
 			Library.logger().finest("no timestamp in interest after the name enumeration marker");
 		}
-		
->>>>>>> cleaned up code from switch to collections.  added timestamp to NameEnumerationResponse object so it doesn't have to be added and then cut from the prefix name on a CollectionObject.save(Timestamp):Java_CCN/com/parc/ccn/network/daemons/repo/ContentTree.java
+	
 		Library.logger().fine("checking for content names under: "+prefix);
 		
 		TreeNode parent = lookupNode(prefix, prefix.count());
 		if (parent!=null) {
-		
+
 			//check if we should respond...
+
 			if (interest.matches(VersioningProfile.addVersion(new ContentName(prefix, CCNNameEnumerator.NEMARKER), new Timestamp(parent.timestamp)), null)) {
 				Library.logger().info("the new version is a match with the interest!  we should respond");
 			}
 			else {
-				Library.logger().info("the new version doesn't match, no response needed");
-				parent.interestFlag = true;
-				return null;
-			}
 
+		        Library.logger().info("the new version doesn't match, no response needed");
+		        parent.interestFlag = true;
+		        return null;
+			}
+				
 			//the parent has children we need to return
 			ContentName c = new ContentName();
 			if (parent.oneChild!=null) {
@@ -519,8 +518,8 @@ public class ContentTree {
 			
 			if (names.size()>0)
 				Library.logger().finer("sending back "+names.size()+" names in the enumeration response");
-			parent.interestFlag = false;
-			
+				parent.interestFlag = false;
+
 			return new NameEnumerationResponse(interest.name(), names, new Timestamp(parent.timestamp));
 		}
 		return null;
