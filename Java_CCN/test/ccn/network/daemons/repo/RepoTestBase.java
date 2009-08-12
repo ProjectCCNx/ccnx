@@ -10,7 +10,7 @@ import test.ccn.library.LibraryTestBase;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.library.io.CCNInputStream;
-import com.parc.ccn.library.io.repo.RepositoryOutputStream;
+import com.parc.ccn.library.io.repo.RepositoryFileOutputStream;
 
 /**
  * 
@@ -64,7 +64,7 @@ public class RepoTestBase extends LibraryTestBase {
 	}
 	
 	protected ContentName testWriteToRepo(ContentName name) throws Exception {
-		RepositoryOutputStream ros = putLibrary.repoOpen(name, null, putLibrary.getDefaultPublisher());	
+		RepositoryFileOutputStream ros = new RepositoryFileOutputStream(name, putLibrary);	
 		byte [] data = "Testing 1 2 3".getBytes();
 		ros.write(data, 0, data.length);
 		ContentName baseName = ros.getBaseName();

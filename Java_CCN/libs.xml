@@ -17,7 +17,6 @@
 	<path id="ccn-classpath">
 		<pathelement location="${lib}/parccalib-1.2.jar"/>
 		<pathelement location="${lib}/bcprov-jdk15-143.jar"/>
-		<pathelement location="${lib}/jcr-1.0.jar"/>
 		<pathelement location="${lib}/jsr173_api.jar"/>
 		<pathelement location="${junit-jar}"/>
 	</path>
