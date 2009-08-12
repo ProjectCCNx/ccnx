@@ -1722,7 +1722,6 @@ ccnd_req_newface(struct ccnd *h, const unsigned char *msg, size_t size)
             h->flood = save;
         }
         else if (addrinfo->ai_socktype == SOCK_STREAM) {
-            // XXX - should search for previously existing connection
             save = h->flood;
             h->flood = 0; /* never auto-register ccn:/ for these */
             newface = make_connection(h,
