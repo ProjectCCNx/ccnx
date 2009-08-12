@@ -6,7 +6,7 @@ default:
 
 all documentation: $(DERIVED_HTML)
 
-clean:
+clean-documentation: _always
 	rm -f $(DERIVED_HTML)
 
 DigestComponent.html: DigestComponent.txt

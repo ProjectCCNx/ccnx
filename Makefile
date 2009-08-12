@@ -9,6 +9,11 @@ default all clean depend test check shared documentation testinstall install uni
 	done
 	@rm -f _always
 
+clean-documentation: _always
+	rm -rf Documentation/ccode
+	rm -rf Documentation/javacode
+	(cd Documentation/technical && pwd && $(MAKE) clean-documentation)
+
 # The rest of this is for packaging purposes.
 _manifester:
 	rm -f _manifester

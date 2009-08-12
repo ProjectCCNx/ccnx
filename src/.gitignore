@@ -31,7 +31,6 @@ cmd/ccnsendchunks
 cmd/ccnslurp
 cmd/ccntimestamps
 cmd/dataresponsetest
-doxy/
 lib/Makefile
 lib/basicparsetest
 lib/encodedecodetest
