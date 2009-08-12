@@ -150,6 +150,12 @@ ccn_ccnbtoxml.o: ccn_ccnbtoxml.c ../include/ccn/charbuf.h \
 ccn_splitccnb.o: ccn_splitccnb.c ../include/ccn/coding.h
 ccn_xmltoccnb.o: ccn_xmltoccnb.c ../include/ccn/coding.h \
   ../include/ccn/charbuf.h
+ccnbasicconfig.o: ccnbasicconfig.c ../include/ccn/bloom.h \
+  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h ../include/ccn/uri.h \
+  ../include/ccn/face_mgmt.h ../include/ccn/sockcreate.h \
+  ../include/ccn/reg_mgmt.h ../include/ccn/signing.h \
+  ../include/ccn/keystore.h
 ccnbuzz.o: ccnbuzz.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
