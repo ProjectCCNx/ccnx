@@ -177,11 +177,11 @@
 		</parallel>
 	</target>
 	
-	<target name="repo" depends="repo-start, test-repo-is-up">
+	<target name="repo" depends="ccnd, repo-start, test-repo-is-up">
 	</target>
 
 	<!-- Don't run this by itself - use target repo -->
-	<target name="repo-start" depends="jar, ccnd">
+	<target name="repo-start" depends="jar">
 		<parallel>
 			<daemons>
 				<java classname="com.parc.ccn.network.daemons.repo.RepositoryDaemon" fork="true" failonerror="true" output = "${testout}/TEST-repo-daemon.txt" dir="${testout}">
@@ -207,7 +207,7 @@
 	</target>
 	
 	<!-- Run this after starting repo to insure it's up before running further tests"/> -->
-	<target name="test-repo-is-up" depends="jar,ccnd">
+	<target name="test-repo-is-up" depends="jar">
 		<mkdir dir="${testout}"/>
 		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
 			<classpath>
@@ -392,6 +392,15 @@
 	<!-- IMPORTANT: test-repo-structure must be the *first* test in this list because subsequent test require
 	     that the repo must not have been running when test-repo-structure is run -->
 	<target name="test-repo" depends="test-repo-structure, test-repo-name-responder, test-repo-initial-read, test-repo-io">
+	</target>
+	
+	<target name="test-repo-ccnd-restart">
+		<antcall target="stoppable-ccnd" />
+		<antcall target="repo-start" />
+		<antcall target="test-repo-is-up" />
+		<antcall target="ccnd-stop" />
+		<antcall target="stoppable-ccnd" />
+		<antcall target="test-repo-is-up" />
 	</target>
 	
 	<target name="test-enumerated-name-list" depends="jar, ccnd, repo">
