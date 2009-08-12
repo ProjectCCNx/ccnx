@@ -1589,6 +1589,8 @@ ccnd_reg_self(struct ccnd *h, const unsigned char *msg, size_t size)
     struct ccn_indexbuf *comps = ccn_indexbuf_create();
     int res;
     struct ccn_charbuf *result = NULL;
+    struct ccn_forwarding_entry forwarding_entry_storage = {0};
+    struct ccn_forwarding_entry *forwarding_entry = &forwarding_entry_storage;
     
     res = ccn_parse_ContentObject(msg, size, &pco, comps);
     if (res >= 0) {
@@ -1598,7 +1600,22 @@ ccnd_reg_self(struct ccnd *h, const unsigned char *msg, size_t size)
                               60);
         if (res >= 0) {
             result = ccn_charbuf_create();
-            // XXX - for now, zero-length result
+            forwarding_entry->action = NULL;
+            forwarding_entry->name_prefix = ccn_charbuf_create();
+            ccn_name_init(forwarding_entry->name_prefix);
+            ccn_name_append_components(forwarding_entry->name_prefix,
+                                       msg,
+                                       comps->buf[0],
+                                       comps->buf[comps->n - 1]);
+            forwarding_entry->ccnd_id = h->ccnd_id;
+            forwarding_entry->ccnd_id_size = sizeof(h->ccnd_id);
+            forwarding_entry->faceid = h->interest_faceid;
+            forwarding_entry->flags = (CCN_FORW_CHILD_INHERIT | CCN_FORW_ADVERTISE);
+            forwarding_entry->lifetime = 60;
+            res = ccnb_append_forwarding_entry(result, forwarding_entry);
+            if (res < 0)
+                ccn_charbuf_destroy(&result);
+            ccn_charbuf_destroy(&forwarding_entry->name_prefix);
         }
     }
     ccn_indexbuf_destroy(&comps);
@@ -1701,7 +1718,6 @@ ccnd_req_newface(struct ccnd *h, const unsigned char *msg, size_t size)
             h->flood = save;
         }
         else if (addrinfo->ai_socktype == SOCK_STREAM) {
-            // XXX - should search for previously existing connection
             save = h->flood;
             h->flood = 0; /* never auto-register ccn:/ for these */
             newface = make_connection(h,

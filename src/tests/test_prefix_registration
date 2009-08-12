@@ -34,5 +34,7 @@ ccndsmoketest -b send registration-request.ccnb recv > registration-response.ccn
 
 ccn_ccnbtoxml registration-response.ccnb || Fail did not get registration response
 
+ccnbx -d registration-response.ccnb Content | ccn_ccnbtoxml -x -
+
 # Testing for the reg request to time out would be more complicated.
 rm registration-*.ccnb
