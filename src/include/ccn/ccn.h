@@ -1,10 +1,11 @@
-/*
- * ccn/ccn.h
- * 
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
+/**
+ * @file ccn/ccn.h
  *
  * This is the low-level interface for CCN clients
  *
+ */
+/*-
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
  */
 
 #ifndef CCN_CCN_DEFINED
