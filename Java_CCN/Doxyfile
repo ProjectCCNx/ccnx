@@ -4,9 +4,9 @@
 # Project related configuration options
 #---------------------------------------------------------------------------
 DOXYFILE_ENCODING      = UTF-8
-PROJECT_NAME           = "Content Centric Networking"
+PROJECT_NAME           = "Content-Centric Networking in Java"
 PROJECT_NUMBER         = 0.0.123
-OUTPUT_DIRECTORY       = doc
+OUTPUT_DIRECTORY       = ../Documentation/javacode
 CREATE_SUBDIRS         = NO
 OUTPUT_LANGUAGE        = English
 BRIEF_MEMBER_DESC      = YES
