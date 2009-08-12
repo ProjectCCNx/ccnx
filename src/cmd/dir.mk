@@ -6,7 +6,7 @@ CCNLIBDIR = ../lib
 
 INSTALLED_PROGRAMS = \
     ccn_ccnbtoxml ccn_splitccnb ccntimestamps ccndumpnames ccnrm \
-    ccnls ccnslurp ccnbx ccncat \
+    ccnls ccnslurp ccnbx ccncat ccnbasicconfig \
     ccnsendchunks ccncatchunks ccncatchunks2 \
     ccnput ccnget ccnhexdumpdata $(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)
 
@@ -21,7 +21,7 @@ EXPAT_PROGRAMS = ccn_xmltoccnb
 BROKEN_PROGRAMS =
 DEBRIS = 
 SCRIPTSRC = ccn_initkeystore.sh
-CSRC =  ccn_ccnbtoxml.c ccn_splitccnb.c ccn_xmltoccnb.c ccnbuzz.c \
+CSRC =  ccn_ccnbtoxml.c ccn_splitccnb.c ccn_xmltoccnb.c ccnbasicconfig.c ccnbuzz.c\
        ccnbx.c ccncat.c ccncatchunks.c ccncatchunks2.c ccndump.c \
        ccndumpnames.c ccndumppcap.c ccnget.c ccnhexdumpdata.c \
        ccnls.c ccnput.c ccnrm.c ccnsendchunks.c \
@@ -94,6 +94,9 @@ ccncatchunks: ccncatchunks.o
 
 ccncatchunks2: ccncatchunks2.o
 	$(CC) $(CFLAGS) -o $@ ccncatchunks2.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+
+ccnbasicconfig: ccnbasicconfig.o
+	$(CC) $(CFLAGS) -o $@ ccnbasicconfig.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccnbuzz: ccnbuzz.o
 	$(CC) $(CFLAGS) -o $@ ccnbuzz.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
