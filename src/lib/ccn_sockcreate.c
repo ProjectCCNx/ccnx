@@ -137,13 +137,11 @@ ccn_setup_socket(const struct ccn_sockdescr *descr,
     int res;
     struct addrinfo *mcast_source_addrinfo = NULL;
     struct addrinfo *addrinfo = NULL;
-    struct addrinfo *laddrinfo = NULL;
     unsigned int if_index = 0;
-    const int one = 1;
+    const char *source_port = "4485"; //< @bug XXX FIXTHIS - should be passwd in (not in descr) ?
+    //const int one = 1;
     int sock = -1;
     
-    GOT_HERE;
-    socks->sending = socks->recving = -1;
     if (descr->ipproto > 0)
         hints.ai_protocol = descr->ipproto;
     hints.ai_flags =  AI_NUMERICHOST;
@@ -154,8 +152,9 @@ ccn_setup_socket(const struct ccn_sockdescr *descr,
     }
     GOT_HERE;
     if (descr->source_address != NULL) {
-	hints.ai_socktype = SOCK_DGRAM;
-	res = getaddrinfo(descr->source_address, descr->port,
+	// hints.ai_family = PF_INET;
+	// hints.ai_socktype = SOCK_DGRAM;
+	res = getaddrinfo(descr->source_address, source_port,
                           &hints, &mcast_source_addrinfo);
 	if (res != 0 || mcast_source_addrinfo == NULL) {
 	    LOGGIT(logdat, "getaddrinfo(\"%s\", ...): %s",
@@ -192,88 +191,26 @@ ccn_setup_socket(const struct ccn_sockdescr *descr,
         }
     }
 #endif
-    GOT_HERE;
     res = getaddrinfo(descr->address, descr->port,
                       &hints, &addrinfo);
-    if (res != 0 || addrinfo == NULL) {
-        LOGGIT(logdat, "getaddrinfo(\"%s\", ...): %s",
+    if (res != 0 || mcast_source_addrinfo == NULL) {
+        LOGGIT(logdat, "getaddrinfo(\"%s\", ...): %s\n",
                descr->address, gai_strerror(res));
         goto Finish;
     }
     sock = socket(addrinfo->ai_family, addrinfo->ai_socktype, addrinfo->ai_protocol);
-    GOT_HERE;
     if (sock == -1) {
         LOGGIT(logdat, "socket: %s", strerror(errno));
         goto Finish;
     }
-    GOT_HERE;
-    socks->recving = socks->sending = sock;
-    if (mcast_source_addrinfo != NULL) {
-        /*
-         * We have a specific interface to bind to for sending.
-         * mcast_source_addrinfo is  the unicast address of this interface.
-         * Since we need to bind the recving side to the multicast address,
-         * we need two sockets in this case.
-         */
-        socks->recving = socket(addrinfo->ai_family, addrinfo->ai_socktype, addrinfo->ai_protocol);
-        if (socks->recving == -1) {
-            LOGGIT(logdat, "socket: %s", strerror(errno));
-            goto Finish;
-        }
-        res = setsockopt(socks->recving, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
-        if (res == -1) {
-            LOGGIT(logdat, "setsockopt(recving, ..., SO_REUSEADDR, ...): %s", strerror(errno));
-            goto Finish;
-        }
-        /* bind the recving socket to the multicast address */
-	res = bind(socks->recving, addrinfo->ai_addr, addrinfo->ai_addrlen);
-        if (res == -1) {
-            LOGGIT(logdat, "bind(recving, ...): %s", strerror(errno));
-            goto Finish;
-        }
-    }
-    GOT_HERE;
-    res = set_multicast_socket_options(socks->recving, socks->sending, addrinfo, mcast_source_addrinfo, descr->mcast_ttl, if_index, logger,
-                 logdat);
-    if (res < 0)
-        goto Finish;
-    if (mcast_source_addrinfo != NULL) {
-        GOT_HERE;
-        res = bind(socks->sending, mcast_source_addrinfo->ai_addr, mcast_source_addrinfo->ai_addrlen);
-        if (res == -1) {
-            LOGGIT(logdat, "bind(sending, ...): %s", strerror(errno));
-        }
-    }
-    else {
-        hints.ai_family = addrinfo->ai_family;
-        hints.ai_socktype = addrinfo->ai_socktype;
-        hints.ai_flags = AI_PASSIVE;
-        res = getaddrinfo(NULL, descr->port, &hints, &laddrinfo);
-        if (res != 0)
-            goto Finish;
-        GOT_HERE;
-        res = bind(socks->sending, laddrinfo->ai_addr, laddrinfo->ai_addrlen);
-        if (res == -1) {
-            LOGGIT(logdat, "bind(sending, *.%s, ...): %s", descr->port, strerror(errno));
-            goto Finish;
-        }
-        GOT_HERE;
-        }
-    GOT_HERE;
-    result = 0;
     
+    result = 0;
 Finish:
     if (addrinfo != NULL)
         freeaddrinfo(addrinfo);
-    if (laddrinfo != NULL)
-        freeaddrinfo(laddrinfo);
     if (mcast_source_addrinfo != NULL)
         freeaddrinfo(mcast_source_addrinfo);
-    if (result != 0) {
-        close(socks->recving);
-        if (socks->sending != socks->recving)
-            close(socks->sending);
-        socks->sending = socks->recving = -1;
-    }
+    if (sock != -1)
+        close(sock);
     return(result);
 }
