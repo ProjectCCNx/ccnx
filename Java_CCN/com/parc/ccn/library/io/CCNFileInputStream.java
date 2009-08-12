@@ -93,8 +93,13 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 		retrieveHeader(_baseName, null);
 	}
 
+	protected boolean hasHeader() {
+		return (null != _header);
+	}
 	
 	protected void retrieveHeader(ContentName baseName, PublisherID publisher) throws IOException {
+		if (hasHeader())
+			return; // done already
 		// DKS TODO match header interest to new header name
 		Interest headerInterest = new Interest(SegmentationProfile.headerName(baseName), publisher);
 		headerInterest.additionalNameComponents(1);
@@ -113,7 +118,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 		ArrayList<byte[]> excludeList = new ArrayList<byte[]>();
 		for (ContentObject co : results) {
 			Library.logger().info("CCNInputStream: retrieved possible header: " + co.name() + " type: " + co.signedInfo().getTypeName());
-			if (co.signedInfo().getType() == SignedInfo.ContentType.DATA &&
+			if (SegmentationProfile.isHeader(_baseName, co.name()) &&
 					addHeader(co)) {
 				// Low-level verify is done in addHeader
 				// TODO: DKS: should this be header.verify()?
@@ -169,23 +174,21 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 		// This might get us the header instead...
 		ContentObject result =  _library.getLatestVersion(_baseName, null, _timeout);
 		if (null != result){
+			// Now we know the version
+			_baseName = SegmentationProfile.segmentRoot(result.name());
 			Library.logger().info("getFirstBlock: retrieved " + result.name() + " type: " + result.signedInfo().getTypeName());
-			if (result.signedInfo().getType() == ContentType.DATA) {
+			if (SegmentationProfile.isHeader(_baseName, result.name())) {
 				if (!addHeader(result)) { // verifies
-					Library.logger().warning("Retrieved header in getFirstBlock, but failed to process it.");
+					Library.logger().warning("Retrieved header spontaneously in getFirstBlock, but failed to process it.");
 				}
-				_baseName = SegmentationProfile.headerRoot(result.name());
 				Library.logger().info("Retrieved header, setting _baseName to " + _baseName + " calling CCNInputStream.getFirstBlock.");
-				// now we know the version
-				return super.getFirstBlock();
 			}
 			// Now need to verify the block we got
 			if (!verifyBlock(result)) {
 				return null;
 			}
-			// Now we know the version
-			_baseName = SegmentationProfile.segmentRoot(result.name());
-			retrieveHeader(_baseName, new PublisherID(result.signedInfo().getPublisherKeyID()));
+			if (!hasHeader())
+				retrieveHeader(_baseName, new PublisherID(result.signedInfo().getPublisherKeyID()));
 			return getBlock(_startingBlockIndex);
 		}
 		return result;

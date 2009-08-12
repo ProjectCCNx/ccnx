@@ -2,7 +2,6 @@ package com.parc.ccn.library.profiles;
 
 import java.math.BigInteger;
 
-import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 
 /**
@@ -138,32 +137,22 @@ public class SegmentationProfile implements CCNProfile {
 	}
 
 	/**
-	 * DKS -- may remove headers entirely, or more likely move to a file metadata
-	 * profile. For now, leave the code here temporarily.
-	 * DKS not currently adding a header-specific prefix. A header, however,
-	 * should not be a fragment.
-	 * @param headerName
+	 * Check to see if we have (a block of) the header.
+	 * @param baseName The name of the object whose header we are looking for (including version, but
+	 * 			not including segmentation information).
+	 * @param headerName The name of the object we think might be a header block (can include
+	 * 			segmentation).
 	 * @return
 	 */
-	public static ContentName headerRoot(ContentName headerName) {
-		// Do we want to handle fragment roots, etc, here too?
-		if (!SegmentationProfile.isHeader(headerName)) {
-			Library.logger().warning("Name " + headerName + " is not a header name.");
-			throw new IllegalArgumentException("Name " + headerName.toString() + " is not a header name.");
+	public static boolean isHeader(ContentName baseName, ContentName headerName) {
+		// TODO update to new header naming
+		if (!baseName.isPrefixOf(headerName)) {
+			return false;
 		}
-		// Strip off any header-specific prefix info if we
-		// add any. If not present, does nothing. Would be faster not to bother
-		// calling at all.
-		// return headerName.cut(HEADER_NAME); 
-		return headerName;
-	}
-
-	public static boolean isHeader(ContentName name) {
-		// with on-path header, no way to tell except
-		// that it wasn't a fragment. With separate name,
-		// easier to handle.
-	//	return (name.contains(HEADER_NAME));
-		return (!isSegment(name));
+		if (isSegment(headerName)) {
+			headerName = segmentRoot(headerName);
+		}
+		return (baseName.count() == headerName.count());
 	}
 
 	/**
