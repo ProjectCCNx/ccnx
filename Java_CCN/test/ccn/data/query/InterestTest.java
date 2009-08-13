@@ -93,11 +93,17 @@ public class InterestTest {
 		Interest opPlainBDec = new Interest();
 		XMLEncodableTester.encodeDecodeTest("PreferenceInterest", opPlain, opPlainDec, opPlainBDec);
 		
-		Interest opANC = new Interest(tcn);
-		opANC.maxSuffixComponents(3);
-		Interest opANCDec = new Interest();
-		Interest opANCBDec = new Interest();
-		XMLEncodableTester.encodeDecodeTest("AdditionalNameComponentsInterest", opANC, opANCDec, opANCBDec);
+		Interest opMSC = new Interest(tcn);
+		opMSC.maxSuffixComponents(3);
+		Interest opMSCDec = new Interest();
+		Interest opMSCBDec = new Interest();
+		XMLEncodableTester.encodeDecodeTest("MaxSuffixComponentsInterest", opMSC, opMSCDec, opMSCBDec);	
+
+		Interest opMinSC = new Interest(tcn);
+		opMinSC.minSuffixComponents(3);
+		Interest opMinSCDec = new Interest();
+		Interest opMinSCBDec = new Interest();
+		XMLEncodableTester.encodeDecodeTest("MinSuffixComponentsInterest", opMinSC, opMinSCDec, opMinSCBDec);
 	}
 		
 	@Test

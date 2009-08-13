@@ -425,12 +425,12 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		_name = new ContentName();
 		_name.decode(decoder);
 		
-		if (decoder.peekStartElement(MAX_SUFFIX_COMPONENTS)) {
-			_maxSuffixComponents = decoder.readIntegerElement(MAX_SUFFIX_COMPONENTS);
-		}
-		
 		if (decoder.peekStartElement(MIN_SUFFIX_COMPONENTS)) {
 			_minSuffixComponents = decoder.readIntegerElement(MIN_SUFFIX_COMPONENTS);
+		}
+		
+		if (decoder.peekStartElement(MAX_SUFFIX_COMPONENTS)) {
+			_maxSuffixComponents = decoder.readIntegerElement(MAX_SUFFIX_COMPONENTS);
 		}
 				
 		if (PublisherID.peek(decoder)) {
@@ -474,12 +474,12 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		encoder.writeStartElement(INTEREST_ELEMENT);
 		
 		name().encode(encoder);
-		
+	
+		if (null != minSuffixComponents()) 
+			encoder.writeIntegerElement(MIN_SUFFIX_COMPONENTS, minSuffixComponents());	
+
 		if (null != maxSuffixComponents()) 
 			encoder.writeIntegerElement(MAX_SUFFIX_COMPONENTS, maxSuffixComponents());
-		
-		if (null != minSuffixComponents()) 
-			encoder.writeIntegerElement(MIN_SUFFIX_COMPONENTS, minSuffixComponents());
 
 		if (null != publisherID())
 			publisherID().encode(encoder);
@@ -583,9 +583,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		} else if (!_maxSuffixComponents.equals(other._maxSuffixComponents))
 			return false;
 		if (_minSuffixComponents == null) {
-			if (other._maxSuffixComponents != null)
+			if (other._minSuffixComponents != null)
 				return false;
-		} else if (!_minSuffixComponents.equals(other._maxSuffixComponents))
+		} else if (!_minSuffixComponents.equals(other._minSuffixComponents))
 			return false;
 		if (_answerOriginKind == null) {
 			if (other._answerOriginKind != null)
