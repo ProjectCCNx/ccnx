@@ -72,8 +72,8 @@ struct ccnd {
     int local_listener_fd;
     int tcp4_fd;                    /**< listener for IPv4 tcp connections */
     int tcp6_fd;                    /**< listener for IPv6 tcp connections */
-    int udp4_fd;
-    int udp6_fd;
+    int udp4_fd;                    /**< common fd for IPv4 unicast */
+    int udp6_fd;                    /**< common fd for IPv6 unicast */
     nfds_t nfds;
     struct pollfd *fds;
     struct ccn_gettime ticktock;
@@ -143,7 +143,8 @@ enum cq_delay_class {
  * One of our active interfaces
  */
 struct face {
-    int fd;
+    int recv_fd;                /* socket for receiving */
+    int send_fd;                /* socket for sending (maybe same as recv_fd) */
     int flags;                  /* CCN_FACE_* below */
     unsigned faceid;            /* internal face id */
     unsigned recvcount;         /* for activity level monitoring */
@@ -162,6 +163,7 @@ struct face {
 #define CCN_FACE_GG     (1 << 2) /**< Considered friendly */
 #define CCN_FACE_LOCAL  (1 << 3) /**< PF_UNIX socket */
 #define CCN_FACE_INET   (1 << 4) /**< IPv4 */
+#define CCN_FACE_MCAST  (1 << 5) /**< a party line (e.g. multicast) */
 #define CCN_FACE_INET6  (1 << 6) /**< IPv6 */
 #define CCN_FACE_DC     (1 << 7) /**< Face sends Inject messages */
 #define CCN_FACE_NOSEND (1 << 8) /**< Don't send anymore */

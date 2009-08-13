@@ -238,14 +238,14 @@ ccnd_stats_handle_http_connection(struct ccnd *h, struct face *face)
     int hdrlen;
     char *response = NULL;
     struct linger linger = { .l_onoff = 1, .l_linger = 1 };
-    int fd = face->fd;
+    int fd = face->send_fd;
     char buf[128];
     
     if (face->inbuf->length < 6)
         return(-1);
     response = collect_stats_html(h);
     /* Set linger to prevent quickly resetting the connection on close.*/
-    res = setsockopt(face->fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
+    res = setsockopt(fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
     if (0 == memcmp(face->inbuf->buf, "GET / ", 6)) {
         res = strlen(response);
         hdrlen = snprintf(buf, sizeof(buf),
@@ -261,7 +261,7 @@ ccnd_stats_handle_http_connection(struct ccnd *h, struct face *face)
         (void)write(fd, resp404, strlen(resp404));
     else
         (void)write(fd, resp405, strlen(resp405));
-    shutdown_client_fd(h, face->fd);
+    shutdown_client_fd(h, fd);
     free(response);
     return(0);
 }

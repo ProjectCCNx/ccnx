@@ -693,7 +693,7 @@ accept_new_local_client(struct ccnd *h)
     if (hashtb_seek(e, &fd, sizeof(fd), 0) != HT_NEW_ENTRY)
         fatal_err("ccnd: accept_new_local_client");
     face = e->data;
-    face->fd = fd;
+    face->recv_fd = face->send_fd = fd;
     face->flags |= (CCN_FACE_GG | CCN_FACE_LOCAL);
     res = enroll_face(h, face);
     hashtb_end(e);
@@ -701,8 +701,8 @@ accept_new_local_client(struct ccnd *h)
 }
 
 static struct face *
-record_stream_connection(struct ccnd *h, int fd,
-                         struct sockaddr *who, socklen_t wholen)
+record_connection(struct ccnd *h, int fd,
+                  struct sockaddr *who, socklen_t wholen)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -717,7 +717,7 @@ record_stream_connection(struct ccnd *h, int fd,
     if (hashtb_seek(e, &fd, sizeof(fd), wholen) != HT_NEW_ENTRY)
         fatal_err("ccnd: record_stream_connection");
     face = e->data;
-    face->fd = fd;
+    face->recv_fd = face->send_fd = fd;
     if (who->sa_family == AF_INET)
         face->flags |= CCN_FACE_INET;
     if (who->sa_family == AF_INET6)
@@ -744,7 +744,7 @@ accept_connection(struct ccnd *h, int listener_fd)
         perror("accept");
         return;
     }
-    face = record_stream_connection(h, fd, who, wholen);
+    face = record_connection(h, fd, who, wholen);
     if (face != NULL) {
         ccnd_msg(h, "accepted client fd=%d id=%u", fd, face->faceid);
         face->flags |= CCN_FACE_UNDECIDED; /* might be http */
@@ -787,9 +787,54 @@ make_connection(struct ccnd *h, struct sockaddr *who, socklen_t wholen)
         close(fd);
         return(NULL);
     }
-    face = record_stream_connection(h, fd, who, wholen);
+    face = record_connection(h, fd, who, wholen);
     if (face != NULL)
         ccnd_msg(h, "connected client fd=%d id=%u", fd, face->faceid);
+    return(face);
+}
+
+typedef void (*loggerproc)(void *, const char *, ...);
+static struct face *
+setup_multicast(struct ccnd *h, struct ccn_face_instance *face_instance,
+                struct sockaddr *who, socklen_t wholen)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct ccn_sockets socks = { -1, -1 };
+    int res;
+    struct face *face = NULL;
+    const int checkflags = CCN_FACE_LINK | CCN_FACE_DGRAM | CCN_FACE_MCAST |
+                           CCN_FACE_LOCAL | CCN_FACE_NOSEND;
+    const int wantflags = CCN_FACE_DGRAM | CCN_FACE_MCAST;
+
+    /* See if one is already active */
+    // XXX - should also compare and record additional mcast props.
+    for (hashtb_start(h->faces_by_fd, e); e->data != NULL; hashtb_next(e)) {
+        face = e->data;
+        if (face->addr != NULL && face->addrlen == wholen &&
+            ((face->flags & checkflags) == wantflags) &&
+            0 == memcmp(face->addr, who, wholen)) {
+            hashtb_end(e);
+            return(face);
+        }
+    }
+    face = NULL;
+    hashtb_end(e);
+    
+    res = ccn_setup_socket(&face_instance->descr,
+                           (loggerproc)&ccnd_msg,
+                           (void *)h, &socks);
+    if (res < 0)
+        return(NULL);
+    face = record_connection(h, socks.recving, who, wholen);
+    if (face == NULL) {
+        close(socks.recving);
+        if (socks.sending != socks.recving)
+            close(socks.sending);
+        return(NULL);
+    }
+    face->send_fd = socks.sending;
+    face->flags |= CCN_FACE_MCAST;
     return(face);
 }
 
@@ -803,9 +848,11 @@ shutdown_client_fd(struct ccnd *h, int fd)
     if (hashtb_seek(e, &fd, sizeof(fd), 0) != HT_OLD_ENTRY)
         fatal_err("ccnd: shutdown_client_fd");
     face = e->data;
-    if (face->fd != fd) abort();
+    if (face->recv_fd != fd) abort();
     close(fd);
-    face->fd = -1;
+    if (face->send_fd != fd)
+        close(face->send_fd);
+    face->recv_fd = face->send_fd = -1;
     ccnd_msg(h, "shutdown client fd=%d id=%d", fd, (int)face->faceid);
     ccn_charbuf_destroy(&face->inbuf);
     ccn_charbuf_destroy(&face->outbuf);
@@ -1576,7 +1623,8 @@ static void
 register_new_face(struct ccnd *h, struct face *face)
 {
     int res;
-    if (h->flood && face->faceid != 0 && (face->flags & CCN_FACE_UNDECIDED) == 0) {
+    if (h->flood && face->faceid != 0 &&
+          (face->flags & CCN_FACE_UNDECIDED) == 0) {
         res = ccnd_reg_uri(h, "ccn:/", face->faceid,
                            CCN_FORW_CHILD_INHERIT, 0x7FFFFFFF);
     }
@@ -1648,11 +1696,14 @@ ccnd_req_newface(struct ccnd *h, const unsigned char *msg, size_t size)
     struct addrinfo hints = {0};
     struct addrinfo *addrinfo = NULL;
     int fd = -1;
+    int mcast;
     struct face *face = NULL;
     struct face *reqface = NULL;
     struct face *newface = NULL;
     int save;
 
+    save = h->flood;
+    h->flood = 0; /* never auto-register ccn:/ for these */
     res = ccn_parse_ContentObject(msg, size, &pco, NULL);
     if (res < 0)
         goto Finish;        
@@ -1686,7 +1737,6 @@ ccnd_req_newface(struct ccnd *h, const unsigned char *msg, size_t size)
     if (face_instance->descr.source_address == NULL &&
         face_instance->descr.mcast_ttl == -1) {
         hints.ai_flags |= AI_NUMERICHOST;
-        //hints.ai_socktype = SOCK_DGRAM;
         hints.ai_protocol = face_instance->descr.ipproto;
         res = getaddrinfo(face_instance->descr.address,
                           face_instance->descr.port,
@@ -1703,27 +1753,35 @@ ccnd_req_newface(struct ccnd *h, const unsigned char *msg, size_t size)
         if (addrinfo->ai_next != NULL)
             ccnd_msg(h, "ccnd_req_newface: (addrinfo->ai_next != NULL) ? ?");
         if (face_instance->descr.ipproto == IPPROTO_UDP) {
-            fd = (addrinfo->ai_family == AF_INET)  ? h->udp4_fd :
-            (addrinfo->ai_family == AF_INET6) ? h->udp6_fd : -1;
+            fd = -1;
+            mcast = 0;
+            if (addrinfo->ai_family == AF_INET) {
+                fd = h->udp4_fd;
+                mcast = IN_MULTICAST(ntohl(((struct sockaddr_in *)(addrinfo->ai_addr))->sin_addr.s_addr));
+            }
+            else if (addrinfo->ai_family == AF_INET6) {
+                fd = h->udp6_fd;
+                mcast = IN6_IS_ADDR_MULTICAST(&((struct sockaddr_in6 *)addrinfo->ai_addr)->sin6_addr);
+            }
             if (fd == -1)
                 goto Finish;
-            face = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
+            if (mcast)
+                face = setup_multicast(h, face_instance,
+                                       addrinfo->ai_addr,
+                                       addrinfo->ai_addrlen);
+            else
+                face = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
             if (face == NULL)
                 goto Finish;
-            save = h->flood;
-            h->flood = 0; /* never auto-register ccn:/ for these */
             newface = get_dgram_source(h, face,
                                        addrinfo->ai_addr,
                                        addrinfo->ai_addrlen);
-            h->flood = save;
         }
         else if (addrinfo->ai_socktype == SOCK_STREAM) {
-            save = h->flood;
-            h->flood = 0; /* never auto-register ccn:/ for these */
             newface = make_connection(h,
                                       addrinfo->ai_addr,
                                       addrinfo->ai_addrlen);
-            h->flood = save;
+            
         }
     }
     if (newface != NULL) {
@@ -1738,6 +1796,7 @@ ccnd_req_newface(struct ccnd *h, const unsigned char *msg, size_t size)
             ccn_charbuf_destroy(&result);
     }    
 Finish:
+    h->flood = save; /* restore saved flood flag */
     ccn_face_instance_destroy(&face_instance);
     if (addrinfo != NULL)
         freeaddrinfo(addrinfo);
@@ -2792,6 +2851,8 @@ get_dgram_source(struct ccnd *h, struct face *face,
     int port = 0;
     if ((face->flags & CCN_FACE_DGRAM) == 0)
         return(face);
+    if ((face->flags & CCN_FACE_MCAST) == 1)
+        return(face);
     hashtb_start(h->dgram_faces, e);
     res = hashtb_seek(e, addr, addrlen, 0);
     if (res >= 0) {
@@ -2799,7 +2860,8 @@ get_dgram_source(struct ccnd *h, struct face *face,
         if (source->addr == NULL) {
             source->addr = e->key;
             source->addrlen = e->keysize;
-            source->fd = face->fd;
+            source->recv_fd = face->recv_fd;
+            source->send_fd = face->send_fd;
             source->flags |= CCN_FACE_DGRAM;
             if (addr->sa_family == AF_INET6) {
                 const struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)addr;
@@ -2816,9 +2878,8 @@ get_dgram_source(struct ccnd *h, struct face *face,
                 rawaddr = (const unsigned char *)&addr4->sin_addr.s_addr;
                 source->flags |= CCN_FACE_INET;
                 port = htons(addr4->sin_port);
-                if (rawaddr[0] == 127) {
+                if (rawaddr[0] == 127)
                     source->flags |= CCN_FACE_GG;
-                }
             }
             if (rawaddr != NULL)
                 peer = inet_ntop(addr->sa_family, rawaddr, printable, sizeof(printable));
@@ -2856,7 +2917,7 @@ process_input(struct ccnd *h, int fd)
     if (face->inbuf->length == 0)
         memset(d, 0, sizeof(*d));
     buf = ccn_charbuf_reserve(face->inbuf, 8800);
-    res = recvfrom(face->fd, buf, face->inbuf->limit - face->inbuf->length,
+    res = recvfrom(face->recv_fd, buf, face->inbuf->limit - face->inbuf->length,
             /* flags */ 0, addr, &addrlen);
     if (res == -1)
         perror("ccnd: recvfrom");
@@ -2948,9 +3009,9 @@ do_write(struct ccnd *h, struct face *face, unsigned char *data, size_t size)
         return;
     }
     if (face->addr == NULL)
-        res = send(face->fd, data, size, 0);
+        res = send(face->send_fd, data, size, 0);
     else
-        res = sendto(face->fd, data, size, 0, face->addr, face->addrlen);
+        res = sendto(face->send_fd, data, size, 0, face->addr, face->addrlen);
     if (res == size)
         return;
     if (res == -1) {
@@ -3046,9 +3107,9 @@ run(struct ccnd *h)
              i < h->nfds && e->data != NULL;
              i++, hashtb_next(e)) {
             struct face *face = e->data;
-            h->fds[i].fd = face->fd;
+            h->fds[i].fd = face->recv_fd;
             h->fds[i].events = POLLIN;
-            if (face->outbuf != NULL)
+            if (face->outbuf != NULL && face->send_fd == face->recv_fd)
                 h->fds[i].events |= POLLOUT;
         }
         hashtb_end(e);
@@ -3263,7 +3324,7 @@ ccnd_create(const char *progname)
                     if (hashtb_seek(e, &fd, sizeof(fd), 0) != HT_NEW_ENTRY)
                         exit(1);
                     face = e->data;
-                    face->fd = fd;
+                    face->recv_fd = face->send_fd = fd;
                     face->flags |= CCN_FACE_DGRAM;
                     if (a->ai_family == AF_INET) {
                         face->flags |= CCN_FACE_INET;
@@ -3314,7 +3375,7 @@ ccnd_create(const char *progname)
     if (h->face0 == NULL) {
         struct face *face;
         face = calloc(1, sizeof(*face));
-        face->fd = -1;
+        face->recv_fd = face->send_fd = -1;
         face->flags = (CCN_FACE_GG | CCN_FACE_LOCAL);
         h->face0 = face;
     }

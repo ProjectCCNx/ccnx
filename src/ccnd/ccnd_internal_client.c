@@ -172,8 +172,6 @@ ccnd_internal_client_refresh(struct ccn_schedule *sched,
         return(0);
     if (ccnd->internal_client == NULL)
         return(0);
-    if ((ccnd->debug & 128) != 0)
-        ccnd_msg(ccnd, "ccnd_internal_client_refresh");
     microsec = ccn_process_scheduled_operations(ccnd->internal_client);
     if (microsec > ev->evint)
         microsec = ev->evint;
