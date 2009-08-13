@@ -116,6 +116,19 @@ public class BasicKeyManager extends KeyManager {
 				throw new ConfigurationException("Cannot load keystore with no certificates.");
 			} catch (IOException e) {
 				Library.logger().warning("Cannot open existing key store: " + e);
+				try {
+					in.reset();
+					java.io.FileOutputStream bais = new java.io.FileOutputStream("KeyDump.p12");
+					byte [] tmp = new byte[2048];
+					int read = in.read(tmp);
+					while (read > 0) {
+						bais.write(tmp, 0, read);
+					}
+					bais.flush();
+					bais.close();
+				} catch (IOException e1) {
+					Library.logger().info("Another exception: " + e1);
+				}
 				throw new ConfigurationException(e);
 			} catch (KeyStoreException e) {
 				Library.logger().warning("Cannot create instance of preferred key store type: " + UserConfiguration.defaultKeystoreType() + " " + e.getMessage());
