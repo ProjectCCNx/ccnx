@@ -236,7 +236,6 @@ public class Daemon {
 	}
 	
 	/**
-<<<<<<< HEAD:Java_CCN/com/parc/ccn/network/daemons/Daemon.java
 	 * Gets a process identifier (PID) for the running Java Virtual Machine (JVM) process, if possible. 
 	 * Java does not provide a supported way to obtain the operating system (OS) PID in general.
 	 * This method uses technique(s) for getting the OS PID that are not necessarily portable
@@ -248,7 +247,6 @@ public class Daemon {
 	 * If no identifier can be obtained, the result will be null.
 	 * @return A Process Identifier (PID) of the JVM (not necessarily the OS PID) or null if not available
 	 * @see <a href="http://blog.igorminar.com/2007/03/how-java-application-can-discover-its.html">Techniques for Discovering PID</a>
-=======
 	 * getPID() of JVM process if possible.  Java 
 	 * deliberately makes it difficult to get the PID.
 	 * This method uses methods suggested here:
@@ -257,10 +255,6 @@ public class Daemon {
 	 * and so that null may be returned if the PID cannot be obtained on the 
 	 * platform (JVM/OS).
 	 * @return Process Identifier (PID) of the JVM or null if not available
->>>>>>> Fixed daemon (for repo) to allow multiple instances to execute at once.
-The PID is used to distinguish them for subsequent stop and signal
-operations.  If the PID cannot be obtained on the platform in question
-then execution will be limited to one instance at a time. Refs #613.:Java_CCN/com/parc/ccn/network/daemons/Daemon.java
 	 */
 	public static String getPID() {
 		// Try the JVM mgmt bean, reported to work on variety
@@ -271,11 +265,16 @@ then execution will be limited to one instance at a time. Refs #613.:Java_CCN/co
 			if (null == vmname) {
 				return null;
 			}
-			// Expect the string to be in the form "60447@ice.local"
+			// Hopefully the string is in the form "60447@ice.local", where we can pull
+			// out the integer hoping it is identical to the OS PID
 			Pattern exp = Pattern.compile("^(\\d+)@\\S+$");
 			Matcher match = exp.matcher(vmname);
 			if (match.matches()) {
 				pid = match.group(1);
+			} else {
+				// We don't have a candidate to match the OS PID, but we have the JVM name
+				// from the mgmt bean itself so that will have to do, cleaned of spaces
+				pid = vmname.replaceAll("\\s+", "_");
 			}
 			return pid;
 		} catch (Exception e) {
