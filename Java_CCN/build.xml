@@ -23,6 +23,7 @@
 	<property name="repozip" value="repotest.zip"/>
 	<property name="CCND_CMD" value="../../ccnd/agent/ccnd"/>
 	<property name="CCND_DEBUG" value="-1"/>
+	<property name="CCND_CAP" value="50000"/>
 	<property name="REPO_ROOT" value="${testout}/repotest"/>
 	<property name="REPO_LOCAL_ROOT" value="repotest"/>
 	<property name="REPO_LOCAL" value="TestRepository"/>
@@ -114,7 +115,8 @@
 					<echo message="Running test ccnd on port ${TEST_PORT}"/>
 					<exec executable="${ccnd}" dir="${testout}" output="${testout}/TEST-ccnd-baselib.txt">
 						<env key="CCN_LOCAL_PORT" value="${TEST_PORT}"/>
-						<env key="CCND_DEBUG" value="-1"/>
+						<env key="CCND_CAP" value="${CCND_CAP}"/>
+						<env key="CCND_DEBUG" value="${CCND_DEBUG}"/>
 					</exec>
 				</daemons>
 	                        <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
