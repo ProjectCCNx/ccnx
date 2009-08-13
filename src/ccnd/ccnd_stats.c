@@ -87,6 +87,11 @@ static void
 collect_faces_html(struct ccnd *h, struct ccn_charbuf *b)
 {
     int i;
+    char node[104];
+    char port[8];
+    int res;
+    int niflags = 0;
+    
     ccn_charbuf_putf(b, "<h4>Faces</h4>");
     ccn_charbuf_putf(b, "<ul>");
     for (i = 0; i < h->face_limit; i++) {
@@ -100,6 +105,19 @@ collect_faces_html(struct ccnd *h, struct ccn_charbuf *b)
             if (face->recvcount != 0)
                 ccn_charbuf_putf(b, " <b>activity:</b> %d",
                                  face->recvcount);
+            if (face->addr != NULL) {
+                niflags = NI_NUMERICHOST | NI_NUMERICSERV;
+                if ((face->flags & CCN_FACE_DGRAM) != 0)
+                    niflags |= NI_DGRAM;
+                res = getnameinfo(face->addr, face->addrlen,
+                    node, sizeof(node),
+                    port, sizeof(port),
+                    niflags
+                    );
+                if (res == 0)
+                    ccn_charbuf_putf(b, " <b>remote:</b> [%s]:%s",
+                                     node, port);
+            }
             ccn_charbuf_putf(b, "</li>");
         }
     }

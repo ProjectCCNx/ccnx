@@ -145,7 +145,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 				_atEOF = true;
 				return -1; // nothing to read
 			}
-			setCurrentBlock(firstBlock);
+			setFirstBlock(firstBlock);
 		} 
 		Library.logger().finer("reading from block: " + _currentBlock.name() + " length: " + 
 				_currentBlock.contentLength());
@@ -192,7 +192,11 @@ public class CCNInputStream extends CCNAbstractInputStream {
 
 	@Override
 	public synchronized void reset() throws IOException {
-		setCurrentBlock(getBlock(_markBlock));
+		// TODO: when first block is read in constructor this check can be removed
+		if (_currentBlock == null)
+			setFirstBlock(getBlock(_markBlock));
+		else
+			setCurrentBlock(getBlock(_markBlock));
 		_blockReadStream.skip(_markOffset);
 		_atEOF = false;
 		Library.logger().finer("reset: block: " + blockIndex() + " offset: " + _markOffset + " eof? " + _atEOF);
@@ -216,7 +220,11 @@ public class CCNInputStream extends CCNAbstractInputStream {
 
 	public long seek(long position) throws IOException {
 		Library.logger().info("Seeking stream to " + position);
-		setCurrentBlock(getFirstBlock());
+		// TODO: when first block is read in constructor this check can be removed
+		if (_currentBlock == null)
+			setFirstBlock(getFirstBlock());
+		else
+			setCurrentBlock(getFirstBlock());
 		return skip(position);
 	}
 

@@ -15,6 +15,7 @@
 #include <arpa/inet.h>
 #include <net/if.h>
 #include <netdb.h>
+#include <unistd.h>
 
 #include <ccn/sockcreate.h>
 
@@ -22,7 +23,6 @@
     #include "getaddrinfo.h"
     #include "dummyin6.h"
 #endif
-
 
 #define LOGGIT if (logger) (*logger)
 /**
@@ -46,19 +46,25 @@ ccn_setup_socket(const struct ccn_sockdescr *descr,
     struct addrinfo hints = {0};
     int res;
     struct addrinfo *mcast_source_addrinfo = NULL;
+    struct addrinfo *addrinfo = NULL;
     unsigned int if_index = 0;
     const char *source_port = "4485"; //< @bug XXX FIXTHIS - should be passwd in (not in descr) ?
+    //const int one = 1;
+    int sock = -1;
     
+    if (descr->ipproto > 0)
+        hints.ai_protocol = descr->ipproto;
+    hints.ai_flags =  AI_NUMERICHOST;
     if (descr->port == NULL ||
         strspn(descr->port, "0123456789") != strlen(descr->port)) {
         LOGGIT(logdat, "must specify numeric port");
         goto Finish;
     }
     if (descr->source_address != NULL) {
-	hints.ai_family = PF_INET;
-	hints.ai_socktype = SOCK_DGRAM;
-	hints.ai_flags =  AI_NUMERICHOST;
-	res = getaddrinfo(descr->source_address, source_port, &hints, &mcast_source_addrinfo);
+	// hints.ai_family = PF_INET;
+	// hints.ai_socktype = SOCK_DGRAM;
+	res = getaddrinfo(descr->source_address, source_port,
+                          &hints, &mcast_source_addrinfo);
 	if (res != 0 || mcast_source_addrinfo == NULL) {
 	    LOGGIT(logdat, "getaddrinfo(\"%s\", ...): %s\n",
                    descr->source_address, gai_strerror(res));
@@ -91,9 +97,27 @@ ccn_setup_socket(const struct ccn_sockdescr *descr,
         }
     }
 #endif
+    res = getaddrinfo(descr->address, descr->port,
+                      &hints, &addrinfo);
+    if (res != 0 || mcast_source_addrinfo == NULL) {
+        LOGGIT(logdat, "getaddrinfo(\"%s\", ...): %s\n",
+               descr->address, gai_strerror(res));
+        goto Finish;
+    }
+    sock = socket(addrinfo->ai_family, addrinfo->ai_socktype, addrinfo->ai_protocol);
+    if (sock == -1) {
+        LOGGIT(logdat, "socket: %s", strerror(errno));
+        goto Finish;
+    }
+    
+    result = 0;
 Finish:
+    if (addrinfo != NULL)
+        freeaddrinfo(addrinfo);
     if (mcast_source_addrinfo != NULL)
         freeaddrinfo(mcast_source_addrinfo);
+    if (sock != -1)
+        close(sock);
     return(result);
 }
 

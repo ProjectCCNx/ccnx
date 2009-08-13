@@ -1,12 +1,12 @@
 # Makefile for ccn/Documentation/technical
 
-DERIVED_HTML = DigestComponent.html InterestMessage.html NameConventions.html Staleness.html Registration.html URI.html
+DERIVED_HTML = DigestComponent.html InterestMessage.html NameConventions.html Staleness.html Registration.html URI.html ../index.html
 
 default:
 
 all documentation: $(DERIVED_HTML)
 
-clean:
+clean-documentation: _always
 	rm -f $(DERIVED_HTML)
 
 DigestComponent.html: DigestComponent.txt
@@ -26,6 +26,9 @@ Staleness.html: Staleness.txt
 
 URI.html: URI.txt
 	asciidoc URI.txt
+
+../index.html: ../index.txt
+	asciidoc ../index.txt
 
 default all clean depend test check shared documentation testinstall install uninstall: _always
 

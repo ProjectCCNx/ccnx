@@ -1,6 +1,10 @@
-/*
- * ccnd.c
- *  
+/**
+ * @file ccnd.c
+ * 
+ * CCN Daemon
+ */  
+
+/*-
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
  */
 
@@ -41,6 +45,7 @@
 #include <ccn/uri.h>
 
 #include "ccnd_private.h"
+#define GOT_HERE ccnd_msg(h, "at ccnd.c:%d", __LINE__);
 
 static void cleanup_at_exit(void);
 static void unlink_at_exit(const char *path);
@@ -695,37 +700,97 @@ accept_new_local_client(struct ccnd *h)
     ccnd_msg(h, "accepted client fd=%d id=%d", fd, res);
 }
 
-static void
-accept_connection(struct ccnd *h, int listener_fd)
+static struct face *
+record_stream_connection(struct ccnd *h, int fd,
+                         struct sockaddr *who, socklen_t wholen)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
-    struct sockaddr who[4];
-    socklen_t wholen = sizeof(who);
-    int fd;
     int res;
-    struct face *face;
-    fd = accept(listener_fd, who, &wholen);
-    if (fd == -1) {
-        perror("accept");
-        return;
-    }
+    struct face *face = NULL;
+    unsigned char *addrspace;
+    
     res = fcntl(fd, F_SETFL, O_NONBLOCK);
     if (res == -1)
         perror("fcntl");
     hashtb_start(h->faces_by_fd, e);
-    if (hashtb_seek(e, &fd, sizeof(fd), 0) != HT_NEW_ENTRY)
-        fatal_err("ccnd: accept_connection");
+    if (hashtb_seek(e, &fd, sizeof(fd), wholen) != HT_NEW_ENTRY)
+        fatal_err("ccnd: record_stream_connection");
     face = e->data;
     face->fd = fd;
     if (who->sa_family == AF_INET)
         face->flags |= CCN_FACE_INET;
     if (who->sa_family == AF_INET6)
         face->flags |= CCN_FACE_INET6;
-    face->flags |= CCN_FACE_UNDECIDED;
+    face->addrlen = e->extsize;
+    addrspace = ((unsigned char *)e->key) + e->keysize;
+    face->addr = (struct sockaddr *)addrspace;
+    memcpy(addrspace, who, e->extsize);
     res = enroll_face(h, face);
     hashtb_end(e);
-    ccnd_msg(h, "accepted client fd=%d id=%d", fd, res);
+    return(face);
+}
+
+static void
+accept_connection(struct ccnd *h, int listener_fd)
+{
+    struct sockaddr who[4];
+    socklen_t wholen = sizeof(who);
+    int fd;
+    struct face *face;
+
+    fd = accept(listener_fd, who, &wholen);
+    if (fd == -1) {
+        perror("accept");
+        return;
+    }
+    face = record_stream_connection(h, fd, who, wholen);
+    if (face != NULL) {
+        ccnd_msg(h, "accepted client fd=%d id=%u", fd, face->faceid);
+        face->flags |= CCN_FACE_UNDECIDED; /* might be http */
+    }
+}
+
+static struct face *
+make_connection(struct ccnd *h, struct sockaddr *who, socklen_t wholen)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    int fd;
+    int res;
+    struct face *face;
+    const int checkflags = CCN_FACE_LINK | CCN_FACE_DGRAM | CCN_FACE_LOCAL |
+                           CCN_FACE_NOSEND | CCN_FACE_UNDECIDED;
+    const int wantflags = 0;
+    
+    /* Check for an existing usable connection */
+    for (hashtb_start(h->faces_by_fd, e); e->data != NULL; hashtb_next(e)) {
+        face = e->data;
+        if (face->addr != NULL && face->addrlen == wholen &&
+            ((face->flags & checkflags) == wantflags) &&
+            0 == memcmp(face->addr, who, wholen)) {
+            hashtb_end(e);
+            return(face);
+        }
+    }
+    face = NULL;
+    hashtb_end(e);
+    /* No existing connection, try to make a new one. */
+    fd = socket(who->sa_family, SOCK_STREAM, 0);
+    if (fd == -1) {
+        perror("socket");
+        return(NULL);
+    }
+    res = connect(fd, who, wholen);
+    if (res == -1) {
+        perror("connect");
+        close(fd);
+        return(NULL);
+    }
+    face = record_stream_connection(h, fd, who, wholen);
+    if (face != NULL)
+        ccnd_msg(h, "connected client fd=%d id=%u", fd, face->faceid);
+    return(face);
 }
 
 void
@@ -1524,6 +1589,8 @@ ccnd_reg_self(struct ccnd *h, const unsigned char *msg, size_t size)
     struct ccn_indexbuf *comps = ccn_indexbuf_create();
     int res;
     struct ccn_charbuf *result = NULL;
+    struct ccn_forwarding_entry forwarding_entry_storage = {0};
+    struct ccn_forwarding_entry *forwarding_entry = &forwarding_entry_storage;
     
     res = ccn_parse_ContentObject(msg, size, &pco, comps);
     if (res >= 0) {
@@ -1533,7 +1600,22 @@ ccnd_reg_self(struct ccnd *h, const unsigned char *msg, size_t size)
                               60);
         if (res >= 0) {
             result = ccn_charbuf_create();
-            // XXX - for now, zero-length result
+            forwarding_entry->action = NULL;
+            forwarding_entry->name_prefix = ccn_charbuf_create();
+            ccn_name_init(forwarding_entry->name_prefix);
+            ccn_name_append_components(forwarding_entry->name_prefix,
+                                       msg,
+                                       comps->buf[0],
+                                       comps->buf[comps->n - 1]);
+            forwarding_entry->ccnd_id = h->ccnd_id;
+            forwarding_entry->ccnd_id_size = sizeof(h->ccnd_id);
+            forwarding_entry->faceid = h->interest_faceid;
+            forwarding_entry->flags = (CCN_FORW_CHILD_INHERIT | CCN_FORW_ADVERTISE);
+            forwarding_entry->lifetime = 60;
+            res = ccnb_append_forwarding_entry(result, forwarding_entry);
+            if (res < 0)
+                ccn_charbuf_destroy(&result);
+            ccn_charbuf_destroy(&forwarding_entry->name_prefix);
         }
     }
     ccn_indexbuf_destroy(&comps);
@@ -1581,6 +1663,7 @@ ccnd_req_newface(struct ccnd *h, const unsigned char *msg, size_t size)
     face_instance = ccn_face_instance_parse(req, req_size);
     if (face_instance == NULL || face_instance->action == NULL)
         goto Finish;
+
     if (strcmp(face_instance->action, "newface") != 0)
         goto Finish;
     if (face_instance->ccnd_id_size == sizeof(h->ccnd_id)) {
@@ -1600,11 +1683,11 @@ ccnd_req_newface(struct ccnd *h, const unsigned char *msg, size_t size)
     reqface = face_from_faceid(h, h->interest_faceid);
     if (reqface == NULL || (reqface->flags & CCN_FACE_GG) == 0)
         goto Finish;
-    if (face_instance->descr.ipproto == IPPROTO_UDP &&
-        face_instance->descr.source_address == NULL &&
+    if (face_instance->descr.source_address == NULL &&
         face_instance->descr.mcast_ttl == -1) {
         hints.ai_flags |= AI_NUMERICHOST;
-        hints.ai_socktype = SOCK_DGRAM;
+        //hints.ai_socktype = SOCK_DGRAM;
+        hints.ai_protocol = face_instance->descr.ipproto;
         res = getaddrinfo(face_instance->descr.address,
                           face_instance->descr.port,
                           &hints,
@@ -1619,31 +1702,41 @@ ccnd_req_newface(struct ccnd *h, const unsigned char *msg, size_t size)
             goto Finish;
         if (addrinfo->ai_next != NULL)
             ccnd_msg(h, "ccnd_req_newface: (addrinfo->ai_next != NULL) ? ?");
-        fd = (addrinfo->ai_family == AF_INET)  ? h->udp4_fd :
-        (addrinfo->ai_family == AF_INET6) ? h->udp6_fd : -1;
-        if (fd == -1)
-            goto Finish;
-        face = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
-        if (face == NULL)
-            goto Finish;
-        save = h->flood;
-        h->flood = 0; /* never auto-register / for these */
-        newface = get_dgram_source(h, face,
-                                   addrinfo->ai_addr,
-                                   addrinfo->ai_addrlen);
-        h->flood = save;
-        if (newface != NULL) {
-            result = ccn_charbuf_create();
-            face_instance->action = NULL;
-            face_instance->ccnd_id = h->ccnd_id;
-            face_instance->ccnd_id_size = sizeof(h->ccnd_id);
-            face_instance->faceid = newface->faceid;
-            face_instance->lifetime = 42;
-            res = ccnb_append_face_instance(result, face_instance);
-            if (res < 0)
-                ccn_charbuf_destroy(&result);
+        if (face_instance->descr.ipproto == IPPROTO_UDP) {
+            fd = (addrinfo->ai_family == AF_INET)  ? h->udp4_fd :
+            (addrinfo->ai_family == AF_INET6) ? h->udp6_fd : -1;
+            if (fd == -1)
+                goto Finish;
+            face = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
+            if (face == NULL)
+                goto Finish;
+            save = h->flood;
+            h->flood = 0; /* never auto-register ccn:/ for these */
+            newface = get_dgram_source(h, face,
+                                       addrinfo->ai_addr,
+                                       addrinfo->ai_addrlen);
+            h->flood = save;
+        }
+        else if (addrinfo->ai_socktype == SOCK_STREAM) {
+            save = h->flood;
+            h->flood = 0; /* never auto-register ccn:/ for these */
+            newface = make_connection(h,
+                                      addrinfo->ai_addr,
+                                      addrinfo->ai_addrlen);
+            h->flood = save;
         }
     }
+    if (newface != NULL) {
+        result = ccn_charbuf_create();
+        face_instance->action = NULL;
+        face_instance->ccnd_id = h->ccnd_id;
+        face_instance->ccnd_id_size = sizeof(h->ccnd_id);
+        face_instance->faceid = newface->faceid;
+        face_instance->lifetime = 42; // XXX - 
+        res = ccnb_append_face_instance(result, face_instance);
+        if (res < 0)
+            ccn_charbuf_destroy(&result);
+    }    
 Finish:
     ccn_face_instance_destroy(&face_instance);
     if (addrinfo != NULL)
@@ -2714,9 +2807,8 @@ get_dgram_source(struct ccnd *h, struct face *face,
                 source->flags |= CCN_FACE_INET6;
                 port = htons(addr6->sin6_port);
 #ifdef IN6_IS_ADDR_LOOPBACK
-                if (IN6_IS_ADDR_LOOPBACK(&addr6->sin6_addr)) {
+                if (IN6_IS_ADDR_LOOPBACK(&addr6->sin6_addr))
                     source->flags |= CCN_FACE_GG;
-                }
 #endif
             }
             else if (addr->sa_family == AF_INET) {

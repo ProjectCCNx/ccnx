@@ -77,7 +77,6 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		 * @param library
 		 * @throws XMLStreamException
 		 * @throws IOException
-		 * @throws ClassNotFoundException 
 		 */
 		public WrappedKeyObject(ContentName name, 
 				CCNLibrary library) throws IOException, XMLStreamException {

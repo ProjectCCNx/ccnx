@@ -120,7 +120,7 @@ public class CCNSegmenter {
 	}
 
 	public CCNSegmenter(CCNLibrary library, ContentKeys keys) throws IOException {
-		this(new CCNFlowControl(library), null, null);
+		this(new CCNFlowControl(library), null, keys);
 	}
 	/**
 	 * Create an object with default Merkle hash tree aggregated signing.
