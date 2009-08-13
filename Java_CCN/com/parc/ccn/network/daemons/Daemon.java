@@ -551,6 +551,11 @@ public class Daemon {
 			sigName = args[1];
 			targetPID = args[2];
 		} 
+		if ("0".equals(targetPID)) {
+			// This is request to apply to the single instance on platforms where
+			// PIDs are not available
+			targetPID = null;
+		}
 
 		// Now proceed based on mode, catching all exceptions
 		try {
