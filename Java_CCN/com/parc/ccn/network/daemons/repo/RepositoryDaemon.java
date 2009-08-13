@@ -233,7 +233,7 @@ public class RepositoryDaemon extends Daemon {
 		try {
 			// Without parsing args, we don't know which repo impl we will get, so show the default 
 			// impl usage and allow for differences 
-			String msg = "usage: " + this.getClass().getName() + " -start | -stop | -interactive | -signal <signal> " +
+			String msg = "usage: " + this.getClass().getName() + " -start | -stop <pid> | -interactive | -signal <signal> <pid>" +
 			" [-log <level>] [-singlefile | -bb] " + RFSLogImpl.getUsage() + " | <repoimpl-args>";
 			System.out.println(msg);
 			Library.logger().severe(msg);
