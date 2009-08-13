@@ -235,52 +235,6 @@ public class Daemon {
 		return new WorkerThread(daemonName());
 	}
 	
-	/**
-	 * Gets a process identifier (PID) for the running Java Virtual Machine (JVM) process, if possible. 
-	 * Java does not provide a supported way to obtain the operating system (OS) PID in general.
-	 * This method uses technique(s) for getting the OS PID that are not necessarily portable
-	 * to all Java execution environments.
-	 * The PID is returned as a String value.  Where possible, the result will be the string representation of an integer
-	 * that is probably identical to the OS PID of the JVM process that executed this method.  In other cases,
-	 * the result will be an implementation-dependent string name that identifies the JVM instance but does not exactly 
-	 * match the OS PID.  The returned value will not contain spaces.
-	 * If no identifier can be obtained, the result will be null.
-	 * @return A Process Identifier (PID) of the JVM (not necessarily the OS PID) or null if not available
-	 * @see <a href="http://blog.igorminar.com/2007/03/how-java-application-can-discover-its.html">Techniques for Discovering PID</a>
-	 * getPID() of JVM process if possible.  Java 
-	 * deliberately makes it difficult to get the PID.
-	 * This method uses methods suggested here:
-	 * http://blog.igorminar.com/2007/03/how-java-application-can-discover-its.html
-	 * The PID is returned in a String for maximum possible portability
-	 * and so that null may be returned if the PID cannot be obtained on the 
-	 * platform (JVM/OS).
-	 * @return Process Identifier (PID) of the JVM or null if not available
-	 */
-	public static String getPID() {
-		// Try the JVM mgmt bean, reported to work on variety
-		// of operating systems on the Sun JVM.
-		try {
-			String pid = null;
-			String vmname = ManagementFactory.getRuntimeMXBean().getName();
-			if (null == vmname) {
-				return null;
-			}
-			// Hopefully the string is in the form "60447@ice.local", where we can pull
-			// out the integer hoping it is identical to the OS PID
-			Pattern exp = Pattern.compile("^(\\d+)@\\S+$");
-			Matcher match = exp.matcher(vmname);
-			if (match.matches()) {
-				pid = match.group(1);
-			} else {
-				// We don't have a candidate to match the OS PID, but we have the JVM name
-				// from the mgmt bean itself so that will have to do, cleaned of spaces
-				pid = vmname.replaceAll("\\s+", "_");
-			}
-			return pid;
-		} catch (Exception e) {
-			return null;
-		}
-	}
 	
 	protected static void setupRemoteAccess(Daemon daemon, WorkerThread wt) throws IOException {
 		if (wt == null)
