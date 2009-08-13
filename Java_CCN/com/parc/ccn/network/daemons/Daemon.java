@@ -235,6 +235,33 @@ public class Daemon {
 		return new WorkerThread(daemonName());
 	}
 	
+	public static String getPID() {
+		// Try the JVM mgmt bean, reported to work on variety
+		// of operating systems on the Sun JVM.
+		try {
+			String pid = null;
+			String vmname = ManagementFactory.getRuntimeMXBean().getName();
+			if (null == vmname) {
+				return null;
+			}
+
+			// Hopefully the string is in the form "60447@ice.local", where we can pull
+			// out the integer hoping it is identical to the OS PID
+			Pattern exp = Pattern.compile("^(\\d+)@\\S+$");
+			Matcher match = exp.matcher(vmname);
+			if (match.matches()) {
+				pid = match.group(1);
+			} else {
+				// We don't have a candidate to match the OS PID, but we have the JVM name
+				// from the mgmt bean itself so that will have to do, cleaned of spaces
+				pid = vmname.replaceAll("\\s+", "_");
+			}
+			return pid;
+		} catch (Exception e) {
+			return null;
+		}
+	}
+>>>>>>> Generalized PID determination for daemon processes to improve portability.:Java_CCN/com/parc/ccn/network/daemons/Daemon.java
 	
 	protected static void setupRemoteAccess(Daemon daemon, WorkerThread wt) throws IOException {
 		if (wt == null)
