@@ -9,14 +9,15 @@ PROGRAMS = hashtbtest matrixtest skel_decode_test \
     encodedecodetest signbenchtest basicparsetest
 
 BROKEN_PROGRAMS =
-DEBRIS = 
+DEBRIS = ccn_verifysig
 SCRIPTSRC = ccn_initkeystore.sh
 CSRC = ccn_bloom.c ccn_buf_decoder.c ccn_buf_encoder.c ccn_bulkdata.c \
        ccn_charbuf.c ccn_client.c ccn_coding.c ccn_digest.c \
        ccn_dtag_table.c ccn_indexbuf.c ccn_keystore.c ccn_match.c \
        ccn_reg_mgmt.c ccn_face_mgmt.c \
        ccn_matrix.c ccn_merkle_path_asn1.c ccn_name_util.c ccn_schedule.c \
-       ccn_signing.c ccn_sockcreate.c ccn_traverse.c ccn_uri.c ccn_verifysig.c ccn_versioning.c \
+       ccn_signing.c ccn_sockcreate.c ccn_traverse.c ccn_uri.c \
+       ccn_verifysig.c ccn_versioning.c \
        encodedecodetest.c hashtb.c hashtbtest.c \
        matrixtest.c signbenchtest.c skel_decode_test.c \
        smoketestclientlib.c basicparsetest.c
