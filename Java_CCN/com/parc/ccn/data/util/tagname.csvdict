@@ -66,6 +66,8 @@
 79,ForwardingFlags
 80,FaceInstance
 81,ForwardingEntry
+82,MaxSuffixComponents
+83,MinSuffixComponents
 2048,Address
 2049,SOType
 2050,Inject
