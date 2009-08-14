@@ -249,25 +249,26 @@ public class InterestTable<V> {
 	 */
 	public Entry<V> remove(ContentName name, V value) {
 		Holder<V> result = null;
-		synchronized (_contents) {
 			List<Holder<V>> list = _contents.get(new LongestFirstContentName(name));
-			if (null != list) {
-				for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
-					Holder<V> holder = holdIt.next();
-					if (null == holder.value()) {
-						if (null == value) {
-							holdIt.remove();
-							result = holder;
-						}
-					} else {
-						if (holder.value().equals(value)) {
-							holdIt.remove();
-							result = holder;
-						}
+		if (null != list) {
+			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
+				Holder<V> holder = holdIt.next();
+				if (null == holder.value()) {
+					if (null == value) {
+						holdIt.remove();
+						result = holder;
+					}
+				} else {
+					if (holder.value().equals(value)) {
+						holdIt.remove();
+						result = holder;
 					}
 				}
-				if (list.size() == 0)
+			}
+			if (list.size() == 0) {
+				synchronized (_contents) {
 					_contents.remove(new LongestFirstContentName(name));
+				}
 			}
 		}
 		return result;
@@ -281,28 +282,29 @@ public class InterestTable<V> {
 	 */
 	public Entry<V> remove(Interest interest, V value) {
 		Holder<V> result = null;
-		synchronized (_contents) {
-			List<Holder<V>> list = _contents.get(new LongestFirstContentName(interest.name()));
-			if (null != list) {
-				for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
-					Holder<V> holder = holdIt.next();
-					if (interest.equals(holder.interest())) {
-						if (null == holder.value()) {
-							if (null == value) {
-								holdIt.remove();
-								result = holder;
-				
-							}
-						} else {
-							if (holder.value().equals(value)) {
-								holdIt.remove();
-								result = holder;
-							}
+		List<Holder<V>> list = _contents.get(new LongestFirstContentName(interest.name()));
+		if (null != list) {
+			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
+				Holder<V> holder = holdIt.next();
+				if (interest.equals(holder.interest())) {
+					if (null == holder.value()) {
+						if (null == value) {
+							holdIt.remove();
+							result = holder;
+			
+						}
+					} else {
+						if (holder.value().equals(value)) {
+							holdIt.remove();
+							result = holder;
 						}
 					}
 				}
-				if (list.size() == 0)
+			}
+			if (list.size() == 0) {
+				synchronized (_contents) {
 					_contents.remove(new LongestFirstContentName(interest.name()));
+				}
 			}
 		}
 		return result;
@@ -310,19 +312,19 @@ public class InterestTable<V> {
 	
 	protected List<Holder<V>> removeAllMatchByName(ContentName name, ContentObject target) {
 		List<Holder<V>> matches = new ArrayList<Holder<V>>();
-		synchronized (_contents) {
-			List<Holder<V>> list = _contents.get(new LongestFirstContentName(name));
-			if (null != list) {
-				for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
-					Holder<V> holder = holdIt.next();
-					if (null != holder.interest()) {
-						if (holder.interest().matches(target)) {
-							holdIt.remove();
-							matches.add(holder);
-						}
-					}	
-				}
-				if (list.size() == 0) {
+		List<Holder<V>> list = _contents.get(new LongestFirstContentName(name));
+		if (null != list) {
+			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
+				Holder<V> holder = holdIt.next();
+				if (null != holder.interest()) {
+					if (holder.interest().matches(target)) {
+						holdIt.remove();
+						matches.add(holder);
+					}
+				}	
+			}
+			if (list.size() == 0) {
+				synchronized (_contents) {
 					_contents.remove(new LongestFirstContentName(name));
 				}
 			}
@@ -489,10 +491,12 @@ public class InterestTable<V> {
 	 */
 	public Collection<Entry<V>> values() {
 		List<Entry<V>> results =  new ArrayList<Entry<V>>();
-		for (Iterator<LongestFirstContentName> keyIt = _contents.keySet().iterator(); keyIt.hasNext();) {
-			LongestFirstContentName name = (LongestFirstContentName) keyIt.next();
-			List<Holder<V>> list = _contents.get(name);
-			results.addAll(list);
+		synchronized (_contents) {
+			for (Iterator<LongestFirstContentName> keyIt = _contents.keySet().iterator(); keyIt.hasNext();) {
+				LongestFirstContentName name = (LongestFirstContentName) keyIt.next();
+				List<Holder<V>> list = _contents.get(name);
+				results.addAll(list);
+			}
 		}
 		return results;
 	}
@@ -597,11 +601,13 @@ public class InterestTable<V> {
 	 */
 	public int size() {
 		int result = 0;
-	    for (Iterator<LongestFirstContentName> nameIt = _contents.keySet().iterator(); nameIt.hasNext();) {
-			LongestFirstContentName name = nameIt.next();
-			List<Holder<V>> list = _contents.get(name);
-			result += list.size();
-	    }
+		synchronized (_contents) {
+		    for (Iterator<LongestFirstContentName> nameIt = _contents.keySet().iterator(); nameIt.hasNext();) {
+				LongestFirstContentName name = nameIt.next();
+				List<Holder<V>> list = _contents.get(name);
+				result += list.size();
+		    }
+		}
 	    return result;
 	}
 	
