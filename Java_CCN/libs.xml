@@ -24,7 +24,7 @@
 	<path id="ccn-classpath-run">
 		<path refid="ccn-classpath"/>
 		<pathelement location="${lib}/parccalib-1.2.jar"/>
-		<pathelement location="${lib}/bcprov-jdk15-140.jar"/>
+		<pathelement location="${lib}/bcprov-jdk15-143.jar"/>
 		<pathelement location="${lib}/jsr173_1.0_ri.jar"/>
     </path>
 
