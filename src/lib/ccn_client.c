@@ -1207,6 +1207,7 @@ ccn_process_scheduled_operations(struct ccn *h)
             struct interest_filter *i = e->data;
             // XXX If the registration is expiring, refresh it
             // Otherwise update h->refresh_us
+            if (i == NULL) abort(); // Silence unused var warning for now.
         }
         hashtb_end(e);
     }

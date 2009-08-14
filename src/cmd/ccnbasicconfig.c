@@ -105,10 +105,11 @@ main(int argc, char **argv)
     temp = ccn_charbuf_create();
     templ = ccn_charbuf_create();
     signed_info = ccn_charbuf_create();
+    resultbuf = ccn_charbuf_create();
+    name_prefix = ccn_charbuf_create();
+
     keystore = ccn_keystore_create();
-    resultbuf = ccn_keystore_create();
-    name_prefix = ccn_keystore_create();
-    
+        
     face_instance->action = "newface";
     face_instance->descr.ipproto = atoi(argv[optind + 1]); // XXX - 6 = tcp or 17 = udp
     face_instance->descr.address = argv[optind + 2];
