@@ -12,7 +12,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.PrintStream;
 import java.io.Serializable;
-import java.lang.management.ManagementFactory;
 import java.rmi.NoSuchObjectException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
@@ -22,8 +21,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.network.CCNNetworkManager;
@@ -54,25 +51,23 @@ public class Daemon {
 	 * the daemon 
 	 */
 	public interface DaemonListener extends Remote {
-		public String startLoop() throws RemoteException; // returns pid
+		public boolean startLoop() throws RemoteException;
 		public void shutDown() throws RemoteException;
 		public boolean signal(String name) throws RemoteException;
 	}
 	
 	public class StopTimer extends TimerTask {
 		private String _daemonName;
-		private String _pid;
 		
-		private StopTimer(String daemonName, String pid) {
+		private StopTimer(String daemonName) {
 			_daemonName = daemonName;
-			_pid = pid;
 		}
 
 		@Override
 		public void run() {
 			System.out.println("Attempt to contact daemon " + _daemonName + " timed out");
 			Library.logger().info("Attempt to contact daemon " + _daemonName + " timed out");
-			cleanupDaemon(_daemonName, _pid);
+			cleanupDaemon(_daemonName);
 			System.exit(1);
 		}
 		
@@ -128,7 +123,7 @@ public class Daemon {
 			} catch (NoSuchObjectException e) {
 			}
 
-			getRMIFile(_daemonName, getPID()).delete();		
+			getRMIFile(_daemonName).delete();		
 			System.exit(0);
 		}			
 
@@ -171,7 +166,7 @@ public class Daemon {
 			_daemonThread.shutDown();			
 		}
 
-		public String startLoop() throws RemoteException {
+		public boolean startLoop() throws RemoteException {
 
 			System.out.println("Starting the daemon loop.");
 			Library.logger().info("Starting the daemon loop.");
@@ -179,13 +174,7 @@ public class Daemon {
 			try {
 				_daemonThread.start();
 
-				String pid = getPID();
-				if (null != getPID()) {
-					// PID is available on this platform and we have the startLoop() 
-					// invocation so we can rename our RMI file and send PID back to controller.
-					renameRMIFile(_daemonThread._daemonName, pid);
-				}
-				return pid;
+				return true;
 
 			} catch(Exception e) {
 				throw new RemoteException(e.getMessage(), e);
@@ -212,7 +201,7 @@ public class Daemon {
 	 */
 	protected void usage() {
 		try {
-			System.out.println("usage: " + this.getClass().getName() + " -start | -stop <pid> | -interactive | -signal <name> <pid>");
+			System.out.println("usage: " + this.getClass().getName() + " [-start | -stop | -interactive | -signal <name>]");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -234,35 +223,7 @@ public class Daemon {
 	protected WorkerThread createWorkerThread() {
 		return new WorkerThread(daemonName());
 	}
-	
-	public static String getPID() {
-		// Try the JVM mgmt bean, reported to work on variety
-		// of operating systems on the Sun JVM.
-		try {
-			String pid = null;
-			String vmname = ManagementFactory.getRuntimeMXBean().getName();
-			if (null == vmname) {
-				return null;
-			}
-
-			// Hopefully the string is in the form "60447@ice.local", where we can pull
-			// out the integer hoping it is identical to the OS PID
-			Pattern exp = Pattern.compile("^(\\d+)@\\S+$");
-			Matcher match = exp.matcher(vmname);
-			if (match.matches()) {
-				pid = match.group(1);
-			} else {
-				// We don't have a candidate to match the OS PID, but we have the JVM name
-				// from the mgmt bean itself so that will have to do, cleaned of spaces
-				pid = vmname.replaceAll("\\s+", "_");
-			}
-			return pid;
-		} catch (Exception e) {
-			return null;
-		}
-	}
->>>>>>> Generalized PID determination for daemon processes to improve portability.:Java_CCN/com/parc/ccn/network/daemons/Daemon.java
-	
+		
 	protected static void setupRemoteAccess(Daemon daemon, WorkerThread wt) throws IOException {
 		if (wt == null)
 			wt = daemon.createWorkerThread();
@@ -278,26 +239,16 @@ public class Daemon {
 		out.flush();
 		out.close();
 
-		// always use name without PID at first, will rename
-		// when startloop() message comes along.  This allows
-		// the controlling starter process to communicate
-		// without needing the pid of the child, though it
-		// does limit the spawn rate
 		// this is atomic
-		tempFile.renameTo(getRMIFile(daemon.daemonName(), null));
+		tempFile.renameTo(getRMIFile(daemon.daemonName()));
 	}
 
 	private static void startDaemon(String daemonName, String daemonClass, String args[]) throws IOException, ClassNotFoundException {
 
-		String mypid = getPID();
-		if (null == mypid) {
-			// PID unavailable on this platform so we are restricted
-			// to a single instance per daemon name
-			if (getRMIFile(daemonName, null).exists()) {
-				System.out.println("Daemon already running. Use '" + daemonName + " -stop' to kill the daemon.");
-				return;
-			}
-		} // else it doesn't matter if one is running we may start another
+		if (getRMIFile(daemonName).exists()) {
+			System.out.println("Daemon already running. Use '" + daemonName + " -stop' to kill the daemon.");
+			return;
+		}
 		
 		ArrayList<String> argList = new ArrayList<String>();
 
@@ -374,11 +325,7 @@ public class Daemon {
 			new DaemonOutput(child.getInputStream(), outputFile);
 		}
 		
-		// Initial RMI file never named with PID to permit
-		// us to read it without knowing PID.  After 
-		// daemon operation is started below the file 
-		// will be renamed with PID if possible
-		while (!getRMIFile(daemonName, null).exists()) {
+		while (!getRMIFile(daemonName).exists()) {
 			try {
 				Thread.sleep(200);
 				
@@ -401,13 +348,14 @@ public class Daemon {
 			}
 		}
 
-		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName, null)));
+		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName)));
 		DaemonListener l = (DaemonListener)in.readObject();
 
-		String childpid = null;
-		childpid = l.startLoop();
-		System.out.println("Started daemon " + daemonName + "." + (null == childpid ? "" : " PID " + childpid));
-		Library.logger().info("Started daemon " + daemonName + "." + (null == childpid ? "" : " PID " + childpid));
+		boolean b = false;
+		b = l.startLoop();
+		// use of b is to deflect warnings
+		System.out.println("Started daemon " + daemonName + "." + (b ? "" : ""));
+		Library.logger().info("Started daemon " + daemonName + ".");
 		
 		/*
 		 * To log output at this level we have to keep running until the daemon exits
@@ -427,19 +375,19 @@ public class Daemon {
 		}
 	}
 
-	protected static void stopDaemon(Daemon daemon, String pid) throws FileNotFoundException, IOException, ClassNotFoundException {
+	protected static void stopDaemon(Daemon daemon) throws FileNotFoundException, IOException, ClassNotFoundException {
 
 		String daemonName = daemon.daemonName();
-		if (!getRMIFile(daemonName, pid).exists()) {
+		if (!getRMIFile(daemonName).exists()) {
 			System.out.println("Daemon " + daemonName + " does not appear to be running.");
 			Library.logger().info("Daemon " + daemonName + " does not appear to be running.");
 			return;
 		}
 		
 		Timer stopTimer = new Timer(false);
-		stopTimer.schedule(daemon.new StopTimer(daemonName, pid), STOP_TIMEOUT);
+		stopTimer.schedule(daemon.new StopTimer(daemonName), STOP_TIMEOUT);
 
-		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName, pid)));
+		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName)));
 
 		DaemonListener l = (DaemonListener)in.readObject();		
 
@@ -450,25 +398,25 @@ public class Daemon {
 			System.out.println("Daemon " + daemonName + " is shut down.");
 			Library.logger().info("Daemon " + daemonName + " is shut down.");
 		} catch(RemoteException e) {
-			cleanupDaemon(daemonName, pid);
+			cleanupDaemon(daemonName);
 		}
 	}
 	
-	protected static void cleanupDaemon(String daemonName, String pid) {
+	protected static void cleanupDaemon(String daemonName) {
 		// looks like the RMI file is still here, but the daemon is gone. let's delete the file, then,
 		System.out.println("Daemon " + daemonName + " seems to have died some other way, cleaning up state...");
 		Library.logger().info("Daemon " + daemonName + " seems to have died some other way, cleaning up state...");
-		getRMIFile(daemonName, pid).delete();
+		getRMIFile(daemonName).delete();
 	}
 
-	protected static void signalDaemon(String daemonName, String sigName, String pid) throws FileNotFoundException, IOException, ClassNotFoundException {
-		if (!getRMIFile(daemonName, pid).exists()) {
+	protected static void signalDaemon(String daemonName, String sigName) throws FileNotFoundException, IOException, ClassNotFoundException {
+		if (!getRMIFile(daemonName).exists()) {
 			System.out.println("Daemon " + daemonName + " does not appear to be running.");
 			Library.logger().info("Daemon " + daemonName + " does not appear to be running.");
 			return;
 		}
 
-		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName, pid)));
+		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName)));
 
 		DaemonListener l = (DaemonListener)in.readObject();		
 
@@ -489,22 +437,11 @@ public class Daemon {
 		}
 	}
 
-	protected static File getRMIFile(String daemonName, String pid) {
-		String name = ".rmi-server-" + daemonName + (null == pid ? "" : "-" + pid) + ".obj";
+	protected static File getRMIFile(String daemonName) {
+		String name = ".rmi-server-" + daemonName + ".obj";
 		return new File(System.getProperty("user.home"), name);
 	}
-	
-	/**
-	 * Rename RMI file to add PID if available, otherwise do nothing.
-	 * @param daemonName  the name of this daemon
-	 * @param PID  the PID to add to the RMI file name or null if unavailable
-	 */
-	protected static void renameRMIFile(String daemonName, String pid) {
-		if (null != pid) {
-			getRMIFile(daemonName, null).renameTo(getRMIFile(daemonName, pid));
-		}
-	}
-	
+
 	protected static File getRMITempFile(String daemonName) throws IOException {
 		String prefix = ".rmi-server-" + daemonName;
 
@@ -515,7 +452,6 @@ public class Daemon {
 		
 		Mode mode = Mode.MODE_UNKNOWN;
 		String sigName = null;
-		String targetPID = null;
 
 		// Argument parsing ONLY here: don't do any execution yet
 		if (0 == args.length) {
@@ -524,41 +460,27 @@ public class Daemon {
 			mode = Mode.MODE_START;
 		} else if (args[0].equals("-stop")) {
 			mode = Mode.MODE_STOP;
-			if (args.length < 2) {
-				daemon.usage();
-			}
-			targetPID = args[1];
 		} else if (args[0].equals("-daemon")) {
 			mode = Mode.MODE_DAEMON;
 		} else if (args[0].equals("-interactive")) {
 			mode = Mode.MODE_INTERACTIVE;
 		} else if (args[0].equals("-signal")) {
 			mode = Mode.MODE_SIGNAL;
-			if (args.length < 3) {
+			if (args.length < 2) {
 				daemon.usage();
 			}
 			sigName = args[1];
-			targetPID = args[2];
 		} 
-		if ("0".equals(targetPID)) {
-			// This is request to apply to the single instance on platforms where
-			// PIDs are not available
-			targetPID = null;
-		}
 
 		// Now proceed based on mode, catching all exceptions
 		try {
 			switch (mode) {
 			  case MODE_INTERACTIVE:
-				String pid = getPID();
 				daemon.initialize(args, daemon);
-				Library.logger().info("Running " + daemon.daemonName() + " in the foreground." + (null == pid ? "" : " PID " + pid));
+				Library.logger().info("Running " + daemon.daemonName() + " in the foreground.");
 				WorkerThread wt = daemon.createWorkerThread();
 				// Set up remote access when interactive also to enable signals
 				setupRemoteAccess(daemon, wt);
-				// In Interactive mode there is no startLoop() invocation to separate daemon
-				// process, so just rename our RMI file immediately
-				renameRMIFile(daemon.daemonName(), pid);
 				wt.start();
 				wt.join();
 				System.exit(0);
@@ -570,7 +492,7 @@ public class Daemon {
 			  case MODE_STOP:
 				// Don't initialize since this process will never be the daemon
 				// This will signal daemon to terminate
-				stopDaemon(daemon, targetPID);
+				stopDaemon(daemon);
 				System.exit(0);
 			  case MODE_DAEMON:
 				daemon.initialize(args, daemon);
@@ -582,7 +504,7 @@ public class Daemon {
 			  case MODE_SIGNAL:
 				  // This will signal daemon to do something specifically named
 				  assert(null != sigName);
-				  signalDaemon(daemon.daemonName(), sigName, targetPID);
+				  signalDaemon(daemon.daemonName(), sigName);
 				  break;
 			  default:
 				daemon.usage();
