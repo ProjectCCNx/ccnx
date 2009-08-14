@@ -701,8 +701,8 @@ accept_new_local_client(struct ccnd *h)
 }
 
 static struct face *
-record_stream_connection(struct ccnd *h, int fd,
-                         struct sockaddr *who, socklen_t wholen)
+record_connection(struct ccnd *h, int fd,
+                  struct sockaddr *who, socklen_t wholen)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -744,7 +744,7 @@ accept_connection(struct ccnd *h, int listener_fd)
         perror("accept");
         return;
     }
-    face = record_stream_connection(h, fd, who, wholen);
+    face = record_connection(h, fd, who, wholen);
     if (face != NULL) {
         ccnd_msg(h, "accepted client fd=%d id=%u", fd, face->faceid);
         face->flags |= CCN_FACE_UNDECIDED; /* might be http */
@@ -787,9 +787,54 @@ make_connection(struct ccnd *h, struct sockaddr *who, socklen_t wholen)
         close(fd);
         return(NULL);
     }
-    face = record_stream_connection(h, fd, who, wholen);
+    face = record_connection(h, fd, who, wholen);
     if (face != NULL)
         ccnd_msg(h, "connected client fd=%d id=%u", fd, face->faceid);
+    return(face);
+}
+
+typedef void (*loggerproc)(void *, const char *, ...);
+static struct face *
+setup_multicast(struct ccnd *h, struct ccn_face_instance *face_instance,
+                struct sockaddr *who, socklen_t wholen)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct ccn_sockets socks = { -1, -1 };
+    int res;
+    struct face *face = NULL;
+    const int checkflags = CCN_FACE_LINK | CCN_FACE_DGRAM | CCN_FACE_MCAST |
+                           CCN_FACE_LOCAL | CCN_FACE_NOSEND;
+    const int wantflags = CCN_FACE_DGRAM | CCN_FACE_MCAST;
+
+    /* See if one is already active */
+    // XXX - should also compare and record additional mcast props.
+    for (hashtb_start(h->faces_by_fd, e); e->data != NULL; hashtb_next(e)) {
+        face = e->data;
+        if (face->addr != NULL && face->addrlen == wholen &&
+            ((face->flags & checkflags) == wantflags) &&
+            0 == memcmp(face->addr, who, wholen)) {
+            hashtb_end(e);
+            return(face);
+        }
+    }
+    face = NULL;
+    hashtb_end(e);
+    
+    res = ccn_setup_socket(&face_instance->descr,
+                           (loggerproc)&ccnd_msg,
+                           (void *)h, &socks);
+    if (res < 0)
+        return(NULL);
+    face = record_connection(h, socks.recving, who, wholen);
+    if (face == NULL) {
+        close(socks.recving);
+        if (socks.sending != socks.recving)
+            close(socks.sending);
+        return(NULL);
+    }
+    face->send_fd = socks.sending;
+    face->flags |= CCN_FACE_MCAST;
     return(face);
 }
 
@@ -856,6 +901,7 @@ choose_face_delay(struct ccnd *h, struct face *face, enum cq_delay_class c)
     if ((face->flags & CCN_FACE_DGRAM) != 0)
         return(100 << shift); /* udp, delay just a little */
     if ((face->flags & CCN_FACE_LINK) != 0) /* udplink or such, delay more */
+        return((h->data_pause_microsec) << shift);
     return(10); /* local stream, answer quickly */
 }
 
@@ -1707,27 +1753,35 @@ ccnd_req_newface(struct ccnd *h, const unsigned char *msg, size_t size)
         if (addrinfo->ai_next != NULL)
             ccnd_msg(h, "ccnd_req_newface: (addrinfo->ai_next != NULL) ? ?");
         if (face_instance->descr.ipproto == IPPROTO_UDP) {
-            fd = (addrinfo->ai_family == AF_INET)  ? h->udp4_fd :
-            (addrinfo->ai_family == AF_INET6) ? h->udp6_fd : -1;
+            fd = -1;
+            mcast = 0;
+            if (addrinfo->ai_family == AF_INET) {
+                fd = h->udp4_fd;
+                mcast = IN_MULTICAST(ntohl(((struct sockaddr_in *)(addrinfo->ai_addr))->sin_addr.s_addr));
+            }
+            else if (addrinfo->ai_family == AF_INET6) {
+                fd = h->udp6_fd;
+                mcast = IN6_IS_ADDR_MULTICAST(&((struct sockaddr_in6 *)addrinfo->ai_addr)->sin6_addr);
+            }
             if (fd == -1)
                 goto Finish;
-            face = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
+            if (mcast)
+                face = setup_multicast(h, face_instance,
+                                       addrinfo->ai_addr,
+                                       addrinfo->ai_addrlen);
+            else
+                face = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
             if (face == NULL)
                 goto Finish;
-            save = h->flood;
-            h->flood = 0; /* never auto-register ccn:/ for these */
             newface = get_dgram_source(h, face,
                                        addrinfo->ai_addr,
                                        addrinfo->ai_addrlen);
-            h->flood = save;
         }
         else if (addrinfo->ai_socktype == SOCK_STREAM) {
-            save = h->flood;
-            h->flood = 0; /* never auto-register ccn:/ for these */
             newface = make_connection(h,
                                       addrinfo->ai_addr,
                                       addrinfo->ai_addrlen);
-            h->flood = save;
+            
         }
     }
     if (newface != NULL) {
