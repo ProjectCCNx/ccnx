@@ -208,8 +208,9 @@ int main(int argc, char **argv)
     FILE *msgs = stdout;
     int binout = 0;
     int udp = 0;
+    int tcp = 0;
     const char *host = NULL;
-    while ((c = getopt(argc, argv, "bht:u:")) != -1) {
+    while ((c = getopt(argc, argv, "bht:T:u:")) != -1) {
         switch (c) {
             case 'b':
                 binout = 1;
@@ -222,11 +223,16 @@ int main(int argc, char **argv)
 		udp = 1;
                 host = optarg;
 		break;
+	    case 'T':
+		tcp = 1;
+                host = optarg;
+		break;
             case 'h':
             default:
                 fprintf(stderr, "Usage %s %s\n", argv[0],
                             " [-b(inaryout)] "
                             " [-u udphost] "
+                            " [-T tcphost] "
                             " [-t millisconds] "
                             " ( send <filename>"
                             " | <sendfilename>.ccnb"
@@ -242,6 +248,8 @@ int main(int argc, char **argv)
     setup_sockaddr_un(portstr, &addr);
     if (udp)
         sock = open_socket(host, portstr, SOCK_DGRAM);
+    else if (tcp)
+        sock = open_socket(host, portstr, SOCK_STREAM);
     else
         sock = open_local(&addr);
     fds[0].fd = sock;

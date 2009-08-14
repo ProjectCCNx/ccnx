@@ -3204,7 +3204,6 @@ ccnd_create(const char *progname)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
-    struct face *face;
     const char *sockname;
     const char *portstr;
     const char *debugstr;
@@ -3311,6 +3310,7 @@ ccnd_create(const char *progname)
                 if (fd != -1) {
                     const char *af = "";
                     int yes = 1;
+                    struct face *face;
 		    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
 		    res = bind(fd, a->ai_addr, a->ai_addrlen);
                     if (res != 0) {
@@ -3357,12 +3357,10 @@ ccnd_create(const char *progname)
                         continue;
                     }
                     if (a->ai_family == AF_INET) {
-                        face->flags |= CCN_FACE_INET;
                         h->tcp4_fd = fd;
                         af = "ipv4";
                     }
                     else if (a->ai_family == AF_INET6) {
-                        face->flags |= CCN_FACE_INET6;
                         h->tcp6_fd = fd;
                         af = "ipv6";
                     }
