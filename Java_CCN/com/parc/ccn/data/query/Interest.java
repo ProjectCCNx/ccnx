@@ -602,8 +602,8 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 				return false;
 		} else if (!_name.equals(other._name))
 			return false;
-		if (!Arrays.equals(_nonce, other._nonce))
-			return false;
+		//if (!Arrays.equals(_nonce, other._nonce))
+		//	return false;
 		if (_orderPreference == null) {
 			if (other._orderPreference != null)
 				return false;
