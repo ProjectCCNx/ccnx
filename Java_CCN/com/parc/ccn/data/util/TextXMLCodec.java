@@ -42,14 +42,14 @@ public class TextXMLCodec {
 	public static String encodeBinaryElement(byte [] element) {
 		if ((null == element) || (0 == element.length)) 
 			return new String("");
-		return new String(DataUtils.base6Encode(element));
+		return new String(DataUtils.base64Encode(element));
 	}
 	
 	public static String encodeBinaryElement(byte [] element, int offset, int length) {
 		if ((null == element) || (0 == element.length)) 
 			return new String("");
 		ByteBuffer bbuf = ByteBuffer.wrap(element, offset, length);
-		return new String(DataUtils.base6Encode(bbuf.array()));
+		return new String(DataUtils.base64Encode(bbuf.array()));
 	}
 
 	public static byte [] decodeBinaryElement(String element) throws IOException {
