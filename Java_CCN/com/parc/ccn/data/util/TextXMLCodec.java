@@ -11,9 +11,6 @@ import java.util.TimeZone;
 
 import com.parc.ccn.Library;
 
-import sun.misc.BASE64Decoder;
-import sun.misc.BASE64Encoder;
-
 public class TextXMLCodec {
 
 	public static final String CCN_NAMESPACE = "http://www.parc.com/ccn";
@@ -45,20 +42,20 @@ public class TextXMLCodec {
 	public static String encodeBinaryElement(byte [] element) {
 		if ((null == element) || (0 == element.length)) 
 			return new String("");
-		return new BASE64Encoder().encode(element);
+		return new String(DataUtils.base6Encode(element));
 	}
 	
 	public static String encodeBinaryElement(byte [] element, int offset, int length) {
 		if ((null == element) || (0 == element.length)) 
 			return new String("");
 		ByteBuffer bbuf = ByteBuffer.wrap(element, offset, length);
-		return new BASE64Encoder().encode(bbuf);
+		return new String(DataUtils.base6Encode(bbuf.array()));
 	}
 
 	public static byte [] decodeBinaryElement(String element) throws IOException {
 		if ((null == element) || (0 == element.length()))
 			return new byte[0];
-		return new BASE64Decoder().decodeBuffer(element);
+		return DataUtils.base64Decode(element.getBytes());
 	}
 
 	/**
