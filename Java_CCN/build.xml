@@ -70,7 +70,7 @@
 		<depend srcdir="." destdir="${build}" closure="yes"/>
 		<javac destdir="${build}"
               srcdir="." excludes="${build-excludes}"
-              source="1.5" compiler="javac1.5" debug="on">
+              debug="on">
 			<classpath>
 				<path refid="classpath"/>
 			</classpath>
