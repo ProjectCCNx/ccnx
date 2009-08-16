@@ -2,6 +2,7 @@ package com.parc.ccn.data;
 
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
+import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -14,7 +15,6 @@ import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
-import com.sun.org.apache.xerces.internal.util.URI.MalformedURIException;
 
 public class ContentName extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentName> {
 
@@ -247,7 +247,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 				}
 			}
 			return result;
-		} catch (MalformedURIException e) {
+		} catch (URISyntaxException e) {
 			throw new MalformedContentNameStringException(e.getMessage());
 		}
 	}
@@ -276,7 +276,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 				}
 			}
 			return result;
-		} catch (MalformedURIException e) {
+		} catch (URISyntaxException e) {
 			throw new MalformedContentNameStringException(e.getMessage());
 		}
 	}
@@ -309,7 +309,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 				}
 			}
 			return result;
-		} catch (MalformedURIException e) {
+		} catch (URISyntaxException e) {
 			throw new MalformedContentNameStringException(e.getMessage());
 		}
 	}
@@ -590,7 +590,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @param name a single component of a name
 	 * @return
      */
-	public static byte[] componentParseURI(String name) throws DotDotComponent, MalformedURIException {
+	public static byte[] componentParseURI(String name) throws DotDotComponent, URISyntaxException {
 		byte[] decodedName = null;
 		boolean alldots = true; // does this component contain only dots after unescaping?
 		boolean quitEarly = false;
@@ -605,15 +605,15 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 					// of componentPrint(), we may convert the byte values directly.
 					// There is no need to go through a character representation.
 					if (name.length()-1 < i+2) {
-						throw new MalformedURIException("malformed %xy byte representation: too short");
+						throw new URISyntaxException(name, "malformed %xy byte representation: too short", i);
 					}
 					if (name.charAt(i+1) == '-') {
-						throw new MalformedURIException("malformed %xy byte representation: negative value not permitted");
+						throw new URISyntaxException(name, "malformed %xy byte representation: negative value not permitted", i);
 					}
 					try {
 						result.put(new Integer(Integer.parseInt(name.substring(i+1, i+3),16)).byteValue());
 					} catch (NumberFormatException e) {
-						throw new MalformedURIException("malformed %xy byte representation: not legal hex number: " + name.substring(i+1, i+3));
+						throw new URISyntaxException(name, "malformed %xy byte representation: not legal hex number: " + name.substring(i+1, i+3), i);
 					}
 					i+=2; // for loop will increment by one more to get net +3 so past byte string
 					break;
@@ -639,7 +639,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 						// This character remains the same
 						result.put(name.substring(i, i+1).getBytes("UTF-8"));
 					} else {
-						throw new MalformedURIException("Illegal characters in URI: " + name);
+						throw new URISyntaxException(name, "Illegal characters in URI", i);
 					}
 				break;
 				}
@@ -890,7 +890,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @param str
 	 * @return
 	 */
-	public boolean contains(String str) throws MalformedURIException {
+	public boolean contains(String str) throws URISyntaxException {
 		try {
 			byte[] parsed = componentParseURI(str);
 			if (null == parsed) {
@@ -913,7 +913,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @return
 	 * @throws MalformedURIException 
 	 */
-	public int containsWhere(String str) throws MalformedURIException {
+	public int containsWhere(String str) throws URISyntaxException {
 		try {
 			byte[] parsed = componentParseURI(str);
 			if (null == parsed) {
@@ -972,7 +972,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		return new ContentName(offset, this.components());
 	}
 	
-	public ContentName cut(String component) throws MalformedURIException {
+	public ContentName cut(String component) throws URISyntaxException {
 		try {
 			byte[] parsed = componentParseURI(component);
 			if (null == parsed) {
