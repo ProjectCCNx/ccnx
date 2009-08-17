@@ -17,11 +17,13 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 
 import org.bouncycastle.asn1.ASN1InputStream;
+import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.DEREncodable;
 import org.bouncycastle.asn1.DERObject;
 import org.bouncycastle.asn1.DEROutputStream;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
+import org.bouncycastle.asn1.x509.X509Extensions;
 
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 
@@ -164,5 +166,29 @@ public class CryptoUtil {
 
 	public static String getKeyIDString(Key key) {
 		return getKeyIDString(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM,key);
+	}
+	
+	/**
+	 * Get the keyID from a CA certificate to use as the key id in an AuthorityKeyIdentifier
+	 * extension for certificates issued by that CA. This should come out of the SubjectKeyIdentifier
+	 * extension of the certificate if present. If that extension is missing, this function
+	 * will return null, and generateKeyID can be used to generate a new key id.
+	 **/
+	public static byte [] getKeyIDFromCertificate(X509Certificate issuerCert) 
+		throws IOException, CertificateEncodingException {
+		byte [] keyIDExtensionValue = issuerCert.getExtensionValue(X509Extensions.SubjectKeyIdentifier.toString());
+		if (null == keyIDExtensionValue)
+			return null;
+		// extension should decode to an OCTET STRING containing the key id.
+		DERObject decodedValue = decode(keyIDExtensionValue);
+		if (!(decodedValue instanceof ASN1OctetString)) {
+			throw new CertificateEncodingException("Cannot parse SubjectKeyIdentifier extension!");
+		}
+		// now decode the inner octet string to get key ID
+		DERObject keyID = decode(((ASN1OctetString)decodedValue).getOctets());
+		if (!(keyID instanceof ASN1OctetString)) {
+			throw new CertificateEncodingException("Cannot parse SubjectKeyIdentifier extension!");
+		}
+		return ((ASN1OctetString)keyID).getOctets();
 	}
 }
