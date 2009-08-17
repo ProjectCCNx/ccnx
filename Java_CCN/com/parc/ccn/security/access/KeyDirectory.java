@@ -260,6 +260,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		if (!hasPreviousKeyBlock())
 			return null;
 		LinkObject previousKey = new LinkObject(getPreviousKeyBlockName(), _manager.library());
+		previousKey.waitForData(); // TODO timeout?
 		if (!previousKey.available()) {
 			Library.logger().info("Unexpected: no previous key link at " + getPreviousKeyBlockName());
 			return null;
