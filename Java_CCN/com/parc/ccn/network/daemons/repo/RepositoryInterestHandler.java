@@ -111,8 +111,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 					// DKS- this should use SegmentationProfile.headerName to figure out the header name,
 					// not hardcode its structure here.
 					// Needs to match move to HeaderObject (versioned) writes in output streams.
-					listener._headerInterest = Interest.constructInterest(listener.getVersionedName(), _daemon.getExcludes(), 
-							listener.getVersionedName().count());
+					listener._headerInterest = Interest.constructInterest(listener.getVersionedName(), _daemon.getExcludes(), null);
 					listener._headerInterest.maxSuffixComponents(1);
 					Library.logger().fine("Sending header request: " + listener._headerInterest);
 					_library.expressInterest(listener._headerInterest, listener);
