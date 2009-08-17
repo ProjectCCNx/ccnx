@@ -663,34 +663,6 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 		return result;
 	}
 	
-	
-	/**
-	 * Approaches to read and write content. Low-level CCNBase returns
-	 * a specific piece of content from the repository (e.g.
-	 * if you ask for a fragment, you get a fragment). Library
-	 * customers want the actual content, independent of
-	 * fragmentation. Can implement this in a variety of ways;
-	 * could verify fragments and reconstruct whole content
-	 * and return it all at once. Could (better) implement
-	 * file-like API -- open opens the header for a piece of
-	 * content, read verifies the necessary fragments to return
-	 * that much data and reads the corresponding content.
-	 * Open read/write or append does?
-	 * 
-	 * DKS: TODO -- state-based put() analogous to write()s in
-	 * blocks; also state-based read() that verifies. Start
-	 * with state-based read.
-	 * 
-	 * Nothing uses this method for anything that couldn't easily be replaced.
-	 */
-	@Deprecated
-	public RepositoryOutputStream repoOpen(ContentName name, 
-			KeyLocator locator, PublisherPublicKeyDigest publisher) 
-				throws IOException, XMLStreamException {
-		return new RepositoryOutputStream(name, locator, publisher, this); 
-	}
-	
-
 	/**
 	 * Medium level interface for retrieving pieces of a file
 	 *

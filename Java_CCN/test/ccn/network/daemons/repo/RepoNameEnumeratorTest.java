@@ -4,20 +4,18 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Random;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.parc.ccn.Library;
-import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.CCNNameEnumerator;
-import com.parc.ccn.library.io.repo.RepositoryOutputStream;
-import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.BasicNameEnumeratorListener;
+import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.CCNNameEnumerator;
+import com.parc.ccn.library.io.repo.RepositoryOutputStream;
+import com.parc.ccn.library.profiles.VersioningProfile;
 
 
 public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
@@ -89,7 +87,7 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 	
 	private void addContentToRepo(ContentName name){
 		try{
-			RepositoryOutputStream ros = putLibrary.repoOpen(name, null, putLibrary.getDefaultPublisher());
+			RepositoryOutputStream ros = new RepositoryOutputStream(name, putLibrary);
 			ros.setTimeout(5000);
 			byte [] data = "Testing 1 2 3".getBytes();
 			ros.write(data, 0, data.length);
@@ -97,10 +95,7 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 		} catch (IOException ex) {
 			ex.printStackTrace();
 			Assert.fail("could not put the content into the repo ("+name+"); " + ex.getMessage());
-		} catch (XMLStreamException e) {
-			e.printStackTrace();
-			Assert.fail("Could not open repo output stream for test.");
-		}
+		} 
 	}
 	
 	private void addContentToRepo(String contentName){

@@ -42,8 +42,7 @@ public class RepoIOTest extends RepoTestBase {
 		byte value = 1;
 		for (int i = 0; i < data.length; i++)
 			data[i] = value++;
-		RepositoryOutputStream ros = putLibrary.repoOpen(ContentName.fromNative("/testNameSpace/stream"), 
-														null, putLibrary.getDefaultPublisher());
+		RepositoryOutputStream ros = new RepositoryOutputStream(ContentName.fromNative("/testNameSpace/stream"), putLibrary); 
 		ros.setBlockSize(100);
 		ros.setTimeout(4000);
 		ros.write(data, 0, data.length);
