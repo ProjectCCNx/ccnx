@@ -95,6 +95,12 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable, 
 				return null;
 			return data(); 
 		}
+		
+		public ContentObject dereference(long timeout) throws IOException {
+			if (null == data())
+				return null;
+			return getReference().dereference(timeout, _library);
+		}
 	}
 
 	protected static final String LINK_ELEMENT = "Link";
@@ -140,6 +146,24 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable, 
 	public String targetLabel() { return _targetLabel; }
 	public LinkAuthenticator targetAuthenticator() { return _targetAuthenticator; }
 		
+	/**
+	 * A stab at a dereference() method. Dereferencing is not well-defined in this
+	 * general setting -- we don't know what we'll find down below this name. A link may
+	 * link to anything in the tree, including an intermediate node, or a name qualified
+	 * down to the digest, and we need a way of distinguishing these things (TODO). Usually
+	 * you'll read the target of the link using a method that knows something about what
+	 * kind of data to find there. This is a brute-force method that hands you back a block
+	 * underneath the link target name that meets the authentication criteria; at minimum
+	 * it should pull an exact match if the link fully specifies digests and so on (TODO -- TBD),
+	 * and otherwise it'll probably assume that what is below here is either a version and
+	 * segments (get latest version) or that this is versioned and it wants segments.
+	 * @throws IOException 
+	 */
+	public ContentObject dereference(long timeout, CCNLibrary library) throws IOException {
+		
+		return library.getLatestVersion(targetName(), (null != targetAuthenticator()) ? targetAuthenticator().publisher() : null, timeout);
+	}
+	
 	/**
 	 * XML format:
 	 * @throws XMLStreamException 
