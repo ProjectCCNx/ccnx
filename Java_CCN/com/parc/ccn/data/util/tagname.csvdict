@@ -66,10 +66,12 @@
 79,ForwardingFlags
 80,FaceInstance
 81,ForwardingEntry
-82,MaxSuffixComponents
+82,MulticastTTL
 83,MinSuffixComponents
-2048,Address
-2049,SOType
-2050,Inject
+84,MaxSuffixComponents
+85,ChildSelector
+2048,Address,Deprecated
+2049,SOType,Deprecated
+2050,Inject,Deprecated
 17702112,CCNProtocolDataUnit
-23204960,ExperimentalResponseFilter
+23204960,ExperimentalResponseFilter,Deprecated
