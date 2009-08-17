@@ -137,7 +137,7 @@ public class DataUtils {
 		return Base64.decode(input);
 	}
 	
-	public static byte [] base6Encode(byte [] input) {
+	public static byte [] base64Encode(byte [] input) {
 		return Base64.encode(input);
 	}
 

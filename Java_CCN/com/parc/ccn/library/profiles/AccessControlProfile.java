@@ -206,7 +206,7 @@ public class AccessControlProfile implements CCNProfile {
 	public static byte[] targetKeyIDToNameComponent(byte[] keyID) {
 		if (null == keyID)
 			return null;
-		byte [] encodedKeyIDBytes = DataUtils.base6Encode(keyID);
+		byte [] encodedKeyIDBytes = DataUtils.base64Encode(keyID);
 		byte [] output = new byte[WRAPPING_KEY_PREFIX.length + encodedKeyIDBytes.length];
 		System.arraycopy(WRAPPING_KEY_PREFIX, 0, output, 0, WRAPPING_KEY_PREFIX.length);
 		System.arraycopy(encodedKeyIDBytes, 0, output, WRAPPING_KEY_PREFIX.length, encodedKeyIDBytes.length);
