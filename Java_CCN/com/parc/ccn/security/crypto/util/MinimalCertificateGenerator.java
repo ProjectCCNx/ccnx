@@ -114,8 +114,7 @@ public class MinimalCertificateGenerator {
 
 		this(subjectDN, subjectPublicKey, issuerCertificate.getSubjectX500Principal(), duration, isCA);
 		AuthorityKeyIdentifier aki = 
-			new AuthorityKeyIdentifier(CryptoUtil.getKeyIDFromCertificate(issuerCertificate), 
-									   (GeneralNames)null, null);
+			new AuthorityKeyIdentifier(CryptoUtil.generateKeyID(subjectPublicKey));
 		_generator.addExtension(X509Extensions.AuthorityKeyIdentifier, false, aki);
 	}
 
@@ -133,8 +132,7 @@ public class MinimalCertificateGenerator {
 
 		this(subjectDN, subjectPublicKey, new X500Principal(subjectDN), duration, isCA);
 		AuthorityKeyIdentifier aki = 
-			new AuthorityKeyIdentifier(CryptoUtil.generateKeyID(subjectPublicKey), 
-					(GeneralNames)null, null);
+			new AuthorityKeyIdentifier(CryptoUtil.generateKeyID(subjectPublicKey));
 		_generator.addExtension(X509Extensions.AuthorityKeyIdentifier, false, aki);
 	}
 
