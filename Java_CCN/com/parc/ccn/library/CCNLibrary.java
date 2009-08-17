@@ -301,25 +301,6 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 		return collection;
 	}
 
-	/**
-	 * Use the same publisherID that we used originally.
-	 * @throws IOException 
-	 * @throws SignatureException 
-	 * @throws XMLStreamException 
-	 * @throws InvalidKeyException 
-	 */
-	@Deprecated
-	public Collection createCollection(
-			ContentName name,
-			ContentName [] references, PublisherPublicKeyDigest publisher, KeyLocator locator,
-			PrivateKey signingKey) throws IOException, SignatureException, 
-			XMLStreamException, InvalidKeyException {
-		LinkReference[] lrs = new LinkReference[references.length];
-		for (int i = 0; i < references.length; i++) {
-			lrs[i] = new LinkReference(references[i]);
-		}
-		return createCollection(name, lrs, publisher, locator, signingKey);
-	}
 	
 	@Deprecated
 	public Collection createCollection(
