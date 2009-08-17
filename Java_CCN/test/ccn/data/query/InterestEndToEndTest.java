@@ -35,8 +35,11 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest"));
 		doTest();
 		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest2"));
-		_interestSent.maxSuffixComponents(3);
-		_interestSent.minSuffixComponents(4);
+		_interestSent.maxSuffixComponents(4);
+		_interestSent.minSuffixComponents(3);
+		doTest();
+		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest2"));
+		_interestSent.maxSuffixComponents(1);
 		doTest();
 	}
 
