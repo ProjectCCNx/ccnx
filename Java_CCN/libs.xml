@@ -20,7 +20,6 @@
         required, so we have an authoritative list of dependencies 
 		ccn-classpath contains jar files required to compile -->
 	<path id="ccn-classpath">
-		<pathelement location="${lib}/parccalib-1.2.jar"/>
 		<pathelement location="${bcprov-jar}"/>
 		<!-- NOTE: jsr173 files are not distributed but may be supplied
 		     in order to use JDK1.5.  We plan to drop support for
