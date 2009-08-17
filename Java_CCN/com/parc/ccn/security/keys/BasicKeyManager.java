@@ -30,7 +30,7 @@ import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.KeyName;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.security.crypto.certificates.BCX509CertificateGenerator;
+import com.parc.ccn.security.crypto.util.MinimalCertificateGenerator;
 
 public class BasicKeyManager extends KeyManager {
 		
@@ -217,7 +217,7 @@ public class BasicKeyManager extends KeyManager {
 		X509Certificate ssCert = null;
 		try {
 			 ssCert = 
-				BCX509CertificateGenerator.GenerateX509Certificate(userKeyPair, subjectDN, BCX509CertificateGenerator.MSEC_IN_YEAR);
+				 MinimalCertificateGenerator.GenerateUserCertificate(userKeyPair, subjectDN, MinimalCertificateGenerator.MSEC_IN_YEAR);
 		} catch (Exception e) {
 			generateConfigurationException("InvalidKeyException generating user internal certificate.", e);
 		} 

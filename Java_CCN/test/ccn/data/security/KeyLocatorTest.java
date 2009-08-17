@@ -6,6 +6,8 @@ import java.security.Security;
 import java.security.cert.X509Certificate;
 import java.util.Date;
 
+import javax.security.auth.x500.X500Principal;
+
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -15,7 +17,7 @@ import test.ccn.data.util.XMLEncodableTester;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
-import com.parc.security.crypto.certificates.BCX509CertificateGenerator;
+import com.parc.ccn.security.crypto.util.MinimalCertificateGenerator;
 
 public class KeyLocatorTest {
 
@@ -42,17 +44,11 @@ public class KeyLocatorTest {
 			KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
 			kpg.initialize(512); // go for fast
 			pair = kpg.generateKeyPair();
-			cert = 
-				BCX509CertificateGenerator.GenerateX509Certificate(
-					pair.getPublic(),
-					rootDN,
-					endDN,
-					null,
-					start,
-					end,
-					null,
-					pair.getPrivate(),
-					null);
+			MinimalCertificateGenerator mg = new MinimalCertificateGenerator(
+					endDN, pair.getPublic(), 
+					new X500Principal(rootDN), 
+					MinimalCertificateGenerator.MSEC_IN_YEAR, false);
+			cert = mg.sign(null, pair.getPrivate());
 			pubID = new PublisherID(pair.getPublic(), false);
 		} catch (Exception ex) {
 			XMLEncodableTester.handleException(ex);
