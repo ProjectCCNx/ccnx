@@ -25,6 +25,7 @@ import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.PublisherID.PublisherType;
 import com.parc.ccn.data.util.CCNNetworkObject;
+import com.parc.ccn.data.util.CCNStringObject;
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNVersionedInputStream;

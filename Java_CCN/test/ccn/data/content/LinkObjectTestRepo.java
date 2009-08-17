@@ -5,7 +5,6 @@ package test.ccn.data.content;
 
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Random;
 
 import javax.xml.stream.XMLStreamException;
@@ -15,15 +14,14 @@ import junit.framework.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import test.ccn.data.util.CCNStringObject;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.content.LinkReference.LinkObject;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
+import com.parc.ccn.data.util.CCNStringObject;
 import com.parc.ccn.library.CCNLibrary;
-import com.parc.ccn.library.io.CCNWriter;
 
 /**
  * @author smetters

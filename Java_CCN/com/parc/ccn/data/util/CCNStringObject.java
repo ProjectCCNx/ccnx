@@ -1,7 +1,7 @@
 /**
  * 
  */
-package test.ccn.data.util;
+package com.parc.ccn.data.util;
 
 import java.io.IOException;
 
@@ -11,7 +11,6 @@ import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.data.util.CCNSerializableObject;
 import com.parc.ccn.library.CCNLibrary;
 
 public class CCNStringObject extends CCNSerializableObject<String> {

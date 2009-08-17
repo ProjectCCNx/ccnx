@@ -16,11 +16,11 @@ import junit.framework.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import test.ccn.data.util.CCNStringObject;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.content.CollectionData.CollectionObject;
+import com.parc.ccn.data.util.CCNStringObject;
 import com.parc.ccn.library.CCNLibrary;
 
 /**
