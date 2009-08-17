@@ -48,8 +48,24 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 			super(CollectionData.class, name, data, library);
 		}
 		
+		public CollectionObject(ContentName name, java.util.Collection<LinkReference> contents, CCNLibrary library) throws IOException {
+			this(name, new CollectionData(contents), library);
+		}
+		
+		public CollectionObject(ContentName name, LinkReference [] contents, CCNLibrary library) throws IOException {
+			this(name, new CollectionData(contents), library);			
+		}
+
 		public CollectionObject(ContentName name, CollectionData data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNLibrary library) throws IOException {
 			super(CollectionData.class, name, data, publisher, keyLocator, library);
+		}
+
+		public CollectionObject(ContentName name, java.util.Collection<LinkReference> contents, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNLibrary library) throws IOException {
+			this(name, new CollectionData(contents), publisher, keyLocator, library);
+		}
+		
+		public CollectionObject(ContentName name, LinkReference [] contents, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNLibrary library) throws IOException {
+			this(name, new CollectionData(contents), publisher, keyLocator, library);			
 		}
 
 		/**
