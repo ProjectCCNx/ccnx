@@ -6,6 +6,5 @@
 	<classpathentry exported="true" kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry exported="true" kind="lib" path="lib/jsr173_1.0_ri.jar" sourcepath="lib/jsr173_1.0_src.jar"/>
 	<classpathentry kind="lib" path="lib/bcprov-jdk15-143.jar"/>
-	<classpathentry kind="lib" path="lib/parccalib-1.2.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

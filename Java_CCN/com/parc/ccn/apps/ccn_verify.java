@@ -13,7 +13,7 @@ import java.security.spec.InvalidKeySpecException;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.data.ContentObject;
-import com.parc.security.crypto.certificates.CryptoUtil;
+import com.parc.ccn.security.crypto.util.CryptoUtil;
 
 public class ccn_verify {
 	

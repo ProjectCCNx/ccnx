@@ -7,7 +7,7 @@ import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.util.XMLEncodable;
-import com.parc.security.crypto.DigestHelper;
+import com.parc.ccn.security.crypto.util.DigestHelper;
 
 public class CCNDigestHelper extends DigestHelper {
 

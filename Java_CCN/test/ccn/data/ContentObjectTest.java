@@ -5,7 +5,6 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.Security;
 import java.security.SignatureException;
-import java.security.cert.X509Certificate;
 import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.Date;
@@ -24,7 +23,6 @@ import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.util.DataUtils;
-import com.parc.security.crypto.certificates.BCX509CertificateGenerator;
 
 public class ContentObjectTest {
 
@@ -46,7 +44,6 @@ public class ContentObjectTest {
 	static ContentName keyname;
 
 	static KeyPair pair = null;
-	static X509Certificate cert = null;
 	static KeyLocator nameLoc = null;
 	static KeyLocator keyLoc = null;
 	static public Signature signature;
@@ -68,17 +65,6 @@ public class ContentObjectTest {
 			KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
 			kpg.initialize(512); // go for fast
 			pair = kpg.generateKeyPair();
-			cert = 
-				BCX509CertificateGenerator.GenerateX509Certificate(
-					pair.getPublic(),
-					rootDN,
-					endDN,
-					null,
-					start,
-					end,
-					null,
-					pair.getPrivate(),
-					null);
 			nameLoc = new KeyLocator(keyname);
 			keyLoc = new KeyLocator(pair.getPublic());
 			
