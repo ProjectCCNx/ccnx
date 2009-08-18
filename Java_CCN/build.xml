@@ -18,10 +18,10 @@
 	<property name="jarfile-base" value="ccn.jar"/>
 	<property name="jarfile" location="${jarfile-base}"/>
 	<property name="testout" location="testout"/>
-	<property name="ccnd" location="../src/ccnd/ccnd"/>
+	<property name="ccnd" location="../csrc/ccnd/ccnd"/>
 	<property name="showoutput" value="no"/>
 	<property name="repozip" value="repotest.zip"/>
-	<property name="CCND_CMD" value="../../src/ccnd/ccnd"/>
+	<property name="CCND_CMD" value="../../csrc/ccnd/ccnd"/>
 	<property name="CCND_DEBUG" value="-1"/>
 	<property name="CCND_CAP" value="50000"/>
 	<property name="REPO_ROOT" value="${testout}/repotest"/>

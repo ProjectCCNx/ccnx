@@ -1,4 +1,4 @@
-# makefile for src/tests directory
+# makefile for csrc/tests directory
 
 SCRIPTSRC = testdriver.sh shebang functions preamble settings $(ALLTESTS)
 DUPDIR = stubs

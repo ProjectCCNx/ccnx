@@ -19,10 +19,6 @@ conf.mk:
 
 test check: default
 
-testinstall: default _always
-	mkdir -p ../testinstall/lib ../testinstall/bin ../testinstall/include
-	$(MAKE) install INSTALL_BASE=`cd ../testinstall/. && pwd -L`
-
 objtree: conf.mk _always
 	mkdir -p $(OBJTREE)
 	echo SRCDIR = ..  > $(OBJTREE)/Makefile

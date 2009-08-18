@@ -1,4 +1,4 @@
-# makefile for src/lib directory
+# makefile for csrc/lib directory
 
 LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn
 EXPATLIBS = -lexpat

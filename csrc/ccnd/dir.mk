@@ -1,4 +1,4 @@
-# makefile for src/ccnd directory
+# makefile for csrc/ccnd directory
 
 LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn
 CCNLIBDIR = ../lib
