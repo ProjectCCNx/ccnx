@@ -904,7 +904,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 	
 	public boolean contains(byte [] component) {
-		return (containsWhere(component) > 0);
+		return (containsWhere(component) >= 0);
 	}
 	
 	/**
