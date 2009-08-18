@@ -19,7 +19,7 @@ import org.junit.Test;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.Link;
-import com.parc.ccn.data.content.CollectionData.CollectionObject;
+import com.parc.ccn.data.content.Collection.CollectionObject;
 import com.parc.ccn.data.util.CCNStringObject;
 import com.parc.ccn.library.CCNLibrary;
 

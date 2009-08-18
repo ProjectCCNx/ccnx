@@ -9,7 +9,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Collection;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -18,7 +17,7 @@ import org.bouncycastle.crypto.InvalidCipherTextException;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.content.CollectionData;
+import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.content.Link.LinkObject;
 import com.parc.ccn.data.security.LinkAuthenticator;
@@ -183,7 +182,7 @@ public class Group {
 		return null;
 	}
 
-	public void setMembershipList(GroupManager groupManager, Collection<Link> newMembers) 
+	public void setMembershipList(GroupManager groupManager, java.util.Collection<Link> newMembers) 
 					throws XMLStreamException, IOException, 
 						InvalidKeyException, InvalidCipherTextException, AccessDeniedException, ConfigurationException {
 		// need to figure out if we need to know private key; if we do and we don't, throw access denied.
@@ -296,7 +295,7 @@ public class Group {
 	 * @throws ConfigurationException 
 	 */
 	public void updateGroupPublicKey(GroupManager manager, 
-									 Collection<Link> membersToAdd) 
+									 java.util.Collection<Link> membersToAdd) 
 				throws IOException, InvalidKeyException, InvalidCipherTextException, XMLStreamException, AccessDeniedException, ConfigurationException {
 		
 		if ((null == membersToAdd) || (membersToAdd.size() == 0))
@@ -373,8 +372,8 @@ public class Group {
  * @throws AccessDeniedException
  * @throws ConfigurationException
  */
-	public void modify(Collection<Link> membersToAdd,
-					   Collection<Link> membersToRemove) 
+	public void modify(java.util.Collection<Link> membersToAdd,
+					   java.util.Collection<Link> membersToRemove) 
 				throws XMLStreamException, IOException, InvalidKeyException, 
 						InvalidCipherTextException, AccessDeniedException, ConfigurationException {
 		
@@ -391,7 +390,7 @@ public class Group {
 		// Add before remove so that remove overrides adds.
 		if ((null != membersToAdd) && (!membersToAdd.isEmpty())) {
 			if (null == _groupMembers.membershipList()) {
-				_groupMembers.setData(new CollectionData(membersToAdd));
+				_groupMembers.setData(new Collection(membersToAdd));
 				addedMembers = true;
 			} else {
 				// Optimization: check to see if any were already in there before adding them....

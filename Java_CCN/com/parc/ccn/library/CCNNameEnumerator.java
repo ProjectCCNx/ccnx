@@ -9,9 +9,9 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.content.CollectionData;
+import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Link;
-import com.parc.ccn.data.content.CollectionData.CollectionObject;
+import com.parc.ccn.data.content.Collection.CollectionObject;
 import com.parc.ccn.data.query.BasicNameEnumeratorListener;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.CCNInterestListener;
@@ -229,7 +229,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 						callback.handleNameEnumerator(interest.name().cut(NEMARKER), names);
 					} catch(XMLStreamException e) {
 						e.printStackTrace();
-						System.err.println("Error getting CollectionData from ContentObject in CCNNameEnumerator");
+						System.err.println("Error getting Collection from ContentObject in CCNNameEnumerator");
 					} catch(IOException e) {
 						e.printStackTrace();
 						System.err.println("error getting CollectionObject from ContentObject in CCNNameEnumerator.handleContent");
@@ -269,7 +269,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 		
 		ContentName collectionName = null;
 		Link match;
-		CollectionData cd;
+		Collection cd;
 				
 		
 		ContentName name = null;
@@ -279,7 +279,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			//Library.logger().info("processing interest: "+name.toString());
 			//collectionName = i.name().clone();
 			
-			cd = new CollectionData();
+			cd = new Collection();
 			//Verify NameEnumeration Marker is in the name
 			if (!name.contains(NEMARKER)) {
 				//Skip...  we don't handle these

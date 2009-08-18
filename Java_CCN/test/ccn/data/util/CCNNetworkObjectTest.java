@@ -17,9 +17,9 @@ import org.junit.Test;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.content.CollectionData;
+import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Link;
-import com.parc.ccn.data.content.CollectionData.CollectionObject;
+import com.parc.ccn.data.content.Collection.CollectionObject;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.SignedInfo;
@@ -57,10 +57,10 @@ public class CCNNetworkObjectTest {
 	static LinkAuthenticator [] las = new LinkAuthenticator[NUM_LINKS];
 	static Link [] lrs = null;
 	
-	static CollectionData small1;
-	static CollectionData small2;
-	static CollectionData empty;
-	static CollectionData big;
+	static Collection small1;
+	static Collection small2;
+	static Collection empty;
+	static Collection big;
 	static CCNLibrary library;
 	static String [] numbers = new String[]{"ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN"};
 	
@@ -122,14 +122,14 @@ public class CCNNetworkObjectTest {
 			lrs[i] = new Link(ns[i],las[i]);
 		}
 		
-		empty = new CollectionData();
-		small1 = new CollectionData();
-		small2 = new CollectionData();
+		empty = new Collection();
+		small1 = new Collection();
+		small2 = new Collection();
 		for (int i=0; i < 5; ++i) {
 			small1.add(lrs[i]);
 			small2.add(lrs[i+5]);
 		}
-		big = new CollectionData();
+		big = new Collection();
 		for (int i=0; i < NUM_LINKS; ++i) {
 			big.add(lrs[i]);
 		}
@@ -226,7 +226,7 @@ public class CCNNetworkObjectTest {
 		try {
 			setupNamespace(testName);
 			CollectionObject emptycoll = 
-				new CollectionObject(testName, (CollectionData)null, library);
+				new CollectionObject(testName, (Collection)null, library);
 			try {
 				saveAndLog("Empty", emptycoll, null, null);
 			} catch (InvalidObjectException iox) {
@@ -262,7 +262,7 @@ public class CCNNetworkObjectTest {
 			System.out.println("Read " + baos.toByteArray().length + " bytes, digest: " + 
 					DigestHelper.printBytes(DigestHelper.digest(baos.toByteArray()), 16));
 
-			CollectionData decodedData = new CollectionData();
+			Collection decodedData = new Collection();
 			decodedData.decode(baos.toByteArray());
 			System.out.println("Decoded collection data: " + decodedData);
 			Assert.assertEquals("Decoding via stream fails to give expected result!", decodedData, small1);
@@ -280,12 +280,12 @@ public class CCNNetworkObjectTest {
 					DigestHelper.printBytes(DigestHelper.digest(baos2.toByteArray()), 16));
 			Assert.assertArrayEquals("Reading same object twice gets different results!", baos.toByteArray(), baos2.toByteArray());
 
-			CollectionData decodedData2 = new CollectionData();
+			Collection decodedData2 = new Collection();
 			decodedData2.decode(baos2.toByteArray());
 			Assert.assertEquals("Decoding via stream byte read fails to give expected result!", decodedData2, small1);
 
 			CCNVersionedInputStream vis3 = new CCNVersionedInputStream(testCollectionObject.getCurrentVersionName());
-			CollectionData decodedData3 = new CollectionData();
+			Collection decodedData3 = new Collection();
 			decodedData3.decode(vis3);
 			Assert.assertEquals("Decoding via stream full read fails to give expected result!", decodedData3, small1);
 		} finally {

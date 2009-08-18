@@ -17,8 +17,8 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.content.CollectionData;
-import com.parc.ccn.data.content.CollectionData.CollectionObject;
+import com.parc.ccn.data.content.Collection;
+import com.parc.ccn.data.content.Collection.CollectionObject;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
@@ -388,7 +388,7 @@ public class RepositoryDaemon extends Daemon {
 					Library.logger().finer("name: "+ner.names.get(x));
 				}
 				
-				CollectionData cd = ner.getNamesInCollectionData();
+				Collection cd = ner.getNamesInCollectionData();
 				CollectionObject co = new CollectionObject(ner.prefix, cd, _library);
 				co.save(ner.getTimestamp());
 				System.out.println("saved collection object");

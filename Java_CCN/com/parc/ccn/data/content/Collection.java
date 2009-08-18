@@ -22,18 +22,18 @@ import com.parc.ccn.library.CCNLibrary;
 /**
  * Mapping from a collection to the underlying XML representation.
  * Basically a collection is a content object containing
- * a List of names and optionally some content authentication
+ * a List of links -- names and optionally some content authentication
  * information to specify whose value for each name
  * to take.
  * @author smetters
  *
  */
-public class CollectionData extends GenericXMLEncodable implements XMLEncodable {
+public class Collection extends GenericXMLEncodable implements XMLEncodable {
 	
 	/**
 	 * This should eventually be called Collection, and the Collection class deleted.
 	 */
-	public static class CollectionObject extends CCNEncodableObject<CollectionData> {
+	public static class CollectionObject extends CCNEncodableObject<Collection> {
 		
 		/**
 		 * Write constructor. Doesn't save until you call save, in case you want to tweak things first.
@@ -43,28 +43,28 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 		 * @throws ConfigurationException
 		 * @throws IOException
 		 */
-		public CollectionObject(ContentName name, CollectionData data, CCNLibrary library) throws IOException {
-			super(CollectionData.class, name, data, library);
+		public CollectionObject(ContentName name, Collection data, CCNLibrary library) throws IOException {
+			super(Collection.class, name, data, library);
 		}
 		
 		public CollectionObject(ContentName name, java.util.Collection<Link> contents, CCNLibrary library) throws IOException {
-			this(name, new CollectionData(contents), library);
+			this(name, new Collection(contents), library);
 		}
 		
 		public CollectionObject(ContentName name, Link [] contents, CCNLibrary library) throws IOException {
-			this(name, new CollectionData(contents), library);			
+			this(name, new Collection(contents), library);			
 		}
 
-		public CollectionObject(ContentName name, CollectionData data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNLibrary library) throws IOException {
-			super(CollectionData.class, name, data, publisher, keyLocator, library);
+		public CollectionObject(ContentName name, Collection data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNLibrary library) throws IOException {
+			super(Collection.class, name, data, publisher, keyLocator, library);
 		}
 
 		public CollectionObject(ContentName name, java.util.Collection<Link> contents, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNLibrary library) throws IOException {
-			this(name, new CollectionData(contents), publisher, keyLocator, library);
+			this(name, new Collection(contents), publisher, keyLocator, library);
 		}
 		
 		public CollectionObject(ContentName name, Link [] contents, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNLibrary library) throws IOException {
-			this(name, new CollectionData(contents), publisher, keyLocator, library);			
+			this(name, new Collection(contents), publisher, keyLocator, library);			
 		}
 
 		/**
@@ -76,15 +76,19 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 		 * @throws ClassNotFoundException 
 		 */
 		public CollectionObject(ContentName name, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException, XMLStreamException {
-			super(CollectionData.class, name, publisher, library);
+			super(Collection.class, name, publisher, library);
 		}
 		
 		public CollectionObject(ContentName name, CCNLibrary library) throws IOException, XMLStreamException {
-			super(CollectionData.class, name, (PublisherPublicKeyDigest)null, library);
+			super(Collection.class, name, (PublisherPublicKeyDigest)null, library);
 		}
 		
 		public CollectionObject(ContentObject firstBlock, CCNLibrary library) throws IOException, XMLStreamException {
-			super(CollectionData.class, firstBlock, library);
+			super(Collection.class, firstBlock, library);
+		}
+		
+		public Collection collection() {
+			return data();
 		}
 		
 		public LinkedList<Link> contents() { 
@@ -98,18 +102,18 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 
 	protected LinkedList<Link> _contents = new LinkedList<Link>();
 	
-	public CollectionData() {
+	public Collection() {
 	}
 	
-	public CollectionData clone() {
-		return new CollectionData(_contents);
+	public Collection clone() {
+		return new Collection(_contents);
 	}
 	
-	public CollectionData(java.util.Collection<Link> contents) {
+	public Collection(java.util.Collection<Link> contents) {
 		_contents.addAll(contents); // should we clone each?
 	}
 	
-	public CollectionData(Link [] contents) {
+	public Collection(Link [] contents) {
 		if (contents != null) {
 			for (int i=0; i < contents.length; ++i) {
 				_contents.add(contents[i]);
@@ -199,7 +203,7 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		final CollectionData other = (CollectionData) obj;
+		final Collection other = (Collection) obj;
 		if (_contents == null) {
 			if (other._contents != null)
 				return false;

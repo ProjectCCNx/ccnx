@@ -11,7 +11,7 @@ import org.junit.Test;
 import test.ccn.data.util.XMLEncodableTester;
 
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.content.CollectionData;
+import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherID;
@@ -70,7 +70,7 @@ public class CollectionDataTest {
 
 	@Test
 	public void testValidate() {
-		CollectionData cd = new CollectionData();
+		Collection cd = new Collection();
 		Assert.assertTrue(cd.validate());
 		cd.add(lrs[0]);
 		Assert.assertTrue(cd.validate());
@@ -80,14 +80,14 @@ public class CollectionDataTest {
 
 	@Test
 	public void testCollectionData() {
-		CollectionData cd = new CollectionData();
+		Collection cd = new Collection();
 		Assert.assertNotNull(cd);
 		Assert.assertTrue(cd.validate());
 	}
 
 	@Test
 	public void testContents() {
-		CollectionData cd = new CollectionData();
+		Collection cd = new Collection();
 		Assert.assertTrue(cd.validate());
 		for (int i=0; i < lrs.length; ++i) {
 			cd.add(lrs[i]);
@@ -102,7 +102,7 @@ public class CollectionDataTest {
 
 	@Test
 	public void testAddGet() {
-		CollectionData cd = new CollectionData();
+		Collection cd = new Collection();
 		for (int i=0; i < lrs.length; ++i) {
 			cd.add(lrs[i]);
 		}
@@ -113,7 +113,7 @@ public class CollectionDataTest {
 
 	@Test
 	public void testRemoveInt() {
-		CollectionData cd = new CollectionData();
+		Collection cd = new Collection();
 		for (int i=0; i < lrs.length; ++i) {
 			cd.add(lrs[i]);
 		}
@@ -123,7 +123,7 @@ public class CollectionDataTest {
 
 	@Test
 	public void testRemoveLink() {
-		CollectionData cd = new CollectionData();
+		Collection cd = new Collection();
 		for (int i=0; i < lrs.length; ++i) {
 			cd.add(lrs[i]);
 		}
@@ -139,7 +139,7 @@ public class CollectionDataTest {
 
 	@Test
 	public void testSize() {
-		CollectionData cd = new CollectionData();
+		Collection cd = new Collection();
 		for (int i=0; i < lrs.length; ++i) {
 			cd.add(lrs[i]);
 		}
@@ -148,9 +148,9 @@ public class CollectionDataTest {
 
 	@Test
 	public void testEqualsObject() {
-		CollectionData cd = new CollectionData();
-		CollectionData cd2 = new CollectionData();
-		CollectionData cd3 = new CollectionData();
+		Collection cd = new Collection();
+		Collection cd2 = new Collection();
+		Collection cd3 = new Collection();
 
 		for (int i=0; i < lrs.length; ++i) {
 			cd.add(lrs[i]);
@@ -160,7 +160,7 @@ public class CollectionDataTest {
 		Assert.assertEquals(cd, cd2);
 		Assert.assertFalse(cd.equals(cd3));
 		cd.remove(2);
-		CollectionData cd4 = cd2.clone();
+		Collection cd4 = cd2.clone();
 		Assert.assertFalse(cd.equals(cd2));
 		Assert.assertEquals(cd4, cd2);
 		cd2.remove(2);
@@ -174,25 +174,25 @@ public class CollectionDataTest {
 
 	@Test
 	public void testEncodeDecodeStream() {
-		CollectionData cd = new CollectionData();
-		CollectionData cdec = new CollectionData();
-		CollectionData bdec = new CollectionData();
+		Collection cd = new Collection();
+		Collection cdec = new Collection();
+		Collection bdec = new Collection();
 
 		for (int i=0; i < lrs.length; ++i) {
 			cd.add(lrs[i]);
 		}
-		XMLEncodableTester.encodeDecodeTest("CollectionData", cd, cdec, bdec);
+		XMLEncodableTester.encodeDecodeTest("Collection", cd, cdec, bdec);
 	}
 
 	@Test
 	public void testEncodeDecodeByteArray() {
-		CollectionData cd = new CollectionData();
-		CollectionData cdec = new CollectionData();
-		CollectionData bdec = new CollectionData();
+		Collection cd = new Collection();
+		Collection cdec = new Collection();
+		Collection bdec = new Collection();
 
 		for (int i=0; i < lrs.length; ++i) {
 			cd.add(lrs[i]);
 		}
-		XMLEncodableTester.encodeDecodeByteArrayTest("CollectionData", cd, cdec, bdec);
+		XMLEncodableTester.encodeDecodeByteArrayTest("Collection", cd, cdec, bdec);
 	}
 }

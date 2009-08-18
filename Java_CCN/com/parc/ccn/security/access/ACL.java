@@ -14,7 +14,7 @@ import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.content.CollectionData;
+import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.util.CCNEncodableObject;
@@ -23,7 +23,7 @@ import com.parc.ccn.library.profiles.VersioningProfile;
 
 
 
-public class ACL extends CollectionData {
+public class ACL extends Collection {
 	
 	public static final String LABEL_READER = "r";
 	public static final String LABEL_WRITER = "rw";

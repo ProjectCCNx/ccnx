@@ -17,7 +17,7 @@ import org.bouncycastle.crypto.InvalidCipherTextException;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.content.CollectionData;
+import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.security.PublicKeyObject;
 import com.parc.ccn.data.security.PublisherID;
@@ -105,7 +105,7 @@ public class GroupManager {
 			MembershipList ml = 
 				new MembershipList(
 						AccessControlProfile.groupMembershipListName(_groupStorage, groupFriendlyName), 
-						new CollectionData(newMembers), _library);
+						new Collection(newMembers), _library);
 			Group newGroup =  new Group(_groupStorage, groupFriendlyName, ml, _library, this);
 			cacheGroup(newGroup);
 			// If I'm a group member (I end up knowing the private key of the group if I
