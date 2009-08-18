@@ -16,6 +16,7 @@ import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.profiles.VersioningProfile;
 
 /**
  * Mapping from a link to the underlying XML representation.
@@ -161,6 +162,11 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 	 */
 	public ContentObject dereference(long timeout, CCNLibrary library) throws IOException {
 		
+		// getLatestVersion will return the latest version of an unversioned name, or the
+		// latest version after a given version. So if given a specific version, get that one.
+		if (VersioningProfile.hasTerminalVersion(targetName())) {
+			return library.get(targetName(), (null != targetAuthenticator()) ? targetAuthenticator().publisher() : null, timeout);
+		}
 		return library.getLatestVersion(targetName(), (null != targetAuthenticator()) ? targetAuthenticator().publisher() : null, timeout);
 	}
 	
