@@ -399,14 +399,14 @@ public class CCNNetworkObjectTest {
 	public <T> Timestamp saveAndLog(String name, CCNNetworkObject<T> ecd, Timestamp version, T data) throws XMLStreamException, IOException {
 		Timestamp oldVersion = ecd.getCurrentVersion();
 		ecd.save(version, data);
-		Library.logger().info("Saved: " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
+		Library.logger().info("Saved " + name + ": " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		return ecd.getCurrentVersion();
 	}
 	
 	public <T> Timestamp saveAsGoneAndLog(String name, CCNNetworkObject<T> ecd) throws XMLStreamException, IOException {
 		Timestamp oldVersion = ecd.getCurrentVersion();
 		ecd.saveAsGone();
-		Library.logger().info("Saved: " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
+		Library.logger().info("Saved " + name + ": " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		return ecd.getCurrentVersion();
 	}
 	
