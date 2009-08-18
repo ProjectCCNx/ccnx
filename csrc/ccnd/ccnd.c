@@ -1859,7 +1859,7 @@ ccnd_req_prefixreg(struct ccnd *h, const unsigned char *msg, size_t size)
     if (forwarding_entry->lifetime < 0)
         forwarding_entry->lifetime = 60;
     else if (forwarding_entry->lifetime > 3600 &&
-             forwarding_entry->lifetime < (1<<31))
+             forwarding_entry->lifetime < (1 << 30))
         forwarding_entry->lifetime = 300;
     comps = ccn_indexbuf_create();
     res = ccn_name_split(forwarding_entry->name_prefix, comps);
