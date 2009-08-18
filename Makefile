@@ -17,14 +17,14 @@ clean depend test check shared documentation testinstall install uninstall: chec
 	@rm -f _always
 
 clean-documentation: _always
-	$(RM) -rf doc/ccode
-	$(RM) -rf doc/javacode
+	rm -rf doc/ccode
+	rm -rf doc/javacode
 	(cd doc/technical && pwd && $(MAKE) clean-documentation)
 
 # Note: This should remove lib after java dir reorg is done.
 clean: clean-testinstall
 clean-testinstall: _always
-	$(RM) -rf bin include  # lib
+	rm -rf bin include  # lib
 
 # Transitional (18-Aug-2009): make sure old src directory is gone, but move aside one if it exists.
 # This should go away in a little while!
