@@ -1738,6 +1738,7 @@ ccnd_req_newface(struct ccnd *h, const unsigned char *msg, size_t size)
         face_instance->descr.mcast_ttl == -1) {
         hints.ai_flags |= AI_NUMERICHOST;
         hints.ai_protocol = face_instance->descr.ipproto;
+        hints.ai_socktype = (hints.ai_protocol == IPPROTO_UDP) ? SOCK_DGRAM : SOCK_STREAM;
         res = getaddrinfo(face_instance->descr.address,
                           face_instance->descr.port,
                           &hints,
