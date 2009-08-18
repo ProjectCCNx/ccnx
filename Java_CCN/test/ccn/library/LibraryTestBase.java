@@ -285,7 +285,12 @@ public class LibraryTestBase {
 				// Register interest
 				library.expressInterest(interest, this);
 				// Block on semaphore until enough data has been received
-				sema.acquire();
+				boolean interrupted = false;
+				do {
+					try {
+						sema.acquire();
+					} catch (InterruptedException ie) { interrupted = true; }
+				} while (interrupted);
 				library.cancelInterest(interest, this);
 				library.close();
 
