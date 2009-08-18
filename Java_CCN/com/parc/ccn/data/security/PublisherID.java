@@ -16,7 +16,7 @@ import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
-import com.parc.security.crypto.certificates.GenericX509CertificateGenerator;
+import com.parc.ccn.security.crypto.util.CryptoUtil;
 
 /**
  * Helper wrapper class for publisher IDs. This encodes and decodes
@@ -84,7 +84,7 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 	public PublisherType type() { return _publisherType; }
 	
 	public static byte [] generatePublicKeyDigest(PublicKey key) {
-		return GenericX509CertificateGenerator.generateKeyID(PUBLISHER_ID_DIGEST_ALGORITHM, key);
+		return CryptoUtil.generateKeyID(PUBLISHER_ID_DIGEST_ALGORITHM, key);
 	}
 
 	@Override

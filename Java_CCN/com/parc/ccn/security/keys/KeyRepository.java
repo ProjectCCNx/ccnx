@@ -3,10 +3,10 @@ package com.parc.ccn.security.keys;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.security.cert.Certificate;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.cert.Certificate;
 import java.security.cert.CertificateEncodingException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
@@ -21,13 +21,13 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
+import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.network.CCNNetworkManager;
-import com.parc.security.crypto.certificates.CryptoUtil;
+import com.parc.ccn.security.crypto.util.CryptoUtil;
 
 public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	
