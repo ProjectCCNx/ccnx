@@ -6,7 +6,10 @@ import java.util.Arrays;
 
 import javax.xml.stream.XMLStreamException;
 
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
+
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
@@ -91,6 +94,25 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 			return null;
 		return new ExcludeFilter(omissions);
 	}
+	
+	/**
+	 * Exclude range of values between input ranges
+	 * @param omissions
+	 * @return
+	 */
+	public static ArrayList<ExcludeElement> rangeFactory(byte [][] range) {
+		if (range == null || range.length == 0 || (range.length %2) != 0)
+			return null;
+		int i = 0;
+		ArrayList<ExcludeElement>values = new ArrayList<ExcludeElement>();
+		while (i < range.length) {
+			values.add(new ExcludeComponent(range[i]));
+			values.add(new ExcludeAny());
+			values.add(new ExcludeComponent(range[i+1]));
+			i += 2;
+		}
+		return values;
+	}
 
 	/**
 	 * @param component - A name component
@@ -98,9 +120,22 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 	 */
 	public boolean exclude(byte [] component) {
 		BloomFilter bloom = null;
-		for (ExcludeElement ee : _values) {
+		for (int i = 0; i < _values.size(); i++) {
+			ExcludeElement ee = _values.get(i);
 			if (ee instanceof ExcludeComponent) {
 				ExcludeComponent ec = (ExcludeComponent) ee;
+				byte[][] range = getRange(i);
+				if (range != null) {
+					if (DataUtils.compare(component, range[0]) >= 0) {
+						if (DataUtils.compare(component, range[1]) <= 0)
+							return true;
+					}
+					i += 2;
+					if (i >= _values.size()) {
+						return false;
+					}
+					continue;
+				}
 				int res = ec.compareTo(component);
 				if (res > 0) {
 					// we reached a component in the filter that is lexigraphically after than the one
@@ -144,7 +179,14 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 				int res = ec.compareTo(omission);
 				if (res > 0) {
 					// we reached a component in the filter that is lexigraphically after than the one
-					// we're looking for so check the bloom and exit.
+					// we're looking for.
+					byte[][] range = getRange(j);
+					if (null != range) {
+						if (DataUtils.compare(omission,range[1]) < 0) {
+							i++;	// Falls within an existing range
+							continue;
+						}		
+					}
 					if (bloom != null && bloom.match(omission)) {
 						// the bloom already matches the component, no need to add it!
 						i++;
@@ -180,6 +222,68 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 			_values.add(new ExcludeComponent(omission));
 		}
 	}
+	
+	/**
+	 * Add a range - only one is allowed for now...
+	 * @param range
+	 */
+	public void addRange(byte[][] range) {
+		if (range.length != 2)
+			throw new NotImplementedException();
+		if (DataUtils.compare(range[0], range[1]) > 0)
+			throw new IllegalArgumentException("Invalid range");
+		for (int i = 0; i < _values.size(); i++) {
+			ExcludeElement ee = _values.get(i);
+			byte[][] oldRange = getRange(i);
+			if (oldRange != null) {
+				ExcludeComponent ec = (ExcludeComponent)ee;
+				if ((DataUtils.compare(oldRange[0], range[0]) < 0) && (DataUtils.compare(range[1], oldRange[1]) < 0))
+					return;  	// oldRange completely encapsulates new range
+				if (DataUtils.compare(range[0], oldRange[0]) < 0) {
+					if (DataUtils.compare(oldRange[0], range[1]) < 0) {
+						// We are extending an old range in front
+						ec.body = range[0];
+						return;
+					}
+				}
+				if (DataUtils.compare(range[0], oldRange[1]) < 0) {
+					if (DataUtils.compare(oldRange[1], range[1]) < 0) {
+						// We are extending an old range in back
+						ec = (ExcludeComponent)_values.get(i + 2);
+						ec.body = range[0];
+						return;
+					}
+				}
+				i += 2;
+			} 
+			if (! (ee instanceof BloomFilter)) {
+				ExcludeComponent ec = (ExcludeComponent)ee;
+				if (DataUtils.compare(range[1], ec.body) < 0) {
+					_values.addAll(i, rangeFactory(range));
+					if (DataUtils.compare(ec.body, range[0]) < 0) {
+						_values.remove(i + 3);
+					}
+					return;
+				}
+			}
+		}
+	}
+	
+	/**
+	 * Get a range at i if there is one
+	 * XXX - should we check for bogus bloom filters here?
+	 */
+	protected byte[][] getRange(int i) {
+		if ((_values.size() < i + 2))
+			return null;
+		ExcludeElement ee = _values.get(i + 1);
+		if (! (ee instanceof ExcludeAny))
+			return null;
+		byte[][] range = new byte[2][];
+		range[0] = ((ExcludeComponent)_values.get(i)).body;
+		range[1] = ((ExcludeComponent)_values.get(i + 2)).body;
+		return range;
+	}
 
 	public boolean empty() {
 		return ((null == _values) || (_values.isEmpty()));
@@ -191,8 +295,10 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 		_values = new ArrayList<ExcludeElement>();
 		
 		boolean component;
-		while ((component = decoder.peekStartElement(ExcludeComponent.COMPONENT)) || decoder.peekStartElement(BloomFilter.BLOOM)) {
-			ExcludeElement ee = component?new ExcludeComponent():new BloomFilter();
+		boolean any = false;
+		while ((component = decoder.peekStartElement(ExcludeComponent.COMPONENT)) || (any = decoder.peekStartElement(ExcludeAny.ANY)) ||
+					decoder.peekStartElement(BloomFilter.BLOOM)) {
+			ExcludeElement ee = component?new ExcludeComponent(): any ? new ExcludeAny() : new BloomFilter();
 			ee.decode(decoder);
 			_values.add(ee);
 		}

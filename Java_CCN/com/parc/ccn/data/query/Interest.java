@@ -285,9 +285,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			nextExclude[0] = zeroByte;
 			nextExclude[1] = name.component(prefixCount);
 			if (null != exclude) {
-				exclude.add(nextExclude);
+				exclude.addRange(nextExclude);
 			} else
-				exclude = ExcludeFilter.factory(nextExclude);
+				exclude = new ExcludeFilter(ExcludeFilter.rangeFactory(nextExclude));
 			name = newName;
 		}
 		return constructInterest(name, exclude, order);
