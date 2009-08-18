@@ -25,6 +25,7 @@ import org.bouncycastle.asn1.DEROutputStream;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import org.bouncycastle.asn1.x509.X509Extensions;
 
+import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 
 
@@ -160,8 +161,7 @@ public class CryptoUtil {
 
 	public static String getKeyIDString(String digestAlg, Key key)  {
 		byte[] keyID = generateKeyID(digestAlg, key);
-		BigInteger big = new BigInteger(1,keyID);
-		return big.toString(16);
+		return DataUtils.printHexBytes(keyID);
 	}
 
 	public static String getKeyIDString(Key key) {
