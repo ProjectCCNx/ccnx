@@ -72,8 +72,8 @@ public class CollectionObjectTestRepo {
 		readCollection.waitForData();
 		LinkedList<Link> checkReferences = collection.contents();
 		Assert.assertEquals(checkReferences.size(), 2);
-		Assert.assertEquals(references[0], checkReferences.get(0).targetName());
-		Assert.assertEquals(references[1], checkReferences.get(1).targetName());
+		Assert.assertEquals(references[0], checkReferences.get(0));
+		Assert.assertEquals(references[1], checkReferences.get(1));
 		
 		// test addToCollection
 		ArrayList<Link> newReferences = new ArrayList<Link>();
