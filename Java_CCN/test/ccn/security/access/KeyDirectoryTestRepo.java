@@ -95,7 +95,7 @@ public class KeyDirectoryTestRepo {
 		kd.getNewData();		
 
 		// we expect to get one wrapped key back
-		ArrayList<byte[]> wkid = kd.getWrappingKeyIDs();
+		ArrayList<byte[]> wkid = new ArrayList<byte[]>(kd.getWrappingKeyIDs());
 		Assert.assertEquals(1, wkid.size());
 
 		// unwrap the key and check that the unwrapped secret key is correct
