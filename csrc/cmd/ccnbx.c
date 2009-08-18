@@ -59,7 +59,7 @@ ccnbx(const char *path, const char *selector, int opt) {
     ssize_t s;
     size_t offset = 0;
     size_t start = 0;
-    size_t end = ~0;
+    size_t end = ~0U;
     int verbose = (opt & CCNBX_OPT_VERBOSE) != 0;
         
     if (0 != strcmp(path, "-")) {
