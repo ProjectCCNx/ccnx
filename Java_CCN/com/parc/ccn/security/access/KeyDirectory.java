@@ -1,4 +1,4 @@
-gpackage com.parc.ccn.security.access;
+package com.parc.ccn.security.access;
 
 import java.io.IOException;
 import java.security.InvalidKeyException;
