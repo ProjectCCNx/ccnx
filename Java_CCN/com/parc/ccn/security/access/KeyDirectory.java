@@ -6,7 +6,8 @@ import java.security.Key;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.sql.Timestamp;
-import java.util.ArrayList;
+import java.util.TreeSet;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.SortedSet;
 
@@ -20,6 +21,7 @@ import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.content.LinkReference.LinkObject;
+import com.parc.ccn.data.query.ByteArrayCompare;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.WrappedKey;
@@ -60,10 +62,12 @@ import com.parc.ccn.library.profiles.AccessControlProfile.PrincipalInfo;
  */
 public class KeyDirectory extends EnumeratedNameList {
 	
+	static Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
+	
 	AccessControlManager _manager; // to get at key cache
 	HashMap<String, PrincipalInfo> _principals = new HashMap<String, PrincipalInfo>();
-	ArrayList<byte []> _keyIDs = new ArrayList<byte []>();
-	ArrayList<byte []> _otherNames = new ArrayList<byte []>();
+	TreeSet<byte []> _keyIDs = new TreeSet<byte []>(byteArrayComparator);
+	TreeSet<byte []> _otherNames = new TreeSet<byte []>(byteArrayComparator);
 	
 	/**
 	 * Directory name should be versioned, else we pull the latest version
@@ -135,11 +139,11 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 	}
 	
-	public ArrayList<byte []> getWrappingKeyIDs() { return _keyIDs; }
+	public TreeSet<byte []> getWrappingKeyIDs() { return _keyIDs; }
 	
 	public HashMap<String, PrincipalInfo> getPrincipals() { return _principals; }
 	
-	public ArrayList<byte []> otherNames() { return _otherNames; }
+	public TreeSet<byte []> otherNames() { return _otherNames; }
 	
 	protected void addPrincipal(byte [] wkChildName) {
 		PrincipalInfo pi = AccessControlProfile.parsePrincipalInfoFromNameComponent(wkChildName);
@@ -193,7 +197,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	public boolean hasSupersededBlock() {
-		return _otherNames.contains(AccessControlProfile.SUPERSEDED_MARKER);
+		return _otherNames.contains(AccessControlProfile.SUPERSEDED_MARKER.getBytes());
 	}
 	
 	public ContentName getSupersededBlockName() {
@@ -233,7 +237,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	public boolean hasPreviousKeyBlock() {
-		return _otherNames.contains(AccessControlProfile.PREVIOUS_KEY_NAME);
+		return _otherNames.contains(AccessControlProfile.PREVIOUS_KEY_NAME.getBytes());
 	}
 
 	public ContentName getPreviousKeyBlockName() {
@@ -271,7 +275,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @return
 	 */
 	public boolean hasPrivateKeyBlock() {
-		return _otherNames.contains(AccessControlProfile.GROUP_PRIVATE_KEY_NAME);
+		return _otherNames.contains(AccessControlProfile.GROUP_PRIVATE_KEY_NAME.getBytes());
 	}
 
 	public ContentName getPrivateKeyBlockName() {
