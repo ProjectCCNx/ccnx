@@ -10,7 +10,6 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.content.LinkReference.LinkObject;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.util.CCNEncodableObject;
@@ -48,11 +47,11 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 			super(CollectionData.class, name, data, library);
 		}
 		
-		public CollectionObject(ContentName name, java.util.Collection<LinkReference> contents, CCNLibrary library) throws IOException {
+		public CollectionObject(ContentName name, java.util.Collection<Link> contents, CCNLibrary library) throws IOException {
 			this(name, new CollectionData(contents), library);
 		}
 		
-		public CollectionObject(ContentName name, LinkReference [] contents, CCNLibrary library) throws IOException {
+		public CollectionObject(ContentName name, Link [] contents, CCNLibrary library) throws IOException {
 			this(name, new CollectionData(contents), library);			
 		}
 
@@ -60,11 +59,11 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 			super(CollectionData.class, name, data, publisher, keyLocator, library);
 		}
 
-		public CollectionObject(ContentName name, java.util.Collection<LinkReference> contents, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNLibrary library) throws IOException {
+		public CollectionObject(ContentName name, java.util.Collection<Link> contents, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNLibrary library) throws IOException {
 			this(name, new CollectionData(contents), publisher, keyLocator, library);
 		}
 		
-		public CollectionObject(ContentName name, LinkReference [] contents, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNLibrary library) throws IOException {
+		public CollectionObject(ContentName name, Link [] contents, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNLibrary library) throws IOException {
 			this(name, new CollectionData(contents), publisher, keyLocator, library);			
 		}
 
@@ -88,7 +87,7 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 			super(CollectionData.class, firstBlock, library);
 		}
 		
-		public LinkedList<LinkReference> contents() { 
+		public LinkedList<Link> contents() { 
 			if (null == data())
 				return null;
 			return data().contents(); 
@@ -97,7 +96,7 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 	
 	protected static final String COLLECTION_ELEMENT = "Collection";
 
-	protected LinkedList<LinkReference> _contents = new LinkedList<LinkReference>();
+	protected LinkedList<Link> _contents = new LinkedList<Link>();
 	
 	public CollectionData() {
 	}
@@ -106,11 +105,11 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 		return new CollectionData(_contents);
 	}
 	
-	public CollectionData(java.util.Collection<LinkReference> contents) {
+	public CollectionData(java.util.Collection<Link> contents) {
 		_contents.addAll(contents); // should we clone each?
 	}
 	
-	public CollectionData(LinkReference [] contents) {
+	public CollectionData(Link [] contents) {
 		if (contents != null) {
 			for (int i=0; i < contents.length; ++i) {
 				_contents.add(contents[i]);
@@ -118,32 +117,28 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 		}
 	}
 	
-	public LinkedList<LinkReference> contents() { 
+	public LinkedList<Link> contents() { 
 		return _contents; 
 	}
 		
-	public LinkReference get(int i) {
+	public Link get(int i) {
 		return contents().get(i);
 	}
 	
-	public void add(LinkReference content) {
+	public void add(Link content) {
 		_contents.add(content);
 	}
 	
-	public void add(ArrayList<LinkReference> contents) {
+	public void add(ArrayList<Link> contents) {
 		_contents.addAll(contents);
 	}
 	
-	public LinkReference remove(int i) {
+	public Link remove(int i) {
 		return _contents.remove(i);
 	}
 	
-	public boolean remove(LinkReference content) {
+	public boolean remove(Link content) {
 		return _contents.remove(content);
-	}
-	
-	public boolean remove(LinkObject content) {
-		return _contents.remove(content.getReference());
 	}
 
 	public void removeAll() {
@@ -162,9 +157,9 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 		
 		decoder.readStartElement(COLLECTION_ELEMENT);
 
-		LinkReference link = null;
-		while (decoder.peekStartElement(LinkReference.LINK_ELEMENT)) {
-			link = new LinkReference();
+		Link link = null;
+		while (decoder.peekStartElement(Link.LINK_ELEMENT)) {
+			link = new Link();
 			link.decode(decoder);
 			add(link);
 		}
@@ -176,9 +171,9 @@ public class CollectionData extends GenericXMLEncodable implements XMLEncodable 
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		encoder.writeStartElement(COLLECTION_ELEMENT);
-		Iterator<LinkReference> linkIt = contents().iterator();
+		Iterator<Link> linkIt = contents().iterator();
 		while (linkIt.hasNext()) {
-			LinkReference link = linkIt.next();
+			Link link = linkIt.next();
 			link.encode(encoder);
 		}
 		encoder.writeEndElement();   		

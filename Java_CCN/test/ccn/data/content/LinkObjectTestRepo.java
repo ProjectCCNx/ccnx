@@ -17,8 +17,8 @@ import org.junit.Test;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.content.LinkReference;
-import com.parc.ccn.data.content.LinkReference.LinkObject;
+import com.parc.ccn.data.content.Link;
+import com.parc.ccn.data.content.Link.LinkObject;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.data.util.CCNStringObject;
 import com.parc.ccn.library.CCNLibrary;
@@ -62,7 +62,7 @@ public class LinkObjectTestRepo {
 			// this is what we actually expect
 		}
 
-		LinkReference lr = new LinkReference(so.getCurrentVersionName());
+		Link lr = new Link(so.getCurrentVersionName());
 		LinkObject aLink = new LinkObject(linkName, lr, putLibrary);
 		aLink.save();
 		
@@ -76,7 +76,7 @@ public class LinkObjectTestRepo {
 		LinkObject readLink = new LinkObject(linkData, getLibrary);
 		readLink.waitForData();
 		
-		Assert.assertEquals(readLink.getReference(), lr);
+		Assert.assertEquals(readLink.link(), lr);
 
 		ContentObject firstBlock = aLink.dereference(5000);
 		if (null == firstBlock) {

@@ -18,7 +18,7 @@ import org.junit.Test;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.CollectionData;
-import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.content.CollectionData.CollectionObject;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherID;
@@ -55,7 +55,7 @@ public class CCNNetworkObjectTest {
 	static PublisherID pubID2 = null;
 	static int NUM_LINKS = 15;
 	static LinkAuthenticator [] las = new LinkAuthenticator[NUM_LINKS];
-	static LinkReference [] lrs = null;
+	static Link [] lrs = null;
 	
 	static CollectionData small1;
 	static CollectionData small2;
@@ -117,9 +117,9 @@ public class CCNNetworkObjectTest {
 			las[j] = new LinkAuthenticator(pubID2, null, new Timestamp(System.currentTimeMillis()),null, null);
  		}
 
-		lrs = new LinkReference[NUM_LINKS];
+		lrs = new Link[NUM_LINKS];
 		for (int i=0; i < lrs.length; ++i) {
-			lrs[i] = new LinkReference(ns[i],las[i]);
+			lrs[i] = new Link(ns[i],las[i]);
 		}
 		
 		empty = new CollectionData();

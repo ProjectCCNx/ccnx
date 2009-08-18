@@ -26,12 +26,12 @@ import com.parc.ccn.library.CCNLibrary;
  * @author smetters
  *
  */
-public class LinkReference extends GenericXMLEncodable implements XMLEncodable, Cloneable {
+public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable {
 	
 	/**
 	 * This should eventually be called Link, and the Link class deleted.
 	 */
-	public static class LinkObject extends CCNEncodableObject<LinkReference> {
+	public static class LinkObject extends CCNEncodableObject<Link> {
 		
 		/**
 		 * Write constructor. Doesn't save until you call save, in case you want to tweak things first.
@@ -41,12 +41,12 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable, 
 		 * @throws ConfigurationException
 		 * @throws IOException
 		 */
-		public LinkObject(ContentName name, LinkReference data, CCNLibrary library) throws IOException {
-			super(LinkReference.class, name, data, library);
+		public LinkObject(ContentName name, Link data, CCNLibrary library) throws IOException {
+			super(Link.class, name, data, library);
 		}
 		
-		public LinkObject(ContentName name, LinkReference data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNLibrary library) throws IOException {
-			super(LinkReference.class, name, data, publisher, keyLocator, library);
+		public LinkObject(ContentName name, Link data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNLibrary library) throws IOException {
+			super(Link.class, name, data, publisher, keyLocator, library);
 		}
 
 		/**
@@ -58,15 +58,15 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable, 
 		 * @throws ClassNotFoundException 
 		 */
 		public LinkObject(ContentName name, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException, XMLStreamException {
-			super(LinkReference.class, name, publisher, library);
+			super(Link.class, name, publisher, library);
 		}
 		
 		public LinkObject(ContentName name, CCNLibrary library) throws IOException, XMLStreamException {
-			super(LinkReference.class, name, (PublisherPublicKeyDigest)null, library);
+			super(Link.class, name, (PublisherPublicKeyDigest)null, library);
 		}
 		
 		public LinkObject(ContentObject firstBlock, CCNLibrary library) throws IOException, XMLStreamException {
-			super(LinkReference.class, firstBlock, library);
+			super(Link.class, firstBlock, library);
 		}
 		
 		/**
@@ -77,20 +77,20 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable, 
 		public ContentType contentType() { return ContentType.LINK; }
 
 		public ContentName getTargetName() { 
-			LinkReference lr = getReference();
+			Link lr = link();
 			if (null == lr)
 				return null;
 			return lr.targetName(); 
 		}
 
 		public LinkAuthenticator getTargetAuthenticator() { 
-			LinkReference lr = getReference();
+			Link lr = link();
 			if (null == lr)
 				return null;
 			return lr.targetAuthenticator(); 
 		}
 
-		public LinkReference getReference() { 
+		public Link link() { 
 			if (null == data())
 				return null;
 			return data(); 
@@ -99,7 +99,7 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable, 
 		public ContentObject dereference(long timeout) throws IOException {
 			if (null == data())
 				return null;
-			return getReference().dereference(timeout, _library);
+			return link().dereference(timeout, _library);
 		}
 	}
 
@@ -110,7 +110,7 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable, 
 	protected String _targetLabel;
 	protected LinkAuthenticator _targetAuthenticator = null;
 	
-	public LinkReference(ContentName targetName, String targetLabel, LinkAuthenticator targetAuthenticator) {
+	public Link(ContentName targetName, String targetLabel, LinkAuthenticator targetAuthenticator) {
 		_targetName = targetName;
 		if ((null != targetLabel) && (targetLabel.length() == 0))
 			targetLabel = null;
@@ -118,25 +118,25 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable, 
 		_targetAuthenticator = targetAuthenticator;
 	}
 
-	public LinkReference(ContentName targetName, LinkAuthenticator targetAuthenticator) {
+	public Link(ContentName targetName, LinkAuthenticator targetAuthenticator) {
 		_targetName = targetName;
 		_targetAuthenticator = targetAuthenticator;
 	}
 	
-	public LinkReference(ContentName targetName) {
+	public Link(ContentName targetName) {
 		this(targetName, null);
 	}
 	
 	/**
 	 * Decoding constructor.
 	 */
-	public LinkReference() {}
+	public Link() {}
 	
 	/**
 	 * Copy constructor. If we want to change name or authenticator,
 	 * should clone those as well.
 	 */
-	public LinkReference(LinkReference other) {
+	public Link(Link other) {
 		_targetName = other.targetName();
 		_targetLabel = other.targetLabel();
 		_targetAuthenticator = other.targetAuthenticator();
@@ -227,7 +227,7 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable, 
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		LinkReference other = (LinkReference) obj;
+		Link other = (Link) obj;
 		if (_targetAuthenticator == null) {
 			if (other._targetAuthenticator != null)
 				return false;
@@ -248,7 +248,7 @@ public class LinkReference extends GenericXMLEncodable implements XMLEncodable, 
 
 	@Override
 	public Object clone() throws CloneNotSupportedException {
-		return new LinkReference(this);
+		return new Link(this);
 	}
 
 }

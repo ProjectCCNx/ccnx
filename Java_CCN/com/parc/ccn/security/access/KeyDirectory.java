@@ -1,4 +1,4 @@
-package com.parc.ccn.security.access;
+gpackage com.parc.ccn.security.access;
 
 import java.io.IOException;
 import java.security.InvalidKeyException;
@@ -19,8 +19,8 @@ import org.bouncycastle.util.Arrays;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.content.LinkReference;
-import com.parc.ccn.data.content.LinkReference.LinkObject;
+import com.parc.ccn.data.content.Link;
+import com.parc.ccn.data.content.Link.LinkObject;
 import com.parc.ccn.data.query.ByteArrayCompare;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherID;
@@ -256,7 +256,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws XMLStreamException
 	 * @throws IOException
 	 */
-	public LinkReference getPreviousKey() throws XMLStreamException, IOException {
+	public Link getPreviousKey() throws XMLStreamException, IOException {
 		if (!hasPreviousKeyBlock())
 			return null;
 		LinkObject previousKey = new LinkObject(getPreviousKeyBlockName(), _manager.library());
@@ -265,7 +265,7 @@ public class KeyDirectory extends EnumeratedNameList {
 			Library.logger().info("Unexpected: no previous key link at " + getPreviousKeyBlockName());
 			return null;
 		}
-		return previousKey.getReference();
+		return previousKey.link();
 	}
 
 	/**
@@ -500,7 +500,7 @@ public class KeyDirectory extends EnumeratedNameList {
 			new WrappedKeyObject(getWrappedKeyNameForKeyID(WrappedKey.wrappingKeyIdentifier(publicKey)),
 								 wrappedKey, _manager.library());
 		wko.saveToRepository();
-		LinkObject lo = new LinkObject(getWrappedKeyNameForPrincipal(publicKeyName), new LinkReference(wko.getCurrentVersionName()), _manager.library());
+		LinkObject lo = new LinkObject(getWrappedKeyNameForPrincipal(publicKeyName), new Link(wko.getCurrentVersionName()), _manager.library());
 		lo.saveToRepository();
 	}
 	
@@ -559,7 +559,7 @@ public class KeyDirectory extends EnumeratedNameList {
 			Library.logger().warning("Unexpected, already have previous key block : " + getPreviousKeyBlockName());
 		}
 		LinkAuthenticator la = (null != previousKeyPublisher) ? new LinkAuthenticator(previousKeyPublisher) : null;
-		LinkObject pklo = new LinkObject(getPreviousKeyBlockName(), new LinkReference(previousKey,la), _manager.library());
+		LinkObject pklo = new LinkObject(getPreviousKeyBlockName(), new Link(previousKey,la), _manager.library());
 		pklo.saveToRepository();
 	}
 	

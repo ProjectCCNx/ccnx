@@ -18,7 +18,7 @@ import org.junit.Test;
 
 
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.content.CollectionData.CollectionObject;
 import com.parc.ccn.data.util.CCNStringObject;
 import com.parc.ccn.library.CCNLibrary;
@@ -52,9 +52,9 @@ public class CollectionObjectTestRepo {
 		CCNStringObject so = new CCNStringObject(nonCollectionName, "This is not a collection.", putLibrary);
 		so.saveToRepository();
 		
-		LinkReference[] references = new LinkReference[2];
-		references[0] = new LinkReference(ContentName.fromNative(collectionName, "r1"));
-		references[1] = new LinkReference(ContentName.fromNative(collectionName, "r2"));
+		Link[] references = new Link[2];
+		references[0] = new Link(ContentName.fromNative(collectionName, "r1"));
+		references[1] = new Link(ContentName.fromNative(collectionName, "r2"));
 		CollectionObject collection = new CollectionObject(collectionName, references, putLibrary);
 		collection.saveToRepository();
 		
@@ -70,15 +70,15 @@ public class CollectionObjectTestRepo {
 		// test reading latest version
 		CollectionObject readCollection = new CollectionObject(collectionName, getLibrary);
 		readCollection.waitForData();
-		LinkedList<LinkReference> checkReferences = collection.contents();
+		LinkedList<Link> checkReferences = collection.contents();
 		Assert.assertEquals(checkReferences.size(), 2);
 		Assert.assertEquals(references[0], checkReferences.get(0).targetName());
 		Assert.assertEquals(references[1], checkReferences.get(1).targetName());
 		
 		// test addToCollection
-		ArrayList<LinkReference> newReferences = new ArrayList<LinkReference>();
-		newReferences.add(new LinkReference(ContentName.fromNative("/libraryTest/r3")));
-		newReferences.add(new LinkReference(ContentName.fromNative("/libraryTest/r4")));
+		ArrayList<Link> newReferences = new ArrayList<Link>();
+		newReferences.add(new Link(ContentName.fromNative("/libraryTest/r3")));
+		newReferences.add(new Link(ContentName.fromNative("/libraryTest/r4")));
 		collection.contents().addAll(newReferences);
 		collection.save();
 		readCollection.update(5000);

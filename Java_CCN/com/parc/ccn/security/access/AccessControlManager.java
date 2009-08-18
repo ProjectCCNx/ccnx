@@ -20,7 +20,7 @@ import org.bouncycastle.crypto.InvalidCipherTextException;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.security.PublicKeyObject;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.WrappedKey;
@@ -276,7 +276,7 @@ public class AccessControlManager {
 	 * @throws IOException 
 	 * @throws ConfigurationException 
 	 */
-	public PublicKeyObject getLatestKeyForPrincipal(LinkReference principal) throws IOException, XMLStreamException, ConfigurationException {
+	public PublicKeyObject getLatestKeyForPrincipal(Link principal) throws IOException, XMLStreamException, ConfigurationException {
 		if (null == principal) {
 			Library.logger().info("Cannot retrieve key for empty principal.");
 			return null;
@@ -481,7 +481,7 @@ public class AccessControlManager {
 			newACL = new ACL();
 		}
 		
-		LinkedList<LinkReference> newReaders = newACL.update(ACLUpdates);
+		LinkedList<Link> newReaders = newACL.update(ACLUpdates);
 		
 		if ((null == newReaders) || (null == currentACL)) {
 			// null newReaders means we revoked someone.
@@ -506,7 +506,7 @@ public class AccessControlManager {
 			
 			keyDirectory = new KeyDirectory(this, latestNodeKey.storedNodeKeyName(), library());
 
-			for (LinkReference principal : newReaders) {
+			for (Link principal : newReaders) {
 				PublicKeyObject latestKey = getLatestKeyForPrincipal(principal);
 				try {
 					if (!latestKey.available()) {
@@ -540,25 +540,25 @@ public class AccessControlManager {
 	}
 	
 		
-	public ACL addReaders(ContentName nodeName, ArrayList<LinkReference> newReaders) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
+	public ACL addReaders(ContentName nodeName, ArrayList<Link> newReaders) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
 		ArrayList<ACLOperation> ops = new ArrayList<ACLOperation>();
-		for(LinkReference reader : newReaders){
+		for(Link reader : newReaders){
 			ops.add(ACLOperation.addReaderOperation(reader));
 		}
 		return updateACL(nodeName, ops);
 	}
 	
-	public ACL addWriters(ContentName nodeName, ArrayList<LinkReference> newWriters) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
+	public ACL addWriters(ContentName nodeName, ArrayList<Link> newWriters) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
 		ArrayList<ACLOperation> ops = new ArrayList<ACLOperation>();
-		for(LinkReference writer : newWriters){
+		for(Link writer : newWriters){
 			ops.add(ACLOperation.addWriterOperation(writer));
 		}
 		return updateACL(nodeName, ops);
 	}
 	
-	public ACL addManagers(ContentName nodeName, ArrayList<LinkReference> newManagers) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
+	public ACL addManagers(ContentName nodeName, ArrayList<Link> newManagers) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
 		ArrayList<ACLOperation> ops = new ArrayList<ACLOperation>();
-		for(LinkReference manager: newManagers){
+		for(Link manager: newManagers){
 			ops.add(ACLOperation.addManagerOperation(manager));
 		}
 		return updateACL(nodeName, ops);
@@ -898,7 +898,7 @@ public class AccessControlManager {
 			theNodeKey = new NodeKey(nodeKeyDirectoryName, nodeKey);
 			// Add a key block for every reader on the ACL. As managers and writers can read, they are all readers.
 			// DKS TODO -- pulling public keys here; could be slow; might want to manage concurrency over acl.
-			for (LinkReference aclEntry : effectiveACL.contents()) {
+			for (Link aclEntry : effectiveACL.contents()) {
 				PublicKeyObject entryPublicKey = null;
 				if (groupManager().isGroup(aclEntry)) {
 					entryPublicKey = groupManager().getLatestPublicKeyForGroup(aclEntry);

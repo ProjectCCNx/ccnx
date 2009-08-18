@@ -12,7 +12,7 @@ import test.ccn.data.util.XMLEncodableTester;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.CollectionData;
-import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.SignedInfo;
@@ -37,7 +37,7 @@ public class CollectionDataTest {
 	static PublisherID pubID1 = null;	
 	static PublisherID pubID2 = null;	
 	static LinkAuthenticator [] las = new LinkAuthenticator[4];
-	static LinkReference [] lrs = null;
+	static Link [] lrs = null;
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -62,9 +62,9 @@ public class CollectionDataTest {
 				null, contenthash1);
 
 
-		lrs = new LinkReference[4];
+		lrs = new Link[4];
 		for (int i=0; i < lrs.length; ++i) {
-			lrs[i] = new LinkReference(ns[i],las[i]);
+			lrs[i] = new Link(ns[i],las[i]);
 		}
 	}
 
@@ -92,7 +92,7 @@ public class CollectionDataTest {
 		for (int i=0; i < lrs.length; ++i) {
 			cd.add(lrs[i]);
 		}
-		LinkedList<LinkReference> c = cd.contents();
+		LinkedList<Link> c = cd.contents();
 		Assert.assertNotNull(c);
 		Assert.assertTrue(c.size() == lrs.length);
 		for (int i=0; i < lrs.length; ++i) {
@@ -132,7 +132,7 @@ public class CollectionDataTest {
 		LinkAuthenticator la2alt = new LinkAuthenticator(pubID2, null, null,
 				SignedInfo.ContentType.DATA, contenthash1);
 
-		LinkReference lr2alt = new LinkReference(name3.clone(), la2alt);
+		Link lr2alt = new Link(name3.clone(), la2alt);
 		cd.remove(lr2alt);
 		Assert.assertEquals(cd.get(1), lrs[3]);
 	}
@@ -167,8 +167,8 @@ public class CollectionDataTest {
 		Assert.assertEquals(cd, cd2);
 
 		cd2.remove(2); // remove last entry
-		cd2.add(new LinkReference(name3, las[2]));
-		cd2.add(new LinkReference(name4, las[3]));
+		cd2.add(new Link(name3, las[2]));
+		cd2.add(new Link(name4, las[3]));
 		Assert.assertEquals(cd2, cd4);
 	}
 
