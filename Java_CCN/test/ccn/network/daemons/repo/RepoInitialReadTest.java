@@ -12,8 +12,6 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.network.daemons.repo.RFSImpl;
-import com.parc.ccn.network.daemons.repo.Repository;
 import com.parc.ccn.network.daemons.repo.RepositoryException;
 public class RepoInitialReadTest extends RepoTestBase {
 	
