@@ -604,49 +604,6 @@ public class InterestTableTest {
 		match(names, "/c/c", 3);
 	}
 	
-	/*
-	 * Note by paul r. We can't easily test "additionalNameComponents = 1" because
-	 * "getContent" appends an arbitrary component to the names it creates and we won't have an
-	 * Interest that matches that.
-	 */
-	@Test
-	public void testAdditionalNameComponents() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
-		additionalComponents = 2;
-		InterestTable<Integer> names = initInterest(InterestType.MaxSuffixComponents);
-		
-		setID(1);
-		match(names, abc, 7);
-		match(names, ab, 2);
-		match(names, a, 1);
-		noMatch(names, "/a/b/c/d");
-		
-		additionalComponents = 3;
-		names = initInterest(InterestType.MaxSuffixComponents);
-		match(names, abc, 2);
-		match(names, ab, 1);
-		noMatch(names, a);
-	}
-	
-	@Test
-	public void testRemoveAdditionalNameComponents() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
-		additionalComponents = 2;
-		InterestTable<Integer> names = initInterest(InterestType.MaxSuffixComponents);
-		
-		setID(1);
-		noRemoveMatch(names, "/a/b/c/d");
-		removeMatch(names, abc, 7);
-		removeMatch(names, ab, 2);
-		removeMatch(names, a, 1);
-		sizes(names, 4, 4);
-		
-		additionalComponents = 3;
-		names = initInterest(InterestType.MaxSuffixComponents);
-		removeMatch(names, abc, 2);
-		removeMatch(names, ab, 1);
-		noRemoveMatch(names, a);
-		sizes(names, 5, 5);
-	}
-	
 	private void runRemovesNextOrLast(InterestType type) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
 		InterestTable<Integer> names = initInterest(type);
 		
