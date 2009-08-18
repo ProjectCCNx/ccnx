@@ -1,3 +1,5 @@
+# Hakefile for csrc directory
+
 SUBDIRS = lib ccnd libexec cmd tests
 OBJTREE = build
 MAKEF =  -f ../conf.mk -f dir.mk -f ../subr.mk
