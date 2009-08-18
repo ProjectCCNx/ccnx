@@ -15,6 +15,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.Link;
@@ -40,6 +41,8 @@ public class LinkObjectTestRepo {
 	public static void setUpBeforeClass() throws Exception {
 		random = new Random();
 		baseName = ContentName.fromNative("/libraryTest/LinkObjectTestRepo-" + random.nextInt(10000));
+		putLibrary = CCNLibrary.open();
+		getLibrary = CCNLibrary.open();
 	}
 	
 	@Test
@@ -60,11 +63,12 @@ public class LinkObjectTestRepo {
 		} catch (IOException ioe) {
 		} catch (XMLStreamException ex) {
 			// this is what we actually expect
+			System.out.println("Got expected exception reading link from non-link.");
 		}
 
 		Link lr = new Link(so.getCurrentVersionName());
 		LinkObject aLink = new LinkObject(linkName, lr, putLibrary);
-		aLink.save();
+		aLink.saveToRepository();
 		
 		ContentObject linkData = getLibrary.get(aLink.getCurrentVersionName(), 5000);
 		if (null == linkData) {
@@ -82,6 +86,8 @@ public class LinkObjectTestRepo {
 		if (null == firstBlock) {
 			Assert.fail("Cannot read first block of link target: " + readLink.getTargetName());
 		}
+		Library.logger().info("Got block of target: " + firstBlock.name());
+		
 		// TODO -- not a good test; does dereference get us back the first block? What about the
 		// first block of the latest version? What if thing isn't versioned? (e.g. intermediate node)
 		CCNStringObject readString = new CCNStringObject(firstBlock, getLibrary);
