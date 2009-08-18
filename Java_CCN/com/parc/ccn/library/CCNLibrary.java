@@ -203,6 +203,19 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 	}
 	
 	/**
+	 * TODO -- ignores publisher.
+	 * @param name
+	 * @param publisher
+	 * @param timeout
+	 * @return
+	 * @throws IOException
+	 */
+	public ContentObject get(ContentName name, PublisherPublicKeyDigest publisher, long timeout) throws IOException {
+		Interest interest = new Interest(name);
+		return get(interest, timeout);
+	}
+
+	/**
 	 * Return data the specified number of levels below us in the
 	 * hierarchy
 	 * 
