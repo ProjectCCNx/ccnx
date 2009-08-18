@@ -1,7 +1,7 @@
 # Top level Makefile for ccn
 
-SUBDIRS = csrc schema Java_CCN apps/containerApp Documentation/technical
-PACKLIST = Makefile build.xml README configure Documentation/index.txt $(SUBDIRS)
+SUBDIRS = csrc schema Java_CCN apps/containerApp doc/technical
+PACKLIST = Makefile build.xml README configure doc/index.txt $(SUBDIRS)
 
 default all: _always
 	for i in $(SUBDIRS); do         \
@@ -17,9 +17,9 @@ clean depend test check shared documentation testinstall install uninstall: chec
 	@rm -f _always
 
 clean-documentation: _always
-	$(RM) -rf Documentation/ccode
-	$(RM) -rf Documentation/javacode
-	(cd Documentation/technical && pwd && $(MAKE) clean-documentation)
+	$(RM) -rf doc/ccode
+	$(RM) -rf doc/javacode
+	(cd doc/technical && pwd && $(MAKE) clean-documentation)
 
 # Note: This should remove lib after java dir reorg is done.
 clean: clean-testinstall
