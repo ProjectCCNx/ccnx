@@ -148,8 +148,18 @@ public class CCNVersionedInputStream extends CCNInputStream {
 		return result;
 	}
 	
+	/**
+	 * This is a temporary function to allow use of this functionality, which will
+	 * get refactored and moved elsewhere in a cleaner form.
+	 * @param startingVersion
+	 * @param publisher
+	 * @param timeout
+	 * @param library
+	 * @return
+	 * @throws IOException
+	 */
 	public static ContentObject getFirstBlockOfLatestVersion(ContentName startingVersion, PublisherPublicKeyDigest publisher, long timeout, CCNLibrary library) throws IOException {
-		return getFirstBlockOfLatestVersion(startingVersion, null, timeout, new ContentObject.SimpleVerifier(publisher)), library);
+		return getFirstBlockOfLatestVersion(startingVersion, null, timeout, new ContentObject.SimpleVerifier(publisher), library);
 	}
 	
 	/**
