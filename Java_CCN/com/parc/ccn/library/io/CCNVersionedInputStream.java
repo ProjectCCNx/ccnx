@@ -147,7 +147,11 @@ public class CCNVersionedInputStream extends CCNInputStream {
 		}
 		return result;
 	}
-
+	
+	public static ContentObject getFirstBlockOfLatestVersion(ContentName startingVersion, PublisherPublicKeyDigest publisher, long timeout, CCNLibrary library) throws IOException {
+		return getFirstBlockOfLatestVersion(startingVersion, null, timeout, new ContentObject.SimpleVerifier(publisher)), library);
+	}
+	
 	/**
 	 * Version of isFirstBlock that expects names to be versioned, and allows that desiredName
 	 * won't know what version it wants but will want some version.
