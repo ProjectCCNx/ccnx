@@ -9,12 +9,12 @@ import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.Header;
+import com.parc.ccn.data.content.HeaderData.HeaderObject;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo;
-import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
@@ -30,28 +30,18 @@ import com.parc.ccn.security.crypto.ContentKeys;
  */
 public class CCNFileInputStream extends CCNVersionedInputStream implements CCNInterestListener {
 
-	protected ContentName _headerName = null;
-	/**
-	 * The content signedInfo associated with the 
-	 * corresponding header information. We only need
-	 * the publisher ID and the root object content digest,
-	 * but might want to have access to the other
-	 * authentication information.
-	 */
-	protected SignedInfo _headerSignedInfo = null;
-	
 	/**
 	 * The header information for that object, once
 	 * we've read it. 
 	 */
-	protected Header _header = null;
+	protected HeaderObject _header = null;
 	
 	public CCNFileInputStream(ContentName name, Long startingBlockIndex,
 			PublisherPublicKeyDigest publisher, CCNLibrary library)
 			throws XMLStreamException, IOException {
 		super(name, startingBlockIndex, publisher, library);
 		// Asynchronously attempt to retrieve a header block, if one exists.
-		retrieveHeader(_baseName, (null != publisher) ? new PublisherID(publisher) : null);
+		requestHeader(_baseName, publisher);
 	}
 
 	public CCNFileInputStream(ContentName name, Long startingBlockIndex,
@@ -59,7 +49,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 			throws XMLStreamException, IOException {
 		super(name, startingBlockIndex, publisher, keys, library);
 		// Asynchronously attempt to retrieve a header block, if one exists.
-		retrieveHeader(_baseName, (null != publisher) ? new PublisherID(publisher) : null);
+		requestHeader(_baseName, publisher);
 	}
 
 	public CCNFileInputStream(ContentName name, PublisherPublicKeyDigest publisher,
@@ -71,14 +61,14 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 			IOException {
 		super(name);
 		// Asynchronously attempt to retrieve a header block, if one exists.
-		retrieveHeader(_baseName, null);
+		requestHeader(_baseName, null);
 	}
 
 	public CCNFileInputStream(ContentName name, CCNLibrary library)
 			throws XMLStreamException, IOException {
 		super(name, library);
 		// Asynchronously attempt to retrieve a header block, if one exists.
-		retrieveHeader(_baseName, null);
+		requestHeader(_baseName, null);
 	}
 
 	public CCNFileInputStream(ContentName name, long startingBlockIndex)
@@ -90,26 +80,37 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 			throws XMLStreamException, IOException {
 		super(starterBlock, library);
 		// Asynchronously attempt to retrieve a header block, if one exists.
-		retrieveHeader(_baseName, null);
+		requestHeader(_baseName, null);
 	}
 
-	protected boolean hasHeader() {
+	protected boolean headerRequested() {
 		return (null != _header);
 	}
 	
-	protected void retrieveHeader(ContentName baseName, PublisherID publisher) throws IOException {
-		if (hasHeader())
+	public boolean headerAvailable() {
+		return (headerRequested() && _header.available());
+	}
+	
+	protected void requestHeader(ContentName baseName, PublisherPublicKeyDigest publisher) throws IOException, XMLStreamException {
+		if (headerRequested())
 			return; // done already
 		// DKS TODO match header interest to new header name
+		/*
 		Interest headerInterest = new Interest(SegmentationProfile.headerName(baseName), publisher);
 		headerInterest.maxSuffixComponents(1);
 		Library.logger().info("retrieveHeader: base name " + baseName);
 		Library.logger().info("retrieveHeader: header name " + SegmentationProfile.headerName(baseName));
 		_library.expressInterest(headerInterest, this);
+		*/
+		// Ask for the header, but update it in the background, as it may not be there yet.
+		_header = new HeaderObject(SegmentationProfile.headerName(baseName), null, publisher, null, _library);
+		Library.logger().info("Retrieving header : " + _header.getBaseName() + " in background.");
+		_header.updateInBackground();
 	}
 
 	public Interest handleContent(ArrayList<ContentObject> results,
 								  Interest interest) {
+		Library.logger().warning("Unexpected: shouldn't be in handleContent, object should handle this.");
 		if (null != _header) {
 			// Already have header so should not have reached here
 			// and do not need to renew interest
@@ -153,9 +154,8 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 				return false;
 			} else {
 				// DKS TODO -- use HeaderObject to read
-				_headerName = headerObject.name();
-				_headerSignedInfo = headerObject.signedInfo();
-				_header = Header.contentToHeader(headerObject);
+				Library.logger().info("Got header object in handleContent, loading into _header. Name: " + headerObject.name());
+				_header.update(headerObject);
 				Library.logger().fine("Found header specifies " + _header.blockCount() + " blocks");
 				return true; // done
 			}
@@ -187,8 +187,8 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 			if (!verifyBlock(result)) {
 				return null;
 			}
-			if (!hasHeader())
-				retrieveHeader(_baseName, new PublisherID(result.signedInfo().getPublisherKeyID()));
+			if (!headerRequested())
+				requestHeader(_baseName, new PublisherID(result.signedInfo().getPublisherKeyID()));
 			return getBlock(_startingBlockIndex);
 		}
 		return result;
@@ -203,7 +203,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 			return 0;
 		}
 		
-		if (null == _header){
+		if (!headerAvailable()){
 			super.skip(n);
 		}
 		
@@ -274,7 +274,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	
 	@Override
 	protected int blockCount() {
-		if (null == _header) {
+		if (!headerAvailable()) {
 			return super.blockCount();
 		}
 		return _header.blockCount();
@@ -283,7 +283,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	@Override
 	public long seek(long position) throws IOException {
 		Library.logger().info("Seeking stream to " + position + ": have header? " + ((_header == null) ? "no." : "yes."));
-		if (null != _header) {
+		if (!headerAvailable()) {
 			int [] blockAndOffset = _header.positionToBlockLocation(position);
 			Library.logger().info("seek:  position: " + position + " block: " + blockAndOffset[0] + " offset: " + blockAndOffset[1]);
 			Library.logger().info("currently have block "+ currentBlockNumber());
@@ -331,7 +331,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 
 	@Override
 	public long tell() {
-		if (null != _header) {
+		if (!headerAvailable()) {
 			return _header.blockLocationToPosition(blockIndex(), (int)super.tell());
 		} else {
 			return super.tell();
@@ -340,7 +340,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	
 	@Override
 	public long length() {
-		if (null != _header) {
+		if (!headerAvailable()) {
 			return _header.length();
 		}
 		return super.length();
