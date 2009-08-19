@@ -851,7 +851,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			return true;
 		if (obj == null)
 			return false;
-		if (getClass() != obj.getClass())
+		if (! (obj instanceof ContentName)) 
 			return false;
 		final ContentName other = (ContentName)obj;
 		if (other.count() != this.count())
