@@ -376,7 +376,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		// express this
 		// DKS TODO better versioned interests, a la library.getlatestVersion
 		_continuousUpdates = continuousUpdates;
-		_currentInterest = Interest.last(latestVersionKnown, (byte[][])null, null);
+		_currentInterest = 
+            Interest.last(latestVersionKnown, 
+                          VersioningProfile.acceptVersions(latestVersionKnown.lastComponent()),
+                          latestVersionKnow.count());
 		_library.expressInterest(_currentInterest, this);
 	}
 	
