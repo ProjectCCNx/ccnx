@@ -1,16 +1,9 @@
 package com.parc.ccn.library;
 
 import java.io.IOException;
-import java.security.InvalidKeyException;
 import java.security.InvalidParameterException;
-import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
 import java.security.Security;
-import java.security.SignatureException;
 import java.util.ArrayList;
-import java.util.LinkedList;
-
-import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
@@ -20,16 +13,10 @@ import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.data.content.Collection;
-import com.parc.ccn.data.content.Link;
-import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentVerifier;
-import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.data.security.SignedInfo.ContentType;
-import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.network.CCNNetworkManager;
@@ -151,392 +138,7 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 
 	public PublisherPublicKeyDigest getDefaultPublisher() {
 		return keyManager().getDefaultKeyID();
-	}
-	
-	
-	/**
-	 * DKS -- TODO -- collection and link functions move to collection and link, respectively
-	 * @throws IOException 
-	 * @throws NoSuchAlgorithmException 
-	 * @throws SignatureException 
-	 * @throws InvalidKeyException 
-	 */
-	@Deprecated
-	public Link put(ContentName name, LinkReference target) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
-		return put(name, target, null, null, null);
-	}
-	
-	@Deprecated
-	public Link put(
-			ContentName name, 
-			LinkReference target,
-			PublisherPublicKeyDigest publisher, KeyLocator locator,
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
-
-		if (null == signingKey)
-			signingKey = keyManager().getDefaultSigningKey();
-
-		if (null == locator)
-			locator = keyManager().getKeyLocator(signingKey);
-		
-		if (null == publisher) {
-			publisher = keyManager().getPublisherKeyID(signingKey);
-		}
-		
-		try {
-			Link link = new Link(VersioningProfile.addVersion(name), target, 
-					publisher, locator, signingKey);
-			put(link);
-			return link;
-		} catch (XMLStreamException e) {
-			Library.logger().warning("Cannot canonicalize a standard container!");
-			Library.warningStackTrace(e);
-			throw new IOException("Cannot canonicalize a standard container!");
-		}
-	}
-
-	/**
-	 * The following 3 methods create a Collection with the argument references,
-	 * put it, and return it. Note that fragmentation is not handled.
-	 * 
-	 * @param name
-	 * @param references
-	 * @return
-	 * @throws SignatureException
-	 * @throws IOException
-	 */
-	@Deprecated
-	public Collection put(ContentName name, LinkReference [] references) throws SignatureException, IOException {
-		return put(name, references, getDefaultPublisher());
-	}
-
-	@Deprecated
-	public Collection put(ContentName name, LinkReference [] references, PublisherPublicKeyDigest publisher) 
-				throws SignatureException, IOException {
-		try {
-			return put(name, references, publisher, null, null);
-		} catch (InvalidKeyException e) {
-			Library.logger().warning("Default key invalid.");
-			Library.warningStackTrace(e);
-			throw new SignatureException(e);
-		} catch (NoSuchAlgorithmException e) {
-			Library.logger().warning("Default key has invalid algorithm.");
-			Library.warningStackTrace(e);
-			throw new SignatureException(e);
-		}
-	}
-
-	@Deprecated
-	public Collection put(
-			ContentName name, 
-			LinkReference[] references,
-			PublisherPublicKeyDigest publisher, KeyLocator locator,
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
-
-		if (null == signingKey)
-			signingKey = keyManager().getDefaultSigningKey();
-
-		if (null == locator)
-			locator = keyManager().getKeyLocator(signingKey);
-		
-		if (null == publisher) {
-			publisher = keyManager().getPublisherKeyID(signingKey);
-		}
-		
-		try {
-			Collection collection = new Collection(VersioningProfile.addVersion(name), references, 
-					publisher, locator, signingKey);
-			put(collection);
-			return collection;
-		} catch (XMLStreamException e) {
-			Library.logger().warning("Cannot canonicalize a standard container!");
-			Library.warningStackTrace(e);
-			throw new IOException("Cannot canonicalize a standard container!");
-		}
-	}
-	
-	@Deprecated
-	public Collection put(
-			ContentName name, 
-			ContentName[] references) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
-		return put(name, references, null, null, null);
-	}
-	
-	@Deprecated
-	public Collection put(
-			ContentName name, 
-			ContentName[] references,
-			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
-		return put(name, references, publisher, null, null);
-	}
-	
-	@Deprecated
-	public Collection put(
-			ContentName name, 
-			ContentName[] references,
-			PublisherPublicKeyDigest publisher, KeyLocator locator,
-			PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
-		LinkReference[] lrs = new LinkReference[references.length];
-		for (int i = 0; i < lrs.length; i++)
-			lrs[i] = new LinkReference(references[i]);
-		return put(name, lrs, publisher, locator, signingKey);
-	}
-	
-
-	/**
-	 * 
-	 * @param name - ContentName
-	 * @param timeout - milliseconds
-	 * @return
-	 * @throws IOException
-	 * @throws XMLStreamException 
-	 */
-	@Deprecated
-	public Collection getCollection(ContentName name, long timeout) throws IOException, XMLStreamException {
-		ContentObject co = getLatestVersion(name, null, timeout);
-		if (null == co)
-			return null;
-		if (co.signedInfo().getType() != ContentType.DATA)
-			throw new IOException("Content is not data, so can't be a collection.");
-		Collection collection = Collection.contentToCollection(co);
-		return collection;
-	}
-
-	/**
-	 * Use the same publisherID that we used originally.
-	 * @throws IOException 
-	 * @throws SignatureException 
-	 * @throws XMLStreamException 
-	 * @throws InvalidKeyException 
-	 */
-	@Deprecated
-	public Collection createCollection(
-			ContentName name,
-			ContentName [] references, PublisherPublicKeyDigest publisher, KeyLocator locator,
-			PrivateKey signingKey) throws IOException, SignatureException, 
-			XMLStreamException, InvalidKeyException {
-		LinkReference[] lrs = new LinkReference[references.length];
-		for (int i = 0; i < references.length; i++) {
-			lrs[i] = new LinkReference(references[i]);
-		}
-		return createCollection(name, lrs, publisher, locator, signingKey);
-	}
-	
-	@Deprecated
-	public Collection createCollection(
-			ContentName name,
-			LinkReference [] references, PublisherPublicKeyDigest publisher, KeyLocator locator,
-			PrivateKey signingKey) throws IOException, SignatureException, 
-			XMLStreamException, InvalidKeyException {
-		if (null == signingKey)
-			signingKey = keyManager().getDefaultSigningKey();
-
-		if (null == locator)
-			locator = keyManager().getKeyLocator(signingKey);
-		
-		if (null == publisher) {
-			publisher = keyManager().getPublisherKeyID(signingKey);
-		}
-		return new Collection(name, references, publisher, locator, signingKey);
-	}
-	
-	@Deprecated
-	public Collection addToCollection(
-			Collection collection,
-			ContentName [] references) throws IOException, SignatureException, 
-			XMLStreamException, InvalidKeyException {
-		LinkedList<LinkReference> contents = collection.contents();
-		for (ContentName reference : references)
-			contents.add(new LinkReference(reference));
-		return updateCollection(collection, contents, null, null, null);
-	}
-
-	@Deprecated
-	public ContentObject removeFromCollection(
-			Collection collection,
-			ContentName [] references) throws IOException, SignatureException, 
-			XMLStreamException, InvalidKeyException {
-		LinkedList<LinkReference> contents = collection.contents();
-		for (ContentName reference : references)
-			contents.remove(new LinkReference(reference));
-		return updateCollection(collection, contents, null, null, null);
-	}
-	
-	@Deprecated
-	public ContentObject updateCollection(
-			Collection collection,
-			ContentName [] referencesToAdd,
-			ContentName [] referencesToRemove) throws IOException, SignatureException, 
-			XMLStreamException, InvalidKeyException {
-		LinkedList<LinkReference> contents = collection.contents();
-		for (ContentName reference : referencesToAdd)
-			contents.add(new LinkReference(reference));
-		for (ContentName reference : referencesToRemove)
-			contents.remove(new LinkReference(reference));
-		return updateCollection(collection, contents, null, null, null);
-	}
-	
-	/**
-	 * Create a Collection with the next version name and the input
-	 * references and put it.  Note that this can't handle fragmentation.
-	 * 
-	 * @param oldCollection
-	 * @param references
-	 * @return
-	 * @throws XMLStreamException
-	 * @throws IOException
-	 * @throws SignatureException 
-	 * @throws InvalidKeyException 
-	 */
-	@Deprecated
-	private Collection updateCollection(Collection oldCollection, LinkedList<LinkReference> references,
-			 PublisherPublicKeyDigest publisher, KeyLocator locator,
-			 PrivateKey signingKey) throws XMLStreamException, IOException,
-			 InvalidKeyException, SignatureException {
-		LinkReference[] newReferences = new LinkReference[references.size()];
-		references.toArray(newReferences);
-		Collection updatedCollection = createCollection(VersioningProfile.updateVersion(oldCollection.name()),
-				newReferences, publisher, locator, signingKey);
-		put(updatedCollection);
-		return updatedCollection;
-	}
-	
-	@Deprecated
-	public Link createLink(
-			ContentName name,
-			ContentName linkName, PublisherPublicKeyDigest publisher, KeyLocator locator,
-			PrivateKey signingKey) throws IOException, SignatureException, 
-			XMLStreamException, InvalidKeyException {
-		if (null == signingKey)
-			signingKey = keyManager().getDefaultSigningKey();
-
-		if (null == locator)
-			locator = keyManager().getKeyLocator(signingKey);
-		
-		if (null == publisher) {
-			publisher = keyManager().getPublisherKeyID(signingKey);
-		}
-		return new Link(name, linkName, publisher, locator, signingKey);
-	}
-
-	/**
-	 * Return the link itself, not the content
-	 * pointed to by a link. 
-	 * @param name the identifier for the link to work on
-	 * @return returns null if not a link, or name refers to more than one object
-
-	 * @throws IOException 
-	 * @throws SignatureException
-	 * @throws IOException
-	 */
-	@Deprecated
-	public Link getLink(ContentName name, long timeout) throws IOException {
-		ContentObject co = getLatestVersion(name, null, timeout);
-		if (co.signedInfo().getType() != ContentType.LINK)
-			throw new IOException("Content is not a link reference");
-		Link reference = new Link();
-		try {
-			reference.decode(co.content());
-		} catch (XMLStreamException e) {
-			// Shouldn't happen
-			e.printStackTrace();
-		}
-		return reference;
-	}
-	
-	/**
-	 * Turn ContentObject of type link into a LinkReference
-	 * @param co ContentObject
-	 * @return
-	 * @throws IOException
-	 */
-	@Deprecated
-	public Link decodeLinkReference(ContentObject co) throws IOException {
-		if (co.signedInfo().getType() != ContentType.LINK)
-			throw new IOException("Content is not a collection");
-		Link reference = new Link();
-		try {
-			reference.decode(co.content());
-		} catch (XMLStreamException e) {
-			// Shouldn't happen
-			e.printStackTrace();
-		}
-		return reference;
-	}
-	
-	/**
-	 * Deference links and collections
-	 * DKS TODO -- should it dereference collections?
-	 * @param content
-	 * @param timeout
-	 * @return
-	 * @throws IOException 
-	 * @throws XMLStreamException 
-	 */
-	@Deprecated
-	public ArrayList<ContentObject> dereference(ContentObject content, long timeout) throws IOException, XMLStreamException {
-		ArrayList<ContentObject> result = new ArrayList<ContentObject>();
-		if (null == content)
-			return null;
-		if (content.signedInfo().getType() == ContentType.LINK) {
-			Link link = Link.contentToLinkReference(content);
-			ContentObject linkCo = dereferenceLink(link, content.signedInfo().getPublisherKeyID(), timeout);
-			if (linkCo == null) {
-				return null;
-			}
-			result.add(linkCo);
-		} else if (content.signedInfo().getType() == ContentType.DATA) {
-			try {
-				Collection collection = Collection.contentToCollection(content);
-			
-				if (null != collection) {
-					LinkedList<LinkReference> al = collection.contents();
-					for (LinkReference lr : al) {
-						ContentObject linkCo = dereferenceLink(lr, content.signedInfo().getPublisherKeyID(), timeout);
-						if (linkCo != null)
-							result.add(linkCo);
-					}
-					if (result.size() == 0)
-						return null;
-				} else { // else, not a collection
-					result.add(content);
-				}
-			} catch (XMLStreamException xe) {
-				// not a collection
-				result.add(content);
-			}
-		} else {
-			result.add(content);
-		}
-		return result;
-	} 
-	
-	/**
-	 * Try to get the content referenced by the link. If it doesn't exist directly,
-	 * try to get the latest version below the name.
-	 * 
-	 * @param reference
-	 * @param publisher
-	 * @param timeout
-	 * @return
-	 * @throws IOException
-	 */
-	@Deprecated
-	private ContentObject dereferenceLink(LinkReference reference, PublisherPublicKeyDigest publisher, long timeout) throws IOException {
-		ContentObject linkCo = get(reference.targetName(), timeout);
-		if (linkCo == null)
-			linkCo = getLatestVersion(reference.targetName(), publisher, timeout);
-		return linkCo;
-	}
-	
-	@Deprecated
-	private ContentObject dereferenceLink(Link reference, PublisherPublicKeyDigest publisher, long timeout) throws IOException {
-		ContentObject linkCo = get(reference.getTargetName(), timeout);
-		if (linkCo == null)
-			linkCo = getLatestVersion(reference.getTargetName(), publisher, timeout);
-		return linkCo;
-	}
-
+	}	
 	
 	/**
 	 * Gets the latest version using a single interest/response. There may be newer versions available
@@ -601,6 +203,19 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 	}
 	
 	/**
+	 * TODO -- ignores publisher.
+	 * @param name
+	 * @param publisher
+	 * @param timeout
+	 * @return
+	 * @throws IOException
+	 */
+	public ContentObject get(ContentName name, PublisherPublicKeyDigest publisher, long timeout) throws IOException {
+		Interest interest = new Interest(name);
+		return get(interest, timeout);
+	}
+
+	/**
 	 * Return data the specified number of levels below us in the
 	 * hierarchy
 	 * 
@@ -663,34 +278,6 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 		return result;
 	}
 	
-	
-	/**
-	 * Approaches to read and write content. Low-level CCNBase returns
-	 * a specific piece of content from the repository (e.g.
-	 * if you ask for a fragment, you get a fragment). Library
-	 * customers want the actual content, independent of
-	 * fragmentation. Can implement this in a variety of ways;
-	 * could verify fragments and reconstruct whole content
-	 * and return it all at once. Could (better) implement
-	 * file-like API -- open opens the header for a piece of
-	 * content, read verifies the necessary fragments to return
-	 * that much data and reads the corresponding content.
-	 * Open read/write or append does?
-	 * 
-	 * DKS: TODO -- state-based put() analogous to write()s in
-	 * blocks; also state-based read() that verifies. Start
-	 * with state-based read.
-	 * 
-	 * Nothing uses this method for anything that couldn't easily be replaced.
-	 */
-	@Deprecated
-	public RepositoryOutputStream repoOpen(ContentName name, 
-			KeyLocator locator, PublisherPublicKeyDigest publisher) 
-				throws IOException, XMLStreamException {
-		return new RepositoryOutputStream(name, locator, publisher, this); 
-	}
-	
-
 	/**
 	 * Medium level interface for retrieving pieces of a file
 	 *

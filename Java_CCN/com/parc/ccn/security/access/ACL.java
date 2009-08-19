@@ -5,8 +5,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.LinkedList;
-import java.util.TreeSet;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -14,9 +14,8 @@ import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.content.CollectionData;
-import com.parc.ccn.data.content.LinkReference;
-import com.parc.ccn.data.content.LinkReference.LinkObject;
+import com.parc.ccn.data.content.Collection;
+import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.util.CCNEncodableObject;
 import com.parc.ccn.library.CCNLibrary;
@@ -24,14 +23,14 @@ import com.parc.ccn.library.profiles.VersioningProfile;
 
 
 
-public class ACL extends CollectionData {
+public class ACL extends Collection {
 	
 	public static final String LABEL_READER = "r";
 	public static final String LABEL_WRITER = "rw";
 	public static final String LABEL_MANAGER = "rw+";
 	public static final String [] ROLE_LABELS = {LABEL_READER, LABEL_WRITER, LABEL_MANAGER};
 	
-	public static class ACLOperation extends LinkReference{
+	public static class ACLOperation extends Link{
 		public static final String LABEL_ADD_READER = "+r";
 		public static final String LABEL_ADD_WRITER = "+rw";
 		public static final String LABEL_ADD_MANAGER = "+rw+";
@@ -39,26 +38,26 @@ public class ACL extends CollectionData {
 		public static final String LABEL_DEL_WRITER = "-rw";
 		public static final String LABEL_DEL_MANAGER = "-rw+";
 		
-		public ACLOperation(String label, LinkReference linkRef){
+		public ACLOperation(String label, Link linkRef){
 			super(linkRef.targetName(), label, linkRef.targetAuthenticator());
 		}
 		
-		public static ACLOperation addReaderOperation(LinkReference linkRef){
+		public static ACLOperation addReaderOperation(Link linkRef){
 			return new ACLOperation(LABEL_ADD_READER, linkRef);
 		}
-		public static ACLOperation removeReaderOperation(LinkReference linkRef){
+		public static ACLOperation removeReaderOperation(Link linkRef){
 			return new ACLOperation(LABEL_DEL_READER, linkRef);
 		}
-		public static ACLOperation addWriterOperation(LinkReference linkRef){
+		public static ACLOperation addWriterOperation(Link linkRef){
 			return new ACLOperation(LABEL_ADD_WRITER, linkRef);
 		}
-		public static ACLOperation removeWriterOperation(LinkReference linkRef){
+		public static ACLOperation removeWriterOperation(Link linkRef){
 			return new ACLOperation(LABEL_DEL_WRITER, linkRef);
 		}
-		public static ACLOperation addManagerOperation(LinkReference linkRef){
+		public static ACLOperation addManagerOperation(Link linkRef){
 			return new ACLOperation(LABEL_ADD_MANAGER, linkRef);
 		}
-		public static ACLOperation removeManagerOperation(LinkReference linkRef){
+		public static ACLOperation removeManagerOperation(Link linkRef){
 			return new ACLOperation(LABEL_DEL_MANAGER, linkRef);
 		}
 	}
@@ -67,9 +66,9 @@ public class ACL extends CollectionData {
 	// maintain a set of index structures. want to match on unversioned link target name only,
 	// not label and potentially not signer if specified. Use a set class that can
 	// allow us to specify a comparator; use one that ignores labels and versions on names.
-	public static class SuperficialLinkComparator implements Comparator<LinkReference> {
+	public static class SuperficialLinkComparator implements Comparator<Link> {
 
-		public int compare(LinkReference o1, LinkReference o2) {
+		public int compare(Link o1, Link o2) {
 			int result = 0;
 			if (null != o1) {
 				if (null == o2) {
@@ -100,9 +99,9 @@ public class ACL extends CollectionData {
 	
 	static SuperficialLinkComparator _comparator = new SuperficialLinkComparator();
 	
-	protected TreeSet<LinkReference> _readers = new TreeSet<LinkReference>(_comparator);
-	protected TreeSet<LinkReference> _writers = new TreeSet<LinkReference>(_comparator);
-	protected TreeSet<LinkReference> _managers = new TreeSet<LinkReference>(_comparator);
+	protected TreeSet<Link> _readers = new TreeSet<Link>(_comparator);
+	protected TreeSet<Link> _writers = new TreeSet<Link>(_comparator);
+	protected TreeSet<Link> _managers = new TreeSet<Link>(_comparator);
 
 	public static class ACLObject extends CCNEncodableObject<ACL> {
 
@@ -141,14 +140,14 @@ public class ACL extends CollectionData {
 		super();
 	}
 
-	public ACL(ArrayList<LinkReference> contents) {
+	public ACL(ArrayList<Link> contents) {
 		super(contents);
 		if (!validate()) {
 			throw new IllegalArgumentException("Invalid contents for ACL.");
 		}
 	}
 		
-	public boolean validLabel(LinkReference lr) {
+	public boolean validLabel(Link lr) {
 		return LABEL_MANAGER.contains(lr.targetLabel());
 	}
 	
@@ -163,7 +162,7 @@ public class ACL extends CollectionData {
 	public boolean validate() {
 		if (!super.validate())
 			return false;
-		for (LinkReference lr : contents()) {
+		for (Link lr : contents()) {
 			if ((null == lr.targetLabel()) || (!validLabel(lr))) {
 				return false;
 			}
@@ -171,15 +170,15 @@ public class ACL extends CollectionData {
 		return true;
 	}
 	
-	public void addReader(LinkReference reader) {
+	public void addReader(Link reader) {
 		addLabeledLink(reader, LABEL_READER);
 	}
 	
-	public void addWriter(LinkReference writer) {
+	public void addWriter(Link writer) {
 		addLabeledLink(writer, LABEL_WRITER);
 	}
 	
-	public void addManager(LinkReference manager) {
+	public void addManager(Link manager) {
 		addLabeledLink(manager, LABEL_MANAGER);
 	}
 	
@@ -187,7 +186,7 @@ public class ACL extends CollectionData {
 	 * Batch perform a set of ACL update Operations
 	 * @param ACLUpdates: ordered set of ACL update operations
 	 * 
-	 * @return We return a LinkedList<LinkReference> of the principals newly granted read
+	 * @return We return a LinkedList<Link> of the principals newly granted read
 	 *   access on this ACL. If no individuals are granted read access, we return a 0-length
 	 *   LinkedList. If any individuals are completely removed, requiring the caller to generate
 	 *   a new node key or otherwise update cryptographic data, we return null.
@@ -195,7 +194,7 @@ public class ACL extends CollectionData {
 	 *   removed from a role and added to others. For now, we just return the thing we need
 	 *   for our current implementation, which is whether anyone lost read access entirely.)
 	 */
-	public LinkedList<LinkReference> update(ArrayList<ACLOperation> ACLUpdates){
+	public LinkedList<Link> update(ArrayList<ACLOperation> ACLUpdates){
 		
 		final int LEVEL_NONE = 0;
 		final int LEVEL_READ = 1;
@@ -204,7 +203,7 @@ public class ACL extends CollectionData {
 		
 		//for principals that are affected, 
 		//tm records the previous privileges of those principals
-		TreeMap<LinkReference, Integer> tm = new TreeMap<LinkReference, Integer>(_comparator);
+		TreeMap<Link, Integer> tm = new TreeMap<Link, Integer>(_comparator);
 		
 		for (ACLOperation op: ACLUpdates){
 			int levelOld = LEVEL_NONE;
@@ -277,11 +276,11 @@ public class ACL extends CollectionData {
 		// a new node key is required if someone with LEVEL_READ or above
 		// is down-graded to LEVEL_NONE
 		boolean newKeyRequired = false;
-		LinkedList<LinkReference> newReaders = new LinkedList<LinkReference>();
+		LinkedList<Link> newReaders = new LinkedList<Link>();
 		
-		Iterator<LinkReference> it = tm.keySet().iterator();
+		Iterator<Link> it = tm.keySet().iterator();
 		while(it.hasNext()){
-			LinkReference p = it.next();
+			Link p = it.next();
 			int lvOld = tm.get(p);
 			
 			if (_readers.contains(p) || _writers.contains(p) || _managers.contains(p)){
@@ -300,30 +299,30 @@ public class ACL extends CollectionData {
 		
 	}
 		
-	protected void addLabeledLink(LinkReference link, String desiredLabel) {
+	protected void addLabeledLink(Link link, String desiredLabel) {
 		// assume that the reference has link's name and authentication information,
 		// but possibly not the right label. Also assume that the link object might
 		// be used in multiple places, and we can't modify it.
 		if (((null == desiredLabel) && (null != link.targetLabel()))
 			|| (!desiredLabel.equals(link.targetLabel()))) {
-			link = new LinkReference(link.targetName(), desiredLabel, link.targetAuthenticator());
+			link = new Link(link.targetName(), desiredLabel, link.targetAuthenticator());
 		}
 		add(link);
 	}
 
-	protected void removeLabeledLink(LinkReference link, String desiredLabel) {
+	protected void removeLabeledLink(Link link, String desiredLabel) {
 		// assume that the reference has link's name and authentication information,
 		// but possibly not the right label. Also assume that the link object might
 		// be used in multiple places, and we can't modify it.
 		if (((null == desiredLabel) && (null != link.targetLabel()))
 			|| (!desiredLabel.equals(link.targetLabel()))) {
-			link = new LinkReference(link.targetName(), desiredLabel, link.targetAuthenticator());
+			link = new Link(link.targetName(), desiredLabel, link.targetAuthenticator());
 		}
 		remove(link);
 	}
 
 	@Override
-	public void add(LinkReference link) {
+	public void add(Link link) {
 		if (validLabel(link)) {
 			super.add(link);
 			index(link);
@@ -332,31 +331,26 @@ public class ACL extends CollectionData {
 	}
 	
 	@Override
-	public void add(ArrayList<LinkReference> contents) {
-		for (LinkReference link : contents) {
+	public void add(ArrayList<Link> contents) {
+		for (Link link : contents) {
 			add(link); // break them out for validation and indexing
 		}
 	}
 	
 	@Override
-	public LinkReference remove(int i) {
-		LinkReference link = _contents.remove(i);
+	public Link remove(int i) {
+		Link link = _contents.remove(i);
 		deindex(link);
 		return link;
 	}
 	
 	@Override
-	public boolean remove(LinkReference content) {
+	public boolean remove(Link content) {
 		if  (_contents.remove(content)) {
 			deindex(content);
 			return true;
 		}
 		return false;
-	}
-	
-	@Override
-	public boolean remove(LinkObject content) {
-		return remove(content.getReference());
 	}
 	
 	@Override
@@ -371,7 +365,7 @@ public class ACL extends CollectionData {
 		_managers.clear();
 	}
 	
-	protected void index(LinkReference link) {
+	protected void index(Link link) {
 		if (LABEL_READER.equals(link.targetLabel())) {
 			_readers.add(link);
 		} else if (LABEL_WRITER.equals(link.targetLabel())) {
@@ -383,7 +377,7 @@ public class ACL extends CollectionData {
 		}
 	}
 	
-	protected void deindex(String label, LinkReference link) {
+	protected void deindex(String label, Link link) {
 		if (LABEL_READER.equals(label)) {
 			_readers.remove(link);
 		} else if (LABEL_WRITER.equals(label)) {
@@ -395,7 +389,7 @@ public class ACL extends CollectionData {
 		}				
 	}
 	
-	protected void deindex(LinkReference link) {
+	protected void deindex(Link link) {
 		deindex(link.targetLabel(), link);
 	}
 }

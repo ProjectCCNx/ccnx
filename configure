@@ -1,1 +1,1 @@
-cd src && ./configure "$@"
+cd csrc && ./configure "$@"

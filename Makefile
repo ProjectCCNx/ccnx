@@ -1,19 +1,37 @@
 # Top level Makefile for ccn
 
-SUBDIRS = src schema Java_CCN apps/containerApp Documentation/technical
-PACKLIST = Makefile build.xml README configure Documentation/index.txt $(SUBDIRS)
+SUBDIRS = csrc schema Java_CCN apps/containerApp doc/technical
+PACKLIST = Makefile build.xml README configure doc/index.txt $(SUBDIRS)
 
-default all clean depend test check shared documentation testinstall install uninstall: _always
+default all: _always
+	for i in $(SUBDIRS); do         \
+	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
+	done
+	mkdir -p ./lib ./bin ./include
+	$(MAKE) install INSTALL_BASE=`pwd`
+
+clean depend test check shared documentation testinstall install uninstall: checkdirs _always
 	for i in $(SUBDIRS); do         \
 	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
 	done
 	@rm -f _always
 
 clean-documentation: _always
-	rm -rf Documentation/ccode
-	rm -rf Documentation/javacode
-	(cd Documentation/technical && pwd && $(MAKE) clean-documentation)
+	rm -rf doc/ccode
+	rm -rf doc/javacode
+	(cd doc/technical && pwd && $(MAKE) clean-documentation)
 
+# Note: This should remove lib after java dir reorg is done.
+clean: clean-testinstall
+clean-testinstall: _always
+	rm -rf bin include  # lib
+
+# Transitional (18-Aug-2009): make sure old src directory is gone, but move aside one if it exists.
+# This should go away in a little while!
+checkdirs: _always
+	test -d src && mv src src.`date +%Y%m%d%H%M` || :
+	rm -rf src
+	
 # The rest of this is for packaging purposes.
 _manifester:
 	rm -f _manifester
@@ -48,7 +66,7 @@ distfile: tar
 	ls -l ccn-$(VERSION).tar.gz
 	
 fixupversions: _always
-	Fix1 () { sed -e '/^PROJECT_NUMBER/s/=.*$$/= $(VERSION)/' $$1 > DTemp && mv DTemp $$1; } && Fix1 src/Doxyfile && Fix1 Java_CCN/Doxyfile
+	Fix1 () { sed -e '/^PROJECT_NUMBER/s/=.*$$/= $(VERSION)/' $$1 > DTemp && mv DTemp $$1; } && Fix1 csrc/Doxyfile && Fix1 Java_CCN/Doxyfile
 
 MD5: _always
 	openssl dgst `cat MANIFEST` > MD5

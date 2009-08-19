@@ -9,6 +9,7 @@ import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.PublicKeyObject;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.security.crypto.util.CryptoUtil;
 import com.parc.ccn.security.keys.KeyManager;
 
 public class TestUserDataTestRepo {
@@ -74,6 +75,12 @@ public class TestUserDataTestRepo {
 				Assert.assertEquals(pkr.contentPublisher(), userKeyManager.getDefaultKeyID());
 				Assert.assertEquals(pkr.publisherKeyLocator(), userKeyManager.getDefaultKeyLocator());
 			}
+			
+			for (String name : td.friendlyNames()) {
+				System.out.println("User: " + name + " key fingerprint: " + td.getUser(name).getDefaultKeyID() + 
+						" recalculated key fingerprint: " + CryptoUtil.getKeyIDString(td.getUser(name).getDefaultPublicKey()));
+			}
+			
 			System.out.println("Success.");
 		} catch (Exception e) {
 			e.printStackTrace();

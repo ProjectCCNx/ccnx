@@ -11,8 +11,8 @@ import org.junit.Test;
 import test.ccn.data.util.XMLEncodableTester;
 
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.content.CollectionData;
-import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.content.Collection;
+import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.SignedInfo;
@@ -37,7 +37,7 @@ public class CollectionDataTest {
 	static PublisherID pubID1 = null;	
 	static PublisherID pubID2 = null;	
 	static LinkAuthenticator [] las = new LinkAuthenticator[4];
-	static LinkReference [] lrs = null;
+	static Link [] lrs = null;
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -62,15 +62,15 @@ public class CollectionDataTest {
 				null, contenthash1);
 
 
-		lrs = new LinkReference[4];
+		lrs = new Link[4];
 		for (int i=0; i < lrs.length; ++i) {
-			lrs[i] = new LinkReference(ns[i],las[i]);
+			lrs[i] = new Link(ns[i],las[i]);
 		}
 	}
 
 	@Test
 	public void testValidate() {
-		CollectionData cd = new CollectionData();
+		Collection cd = new Collection();
 		Assert.assertTrue(cd.validate());
 		cd.add(lrs[0]);
 		Assert.assertTrue(cd.validate());
@@ -80,19 +80,19 @@ public class CollectionDataTest {
 
 	@Test
 	public void testCollectionData() {
-		CollectionData cd = new CollectionData();
+		Collection cd = new Collection();
 		Assert.assertNotNull(cd);
 		Assert.assertTrue(cd.validate());
 	}
 
 	@Test
 	public void testContents() {
-		CollectionData cd = new CollectionData();
+		Collection cd = new Collection();
 		Assert.assertTrue(cd.validate());
 		for (int i=0; i < lrs.length; ++i) {
 			cd.add(lrs[i]);
 		}
-		LinkedList<LinkReference> c = cd.contents();
+		LinkedList<Link> c = cd.contents();
 		Assert.assertNotNull(c);
 		Assert.assertTrue(c.size() == lrs.length);
 		for (int i=0; i < lrs.length; ++i) {
@@ -102,7 +102,7 @@ public class CollectionDataTest {
 
 	@Test
 	public void testAddGet() {
-		CollectionData cd = new CollectionData();
+		Collection cd = new Collection();
 		for (int i=0; i < lrs.length; ++i) {
 			cd.add(lrs[i]);
 		}
@@ -113,7 +113,7 @@ public class CollectionDataTest {
 
 	@Test
 	public void testRemoveInt() {
-		CollectionData cd = new CollectionData();
+		Collection cd = new Collection();
 		for (int i=0; i < lrs.length; ++i) {
 			cd.add(lrs[i]);
 		}
@@ -123,7 +123,7 @@ public class CollectionDataTest {
 
 	@Test
 	public void testRemoveLink() {
-		CollectionData cd = new CollectionData();
+		Collection cd = new Collection();
 		for (int i=0; i < lrs.length; ++i) {
 			cd.add(lrs[i]);
 		}
@@ -132,14 +132,14 @@ public class CollectionDataTest {
 		LinkAuthenticator la2alt = new LinkAuthenticator(pubID2, null, null,
 				SignedInfo.ContentType.DATA, contenthash1);
 
-		LinkReference lr2alt = new LinkReference(name3.clone(), la2alt);
+		Link lr2alt = new Link(name3.clone(), la2alt);
 		cd.remove(lr2alt);
 		Assert.assertEquals(cd.get(1), lrs[3]);
 	}
 
 	@Test
 	public void testSize() {
-		CollectionData cd = new CollectionData();
+		Collection cd = new Collection();
 		for (int i=0; i < lrs.length; ++i) {
 			cd.add(lrs[i]);
 		}
@@ -148,9 +148,9 @@ public class CollectionDataTest {
 
 	@Test
 	public void testEqualsObject() {
-		CollectionData cd = new CollectionData();
-		CollectionData cd2 = new CollectionData();
-		CollectionData cd3 = new CollectionData();
+		Collection cd = new Collection();
+		Collection cd2 = new Collection();
+		Collection cd3 = new Collection();
 
 		for (int i=0; i < lrs.length; ++i) {
 			cd.add(lrs[i]);
@@ -160,39 +160,39 @@ public class CollectionDataTest {
 		Assert.assertEquals(cd, cd2);
 		Assert.assertFalse(cd.equals(cd3));
 		cd.remove(2);
-		CollectionData cd4 = cd2.clone();
+		Collection cd4 = cd2.clone();
 		Assert.assertFalse(cd.equals(cd2));
 		Assert.assertEquals(cd4, cd2);
 		cd2.remove(2);
 		Assert.assertEquals(cd, cd2);
 
 		cd2.remove(2); // remove last entry
-		cd2.add(new LinkReference(name3, las[2]));
-		cd2.add(new LinkReference(name4, las[3]));
+		cd2.add(new Link(name3, las[2]));
+		cd2.add(new Link(name4, las[3]));
 		Assert.assertEquals(cd2, cd4);
 	}
 
 	@Test
 	public void testEncodeDecodeStream() {
-		CollectionData cd = new CollectionData();
-		CollectionData cdec = new CollectionData();
-		CollectionData bdec = new CollectionData();
+		Collection cd = new Collection();
+		Collection cdec = new Collection();
+		Collection bdec = new Collection();
 
 		for (int i=0; i < lrs.length; ++i) {
 			cd.add(lrs[i]);
 		}
-		XMLEncodableTester.encodeDecodeTest("CollectionData", cd, cdec, bdec);
+		XMLEncodableTester.encodeDecodeTest("Collection", cd, cdec, bdec);
 	}
 
 	@Test
 	public void testEncodeDecodeByteArray() {
-		CollectionData cd = new CollectionData();
-		CollectionData cdec = new CollectionData();
-		CollectionData bdec = new CollectionData();
+		Collection cd = new Collection();
+		Collection cdec = new Collection();
+		Collection bdec = new Collection();
 
 		for (int i=0; i < lrs.length; ++i) {
 			cd.add(lrs[i]);
 		}
-		XMLEncodableTester.encodeDecodeByteArrayTest("CollectionData", cd, cdec, bdec);
+		XMLEncodableTester.encodeDecodeByteArrayTest("Collection", cd, cdec, bdec);
 	}
 }

@@ -73,90 +73,90 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 		}
 		
 		public long start() { 
-			HeaderData h = getHeader();
+			HeaderData h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.start(); 
 		}
 
 		public long count() { 
-			HeaderData h = getHeader();
+			HeaderData h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.count(); 
 		}
 		
 		public int blockSize() { 
-			HeaderData h = getHeader();
+			HeaderData h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.blockSize(); 
 		}
 		
 		public long length() { 
-			HeaderData h = getHeader();
+			HeaderData h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.length(); 
 		}
 		
 		public byte [] rootDigest() { 
-			HeaderData h = getHeader();
+			HeaderData h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.rootDigest(); 
 		}
 		
 		public byte [] contentDigest() {
-			HeaderData h = getHeader();
+			HeaderData h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.contentDigest(); 
 		}
 		
 		public FragmentationType type() {
-			HeaderData h = getHeader();
+			HeaderData h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.type(); 
 		}
 
 		public String typeName() {
-			HeaderData h = getHeader();
+			HeaderData h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.typeName(); 
 		}
 		
 		public int[] positionToBlockLocation(long position) {
-			HeaderData h = getHeader();
+			HeaderData h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.positionToBlockLocation(position);
 		}
 
 		public long blockLocationToPosition(long block, int offset) {
-			HeaderData h = getHeader();
+			HeaderData h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.blockLocationToPosition(block, offset);
 		}
 
 		public int blockCount() {
-			HeaderData h = getHeader();
+			HeaderData h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.blockCount();
 		}
 		
 		public int blockRemainder() {
-			HeaderData h = getHeader();
+			HeaderData h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.blockRemainder();
 		}
 
-		public HeaderData getHeader() { 
+		public HeaderData header() { 
 			if (null == data())
 				return null;
 			return data(); 

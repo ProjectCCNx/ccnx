@@ -9,9 +9,9 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.content.CollectionData;
-import com.parc.ccn.data.content.LinkReference;
-import com.parc.ccn.data.content.CollectionData.CollectionObject;
+import com.parc.ccn.data.content.Collection;
+import com.parc.ccn.data.content.Link;
+import com.parc.ccn.data.content.Collection.CollectionObject;
 import com.parc.ccn.data.query.BasicNameEnumeratorListener;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.CCNInterestListener;
@@ -194,7 +194,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 
 			CollectionObject collection;
 			ArrayList<ContentName> names = new ArrayList<ContentName>();
-			LinkedList<LinkReference> links;
+			LinkedList<Link> links;
 			ContentName responseName = null;
 			Interest newInterest = interest;
 		
@@ -221,7 +221,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 						//collection = Collection.contentToCollection(c);
 						collection = new CollectionObject(c, _library);
 						links = collection.contents();
-						for (LinkReference l: links) {
+						for (Link l: links) {
 							names.add(l.targetName());
 							//Library.logger().info("names: "+l.targetName());
 						}
@@ -229,7 +229,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 						callback.handleNameEnumerator(interest.name().cut(NEMARKER), names);
 					} catch(XMLStreamException e) {
 						e.printStackTrace();
-						System.err.println("Error getting CollectionData from ContentObject in CCNNameEnumerator");
+						System.err.println("Error getting Collection from ContentObject in CCNNameEnumerator");
 					} catch(IOException e) {
 						e.printStackTrace();
 						System.err.println("error getting CollectionObject from ContentObject in CCNNameEnumerator.handleContent");
@@ -268,8 +268,8 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 		//Library.logger().info("Received Interests matching my filter!");
 		
 		ContentName collectionName = null;
-		LinkReference match;
-		CollectionData cd;
+		Link match;
+		Collection cd;
 				
 		
 		ContentName name = null;
@@ -279,7 +279,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			//Library.logger().info("processing interest: "+name.toString());
 			//collectionName = i.name().clone();
 			
-			cd = new CollectionData();
+			cd = new Collection();
 			//Verify NameEnumeration Marker is in the name
 			if (!name.contains(NEMARKER)) {
 				//Skip...  we don't handle these
@@ -320,7 +320,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 								byte[][] na = new byte[1][tn.length];
 								na[0] = tn;
 								tempName = new ContentName(na);
-								match = new LinkReference(tempName);
+								match = new Link(tempName);
 								//names.add(match);
 								if (!cd.contents().contains(match)) {
 									cd.add(match);

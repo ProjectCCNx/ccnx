@@ -9,7 +9,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Collection;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -18,9 +17,9 @@ import org.bouncycastle.crypto.InvalidCipherTextException;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.content.CollectionData;
-import com.parc.ccn.data.content.LinkReference;
-import com.parc.ccn.data.content.LinkReference.LinkObject;
+import com.parc.ccn.data.content.Collection;
+import com.parc.ccn.data.content.Link;
+import com.parc.ccn.data.content.Link.LinkObject;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublicKeyObject;
 import com.parc.ccn.data.security.PublisherID;
@@ -92,14 +91,14 @@ public class Group {
 	}
 	
 	
-	public void addUsers(ArrayList<LinkReference> newUsers)
+	public void addUsers(ArrayList<Link> newUsers)
 			throws XMLStreamException, IOException, InvalidKeyException,
 			InvalidCipherTextException, AccessDeniedException,
 			ConfigurationException {
 		modify(newUsers, null);						
 	}
 
-	public void removeUsers( ArrayList<LinkReference> removedUsers) throws XMLStreamException,
+	public void removeUsers( ArrayList<Link> removedUsers) throws XMLStreamException,
 			IOException, InvalidKeyException, InvalidCipherTextException,
 			AccessDeniedException, ConfigurationException {
 		modify(null, removedUsers);
@@ -183,7 +182,7 @@ public class Group {
 		return null;
 	}
 
-	public void setMembershipList(GroupManager groupManager, Collection<LinkReference> newMembers) 
+	public void setMembershipList(GroupManager groupManager, java.util.Collection<Link> newMembers) 
 					throws XMLStreamException, IOException, 
 						InvalidKeyException, InvalidCipherTextException, AccessDeniedException, ConfigurationException {
 		// need to figure out if we need to know private key; if we do and we don't, throw access denied.
@@ -214,7 +213,7 @@ public class Group {
 		// Write superseded block in old key directory
 		oldPrivateKeyDirectory.addSupersededByBlock(oldPrivateKeyWrappingKey, publicKeyName(), privateKeyWrappingKey);
 		// Write link back to previous key
-		LinkReference lr = new LinkReference(_groupPublicKey.getCurrentVersionName(), new LinkAuthenticator(new PublisherID(KeyManager.getKeyManager().getDefaultKeyID())));
+		Link lr = new Link(_groupPublicKey.getCurrentVersionName(), new LinkAuthenticator(new PublisherID(KeyManager.getKeyManager().getDefaultKeyID())));
 		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, _library);
 		precededByBlock.save();
 	}
@@ -260,7 +259,7 @@ public class Group {
 		}
 		
 		PublicKeyObject latestPublicKey = null;
-		for (LinkReference lr : ml.membershipList().contents()) {
+		for (Link lr : ml.membershipList().contents()) {
 			try {
 				// DKS TODO verify target public key against publisher, etc in link
 				latestPublicKey = new PublicKeyObject(lr.targetName(), _library);
@@ -296,7 +295,7 @@ public class Group {
 	 * @throws ConfigurationException 
 	 */
 	public void updateGroupPublicKey(GroupManager manager, 
-									 Collection<LinkReference> membersToAdd) 
+									 java.util.Collection<Link> membersToAdd) 
 				throws IOException, InvalidKeyException, InvalidCipherTextException, XMLStreamException, AccessDeniedException, ConfigurationException {
 		
 		if ((null == membersToAdd) || (membersToAdd.size() == 0))
@@ -309,7 +308,7 @@ public class Group {
 		}
 		
 		PublicKeyObject latestPublicKey = null;
-		for (LinkReference lr : membersToAdd) {
+		for (Link lr : membersToAdd) {
 			try {
 				// DKS TODO verify target public key against publisher, etc in link
 				latestPublicKey = new PublicKeyObject(lr.targetName(), _library);
@@ -373,8 +372,8 @@ public class Group {
  * @throws AccessDeniedException
  * @throws ConfigurationException
  */
-	public void modify(Collection<LinkReference> membersToAdd,
-					   Collection<LinkReference> membersToRemove) 
+	public void modify(java.util.Collection<Link> membersToAdd,
+					   java.util.Collection<Link> membersToRemove) 
 				throws XMLStreamException, IOException, InvalidKeyException, 
 						InvalidCipherTextException, AccessDeniedException, ConfigurationException {
 		
@@ -391,7 +390,7 @@ public class Group {
 		// Add before remove so that remove overrides adds.
 		if ((null != membersToAdd) && (!membersToAdd.isEmpty())) {
 			if (null == _groupMembers.membershipList()) {
-				_groupMembers.setData(new CollectionData(membersToAdd));
+				_groupMembers.setData(new Collection(membersToAdd));
 				addedMembers = true;
 			} else {
 				// Optimization: check to see if any were already in there before adding them....

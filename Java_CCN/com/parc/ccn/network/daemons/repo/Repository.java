@@ -5,8 +5,8 @@ import java.util.ArrayList;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.content.CollectionData;
-import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.content.Collection;
+import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNLibrary;
 
@@ -66,12 +66,12 @@ public interface Repository {
 			return version;
 		}
 		
-		public CollectionData getNamesInCollectionData(){
-			LinkReference[] temp = new LinkReference[names.size()];
+		public Collection getNamesInCollectionData(){
+			Link[] temp = new Link[names.size()];
 			for (int x = 0; x < names.size(); x++) {
-				temp[x] = new LinkReference(names.get(x));
+				temp[x] = new Link(names.get(x));
 			}
-			return new CollectionData(temp);
+			return new Collection(temp);
 		}
 		
 	}

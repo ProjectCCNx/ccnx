@@ -4,14 +4,12 @@ import java.io.File;
 import java.security.InvalidParameterException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
-import java.sql.Timestamp;
 
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.apps.Utils;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
@@ -19,6 +17,7 @@ import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo;
+import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
@@ -55,7 +54,7 @@ public class RFSTest extends RepoTestBase {
 	public static void setUpBeforeClass() throws Exception {
 		RepoTestBase.setUpBeforeClass();
 		_fileTest = new File(_fileTestDir);
-		Utils.deleteDirectory(_fileTest);
+		DataUtils.deleteDirectory(_fileTest);
 		_fileTest.mkdirs();
 	}
 		
@@ -226,7 +225,7 @@ public class RFSTest extends RepoTestBase {
 		ner3 = new ContentName(ner3, "name3".getBytes());
 		ContentName nername3 = ContentName.fromNative("/longer");
 		NameEnumerationResponse neresponse = null;
-		Timestamp ts = null;
+
 		//send initial interest to make sure namespace is empty
 		//interest flag will not be set for a fast response since there isn't anything in the index yet
 		
