@@ -90,6 +90,7 @@ public class BasicKeyManager extends KeyManager {
 				throw new ConfigurationException("Cannot open existing key store file: " + UserConfiguration.keystoreFileName());
 			} 
 		}
+		// Overriding classes must call this.
 		if (!loadValuesFromKeystore(_keystore)) {
 			Library.logger().warning("Cannot process keystore!");
 		}
@@ -263,7 +264,6 @@ public class BasicKeyManager extends KeyManager {
 				}
 	        }
 	    }
-		
 		return ks;
 	}
 

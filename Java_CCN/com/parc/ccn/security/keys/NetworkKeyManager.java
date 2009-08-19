@@ -59,11 +59,11 @@ public class NetworkKeyManager extends BasicKeyManager {
 	protected void loadKeyStore() throws ConfigurationException {
 		// Is there an existing version of this key store? don't assume repo, so don't enumerate.
 		// timeouts should be ok.
+		// DKS TODO -- once streams pull first block on creation, don't need this much work.
 		ContentObject keystoreObject = null;
-
 		try {
 			keystoreObject = 
-				_library.getLatestVersion(_keystoreName, _publisher, DEFAULT_TIMEOUT);
+				CCNVersionedInputStream.getFirstBlockOfLatestVersion(_keystoreName, _publisher, DEFAULT_TIMEOUT);
 			if (null == keystoreObject) {
 				Library.logger().info("Creating new CCN key store..." + _keystoreName);
 				_keystore = createKeyStore();	
@@ -85,6 +85,10 @@ public class NetworkKeyManager extends BasicKeyManager {
 				Library.logger().warning("Cannot open existing key store: " + _keystoreName);
 				throw new ConfigurationException("Cannot open existing key store: " + _keystoreName + ": " + e.getMessage(), e);
 			} 
+		}
+		
+		if (!loadValuesFromKeystore(_keystore)) {
+			Library.logger().warning("Cannot process keystore!");
 		}
 	}
 
