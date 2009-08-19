@@ -1,6 +1,7 @@
 package com.parc.ccn.library.profiles;
 
 import java.math.BigInteger;
+import java.util.Arrays;
 
 import com.parc.ccn.data.ContentName;
 
@@ -37,7 +38,7 @@ public class SegmentationProfile implements CCNProfile {
 	public static final byte [] FIRST_SEGMENT_MARKER = new byte[]{SEGMENT_MARKER};
 	public static final byte [] NO_SEGMENT_MARKER = new byte[]{SEGMENT_MARKER, NO_SEGMENT_POSTFIX};
 
-	public static final String HEADER_NAME = ".header"; // DKS currently not used; see below.
+	public static final byte [] HEADER_NAME = ContentName.componentParseNative(".header"); 
 
 	/**
 	 * What does its fragment number mean?
@@ -152,29 +153,21 @@ public class SegmentationProfile implements CCNProfile {
 		if (isSegment(headerName)) {
 			headerName = segmentRoot(headerName);
 		}
-		return (baseName.count() == headerName.count());
+		// Should end with metadata/header
+		if (baseName.count() != (headerName.count() - 2))
+			return false;
+		
+		if (!Arrays.equals(headerName.lastComponent(), HEADER_NAME))
+			return false;
+		
+		if (!Arrays.equals(headerName.component(headerName.count()-2), MetadataProfile.METADATA_MARKER))
+			return false;
+		
+		return true;
 	}
 
 	/**
-	 * Might want to make headerName not prefix of  rest of
-	 * name, but instead different subleaf. For example,
-	 * the header name of v.6 of name <name>
-	 * was originally <name>/_v_/6; could be 
-	 * <name>/_v_/6/.header or <name>/_v_/6/_m_/.header;
-	 * the full uniqueified names would be:
-	 * <name>/_v_/6/<sha256> or <name>/_v_/6/.header/<sha256>
-	 * or <name>/_v_/6/_m_/.header/<sha256>.
-	 * The first version has the problem that the
-	 * header name (without the unknown uniqueifier)
-	 * is the prefix of the block names; so we must use the
-	 * scheduler or other cleverness to get the header ahead of the blocks.
-	 * The second version of this makes it impossible to easily
-	 * write a reader that gets both single-block content and
-	 * fragmented content (and we don't want to turn the former
-	 * into always two-block content).
-	 * So having tried the second route, we're moving back to the former.
-	 * 
-	 * DKS TODO move header from <content>/<version> as its name to
+	 * Move header from <content>/<version> as its name to
 	 * <content>/<version>/_metadata_marker_/HEADER/<version>
 	 * where the second version is imposed by the use of versioning
 	 * network objects (i.e. this function should return up through HEADER above)
@@ -188,11 +181,9 @@ public class SegmentationProfile implements CCNProfile {
 		// to a fragment. Go back up to the fragment root.
 		// Currently no header name added.
 		if (isSegment(name)) {
-			// return new ContentName(fragmentRoot(name), HEADER_NAME);
-			return segmentRoot(name);
+			name = segmentRoot(name);
 		}
-		// return new ContentName(name, HEADER_NAME);
-		return name;
+		return new ContentName(name, MetadataProfile.METADATA_MARKER, HEADER_NAME);
 	}
 
 	public static boolean isFirstSegment(ContentName name) {
