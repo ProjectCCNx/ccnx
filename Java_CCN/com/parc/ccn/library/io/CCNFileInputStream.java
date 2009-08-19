@@ -8,13 +8,10 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.content.Header;
 import com.parc.ccn.data.content.HeaderData.HeaderObject;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
@@ -187,8 +184,14 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 			if (!verifyBlock(result)) {
 				return null;
 			}
-			if (!headerRequested())
-				requestHeader(_baseName, new PublisherID(result.signedInfo().getPublisherKeyID()));
+			if (!headerRequested()) {
+				try {
+					requestHeader(_baseName, result.signedInfo().getPublisherKeyID());
+				} catch (XMLStreamException e) {
+					Library.logger().fine("XMLStreamException in processing header: " + e.getMessage());
+					throw new IOException("Exception in processing header", e);
+				}
+			}
 			return getBlock(_startingBlockIndex);
 		}
 		return result;
