@@ -264,6 +264,7 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 		ArrayList<ContentObject> result = new ArrayList<ContentObject>();
 		// This won't work without a correct order preference
 		query.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME | Interest.ORDER_PREFERENCE_LEFT);
+		int count = query.name().count();
 		while (true) {
 			ContentObject co = null;
 			co = get(query, timeout == NO_TIMEOUT ? 5000 : timeout);
@@ -272,7 +273,10 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 			Library.logger().info("enumerate: retrieved " + co.name() + 
 					" digest: " + ContentName.componentPrintURI(co.contentDigest()) + " on query: " + query.name());
 			result.add(co);
-			query = Interest.next(co);
+			for (int i = co.name().count() - 1; i > count; i--) {
+				result.addAll(enumerate(new Interest(new ContentName(i, co.name().components())), timeout));
+			}
+			query = Interest.next(co, count);
 		}
 		Library.logger().info("enumerate: retrieved " + result.size() + " objects.");
 		return result;
