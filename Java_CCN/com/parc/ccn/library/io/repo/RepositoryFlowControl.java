@@ -3,6 +3,8 @@ package com.parc.ccn.library.io.repo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -41,7 +43,8 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	protected HashSet<Interest> _writeInterests = new HashSet<Interest>();
 	protected CCNNameEnumerator _ackne;
 	protected RepoAckHandler _ackHandler;
-	protected ContentName _header = null;
+	
+	protected Queue<Client> _clients = new ConcurrentLinkedQueue<Client>();
 
 	public Interest handleContent(ArrayList<ContentObject> results,
 			Interest interest) {
@@ -200,7 +203,6 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		super.afterClose();
 		// DKS don't actually want to cancel all the interests, only the
 		// ones relevant to the data we've finished writing.
-		// paul r. ??
 		cancelInterests();
 		if (!flushComplete()) {
 			throw new IOException("Unable to confirm writes are stable: timed out waiting ack for " + _holdingArea.firstKey());

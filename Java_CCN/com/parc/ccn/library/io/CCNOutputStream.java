@@ -17,6 +17,7 @@ import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNSegmenter;
+import com.parc.ccn.library.CCNFlowControl.Shape;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.crypto.ContentKeys;
@@ -99,6 +100,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		super(locator, publisher, segmenter);
 
 		ContentName nameToOpen = name;
+		_segmenter.getFlowControl().startWrite(name, Shape.STREAM_WITH_HEADER);
 		if (SegmentationProfile.isSegment(nameToOpen)) {
 			nameToOpen = SegmentationProfile.segmentRoot(nameToOpen);
 			// DKS -- should we offset output index to next one? might have closed
