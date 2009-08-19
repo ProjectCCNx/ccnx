@@ -381,6 +381,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		return false;
 	}
 
+	/**
+	 * TODO -- check to see if it matches desired publisher.
+	 */
 	public boolean verifyBlock(ContentObject block) {
 
 		// First we verify. 
