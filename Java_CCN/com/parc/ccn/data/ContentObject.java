@@ -17,6 +17,7 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
+import com.parc.ccn.data.security.ContentVerifier;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.Signature;
@@ -50,6 +51,40 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	protected SignedInfo _signedInfo;
 	protected byte [] _content;
 	protected Signature _signature; 
+	
+	public static class SimpleVerifier implements ContentVerifier {
+
+		PublisherPublicKeyDigest _publisher; 
+		
+		public SimpleVerifier(PublisherPublicKeyDigest publisher) {
+			_publisher = publisher;
+		}
+		
+		/* (non-Javadoc)
+		 * @see com.parc.ccn.data.security.ContentVerifier#verifyBlock(com.parc.ccn.data.ContentObject)
+		 */
+		public boolean verifyBlock(ContentObject block) {
+			if (null == block)
+				return false;
+			if (null != _publisher) {
+				if (!_publisher.equals(block.signedInfo().getPublisherKeyID()))
+					return false;
+			}
+			try {
+				return block.verify(null);
+			} catch (InvalidKeyException e) {
+				return false;
+			} catch (SignatureException e) {
+				return false;
+			} catch (NoSuchAlgorithmException e) {
+				return false;
+			} catch (XMLStreamException e) {
+				return false;
+			} catch (InterruptedException e) {
+				return false;
+			}
+		}		
+	}
 
 	/**
 	 * We copy the content when we get it. The intent is for this object to
