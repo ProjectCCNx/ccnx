@@ -275,7 +275,13 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @return
 	 */
 	private static Interest nextOrLast(ContentName name, ExcludeFilter exclude, Integer order, Integer prefixCount)  {
-		if (null != prefixCount && prefixCount <= (name.count() - 1)) {
+		if (null != prefixCount) {
+			if (prefixCount > name.count())
+				throw new IllegalArgumentException("Invalid prefixCount > components: " + prefixCount);
+		} else
+			prefixCount = name.count() - 1;
+		
+		if (prefixCount < name.count()) {
 			ContentName newName = name.clone();
 			newName = new ContentName(prefixCount, newName.components());
 		

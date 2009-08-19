@@ -193,8 +193,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 
 			CollectionObject collection;
 			ArrayList<ContentName> names = new ArrayList<ContentName>();
-
-			LinkedList<LinkReference> links;
+			LinkedList<Link> links;
 			Interest newInterest = interest;
 		
 			//TODO  integrate handling for multiple responders, for now, just handles one result properly
