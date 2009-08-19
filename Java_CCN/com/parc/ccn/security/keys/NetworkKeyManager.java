@@ -8,6 +8,7 @@ import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
+import com.parc.ccn.config.UserConfiguration;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
@@ -29,14 +30,30 @@ public class NetworkKeyManager extends BasicKeyManager {
 	PublisherPublicKeyDigest _publisher;
 	CCNLibrary _library;
 
-	public NetworkKeyManager(ContentName keystoreName, PublisherPublicKeyDigest publisher,
+	public NetworkKeyManager(String userName, ContentName keystoreName, PublisherPublicKeyDigest publisher,
 							char [] password, CCNLibrary library) throws ConfigurationException, IOException {
 		// key repository created by default superclass constructor
+		if (null != userName)
+			_userName = userName; // otherwise default for actual user
 		_keystoreName = keystoreName;
 		_publisher = publisher;
 		_library = library;
 		setPassword(password);
 		// loading done by initialize()
+	}
+
+	/**
+	 * The default key name is the publisher ID itself,
+	 * under the keystore namespace.
+	 * @param keyID
+	 * @return
+	 */
+	@Override
+	public ContentName getDefaultKeyName(byte [] keyID) {
+		ContentName keyDir =
+			ContentName.fromNative(_keystoreName, 
+				   			UserConfiguration.defaultKeyName());
+		return new ContentName(keyDir, keyID);
 	}
 
 	protected void loadKeyStore() throws ConfigurationException {
@@ -60,7 +77,7 @@ public class NetworkKeyManager extends BasicKeyManager {
 			Library.logger().info("Loading CCN key store from " + _keystoreName + "...");
 			try {
 				in = new CCNVersionedInputStream(keystoreObject, _library);
-				loadKeyStore(in);
+				readKeyStore(in);
 			} catch (XMLStreamException e) {
 				Library.logger().warning("Cannot open existing key store: " + _keystoreName);
 				throw new ConfigurationException("Cannot open existing key store: " + _keystoreName + ": " + e.getMessage(), e);

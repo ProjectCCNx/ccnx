@@ -32,6 +32,7 @@ import com.parc.ccn.security.crypto.util.CryptoUtil;
 public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	
 	protected static final boolean _DEBUG = true;
+	public static final long SHORT_KEY_TIMEOUT = 300;
 	public static final long DEFAULT_KEY_TIMEOUT = 2000;
 	
 	protected  CCNNetworkManager _networkManager = null;
@@ -174,7 +175,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		return theKey;
 	}
 
-	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator) throws IOException {
+	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, long timeout) throws IOException {
 	
 		// Look for it in our cache first.
 		PublicKey publicKey = getPublicKey(desiredKeyID);
@@ -205,7 +206,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 			//  it would be really good to know how many additional name components to expect...
 			try {
 				Library.logger().info("Trying network retrieval of key: " + keyInterest.name());
-				keyObject = _networkManager.get(keyInterest, DEFAULT_KEY_TIMEOUT);
+				keyObject = _networkManager.get(keyInterest, timeout);
 			} catch (IOException e) {
 				Library.logger().warning("IOException attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
 				Library.warningStackTrace(e);
