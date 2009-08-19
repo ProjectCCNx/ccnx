@@ -3,16 +3,14 @@ package com.parc.ccn.library.io;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
 import java.security.SignatureException;
-import java.sql.Timestamp;
 
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.content.Header;
+import com.parc.ccn.data.content.HeaderData;
+import com.parc.ccn.data.content.HeaderData.HeaderObject;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
@@ -61,11 +59,14 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 		_segmenter.getFlowControl().startWrite(_baseName, Shape.STREAM_WITH_HEADER);		
 	}
 
-	protected void writeHeader() throws InvalidKeyException, SignatureException, IOException, InterruptedException {
+	protected void writeHeader() throws IOException {
 		// What do we put in the header if we have multiple merkle trees?
-		putHeader(_baseName, lengthWritten(), getBlockSize(), _dh.digest(), null,
-				_timestamp, _locator, _publisher);
-		Library.logger().info("Wrote header: " + SegmentationProfile.headerName(_baseName));
+		try {
+			putHeader(_baseName, lengthWritten(), getBlockSize(), _dh.digest(), null);
+		} catch (XMLStreamException e) {
+			Library.logger().fine("XMLStreamException in writing header: " + e.getMessage());
+			throw new IOException("Exception in writing header", e);
+		}
 	}
 	
 	/**
@@ -74,56 +75,33 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 	 * 
 	 * When we can, we might want to write the header earlier. Here we wait
 	 * till we know how many bytes are in the file.
+	 * @throws IOException 
+	 * @throws InterruptedException 
+	 * @throws NoSuchAlgorithmException 
+	 * @throws SignatureException 
+	 * @throws InvalidKeyException 
+	 * @throws XMLStreamException 
 	 */
 	@Override
-	protected void closeNetworkData() throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, 
-								IOException, InterruptedException {
+	protected void closeNetworkData() throws IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException  {
 		super.closeNetworkData();
 		writeHeader();
 	}
 	
-	protected ContentObject putHeader(
+	protected void putHeader(
 			ContentName name, long contentLength, int blockSize, byte [] contentDigest, 
-			byte [] contentTreeAuthenticator,
-			Timestamp timestamp, 
-			KeyLocator locator, 
-			PublisherPublicKeyDigest publisher) throws IOException, InvalidKeyException, SignatureException {
+			byte [] contentTreeAuthenticator) throws XMLStreamException, IOException  {
 
-		if (null == publisher) {
-			publisher = _library.keyManager().getDefaultKeyID();
-		}
 
-		PrivateKey signingKey = _library.keyManager().getSigningKey(publisher);
-
-		if (null == locator)
-			locator = _library.keyManager().getKeyLocator(signingKey);
-
-		// Add another differentiator to avoid making header
-		// name prefix of other valid names?
 		ContentName headerName = SegmentationProfile.headerName(name);
-		Header header;
-		try {
-			// TODO -- move to HeaderObject, and preferably to new name for header; requires
-			// corresponding change to reading code in repository and CCNFileInputStream
-			//ContentName headerName = SegmentationProfile.headerName(name);
-			//HeaderData headerData = new HeaderData(contentLength, contentDigest, contentTreeAuthenticator, blockSize);
-			//HeaderObject header = new HeaderObject(headerName, headerData, publisher, locator, _library);
-			//header.save();
-			header = new Header(headerName, contentLength, contentDigest, contentTreeAuthenticator, blockSize,
-								publisher, locator, signingKey);
-		} catch (XMLStreamException e) {
-			Library.logger().warning("This should not happen: we cannot encode our own header!");
-			Library.warningStackTrace(e);
-			throw new IOException("This should not happen: we cannot encode our own header!" + e.getMessage());
-		}
-		ContentObject headerResult = null;
-		try {
-			headerResult = getSegmenter().getFlowControl().put(header);
-		} catch (IOException e) {
-			Library.logger().warning("This should not happen: we cannot put our own header!");
-			Library.warningStackTrace(e);
-			throw e;
-		}
-		return headerResult;		
+		HeaderData headerData = new HeaderData(contentLength, contentDigest, contentTreeAuthenticator, blockSize);
+		// DKS TODO -- deal with header encryption, making sure it has same publisher as
+		// rest of file via the segmenter
+		// The segmenter contains the flow controller. Should do the right thing whether this
+		// is a raw stream or a repo stream. It should also already have the keys. Could just share
+		// the segmenter. For now, use our own.
+		HeaderObject header = new HeaderObject(headerName, headerData, this._publisher, this._locator, this._library);
+		header.save();
+		Library.logger().info("Wrote header: " + header.getCurrentVersionName());
 	}
 }
