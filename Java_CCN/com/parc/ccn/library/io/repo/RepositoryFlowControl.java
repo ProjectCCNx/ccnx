@@ -3,6 +3,7 @@ package com.parc.ccn.library.io.repo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -34,12 +35,9 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 
 	protected static final int ACK_BLOCK_SIZE = 20;
 	protected static final int ACK_INTERVAL = 128;
-
 	protected boolean _bestEffort = true;
-	protected boolean _initialized = false;
 	protected int _blocksSinceAck = 0;
 	protected int _ackInterval = ACK_INTERVAL;
-	protected String _repoName = null;
 	protected HashSet<Interest> _writeInterests = new HashSet<Interest>();
 	protected CCNNameEnumerator _ackne;
 	protected RepoAckHandler _ackHandler;
@@ -59,7 +57,10 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 				repoInfo.decode(co.content());
 				switch (repoInfo.getType()) {
 				case INFO:
-					_repoName = repoInfo.getLocalName();
+					for (Client client : _clients) {
+						if (client._name.isPrefixOf(co.name()))
+							client._initialized = true;
+					}
 					//_writeInterest = null;
 					synchronized (this) {
 						notify();
@@ -93,6 +94,15 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 			return names.size();
 		}
 	}
+	
+	protected class Client {
+		protected ContentName _name;
+		protected boolean _initialized = false;
+		
+		public Client(ContentName name) {
+			_name = name;
+		}
+	}
 
 	public RepositoryFlowControl(CCNLibrary library) throws IOException {
 		super(library);
@@ -109,9 +119,6 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		startWrite(name, shape);
 	}
 
-	/**
-	 * Note we only want to do this once
-	 */
 	@Override
 	public void startWrite(ContentName name, Shape shape) throws IOException {
 		
@@ -142,7 +149,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 				}
 			} while (interrupted);
 		}
-		if (_repoName == null) {
+		if (!client._initialized) {
 			Library.logger().finest("No response from a repository, cannot add name space : " + name);
 			throw new IOException("No response from a repository for " + name);
 		}
@@ -192,13 +199,17 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 
 	@Override
 	public void afterClose() throws IOException {
-		if (_header != null) {
-			ContentName repoWriteName = new ContentName(_header, CommandMarkers.REPO_GET_HEADER, Interest.generateNonce());
-	
-			Interest writeInterest = new Interest(repoWriteName);
-			_library.expressInterest(writeInterest, this);
-			_writeInterests.add(writeInterest);
-		}
+		try {
+			Client client = _clients.remove();
+			if (client._name != null) {
+				ContentName repoWriteName = new ContentName(client._name, CommandMarkers.REPO_GET_HEADER, Interest.generateNonce());
+		
+				Interest writeInterest = new Interest(repoWriteName);
+				_library.expressInterest(writeInterest, this);
+				_writeInterests.add(writeInterest);
+			}
+		} catch (NoSuchElementException nse) {}
+		
 		// super.afterClose() calls waitForPutDrain.
 		super.afterClose();
 		// DKS don't actually want to cancel all the interests, only the
