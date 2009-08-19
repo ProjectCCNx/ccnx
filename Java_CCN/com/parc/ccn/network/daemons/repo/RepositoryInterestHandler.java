@@ -39,9 +39,9 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 					Library.logger().finer("Saw interest: " + interest.name());
 				if (interest.name().contains(CommandMarkers.REPO_START_WRITE)) {
 					startReadProcess(interest);
-				} else if(interest.name().contains(CCNNameEnumerator.NEMARKER)){
+				} else if (interest.name().contains(CCNNameEnumerator.NEMARKER)) {
 					nameEnumeratorResponse(interest);
-				} else if(interest.name().contains(CommandMarkers.REPO_GET_HEADER)){
+				} else if (interest.name().contains(CommandMarkers.REPO_GET_HEADER)) {
 					getHeader(interest);
 				} else {
 					ContentObject content = _daemon.getRepository().getContent(interest);
