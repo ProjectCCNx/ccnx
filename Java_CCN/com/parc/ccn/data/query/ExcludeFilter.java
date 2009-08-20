@@ -66,11 +66,10 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 	/**
 	 * Create an Exclude filter that excludes exactly the listed name components.
 	 * @param omissions The name components to be excluded. Passing in null or a zero length array
-	 * here will result in an #InvalidParameter exception
-	 * @throws InvalidParameterException
+	 * here will result in an #IllegalArgumentException exception
+	 * @throws IllegalArgumentException
 	 */
-	public ExcludeFilter(byte [][] omissions)
-		throws InvalidParameterException {
+	public ExcludeFilter(byte [][] omissions) {
 		if (omissions == null || omissions.length == 0)
 			throw new InvalidParameterException("No omissions");
 		Arrays.sort(omissions, new ByteArrayCompare());
