@@ -50,13 +50,14 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 		for (ExcludeElement ee : values) {
 			if (ee instanceof ExcludeComponent) {
 				ExcludeComponent ec = (ExcludeComponent) ee;
-				// Components must be in increasing order
+				// Components must be in increasing order, and no duplicates.
 				if (c != null && ec.compareTo(c) <=0)
-					throw new InvalidParameterException();
+					throw new InvalidParameterException("out of order or duplicate component element");
 				c = ec;
-			} else if (last instanceof BloomFilter)
-				// do not allow 2 bloom filters in a row
-				throw new InvalidParameterException();
+			} else if (last instanceof BloomFilter ||
+					last instanceof ExcludeAny)
+				// do not allow 2 bloom filters/Any's in a row
+				throw new InvalidParameterException("bloom filters or anys are not allowed to follow each other");
 			last = ee;
 		}
 		_values = new ArrayList<ExcludeElement>(values);
