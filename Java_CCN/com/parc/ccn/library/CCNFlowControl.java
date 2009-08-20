@@ -347,7 +347,7 @@ public class CCNFlowControl implements CCNFilterListener {
 			ContentObject result = _holdingArea.get(name);
 			
 			// We only have to do something unusual here if the caller is looking for CHILD_SELECTOR_RIGHT
-			if (interest.childSelector()  == Interest.CHILD_SELECTOR_RIGHT) {
+			if (null != interest.childSelector() && interest.childSelector() == Interest.CHILD_SELECTOR_RIGHT) {
 				if (interest.matches(result)) {
 					if (bestMatch == null) {
 						bestMatch = result;

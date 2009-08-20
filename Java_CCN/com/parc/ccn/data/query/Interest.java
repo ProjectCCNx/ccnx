@@ -97,6 +97,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	protected Integer _childSelector;
 	protected Integer _answerOriginKind;
 	protected Integer _scope;
+	protected byte[] _nonce;
 
 	/**
 	 * TODO: DKS figure out how to handle encoding faster,
@@ -144,6 +145,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	
 	public Integer scope() { return _scope; }
 	public void scope(int scope) { _scope = scope; }
+	
+	public byte[] nonce() { return _nonce; }
+	public void nonce(byte[] nonce) { _nonce = nonce; }
 
 	public boolean matches(ContentObject result) {
 		return matches(result, (null != result.signedInfo()) ? result.signedInfo().getPublisherKeyID() : null);
@@ -442,6 +446,10 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			_scope = decoder.readIntegerElement(SCOPE_ELEMENT);
 		}
 		
+		if (decoder.peekStartElement(NONCE_ELEMENT)) {
+			_nonce = decoder.readBinaryElement(NONCE_ELEMENT);
+		}
+		
 		try {
 			decoder.readEndElement();
 		} catch (XMLStreamException e) {
@@ -479,6 +487,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		if (null != scope()) 
 			encoder.writeIntegerElement(SCOPE_ELEMENT, scope());
 		
+		if (null != nonce())
+			encoder.writeElement(NONCE_ELEMENT, nonce());
+		
 		encoder.writeEndElement();   		
 	}
 	
@@ -512,6 +523,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		
 		result = DataUtils.compare(scope(), o.scope());
 		if (result != 0) return result;
+		
+		result = DataUtils.compare(nonce(), o.nonce());
+		if (result != 0) return result;
 
 		return result;
 	}
@@ -541,6 +555,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		result = prime * result
 				+ ((_publisher == null) ? 0 : _publisher.hashCode());
 		result = prime * result + ((_scope == null) ? 0 : _scope.hashCode());
+		result = prime * result + Arrays.hashCode(_nonce);
 		return result;
 	}
 
@@ -578,8 +593,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 				return false;
 		} else if (!_name.equals(other._name))
 			return false;
-		//if (!Arrays.equals(_nonce, other._nonce))
-		//	return false;
 		if (_childSelector == null) {
 			if (other._childSelector != null)
 				return false;
@@ -595,6 +608,8 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 				return false;
 		} else if (!_scope.equals(other._scope))
 			return false;
+		//if (!Arrays.equals(_nonce, other._nonce))
+		//	return false;
 		return true;
 	}
 	
@@ -632,6 +647,8 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			clone.answerOriginKind(answerOriginKind());
 		if (null != _scope)
 			clone.scope(scope());
+		if (null != _nonce)
+			clone.nonce(nonce());
 		return clone;
 	}
 
