@@ -65,7 +65,8 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 		
 	/**
 	 * Create an Exclude filter that excludes exactly the listed name components.
-	 * @param omissions The name components to be excluded.
+	 * @param omissions The name components to be excluded. Passing in null or a zero length array
+	 * here will result in an #InvalidParameter exception
 	 * @throws InvalidParameterException
 	 */
 	public ExcludeFilter(byte [][] omissions)
@@ -83,7 +84,8 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 	
 	/**
 	 * @param omissions List of names to exclude, or null
-	 * @return returns null if list is null, or a new Exclude filter that excludes the listed names. @see #ExcludeFilter(byte [][])
+	 * @return returns null if list is null or empty, or a new Exclude filter that excludes the listed names.
+	 * @see #ExcludeFilter(byte [][])
 	 */
 	public static ExcludeFilter factory(byte [][] omissions) {
 		if (omissions == null || omissions.length == 0)
