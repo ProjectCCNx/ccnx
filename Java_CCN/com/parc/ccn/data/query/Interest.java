@@ -28,26 +28,28 @@ import com.parc.ccn.security.keys.TrustManager;
  * Implement Comparable to make it much easier to store in
  * a Set and avoid duplicates.
  * 
- * <xs:complexType name="InterestType">
- *  <xs:sequence>
+ * xs:complexType name="InterestType">
+ * <xs:sequence>
  *   <xs:element name="Name" type="NameType"/>
- *   <xs:element name="NameComponentCount" type="xs:nonNegativeInteger"
+ *   <xs:element name="MinSuffixComponents" type="xs:nonNegativeInteger"
  *                       minOccurs="0" maxOccurs="1"/>
- *   <xs:element name="PublisherID" type="PublisherIDType"
- *			minOccurs="0" maxOccurs="1"/>
- *    <xs:element name="Exclude" type="ExcludeType"
+ *   <xs:element name="MaxSuffixComponents" type="xs:nonNegativeInteger"
  *                       minOccurs="0" maxOccurs="1"/>
- *   <xs:element name="OrderPreference" type="xs:nonNegativeInteger"
+ *   <xs:choice minOccurs="0" maxOccurs="1">
+ *       <xs:element name="PublisherPublicKeyDigest" type="DigestType"/>
+ *       <xs:element name="PublisherCertificateDigest" type="DigestType"/>
+ *       <xs:element name="PublisherIssuerKeyDigest" type="DigestType"/>
+ *       <xs:element name="PublisherIssuerCertificateDigest" type="DigestType"/>
+ *   </xs:choice>
+ *   <xs:element name="Exclude" type="ExcludeType"
+ *                       minOccurs="0" maxOccurs="1"/>
+ *   <xs:element name="ChildSelector" type="xs:nonNegativeInteger"
  *                       minOccurs="0" maxOccurs="1"/>
  *   <xs:element name="AnswerOriginKind" type="xs:nonNegativeInteger"
  *                       minOccurs="0" maxOccurs="1"/>
  *   <xs:element name="Scope" type="xs:nonNegativeInteger"
  *			minOccurs="0" maxOccurs="1"/>
- *   <xs:element name="Count" type="xs:nonNegativeInteger"                                               
- *          minOccurs="0" maxOccurs="1"/>
  *   <xs:element name="Nonce" type="Base64BinaryType"
- *			minOccurs="0" maxOccurs="1"/>
- *   <xs:element name="ExperimentalResponseFilter" type="Base64BinaryType"
  *			minOccurs="0" maxOccurs="1"/>
  * </xs:sequence>
  * </xs:complexType>
@@ -63,16 +65,14 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public static final String INTEREST_ELEMENT = "Interest";
 	public static final String MAX_SUFFIX_COMPONENTS = "MaxSuffixComponents";
 	public static final String MIN_SUFFIX_COMPONENTS = "MinSuffixComponents";
-	public static final String ORDER_PREFERENCE = "OrderPreference";
+	public static final String CHILD_SELECTOR = "ChildSelector";
 	public static final String ANSWER_ORIGIN_KIND = "AnswerOriginKind";
 	public static final String SCOPE_ELEMENT = "Scope";
 	public static final String NONCE_ELEMENT = "Nonce";
 	
 	// OrderPreference values.  These are bitmapped
-	public static final int ORDER_PREFERENCE_LEFT = 0;		// bit 0
-	public static final int ORDER_PREFERENCE_RIGHT = 1;
-	public static final int ORDER_PREFERENCE_ORDER_ARRIVAL = 2;
-	public static final int	ORDER_PREFERENCE_ORDER_NAME = 4;	// User name space hierarchy for ordering
+	public static final int CHILD_SELECTOR_LEFT = 0;		// bit 0
+	public static final int CHILD_SELECTOR_RIGHT = 1;
 	
 	/**
 	 * AnswerOriginKind values
@@ -94,10 +94,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	// DKS TODO can we really support a PublisherID here, or just a PublisherPublicKeyDigest?
 	protected PublisherID _publisher;
 	protected ExcludeFilter _excludeFilter;
-	protected Integer _orderPreference;
+	protected Integer _childSelector;
 	protected Integer _answerOriginKind;
 	protected Integer _scope;
-	protected byte [] _nonce;
 
 	/**
 	 * TODO: DKS figure out how to handle encoding faster,
@@ -137,8 +136,8 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public ExcludeFilter excludeFilter() { return _excludeFilter; }
 	public void excludeFilter(ExcludeFilter excludeFilter) { _excludeFilter = excludeFilter; }
 	
-	public Integer orderPreference() { return _orderPreference;}
-	public void orderPreference(int orderPreference) { _orderPreference = orderPreference; }
+	public Integer childSelector() { return _childSelector;}
+	public void childSelector(int childSelector) { _childSelector = childSelector; }
 	
 	public Integer answerOriginKind() { return _answerOriginKind; }
 	public void answerOriginKind(int answerOriginKind) { _answerOriginKind = answerOriginKind; }
@@ -146,9 +145,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public Integer scope() { return _scope; }
 	public void scope(int scope) { _scope = scope; }
 
-	public byte [] nonce() { return _nonce; }
-	public void nonce(byte [] nonce) { _nonce = nonce; }
-	
 	public boolean matches(ContentObject result) {
 		return matches(result, (null != result.signedInfo()) ? result.signedInfo().getPublisherKeyID() : null);
 	}
@@ -212,21 +208,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 				return false;
 			}
 		}
-		if (null != orderPreference()) {
-			// All we can check here is whether the test name is > our name.
-			// Any set of orderPreference requires this
-			if (name.compareTo(name()) <= 0) {
-				Library.logger().finest("Interest match failed. orderPreference is " + orderPreference() +
-						" and name " + name + " comes before our name " + name());
-				// If the name (missing the digest) has one less component than our name, we assume
-				// we matched by way of the digest
-				if (!digestIncluded || name.count() != name().count() - 1) {
-					Library.logger().finest("Interest match failed. orderPreference is " + orderPreference() +
-							" and name " + name + " comes before our name " + name());
-					return false;
-				}
-			}
-		}
 		if (null != excludeFilter()) {
 			if (excludeFilter().exclude(name.component(name().count()))) {
 				Library.logger().finest("Interest match failed. " + name + " has been excluded");
@@ -260,7 +241,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	}
 	
 	public static Interest next(ContentName name, byte[][] omissions, Integer prefixCount) {
-		return nextOrLast(name, ExcludeFilter.factory(omissions), new Integer(ORDER_PREFERENCE_LEFT | ORDER_PREFERENCE_ORDER_NAME), prefixCount);
+		return nextOrLast(name, ExcludeFilter.factory(omissions), new Integer(CHILD_SELECTOR_LEFT), prefixCount);
 	}
 	
 	/**
@@ -313,15 +294,15 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	}
 	
 	public static Interest last(ContentName name, byte[] [] omissions, Integer prefixCount) {
-		return nextOrLast(name, ExcludeFilter.factory(omissions), new Integer(ORDER_PREFERENCE_RIGHT | ORDER_PREFERENCE_ORDER_NAME), prefixCount);
+		return nextOrLast(name, ExcludeFilter.factory(omissions), new Integer(CHILD_SELECTOR_RIGHT), prefixCount);
 	}
 	
 	public static Interest last(ContentName name, ExcludeFilter exclude) {
-		return nextOrLast(name, exclude, new Integer(ORDER_PREFERENCE_RIGHT | ORDER_PREFERENCE_ORDER_NAME), null);
+		return nextOrLast(name, exclude, new Integer(CHILD_SELECTOR_RIGHT), null);
 	}
 	
 	public static Interest last(ContentName name, ExcludeFilter exclude, Integer prefixCount) {
-		return nextOrLast(name, exclude, new Integer(ORDER_PREFERENCE_RIGHT | ORDER_PREFERENCE_ORDER_NAME), prefixCount);
+		return nextOrLast(name, exclude, new Integer(CHILD_SELECTOR_RIGHT), prefixCount);
 	}
 	
 	/**
@@ -360,10 +341,10 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	}
 	
 	public static Interest constructInterest(ContentName name,  ExcludeFilter filter,
-			Integer orderPreference, PublisherID publisherID, Integer maxSuffixComponents, Integer minSuffixComponents) {
+			Integer childSelector, PublisherID publisherID, Integer maxSuffixComponents, Integer minSuffixComponents) {
 		Interest interest = new Interest(name);
-		if (null != orderPreference)
-			interest.orderPreference(orderPreference);
+		if (null != childSelector)
+			interest.childSelector(childSelector);
 		if (null != filter)
 			interest.excludeFilter(filter);
 		if (null != publisherID)
@@ -449,8 +430,8 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			_excludeFilter.decode(decoder);
 		}
 		
-		if (decoder.peekStartElement(ORDER_PREFERENCE)) {
-			_orderPreference = decoder.readIntegerElement(ORDER_PREFERENCE);
+		if (decoder.peekStartElement(CHILD_SELECTOR)) {
+			_childSelector = decoder.readIntegerElement(CHILD_SELECTOR);
 		}
 		
 		if (decoder.peekStartElement(ANSWER_ORIGIN_KIND)) {
@@ -459,10 +440,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		
 		if (decoder.peekStartElement(SCOPE_ELEMENT)) {
 			_scope = decoder.readIntegerElement(SCOPE_ELEMENT);
-		}
-		
-		if (decoder.peekStartElement(NONCE_ELEMENT)) {
-			_nonce = decoder.readBinaryElement(NONCE_ELEMENT);
 		}
 		
 		try {
@@ -493,18 +470,15 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		if (null != excludeFilter())
 			excludeFilter().encode(encoder);
 
-		if (null != orderPreference()) 
-			encoder.writeIntegerElement(ORDER_PREFERENCE, orderPreference());
+		if (null != childSelector()) 
+			encoder.writeIntegerElement(CHILD_SELECTOR, childSelector());
 
 		if (null != answerOriginKind()) 
 			encoder.writeIntegerElement(ANSWER_ORIGIN_KIND, answerOriginKind());
 
 		if (null != scope()) 
 			encoder.writeIntegerElement(SCOPE_ELEMENT, scope());
-
-		if (null != nonce())
-			encoder.writeElement(NONCE_ELEMENT, nonce());
-
+		
 		encoder.writeEndElement();   		
 	}
 	
@@ -530,7 +504,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		result = DataUtils.compare(excludeFilter(), o.excludeFilter());
 		if (result != 0) return result;
 		
-		result = DataUtils.compare(orderPreference(), o.orderPreference());
+		result = DataUtils.compare(childSelector(), o.childSelector());
 		if (result != 0) return result;
 		
 		result = DataUtils.compare(answerOriginKind(), o.answerOriginKind());
@@ -539,9 +513,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		result = DataUtils.compare(scope(), o.scope());
 		if (result != 0) return result;
 
-		result = DataUtils.compare(nonce(), o.nonce());
-		if (result != 0) return result;
-		
 		return result;
 	}
 
@@ -564,10 +535,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		result = prime * result
 				+ ((_excludeFilter == null) ? 0 : _excludeFilter.hashCode());
 		result = prime * result + ((_name == null) ? 0 : _name.hashCode());
-		result = prime * result + Arrays.hashCode(_nonce);
 		result = prime
 				* result
-				+ ((_orderPreference == null) ? 0 : _orderPreference.hashCode());
+				+ ((_childSelector == null) ? 0 : _childSelector.hashCode());
 		result = prime * result
 				+ ((_publisher == null) ? 0 : _publisher.hashCode());
 		result = prime * result + ((_scope == null) ? 0 : _scope.hashCode());
@@ -610,10 +580,10 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			return false;
 		//if (!Arrays.equals(_nonce, other._nonce))
 		//	return false;
-		if (_orderPreference == null) {
-			if (other._orderPreference != null)
+		if (_childSelector == null) {
+			if (other._childSelector != null)
 				return false;
-		} else if (!_orderPreference.equals(other._orderPreference))
+		} else if (!_childSelector.equals(other._childSelector))
 			return false;
 		if (_publisher == null) {
 			if (other._publisher != null)
@@ -656,14 +626,12 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			clone.publisherID(publisherID());
 		if (null != _excludeFilter)
 			clone.excludeFilter(excludeFilter());
-		if (null != _orderPreference)
-			clone.orderPreference(orderPreference());
+		if (null != _childSelector)
+			clone.childSelector(childSelector());
 		if (null != _answerOriginKind)
 			clone.answerOriginKind(answerOriginKind());
 		if (null != _scope)
 			clone.scope(scope());
-		if (null != _nonce)
-			clone.nonce(nonce());
 		return clone;
 	}
 
