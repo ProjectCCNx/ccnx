@@ -7,7 +7,7 @@ config_subdir: Makefile
 
 Makefile:
 	test -f $(SRCDIR)/../generic.mk && ln -s $(SRCDIR)/../generic.mk Makefile
-	
+
 $(DUPDIR):
 	test -d $(SRCDIR)/$(DUPDIR) && mkdir $(DUPDIR) && cp -p $(SRCDIR)/$(DUPDIR)/* $(DUPDIR)
 
@@ -18,19 +18,19 @@ $(OBJDIR)/dir.mk: dir.mk
 
 install_libs: $(LIBS)
 	test -d $(INSTALL_LIB)
-	for i in $(LIBS); do $(INSTALL) $$i $(INSTALL_LIB); done
+	for i in $(LIBS) ""; do test -z "$$i" || $(INSTALL) $$i $(INSTALL_LIB); done
 
 install_programs: $(INSTALLED_PROGRAMS)
 	test -d $(INSTALL_BIN)
-	for i in $(INSTALLED_PROGRAMS); do $(INSTALL) $$i $(INSTALL_BIN); done
+	for i in $(INSTALLED_PROGRAMS) ""; do test -z "$$i" || $(INSTALL) $$i $(INSTALL_BIN); done
 
 install: install_libs install_programs
 
 uninstall_libs:
-	for i in $(LIBS); do $(RM) $(INSTALL_LIB)/$$i; done
+	for i in $(LIBS) ""; do test -z "$$i" || $(RM) $(INSTALL_LIB)/$$i; done
 
 uninstall_programs:
-	for i in $(PROGRAMS); do $(RM) $(INSTALL_BIN)/$$i; done
+	for i in $(PROGRAMS) ""; do test -z "$$i" || $(RM) $(INSTALL_BIN)/$$i; done
 
 uninstall: uninstall_libs uninstall_programs
 
