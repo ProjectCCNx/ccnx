@@ -246,7 +246,6 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 		Interest interest = new Interest(name);
 		interest.maxSuffixComponents(level);
 		interest.minSuffixComponents(level);
-		interest.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME | Interest.ORDER_PREFERENCE_LEFT);
 		return get(interest, timeout);
 	}
 
@@ -263,7 +262,6 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 	public ArrayList<ContentObject> enumerate(Interest query, long timeout) throws IOException {
 		ArrayList<ContentObject> result = new ArrayList<ContentObject>();
 		// This won't work without a correct order preference
-		query.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME | Interest.ORDER_PREFERENCE_LEFT);
 		int count = query.name().count();
 		while (true) {
 			ContentObject co = null;

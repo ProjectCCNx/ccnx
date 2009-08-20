@@ -571,10 +571,9 @@ public class InterestTableTest {
 		Interest i = new Interest(ContentName.fromNative(name));
 		switch (type) {
 		case Next:
-			i.orderPreference(Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME);
 			break;
 		case Last:
-			i.orderPreference(Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME);
+			i.childSelector(Interest.CHILD_SELECTOR_RIGHT);
 			break;
 		case MaxSuffixComponents:
 			i.maxSuffixComponents(additionalComponents);

@@ -345,24 +345,15 @@ public class CCNFlowControl implements CCNFilterListener {
 		Library.logger().finest("Looking for best match to " + interest + " among " + set.size() + " options.");
 		for (ContentName name : set) {
 			ContentObject result = _holdingArea.get(name);
-			/*
-			 * Since "ORDER_PREFERENCE_LEFT" is actually 0, we have to do the test in this order so that left and
-			 * right don't look the same
-			 */
-			if (interest.orderPreference()  != null) {
+			
+			// We only have to do something unusual here if the caller is looking for CHILD_SELECTOR_RIGHT
+			if (interest.childSelector()  == Interest.CHILD_SELECTOR_RIGHT) {
 				if (interest.matches(result)) {
-					if (bestMatch == null)
+					if (bestMatch == null) {
 						bestMatch = result;
-					if ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME))
-							== (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME)) { //last
 						if (name.compareTo(bestMatch.name()) > 0) {
 							bestMatch = result;
 						}
-					} else if ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME))
-							== (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME)) { //next
-						if (name.compareTo(bestMatch.name()) < 0) {
-							bestMatch = result;
-						}				
 					}
 				}
 			} else

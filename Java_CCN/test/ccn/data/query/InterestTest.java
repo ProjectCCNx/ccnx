@@ -88,7 +88,7 @@ public class InterestTest {
 		XMLEncodableTester.encodeDecodeTest("FancyInterest", nplain, nplainDec, nplainBDec);
 		
 		Interest opPlain = new Interest(tcn);
-		opPlain.orderPreference(Interest.ORDER_PREFERENCE_LEFT + Interest.ORDER_PREFERENCE_ORDER_ARRIVAL);
+		opPlain.childSelector(Interest.CHILD_SELECTOR_RIGHT);
 		Interest opPlainDec = new Interest();
 		Interest opPlainBDec = new Interest();
 		XMLEncodableTester.encodeDecodeTest("PreferenceInterest", opPlain, opPlainDec, opPlainBDec);

@@ -522,8 +522,8 @@ public class ContentTree {
 				return null;
 			}
 			
-			if (null != interest.orderPreference() && (interest.orderPreference() & (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME))
-					== (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME)) {
+			if (null != interest.childSelector() && ((interest.childSelector() & (Interest.CHILD_SELECTOR_RIGHT))
+					== (Interest.CHILD_SELECTOR_RIGHT))) {
 				// Traverse to find latest match
 				return rightSearch(interest, (null == addl) ? -1 : addl + ncc, 
 						prefixRoot, new ContentName(ncc, interest.name().components()), 
@@ -532,8 +532,7 @@ public class ContentTree {
 			else{
 				return leftSearch(interest, (null == addl) ? -1 : addl + ncc,
 						prefixRoot, new ContentName(ncc, interest.name().components()), 
-						ncc, null == interest.orderPreference() || (interest.orderPreference() & (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME))
-						!= (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME), getter);
+						ncc, false, getter);
 			}
 			
 			
