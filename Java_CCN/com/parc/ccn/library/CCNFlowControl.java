@@ -43,6 +43,8 @@ import com.parc.ccn.data.util.InterestTable.Entry;
 
 public class CCNFlowControl implements CCNFilterListener {
 	
+	public enum Shape {STREAM, STREAM_WITH_HEADER};
+	
 	protected CCNLibrary _library = null;
 	
 	// Temporarily default to very high timeout so that puts have a good
@@ -129,6 +131,18 @@ public class CCNFlowControl implements CCNFilterListener {
 	public void addNameSpace(String name) throws MalformedContentNameStringException, IOException {
 		addNameSpace(ContentName.fromNative(name));
 	}
+	
+	/**
+	 * This is used by the RepoFlowController to indicate that it should start a write
+	 * @param name
+	 * @param shape
+	 * @throws MalformedContentNameStringException
+	 * @throws IOException 
+	 */
+	public void startWrite(String name, Shape shape) throws MalformedContentNameStringException, IOException {
+		startWrite(ContentName.fromNative(name), shape);
+	}
+	public void startWrite(ContentName name, Shape shape) throws IOException {}
 	
 	/**
 	 * For now we don't have anyway to remove a partial namespace from

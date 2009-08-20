@@ -9,7 +9,6 @@ import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNFileOutputStream;
 
-
 public class RepositoryFileOutputStream extends CCNFileOutputStream {
 
 	public RepositoryFileOutputStream(ContentName name, CCNLibrary library) throws IOException {
@@ -19,7 +18,7 @@ public class RepositoryFileOutputStream extends CCNFileOutputStream {
 	public RepositoryFileOutputStream(ContentName name,
 			PublisherPublicKeyDigest publisher, CCNLibrary library)
 			throws IOException {
-		this(name, null, publisher, null, library);
+		super(name, null, publisher, null, new RepositoryFlowControl(name, library));
 	}
 
 	public RepositoryFileOutputStream(ContentName name, KeyLocator locator,

@@ -117,6 +117,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 					listener._headerInterest = Interest.constructInterest(listener.getVersionedName(), _daemon.getExcludes(), null, 
 							listener.getVersionedName().count());
 					listener._headerInterest.additionalNameComponents(1);
+					Library.logger().fine("Sending header request: " + listener._headerInterest);
 					_library.expressInterest(listener._headerInterest, listener);
 				} catch (IOException e) {
 					Library.logStackTrace(Level.WARNING, e);

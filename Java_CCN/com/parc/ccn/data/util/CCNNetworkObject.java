@@ -20,6 +20,7 @@ import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.data.util.DataUtils.Tuple;
 import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.CCNFlowControl.Shape;
 import com.parc.ccn.library.io.CCNInputStream;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
 import com.parc.ccn.library.io.CCNVersionedOutputStream;
@@ -476,6 +477,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			// DKS TODO -- start write
 			// The segmenter in the stream does an addNameSpace of the versioned name. Right now
 			// this not only adds the prefix (ignored) but triggers the repo start write.
+			_flowControl.startWrite(name, Shape.STREAM_WITH_HEADER);
 			_flowControl.addNameSpace(name);
 			_flowControl.put(goneObject);
 			_currentPublisher = goneObject.signedInfo().getPublisherKeyID();
