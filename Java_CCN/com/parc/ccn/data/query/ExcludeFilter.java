@@ -16,23 +16,18 @@ import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
 
 /**
- * Terse documentation of these filters:
+ * The exclude filters are used with Interest matching to exclude content with components
+ * which match the filters 1 level below the prefix length of the interest.
  * 
- * The filters are used to exclude content with components which match the filters 1 level
- * below the prefix length of the interest.
+ * Filters contain at least one element. The elements consist of either a component name,
+ * a bloom filter or the 'any' element.
  * 
- * Filters can contain 1-n "elements". The elements consist of either a component name
- * or a bloom filter. The elements must contain one of the following:
- * 
- *  - A single bloom filter. If the component to be tested matches the filter, it is excluded.
- *  - A series of ordered components, canonically increasing. If the component to be tested 
- *       exactly matches any of these components, it is excluded.
- *  - A mixture of bloom filters and components with the component elements canonically increasing.
- *       2 bloom filters in a row are not allowed. The component to be tested is excluded if it
- *       exactly matches one of the components or if it is canonically located between 2 components 
- *       in the series of elements and it matches a bloom filter located between those 2 components.
+ * The order of elements within an exclude filter must follow 2 rules:
+ * 1. Within an exclude filter all component elements must be in ascending order wherever they occur
+ * and there should be no duplicates.
+ * 2. An any element or a bloom filter element must not be followed by an any element or bloom filter.
+ * I.E. Any elements or bloom filters must be separated by at least one component element.
  */
-
 public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 		Comparable<ExcludeFilter> {
 	
