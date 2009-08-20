@@ -102,11 +102,16 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	
 	protected class Client {
 		protected ContentName _name;
+		protected Shape _shape;
 		protected boolean _initialized = false;
 		
-		public Client(ContentName name) {
+		public Client(ContentName name, Shape shape) {
 			_name = name;
+			_shape = shape;
 		}
+		
+		public ContentName name() { return _name; }
+		public Shape shape() { return _shape; }
 	}
 
 	public RepositoryFlowControl(CCNLibrary library) throws IOException {
@@ -127,7 +132,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	@Override
 	public void startWrite(ContentName name, Shape shape) throws IOException {
 		
-		Client client = new Client(name);
+		Client client = new Client(name, shape);
 		_clients.add(client);
 		clearUnmatchedInterests();	// Remove possible leftover interests from "getLatestVersion"
 		ContentName repoWriteName = new ContentName(name, CommandMarkers.REPO_START_WRITE, Interest.generateNonce());
@@ -206,7 +211,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	public void afterClose() throws IOException {
 		try {
 			Client client = _clients.remove();
-			if (client._name != null) {
+			if ((client.name() != null) && (client.shape() == Shape.STREAM_WITH_HEADER)) {
 				ContentName repoWriteName = new ContentName(client._name, CommandMarkers.REPO_GET_HEADER, Interest.generateNonce());
 		
 				Interest writeInterest = new Interest(repoWriteName);
