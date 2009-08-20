@@ -80,7 +80,22 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 	}
 
 	public ExcludeFilter() {} // for use by decoders
-	
+
+	/**
+	 * Create an Exclude filter that excludes all components up to and including the one given,
+	 * but none after.
+	 * @param component if a null component is passed in then null is returned.
+	 */
+	public static ExcludeFilter factory(byte [] component) {
+		if ( component == null)
+			return null;
+		ExcludeFilter ef = new ExcludeFilter();
+		ef._values = new ArrayList<ExcludeElement>(2);
+		ef._values.add(new ExcludeAny());
+		ef._values.add(new ExcludeComponent(component));
+		return ef;
+	}
+
 	/**
 	 * @param omissions List of names to exclude, or null
 	 * @return returns null if list is null or empty, or a new Exclude filter that excludes the listed names.
