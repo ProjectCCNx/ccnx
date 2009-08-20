@@ -17,7 +17,7 @@ documentation: _always
 	doxygen
 
 testinstall install uninstall:
-	@echo No $@ target for $$(pwd -L)
+	@echo No $@ target for `pwd`
  
 default all clean depend test check shared install uninstall: _always
 

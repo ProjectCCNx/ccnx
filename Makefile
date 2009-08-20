@@ -31,7 +31,7 @@ clean-testinstall: _always
 checkdirs: _always
 	test -d src && mv src src.`date +%Y%m%d%H%M` || :
 	rm -rf src
-	
+
 # The rest of this is for packaging purposes.
 _manifester:
 	rm -f _manifester
@@ -64,7 +64,7 @@ distfile: tar
 	tar cf ccn-$(VERSION).tar ccn-$(VERSION)
 	gzip -9 ccn-$(VERSION).tar
 	ls -l ccn-$(VERSION).tar.gz
-	
+
 fixupversions: _always
 	Fix1 () { sed -e '/^PROJECT_NUMBER/s/=.*$$/= $(VERSION)/' $$1 > DTemp && mv DTemp $$1; } && Fix1 csrc/Doxyfile && Fix1 Java_CCN/Doxyfile
 
