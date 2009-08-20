@@ -7,9 +7,8 @@ import java.util.ArrayList;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.query.BloomFilter;
+import com.parc.ccn.data.query.ExcludeAny;
 import com.parc.ccn.data.query.ExcludeComponent;
-import com.parc.ccn.data.query.ExcludeElement;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.util.DataUtils;
@@ -356,14 +355,13 @@ public class VersioningProfile implements CCNProfile {
 			start = startingVersionComponent;
 		}
 		
-		ArrayList<ExcludeElement> ees = new ArrayList<ExcludeElement>();
-		
-		ees.add(BloomFilter.matchEverything());
+		ArrayList<ExcludeFilter.Element> ees = new ArrayList<ExcludeFilter.Element>();
+		ees.add(new ExcludeAny());
 		ees.add(new ExcludeComponent(start));
 		ees.add(new ExcludeComponent(new byte [] {
 				VERSION_MARKER+1, OO, OO, OO, OO, OO, OO } ));
-		ees.add(BloomFilter.matchEverything());
-		ExcludeFilter ef = new ExcludeFilter(ees);
-		return ef;
+		ees.add(new ExcludeAny());
+		
+		return new ExcludeFilter(ees);
 	}
 }

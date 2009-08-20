@@ -16,7 +16,6 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.ExcludeComponent;
-import com.parc.ccn.data.query.ExcludeElement;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.util.DataUtils;
@@ -183,12 +182,12 @@ public class Flosser implements CCNInterestListener {
             // DKS TODO should the count above be count()-1 and this just prefixCount?
             if (prefixCount == result.name().count()) {
             	if (null == interest.excludeFilter()) {
-              		ArrayList<ExcludeElement> excludes = new ArrayList<ExcludeElement>();
+              		ArrayList<ExcludeFilter.Element> excludes = new ArrayList<ExcludeFilter.Element>();
                		excludes.add(new ExcludeComponent(result.contentDigest()));
             		interest.excludeFilter(new ExcludeFilter(excludes));
             		Library.logger().finest("Creating new exclude filter for interest " + interest.name());
             	} else {
-            		if (interest.excludeFilter().exclude(result.contentDigest())) {
+            		if (interest.excludeFilter().isExcluded(result.contentDigest())) {
             			Library.logger().fine("We should have already excluded content digest: " + DataUtils.printBytes(result.contentDigest()));
             		} else {
             			// Has to be in order...
@@ -199,12 +198,12 @@ public class Flosser implements CCNInterestListener {
             	Library.logger().finer("Excluding content digest: " + DataUtils.printBytes(result.contentDigest()) + " onto interest " + interest.name() + " total excluded: " + interest.excludeFilter().size());
             } else {
                	if (null == interest.excludeFilter()) {
-               		ArrayList<ExcludeElement> excludes = new ArrayList<ExcludeElement>();
+               		ArrayList<ExcludeFilter.Element> excludes = new ArrayList<ExcludeFilter.Element>();
                		excludes.add(new ExcludeComponent(result.name().component(prefixCount)));
             		interest.excludeFilter(new ExcludeFilter(excludes));
             		Library.logger().finest("Creating new exclude filter for interest " + interest.name());
                	} else {
-                    if (interest.excludeFilter().exclude(result.name().component(prefixCount))) {
+                    if (interest.excludeFilter().isExcluded(result.name().component(prefixCount))) {
             			Library.logger().fine("We should have already excluded child component: " + ContentName.componentPrintURI(result.name().component(prefixCount)));                   	
                     } else {
                     	// Has to be in order...

@@ -9,7 +9,7 @@ import com.parc.ccn.data.util.XMLEncoder;
 /**
  * This represents a Component with an ExcludeFilter
  */
-public class ExcludeComponent extends ExcludeElement implements Comparable<ExcludeComponent> {
+public class ExcludeComponent extends ExcludeFilter.Element implements Comparable<ExcludeComponent> {
 	public static final String COMPONENT = "Component";
 	protected byte [] body = null;
 	

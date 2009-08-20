@@ -14,7 +14,6 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.BloomFilter;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.ExcludeComponent;
-import com.parc.ccn.data.query.ExcludeElement;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.util.DataUtils;
@@ -51,7 +50,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 		for (String value : bloomTestValues) {
 			bf1.insert(value.getBytes());
 		}
-		ArrayList<ExcludeElement>excludes = new ArrayList<ExcludeElement>(3);
+		ArrayList<ExcludeFilter.Element>excludes = new ArrayList<ExcludeFilter.Element>(3);
 		excludes.add(e1);
 		excludes.add(bf1);
 		excludes.add(e2);

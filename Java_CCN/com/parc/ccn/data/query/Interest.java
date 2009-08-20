@@ -213,7 +213,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			}
 		}
 		if (null != excludeFilter()) {
-			if (excludeFilter().exclude(name.component(name().count()))) {
+			if (excludeFilter().isExcluded(name.component(name().count()))) {
 				Library.logger().finest("Interest match failed. " + name + " has been excluded");
 				return false;
 			}
@@ -267,19 +267,13 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			prefixCount = name.count() - 1;
 		
 		if (prefixCount < name.count()) {
-			ContentName newName = name.clone();
-			newName = new ContentName(prefixCount, newName.components());
+			byte [] component = name.component(prefixCount);
+			name = new ContentName(prefixCount, name.components());
 		
-			byte[][] nextExclude = new byte[2][];
-			byte[] zeroByte = new byte[1];
-			zeroByte[0] = 0;
-			nextExclude[0] = zeroByte;
-			nextExclude[1] = name.component(prefixCount);
-			if (null != exclude) {
-				exclude.addRange(nextExclude);
+			if (exclude == null) {
+				exclude = ExcludeFilter.uptoFactory(component);
 			} else
-				exclude = new ExcludeFilter(ExcludeFilter.rangeFactory(nextExclude));
-			name = newName;
+				exclude.excludeUpto(component);
 		}
 		return constructInterest(name, exclude, order);
 	}

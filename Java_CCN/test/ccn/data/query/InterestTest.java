@@ -16,7 +16,6 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.BloomFilter;
 import com.parc.ccn.data.query.ExcludeComponent;
-import com.parc.ccn.data.query.ExcludeElement;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherID;
@@ -58,7 +57,7 @@ public class InterestTest {
 		ExcludeComponent e2 = new ExcludeComponent("zzzzzzzz".getBytes());
 		
 		try {
-			ArrayList<ExcludeElement>te = new ArrayList<ExcludeElement>(2);
+			ArrayList<ExcludeFilter.Element>te = new ArrayList<ExcludeFilter.Element>(2);
 			te.add(e2);
 			te.add(e1);
 			new ExcludeFilter(te);
@@ -68,7 +67,7 @@ public class InterestTest {
 		for (String value : bloomTestValues) {
 			bf1.insert(value.getBytes());
 		}
-		ArrayList<ExcludeElement>excludes = new ArrayList<ExcludeElement>(2);
+		ArrayList<ExcludeFilter.Element>excludes = new ArrayList<ExcludeFilter.Element>(2);
 		excludes.add(e1);
 		excludes.add(bf1);
 		excludes.add(e2);

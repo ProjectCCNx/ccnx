@@ -14,7 +14,7 @@ import com.parc.ccn.data.util.XMLEncoder;
 /**
  * Implement bloom filter operations
  */
-public class BloomFilter extends ExcludeElement implements Comparable<BloomFilter> {
+public class BloomFilter extends ExcludeFilter.Filler implements Comparable<BloomFilter> {
 	public static final String BLOOM = "Bloom";
 
 	private int _lgBits;
@@ -62,22 +62,6 @@ public class BloomFilter extends ExcludeElement implements Comparable<BloomFilte
 	 * For decoding
 	 */
 	public BloomFilter() {}
-	
-	/**
-	 * Create a new BloomFilter that always matches. This is useful for creating ranges in ExcludeFilters.
-	 * @return a new BloomFilter that matches everything.
-	 */
-	public static BloomFilter matchEverything() {
-		BloomFilter b = new BloomFilter();
-		final short [] zeroSeed = { 0, 0, 0, 0 };
-		final byte [] full = { (byte)0xFF };
-		b._lgBits = 3;
-		b._nHash = 1;
-		b._seed = zeroSeed;
-		b._bloom = full;
-		b._size = 1;
-		return b;
-	}
 	
 	public void insert(byte [] key) {
 		long s = computeSeed();

@@ -6,12 +6,14 @@ import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncoder;
 
 /**
- * 
- * @author rasmusse
- *
+ * This element in an #ExcludeFilter matches all components.
  */
-public class ExcludeAny extends ExcludeElement {
+public class ExcludeAny extends ExcludeFilter.Filler {
 	public static final String ANY = "Any";
+	
+	public boolean match(byte [] component) {
+		return true;
+	}
 
 	@Override
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
@@ -29,5 +31,4 @@ public class ExcludeAny extends ExcludeElement {
 	public boolean validate() {
 		return true;
 	}
-
 }
