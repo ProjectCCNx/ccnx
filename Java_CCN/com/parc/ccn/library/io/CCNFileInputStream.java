@@ -189,7 +189,8 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 					requestHeader(_baseName, result.signedInfo().getPublisherKeyID());
 				} catch (XMLStreamException e) {
 					Library.logger().fine("XMLStreamException in processing header: " + e.getMessage());
-					throw new IOException("Exception in processing header", e);
+					// TODO -- throw nested exception in 1.6
+					throw new IOException("Exception in processing header: " + e);
 				}
 			}
 			return getBlock(_startingBlockIndex);

@@ -65,7 +65,8 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 			putHeader(_baseName, lengthWritten(), getBlockSize(), _dh.digest(), null);
 		} catch (XMLStreamException e) {
 			Library.logger().fine("XMLStreamException in writing header: " + e.getMessage());
-			throw new IOException("Exception in writing header", e);
+			// TODO throw nested exception
+			throw new IOException("Exception in writing header: " + e);
 		}
 	}
 	
