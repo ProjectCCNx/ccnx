@@ -460,6 +460,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		if (_data != null) {
 			// CCNVersionedOutputStream will version an unversioned name. 
 			// If it gets a versioned name, will respect it. 
+			// This will call startWrite on the flow controller.
 			CCNVersionedOutputStream cos = new CCNVersionedOutputStream(name, _keyLocator, _publisher, contentType(), _flowControl);
 			save(cos); // superclass stream save. calls flush but not close on a wrapping
 			// digest stream; want to make sure we end up with a single non-MHT signed
@@ -477,8 +478,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			// DKS TODO -- start write
 			// The segmenter in the stream does an addNameSpace of the versioned name. Right now
 			// this not only adds the prefix (ignored) but triggers the repo start write.
-			_flowControl.startWrite(name, Shape.STREAM_WITH_HEADER);
 			_flowControl.addNameSpace(name);
+			_flowControl.startWrite(name, Shape.STREAM);
 			_flowControl.put(goneObject);
 			_currentPublisher = goneObject.signedInfo().getPublisherKeyID();
 			_currentPublisherKeyLocator = goneObject.signedInfo().getKeyLocator();

@@ -47,6 +47,8 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 	}
 	
 	public CCNAbstractOutputStream() {}	// special purpose constructor
+	
+	protected void startWrite() throws IOException {}
 
 	@Override
 	public void write(byte[] b) throws IOException {

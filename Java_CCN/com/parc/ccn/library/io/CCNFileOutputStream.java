@@ -19,6 +19,7 @@ import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNSegmenter;
+import com.parc.ccn.library.CCNFlowControl.Shape;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.security.crypto.ContentKeys;
 
@@ -52,6 +53,12 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 			PublisherPublicKeyDigest publisher, ContentType type, CCNFlowControl flowControl)
 			throws IOException {
 		super(name, locator, publisher, type, flowControl);
+	}
+	
+	@Override
+	protected void startWrite() throws IOException {
+		// Won't need this if header is its own stream
+		_segmenter.getFlowControl().startWrite(_baseName, Shape.STREAM_WITH_HEADER);		
 	}
 
 	protected void writeHeader() throws InvalidKeyException, SignatureException, IOException, InterruptedException {
