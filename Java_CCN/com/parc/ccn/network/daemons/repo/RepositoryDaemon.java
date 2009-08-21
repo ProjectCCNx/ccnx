@@ -392,6 +392,7 @@ public class RepositoryDaemon extends Daemon {
 					Library.logger().info("node.timestamp was null!!!");
 				Collection cd = ner.getNamesInCollectionData();
 				co = new CollectionObject(ner.getPrefix(), cd, _library);
+				co.disableFlowControl();
 				co.save(ner.getTimestamp());
 				Library.logger().finer("saved collection object: "+co.getCurrentVersionName());
 				return;
