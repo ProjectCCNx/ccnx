@@ -414,7 +414,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 	
 	protected NERequest getCurrentRequest(ContentName n) {
 		//Library.logger().info("checking current requests...");
-		synchronized (_handledResponses) {
+		synchronized (_currentRequests) {
 			for (NERequest r: _currentRequests) {
 				if (r.prefix.equals(n))
 					return r;
