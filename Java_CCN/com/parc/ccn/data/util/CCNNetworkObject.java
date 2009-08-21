@@ -478,7 +478,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			// DKS TODO -- start write
 			// The segmenter in the stream does an addNameSpace of the versioned name. Right now
 			// this not only adds the prefix (ignored) but triggers the repo start write.
-			_flowControl.startWrite(name, Shape.STREAM_WITH_HEADER);
 			_flowControl.addNameSpace(name);
 			_flowControl.startWrite(name, Shape.STREAM);
 			_flowControl.put(goneObject);
