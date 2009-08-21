@@ -48,17 +48,17 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	protected int _markOffset = 0;
 	protected long _markBlock = 0;
 
-	public CCNInputStream(ContentName name, Long startingBlockIndex, PublisherPublicKeyDigest publisher, 
+	public CCNInputStream(ContentName name, Long startingSegmentNumber, PublisherPublicKeyDigest publisher, 
 			ContentKeys keys, CCNLibrary library) throws XMLStreamException,
 			IOException {
 
-		super(name, startingBlockIndex, publisher, keys, library);
+		super(name, startingSegmentNumber, publisher, keys, library);
 	}
 
-	public CCNInputStream(ContentName name, Long startingBlockIndex, PublisherPublicKeyDigest publisher,
+	public CCNInputStream(ContentName name, Long startingSegmentNumber, PublisherPublicKeyDigest publisher,
 			CCNLibrary library) throws XMLStreamException, IOException {
 
-		super(name, startingBlockIndex, publisher, library);
+		super(name, startingSegmentNumber, publisher, library);
 	}
 	
 	public CCNInputStream(ContentName name, PublisherPublicKeyDigest publisher, CCNLibrary library) 
@@ -74,12 +74,12 @@ public class CCNInputStream extends CCNAbstractInputStream {
 		this(name, null, null, library);
 	}
 	
-	public CCNInputStream(ContentName name, long blockNumber) throws XMLStreamException, IOException {
-		this(name, blockNumber, null, null);
+	public CCNInputStream(ContentName name, long segmentNumber) throws XMLStreamException, IOException {
+		this(name, segmentNumber, null, null);
 	}
 	
-	public CCNInputStream(ContentObject starterBlock, CCNLibrary library) throws XMLStreamException, IOException {
-		super(starterBlock, library);
+	public CCNInputStream(ContentObject firstSegment, CCNLibrary library) throws XMLStreamException, IOException {
+		super(firstSegment, library);
 	}
 	
 	@Override
@@ -87,16 +87,6 @@ public class CCNInputStream extends CCNAbstractInputStream {
 		if (null == _segmentReadStream)
 			return 0;
 		return _segmentReadStream.available();
-			
-		//int available = 0;
-		//if (null != _header) {
-		//	available =  (int)(_header.length() - blockIndex()*_header.blockSize() - _blockOffset);
-		//	//available =  (int)(_header.length() - (blockIndex()-_header.start())*_header.blockSize() - _blockOffset);
-		//} else if (null != _currentSegment) {
-		//	available =  _currentSegment.contentLength() - _blockOffset;
-		//}
-		//Library.logger().info("available(): " + available);
-		//return available; /* unknown */
 	}
 	
 	public boolean eof() { 

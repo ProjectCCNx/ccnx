@@ -22,15 +22,15 @@ import com.parc.ccn.security.crypto.ContentKeys;
  */
 public class CCNBlockInputStream extends CCNAbstractInputStream {
 
-	public CCNBlockInputStream(ContentName baseName, Long startingBlockIndex, 
+	public CCNBlockInputStream(ContentName baseName, Long startingSegmentNumber, 
 			   PublisherPublicKeyDigest publisher, ContentKeys keys, CCNLibrary library) throws XMLStreamException, IOException {
-		super(baseName, startingBlockIndex, publisher, keys, library);
+		super(baseName, startingSegmentNumber, publisher, keys, library);
 		setTimeout(CCNBase.NO_TIMEOUT);
 	}
 
-	public CCNBlockInputStream(ContentName baseName, Long startingBlockIndex,
+	public CCNBlockInputStream(ContentName baseName, Long startingSegmentNumber,
 							   PublisherPublicKeyDigest publisher, CCNLibrary library) throws XMLStreamException, IOException {
-		super(baseName, startingBlockIndex, publisher, null, library);
+		super(baseName, startingSegmentNumber, publisher, null, library);
 		setTimeout(CCNBase.NO_TIMEOUT);
 	}
 
@@ -47,12 +47,12 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 		this(baseName, null, null, library);
 	}
 
-	public CCNBlockInputStream(ContentName baseName, long blockNumber) throws XMLStreamException, IOException {
-		this(baseName, blockNumber, null, null);
+	public CCNBlockInputStream(ContentName baseName, long segmentNumber) throws XMLStreamException, IOException {
+		this(baseName, segmentNumber, null, null);
 	}
 	
-	public CCNBlockInputStream(ContentObject starterBlock, CCNLibrary library) throws XMLStreamException, IOException {
-		super(starterBlock, null, library);
+	public CCNBlockInputStream(ContentObject firstSegment, CCNLibrary library) throws XMLStreamException, IOException {
+		super(firstSegment, null, library);
 	}
 
 	@Override
@@ -62,11 +62,11 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 				((null != buf) ? buf.length : "null") + " at offset " + offset);
 		// is this the first block?
 		if (null == _currentSegment) {
-			ContentObject firstBlock = getFirstSegment();
-			if (null == firstBlock) {
+			ContentObject firstSegment = getFirstSegment();
+			if (null == firstSegment) {
 				return 0; // nothing to read
 			}
-			setFirstSegment(firstBlock);
+			setFirstSegment(firstSegment);
 		} 
 		
 		// Now we have a block in place. Read from it. If we run out of block before
