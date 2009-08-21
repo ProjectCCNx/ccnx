@@ -52,4 +52,8 @@ public class ExcludeComponent extends ExcludeFilter.Element implements Comparabl
 		ExcludeComponent ec = (ExcludeComponent) obj;
 		return DataUtils.arrayEquals(body, ec.body);
 	}
+
+	public byte [] getBytes() {
+		return body.clone();
+	}
 }
