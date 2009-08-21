@@ -379,7 +379,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_currentInterest = 
             Interest.last(latestVersionKnown, 
                           VersioningProfile.acceptVersions(latestVersionKnown.lastComponent()),
-                          latestVersionKnow.count());
+                          latestVersionKnown.count());
 		Library.logger().info("UpdateInBackground: interest: " + _currentInterest);
 		_library.expressInterest(_currentInterest, this);
 	}
