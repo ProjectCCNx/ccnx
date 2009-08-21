@@ -30,6 +30,8 @@ public class BloomFilter extends ExcludeFilter.Filler implements Comparable<Bloo
 	private int _size = 0;
 	
 	public BloomFilter(int size, byte [] seed) {
+		if (seed.length != 4)
+			throw new IllegalArgumentException("Bloom seed length must be 4"); // for now
 		_seed = new short[seed.length];
 		for (int i = 0; i < seed.length; i++)
 			_seed[i] = (short)((seed[i]) & 0xff);
