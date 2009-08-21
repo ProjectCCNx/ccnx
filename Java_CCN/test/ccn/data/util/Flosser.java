@@ -187,7 +187,7 @@ public class Flosser implements CCNInterestListener {
             		interest.excludeFilter(new ExcludeFilter(excludes));
             		Library.logger().finest("Creating new exclude filter for interest " + interest.name());
             	} else {
-            		if (interest.excludeFilter().isExcluded(result.contentDigest())) {
+            		if (interest.excludeFilter().match(result.contentDigest())) {
             			Library.logger().fine("We should have already excluded content digest: " + DataUtils.printBytes(result.contentDigest()));
             		} else {
             			// Has to be in order...
@@ -203,7 +203,7 @@ public class Flosser implements CCNInterestListener {
             		interest.excludeFilter(new ExcludeFilter(excludes));
             		Library.logger().finest("Creating new exclude filter for interest " + interest.name());
                	} else {
-                    if (interest.excludeFilter().isExcluded(result.name().component(prefixCount))) {
+                    if (interest.excludeFilter().match(result.name().component(prefixCount))) {
             			Library.logger().fine("We should have already excluded child component: " + ContentName.componentPrintURI(result.name().component(prefixCount)));                   	
                     } else {
                     	// Has to be in order...

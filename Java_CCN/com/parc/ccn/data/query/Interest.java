@@ -213,7 +213,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			}
 		}
 		if (null != excludeFilter()) {
-			if (excludeFilter().isExcluded(name.component(name().count()))) {
+			if (excludeFilter().match(name.component(name().count()))) {
 				Library.logger().finest("Interest match failed. " + name + " has been excluded");
 				return false;
 			}

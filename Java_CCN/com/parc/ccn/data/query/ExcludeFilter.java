@@ -115,7 +115,7 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 	 * @param component - A name component
 	 * @return true if this component would be excluded by the exclude filter
 	 */
-	public boolean isExcluded(byte [] component) {
+	public boolean match(byte [] component) {
 		Filler lastFiller = null;
 		synchronized (_values) {
 			for (Element ee : _values) {
