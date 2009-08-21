@@ -13,12 +13,10 @@ import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.data.ContentObject.SimpleVerifier;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentVerifier;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.library.io.CCNAbstractInputStream;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
@@ -203,7 +201,7 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 			// right, that should be the right thing.
 			startingVersion = result.name().cut(prefixLength);
 			Library.logger().info("getFirstBlockOfLatestVersion: Have version information, now querying first segment of " + startingVersion);
-			return CCNAbstractInputStream.getBlock(startingVersion, startingBlockIndex, timeout, verifier, library); // now that we have the latest version, go back for the first block.
+			return SegmentationProfile.getBlock(startingVersion, startingBlockIndex, null, timeout, verifier, library); // now that we have the latest version, go back for the first block.
 		} else {
 			Library.logger().info("getFirstBlockOfLatestVersion: no block available for later version of " + startingVersion);
 		}

@@ -1,9 +1,15 @@
 package com.parc.ccn.library.profiles;
 
+import java.io.IOException;
 import java.math.BigInteger;
 import java.util.Arrays;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
+import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.security.ContentVerifier;
+import com.parc.ccn.data.security.PublisherPublicKeyDigest;
+import com.parc.ccn.library.CCNLibrary;
 
 /**
  * We speak in terms of segments, not fragments, as this profile
@@ -190,5 +196,45 @@ public class SegmentationProfile implements CCNProfile {
 		if (!isSegment(name))
 			return false;
 		return (getSegmentNumber(name) == BASE_SEGMENT);
+	}
+
+	/**
+	 * Retrieves a specific segment, following the above naming conventions.
+	 * If necessary (not currently), will issue repeated requests until it gets a segment
+	 * that matches requirements and verifies, or it times out.
+	 * TODO Eventually support publisher specification, and cope if verification fails (exclude, warn and retry).
+	 * @param desiredContent
+	 * @param segmentNumber If null, gets baseSegment().
+	 * @param timeout
+	 * @param verifier Cannot be null.
+	 * @param library
+	 * @return
+	 * @throws IOException
+	 */
+	public static ContentObject getBlock(ContentName desiredContent, Long desiredSegmentNumber, PublisherPublicKeyDigest publisher, long timeout, ContentVerifier verifier, CCNLibrary library) throws IOException {
+		
+	    // Block name requested should be interpreted literally, not taken
+	    // relative to baseSegment().
+		if (null == desiredSegmentNumber) {
+			desiredSegmentNumber = baseSegment();
+		}
+		
+		ContentName blockName = segmentName(desiredContent, desiredSegmentNumber);
+	
+		Library.logger().info("getBlock: getting block " + blockName);
+		ContentObject block = library.getLower(blockName, 1, timeout);
+	
+		if (null == block) {
+			Library.logger().info("Cannot get block " + desiredSegmentNumber + " of file " + desiredContent + " expected block: " + blockName);
+			throw new IOException("Cannot get block " + desiredSegmentNumber + " of file " + desiredContent + " expected block: " + blockName);
+		} else {
+			Library.logger().info("getBlock: retrieved block " + block.name());
+		}
+		
+		// So for the block, we assume we have a potential document.
+		if (!verifier.verifyBlock(block)) {
+			return null;
+		}
+		return block;
 	}
 }

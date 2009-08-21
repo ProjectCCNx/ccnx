@@ -61,8 +61,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	protected byte [] _verifiedRootSignature = null;
 	protected byte [] _verifiedProxy = null;
 	
-	protected PublisherPublicKeyDigest _contentPublisher; // the publisher of the content we are reading
-	protected KeyLocator _publisherKeyLocator; // the key locator of the content publisher.
+	protected KeyLocator _publisherKeyLocator; // the key locator of the content publisher as we read it.
 
 	/**
 	 * @param baseName should not include a segment component.
@@ -229,7 +228,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		}
 		
 		_currentBlock = newBlock;
-		_contentPublisher = newBlock.signedInfo().getPublisherKeyID();
+		// Should we only set these on the first retrieval?
+		// getBlock will ensure we get a requested publisher (if we have one) for the
+		// first block; once we have a publisher, it will ensure that future blocks match it.
+		_publisher = newBlock.signedInfo().getPublisherKeyID();
 		_publisherKeyLocator = newBlock.signedInfo().getKeyLocator();
 		
 		_blockReadStream = new ByteArrayInputStream(_currentBlock.content());
@@ -272,48 +274,13 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				return _currentBlock;
 			}
 		}
-		return getBlock(_baseName, number, _timeout, this, _library);
+ 		// If no publisher specified a priori, _publisher will be null and we will get whoever is
+ 		// available that verifies for first block. If _publisher specified a priori, or once we have
+ 		// retrieved a block and set _publisher to the publisher of that block, we will continue to
+ 		// retrieve blocks by the same publisher.
+		return SegmentationProfile.getBlock(_baseName, number, _publisher, _timeout, this, _library);
 	}
 	
-	/**
-	 * Gets a stream block following stream naming/segmentation conventions.
-	 * TODO Eventually support publisher specification, and cope if verifcation fails (exclude, warn and retry).
-	 * @param desiredContent
-	 * @param segmentNumber If null, gets baseSegment().
-	 * @param timeout
-	 * @param verifier Cannot be null.
-	 * @param library
-	 * @return
-	 * @throws IOException
-	 */
-	public static ContentObject getBlock(ContentName desiredContent, Long segmentNumber, long timeout, ContentVerifier verifier, CCNLibrary library) throws IOException {
-		
-	    // Block name requested should be interpreted literally, not taken
-        // relative to baseSegment().
-		if (null == segmentNumber) {
-			segmentNumber = SegmentationProfile.baseSegment();
-		}
-		
-		ContentName blockName = SegmentationProfile.segmentName(desiredContent, segmentNumber);
-
-		Library.logger().info("getBlock: getting block " + blockName);
-		ContentObject block = library.getLower(blockName, 1, timeout);
-
-		if (null == block) {
-			Library.logger().info("Cannot get block " + segmentNumber + " of file " + desiredContent + " expected block: " + blockName);
-			throw new IOException("Cannot get block " + segmentNumber + " of file " + desiredContent + " expected block: " + blockName);
-		} else {
-			Library.logger().info("getBlock: retrieved block " + block.name());
-		}
-		
-		// So for the block, we assume we have a potential document.
-		if (!verifier.verifyBlock(block)) {
-			return null;
-		}
-		return block;
-	}
-	
-
 	protected ContentObject getNextBlock() throws IOException {
 		
 		// We're looking at content marked GONE
@@ -504,8 +471,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * But we do verify each block, so start by pulling what's in the current block.
 	 * @return
 	 */
-	public PublisherPublicKeyDigest contentPublisher() {
-		return _contentPublisher;
+	public PublisherPublicKeyDigest publisher() {
+		return _publisher;
 	}
 	
 	public KeyLocator publisherKeyLocator() {
