@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.ContentObject.SimpleVerifier;
 import com.parc.ccn.data.query.BloomFilter;
 import com.parc.ccn.data.query.ExcludeAny;
 import com.parc.ccn.data.query.ExcludeComponent;

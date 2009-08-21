@@ -53,8 +53,12 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	protected Signature _signature; 
 	
 	public static class SimpleVerifier implements ContentVerifier {
+		
+		public static SimpleVerifier _defaultVerifier = new SimpleVerifier(null);
 
 		PublisherPublicKeyDigest _publisher; 
+		
+		public static ContentVerifier getDefaultVerifier() { return _defaultVerifier; }
 		
 		public SimpleVerifier(PublisherPublicKeyDigest publisher) {
 			_publisher = publisher;

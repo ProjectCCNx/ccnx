@@ -13,6 +13,7 @@ import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
+import com.parc.ccn.data.ContentObject.SimpleVerifier;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentVerifier;
@@ -46,7 +47,7 @@ import com.parc.ccn.security.keys.KeyManager;
  * can getLink to get link info
  *
  */
-public class CCNLibrary extends CCNBase implements ContentVerifier {
+public class CCNLibrary extends CCNBase {
 	
 	static {
 		Security.addProvider(new BouncyCastleProvider());
@@ -138,7 +139,6 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 		return keyManager().getDefaultKeyID();
 	}	
 	
-
 	public ContentObject get(ContentName name, long timeout) throws IOException {
 		Interest interest = new Interest(name);
 		return get(interest, timeout);
@@ -319,29 +319,12 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 		_networkManager = null;
 	}
 
-	/* (non-Javadoc)
-	 * @see com.parc.ccn.data.security.ContentVerifier#verifyBlock(com.parc.ccn.data.ContentObject)
-	 */
-	public boolean verifySegment(ContentObject block) {
-		boolean result = false;
-		try {
-			if (null == block)
-				return false;
-			result = block.verify(null);
-		} catch (Exception ex) {
-			// DKS TODO -- maybe do something more significant, but will minimize use of the default verifier.
-			Library.logger().warning("Caught exception of type: " + ex.getClass().getName() + " in verify: " + ex.getMessage());
-			result = false;
-		}
-		return result;
-	}
-	
 	/**
 	 * Allow default verification behavior to be replaced.
 	 * @return
 	 */
 	public ContentVerifier defaultVerifier() {
-		return this;
+		return SimpleVerifier.getDefaultVerifier();
 	}
 }
 
