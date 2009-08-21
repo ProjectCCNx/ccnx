@@ -178,7 +178,7 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 		Library.logger().info("getFirstBlockOfLatestVersion: getting version later than " + startingVersion);
 		
 		int prefixLength = VersioningProfile.hasTerminalVersion(startingVersion) ? startingVersion.count() : startingVersion.count() + 1;
-		ContentObject result =  library.getLatestVersion(startingVersion, null, timeout);
+		ContentObject result =  getLatestVersion(startingVersion, null, timeout, library);
 		
 		if (null != result){
 			Library.logger().info("getFirstBlockOfLatestVersion: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
@@ -223,13 +223,13 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 	 * DKS TODO -- doesn't use publisher
 	 * DKS TODO -- specify separately latest version known?
 	 */
-	public ContentObject getLatestVersion(ContentName name, PublisherPublicKeyDigest publisher, long timeout) throws IOException {
+	public static ContentObject getLatestVersion(ContentName name, PublisherPublicKeyDigest publisher, long timeout, CCNLibrary library) throws IOException {
 		
 		if (VersioningProfile.hasTerminalVersion(name)) {
-			return getVersionInternal(SegmentationProfile.segmentRoot(name), timeout);
+			return getVersionInternal(SegmentationProfile.segmentRoot(name), timeout, library);
 		} else {
 			ContentName firstVersionName = VersioningProfile.addVersion(name, VersioningProfile.baseVersion());
-			return getVersionInternal(firstVersionName, timeout);
+			return getVersionInternal(firstVersionName, timeout, library);
 		}
 	}
 	
@@ -239,13 +239,13 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 	 * also previously stripped any segment marker. So we know we have a name terminated
 	 * by the last version we know about (which could be 0).
 	 */
-	private ContentObject getVersionInternal(ContentName name, long timeout) throws InvalidParameterException, IOException {
+	private static ContentObject getVersionInternal(ContentName name, long timeout, CCNLibrary library) throws InvalidParameterException, IOException {
 		
 		byte [] versionComponent = name.lastComponent();
 		// initially exclude name components just before the first version, whether that is the
 		// 0th version or the version passed in
 		while (true) {
-			ContentObject co = getLatest(name, VersioningProfile.acceptVersions(versionComponent), timeout);
+			ContentObject co = library.getLatest(name, VersioningProfile.acceptVersions(versionComponent), timeout);
 			if (co == null) {
 				Library.logger().info("Null returned from getLatest for name: " + name);
 				return null;
