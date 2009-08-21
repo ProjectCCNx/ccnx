@@ -49,6 +49,8 @@ public class GroupManager {
 	
 	public EnumeratedNameList groupList() throws IOException {
 		if (null == _groupList) {
+			System.out.println("enumerating group: ......");
+			System.out.println(_groupStorage);
 			_groupList = new EnumeratedNameList(_groupStorage, _library);
 		}
 		return _groupList;
@@ -60,6 +62,19 @@ public class GroupManager {
 			return null;
 		}
 		Group theGroup = _groupCache.get(groupFriendlyName);
+		
+		//elaine : need to wait for data and add time out... the first time you run this, 
+		// nothing will be read... 
+		/*if( null == theGroup) {
+			groupList().waitForData();
+			SortedSet<ContentName> children = groupList().getChildren();
+			System.out.println("found the following groups:.................");
+			for (ContentName child : children) {
+				System.out.println(child);
+			}
+		}*/
+		
+		
 		if ((null == theGroup) && (groupList().hasChild(groupFriendlyName))) {
 			// Only go hunting for it if we think it exists, otherwise we'll block.
 			synchronized(_groupCache) {

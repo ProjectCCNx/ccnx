@@ -138,7 +138,8 @@ public abstract class KeyManager {
 	
 	/**
 	 * Publish a key at a certain name, signed by our default identity. Usually used to
-	 * publish our own keys.
+	 * publish our own keys. Version that takes a public key can be used to
+	 * publish other people's keys.
 	 * @param keyName
 	 * @param keyToPublish can be null, in which case we publish our own default public key
 	 * @throws InvalidKeyException 

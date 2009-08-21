@@ -459,5 +459,4 @@ public class BasicKeyManager extends KeyManager {
 		}
 		keyRepository().publishKey(keyName, key, getDefaultKeyID(), getDefaultSigningKey());
 	}
-
 }
