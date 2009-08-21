@@ -371,39 +371,52 @@ public class VersioningProfile implements CCNProfile {
 		
 		return new ExcludeFilter(ees);
 	}
+	
+	/**
+	 * Active methods. Want to provide profile-specific methods that:
+	 * - find the latest version without regard to what is below it
+	 * 		- if no version given, gets the latest version
+	 * 		- if a starting version given, gets the latest version available *after* that version;
+	 *            will time out if no such newer version exists
+	 *    Returns a content object, which may or may not be a segment of the latest version, but the
+	 *    latest version information is available from its name.
+	 *    
+	 * - find the first segment of the latest version of a name
+	 * 		- if no version given, gets the first segment of the latest version
+	 * 		- if a starting version given, gets the latest version available *after* that version or times out
+	 *    Will ensure that what it returns is a segment of a version of that object.
+	 */
 
 	/**
 	 * Gets the latest version using a single interest/response. There may be newer versions available
-	 * if you ask again passing in the version found.
+	 * if you ask again passing in the version found (i.e. each response will be the latest version
+	 * a given responder knows about. Further queries will move past that responder to other responders,
+	 * who may have newer information.)
 	 *  
 	 * @param name If the name ends in a version then this method explicitly looks for a newer version
-	 * than that. If the name does not end in a version then this call just looks for the latest version.
-	 * @param publisher Currently unused
+	 * than that, and will time out if no such later version exists. If the name does not end in a 
+	 * version then this call just looks for the latest version.
+	 * @param publisher Currently unused, will limit query to a specific publisher.
 	 * @param timeout
 	 * @return A ContentObject with the latest version, or null if the query timed out. Note - the content
-	 * returned could be any name under this new version - the last (rightmost) name is asked for, but
-	 * depending on where the answer came from it may not necessarily be the last (rightmost) available.
+	 * returned could be any name under this new version - by default it will get the leftmost item,
+	 * but right now that is generally a repo start write, not a segment. Changing the marker values
+	 * used will fix that.
+	 * TODO fix marker values
 	 * @throws IOException
 	 * DKS TODO -- doesn't use publisher
 	 * DKS TODO -- specify separately latest version known?
 	 */
-	public static ContentObject getLatestVersion(ContentName name, PublisherPublicKeyDigest publisher, long timeout, CCNLibrary library) throws IOException {
+	public static ContentObject getLatestVersionAfter(ContentName name, PublisherPublicKeyDigest publisher, long timeout, CCNLibrary library) throws IOException {
 		
 		if (hasTerminalVersion(name)) {
-			return VersioningProfile.getVersionInternal(SegmentationProfile.segmentRoot(name), timeout, library);
+			// Has a version. Make sure it doesn't have a segment; find a version after this one.
+			name = SegmentationProfile.segmentRoot(name);
 		} else {
+			// Doesn't have a version. Add the "0" version, so we are finding any version after that.
 			ContentName firstVersionName = addVersion(name, baseVersion());
-			return VersioningProfile.getVersionInternal(firstVersionName, timeout, library);
+			name = firstVersionName;
 		}
-	}
-
-	/**
-	 * We are only called by getLatestVersion, which has already ensured that we
-	 * either have a user-supplied version or a terminal version marker at the end of name; we have
-	 * also previously stripped any segment marker. So we know we have a name terminated
-	 * by the last version we know about (which could be 0).
-	 */
-	public static ContentObject getVersionInternal(ContentName name, long timeout, CCNLibrary library) throws InvalidParameterException, IOException {
 		
 		byte [] versionComponent = name.lastComponent();
 		// initially exclude name components just before the first version, whether that is the
@@ -429,6 +442,8 @@ public class VersioningProfile implements CCNProfile {
 	}
 
 	/**
+	 * DKS fix this one up to restrict length of valid answer, and check for segments. Don't
+	 * use above method to do this.
 	 * This method returns 
 	 * @param desiredName The name of the object we are looking for the first segment of.
 	 * 					  If (VersioningProfile.hasTerminalVersion(desiredName) == false), will get latest version it can
@@ -450,7 +465,7 @@ public class VersioningProfile implements CCNProfile {
 		Library.logger().info("getFirstBlockOfLatestVersion: getting version later than " + startingVersion);
 		
 		int prefixLength = hasTerminalVersion(startingVersion) ? startingVersion.count() : startingVersion.count() + 1;
-		ContentObject result =  getLatestVersion(startingVersion, null, timeout, library);
+		ContentObject result =  getLatestVersionAfter(startingVersion, null, timeout, library);
 		
 		if (null != result){
 			Library.logger().info("getFirstBlockOfLatestVersion: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());

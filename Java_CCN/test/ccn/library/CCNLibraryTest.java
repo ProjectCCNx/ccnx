@@ -223,12 +223,12 @@ public class CCNLibraryTest extends LibraryTestBase {
 		} t test = new t();
 		test.readAndCheck(base, 0);
 		test.readAndCheck(cos[1].name(), 1);
-		test.check(VersioningProfile.getLatestVersion(base, putLibrary.getDefaultPublisher(), 2000, getLibrary), 1);
+		test.check(VersioningProfile.getLatestVersionAfter(base, putLibrary.getDefaultPublisher(), 2000, getLibrary), 1);
 		// Beef this up a bit...
 		for (int i=2; i < testCount; ++i) {
 			f.put(cos[i]);
 			System.out.println("Wrote content: " + cos[i].name());
-			test.check(VersioningProfile.getLatestVersion(cos[i-1].name(), putLibrary.getDefaultPublisher(), 2000, getLibrary), i);
+			test.check(VersioningProfile.getLatestVersionAfter(cos[i-1].name(), putLibrary.getDefaultPublisher(), 2000, getLibrary), i);
 		}
 	}
 
@@ -306,7 +306,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 		Assert.assertNotNull("New version is null!", version1);
 
 		ContentObject latestVersion =
-			VersioningProfile.getLatestVersion(docName, null, CCNLibrary.NO_TIMEOUT, getLibrary);
+			VersioningProfile.getLatestVersionAfter(docName, null, CCNLibrary.NO_TIMEOUT, getLibrary);
 
 		Assert.assertNotNull("Retrieved latest version of " + docName + " got null!", latestVersion);
 		System.out.println("Latest version name: " + latestVersion.name());
@@ -318,7 +318,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 		System.out.println("Inserted second version as: " + version2);
 
 		ContentObject newLatestVersion = 
-			VersioningProfile.getLatestVersion(docName, null, CCNLibrary.NO_TIMEOUT, getLibrary);
+			VersioningProfile.getLatestVersionAfter(docName, null, CCNLibrary.NO_TIMEOUT, getLibrary);
 		Assert.assertNotNull("Retrieved new latest version of " + docName + " got null!", newLatestVersion);
 		System.out.println("Latest version name: " + newLatestVersion.name());
 
