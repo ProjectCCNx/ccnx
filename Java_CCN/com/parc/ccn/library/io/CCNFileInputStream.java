@@ -8,13 +8,13 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.content.HeaderData;
 import com.parc.ccn.data.content.HeaderData.HeaderObject;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
-import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.crypto.ContentKeys;
 
 /**
@@ -86,6 +86,12 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	
 	public boolean hasHeader() {
 		return (headerRequested() && _header.available());
+	}
+	
+	public HeaderData header() {
+		if (null == _header)
+			return null;
+		return _header.header();
 	}
 	
 	protected void requestHeader(ContentName baseName, PublisherPublicKeyDigest publisher) throws IOException, XMLStreamException {
@@ -164,36 +170,21 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	}
 
 	protected ContentObject getFirstBlock() throws IOException {
-		if (VersioningProfile.hasTerminalVersion(_baseName)) {
-			return super.getFirstBlock();
+		// Give up efficiency where we try to detect auto-caught header, and just
+		// use superclass method to really get us a first content block, then
+		// go after the header. Later on we can worry about re-adding the optimization.
+		ContentObject result = super.getFirstBlock();
+		if (null == result) {
+			throw new IOException("Cannot retrieve first block of " + _baseName + "!");
 		}
-		Library.logger().info("getFirstBlock: getting latest version of " + _baseName);
-		// This might get us the header instead...
-		ContentObject result =  _library.getLatestVersion(_baseName, null, _timeout);
-		if (null != result){
-			// Now we know the version
-			_baseName = SegmentationProfile.segmentRoot(result.name());
-			Library.logger().info("getFirstBlock: retrieved " + result.name() + " type: " + result.signedInfo().getTypeName());
-			if (SegmentationProfile.isHeader(_baseName, result.name())) {
-				if (!addHeader(result)) { // verifies
-					Library.logger().warning("Retrieved header spontaneously in getFirstBlock, but failed to process it.");
-				}
-				Library.logger().info("Retrieved header, setting _baseName to " + _baseName + " calling CCNInputStream.getFirstBlock.");
+		if (!headerRequested()) {
+			try {
+				requestHeader(_baseName, result.signedInfo().getPublisherKeyID());
+			} catch (XMLStreamException e) {
+				Library.logger().fine("XMLStreamException in processing header: " + e.getMessage());
+				// TODO -- throw nested exception in 1.6
+				throw new IOException("Exception in processing header: " + e);
 			}
-			// Now need to verify the block we got
-			if (!verifyBlock(result)) {
-				return null;
-			}
-			if (!headerRequested()) {
-				try {
-					requestHeader(_baseName, result.signedInfo().getPublisherKeyID());
-				} catch (XMLStreamException e) {
-					Library.logger().fine("XMLStreamException in processing header: " + e.getMessage());
-					// TODO -- throw nested exception in 1.6
-					throw new IOException("Exception in processing header: " + e);
-				}
-			}
-			return getBlock(_startingBlockIndex);
 		}
 		return result;
 	}
