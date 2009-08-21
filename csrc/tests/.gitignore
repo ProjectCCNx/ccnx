@@ -1,0 +1,13 @@
+Makefile
+FAILING
+SKIPPED
+STATUS/
+testdriver
+ephemeral*
+*.out
+newface-request.ccnb
+newface-response.ccnb
+newface.ccnb
+prefixreg-request.ccnb
+prefixreg-response.ccnb
+prefixreg.ccnb

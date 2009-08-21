@@ -3,10 +3,10 @@ package com.parc.ccn.security.keys;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.security.cert.Certificate;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.cert.Certificate;
 import java.security.cert.CertificateEncodingException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
@@ -21,17 +21,18 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.CCNInterestListener;
 import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
+import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.network.CCNNetworkManager;
-import com.parc.security.crypto.certificates.CryptoUtil;
+import com.parc.ccn.security.crypto.util.CryptoUtil;
 
 public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	
 	protected static final boolean _DEBUG = true;
+	public static final long SHORT_KEY_TIMEOUT = 300;
 	public static final long DEFAULT_KEY_TIMEOUT = 2000;
 	
 	protected  CCNNetworkManager _networkManager = null;
@@ -174,7 +175,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		return theKey;
 	}
 
-	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator) throws IOException {
+	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, long timeout) throws IOException {
 	
 		// Look for it in our cache first.
 		PublicKey publicKey = getPublicKey(desiredKeyID);
@@ -205,7 +206,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 			//  it would be really good to know how many additional name components to expect...
 			try {
 				Library.logger().info("Trying network retrieval of key: " + keyInterest.name());
-				keyObject = _networkManager.get(keyInterest, DEFAULT_KEY_TIMEOUT);
+				keyObject = _networkManager.get(keyInterest, timeout);
 			} catch (IOException e) {
 				Library.logger().warning("IOException attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
 				Library.warningStackTrace(e);
@@ -234,6 +235,14 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 				}
 			}
 		}
+		return null;
+	}
+	
+	public ContentObject retrieve(PublisherPublicKeyDigest keyName) {
+		ContentName name = _idMap.get(keyName);
+		if (null != name) {
+			return _keyMap.get(name);
+		}		
 		return null;
 	}
 	

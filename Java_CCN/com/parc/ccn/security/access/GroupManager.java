@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
-import javax.jcr.AccessDeniedException;
 import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.crypto.InvalidCipherTextException;
@@ -18,8 +17,8 @@ import org.bouncycastle.crypto.InvalidCipherTextException;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.content.CollectionData;
-import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.content.Collection;
+import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.security.PublicKeyObject;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.util.DataUtils;
@@ -77,7 +76,7 @@ public class GroupManager {
 		return theGroup;
 	}
 	
-	public Group getGroup(LinkReference theGroup) throws IOException, ConfigurationException, XMLStreamException {
+	public Group getGroup(Link theGroup) throws IOException, ConfigurationException, XMLStreamException {
 		if (null == theGroup) {
 			Library.logger().info("Asked to retrieve group with empty link.");
 			return null;
@@ -94,7 +93,7 @@ public class GroupManager {
 		}
 	}
 	
-	public Group createGroup(String groupFriendlyName, ArrayList<LinkReference> newMembers) 
+	public Group createGroup(String groupFriendlyName, ArrayList<Link> newMembers) 
 				throws XMLStreamException, IOException, ConfigurationException, InvalidKeyException, 
 						InvalidCipherTextException, AccessDeniedException {
 		Group existingGroup = getGroup(groupFriendlyName);
@@ -106,7 +105,7 @@ public class GroupManager {
 			MembershipList ml = 
 				new MembershipList(
 						AccessControlProfile.groupMembershipListName(_groupStorage, groupFriendlyName), 
-						new CollectionData(newMembers), _library);
+						new Collection(newMembers), _library);
 			Group newGroup =  new Group(_groupStorage, groupFriendlyName, ml, _library, this);
 			cacheGroup(newGroup);
 			// If I'm a group member (I end up knowing the private key of the group if I
@@ -137,7 +136,7 @@ public class GroupManager {
 	 * @param member
 	 * @return
 	 */
-	public boolean isGroup(LinkReference member) {
+	public boolean isGroup(Link member) {
 		return _groupStorage.isPrefixOf(member.targetName());
 	}
 	
@@ -171,7 +170,7 @@ public class GroupManager {
 	 */
 	public boolean amCurrentGroupMember(Group group) throws IOException, XMLStreamException, ConfigurationException {
 		MembershipList ml = group.membershipList(); // will update
-		for (LinkReference lr : ml.membershipList().contents()) {
+		for (Link lr : ml.membershipList().contents()) {
 			if (isGroup(lr)) {
 				String groupFriendlyName = AccessControlProfile.groupNameToFriendlyName(lr.targetName());
 				if (amCurrentGroupMember(groupFriendlyName)) {
@@ -280,7 +279,7 @@ public class GroupManager {
 		return privateKey;
 	}
 
-	public PublicKeyObject getLatestPublicKeyForGroup(LinkReference principal) throws IOException, ConfigurationException, XMLStreamException {
+	public PublicKeyObject getLatestPublicKeyForGroup(Link principal) throws IOException, ConfigurationException, XMLStreamException {
 		Group theGroup = getGroup(principal);
 		if (null == theGroup) 
 			return null;

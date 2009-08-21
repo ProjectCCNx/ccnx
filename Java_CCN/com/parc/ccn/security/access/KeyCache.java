@@ -2,11 +2,13 @@ package com.parc.ccn.security.access;
 
 import java.security.Key;
 import java.security.PrivateKey;
-import java.util.HashMap;
+import java.util.TreeMap;
+import java.util.Comparator;
 
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.keys.KeyManager;
+import com.parc.ccn.data.query.ByteArrayCompare;
 
 /**
  * A cache for decrypted symmetric keys for access control.
@@ -15,11 +17,13 @@ import com.parc.ccn.security.keys.KeyManager;
  */
 public class KeyCache {
 	
-	private HashMap<byte [], Key> _keyMap = new HashMap<byte [], Key>();
-	private HashMap<byte [], PrivateKey> _myKeyMap = new HashMap<byte [], PrivateKey>();
-	private HashMap<byte [], PrivateKey> _privateKeyMap = new HashMap<byte [], PrivateKey>();
-	private HashMap<byte [], byte []> _privateKeyIdentifierMap = new HashMap<byte [], byte[]>();
-	private HashMap<byte [], ContentName> _keyNameMap = new HashMap<byte [], ContentName>();
+	static Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
+	
+	private TreeMap<byte [], Key> _keyMap = new TreeMap<byte [], Key>(byteArrayComparator);
+	private TreeMap<byte [], PrivateKey> _myKeyMap = new TreeMap<byte [], PrivateKey>(byteArrayComparator);
+	private TreeMap<byte [], PrivateKey> _privateKeyMap = new TreeMap<byte [], PrivateKey>(byteArrayComparator);
+	private TreeMap<byte [], byte []> _privateKeyIdentifierMap = new TreeMap<byte [], byte[]>(byteArrayComparator);
+	private TreeMap<byte [], ContentName> _keyNameMap = new TreeMap<byte [], ContentName>(byteArrayComparator);
 	
 	public KeyCache() {
 		this(KeyManager.getKeyManager());

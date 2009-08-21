@@ -55,15 +55,18 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 		super(starterBlock, null, library);
 	}
 
+	@Override
 	protected int readInternal(byte [] buf, int offset, int len) throws IOException {
 		
 		Library.logger().info("CCNBlockInputStream: reading " + len + " bytes into buffer of length " + 
 				((null != buf) ? buf.length : "null") + " at offset " + offset);
 		// is this the first block?
 		if (null == _currentBlock) {
-			setCurrentBlock(getFirstBlock());
-			if (null == _currentBlock)
+			ContentObject firstBlock = getFirstBlock();
+			if (null == firstBlock) {
 				return 0; // nothing to read
+			}
+			setFirstBlock(firstBlock);
 		} 
 		
 		// Now we have a block in place. Read from it. If we run out of block before

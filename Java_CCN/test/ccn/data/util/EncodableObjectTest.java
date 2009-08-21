@@ -16,8 +16,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.content.CollectionData;
-import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.content.Collection;
+import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.SignedInfo;
@@ -45,12 +45,12 @@ public class EncodableObjectTest {
 	static PublisherID pubID2 = null;
 	static int NUM_LINKS = 100;
 	static LinkAuthenticator [] las = new LinkAuthenticator[NUM_LINKS];
-	static LinkReference [] lrs = null;
+	static Link [] lrs = null;
 	
-	static CollectionData small1;
-	static CollectionData small2;
-	static CollectionData empty;
-	static CollectionData big;
+	static Collection small1;
+	static Collection small2;
+	static Collection empty;
+	static Collection big;
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -76,19 +76,19 @@ public class EncodableObjectTest {
 			las[j] = new LinkAuthenticator(pubID2, null, new Timestamp(System.currentTimeMillis()),null, null);
  		}
 
-		lrs = new LinkReference[NUM_LINKS];
+		lrs = new Link[NUM_LINKS];
 		for (int i=0; i < lrs.length; ++i) {
-			lrs[i] = new LinkReference(ns[i],las[i]);
+			lrs[i] = new Link(ns[i],las[i]);
 		}
 		
-		empty = new CollectionData();
-		small1 = new CollectionData();
-		small2 = new CollectionData();
+		empty = new Collection();
+		small1 = new Collection();
+		small2 = new Collection();
 		for (int i=0; i < 5; ++i) {
 			small1.add(lrs[i]);
 			small2.add(lrs[i+5]);
 		}
-		big = new CollectionData();
+		big = new Collection();
 		for (int i=0; i < NUM_LINKS; ++i) {
 			big.add(lrs[i]);
 		}
@@ -123,7 +123,7 @@ public class EncodableObjectTest {
 		try {
 			ecd0.save(baos0);
 			Assert.assertFalse(baos0.toByteArray().length == 0);
-			System.out.println("Saved empty CollectionData, length: " + baos0.toByteArray().length);
+			System.out.println("Saved empty Collection, length: " + baos0.toByteArray().length);
 			ecd1.save(baos);
 			ecd2.save(baos2); // will this save? currently not, should it?
 			Assert.assertArrayEquals("Serializing two versions of same content should produce same output",

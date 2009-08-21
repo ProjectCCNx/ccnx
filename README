@@ -1,0 +1,17 @@
+Content-Centric Networking (CCN) Reference Implementation
+
+The CCN reference implementation provides the libraries and components
+required to build and run applications that use and demonstrate the
+basic CCN protocols.
+
+The CCN reference implementation is open source software.  Please see
+the file LICENSE for details.
+
+This file provides introductory information in the following sections:
+
+1. Package contents
+2. Supported platforms
+3. Build and install instructions
+4. Support and contact information
+
+<to be completed>

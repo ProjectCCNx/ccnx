@@ -24,14 +24,13 @@ import com.parc.ccn.library.profiles.SegmentationProfile;
  * 
  * @author rasmusse
  *
+ * Replaced by HeaderObject
  */
+@Deprecated
 public class Header extends ContentObject  {
 	
 	protected HeaderData _data;
 
-	public static final String HEADER_ELEMENT = "Header";
-	public static final String START_ELEMENT = "Start";
-	
 	public Header(ContentName name,
 			 long start, long count, 
 			 int blockSize, long length,

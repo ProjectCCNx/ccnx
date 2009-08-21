@@ -1,0 +1,156 @@
+CCN Face Management and Registration Protocol
+=============================================
+Revision 8/06/2009
+
+== Source references
+later.
+
+== Face Management Protocol
+The Face Management Protocol provides a method for an entity such as ccndc to control
+the faces maintained by ccnd, which are subsequently used in the Registration Protocol.
+
+The FMP supports "newface", "destroyface", and "queryface" operations.
+
+A request operation is represented as a CCN Interest with
+a CCN ContentObject encoding the majority of the request parameters embedded
+as a component of the Interest name.
+A response is represented as a ContentObject for which the name matches the Interest,
+and the content encodes any necessary response data.
+
+For the Face Management Protocol, the CCN ContentObject encoding the request and reply
+is the FaceInstance.
+
+To create a new face ccndc signs a content object NFBLOB whose Content is a
+ccnb-encoded FaceInstance containing
+
+  - Action "newface"
+  - other fields necessary to set up a socket (at least IPProto, Host, and Port).
+
+ccndc then expresses an interest in /ccn/CCNDID/newface/NFBLOB
+
+  - CCNDID is the pubid of the local ccnd
+  - NFBLOB is the signed content object
+
+The verb, "newface" occurs redundantly in both the interest prefix and in the NFBLOB.
+Its presence in the prefix is for dispatching the request.
+It is also in the NFBLOB, so that it is signed.
+
+ccnd creates the new face and answers with a FaceInstance containing
+at least the PublisherPublicKeyDigest and FaceID.
+
+== FaceInstance
+See ccn.xsd/ccn.dtd
+
+.......................................................
+FaceInstance ::= Action?
+	         PublisherPublicKeyDigest?
+		 FaceID?
+		 IPProto?
+		 Host?
+		 Port?
+		 MulticastInterface?
+		 MulticastTTL?
+		 FreshnessSeconds?
+
+Action		 ::= ("newface" | "destroyface" | "queryface")
+PublisherPublicKeyDigest ::= SHA-256 digest
+FaceID 		 ::= nonNegativeInteger
+IPProto 	 ::= nonNegativeInteger [IANA protocol number; 6=TCP, 17=UDP]
+Host 		 ::= textual representation of numeric IPv4 or IPv6 address
+Port 		 ::= nonNegativeInteger [1..65535]
+MulticastInterface ::= textual representation of numeric IPv4 or IPv6 address
+MulticastTTL 	 ::= nonNegativeInteger [1..255]
+FreshnessSeconds ::= nonNegativeInteger
+.......................................................
+
+=== Action
+When FaceInstance is used as a request, the Action must be specified.
+It will not be present in a response.
+
+. `newface` - If a face matching the parameters does not already exist, an attempt is made to create it. Then if the face exists (whether new or old) the full description is returned as a FaceInstance.
+. `destroyface` - at least the FaceID must be present. If permitted, the face is destroyed.  (NYI)
+. `queryface` - specification TBD
+
+=== PublisherPublicKeyDigest
+Identifies the ccnd that the information is relevant for.
+PublisherPublicKeyDigest is not necessary for self-registration, but
+indicates the ccnd to which the request is directed, if present.
+PublisherPublicKeyDigest is always present in a response.
+
+=== FaceID
+FaceID is not present in a `newface` request, but must be specified in
+a `destroyface` or `queryface` request.
+FaceID is always present in a response.
+
+=== Host
+Identifies the IPv4 or IPv6 numeric address of the remote ccnd for this
+FaceInstance.
+
+=== Port
+Port identifies the port on the remote ccnd, or the port for the multicast group.
+
+=== MulticastInterface
+If the Host is a multicast address, and there are multiple
+interfaces present, MulticastInterface will identify the unicast
+numeric address of the interface to which the multicast address will be
+attached.
+
+=== MulticastTTL
+Specifies the TTL to be used for multicast operations.  The default value is 1.
+
+=== FreshnessSeconds
+FreshnessSeconds is optional in a request, but is treated as a hint by ccnd.
+In a response, FreshnessSeconds specifies the remaining lifetime of the
+face.
+
+== Prefix Registration Protocol
+The prefix registration protocol uses the ForwardingEntry element type
+to represent both requests and responses.
+.......................................................
+ForwardingEntry ::= Action?
+	            Name?
+	            PublisherPublicKeyDigest?
+		    FaceID?
+		   ForwardingFlags?
+		   FreshnessSeconds?
+
+Action		 ::= ("prefixreg")
+Name		 ::= the name prefix to be registered
+PublisherPublicKeyDigest ::= SHA-256 digest of the ccnd's public key (CCNDID)
+FaceID 		 ::= nonNegativeInteger
+ForwardingFlags  ::= nonNegativeInteger
+FreshnessSeconds ::= nonNegativeInteger
+.......................................................
+
+=== Action
+When ForwardingEntry is used as a request, the Action must be specified.
+It will not be present in a response.
+
+- `prefixreg` - Register (or re-register) the prefix on the specified face.
+
+=== PublisherPublicKeyDigest
+Identifies the ccnd that the information is relevant for.
+It is optional in a request (the name in the requesting interest has
+already addressed the appropriate node).
+PublisherPublicKeyDigest is always present in a response.
+
+=== FaceID
+FaceID required in a `prefixreg` request.
+FaceID is always present in a response.
+
+=== Name
+This is the name prefix that is to acted on.
+
+=== ForwardingFlags
+This integer holds the inclusive OR of the following bit fields:
+.........................
+CCN_FORW_ACTIVE         1
+CCN_FORW_CHILD_INHERIT  2
+CCN_FORW_ADVERTISE      4
+.........................
+
+=== FreshnessSeconds
+FreshnessSeconds is optional in a request, but is treated as a hint by ccnd.
+In a response, FreshnessSeconds specifies the remaining lifetime of the
+registration.
+

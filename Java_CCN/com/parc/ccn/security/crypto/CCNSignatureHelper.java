@@ -10,7 +10,7 @@ import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
 import com.parc.ccn.data.util.XMLEncodable;
-import com.parc.security.crypto.SignatureHelper;
+import com.parc.ccn.security.crypto.util.SignatureHelper;
 
 /** 
  * Helper class for generating signatures.

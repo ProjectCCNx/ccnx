@@ -12,12 +12,14 @@ import java.security.spec.InvalidKeySpecException;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.data.util.CCNNetworkObject;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNInputStream;
-import com.parc.security.crypto.certificates.CryptoUtil;
+import com.parc.ccn.security.crypto.util.CryptoUtil;
 
 /**
  * PublicKeys are Serializable. So we could use a subclass of CCNSerializableObject
@@ -33,8 +35,7 @@ import com.parc.security.crypto.certificates.CryptoUtil;
 public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 
 	/**
-	 * Doesn't save until you call save, in case you want to tweak things first.
-	 * @param type
+	 * Write constructor. Doesn't save until you call save, in case you want to tweak things first.
 	 * @param name
 	 * @param data
 	 * @param library
@@ -45,19 +46,22 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 		super(PublicKey.class, name, data, library);
 	}
 	
-	public PublicKeyObject(ContentName name, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException, XMLStreamException {
-		super(PublicKey.class, name, publisher, library);
+	public PublicKeyObject(ContentName name, PublicKey data, PublisherPublicKeyDigest publisher, KeyLocator locator, CCNLibrary library) throws IOException {
+		super(PublicKey.class, name, data, publisher, locator, library);
 	}
-	
+
 	/**
 	 * Read constructor -- opens existing object.
-	 * @param type
 	 * @param name
 	 * @param library
 	 * @throws XMLStreamException
 	 * @throws IOException
 	 * @throws ClassNotFoundException 
 	 */
+	public PublicKeyObject(ContentName name, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException, XMLStreamException {
+		super(PublicKey.class, name, publisher, library);
+	}
+	
 	public PublicKeyObject(ContentName name, CCNLibrary library) throws IOException, XMLStreamException {
 		super(PublicKey.class, name, (PublisherPublicKeyDigest)null, library);
 	}
@@ -66,6 +70,13 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 		super(PublicKey.class, firstBlock, library);
 	}
 	
+	/**
+	 * Subclasses that need to write an object of a particular type can override.
+	 * DKS TODO -- verify type on read, modulo that ENCR overrides everything.
+	 * @return
+	 */
+	public ContentType contentType() { return ContentType.KEY; }
+
 	public PublicKey publicKey() { return data(); }
 
 	@Override

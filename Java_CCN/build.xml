@@ -18,9 +18,12 @@
 	<property name="jarfile-base" value="ccn.jar"/>
 	<property name="jarfile" location="${jarfile-base}"/>
 	<property name="testout" location="testout"/>
-	<property name="ccnd" location="../src/ccnd/ccnd"/>
+	<property name="ccnd" location="../csrc/ccnd/ccnd"/>
 	<property name="showoutput" value="no"/>
 	<property name="repozip" value="repotest.zip"/>
+	<property name="CCND_CMD" value="../../csrc/ccnd/ccnd"/>
+	<property name="CCND_DEBUG" value="-1"/>
+	<property name="CCND_CAP" value="50000"/>
 	<property name="REPO_ROOT" value="${testout}/repotest"/>
 	<property name="REPO_LOCAL_ROOT" value="repotest"/>
 	<property name="REPO_LOCAL" value="TestRepository"/>
@@ -67,7 +70,7 @@
 		<depend srcdir="." destdir="${build}" closure="yes"/>
 		<javac destdir="${build}"
               srcdir="." excludes="${build-excludes}"
-              source="1.5" compiler="javac1.5" debug="on">
+              debug="on">
 			<classpath>
 				<path refid="classpath"/>
 			</classpath>
@@ -100,30 +103,71 @@
 
 	<!-- Run targets: running components -->
 
-        <target name="dumpclasspath" depends="jar">
-                <pathconvert pathsep=":" property="classpatharg" refid="classpath-run"/>
-                <echo message="${classpatharg}" file=".antclasspath"/>
-        </target>
-
+    <target name="dumpclasspath" depends="jar">
+        <pathconvert pathsep=":" property="classpatharg" refid="classpath-run"/>
+        <echo message="${classpatharg}" file=".antclasspath"/>
+    </target>
+	
 	<target name="ccnd">
+			<mkdir dir="${testout}"/>
+			<parallel failonany="true">
+				<daemons>
+					<echo message="Running test ccnd on port ${TEST_PORT}"/>
+					<exec executable="${ccnd}" dir="${testout}" output="${testout}/TEST-ccnd-baselib.txt">
+						<env key="CCN_LOCAL_PORT" value="${TEST_PORT}"/>
+						<env key="CCND_CAP" value="${CCND_CAP}"/>
+						<env key="CCND_DEBUG" value="${CCND_DEBUG}"/>
+					</exec>
+				</daemons>
+	                        <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
+	                        <sleep seconds="1"/>
+			</parallel>
+		</target>
+
+	<target name="stoppable-ccnd" depends="jar">
 		<mkdir dir="${testout}"/>
-		<parallel failonany="true">
+		<parallel>
 			<daemons>
-				<echo message="Running test ccnd on port ${TEST_PORT}"/>
-				<exec executable="${ccnd}" dir="${testout}" output="${testout}/TEST-ccnd-baselib.txt">
-					<env key="CCN_LOCAL_PORT" value="${TEST_PORT}"/>
-					<env key="CCND_DEBUG" value="-1"/>
-				</exec>
+				<java classname="com.parc.ccn.network.daemons.CCNDaemon" fork="true" failonerror="true" output = "${testout}/TEST-ccnd-baselib.txt" dir="${testout}">
+					<classpath>
+						<path refid="classpath-run" />
+					</classpath>
+					<sysproperty key="ccn.agent.port" value="${TEST_PORT}" />
+					<sysproperty key="ccn.daemon.output" value="${testout}/TEST-ccnd-baselib.txt" />
+					<sysproperty key="ccnd.debug" value="${CCND_DEBUG}" />
+					<arg value="-interactive" />
+					<arg value="-command" />
+					<arg value="${CCND_CMD}" />
+				</java>
 			</daemons>
-                        <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
-                        <sleep seconds="1"/>
+            <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
+            <sleep seconds="1"/>
 		</parallel>
+		<sleep seconds="5"/>  <!-- Make sure really started -->
+	</target>
+	
+	<target name="ccnd-stop">
+		<mkdir dir="${testout}"/>
+		<parallel>
+			<daemons>
+				<java classname="com.parc.ccn.network.daemons.CCNDaemon" fork="true" failonerror="true" output = "${testout}/TEST-ccnd-stop.txt" dir="${testout}">
+					<classpath>
+						<path refid="classpath-run" />
+					</classpath>
+					<arg value="-stop" />
+				</java>
+			</daemons>
+            <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
+            <sleep seconds="1"/>
+		</parallel>
+		<sleep seconds="5"/>  <!-- Make sure really started -->
+		<echo message="ccnd is stopped"/>
 	</target>
 
-        <!-- Run a ccnd on test port but not as daemon (i.e. keep running
-             even if nothing else running under ant.  This is useful
-             if you need to separately start a ccnd, for instance 
-             to support tests that don't work when ant runs under cygwin -->
+    <!-- Run a ccnd on test port but not as daemon (i.e. keep running
+         even if nothing else running under ant.  This is useful
+         if you need to separately start a ccnd, for instance 
+         to support tests that don't work when ant runs under cygwin -->
 	<target name="ccnd-testport">
 		<mkdir dir="${testout}"/>
 		<parallel failonany="true">
@@ -135,11 +179,11 @@
 		</parallel>
 	</target>
 	
-	<target name="repo" depends="repo-start, test-repo-is-up">
+	<target name="repo" depends="ccnd, repo-start, test-repo-is-up">
 	</target>
 
 	<!-- Don't run this by itself - use target repo -->
-	<target name="repo-start" depends="jar, ccnd">
+	<target name="repo-start" depends="jar">
 		<parallel>
 			<daemons>
 				<java classname="com.parc.ccn.network.daemons.repo.RepositoryDaemon" fork="true" failonerror="true" output = "${testout}/TEST-repo-daemon.txt" dir="${testout}">
@@ -165,7 +209,7 @@
 	</target>
 	
 	<!-- Run this after starting repo to insure it's up before running further tests"/> -->
-	<target name="test-repo-is-up" depends="jar,ccnd">
+	<target name="test-repo-is-up" depends="jar">
 		<mkdir dir="${testout}"/>
 		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
 			<classpath>
@@ -186,22 +230,22 @@
     <!-- target for running a test repo foreground so you can run a test
 	     against it in debugger -->
 	<target name="run-test-repo" depends="jar">
-				<java classname="com.parc.ccn.network.daemons.repo.RepositoryDaemon" fork="true" failonerror="true" output = "${testout}/TEST-repo-daemon.txt" dir="${testout}">
-					<classpath>
-						<path refid="classpath-run" />
-					</classpath>
-					<sysproperty key="ccn.agent.port" value="${TEST_PORT}" />
-					<jvmarg value="-Xrunjdwp:transport=dt_socket,address=25000,server=y,suspend=n" />
-					<arg value="-interactive" />
-					<arg value="-root" />
-					<arg value="${REPO_ROOT}" />
-					<arg value="-local" />
-					<arg value="${REPO_LOCAL}" />
-					<arg value="-global" />
-					<arg value="${REPO_GLOBAL}" />
-				</java>
-                        <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
-                        <sleep seconds="1"/>
+		<java classname="com.parc.ccn.network.daemons.repo.RepositoryDaemon" fork="true" failonerror="true" output = "${testout}/TEST-repo-daemon.txt" dir="${testout}">
+			<classpath>
+				<path refid="classpath-run" />
+			</classpath>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}" />
+			<jvmarg value="-Xrunjdwp:transport=dt_socket,address=25000,server=y,suspend=n" />
+			<arg value="-interactive" />
+			<arg value="-root" />
+			<arg value="${REPO_ROOT}" />
+			<arg value="-local" />
+			<arg value="${REPO_LOCAL}" />
+			<arg value="-global" />
+			<arg value="${REPO_GLOBAL}" />
+		</java>
+        <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
+        <sleep seconds="1"/>
 	</target>
 
 	<!-- test is for running all current automated tests to validate code 
@@ -215,7 +259,7 @@
 	
 	<target name="test-data-without-repo" depends="jar, ccnd">
 		<mkdir dir="${testout}"/>
-		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}">
+		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" showoutput="${showoutput}" dir="${testout}">
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
@@ -236,7 +280,7 @@
 
 	<target name="test-data-with-repo" depends="jar, ccnd, repo">
 		<mkdir dir="${testout}"/>
-		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}">
+		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" showoutput="${showoutput}" dir="${testout}">
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
@@ -329,27 +373,36 @@
 	</target>
 	
 	<!-- This target is for debugging only -->
-		<target name="test-blockreadwrite" depends="jar, ccnd">
+	<target name="test-blockreadwrite" depends="jar, ccnd">
 
-			<mkdir dir="${testout}"/>
-			<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
-				<classpath>
-					<path refid="classpath-run"/>
-				</classpath>
-				<formatter type="xml" usefile="true"/>
-				<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+		<mkdir dir="${testout}"/>
+		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="xml" usefile="true"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 
-				<batchtest todir="${testout}">
-					<fileset dir="${build}">
-						<include name="test/ccn/library/BlockReadWriteTest.class"/>
-					</fileset>
-				</batchtest>
-			</junit>
-		</target>
+			<batchtest todir="${testout}">
+				<fileset dir="${build}">
+					<include name="test/ccn/library/BlockReadWriteTest.class"/>
+				</fileset>
+			</batchtest>
+		</junit>
+	</target>
 	
 	<!-- IMPORTANT: test-repo-structure must be the *first* test in this list because subsequent test require
 	     that the repo must not have been running when test-repo-structure is run -->
 	<target name="test-repo" depends="test-repo-structure, test-repo-name-responder, test-repo-initial-read, test-repo-io">
+	</target>
+	
+	<target name="test-repo-ccnd-restart">
+		<antcall target="stoppable-ccnd" />
+		<antcall target="repo-start" />
+		<antcall target="test-repo-is-up" />
+		<antcall target="ccnd-stop" />
+		<antcall target="stoppable-ccnd" />
+		<antcall target="test-repo-is-up" />
 	</target>
 	
 	<target name="test-enumerated-name-list" depends="jar, ccnd, repo">
@@ -496,24 +549,22 @@
 		</target>
 	
 	<target name="test-repo-name-responder" depends="jar, ccnd, repo">
-			<mkdir dir="${testout}"/>
-			<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
-				<classpath>
-					<path refid="classpath-run"/>
-				</classpath>
-				<formatter type="xml" usefile="true"/>
-				<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-				<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
-				<batchtest todir="${testout}" >
-					<fileset dir="${build}">
-						<include name="test/ccn/network/daemons/repo/RepoNameEnumeratorTest.class"/>
-					</fileset>
-				</batchtest>
-			</junit>
-			<!-- <delete dir="${REPO_ROOT}"/> -->
-		</target>
-
-
+		<mkdir dir="${testout}"/>
+		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="xml" usefile="true"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
+			<batchtest todir="${testout}" >
+				<fileset dir="${build}">
+					<include name="test/ccn/network/daemons/repo/RepoNameEnumeratorTest.class"/>
+				</fileset>
+			</batchtest>
+		</junit>
+		<!-- <delete dir="${REPO_ROOT}"/> -->
+	</target>
 
 	<target name="test-puttap" depends="jar, ccnd">
 		<!-- Note that puttap forces writes of encoded messages to a tap

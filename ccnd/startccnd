@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 D=`dirname "$0"`
-P="${D:-.}/../src"
+P="${D:-.}/../csrc"
 : ${CCND_CAP:=50000}
 export CCND_CAP
 export PATH="$P"/ccnd:"$P"/libexec:$PATH

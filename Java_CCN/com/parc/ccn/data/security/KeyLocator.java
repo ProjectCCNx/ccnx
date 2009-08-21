@@ -28,7 +28,7 @@ import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
-import com.parc.security.crypto.certificates.OIDLookup;
+import com.parc.ccn.security.crypto.util.OIDLookup;
 
 public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 	/**

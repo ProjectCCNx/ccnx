@@ -120,7 +120,7 @@ public class CCNSegmenter {
 	}
 
 	public CCNSegmenter(CCNLibrary library, ContentKeys keys) throws IOException {
-		this(new CCNFlowControl(library), null, null);
+		this(new CCNFlowControl(library), null, keys);
 	}
 	/**
 	 * Create an object with default Merkle hash tree aggregated signing.
@@ -373,6 +373,7 @@ public class CCNSegmenter {
 			locator = getFlowControl().getLibrary().keyManager().getKeyLocator(signingKey);
 
 		ContentName rootName = SegmentationProfile.segmentRoot(name);
+		// DKS -- replace with stream-level call to start writing
 		getFlowControl().addNameSpace(rootName);
 
 		if (null == type) {

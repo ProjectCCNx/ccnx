@@ -2,7 +2,6 @@ package com.parc.ccn.network.daemons.repo;
 
 import java.io.IOException;
 import java.security.InvalidParameterException;
-import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
@@ -18,7 +17,8 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.content.Collection;
+import com.parc.ccn.data.content.Collection.CollectionObject;
 import com.parc.ccn.data.query.CCNFilterListener;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
@@ -95,6 +95,7 @@ public class RepositoryDaemon extends Daemon {
 				}
 			
 				if (_currentListeners.size() == 0 && _pendingNameSpaceChange) {
+					Library.logger().finer("InterestTimer - resetting nameSpace");
 					try {
 						resetNameSpace();
 					} catch (IOException e) {
@@ -120,6 +121,7 @@ public class RepositoryDaemon extends Daemon {
 				boolean interrupted = false;
 				do {
 					try {
+						interrupted = false;
 						wait();
 					} catch (InterruptedException e) {
 						interrupted = true;
@@ -147,7 +149,7 @@ public class RepositoryDaemon extends Daemon {
 		
 		public void finish() {
 			synchronized (this) {
-				notify();
+				notifyAll(); // notifyAll ensures shutdown in interactive case when main thread is join()'ing
 			}
 		}
 		
@@ -204,9 +206,7 @@ public class RepositoryDaemon extends Daemon {
 				
 				if(args[i].equals("-singlefile"))
 					_repo = new RFSLogImpl();
-				
-				if(args[i].equals("-multifile"))
-					_repo = new RFSImpl();
+
 			}
 
 			if (!useLogging)
@@ -233,8 +233,8 @@ public class RepositoryDaemon extends Daemon {
 		try {
 			// Without parsing args, we don't know which repo impl we will get, so show the default 
 			// impl usage and allow for differences 
-			String msg = "usage: " + this.getClass().getName() + 
-			RFSLogImpl.getUsage() + " | <repoimpl-args> [-start | -stop | -interactive | -signal <signal>] [-log <level>] [-multifile | -singlefile | -bb]";
+			String msg = "usage: " + this.getClass().getName() + " -start | -stop <pid> | -interactive | -signal <signal> <pid>" +
+			" [-log <level>] [-singlefile | -bb] " + RFSLogImpl.getUsage() + " | <repoimpl-args>";
 			System.out.println(msg);
 			Library.logger().severe(msg);
 		} catch (Exception e) {
@@ -260,6 +260,7 @@ public class RepositoryDaemon extends Daemon {
 				resetNameSpace();
 			else
 				_pendingNameSpaceChange = true;
+			Library.logger().finer("ResetNameSpaceFromHandler: pendingNameSpaceChange is " + _pendingNameSpaceChange);
 		}	
 	}
 	
@@ -379,28 +380,26 @@ public class RepositoryDaemon extends Daemon {
 	}
 	
 	public void sendEnumerationResponse(NameEnumerationResponse ner){
-		if(ner!=null && ner.prefix!=null && ner.names!=null && ner.names.size()>0){
+		if(ner!=null && ner.getPrefix()!=null && ner.hasNames()){
+			CollectionObject co = null;
 			try{
-				
-				//the following 6 lines are to be deleted after Collections are refactored
-				LinkReference[] temp = new LinkReference[ner.names.size()];
-				for(int x = 0; x < ner.names.size(); x++)
-					temp[x] = new LinkReference(ner.names.get(x));
-				
-				
-				_library.put(ner.prefix, temp);
-				
-				//CCNEncodableCollectionData ecd = new CCNEncodableCollectionData(collectionName, cd);
-				//ecd.save();
-				//System.out.println("saved ecd.  name: "+ecd.getName());
+				Library.logger().finer("returning names for prefix: "+ner.getPrefix());
+
+				for (int x = 0; x < ner.getNames().size(); x++) {
+					Library.logger().finer("name: "+ner.getNames().get(x));
+				}
+				if (ner.getTimestamp()==null)
+					Library.logger().info("node.timestamp was null!!!");
+				Collection cd = ner.getNamesInCollectionData();
+				co = new CollectionObject(ner.getPrefix(), cd, _library);
+				co.save(ner.getTimestamp());
+				Library.logger().finer("saved collection object: "+co.getCurrentVersionName());
+				return;
+
+			} catch(IOException e){
+				Library.logException("error saving name enumeration response for write out (prefix = "+ner.getPrefix()+" collection name: "+co.getCurrentVersion()+")", e);
 			}
-			catch(IOException e){
-				
-			}
-			catch(SignatureException e) {
-				Library.logStackTrace(Level.WARNING, e);
-				e.printStackTrace();
-			}
+
 		}
 	}
 	

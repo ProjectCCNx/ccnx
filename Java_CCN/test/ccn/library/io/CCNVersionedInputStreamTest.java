@@ -293,7 +293,7 @@ public class CCNVersionedInputStreamTest {
 		try {
 			// we can make a new library; as long as we don't use the outputLibrary it should work
 			ContentObject firstVersionBlock = inputLibrary.get(firstVersionName, 1000);
-			ContentObject latestVersionBlock = inputLibrary.getLatest(defaultStreamName, 1000);
+			ContentObject latestVersionBlock = inputLibrary.getLatest(defaultStreamName, defaultStreamName.count(), 1000);
 			CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionBlock, inputLibrary);
 			CCNVersionedInputStream vlatest = new CCNVersionedInputStream(latestVersionBlock, inputLibrary);
 			testArgumentRunner(vfirst, vlatest);

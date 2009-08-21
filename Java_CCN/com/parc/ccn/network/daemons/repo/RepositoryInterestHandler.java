@@ -84,10 +84,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		ContentName listeningName = new ContentName(interest.name().count() - 2, interest.name().components());
 		try {
 			Library.logger().info("Processing write request for " + listeningName);
-			Integer count = interest.nameComponentCount();
-			if (count != null && count > listeningName.count())
-				count = null;
-			Interest readInterest = Interest.constructInterest(listeningName, _daemon.getExcludes(), null, count);
+			Interest readInterest = Interest.constructInterest(listeningName, _daemon.getExcludes(), null);
 			RepositoryDataListener listener = _daemon.addListener(interest, readInterest);
 			_daemon.getWriter().put(interest.name(), _daemon.getRepository().getRepoInfo(null), null, null,
 					_daemon.getFreshness());
@@ -111,9 +108,12 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		for (RepositoryDataListener listener : _daemon.getDataListeners()) {
 			if (listener.getOrigInterest().name().equals(listeningName)) {		
 				try {
-					listener._headerInterest = Interest.constructInterest(listener.getVersionedName(), _daemon.getExcludes(), null, 
-							listener.getVersionedName().count());
-					listener._headerInterest.additionalNameComponents(1);
+					// DKS- this should use SegmentationProfile.headerName to figure out the header name,
+					// not hardcode its structure here.
+					// Needs to match move to HeaderObject (versioned) writes in output streams.
+					listener._headerInterest = Interest.constructInterest(listener.getVersionedName(), _daemon.getExcludes(), null);
+					listener._headerInterest.maxSuffixComponents(1);
+					Library.logger().fine("Sending header request: " + listener._headerInterest);
 					_library.expressInterest(listener._headerInterest, listener);
 				} catch (IOException e) {
 					Library.logStackTrace(Level.WARNING, e);
@@ -125,14 +125,13 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	}
 	
 	public void nameEnumeratorResponse(Interest interest) {
-		//the name enumerator marker won't be at the end if the interest is a followup (created with .last())
-		//else if(Arrays.equals(marker, CCNNameEnumerator.NEMARKER)){
-		//System.out.println("handling interest: "+interest.name().toString());
-		//ContentName prefixName = interest.name().cut(CCNNameEnumerator.NEMARKER);
-		
 		NameEnumerationResponse ner = _daemon.getRepository().getNamesWithPrefix(interest);
 
-		if(ner!=null && ner.names!=null)
+		if (ner!=null && ner.hasNames()) {
 			_daemon.sendEnumerationResponse(ner);
-	}	
+			Library.logger().fine("sending back name enumeration response "+ner.getPrefix());
+		} else {
+			Library.logger().fine("we are not sending back a response to the name enumeration interest (interest.name() = "+interest.name()+")");
+		}
+	}
 }

@@ -84,12 +84,12 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 							ContentName.fromNative(REPO_NAMESPACE + "/" + _info.getLocalName() + "/" + REPO_POLICY));
 					ContentObject policyCo = new ContentObject(policyName, co.signedInfo(), co.content(), co.signature());
 	   				saveContent(policyCo);
+	   				return true;
 				}
 			} catch (Exception e) {
 				Library.logStackTrace(Level.WARNING, e);
 				e.printStackTrace();
 			} 
-			return true;
 		}
 		return false;
 	}
@@ -243,7 +243,6 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		
 		_repositoryFile = new File(_repositoryRoot);
 		_repositoryFile.mkdirs();
-//		_locker = new RFSLocks(_repositoryRoot + File.separator + META_DIR);
 		
 		// Internal initialization
 		_files = new HashMap<Integer, RepoFile>();
@@ -350,11 +349,10 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 				content.encode(os);
 				_activeWriteFile.nextWritePos = _activeWriteFile.openFile.getFilePointer();
 				_index.insert(content, ref, System.currentTimeMillis(), this, ner);
-				if(ner==null || ner.prefix==null){
-					Library.logger().finest("new content did not trigger an interest flag");
-				}
-				else{
-					Library.logger().info("new content was added where there was a name enumeration response interest flag");
+				if(ner==null || ner.getPrefix()==null){
+					Library.logger().fine("new content did not trigger an interest flag");
+				} else {
+					Library.logger().fine("new content was added where there was a name enumeration response interest flag");
 				}
 				return ner;
 			}

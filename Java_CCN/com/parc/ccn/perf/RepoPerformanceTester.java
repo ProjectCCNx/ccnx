@@ -16,7 +16,7 @@ import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNOutputStream;
-import com.parc.ccn.network.daemons.repo.RFSImpl;
+import com.parc.ccn.network.daemons.repo.RFSLogImpl;
 import com.parc.ccn.network.daemons.repo.Repository;
 import com.parc.ccn.network.daemons.repo.RepositoryException;
 
@@ -38,7 +38,7 @@ public class RepoPerformanceTester extends CCNOutputStream {
 				throws MalformedContentNameStringException, RepositoryException, IOException {
 			super(name, library);
 			if (repoName != null) {
-				_repo = new RFSImpl();
+				_repo = new RFSLogImpl();
 				_repo.initialize(new String[] {"-root", repoName}, library);
 			}
 		}

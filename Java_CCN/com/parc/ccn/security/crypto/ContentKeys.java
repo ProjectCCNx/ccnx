@@ -38,6 +38,20 @@ public class ContentKeys {
 	public String encryptionAlgorithm;
 	public SecretKeySpec encryptionKey;
 	public IvParameterSpec masterIV;
+	
+	/**
+	 * Create a set of ContentKeys using the default cipher and key algorithm.
+	 * @param key key material to be used with the default key algorithm.
+	 * @param iv iv key material to be used with default key algorithm 
+	 */
+	public ContentKeys(byte [] key, byte [] iv) {
+		assert(key.length == DEFAULT_KEY_LENGTH);
+		assert(iv.length == IV_MASTER_LENGTH);
+		this.encryptionAlgorithm = DEFAULT_CIPHER_ALGORITHM;
+		this.encryptionKey = new SecretKeySpec(key, DEFAULT_KEY_ALGORITHM);
+		this.masterIV = new IvParameterSpec(iv);
+		// TODO: this assumes the default algorithms are available. Should probably check during startup
+	}
 
 	public ContentKeys(String encryptionAlgorithm, SecretKeySpec encryptionKey,
 			IvParameterSpec masterIV) throws NoSuchAlgorithmException, NoSuchPaddingException {
@@ -85,19 +99,11 @@ public class ContentKeys {
 	}
 	
 	/**
-	 * Create a set of encryption/decryption keys using the default algorithm.
+	 * Create a set of random encryption/decryption keys using the default algorithm.
 	 */
 	public static ContentKeys generateRandomKeys() {
-		try {
-			return new ContentKeys(
-					DEFAULT_CIPHER_ALGORITHM,
-					new SecretKeySpec(SecureRandom.getSeed(DEFAULT_KEY_LENGTH), DEFAULT_KEY_ALGORITHM),
-					new IvParameterSpec(SecureRandom.getSeed(IV_MASTER_LENGTH)));
-		} catch (NoSuchAlgorithmException e) {
-			throw new RuntimeException(e);
-		} catch (NoSuchPaddingException e) {
-			throw new RuntimeException(e);
-		}
+		return new ContentKeys(SecureRandom.getSeed(DEFAULT_KEY_LENGTH),
+				SecureRandom.getSeed(IV_MASTER_LENGTH));
 	}
 	
 	/**

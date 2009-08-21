@@ -16,7 +16,6 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.BloomFilter;
 import com.parc.ccn.data.query.ExcludeComponent;
-import com.parc.ccn.data.query.ExcludeElement;
 import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherID;
@@ -58,7 +57,7 @@ public class InterestTest {
 		ExcludeComponent e2 = new ExcludeComponent("zzzzzzzz".getBytes());
 		
 		try {
-			ArrayList<ExcludeElement>te = new ArrayList<ExcludeElement>(2);
+			ArrayList<ExcludeFilter.Element>te = new ArrayList<ExcludeFilter.Element>(2);
 			te.add(e2);
 			te.add(e1);
 			new ExcludeFilter(te);
@@ -68,7 +67,7 @@ public class InterestTest {
 		for (String value : bloomTestValues) {
 			bf1.insert(value.getBytes());
 		}
-		ArrayList<ExcludeElement>excludes = new ArrayList<ExcludeElement>(2);
+		ArrayList<ExcludeFilter.Element>excludes = new ArrayList<ExcludeFilter.Element>(2);
 		excludes.add(e1);
 		excludes.add(bf1);
 		excludes.add(e2);
@@ -88,22 +87,22 @@ public class InterestTest {
 		XMLEncodableTester.encodeDecodeTest("FancyInterest", nplain, nplainDec, nplainBDec);
 		
 		Interest opPlain = new Interest(tcn);
-		opPlain.orderPreference(Interest.ORDER_PREFERENCE_LEFT + Interest.ORDER_PREFERENCE_ORDER_ARRIVAL);
+		opPlain.childSelector(Interest.CHILD_SELECTOR_RIGHT);
 		Interest opPlainDec = new Interest();
 		Interest opPlainBDec = new Interest();
 		XMLEncodableTester.encodeDecodeTest("PreferenceInterest", opPlain, opPlainDec, opPlainBDec);
 		
-		Interest opPrefixed = new Interest(tcn);
-		opPrefixed.nameComponentCount(2);
-		Interest opPrefixedDec = new Interest();
-		Interest opPrefixedBDec = new Interest();
-		XMLEncodableTester.encodeDecodeTest("PrefixedInterest", opPrefixed, opPrefixedDec, opPrefixedBDec);	
-		
-		Interest opANC = new Interest(tcn);
-		opANC.additionalNameComponents(3);
-		Interest opANCDec = new Interest();
-		Interest opANCBDec = new Interest();
-		XMLEncodableTester.encodeDecodeTest("AdditionalNameComponentsInterest", opANC, opANCDec, opANCBDec);
+		Interest opMSC = new Interest(tcn);
+		opMSC.maxSuffixComponents(3);
+		Interest opMSCDec = new Interest();
+		Interest opMSCBDec = new Interest();
+		XMLEncodableTester.encodeDecodeTest("MaxSuffixComponentsInterest", opMSC, opMSCDec, opMSCBDec);	
+
+		Interest opMinSC = new Interest(tcn);
+		opMinSC.minSuffixComponents(3);
+		Interest opMinSCDec = new Interest();
+		Interest opMinSCBDec = new Interest();
+		XMLEncodableTester.encodeDecodeTest("MinSuffixComponentsInterest", opMinSC, opMinSCDec, opMinSCBDec);
 	}
 		
 	@Test

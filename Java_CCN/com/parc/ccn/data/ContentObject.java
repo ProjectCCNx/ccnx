@@ -17,6 +17,7 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
+import com.parc.ccn.data.security.ContentVerifier;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.Signature;
@@ -50,6 +51,40 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	protected SignedInfo _signedInfo;
 	protected byte [] _content;
 	protected Signature _signature; 
+	
+	public static class SimpleVerifier implements ContentVerifier {
+
+		PublisherPublicKeyDigest _publisher; 
+		
+		public SimpleVerifier(PublisherPublicKeyDigest publisher) {
+			_publisher = publisher;
+		}
+		
+		/* (non-Javadoc)
+		 * @see com.parc.ccn.data.security.ContentVerifier#verifyBlock(com.parc.ccn.data.ContentObject)
+		 */
+		public boolean verifyBlock(ContentObject block) {
+			if (null == block)
+				return false;
+			if (null != _publisher) {
+				if (!_publisher.equals(block.signedInfo().getPublisherKeyID()))
+					return false;
+			}
+			try {
+				return block.verify(null);
+			} catch (InvalidKeyException e) {
+				return false;
+			} catch (SignatureException e) {
+				return false;
+			} catch (NoSuchAlgorithmException e) {
+				return false;
+			} catch (XMLStreamException e) {
+				return false;
+			} catch (InterruptedException e) {
+				return false;
+			}
+		}		
+	}
 
 	/**
 	 * We copy the content when we get it. The intent is for this object to
@@ -79,7 +114,8 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		_name = name;
 		_signedInfo = signedInfo;
 		_content = new byte[length];
-		System.arraycopy(content, offset, _content, 0, length);
+		if (null != content)
+			System.arraycopy(content, offset, _content, 0, length);
 		_signature = signature;
 		if ((null != signature) && SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
 			try {
@@ -155,7 +191,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			byte [] content, int offset, int length,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException {
 		this(name, signedInfo, content, offset, length, (Signature)null);
-		_signature = sign(name, signedInfo, content, offset, length, signingKey);
+		_signature = sign(_name, _signedInfo, _content, 0, _content.length, signingKey);
 		if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
 			Library.logger().info("Created content object: " + name + " timestamp: " + signedInfo.getTimestamp());
 			try {
@@ -193,7 +229,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	 * library code for specialized applications.
 	 */
 	public static ContentObject buildContentObject(ContentName name, ContentType type, byte[] contents, 
-			PublisherPublicKeyDigest publisher,
+			PublisherPublicKeyDigest publisher, KeyLocator locator,
 			KeyManager keyManager, byte[] finalBlockID) {
 		try {
 			if (null == keyManager) {
@@ -204,7 +240,8 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 				signingKey = keyManager.getDefaultSigningKey();
 				publisher = keyManager.getPublisherKeyID(signingKey);
 			}
-			KeyLocator locator = keyManager.getKeyLocator(signingKey);
+			if (null == locator)
+				locator = keyManager.getKeyLocator(signingKey);
 			return new ContentObject(name, 
 							         new SignedInfo(publisher, null, type, locator, null, finalBlockID), 
 							         contents, signingKey);
@@ -214,7 +251,14 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		}
 		return null;
 	}
-	
+
+	public static ContentObject buildContentObject(ContentName name, ContentType type, byte[] contents, 
+
+			PublisherPublicKeyDigest publisher,
+			KeyManager keyManager, byte[] finalBlockID) {
+		return buildContentObject(name, type, contents, publisher, null, keyManager, finalBlockID);
+	}
+
 	public static ContentObject buildContentObject(ContentName name, byte[] contents, 
 			PublisherPublicKeyDigest publisher,
 			KeyManager keyManager, byte[] finalBlockID) {
@@ -299,7 +343,6 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		name().encode(encoder);
 		signedInfo().encode(encoder);
 
-		// needs to handle null content
 		encoder.writeElement(CONTENT_ELEMENT, _content);
 
 		encoder.writeEndElement();   		
@@ -629,9 +672,9 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	public static byte [] prepareContent(ContentName name, 
 			SignedInfo signedInfo, 
 			byte [] content, int offset, int length) throws XMLStreamException {
-		if ((null == name) || (null == signedInfo) || (null == content)) {
-			Library.logger().info("Name, signedInfo and content must not be null.");
-			throw new XMLStreamException("prepareContent: name, signedInfo and content must not be null.");
+		if ((null == name) || (null == signedInfo)) {
+			Library.logger().info("Name and signedInfo must not be null.");
+			throw new XMLStreamException("prepareContent: name, signedInfo must not be null.");
 		}
 
 		// Do setup. Binary codec doesn't write a preamble or anything.

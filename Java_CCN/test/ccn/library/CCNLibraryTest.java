@@ -10,10 +10,7 @@ import java.security.SignatureException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.Random;
-
-import javax.xml.stream.XMLStreamException;
 
 import junit.framework.Assert;
 
@@ -24,8 +21,6 @@ import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.data.content.Collection;
-import com.parc.ccn.data.content.LinkReference;
 import com.parc.ccn.data.query.BasicInterestListener;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
@@ -342,89 +337,6 @@ public class CCNLibraryTest extends LibraryTestBase {
 			System.out.println("Exception in testing recall: " + e.getClass().getName() + ": " + e.getMessage());
 			Assert.fail(e.getMessage());
 		}
-	}
-	
-	@Test
-	public void testLinks() throws Exception {
-		ContentName baseName = ContentName.fromNative("/libraryTest/linkTest/base");
-		CCNWriter writer = new CCNWriter(baseName, putLibrary);
-		writer.put(baseName, "base".getBytes());
-		LinkReference lr = new LinkReference(baseName);
-		ContentName linkName = ContentName.fromNative("/libraryTest/linkTest/l1");
-		putLibrary.put(linkName, lr);
-		ContentObject linkContent = getLibrary.get(linkName, 5000);
-		ArrayList<ContentObject> al = getLibrary.dereference(linkContent, 5000);
-		Assert.assertEquals(al.size(), 1);
-		ContentObject baseContent = al.get(0);
-		Assert.assertEquals(new String(baseContent.content()), "base");
-		LinkReference[] references = new LinkReference[2];
-		LinkReference lr2 = new LinkReference(baseName);
-		ContentName linkName2 = ContentName.fromNative("/libraryTest/linkTest/l2");
-		putLibrary.put(linkName2, lr2);
-		references[0] = lr;
-		references[1] = lr2;
-		ContentName c1 = ContentName.fromNative("/libraryTest/linkTest/collection");
-		putLibrary.put(c1, references);
-		ContentObject collectionContent = getLibrary.get(c1, 5000);
-		al = getLibrary.dereference(collectionContent, 5000);
-		Assert.assertEquals(al.size(), 2);
-		baseContent = al.get(0);
-		Assert.assertEquals(new String(baseContent.content()), "base");
-		baseContent = al.get(1);
-		Assert.assertEquals(new String(baseContent.content()), "base");
-	}
-	
-	@Test
-	public void testCollections() throws Exception {
-		ContentName baseName = ContentName.fromNative("/libraryTest/collectionTest/base");
-		CCNWriter writer = new CCNWriter(baseName, putLibrary);
-		ContentName collectionName = ContentName.fromNative("/libraryTest/collectionTest/myCollection");
-		ContentName[] references = new ContentName[2];
-		writer.newVersion(baseName, "base".getBytes());
-		references[0] = ContentName.fromNative("/libraryTest/collectionTest/r1");
-		references[1] = ContentName.fromNative("/libraryTest/collectionTest/r2");
-		Collection collection = putLibrary.put(collectionName, references);
-		
-		try {
-			getLibrary.getCollection(baseName, 5000);
-			Assert.fail("getCollection for non-collection succeeded");
-		} catch (IOException ioe) {
-		} catch (XMLStreamException ex) {
-			// this is what we actually expect
-		}
-	
-		
-		// test getCollection
-		collection = getLibrary.getCollection(collectionName, 5000);
-		LinkedList<LinkReference> checkReferences = collection.contents();
-		Assert.assertEquals(checkReferences.size(), 2);
-		Assert.assertEquals(references[0], checkReferences.get(0).targetName());
-		Assert.assertEquals(references[1], checkReferences.get(1).targetName());
-		
-		// test addToCollection
-		ContentName[] newReferences = new ContentName[2];
-		newReferences[0] = ContentName.fromNative("/libraryTest/r3");
-		newReferences[1] = ContentName.fromNative("/libraryTest/r4");
-		getLibrary.addToCollection(collection, newReferences);
-		collection = getLibrary.getCollection(collectionName, 5000);
-		checkReferences = collection.contents();
-		Assert.assertEquals(checkReferences.size(), 4);
-		Assert.assertEquals(newReferences[0], checkReferences.get(2).targetName());
-		Assert.assertEquals(newReferences[1], checkReferences.get(3).targetName());
-		
-		putLibrary.removeFromCollection(collection, newReferences);
-		collection = getLibrary.getCollection(collectionName, 5000);
-		checkReferences = collection.contents();
-		Assert.assertEquals(checkReferences.size(), 2);
-		Assert.assertEquals(references[0], checkReferences.get(0).targetName());
-		Assert.assertEquals(references[1], checkReferences.get(1).targetName());
-		
-		putLibrary.updateCollection(collection, newReferences, references);
-		collection = getLibrary.getCollection(collectionName, 5000);
-		checkReferences = collection.contents();
-		Assert.assertEquals(checkReferences.size(), 2);
-		Assert.assertEquals(newReferences[0], checkReferences.get(0).targetName());
-		Assert.assertEquals(newReferences[1], checkReferences.get(1).targetName());
 	}
 
 	class TestListener extends BasicInterestListener {

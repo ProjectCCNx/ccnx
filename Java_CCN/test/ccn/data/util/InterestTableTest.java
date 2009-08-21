@@ -551,7 +551,7 @@ public class InterestTableTest {
 		sizes(names, 6, 5);
 	}
 	
-	private enum InterestType {Next, Last, Prefix, AdditionalNameComponents, Exclude};
+	private enum InterestType {Next, Last, MaxSuffixComponents, Exclude};
 	
 	private InterestTable<Integer> initInterest(InterestType type) throws MalformedContentNameStringException {
 		InterestTable<Integer> table = new InterestTable<Integer>();
@@ -571,16 +571,12 @@ public class InterestTableTest {
 		Interest i = new Interest(ContentName.fromNative(name));
 		switch (type) {
 		case Next:
-			i.orderPreference(Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME);
 			break;
 		case Last:
-			i.orderPreference(Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME);
+			i.childSelector(Interest.CHILD_SELECTOR_RIGHT);
 			break;
-		case Prefix:
-			i.nameComponentCount(prefixCount);
-			break;
-		case AdditionalNameComponents:
-			i.additionalNameComponents(additionalComponents);
+		case MaxSuffixComponents:
+			i.maxSuffixComponents(additionalComponents);
 			break;
 		}
 		table.add(i, value);
@@ -605,86 +601,6 @@ public class InterestTableTest {
 		matches(names, "/a/b/b/a", new String[] {ab, a}, new int[] {2, 1});
 		noMatch(names, "/d");
 		match(names, "/c/c", 3);
-	}
-	
-	/*
-	 * Note by paul r. We can't easily test "additionalNameComponents = 1" because
-	 * "getContent" appends an arbitrary component to the names it creates and we won't have an
-	 * Interest that matches that.
-	 */
-	@Test
-	public void testAdditionalNameComponents() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
-		additionalComponents = 2;
-		InterestTable<Integer> names = initInterest(InterestType.AdditionalNameComponents);
-		
-		setID(1);
-		match(names, abc, 7);
-		match(names, ab, 2);
-		match(names, a, 1);
-		noMatch(names, "/a/b/c/d");
-		
-		additionalComponents = 3;
-		names = initInterest(InterestType.AdditionalNameComponents);
-		match(names, abc, 2);
-		match(names, ab, 1);
-		noMatch(names, a);
-	}
-	
-	@Test
-	public void testRemoveAdditionalNameComponents() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
-		additionalComponents = 2;
-		InterestTable<Integer> names = initInterest(InterestType.AdditionalNameComponents);
-		
-		setID(1);
-		noRemoveMatch(names, "/a/b/c/d");
-		removeMatch(names, abc, 7);
-		removeMatch(names, ab, 2);
-		removeMatch(names, a, 1);
-		sizes(names, 4, 4);
-		
-		additionalComponents = 3;
-		names = initInterest(InterestType.AdditionalNameComponents);
-		removeMatch(names, abc, 2);
-		removeMatch(names, ab, 1);
-		noRemoveMatch(names, a);
-		sizes(names, 5, 5);
-	}
-	
-	@Test
-	public void testPrefixes() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
-		prefixCount = 1;
-		InterestTable<Integer> names = initInterest(InterestType.Prefix);
-		
-		setID(1);
-		matches(names, abc, new String[] {abc, a_bb, ab, a}, new int[] {7, 5, 2, 1});
-		match(names, "/b/c/d", 4);
-		noMatch(names, "/d");
-		
-		prefixCount = 2;
-		names = initInterest(InterestType.Prefix);
-		matches(names, abc, new String[] {abc, ab}, new int[] {7, 2});
-		match(names, a_bb, 5);
-		noMatch(names, a);
-	}
-	
-	
-	@Test
-	public void testRemovePrefixes() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
-		prefixCount = 1;
-		InterestTable<Integer> names = initInterest(InterestType.Prefix);
-		
-		setID(1);
-		noRemoveMatch(names, "/d");
-		removeMatch(names, abc, 7);
-		removeMatch(names, "/b/c/d", 4);
-		sizes(names, 5, 5);
-		
-		prefixCount = 2;
-		names = initInterest(InterestType.Prefix);
-		removeMatch(names, abc, 7);
-		removeMatch(names, a_bb, 5);
-		noRemoveMatch(names, a);
-		sizes(names, 5, 5);
 	}
 	
 	private void runRemovesNextOrLast(InterestType type) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {

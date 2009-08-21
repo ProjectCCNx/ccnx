@@ -6,11 +6,11 @@ import java.security.Key;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.sql.Timestamp;
-import java.util.ArrayList;
+import java.util.TreeSet;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.SortedSet;
 
-import javax.jcr.AccessDeniedException;
 import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.crypto.InvalidCipherTextException;
@@ -20,8 +20,8 @@ import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.Link;
-import com.parc.ccn.data.content.LinkReference;
-import com.parc.ccn.data.content.LinkReference.LinkObject;
+import com.parc.ccn.data.content.Link.LinkObject;
+import com.parc.ccn.data.query.ByteArrayCompare;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.WrappedKey;
@@ -62,10 +62,12 @@ import com.parc.ccn.library.profiles.AccessControlProfile.PrincipalInfo;
  */
 public class KeyDirectory extends EnumeratedNameList {
 	
+	static Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
+	
 	AccessControlManager _manager; // to get at key cache
 	HashMap<String, PrincipalInfo> _principals = new HashMap<String, PrincipalInfo>();
-	ArrayList<byte []> _keyIDs = new ArrayList<byte []>();
-	ArrayList<byte []> _otherNames = new ArrayList<byte []>();
+	TreeSet<byte []> _keyIDs = new TreeSet<byte []>(byteArrayComparator);
+	TreeSet<byte []> _otherNames = new TreeSet<byte []>(byteArrayComparator);
 	
 	/**
 	 * Directory name should be versioned, else we pull the latest version
@@ -137,11 +139,11 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 	}
 	
-	public ArrayList<byte []> getWrappingKeyIDs() { return _keyIDs; }
+	public TreeSet<byte []> getWrappingKeyIDs() { return _keyIDs; }
 	
 	public HashMap<String, PrincipalInfo> getPrincipals() { return _principals; }
 	
-	public ArrayList<byte []> otherNames() { return _otherNames; }
+	public TreeSet<byte []> otherNames() { return _otherNames; }
 	
 	protected void addPrincipal(byte [] wkChildName) {
 		PrincipalInfo pi = AccessControlProfile.parsePrincipalInfoFromNameComponent(wkChildName);
@@ -173,8 +175,8 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 		ContentName principalLinkName = getWrappedKeyNameForPrincipal(pi.isGroup(), pi.friendlyName(), pi.versionTimestamp());
 		// This should be a link to the actual key block
-		// TODO DKS replace link handling
-		Link principalLink = _manager.library().getLink(principalLinkName, AccessControlManager.DEFAULT_TIMEOUT);
+		// TODO DKS should wait on link data...
+		LinkObject principalLink = new LinkObject(principalLinkName, _manager.library());
 		Library.logger().info("Retrieving wrapped key for principal " + principalName + " at " + principalLink.getTargetName());
 		ContentName wrappedKeyName = principalLink.getTargetName();
 		return getWrappedKey(wrappedKeyName);
@@ -195,7 +197,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	public boolean hasSupersededBlock() {
-		return _otherNames.contains(AccessControlProfile.SUPERSEDED_MARKER);
+		return _otherNames.contains(AccessControlProfile.SUPERSEDED_MARKER.getBytes());
 	}
 	
 	public ContentName getSupersededBlockName() {
@@ -228,14 +230,14 @@ public class KeyDirectory extends EnumeratedNameList {
 		return getWrappedKey(getSupersededBlockName());
 	}
 	
-	WrappedKeyObject getWrappedKey(ContentName wrappedKeyName) throws XMLStreamException, IOException, ConfigurationException {
+	public WrappedKeyObject getWrappedKey(ContentName wrappedKeyName) throws XMLStreamException, IOException, ConfigurationException {
 		WrappedKeyObject wrappedKey = new WrappedKeyObject(wrappedKeyName, _manager.library());
 		wrappedKey.update();
 		return wrappedKey;		
 	}
 	
 	public boolean hasPreviousKeyBlock() {
-		return _otherNames.contains(AccessControlProfile.PREVIOUS_KEY_NAME);
+		return _otherNames.contains(AccessControlProfile.PREVIOUS_KEY_NAME.getBytes());
 	}
 
 	public ContentName getPreviousKeyBlockName() {
@@ -254,15 +256,16 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws XMLStreamException
 	 * @throws IOException
 	 */
-	public LinkReference getPreviousKey() throws XMLStreamException, IOException {
+	public Link getPreviousKey() throws XMLStreamException, IOException {
 		if (!hasPreviousKeyBlock())
 			return null;
-		Link previousKey = _manager.library().getLink(getPreviousKeyBlockName(), AccessControlManager.DEFAULT_TIMEOUT);
-		if (null == previousKey) {
+		LinkObject previousKey = new LinkObject(getPreviousKeyBlockName(), _manager.library());
+		previousKey.waitForData(); // TODO timeout?
+		if (!previousKey.available()) {
 			Library.logger().info("Unexpected: no previous key link at " + getPreviousKeyBlockName());
 			return null;
 		}
-		return previousKey.getReference();
+		return previousKey.link();
 	}
 
 	/**
@@ -273,7 +276,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @return
 	 */
 	public boolean hasPrivateKeyBlock() {
-		return _otherNames.contains(AccessControlProfile.GROUP_PRIVATE_KEY_NAME);
+		return _otherNames.contains(AccessControlProfile.GROUP_PRIVATE_KEY_NAME.getBytes());
 	}
 
 	public ContentName getPrivateKeyBlockName() {
@@ -497,7 +500,7 @@ public class KeyDirectory extends EnumeratedNameList {
 			new WrappedKeyObject(getWrappedKeyNameForKeyID(WrappedKey.wrappingKeyIdentifier(publicKey)),
 								 wrappedKey, _manager.library());
 		wko.saveToRepository();
-		LinkObject lo = new LinkObject(getWrappedKeyNameForPrincipal(publicKeyName), new LinkReference(wko.getCurrentVersionName()), _manager.library());
+		LinkObject lo = new LinkObject(getWrappedKeyNameForPrincipal(publicKeyName), new Link(wko.getCurrentVersionName()), _manager.library());
 		lo.saveToRepository();
 	}
 	
@@ -556,7 +559,7 @@ public class KeyDirectory extends EnumeratedNameList {
 			Library.logger().warning("Unexpected, already have previous key block : " + getPreviousKeyBlockName());
 		}
 		LinkAuthenticator la = (null != previousKeyPublisher) ? new LinkAuthenticator(previousKeyPublisher) : null;
-		LinkObject pklo = new LinkObject(getPreviousKeyBlockName(), new LinkReference(previousKey,la), _manager.library());
+		LinkObject pklo = new LinkObject(getPreviousKeyBlockName(), new Link(previousKey,la), _manager.library());
 		pklo.saveToRepository();
 	}
 	

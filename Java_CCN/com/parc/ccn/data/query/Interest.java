@@ -2,6 +2,7 @@ package com.parc.ccn.data.query;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Random;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -16,6 +17,7 @@ import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
+import com.parc.ccn.library.profiles.CommandMarkers;
 import com.parc.ccn.security.keys.TrustManager;
 
 /**
@@ -26,26 +28,28 @@ import com.parc.ccn.security.keys.TrustManager;
  * Implement Comparable to make it much easier to store in
  * a Set and avoid duplicates.
  * 
- * <xs:complexType name="InterestType">
- *  <xs:sequence>
+ * xs:complexType name="InterestType">
+ * <xs:sequence>
  *   <xs:element name="Name" type="NameType"/>
- *   <xs:element name="NameComponentCount" type="xs:nonNegativeInteger"
+ *   <xs:element name="MinSuffixComponents" type="xs:nonNegativeInteger"
  *                       minOccurs="0" maxOccurs="1"/>
- *   <xs:element name="PublisherID" type="PublisherIDType"
- *			minOccurs="0" maxOccurs="1"/>
- *    <xs:element name="Exclude" type="ExcludeType"
+ *   <xs:element name="MaxSuffixComponents" type="xs:nonNegativeInteger"
  *                       minOccurs="0" maxOccurs="1"/>
- *   <xs:element name="OrderPreference" type="xs:nonNegativeInteger"
+ *   <xs:choice minOccurs="0" maxOccurs="1">
+ *       <xs:element name="PublisherPublicKeyDigest" type="DigestType"/>
+ *       <xs:element name="PublisherCertificateDigest" type="DigestType"/>
+ *       <xs:element name="PublisherIssuerKeyDigest" type="DigestType"/>
+ *       <xs:element name="PublisherIssuerCertificateDigest" type="DigestType"/>
+ *   </xs:choice>
+ *   <xs:element name="Exclude" type="ExcludeType"
+ *                       minOccurs="0" maxOccurs="1"/>
+ *   <xs:element name="ChildSelector" type="xs:nonNegativeInteger"
  *                       minOccurs="0" maxOccurs="1"/>
  *   <xs:element name="AnswerOriginKind" type="xs:nonNegativeInteger"
  *                       minOccurs="0" maxOccurs="1"/>
  *   <xs:element name="Scope" type="xs:nonNegativeInteger"
  *			minOccurs="0" maxOccurs="1"/>
- *   <xs:element name="Count" type="xs:nonNegativeInteger"                                               
- *          minOccurs="0" maxOccurs="1"/>
  *   <xs:element name="Nonce" type="Base64BinaryType"
- *			minOccurs="0" maxOccurs="1"/>
- *   <xs:element name="ExperimentalResponseFilter" type="Base64BinaryType"
  *			minOccurs="0" maxOccurs="1"/>
  * </xs:sequence>
  * </xs:complexType>
@@ -59,20 +63,16 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public static final String RECURSIVE_POSTFIX = "*";
 	
 	public static final String INTEREST_ELEMENT = "Interest";
-	public static final String ADDITIONAL_NAME_COMPONENTS = "AdditionalNameComponents";
-	public static final String NAME_COMPONENT_COUNT = "NameComponentCount";
-	public static final String ORDER_PREFERENCE = "OrderPreference";
+	public static final String MAX_SUFFIX_COMPONENTS = "MaxSuffixComponents";
+	public static final String MIN_SUFFIX_COMPONENTS = "MinSuffixComponents";
+	public static final String CHILD_SELECTOR = "ChildSelector";
 	public static final String ANSWER_ORIGIN_KIND = "AnswerOriginKind";
 	public static final String SCOPE_ELEMENT = "Scope";
-	public static final String COUNT_ELEMENT = "Count";
 	public static final String NONCE_ELEMENT = "Nonce";
-	public static final String RESPONSE_FILTER_ELEMENT = "ExperimentalResponseFilter";
 	
 	// OrderPreference values.  These are bitmapped
-	public static final int ORDER_PREFERENCE_LEFT = 0;		// bit 0
-	public static final int ORDER_PREFERENCE_RIGHT = 1;
-	public static final int ORDER_PREFERENCE_ORDER_ARRIVAL = 2;
-	public static final int	ORDER_PREFERENCE_ORDER_NAME = 4;	// User name space hierarchy for ordering
+	public static final int CHILD_SELECTOR_LEFT = 0;		// bit 0
+	public static final int CHILD_SELECTOR_RIGHT = 1;
 	
 	/**
 	 * AnswerOriginKind values
@@ -83,20 +83,22 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public static final int ANSWER_STALE = 4;		// Stale answer OK
 	public static final int MARK_STALE = 16;		// Must have Scope 0.  Michael calls this a "hack"
 
+	/**
+	 * For nonce generation
+	 */
+	protected static Random _random = new Random();
+	
 	protected ContentName _name;
-	protected Integer _nameComponentCount;
-	protected Integer _additionalNameComponents;
+	protected Integer _maxSuffixComponents;
+	protected Integer _minSuffixComponents;
 	// DKS TODO can we really support a PublisherID here, or just a PublisherPublicKeyDigest?
 	protected PublisherID _publisher;
 	protected ExcludeFilter _excludeFilter;
-	protected Integer _orderPreference;
+	protected Integer _childSelector;
 	protected Integer _answerOriginKind;
 	protected Integer _scope;
-	protected Integer _count;
-	protected byte [] _nonce;
-	protected byte [] _responseFilter;
-	
-	
+	protected byte[] _nonce;
+
 	/**
 	 * TODO: DKS figure out how to handle encoding faster,
 	 * and how to handle shorter version of names without
@@ -108,17 +110,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			   PublisherID publisher) {
 		_name = name;
 		_publisher = publisher;
-	}
-	
-	public Interest(ContentName name, int additionalNameComponents,
-			   PublisherID publisher) {
-		this(name, publisher);
-		_additionalNameComponents = additionalNameComponents;
-	}
-	
-	public Interest(ContentName name, int additionalNameComponents,
-				PublisherPublicKeyDigest exactPublisher) {
-		this(name, additionalNameComponents, new PublisherID(exactPublisher));
 	}
 	
 	public Interest(ContentName name) {
@@ -134,36 +125,30 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public ContentName name() { return _name; }
 	public void name(ContentName name) { _name = name; }
 	
-	public Integer nameComponentCount() { return _nameComponentCount;}
-	public void nameComponentCount(int nameComponentCount) { _nameComponentCount = nameComponentCount; }
+	public Integer maxSuffixComponents() { return _maxSuffixComponents; }
+	public void maxSuffixComponents(Integer maxSuffixComponents) { _maxSuffixComponents = maxSuffixComponents; }
 	
-	public Integer additionalNameComponents() { return _additionalNameComponents;}
-	public void additionalNameComponents(int additionalNameComponents) { _additionalNameComponents = additionalNameComponents; }
-
+	public Integer minSuffixComponents() { return _minSuffixComponents; }
+	public void minSuffixComponents(Integer minSuffixComponents) { _minSuffixComponents = minSuffixComponents; }
+	
 	public PublisherID publisherID() { return _publisher; }
 	public void publisherID(PublisherID publisherID) { _publisher = publisherID; }
 	
 	public ExcludeFilter excludeFilter() { return _excludeFilter; }
 	public void excludeFilter(ExcludeFilter excludeFilter) { _excludeFilter = excludeFilter; }
 	
-	public Integer orderPreference() { return _orderPreference;}
-	public void orderPreference(int orderPreference) { _orderPreference = orderPreference; }
+	public Integer childSelector() { return _childSelector;}
+	public void childSelector(int childSelector) { _childSelector = childSelector; }
 	
 	public Integer answerOriginKind() { return _answerOriginKind; }
 	public void answerOriginKind(int answerOriginKind) { _answerOriginKind = answerOriginKind; }
 	
 	public Integer scope() { return _scope; }
 	public void scope(int scope) { _scope = scope; }
-
-	public Integer count() { return _count; }
-	public void count(int count) { _count = count; }
-
-	public byte [] nonce() { return _nonce; }
-	public void nonce(byte [] nonce) { _nonce = nonce; }
 	
-	public byte [] responseFilter() { return _responseFilter; }
-	public void responseFilter(byte [] responseFilter) { _responseFilter = responseFilter; }
-	
+	public byte[] nonce() { return _nonce; }
+	public void nonce(byte[] nonce) { _nonce = nonce; }
+
 	public boolean matches(ContentObject result) {
 		return matches(result, (null != result.signedInfo()) ? result.signedInfo().getPublisherKeyID() : null);
 	}
@@ -200,8 +185,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			return false; // null name() should not happen, null arg can
 		// to get interest that matches everything, should
 		// use / (ROOT)
-		int ourCount = null != nameComponentCount() ? nameComponentCount() : name().count();
-		boolean digest = co.name().count()+1 == ourCount;
+		boolean digest = co.name().count()+1 == name().count();
 		ContentName name = digest ? co.fullName() : co.name();
 		if (isPrefixOf(name)) {
 			return internalMatch(name, digest, resultPublisherKeyID);
@@ -212,41 +196,26 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	// TODO We need to beef this up to deal with the more complex interest specs.
 	private boolean internalMatch(ContentName name, boolean digestIncluded,
 			PublisherPublicKeyDigest resultPublisherKeyID) {
-		if (null != additionalNameComponents()) {
+		if (null != maxSuffixComponents() || null != minSuffixComponents()) {
 			// we know our specified name is a prefix of the result. 
 			// the number of additional components must be this value
 			int nameCount = name.count();
-			int ourCount = null != nameComponentCount() ? nameComponentCount() : name().count();
-			int lengthDiff = nameCount + (digestIncluded?0:1) - ourCount ;
-			if (!additionalNameComponents().equals(lengthDiff)) {
-				Library.logger().fine("Interest match failed: " + lengthDiff + " more than the " + additionalNameComponents() + " components between expected " +
+			int lengthDiff = nameCount + (digestIncluded?0:1) - name().count();
+			if (null != maxSuffixComponents() && lengthDiff > maxSuffixComponents()) {
+				Library.logger().fine("Interest match failed: " + lengthDiff + " more than the " + maxSuffixComponents() + " components between expected " +
+						name() + " and tested " + name);
+				return false;
+			}
+			if (null != minSuffixComponents() && lengthDiff < minSuffixComponents()) {
+				Library.logger().fine("Interest match failed: " + lengthDiff + " less than the " + minSuffixComponents() + " components between expected " +
 						name() + " and tested " + name);
 				return false;
 			}
 		}
-		if (null != orderPreference()) {
-			// All we can check here is whether the test name is > our name.
-			// Any set of orderPreference requires this
-			if (name.compareTo(name()) <= 0) {
-				Library.logger().finest("Interest match failed. orderPreference is " + orderPreference() +
-						" and name " + name + " comes before our name " + name());
-				// If the name (missing the digest) has one less component than our name, we assume
-				// we matched by way of the digest
-				if (!digestIncluded || name.count() != name().count() - 1) {
-					Library.logger().finest("Interest match failed. orderPreference is " + orderPreference() +
-							" and name " + name + " comes before our name " + name());
-					return false;
-				}
-			}
-		}
 		if (null != excludeFilter()) {
-			int componentIndex = nameComponentCount() != null ? nameComponentCount() : name().count();
-			if (name.count() > componentIndex) {
-				if (excludeFilter().exclude(name.component(componentIndex))) {
-					Library.logger().finest("Interest match failed. " + name + " has more components than our name " +
-							name() + " and the component after our prefix count " + nameComponentCount() + " is excluded.");
-					return false;
-				}
+			if (excludeFilter().match(name.component(name().count()))) {
+				Library.logger().finest("Interest match failed. " + name + " has been excluded");
+				return false;
 			}
 		}
 		if (null != publisherID()) {
@@ -276,13 +245,37 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	}
 	
 	public static Interest next(ContentName name, byte[][] omissions, Integer prefixCount) {
-		return nextOrLast(name, ExcludeFilter.factory(omissions), new Integer(ORDER_PREFERENCE_LEFT | ORDER_PREFERENCE_ORDER_NAME), prefixCount);
+		return nextOrLast(name, ExcludeFilter.factory(omissions), new Integer(CHILD_SELECTOR_LEFT), prefixCount);
 	}
 	
+	/**
+	 * Regardless of whether we are looking for the next or the last Content
+	 * we always want to exclude everything before the first component at the 
+	 * prefix level.
+	 * 
+	 * @param name
+	 * @param exclude
+	 * @param order
+	 * @param prefixCount
+	 * @return
+	 */
 	private static Interest nextOrLast(ContentName name, ExcludeFilter exclude, Integer order, Integer prefixCount)  {
-		if (null == prefixCount)
+		if (null != prefixCount) {
+			if (prefixCount > name.count())
+				throw new IllegalArgumentException("Invalid prefixCount > components: " + prefixCount);
+		} else
 			prefixCount = name.count() - 1;
-		return constructInterest(name, exclude, order, prefixCount);
+		
+		if (prefixCount < name.count()) {
+			byte [] component = name.component(prefixCount);
+			name = new ContentName(prefixCount, name.components());
+		
+			if (exclude == null) {
+				exclude = ExcludeFilter.uptoFactory(component);
+			} else
+				exclude.excludeUpto(component);
+		}
+		return constructInterest(name, exclude, order);
 	}
 	
 	/**
@@ -291,20 +284,23 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @return
 	 */
 	public static Interest last(ContentName name) {
-		return last(name, null, null);
+		return last(name, (byte[][])null, null);
 	}
 	
-	public static Interest last(ContentName name, int prefixCount) {
-		ContentName newName = new ContentName(prefixCount, name.components());
-		return last(newName, (byte[][])null, prefixCount);
+	public static Interest last(ContentName name, Integer prefixCount) {
+		return last(name, (byte[][])null, prefixCount);
 	}
 	
 	public static Interest last(ContentName name, byte[] [] omissions, Integer prefixCount) {
-		return nextOrLast(name, ExcludeFilter.factory(omissions), new Integer(ORDER_PREFERENCE_RIGHT | ORDER_PREFERENCE_ORDER_NAME), prefixCount);
+		return nextOrLast(name, ExcludeFilter.factory(omissions), new Integer(CHILD_SELECTOR_RIGHT), prefixCount);
 	}
 	
 	public static Interest last(ContentName name, ExcludeFilter exclude) {
-		return nextOrLast(name, exclude, new Integer(ORDER_PREFERENCE_RIGHT | ORDER_PREFERENCE_ORDER_NAME), null);
+		return nextOrLast(name, exclude, new Integer(CHILD_SELECTOR_RIGHT), null);
+	}
+	
+	public static Interest last(ContentName name, ExcludeFilter exclude, Integer prefixCount) {
+		return nextOrLast(name, exclude, new Integer(CHILD_SELECTOR_RIGHT), prefixCount);
 	}
 	
 	/**
@@ -314,11 +310,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @return
 	 */
 	public static Interest exclude(ContentName name, byte[][] omissions) {
-		return constructInterest(name, null == omissions ? null : new ExcludeFilter(omissions), null, null);
+		return constructInterest(name, null == omissions ? null : new ExcludeFilter(omissions), null);
 	}
 	
-	public static Interest exclude(ContentName name, byte[][] omissions, PublisherID publisherID, Integer additionalNameComponents) {
-		return constructInterest(name, null == omissions ? null : new ExcludeFilter(omissions), null, null, publisherID, additionalNameComponents);
+	public static Interest exclude(ContentName name, byte[][] omissions, PublisherID publisherID, Integer maxSuffixComponents, Integer minSuffixComponents) {
+		return constructInterest(name, null == omissions ? null : new ExcludeFilter(omissions), null, publisherID, maxSuffixComponents, minSuffixComponents);
 	}
 	
 	
@@ -332,43 +328,64 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		ContentName nextName = new ContentName(components.size(), components);
 		return next(nextName, prefixCount == null ? components.size() - 2 : prefixCount);
 	}
+	
+	public static Interest next(ContentObject co) {
+		return next(co, null);
+	}
 
 	public static Interest constructInterest(ContentName name,  ExcludeFilter filter,
-			Integer orderPreference, Integer prefixCount) {
-		return constructInterest(name, filter, orderPreference, prefixCount, null, null);
+			Integer orderPreference) {
+		return constructInterest(name, filter, orderPreference, null, null, null);
 	}
 	
 	public static Interest constructInterest(ContentName name,  ExcludeFilter filter,
-			Integer orderPreference, Integer prefixCount, PublisherID publisherID, Integer additionalNameComponents) {
+			Integer childSelector, PublisherID publisherID, Integer maxSuffixComponents, Integer minSuffixComponents) {
 		Interest interest = new Interest(name);
-		if (null != orderPreference)
-			interest.orderPreference(orderPreference);
+		if (null != childSelector)
+			interest.childSelector(childSelector);
 		if (null != filter)
 			interest.excludeFilter(filter);
-		if (null != prefixCount)
-			interest.nameComponentCount(prefixCount);
 		if (null != publisherID)
 			interest.publisherID(publisherID);
-		if (null != additionalNameComponents)
-			interest.additionalNameComponents(additionalNameComponents);
+		if (null != maxSuffixComponents)
+			interest.maxSuffixComponents(maxSuffixComponents);
+		if (null != minSuffixComponents)
+			interest.minSuffixComponents(minSuffixComponents);
 		return interest;
 	}
 	
+	/**
+	 * Currently used as an interest name component to disambiguate multiple requests for the
+	 * same content.
+	 * 
+	 * @return
+	 */
+	public static byte[] generateNonce() {
+		byte [] nonce = new byte[8];
+		_random.nextBytes(nonce);
+		byte [] wholeNonce = new byte[CommandMarkers.NONCE_MARKER.length + nonce.length];
+		System.arraycopy(CommandMarkers.NONCE_MARKER, 0, wholeNonce, 0, CommandMarkers.NONCE_MARKER.length);
+		System.arraycopy(nonce, 0, wholeNonce, CommandMarkers.NONCE_MARKER.length, nonce.length);	
+		return wholeNonce;
+	}
+
 	public boolean isPrefixOf(ContentName name) {
-		int count = nameComponentCount() == null ? name().count() : nameComponentCount();
-		if (null != additionalNameComponents() && 0 == additionalNameComponents() 
-				&& (null == nameComponentCount() || name().count() == nameComponentCount()) ) {
+		int count = name().count();
+		if (null != maxSuffixComponents() && 0 == maxSuffixComponents()) {
 			// This Interest is trying to match a complete content name with digest explicitly included
 			// so we must drop the last component for the prefix test against a name that is 
 			// designed to be direct from ContentObject and so does not include digest explicitly
-			count--;
+			//count--;
 		}
 		return name().isPrefixOf(name, count);
 	}
 	
+	public boolean isPrefixOf(ContentName name, int count) {
+		return name().isPrefixOf(name, count);
+	}
+	
 	public boolean isPrefixOf(ContentObject other) {
-		int count = nameComponentCount() == null ? name().count() : nameComponentCount();
-		return name().isPrefixOf(other, count);
+		return name().isPrefixOf(other, name().count());
 	}
 	
 	public boolean recursive() { return true; }
@@ -393,12 +410,12 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		_name = new ContentName();
 		_name.decode(decoder);
 		
-		if (decoder.peekStartElement(NAME_COMPONENT_COUNT)) {
-			_nameComponentCount = decoder.readIntegerElement(NAME_COMPONENT_COUNT);
+		if (decoder.peekStartElement(MIN_SUFFIX_COMPONENTS)) {
+			_minSuffixComponents = decoder.readIntegerElement(MIN_SUFFIX_COMPONENTS);
 		}
 		
-		if (decoder.peekStartElement(ADDITIONAL_NAME_COMPONENTS)) {
-			_additionalNameComponents = decoder.readIntegerElement(ADDITIONAL_NAME_COMPONENTS);
+		if (decoder.peekStartElement(MAX_SUFFIX_COMPONENTS)) {
+			_maxSuffixComponents = decoder.readIntegerElement(MAX_SUFFIX_COMPONENTS);
 		}
 				
 		if (PublisherID.peek(decoder)) {
@@ -411,8 +428,8 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			_excludeFilter.decode(decoder);
 		}
 		
-		if (decoder.peekStartElement(ORDER_PREFERENCE)) {
-			_orderPreference = decoder.readIntegerElement(ORDER_PREFERENCE);
+		if (decoder.peekStartElement(CHILD_SELECTOR)) {
+			_childSelector = decoder.readIntegerElement(CHILD_SELECTOR);
 		}
 		
 		if (decoder.peekStartElement(ANSWER_ORIGIN_KIND)) {
@@ -425,11 +442,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		
 		if (decoder.peekStartElement(NONCE_ELEMENT)) {
 			_nonce = decoder.readBinaryElement(NONCE_ELEMENT);
-		}
-		
-		if (decoder.peekStartElement(RESPONSE_FILTER_ELEMENT)) {
-			Library.logger().info("Got response filter element.");
-			_responseFilter = decoder.readBinaryElement(RESPONSE_FILTER_ELEMENT);
 		}
 		
 		try {
@@ -447,12 +459,12 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		encoder.writeStartElement(INTEREST_ELEMENT);
 		
 		name().encode(encoder);
-		
-		if (null != nameComponentCount()) 
-			encoder.writeIntegerElement(NAME_COMPONENT_COUNT, nameComponentCount());
+	
+		if (null != minSuffixComponents()) 
+			encoder.writeIntegerElement(MIN_SUFFIX_COMPONENTS, minSuffixComponents());	
 
-		if (null != additionalNameComponents()) 
-			encoder.writeIntegerElement(ADDITIONAL_NAME_COMPONENTS, additionalNameComponents());
+		if (null != maxSuffixComponents()) 
+			encoder.writeIntegerElement(MAX_SUFFIX_COMPONENTS, maxSuffixComponents());
 
 		if (null != publisherID())
 			publisherID().encode(encoder);
@@ -460,21 +472,18 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		if (null != excludeFilter())
 			excludeFilter().encode(encoder);
 
-		if (null != orderPreference()) 
-			encoder.writeIntegerElement(ORDER_PREFERENCE, orderPreference());
+		if (null != childSelector()) 
+			encoder.writeIntegerElement(CHILD_SELECTOR, childSelector());
 
 		if (null != answerOriginKind()) 
 			encoder.writeIntegerElement(ANSWER_ORIGIN_KIND, answerOriginKind());
 
 		if (null != scope()) 
 			encoder.writeIntegerElement(SCOPE_ELEMENT, scope());
-
+		
 		if (null != nonce())
 			encoder.writeElement(NONCE_ELEMENT, nonce());
-
-		if (null != responseFilter())
-			encoder.writeElement(RESPONSE_FILTER_ELEMENT, responseFilter());
-
+		
 		encoder.writeEndElement();   		
 	}
 	
@@ -488,10 +497,10 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		int result = DataUtils.compare(name(), o.name());
 		if (result != 0) return result;
 		
-		result = DataUtils.compare(nameComponentCount(), o.nameComponentCount());
+		result = DataUtils.compare(maxSuffixComponents(), o.maxSuffixComponents());
 		if (result != 0) return result;
 		
-		result = DataUtils.compare(additionalNameComponents(), o.additionalNameComponents());
+		result = DataUtils.compare(minSuffixComponents(), o.minSuffixComponents());
 		if (result != 0) return result;
 		
 		result = DataUtils.compare(publisherID(), o.publisherID());
@@ -500,7 +509,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		result = DataUtils.compare(excludeFilter(), o.excludeFilter());
 		if (result != 0) return result;
 		
-		result = DataUtils.compare(orderPreference(), o.orderPreference());
+		result = DataUtils.compare(childSelector(), o.childSelector());
 		if (result != 0) return result;
 		
 		result = DataUtils.compare(answerOriginKind(), o.answerOriginKind());
@@ -508,16 +517,10 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		
 		result = DataUtils.compare(scope(), o.scope());
 		if (result != 0) return result;
-
-		result = DataUtils.compare(count(), o.count());
-		if (result != 0) return result;
 		
 		result = DataUtils.compare(nonce(), o.nonce());
 		if (result != 0) return result;
-		
-		result = DataUtils.compare(responseFilter(), o.responseFilter());
-		if (result != 0) return result;
-		
+
 		return result;
 	}
 
@@ -527,28 +530,26 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		int result = 1;
 		result = prime
 			* result
-			+ ((_nameComponentCount == null) ? 0 : _nameComponentCount
+			+ ((_maxSuffixComponents == null) ? 0 : _maxSuffixComponents
 				.hashCode());
 		result = prime
-			* result
-			+ ((_additionalNameComponents == null) ? 0 : _additionalNameComponents
-				.hashCode());
+		* result
+		+ ((_minSuffixComponents == null) ? 0 : _minSuffixComponents
+			.hashCode());
 		result = prime
 				* result
 				+ ((_answerOriginKind == null) ? 0 : _answerOriginKind
 						.hashCode());
-		result = prime * result + ((_count == null) ? 0 : _count.hashCode());
 		result = prime * result
 				+ ((_excludeFilter == null) ? 0 : _excludeFilter.hashCode());
 		result = prime * result + ((_name == null) ? 0 : _name.hashCode());
-		result = prime * result + Arrays.hashCode(_nonce);
 		result = prime
 				* result
-				+ ((_orderPreference == null) ? 0 : _orderPreference.hashCode());
+				+ ((_childSelector == null) ? 0 : _childSelector.hashCode());
 		result = prime * result
 				+ ((_publisher == null) ? 0 : _publisher.hashCode());
-		result = prime * result + Arrays.hashCode(_responseFilter);
 		result = prime * result + ((_scope == null) ? 0 : _scope.hashCode());
+		result = prime * result + Arrays.hashCode(_nonce);
 		return result;
 	}
 
@@ -561,25 +562,20 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		if (getClass() != obj.getClass())
 			return false;
 		Interest other = (Interest) obj;
-		if (_nameComponentCount == null) {
-			if (other._nameComponentCount != null)
+		if (_maxSuffixComponents == null) {
+			if (other._maxSuffixComponents != null)
 				return false;
-		} else if (!_nameComponentCount.equals(other._nameComponentCount))
+		} else if (!_maxSuffixComponents.equals(other._maxSuffixComponents))
 			return false;
-		if (_additionalNameComponents == null) {
-			if (other._additionalNameComponents != null)
+		if (_minSuffixComponents == null) {
+			if (other._minSuffixComponents != null)
 				return false;
-		} else if (!_additionalNameComponents.equals(other._additionalNameComponents))
+		} else if (!_minSuffixComponents.equals(other._minSuffixComponents))
 			return false;
 		if (_answerOriginKind == null) {
 			if (other._answerOriginKind != null)
 				return false;
 		} else if (!_answerOriginKind.equals(other._answerOriginKind))
-			return false;
-		if (_count == null) {
-			if (other._count != null)
-				return false;
-		} else if (!_count.equals(other._count))
 			return false;
 		if (_excludeFilter == null) {
 			if (other._excludeFilter != null)
@@ -591,36 +587,35 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 				return false;
 		} else if (!_name.equals(other._name))
 			return false;
-		if (!Arrays.equals(_nonce, other._nonce))
-			return false;
-		if (_orderPreference == null) {
-			if (other._orderPreference != null)
+		if (_childSelector == null) {
+			if (other._childSelector != null)
 				return false;
-		} else if (!_orderPreference.equals(other._orderPreference))
+		} else if (!_childSelector.equals(other._childSelector))
 			return false;
 		if (_publisher == null) {
 			if (other._publisher != null)
 				return false;
 		} else if (!_publisher.equals(other._publisher))
 			return false;
-		if (!Arrays.equals(_responseFilter, other._responseFilter))
-			return false;
 		if (_scope == null) {
 			if (other._scope != null)
 				return false;
 		} else if (!_scope.equals(other._scope))
 			return false;
+		//if (!Arrays.equals(_nonce, other._nonce))
+		//	return false;
 		return true;
 	}
 	
 	public String toString() {
 		StringBuffer sb = new StringBuffer(_name.toString());
 		sb.append(": ");
-		if (null != _nameComponentCount)
-			sb.append(" ct:" + _nameComponentCount);
-
-		if  (null != _additionalNameComponents)
-			sb.append(" anc:" + _additionalNameComponents);
+	
+		if  (null != _maxSuffixComponents)
+			sb.append(" maxsc:" + _maxSuffixComponents);
+		
+		if  (null != _minSuffixComponents)
+			sb.append(" minsc:" + _minSuffixComponents);
 
 		if (null != _publisher)
 			sb.append(" p:" + DataUtils.printHexBytes(_publisher.id()) + "");
@@ -632,26 +627,23 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	
 	public Interest clone() {
 		Interest clone = new Interest(name());
-		if (null != _additionalNameComponents)
-			clone.additionalNameComponents(additionalNameComponents());
+		if (null != _maxSuffixComponents)
+			clone.maxSuffixComponents(maxSuffixComponents());
+		if (null != _minSuffixComponents)
+			clone.minSuffixComponents(minSuffixComponents());
 		if (null != _publisher)
 			clone.publisherID(publisherID());
-		if (null != _nameComponentCount)
-			clone.nameComponentCount(nameComponentCount());
 		if (null != _excludeFilter)
 			clone.excludeFilter(excludeFilter());
-		if (null != _orderPreference)
-			clone.orderPreference(orderPreference());
+		if (null != _childSelector)
+			clone.childSelector(childSelector());
 		if (null != _answerOriginKind)
 			clone.answerOriginKind(answerOriginKind());
 		if (null != _scope)
 			clone.scope(scope());
-		if (null != _count)
-			clone.count(count());
 		if (null != _nonce)
 			clone.nonce(nonce());
-		if (null != _responseFilter)
-			clone.responseFilter(responseFilter());
 		return clone;
 	}
+
 }

@@ -7,5 +7,6 @@
   <IPProto>17</IPProto>
   <Host>224.18.14.21</Host>
   <MulticastInterface>192.168.0.13</MulticastInterface>
-  <MulticastTTL>1</MulticastTTL>
+  <MulticastTTL>2</MulticastTTL>
+  <FreshnessSeconds>3600</FreshnessSeconds>
 </FaceInstance>

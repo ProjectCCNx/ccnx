@@ -9,7 +9,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.content.Link;
 import com.parc.ccn.security.access.ACL;
 import com.parc.ccn.security.access.ACL.ACLOperation;
 
@@ -23,15 +23,15 @@ import com.parc.ccn.security.access.ACL.ACLOperation;
 
 public class ACLTest {
 	
-	static LinkReference lr1 = null;
-	static LinkReference lr2 = null;
-	static LinkReference lr3 = null;
+	static Link lr1 = null;
+	static Link lr2 = null;
+	static Link lr3 = null;
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		lr1 = new LinkReference(ContentName.fromNative("/parc/sds/pgolle"));
-		lr2 = new LinkReference(ContentName.fromNative("/parc/sds/eshi"));
-		lr3 = new LinkReference(ContentName.fromNative("/parc/sds/smetters"));		
+		lr1 = new Link(ContentName.fromNative("/parc/sds/pgolle"));
+		lr2 = new Link(ContentName.fromNative("/parc/sds/eshi"));
+		lr3 = new Link(ContentName.fromNative("/parc/sds/smetters"));		
 	}
 	
 	@Test
@@ -50,9 +50,9 @@ public class ACLTest {
 
 	@Test
 	public void testACLCreationFromArrayList() throws Exception {
-		ArrayList<LinkReference> alr = new ArrayList<LinkReference>();
-		alr.add(new LinkReference(ContentName.fromNative("/parc/sds/pgolle"), "r", null));
-		alr.add(new LinkReference(ContentName.fromNative("/parc/sds/eshi"), "w", null));
+		ArrayList<Link> alr = new ArrayList<Link>();
+		alr.add(new Link(ContentName.fromNative("/parc/sds/pgolle"), "r", null));
+		alr.add(new Link(ContentName.fromNative("/parc/sds/eshi"), "w", null));
 		ACL testACL = new ACL(alr);
 		Assert.assertTrue(testACL.validate());
 	}
@@ -65,7 +65,7 @@ public class ACLTest {
 		// add lr1 and lr2 as readers (2 new readers)
 		userList.add(ACLOperation.addReaderOperation(lr1));
 		userList.add(ACLOperation.addReaderOperation(lr2));
-		LinkedList<LinkReference> result = 
+		LinkedList<Link> result = 
 			testACL.update(userList);
 		Assert.assertEquals(2, result.size());
 

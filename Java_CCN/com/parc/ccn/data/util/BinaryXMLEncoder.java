@@ -53,6 +53,7 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 			throws XMLStreamException {
 		try {
 			writeStartElement(tag, attributes);
+			// Will omit if 0-length
 			BinaryXMLCodec.encodeUString(_ostream, utf8Content);
 			writeEndElement();
 		} catch (IOException e) {
@@ -75,6 +76,7 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 			throws XMLStreamException {
 		try {
 			writeStartElement(tag, attributes);
+			// Will omit if 0-length
 			BinaryXMLCodec.encodeBlob(_ostream, binaryContent);
 			writeEndElement();
 		} catch (IOException e) {
@@ -88,6 +90,7 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 			throws XMLStreamException {
 		try {
 			writeStartElement(tag, attributes);
+			// Will omit if 0-length
 			BinaryXMLCodec.encodeBlob(_ostream, binaryContent, offset, length);
 			writeEndElement();
 		} catch (IOException e) {

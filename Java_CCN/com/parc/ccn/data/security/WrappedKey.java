@@ -77,7 +77,6 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		 * @param library
 		 * @throws XMLStreamException
 		 * @throws IOException
-		 * @throws ClassNotFoundException 
 		 */
 		public WrappedKeyObject(ContentName name, 
 				CCNLibrary library) throws IOException, XMLStreamException {
@@ -515,7 +514,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	 * @return
 	 */
 	protected static byte [] AESWrapWithPad(Key wrappingKey, byte[] input, int offset, int length) {
-		if (wrappingKey.getAlgorithm() != "AES") {
+		if (! wrappingKey.getAlgorithm().equals("AES")) {
 			throw new IllegalArgumentException("AES wrap must wrap with with an AES key.");
 		}
 		AESWrapWithPadEngine engine = new AESWrapWithPadEngine();
@@ -525,7 +524,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	
 	protected static Key AESUnwrapWithPad(Key unwrappingKey, String wrappedKeyAlgorithm,
 				byte [] input, int offset, int length) throws InvalidCipherTextException, InvalidKeyException {
-		if (unwrappingKey.getAlgorithm() != "AES") {
+		if (! unwrappingKey.getAlgorithm().equals("AES")) {
 			throw new IllegalArgumentException("AES wrap must unwrap with with an AES key.");
 		}
 		AESWrapWithPad engine = new AESWrapWithPad();

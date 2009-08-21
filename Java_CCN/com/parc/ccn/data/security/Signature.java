@@ -15,7 +15,7 @@ import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.crypto.MerklePath;
-import com.parc.security.crypto.certificates.OIDLookup;
+import com.parc.ccn.security.crypto.util.OIDLookup;
 
 public class Signature extends GenericXMLEncodable implements XMLEncodable,
 		Comparable<Signature> {

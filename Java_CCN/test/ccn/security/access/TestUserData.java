@@ -67,9 +67,9 @@ public class TestUserData {
 			if (storeInRepo) {
 				// This only matters the first time through, when we save the user's data.
 				// but it makes no difference in other cases anyway.
-				userKeyManager = new RepositoryKeyManager(childName, null, password, library);
+				userKeyManager = new RepositoryKeyManager(friendlyName, childName, null, password, library);
 			} else {
-				userKeyManager = new NetworkKeyManager(childName, null, password, library);
+				userKeyManager = new NetworkKeyManager(friendlyName, childName, null, password, library);
 			}
 			userKeyManager.initialize();
 			_userData.put(childName, userKeyManager);
@@ -105,7 +105,7 @@ public class TestUserData {
 				}
 				childName = new ContentName(userKeystoreDataPrefix, child.lastComponent());
 				Library.logger().info("Loading user: " + friendlyName + " from " + childName);
-				userKeyManager = new NetworkKeyManager(childName, null, password, library);
+				userKeyManager = new NetworkKeyManager(friendlyName, childName, null, password, library);
 				userKeyManager.initialize();
 				_userData.put(childName, userKeyManager);
 				_userFriendlyNames.put(friendlyName, childName);

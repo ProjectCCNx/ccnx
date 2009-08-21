@@ -10,6 +10,7 @@ import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
@@ -33,17 +34,21 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 	 * @throws IOException
 	 */
 	public CCNEncodableObject(Class<E> type, ContentName name, E data, CCNLibrary library) throws IOException {
-		super(type, name, data, library);
+		super(type, name, data, null, null, library);
 	}
 	
-	public CCNEncodableObject(Class<E> type, ContentName name, E data,
-			boolean raw, CCNLibrary library) throws IOException {
-		super(type, name, data, raw, library);
+	public CCNEncodableObject(Class<E> type, ContentName name, E data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNLibrary library) throws IOException {
+		super(type, name, data, publisher, keyLocator, library);
 	}
 
-	protected CCNEncodableObject(Class<E> type, ContentName name, E data,
-			CCNFlowControl flowControl) throws IOException {
-		super(type, name, data, flowControl);
+	public CCNEncodableObject(Class<E> type, ContentName name, E data,
+			boolean raw, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNLibrary library) throws IOException {
+		super(type, name, data, raw, publisher, keyLocator, library);
+	}
+
+	protected CCNEncodableObject(Class<E> type, ContentName name, E data, PublisherPublicKeyDigest publisher,
+			KeyLocator keyLocator, CCNFlowControl flowControl) throws IOException {
+		super(type, name, data, publisher, keyLocator, flowControl);
 	}
 	
 	/**

@@ -20,10 +20,10 @@ import com.parc.ccn.library.io.repo.RepositoryVersionedOutputStream;
  */
 public class RepositoryKeyManager extends NetworkKeyManager {
 
-	public RepositoryKeyManager(ContentName keystoreName,
+	public RepositoryKeyManager(String userName, ContentName keystoreName,
 			PublisherPublicKeyDigest publisher, char[] password,
 			CCNLibrary library) throws ConfigurationException, IOException {
-		super(keystoreName, publisher, password, library);
+		super(userName, keystoreName, publisher, password, library);
 	}
 
 	/**

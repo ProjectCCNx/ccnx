@@ -14,6 +14,7 @@ import javax.xml.stream.XMLStreamException;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
+import com.parc.ccn.data.security.ContentVerifier;
 import com.parc.ccn.data.security.KeyLocator;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo.ContentType;
@@ -24,7 +25,7 @@ import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.crypto.ContentKeys;
 import com.parc.ccn.security.crypto.UnbufferedCipherInputStream;
 
-public abstract class CCNAbstractInputStream extends InputStream {
+public abstract class CCNAbstractInputStream extends InputStream implements ContentVerifier {
 
 	protected static final int MAX_TIMEOUT = 5000;
 
@@ -63,6 +64,14 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	protected PublisherPublicKeyDigest _contentPublisher; // the publisher of the content we are reading
 	protected KeyLocator _publisherKeyLocator; // the key locator of the content publisher.
 
+	/**
+	 * @param baseName should not include a segment component.
+	 * @param startingBlockIndex
+	 * @param publisher
+	 * @param library
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 */
 	public CCNAbstractInputStream(
 			ContentName baseName, Long startingBlockIndex,
 			PublisherPublicKeyDigest publisher, CCNLibrary library) 
@@ -85,15 +94,17 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		// whatever you want to open -- this doesn't crawl versions.  If you don't
 		// offer a starting block index, but instead offer the name of a specific
 		// segment, this will use that segment as the starting block. 
-		if ((null == startingBlockIndex)  && (SegmentationProfile.isSegment(baseName))) {
-			_startingBlockIndex = SegmentationProfile.getSegmentNumber(baseName);
-		} else {
-			_startingBlockIndex = startingBlockIndex;
-		}
-		if (null == _startingBlockIndex) {
-			_startingBlockIndex = SegmentationProfile.baseSegment();
-		}
 		_baseName = baseName;
+		if (startingBlockIndex != null) {
+			_startingBlockIndex = startingBlockIndex;
+		} else {
+			if (SegmentationProfile.isSegment(baseName)) {
+				_startingBlockIndex = SegmentationProfile.getSegmentNumber(baseName);
+				baseName = _baseName.parent();
+			} else {
+				_startingBlockIndex = SegmentationProfile.baseSegment();
+			}
+		}
 	}
 	
 	public CCNAbstractInputStream(
@@ -110,6 +121,12 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		}
 	}
 	
+	/**
+	 * Assumes starterBlock has been verified by caller.
+	 * @param starterBlock
+	 * @param library
+	 * @throws IOException
+	 */
 	public CCNAbstractInputStream(ContentObject starterBlock, 			
 			CCNLibrary library) throws IOException  {
 		super();
@@ -120,8 +137,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		if (null == _library) {
 			_library = CCNLibrary.getLibrary();
 		}
-		setCurrentBlock(starterBlock);
-		_publisher = starterBlock.signedInfo().getPublisherKeyID();
+		setFirstBlock(starterBlock);
 		_baseName = SegmentationProfile.segmentRoot(starterBlock.name());
 		try {
 			_startingBlockIndex = SegmentationProfile.getSegmentNumber(starterBlock.name());
@@ -188,7 +204,16 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	}
 	
 	protected abstract int readInternal(byte [] buf, int offset, int len) throws IOException;
-	
+
+	/**
+	 * Called to set the first block when opening a stream.
+	 * @param block Must not be null
+	 * @throws IOException
+	 */
+	protected void setFirstBlock(ContentObject block) throws IOException {
+		setCurrentBlock(block);
+	}
+
 	/**
 	 * Set up current block for reading, including prep for decryption if necessary.
 	 * Called after getBlock/getFirstBlock/getNextBlock, which take care of verifying
@@ -208,6 +233,8 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		_publisherKeyLocator = newBlock.signedInfo().getKeyLocator();
 		
 		_blockReadStream = new ByteArrayInputStream(_currentBlock.content());
+
+		// if we're decrypting, then set it up now
 		if (_keys != null) {
 			try {
 				// Reuse of current block OK. Don't expect to have two separate readers
@@ -238,29 +265,49 @@ public abstract class CCNAbstractInputStream extends InputStream {
 	 **/
 	protected ContentObject getBlock(long number) throws IOException {
 
-        // Block name requested should be interpreted literally, not taken
-        // relative to baseSegment().
-		ContentName blockName = SegmentationProfile.segmentName(_baseName, number);
-
-		if (_currentBlock != null) {
+ 		if (_currentBlock != null) {
 			//what block do we have right now?  maybe we already have it
 			if (currentBlockNumber() == number){
 				//we already have this block..
 				return _currentBlock;
 			}
 		}
+		return getBlock(_baseName, number, _timeout, this, _library);
+	}
+	
+	/**
+	 * Gets a stream block following stream naming/segmentation conventions.
+	 * TODO Eventually support publisher specification, and cope if verifcation fails (exclude, warn and retry).
+	 * @param desiredContent
+	 * @param segmentNumber If null, gets baseSegment().
+	 * @param timeout
+	 * @param verifier Cannot be null.
+	 * @param library
+	 * @return
+	 * @throws IOException
+	 */
+	public static ContentObject getBlock(ContentName desiredContent, Long segmentNumber, long timeout, ContentVerifier verifier, CCNLibrary library) throws IOException {
 		
+	    // Block name requested should be interpreted literally, not taken
+        // relative to baseSegment().
+		if (null == segmentNumber) {
+			segmentNumber = SegmentationProfile.baseSegment();
+		}
+		
+		ContentName blockName = SegmentationProfile.segmentName(desiredContent, segmentNumber);
+
 		Library.logger().info("getBlock: getting block " + blockName);
-		ContentObject block = _library.getLower(blockName, 1, _timeout);
+		ContentObject block = library.getLower(blockName, 1, timeout);
 
 		if (null == block) {
-			Library.logger().info("Cannot get block " + number + " of file " + _baseName + " expected block: " + blockName.toString());
-			throw new IOException("Cannot get block " + number + " of file " + _baseName + " expected block: " + blockName.toString());
+			Library.logger().info("Cannot get block " + segmentNumber + " of file " + desiredContent + " expected block: " + blockName);
+			throw new IOException("Cannot get block " + segmentNumber + " of file " + desiredContent + " expected block: " + blockName);
 		} else {
 			Library.logger().info("getBlock: retrieved block " + block.name());
 		}
+		
 		// So for the block, we assume we have a potential document.
-		if (!verifyBlock(block)) {
+		if (!verifier.verifyBlock(block)) {
 			return null;
 		}
 		return block;
@@ -291,7 +338,7 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		Library.logger().info("getNextBlock: getting block after " + _currentBlock.name());
 		return getBlock(nextBlockIndex());
 	}
-
+	
 	protected ContentObject getFirstBlock() throws IOException {
 		if (null != _startingBlockIndex) {
 			ContentObject firstBlock = getBlock(_startingBlockIndex);
@@ -334,7 +381,10 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		return false;
 	}
 
-	boolean verifyBlock(ContentObject block) {
+	/**
+	 * TODO -- check to see if it matches desired publisher.
+	 */
+	public boolean verifyBlock(ContentObject block) {
 
 		// First we verify. 
 		// Low-level verify just checks that signer actually signed.
@@ -418,15 +468,23 @@ public abstract class CCNAbstractInputStream extends InputStream {
 		return blockIndex();
 	}
 	
+	/**
+	 * Is the stream GONE? I.E. Is there a single empty data block, of type GONE where
+	 * the first block should be? This convention is used to represent a stream that has been
+	 * deleted.
+	 * @return
+	 * @throws IOException
+	 */
 	public boolean isGone() throws IOException {
 		ContentObject newBlock = null;
 
+		// TODO: once first block is always read in constructor this code will change
 		if (null == _currentBlock && null == _goneBlock) {
 			newBlock = getFirstBlock(); // sets _goneBlock, but not _currentBlock
 		}
 		if (null == _goneBlock) {
 			if (null != newBlock) {
-				setCurrentBlock(newBlock); // save it for reuse
+				setFirstBlock(newBlock); // save it for reuse
 			}
 			return false;
 		}

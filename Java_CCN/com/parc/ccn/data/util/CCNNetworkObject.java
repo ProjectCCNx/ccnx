@@ -1,6 +1,7 @@
 package com.parc.ccn.data.util;
 
 import java.io.IOException;
+import java.io.InvalidObjectException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -8,6 +9,7 @@ import java.util.Arrays;
 import javax.xml.stream.XMLStreamException;
 
 import com.parc.ccn.Library;
+import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.CCNInterestListener;
@@ -18,6 +20,7 @@ import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.data.util.DataUtils.Tuple;
 import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
+import com.parc.ccn.library.CCNFlowControl.Shape;
 import com.parc.ccn.library.io.CCNInputStream;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
 import com.parc.ccn.library.io.CCNVersionedOutputStream;
@@ -48,6 +51,7 @@ import com.parc.ccn.library.profiles.VersioningProfile;
 public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CCNInterestListener {
 
 	protected static boolean DEFAULT_RAW = true;
+	protected static long DEFAULT_TIMEOUT = 3000; // msec
 	
 	/**
 	 * Unversioned "base" name.
@@ -66,6 +70,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	protected KeyLocator _currentPublisherKeyLocator;
 	protected CCNLibrary _library;
 	protected CCNFlowControl _flowControl;
+	protected PublisherPublicKeyDigest _publisher; // publisher we write under, if null, use library defaults
+	protected KeyLocator _keyLocator; // locator to find publisher key
 	protected boolean _raw = DEFAULT_RAW; // what kind of flow controller to make if we don't have one
 	
 	// control ongoing update.
@@ -83,7 +89,20 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException
 	 */
 	public CCNNetworkObject(Class<E> type, ContentName name, E data, CCNLibrary library) throws IOException {
-		this(type, name, data, DEFAULT_RAW, library);
+		this(type, name, data, DEFAULT_RAW, null, null, library);
+	}
+		
+	/**
+	 * Allow publisher control.
+	 * @param type
+	 * @param name
+	 * @param data
+	 * @param publisher which publisher key to sign this content with, or library defaults if null
+	 * @param library
+	 * @throws IOException
+	 */
+	public CCNNetworkObject(Class<E> type, ContentName name, E data, PublisherPublicKeyDigest publisher, KeyLocator locator, CCNLibrary library) throws IOException {
+		this(type, name, data, DEFAULT_RAW, publisher, locator, library);
 	}
 		
 	/**
@@ -93,15 +112,27 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param name
 	 * @param data
 	 * @param raw
+	 * @param publisher which publisher key to sign this content with, or library defaults if null
 	 * @param library
 	 * @throws IOException
 	 */
-	public CCNNetworkObject(Class<E> type, ContentName name, E data, boolean raw, CCNLibrary library) throws IOException {
+	public CCNNetworkObject(Class<E> type, ContentName name, E data, boolean raw, 
+							PublisherPublicKeyDigest publisher, KeyLocator locator,
+							CCNLibrary library) throws IOException {
 		// Don't start pulling a namespace till we actually write something. We may never write
 		// anything on this object. In fact, don't make a flow controller at all till we need one.
 		super(type, data);
+		if (null == library) {
+			try {
+				library = CCNLibrary.open();
+			} catch (ConfigurationException e) {
+				throw new IllegalArgumentException("Library null, and cannot create one: " + e.getMessage(), e);
+			}
+		}
 		_library = library;
 		_baseName = name;
+		_publisher = publisher;
+		_keyLocator = locator;
 		_raw = raw;
 	}
 
@@ -112,11 +143,15 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param type
 	 * @param name
 	 * @param data
+	 * @param publisher which publisher key to sign this content with, or library defaults if null
 	 * @param flowControl
 	 * @throws IOException
 	 */
-	protected CCNNetworkObject(Class<E> type, ContentName name, E data, CCNFlowControl flowControl) throws IOException {
-		this(type, name, data, flowControl.getLibrary());
+	protected CCNNetworkObject(Class<E> type, ContentName name, E data, 
+								PublisherPublicKeyDigest publisher, 
+								KeyLocator locator,
+								CCNFlowControl flowControl) throws IOException {
+		this(type, name, data, publisher, locator, flowControl.getLibrary());
 		_flowControl = flowControl;
 	}
 
@@ -125,7 +160,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * named version. Flow controller assumed to already be set to handle this namespace.
 	 * @param type
 	 * @param name
-	 * @param publisher
+	 * @param publisher Who must have signed the data we want. TODO should be PublisherID.
 	 * @param library
 	 * @throws ConfigurationException
 	 * @throws IOException
@@ -141,6 +176,20 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		this(type, name, publisher, DEFAULT_RAW, library);
 	}
 
+	/**
+	 * Updates to either a particular named version, or if no version given on name,
+	 * the latest version. 
+	 * Currently will time out and be unhappy if no such version exists.
+	 * 
+	 * Need a way to differentiate whether to read a specific
+	 * version or to read the latest version after a given one.
+	 * @param type
+	 * @param name
+	 * @param publisher
+	 * @param flowControl
+	 * @throws IOException
+	 * @throws XMLStreamException
+	 */
 	protected CCNNetworkObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
 			CCNFlowControl flowControl) throws IOException, XMLStreamException {
 		super(type);
@@ -152,6 +201,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public CCNNetworkObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
 			boolean raw, CCNLibrary library) throws IOException, XMLStreamException {
 		super(type);
+		if (null == library) {
+			try {
+				library = CCNLibrary.open();
+			} catch (ConfigurationException e) {
+				throw new IllegalArgumentException("Library null, and cannot create one: " + e.getMessage(), e);
+			}
+		}
 		_library = library;
 		_baseName = name;
 		update(name, publisher);
@@ -172,23 +228,24 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	
 	public CCNNetworkObject(Class<E> type, ContentObject firstBlock, boolean raw, CCNLibrary library) throws IOException, XMLStreamException {
 		super(type);
+		if (null == library) {
+			try {
+				library = CCNLibrary.open();
+			} catch (ConfigurationException e) {
+				throw new IllegalArgumentException("Library null, and cannot create one: " + e.getMessage(), e);
+			}
+		}
 		_library = library;
 		update(firstBlock);
 	}
 
 	protected CCNNetworkObject(Class<E> type, ContentObject firstBlock, CCNFlowControl flowControl) throws IOException, XMLStreamException {
 		super(type);
+		if (null == flowControl)
+			throw new IllegalArgumentException("flowControl cannot be null!");
 		_flowControl = flowControl;
 		_library = flowControl.getLibrary();
 		update(firstBlock);
-	}
-	
-	public void update() throws XMLStreamException, IOException {
-		if (null == _baseName) {
-			throw new IllegalStateException("Cannot retrieve an object without giving a name!");
-		}
-		// Look for latest version. _baseName is unversioned
-		update(_baseName, null);
 	}
 	
 	/**
@@ -210,27 +267,56 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 
 	/**
+	 * Attempts to find a version after the latest one we have, or times out. If
+	 * it times out, it simply leaves the object unchanged.
+	 * @return returns true if it found an update, false if not
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 */
+	public boolean update(long timeout) throws XMLStreamException, IOException {
+		if (null == _baseName) {
+			throw new IllegalStateException("Cannot retrieve an object without giving a name!");
+		}
+		// Look for first block of version after ours, or first version if we have none.
+		ContentObject firstBlock = 
+			CCNVersionedInputStream.getFirstBlockOfLatestVersion(getCurrentVersionName(), null, timeout, _library.defaultVerifier(), _library);
+		if (null != firstBlock) {
+			return update(firstBlock);
+		}
+		return false;
+	}
+	
+	public boolean update() throws XMLStreamException, IOException {
+		return update(DEFAULT_TIMEOUT);
+	}
+	
+	/**
 	 * Load data into object. If name is versioned, load that version. If
-	 * name is not versioned, look for latest version. CCNInputStream doesn't
-	 * have that property at the moment.
+	 * name is not versioned, look for latest version. 
 	 * @param name
 	 * @throws IOException 
 	 * @throws XMLStreamException 
 	 * @throws ClassNotFoundException 
 	 */
-	public void update(ContentName name, PublisherPublicKeyDigest publisher) throws XMLStreamException, IOException {
+	public boolean update(ContentName name, PublisherPublicKeyDigest publisher) throws XMLStreamException, IOException {
 		Library.logger().info("Updating object to " + name);
 		CCNVersionedInputStream is = new CCNVersionedInputStream(name, publisher, _library);
-		update(is);
+		return update(is);
 	}
 
-	public void update(ContentObject object) throws XMLStreamException, IOException {
+	/**
+	 * Load a stream starting with a specific object.
+	 * @param object
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 */
+	public boolean update(ContentObject object) throws XMLStreamException, IOException {
 		CCNInputStream is = new CCNInputStream(object, _library);
 		is.seek(0); // in case it wasn't the first block
-		update(is);
+		return update(is);
 	}
 
-	public void update(CCNInputStream inputStream) throws IOException, XMLStreamException {
+	public boolean update(CCNInputStream inputStream) throws IOException, XMLStreamException {
 		Tuple<ContentName, byte []> nameAndVersion = null;
 		if (inputStream.isGone()) {
 			_data = null;
@@ -250,6 +336,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_baseName = nameAndVersion.first();
 		_currentVersionComponent = nameAndVersion.second();
 		_currentVersionName = null; // cached if used
+		
+		// Signal readers.
+		newVersionAvailable();
+		return true;
 	}
 	
 	public void updateInBackground() throws IOException {
@@ -261,7 +351,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			throw new IllegalStateException("Cannot retrieve an object without giving a name!");
 		}
 		// Look for latest version.
-		updateInBackground((null == _currentVersionComponent) ? _baseName : new ContentName(_baseName, _currentVersionComponent), continuousUpdates);
+		updateInBackground(getCurrentVersionName(), continuousUpdates);
 	}
 
 	/**
@@ -281,8 +371,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		// DKS TODO locking?
 		cancelInterest();
 		// express this
+		// DKS TODO better versioned interests, a la library.getlatestVersion
 		_continuousUpdates = continuousUpdates;
-		_currentInterest = Interest.last(latestVersionKnown, null, null);
+		_currentInterest = Interest.last(latestVersionKnown, (byte[][])null, null);
 		_library.expressInterest(_currentInterest, this);
 	}
 	
@@ -300,11 +391,11 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * the value of raw specified.
 	 * @throws IOException 
 	 */
-	public void save() throws IOException {
+	public boolean save() throws IOException {
 		if (null == _baseName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
-		saveInternal(null);
+		return saveInternal(null, false);
 	}
 
 	/**
@@ -313,20 +404,22 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * the value of raw specified.
 	 * @throws IOException 
 	 */
-	public void save(Timestamp version) throws IOException {
+	public boolean save(Timestamp version) throws IOException {
 		if (null == _baseName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
-		saveInternal(version);
+		return saveInternal(version, false);
 	}
 
 	/**
 	 * Save content to specific version. If version is non-null, assume that is the desired
 	 * version. If not, set version based on current time.
 	 * @param name
+	 * @param return Returns true if it saved data, false if it thought data was stale and didn't
+	 * 		save. (DKS TODO: add force write flag if you need to update version. Also allow specification of freshness.)
 	 * @throws IOException 
 	 */
-	public void saveInternal(Timestamp version) throws IOException {
+	public boolean saveInternal(Timestamp version, boolean gone) throws IOException {
 		// move object to this name
 		// need to make sure we get back the actual name we're using,
 		// even if output stream does automatic versioning
@@ -337,8 +430,14 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 
 		if (_data != null && !isDirty()) { // Should we check potentially dirty?
 			Library.logger().info("Object not dirty. Not saving.");
-			return;
+			return false;
 		}
+		
+		if (!gone && (null == _data)) {
+			// skip some of the prep steps that have side effects rather than getting this exception later from superclass
+			throw new InvalidObjectException("No data to save!");
+		}
+		
 		if (null == _baseName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
@@ -361,18 +460,26 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		if (_data != null) {
 			// CCNVersionedOutputStream will version an unversioned name. 
 			// If it gets a versioned name, will respect it. 
-			CCNVersionedOutputStream cos = new CCNVersionedOutputStream(name, null, null, _flowControl);
+			// This will call startWrite on the flow controller.
+			CCNVersionedOutputStream cos = new CCNVersionedOutputStream(name, _keyLocator, _publisher, contentType(), _flowControl);
 			save(cos); // superclass stream save. calls flush but not close on a wrapping
 			// digest stream; want to make sure we end up with a single non-MHT signed
 			// block and no header on small objects
 			cos.close();
-			_currentPublisher = _flowControl.getLibrary().getDefaultPublisher(); // TODO DKS -- is this always correct?
-			_currentPublisherKeyLocator = _flowControl.getLibrary().keyManager().getDefaultKeyLocator();
+			_currentPublisher = (_publisher == null) ? _flowControl.getLibrary().getDefaultPublisher() : _publisher; // TODO DKS -- is this always correct?
+			_currentPublisherKeyLocator = (_keyLocator == null) ? 
+							_flowControl.getLibrary().keyManager().getKeyLocator(_publisher) : _keyLocator;
 		} else {
 			// saving object as gone, currently this is always one empty block so we don't use an OutputStream
 			ContentName segmentedName = SegmentationProfile.segmentName(name, SegmentationProfile.BASE_SEGMENT );
-			byte [] empty = { };
-			ContentObject goneObject = ContentObject.buildContentObject(segmentedName, ContentType.GONE, empty);
+			byte [] empty = new byte[0];
+			ContentObject goneObject = 
+				ContentObject.buildContentObject(segmentedName, ContentType.GONE, empty, _publisher, _keyLocator, null, null);
+			// DKS TODO -- start write
+			// The segmenter in the stream does an addNameSpace of the versioned name. Right now
+			// this not only adds the prefix (ignored) but triggers the repo start write.
+			_flowControl.addNameSpace(name);
+			_flowControl.startWrite(name, Shape.STREAM);
 			_flowControl.put(goneObject);
 			_currentPublisher = goneObject.signedInfo().getPublisherKeyID();
 			_currentPublisherKeyLocator = goneObject.signedInfo().getKeyLocator();
@@ -380,16 +487,17 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_currentVersionComponent = name.lastComponent();
 		_currentVersionName = null;
 		setPotentiallyDirty(false);
+		return true;
 	}
 	
-	public void save(E data) throws XMLStreamException, IOException {
+	public boolean save(E data) throws XMLStreamException, IOException {
 		setData(data);
-		save();
+		return save();
 	}
 	
-	public void save(Timestamp version, E data) throws IOException {
+	public boolean save(Timestamp version, E data) throws IOException {
 		setData(data);
-		save(version);
+		return save(version);
 	}
 
 	/**
@@ -397,7 +505,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * If raw=true or DEFAULT_RAW=true specified, this must be the first call to save made
 	 * for this object.
 	 */
-	public void saveToRepository(Timestamp version) throws IOException {
+	public boolean saveToRepository(Timestamp version) throws IOException {
 		if (null == _baseName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
@@ -405,21 +513,21 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			throw new IOException("Cannot call saveToRepository on raw object!");
 		}
 		_raw = false; // control what flow controller will be made
-		save(version);
+		return save(version);
 	}
 	
-	public void saveToRepository() throws IOException {		
-		saveToRepository((Timestamp)null);
+	public boolean saveToRepository() throws IOException {		
+		return saveToRepository((Timestamp)null);
 	}
 	
-	public void saveToRepository(E data) throws IOException {
+	public boolean saveToRepository(E data) throws IOException {
 		setData(data);
-		saveToRepository();
+		return saveToRepository();
 	}
 	
-	public void saveToRepository(Timestamp version, E data) throws IOException {
+	public boolean saveToRepository(Timestamp version, E data) throws IOException {
 		setData(data);
-		saveToRepository(version);
+		return saveToRepository(version);
 	}
 
 	/**
@@ -429,23 +537,25 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param name
 	 * @throws IOException
 	 */
-	public void saveAsGone() throws IOException {
-		
+	public boolean saveAsGone() throws IOException {		
+		if (null == _baseName) {
+			throw new IllegalStateException("Cannot save an object without giving it a name!");
+		}
 		_data = null;
 		_available = true;
-		save();
+		return saveInternal(null, true);
 	}
 
 	/**
 	 * If raw=true or DEFAULT_RAW=true specified, this must be the first call to save made
 	 * for this object.
 	 */
-	public void saveToRepositoryAsGone() throws XMLStreamException, IOException {
+	public boolean saveToRepositoryAsGone() throws XMLStreamException, IOException {
 		if ((null != _flowControl) && !(_flowControl instanceof RepositoryFlowControl)) {
 			throw new IOException("Cannot call saveToRepository on raw object!");
 		}
 		_raw = false; // control what flow controller will be made
-		saveAsGone();
+		return saveAsGone();
 	}
 	
 	public Timestamp getVersion() {
@@ -478,9 +588,26 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		return _baseName;
 	}
 	
-	protected void newVersionAvailable() {
+	protected synchronized void newVersionAvailable() {
 		// by default signal all waiters
 		this.notifyAll();
+	}
+	
+	/**
+	 * Will return immediately if this object already has data, otherwise
+	 * will wait for new data to appear.
+	 */
+	public void waitForData() {
+		if (available())
+			return;
+		synchronized (this) {
+			while (!available()) {
+				try {
+					wait();
+				} catch (InterruptedException e) {
+				}
+			}
+		}
 	}
 
 	public boolean isGone() {
@@ -503,7 +630,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				if (VersioningProfile.isLaterVersionOf(co.name(), _currentInterest.name())) {
 					// OK, we have something that is a later version of our desired object.
 					// We're not sure it's actually the first content block.
-					if (SegmentationProfile.isFirstSegment(co.name())) {
+					if (CCNVersionedInputStream.isFirstBlock(_currentInterest.name(), co, null)) {
 						update(co);
 					} else {
 						// Have a later segment. Caching problem. Go back for first segment.
@@ -538,6 +665,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_currentInterest = Interest.last(_currentInterest.name(), excludes, null);
 		return _currentInterest;
 	}
+	
+	/**
+	 * Subclasses that need to write an object of a particular type can override.
+	 * DKS TODO -- verify type on read, modulo that ENCR overrides everything.
+	 * @return
+	 */
+	public ContentType contentType() { return ContentType.DATA; }
 
 	@Override
 	public int hashCode() {
@@ -578,4 +712,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			return false;
 		return true;
 	}
+	
+	@Override
+	public String toString() { return getCurrentVersionName() + ": " + ((null == _data) ? null : _data.toString()); }
 }
+
+
+

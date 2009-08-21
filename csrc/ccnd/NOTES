@@ -1,0 +1,25 @@
+/**
+ * @file ccnd.c
+ * @brief Main program of the ccnd.
+ */
+
+/**
+ * @file ccnd_internal_client.c
+ * @brief Internal client of ccnd, handles requests for
+ *        inspecting and controlling operation of the ccnd.
+ */
+
+/**
+ * @file ccnd_msg.c
+ * @brief Logging support for ccnd.
+ */
+
+/**
+ * @file ccnd_stats.c
+ * @brief Statistics presentation for ccnd.
+ */
+
+/**
+ * @file ccndsmoketest.c
+ * @brief Simple program for smoke-test of ccnd.
+ */

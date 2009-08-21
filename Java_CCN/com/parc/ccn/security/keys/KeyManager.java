@@ -89,6 +89,7 @@ public abstract class KeyManager {
 	public abstract PrivateKey getDefaultSigningKey();
 	public abstract PublicKey getDefaultPublicKey();
 	public abstract KeyLocator getDefaultKeyLocator();
+	public abstract KeyLocator getKeyLocator(PublisherPublicKeyDigest publisherKeyID);
 
 	public abstract ContentName getDefaultKeyName(byte [] keyID);
 	
@@ -126,10 +127,14 @@ public abstract class KeyManager {
 	 * @throws InvalidKeySpecException 
 	 * @throws CertificateEncodingException 
 	 */
-	public abstract PublicKey getPublicKey(PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator) throws IOException, InterruptedException;
+	public abstract PublicKey getPublicKey(PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator, long timeout) throws IOException, InterruptedException;
 
+	public PublicKey getPublicKey(PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator) throws IOException, InterruptedException {
+		return getPublicKey(publisherKeyID, keyLocator,KeyRepository.DEFAULT_KEY_TIMEOUT);
+	}
+	
 	public abstract PublicKey getKey(PublisherPublicKeyDigest desiredKeyID,
-									KeyLocator locator) throws IOException, InterruptedException;
+									KeyLocator locator, long timeout) throws IOException, InterruptedException;
 	
 	/**
 	 * Publish a key at a certain name, signed by our default identity. Usually used to

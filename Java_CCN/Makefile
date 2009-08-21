@@ -16,8 +16,8 @@ jar clean test: _always
 documentation: _always
 	doxygen
 
-install uninstall:
-	@echo No $@ target for $$(pwd -L)
+testinstall install uninstall:
+	@echo No $@ target for `pwd`
  
 default all clean depend test check shared install uninstall: _always
 

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -12,7 +13,6 @@ import java.util.LinkedList;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
-import javax.jcr.AccessDeniedException;
 import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.crypto.InvalidCipherTextException;
@@ -20,7 +20,7 @@ import org.bouncycastle.crypto.InvalidCipherTextException;
 import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.content.LinkReference;
+import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.security.PublicKeyObject;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.WrappedKey;
@@ -220,7 +220,7 @@ public class AccessControlManager {
 	public GroupManager groupManager() { return _groupManager; }
 	
 	public void publishIdentity(ContentName identity, PublisherPublicKeyDigest myPublicKey) throws InvalidKeyException, IOException, ConfigurationException {
-		KeyManager km = KeyManager.getKeyManager();
+		KeyManager km = _library.keyManager();
 		if (null == myPublicKey) {
 			myPublicKey = km.getDefaultKeyID();
 		}
@@ -276,7 +276,7 @@ public class AccessControlManager {
 	 * @throws IOException 
 	 * @throws ConfigurationException 
 	 */
-	public PublicKeyObject getLatestKeyForPrincipal(LinkReference principal) throws IOException, XMLStreamException, ConfigurationException {
+	public PublicKeyObject getLatestKeyForPrincipal(Link principal) throws IOException, XMLStreamException, ConfigurationException {
 		if (null == principal) {
 			Library.logger().info("Cannot retrieve key for empty principal.");
 			return null;
@@ -481,7 +481,7 @@ public class AccessControlManager {
 			newACL = new ACL();
 		}
 		
-		LinkedList<LinkReference> newReaders = newACL.update(ACLUpdates);
+		LinkedList<Link> newReaders = newACL.update(ACLUpdates);
 		
 		if ((null == newReaders) || (null == currentACL)) {
 			// null newReaders means we revoked someone.
@@ -506,7 +506,7 @@ public class AccessControlManager {
 			
 			keyDirectory = new KeyDirectory(this, latestNodeKey.storedNodeKeyName(), library());
 
-			for (LinkReference principal : newReaders) {
+			for (Link principal : newReaders) {
 				PublicKeyObject latestKey = getLatestKeyForPrincipal(principal);
 				try {
 					if (!latestKey.available()) {
@@ -540,25 +540,25 @@ public class AccessControlManager {
 	}
 	
 		
-	public ACL addReaders(ContentName nodeName, ArrayList<LinkReference> newReaders) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
+	public ACL addReaders(ContentName nodeName, ArrayList<Link> newReaders) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
 		ArrayList<ACLOperation> ops = new ArrayList<ACLOperation>();
-		for(LinkReference reader : newReaders){
+		for(Link reader : newReaders){
 			ops.add(ACLOperation.addReaderOperation(reader));
 		}
 		return updateACL(nodeName, ops);
 	}
 	
-	public ACL addWriters(ContentName nodeName, ArrayList<LinkReference> newWriters) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
+	public ACL addWriters(ContentName nodeName, ArrayList<Link> newWriters) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
 		ArrayList<ACLOperation> ops = new ArrayList<ACLOperation>();
-		for(LinkReference writer : newWriters){
+		for(Link writer : newWriters){
 			ops.add(ACLOperation.addWriterOperation(writer));
 		}
 		return updateACL(nodeName, ops);
 	}
 	
-	public ACL addManagers(ContentName nodeName, ArrayList<LinkReference> newManagers) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
+	public ACL addManagers(ContentName nodeName, ArrayList<Link> newManagers) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
 		ArrayList<ACLOperation> ops = new ArrayList<ACLOperation>();
-		for(LinkReference manager: newManagers){
+		for(Link manager: newManagers){
 			ops.add(ACLOperation.addManagerOperation(manager));
 		}
 		return updateACL(nodeName, ops);
@@ -898,7 +898,7 @@ public class AccessControlManager {
 			theNodeKey = new NodeKey(nodeKeyDirectoryName, nodeKey);
 			// Add a key block for every reader on the ACL. As managers and writers can read, they are all readers.
 			// DKS TODO -- pulling public keys here; could be slow; might want to manage concurrency over acl.
-			for (LinkReference aclEntry : effectiveACL.contents()) {
+			for (Link aclEntry : effectiveACL.contents()) {
 				PublicKeyObject entryPublicKey = null;
 				if (groupManager().isGroup(aclEntry)) {
 					entryPublicKey = groupManager().getLatestPublicKeyForGroup(aclEntry);
@@ -1085,6 +1085,34 @@ public class AccessControlManager {
 		// TODO DKS FIX FOR REPO
 		WrappedKeyObject wko = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataNodeName), wrappedKey, library());
 		wko.save();
+	}
+	
+	/**
+	 * add a private key to _keyCache
+	 * @param keyName
+	 * @param publicKeyIdentifier
+	 * @param pk
+	 */
+	void addPrivateKey(ContentName keyName, byte [] publicKeyIdentifier, PrivateKey pk) {
+		_keyCache.addPrivateKey(keyName, publicKeyIdentifier, pk);
+	}
+
+	/**
+	 * add my private key to _keyCache
+	 * @param publicKeyIdentifier
+	 * @param pk
+	 */
+	void addMyPrivateKey(byte [] publicKeyIdentifier, PrivateKey pk) {
+		_keyCache.addMyPrivateKey(publicKeyIdentifier, pk);
+	}
+	
+	/**
+	 * add a key to _keyCache
+	 * @param name
+	 * @param key
+	 */
+	public void addKey(ContentName name, Key key) {
+		_keyCache.addKey(name, key);
 	}
 
 }	

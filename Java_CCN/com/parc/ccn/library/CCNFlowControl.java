@@ -43,6 +43,8 @@ import com.parc.ccn.data.util.InterestTable.Entry;
 
 public class CCNFlowControl implements CCNFilterListener {
 	
+	public enum Shape {STREAM, STREAM_WITH_HEADER};
+	
 	protected CCNLibrary _library = null;
 	
 	// Temporarily default to very high timeout so that puts have a good
@@ -129,6 +131,18 @@ public class CCNFlowControl implements CCNFilterListener {
 	public void addNameSpace(String name) throws MalformedContentNameStringException, IOException {
 		addNameSpace(ContentName.fromNative(name));
 	}
+	
+	/**
+	 * This is used by the RepoFlowController to indicate that it should start a write
+	 * @param name
+	 * @param shape
+	 * @throws MalformedContentNameStringException
+	 * @throws IOException 
+	 */
+	public void startWrite(String name, Shape shape) throws MalformedContentNameStringException, IOException {
+		startWrite(ContentName.fromNative(name), shape);
+	}
+	public void startWrite(ContentName name, Shape shape) throws IOException {}
 	
 	/**
 	 * For now we don't have anyway to remove a partial namespace from
@@ -272,7 +286,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	public int handleInterests(ArrayList<Interest> interests) {
 		synchronized (_holdingArea) {
 			for (Interest interest : interests) {
-				Library.logger().info("Flow controller: got interest: " + interest);
+				Library.logger().fine("Flow controller: got interest: " + interest);
 				ContentObject co = getBestMatch(interest);
 				if (co != null) {
 					Library.logger().finest("Found content " + co.name() + " matching interest: " + interest);
@@ -331,24 +345,14 @@ public class CCNFlowControl implements CCNFilterListener {
 		Library.logger().finest("Looking for best match to " + interest + " among " + set.size() + " options.");
 		for (ContentName name : set) {
 			ContentObject result = _holdingArea.get(name);
-			/*
-			 * Since "ORDER_PREFERENCE_LEFT" is actually 0, we have to do the test in this order so that left and
-			 * right don't look the same
-			 */
-			if (interest.orderPreference()  != null) {
+			
+			// We only have to do something unusual here if the caller is looking for CHILD_SELECTOR_RIGHT
+			if (null != interest.childSelector() && interest.childSelector() == Interest.CHILD_SELECTOR_RIGHT) {
 				if (interest.matches(result)) {
 					if (bestMatch == null)
 						bestMatch = result;
-					if ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME))
-							== (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME)) { //last
-						if (name.compareTo(bestMatch.name()) > 0) {
-							bestMatch = result;
-						}
-					} else if ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME))
-							== (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME)) { //next
-						if (name.compareTo(bestMatch.name()) < 0) {
-							bestMatch = result;
-						}				
+					if (name.compareTo(bestMatch.name()) > 0) {
+						bestMatch = result;
 					}
 				}
 			} else

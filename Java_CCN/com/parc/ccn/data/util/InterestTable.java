@@ -163,8 +163,10 @@ public class InterestTable<V> {
 			List<Holder<V>> list = _contents.get(name);
 			list.add(holder);
 			if (null != _highWater) {
-				_contents.remove(name);
-				_contents.put(name, list);		// Put us last to avoid LRU removal
+				synchronized (_contents) {
+					_contents.remove(name);
+					_contents.put(name, list);		// Put us last to avoid LRU removal
+				}
 			}
 		} else {
 			ArrayList<Holder<V>> list = new ArrayList<Holder<V>>(1);
@@ -174,9 +176,11 @@ public class InterestTable<V> {
 			// In cases we know about currently this should be true
 			// XXX - should we care about whether the key has multiple
 			// interests attached?
-			if (null != _highWater && _contents.size() >= _highWater)
-				_contents.remove(_contents.firstKey());
-			_contents.put(new LongestFirstContentName(holder.name()), list);
+			synchronized (_contents) {
+				if (null != _highWater && _contents.size() >= _highWater)
+					_contents.remove(_contents.firstKey());
+				_contents.put(new LongestFirstContentName(holder.name()), list);
+			}
 		}
 	}
 	
@@ -225,7 +229,9 @@ public class InterestTable<V> {
 					if (holder.interest().matches(target)) {
 						holdIt.remove();
 						if (list.size() == 0) {
-							_contents.remove(new LongestFirstContentName(name));
+							synchronized (_contents) {
+								_contents.remove(new LongestFirstContentName(name));
+							}
 						}
 						return holder;
 					}
@@ -243,7 +249,7 @@ public class InterestTable<V> {
 	 */
 	public Entry<V> remove(ContentName name, V value) {
 		Holder<V> result = null;
-		List<Holder<V>> list = _contents.get(new LongestFirstContentName(name));
+			List<Holder<V>> list = _contents.get(new LongestFirstContentName(name));
 		if (null != list) {
 			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
 				Holder<V> holder = holdIt.next();
@@ -259,8 +265,11 @@ public class InterestTable<V> {
 					}
 				}
 			}
-			if (list.size() == 0)
-				_contents.remove(new LongestFirstContentName(name));
+			if (list.size() == 0) {
+				synchronized (_contents) {
+					_contents.remove(new LongestFirstContentName(name));
+				}
+			}
 		}
 		return result;
 	}
@@ -292,8 +301,11 @@ public class InterestTable<V> {
 					}
 				}
 			}
-			if (list.size() == 0)
-				_contents.remove(new LongestFirstContentName(interest.name()));
+			if (list.size() == 0) {
+				synchronized (_contents) {
+					_contents.remove(new LongestFirstContentName(interest.name()));
+				}
+			}
 		}
 		return result;
 	}
@@ -312,7 +324,9 @@ public class InterestTable<V> {
 				}	
 			}
 			if (list.size() == 0) {
-				_contents.remove(new LongestFirstContentName(name));
+				synchronized (_contents) {
+					_contents.remove(new LongestFirstContentName(name));
+				}
 			}
 		}
 		return matches;
@@ -477,10 +491,12 @@ public class InterestTable<V> {
 	 */
 	public Collection<Entry<V>> values() {
 		List<Entry<V>> results =  new ArrayList<Entry<V>>();
-		for (Iterator<LongestFirstContentName> keyIt = _contents.keySet().iterator(); keyIt.hasNext();) {
-			LongestFirstContentName name = (LongestFirstContentName) keyIt.next();
-			List<Holder<V>> list = _contents.get(name);
-			results.addAll(list);
+		synchronized (_contents) {
+			for (Iterator<LongestFirstContentName> keyIt = _contents.keySet().iterator(); keyIt.hasNext();) {
+				LongestFirstContentName name = (LongestFirstContentName) keyIt.next();
+				List<Holder<V>> list = _contents.get(name);
+				results.addAll(list);
+			}
 		}
 		return results;
 	}
@@ -585,11 +601,13 @@ public class InterestTable<V> {
 	 */
 	public int size() {
 		int result = 0;
-	    for (Iterator<LongestFirstContentName> nameIt = _contents.keySet().iterator(); nameIt.hasNext();) {
-			LongestFirstContentName name = nameIt.next();
-			List<Holder<V>> list = _contents.get(name);
-			result += list.size();
-	    }
+		synchronized (_contents) {
+		    for (Iterator<LongestFirstContentName> nameIt = _contents.keySet().iterator(); nameIt.hasNext();) {
+				LongestFirstContentName name = nameIt.next();
+				List<Holder<V>> list = _contents.get(name);
+				result += list.size();
+		    }
+		}
 	    return result;
 	}
 	
@@ -604,7 +622,9 @@ public class InterestTable<V> {
 	}
 	
 	public void clear() {
-		_contents.clear();
+		synchronized (_contents) {
+			_contents.clear();
+		}
 	}
 
 }

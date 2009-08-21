@@ -19,6 +19,7 @@ import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNSegmenter;
+import com.parc.ccn.library.CCNFlowControl.Shape;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.security.crypto.ContentKeys;
 
@@ -48,10 +49,16 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 		super(name, locator, publisher, type, segmenter);
 	}
 
-	public CCNFileOutputStream(ContentName name,
-			PublisherPublicKeyDigest publisher, CCNFlowControl flowControl)
+	public CCNFileOutputStream(ContentName name, KeyLocator locator,
+			PublisherPublicKeyDigest publisher, ContentType type, CCNFlowControl flowControl)
 			throws IOException {
-		super(name, null, publisher, flowControl);
+		super(name, locator, publisher, type, flowControl);
+	}
+	
+	@Override
+	protected void startWrite() throws IOException {
+		// Won't need this if header is its own stream
+		_segmenter.getFlowControl().startWrite(_baseName, Shape.STREAM_WITH_HEADER);		
 	}
 
 	protected void writeHeader() throws InvalidKeyException, SignatureException, IOException, InterruptedException {
@@ -85,6 +92,7 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 		if (null == publisher) {
 			publisher = _library.keyManager().getDefaultKeyID();
 		}
+
 		PrivateKey signingKey = _library.keyManager().getSigningKey(publisher);
 
 		if (null == locator)
@@ -95,6 +103,12 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 		ContentName headerName = SegmentationProfile.headerName(name);
 		Header header;
 		try {
+			// TODO -- move to HeaderObject, and preferably to new name for header; requires
+			// corresponding change to reading code in repository and CCNFileInputStream
+			//ContentName headerName = SegmentationProfile.headerName(name);
+			//HeaderData headerData = new HeaderData(contentLength, contentDigest, contentTreeAuthenticator, blockSize);
+			//HeaderObject header = new HeaderObject(headerName, headerData, publisher, locator, _library);
+			//header.save();
 			header = new Header(headerName, contentLength, contentDigest, contentTreeAuthenticator, blockSize,
 								publisher, locator, signingKey);
 		} catch (XMLStreamException e) {
