@@ -263,7 +263,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 		if (hasHeader()) {
             return _header.segmentCount();
 		}
-		return super.blockCount();
+		return super.segmentCount();
 	}
 
 	@Override

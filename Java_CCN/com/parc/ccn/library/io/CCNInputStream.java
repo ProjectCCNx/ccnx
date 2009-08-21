@@ -214,7 +214,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 		return readInternal(null,0, (int)n);
 	}
 	
-	protected int blockCount() {
+	protected int segmentCount() {
 		return 0;
 	}
 
