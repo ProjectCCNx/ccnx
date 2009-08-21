@@ -41,7 +41,7 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 		public abstract boolean match(byte [] component);
 	}
 
-	protected ArrayList<Element> _values;
+	protected ArrayList<Element> _values = new ArrayList<Element>();
 	
 	/**
 	 * @param values Must be a list of ExcludeElements - Components must be in increasing order
@@ -63,8 +63,8 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 				// do not allow 2 fillers in a row
 				throw new IllegalArgumentException("bloom filters or anys are not allowed to follow each other");
 			last = ee;
-		}
-		_values = new ArrayList<Element>(values);
+		}			
+		_values.addAll(values);
 	}
 
 	/**
@@ -77,7 +77,6 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 		if (omissions == null || omissions.length == 0)
 			throw new IllegalArgumentException("No omissions");
 		Arrays.sort(omissions, new ByteArrayCompare());
-		_values = new ArrayList<Element>();
 		for (byte[] omission : omissions) {
 			_values.add(new ExcludeComponent(omission));
 		}
@@ -94,9 +93,10 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 		if ( component == null)
 			return null;
 		ExcludeFilter ef = new ExcludeFilter();
-		ef._values = new ArrayList<Element>(2);
-		ef._values.add(new ExcludeAny());
-		ef._values.add(new ExcludeComponent(component));
+		synchronized (ef._values) {
+			ef._values.add(new ExcludeAny());
+			ef._values.add(new ExcludeComponent(component));
+		}
 		return ef;
 	}
 
@@ -117,23 +117,25 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 	 */
 	public boolean isExcluded(byte [] component) {
 		Filler lastFiller = null;
-		for (Element ee : _values) {
-			if (ee instanceof ExcludeComponent) {
-				ExcludeComponent ec = (ExcludeComponent) ee;
-				int res = ec.compareTo(component);
-				if (res == 0) {
-					// we exactly matched a component in the filter
-					return true;
-				} else if (res > 0) {
-					// we reached a component in the filter that is lexigraphically after than the one
-					// we're looking for so check if there was a filler between the last component
-					// we saw and this one.
-					return lastFiller != null && lastFiller.match(component);
+		synchronized (_values) {
+			for (Element ee : _values) {
+				if (ee instanceof ExcludeComponent) {
+					ExcludeComponent ec = (ExcludeComponent) ee;
+					int res = ec.compareTo(component);
+					if (res == 0) {
+						// we exactly matched a component in the filter
+						return true;
+					} else if (res > 0) {
+						// we reached a component in the filter that is lexigraphically after than the one
+						// we're looking for so check if there was a filler between the last component
+						// we saw and this one.
+						return lastFiller != null && lastFiller.match(component);
+					}
+					lastFiller = null;
+				} else {
+					// The element is not a component - so track what filler it was.
+					lastFiller = (Filler) ee;
 				}
-				lastFiller = null;
-			} else {
-				// The element is not a component - so track what filler it was.
-				lastFiller = (Filler) ee;
 			}
 		}
 		return lastFiller != null && lastFiller.match(component);
@@ -159,45 +161,47 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 		byte [] omission;
 		Element ee;
 		Filler lastFiller = null;
-		for(;i<omissions.length && j<_values.size();) {
-			omission = omissions[i];
-			ee = _values.get(j);
-			if (ee instanceof ExcludeComponent) {
-				ExcludeComponent ec = (ExcludeComponent) ee;
-				int res = ec.compareTo(omission);
-				if (res > 0) {
-					// we reached a component in the filter that is lexigraphically after than the one
-					// we're looking for.
-					if (lastFiller != null && lastFiller.match(omission)) {
-						// the filler already matches the component, no need to add it!
+		synchronized (_values) {
+			for(;i<omissions.length && j<_values.size();) {
+				omission = omissions[i];
+				ee = _values.get(j);
+				if (ee instanceof ExcludeComponent) {
+					ExcludeComponent ec = (ExcludeComponent) ee;
+					int res = ec.compareTo(omission);
+					if (res > 0) {
+						// we reached a component in the filter that is lexigraphically after than the one
+						// we're looking for.
+						if (lastFiller != null && lastFiller.match(omission)) {
+							// the filler already matches the component, no need to add it!
+							i++;
+							continue;
+						}
+						// no bloom or the bloom does not match - so add the component explicitly
+						_values.add(j, new ExcludeComponent(omission));
+						j++; // skip the component we just added
+						if (lastFiller != null) {
+							// there was a non matching bloom, so copy it to ensure same values get excluded
+							// TODO: should this be a clone()?
+							_values.add(j, lastFiller);
+							j++; // skip the bloom we just added
+						}
+						i++;
+						continue;
+					} else if (res == 0) {
+						// we matched a component already in the filter, so no need to add one in, just skip it.
 						i++;
 						continue;
 					}
-					// no bloom or the bloom does not match - so add the component explicitly
-					_values.add(j, new ExcludeComponent(omission));
-					j++; // skip the component we just added
-					if (lastFiller != null) {
-						// there was a non matching bloom, so copy it to ensure same values get excluded
-						// TODO: should this be a clone()?
-						_values.add(j, lastFiller);
-						j++; // skip the bloom we just added
-					}
-					i++;
-					continue;
-				} else if (res == 0) {
-					// we matched a component already in the filter, so no need to add one in, just skip it.
-					i++;
-					continue;
-				}
-				lastFiller = null;
-			} else
-				lastFiller = (Filler) ee;
-			j++;
-		}
-		// if we have values still to add, then add them to the end of the list
-		for(;i<omissions.length;i++) {
-			omission = omissions[i];
-			_values.add(new ExcludeComponent(omission));
+					lastFiller = null;
+				} else
+					lastFiller = (Filler) ee;
+				j++;
+			}
+			// if we have values still to add, then add them to the end of the list
+			for(;i<omissions.length;i++) {
+				omission = omissions[i];
+				_values.add(new ExcludeComponent(omission));
+			}
 		}
 	}
 	
@@ -211,66 +215,68 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 			return;
 
 		Filler lastFiller = null;
-		for (Element ee : _values) {
-			if (ee instanceof ExcludeComponent) {
-				ExcludeComponent ec = (ExcludeComponent) ee;
-				int res = ec.compareTo(component);
-				if (res == 0) {
-					// we exactly matched a component already in the filter
-					// prefix it with an Any element, and we're done.
-					_values.add(0, new ExcludeAny());
-					return;
-				} else if (res > 0) {
-					// we reached a component in the filter that is lexigraphically after than the one
-					// we're looking for so check if there was a filler between the last component
-					// we saw and this one.
-					finishUp(lastFiller, component);
-					return;
+		synchronized (_values) {
+			int res = 0;
+			for (Element ee : _values) {
+				if (ee instanceof ExcludeComponent) {
+					ExcludeComponent ec = (ExcludeComponent) ee;
+					res = ec.compareTo(component);
+					if (res >= 0)
+						break;
+					lastFiller = null;
+				} else {
+					// The element is not a component - so track what filler it was.
+					lastFiller = (Filler) ee;
 				}
-				lastFiller = null;
-			} else {
-				// The element is not a component - so track what filler it was.
-				lastFiller = (Filler) ee;
+				// _values.remove(0); ??
 			}
-			_values.remove(0);
+			if (res == 0) {
+				// we exactly matched a component already in the filter
+				// prefix it with an Any element, and we're done.
+				_values.add(0, new ExcludeAny());
+			} else 
+				finishUp(lastFiller, component);
 		}
-		finishUp(lastFiller, component);
 	}
 	protected void finishUp(Filler filler, byte [] component) {
-		if (filler == null) {
-			// there was no filler, so prefix the list with an Any and the component, and we're done
+		synchronized (_values) {
+			if (filler == null) {
+				// there was no filler, so prefix the list with an Any and the component, and we're done
+				_values.add(0, new ExcludeAny());
+				_values.add(1, new ExcludeComponent(component));
+				return;
+			}
+			if (filler instanceof ExcludeAny) {
+				_values.add(0, new ExcludeAny());
+				return;
+			}
 			_values.add(0, new ExcludeAny());
 			_values.add(1, new ExcludeComponent(component));
-			return;
+			_values.add(2, filler);
 		}
-		if (filler instanceof ExcludeAny) {
-			_values.add(0, new ExcludeAny());
-			return;
-		}
-		_values.add(0, new ExcludeAny());
-		_values.add(1, new ExcludeComponent(component));
-		_values.add(2, filler);
 		return;		
 	}
 
 	public boolean empty() {
-		return ((null == _values) || (_values.isEmpty()));
+		synchronized (_values) {
+			return ((null == _values) || (_values.isEmpty()));
+		}
 	}
 
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		decoder.readStartElement(EXCLUDE_ELEMENT);
 		
-		_values = new ArrayList<Element>();
-		
-		boolean component;
-		boolean any = false;
-		while ((component = decoder.peekStartElement(ExcludeComponent.COMPONENT)) || (any = decoder.peekStartElement(ExcludeAny.ANY)) ||
-					decoder.peekStartElement(BloomFilter.BLOOM)) {
-			Element ee = component?new ExcludeComponent(): any ? new ExcludeAny() : new BloomFilter();
-			ee.decode(decoder);
-			_values.add(ee);
+		synchronized (_values) {
+			boolean component;
+			boolean any = false;
+			while ((component = decoder.peekStartElement(ExcludeComponent.COMPONENT)) || (any = decoder.peekStartElement(ExcludeAny.ANY)) ||
+						decoder.peekStartElement(BloomFilter.BLOOM)) {
+				Element ee = component?new ExcludeComponent(): any ? new ExcludeAny() : new BloomFilter();
+				ee.decode(decoder);
+				_values.add(ee);
+			}
+			decoder.readEndElement();
 		}
-		decoder.readEndElement();
 	}
 
 	public void encode(XMLEncoder encoder) throws XMLStreamException {
@@ -283,8 +289,10 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 		
 		encoder.writeStartElement(EXCLUDE_ELEMENT);
 
-		for (Element element : _values)
-			element.encode(encoder);
+		synchronized (_values) {
+			for (Element element : _values)
+				element.encode(encoder);
+		}
 
 		encoder.writeEndElement();
 	}
@@ -301,7 +309,9 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 		if (!empty()) {
 			if (o.empty())
 				return 1;
-			result = _values.size() - o._values.size();
+			synchronized (_values) {
+				result = _values.size() - o._values.size();
+			}
 			// TODO: need a better definition of ordering between exclude filters
 			// it's definitely an error to report they are the same just based on length
 			// but first - is this ever used?
@@ -318,30 +328,32 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 		if (getClass() != obj.getClass())
 			return false;
 		ExcludeFilter other = (ExcludeFilter) obj;
-		return _values.equals(other._values);
+		synchronized (_values) {
+			return _values.equals(other._values);
+		}
 	}
 
 	public int size() {
-		return _values.size();
-	}
-	
-	public ArrayList<Element> getValues() {
-		return _values;
+		synchronized (_values) {
+			return _values.size();
+		}
 	}
 
 	public String toString() {
 		StringBuffer sb = new StringBuffer();
 		boolean first = true;
-		for (Element ee : _values) {
-			if (first)
-				first = false;
-			else
-				sb.append(",");
-			if (ee instanceof ExcludeComponent) {
-				ExcludeComponent ec = (ExcludeComponent) ee;
-				sb.append(ContentName.componentPrintURI(ec.body));
-			} else {
-				sb.append("B");
+		synchronized (_values) {
+			for (Element ee : _values) {
+				if (first)
+					first = false;
+				else
+					sb.append(",");
+				if (ee instanceof ExcludeComponent) {
+					ExcludeComponent ec = (ExcludeComponent) ee;
+					sb.append(ContentName.componentPrintURI(ec.body));
+				} else {
+					sb.append("B");
+				}
 			}
 		}
 		return sb.toString();
