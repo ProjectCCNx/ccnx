@@ -380,22 +380,24 @@ public class RepositoryDaemon extends Daemon {
 	}
 	
 	public void sendEnumerationResponse(NameEnumerationResponse ner){
-		if(ner!=null && ner.prefix!=null && ner.names!=null && ner.names.size()>0){
+		if(ner!=null && ner.getPrefix()!=null && ner.hasNames()){
+			CollectionObject co = null;
 			try{
-				Library.logger().finer("returning names for prefix: "+ner.prefix);
+				Library.logger().finer("returning names for prefix: "+ner.getPrefix());
 
-				for (int x = 0; x < ner.names.size(); x++) {
-					Library.logger().finer("name: "+ner.names.get(x));
+				for (int x = 0; x < ner.getNames().size(); x++) {
+					Library.logger().finer("name: "+ner.getNames().get(x));
 				}
-				
+				if (ner.getTimestamp()==null)
+					Library.logger().info("node.timestamp was null!!!");
 				Collection cd = ner.getNamesInCollectionData();
-				CollectionObject co = new CollectionObject(ner.prefix, cd, _library);
+				co = new CollectionObject(ner.getPrefix(), cd, _library);
 				co.save(ner.getTimestamp());
-				System.out.println("saved collection object");
+				Library.logger().finer("saved collection object: "+co.getCurrentVersionName());
+				return;
 
 			} catch(IOException e){
-				e.printStackTrace();
-				System.err.println("error saving name enumeration response for write out (prefix = "+ner.prefix+")");
+				Library.logException("error saving name enumeration response for write out (prefix = "+ner.getPrefix()+" collection name: "+co.getCurrentVersion()+")", e);
 			}
 
 		}

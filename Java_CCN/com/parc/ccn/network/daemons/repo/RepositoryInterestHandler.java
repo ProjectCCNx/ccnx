@@ -127,9 +127,11 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	public void nameEnumeratorResponse(Interest interest) {
 		NameEnumerationResponse ner = _daemon.getRepository().getNamesWithPrefix(interest);
 
-		if (ner!=null && ner.names!=null) {
+		if (ner!=null && ner.hasNames()) {
 			_daemon.sendEnumerationResponse(ner);
-			Library.logger().finer("sending back name enumeration response "+ner.prefix);
+			Library.logger().fine("sending back name enumeration response "+ner.getPrefix());
+		} else {
+			Library.logger().fine("we are not sending back a response to the name enumeration interest (interest.name() = "+interest.name()+")");
 		}
 	}
 }

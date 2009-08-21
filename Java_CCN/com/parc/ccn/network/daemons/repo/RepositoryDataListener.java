@@ -62,7 +62,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 				if (_daemon.getRepository().checkPolicyUpdate(_content)) {
 					_daemon.resetNameSpaceFromHandler();
 				}
-				if(ner!=null && ner.names!=null){
+				if(ner!=null && ner.hasNames()){
 					_daemon.sendEnumerationResponse(ner);
 				}
 			} catch (Exception e) {

@@ -173,7 +173,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 		} else {
 			//NEMARKER missing...  we have a problem
 			Library.logger().warning("the name enumeration marker is missing...  shouldn't have gotten this callback");
-			_library.cancelInterest(interest, this);
+			//_library.cancelInterest(interest, this);
 			return null;
 		}
 		
@@ -184,7 +184,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			//need to make sure the prefix is still registered
 			if (ner==null) {
 				//this is no longer registered...  no need to keep refreshing the interest use the callback
-				_library.cancelInterest(interest, this);
+				//_library.cancelInterest(interest, this);
 				return null;
 			} else {
 				ner.removeInterest(interest);
