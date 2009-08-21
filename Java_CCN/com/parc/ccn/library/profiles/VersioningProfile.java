@@ -419,7 +419,6 @@ public class VersioningProfile implements CCNProfile {
 			// object - e.g. a repo message -- which starts with a particular version of name.
 			if (startsWithLaterVersionOf(co.name(), name)) {
 				// we got a valid version! 
-				// DKS TODO should we see if it's actually later than name?
 				Library.logger().info("Got latest version: " + co.name());
 				return co;
 			} else {
