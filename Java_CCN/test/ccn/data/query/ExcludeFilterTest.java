@@ -18,7 +18,7 @@ import com.parc.ccn.data.query.ExcludeFilter;
 
 public class ExcludeFilterTest {
 
-	static ArrayList<ExcludeFilter.Element> al = new ArrayList<ExcludeFilter.Element>();
+	static ArrayList<ExcludeFilter.Element> al;
 	static final byte [] b0 = "0".getBytes();
 	static final byte [] b1 = "1".getBytes();
 	static final byte [] b3 = "3".getBytes();
@@ -28,12 +28,16 @@ public class ExcludeFilterTest {
 	static ExcludeComponent c3 = new ExcludeComponent(b3);
 	static ExcludeComponent c06 = new ExcludeComponent(b06);
 	static ExcludeAny any = new ExcludeAny();
-	static BloomFilter bloom = new BloomFilter();
+	static BloomFilter bloom;
 	static ExcludeFilter ef;
 	static byte [][] array = { b1, b06 };
 	
+	private static byte [] bloomSeed = "test".getBytes();
+	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
+		al = new ArrayList<ExcludeFilter.Element>();
+		bloom = new BloomFilter(13, bloomSeed);
 		bloom.insert(b3);
 	}
 
@@ -42,7 +46,7 @@ public class ExcludeFilterTest {
 	}
 	
 	@Before
-	public static void setUpBefore() {
+	public void setUpBefore() {
 		al.clear();
 	}
 
@@ -138,10 +142,10 @@ public class ExcludeFilterTest {
 		assertTrue(ef.empty());
 	}
 
-	@Test
-	public void testCompareTo() {
-		fail("Not yet implemented"); // TODO
-	}
+	//@Test
+	//public void testCompareTo() {
+	//	fail("Not yet implemented"); // TODO
+	//}
 
 	@Test
 	public void testEqualsObject() {

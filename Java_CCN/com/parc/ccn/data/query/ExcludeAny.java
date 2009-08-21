@@ -8,7 +8,7 @@ import com.parc.ccn.data.util.XMLEncoder;
 /**
  * This element in an #ExcludeFilter matches all components.
  */
-public class ExcludeAny extends ExcludeFilter.Filler {
+public class ExcludeAny extends ExcludeFilter.Filler implements Comparable<ExcludeAny> {
 	public static final String ANY = "Any";
 	
 	public boolean match(byte [] component) {
