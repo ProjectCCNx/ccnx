@@ -201,7 +201,7 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 			// right, that should be the right thing.
 			startingVersion = result.name().cut(prefixLength);
 			Library.logger().info("getFirstBlockOfLatestVersion: Have version information, now querying first segment of " + startingVersion);
-			return SegmentationProfile.getBlock(startingVersion, startingBlockIndex, null, timeout, verifier, library); // now that we have the latest version, go back for the first block.
+			return SegmentationProfile.getSegment(startingVersion, startingBlockIndex, null, timeout, verifier, library); // now that we have the latest version, go back for the first block.
 		} else {
 			Library.logger().info("getFirstBlockOfLatestVersion: no block available for later version of " + startingVersion);
 		}

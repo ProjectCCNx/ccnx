@@ -211,7 +211,7 @@ public class SegmentationProfile implements CCNProfile {
 	 * @return
 	 * @throws IOException
 	 */
-	public static ContentObject getBlock(ContentName desiredContent, Long desiredSegmentNumber, PublisherPublicKeyDigest publisher, long timeout, ContentVerifier verifier, CCNLibrary library) throws IOException {
+	public static ContentObject getSegment(ContentName desiredContent, Long desiredSegmentNumber, PublisherPublicKeyDigest publisher, long timeout, ContentVerifier verifier, CCNLibrary library) throws IOException {
 		
 	    // Block name requested should be interpreted literally, not taken
 	    // relative to baseSegment().
@@ -221,6 +221,7 @@ public class SegmentationProfile implements CCNProfile {
 		
 		ContentName blockName = segmentName(desiredContent, desiredSegmentNumber);
 	
+		// TODO allow publisher specification.
 		Library.logger().info("getBlock: getting block " + blockName);
 		ContentObject block = library.getLower(blockName, 1, timeout);
 	

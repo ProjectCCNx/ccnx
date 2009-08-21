@@ -278,7 +278,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
  		// available that verifies for first block. If _publisher specified a priori, or once we have
  		// retrieved a block and set _publisher to the publisher of that block, we will continue to
  		// retrieve blocks by the same publisher.
-		return SegmentationProfile.getBlock(_baseName, number, _publisher, _timeout, this, _library);
+		return SegmentationProfile.getSegment(_baseName, number, _publisher, _timeout, this, _library);
 	}
 	
 	protected ContentObject getNextBlock() throws IOException {
