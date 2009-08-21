@@ -167,7 +167,7 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 		if (VersioningProfile.hasTerminalVersion(targetName())) {
 			return library.get(targetName(), (null != targetAuthenticator()) ? targetAuthenticator().publisher() : null, timeout);
 		}
-		return CCNLibrary.getLatestVersion(targetName(), 
+		return VersioningProfile.getLatestVersion(targetName(), 
 				(null != targetAuthenticator()) ? targetAuthenticator().publisher() : null, timeout, library);
 	}
 	

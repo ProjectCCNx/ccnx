@@ -15,6 +15,7 @@ import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
 import com.parc.ccn.library.io.CCNVersionedOutputStream;
+import com.parc.ccn.library.profiles.VersioningProfile;
 
 /**
  * A Key Manager designed to make dynamic key stores and back them up to CCN.
@@ -63,7 +64,7 @@ public class NetworkKeyManager extends BasicKeyManager {
 		ContentObject keystoreObject = null;
 		try {
 			keystoreObject = 
-				CCNLibrary.getFirstBlockOfLatestVersion(_keystoreName, _publisher, DEFAULT_TIMEOUT, _library);
+				VersioningProfile.getFirstBlockOfLatestVersion(_keystoreName, _publisher, DEFAULT_TIMEOUT, _library);
 			if (null == keystoreObject) {
 				Library.logger().info("Creating new CCN key store..." + _keystoreName);
 				_keystore = createKeyStore();	
