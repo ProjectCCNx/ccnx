@@ -17,6 +17,7 @@ import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
+import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 
@@ -52,6 +53,12 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 			super(HeaderData.class, name, data, publisher, keyLocator, library);
 		}
 
+		public HeaderObject(ContentName name,
+				HeaderData data, PublisherPublicKeyDigest publisher,
+				KeyLocator keyLocator, CCNFlowControl flowControl) throws IOException, XMLStreamException {
+			super(HeaderData.class, name, data, publisher, keyLocator, flowControl);
+		}
+	
 		/**
 		 * Read constructor -- opens existing object.
 		 * @param name
