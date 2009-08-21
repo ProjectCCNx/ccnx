@@ -380,6 +380,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
             Interest.last(latestVersionKnown, 
                           VersioningProfile.acceptVersions(latestVersionKnown.lastComponent()),
                           latestVersionKnow.count());
+		Library.logger().info("UpdateInBackground: interest: " + _currentInterest);
 		_library.expressInterest(_currentInterest, this);
 	}
 	
@@ -648,6 +649,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 					// OK, we have something that is a later version of our desired object.
 					// We're not sure it's actually the first content block.
 					if (CCNVersionedInputStream.isFirstBlock(_currentInterest.name(), co, null)) {
+						Library.logger().info("Background updating of " + getCurrentVersionName() + ", got first block: " + co.name());
 						update(co);
 					} else {
 						// Have a later segment. Caching problem. Go back for first segment.
