@@ -1,6 +1,5 @@
 package com.parc.ccn.data.query;
 
-import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -47,10 +46,9 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 	/**
 	 * @param values Must be a list of ExcludeElements - Components must be in increasing order
 	 * and there must not be more than one BloomFilter in a row.
-	 * @throws InvalidParameterException
+	 * @throws #IllegalArgumentException
 	 */
-	public ExcludeFilter(ArrayList<Element> values)
-				throws InvalidParameterException {
+	public ExcludeFilter(ArrayList<Element> values) {
 		// Make sure the values are valid
 		ExcludeComponent c = null;
 		Element last = null;
@@ -59,11 +57,11 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 				ExcludeComponent ec = (ExcludeComponent) ee;
 				// Components must be in increasing order, and no duplicates.
 				if (c != null && ec.compareTo(c) <=0)
-					throw new InvalidParameterException("out of order or duplicate component element");
+					throw new IllegalArgumentException("out of order or duplicate component element");
 				c = ec;
 			} else if (last instanceof Filler)
 				// do not allow 2 fillers in a row
-				throw new InvalidParameterException("bloom filters or anys are not allowed to follow each other");
+				throw new IllegalArgumentException("bloom filters or anys are not allowed to follow each other");
 			last = ee;
 		}
 		_values = new ArrayList<Element>(values);
@@ -73,11 +71,11 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 	 * Create an Exclude filter that excludes exactly the listed name components.
 	 * @param omissions The name components to be excluded. Passing in null or a zero length array
 	 * here will result in an #IllegalArgumentException exception
-	 * @throws IllegalArgumentException
+	 * @throws #IllegalArgumentException
 	 */
 	public ExcludeFilter(byte [][] omissions) {
 		if (omissions == null || omissions.length == 0)
-			throw new InvalidParameterException("No omissions");
+			throw new IllegalArgumentException("No omissions");
 		Arrays.sort(omissions, new ByteArrayCompare());
 		_values = new ArrayList<Element>();
 		for (byte[] omission : omissions) {
