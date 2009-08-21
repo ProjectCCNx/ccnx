@@ -222,6 +222,7 @@ public class SegmentationProfile implements CCNProfile {
 		ContentName blockName = segmentName(desiredContent, desiredSegmentNumber);
 	
 		// TODO allow publisher specification.
+		// TODO use better exclude filters to ensure we're only getting segments.
 		Library.logger().info("getBlock: getting block " + blockName);
 		ContentObject block = library.getLower(blockName, 1, timeout);
 	
