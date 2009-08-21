@@ -97,7 +97,7 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 			Library.logger().warning("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
 			throw new IOException("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
 		} catch (InvalidKeySpecException e) {
-			Library.logger().warning("Cannot decode public key from block: " + ((CCNInputStream)input).currentBlockName() + "  " + e.getClass().getName() + ": " + e.getMessage());
+			Library.logger().warning("Cannot decode public key from block: " + ((CCNInputStream)input).currentSegmentName() + "  " + e.getClass().getName() + ": " + e.getMessage());
 			throw new IOException("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
 		} catch (NoSuchAlgorithmException e) {
 			Library.logger().warning("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());

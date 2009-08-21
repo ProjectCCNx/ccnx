@@ -233,7 +233,7 @@ public class SegmentationProfile implements CCNProfile {
 		}
 		
 		// So for the block, we assume we have a potential document.
-		if (!verifier.verifyBlock(block)) {
+		if (!verifier.verifySegment(block)) {
 			return null;
 		}
 		return block;

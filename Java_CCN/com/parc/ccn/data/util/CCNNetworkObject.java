@@ -214,19 +214,19 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 
 	/**
-	 * Read constructors if you already have a block of the object. Used by streams.
+	 * Read constructors if you already have a segment of the object. Used by streams.
 	 * @param type
-	 * @param firstBlock
+	 * @param firstSegment
 	 * @param library
 	 * @throws ConfigurationException
 	 * @throws IOException
 	 * @throws XMLStreamException
 	 */
-	public CCNNetworkObject(Class<E> type, ContentObject firstBlock, CCNLibrary library) throws IOException, XMLStreamException {
-		this(type, firstBlock, DEFAULT_RAW, library);
+	public CCNNetworkObject(Class<E> type, ContentObject firstSegment, CCNLibrary library) throws IOException, XMLStreamException {
+		this(type, firstSegment, DEFAULT_RAW, library);
 	}
 	
-	public CCNNetworkObject(Class<E> type, ContentObject firstBlock, boolean raw, CCNLibrary library) throws IOException, XMLStreamException {
+	public CCNNetworkObject(Class<E> type, ContentObject firstSegment, boolean raw, CCNLibrary library) throws IOException, XMLStreamException {
 		super(type);
 		if (null == library) {
 			try {
@@ -236,16 +236,16 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			}
 		}
 		_library = library;
-		update(firstBlock);
+		update(firstSegment);
 	}
 
-	protected CCNNetworkObject(Class<E> type, ContentObject firstBlock, CCNFlowControl flowControl) throws IOException, XMLStreamException {
+	protected CCNNetworkObject(Class<E> type, ContentObject firstSegment, CCNFlowControl flowControl) throws IOException, XMLStreamException {
 		super(type);
 		if (null == flowControl)
 			throw new IllegalArgumentException("flowControl cannot be null!");
 		_flowControl = flowControl;
 		_library = flowControl.getLibrary();
-		update(firstBlock);
+		update(firstSegment);
 	}
 	
 	/**
@@ -279,11 +279,11 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		if (null == _baseName) {
 			throw new IllegalStateException("Cannot retrieve an object without giving a name!");
 		}
-		// Look for first block of version after ours, or first version if we have none.
-		ContentObject firstBlock = 
+		// Look for first segment of version after ours, or first version if we have none.
+		ContentObject firstSegment = 
 			CCNLibrary.getFirstBlockOfLatestVersion(getCurrentVersionName(), null, timeout, _library.defaultVerifier(), _library);
-		if (null != firstBlock) {
-			return update(firstBlock);
+		if (null != firstSegment) {
+			return update(firstSegment);
 		}
 		return false;
 	}
@@ -314,7 +314,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 */
 	public boolean update(ContentObject object) throws XMLStreamException, IOException {
 		CCNInputStream is = new CCNInputStream(object, _library);
-		is.seek(0); // in case it wasn't the first block
+		is.seek(0); // in case it wasn't the first segment
 		return update(is);
 	}
 
@@ -332,7 +332,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			super.update(inputStream);
 			
 			nameAndVersion = VersioningProfile.cutTerminalVersion(inputStream.baseName());
-			_currentPublisher = inputStream.contentPublisher();
+			_currentPublisher = inputStream.publisher();
 			_currentPublisherKeyLocator = inputStream.publisherKeyLocator();
 		}
 		_baseName = nameAndVersion.first();
@@ -366,7 +366,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 */
 	public void updateInBackground(ContentName latestVersionKnown, boolean continuousUpdates) throws IOException {
 		
-		Library.logger().info("getFirstBlock: getting latest version after " + latestVersionKnown + " in background.");
+		Library.logger().info("updateInBackground: getting latest version after " + latestVersionKnown + " in background.");
 		if (!VersioningProfile.hasTerminalVersion(latestVersionKnown)) {
 			latestVersionKnown = VersioningProfile.addVersion(latestVersionKnown, VersioningProfile.baseVersion());
 		}
@@ -470,13 +470,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			CCNVersionedOutputStream cos = new CCNVersionedOutputStream(name, _keyLocator, _publisher, contentType(), _flowControl);
 			save(cos); // superclass stream save. calls flush but not close on a wrapping
 			// digest stream; want to make sure we end up with a single non-MHT signed
-			// block and no header on small objects
+			// segment and no header on small objects
 			cos.close();
 			_currentPublisher = (_publisher == null) ? _flowControl.getLibrary().getDefaultPublisher() : _publisher; // TODO DKS -- is this always correct?
 			_currentPublisherKeyLocator = (_keyLocator == null) ? 
 							_flowControl.getLibrary().keyManager().getKeyLocator(_publisher) : _keyLocator;
 		} else {
-			// saving object as gone, currently this is always one empty block so we don't use an OutputStream
+			// saving object as gone, currently this is always one empty segment so we don't use an OutputStream
 			ContentName segmentedName = SegmentationProfile.segmentName(name, SegmentationProfile.BASE_SEGMENT );
 			byte [] empty = new byte[0];
 			ContentObject goneObject = 
@@ -647,9 +647,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				Library.logger().info("handleContent: " + _currentInterest + " retrieved " + co.name());
 				if (VersioningProfile.startsWithLaterVersionOf(co.name(), _currentInterest.name())) {
 					// OK, we have something that is a later version of our desired object.
-					// We're not sure it's actually the first content block.
-					if (CCNVersionedInputStream.isFirstBlock(_currentInterest.name(), co, null)) {
-						Library.logger().info("Background updating of " + getCurrentVersionName() + ", got first block: " + co.name());
+					// We're not sure it's actually the first content segment.
+					if (CCNVersionedInputStream.isFirstSegment(_currentInterest.name(), co, null)) {
+						Library.logger().info("Background updating of " + getCurrentVersionName() + ", got first segment: " + co.name());
 						update(co);
 					} else {
 						// Have something that is not the first segment, like a repo write or a later segment. Go back

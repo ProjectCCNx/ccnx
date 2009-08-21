@@ -25,7 +25,7 @@ import com.parc.ccn.security.crypto.ContentKeys;
  * it opens that version of that content at that segment.
  * 
  * The only behavior we have to change from superclass is that
- * involved in getting the first block -- header or regular block.
+ * involved in getting the first segment -- header or regular segment.
  * We need to make an interest that gets the latest version, and
  * then fills in the version information on the name we
  * are working with, to make sure we continue to get blocks
@@ -42,16 +42,16 @@ import com.parc.ccn.security.crypto.ContentKeys;
 public class CCNVersionedInputStream extends CCNInputStream {
 
 	public CCNVersionedInputStream(ContentName name,
-			Long startingBlockIndex, PublisherPublicKeyDigest publisher,
+			Long startingSegmentNumber, PublisherPublicKeyDigest publisher,
 			ContentKeys keys, CCNLibrary library)
 			throws XMLStreamException, IOException {
-		super(name, startingBlockIndex, publisher, keys, library);
+		super(name, startingSegmentNumber, publisher, keys, library);
 	}
 
 	public CCNVersionedInputStream(ContentName name,
-			Long startingBlockIndex, PublisherPublicKeyDigest publisher,
+			Long startingSegmentNumber, PublisherPublicKeyDigest publisher,
 			CCNLibrary library) throws XMLStreamException, IOException {
-		super(name, startingBlockIndex, publisher, library);
+		super(name, startingSegmentNumber, publisher, library);
 	}
 
 	public CCNVersionedInputStream(ContentName name, PublisherPublicKeyDigest publisher,
@@ -69,75 +69,75 @@ public class CCNVersionedInputStream extends CCNInputStream {
 		super(name, library);
 	}
 
-	public CCNVersionedInputStream(ContentName name, Long startingBlockIndex)
+	public CCNVersionedInputStream(ContentName name, Long startingSegmentNumber)
 			throws XMLStreamException, IOException {
-		super(name, startingBlockIndex);
+		super(name, startingSegmentNumber);
 	}
 
-	public CCNVersionedInputStream(ContentObject starterBlock,
+	public CCNVersionedInputStream(ContentObject firstSegment,
 			CCNLibrary library) throws XMLStreamException, IOException {
-		super(starterBlock, library);
+		super(firstSegment, library);
 	}
 	
 	@Override
-	protected ContentObject getFirstBlock() throws IOException {
+	protected ContentObject getFirstSegment() throws IOException {
 		if (VersioningProfile.hasTerminalVersion(_baseName)) {
 			// Get exactly this version
-			return super.getFirstBlock();
+			return super.getFirstSegment();
 		}
-		Library.logger().info("getFirstBlock: getting latest version of " + _baseName);
+		Library.logger().info("getFirstSegment: getting latest version of " + _baseName);
 		ContentObject result = CCNLibrary.getFirstBlockOfLatestVersion(_baseName, null, _timeout, this, _library);
 		if (null != result){
-			Library.logger().info("getFirstBlock: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
+			Library.logger().info("getFirstSegment: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
 			_baseName = result.name().cut(_baseName.count() + 1);
 			if (result.signedInfo().getType().equals(ContentType.GONE)) {
-				_goneBlock = result;
-				Library.logger().info("getFirstBlock: got gone block: " + _goneBlock.name());
+				_goneSegment = result;
+				Library.logger().info("getFirstSegment: got gone segment: " + _goneSegment.name());
 				return null;
 			}
 		} else {
-			Library.logger().info("getFirstBlock: no block available for latest version of " + _baseName);
+			Library.logger().info("getFirstSegment: no segment available for latest version of " + _baseName);
 		}
 		return result;
 	}
 	
 	/**
-	 * Version of isFirstBlock that expects names to be versioned, and allows that desiredName
+	 * Version of isFirstSegment that expects names to be versioned, and allows that desiredName
 	 * won't know what version it wants but will want some version.
 	 */
-	public static boolean isFirstBlock(ContentName desiredName, ContentObject block, Long startingBlockIndex) {
-		if ((null != block) && (SegmentationProfile.isSegment(block.name()))) {
-			Library.logger().info("is " + block.name() + " a first block of " + desiredName);
-			// In theory, the block should be at most a versioning component different from desiredName.
+	public static boolean isFirstSegment(ContentName desiredName, ContentObject potentialFirstSegment, Long startingSegmentNumber) {
+		if ((null != potentialFirstSegment) && (SegmentationProfile.isSegment(potentialFirstSegment.name()))) {
+			Library.logger().info("is " + potentialFirstSegment.name() + " a first segment of " + desiredName);
+			// In theory, the segment should be at most a versioning component different from desiredName.
 			// In the case of complex segmented objects (e.g. a KeyDirectory), where there is a version,
 			// then some name components, then a segment, desiredName should contain all of those other
-			// name components -- you can't use the usual versioning mechanisms to pull first block anyway.
-			if (!desiredName.isPrefixOf(block.name())) {
-				Library.logger().info("Desired name :" + desiredName + " is not a prefix of block: " + block.name());
+			// name components -- you can't use the usual versioning mechanisms to pull first segment anyway.
+			if (!desiredName.isPrefixOf(potentialFirstSegment.name())) {
+				Library.logger().info("Desired name :" + desiredName + " is not a prefix of segment: " + potentialFirstSegment.name());
 				return false;
 			}
-			int difflen = block.name().count() - desiredName.count();
+			int difflen = potentialFirstSegment.name().count() - desiredName.count();
 			if (difflen > 2) {
-				Library.logger().info("Have " + difflen + " extra components between " + block.name() + " and desired " + desiredName);
+				Library.logger().info("Have " + difflen + " extra components between " + potentialFirstSegment.name() + " and desired " + desiredName);
 				return false;
 			}
 			// Now need to make sure that if the difference is more than 1, that difference is
 			// a version component.
-			if ((difflen == 2) && (!VersioningProfile.isVersionComponent(block.name().component(block.name().count()-2)))) {
-				Library.logger().info("The " + difflen + " extra component between " + block.name() + " and desired " + desiredName + " is not a version.");
+			if ((difflen == 2) && (!VersioningProfile.isVersionComponent(potentialFirstSegment.name().component(potentialFirstSegment.name().count()-2)))) {
+				Library.logger().info("The " + difflen + " extra component between " + potentialFirstSegment.name() + " and desired " + desiredName + " is not a version.");
 				
 			}
-			if (null != startingBlockIndex) {
-				return (startingBlockIndex.equals(SegmentationProfile.getSegmentNumber(block.name())));
+			if (null != startingSegmentNumber) {
+				return (startingSegmentNumber.equals(SegmentationProfile.getSegmentNumber(potentialFirstSegment.name())));
 			} else {
-				return SegmentationProfile.isFirstSegment(block.name());
+				return SegmentationProfile.isFirstSegment(potentialFirstSegment.name());
 			}
 		}
 		return false;
 	}
 	
-	protected boolean isFirstBlock(ContentName desiredName, ContentObject block) {
-		return isFirstBlock(desiredName, block, _startingBlockIndex);
+	protected boolean isFirstSegment(ContentName desiredName, ContentObject potentialFirstSegment) {
+		return isFirstSegment(desiredName, potentialFirstSegment, _startingSegmentNumber);
 	}
 	
 	public Timestamp getVersionAsTimestamp() throws VersionMissingException {

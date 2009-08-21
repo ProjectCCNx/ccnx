@@ -61,34 +61,34 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 		Library.logger().info("CCNBlockInputStream: reading " + len + " bytes into buffer of length " + 
 				((null != buf) ? buf.length : "null") + " at offset " + offset);
 		// is this the first block?
-		if (null == _currentBlock) {
-			ContentObject firstBlock = getFirstBlock();
+		if (null == _currentSegment) {
+			ContentObject firstBlock = getFirstSegment();
 			if (null == firstBlock) {
 				return 0; // nothing to read
 			}
-			setFirstBlock(firstBlock);
+			setFirstSegment(firstBlock);
 		} 
 		
 		// Now we have a block in place. Read from it. If we run out of block before
 		// we've read len bytes, return what we read. On next read, pull next block.
-		int remainingBytes = _blockReadStream.available();
+		int remainingBytes = _segmentReadStream.available();
 		
 		if (remainingBytes <= 0) {
-			setCurrentBlock(getNextBlock());
-			if (null == _currentBlock) {
+			setCurrentSegment(getNextSegment());
+			if (null == _currentSegment) {
 				// in socket implementation, this would be EAGAIN
 				return 0;
 			}
-			remainingBytes = _blockReadStream.available();
+			remainingBytes = _segmentReadStream.available();
 		}
 		// Read minimum of remainder of this block and available buffer.
 		long readCount = (remainingBytes > len) ? len : remainingBytes;
 		if (null != buf) { // use for skip
-			readCount = _blockReadStream.read(buf, offset, len);
+			readCount = _segmentReadStream.read(buf, offset, len);
 		} else {
-			readCount = _blockReadStream.skip(len);
+			readCount = _segmentReadStream.skip(len);
 		}
-		Library.logger().info("CCNBlockInputStream: read " + readCount + " bytes from block " + _currentBlock.name());
+		Library.logger().info("CCNBlockInputStream: read " + readCount + " bytes from block " + _currentSegment.name());
 		return (int)readCount;
 	}
 }

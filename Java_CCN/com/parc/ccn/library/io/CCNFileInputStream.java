@@ -149,7 +149,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 				// DKS TODO -- use HeaderObject to read
 				Library.logger().info("Got header object in handleContent, loading into _header. Name: " + headerObject.name());
 				_header.update(headerObject);
-				Library.logger().fine("Found header specifies " + _header.blockCount() + " blocks");
+				Library.logger().fine("Found header specifies " + _header.segmentCount() + " blocks");
 				return true; // done
 			}
 		} catch (Exception e) {
@@ -159,11 +159,11 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 		}
 	}
 
-	protected ContentObject getFirstBlock() throws IOException {
+	protected ContentObject getFirstSegment() throws IOException {
 		// Give up efficiency where we try to detect auto-caught header, and just
 		// use superclass method to really get us a first content block, then
 		// go after the header. Later on we can worry about re-adding the optimization.
-		ContentObject result = super.getFirstBlock();
+		ContentObject result = super.getFirstSegment();
 		if (null == result) {
 			throw new IOException("Cannot retrieve first block of " + _baseName + "!");
 		}
@@ -200,16 +200,16 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 		int currentBlockOffset = 0;
 		long currentPosition = 0;
 		
-		if (_currentBlock == null) {
+		if (_currentSegment == null) {
 			//we do not have a block already
 			//skip position is n
 			currentPosition = 0;
 			toGetPosition = n;
 		} else {
 		    //we already have a block...  need to handle some tricky cases
-			currentBlock = blockIndex();
+			currentBlock = segmentNumber();
 			currentBlockOffset = (int)super.tell();
-			currentPosition = _header.blockLocationToPosition(currentBlock, currentBlockOffset);
+			currentPosition = _header.segmentLocationToPosition(currentBlock, currentBlockOffset);
 			toGetPosition = currentPosition + n;
 		}
 		//make sure we don't skip past end of the object
@@ -218,11 +218,11 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 			_atEOF = true;
 		}
 			
-		toGetBlockAndOffset = _header.positionToBlockLocation(toGetPosition);
+		toGetBlockAndOffset = _header.positionToSegmentLocation(toGetPosition);
 		
 		//make sure the position makes sense
 		//is this a valid block?
-		if (toGetBlockAndOffset[0] >= _header.blockCount()){
+		if (toGetBlockAndOffset[0] >= _header.segmentCount()){
 			//this is not a valid block number, subtract 1
 			if (toGetBlockAndOffset[0] > 0) {
 				toGetBlockAndOffset[0]--;
@@ -237,31 +237,31 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 			
 		//now we should get the block and check the offset
 		// TODO: once first block is always set in a constructor this conditional can be removed
-		if (_currentBlock == null)
-			setFirstBlock(getBlock(toGetBlockAndOffset[0]));
+		if (_currentSegment == null)
+			setFirstSegment(getSegment(toGetBlockAndOffset[0]));
 		else
-			setCurrentBlock(getBlock(toGetBlockAndOffset[0]));
-		if (_currentBlock == null) {
+			setCurrentSegment(getSegment(toGetBlockAndOffset[0]));
+		if (_currentSegment == null) {
 			//we had an error getting the block
 			throw new IOException("Error getting block "+toGetBlockAndOffset[0]+" in CCNInputStream.skip("+n+")");
 		} else {
 			//we have a valid block!
 			//first make sure the offset is valid
-			if (toGetBlockAndOffset[1] <= _currentBlock.contentLength()) {
+			if (toGetBlockAndOffset[1] <= _currentSegment.contentLength()) {
 				//this is good, our offset is somewhere in this block
 			} else {
 				//our offset is past the end of our block, reset to the end.
-				toGetBlockAndOffset[1] = _currentBlock.contentLength();
+				toGetBlockAndOffset[1] = _currentSegment.contentLength();
 			}
-			_blockReadStream.skip(toGetBlockAndOffset[1]);
-			return _header.blockLocationToPosition(toGetBlockAndOffset[0], toGetBlockAndOffset[1]) - currentPosition;
+			_segmentReadStream.skip(toGetBlockAndOffset[1]);
+			return _header.segmentLocationToPosition(toGetBlockAndOffset[0], toGetBlockAndOffset[1]) - currentPosition;
 		}
 	}
 	
 	@Override
 	protected int blockCount() {
 		if (hasHeader()) {
-			return _header.blockCount();
+            return _header.segmentCount();
 		}
 		return super.blockCount();
 	}
@@ -270,35 +270,35 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	public long seek(long position) throws IOException {
 		Library.logger().info("Seeking stream to " + position + ": have header? " + hasHeader());
 		if (hasHeader()) {
-			int [] blockAndOffset = _header.positionToBlockLocation(position);
+			int [] blockAndOffset = _header.positionToSegmentLocation(position);
 			Library.logger().info("seek:  position: " + position + " block: " + blockAndOffset[0] + " offset: " + blockAndOffset[1]);
-			Library.logger().info("currently have block "+ currentBlockNumber());
-			if (currentBlockNumber() == blockAndOffset[0]) {
+			Library.logger().info("currently have block "+ currentSegmentNumber());
+			if (currentSegmentNumber() == blockAndOffset[0]) {
 				//already have the correct block
 				if (super.tell() == blockAndOffset[1]){
 					//already have the correct offset
 				} else {
 					// Reset and skip.
-					if (_blockReadStream.markSupported()) {
-						_blockReadStream.reset();
+					if (_segmentReadStream.markSupported()) {
+						_segmentReadStream.reset();
 					} else {
-						setCurrentBlock(_currentBlock);
+						setCurrentSegment(_currentSegment);
 					}
-					_blockReadStream.skip(blockAndOffset[1]);
+					_segmentReadStream.skip(blockAndOffset[1]);
 				}
 				return position;
 			}
 			
 			// TODO: once first block is always set in a constructor this conditional can be removed
-			if (_currentBlock == null)
-				setFirstBlock(getBlock(blockAndOffset[0]));
+			if (_currentSegment == null)
+				setFirstSegment(getSegment(blockAndOffset[0]));
 			else
-				setCurrentBlock(getBlock(blockAndOffset[0]));
+				setCurrentSegment(getSegment(blockAndOffset[0]));
 			super.skip(blockAndOffset[1]);
-			long check = _header.blockLocationToPosition(blockAndOffset[0], blockAndOffset[1]);
+			long check = _header.segmentLocationToPosition(blockAndOffset[0], blockAndOffset[1]);
 			Library.logger().info("current position: block "+blockAndOffset[0]+" _blockOffset "+super.tell()+" ("+check+")");
 
-			if (_currentBlock != null) {
+			if (_currentSegment != null) {
 				_atEOF=false;
 			}
 			// Might be at end of stream, so different value than came in...
@@ -318,7 +318,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	@Override
 	public long tell() {
 		if (hasHeader()) {
-			return _header.blockLocationToPosition(blockIndex(), (int)super.tell());
+			return _header.segmentLocationToPosition(segmentNumber(), (int)super.tell());
 		} else {
 			return super.tell();
 		}

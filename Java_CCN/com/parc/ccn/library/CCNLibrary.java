@@ -183,12 +183,12 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 		if (null != result){
 			Library.logger().info("getFirstBlockOfLatestVersion: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
 			// Now need to verify the block we got
-			if (!verifier.verifyBlock(result)) {
+			if (!verifier.verifySegment(result)) {
 				return null;
 			}
 			
 			// Now we know the version. Did we luck out and get first block?
-			if (CCNVersionedInputStream.isFirstBlock(startingVersion, result, startingBlockIndex)) {
+			if (CCNVersionedInputStream.isFirstSegment(startingVersion, result, startingBlockIndex)) {
 				Library.logger().info("getFirstBlockOfLatestVersion: got first block on first try: " + result.name());
 				return result;
 			}
@@ -448,7 +448,7 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 	/* (non-Javadoc)
 	 * @see com.parc.ccn.data.security.ContentVerifier#verifyBlock(com.parc.ccn.data.ContentObject)
 	 */
-	public boolean verifyBlock(ContentObject block) {
+	public boolean verifySegment(ContentObject block) {
 		boolean result = false;
 		try {
 			if (null == block)

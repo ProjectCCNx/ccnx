@@ -135,32 +135,32 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 			return h.typeName(); 
 		}
 		
-		public int[] positionToBlockLocation(long position) {
+		public int[] positionToSegmentLocation(long position) {
 			HeaderData h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
-			return h.positionToBlockLocation(position);
+			return h.positionToSegmentLocation(position);
 		}
 
-		public long blockLocationToPosition(long block, int offset) {
+		public long segmentLocationToPosition(long block, int offset) {
 			HeaderData h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
-			return h.blockLocationToPosition(block, offset);
+			return h.segmentLocationToPosition(block, offset);
 		}
 
-		public int blockCount() {
+		public int segmentCount() {
 			HeaderData h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
-			return h.blockCount();
+			return h.segmentCount();
 		}
 		
-		public int blockRemainder() {
+		public int segmentRemainder() {
 			HeaderData h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
-			return h.blockRemainder();
+			return h.segmentRemainder();
 		}
 
 		public HeaderData header() { 
@@ -385,7 +385,7 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 		return true;
 	}
 
-	public int[] positionToBlockLocation(long position) {
+	public int[] positionToSegmentLocation(long position) {
 		int [] blockLocation = new int[2];
 		Library.logger().info("Header: " + this);
 		Library.logger().info("position: " + position + " blockSize " + blockSize() + " position/blockSize " + position/blockSize() + " start: " + start());
@@ -394,18 +394,18 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 		return blockLocation;
 	}
 
-	public long blockLocationToPosition(long block, int offset) {
+	public long segmentLocationToPosition(long block, int offset) {
 		if (offset > blockSize()) {
 			block += (int)(Math.floor(1.0*offset/blockSize()));
 			offset = (int)(1.0*offset % blockSize());
 		}
-		if (block >= blockCount()) {
+		if (block >= segmentCount()) {
 			return length();
 		}
 		return block*blockSize() + offset;
 	}
 
-	public int blockCount() {
+	public int segmentCount() {
 		return (int)(Math.ceil(1.0*length()/blockSize()));
 	}
 	
@@ -413,7 +413,7 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 	 * Length of last block.
 	 * @return
 	 */
-	public int blockRemainder() {
+	public int segmentRemainder() {
 		int remainder = (int)(1.0*length() % blockSize());
 		if (remainder == 0)
 			return blockSize();

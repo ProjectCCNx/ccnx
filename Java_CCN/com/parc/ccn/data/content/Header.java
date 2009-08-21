@@ -138,18 +138,18 @@ public class Header extends ContentObject  {
 	}
 	
 	public int[] positionToBlockLocation(long position) {
-		return _data.positionToBlockLocation(position);
+		return _data.positionToSegmentLocation(position);
 	}
 
 	public long blockLocationToPosition(long block, int offset) {
-		return _data.blockLocationToPosition(block, offset);
+		return _data.segmentLocationToPosition(block, offset);
 	}
 
 	public int blockCount() {
-		return _data.blockCount();
+		return _data.segmentCount();
 	}
 	
 	public int blockRemainder() {
-		return _data.blockRemainder();
+		return _data.segmentRemainder();
 	}
 }

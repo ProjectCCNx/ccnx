@@ -18,6 +18,6 @@ public interface ContentVerifier {
 	 * @param block Should we rename this?
 	 * @return
 	 */
-	public boolean verifyBlock(ContentObject block);
+	public boolean verifySegment(ContentObject block);
 
 }

@@ -31,9 +31,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 	protected CCNLibrary _library;
 
-	protected ContentObject _currentBlock = null;
-	protected ContentObject _goneBlock = null;
-	protected InputStream _blockReadStream = null; // includes filters, etc.
+	protected ContentObject _currentSegment = null;
+	protected ContentObject _goneSegment = null;
+	protected InputStream _segmentReadStream = null; // includes filters, etc.
 	
 	/**
 	 * This is the name we are querying against, prior to each
@@ -41,7 +41,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 */
 	protected ContentName _baseName = null;
 	protected PublisherPublicKeyDigest _publisher = null; // the publisher we are looking for
-	protected Long _startingBlockIndex = null;
+	protected Long _startingSegmentNumber = null;
 	protected int _timeout = MAX_TIMEOUT;
 	
 	/**
@@ -65,14 +65,14 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 	/**
 	 * @param baseName should not include a segment component.
-	 * @param startingBlockIndex
+	 * @param startingSegmentNumber
 	 * @param publisher
 	 * @param library
 	 * @throws XMLStreamException
 	 * @throws IOException
 	 */
 	public CCNAbstractInputStream(
-			ContentName baseName, Long startingBlockIndex,
+			ContentName baseName, Long startingSegmentNumber,
 			PublisherPublicKeyDigest publisher, CCNLibrary library) 
 					throws XMLStreamException, IOException {
 		super();
@@ -87,32 +87,32 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		_publisher = publisher;	
 		
 		// So, we assume the name we get in is up to but not including the sequence
-		// numbers, whatever they happen to be. If a starting block is given, we
+		// numbers, whatever they happen to be. If a starting segment is given, we
 		// open from there, otherwise we open from the leftmost number available.
 		// We assume by the time you've called this, you have a specific version or
 		// whatever you want to open -- this doesn't crawl versions.  If you don't
-		// offer a starting block index, but instead offer the name of a specific
-		// segment, this will use that segment as the starting block. 
+		// offer a starting segment index, but instead offer the name of a specific
+		// segment, this will use that segment as the starting segment. 
 		_baseName = baseName;
-		if (startingBlockIndex != null) {
-			_startingBlockIndex = startingBlockIndex;
+		if (startingSegmentNumber != null) {
+			_startingSegmentNumber = startingSegmentNumber;
 		} else {
 			if (SegmentationProfile.isSegment(baseName)) {
-				_startingBlockIndex = SegmentationProfile.getSegmentNumber(baseName);
+				_startingSegmentNumber = SegmentationProfile.getSegmentNumber(baseName);
 				baseName = _baseName.parent();
 			} else {
-				_startingBlockIndex = SegmentationProfile.baseSegment();
+				_startingSegmentNumber = SegmentationProfile.baseSegment();
 			}
 		}
 	}
 	
 	public CCNAbstractInputStream(
-			ContentName baseName, Long startingBlockIndex,
+			ContentName baseName, Long startingSegmentNumber,
 			PublisherPublicKeyDigest publisher,
 			ContentKeys keys, CCNLibrary library) 
 					throws XMLStreamException, IOException {
 		
-		this(baseName, startingBlockIndex, publisher, library);
+		this(baseName, startingSegmentNumber, publisher, library);
 		
 		if (null != keys) {
 			keys.OnlySupportDefaultAlg();
@@ -121,35 +121,35 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	}
 	
 	/**
-	 * Assumes starterBlock has been verified by caller.
-	 * @param starterBlock
+	 * Assumes starterSegment has been verified by caller.
+	 * @param firstSegment
 	 * @param library
 	 * @throws IOException
 	 */
-	public CCNAbstractInputStream(ContentObject starterBlock, 			
+	public CCNAbstractInputStream(ContentObject firstSegment, 			
 			CCNLibrary library) throws IOException  {
 		super();
-		if (null == starterBlock) {
-			throw new IllegalArgumentException("starterBlock cannot be null!");
+		if (null == firstSegment) {
+			throw new IllegalArgumentException("starterSegment cannot be null!");
 		}
 		_library = library; 
 		if (null == _library) {
 			_library = CCNLibrary.getLibrary();
 		}
-		setFirstBlock(starterBlock);
-		_baseName = SegmentationProfile.segmentRoot(starterBlock.name());
+		setFirstSegment(firstSegment);
+		_baseName = SegmentationProfile.segmentRoot(firstSegment.name());
 		try {
-			_startingBlockIndex = SegmentationProfile.getSegmentNumber(starterBlock.name());
+			_startingSegmentNumber = SegmentationProfile.getSegmentNumber(firstSegment.name());
 		} catch (NumberFormatException nfe) {
-			throw new IOException("Stream starter block name does not contain a valid segment number, so the stream does not know what content to start with.");
+			throw new IOException("Stream starter segment name does not contain a valid segment number, so the stream does not know what content to start with.");
 		}
 	}
 
-	public CCNAbstractInputStream(ContentObject starterBlock, 			
+	public CCNAbstractInputStream(ContentObject firstSegment, 			
 			ContentKeys keys,
 			CCNLibrary library) throws IOException {
 
-		this(starterBlock, library);
+		this(firstSegment, library);
 		
 		keys.OnlySupportDefaultAlg();
 		_keys = keys;
@@ -184,8 +184,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	}
 
 	/**
-	 * Reads a packet/block into the buffer. If the buffer is shorter than
-	 * the packet's length, reads out of the current block for now.
+	 * Reads a packet/segment into the buffer. If the buffer is shorter than
+	 * the packet's length, reads out of the current segment for now.
 	 * Aim is really to do packet-sized reads. Probably ought to be a DatagramSocket subclass.
 	 * @param buf the buffer into which to write.
 	 * @param offset the offset into buf at which to write data
@@ -205,44 +205,44 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	protected abstract int readInternal(byte [] buf, int offset, int len) throws IOException;
 
 	/**
-	 * Called to set the first block when opening a stream.
-	 * @param block Must not be null
+	 * Called to set the first segment when opening a stream.
+	 * @param newSegment Must not be null
 	 * @throws IOException
 	 */
-	protected void setFirstBlock(ContentObject block) throws IOException {
-		setCurrentBlock(block);
+	protected void setFirstSegment(ContentObject newSegment) throws IOException {
+		setCurrentSegment(newSegment);
 	}
 
 	/**
-	 * Set up current block for reading, including prep for decryption if necessary.
-	 * Called after getBlock/getFirstBlock/getNextBlock, which take care of verifying
-	 * the block for us. So we assume newBlock is valid.
+	 * Set up current segment for reading, including prep for decryption if necessary.
+	 * Called after getSegment/getFirstSegment/getNextSegment, which take care of verifying
+	 * the segment for us. So we assume newSegment is valid.
 	 * @throws IOException 
 	 */
-	protected void setCurrentBlock(ContentObject newBlock) throws IOException {
-		_currentBlock = null;
-		_blockReadStream = null;
-		if (null == newBlock) {
-			Library.logger().info("Setting current block to null! Did a block fail to verify?");
+	protected void setCurrentSegment(ContentObject newSegment) throws IOException {
+		_currentSegment = null;
+		_segmentReadStream = null;
+		if (null == newSegment) {
+			Library.logger().info("Setting current segment to null! Did a segment fail to verify?");
 			return;
 		}
 		
-		_currentBlock = newBlock;
+		_currentSegment = newSegment;
 		// Should we only set these on the first retrieval?
-		// getBlock will ensure we get a requested publisher (if we have one) for the
-		// first block; once we have a publisher, it will ensure that future blocks match it.
-		_publisher = newBlock.signedInfo().getPublisherKeyID();
-		_publisherKeyLocator = newBlock.signedInfo().getKeyLocator();
+		// getSegment will ensure we get a requested publisher (if we have one) for the
+		// first segment; once we have a publisher, it will ensure that future segments match it.
+		_publisher = newSegment.signedInfo().getPublisherKeyID();
+		_publisherKeyLocator = newSegment.signedInfo().getKeyLocator();
 		
-		_blockReadStream = new ByteArrayInputStream(_currentBlock.content());
+		_segmentReadStream = new ByteArrayInputStream(_currentSegment.content());
 
 		// if we're decrypting, then set it up now
 		if (_keys != null) {
 			try {
-				// Reuse of current block OK. Don't expect to have two separate readers
+				// Reuse of current segment OK. Don't expect to have two separate readers
 				// independently use this stream without state confusion anyway.
 				_cipher = _keys.getSegmentDecryptionCipher(
-						SegmentationProfile.getSegmentNumber(_currentBlock.name()));
+						SegmentationProfile.getSegmentNumber(_currentSegment.name()));
 			} catch (InvalidKeyException e) {
 				Library.logger().warning("InvalidKeyException: " + e.getMessage());
 				throw new IOException("InvalidKeyException: " + e.getMessage());
@@ -250,99 +250,99 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				Library.logger().warning("InvalidAlgorithmParameterException: " + e.getMessage());
 				throw new IOException("InvalidAlgorithmParameterException: " + e.getMessage());
 			}
-			_blockReadStream = new UnbufferedCipherInputStream(_blockReadStream, _cipher);
+			_segmentReadStream = new UnbufferedCipherInputStream(_segmentReadStream, _cipher);
 		} else {
-			if (_currentBlock.signedInfo().getType().equals(ContentType.ENCR)) {
+			if (_currentSegment.signedInfo().getType().equals(ContentType.ENCR)) {
 				Library.logger().warning("Asked to read encrypted content, but not given a key to decrypt it. Decryption happening at higher level?");
 			}
 		}
 	}
 
 	/**
-	 * Three navigation options: get first (leftmost) block, get next block,
-	 * or get a specific block.
+	 * Three navigation options: get first (leftmost) segment, get next segment,
+	 * or get a specific segment.
 	 * Have to assume that everyone is using our segment number encoding. Probably
 	 * easier to ask raw streams to use that encoding (e.g. for packet numbers)
 	 * than to flag streams as to whether they are using integers or segments.
 	 **/
-	protected ContentObject getBlock(long number) throws IOException {
+	protected ContentObject getSegment(long number) throws IOException {
 
- 		if (_currentBlock != null) {
-			//what block do we have right now?  maybe we already have it
-			if (currentBlockNumber() == number){
-				//we already have this block..
-				return _currentBlock;
+ 		if (_currentSegment != null) {
+			//what segment do we have right now?  maybe we already have it
+			if (currentSegmentNumber() == number){
+				//we already have this segment...
+				return _currentSegment;
 			}
 		}
  		// If no publisher specified a priori, _publisher will be null and we will get whoever is
- 		// available that verifies for first block. If _publisher specified a priori, or once we have
- 		// retrieved a block and set _publisher to the publisher of that block, we will continue to
- 		// retrieve blocks by the same publisher.
+ 		// available that verifies for first segment. If _publisher specified a priori, or once we have
+ 		// retrieved a segment and set _publisher to the publisher of that segment, we will continue to
+ 		// retrieve segments by the same publisher.
 		return SegmentationProfile.getSegment(_baseName, number, _publisher, _timeout, this, _library);
 	}
 	
-	protected ContentObject getNextBlock() throws IOException {
+	protected ContentObject getNextSegment() throws IOException {
 		
 		// We're looking at content marked GONE
-		if (null != _goneBlock) {
-			Library.logger().info("getNextBlock: We have a gone block, no next block. Gone block: " + _goneBlock.name());
+		if (null != _goneSegment) {
+			Library.logger().info("getNextSegment: We have a gone segment, no next segment. Gone segment: " + _goneSegment.name());
 			return null;
 		}
 		
-		// Check to see if finalBlockID is the current block. If so, there should
-		// be no next block. (If the writer makes a mistake and guesses the wrong
-		// value for finalBlockID, they won't put that wrong value in the block they're
+		// Check to see if finalBlockID is the current segment. If so, there should
+		// be no next segment. (If the writer makes a mistake and guesses the wrong
+		// value for finalBlockID, they won't put that wrong value in the segment they're
 		// guessing itself -- unless they want to try to extend a "closed" stream.
-		// Normally by the time they write that block, they either know they're done or not.
-		if (null != _currentBlock.signedInfo().getFinalBlockID()) {
-			if (Arrays.equals(_currentBlock.signedInfo().getFinalBlockID(), _currentBlock.name().lastComponent())) {
-				Library.logger().info("getNextBlock: there is no next block. We have block: " + 
-						DataUtils.printHexBytes(_currentBlock.name().lastComponent()) + " which is marked as the final block.");
+		// Normally by the time they write that segment, they either know they're done or not.
+		if (null != _currentSegment.signedInfo().getFinalBlockID()) {
+			if (Arrays.equals(_currentSegment.signedInfo().getFinalBlockID(), _currentSegment.name().lastComponent())) {
+				Library.logger().info("getNextSegment: there is no next segment. We have segment: " + 
+						DataUtils.printHexBytes(_currentSegment.name().lastComponent()) + " which is marked as the final segment.");
 				return null;
 			}
 		}
 		
-		Library.logger().info("getNextBlock: getting block after " + _currentBlock.name());
-		return getBlock(nextBlockIndex());
+		Library.logger().info("getNextSegment: getting segment after " + _currentSegment.name());
+		return getSegment(nextSegmentNumber());
 	}
 	
-	protected ContentObject getFirstBlock() throws IOException {
-		if (null != _startingBlockIndex) {
-			ContentObject firstBlock = getBlock(_startingBlockIndex);
-			if ((null != firstBlock) && (firstBlock.signedInfo().getType().equals(ContentType.GONE))) {
-				_goneBlock = firstBlock;
-				Library.logger().info("getFirstBlock: got gone block: " + _goneBlock.name());
+	protected ContentObject getFirstSegment() throws IOException {
+		if (null != _startingSegmentNumber) {
+			ContentObject firstSegment = getSegment(_startingSegmentNumber);
+			if ((null != firstSegment) && (firstSegment.signedInfo().getType().equals(ContentType.GONE))) {
+				_goneSegment = firstSegment;
+				Library.logger().info("getFirstSegment: got gone segment: " + _goneSegment.name());
 				return null;
 			}
-			Library.logger().info("getFirstBlock: block number: " + _startingBlockIndex + " got block? " + 
-					((null == firstBlock) ? "no " : firstBlock.name()));
-			return firstBlock;
+			Library.logger().info("getFirstSegment: segment number: " + _startingSegmentNumber + " got segment? " + 
+					((null == firstSegment) ? "no " : firstSegment.name()));
+			return firstSegment;
 		} else {
-			throw new IOException("Stream does not have a valid starting block number.");
+			throw new IOException("Stream does not have a valid starting segment number.");
 		}
 	}
 	
 	/**
 	 * For CCNAbstractInputStream, assume that desiredName contains the name up to segmentation information.
 	 * @param desiredName
-	 * @param block
+	 * @param segment
 	 * @return
 	 */
-	protected boolean isFirstBlock(ContentName desiredName, ContentObject block) {
-		if ((null != block) && (SegmentationProfile.isSegment(block.name()))) {
-			Library.logger().info("is " + block.name() + " a first block of " + desiredName);
-			// In theory, the block should be at most a versioning component different from desiredName.
+	protected boolean isFirstSegment(ContentName desiredName, ContentObject segment) {
+		if ((null != segment) && (SegmentationProfile.isSegment(segment.name()))) {
+			Library.logger().info("is " + segment.name() + " a first segment of " + desiredName);
+			// In theory, the segment should be at most a versioning component different from desiredName.
 			// In the case of complex segmented objects (e.g. a KeyDirectory), where there is a version,
 			// then some name components, then a segment, desiredName should contain all of those other
-			// name components -- you can't use the usual versioning mechanisms to pull first block anyway.
-			if (!desiredName.equals(SegmentationProfile.segmentRoot(block.name()))) {
-				Library.logger().info("Desired name :" + desiredName + " is not a prefix of block: " + block.name());
+			// name components -- you can't use the usual versioning mechanisms to pull first segment anyway.
+			if (!desiredName.equals(SegmentationProfile.segmentRoot(segment.name()))) {
+				Library.logger().info("Desired name :" + desiredName + " is not a prefix of segment: " + segment.name());
 				return false;
 			}
-			if (null != _startingBlockIndex) {
-				return (_startingBlockIndex.equals(SegmentationProfile.getSegmentNumber(block.name())));
+			if (null != _startingSegmentNumber) {
+				return (_startingSegmentNumber.equals(SegmentationProfile.getSegmentNumber(segment.name())));
 			} else {
-				return SegmentationProfile.isFirstSegment(block.name());
+				return SegmentationProfile.isFirstSegment(segment.name());
 			}
 		}
 		return false;
@@ -351,107 +351,107 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	/**
 	 * TODO -- check to see if it matches desired publisher.
 	 */
-	public boolean verifyBlock(ContentObject block) {
+	public boolean verifySegment(ContentObject segment) {
 
 		// First we verify. 
 		// Low-level verify just checks that signer actually signed.
 		// High-level verify checks trust.
 		try {
 
-			// We could have several options here. This block could be simply signed.
+			// We could have several options here. This segment could be simply signed.
 			// or this could be part of a Merkle Hash Tree. If the latter, we could
 			// already have its signing information.
-			if (null == block.signature().witness()) {
-				return block.verify(null);
+			if (null == segment.signature().witness()) {
+				return segment.verify(null);
 			}
 
-			// Compare to see whether this block matches the root signature we previously verified, if
+			// Compare to see whether this segment matches the root signature we previously verified, if
 			// not, verify and store the current signature.
 			// We need to compute the proxy regardless.
-			byte [] proxy = block.computeProxy();
+			byte [] proxy = segment.computeProxy();
 
-			// OK, if we have an existing verified signature, and it matches this block's
+			// OK, if we have an existing verified signature, and it matches this segment's
 			// signature, the proxy ought to match as well.
-			if ((null != _verifiedRootSignature) && (Arrays.equals(_verifiedRootSignature, block.signature().signature()))) {
+			if ((null != _verifiedRootSignature) && (Arrays.equals(_verifiedRootSignature, segment.signature().signature()))) {
 				if ((null == proxy) || (null == _verifiedProxy) || (!Arrays.equals(_verifiedProxy, proxy))) {
-					Library.logger().warning("Found block: " + block.name() + " whose digest fails to verify; block length: " + block.contentLength());
-					Library.logger().info("Verification failure: " + block.name() + " timestamp: " + block.signedInfo().getTimestamp() + " content length: " + block.contentLength() + 
-							" content digest: " + DataUtils.printBytes(block.contentDigest()) + " proxy: " + 
+					Library.logger().warning("Found segment: " + segment.name() + " whose digest fails to verify; segment length: " + segment.contentLength());
+					Library.logger().info("Verification failure: " + segment.name() + " timestamp: " + segment.signedInfo().getTimestamp() + " content length: " + segment.contentLength() + 
+							" content digest: " + DataUtils.printBytes(segment.contentDigest()) + " proxy: " + 
 							DataUtils.printBytes(proxy) + " expected proxy: " + DataUtils.printBytes(_verifiedProxy));
 	 				return false;
 				}
 			} else {
-				// Verifying a new block. See if the signature verifies, otherwise store the signature
+				// Verifying a new segment. See if the signature verifies, otherwise store the signature
 				// and proxy.
-				if (!ContentObject.verify(proxy, block.signature().signature(), block.signedInfo(), block.signature().digestAlgorithm(), null)) {
-					Library.logger().warning("Found block: " + block.name().toString() + " whose signature fails to verify; block length: " + block.contentLength() + ".");
+				if (!ContentObject.verify(proxy, segment.signature().signature(), segment.signedInfo(), segment.signature().digestAlgorithm(), null)) {
+					Library.logger().warning("Found segment: " + segment.name().toString() + " whose signature fails to verify; segment length: " + segment.contentLength() + ".");
 					return false;
 				} else {
 					// Remember current verifiers
-					_verifiedRootSignature = block.signature().signature();
+					_verifiedRootSignature = segment.signature().signature();
 					_verifiedProxy = proxy;
 				}
 			} 
-			Library.logger().info("Got block: " + block.name().toString() + ", verified.");
+			Library.logger().info("Got segment: " + segment.name().toString() + ", verified.");
 		} catch (Exception e) {
-			Library.logger().warning("Got an " + e.getClass().getName() + " exception attempting to verify block: " + block.name().toString() + ", treat as failure to verify.");
+			Library.logger().warning("Got an " + e.getClass().getName() + " exception attempting to verify segment: " + segment.name().toString() + ", treat as failure to verify.");
 			Library.warningStackTrace(e);
 			return false;
 		}
 		return true;
 	}
 
-	public long blockIndex() {
-		if (null == _currentBlock) {
+	public long segmentNumber() {
+		if (null == _currentSegment) {
 			return SegmentationProfile.baseSegment();
 		} else {
 			// This needs to work on streaming content that is not traditional fragments.
 			// The segmentation profile tries to do that, though it is seeming like the
 			// new segment representation means we will have to assume that representation
 			// even for stream content.
-			return SegmentationProfile.getSegmentNumber(_currentBlock.name());
+			return SegmentationProfile.getSegmentNumber(_currentSegment.name());
 		}
 	}
 	
 	/**
-	 * Return the index of the next block of stream data.
+	 * Return the index of the next segment of stream data.
 	 * Default segmentation generates sequentially-numbered stream
-	 * blocks but this method may be overridden in subclasses to 
+	 * segments but this method may be overridden in subclasses to 
 	 * perform re-assembly on streams that have been segemented differently.
 	 * @return
 	 */
-	public long nextBlockIndex() {
-		if (null == _currentBlock) {
-			return _startingBlockIndex.longValue();
+	public long nextSegmentNumber() {
+		if (null == _currentSegment) {
+			return _startingSegmentNumber.longValue();
 		} else {
-			return blockIndex() + 1;
+			return segmentNumber() + 1;
 		}
 	}
 	
-	protected long currentBlockNumber(){
-		if (null == _currentBlock) {
+	protected long currentSegmentNumber(){
+		if (null == _currentSegment) {
 			return -1; // make sure we don't match inappropriately
 		}
-		return blockIndex();
+		return segmentNumber();
 	}
 	
 	/**
-	 * Is the stream GONE? I.E. Is there a single empty data block, of type GONE where
-	 * the first block should be? This convention is used to represent a stream that has been
+	 * Is the stream GONE? I.E. Is there a single empty data segment, of type GONE where
+	 * the first segment should be? This convention is used to represent a stream that has been
 	 * deleted.
 	 * @return
 	 * @throws IOException
 	 */
 	public boolean isGone() throws IOException {
-		ContentObject newBlock = null;
+		ContentObject newSegment = null;
 
-		// TODO: once first block is always read in constructor this code will change
-		if (null == _currentBlock && null == _goneBlock) {
-			newBlock = getFirstBlock(); // sets _goneBlock, but not _currentBlock
+		// TODO: once first segment is always read in constructor this code will change
+		if (null == _currentSegment && null == _goneSegment) {
+			newSegment = getFirstSegment(); // sets _goneSegment, but not _currentSegment
 		}
-		if (null == _goneBlock) {
-			if (null != newBlock) {
-				setFirstBlock(newBlock); // save it for reuse
+		if (null == _goneSegment) {
+			if (null != newSegment) {
+				setFirstSegment(newSegment); // save it for reuse
 			}
 			return false;
 		}
@@ -459,16 +459,16 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	}
 	
 	public ContentObject deletionInformation() {
-		return _goneBlock;
+		return _goneSegment;
 	}
 	
 	/**
 	 * Callers may need to access information about this stream's publisher.
-	 * We eventually should (TODO) ensure that all the blocks we're reading
+	 * We eventually should (TODO) ensure that all the segments we're reading
 	 * match in publisher information, and cache the verified publisher info.
 	 * (In particular once we're doing trust calculations, to ensure we do them
 	 * only once per stream.)
-	 * But we do verify each block, so start by pulling what's in the current block.
+	 * But we do verify each segment, so start by pulling what's in the current segment.
 	 * @return
 	 */
 	public PublisherPublicKeyDigest publisher() {
@@ -482,8 +482,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	/**
 	 * For debugging
 	 */
-	public String currentBlockName() {
-		return ((null == _currentBlock) ? "null" : _currentBlock.name().toString());
+	public String currentSegmentName() {
+		return ((null == _currentSegment) ? "null" : _currentSegment.name().toString());
 	}
 	
 }
