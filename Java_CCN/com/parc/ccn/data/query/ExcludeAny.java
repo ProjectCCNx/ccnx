@@ -31,4 +31,12 @@ public class ExcludeAny extends ExcludeFilter.Filler {
 	public boolean validate() {
 		return true;
 	}
+	
+	public int compareTo(ExcludeAny o) {
+		return 0;	// always equal
+	}
+	
+	public boolean equals(Object o) {
+		return true;
+	}
 }
