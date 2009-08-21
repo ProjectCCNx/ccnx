@@ -56,7 +56,8 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 	@Override
 	protected void startWrite() throws IOException {
 		// Won't need this if header is its own stream
-		_segmenter.getFlowControl().startWrite(_baseName, Shape.STREAM_WITH_HEADER);		
+	//	_segmenter.getFlowControl().startWrite(_baseName, Shape.STREAM_WITH_HEADER);		
+		_segmenter.getFlowControl().startWrite(_baseName, Shape.STREAM);		
 	}
 
 	protected void writeHeader() throws IOException {
@@ -101,7 +102,7 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 		// The segmenter contains the flow controller. Should do the right thing whether this
 		// is a raw stream or a repo stream. It should also already have the keys. Could just share
 		// the segmenter. For now, use our own.
-		HeaderObject header = new HeaderObject(headerName, headerData, this._publisher, this._locator, this._library);
+		HeaderObject header = new HeaderObject(headerName, headerData, this._publisher, this._locator, this.getSegmenter().getFlowControl());
 		header.save();
 		Library.logger().info("Wrote header: " + header.getCurrentVersionName());
 	}
