@@ -1,5 +1,6 @@
 package com.parc.ccn.data.query;
 
+import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -57,11 +58,11 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 				ExcludeComponent ec = (ExcludeComponent) ee;
 				// Components must be in increasing order, and no duplicates.
 				if (c != null && ec.compareTo(c) <=0)
-					throw new IllegalArgumentException("out of order or duplicate component element");
+					throw new InvalidParameterException("out of order or duplicate component element");
 				c = ec;
 			} else if (last instanceof Filler)
 				// do not allow 2 fillers in a row
-				throw new IllegalArgumentException("bloom filters or anys are not allowed to follow each other");
+				throw new InvalidParameterException("bloom filters or anys are not allowed to follow each other");
 			last = ee;
 		}			
 		_values.addAll(values);
@@ -216,7 +217,8 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 
 		Filler lastFiller = null;
 		synchronized (_values) {
-			int res = 0;
+			int res = -2;
+			int removes = 0;
 			for (Element ee : _values) {
 				if (ee instanceof ExcludeComponent) {
 					ExcludeComponent ec = (ExcludeComponent) ee;
@@ -228,31 +230,30 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 					// The element is not a component - so track what filler it was.
 					lastFiller = (Filler) ee;
 				}
-				// _values.remove(0); ??
+				removes++;
 			}
+			for (int i = 0; i < removes; i++)
+				_values.remove(0);
 			if (res == 0) {
 				// we exactly matched a component already in the filter
 				// prefix it with an Any element, and we're done.
 				_values.add(0, new ExcludeAny());
-			} else 
-				finishUp(lastFiller, component);
-		}
-	}
-	protected void finishUp(Filler filler, byte [] component) {
-		synchronized (_values) {
-			if (filler == null) {
-				// there was no filler, so prefix the list with an Any and the component, and we're done
+			} else {
+	
+				if (lastFiller == null) {
+					// there was no filler, so prefix the list with an Any and the component, and we're done
+					_values.add(0, new ExcludeAny());
+					_values.add(1, new ExcludeComponent(component));
+					return;
+				}
+				if (lastFiller instanceof ExcludeAny) {
+					_values.add(0, new ExcludeAny());
+					return;
+				}
 				_values.add(0, new ExcludeAny());
 				_values.add(1, new ExcludeComponent(component));
-				return;
+				_values.add(2, lastFiller);
 			}
-			if (filler instanceof ExcludeAny) {
-				_values.add(0, new ExcludeAny());
-				return;
-			}
-			_values.add(0, new ExcludeAny());
-			_values.add(1, new ExcludeComponent(component));
-			_values.add(2, filler);
 		}
 		return;		
 	}
