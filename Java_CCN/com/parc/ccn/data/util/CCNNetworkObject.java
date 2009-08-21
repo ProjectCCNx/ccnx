@@ -281,7 +281,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		}
 		// Look for first block of version after ours, or first version if we have none.
 		ContentObject firstBlock = 
-			CCNVersionedInputStream.getFirstBlockOfLatestVersion(getCurrentVersionName(), null, timeout, _library.defaultVerifier(), _library);
+			CCNLibrary.getFirstBlockOfLatestVersion(getCurrentVersionName(), null, timeout, _library.defaultVerifier(), _library);
 		if (null != firstBlock) {
 			return update(firstBlock);
 		}
