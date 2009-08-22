@@ -349,11 +349,10 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 				content.encode(os);
 				_activeWriteFile.nextWritePos = _activeWriteFile.openFile.getFilePointer();
 				_index.insert(content, ref, System.currentTimeMillis(), this, ner);
-				if(ner==null || ner.prefix==null){
-					Library.logger().finest("new content did not trigger an interest flag");
-				}
-				else{
-					Library.logger().info("new content was added where there was a name enumeration response interest flag");
+				if(ner==null || ner.getPrefix()==null){
+					Library.logger().fine("new content did not trigger an interest flag");
+				} else {
+					Library.logger().fine("new content was added where there was a name enumeration response interest flag");
 				}
 				return ner;
 			}

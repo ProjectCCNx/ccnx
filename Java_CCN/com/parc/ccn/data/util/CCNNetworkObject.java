@@ -70,6 +70,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	protected KeyLocator _currentPublisherKeyLocator;
 	protected CCNLibrary _library;
 	protected CCNFlowControl _flowControl;
+	protected boolean _disableFlowControlRequest = false;
 	protected PublisherPublicKeyDigest _publisher; // publisher we write under, if null, use library defaults
 	protected KeyLocator _keyLocator; // locator to find publisher key
 	protected boolean _raw = DEFAULT_RAW; // what kind of flow controller to make if we don't have one
@@ -260,6 +261,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		if (null == _flowControl) {
 			_flowControl = (_raw ? new CCNFlowControl(_library) : 
 								   new RepositoryFlowControl(_library));
+			if (_disableFlowControlRequest)
+				_flowControl.disable();
 			// Have to register the version root. If we just register this specific version, we won't
 			// see any shorter interests -- i.e. for get latest version.
 			_flowControl.addNameSpace(_baseName);
@@ -373,7 +376,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		// express this
 		// DKS TODO better versioned interests, a la library.getlatestVersion
 		_continuousUpdates = continuousUpdates;
-		_currentInterest = Interest.last(latestVersionKnown, null, null);
+		_currentInterest = Interest.last(latestVersionKnown, (byte[][])null, null);
 		_library.expressInterest(_currentInterest, this);
 	}
 	
@@ -586,6 +589,17 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			return _currentVersionName;
 		}
 		return _baseName;
+	}
+	
+	/**
+	 * Warning - calling this risks packet drops. It should only
+	 * be used for tests or other special circumstances in which
+	 * you "know what you are doing".
+	 */
+	public void disableFlowControl() {
+		if (null != _flowControl)
+			_flowControl.disable();
+		_disableFlowControlRequest = true;
 	}
 	
 	protected synchronized void newVersionAvailable() {

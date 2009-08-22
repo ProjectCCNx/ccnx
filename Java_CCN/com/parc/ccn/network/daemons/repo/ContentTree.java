@@ -158,38 +158,37 @@ public class ContentTree {
 						node.oneChild = null;
 					}
 					node.timestamp = ts;
-				}
-				
-				if(node.interestFlag && (ner==null || ner.prefix==null)){
-					//we have added something to this node and someone was interested
-					//we need to get the child names and the prefix to send back
-					Library.logger().info("we added at least one child, need to send a name enumeration response");
-					ContentName prefix = name.cut(component);
-
-					prefix = new ContentName(prefix, CCNNameEnumerator.NEMARKER);
-					//prefix = VersioningProfile.addVersion(prefix, new Timestamp(node.timestamp));
-					Library.logger().info("prefix for NEResponse: "+prefix);
-
-					ArrayList<ContentName> names = new ArrayList<ContentName>();
-					//the parent has children we need to return
-					ContentName c = new ContentName();
-					if(node.oneChild!=null){
-						names.add(new ContentName(c, node.oneChild.component));
-					}
-					else{
-						if(node.children!=null){
-							for(TreeNode ch:node.children)
-								names.add(new ContentName(c, ch.component));
-						}
-					}
-					ner.setPrefix(prefix);
-					ner.setNameList(names);
-					ner.setTimestamp(new Timestamp(node.timestamp));
-					Library.logger().info("resetting interestFlag to false");
-					node.interestFlag = false;
 					
+					if (node.interestFlag && (ner==null || ner.getPrefix()==null)){
+						//we have added something to this node and someone was interested
+						//we need to get the child names and the prefix to send back
+						Library.logger().info("we added at least one child, need to send a name enumeration response");
+						ContentName prefix = name.cut(component);
+	
+						prefix = new ContentName(prefix, CCNNameEnumerator.NEMARKER);
+						//prefix = VersioningProfile.addVersion(prefix, new Timestamp(node.timestamp));
+						Library.logger().info("prefix for FastNEResponse: "+prefix);
+						Library.logger().info("response name will be: "+ VersioningProfile.addVersion(new ContentName(prefix, CCNNameEnumerator.NEMARKER), new Timestamp(node.timestamp)));
+	
+						ArrayList<ContentName> names = new ArrayList<ContentName>();
+						// the parent has children we need to return
+						ContentName c = new ContentName();
+						if (node.oneChild != null) {
+							names.add(new ContentName(c,
+									node.oneChild.component));
+						} else {
+							if (node.children != null) {
+								for (TreeNode ch : node.children)
+									names.add(new ContentName(c, ch.component));
+							}
+						}
+						ner.setPrefix(prefix);
+						ner.setNameList(names);
+						ner.setTimestamp(new Timestamp(node.timestamp));
+						Library.logger().info("resetting interestFlag to false");
+						node.interestFlag = false;
+					}
 				}
-				
 				
 				//Library.logger().finest("child was not null: moving down the tree");
 				node = child;
@@ -428,8 +427,8 @@ public class ContentTree {
 		// subtree happens to be a perfect match
 		ArrayList<TreeNode> options = new ArrayList<TreeNode>();
 		Integer totalComponents = null;
-		if (interest.additionalNameComponents() != null)
-			totalComponents = interest.name().count() + interest.additionalNameComponents();
+		if (interest.minSuffixComponents() != null)
+			totalComponents = interest.name().count() + interest.minSuffixComponents();
 		getSubtreeNodes(node, options, totalComponents);
 		for (int i = options.size()-1; i >= 0 ; i--) {
 			TreeNode candidate = options.get(i);
@@ -464,13 +463,12 @@ public class ContentTree {
 		
 		TreeNode parent = lookupNode(prefix, prefix.count());
 		if (parent!=null) {
-		
+		    ContentName potentialCollectionName = VersioningProfile.addVersion(new ContentName(prefix, CCNNameEnumerator.NEMARKER), new Timestamp(parent.timestamp));
 			//check if we should respond...
-			if (interest.matches(VersioningProfile.addVersion(new ContentName(prefix, CCNNameEnumerator.NEMARKER), new Timestamp(parent.timestamp)), null)) {
-				Library.logger().info("the new version is a match with the interest!  we should respond");
-			}
-			else {
-				Library.logger().info("the new version doesn't match, no response needed");
+			if (interest.matches(potentialCollectionName, null)) {
+				Library.logger().info("the new version is a match with the interest!  we should respond: interest = "+interest.name()+" potentialCollectionName = "+potentialCollectionName);
+			} else {
+				Library.logger().info("the new version doesn't match, no response needed: interest = "+interest.name()+" would be collection name: "+potentialCollectionName);
 				parent.interestFlag = true;
 				return null;
 			}
@@ -487,18 +485,18 @@ public class ContentTree {
 			}
 			
 			if (names.size()>0)
-				Library.logger().finer("sending back "+names.size()+" names in the enumeration response");
+				Library.logger().finer("sending back "+names.size()+" names in the enumeration response for prefix "+prefix);
 			parent.interestFlag = false;
 			
-			return new NameEnumerationResponse(interest.name(), names, new Timestamp(parent.timestamp));
+			return new NameEnumerationResponse(new ContentName(prefix, CCNNameEnumerator.NEMARKER), names, new Timestamp(parent.timestamp));
 		}
 		return null;
 	}
 	
 	
 	public final ContentObject get(Interest interest, ContentGetter getter) {
-		Integer addl = interest.additionalNameComponents();
-		int ncc = (null != interest.nameComponentCount()) ? interest.nameComponentCount() : interest.name().count();
+		Integer addl = interest.maxSuffixComponents();
+		int ncc = interest.name().count();
 		if (null != addl && addl.intValue() == 0) {
 			// Query is for exact match to full name with digest, no additional components
 			List<ContentFileRef> found = lookup(interest.name());
@@ -520,8 +518,8 @@ public class ContentTree {
 				return null;
 			}
 			
-			if (null != interest.orderPreference() && (interest.orderPreference() & (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME))
-					== (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME)) {
+			if (null != interest.childSelector() && ((interest.childSelector() & (Interest.CHILD_SELECTOR_RIGHT))
+					== (Interest.CHILD_SELECTOR_RIGHT))) {
 				// Traverse to find latest match
 				return rightSearch(interest, (null == addl) ? -1 : addl + ncc, 
 						prefixRoot, new ContentName(ncc, interest.name().components()), 
@@ -530,8 +528,7 @@ public class ContentTree {
 			else{
 				return leftSearch(interest, (null == addl) ? -1 : addl + ncc,
 						prefixRoot, new ContentName(ncc, interest.name().components()), 
-						ncc, null == interest.orderPreference() || (interest.orderPreference() & (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME))
-						!= (Interest.ORDER_PREFERENCE_RIGHT | Interest.ORDER_PREFERENCE_ORDER_NAME), getter);
+						ncc, false, getter);
 			}
 			
 			

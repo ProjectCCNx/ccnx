@@ -12,7 +12,7 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-
+import com.parc.ccn.network.daemons.repo.RepositoryException;
 public class RepoInitialReadTest extends RepoTestBase {
 	
 	@Test
@@ -50,10 +50,12 @@ public class RepoInitialReadTest extends RepoTestBase {
 		checkData(new Interest(name), data.getBytes());
 	}
 	
-	private void checkDataWithDigest(ContentName name, String data) throws IOException, InterruptedException{
-		// When generating an Interest for the exact name with content digest, need to set additionalNameComponents
+	private void checkDataWithDigest(ContentName name, String data) throws RepositoryException, IOException, InterruptedException {
+		// When generating an Interest for the exact name with content digest, need to set maxSuffixComponents
 		// to 0, signifying that name ends with explicit digest
-		checkData(new Interest(name, 0, (PublisherID)null), data.getBytes());
+		Interest interest = new Interest(name);
+		interest.maxSuffixComponents(0);
+		checkData(interest, data.getBytes());
 	}
 	
 	private void checkData(Interest interest, byte[] data) throws IOException, InterruptedException{

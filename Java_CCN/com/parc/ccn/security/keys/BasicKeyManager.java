@@ -76,7 +76,8 @@ public class BasicKeyManager extends KeyManager {
 		File keyStoreFile = new File(UserConfiguration.keystoreFileName());
 		if (!keyStoreFile.exists()) {
 			Library.logger().info("Creating new CCN key store..." + UserConfiguration.keystoreFileName());
-			_keystore = createKeyStore();	
+			_keystore = createKeyStore();
+			System.out.println("created key store.");
 		}
 		if (null == _keystore) {
 			FileInputStream in = null;
@@ -115,6 +116,19 @@ public class BasicKeyManager extends KeyManager {
 				throw new ConfigurationException("Cannot load keystore with no certificates.");
 			} catch (IOException e) {
 				Library.logger().warning("Cannot open existing key store: " + e);
+				try {
+					in.reset();
+					java.io.FileOutputStream bais = new java.io.FileOutputStream("KeyDump.p12");
+					byte [] tmp = new byte[2048];
+					int read = in.read(tmp);
+					while (read > 0) {
+						bais.write(tmp, 0, read);
+					}
+					bais.flush();
+					bais.close();
+				} catch (IOException e1) {
+					Library.logger().info("Another exception: " + e1);
+				}
 				throw new ConfigurationException(e);
 			} catch (KeyStoreException e) {
 				Library.logger().warning("Cannot create instance of preferred key store type: " + UserConfiguration.defaultKeystoreType() + " " + e.getMessage());
@@ -445,5 +459,4 @@ public class BasicKeyManager extends KeyManager {
 		}
 		keyRepository().publishKey(keyName, key, getDefaultKeyID(), getDefaultSigningKey());
 	}
-
 }

@@ -71,11 +71,7 @@ public class CCNFlowControlTest {
 	ContentName v1s3 = SegmentationProfile.segmentName(v1, 3);
 	ContentObject objv1s3 = new ContentObject(v1s3, new SignedInfo(), "v1s3".getBytes(), (Signature)null);	
 	ContentName v1s4 = SegmentationProfile.segmentName(v1, 4);
-	ContentObject objv1s4 = new ContentObject(v1s4, new SignedInfo(), "v1s4".getBytes(), (Signature)null);	
-	ContentName v2s1 = SegmentationProfile.segmentName(v2, 1);
-	ContentObject objv2s1 = new ContentObject(v2s1, new SignedInfo(), "v2s1".getBytes(), (Signature)null);	
-	ContentName v2s2 = SegmentationProfile.segmentName(v2, 2);
-	ContentObject objv2s2 = new ContentObject(v2s2, new SignedInfo(), "v2s2".getBytes(), (Signature)null);
+	ContentObject objv1s4 = new ContentObject(v1s4, new SignedInfo(), "v1s4".getBytes(), (Signature)null);
 	Queue<ContentObject> queue = _library.getOutputQueue();
 	ArrayList<Interest> interestList = new ArrayList<Interest>();
 	CCNFlowControl fc = null;
@@ -165,17 +161,14 @@ public class CCNFlowControlTest {
 		
 		// Put these in slightly random order. It would be nice to truly randomize this but am
 		// not going to bother with that right now.
-		fc.put(objv2s1);
 		fc.put(objv1s4);
 		fc.put(objv1s1);
 		fc.put(objv1s2);
 		fc.put(objv1s3);
-		fc.put(objv2s2);
 		ContentObject co = testExpected(_library.get(v1, 0), objv1s1);
 		co = testNext(co, objv1s2);
 		co = testNext(co, objv1s3);
 		co = testNext(co, objv1s4);
-		co = testNext(co, objv2s1);
 		
 	}
 
@@ -213,17 +206,13 @@ public class CCNFlowControlTest {
 
 		normalReset(name1);
 		fc.put(objv1s2);
-		fc.put(objv2s1);
 		fc.put(objv1s4);
 		fc.put(objv1s1);
 		fc.put(objv1s3);
-		fc.put(objv2s2);
-		testLast(objv1s1, objv2s2);
-		testLast(objv1s1, objv2s1);
 		testLast(objv1s1, objv1s4);
 		testLast(objv1s1, objv1s3);
 		testLast(objv1s1, objv1s2);
-		testLast(objv1s1, objv1s1);
+		_library.get(new Interest(v1s1), 0);
 		
 		System.out.println("Testing \"waitForPutDrain\"");
 		try {
@@ -289,12 +278,12 @@ public class CCNFlowControlTest {
 	}
 	
 	private ContentObject testNext(ContentObject co, ContentObject expected) throws InvalidParameterException, IOException {
-		co = _library.getNext(co.name(), 2, 0);
+		co = _library.getNext(co.name(), 3, 0);
 		return testExpected(co, expected);
 	}
 	
 	private void testLast(ContentObject co, ContentObject expected) throws InvalidParameterException, IOException {
-		co = _library.getLatest(co.name(), 2, 0);
+		co = _library.getLatest(co.name(), 3, 0);
 		testExpected(co, expected);
 	}
 	

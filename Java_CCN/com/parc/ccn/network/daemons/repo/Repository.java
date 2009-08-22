@@ -26,9 +26,9 @@ public interface Repository {
 	public static final String REPO_DATA = "data";
 	
 	public class NameEnumerationResponse{
-		ContentName prefix;
-		ArrayList<ContentName> names;
-		Timestamp version;
+		private ContentName prefix;
+		private ArrayList<ContentName> names;
+		private Timestamp version;
 		
 		public NameEnumerationResponse(){
 			prefix = null;
@@ -72,6 +72,13 @@ public interface Repository {
 				temp[x] = new Link(names.get(x));
 			}
 			return new Collection(temp);
+		}
+		
+		public boolean hasNames(){
+			if (names!=null && names.size()>0)
+				return true;
+			else
+				return false;
 		}
 		
 	}

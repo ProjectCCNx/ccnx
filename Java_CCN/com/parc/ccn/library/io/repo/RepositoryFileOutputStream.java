@@ -18,7 +18,7 @@ public class RepositoryFileOutputStream extends CCNFileOutputStream {
 	public RepositoryFileOutputStream(ContentName name,
 			PublisherPublicKeyDigest publisher, CCNLibrary library)
 			throws IOException {
-		super(name, null, publisher, null, new RepositoryFlowControl(name, library));
+		this(name, null, publisher, null, library);
 	}
 
 	public RepositoryFileOutputStream(ContentName name, KeyLocator locator,

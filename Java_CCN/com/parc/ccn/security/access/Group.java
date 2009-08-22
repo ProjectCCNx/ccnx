@@ -85,8 +85,9 @@ public class Group {
 	 * @throws InvalidKeyException 
 	 */
 	Group(ContentName namespace, String groupFriendlyName, MembershipList members, 
-					CCNLibrary library, GroupManager manager) throws XMLStreamException, IOException, ConfigurationException, InvalidKeyException {
+					CCNLibrary library, GroupManager manager) throws XMLStreamException, IOException, ConfigurationException, InvalidKeyException {		
 		this(namespace, groupFriendlyName, members, null, library,manager);
+		_groupPublicKey = new PublicKeyObject(AccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), _library);
 		createGroupPublicKey(manager, members);		
 	}
 	
@@ -129,7 +130,9 @@ public class Group {
 	 */
 	public MembershipList membershipList() throws XMLStreamException, IOException, ConfigurationException { 
 		if (null == _groupMembers) {
-			// Read constructor. Synchronously updates.
+			// Read constructor. Synchronously updates. 
+			// Elaine: the code will throw an exception if no membership list is found or upon error
+			// reading membership list from network... need error handling...
 			_groupMembers = new MembershipList(AccessControlProfile.groupMembershipListName(_groupNamespace, _groupFriendlyName), _library);
 			// Keep dynamically updating.
 			_groupMembers.updateInBackground(true);
@@ -245,7 +248,12 @@ public class Group {
 		kpg.initialize(AccessControlManager.DEFAULT_GROUP_KEY_LENGTH);
 		KeyPair pair = kpg.generateKeyPair();
 		
-		_groupPublicKey.save(pair.getPublic());
+		_groupPublicKey = 
+			new PublicKeyObject(
+					AccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), 
+					pair.getPublic(),
+					_library);
+		_groupPublicKey.saveToRepository();
 		KeyDirectory newPrivateKeyDirectory = privateKeyDirectory(manager.getAccessManager()); // takes from new public key
 		
 		Key privateKeyWrappingKey = WrappedKey.generateNonceKey();

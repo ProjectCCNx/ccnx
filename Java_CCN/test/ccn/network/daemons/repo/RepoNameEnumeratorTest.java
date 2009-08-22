@@ -38,6 +38,8 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 	public void repoNameEnumerationTest(){
 		setLibraries();
 		
+		prefix1String += "-" + rand.nextInt(10000);
+		
 		Library.logger().info("adding name1 to repo");
 		addContentToRepo(prefix1String+"/name1");
 		
@@ -180,7 +182,7 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 	public void testGetResponse(int count){
 		try {
 			int i = 0;
-			while (i < 350) {
+			while (i < 500) {
 				Thread.sleep(rand.nextInt(50));
 				i++;
 				//break out early if possible

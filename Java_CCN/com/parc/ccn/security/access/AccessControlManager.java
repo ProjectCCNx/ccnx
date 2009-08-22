@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
 import java.security.PrivateKey;
 import java.security.SecureRandom;
 import java.util.ArrayList;
@@ -219,17 +220,24 @@ public class AccessControlManager {
 	
 	public GroupManager groupManager() { return _groupManager; }
 	
-	public void publishIdentity(ContentName identity, PublisherPublicKeyDigest myPublicKey) throws InvalidKeyException, IOException, ConfigurationException {
-		KeyManager km = _library.keyManager();
+	public void publishMyIdentity(ContentName identity, PublisherPublicKeyDigest myPublicKey) throws InvalidKeyException, IOException, ConfigurationException, XMLStreamException {
+		KeyManager km = KeyManager.getKeyManager();
 		if (null == myPublicKey) {
 			myPublicKey = km.getDefaultKeyID();
 		}
-		km.publishKey(identity, myPublicKey);
+		PublicKeyObject pko = new PublicKeyObject(identity, myPublicKey, library());
+		pko.saveToRepository();
 		_myIdentities.add(identity);
 	}
 	
-	public void publishIdentity(String userName, PublisherPublicKeyDigest myPublicKey) throws InvalidKeyException, IOException, ConfigurationException {
-		publishIdentity(AccessControlProfile.userNamespaceName(_userStorage, userName), myPublicKey);
+	public void publishMyIdentity(String userName, PublisherPublicKeyDigest myPublicKey) throws InvalidKeyException, IOException, ConfigurationException, XMLStreamException {
+		publishMyIdentity(AccessControlProfile.userNamespaceName(_userStorage, userName), myPublicKey);
+	}
+	
+	public void publishUserIdentity(String userName, PublicKey userPublicKey) throws ConfigurationException, IOException {
+		PublicKeyObject pko = new PublicKeyObject(AccessControlProfile.userNamespaceName(_userStorage, userName), userPublicKey, library());
+		System.out.println("saving user pubkey to repo:" + AccessControlProfile.userNamespaceName(_userStorage, userName));
+		pko.saveToRepository();
 	}
 	
 	public boolean haveIdentity(String userName) {

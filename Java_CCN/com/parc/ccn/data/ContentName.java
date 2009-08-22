@@ -926,7 +926,12 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		}
 	}
 	
-	int containsWhere(byte [] component) {
+	/**
+	 * Return component # of first matching component if it exists
+	 * @param component
+	 * @return -1 on failure, component # otherwise
+	 */
+	public int containsWhere(byte [] component) {
 		int i=0;
 		boolean result = false;
 		for (i=0; i < _components.size(); ++i) {

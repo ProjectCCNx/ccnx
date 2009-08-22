@@ -227,7 +227,8 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 	 */
 	public ContentObject getLower(ContentName name, int level, long timeout) throws IOException {
 		Interest interest = new Interest(name);
-		interest.additionalNameComponents(level);
+		interest.maxSuffixComponents(level);
+		interest.minSuffixComponents(level);
 		return get(interest, timeout);
 	}
 	
@@ -243,8 +244,8 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 	 */
 	public ContentObject getLeftmostLower(ContentName name, int level, long timeout) throws IOException {
 		Interest interest = new Interest(name);
-		interest.additionalNameComponents(level);
-		interest.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME | Interest.ORDER_PREFERENCE_LEFT);
+		interest.maxSuffixComponents(level);
+		interest.minSuffixComponents(level);
 		return get(interest, timeout);
 	}
 
@@ -260,19 +261,20 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 	 */
 	public ArrayList<ContentObject> enumerate(Interest query, long timeout) throws IOException {
 		ArrayList<ContentObject> result = new ArrayList<ContentObject>();
-		Integer prefixCount = query.nameComponentCount() == null ? query.name().components().size() 
-				: query.nameComponentCount();
 		// This won't work without a correct order preference
-		query.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME | Interest.ORDER_PREFERENCE_LEFT);
+		int count = query.name().count();
 		while (true) {
 			ContentObject co = null;
 			co = get(query, timeout == NO_TIMEOUT ? 5000 : timeout);
 			if (co == null)
 				break;
 			Library.logger().info("enumerate: retrieved " + co.name() + 
-					" digest: " + ContentName.componentPrintURI(co.contentDigest()) + " on query: " + query.name() + " prefix count: " + prefixCount);
+					" digest: " + ContentName.componentPrintURI(co.contentDigest()) + " on query: " + query.name());
 			result.add(co);
-			query = Interest.next(co, prefixCount);
+			for (int i = co.name().count() - 1; i > count; i--) {
+				result.addAll(enumerate(new Interest(new ContentName(i, co.name().components())), timeout));
+			}
+			query = Interest.next(co, count);
 		}
 		Library.logger().info("enumerate: retrieved " + result.size() + " objects.");
 		return result;
@@ -327,7 +329,7 @@ public class CCNLibrary extends CCNBase implements ContentVerifier {
 	 */
 	public ContentObject getLatest(ContentName name, ExcludeFilter exclude, long timeout) 
 			throws IOException, InvalidParameterException {
-		return get(Interest.last(name, exclude), timeout);
+		return get(Interest.last(name, exclude, name.count() - 1), timeout);
 	}
 	
 	public ContentObject getLatest(ContentName name, long timeout) throws InvalidParameterException, 

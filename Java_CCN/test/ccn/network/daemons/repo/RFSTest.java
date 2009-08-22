@@ -229,7 +229,7 @@ public class RFSTest extends RepoTestBase {
 		//send initial interest to make sure namespace is empty
 		//interest flag will not be set for a fast response since there isn't anything in the index yet
 		
-		Interest interest = Interest.constructInterest(new ContentName(nerpre, CCNNameEnumerator.NEMARKER), null, Interest.ORDER_PREFERENCE_ORDER_NAME, nerpre.count()+1);
+		Interest interest = new Interest(new ContentName(nerpre, CCNNameEnumerator.NEMARKER));
 		neresponse = repo.getNamesWithPrefix(interest);
 		Assert.assertTrue(neresponse == null || neresponse.getNames()==null);
 		//now saving the first piece of content in the repo.  interest flag not set, so it should not get an object back
@@ -244,8 +244,6 @@ public class RFSTest extends RepoTestBase {
 		//now call get names with prefix again to set interest flag
 		//have to use the version from the last response (or at least a version after the last write
 		interest = Interest.last(VersioningProfile.addVersion(neresponse.getPrefix(), neresponse.getTimestamp()));
-		interest.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME);
-		interest.nameComponentCount(interest.nameComponentCount());
 		//the response should be null and the flag set
 		neresponse = repo.getNamesWithPrefix(interest);
 		Assert.assertTrue(neresponse==null || neresponse.getNames()==null);
@@ -258,8 +256,6 @@ public class RFSTest extends RepoTestBase {
 		
 		//need to reconstruct the interest again
 		interest = Interest.last(VersioningProfile.addVersion(neresponse.getPrefix(), neresponse.getTimestamp()));
-		interest.orderPreference(Interest.ORDER_PREFERENCE_ORDER_NAME);
-		interest.nameComponentCount(interest.nameComponentCount());
 		//another interest to set interest flag, response should be null
 		neresponse = repo.getNamesWithPrefix(interest);
 		Assert.assertTrue(neresponse == null || neresponse.getNames()==null);
@@ -284,12 +280,12 @@ public class RFSTest extends RepoTestBase {
 		checkData(repo, badCharName, "Funny characters!");
 		checkData(repo, badCharLongName, "Long and funny");
 		Interest vnInterest = new Interest(versionedName);
-		vnInterest.additionalNameComponents(1);
+		vnInterest.maxSuffixComponents(1);
 		checkData(repo, vnInterest, "version");
 		checkData(repo, segmentedName1, "segment1");
 		checkData(repo, segmentedName223, "segment223");
 		vnInterest = new Interest(versionedNameNormal);
-		vnInterest.additionalNameComponents(1);
+		vnInterest.maxSuffixComponents(1);
 		checkData(repo, vnInterest, "version-normal");
 		for (Long i=SegmentationProfile.baseSegment(); i<5; i++) {
 			ContentName segmented = SegmentationProfile.segmentName(versionedNameNormal, i);
@@ -331,9 +327,11 @@ public class RFSTest extends RepoTestBase {
 	}
 	
 	private void checkDataWithDigest(Repository repo, ContentName name, String data) throws RepositoryException {
-		// When generating an Interest for the exact name with content digest, need to set additionalNameComponents
+		// When generating an Interest for the exact name with content digest, need to set maxSuffixComponents
 		// to 0, signifying that name ends with explicit digest
-		checkData(repo, new Interest(name, 0, (PublisherID)null), data);
+		Interest interest = new Interest(name);
+		interest.maxSuffixComponents(0);
+		checkData(repo, interest, data);
 	}
 
 	private void checkData(Repository repo, Interest interest, String data) throws RepositoryException {

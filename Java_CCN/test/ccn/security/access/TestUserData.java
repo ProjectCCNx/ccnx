@@ -1,6 +1,8 @@
 package test.ccn.security.access;
 
 import java.io.IOException;
+import java.security.InvalidKeyException;
+import java.security.PublicKey;
 import java.util.HashMap;
 import java.util.Set;
 import java.util.SortedSet;
@@ -12,6 +14,9 @@ import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.EnumeratedNameList;
+import com.parc.ccn.library.profiles.AccessControlProfile;
+
+import com.parc.ccn.security.access.AccessControlManager;
 import com.parc.ccn.security.keys.KeyManager;
 import com.parc.ccn.security.keys.NetworkKeyManager;
 import com.parc.ccn.security.keys.RepositoryKeyManager;
@@ -43,6 +48,7 @@ public class TestUserData {
 	protected HashMap<ContentName, KeyManager> _userData = new HashMap<ContentName,KeyManager>();
 	protected HashMap<String,ContentName> _userFriendlyNames = new HashMap<String, ContentName>();	
 	
+		
 	/**
 	 * Read/write constructor. Makes extra new users if necessary. Expects names to come as above.
 	 * Will incur timeouts the first time, as it checks for data first, and will take time
@@ -53,12 +59,17 @@ public class TestUserData {
 	 * @param storeInRepo
 	 * @throws IOException 
 	 * @throws ConfigurationException 
+	 * @throws InvalidKeyException 
 	 */
-	public TestUserData(ContentName userKeystoreDataPrefix, int userCount, boolean storeInRepo, char [] password, CCNLibrary library) throws ConfigurationException, IOException {
+	public TestUserData(ContentName testStorePrefix, int userCount, boolean storeInRepo, char [] password, CCNLibrary library) throws ConfigurationException, IOException, InvalidKeyException {
 	
 		ContentName childName = null;
 		String friendlyName = null;
 		KeyManager userKeyManager = null;
+		
+		AccessControlManager _acm = new AccessControlManager(testStorePrefix);
+		ContentName userKeystoreDataPrefix = AccessControlProfile.userNamespaceName(testStorePrefix);
+		
 		for (int i=0; i < userCount; ++i) {
 			friendlyName = USER_NAMES[i % USER_NAMES.length] + Integer.toString(1 + i/USER_NAMES.length);
 			childName = ContentName.fromNative(userKeystoreDataPrefix, friendlyName);
@@ -74,16 +85,32 @@ public class TestUserData {
 			userKeyManager.initialize();
 			_userData.put(childName, userKeyManager);
 			_userFriendlyNames.put(friendlyName, childName);
+			
+			_acm.publishUserIdentity(friendlyName, userKeyManager.getDefaultPublicKey());
+			
+/*			KeyPairGenerator kpg = null;
+			try {
+				kpg = KeyPairGenerator.getInstance(AccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM);
+			} catch (NoSuchAlgorithmException e) {
+				throw new ConfigurationException("Specified user public key algorithm " +  AccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM + " not found. " + e.getMessage());
+			}
+			kpg.initialize(AccessControlManager.DEFAULT_GROUP_KEY_LENGTH);
+			KeyPair pair = kpg.generateKeyPair();
+			PublicKeyObject pko = new PublicKeyObject(childName, pair.getPublic(), library);
+			pko.saveToRepository();*/
 		}
 	}
+	
+	
 	
 	/**
 	 * General read constructor. Expects names to be available in repo, and so enumerable.
 	 * i.e. something must be there. Uses NetworkKeyManager to read them out, though.
 	 * @throws IOException 
 	 * @throws ConfigurationException 
+	 * @throws InvalidKeyException 
 	 */
-	public TestUserData(ContentName userKeystoreDataPrefix, char [] password, CCNLibrary library) throws IOException, ConfigurationException {
+	public TestUserData(ContentName userKeystoreDataPrefix, char [] password, CCNLibrary library) throws IOException, ConfigurationException, InvalidKeyException {
 		
 		EnumeratedNameList userDirectory = new EnumeratedNameList(userKeystoreDataPrefix, library);
 		userDirectory.waitForData(); // will block
@@ -109,6 +136,7 @@ public class TestUserData {
 				userKeyManager.initialize();
 				_userData.put(childName, userKeyManager);
 				_userFriendlyNames.put(friendlyName, childName);
+				
 			}
 			availableChildren = null;
 			if (userDirectory.hasNewData()) {
