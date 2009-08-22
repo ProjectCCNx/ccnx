@@ -158,6 +158,9 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 	 * it should pull an exact match if the link fully specifies digests and so on (TODO -- TBD),
 	 * and otherwise it'll probably assume that what is below here is either a version and
 	 * segments (get latest version) or that this is versioned and it wants segments.
+	 * 
+	 * @return Returns a child object. Does not verify it, other than to ensure it matches
+	 *   the requirements of the Link.
 	 * @throws IOException 
 	 */
 	public ContentObject dereference(long timeout, CCNLibrary library) throws IOException {

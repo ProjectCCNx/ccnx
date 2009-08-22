@@ -13,7 +13,9 @@ import com.parc.ccn.data.query.BloomFilter;
 import com.parc.ccn.data.query.ExcludeAny;
 import com.parc.ccn.data.query.ExcludeComponent;
 import com.parc.ccn.data.query.ExcludeFilter;
+import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentVerifier;
+import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.util.DataUtils;
@@ -405,6 +407,53 @@ public class VersioningProfile implements CCNProfile {
 	 */
 
 	/**
+	 * Generate an interest that will find the leftmost child of the latest version. It
+	 * will ensure that the next to last segment is a version, and the last segment (excluding
+	 * digest) is the leftmost child available. But it can't guarantee that the latter is
+	 * a segment. Because most data is segmented, length constraints will make it very
+	 * likely, however.
+	 * @param startingVersion
+	 * @return
+	 */
+	public static Interest getFirstBlockLatestVersionAfterInterest(ContentName startingVersion, PublisherPublicKeyDigest publisher) {
+		// by the time we look for extra components we will have a version on our name if it
+		// doesn't have one already, so look for names with 2 extra components -- segment and digest.
+		return getLatestVersionAfterInterest(startingVersion, 2, publisher);
+	}
+	
+	/**
+	 * Generate an interest that will find a descendant of the latest version of startingVersion,
+	 * after any existing version component. If additionalNameComponents is non-null, it will
+	 * find a descendant with exactly that many name components after the version (including
+	 * the digest). The latest version is the rightmost child of the desired prefix, however,
+	 * this interest will find leftmost descendants of that rightmost child. With appropriate
+	 * length limitations, can be used to find segments of the latest version (though that
+	 * will work more effectively with appropriate segment numbering).
+	 */
+	public static Interest getLatestVersionAfterInterest(ContentName startingVersion, Integer additionalNameComponents, PublisherPublicKeyDigest publisher) {
+		
+		if (hasTerminalVersion(startingVersion)) {
+			// Has a version. Make sure it doesn't have a segment; find a version after this one.
+			startingVersion = SegmentationProfile.segmentRoot(startingVersion);
+		} else {
+			// Doesn't have a version. Add the "0" version, so we are finding any version after that.
+			ContentName firstVersionName = addVersion(startingVersion, baseVersion());
+			startingVersion = firstVersionName;
+		}
+		byte [] versionComponent = startingVersion.lastComponent();
+		
+		Interest constructedInterest = Interest.last(startingVersion, acceptVersions(versionComponent), startingVersion.count() - 1);
+		if (null != additionalNameComponents) {
+			constructedInterest.maxSuffixComponents(additionalNameComponents);
+			constructedInterest.minSuffixComponents(additionalNameComponents);
+		}
+		if (null != publisher) {
+			constructedInterest.publisherID(new PublisherID(publisher));
+		}
+		return constructedInterest;
+	}
+
+	/**
 	 * Gets the latest version using a single interest/response. There may be newer versions available
 	 * if you ask again passing in the version found (i.e. each response will be the latest version
 	 * a given responder knows about. Further queries will move past that responder to other responders,
@@ -420,64 +469,60 @@ public class VersioningProfile implements CCNProfile {
 	 * but right now that is generally a repo start write, not a segment. Changing the marker values
 	 * used will fix that.
 	 * TODO fix marker values
+	 * @result Returns a matching ContentObject, *unverified*.
 	 * @throws IOException
 	 * DKS TODO -- doesn't use publisher
 	 * DKS TODO -- specify separately latest version known?
 	 */
-	public static ContentObject getLatestVersionAfter(ContentName name, PublisherPublicKeyDigest publisher, 
+	public static ContentObject getLatestVersionAfter(ContentName startingVersion, 
+													  PublisherPublicKeyDigest publisher, 
 													  long timeout, CCNLibrary library) throws IOException {
 		
-		if (hasTerminalVersion(name)) {
-			// Has a version. Make sure it doesn't have a segment; find a version after this one.
-			name = SegmentationProfile.segmentRoot(name);
-		} else {
-			// Doesn't have a version. Add the "0" version, so we are finding any version after that.
-			ContentName firstVersionName = addVersion(name, baseVersion());
-			name = firstVersionName;
-		}
+		ContentName latestVersionFound = startingVersion;
 		
-		byte [] versionComponent = name.lastComponent();
-		// initially exclude name components just before the first version, whether that is the
-		// 0th version or the version passed in
 		while (true) {
-			ContentObject co = library.getLatest(name, acceptVersions(versionComponent), timeout);
+			
+			Interest getLatestInterest = getLatestVersionAfterInterest(latestVersionFound, null, publisher);
+			ContentObject co = library.get(getLatestInterest, timeout);
 			if (co == null) {
-				Library.logger().info("Null returned from getLatest for name: " + name);
+				Library.logger().info("Null returned from getLatest for name: " + startingVersion);
 				return null;
 			}
 			// What we get should be a block representing a later version of name. It might
 			// be an actual segment of a versioned object, but it might also be an ancillary
 			// object - e.g. a repo message -- which starts with a particular version of name.
-			if (startsWithLaterVersionOf(co.name(), name)) {
+			if (startsWithLaterVersionOf(co.name(), startingVersion)) {
 				// we got a valid version! 
 				Library.logger().info("Got latest version: " + co.name());
 				return co;
 			} else {
-				Library.logger().info("Rejected potential candidate version: " + co.name() + " not a later version of " + name);
+				Library.logger().info("Rejected potential candidate version: " + co.name() + " not a later version of " + startingVersion);
 			}
-			versionComponent = co.name().component(name.count()-1);
+			latestVersionFound = new ContentName(getLatestInterest.name().count(), co.name().components());
 		}
 	}
-
+	
 	/**
-	 * DKS fix this one up to restrict length of valid answer, and check for segments. Don't
-	 * use above method to do this.
-	 * This method returns 
-	 * @param desiredName The name of the object we are looking for the first segment of.
+	 * - find the first segment of the latest version of a name
+	 * 		- if no version given, gets the first segment of the latest version
+	 * 		- if a starting version given, gets the latest version available *after* that version or times out
+	 *    Will ensure that what it returns is a segment of a version of that object.
+	 *	 * @param desiredName The name of the object we are looking for the first segment of.
 	 * 					  If (VersioningProfile.hasTerminalVersion(desiredName) == false), will get latest version it can
 	 * 							find of desiredName.
 	 * 					  If desiredName has a terminal version, will try to find the first block of content whose
 	 * 						    version is *after* desiredName (i.e. getLatestVersion starting from desiredName).
 	 * @param startingSegmentNumber The desired block number, or SegmentationProfile.baseSegment if null.
+	 * @param publisher, if one is specified.
 	 * @param timeout
-	 * @param verifier Cannot be null.
-	 * @return 			  The first block of a stream with a version later than desiredName, or null if timeout is reached.
+	 * @return The first block of a stream with a version later than desiredName, or null if timeout is reached.
+	 *   		This block is *unverified*.
 	 * @throws IOException
 	 */
 	public static ContentObject getFirstBlockOfLatestVersionAfter(ContentName startingVersion, 
 															 Long startingSegmentNumber, 
+															 PublisherPublicKeyDigest publisher, 
 															 long timeout, 
-															 ContentVerifier verifier, 
 															 CCNLibrary library) throws IOException {
 		
 		Library.logger().info("getFirstBlockOfLatestVersion: getting version later than " + startingVersion);
@@ -513,17 +558,4 @@ public class VersioningProfile implements CCNProfile {
 		return result;
 	}
 
-	/**
-	 * This is a temporary function to allow use of this functionality, which will
-	 * get refactored and moved elsewhere in a cleaner form.
-	 * @param startingVersion
-	 * @param publisher
-	 * @param timeout
-	 * @param library
-	 * @return
-	 * @throws IOException
-	 */
-	public static ContentObject getFirstBlockOfLatestVersion(ContentName startingVersion, PublisherPublicKeyDigest publisher, long timeout, CCNLibrary library) throws IOException {
-		return getFirstBlockOfLatestVersionAfter(startingVersion, null, timeout, new ContentObject.SimpleVerifier(publisher), library);
-	}
 }
