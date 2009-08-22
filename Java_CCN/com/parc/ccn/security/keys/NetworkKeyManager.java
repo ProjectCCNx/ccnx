@@ -25,7 +25,7 @@ import com.parc.ccn.library.profiles.VersioningProfile;
  */
 public class NetworkKeyManager extends BasicKeyManager {
 	
-	static final int DEFAULT_TIMEOUT = 1000;
+	static final long DEFAULT_TIMEOUT = 1000;
 	
 	ContentName _keystoreName;
 	PublisherPublicKeyDigest _publisher;
