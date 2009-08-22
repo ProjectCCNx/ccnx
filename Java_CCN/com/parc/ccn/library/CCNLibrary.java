@@ -153,7 +153,7 @@ public class CCNLibrary extends CCNBase {
 	 * @throws IOException
 	 */
 	public ContentObject get(ContentName name, PublisherPublicKeyDigest publisher, long timeout) throws IOException {
-		Interest interest = new Interest(name);
+		Interest interest = new Interest(name, publisher);
 		return get(interest, timeout);
 	}
 
@@ -167,8 +167,8 @@ public class CCNLibrary extends CCNBase {
 	 * @return
 	 * @throws IOException
 	 */
-	public ContentObject getLower(ContentName name, int level, long timeout) throws IOException {
-		Interest interest = new Interest(name);
+	public ContentObject getLower(ContentName name, int level, PublisherPublicKeyDigest publisher, long timeout) throws IOException {
+		Interest interest = new Interest(name, publisher);
 		interest.maxSuffixComponents(level);
 		interest.minSuffixComponents(level);
 		return get(interest, timeout);

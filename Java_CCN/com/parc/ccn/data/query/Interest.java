@@ -112,12 +112,16 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		_publisher = publisher;
 	}
 	
+	public Interest(ContentName name, PublisherPublicKeyDigest publisher) {
+		this(name, (null != publisher) ? new PublisherID(publisher) : (PublisherID)null);
+	}
+	
 	public Interest(ContentName name) {
-		this(name, null);
+		this(name, (PublisherID)null);
 	}
 	
 	public Interest(String name) throws MalformedContentNameStringException {
-		this(ContentName.fromURI(name), null);
+		this(ContentName.fromURI(name), (PublisherID)null);
 	}
 
 	public Interest() {} // for use by decoders

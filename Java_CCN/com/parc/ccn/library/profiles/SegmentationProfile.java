@@ -202,7 +202,7 @@ public class SegmentationProfile implements CCNProfile {
 	 * Retrieves a specific segment, following the above naming conventions.
 	 * If necessary (not currently), will issue repeated requests until it gets a segment
 	 * that matches requirements and verifies, or it times out.
-	 * TODO Eventually support publisher specification, and cope if verification fails (exclude, warn and retry).
+	 * TODO Eventually cope if verification fails (exclude, warn and retry).
 	 * @param desiredContent
 	 * @param segmentNumber If null, gets baseSegment().
 	 * @param timeout
@@ -221,10 +221,9 @@ public class SegmentationProfile implements CCNProfile {
 		
 		ContentName blockName = segmentName(desiredContent, desiredSegmentNumber);
 	
-		// TODO allow publisher specification.
 		// TODO use better exclude filters to ensure we're only getting segments.
 		Library.logger().info("getBlock: getting block " + blockName);
-		ContentObject block = library.getLower(blockName, 1, timeout);
+		ContentObject block = library.getLower(blockName, 1, publisher, timeout);
 	
 		if (null == block) {
 			Library.logger().info("Cannot get block " + desiredSegmentNumber + " of file " + desiredContent + " expected block: " + blockName);
